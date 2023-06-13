@@ -64,6 +64,14 @@ export interface BatchRemoveTestersResponse {
   emails: string[];
 }
 
+export interface Group {
+  name: string;
+  displayName: string;
+  testerCount?: number;
+  releaseCount?: number;
+  inviteLinkCount?: number;
+}
+
 /**
  * Makes RPCs to the App Distribution server backend.
  */
@@ -166,7 +174,7 @@ export class AppDistributionClient {
     utils.logSuccess("distributed to testers/groups successfully");
   }
 
-  async addTesters(projectName: string, emails: string[]) {
+  async addTesters(projectName: string, emails: string[]): Promise<void> {
     try {
       await this.appDistroV2Client.request({
         method: "POST",
@@ -195,5 +203,33 @@ export class AppDistributionClient {
       throw new FirebaseError(`Failed to remove testers ${err}`);
     }
     return apiResponse.body;
+  }
+
+  async createGroup(projectName: string, displayName: string, alias?: string): Promise<Group> {
+    let apiResponse;
+    try {
+      apiResponse = await this.appDistroV2Client.request<{ displayName: string }, Group>({
+        method: "POST",
+        path:
+          alias === undefined ? `${projectName}/groups` : `${projectName}/groups?groupId=${alias}`,
+        body: { displayName: displayName },
+      });
+    } catch (err: any) {
+      throw new FirebaseError(`Failed to create group ${err}`);
+    }
+    return apiResponse.body;
+  }
+
+  async deleteGroup(groupName: string): Promise<void> {
+    try {
+      await this.appDistroV2Client.request({
+        method: "DELETE",
+        path: groupName,
+      });
+    } catch (err: any) {
+      throw new FirebaseError(`Failed to delete group ${err}`);
+    }
+
+    utils.logSuccess(`Group deleted successfully`);
   }
 }

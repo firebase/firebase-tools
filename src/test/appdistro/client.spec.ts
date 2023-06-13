@@ -6,14 +6,18 @@ import * as rimraf from "rimraf";
 import * as sinon from "sinon";
 import * as tmp from "tmp";
 
-import { AppDistributionClient, BatchRemoveTestersResponse } from "../../appdistribution/client";
+import {
+  AppDistributionClient,
+  BatchRemoveTestersResponse,
+  Group,
+} from "../../appdistribution/client";
 import { appDistributionOrigin } from "../../api";
 import { Distribution } from "../../appdistribution/distribution";
 import { FirebaseError } from "../../error";
 
 tmp.setGracefulCleanup();
 
-describe("distribution", () => {
+describe.only("distribution", () => {
   const tempdir = tmp.dirSync();
   const projectName = "projects/123456789";
   const appName = `${projectName}/apps/1:123456789:ios:abc123def456`;
@@ -198,6 +202,57 @@ describe("distribution", () => {
         ).to.be.rejectedWith(FirebaseError, "failed to distribute to testers/groups");
         expect(nock.isDone()).to.be.true;
       });
+    });
+  });
+
+  describe("createGroup", () => {
+    it("should throw error if request fails", async () => {
+      nock(appDistributionOrigin)
+        .post(`/v1/${projectName}/groups`)
+        .reply(400, { error: { status: "FAILED_PRECONDITION" } });
+      await expect(appDistributionClient.createGroup(projectName, "My Group")).to.be.rejectedWith(
+        FirebaseError,
+        "Failed to create group"
+      );
+      expect(nock.isDone()).to.be.true;
+    });
+
+    const mockResponse: Group = { name: `${projectName}/groups/my-group`, displayName: "My Group" };
+    it("should resolve when request succeeds", async () => {
+      nock(appDistributionOrigin).post(`/v1/${projectName}/groups`).reply(200, mockResponse);
+      await expect(
+        appDistributionClient.createGroup(projectName, "My Group")
+      ).to.eventually.deep.eq(mockResponse);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should resolve when request with alias succeeds", async () => {
+      nock(appDistributionOrigin)
+        .post(`/v1/${projectName}/groups?groupId=my-group`)
+        .reply(200, mockResponse);
+      await expect(
+        appDistributionClient.createGroup(projectName, "My Group", "my-group")
+      ).to.eventually.deep.eq(mockResponse);
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("deleteGroup", () => {
+    it("should throw error if delete fails", async () => {
+      nock(appDistributionOrigin)
+        .delete(`/v1/${projectName}/groups/my-group`)
+        .reply(400, { error: { status: "FAILED_PRECONDITION" } });
+      await expect(
+        appDistributionClient.deleteGroup(`${projectName}/groups/my-group`)
+      ).to.be.rejectedWith(FirebaseError, "Failed to delete group");
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should resolve when request succeeds", async () => {
+      nock(appDistributionOrigin).delete(`/v1/${projectName}/groups/my-group`).reply(200, {});
+      await expect(appDistributionClient.deleteGroup(`${projectName}/groups/my-group`)).to.be
+        .eventually.fulfilled;
+      expect(nock.isDone()).to.be.true;
     });
   });
 });
