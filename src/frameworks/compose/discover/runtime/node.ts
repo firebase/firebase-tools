@@ -246,7 +246,12 @@ export class NodejsRuntime implements Runtime {
 
       return runtimeSpec;
     } catch (error: any) {
+<<<<<<< HEAD
       throw new FirebaseError(`Failed to indentify commands for codebase: ${error}`);
+=======
+      logger.error("Failed to analyseCodebase: ", error);
+      throw error;
+>>>>>>> 822fc93b (Error handling corrections)
     }
   }
 }
