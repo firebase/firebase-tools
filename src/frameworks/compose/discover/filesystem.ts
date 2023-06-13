@@ -2,7 +2,7 @@ import { FileSystem } from "./types";
 import { pathExists, readFile } from "fs-extra";
 import * as path from "path";
 import { FirebaseError } from "../../../error";
-import { logger } from "../../..";
+import { logger } from "../../../../src/logger";
 
 /**
  * Find files or read file contents present in the directory.
@@ -21,7 +21,7 @@ export class LocalFileSystem implements FileSystem {
 
       return this.existsCache[file];
     } catch (error) {
-      throw new FirebaseError("Error occured while searching for file.");
+      throw new FirebaseError(`Error occured while searching for file: ${error}`);
     }
   }
 
@@ -33,7 +33,7 @@ export class LocalFileSystem implements FileSystem {
       }
       return this.contentCache[file];
     } catch (error) {
-      logger.log("Error occured while reading file contents.");
+      logger.error("Error occured while reading file contents.");
       throw error;
     }
   }
@@ -45,10 +45,11 @@ export class LocalFileSystem implements FileSystem {
 export async function readOrNull(fs: FileSystem, path: string): Promise<string | null> {
   try {
     return fs.read(path);
-  } catch (err: unknown) {
-    if (err && typeof err === "object" && "code" in err && err.code === "ENOENT") {
+  } catch (err: any) {
+    if (err && typeof err === "object" && err?.code === "ENOENT") {
+      logger.debug("ENOENT error occured while reading file.");
       return null;
     }
-    throw new FirebaseError("Unknown error occured while trying to read file contents.");
+    throw new Error(`Unknown error occured while reading file: ${err}`);
   }
 }
