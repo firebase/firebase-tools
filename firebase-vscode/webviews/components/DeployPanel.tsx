@@ -2,7 +2,6 @@ import {
   VSCodeButton,
   VSCodeDivider,
   VSCodeProgressRing,
-  VSCodeLink,
   VSCodeRadio,
   VSCodeRadioGroup,
   VSCodeTextField,

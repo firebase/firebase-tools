@@ -26,22 +26,16 @@
           "description": "Enable writing debug-level messages to the file provided in firebase.debugLogPath (requires restart)"
         },
         "firebase.debugLogPath": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null,
+          "type": "string",
+          "default": "",
           "description": "If firebase.debug is true, appends debug-level messages to the provided file (requires restart)"
         },
         "firebase.npmPath": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null,
+          "type": "string",
+          "default": "",
           "description": "Path to NPM executable in local environment"
         },
-        "firebase.useFrameworkLocal": {
+        "firebase.useFrameworks": {
           "type": "boolean",
           "default": false,
           "description": "Enable web frameworks in a local VSCode environment"

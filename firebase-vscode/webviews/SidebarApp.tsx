@@ -12,6 +12,7 @@ import { DeployPanel } from "./components/DeployPanel";
 import { HostingState } from "./webview-types";
 import { ChannelWithId } from "./messaging/types";
 import { webLogger } from "./globals/web-logger";
+import { TEXT } from "./globals/ux-text";
 
 export function SidebarApp() {
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -148,13 +149,11 @@ export function SidebarApp() {
 function InitFirebasePanel({ onHostingInit }: { onHostingInit: Function }) {
   return (
     <PanelSection isLast>
-      <Body>Choose a path below to get started</Body>
-      <Spacer size="medium" />
       <VSCodeButton onClick={() => onHostingInit()}>
-        Host your web app
+        {TEXT.INIT_HOSTING_BUTTON}
       </VSCodeButton>
       <Spacer size="medium" />
-      <Body>Free web hosting with a world-class CDN for peak performance</Body>
+      <Body>{TEXT.INIT_HOSTING_DESCRIPTION}</Body>
       <Spacer size="large" />
     </PanelSection>
   );

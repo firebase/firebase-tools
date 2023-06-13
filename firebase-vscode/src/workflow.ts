@@ -149,15 +149,14 @@ export function setupWorkflow(
     vscode.workspace.workspaceFolders[0].uri
   );
   const shouldWriteDebug: boolean = workspaceConfig.get('debug');
-  const debugLogPath: string | null = workspaceConfig.get('debugLogPath');
-  const useFrameworkLocal: boolean = workspaceConfig.get('useFrameworkLocal');
-  const npmPath: boolean = workspaceConfig.get('npmPath');
+  const debugLogPath: string = workspaceConfig.get('debugLogPath');
+  const useFrameworks: boolean = workspaceConfig.get('useFrameworks');
+  const npmPath: string = workspaceConfig.get('npmPath');
   if (npmPath) {
     process.env.PATH += `:${npmPath}`;
   }
   
-  if (process.env.MONOSPACE_ENV || useFrameworkLocal) {
-    // TODO(hsubox76): Also allow VS Code users to enable this manually with a UI
+  if (useFrameworks) {
     setEnabled('webframeworks', true);
   }
   /**
