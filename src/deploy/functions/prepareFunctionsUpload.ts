@@ -81,6 +81,7 @@ async function prepareSource(
     tmpDir,
     `${tmpDir}/${internalDepDir}`,
     `./${internalDepDir}/`,
+    ignore,
     (args) => {
       if (args.versionString.startsWith("workspace:")) {
         return join(args.source, "node_modules", args.dependency);
@@ -119,6 +120,9 @@ async function packageSource(
   archive.directory(dir, false);
   await pipeAsync(archive, fileStream);
 
+  // Delete tmp directory
+  fs.rmdirSync(dir);
+
   utils.logBullet(
     clc.cyan(clc.bold("functions:")) +
       " packaged " +
@@ -130,7 +134,7 @@ async function packageSource(
   return { pathToSource: tmpFile, hash };
 }
 
-interface ResolveInternalDependency {
+interface ResolveInternalDependencyArgs {
   source: string;
   dependency: string;
   versionString: string;
@@ -140,30 +144,27 @@ interface ResolveInternalDependency {
  *
  */
 async function copyPackageTo(
-  sourcePackage: string,
+  sourceDir: string,
   target: string,
   internalDependencyDir: string,
   pathRewritePrefix: string,
-  resolveInternalDependency: (args: ResolveInternalDependency) => string | null
+  ignore: string[],
+  resolveInternalDependency: (args: ResolveInternalDependencyArgs) => string | null
 ): Promise<string[]> {
-  if (fs.existsSync(target)) {
-    return [];
-  }
   fs.mkdirSync(target, { recursive: true });
-  const files = await readdirRecursive({ path: sourcePackage });
+  const files = await readdirRecursive({ path: sourceDir, ignore: ignore });
   const hashes: string[] = [];
   for (const file of files) {
-    const absSource = path.join(sourcePackage, file.name);
-    const absDest = path.join(target, file.name);
+    const absDest = path.join(target, path.relative(sourceDir, file.name));
     const fileHash = await getSourceHash(file.name);
     hashes.push(fileHash);
-    if (file.name !== "package.json") {
+    if (!file.name.endsWith("package.json")) {
       const targetDir = absDest.slice(0, absDest.lastIndexOf("/"));
       fs.mkdirSync(targetDir, { recursive: true });
-      fs.copyFileSync(absSource, absDest);
+      fs.copyFileSync(file.name, absDest);
     } else {
       const packageJson: PackageJson = JSON.parse(
-        fs.readFileSync(absSource, "utf-8")
+        fs.readFileSync(file.name, "utf-8")
       ) as PackageJson;
       for (const map of [
         packageJson.dependencies,
@@ -180,21 +181,26 @@ async function copyPackageTo(
           }
           const version = map[dep];
           const internal = resolveInternalDependency({
-            source: sourcePackage,
+            source: sourceDir,
             dependency: dep,
             versionString: version,
           });
           if (internal) {
             const name = path.basename(internal);
+            const internalDependencyTarget = `${internalDependencyDir}/${name}`;
             map[dep] = `file:${pathRewritePrefix}${name}`;
-            const childHashes = await copyPackageTo(
-              internal,
-              `${internalDependencyDir}/${name}`,
-              internalDependencyDir,
-              "../",
-              resolveInternalDependency
-            );
-            hashes.push(...childHashes);
+            // Check if the dependency was already copied
+            if (!fs.existsSync(internalDependencyTarget)) {
+              const childHashes = await copyPackageTo(
+                internal,
+                internalDependencyTarget,
+                internalDependencyDir,
+                "../",
+                ignore,
+                resolveInternalDependency
+              );
+              hashes.push(...childHashes);
+            }
           }
         }
       }
