@@ -216,9 +216,21 @@
                 "resource": {
                   "type": "string",
                   "description": "The name or pattern of the resource to trigger on"
+                },
+                "eventFilters": {
+                  "type": "string",
+                  "description": "Filters that further limit the events to listen to."
+                },
+                "channel": {
+                  "type": "string",
+                  "description": "The name of the channel associated with the trigger in projects/{project}/locations/{location}/channels/{channel} format. If you omit this property, the function will listen for events on the project's default channel."
+                },
+                "triggerRegion": {
+                  "type": "string",
+                  "description": "The trigger will only receive events originating in this region. It can be the same region as the function, a different region or multi-region, or the global region. If not provided, defaults to the same region as the function."
                 }
               },
-              "required": ["eventType", "resource"]
+              "required": ["eventType"]
             },
             "scheduleTrigger": {
               "type": "object",
@@ -241,12 +253,66 @@
               "properties": {}
             },
             "buildConfig": {
-              
+              "type": "object",
+              "description": "Build configuration for a  gen 2 Cloud Function",
+              "properties": {
+                "runtime": {
+                  "type": "string",
+                  "description": "Runtime environment for the function. Defaults to the most recent LTS version of node."
+                },
+                "entryPoint": {
+                  "type": "string",
+                  "description": "The entry point for a function resource"
+                }
+              }
+            },
+            "serviceConfig": {
+              "type": "object",
+              "description": "Service configuration for a  gen 2 Cloud Function",
+              "properties": {
+                "timeoutSeconds": {
+                  "type": "string",
+                  "description": "The function's maximum execution time. Default: 60, max value: 540."
+                },
+                "availableMemory": {
+                  "type": "string",
+                  "description": "The amount of memory available for a function. Defaults to 256M. Supported units are k, M, G, Mi, Gi. If no unit is supplied, the value is interpreted as bytes."
+                }
+              }
             }
           }
         }
       },
       "required": ["name", "type", "description", "properties"]
+    },
+    "lifecycleEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "onInstall": {
+          "$ref": "#/definitions/lifecycleEventSpec"
+        },
+        "onUpdate": {
+          "$ref": "#/definitions/lifecycleEventSpec"
+        },
+        "onConfigure": {
+          "$ref": "#/definitions/lifecycleEventSpec"
+        }
+      }
+    },
+    "lifecycleEventSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "function": {
+          "type": "string",
+          "description": "Name of the task queue-triggered function that will handle the event. This function must be a taskQueueTriggered function declared in the resources section."
+        },
+        "processingMessage": {
+          "type": "string",
+          "description": "Message to display in the Firebase console while the task is in progress."
+        }
+      }
     }
   },
   "properties": {
@@ -330,6 +396,12 @@
       "type": "array",
       "items": {
         "$ref": "#/definitions/resource"
+      }
+    },
+    "lifecycleEvents": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/lifecycleEvent"
       }
     }
   }
