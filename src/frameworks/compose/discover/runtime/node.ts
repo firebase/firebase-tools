@@ -114,7 +114,8 @@ export class NodejsRuntime implements Runtime {
 
       return dependencies;
     } catch (error: any) {
-      throw new Error("Failed to getDependencies for the project", error.message);
+      logger.error("Failed to getDependencies for the project: ", error);
+      throw error;
     }
   }
 
@@ -250,7 +251,8 @@ export class NodejsRuntime implements Runtime {
 
       return runtimeSpec;
     } catch (error: any) {
-      throw new Error("Failed to analyseCodebase", error.message);
+      logger.error("Failed to analyseCodebase: ", error);
+      throw error;
     }
   }
 }
