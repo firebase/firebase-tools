@@ -140,7 +140,7 @@ interface StorageServiceAccountResponse {
 
 export async function getDefaultBucket(projectId?: string): Promise<string> {
   try {
-    const appengineClient = new Client({ urlPrefix: appengineOrigin, apiVersion: "v1" });
+    const appengineClient = new Client({ urlPrefix: appengineOrigin, apiVersion: "v1alpha" });
     const resp = await appengineClient.get<{ defaultBucket: string }>(`/apps/${projectId}`);
     if (resp.body.defaultBucket === "undefined") {
       logger.debug("Default storage bucket is undefined.");
