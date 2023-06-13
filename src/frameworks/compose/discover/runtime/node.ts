@@ -32,6 +32,7 @@ export class NodejsRuntime implements Runtime {
     const areAllFilesPresent = await Promise.all(
       this.runtimeRequiredFiles.map((file) => fs.exists(file))
     );
+
     return Promise.resolve(areAllFilesPresent.every((present) => present));
   }
 
@@ -67,6 +68,7 @@ export class NodejsRuntime implements Runtime {
     if (await fs.exists(YARN_LOCK)) {
       return YARN;
     }
+
     return NPM;
   }
 
