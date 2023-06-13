@@ -6,16 +6,11 @@ export function filterFrameworksWithDependencies(
   allFrameworkSpecs: FrameworkSpec[],
   dependencies: Record<string, string>
 ): FrameworkSpec[] {
-  try {
-    return allFrameworkSpecs.filter((framework) => {
-      return framework.requiredDependencies.every((dependency) => {
-        return dependency.name in dependencies;
-      });
+  return allFrameworkSpecs.filter((framework) => {
+    return framework.requiredDependencies.every((dependency) => {
+      return dependency.name in dependencies;
     });
-  } catch (error) {
-    logger.error("Error while filtering FrameworksWithDependencies", error);
-    throw error;
-  }
+  });
 }
 
 export async function filterFrameworksWithFiles(
@@ -30,41 +25,43 @@ export async function filterFrameworksWithFiles(
         continue;
       }
       let isRequired = true;
-      for (const files of framework.requiredFiles) {
-        if (Array.isArray(files)) {
-          for (const file of files) {
-            isRequired = isRequired && (await fs.exists(file));
+      for (let files of framework.requiredFiles) {
+        files = Array.isArray(files) ? files : [files];
+        for (const file of files) {
+          isRequired = isRequired && (await fs.exists(file));
+          if (!isRequired) {
+            break;
           }
-        } else {
-          isRequired = isRequired && (await fs.exists(files));
         }
       }
-
       if (isRequired) {
         filteredFrameworks.push(framework);
       }
     }
+
     return filteredFrameworks;
   } catch (error) {
-    logger.error("Error while filtering FrameworksWithFiles", error);
+    logger.error("Error: Unable to filter frameworks based on required files", error);
     throw error;
   }
 }
 
+/**
+ * Embeded frameworks help to resolve tiebreakers when multiple frameworks are discovered.
+ * Ex: "next" embeds "react", so if both frameworks are discovered,
+ * we can suggest "next" commands by removing embeded framework(react).
+ */
 export function removeEmbededFrameworks(allFrameworkSpecs: FrameworkSpec[]): FrameworkSpec[] {
-  try {
-    const embededFrameworkSet: Set<string> = new Set<string>();
-    allFrameworkSpecs.forEach((framework) => {
-      if (!framework.embedsFrameworks) {
-        return;
-      }
-      framework.embedsFrameworks.forEach((item) => embededFrameworkSet.add(item));
-    });
-    return allFrameworkSpecs.filter((item) => !embededFrameworkSet.has(item.id));
-  } catch (error) {
-    logger.error("Error occured while removing Embeded Frameworks", error);
-    throw error;
-  }
+  const embededFrameworkSet: Set<string> = new Set<string>();
+
+  allFrameworkSpecs.forEach((framework) => {
+    if (!framework.embedsFrameworks) {
+      return;
+    }
+    framework.embedsFrameworks.forEach((item) => embededFrameworkSet.add(item));
+  });
+
+  return allFrameworkSpecs.filter((item) => !embededFrameworkSet.has(item.id));
 }
 
 /**
@@ -90,11 +87,15 @@ export async function frameworkMatcher(
     }
     if (allMatches.length > 1) {
       const frameworkNames = allMatches.map((framework) => framework.id);
-      throw new FirebaseError(`Multiple Frameworks are matched: ${frameworkNames.join(", ")}`);
+      throw new FirebaseError(
+        `Multiple Frameworks are matched: ${frameworkNames.join(
+          ", "
+        )} Manually set up override commands in firebase.json`
+      );
     }
 
     return allMatches[0];
   } catch (error: any) {
-    throw new FirebaseError(`Failed to match the correct frameworkSpec: ${error}`);
+    throw new FirebaseError(`Failed to match the correct framework: ${error}`);
   }
 }
