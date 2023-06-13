@@ -12,7 +12,7 @@ export interface Runtime {
 export interface Command {
   // Consider: string[] for series of commands that must execute successfully
   // in sequence.
-  cmd: string | string[];
+  cmd: string;
 
   // Environment in which command is executed.
   env?: Record<string, string>;
