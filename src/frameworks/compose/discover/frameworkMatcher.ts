@@ -94,7 +94,7 @@ export async function frameworkMatcher(
     }
 
     return allMatches[0];
-  } catch (error) {
-    throw new FirebaseError("Failed to match the correct frameworkSpec");
+  } catch (error: any) {
+    throw new FirebaseError(`Failed to match the correct frameworkSpec: ${error}`);
   }
 }
