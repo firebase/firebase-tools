@@ -313,6 +313,20 @@
           "description": "Message to display in the Firebase console while the task is in progress."
         }
       }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "The type identifier of the event. Construct the identifier out of 3-4 dot-delimited fields: the publisher ID, extension name, and event name fields are required; the version field is recommended. Choose a unique and descriptive event name for each event type you publish."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the event"
+        }
+      }
     }
   },
   "properties": {
@@ -402,6 +416,12 @@
       "type": "array",
       "items": {
         "$ref": "#/definitions/lifecycleEvent"
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/event"
       }
     }
   }
