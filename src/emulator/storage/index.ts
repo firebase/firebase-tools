@@ -6,7 +6,7 @@ import { createApp } from "./server";
 import { StorageLayer, StoredFile } from "./files";
 import { EmulatorLogger } from "../emulatorLogger";
 import { createStorageRulesManager, StorageRulesManager } from "./rules/manager";
-import { StorageRulesRuntime } from "./rules/runtime";
+import { StorageRulesIssues, StorageRulesRuntime } from "./rules/runtime";
 import { SourceFile } from "./rules/types";
 import * as express from "express";
 import {
@@ -143,6 +143,12 @@ export class StorageEmulator implements EmulatorInstance {
 
   private createRulesManager(rules: SourceFile | RulesConfig[]): StorageRulesManager {
     return createStorageRulesManager(rules, this._rulesRuntime);
+  }
+
+  async replaceRules(rules: SourceFile | RulesConfig[]): Promise<StorageRulesIssues> {
+    await this._rulesManager.stop();
+    this._rulesManager = this.createRulesManager(rules);
+    return this._rulesManager.start();
   }
 
   private getPersistenceTmpDir(): string {
