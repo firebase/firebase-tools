@@ -232,4 +232,32 @@ export class AppDistributionClient {
 
     utils.logSuccess(`Group deleted successfully`);
   }
+
+  async addTestersToGroup(groupName: string, emails: string[]): Promise<void> {
+    try {
+      await this.appDistroV2Client.request({
+        method: "POST",
+        path: `${groupName}:batchJoin`,
+        body: { emails: emails },
+      });
+    } catch (err: any) {
+      throw new FirebaseError(`Failed to add testers to group ${err}`);
+    }
+
+    utils.logSuccess(`Testers added to group successfully`);
+  }
+
+  async removeTestersFromGroup(groupName: string, emails: string[]): Promise<void> {
+    try {
+      await this.appDistroV2Client.request({
+        method: "POST",
+        path: `${groupName}:batchLeave`,
+        body: { emails: emails },
+      });
+    } catch (err: any) {
+      throw new FirebaseError(`Failed to remove testers from group ${err}`);
+    }
+
+    utils.logSuccess(`Testers removed from group successfully`);
+  }
 }

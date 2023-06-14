@@ -21,6 +21,7 @@ describe.only("distribution", () => {
   const tempdir = tmp.dirSync();
   const projectName = "projects/123456789";
   const appName = `${projectName}/apps/1:123456789:ios:abc123def456`;
+  const groupName = `${projectName}/groups/my-group`;
   const binaryFile = join(tempdir.name, "app.ipa");
   fs.ensureFileSync(binaryFile);
   const mockDistribution = new Distribution(binaryFile);
@@ -217,7 +218,7 @@ describe.only("distribution", () => {
       expect(nock.isDone()).to.be.true;
     });
 
-    const mockResponse: Group = { name: `${projectName}/groups/my-group`, displayName: "My Group" };
+    const mockResponse: Group = { name: groupName, displayName: "My Group" };
     it("should resolve when request succeeds", async () => {
       nock(appDistributionOrigin).post(`/v1/${projectName}/groups`).reply(200, mockResponse);
       await expect(
@@ -240,18 +241,62 @@ describe.only("distribution", () => {
   describe("deleteGroup", () => {
     it("should throw error if delete fails", async () => {
       nock(appDistributionOrigin)
-        .delete(`/v1/${projectName}/groups/my-group`)
+        .delete(`/v1/${groupName}`)
         .reply(400, { error: { status: "FAILED_PRECONDITION" } });
       await expect(
-        appDistributionClient.deleteGroup(`${projectName}/groups/my-group`)
+        appDistributionClient.deleteGroup(groupName)
       ).to.be.rejectedWith(FirebaseError, "Failed to delete group");
       expect(nock.isDone()).to.be.true;
     });
 
     it("should resolve when request succeeds", async () => {
-      nock(appDistributionOrigin).delete(`/v1/${projectName}/groups/my-group`).reply(200, {});
-      await expect(appDistributionClient.deleteGroup(`${projectName}/groups/my-group`)).to.be
+      nock(appDistributionOrigin).delete(`/v1/${groupName}`).reply(200, {});
+      await expect(appDistributionClient.deleteGroup(groupName)).to.be
         .eventually.fulfilled;
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("addTestersToGroup", () => {
+    const emails = ["a@foo.com", "b@foo.com"];
+
+    it("should throw error if request fails", async () => {
+      nock(appDistributionOrigin)
+        .post(`/v1/${groupName}:batchJoin`)
+        .reply(400, { error: { status: "FAILED_PRECONDITION" } });
+      await expect(appDistributionClient.addTestersToGroup(groupName, emails)).to.be.rejectedWith(
+        FirebaseError,
+        "Failed to add testers to group"
+      );
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should resolve when request succeeds", async () => {
+      nock(appDistributionOrigin).post(`/v1/${groupName}:batchJoin`).reply(200, {});
+      await expect(appDistributionClient.addTestersToGroup(groupName, emails)).to.be.eventually
+        .fulfilled;
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("removeTestersFromGroup", () => {
+    const emails = ["a@foo.com", "b@foo.com"];
+
+    it("should throw error if request fails", async () => {
+      nock(appDistributionOrigin)
+        .post(`/v1/${groupName}:batchLeave`)
+        .reply(400, { error: { status: "FAILED_PRECONDITION" } });
+      await expect(appDistributionClient.removeTestersFromGroup(groupName, emails)).to.be.rejectedWith(
+        FirebaseError,
+        "Failed to remove testers from group"
+      );
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should resolve when request succeeds", async () => {
+      nock(appDistributionOrigin).post(`/v1/${groupName}:batchLeave`).reply(200, {});
+      await expect(appDistributionClient.removeTestersFromGroup(groupName, emails)).to.be.eventually
+        .fulfilled;
       expect(nock.isDone()).to.be.true;
     });
   });
