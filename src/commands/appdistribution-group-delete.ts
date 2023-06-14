@@ -3,8 +3,7 @@ import * as utils from "../utils";
 import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
 import { AppDistributionClient } from "../appdistribution/client";
-import { getEmails, getProjectName } from "../appdistribution/options-parser-util";
-import { logger } from "../logger";
+import { getProjectName } from "../appdistribution/options-parser-util";
 
 export const command = new Command("appdistribution:group:delete <alias>")
   .description("delete group from a project")
