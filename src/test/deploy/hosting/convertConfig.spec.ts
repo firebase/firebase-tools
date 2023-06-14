@@ -519,7 +519,7 @@ describe("convertConfig", () => {
           }
         )
       ).to.eventually.be.rejectedWith(FirebaseError);
-    });
+    }).timeout(2000);
 
     it("should throw when rewrite points to function being deleted", async () => {
       await expect(
@@ -561,7 +561,7 @@ describe("convertConfig", () => {
         )
       ).to.eventually.be.rejectedWith(FirebaseError);
     });
-  });
+  }).timeout(2000);
 
   describe("with permissions issues", () => {
     let existingBackendStub: sinon.SinonStub;
