@@ -2,6 +2,9 @@ import { FirebaseError } from "../../../error";
 import { FrameworkSpec, FileSystem } from "./types";
 import { logger } from "../../../logger";
 
+/**
+ *
+ */
 export function filterFrameworksWithDependencies(
   allFrameworkSpecs: FrameworkSpec[],
   dependencies: Record<string, string>
@@ -13,6 +16,9 @@ export function filterFrameworksWithDependencies(
   });
 }
 
+/**
+ *
+ */
 export async function filterFrameworksWithFiles(
   allFrameworkSpecs: FrameworkSpec[],
   fs: FileSystem
@@ -49,23 +55,25 @@ export async function filterFrameworksWithFiles(
 /**
  * Embeded frameworks help to resolve tiebreakers when multiple frameworks are discovered.
  * Ex: "next" embeds "react", so if both frameworks are discovered,
- * we can suggest "next" commands by removing embeded framework(react).
+ * we can suggest "next" commands by removing its embeded framework (react).
  */
 export function removeEmbededFrameworks(allFrameworkSpecs: FrameworkSpec[]): FrameworkSpec[] {
   const embededFrameworkSet: Set<string> = new Set<string>();
 
-  allFrameworkSpecs.forEach((framework) => {
+  for (const framework of allFrameworkSpecs) {
     if (!framework.embedsFrameworks) {
-      return;
+      continue;
     }
-    framework.embedsFrameworks.forEach((item) => embededFrameworkSet.add(item));
-  });
+    for (const item of framework.embedsFrameworks) {
+      embededFrameworkSet.add(item);
+    }
+  }
 
   return allFrameworkSpecs.filter((item) => !embededFrameworkSet.has(item.id));
 }
 
 /**
- * Identifies the correct FrameworkSpec for the codebase.
+ * Identifies the best FrameworkSpec for the codebase.
  */
 export async function frameworkMatcher(
   runtime: string,

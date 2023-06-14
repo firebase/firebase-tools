@@ -89,16 +89,9 @@ describe("frameworkMatcher", () => {
           embedsFrameworks: ["react"],
         },
       ];
-      const notExpect: FrameworkSpec[] = [
-        {
-          id: "react",
-          runtime: "nodejs",
-          requiredDependencies: [],
-        },
-      ];
 
       expect(actual).to.have.deep.members(expected);
-      expect(actual).to.not.have.deep.members(notExpect);
+      expect(actual).to.have.length(2);
     });
   });
 
@@ -128,17 +121,8 @@ describe("frameworkMatcher", () => {
         },
       ];
 
-      const notExpect: FrameworkSpec[] = [
-        {
-          id: "next",
-          runtime: "nodejs",
-          requiredDependencies: [],
-          requiredFiles: [["next.config.js"], "next.config.ts"],
-        },
-      ];
-
       expect(actual).to.have.deep.members(expected);
-      expect(actual).to.not.have.members(notExpect);
+      expect(actual).to.have.length(1);
     });
   });
 
@@ -179,20 +163,9 @@ describe("frameworkMatcher", () => {
           ],
         },
       ];
-      const notExpect: FrameworkSpec[] = [
-        {
-          id: "next",
-          runtime: "nodejs",
-          requiredDependencies: [
-            {
-              name: "next",
-            },
-          ],
-        },
-      ];
 
       expect(actual).to.have.deep.members(expected);
-      expect(actual).to.not.have.deep.members(notExpect);
+      expect(actual).to.have.length(1);
     });
   });
 });
