@@ -1168,6 +1168,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     envs.GCLOUD_PROJECT = this.args.projectId;
     envs.K_REVISION = "1";
     envs.PORT = "80";
+    envs.GOOGLE_CLOUD_QUOTA_PROJECT = this.args.projectId;
 
     if (trigger) {
       const target = trigger.entryPoint;

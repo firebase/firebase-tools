@@ -410,5 +410,6 @@ export function loadFirebaseEnvs(
   return {
     FIREBASE_CONFIG: JSON.stringify(firebaseConfig),
     GCLOUD_PROJECT: projectId,
+    GOOGLE_CLOUD_QUOTA_PROJECT: projectId,
   };
 }
