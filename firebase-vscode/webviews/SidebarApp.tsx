@@ -153,7 +153,7 @@ export function SidebarApp() {
           }}
         />
       )}
-      {firebaseJson && <EmulatorPanel firebaseJson={firebaseJson} />}
+      {(!!userEmail && !!firebaseJson) && <EmulatorPanel firebaseJson={firebaseJson} />}
     </>
   );
 }
