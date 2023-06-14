@@ -17,7 +17,7 @@ import { FirebaseError } from "../../error";
 
 tmp.setGracefulCleanup();
 
-describe.only("distribution", () => {
+describe("distribution", () => {
   const tempdir = tmp.dirSync();
   const projectName = "projects/123456789";
   const appName = `${projectName}/apps/1:123456789:ios:abc123def456`;
