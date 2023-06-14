@@ -48,7 +48,7 @@ EOM
 echo "Initialized temp directory."
 
 echo "Testing storage deployment..."
-firebase deploy --force --only storage --project "${FBTOOLS_TARGET_PROJECT}"
+firebase deploy --force --only storage --project "${FBTOOLS_TARGET_PROJECT}" --debug
 RET_CODE="$?"
 test "${RET_CODE}" == "0" || (echo "Expected exit code ${RET_CODE} to equal 0." && false)
 echo "Tested storage deployment."
@@ -70,14 +70,14 @@ echo "Updated config for targets."
 
 echo "Testing storage deployment with invalid target..."
 set +e
-firebase deploy --force --only storage:storage-invalid-target --project "${FBTOOLS_TARGET_PROJECT}"
+firebase deploy --force --only storage:storage-invalid-target --project "${FBTOOLS_TARGET_PROJECT}" --debug
 RET_CODE="$?"
 set -e
 test "${RET_CODE}" == "1" || (echo "Expected exit code ${RET_CODE} to equal 1." && false)
 echo "Tested storage deployment with invalid target."
 
 echo "Testing storage deployment with target..."
-firebase deploy --force --only storage:storage-target --project "${FBTOOLS_TARGET_PROJECT}"
+firebase deploy --force --only storage:storage-target --project "${FBTOOLS_TARGET_PROJECT}" --debug
 RET_CODE="$?"
 test "${RET_CODE}" == "0" || (echo "Expected exit code ${RET_CODE} to equal 0." && false)
 echo "Tested storage deployment with target."
