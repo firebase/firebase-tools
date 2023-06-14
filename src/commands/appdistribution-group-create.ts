@@ -13,5 +13,5 @@ export const command = new Command("appdistribution:group:create <displayName> [
     utils.logBullet(`Creating group in project`);
     const group = await appDistroClient.createGroup(projectName, displayName, alias);
     alias = group.name.split("/").pop();
-    utils.logSuccess(`Group '${group.displayName}' (${alias}) created successfully`);
+    utils.logSuccess(`Group '${group.displayName}' (alias: ${alias}) created successfully`);
   });

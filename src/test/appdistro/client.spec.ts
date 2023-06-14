@@ -66,6 +66,7 @@ describe("distribution", () => {
 
   describe("deleteTesters", () => {
     const emails = ["a@foo.com", "b@foo.com"];
+    const mockResponse: BatchRemoveTestersResponse = { emails: emails };
 
     it("should throw error if delete fails", async () => {
       nock(appDistributionOrigin)
@@ -78,7 +79,6 @@ describe("distribution", () => {
       expect(nock.isDone()).to.be.true;
     });
 
-    const mockResponse: BatchRemoveTestersResponse = { emails: emails };
     it("should resolve when request succeeds", async () => {
       nock(appDistributionOrigin)
         .post(`/v1/${projectName}/testers:batchRemove`)
@@ -207,6 +207,8 @@ describe("distribution", () => {
   });
 
   describe("createGroup", () => {
+    const mockResponse: Group = { name: groupName, displayName: "My Group" };
+
     it("should throw error if request fails", async () => {
       nock(appDistributionOrigin)
         .post(`/v1/${projectName}/groups`)
@@ -218,7 +220,6 @@ describe("distribution", () => {
       expect(nock.isDone()).to.be.true;
     });
 
-    const mockResponse: Group = { name: groupName, displayName: "My Group" };
     it("should resolve when request succeeds", async () => {
       nock(appDistributionOrigin).post(`/v1/${projectName}/groups`).reply(200, mockResponse);
       await expect(
