@@ -151,7 +151,7 @@ export async function getDefaultBucket(projectId?: string): Promise<string> {
     return resp.body.defaultBucket;
   } catch (err: any) {
     logger.info(
-      "\n\nThere was an issue deploying your functions. Verify that your project has a Google App Engine instance setup at https://console.cloud.google.com/appengine and try again. If this issue persists, please contact support."
+      "\n\nFailed to deploy Storage rules. Verify that your project is setup and has a default bucket at https://console.firebase.google.com/project/_/storage and try again. If this issue persists, please contact support."
     );
     throw err;
   }
