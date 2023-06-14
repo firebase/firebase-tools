@@ -1,1 +1,1 @@
-- Update App Engine api version to v1alpha (#5955)
+- Fixed issue where Storage rules could not be deployed to projects without a billing plan. (#5955)
