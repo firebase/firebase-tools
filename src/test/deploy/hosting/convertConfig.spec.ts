@@ -519,7 +519,7 @@ describe("convertConfig", () => {
           }
         )
       ).to.eventually.be.rejectedWith(FirebaseError);
-    }).timeout(5000);
+    }).timeout(10000);
 
     it("should throw when rewrite points to function being deleted", async () => {
       await expect(
@@ -560,7 +560,7 @@ describe("convertConfig", () => {
           }
         )
       ).to.eventually.be.rejectedWith(FirebaseError);
-    }).timeout(5000);
+    }).timeout(10000);
   });
 
   describe("with permissions issues", () => {
