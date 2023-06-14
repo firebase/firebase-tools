@@ -31,7 +31,6 @@ import { selectProjectInMonospace } from "../../src/monospace";
 import { setupLoggers, tryStringify } from "../../src/utils";
 import { pluginLogger } from "./logger-wrapper";
 import { logger } from '../../src/logger';
-import { EmulatorUiSelections } from "../common/messaging/protocol";
 
 let firebaseRC: FirebaseRC | null = null;
 let firebaseJSON: FirebaseConfig | null = null;

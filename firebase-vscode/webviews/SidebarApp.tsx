@@ -59,7 +59,7 @@ export function SidebarApp() {
       );
       if (firebaseJson) {
         setFirebaseJson(firebaseJson);
-        console.log("set firebase JSON");
+        webLogger.debug("set firebase JSON");
       }
       if (firebaseJson?.hosting) {
         webLogger.debug("Detected hosting setup");

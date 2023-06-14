@@ -281,8 +281,8 @@ export class Command {
       setupLoggers();
     }
 
-    if (getInheritedOption(options, "configPath")) {
-      options.configPath = getInheritedOption(options, "configPath");
+    if (getInheritedOption(options, "config")) {
+      options.configPath = getInheritedOption(options, "config");
     }
 
     try {

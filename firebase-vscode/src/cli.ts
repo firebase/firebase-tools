@@ -27,7 +27,7 @@ import { ServiceAccount } from "../common/types";
 import { listChannels } from "../../src/hosting/api";
 import { ChannelWithId } from "./messaging/types";
 import * as commandUtils from "../../src/emulator/commandUtils";
-import { EmulatorUiSelections } from "../common/messaging/protocol";
+import { EmulatorUiSelections } from "../common/messaging/types";
 import { setEnabled } from "../../src/experiments";
 import { pluginLogger } from "./logger-wrapper";
 
@@ -178,8 +178,7 @@ export async function initHosting(options: { spa: boolean; public: string }) {
 }
 
 export async function emulatorsStart(firebaseJson: FirebaseConfig, emulatorUiSelections: EmulatorUiSelections) {
-  const commandOptions = await getCommandOptions(firebaseJson, {
-    config: { ...firebaseJson },
+  const commandOptions = await getCommandOptions(undefined, {
     ...currentOptions,
     project: emulatorUiSelections.projectId,
     exportOnExit: emulatorUiSelections.exportStateOnExit,

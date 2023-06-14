@@ -7,7 +7,7 @@ import { FirebaseConfig } from '../../../src/firebaseConfig';
 import { FirebaseRC } from "../firebaserc";
 import { User } from "../../../src/types/auth";
 import { ServiceAccountUser } from "../types";
-import { EmulatorInfo } from "../emulator/types";
+import { EmulatorUiSelections, RunningEmulatorInfo } from "./types";
 
 export interface WebviewToExtensionParamsMap {
   /**
@@ -137,20 +137,3 @@ export interface ExtensionToWebviewParamsMap {
 }
 
 export type MessageParamsMap = WebviewToExtensionParamsMap | ExtensionToWebviewParamsMap;
-
-/**
- * Info to display in the UI while the emulators are running
- */
-export interface RunningEmulatorInfo {
-  uiUrl: string;
-  displayInfo: EmulatorInfo[];
-}
-
-export interface EmulatorUiSelections {
-  projectId: string
-  firebaseJsonPath?: string
-  importStateFolderPath?: string
-  exportStateOnExit: boolean
-  mode: "hosting" | "all"
-  debugLogging: boolean
-}

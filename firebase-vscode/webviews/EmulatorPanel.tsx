@@ -14,10 +14,11 @@ import { FirebaseConfig } from "../../src/firebaseConfig";
 import {
   RunningEmulatorInfo,
   EmulatorUiSelections,
-} from "../common/messaging/protocol";
+} from "../common/messaging/types";
 import { VSCodeDropdown } from "@vscode/webview-ui-toolkit/react";
 import { VSCodeOption } from "@vscode/webview-ui-toolkit/react";
 import { EmulatorInfo } from "../../src/emulator/types";
+import { webLogger } from "./globals/web-logger";
 
 const DEFAULT_EMULATOR_UI_SELECTIONS: EmulatorUiSelections = {
   projectId: "demo-something",
@@ -41,7 +42,7 @@ export function EmulatorPanel({
   const [emulatorUiSelections, setEmulatorUiSelections] =
     useState<EmulatorUiSelections>(DEFAULT_EMULATOR_UI_SELECTIONS);
 
-  console.log(
+  webLogger.debug(
     "initial state ui selections:" + JSON.stringify(emulatorUiSelections)
   );
   function setEmulatorUiSelectionsAndSaveToWorkspace(
@@ -62,18 +63,18 @@ export function EmulatorPanel({
 
   broker.on("notifyEmulatorsStopped", () => {
     setShowEmulatorProgressIndicator(false);
-    console.log(`notifyEmulatorsStopped received in sidebar`);
+    webLogger.debug(`notifyEmulatorsStopped received in sidebar`);
     setRunningEmulatorInfo(null);
   });
 
   broker.on("notifyRunningEmulatorInfo", (info: RunningEmulatorInfo) => {
     setShowEmulatorProgressIndicator(false);
-    console.log(`notifyRunningEmulatorInfo received in sidebar`);
+    webLogger.debug(`notifyRunningEmulatorInfo received in sidebar`);
     setRunningEmulatorInfo(info);
   });
 
   broker.on("notifyEmulatorImportFolder", ({ folder }) => {
-    console.log(`notifyEmulatorImportFolder received in sidebar: ${folder}`);
+    webLogger.debug(`notifyEmulatorImportFolder received in sidebar: ${folder}`);
     emulatorUiSelections.importStateFolderPath = folder;
     setEmulatorUiSelectionsAndSaveToWorkspace({ ...emulatorUiSelections }); // rerender clone
   });
@@ -122,21 +123,21 @@ export function EmulatorPanel({
   }
 
   function toggleExportOnExit() {
-    console.log("toggle export on exit");
+    webLogger.debug("toggle export on exit");
     const selections: EmulatorUiSelections = emulatorUiSelections;
     selections.exportStateOnExit = !selections.exportStateOnExit;
     setEmulatorUiSelectionsAndSaveToWorkspace(selections);
   }
 
   function projectIdChanged(event: React.ChangeEvent<HTMLInputElement>) {
-    console.log("projectIdChanged: " + event.target.value);
+    webLogger.debug("projectIdChanged: " + event.target.value);
     const selections: EmulatorUiSelections = emulatorUiSelections;
     selections.projectId = event.target.value;
     setEmulatorUiSelectionsAndSaveToWorkspace(selections);
   }
 
   function emulatorModeChanged(event: React.ChangeEvent<HTMLSelectElement>) {
-    console.log("emulatorModeChanged: " + event.target.value);
+    webLogger.debug("emulatorModeChanged: " + event.target.value);
     const selections: EmulatorUiSelections = emulatorUiSelections;
     selections.mode = event.target.value as typeof emulatorUiSelections.mode;
     setEmulatorUiSelectionsAndSaveToWorkspace(selections);
@@ -159,7 +160,7 @@ export function EmulatorPanel({
   }
 
   return (
-    <PanelSection>
+    <PanelSection title="Emulators">
       <h2>Launch the Emulator Suite</h2>
       {/* TODO(christhompson): Insert some education links or tooltips here. */}
       <Spacer size="xxlarge" />

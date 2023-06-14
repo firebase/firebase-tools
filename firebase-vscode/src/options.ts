@@ -12,16 +12,20 @@ import * as commandUtils from "../../src/emulator/commandUtils";
  * Passed to command.prepare()
  */
 
-interface CliOptions extends BaseOptions {
-  exportOnExit?: boolean | string
-  import?: string
+interface CliOptions extends Omit<BaseOptions, "config"> {
+  config: string;
+  exportOnExit?: boolean | string;
+  import?: string;
 }
 
 /**
  * Final options passed to CLI command functions
  * Result of command.prepare()
  */
-interface CommandOptions extends Options {}
+interface CommandOptions extends Options {
+  exportOnExit?: boolean | string;
+  import?: string;
+}
 
 /**
  * User-facing CLI options
@@ -31,7 +35,7 @@ export let currentOptions: CliOptions & { isVSCE: boolean } = {
   configPath: "",
   only: "",
   except: "",
-  config: commandUtils.DEFAULT_CONFIG,
+  config: "",
   filteredTargets: [],
   force: true,
 
