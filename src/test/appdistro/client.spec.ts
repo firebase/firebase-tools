@@ -243,16 +243,16 @@ describe.only("distribution", () => {
       nock(appDistributionOrigin)
         .delete(`/v1/${groupName}`)
         .reply(400, { error: { status: "FAILED_PRECONDITION" } });
-      await expect(
-        appDistributionClient.deleteGroup(groupName)
-      ).to.be.rejectedWith(FirebaseError, "Failed to delete group");
+      await expect(appDistributionClient.deleteGroup(groupName)).to.be.rejectedWith(
+        FirebaseError,
+        "Failed to delete group"
+      );
       expect(nock.isDone()).to.be.true;
     });
 
     it("should resolve when request succeeds", async () => {
       nock(appDistributionOrigin).delete(`/v1/${groupName}`).reply(200, {});
-      await expect(appDistributionClient.deleteGroup(groupName)).to.be
-        .eventually.fulfilled;
+      await expect(appDistributionClient.deleteGroup(groupName)).to.be.eventually.fulfilled;
       expect(nock.isDone()).to.be.true;
     });
   });
@@ -286,10 +286,9 @@ describe.only("distribution", () => {
       nock(appDistributionOrigin)
         .post(`/v1/${groupName}:batchLeave`)
         .reply(400, { error: { status: "FAILED_PRECONDITION" } });
-      await expect(appDistributionClient.removeTestersFromGroup(groupName, emails)).to.be.rejectedWith(
-        FirebaseError,
-        "Failed to remove testers from group"
-      );
+      await expect(
+        appDistributionClient.removeTestersFromGroup(groupName, emails)
+      ).to.be.rejectedWith(FirebaseError, "Failed to remove testers from group");
       expect(nock.isDone()).to.be.true;
     });
 

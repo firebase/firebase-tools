@@ -9,7 +9,10 @@ import { logger } from "../logger";
 export const command = new Command("appdistribution:testers:remove [emails...]")
   .description("remove testers from a project (or group)")
   .option("--file <file>", "a path to a file containing a list of tester emails to be removed")
-  .option("--group-alias <group-alias>", "if specified, the testers are only removed from the group identified by this alias, but not the project")
+  .option(
+    "--group-alias <group-alias>",
+    "if specified, the testers are only removed from the group identified by this alias, but not the project"
+  )
   .before(requireAuth)
   .action(async (emails: string[], options?: any) => {
     const projectName = await getProjectName(options);
@@ -17,7 +20,10 @@ export const command = new Command("appdistribution:testers:remove [emails...]")
     const emailsArr = getEmails(emails, options.file);
     if (options.groupAlias) {
       utils.logBullet(`Removing ${emailsArr.length} testers from group`);
-      await appDistroClient.removeTestersFromGroup(`${projectName}/groups/${options.groupAlias}`, emailsArr);
+      await appDistroClient.removeTestersFromGroup(
+        `${projectName}/groups/${options.groupAlias}`,
+        emailsArr
+      );
     } else {
       let deleteResponse;
       try {
