@@ -358,6 +358,10 @@
       "type": "string",
       "description": "The file name of this extension's icon"
     },
+    "billingRequired": {
+      "type": "boolean",
+      "description": "Whether this extension requires a billing to be enabled on the project it is installed on"
+    },
     "tags": {
       "type": "array",
       "items": {
