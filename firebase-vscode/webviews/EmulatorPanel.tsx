@@ -104,7 +104,6 @@ export function EmulatorPanel({
     }
     setShowEmulatorProgressIndicator(true);
     broker.send("launchEmulators", {
-      firebaseJson,
       emulatorUiSelections,
     });
   }
@@ -123,9 +122,9 @@ export function EmulatorPanel({
   }
 
   function toggleExportOnExit() {
-    webLogger.debug("toggle export on exit");
     const selections: EmulatorUiSelections = emulatorUiSelections;
     selections.exportStateOnExit = !selections.exportStateOnExit;
+    webLogger.debug(`toggle export on exit : ${!selections.exportStateOnExit}`);
     setEmulatorUiSelectionsAndSaveToWorkspace(selections);
   }
 

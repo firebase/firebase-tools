@@ -82,7 +82,6 @@ export interface WebviewToExtensionParamsMap {
    * Equivalent to the `firebase emulators:start` command.
   */
   launchEmulators : {
-    firebaseJson: FirebaseConfig,
     emulatorUiSelections: EmulatorUiSelections,
   };
 

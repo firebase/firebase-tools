@@ -177,7 +177,7 @@ export async function initHosting(options: { spa: boolean; public: string }) {
   await initAction("hosting", commandOptions);
 }
 
-export async function emulatorsStart(firebaseJson: FirebaseConfig, emulatorUiSelections: EmulatorUiSelections) {
+export async function emulatorsStart(emulatorUiSelections: EmulatorUiSelections) {
   const commandOptions = await getCommandOptions(undefined, {
     ...currentOptions,
     project: emulatorUiSelections.projectId,
@@ -199,8 +199,8 @@ export function listRunningEmulators(): EmulatorInfo[] {
 }
 
 export function getEmulatorUiUrl(): string | undefined {
-  const asdf = EmulatorRegistry.url(Emulators.UI);
-  return asdf.hostname === "unknown" ? undefined : asdf.toString();
+  const url: URL = EmulatorRegistry.url(Emulators.UI);
+  return url.hostname === "unknown" ? undefined : url.toString();
 }
 
 export async function deployToHosting(
