@@ -1,2 +1,2 @@
-- Fix issue caused by adding type checks in #5906.
+- Fixes issue caused by adding type checks in #5906.
 - Fixed an issue where Storage rules could not be deployed to projects without a billing plan. (#5955)
