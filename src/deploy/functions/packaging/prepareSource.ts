@@ -30,7 +30,7 @@ export async function prepareSource(
   );
 
   const registry = findWorkspacePackages(path.resolve("./"));
-  const internalDepDir = "internal_dependencies" || process.env.FIREBASE_WORKSPACE_DEPENDENCY_DIR;
+  const internalDepDir = process.env.FIREBASE_WORKSPACE_DEPENDENCY_DIR || "internal_dependencies";
   const hashes = await copyPackageTo(
     sourceDir,
     tmpDir,
@@ -40,9 +40,11 @@ export async function prepareSource(
     // Strategy on how to detect if a dependency is a locally linked dependency and should be packaged
     // Returns the path to the dependency or null if it shouldn't be included
     (args) => {
-      const internalDependency = registry[args.dependency];
-      if (internalDependency) {
-        return internalDependency.relativePackageDir;
+      if (registry) {
+        const internalDependency = registry[args.dependency];
+        if (internalDependency) {
+          return internalDependency.relativePackageDir;
+        }
       }
       return null;
     }
