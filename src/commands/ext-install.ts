@@ -2,7 +2,7 @@ import * as clc from "colorette";
 import { marked } from "marked";
 import * as TerminalRenderer from "marked-terminal";
 
-import { displayExtInfo } from "../extensions/displayExtensionInfo";
+import { displayExtensionVersionInfo } from "../extensions/displayExtensionInfo";
 import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
@@ -55,25 +55,21 @@ export const command = new Command("ext:install [extensionRef]")
     const projectId = getProjectId(options);
     // TODO(b/230598656): Clean up paramsEnvPath after v11 launch.
     const paramsEnvPath = "";
-    let learnMore = false;
     if (!extensionRef) {
       if (options.interactive) {
-        learnMore = true;
-        extensionRef = await promptForOfficialExtension(
-          "Which official extension do you wish to install?\n" +
-            "  Select an extension, then press Enter to learn more."
-        );
+        // TODO(alexpascal): Query the backend for published extensions instead.
+        extensionRef = await promptForOfficialExtension("Which extension do you wish to install?");
       } else {
         throw new FirebaseError(
-          `Unable to find published extension '${clc.bold(extensionRef)}'. ` +
+          `Unable to find extension '${clc.bold(extensionRef)}'. ` +
             `Run ${clc.bold(
               "firebase ext:install -i"
-            )} to select from the list of all available published extensions.`
+            )} to select from the list of all available extensions.`
         );
       }
     }
-    let source;
-    let extensionVersion;
+    let source: ExtensionSource | undefined;
+    let extensionVersion: ExtensionVersion | undefined;
 
     // TODO(b/220900194): Remove when deprecating old install flow.
     // --local doesn't support urlPath so this will become dead codepath.
@@ -95,18 +91,21 @@ export const command = new Command("ext:install [extensionRef]")
       // TODO(b/228444119): Create source should happen at deploy time.
       // Should parse spec locally so we don't need project ID.
       source = await createSourceFromLocation(needProjectId({ projectId }), extensionRef);
-      await displayExtInfo(extensionRef, "", source.spec);
+      await displayExtensionVersionInfo(source.spec);
       void track("Extension Install", "Install by Source", options.interactive ? 1 : 0);
     } else {
       void track("Extension Install", "Install by Extension Ref", options.interactive ? 1 : 0);
       const extension = await extensionsApi.getExtension(extensionRef);
       const extensionVersionRef = await resolveVersion(refs.parse(extensionRef), extension);
       extensionVersion = await extensionsApi.getExtensionVersion(extensionVersionRef);
-      await infoExtensionVersion({
-        extensionRef,
-        extensionVersion,
-        published: !!extension.latestApprovedVersion,
-      });
+      if (extensionVersion.state === "DEPRECATED") {
+        throw new FirebaseError(
+          `Extension version ${clc.bold(
+            extensionVersionRef
+          )} is deprecated and cannot be installed. To install the latest non-deprecated version, omit the version in \`extensionRef\`.`
+        );
+      }
+      await displayExtensionVersionInfo(extensionVersion.spec, extensionVersion);
     }
     if (
       !(await confirm({
@@ -130,14 +129,6 @@ export const command = new Command("ext:install [extensionRef]")
         )}'. Please make sure this is a valid extension and try again.`
       );
     }
-    if (learnMore) {
-      utils.logLabeledBullet(
-        logPrefix,
-        `You selected: ${clc.bold(spec.displayName || "")}.\n` +
-          `${spec.description}\n` +
-          `View details: https://firebase.google.com/products/extensions/${spec.name}\n`
-      );
-    }
 
     try {
       return installToManifest({
@@ -158,15 +149,6 @@ export const command = new Command("ext:install [extensionRef]")
       throw err;
     }
   });
-
-async function infoExtensionVersion(args: {
-  extensionRef: string;
-  extensionVersion: ExtensionVersion;
-  published: boolean;
-}): Promise<void> {
-  const ref = refs.parse(args.extensionRef);
-  await displayExtInfo(args.extensionRef, ref.publisherId, args.extensionVersion.spec, args.published);
-}
 
 interface InstallExtensionOptions {
   paramsEnvPath?: string;

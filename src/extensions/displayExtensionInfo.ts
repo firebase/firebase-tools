@@ -1,12 +1,21 @@
 import * as clc from "colorette";
 import { marked } from "marked";
 import * as TerminalRenderer from "marked-terminal";
+import * as path from "path";
 
 import * as utils from "../utils";
 import { logPrefix } from "./extensionsHelper";
+import * as refs from "../extensions/refs";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
-import { Api, ExtensionSpec, Role, Resource, FUNCTIONS_RESOURCE_TYPE } from "./types";
+import {
+  Api,
+  ExtensionSpec,
+  ExtensionVersion,
+  Role,
+  Resource,
+  FUNCTIONS_RESOURCE_TYPE,
+} from "./types";
 import * as iam from "../gcp/iam";
 import { SECRET_ROLE, usesSecrets } from "./secretsUtils";
 
@@ -18,34 +27,38 @@ const TASKS_ROLE = "cloudtasks.enqueuer";
 const TASKS_API = "cloudtasks.googleapis.com";
 
 /**
- * displayExtInfo prints the extension info displayed when running ext:install.
+ * Displays info about an extension version, whether it is uploaded to the registry or a local spec.
  *
- * @param extensionName name of the extension to display information about
- * @param spec extension spec
- * @param published whether or not the extension is a published extension
- */
-export async function displayExtInfo(
-  extensionName: string,
-  publisher: string,
+ * @param spec the extension spec
+ * @param extensionVersion the extension version
+ * */
+export async function displayExtensionVersionInfo(
   spec: ExtensionSpec,
-  published = false
+  extensionVersion?: ExtensionVersion
 ): Promise<string[]> {
+  const extensionRef = extensionVersion
+    ? `(${refs.toExtensionRef(refs.parse(extensionVersion.ref))})`
+    : "";
   const lines = [];
-  lines.push(`**Name**: ${spec.displayName}`);
-  if (publisher) {
-    lines.push(`**Publisher**: ${publisher}`);
-  }
-  if (spec.description) {
-    lines.push(`**Description**: ${spec.description}`);
-  }
-  if (published) {
-    if (spec.license) {
-      lines.push(`**License**: ${spec.license}`);
+  lines.push(`${clc.bold("Extension:")} ${spec.displayName} ${extensionRef}`);
+  lines.push(`${clc.bold("Description:")} ${spec.description}`);
+  // TODO(alexpascal): Add latest version or add metadata about the version (e.g. not latest, rejected, etc).
+  lines.push(`${clc.bold("Version:")} ${spec.version}`);
+  if (extensionVersion) {
+    if (extensionVersion.buildSourceUri) {
+      const buildSourceUri = new URL(extensionVersion.buildSourceUri!);
+      buildSourceUri.pathname = path.join(
+        buildSourceUri.pathname,
+        extensionVersion.extensionRoot ?? ""
+      );
+      lines.push(`${clc.bold("Source in GitHub:")} ${buildSourceUri}`);
+    } else {
+      lines.push(
+        `${clc.bold("Source download URI:")} ${extensionVersion.sourceDownloadUri ?? "-"}`
+      );
     }
-    if (spec.sourceUrl) {
-      lines.push(`**Source code**: ${spec.sourceUrl}`);
-    }
   }
+  lines.push(`${clc.bold("License:")} ${spec.license ?? "-"}`);
   const apis = impliedApis(spec);
   if (apis.length) {
     lines.push(displayApis(apis));
@@ -54,33 +67,8 @@ export async function displayExtInfo(
   if (roles.length) {
     lines.push(await displayRoles(roles));
   }
-  if (lines.length > 0) {
-    utils.logLabeledBullet(logPrefix, `information about '${clc.bold(extensionName)}':`);
-    const infoStr = lines.join("\n");
-    // Convert to markdown and convert any trailing newlines to a single newline.
-    const formatted = marked(infoStr).replace(/\n+$/, "\n");
-    logger.info(formatted);
-    // Return for testing purposes.
-    return lines;
-  } else {
-    throw new FirebaseError(
-      "Error occurred during installation: cannot parse info from source spec",
-      {
-        context: {
-          spec: spec,
-          extensionName: extensionName,
-        },
-      }
-    );
-  }
-}
-
-/**
- * Prints a clickable link where users can download the source code for an Extension Version.
- */
-export function printSourceDownloadLink(sourceDownloadUri: string): void {
-  const sourceDownloadMsg = `Want to review the source code that will be installed? Download it here: ${sourceDownloadUri}`;
-  utils.logBullet(marked(sourceDownloadMsg));
+  logger.info(`\n${lines.join("\n")}\n`);
+  return lines;
 }
 
 /**
@@ -92,7 +80,7 @@ export function printSourceDownloadLink(sourceDownloadUri: string): void {
  */
 export async function retrieveRoleInfo(role: string) {
   const res = await iam.getRole(role);
-  return `  ${res.title} (${res.description})`;
+  return `  ${clc.yellow(res.title!)}: ${res.description}`;
 }
 
 async function displayRoles(roles: Role[]): Promise<string> {
@@ -101,14 +89,14 @@ async function displayRoles(roles: Role[]): Promise<string> {
       return retrieveRoleInfo(role.role);
     })
   );
-  return clc.bold("**Roles granted to this Extension**:\n") + lines.join("\n");
+  return clc.bold("Roles granted to this extension:\n") + lines.join("\n");
 }
 
 function displayApis(apis: Api[]): string {
   const lines: string[] = apis.map((api: Api) => {
-    return `  ${api.apiName} (${api.reason})`;
+    return `  ${clc.blue(api.apiName!)}: ${api.reason}`;
   });
-  return "**APIs used by this Extension**:\n" + lines.join("\n");
+  return clc.bold("APIs used by this extension:\n") + lines.join("\n");
 }
 
 function usesTasks(spec: ExtensionSpec): boolean {
@@ -123,13 +111,13 @@ function impliedRoles(spec: ExtensionSpec): Role[] {
   if (usesSecrets(spec) && !spec.roles?.some((r: Role) => r.role === SECRET_ROLE)) {
     roles.push({
       role: SECRET_ROLE,
-      reason: "Allows the extension to read secret values from Cloud Secret Manager",
+      reason: "Allows the extension to read secret values from Cloud Secret Manager.",
     });
   }
   if (usesTasks(spec) && !spec.roles?.some((r: Role) => r.role === TASKS_ROLE)) {
     roles.push({
       role: TASKS_ROLE,
-      reason: "Allows the extension to enqueue Cloud Tasks",
+      reason: "Allows the extension to enqueue Cloud Tasks.",
     });
   }
   return roles.concat(spec.roles ?? []);
@@ -140,7 +128,7 @@ function impliedApis(spec: ExtensionSpec): Api[] {
   if (usesTasks(spec) && !spec.apis?.some((a: Api) => a.apiName === TASKS_API)) {
     apis.push({
       apiName: TASKS_API,
-      reason: "Allows the extension to enqueue Cloud Tasks",
+      reason: "Allows the extension to enqueue Cloud Tasks.",
     });
   }
 
