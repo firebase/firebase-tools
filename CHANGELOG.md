@@ -1,0 +1,1 @@
+- Fixed an issue where Storage rules could not be deployed to projects without a billing plan. (#5955)
