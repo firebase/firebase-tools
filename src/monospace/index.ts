@@ -10,7 +10,7 @@ import type {
   SetupMonospaceOptions,
 } from "./interfaces";
 
-const POLL_USER_RESPONSE_MILLIS = 5000;
+const POLL_USER_RESPONSE_MILLIS = 2000;
 
 /**
  * Integrate Firebase Plugin with Monospace’s service Account Authentication
