@@ -208,7 +208,7 @@ export function EmulatorPanel({
         onChange={(event) => emulatorModeChanged(event)}
       >
         <VSCodeOption value="all">All emulators</VSCodeOption>
-        <VSCodeOption value="hosting">Only hosting</VSCodeOption>
+        {!!firebaseJson.hosting && <VSCodeOption value="hosting">Only hosting</VSCodeOption>}
       </VSCodeDropdown>
       {runningEmulatorInfo ? (
         <>
