@@ -1,0 +1,1 @@
+- Fix issue caused by adding type checks in #5906.
