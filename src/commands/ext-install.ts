@@ -9,7 +9,7 @@ import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { getProjectId, needProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
-import { ExtensionVersion, ExtensionSource } from "../extensions/types";
+import { ExtensionVersion, ExtensionSource, Extension } from "../extensions/types";
 import * as refs from "../extensions/refs";
 import * as secretsUtils from "../extensions/secretsUtils";
 import * as paramHelper from "../extensions/paramHelper";
@@ -22,8 +22,8 @@ import {
   diagnoseAndFixProject,
   isUrlPath,
   isLocalPath,
-  canonicalizeRefInput,
 } from "../extensions/extensionsHelper";
+import { resolveVersion } from "../deploy/extensions/planner";
 import { getRandomString } from "../extensions/utils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
@@ -40,7 +40,7 @@ marked.setOptions({
 /**
  * Command for installing an extension
  */
-export const command = new Command("ext:install [extensionName]")
+export const command = new Command("ext:install [extensionRef]")
   .description(
     "add an uploaded extension to firebase.json if [publisherId/extensionId] is provided;" +
       "or, add a local extension if [localPath] is provided"
@@ -51,21 +51,21 @@ export const command = new Command("ext:install [extensionName]")
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
   .before(diagnoseAndFixProject)
-  .action(async (extensionName: string, options: Options) => {
+  .action(async (extensionRef: string, options: Options) => {
     const projectId = getProjectId(options);
     // TODO(b/230598656): Clean up paramsEnvPath after v11 launch.
     const paramsEnvPath = "";
     let learnMore = false;
-    if (!extensionName) {
+    if (!extensionRef) {
       if (options.interactive) {
         learnMore = true;
-        extensionName = await promptForOfficialExtension(
+        extensionRef = await promptForOfficialExtension(
           "Which official extension do you wish to install?\n" +
             "  Select an extension, then press Enter to learn more."
         );
       } else {
         throw new FirebaseError(
-          `Unable to find published extension '${clc.bold(extensionName)}'. ` +
+          `Unable to find published extension '${clc.bold(extensionRef)}'. ` +
             `Run ${clc.bold(
               "firebase ext:install -i"
             )} to select from the list of all available published extensions.`
@@ -77,7 +77,7 @@ export const command = new Command("ext:install [extensionName]")
 
     // TODO(b/220900194): Remove when deprecating old install flow.
     // --local doesn't support urlPath so this will become dead codepath.
-    if (isUrlPath(extensionName)) {
+    if (isUrlPath(extensionRef)) {
       throw new FirebaseError(
         `Installing with a source url is no longer supported in the CLI. Please use Firebase Console instead.`
       );
@@ -91,19 +91,21 @@ export const command = new Command("ext:install [extensionName]")
 
     // If the user types in a local path (prefixed with ~/, ../, or ./), install from local source.
     // Otherwise, treat the input as an extension reference and proceed with reference-based installation.
-    if (isLocalPath(extensionName)) {
+    if (isLocalPath(extensionRef)) {
       // TODO(b/228444119): Create source should happen at deploy time.
       // Should parse spec locally so we don't need project ID.
-      source = await createSourceFromLocation(needProjectId({ projectId }), extensionName);
-      await displayExtInfo(extensionName, "", source.spec);
+      source = await createSourceFromLocation(needProjectId({ projectId }), extensionRef);
+      await displayExtInfo(extensionRef, "", source.spec);
       void track("Extension Install", "Install by Source", options.interactive ? 1 : 0);
     } else {
       void track("Extension Install", "Install by Extension Ref", options.interactive ? 1 : 0);
-      extensionName = await canonicalizeRefInput(extensionName);
-      extensionVersion = await extensionsApi.getExtensionVersion(extensionName);
+      const extension = await extensionsApi.getExtension(extensionRef);
+      const extensionVersionRef = await resolveVersion(refs.parse(extensionRef), extension);
+      extensionVersion = await extensionsApi.getExtensionVersion(extensionVersionRef);
       await infoExtensionVersion({
-        extensionName,
+        extensionRef,
         extensionVersion,
+        published: !!extension.latestApprovedVersion,
       });
     }
     if (
@@ -124,7 +126,7 @@ export const command = new Command("ext:install [extensionName]")
     if (!spec) {
       throw new FirebaseError(
         `Could not find the extension.yaml for extension '${clc.bold(
-          extensionName
+          extensionRef
         )}'. Please make sure this is a valid extension and try again.`
       );
     }
@@ -141,7 +143,7 @@ export const command = new Command("ext:install [extensionName]")
       return installToManifest({
         paramsEnvPath,
         projectId,
-        extensionName,
+        extensionRef,
         source,
         extVersion: extensionVersion,
         nonInteractive: options.nonInteractive,
@@ -158,17 +160,18 @@ export const command = new Command("ext:install [extensionName]")
   });
 
 async function infoExtensionVersion(args: {
-  extensionName: string;
+  extensionRef: string;
   extensionVersion: ExtensionVersion;
+  published: boolean;
 }): Promise<void> {
-  const ref = refs.parse(args.extensionName);
-  await displayExtInfo(args.extensionName, ref.publisherId, args.extensionVersion.spec, true);
+  const ref = refs.parse(args.extensionRef);
+  await displayExtInfo(args.extensionRef, ref.publisherId, args.extensionVersion.spec, args.published);
 }
 
 interface InstallExtensionOptions {
   paramsEnvPath?: string;
   projectId?: string;
-  extensionName: string;
+  extensionRef: string;
   source?: ExtensionSource;
   extVersion?: ExtensionVersion;
   nonInteractive: boolean;
@@ -182,14 +185,14 @@ interface InstallExtensionOptions {
  * @param options
  */
 async function installToManifest(options: InstallExtensionOptions): Promise<void> {
-  const { projectId, extensionName, extVersion, source, paramsEnvPath, nonInteractive, force } =
+  const { projectId, extensionRef, extVersion, source, paramsEnvPath, nonInteractive, force } =
     options;
-  const isLocalSource = isLocalPath(extensionName);
+  const isLocalSource = isLocalPath(extensionRef);
 
   const spec = extVersion?.spec ?? source?.spec;
   if (!spec) {
     throw new FirebaseError(
-      `Could not find the extension.yaml for ${extensionName}. Please make sure this is a valid extension and try again.`
+      `Could not find the extension.yaml for ${extensionRef}. Please make sure this is a valid extension and try again.`
     );
   }
 
@@ -230,7 +233,7 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
       {
         instanceId,
         ref: !isLocalSource ? ref : undefined,
-        localPath: isLocalSource ? extensionName : undefined,
+        localPath: isLocalSource ? extensionRef : undefined,
         params: paramBindingOptions,
         extensionSpec: spec,
       },

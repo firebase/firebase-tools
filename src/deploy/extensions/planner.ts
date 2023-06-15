@@ -207,32 +207,36 @@ export async function want(args: {
 }
 
 /**
- * resolveVersion resolves a semver string to the max matching version.
- * Exported for testing.
- * @param publisherId
- * @param extensionId
- * @param version a semver or semver range
+ * Resolves a semver string to the max matching version. If no version is specified, 
+ * it will default to the extension's latest approved version if set, otherwise to the latest version.
+ * 
+ * @param ref the extension version ref
+ * @param extension the extension (optional)
  */
-export async function resolveVersion(ref: refs.Ref): Promise<string> {
+export async function resolveVersion(ref: refs.Ref, extension?: Extension): Promise<string> {
   const extensionRef = refs.toExtensionRef(ref);
-  const extension = await extensionsApi.getExtension(extensionRef);
-  if (!ref.version || ref.version === "latest-approved") {
-    if (!extension.latestApprovedVersion) {
+  if (!ref.version && extension?.latestApprovedVersion) {
+    ref.version = extension.latestApprovedVersion;
+    return refs.toExtensionVersionRef(ref);
+  }
+  if (ref.version === "latest-approved") {
+    if (!extension?.latestApprovedVersion) {
       throw new FirebaseError(
         `${extensionRef} has not been published to Extensions Hub (https://extensions.dev). To install it, you must specify the version you want to install.`
       );
     }
-    return extension.latestApprovedVersion;
+    ref.version = extension.latestApprovedVersion;
+    return refs.toExtensionVersionRef(ref);
   }
-  if (ref.version === "latest") {
-    if (!extension.latestVersion) {
+  if (!ref.version || ref.version === "latest") {
+    if (!extension?.latestVersion) {
       throw new FirebaseError(
         `${extensionRef} has no stable non-deprecated versions. If you wish to install a prerelease version, you must specify the version you want to install.`
       );
     }
-    return extension.latestVersion;
+    ref.version = extension.latestVersion;
+    return refs.toExtensionVersionRef(ref);
   }
-
   const versions = await extensionsApi.listExtensionVersions(extensionRef, undefined, true);
   if (versions.length === 0) {
     throw new FirebaseError(`No versions found for ${extensionRef}`);
@@ -246,5 +250,6 @@ export async function resolveVersion(ref: refs.Ref): Promise<string> {
       `No version of ${extensionRef} matches requested version ${ref.version}`
     );
   }
-  return maxSatisfying;
+  ref.version = maxSatisfying;
+  return refs.toExtensionVersionRef(ref);
 }
