@@ -198,13 +198,13 @@ async function signUp(
     }
   }
 
-  if (typeof reqBody.email === "string") {
+  if (reqBody.email || (reqBody.email === "" && provider)) {
     assert(isValidEmailAddress(reqBody.email), "INVALID_EMAIL");
     const email = canonicalizeEmailAddress(reqBody.email);
     assert(!state.getUserByEmail(email), "EMAIL_EXISTS");
     updates.email = email;
   }
-  if (typeof reqBody.password === "string") {
+  if (reqBody.password) {
     assert(
       reqBody.password.length >= PASSWORD_MIN_LENGTH,
       `WEAK_PASSWORD : Password should be at least ${PASSWORD_MIN_LENGTH} characters`
