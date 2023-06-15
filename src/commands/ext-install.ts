@@ -52,39 +52,20 @@ export const command = new Command("ext:install [extensionRef]")
   .before(checkMinRequiredVersion, "extMinVersion")
   .before(diagnoseAndFixProject)
   .action(async (extensionRef: string, options: Options) => {
-    const projectId = getProjectId(options);
-    // TODO(b/230598656): Clean up paramsEnvPath after v11 launch.
-    const paramsEnvPath = "";
-    if (!extensionRef) {
-      if (options.interactive) {
-        // TODO(alexpascal): Query the backend for published extensions instead.
-        extensionRef = await promptForOfficialExtension("Which extension do you wish to install?");
-      } else {
-        throw new FirebaseError(
-          `Unable to find extension '${clc.bold(extensionRef)}'. ` +
-            `Run ${clc.bold(
-              "firebase ext:install -i"
-            )} to select from the list of all available extensions.`
-        );
-      }
-    }
-    let source: ExtensionSource | undefined;
-    let extensionVersion: ExtensionVersion | undefined;
-
-    // TODO(b/220900194): Remove when deprecating old install flow.
-    // --local doesn't support urlPath so this will become dead codepath.
-    if (isUrlPath(extensionRef)) {
-      throw new FirebaseError(
-        `Installing with a source url is no longer supported in the CLI. Please use Firebase Console instead.`
-      );
-    }
     if (options.local) {
       utils.logLabeledWarning(
         logPrefix,
         "As of firebase-tools@11.0.0, the `--local` flag is no longer required, as it is the default behavior."
       );
     }
-
+    if (!extensionRef) {
+      throw new FirebaseError(
+        "Extension ref is required to install. To see a full list of available extensions, go to https://extensions.dev/extensions."
+      );
+    }
+    let source: ExtensionSource | undefined;
+    let extensionVersion: ExtensionVersion | undefined;
+    const projectId = getProjectId(options);
     // If the user types in a local path (prefixed with ~/, ../, or ./), install from local source.
     // Otherwise, treat the input as an extension reference and proceed with reference-based installation.
     if (isLocalPath(extensionRef)) {
@@ -98,14 +79,19 @@ export const command = new Command("ext:install [extensionRef]")
       const extension = await extensionsApi.getExtension(extensionRef);
       const extensionVersionRef = await resolveVersion(refs.parse(extensionRef), extension);
       extensionVersion = await extensionsApi.getExtensionVersion(extensionVersionRef);
+      await displayExtensionVersionInfo(extensionVersion.spec, extensionVersion);
       if (extensionVersion.state === "DEPRECATED") {
         throw new FirebaseError(
           `Extension version ${clc.bold(
             extensionVersionRef
-          )} is deprecated and cannot be installed. To install the latest non-deprecated version, omit the version in \`extensionRef\`.`
+          )} is deprecated and cannot be installed. To install the latest non-deprecated version, omit the version in the extension ref.`
         );
       }
-      await displayExtensionVersionInfo(extensionVersion.spec, extensionVersion);
+    }
+    if (!source && !extensionVersion) {
+      throw new FirebaseError(
+        "Could not find a source. Please specify a valid source to continue."
+      );
     }
     if (
       !(await confirm({
@@ -116,11 +102,6 @@ export const command = new Command("ext:install [extensionRef]")
     ) {
       return;
     }
-    if (!source && !extensionVersion) {
-      throw new FirebaseError(
-        "Could not find a source. Please specify a valid source to continue."
-      );
-    }
     const spec = source?.spec ?? extensionVersion?.spec;
     if (!spec) {
       throw new FirebaseError(
@@ -129,10 +110,8 @@ export const command = new Command("ext:install [extensionRef]")
         )}'. Please make sure this is a valid extension and try again.`
       );
     }
-
     try {
       return installToManifest({
-        paramsEnvPath,
         projectId,
         extensionRef,
         source,
@@ -151,7 +130,6 @@ export const command = new Command("ext:install [extensionRef]")
   });
 
 interface InstallExtensionOptions {
-  paramsEnvPath?: string;
   projectId?: string;
   extensionRef: string;
   source?: ExtensionSource;
@@ -167,8 +145,7 @@ interface InstallExtensionOptions {
  * @param options
  */
 async function installToManifest(options: InstallExtensionOptions): Promise<void> {
-  const { projectId, extensionRef, extVersion, source, paramsEnvPath, nonInteractive, force } =
-    options;
+  const { projectId, extensionRef, extVersion, source, nonInteractive, force } = options;
   const isLocalSource = isLocalPath(extensionRef);
 
   const spec = extVersion?.spec ?? source?.spec;
@@ -193,7 +170,6 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
     projectId,
     paramSpecs: (spec.params ?? []).concat(spec.systemParams ?? []),
     nonInteractive,
-    paramsEnvPath,
     instanceId,
   });
   const eventsConfig = spec.events

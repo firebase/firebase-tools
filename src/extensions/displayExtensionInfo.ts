@@ -36,15 +36,34 @@ export async function displayExtensionVersionInfo(
   spec: ExtensionSpec,
   extensionVersion?: ExtensionVersion
 ): Promise<string[]> {
-  const extensionRef = extensionVersion
-    ? `(${refs.toExtensionRef(refs.parse(extensionVersion.ref))})`
-    : "";
-  const lines = [];
-  lines.push(`${clc.bold("Extension:")} ${spec.displayName} ${extensionRef}`);
-  lines.push(`${clc.bold("Description:")} ${spec.description}`);
-  // TODO(alexpascal): Add latest version or add metadata about the version (e.g. not latest, rejected, etc).
-  lines.push(`${clc.bold("Version:")} ${spec.version}`);
+  const lines: string[] = [];
+  lines.push(
+    `${clc.bold("Extension:")} ${spec.displayName ?? "Unnamed extension"} ${
+      extensionVersion ? `(${refs.toExtensionRef(refs.parse(extensionVersion.ref))})` : ""
+    }`
+  );
+  if (spec.description) {
+    lines.push(`${clc.bold("Description")} ${spec.description}`);
+  }
+  lines.push(
+    `${clc.bold("Version:")} ${spec.version} ${
+      extensionVersion?.state === "DEPRECATED" ? `(${clc.red("Deprecated")})` : ""
+    }`
+  );
   if (extensionVersion) {
+    let reviewStatus: string;
+    switch (extensionVersion.listing?.state) {
+      case "APPROVED":
+        reviewStatus = clc.bold(clc.green("Accepted"));
+        break;
+      case "REJECTED":
+        reviewStatus = clc.bold(clc.red("Rejected"));
+        break;
+      default:
+        reviewStatus = clc.bold(clc.yellow("Unreviewed"));
+        break;
+    }
+    lines.push(`${clc.bold("Review status:")} ${reviewStatus}`);
     if (extensionVersion.buildSourceUri) {
       const buildSourceUri = new URL(extensionVersion.buildSourceUri!);
       buildSourceUri.pathname = path.join(
@@ -67,7 +86,7 @@ export async function displayExtensionVersionInfo(
   if (roles.length) {
     lines.push(await displayRoles(roles));
   }
-  logger.info(`\n${lines.join("\n")}\n`);
+  logger.info(`\n${lines.join("\n")}`);
   return lines;
 }
 
@@ -80,7 +99,7 @@ export async function displayExtensionVersionInfo(
  */
 export async function retrieveRoleInfo(role: string) {
   const res = await iam.getRole(role);
-  return `  ${clc.yellow(res.title!)}: ${res.description}`;
+  return ` - ${clc.cyan(res.title!)}: ${res.description}`;
 }
 
 async function displayRoles(roles: Role[]): Promise<string> {
@@ -94,7 +113,7 @@ async function displayRoles(roles: Role[]): Promise<string> {
 
 function displayApis(apis: Api[]): string {
   const lines: string[] = apis.map((api: Api) => {
-    return `  ${clc.blue(api.apiName!)}: ${api.reason}`;
+    return ` - ${clc.cyan(api.apiName!)}: ${api.reason}`;
   });
   return clc.bold("APIs used by this extension:\n") + lines.join("\n");
 }
