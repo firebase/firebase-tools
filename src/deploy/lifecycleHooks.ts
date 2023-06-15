@@ -139,8 +139,19 @@ function getReleventConfigs(target: string, options: Options) {
       return individualOnly.replace(`${target}:`, "");
     });
 
-  return targetConfigs.filter((config: any) => {
+  // If config specifies a target, only include it if it's in the only list
+  targetConfigs = targetConfigs.filter((config) => {
     return !config.target || onlyTargets.includes(config.target);
+  });
+  // If config specifies a codebase, only include it if it's in the only list
+  targetConfigs = targetConfigs.filter((config) => {
+    if (!config.codebase) return true;
+
+    return onlyTargets.some(
+      (individualOnly) =>
+        individualOnly.indexOf(":") === -1 ||
+        config.codebase === individualOnly.split(":")[0]
+    );
   });
 }
 
