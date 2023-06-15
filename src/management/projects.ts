@@ -411,7 +411,11 @@ export async function getFirebaseProject(projectId: string): Promise<FirebasePro
     });
     return res.body;
   } catch (err: any) {
-    logger.debug(err.message);
+    let message = err.message;
+    if (err.original) {
+      message += ` (original: ${err.original})`
+    }
+    logger.debug(message);
     throw new FirebaseError(
       `Failed to get Firebase project ${projectId}. ` +
         "Please make sure the project exists and your account has permission to access it.",

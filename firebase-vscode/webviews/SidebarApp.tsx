@@ -32,26 +32,22 @@ export function SidebarApp() {
 
   useEffect(() => {
     webLogger.debug("loading SidebarApp component");
-    broker.send("getEnv");
-    broker.send("getUsers");
-    broker.send("getFirebaseJson");
-    broker.send("getSelectedProject");
-    broker.send("getChannels");
+    broker.send("getInitialData");
 
     broker.on("notifyEnv", ({ env }) => {
-      webLogger.debug("notifyEnv()");
+      webLogger.debug(`notifyEnv() returned ${JSON.stringify(env)}`);
       setEnv(env);
     });
 
     broker.on("notifyChannels", ({ channels }) => {
-      webLogger.debug("notifyChannels()");
+      webLogger.debug(`notifyChannels() returned ${JSON.stringify(channels)}`);
       setChannels(channels);
     });
 
     broker.on("notifyFirebaseConfig", ({ firebaseJson, firebaseRC }) => {
       webLogger.debug("got firebase hosting");
       if (firebaseJson?.hosting) {
-        webLogger.debug("Detected hosting setup");
+        webLogger.debug("Detected firebase.json");
         setHostingOnboarded(true);
         broker.send("showMessage", {
           msg: "Auto-detected hosting setup in this folder",
@@ -69,7 +65,7 @@ export function SidebarApp() {
     });
 
     broker.on("notifyUsers", ({ users }) => {
-      webLogger.debug("notifyUsers()");
+      webLogger.debug(`notifyUsers() returned ${JSON.stringify(users)}`);
       setAllUsers(users);
     });
 
@@ -90,7 +86,7 @@ export function SidebarApp() {
 
     broker.on("notifyHostingDeploy", ({ success }) => {
       webLogger.debug(`notifyHostingDeploy: ${success}`);
-      setHostingState("deployed");
+      setHostingState(success ? 'success' : 'failure');
     });
   }, []);
 

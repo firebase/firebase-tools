@@ -13,7 +13,6 @@ import { listFirebaseProjects } from "../../src/management/projects";
 import { requireAuth } from "../../src/requireAuth";
 import { deploy } from "../../src/deploy";
 import { FirebaseConfig, HostingSingle } from "../../src/firebaseConfig";
-import { FirebaseRC } from "../common/firebaserc";
 import { getDefaultHostingSite } from "../../src/getDefaultHostingSite";
 import { initAction } from "../../src/commands/init";
 import { Account, User } from "../../src/types/auth";
@@ -24,6 +23,7 @@ import { ServiceAccount } from "../common/types";
 import { listChannels } from "../../src/hosting/api";
 import { ChannelWithId } from "../common/messaging/types";
 import { pluginLogger } from "./logger-wrapper";
+import { Config } from "../../src/config";
 
 /**
  * Wrap the CLI's requireAuth() which is normally run before every command
@@ -41,6 +41,7 @@ async function requireAuthWrapper(showError: boolean = true) {
       account = accounts[0];
       setGlobalDefaultAccount(account);
     }
+    return true;
   }
   // If account is still null, `requireAuth()` will use google-auth-library
   // to look for the service account hopefully.
@@ -85,7 +86,7 @@ export async function getAccounts(): Promise<Array<Account | ServiceAccount>> {
   return accounts;
 }
 
-export async function getChannels(firebaseJSON: FirebaseConfig): Promise<ChannelWithId[]> {
+export async function getChannels(firebaseJSON: Config): Promise<ChannelWithId[]> {
   if (!firebaseJSON) {
     return [];
   }
@@ -97,18 +98,18 @@ export async function getChannels(firebaseJSON: FirebaseConfig): Promise<Channel
   if (!options.project) {
     return [];
   }
+  let site = (firebaseJSON.get('hosting') as HostingSingle)?.site;
   // TODO(hsubox76): handle multiple hosting configs
-  if (!(firebaseJSON.hosting as HostingSingle).site) {
-    (firebaseJSON.hosting as HostingSingle).site =
-      await getDefaultHostingSite(options);
+  if (!site) {
+    site = await getDefaultHostingSite(options);
   }
   pluginLogger.debug(
     'Calling listChannels with params',
     options.project,
-    (firebaseJSON.hosting as HostingSingle).site
+    site
   );
   try {
-    const channels = await listChannels(options.project, (firebaseJSON.hosting as HostingSingle).site);
+    const channels = await listChannels(options.project, site);
     return channels.map(channel => ({
       ...channel, id: channel.name.split("/").pop()
     }));
@@ -170,8 +171,7 @@ export async function initHosting(options: { spa: boolean; public?: string }) {
 }
 
 export async function deployToHosting(
-  firebaseJSON: FirebaseConfig,
-  firebaseRC: FirebaseRC,
+  firebaseJSON: Config,
   deployTarget: string
 ) {
   if (!(await requireAuthWrapper())) {
@@ -182,10 +182,10 @@ export async function deployToHosting(
   try {
     const options = { ...currentOptions };
     // TODO(hsubox76): handle multiple hosting configs
-    if (!(firebaseJSON.hosting as HostingSingle).site) {
+    let site = firebaseJSON.get('hosting')?.site;
+    if (!site) {
       pluginLogger.debug('Calling getDefaultHostingSite() with options', inspect(options));
-      (firebaseJSON.hosting as HostingSingle).site =
-        await getDefaultHostingSite(options);
+      firebaseJSON.set('hosting', { ...firebaseJSON.get('hosting'), site: await getDefaultHostingSite(options) });
     }
     pluginLogger.debug('Calling getCommandOptions() with options', inspect(options));
     const commandOptions = await getCommandOptions(firebaseJSON, options);

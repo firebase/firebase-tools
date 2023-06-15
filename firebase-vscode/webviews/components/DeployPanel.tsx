@@ -1,10 +1,6 @@
 import {
-  VSCodeButton,
   VSCodeDivider,
   VSCodeProgressRing,
-  VSCodeRadio,
-  VSCodeRadioGroup,
-  VSCodeTextField,
 } from "@vscode/webview-ui-toolkit/react";
 import cn from "classnames";
 import React, { useEffect, useState } from "react";
@@ -17,10 +13,13 @@ import { PanelSection } from "./ui/PanelSection";
 import { HostingState } from "../webview-types";
 import { ChannelWithId } from "../messaging/types";
 import { ExternalLink } from "./ui/ExternalLink";
+import { SplitButton } from "./ui/SplitButton";
+import { MenuItem } from "./ui/popup-menu/PopupMenu";
 
 interface DeployInfo {
   date: string;
   channelId: string;
+  succeeded: boolean;
 }
 
 export function DeployPanel({
@@ -39,16 +38,34 @@ export function DeployPanel({
   const [deployedInfo, setDeployedInfo] = useState<DeployInfo>(null);
 
   useEffect(() => {
-    if (hostingState === "deployed") {
+    if (hostingState === "success" || hostingState === "failure") {
       setDeployedInfo({
         date: new Date().toLocaleDateString(),
         channelId: deployTarget === "new" ? newPreviewChannel : deployTarget,
+        succeeded: hostingState === "success",
       });
       setNewPreviewChannel("");
     }
   }, [hostingState]);
 
-  if (!channels || channels.length === 0) {
+  useEffect(() => {
+    broker.on("notifyPreviewChannelResponse", ({ id }: { id: string }) => {
+      if (!id) {
+        return;
+      }
+      setNewPreviewChannel(id);
+      setDeployTarget(id);
+    });
+  }, [broker]);
+
+  function getNewPreviewChannelName() {
+    broker.send("promptUserForInput", {
+      title: "New Preview Channel",
+      prompt: "Enter a name for the new preview channel",
+    });
+  }
+
+  if (!channels) {
     return (
       <>
         <VSCodeDivider style={{ width: "100vw" }} />
@@ -65,17 +82,6 @@ export function DeployPanel({
 
   channels.sort((a, b) => (a.id === "live" ? -1 : 0));
 
-  const channelOptions = channels.map((channel) => (
-    <VSCodeRadio
-      name="deployTarget"
-      value={channel.id}
-      key={channel.id + (channel.id === deployTarget ? "-checked" : "")}
-      checked={channel.id === deployTarget}
-      onChange={(e) => setDeployTarget(e.target.value)}
-    >
-      {channel.id}
-    </VSCodeRadio>
-  ));
   let siteLink = null;
 
   const existingChannel = channels.find(
@@ -95,46 +101,60 @@ export function DeployPanel({
     );
   }
 
+  const channelDropdownOptions = channels.map((channel) => (
+    <MenuItem
+      key={channel.id + (channel.id === deployTarget ? "-checked" : "")}
+      onClick={(e) => setDeployTarget(channel.id)}
+    >
+      Deploy to {channel.id === "live" ? "Live Channel" : `"${channel.id}"`}
+    </MenuItem>
+  ));
+
+  const DeploySplitButton = (
+    <SplitButton
+      appearance="primary"
+      onClick={() => {
+        setHostingState("deploying");
+        broker.send("hostingDeploy", {
+          target: deployTarget === "new" ? newPreviewChannel : deployTarget,
+        });
+      }}
+      popupMenuContent={
+        <>
+          {channelDropdownOptions}
+          {newPreviewChannel && (
+            <MenuItem
+              key={newPreviewChannel}
+              onClick={() => setDeployTarget(newPreviewChannel)}
+            >
+              {`Deploy to ${newPreviewChannel}`}
+            </MenuItem>
+          )}
+          <MenuItem key="new" onClick={getNewPreviewChannelName}>
+            Create a new preview channel
+          </MenuItem>
+        </>
+      }
+    >
+      Deploy to {deployTarget === "live" ? "Live Channel" : `"${deployTarget}"`}
+    </SplitButton>
+  );
+
+  //TODO(chholland): Fill this in based on what was fetched from listChannels()
+  let deployedText = "not deployed yet";
+  if (deployedInfo?.succeeded) {
+    deployedText = `Deployed ${deployedInfo.date} to ${deployedInfo.channelId}`;
+  } else if (deployedInfo && !deployedInfo?.succeeded) {
+    deployedText = `Failed deploy at ${deployedInfo.date} to ${deployedInfo.channelId}`;
+  }
+
   return (
     <>
       <VSCodeDivider style={{ width: "100vw" }} />
       <Spacer size="medium" />
       <PanelSection title="Hosting">
         <>
-          <VSCodeButton
-            disabled={hostingState === "deploying"}
-            onClick={() => {
-              setHostingState("deploying");
-              broker.send("hostingDeploy", {
-                target:
-                  deployTarget === "new" ? newPreviewChannel : deployTarget,
-              });
-            }}
-          >
-            Deploy to channel:{" "}
-            {deployTarget === "new" ? newPreviewChannel : deployTarget}
-          </VSCodeButton>
-          <VSCodeRadioGroup
-            name="deployTarget"
-            onChange={(e) => setDeployTarget(e.target.value)}
-            orientation="vertical"
-          >
-            {channelOptions}
-            <VSCodeRadio
-              name="deployTarget"
-              value="new"
-              checked={"new" === deployTarget}
-            >
-              new (type new id below)
-            </VSCodeRadio>
-          </VSCodeRadioGroup>
-          <VSCodeTextField
-            onInput={(e) => {
-              setNewPreviewChannel(e.target.value);
-            }}
-            value={newPreviewChannel}
-            placeholder="new preview channel id"
-          ></VSCodeTextField>
+          {DeploySplitButton}
           <Spacer size="xsmall" />
           {hostingState !== "deploying" && (
             <>
@@ -147,9 +167,7 @@ export function DeployPanel({
                     slot="start"
                     icon="history"
                   ></Icon>
-                  {deployedInfo
-                    ? `Deployed ${deployedInfo.date} to ${deployedInfo.channelId}`
-                    : "Not deployed yet"}
+                  {deployedText}
                 </Label>
               </div>
             </>
@@ -169,15 +187,17 @@ export function DeployPanel({
             </>
           )}
           <Spacer size="medium" />
-          {siteLink && (<Label level={3} className={styles.hostingRowLabel}>
-            <Spacer size="xsmall" />
-            <Icon
-              className={styles.hostingRowIcon}
-              slot="start"
-              icon="globe"
-            ></Icon>
-            {siteLink}
-          </Label>)}
+          {siteLink && (
+            <Label level={3} className={styles.hostingRowLabel}>
+              <Spacer size="xsmall" />
+              <Icon
+                className={styles.hostingRowIcon}
+                slot="start"
+                icon="globe"
+              ></Icon>
+              {siteLink}
+            </Label>
+          )}
         </>
       </PanelSection>
     </>
