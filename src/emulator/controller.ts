@@ -848,8 +848,8 @@ export async function startAll(
       "WARN",
       "emulators",
       "The Emulator UI is not starting, either because none of the running " +
-      "emulators have a UI component or the Emulator UI cannot " +
-      "determine the Project ID. Pass the --project flag to specify a project."
+        "emulators have a UI component or the Emulator UI cannot " +
+        "determine the Project ID. Pass the --project flag to specify a project."
     );
   }
 
