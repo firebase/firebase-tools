@@ -81,7 +81,11 @@ export const command = new Command("ext:install [extensionRef]")
       const extension = await extensionsApi.getExtension(extensionRef);
       const extensionVersionRef = await resolveVersion(refs.parse(extensionRef), extension);
       extensionVersion = await extensionsApi.getExtensionVersion(extensionVersionRef);
-      await displayExtensionVersionInfo(extensionVersion.spec, extensionVersion, extension.latestApprovedVersion ?? extension.latestVersion);
+      await displayExtensionVersionInfo(
+        extensionVersion.spec,
+        extensionVersion,
+        extension.latestApprovedVersion ?? extension.latestVersion
+      );
       if (extensionVersion.state === "DEPRECATED") {
         throw new FirebaseError(
           `Extension version ${clc.bold(
@@ -101,7 +105,9 @@ export const command = new Command("ext:install [extensionRef]")
         logger.info(
           `You are about to install extension version ${clc.bold(
             extensionVersion.spec.version
-          )} which is older than the latest ${extension.latestApprovedVersion ? "accepted version" : "version"} ${clc.bold(extension.latestApprovedVersion!)}.`
+          )} which is older than the latest ${
+            extension.latestApprovedVersion ? "accepted version" : "version"
+          } ${clc.bold(extension.latestApprovedVersion!)}.`
         );
       }
     }
