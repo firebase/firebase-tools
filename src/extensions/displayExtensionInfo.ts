@@ -84,6 +84,7 @@ export async function displayExtensionVersionInfo(
     }
   }
   lines.push(`${clc.bold("License:")} ${spec.license ?? "-"}`);
+  lines.push(displayResources(spec));
   const apis = impliedApis(spec);
   if (apis.length) {
     lines.push(displayApis(apis));
@@ -94,6 +95,13 @@ export async function displayExtensionVersionInfo(
   }
   logger.info(`\n${lines.join("\n")}`);
   return lines;
+}
+
+export function displayResources(spec: ExtensionSpec) {
+  const lines: string[] = spec.resources.map((resource: Resource) => {
+    return ` - ${clc.blue(`${resource.name} (${resource.type})`)}: ${resource.description}`;
+  });
+  return clc.bold("Resources created by this extension:\n") + lines.join("\n");
 }
 
 /**
@@ -119,7 +127,7 @@ async function displayRoles(roles: Role[]): Promise<string> {
 
 function displayApis(apis: Api[]): string {
   const lines: string[] = apis.map((api: Api) => {
-    return ` - ${clc.yellow(api.apiName!)}: ${api.reason}`;
+    return ` - ${clc.cyan(api.apiName!)}: ${api.reason}`;
   });
   return clc.bold("APIs used by this extension:\n") + lines.join("\n");
 }
