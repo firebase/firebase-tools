@@ -38,9 +38,13 @@ export async function displayExtensionVersionInfo(
   latestVersion?: string
 ): Promise<string[]> {
   const lines: string[] = [];
-  const extensionRef = extensionVersion ? refs.toExtensionRef(refs.parse(extensionVersion?.ref)) : "";
+  const extensionRef = extensionVersion
+    ? refs.toExtensionRef(refs.parse(extensionVersion?.ref))
+    : "";
   lines.push(
-    `${clc.bold("Extension:")} ${spec.displayName ?? "Unnamed extension"} ${extensionRef ? `(${extensionRef})` : ""}`
+    `${clc.bold("Extension:")} ${spec.displayName ?? "Unnamed extension"} ${
+      extensionRef ? `(${extensionRef})` : ""
+    }`
   );
   if (spec.description) {
     lines.push(`${clc.bold("Description:")} ${spec.description}`);
@@ -107,14 +111,19 @@ export function displayEvents(spec: ExtensionSpec) {
   const lines = spec.events?.map((event: EventDescriptor) => {
     return `  - ${clc.magenta(event.type)}: ${event.description || "-"}`;
   });
-  return clc.bold("Events emitted by this extension:\n") + (lines?.length ? lines.join("\n") : " - None");
+  return (
+    clc.bold("Events emitted by this extension:\n") + (lines?.length ? lines.join("\n") : " - None")
+  );
 }
 
 export function displayResources(spec: ExtensionSpec) {
   const lines = spec.resources.map((resource: Resource) => {
     return `  - ${clc.blue(`${resource.name} (${resource.type})`)}: ${resource.description || "-"}`;
   });
-  return clc.bold("Resources created by this extension:\n") + (lines.length ? lines.join("\n") : " - None");
+  return (
+    clc.bold("Resources created by this extension:\n") +
+    (lines.length ? lines.join("\n") : " - None")
+  );
 }
 
 /**
@@ -126,7 +135,7 @@ export function displayResources(spec: ExtensionSpec) {
  */
 export async function retrieveRoleInfo(role: string) {
   const res = await iam.getRole(role);
-  return `  - ${clc.yellow(res.title!)}: ${res.description}`;
+  return `  - ${clc.yellow(res.title!)}: ${res.description || "-"}`;
 }
 
 async function displayRoles(roles: Role[]): Promise<string> {
