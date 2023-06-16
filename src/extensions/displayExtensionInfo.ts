@@ -109,7 +109,7 @@ export async function displayExtensionVersionInfo(
 
 export function displayEvents(spec: ExtensionSpec) {
   const lines = spec.events?.map((event: EventDescriptor) => {
-    return `  - ${clc.magenta(event.type)}: ${event.description || "-"}`;
+    return `  - ${clc.magenta(event.type)}${event.description ? `: ${event.description}` : ""}`;
   });
   return (
     clc.bold("Events emitted by this extension:\n") + (lines?.length ? lines.join("\n") : " - None")
@@ -118,7 +118,9 @@ export function displayEvents(spec: ExtensionSpec) {
 
 export function displayResources(spec: ExtensionSpec) {
   const lines = spec.resources.map((resource: Resource) => {
-    return `  - ${clc.blue(`${resource.name} (${resource.type})`)}: ${resource.description || "-"}`;
+    return `  - ${clc.blue(`${resource.name} (${resource.type})`)}${
+      resource.description ? `: ${resource.description}` : ""
+    }`;
   });
   return (
     clc.bold("Resources created by this extension:\n") +
@@ -135,7 +137,7 @@ export function displayResources(spec: ExtensionSpec) {
  */
 export async function retrieveRoleInfo(role: string) {
   const res = await iam.getRole(role);
-  return `  - ${clc.yellow(res.title!)}: ${res.description || "-"}`;
+  return `  - ${clc.yellow(res.title!)}${res.description ? `: ${res.description}` : ""}`;
 }
 
 async function displayRoles(roles: Role[]): Promise<string> {
