@@ -252,6 +252,9 @@ export function relativeRequire(dir: string, mod: string) {
     if (extname(path) === ".mjs") {
       return dynamicImport(pathToFileURL(path).toString());
     } else {
+      // The VSCode plugin is searching for the string "require(path" for
+      // the string replacement described below - if this code is changed,
+      // make sure to change firebase-vscode/webpack.common.js
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore prevent VSCE webpack from erroring on non_webpack_require
       return require(path);
