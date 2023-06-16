@@ -1,5 +1,6 @@
 import * as clc from "colorette";
 import { marked } from "marked";
+import * as semver from "semver";
 import * as TerminalRenderer from "marked-terminal";
 
 import { displayExtensionVersionInfo } from "../extensions/displayExtensionInfo";
@@ -7,6 +8,7 @@ import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
+import { logger } from "../logger";
 import { getProjectId, needProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
 import { ExtensionVersion, ExtensionSource, Extension } from "../extensions/types";
@@ -60,7 +62,7 @@ export const command = new Command("ext:install [extensionRef]")
     }
     if (!extensionRef) {
       throw new FirebaseError(
-        "Extension ref is required to install. To see a full list of available extensions, go to https://extensions.dev/extensions."
+        "Extension ref is required to install. To see a full list of available extensions, go to Extensions Hub (https://extensions.dev/extensions)."
       );
     }
     let source: ExtensionSource | undefined;
@@ -85,6 +87,15 @@ export const command = new Command("ext:install [extensionRef]")
           `Extension version ${clc.bold(
             extensionVersionRef
           )} is deprecated and cannot be installed. To install the latest non-deprecated version, omit the version in the extension ref.`
+        );
+      }
+      const latestApprovedSemver = semver.parse(extension.latestApprovedVersion!);
+      const selectedSemver = semver.parse(extensionVersion.spec.version);
+      if (latestApprovedSemver && semver.gt(latestApprovedSemver, selectedSemver!)) {
+        logger.info(
+          `You are about to install extension version ${clc.bold(
+            extensionVersion.spec.version
+          )} which is older than the latest version ${clc.bold(extension.latestApprovedVersion!)}.`
         );
       }
     }

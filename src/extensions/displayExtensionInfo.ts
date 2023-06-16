@@ -3,11 +3,8 @@ import { marked } from "marked";
 import * as TerminalRenderer from "marked-terminal";
 import * as path from "path";
 
-import * as utils from "../utils";
-import { logPrefix } from "./extensionsHelper";
 import * as refs from "../extensions/refs";
 import { logger } from "../logger";
-import { FirebaseError } from "../error";
 import {
   Api,
   ExtensionSpec,
@@ -86,7 +83,7 @@ export async function displayExtensionVersionInfo(
   if (roles.length) {
     lines.push(await displayRoles(roles));
   }
-  logger.info(`\n${lines.join("\n")}`);
+  logger.info(`\n${lines.join("\n")}\n`);
   return lines;
 }
 
@@ -99,7 +96,7 @@ export async function displayExtensionVersionInfo(
  */
 export async function retrieveRoleInfo(role: string) {
   const res = await iam.getRole(role);
-  return ` - ${clc.cyan(res.title!)}: ${res.description}`;
+  return ` - ${clc.yellow(res.title!)}: ${res.description}`;
 }
 
 async function displayRoles(roles: Role[]): Promise<string> {
@@ -113,7 +110,7 @@ async function displayRoles(roles: Role[]): Promise<string> {
 
 function displayApis(apis: Api[]): string {
   const lines: string[] = apis.map((api: Api) => {
-    return ` - ${clc.cyan(api.apiName!)}: ${api.reason}`;
+    return ` - ${clc.yellow(api.apiName!)}: ${api.reason}`;
   });
   return clc.bold("APIs used by this extension:\n") + lines.join("\n");
 }
