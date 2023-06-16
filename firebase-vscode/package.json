@@ -58,7 +58,19 @@
           "name": "Firebase"
         }
       ]
-    }
+    },
+    "jsonValidation": [
+      {
+        "fileMatch": "firebase.json",
+        "url": "https://raw.githubusercontent.com/firebase/firebase-tools/master/schema/firebase-config.json"
+      }
+    ],
+    "yamlValidation": [
+      {
+        "fileMatch": "extension.yaml",
+        "url": "https://raw.githubusercontent.com/firebase/firebase-tools/master/schema/extension-yaml.json"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run build",
