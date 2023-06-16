@@ -26,14 +26,12 @@ import { logger } from '../../src/logger';
 import { discover } from "../../src/frameworks";
 import { setEnabled } from "../../src/experiments";
 import {
-  readFirebaseConfigs,
   readAndSendFirebaseConfigs,
   setupFirebaseJsonAndRcFileSystemWatcher,
   updateFirebaseRCProject,
   getRootFolders
 } from "./configs";
 
-let extensionContext: ExtensionContext = null;
 let users: Array<ServiceAccountUser | User> = [];
 let currentUserEmail = "";
 // Stores a mapping from user email to list of projects for that user
@@ -97,7 +95,6 @@ export async function setupWorkflow(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl
 ) {
-  extensionContext = context;
 
   // Get user-defined VSCode settings.
   const workspaceConfig = workspace.getConfiguration(
@@ -140,11 +137,6 @@ export async function setupWorkflow(
       })
     );
   }
-  // Read config files and store in memory.
-  readFirebaseConfigs(extensionContext);
-  // Check current users state then get hosting channels.
-  // await fetchUsers();
-  // fetchChannels();
 
   /**
    * Call pluginLogger with log arguments received from webview.
@@ -167,9 +159,7 @@ export async function setupWorkflow(
     readAndSendFirebaseConfigs(broker, context);
 
     // User login state
-    if (users.length === 0) {
-      await fetchUsers();
-    }
+    await fetchUsers();
     broker.send("notifyUsers", { users });
     currentUserEmail = updateCurrentUser(users, broker);
     if (users.length > 0) {
@@ -302,7 +292,7 @@ export async function setupWorkflow(
       pluginLogger.debug('selectProject: no service account or MONOSPACE_ENV '
         + 'found, using firebase account to list projects');
       let projects = [];
-      if (false && projectsUserMapping.has(email)) {
+      if (projectsUserMapping.has(email)) {
         pluginLogger.info(`using cached projects list for ${email}`);
         projects = projectsUserMapping.get(email)!;
       } else {
@@ -326,8 +316,8 @@ export async function setupWorkflow(
 
   async function selectAndInitHosting({ projectId, singleAppSupport }) {
     pluginLogger.debug('Searching for a web framework in this project.');
-    //TODO(chholland): This takes a few seconds - add some UI progress/message
-    const discoveredFramework = await discover(currentOptions.cwd, false);
+      //TODO(chholland): This takes a few seconds - add some UI progress/message
+    let discoveredFramework = useFrameworks && await discover(currentOptions.cwd, false);
     if (discoveredFramework) {
       pluginLogger.debug('Detected web framework, launching frameworks init.');
       await initHosting({
@@ -350,11 +340,11 @@ export async function setupWorkflow(
           spa: singleAppSupport,
           public: publicFolder,
         });
-        readAndSendFirebaseConfigs(broker, context);
-        broker.send("notifyHostingFolderReady",
-          { projectId, folderPath: currentOptions.cwd });
       }
     }
+    readAndSendFirebaseConfigs(broker, context);
+    broker.send("notifyHostingInitDone",
+      { projectId, folderPath: currentOptions.cwd });
     await fetchChannels(true);
   }
 }

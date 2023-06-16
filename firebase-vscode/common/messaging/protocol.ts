@@ -84,7 +84,7 @@ export interface ExtensionToWebviewParamsMap {
    * Notifies webview when user has successfully selected a hosting folder
    * and it has been written to firebase.json.
    */
-  notifyHostingFolderReady: { projectId: string, folderPath: string };
+  notifyHostingInitDone: { projectId: string, folderPath?: string };
 
   /**
    * Notify webview of status of deployment attempt.

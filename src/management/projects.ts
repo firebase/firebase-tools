@@ -413,7 +413,7 @@ export async function getFirebaseProject(projectId: string): Promise<FirebasePro
   } catch (err: any) {
     let message = err.message;
     if (err.original) {
-      message += ` (original: ${err.original})`
+      message += ` (original: ${err.original.message})`;
     }
     logger.debug(message);
     throw new FirebaseError(

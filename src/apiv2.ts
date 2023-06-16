@@ -393,7 +393,7 @@ export class Client {
                 original: err,
               });
             }
-            throw new FirebaseError(`Failed to make request to ${fetchURL} (${err.message})`, { original: err });
+            throw new FirebaseError(`Failed to make request to ${fetchURL}`, { original: err });
           } finally {
             // If we succeed or failed, clear the timeout.
             if (reqTimeout) {

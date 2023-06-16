@@ -79,8 +79,8 @@ export function SidebarApp() {
       setUserEmail(email);
     });
 
-    broker.on("notifyHostingFolderReady", ({ projectId, folderPath }) => {
-      webLogger.debug(`notifyHostingFolderReady: ${projectId}, ${folderPath}`);
+    broker.on("notifyHostingInitDone", ({ projectId, folderPath }) => {
+      webLogger.debug(`notifyHostingInitDone: ${projectId}, ${folderPath}`);
       setHostingOnboarded(true);
     });
 

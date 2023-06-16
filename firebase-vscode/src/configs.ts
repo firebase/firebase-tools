@@ -55,6 +55,7 @@ export function readFirebaseConfigs(context: vscode.ExtensionContext) {
     if (e.message.includes('error trying to load')) {
       firebaseRC = null;
     } else {
+      pluginLogger.error(e.message);
       throw e;
     }
   }
@@ -62,9 +63,11 @@ export function readFirebaseConfigs(context: vscode.ExtensionContext) {
     firebaseJSON = Config.load({ configPath: path.join(configPath, 'firebase.json') });
   }
   catch (e) {
-    if (e.message.includes('could not locate')) {
+    if (e.message.includes('could not locate')
+      || e.message.includes('Could not load config file')) {
       firebaseJSON = null;
     } else {
+      pluginLogger.error(e.message);
       throw e;
     }
   }

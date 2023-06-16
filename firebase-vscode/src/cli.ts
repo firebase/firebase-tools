@@ -12,7 +12,7 @@ import { hostingChannelDeployAction } from "../../src/commands/hosting-channel-d
 import { listFirebaseProjects } from "../../src/management/projects";
 import { requireAuth } from "../../src/requireAuth";
 import { deploy } from "../../src/deploy";
-import { FirebaseConfig, HostingSingle } from "../../src/firebaseConfig";
+import { HostingSingle } from "../../src/firebaseConfig";
 import { getDefaultHostingSite } from "../../src/getDefaultHostingSite";
 import { initAction } from "../../src/commands/init";
 import { Account, User } from "../../src/types/auth";
@@ -33,6 +33,7 @@ import { Config } from "../../src/config";
 async function requireAuthWrapper(showError: boolean = true) {
   // Try to get global default from configstore. For some reason this is
   // often overwritten when restarting the extension.
+  pluginLogger.debug('requireAuthWrapper');
   let account = getGlobalDefaultAccount();
   if (!account) {
     // If nothing in configstore top level, grab the first "additionalAccount"
@@ -41,10 +42,10 @@ async function requireAuthWrapper(showError: boolean = true) {
       account = accounts[0];
       setGlobalDefaultAccount(account);
     }
-    return true;
   }
-  // If account is still null, `requireAuth()` will use google-auth-library
-  // to look for the service account hopefully.
+  // `requireAuth()` will register the token with apiv2, and if account is
+  // still null at this point, it will use google-auth-library
+  // to find the service account.
   try {
     const commandOptions = await getCommandOptions(undefined, {
       ...currentOptions,
@@ -66,8 +67,8 @@ async function requireAuthWrapper(showError: boolean = true) {
     }
     return false;
   }
-  // No accounts but no error on requireAuth means it's a service account
-  // (or glogin - edge case)
+  // If we reach here, there is either a google account or no error on
+  // requireAuth (which means there is a service account or glogin)
   return true;
 }
 
@@ -98,11 +99,7 @@ export async function getChannels(firebaseJSON: Config): Promise<ChannelWithId[]
   if (!options.project) {
     return [];
   }
-  let site = (firebaseJSON.get('hosting') as HostingSingle)?.site;
-  // TODO(hsubox76): handle multiple hosting configs
-  if (!site) {
-    site = await getDefaultHostingSite(options);
-  }
+  const site = await getDefaultHostingSite(options);
   pluginLogger.debug(
     'Calling listChannels with params',
     options.project,
@@ -182,11 +179,8 @@ export async function deployToHosting(
   try {
     const options = { ...currentOptions };
     // TODO(hsubox76): handle multiple hosting configs
-    let site = firebaseJSON.get('hosting')?.site;
-    if (!site) {
-      pluginLogger.debug('Calling getDefaultHostingSite() with options', inspect(options));
-      firebaseJSON.set('hosting', { ...firebaseJSON.get('hosting'), site: await getDefaultHostingSite(options) });
-    }
+    pluginLogger.debug('Calling getDefaultHostingSite() with options', inspect(options));
+    firebaseJSON.set('hosting', { ...firebaseJSON.get('hosting'), site: await getDefaultHostingSite(options) });
     pluginLogger.debug('Calling getCommandOptions() with options', inspect(options));
     const commandOptions = await getCommandOptions(firebaseJSON, options);
     pluginLogger.debug('Calling hosting deploy with command options', inspect(commandOptions));
