@@ -1,5 +1,6 @@
 import * as clc from "colorette";
 import { marked } from "marked";
+import * as semver from "semver";
 import * as TerminalRenderer from "marked-terminal";
 import * as path from "path";
 
@@ -31,7 +32,8 @@ const TASKS_API = "cloudtasks.googleapis.com";
  * */
 export async function displayExtensionVersionInfo(
   spec: ExtensionSpec,
-  extensionVersion?: ExtensionVersion
+  extensionVersion?: ExtensionVersion,
+  latestRelevantVersion?: string
 ): Promise<string[]> {
   const lines: string[] = [];
   lines.push(
@@ -42,11 +44,14 @@ export async function displayExtensionVersionInfo(
   if (spec.description) {
     lines.push(`${clc.bold("Description")} ${spec.description}`);
   }
-  lines.push(
-    `${clc.bold("Version:")} ${spec.version} ${
-      extensionVersion?.state === "DEPRECATED" ? `(${clc.red("Deprecated")})` : ""
-    }`
-  );
+  let versionNote = "";
+  if (latestRelevantVersion && semver.eq(extensionVersion?.spec.version!, latestRelevantVersion)) {
+    versionNote = `- ${clc.green("Latest")}`;
+  }
+  if (extensionVersion?.state === "DEPRECATED") {
+    versionNote = `- ${clc.red("Deprecated")}`;
+  }
+  lines.push(`${clc.bold("Version:")} ${spec.version} ${versionNote}`);
   if (extensionVersion) {
     let reviewStatus: string;
     switch (extensionVersion.listing?.state) {
@@ -83,7 +88,7 @@ export async function displayExtensionVersionInfo(
   if (roles.length) {
     lines.push(await displayRoles(roles));
   }
-  logger.info(`\n${lines.join("\n")}\n`);
+  logger.info(`\n${lines.join("\n")}`);
   return lines;
 }
 

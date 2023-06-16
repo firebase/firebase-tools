@@ -81,7 +81,7 @@ export const command = new Command("ext:install [extensionRef]")
       const extension = await extensionsApi.getExtension(extensionRef);
       const extensionVersionRef = await resolveVersion(refs.parse(extensionRef), extension);
       extensionVersion = await extensionsApi.getExtensionVersion(extensionVersionRef);
-      await displayExtensionVersionInfo(extensionVersion.spec, extensionVersion);
+      await displayExtensionVersionInfo(extensionVersion.spec, extensionVersion, extension.latestApprovedVersion ?? extension.latestVersion);
       if (extensionVersion.state === "DEPRECATED") {
         throw new FirebaseError(
           `Extension version ${clc.bold(
@@ -89,13 +89,19 @@ export const command = new Command("ext:install [extensionRef]")
           )} is deprecated and cannot be installed. To install the latest non-deprecated version, omit the version in the extension ref.`
         );
       }
-      const latestApprovedSemver = semver.parse(extension.latestApprovedVersion!);
-      const selectedSemver = semver.parse(extensionVersion.spec.version);
-      if (latestApprovedSemver && semver.gt(latestApprovedSemver, selectedSemver!)) {
+      logger.info();
+      // Check if selected version is older than the latest approved version, or the latest version only if there is no approved version.
+      if (
+        (extension.latestApprovedVersion &&
+          semver.gt(extension.latestApprovedVersion, extensionVersion.spec.version)) ||
+        (!extension.latestApprovedVersion &&
+          extension.latestVersion &&
+          semver.gt(extension.latestVersion, extensionVersion.spec.version))
+      ) {
         logger.info(
           `You are about to install extension version ${clc.bold(
             extensionVersion.spec.version
-          )} which is older than the latest version ${clc.bold(extension.latestApprovedVersion!)}.`
+          )} which is older than the latest ${extension.latestApprovedVersion ? "accepted version" : "version"} ${clc.bold(extension.latestApprovedVersion!)}.`
         );
       }
     }
