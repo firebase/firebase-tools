@@ -198,6 +198,8 @@ async function signUp(
     }
   }
 
+  // Assert a valid email address when we expect the email to have a value.
+  // Prevents empty email and password string to be treated as anonymous sign in.
   if (reqBody.email || (reqBody.email === "" && provider)) {
     assert(isValidEmailAddress(reqBody.email), "INVALID_EMAIL");
     const email = canonicalizeEmailAddress(reqBody.email);
