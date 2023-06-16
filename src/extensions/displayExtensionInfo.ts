@@ -13,6 +13,7 @@ import {
   Role,
   Resource,
   FUNCTIONS_RESOURCE_TYPE,
+  EventDescriptor,
 } from "./types";
 import * as iam from "../gcp/iam";
 import { SECRET_ROLE, usesSecrets } from "./secretsUtils";
@@ -87,6 +88,9 @@ export async function displayExtensionVersionInfo(
   }
   lines.push(`${clc.bold("License:")} ${spec.license ?? "-"}`);
   lines.push(displayResources(spec));
+  if (spec.events) {
+    lines.push(displayEvents(spec));
+  }
   const apis = impliedApis(spec);
   if (apis.length) {
     lines.push(displayApis(apis));
@@ -99,11 +103,18 @@ export async function displayExtensionVersionInfo(
   return lines;
 }
 
-export function displayResources(spec: ExtensionSpec) {
-  const lines: string[] = spec.resources.map((resource: Resource) => {
-    return ` - ${clc.blue(`${resource.name} (${resource.type})`)}: ${resource.description}`;
+export function displayEvents(spec: ExtensionSpec) {
+  const lines = spec.events?.map((event: EventDescriptor) => {
+    return `  - ${clc.magenta(event.type)}: ${event.description || "-"}`;
   });
-  return clc.bold("Resources created by this extension:\n") + lines.join("\n");
+  return clc.bold("Events emitted by this extension:\n") + (lines?.length ? lines.join("\n") : " - None");
+}
+
+export function displayResources(spec: ExtensionSpec) {
+  const lines = spec.resources.map((resource: Resource) => {
+    return `  - ${clc.blue(`${resource.name} (${resource.type})`)}: ${resource.description || "-"}`;
+  });
+  return clc.bold("Resources created by this extension:\n") + (lines.length ? lines.join("\n") : " - None");
 }
 
 /**
@@ -115,7 +126,7 @@ export function displayResources(spec: ExtensionSpec) {
  */
 export async function retrieveRoleInfo(role: string) {
   const res = await iam.getRole(role);
-  return ` - ${clc.yellow(res.title!)}: ${res.description}`;
+  return `  - ${clc.yellow(res.title!)}: ${res.description}`;
 }
 
 async function displayRoles(roles: Role[]): Promise<string> {
@@ -129,7 +140,7 @@ async function displayRoles(roles: Role[]): Promise<string> {
 
 function displayApis(apis: Api[]): string {
   const lines: string[] = apis.map((api: Api) => {
-    return ` - ${clc.cyan(api.apiName!)}: ${api.reason}`;
+    return `  - ${clc.cyan(api.apiName!)}: ${api.reason}`;
   });
   return clc.bold("APIs used by this extension:\n") + lines.join("\n");
 }
