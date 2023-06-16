@@ -1,12 +1,12 @@
 {
   "name": "firebase-tools",
-  "version": "11.30.0",
+  "version": "12.4.0",
   "lockfileVersion": 2,
   "requires": true,
   "packages": {
     "": {
       "name": "firebase-tools",
-      "version": "11.30.0",
+      "version": "12.4.0",
       "license": "MIT",
       "dependencies": {
         "@google-cloud/pubsub": "^3.0.1",
@@ -18594,8 +18594,9 @@
       }
     },
     "node_modules/vm2": {
-      "version": "3.9.17",
-      "resolved": "https://registry.npmjs.org/vm2/-/vm2-3.9.17.tgz",
+      "version": "3.9.19",
+      "resolved": "https://registry.npmjs.org/vm2/-/vm2-3.9.19.tgz",
+      "integrity": "sha512-J637XF0DHDMV57R6JyVsTak7nIL8gy5KH4r1HiwWLf/4GBbb5MKL5y7LpmF4A8E2nR6XmzpmMFQ7V7ppPTmUQg==",
       "dependencies": {
         "acorn": "^8.7.0",
         "acorn-walk": "^8.2.0"
@@ -33107,8 +33108,9 @@
       "requires": {}
     },
     "vm2": {
-      "version": "3.9.17",
-      "resolved": "https://registry.npmjs.org/vm2/-/vm2-3.9.17.tgz",
+      "version": "3.9.19",
+      "resolved": "https://registry.npmjs.org/vm2/-/vm2-3.9.19.tgz",
+      "integrity": "sha512-J637XF0DHDMV57R6JyVsTak7nIL8gy5KH4r1HiwWLf/4GBbb5MKL5y7LpmF4A8E2nR6XmzpmMFQ7V7ppPTmUQg==",
       "requires": {
         "acorn": "^8.7.0",
         "acorn-walk": "^8.2.0"

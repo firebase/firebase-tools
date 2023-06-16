@@ -5,7 +5,6 @@ import { sync as spawnSync } from "cross-spawn";
 import { copyFile, readdir, readFile, rm, writeFile } from "fs/promises";
 import { mkdirp, pathExists, stat } from "fs-extra";
 import * as process from "node:process";
-import * as semver from "semver";
 import * as glob from "glob";
 
 import { needProjectId } from "../projectUtils";
@@ -22,23 +21,39 @@ import { FirebaseError } from "../error";
 import { requireHostingSite } from "../requireHostingSite";
 import * as experiments from "../experiments";
 import { implicitInit } from "../hosting/implicitInit";
-import { findDependency, conjoinOptions, frameworksCallToAction } from "./utils";
+import {
+  findDependency,
+  conjoinOptions,
+  frameworksCallToAction,
+  getFrameworksBuildTarget,
+} from "./utils";
 import {
   ALLOWED_SSR_REGIONS,
   DEFAULT_REGION,
+  DEFAULT_SHOULD_USE_DEV_MODE_HANDLE,
   FIREBASE_ADMIN_VERSION,
   FIREBASE_FRAMEWORKS_VERSION,
   FIREBASE_FUNCTIONS_VERSION,
+  GET_DEFAULT_BUILD_TARGETS,
   I18N_ROOT,
   NODE_VERSION,
   SupportLevelWarnings,
   VALID_ENGINES,
   WebFrameworks,
 } from "./constants";
-import { BuildResult, FirebaseDefaults, Framework } from "./interfaces";
+import {
+  BUILD_TARGET_PURPOSE,
+  BuildResult,
+  FirebaseDefaults,
+  Framework,
+  FrameworkContext,
+  FrameworksOptions,
+} from "./interfaces";
 import { logWarning } from "../utils";
 import { ensureTargeted } from "../functions/ensureTargeted";
 import { isDeepStrictEqual } from "util";
+import { resolveProjectPath } from "../projectPath";
+import { logger } from "../logger";
 
 export { WebFrameworks };
 
@@ -74,8 +89,9 @@ const BUILD_MEMO = new Map<string[], Promise<BuildResult | void>>();
 // Memoize the build based on both the dir and the environment variables
 function memoizeBuild(
   dir: string,
-  build: (dir: string) => Promise<BuildResult | void>,
-  deps: any[]
+  build: (dir: string, target: string) => Promise<BuildResult | void>,
+  deps: any[],
+  target: string
 ) {
   const key = [dir, ...deps];
   for (const existingKey of BUILD_MEMO.keys()) {
@@ -83,7 +99,7 @@ function memoizeBuild(
       return BUILD_MEMO.get(existingKey);
     }
   }
-  const value = build(dir);
+  const value = build(dir, target);
   BUILD_MEMO.set(key, value);
   return value;
 }
@@ -92,21 +108,14 @@ function memoizeBuild(
  *
  */
 export async function prepareFrameworks(
+  purpose: BUILD_TARGET_PURPOSE,
   targetNames: string[],
-  context: any,
-  options: any,
+  context: FrameworkContext | undefined,
+  options: FrameworksOptions,
   emulators: EmulatorInfo[] = []
 ): Promise<void> {
-  // `firebase-frameworks` requires Node >= 16. We must check for this to avoid horrible errors.
-  const nodeVersion = process.version;
-  if (!semver.satisfies(nodeVersion, ">=16.0.0")) {
-    throw new FirebaseError(
-      `The frameworks awareness feature requires Node.JS >= 16 and npm >= 8 in order to work correctly, due to some of the downstream dependencies. Please upgrade your version of Node.JS, reinstall firebase-tools, and give it another go.`
-    );
-  }
-
-  const project = needProjectId(context);
-  const { projectRoot } = options;
+  const project = needProjectId(context || options);
+  const projectRoot = resolveProjectPath(options, ".");
   const account = getProjectDefaultAccount(projectRoot);
   // options.site is not present when emulated. We could call requireHostingSite but IAM permissions haven't
   // been booted up (at this point) and we may be offline, so just use projectId. Most of the time
@@ -244,20 +253,30 @@ export async function prepareFrameworks(
       name,
       support,
       docsUrl,
+      getValidBuildTargets = GET_DEFAULT_BUILD_TARGETS,
+      shouldUseDevModeHandle = DEFAULT_SHOULD_USE_DEV_MODE_HANDLE,
     } = WebFrameworks[framework];
-    console.log(
+    logger.info(
       `\n${frameworksCallToAction(SupportLevelWarnings[support](name), docsUrl, "   ")}\n`
     );
-    // TODO allow for override
-    const isDevMode = context._name === "serve" || context._name === "emulators:start";
 
     const hostingEmulatorInfo = emulators.find((e) => e.name === Emulators.HOSTING);
+    const validBuildTargets = await getValidBuildTargets(purpose, getProjectPath());
+    const frameworksBuildTarget = getFrameworksBuildTarget(purpose, validBuildTargets);
+    const useDevModeHandle =
+      purpose !== "deploy" &&
+      (await shouldUseDevModeHandle(frameworksBuildTarget, getProjectPath()));
+
+    let codegenFunctionsDirectory: Framework["ɵcodegenFunctionsDirectory"];
+    let baseUrl = "";
+    const rewrites = [];
+    const redirects = [];
+    const headers = [];
 
     const devModeHandle =
-      isDevMode &&
+      useDevModeHandle &&
       getDevModeHandle &&
-      (await getDevModeHandle(getProjectPath(), hostingEmulatorInfo));
-    let codegenFunctionsDirectory: Framework["ɵcodegenFunctionsDirectory"];
+      (await getDevModeHandle(getProjectPath(), frameworksBuildTarget, hostingEmulatorInfo));
     if (devModeHandle) {
       config.public = relative(projectRoot, publicDirectory);
       // Attach the handle to options, it will be used when spinning up superstatic
@@ -267,25 +286,28 @@ export async function prepareFrameworks(
         codegenFunctionsDirectory = codegenDevModeFunctionsDirectory;
       }
     } else {
-      const {
-        wantsBackend = false,
-        rewrites = [],
-        redirects = [],
-        headers = [],
-        trailingSlash,
-        i18n = false,
-      } = (await memoizeBuild(getProjectPath(), build, [firebaseDefaults])) || {};
+      const buildResult = await memoizeBuild(
+        getProjectPath(),
+        build,
+        [firebaseDefaults, frameworksBuildTarget],
+        frameworksBuildTarget
+      );
+      const { wantsBackend = false, trailingSlash, i18n = false }: BuildResult = buildResult || {};
 
-      config.rewrites.push(...rewrites);
-      config.redirects.push(...redirects);
-      config.headers.push(...headers);
+      if (buildResult) {
+        baseUrl = buildResult.baseUrl ?? baseUrl;
+        if (buildResult.headers) headers.push(...buildResult.headers);
+        if (buildResult.rewrites) rewrites.push(...buildResult.rewrites);
+        if (buildResult.redirects) redirects.push(...buildResult.redirects);
+      }
+
       config.trailingSlash ??= trailingSlash;
       if (i18n) config.i18n ??= { root: I18N_ROOT };
 
       if (await pathExists(hostingDist)) await rm(hostingDist, { recursive: true });
       await mkdirp(hostingDist);
 
-      await ɵcodegenPublicDirectory(getProjectPath(), hostingDist, {
+      await ɵcodegenPublicDirectory(getProjectPath(), hostingDist, frameworksBuildTarget, {
         project,
         site,
       });
@@ -301,7 +323,7 @@ export async function prepareFrameworks(
         process.env.__FIREBASE_DEFAULTS__ = JSON.stringify(firebaseDefaults);
       }
 
-      if (context.hostingChannel) {
+      if (context?.hostingChannel) {
         experiments.assertEnabled(
           "pintags",
           "deploy an app that requires a backend to a preview channel"
@@ -324,12 +346,7 @@ export async function prepareFrameworks(
       // This is just a fallback for previous behavior if the user manually
       // disables the pintags experiment (e.g. there is a break and they would
       // rather disable the experiment than roll back).
-      if (
-        !experiments.isEnabled("pintags") ||
-        context._name === "serve" ||
-        context._name === "emulators:start" ||
-        context._name === "emulators:exec"
-      ) {
+      if (!experiments.isEnabled("pintags") || purpose !== "deploy") {
         if (!targetNames.includes("functions")) {
           targetNames.unshift("functions");
         }
@@ -359,18 +376,27 @@ export async function prepareFrameworks(
         packageJson,
         bootstrapScript,
         frameworksEntry = framework,
-        baseUrl = "",
         dotEnv = {},
-      } = await codegenFunctionsDirectory(getProjectPath(), functionsDist);
+        rewriteSource,
+      } = await codegenFunctionsDirectory(getProjectPath(), functionsDist, frameworksBuildTarget);
 
-      config.rewrites.push({
-        source: posix.normalize(posix.join(baseUrl, "**")),
+      const rewrite = {
+        source: rewriteSource || posix.join(baseUrl, "**"),
         function: {
           functionId,
           region: ssrRegion,
           pinTag: experiments.isEnabled("pintags"),
         },
-      });
+      };
+
+      // If the rewriteSource is overridden, we're talking a very specific rewrite. E.g, Image Optimization
+      // in this case, we should ensure that it's the first priority—otherwise defer to the push/unshift
+      // logic based off the baseUrl
+      if (rewriteSource) {
+        config.rewrites.unshift(rewrite);
+      } else {
+        rewrites.push(rewrite);
+      }
 
       // Set the framework entry in the env variables to handle generation of the functions.yaml
       process.env.__FIREBASE_FRAMEWORKS_ENTRY__ = frameworksEntry;
@@ -421,7 +447,8 @@ export async function prepareFrameworks(
                 cwd: functionsDist,
               }
             );
-            if (result.status) throw new Error(`Error running \`npm pack\` at ${path}`);
+            if (result.status !== 0)
+              throw new FirebaseError(`Error running \`npm pack\` at ${path}`);
             const { filename } = JSON.parse(result.stdout.toString())[0];
             packageJson.dependencies[name] = `file:${filename}`;
           } else {
@@ -505,13 +532,14 @@ ${
       if (await pathExists(functionsDist)) {
         await rm(functionsDist, { recursive: true });
       }
-      // No function, treat as an SPA
-      // TODO(jamesdaniels) be smarter about this, leave it to the framework?
-      config.rewrites.push({
-        source: "**",
-        destination: "/index.html",
-      });
     }
+
+    const ourConfigShouldComeFirst = !["", "/"].includes(baseUrl);
+    const operation = ourConfigShouldComeFirst ? "unshift" : "push";
+
+    config.rewrites[operation](...rewrites);
+    config.redirects[operation](...redirects);
+    config.headers[operation](...headers);
 
     if (firebaseDefaults) {
       const encodedDefaults = Buffer.from(JSON.stringify(firebaseDefaults)).toString("base64url");
@@ -519,7 +547,7 @@ ${
       const sameSite = "Strict";
       const path = `/`;
       config.headers.push({
-        source: "**/*.js",
+        source: posix.join(baseUrl, "**", "*.[jt]s"),
         headers: [
           {
             key: "Set-Cookie",
@@ -529,10 +557,11 @@ ${
       });
     }
   }
-  if (process.env.DEBUG) {
-    console.log("Effective firebase.json:");
-    console.log(JSON.stringify(configs, undefined, 2));
-  }
+
+  logger.debug(
+    "[web frameworks] effective firebase.json: ",
+    JSON.stringify({ hosting: configs, functions: options.config.get("functions") }, undefined, 2)
+  );
 
   // Clean up memos/caches
   BUILD_MEMO.clear();

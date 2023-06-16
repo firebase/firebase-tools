@@ -27,10 +27,10 @@ logic to {{cloud_functions_full}}.
 
 <<_includes/_initialize-firebase.md>>
 
+1.  Answer yes to "Do you want to use a web framework? (experimental)"
 1.  Choose your hosting source directory. If this an existing Next.js app,
     the {{cli}} process completes, and you can proceed to the next section.
-1.  Choose "Dynamic web hosting with web framework"
-1.  Choose Next.js.
+1.  If prompted, choose Next.js.
 
 ## Serve static content
 
