@@ -101,12 +101,13 @@ export const command = new Command("ext:install [extensionRef]")
           extension.latestVersion &&
           semver.gt(extension.latestVersion, extensionVersion.spec.version))
       ) {
+        const version = extension.latestApprovedVersion || extension.latestVersion;
         logger.info(
           `You are about to install extension version ${clc.bold(
             extensionVersion.spec.version
           )} which is older than the latest ${
             extension.latestApprovedVersion ? "accepted version" : "version"
-          } ${clc.bold(extension.latestApprovedVersion!)}.`
+          } ${clc.bold(version!)}.`
         );
       }
     }
