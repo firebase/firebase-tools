@@ -246,10 +246,14 @@ export function relativeRequire(dir: string, mod: "@nuxt/kit"): Promise<any>;
  */
 export function relativeRequire(dir: string, mod: string) {
   try {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore prevent VSCE webpack from erroring on non_webpack_require
     const path = require.resolve(mod, { paths: [dir] });
     if (extname(path) === ".mjs") {
       return dynamicImport(pathToFileURL(path).toString());
     } else {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore prevent VSCE webpack from erroring on non_webpack_require
       return require(path);
     }
   } catch (e) {
