@@ -82,7 +82,8 @@ export const command = new Command("ext:install [extensionRef]")
       await displayExtensionVersionInfo(
         extensionVersion.spec,
         extensionVersion,
-        extension.latestApprovedVersion || extension.latestVersion
+        extension.latestApprovedVersion,
+        extension.latestVersion
       );
       if (extensionVersion.state === "DEPRECATED") {
         throw new FirebaseError(

@@ -33,23 +33,20 @@ const TASKS_API = "cloudtasks.googleapis.com";
 export async function displayExtensionVersionInfo(
   spec: ExtensionSpec,
   extensionVersion?: ExtensionVersion,
-  latestRelevantVersion?: string
+  latestApprovedVersion?: string,
+  latestVersion?: string
 ): Promise<string[]> {
   const lines: string[] = [];
+  const extensionRef = extensionVersion ? refs.toExtensionRef(refs.parse(extensionVersion?.ref)) : "";
   lines.push(
-    `${clc.bold("Extension:")} ${spec.displayName ?? "Unnamed extension"} ${
-      extensionVersion ? `(${refs.toExtensionRef(refs.parse(extensionVersion.ref))})` : ""
-    }`
+    `${clc.bold("Extension:")} ${spec.displayName ?? "Unnamed extension"} ${extensionRef ? `(${extensionRef})` : ""}`
   );
   if (spec.description) {
-    lines.push(`${clc.bold("Description")} ${spec.description}`);
+    lines.push(`${clc.bold("Description:")} ${spec.description}`);
   }
   let versionNote = "";
-  if (
-    latestRelevantVersion &&
-    extensionVersion?.spec.version &&
-    semver.eq(extensionVersion?.spec.version, latestRelevantVersion)
-  ) {
+  const latestRelevantVersion = latestApprovedVersion || latestVersion;
+  if (latestRelevantVersion && semver.eq(spec.version, latestRelevantVersion)) {
     versionNote = `- ${clc.green("Latest")}`;
   }
   if (extensionVersion?.state === "DEPRECATED") {
@@ -70,6 +67,11 @@ export async function displayExtensionVersionInfo(
         break;
     }
     lines.push(`${clc.bold("Review status:")} ${reviewStatus}`);
+    if (latestApprovedVersion) {
+      lines.push(
+        `${clc.bold("View in Extensions Hub:")} https://extensions.dev/extensions/${extensionRef}`
+      );
+    }
     if (extensionVersion.buildSourceUri) {
       const buildSourceUri = new URL(extensionVersion.buildSourceUri!);
       buildSourceUri.pathname = path.join(
