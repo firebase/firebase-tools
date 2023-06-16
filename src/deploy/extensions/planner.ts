@@ -207,9 +207,9 @@ export async function want(args: {
 }
 
 /**
- * Resolves a semver string to the max matching version. If no version is specified, 
+ * Resolves a semver string to the max matching version. If no version is specified,
  * it will default to the extension's latest approved version if set, otherwise to the latest version.
- * 
+ *
  * @param ref the extension version ref
  * @param extension the extension (optional)
  */

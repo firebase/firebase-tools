@@ -45,7 +45,11 @@ export async function displayExtensionVersionInfo(
     lines.push(`${clc.bold("Description")} ${spec.description}`);
   }
   let versionNote = "";
-  if (latestRelevantVersion && semver.eq(extensionVersion?.spec.version!, latestRelevantVersion)) {
+  if (
+    latestRelevantVersion &&
+    extensionVersion?.spec.version &&
+    semver.eq(extensionVersion?.spec.version, latestRelevantVersion)
+  ) {
     versionNote = `- ${clc.green("Latest")}`;
   }
   if (extensionVersion?.state === "DEPRECATED") {

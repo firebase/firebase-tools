@@ -11,7 +11,7 @@ import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { getProjectId, needProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
-import { ExtensionVersion, ExtensionSource, Extension } from "../extensions/types";
+import { ExtensionVersion, ExtensionSource } from "../extensions/types";
 import * as refs from "../extensions/refs";
 import * as secretsUtils from "../extensions/secretsUtils";
 import * as paramHelper from "../extensions/paramHelper";
@@ -19,10 +19,8 @@ import {
   createSourceFromLocation,
   ensureExtensionsApiEnabled,
   logPrefix,
-  promptForOfficialExtension,
   promptForValidInstanceId,
   diagnoseAndFixProject,
-  isUrlPath,
   isLocalPath,
 } from "../extensions/extensionsHelper";
 import { resolveVersion } from "../deploy/extensions/planner";
@@ -84,7 +82,7 @@ export const command = new Command("ext:install [extensionRef]")
       await displayExtensionVersionInfo(
         extensionVersion.spec,
         extensionVersion,
-        extension.latestApprovedVersion ?? extension.latestVersion
+        extension.latestApprovedVersion || extension.latestVersion
       );
       if (extensionVersion.state === "DEPRECATED") {
         throw new FirebaseError(

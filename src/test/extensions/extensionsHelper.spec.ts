@@ -22,7 +22,6 @@ import {
 } from "../../extensions/types";
 import { Readable } from "stream";
 import { ArchiveResult } from "../../archiveDirectory";
-import * as planner from "../../deploy/extensions/planner";
 
 describe("extensionsHelper", () => {
   describe("substituteParams", () => {
