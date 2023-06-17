@@ -10,7 +10,9 @@ import {
   Api,
   ExtensionSpec,
   ExtensionVersion,
+  LifecycleEvent,
   Role,
+  Param,
   Resource,
   FUNCTIONS_RESOURCE_TYPE,
   EventDescriptor,
@@ -92,7 +94,7 @@ export async function displayExtensionVersionInfo(
   }
   lines.push(`${clc.bold("License:")} ${spec.license ?? "-"}`);
   lines.push(displayResources(spec));
-  if (spec.events) {
+  if (spec.events?.length) {
     lines.push(displayEvents(spec));
   }
   const apis = impliedApis(spec);
@@ -108,12 +110,11 @@ export async function displayExtensionVersionInfo(
 }
 
 export function displayEvents(spec: ExtensionSpec) {
-  const lines = spec.events?.map((event: EventDescriptor) => {
-    return `  - ${clc.magenta(event.type)}${event.description ? `: ${event.description}` : ""}`;
-  });
-  return (
-    clc.bold("Events emitted by this extension:\n") + (lines?.length ? lines.join("\n") : " - None")
-  );
+  const lines =
+    spec.events?.map((event: EventDescriptor) => {
+      return `  - ${clc.magenta(event.type)}${event.description ? `: ${event.description}` : ""}`;
+    }) ?? [];
+  return clc.bold("Events emitted by this extension:\n") + lines.join("\n");
 }
 
 export function displayResources(spec: ExtensionSpec) {
@@ -122,6 +123,22 @@ export function displayResources(spec: ExtensionSpec) {
       resource.description ? `: ${resource.description}` : ""
     }`;
   });
+  lines.push(
+    ...new Set(
+      spec.lifecycleEvents?.map((event: LifecycleEvent) => {
+        return `  - ${clc.blue(`${event.taskQueueTriggerFunction} (Cloud Task queue)`)}`;
+      })
+    )
+  );
+  lines.push(
+    ...spec.params
+      .filter((param: Param) => {
+        return param.type === "SECRET";
+      })
+      .map((param: Param) => {
+        return `  - ${clc.blue(`${param.param} (Cloud Secret Manager secret)`)}`;
+      })
+  );
   return (
     clc.bold("Resources created by this extension:\n") +
     (lines.length ? lines.join("\n") : " - None")
