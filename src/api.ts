@@ -37,10 +37,6 @@ export const appDistributionOrigin = utils.envOverride(
   "FIREBASE_APP_DISTRIBUTION_URL",
   "https://firebaseappdistribution.googleapis.com"
 );
-export const appengineOrigin = utils.envOverride(
-  "FIREBASE_APPENGINE_URL",
-  "https://appengine.googleapis.com"
-);
 export const authOrigin = utils.envOverride("FIREBASE_AUTH_URL", "https://accounts.google.com");
 export const consoleOrigin = utils.envOverride(
   "FIREBASE_CONSOLE_URL",
