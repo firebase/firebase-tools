@@ -11,6 +11,7 @@ import {
   ExtensionSpec,
   ExtensionVersion,
   LifecycleEvent,
+  ExternalService,
   Role,
   Param,
   Resource,
@@ -97,6 +98,9 @@ export async function displayExtensionVersionInfo(
   if (spec.events?.length) {
     lines.push(displayEvents(spec));
   }
+  if (spec.externalServices?.length) {
+    lines.push(displayExternalServices(spec));
+  }
   const apis = impliedApis(spec);
   if (apis.length) {
     lines.push(displayApis(apis));
@@ -109,17 +113,35 @@ export async function displayExtensionVersionInfo(
   return lines;
 }
 
+export function displayExternalServices(spec: ExtensionSpec) {
+  const lines =
+    spec.externalServices?.map((service: ExternalService) => {
+      return `  - ${clc.cyan(`${service.name} (${service.pricingUri})`)}`;
+    }) ?? [];
+  return clc.bold("External services used:\n") + lines.join("\n");
+}
+
 export function displayEvents(spec: ExtensionSpec) {
   const lines =
     spec.events?.map((event: EventDescriptor) => {
       return `  - ${clc.magenta(event.type)}${event.description ? `: ${event.description}` : ""}`;
     }) ?? [];
-  return clc.bold("Events emitted by this extension:\n") + lines.join("\n");
+  return clc.bold("Events emitted:\n") + lines.join("\n");
 }
 
 export function displayResources(spec: ExtensionSpec) {
   const lines = spec.resources.map((resource: Resource) => {
-    return `  - ${clc.blue(`${resource.name} (${resource.type})`)}${
+    let type: string = resource.type;
+    switch (resource.type) {
+      case "firebaseextensions.v1beta.function":
+        type = "Cloud Function V1";
+        break;
+      case "firebaseextensions.v1beta.v2function":
+        type = "Cloud Function V2";
+        break;
+      default:
+    }
+    return `  - ${clc.blue(`${resource.name} (${type})`)}${
       resource.description ? `: ${resource.description}` : ""
     }`;
   });
@@ -139,10 +161,7 @@ export function displayResources(spec: ExtensionSpec) {
         return `  - ${clc.blue(`${param.param} (Cloud Secret Manager secret)`)}`;
       })
   );
-  return (
-    clc.bold("Resources created by this extension:\n") +
-    (lines.length ? lines.join("\n") : " - None")
-  );
+  return clc.bold("Resources created:\n") + (lines.length ? lines.join("\n") : " - None");
 }
 
 /**
@@ -163,14 +182,14 @@ async function displayRoles(roles: Role[]): Promise<string> {
       return retrieveRoleInfo(role.role);
     })
   );
-  return clc.bold("Roles granted to this extension:\n") + lines.join("\n");
+  return clc.bold("Roles granted:\n") + lines.join("\n");
 }
 
 function displayApis(apis: Api[]): string {
   const lines: string[] = apis.map((api: Api) => {
     return `  - ${clc.cyan(api.apiName!)}: ${api.reason}`;
   });
-  return clc.bold("APIs used by this extension:\n") + lines.join("\n");
+  return clc.bold("APIs used:\n") + lines.join("\n");
 }
 
 function usesTasks(spec: ExtensionSpec): boolean {
