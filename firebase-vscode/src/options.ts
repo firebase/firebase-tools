@@ -14,8 +14,6 @@ import * as commandUtils from "../../src/emulator/commandUtils";
 
 interface CliOptions extends Omit<BaseOptions, "config"> {
   config: string;
-  exportOnExit?: boolean | string;
-  import?: string;
 }
 
 /**
@@ -23,8 +21,6 @@ interface CliOptions extends Omit<BaseOptions, "config"> {
  * Result of command.prepare()
  */
 interface CommandOptions extends Options {
-  exportOnExit?: boolean | string;
-  import?: string;
 }
 
 /**
