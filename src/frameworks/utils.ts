@@ -63,20 +63,47 @@ export async function warnIfCustomBuildScript(
   }
 }
 
-function proxyResponse(original: ServerResponse, next: () => void) {
-  return (response: IncomingMessage | ServerResponse) => {
-    const { statusCode, statusMessage } = response;
-    if (!statusCode) {
-      original.end();
-      return;
-    }
-    if (statusCode === 404) {
-      return next();
-    }
-    const headers = "getHeaders" in response ? response.getHeaders() : response.headers;
-    original.writeHead(statusCode, statusMessage, headers);
-    response.pipe(original);
-  };
+export function proxyResponse(req: IncomingMessage, res: ServerResponse, next: () => void) {
+  const proxiedRes = new ServerResponse(req);
+  const buffer: [string, any[]][] = [];
+  proxiedRes.write = new Proxy(proxiedRes.write.bind(proxiedRes), {
+    apply: (target: any, thisArg, args) => {
+      target.call(thisArg, ...args);
+      buffer.push(["write", args]);
+    },
+  });
+  proxiedRes.setHeader = new Proxy(proxiedRes.setHeader.bind(proxiedRes), {
+    apply: (target: any, thisArg, args) => {
+      target.call(thisArg, ...args);
+      buffer.push(["setHeader", args]);
+    },
+  });
+  proxiedRes.removeHeader = new Proxy(proxiedRes.removeHeader.bind(proxiedRes), {
+    apply: (target: any, thisArg, args) => {
+      target.call(thisArg, ...args);
+      buffer.push(["removeHeader", args]);
+    },
+  });
+  proxiedRes.writeHead = new Proxy(proxiedRes.writeHead.bind(proxiedRes), {
+    apply: (target: any, thisArg, args) => {
+      target.call(thisArg, ...args);
+      buffer.push(["writeHead", args]);
+    },
+  });
+  proxiedRes.end = new Proxy(proxiedRes.end.bind(proxiedRes), {
+    apply: (target: any, thisArg, args) => {
+      target.call(thisArg, ...args);
+      if (proxiedRes.statusCode === 404) {
+        next();
+      } else {
+        for (const [fn, args] of buffer) {
+          (res as any)[fn](...args);
+        }
+        res.end(...args);
+      }
+    },
+  });
+  return proxiedRes;
 }
 
 export function simpleProxy(hostOrRequestHandler: string | RequestHandler) {
@@ -127,9 +154,8 @@ export function simpleProxy(hostOrRequestHandler: string | RequestHandler) {
         originalRes.end();
       });
     } else {
-      await Promise.resolve(hostOrRequestHandler(originalReq, originalRes, next));
-      const proxiedRes = new ServerResponse(originalReq);
-      proxyResponse(originalRes, next)(proxiedRes);
+      const proxiedRes = proxyResponse(originalReq, originalRes, next);
+      await hostOrRequestHandler(originalReq, proxiedRes, next);
     }
   };
 }
