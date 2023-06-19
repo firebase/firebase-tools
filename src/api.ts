@@ -173,6 +173,10 @@ export const serviceUsageOrigin = utils.envOverride(
   "FIREBASE_SERVICE_USAGE_URL",
   "https://serviceusage.googleapis.com"
 );
+export const firestackApiOrigin = utils.envOverride(
+  "FIRESTACK_API_URL",
+  "https://firestack.googleapis.com"
+);
 export const githubOrigin = utils.envOverride("GITHUB_URL", "https://github.com");
 export const githubApiOrigin = utils.envOverride("GITHUB_API_URL", "https://api.github.com");
 export const secretManagerOrigin = utils.envOverride(
