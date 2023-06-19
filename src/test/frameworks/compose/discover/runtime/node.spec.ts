@@ -23,16 +23,6 @@ describe("NodejsRuntime", () => {
 
       expect(actualImage).to.deep.equal(expectedImage);
     });
-
-    it("should return node Image", () => {
-      const version: Record<string, string> = {
-        node: "16",
-      };
-      const actualImage = nodeJSRuntime.getNodeImage(version);
-      const expectedImage = "node:16-slim";
-
-      expect(actualImage).to.deep.equal(expectedImage);
-    });
   });
 
   describe("getPackageManager", () => {
@@ -47,41 +37,8 @@ describe("NodejsRuntime", () => {
     });
   });
 
-  describe("getDependenciesNPM", () => {
-    it("should return direct and transitive dependencies", async () => {
-      const fileSystem = new MockFileSystem({
-        "package.json": JSON.stringify({
-          dependencies: {
-            express: "^4.18.2",
-          },
-          devDependencies: {
-            nodemon: "^2.0.12",
-            mocha: "^9.1.1",
-          },
-        }),
-        "package-lock.json": JSON.stringify({
-          packages: {
-            "node_modules/express": {
-              dependencies: {
-                accepts: "~1.3.8",
-                "array-flatten": "1.1.1",
-              },
-            },
-            "node_modules/nodemon": {
-              dependencies: {
-                chokidar: "^3.5.2",
-                debug: "^3.2.7",
-              },
-            },
-            "node_modules/mocha": {
-              dependencies: {
-                "escape-string-regexp": "4.0.0",
-                "find-up": "5.0.0",
-              },
-            },
-          },
-        }),
-      });
+  describe("getDependencies", () => {
+    it("should return direct and transitive dependencies", () => {
       const packageJSON: PackageJSON = {
         dependencies: {
           express: "^4.18.2",
@@ -91,67 +48,10 @@ describe("NodejsRuntime", () => {
           mocha: "^9.1.1",
         },
       };
-      const actual = await nodeJSRuntime.getDependencies(fileSystem, packageJSON, "npm");
+      const actual = nodeJSRuntime.getDependencies(packageJSON);
       const expected = {
         express: "^4.18.2",
         nodemon: "^2.0.12",
-        mocha: "^9.1.1",
-        accepts: "~1.3.8",
-        "array-flatten": "1.1.1",
-        chokidar: "^3.5.2",
-        debug: "^3.2.7",
-        "escape-string-regexp": "4.0.0",
-        "find-up": "5.0.0",
-      };
-
-      expect(actual).to.deep.equal(expected);
-    });
-  });
-
-  describe("getDependenciesYARN", () => {
-    it("should return all dependencies present in yarn file", async () => {
-      const fileSystem = new MockFileSystem({
-        "package.json": JSON.stringify({
-          dependencies: {
-            express: "^4.18.2",
-          },
-          devDependencies: {
-            "@algolia/autocomplete-core": "npm:1.7.1",
-            mocha: "^9.1.1",
-          },
-        }),
-        "yarn.lock": `
-          # Testing
-        __metadata:
-          version: 7
-          cacheKey: 9
-        "express@^4.18.2":
-          version "^4.18.2"
-          resolved "https://registry.yarnpkg.com/axios/-/axios-0.21.1.tgz"
-          integrity sha512-abc123...
-        "@algolia/autocomplete-core@npm:1.7.1":
-          version "npm:1.7.1"
-          resolved "https://registry.yarnpkg.com/ms/-/ms-2.1.3.tgz"
-          integrity sha512-xyz456...
-        "mocha@^9.1.1":
-          version "9.1.1"
-          resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.0.2.tgz"
-          integrity sha512-pqr789...
-      `,
-      });
-      const packageJSON: PackageJSON = {
-        dependencies: {
-          express: "^4.18.2",
-        },
-        devDependencies: {
-          "@algolia/autocomplete-core": "npm:1.7.1",
-          mocha: "^9.1.1",
-        },
-      };
-      const actual = await nodeJSRuntime.getDependencies(fileSystem, packageJSON, "yarn");
-      const expected = {
-        express: "^4.18.2",
-        "@algolia/autocomplete-core": "npm:1.7.1",
         mocha: "^9.1.1",
       };
 
@@ -160,7 +60,7 @@ describe("NodejsRuntime", () => {
   });
 
   describe("detectedCommands", () => {
-    it("scripts are run using yarn and framework commands prepend npx", () => {
+    it("should prepend npx to framework commands", () => {
       const matchedFramework: FrameworkSpec = {
         id: "next",
         runtime: "nodejs",
@@ -195,7 +95,7 @@ describe("NodejsRuntime", () => {
       expect(actual).to.deep.equal(expected);
     });
 
-    it("scripts have higher preference over framework commands", () => {
+    it("should prefer scripts over framework commands", () => {
       const matchedFramework: FrameworkSpec = {
         id: "next",
         runtime: "nodejs",
@@ -300,7 +200,7 @@ describe("NodejsRuntime", () => {
         id: "nodejs",
         baseImage: "node:18-slim",
         packageManagerInstallCommand: undefined,
-        installCommand: "npm ci",
+        installCommand: "npm install",
         detectedCommands: {
           build: {
             cmd: "npm run build",
