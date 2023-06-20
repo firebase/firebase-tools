@@ -8,11 +8,23 @@ import {
   DEFAULT_DEPLOY_METHOD,
   ALLOWED_DEPLOY_METHODS,
 } from "./constants";
+import { Options } from "../../../options";
+import { ensure } from "../../../ensureApiEnabled";
+import { Config } from "../../../config";
+import { requirePermissions } from "../../../requirePermissions";
 
 /**
  * Setup new Frameworkstack project.
  */
-export async function doSetup(setup: any): Promise<void> {
+export async function doSetup(setup: any, config: Config, options: Options): Promise<void> {
+  const projectId = setup?.rcfile?.projects?.default;
+  if (projectId) {
+    await requirePermissions({ ...options, project: projectId });
+    await Promise.all([
+      ensure(projectId, "firestack.googleapis.com", "unused", true),
+    ]);
+  }
+
   setup.frameworkstack = {};
 
   utils.logBullet("First we need a few details to create your service.");
