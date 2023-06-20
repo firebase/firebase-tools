@@ -40,7 +40,7 @@ export async function doSetup(setup: any): Promise<void> {
     setup.frameworkstack
   );
 
-  utils.logSuccess(`Region set to ${setup.frameworkstack.regionName}.`);
+  utils.logSuccess(`Region set to ${setup.frameworkstack.region}.`);
 
   logger.info(clc.bold(`\n${clc.white("===")} Deploy Setup`));
 
