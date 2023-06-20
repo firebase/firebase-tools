@@ -88,6 +88,8 @@ export interface ExtensionToWebviewParamsMap {
   /** Triggered when a new project is selected */
   notifyProjectChanged: { projectId: string };
 
+  notifyProgress: { section: string, message?: string, isDone: boolean };
+
   /**
    * This can potentially call multiple webviews to notify of user selection.
    */

@@ -4,6 +4,8 @@ export const TEXT = {
   INIT_HOSTING_DESCRIPTION: "Deploy your app with Firebase Hosting"
     + ", a high-performance static web host backed by a global CDN",
 
+  INIT_HOSTING_PROGRESS: "Initializing...",
+
   LOGIN_PROGRESS: "Checking login",
 
   MONOSPACE_LOGGED_IN: "Using default credentials",

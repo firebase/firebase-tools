@@ -1,10 +1,7 @@
-import { VSCodeButton } from "@vscode/webview-ui-toolkit/react";
 import React, { useEffect, useState } from "react";
 import { Spacer } from "./components/ui/Spacer";
-import { Body } from "./components/ui/Text";
 import { broker } from "./globals/html-broker";
 import { User } from "../../src/types/auth";
-import { PanelSection } from "./components/ui/PanelSection";
 import { AccountSection } from "./components/AccountSection";
 import { ProjectSection } from "./components/ProjectSection";
 import { FirebaseConfig } from "../../src/firebaseConfig";
@@ -15,7 +12,7 @@ import { ChannelWithId } from "./messaging/types";
 import { EmulatorPanel } from "./EmulatorPanel";
 
 import { webLogger } from "./globals/web-logger";
-import { TEXT } from "./globals/ux-text";
+import { InitFirebasePanel } from "./components/InitPanel";
 
 export function SidebarApp() {
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -151,18 +148,5 @@ export function SidebarApp() {
       )}
       {(!!userEmail && !!firebaseJson) && <EmulatorPanel firebaseJson={firebaseJson} />}
     </>
-  );
-}
-
-function InitFirebasePanel({ onHostingInit }: { onHostingInit: Function }) {
-  return (
-    <PanelSection isLast>
-      <VSCodeButton onClick={() => onHostingInit()}>
-        {TEXT.INIT_HOSTING_BUTTON}
-      </VSCodeButton>
-      <Spacer size="medium" />
-      <Body>{TEXT.INIT_HOSTING_DESCRIPTION}</Body>
-      <Spacer size="large" />
-    </PanelSection>
   );
 }
