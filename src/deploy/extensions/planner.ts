@@ -216,8 +216,7 @@ export async function want(args: {
 export async function resolveVersion(ref: refs.Ref, extension?: Extension): Promise<string> {
   const extensionRef = refs.toExtensionRef(ref);
   if (!ref.version && extension?.latestApprovedVersion) {
-    ref.version = extension.latestApprovedVersion;
-    return refs.toExtensionVersionRef(ref);
+    return extension.latestApprovedVersion;
   }
   if (ref.version === "latest-approved") {
     if (!extension?.latestApprovedVersion) {
@@ -225,8 +224,7 @@ export async function resolveVersion(ref: refs.Ref, extension?: Extension): Prom
         `${extensionRef} has not been published to Extensions Hub (https://extensions.dev). To install it, you must specify the version you want to install.`
       );
     }
-    ref.version = extension.latestApprovedVersion;
-    return refs.toExtensionVersionRef(ref);
+    return extension.latestApprovedVersion;
   }
   if (!ref.version || ref.version === "latest") {
     if (!extension?.latestVersion) {
@@ -234,8 +232,7 @@ export async function resolveVersion(ref: refs.Ref, extension?: Extension): Prom
         `${extensionRef} has no stable non-deprecated versions. If you wish to install a prerelease version, you must specify the version you want to install.`
       );
     }
-    ref.version = extension.latestVersion;
-    return refs.toExtensionVersionRef(ref);
+    return extension.latestVersion;
   }
   const versions = await extensionsApi.listExtensionVersions(extensionRef, undefined, true);
   if (versions.length === 0) {
@@ -250,6 +247,5 @@ export async function resolveVersion(ref: refs.Ref, extension?: Extension): Prom
       `No version of ${extensionRef} matches requested version ${ref.version}`
     );
   }
-  ref.version = maxSatisfying;
-  return refs.toExtensionVersionRef(ref);
+  return maxSatisfying;
 }

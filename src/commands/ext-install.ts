@@ -77,7 +77,9 @@ export const command = new Command("ext:install [extensionRef]")
     } else {
       void track("Extension Install", "Install by Extension Ref", options.interactive ? 1 : 0);
       const extension = await extensionsApi.getExtension(extensionRef);
-      const extensionVersionRef = await resolveVersion(refs.parse(extensionRef), extension);
+      const ref = refs.parse(extensionRef);
+      ref.version = await resolveVersion(ref, extension);
+      const extensionVersionRef = refs.toExtensionVersionRef(ref);
       extensionVersion = await extensionsApi.getExtensionVersion(extensionVersionRef);
       await displayExtensionVersionInfo(
         extensionVersion.spec,
