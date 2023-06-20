@@ -86,11 +86,15 @@ export class NodejsRuntime implements Runtime {
   async installCommand(fs: FileSystem, packageManager: PackageManager): Promise<string> {
     try {
       let installCmd = "npm install";
-
       if (await fs.exists(PACKAGE_LOCK_JSON)) {
         installCmd = "npm ci";
-      } else if (packageManager === "yarn") {
+      }
+
+      if (packageManager === "yarn") {
         installCmd = "yarn install";
+        if (await fs.exists(YARN_LOCK)) {
+          installCmd = "yarn install --frozen-lockfile";
+        }
       }
 
       return installCmd;
