@@ -3,18 +3,18 @@ import { expect } from "chai";
 
 import * as iam from "../../gcp/iam";
 import * as displayExtensionInfo from "../../extensions/displayExtensionInfo";
-import { ExtensionSpec, Param, Resource } from "../../extensions/types";
+import { ExtensionSpec, ExtensionVersion, Resource } from "../../extensions/types";
 import { ParamType } from "../../extensions/types";
 
 const SPEC: ExtensionSpec = {
   name: "test",
-  displayName: "Old",
-  description: "descriptive",
-  version: "0.1.0",
+  displayName: "My Extension",
+  description: "My extension's description",
+  version: "1.0.0",
   license: "MIT",
   apis: [
-    { apiName: "api1", reason: "" },
-    { apiName: "api2", reason: "" },
+    { apiName: "api1.googleapis.com", reason: "" },
+    { apiName: "api2.googleapis.com", reason: "" },
   ],
   roles: [
     { role: "role1", reason: "" },
@@ -23,27 +23,51 @@ const SPEC: ExtensionSpec = {
   resources: [
     { name: "resource1", type: "firebaseextensions.v1beta.function", description: "desc" },
     { name: "resource2", type: "other", description: "" } as unknown as Resource,
+    {
+      name: "taskResource",
+      type: "firebaseextensions.v1beta.function",
+      properties: {
+        taskQueueTrigger: {},
+      },
+    },
   ],
   author: { authorName: "Tester", url: "firebase.google.com" },
   contributors: [{ authorName: "Tester 2" }],
   billingRequired: true,
   sourceUrl: "test.com",
-  params: [],
+  params: [
+    {
+      param: "secret",
+      label: "Secret",
+      type: ParamType.SECRET,
+    },
+  ],
   systemParams: [],
+  events: [
+    {
+      type: "abc.def.my-event",
+      description: "desc",
+    },
+  ],
+  lifecycleEvents: [
+    {
+      stage: "ON_INSTALL",
+      taskQueueTriggerFunction: "taskResource",
+    },
+  ],
 };
 
-const TASK_FUNCTION_RESOURCE: Resource = {
-  name: "taskResource",
-  type: "firebaseextensions.v1beta.function",
-  properties: {
-    taskQueueTrigger: {},
+const EXT_VERSION: ExtensionVersion = {
+  name: "publishers/pub/extensions/my-ext/versions/1.0.0",
+  ref: "pub/my-ext@1.0.0",
+  state: "PUBLISHED",
+  spec: SPEC,
+  hash: "abc123",
+  sourceDownloadUri: "https://google.com",
+  buildSourceUri: "https://github.com/pub/extensions/my-ext",
+  listing: {
+    state: "APPROVED",
   },
-};
-
-const SECRET_PARAM: Param = {
-  param: "secret",
-  label: "Secret",
-  type: ParamType.SECRET,
 };
 
 describe("displayExtensionInfo", () => {
@@ -74,91 +98,51 @@ describe("displayExtensionInfo", () => {
     });
 
     it("should display info during install", async () => {
-      const loggedLines = await displayExtensionInfo.displayExtInfo(SPEC.name, "", SPEC);
-      const expected: string[] = [
-        "**Name**: Old",
-        "**Description**: descriptive",
-        "**APIs used by this Extension**:\n  api1 ()\n  api2 ()",
-        "\u001b[1m**Roles granted to this Extension**:\n\u001b[22m  Role 1 (a role)\n  Role 2 (a role)",
-      ];
-      expect(loggedLines.length).to.eql(expected.length);
-      expect(loggedLines[0]).to.include("Old");
-      expect(loggedLines[1]).to.include("descriptive");
-      expect(loggedLines[2]).to.include("api1");
-      expect(loggedLines[2]).to.include("api2");
-      expect(loggedLines[3]).to.include("Role 1");
-      expect(loggedLines[3]).to.include("Role 2");
+      const loggedLines = await displayExtensionInfo.displayExtensionVersionInfo(SPEC);
+      expect(loggedLines[0]).to.include(SPEC.displayName);
+      expect(loggedLines[1]).to.include(SPEC.description);
+      expect(loggedLines[2]).to.include(SPEC.version);
+      expect(loggedLines[3]).to.include(SPEC.license);
+      expect(loggedLines[4]).to.include("resource1 (Cloud Function V1)");
+      expect(loggedLines[4]).to.include("resource2 (other)");
+      expect(loggedLines[4]).to.include("taskResource (Cloud Function V1)");
+      expect(loggedLines[4]).to.include("taskResource (Cloud Task queue)");
+      expect(loggedLines[4]).to.include("secret (Cloud Secret Manager secret)");
+      expect(loggedLines[5]).to.include("abc.def.my-event");
+      expect(loggedLines[6]).to.include("api1.googleapis.com");
+      expect(loggedLines[6]).to.include("api1.googleapis.com");
+      expect(loggedLines[6]).to.include("cloudtasks.googleapis.com");
+      expect(loggedLines[7]).to.include("Role 1");
+      expect(loggedLines[7]).to.include("Role 2");
+      expect(loggedLines[7]).to.include("Cloud Task Enqueuer");
     });
 
     it("should display additional information for a published extension", async () => {
-      const loggedLines = await displayExtensionInfo.displayExtInfo(
-        SPEC.name,
-        "testpublisher",
+      const loggedLines = await displayExtensionInfo.displayExtensionVersionInfo(
         SPEC,
-        true
+        EXT_VERSION,
+        "1.0.0",
+        "1.0.0"
       );
-      const expected: string[] = [
-        "**Name**: Old",
-        "**Publisher**: testpublisher",
-        "**Description**: descriptive",
-        "**License**: MIT",
-        "**Source code**: test.com",
-        "**APIs used by this Extension**:\n  api1 ()\n  api2 ()",
-        "\u001b[1m**Roles granted to this Extension**:\n\u001b[22m  Role 1 (a role)\n  Role 2 (a role)",
-      ];
-      expect(loggedLines.length).to.eql(expected.length);
-      expect(loggedLines[0]).to.include("Old");
-      expect(loggedLines[1]).to.include("testpublisher");
-      expect(loggedLines[2]).to.include("descriptive");
-      expect(loggedLines[3]).to.include("MIT");
-      expect(loggedLines[4]).to.include("test.com");
-      expect(loggedLines[5]).to.include("api1");
-      expect(loggedLines[5]).to.include("api2");
-      expect(loggedLines[6]).to.include("Role 1");
-      expect(loggedLines[6]).to.include("Role 2");
-    });
-
-    it("should display role and api for Cloud Tasks during install", async () => {
-      const specWithTasks = JSON.parse(JSON.stringify(SPEC)) as ExtensionSpec;
-      specWithTasks.resources.push(TASK_FUNCTION_RESOURCE);
-
-      const loggedLines = await displayExtensionInfo.displayExtInfo(SPEC.name, "", specWithTasks);
-      const expected: string[] = [
-        "**Name**: Old",
-        "**Description**: descriptive",
-        "**APIs used by this Extension**:\n  api1 ()\n  api2 ()",
-        "\u001b[1m**Roles granted to this Extension**:\n\u001b[22m  Role 1 (a role)\n  Role 2 (a role)\n  Cloud Task Enqueuer (Enqueue tasks)",
-      ];
-      expect(loggedLines.length).to.eql(expected.length);
-      expect(loggedLines[0]).to.include("Old");
-      expect(loggedLines[1]).to.include("descriptive");
-      expect(loggedLines[2]).to.include("api1");
-      expect(loggedLines[2]).to.include("api2");
-      expect(loggedLines[2]).to.include("Cloud Tasks");
-      expect(loggedLines[3]).to.include("Role 1");
-      expect(loggedLines[3]).to.include("Role 2");
-      expect(loggedLines[3]).to.include("Cloud Task Enqueuer");
-    });
-
-    it("should display role for Cloud Secret Manager during install", async () => {
-      const specWithSecret = JSON.parse(JSON.stringify(SPEC)) as ExtensionSpec;
-      specWithSecret.params.push(SECRET_PARAM);
-
-      const loggedLines = await displayExtensionInfo.displayExtInfo(SPEC.name, "", specWithSecret);
-      const expected: string[] = [
-        "**Name**: Old",
-        "**Description**: descriptive",
-        "**APIs used by this Extension**:\n  api1 ()\n  api2 ()",
-        "\u001b[1m**Roles granted to this Extension**:\n\u001b[22m  Role 1 (a role)\n  Role 2 (a role)\n  Secret Accessor (Access secrets)",
-      ];
-      expect(loggedLines.length).to.eql(expected.length);
-      expect(loggedLines[0]).to.include("Old");
-      expect(loggedLines[1]).to.include("descriptive");
-      expect(loggedLines[2]).to.include("api1");
-      expect(loggedLines[2]).to.include("api2");
-      expect(loggedLines[3]).to.include("Role 1");
-      expect(loggedLines[3]).to.include("Role 2");
-      expect(loggedLines[3]).to.include("Secret Accessor");
+      expect(loggedLines[0]).to.include(SPEC.displayName);
+      expect(loggedLines[1]).to.include(SPEC.description);
+      expect(loggedLines[2]).to.include(SPEC.version);
+      expect(loggedLines[3]).to.include("Accepted");
+      expect(loggedLines[4]).to.include("View in Extensions Hub");
+      expect(loggedLines[5]).to.include(EXT_VERSION.buildSourceUri);
+      expect(loggedLines[6]).to.include(SPEC.license);
+      expect(loggedLines[7]).to.include("resource1 (Cloud Function V1)");
+      expect(loggedLines[7]).to.include("resource2 (other)");
+      expect(loggedLines[7]).to.include("taskResource (Cloud Function V1)");
+      expect(loggedLines[7]).to.include("taskResource (Cloud Task queue)");
+      expect(loggedLines[7]).to.include("secret (Cloud Secret Manager secret)");
+      expect(loggedLines[8]).to.include("abc.def.my-event");
+      expect(loggedLines[9]).to.include("api1.googleapis.com");
+      expect(loggedLines[9]).to.include("api1.googleapis.com");
+      expect(loggedLines[9]).to.include("cloudtasks.googleapis.com");
+      expect(loggedLines[10]).to.include("Role 1");
+      expect(loggedLines[10]).to.include("Role 2");
+      expect(loggedLines[10]).to.include("Cloud Task Enqueuer");
     });
   });
 });
