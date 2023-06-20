@@ -10,7 +10,7 @@ import type {
   SetupMonospaceOptions,
 } from "./interfaces";
 
-const POLL_USER_RESPONSE_MILLIS = 5000;
+const POLL_USER_RESPONSE_MILLIS = 2000;
 
 /**
  * Integrate Firebase Plugin with Monospace’s service Account Authentication
@@ -54,9 +54,9 @@ async function pollAuthorizedProject(rid: string): Promise<string | null> {
   if ("userResponse" in getInitFirebaseRes) {
     if (getInitFirebaseRes.userResponse.success) {
       return getInitFirebaseRes.userResponse.projectId;
-    } else {
-      return null;
     }
+
+    return null;
   }
 
   const { error } = getInitFirebaseRes;
@@ -72,7 +72,8 @@ async function pollAuthorizedProject(rid: string): Promise<string | null> {
     return pollAuthorizedProject(rid);
   }
 
-  // FIXME: This is not being reached as the process exits before a new call is made
+  // TODO: Review this. It's not being reached as the process exits before a new
+  // call is made
 
   // Error response: User canceled without authorizing any project
   if (error === "USER_CANCELED") {
@@ -81,7 +82,9 @@ async function pollAuthorizedProject(rid: string): Promise<string | null> {
     throw new FirebaseError("User canceled without authorizing any project");
   }
 
-  throw new FirebaseError(`Unhandled /get-init-firebase-response error: ${error}`);
+  throw new FirebaseError(`Unhandled /get-init-firebase-response error`, {
+    original: new Error(error),
+  });
 }
 
 /**
@@ -143,8 +146,8 @@ function createFirebaseRc(projectDir: string, authorizedProject: string): boolea
 /**
  * Whether this is a Monospace environment
  */
-export async function isMonospaceEnv(): Promise<boolean> {
-  return Promise.resolve(Boolean(getMonospaceDaemonPort()));
+export function isMonospaceEnv(): boolean {
+  return getMonospaceDaemonPort() !== undefined;
 }
 
 /**

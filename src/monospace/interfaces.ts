@@ -22,7 +22,7 @@ export type GetInitFirebaseResponse =
     }
   | {
       success: false;
-      error: "WAITING_FOR_RESPONSE" | "USER_CANCELED" | unknown; // TODO: define all errors
+      error: "WAITING_FOR_RESPONSE" | "USER_CANCELED" | string; // TODO: define all errors
     };
 
 export type InitFirebaseResponse =
