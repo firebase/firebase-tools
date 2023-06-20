@@ -44,7 +44,7 @@ interface Codebase {
 }
 
 /** A Stack, the primary resource of Frameworks. */
-interface StackBase {
+interface Stack {
   name: string;
   mode?: string;
   codebase: Codebase;
@@ -53,15 +53,19 @@ interface StackBase {
   traffic: TrafficTargetList;
   rolloutPolicy: RolloutPolicy;
   // end oneof traffic_management
-}
-
-export type OutputStack = StackBase & {
   createTime: string;
   updateTime: string;
   uri: string;
   trafficStatuses: TrafficTargetStatus[];
   managedResources: ManagedResource[];
-};
+}
+
+export type StackOutputOnlyFields =
+  | "createTime"
+  | "updateTime"
+  | "uri"
+  | "trafficStatuses"
+  | "managedResources";
 
 interface Build {
   name: string;
@@ -71,13 +75,12 @@ interface Build {
   spec: Spec;
   source: BuildSource;
   buildLogsUri: string;
-}
-
-export type OutputBuild = Build & {
   createTime: Date;
   updateTime: Date;
   sourceRef: string;
-};
+}
+
+export type BuildOutputOnlyFields = "createTime" | "updateTime" | "sourceRef";
 
 interface BuildSource {
   codeBaseSource?: CodebaseSource;
@@ -120,15 +123,34 @@ export interface Operation {
 /**
  * Creates a new Stack in a given project and location.
  */
-export async function createStack(stack: StackBase): Promise<Operation> {
-  const res = await client.post<StackBase, Operation>(stack.name, stack, {});
+export async function createStack(
+  projectId: string,
+  location: string,
+  stackId: string,
+  stack: Stack
+): Promise<Operation> {
+  const res = await client.post<Omit<Stack, StackOutputOnlyFields>, Operation>(
+    `projects/${projectId}/locations/${location}/stacks`,
+    stack,
+    { queryParams: { stackId } }
+  );
   return res.body;
 }
 
 /**
  * Creates a new Build in a given project and location.
  */
-export async function createBuild(build: Build): Promise<Operation> {
-  const res = await client.post<Build, Operation>(build.name, build, {});
+export async function createBuild(
+  projectId: string,
+  location: string,
+  stackId: string,
+  buildId: string,
+  build: Build
+): Promise<Operation> {
+  const res = await client.post<Omit<Build, BuildOutputOnlyFields>, Operation>(
+    `projects/${projectId}/locations/${location}/stacks/${stackId}/builds`,
+    build,
+    { queryParams: { buildId } }
+  );
   return res.body;
 }
