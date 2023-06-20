@@ -6,8 +6,11 @@ This extension is in the development and exploration stage.
 
 1. In order to make sure f5 launches the extension properly, first open your
    VS Code session from the `firebase-vscode` subdirectory (not the `firebase-tools` directory).
-2. npm i
-3. f5 to run opens new window
+2. npm i (run this in both `firebase-tools` and `firebase-vscode`)
+3. Make sure the extension `amodio.tsl-problem-matcher` is installed - this
+   enables the watcher to work, otherwise the Extension Development Host
+   will not automatically open on F5 when the compilation is done.
+4. f5 to run opens new window
    f5 -> npm run watch defined in tasks.json
    My terminal didn't have npm available but yours might
 
