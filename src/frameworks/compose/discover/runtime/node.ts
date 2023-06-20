@@ -5,6 +5,7 @@ import { frameworkMatcher } from "../frameworkMatcher";
 import { LifecycleCommands } from "../types";
 import { Command } from "../types";
 import { FirebaseError } from "../../../../error";
+import { logger } from "../../../../../src/logger";
 
 export interface PackageJSON {
   dependencies?: Record<string, string>;
@@ -18,6 +19,7 @@ const supportedNodeVersion = 18;
 const NODE_RUNTIME_ID = "nodejs";
 const PACKAGE_JSON = "package.json";
 const YARN_LOCK = "yarn.lock";
+const PACKAGE_LOCK_JSON = "package-lock.json";
 
 export class NodejsRuntime implements Runtime {
   private readonly runtimeRequiredFiles: string[] = [PACKAGE_JSON];
@@ -53,11 +55,16 @@ export class NodejsRuntime implements Runtime {
   }
 
   async getPackageManager(fs: FileSystem): Promise<PackageManager> {
-    if (await fs.exists(YARN_LOCK)) {
-      return "yarn";
-    }
+    try {
+      if (await fs.exists(YARN_LOCK)) {
+        return "yarn";
+      }
 
-    return "npm";
+      return "npm";
+    } catch (error: any) {
+      logger.error("Failed to check files to identify package manager");
+      throw error;
+    }
   }
 
   getDependencies(packageJSON: PackageJSON): Record<string, string> {
@@ -76,14 +83,21 @@ export class NodejsRuntime implements Runtime {
     return `npm install --global ${packages.join(" ")}`;
   }
 
-  installCommand(packageManager: PackageManager): string | undefined {
-    if (packageManager === "npm") {
-      return "npm install";
-    } else if (packageManager === "yarn") {
-      return "yarn install";
-    }
+  async installCommand(fs: FileSystem, packageManager: PackageManager): Promise<string> {
+    try {
+      let installCmd = "npm install";
 
-    return undefined;
+      if (await fs.exists(PACKAGE_LOCK_JSON)) {
+        installCmd = "npm ci";
+      } else if (packageManager === "yarn") {
+        installCmd = "yarn install";
+      }
+
+      return installCmd;
+    } catch (error: any) {
+      logger.error("Failed to check files to identify install command");
+      throw error;
+    }
   }
 
   detectedCommands(
@@ -182,7 +196,7 @@ export class NodejsRuntime implements Runtime {
         id: NODE_RUNTIME_ID,
         baseImage: nodeImage,
         packageManagerInstallCommand: this.packageManagerInstallCommand(packageManager),
-        installCommand: this.installCommand(packageManager),
+        installCommand: await this.installCommand(fs, packageManager),
         detectedCommands: this.detectedCommands(
           packageManager,
           packageJSON.scripts,

@@ -5,6 +5,7 @@ import {
   PackageJSON,
 } from "../../../../../frameworks/compose/discover/runtime/node";
 import { FrameworkSpec } from "../../../../../frameworks/compose/discover/types";
+import { FirebaseError } from "../../../../../error";
 
 describe("NodejsRuntime", () => {
   let nodeJSRuntime: NodejsRuntime;
@@ -156,22 +157,6 @@ describe("NodejsRuntime", () => {
             node: "18",
           },
         }),
-        "package-lock.json": JSON.stringify({
-          packages: {
-            "node_modules/next": {
-              dependencies: {
-                accepts: "~1.3.8",
-                "array-flatten": "1.1.1",
-              },
-            },
-            "node_modules/react": {
-              dependencies: {
-                chokidar: "^3.5.2",
-                debug: "^3.2.7",
-              },
-            },
-          },
-        }),
       });
 
       const allFrameworks: FrameworkSpec[] = [
@@ -217,6 +202,54 @@ describe("NodejsRuntime", () => {
       };
 
       expect(actual).to.deep.equal(expected);
+    });
+
+    it("should return error", async () => {
+      const fileSystem = new MockFileSystem({
+        "next.config.js": "For testing purpose.",
+        "next.config.ts": "For testing purpose.",
+        "package.json": JSON.stringify({
+          scripts: {
+            build: "next build",
+            start: "next start",
+          },
+          dependencies: {
+            express: "2.0.8",
+            next: "13.4.5",
+            react: "18.2.0",
+          },
+          engines: {
+            node: "18",
+          },
+        }),
+      });
+
+      const allFrameworks: FrameworkSpec[] = [
+        {
+          id: "express",
+          runtime: "nodejs",
+          requiredDependencies: [{ name: "express" }],
+        },
+        {
+          id: "next",
+          runtime: "nodejs",
+          requiredDependencies: [{ name: "next" }],
+          requiredFiles: [["next.config.js"], "next.config.ts"],
+          embedsFrameworks: ["react"],
+          commands: {
+            dev: {
+              cmd: "next dev",
+              env: { NODE_ENV: "dev" },
+            },
+          },
+        },
+      ];
+
+      // Failed with multiple framework matches
+      await expect(nodeJSRuntime.analyseCodebase(fileSystem, allFrameworks)).to.be.rejectedWith(
+        FirebaseError,
+        "Failed to parse engine"
+      );
     });
   });
 });
