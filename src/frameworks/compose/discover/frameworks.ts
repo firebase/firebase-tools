@@ -11,33 +11,6 @@ const client = new Client({
 
 export type State = "BUILDING" | "BUILD" | "DEPLOYING" | "READY" | "FAILED";
 
-type RolloutPolicy = {};
-type Spec = {};
-
-interface TrafficTarget {
-  build: string;
-  percent: number;
-}
-
-interface TrafficTargetList {
-  values: TrafficTarget[];
-}
-
-interface RunService {
-  name: string;
-}
-
-interface ManagedResource {
-  // oneof managed_resource {
-  runService: RunService;
-  // end oneof managed_resource
-}
-
-interface TrafficTargetStatus {
-  build: string;
-  percent: number;
-}
-
 interface Codebase {
   repository?: string;
   rootDirectory: string;
@@ -49,30 +22,18 @@ interface Stack {
   mode?: string;
   codebase: Codebase;
   labels: Record<string, string>;
-  // oneof traffic_management
-  traffic: TrafficTargetList;
-  rolloutPolicy: RolloutPolicy;
-  // end oneof traffic_management
   createTime: string;
   updateTime: string;
   uri: string;
-  trafficStatuses: TrafficTargetStatus[];
-  managedResources: ManagedResource[];
 }
 
-export type StackOutputOnlyFields =
-  | "createTime"
-  | "updateTime"
-  | "uri"
-  | "trafficStatuses"
-  | "managedResources";
+export type StackOutputOnlyFields = "createTime" | "updateTime" | "uri";
 
 interface Build {
   name: string;
   state: State;
   error: Status;
   image: string;
-  spec: Spec;
   source: BuildSource;
   buildLogsUri: string;
   createTime: Date;
