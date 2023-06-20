@@ -319,13 +319,18 @@ export async function setupWorkflow(
   }
 
   async function selectAndInitHosting({ projectId, singleAppSupport }) {
-    pluginLogger.debug('Searching for a web framework in this project.');
-      //TODO(chholland): This takes a few seconds - add some UI progress/message
-    let discoveredFramework = useFrameworks && await discover(currentOptions.cwd, false);
+    let discoveredFramework;
+    // Note: discover() takes a few seconds. No need to block users that don't
+    // have frameworks support enabled.
+    if (useFrameworks) {
+      discoveredFramework = useFrameworks && await discover(currentOptions.cwd, false);
+      pluginLogger.debug('Searching for a web framework in this project.');
+    }
     if (discoveredFramework) {
       pluginLogger.debug('Detected web framework, launching frameworks init.');
       await initHosting({
-        spa: singleAppSupport
+        spa: singleAppSupport,
+        useFrameworks: true
       });
     } else {
       const options: vscode.OpenDialogOptions = {
@@ -343,6 +348,7 @@ export async function setupWorkflow(
         await initHosting({
           spa: singleAppSupport,
           public: publicFolder,
+          useFrameworks: false
         });
       }
     }

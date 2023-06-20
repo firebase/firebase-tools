@@ -144,11 +144,12 @@ export async function listProjects() {
   return listFirebaseProjects();
 }
 
-export async function initHosting(options: { spa: boolean; public?: string }) {
+export async function initHosting(
+  options: { spa: boolean; public?: string, useFrameworks: boolean }
+) {
   await requireAuthWrapper();
   let webFrameworksOptions = {};
-  // Empty public param means this is a web frameworks setup.
-  if (!options.public) {
+  if (options.useFrameworks) {
     pluginLogger.debug('Setting web frameworks options');
     webFrameworksOptions = {
       // Should use auto-discovered framework
@@ -180,7 +181,7 @@ export async function emulatorsStart(emulatorUiSelections: EmulatorUiSelections)
   });
   // Adjusts some options, export on exit can be a boolean or a path.
   commandUtils.setExportOnExitOptions(commandOptions as commandUtils.ExportOnExitOptions);
-  return startAllEmulators(commandOptions, /*showUi=*/ true); 
+  return startAllEmulators(commandOptions, /*showUi=*/ true);
 }
 
 export async function stopEmulators() {
