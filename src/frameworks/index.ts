@@ -39,7 +39,6 @@ import {
   NODE_VERSION,
   SupportLevelWarnings,
   VALID_ENGINES,
-  WebFrameworks,
 } from "./constants";
 import {
   BUILD_TARGET_PURPOSE,
@@ -54,6 +53,7 @@ import { ensureTargeted } from "../functions/ensureTargeted";
 import { isDeepStrictEqual } from "util";
 import { resolveProjectPath } from "../projectPath";
 import { logger } from "../logger";
+import { WebFrameworks } from "./frameworks";
 
 export { WebFrameworks };
 
