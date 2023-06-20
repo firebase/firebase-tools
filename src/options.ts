@@ -25,6 +25,9 @@ export interface BaseOptions {
   debug: boolean;
 
   rc: RC;
+  // Emulator specific import/export options
+  exportOnExit?: boolean | string;
+  import?: string;
 }
 
 export interface Options extends BaseOptions {

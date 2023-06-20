@@ -11,12 +11,16 @@ import { writeFirebaseRCFile } from "./utils";
 import { ExtensionBrokerImpl } from "./extension-broker";
 import {
   deployToHosting,
+  emulatorsStart,
   getAccounts,
+  getChannels,
+  getEmulatorUiUrl,
+  initHosting,
   listProjects,
+  listRunningEmulators,
   login,
   logoutUser,
-  initHosting,
-  getChannels,
+  stopEmulators,
 } from "./cli";
 import { User } from "../../src/types/auth";
 import { FirebaseRC } from "../../src/firebaserc";
@@ -90,7 +94,7 @@ function updateCurrentUser(
   return currentUserEmail;
 }
 
-function getRootFolders() {
+function getRootFolders(): string[] {
   if (!workspace) {
     return [];
   }
@@ -369,10 +373,53 @@ export function setupWorkflow(
       readAndSendFirebaseConfigs(broker);
       broker.send("notifyHostingFolderReady",
         { projectId, folderPath: currentOptions.cwd });
-      
+
       await fetchChannels();
     }
   }
+  broker.on(
+    "launchEmulators",
+    async ({ emulatorUiSelections }) => {
+      await emulatorsStart(emulatorUiSelections);
+      broker.send("notifyRunningEmulatorInfo", { uiUrl: getEmulatorUiUrl(), displayInfo: listRunningEmulators() });
+    }
+  );
+
+  broker.on(
+    "stopEmulators",
+    async () => {
+      await stopEmulators();
+      // Update the UI
+      broker.send("notifyEmulatorsStopped");
+    }
+  );
+
+  broker.on(
+    "selectEmulatorImportFolder",
+    async () => {
+      const options: vscode.OpenDialogOptions = {
+        canSelectMany: false,
+        openLabel: `Pick an import folder`,
+        title: `Pick an import folder`,
+        canSelectFiles: false,
+        canSelectFolders: true,
+      };
+      const fileUri = await vscode.window.showOpenDialog(options);
+      // Update the UI of the selection
+      if (!fileUri || fileUri.length < 1) {
+        vscode.window.showErrorMessage("Invalid import folder selected.");
+        return;
+      }
+      broker.send("notifyEmulatorImportFolder", { folder: fileUri[0].fsPath });
+    }
+  );
+}
+
+/**
+ * Cleans up any open resources before shutting down.
+ */
+export async function onShutdown() {
+  await stopEmulators();
 }
 
 /**
