@@ -109,6 +109,7 @@ export class StorageEmulator implements EmulatorInstance {
       "Running emulator from a local checkout!"
     );
     const { host, port } = this.getInfo();
+    console.log("runnning imulator");
     await this._rulesRuntime.start(this.args.auto_download);
     await this._rulesManager.start();
     this._app = await createApp(this.args.projectId, this);
