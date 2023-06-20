@@ -14,4 +14,3 @@ module.exports = common.map(config => merge(config, {
     }), '...']
   }
 }));
-

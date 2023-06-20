@@ -1,24 +1,9 @@
 import { RC } from "../../src/rc";
-import { BaseOptions, Options } from "../../src/options";
+import { Options } from "../../src/options";
 import { Command } from "../../src/command";
 import { ExtensionContext } from "vscode";
 import { setInquirerOptions } from "./stubs/inquirer-stub";
 import { Config } from "../../src/config";
-
-/**
- * User-facing CLI options
- * Passed to command.prepare()
- */
-
-interface CliOptions extends Omit<BaseOptions, "config"> {
-  config: string;
-}
-
-/**
- * Final options passed to CLI command functions
- * Result of command.prepare()
- */
-interface CommandOptions extends Options {}
 
 /**
  * User-facing CLI options
@@ -43,8 +28,10 @@ export let currentOptions: Options & { isVSCE: boolean } = {
   nonInteractive: true,
   interactive: false,
   debug: false,
-
   rc: null,
+  exportOnExit: false,
+  import: "",
+
   isVSCE: true
 };
 
@@ -84,7 +71,7 @@ export function updateOptions(
 export async function getCommandOptions(
   firebaseJSON: Config,
   options: Options = currentOptions
-): Promise<CommandOptions> {
+): Promise<Options> {
   // Use any string, it doesn't affect `prepare()`.
   const command = new Command("deploy");
   let newOptions = Object.assign(options, { config: options.configPath });
@@ -92,5 +79,5 @@ export async function getCommandOptions(
     newOptions = Object.assign(newOptions, firebaseJSON.get('hosting'));
   }
   await command.prepare(newOptions);
-  return newOptions as CommandOptions;
+  return newOptions as Options;
 }

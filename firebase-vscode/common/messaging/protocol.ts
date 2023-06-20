@@ -7,6 +7,7 @@ import { FirebaseConfig } from '../../../src/firebaseConfig';
 import { User } from "../../../src/types/auth";
 import { ServiceAccountUser } from "../types";
 import { RCData } from '../rc';
+import { EmulatorUiSelections, RunningEmulatorInfo } from "./types";
 
 export interface WebviewToExtensionParamsMap {
   /**
@@ -60,6 +61,18 @@ export interface WebviewToExtensionParamsMap {
   openLink: {
     href: string
   };
+
+  /** 
+   * Equivalent to the `firebase emulators:start` command.
+  */
+  launchEmulators : {
+    emulatorUiSelections: EmulatorUiSelections,
+  };
+
+  /** Stops the emulators gracefully allowing for data export if required. */
+  stopEmulators: {};
+
+  selectEmulatorImportFolder: {};
 }
 
 export interface ExtensionToWebviewParamsMap {
@@ -106,6 +119,9 @@ export interface ExtensionToWebviewParamsMap {
    */
   notifyPreviewChannelResponse: { id: string };
 
+  notifyEmulatorsStopped: {};
+  notifyRunningEmulatorInfo: RunningEmulatorInfo ;
+  notifyEmulatorImportFolder: { folder: string };
 }
 
 export type MessageParamsMap = WebviewToExtensionParamsMap | ExtensionToWebviewParamsMap;

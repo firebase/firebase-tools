@@ -246,15 +246,22 @@ export function relativeRequire(dir: string, mod: "@nuxt/kit"): Promise<any>;
  */
 export function relativeRequire(dir: string, mod: string) {
   try {
+    // If being compiled with webpack, use non webpack require for these calls.
+    // (VSCode plugin uses webpack which by default replaces require calls
+    // with its own require, which doesn't work on files)
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const requireFunc: typeof require =
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore prevent VSCE webpack from erroring on non_webpack_require
+      // eslint-disable-next-line camelcase
+      typeof __webpack_require__ === "function" ? __non_webpack_require__ : require;
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore prevent VSCE webpack from erroring on non_webpack_require
-    const path = require.resolve(mod, { paths: [dir] });
+    const path = requireFunc.resolve(mod, { paths: [dir] });
     if (extname(path) === ".mjs") {
       return dynamicImport(pathToFileURL(path).toString());
     } else {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore prevent VSCE webpack from erroring on non_webpack_require
-      return require(path);
+      return requireFunc(path);
     }
   } catch (e) {
     const path = relative(process.cwd(), dir);
