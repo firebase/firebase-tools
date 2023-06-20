@@ -174,9 +174,9 @@ export const serviceUsageOrigin = utils.envOverride(
   "https://serviceusage.googleapis.com"
 );
 // TODO: Change to correct URL later.
-export const frameworkstackApiOrigin = utils.envOverride(
-  "FRAMEWORKSTACK_API_URL",
-  "https://frameworkstack.googleapis.com"
+export const frameworksOrigin = utils.envOverride(
+  "FRAMEWORKS_URL",
+  "https://placeholder.googleapis.com"
 );
 export const githubOrigin = utils.envOverride("GITHUB_URL", "https://github.com");
 export const githubApiOrigin = utils.envOverride("GITHUB_API_URL", "https://api.github.com");

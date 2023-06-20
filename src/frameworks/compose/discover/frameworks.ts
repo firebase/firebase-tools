@@ -1,10 +1,10 @@
 import { Client } from "../../../apiv2";
-import { frameworkstackApiOrigin } from "../../../api";
+import { frameworksOrigin } from "../../../api";
 
 export const API_VERSION = "v1";
 
 const client = new Client({
-  urlPrefix: frameworkstackApiOrigin,
+  urlPrefix: frameworksOrigin,
   auth: true,
   apiVersion: API_VERSION,
 });
