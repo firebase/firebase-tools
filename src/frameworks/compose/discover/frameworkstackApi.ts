@@ -1,10 +1,10 @@
 import { Client } from "../../../apiv2";
-import { firestackApiOrigin } from "../../../api";
+import { frameworkstackApiOrigin } from "../../../api";
 
 export const API_VERSION = "v1";
 
 const client = new Client({
-  urlPrefix: firestackApiOrigin,
+  urlPrefix: frameworkstackApiOrigin,
   auth: true,
   apiVersion: API_VERSION,
 });
