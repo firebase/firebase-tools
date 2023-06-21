@@ -33,14 +33,20 @@ const DEFAULT_EMULATOR_UI_SELECTIONS: EmulatorUiSelections = {
  */
 export function EmulatorPanel({
   firebaseJson,
+  projectId,
 }: {
   firebaseJson: FirebaseConfig;
+  projectId?: string | undefined;
 }) {
   if (!firebaseJson) {
     throw Error("Expected a valid FirebaseConfig.");
   }
+  var defaultState = DEFAULT_EMULATOR_UI_SELECTIONS;
+  if (projectId) {
+    defaultState.projectId = getProjectIdForMode(projectId, defaultState.mode);
+  }
   const [emulatorUiSelections, setEmulatorUiSelections] =
-    useState<EmulatorUiSelections>(DEFAULT_EMULATOR_UI_SELECTIONS);
+    useState<EmulatorUiSelections>(defaultState);
 
   webLogger.debug(
     "initial state ui selections:" + JSON.stringify(emulatorUiSelections)
@@ -74,7 +80,9 @@ export function EmulatorPanel({
   });
 
   broker.on("notifyEmulatorImportFolder", ({ folder }) => {
-    webLogger.debug(`notifyEmulatorImportFolder received in sidebar: ${folder}`);
+    webLogger.debug(
+      `notifyEmulatorImportFolder received in sidebar: ${folder}`
+    );
     emulatorUiSelections.importStateFolderPath = folder;
     setEmulatorUiSelectionsAndSaveToWorkspace({ ...emulatorUiSelections }); // rerender clone
   });
@@ -139,7 +147,8 @@ export function EmulatorPanel({
     webLogger.debug("emulatorModeChanged: " + event.target.value);
     const selections: EmulatorUiSelections = emulatorUiSelections;
     selections.mode = event.target.value as typeof emulatorUiSelections.mode;
-    setEmulatorUiSelectionsAndSaveToWorkspace(selections);
+    selections.projectId = getProjectIdForMode(projectId, selections.mode);
+    setEmulatorUiSelectionsAndSaveToWorkspace({...selections});
   }
 
   function clearImportFolder() {
@@ -208,7 +217,9 @@ export function EmulatorPanel({
         onChange={(event) => emulatorModeChanged(event)}
       >
         <VSCodeOption value="all">All emulators</VSCodeOption>
-        {!!firebaseJson.hosting && <VSCodeOption value="hosting">Only hosting</VSCodeOption>}
+        {!!firebaseJson.hosting && (
+          <VSCodeOption value="hosting">Only hosting</VSCodeOption>
+        )}
       </VSCodeDropdown>
       {runningEmulatorInfo ? (
         <>
@@ -246,4 +257,21 @@ export function EmulatorPanel({
       )}
     </PanelSection>
   );
+}
+
+/**
+ * Formats a project ID with a demo prefix if we're in offline mode, or uses the
+ * regular ID if we're hosting.
+ */
+function getProjectIdForMode(
+  projectId: string | undefined,
+  mode: "all" | "hosting"
+): string {
+  if (!projectId) {
+    return "demo-something";
+  }
+  if (mode === "hosting") {
+    return projectId;
+  }
+  return "demo-" + projectId;
 }
