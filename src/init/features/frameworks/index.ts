@@ -33,7 +33,7 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
       name: "serviceName",
       type: "input",
       default: "acme-inc-web",
-      message: "Create a name for your service [1-64 characters]",
+      message: "Create a name for your service [6-32 characters]",
     },
     setup.frameworks
   );
