@@ -100,17 +100,23 @@ export async function setupWorkflow(
   broker: ExtensionBrokerImpl
 ) {
 
-  // Get user-defined VSCode settings.
-  const workspaceConfig = workspace.getConfiguration(
-    'firebase',
-    vscode.workspace.workspaceFolders?.[0].uri
-  );
-  const shouldWriteDebug: boolean = workspaceConfig.get('debug');
-  const debugLogPath: string = workspaceConfig.get('debugLogPath');
-  const useFrameworks: boolean = workspaceConfig.get('useFrameworks');
-  const npmPath: string = workspaceConfig.get('npmPath');
-  if (npmPath) {
-    process.env.PATH += `:${npmPath}`;
+  // Get user-defined VSCode settings if workspace is found.
+  let shouldWriteDebug: boolean = false;
+  let debugLogPath: string = '';
+  let useFrameworks: boolean = false;
+  let npmPath: string = '';
+  if (vscode.workspace.workspaceFolders) {
+    const workspaceConfig = workspace.getConfiguration(
+      'firebase',
+      vscode.workspace.workspaceFolders[0].uri
+    );
+    shouldWriteDebug = workspaceConfig.get('debug');
+    debugLogPath= workspaceConfig.get('debugLogPath');
+    useFrameworks = workspaceConfig.get('useFrameworks');
+    npmPath = workspaceConfig.get('npmPath');
+    if (npmPath) {
+      process.env.PATH += `:${npmPath}`;
+    }
   }
 
   if (useFrameworks) {
@@ -122,25 +128,26 @@ export async function setupWorkflow(
   // Sets up CLI logger to log to console
   process.env.DEBUG = 'true';
   setupLoggers();
-  // Re-implement file logger call from ../../src/bin/firebase.ts to not bring
-  // in the entire firebase.ts file
-  const rootFolders = getRootFolders();
-  const filePath = debugLogPath || path.join(rootFolders[0], 'firebase-plugin-debug.log');
-  pluginLogger.info('Logging to path', filePath);
+  
   // Only log to file if firebase.debug extension setting is true.
   if (shouldWriteDebug) {
-    logger.add(
-      new transports.File({
-        level: "debug",
-        filename: filePath,
-        format: format.printf((info) => {
-          const segments = [info.message, ...(info[SPLAT] || [])]
-            .map(tryStringify);
-          return `[${info.level}] ${stripAnsi(segments.join(" "))}`;
-        }),
-      })
-    );
-  }
+    // Re-implement file logger call from ../../src/bin/firebase.ts to not bring
+    // in the entire firebase.ts file
+    const rootFolders = getRootFolders();
+    const filePath = debugLogPath || path.join(rootFolders[0], 'firebase-plugin-debug.log');
+    pluginLogger.info('Logging to path', filePath);
+      logger.add(
+        new transports.File({
+          level: "debug",
+          filename: filePath,
+          format: format.printf((info) => {
+            const segments = [info.message, ...(info[SPLAT] || [])]
+              .map(tryStringify);
+            return `[${info.level}] ${stripAnsi(segments.join(" "))}`;
+          }),
+        })
+      );
+    }
 
   /**
    * Call pluginLogger with log arguments received from webview.
