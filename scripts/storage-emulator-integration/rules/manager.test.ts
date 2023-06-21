@@ -34,7 +34,7 @@ describe("Storage Rules Manager", () => {
       { resource: "bucket_0", rules: StorageRulesFiles.readWriteIfTrue },
       { resource: "bucket_1", rules: StorageRulesFiles.readWriteIfAuth },
     ];
-    let rulesManager = createStorageRulesManager(rules, rulesRuntime);
+    const rulesManager = createStorageRulesManager(rules, rulesRuntime);
     await rulesManager.start();
 
     const bucket0Ruleset = rulesManager.getRuleset("bucket_0");
@@ -68,7 +68,7 @@ describe("Storage Rules Manager", () => {
     appendBytes(testDir, fileName, Buffer.from(StorageRulesFiles.readWriteIfTrue.content));
 
     const sourceFile = getSourceFile(testDir, fileName);
-    let rulesManager = createStorageRulesManager(sourceFile, rulesRuntime);
+    const rulesManager = createStorageRulesManager(sourceFile, rulesRuntime);
     await rulesManager.start();
 
     const ruleset = rulesManager.getRuleset("bucket");
@@ -85,7 +85,7 @@ describe("Storage Rules Manager", () => {
     appendBytes(testDir, fileName, Buffer.from(StorageRulesFiles.readWriteIfTrue.content));
 
     const sourceFile = getSourceFile(testDir, fileName);
-    let rulesManager = createStorageRulesManager(sourceFile, rulesRuntime);
+    const rulesManager = createStorageRulesManager(sourceFile, rulesRuntime);
     await rulesManager.start();
 
     expect(
