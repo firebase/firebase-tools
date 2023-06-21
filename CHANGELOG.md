@@ -1,0 +1,1 @@
+- Fixes issue that caused firebase emulators:start to crash in Next.js apps (#6005)
