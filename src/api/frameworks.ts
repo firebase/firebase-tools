@@ -1,5 +1,5 @@
-import { Client } from "../../../apiv2";
-import { frameworksOrigin } from "../../../api";
+import { Client } from "../apiv2";
+import { frameworksOrigin } from "../api";
 
 export const API_VERSION = "v1";
 

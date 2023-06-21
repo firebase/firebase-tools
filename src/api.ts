@@ -173,7 +173,6 @@ export const serviceUsageOrigin = utils.envOverride(
   "FIREBASE_SERVICE_USAGE_URL",
   "https://serviceusage.googleapis.com"
 );
-// TODO: Change to correct URL later.
 export const frameworksOrigin = utils.envOverride(
   "FRAMEWORKS_URL",
   "https://placeholder.googleapis.com"
