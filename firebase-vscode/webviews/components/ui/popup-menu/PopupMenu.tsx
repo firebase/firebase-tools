@@ -9,11 +9,13 @@ type PopupMenuProps<T> = PropsWithChildren<
     HTMLAttributes<HTMLElement> & {
       show?: boolean;
       onClose: Function;
+      autoClose: boolean;
     }
 >;
 
 export const PopupMenu: FC<PopupMenuProps<{}>> = ({
   children,
+  autoClose,
   className,
   show,
   onClose,
@@ -26,6 +28,9 @@ export const PopupMenu: FC<PopupMenuProps<{}>> = ({
           <ul
             style={{ left: "auto", top: "auto" }}
             className={cn(className, styles.menu)}
+            onClick={() => {
+              autoClose && onClose();
+            }}
           >
             {children}
           </ul>
