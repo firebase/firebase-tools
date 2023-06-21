@@ -748,6 +748,11 @@ async function fetchExtensionSource(
     );
   }
   const archiveName = fs.readdirSync(tempDirectory.name)[0];
+  if (!archiveName) {
+    throw new FirebaseError(
+      `Failed to extract archive from ${archiveUri}. Please check that the repo is public and that the source ref is valid.`
+    );
+  }
   const rootDirectory = path.join(tempDirectory.name, archiveName, extensionRoot);
   // Pre-validation to show a more useful error message in the context of a temp directory.
   try {
