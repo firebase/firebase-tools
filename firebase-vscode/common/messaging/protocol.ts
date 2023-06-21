@@ -6,7 +6,7 @@
 import { FirebaseConfig } from '../../../src/firebaseConfig';
 import { User } from "../../../src/types/auth";
 import { ServiceAccountUser } from "../types";
-import { RCData } from '../rc';
+import { RCData } from '../../../src/rc';
 import { EmulatorUiSelections, RunningEmulatorInfo } from "./types";
 
 export interface WebviewToExtensionParamsMap {
