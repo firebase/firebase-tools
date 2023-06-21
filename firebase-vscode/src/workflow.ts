@@ -33,7 +33,7 @@ import {
   setupFirebaseJsonAndRcFileSystemWatcher,
   updateFirebaseRCProject,
   getRootFolders
-} from "./configs";
+} from "./config-files";
 import { ServiceAccountUser } from "../common/types";
 
 let users: Array<ServiceAccountUser | User> = [];

@@ -4,8 +4,8 @@ import * as vscode from "vscode";
 import { workspace } from "vscode";
 import { ExtensionBrokerImpl } from "./extension-broker";
 import { updateOptions, currentOptions } from "./options";
-import { RC } from "../../src/rc";
-import { Config } from "../../src/config";
+import { RC } from "./rc";
+import { Config } from "./config";
 import { pluginLogger } from "./logger-wrapper";
 
 export function getRootFolders() {
