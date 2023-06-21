@@ -7,6 +7,7 @@ import { updateOptions, currentOptions } from "./options";
 import { RC } from "../../src/rc";
 import { Config } from "../../src/config";
 import { pluginLogger } from "./logger-wrapper";
+import isEmpty from "lodash/isEmpty";
 
 export function getRootFolders() {
   if (!workspace) {
@@ -52,19 +53,20 @@ export function readFirebaseConfigs(context: vscode.ExtensionContext) {
   try {
     firebaseRC = RC.loadFile(path.join(configPath, '.firebaserc'));
   } catch (e) {
-    if (e.message.includes('error trying to load')) {
-      firebaseRC = null;
-    } else {
-      pluginLogger.error(e.message);
-      throw e;
-    }
+    pluginLogger.error(e.message);
+    throw e;
   }
+  
+  // RC.loadFile doesn't throw if not found, it just returns an empty object
+  if (isEmpty(firebaseRC.data)) {
+    firebaseRC = null;
+  }
+
   try {
     firebaseJSON = Config.load({ configPath: path.join(configPath, 'firebase.json') });
   }
   catch (e) {
-    if (e.message.includes('could not locate')
-      || e.message.includes('Could not load config file')) {
+    if (e.status === 404) {
       firebaseJSON = null;
     } else {
       pluginLogger.error(e.message);
