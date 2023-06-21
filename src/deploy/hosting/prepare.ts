@@ -77,9 +77,15 @@ export async function addPinnedFunctionsToOnlyString(
         options.only = ensureTargeted(options.only, endpoint.codebase || "default", endpoint.id);
       } else {
         const functionsConfig = normalizeAndValidate(options.config.src.functions);
-        const codebasesFromConfig = [...new Set(Object.values(functionsConfig).map((c) => c.codebase))];
+        const codebasesFromConfig = [
+          ...new Set(Object.values(functionsConfig).map((c) => c.codebase)),
+        ];
         if (codebasesFromConfig.length > 0) {
-          options.only = ensureTargeted(options.only, codebasesFromConfig[0], r.function.functionId);
+          options.only = ensureTargeted(
+            options.only,
+            codebasesFromConfig[0],
+            r.function.functionId
+          );
         } else {
           // This endpoint is just being added in this push. We don't know what codebase it is.
           options.only = ensureTargeted(options.only, r.function.functionId);
