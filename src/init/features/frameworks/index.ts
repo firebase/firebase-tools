@@ -21,7 +21,7 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
   const projectId = setup?.rcfile?.projects?.default;
   if (projectId && !isEnabled("frameworks")) {
     await requirePermissions({ ...options, project: projectId });
-    await Promise.all([ensure(projectId, "frameworks.googleapis.com", "unused", true)]);
+    await Promise.all([ensure(projectId, "placeholder.googleapis.com", "unused", true)]);
   }
 
   setup.frameworks = {};
