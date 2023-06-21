@@ -4,7 +4,6 @@ import { Spacer } from "./components/ui/Spacer";
 import { Body } from "./components/ui/Text";
 import { broker } from "./globals/html-broker";
 import { User } from "../../src/types/auth";
-import { FirebaseRC } from "../../src/firebaserc";
 import { PanelSection } from "./components/ui/PanelSection";
 import { AccountSection } from "./components/AccountSection";
 import { ProjectSection } from "./components/ProjectSection";
@@ -153,7 +152,7 @@ export function SidebarApp() {
           }}
         />
       )}
-      {(!!userEmail && !!firebaseJson) && <EmulatorPanel firebaseJson={firebaseJson} />}
+      {(!!userEmail && !!firebaseJson) && <EmulatorPanel firebaseJson={firebaseJson} projectId={projectId} />}
     </>
   );
 }
