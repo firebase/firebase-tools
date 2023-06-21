@@ -127,7 +127,6 @@ function getReleventConfigs(target: string, options: Options) {
 
   let onlyTargets = options.only.split(",");
   if (onlyTargets.includes(target)) {
-    // If the target matches entirely then all instances should be included.
     return targetConfigs;
   }
 
@@ -140,6 +139,9 @@ function getReleventConfigs(target: string, options: Options) {
     });
 
   return targetConfigs.filter((config: any) => {
+    if (target === "functions") {
+      return onlyTargets.includes(config.codebase);
+    }
     return !config.target || onlyTargets.includes(config.target);
   });
 }
