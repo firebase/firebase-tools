@@ -7,18 +7,18 @@ import {
   VSCodeTextField,
 } from "@vscode/webview-ui-toolkit/react";
 import React, { useState } from "react";
-import { Spacer } from "./components/ui/Spacer";
-import { broker } from "./globals/html-broker";
-import { PanelSection } from "./components/ui/PanelSection";
-import { FirebaseConfig } from "../../src/firebaseConfig";
+import { Spacer } from "./ui/Spacer";
+import { broker } from "../globals/html-broker";
+import { PanelSection } from "./ui/PanelSection";
+import { FirebaseConfig } from "../../../src/firebaseConfig";
 import {
   RunningEmulatorInfo,
   EmulatorUiSelections,
-} from "../common/messaging/types";
+} from "../../common/messaging/types";
 import { VSCodeDropdown } from "@vscode/webview-ui-toolkit/react";
 import { VSCodeOption } from "@vscode/webview-ui-toolkit/react";
-import { EmulatorInfo } from "../../src/emulator/types";
-import { webLogger } from "./globals/web-logger";
+import { EmulatorInfo } from "../../../src/emulator/types";
+import { webLogger } from "../globals/web-logger";
 
 const DEFAULT_EMULATOR_UI_SELECTIONS: EmulatorUiSelections = {
   projectId: "demo-something",
@@ -41,7 +41,7 @@ export function EmulatorPanel({
   if (!firebaseJson) {
     throw Error("Expected a valid FirebaseConfig.");
   }
-  var defaultState = DEFAULT_EMULATOR_UI_SELECTIONS;
+  const defaultState = DEFAULT_EMULATOR_UI_SELECTIONS;
   if (projectId) {
     defaultState.projectId = getProjectIdForMode(projectId, defaultState.mode);
   }
@@ -83,8 +83,11 @@ export function EmulatorPanel({
     webLogger.debug(
       `notifyEmulatorImportFolder received in sidebar: ${folder}`
     );
-    emulatorUiSelections.importStateFolderPath = folder;
-    setEmulatorUiSelectionsAndSaveToWorkspace({ ...emulatorUiSelections }); // rerender clone
+    const newSelections = {
+      ...emulatorUiSelections,
+      importStateFolderPath: folder,
+    };
+    setEmulatorUiSelectionsAndSaveToWorkspace(newSelections);
   });
 
   function launchEmulators() {
@@ -145,16 +148,22 @@ export function EmulatorPanel({
 
   function emulatorModeChanged(event: React.ChangeEvent<HTMLSelectElement>) {
     webLogger.debug("emulatorModeChanged: " + event.target.value);
-    const selections: EmulatorUiSelections = emulatorUiSelections;
-    selections.mode = event.target.value as typeof emulatorUiSelections.mode;
-    selections.projectId = getProjectIdForMode(projectId, selections.mode);
-    setEmulatorUiSelectionsAndSaveToWorkspace({...selections});
+    const newSelections: EmulatorUiSelections = { ...emulatorUiSelections };
+    newSelections.mode = event.target.value as typeof emulatorUiSelections.mode;
+    newSelections.projectId = getProjectIdForMode(
+      projectId,
+      newSelections.mode
+    );
+    setEmulatorUiSelectionsAndSaveToWorkspace(newSelections);
   }
 
   function clearImportFolder() {
     console.log(`clearImportFolder`);
-    emulatorUiSelections.importStateFolderPath = "";
-    setEmulatorUiSelectionsAndSaveToWorkspace({ ...emulatorUiSelections });
+    const newSelections = {
+      ...emulatorUiSelections,
+      importStateFolderPath: "",
+    };
+    setEmulatorUiSelectionsAndSaveToWorkspace(newSelections);
   }
 
   // Make it pretty for the screen. Filter out the logging emulator since it's
