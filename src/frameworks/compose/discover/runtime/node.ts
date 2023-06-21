@@ -31,7 +31,7 @@ export class NodejsRuntime implements Runtime {
       this.runtimeRequiredFiles.map((file) => fs.exists(file))
     );
 
-    return Promise.resolve(areAllFilesPresent.every((present) => present));
+    return areAllFilesPresent.every((present) => present);
   }
 
   getRuntimeName(): string {

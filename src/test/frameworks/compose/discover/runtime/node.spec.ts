@@ -9,9 +9,30 @@ import { FirebaseError } from "../../../../../error";
 
 describe("NodejsRuntime", () => {
   let nodeJSRuntime: NodejsRuntime;
+  let allFrameworks: FrameworkSpec[];
 
   before(() => {
     nodeJSRuntime = new NodejsRuntime();
+    allFrameworks = [
+      {
+        id: "express",
+        runtime: "nodejs",
+        requiredDependencies: [{ name: "express" }],
+      },
+      {
+        id: "next",
+        runtime: "nodejs",
+        requiredDependencies: [{ name: "next" }],
+        requiredFiles: [["next.config.js"], "next.config.ts"],
+        embedsFrameworks: ["react"],
+        commands: {
+          dev: {
+            cmd: "next dev",
+            env: { NODE_ENV: "dev" },
+          },
+        },
+      },
+    ];
   });
 
   describe("getNodeImage", () => {
@@ -159,27 +180,6 @@ describe("NodejsRuntime", () => {
         }),
       });
 
-      const allFrameworks: FrameworkSpec[] = [
-        {
-          id: "express",
-          runtime: "nodejs",
-          requiredDependencies: [{ name: "express" }],
-        },
-        {
-          id: "next",
-          runtime: "nodejs",
-          requiredDependencies: [{ name: "next" }],
-          requiredFiles: [["next.config.js"], "next.config.ts"],
-          embedsFrameworks: ["react"],
-          commands: {
-            dev: {
-              cmd: "next dev",
-              env: { NODE_ENV: "dev" },
-            },
-          },
-        },
-      ];
-
       const actual = await nodeJSRuntime.analyseCodebase(fileSystem, allFrameworks);
       const expected = {
         id: "nodejs",
@@ -214,6 +214,7 @@ describe("NodejsRuntime", () => {
             start: "next start",
           },
           dependencies: {
+            // Having both express and next as dependencies.
             express: "2.0.8",
             next: "13.4.5",
             react: "18.2.0",
@@ -223,27 +224,6 @@ describe("NodejsRuntime", () => {
           },
         }),
       });
-
-      const allFrameworks: FrameworkSpec[] = [
-        {
-          id: "express",
-          runtime: "nodejs",
-          requiredDependencies: [{ name: "express" }],
-        },
-        {
-          id: "next",
-          runtime: "nodejs",
-          requiredDependencies: [{ name: "next" }],
-          requiredFiles: [["next.config.js"], "next.config.ts"],
-          embedsFrameworks: ["react"],
-          commands: {
-            dev: {
-              cmd: "next dev",
-              env: { NODE_ENV: "dev" },
-            },
-          },
-        },
-      ];
 
       // Failed with multiple framework matches
       await expect(nodeJSRuntime.analyseCodebase(fileSystem, allFrameworks)).to.be.rejectedWith(
