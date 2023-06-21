@@ -2,11 +2,11 @@ import * as clc from "colorette";
 import { logger } from "../logger";
 import { hostingOrigin } from "../api";
 import { bold, underline, white } from "colorette";
-import { has, includes, each } from "lodash";
+import { includes, each } from "lodash";
 import { needProjectId } from "../projectUtils";
 import { logBullet, logSuccess, consoleUrl, addSubdomain } from "../utils";
 import { FirebaseError } from "../error";
-import { track } from "../track";
+import { AnalyticsParams, trackGA4 } from "../track";
 import { lifecycleHooks } from "./lifecycleHooks";
 import * as experiments from "../experiments";
 import * as HostingTarget from "./hosting";
@@ -119,12 +119,20 @@ export const deploy = async function (
   await chain(releases, context, options, payload);
   await chain(postdeploys, context, options, payload);
 
-  if (has(options, "config.notes.databaseRules")) {
-    await track("Rules Deploy", options.config.notes.databaseRules);
-  }
-
   const duration = Date.now() - startTime;
-  await track("Product Deploy", [...targetNames].sort().join(","), duration);
+  const analyticsParams: AnalyticsParams = {
+    duration,
+    interactive: options.nonInteractive ? "false" : "true",
+  };
+
+  Object.keys(TARGETS).reduce((accum, t) => {
+    accum[t] = "false";
+    return accum;
+  }, analyticsParams);
+  for (const t of targetNames) {
+    analyticsParams[t] = "true";
+  }
+  await trackGA4("product_deploy", analyticsParams);
 
   logger.info();
   logSuccess(bold(underline("Deploy complete!")));
