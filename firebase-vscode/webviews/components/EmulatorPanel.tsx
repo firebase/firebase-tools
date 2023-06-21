@@ -270,7 +270,7 @@ export function EmulatorPanel({
 
 /**
  * Formats a project ID with a demo prefix if we're in offline mode, or uses the
- * regular ID if we're hosting.
+ * regular ID if we're in hosting only mode.
  */
 function getProjectIdForMode(
   projectId: string | undefined,
