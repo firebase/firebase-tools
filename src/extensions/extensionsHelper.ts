@@ -737,7 +737,9 @@ async function fetchExtensionSource(
   logger.info(`Validating source code at ${clc.bold(sourceUri)}...`);
   const archiveUri = `${repoUri}/archive/${sourceRef}.zip`;
   const tempDirectory = tmp.dirSync({ unsafeCleanup: true });
-  const archiveErrorMessage = `Failed to extract archive from ${archiveUri}. Please check that the repo is public and that the source ref is valid.`;
+  const archiveErrorMessage = `Failed to extract archive from ${clc.bold(
+    archiveUri
+  )}. Please check that the repo is public and that the source ref is valid.`;
   try {
     const response = await fetch(archiveUri);
     if (response.ok) {
