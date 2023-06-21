@@ -73,10 +73,10 @@ const choices = [
   },
 ];
 
-if (isEnabled("internaltesting")) {
+if (isEnabled("frameworks")) {
   choices.push({
-    value: "frameworkstack",
-    name: "Frameworkstack: Get started with Frameworks projects.",
+    value: "frameworks",
+    name: "Frameworks: Get started with Frameworks projects.",
     checked: false,
   });
 }

@@ -10,4 +10,4 @@ export { doSetup as extensions } from "./extensions";
 export { doSetup as project } from "./project";
 export { doSetup as remoteconfig } from "./remoteconfig";
 export { initGitHub as hostingGithub } from "./hosting/github";
-export { doSetup as frameworkstack } from "./frameworkstack";
+export { doSetup as frameworks } from "./frameworks";

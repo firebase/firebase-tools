@@ -127,7 +127,7 @@ export async function doSetup(setup: any, config: any, options: any): Promise<vo
 
   let projectMetaData;
   // If the user presented a project with `--project`, try to fetch that project.
-  if (options.project) {
+  if (!options.project) {
     logger.debug(`Using project from CLI flag: ${options.project}`);
     projectMetaData = await getFirebaseProject(options.project);
   } else {

@@ -12,20 +12,19 @@ import { Options } from "../../../options";
 import { ensure } from "../../../ensureApiEnabled";
 import { Config } from "../../../config";
 import { requirePermissions } from "../../../requirePermissions";
+import { isEnabled } from "../../../experiments";
 
 /**
- * Setup new Frameworkstack project.
+ * Setup new frameworks project.
  */
 export async function doSetup(setup: any, config: Config, options: Options): Promise<void> {
   const projectId = setup?.rcfile?.projects?.default;
-  if (projectId) {
+  if (projectId && !isEnabled("frameworks")) {
     await requirePermissions({ ...options, project: projectId });
-    await Promise.all([
-      ensure(projectId, "firestack.googleapis.com", "unused", true),
-    ]);
+    await Promise.all([ensure(projectId, "frameworks.googleapis.com", "unused", true)]);
   }
 
-  setup.frameworkstack = {};
+  setup.frameworks = {};
 
   utils.logBullet("First we need a few details to create your service.");
 
@@ -36,7 +35,7 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
       default: "acme-inc-web",
       message: "Create a name for your service [1-64 characters]",
     },
-    setup.frameworkstack
+    setup.frameworks
   );
 
   await promptOnce(
@@ -49,10 +48,10 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
         `(${clc.yellow("info")}: Your region determines where your backend is located):\n`,
       choices: ALLOWED_REGIONS,
     },
-    setup.frameworkstack
+    setup.frameworks
   );
 
-  utils.logSuccess(`Region set to ${setup.frameworkstack.region}.`);
+  utils.logSuccess(`Region set to ${setup.frameworks.region}.`);
 
   logger.info(clc.bold(`\n${clc.white("===")} Deploy Setup`));
 
@@ -64,6 +63,6 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
       message: "How do you want to deploy",
       choices: ALLOWED_DEPLOY_METHODS,
     },
-    setup.frameworkstack
+    setup.frameworks
   );
 }
