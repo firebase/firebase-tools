@@ -1,4 +1,3 @@
-import { Config as cliConfig } from "../../src/config";
 import { FirebaseConfig } from "../../src/firebaseConfig";
 import { FirebaseRC } from "../common/firebaserc";
 import { RC } from "../../src/rc";
@@ -6,6 +5,7 @@ import { BaseOptions, Options } from "../../src/options";
 import { Command } from "../../src/command";
 import { ExtensionContext } from "vscode";
 import { setInquirerOptions } from "./stubs/inquirer-stub";
+import * as commandUtils from "../../src/emulator/commandUtils";
 
 /**
  * User-facing CLI options
@@ -20,7 +20,8 @@ interface CliOptions extends Omit<BaseOptions, "config"> {
  * Final options passed to CLI command functions
  * Result of command.prepare()
  */
-interface CommandOptions extends Options {}
+interface CommandOptions extends Options {
+}
 
 /**
  * User-facing CLI options
@@ -45,8 +46,10 @@ export let currentOptions: CliOptions & { isVSCE: boolean } = {
   nonInteractive: true,
   interactive: false,
   debug: false,
-
   rc: null,
+  exportOnExit: false,
+  import: "",
+
   isVSCE: true
 };
 

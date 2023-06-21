@@ -1,1 +1,2 @@
+- Run lifecycle hooks for specific codebases. (#6011)
 - Fixes issue caused by adding type checks in #5906.

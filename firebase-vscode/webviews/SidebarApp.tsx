@@ -4,13 +4,17 @@ import { Spacer } from "./components/ui/Spacer";
 import { Body } from "./components/ui/Text";
 import { broker } from "./globals/html-broker";
 import { User } from "../../src/types/auth";
+import { FirebaseRC } from "../../src/firebaserc";
 import { PanelSection } from "./components/ui/PanelSection";
 import { AccountSection } from "./components/AccountSection";
 import { ProjectSection } from "./components/ProjectSection";
+import { FirebaseConfig } from "../../src/firebaseConfig";
 import { ServiceAccountUser } from "../common/types";
 import { DeployPanel } from "./components/DeployPanel";
 import { HostingState } from "./webview-types";
 import { ChannelWithId } from "./messaging/types";
+import { EmulatorPanel } from "./EmulatorPanel";
+
 import { webLogger } from "./globals/web-logger";
 
 export function SidebarApp() {
@@ -28,6 +32,7 @@ export function SidebarApp() {
     ServiceAccountUser | User
   > | null>(null);
   const [isHostingOnboarded, setHostingOnboarded] = useState<boolean>(false);
+  const [firebaseJson, setFirebaseJson] = useState<FirebaseConfig>();
 
   useEffect(() => {
     webLogger.debug("loading SidebarApp component");
@@ -48,7 +53,14 @@ export function SidebarApp() {
     });
 
     broker.on("notifyFirebaseConfig", ({ firebaseJson, firebaseRC }) => {
-      webLogger.debug("got firebase hosting", JSON.stringify(firebaseJson?.hosting));
+      webLogger.debug(
+        "got firebase hosting",
+        JSON.stringify(firebaseJson?.hosting)
+      );
+      if (firebaseJson) {
+        setFirebaseJson(firebaseJson);
+        webLogger.debug("set firebase JSON");
+      }
       if (firebaseJson?.hosting) {
         webLogger.debug("Detected hosting setup");
         setHostingOnboarded(true);
@@ -99,7 +111,7 @@ export function SidebarApp() {
       email: userEmail!, // Safe to assume user email is already there
       singleAppSupport: true,
     });
-  };
+  }
 
   const accountSection = (
     <AccountSection
@@ -141,6 +153,7 @@ export function SidebarApp() {
           }}
         />
       )}
+      {(!!userEmail && !!firebaseJson) && <EmulatorPanel firebaseJson={firebaseJson} />}
     </>
   );
 }
