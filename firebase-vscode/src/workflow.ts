@@ -145,12 +145,17 @@ export function setupWorkflow(
 ) {
   extensionContext = context;
 
-  // Get user-defined VSCode settings.
-  const workspaceConfig = workspace.getConfiguration(
-    'firebase',
-    vscode.workspace.workspaceFolders[0].uri
-  );
-  const shouldDebug: boolean = workspaceConfig.get('debug');
+  var shouldDebug: boolean;
+  if (vscode.workspace.workspaceFolders) {
+    // Get user-defined VSCode settings.
+    const workspaceConfig = workspace.getConfiguration(
+      'firebase',
+      vscode.workspace.workspaceFolders[0].uri
+    );
+    shouldDebug = workspaceConfig.get('debug');
+  } else {
+    shouldDebug = false;
+  }
 
   /**
    * Logging setup for logging to console and to file.
@@ -158,13 +163,14 @@ export function setupWorkflow(
   // Sets up CLI logger to log to console
   process.env.DEBUG = 'true';
   setupLoggers();
+  
+  // Only log to file if firebase.debug extension setting is true.
+  if (shouldDebug) {
   // Re-implement file logger call from ../../src/bin/firebase.ts to not bring
   // in the entire firebase.ts file
   const rootFolders = getRootFolders();
   const filePath = path.join(rootFolders[0], 'firebase-plugin-debug.log');
   pluginLogger.info('Logging to path', filePath);
-  // Only log to file if firebase.debug extension setting is true.
-  if (shouldDebug) {
     logger.add(
       new transports.File({
         level: "debug",
