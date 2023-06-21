@@ -105,10 +105,9 @@ export async function cleanShutdown(): Promise<void> {
  * Filters a list of emulators to only those specified in the config
  * @param options
  */
-export function filterEmulatorTargets(options: any): Emulators[] {
+export function filterEmulatorTargets(options: { only: string; config: any }): Emulators[] {
   let targets = [...ALL_SERVICE_EMULATORS];
   targets.push(Emulators.EXTENSIONS);
-
   targets = targets.filter((e) => {
     return options.config.has(e) || options.config.has(`emulators.${e}`);
   });
@@ -186,6 +185,11 @@ export function shouldStart(options: Options, name: Emulators): boolean {
 }
 
 function findExportMetadata(importPath: string): ExportMetadata | undefined {
+  const pathExists = fs.existsSync(importPath);
+  if (!pathExists) {
+    throw new FirebaseError(`Directory "${importPath}" does not exist.`);
+  }
+
   const pathIsDirectory = fs.lstatSync(importPath).isDirectory();
   if (!pathIsDirectory) {
     return;
@@ -313,7 +317,7 @@ export async function startAll(
         );
       } else {
         // this should not work:
-        // firebase emulators:start --only doesnotexit
+        // firebase emulators:start --only doesnotexist
         throw new FirebaseError(
           `${name} is not a valid emulator name, valid options are: ${JSON.stringify(
             ALL_SERVICE_EMULATORS
@@ -829,16 +833,6 @@ export async function startAll(
     await startEmulator(hostingEmulator);
   }
 
-  if (showUI && !shouldStart(options, Emulators.UI)) {
-    hubLogger.logLabeled(
-      "WARN",
-      "emulators",
-      "The Emulator UI is not starting, either because none of the emulated " +
-        "products have an interaction layer in Emulator UI or it cannot " +
-        "determine the Project ID. Pass the --project flag to specify a project."
-    );
-  }
-
   if (listenForEmulator.logging) {
     const loggingAddr = legacyGetFirstAddr(Emulators.LOGGING);
     const loggingEmulator = new LoggingEmulator({
@@ -847,6 +841,16 @@ export async function startAll(
     });
 
     await startEmulator(loggingEmulator);
+  }
+
+  if (showUI && !shouldStart(options, Emulators.UI)) {
+    hubLogger.logLabeled(
+      "WARN",
+      "emulators",
+      "The Emulator UI is not starting, either because none of the running " +
+        "emulators have a UI component or the Emulator UI cannot " +
+        "determine the Project ID. Pass the --project flag to specify a project."
+    );
   }
 
   if (listenForEmulator.ui) {

@@ -1,1 +1,1 @@
-- Address additional cases where we were attempting to deploy a framework's development bundle (#5895)
+- Run lifecycle hooks for specific codebases. (#6011)

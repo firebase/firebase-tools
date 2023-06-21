@@ -39,7 +39,6 @@ import {
   NODE_VERSION,
   SupportLevelWarnings,
   VALID_ENGINES,
-  WebFrameworks,
 } from "./constants";
 import {
   BUILD_TARGET_PURPOSE,
@@ -53,6 +52,8 @@ import { logWarning } from "../utils";
 import { ensureTargeted } from "../functions/ensureTargeted";
 import { isDeepStrictEqual } from "util";
 import { resolveProjectPath } from "../projectPath";
+import { logger } from "../logger";
+import { WebFrameworks } from "./frameworks";
 
 export { WebFrameworks };
 
@@ -255,7 +256,7 @@ export async function prepareFrameworks(
       getValidBuildTargets = GET_DEFAULT_BUILD_TARGETS,
       shouldUseDevModeHandle = DEFAULT_SHOULD_USE_DEV_MODE_HANDLE,
     } = WebFrameworks[framework];
-    console.log(
+    logger.info(
       `\n${frameworksCallToAction(SupportLevelWarnings[support](name), docsUrl, "   ")}\n`
     );
 
@@ -267,6 +268,10 @@ export async function prepareFrameworks(
       (await shouldUseDevModeHandle(frameworksBuildTarget, getProjectPath()));
 
     let codegenFunctionsDirectory: Framework["ɵcodegenFunctionsDirectory"];
+    let baseUrl = "";
+    const rewrites = [];
+    const redirects = [];
+    const headers = [];
 
     const devModeHandle =
       useDevModeHandle &&
@@ -287,18 +292,15 @@ export async function prepareFrameworks(
         [firebaseDefaults, frameworksBuildTarget],
         frameworksBuildTarget
       );
-      const {
-        wantsBackend = false,
-        rewrites = [],
-        redirects = [],
-        headers = [],
-        trailingSlash,
-        i18n = false,
-      }: BuildResult = buildResult || {};
+      const { wantsBackend = false, trailingSlash, i18n = false }: BuildResult = buildResult || {};
 
-      config.rewrites.push(...rewrites);
-      config.redirects.push(...redirects);
-      config.headers.push(...headers);
+      if (buildResult) {
+        baseUrl = buildResult.baseUrl ?? baseUrl;
+        if (buildResult.headers) headers.push(...buildResult.headers);
+        if (buildResult.rewrites) rewrites.push(...buildResult.rewrites);
+        if (buildResult.redirects) redirects.push(...buildResult.redirects);
+      }
+
       config.trailingSlash ??= trailingSlash;
       if (i18n) config.i18n ??= { root: I18N_ROOT };
 
@@ -374,22 +376,27 @@ export async function prepareFrameworks(
         packageJson,
         bootstrapScript,
         frameworksEntry = framework,
-        baseUrl = "",
         dotEnv = {},
-        rewriteSource = posix.join(baseUrl, "**"),
+        rewriteSource,
       } = await codegenFunctionsDirectory(getProjectPath(), functionsDist, frameworksBuildTarget);
 
-      config.rewrites = [
-        {
-          source: rewriteSource,
-          function: {
-            functionId,
-            region: ssrRegion,
-            pinTag: experiments.isEnabled("pintags"),
-          },
+      const rewrite = {
+        source: rewriteSource || posix.join(baseUrl, "**"),
+        function: {
+          functionId,
+          region: ssrRegion,
+          pinTag: experiments.isEnabled("pintags"),
         },
-        ...config.rewrites,
-      ];
+      };
+
+      // If the rewriteSource is overridden, we're talking a very specific rewrite. E.g, Image Optimization
+      // in this case, we should ensure that it's the first priority—otherwise defer to the push/unshift
+      // logic based off the baseUrl
+      if (rewriteSource) {
+        config.rewrites.unshift(rewrite);
+      } else {
+        rewrites.push(rewrite);
+      }
 
       // Set the framework entry in the env variables to handle generation of the functions.yaml
       process.env.__FIREBASE_FRAMEWORKS_ENTRY__ = frameworksEntry;
@@ -527,13 +534,20 @@ ${
       }
     }
 
+    const ourConfigShouldComeFirst = !["", "/"].includes(baseUrl);
+    const operation = ourConfigShouldComeFirst ? "unshift" : "push";
+
+    config.rewrites[operation](...rewrites);
+    config.redirects[operation](...redirects);
+    config.headers[operation](...headers);
+
     if (firebaseDefaults) {
       const encodedDefaults = Buffer.from(JSON.stringify(firebaseDefaults)).toString("base64url");
       const expires = new Date(new Date().getTime() + 60_000_000_000);
       const sameSite = "Strict";
       const path = `/`;
       config.headers.push({
-        source: "**/*.[jt]s",
+        source: posix.join(baseUrl, "**", "*.[jt]s"),
         headers: [
           {
             key: "Set-Cookie",
@@ -543,10 +557,11 @@ ${
       });
     }
   }
-  if (process.env.DEBUG) {
-    console.log("Effective firebase.json:");
-    console.log(JSON.stringify(configs, undefined, 2));
-  }
+
+  logger.debug(
+    "[web frameworks] effective firebase.json: ",
+    JSON.stringify({ hosting: configs, functions: options.config.get("functions") }, undefined, 2)
+  );
 
   // Clean up memos/caches
   BUILD_MEMO.clear();
