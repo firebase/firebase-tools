@@ -14,17 +14,21 @@ import { requireAuth } from "../../src/requireAuth";
 import { deploy } from "../../src/deploy";
 import { getDefaultHostingSite } from "../../src/getDefaultHostingSite";
 import { initAction } from "../../src/commands/init";
+/*
 import { startAll as startAllEmulators, cleanShutdown as stopAllEmulators } from "../../src/emulator/controller";
 import { EmulatorRegistry } from "../../src/emulator/registry";
 import { EmulatorInfo, Emulators } from "../../src/emulator/types";
+*/
 import { Account, User } from "../../src/types/auth";
 import { Options } from "../../src/options";
 import { currentOptions, getCommandOptions } from "./options";
 import { setInquirerOptions } from "./stubs/inquirer-stub";
 import { ServiceAccount } from "../common/types";
 import { listChannels } from "../../src/hosting/api";
+/*
 import * as commandUtils from "../../src/emulator/commandUtils";
-import { EmulatorUiSelections, ChannelWithId } from "../common/messaging/types";
+*/
+import { /* EmulatorUiSelections, */ ChannelWithId } from "../common/messaging/types";
 import { pluginLogger } from "./logger-wrapper";
 import { Config } from "../../src/config";
 
@@ -170,7 +174,7 @@ export async function initHosting(
   setInquirerOptions(inquirerOptions);
   await initAction("hosting", commandOptions);
 }
-
+/**
 export async function emulatorsStart(emulatorUiSelections: EmulatorUiSelections) {
   const commandOptions = await getCommandOptions(undefined, {
     ...currentOptions,
@@ -181,7 +185,7 @@ export async function emulatorsStart(emulatorUiSelections: EmulatorUiSelections)
   });
   // Adjusts some options, export on exit can be a boolean or a path.
   commandUtils.setExportOnExitOptions(commandOptions as commandUtils.ExportOnExitOptions);
-  return startAllEmulators(commandOptions, /*showUi=*/ true);
+  return startAllEmulators(commandOptions, true);
 }
 
 export async function stopEmulators() {
@@ -196,7 +200,7 @@ export function getEmulatorUiUrl(): string | undefined {
   const url: URL = EmulatorRegistry.url(Emulators.UI);
   return url.hostname === "unknown" ? undefined : url.toString();
 }
-
+*/
 export async function deployToHosting(
   firebaseJSON: Config,
   deployTarget: string

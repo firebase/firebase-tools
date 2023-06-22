@@ -9,7 +9,6 @@ import { ServiceAccountUser } from "../common/types";
 import { DeployPanel } from "./components/DeployPanel";
 import { HostingState } from "./webview-types";
 import { ChannelWithId } from "./messaging/types";
-import { EmulatorPanel } from "./components/EmulatorPanel";
 
 import { webLogger } from "./globals/web-logger";
 import { InitFirebasePanel } from "./components/InitPanel";
@@ -146,7 +145,7 @@ export function SidebarApp() {
           }}
         />
       )}
-      {(!!userEmail && !!firebaseJson) && <EmulatorPanel firebaseJson={firebaseJson} projectId={projectId} />}
+      {/* (!!userEmail && !!firebaseJson) && <EmulatorPanel firebaseJson={firebaseJson} projectId={projectId} /> */}
     </>
   );
 }

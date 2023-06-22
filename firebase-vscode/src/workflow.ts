@@ -9,16 +9,15 @@ import { FirebaseProjectMetadata } from "../../src/types/project";
 import { ExtensionBrokerImpl } from "./extension-broker";
 import {
   deployToHosting,
-  emulatorsStart,
   getAccounts,
   getChannels,
-  getEmulatorUiUrl,
+  // getEmulatorUiUrl,
   initHosting,
   listProjects,
-  listRunningEmulators,
+  // listRunningEmulators,
   login,
   logoutUser,
-  stopEmulators,
+  // stopEmulators,
 } from "./cli";
 import { User } from "../../src/types/auth";
 import { currentOptions } from "./options";
@@ -364,6 +363,7 @@ export async function setupWorkflow(
       { projectId, folderPath: currentOptions.cwd });
     await fetchChannels(true);
   }
+  /*
   broker.on(
     "launchEmulators",
     async ({ emulatorUiSelections }) => {
@@ -400,11 +400,14 @@ export async function setupWorkflow(
       broker.send("notifyEmulatorImportFolder", { folder: fileUri[0].fsPath });
     }
   );
+*/
 }
 
 /**
  * Cleans up any open resources before shutting down.
  */
+/*
 export async function onShutdown() {
   await stopEmulators();
 }
+*/
