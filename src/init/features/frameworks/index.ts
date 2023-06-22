@@ -8,22 +8,11 @@ import {
   DEFAULT_DEPLOY_METHOD,
   ALLOWED_DEPLOY_METHODS,
 } from "./constants";
-import { Options } from "../../../options";
-import { ensure } from "../../../ensureApiEnabled";
-import { Config } from "../../../config";
-import { requirePermissions } from "../../../requirePermissions";
-import { isEnabled } from "../../../experiments";
 
 /**
  * Setup new frameworks project.
  */
-export async function doSetup(setup: any, config: Config, options: Options): Promise<void> {
-  const projectId = setup?.rcfile?.projects?.default;
-  if (projectId && !isEnabled("frameworks")) {
-    await requirePermissions({ ...options, project: projectId });
-    await Promise.all([ensure(projectId, "placeholder.googleapis.com", "unused", true)]);
-  }
-
+export async function doSetup(setup: any): Promise<void> {
   setup.frameworks = {};
 
   utils.logBullet("First we need a few details to create your service.");
