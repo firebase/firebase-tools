@@ -12,7 +12,6 @@ import * as utils from "../../utils";
 import { HostingSource, RunRewrite } from "../../firebaseConfig";
 import * as backend from "../functions/backend";
 import { ensureTargeted } from "../../functions/ensureTargeted";
-import { normalizeAndValidate } from "../../functions/projectConfig";
 
 function handlePublicDirectoryFlag(options: HostingOptions & Options): void {
   // Allow the public directory to be overridden by the --public flag
@@ -76,20 +75,8 @@ export async function addPinnedFunctionsToOnlyString(
       if (endpoint) {
         options.only = ensureTargeted(options.only, endpoint.codebase || "default", endpoint.id);
       } else {
-        const functionsConfig = normalizeAndValidate(options.config.src.functions);
-        const codebasesFromConfig = [
-          ...new Set(Object.values(functionsConfig).map((c) => c.codebase)),
-        ];
-        if (codebasesFromConfig.length > 0) {
-          options.only = ensureTargeted(
-            options.only,
-            codebasesFromConfig[0],
-            r.function.functionId
-          );
-        } else {
-          // This endpoint is just being added in this push. We don't know what codebase it is.
-          options.only = ensureTargeted(options.only, r.function.functionId);
-        }
+        // This endpoint is just being added in this push. We don't know what codebase it is.
+        options.only = ensureTargeted(options.only, r.function.functionId);
       }
       addedFunctionsPerSite.push(r.function.functionId);
     }
