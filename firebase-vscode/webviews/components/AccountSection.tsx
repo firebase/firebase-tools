@@ -12,6 +12,7 @@ import { Label } from "./ui/Text";
 import styles from "./AccountSection.scss";
 import { ServiceAccountUser } from "../../common/types";
 import { User } from "../../../src/types/auth";
+import { TEXT } from "../globals/ux-text";
 
 export function AccountSection({
   userEmail,
@@ -25,24 +26,25 @@ export function AccountSection({
   const [userDropdownVisible, toggleUserDropdown] = useState(false);
   const usersLoaded = !!allUsers;
   // Default: initial users check hasn't completed
-  let currentUserElement: ReactElement | string = "checking login";
+  let currentUserElement: ReactElement | string = TEXT.LOGIN_PROGRESS;
   if (usersLoaded && !allUsers.length) {
     // Users loaded but no user was found
     if (isMonospace) {
       // Monospace: this is an error, should have found a workspace
       // service account
-      currentUserElement = "unable to find workspace service account";
+      currentUserElement = TEXT.MONOSPACE_LOGIN_FAIL;
     } else {
       // VS Code: prompt user to log in with Google account
-      currentUserElement = (<VSCodeLink onClick={() => broker.send("addUser")}>
-      Sign in with Google
-    </VSCodeLink>);
+      currentUserElement = (
+        <VSCodeLink onClick={() => broker.send("addUser")}>
+          {TEXT.GOOGLE_SIGN_IN}
+        </VSCodeLink>
+      );
     }
   } else if (usersLoaded && allUsers.length > 0) {
     // Users loaded, at least one user was found
-    if (isMonospace && userEmail === 'service_account') {
-      // TODO(hsubox76): Figure out correct wording
-      currentUserElement = 'workspace logged in';
+    if (isMonospace && userEmail === "service_account") {
+      currentUserElement = TEXT.MONOSPACE_LOGGED_IN;
     } else {
       currentUserElement = userEmail;
     }
@@ -51,7 +53,7 @@ export function AccountSection({
     <div className={styles.accountRow}>
       <Label className={styles.accountRowLabel}>
         <Icon className={styles.accountRowIcon} slot="start" icon="account" />
-        { currentUserElement }
+        {currentUserElement}
       </Label>
       {!usersLoaded && (
         <Label>
@@ -67,6 +69,7 @@ export function AccountSection({
           />
           {userDropdownVisible ? (
             <UserSelectionMenu
+              isMonospace={isMonospace}
               userEmail={userEmail}
               allUsers={allUsers}
               onClose={() => toggleUserDropdown(false)}
@@ -83,10 +86,12 @@ function UserSelectionMenu({
   userEmail,
   allUsers,
   onClose,
+  isMonospace,
 }: {
   userEmail: string;
   allUsers: Array<User | ServiceAccountUser>;
   onClose: Function;
+  isMonospace: boolean;
 }) {
   return (
     <>
@@ -103,12 +108,14 @@ function UserSelectionMenu({
         {allUsers.map((user) => (
           <MenuItem
             onClick={() => {
-              broker.send("requestChangeUser", {user});
+              broker.send("requestChangeUser", { user });
               onClose();
             }}
             key={user.email}
           >
-            {user.email}
+            {isMonospace && user.email === "service_account"
+              ? TEXT.MONOSPACE_LOGIN_SELECTION_ITEM
+              : user.email}
           </MenuItem>
         ))}
         <VSCodeDivider />
@@ -117,7 +124,7 @@ function UserSelectionMenu({
           userEmail !== "service_account" && (
             <MenuItem
               onClick={() => {
-                broker.send("logout", {email: userEmail});
+                broker.send("logout", { email: userEmail });
                 onClose();
               }}
             >
