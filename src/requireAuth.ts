@@ -42,7 +42,7 @@ async function autoAuth(options: Options, authScopes: string[]): Promise<void> {
   const token = await client.getAccessToken();
   token !== null ? apiv2.setAccessToken(token) : false;
 
-  if (!options.isVSCE && (await isMonospaceEnv())) {
+  if (!options.isVSCE && isMonospaceEnv()) {
     await selectProjectInMonospace({
       projectRoot: options.config.projectDir,
       project: options.project,
