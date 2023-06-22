@@ -6,6 +6,7 @@ import { LifecycleCommands } from "../types";
 import { Command } from "../types";
 import { FirebaseError } from "../../../../error";
 import { logger } from "../../../../../src/logger";
+import { conjoinOptions } from "../../../utils";
 
 export interface PackageJSON {
   dependencies?: Record<string, string>;
@@ -15,11 +16,10 @@ export interface PackageJSON {
 }
 type PackageManager = "npm" | "yarn";
 
-const supportedNodeVersion = 18;
+const supportedNodeVersions: string[] = ["18"];
 const NODE_RUNTIME_ID = "nodejs";
 const PACKAGE_JSON = "package.json";
 const YARN_LOCK = "yarn.lock";
-const PACKAGE_LOCK_JSON = "package-lock.json";
 
 export class NodejsRuntime implements Runtime {
   private readonly runtimeRequiredFiles: string[] = [PACKAGE_JSON];
@@ -40,14 +40,17 @@ export class NodejsRuntime implements Runtime {
 
   getNodeImage(engine: Record<string, string> | undefined): string {
     // If no version is mentioned explicitly, assuming application is compatible with latest version.
-    if (!engine) {
-      return `node:${supportedNodeVersion}-slim`;
+    if (!engine || !engine.node) {
+      return `node:${supportedNodeVersions[supportedNodeVersions.length - 1]}-slim`;
     }
-    const versionNumber = parseInt(engine.node, 10);
+    const versionNumber = engine.node;
 
-    if (versionNumber !== supportedNodeVersion) {
+    if (!supportedNodeVersions.includes(versionNumber)) {
       throw new FirebaseError(
-        `This integration expects Node version ${supportedNodeVersion}. You're running version ${versionNumber}, which is not compatible.`
+        `This integration expects Node version ${conjoinOptions(
+          supportedNodeVersions,
+          "or"
+        )}. You're running version ${versionNumber}, which is not compatible.`
       );
     }
 
@@ -83,25 +86,14 @@ export class NodejsRuntime implements Runtime {
     return `npm install --global ${packages.join(" ")}`;
   }
 
-  async installCommand(fs: FileSystem, packageManager: PackageManager): Promise<string> {
-    try {
-      let installCmd = "npm install";
-      if (await fs.exists(PACKAGE_LOCK_JSON)) {
-        installCmd = "npm ci";
-      }
+  installCommand(fs: FileSystem, packageManager: PackageManager): string {
+    let installCmd = "npm install";
 
-      if (packageManager === "yarn") {
-        installCmd = "yarn install";
-        if (await fs.exists(YARN_LOCK)) {
-          installCmd = "yarn install --frozen-lockfile";
-        }
-      }
-
-      return installCmd;
-    } catch (error: any) {
-      logger.error("Failed to check files to identify install command");
-      throw error;
+    if (packageManager === "yarn") {
+      installCmd = "yarn install";
     }
+
+    return installCmd;
   }
 
   detectedCommands(
@@ -200,7 +192,7 @@ export class NodejsRuntime implements Runtime {
         id: NODE_RUNTIME_ID,
         baseImage: nodeImage,
         packageManagerInstallCommand: this.packageManagerInstallCommand(packageManager),
-        installCommand: await this.installCommand(fs, packageManager),
+        installCommand: this.installCommand(fs, packageManager),
         detectedCommands: this.detectedCommands(
           packageManager,
           packageJSON.scripts,
