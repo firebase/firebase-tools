@@ -238,7 +238,7 @@ export class Config {
     });
   }
 
-  public static load(options: any, allowMissing?: boolean) {
+  public static load(options: any, allowMissing?: boolean): Config | null {
     const pd = detectProjectRoot(options);
     const filename = options.configPath || Config.FILENAME;
     if (pd) {
@@ -273,6 +273,7 @@ export class Config {
 
     throw new FirebaseError("Not in a Firebase app directory (could not locate firebase.json)", {
       exit: 1,
+      status: 404,
     });
   }
 }

@@ -1,5 +1,4 @@
 import * as path from "path";
-import * as fs from "fs";
 import * as vscode from "vscode";
 import { transports, format } from "winston";
 import stripAnsi from "strip-ansi";
@@ -7,34 +6,41 @@ import { SPLAT } from "triple-beam";
 import { ExtensionContext, workspace } from "vscode";
 
 import { FirebaseProjectMetadata } from "../../src/types/project";
-import { writeFirebaseRCFile } from "./utils";
 import { ExtensionBrokerImpl } from "./extension-broker";
 import {
   deployToHosting,
+  emulatorsStart,
   getAccounts,
+  getChannels,
+  getEmulatorUiUrl,
+  initHosting,
   listProjects,
+  listRunningEmulators,
   login,
   logoutUser,
-  initHosting,
-  getChannels,
+  stopEmulators,
 } from "./cli";
 import { User } from "../../src/types/auth";
-import { FirebaseRC } from "../../src/firebaserc";
-import { FirebaseConfig } from "../../src/firebaseConfig";
-import { currentOptions, updateOptions } from "./options";
-import { ServiceAccountUser } from "./types";
+import { currentOptions } from "./options";
 import { selectProjectInMonospace } from "../../src/monospace";
 import { setupLoggers, tryStringify } from "../../src/utils";
 import { pluginLogger } from "./logger-wrapper";
 import { logger } from '../../src/logger';
+import { discover } from "../../src/frameworks";
+import { setEnabled } from "../../src/experiments";
+import {
+  readAndSendFirebaseConfigs,
+  setupFirebaseJsonAndRcFileSystemWatcher,
+  updateFirebaseRCProject,
+  getRootFolders
+} from "./config-files";
+import { ServiceAccountUser } from "../common/types";
 
-let firebaseRC: FirebaseRC | null = null;
-let firebaseJSON: FirebaseConfig | null = null;
-let extensionContext: ExtensionContext = null;
 let users: Array<ServiceAccountUser | User> = [];
 let currentUserEmail = "";
 // Stores a mapping from user email to list of projects for that user
 let projectsUserMapping = new Map<string, FirebaseProjectMetadata[]>();
+let channels = null;
 
 async function fetchUsers() {
   const accounts = await getAccounts();
@@ -45,7 +51,6 @@ async function fetchUsers() {
  * Get the user to select a project.
  */
 async function promptUserForProject(
-  broker: ExtensionBrokerImpl,
   projects: FirebaseProjectMetadata[]
 ) {
   const items = projects.map(({ projectId }) => projectId);
@@ -54,7 +59,7 @@ async function promptUserForProject(
     vscode.window.showQuickPick(items).then(async (projectId) => {
       const project = projects.find((p) => p.projectId === projectId);
       if (!project) {
-        if (firebaseRC?.projects?.default) {
+        if (currentOptions.rc?.projects?.default) {
           // Don't show an error message if a project was previously selected,
           // just do nothing.
           resolve(null);
@@ -90,95 +95,59 @@ function updateCurrentUser(
   return currentUserEmail;
 }
 
-function getRootFolders() {
-  if (!workspace) {
-    return [];
-  }
-  const folders = workspace.workspaceFolders
-    ? workspace.workspaceFolders.map((wf) => wf.uri.fsPath)
-    : [];
-  if (workspace.workspaceFile) {
-    folders.push(path.dirname(workspace.workspaceFile.fsPath));
-  }
-  return Array.from(new Set(folders));
-}
-
-function getConfigFile<T>(filename: string): T | null {
-  const rootFolders = getRootFolders();
-  for (const folder of rootFolders) {
-    const jsonFilePath = path.join(folder, filename);
-    if (fs.existsSync(jsonFilePath)) {
-      const fileText = fs.readFileSync(jsonFilePath, "utf-8");
-      try {
-        const result = JSON.parse(fileText);
-        currentOptions.cwd = folder;
-        return result;
-      } catch (e) {
-        pluginLogger.error(`Error parsing JSON in ${jsonFilePath}`);
-        return null;
-      }
-    }
-  }
-  // Usually there's only one root folder unless someone is using a
-  // multi-root VS Code workspace.
-  // https://code.visualstudio.com/docs/editor/multi-root-workspaces
-  // We were trying to play it safe up above by assigning the cwd
-  // based on where a .firebaserc or firebase.json was found but if
-  // the user hasn't run firebase init there won't be one, and without
-  // a cwd we won't know where to put it.
-  //
-  // TODO: prompt where we're going to save a new firebase config
-  // file before we do it so the user can change it
-  if (!currentOptions.cwd) {
-    currentOptions.cwd = rootFolders[0];
-  }
-  return null;
-}
-
-export function setupWorkflow(
+export async function setupWorkflow(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl
 ) {
-  extensionContext = context;
 
-  // Get user-defined VSCode settings.
-  const workspaceConfig = workspace.getConfiguration(
-    'firebase',
-    vscode.workspace.workspaceFolders[0].uri
-  );
-  const shouldDebug: boolean = workspaceConfig.get('debug');
+  // Get user-defined VSCode settings if workspace is found.
+  let shouldWriteDebug: boolean = false;
+  let debugLogPath: string = '';
+  let useFrameworks: boolean = false;
+  let npmPath: string = '';
+  if (vscode.workspace.workspaceFolders) {
+    const workspaceConfig = workspace.getConfiguration(
+      'firebase',
+      vscode.workspace.workspaceFolders[0].uri
+    );
+    shouldWriteDebug = workspaceConfig.get('debug');
+    debugLogPath= workspaceConfig.get('debugLogPath');
+    useFrameworks = workspaceConfig.get('useFrameworks');
+    npmPath = workspaceConfig.get('npmPath');
+    if (npmPath) {
+      process.env.PATH += `:${npmPath}`;
+    }
+  }
 
+  if (useFrameworks) {
+    setEnabled('webframeworks', true);
+  }
   /**
    * Logging setup for logging to console and to file.
    */
   // Sets up CLI logger to log to console
   process.env.DEBUG = 'true';
   setupLoggers();
-  // Re-implement file logger call from ../../src/bin/firebase.ts to not bring
-  // in the entire firebase.ts file
-  const rootFolders = getRootFolders();
-  const filePath = path.join(rootFolders[0], 'firebase-plugin-debug.log');
-  pluginLogger.info('Logging to path', filePath);
+  
   // Only log to file if firebase.debug extension setting is true.
-  if (shouldDebug) {
-    logger.add(
-      new transports.File({
-        level: "debug",
-        filename: filePath,
-        format: format.printf((info) => {
-          const segments = [info.message, ...(info[SPLAT] || [])]
-            .map(tryStringify);
-          return `[${info.level}] ${stripAnsi(segments.join(" "))}`;
-        }),
-      })
-    );
-  }
-  // Read config files and store in memory.
-  readFirebaseConfigs();
-  // Check current users state
-  fetchUsers();
-  // Get hosting channels
-  fetchChannels();
+  if (shouldWriteDebug) {
+    // Re-implement file logger call from ../../src/bin/firebase.ts to not bring
+    // in the entire firebase.ts file
+    const rootFolders = getRootFolders();
+    const filePath = debugLogPath || path.join(rootFolders[0], 'firebase-plugin-debug.log');
+    pluginLogger.info('Logging to path', filePath);
+      logger.add(
+        new transports.File({
+          level: "debug",
+          filename: filePath,
+          format: format.printf((info) => {
+            const segments = [info.message, ...(info[SPLAT] || [])]
+              .map(tryStringify);
+            return `[${info.level}] ${stripAnsi(segments.join(" "))}`;
+          }),
+        })
+      );
+    }
 
   /**
    * Call pluginLogger with log arguments received from webview.
@@ -187,7 +156,8 @@ export function setupWorkflow(
     pluginLogger[level]('(Webview)', ...args);
   });
 
-  broker.on("getEnv", async () => {
+  broker.on("getInitialData", async () => {
+    // Env
     pluginLogger.debug(`Value of process.env.MONOSPACE_ENV: `
       + `${process.env.MONOSPACE_ENV}`);
     broker.send("notifyEnv", {
@@ -195,14 +165,24 @@ export function setupWorkflow(
         isMonospace: Boolean(process.env.MONOSPACE_ENV),
       }
     });
-  });
 
-  broker.on("getUsers", async () => {
-    if (users.length === 0) {
-      await fetchUsers();
-    }
+    // Firebase JSON and RC
+    readAndSendFirebaseConfigs(broker, context);
+
+    // User login state
+    await fetchUsers();
     broker.send("notifyUsers", { users });
     currentUserEmail = updateCurrentUser(users, broker);
+    if (users.length > 0) {
+      await fetchChannels();
+    }
+
+    // Project
+    if (currentOptions.rc?.projects?.default) {
+      broker.send("notifyProjectChanged", {
+        projectId: currentOptions.rc.projects.default
+      });
+    }
   });
 
   broker.on("logout", async ({ email }: { email: string }) => {
@@ -215,16 +195,6 @@ export function setupWorkflow(
     } catch (e) {
       // ignored
     }
-  });
-
-  broker.on("getSelectedProject", async () => {
-    // For now, just read the cached value.
-    // TODO: Extend this to reading from firebaserc
-    if (firebaseRC?.projects?.default) {
-      broker.send("notifyProjectChanged",
-        { projectId: firebaseRC?.projects?.default });
-    }
-    fetchChannels();
   });
 
   broker.on("showMessage", async ({ msg, options }) => {
@@ -264,26 +234,32 @@ export function setupWorkflow(
 
   broker.on("hostingDeploy", async ({ target: deployTarget }) => {
     const { success, consoleUrl, hostingUrl } = await deployToHosting(
-      firebaseJSON,
-      firebaseRC,
+      currentOptions.config,
       deployTarget
     );
     broker.send("notifyHostingDeploy", { success, consoleUrl, hostingUrl });
     if (success) {
-      fetchChannels();
+      fetchChannels(true);
     }
   });
 
-  broker.on("getFirebaseJson", async () => {
-    readAndSendFirebaseConfigs(broker);
+  broker.on("promptUserForInput", async () => {
+    const response = await vscode.window.showInputBox({
+      title: "New Preview Channel",
+      prompt: "Enter a name for the new preview channel"
+    });
+    broker.send("notifyPreviewChannelResponse", { id: response });
   });
 
   context.subscriptions.push(
-    setupFirebaseJsonAndRcFileSystemWatcher(broker)
+    setupFirebaseJsonAndRcFileSystemWatcher(broker, context)
   );
 
-  async function fetchChannels() {
-    const channels = await getChannels(firebaseJSON);
+  async function fetchChannels(force = false) {
+    if (force || !channels) {
+      pluginLogger.debug('Fetching hosting channels');
+      channels = await getChannels(currentOptions.config);
+    };
     broker.send("notifyChannels", { channels });
   }
 
@@ -337,113 +313,98 @@ export function setupWorkflow(
         projectsUserMapping.set(email, projects);
       }
       try {
-        projectId = await promptUserForProject(broker, projects);
+        projectId = await promptUserForProject(projects);
       } catch (e) {
         vscode.window.showErrorMessage(e.message);
       }
     }
     if (projectId) {
-      await updateFirebaseRC("default", projectId);
+      await updateFirebaseRCProject(context, "default", projectId);
       broker.send("notifyProjectChanged", { projectId });
-      fetchChannels();
+      fetchChannels(true);
     }
   }
 
   async function selectAndInitHosting({ projectId, singleAppSupport }) {
-    const options: vscode.OpenDialogOptions = {
-      canSelectMany: false,
-      openLabel: `Select distribution/public folder for ${projectId}`,
-      canSelectFiles: false,
-      canSelectFolders: true,
-    };
-    const fileUri = await vscode.window.showOpenDialog(options);
-    if (fileUri && fileUri[0] && fileUri[0].fsPath) {
-      const publicFolderFull = fileUri[0].fsPath;
-      const publicFolder = publicFolderFull.substring(
-        currentOptions.cwd.length + 1
-      );
+    let discoveredFramework;
+    // Note: discover() takes a few seconds. No need to block users that don't
+    // have frameworks support enabled.
+    if (useFrameworks) {
+      discoveredFramework = useFrameworks && await discover(currentOptions.cwd, false);
+      pluginLogger.debug('Searching for a web framework in this project.');
+    }
+    if (discoveredFramework) {
+      pluginLogger.debug('Detected web framework, launching frameworks init.');
       await initHosting({
         spa: singleAppSupport,
-        public: publicFolder,
+        useFrameworks: true
       });
-      readAndSendFirebaseConfigs(broker);
-      broker.send("notifyHostingFolderReady",
-        { projectId, folderPath: currentOptions.cwd });
-      
-      await fetchChannels();
+    } else {
+      const options: vscode.OpenDialogOptions = {
+        canSelectMany: false,
+        openLabel: `Select distribution/public folder for ${projectId}`,
+        canSelectFiles: false,
+        canSelectFolders: true,
+      };
+      const fileUri = await vscode.window.showOpenDialog(options);
+      if (fileUri && fileUri[0] && fileUri[0].fsPath) {
+        const publicFolderFull = fileUri[0].fsPath;
+        const publicFolder = publicFolderFull.substring(
+          currentOptions.cwd.length + 1
+        );
+        await initHosting({
+          spa: singleAppSupport,
+          public: publicFolder,
+          useFrameworks: false
+        });
+      }
     }
+    readAndSendFirebaseConfigs(broker, context);
+    broker.send("notifyHostingInitDone",
+      { projectId, folderPath: currentOptions.cwd });
+    await fetchChannels(true);
   }
-}
-
-/**
- * Parse firebase.json and .firebaserc from the configured location, if they
- * exist, and write to memory.
- */
-function readFirebaseConfigs() {
-  firebaseRC = getConfigFile<FirebaseRC>(".firebaserc");
-  firebaseJSON = getConfigFile<FirebaseConfig>("firebase.json");
-
-  updateOptions(extensionContext, firebaseJSON, firebaseRC);
-}
-
-/**
- *  Read Firebase configs and then send it to webviews through the given broker
- */
-async function readAndSendFirebaseConfigs(broker: ExtensionBrokerImpl) {
-  readFirebaseConfigs();
-  broker.send("notifyFirebaseConfig",
-    {
-      firebaseJson: firebaseJSON, firebaseRC
-    });
-}
-
-/**
- * Write new default project to .firebaserc
- */
-async function updateFirebaseRC(alias: string, projectId: string) {
-  if (currentOptions.cwd) {
-    firebaseRC = {
-      ...firebaseRC,
-      projects: {
-        default: firebaseRC?.projects?.default || "",
-        ...(firebaseRC?.projects || {}),
-        [alias]: projectId,
-      },
-    };
-    writeFirebaseRCFile(`${currentOptions.cwd}/.firebaserc`, firebaseRC);
-    updateOptions(extensionContext, firebaseJSON, firebaseRC);
-  }
-}
-
-/**
- * Set up a FileSystemWatcher for .firebaserc and firebase.json Also un-watch and re-watch when the
- * configuration for where in the workspace the .firebaserc and firebase.json are.
- */
-function setupFirebaseJsonAndRcFileSystemWatcher(
-  broker: ExtensionBrokerImpl
-): vscode.Disposable {
-  // Create a new watcher
-  let watcher = newWatcher();
-
-  // Return a disposable that tears down a watcher if it's active
-  return {
-    dispose() {
-      watcher && watcher.dispose();
-    },
-  };
-
-  // HelperFunction to create a new watcher
-  function newWatcher() {
-    if (!currentOptions.cwd) {
-      return null;
+  broker.on(
+    "launchEmulators",
+    async ({ emulatorUiSelections }) => {
+      await emulatorsStart(emulatorUiSelections);
+      broker.send("notifyRunningEmulatorInfo", { uiUrl: getEmulatorUiUrl(), displayInfo: listRunningEmulators() });
     }
+  );
 
-    let watcher = workspace.createFileSystemWatcher(
-      path.join(currentOptions.cwd, "{firebase.json,.firebaserc}")
-    );
-    watcher.onDidChange(async () => {
-      readAndSendFirebaseConfigs(broker);
-    });
-    return watcher;
-  }
+  broker.on(
+    "stopEmulators",
+    async () => {
+      await stopEmulators();
+      // Update the UI
+      broker.send("notifyEmulatorsStopped");
+    }
+  );
+
+  broker.on(
+    "selectEmulatorImportFolder",
+    async () => {
+      const options: vscode.OpenDialogOptions = {
+        canSelectMany: false,
+        openLabel: `Pick an import folder`,
+        title: `Pick an import folder`,
+        canSelectFiles: false,
+        canSelectFolders: true,
+      };
+      const fileUri = await vscode.window.showOpenDialog(options);
+      // Update the UI of the selection
+      if (!fileUri || fileUri.length < 1) {
+        vscode.window.showErrorMessage("Invalid import folder selected.");
+        return;
+      }
+      broker.send("notifyEmulatorImportFolder", { folder: fileUri[0].fsPath });
+    }
+  );
+}
+
+/**
+ * Cleans up any open resources before shutting down.
+ */
+export async function onShutdown() {
+  await stopEmulators();
 }
