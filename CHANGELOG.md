@@ -1,1 +1,2 @@
 - Run lifecycle hooks for specific codebases. (#6011)
+- Fixed issue causing `firebase emulators:start` to crash in Next.js apps (#6005)
