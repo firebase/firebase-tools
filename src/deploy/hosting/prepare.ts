@@ -7,7 +7,7 @@ import { Context } from "./context";
 import { Options } from "../../options";
 import { HostingOptions } from "../../hosting/options";
 import { assertExhaustive, zipIn } from "../../functional";
-import { track } from "../../track";
+import { trackGA4 } from "../../track";
 import * as utils from "../../utils";
 import { HostingSource, RunRewrite } from "../../firebaseConfig";
 import * as backend from "../functions/backend";
@@ -137,7 +137,9 @@ export async function prepare(context: Context, options: HostingOptions & Option
         labels,
       };
       const [, versionName] = await Promise.all([
-        track("hosting_deploy", config.webFramework || "classic"),
+        trackGA4("hosting_version", {
+          framework: config.webFramework || "classic",
+        }),
         api.createVersion(config.site, version),
       ]);
       return versionName;
