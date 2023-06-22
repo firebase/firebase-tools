@@ -175,9 +175,6 @@ function getReleventConfigs(target: string, options: Options) {
   }
 }
 
-/**
- *
- */
 export function lifecycleHooks(
   target: string,
   hook: string
