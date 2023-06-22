@@ -121,7 +121,6 @@ export const deploy = async function (
 
   const duration = Date.now() - startTime;
   const analyticsParams: AnalyticsParams = {
-    duration,
     interactive: options.nonInteractive ? "false" : "true",
   };
 
@@ -132,7 +131,7 @@ export const deploy = async function (
   for (const t of targetNames) {
     analyticsParams[t] = "true";
   }
-  await trackGA4("product_deploy", analyticsParams);
+  await trackGA4("product_deploy", analyticsParams, duration);
 
   logger.info();
   logSuccess(bold(underline("Deploy complete!")));

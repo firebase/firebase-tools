@@ -241,12 +241,15 @@ export class Command {
           await withTimeout(
             5000,
             Promise.all([
-              trackGA4("command_execution", {
-                command_name: this.name,
-                result: "error",
-                duration,
-                interactive: getInheritedOption(options, "nonInteractive") ? "false" : "true",
-              }),
+              trackGA4(
+                "command_execution",
+                {
+                  command_name: this.name,
+                  result: "error",
+                  interactive: getInheritedOption(options, "nonInteractive") ? "false" : "true",
+                },
+                duration
+              ),
               isEmulator
                 ? trackEmulator("command_error", {
                     command_name: this.name,
