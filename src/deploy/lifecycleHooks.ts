@@ -133,28 +133,51 @@ function getReleventConfigs(target: string, options: Options) {
 
   onlyTargets = onlyTargets
     .filter((individualOnly) => {
-      return individualOnly.indexOf(`${target}:`) === 0;
+      return individualOnly.startsWith(`${target}:`);
     })
     .map((individualOnly) => {
       return individualOnly.replace(`${target}:`, "");
     });
 
-  // If config specifies a target, only include it if it's in the only list
-  targetConfigs = targetConfigs.filter((config) => {
-    return !config.target || onlyTargets.includes(config.target);
-  });
-  // If config specifies a codebase, only include it if it's in the only list
-  targetConfigs = targetConfigs.filter((config) => {
-    if (!config.codebase) return true;
-
-    return onlyTargets.some(
-      (individualOnly) =>
-        individualOnly.indexOf(":") === -1 ||
-        config.codebase === individualOnly.split(":")[0]
+  if (target === "functions") {
+    let onlyConfigs = [];
+    const matched = onlyTargets.reduce(
+      (matched: object, target: string) => ({ ...matched, [target]: false }),
+      {}
     );
-  });
+    targetConfigs.forEach((config: any) => {
+      if (!config.codebase) {
+        onlyConfigs.push(config);
+      } else {
+        const found = onlyTargets.find(
+          (individualOnly) => config.codebase === individualOnly.split(":")[0]
+        );
+        if (found) {
+          onlyConfigs.push(config);
+          matched[found] = true;
+        }
+      }
+    });
+    // if there are --only targets that failed to match, we assume that the target is a
+    // individually specified function and so we run lifecycle hooks for all codebases.
+    // However, this also means that codebases or functions that don't exist will also run
+    // the all codebase lifecycle hooks. Until we can significantly refactor the way we
+    // identify which functions are in which codebase in the predeploy phase, we have to live
+    // with this default behavior.
+    if (!Object.values(matched).every((matched) => matched)) {
+      onlyConfigs = targetConfigs;
+    }
+    return onlyConfigs;
+  } else {
+    return targetConfigs.filter((config: any) => {
+      return !config.target || onlyTargets.includes(config.target);
+    });
+  }
 }
 
+/**
+ *
+ */
 export function lifecycleHooks(
   target: string,
   hook: string
