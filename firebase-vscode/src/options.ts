@@ -1,36 +1,19 @@
-import { Config as cliConfig } from "../../src/config";
-import { FirebaseConfig } from "../../src/firebaseConfig";
-import { FirebaseRC } from "../common/firebaserc";
 import { RC } from "../../src/rc";
-import { BaseOptions, Options } from "../../src/options";
+import { Options } from "../../src/options";
 import { Command } from "../../src/command";
 import { ExtensionContext } from "vscode";
 import { setInquirerOptions } from "./stubs/inquirer-stub";
-
-/**
- * User-facing CLI options
- * Passed to command.prepare()
- */
-
-interface CliOptions extends Omit<BaseOptions, "config"> {
-  config: string;
-}
-
-/**
- * Final options passed to CLI command functions
- * Result of command.prepare()
- */
-interface CommandOptions extends Options {}
+import { Config } from "../../src/config";
 
 /**
  * User-facing CLI options
  */
-export let currentOptions: CliOptions & { isVSCE: boolean } = {
+export let currentOptions: Options & { isVSCE: boolean } = {
   cwd: "",
   configPath: "",
   only: "",
   except: "",
-  config: "",
+  config: new Config({}),
   filteredTargets: [],
   force: true,
 
@@ -45,31 +28,32 @@ export let currentOptions: CliOptions & { isVSCE: boolean } = {
   nonInteractive: true,
   interactive: false,
   debug: false,
-
   rc: null,
+  exportOnExit: false,
+  import: "",
+
   isVSCE: true
 };
 
 export function updateOptions(
   context: ExtensionContext,
-  firebaseJSON: FirebaseConfig,
-  firebaseRC: FirebaseRC
+  firebaseJSON: Config,
+  firebaseRC: RC
 ) {
-  // const config = new cliConfig(firebaseJSON, options);
-  // currentOptions.config = config;
   if (firebaseJSON) {
+    currentOptions.config = firebaseJSON;
     currentOptions.configPath = `${currentOptions.cwd}/firebase.json`;
-    if (firebaseJSON.hosting) {
+    if (firebaseJSON.has('hosting')) {
       currentOptions = {
         ...currentOptions,
-        ...firebaseJSON.hosting,
+        ...firebaseJSON.get('hosting'),
       };
     }
   } else {
     currentOptions.configPath = "";
   }
   if (firebaseRC) {
-    currentOptions.rc = new RC(`${currentOptions.cwd}/.firebaserc`, firebaseRC);
+    currentOptions.rc = firebaseRC;
     currentOptions.project = firebaseRC.projects?.default;
   } else {
     currentOptions.rc = null;
@@ -85,15 +69,15 @@ export function updateOptions(
  * Mostly runs it through the CLI's command.prepare() options formatter.
  */
 export async function getCommandOptions(
-  firebaseJSON: FirebaseConfig = {},
-  options: CliOptions = currentOptions
-): Promise<CommandOptions> {
+  firebaseJSON: Config,
+  options: Options = currentOptions
+): Promise<Options> {
   // Use any string, it doesn't affect `prepare()`.
   const command = new Command("deploy");
-  let newOptions = Object.assign(options);
-  if (firebaseJSON.hosting) {
-    newOptions = Object.assign(newOptions, firebaseJSON.hosting);
+  let newOptions = Object.assign(options, { config: options.configPath });
+  if (firebaseJSON?.has('hosting')) {
+    newOptions = Object.assign(newOptions, firebaseJSON.get('hosting'));
   }
   await command.prepare(newOptions);
-  return newOptions as CommandOptions;
+  return newOptions as Options;
 }

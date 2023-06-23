@@ -39,7 +39,6 @@ import {
   NODE_VERSION,
   SupportLevelWarnings,
   VALID_ENGINES,
-  WebFrameworks,
 } from "./constants";
 import {
   BUILD_TARGET_PURPOSE,
@@ -54,6 +53,7 @@ import { ensureTargeted } from "../functions/ensureTargeted";
 import { isDeepStrictEqual } from "util";
 import { resolveProjectPath } from "../projectPath";
 import { logger } from "../logger";
+import { WebFrameworks } from "./frameworks";
 
 export { WebFrameworks };
 
@@ -102,6 +102,14 @@ function memoizeBuild(
   const value = build(dir, target);
   BUILD_MEMO.set(key, value);
   return value;
+}
+
+/**
+ * Use a function to ensure the same codebase name is used here and
+ * during hosting deploy.
+ */
+export function generateSSRCodebaseId(site: string) {
+  return `firebase-frameworks-${site}`;
 }
 
 /**
@@ -330,7 +338,7 @@ export async function prepareFrameworks(
         );
       }
 
-      const codebase = `firebase-frameworks-${site}`;
+      const codebase = generateSSRCodebaseId(site);
       const existingFunctionsConfig = options.config.get("functions")
         ? [].concat(options.config.get("functions"))
         : [];
