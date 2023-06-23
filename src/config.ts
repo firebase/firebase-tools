@@ -273,6 +273,7 @@ export class Config {
 
     throw new FirebaseError("Not in a Firebase app directory (could not locate firebase.json)", {
       exit: 1,
+      status: 404,
     });
   }
 }

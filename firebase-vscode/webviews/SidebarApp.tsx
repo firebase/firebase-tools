@@ -1,11 +1,7 @@
-import { VSCodeButton } from "@vscode/webview-ui-toolkit/react";
 import React, { useEffect, useState } from "react";
 import { Spacer } from "./components/ui/Spacer";
-import { Body } from "./components/ui/Text";
 import { broker } from "./globals/html-broker";
 import { User } from "../../src/types/auth";
-import { FirebaseRC } from "../../src/firebaserc";
-import { PanelSection } from "./components/ui/PanelSection";
 import { AccountSection } from "./components/AccountSection";
 import { ProjectSection } from "./components/ProjectSection";
 import { FirebaseConfig } from "../../src/firebaseConfig";
@@ -13,9 +9,10 @@ import { ServiceAccountUser } from "../common/types";
 import { DeployPanel } from "./components/DeployPanel";
 import { HostingState } from "./webview-types";
 import { ChannelWithId } from "./messaging/types";
-import { EmulatorPanel } from "./EmulatorPanel";
+import { EmulatorPanel } from "./components/EmulatorPanel";
 
 import { webLogger } from "./globals/web-logger";
+import { InitFirebasePanel } from "./components/InitPanel";
 
 export function SidebarApp() {
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -36,19 +33,15 @@ export function SidebarApp() {
 
   useEffect(() => {
     webLogger.debug("loading SidebarApp component");
-    broker.send("getEnv");
-    broker.send("getUsers");
-    broker.send("getFirebaseJson");
-    broker.send("getSelectedProject");
-    broker.send("getChannels");
+    broker.send("getInitialData");
 
     broker.on("notifyEnv", ({ env }) => {
-      webLogger.debug("notifyEnv()");
+      webLogger.debug(`notifyEnv() returned ${JSON.stringify(env)}`);
       setEnv(env);
     });
 
     broker.on("notifyChannels", ({ channels }) => {
-      webLogger.debug("notifyChannels()");
+      webLogger.debug(`notifyChannels() returned ${JSON.stringify(channels)}`);
       setChannels(channels);
     });
 
@@ -62,7 +55,7 @@ export function SidebarApp() {
         webLogger.debug("set firebase JSON");
       }
       if (firebaseJson?.hosting) {
-        webLogger.debug("Detected hosting setup");
+        webLogger.debug("Detected firebase.json");
         setHostingOnboarded(true);
         broker.send("showMessage", {
           msg: "Auto-detected hosting setup in this folder",
@@ -80,7 +73,7 @@ export function SidebarApp() {
     });
 
     broker.on("notifyUsers", ({ users }) => {
-      webLogger.debug("notifyUsers()");
+      webLogger.debug(`notifyUsers() returned ${JSON.stringify(users)}`);
       setAllUsers(users);
     });
 
@@ -94,14 +87,14 @@ export function SidebarApp() {
       setUserEmail(email);
     });
 
-    broker.on("notifyHostingFolderReady", ({ projectId, folderPath }) => {
-      webLogger.debug(`notifyHostingFolderReady: ${projectId}, ${folderPath}`);
+    broker.on("notifyHostingInitDone", ({ projectId, folderPath }) => {
+      webLogger.debug(`notifyHostingInitDone: ${projectId}, ${folderPath}`);
       setHostingOnboarded(true);
     });
 
     broker.on("notifyHostingDeploy", ({ success }) => {
       webLogger.debug(`notifyHostingDeploy: ${success}`);
-      setHostingState("deployed");
+      setHostingState(success ? 'success' : 'failure');
     });
   }, []);
 
@@ -153,22 +146,7 @@ export function SidebarApp() {
           }}
         />
       )}
-      {(!!userEmail && !!firebaseJson) && <EmulatorPanel firebaseJson={firebaseJson} />}
+      {(!!userEmail && !!firebaseJson) && <EmulatorPanel firebaseJson={firebaseJson} projectId={projectId} />}
     </>
-  );
-}
-
-function InitFirebasePanel({ onHostingInit }: { onHostingInit: Function }) {
-  return (
-    <PanelSection isLast>
-      <Body>Choose a path below to get started</Body>
-      <Spacer size="medium" />
-      <VSCodeButton onClick={() => onHostingInit()}>
-        Host your web app
-      </VSCodeButton>
-      <Spacer size="medium" />
-      <Body>Free web hosting with a world-class CDN for peak performance</Body>
-      <Spacer size="large" />
-    </PanelSection>
   );
 }

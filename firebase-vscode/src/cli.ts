@@ -12,24 +12,21 @@ import { hostingChannelDeployAction } from "../../src/commands/hosting-channel-d
 import { listFirebaseProjects } from "../../src/management/projects";
 import { requireAuth } from "../../src/requireAuth";
 import { deploy } from "../../src/deploy";
-import { FirebaseRC } from "../../src/firebaserc";
 import { getDefaultHostingSite } from "../../src/getDefaultHostingSite";
 import { initAction } from "../../src/commands/init";
 import { startAll as startAllEmulators, cleanShutdown as stopAllEmulators } from "../../src/emulator/controller";
 import { EmulatorRegistry } from "../../src/emulator/registry";
 import { EmulatorInfo, Emulators } from "../../src/emulator/types";
-import { FirebaseConfig, HostingSingle } from "../../src/firebaseConfig";
 import { Account, User } from "../../src/types/auth";
 import { Options } from "../../src/options";
 import { currentOptions, getCommandOptions } from "./options";
 import { setInquirerOptions } from "./stubs/inquirer-stub";
 import { ServiceAccount } from "../common/types";
 import { listChannels } from "../../src/hosting/api";
-import { ChannelWithId } from "./messaging/types";
 import * as commandUtils from "../../src/emulator/commandUtils";
-import { EmulatorUiSelections } from "../common/messaging/types";
-import { setEnabled } from "../../src/experiments";
+import { EmulatorUiSelections, ChannelWithId } from "../common/messaging/types";
 import { pluginLogger } from "./logger-wrapper";
+import { Config } from "../../src/config";
 
 /**
  * Wrap the CLI's requireAuth() which is normally run before every command
@@ -39,6 +36,7 @@ import { pluginLogger } from "./logger-wrapper";
 async function requireAuthWrapper(showError: boolean = true) {
   // Try to get global default from configstore. For some reason this is
   // often overwritten when restarting the extension.
+  pluginLogger.debug('requireAuthWrapper');
   let account = getGlobalDefaultAccount();
   if (!account) {
     // If nothing in configstore top level, grab the first "additionalAccount"
@@ -48,8 +46,9 @@ async function requireAuthWrapper(showError: boolean = true) {
       setGlobalDefaultAccount(account);
     }
   }
-  // If account is still null, `requireAuth()` will use google-auth-library
-  // to look for the service account hopefully.
+  // `requireAuth()` will register the token with apiv2, and if account is
+  // still null at this point, it will use google-auth-library
+  // to find the service account.
   try {
     const commandOptions = await getCommandOptions(undefined, {
       ...currentOptions,
@@ -71,8 +70,8 @@ async function requireAuthWrapper(showError: boolean = true) {
     }
     return false;
   }
-  // No accounts but no error on requireAuth means it's a service account
-  // (or glogin - edge case)
+  // If we reach here, there is either a google account or no error on
+  // requireAuth (which means there is a service account or glogin)
   return true;
 }
 
@@ -91,7 +90,7 @@ export async function getAccounts(): Promise<Array<Account | ServiceAccount>> {
   return accounts;
 }
 
-export async function getChannels(firebaseJSON: FirebaseConfig): Promise<ChannelWithId[]> {
+export async function getChannels(firebaseJSON: Config): Promise<ChannelWithId[]> {
   if (!firebaseJSON) {
     return [];
   }
@@ -103,18 +102,14 @@ export async function getChannels(firebaseJSON: FirebaseConfig): Promise<Channel
   if (!options.project) {
     return [];
   }
-  // TODO(hsubox76): handle multiple hosting configs
-  if (!(firebaseJSON.hosting as HostingSingle).site) {
-    (firebaseJSON.hosting as HostingSingle).site =
-      await getDefaultHostingSite(options);
-  }
+  const site = await getDefaultHostingSite(options);
   pluginLogger.debug(
     'Calling listChannels with params',
     options.project,
-    (firebaseJSON.hosting as HostingSingle).site
+    site
   );
   try {
-    const channels = await listChannels(options.project, (firebaseJSON.hosting as HostingSingle).site);
+    const channels = await listChannels(options.project, site);
     return channels.map(channel => ({
       ...channel, id: channel.name.split("/").pop()
     }));
@@ -149,14 +144,13 @@ export async function listProjects() {
   return listFirebaseProjects();
 }
 
-export async function initHosting(options: { spa: boolean; public: string }) {
+export async function initHosting(
+  options: { spa: boolean; public?: string, useFrameworks: boolean }
+) {
   await requireAuthWrapper();
   let webFrameworksOptions = {};
-  if (process.env.MONOSPACE_ENV) {
-    pluginLogger.debug('initHosting found MONOSPACE_ENV, '
-      + 'setting web frameworks options');
-    // TODO(hsubox76): Also allow VS Code users to enable this manually with a UI
-    setEnabled('webframeworks', true);
+  if (options.useFrameworks) {
+    pluginLogger.debug('Setting web frameworks options');
     webFrameworksOptions = {
       // Should use auto-discovered framework
       useDiscoveredFramework: true,
@@ -187,7 +181,7 @@ export async function emulatorsStart(emulatorUiSelections: EmulatorUiSelections)
   });
   // Adjusts some options, export on exit can be a boolean or a path.
   commandUtils.setExportOnExitOptions(commandOptions as commandUtils.ExportOnExitOptions);
-  return startAllEmulators(commandOptions, /*showUi=*/ true); 
+  return startAllEmulators(commandOptions, /*showUi=*/ true);
 }
 
 export async function stopEmulators() {
@@ -204,8 +198,7 @@ export function getEmulatorUiUrl(): string | undefined {
 }
 
 export async function deployToHosting(
-  firebaseJSON: FirebaseConfig,
-  firebaseRC: FirebaseRC,
+  firebaseJSON: Config,
   deployTarget: string
 ) {
   if (!(await requireAuthWrapper())) {
@@ -216,11 +209,8 @@ export async function deployToHosting(
   try {
     const options = { ...currentOptions };
     // TODO(hsubox76): handle multiple hosting configs
-    if (!(firebaseJSON.hosting as HostingSingle).site) {
-      pluginLogger.debug('Calling getDefaultHostingSite() with options', inspect(options));
-      (firebaseJSON.hosting as HostingSingle).site =
-        await getDefaultHostingSite(options);
-    }
+    pluginLogger.debug('Calling getDefaultHostingSite() with options', inspect(options));
+    firebaseJSON.set('hosting', { ...firebaseJSON.get('hosting'), site: await getDefaultHostingSite(options) });
     pluginLogger.debug('Calling getCommandOptions() with options', inspect(options));
     const commandOptions = await getCommandOptions(firebaseJSON, options);
     pluginLogger.debug('Calling hosting deploy with command options', inspect(commandOptions));
