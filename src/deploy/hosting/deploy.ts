@@ -2,7 +2,6 @@ import { Uploader } from "./uploader";
 import { detectProjectRoot } from "../../detectProjectRoot";
 import { listFiles } from "../../listFiles";
 import { logger } from "../../logger";
-import { track } from "../../track";
 import { envOverride, logLabeledBullet, logLabeledSuccess } from "../../utils";
 import { bold, cyan } from "colorette";
 import * as ora from "ora";

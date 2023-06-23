@@ -4,7 +4,7 @@ import * as path from "path";
 import * as fsConfig from "../firestore/fsConfig";
 
 import { logger } from "../logger";
-import { trackEmulator } from "../track";
+import { trackEmulator, trackGA4 } from "../track";
 import * as utils from "../utils";
 import { EmulatorRegistry } from "./registry";
 import {
@@ -351,13 +351,11 @@ export async function startAll(
       extensionsBackends
     );
     emulatableBackends.push(...filteredExtensionsBackends);
-    trackEmulator("extensions_emulated", {
-      "number_of_extensions_emulated": filteredExtensionsBackends.length,
-      "number_of_extensions_in_manifest": extensionsBackends.length,
+    trackGA4("extensions_emulated", {
+      number_of_extensions_emulated: filteredExtensionsBackends.length,
+      number_of_extensions_ignored: extensionsBackends.length - filteredExtensionsBackends.length,
     });
   }
-
-
 
   const listenConfig = {} as Record<PortName, EmulatorListenConfig>;
   if (emulatableBackends.length) {
