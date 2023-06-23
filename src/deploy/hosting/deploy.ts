@@ -88,9 +88,6 @@ export async function deploy(context: Context, options: Options): Promise<void> 
 
     try {
       await uploader.start();
-    } catch (err: any) {
-      void track("Hosting Deploy", "failure");
-      throw err;
     } finally {
       clearInterval(progressInterval);
       updateSpinner(uploader.statusMessage(), debugging);
@@ -103,8 +100,6 @@ export async function deploy(context: Context, options: Options): Promise<void> 
     logLabeledSuccess(`hosting[${deploy.config.site}]`, "file upload complete");
     const dt = Date.now() - t0;
     logger.debug(`[hosting] deploy completed after ${dt}ms`);
-
-    void track("Hosting Deploy", "success", dt);
     return runDeploys(deploys, debugging);
   }
 

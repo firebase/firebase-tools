@@ -351,7 +351,13 @@ export async function startAll(
       extensionsBackends
     );
     emulatableBackends.push(...filteredExtensionsBackends);
+    trackEmulator("extensions_emulated", {
+      "number_of_extensions_emulated": filteredExtensionsBackends.length,
+      "number_of_extensions_in_manifest": extensionsBackends.length,
+    });
   }
+
+
 
   const listenConfig = {} as Record<PortName, EmulatorListenConfig>;
   if (emulatableBackends.length) {

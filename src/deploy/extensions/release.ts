@@ -7,6 +7,7 @@ import { ErrorHandler } from "./errors";
 import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
 import { saveEtags } from "../../extensions/etags";
+import { trackGA4 } from "../../track";
 
 export async function release(context: Context, options: Options, payload: Payload) {
   const projectId = needProjectId(options);
@@ -45,6 +46,16 @@ export async function release(context: Context, options: Options, payload: Paylo
   deploymentQueue.close();
 
   await deploymentPromise;
+  // extensionsStartTime should always be populated, but if not, fall back to something that won't break us.
+  const duration = context.extensionsStartTime ? Date.now() - context.extensionsStartTime : 1;
+  await trackGA4("extensions_deploy", {
+    "extension_instance_created": payload.instancesToCreate?.length ?? 0,
+    "extension_instance_updated": payload.instancesToUpdate?.length ?? 0,
+    "extension_instance_configured": payload.instancesToConfigure?.length ?? 0,
+    "extension_instance_deleted": payload.instancesToDelete?.length ?? 0,
+    "errors": errorHandler.errors.length ?? 0,
+    "interactive": options.nonInteractive ? "false" : "true",
+  }, duration);
 
   // After deployment, write the latest etags to RC so we can detect out of band changes in the next deploy.
   const newHave = await planner.have(projectId);
