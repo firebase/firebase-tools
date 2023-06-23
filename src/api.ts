@@ -37,10 +37,6 @@ export const appDistributionOrigin = utils.envOverride(
   "FIREBASE_APP_DISTRIBUTION_URL",
   "https://firebaseappdistribution.googleapis.com"
 );
-export const appengineOrigin = utils.envOverride(
-  "FIREBASE_APPENGINE_URL",
-  "https://appengine.googleapis.com"
-);
 export const authOrigin = utils.envOverride("FIREBASE_AUTH_URL", "https://accounts.google.com");
 export const consoleOrigin = utils.envOverride(
   "FIREBASE_CONSOLE_URL",
@@ -176,6 +172,10 @@ export const cloudRunApiOrigin = utils.envOverride(
 export const serviceUsageOrigin = utils.envOverride(
   "FIREBASE_SERVICE_USAGE_URL",
   "https://serviceusage.googleapis.com"
+);
+export const frameworksOrigin = utils.envOverride(
+  "FRAMEWORKS_URL",
+  "https://placeholder.googleapis.com"
 );
 export const githubOrigin = utils.envOverride("GITHUB_URL", "https://github.com");
 export const githubApiOrigin = utils.envOverride("GITHUB_API_URL", "https://api.github.com");
