@@ -145,7 +145,6 @@ export function SidebarApp() {
           }}
         />
       )}
-      {/* (!!userEmail && !!firebaseJson) && <EmulatorPanel firebaseJson={firebaseJson} projectId={projectId} /> */}
     </>
   );
 }
