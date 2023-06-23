@@ -11,7 +11,7 @@ import { EventEmitter } from "events";
 
 import { Account } from "../types/auth";
 import { logger } from "../logger";
-import { track, trackEmulator } from "../track";
+import { trackEmulator } from "../track";
 import { Constants } from "./constants";
 import { EmulatorInfo, EmulatorInstance, Emulators, FunctionsExecutionMode } from "./types";
 import * as chokidar from "chokidar";
@@ -63,7 +63,6 @@ import { resolveBackend } from "../deploy/functions/build";
 import { setEnvVarsForEmulators } from "./env";
 import { runWithVirtualEnv } from "../functions/python";
 
-const EVENT_INVOKE = "functions:invoke"; // event name for UA
 const EVENT_INVOKE_GA4 = "functions_invoke"; // event name GA4 (alphanumertic)
 
 /*
@@ -1554,7 +1553,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       }
     }
     // For analytics, track the invoked service
-    void track(EVENT_INVOKE, getFunctionService(trigger));
     void trackEmulator(EVENT_INVOKE_GA4, {
       function_service: getFunctionService(trigger),
     });
