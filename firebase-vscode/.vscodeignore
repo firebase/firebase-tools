@@ -16,3 +16,5 @@ vsc-extension-quickstart.md
 webpack.*.js
 ../
 *.zip
+node_modules/
+dist/test/
