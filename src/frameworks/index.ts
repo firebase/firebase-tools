@@ -105,6 +105,14 @@ function memoizeBuild(
 }
 
 /**
+ * Use a function to ensure the same codebase name is used here and
+ * during hosting deploy.
+ */
+export function generateSSRCodebaseId(site: string) {
+  return `firebase-frameworks-${site}`;
+}
+
+/**
  *
  */
 export async function prepareFrameworks(
@@ -330,7 +338,7 @@ export async function prepareFrameworks(
         );
       }
 
-      const codebase = `firebase-frameworks-${site}`;
+      const codebase = generateSSRCodebaseId(site);
       const existingFunctionsConfig = options.config.get("functions")
         ? [].concat(options.config.get("functions"))
         : [];
