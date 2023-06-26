@@ -3,13 +3,10 @@ import { NodejsRuntime } from "./runtime/node";
 import { FirebaseError } from "../../../error";
 import { AppBundle } from "../interfaces";
 
-/**
- * Discover framework in the given project directory
- */
 const availableRuntimes: Runtime[] = [new NodejsRuntime()];
 
 /**
- *
+ * Discover framework in the given project directory
  */
 export async function discover(
   fs: FileSystem,
@@ -22,7 +19,9 @@ export async function discover(
         if (!discoveredRuntime) {
           discoveredRuntime = runtime;
         } else {
-          throw new FirebaseError("Multiple runtimes discovered for the codebase");
+          throw new FirebaseError(
+            `Multiple runtimes discovered within the codebase ${discoveredRuntime.getRuntimeName()}, ${runtime.getRuntimeName()}.`
+          );
         }
       }
     }
