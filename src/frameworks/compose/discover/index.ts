@@ -35,7 +35,7 @@ export async function discover(
     return runtimeSpec;
   } catch (error: any) {
     throw new FirebaseError(
-      `Failed to identify required specifications for the codebase: ${error}`
+      `Failed to identify required specifications to execute the application: ${error}`
     );
   }
 }
