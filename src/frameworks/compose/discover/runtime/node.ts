@@ -158,7 +158,7 @@ export class NodejsRuntime implements Runtime {
     scripts: Record<string, string> | undefined,
     matchedFramework: FrameworkSpec | null,
     fs: FileSystem
-  ): Promise<Command> {
+  ): Promise<Command | undefined> {
     let runCommand: Command = { cmd: "", env: { NODE_ENV: "production" } };
     if (scripts?.start) {
       runCommand.cmd = this.executeScript(packageManager, "start");
@@ -171,7 +171,7 @@ export class NodejsRuntime implements Runtime {
       runCommand.cmd = `node index.js`;
     }
 
-    return runCommand;
+    return runCommand.cmd === "" ? undefined : runCommand;
   }
 
   async analyseCodebase(fs: FileSystem, allFrameworkSpecs: FrameworkSpec[]): Promise<RuntimeSpec> {
