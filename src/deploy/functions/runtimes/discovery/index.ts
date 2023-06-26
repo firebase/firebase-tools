@@ -14,7 +14,7 @@ import { FirebaseError } from "../../../../error";
 export const readFileAsync = promisify(fs.readFile);
 
 /**
- *
+ * Converts the YAML retrieved from discovery into a Build object for param interpolation.
  */
 export function yamlToBuild(
   yaml: any,
@@ -38,7 +38,7 @@ export function yamlToBuild(
 }
 
 /**
- *
+ * Load a Build from a functions.yaml file.
  */
 export async function detectFromYaml(
   directory: string,
@@ -63,7 +63,7 @@ export async function detectFromYaml(
 }
 
 /**
- *
+ * Load a build from a discovery service.
  */
 export async function detectFromPort(
   port: number,
