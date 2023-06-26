@@ -30,12 +30,8 @@ export async function discover(
     if (!discoveredRuntime) {
       throw new FirebaseError("No runtime discovered for the codebase");
     }
-
     const runtimeSpec = await discoveredRuntime.analyseCodebase(fs, allFrameworkSpecs);
-
-    if (runtimeSpec) {
-      runtimeSpec.frameworkHooks = getFrameworkHooks();
-    }
+    runtimeSpec.frameworkHooks = getFrameworkHooks();
 
     return runtimeSpec;
   } catch (error: any) {
@@ -44,17 +40,15 @@ export async function discover(
 }
 
 function getFrameworkHooks(): FrameworkHooks {
-  const hooks: FrameworkHooks = {};
+  return {
+    afterBuild: (b: AppBundle) => {
+      console.log("HOOK: AFTER INSTALL");
+      return { ...b, version: "v1alpha", notes: "afterInstall" };
+    },
 
-  hooks.afterBuild = (b: AppBundle) => {
-    console.log("HOOK: AFTER INSTALL");
-    return { ...b, version: "v1alpha", notes: "afterInstall" };
+    afterInstall: (b: AppBundle) => {
+      console.log("HOOK: AFTER BUILD");
+      return { ...b, version: "v1alpha", notes: "afterBuild" };
+    },
   };
-
-  hooks.afterInstall = (b: AppBundle) => {
-    console.log("HOOK: AFTER BUILD");
-    return { ...b, version: "v1alpha", notes: "afterBuild" };
-  };
-
-  return hooks;
 }
