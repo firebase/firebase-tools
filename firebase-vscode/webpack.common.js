@@ -97,6 +97,13 @@ const extensionConfig = {
         {
           from: "../schema",
           to: "./schema",
+        },
+        // Copy uncompiled JS files called by
+        // firebase-tools/src/parseTriggers.ts
+        {
+          from: "*.js",
+          to: './',
+          context: "../src/deploy/functions/runtimes/node",
         }
       ],
     })
