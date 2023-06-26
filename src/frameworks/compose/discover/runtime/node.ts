@@ -96,15 +96,16 @@ export class NodejsRuntime implements Runtime {
     return installCmd;
   }
 
-  detectedCommands(
+  async detectedCommands(
     packageManager: PackageManager,
     scripts: Record<string, string> | undefined,
-    matchedFramework: FrameworkSpec | null
-  ): LifecycleCommands {
+    matchedFramework: FrameworkSpec | null,
+    fs: FileSystem
+  ): Promise<LifecycleCommands> {
     return {
       build: this.getBuildCommand(packageManager, scripts, matchedFramework),
       dev: this.getDevCommand(packageManager, scripts, matchedFramework),
-      run: this.getRunCommand(packageManager, scripts, matchedFramework),
+      run: await this.getRunCommand(packageManager, scripts, matchedFramework, fs),
     };
   }
 
@@ -152,32 +153,34 @@ export class NodejsRuntime implements Runtime {
     return devCommand;
   }
 
-  getRunCommand(
+  async getRunCommand(
     packageManager: PackageManager,
     scripts: Record<string, string> | undefined,
-    matchedFramework: FrameworkSpec | null
-  ): Command {
+    matchedFramework: FrameworkSpec | null,
+    fs: FileSystem
+  ): Promise<Command> {
     let runCommand: Command = { cmd: "", env: { NODE_ENV: "production" } };
     if (scripts?.start) {
       runCommand.cmd = this.executeScript(packageManager, "start");
     } else if (matchedFramework && matchedFramework.commands?.run) {
       runCommand = matchedFramework.commands.run;
       runCommand = this.executeFrameworkCommand(packageManager, runCommand);
+    } else if (scripts?.main) {
+      runCommand.cmd = `node ${scripts.main}`;
+    } else if (await fs.exists("index.js")) {
+      runCommand.cmd = `node index.js`;
     }
 
     return runCommand;
   }
 
-  async analyseCodebase(
-    fs: FileSystem,
-    allFrameworkSpecs: FrameworkSpec[]
-  ): Promise<RuntimeSpec | null> {
+  async analyseCodebase(fs: FileSystem, allFrameworkSpecs: FrameworkSpec[]): Promise<RuntimeSpec> {
     try {
       const packageJSONRaw = await readOrNull(fs, PACKAGE_JSON);
-      if (!packageJSONRaw) {
-        return null;
+      let packageJSON: PackageJSON = {};
+      if (packageJSONRaw) {
+        packageJSON = JSON.parse(packageJSONRaw) as PackageJSON;
       }
-      const packageJSON = JSON.parse(packageJSONRaw) as PackageJSON;
       const packageManager = await this.getPackageManager(fs);
       const nodeImage = this.getNodeImage(packageJSON.engines);
       const dependencies = this.getDependencies(packageJSON);
@@ -193,10 +196,11 @@ export class NodejsRuntime implements Runtime {
         baseImage: nodeImage,
         packageManagerInstallCommand: this.packageManagerInstallCommand(packageManager),
         installCommand: this.installCommand(fs, packageManager),
-        detectedCommands: this.detectedCommands(
+        detectedCommands: await this.detectedCommands(
           packageManager,
           packageJSON.scripts,
-          matchedFramework
+          matchedFramework,
+          fs
         ),
       };
 

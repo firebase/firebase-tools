@@ -82,7 +82,10 @@ describe("NodejsRuntime", () => {
   });
 
   describe("detectedCommands", () => {
-    it("should prepend npx to framework commands", () => {
+    it("should prepend npx to framework commands", async () => {
+      const fs = new MockFileSystem({
+        "package.json": "Test file",
+      });
       const matchedFramework: FrameworkSpec = {
         id: "next",
         runtime: "nodejs",
@@ -99,7 +102,7 @@ describe("NodejsRuntime", () => {
         start: "next start",
       };
 
-      const actual = nodeJSRuntime.detectedCommands("yarn", scripts, matchedFramework);
+      const actual = await nodeJSRuntime.detectedCommands("yarn", scripts, matchedFramework, fs);
       const expected = {
         build: {
           cmd: "yarn run build",
@@ -117,7 +120,10 @@ describe("NodejsRuntime", () => {
       expect(actual).to.deep.equal(expected);
     });
 
-    it("should prefer scripts over framework commands", () => {
+    it("should prefer scripts over framework commands", async () => {
+      const fs = new MockFileSystem({
+        "package.json": "Test file",
+      });
       const matchedFramework: FrameworkSpec = {
         id: "next",
         runtime: "nodejs",
@@ -141,7 +147,7 @@ describe("NodejsRuntime", () => {
         start: "next start",
       };
 
-      const actual = nodeJSRuntime.detectedCommands("yarn", scripts, matchedFramework);
+      const actual = await nodeJSRuntime.detectedCommands("yarn", scripts, matchedFramework, fs);
       const expected = {
         build: {
           cmd: "yarn run build",
