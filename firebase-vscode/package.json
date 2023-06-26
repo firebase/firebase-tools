@@ -68,7 +68,19 @@
           "name": "Firebase"
         }
       ]
-    }
+    },
+    "jsonValidation": [
+      {
+        "fileMatch": "firebase.json",
+        "url": "https://raw.githubusercontent.com/firebase/firebase-tools/master/schema/firebase-config.json"
+      }
+    ],
+    "yamlValidation": [
+      {
+        "fileMatch": "extension.yaml",
+        "url": "https://raw.githubusercontent.com/firebase/firebase-tools/master/schema/extension-yaml.json"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run build",
@@ -82,7 +94,7 @@
     "build": "npm run copyfiles && webpack --config webpack.prod.js --devtool hidden-source-map",
     "build:extension": "webpack --config webpack.prod.js --config-name extension",
     "build:sidebar": "npm run copyfiles && webpack --config webpack.prod.js --config-name sidebar",
-    "pretest": "npm run build && npm run lint",
+    "pretest": "npm run dev ; npm run lint && tsc -p src/test/tsconfig.test.json",
     "lint": "eslint src --ext ts",
     "test": "node ./dist/test/runTest.js"
   },
