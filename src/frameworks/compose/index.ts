@@ -24,12 +24,12 @@ export async function compose(
   }
 
   driver.install();
-  if (spec?.frameworkHooks && spec.frameworkHooks.afterInstall) {
+  if (spec.frameworkHooks && spec.frameworkHooks.afterInstall) {
     bundle = driver.execHook(bundle, spec.frameworkHooks.afterInstall);
   }
 
   driver.build();
-  if (spec?.frameworkHooks && spec.frameworkHooks.afterBuild) {
+  if (spec.frameworkHooks && spec.frameworkHooks.afterBuild) {
     bundle = driver.execHook(bundle, spec.frameworkHooks?.afterBuild);
   }
 
