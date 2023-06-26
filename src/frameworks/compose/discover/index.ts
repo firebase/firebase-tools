@@ -6,7 +6,7 @@ import { AppBundle } from "../interfaces";
 const availableRuntimes: Runtime[] = [new NodejsRuntime()];
 
 /**
- * Discover the best matching runtime specs for the codebase.
+ * Discover the best matching runtime specs for the application.
  */
 export async function discover(
   fs: FileSystem,
