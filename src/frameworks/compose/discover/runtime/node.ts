@@ -125,7 +125,7 @@ export class NodejsRuntime implements Runtime {
     packageManager: PackageManager,
     scripts: Record<string, string> | undefined,
     matchedFramework: FrameworkSpec | null
-  ): Command {
+  ): Command | undefined {
     let buildCommand: Command = { cmd: "" };
     if (scripts?.build) {
       buildCommand.cmd = this.executeScript(packageManager, "build");
@@ -134,14 +134,14 @@ export class NodejsRuntime implements Runtime {
       buildCommand = this.executeFrameworkCommand(packageManager, buildCommand);
     }
 
-    return buildCommand;
+    return buildCommand.cmd === "" ? undefined : buildCommand;
   }
 
   getDevCommand(
     packageManager: PackageManager,
     scripts: Record<string, string> | undefined,
     matchedFramework: FrameworkSpec | null
-  ): Command {
+  ): Command | undefined {
     let devCommand: Command = { cmd: "", env: { NODE_ENV: "dev" } };
     if (scripts?.dev) {
       devCommand.cmd = this.executeScript(packageManager, "dev");
@@ -150,7 +150,7 @@ export class NodejsRuntime implements Runtime {
       devCommand = this.executeFrameworkCommand(packageManager, devCommand);
     }
 
-    return devCommand;
+    return devCommand.cmd === "" ? undefined : devCommand;
   }
 
   async getRunCommand(
