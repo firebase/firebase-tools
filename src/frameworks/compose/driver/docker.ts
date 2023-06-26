@@ -162,7 +162,7 @@ export class DockerDriver implements Driver {
 
   build(): void {
     this.dockerfileBuilder.fromLastStage(DOCKER_STAGE_BUILD).copyForFirebase(".", ".");
-    if (this.spec.detectedCommands && this.spec.detectedCommands.build) {
+    if (this.spec.detectedCommands?.build) {
       this.dockerfileBuilder.run(this.spec.detectedCommands.build.cmd);
     }
     this.buildStage(DOCKER_STAGE_BUILD, ".");

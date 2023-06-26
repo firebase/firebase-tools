@@ -15,7 +15,7 @@ export async function compose(
   const spec = await discover(fs, allFrameworkSpecs);
   const driver = getDriver(mode, spec);
 
-  if (spec.detectedCommands && spec.detectedCommands.run) {
+  if (spec.detectedCommands?.run) {
     bundle.server = {
       start: {
         cmd: spec.detectedCommands.run.cmd.split(" "),
@@ -24,12 +24,12 @@ export async function compose(
   }
 
   driver.install();
-  if (spec.frameworkHooks && spec.frameworkHooks.afterInstall) {
+  if (spec.frameworkHooks?.afterInstall) {
     bundle = driver.execHook(bundle, spec.frameworkHooks.afterInstall);
   }
 
   driver.build();
-  if (spec.frameworkHooks && spec.frameworkHooks.afterBuild) {
+  if (spec.frameworkHooks?.afterBuild) {
     bundle = driver.execHook(bundle, spec.frameworkHooks?.afterBuild);
   }
 

@@ -19,21 +19,17 @@ export class LocalDriver implements Driver {
   }
 
   install(): void {
-    let cmd = "";
-    let args: string[] = [];
     if (this.spec.installCommand) {
-      [cmd, ...args] = this.spec.installCommand.split(" ");
+      const [cmd, ...args] = this.spec.installCommand.split(" ");
+      this.execCmd(cmd, args);
     }
-    this.execCmd(cmd, args);
   }
 
   build(): void {
-    let cmd = "";
-    let args: string[] = [];
-    if (this.spec.detectedCommands && this.spec.detectedCommands.build) {
-      [cmd, ...args] = this.spec.detectedCommands.build.cmd.split(" ");
+    if (this.spec.detectedCommands?.build) {
+      const [cmd, ...args] = this.spec.detectedCommands.build.cmd.split(" ");
+      this.execCmd(cmd, args);
     }
-    this.execCmd(cmd, args);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
