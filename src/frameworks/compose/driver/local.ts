@@ -1,11 +1,12 @@
 import * as fs from "node:fs";
 import * as spawn from "cross-spawn";
 
-import { AppBundle, AppSpec, Hook, Driver } from "../interfaces";
+import { AppBundle, Hook, Driver } from "../interfaces";
 import { BUNDLE_PATH, genHookScript } from "./hooks";
+import { RuntimeSpec } from "../discover/types";
 
 export class LocalDriver implements Driver {
-  constructor(readonly spec: AppSpec) {}
+  constructor(readonly spec: RuntimeSpec) {}
 
   private execCmd(cmd: string, args: string[]) {
     const ret = spawn.sync(cmd, args, {
@@ -18,12 +19,20 @@ export class LocalDriver implements Driver {
   }
 
   install(): void {
-    const [cmd, ...args] = this.spec.installCommand.split(" ");
+    let cmd = "";
+    let args: string[] = [];
+    if (this.spec.installCommand) {
+      [cmd, ...args] = this.spec.installCommand.split(" ");
+    }
     this.execCmd(cmd, args);
   }
 
   build(): void {
-    const [cmd, ...args] = this.spec.buildCommand.split(" ");
+    let cmd = "";
+    let args: string[] = [];
+    if (this.spec.detectedCommands && this.spec.detectedCommands.build) {
+      [cmd, ...args] = this.spec.detectedCommands.build.cmd.split(" ");
+    }
     this.execCmd(cmd, args);
   }
 
