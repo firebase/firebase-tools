@@ -457,7 +457,17 @@ export async function loadCodebases(
     await runtimeDelegate.build();
 
     const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
-    wantBuilds[codebase] = await runtimeDelegate.discoverBuild(runtimeConfig, firebaseEnvs);
+    logLabeledBullet(
+      "functions",
+      `Loading and anaylzing source code for codebase ${codebase} to determine what to deploy`
+    );
+    wantBuilds[codebase] = await runtimeDelegate.discoverBuild(runtimeConfig, {
+      ...firebaseEnvs,
+      // Quota project is required when using GCP's Client-based APIs
+      // Some GCP client SDKs, like Vertex AI, requires appropriate quota project setup
+      // in order for .init() calls to succeed.
+      GOOGLE_CLOUD_QUOTA_PROJECT: projectId,
+    });
   }
   return wantBuilds;
 }

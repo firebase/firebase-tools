@@ -7,7 +7,6 @@ import { logger } from "../logger";
 import { ExtensionInstance, ExtensionSpec, Param } from "./types";
 import { getFirebaseProjectParams, substituteParams } from "./extensionsHelper";
 import * as askUserForParam from "./askUserForParam";
-import { track } from "../track";
 import * as env from "../functions/env";
 import { cloneDeep } from "../utils";
 
@@ -111,8 +110,6 @@ export async function getParams(args: {
       reconfiguring: !!args.reconfiguring,
     });
   }
-  const paramNames = Object.keys(params);
-  void track("Extension Params", paramNames.length ? "Not Present" : "Present", paramNames.length);
   return params;
 }
 
@@ -137,8 +134,6 @@ export async function getParamsForUpdate(args: {
       instanceId: args.instanceId,
     });
   }
-  const paramNames = Object.keys(params);
-  void track("Extension Params", paramNames.length ? "Not Present" : "Present", paramNames.length);
   return params;
 }
 
