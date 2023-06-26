@@ -82,10 +82,16 @@ export interface RuntimeSpec {
 
   environmentVariables?: Record<string, string>;
 
+  // Framework authors can execute framework-specific code using hooks at different stages of Frameworks API build process.
   frameworkHooks?: FrameworkHooks;
 }
 
 export interface FrameworkHooks {
+  // Programmatic hook with access to filesystem and nodejs API to inspect the workspace.
+  // Primarily intended to gather hints relevant to the build.
   afterInstall?: (b: AppBundle) => AppBundle;
+
+  // Programmatic hook with access to filesystem and nodejs API to inspect the build artifacts.
+  // Primarily intended to informs what assets should be deployed.
   afterBuild?: (b: AppBundle) => AppBundle;
 }
