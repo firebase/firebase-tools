@@ -6,7 +6,7 @@ import { AppBundle } from "../interfaces";
 const availableRuntimes: Runtime[] = [new NodejsRuntime()];
 
 /**
- * Discover framework in the given project directory
+ * Discover the best matching runtime specs for the codebase.
  */
 export async function discover(
   fs: FileSystem,
@@ -20,21 +20,23 @@ export async function discover(
           discoveredRuntime = runtime;
         } else {
           throw new FirebaseError(
-            `Unable to proceed as multiple runtimes ${discoveredRuntime.getRuntimeName()}, ${runtime.getRuntimeName()} are discovered within the codebase.`
+            `Conflit occured as multiple runtimes ${discoveredRuntime.getRuntimeName()}, ${runtime.getRuntimeName()} are discovered within the codebase.`
           );
         }
       }
     }
 
     if (!discoveredRuntime) {
-      throw new FirebaseError("Unable to discover runtime for the codebase");
+      throw new FirebaseError("Unable to identify a runtime for the codebase");
     }
     const runtimeSpec = await discoveredRuntime.analyseCodebase(fs, allFrameworkSpecs);
     runtimeSpec.frameworkHooks = getFrameworkHooks();
 
     return runtimeSpec;
   } catch (error: any) {
-    throw new FirebaseError(`Failed to discover the codebase: ${error}`);
+    throw new FirebaseError(
+      `Failed to identify required specifications for the codebase: ${error}`
+    );
   }
 }
 
