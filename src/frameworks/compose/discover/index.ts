@@ -20,14 +20,14 @@ export async function discover(
           discoveredRuntime = runtime;
         } else {
           throw new FirebaseError(
-            `Multiple runtimes discovered within the codebase ${discoveredRuntime.getRuntimeName()}, ${runtime.getRuntimeName()}.`
+            `Unable to proceed as multiple runtimes ${discoveredRuntime.getRuntimeName()}, ${runtime.getRuntimeName()} are discovered within the codebase.`
           );
         }
       }
     }
 
     if (!discoveredRuntime) {
-      throw new FirebaseError("No runtime discovered for the codebase");
+      throw new FirebaseError("Unable to discover runtime for the codebase");
     }
     const runtimeSpec = await discoveredRuntime.analyseCodebase(fs, allFrameworkSpecs);
     runtimeSpec.frameworkHooks = getFrameworkHooks();
