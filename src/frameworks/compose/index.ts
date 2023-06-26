@@ -15,10 +15,10 @@ export async function compose(
   const spec = await discover(fs, allFrameworkSpecs);
   const driver = getDriver(mode, spec);
 
-  if (spec.detectedCommands && spec?.detectedCommands.run) {
+  if (spec.detectedCommands && spec.detectedCommands.run) {
     bundle.server = {
       start: {
-        cmd: spec?.detectedCommands?.run.cmd.split(" "),
+        cmd: spec.detectedCommands.run.cmd.split(" "),
       },
     };
   }
