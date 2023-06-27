@@ -27,7 +27,7 @@ import { resolveVersion } from "../deploy/extensions/planner";
 import { getRandomString } from "../extensions/utils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
-import { track } from "../track";
+import { trackGA4 } from "../track";
 import { confirm } from "../prompt";
 import { Options } from "../options";
 import * as manifest from "../extensions/manifest";
@@ -73,14 +73,20 @@ export const command = new Command("ext:install [extensionRef]")
       // Should parse spec locally so we don't need project ID.
       source = await createSourceFromLocation(needProjectId({ projectId }), extensionRef);
       await displayExtensionVersionInfo({ spec: source.spec });
-      void track("Extension Install", "Install by Source", options.interactive ? 1 : 0);
+      void trackGA4("extension_added_to_manifest", {
+        published: "local",
+        interactive: options.nonInteractive ? "false" : "true",
+      });
     } else {
-      void track("Extension Install", "Install by Extension Ref", options.interactive ? 1 : 0);
       const extension = await extensionsApi.getExtension(extensionRef);
       const ref = refs.parse(extensionRef);
       ref.version = await resolveVersion(ref, extension);
       const extensionVersionRef = refs.toExtensionVersionRef(ref);
       extensionVersion = await extensionsApi.getExtensionVersion(extensionVersionRef);
+      void trackGA4("extension_added_to_manifest", {
+        published: extensionVersion.listing?.state === "APPROVED" ? "published" : "uploaded",
+        interactive: options.nonInteractive ? "false" : "true",
+      });
       await displayExtensionVersionInfo({
         spec: extensionVersion.spec,
         extensionVersion,
