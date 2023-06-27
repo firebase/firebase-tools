@@ -19,6 +19,7 @@ export enum Emulators {
   DATACONNECT = "dataconnect",
   TASKS = "tasks",
   REMOTECONFIG = "remoteconfig",
+}
 
 export type DownloadableEmulators =
   | Emulators.FIRESTORE
