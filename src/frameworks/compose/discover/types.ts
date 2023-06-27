@@ -6,7 +6,7 @@ export interface FileSystem {
 export interface Runtime {
   match(fs: FileSystem): Promise<boolean | null>;
   getRuntimeName(): string;
-  analyseCodebase(fs: FileSystem, allFrameworkSpecs: FrameworkSpec[]): Promise<RuntimeSpec | null>;
+  analyseCodebase(fs: FileSystem, allFrameworkSpecs: FrameworkSpec[]): Promise<RuntimeSpec>;
 }
 
 export interface Command {
