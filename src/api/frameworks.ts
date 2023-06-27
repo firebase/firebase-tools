@@ -17,7 +17,7 @@ interface Codebase {
 }
 
 /** A Stack, the primary resource of Frameworks. */
-export interface Stack {
+interface Stack {
   name: string;
   mode?: string;
   codebase: Codebase;
