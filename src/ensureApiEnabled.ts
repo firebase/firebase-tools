@@ -1,6 +1,6 @@
 import { bold } from "colorette";
 
-import { track } from "./track";
+import { trackGA4 } from "./track";
 import { serviceUsageOrigin } from "./api";
 import { Client } from "./apiv2";
 import * as utils from "./utils";
@@ -91,7 +91,9 @@ async function pollCheckEnabled(
   });
   const isEnabled = await check(projectId, apiName, prefix, silent);
   if (isEnabled) {
-    void track("api_enabled", apiName);
+    void trackGA4("api_enabled", {
+      api_name: apiName,
+    });
     return;
   }
   if (!silent) {
