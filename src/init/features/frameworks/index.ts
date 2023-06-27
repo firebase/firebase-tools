@@ -8,11 +8,15 @@ import {
   DEFAULT_DEPLOY_METHOD,
   ALLOWED_DEPLOY_METHODS,
 } from "./constants";
+import { linkGitHubRepository } from "../composer/repo";
+import { Stack, createStack } from "../../../api/frameworks";
+import { Repository } from "../../../gcp/cloudbuild";
 
 /**
  * Setup new frameworks project.
  */
 export async function doSetup(setup: any): Promise<void> {
+  const projectId = setup?.rcfile?.projects?.default;
   setup.frameworks = {};
 
   utils.logBullet("First we need a few details to create your service.");
@@ -54,4 +58,30 @@ export async function doSetup(setup: any): Promise<void> {
     },
     setup.frameworks
   );
+
+  if (setup.frameworks.deployMethod === "github") {
+    const cloudBuildConnRepo: Repository = await linkGitHubRepository(
+      projectId,
+      setup.frameworks.region,
+      setup.frameworks.serviceName
+    );
+    createStack(
+      projectId,
+      setup.frameworks.region,
+      setup.frameworks.serviceName,
+      getStack(cloudBuildConnRepo, setup)
+    );
+  }
+}
+
+function getStack(cloudBuildConnRepo: Repository, setup: any): Stack {
+  const stack: Stack = {
+    name: setup.frameworks.serviceName,
+    codebase: { repository: cloudBuildConnRepo.name, rootDirectory: "root" },
+    labels: {},
+    createTime: cloudBuildConnRepo.createTime,
+    uri: "",
+    updateTime: cloudBuildConnRepo.updateTime,
+  };
+  return stack;
 }
