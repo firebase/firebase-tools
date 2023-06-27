@@ -103,9 +103,9 @@ describe("displayExtensionInfo", () => {
       expect(loggedLines[1]).to.include(SPEC.description);
       expect(loggedLines[2]).to.include(SPEC.version);
       expect(loggedLines[3]).to.include(SPEC.license);
-      expect(loggedLines[4]).to.include("resource1 (Cloud Function V1)");
+      expect(loggedLines[4]).to.include("resource1 (Cloud Function (1st gen))");
       expect(loggedLines[4]).to.include("resource2 (other)");
-      expect(loggedLines[4]).to.include("taskResource (Cloud Function V1)");
+      expect(loggedLines[4]).to.include("taskResource (Cloud Function (1st gen))");
       expect(loggedLines[4]).to.include("taskResource (Cloud Task queue)");
       expect(loggedLines[4]).to.include("secret (Cloud Secret Manager secret)");
       expect(loggedLines[5]).to.include("abc.def.my-event");
@@ -131,9 +131,9 @@ describe("displayExtensionInfo", () => {
       expect(loggedLines[4]).to.include("View in Extensions Hub");
       expect(loggedLines[5]).to.include(EXT_VERSION.buildSourceUri);
       expect(loggedLines[6]).to.include(SPEC.license);
-      expect(loggedLines[7]).to.include("resource1 (Cloud Function V1)");
+      expect(loggedLines[7]).to.include("resource1 (Cloud Function (1st gen))");
       expect(loggedLines[7]).to.include("resource2 (other)");
-      expect(loggedLines[7]).to.include("taskResource (Cloud Function V1)");
+      expect(loggedLines[7]).to.include("taskResource (Cloud Function (1st gen))");
       expect(loggedLines[7]).to.include("taskResource (Cloud Task queue)");
       expect(loggedLines[7]).to.include("secret (Cloud Secret Manager secret)");
       expect(loggedLines[8]).to.include("abc.def.my-event");
