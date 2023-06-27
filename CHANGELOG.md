@@ -1,1 +1,1 @@
-- Refactored ext:install to use the latest extension metadata. (#5997)
+- Refactored `ext:install` to use the latest extension metadata. (#5997)
