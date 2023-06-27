@@ -42,7 +42,6 @@ import { envOverride } from "../utils";
 import { getLocalChangelog } from "./change-log";
 import { getProjectNumber } from "../getProjectNumber";
 import { Constants } from "../emulator/constants";
-import { resolveVersion } from "../deploy/extensions/planner";
 
 /**
  * SpecParamType represents the exact strings that the extensions
@@ -1244,26 +1243,4 @@ export async function diagnoseAndFixProject(options: any): Promise<void> {
   if (!ok) {
     throw new FirebaseError("Unable to proceed until all issues are resolved.");
   }
-}
-
-/**
- * Canonicalize a user-inputted ref string.
- * 1. Infer firebase publisher if not provided
- * 2. Infer "latest-approved" as the version if not provided
- */
-export async function canonicalizeRefInput(refInput: string): Promise<string> {
-  let inferredRef = refInput;
-  // TODO: Stop defaulting to 'firebase' publisher ID if none provided.
-  // Infer 'firebase' if publisher ID not provided.
-  if (refInput.split("/").length < 2) {
-    inferredRef = `firebase/${inferredRef}`;
-  }
-  // Infer 'latest-approved' if no version provided.
-  if (refInput.split("@").length < 2) {
-    inferredRef = `${inferredRef}@latest-approved`;
-  }
-  // Get the correct version for a given extension reference from the Registry API.
-  const ref = refs.parse(inferredRef);
-  ref.version = await resolveVersion(ref);
-  return refs.toExtensionVersionRef(ref);
 }
