@@ -37,8 +37,8 @@ const TASKS_API = "cloudtasks.googleapis.com";
 export async function displayExtensionVersionInfo(args: {
   spec: ExtensionSpec;
   extensionVersion?: ExtensionVersion;
-  latestApprovedVersion?: string,
-  latestVersion?: string
+  latestApprovedVersion?: string;
+  latestVersion?: string;
 }): Promise<string[]> {
   const { spec, extensionVersion, latestApprovedVersion, latestVersion } = args;
   const lines: string[] = [];
