@@ -9,7 +9,7 @@ import {
   ALLOWED_DEPLOY_METHODS,
 } from "./constants";
 import { linkGitHubRepository } from "../composer/repo";
-import { Stack, createStack } from "../../../api/frameworks";
+import { Stack, createStackInCloudBuild } from "../../../api/frameworks";
 import { Repository } from "../../../gcp/cloudbuild";
 
 /**
@@ -65,16 +65,12 @@ export async function doSetup(setup: any): Promise<void> {
       setup.frameworks.region,
       setup.frameworks.serviceName
     );
-    createStack(
-      projectId,
-      setup.frameworks.region,
-      setup.frameworks.serviceName,
-      getStack(cloudBuildConnRepo, setup)
-    );
+    const stackDetails = toStack(cloudBuildConnRepo, setup);
+    await createStackInCloudBuild(projectId, stackDetails, setup.frameworks.region);
   }
 }
 
-function getStack(cloudBuildConnRepo: Repository, setup: any): Stack {
+function toStack(cloudBuildConnRepo: Repository, setup: any): Stack {
   const stack: Stack = {
     name: setup.frameworks.serviceName,
     codebase: { repository: cloudBuildConnRepo.name, rootDirectory: "root" },

@@ -1,7 +1,7 @@
 import { Client } from "../apiv2";
 import { frameworksOrigin } from "../api";
 
-export const API_VERSION = "v1";
+export const API_VERSION = "v2";
 
 const client = new Client({
   urlPrefix: frameworksOrigin,
@@ -87,9 +87,9 @@ export interface Operation {
 export async function createStack(
   projectId: string,
   location: string,
-  stackId: string,
   stack: Stack
 ): Promise<Operation> {
+  const stackId = stack.name;
   const res = await client.post<Omit<Stack, StackOutputOnlyFields>, Operation>(
     `projects/${projectId}/locations/${location}/stacks`,
     stack,
@@ -114,4 +114,24 @@ export async function createBuild(
     { queryParams: { buildId } }
   );
   return res.body;
+}
+
+/**
+ * Exported for unit testing.
+ */
+export async function createStackInCloudBuild(
+  projectId: string,
+  stackInput: Stack,
+  location: string
+): Promise<Stack> {
+  let res: Stack;
+
+  const op = await createStack(projectId, location, stackInput);
+  stack = await poller.pollOperation<Stack>({
+    ...gcbPollerOptions,
+    pollerName: `create-${location}-${connectionId}`,
+    operationResourceName: op.name,
+  });
+
+  return stack;
 }
