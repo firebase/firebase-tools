@@ -34,12 +34,13 @@ const TASKS_API = "cloudtasks.googleapis.com";
  * @param spec the extension spec
  * @param extensionVersion the extension version
  * */
-export async function displayExtensionVersionInfo(
-  spec: ExtensionSpec,
-  extensionVersion?: ExtensionVersion,
+export async function displayExtensionVersionInfo(args: {
+  spec: ExtensionSpec;
+  extensionVersion?: ExtensionVersion;
   latestApprovedVersion?: string,
   latestVersion?: string
-): Promise<string[]> {
+}): Promise<string[]> {
+  const { spec, extensionVersion, latestApprovedVersion, latestVersion } = args;
   const lines: string[] = [];
   const extensionRef = extensionVersion
     ? refs.toExtensionRef(refs.parse(extensionVersion?.ref))
@@ -72,7 +73,6 @@ export async function displayExtensionVersionInfo(
         break;
       default:
         reviewStatus = clc.bold(clc.yellow("Unreviewed"));
-        break;
     }
     lines.push(`${clc.bold("Review status:")} ${reviewStatus}`);
     if (latestApprovedVersion) {
@@ -134,10 +134,10 @@ export function displayResources(spec: ExtensionSpec) {
     let type: string = resource.type;
     switch (resource.type) {
       case "firebaseextensions.v1beta.function":
-        type = "Cloud Function V1";
+        type = "Cloud Function (1st gen)";
         break;
       case "firebaseextensions.v1beta.v2function":
-        type = "Cloud Function V2";
+        type = "Cloud Function (2nd gen)";
         break;
       default:
     }

@@ -72,7 +72,7 @@ export const command = new Command("ext:install [extensionRef]")
       // TODO(b/228444119): Create source should happen at deploy time.
       // Should parse spec locally so we don't need project ID.
       source = await createSourceFromLocation(needProjectId({ projectId }), extensionRef);
-      await displayExtensionVersionInfo(source.spec);
+      await displayExtensionVersionInfo({ spec: source.spec });
       void track("Extension Install", "Install by Source", options.interactive ? 1 : 0);
     } else {
       void track("Extension Install", "Install by Extension Ref", options.interactive ? 1 : 0);
@@ -81,12 +81,12 @@ export const command = new Command("ext:install [extensionRef]")
       ref.version = await resolveVersion(ref, extension);
       const extensionVersionRef = refs.toExtensionVersionRef(ref);
       extensionVersion = await extensionsApi.getExtensionVersion(extensionVersionRef);
-      await displayExtensionVersionInfo(
-        extensionVersion.spec,
+      await displayExtensionVersionInfo({
+        spec: extensionVersion.spec,
         extensionVersion,
-        extension.latestApprovedVersion,
-        extension.latestVersion
-      );
+        latestApprovedVersion: extension.latestApprovedVersion,
+        latestVersion: extension.latestVersion,
+      });
       if (extensionVersion.state === "DEPRECATED") {
         throw new FirebaseError(
           `Extension version ${clc.bold(
@@ -115,7 +115,9 @@ export const command = new Command("ext:install [extensionRef]")
     }
     if (!source && !extensionVersion) {
       throw new FirebaseError(
-        "Could not find a source. Please specify a valid source to continue."
+        `Failed to parse ${clc.bold(
+          extensionRef
+        )} as an extension version or a path to a local extension. Please specify a valid reference.`
       );
     }
     if (

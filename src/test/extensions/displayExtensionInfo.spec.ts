@@ -98,7 +98,7 @@ describe("displayExtensionInfo", () => {
     });
 
     it("should display info during install", async () => {
-      const loggedLines = await displayExtensionInfo.displayExtensionVersionInfo(SPEC);
+      const loggedLines = await displayExtensionInfo.displayExtensionVersionInfo({ spec: SPEC });
       expect(loggedLines[0]).to.include(SPEC.displayName);
       expect(loggedLines[1]).to.include(SPEC.description);
       expect(loggedLines[2]).to.include(SPEC.version);
@@ -118,12 +118,12 @@ describe("displayExtensionInfo", () => {
     });
 
     it("should display additional information for a published extension", async () => {
-      const loggedLines = await displayExtensionInfo.displayExtensionVersionInfo(
-        SPEC,
-        EXT_VERSION,
-        "1.0.0",
-        "1.0.0"
-      );
+      const loggedLines = await displayExtensionInfo.displayExtensionVersionInfo({
+        spec: SPEC,
+        extensionVersion: EXT_VERSION,
+        latestApprovedVersion: "1.0.0",
+        latestVersion: "1.0.0",
+      });
       expect(loggedLines[0]).to.include(SPEC.displayName);
       expect(loggedLines[1]).to.include(SPEC.description);
       expect(loggedLines[2]).to.include(SPEC.version);

@@ -157,7 +157,7 @@ export async function updateFromLocalSource(
   localSource: string,
   existingSpec: ExtensionSpec
 ): Promise<string> {
-  await displayExtensionVersionInfo(existingSpec);
+  await displayExtensionVersionInfo({ spec: existingSpec });
   let source;
   try {
     source = await createSourceFromLocation(projectId, localSource);
@@ -187,7 +187,7 @@ export async function updateFromUrlSource(
   urlSource: string,
   existingSpec: ExtensionSpec
 ): Promise<string> {
-  await displayExtensionVersionInfo(existingSpec);
+  await displayExtensionVersionInfo({ spec: existingSpec });
   let source;
   try {
     source = await createSourceFromLocation(projectId, urlSource);
