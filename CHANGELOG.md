@@ -1,1 +1,4 @@
 - Run lifecycle hooks for specific functions. (#6023)
+- Release Firestore emulator 1.18.1 which addes a emulator configuration to start with experimental mode (#5942).
+- Run lifecycle hooks for specific codebases. (#6011)
+- Fixed issue causing `firebase emulators:start` to crash in Next.js apps (#6005)

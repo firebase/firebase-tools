@@ -127,7 +127,6 @@ function getReleventConfigs(target: string, options: Options) {
 
   let onlyTargets = options.only.split(",");
   if (onlyTargets.includes(target)) {
-    // If the target matches entirely then all instances should be included.
     return targetConfigs;
   }
 
