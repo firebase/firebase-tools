@@ -1242,7 +1242,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     triggers.push(key);
     this.multicastTriggers[eventTriggerId] = triggers;
 
-    return true
+    return true;
   }
 
   getProjectId(): string {
