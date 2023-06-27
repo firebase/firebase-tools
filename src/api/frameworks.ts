@@ -1,5 +1,6 @@
 import { Client } from "../apiv2";
 import { frameworksOrigin } from "../api";
+import * as poller from "../../../operation-poller";
 
 export const API_VERSION = "v2";
 
