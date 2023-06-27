@@ -1,7 +1,3 @@
-- Releases Firestore Emulator 1.17.1
-  - Propagates page token from ListDocumentsResponse to GetOrListDocumentsResponse in Firestore emulator.
-- Fixes an issue where Secret Manager secrets were tagged incorrectly (#5704).
-- Fix bug where Custom Event channels weren't automatically crated on function deploys (#5700)
-- Lift GCF 2nd gen naming restrictions (#5690)
-- Fixes a bug where `ext:install` and `ext:configure` would error on extensions with no params.
-- Fixed an issue with Vite and Angular integrations using a obsolete NPM command (#5710)
+- Release Firestore emulator 1.18.1 which addes a emulator configuration to start with experimental mode (#5942).
+- Run lifecycle hooks for specific codebases. (#6011)
+- Fixed issue causing `firebase emulators:start` to crash in Next.js apps (#6005)

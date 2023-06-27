@@ -4,7 +4,7 @@ import * as path from "path";
 import * as fsConfig from "../firestore/fsConfig";
 
 import { logger } from "../logger";
-import { track, trackEmulator } from "../track";
+import { trackEmulator } from "../track";
 import * as utils from "../utils";
 import { EmulatorRegistry } from "./registry";
 import {
@@ -105,10 +105,9 @@ export async function cleanShutdown(): Promise<void> {
  * Filters a list of emulators to only those specified in the config
  * @param options
  */
-export function filterEmulatorTargets(options: any): Emulators[] {
+export function filterEmulatorTargets(options: { only: string; config: any }): Emulators[] {
   let targets = [...ALL_SERVICE_EMULATORS];
   targets.push(Emulators.EXTENSIONS);
-
   targets = targets.filter((e) => {
     return options.config.has(e) || options.config.has(`emulators.${e}`);
   });
@@ -186,6 +185,11 @@ export function shouldStart(options: Options, name: Emulators): boolean {
 }
 
 function findExportMetadata(importPath: string): ExportMetadata | undefined {
+  const pathExists = fs.existsSync(importPath);
+  if (!pathExists) {
+    throw new FirebaseError(`Directory "${importPath}" does not exist.`);
+  }
+
   const pathIsDirectory = fs.lstatSync(importPath).isDirectory();
   if (!pathIsDirectory) {
     return;
@@ -250,7 +254,8 @@ interface EmulatorOptions extends Options {
  */
 export async function startAll(
   options: EmulatorOptions,
-  showUI = true
+  showUI = true,
+  runningTestScript = false
 ): Promise<{ deprecationNotices: string[] }> {
   // Emulators config is specified in firebase.json as:
   // "emulators": {
@@ -312,7 +317,7 @@ export async function startAll(
         );
       } else {
         // this should not work:
-        // firebase emulators:start --only doesnotexit
+        // firebase emulators:start --only doesnotexist
         throw new FirebaseError(
           `${name} is not a valid emulator name, valid options are: ${JSON.stringify(
             ALL_SERVICE_EMULATORS
@@ -396,7 +401,6 @@ export async function startAll(
     const name = instance.getName();
 
     // Log the command for analytics
-    void track("Emulator Run", name);
     void trackEmulator("emulator_run", {
       emulator_name: name,
       is_demo_project: String(isDemoProject),
@@ -416,7 +420,6 @@ export async function startAll(
     // since we originally mistakenly reported emulators:start events
     // for each emulator, by reporting the "hub" we ensure that our
     // historical data can still be viewed.
-    void track("emulators:start", "hub");
     await startEmulator(hub);
   }
 
@@ -451,21 +454,25 @@ export async function startAll(
   ) {
     experiments.assertEnabled("webframeworks", "emulate a web framework");
     const emulators: EmulatorInfo[] = [];
-    if (experiments.isEnabled("webframeworks")) {
-      for (const e of ALL_SERVICE_EMULATORS) {
-        // TODO(yuchenshi): Functions and Eventarc may be missing if they are not
-        // yet known to be needed and then prepareFrameworks adds extra functions.
-        if (listenForEmulator[e]) {
-          emulators.push({
-            name: e,
-            host: utils.connectableHostname(listenForEmulator[e][0].address),
-            port: listenForEmulator[e][0].port,
-          });
-        }
+    for (const e of ALL_SERVICE_EMULATORS) {
+      // TODO(yuchenshi): Functions and Eventarc may be missing if they are not
+      // yet known to be needed and then prepareFrameworks adds extra functions.
+      if (listenForEmulator[e]) {
+        emulators.push({
+          name: e,
+          host: utils.connectableHostname(listenForEmulator[e][0].address),
+          port: listenForEmulator[e][0].port,
+        });
       }
     }
     // This may add additional sources for Functions emulator and must be done before it.
-    await prepareFrameworks(targets, options, options, emulators);
+    await prepareFrameworks(
+      runningTestScript ? "test" : "emulate",
+      targets,
+      undefined,
+      options,
+      emulators
+    );
   }
 
   const projectDir = (options.extDevDir || options.config.projectDir) as string;
@@ -824,16 +831,6 @@ export async function startAll(
     await startEmulator(hostingEmulator);
   }
 
-  if (showUI && !shouldStart(options, Emulators.UI)) {
-    hubLogger.logLabeled(
-      "WARN",
-      "emulators",
-      "The Emulator UI is not starting, either because none of the emulated " +
-        "products have an interaction layer in Emulator UI or it cannot " +
-        "determine the Project ID. Pass the --project flag to specify a project."
-    );
-  }
-
   if (listenForEmulator.logging) {
     const loggingAddr = legacyGetFirstAddr(Emulators.LOGGING);
     const loggingEmulator = new LoggingEmulator({
@@ -842,6 +839,16 @@ export async function startAll(
     });
 
     await startEmulator(loggingEmulator);
+  }
+
+  if (showUI && !shouldStart(options, Emulators.UI)) {
+    hubLogger.logLabeled(
+      "WARN",
+      "emulators",
+      "The Emulator UI is not starting, either because none of the running " +
+        "emulators have a UI component or the Emulator UI cannot " +
+        "determine the Project ID. Pass the --project flag to specify a project."
+    );
   }
 
   if (listenForEmulator.ui) {

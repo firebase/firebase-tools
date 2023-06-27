@@ -25,6 +25,9 @@ export function load(client: any): any {
   client.appdistribution.testers = {};
   client.appdistribution.testers.add = loadCommand("appdistribution-testers-add");
   client.appdistribution.testers.delete = loadCommand("appdistribution-testers-remove");
+  client.appdistribution.group = {};
+  client.appdistribution.group.create = loadCommand("appdistribution-group-create");
+  client.appdistribution.group.delete = loadCommand("appdistribution-group-delete");
   client.apps = {};
   client.apps.create = loadCommand("apps-create");
   client.apps.list = loadCommand("apps-list");
@@ -86,25 +89,15 @@ export function load(client: any): any {
   client.ext.list = loadCommand("ext-list");
   client.ext.uninstall = loadCommand("ext-uninstall");
   client.ext.update = loadCommand("ext-update");
-  if (experiments.isEnabled("ext")) {
-    client.ext.sources = {};
-    client.ext.sources.create = loadCommand("ext-sources-create");
-  }
-  if (experiments.isEnabled("extdev")) {
-    client.ext.dev = {};
-    client.ext.dev.init = loadCommand("ext-dev-init");
-    client.ext.dev.list = loadCommand("ext-dev-list");
-    client.ext.dev.register = loadCommand("ext-dev-register");
-    client.ext.dev.emulators = {};
-    client.ext.dev.emulators.start = loadCommand("ext-dev-emulators-start");
-    client.ext.dev.emulators.exec = loadCommand("ext-dev-emulators-exec");
-    client.ext.dev.deprecate = loadCommand("ext-dev-deprecate");
-    client.ext.dev.undeprecate = loadCommand("ext-dev-undeprecate");
-    client.ext.dev.unpublish = loadCommand("ext-dev-unpublish");
-    client.ext.dev.publish = loadCommand("ext-dev-publish");
-    client.ext.dev.delete = loadCommand("ext-dev-extension-delete");
-    client.ext.dev.usage = loadCommand("ext-dev-usage");
-  }
+  client.ext.dev = {};
+  client.ext.dev.init = loadCommand("ext-dev-init");
+  client.ext.dev.list = loadCommand("ext-dev-list");
+  client.ext.dev.register = loadCommand("ext-dev-register");
+  client.ext.dev.deprecate = loadCommand("ext-dev-deprecate");
+  client.ext.dev.undeprecate = loadCommand("ext-dev-undeprecate");
+  client.ext.dev.upload = loadCommand("ext-dev-upload");
+  client.ext.dev.publish = loadCommand("ext-dev-publish");
+  client.ext.dev.usage = loadCommand("ext-dev-usage");
   client.firestore = {};
   client.firestore.delete = loadCommand("firestore-delete");
   client.firestore.indexes = loadCommand("firestore-indexes-list");
@@ -153,6 +146,8 @@ export function load(client: any): any {
   client.init = loadCommand("init");
   if (experiments.isEnabled("internaltesting")) {
     client.internaltesting = {};
+    client.internaltesting.frameworks = {};
+    client.internaltesting.frameworks.compose = loadCommand("internaltesting-frameworks-compose");
     client.internaltesting.functions = {};
     client.internaltesting.functions.discover = loadCommand("internaltesting-functions-discover");
     client.internaltesting.frameworks = {};

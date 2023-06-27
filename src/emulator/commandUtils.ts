@@ -59,7 +59,7 @@ export const FLAG_TEST_PARAMS = "--test-params <params.env file>";
 export const DESC_TEST_PARAMS =
   "A .env file containing test param values for your emulated extension.";
 
-const DEFAULT_CONFIG = new Config(
+export const DEFAULT_CONFIG = new Config(
   {
     eventarc: {},
     database: {},
@@ -182,6 +182,11 @@ export function parseInspectionPort(options: any): number {
   return parsed;
 }
 
+export interface ExportOnExitOptions {
+  exportOnExit?: boolean | string;
+  import?: string;
+}
+
 /**
  * Sets the correct export options based on --import and --export-on-exit. Mutates the options object.
  * Also validates if we have a correct setting we need to export the data on exit.
@@ -190,7 +195,7 @@ export function parseInspectionPort(options: any): number {
  * export data the first time they start developing on a clean project.
  * @param options
  */
-export function setExportOnExitOptions(options: any) {
+export function setExportOnExitOptions(options: ExportOnExitOptions): void {
   if (options.exportOnExit || typeof options.exportOnExit === "string") {
     // note that options.exportOnExit may be a bool when used as a flag without a [dir] argument:
     // --import ./data --export-on-exit
@@ -434,7 +439,7 @@ export async function emulatorExec(script: string, options: any): Promise<void> 
   let deprecationNotices;
   try {
     const showUI = !!options.ui;
-    ({ deprecationNotices } = await controller.startAll(options, showUI));
+    ({ deprecationNotices } = await controller.startAll(options, showUI, true));
     exitCode = await runScript(script, extraEnv);
     await controller.onExit(options);
   } finally {

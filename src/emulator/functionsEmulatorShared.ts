@@ -23,6 +23,7 @@ const V2_EVENTS = [
   events.v2.PUBSUB_PUBLISH_EVENT,
   ...events.v2.STORAGE_EVENTS,
   ...events.v2.DATABASE_EVENTS,
+  ...events.v2.FIRESTORE_EVENTS,
 ];
 
 /**
@@ -451,6 +452,9 @@ export function formatHost(info: { host: string; port: number }): string {
  */
 export function getSignatureType(def: EmulatedTriggerDefinition): SignatureType {
   if (def.httpsTrigger || def.blockingTrigger) {
+    return "http";
+  }
+  if (def.platform === "gcfv2" && def.schedule) {
     return "http";
   }
   // TODO: As implemented, emulated CF3v1 functions cannot receive events in CloudEvent format, and emulated CF3v2

@@ -5,7 +5,7 @@
  * Reference PARAMETERS in your functions code with:
  * `process.env.<parameter-name>`
  * Learn more about building extensions in the docs:
- * https://firebase.google.com/docs/extensions/alpha/overview
+ * https://firebase.google.com/docs/extensions/publishers
  */
 
 import * as functions from "firebase-functions";

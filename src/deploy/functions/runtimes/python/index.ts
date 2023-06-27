@@ -9,11 +9,11 @@ import * as runtimes from "..";
 import * as backend from "../../backend";
 import * as discovery from "../discovery";
 import { logger } from "../../../../logger";
-import { runWithVirtualEnv } from "../../../../functions/python";
+import { DEFAULT_VENV_DIR, runWithVirtualEnv, virtualEnvCmd } from "../../../../functions/python";
 import { FirebaseError } from "../../../../error";
 import { Build } from "../../build";
 
-export const LATEST_VERSION: runtimes.Runtime = "python310";
+export const LATEST_VERSION: runtimes.Runtime = "python311";
 
 /**
  * Create a runtime delegate for the Python runtime, if applicable.
@@ -75,6 +75,8 @@ export class Delegate implements runtimes.RuntimeDelegate {
 
   async modulesDir(): Promise<string> {
     if (!this._modulesDir) {
+      let out = "";
+      let stderr = "";
       const child = runWithVirtualEnv(
         [
           this.bin,
@@ -84,7 +86,11 @@ export class Delegate implements runtimes.RuntimeDelegate {
         this.sourceDir,
         {}
       );
-      let out = "";
+      child.stderr?.on("data", (chunk: Buffer) => {
+        const chunkString = chunk.toString();
+        stderr = stderr + chunkString;
+        logger.debug(`stderr: ${chunkString}`);
+      });
       child.stdout?.on("data", (chunk: Buffer) => {
         const chunkString = chunk.toString();
         out = out + chunkString;
@@ -95,6 +101,21 @@ export class Delegate implements runtimes.RuntimeDelegate {
         child.on("error", reject);
       });
       this._modulesDir = out.trim();
+      if (this._modulesDir === "") {
+        if (stderr.includes("venv") && stderr.includes("activate")) {
+          throw new FirebaseError(
+            "Failed to find location of Firebase Functions SDK: Missing virtual environment at venv directory. " +
+              `Did you forget to run '${this.bin} -m venv venv'?`
+          );
+        }
+        const { command, args } = virtualEnvCmd(this.sourceDir, DEFAULT_VENV_DIR);
+        throw new FirebaseError(
+          "Failed to find location of Firebase Functions SDK. " +
+            `Did you forget to run '${command} ${args.join(" ")} && ${
+              this.bin
+            } -m pip install -r requirements.txt'?`
+        );
+      }
     }
     return this._modulesDir;
   }
@@ -116,13 +137,13 @@ export class Delegate implements runtimes.RuntimeDelegate {
     return Promise.resolve();
   }
 
-  async serveAdmin(port: number, envs: backend.EnvironmentVariables): Promise<() => Promise<void>> {
+  async serveAdmin(port: number, envs: backend.EnvironmentVariables) {
     const modulesDir = await this.modulesDir();
     const envWithAdminPort = {
       ...envs,
       ADMIN_PORT: port.toString(),
     };
-    const args = [this.bin, path.join(modulesDir, "private", "serving.py")];
+    const args = [this.bin, `"${path.join(modulesDir, "private", "serving.py")}"`];
     logger.debug(
       `Running admin server with args: ${JSON.stringify(args)} and env: ${JSON.stringify(
         envWithAdminPort
@@ -130,21 +151,27 @@ export class Delegate implements runtimes.RuntimeDelegate {
     );
     const childProcess = runWithVirtualEnv(args, this.sourceDir, envWithAdminPort);
     childProcess.stdout?.on("data", (chunk: Buffer) => {
-      const chunkString = chunk.toString();
-      logger.debug(`stdout: ${chunkString}`);
+      logger.info(chunk.toString("utf8"));
     });
     childProcess.stderr?.on("data", (chunk: Buffer) => {
-      const chunkString = chunk.toString();
-      logger.debug(`stderr: ${chunkString}`);
+      logger.error(chunk.toString("utf8"));
     });
     return Promise.resolve(async () => {
-      await fetch(`http://127.0.0.1:${port}/__/quitquitquit`);
+      try {
+        await fetch(`http://127.0.0.1:${port}/__/quitquitquit`);
+      } catch (e) {
+        logger.debug("Failed to call quitquitquit. This often means the server failed to start", e);
+      }
       const quitTimeout = setTimeout(() => {
         if (!childProcess.killed) {
           childProcess.kill("SIGKILL");
         }
       }, 10_000);
       clearTimeout(quitTimeout);
+      return new Promise<void>((resolve, reject) => {
+        childProcess.once("exit", resolve);
+        childProcess.once("error", reject);
+      });
     });
   }
 

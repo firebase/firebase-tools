@@ -12,7 +12,6 @@ import * as extensionsApi from "../extensions/extensionsApi";
 import { ExtensionVersion, ExtensionSource } from "../extensions/types";
 import * as refs from "../extensions/refs";
 import * as secretsUtils from "../extensions/secretsUtils";
-import { displayWarningPrompts } from "../extensions/warnings";
 import * as paramHelper from "../extensions/paramHelper";
 import {
   createSourceFromLocation,
@@ -25,14 +24,14 @@ import {
   isLocalPath,
   canonicalizeRefInput,
 } from "../extensions/extensionsHelper";
-import { confirm } from "../prompt";
 import { getRandomString } from "../extensions/utils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
-import { track } from "../track";
-import * as experiments from "../experiments";
+import { trackGA4 } from "../track";
+import { confirm } from "../prompt";
 import { Options } from "../options";
 import * as manifest from "../extensions/manifest";
+import { displayDeveloperTOSWarning } from "../extensions/tos";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -43,11 +42,8 @@ marked.setOptions({
  */
 export const command = new Command("ext:install [extensionName]")
   .description(
-    "install an official extension if [extensionName] or [extensionName@version] is provided; " +
-      (experiments.isEnabled("extdev")
-        ? "install a local extension if [localPathOrUrl] or [url#root] is provided; install a published extension (not authored by Firebase) if [publisherId/extensionId] is provided "
-        : "") +
-      "or run with `-i` to see all available extensions."
+    "add an uploaded extension to firebase.json if [publisherId/extensionId] is provided;" +
+      "or, add a local extension if [localPath] is provided"
   )
   .option("--local", "deprecated")
   .withForce()
@@ -100,11 +96,18 @@ export const command = new Command("ext:install [extensionName]")
       // Should parse spec locally so we don't need project ID.
       source = await createSourceFromLocation(needProjectId({ projectId }), extensionName);
       await displayExtInfo(extensionName, "", source.spec);
-      void track("Extension Install", "Install by Source", options.interactive ? 1 : 0);
+      void trackGA4("extension_added_to_manifest", {
+        published: "local",
+        interactive: options.nonInteractive ? "false" : "true",
+      });
     } else {
-      void track("Extension Install", "Install by Extension Ref", options.interactive ? 1 : 0);
       extensionName = await canonicalizeRefInput(extensionName);
       extensionVersion = await extensionsApi.getExtensionVersion(extensionName);
+
+      void trackGA4("extension_added_to_manifest", {
+        published: extensionVersion.listing?.state === "APPROVED" ? "published" : "uploaded",
+        interactive: options.nonInteractive ? "false" : "true",
+      });
       await infoExtensionVersion({
         extensionName,
         extensionVersion,
@@ -167,7 +170,6 @@ async function infoExtensionVersion(args: {
 }): Promise<void> {
   const ref = refs.parse(args.extensionName);
   await displayExtInfo(args.extensionName, ref.publisherId, args.extensionVersion.spec, true);
-  await displayWarningPrompts(ref.publisherId, args.extensionVersion);
 }
 
 interface InstallExtensionOptions {
@@ -243,5 +245,5 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
     config,
     { nonInteractive, force: force ?? false }
   );
-  manifest.showPostDeprecationNotice();
+  displayDeveloperTOSWarning();
 }

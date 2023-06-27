@@ -1,12 +1,12 @@
 import { execSync } from "child_process";
 import { spawn, sync as spawnSync } from "cross-spawn";
 import { mkdir, copyFile } from "fs/promises";
-import { dirname, join } from "path";
+import { basename, dirname, join } from "path";
 import type { NextConfig } from "next";
 import type { PrerenderManifest } from "next/dist/build";
-import type { MiddlewareManifest } from "next/dist/build/webpack/plugins/middleware-plugin";
+import type { DomainLocale } from "next/dist/server/config";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
-import { copy, mkdirp, pathExists } from "fs-extra";
+import { copy, mkdirp, pathExists, pathExistsSync } from "fs-extra";
 import { pathToFileURL, parse } from "url";
 import { existsSync } from "fs";
 import { gte } from "semver";
@@ -16,46 +16,66 @@ import { chain } from "stream-chain";
 import { parser } from "stream-json";
 import { pick } from "stream-json/filters/Pick";
 import { streamObject } from "stream-json/streamers/StreamObject";
+import { fileExistsSync } from "../../fsutils";
 
-import {
-  BuildResult,
-  findDependency,
-  FrameworkType,
-  NODE_VERSION,
-  relativeRequire,
-  SupportLevel,
-} from "..";
 import { promptOnce } from "../../prompt";
 import { FirebaseError } from "../../error";
+import type { EmulatorInfo } from "../../emulator/types";
+import {
+  readJSON,
+  simpleProxy,
+  warnIfCustomBuildScript,
+  relativeRequire,
+  findDependency,
+  validateLocales,
+} from "../utils";
+import { BuildResult, FrameworkType, SupportLevel } from "../interfaces";
+
 import {
   cleanEscapedChars,
   getNextjsRewritesToUse,
   isHeaderSupportedByHosting,
   isRedirectSupportedByHosting,
   isRewriteSupportedByHosting,
-  isUsingAppDirectory,
   isUsingImageOptimization,
   isUsingMiddleware,
   allDependencyNames,
+  getMiddlewareMatcherRegexes,
+  getNonStaticRoutes,
+  getNonStaticServerComponents,
+  getHeadersFromMetaFiles,
+  cleanI18n,
+  usesAppDirRouter,
+  usesNextImage,
+  hasUnoptimizedImage,
 } from "./utils";
-import type { Manifest, NpmLsDepdendency } from "./interfaces";
-import { readJSON, simpleProxy } from "../utils";
-import { warnIfCustomBuildScript } from "../utils";
-import type { EmulatorInfo } from "../../emulator/types";
-import { usesAppDirRouter, usesNextImage, hasUnoptimizedImage } from "./utils";
+import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES, SHARP_VERSION, I18N_ROOT } from "../constants";
+import type {
+  AppPathRoutesManifest,
+  AppPathsManifest,
+  HostingHeadersWithSource,
+  RoutesManifest,
+  NpmLsDepdendency,
+  MiddlewareManifest,
+} from "./interfaces";
 import {
   MIDDLEWARE_MANIFEST,
   PAGES_MANIFEST,
   PRERENDER_MANIFEST,
   ROUTES_MANIFEST,
+  APP_PATH_ROUTES_MANIFEST,
+  APP_PATHS_MANIFEST,
 } from "./constants";
+import { getAllSiteDomains } from "../../hosting/api";
+import { logger } from "../../logger";
 
 const DEFAULT_BUILD_SCRIPT = ["next build"];
 const PUBLIC_DIR = "public";
 
 export const name = "Next.js";
-export const support = SupportLevel.Experimental;
+export const support = SupportLevel.Preview;
 export const type = FrameworkType.MetaFramework;
+export const docsUrl = "https://firebase.google.com/docs/hosting/frameworks/nextjs";
 
 const DEFAULT_NUMBER_OF_REASONS_TO_LIST = 5;
 
@@ -98,21 +118,15 @@ export async function build(dir: string): Promise<BuildResult> {
     throw e;
   });
 
-  const reasonsForBackend = [];
-  const { distDir, trailingSlash } = await getConfig(dir);
+  const reasonsForBackend = new Set();
+  const { distDir, trailingSlash, basePath: baseUrl } = await getConfig(dir);
 
   if (await isUsingMiddleware(join(dir, distDir), false)) {
-    reasonsForBackend.push("middleware");
+    reasonsForBackend.add("middleware");
   }
 
   if (await isUsingImageOptimization(join(dir, distDir))) {
-    reasonsForBackend.push(`Image Optimization`);
-  }
-
-  if (isUsingAppDirectory(join(dir, distDir))) {
-    // Let's not get smart here, if they are using the app directory we should
-    // opt for spinning up a Cloud Function. The app directory is unstable.
-    reasonsForBackend.push("app directory (unstable)");
+    reasonsForBackend.add(`Image Optimization`);
   }
 
   const prerenderManifest = await readJSON<PrerenderManifest>(
@@ -124,7 +138,7 @@ export async function build(dir: string): Promise<BuildResult> {
   );
   if (dynamicRoutesWithFallback.length > 0) {
     for (const [key] of dynamicRoutesWithFallback) {
-      reasonsForBackend.push(`use of fallback ${key}`);
+      reasonsForBackend.add(`use of fallback ${key}`);
     }
   }
 
@@ -132,8 +146,8 @@ export async function build(dir: string): Promise<BuildResult> {
     ([, it]) => it.initialRevalidateSeconds
   );
   if (routesWithRevalidate.length > 0) {
-    for (const [key] of routesWithRevalidate) {
-      reasonsForBackend.push(`use of revalidate ${key}`);
+    for (const [, { srcRoute }] of routesWithRevalidate) {
+      reasonsForBackend.add(`use of revalidate ${srcRoute}`);
     }
   }
 
@@ -142,47 +156,77 @@ export async function build(dir: string): Promise<BuildResult> {
   );
   const prerenderedRoutes = Object.keys(prerenderManifest.routes);
   const dynamicRoutes = Object.keys(prerenderManifest.dynamicRoutes);
-  const unrenderedPages = Object.keys(pagesManifestJSON).filter(
-    (it) =>
-      !(
-        ["/_app", "/", "/_error", "/_document", "/404"].includes(it) ||
-        prerenderedRoutes.includes(it) ||
-        dynamicRoutes.includes(it)
-      )
-  );
-  if (unrenderedPages.length > 0) {
-    for (const key of unrenderedPages) {
-      reasonsForBackend.push(`non-static route ${key}`);
-    }
+
+  const unrenderedPages = getNonStaticRoutes(pagesManifestJSON, prerenderedRoutes, dynamicRoutes);
+
+  for (const key of unrenderedPages) {
+    reasonsForBackend.add(`non-static route ${key}`);
   }
 
-  const manifest = await readJSON<Manifest>(join(dir, distDir, ROUTES_MANIFEST));
+  const manifest = await readJSON<RoutesManifest>(join(dir, distDir, ROUTES_MANIFEST));
 
   const {
     headers: nextJsHeaders = [],
     redirects: nextJsRedirects = [],
     rewrites: nextJsRewrites = [],
+    i18n: nextjsI18n,
   } = manifest;
 
-  const isEveryHeaderSupported = nextJsHeaders.every(isHeaderSupportedByHosting);
+  const isEveryHeaderSupported = nextJsHeaders.map(cleanI18n).every(isHeaderSupportedByHosting);
   if (!isEveryHeaderSupported) {
-    reasonsForBackend.push("advanced headers");
+    reasonsForBackend.add("advanced headers");
   }
 
-  const headers = nextJsHeaders.filter(isHeaderSupportedByHosting).map(({ source, headers }) => ({
-    // clean up unnecessary escaping
-    source: cleanEscapedChars(source),
-    headers,
-  }));
+  const headers: HostingHeadersWithSource[] = nextJsHeaders
+    .map(cleanI18n)
+    .filter(isHeaderSupportedByHosting)
+    .map(({ source, headers }) => ({
+      // clean up unnecessary escaping
+      source: cleanEscapedChars(source),
+      headers,
+    }));
+
+  const [appPathsManifest, appPathRoutesManifest] = await Promise.all([
+    readJSON<AppPathsManifest>(join(dir, distDir, "server", APP_PATHS_MANIFEST)).catch(
+      () => undefined
+    ),
+    readJSON<AppPathRoutesManifest>(join(dir, distDir, APP_PATH_ROUTES_MANIFEST)).catch(
+      () => undefined
+    ),
+  ]);
+
+  if (appPathRoutesManifest) {
+    const headersFromMetaFiles = await getHeadersFromMetaFiles(
+      dir,
+      distDir,
+      baseUrl,
+      appPathRoutesManifest
+    );
+    headers.push(...headersFromMetaFiles);
+
+    if (appPathsManifest) {
+      const unrenderedServerComponents = getNonStaticServerComponents(
+        appPathsManifest,
+        appPathRoutesManifest,
+        prerenderedRoutes,
+        dynamicRoutes
+      );
+
+      for (const key of unrenderedServerComponents) {
+        reasonsForBackend.add(`non-static component ${key}`);
+      }
+    }
+  }
 
   const isEveryRedirectSupported = nextJsRedirects
     .filter((it) => !it.internal)
     .every(isRedirectSupportedByHosting);
   if (!isEveryRedirectSupported) {
-    reasonsForBackend.push("advanced redirects");
+    reasonsForBackend.add("advanced redirects");
   }
 
   const redirects = nextJsRedirects
+    .map(cleanI18n)
     .filter(isRedirectSupportedByHosting)
     .map(({ source, destination, statusCode: type }) => ({
       // clean up unnecessary escaping
@@ -198,42 +242,57 @@ export async function build(dir: string): Promise<BuildResult> {
     !Array.isArray(nextJsRewrites) &&
     (nextJsRewrites.afterFiles?.length || nextJsRewrites.fallback?.length)
   ) {
-    reasonsForBackend.push("advanced rewrites");
+    reasonsForBackend.add("advanced rewrites");
   }
 
   const isEveryRewriteSupported = nextJsRewritesToUse.every(isRewriteSupportedByHosting);
   if (!isEveryRewriteSupported) {
-    reasonsForBackend.push("advanced rewrites");
+    reasonsForBackend.add("advanced rewrites");
   }
 
-  // Can we change i18n into Firebase settings?
   const rewrites = nextJsRewritesToUse
     .filter(isRewriteSupportedByHosting)
+    .map(cleanI18n)
     .map(({ source, destination }) => ({
       // clean up unnecessary escaping
       source: cleanEscapedChars(source),
       destination,
     }));
 
-  const wantsBackend = reasonsForBackend.length > 0;
+  const wantsBackend = reasonsForBackend.size > 0;
 
   if (wantsBackend) {
-    const numberOfReasonsToList = process.env.DEBUG ? Infinity : DEFAULT_NUMBER_OF_REASONS_TO_LIST;
-    console.log("Building a Cloud Function to run this application. This is needed due to:");
-    for (const reason of reasonsForBackend.slice(0, numberOfReasonsToList)) {
-      console.log(` • ${reason}`);
+    logger.info("Building a Cloud Function to run this application. This is needed due to:");
+    for (const reason of Array.from(reasonsForBackend).slice(
+      0,
+      DEFAULT_NUMBER_OF_REASONS_TO_LIST
+    )) {
+      logger.info(` • ${reason}`);
     }
-    if (reasonsForBackend.length > numberOfReasonsToList) {
-      console.log(
+    for (const reason of Array.from(reasonsForBackend).slice(DEFAULT_NUMBER_OF_REASONS_TO_LIST)) {
+      logger.debug(` • ${reason}`);
+    }
+    if (reasonsForBackend.size > DEFAULT_NUMBER_OF_REASONS_TO_LIST && !process.env.DEBUG) {
+      logger.info(
         ` • and ${
-          reasonsForBackend.length - numberOfReasonsToList
+          reasonsForBackend.size - DEFAULT_NUMBER_OF_REASONS_TO_LIST
         } other reasons, use --debug to see more`
       );
     }
-    console.log("");
+    logger.info("");
   }
 
-  return { wantsBackend, headers, redirects, rewrites, trailingSlash };
+  const i18n = !!nextjsI18n;
+
+  return {
+    wantsBackend,
+    headers,
+    redirects,
+    rewrites,
+    trailingSlash,
+    i18n,
+    baseUrl,
+  };
 }
 
 /**
@@ -257,48 +316,59 @@ export async function init(setup: any, config: any) {
 /**
  * Create a directory for SSG content.
  */
-export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: string) {
-  const { distDir } = await getConfig(sourceDir);
+export async function ɵcodegenPublicDirectory(
+  sourceDir: string,
+  destDir: string,
+  _: string,
+  context: { site: string; project: string }
+) {
+  const { distDir, i18n, basePath } = await getConfig(sourceDir);
+
+  let matchingI18nDomain: DomainLocale | undefined = undefined;
+  if (i18n?.domains) {
+    const siteDomains = await getAllSiteDomains(context.project, context.site);
+    matchingI18nDomain = i18n.domains.find(({ domain }) => siteDomains.includes(domain));
+  }
+  const singleLocaleDomain = !i18n || ((matchingI18nDomain || i18n).locales || []).length <= 1;
 
   const publicPath = join(sourceDir, "public");
-  await mkdir(join(destDir, "_next", "static"), { recursive: true });
+  await mkdir(join(destDir, basePath, "_next", "static"), { recursive: true });
   if (await pathExists(publicPath)) {
-    await copy(publicPath, destDir);
+    await copy(publicPath, join(destDir, basePath));
   }
-  await copy(join(sourceDir, distDir, "static"), join(destDir, "_next", "static"));
+  await copy(join(sourceDir, distDir, "static"), join(destDir, basePath, "_next", "static"));
 
-  // Copy over the default html files
-  for (const file of ["index.html", "404.html", "500.html"]) {
-    const pagesPath = join(sourceDir, distDir, "server", "pages", file);
-    if (await pathExists(pagesPath)) {
-      await copyFile(pagesPath, join(destDir, file));
-      continue;
-    }
-    const appPath = join(sourceDir, distDir, "server", "app", file);
-    if (await pathExists(appPath)) {
-      await copyFile(appPath, join(destDir, file));
-    }
-  }
-
-  const [middlewareManifest, prerenderManifest, routesManifest] = await Promise.all([
+  const [
+    middlewareManifest,
+    prerenderManifest,
+    routesManifest,
+    pagesManifest,
+    appPathRoutesManifest,
+  ] = await Promise.all([
     readJSON<MiddlewareManifest>(join(sourceDir, distDir, "server", MIDDLEWARE_MANIFEST)),
     readJSON<PrerenderManifest>(join(sourceDir, distDir, PRERENDER_MANIFEST)),
-    readJSON<Manifest>(join(sourceDir, distDir, ROUTES_MANIFEST)),
+    readJSON<RoutesManifest>(join(sourceDir, distDir, ROUTES_MANIFEST)),
+    readJSON<PagesManifest>(join(sourceDir, distDir, "server", PAGES_MANIFEST)),
+    readJSON<AppPathRoutesManifest>(join(sourceDir, distDir, APP_PATH_ROUTES_MANIFEST)).catch(
+      () => ({})
+    ),
   ]);
 
-  const middlewareMatcherRegexes = Object.values(middlewareManifest.middleware)
-    .map((it) => it.matchers)
-    .flat()
-    .map((it) => new RegExp(it.regexp));
+  const appPathRoutesEntries = Object.entries(appPathRoutesManifest);
+
+  const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(middlewareManifest);
 
   const { redirects = [], rewrites = [], headers = [] } = routesManifest;
 
   const rewritesRegexesNotSupportedByHosting = getNextjsRewritesToUse(rewrites)
     .filter((rewrite) => !isRewriteSupportedByHosting(rewrite))
+    .map(cleanI18n)
     .map((rewrite) => new RegExp(rewrite.regex));
 
   const redirectsRegexesNotSupportedByHosting = redirects
+    .filter((it) => !it.internal)
     .filter((redirect) => !isRedirectSupportedByHosting(redirect))
+    .map(cleanI18n)
     .map((redirect) => new RegExp(redirect.regex));
 
   const headersRegexesNotSupportedByHosting = headers
@@ -312,36 +382,96 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
     ...headersRegexesNotSupportedByHosting,
   ];
 
-  for (const [path, route] of Object.entries(prerenderManifest.routes)) {
-    if (
-      route.initialRevalidateSeconds ||
-      pathsUsingsFeaturesNotSupportedByHosting.some((it) => path.match(it))
-    ) {
-      continue;
-    }
+  const pagesManifestLikePrerender: PrerenderManifest["routes"] = Object.fromEntries(
+    Object.entries(pagesManifest)
+      .filter(([, srcRoute]) => srcRoute.endsWith(".html"))
+      .map(([path]) => {
+        return [path, { srcRoute: null, initialRevalidateSeconds: false, dataRoute: "" }];
+      })
+  );
 
-    const isReactServerComponent = route.dataRoute.endsWith(".rsc");
-    const contentDist = join(
-      sourceDir,
-      distDir,
-      "server",
-      isReactServerComponent ? "app" : "pages"
-    );
+  const routesToCopy: PrerenderManifest["routes"] = {
+    ...prerenderManifest.routes,
+    ...pagesManifestLikePrerender,
+  };
 
-    const parts = path.split("/").filter((it) => !!it);
-    const partsOrIndex = parts.length > 0 ? parts : ["index"];
+  await Promise.all(
+    Object.entries(routesToCopy).map(async ([path, route]) => {
+      if (route.initialRevalidateSeconds) {
+        logger.debug(`skipping ${path} due to revalidate`);
+        return;
+      }
+      if (pathsUsingsFeaturesNotSupportedByHosting.some((it) => path.match(it))) {
+        logger.debug(
+          `skipping ${path} due to it matching an unsupported rewrite/redirect/header or middlware`
+        );
+        return;
+      }
+      const appPathRoute =
+        route.srcRoute && appPathRoutesEntries.find(([, it]) => it === route.srcRoute)?.[0];
+      const contentDist = join(sourceDir, distDir, "server", appPathRoute ? "app" : "pages");
 
-    const htmlPath = `${join(...partsOrIndex)}.html`;
-    await mkdir(join(destDir, dirname(htmlPath)), { recursive: true });
-    await copyFile(join(contentDist, htmlPath), join(destDir, htmlPath));
+      const sourceParts = path.split("/").filter((it) => !!it);
+      const locale = i18n?.locales.includes(sourceParts[0]) ? sourceParts[0] : undefined;
+      const includeOnThisDomain =
+        !locale ||
+        !matchingI18nDomain ||
+        matchingI18nDomain.defaultLocale === locale ||
+        !matchingI18nDomain.locales ||
+        matchingI18nDomain.locales.includes(locale);
 
-    if (!isReactServerComponent) {
-      const dataPath = `${join(...partsOrIndex)}.json`;
-      await mkdir(join(destDir, dirname(route.dataRoute)), { recursive: true });
-      await copyFile(join(contentDist, dataPath), join(destDir, route.dataRoute));
-    }
-  }
+      if (!includeOnThisDomain) {
+        logger.debug(`skipping ${path} since it is for a locale not deployed on this domain`);
+        return;
+      }
+
+      const sourcePartsOrIndex = sourceParts.length > 0 ? sourceParts : ["index"];
+      const destParts = sourceParts.slice(locale ? 1 : 0);
+      const destPartsOrIndex = destParts.length > 0 ? destParts : ["index"];
+      const isDefaultLocale = !locale || (matchingI18nDomain || i18n)?.defaultLocale === locale;
+
+      let sourcePath = join(contentDist, ...sourcePartsOrIndex);
+      let localizedDestPath =
+        !singleLocaleDomain &&
+        locale &&
+        join(destDir, I18N_ROOT, locale, basePath, ...destPartsOrIndex);
+      let defaultDestPath = isDefaultLocale && join(destDir, basePath, ...destPartsOrIndex);
+      if (!fileExistsSync(sourcePath) && fileExistsSync(`${sourcePath}.html`)) {
+        sourcePath += ".html";
+        if (localizedDestPath) localizedDestPath += ".html";
+        if (defaultDestPath) defaultDestPath += ".html";
+      } else if (
+        appPathRoute &&
+        basename(appPathRoute) === "route" &&
+        fileExistsSync(`${sourcePath}.body`)
+      ) {
+        sourcePath += ".body";
+      } else if (!pathExistsSync(sourcePath)) {
+        console.error(`Cannot find ${path} in your compiled Next.js application.`);
+        return;
+      }
+
+      if (localizedDestPath) {
+        await mkdir(dirname(localizedDestPath), { recursive: true });
+        await copyFile(sourcePath, localizedDestPath);
+      }
+
+      if (defaultDestPath) {
+        await mkdir(dirname(defaultDestPath), { recursive: true });
+        await copyFile(sourcePath, defaultDestPath);
+      }
+
+      if (route.dataRoute && !appPathRoute) {
+        const dataSourcePath = `${join(...sourcePartsOrIndex)}.json`;
+        const dataDestPath = join(destDir, basePath, route.dataRoute);
+        await mkdir(dirname(dataDestPath), { recursive: true });
+        await copyFile(join(contentDist, dataSourcePath), dataDestPath);
+      }
+    })
+  );
 }
+
+const BUNDLE_NEXT_CONFIG_TIMEOUT = 10_000;
 
 /**
  * Create a directory for SSR content.
@@ -357,8 +487,12 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
     try {
       const productionDeps = await new Promise<string[]>((resolve) => {
         const dependencies: string[] = [];
+        const npmLs = spawn("npm", ["ls", "--omit=dev", "--all", "--json=true"], {
+          cwd: sourceDir,
+          timeout: NPM_COMMAND_TIMEOUT_MILLIES,
+        });
         const pipeline = chain([
-          spawn("npm", ["ls", "--omit=dev", "--all", "--json"], { cwd: sourceDir }).stdout,
+          npmLs.stdout,
           parser({ packValues: false, packKeys: true, streamValues: false }),
           pick({ filter: "dependencies" }),
           streamObject(),
@@ -385,15 +519,16 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
         );
       const bundle = spawnSync("npx", ["--yes", "esbuild", "next.config.js", ...esbuildArgs], {
         cwd: sourceDir,
+        timeout: BUNDLE_NEXT_CONFIG_TIMEOUT,
       });
-      if (bundle.status) {
+      if (bundle.status !== 0) {
         throw new FirebaseError(bundle.stderr.toString());
       }
     } catch (e: any) {
       console.warn(
         "Unable to bundle next.config.js for use in Cloud Functions, proceeding with deploy but problems may be enountered."
       );
-      console.error(e.message);
+      console.error(e.message || e);
       copy(join(sourceDir, "next.config.js"), join(destDir, "next.config.js"));
     }
   }
@@ -410,7 +545,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
     !(await hasUnoptimizedImage(sourceDir, distDir)) &&
     (usesAppDirRouter(sourceDir) || (await usesNextImage(sourceDir, distDir)))
   ) {
-    packageJson.dependencies["sharp"] = "latest";
+    packageJson.dependencies["sharp"] = SHARP_VERSION;
   }
 
   await mkdirp(join(destDir, distDir));
@@ -421,7 +556,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
 /**
  * Create a dev server.
  */
-export async function getDevModeHandle(dir: string, hostingEmulatorInfo?: EmulatorInfo) {
+export async function getDevModeHandle(dir: string, _: string, hostingEmulatorInfo?: EmulatorInfo) {
   // throw error when using Next.js middleware with firebase serve
   if (!hostingEmulatorInfo) {
     if (await isUsingMiddleware(dir, true)) {
@@ -433,7 +568,8 @@ export async function getDevModeHandle(dir: string, hostingEmulatorInfo?: Emulat
     }
   }
 
-  const { default: next } = relativeRequire(dir, "next");
+  let next = relativeRequire(dir, "next");
+  if ("default" in next) next = next.default;
   const nextApp = next({
     dev: true,
     dir,
@@ -449,7 +585,9 @@ export async function getDevModeHandle(dir: string, hostingEmulatorInfo?: Emulat
   });
 }
 
-async function getConfig(dir: string): Promise<NextConfig & { distDir: string }> {
+async function getConfig(
+  dir: string
+): Promise<Partial<NextConfig> & { distDir: string; trailingSlash: boolean; basePath: string }> {
   let config: NextConfig = {};
   if (existsSync(join(dir, "next.config.js"))) {
     const version = getNextVersion(dir);
@@ -466,10 +604,12 @@ async function getConfig(dir: string): Promise<NextConfig & { distDir: string }>
       }
     }
   }
+  validateLocales(config.i18n?.locales);
   return {
     distDir: ".next",
     // trailingSlash defaults to false in Next.js: https://nextjs.org/docs/api-reference/next.config.js/trailing-slash
     trailingSlash: false,
+    basePath: "/",
     ...config,
   };
 }
