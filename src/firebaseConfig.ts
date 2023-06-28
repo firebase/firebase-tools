@@ -4,14 +4,12 @@
 // the schema/ directory. After changing this file you will need to run
 // 'npm run generate:json-schema' to regenerate the schema files.
 //
-<<<<<<< HEAD
 
 import type { HttpsOptions } from "firebase-functions/v2/https";
 import { IngressSetting, MemoryOption, VpcEgressSetting } from "firebase-functions/v2/options";
 import { Runtime, DecommissionedRuntime } from "./deploy/functions/runtimes/supported/types";
 import { RequireAtLeastOne } from "./metaprogramming";
 // Sourced from - https://docs.microsoft.com/en-us/javascript/api/@azure/keyvault-certificates/requireatleastone?view=azure-node-latest
-import { Emulators } from "./emulator/types";
 
 /**
  * Creates a type that requires at least one key to be present in an interface
@@ -186,56 +184,52 @@ export type RemoteConfigConfig = {
 } & Deployable;
 
 export type EmulatorsConfig = {
-  [Emulators.AUTH]?: {
+  auth?: {
     host?: string;
     port?: number;
   };
-  [Emulators.DATABASE]?: {
+  database?: {
     host?: string;
     port?: number;
   };
-  [Emulators.FIRESTORE]?: {
+  firestore?: {
     host?: string;
     port?: number;
     websocketPort?: number;
   };
-  [Emulators.FUNCTIONS]?: {
+  functions?: {
     host?: string;
     port?: number;
   };
-  [Emulators.HOSTING]?: {
+  hosting?: {
     host?: string;
     port?: number;
   };
-<<<<<<< HEAD
   apphosting?: {
     host?: string;
     port?: number;
   };
   pubsub?: {
-=======
-  [Emulators.PUBSUB]?: {
->>>>>>> 986a378b3 (Adds remote config emulator boilerplate)
     host?: string;
     port?: number;
   };
-  [Emulators.STORAGE]?: {
+  storage?: {
     host?: string;
     port?: number;
   };
-  [Emulators.REMOTE_CONFIG]?: {
+  remoteconfig?: {
     host?: string;
     port?: number;
   };
-  [Emulators.LOGGING]?: {
+  logging?: {
     host?: string;
     port?: number;
   };
-  [Emulators.HUB]?: {
+  hub?: {
     host?: string;
     port?: number;
   };
-  [Emulators.UI]?: {
+  ui?: {
     enabled?: boolean;
     host?: string;
     port?: number | string;
