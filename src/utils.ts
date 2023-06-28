@@ -2,6 +2,7 @@ import * as _ from "lodash";
 import * as url from "url";
 import * as http from "http";
 import * as clc from "colorette";
+import * as open from "open";
 import * as ora from "ora";
 import * as process from "process";
 import { Readable } from "stream";
@@ -763,4 +764,12 @@ export function connectableHostname(hostname: string): string {
     hostname = "[::1]";
   }
   return hostname;
+}
+
+/**
+ * We wrap and export the open() function from the "open" package
+ * to stub it out in unit tests.
+ */
+export async function openInBrowser(url: string): Promise<void> {
+  await open(url);
 }
