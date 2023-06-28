@@ -1,4 +1,4 @@
-export type State = "BUILDING" | "BUILD" | "DEPLOYING" | "READY" | "FAILED";
+type State = "BUILDING" | "BUILD" | "DEPLOYING" | "READY" | "FAILED";
 
 interface Codebase {
   repository?: string;
