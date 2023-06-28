@@ -53,7 +53,7 @@ export class NodejsRuntime implements Runtime {
       );
     }
 
-    return `node:${versionNumber}-slim`;
+    return "us-docker.pkg.dev/firestack-build/test/run";
   }
 
   async getPackageManager(fs: FileSystem): Promise<PackageManager> {
