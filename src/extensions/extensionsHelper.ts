@@ -729,17 +729,21 @@ async function fetchExtensionSource(
   logger.info(`Validating source code at ${clc.bold(sourceUri)}...`);
   const archiveUri = `${repoUri}/archive/${sourceRef}.zip`;
   const tempDirectory = tmp.dirSync({ unsafeCleanup: true });
+  const archiveErrorMessage = `Failed to extract archive from ${clc.bold(
+    archiveUri
+  )}. Please check that the repo is public and that the source ref is valid.`;
   try {
     const response = await fetch(archiveUri);
     if (response.ok) {
       await response.body.pipe(createUnzipTransform(tempDirectory.name)).promise();
     }
   } catch (err: any) {
-    throw new FirebaseError(
-      `Failed to fetch extension archive from ${archiveUri}. Please check the repo URI and source ref. ${err}`
-    );
+    throw new FirebaseError(archiveErrorMessage);
   }
   const archiveName = fs.readdirSync(tempDirectory.name)[0];
+  if (!archiveName) {
+    throw new FirebaseError(archiveErrorMessage);
+  }
   const rootDirectory = path.join(tempDirectory.name, archiveName, extensionRoot);
   // Pre-validation to show a more useful error message in the context of a temp directory.
   try {
