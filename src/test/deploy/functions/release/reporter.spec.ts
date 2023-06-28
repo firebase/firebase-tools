@@ -6,6 +6,7 @@ import * as backend from "../../../../deploy/functions/backend";
 import * as reporter from "../../../../deploy/functions/release/reporter";
 import * as track from "../../../../track";
 import * as events from "../../../../functions/events";
+import * as args from "../../../../deploy/functions/args";
 
 const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
   platform: "gcfv1",
@@ -117,10 +118,12 @@ describe("reporter", () => {
   });
 
   describe("logAndTrackDeployStats", () => {
+    let trackGA4Stub: sinon.SinonStub;
     let trackStub: sinon.SinonStub;
     let debugStub: sinon.SinonStub;
 
     beforeEach(() => {
+      trackGA4Stub = sinon.stub(track, "trackGA4");
       trackStub = sinon.stub(track, "track");
       debugStub = sinon.stub(logger, "debug");
     });
@@ -134,23 +137,94 @@ describe("reporter", () => {
         totalTime: 2_000,
         results: [
           {
-            endpoint: ENDPOINT,
+            endpoint: { ...ENDPOINT, codebase: "codebase0" },
             durationMs: 2_000,
           },
           {
-            endpoint: ENDPOINT,
+            endpoint: { ...ENDPOINT, codebase: "codebase1" },
             durationMs: 1_000,
-            error: new reporter.DeploymentError(ENDPOINT, "update", undefined),
+            error: new reporter.DeploymentError(
+              { ...ENDPOINT, codebase: "codebase1" },
+              "update",
+              undefined
+            ),
           },
           {
-            endpoint: ENDPOINT,
+            endpoint: { ...ENDPOINT, codebase: "codebase1" },
             durationMs: 0,
-            error: new reporter.AbortedDeploymentError(ENDPOINT),
+            error: new reporter.AbortedDeploymentError({ ...ENDPOINT, codebase: "codebase1" }),
           },
         ],
       };
 
-      await reporter.logAndTrackDeployStats(summary);
+      const context: args.Context = {
+        projectId: "id",
+        codebaseDeployEvents: {
+          codebase0: {
+            params: "none",
+            fn_deploy_num_successes: 0,
+            fn_deploy_num_canceled: 0,
+            fn_deploy_num_failures: 0,
+            fn_deploy_num_skipped: 0,
+          },
+          codebase1: {
+            params: "none",
+            fn_deploy_num_successes: 0,
+            fn_deploy_num_canceled: 0,
+            fn_deploy_num_failures: 0,
+            fn_deploy_num_skipped: 0,
+          },
+        },
+      };
+
+      await reporter.logAndTrackDeployStats(summary, context);
+
+      expect(trackGA4Stub).to.have.been.calledWith("function_deploy", {
+        platform: "gcfv1",
+        trigger_type: "https",
+        region: "region",
+        runtime: "nodejs16",
+        status: "success",
+        duration: 2_000,
+      });
+      expect(trackGA4Stub).to.have.been.calledWith("function_deploy", {
+        platform: "gcfv1",
+        trigger_type: "https",
+        region: "region",
+        runtime: "nodejs16",
+        status: "failure",
+        duration: 1_000,
+      });
+      expect(trackGA4Stub).to.have.been.calledWith("function_deploy", {
+        platform: "gcfv1",
+        trigger_type: "https",
+        region: "region",
+        runtime: "nodejs16",
+        status: "aborted",
+        duration: 0,
+      });
+
+      expect(trackGA4Stub).to.have.been.calledWith("codebase_deploy", {
+        params: "none",
+        fn_deploy_num_successes: 1,
+        fn_deploy_num_canceled: 0,
+        fn_deploy_num_failures: 0,
+        fn_deploy_num_skipped: 0,
+      });
+      expect(trackGA4Stub).to.have.been.calledWith("codebase_deploy", {
+        params: "none",
+        fn_deploy_num_successes: 0,
+        fn_deploy_num_canceled: 1,
+        fn_deploy_num_failures: 1,
+        fn_deploy_num_skipped: 0,
+      });
+
+      expect(trackGA4Stub).to.have.been.calledWith("function_deploy_group", {
+        codebase_deploy_count: "2",
+        fn_deploy_num_successes: 1,
+        fn_deploy_num_canceled: 1,
+        fn_deploy_num_failures: 1,
+      });
 
       expect(trackStub).to.have.been.calledWith("functions_region_count", "1", 1);
       expect(trackStub).to.have.been.calledWith("function_deploy_success", "v1.https", 2_000);

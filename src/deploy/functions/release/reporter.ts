@@ -1,8 +1,9 @@
 import * as backend from "../backend";
 import * as clc from "colorette";
 
+import * as args from "../args";
 import { logger } from "../../../logger";
-import { track } from "../../../track";
+import { track, trackGA4 } from "../../../track";
 import * as utils from "../../../utils";
 import { getFunctionLabel } from "../functionsDeployHelper";
 
@@ -56,7 +57,10 @@ export class AbortedDeploymentError extends DeploymentError {
 }
 
 /** Add debugger logs and GA metrics for deploy stats. */
-export async function logAndTrackDeployStats(summary: Summary): Promise<void> {
+export async function logAndTrackDeployStats(
+  summary: Summary,
+  context?: args.Context
+): Promise<void> {
   let totalTime = 0;
   let totalErrors = 0;
   let totalSuccesses = 0;
@@ -64,21 +68,71 @@ export async function logAndTrackDeployStats(summary: Summary): Promise<void> {
   const reports: Array<Promise<void>> = [];
 
   const regions = new Set<string>();
+  const codebases = new Set<string>();
   for (const result of summary.results) {
+    const fnDeployEvent = {
+      platform: result.endpoint.platform,
+      trigger_type: backend.endpointTriggerType(result.endpoint),
+      region: result.endpoint.region,
+      runtime: result.endpoint.runtime,
+      status: !result.error
+        ? "success"
+        : result.error instanceof AbortedDeploymentError
+        ? "aborted"
+        : "failure",
+      duration: result.durationMs,
+    };
+    reports.push(trackGA4("function_deploy", fnDeployEvent));
+
     const tag = triggerTag(result.endpoint);
     regions.add(result.endpoint.region);
+    codebases.add(result.endpoint.codebase || "default");
     totalTime += result.durationMs;
     if (!result.error) {
       totalSuccesses++;
+      if (
+        context?.codebaseDeployEvents &&
+        context.codebaseDeployEvents[result.endpoint.codebase || "default"] !== undefined
+      ) {
+        context.codebaseDeployEvents[result.endpoint.codebase || "default"]
+          .fn_deploy_num_successes++;
+      }
       reports.push(track("function_deploy_success", tag, result.durationMs));
     } else if (result.error instanceof AbortedDeploymentError) {
       totalAborts++;
+      if (
+        context?.codebaseDeployEvents &&
+        context.codebaseDeployEvents[result.endpoint.codebase || "default"] !== undefined
+      ) {
+        context.codebaseDeployEvents[result.endpoint.codebase || "default"]
+          .fn_deploy_num_canceled++;
+      }
       reports.push(track("function_deploy_abort", tag, result.durationMs));
     } else {
       totalErrors++;
+      if (
+        context?.codebaseDeployEvents &&
+        context.codebaseDeployEvents[result.endpoint.codebase || "default"] !== undefined
+      ) {
+        context.codebaseDeployEvents[result.endpoint.codebase || "default"]
+          .fn_deploy_num_failures++;
+      }
       reports.push(track("function_deploy_failure", tag, result.durationMs));
     }
   }
+
+  for (const codebase of codebases) {
+    if (context?.codebaseDeployEvents) {
+      reports.push(trackGA4("codebase_deploy", { ...context.codebaseDeployEvents[codebase] }));
+    }
+  }
+  const fnDeployGroupEvent = {
+    codebase_deploy_count: codebases.size >= 5 ? "5+" : codebases.size.toString(),
+    fn_deploy_num_successes: totalSuccesses,
+    fn_deploy_num_canceled: totalAborts,
+    fn_deploy_num_failures: totalErrors,
+  };
+  reports.push(trackGA4("function_deploy_group", fnDeployGroupEvent));
 
   const regionCountTag = regions.size < 5 ? regions.size.toString() : ">=5";
   reports.push(track("functions_region_count", regionCountTag, 1));

@@ -88,6 +88,8 @@ export async function prepare(
     runtimeConfig = { ...runtimeConfig, ...(await getFunctionsConfig(projectId)) };
   }
 
+  context.codebaseDeployEvents = {};
+
   // ===Phase 1. Load codebases from source.
   const wantBuilds = await loadCodebases(
     context.config,
@@ -155,15 +157,26 @@ export async function prepare(
       codebaseUsesEnvs.push(codebase);
     }
 
+    context.codebaseDeployEvents[codebase] = {
+      fn_deploy_num_successes: 0,
+      fn_deploy_num_failures: 0,
+      fn_deploy_num_canceled: 0,
+      fn_deploy_num_skipped: 0,
+    };
+
     if (wantBuild.params.length > 0) {
       if (wantBuild.params.every((p) => p.type !== "secret")) {
+        context.codebaseDeployEvents[codebase].params = "env_only";
         void track("functions_params_in_build", "env_only");
       } else {
+        context.codebaseDeployEvents[codebase].params = "with_secrets";
         void track("functions_params_in_build", "with_secrets");
       }
     } else {
+      context.codebaseDeployEvents[codebase].params = "none";
       void track("functions_params_in_build", "none");
     }
+    context.codebaseDeployEvents[codebase].runtime = wantBuild.runtime;
   }
 
   // ===Phase 2.5. Before proceeding further, let's make sure that we don't have conflicting function names.
@@ -468,6 +481,7 @@ export async function loadCodebases(
       // in order for .init() calls to succeed.
       GOOGLE_CLOUD_QUOTA_PROJECT: projectId,
     });
+    wantBuilds[codebase].runtime = codebaseConfig.runtime;
   }
   return wantBuilds;
 }
