@@ -1,3 +1,4 @@
+- Run lifecycle hooks for specific functions. (#6023)
 - Increased extension instance create poll timeout to 1h to match backend (#5969).
 - Refactored `ext:install` to use the latest extension metadata. (#5997)
 - Added descriptive error when repo is private or not found during `ext:dev:upload`. (#6052)
