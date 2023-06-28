@@ -820,7 +820,7 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
     .normalize(extensionRoot)
     .replaceAll(/^\/|\/$/g, "")
     .replaceAll(/^(\.\.\/)*/g, "");
-  extensionRoot = normalizedRoot ? normalizedRoot : "/";
+  extensionRoot = normalizedRoot || "/";
 
   // Prompt for source ref and default to HEAD.
   let sourceRef = args.sourceRef;
