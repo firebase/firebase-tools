@@ -96,18 +96,9 @@ export const command = new Command("ext:install [extensionName]")
       // Should parse spec locally so we don't need project ID.
       source = await createSourceFromLocation(needProjectId({ projectId }), extensionName);
       await displayExtInfo(extensionName, "", source.spec);
-      void trackGA4("extension_added_to_manifest", {
-        published: "local",
-        interactive: options.nonInteractive ? "false" : "true",
-      });
     } else {
       extensionName = await canonicalizeRefInput(extensionName);
       extensionVersion = await extensionsApi.getExtensionVersion(extensionName);
-
-      void trackGA4("extension_added_to_manifest", {
-        published: extensionVersion.listing?.state === "APPROVED" ? "published" : "uploaded",
-        interactive: options.nonInteractive ? "false" : "true",
-      });
       await infoExtensionVersion({
         extensionName,
         extensionVersion,
@@ -142,6 +133,18 @@ export const command = new Command("ext:install [extensionName]")
           `${spec.description}\n` +
           `View details: https://firebase.google.com/products/extensions/${spec.name}\n`
       );
+    }
+
+    if (source) {
+      void trackGA4("extension_added_to_manifest", {
+        published: "local",
+        interactive: options.nonInteractive ? "false" : "true",
+      });
+    } else if (extensionVersion) {
+      void trackGA4("extension_added_to_manifest", {
+        published: extensionVersion.listing?.state === "APPROVED" ? "published" : "uploaded",
+        interactive: options.nonInteractive ? "false" : "true",
+      });
     }
 
     try {
