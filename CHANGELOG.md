@@ -1,3 +1,2 @@
-- Release Firestore emulator 1.18.1 which addes a emulator configuration to start with experimental mode (#5942).
-- Run lifecycle hooks for specific codebases. (#6011)
-- Fixed issue causing `firebase emulators:start` to crash in Next.js apps (#6005)
+- Increased extension instance create poll timeout to 1h to match backend (#5969).
+- Refactored `ext:install` to use the latest extension metadata. (#5997)

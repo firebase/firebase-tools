@@ -94,7 +94,6 @@ export async function getParams(args: {
   instanceId: string;
   paramSpecs: Param[];
   nonInteractive?: boolean;
-  paramsEnvPath?: string;
   reconfiguring?: boolean;
 }): Promise<Record<string, ParamBindingOptions>> {
   let params: Record<string, ParamBindingOptions>;
@@ -118,7 +117,6 @@ export async function getParamsForUpdate(args: {
   newSpec: ExtensionSpec;
   currentParams: { [option: string]: string };
   projectId?: string;
-  paramsEnvPath?: string;
   nonInteractive?: boolean;
   instanceId: string;
 }): Promise<Record<string, ParamBindingOptions>> {
