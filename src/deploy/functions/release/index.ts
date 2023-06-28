@@ -76,7 +76,7 @@ export async function release(
 
   const summary = await fab.applyPlan(plan);
 
-  await reporter.logAndTrackDeployStats(summary);
+  await reporter.logAndTrackDeployStats(summary, context);
   reporter.printErrors(summary);
 
   // N.B. Fabricator::applyPlan updates the endpoints it deploys to include the
