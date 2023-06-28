@@ -35,7 +35,6 @@ function extensionVersion(version?: string): any {
 describe("Extensions Deployment Planner", () => {
   describe("resolveSemver", () => {
     let listExtensionVersionsStub: sinon.SinonStub;
-    let getExtensionStub: sinon.SinonStub;
     before(() => {
       listExtensionVersionsStub = sinon.stub(extensionsApi, "listExtensionVersions").resolves([
         extensionVersion("0.1.0"),
@@ -43,14 +42,10 @@ describe("Extensions Deployment Planner", () => {
         extensionVersion("0.2.0"),
         extensionVersion(), // Explicitly test that this doesn't break on bad data
       ]);
-      getExtensionStub = sinon
-        .stub(extensionsApi, "getExtension")
-        .resolves(extension("0.2.0", "0.1.1"));
     });
 
     after(() => {
       listExtensionVersionsStub.restore();
-      getExtensionStub.restore();
     });
 
     const cases = [
@@ -94,19 +89,25 @@ describe("Extensions Deployment Planner", () => {
       it(c.description, () => {
         if (!c.err) {
           expect(
-            planner.resolveVersion({
-              publisherId: "test",
-              extensionId: "test",
-              version: c.in,
-            })
+            planner.resolveVersion(
+              {
+                publisherId: "test",
+                extensionId: "test",
+                version: c.in,
+              },
+              extension("0.2.0", "0.1.1")
+            )
           ).to.eventually.equal(c.out);
         } else {
           expect(
-            planner.resolveVersion({
-              publisherId: "test",
-              extensionId: "test",
-              version: c.in,
-            })
+            planner.resolveVersion(
+              {
+                publisherId: "test",
+                extensionId: "test",
+                version: c.in,
+              },
+              extension("0.2.0", "0.1.1")
+            )
           ).to.eventually.be.rejected;
         }
       });

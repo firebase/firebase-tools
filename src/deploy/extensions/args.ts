@@ -10,4 +10,5 @@ export interface Payload {
 export interface Context {
   have?: planner.DeploymentInstanceSpec[];
   want?: planner.DeploymentInstanceSpec[];
+  extensionsStartTime?: number;
 }

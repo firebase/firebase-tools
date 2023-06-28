@@ -25,6 +25,9 @@ export function load(client: any): any {
   client.appdistribution.testers = {};
   client.appdistribution.testers.add = loadCommand("appdistribution-testers-add");
   client.appdistribution.testers.delete = loadCommand("appdistribution-testers-remove");
+  client.appdistribution.group = {};
+  client.appdistribution.group.create = loadCommand("appdistribution-group-create");
+  client.appdistribution.group.delete = loadCommand("appdistribution-group-delete");
   client.apps = {};
   client.apps.create = loadCommand("apps-create");
   client.apps.list = loadCommand("apps-list");
@@ -147,6 +150,8 @@ export function load(client: any): any {
     client.internaltesting.frameworks.compose = loadCommand("internaltesting-frameworks-compose");
     client.internaltesting.functions = {};
     client.internaltesting.functions.discover = loadCommand("internaltesting-functions-discover");
+    client.internaltesting.frameworks = {};
+    client.internaltesting.frameworks.init = loadCommand("internaltesting-frameworks-init");
   }
   client.login = loadCommand("login");
   client.login.add = loadCommand("login-add");

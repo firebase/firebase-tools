@@ -25,6 +25,3 @@ export function activate(context: vscode.ExtensionContext) {
   setupWorkflow(context, broker);
   setupSidebar(context, broker);
 }
-
-// This method is called when your extension is deactivated
-export function deactivate() {}
