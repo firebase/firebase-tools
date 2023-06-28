@@ -243,7 +243,7 @@ export interface paths {
     };
   };
   "/v1/accounts:signInWithGameCenter": {
-    /** Signs in or signs up a user with iOS Game Center credentials. If the sign-in succeeds, a new Identity Platform ID token and refresh token are issued for the authenticated user. The bundle ID is required in the request header as `x-ios-bundle-identifier`. An [API key](https://cloud.google.com/docs/authentication/api-keys) is required in the request in order to identify the Google Cloud project. */
+    /** Signs in or signs up a user with iOS Game Center credentials. If the sign-in succeeds, a new Identity Platform ID token and refresh token are issued for the authenticated user. The bundle ID is required in the request header as `x-ios-bundle-identifier`. An [API key](https://cloud.google.com/docs/authentication/api-keys) is required in the request in order to identify the Google Cloud project. Apple has [deprecated the `playerID` field](https://developer.apple.com/documentation/gamekit/gkplayer/1521127-playerid/). The Apple platform Firebase SDK will use `gamePlayerID` and `teamPlayerID` from version 10.5.0 and onwards. Upgrading to SDK version 10.5.0 or later updates existing integrations that use `playerID` to instead use `gamePlayerID` and `teamPlayerID`. When making calls to `signInWithGameCenter`, you must include `playerID` along with the new fields `gamePlayerID` and `teamPlayerID` to successfully identify all existing users. Upgrading existing Game Center sign in integrations to SDK version 10.5.0 or later is irreversible. */
     post: operations["identitytoolkit.accounts.signInWithGameCenter"];
     parameters: {
       query: {
@@ -1048,6 +1048,32 @@ export interface paths {
       };
     };
   };
+  "/v2/accounts:revokeToken": {
+    /** Revokes a user's token from an Identity Provider (IdP). This is done by manually providing an IdP credential, and the token types for revocation. An [API key](https://cloud.google.com/docs/authentication/api-keys) is required in the request in order to identify the Google Cloud project. */
+    post: operations["identitytoolkit.accounts.revokeToken"];
+    parameters: {
+      query: {
+        /** OAuth access token. */
+        access_token?: components["parameters"]["access_token"];
+        /** Data format for response. */
+        alt?: components["parameters"]["alt"];
+        /** JSONP */
+        callback?: components["parameters"]["callback"];
+        /** Selector specifying which fields to include in a partial response. */
+        fields?: components["parameters"]["fields"];
+        /** OAuth 2.0 token for the current user. */
+        oauth_token?: components["parameters"]["oauth_token"];
+        /** Returns response with indentations and line breaks. */
+        prettyPrint?: components["parameters"]["prettyPrint"];
+        /** Available to use for quota purposes for server-side applications. Can be any arbitrary string assigned to a user, but should not exceed 40 characters. */
+        quotaUser?: components["parameters"]["quotaUser"];
+        /** Legacy upload protocol for media (e.g. "media", "multipart"). */
+        uploadType?: components["parameters"]["uploadType"];
+        /** Upload protocol for media (e.g. "raw", "multipart"). */
+        upload_protocol?: components["parameters"]["upload_protocol"];
+      };
+    };
+  };
   "/v2/accounts/mfaEnrollment:finalize": {
     /** Finishes enrolling a second factor for the user. */
     post: operations["identitytoolkit.accounts.mfaEnrollment.finalize"];
@@ -1742,6 +1768,58 @@ export interface paths {
       };
     };
   };
+  "/v2/passwordPolicy": {
+    /** Gets password policy config set on the project or tenant. */
+    get: operations["identitytoolkit.getPasswordPolicy"];
+    parameters: {
+      query: {
+        /** OAuth access token. */
+        access_token?: components["parameters"]["access_token"];
+        /** Data format for response. */
+        alt?: components["parameters"]["alt"];
+        /** JSONP */
+        callback?: components["parameters"]["callback"];
+        /** Selector specifying which fields to include in a partial response. */
+        fields?: components["parameters"]["fields"];
+        /** OAuth 2.0 token for the current user. */
+        oauth_token?: components["parameters"]["oauth_token"];
+        /** Returns response with indentations and line breaks. */
+        prettyPrint?: components["parameters"]["prettyPrint"];
+        /** Available to use for quota purposes for server-side applications. Can be any arbitrary string assigned to a user, but should not exceed 40 characters. */
+        quotaUser?: components["parameters"]["quotaUser"];
+        /** Legacy upload protocol for media (e.g. "media", "multipart"). */
+        uploadType?: components["parameters"]["uploadType"];
+        /** Upload protocol for media (e.g. "raw", "multipart"). */
+        upload_protocol?: components["parameters"]["upload_protocol"];
+      };
+    };
+  };
+  "/v2/recaptchaConfig": {
+    /** Gets parameters needed for reCAPTCHA analysis. */
+    get: operations["identitytoolkit.getRecaptchaConfig"];
+    parameters: {
+      query: {
+        /** OAuth access token. */
+        access_token?: components["parameters"]["access_token"];
+        /** Data format for response. */
+        alt?: components["parameters"]["alt"];
+        /** JSONP */
+        callback?: components["parameters"]["callback"];
+        /** Selector specifying which fields to include in a partial response. */
+        fields?: components["parameters"]["fields"];
+        /** OAuth 2.0 token for the current user. */
+        oauth_token?: components["parameters"]["oauth_token"];
+        /** Returns response with indentations and line breaks. */
+        prettyPrint?: components["parameters"]["prettyPrint"];
+        /** Available to use for quota purposes for server-side applications. Can be any arbitrary string assigned to a user, but should not exceed 40 characters. */
+        quotaUser?: components["parameters"]["quotaUser"];
+        /** Legacy upload protocol for media (e.g. "media", "multipart"). */
+        uploadType?: components["parameters"]["uploadType"];
+        /** Upload protocol for media (e.g. "raw", "multipart"). */
+        upload_protocol?: components["parameters"]["upload_protocol"];
+      };
+    };
+  };
   "/v1/token": {
     /** The Token Service API lets you exchange either an ID token or a refresh token for an access token and a new refresh token. You can use the access token to securely call APIs that require user authorization. */
     post: operations["securetoken.token"];
@@ -1893,7 +1971,7 @@ export interface components {
       force?: boolean;
       /** @description Required. List of user IDs to be deleted. */
       localIds?: string[];
-      /** @description If the accounts belong to an Identity Platform tenant, the ID of the tenant. If the accounts belong to an default Identity Platform project, the field is not needed. */
+      /** @description If the accounts belong to an Identity Platform tenant, the ID of the tenant. If the accounts belong to a default Identity Platform project, the field is not needed. */
       tenantId?: string;
     };
     /** @description Response message to BatchDeleteAccounts. */
@@ -2001,6 +2079,11 @@ export interface components {
       /** @description All accounts belonging to the project/tenant limited by max_results in the request. */
       users?: components["schemas"]["GoogleCloudIdentitytoolkitV1UserInfo"][];
     };
+    /** @description Information about email MFA. */
+    GoogleCloudIdentitytoolkitV1EmailInfo: {
+      /** @description Email address that a MFA verification should be sent to. */
+      emailAddress?: string;
+    };
     /** @description Email template */
     GoogleCloudIdentitytoolkitV1EmailTemplate: {
       /** @description Email body */
@@ -2081,6 +2164,12 @@ export interface components {
       /** @description For a PASSWORD_RESET request, a reCaptcha response is required when the system detects possible abuse activity. In those cases, this is the response from the reCaptcha challenge used to verify the caller. */
       captchaResp?: string;
       challenge?: string;
+      /** @description The client type: web, Android or iOS. Required when reCAPTCHA Enterprise protection is enabled. */
+      clientType?:
+        | "CLIENT_TYPE_UNSPECIFIED"
+        | "CLIENT_TYPE_WEB"
+        | "CLIENT_TYPE_ANDROID"
+        | "CLIENT_TYPE_IOS";
       /** @description The Url to continue after user clicks the link sent in email. This is the url that will allow the web widget to handle the OOB code. */
       continueUrl?: string;
       /** @description In order to ensure that the url used can be easily opened up in iOS or android, we create a [Firebase Dynamic Link](https://firebase.google.com/docs/dynamic-links). Most Identity Platform projects will only have one Dynamic Link domain enabled, and can leave this field blank. This field contains a specified Dynamic Link domain for projects that have multiple enabled. */
@@ -2095,6 +2184,8 @@ export interface components {
       idToken?: string;
       /** @description The email address the account is being updated to. Required only for VERIFY_AND_CHANGE_EMAIL requests. */
       newEmail?: string;
+      /** @description The reCAPTCHA version of the reCAPTCHA token in the captcha_response. */
+      recaptchaVersion?: "RECAPTCHA_VERSION_UNSPECIFIED" | "RECAPTCHA_ENTERPRISE";
       /** @description Required. The type of out-of-band (OOB) code to send. Depending on this value, other fields in this request will be required and/or have different meanings. There are 4 different OOB codes that can be sent: * PASSWORD_RESET * EMAIL_SIGNIN * VERIFY_EMAIL * VERIFY_AND_CHANGE_EMAIL */
       requestType?:
         | "OOB_REQ_TYPE_UNSPECIFIED"
@@ -2223,6 +2314,7 @@ export interface components {
     GoogleCloudIdentitytoolkitV1MfaEnrollment: {
       /** @description Display name for this mfa option e.g. "corp cell phone". */
       displayName?: string;
+      emailInfo?: components["schemas"]["GoogleCloudIdentitytoolkitV1EmailInfo"];
       /**
        * Format: google-datetime
        * @description Timestamp when the account enrolled this second factor.
@@ -2232,6 +2324,7 @@ export interface components {
       mfaEnrollmentId?: string;
       /** @description Normally this will show the phone number associated with this enrollment. In some situations, such as after a first factor sign in, it will only show the obfuscated version of the associated phone number. */
       phoneInfo?: string;
+      totpInfo?: components["schemas"]["GoogleCloudIdentitytoolkitV1TotpInfo"];
       /** @description Output only. Unobfuscated phone_info. */
       unobfuscatedPhoneInfo?: string;
     };
@@ -2359,6 +2452,8 @@ export interface components {
       iosSecret?: string;
       /** @description The phone number to send the verification code to in E.164 format. */
       phoneNumber?: string;
+      /** @description Android only. Used to assert application identity in place of a recaptcha token (and safety_net_token). At least one of (`ios_receipt` and `ios_secret`), `recaptcha_token`, , or `play_integrity_token` must be specified to verify the verification code is being sent on behalf of a real app and not an emulator. A Play Integrity Token can be generated via the [PlayIntegrity API](https://developer.android.com/google/play/integrity) with applying SHA256 to the `phone_number` field as the nonce. */
+      playIntegrityToken?: string;
       /** @description Recaptcha token for app verification. At least one of (`ios_receipt` and `ios_secret`), `recaptcha_token`, or `safety_net_token` must be specified to verify the verification code is being sent on behalf of a real app and not an emulator. The recaptcha should be generated by calling getRecaptchaParams and the recaptcha token will be generated on user completion of the recaptcha challenge. */
       recaptchaToken?: string;
       /** @description Android only. Used to assert application identity in place of a recaptcha token. At least one of (`ios_receipt` and `ios_secret`), `recaptcha_token`, or `safety_net_token` must be specified to verify the verification code is being sent on behalf of a real app and not an emulator. A SafetyNet Token can be generated via the [SafetyNet Android Attestation API](https://developer.android.com/training/safetynet/attestation.html), with the Base64 encoding of the `phone_number` field as the nonce. */
@@ -2539,7 +2634,7 @@ export interface components {
       gamePlayerId?: string;
       /** @description A valid ID token for an Identity Platform account. If present, this request will link the Game Center player ID to the account represented by this ID token. */
       idToken?: string;
-      /** @description Required. The user's Game Center player ID. */
+      /** @description Required. The user's Game Center player ID. Deprecated by Apple. Pass `playerID` along with `gamePlayerID` and `teamPlayerID` to initiate the migration of a user's Game Center player ID to `gamePlayerID`. */
       playerId?: string;
       /** @description Required. The URL to fetch the Apple public key in order to verify the given signature is signed by Apple. */
       publicKeyUrl?: string;
@@ -2574,7 +2669,7 @@ export interface components {
       isNewUser?: boolean;
       /** @description The ID of the authenticated user. Always present in the response. */
       localId?: string;
-      /** @description The user's Game Center player ID. */
+      /** @description The user's Game Center player ID. Pass `playerID` along with `gamePlayerID` and `teamPlayerID` to initiate the migration of a user's Game Center player ID to `gamePlayerID`. */
       playerId?: string;
       /** @description An Identity Platform refresh token for the authenticated user. */
       refreshToken?: string;
@@ -2589,9 +2684,9 @@ export interface components {
       /** @description A valid Identity Platform ID token. If passed, the user's account at the IdP will be linked to the account represented by this ID token. */
       idToken?: string;
       pendingIdToken?: string;
-      /** @description An opaque string from a previous SignInWithIdp response. If set, it can be used to repeat the sign-in operation from the previous SignInWithIdp operation. */
+      /** @description An opaque string from a previous SignInWithIdp response. If set, it can be used to repeat the sign-in operation from the previous SignInWithIdp operation. This may be present if the user needs to confirm their account information as part of a previous federated login attempt, or perform account linking. */
       pendingToken?: string;
-      /** @description If the user is signing in with an authorization response obtained via a previous CreateAuthUri authorization request, this is the body of the HTTP POST callback from the IdP, if present. Otherwise, if the user is signing in with a manually provided IdP credential, this should be a URL-encoded form that contains the credential (e.g. an ID token or access token for OAuth 2.0 IdPs) and the provider ID of the IdP that issued the credential. For example, if the user is signing in to the Google provider using a Google ID token, this should be set to `id_token=[GOOGLE_ID_TOKEN]&providerId=google.com`, where `[GOOGLE_ID_TOKEN]` should be replaced with the Google ID token. If the user is signing in to the Facebook provider using a Facebook authentication token, this should be set to `id_token=[FACEBOOK_AUTHENTICATION_TOKEN]&providerId=facebook.com&nonce= [NONCE]`, where `[FACEBOOK_AUTHENTICATION_TOKEN]` should be replaced with the Facebook authentication token. Nonce is required for validating the token. The request will fail if no nonce is provided. If the user is signing in to the Facebook provider using a Facebook access token, this should be set to `access_token=[FACEBOOK_ACCESS_TOKEN]&providerId=facebook.com`, where `[FACEBOOK_ACCESS_TOKEN]` should be replaced with the Facebook access token. If the user is signing in to the Twitter provider using a Twitter OAuth 1.0 credential, this should be set to `access_token=[TWITTER_ACCESS_TOKEN]&oauth_token_secret=[TWITTER_TOKEN_SECRET]&providerId=twitter.com`, where `[TWITTER_ACCESS_TOKEN]` and `[TWITTER_TOKEN_SECRET]` should be replaced with the Twitter OAuth access token and Twitter OAuth token secret respectively. */
+      /** @description If the user is signing in with an authorization response obtained via a previous CreateAuthUri authorization request, this is the body of the HTTP POST callback from the IdP, if present. Otherwise, if the user is signing in with a manually provided IdP credential, this should be a URL-encoded form that contains the credential (e.g. an ID token or access token for OAuth 2.0 IdPs) and the provider ID of the IdP that issued the credential. For example, if the user is signing in to the Google provider using a Google ID token, this should be set to id_token`=[GOOGLE_ID_TOKEN]&providerId=google.com`, where `[GOOGLE_ID_TOKEN]` should be replaced with the Google ID token. If the user is signing in to the Facebook provider using a Facebook authentication token, this should be set to id_token`=[FACEBOOK_AUTHENTICATION_TOKEN]&providerId=facebook. com&nonce= [NONCE]`, where `[FACEBOOK_AUTHENTICATION_TOKEN]` should be replaced with the Facebook authentication token. Nonce is required for validating the token. The request will fail if no nonce is provided. If the user is signing in to the Facebook provider using a Facebook access token, this should be set to access_token`=[FACEBOOK_ACCESS_TOKEN]&providerId=facebook. com`, where `[FACEBOOK_ACCESS_TOKEN]` should be replaced with the Facebook access token. If the user is signing in to the Twitter provider using a Twitter OAuth 1.0 credential, this should be set to access_token`=[TWITTER_ACCESS_TOKEN]&oauth_token_secret= [TWITTER_TOKEN_SECRET]&providerId=twitter.com`, where `[TWITTER_ACCESS_TOKEN]` and `[TWITTER_TOKEN_SECRET]` should be replaced with the Twitter OAuth access token and Twitter OAuth token secret respectively. */
       postBody?: string;
       /** @description Required. The URL to which the IdP redirects the user back. This can be set to `http://localhost` if the user is signing in with a manually provided IdP credential. */
       requestUri?: string;
@@ -2695,6 +2790,12 @@ export interface components {
       captchaChallenge?: string;
       /** @description The reCAPTCHA token provided by the reCAPTCHA client-side integration. reCAPTCHA Enterprise uses it for risk assessment. Required when reCAPTCHA Enterprise is enabled. */
       captchaResponse?: string;
+      /** @description The client type, web, android or ios. Required when reCAPTCHA Enterprise is enabled. */
+      clientType?:
+        | "CLIENT_TYPE_UNSPECIFIED"
+        | "CLIENT_TYPE_WEB"
+        | "CLIENT_TYPE_ANDROID"
+        | "CLIENT_TYPE_IOS";
       /** Format: int64 */
       delegatedProjectNumber?: string;
       /** @description Required. The email the user is signing in with. The length of email should be less than 256 characters and in the format of `name@domain.tld`. The email should also match the [RFC 822](https://tools.ietf.org/html/rfc822) addr-spec production. */
@@ -2704,6 +2805,8 @@ export interface components {
       /** @description Required. The password the user provides to sign in to the account. */
       password?: string;
       pendingIdToken?: string;
+      /** @description The reCAPTCHA version of the reCAPTCHA token in the captcha_response. */
+      recaptchaVersion?: "RECAPTCHA_VERSION_UNSPECIFIED" | "RECAPTCHA_ENTERPRISE";
       /** @description Should always be true. */
       returnSecureToken?: boolean;
       /** @description The ID of the Identity Platform tenant the user is signing in to. If not set, the user will sign in to the default Identity Platform instance in the project. */
@@ -2743,6 +2846,8 @@ export interface components {
       refreshToken?: string;
       /** @description Whether the email is for an existing account. Always true. */
       registered?: boolean;
+      /** @description Warning notifications for the user. */
+      userNotifications?: components["schemas"]["GoogleCloudIdentitytoolkitV1UserNotification"][];
     };
     /** @description Request message for SignInWithPhoneNumber. */
     GoogleCloudIdentitytoolkitV1SignInWithPhoneNumberRequest: {
@@ -2799,6 +2904,12 @@ export interface components {
       captchaChallenge?: string;
       /** @description The reCAPTCHA token provided by the reCAPTCHA client-side integration. reCAPTCHA Enterprise uses it for assessment. Required when reCAPTCHA enterprise is enabled. */
       captchaResponse?: string;
+      /** @description The client type: web, Android or iOS. Required when enabling reCAPTCHA enterprise protection. */
+      clientType?:
+        | "CLIENT_TYPE_UNSPECIFIED"
+        | "CLIENT_TYPE_WEB"
+        | "CLIENT_TYPE_ANDROID"
+        | "CLIENT_TYPE_IOS";
       /** @description Whether the user will be disabled upon creation. Disabled accounts are inaccessible except for requests bearing a Google OAuth2 credential with proper [permissions](https://cloud.google.com/identity-platform/docs/access-control). */
       disabled?: boolean;
       /** @description The display name of the user to be created. */
@@ -2820,6 +2931,8 @@ export interface components {
       phoneNumber?: string;
       /** @description The profile photo url of the user to create. */
       photoUrl?: string;
+      /** @description The reCAPTCHA version of the reCAPTCHA token in the captcha_response. */
+      recaptchaVersion?: "RECAPTCHA_VERSION_UNSPECIFIED" | "RECAPTCHA_ENTERPRISE";
       /** @description The project ID of the project which the user should belong to. Specifying this field requires a Google OAuth 2.0 credential with the proper [permissions](https://cloud.google.com/identity-platform/docs/access-control). If this is not set, the target project is inferred from the scope associated to the Bearer access token. */
       targetProjectId?: string;
       /** @description The ID of the Identity Platform tenant to create a user under. If not set, the user will be created under the default Identity Platform project. */
@@ -2853,6 +2966,8 @@ export interface components {
       /** @description A string that the account's local ID should match. Only one of `email`, `phone_number`, or `user_id` should be specified in a SqlExpression If more than one is specified, only the first (in that order) will be applied. */
       userId?: string;
     };
+    /** @description Information about TOTP MFA. */
+    GoogleCloudIdentitytoolkitV1TotpInfo: { [key: string]: unknown };
     /** @description Request message for UploadAccount. */
     GoogleCloudIdentitytoolkitV1UploadAccountRequest: {
       /** @description Whether to overwrite an existing account in Identity Platform with a matching `local_id` in the request. If true, the existing account will be overwritten. If false, an error will be returned. */
@@ -2998,6 +3113,20 @@ export interface components {
        */
       version?: number;
     };
+    /** @description Warning notifications for the user. */
+    GoogleCloudIdentitytoolkitV1UserNotification: {
+      /** @description Warning notification enum. Can be used for localization. */
+      notificationCode?:
+        | "NOTIFICATION_CODE_UNSPECIFIED"
+        | "MISSING_LOWERCASE_CHARACTER"
+        | "MISSING_UPPERCASE_CHARACTER"
+        | "MISSING_NUMERIC_CHARACTER"
+        | "MISSING_NON_ALPHANUMERIC_CHARACTER"
+        | "MINIMUM_PASSWORD_LENGTH"
+        | "MAXIMUM_PASSWORD_LENGTH";
+      /** @description Warning notification string. Can be used as fallback. */
+      notificationMessage?: string;
+    };
     /** @description Request message for VerifyIosClient */
     GoogleCloudIdentitytoolkitV1VerifyIosClientRequest: {
       /** @description A device token that the iOS client gets after registering to APNs (Apple Push Notification service). */
@@ -3087,11 +3216,34 @@ export interface components {
       /** @description Output only. The name of the Config resource. Example: "projects/my-awesome-project/config" */
       name?: string;
       notification?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2NotificationConfig"];
+      passwordPolicyConfig?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2PasswordPolicyConfig"];
       quota?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2QuotaConfig"];
+      recaptchaConfig?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2RecaptchaConfig"];
       signIn?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2SignInConfig"];
       smsRegionConfig?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2SmsRegionConfig"];
       /** @description Output only. The subtype of this config. */
       subtype?: "SUBTYPE_UNSPECIFIED" | "IDENTITY_PLATFORM" | "FIREBASE_AUTH";
+    };
+    /** @description Custom strength options to enforce on user passwords. */
+    GoogleCloudIdentitytoolkitAdminV2CustomStrengthOptions: {
+      /** @description The password must contain a lower case character. */
+      containsLowercaseCharacter?: boolean;
+      /** @description The password must contain a non alpha numeric character. */
+      containsNonAlphanumericCharacter?: boolean;
+      /** @description The password must contain a number. */
+      containsNumericCharacter?: boolean;
+      /** @description The password must contain an upper case character. */
+      containsUppercaseCharacter?: boolean;
+      /**
+       * Format: int32
+       * @description Maximum password length. No default max length
+       */
+      maxPasswordLength?: number;
+      /**
+       * Format: int32
+       * @description Minimum password length. Range from 6 to 30
+       */
+      minPasswordLength?: number;
     };
     /** @description Standard Identity Toolkit-trusted IDPs. */
     GoogleCloudIdentitytoolkitAdminV2DefaultSupportedIdp: {
@@ -3283,6 +3435,8 @@ export interface components {
     GoogleCloudIdentitytoolkitAdminV2MultiFactorAuthConfig: {
       /** @description A list of usable second factors for this project. */
       enabledProviders?: ("PROVIDER_UNSPECIFIED" | "PHONE_SMS")[];
+      /** @description A list of usable second factors for this project along with their configurations. This field does not support phone based MFA, for that use the 'enabled_providers' field. */
+      providerConfigs?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2ProviderConfig"][];
       /** @description Whether MultiFactor Authentication has been enabled for this project. */
       state?: "STATE_UNSPECIFIED" | "DISABLED" | "ENABLED" | "MANDATORY";
     };
@@ -3325,6 +3479,32 @@ export interface components {
       /** @description Do not use. The `token` response type is not supported at the moment. */
       token?: boolean;
     };
+    /** @description The configuration for the password policy on the project. */
+    GoogleCloudIdentitytoolkitAdminV2PasswordPolicyConfig: {
+      /** @description Users must have a password compliant with the password policy to sign-in. */
+      forceUpgradeOnSignin?: boolean;
+      /**
+       * Format: google-datetime
+       * @description Output only. The last time the password policy on the project was updated.
+       */
+      lastUpdateTime?: string;
+      /** @description Which enforcement mode to use for the password policy. */
+      passwordPolicyEnforcementState?:
+        | "PASSWORD_POLICY_ENFORCEMENT_STATE_UNSPECIFIED"
+        | "OFF"
+        | "ENFORCE";
+      /** @description Must be of length 1. Contains the strength attributes for the password policy. */
+      passwordPolicyVersions?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2PasswordPolicyVersion"][];
+    };
+    /** @description The strength attributes for the password policy on the project. */
+    GoogleCloudIdentitytoolkitAdminV2PasswordPolicyVersion: {
+      customStrengthOptions?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2CustomStrengthOptions"];
+      /**
+       * Format: int32
+       * @description Output only. schema version number for the password policy
+       */
+      schemaVersion?: number;
+    };
     /** @description Configuration related to restricting a user's ability to affect their account. */
     GoogleCloudIdentitytoolkitAdminV2Permissions: {
       /** @description When true, end users cannot delete their account on the associated project through any of our API methods */
@@ -3339,9 +3519,47 @@ export interface components {
       /** @description A map of that can be used for phone auth testing. */
       testPhoneNumbers?: { [key: string]: string };
     };
+    /** @description ProviderConfig describes the supported MFA providers along with their configurations. */
+    GoogleCloudIdentitytoolkitAdminV2ProviderConfig: {
+      /** @description Describes the state of the MultiFactor Authentication type. */
+      state?: "MFA_STATE_UNSPECIFIED" | "DISABLED" | "ENABLED" | "MANDATORY";
+      totpProviderConfig?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2TotpMfaProviderConfig"];
+    };
     /** @description Configuration related to quotas. */
     GoogleCloudIdentitytoolkitAdminV2QuotaConfig: {
       signUpQuotaConfig?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2TemporaryQuota"];
+    };
+    /** @description The reCAPTCHA Enterprise integration config. */
+    GoogleCloudIdentitytoolkitAdminV2RecaptchaConfig: {
+      /** @description The reCAPTCHA config for email/password provider, containing the enforcement status. The email/password provider contains all related user flows protected by reCAPTCHA. */
+      emailPasswordEnforcementState?:
+        | "RECAPTCHA_PROVIDER_ENFORCEMENT_STATE_UNSPECIFIED"
+        | "OFF"
+        | "AUDIT"
+        | "ENFORCE";
+      /** @description The managed rules for authentication action based on reCAPTCHA scores. The rules are shared across providers for a given tenant project. */
+      managedRules?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2RecaptchaManagedRule"][];
+      /** @description Output only. The reCAPTCHA keys. */
+      recaptchaKeys?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2RecaptchaKey"][];
+      /** @description Whether to use the account defender for reCAPTCHA assessment. Defaults to `false`. */
+      useAccountDefender?: boolean;
+    };
+    /** @description The reCAPTCHA key config. reCAPTCHA Enterprise offers different keys for different client platforms. */
+    GoogleCloudIdentitytoolkitAdminV2RecaptchaKey: {
+      /** @description The reCAPTCHA Enterprise key resource name, e.g. "projects/{project}/keys/{key}" */
+      key?: string;
+      /** @description The client's platform type. */
+      type?: "CLIENT_TYPE_UNSPECIFIED" | "WEB" | "IOS" | "ANDROID";
+    };
+    /** @description The config for a reCAPTCHA managed rule. Models a single interval [start_score, end_score]. The start_score is implicit. It is either the closest smaller end_score (if one is available) or 0. Intervals in aggregate span [0, 1] without overlapping. */
+    GoogleCloudIdentitytoolkitAdminV2RecaptchaManagedRule: {
+      /** @description The action taken if the reCAPTCHA score of a request is within the interval [start_score, end_score]. */
+      action?: "RECAPTCHA_ACTION_UNSPECIFIED" | "BLOCK";
+      /**
+       * Format: float
+       * @description The end score (inclusive) of the score range for an action. Must be a value between 0.0 and 1.0, at 11 discrete values; e.g. 0, 0.1, 0.2, 0.3, ... 0.9, 1.0. A score of 0.0 indicates the riskiest request (likely a bot), whereas 1.0 indicates the safest request (likely a human). See https://cloud.google.com/recaptcha-enterprise/docs/interpret-assessment.
+       */
+      endScore?: number;
     };
     /** @description Configuration for logging requests made to this project to Stackdriver Logging */
     GoogleCloudIdentitytoolkitAdminV2RequestLogging: {
@@ -3464,9 +3682,19 @@ export interface components {
       monitoring?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2MonitoringConfig"];
       /** @description Output only. Resource name of a tenant. For example: "projects/{project-id}/tenants/{tenant-id}" */
       name?: string;
+      passwordPolicyConfig?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2PasswordPolicyConfig"];
+      recaptchaConfig?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2RecaptchaConfig"];
       smsRegionConfig?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2SmsRegionConfig"];
       /** @description A map of pairs that can be used for MFA. The phone number should be in E.164 format (https://www.itu.int/rec/T-REC-E.164/) and a maximum of 10 pairs can be added (error will be thrown once exceeded). */
       testPhoneNumbers?: { [key: string]: string };
+    };
+    /** @description TotpMFAProviderConfig represents the TOTP based MFA provider. */
+    GoogleCloudIdentitytoolkitAdminV2TotpMfaProviderConfig: {
+      /**
+       * Format: int32
+       * @description The allowed number of adjacent intervals that will be used for verification to avoid clock skew.
+       */
+      adjacentIntervals?: number;
     };
     /** @description Synchronous Cloud Function with HTTP Trigger */
     GoogleCloudIdentitytoolkitAdminV2Trigger: {
@@ -3483,6 +3711,27 @@ export interface components {
       /** @description The Android app's signature hash for Google Play Service's SMS Retriever API. */
       appSignatureHash?: string;
     };
+    /** @description Custom strength options to enforce on user passwords. */
+    GoogleCloudIdentitytoolkitV2CustomStrengthOptions: {
+      /** @description The password must contain a lower case character. */
+      containsLowercaseCharacter?: boolean;
+      /** @description The password must contain a non alpha numeric character. */
+      containsNonAlphanumericCharacter?: boolean;
+      /** @description The password must contain a number. */
+      containsNumericCharacter?: boolean;
+      /** @description The password must contain an upper case character. */
+      containsUppercaseCharacter?: boolean;
+      /**
+       * Format: int32
+       * @description Maximum password length. No default max length
+       */
+      maxPasswordLength?: number;
+      /**
+       * Format: int32
+       * @description Minimum password length. Range from 6 to 30
+       */
+      minPasswordLength?: number;
+    };
     /** @description Finishes enrolling a second factor for the user. */
     GoogleCloudIdentitytoolkitV2FinalizeMfaEnrollmentRequest: {
       /** @description Display name which is entered by users to distinguish between different second factors with same type or different type. */
@@ -3492,6 +3741,7 @@ export interface components {
       phoneVerificationInfo?: components["schemas"]["GoogleCloudIdentitytoolkitV2FinalizeMfaPhoneRequestInfo"];
       /** @description The ID of the Identity Platform tenant that the user enrolling MFA belongs to. If not set, the user belongs to the default Identity Platform project. */
       tenantId?: string;
+      totpVerificationInfo?: components["schemas"]["GoogleCloudIdentitytoolkitV2FinalizeMfaTotpEnrollmentRequestInfo"];
     };
     /** @description FinalizeMfaEnrollment response. */
     GoogleCloudIdentitytoolkitV2FinalizeMfaEnrollmentResponse: {
@@ -3500,6 +3750,7 @@ export interface components {
       phoneAuthInfo?: components["schemas"]["GoogleCloudIdentitytoolkitV2FinalizeMfaPhoneResponseInfo"];
       /** @description Refresh token updated to reflect MFA enrollment. */
       refreshToken?: string;
+      totpAuthInfo?: components["schemas"]["GoogleCloudIdentitytoolkitV2FinalizeMfaTotpEnrollmentResponseInfo"];
     };
     /** @description Phone Verification info for a FinalizeMfa request. */
     GoogleCloudIdentitytoolkitV2FinalizeMfaPhoneRequestInfo: {
@@ -3526,11 +3777,14 @@ export interface components {
     };
     /** @description Finalizes sign-in by verifying MFA challenge. */
     GoogleCloudIdentitytoolkitV2FinalizeMfaSignInRequest: {
+      /** @description The MFA enrollment ID from the user's list of current MFA enrollments. */
+      mfaEnrollmentId?: string;
       /** @description Required. Pending credential from first factor sign-in. */
       mfaPendingCredential?: string;
       phoneVerificationInfo?: components["schemas"]["GoogleCloudIdentitytoolkitV2FinalizeMfaPhoneRequestInfo"];
       /** @description The ID of the Identity Platform tenant the user is signing in to. If not set, the user will sign in to the default Identity Platform project. */
       tenantId?: string;
+      totpVerificationInfo?: components["schemas"]["GoogleCloudIdentitytoolkitV2MfaTotpSignInRequestInfo"];
     };
     /** @description FinalizeMfaSignIn response. */
     GoogleCloudIdentitytoolkitV2FinalizeMfaSignInResponse: {
@@ -3540,6 +3794,62 @@ export interface components {
       /** @description Refresh token for the authenticated user. */
       refreshToken?: string;
     };
+    /** @description Mfa request info specific to TOTP auth for FinalizeMfa. */
+    GoogleCloudIdentitytoolkitV2FinalizeMfaTotpEnrollmentRequestInfo: {
+      /** @description An opaque string that represents the enrollment session. */
+      sessionInfo?: string;
+      /** @description User-entered verification code. */
+      verificationCode?: string;
+    };
+    /** @description Mfa response info specific to TOTP auth for FinalizeMfa. */
+    GoogleCloudIdentitytoolkitV2FinalizeMfaTotpEnrollmentResponseInfo: { [key: string]: unknown };
+    /** @description TOTP verification info for FinalizeMfaSignInRequest. */
+    GoogleCloudIdentitytoolkitV2MfaTotpSignInRequestInfo: {
+      /** @description User-entered verification code. */
+      verificationCode?: string;
+    };
+    /** @description Configuration for password policy. */
+    GoogleCloudIdentitytoolkitV2PasswordPolicy: {
+      /** @description Output only. Allowed characters which satisfy the non_alphanumeric requirement. */
+      allowedNonAlphanumericCharacters?: string[];
+      customStrengthOptions?: components["schemas"]["GoogleCloudIdentitytoolkitV2CustomStrengthOptions"];
+      /**
+       * Format: int32
+       * @description Output only. schema version number for the password policy
+       */
+      schemaVersion?: number;
+    };
+    /** @description Configuration for reCAPTCHA */
+    GoogleCloudIdentitytoolkitV2RecaptchaConfig: {
+      /** @description The reCAPTCHA enforcement state for the providers that GCIP supports reCAPTCHA protection. */
+      recaptchaEnforcementState?: components["schemas"]["GoogleCloudIdentitytoolkitV2RecaptchaEnforcementState"][];
+      /** @description The reCAPTCHA Enterprise key resource name, e.g. "projects/{project}/keys/{key}". This will only be returned when the reCAPTCHA enforcement state is AUDIT or ENFORCE on at least one of the reCAPTCHA providers. */
+      recaptchaKey?: string;
+    };
+    /** @description Enforcement states for reCAPTCHA protection. */
+    GoogleCloudIdentitytoolkitV2RecaptchaEnforcementState: {
+      /** @description The reCAPTCHA enforcement state for the provider. */
+      enforcementState?: "ENFORCEMENT_STATE_UNSPECIFIED" | "OFF" | "AUDIT" | "ENFORCE";
+      /** @description The provider that has reCAPTCHA protection. */
+      provider?: "RECAPTCHA_PROVIDER_UNSPECIFIED" | "EMAIL_PASSWORD_PROVIDER";
+    };
+    /** @description Request message for RevokeToken. */
+    GoogleCloudIdentitytoolkitV2RevokeTokenRequest: {
+      /** @description Required. A valid Identity Platform ID token to link the account. If there was a successful token revocation request on the account and no tokens are generated after the revocation, the duplicate requests will be ignored and returned immediately. */
+      idToken?: string;
+      /** @description Required. The idp provider for the token. Currently only supports Apple Idp. The format should be "apple.com". */
+      providerId?: string;
+      /** @description The redirect URI provided in the initial authorization request made by the client to the IDP. The URI must use the HTTPS protocol, include a domain name, and can't contain an IP address or localhost. Required if token_type is CODE. */
+      redirectUri?: string;
+      /** @description The ID of the Identity Platform tenant the user is signing in to. If not set, the user will sign in to the default Identity Platform project. */
+      tenantId?: string;
+      /** @description Required. The token to be revoked. If an authorization_code is passed in, the API will first exchange the code for access token and then revoke the token exchanged. */
+      token?: string;
+      /** @description Required. The type of the token to be revoked. */
+      tokenType?: "TOKEN_TYPE_UNSPECIFIED" | "REFRESH_TOKEN" | "ACCESS_TOKEN" | "CODE";
+    };
+    /** @description Response message for RevokeToken. Empty for now. */
+    GoogleCloudIdentitytoolkitV2RevokeTokenResponse: { [key: string]: unknown };
     /** @description Sends MFA enrollment verification SMS for a user. */
     GoogleCloudIdentitytoolkitV2StartMfaEnrollmentRequest: {
       /** @description Required. User's ID token. */
@@ -3547,10 +3857,12 @@ export interface components {
       phoneEnrollmentInfo?: components["schemas"]["GoogleCloudIdentitytoolkitV2StartMfaPhoneRequestInfo"];
       /** @description The ID of the Identity Platform tenant that the user enrolling MFA belongs to. If not set, the user belongs to the default Identity Platform project. */
       tenantId?: string;
+      totpEnrollmentInfo?: components["schemas"]["GoogleCloudIdentitytoolkitV2StartMfaTotpEnrollmentRequestInfo"];
     };
     /** @description StartMfaEnrollment response. */
     GoogleCloudIdentitytoolkitV2StartMfaEnrollmentResponse: {
       phoneSessionInfo?: components["schemas"]["GoogleCloudIdentitytoolkitV2StartMfaPhoneResponseInfo"];
+      totpSessionInfo?: components["schemas"]["GoogleCloudIdentitytoolkitV2StartMfaTotpEnrollmentResponseInfo"];
     };
     /** @description App Verification info for a StartMfa request. */
     GoogleCloudIdentitytoolkitV2StartMfaPhoneRequestInfo: {
@@ -3561,6 +3873,8 @@ export interface components {
       iosSecret?: string;
       /** @description Required for enrollment. Phone number to be enrolled as MFA. */
       phoneNumber?: string;
+      /** @description Android only. Used to assert application identity in place of a recaptcha token (or safety net token). A Play Integrity Token can be generated via the [PlayIntegrity API] (https://developer.android.com/google/play/integrity) with applying SHA256 to the `phone_number` field as the nonce. */
+      playIntegrityToken?: string;
       /** @description Web only. Recaptcha solution. */
       recaptchaToken?: string;
       /** @description Android only. Used to assert application identity in place of a recaptcha token. A SafetyNet Token can be generated via the [SafetyNet Android Attestation API](https://developer.android.com/training/safetynet/attestation.html), with the Base64 encoding of the `phone_number` field as the nonce. */
@@ -3584,6 +3898,32 @@ export interface components {
     /** @description StartMfaSignIn response. */
     GoogleCloudIdentitytoolkitV2StartMfaSignInResponse: {
       phoneResponseInfo?: components["schemas"]["GoogleCloudIdentitytoolkitV2StartMfaPhoneResponseInfo"];
+    };
+    /** @description Mfa request info specific to TOTP auth for StartMfa. */
+    GoogleCloudIdentitytoolkitV2StartMfaTotpEnrollmentRequestInfo: { [key: string]: unknown };
+    /** @description Mfa response info specific to TOTP auth for StartMfa. */
+    GoogleCloudIdentitytoolkitV2StartMfaTotpEnrollmentResponseInfo: {
+      /**
+       * Format: google-datetime
+       * @description The time by which the enrollment must finish.
+       */
+      finalizeEnrollmentTime?: string;
+      /** @description The hashing algorithm used to generate the verification code. */
+      hashingAlgorithm?: string;
+      /**
+       * Format: int32
+       * @description Duration in seconds at which the verification code will change.
+       */
+      periodSec?: number;
+      /** @description An encoded string that represents the enrollment session. */
+      sessionInfo?: string;
+      /** @description A base 32 encoded string that represents the shared TOTP secret. The base 32 encoding is the one specified by [RFC4648#section-6](https://datatracker.ietf.org/doc/html/rfc4648#section-6). (This is the same as the base 32 encoding from [RFC3548#section-5](https://datatracker.ietf.org/doc/html/rfc3548#section-5).) */
+      sharedSecretKey?: string;
+      /**
+       * Format: int32
+       * @description The length of the verification code that needs to be generated.
+       */
+      verificationCodeLength?: number;
     };
     /** @description Withdraws MFA. */
     GoogleCloudIdentitytoolkitV2WithdrawMfaRequest: {
@@ -4158,7 +4498,7 @@ export interface operations {
       };
     };
   };
-  /** Signs in or signs up a user with iOS Game Center credentials. If the sign-in succeeds, a new Identity Platform ID token and refresh token are issued for the authenticated user. The bundle ID is required in the request header as `x-ios-bundle-identifier`. An [API key](https://cloud.google.com/docs/authentication/api-keys) is required in the request in order to identify the Google Cloud project. */
+  /** Signs in or signs up a user with iOS Game Center credentials. If the sign-in succeeds, a new Identity Platform ID token and refresh token are issued for the authenticated user. The bundle ID is required in the request header as `x-ios-bundle-identifier`. An [API key](https://cloud.google.com/docs/authentication/api-keys) is required in the request in order to identify the Google Cloud project. Apple has [deprecated the `playerID` field](https://developer.apple.com/documentation/gamekit/gkplayer/1521127-playerid/). The Apple platform Firebase SDK will use `gamePlayerID` and `teamPlayerID` from version 10.5.0 and onwards. Upgrading to SDK version 10.5.0 or later updates existing integrations that use `playerID` to instead use `gamePlayerID` and `teamPlayerID`. When making calls to `signInWithGameCenter`, you must include `playerID` along with the new fields `gamePlayerID` and `teamPlayerID` to successfully identify all existing users. Upgrading existing Game Center sign in integrations to SDK version 10.5.0 or later is irreversible. */
   "identitytoolkit.accounts.signInWithGameCenter": {
     parameters: {
       query: {
@@ -4986,7 +5326,7 @@ export interface operations {
       path: {
         /** If `tenant_id` is specified, the ID of the Google Cloud project that the Identity Platform tenant belongs to. Otherwise, the ID of the Google Cloud project that accounts belong to. */
         targetProjectId: string;
-        /** If the accounts belong to an Identity Platform tenant, the ID of the tenant. If the accounts belong to an default Identity Platform project, the field is not needed. */
+        /** If the accounts belong to an Identity Platform tenant, the ID of the tenant. If the accounts belong to a default Identity Platform project, the field is not needed. */
         tenantId: string;
       };
     };
@@ -5356,6 +5696,44 @@ export interface operations {
         content: {
           "*/*": components["schemas"]["GoogleCloudIdentitytoolkitV1GetSessionCookiePublicKeysResponse"];
         };
+      };
+    };
+  };
+  /** Revokes a user's token from an Identity Provider (IdP). This is done by manually providing an IdP credential, and the token types for revocation. An [API key](https://cloud.google.com/docs/authentication/api-keys) is required in the request in order to identify the Google Cloud project. */
+  "identitytoolkit.accounts.revokeToken": {
+    parameters: {
+      query: {
+        /** OAuth access token. */
+        access_token?: components["parameters"]["access_token"];
+        /** Data format for response. */
+        alt?: components["parameters"]["alt"];
+        /** JSONP */
+        callback?: components["parameters"]["callback"];
+        /** Selector specifying which fields to include in a partial response. */
+        fields?: components["parameters"]["fields"];
+        /** OAuth 2.0 token for the current user. */
+        oauth_token?: components["parameters"]["oauth_token"];
+        /** Returns response with indentations and line breaks. */
+        prettyPrint?: components["parameters"]["prettyPrint"];
+        /** Available to use for quota purposes for server-side applications. Can be any arbitrary string assigned to a user, but should not exceed 40 characters. */
+        quotaUser?: components["parameters"]["quotaUser"];
+        /** Legacy upload protocol for media (e.g. "media", "multipart"). */
+        uploadType?: components["parameters"]["uploadType"];
+        /** Upload protocol for media (e.g. "raw", "multipart"). */
+        upload_protocol?: components["parameters"]["upload_protocol"];
+      };
+    };
+    responses: {
+      /** Successful response */
+      200: {
+        content: {
+          "*/*": components["schemas"]["GoogleCloudIdentitytoolkitV2RevokeTokenResponse"];
+        };
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["GoogleCloudIdentitytoolkitV2RevokeTokenRequest"];
       };
     };
   };
@@ -7195,6 +7573,84 @@ export interface operations {
       };
     };
     requestBody: components["requestBodies"]["GoogleCloudIdentitytoolkitAdminV2OAuthIdpConfig"];
+  };
+  /** Gets password policy config set on the project or tenant. */
+  "identitytoolkit.getPasswordPolicy": {
+    parameters: {
+      query: {
+        /** OAuth access token. */
+        access_token?: components["parameters"]["access_token"];
+        /** Data format for response. */
+        alt?: components["parameters"]["alt"];
+        /** JSONP */
+        callback?: components["parameters"]["callback"];
+        /** Selector specifying which fields to include in a partial response. */
+        fields?: components["parameters"]["fields"];
+        /** OAuth 2.0 token for the current user. */
+        oauth_token?: components["parameters"]["oauth_token"];
+        /** Returns response with indentations and line breaks. */
+        prettyPrint?: components["parameters"]["prettyPrint"];
+        /** Available to use for quota purposes for server-side applications. Can be any arbitrary string assigned to a user, but should not exceed 40 characters. */
+        quotaUser?: components["parameters"]["quotaUser"];
+        /** Legacy upload protocol for media (e.g. "media", "multipart"). */
+        uploadType?: components["parameters"]["uploadType"];
+        /** Upload protocol for media (e.g. "raw", "multipart"). */
+        upload_protocol?: components["parameters"]["upload_protocol"];
+        /** The id of a tenant. */
+        tenantId?: string;
+      };
+    };
+    responses: {
+      /** Successful response */
+      200: {
+        content: {
+          "*/*": components["schemas"]["GoogleCloudIdentitytoolkitV2PasswordPolicy"];
+        };
+      };
+    };
+  };
+  /** Gets parameters needed for reCAPTCHA analysis. */
+  "identitytoolkit.getRecaptchaConfig": {
+    parameters: {
+      query: {
+        /** OAuth access token. */
+        access_token?: components["parameters"]["access_token"];
+        /** Data format for response. */
+        alt?: components["parameters"]["alt"];
+        /** JSONP */
+        callback?: components["parameters"]["callback"];
+        /** Selector specifying which fields to include in a partial response. */
+        fields?: components["parameters"]["fields"];
+        /** OAuth 2.0 token for the current user. */
+        oauth_token?: components["parameters"]["oauth_token"];
+        /** Returns response with indentations and line breaks. */
+        prettyPrint?: components["parameters"]["prettyPrint"];
+        /** Available to use for quota purposes for server-side applications. Can be any arbitrary string assigned to a user, but should not exceed 40 characters. */
+        quotaUser?: components["parameters"]["quotaUser"];
+        /** Legacy upload protocol for media (e.g. "media", "multipart"). */
+        uploadType?: components["parameters"]["uploadType"];
+        /** Upload protocol for media (e.g. "raw", "multipart"). */
+        upload_protocol?: components["parameters"]["upload_protocol"];
+        /** reCAPTCHA Enterprise uses separate site keys for different client types. Specify the client type to get the corresponding key. */
+        clientType?:
+          | "CLIENT_TYPE_UNSPECIFIED"
+          | "CLIENT_TYPE_WEB"
+          | "CLIENT_TYPE_ANDROID"
+          | "CLIENT_TYPE_IOS";
+        /** The id of a tenant. */
+        tenantId?: string;
+        /** The reCAPTCHA version. */
+        version?: "RECAPTCHA_VERSION_UNSPECIFIED" | "RECAPTCHA_ENTERPRISE";
+      };
+    };
+    responses: {
+      /** Successful response */
+      200: {
+        content: {
+          "*/*": components["schemas"]["GoogleCloudIdentitytoolkitV2RecaptchaConfig"];
+        };
+      };
+    };
   };
   /** The Token Service API lets you exchange either an ID token or a refresh token for an access token and a new refresh token. You can use the access token to securely call APIs that require user authorization. */
   "securetoken.token": {
