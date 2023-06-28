@@ -147,7 +147,7 @@ export const command = new Command("ext:install [extensionRef]")
         interactive: options.nonInteractive ? "false" : "true",
       });
     }
-    
+
     try {
       return installToManifest({
         projectId,
