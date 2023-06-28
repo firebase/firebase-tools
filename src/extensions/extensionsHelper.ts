@@ -815,7 +815,7 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
       extensionRoot = defaultRoot;
     }
   }
-  const normalizedRoot = path.join(extensionRoot).replaceAll(/^[.\/]*|[\/]*$/g, "");
+  const normalizedRoot = path.normalize(extensionRoot).replaceAll(/^(\.\.\/)*|(\/$)/g, "");
   extensionRoot = normalizedRoot ? normalizedRoot : "/";
 
   // Prompt for source ref and default to HEAD.
