@@ -96,7 +96,8 @@
     "build:sidebar": "npm run copyfiles && webpack --config webpack.prod.js --config-name sidebar",
     "pretest": "npm run dev ; npm run lint && tsc -p src/test/tsconfig.test.json",
     "lint": "eslint src --ext ts",
-    "test": "node ./dist/test/runTest.js"
+    "test": "node ./dist/test/runTest.js",
+    "runTestsss": "webpack --config webpack.test.js --config-name extension && node ./dist/test/runTest.js"
   },
   "dependencies": {
     "@vscode/codicons": "0.0.30",

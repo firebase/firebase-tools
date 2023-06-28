@@ -10,5 +10,5 @@
 		"rootDirs": ["./", "../../src", "../common"],
     "strict": false /* enable all strict type-checking options */
   },
-  "include": ["../webviews/**/*", "../common/**/*"]
+  "include": ["../webviews/**/*", "../common/**/*", "../test/**/*"]
 }
