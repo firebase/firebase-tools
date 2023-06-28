@@ -21,7 +21,6 @@ import { logLabeledBullet } from "../../utils";
 import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
 import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import { needProjectId, needProjectNumber } from "../../projectUtils";
-import { track } from "../../track";
 import { logger } from "../../logger";
 import { ensureTriggerRegions } from "./triggerRegionHelper";
 import { ensureServiceAgentRoles } from "./checkIam";
@@ -38,11 +37,6 @@ import { allEndpoints, Backend } from "./backend";
 import { assertExhaustive } from "../../functional";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
-function hasUserConfig(config: Record<string, unknown>): boolean {
-  // "firebase" key is always going to exist in runtime config.
-  // If any other key exists, we can assume that user is using runtime config.
-  return Object.keys(config).length > 1;
-}
 
 /**
  * Prepare functions codebases for deploy.
