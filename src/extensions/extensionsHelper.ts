@@ -408,24 +408,17 @@ export async function promptForValidRepoURI(): Promise<string> {
 }
 
 /**
- * Prompts for a valid extension root.
+ * Prompts for an extension root.
  *
  * @param defaultRoot the default extension root
  */
-export async function promptForValidExtensionRoot(defaultRoot: string): Promise<string> {
-  let rootIsValid = false;
-  let extensionRoot = "";
-  while (!rootIsValid) {
-    extensionRoot = await promptOnce({
-      type: "input",
-      message:
-        "Enter this extension's root directory in the repo (defaults to previous root if set):",
-      default: defaultRoot,
-    });
-    // TODO: Add real directory path validation.
-    rootIsValid = true;
-  }
-  return extensionRoot;
+export async function promptForExtensionRoot(defaultRoot: string): Promise<string> {
+  return await promptOnce({
+    type: "input",
+    message:
+      "Enter this extension's root directory in the repo (defaults to previous root if set):",
+    default: defaultRoot,
+  });
 }
 
 /**
@@ -817,11 +810,17 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
   if (!extensionRoot) {
     const defaultRoot = "/";
     if (!args.nonInteractive) {
-      extensionRoot = await promptForValidExtensionRoot(defaultRoot);
+      extensionRoot = await promptForExtensionRoot(defaultRoot);
     } else {
       extensionRoot = defaultRoot;
     }
   }
+  // Normalize root path and strip leading and trailing slashes and all `../`.
+  const normalizedRoot = path
+    .normalize(extensionRoot)
+    .replaceAll(/^\/|\/$/g, "")
+    .replaceAll(/^(\.\.\/)*/g, "");
+  extensionRoot = normalizedRoot || "/";
 
   // Prompt for source ref and default to HEAD.
   let sourceRef = args.sourceRef;
