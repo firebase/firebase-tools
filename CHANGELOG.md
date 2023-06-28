@@ -1,1 +1,2 @@
+- Increased extension instance create poll timeout to 1h to match backend (#5969).
 - Refactored `ext:install` to use the latest extension metadata. (#5997)
