@@ -5,7 +5,7 @@ import { frameworkMatcher } from "../frameworkMatcher";
 import { LifecycleCommands } from "../types";
 import { Command } from "../types";
 import { FirebaseError } from "../../../../error";
-import { logger } from "../../../../../src/logger";
+import { logger } from "../../../../logger";
 import { conjoinOptions } from "../../../utils";
 
 export interface PackageJSON {
@@ -23,7 +23,6 @@ const YARN_LOCK = "yarn.lock";
 
 export class NodejsRuntime implements Runtime {
   private readonly runtimeRequiredFiles: string[] = [PACKAGE_JSON];
-  private readonly contentCache: Record<string, boolean> = {};
 
   // Checks if the codebase is using Node as runtime.
   async match(fs: FileSystem): Promise<boolean | null> {
@@ -41,7 +40,7 @@ export class NodejsRuntime implements Runtime {
   getNodeImage(engine: Record<string, string> | undefined): string {
     // If no version is mentioned explicitly, assuming application is compatible with latest version.
     if (!engine || !engine.node) {
-      return `node:${supportedNodeVersions[supportedNodeVersions.length - 1]}-slim`;
+      return "us-docker.pkg.dev/firestack-build/test/run";
     }
     const versionNumber = engine.node;
 
@@ -54,7 +53,7 @@ export class NodejsRuntime implements Runtime {
       );
     }
 
-    return `node:${versionNumber}-slim`;
+    return "us-docker.pkg.dev/firestack-build/test/run";
   }
 
   async getPackageManager(fs: FileSystem): Promise<PackageManager> {
