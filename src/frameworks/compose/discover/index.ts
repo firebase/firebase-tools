@@ -34,7 +34,6 @@ export async function discover(
       );
     }
     const runtimeSpec = await discoveredRuntime.analyseCodebase(fs, allFrameworkSpecs);
-    runtimeSpec.frameworkHooks = getFrameworkHooks();
 
     return runtimeSpec;
   } catch (error: any) {
