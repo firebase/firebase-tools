@@ -128,6 +128,10 @@
         }
     },
     "properties": {
+        "$schema": {
+            "type": "string",
+            "format": "uri"
+        },
         "database": {
             "anyOf": [
                 {
