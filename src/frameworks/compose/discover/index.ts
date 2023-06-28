@@ -1,7 +1,6 @@
-import { Runtime, FileSystem, FrameworkSpec, RuntimeSpec, FrameworkHooks } from "./types";
+import { Runtime, FileSystem, FrameworkSpec, RuntimeSpec } from "./types";
 import { NodejsRuntime } from "./runtime/node";
 import { FirebaseError } from "../../../error";
-import { AppBundle } from "../interfaces";
 
 const supportedRuntimes: Runtime[] = [new NodejsRuntime()];
 
@@ -43,16 +42,16 @@ export async function discover(
   }
 }
 
-function getFrameworkHooks(): FrameworkHooks {
-  return {
-    afterBuild: (b: AppBundle) => {
-      console.log("HOOK: AFTER INSTALL");
-      return { ...b, version: "v1alpha", notes: "afterInstall" };
-    },
+// function getFrameworkHooks(): FrameworkHooks {
+//   return {
+//     afterBuild: (b: AppBundle) => {
+//       console.log("HOOK: AFTER INSTALL");
+//       return { ...b, version: "v1alpha", notes: "afterInstall" };
+//     },
 
-    afterInstall: (b: AppBundle) => {
-      console.log("HOOK: AFTER BUILD");
-      return { ...b, version: "v1alpha", notes: "afterBuild" };
-    },
-  };
-}
+//     afterInstall: (b: AppBundle) => {
+//       console.log("HOOK: AFTER BUILD");
+//       return { ...b, version: "v1alpha", notes: "afterBuild" };
+//     },
+//   };
+// }

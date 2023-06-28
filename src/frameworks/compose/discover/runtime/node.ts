@@ -40,7 +40,7 @@ export class NodejsRuntime implements Runtime {
   getNodeImage(engine: Record<string, string> | undefined): string {
     // If no version is mentioned explicitly, assuming application is compatible with latest version.
     if (!engine || !engine.node) {
-      return `node:${supportedNodeVersions[supportedNodeVersions.length - 1]}-slim`;
+      return "us-docker.pkg.dev/firestack-build/test/run";
     }
     const versionNumber = engine.node;
 
