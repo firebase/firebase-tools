@@ -88,8 +88,6 @@ export const command = new Command("ext:configure <extensionInstanceId>")
       projectId,
       paramSpecs: tbdParams,
       nonInteractive: false,
-      // TODO(b/230598656): Clean up paramsEnvPath after v11 launch.
-      paramsEnvPath: "",
       instanceId,
       reconfiguring: true,
     });
