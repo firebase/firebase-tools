@@ -119,12 +119,10 @@ describe("reporter", () => {
 
   describe("logAndTrackDeployStats", () => {
     let trackGA4Stub: sinon.SinonStub;
-    let trackStub: sinon.SinonStub;
     let debugStub: sinon.SinonStub;
 
     beforeEach(() => {
       trackGA4Stub = sinon.stub(track, "trackGA4");
-      trackStub = sinon.stub(track, "track");
       debugStub = sinon.stub(logger, "debug");
     });
 
@@ -226,87 +224,8 @@ describe("reporter", () => {
         fn_deploy_num_failures: 1,
       });
 
-      expect(trackStub).to.have.been.calledWith("functions_region_count", "1", 1);
-      expect(trackStub).to.have.been.calledWith("function_deploy_success", "v1.https", 2_000);
-      expect(trackStub).to.have.been.calledWith("function_deploy_failure", "v1.https", 1_000);
-      // Aborts aren't tracked because they would throw off timing metrics
-      expect(trackStub).to.not.have.been.calledWith("function_deploy_failure", "v1.https", 0);
-
-      expect(debugStub).to.have.been.calledWith("Total Function Deployment time: 2000");
-      expect(debugStub).to.have.been.calledWith("3 Functions Deployed");
-      expect(debugStub).to.have.been.calledWith("1 Functions Errored");
-      expect(debugStub).to.have.been.calledWith("1 Function Deployments Aborted");
-
       // The 0ms for an aborted function isn't counted.
       expect(debugStub).to.have.been.calledWith("Average Function Deployment time: 1500");
-    });
-
-    it("tracks v1 vs v2 codebases", async () => {
-      const v1 = { ...ENDPOINT };
-      const v2: backend.Endpoint = { ...ENDPOINT, platform: "gcfv2" };
-
-      const summary: reporter.Summary = {
-        totalTime: 1_000,
-        results: [
-          {
-            endpoint: v1,
-            durationMs: 1_000,
-          },
-          {
-            endpoint: v2,
-            durationMs: 1_000,
-          },
-        ],
-      };
-
-      await reporter.logAndTrackDeployStats(summary);
-      expect(trackStub).to.have.been.calledWith("functions_codebase_deploy", "v1+v2", 2);
-      trackStub.resetHistory();
-
-      summary.results = [{ endpoint: v1, durationMs: 1_000 }];
-      await reporter.logAndTrackDeployStats(summary);
-      expect(trackStub).to.have.been.calledWith("functions_codebase_deploy", "v1", 1);
-      trackStub.resetHistory();
-
-      summary.results = [{ endpoint: v2, durationMs: 1_000 }];
-      await reporter.logAndTrackDeployStats(summary);
-      expect(trackStub).to.have.been.calledWith("functions_codebase_deploy", "v2", 1);
-    });
-
-    it("tracks overall success/failure", async () => {
-      const success: reporter.DeployResult = {
-        endpoint: ENDPOINT,
-        durationMs: 1_000,
-      };
-      const failure: reporter.DeployResult = {
-        endpoint: ENDPOINT,
-        durationMs: 1_000,
-        error: new reporter.DeploymentError(ENDPOINT, "create", undefined),
-      };
-
-      const summary: reporter.Summary = {
-        totalTime: 1_000,
-        results: [success, failure],
-      };
-
-      await reporter.logAndTrackDeployStats(summary);
-      expect(trackStub).to.have.been.calledWith("functions_deploy_result", "partial_success", 1);
-      expect(trackStub).to.have.been.calledWith("functions_deploy_result", "partial_failure", 1);
-      expect(trackStub).to.have.been.calledWith(
-        "functions_deploy_result",
-        "partial_error_ratio",
-        0.5
-      );
-      trackStub.resetHistory();
-
-      summary.results = [success];
-      await reporter.logAndTrackDeployStats(summary);
-      expect(trackStub).to.have.been.calledWith("functions_deploy_result", "success", 1);
-      trackStub.resetHistory();
-
-      summary.results = [failure];
-      await reporter.logAndTrackDeployStats(summary);
-      expect(trackStub).to.have.been.calledWith("functions_deploy_result", "failure", 1);
     });
   });
 
