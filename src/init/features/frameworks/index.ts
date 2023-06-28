@@ -9,8 +9,9 @@ import {
   ALLOWED_DEPLOY_METHODS,
 } from "./constants";
 import { linkGitHubRepository } from "../composer/repo";
-import { Stack, createStackInCloudBuild, StackOutputOnlyFields } from "../../../api/frameworks";
+import { Stack, StackOutputOnlyFields } from "../../../api/frameworks/interfaces";
 import { Repository } from "../../../gcp/cloudbuild";
+import { createStack } from "../../../api/frameworks/operationsCoverter";
 
 /**
  * Setup new frameworks project.
@@ -66,7 +67,7 @@ export async function doSetup(setup: any): Promise<void> {
       setup.frameworks.serviceName
     );
     const stackDetails = toStack(cloudBuildConnRepo, setup.frameworks.serviceName);
-    await createStackInCloudBuild(projectId, stackDetails, setup.frameworks.region);
+    await createStack(projectId, setup.frameworks.region, stackDetails);
   }
 }
 
