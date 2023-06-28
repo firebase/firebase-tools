@@ -52,6 +52,7 @@ export const authOperations: AuthOps = {
     accounts: {
       createAuthUri,
       delete: deleteAccount,
+      revokeToken,
       lookup,
       resetPassword,
       sendOobCode,
@@ -679,6 +680,24 @@ function createSessionCookie(
 
   return { sessionCookie };
 }
+
+function revokeToken(
+  state: ProjectState,
+  reqBody: Schemas["GoogleCloudIdentitytoolkitV2RevokeTokenRequest"]
+  // ctx: ExegesisContext
+): Schemas["GoogleCloudIdentitytoolkitV2RevokeTokenResponse"] {
+  assert(!state.disableAuth, "PROJECT_DISABLED");
+  
+  assert(reqBody.idToken, "MISSING_LOCAL_ID");
+  assert(reqBody.providerId, "MISSING_PROVIDER_ID");
+  assert(reqBody.token, "MISSING_TOKEN");
+  assert(reqBody.tokenType, "MISSING_TOKEN_TYPE");
+
+  return {
+    kind: "identitytoolkit#RevokeTokenResponse",
+  };
+}
+
 
 function deleteAccount(
   state: ProjectState,
