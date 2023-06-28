@@ -16,7 +16,10 @@ type cliEventNames =
   | "hosting_version"
   | "extension_added_to_manifest"
   | "extensions_deploy"
-  | "extensions_emulated";
+  | "extensions_emulated"
+  | "function_deploy"
+  | "codebase_deploy"
+  | "function_deploy_group";
 type GA4Property = "cli" | "emulator";
 interface GA4Info {
   measurementId: string;

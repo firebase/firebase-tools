@@ -41,7 +41,7 @@ describe("NodejsRuntime", () => {
         node: "18",
       };
       const actualImage = nodeJSRuntime.getNodeImage(version);
-      const expectedImage = "node:18-slim";
+      const expectedImage = "us-docker.pkg.dev/firestack-build/test/run";
 
       expect(actualImage).to.deep.equal(expectedImage);
     });
@@ -189,7 +189,7 @@ describe("NodejsRuntime", () => {
       const actual = await nodeJSRuntime.analyseCodebase(fileSystem, allFrameworks);
       const expected = {
         id: "nodejs",
-        baseImage: "node:18-slim",
+        baseImage: "us-docker.pkg.dev/firestack-build/test/run",
         packageManagerInstallCommand: undefined,
         installCommand: "npm install",
         detectedCommands: {
