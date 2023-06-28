@@ -144,7 +144,7 @@ function getReleventConfigs(target: string, options: Options) {
       (matched: object, target: string) => ({ ...matched, [target]: false }),
       {}
     );
-    targetConfigs.forEach((config: any) => {
+    for (const config of targetConfigs) {
       if (!config.codebase) {
         onlyConfigs.push(config);
       } else {
@@ -156,7 +156,7 @@ function getReleventConfigs(target: string, options: Options) {
           matched[found] = true;
         }
       }
-    });
+    }
     // if there are --only targets that failed to match, we assume that the target is a
     // individually specified function and so we run lifecycle hooks for all codebases.
     // However, this also means that codebases or functions that don't exist will also run
