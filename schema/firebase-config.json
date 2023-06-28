@@ -129,8 +129,8 @@
     },
     "properties": {
         "$schema": {
-            "type": "string",
-            "format": "uri"
+            "format": "uri",
+            "type": "string"
         },
         "database": {
             "anyOf": [
