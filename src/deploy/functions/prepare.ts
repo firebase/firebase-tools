@@ -167,14 +167,11 @@ export async function prepare(
     if (wantBuild.params.length > 0) {
       if (wantBuild.params.every((p) => p.type !== "secret")) {
         context.codebaseDeployEvents[codebase].params = "env_only";
-        void track("functions_params_in_build", "env_only");
       } else {
         context.codebaseDeployEvents[codebase].params = "with_secrets";
-        void track("functions_params_in_build", "with_secrets");
       }
     } else {
       context.codebaseDeployEvents[codebase].params = "none";
-      void track("functions_params_in_build", "none");
     }
     context.codebaseDeployEvents[codebase].runtime = wantBuild.runtime;
   }
@@ -226,18 +223,6 @@ export async function prepare(
     validate.endpointsAreValid(wantBackend);
     inferBlockingDetails(wantBackend);
   }
-
-  const tag = hasUserConfig(runtimeConfig)
-    ? codebaseUsesEnvs.length > 0
-      ? "mixed"
-      : "runtime_config"
-    : codebaseUsesEnvs.length > 0
-    ? "dotenv"
-    : "none";
-  void track("functions_codebase_deploy_env_method", tag);
-
-  const codebaseCnt = Object.keys(payload.functions).length;
-  void track("functions_codebase_deploy_count", codebaseCnt >= 5 ? "5+" : codebaseCnt.toString());
 
   // ===Phase 5. Enable APIs required by the deploying backends.
   const wantBackend = backend.merge(...Object.values(wantBackends));
