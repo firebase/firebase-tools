@@ -149,23 +149,25 @@ export class DockerDriver implements Driver {
   }
 
   install(): void {
-    this.dockerfileBuilder
-      .fromLastStage(DOCKER_STAGE_INSTALL)
-      .workdir("/home/firebase/app")
-      .envs(this.spec.environmentVariables || {})
-      .copyForFirebase("package.json", ".");
     if (this.spec.installCommand) {
-      this.dockerfileBuilder.run(this.spec.installCommand);
+      this.dockerfileBuilder
+        .fromLastStage(DOCKER_STAGE_INSTALL)
+        .workdir("/home/firebase/app")
+        .envs(this.spec.environmentVariables || {})
+        .copyForFirebase("package.json", ".")
+        .run(this.spec.installCommand);
+      this.buildStage(DOCKER_STAGE_INSTALL, ".");
     }
-    this.buildStage(DOCKER_STAGE_INSTALL, ".");
   }
 
   build(): void {
-    this.dockerfileBuilder.fromLastStage(DOCKER_STAGE_BUILD).copyForFirebase(".", ".");
     if (this.spec.detectedCommands?.build) {
-      this.dockerfileBuilder.run(this.spec.detectedCommands.build.cmd);
+      this.dockerfileBuilder
+        .fromLastStage(DOCKER_STAGE_BUILD)
+        .copyForFirebase(".", ".")
+        .run(this.spec.detectedCommands.build.cmd);
+      this.buildStage(DOCKER_STAGE_BUILD, ".");
     }
-    this.buildStage(DOCKER_STAGE_BUILD, ".");
   }
 
   export(bundle: AppBundle): void {

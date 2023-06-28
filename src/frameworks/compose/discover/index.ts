@@ -3,7 +3,7 @@ import { NodejsRuntime } from "./runtime/node";
 import { FirebaseError } from "../../../error";
 import { AppBundle } from "../interfaces";
 
-const availableRuntimes: Runtime[] = [new NodejsRuntime()];
+const supportedRuntimes: Runtime[] = [new NodejsRuntime()];
 
 /**
  * Discover the best matching runtime specs for the application.
@@ -14,20 +14,24 @@ export async function discover(
 ): Promise<RuntimeSpec> {
   try {
     let discoveredRuntime = undefined;
-    for (const runtime of availableRuntimes) {
+    for (const runtime of supportedRuntimes) {
       if (await runtime.match(fs)) {
         if (!discoveredRuntime) {
           discoveredRuntime = runtime;
         } else {
           throw new FirebaseError(
-            `Conflit occured as multiple runtimes ${discoveredRuntime.getRuntimeName()}, ${runtime.getRuntimeName()} are discovered within the codebase.`
+            `Conflit occurred as multiple runtimes ${discoveredRuntime.getRuntimeName()}, ${runtime.getRuntimeName()} are discovered in the application.`
           );
         }
       }
     }
 
     if (!discoveredRuntime) {
-      throw new FirebaseError("Unable to identify a runtime for the codebase");
+      throw new FirebaseError(
+        `Unable to determine the specific runtime for the application. The supported runtime options include ${supportedRuntimes
+          .map((x) => x.getRuntimeName())
+          .join(" , ")}.`
+      );
     }
     const runtimeSpec = await discoveredRuntime.analyseCodebase(fs, allFrameworkSpecs);
     runtimeSpec.frameworkHooks = getFrameworkHooks();
