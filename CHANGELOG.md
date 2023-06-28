@@ -1,4 +1,5 @@
 - Increased extension instance create poll timeout to 1h to match backend (#5969).
 - Refactored `ext:install` to use the latest extension metadata. (#5997)
+- Added descriptive error when repo is private or not found during `ext:dev:upload`. (#6052)
 - Fixed issue where missing trigger warnings would be wrongly displayed when emulating extensions with HTTPS triggers. (#6055)
 - Normalized extension root path before usage in `ext:dev:upload`. (#6054)
