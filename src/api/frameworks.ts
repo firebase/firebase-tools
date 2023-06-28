@@ -88,12 +88,12 @@ export interface Operation {
 export async function createStack(
   projectId: string,
   location: string,
-  stack: Stack
+  stackInput: Omit<Stack, StackOutputOnlyFields>
 ): Promise<Operation> {
-  const stackId = stack.name;
+  const stackId = stackInput.name;
   const res = await client.post<Omit<Stack, StackOutputOnlyFields>, Operation>(
     `projects/${projectId}/locations/${location}/stacks`,
-    stack,
+    stackInput,
     { queryParams: { stackId } }
   );
   return res.body;
@@ -122,11 +122,10 @@ export async function createBuild(
  */
 export async function createStackInCloudBuild(
   projectId: string,
-  stackInput: Stack,
+  stackInput: Omit<Stack, StackOutputOnlyFields>,
   location: string
 ): Promise<Stack> {
-  let res: Stack;
-
+  let stack: Stack;
   const op = await createStack(projectId, location, stackInput);
   stack = await poller.pollOperation<Stack>({
     ...gcbPollerOptions,

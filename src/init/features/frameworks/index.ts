@@ -9,14 +9,14 @@ import {
   ALLOWED_DEPLOY_METHODS,
 } from "./constants";
 import { linkGitHubRepository } from "../composer/repo";
-import { Stack, createStackInCloudBuild } from "../../../api/frameworks";
+import { Stack, createStackInCloudBuild, StackOutputOnlyFields } from "../../../api/frameworks";
 import { Repository } from "../../../gcp/cloudbuild";
 
 /**
  * Setup new frameworks project.
  */
 export async function doSetup(setup: any): Promise<void> {
-  const projectId = setup?.rcfile?.projects?.default;
+  const projectId: string = setup?.rcfile?.projects?.default;
   setup.frameworks = {};
 
   utils.logBullet("First we need a few details to create your service.");
@@ -65,19 +65,18 @@ export async function doSetup(setup: any): Promise<void> {
       setup.frameworks.region,
       setup.frameworks.serviceName
     );
-    const stackDetails = toStack(cloudBuildConnRepo, setup);
+    const stackDetails = toStack(cloudBuildConnRepo, setup.frameworks.serviceName);
     await createStackInCloudBuild(projectId, stackDetails, setup.frameworks.region);
   }
 }
 
-function toStack(cloudBuildConnRepo: Repository, setup: any): Stack {
-  const stack: Stack = {
-    name: setup.frameworks.serviceName,
-    codebase: { repository: cloudBuildConnRepo.name, rootDirectory: "root" },
+function toStack(
+  cloudBuildConnRepo: Repository,
+  stackId: string
+): Omit<Stack, StackOutputOnlyFields> {
+  return {
+    name: stackId,
+    codebase: { repository: cloudBuildConnRepo.name, rootDirectory: "/" },
     labels: {},
-    createTime: cloudBuildConnRepo.createTime,
-    uri: "",
-    updateTime: cloudBuildConnRepo.updateTime,
   };
-  return stack;
 }
