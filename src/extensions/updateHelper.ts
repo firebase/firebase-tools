@@ -13,7 +13,7 @@ import {
   isLocalOrURLPath,
 } from "./extensionsHelper";
 import * as utils from "../utils";
-import { displayExtInfo } from "./displayExtensionInfo";
+import { displayExtensionVersionInfo } from "./displayExtensionInfo";
 
 function invalidSourceErrMsgTemplate(instanceId: string, source: string): string {
   return `Unable to update from the source \`${clc.bold(
@@ -157,7 +157,7 @@ export async function updateFromLocalSource(
   localSource: string,
   existingSpec: ExtensionSpec
 ): Promise<string> {
-  await displayExtInfo(instanceId, "", existingSpec, false);
+  await displayExtensionVersionInfo({ spec: existingSpec });
   let source;
   try {
     source = await createSourceFromLocation(projectId, localSource);
@@ -187,7 +187,7 @@ export async function updateFromUrlSource(
   urlSource: string,
   existingSpec: ExtensionSpec
 ): Promise<string> {
-  await displayExtInfo(instanceId, "", existingSpec, false);
+  await displayExtensionVersionInfo({ spec: existingSpec });
   let source;
   try {
     source = await createSourceFromLocation(projectId, urlSource);
