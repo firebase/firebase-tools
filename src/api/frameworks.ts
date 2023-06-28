@@ -1,6 +1,6 @@
 import { Client } from "../apiv2";
 import { frameworksOrigin } from "../api";
-import * as poller from "../../../operation-poller";
+import * as poller from "../operation-poller";
 
 export const API_VERSION = "v2";
 
@@ -9,6 +9,13 @@ const client = new Client({
   auth: true,
   apiVersion: API_VERSION,
 });
+
+const frameworksPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
+  apiOrigin: frameworksOrigin,
+  apiVersion: API_VERSION,
+  masterTimeout: 25 * 60 * 1_000,
+  maxBackoff: 10_000,
+};
 
 export type State = "BUILDING" | "BUILD" | "DEPLOYING" | "READY" | "FAILED";
 
@@ -96,6 +103,7 @@ export async function createStack(
     stackInput,
     { queryParams: { stackId } }
   );
+
   return res.body;
 }
 
@@ -106,14 +114,15 @@ export async function createBuild(
   projectId: string,
   location: string,
   stackId: string,
-  buildId: string,
-  build: Build
+  buildInput: Omit<Build, BuildOutputOnlyFields>
 ): Promise<Operation> {
+  const buildId = buildInput.name;
   const res = await client.post<Omit<Build, BuildOutputOnlyFields>, Operation>(
     `projects/${projectId}/locations/${location}/stacks/${stackId}/builds`,
-    build,
+    buildInput,
     { queryParams: { buildId } }
   );
+
   return res.body;
 }
 
@@ -125,11 +134,10 @@ export async function createStackInCloudBuild(
   stackInput: Omit<Stack, StackOutputOnlyFields>,
   location: string
 ): Promise<Stack> {
-  let stack: Stack;
   const op = await createStack(projectId, location, stackInput);
-  stack = await poller.pollOperation<Stack>({
-    ...gcbPollerOptions,
-    pollerName: `create-${location}-${connectionId}`,
+  const stack = await poller.pollOperation<Stack>({
+    ...frameworksPollerOptions,
+    pollerName: `create-${location}-${stackInput.name}`,
     operationResourceName: op.name,
   });
 
