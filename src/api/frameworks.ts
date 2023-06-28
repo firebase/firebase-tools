@@ -137,7 +137,7 @@ export async function createStackInCloudBuild(
   const op = await createStack(projectId, location, stackInput);
   const stack = await poller.pollOperation<Stack>({
     ...frameworksPollerOptions,
-    pollerName: `create-${location}-${stackInput.name}`,
+    pollerName: `create-${projectId}-${location}-${stackInput.name}`,
     operationResourceName: op.name,
   });
 
