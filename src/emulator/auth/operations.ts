@@ -687,7 +687,7 @@ function revokeToken(
   // ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV2RevokeTokenResponse"] {
   assert(!state.disableAuth, "PROJECT_DISABLED");
-  
+
   assert(reqBody.idToken, "MISSING_LOCAL_ID");
   assert(reqBody.providerId, "MISSING_PROVIDER_ID");
   assert(reqBody.token, "MISSING_TOKEN");
@@ -697,7 +697,6 @@ function revokeToken(
     kind: "identitytoolkit#RevokeTokenResponse",
   };
 }
-
 
 function deleteAccount(
   state: ProjectState,
