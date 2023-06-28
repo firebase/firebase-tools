@@ -3,10 +3,9 @@ import { expect } from "chai";
 
 import * as rpc from "../../../api/frameworks/rpcHandler";
 import * as poller from "../../../operation-poller";
-import * as utils from "../../../utils";
 import { createStack } from "../../../api/frameworks/operationsCoverter";
 
-describe("composer", () => {
+describe("operationsConverter", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
 
   let pollOperationStub: sinon.SinonStub;
@@ -17,15 +16,13 @@ describe("composer", () => {
       .stub(poller, "pollOperation")
       .throws("Unexpected pollOperation call");
     createStackStub = sandbox.stub(rpc, "createStack").throws("Unexpected createStack call");
-
-    sandbox.stub(utils, "openInBrowser").resolves();
   });
 
   afterEach(() => {
     sandbox.verifyAndRestore();
   });
 
-  describe("createStackInCloudBuild", () => {
+  describe("createStack", () => {
     const projectId = "projectId";
     const location = "us-central1";
     const stackId = "stackId";
@@ -37,7 +34,6 @@ describe("composer", () => {
       },
       labels: {},
     };
-
     const op = {
       name: `projects/${projectId}/locations/${location}/stacks/${stackId}`,
       done: true,
@@ -54,7 +50,7 @@ describe("composer", () => {
       uri: "https://placeholder.com",
     };
 
-    it("create a stack", async () => {
+    it("checks is correct arguments are sent & creates a stack", async () => {
       createStackStub.resolves(op);
       pollOperationStub.resolves(completeStack);
 

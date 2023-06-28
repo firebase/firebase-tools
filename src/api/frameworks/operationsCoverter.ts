@@ -12,7 +12,7 @@ const frameworksPollerOptions: Omit<poller.OperationPollerOptions, "operationRes
 };
 
 /**
- * Exported for unit testing.
+ * Creates Stack object from long running operations.
  */
 export async function createStack(
   projectId: string,

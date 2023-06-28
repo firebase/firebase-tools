@@ -60,8 +60,8 @@ export async function doSetup(setup: any): Promise<void> {
     setup.frameworks
   );
 
-  if (setup.frameworks.deployMethod === DEFAULT_DEPLOY_METHOD) {
-    const cloudBuildConnRepo: Repository = await linkGitHubRepository(
+  if (setup.frameworks.deployMethod === "github") {
+    const cloudBuildConnRepo = await linkGitHubRepository(
       projectId,
       setup.frameworks.region,
       setup.frameworks.serviceName
