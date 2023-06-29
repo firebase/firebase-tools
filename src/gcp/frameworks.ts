@@ -1,6 +1,14 @@
 import { Client } from "../apiv2";
 import { frameworksOrigin } from "../api";
 
+export const API_VERSION = "v2";
+
+const client = new Client({
+  urlPrefix: frameworksOrigin,
+  auth: true,
+  apiVersion: API_VERSION,
+});
+
 type State = "BUILDING" | "BUILD" | "DEPLOYING" | "READY" | "FAILED";
 
 interface Codebase {
@@ -72,14 +80,6 @@ export interface Operation {
   response?: any;
   // end oneof result
 }
-
-export const API_VERSION = "v2";
-
-const client = new Client({
-  urlPrefix: frameworksOrigin,
-  auth: true,
-  apiVersion: API_VERSION,
-});
 
 /**
  * Creates a new Stack in a given project and location.
