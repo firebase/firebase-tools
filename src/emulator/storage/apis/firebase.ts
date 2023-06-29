@@ -130,10 +130,6 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     return res.json(new OutgoingFirebaseMetadata(metadata));
   });
 
-  /**
-   * Is object ID encoded? And where
-   * @date 6/27/2023 - 4:02:12 PM
-   */
   firebaseStorageAPI.post(`/b/:bucketId/o/:objectId[(:)]generateSignedUrl`, async (req, res) => {
     const timeToLive = req.body.ttl;
     const msInAWeek = 7 * 24 * 60 * 60 * 1000;

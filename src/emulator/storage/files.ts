@@ -133,8 +133,7 @@ export class StorageLayer {
   ) {}
 
   /**
-   * For the RulesVariableOverrides, since we dont have metadata, do we pass nothing
-   * Ask for explamation on before/after
+   * Authenticate user on an inital post request
    * @date 6/28/2023 - 2:56:09 PM
    *
    * @async
@@ -142,12 +141,13 @@ export class StorageLayer {
    * @returns {Promise<boolean>}
    */
   async authenticateUser(request: CreateObjectRequest): Promise<boolean> {
+    const metadata = this.getMetadata(request.bucketId, request.decodedObjectId);
+
     return await this._rulesValidator.validate(
       ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
       request.bucketId,
       RulesetOperationMethod.CREATE,
-      {},
-      //   { before: metadata?.asRulesResource() },
+      { before: metadata?.asRulesResource() },
       this._projectId,
       request.authorization
     );
