@@ -1,5 +1,6 @@
-import { Command } from "../command";
 const Table = require("cli-table");
+
+import { Command } from "../command";
 import * as clc from "colorette";
 import * as ora from "ora";
 
@@ -27,7 +28,7 @@ export const command = new Command("database:instances:list")
     const location = parseDatabaseLocation(options.location, DatabaseLocation.ANY);
     const spinner = ora(
       "Preparing the list of your Firebase Realtime Database instances" +
-      `${location === DatabaseLocation.ANY ? "" : ` for location: ${location}`}`
+        `${location === DatabaseLocation.ANY ? "" : ` for location: ${location}`}`
     ).start();
 
     const projectId = needProjectId(options);
