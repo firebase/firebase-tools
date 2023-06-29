@@ -11,7 +11,7 @@ import {
 import { linkGitHubRepository } from "../composer/repo";
 import { Stack, StackOutputOnlyFields } from "../../../frameworks/compose/api/interfaces";
 import { Repository } from "../../../gcp/cloudbuild";
-import { createStack } from "../../../frameworks/compose/api/frameworks/operationsCoverter";
+import { createStack } from "../../../frameworks/compose/api/repo";
 
 /**
  * Setup new frameworks project.
