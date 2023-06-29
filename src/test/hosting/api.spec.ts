@@ -786,6 +786,35 @@ describe("hosting", () => {
       expect(nock.isDone()).to.be.true;
     });
   });
+
+  describe("siteCustomDomains", () => {
+    afterEach(nock.cleanAll);
+
+    const API_TARGET = `/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/customDomains`;
+
+    it("should get the site custom domains", async () => {
+      nock(hostingApiOrigin)
+        .get(API_TARGET)
+        .query({ pageToken: "", pageSize: 10 })
+        .reply(200, { customDomains: [{ name: "hello-cds" }] });
+
+      await expect(hostingApi.siteCustomDomains(PROJECT_ID, SITE)).to.eventually.deep.equal([
+        { name: "hello-cds" },
+      ]);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should throw an error if it can't find the custom domains", async () => {
+      nock(hostingApiOrigin).get(API_TARGET).query({ pageToken: "", pageSize: 10 }).reply(404, {});
+
+      await expect(hostingApi.siteCustomDomains(PROJECT_ID, SITE)).to.eventually.be.rejectedWith(
+        FirebaseError,
+        /could not find custom domains/
+      );
+
+      expect(nock.isDone()).to.be.true;
+    });
+  });
 });
 
 describe("normalizeName", () => {

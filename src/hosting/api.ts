@@ -824,9 +824,12 @@ export async function siteCustomDomains(project: string, site: string): Promise<
       }
     } catch (e: unknown) {
       if (e instanceof FirebaseError && e.status === 404) {
-        throw new FirebaseError(`could not find sites for project "${project}", site "${site}"`, {
-          original: e,
-        });
+        throw new FirebaseError(
+          `could not find custom domains for project "${project}", site "${site}"`,
+          {
+            original: e,
+          }
+        );
       }
       throw e;
     }
