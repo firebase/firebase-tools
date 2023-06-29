@@ -16,7 +16,6 @@ import {
 } from "../upload";
 import { reqBodyToBuffer } from "../../shared/request";
 import { ListObjectsResponse } from "../files";
-import { time } from "node:console";
 import { createHmac } from "node:crypto";
 import { privateKey } from "../constants";
 /**
