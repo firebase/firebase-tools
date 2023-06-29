@@ -1,16 +1,16 @@
 import * as fs from "node:fs";
 import * as spawn from "cross-spawn";
 
-import { AppBundle, Hook, Driver } from "../interfaces";
-import { BUNDLE_PATH, genHookScript } from "./hooks";
-import { RuntimeSpec } from "../discover/types";
+import {AppBundle, Hook, Driver} from "../interfaces";
+import {BUNDLE_PATH, genHookScript} from "./hooks";
+import {RuntimeSpec} from "../discover/types";
 
 export class LocalDriver implements Driver {
   constructor(readonly spec: RuntimeSpec) {}
 
   private execCmd(cmd: string, args: string[]) {
     const ret = spawn.sync(cmd, args, {
-      env: { ...process.env, ...this.spec.environmentVariables },
+      env: {...process.env, ...this.spec.environmentVariables},
       stdio: [/* stdin= */ "pipe", /* stdout= */ "inherit", /* stderr= */ "inherit"],
     });
     if (ret.error) {
@@ -20,6 +20,10 @@ export class LocalDriver implements Driver {
 
   install(): void {
     if (this.spec.installCommand) {
+      if (this.spec.packageManagerInstallCommand) {
+        const [cmd, ...args] = this.spec.packageManagerInstallCommand.split(" ");
+        this.execCmd(cmd, args);
+      }
       const [cmd, ...args] = this.spec.installCommand.split(" ");
       this.execCmd(cmd, args);
     }
