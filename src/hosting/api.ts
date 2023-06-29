@@ -104,6 +104,77 @@ export interface Domain {
   };
 }
 
+export enum HostState {
+  // Your `CustomDomain`'s host state is unspecified. The message is invalid if
+  // this is unspecified.
+  HOST_STATE_UNSPECIFIED = "HOST_STATE_UNSPECIFIED",
+
+  // Your `CustomDomain`'s domain name isn't associated with any IP addresses.
+  HOST_UNHOSTED = "HOST_UNHOSTED",
+
+  // Your `CustomDomain`'s domain name can't be reached. Hosting services' DNS
+  // queries to find your domain name's IP addresses resulted in errors. See
+  // your `CustomDomain`'s `issues` field for more details.
+  HOST_UNREACHABLE = "HOST_UNREACHABLE",
+
+  // Your `CustomDomain`'s domain name has IP addresses that don't ultimately
+  // resolve to Hosting.
+  HOST_MISMATCH = "HOST_MISMATCH",
+
+  // Your `CustomDomain`'s domain name has IP addresses that resolve to both
+  // Hosting and other services. To ensure consistent results, remove `A` and
+  // `AAAA` records related to non-Hosting services.
+  HOST_CONFLICT = "HOST_CONFLICT",
+
+  // All requests against your `CustomDomain`'s domain name are served by
+  // Hosting. If the `CustomDomain`'s `OwnershipState` is also `ACTIVE`, Hosting
+  // serves your Hosting Site's content on the domain name.
+  HOST_ACTIVE = "HOST_ACTIVE",
+}
+
+export enum OwnershipState {
+  // Your `CustomDomain`'s ownership state is unspecified. This should never
+  // happen.
+  OWNERSHIP_STATE_UNSPECIFIED = "OWNERSHIP_STATE_UNSPECIFIED",
+
+  // Your `CustomDomain`'s domain name has no Hosting-related ownership records;
+  // no Firebase project has permission to act on the domain name's behalf.
+  OWNERSHIP_MISSING = "OWNERSHIP_MISSING",
+
+  // Your `CustomDomain`'s domain name can't be reached. Hosting services' DNS
+  // queries to find your domain name's ownership records resulted in errors.
+  // See your `CustomDomain`'s `issues` field for more details.
+  OWNERSHIP_UNREACHABLE = "OWNERSHIP_UNREACHABLE",
+
+  // Your `CustomDomain`'s domain name is owned by another Firebase project.
+  // Remove the conflicting `TXT` records and replace them with project-specific
+  // records for your current Firebase project.
+  OWNERSHIP_MISMATCH = "OWNERSHIP_MISMATCH",
+
+  // Your `CustomDomain`'s domain name has conflicting `TXT` records that
+  // indicate ownership by both your current Firebase project and another
+  // project. Remove the other project's ownership records to grant the current
+  // project ownership.
+  OWNERSHIP_CONFLICT = "OWNERSHIP_CONFLICT",
+
+  // Your `CustomDomain`'s DNS records are configured correctly. Hosting will
+  // transfer ownership of your domain to this `CustomDomain` within 24 hours.
+  OWNERSHIP_PENDING = "OWNERSHIP_PENDING",
+
+  // Your `CustomDomain`'s domain name has `TXT` records that grant its project
+  // permission to act on its behalf.
+  OWNERSHIP_ACTIVE = "OWNERSHIP_ACTIVE",
+}
+
+export interface CustomDomain {
+  name: string;
+  createTime: string;
+  updateTime: string;
+  hostState: HostState;
+  ownershipState: OwnershipState;
+  issues: unknown;
+}
+
 export type VersionStatus =
   // The version has been created, and content is currently being added to the
   // version.
@@ -726,4 +797,38 @@ export async function getAllSiteDomains(projectId: string, siteId: string): Prom
   ]);
 
   return Array.from(allSiteDomains);
+}
+
+/**
+ * Fetches all the domains for a given site.
+ * @param project project ID.
+ * @param site site ID.
+ * @return array of custom domains.
+ */
+export async function siteCustomDomains(project: string, site: string): Promise<CustomDomain[]> {
+  const domains: CustomDomain[] = [];
+  let nextPageToken = "";
+  for (;;) {
+    try {
+      const res = await apiClient.get<{ customDomains: CustomDomain[]; nextPageToken?: string }>(
+        `/projects/${project}/sites/${site}/customDomains`,
+        { queryParams: { pageToken: nextPageToken, pageSize: 10 } }
+      );
+      const c = res.body.customDomains;
+      if (c) {
+        domains.push(...c);
+      }
+      nextPageToken = res.body.nextPageToken || "";
+      if (!nextPageToken) {
+        return domains;
+      }
+    } catch (e: unknown) {
+      if (e instanceof FirebaseError && e.status === 404) {
+        throw new FirebaseError(`could not find sites for project "${project}", site "${site}"`, {
+          original: e,
+        });
+      }
+      throw e;
+    }
+  }
 }
