@@ -18,71 +18,40 @@ import {
   parseDatabaseLocation,
 } from "../management/database";
 
-function logInstances(instances: DatabaseInstance[]): void {
-  if (instances.length === 0) {
-    logger.info(clc.bold("No database instances found."));
-    return;
-  }
-  const tableHead = ["Database Instance Name", "Location", "Type", "State"];
-  const table = new Table({ head: tableHead, style: { head: ["green"] } });
-  instances.forEach((db) => {
-    table.push([db.name, db.location, db.type, db.state]);
-  });
-
-  logger.info(table.toString());
-}
-
-function logInstancesCount(count = 0): void {
-  if (count === 0) {
-    return;
-  }
-  logger.info("");
-  logger.info(`${count} database instance(s) total.`);
-}
-
 export let command = new Command("database:instances:list")
   .description("list realtime database instances, optionally filtered by a specified location")
   .before(requirePermissions, ["firebasedatabase.instances.list"])
+  .option(
+    "-l, --location <location>",
+    "(optional) location for the database instance, defaults to us-central1"
+  )
   .before(warnEmulatorNotSupported, Emulators.DATABASE)
   .action(async (options: any) => {
     const location = parseDatabaseLocation(options.location, DatabaseLocation.ANY);
     const spinner = ora(
       "Preparing the list of your Firebase Realtime Database instances" +
-        `${location === DatabaseLocation.ANY ? "" : ` for location: ${location}`}`
+      `${location === DatabaseLocation.ANY ? "" : ` for location: ${location}`}`
     ).start();
-    let instances;
 
-    if (experiments.isEnabled("rtdbmanagement")) {
-      const projectId = needProjectId(options);
-      try {
-        instances = await listDatabaseInstances(projectId, location);
-      } catch (err: any) {
-        spinner.fail();
-        throw err;
-      }
-      spinner.succeed();
-      logInstances(instances);
-      logInstancesCount(instances.length);
-      return instances;
-    }
-    const projectNumber = await needProjectNumber(options);
+    const projectId = needProjectId(options);
+    let instances: DatabaseInstance[] = [];
     try {
-      instances = await firedata.listDatabaseInstances(projectNumber);
+      instances = await listDatabaseInstances(projectId, location);
     } catch (err: any) {
       spinner.fail();
       throw err;
     }
     spinner.succeed();
-    for (const instance of instances) {
-      logger.info(instance.instance);
+    if (instances.length === 0) {
+      logger.info(clc.bold("No database instances found."));
+      return;
     }
-    logger.info(`Project ${options.project} has ${instances.length} database instances`);
+    const tableHead = ["Database Instance Name", "Location", "Type", "State"];
+    const table = new Table({ head: tableHead, style: { head: ["green"] } });
+    instances.forEach((db) => {
+      table.push([db.name, db.location, db.type, db.state]);
+    });
+    logger.info(table.toString());
+    logger.info(`${instances.length} database instance(s) total.`);
     return instances;
   });
-
-if (experiments.isEnabled("rtdbmanagement")) {
-  command = command.option(
-    "-l, --location <location>",
-    "(optional) location for the database instance, defaults to us-central1"
-  );
-}

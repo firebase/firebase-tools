@@ -29,9 +29,6 @@ export const ALL_EXPERIMENTS = experiments({
   rtdbrules: {
     shortDescription: "Advanced security rules management",
   },
-  rtdbmanagement: {
-    shortDescription: "Use new endpoint to administer realtime database instances",
-  },
   // Cloud Functions for Firebase experiments
   pythonfunctions: {
     shortDescription: "Python support for Cloud Functions for Firebase",
