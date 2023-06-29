@@ -25,10 +25,6 @@ function extractRepoSlugFromURI(remoteUri: string): string | undefined {
   return match[1];
 }
 
-function generateConnectionId(stackId: string): string {
-  return `composer-${stackId}-conn`;
-}
-
 /**
  * Generates a repository ID.
  * N.B. The deterministic nature of the repository ID implies that each
@@ -48,7 +44,7 @@ export async function linkGitHubRepository(
   location: string,
   stackId: string
 ): Promise<gcb.Repository> {
-  const connectionId = generateConnectionId(stackId);
+  const connectionId = stackId;
   await getOrCreateConnection(projectId, location, connectionId);
 
   let remoteUri = await promptRepositoryURI(projectId, location, connectionId);
