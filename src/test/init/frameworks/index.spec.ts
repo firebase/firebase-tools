@@ -1,9 +1,9 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
 
-import * as gcp from "../../../../gcp/frameworks";
-import * as poller from "../../../../operation-poller";
-import { createStack } from "../../../../frameworks/compose/api/repo";
+import * as gcp from "../../../gcp/frameworks";
+import * as poller from "../../../operation-poller";
+import { createStack } from "../../../init/features/frameworks/index";
 
 describe("operationsConverter", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();

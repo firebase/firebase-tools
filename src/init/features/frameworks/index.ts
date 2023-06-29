@@ -8,10 +8,20 @@ import {
   DEFAULT_DEPLOY_METHOD,
   ALLOWED_DEPLOY_METHODS,
 } from "./constants";
-import { linkGitHubRepository } from "../composer/repo";
-import { Stack, StackOutputOnlyFields } from "../../../frameworks/compose/api/interfaces";
+import { linkGitHubRepository } from "./repo";
+import { Stack, StackOutputOnlyFields } from "../../../gcp/frameworks";
 import { Repository } from "../../../gcp/cloudbuild";
-import { createStack } from "../../../frameworks/compose/api/repo";
+import * as poller from "../../../operation-poller";
+import { frameworksOrigin } from "../../../api";
+import * as gcp from "../../../gcp/frameworks";
+import { API_VERSION } from "../../../gcp/frameworks";
+
+const frameworksPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
+  apiOrigin: frameworksOrigin,
+  apiVersion: API_VERSION,
+  masterTimeout: 25 * 60 * 1_000,
+  maxBackoff: 10_000,
+};
 
 /**
  * Setup new frameworks project.
@@ -66,8 +76,7 @@ export async function doSetup(setup: any): Promise<void> {
       setup.frameworks.region,
       setup.frameworks.serviceName
     );
-    const stackDetails = toStack(cloudBuildConnRepo, setup.frameworks.serviceName);
-    await createStack(projectId, setup.frameworks.region, stackDetails);
+    toStack(cloudBuildConnRepo, setup.frameworks.serviceName);
   }
 }
 
@@ -80,4 +89,22 @@ function toStack(
     codebase: { repository: cloudBuildConnRepo.name, rootDirectory: "/" },
     labels: {},
   };
+}
+
+/**
+ * Creates Stack object from long running operations.
+ */
+export async function createStack(
+  projectId: string,
+  location: string,
+  stackInput: Omit<Stack, StackOutputOnlyFields>
+): Promise<Stack> {
+  const op = await gcp.createStack(projectId, location, stackInput);
+  const stack = await poller.pollOperation<Stack>({
+    ...frameworksPollerOptions,
+    pollerName: `create-${projectId}-${location}-${stackInput.name}`,
+    operationResourceName: op.name,
+  });
+
+  return stack;
 }
