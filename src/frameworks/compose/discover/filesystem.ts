@@ -2,7 +2,7 @@ import { FileSystem } from "./types";
 import { pathExists, readFile } from "fs-extra";
 import * as path from "path";
 import { FirebaseError } from "../../../error";
-import { logger } from "../../../../src/logger";
+import { logger } from "../../../logger";
 
 /**
  * Find files or read file contents present in the directory.
