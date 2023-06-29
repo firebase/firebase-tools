@@ -5,7 +5,7 @@ import * as gcb from "../../../gcp/cloudbuild";
 import * as prompt from "../../../prompt";
 import * as poller from "../../../operation-poller";
 import { FirebaseError } from "../../../error";
-import * as repo from "../../../init/features/composer/repo";
+import * as repo from "../../../init/features/frameworks/repo";
 import * as utils from "../../../utils";
 
 describe("composer", () => {
