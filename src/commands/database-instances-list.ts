@@ -5,11 +5,8 @@ import * as ora from "ora";
 
 import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
-import { needProjectNumber } from "../projectUtils";
-import * as firedata from "../gcp/firedata";
 import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
-import * as experiments from "../experiments";
 import { needProjectId } from "../projectUtils";
 import {
   listDatabaseInstances,
@@ -18,7 +15,7 @@ import {
   parseDatabaseLocation,
 } from "../management/database";
 
-export let command = new Command("database:instances:list")
+export const command = new Command("database:instances:list")
   .description("list realtime database instances, optionally filtered by a specified location")
   .before(requirePermissions, ["firebasedatabase.instances.list"])
   .option(
