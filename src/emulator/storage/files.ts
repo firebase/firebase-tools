@@ -40,6 +40,13 @@ export class StoredFile {
   }
 }
 
+/**  Parsed request object for {@link StorageLayer#authenticateUser}. */
+export type CreateObjectRequest = {
+  bucketId: string;
+  decodedObjectId: string;
+  authorization?: string;
+};
+
 /**  Parsed request object for {@link StorageLayer#getObject}. */
 export type GetObjectRequest = {
   bucketId: string;
@@ -124,6 +131,27 @@ export class StorageLayer {
     private _persistence: Persistence,
     private _cloudFunctions: StorageCloudFunctions
   ) {}
+
+  /**
+   * For the RulesVariableOverrides, since we dont have metadata, do we pass nothing
+   * Ask for explamation on before/after
+   * @date 6/28/2023 - 2:56:09 PM
+   *
+   * @async
+   * @param {GetObjectRequest} request
+   * @returns {Promise<boolean>}
+   */
+  async authenticateUser(request: CreateObjectRequest): Promise<boolean> {
+    return await this._rulesValidator.validate(
+      ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
+      request.bucketId,
+      RulesetOperationMethod.CREATE,
+      {},
+      //   { before: metadata?.asRulesResource() },
+      this._projectId,
+      request.authorization
+    );
+  }
 
   createBucket(id: string): void {
     if (!this._buckets.has(id)) {

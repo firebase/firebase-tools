@@ -103,13 +103,16 @@ export class StorageEmulator implements EmulatorInstance {
     this._uploadService.reset();
   }
 
+  /**
+   * Description placeholder
+   * @async
+   */
   async start(): Promise<void> {
     EmulatorLogger.forEmulator(Emulators.STORAGE).log(
       "INFO",
       "Running emulator from a local checkout!"
     );
     const { host, port } = this.getInfo();
-    console.log("runnning imulator");
     await this._rulesRuntime.start(this.args.auto_download);
     await this._rulesManager.start();
     this._app = await createApp(this.args.projectId, this);
