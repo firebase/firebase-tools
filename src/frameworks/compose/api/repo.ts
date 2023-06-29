@@ -1,8 +1,8 @@
 import { Stack, StackOutputOnlyFields } from "./interfaces";
-import * as poller from "../../operation-poller";
-import { frameworksOrigin } from "../../api";
-import * as rpc from "./rpcHandler";
-import { API_VERSION } from "./rpcHandler";
+import * as poller from "../../../operation-poller";
+import { frameworksOrigin } from "../../../api";
+import * as gcp from "../../../gcp/frameworks";
+import { API_VERSION } from "../../../gcp/frameworks";
 
 const frameworksPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: frameworksOrigin,
@@ -19,7 +19,7 @@ export async function createStack(
   location: string,
   stackInput: Omit<Stack, StackOutputOnlyFields>
 ): Promise<Stack> {
-  const op = await rpc.createStack(projectId, location, stackInput);
+  const op = await gcp.createStack(projectId, location, stackInput);
   const stack = await poller.pollOperation<Stack>({
     ...frameworksPollerOptions,
     pollerName: `create-${projectId}-${location}-${stackInput.name}`,

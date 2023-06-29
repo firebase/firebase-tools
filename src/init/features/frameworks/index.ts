@@ -9,9 +9,9 @@ import {
   ALLOWED_DEPLOY_METHODS,
 } from "./constants";
 import { linkGitHubRepository } from "../composer/repo";
-import { Stack, StackOutputOnlyFields } from "../../../api/frameworks/interfaces";
+import { Stack, StackOutputOnlyFields } from "../../../frameworks/compose/api/interfaces";
 import { Repository } from "../../../gcp/cloudbuild";
-import { createStack } from "../../../api/frameworks/operationsCoverter";
+import { createStack } from "../../../frameworks/compose/api/frameworks/operationsCoverter";
 
 /**
  * Setup new frameworks project.

@@ -1,9 +1,9 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
 
-import * as rpc from "../../../api/frameworks/rpcHandler";
-import * as poller from "../../../operation-poller";
-import { createStack } from "../../../api/frameworks/operationsCoverter";
+import * as gcp from "../../../../gcp/frameworks";
+import * as poller from "../../../../operation-poller";
+import { createStack } from "../../../../frameworks/compose/api/repo";
 
 describe("operationsConverter", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
@@ -15,7 +15,7 @@ describe("operationsConverter", () => {
     pollOperationStub = sandbox
       .stub(poller, "pollOperation")
       .throws("Unexpected pollOperation call");
-    createStackStub = sandbox.stub(rpc, "createStack").throws("Unexpected createStack call");
+    createStackStub = sandbox.stub(gcp, "createStack").throws("Unexpected createStack call");
   });
 
   afterEach(() => {
