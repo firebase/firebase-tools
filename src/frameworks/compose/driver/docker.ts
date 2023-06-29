@@ -154,8 +154,11 @@ export class DockerDriver implements Driver {
         .fromLastStage(DOCKER_STAGE_INSTALL)
         .workdir("/home/firebase/app")
         .envs(this.spec.environmentVariables || {})
-        .copyForFirebase("package.json", ".")
-        .run(this.spec.installCommand);
+        .copyForFirebase("package.json", ".");
+      if (this.spec.packageManagerInstallCommand) {
+        this.dockerfileBuilder.run(this.spec.packageManagerInstallCommand);
+      }
+      this.dockerfileBuilder.run(this.spec.installCommand);
       this.buildStage(DOCKER_STAGE_INSTALL, ".");
     }
   }
