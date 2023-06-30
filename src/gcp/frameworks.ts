@@ -1,7 +1,7 @@
 import { Client } from "../apiv2";
 import { frameworksOrigin } from "../api";
 
-export const API_VERSION = "v1";
+export const API_VERSION = "v2";
 
 const client = new Client({
   urlPrefix: frameworksOrigin,
@@ -9,7 +9,7 @@ const client = new Client({
   apiVersion: API_VERSION,
 });
 
-export type State = "BUILDING" | "BUILD" | "DEPLOYING" | "READY" | "FAILED";
+type State = "BUILDING" | "BUILD" | "DEPLOYING" | "READY" | "FAILED";
 
 interface Codebase {
   repository?: string;
@@ -17,7 +17,7 @@ interface Codebase {
 }
 
 /** A Stack, the primary resource of Frameworks. */
-interface Stack {
+export interface Stack {
   name: string;
   mode?: string;
   codebase: Codebase;
@@ -29,7 +29,7 @@ interface Stack {
 
 export type StackOutputOnlyFields = "createTime" | "updateTime" | "uri";
 
-interface Build {
+export interface Build {
   name: string;
   state: State;
   error: Status;
@@ -61,7 +61,7 @@ interface CodebaseSource {
   // end oneof reference
 }
 
-export interface OperationMetadata {
+interface OperationMetadata {
   createTime: string;
   endTime: string;
   target: string;
@@ -87,14 +87,15 @@ export interface Operation {
 export async function createStack(
   projectId: string,
   location: string,
-  stackId: string,
-  stack: Stack
+  stackInput: Omit<Stack, StackOutputOnlyFields>
 ): Promise<Operation> {
+  const stackId = stackInput.name;
   const res = await client.post<Omit<Stack, StackOutputOnlyFields>, Operation>(
     `projects/${projectId}/locations/${location}/stacks`,
-    stack,
+    stackInput,
     { queryParams: { stackId } }
   );
+
   return res.body;
 }
 
@@ -105,13 +106,14 @@ export async function createBuild(
   projectId: string,
   location: string,
   stackId: string,
-  buildId: string,
-  build: Build
+  buildInput: Omit<Build, BuildOutputOnlyFields>
 ): Promise<Operation> {
+  const buildId = buildInput.name;
   const res = await client.post<Omit<Build, BuildOutputOnlyFields>, Operation>(
     `projects/${projectId}/locations/${location}/stacks/${stackId}/builds`,
-    build,
+    buildInput,
     { queryParams: { buildId } }
   );
+
   return res.body;
 }

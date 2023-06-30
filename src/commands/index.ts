@@ -150,8 +150,6 @@ export function load(client: any): any {
     client.internaltesting.frameworks.compose = loadCommand("internaltesting-frameworks-compose");
     client.internaltesting.functions = {};
     client.internaltesting.functions.discover = loadCommand("internaltesting-functions-discover");
-    client.internaltesting.frameworks = {};
-    client.internaltesting.frameworks.init = loadCommand("internaltesting-frameworks-init");
   }
   client.login = loadCommand("login");
   client.login.add = loadCommand("login-add");
