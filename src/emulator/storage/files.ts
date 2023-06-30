@@ -51,9 +51,12 @@ export type CreateObjectRequest = {
 export type GetObjectRequest = {
   bucketId: string;
   decodedObjectId: string;
+  url: string;
   authorization?: string;
   downloadToken?: string;
-  queryParams: ParsedQs;
+  urlSignature?: string;
+  urlUsableMs?: number;
+  urlTtlMs?: number; // must be converted from X-Firebase-Expires
 };
 
 /** Response object for {@link StorageLayer#getObject}. */
@@ -185,21 +188,34 @@ export class StorageLayer {
       request.downloadToken ?? ""
     );
 
-    const signedUrlWithNoToken =
-      !hasValidDownloadToken && request.queryParams["X-Firebase-Signature"] ? true : false;
+    const signedUrlWithNoToken = !hasValidDownloadToken && request.urlSignature ? true : false;
+
+    console.log(
+      `the token was:=
+        ${hasValidDownloadToken} and the urlSig was 
+        ${request.urlSignature}`
+    );
+
     if (signedUrlWithNoToken) {
-      const prevSignature = request.queryParams["X-Firebase-Signature"];
+      const prevSignature = request.urlSignature;
+      console.log("prev signature is: " + prevSignature);
 
       if (prevSignature != null) {
         //make time and validity checks
-        const start = request.queryParams["X-Firebase-Date"] as string;
-        const end = (start + request.queryParams["X-Firebase-Expires"]) as string;
-        const now = new Date()
-          .toISOString()
-          .replaceAll("-", "")
-          .replaceAll(":", "")
-          .replaceAll(".", "");
+        const start = request.urlUsableMs!;
+        console.log("START: " + start);
+        console.log("expire is " + request.urlTtlMs);
+        const end = start + request.urlTtlMs!;
+        console.log("END: " + start);
+        console.log(" ");
+        const now = Date.parse(new Date().toISOString());
+        console.log("NOW: " + now);
+        console.log(" ");
+
+        console.log(`start is ${start} the end is ${end} and now is ${now}`);
+
         if (!(now >= start && now < end)) {
+          console.log("OUT OF TIME");
           throw new ForbiddenError("Failed auth");
         }
       } else {
@@ -207,7 +223,7 @@ export class StorageLayer {
       }
     }
 
-    let authorized = signedUrlWithNoToken;
+    let authorized = hasValidDownloadToken;
     if (!authorized) {
       authorized = await this._rulesValidator.validate(
         ["b", request.bucketId, "o", request.decodedObjectId].join("/"),

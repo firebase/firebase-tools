@@ -100,9 +100,12 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       ({ metadata, data } = await storageLayer.getObject({
         bucketId: req.params.bucketId,
         decodedObjectId: decodeURIComponent(req.params.objectId),
+        url: req.originalUrl,
         authorization: req.header("authorization"),
         downloadToken: req.query.token?.toString(),
-        queryParams: req.query,
+        urlSignature: req.query["X-Firebase-Signature"] as string,
+        urlUsableMs: Date.parse(req.query["X-Firebase-Date"] as string),
+        urlTtlMs: Number(req.query["X-Firebase-Expires"]),
       }));
     } catch (err) {
       if (err instanceof NotFoundError) {
@@ -144,11 +147,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         },
       });
     }
-    const currentDate = new Date()
-      .toISOString()
-      .replaceAll("-", "")
-      .replaceAll(":", "")
-      .replaceAll(".", "");
+    const currentDate = new Date().toISOString();
 
     const unsignedUrl = `${req.protocol}://${req.hostname}:${req.socket.localPort}/v0/b/${req.params.bucketId}/o/${req.params.objectId}?alt=media&X-Firebase-Date=${currentDate}&X-Firebase-Expires=${timeToLive}`;
 
