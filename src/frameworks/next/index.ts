@@ -102,7 +102,6 @@ export async function discover(dir: string) {
  * Build a next.js application.
  */
 export async function build(dir: string): Promise<BuildResult> {
-
   await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
 
   const reactVersion = getReactVersion(dir);
@@ -115,12 +114,14 @@ export async function build(dir: string): Promise<BuildResult> {
 
   const nextBuild = new Promise((resolve, reject) => {
     const buildProcess = spawn(cli, ["build"], { cwd: dir });
-    buildProcess.stdout?.on('data', (data) => logger.info(data.toString()));
-    buildProcess.stderr?.on('data', (data) => logger.info(data.toString()));
-    buildProcess.on('error', (err) => {
+    buildProcess.stdout?.on("data", (data) => logger.info(data.toString()));
+    buildProcess.stderr?.on("data", (data) => logger.info(data.toString()));
+    buildProcess.on("error", (err) => {
       reject(new FirebaseError(`Unable to build your Next.js app: ${err}`));
-    })
-    buildProcess.on('exit', (code) => { resolve(code) });
+    });
+    buildProcess.on("exit", (code) => {
+      resolve(code);
+    });
   });
   await nextBuild;
 
