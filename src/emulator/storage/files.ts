@@ -20,7 +20,7 @@ import { Persistence } from "./persistence";
 import { Upload, UploadStatus } from "./upload";
 import { trackEmulator } from "../../track";
 import { Emulators } from "../types";
-
+import { ParsedQs } from "qs";
 interface BucketsList {
   buckets: {
     id: string;
@@ -53,6 +53,7 @@ export type GetObjectRequest = {
   decodedObjectId: string;
   authorization?: string;
   downloadToken?: string;
+  queryParams: ParsedQs;
 };
 
 /** Response object for {@link StorageLayer#getObject}. */
@@ -183,7 +184,30 @@ export class StorageLayer {
     const hasValidDownloadToken = (metadata?.downloadTokens || []).includes(
       request.downloadToken ?? ""
     );
-    let authorized = hasValidDownloadToken;
+
+    const signedUrlWithNoToken =
+      !hasValidDownloadToken && request.queryParams["X-Firebase-Signature"] ? true : false;
+    if (signedUrlWithNoToken) {
+      const prevSignature = request.queryParams["X-Firebase-Signature"];
+
+      if (prevSignature != null) {
+        //make time and validity checks
+        const start = request.queryParams["X-Firebase-Date"] as string;
+        const end = (start + request.queryParams["X-Firebase-Expires"]) as string;
+        const now = new Date()
+          .toISOString()
+          .replaceAll("-", "")
+          .replaceAll(":", "")
+          .replaceAll(".", "");
+        if (!(now >= start && now < end)) {
+          throw new ForbiddenError("Failed auth");
+        }
+      } else {
+        //not signed
+      }
+    }
+
+    let authorized = signedUrlWithNoToken;
     if (!authorized) {
       authorized = await this._rulesValidator.validate(
         ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
@@ -194,6 +218,7 @@ export class StorageLayer {
         request.authorization
       );
     }
+
     if (!authorized) {
       throw new ForbiddenError("Failed auth");
     }

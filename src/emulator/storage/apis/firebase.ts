@@ -102,6 +102,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         decodedObjectId: decodeURIComponent(req.params.objectId),
         authorization: req.header("authorization"),
         downloadToken: req.query.token?.toString(),
+        queryParams: req.query,
       }));
     } catch (err) {
       if (err instanceof NotFoundError) {
@@ -132,6 +133,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
 
   firebaseStorageAPI.post(`/b/:bucketId/o/:objectId[(:)]generateSignedUrl`, async (req, res) => {
     const timeToLive = req.body.ttl;
+
     const msInAWeek = 7 * 24 * 60 * 60 * 1000;
 
     if (timeToLive < 0 || timeToLive > msInAWeek) {
@@ -150,20 +152,20 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
 
     const unsignedUrl = `${req.protocol}://${req.hostname}:${req.socket.localPort}/v0/b/${req.params.bucketId}/o/${req.params.objectId}?alt=media&X-Firebase-Date=${currentDate}&X-Firebase-Expires=${timeToLive}`;
 
-    const authorized = await storageLayer.authenticateUser({
-      bucketId: req.params.bucketId,
-      decodedObjectId: decodeURIComponent(req.params.objectId),
-      authorization: req.header("authorization"),
-    });
+    // const authorized = await storageLayer.authenticateUser({
+    //   bucketId: req.params.bucketId,
+    //   decodedObjectId: decodeURIComponent(req.params.objectId),
+    //   authorization: req.header("authorization"),
+    // });
 
-    if (!authorized) {
-      return res.status(403).json({
-        error: {
-          code: 403,
-          message: `Unauthorized User`,
-        },
-      });
-    }
+    // if (!authorized) {
+    //   return res.status(403).json({
+    //     error: {
+    //       code: 403,
+    //       message: `Unauthorized User`,
+    //     },
+    //   });
+    // }
 
     const signature = createHmac("sha256", privateKey).update(unsignedUrl).digest("base64");
 
