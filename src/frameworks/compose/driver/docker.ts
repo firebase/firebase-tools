@@ -105,7 +105,11 @@ export class DockerDriver implements Driver {
   }
 
   private execDockerPush(args: string[]) {
-    console.log(`executing docker build: ${args.join(" ")}`);
+    console.debug(JSON.stringify({ message: `executing docker build: ${args.join(" ")}` }));
+    console.info(
+      JSON.stringify({ foo: "bar", message: `executing docker build: ${args.join(" ")}` })
+    );
+    console.error(JSON.stringify({ message: `executing docker build: ${args.join(" ")}` }));
     return spawn.sync("docker", ["push", ...args], {
       stdio: [/* stdin= */ "pipe", /* stdout= */ "inherit", /* stderr= */ "inherit"],
     });
@@ -154,8 +158,11 @@ export class DockerDriver implements Driver {
         .fromLastStage(DOCKER_STAGE_INSTALL)
         .workdir("/home/firebase/app")
         .envs(this.spec.environmentVariables || {})
-        .copyForFirebase("package.json", ".")
-        .run(this.spec.installCommand);
+        .copyForFirebase("package.json", ".");
+      if (this.spec.packageManagerInstallCommand) {
+        this.dockerfileBuilder.run(this.spec.packageManagerInstallCommand);
+      }
+      this.dockerfileBuilder.run(this.spec.installCommand);
       this.buildStage(DOCKER_STAGE_INSTALL, ".");
     }
   }
