@@ -137,8 +137,9 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   });
 
   firebaseStorageAPI.post(`/b/:bucketId/o/:objectId[(:)]generateSignedUrl`, async (req, res) => {
-    const timeToLive = req.body.ttl;
-	
+    const timeToLive = req.body.ttlInMillis;
+	//createSignedUrl
+
     if (timeToLive < SIGNED_URL_MIN_TTL_MILLIS || timeToLive > SIGNED_URL_MAX_TTL_MILLIS) {
       return res.status(400).json({
         error: {
