@@ -1,8 +1,9 @@
 import * as backend from "../backend";
 import * as clc from "colorette";
 
+import * as args from "../args";
 import { logger } from "../../../logger";
-import { track } from "../../../track";
+import { trackGA4 } from "../../../track";
 import * as utils from "../../../utils";
 import { getFunctionLabel } from "../functionsDeployHelper";
 
@@ -56,7 +57,10 @@ export class AbortedDeploymentError extends DeploymentError {
 }
 
 /** Add debugger logs and GA metrics for deploy stats. */
-export async function logAndTrackDeployStats(summary: Summary): Promise<void> {
+export async function logAndTrackDeployStats(
+  summary: Summary,
+  context?: args.Context
+): Promise<void> {
   let totalTime = 0;
   let totalErrors = 0;
   let totalSuccesses = 0;
@@ -64,54 +68,65 @@ export async function logAndTrackDeployStats(summary: Summary): Promise<void> {
   const reports: Array<Promise<void>> = [];
 
   const regions = new Set<string>();
+  const codebases = new Set<string>();
   for (const result of summary.results) {
-    const tag = triggerTag(result.endpoint);
+    const fnDeployEvent = {
+      platform: result.endpoint.platform,
+      trigger_type: backend.endpointTriggerType(result.endpoint),
+      region: result.endpoint.region,
+      runtime: result.endpoint.runtime,
+      status: !result.error
+        ? "success"
+        : result.error instanceof AbortedDeploymentError
+        ? "aborted"
+        : "failure",
+      duration: result.durationMs,
+    };
+    reports.push(trackGA4("function_deploy", fnDeployEvent));
+
     regions.add(result.endpoint.region);
+    codebases.add(result.endpoint.codebase || "default");
     totalTime += result.durationMs;
     if (!result.error) {
       totalSuccesses++;
-      reports.push(track("function_deploy_success", tag, result.durationMs));
+      if (context?.codebaseDeployEvents?.[result.endpoint.codebase || "default"] !== undefined) {
+        context.codebaseDeployEvents[result.endpoint.codebase || "default"]
+          .fn_deploy_num_successes++;
+      }
     } else if (result.error instanceof AbortedDeploymentError) {
       totalAborts++;
-      reports.push(track("function_deploy_abort", tag, result.durationMs));
+      if (context?.codebaseDeployEvents?.[result.endpoint.codebase || "default"] !== undefined) {
+        context.codebaseDeployEvents[result.endpoint.codebase || "default"]
+          .fn_deploy_num_canceled++;
+      }
     } else {
       totalErrors++;
-      reports.push(track("function_deploy_failure", tag, result.durationMs));
+      if (context?.codebaseDeployEvents?.[result.endpoint.codebase || "default"] !== undefined) {
+        context.codebaseDeployEvents[result.endpoint.codebase || "default"]
+          .fn_deploy_num_failures++;
+      }
     }
   }
 
-  const regionCountTag = regions.size < 5 ? regions.size.toString() : ">=5";
-  reports.push(track("functions_region_count", regionCountTag, 1));
-
-  const gcfv1 = summary.results.find((r) => r.endpoint.platform === "gcfv1");
-  const gcfv2 = summary.results.find((r) => r.endpoint.platform === "gcfv2");
-  const tag = gcfv1 && gcfv2 ? "v1+v2" : gcfv1 ? "v1" : "v2";
-  reports.push(track("functions_codebase_deploy", tag, summary.results.length));
+  for (const codebase of codebases) {
+    if (context?.codebaseDeployEvents) {
+      reports.push(trackGA4("codebase_deploy", { ...context.codebaseDeployEvents[codebase] }));
+    }
+  }
+  const fnDeployGroupEvent = {
+    codebase_deploy_count: codebases.size >= 5 ? "5+" : codebases.size.toString(),
+    fn_deploy_num_successes: totalSuccesses,
+    fn_deploy_num_canceled: totalAborts,
+    fn_deploy_num_failures: totalErrors,
+  };
+  reports.push(trackGA4("function_deploy_group", fnDeployGroupEvent));
 
   const avgTime = totalTime / (totalSuccesses + totalErrors);
-
   logger.debug(`Total Function Deployment time: ${summary.totalTime}`);
   logger.debug(`${totalErrors + totalSuccesses + totalAborts} Functions Deployed`);
   logger.debug(`${totalErrors} Functions Errored`);
   logger.debug(`${totalAborts} Function Deployments Aborted`);
   logger.debug(`Average Function Deployment time: ${avgTime}`);
-  if (totalErrors + totalSuccesses > 0) {
-    if (totalErrors === 0) {
-      reports.push(track("functions_deploy_result", "success", totalSuccesses));
-    } else if (totalSuccesses > 0) {
-      reports.push(track("functions_deploy_result", "partial_success", totalSuccesses));
-      reports.push(track("functions_deploy_result", "partial_failure", totalErrors));
-      reports.push(
-        track(
-          "functions_deploy_result",
-          "partial_error_ratio",
-          totalErrors / (totalSuccesses + totalErrors)
-        )
-      );
-    } else {
-      reports.push(track("functions_deploy_result", "failure", totalErrors));
-    }
-  }
 
   await utils.allSettled(reports);
 }

@@ -1,3 +1,5 @@
+import { AppBundle } from "../interfaces";
+
 export interface FileSystem {
   exists(file: string): Promise<boolean>;
   read(file: string): Promise<string | null>;
@@ -6,7 +8,7 @@ export interface FileSystem {
 export interface Runtime {
   match(fs: FileSystem): Promise<boolean | null>;
   getRuntimeName(): string;
-  analyseCodebase(fs: FileSystem, allFrameworkSpecs: FrameworkSpec[]): Promise<RuntimeSpec | null>;
+  analyseCodebase(fs: FileSystem, allFrameworkSpecs: FrameworkSpec[]): Promise<RuntimeSpec>;
 }
 
 export interface Command {
@@ -77,4 +79,19 @@ export interface RuntimeSpec {
   // The runtime has detected a command that should always be run irrespective of
   // the framework (e.g. the "build" script always wins in Node)
   detectedCommands?: LifecycleCommands;
+
+  environmentVariables?: Record<string, string>;
+
+  // Framework authors can execute framework-specific code using hooks at different stages of Frameworks API build process.
+  frameworkHooks?: FrameworkHooks;
+}
+
+export interface FrameworkHooks {
+  // Programmatic hook with access to filesystem and nodejs API to inspect the workspace.
+  // Primarily intended to gather hints relevant to the build.
+  afterInstall?: (b: AppBundle) => AppBundle;
+
+  // Programmatic hook with access to filesystem and nodejs API to inspect the build artifacts.
+  // Primarily intended to informs what assets should be deployed.
+  afterBuild?: (b: AppBundle) => AppBundle;
 }

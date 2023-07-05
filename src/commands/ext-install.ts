@@ -1,12 +1,14 @@
 import * as clc from "colorette";
 import { marked } from "marked";
+import * as semver from "semver";
 import * as TerminalRenderer from "marked-terminal";
 
-import { displayExtInfo } from "../extensions/displayExtensionInfo";
+import { displayExtensionVersionInfo } from "../extensions/displayExtensionInfo";
 import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
+import { logger } from "../logger";
 import { getProjectId, needProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
 import { ExtensionVersion, ExtensionSource } from "../extensions/types";
@@ -17,13 +19,11 @@ import {
   createSourceFromLocation,
   ensureExtensionsApiEnabled,
   logPrefix,
-  promptForOfficialExtension,
   promptForValidInstanceId,
   diagnoseAndFixProject,
-  isUrlPath,
   isLocalPath,
-  canonicalizeRefInput,
 } from "../extensions/extensionsHelper";
+import { resolveVersion } from "../deploy/extensions/planner";
 import { getRandomString } from "../extensions/utils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
@@ -40,7 +40,7 @@ marked.setOptions({
 /**
  * Command for installing an extension
  */
-export const command = new Command("ext:install [extensionName]")
+export const command = new Command("ext:install [extensionRef]")
   .description(
     "add an uploaded extension to firebase.json if [publisherId/extensionId] is provided;" +
       "or, add a local extension if [localPath] is provided"
@@ -51,67 +51,72 @@ export const command = new Command("ext:install [extensionName]")
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
   .before(diagnoseAndFixProject)
-  .action(async (extensionName: string, options: Options) => {
-    const projectId = getProjectId(options);
-    // TODO(b/230598656): Clean up paramsEnvPath after v11 launch.
-    const paramsEnvPath = "";
-    let learnMore = false;
-    if (!extensionName) {
-      if (options.interactive) {
-        learnMore = true;
-        extensionName = await promptForOfficialExtension(
-          "Which official extension do you wish to install?\n" +
-            "  Select an extension, then press Enter to learn more."
-        );
-      } else {
-        throw new FirebaseError(
-          `Unable to find published extension '${clc.bold(extensionName)}'. ` +
-            `Run ${clc.bold(
-              "firebase ext:install -i"
-            )} to select from the list of all available published extensions.`
-        );
-      }
-    }
-    let source;
-    let extensionVersion;
-
-    // TODO(b/220900194): Remove when deprecating old install flow.
-    // --local doesn't support urlPath so this will become dead codepath.
-    if (isUrlPath(extensionName)) {
-      throw new FirebaseError(
-        `Installing with a source url is no longer supported in the CLI. Please use Firebase Console instead.`
-      );
-    }
+  .action(async (extensionRef: string, options: Options) => {
     if (options.local) {
       utils.logLabeledWarning(
         logPrefix,
         "As of firebase-tools@11.0.0, the `--local` flag is no longer required, as it is the default behavior."
       );
     }
-
+    if (!extensionRef) {
+      throw new FirebaseError(
+        "Extension ref is required to install. To see a full list of available extensions, go to Extensions Hub (https://extensions.dev/extensions)."
+      );
+    }
+    let source: ExtensionSource | undefined;
+    let extensionVersion: ExtensionVersion | undefined;
+    const projectId = getProjectId(options);
     // If the user types in a local path (prefixed with ~/, ../, or ./), install from local source.
     // Otherwise, treat the input as an extension reference and proceed with reference-based installation.
-    if (isLocalPath(extensionName)) {
+    if (isLocalPath(extensionRef)) {
       // TODO(b/228444119): Create source should happen at deploy time.
       // Should parse spec locally so we don't need project ID.
-      source = await createSourceFromLocation(needProjectId({ projectId }), extensionName);
-      await displayExtInfo(extensionName, "", source.spec);
-      void trackGA4("extension_added_to_manifest", {
-        published: "local",
-        interactive: options.nonInteractive ? "false" : "true",
-      });
+      source = await createSourceFromLocation(needProjectId({ projectId }), extensionRef);
+      await displayExtensionVersionInfo({ spec: source.spec });
     } else {
-      extensionName = await canonicalizeRefInput(extensionName);
-      extensionVersion = await extensionsApi.getExtensionVersion(extensionName);
-
-      void trackGA4("extension_added_to_manifest", {
-        published: extensionVersion.listing?.state === "APPROVED" ? "published" : "uploaded",
-        interactive: options.nonInteractive ? "false" : "true",
-      });
-      await infoExtensionVersion({
-        extensionName,
+      const extension = await extensionsApi.getExtension(extensionRef);
+      const ref = refs.parse(extensionRef);
+      ref.version = await resolveVersion(ref, extension);
+      const extensionVersionRef = refs.toExtensionVersionRef(ref);
+      extensionVersion = await extensionsApi.getExtensionVersion(extensionVersionRef);
+      await displayExtensionVersionInfo({
+        spec: extensionVersion.spec,
         extensionVersion,
+        latestApprovedVersion: extension.latestApprovedVersion,
+        latestVersion: extension.latestVersion,
       });
+      if (extensionVersion.state === "DEPRECATED") {
+        throw new FirebaseError(
+          `Extension version ${clc.bold(
+            extensionVersionRef
+          )} is deprecated and cannot be installed. To install the latest non-deprecated version, omit the version in the extension ref.`
+        );
+      }
+      logger.info();
+      // Check if selected version is older than the latest approved version, or the latest version only if there is no approved version.
+      if (
+        (extension.latestApprovedVersion &&
+          semver.gt(extension.latestApprovedVersion, extensionVersion.spec.version)) ||
+        (!extension.latestApprovedVersion &&
+          extension.latestVersion &&
+          semver.gt(extension.latestVersion, extensionVersion.spec.version))
+      ) {
+        const version = extension.latestApprovedVersion || extension.latestVersion;
+        logger.info(
+          `You are about to install extension version ${clc.bold(
+            extensionVersion.spec.version
+          )} which is older than the latest ${
+            extension.latestApprovedVersion ? "accepted version" : "version"
+          } ${clc.bold(version!)}.`
+        );
+      }
+    }
+    if (!source && !extensionVersion) {
+      throw new FirebaseError(
+        `Failed to parse ${clc.bold(
+          extensionRef
+        )} as an extension version or a path to a local extension. Please specify a valid reference.`
+      );
     }
     if (
       !(await confirm({
@@ -122,33 +127,31 @@ export const command = new Command("ext:install [extensionName]")
     ) {
       return;
     }
-    if (!source && !extensionVersion) {
-      throw new FirebaseError(
-        "Could not find a source. Please specify a valid source to continue."
-      );
-    }
     const spec = source?.spec ?? extensionVersion?.spec;
     if (!spec) {
       throw new FirebaseError(
         `Could not find the extension.yaml for extension '${clc.bold(
-          extensionName
+          extensionRef
         )}'. Please make sure this is a valid extension and try again.`
       );
     }
-    if (learnMore) {
-      utils.logLabeledBullet(
-        logPrefix,
-        `You selected: ${clc.bold(spec.displayName || "")}.\n` +
-          `${spec.description}\n` +
-          `View details: https://firebase.google.com/products/extensions/${spec.name}\n`
-      );
+
+    if (source) {
+      void trackGA4("extension_added_to_manifest", {
+        published: "local",
+        interactive: options.nonInteractive ? "false" : "true",
+      });
+    } else if (extensionVersion) {
+      void trackGA4("extension_added_to_manifest", {
+        published: extensionVersion.listing?.state === "APPROVED" ? "published" : "uploaded",
+        interactive: options.nonInteractive ? "false" : "true",
+      });
     }
 
     try {
       return installToManifest({
-        paramsEnvPath,
         projectId,
-        extensionName,
+        extensionRef,
         source,
         extVersion: extensionVersion,
         nonInteractive: options.nonInteractive,
@@ -164,18 +167,9 @@ export const command = new Command("ext:install [extensionName]")
     }
   });
 
-async function infoExtensionVersion(args: {
-  extensionName: string;
-  extensionVersion: ExtensionVersion;
-}): Promise<void> {
-  const ref = refs.parse(args.extensionName);
-  await displayExtInfo(args.extensionName, ref.publisherId, args.extensionVersion.spec, true);
-}
-
 interface InstallExtensionOptions {
-  paramsEnvPath?: string;
   projectId?: string;
-  extensionName: string;
+  extensionRef: string;
   source?: ExtensionSource;
   extVersion?: ExtensionVersion;
   nonInteractive: boolean;
@@ -189,14 +183,13 @@ interface InstallExtensionOptions {
  * @param options
  */
 async function installToManifest(options: InstallExtensionOptions): Promise<void> {
-  const { projectId, extensionName, extVersion, source, paramsEnvPath, nonInteractive, force } =
-    options;
-  const isLocalSource = isLocalPath(extensionName);
+  const { projectId, extensionRef, extVersion, source, nonInteractive, force } = options;
+  const isLocalSource = isLocalPath(extensionRef);
 
   const spec = extVersion?.spec ?? source?.spec;
   if (!spec) {
     throw new FirebaseError(
-      `Could not find the extension.yaml for ${extensionName}. Please make sure this is a valid extension and try again.`
+      `Could not find the extension.yaml for ${extensionRef}. Please make sure this is a valid extension and try again.`
     );
   }
 
@@ -215,7 +208,6 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
     projectId,
     paramSpecs: (spec.params ?? []).concat(spec.systemParams ?? []),
     nonInteractive,
-    paramsEnvPath,
     instanceId,
   });
   const eventsConfig = spec.events
@@ -237,7 +229,7 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
       {
         instanceId,
         ref: !isLocalSource ? ref : undefined,
-        localPath: isLocalSource ? extensionName : undefined,
+        localPath: isLocalSource ? extensionRef : undefined,
         params: paramBindingOptions,
         extensionSpec: spec,
       },
