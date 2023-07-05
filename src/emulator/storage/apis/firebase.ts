@@ -18,7 +18,7 @@ import { reqBodyToBuffer } from "../../shared/request";
 import { ListObjectsResponse } from "../files";
 import { time } from "node:console";
 import { createHmac } from "node:crypto";
-import { privateKey } from "../constants";
+import { SIGNED_URL_MAX_TTL_MILLIS, privateKey } from "../constants";
 /**
  * @param emulator
  */
@@ -139,9 +139,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   firebaseStorageAPI.post(`/b/:bucketId/o/:objectId[(:)]generateSignedUrl`, async (req, res) => {
     const timeToLive = req.body.ttl;
 
-    const msInAWeek = 7 * 24 * 60 * 60 * 1000;
-
-    if (timeToLive < 0 || timeToLive > msInAWeek) {
+    if (timeToLive < 0 || timeToLive > SIGNED_URL_MAX_TTL_MILLIS) {
       return res.status(400).json({
         error: {
           code: 400,
@@ -167,12 +165,15 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         },
       });
     }
+	console.log(privateKey);
 
     const signature = createHmac("sha256", privateKey).update(unsignedUrl).digest("base64");
 
     const signedUrl = `${unsignedUrl}&X-Firebase-Signature=${signature}`;
 
-    return res.status(200).json(signedUrl);
+    return res.status(200).json({
+      signed_url: signedUrl,
+    });
   });
 
   // list object handler
