@@ -7,7 +7,7 @@ import { StorageEmulator } from "../index";
 import { sendFileBytes } from "./shared";
 import { EmulatorRegistry } from "../../registry";
 import { parseObjectUploadMultipartRequest } from "../multipart";
-import { NotFoundError, ForbiddenError } from "../errors";
+import { NotFoundError, ForbiddenError, BadRequestError } from "../errors";
 import {
   NotCancellableError,
   Upload,
@@ -117,6 +117,8 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
             message: `Permission denied. No READ permission.`,
           },
         });
+      } else if (err instanceof BadRequestError) {
+        return res.status(400);
       }
       throw err;
     }
@@ -151,20 +153,20 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
 
     const unsignedUrl = `${req.protocol}://${req.hostname}:${req.socket.localPort}/v0/b/${req.params.bucketId}/o/${req.params.objectId}?alt=media&X-Firebase-Date=${currentDate}&X-Firebase-Expires=${timeToLive}`;
 
-    // const authorized = await storageLayer.authenticateUser({
-    //   bucketId: req.params.bucketId,
-    //   decodedObjectId: decodeURIComponent(req.params.objectId),
-    //   authorization: req.header("authorization"),
-    // });
+    const authorized = await storageLayer.authenticateUser({
+      bucketId: req.params.bucketId,
+      decodedObjectId: decodeURIComponent(req.params.objectId),
+      authorization: req.header("authorization"),
+    });
 
-    // if (!authorized) {
-    //   return res.status(403).json({
-    //     error: {
-    //       code: 403,
-    //       message: `Unauthorized User`,
-    //     },
-    //   });
-    // }
+    if (!authorized) {
+      return res.status(403).json({
+        error: {
+          code: 403,
+          message: `Unauthorized User`,
+        },
+      });
+    }
 
     const signature = createHmac("sha256", privateKey).update(unsignedUrl).digest("base64");
 

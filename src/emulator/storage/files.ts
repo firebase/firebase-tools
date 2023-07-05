@@ -5,7 +5,7 @@ import {
   IncomingMetadata,
   StoredFileMetadata,
 } from "./metadata";
-import { NotFoundError, ForbiddenError } from "./errors";
+import { NotFoundError, ForbiddenError, BadRequestError } from "./errors";
 import * as path from "path";
 import * as fse from "fs-extra";
 import { StorageCloudFunctions } from "./cloudFunctions";
@@ -21,6 +21,8 @@ import { Upload, UploadStatus } from "./upload";
 import { trackEmulator } from "../../track";
 import { Emulators } from "../types";
 import { ParsedQs } from "qs";
+import { createHmac } from "crypto";
+import { privateKey } from "./constants";
 interface BucketsList {
   buckets: {
     id: string;
@@ -51,7 +53,7 @@ export type CreateObjectRequest = {
 export type GetObjectRequest = {
   bucketId: string;
   decodedObjectId: string;
-  url: string;
+  url?: string;
   authorization?: string;
   downloadToken?: string;
   urlSignature?: string;
@@ -200,30 +202,26 @@ export class StorageLayer {
       const prevSignature = request.urlSignature;
       console.log("prev signature is: " + prevSignature);
 
-      if (prevSignature != null) {
-        //make time and validity checks
-        const start = request.urlUsableMs!;
-        console.log("START: " + start);
-        console.log("expire is " + request.urlTtlMs);
-        const end = start + request.urlTtlMs!;
-        console.log("END: " + start);
-        console.log(" ");
-        const now = Date.parse(new Date().toISOString());
-        console.log("NOW: " + now);
-        console.log(" ");
+      //make time and validity checks
+      const start = request.urlUsableMs!;
+      const end = start + request.urlTtlMs!;
+      const now = Date.parse(new Date().toISOString());
+      const isLive = now >= start && now < start + end;
 
-        console.log(`start is ${start} the end is ${end} and now is ${now}`);
+      if (!isLive) {
+        throw new ForbiddenError("Failed auth");
+      }
 
-        if (!(now >= start && now < end)) {
-          console.log("OUT OF TIME");
-          throw new ForbiddenError("Failed auth");
-        }
-      } else {
-        //not signed
+      const isCorrect =
+        createHmac("sha256", privateKey).update(request.url!).digest("base64") ===
+        request.urlSignature;
+
+      if (!isCorrect) {
+		throw new BadRequestError("Invalid Url");
       }
     }
 
-    let authorized = hasValidDownloadToken;
+    let authorized = signedUrlWithNoToken;
     if (!authorized) {
       authorized = await this._rulesValidator.validate(
         ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
