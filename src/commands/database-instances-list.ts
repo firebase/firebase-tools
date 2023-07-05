@@ -41,6 +41,10 @@ export const command = new Command("database:instances:list")
       throw err;
     }
     spinner.succeed();
+    if (instances.length === 0) {
+      logger.info(clc.bold("No database instances found."));
+      return;
+    }
     // TODO: remove rtdbmanagement experiment in the next major release.
     if (!experiments.isEnabled("rtdbmanagement")) {
       for (const instance of instances) {
@@ -48,10 +52,6 @@ export const command = new Command("database:instances:list")
       }
       logger.info(`Project ${options.project} has ${instances.length} database instances`);
       return instances;
-    }
-    if (instances.length === 0) {
-      logger.info(clc.bold("No database instances found."));
-      return;
     }
     const tableHead = ["Database Instance Name", "Location", "Type", "State"];
     const table = new Table({ head: tableHead, style: { head: ["green"] } });
