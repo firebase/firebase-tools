@@ -15,7 +15,7 @@ import {
   UploadPreviouslyFinalizedError,
 } from "../upload";
 import { reqBodyToBuffer } from "../../shared/request";
-import { ListObjectsResponse } from "../files";
+import { ListObjectsResponse, SignedUrlResponse } from "../files";
 import { time } from "node:console";
 import { createHmac } from "node:crypto";
 import {
@@ -142,9 +142,10 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
 
   firebaseStorageAPI.post(`/b/:bucketId/o/:objectId[(:)]generateSignedUrl`, async (req, res) => {
     const timeToLive = req.body.ttlInMillis;
+    let signedUrlObject: SignedUrlResponse;
 
     try {
-      await storageLayer.generateSignedUrl({
+      signedUrlObject = await storageLayer.generateSignedUrl({
         bucketId: req.params.bucketId,
         decodedObjectId: decodeURIComponent(req.params.objectId),
         authorization: req.header("authorization"),
@@ -152,12 +153,20 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         ttlInMillis: timeToLive,
       });
     } catch (err) {
+      if (err instanceof NotFoundError) {
+        return res.sendStatus(404);
+      } else if (err instanceof ForbiddenError) {
+        return res.status(401).json({
+          error: {
+            code: 401,
+            message: `User is not authenticated`,
+          },
+        });
+      }
       throw err;
     }
 
-    return res.status(200).json({
-      signed_url: "signedUrl",
-    });
+    return signedUrlObject;
   });
 
   // list object handler

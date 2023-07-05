@@ -22,7 +22,11 @@ import { trackEmulator } from "../../track";
 import { Emulators } from "../types";
 import { ParsedQs } from "qs";
 import { createHmac } from "crypto";
-import { SIGNED_URL_MAX_TTL_MILLIS, SIGNED_URL_MIN_TTL_MILLIS, SIGNED_URL_PRIVATE_KEY } from "./constants";
+import {
+  SIGNED_URL_MAX_TTL_MILLIS,
+  SIGNED_URL_MIN_TTL_MILLIS,
+  SIGNED_URL_PRIVATE_KEY,
+} from "./constants";
 interface BucketsList {
   buckets: {
     id: string;
@@ -51,7 +55,9 @@ export type CreateSignedUrl = {
   ttlInMillis: number;
 };
 
-export type SignedUrlResponse = {};
+export type SignedUrlResponse = {
+  signedUrl: string;
+};
 
 /**  Parsed request object for {@link StorageLayer#getObject}. */
 export type GetObjectRequest = {
@@ -150,14 +156,18 @@ export class StorageLayer {
    * @param {GetObjectRequest} request
    * @returns {Promise<boolean>}
    */
-  async generateSignedUrl(request: CreateSignedUrl): Promise<boolean> {
+  async generateSignedUrl(request: CreateSignedUrl): Promise<SignedUrlResponse> {
     const metadata = this.getMetadata(request.bucketId, request.decodedObjectId);
     const currentDate = new Date().toISOString(); //make helper for this to make sure it is being formatted correctly
-	const timeToLive = request.ttlInMillis;
+    const timeToLive = request.ttlInMillis;
 
-	if (timeToLive < SIGNED_URL_MIN_TTL_MILLIS || timeToLive > SIGNED_URL_MAX_TTL_MILLIS) {
-		//error
-	  }
+    if (!timeToLive) {
+      //Error
+    }
+
+    if (timeToLive < SIGNED_URL_MIN_TTL_MILLIS || timeToLive > SIGNED_URL_MAX_TTL_MILLIS) {
+      throw new BadRequestError("TTL specified is less than 0 or more than allowed max (1 week)");
+    }
     const authorized = await this._rulesValidator.validate(
       ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
       request.bucketId,
@@ -167,26 +177,25 @@ export class StorageLayer {
       request.authorization
     );
 
+    //What goes with this
     if (!authorized) {
-      //error
-	  // if (!authorized) {
-	  //   return res.status(403).json({
-	  //     error: {
-	  //       code: 403,
-	  //       message: `Unauthorized User`,
-	  //     },
-	  //   });
-	  // }
+      throw new ForbiddenError("");
+    }
+
+    if (!metadata) {
+      throw new NotFoundError("Object in bucket does not exist");
     }
     // //move all this to storage layer
     const unsignedUrl = `${request.originalUrl}/v0/b/${request.bucketId}/o/${request.decodedObjectId}?alt=media&X-Firebase-Date=${currentDate}&X-Firebase-Expires=${request.ttlInMillis}`;
-	// const signature = createHmac("sha256", SIGNED_URL_PRIVATE_KEY)
-	//   .update(unsignedUrl)
-	//   .digest("base64");
+    const signature = createHmac("sha256", SIGNED_URL_PRIVATE_KEY)
+      .update(unsignedUrl)
+      .digest("base64");
 
-	// const signedUrl = `${unsignedUrl}&X-Firebase-Signature=${signature}`;
+    const signedUrl = `${unsignedUrl}&X-Firebase-Signature=${signature}`;
 
-    return false;
+    return {
+      signedUrl: signedUrl,
+    };
   }
 
   createBucket(id: string): void {
