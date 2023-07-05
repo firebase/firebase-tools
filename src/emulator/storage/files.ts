@@ -22,7 +22,7 @@ import { trackEmulator } from "../../track";
 import { Emulators } from "../types";
 import { ParsedQs } from "qs";
 import { createHmac } from "crypto";
-import { privateKey } from "./constants";
+import { SIGNED_URL_PRIVATE_KEY } from "./constants";
 interface BucketsList {
   buckets: {
     id: string;
@@ -213,7 +213,7 @@ export class StorageLayer {
       }
 
       const isCorrect =
-        createHmac("sha256", privateKey).update(request.url!).digest("base64") ===
+        createHmac("sha256", SIGNED_URL_PRIVATE_KEY).update(request.url!).digest("base64") ===
         request.urlSignature;
 
       if (!isCorrect) {
