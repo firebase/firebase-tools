@@ -18,7 +18,11 @@ import { reqBodyToBuffer } from "../../shared/request";
 import { ListObjectsResponse } from "../files";
 import { time } from "node:console";
 import { createHmac } from "node:crypto";
-import { SIGNED_URL_MAX_TTL_MILLIS, SIGNED_URL_MIN_TTL_MILLIS, SIGNED_URL_PRIVATE_KEY } from "../constants";
+import {
+  SIGNED_URL_MAX_TTL_MILLIS,
+  SIGNED_URL_MIN_TTL_MILLIS,
+  SIGNED_URL_PRIVATE_KEY,
+} from "../constants";
 /**
  * @param emulator
  */
@@ -138,44 +142,21 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
 
   firebaseStorageAPI.post(`/b/:bucketId/o/:objectId[(:)]generateSignedUrl`, async (req, res) => {
     const timeToLive = req.body.ttlInMillis;
-	//createSignedUrl
 
-    if (timeToLive < SIGNED_URL_MIN_TTL_MILLIS || timeToLive > SIGNED_URL_MAX_TTL_MILLIS) {
-      return res.status(400).json({
-        error: {
-          code: 400,
-          message: `Invalid TTL.`,
-        },
+    try {
+      await storageLayer.generateSignedUrl({
+        bucketId: req.params.bucketId,
+        decodedObjectId: decodeURIComponent(req.params.objectId),
+        authorization: req.header("authorization"),
+        originalUrl: `${req.protocol}://${req.hostname}:${req.socket.localPort}`,
+        ttlInMillis: timeToLive,
       });
+    } catch (err) {
+      throw err;
     }
-    const currentDate = new Date().toISOString(); //make helper for this to make sure it is being formatted correctly
-
-	//move all this to storage layer 
-    const unsignedUrl = `${req.protocol}://${req.hostname}:${req.socket.localPort}/v0/b/${req.params.bucketId}/o/${req.params.objectId}?alt=media&X-Firebase-Date=${currentDate}&X-Firebase-Expires=${timeToLive}`;
-
-    const authorized = await storageLayer.authenticateUser({
-      bucketId: req.params.bucketId,
-      decodedObjectId: decodeURIComponent(req.params.objectId),
-      authorization: req.header("authorization"),
-    });
-
-    if (!authorized) {
-      return res.status(403).json({
-        error: {
-          code: 403,
-          message: `Unauthorized User`,
-        },
-      });
-    }
-
-    const signature = createHmac("sha256", SIGNED_URL_PRIVATE_KEY)
-      .update(unsignedUrl)
-      .digest("base64");
-
-    const signedUrl = `${unsignedUrl}&X-Firebase-Signature=${signature}`;
 
     return res.status(200).json({
-      signed_url: signedUrl,
+      signed_url: "signedUrl",
     });
   });
 

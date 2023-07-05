@@ -22,7 +22,7 @@ import { trackEmulator } from "../../track";
 import { Emulators } from "../types";
 import { ParsedQs } from "qs";
 import { createHmac } from "crypto";
-import { SIGNED_URL_PRIVATE_KEY } from "./constants";
+import { SIGNED_URL_MAX_TTL_MILLIS, SIGNED_URL_MIN_TTL_MILLIS, SIGNED_URL_PRIVATE_KEY } from "./constants";
 interface BucketsList {
   buckets: {
     id: string;
@@ -43,11 +43,15 @@ export class StoredFile {
 }
 
 /**  Parsed request object for {@link StorageLayer#authenticateUser}. */
-export type CreateObjectRequest = {
+export type CreateSignedUrl = {
   bucketId: string;
   decodedObjectId: string;
   authorization?: string;
+  originalUrl: string;
+  ttlInMillis: number;
 };
+
+export type SignedUrlResponse = {};
 
 /**  Parsed request object for {@link StorageLayer#getObject}. */
 export type GetObjectRequest = {
@@ -139,17 +143,22 @@ export class StorageLayer {
   ) {}
 
   /**
-   * Authenticate user on an inital post request
+   * Create SignedUrl
    * @date 6/28/2023 - 2:56:09 PM
    *
    * @async
    * @param {GetObjectRequest} request
    * @returns {Promise<boolean>}
    */
-  async authenticateUser(request: CreateObjectRequest): Promise<boolean> {
+  async generateSignedUrl(request: CreateSignedUrl): Promise<boolean> {
     const metadata = this.getMetadata(request.bucketId, request.decodedObjectId);
+    const currentDate = new Date().toISOString(); //make helper for this to make sure it is being formatted correctly
+	const timeToLive = request.ttlInMillis;
 
-    return await this._rulesValidator.validate(
+	if (timeToLive < SIGNED_URL_MIN_TTL_MILLIS || timeToLive > SIGNED_URL_MAX_TTL_MILLIS) {
+		//error
+	  }
+    const authorized = await this._rulesValidator.validate(
       ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
       request.bucketId,
       RulesetOperationMethod.CREATE,
@@ -157,6 +166,27 @@ export class StorageLayer {
       this._projectId,
       request.authorization
     );
+
+    if (!authorized) {
+      //error
+	  // if (!authorized) {
+	  //   return res.status(403).json({
+	  //     error: {
+	  //       code: 403,
+	  //       message: `Unauthorized User`,
+	  //     },
+	  //   });
+	  // }
+    }
+    // //move all this to storage layer
+    const unsignedUrl = `${request.originalUrl}/v0/b/${request.bucketId}/o/${request.decodedObjectId}?alt=media&X-Firebase-Date=${currentDate}&X-Firebase-Expires=${request.ttlInMillis}`;
+	// const signature = createHmac("sha256", SIGNED_URL_PRIVATE_KEY)
+	//   .update(unsignedUrl)
+	//   .digest("base64");
+
+	// const signedUrl = `${unsignedUrl}&X-Firebase-Signature=${signature}`;
+
+    return false;
   }
 
   createBucket(id: string): void {
@@ -217,7 +247,7 @@ export class StorageLayer {
         request.urlSignature;
 
       if (!isCorrect) {
-		throw new BadRequestError("Invalid Url");
+        throw new BadRequestError("Invalid Url");
       }
     }
 
