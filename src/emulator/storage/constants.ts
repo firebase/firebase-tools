@@ -1,4 +1,2 @@
-import { randomBytes, createHmac } from "node:crypto";
-
-export const privateKey = randomBytes(32).toString("hex");
 export const SIGNED_URL_MAX_TTL_MILLIS = 7 * 24 * 60 * 60 * 1000;
+export const SIGNED_URL_PRIVATE_KEY = "5c39d11c20b96241c42e07218724d6726ee27c3db33eb43256c21f92bb1f52dc";

@@ -18,7 +18,7 @@ import { reqBodyToBuffer } from "../../shared/request";
 import { ListObjectsResponse } from "../files";
 import { time } from "node:console";
 import { createHmac } from "node:crypto";
-import { SIGNED_URL_MAX_TTL_MILLIS, privateKey } from "../constants";
+import { SIGNED_URL_MAX_TTL_MILLIS, SIGNED_URL_PRIVATE_KEY } from "../constants";
 /**
  * @param emulator
  */
@@ -165,9 +165,10 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         },
       });
     }
-	console.log(privateKey);
 
-    const signature = createHmac("sha256", privateKey).update(unsignedUrl).digest("base64");
+    const signature = createHmac("sha256", SIGNED_URL_PRIVATE_KEY)
+      .update(unsignedUrl)
+      .digest("base64");
 
     const signedUrl = `${unsignedUrl}&X-Firebase-Signature=${signature}`;
 
