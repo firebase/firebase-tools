@@ -28,6 +28,7 @@ import {
   relativeRequire,
   findDependency,
   validateLocales,
+  getNodeModuleBin,
 } from "../utils";
 import { BuildResult, FrameworkType, SupportLevel } from "../interfaces";
 
@@ -101,8 +102,6 @@ export async function discover(dir: string) {
  * Build a next.js application.
  */
 export async function build(dir: string): Promise<BuildResult> {
-  const { default: nextBuild } = relativeRequire(dir, "next/dist/build");
-
   await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
 
   const reactVersion = getReactVersion(dir);
@@ -111,12 +110,20 @@ export async function build(dir: string): Promise<BuildResult> {
     process.env.__NEXT_REACT_ROOT = "true";
   }
 
-  await nextBuild(dir, null, false, false, true).catch((e) => {
-    // Err on the side of displaying this error, since this is likely a bug in
-    // the developer's code that we want to display immediately
-    console.error(e.message);
-    throw e;
+  const cli = getNodeModuleBin("next", dir);
+
+  const nextBuild = new Promise((resolve, reject) => {
+    const buildProcess = spawn(cli, ["build"], { cwd: dir });
+    buildProcess.stdout?.on("data", (data) => logger.info(data.toString()));
+    buildProcess.stderr?.on("data", (data) => logger.info(data.toString()));
+    buildProcess.on("error", (err) => {
+      reject(new FirebaseError(`Unable to build your Next.js app: ${err}`));
+    });
+    buildProcess.on("exit", (code) => {
+      resolve(code);
+    });
   });
+  await nextBuild;
 
   const reasonsForBackend = new Set();
   const { distDir, trailingSlash, basePath: baseUrl } = await getConfig(dir);
