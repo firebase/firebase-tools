@@ -22,7 +22,7 @@ export const command = new Command("database:instances:list")
   .before(requirePermissions, ["firebasedatabase.instances.list"])
   .option(
     "-l, --location <location>",
-    "(optional) location for the database instance, defaults to us-central1"
+    "(optional) location for the database instance, defaults to all regions"
   )
   .before(warnEmulatorNotSupported, Emulators.DATABASE)
   .action(async (options: any) => {
