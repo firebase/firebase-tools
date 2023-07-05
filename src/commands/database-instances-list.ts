@@ -8,6 +8,7 @@ import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
 import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
+import * as experiments from "../experiments";
 import { needProjectId } from "../projectUtils";
 import {
   listDatabaseInstances,
@@ -40,6 +41,14 @@ export const command = new Command("database:instances:list")
       throw err;
     }
     spinner.succeed();
+    // TODO: remove rtdbmanagement experiment in the next major release.
+    if (!experiments.isEnabled("rtdbmanagement")) {
+      for (const instance of instances) {
+        logger.info(instance.name);
+      }
+      logger.info(`Project ${options.project} has ${instances.length} database instances`);
+      return instances;
+    }
     if (instances.length === 0) {
       logger.info(clc.bold("No database instances found."));
       return;
