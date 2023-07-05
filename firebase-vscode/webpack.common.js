@@ -65,22 +65,61 @@ const extensionConfig = {
         loader: "string-replace-loader",
         options: {
           multiple: [
+            // CLI code has absolute path to templates/. We copy templates/
+            // into dist, and this is the correct path now.
             {
               search: /(\.|\.\.)[\.\/]+templates/g,
               replace: "./templates",
             },
+            // CLI code has absolute path to schema/. We copy schema/
+            // into dist, and this is the correct path now.
             {
               search: /(\.|\.\.)[\.\/]+schema/g,
               replace: "./schema",
             },
+            // Without doing this, it dynamically grabs pkg.name from
+            // package.json, which is the firebase-vscode package name.
+            // We want to use the same configstore name as firebase-tools
+            // so the CLI and extension can share login state.
             {
               search: /Configstore\(pkg\.name\)/g,
               replace: "Configstore('firebase-tools')",
             },
             // TODO(hsubox76): replace with something more robust
+            // This is an issue with a local call to cross-env-shell.js
+            // and a dependency on calling the Node executable using an env
+            // variable which returns a string with a lot of unusual characters
+            // if called inside VSCode.
+            // We may be able to copy cross-env-shell.js into dist?
+            // For the node executable we can probably just call Node, still
+            // need to search/replace though
             {
               search: "childProcess.spawn(translatedCommand",
               replace: "childProcess.spawn(escapedCommand"
+            },
+            // Some CLI code uses module.exports for test stubbing.
+            // We are using ES2020 and it doesn't recognize functions called
+            // as exports.functionName() or module.exports.functionName().
+            // Maybe separate those CLI src files at a future time so they can
+            // still be stubbed for tests without doing this, but this is
+            // a temporary fix.
+            {
+              search: /module\.exports\.([a-zA-Z0-9]+)\(/g,
+              replace: (match) => match.replace('module.exports.', '')
+            },
+            // cloudtasks.ts type casts so there's an " as [type]" before the
+            // starting paren to call the function
+            {
+              search: /module\.exports\.([a-zA-Z0-9]+) as/g,
+              replace: (match) => match.replace('module.exports.', '')
+            },
+            // Disallow starting . to ensure it doesn't conflict with
+            // module.exports
+            // Must end with a paren to avoid overwriting exports assignments
+            // such as "exports.something = value"
+            {
+              search: /[^\.]exports\.([a-zA-Z0-9]+)\(/g,
+              replace: (match) => match.replace('exports.', '')
             }
           ],
         },
@@ -97,6 +136,13 @@ const extensionConfig = {
         {
           from: "../schema",
           to: "./schema",
+        },
+        // Copy uncompiled JS files called at runtime by
+        // firebase-tools/src/parseTriggers.ts
+        {
+          from: "*.js",
+          to: './',
+          context: "../src/deploy/functions/runtimes/node",
         }
       ],
     })

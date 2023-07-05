@@ -3,7 +3,7 @@
   "displayName": "firebase-vscode",
   "publisher": "firebase",
   "description": "VSCode Extension for Firebase",
-  "version": "0.0.22-alpha.0",
+  "version": "0.0.23-alpha.1",
   "engines": {
     "vscode": "^1.69.0"
   },
@@ -22,12 +22,12 @@
       "properties": {
         "firebase.debug": {
           "type": "boolean",
-          "default": false,
+          "default": true,
           "description": "Enable writing debug-level messages to the file provided in firebase.debugLogPath (requires restart)"
         },
         "firebase.debugLogPath": {
           "type": "string",
-          "default": "",
+          "default": "/tmp/firebase-plugin.log",
           "description": "If firebase.debug is true, appends debug-level messages to the provided file (requires restart)"
         },
         "firebase.npmPath": {
@@ -37,8 +37,8 @@
         },
         "firebase.useFrameworks": {
           "type": "boolean",
-          "default": false,
-          "description": "Enable web frameworks in a local VSCode environment"
+          "default": true,
+          "description": "Enable web frameworks"
         }
       }
     },
@@ -133,5 +133,8 @@
     "webpack": "^5.75.0",
     "webpack-cli": "^5.0.1",
     "webpack-merge": "^5.8.0"
-  }
+  },
+  "extensionDependencies": [
+    "google.monospace"
+  ]
 }
