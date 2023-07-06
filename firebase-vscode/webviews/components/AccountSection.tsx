@@ -27,7 +27,6 @@ export function AccountSection({
   allUsers: Array<User | ServiceAccountUser> | null;
   isMonospace: boolean;
 }) {
-  console.log(user, allUsers);
   const [userDropdownVisible, toggleUserDropdown] = useState(false);
   const usersLoaded = !!allUsers;
   // Default: initial users check hasn't completed
@@ -102,7 +101,6 @@ function UserSelectionMenu({
   onClose: Function;
   isMonospace: boolean;
 }) {
-  console.log({ user });
   return (
     <>
       <PopupMenu show onClose={onClose} autoClose={true}>
