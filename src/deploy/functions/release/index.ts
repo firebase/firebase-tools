@@ -105,7 +105,7 @@ export async function release(
 
 /**
  * Prints the URLs of HTTPS functions.
- * Caller must eitehr force refresh the backend or assume the fabricator
+ * Caller must either force refresh the backend or assume the fabricator
  * has updated the URI of endpoints after deploy.
  */
 export function printTriggerUrls(results: backend.Backend): void {
