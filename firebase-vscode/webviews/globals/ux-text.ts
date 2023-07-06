@@ -12,6 +12,10 @@ export const TEXT = {
 
   MONOSPACE_LOGIN_SELECTION_ITEM: "Default credentials",
 
+  VSCE_SERVICE_ACCOUNT_LOGGED_IN: "Logged in with service account",
+
+  VSCE_SERVICE_ACCOUNT_SELECTION_ITEM: "service account",
+
   MONOSPACE_LOGIN_FAIL: "Unable to find default credentials",
 
   GOOGLE_SIGN_IN: "Sign in with Google",
