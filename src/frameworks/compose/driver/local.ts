@@ -20,6 +20,10 @@ export class LocalDriver implements Driver {
 
   install(): void {
     if (this.spec.installCommand) {
+      if (this.spec.packageManagerInstallCommand) {
+        const [cmd, ...args] = this.spec.packageManagerInstallCommand.split(" ");
+        this.execCmd(cmd, args);
+      }
       const [cmd, ...args] = this.spec.installCommand.split(" ");
       this.execCmd(cmd, args);
     }
