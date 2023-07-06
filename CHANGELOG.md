@@ -1,2 +1,0 @@
-- Fixed incorrect links in `firebase open hosting` and `firebase open crash`. (#6073)
-- Released Firebase Emulator UI v1.11.7, which includes preview support for multiple Firestore databases. (#6079)
