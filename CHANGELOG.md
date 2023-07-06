@@ -1,0 +1,1 @@
+- Released Firebase Emulator UI v1.11.7, which includes preview support for multiple Firestore databases (#6079)
