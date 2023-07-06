@@ -1,0 +1,1 @@
+- Fixed incorrect links in `firebase open hosting` and `firebase open crash`. (#6073)
