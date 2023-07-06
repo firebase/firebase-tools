@@ -94,10 +94,10 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   firebaseStorageAPI.get("/b/:bucketId/o/:objectId", async (req, res) => {
     let metadata: StoredFileMetadata;
     let data: Buffer;
-    console.log(req.query["X-Firebase-Signature"]);
-    console.log(req.query["X-Firebase-Date"] as string);
-    console.log(Date.parse(req.query["X-Firebase-Date"] as string) as number);
-    console.log(" ");
+    // console.log(req.query["X-Firebase-Signature"]);
+    // console.log(req.query["X-Firebase-Date"] as string);
+    // console.log(Date.parse(req.query["X-Firebase-Date"] as string) as number);
+    // console.log(" ");
     try {
       // Both object data and metadata get can use the same handler since they share auth logic.
       ({ metadata, data } = await storageLayer.getObject({
@@ -107,7 +107,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         authorization: req.header("authorization"),
         downloadToken: req.query.token?.toString(),
         urlSignature: req.query["X-Firebase-Signature"] as string,
-        urlUsableMs: Date.parse(req.query["X-Firebase-Date"] as string) as number,
+        urlUsableMs: conertDateToMS(req.query["X-Firebase-Date"] as string | undefined),
         urlTtlMs: Number(req.query["X-Firebase-Expires"]),
       }));
     } catch (err) {
@@ -141,8 +141,6 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
 
   firebaseStorageAPI.post(`/b/:bucketId/o/:objectId[(:)]generateSignedUrl`, async (req, res) => {
     let signedUrlObject: SignedUrlResponse;
-
-    console.log("tryin");
 
     try {
       signedUrlObject = await storageLayer.generateSignedUrl({
@@ -605,4 +603,18 @@ function isValidNonEncodedPathString(path: string): boolean {
 
 function removeAtMostOneTrailingSlash(path: string): string {
   return path.replace(/\/$/, "");
+}
+function conertDateToMS(currentDate: string | undefined) {
+  if (!currentDate) {
+    return;
+  }
+  const year = +currentDate.slice(0, 4);
+  const month = +currentDate.slice(4, 6) - 1;
+  const day = +currentDate.slice(6, 8);
+  const hour = +currentDate.slice(9, 11);
+  const minute = +currentDate.slice(11, 13);
+  const second = +currentDate.slice(13, 15);
+
+  const date = new Date(Date.UTC(year, month, day, hour, minute, second));
+  return date.getTime();
 }

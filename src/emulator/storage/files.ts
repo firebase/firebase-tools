@@ -158,16 +158,14 @@ export class StorageLayer {
   async generateSignedUrl(request: CreateSignedUrl): Promise<SignedUrlResponse> {
     const metadata = this.getMetadata(request.bucketId, request.decodedObjectId);
     //make helper for this to make sure it is being formatted correctly
-    const currentDate = new Date().toISOString();
-    const timeToLive = request.ttlInMillis;
 
-    console.log("getting to the ttl check");
+    const currentDate = this.getCurrentDate();
+
+    const timeToLive = request.ttlInMillis;
 
     if (timeToLive < SIGNED_URL_MIN_TTL_MILLIS || timeToLive > SIGNED_URL_MAX_TTL_MILLIS) {
       throw new BadRequestError("TTL specified is less than 0 or more than allowed max (1 week)");
     }
-
-    console.log("getting to the auth check");
 
     // const authorized = await this._rulesValidator.validate(
     //   ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
@@ -182,13 +180,9 @@ export class StorageLayer {
     //   throw new ForbiddenError();
     // }
 
-    console.log("getting to the meta check");
-
     if (!metadata) {
       throw new NotFoundError("Object in bucket does not exist");
     }
-
-    console.log("getting to the unsigned url");
 
     const unsignedUrl = `${request.originalUrl}/v0/b/${request.bucketId}/o/${encodeURIComponent(
       request.decodedObjectId
@@ -211,6 +205,10 @@ export class StorageLayer {
     if (!this._buckets.has(id)) {
       this._buckets.set(id, new CloudStorageBucketMetadata(id));
     }
+  }
+
+  getCurrentDate() {
+    return new Date().toISOString().replaceAll("-", "").replaceAll(":", "").replaceAll(".", "");
   }
 
   async listBuckets(): Promise<CloudStorageBucketMetadata[]> {
@@ -238,9 +236,9 @@ export class StorageLayer {
       request.downloadToken ?? ""
     );
 
-	console.log(request.urlSignature);
-	console.log(request.url);
-	console.log(request.urlUsableMs);
+    console.log(request.urlSignature);
+    console.log(request.url);
+    console.log(request.urlUsableMs);
 
     const signedUrlWithNoToken = !hasValidDownloadToken && request.urlSignature ? true : false;
 
@@ -263,7 +261,7 @@ export class StorageLayer {
       console.log("start was: " + start);
       console.log("end was: " + end);
       console.log("now was: " + now);
-	  console.log("difference is " + (end - now));
+      console.log("difference is " + (end - now));
 
       const isLive = now >= start && now < end;
 
