@@ -18,40 +18,76 @@ import { Account, User } from "../../src/types/auth";
 import { Options } from "../../src/options";
 import { currentOptions, getCommandOptions } from "./options";
 import { setInquirerOptions } from "./stubs/inquirer-stub";
-import { ServiceAccount } from "../common/types";
+import { ServiceAccount, ServiceAccountUser } from "../common/types";
 import { listChannels } from "../../src/hosting/api";
 import { ChannelWithId } from "../common/messaging/types";
 import { pluginLogger } from "./logger-wrapper";
 import { Config } from "../../src/config";
+import { currentUser } from "./workflow";
+import { setAccessToken } from "../../src/apiv2";
+
+/**
+ * Try to get a service account by calling requireAuth() without
+ * providing any account info.
+ */
+async function getServiceAccount() {
+  let email = null;
+  try {
+    email = (await requireAuth({})) || null;
+  } catch (e) {
+    pluginLogger.debug('No service account found (this may be normal), requireAuth error output:',
+      e.original || e);
+  }
+  return email;
+}
 
 /**
  * Wrap the CLI's requireAuth() which is normally run before every command
  * requiring user to be logged in. The CLI automatically supplies it with
  * account info if found in configstore so we need to fill that part in.
  */
-async function requireAuthWrapper(showError: boolean = true) {
+async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
   // Try to get global default from configstore. For some reason this is
   // often overwritten when restarting the extension.
   pluginLogger.debug('requireAuthWrapper');
+  let authFound = false;
   let account = getGlobalDefaultAccount();
   if (!account) {
     // If nothing in configstore top level, grab the first "additionalAccount"
     const accounts = getAllAccounts();
-    if (accounts.length > 0) {
-      account = accounts[0];
-      setGlobalDefaultAccount(account);
+    for (const additionalAccount of accounts) {
+      if (additionalAccount.user.email === currentUser.email) {
+        account = additionalAccount;
+        setGlobalDefaultAccount(account);
+      }
     }
   }
-  // `requireAuth()` will register the token with apiv2, and if account is
-  // still null at this point, it will use google-auth-library
-  // to find the service account.
+  if (account) {
+    authFound = true;
+  }
+  const commandOptions = await getCommandOptions(undefined, {
+    ...currentOptions
+  });
+  // `requireAuth()` is not just a check, but will also register SERVICE
+  // ACCOUNT tokens in memory as a variable in apiv2.ts, which is needed
+  // for subsequent API calls. Warning: this variable takes precedence
+  // over Google login tokens and must be removed if a Google
+  // account is the current user.
   try {
-    const commandOptions = await getCommandOptions(undefined, {
-      ...currentOptions,
-      ...account,
-    });
-    await requireAuth(commandOptions);
+    const serviceAccountEmail = await getServiceAccount();
+    // Priority 1: Service account exists and is the current selected user
+    if (serviceAccountEmail && currentUser.email === serviceAccountEmail) {
+      await requireAuth(commandOptions);
+    } else if (account) {
+      // Priority 2: Google login account exists and is the currently selected
+      // user
+      // Priority 3: Google login account exists and there is no selected user
+      // Clear service account access token from memory in apiv2.
+      setAccessToken();
+      await requireAuth({...commandOptions, ...account});
+    }
   } catch (e) {
+    // No service account or google login found.
     if (showError) {
       pluginLogger.error('requireAuth error', e.original || e);
       vscode.window.showErrorMessage("Not logged in", {
@@ -68,7 +104,7 @@ async function requireAuthWrapper(showError: boolean = true) {
   }
   // If we reach here, there is either a google account or no error on
   // requireAuth (which means there is a service account or glogin)
-  return true;
+  return authFound;
 }
 
 export async function getAccounts(): Promise<Array<Account | ServiceAccount>> {
@@ -76,11 +112,11 @@ export async function getAccounts(): Promise<Array<Account | ServiceAccount>> {
   const accounts: Array<Account | ServiceAccount> = getAllAccounts();
   pluginLogger.debug(`Found ${accounts.length} non-service accounts.`);
   // Get other accounts (assuming service account for now, could also be glogin)
-  const otherAuthExists = await requireAuthWrapper(false);
-  if (otherAuthExists) {
-    pluginLogger.debug(`Found service account`);
+  const serviceAccountEmail = await getServiceAccount();
+  if (serviceAccountEmail) {
+    pluginLogger.debug(`Found service account: ${serviceAccountEmail}`);
     accounts.push({
-      user: { email: "service_account", type: "service_account" },
+      user: { email: serviceAccountEmail, type: "service_account" },
     });
   }
   return accounts;
