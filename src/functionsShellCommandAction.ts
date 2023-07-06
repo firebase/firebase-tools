@@ -5,17 +5,18 @@ import * as _ from "lodash";
 import * as request from "request";
 import * as util from "util";
 
-import { FunctionsServer } from "./serve/functions";
-import * as LocalFunction from "./localFunction";
-import * as utils from "./utils";
-import { logger } from "./logger";
 import * as shell from "./emulator/functionsEmulatorShell";
 import * as commandUtils from "./emulator/commandUtils";
+import * as LocalFunction from "./localFunction";
+import * as utils from "./utils";
+import { FunctionsServer } from "./serve/functions";
+import { logger } from "./logger";
 import { EMULATORS_SUPPORTED_BY_FUNCTIONS, EmulatorInfo, Emulators } from "./emulator/types";
 import { EmulatorHubClient } from "./emulator/hubClient";
 import { resolveHostAndAssignPorts } from "./emulator/portUtils";
 import { Options } from "./options";
 import { Constants } from "./emulator/constants";
+import { needProjectId } from "./projectUtils";
 
 const serveFunctions = new FunctionsServer();
 
@@ -29,8 +30,8 @@ export const actionFunction = async (options: Options) => {
     debugPort = commandUtils.parseInspectionPort(options);
   }
 
-  utils.assertDefined(options.project);
-  const hubClient = new EmulatorHubClient(options.project);
+  needProjectId(options);
+  const hubClient = new EmulatorHubClient(options.project!);
 
   let remoteEmulators: Record<string, EmulatorInfo> = {};
   if (hubClient.foundHub()) {
