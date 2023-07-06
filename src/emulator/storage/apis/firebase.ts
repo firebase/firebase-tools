@@ -17,12 +17,7 @@ import {
 import { reqBodyToBuffer } from "../../shared/request";
 import { ListObjectsResponse, SignedUrlResponse } from "../files";
 import { time } from "node:console";
-import { createHmac } from "node:crypto";
-import {
-  SIGNED_URL_MAX_TTL_MILLIS,
-  SIGNED_URL_MIN_TTL_MILLIS,
-  SIGNED_URL_PRIVATE_KEY,
-} from "../constants";
+import { SIGNED_URL_DEFAULT_TTL_MILLIS } from "../constants";
 /**
  * @param emulator
  */
@@ -141,7 +136,6 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   });
 
   firebaseStorageAPI.post(`/b/:bucketId/o/:objectId[(:)]generateSignedUrl`, async (req, res) => {
-    const timeToLive = req.body.ttlInMillis;
     let signedUrlObject: SignedUrlResponse;
 
     try {
@@ -150,16 +144,30 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         decodedObjectId: decodeURIComponent(req.params.objectId),
         authorization: req.header("authorization"),
         originalUrl: `${req.protocol}://${req.hostname}:${req.socket.localPort}`,
-        ttlInMillis: timeToLive,
+        ttlInMillis:
+          req.body.ttlInMillis == undefined ? SIGNED_URL_DEFAULT_TTL_MILLIS : req.body.ttlInMillis,
       });
     } catch (err) {
       if (err instanceof NotFoundError) {
-        return res.sendStatus(404);
-      } else if (err instanceof ForbiddenError) {
-        return res.status(401).json({
+        return res.sendStatus(404).json({
           error: {
-            code: 401,
-            message: `User is not authenticated`,
+            code: 404,
+            message: `Object in bucket does not exist`,
+          },
+        });
+      }
+      if (err instanceof ForbiddenError) {
+        return res.status(403).json({
+          error: {
+            code: 403,
+            message: `Permission denied. No WRITE permission.`,
+          },
+        });
+      } else if (err instanceof BadRequestError) {
+        return res.status(400).json({
+          error: {
+            code: 400,
+            message: `TTL specified is less than 0 or more than allowed max (1 week)`,
           },
         });
       }

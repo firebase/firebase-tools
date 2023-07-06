@@ -161,10 +161,6 @@ export class StorageLayer {
     const currentDate = new Date().toISOString(); //make helper for this to make sure it is being formatted correctly
     const timeToLive = request.ttlInMillis;
 
-    if (!timeToLive) {
-      //Error
-    }
-
     if (timeToLive < SIGNED_URL_MIN_TTL_MILLIS || timeToLive > SIGNED_URL_MAX_TTL_MILLIS) {
       throw new BadRequestError("TTL specified is less than 0 or more than allowed max (1 week)");
     }
@@ -179,7 +175,7 @@ export class StorageLayer {
 
     //What goes with this
     if (!authorized) {
-      throw new ForbiddenError("");
+      throw new ForbiddenError();
     }
 
     if (!metadata) {
