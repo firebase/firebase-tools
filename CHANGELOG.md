@@ -1,0 +1,1 @@
+- Fix bug where `functions:secrets:set` didn't remove stale versions of a secret. (#6080)
