@@ -94,6 +94,10 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   firebaseStorageAPI.get("/b/:bucketId/o/:objectId", async (req, res) => {
     let metadata: StoredFileMetadata;
     let data: Buffer;
+    console.log(req.query["X-Firebase-Signature"]);
+    console.log(req.query["X-Firebase-Date"] as string);
+    console.log(Date.parse(req.query["X-Firebase-Date"] as string) as number);
+    console.log(" ");
     try {
       // Both object data and metadata get can use the same handler since they share auth logic.
       ({ metadata, data } = await storageLayer.getObject({
@@ -103,7 +107,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         authorization: req.header("authorization"),
         downloadToken: req.query.token?.toString(),
         urlSignature: req.query["X-Firebase-Signature"] as string,
-        urlUsableMs: Date.parse(req.query["X-Firebase-Date"] as string),
+        urlUsableMs: Date.parse(req.query["X-Firebase-Date"] as string) as number,
         urlTtlMs: Number(req.query["X-Firebase-Expires"]),
       }));
     } catch (err) {
@@ -138,6 +142,8 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   firebaseStorageAPI.post(`/b/:bucketId/o/:objectId[(:)]generateSignedUrl`, async (req, res) => {
     let signedUrlObject: SignedUrlResponse;
 
+    console.log("tryin");
+
     try {
       signedUrlObject = await storageLayer.generateSignedUrl({
         bucketId: req.params.bucketId,
@@ -149,7 +155,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       });
     } catch (err) {
       if (err instanceof NotFoundError) {
-        return res.sendStatus(404).json({
+        return res.status(404).json({
           error: {
             code: 404,
             message: `Object in bucket does not exist`,
@@ -174,7 +180,9 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       throw err;
     }
 
-    return signedUrlObject;
+    console.log("got out");
+
+    return res.json(signedUrlObject);
   });
 
   // list object handler

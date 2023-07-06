@@ -20,7 +20,6 @@ import { Persistence } from "./persistence";
 import { Upload, UploadStatus } from "./upload";
 import { trackEmulator } from "../../track";
 import { Emulators } from "../types";
-import { ParsedQs } from "qs";
 import { createHmac } from "crypto";
 import {
   SIGNED_URL_MAX_TTL_MILLIS,
@@ -158,36 +157,50 @@ export class StorageLayer {
    */
   async generateSignedUrl(request: CreateSignedUrl): Promise<SignedUrlResponse> {
     const metadata = this.getMetadata(request.bucketId, request.decodedObjectId);
-    const currentDate = new Date().toISOString(); //make helper for this to make sure it is being formatted correctly
+    //make helper for this to make sure it is being formatted correctly
+    const currentDate = new Date().toISOString();
     const timeToLive = request.ttlInMillis;
+
+    console.log("getting to the ttl check");
 
     if (timeToLive < SIGNED_URL_MIN_TTL_MILLIS || timeToLive > SIGNED_URL_MAX_TTL_MILLIS) {
       throw new BadRequestError("TTL specified is less than 0 or more than allowed max (1 week)");
     }
-    const authorized = await this._rulesValidator.validate(
-      ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
-      request.bucketId,
-      RulesetOperationMethod.CREATE,
-      { before: metadata?.asRulesResource() },
-      this._projectId,
-      request.authorization
-    );
 
-    //What goes with this
-    if (!authorized) {
-      throw new ForbiddenError();
-    }
+    console.log("getting to the auth check");
+
+    // const authorized = await this._rulesValidator.validate(
+    //   ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
+    //   request.bucketId,
+    //   RulesetOperationMethod.CREATE,
+    //   { before: metadata?.asRulesResource() },
+    //   this._projectId,
+    //   request.authorization
+    // );
+
+    // if (!authorized) {
+    //   throw new ForbiddenError();
+    // }
+
+    console.log("getting to the meta check");
 
     if (!metadata) {
       throw new NotFoundError("Object in bucket does not exist");
     }
-    // //move all this to storage layer
-    const unsignedUrl = `${request.originalUrl}/v0/b/${request.bucketId}/o/${request.decodedObjectId}?alt=media&X-Firebase-Date=${currentDate}&X-Firebase-Expires=${request.ttlInMillis}`;
+
+    console.log("getting to the unsigned url");
+
+    const unsignedUrl = `${request.originalUrl}/v0/b/${request.bucketId}/o/${encodeURIComponent(
+      request.decodedObjectId
+    )}?alt=media&X-Firebase-Date=${currentDate}&X-Firebase-Expires=${request.ttlInMillis}`;
+
     const signature = createHmac("sha256", SIGNED_URL_PRIVATE_KEY)
       .update(unsignedUrl)
       .digest("base64");
 
     const signedUrl = `${unsignedUrl}&X-Firebase-Signature=${signature}`;
+
+    console.log("signed: " + signedUrl);
 
     return {
       signedUrl: signedUrl,
@@ -225,6 +238,10 @@ export class StorageLayer {
       request.downloadToken ?? ""
     );
 
+	console.log(request.urlSignature);
+	console.log(request.url);
+	console.log(request.urlUsableMs);
+
     const signedUrlWithNoToken = !hasValidDownloadToken && request.urlSignature ? true : false;
 
     console.log(
@@ -232,6 +249,7 @@ export class StorageLayer {
         ${hasValidDownloadToken} and the urlSig was 
         ${request.urlSignature}`
     );
+    console.log(`signedUrlWithNoToken came out as ${signedUrlWithNoToken}`);
 
     if (signedUrlWithNoToken) {
       const prevSignature = request.urlSignature;
@@ -241,19 +259,27 @@ export class StorageLayer {
       const start = request.urlUsableMs!;
       const end = start + request.urlTtlMs!;
       const now = Date.parse(new Date().toISOString());
-      const isLive = now >= start && now < start + end;
+
+      console.log("start was: " + start);
+      console.log("end was: " + end);
+      console.log("now was: " + now);
+	  console.log("difference is " + (end - now));
+
+      const isLive = now >= start && now < end;
+
+      console.log("live status is " + isLive);
 
       if (!isLive) {
         throw new ForbiddenError("Failed auth");
       }
 
-      const isCorrect =
-        createHmac("sha256", SIGNED_URL_PRIVATE_KEY).update(request.url!).digest("base64") ===
-        request.urlSignature;
+      //   const isCorrect =
+      //     createHmac("sha256", SIGNED_URL_PRIVATE_KEY).update(request.url!).digest("base64") ===
+      //     request.urlSignature;
 
-      if (!isCorrect) {
-        throw new BadRequestError("Invalid Url");
-      }
+      //   if (!isCorrect) {
+      //     throw new BadRequestError("Invalid Url");
+      //   }
     }
 
     let authorized = signedUrlWithNoToken;
