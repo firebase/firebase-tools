@@ -1,6 +1,7 @@
-import { AppSpec, Driver } from "../interfaces";
+import { Driver } from "../interfaces";
 import { LocalDriver } from "./local";
 import { DockerDriver } from "./docker";
+import { RuntimeSpec } from "../discover/types";
 
 export const SUPPORTED_MODES = ["local", "docker"] as const;
 export type Mode = (typeof SUPPORTED_MODES)[number];
@@ -8,7 +9,7 @@ export type Mode = (typeof SUPPORTED_MODES)[number];
 /**
  * Returns the driver that provides the execution context for the composer.
  */
-export function getDriver(mode: Mode, app: AppSpec): Driver {
+export function getDriver(mode: Mode, app: RuntimeSpec): Driver {
   if (mode === "local") {
     return new LocalDriver(app);
   } else if (mode === "docker") {

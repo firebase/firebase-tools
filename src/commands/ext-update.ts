@@ -117,8 +117,6 @@ export const command = new Command("ext:update <extensionInstanceId> [updateSour
       newSpec: newExtensionVersion.spec,
       currentParams: oldParamValues,
       projectId,
-      // TODO(b/230598656): Clean up paramsEnvPath after v11 launch.
-      paramsEnvPath: "",
       nonInteractive: options.nonInteractive,
       instanceId,
     });

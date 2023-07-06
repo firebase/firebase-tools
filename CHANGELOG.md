@@ -1,3 +1,1 @@
-- Run lifecycle hooks for specific codebases. (#6011)
-- Fixed issue causing `firebase emulators:start` to crash in Next.js apps (#6005)
-- Release Firebase Emulator UI v1.11.7 (#6079)
+- Released Firebase Emulator UI v1.11.7, which includes preview support for multiple Firestore databases (#6079)

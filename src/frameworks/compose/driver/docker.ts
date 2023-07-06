@@ -2,8 +2,9 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as spawn from "cross-spawn";
 
-import { AppBundle, AppSpec, Driver, Hook } from "../interfaces";
+import { AppBundle, Driver, Hook } from "../interfaces";
 import { BUNDLE_PATH, genHookScript } from "./hooks";
+import { RuntimeSpec } from "../discover/types";
 
 const ADAPTER_SCRIPTS_PATH = "./.firebase/adapters" as const;
 
@@ -98,13 +99,17 @@ export class DockerfileBuilder {
 export class DockerDriver implements Driver {
   private dockerfileBuilder;
 
-  constructor(readonly spec: AppSpec) {
+  constructor(readonly spec: RuntimeSpec) {
     this.dockerfileBuilder = new DockerfileBuilder();
     this.dockerfileBuilder.from(spec.baseImage, "base").user("firebase");
   }
 
   private execDockerPush(args: string[]) {
-    console.log(`executing docker build: ${args.join(" ")}`);
+    console.debug(JSON.stringify({ message: `executing docker build: ${args.join(" ")}` }));
+    console.info(
+      JSON.stringify({ foo: "bar", message: `executing docker build: ${args.join(" ")}` })
+    );
+    console.error(JSON.stringify({ message: `executing docker build: ${args.join(" ")}` }));
     return spawn.sync("docker", ["push", ...args], {
       stdio: [/* stdin= */ "pipe", /* stdout= */ "inherit", /* stderr= */ "inherit"],
     });
@@ -148,21 +153,28 @@ export class DockerDriver implements Driver {
   }
 
   install(): void {
-    this.dockerfileBuilder
-      .fromLastStage(DOCKER_STAGE_INSTALL)
-      .workdir("/home/firebase/app")
-      .envs(this.spec.environmentVariables || {})
-      .copyForFirebase("package.json", ".")
-      .run(this.spec.installCommand);
-    this.buildStage(DOCKER_STAGE_INSTALL, ".");
+    if (this.spec.installCommand) {
+      this.dockerfileBuilder
+        .fromLastStage(DOCKER_STAGE_INSTALL)
+        .workdir("/home/firebase/app")
+        .envs(this.spec.environmentVariables || {})
+        .copyForFirebase("package.json", ".");
+      if (this.spec.packageManagerInstallCommand) {
+        this.dockerfileBuilder.run(this.spec.packageManagerInstallCommand);
+      }
+      this.dockerfileBuilder.run(this.spec.installCommand);
+      this.buildStage(DOCKER_STAGE_INSTALL, ".");
+    }
   }
 
   build(): void {
-    this.dockerfileBuilder
-      .fromLastStage(DOCKER_STAGE_BUILD)
-      .copyForFirebase(".", ".")
-      .run(this.spec.buildCommand);
-    this.buildStage(DOCKER_STAGE_BUILD, ".");
+    if (this.spec.detectedCommands?.build) {
+      this.dockerfileBuilder
+        .fromLastStage(DOCKER_STAGE_BUILD)
+        .copyForFirebase(".", ".")
+        .run(this.spec.detectedCommands.build.cmd);
+      this.buildStage(DOCKER_STAGE_BUILD, ".");
+    }
   }
 
   export(bundle: AppBundle): void {

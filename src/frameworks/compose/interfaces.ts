@@ -1,3 +1,5 @@
+import { RuntimeSpec } from "./discover/types";
+
 export interface AppBundle {
   version: "v1alpha";
   server?: ServerConfig;
@@ -22,22 +24,10 @@ interface StartConfig {
   runtime?: "nodejs18" | string;
 }
 
-export interface AppSpec {
-  baseImage: string;
-  packageManagerInstallCommand?: string;
-  environmentVariables?: Record<string, string>;
-  installCommand: string;
-  buildCommand: string;
-  startCommand: string;
-
-  afterInstall?: (b: AppBundle) => AppBundle;
-  afterBuild?: (b: AppBundle) => AppBundle;
-}
-
 export type Hook = (b: AppBundle) => AppBundle;
 
 export class Driver {
-  constructor(readonly spec: AppSpec) {}
+  constructor(readonly spec: RuntimeSpec) {}
 
   install(): void {
     throw new Error("install() not implemented");

@@ -1167,6 +1167,9 @@ export class FunctionsEmulator implements EmulatorInstance {
     envs.GCLOUD_PROJECT = this.args.projectId;
     envs.K_REVISION = "1";
     envs.PORT = "80";
+    // Quota project is required when using GCP's Client-based APIs.
+    // Some GCP client SDKs, like Vertex AI, requires appropriate quota project setup.
+    envs.GOOGLE_CLOUD_QUOTA_PROJECT = this.args.projectId;
 
     if (trigger) {
       const target = trigger.entryPoint;

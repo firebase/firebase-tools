@@ -3,7 +3,7 @@
   "displayName": "firebase-vscode",
   "publisher": "firebase",
   "description": "VSCode Extension for Firebase",
-  "version": "0.0.22-alpha.0",
+  "version": "0.0.23-alpha.2",
   "engines": {
     "vscode": "^1.69.0"
   },
@@ -37,8 +37,8 @@
         },
         "firebase.useFrameworks": {
           "type": "boolean",
-          "default": false,
-          "description": "Enable web frameworks in a local VSCode environment"
+          "default": true,
+          "description": "Enable web frameworks"
         }
       }
     },
@@ -68,7 +68,19 @@
           "name": "Firebase"
         }
       ]
-    }
+    },
+    "jsonValidation": [
+      {
+        "fileMatch": "firebase.json",
+        "url": "https://raw.githubusercontent.com/firebase/firebase-tools/master/schema/firebase-config.json"
+      }
+    ],
+    "yamlValidation": [
+      {
+        "fileMatch": "extension.yaml",
+        "url": "https://raw.githubusercontent.com/firebase/firebase-tools/master/schema/extension-yaml.json"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run build",
@@ -82,7 +94,7 @@
     "build": "npm run copyfiles && webpack --config webpack.prod.js --devtool hidden-source-map",
     "build:extension": "webpack --config webpack.prod.js --config-name extension",
     "build:sidebar": "npm run copyfiles && webpack --config webpack.prod.js --config-name sidebar",
-    "pretest": "npm run build && npm run lint",
+    "pretest": "npm run dev ; npm run lint && tsc -p src/test/tsconfig.test.json",
     "lint": "eslint src --ext ts",
     "test": "node ./dist/test/runTest.js"
   },
