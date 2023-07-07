@@ -1,1 +1,2 @@
+- Disables KeepAlive timeout when debugger is attached to the functions emulator. (#6069)
 - Refactor `functions:shell` command. (#6092)
