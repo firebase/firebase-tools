@@ -1,22 +1,11 @@
+import * as uuid from "uuid";
 import * as request from "request";
 
 import { encodeFirestoreValue } from "./firestore/encodeFirestoreValue";
 import * as utils from "./utils";
 import { EmulatedTriggerDefinition } from "./emulator/functionsEmulatorShared";
 import { FunctionsEmulatorShell } from "./emulator/functionsEmulatorShell";
-import { AuthMode } from "./emulator/events/types";
-
-type AuthType = "USER" | "ADMIN" | "UNAUTHENTICATED";
-
-type EventOptions = {
-  params?: Record<string, string>;
-  authType?: AuthType;
-  auth?: Partial<AuthMode> & {
-    uid?: string;
-    token?: string;
-  };
-  resource?: string;
-};
+import { AuthMode, AuthType, EventOptions } from "./emulator/events/types";
 
 /**
  * LocalFunction produces EmulatedTriggerDefinition into a function that can be called inside the nodejs repl.
@@ -161,13 +150,17 @@ export default class LocalFunction {
     return utils.getFunctionsEventProvider(eventTrigger.eventType) === "Firestore";
   }
 
+  private isPubsubFunc(eventTrigger: Required<EmulatedTriggerDefinition>["eventTrigger"]) {
+    return utils.getFunctionsEventProvider(eventTrigger.eventType) === "PubSub";
+  }
+
   private triggerEvent(data: unknown, opts?: EventOptions) {
     opts = opts || {};
     let operationType;
     let dataPayload;
 
     if (this.trigger.httpsTrigger) {
-      this.controller.call(this.trigger.name, data || {}, opts);
+      this.controller.call(this.trigger, data || {}, opts);
     } else if (this.trigger.eventTrigger) {
       if (this.isDatabaseFn(this.trigger.eventTrigger)) {
         operationType = utils.last(this.trigger.eventTrigger.eventType.split("."));
@@ -193,7 +186,7 @@ export default class LocalFunction {
         }
         opts.resource = this.substituteParams(this.trigger.eventTrigger.resource!, opts.params);
         opts.auth = this.constructAuth(opts.auth, opts.authType);
-        this.controller.call(this.trigger.name, dataPayload, opts);
+        this.controller.call(this.trigger, dataPayload, opts);
       } else if (this.isFirestoreFunc(this.trigger.eventTrigger)) {
         operationType = utils.last(this.trigger.eventTrigger.eventType.split("."));
         switch (operationType) {
@@ -217,9 +210,15 @@ export default class LocalFunction {
             };
         }
         opts.resource = this.substituteParams(this.trigger.eventTrigger.resource!, opts.params);
-        this.controller.call(this.trigger.name, dataPayload, opts);
+        this.controller.call(this.trigger, dataPayload, opts);
+      } else if (this.isPubsubFunc(this.trigger.eventTrigger)) {
+        dataPayload = data;
+        if (this.trigger.platform === "gcfv2") {
+          dataPayload = { message: { ...(data as any), messageId: uuid.v4() } };
+        }
+        this.controller.call(this.trigger, dataPayload || {}, opts);
       } else {
-        this.controller.call(this.trigger.name, data || {}, opts);
+        this.controller.call(this.trigger, data || {}, opts);
       }
     }
     return "Successfully invoked function.";
