@@ -55,9 +55,9 @@ export const command = new Command("database:instances:list")
     }
     const tableHead = ["Database Instance Name", "Location", "Type", "State"];
     const table = new Table({ head: tableHead, style: { head: ["green"] } });
-    instances.forEach((db) => {
+    for (const db of instances) {
       table.push([db.name, db.location, db.type, db.state]);
-    });
+    }
     logger.info(table.toString());
     logger.info(`${instances.length} database instance(s) total.`);
     return instances;
