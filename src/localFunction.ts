@@ -1,29 +1,20 @@
 import * as request from "request";
 
-import * as utils from "./utils";
 import { encodeFirestoreValue } from "./firestore/encodeFirestoreValue";
+import * as utils from "./utils";
 import { EmulatedTriggerDefinition } from "./emulator/functionsEmulatorShared";
 import { FunctionsEmulatorShell } from "./emulator/functionsEmulatorShell";
 import { AuthMode } from "./emulator/events/types";
 
-type AuthType = "USER" | "ADMIN" | "UNAUTHENTICATED";
-
-type EventOptions = {
-  params?: Record<string, string>;
-  authType?: AuthType;
-  auth?: Partial<AuthMode> & {
-    uid?: string;
-    token?: string;
-  };
-  resource?: string;
-};
-
 /**
- * LocalFunction produces EmulatedTriggerDefinition into a function that can be called inside the nodejs repl.
+ * @class
+ * @this LocalFunction
+ * @param {object} trigger
+ * @param {object=} urls
+ * @param {object=} controller
  */
-export default class LocalFunction {
+export default class LocalFunctionClass {
   private url?: string;
-  private paramWildcardRegex = new RegExp("{[^/{}]*}", "g");
 
   constructor(
     private trigger: EmulatedTriggerDefinition,
@@ -33,14 +24,12 @@ export default class LocalFunction {
     this.url = urls[trigger.id];
   }
 
-  private substituteParams(resource: string, params?: Record<string, string>): string {
-    if (!params) {
-      return resource;
-    }
-    return resource.replace(this.paramWildcardRegex, (wildcard: string) => {
+  private substituteParams(resource: string, params: Record<string, string>) {
+    const wildcardRegex = new RegExp("{[^/{}]*}", "g");
+    return resource.replace(wildcardRegex, (wildcard: string) => {
       const wildcardNoBraces = wildcard.slice(1, -1); // .slice removes '{' and '}' from wildcard
       const sub = params?.[wildcardNoBraces];
-      return sub || `${wildcardNoBraces}${utils.randomInt(1, 9)}`;
+      return sub || wildcardNoBraces + utils.randomInt(1, 9);
     });
   }
 
@@ -59,20 +48,20 @@ export default class LocalFunction {
       callback: (...args) => this.requestCallBack(...args),
       baseUrl: this.url,
       uri: "",
-      body: { data },
+      body: { data: data },
       json: true,
       headers: headers,
     });
   }
 
-  constructAuth(auth?: EventOptions["auth"], authType?: AuthType): AuthMode {
+  constructAuth(
+    authType: "USER" | "ADMIN" | "UNAUTHENTICATED",
+    auth?: AuthMode & { uid?: string; token?: object }
+  ): AuthMode {
     if (auth?.admin || auth?.variable) {
-      return {
-        admin: auth.admin || false,
-        variable: auth.variable,
-      }; // User is providing the wire auth format already.
+      return auth; // User is providing the wire auth format already.
     }
-    if (authType) {
+    if (typeof authType !== "undefined") {
       switch (authType) {
         case "USER":
           return {
@@ -135,7 +124,7 @@ export default class LocalFunction {
     };
   }
 
-  private requestCallBack(err: unknown, response: request.Response, body: string | object): void {
+  private requestCallBack(err: unknown, response: request.Response, body: string | object) {
     if (err) {
       return console.warn("\nERROR SENDING REQUEST: " + err);
     }
@@ -158,12 +147,10 @@ export default class LocalFunction {
     return console.log("\nRESPONSE RECEIVED FROM FUNCTION: " + status + bodyString);
   }
 
-  private isDatabaseFn(eventTrigger: Required<EmulatedTriggerDefinition>["eventTrigger"]): boolean {
+  private isDatabaseFn(eventTrigger: Required<EmulatedTriggerDefinition>["eventTrigger"]) {
     return utils.getFunctionsEventProvider(eventTrigger.eventType) === "Database";
   }
-  private isFirestoreFunc(
-    eventTrigger: Required<EmulatedTriggerDefinition>["eventTrigger"]
-  ): boolean {
+  private isFirestoreFunc(eventTrigger: Required<EmulatedTriggerDefinition>["eventTrigger"]) {
     return utils.getFunctionsEventProvider(eventTrigger.eventType) === "Firestore";
   }
 
@@ -193,12 +180,12 @@ export default class LocalFunction {
           default:
             // 'update' or 'write'
             dataPayload = {
-              data: (data as any).before,
-              delta: (data as any).after,
+              data: data.before,
+              delta: data.after,
             };
         }
         opts.resource = this.substituteParams(this.trigger.eventTrigger.resource!, opts.params);
-        opts.auth = this.constructAuth(opts.auth, opts.authType);
+        opts.auth = this.constructAuth(opts.authType, opts.auth);
         this.controller.call(this.trigger.name, dataPayload, opts);
       } else if (this.isFirestoreFunc(this.trigger.eventTrigger)) {
         operationType = utils.last(this.trigger.eventTrigger.eventType.split("."));
@@ -218,8 +205,8 @@ export default class LocalFunction {
           default:
             // 'update' or 'write'
             dataPayload = {
-              value: this.makeFirestoreValue((data as any).after),
-              oldValue: this.makeFirestoreValue((data as any).before),
+              value: this.makeFirestoreValue(data.after),
+              oldValue: this.makeFirestoreValue(data.before),
             };
         }
         opts.resource = this.substituteParams(this.trigger.eventTrigger.resource!, opts.params);
@@ -228,7 +215,7 @@ export default class LocalFunction {
         this.controller.call(this.trigger.name, data || {}, opts);
       }
     }
-    return console.log("Successfully invoked function.");
+    return "Successfully invoked function.";
   }
 
   makeFn() {
