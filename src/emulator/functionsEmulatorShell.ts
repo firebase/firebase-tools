@@ -67,7 +67,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
       source = eventTrigger.eventFilters!.topic!;
       data = { ...(data as any), messageId: uuid.v4() };
     } else if (eventTrigger.eventType.startsWith("google.cloud.firestore")) {
-      source = `projects/my-project/databases/(default)`;
+      source = `projects/_/databases/(default)`;
     } else if (eventTrigger.eventType.startsWith("google.firebase.database")) {
       source = `projects/_/locations/_/instances/${eventTrigger.eventFilterPathPatterns?.instance}`;
     }

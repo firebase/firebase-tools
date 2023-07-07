@@ -191,19 +191,21 @@ export default class LocalFunction {
         operationType = utils.last(this.trigger.eventTrigger.eventType.split("."));
         switch (operationType) {
           case "create":
+          case "created":
             dataPayload = {
               value: this.makeFirestoreValue(data),
               oldValue: {},
             };
             break;
           case "delete":
+          case "deleted":
             dataPayload = {
               value: {},
               oldValue: this.makeFirestoreValue(data),
             };
             break;
           default:
-            // 'update' or 'write'
+            // 'update', 'updated', 'write' or 'written'
             dataPayload = {
               value: this.makeFirestoreValue((data as any).after),
               oldValue: this.makeFirestoreValue((data as any).before),
