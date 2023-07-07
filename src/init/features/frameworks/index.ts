@@ -78,7 +78,7 @@ export async function doSetup(setup: any): Promise<void> {
       setup.frameworks.serviceName
     );
     const stackDetails = toStack(cloudBuildConnRepo, setup.frameworks.serviceName);
-    await createStack(projectId, setup.frameworks.region, stackDetails);
+    await getOrCreateStack(projectId, setup.frameworks.region, stackDetails);
   }
 }
 
@@ -90,24 +90,6 @@ function toStack(
     name: stackId,
     labels: {},
   };
-}
-
-/**
- * Creates Stack object from long running operations.
- */
-export async function createStack(
-  projectId: string,
-  location: string,
-  stackInput: Omit<Stack, StackOutputOnlyFields>
-): Promise<Stack> {
-  const op = await gcp.createStack(projectId, location, stackInput);
-  const stack = await poller.pollOperation<Stack>({
-    ...frameworksPollerOptions,
-    pollerName: `create-${projectId}-${location}-${stackInput.name}`,
-    operationResourceName: op.name,
-  });
-
-  return stack;
 }
 
 /**
