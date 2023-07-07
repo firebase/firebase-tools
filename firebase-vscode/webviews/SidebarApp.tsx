@@ -19,6 +19,7 @@ export function SidebarApp() {
   const [env, setEnv] = useState<{ isMonospace: boolean }>();
   const [channels, setChannels] = useState<ChannelWithId[]>(null);
   const [user, setUser] = useState<User | ServiceAccountUser | null>(null);
+  const [framework, setFramework] = useState<string | null>(null);
   /**
    * null - has not finished checking yet
    * empty array - finished checking, no users logged in
@@ -86,9 +87,12 @@ export function SidebarApp() {
       setUser(user);
     });
 
-    broker.on("notifyHostingInitDone", ({ projectId, folderPath }) => {
+    broker.on("notifyHostingInitDone", ({ projectId, folderPath, framework }) => {
       webLogger.debug(`notifyHostingInitDone: ${projectId}, ${folderPath}`);
       setHostingOnboarded(true);
+      if (framework) {
+        setFramework(framework);
+      }
     });
 
     broker.on("notifyHostingDeploy", ({ success }) => {
@@ -134,6 +138,7 @@ export function SidebarApp() {
           setHostingState={setHostingState}
           projectId={projectId}
           channels={channels}
+          framework={framework}
         />
       )}
       <Spacer size="large" />

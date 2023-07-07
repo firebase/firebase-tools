@@ -15,6 +15,7 @@ import { ChannelWithId } from "../messaging/types";
 import { ExternalLink } from "./ui/ExternalLink";
 import { SplitButton } from "./ui/SplitButton";
 import { MenuItem } from "./ui/popup-menu/PopupMenu";
+import { TEXT } from "../globals/ux-text";
 
 interface DeployInfo {
   date: string;
@@ -27,11 +28,13 @@ export function DeployPanel({
   setHostingState,
   projectId,
   channels,
+  framework,
 }: {
   hostingState: HostingState;
   setHostingState: (hostingState: HostingState) => void;
   projectId: string;
   channels: ChannelWithId[];
+  framework: string;
 }) {
   const [deployTarget, setDeployTarget] = useState<string>("live");
   const [newPreviewChannel, setNewPreviewChannel] = useState<string>("");
@@ -40,7 +43,7 @@ export function DeployPanel({
   useEffect(() => {
     if (hostingState === "success" || hostingState === "failure") {
       setDeployedInfo({
-        date: new Date().toLocaleDateString(),
+        date: new Date().toLocaleString(),
         channelId: deployTarget === "new" ? newPreviewChannel : deployTarget,
         succeeded: hostingState === "success",
       });
@@ -127,7 +130,7 @@ export function DeployPanel({
               key={newPreviewChannel}
               onClick={() => setDeployTarget(newPreviewChannel)}
             >
-              {`Deploy to ${newPreviewChannel}`}
+              {`Deploy to "${newPreviewChannel}"`}
             </MenuItem>
           )}
           <MenuItem key="new" onClick={getNewPreviewChannelName}>
@@ -140,12 +143,18 @@ export function DeployPanel({
     </SplitButton>
   );
 
+  const channelInfo = channels.find((channel) => channel.id === deployTarget);
+
   //TODO(chholland): Fill this in based on what was fetched from listChannels()
   let deployedText = "not deployed yet";
-  if (deployedInfo?.succeeded) {
-    deployedText = `Deployed ${deployedInfo.date} to ${deployedInfo.channelId}`;
+  if (channelInfo && channelInfo.updateTime) {
+    deployedText = `Last deployed to ${deployTarget} at ${new Date(
+      channelInfo.updateTime
+    ).toLocaleString()}`;
+  } else if (deployedInfo?.succeeded) {
+    deployedText = `Deployed to ${deployedInfo.channelId} at ${deployedInfo.date}`;
   } else if (deployedInfo && !deployedInfo?.succeeded) {
-    deployedText = `Failed deploy at ${deployedInfo.date} to ${deployedInfo.channelId}`;
+    deployedText = `Failed deploy to ${deployedInfo.channelId} at ${deployedInfo.date}`;
   }
 
   return (
@@ -182,7 +191,12 @@ export function DeployPanel({
                     styles.integrationStatusLoading
                   )}
                 />
-                <Label level={3}> Deploying...</Label>
+                <Label level={3}>
+                  {" "}
+                  {framework
+                    ? TEXT.DEPLOYING_IN_PROGRESS
+                    : TEXT.DEPLOYING_PROGRESS_FRAMEWORK}
+                </Label>
               </div>
             </>
           )}
