@@ -15,6 +15,7 @@ import * as poller from "../../../operation-poller";
 import { frameworksOrigin } from "../../../api";
 import * as gcp from "../../../gcp/frameworks";
 import { API_VERSION } from "../../../gcp/frameworks";
+import { FirebaseError } from "../../../error";
 
 const frameworksPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: frameworksOrigin,
@@ -105,6 +106,36 @@ export async function createStack(
     pollerName: `create-${projectId}-${location}-${stackInput.name}`,
     operationResourceName: op.name,
   });
+
+  return stack;
+}
+
+/**
+ * Creates Stack object.
+ */
+export async function getOrCreateStack(
+  projectId: string,
+  location: string,
+  stackInput: Omit<Stack, StackOutputOnlyFields>
+): Promise<Stack> {
+  let stack: Stack;
+  try {
+    stack = await gcp.getStack(projectId, location, stackInput.name);
+    if (stack) {
+      throw new FirebaseError(`${stack.name} has already exists.`);
+    }
+  } catch (err: unknown) {
+    if ((err as FirebaseError).status === 404) {
+      const op = await gcp.createStack(projectId, location, stackInput);
+      stack = await poller.pollOperation<Stack>({
+        ...frameworksPollerOptions,
+        pollerName: `create-${projectId}-${location}-${stackInput.name}`,
+        operationResourceName: op.name,
+      });
+    } else {
+      throw err;
+    }
+  }
 
   return stack;
 }
