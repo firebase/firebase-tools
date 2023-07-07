@@ -40,10 +40,14 @@ export default class LocalFunction {
     return resource.replace(this.paramWildcardRegex, (wildcard: string) => {
       const wildcardNoBraces = wildcard.slice(1, -1); // .slice removes '{' and '}' from wildcard
       const sub = params?.[wildcardNoBraces];
-      return sub || wildcardNoBraces + utils.randomInt(1, 9);
+      return sub || `${wildcardNoBraces}${utils.randomInt(1, 9)}`;
     });
   }
-  private constructCallableFunc(data: string | object, opts: { instanceIdToken?: string }) {
+
+  private constructCallableFunc(
+    data: string | object,
+    opts: { instanceIdToken?: string }
+  ): request.Request {
     opts = opts || {};
 
     const headers: Record<string, string> = {};
@@ -107,7 +111,11 @@ export default class LocalFunction {
     return { admin: true };
   }
 
-  makeFirestoreValue(input?: unknown) {
+  makeFirestoreValue(input?: unknown): {
+    fields?: Record<string, any>;
+    createTime?: string;
+    updateTime?: string;
+  } {
     if (
       typeof input === "undefined" ||
       input === null ||
@@ -127,7 +135,7 @@ export default class LocalFunction {
     };
   }
 
-  private requestCallBack(err: unknown, response: request.Response, body: string | object) {
+  private requestCallBack(err: unknown, response: request.Response, body: string | object): void {
     if (err) {
       return console.warn("\nERROR SENDING REQUEST: " + err);
     }
@@ -150,14 +158,16 @@ export default class LocalFunction {
     return console.log("\nRESPONSE RECEIVED FROM FUNCTION: " + status + bodyString);
   }
 
-  private isDatabaseFn(eventTrigger: Required<EmulatedTriggerDefinition>["eventTrigger"]) {
+  private isDatabaseFn(eventTrigger: Required<EmulatedTriggerDefinition>["eventTrigger"]): boolean {
     return utils.getFunctionsEventProvider(eventTrigger.eventType) === "Database";
   }
-  private isFirestoreFunc(eventTrigger: Required<EmulatedTriggerDefinition>["eventTrigger"]) {
+  private isFirestoreFunc(
+    eventTrigger: Required<EmulatedTriggerDefinition>["eventTrigger"]
+  ): boolean {
     return utils.getFunctionsEventProvider(eventTrigger.eventType) === "Firestore";
   }
 
-  private triggerEvent(data: unknown, opts?: EventOptions) {
+  private triggerEvent(data: unknown, opts?: EventOptions): void {
     opts = opts || {};
     let operationType;
     let dataPayload;
@@ -218,7 +228,7 @@ export default class LocalFunction {
         this.controller.call(this.trigger.name, data || {}, opts);
       }
     }
-    return "Successfully invoked function.";
+    return console.log("Successfully invoked function.");
   }
 
   makeFn() {
