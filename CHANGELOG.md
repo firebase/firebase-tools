@@ -1,1 +1,2 @@
 Disables KeepAlive timeout when debugger is attached to the functions emulator. (#6069)
+Fixed an issue where `database:list` would have inaccurate results. (#6063)
