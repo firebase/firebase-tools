@@ -140,11 +140,11 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   });
 
   //so async or await needed?
-  firebaseStorageAPI.post(`/b/:bucketId/o/:objectId[(:)]generateSignedUrl`, (req, res) => {
+  firebaseStorageAPI.post(`/b/:bucketId/o/:objectId[(:)]generateSignedUrl`, async (req, res) => {
     let signedUrlObject: SignedUrlResponse;
 
     try {
-      signedUrlObject = storageLayer.generateSignedUrl({
+      signedUrlObject = await storageLayer.generateSignedUrl({
         bucketId: req.params.bucketId,
         decodedObjectId: decodeURIComponent(req.params.objectId),
         authorization: req.header("authorization"),

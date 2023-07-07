@@ -155,7 +155,7 @@ export class StorageLayer {
    * @param {GetObjectRequest} request
    * @returns {Promise<boolean>}
    */
-  generateSignedUrl(request: CreateSignedUrl): SignedUrlResponse {
+  async generateSignedUrl(request: CreateSignedUrl): Promise<SignedUrlResponse> {
     const metadata = this.getMetadata(request.bucketId, request.decodedObjectId);
 
     const currentDate = this.getCurrentDate();
@@ -166,18 +166,18 @@ export class StorageLayer {
       throw new BadRequestError("TTL specified is less than 0 or more than allowed max (1 week)");
     }
 
-    // const authorized = await this._rulesValidator.validate(
-    //   ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
-    //   request.bucketId,
-    //   RulesetOperationMethod.CREATE,
-    //   { before: metadata?.asRulesResource() },
-    //   this._projectId,
-    //   request.authorization
-    // );
+    const authorized = await this._rulesValidator.validate(
+      ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
+      request.bucketId,
+      RulesetOperationMethod.GET,
+      { before: metadata?.asRulesResource() },
+      this._projectId,
+      request.authorization
+    );
 
-    // if (!authorized) {
-    //   throw new ForbiddenError();
-    // }
+    if (!authorized) {
+      throw new ForbiddenError();
+    }
 
     if (!metadata) {
       throw new NotFoundError("Object in bucket does not exist");
