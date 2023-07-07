@@ -6,15 +6,24 @@ import { EmulatedTriggerDefinition } from "./emulator/functionsEmulatorShared";
 import { FunctionsEmulatorShell } from "./emulator/functionsEmulatorShell";
 import { AuthMode } from "./emulator/events/types";
 
+type AuthType = "USER" | "ADMIN" | "UNAUTHENTICATED";
+
+type EventOptions = {
+  params?: Record<string, string>;
+  authType?: AuthType;
+  auth?: Partial<AuthMode> & {
+    uid?: string;
+    token?: string;
+  };
+  resource?: string;
+};
+
 /**
- * @class
- * @this LocalFunction
- * @param {object} trigger
- * @param {object=} urls
- * @param {object=} controller
+ * LocalFunction produces EmulatedTriggerDefinition into a function that can be called inside the nodejs repl.
  */
-export default class LocalFunctionClass {
+export default class LocalFunction {
   private url?: string;
+  private paramWildcardRegex = new RegExp("{[^/{}]*}", "g");
 
   constructor(
     private trigger: EmulatedTriggerDefinition,
@@ -24,9 +33,11 @@ export default class LocalFunctionClass {
     this.url = urls[trigger.id];
   }
 
-  private substituteParams(resource: string, params: Record<string, string>) {
-    const wildcardRegex = new RegExp("{[^/{}]*}", "g");
-    return resource.replace(wildcardRegex, (wildcard: string) => {
+  private substituteParams(resource: string, params?: Record<string, string>): string {
+    if (!params) {
+      return resource;
+    }
+    return resource.replace(this.paramWildcardRegex, (wildcard: string) => {
       const wildcardNoBraces = wildcard.slice(1, -1); // .slice removes '{' and '}' from wildcard
       const sub = params?.[wildcardNoBraces];
       return sub || wildcardNoBraces + utils.randomInt(1, 9);
@@ -48,20 +59,20 @@ export default class LocalFunctionClass {
       callback: (...args) => this.requestCallBack(...args),
       baseUrl: this.url,
       uri: "",
-      body: { data: data },
+      body: { data },
       json: true,
       headers: headers,
     });
   }
 
-  constructAuth(
-    authType: "USER" | "ADMIN" | "UNAUTHENTICATED",
-    auth?: AuthMode & { uid?: string; token?: object }
-  ): AuthMode {
+  constructAuth(auth?: EventOptions["auth"], authType?: AuthType): AuthMode {
     if (auth?.admin || auth?.variable) {
-      return auth; // User is providing the wire auth format already.
+      return {
+        admin: auth.admin || false,
+        variable: auth.variable,
+      }; // User is providing the wire auth format already.
     }
-    if (typeof authType !== "undefined") {
+    if (authType) {
       switch (authType) {
         case "USER":
           return {
@@ -100,11 +111,7 @@ export default class LocalFunctionClass {
     return { admin: true };
   }
 
-  makeFirestoreValue(input?: unknown): {
-    fields?: Record<string, any>;
-    createTime?: string;
-    updateTime?: string;
-  } {
+  makeFirestoreValue(input?: unknown) {
     if (
       typeof input === "undefined" ||
       input === null ||
@@ -154,7 +161,7 @@ export default class LocalFunctionClass {
     return utils.getFunctionsEventProvider(eventTrigger.eventType) === "Firestore";
   }
 
-  private triggerEvent(data: unknown, opts?: EventOptions): void {
+  private triggerEvent(data: unknown, opts?: EventOptions) {
     opts = opts || {};
     let operationType;
     let dataPayload;
@@ -180,12 +187,12 @@ export default class LocalFunctionClass {
           default:
             // 'update' or 'write'
             dataPayload = {
-              data: data.before,
-              delta: data.after,
+              data: (data as any).before,
+              delta: (data as any).after,
             };
         }
         opts.resource = this.substituteParams(this.trigger.eventTrigger.resource!, opts.params);
-        opts.auth = this.constructAuth(opts.authType, opts.auth);
+        opts.auth = this.constructAuth(opts.auth, opts.authType);
         this.controller.call(this.trigger.name, dataPayload, opts);
       } else if (this.isFirestoreFunc(this.trigger.eventTrigger)) {
         operationType = utils.last(this.trigger.eventTrigger.eventType.split("."));
@@ -205,8 +212,8 @@ export default class LocalFunctionClass {
           default:
             // 'update' or 'write'
             dataPayload = {
-              value: this.makeFirestoreValue(data.after),
-              oldValue: this.makeFirestoreValue(data.before),
+              value: this.makeFirestoreValue((data as any).after),
+              oldValue: this.makeFirestoreValue((data as any).before),
             };
         }
         opts.resource = this.substituteParams(this.trigger.eventTrigger.resource!, opts.params);
