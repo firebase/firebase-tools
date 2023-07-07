@@ -139,9 +139,9 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     return res.json(new OutgoingFirebaseMetadata(metadata));
   });
 
-  //so async or await needed?
+  
   firebaseStorageAPI.post(`/b/:bucketId/o/:objectId[(:)]generateSignedUrl`, (req, res) => {
-    let signedUrlObject: SignedUrlResponse;
+    let signedUrlObject: SignedUrlResponse; // ask about await
 
     try {
       signedUrlObject = storageLayer.generateSignedUrl({
