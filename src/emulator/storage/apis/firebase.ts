@@ -98,11 +98,11 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       ({ metadata, data } = await storageLayer.getObject({
         bucketId: req.params.bucketId,
         decodedObjectId: decodeURIComponent(req.params.objectId),
-        url: req.originalUrl,
+        url: `${req.protocol}://${req.hostname}:${req.socket.localPort}`,
         authorization: req.header("authorization"),
         downloadToken: req.query.token?.toString(),
         urlSignature: req.query["X-Firebase-Signature"] as string,
-        urlUsableMs: convertDateToMS(req.query["X-Firebase-Date"] as string | undefined),
+        urlUsableMs: req.query["X-Firebase-Date"] as string | undefined,
         urlTtlMs: Number(req.query["X-Firebase-Expires"]),
       }));
     } catch (err) {
@@ -119,7 +119,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         return res.status(400).json({
           error: {
             code: 400,
-            message: `Url has Expired.`,
+            message: err.message,
           },
         });
       }
@@ -139,7 +139,8 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     return res.json(new OutgoingFirebaseMetadata(metadata));
   });
 
-  firebaseStorageAPI.post(`/b/:bucketId/o/:objectId[(:)]generateSignedUrl`, async (req, res) => {
+  //so async or await needed?
+  firebaseStorageAPI.post(`/b/:bucketId/o/:objectId[(:)]generateSignedUrl`, (req, res) => {
     let signedUrlObject: SignedUrlResponse;
 
     try {
@@ -601,18 +602,4 @@ function isValidNonEncodedPathString(path: string): boolean {
 
 function removeAtMostOneTrailingSlash(path: string): string {
   return path.replace(/\/$/, "");
-}
-function convertDateToMS(currentDate: string | undefined) {
-  if (!currentDate) {
-    return undefined;
-  }
-  const year = +currentDate.slice(0, 4);
-  const month = +currentDate.slice(4, 6) - 1;
-  const day = +currentDate.slice(6, 8);
-  const hour = +currentDate.slice(9, 11);
-  const minute = +currentDate.slice(11, 13);
-  const second = +currentDate.slice(13, 15);
-
-  const date = new Date(Date.UTC(year, month, day, hour, minute, second));
-  return date.getTime();
 }

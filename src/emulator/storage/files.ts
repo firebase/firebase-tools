@@ -66,7 +66,7 @@ export type GetObjectRequest = {
   authorization?: string;
   downloadToken?: string;
   urlSignature?: string;
-  urlUsableMs?: number;
+  urlUsableMs?: string | undefined;
   urlTtlMs?: number; // must be converted from X-Firebase-Expires
 };
 
@@ -238,12 +238,12 @@ export class StorageLayer {
 
     if (!hasValidDownloadToken) {
       if (request.urlSignature) {
-        // const prevSignature = request.urlSignature;
+        const prevSignature = request.urlSignature;
 
         if (!request.urlUsableMs || !request.urlTtlMs) {
           throw new BadRequestError(`Invalid ${request.urlUsableMs ? "Date" : "TTL"}`);
         }
-        const start = request.urlUsableMs;
+        const start = convertDateToMS(request.urlUsableMs);
         const end = start + request.urlTtlMs;
         const now = Date.parse(new Date().toISOString());
 
@@ -253,13 +253,18 @@ export class StorageLayer {
           throw new BadRequestError("Url has Expired");
         }
 
-        //   const isCorrect =
-        //     createHmac("sha256", SIGNED_URL_PRIVATE_KEY).update(request.url!).digest("base64") ===
-        //     request.urlSignature;
+        //whats the best way to deal with start
+        const unsignedUrl = `${request.url}/v0/b/${request.bucketId}/o/${encodeURIComponent(
+          request.decodedObjectId
+        )}?alt=media&X-Firebase-Date=${request.urlUsableMs}&X-Firebase-Expires=${request.urlTtlMs}`;
 
-        //   if (!isCorrect) {
-        //     throw new BadRequestError("Invalid Url");
-        //   }
+        const isCorrect =
+          createHmac("sha256", SIGNED_URL_PRIVATE_KEY).update(unsignedUrl).digest("base64") ===
+          prevSignature;
+
+        if (!isCorrect) {
+          throw new BadRequestError("Invalid Url");
+        }
       } else {
         checkAuth = true;
       }
@@ -770,4 +775,16 @@ function getPathSep(decodedPath: string): string {
   // Checks for the first matching file separator
   const firstSepIndex = decodedPath.search(/[\/|\\\\]/g);
   return decodedPath[firstSepIndex];
+}
+
+function convertDateToMS(currentDate: string) {
+  const year = +currentDate.slice(0, 4);
+  const month = +currentDate.slice(4, 6) - 1;
+  const day = +currentDate.slice(6, 8);
+  const hour = +currentDate.slice(9, 11);
+  const minute = +currentDate.slice(11, 13);
+  const second = +currentDate.slice(13, 15);
+
+  const date = new Date(Date.UTC(year, month, day, hour, minute, second));
+  return date.getTime();
 }
