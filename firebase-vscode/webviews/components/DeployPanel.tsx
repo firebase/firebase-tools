@@ -145,12 +145,13 @@ export function DeployPanel({
 
   const channelInfo = channels.find((channel) => channel.id === deployTarget);
 
-  //TODO(chholland): Fill this in based on what was fetched from listChannels()
   let deployedText = "not deployed yet";
+  // If we have server data about last deploy from listChannels()
   if (channelInfo && channelInfo.updateTime) {
     deployedText = `Last deployed to ${deployTarget} at ${new Date(
       channelInfo.updateTime
     ).toLocaleString()}`;
+  // If a deploy just succeeded locally
   } else if (deployedInfo?.succeeded) {
     deployedText = `Deployed to ${deployedInfo.channelId} at ${deployedInfo.date}`;
   } else if (deployedInfo && !deployedInfo?.succeeded) {
