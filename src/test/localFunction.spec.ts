@@ -20,30 +20,30 @@ describe("constructAuth", () => {
   describe("#_constructAuth", () => {
     it("warn if opts.auth and opts.authType are conflicting", () => {
       expect(() => {
-        return lf.constructAuth("UNAUTHENTICATED", { admin: false, uid: "something" });
+        return lf.constructAuth({ uid: "something" }, "UNAUTHENTICATED");
       }).to.throw("incompatible");
 
       expect(() => {
-        return lf.constructAuth("ADMIN", { admin: false, uid: "something" });
+        return lf.constructAuth({ admin: false, uid: "something" }, "ADMIN");
       }).to.throw("incompatible");
     });
 
     it("construct the correct auth for admin users", () => {
-      expect(lf.constructAuth("ADMIN")).to.deep.equal({ admin: true });
+      expect(lf.constructAuth(undefined, "ADMIN")).to.deep.equal({ admin: true });
     });
 
     it("construct the correct auth for unauthenticated users", () => {
-      expect(lf.constructAuth("UNAUTHENTICATED")).to.deep.equal({
+      expect(lf.constructAuth(undefined, "UNAUTHENTICATED")).to.deep.equal({
         admin: false,
       });
     });
 
     it("construct the correct auth for authenticated users", () => {
-      expect(lf.constructAuth("USER")).to.deep.equal({
+      expect(lf.constructAuth(undefined, "USER")).to.deep.equal({
         admin: false,
         variable: { uid: "", token: {} },
       });
-      expect(lf.constructAuth("USER", { admin: false, uid: "11" })).to.deep.equal({
+      expect(lf.constructAuth({ uid: "11" }, "USER")).to.deep.equal({
         admin: false,
         variable: { uid: "11", token: {} },
       });
@@ -51,7 +51,7 @@ describe("constructAuth", () => {
 
     it("leaves auth untouched if it already follows wire format", () => {
       const auth = { admin: false, variable: { uid: "something" } };
-      expect(lf.constructAuth("ADMIN", auth)).to.deep.equal(auth);
+      expect(lf.constructAuth(auth)).to.deep.equal(auth);
     });
   });
 });
