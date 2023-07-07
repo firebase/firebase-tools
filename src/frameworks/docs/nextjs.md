@@ -71,6 +71,9 @@ and [getStaticPaths](https://nextjs.org/docs/basic-features/data-fetching/get-st
 
 The {{firebase_cli}} will detect usage of
 [getServerSideProps](https://nextjs.org/docs/basic-features/data-fetching/get-server-side-props).
+In such cases the {{cli}} will deploy functions to {{cloud_functions_full}} to run dynamic 
+server code. You can view information about these functions, such as their domain and runtime configuration, in the [Firebase console](https://console.firebase.google.com/project/_/functions).
+
 
 ## Configure {{hosting}} behavior with `next.config.js`
 
