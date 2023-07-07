@@ -76,7 +76,8 @@ export async function doSetup(setup: any): Promise<void> {
       setup.frameworks.region,
       setup.frameworks.serviceName
     );
-    toStack(cloudBuildConnRepo, setup.frameworks.serviceName);
+    const stackDetails = toStack(cloudBuildConnRepo, setup.frameworks.serviceName);
+    await createStack(projectId, setup.frameworks.region, stackDetails);
   }
 }
 
@@ -86,7 +87,6 @@ function toStack(
 ): Omit<Stack, StackOutputOnlyFields> {
   return {
     name: stackId,
-    codebase: { repository: cloudBuildConnRepo.name, rootDirectory: "/" },
     labels: {},
   };
 }

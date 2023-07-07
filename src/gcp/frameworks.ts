@@ -1,7 +1,7 @@
 import { Client } from "../apiv2";
 import { frameworksOrigin } from "../api";
 
-export const API_VERSION = "v2";
+export const API_VERSION = "v1alpha";
 
 const client = new Client({
   urlPrefix: frameworksOrigin,
@@ -27,7 +27,7 @@ export interface Stack {
   uri: string;
 }
 
-export type StackOutputOnlyFields = "createTime" | "updateTime" | "uri";
+export type StackOutputOnlyFields = "createTime" | "updateTime" | "uri" | "codebase";
 
 export interface Build {
   name: string;

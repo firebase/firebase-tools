@@ -181,7 +181,7 @@ export const serviceUsageOrigin = utils.envOverride(
 );
 export const frameworksOrigin = utils.envOverride(
   "FRAMEWORKS_URL",
-  "https://placeholder.googleapis.com"
+  "https://autopush-firestack.sandbox.googleapis.com"
 );
 export const githubOrigin = utils.envOverride("GITHUB_URL", "https://github.com");
 export const githubApiOrigin = utils.envOverride("GITHUB_API_URL", "https://api.github.com");
