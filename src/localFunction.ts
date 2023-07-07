@@ -1,7 +1,7 @@
 import * as request from "request";
 
-import { encodeFirestoreValue } from "./firestore/encodeFirestoreValue";
 import * as utils from "./utils";
+import { encodeFirestoreValue } from "./firestore/encodeFirestoreValue";
 import { EmulatedTriggerDefinition } from "./emulator/functionsEmulatorShared";
 import { FunctionsEmulatorShell } from "./emulator/functionsEmulatorShell";
 import { AuthMode } from "./emulator/events/types";
@@ -43,7 +43,7 @@ export default class LocalFunction {
       return sub || wildcardNoBraces + utils.randomInt(1, 9);
     });
   }
-  private constructCallableFunc(data: string | object, opts: { instanceIdToken: string }) {
+  private constructCallableFunc(data: string | object, opts: { instanceIdToken?: string }) {
     opts = opts || {};
 
     const headers: Record<string, string> = {};
