@@ -1,12 +1,11 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import * as clc from "colorette";
 import * as repl from "repl";
-import * as _ from "lodash";
 import * as request from "request";
 import * as util from "util";
 
 import { FunctionsServer } from "./serve/functions";
-import * as LocalFunction from "./localFunction";
+import LocalFunction from "./localFunction";
 import * as utils from "./utils";
 import { logger } from "./logger";
 import * as shell from "./emulator/functionsEmulatorShell";
@@ -99,7 +98,7 @@ export const actionFunction = async (options: Options) => {
           if (emulator.emulatedFunctions.includes(trigger.id)) {
             const localFunction = new LocalFunction(trigger, emulator.urls, emulator);
             const triggerNameDotNotation = trigger.name.replace(/-/g, ".");
-            _.set(context, triggerNameDotNotation, localFunction.call);
+            context[triggerNameDotNotation] = localFunction.makeFn();
           }
         }
         context.help =
