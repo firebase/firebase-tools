@@ -16,7 +16,6 @@ import {
 } from "../upload";
 import { reqBodyToBuffer } from "../../shared/request";
 import { ListObjectsResponse, SignedUrlResponse } from "../files";
-import { time } from "node:console";
 import { SIGNED_URL_DEFAULT_TTL_MILLIS } from "../constants";
 /**
  * @param emulator
@@ -94,10 +93,6 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   firebaseStorageAPI.get("/b/:bucketId/o/:objectId", async (req, res) => {
     let metadata: StoredFileMetadata;
     let data: Buffer;
-    // console.log(req.query["X-Firebase-Signature"]);
-    // console.log(req.query["X-Firebase-Date"] as string);
-    // console.log(Date.parse(req.query["X-Firebase-Date"] as string) as number);
-    // console.log(" ");
     try {
       // Both object data and metadata get can use the same handler since they share auth logic.
       ({ metadata, data } = await storageLayer.getObject({
@@ -107,7 +102,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         authorization: req.header("authorization"),
         downloadToken: req.query.token?.toString(),
         urlSignature: req.query["X-Firebase-Signature"] as string,
-        urlUsableMs: conertDateToMS(req.query["X-Firebase-Date"] as string | undefined),
+        urlUsableMs: convertDateToMS(req.query["X-Firebase-Date"] as string | undefined),
         urlTtlMs: Number(req.query["X-Firebase-Expires"]),
       }));
     } catch (err) {
@@ -121,7 +116,12 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           },
         });
       } else if (err instanceof BadRequestError) {
-        return res.status(400);
+        return res.status(400).json({
+          error: {
+            code: 400,
+            message: `Url has Expired.`,
+          },
+        });
       }
       throw err;
     }
@@ -143,13 +143,13 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     let signedUrlObject: SignedUrlResponse;
 
     try {
-      signedUrlObject = await storageLayer.generateSignedUrl({
+      signedUrlObject = storageLayer.generateSignedUrl({
         bucketId: req.params.bucketId,
         decodedObjectId: decodeURIComponent(req.params.objectId),
         authorization: req.header("authorization"),
         originalUrl: `${req.protocol}://${req.hostname}:${req.socket.localPort}`,
         ttlInMillis:
-          req.body.ttlInMillis == undefined ? SIGNED_URL_DEFAULT_TTL_MILLIS : req.body.ttlInMillis,
+          req.body.ttlInMillis === undefined ? SIGNED_URL_DEFAULT_TTL_MILLIS : req.body.ttlInMillis,
       });
     } catch (err) {
       if (err instanceof NotFoundError) {
@@ -177,8 +177,6 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       }
       throw err;
     }
-
-    console.log("got out");
 
     return res.json(signedUrlObject);
   });
@@ -604,9 +602,9 @@ function isValidNonEncodedPathString(path: string): boolean {
 function removeAtMostOneTrailingSlash(path: string): string {
   return path.replace(/\/$/, "");
 }
-function conertDateToMS(currentDate: string | undefined) {
+function convertDateToMS(currentDate: string | undefined) {
   if (!currentDate) {
-    return;
+    return undefined;
   }
   const year = +currentDate.slice(0, 4);
   const month = +currentDate.slice(4, 6) - 1;

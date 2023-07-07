@@ -5,4 +5,4 @@ export class NotFoundError extends Error {}
 export class ForbiddenError extends Error {}
 
 /** Error that signals an invalid Url trying to be accessed*/
-export class BadRequestError extends Error{}
+export class BadRequestError extends Error {}

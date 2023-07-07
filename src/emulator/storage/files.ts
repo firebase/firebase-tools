@@ -55,7 +55,7 @@ export type CreateSignedUrl = {
 };
 
 export type SignedUrlResponse = {
-  signedUrl: string;
+  signed_url: string;
 };
 
 /**  Parsed request object for {@link StorageLayer#getObject}. */
@@ -155,9 +155,8 @@ export class StorageLayer {
    * @param {GetObjectRequest} request
    * @returns {Promise<boolean>}
    */
-  async generateSignedUrl(request: CreateSignedUrl): Promise<SignedUrlResponse> {
+  generateSignedUrl(request: CreateSignedUrl): SignedUrlResponse {
     const metadata = this.getMetadata(request.bucketId, request.decodedObjectId);
-    //make helper for this to make sure it is being formatted correctly
 
     const currentDate = this.getCurrentDate();
 
@@ -194,10 +193,8 @@ export class StorageLayer {
 
     const signedUrl = `${unsignedUrl}&X-Firebase-Signature=${signature}`;
 
-    console.log("signed: " + signedUrl);
-
     return {
-      signedUrl: signedUrl,
+      signed_url: signedUrl,
     };
   }
 
@@ -229,6 +226,7 @@ export class StorageLayer {
    * @throws {ForbiddenError} if request is unauthorized
    */
   public async getObject(request: GetObjectRequest): Promise<GetObjectResponse> {
+    let authorized = true;
     const metadata = this.getMetadata(request.bucketId, request.decodedObjectId);
 
     // If a valid download token is present, skip Firebase Rules auth. Mainly used by the js sdk.
@@ -236,52 +234,38 @@ export class StorageLayer {
       request.downloadToken ?? ""
     );
 
-    console.log(request.urlSignature);
-    console.log(request.url);
-    console.log(request.urlUsableMs);
+    let checkAuth = false;
 
-    const signedUrlWithNoToken = !hasValidDownloadToken && request.urlSignature ? true : false;
+    if (!hasValidDownloadToken) {
+      if (request.urlSignature) {
+        // const prevSignature = request.urlSignature;
 
-    console.log(
-      `the token was:=
-        ${hasValidDownloadToken} and the urlSig was 
-        ${request.urlSignature}`
-    );
-    console.log(`signedUrlWithNoToken came out as ${signedUrlWithNoToken}`);
+        if (!request.urlUsableMs || !request.urlTtlMs) {
+          throw new BadRequestError(`Invalid ${request.urlUsableMs ? "Date" : "TTL"}`);
+        }
+        const start = request.urlUsableMs;
+        const end = start + request.urlTtlMs;
+        const now = Date.parse(new Date().toISOString());
 
-    if (signedUrlWithNoToken) {
-      const prevSignature = request.urlSignature;
-      console.log("prev signature is: " + prevSignature);
+        const isLive = now >= start && now < end;
 
-      //make time and validity checks
-      const start = request.urlUsableMs!;
-      const end = start + request.urlTtlMs!;
-      const now = Date.parse(new Date().toISOString());
+        if (!isLive) {
+          throw new BadRequestError("Url has Expired");
+        }
 
-      console.log("start was: " + start);
-      console.log("end was: " + end);
-      console.log("now was: " + now);
-      console.log("difference is " + (end - now));
+        //   const isCorrect =
+        //     createHmac("sha256", SIGNED_URL_PRIVATE_KEY).update(request.url!).digest("base64") ===
+        //     request.urlSignature;
 
-      const isLive = now >= start && now < end;
-
-      console.log("live status is " + isLive);
-
-      if (!isLive) {
-        throw new ForbiddenError("Failed auth");
+        //   if (!isCorrect) {
+        //     throw new BadRequestError("Invalid Url");
+        //   }
+      } else {
+        checkAuth = true;
       }
-
-      //   const isCorrect =
-      //     createHmac("sha256", SIGNED_URL_PRIVATE_KEY).update(request.url!).digest("base64") ===
-      //     request.urlSignature;
-
-      //   if (!isCorrect) {
-      //     throw new BadRequestError("Invalid Url");
-      //   }
     }
 
-    let authorized = signedUrlWithNoToken;
-    if (!authorized) {
+    if (checkAuth) {
       authorized = await this._rulesValidator.validate(
         ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
         request.bucketId,
