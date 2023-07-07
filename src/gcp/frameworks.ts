@@ -100,6 +100,20 @@ export async function createStack(
 }
 
 /**
+ * Gets stack details.
+ */
+export async function getStack(
+  projectId: string,
+  location: string,
+  stackId: string
+): Promise<Stack> {
+  const name = `projects/${projectId}/locations/${location}/stacks/${stackId}`;
+  const res = await client.get<Stack>(name);
+
+  return res.body;
+}
+
+/**
  * Creates a new Build in a given project and location.
  */
 export async function createBuild(
