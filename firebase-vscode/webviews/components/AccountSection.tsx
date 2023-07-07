@@ -14,12 +14,16 @@ import { ServiceAccountUser } from "../../common/types";
 import { User } from "../../../src/types/auth";
 import { TEXT } from "../globals/ux-text";
 
+interface UserWithType extends User {
+  type?: string;
+}
+
 export function AccountSection({
-  userEmail,
+  user,
   allUsers,
   isMonospace,
 }: {
-  userEmail: string | null;
+  user: UserWithType | ServiceAccountUser | null;
   allUsers: Array<User | ServiceAccountUser> | null;
   isMonospace: boolean;
 }) {
@@ -27,7 +31,7 @@ export function AccountSection({
   const usersLoaded = !!allUsers;
   // Default: initial users check hasn't completed
   let currentUserElement: ReactElement | string = TEXT.LOGIN_PROGRESS;
-  if (usersLoaded && !allUsers.length) {
+  if (usersLoaded && (!allUsers.length || !user)) {
     // Users loaded but no user was found
     if (isMonospace) {
       // Monospace: this is an error, should have found a workspace
@@ -43,10 +47,14 @@ export function AccountSection({
     }
   } else if (usersLoaded && allUsers.length > 0) {
     // Users loaded, at least one user was found
-    if (isMonospace && userEmail === "service_account") {
-      currentUserElement = TEXT.MONOSPACE_LOGGED_IN;
+    if (user.type === "service_account") {
+      if (isMonospace) {
+        currentUserElement = TEXT.MONOSPACE_LOGGED_IN;
+      } else {
+        currentUserElement = TEXT.VSCE_SERVICE_ACCOUNT_LOGGED_IN;
+      }
     } else {
-      currentUserElement = userEmail;
+      currentUserElement = user.email;
     }
   }
   return (
@@ -70,7 +78,7 @@ export function AccountSection({
           {userDropdownVisible ? (
             <UserSelectionMenu
               isMonospace={isMonospace}
-              userEmail={userEmail}
+              user={user}
               allUsers={allUsers}
               onClose={() => toggleUserDropdown(false)}
             />
@@ -83,19 +91,19 @@ export function AccountSection({
 
 // TODO(roman): Convert to a better menu
 function UserSelectionMenu({
-  userEmail,
+  user,
   allUsers,
   onClose,
   isMonospace,
 }: {
-  userEmail: string;
+  user: UserWithType | ServiceAccountUser;
   allUsers: Array<User | ServiceAccountUser>;
   onClose: Function;
   isMonospace: boolean;
 }) {
   return (
     <>
-      <PopupMenu show onClose={onClose}>
+      <PopupMenu show onClose={onClose} autoClose={true}>
         <MenuItem
           onClick={() => {
             broker.send("addUser");
@@ -105,7 +113,7 @@ function UserSelectionMenu({
           Sign in another user...
         </MenuItem>
         <VSCodeDivider />
-        {allUsers.map((user) => (
+        {allUsers.map((user: UserWithType | ServiceAccountUser) => (
           <MenuItem
             onClick={() => {
               broker.send("requestChangeUser", { user });
@@ -113,22 +121,24 @@ function UserSelectionMenu({
             }}
             key={user.email}
           >
-            {isMonospace && user.email === "service_account"
-              ? TEXT.MONOSPACE_LOGIN_SELECTION_ITEM
+            {user?.type === "service_account"
+              ? isMonospace
+                ? TEXT.MONOSPACE_LOGIN_SELECTION_ITEM
+                : TEXT.VSCE_SERVICE_ACCOUNT_SELECTION_ITEM
               : user.email}
           </MenuItem>
         ))}
         <VSCodeDivider />
         {
           // You can't log out of a service account
-          userEmail !== "service_account" && (
+          user.type !== "service_account" && (
             <MenuItem
               onClick={() => {
-                broker.send("logout", { email: userEmail });
+                broker.send("logout", { email: user.email });
                 onClose();
               }}
             >
-              Sign Out {userEmail}
+              Sign Out {user.email}
             </MenuItem>
           )
         }
