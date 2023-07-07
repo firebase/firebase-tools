@@ -253,7 +253,6 @@ export class StorageLayer {
           throw new BadRequestError("Url has Expired");
         }
 
-        //whats the best way to deal with start
         const unsignedUrl = `${request.url}/v0/b/${request.bucketId}/o/${encodeURIComponent(
           request.decodedObjectId
         )}?alt=media&X-Firebase-Date=${request.urlUsableMs}&X-Firebase-Expires=${request.urlTtlMs}`;
