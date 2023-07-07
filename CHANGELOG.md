@@ -1,0 +1,1 @@
+- Refactor `functions:shell` command. (#6092)
