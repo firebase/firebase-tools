@@ -166,25 +166,30 @@ export default class LocalFunction {
         operationType = utils.last(this.trigger.eventTrigger.eventType.split("."));
         switch (operationType) {
           case "create":
+          case "created":
             dataPayload = {
               data: null,
               delta: data,
             };
             break;
           case "delete":
+          case "deleted":
             dataPayload = {
               data: data,
               delta: null,
             };
             break;
           default:
-            // 'update' or 'write'
+            // 'update', 'updated', 'write', or 'written'
             dataPayload = {
               data: (data as any).before,
               delta: (data as any).after,
             };
         }
-        opts.resource = this.substituteParams(this.trigger.eventTrigger.resource!, opts.params);
+        const resource =
+          this.trigger.eventTrigger.resource ??
+          this.trigger.eventTrigger.eventFilterPathPatterns?.ref;
+        opts.resource = this.substituteParams(resource!, opts.params);
         opts.auth = this.constructAuth(opts.auth, opts.authType);
         this.controller.call(this.trigger, dataPayload, opts);
       } else if (this.isFirestoreFunc(this.trigger.eventTrigger)) {
@@ -211,7 +216,10 @@ export default class LocalFunction {
               oldValue: this.makeFirestoreValue((data as any).before),
             };
         }
-        opts.resource = this.substituteParams(this.trigger.eventTrigger.resource!, opts.params);
+        const resource =
+          this.trigger.eventTrigger.resource ??
+          this.trigger.eventTrigger.eventFilterPathPatterns?.document;
+        opts.resource = this.substituteParams(resource!, opts.params);
         this.controller.call(this.trigger, dataPayload, opts);
       } else if (this.isPubsubFunc(this.trigger.eventTrigger)) {
         dataPayload = data;

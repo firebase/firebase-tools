@@ -58,28 +58,35 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
 
   private createCloudEvent(
     eventTrigger: Required<EmulatedTriggerDefinition>["eventTrigger"],
-    data: unknown
+    data: unknown,
+    opts: EventOptions
   ): CloudEvent<unknown> {
-    let source = "";
-    if (eventTrigger.eventType.startsWith("google.cloud.storage")) {
-      source = `projects/_/buckets/${eventTrigger.eventFilters?.bucket}`;
-    } else if (eventTrigger.eventType.startsWith("google.cloud.pubsub")) {
-      source = eventTrigger.eventFilters!.topic!;
-      data = { ...(data as any), messageId: uuid.v4() };
-    } else if (eventTrigger.eventType.startsWith("google.cloud.firestore")) {
-      source = `projects/_/databases/(default)`;
-    } else if (eventTrigger.eventType.startsWith("google.firebase.database")) {
-      source = `projects/_/locations/_/instances/${eventTrigger.eventFilterPathPatterns?.instance}`;
-    }
-    return {
+    const ce: CloudEvent<unknown> = {
       specversion: "1.0",
       datacontenttype: "application/json",
       id: uuid.v4(),
       type: eventTrigger.eventType,
       time: new Date().toISOString(),
+      source: "",
       data,
-      source,
     };
+    if (eventTrigger.eventType.startsWith("google.cloud.storage")) {
+      ce.source = `projects/_/buckets/${eventTrigger.eventFilters?.bucket}`;
+    } else if (eventTrigger.eventType.startsWith("google.cloud.pubsub")) {
+      ce.source = eventTrigger.eventFilters!.topic!;
+      data = { ...(data as any), messageId: uuid.v4() };
+    } else if (eventTrigger.eventType.startsWith("google.cloud.firestore")) {
+      ce.source = `projects/_/databases/(default)`;
+      if (opts.resource) {
+        ce.document = opts.resource as string;
+      }
+    } else if (eventTrigger.eventType.startsWith("google.firebase.database")) {
+      ce.source = `projects/_/locations/_/instances/${eventTrigger.eventFilterPathPatterns?.instance}`;
+      if (opts.resource) {
+        ce.ref = opts.resource as string;
+      }
+    }
+    return ce;
   }
 
   call(trigger: EmulatedTriggerDefinition, data: any, opts: EventOptions): void {
@@ -97,7 +104,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
     if (trigger.platform === "gcfv1") {
       body = this.createLegacyEvent(eventTrigger, data, opts);
     } else {
-      body = this.createCloudEvent(eventTrigger, data);
+      body = this.createCloudEvent(eventTrigger, data, opts);
     }
     this.emu.sendRequest(trigger, body);
   }
