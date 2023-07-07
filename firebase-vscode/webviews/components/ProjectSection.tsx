@@ -44,7 +44,7 @@ export function ProjectSection({
 
 export function initProjectSelection(userEmail: string | null) {
   if (userEmail) {
-    broker.send("selectProject", { email: userEmail });
+    broker.send("selectProject");
   } else {
     broker.send("showMessage", {
       msg: "Not logged in",

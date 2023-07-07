@@ -125,7 +125,12 @@ export class RuntimeWorker {
     });
   }
 
-  request(req: http.RequestOptions, resp: http.ServerResponse, body?: unknown): Promise<void> {
+  request(
+    req: http.RequestOptions,
+    resp: http.ServerResponse,
+    body?: unknown,
+    debug?: boolean
+  ): Promise<void> {
     if (this.triggerKey !== FREE_WORKER_KEY) {
       this.logInfo(`Beginning execution of "${this.triggerKey}"`);
     }
@@ -176,6 +181,10 @@ export class RuntimeWorker {
         const piped = _resp.pipe(resp);
         piped.on("finish", () => finishReq("finish"));
       });
+      if (debug) {
+        proxy.setSocketKeepAlive(false);
+        proxy.setTimeout(0);
+      }
       proxy.on("timeout", () => {
         this.logger.log(
           "ERROR",
@@ -367,7 +376,7 @@ export class RuntimeWorkerPool {
     if (debug) {
       await worker.sendDebugMsg(debug);
     }
-    return worker.request(req, resp, body);
+    return worker.request(req, resp, body, !!debug);
   }
 
   getIdleWorker(triggerId: string | undefined): RuntimeWorker | undefined {
