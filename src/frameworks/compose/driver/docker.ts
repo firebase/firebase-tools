@@ -172,7 +172,9 @@ export class DockerDriver implements Driver {
       this.dockerfileBuilder
         .fromLastStage(DOCKER_STAGE_BUILD)
         .copyForFirebase(".", ".")
-        .run(this.spec.detectedCommands.build.cmd);
+        .run(
+          `VERCEL_URL=app-directory-1z8z0o9f4-taeold.vercel.app ${this.spec.detectedCommands.build.cmd}`
+        );
       this.buildStage(DOCKER_STAGE_BUILD, ".");
     }
   }
