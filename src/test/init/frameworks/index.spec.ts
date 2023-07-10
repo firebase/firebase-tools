@@ -3,7 +3,7 @@ import { expect } from "chai";
 
 import * as gcp from "../../../gcp/frameworks";
 import * as poller from "../../../operation-poller";
-import { getOrCreateStack } from "../../../init/features/frameworks/index";
+import { createStack } from "../../../init/features/frameworks/index";
 
 describe("operationsConverter", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
@@ -54,7 +54,7 @@ describe("operationsConverter", () => {
       createStackStub.resolves(op);
       pollOperationStub.resolves(completeStack);
 
-      await getOrCreateStack(projectId, location, stackInput);
+      await createStack(projectId, location, stackInput);
       expect(createStackStub).to.be.calledWith(projectId, location, stackInput);
     });
   });
