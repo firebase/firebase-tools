@@ -1,8 +1,4 @@
-import * as path from "path";
 import * as vscode from "vscode";
-import { transports, format } from "winston";
-import stripAnsi from "strip-ansi";
-import { SPLAT } from "triple-beam";
 import { ExtensionContext, workspace } from "vscode";
 
 import { FirebaseProjectMetadata } from "../../src/types/project";
@@ -19,16 +15,13 @@ import {
 import { User } from "../../src/types/auth";
 import { currentOptions } from "./options";
 import { selectProjectInMonospace } from "../../src/monospace";
-import { setupLoggers, tryStringify } from "../../src/utils";
-import { pluginLogger } from "./logger-wrapper";
-import { logger } from '../../src/logger';
+import { logSetup, pluginLogger, showOutputChannel } from "./logger-wrapper";
 import { discover } from "../../src/frameworks";
 import { setEnabled } from "../../src/experiments";
 import {
   readAndSendFirebaseConfigs,
   setupFirebaseJsonAndRcFileSystemWatcher,
-  updateFirebaseRCProject,
-  getRootFolders
+  updateFirebaseRCProject
 } from "./config-files";
 import { ServiceAccountUser } from "../common/types";
 
@@ -37,6 +30,7 @@ export let currentUser: User | ServiceAccountUser;
 // Stores a mapping from user email to list of projects for that user
 let projectsUserMapping = new Map<string, FirebaseProjectMetadata[]>();
 let channels = null;
+let currentFramework: string | undefined;
 
 async function fetchUsers() {
   const accounts = await getAccounts();
@@ -116,32 +110,8 @@ export async function setupWorkflow(
   if (useFrameworks) {
     setEnabled('webframeworks', true);
   }
-  /**
-   * Logging setup for logging to console and to file.
-   */
-  // Sets up CLI logger to log to console
-  process.env.DEBUG = 'true';
-  setupLoggers();
 
-  // Only log to file if firebase.debug extension setting is true.
-  if (shouldWriteDebug) {
-    // Re-implement file logger call from ../../src/bin/firebase.ts to not bring
-    // in the entire firebase.ts file
-    const rootFolders = getRootFolders();
-    const filePath = debugLogPath || path.join(rootFolders[0], 'firebase-plugin-debug.log');
-    pluginLogger.info('Logging to path', filePath);
-    logger.add(
-      new transports.File({
-        level: "debug",
-        filename: filePath,
-        format: format.printf((info) => {
-          const segments = [info.message, ...(info[SPLAT] || [])]
-            .map(tryStringify);
-          return `[${info.level}] ${stripAnsi(segments.join(" "))}`;
-        }),
-      })
-    );
-  }
+  logSetup({ shouldWriteDebug, debugLogPath });
 
   /**
    * Call pluginLogger with log arguments received from webview.
@@ -227,6 +197,9 @@ export async function setupWorkflow(
   broker.on("selectAndInitHostingFolder", selectAndInitHosting);
 
   broker.on("hostingDeploy", async ({ target: deployTarget }) => {
+    showOutputChannel();
+    pluginLogger.info(`Starting deployment of project `
+      + `${currentOptions.projectId} to channel: ${deployTarget}`);
     const { success, consoleUrl, hostingUrl } = await deployToHosting(
       currentOptions.config,
       deployTarget
@@ -323,14 +296,14 @@ export async function setupWorkflow(
   }
 
   async function selectAndInitHosting({ projectId, singleAppSupport }) {
-    let discoveredFramework;
+    currentFramework = undefined;
     // Note: discover() takes a few seconds. No need to block users that don't
     // have frameworks support enabled.
     if (useFrameworks) {
-      discoveredFramework = useFrameworks && await discover(currentOptions.cwd, false);
+      currentFramework = useFrameworks && await discover(currentOptions.cwd, false);
       pluginLogger.debug('Searching for a web framework in this project.');
     }
-    if (discoveredFramework) {
+    if (currentFramework) {
       pluginLogger.debug('Detected web framework, launching frameworks init.');
       await initHosting({
         spa: singleAppSupport,
@@ -358,7 +331,7 @@ export async function setupWorkflow(
     }
     readAndSendFirebaseConfigs(broker, context);
     broker.send("notifyHostingInitDone",
-      { projectId, folderPath: currentOptions.cwd });
+      { projectId, folderPath: currentOptions.cwd, framework: currentFramework });
     await fetchChannels(true);
   }
 }
