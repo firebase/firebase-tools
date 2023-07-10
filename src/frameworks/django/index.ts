@@ -73,11 +73,11 @@ export async function ɵcodegenFunctionsDirectory(root: string, dest: string) {
     splitWsgiApplication.slice(-1)[0],
   ];
   const requirementsTxt = (await readFile(join(root, "requirements.txt"))).toString();
-  // COPY everything except venv
+  // COPY everything except venv and .firebase
   const files = await readdir(root);
   await Promise.all(
     files.map(async (file) => {
-      if (file !== "venv") {
+      if (file !== "venv" && file !== ".firebase") {
         await copy(join(root, file), join(dest, file), { recursive: true });
       }
     })
