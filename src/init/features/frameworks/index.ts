@@ -92,7 +92,7 @@ function toStack(
 }
 
 /**
- * Creates Stack object.
+ * Creates Stack object from long running operations.
  */
 export async function createStack(
   projectId: string,
