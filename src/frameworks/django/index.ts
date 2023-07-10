@@ -27,7 +27,11 @@ export async function init(setup: any, config: any) {
   spawnSync(cli, ["-m", "venv", "venv"], { stdio: "ignore", cwd });
   writeFile(join(cwd, "requirements.txt"), "Django");
   await spawnPython("pip", ["install", "-r", "requirements.txt"], cwd);
-  await spawnPython("django-admin", ["startproject", setup.projectId.replace("-", "_"), "."], cwd);
+  await spawnPython(
+    "django-admin",
+    ["startproject", setup.projectId.replaceAll("-", "_"), "."],
+    cwd
+  );
 }
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
