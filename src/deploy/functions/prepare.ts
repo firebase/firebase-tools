@@ -451,7 +451,7 @@ export async function loadCodebases(
     const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
     logLabeledBullet(
       "functions",
-      `Loading and anaylzing source code for codebase ${codebase} to determine what to deploy`
+      `Loading and analyzing source code for codebase ${codebase} to determine what to deploy`
     );
     wantBuilds[codebase] = await runtimeDelegate.discoverBuild(runtimeConfig, {
       ...firebaseEnvs,
