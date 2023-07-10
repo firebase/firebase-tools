@@ -7,7 +7,8 @@ import * as util from "util";
 
 import * as shell from "./emulator/functionsEmulatorShell";
 import * as commandUtils from "./emulator/commandUtils";
-import * as LocalFunction from "./localFunction";
+import { FunctionsServer } from "./serve/functions";
+import LocalFunction from "./localFunction";
 import * as utils from "./utils";
 import { FunctionsServer } from "./serve/functions";
 import { logger } from "./logger";
@@ -100,7 +101,7 @@ export const actionFunction = async (options: Options) => {
           if (emulator.emulatedFunctions.includes(trigger.id)) {
             const localFunction = new LocalFunction(trigger, emulator.urls, emulator);
             const triggerNameDotNotation = trigger.name.replace(/-/g, ".");
-            _.set(context, triggerNameDotNotation, localFunction.call);
+            _.set(context, triggerNameDotNotation, localFunction.makeFn());
           }
         }
         context.help =
