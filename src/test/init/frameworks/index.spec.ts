@@ -53,7 +53,7 @@ describe("operationsConverter", () => {
       frameworks: {
         region: location,
         serviceName: stackId,
-        existingStack: "yes",
+        existingStack: true,
         deployMethod: "github",
       },
     };
