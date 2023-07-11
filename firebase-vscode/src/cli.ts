@@ -18,7 +18,7 @@ import { Account, User } from "../../src/types/auth";
 import { Options } from "../../src/options";
 import { currentOptions, getCommandOptions } from "./options";
 import { setInquirerOptions } from "./stubs/inquirer-stub";
-import { ServiceAccount, ServiceAccountUser } from "../common/types";
+import { ServiceAccount } from "../common/types";
 import { listChannels } from "../../src/hosting/api";
 import { ChannelWithId } from "../common/messaging/types";
 import { pluginLogger } from "./logger-wrapper";
@@ -38,6 +38,18 @@ async function getServiceAccount() {
     pluginLogger.debug('No service account found (this may be normal), requireAuth error output:',
       e.original || e);
   }
+  if (process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL) {
+    // If Monospace, get service account email using env variable as
+    // the metadata server doesn't currently return the credentials
+    // for the workspace service account. Remove when Monospace is
+    // updated to return credentials through the metadata server.
+    pluginLogger.debug(`Using WORKSPACE_SERVICE_ACCOUNT_EMAIL env `
+      + `variable to get service account email: `
+      + `${process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL}`);
+    return process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL;
+  }
+  pluginLogger.debug(`Got service account email through credentials:`
+    + ` ${email}`);
   return email;
 }
 
@@ -50,7 +62,6 @@ async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
   // Try to get global default from configstore. For some reason this is
   // often overwritten when restarting the extension.
   pluginLogger.debug('requireAuthWrapper');
-  let authFound = false;
   let account = getGlobalDefaultAccount();
   if (!account) {
     // If nothing in configstore top level, grab the first "additionalAccount"
@@ -61,9 +72,6 @@ async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
         setGlobalDefaultAccount(account);
       }
     }
-  }
-  if (account) {
-    authFound = true;
   }
   const commandOptions = await getCommandOptions(undefined, {
     ...currentOptions
@@ -78,13 +86,20 @@ async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
     // Priority 1: Service account exists and is the current selected user
     if (serviceAccountEmail && currentUser.email === serviceAccountEmail) {
       await requireAuth(commandOptions);
+      return true;
     } else if (account) {
       // Priority 2: Google login account exists and is the currently selected
       // user
       // Priority 3: Google login account exists and there is no selected user
       // Clear service account access token from memory in apiv2.
       setAccessToken();
-      await requireAuth({...commandOptions, ...account});
+      await requireAuth({ ...commandOptions, ...account });
+      return true;
+    } else if (serviceAccountEmail) {
+      // Priority 4: There is a service account but it's not set as
+      // currentUser for some reason, but there also isn't an oauth account
+      await requireAuth(commandOptions);
+      return true;
     }
   } catch (e) {
     // No service account or google login found.
@@ -104,7 +119,7 @@ async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
   }
   // If we reach here, there is either a google account or no error on
   // requireAuth (which means there is a service account or glogin)
-  return authFound;
+  return true;
 }
 
 export async function getAccounts(): Promise<Array<Account | ServiceAccount>> {
