@@ -386,7 +386,9 @@ export class Client {
             res = await fetch(fetchURL, fetchOptions);
           } catch (thrown: any) {
             const err = thrown instanceof Error ? thrown : new Error(thrown);
-            logger.debug(`*** [apiv2] error from fetch(${fetchURL}, ${JSON.stringify(fetchOptions)}): ${err}`)
+            logger.debug(
+              `*** [apiv2] error from fetch(${fetchURL}, ${JSON.stringify(fetchOptions)}): ${err}`
+            );
             const isAbortError = err.name.includes("AbortError");
             if (isAbortError) {
               throw new FirebaseError(`Timeout reached making request to ${fetchURL}`, {
