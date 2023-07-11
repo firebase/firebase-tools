@@ -33,10 +33,13 @@ import { setAccessToken } from "../../src/apiv2";
 async function getServiceAccount() {
   let email = null;
   try {
+    // Empty to make sure no oauth user/token is sent to requireAuth
+    // which would prevent autoAuth() from being reached
     email = (await requireAuth({})) || null;
   } catch (e) {
     pluginLogger.debug('No service account found (this may be normal), requireAuth error output:',
       e.original || e);
+    return null;
   }
   if (process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL) {
     // If Monospace, get service account email using env variable as
@@ -85,7 +88,8 @@ async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
     const serviceAccountEmail = await getServiceAccount();
     // Priority 1: Service account exists and is the current selected user
     if (serviceAccountEmail && currentUser.email === serviceAccountEmail) {
-      await requireAuth(commandOptions);
+      // requireAuth should have been run and apiv2 token should be stored
+      // already due to getServiceAccount() call above.
       return true;
     } else if (account) {
       // Priority 2: Google login account exists and is the currently selected
@@ -97,29 +101,25 @@ async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
       return true;
     } else if (serviceAccountEmail) {
       // Priority 4: There is a service account but it's not set as
-      // currentUser for some reason, but there also isn't an oauth account
-      await requireAuth(commandOptions);
+      // currentUser for some reason, but there also isn't an oauth account.
+      // requireAuth was already run as part of getServiceAccount() above
       return true;
     }
+    pluginLogger.debug('No user found (this may be normal)');
+    return false;
   } catch (e) {
-    // No service account or google login found.
     if (showError) {
-      pluginLogger.error('requireAuth error', e.original || e);
+      pluginLogger.error('requireAuth error: ', e.original || e);
       vscode.window.showErrorMessage("Not logged in", {
         modal: true,
         detail: `Log in by clicking "Sign in with Google" in the sidebar.`,
       });
     } else {
-      // If "showError" is false, this may not be an error, just an indication
-      // no one is logged in. Log to "debug".
-      pluginLogger.debug('No user found (this may be normal), requireAuth error output:',
+      pluginLogger.debug('requireAuth error output: ',
         e.original || e);
     }
     return false;
   }
-  // If we reach here, there is either a google account or no error on
-  // requireAuth (which means there is a service account or glogin)
-  return true;
 }
 
 export async function getAccounts(): Promise<Array<Account | ServiceAccount>> {
