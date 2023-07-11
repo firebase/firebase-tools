@@ -1,6 +1,4 @@
-import { readdirSync, statSync } from "fs";
-import { join } from "path";
-import { Framework, SupportLevel } from "./interfaces";
+import { SupportLevel } from "./interfaces";
 import * as clc from "colorette";
 
 export const NPM_COMMAND_TIMEOUT_MILLIES = 10_000;
@@ -27,12 +25,12 @@ export const FEATURE_REQUEST_URL =
   "https://github.com/firebase/firebase-tools/issues/new?template=feature_request.md";
 export const MAILING_LIST_URL = "https://goo.gle/41enW5X";
 
-export const FIREBASE_FRAMEWORKS_VERSION = "^0.10.1";
+export const FIREBASE_FRAMEWORKS_VERSION = "^0.10.4";
 export const FIREBASE_FUNCTIONS_VERSION = "^4.3.0";
 export const FIREBASE_ADMIN_VERSION = "^11.0.1";
 export const SHARP_VERSION = "^0.32.1";
 export const NODE_VERSION = parseInt(process.versions.node, 10);
-export const VALID_ENGINES = { node: [16, 18] };
+export const VALID_ENGINES = { node: [16, 18, 20] };
 
 export const VALID_LOCALE_FORMATS = [/^ALL_[a-z]+$/, /^[a-z]+_ALL$/, /^[a-z]+(_[a-z]+)?$/];
 
@@ -47,24 +45,10 @@ export const ALLOWED_SSR_REGIONS = [
 
 export const I18N_ROOT = "/";
 
-export const WebFrameworks: Record<string, Framework> = Object.fromEntries(
-  readdirSync(__dirname)
-    .filter((path) => statSync(join(__dirname, path)).isDirectory())
-    .map((path) => {
-      // If not called by the CLI, (e.g., by the VS Code Extension)
-      // __dirname won't refer to this folder and these files won't be available.
-      // Instead it may find sibling folders that aren't modules, and this
-      // require will throw.
-      // Long term fix may be to bundle this instead of reading files at runtime
-      // but for now, this prevents crashing.
-      try {
-        return [path, require(join(__dirname, path))];
-      } catch (e) {
-        return [];
-      }
-    })
-    .filter(
-      ([, obj]) =>
-        obj && obj.name && obj.discover && obj.build && obj.type !== undefined && obj.support
-    )
-);
+export function GET_DEFAULT_BUILD_TARGETS() {
+  return Promise.resolve(["production", "development"]);
+}
+
+export function DEFAULT_SHOULD_USE_DEV_MODE_HANDLE(target: string) {
+  return Promise.resolve(target === "development");
+}

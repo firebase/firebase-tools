@@ -5,13 +5,30 @@ import { ThrottlerOptions } from "../../../throttler/throttler";
  * An Executor runs lambdas (which may be async).
  */
 export interface Executor {
-  run<T>(func: () => Promise<T>): Promise<T>;
+  run<T>(func: () => Promise<T>, opts?: RunOptions): Promise<T>;
+}
+
+export interface RunOptions {
+  retryCodes?: number[];
 }
 
 interface Operation {
   func: () => any;
+  retryCodes: number[];
   result?: any;
   error?: any;
+}
+
+export const DEFAULT_RETRY_CODES = [429, 409, 503];
+
+function parseErrorCode(err: any): number {
+  return (
+    err.status ||
+    err.code ||
+    err.context?.response?.statusCode ||
+    err.original?.code ||
+    err.original?.context?.response?.statusCode
+  );
 }
 
 async function handler(op: Operation): Promise<void> {
@@ -24,15 +41,11 @@ async function handler(op: Operation): Promise<void> {
     // errors. This can be a raw error with the correct HTTP code, a raw
     // error with the HTTP code stashed where GCP puts it, or a FirebaseError
     // wrapping either of the previous two cases.
-    const code =
-      err.status ||
-      err.code ||
-      err.context?.response?.statusCode ||
-      err.original?.code ||
-      err.original?.context?.response?.statusCode;
-    if (code === 429 || code === 409 || code === 503) {
+    const code = parseErrorCode(err);
+    if (op.retryCodes.includes(code)) {
       throw err;
     }
+    err.code = code;
     op.error = err;
   }
   return;
@@ -49,8 +62,13 @@ export class QueueExecutor implements Executor {
     this.queue = new Queue({ ...options, handler });
   }
 
-  async run<T>(func: () => Promise<T>): Promise<T> {
-    const op: Operation = { func };
+  async run<T>(func: () => Promise<T>, opts?: RunOptions): Promise<T> {
+    const retryCodes = opts?.retryCodes || DEFAULT_RETRY_CODES;
+
+    const op: Operation = {
+      func,
+      retryCodes,
+    };
     await this.queue.run(op);
     if (op.error) {
       throw op.error;

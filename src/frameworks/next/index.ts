@@ -28,6 +28,7 @@ import {
   relativeRequire,
   findDependency,
   validateLocales,
+  getNodeModuleBin,
 } from "../utils";
 import { BuildResult, FrameworkType, SupportLevel } from "../interfaces";
 
@@ -67,6 +68,7 @@ import {
   APP_PATHS_MANIFEST,
 } from "./constants";
 import { getAllSiteDomains } from "../../hosting/api";
+import { logger } from "../../logger";
 
 const DEFAULT_BUILD_SCRIPT = ["next build"];
 const PUBLIC_DIR = "public";
@@ -100,8 +102,6 @@ export async function discover(dir: string) {
  * Build a next.js application.
  */
 export async function build(dir: string): Promise<BuildResult> {
-  const { default: nextBuild } = relativeRequire(dir, "next/dist/build");
-
   await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
 
   const reactVersion = getReactVersion(dir);
@@ -110,15 +110,23 @@ export async function build(dir: string): Promise<BuildResult> {
     process.env.__NEXT_REACT_ROOT = "true";
   }
 
-  await nextBuild(dir, null, false, false, true).catch((e) => {
-    // Err on the side of displaying this error, since this is likely a bug in
-    // the developer's code that we want to display immediately
-    console.error(e.message);
-    throw e;
+  const cli = getNodeModuleBin("next", dir);
+
+  const nextBuild = new Promise((resolve, reject) => {
+    const buildProcess = spawn(cli, ["build"], { cwd: dir });
+    buildProcess.stdout?.on("data", (data) => logger.info(data.toString()));
+    buildProcess.stderr?.on("data", (data) => logger.info(data.toString()));
+    buildProcess.on("error", (err) => {
+      reject(new FirebaseError(`Unable to build your Next.js app: ${err}`));
+    });
+    buildProcess.on("exit", (code) => {
+      resolve(code);
+    });
   });
+  await nextBuild;
 
   const reasonsForBackend = new Set();
-  const { distDir, trailingSlash, basePath } = await getConfig(dir);
+  const { distDir, trailingSlash, basePath: baseUrl } = await getConfig(dir);
 
   if (await isUsingMiddleware(join(dir, distDir), false)) {
     reasonsForBackend.add("middleware");
@@ -198,7 +206,7 @@ export async function build(dir: string): Promise<BuildResult> {
     const headersFromMetaFiles = await getHeadersFromMetaFiles(
       dir,
       distDir,
-      basePath,
+      baseUrl,
       appPathRoutesManifest
     );
     headers.push(...headersFromMetaFiles);
@@ -261,19 +269,24 @@ export async function build(dir: string): Promise<BuildResult> {
   const wantsBackend = reasonsForBackend.size > 0;
 
   if (wantsBackend) {
-    const numberOfReasonsToList = process.env.DEBUG ? Infinity : DEFAULT_NUMBER_OF_REASONS_TO_LIST;
-    console.log("Building a Cloud Function to run this application. This is needed due to:");
-    for (const reason of Array.from(reasonsForBackend).slice(0, numberOfReasonsToList)) {
-      console.log(` • ${reason}`);
+    logger.info("Building a Cloud Function to run this application. This is needed due to:");
+    for (const reason of Array.from(reasonsForBackend).slice(
+      0,
+      DEFAULT_NUMBER_OF_REASONS_TO_LIST
+    )) {
+      logger.info(` • ${reason}`);
     }
-    if (reasonsForBackend.size > numberOfReasonsToList) {
-      console.log(
+    for (const reason of Array.from(reasonsForBackend).slice(DEFAULT_NUMBER_OF_REASONS_TO_LIST)) {
+      logger.debug(` • ${reason}`);
+    }
+    if (reasonsForBackend.size > DEFAULT_NUMBER_OF_REASONS_TO_LIST && !process.env.DEBUG) {
+      logger.info(
         ` • and ${
-          reasonsForBackend.size - numberOfReasonsToList
+          reasonsForBackend.size - DEFAULT_NUMBER_OF_REASONS_TO_LIST
         } other reasons, use --debug to see more`
       );
     }
-    console.log("");
+    logger.info("");
   }
 
   const i18n = !!nextjsI18n;
@@ -285,6 +298,7 @@ export async function build(dir: string): Promise<BuildResult> {
     rewrites,
     trailingSlash,
     i18n,
+    baseUrl,
   };
 }
 
@@ -312,6 +326,7 @@ export async function init(setup: any, config: any) {
 export async function ɵcodegenPublicDirectory(
   sourceDir: string,
   destDir: string,
+  _: string,
   context: { site: string; project: string }
 ) {
   const { distDir, i18n, basePath } = await getConfig(sourceDir);
@@ -390,14 +405,13 @@ export async function ɵcodegenPublicDirectory(
   await Promise.all(
     Object.entries(routesToCopy).map(async ([path, route]) => {
       if (route.initialRevalidateSeconds) {
-        if (process.env.DEBUG) console.log(`skipping ${path} due to revalidate`);
+        logger.debug(`skipping ${path} due to revalidate`);
         return;
       }
       if (pathsUsingsFeaturesNotSupportedByHosting.some((it) => path.match(it))) {
-        if (process.env.DEBUG)
-          console.log(
-            `skipping ${path} due to it matching an unsupported rewrite/redirect/header or middlware`
-          );
+        logger.debug(
+          `skipping ${path} due to it matching an unsupported rewrite/redirect/header or middlware`
+        );
         return;
       }
       const appPathRoute =
@@ -414,8 +428,7 @@ export async function ɵcodegenPublicDirectory(
         matchingI18nDomain.locales.includes(locale);
 
       if (!includeOnThisDomain) {
-        if (process.env.DEBUG)
-          console.log(`skipping ${path} since it is for a locale not deployed on this domain`);
+        logger.debug(`skipping ${path} since it is for a locale not deployed on this domain`);
         return;
       }
 
@@ -471,7 +484,7 @@ const BUNDLE_NEXT_CONFIG_TIMEOUT = 10_000;
  * Create a directory for SSR content.
  */
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
-  const { distDir, basePath } = await getConfig(sourceDir);
+  const { distDir } = await getConfig(sourceDir);
   const packageJson = await readJSON(join(sourceDir, "package.json"));
   // Bundle their next.config.js with esbuild via NPX, pinned version was having troubles on m1
   // macs and older Node versions; either way, we should avoid taking on any deps in firebase-tools
@@ -544,13 +557,13 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
 
   await mkdirp(join(destDir, distDir));
   await copy(join(sourceDir, distDir), join(destDir, distDir));
-  return { packageJson, frameworksEntry: "next.js", basePath };
+  return { packageJson, frameworksEntry: "next.js" };
 }
 
 /**
  * Create a dev server.
  */
-export async function getDevModeHandle(dir: string, hostingEmulatorInfo?: EmulatorInfo) {
+export async function getDevModeHandle(dir: string, _: string, hostingEmulatorInfo?: EmulatorInfo) {
   // throw error when using Next.js middleware with firebase serve
   if (!hostingEmulatorInfo) {
     if (await isUsingMiddleware(dir, true)) {

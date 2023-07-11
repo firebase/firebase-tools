@@ -52,7 +52,7 @@ type FirestoreMultiple = ({
 
 export type HostingSource = { glob: string } | { source: string } | { regex: string };
 
-type HostingRedirects = HostingSource & {
+export type HostingRedirects = HostingSource & {
   destination: string;
   type?: number;
 };
@@ -234,6 +234,10 @@ export type EmulatorsConfig = {
 export type ExtensionsConfig = Record<string, string>;
 
 export type FirebaseConfig = {
+  /**
+   * @TJS-format uri
+   */
+  $schema?: string;
   database?: DatabaseConfig;
   firestore?: FirestoreConfig;
   functions?: FunctionsConfig;
