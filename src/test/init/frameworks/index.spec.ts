@@ -49,6 +49,20 @@ describe("operationsConverter", () => {
       updateTime: "1",
       uri: "https://placeholder.com",
     };
+    const setup = {
+      frameworks: {
+        region: location,
+        serviceName: stackId,
+        useExistingStack: "yes",
+        deployMethod: "github",
+      },
+    };
+    const cloudBuildConnRepo = {
+      name: `projects/${projectId}/locations/${location}/stacks/${stackId}`,
+      remoteUri: "remoteUri",
+      createTime: "0",
+      updateTime: "1",
+    };
 
     it("checks is correct arguments are sent & creates a stack", async () => {
       createStackStub.resolves(op);
@@ -60,57 +74,28 @@ describe("operationsConverter", () => {
     });
 
     it("should return an existing stack if useExistingStack is 'yes'", async () => {
-      const setup = {
-        frameworks: {
-          region: location,
-          serviceName: stackId,
-          useExistingStack: "yes",
-        },
-      };
       getStackStub.resolves(completeStack);
-
       const result = await getOrCreateStack("projectId", setup);
+
       expect(result).to.deep.equal(completeStack);
       expect(getStackStub.calledOnceWithExactly(projectId, location, stackId)).to.be.true;
     });
 
     it("should create new stack if stack doesn't exist", async () => {
-      const stackId = "newStackId";
-      const setup = {
-        frameworks: {
-          region: location,
-          serviceName: "newStackId",
-          useExistingStack: "yes",
-          deployMethod: "github",
-        },
-      };
-      const op = {
-        name: `projects/${projectId}/locations/${location}/stacks/${stackId}`,
-        done: true,
-      };
-      const completeStack = {
-        name: `projects/${projectId}/locations/${location}/stacks/${stackId}`,
-        labels: {},
-        createTime: "0",
-        updateTime: "1",
-        uri: "https://placeholder.com",
-      };
-      const cloudBuildConnRepo = {
-        name: `projects/${projectId}/locations/${location}/stacks/${stackId}`,
-        remoteUri: "remoteUri",
-        createTime: "0",
-        updateTime: "1",
-      };
-      const stackInput = {
-        name: stackId,
-        labels: {},
-      };
+      const newStackId = "newStackId";
+      const newStackIdPath = `projects/${projectId}/locations/${location}/stacks/${newStackId}`;
+      setup.frameworks.serviceName = newStackId;
+      stackInput.name = newStackId;
+      op.name = newStackIdPath;
+      completeStack.name = newStackIdPath;
+      cloudBuildConnRepo.name = newStackIdPath;
 
       getStackStub.throws(new FirebaseError("error", { status: 404 }));
       linkGitHubRepositoryStub.resolves(cloudBuildConnRepo);
       createStackStub.resolves(op);
       pollOperationStub.resolves(completeStack);
-      const result = await getOrCreateStack("projectId", setup);
+      const result = await getOrCreateStack(projectId, setup);
+
       expect(result).to.deep.equal(completeStack);
       expect(createStackStub).to.be.calledWith(projectId, location, stackInput);
     });
