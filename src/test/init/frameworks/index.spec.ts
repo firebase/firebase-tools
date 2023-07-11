@@ -81,7 +81,7 @@ describe("operationsConverter", () => {
       expect(createStackStub).to.be.calledWith(projectId, location, stackInput);
     });
 
-    it("should return an existing stack if useExistingStack is 'yes'", async () => {
+    it("should return a stack, if user wants use the exiting stack", async () => {
       getStackStub.resolves(completeStack);
       const result = await getOrCreateStack("projectId", setup);
 
@@ -89,7 +89,7 @@ describe("operationsConverter", () => {
       expect(getStackStub.calledOnceWithExactly(projectId, location, stackId)).to.be.true;
     });
 
-    it("should create new stack if stack doesn't exist", async () => {
+    it("should create a new stack, if stack doesn't exist", async () => {
       const newStackId = "newStackId";
       const newPath = `projects/${projectId}/locations/${location}/stacks/${newStackId}`;
       setup.frameworks.serviceName = newStackId;
