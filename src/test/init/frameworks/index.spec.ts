@@ -36,10 +36,6 @@ describe("operationsConverter", () => {
     const stackId = "stackId";
     const stackInput = {
       name: stackId,
-      codebase: {
-        repository: `projects/${projectId}/locations/${location}/stacks/${stackId}`,
-        rootDirectory: ".",
-      },
       labels: {},
     };
     const op = {
@@ -48,10 +44,6 @@ describe("operationsConverter", () => {
     };
     const completeStack = {
       name: `projects/${projectId}/locations/${location}/stacks/${stackId}`,
-      codebase: {
-        repository: `projects/${projectId}/locations/${location}/stacks/${stackId}`,
-        rootDirectory: ".",
-      },
       labels: {},
       createTime: "0",
       updateTime: "1",
@@ -94,10 +86,8 @@ describe("operationsConverter", () => {
       const newPath = `projects/${projectId}/locations/${location}/stacks/${newStackId}`;
       setup.frameworks.serviceName = newStackId;
       stackInput.name = newStackId;
-      stackInput.codebase.repository = newPath;
       op.name = newPath;
       completeStack.name = newPath;
-      completeStack.codebase.repository = newPath;
       cloudBuildConnRepo.name = newPath;
 
       getStackStub.throws(new FirebaseError("error", { status: 404 }));

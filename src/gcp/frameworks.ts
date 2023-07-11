@@ -27,7 +27,7 @@ export interface Stack {
   uri: string;
 }
 
-export type StackOutputOnlyFields = "createTime" | "updateTime" | "uri";
+export type StackOutputOnlyFields = "createTime" | "updateTime" | "uri" | "codebase";
 
 export interface Build {
   name: string;
