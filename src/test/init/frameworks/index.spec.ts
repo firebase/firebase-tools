@@ -64,7 +64,7 @@ describe("operationsConverter", () => {
       updateTime: "1",
     };
 
-    it("checks create stack operation", async () => {
+    it("should createStack", async () => {
       createStackStub.resolves(op);
       pollOperationStub.resolves(completeStack);
 
