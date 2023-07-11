@@ -8,7 +8,7 @@ import {
   DEFAULT_DEPLOY_METHOD,
   ALLOWED_DEPLOY_METHODS,
 } from "./constants";
-import { linkGitHubRepository } from "./repo";
+import * as repo from "./repo";
 import { Stack, StackOutputOnlyFields } from "../../../gcp/frameworks";
 import { Repository } from "../../../gcp/cloudbuild";
 import * as poller from "../../../operation-poller";
@@ -70,15 +70,7 @@ export async function doSetup(setup: any): Promise<void> {
     setup.frameworks
   );
 
-  if (setup.frameworks.deployMethod === "github") {
-    const cloudBuildConnRepo = await linkGitHubRepository(
-      projectId,
-      setup.frameworks.region,
-      setup.frameworks.serviceName
-    );
-    const stackDetails = toStack(cloudBuildConnRepo, setup.frameworks.serviceName);
-    await createStack(projectId, setup.frameworks.region, stackDetails);
-  }
+  await getOrCreateStack(projectId, setup);
 }
 
 function toStack(
@@ -89,6 +81,63 @@ function toStack(
     name: stackId,
     labels: {},
   };
+}
+
+/**
+ * Creates stack if it doesn't exist.
+ */
+export async function getOrCreateStack(projectId: string, setup: any): Promise<Stack | undefined> {
+  const location: string = setup.frameworks.region;
+  try {
+    let stack = await gcp.getStack(projectId, location, setup.frameworks.serviceName);
+    while (stack) {
+      await promptOnce(
+        {
+          name: "useExistingStack",
+          type: "input",
+          default: "yes",
+          message:
+            "A stack already exists for the given serviceName, do you want to use the existing stack? (yes/no)",
+        },
+        setup.frameworks
+      );
+      if (
+        setup.frameworks.useExistingStack === "y" ||
+        setup.frameworks.useExistingStack === "yes"
+      ) {
+        return stack;
+      }
+      await promptOnce(
+        {
+          name: "serviceName",
+          type: "input",
+          default: "acme-inc-web",
+          message: "Please enter a new service name [6-32 characters]",
+        },
+        setup.frameworks
+      );
+      stack = await gcp.getStack(projectId, location, setup.frameworks.serviceName);
+      setup.frameworks.serviceName = undefined;
+      setup.frameworks.useExistingStack = undefined;
+    }
+  } catch (err: any) {
+    if (err.status === 404) {
+      // Create New Stack
+      if (setup.frameworks.deployMethod === "github") {
+        const cloudBuildConnRepo = await repo.linkGitHubRepository(
+          projectId,
+          setup.frameworks.region,
+          setup.frameworks.serviceName
+        );
+        const stackDetails = toStack(cloudBuildConnRepo, setup.frameworks.serviceName);
+        return await createStack(projectId, location, stackDetails);
+      }
+    } else {
+      throw err;
+    }
+  }
+
+  return undefined;
 }
 
 /**
