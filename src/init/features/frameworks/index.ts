@@ -15,6 +15,7 @@ import * as poller from "../../../operation-poller";
 import { frameworksOrigin } from "../../../api";
 import * as gcp from "../../../gcp/frameworks";
 import { API_VERSION } from "../../../gcp/frameworks";
+import { FirebaseError } from "../../../error";
 
 const frameworksPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: frameworksOrigin,
@@ -93,18 +94,15 @@ export async function getOrCreateStack(projectId: string, setup: any): Promise<S
     while (stack) {
       await promptOnce(
         {
-          name: "useExistingStack",
+          name: "existingStack",
           type: "input",
           default: "yes",
           message:
-            "A stack already exists for the given serviceName, do you want to use the existing stack? (yes/no)",
+            "A stack already exists for the given serviceName, do you want to use existing stack? (yes/no)",
         },
         setup.frameworks
       );
-      if (
-        setup.frameworks.useExistingStack === "y" ||
-        setup.frameworks.useExistingStack === "yes"
-      ) {
+      if (setup.frameworks.existingStack === "y" || setup.frameworks.existingStack === "yes") {
         return stack;
       }
       await promptOnce(
@@ -118,10 +116,10 @@ export async function getOrCreateStack(projectId: string, setup: any): Promise<S
       );
       stack = await gcp.getStack(projectId, location, setup.frameworks.serviceName);
       setup.frameworks.serviceName = undefined;
-      setup.frameworks.useExistingStack = undefined;
+      setup.frameworks.existingStack = undefined;
     }
-  } catch (err: any) {
-    if (err.status === 404) {
+  } catch (err: unknown) {
+    if ((err as FirebaseError).status === 404) {
       // Create New Stack
       if (setup.frameworks.deployMethod === "github") {
         const cloudBuildConnRepo = await repo.linkGitHubRepository(
