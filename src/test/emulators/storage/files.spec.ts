@@ -8,6 +8,7 @@ import { ForbiddenError, NotFoundError } from "../../../emulator/storage/errors"
 import { Persistence } from "../../../emulator/storage/persistence";
 import { FirebaseRulesValidator } from "../../../emulator/storage/rules/utils";
 import { UploadService } from "../../../emulator/storage/upload";
+import { BadRequestError } from "../../../emulator/auth/errors";
 
 const ALWAYS_TRUE_RULES_VALIDATOR = {
   validate: () => Promise.resolve(true),
@@ -156,6 +157,53 @@ describe("files", () => {
             decodedObjectId: "dir%2Fobject",
           })
         ).to.be.rejectedWith(NotFoundError);
+      });
+
+      it("should throw an error if usable MS aren't passed", () => {
+        const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
+
+        expect(
+          storageLayer.getObject({
+            bucketId: "bucket",
+            decodedObjectId: "dir%2Fobject",
+            urlSignature: "mockSignature",
+            urlTtlMs: 10,
+          })
+        ).to.be.rejectedWith(BadRequestError);
+      });
+
+      it("should throw an error if TTL in MS aren't passed", () => {
+        const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
+
+        expect(
+          storageLayer.getObject({
+            bucketId: "bucket",
+            decodedObjectId: "dir%2Fobject",
+            urlSignature: "mockSignature",
+            urlUsableMs: new Date()
+              .toISOString()
+              .replaceAll("-", "")
+              .replaceAll(":", "")
+              .replaceAll(".", ""),
+          })
+        ).to.be.rejectedWith(BadRequestError);
+      });
+
+      it("should throw an error if the URL is not alive", () => {
+        const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
+        expect(
+          storageLayer.getObject({
+            bucketId: "bucket",
+            decodedObjectId: "dir%2Fobject",
+            urlSignature: "mockSignature",
+            urlTtlMs: 10,
+            urlUsableMs: new Date()
+              .toISOString()
+              .replaceAll("-", "")
+              .replaceAll(":", "")
+              .replaceAll(".", ""),
+          })
+        ).to.be.rejectedWith(BadRequestError);
       });
     });
 

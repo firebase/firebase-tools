@@ -245,7 +245,7 @@ export class StorageLayer {
         }
         const start = convertDateToMS(request.urlUsableMs);
         const end = start + request.urlTtlMs;
-        const now = Date.parse(new Date().toISOString());
+        const now = convertDateToMS(this.getCurrentDate());
 
         const isLive = now >= start && now < end;
 
@@ -262,7 +262,7 @@ export class StorageLayer {
           prevSignature;
 
         if (!isCorrect) {
-          throw new BadRequestError("Invalid Url");
+          throw new ForbiddenError("Invalid Url");
         }
       } else {
         checkAuth = true;
@@ -281,7 +281,7 @@ export class StorageLayer {
     }
 
     if (!authorized) {
-      throw new ForbiddenError("Failed auth");
+      throw new ForbiddenError("Permission denied. No READ permission");
     }
 
     if (!metadata) {

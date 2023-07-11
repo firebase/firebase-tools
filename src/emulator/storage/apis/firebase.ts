@@ -17,6 +17,7 @@ import {
 import { reqBodyToBuffer } from "../../shared/request";
 import { ListObjectsResponse, SignedUrlResponse } from "../files";
 import { SIGNED_URL_DEFAULT_TTL_MILLIS } from "../constants";
+import { error } from "console";
 /**
  * @param emulator
  */
@@ -112,7 +113,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         return res.status(403).json({
           error: {
             code: 403,
-            message: `Permission denied. No READ permission.`,
+            message: err.message,
           },
         });
       } else if (err instanceof BadRequestError) {
