@@ -93,53 +93,60 @@ function toStack(
  */
 export async function getOrCreateStack(projectId: string, setup: any): Promise<Stack | undefined> {
   const location: string = setup.frameworks.region;
+  const deployMethod: string = setup.frameworks.deployMethod;
   try {
-    let stack = await gcp.getStack(projectId, location, setup.frameworks.serviceName);
-    while (stack) {
-      await promptOnce(
-        {
-          name: "existingStack",
-          type: "input",
-          default: "yes",
-          message:
-            "A stack already exists for the given serviceName, do you want to use existing stack? (yes/no)",
-        },
-        setup.frameworks
-      );
-      if (setup.frameworks.existingStack === "y" || setup.frameworks.existingStack === "yes") {
-        return stack;
-      }
-      await promptOnce(
-        {
-          name: "serviceName",
-          type: "input",
-          default: "acme-inc-web",
-          message: "Please enter a new service name [6-32 characters]",
-        },
-        setup.frameworks
-      );
-      stack = await gcp.getStack(projectId, location, setup.frameworks.serviceName);
-      setup.frameworks.serviceName = undefined;
-      setup.frameworks.existingStack = undefined;
-    }
+    return await getStack(projectId, setup, location);
   } catch (err: unknown) {
     if ((err as FirebaseError).status === 404) {
-      // Create New Stack
-      if (setup.frameworks.deployMethod === "github") {
+      logger.info("Create new stack");
+      if (deployMethod === "github") {
         const cloudBuildConnRepo = await repo.linkGitHubRepository(
           projectId,
-          setup.frameworks.region,
+          location,
           setup.frameworks.serviceName
         );
         const stackDetails = toStack(cloudBuildConnRepo, setup.frameworks.serviceName);
         return await createStack(projectId, location, stackDetails);
       }
     } else {
-      throw err;
+      throw new FirebaseError(`Unable to fetch or create stack: ${err}`);
     }
   }
 
   return undefined;
+}
+
+async function getStack(projectId: string, setup: any, location: string): Promise<Stack> {
+  let stack = await gcp.getStack(projectId, location, setup.frameworks.serviceName);
+  while (stack) {
+    await promptOnce(
+      {
+        name: "existingStack",
+        type: "input",
+        default: "yes",
+        message:
+          "A stack already exists for the given serviceName, do you want to use existing stack? (yes/no)",
+      },
+      setup.frameworks
+    );
+    if (setup.frameworks.existingStack === "y" || setup.frameworks.existingStack === "yes") {
+      return stack;
+    }
+    await promptOnce(
+      {
+        name: "serviceName",
+        type: "input",
+        default: "acme-inc-web",
+        message: "Please enter a new service name [6-32 characters]",
+      },
+      setup.frameworks
+    );
+    stack = await gcp.getStack(projectId, location, setup.frameworks.serviceName);
+    setup.frameworks.serviceName = undefined;
+    setup.frameworks.existingStack = undefined;
+  }
+
+  return stack;
 }
 
 /**
