@@ -95,7 +95,7 @@ export async function getOrCreateStack(projectId: string, setup: any): Promise<S
   const location: string = setup.frameworks.region;
   const deployMethod: string = setup.frameworks.deployMethod;
   try {
-    return await getStack(projectId, setup, location);
+    return await getExistingStack(projectId, setup, location);
   } catch (err: unknown) {
     if ((err as FirebaseError).status === 404) {
       logger.info("Create new stack");
@@ -118,7 +118,7 @@ export async function getOrCreateStack(projectId: string, setup: any): Promise<S
   return undefined;
 }
 
-async function getStack(projectId: string, setup: any, location: string): Promise<Stack> {
+async function getExistingStack(projectId: string, setup: any, location: string): Promise<Stack> {
   let stack = await gcp.getStack(projectId, location, setup.frameworks.serviceName);
   while (stack) {
     await promptOnce(
