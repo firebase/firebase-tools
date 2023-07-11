@@ -110,7 +110,7 @@ export async function getOrCreateStack(projectId: string, setup: any): Promise<S
       }
     } else {
       throw new FirebaseError(
-        `Unable to fetch or create stack, try using different initialization details: ${err}`
+        `Unable to fetch or create stack. Try using different initialization details: ${err}`
       );
     }
   }
