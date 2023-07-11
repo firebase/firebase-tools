@@ -94,7 +94,7 @@ export async function getOrCreateStack(projectId: string, setup: any): Promise<S
     return await getExistingStack(projectId, setup, location);
   } catch (err: unknown) {
     if ((err as FirebaseError).status === 404) {
-      logger.info("Create new stack.");
+      logger.info("Creating new stack.");
       if (deployMethod === "github") {
         const cloudBuildConnRepo = await repo.linkGitHubRepository(
           projectId,
@@ -121,14 +121,14 @@ async function getExistingStack(projectId: string, setup: any, location: string)
     await promptOnce(
       {
         name: "existingStack",
-        type: "input",
-        default: "yes",
+        type: "confirm",
+        default: true,
         message:
           "A stack already exists for the given serviceName, do you want to use existing stack? (yes/no)",
       },
       setup.frameworks
     );
-    if (setup.frameworks.existingStack === "y" || setup.frameworks.existingStack === "yes") {
+    if (setup.frameworks.existingStack) {
       logger.info("Using the existing stack.");
       return stack;
     }
