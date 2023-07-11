@@ -80,6 +80,10 @@ function toStack(
 ): Omit<Stack, StackOutputOnlyFields> {
   return {
     name: stackId,
+    codebase: {
+      repository: cloudBuildConnRepo.name,
+      rootDirectory: ".",
+    },
     labels: {},
   };
 }
