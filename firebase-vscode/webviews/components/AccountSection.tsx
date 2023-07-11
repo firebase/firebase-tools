@@ -57,12 +57,22 @@ export function AccountSection({
       currentUserElement = user.email;
     }
   }
-  return (
-    <div className={styles.accountRow}>
-      <Label className={styles.accountRowLabel}>
-        <Icon className={styles.accountRowIcon} slot="start" icon="account" />
+  let userBoxElement = (
+    <Label className={styles.accountRowLabel}>
+      <Icon className={styles.accountRowIcon} slot="start" icon="account" />
+      {currentUserElement}
+    </Label>
+  );
+  if (user?.type === "service_account" && isMonospace) {
+    userBoxElement = (
+      <Label level={4} secondary className={styles.accountRowLabel}>
         {currentUserElement}
       </Label>
+    );
+  }
+  return (
+    <div className={styles.accountRow}>
+      {userBoxElement}
       {!usersLoaded && (
         <Label>
           <VSCodeProgressRing />
@@ -101,6 +111,12 @@ function UserSelectionMenu({
   onClose: Function;
   isMonospace: boolean;
 }) {
+  const hasNonServiceAccountUser = allUsers.some(
+    (user) => (user as ServiceAccountUser).type !== "service_account"
+  );
+  const allUsersSorted = [...allUsers].sort((user1, user2) =>
+    (user1 as ServiceAccountUser).type !== "service_account" ? -1 : 1
+  );
   return (
     <>
       <PopupMenu show onClose={onClose} autoClose={true}>
@@ -110,36 +126,58 @@ function UserSelectionMenu({
             onClose();
           }}
         >
-          Sign in another user...
+          {hasNonServiceAccountUser
+            ? TEXT.ADDITIONAL_USER_SIGN_IN
+            : TEXT.GOOGLE_SIGN_IN}
         </MenuItem>
         <VSCodeDivider />
-        {allUsers.map((user: UserWithType | ServiceAccountUser) => (
-          <MenuItem
-            onClick={() => {
-              broker.send("requestChangeUser", { user });
-              onClose();
-            }}
-            key={user.email}
-          >
-            {user?.type === "service_account"
-              ? isMonospace
-                ? TEXT.MONOSPACE_LOGIN_SELECTION_ITEM
-                : TEXT.VSCE_SERVICE_ACCOUNT_SELECTION_ITEM
-              : user.email}
-          </MenuItem>
+        {allUsersSorted.map((user: UserWithType | ServiceAccountUser) => (
+          <>
+            <MenuItem
+              onClick={() => {
+                broker.send("requestChangeUser", { user });
+                onClose();
+              }}
+              key={user.email}
+            >
+              {user?.type === "service_account"
+                ? isMonospace
+                  ? TEXT.MONOSPACE_LOGIN_SELECTION_ITEM
+                  : TEXT.VSCE_SERVICE_ACCOUNT_SELECTION_ITEM
+                : user.email}
+            </MenuItem>
+            {user?.type === "service_account" && (
+              <MenuItem
+                onClick={() => {
+                  broker.send("showMessage", {
+                    msg: `Service account email: ${user.email}`,
+                    options: {
+                      modal: true,
+                    },
+                  });
+                  onClose();
+                }}
+                key="service-account-email"
+              >
+                <Label level={3}>{TEXT.SHOW_SERVICE_ACCOUNT}</Label>
+              </MenuItem>
+            )}
+          </>
         ))}
-        <VSCodeDivider />
         {
           // You can't log out of a service account
           user.type !== "service_account" && (
-            <MenuItem
-              onClick={() => {
-                broker.send("logout", { email: user.email });
-                onClose();
-              }}
-            >
-              Sign Out {user.email}
-            </MenuItem>
+            <>
+              <VSCodeDivider />
+              <MenuItem
+                onClick={() => {
+                  broker.send("logout", { email: user.email });
+                  onClose();
+                }}
+              >
+                Sign Out {user.email}
+              </MenuItem>
+            </>
           )
         }
       </PopupMenu>
