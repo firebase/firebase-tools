@@ -75,6 +75,7 @@ describe("operationsConverter", () => {
 
     it("should return a stack, if user wants use the exiting stack", async () => {
       getStackStub.resolves(completeStack);
+
       const result = await getOrCreateStack("projectId", setup);
 
       expect(result).to.deep.equal(completeStack);
@@ -89,11 +90,11 @@ describe("operationsConverter", () => {
       op.name = newPath;
       completeStack.name = newPath;
       cloudBuildConnRepo.name = newPath;
-
       getStackStub.throws(new FirebaseError("error", { status: 404 }));
       linkGitHubRepositoryStub.resolves(cloudBuildConnRepo);
       createStackStub.resolves(op);
       pollOperationStub.resolves(completeStack);
+
       const result = await getOrCreateStack(projectId, setup);
 
       expect(result).to.deep.equal(completeStack);
