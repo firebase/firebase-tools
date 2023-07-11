@@ -64,7 +64,7 @@ describe("operationsConverter", () => {
       updateTime: "1",
     };
 
-    it("checks is correct arguments are sent & creates a stack", async () => {
+    it("checks create stack operation", async () => {
       createStackStub.resolves(op);
       pollOperationStub.resolves(completeStack);
 
