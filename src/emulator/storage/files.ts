@@ -5,7 +5,7 @@ import {
   IncomingMetadata,
   StoredFileMetadata,
 } from "./metadata";
-import { NotFoundError, ForbiddenError } from "./errors";
+import { NotFoundError, ForbiddenError, BadRequestError } from "./errors";
 import * as path from "path";
 import * as fse from "fs-extra";
 import { StorageCloudFunctions } from "./cloudFunctions";
@@ -20,7 +20,12 @@ import { Persistence } from "./persistence";
 import { Upload, UploadStatus } from "./upload";
 import { trackEmulator } from "../../track";
 import { Emulators } from "../types";
-
+import { createHmac } from "crypto";
+import {
+  SIGNED_URL_MAX_TTL_MILLIS,
+  SIGNED_URL_MIN_TTL_MILLIS,
+  SIGNED_URL_PRIVATE_KEY,
+} from "./constants";
 interface BucketsList {
   buckets: {
     id: string;
@@ -41,18 +46,28 @@ export class StoredFile {
 }
 
 /**  Parsed request object for {@link StorageLayer#authenticateUser}. */
-export type CreateObjectRequest = {
+export type CreateSignedUrl = {
   bucketId: string;
   decodedObjectId: string;
   authorization?: string;
+  originalUrl: string;
+  ttlInMillis: number;
+};
+
+export type SignedUrlResponse = {
+  signed_url: string;
 };
 
 /**  Parsed request object for {@link StorageLayer#getObject}. */
 export type GetObjectRequest = {
   bucketId: string;
   decodedObjectId: string;
+  url?: string;
   authorization?: string;
   downloadToken?: string;
+  urlSignature?: string;
+  urlUsableMs?: string | undefined;
+  urlTtlMs?: number; // must be converted from X-Firebase-Expires
 };
 
 /** Response object for {@link StorageLayer#getObject}. */
@@ -133,30 +148,64 @@ export class StorageLayer {
   ) {}
 
   /**
-   * Authenticate user on an inital post request
+   * Create SignedUrl
    * @date 6/28/2023 - 2:56:09 PM
    *
    * @async
    * @param {GetObjectRequest} request
    * @returns {Promise<boolean>}
    */
-  async authenticateUser(request: CreateObjectRequest): Promise<boolean> {
+  async generateSignedUrl(request: CreateSignedUrl): Promise<SignedUrlResponse> {
     const metadata = this.getMetadata(request.bucketId, request.decodedObjectId);
 
-    return await this._rulesValidator.validate(
+    const currentDate = this.getCurrentDate();
+
+    const timeToLive = request.ttlInMillis;
+
+    if (timeToLive < SIGNED_URL_MIN_TTL_MILLIS || timeToLive > SIGNED_URL_MAX_TTL_MILLIS) {
+      throw new BadRequestError("TTL specified is less than 0 or more than allowed max (1 week)");
+    }
+
+    const authorized = await this._rulesValidator.validate(
       ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
       request.bucketId,
-      RulesetOperationMethod.CREATE,
+      RulesetOperationMethod.GET,
       { before: metadata?.asRulesResource() },
       this._projectId,
       request.authorization
     );
+
+    if (!authorized) {
+      throw new ForbiddenError();
+    }
+
+    if (!metadata) {
+      throw new NotFoundError("Object in bucket does not exist");
+    }
+
+    const unsignedUrl = `${request.originalUrl}/v0/b/${request.bucketId}/o/${encodeURIComponent(
+      request.decodedObjectId
+    )}?alt=media&X-Firebase-Date=${currentDate}&X-Firebase-Expires=${request.ttlInMillis}`;
+
+    const signature = createHmac("sha256", SIGNED_URL_PRIVATE_KEY)
+      .update(unsignedUrl)
+      .digest("base64");
+
+    const signedUrl = `${unsignedUrl}&X-Firebase-Signature=${signature}`;
+
+    return {
+      signed_url: signedUrl,
+    };
   }
 
   createBucket(id: string): void {
     if (!this._buckets.has(id)) {
       this._buckets.set(id, new CloudStorageBucketMetadata(id));
     }
+  }
+
+  getCurrentDate() {
+    return new Date().toISOString().replaceAll("-", "").replaceAll(":", "").replaceAll(".", "");
   }
 
   async listBuckets(): Promise<CloudStorageBucketMetadata[]> {
@@ -177,14 +226,50 @@ export class StorageLayer {
    * @throws {ForbiddenError} if request is unauthorized
    */
   public async getObject(request: GetObjectRequest): Promise<GetObjectResponse> {
+    let authorized = true;
     const metadata = this.getMetadata(request.bucketId, request.decodedObjectId);
 
     // If a valid download token is present, skip Firebase Rules auth. Mainly used by the js sdk.
     const hasValidDownloadToken = (metadata?.downloadTokens || []).includes(
       request.downloadToken ?? ""
     );
-    let authorized = hasValidDownloadToken;
-    if (!authorized) {
+
+    let checkAuth = false;
+
+    if (!hasValidDownloadToken) {
+      if (request.urlSignature) {
+        const prevSignature = request.urlSignature;
+
+        if (!request.urlUsableMs || !request.urlTtlMs) {
+          throw new BadRequestError(`Invalid ${request.urlUsableMs ? "Date" : "TTL"}`);
+        }
+        const start = convertDateToMS(request.urlUsableMs);
+        const end = start + request.urlTtlMs;
+        const now = convertDateToMS(this.getCurrentDate());
+
+        const isLive = now >= start && now < end;
+
+        if (!isLive) {
+          throw new BadRequestError("Url has Expired");
+        }
+
+        const unsignedUrl = `${request.url}/v0/b/${request.bucketId}/o/${encodeURIComponent(
+          request.decodedObjectId
+        )}?alt=media&X-Firebase-Date=${request.urlUsableMs}&X-Firebase-Expires=${request.urlTtlMs}`;
+
+        const isCorrect =
+          createHmac("sha256", SIGNED_URL_PRIVATE_KEY).update(unsignedUrl).digest("base64") ===
+          prevSignature;
+
+        if (!isCorrect) {
+          throw new ForbiddenError("Invalid Url");
+        }
+      } else {
+        checkAuth = true;
+      }
+    }
+
+    if (checkAuth) {
       authorized = await this._rulesValidator.validate(
         ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
         request.bucketId,
@@ -194,8 +279,9 @@ export class StorageLayer {
         request.authorization
       );
     }
+
     if (!authorized) {
-      throw new ForbiddenError("Failed auth");
+      throw new ForbiddenError("Permission denied. No READ permission");
     }
 
     if (!metadata) {
@@ -688,4 +774,16 @@ function getPathSep(decodedPath: string): string {
   // Checks for the first matching file separator
   const firstSepIndex = decodedPath.search(/[\/|\\\\]/g);
   return decodedPath[firstSepIndex];
+}
+
+function convertDateToMS(currentDate: string) {
+  const year = +currentDate.slice(0, 4);
+  const month = +currentDate.slice(4, 6) - 1;
+  const day = +currentDate.slice(6, 8);
+  const hour = +currentDate.slice(9, 11);
+  const minute = +currentDate.slice(11, 13);
+  const second = +currentDate.slice(13, 15);
+
+  const date = new Date(Date.UTC(year, month, day, hour, minute, second));
+  return date.getTime();
 }

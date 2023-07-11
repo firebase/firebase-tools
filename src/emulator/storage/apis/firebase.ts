@@ -7,7 +7,7 @@ import { StorageEmulator } from "../index";
 import { sendFileBytes } from "./shared";
 import { EmulatorRegistry } from "../../registry";
 import { parseObjectUploadMultipartRequest } from "../multipart";
-import { NotFoundError, ForbiddenError } from "../errors";
+import { NotFoundError, ForbiddenError, BadRequestError } from "../errors";
 import {
   NotCancellableError,
   Upload,
@@ -15,10 +15,9 @@ import {
   UploadPreviouslyFinalizedError,
 } from "../upload";
 import { reqBodyToBuffer } from "../../shared/request";
-import { ListObjectsResponse } from "../files";
-import { time } from "node:console";
-import { createHmac } from "node:crypto";
-import { privateKey } from "../constants";
+import { ListObjectsResponse, SignedUrlResponse } from "../files";
+import { SIGNED_URL_DEFAULT_TTL_MILLIS } from "../constants";
+import { error } from "console";
 /**
  * @param emulator
  */
@@ -100,8 +99,12 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       ({ metadata, data } = await storageLayer.getObject({
         bucketId: req.params.bucketId,
         decodedObjectId: decodeURIComponent(req.params.objectId),
+        url: `${req.protocol}://${req.hostname}:${req.socket.localPort}`,
         authorization: req.header("authorization"),
         downloadToken: req.query.token?.toString(),
+        urlSignature: req.query["X-Firebase-Signature"] as string,
+        urlUsableMs: req.query["X-Firebase-Date"] as string | undefined,
+        urlTtlMs: Number(req.query["X-Firebase-Expires"]),
       }));
     } catch (err) {
       if (err instanceof NotFoundError) {
@@ -110,7 +113,14 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         return res.status(403).json({
           error: {
             code: 403,
-            message: `Permission denied. No READ permission.`,
+            message: err.message,
+          },
+        });
+      } else if (err instanceof BadRequestError) {
+        return res.status(400).json({
+          error: {
+            code: 400,
+            message: err.message,
           },
         });
       }
@@ -131,45 +141,45 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   });
 
   firebaseStorageAPI.post(`/b/:bucketId/o/:objectId[(:)]generateSignedUrl`, async (req, res) => {
-    const timeToLive = req.body.ttl;
-    const msInAWeek = 7 * 24 * 60 * 60 * 1000;
+    let signedUrlObject: SignedUrlResponse;
 
-    if (timeToLive < 0 || timeToLive > msInAWeek) {
-      return res.status(400).json({
-        error: {
-          code: 400,
-          message: `Invalid TTL.`,
-        },
+    try {
+      signedUrlObject = await storageLayer.generateSignedUrl({
+        bucketId: req.params.bucketId,
+        decodedObjectId: decodeURIComponent(req.params.objectId),
+        authorization: req.header("authorization"),
+        originalUrl: `${req.protocol}://${req.hostname}:${req.socket.localPort}`,
+        ttlInMillis:
+          req.body.ttlInMillis === undefined ? SIGNED_URL_DEFAULT_TTL_MILLIS : req.body.ttlInMillis,
       });
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        return res.status(404).json({
+          error: {
+            code: 404,
+            message: `Object in bucket does not exist`,
+          },
+        });
+      }
+      if (err instanceof ForbiddenError) {
+        return res.status(403).json({
+          error: {
+            code: 403,
+            message: `Permission denied. No WRITE permission.`,
+          },
+        });
+      } else if (err instanceof BadRequestError) {
+        return res.status(400).json({
+          error: {
+            code: 400,
+            message: `TTL specified is less than 0 or more than allowed max (1 week)`,
+          },
+        });
+      }
+      throw err;
     }
-    const currentDate = new Date()
-      .toISOString()
-      .replaceAll("-", "")
-      .replaceAll(":", "")
-      .replaceAll(".", "");
 
-    const unsignedUrl = `${req.protocol}://${req.hostname}:${req.socket.localPort}/v0/b/${req.params.bucketId}/o/${req.params.objectId}?alt=media&X-Firebase-Date=${currentDate}&X-Firebase-Expires=${timeToLive}`;
-
-    const authorized = await storageLayer.authenticateUser({
-      bucketId: req.params.bucketId,
-      decodedObjectId: decodeURIComponent(req.params.objectId),
-      authorization: req.header("authorization"),
-    });
-
-    if (!authorized) {
-      return res.status(403).json({
-        error: {
-          code: 403,
-          message: `Unauthorized User`,
-        },
-      });
-    }
-
-    const signature = createHmac("sha256", privateKey).update(unsignedUrl).digest("base64");
-
-    const signedUrl = `${unsignedUrl}&X-Firebase-Signature=${signature}`;
-
-    return res.status(200).json(signedUrl);
+    return res.json(signedUrlObject);
   });
 
   // list object handler
