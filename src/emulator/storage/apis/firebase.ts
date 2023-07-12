@@ -123,7 +123,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
             message: err.message,
           },
         });
-      }
+      } 
       throw err;
     }
 
@@ -142,6 +142,8 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
 
   firebaseStorageAPI.post(`/b/:bucketId/o/:objectId[(:)]generateSignedUrl`, async (req, res) => {
     let signedUrlObject: SignedUrlResponse;
+
+	console.log("wtf is goin on WBN");
 
     try {
       signedUrlObject = await storageLayer.generateSignedUrl({

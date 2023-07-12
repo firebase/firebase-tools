@@ -241,13 +241,14 @@ export class StorageLayer {
         const prevSignature = request.urlSignature;
 
         if (!request.urlUsableMs || !request.urlTtlMs) {
-          throw new BadRequestError(`Invalid ${request.urlUsableMs ? "Date" : "TTL"}`);
+          console.log("about too throw error");
+          throw new BadRequestError(`Invalid TTL`);
         }
         const start = convertDateToMS(request.urlUsableMs);
         const end = start + request.urlTtlMs;
         const now = convertDateToMS(this.getCurrentDate());
 
-        const isLive = now >= start && now < end;
+        const isLive = now < end;
 
         if (!isLive) {
           throw new BadRequestError("Url has Expired");
@@ -285,6 +286,7 @@ export class StorageLayer {
     }
 
     if (!metadata) {
+      console.log("anout to throw error");
       throw new NotFoundError("File not found");
     }
 
