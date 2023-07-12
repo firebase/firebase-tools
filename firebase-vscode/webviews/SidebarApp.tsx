@@ -7,7 +7,7 @@ import { ProjectSection } from "./components/ProjectSection";
 import { FirebaseConfig } from "../../src/firebaseConfig";
 import { ServiceAccountUser } from "../common/types";
 import { DeployPanel } from "./components/DeployPanel";
-import { HostingState } from "./webview-types";
+import { HostingInitState, HostingState } from "./webview-types";
 import { ChannelWithId } from "./messaging/types";
 
 import { webLogger } from "./globals/web-logger";
@@ -28,7 +28,8 @@ export function SidebarApp() {
   const [allUsers, setAllUsers] = useState<Array<
     ServiceAccountUser | User
   > | null>(null);
-  const [isHostingOnboarded, setHostingOnboarded] = useState<boolean>(false);
+  const [hostingInitState, setHostingInitState] =
+    useState<HostingInitState>("not-started");
   const [firebaseJson, setFirebaseJson] = useState<FirebaseConfig>();
 
   useEffect(() => {
@@ -56,12 +57,12 @@ export function SidebarApp() {
       }
       if (firebaseJson?.hosting) {
         webLogger.debug("Detected firebase.json");
-        setHostingOnboarded(true);
+        setHostingInitState('done');
         broker.send("showMessage", {
           msg: "Auto-detected hosting setup in this folder",
         });
       } else {
-        setHostingOnboarded(false);
+        setHostingInitState('not-started');
       }
 
       if (firebaseRC?.projects?.default) {
@@ -87,11 +88,15 @@ export function SidebarApp() {
       setUser(user);
     });
 
-    broker.on("notifyHostingInitDone", ({ projectId, folderPath, framework }) => {
-      webLogger.debug(`notifyHostingInitDone: ${projectId}, ${folderPath}`);
-      setHostingOnboarded(true);
-      if (framework) {
-        setFramework(framework);
+    broker.on("notifyHostingInitDone", ({ success, projectId, folderPath, framework }) => {
+      if (success) {
+        webLogger.debug(`notifyHostingInitDone: ${projectId}, ${folderPath}`);
+        setHostingInitState('done');
+        if (framework) {
+          setFramework(framework);
+        }
+      } else {
+        setHostingInitState('not-started');
       }
     });
 
@@ -132,7 +137,7 @@ export function SidebarApp() {
       {!!user && (
         <ProjectSection userEmail={user.email} projectId={projectId} />
       )}
-      {isHostingOnboarded && !!user && !!projectId && (
+      {hostingInitState === 'done' && !!user && !!projectId && (
         <DeployPanel
           hostingState={hostingState}
           setHostingState={setHostingState}
@@ -142,11 +147,13 @@ export function SidebarApp() {
         />
       )}
       <Spacer size="large" />
-      {!isHostingOnboarded && !!user && !!projectId && (
+      {hostingInitState !== 'done' && !!user && !!projectId && (
         <InitFirebasePanel
           onHostingInit={() => {
             setupHosting();
           }}
+          hostingInitState={hostingInitState}
+          setHostingInitState={setHostingInitState}
         />
       )}
     </>
