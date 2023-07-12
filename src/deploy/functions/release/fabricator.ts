@@ -323,7 +323,7 @@ export class Fabricator {
             // eventarc.createChannel doesn't always return 409 when channel already exists.
             // Ex. when channel exists and has active triggers the API will return 400 (bad
             // request) with message saying something about active triggers. So instead of
-            // relying on 409 response we explicitly check for channel existense.
+            // relying on 409 response we explicitly check for channel existence.
             if ((await eventarc.getChannel(channel)) !== undefined) {
               return;
             }
@@ -622,8 +622,8 @@ export class Fabricator {
       await this.unregisterBlockingTrigger(endpoint);
     }
     // N.B. Like Pub/Sub topics, we don't delete Eventarc channels because we
-    // don't know if there are any subscriers or not. If we start supporting 2P
-    // channels, we might need to revist this or else the events will still get
+    // don't know if there are any subscribers or not. If we start supporting 2P
+    // channels, we might need to revisit this or else the events will still get
     // published and the customer will still get charged.
   }
 
