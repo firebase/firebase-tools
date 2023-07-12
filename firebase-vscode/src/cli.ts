@@ -33,10 +33,16 @@ import { setAccessToken } from "../../src/apiv2";
 async function getServiceAccount() {
   let email = null;
   try {
-    // Do not send options to make sure no oauth user/token is sent
+    // Make sure no user/token is sent
     // to requireAuth which would prevent autoAuth() from being reached.
-    // We do need to send isVSCE true to prevent project selection popup
-    email = (await requireAuth({ isVSCE: true })) || null;
+    // We do need to send isVSCE to prevent project selection popup
+    const optionsMinusUser = await getCommandOptions(undefined, {
+      ...currentOptions
+    });
+    delete optionsMinusUser.user;
+    delete optionsMinusUser.tokens;
+    delete optionsMinusUser.token;
+    email = (await requireAuth(optionsMinusUser)) || null;
   } catch (e) {
     let errorMessage = e.message;
     if (e.original?.message) {
