@@ -38,7 +38,7 @@ export async function doSetup(setup: any): Promise<void> {
       name: "serviceName",
       type: "input",
       default: "acme-inc-web",
-      message: "Create a name for your service [6-32 characters]",
+      message: "Create a name for your service [1-30 characters]",
     },
     setup.frameworks
   );
@@ -137,7 +137,7 @@ async function getExistingStack(projectId: string, setup: any, location: string)
         name: "serviceName",
         type: "input",
         default: "acme-inc-web",
-        message: "Please enter a new service name [6-32 characters]",
+        message: "Please enter a new service name [1-30 characters]",
       },
       setup.frameworks
     );
