@@ -1,2 +1,2 @@
-export type HostingState = null | "success" | "failure" | "deploying";
-export type HostingInitState = "not-started" | "pending" | "done";
+export type DeployState = null | "success" | "failure" | "deploying";
+export type HostingInitState = null | "success" | "failure" | "pending";
