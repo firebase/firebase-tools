@@ -1,4 +1,3 @@
-
 export const SIGNED_URL_MIN_TTL_MILLIS = 0;
 export const SIGNED_URL_MAX_TTL_MILLIS = 7 * 24 * 60 * 60 * 1000;
 export const SIGNED_URL_DEFAULT_TTL_MILLIS = 60 * 60 * 1000;

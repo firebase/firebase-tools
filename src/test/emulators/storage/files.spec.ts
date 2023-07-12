@@ -8,7 +8,6 @@ import { ForbiddenError, NotFoundError, BadRequestError } from "../../../emulato
 import { Persistence } from "../../../emulator/storage/persistence";
 import { FirebaseRulesValidator } from "../../../emulator/storage/rules/utils";
 import { UploadService } from "../../../emulator/storage/upload";
-import sinon from "sinon";
 
 const ALWAYS_TRUE_RULES_VALIDATOR = {
   validate: () => Promise.resolve(true),
