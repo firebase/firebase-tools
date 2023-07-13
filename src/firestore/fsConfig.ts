@@ -67,6 +67,14 @@ export function getFirestoreConfig(projectId: string, options: Options): ParsedF
     }
   }
 
+  // If user specifies firestore:rules or firestore:indexes make sure we don't throw an error if this doesn't match a database name
+  if (onlyDatabases.has("rules")) {
+    onlyDatabases.delete("rules");
+  }
+  if (onlyDatabases.has("indexes")) {
+    onlyDatabases.delete("indexes");
+  }
+
   if (!allDatabases && onlyDatabases.size !== 0) {
     throw new FirebaseError(
       `Could not find configurations in firebase.json for the following database targets: ${[
