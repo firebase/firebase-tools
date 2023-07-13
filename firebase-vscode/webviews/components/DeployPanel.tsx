@@ -10,7 +10,7 @@ import { Label } from "./ui/Text";
 import { broker } from "../globals/html-broker";
 import styles from "../sidebar.entry.scss";
 import { PanelSection } from "./ui/PanelSection";
-import { HostingState } from "../webview-types";
+import { DeployState as DeployState } from "../webview-types";
 import { ChannelWithId } from "../messaging/types";
 import { ExternalLink } from "./ui/ExternalLink";
 import { SplitButton } from "./ui/SplitButton";
@@ -24,14 +24,14 @@ interface DeployInfo {
 }
 
 export function DeployPanel({
-  hostingState,
-  setHostingState,
+  deployState,
+  setDeployState,
   projectId,
   channels,
   framework,
 }: {
-  hostingState: HostingState;
-  setHostingState: (hostingState: HostingState) => void;
+  deployState: DeployState;
+  setDeployState: (deployState: DeployState) => void;
   projectId: string;
   channels: ChannelWithId[];
   framework: string;
@@ -41,15 +41,15 @@ export function DeployPanel({
   const [deployedInfo, setDeployedInfo] = useState<DeployInfo>(null);
 
   useEffect(() => {
-    if (hostingState === "success" || hostingState === "failure") {
+    if (deployState === "success" || deployState === "failure") {
       setDeployedInfo({
         date: new Date().toLocaleString(),
         channelId: deployTarget === "new" ? newPreviewChannel : deployTarget,
-        succeeded: hostingState === "success",
+        succeeded: deployState === "success",
       });
       setNewPreviewChannel("");
     }
-  }, [hostingState]);
+  }, [deployState]);
 
   useEffect(() => {
     broker.on("notifyPreviewChannelResponse", ({ id }: { id: string }) => {
@@ -117,7 +117,7 @@ export function DeployPanel({
     <SplitButton
       appearance="primary"
       onClick={() => {
-        setHostingState("deploying");
+        setDeployState("deploying");
         broker.send("hostingDeploy", {
           target: deployTarget === "new" ? newPreviewChannel : deployTarget,
         });
@@ -166,7 +166,7 @@ export function DeployPanel({
         <>
           {DeploySplitButton}
           <Spacer size="xsmall" />
-          {hostingState !== "deploying" && (
+          {deployState !== "deploying" && (
             <>
               <Spacer size="xsmall" />
               <div>
@@ -182,7 +182,7 @@ export function DeployPanel({
               </div>
             </>
           )}
-          {hostingState === "deploying" && (
+          {deployState === "deploying" && (
             <>
               <Spacer size="medium" />
               <div className={styles.integrationStatus}>
