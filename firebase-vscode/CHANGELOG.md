@@ -1,5 +1,9 @@
 # Change Log
 
+## 0.0.24-alpha
+
+- Ensure Google login flow works in Monospace.
+
 ## 0.0.23 (July 13, 2023)
 
 - Same as alpha.5, marked as stable.
