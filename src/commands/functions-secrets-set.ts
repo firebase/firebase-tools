@@ -9,13 +9,17 @@ import { Command } from "../command";
 import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
 import { promptOnce } from "../prompt";
-import { logBullet, logSuccess } from "../utils";
+import { logBullet, logSuccess, logWarning } from "../utils";
 import { needProjectId, needProjectNumber } from "../projectUtils";
-import { addVersion, toSecretVersionResourceName } from "../gcp/secretManager";
+import {
+  addVersion,
+  destroySecretVersion,
+  toSecretVersionResourceName,
+} from "../gcp/secretManager";
+import { check } from "../ensureApiEnabled";
 import * as secrets from "../functions/secrets";
 import * as backend from "../deploy/functions/backend";
 import * as args from "../deploy/functions/args";
-import { check } from "../ensureApiEnabled";
 
 export const command = new Command("functions:secrets:set <KEY>")
   .description("Create or update a secret for use in Cloud Functions for Firebase.")
@@ -74,7 +78,7 @@ export const command = new Command("functions:secrets:set <KEY>")
       return;
     }
 
-    const haveBackend = await backend.existingBackend({ projectId } as args.Context);
+    let haveBackend = await backend.existingBackend({ projectId } as args.Context);
     const endpointsToUpdate = backend
       .allEndpoints(haveBackend)
       .filter((e) => secrets.inUse({ projectId, projectNumber }, secret, e));
@@ -118,4 +122,36 @@ export const command = new Command("functions:secrets:set <KEY>")
       return updated;
     });
     await Promise.all(updateOps);
+
+    // Double check that old secrets versions are unused.
+    haveBackend = await backend.existingBackend({ projectId } as args.Context, true);
+    const staleEndpoints = backend.allEndpoints(
+      backend.matchingBackend(haveBackend, (e) => {
+        const pInfo = { projectId, projectNumber };
+        return secrets.inUse(pInfo, secret, e) && !secrets.versionInUse(pInfo, secretVersion, e);
+      })
+    );
+    if (staleEndpoints.length !== 0) {
+      logWarning(
+        `${staleEndpoints.length} functions are unexpectedly using old version of secret ${secret.name} still:\n\t` +
+          staleEndpoints.map((e) => `${e.id}(${e.region})`).join("\n\t")
+      );
+      logBullet(
+        "Please deploy your functions manually for the change to take effect by running:\n\t" +
+          clc.bold("firebase deploy --only functions")
+      );
+    }
+
+    // Remove stale secret versions;
+    const secretsToPrune = (
+      await secrets.pruneSecrets({ projectId, projectNumber }, backend.allEndpoints(haveBackend))
+    ).filter((sv) => sv.key === key);
+    logBullet(
+      `Removing secret versions: ${secretsToPrune
+        .map((sv) => sv.key + "[" + sv.version + "]")
+        .join(", ")}`
+    );
+    await Promise.all(
+      secretsToPrune.map((sv) => destroySecretVersion(projectId, sv.secret, sv.version))
+    );
   });
