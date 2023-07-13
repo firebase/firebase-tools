@@ -58,8 +58,9 @@ export function getFirestoreConfig(projectId: string, options: Options): ParsedF
         onlyDatabases.delete(target);
       }
     } else if (database) {
-      if (allDatabases) {
+      if (allDatabases || onlyDatabases.has(database)) {
         results.push(c as ParsedFirestoreConfig);
+        onlyDatabases.delete(database);
       }
     } else {
       throw new FirebaseError('Must supply either "target" or "databaseId" in firestore config');
