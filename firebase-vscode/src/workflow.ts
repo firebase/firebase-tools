@@ -296,6 +296,7 @@ export async function setupWorkflow(
   }
 
   async function selectAndInitHosting({ projectId, singleAppSupport }) {
+    showOutputChannel();
     currentFramework = undefined;
     // Note: discover() takes a few seconds. No need to block users that don't
     // have frameworks support enabled.
@@ -303,9 +304,10 @@ export async function setupWorkflow(
       currentFramework = useFrameworks && await discover(currentOptions.cwd, false);
       pluginLogger.debug('Searching for a web framework in this project.');
     }
+    let success = false;
     if (currentFramework) {
       pluginLogger.debug('Detected web framework, launching frameworks init.');
-      await initHosting({
+      success = await initHosting({
         spa: singleAppSupport,
         useFrameworks: true
       });
@@ -322,16 +324,21 @@ export async function setupWorkflow(
         const publicFolder = publicFolderFull.substring(
           currentOptions.cwd.length + 1
         );
-        await initHosting({
+        success = await initHosting({
           spa: singleAppSupport,
           public: publicFolder,
           useFrameworks: false
         });
       }
     }
-    readAndSendFirebaseConfigs(broker, context);
-    broker.send("notifyHostingInitDone",
-      { projectId, folderPath: currentOptions.cwd, framework: currentFramework });
-    await fetchChannels(true);
+    if (success) {
+      readAndSendFirebaseConfigs(broker, context);
+      broker.send("notifyHostingInitDone",
+        { success, projectId, folderPath: currentOptions.cwd, framework: currentFramework });
+      await fetchChannels(true);
+    } else {
+      broker.send("notifyHostingInitDone",
+        { success, projectId, folderPath: currentOptions.cwd });
+    }
   }
 }

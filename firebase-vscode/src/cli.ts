@@ -33,12 +33,31 @@ import { setAccessToken } from "../../src/apiv2";
 async function getServiceAccount() {
   let email = null;
   try {
-    // Empty to make sure no oauth user/token is sent to requireAuth
-    // which would prevent autoAuth() from being reached
-    email = (await requireAuth({})) || null;
+    // Make sure no user/token is sent
+    // to requireAuth which would prevent autoAuth() from being reached.
+    // We do need to send isVSCE to prevent project selection popup
+    const optionsMinusUser = await getCommandOptions(undefined, {
+      ...currentOptions
+    });
+    delete optionsMinusUser.user;
+    delete optionsMinusUser.tokens;
+    delete optionsMinusUser.token;
+    email = (await requireAuth(optionsMinusUser)) || null;
   } catch (e) {
-    pluginLogger.debug('No service account found (this may be normal), requireAuth error output:',
-      e.original || e);
+    let errorMessage = e.message;
+    if (e.original?.message) {
+      errorMessage += ` (original: ${e.original.message})`;
+    }
+    if (process.env.MONOSPACE_ENV) {
+      // If it can't find a service account in Monospace, that's a blocking
+      // error and we should throw.
+      throw new Error(`Unable to find service account. `
+        +`requireAuthError: ${errorMessage}`);
+    } else {
+      // In other environments, it is common to not find a service account.
+      pluginLogger.debug(`No service account found (this may be normal), `
+        +`requireAuth error output: ${errorMessage}`);
+    }
     return null;
   }
   if (process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL) {
@@ -109,14 +128,19 @@ async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
     return false;
   } catch (e) {
     if (showError) {
-      pluginLogger.error('requireAuth error: ', e.original || e);
+      // Show error to user - show a popup and log it with log level
+      // "error". Usually set on user-triggered actions such as
+      // init hosting and deploy.
+      pluginLogger.error(`requireAuth error: ${e.original?.message || e.message}`);
       vscode.window.showErrorMessage("Not logged in", {
         modal: true,
         detail: `Log in by clicking "Sign in with Google" in the sidebar.`,
       });
     } else {
+      // User shouldn't need to see this error - not actionable,
+      // but we should log it for debugging purposes.
       pluginLogger.debug('requireAuth error output: ',
-        e.original || e);
+        e.original?.message || e.message);
     }
     return false;
   }
@@ -193,8 +217,12 @@ export async function listProjects() {
 
 export async function initHosting(
   options: { spa: boolean; public?: string, useFrameworks: boolean }
-) {
-  await requireAuthWrapper();
+): Promise<boolean> {
+  const loggedIn = await requireAuthWrapper(true);
+  if (!loggedIn) {
+    pluginLogger.error('No user found, canceling hosting init');
+    return false;
+  }
   let webFrameworksOptions = {};
   if (options.useFrameworks) {
     pluginLogger.debug('Setting web frameworks options');
@@ -215,17 +243,25 @@ export async function initHosting(
   };
   pluginLogger.debug('Calling hosting init with inquirer options', inspect(inquirerOptions));
   setInquirerOptions(inquirerOptions);
-  await initAction("hosting", commandOptions);
+  try {
+    await initAction("hosting", commandOptions);
+  } catch(e) {
+    pluginLogger.error(e.message);
+    return false;
+  }
+  return true;
 }
+
 export async function deployToHosting(
   firebaseJSON: Config,
   deployTarget: string
 ) {
-  if (!(await requireAuthWrapper())) {
+  if (!(await requireAuthWrapper(true))) {
+    pluginLogger.error('No user found, canceling deployment');
     return { success: false, hostingUrl: "", consoleUrl: "" };
   }
 
-  // TODO(hsubox76): throw if it doesn't find firebaseJSON or the hosting field
+  // TODO(hsubox76): throw if it doesn't find firebaseJSON
   try {
     const options = { ...currentOptions };
     // TODO(hsubox76): handle multiple hosting configs
