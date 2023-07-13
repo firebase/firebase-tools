@@ -1,13 +1,13 @@
 import { expect } from "chai";
 import { tmpdir } from "os";
-
 import { StoredFileMetadata } from "../../../emulator/storage/metadata";
 import { StorageCloudFunctions } from "../../../emulator/storage/cloudFunctions";
-import { StorageLayer } from "../../../emulator/storage/files";
+import { StorageLayer, convertDateToMS } from "../../../emulator/storage/files";
 import { ForbiddenError, NotFoundError, BadRequestError } from "../../../emulator/storage/errors";
 import { Persistence } from "../../../emulator/storage/persistence";
 import { FirebaseRulesValidator } from "../../../emulator/storage/rules/utils";
 import { UploadService } from "../../../emulator/storage/upload";
+import { SIGNED_URL_MAX_TTL_MILLIS } from "../../../emulator/storage/constants";
 
 const ALWAYS_TRUE_RULES_VALIDATOR = {
   validate: () => Promise.resolve(true),
@@ -158,7 +158,7 @@ describe.only("files", () => {
         ).to.be.rejectedWith(NotFoundError);
       });
 
-      it.only("should throw an error if TTL in MS aren't passed", async () => {
+      it("should throw an error if TTL in MS aren't passed", async () => {
         const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
 
         expect(
@@ -171,18 +171,46 @@ describe.only("files", () => {
         ).to.be.rejectedWith(BadRequestError);
       });
 
-      //   it("should throw an error if the URL is not alive", () => {
-      //     const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
-      //     expect(
-      //       storageLayer.getObject({
-      //         bucketId: "bucket",
-      //         decodedObjectId: "dir%2Fobject",
-      //         urlSignature: "mockSignature",
-      //         urlTtlMs: 10,
-      //         urlUsableMs: String(Number(getCurrentDate()) - 11),
-      //       })
-      //     ).to.be.rejectedWith(BadRequestError);
-      //   });
+      it("should throw an error if the URL has expired. TTL is 1 MS", () => {
+        const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
+
+        expect(
+          storageLayer.getObject({
+            bucketId: "bucket",
+            decodedObjectId: "dir%2Fobject",
+            urlSignature: "mockSignature",
+            urlTtlMs: 1,
+            urlUsableMs: getAdjustedDate(-1),
+          })
+        ).to.be.rejectedWith(BadRequestError);
+      });
+
+      it("should throw an error if the URL has expired. TTL is 1 Week(Max)", () => {
+        const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
+
+        expect(
+          storageLayer.getObject({
+            bucketId: "bucket",
+            decodedObjectId: "dir%2Fobject",
+            urlSignature: "mockSignature",
+            urlTtlMs: SIGNED_URL_MAX_TTL_MILLIS,
+            urlUsableMs: getAdjustedDate(- SIGNED_URL_MAX_TTL_MILLIS),
+          })
+        ).to.be.rejectedWith(BadRequestError);
+      });
+
+      it("should throw an error if the usable date is in the future", () => {
+        const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
+        expect(
+          storageLayer.getObject({
+            bucketId: "bucket",
+            decodedObjectId: "dir%2Fobject",
+            urlSignature: "mockSignature",
+            urlTtlMs: 10,
+            urlUsableMs: getAdjustedDate(1),
+          })
+        ).to.be.rejectedWith(BadRequestError);
+      });
     });
 
     //   it("should throw an error if usable MS aren't passed", () => {
@@ -214,4 +242,18 @@ describe.only("files", () => {
 });
 function getCurrentDate(): string {
   return new Date().toISOString().replaceAll("-", "").replaceAll(":", "").replaceAll(".", "");
+}
+
+/**
+ * get the current date and add of changeBy milliseconds
+ * @date 7/12/2023 - 4:28:20 PM
+ *
+ * @param {number} changeBy
+ * @returns {string}
+ */
+function getAdjustedDate(changeBy: number): string {
+  const newDate = new Date();
+  const adjutedDate = new Date(newDate.getTime() + changeBy);
+
+  return adjutedDate.toISOString().replaceAll("-", "").replaceAll(":", "").replaceAll(".", "");
 }

@@ -241,14 +241,17 @@ export class StorageLayer {
         const prevSignature = request.urlSignature;
 
         if (!request.urlUsableMs || !request.urlTtlMs) {
-          console.log("about too throw error");
           throw new BadRequestError(`Invalid TTL`);
         }
         const start = convertDateToMS(request.urlUsableMs);
+
         const end = start + request.urlTtlMs;
         const now = convertDateToMS(this.getCurrentDate());
 
-        const isLive = now < end;
+        const isLive = now >= start && now < end;
+        if (now < start) {
+          console.log("in future");
+        }
 
         if (!isLive) {
           throw new BadRequestError("Url has Expired");
@@ -286,7 +289,6 @@ export class StorageLayer {
     }
 
     if (!metadata) {
-      console.log("anout to throw error");
       throw new NotFoundError("File not found");
     }
 
@@ -777,15 +779,16 @@ function getPathSep(decodedPath: string): string {
   const firstSepIndex = decodedPath.search(/[\/|\\\\]/g);
   return decodedPath[firstSepIndex];
 }
-
-function convertDateToMS(currentDate: string) {
+export function convertDateToMS(currentDate: string) {
   const year = +currentDate.slice(0, 4);
   const month = +currentDate.slice(4, 6) - 1;
   const day = +currentDate.slice(6, 8);
   const hour = +currentDate.slice(9, 11);
   const minute = +currentDate.slice(11, 13);
   const second = +currentDate.slice(13, 15);
+  const milliseconds = +currentDate.slice(15, 18);
 
-  const date = new Date(Date.UTC(year, month, day, hour, minute, second));
+  const date = new Date(Date.UTC(year, month, day, hour, minute, second, milliseconds));
+
   return date.getTime();
 }
