@@ -1,8 +1,10 @@
 import * as utils from "../utils";
 import * as poller from "../operation-poller";
-import * as gcf from "../gcp/cloudfunctions";
+import * as gcfV1 from "../gcp/cloudfunctions";
+import * as gcfV2 from "../gcp/cloudfunctionsv2";
 import * as backend from "../deploy/functions/backend";
 import * as ensureApiEnabled from "../ensureApiEnabled";
+import { functionsOrigin, functionsV2Origin } from "../api";
 import {
   createSecret,
   destroySecretVersion,
@@ -21,11 +23,28 @@ import { logWarning } from "../utils";
 import { promptOnce } from "../prompt";
 import { validateKey } from "./env";
 import { logger } from "../logger";
-import { functionsOrigin } from "../api";
 import { assertExhaustive } from "../functional";
 import { needProjectId } from "../projectUtils";
 
 const FIREBASE_MANAGED = "firebase-managed";
+
+// For mysterious reasons, importing the poller option in fabricator.ts leads to some
+// value of the poller option to be undefined at runtime. I can't figure out what's going on,
+// but don't have time to find out. Taking a shortcut and copying the values directly in
+// violation of DRY. Sorry!
+const gcfV1PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
+  apiOrigin: functionsOrigin,
+  apiVersion: "v1",
+  masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
+  maxBackoff: 10_000,
+};
+
+const gcfV2PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
+  apiOrigin: functionsV2Origin,
+  apiVersion: "v2",
+  masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
+  maxBackoff: 10_000,
+};
 
 type ProjectInfo = {
   projectId: string;
@@ -172,6 +191,27 @@ export function inUse(projectInfo: ProjectInfo, secret: Secret, endpoint: backen
 }
 
 /**
+ * Checks whether a secret version in use by the given endpoint.
+ */
+export function versionInUse(
+  projectInfo: ProjectInfo,
+  sv: SecretVersion,
+  endpoint: backend.Endpoint
+): boolean {
+  const { projectId, projectNumber } = projectInfo;
+  for (const sev of of([endpoint])) {
+    if (
+      (sev.projectId === projectId || sev.projectId === projectNumber) &&
+      sev.secret === sv.secret.name &&
+      sev.version === sv.versionId
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Returns all secret versions from Firebase managed secrets unused in the given list of endpoints.
  */
 export async function pruneSecrets(
@@ -301,28 +341,32 @@ export async function updateEndpointSecret(
   }
 
   if (endpoint.platform === "gcfv1") {
-    const fn = gcf.functionFromEndpoint(endpoint, "");
-    const op = await gcf.updateFunction({
+    const fn = gcfV1.functionFromEndpoint(endpoint, "");
+    const op = await gcfV1.updateFunction({
       name: fn.name,
       runtime: fn.runtime,
       entryPoint: fn.entryPoint,
       secretEnvironmentVariables: updatedSevs,
     });
-    // Using fabricator.gcfV1PollerOptions doesn't work - apiVersion is empty on that object.
-    // Possibly due to cyclical dependency? Copying the option in verbatim instead.
-    const gcfV1PollerOptions = {
-      apiOrigin: functionsOrigin,
-      apiVersion: gcf.API_VERSION,
-      masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
-      maxBackoff: 10_000,
-      pollerName: `update-${endpoint.region}-${endpoint.id}`,
+    const cfn = await poller.pollOperation<gcfV1.CloudFunction>({
+      ...gcfV1PollerOptions,
       operationResourceName: op.name,
-    };
-    const cfn = await poller.pollOperation<gcf.CloudFunction>(gcfV1PollerOptions);
-    return gcf.endpointFromFunction(cfn);
+    });
+    return gcfV1.endpointFromFunction(cfn);
   } else if (endpoint.platform === "gcfv2") {
-    // TODO add support for updating secrets in v2 functions once the feature lands.
-    throw new FirebaseError(`Unsupported platform ${endpoint.platform}`);
+    const fn = gcfV2.functionFromEndpoint(endpoint);
+    const op = await gcfV2.updateFunction({
+      ...fn,
+      serviceConfig: {
+        ...fn.serviceConfig,
+        secretEnvironmentVariables: updatedSevs,
+      },
+    });
+    const cfn = await poller.pollOperation<gcfV2.OutputCloudFunction>({
+      ...gcfV2PollerOptions,
+      operationResourceName: op.name,
+    });
+    return gcfV2.endpointFromFunction(cfn);
   } else {
     assertExhaustive(endpoint.platform);
   }
