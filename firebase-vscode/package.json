@@ -3,7 +3,7 @@
   "displayName": "firebase-vscode",
   "publisher": "firebase",
   "description": "VSCode Extension for Firebase",
-  "version": "0.0.9",
+  "version": "0.0.23-alpha.4",
   "engines": {
     "vscode": "^1.69.0"
   },
@@ -20,16 +20,26 @@
     "configuration": {
       "title": "Firebase VS Code Extension",
       "properties": {
-        "firebase-vscode-extension.firebaseRcFolder": {
+        "firebase.debug": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable writing debug-level messages to the file provided in firebase.debugLogPath (requires restart)"
+        },
+        "firebase.debugLogPath": {
           "type": "string",
           "default": "",
-          "description": "Firebase RC folder"
+          "description": "If firebase.debug is true, appends debug-level messages to the provided file (requires restart)"
+        },
+        "firebase.npmPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to NPM executable in local environment"
+        },
+        "firebase.useFrameworks": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable web frameworks"
         }
-      },
-      "firebase.debug": {
-        "type": "boolean",
-        "default": false,
-        "description": "Logs debug-level messages to firebase-plugin-debug.log (requires restart)"
       }
     },
     "viewsContainers": {
@@ -58,7 +68,19 @@
           "name": "Firebase"
         }
       ]
-    }
+    },
+    "jsonValidation": [
+      {
+        "fileMatch": "firebase.json",
+        "url": "https://raw.githubusercontent.com/firebase/firebase-tools/master/schema/firebase-config.json"
+      }
+    ],
+    "yamlValidation": [
+      {
+        "fileMatch": "extension.yaml",
+        "url": "https://raw.githubusercontent.com/firebase/firebase-tools/master/schema/extension-yaml.json"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run build",
@@ -72,7 +94,7 @@
     "build": "npm run copyfiles && webpack --config webpack.prod.js --devtool hidden-source-map",
     "build:extension": "webpack --config webpack.prod.js --config-name extension",
     "build:sidebar": "npm run copyfiles && webpack --config webpack.prod.js --config-name sidebar",
-    "pretest": "npm run build && npm run lint",
+    "pretest": "npm run dev ; npm run lint && tsc -p src/test/tsconfig.test.json",
     "lint": "eslint src --ext ts",
     "test": "node ./dist/test/runTest.js"
   },

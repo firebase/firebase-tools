@@ -6,6 +6,7 @@ import { Label } from "./ui/Text";
 import React from "react";
 import styles from "./AccountSection.scss";
 import { ExternalLink } from "./ui/ExternalLink";
+import { TEXT } from "../globals/ux-text";
 
 export function ProjectSection({
   userEmail,
@@ -43,7 +44,7 @@ export function ProjectSection({
 
 export function initProjectSelection(userEmail: string | null) {
   if (userEmail) {
-    broker.send("selectProject", { email: userEmail });
+    broker.send("selectProject");
   } else {
     broker.send("showMessage", {
       msg: "Not logged in",
@@ -60,7 +61,7 @@ export function ConnectProject({ userEmail }: { userEmail: string | null }) {
   return (
     <>
       <VSCodeLink onClick={() => initProjectSelection(userEmail)}>
-        Connect a Firebase project
+        {TEXT.CONNECT_FIREBASE_PROJECT}
       </VSCodeLink>
     </>
   );
@@ -72,7 +73,7 @@ export function ProjectInfo({ projectId }: { projectId: string }) {
       {projectId}
       <ExternalLink
         href={`https://console.firebase.google.com/project/${projectId}/overview`}
-        text="Open in Firebase Console"
+        text={TEXT.CONSOLE_LINK_DESCRIPTION}
       />
     </>
   );

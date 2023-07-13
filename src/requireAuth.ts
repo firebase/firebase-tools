@@ -33,14 +33,24 @@ function getAuthClient(config: GoogleAuthOptions): GoogleAuth {
 
 /**
  * Retrieves and sets the access token for the current user.
+ * Returns account email if found.
  * @param options CLI options.
  * @param authScopes scopes to be obtained.
  */
-async function autoAuth(options: Options, authScopes: string[]): Promise<void> {
+async function autoAuth(options: Options, authScopes: string[]): Promise<void | string> {
   const client = getAuthClient({ scopes: authScopes, projectId: options.project });
 
   const token = await client.getAccessToken();
   token !== null ? apiv2.setAccessToken(token) : false;
+
+  let clientEmail;
+  try {
+    const credentials = await client.getCredentials();
+    clientEmail = credentials.client_email;
+  } catch (e) {
+    // Make sure any error here doesn't block the CLI, but log it.
+    logger.debug(`Error getting account credentials.`);
+  }
 
   if (!options.isVSCE && isMonospaceEnv()) {
     await selectProjectInMonospace({
@@ -49,13 +59,15 @@ async function autoAuth(options: Options, authScopes: string[]): Promise<void> {
       isVSCE: options.isVSCE,
     });
   }
+
+  return clientEmail;
 }
 
 /**
  * Ensures that there is an authenticated user.
  * @param options CLI options.
  */
-export async function requireAuth(options: any): Promise<void> {
+export async function requireAuth(options: any): Promise<string | void> {
   api.setScopes([scopes.CLOUD_PLATFORM, scopes.FIREBASE_PLATFORM]);
   options.authScopes = api.getScopes();
 

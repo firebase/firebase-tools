@@ -4,7 +4,7 @@ import * as path from "path";
 import * as fsConfig from "../firestore/fsConfig";
 
 import { logger } from "../logger";
-import { track, trackEmulator } from "../track";
+import { trackEmulator, trackGA4 } from "../track";
 import * as utils from "../utils";
 import { EmulatorRegistry } from "./registry";
 import {
@@ -351,6 +351,10 @@ export async function startAll(
       extensionsBackends
     );
     emulatableBackends.push(...filteredExtensionsBackends);
+    trackGA4("extensions_emulated", {
+      number_of_extensions_emulated: filteredExtensionsBackends.length,
+      number_of_extensions_ignored: extensionsBackends.length - filteredExtensionsBackends.length,
+    });
   }
 
   const listenConfig = {} as Record<PortName, EmulatorListenConfig>;
@@ -401,7 +405,6 @@ export async function startAll(
     const name = instance.getName();
 
     // Log the command for analytics
-    void track("Emulator Run", name);
     void trackEmulator("emulator_run", {
       emulator_name: name,
       is_demo_project: String(isDemoProject),
@@ -421,7 +424,6 @@ export async function startAll(
     // since we originally mistakenly reported emulators:start events
     // for each emulator, by reporting the "hub" we ensure that our
     // historical data can still be viewed.
-    void track("emulators:start", "hub");
     await startEmulator(hub);
   }
 

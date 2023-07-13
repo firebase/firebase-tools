@@ -4,20 +4,16 @@
  */
 
 import { FirebaseConfig } from '../../../src/firebaseConfig';
-import { FirebaseRC } from "../firebaserc";
 import { User } from "../../../src/types/auth";
 import { ServiceAccountUser } from "../types";
+import { RCData } from '../../../src/rc';
 import { EmulatorUiSelections, RunningEmulatorInfo } from "./types";
 
 export interface WebviewToExtensionParamsMap {
   /**
-   * Ask extension for env variables
+   * Ask extension for initial data
    */
-  getEnv: {};
-  /**
-   * User management
-   */
-  getUsers: {};
+  getInitialData: {};
   addUser: {};
   logout: { email: string };
 
@@ -25,21 +21,15 @@ export interface WebviewToExtensionParamsMap {
   requestChangeUser: { user: User | ServiceAccountUser };
 
   /** Trigger project selection */
-  selectProject: { email: string };
+  selectProject: {};
   /**
    * Runs `firebase init hosting` command.
    * TODO(hsubox76): Generalize to work for all `firebase init` products.
    */
   selectAndInitHostingFolder: {
     projectId: string,
-    email: string,
     singleAppSupport: boolean
   };
-
-  /**
-   * Get hosting channels.
-   */
-  getChannels: {};
 
   /**
    * Runs `firebase deploy` for hosting.
@@ -50,16 +40,9 @@ export interface WebviewToExtensionParamsMap {
   };
 
   /**
-   * Get currently selected Firebase project from extension runtime.
+   * Prompt user for text input
    */
-  getSelectedProject: {};
-
-  /**
-   * Fetches the contents of the .firebaserc and firebase.json config files.
-   * If either or both files do not exist, then it will return a default
-   * value.
-   */
-  getFirebaseJson: {};
+  promptUserForInput: { title: string, prompt: string };
 
   /**
    * Show a UI message using the vscode interface
@@ -81,7 +64,7 @@ export interface WebviewToExtensionParamsMap {
   /** 
    * Equivalent to the `firebase emulators:start` command.
   */
-  launchEmulators : {
+  launchEmulators: {
     emulatorUiSelections: EmulatorUiSelections,
   };
 
@@ -107,13 +90,17 @@ export interface ExtensionToWebviewParamsMap {
   /**
    * This can potentially call multiple webviews to notify of user selection.
    */
-  notifyUserChanged: { email: string };
+  notifyUserChanged: { user: User | ServiceAccountUser };
 
   /**
    * Notifies webview when user has successfully selected a hosting folder
    * and it has been written to firebase.json.
    */
-  notifyHostingFolderReady: { projectId: string, folderPath: string };
+  notifyHostingInitDone: {
+    projectId: string,
+    folderPath?: string
+    framework?: string
+  };
 
   /**
    * Notify webview of status of deployment attempt.
@@ -128,10 +115,15 @@ export interface ExtensionToWebviewParamsMap {
    * Notify webview of initial discovery or change in firebase.json or
    * .firebaserc
    */
-  notifyFirebaseConfig: { firebaseJson: FirebaseConfig, firebaseRC: FirebaseRC };
+  notifyFirebaseConfig: { firebaseJson: FirebaseConfig, firebaseRC: RCData };
+
+  /**
+   * Return user-selected preview channel name
+   */
+  notifyPreviewChannelResponse: { id: string };
 
   notifyEmulatorsStopped: {};
-  notifyRunningEmulatorInfo: RunningEmulatorInfo ;
+  notifyRunningEmulatorInfo: RunningEmulatorInfo;
   notifyEmulatorImportFolder: { folder: string };
 }
 

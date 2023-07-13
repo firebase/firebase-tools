@@ -1,2 +1,2 @@
 
-export type HostingState = null | "deployed" | "deploying";
+export type HostingState = null | "success" | "failure" | "deploying";

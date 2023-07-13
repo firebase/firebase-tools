@@ -12,68 +12,114 @@ import { hostingChannelDeployAction } from "../../src/commands/hosting-channel-d
 import { listFirebaseProjects } from "../../src/management/projects";
 import { requireAuth } from "../../src/requireAuth";
 import { deploy } from "../../src/deploy";
-import { FirebaseRC } from "../../src/firebaserc";
 import { getDefaultHostingSite } from "../../src/getDefaultHostingSite";
 import { initAction } from "../../src/commands/init";
-import { startAll as startAllEmulators, cleanShutdown as stopAllEmulators } from "../../src/emulator/controller";
-import { EmulatorRegistry } from "../../src/emulator/registry";
-import { EmulatorInfo, Emulators } from "../../src/emulator/types";
-import { FirebaseConfig, HostingSingle } from "../../src/firebaseConfig";
 import { Account, User } from "../../src/types/auth";
 import { Options } from "../../src/options";
 import { currentOptions, getCommandOptions } from "./options";
 import { setInquirerOptions } from "./stubs/inquirer-stub";
 import { ServiceAccount } from "../common/types";
 import { listChannels } from "../../src/hosting/api";
-import { ChannelWithId } from "./messaging/types";
-import * as commandUtils from "../../src/emulator/commandUtils";
-import { EmulatorUiSelections } from "../common/messaging/types";
-import { setEnabled } from "../../src/experiments";
+import { ChannelWithId } from "../common/messaging/types";
 import { pluginLogger } from "./logger-wrapper";
+import { Config } from "../../src/config";
+import { currentUser } from "./workflow";
+import { setAccessToken } from "../../src/apiv2";
+
+/**
+ * Try to get a service account by calling requireAuth() without
+ * providing any account info.
+ */
+async function getServiceAccount() {
+  let email = null;
+  try {
+    // Empty to make sure no oauth user/token is sent to requireAuth
+    // which would prevent autoAuth() from being reached
+    email = (await requireAuth({})) || null;
+  } catch (e) {
+    pluginLogger.debug('No service account found (this may be normal), requireAuth error output:',
+      e.original || e);
+    return null;
+  }
+  if (process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL) {
+    // If Monospace, get service account email using env variable as
+    // the metadata server doesn't currently return the credentials
+    // for the workspace service account. Remove when Monospace is
+    // updated to return credentials through the metadata server.
+    pluginLogger.debug(`Using WORKSPACE_SERVICE_ACCOUNT_EMAIL env `
+      + `variable to get service account email: `
+      + `${process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL}`);
+    return process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL;
+  }
+  pluginLogger.debug(`Got service account email through credentials:`
+    + ` ${email}`);
+  return email;
+}
 
 /**
  * Wrap the CLI's requireAuth() which is normally run before every command
  * requiring user to be logged in. The CLI automatically supplies it with
  * account info if found in configstore so we need to fill that part in.
  */
-async function requireAuthWrapper(showError: boolean = true) {
+async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
   // Try to get global default from configstore. For some reason this is
   // often overwritten when restarting the extension.
+  pluginLogger.debug('requireAuthWrapper');
   let account = getGlobalDefaultAccount();
   if (!account) {
     // If nothing in configstore top level, grab the first "additionalAccount"
     const accounts = getAllAccounts();
-    if (accounts.length > 0) {
-      account = accounts[0];
-      setGlobalDefaultAccount(account);
+    for (const additionalAccount of accounts) {
+      if (additionalAccount.user.email === currentUser.email) {
+        account = additionalAccount;
+        setGlobalDefaultAccount(account);
+      }
     }
   }
-  // If account is still null, `requireAuth()` will use google-auth-library
-  // to look for the service account hopefully.
+  const commandOptions = await getCommandOptions(undefined, {
+    ...currentOptions
+  });
+  // `requireAuth()` is not just a check, but will also register SERVICE
+  // ACCOUNT tokens in memory as a variable in apiv2.ts, which is needed
+  // for subsequent API calls. Warning: this variable takes precedence
+  // over Google login tokens and must be removed if a Google
+  // account is the current user.
   try {
-    const commandOptions = await getCommandOptions(undefined, {
-      ...currentOptions,
-      ...account,
-    });
-    await requireAuth(commandOptions);
+    const serviceAccountEmail = await getServiceAccount();
+    // Priority 1: Service account exists and is the current selected user
+    if (serviceAccountEmail && currentUser.email === serviceAccountEmail) {
+      // requireAuth should have been run and apiv2 token should be stored
+      // already due to getServiceAccount() call above.
+      return true;
+    } else if (account) {
+      // Priority 2: Google login account exists and is the currently selected
+      // user
+      // Priority 3: Google login account exists and there is no selected user
+      // Clear service account access token from memory in apiv2.
+      setAccessToken();
+      await requireAuth({ ...commandOptions, ...account });
+      return true;
+    } else if (serviceAccountEmail) {
+      // Priority 4: There is a service account but it's not set as
+      // currentUser for some reason, but there also isn't an oauth account.
+      // requireAuth was already run as part of getServiceAccount() above
+      return true;
+    }
+    pluginLogger.debug('No user found (this may be normal)');
+    return false;
   } catch (e) {
     if (showError) {
-      pluginLogger.error('requireAuth error', e.original || e);
+      pluginLogger.error('requireAuth error: ', e.original || e);
       vscode.window.showErrorMessage("Not logged in", {
         modal: true,
         detail: `Log in by clicking "Sign in with Google" in the sidebar.`,
       });
     } else {
-      // If "showError" is false, this may not be an error, just an indication
-      // no one is logged in. Log to "debug".
-      pluginLogger.debug('No user found (this may be normal), requireAuth error output:',
+      pluginLogger.debug('requireAuth error output: ',
         e.original || e);
     }
     return false;
   }
-  // No accounts but no error on requireAuth means it's a service account
-  // (or glogin - edge case)
-  return true;
 }
 
 export async function getAccounts(): Promise<Array<Account | ServiceAccount>> {
@@ -81,17 +127,17 @@ export async function getAccounts(): Promise<Array<Account | ServiceAccount>> {
   const accounts: Array<Account | ServiceAccount> = getAllAccounts();
   pluginLogger.debug(`Found ${accounts.length} non-service accounts.`);
   // Get other accounts (assuming service account for now, could also be glogin)
-  const otherAuthExists = await requireAuthWrapper(false);
-  if (otherAuthExists) {
-    pluginLogger.debug(`Found service account`);
+  const serviceAccountEmail = await getServiceAccount();
+  if (serviceAccountEmail) {
+    pluginLogger.debug(`Found service account: ${serviceAccountEmail}`);
     accounts.push({
-      user: { email: "service_account", type: "service_account" },
+      user: { email: serviceAccountEmail, type: "service_account" },
     });
   }
   return accounts;
 }
 
-export async function getChannels(firebaseJSON: FirebaseConfig): Promise<ChannelWithId[]> {
+export async function getChannels(firebaseJSON: Config): Promise<ChannelWithId[]> {
   if (!firebaseJSON) {
     return [];
   }
@@ -103,18 +149,14 @@ export async function getChannels(firebaseJSON: FirebaseConfig): Promise<Channel
   if (!options.project) {
     return [];
   }
-  // TODO(hsubox76): handle multiple hosting configs
-  if (!(firebaseJSON.hosting as HostingSingle).site) {
-    (firebaseJSON.hosting as HostingSingle).site =
-      await getDefaultHostingSite(options);
-  }
+  const site = await getDefaultHostingSite(options);
   pluginLogger.debug(
     'Calling listChannels with params',
     options.project,
-    (firebaseJSON.hosting as HostingSingle).site
+    site
   );
   try {
-    const channels = await listChannels(options.project, (firebaseJSON.hosting as HostingSingle).site);
+    const channels = await listChannels(options.project, site);
     return channels.map(channel => ({
       ...channel, id: channel.name.split("/").pop()
     }));
@@ -149,14 +191,13 @@ export async function listProjects() {
   return listFirebaseProjects();
 }
 
-export async function initHosting(options: { spa: boolean; public: string }) {
+export async function initHosting(
+  options: { spa: boolean; public?: string, useFrameworks: boolean }
+) {
   await requireAuthWrapper();
   let webFrameworksOptions = {};
-  if (process.env.MONOSPACE_ENV) {
-    pluginLogger.debug('initHosting found MONOSPACE_ENV, '
-      + 'setting web frameworks options');
-    // TODO(hsubox76): Also allow VS Code users to enable this manually with a UI
-    setEnabled('webframeworks', true);
+  if (options.useFrameworks) {
+    pluginLogger.debug('Setting web frameworks options');
     webFrameworksOptions = {
       // Should use auto-discovered framework
       useDiscoveredFramework: true,
@@ -176,36 +217,8 @@ export async function initHosting(options: { spa: boolean; public: string }) {
   setInquirerOptions(inquirerOptions);
   await initAction("hosting", commandOptions);
 }
-
-export async function emulatorsStart(emulatorUiSelections: EmulatorUiSelections) {
-  const commandOptions = await getCommandOptions(undefined, {
-    ...currentOptions,
-    project: emulatorUiSelections.projectId,
-    exportOnExit: emulatorUiSelections.exportStateOnExit,
-    import: emulatorUiSelections.importStateFolderPath,
-    only: emulatorUiSelections.mode === "hosting" ? "hosting" : ""
-  });
-  // Adjusts some options, export on exit can be a boolean or a path.
-  commandUtils.setExportOnExitOptions(commandOptions as commandUtils.ExportOnExitOptions);
-  return startAllEmulators(commandOptions, /*showUi=*/ true); 
-}
-
-export async function stopEmulators() {
-  await stopAllEmulators();
-}
-
-export function listRunningEmulators(): EmulatorInfo[] {
-  return EmulatorRegistry.listRunningWithInfo();
-}
-
-export function getEmulatorUiUrl(): string | undefined {
-  const url: URL = EmulatorRegistry.url(Emulators.UI);
-  return url.hostname === "unknown" ? undefined : url.toString();
-}
-
 export async function deployToHosting(
-  firebaseJSON: FirebaseConfig,
-  firebaseRC: FirebaseRC,
+  firebaseJSON: Config,
   deployTarget: string
 ) {
   if (!(await requireAuthWrapper())) {
@@ -216,11 +229,8 @@ export async function deployToHosting(
   try {
     const options = { ...currentOptions };
     // TODO(hsubox76): handle multiple hosting configs
-    if (!(firebaseJSON.hosting as HostingSingle).site) {
-      pluginLogger.debug('Calling getDefaultHostingSite() with options', inspect(options));
-      (firebaseJSON.hosting as HostingSingle).site =
-        await getDefaultHostingSite(options);
-    }
+    pluginLogger.debug('Calling getDefaultHostingSite() with options', inspect(options));
+    firebaseJSON.set('hosting', { ...firebaseJSON.get('hosting'), site: await getDefaultHostingSite(options) });
     pluginLogger.debug('Calling getCommandOptions() with options', inspect(options));
     const commandOptions = await getCommandOptions(firebaseJSON, options);
     pluginLogger.debug('Calling hosting deploy with command options', inspect(commandOptions));
