@@ -12,6 +12,7 @@ import {
   SIGNED_URL_DEFAULT_TTL_MILLIS,
   SIGNED_URL_MAX_TTL_MILLIS,
 } from "../../../emulator/storage/constants";
+import { bucket } from "firebase-functions/v1/storage";
 
 const ALWAYS_TRUE_RULES_VALIDATOR = {
   validate: () => Promise.resolve(true),
@@ -229,7 +230,7 @@ describe.only("files", () => {
         ).to.be.rejectedWith(BadRequestError);
       });
 
-      it("should throw an error if the url bucketID was changed from what it originally was", () => {
+      it("should throw an error if anything in the url was changed from what it originally was", () => {
         const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
         const unsignedUrl = createUnsignedUrl({
           bucketId: "10",
@@ -240,16 +241,22 @@ describe.only("files", () => {
         });
 
         const signature = createSignature(unsignedUrl);
-        expect(
-          storageLayer.getObject({
-            bucketId: "11",
-            decodedObjectId: "dir%2Fobject",
-            urlSignature: signature,
-            url: "localhost:9000",
-            urlTtlMs: SIGNED_URL_DEFAULT_TTL_MILLIS,
-            urlUsableMs: getCurrentDate(),
-          })
-        ).to.be.rejectedWith(ForbiddenError);
+
+        const toChange = ["bucketId", "decodedObjectId", "url", "urlTtlMs", " urlUsableMs"];
+
+        toChange.forEach((paramToChange) => {
+          expect(
+            storageLayer.getObject({
+              bucketId: paramToChange === "bucketId" ? "11" : "10",
+              decodedObjectId:
+                paramToChange === "decodedObjectId" ? "dir%2FBadobject" : "dir%2Fobject",
+              urlSignature: signature,
+              url: paramToChange === "url" ? "badurl:0000" : "localhost:9000",
+              urlTtlMs: paramToChange === "urlTtlMs" ? 10 : SIGNED_URL_DEFAULT_TTL_MILLIS,
+              urlUsableMs: paramToChange === "urlUsableMs" ? "badDate" : getCurrentDate(),
+            })
+          ).to.be.rejectedWith(ForbiddenError);
+        });
       });
     });
 

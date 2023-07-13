@@ -17,7 +17,6 @@ import {
 import { reqBodyToBuffer } from "../../shared/request";
 import { ListObjectsResponse, SignedUrlResponse } from "../files";
 import { SIGNED_URL_DEFAULT_TTL_MILLIS } from "../constants";
-import { error } from "console";
 /**
  * @param emulator
  */
@@ -94,6 +93,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   firebaseStorageAPI.get("/b/:bucketId/o/:objectId", async (req, res) => {
     let metadata: StoredFileMetadata;
     let data: Buffer;
+
     try {
       // Both object data and metadata get can use the same handler since they share auth logic.
       ({ metadata, data } = await storageLayer.getObject({
@@ -143,8 +143,6 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   firebaseStorageAPI.post(`/b/:bucketId/o/:objectId[(:)]generateSignedUrl`, async (req, res) => {
     let signedUrlObject: SignedUrlResponse;
 
-    console.log("wtf is goin on WBN");
-
     try {
       signedUrlObject = await storageLayer.generateSignedUrl({
         bucketId: req.params.bucketId,
@@ -180,7 +178,6 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       }
       throw err;
     }
-
     return res.json(signedUrlObject);
   });
 

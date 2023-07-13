@@ -201,7 +201,7 @@ export class StorageLayer {
 
     const signature = createSignature(unsignedUrl);
 
-    const signedUrl = `${unsignedUrl}&X-Firebase-Signature=${signature}`;
+    const signedUrl = `${unsignedUrl}&X-Firebase-Signature=${encodeURIComponent(signature)}`;
 
     return {
       signed_url: signedUrl,
@@ -251,7 +251,7 @@ export class StorageLayer {
         const prevSignature = request.urlSignature;
 
         if (!request.urlUsableMs || !request.urlTtlMs) {
-          throw new BadRequestError(`Invalid TTL`);
+          throw new BadRequestError(`Invalid ${!request.urlUsableMs ? "Date" : "TTL"}`);
         }
         const start = convertDateToMS(request.urlUsableMs);
 
@@ -259,9 +259,6 @@ export class StorageLayer {
         const now = convertDateToMS(this.getCurrentDate());
 
         const isLive = now >= start && now < end;
-        if (now < start) {
-          console.log("in future");
-        }
 
         if (!isLive) {
           throw new BadRequestError("Url has Expired");
