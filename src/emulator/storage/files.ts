@@ -67,7 +67,7 @@ export type GetObjectRequest = {
   downloadToken?: string;
   urlSignature?: string;
   urlUsableMs?: string | undefined;
-  urlTtlMs?: number; // must be converted from X-Firebase-Expires
+  urlTtlMs?: number;
 };
 
 /** Response object for {@link StorageLayer#getObject}. */
@@ -133,6 +133,14 @@ export type CopyObjectRequest = {
   authorization?: string;
 };
 
+export type CreateUnsignedUrl = {
+  bucketId: string;
+  decodedObjectId: string;
+  url: string;
+  urlUsableMs: string;
+  urlTtlMs: number;
+};
+
 // Matches any number of "/" at the end of a string.
 const TRAILING_SLASHES_PATTERN = /\/+$/;
 
@@ -162,7 +170,7 @@ export class StorageLayer {
 
     const timeToLive = request.ttlInMillis;
 
-    if (timeToLive < SIGNED_URL_MIN_TTL_MILLIS || timeToLive > SIGNED_URL_MAX_TTL_MILLIS) {
+    if (timeToLive <= SIGNED_URL_MIN_TTL_MILLIS || timeToLive > SIGNED_URL_MAX_TTL_MILLIS) {
       throw new BadRequestError("TTL specified is less than 0 or more than allowed max (1 week)");
     }
 
@@ -183,13 +191,15 @@ export class StorageLayer {
       throw new NotFoundError("Object in bucket does not exist");
     }
 
-    const unsignedUrl = `${request.originalUrl}/v0/b/${request.bucketId}/o/${encodeURIComponent(
-      request.decodedObjectId
-    )}?alt=media&X-Firebase-Date=${currentDate}&X-Firebase-Expires=${request.ttlInMillis}`;
+    const unsignedUrl = createUnsignedUrl({
+      bucketId: request.bucketId,
+      decodedObjectId: request.decodedObjectId,
+      url: request.originalUrl,
+      urlUsableMs: currentDate,
+      urlTtlMs: request.ttlInMillis,
+    });
 
-    const signature = createHmac("sha256", SIGNED_URL_PRIVATE_KEY)
-      .update(unsignedUrl)
-      .digest("base64");
+    const signature = createSignature(unsignedUrl);
 
     const signedUrl = `${unsignedUrl}&X-Firebase-Signature=${signature}`;
 
@@ -257,13 +267,15 @@ export class StorageLayer {
           throw new BadRequestError("Url has Expired");
         }
 
-        const unsignedUrl = `${request.url}/v0/b/${request.bucketId}/o/${encodeURIComponent(
-          request.decodedObjectId
-        )}?alt=media&X-Firebase-Date=${request.urlUsableMs}&X-Firebase-Expires=${request.urlTtlMs}`;
+        const unsignedUrl = createUnsignedUrl({
+          bucketId: request.bucketId,
+          decodedObjectId: request.decodedObjectId,
+          url: request.url as string,
+          urlUsableMs: request.urlUsableMs,
+          urlTtlMs: request.urlTtlMs,
+        });
 
-        const isCorrect =
-          createHmac("sha256", SIGNED_URL_PRIVATE_KEY).update(unsignedUrl).digest("base64") ===
-          prevSignature;
+        const isCorrect = createSignature(unsignedUrl) === prevSignature;
 
         if (!isCorrect) {
           throw new ForbiddenError("Invalid Url");
@@ -791,4 +803,15 @@ export function convertDateToMS(currentDate: string) {
   const date = new Date(Date.UTC(year, month, day, hour, minute, second, milliseconds));
 
   return date.getTime();
+}
+export function createSignature(unsignedUrl: string) {
+  return createHmac("sha256", SIGNED_URL_PRIVATE_KEY).update(unsignedUrl).digest("base64");
+}
+
+export function createUnsignedUrl(unsignedUrlParams: CreateUnsignedUrl) {
+  return `${unsignedUrlParams.url}/v0/b/${unsignedUrlParams.bucketId}/o/${encodeURIComponent(
+    unsignedUrlParams.decodedObjectId
+  )}?alt=media&X-Firebase-Date=${unsignedUrlParams.urlUsableMs}&X-Firebase-Expires=${
+    unsignedUrlParams.urlTtlMs
+  }`;
 }

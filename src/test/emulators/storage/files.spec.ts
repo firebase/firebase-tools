@@ -1,13 +1,17 @@
 import { expect } from "chai";
 import { tmpdir } from "os";
 import { StoredFileMetadata } from "../../../emulator/storage/metadata";
+import { createSignature, createUnsignedUrl } from "../../../emulator/storage/files";
 import { StorageCloudFunctions } from "../../../emulator/storage/cloudFunctions";
-import { StorageLayer, convertDateToMS } from "../../../emulator/storage/files";
+import { StorageLayer } from "../../../emulator/storage/files";
 import { ForbiddenError, NotFoundError, BadRequestError } from "../../../emulator/storage/errors";
 import { Persistence } from "../../../emulator/storage/persistence";
 import { FirebaseRulesValidator } from "../../../emulator/storage/rules/utils";
 import { UploadService } from "../../../emulator/storage/upload";
-import { SIGNED_URL_MAX_TTL_MILLIS } from "../../../emulator/storage/constants";
+import {
+  SIGNED_URL_DEFAULT_TTL_MILLIS,
+  SIGNED_URL_MAX_TTL_MILLIS,
+} from "../../../emulator/storage/constants";
 
 const ALWAYS_TRUE_RULES_VALIDATOR = {
   validate: () => Promise.resolve(true),
@@ -171,6 +175,19 @@ describe.only("files", () => {
         ).to.be.rejectedWith(BadRequestError);
       });
 
+      it("should throw an error if usable MS aren't passed", () => {
+        const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
+
+        expect(
+          storageLayer.getObject({
+            bucketId: "bucket",
+            decodedObjectId: "dir%2Fobject",
+            urlSignature: "mockSignature",
+            urlTtlMs: 10,
+          })
+        ).to.be.rejectedWith(BadRequestError);
+      });
+
       it("should throw an error if the URL has expired. TTL is 1 MS", () => {
         const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
 
@@ -194,7 +211,7 @@ describe.only("files", () => {
             decodedObjectId: "dir%2Fobject",
             urlSignature: "mockSignature",
             urlTtlMs: SIGNED_URL_MAX_TTL_MILLIS,
-            urlUsableMs: getAdjustedDate(- SIGNED_URL_MAX_TTL_MILLIS),
+            urlUsableMs: getAdjustedDate(-SIGNED_URL_MAX_TTL_MILLIS),
           })
         ).to.be.rejectedWith(BadRequestError);
       });
@@ -211,20 +228,30 @@ describe.only("files", () => {
           })
         ).to.be.rejectedWith(BadRequestError);
       });
+
+      it("should throw an error if the url bucketID was changed from what it originally was", () => {
+        const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
+        const unsignedUrl = createUnsignedUrl({
+          bucketId: "10",
+          decodedObjectId: "dir%2Fobject",
+          url: "localhost:9000",
+          urlUsableMs: getCurrentDate(),
+          urlTtlMs: SIGNED_URL_DEFAULT_TTL_MILLIS,
+        });
+
+        const signature = createSignature(unsignedUrl);
+        expect(
+          storageLayer.getObject({
+            bucketId: "11",
+            decodedObjectId: "dir%2Fobject",
+            urlSignature: signature,
+            url: "localhost:9000",
+            urlTtlMs: SIGNED_URL_DEFAULT_TTL_MILLIS,
+            urlUsableMs: getCurrentDate(),
+          })
+        ).to.be.rejectedWith(ForbiddenError);
+      });
     });
-
-    //   it("should throw an error if usable MS aren't passed", () => {
-    //     const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
-
-    //     expect(
-    //       storageLayer.getObject({
-    //         bucketId: "bucket",
-    //         decodedObjectId: "dir%2Fobject",
-    //         urlSignature: "mockSignature",
-    //         urlTtlMs: 10,
-    //       })
-    //     ).to.be.rejectedWith(BadRequestError);
-    //   });
 
     const getStorageLayer = (rulesValidator: FirebaseRulesValidator) =>
       new StorageLayer(
