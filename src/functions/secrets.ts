@@ -28,6 +28,10 @@ import { needProjectId } from "../projectUtils";
 
 const FIREBASE_MANAGED = "firebase-managed";
 
+// For mysterious reasons, importing the poller option in fabricator.ts leads to some
+// of the value of the poller option being undefined at runtime. I don't honestly know what's
+// going on, but don't have the time to find out. Taking a shortcut and copying the values
+// here directly in violation of DRY. Sorry! 
 const gcfV1PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: functionsOrigin,
   apiVersion: "v1",
