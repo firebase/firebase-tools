@@ -18,7 +18,8 @@ export function SidebarApp() {
   const [hostingState, setHostingState] = useState<HostingState>(null);
   const [env, setEnv] = useState<{ isMonospace: boolean }>();
   const [channels, setChannels] = useState<ChannelWithId[]>(null);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [user, setUser] = useState<User | ServiceAccountUser | null>(null);
+  const [framework, setFramework] = useState<string | null>(null);
   /**
    * null - has not finished checking yet
    * empty array - finished checking, no users logged in
@@ -81,14 +82,17 @@ export function SidebarApp() {
       setProjectId(projectId);
     });
 
-    broker.on("notifyUserChanged", ({ email }) => {
-      webLogger.debug("notifyUserChanged:", email);
-      setUserEmail(email);
+    broker.on("notifyUserChanged", ({ user }) => {
+      webLogger.debug("notifyUserChanged:", user.email);
+      setUser(user);
     });
 
-    broker.on("notifyHostingInitDone", ({ projectId, folderPath }) => {
+    broker.on("notifyHostingInitDone", ({ projectId, folderPath, framework }) => {
       webLogger.debug(`notifyHostingInitDone: ${projectId}, ${folderPath}`);
       setHostingOnboarded(true);
+      if (framework) {
+        setFramework(framework);
+      }
     });
 
     broker.on("notifyHostingDeploy", ({ success }) => {
@@ -100,14 +104,13 @@ export function SidebarApp() {
   function setupHosting() {
     broker.send("selectAndInitHostingFolder", {
       projectId,
-      email: userEmail!, // Safe to assume user email is already there
       singleAppSupport: true,
     });
   }
 
   const accountSection = (
     <AccountSection
-      userEmail={userEmail}
+      user={user}
       allUsers={allUsers}
       isMonospace={env?.isMonospace}
     />
@@ -126,19 +129,20 @@ export function SidebarApp() {
     <>
       <Spacer size="medium" />
       {accountSection}
-      {!!userEmail && (
-        <ProjectSection userEmail={userEmail} projectId={projectId} />
+      {!!user && (
+        <ProjectSection userEmail={user.email} projectId={projectId} />
       )}
-      {isHostingOnboarded && !!userEmail && !!projectId && (
+      {isHostingOnboarded && !!user && !!projectId && (
         <DeployPanel
           hostingState={hostingState}
           setHostingState={setHostingState}
           projectId={projectId}
           channels={channels}
+          framework={framework}
         />
       )}
       <Spacer size="large" />
-      {!isHostingOnboarded && !!userEmail && !!projectId && (
+      {!isHostingOnboarded && !!user && !!projectId && (
         <InitFirebasePanel
           onHostingInit={() => {
             setupHosting();

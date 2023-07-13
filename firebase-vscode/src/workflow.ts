@@ -1,8 +1,4 @@
-import * as path from "path";
 import * as vscode from "vscode";
-import { transports, format } from "winston";
-import stripAnsi from "strip-ansi";
-import { SPLAT } from "triple-beam";
 import { ExtensionContext, workspace } from "vscode";
 
 import { FirebaseProjectMetadata } from "../../src/types/project";
@@ -19,24 +15,22 @@ import {
 import { User } from "../../src/types/auth";
 import { currentOptions } from "./options";
 import { selectProjectInMonospace } from "../../src/monospace";
-import { setupLoggers, tryStringify } from "../../src/utils";
-import { pluginLogger } from "./logger-wrapper";
-import { logger } from '../../src/logger';
+import { logSetup, pluginLogger, showOutputChannel } from "./logger-wrapper";
 import { discover } from "../../src/frameworks";
 import { setEnabled } from "../../src/experiments";
 import {
   readAndSendFirebaseConfigs,
   setupFirebaseJsonAndRcFileSystemWatcher,
-  updateFirebaseRCProject,
-  getRootFolders
+  updateFirebaseRCProject
 } from "./config-files";
 import { ServiceAccountUser } from "../common/types";
 
 let users: Array<ServiceAccountUser | User> = [];
-let currentUserEmail = "";
+export let currentUser: User | ServiceAccountUser;
 // Stores a mapping from user email to list of projects for that user
 let projectsUserMapping = new Map<string, FirebaseProjectMetadata[]>();
 let channels = null;
+let currentFramework: string | undefined;
 
 async function fetchUsers() {
   const accounts = await getAccounts();
@@ -71,24 +65,22 @@ async function promptUserForProject(
 function updateCurrentUser(
   users: User[],
   broker: ExtensionBrokerImpl,
-  newUserEmail?: string
+  newUser?: User | ServiceAccountUser
 ) {
-  if (newUserEmail) {
-    if (newUserEmail === currentUserEmail) {
-      return currentUserEmail;
-    } else {
-      currentUserEmail = newUserEmail;
+  if (newUser) {
+    if (newUser.email !== currentUser.email) {
+      currentUser = newUser;
     }
   }
-  if (!newUserEmail) {
+  if (!newUser) {
     if (users.length > 0) {
-      currentUserEmail = users[0].email;
+      currentUser = users[0];
     } else {
-      currentUserEmail = null;
+      currentUser = null;
     }
   }
-  broker.send("notifyUserChanged", { email: currentUserEmail });
-  return currentUserEmail;
+  broker.send("notifyUserChanged", { user: currentUser });
+  return currentUser;
 }
 
 export async function setupWorkflow(
@@ -107,7 +99,7 @@ export async function setupWorkflow(
       vscode.workspace.workspaceFolders[0].uri
     );
     shouldWriteDebug = workspaceConfig.get('debug');
-    debugLogPath= workspaceConfig.get('debugLogPath');
+    debugLogPath = workspaceConfig.get('debugLogPath');
     useFrameworks = workspaceConfig.get('useFrameworks');
     npmPath = workspaceConfig.get('npmPath');
     if (npmPath) {
@@ -118,32 +110,8 @@ export async function setupWorkflow(
   if (useFrameworks) {
     setEnabled('webframeworks', true);
   }
-  /**
-   * Logging setup for logging to console and to file.
-   */
-  // Sets up CLI logger to log to console
-  process.env.DEBUG = 'true';
-  setupLoggers();
-  
-  // Only log to file if firebase.debug extension setting is true.
-  if (shouldWriteDebug) {
-    // Re-implement file logger call from ../../src/bin/firebase.ts to not bring
-    // in the entire firebase.ts file
-    const rootFolders = getRootFolders();
-    const filePath = debugLogPath || path.join(rootFolders[0], 'firebase-plugin-debug.log');
-    pluginLogger.info('Logging to path', filePath);
-      logger.add(
-        new transports.File({
-          level: "debug",
-          filename: filePath,
-          format: format.printf((info) => {
-            const segments = [info.message, ...(info[SPLAT] || [])]
-              .map(tryStringify);
-            return `[${info.level}] ${stripAnsi(segments.join(" "))}`;
-          }),
-        })
-      );
-    }
+
+  logSetup({ shouldWriteDebug, debugLogPath });
 
   /**
    * Call pluginLogger with log arguments received from webview.
@@ -168,7 +136,7 @@ export async function setupWorkflow(
     // User login state
     await fetchUsers();
     broker.send("notifyUsers", { users });
-    currentUserEmail = updateCurrentUser(users, broker);
+    currentUser = updateCurrentUser(users, broker, currentUser);
     if (users.length > 0) {
       await fetchChannels();
     }
@@ -187,7 +155,7 @@ export async function setupWorkflow(
       const accounts = await getAccounts();
       users = accounts.map((account) => account.user);
       broker.send("notifyUsers", { users });
-      currentUserEmail = updateCurrentUser(users, broker);
+      currentUser = updateCurrentUser(users, broker);
     } catch (e) {
       // ignored
     }
@@ -206,10 +174,10 @@ export async function setupWorkflow(
     users.push(user);
     if (users) {
       broker.send("notifyUsers", { users });
-      currentUserEmail = updateCurrentUser(
+      currentUser = updateCurrentUser(
         users,
         broker,
-        user.email
+        user
       );
     }
   });
@@ -219,8 +187,8 @@ export async function setupWorkflow(
       { user: User | ServiceAccountUser }
   ) => {
     if (users.some((user) => user.email === requestedUser.email)) {
-      currentUserEmail = requestedUser.email;
-      broker.send("notifyUserChanged", { email: currentUserEmail });
+      currentUser = requestedUser;
+      broker.send("notifyUserChanged", { user: currentUser });
     }
   });
 
@@ -229,6 +197,9 @@ export async function setupWorkflow(
   broker.on("selectAndInitHostingFolder", selectAndInitHosting);
 
   broker.on("hostingDeploy", async ({ target: deployTarget }) => {
+    showOutputChannel();
+    pluginLogger.info(`Starting deployment of project `
+      + `${currentOptions.projectId} to channel: ${deployTarget}`);
     const { success, consoleUrl, hostingUrl } = await deployToHosting(
       currentOptions.config,
       deployTarget
@@ -259,8 +230,11 @@ export async function setupWorkflow(
     broker.send("notifyChannels", { channels });
   }
 
-  async function selectProject({ email }) {
+  async function selectProject() {
     let projectId;
+    const isServiceAccount =
+      (currentUser as ServiceAccountUser).type === "service_account";
+    const email = currentUser.email;
     if (process.env.MONOSPACE_ENV) {
       pluginLogger.debug('selectProject: found MONOSPACE_ENV, '
         + 'prompting user using external flow');
@@ -280,7 +254,7 @@ export async function setupWorkflow(
       } catch (e) {
         pluginLogger.error(e);
       }
-    } else if (email === 'service_account') {
+    } else if (isServiceAccount) {
       /**
        * Non-Monospace service account case: get the service account's only
        * linked project.
@@ -322,14 +296,14 @@ export async function setupWorkflow(
   }
 
   async function selectAndInitHosting({ projectId, singleAppSupport }) {
-    let discoveredFramework;
+    currentFramework = undefined;
     // Note: discover() takes a few seconds. No need to block users that don't
     // have frameworks support enabled.
     if (useFrameworks) {
-      discoveredFramework = useFrameworks && await discover(currentOptions.cwd, false);
+      currentFramework = useFrameworks && await discover(currentOptions.cwd, false);
       pluginLogger.debug('Searching for a web framework in this project.');
     }
-    if (discoveredFramework) {
+    if (currentFramework) {
       pluginLogger.debug('Detected web framework, launching frameworks init.');
       await initHosting({
         spa: singleAppSupport,
@@ -357,7 +331,7 @@ export async function setupWorkflow(
     }
     readAndSendFirebaseConfigs(broker, context);
     broker.send("notifyHostingInitDone",
-      { projectId, folderPath: currentOptions.cwd });
+      { projectId, folderPath: currentOptions.cwd, framework: currentFramework });
     await fetchChannels(true);
   }
 }

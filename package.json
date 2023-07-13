@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "12.4.2",
+  "version": "12.4.4",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -138,7 +138,7 @@
     "request": "^2.87.0",
     "retry": "^0.13.1",
     "rimraf": "^3.0.0",
-    "semver": "^5.7.1",
+    "semver": "^7.5.2",
     "stream-chain": "^2.2.4",
     "stream-json": "^1.7.3",
     "strip-ansi": "^6.0.1",

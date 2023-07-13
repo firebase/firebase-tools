@@ -1,2 +1,1 @@
 - Fix bug where `functions:secrets:set` didn't remove stale versions of a secret. (#6080)
-- Released Firebase Emulator UI v1.11.7, which includes preview support for multiple Firestore databases (#6079)

@@ -86,7 +86,7 @@ export interface EventTrigger {
    * The region of a trigger, which may not be the same region as the function.
    * Cross-regional triggers are not permitted, i.e. triggers that are in a
    * single-region location that is different from the function's region.
-   * When omitted, the region defults to the function's region.
+   * When omitted, the region defaults to the function's region.
    */
   region?: string;
 

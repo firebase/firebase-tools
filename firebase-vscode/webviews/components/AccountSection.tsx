@@ -14,12 +14,16 @@ import { ServiceAccountUser } from "../../common/types";
 import { User } from "../../../src/types/auth";
 import { TEXT } from "../globals/ux-text";
 
+interface UserWithType extends User {
+  type?: string;
+}
+
 export function AccountSection({
-  userEmail,
+  user,
   allUsers,
   isMonospace,
 }: {
-  userEmail: string | null;
+  user: UserWithType | ServiceAccountUser | null;
   allUsers: Array<User | ServiceAccountUser> | null;
   isMonospace: boolean;
 }) {
@@ -27,7 +31,7 @@ export function AccountSection({
   const usersLoaded = !!allUsers;
   // Default: initial users check hasn't completed
   let currentUserElement: ReactElement | string = TEXT.LOGIN_PROGRESS;
-  if (usersLoaded && !allUsers.length) {
+  if (usersLoaded && (!allUsers.length || !user)) {
     // Users loaded but no user was found
     if (isMonospace) {
       // Monospace: this is an error, should have found a workspace
@@ -43,18 +47,32 @@ export function AccountSection({
     }
   } else if (usersLoaded && allUsers.length > 0) {
     // Users loaded, at least one user was found
-    if (isMonospace && userEmail === "service_account") {
-      currentUserElement = TEXT.MONOSPACE_LOGGED_IN;
+    if (user.type === "service_account") {
+      if (isMonospace) {
+        currentUserElement = TEXT.MONOSPACE_LOGGED_IN;
+      } else {
+        currentUserElement = TEXT.VSCE_SERVICE_ACCOUNT_LOGGED_IN;
+      }
     } else {
-      currentUserElement = userEmail;
+      currentUserElement = user.email;
     }
+  }
+  let userBoxElement = (
+    <Label className={styles.accountRowLabel}>
+      <Icon className={styles.accountRowIcon} slot="start" icon="account" />
+      {currentUserElement}
+    </Label>
+  );
+  if (user?.type === "service_account" && isMonospace) {
+    userBoxElement = (
+      <Label level={4} secondary className={styles.accountRowLabel}>
+        {currentUserElement}
+      </Label>
+    );
   }
   return (
     <div className={styles.accountRow}>
-      <Label className={styles.accountRowLabel}>
-        <Icon className={styles.accountRowIcon} slot="start" icon="account" />
-        {currentUserElement}
-      </Label>
+      {userBoxElement}
       {!usersLoaded && (
         <Label>
           <VSCodeProgressRing />
@@ -70,7 +88,7 @@ export function AccountSection({
           {userDropdownVisible ? (
             <UserSelectionMenu
               isMonospace={isMonospace}
-              userEmail={userEmail}
+              user={user}
               allUsers={allUsers}
               onClose={() => toggleUserDropdown(false)}
             />
@@ -83,53 +101,83 @@ export function AccountSection({
 
 // TODO(roman): Convert to a better menu
 function UserSelectionMenu({
-  userEmail,
+  user,
   allUsers,
   onClose,
   isMonospace,
 }: {
-  userEmail: string;
+  user: UserWithType | ServiceAccountUser;
   allUsers: Array<User | ServiceAccountUser>;
   onClose: Function;
   isMonospace: boolean;
 }) {
+  const hasNonServiceAccountUser = allUsers.some(
+    (user) => (user as ServiceAccountUser).type !== "service_account"
+  );
+  const allUsersSorted = [...allUsers].sort((user1, user2) =>
+    (user1 as ServiceAccountUser).type !== "service_account" ? -1 : 1
+  );
   return (
     <>
-      <PopupMenu show onClose={onClose}>
+      <PopupMenu show onClose={onClose} autoClose={true}>
         <MenuItem
           onClick={() => {
             broker.send("addUser");
             onClose();
           }}
         >
-          Sign in another user...
+          {hasNonServiceAccountUser
+            ? TEXT.ADDITIONAL_USER_SIGN_IN
+            : TEXT.GOOGLE_SIGN_IN}
         </MenuItem>
         <VSCodeDivider />
-        {allUsers.map((user) => (
-          <MenuItem
-            onClick={() => {
-              broker.send("requestChangeUser", { user });
-              onClose();
-            }}
-            key={user.email}
-          >
-            {isMonospace && user.email === "service_account"
-              ? TEXT.MONOSPACE_LOGIN_SELECTION_ITEM
-              : user.email}
-          </MenuItem>
-        ))}
-        <VSCodeDivider />
-        {
-          // You can't log out of a service account
-          userEmail !== "service_account" && (
+        {allUsersSorted.map((user: UserWithType | ServiceAccountUser) => (
+          <>
             <MenuItem
               onClick={() => {
-                broker.send("logout", { email: userEmail });
+                broker.send("requestChangeUser", { user });
                 onClose();
               }}
+              key={user.email}
             >
-              Sign Out {userEmail}
+              {user?.type === "service_account"
+                ? isMonospace
+                  ? TEXT.MONOSPACE_LOGIN_SELECTION_ITEM
+                  : TEXT.VSCE_SERVICE_ACCOUNT_SELECTION_ITEM
+                : user.email}
             </MenuItem>
+            {user?.type === "service_account" && (
+              <MenuItem
+                onClick={() => {
+                  broker.send("showMessage", {
+                    msg: `Service account email: ${user.email}`,
+                    options: {
+                      modal: true,
+                    },
+                  });
+                  onClose();
+                }}
+                key="service-account-email"
+              >
+                <Label level={3}>{TEXT.SHOW_SERVICE_ACCOUNT}</Label>
+              </MenuItem>
+            )}
+          </>
+        ))}
+        {
+          // You can't log out of a service account
+          user.type !== "service_account" && (
+            <>
+              <VSCodeDivider />
+              <MenuItem
+                onClick={() => {
+                  broker.send("logout", { email: user.email });
+                  onClose();
+                }}
+              >
+                Sign Out {user.email}
+              </MenuItem>
+            </>
           )
         }
       </PopupMenu>

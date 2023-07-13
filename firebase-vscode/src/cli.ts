@@ -23,13 +23,45 @@ import { listChannels } from "../../src/hosting/api";
 import { ChannelWithId } from "../common/messaging/types";
 import { pluginLogger } from "./logger-wrapper";
 import { Config } from "../../src/config";
+import { currentUser } from "./workflow";
+import { setAccessToken } from "../../src/apiv2";
+
+/**
+ * Try to get a service account by calling requireAuth() without
+ * providing any account info.
+ */
+async function getServiceAccount() {
+  let email = null;
+  try {
+    // Empty to make sure no oauth user/token is sent to requireAuth
+    // which would prevent autoAuth() from being reached
+    email = (await requireAuth({})) || null;
+  } catch (e) {
+    pluginLogger.debug('No service account found (this may be normal), requireAuth error output:',
+      e.original || e);
+    return null;
+  }
+  if (process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL) {
+    // If Monospace, get service account email using env variable as
+    // the metadata server doesn't currently return the credentials
+    // for the workspace service account. Remove when Monospace is
+    // updated to return credentials through the metadata server.
+    pluginLogger.debug(`Using WORKSPACE_SERVICE_ACCOUNT_EMAIL env `
+      + `variable to get service account email: `
+      + `${process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL}`);
+    return process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL;
+  }
+  pluginLogger.debug(`Got service account email through credentials:`
+    + ` ${email}`);
+  return email;
+}
 
 /**
  * Wrap the CLI's requireAuth() which is normally run before every command
  * requiring user to be logged in. The CLI automatically supplies it with
  * account info if found in configstore so we need to fill that part in.
  */
-async function requireAuthWrapper(showError: boolean = true) {
+async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
   // Try to get global default from configstore. For some reason this is
   // often overwritten when restarting the extension.
   pluginLogger.debug('requireAuthWrapper');
@@ -37,38 +69,57 @@ async function requireAuthWrapper(showError: boolean = true) {
   if (!account) {
     // If nothing in configstore top level, grab the first "additionalAccount"
     const accounts = getAllAccounts();
-    if (accounts.length > 0) {
-      account = accounts[0];
-      setGlobalDefaultAccount(account);
+    for (const additionalAccount of accounts) {
+      if (additionalAccount.user.email === currentUser.email) {
+        account = additionalAccount;
+        setGlobalDefaultAccount(account);
+      }
     }
   }
-  // `requireAuth()` will register the token with apiv2, and if account is
-  // still null at this point, it will use google-auth-library
-  // to find the service account.
+  const commandOptions = await getCommandOptions(undefined, {
+    ...currentOptions
+  });
+  // `requireAuth()` is not just a check, but will also register SERVICE
+  // ACCOUNT tokens in memory as a variable in apiv2.ts, which is needed
+  // for subsequent API calls. Warning: this variable takes precedence
+  // over Google login tokens and must be removed if a Google
+  // account is the current user.
   try {
-    const commandOptions = await getCommandOptions(undefined, {
-      ...currentOptions,
-      ...account,
-    });
-    await requireAuth(commandOptions);
+    const serviceAccountEmail = await getServiceAccount();
+    // Priority 1: Service account exists and is the current selected user
+    if (serviceAccountEmail && currentUser.email === serviceAccountEmail) {
+      // requireAuth should have been run and apiv2 token should be stored
+      // already due to getServiceAccount() call above.
+      return true;
+    } else if (account) {
+      // Priority 2: Google login account exists and is the currently selected
+      // user
+      // Priority 3: Google login account exists and there is no selected user
+      // Clear service account access token from memory in apiv2.
+      setAccessToken();
+      await requireAuth({ ...commandOptions, ...account });
+      return true;
+    } else if (serviceAccountEmail) {
+      // Priority 4: There is a service account but it's not set as
+      // currentUser for some reason, but there also isn't an oauth account.
+      // requireAuth was already run as part of getServiceAccount() above
+      return true;
+    }
+    pluginLogger.debug('No user found (this may be normal)');
+    return false;
   } catch (e) {
     if (showError) {
-      pluginLogger.error('requireAuth error', e.original || e);
+      pluginLogger.error('requireAuth error: ', e.original || e);
       vscode.window.showErrorMessage("Not logged in", {
         modal: true,
         detail: `Log in by clicking "Sign in with Google" in the sidebar.`,
       });
     } else {
-      // If "showError" is false, this may not be an error, just an indication
-      // no one is logged in. Log to "debug".
-      pluginLogger.debug('No user found (this may be normal), requireAuth error output:',
+      pluginLogger.debug('requireAuth error output: ',
         e.original || e);
     }
     return false;
   }
-  // If we reach here, there is either a google account or no error on
-  // requireAuth (which means there is a service account or glogin)
-  return true;
 }
 
 export async function getAccounts(): Promise<Array<Account | ServiceAccount>> {
@@ -76,11 +127,11 @@ export async function getAccounts(): Promise<Array<Account | ServiceAccount>> {
   const accounts: Array<Account | ServiceAccount> = getAllAccounts();
   pluginLogger.debug(`Found ${accounts.length} non-service accounts.`);
   // Get other accounts (assuming service account for now, could also be glogin)
-  const otherAuthExists = await requireAuthWrapper(false);
-  if (otherAuthExists) {
-    pluginLogger.debug(`Found service account`);
+  const serviceAccountEmail = await getServiceAccount();
+  if (serviceAccountEmail) {
+    pluginLogger.debug(`Found service account: ${serviceAccountEmail}`);
     accounts.push({
-      user: { email: "service_account", type: "service_account" },
+      user: { email: serviceAccountEmail, type: "service_account" },
     });
   }
   return accounts;
