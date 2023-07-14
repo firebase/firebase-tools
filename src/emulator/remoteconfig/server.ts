@@ -3,8 +3,9 @@ import { RemoteConfigEmulator } from "./index";
 import * as cors from "cors";
 
 /**
- * @param defaultProjectId
- * @param emulator
+ * @param defaultProjectId Project ID used to start the emulator.
+ * @param emulator Remote config emulator.
+ * @returns Express app.
  */
 export function createApp(
   defaultProjectId: string,
