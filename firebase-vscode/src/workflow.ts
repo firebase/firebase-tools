@@ -67,8 +67,9 @@ function updateCurrentUser(
   broker: ExtensionBrokerImpl,
   newUser?: User | ServiceAccountUser
 ) {
+  const previousCurrentUser = currentUser;
   if (newUser) {
-    if (newUser.email !== currentUser.email) {
+    if (newUser.email !== currentUser?.email) {
       currentUser = newUser;
     }
   }
@@ -80,7 +81,18 @@ function updateCurrentUser(
     }
   }
   broker.send("notifyUserChanged", { user: currentUser });
+  if (currentUser && previousCurrentUser?.email !== currentUser.email) {
+    fetchChannels(broker);
+  }
   return currentUser;
+}
+
+async function fetchChannels(broker: ExtensionBrokerImpl, force = false) {
+  if (force || !channels) {
+    pluginLogger.debug('Fetching hosting channels');
+    channels = await getChannels(currentOptions.config);
+  };
+  broker.send("notifyChannels", { channels });
 }
 
 export async function setupWorkflow(
@@ -138,7 +150,7 @@ export async function setupWorkflow(
     broker.send("notifyUsers", { users });
     currentUser = updateCurrentUser(users, broker, currentUser);
     if (users.length > 0) {
-      await fetchChannels();
+      await fetchChannels(broker);
     }
 
     // Project
@@ -206,7 +218,7 @@ export async function setupWorkflow(
     );
     broker.send("notifyHostingDeploy", { success, consoleUrl, hostingUrl });
     if (success) {
-      fetchChannels(true);
+      fetchChannels(broker, true);
     }
   });
 
@@ -221,14 +233,6 @@ export async function setupWorkflow(
   context.subscriptions.push(
     setupFirebaseJsonAndRcFileSystemWatcher(broker, context)
   );
-
-  async function fetchChannels(force = false) {
-    if (force || !channels) {
-      pluginLogger.debug('Fetching hosting channels');
-      channels = await getChannels(currentOptions.config);
-    };
-    broker.send("notifyChannels", { channels });
-  }
 
   async function selectProject() {
     let projectId;
@@ -291,11 +295,12 @@ export async function setupWorkflow(
     if (projectId) {
       await updateFirebaseRCProject(context, "default", projectId);
       broker.send("notifyProjectChanged", { projectId });
-      fetchChannels(true);
+      fetchChannels(broker, true);
     }
   }
 
   async function selectAndInitHosting({ projectId, singleAppSupport }) {
+    showOutputChannel();
     currentFramework = undefined;
     // Note: discover() takes a few seconds. No need to block users that don't
     // have frameworks support enabled.
@@ -303,9 +308,10 @@ export async function setupWorkflow(
       currentFramework = useFrameworks && await discover(currentOptions.cwd, false);
       pluginLogger.debug('Searching for a web framework in this project.');
     }
+    let success = false;
     if (currentFramework) {
       pluginLogger.debug('Detected web framework, launching frameworks init.');
-      await initHosting({
+      success = await initHosting({
         spa: singleAppSupport,
         useFrameworks: true
       });
@@ -322,16 +328,21 @@ export async function setupWorkflow(
         const publicFolder = publicFolderFull.substring(
           currentOptions.cwd.length + 1
         );
-        await initHosting({
+        success = await initHosting({
           spa: singleAppSupport,
           public: publicFolder,
           useFrameworks: false
         });
       }
     }
-    readAndSendFirebaseConfigs(broker, context);
-    broker.send("notifyHostingInitDone",
-      { projectId, folderPath: currentOptions.cwd, framework: currentFramework });
-    await fetchChannels(true);
+    if (success) {
+      readAndSendFirebaseConfigs(broker, context);
+      broker.send("notifyHostingInitDone",
+        { success, projectId, folderPath: currentOptions.cwd, framework: currentFramework });
+      await fetchChannels(true);
+    } else {
+      broker.send("notifyHostingInitDone",
+        { success, projectId, folderPath: currentOptions.cwd });
+    }
   }
 }
