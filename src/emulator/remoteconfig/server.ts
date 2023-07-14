@@ -3,8 +3,8 @@ import { RemoteConfigEmulator } from "./index";
 import * as cors from "cors";
 
 /**
- * @param defaultProjectId Project ID used to start the emulator.
- * @param emulator Remote config emulator.
+ * @param defaultProjectId Default project ID used to start the emulator.
+ * @param emulator Remote Config emulator.
  * @returns Express app.
  */
 export function createApp(
@@ -24,7 +24,7 @@ export function createApp(
   app.post("/v1/projects/:projectId/namespaces/firebase:fetch", (req, res) => {
     res.header("etag", `etag-${req.params["projectId"]}-firebase-fetch--${new Date().getTime()}`);
     res.header(
-      "Access-Control-expose-Headers",
+      "Access-Control-Expose-Headers",
       "etag,vary,vary,vary,content-encoding,date,server,content-length"
     );
 
