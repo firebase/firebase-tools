@@ -261,10 +261,6 @@ function getCallbackUrl(port?: number): string {
   if (typeof port === "undefined") {
     return "urn:ietf:wg:oauth:2.0:oob";
   }
-  // Monospace routes localhost ports through this url
-  if (process.env.MONOSPACE_ENV && process.env.WEB_HOST) {
-    return `https://${port}-${process.env.WEB_HOST}`;
-  }
   return `http://localhost:${port}`;
 }
 
