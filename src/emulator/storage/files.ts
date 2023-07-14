@@ -258,6 +258,10 @@ export class StorageLayer {
           throw new BadRequestError(`Invalid ${!request.urlUsableSeconds ? "Date" : "TTL"}`);
         }
         const start = convertDateToMS(request.urlUsableSeconds);
+		
+        if (!start || !Number.isInteger(request.urlTtlSeconds)) {
+          throw new BadRequestError(`Invalid ${!start ? "Date" : "TTL"}`);
+        }
 
         const changeInTime = request.urlTtlSeconds * SECONDS_TO_MS_FACTOR;
         const end = start + changeInTime;
