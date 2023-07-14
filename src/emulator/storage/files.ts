@@ -248,6 +248,10 @@ export class StorageLayer {
       request.downloadToken ?? ""
     );
 
+    if (hasValidDownloadToken) {
+      console.log("trumps");
+    }
+
     let checkAuth = false;
 
     if (!hasValidDownloadToken) {
@@ -258,7 +262,7 @@ export class StorageLayer {
           throw new BadRequestError(`Invalid ${!request.urlUsableSeconds ? "Date" : "TTL"}`);
         }
         const start = convertDateToMS(request.urlUsableSeconds);
-		
+
         if (!start || !Number.isInteger(request.urlTtlSeconds)) {
           throw new BadRequestError(`Invalid ${!start ? "Date" : "TTL"}`);
         }

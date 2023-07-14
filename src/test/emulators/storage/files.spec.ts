@@ -193,8 +193,8 @@ describe.only("files", () => {
         const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
 
         expect(
-          storageLayer.getObject({
-            bucketId: "bucket",
+			storageLayer.getObject({
+			  bucketId: "bucket",
             decodedObjectId: "dir%2Fobject",
             urlSignature: "mockSignature",
             urlTtlSeconds: 1,
@@ -265,6 +265,32 @@ describe.only("files", () => {
             })
           ).to.be.rejectedWith(ForbiddenError);
         });
+      });
+
+      it("should throw an error if the ttl is not a valid type", () => {
+        const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
+        expect(
+          storageLayer.getObject({
+            bucketId: "bucket",
+            decodedObjectId: "dir%2Fobject",
+            urlSignature: "mockSignature",
+            urlTtlSeconds: 1.3,
+            urlUsableSeconds: getCurrentDate(),
+          })
+        ).to.be.rejectedWith(BadRequestError);
+      });
+
+      it("should throw an error if the usableSeconds is not a valid type", () => {
+        const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
+        expect(
+          storageLayer.getObject({
+            bucketId: "bucket",
+            decodedObjectId: "dir%2Fobject",
+            urlSignature: "mockSignature",
+            urlTtlSeconds: 1.3,
+            urlUsableSeconds: "invalid date",
+          })
+        ).to.be.rejectedWith(BadRequestError);
       });
     });
 
