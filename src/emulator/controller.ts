@@ -895,7 +895,7 @@ export async function startAll(
 
     if (!rcConfig?.template) {
       throw new FirebaseError(
-        "Cannot start the Remote Config emulator without a template file specified in firebase.json: run 'firebase init' and set up your Remote Config configuration"
+        "Cannot start the Remote Config emulator without a template file specified in firebase.json; run 'firebase init' and set up your Remote Config configuration"
       );
     }
 
