@@ -9,10 +9,10 @@ import { Persistence } from "../../../emulator/storage/persistence";
 import { FirebaseRulesValidator } from "../../../emulator/storage/rules/utils";
 import { UploadService } from "../../../emulator/storage/upload";
 import {
-  SIGNED_URL_DEFAULT_TTL_MILLIS,
-  SIGNED_URL_MAX_TTL_MILLIS,
+  SECONDS_TO_MS_FACTOR,
+  SIGNED_URL_DEFAULT_TTL_SECONDS,
+  SIGNED_URL_MAX_TTL_SECONDS,
 } from "../../../emulator/storage/constants";
-import { bucket } from "firebase-functions/v1/storage";
 
 const ALWAYS_TRUE_RULES_VALIDATOR = {
   validate: () => Promise.resolve(true),
@@ -163,7 +163,7 @@ describe.only("files", () => {
         ).to.be.rejectedWith(NotFoundError);
       });
 
-      it("should throw an error if TTL in MS aren't passed", async () => {
+      it("should throw an error if TTL in Seconds aren't passed", async () => {
         const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
 
         expect(
@@ -171,12 +171,12 @@ describe.only("files", () => {
             bucketId: "bucket",
             decodedObjectId: "dir%2Fobject",
             urlSignature: "mockSignature",
-            urlUsableMs: getCurrentDate(),
+            urlUsableSeconds: getCurrentDate(),
           })
         ).to.be.rejectedWith(BadRequestError);
       });
 
-      it("should throw an error if usable MS aren't passed", () => {
+      it("should throw an error if usable Seconds aren't passed", () => {
         const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
 
         expect(
@@ -184,12 +184,12 @@ describe.only("files", () => {
             bucketId: "bucket",
             decodedObjectId: "dir%2Fobject",
             urlSignature: "mockSignature",
-            urlTtlMs: 10,
+            urlTtlSeconds: 10,
           })
         ).to.be.rejectedWith(BadRequestError);
       });
 
-      it("should throw an error if the URL has expired. TTL is 1 MS", () => {
+      it("should throw an error if the URL has expired. TTL is 1 Second", () => {
         const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
 
         expect(
@@ -197,8 +197,8 @@ describe.only("files", () => {
             bucketId: "bucket",
             decodedObjectId: "dir%2Fobject",
             urlSignature: "mockSignature",
-            urlTtlMs: 1,
-            urlUsableMs: getAdjustedDate(-1),
+            urlTtlSeconds: 1,
+            urlUsableSeconds: getAdjustedDate(-1),
           })
         ).to.be.rejectedWith(BadRequestError);
       });
@@ -211,8 +211,8 @@ describe.only("files", () => {
             bucketId: "bucket",
             decodedObjectId: "dir%2Fobject",
             urlSignature: "mockSignature",
-            urlTtlMs: SIGNED_URL_MAX_TTL_MILLIS,
-            urlUsableMs: getAdjustedDate(-SIGNED_URL_MAX_TTL_MILLIS),
+            urlTtlSeconds: SIGNED_URL_MAX_TTL_SECONDS,
+            urlUsableSeconds: getAdjustedDate(-SIGNED_URL_MAX_TTL_SECONDS),
           })
         ).to.be.rejectedWith(BadRequestError);
       });
@@ -224,8 +224,8 @@ describe.only("files", () => {
             bucketId: "bucket",
             decodedObjectId: "dir%2Fobject",
             urlSignature: "mockSignature",
-            urlTtlMs: 10,
-            urlUsableMs: getAdjustedDate(1),
+            urlTtlSeconds: 10,
+            urlUsableSeconds: getAdjustedDate(1),
           })
         ).to.be.rejectedWith(BadRequestError);
       });
@@ -236,13 +236,19 @@ describe.only("files", () => {
           bucketId: "10",
           decodedObjectId: "dir%2Fobject",
           url: "localhost:9000",
-          urlUsableMs: getCurrentDate(),
-          urlTtlMs: SIGNED_URL_DEFAULT_TTL_MILLIS,
+          urlUsableSeconds: getCurrentDate(),
+          urlTtlSeconds: SIGNED_URL_DEFAULT_TTL_SECONDS,
         });
 
         const signature = createSignature(unsignedUrl);
 
-        const toChange = ["bucketId", "decodedObjectId", "url", "urlTtlMs", " urlUsableMs"];
+        const toChange = [
+          "bucketId",
+          "decodedObjectId",
+          "url",
+          "urlTtlSeconds",
+          "urlUsableSeconds",
+        ];
 
         toChange.forEach((paramToChange) => {
           expect(
@@ -252,8 +258,10 @@ describe.only("files", () => {
                 paramToChange === "decodedObjectId" ? "dir%2FBadobject" : "dir%2Fobject",
               urlSignature: signature,
               url: paramToChange === "url" ? "badurl:0000" : "localhost:9000",
-              urlTtlMs: paramToChange === "urlTtlMs" ? 10 : SIGNED_URL_DEFAULT_TTL_MILLIS,
-              urlUsableMs: paramToChange === "urlUsableMs" ? "badDate" : getCurrentDate(),
+              urlTtlSeconds:
+                paramToChange === "urlTtlSeconds" ? 10 : SIGNED_URL_DEFAULT_TTL_SECONDS,
+              urlUsableSeconds:
+                paramToChange === "urlUsableSeconds" ? getAdjustedDate(-1) : getCurrentDate(),
             })
           ).to.be.rejectedWith(ForbiddenError);
         });
@@ -279,7 +287,7 @@ function getCurrentDate(): string {
 }
 
 /**
- * get the current date and add of changeBy milliseconds
+ * get the current date + changeBy SECONDS
  * @date 7/12/2023 - 4:28:20 PM
  *
  * @param {number} changeBy
@@ -287,7 +295,7 @@ function getCurrentDate(): string {
  */
 function getAdjustedDate(changeBy: number): string {
   const newDate = new Date();
-  const adjutedDate = new Date(newDate.getTime() + changeBy);
+  const adjutedDate = new Date(newDate.getTime() + changeBy * SECONDS_TO_MS_FACTOR);
 
   return adjutedDate.toISOString().replaceAll("-", "").replaceAll(":", "").replaceAll(".", "");
 }

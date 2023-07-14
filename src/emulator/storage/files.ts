@@ -22,8 +22,9 @@ import { trackEmulator } from "../../track";
 import { Emulators } from "../types";
 import { createHmac } from "crypto";
 import {
-  SIGNED_URL_MAX_TTL_MILLIS,
-  SIGNED_URL_MIN_TTL_MILLIS,
+  SECONDS_TO_MS_FACTOR,
+  SIGNED_URL_MAX_TTL_SECONDS,
+  SIGNED_URL_MIN_TTL_SECONDS,
   SIGNED_URL_PRIVATE_KEY,
 } from "./constants";
 interface BucketsList {
@@ -51,7 +52,7 @@ export type CreateSignedUrl = {
   decodedObjectId: string;
   authorization?: string;
   originalUrl: string;
-  ttlInMillis: number;
+  ttlSeconds: number;
 };
 
 export type SignedUrlResponse = {
@@ -66,8 +67,8 @@ export type GetObjectRequest = {
   authorization?: string;
   downloadToken?: string;
   urlSignature?: string;
-  urlUsableMs?: string | undefined;
-  urlTtlMs?: number;
+  urlUsableSeconds?: string | undefined;
+  urlTtlSeconds?: number;
 };
 
 /** Response object for {@link StorageLayer#getObject}. */
@@ -137,8 +138,8 @@ export type CreateUnsignedUrl = {
   bucketId: string;
   decodedObjectId: string;
   url: string;
-  urlUsableMs: string;
-  urlTtlMs: number;
+  urlUsableSeconds: string;
+  urlTtlSeconds: number;
 };
 
 // Matches any number of "/" at the end of a string.
@@ -168,10 +169,13 @@ export class StorageLayer {
 
     const currentDate = this.getCurrentDate();
 
-    const timeToLive = request.ttlInMillis;
+    const timeToLive = request.ttlSeconds;
+    if (!Number.isInteger(timeToLive)) {
+      throw new BadRequestError("Invalid TTL Parameter");
+    }
 
-    if (timeToLive <= SIGNED_URL_MIN_TTL_MILLIS || timeToLive > SIGNED_URL_MAX_TTL_MILLIS) {
-      throw new BadRequestError("TTL specified is less than 0 or more than allowed max (1 week)");
+    if (timeToLive <= SIGNED_URL_MIN_TTL_SECONDS || timeToLive > SIGNED_URL_MAX_TTL_SECONDS) {
+      throw new BadRequestError(`TTL specified is less than 0 or more than allowed max (2 week)`);
     }
 
     const authorized = await this._rulesValidator.validate(
@@ -195,8 +199,8 @@ export class StorageLayer {
       bucketId: request.bucketId,
       decodedObjectId: request.decodedObjectId,
       url: request.originalUrl,
-      urlUsableMs: currentDate,
-      urlTtlMs: request.ttlInMillis,
+      urlUsableSeconds: currentDate,
+      urlTtlSeconds: request.ttlSeconds,
     });
 
     const signature = createSignature(unsignedUrl);
@@ -250,12 +254,13 @@ export class StorageLayer {
       if (request.urlSignature) {
         const prevSignature = request.urlSignature;
 
-        if (!request.urlUsableMs || !request.urlTtlMs) {
-          throw new BadRequestError(`Invalid ${!request.urlUsableMs ? "Date" : "TTL"}`);
+        if (!request.urlUsableSeconds || !request.urlTtlSeconds) {
+          throw new BadRequestError(`Invalid ${!request.urlUsableSeconds ? "Date" : "TTL"}`);
         }
-        const start = convertDateToMS(request.urlUsableMs);
+        const start = convertDateToMS(request.urlUsableSeconds);
 
-        const end = start + request.urlTtlMs;
+        const changeInTime = request.urlTtlSeconds * SECONDS_TO_MS_FACTOR;
+        const end = start + changeInTime;
         const now = convertDateToMS(this.getCurrentDate());
 
         const isLive = now >= start && now < end;
@@ -268,8 +273,8 @@ export class StorageLayer {
           bucketId: request.bucketId,
           decodedObjectId: request.decodedObjectId,
           url: request.url as string,
-          urlUsableMs: request.urlUsableMs,
-          urlTtlMs: request.urlTtlMs,
+          urlUsableSeconds: request.urlUsableSeconds,
+          urlTtlSeconds: request.urlTtlSeconds,
         });
 
         const isCorrect = createSignature(unsignedUrl) === prevSignature;
@@ -795,9 +800,8 @@ export function convertDateToMS(currentDate: string) {
   const hour = +currentDate.slice(9, 11);
   const minute = +currentDate.slice(11, 13);
   const second = +currentDate.slice(13, 15);
-  const milliseconds = +currentDate.slice(15, 18);
 
-  const date = new Date(Date.UTC(year, month, day, hour, minute, second, milliseconds));
+  const date = new Date(Date.UTC(year, month, day, hour, minute, second));
 
   return date.getTime();
 }
@@ -808,7 +812,7 @@ export function createSignature(unsignedUrl: string) {
 export function createUnsignedUrl(unsignedUrlParams: CreateUnsignedUrl) {
   return `${unsignedUrlParams.url}/v0/b/${unsignedUrlParams.bucketId}/o/${encodeURIComponent(
     unsignedUrlParams.decodedObjectId
-  )}?alt=media&X-Firebase-Date=${unsignedUrlParams.urlUsableMs}&X-Firebase-Expires=${
-    unsignedUrlParams.urlTtlMs
+  )}?alt=media&X-Firebase-Date=${unsignedUrlParams.urlUsableSeconds}&X-Firebase-Expires=${
+    unsignedUrlParams.urlTtlSeconds
   }`;
 }

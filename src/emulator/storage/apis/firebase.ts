@@ -16,7 +16,7 @@ import {
 } from "../upload";
 import { reqBodyToBuffer } from "../../shared/request";
 import { ListObjectsResponse, SignedUrlResponse } from "../files";
-import { SIGNED_URL_DEFAULT_TTL_MILLIS } from "../constants";
+import { SIGNED_URL_DEFAULT_TTL_SECONDS } from "../constants";
 /**
  * @param emulator
  */
@@ -103,8 +103,8 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         authorization: req.header("authorization"),
         downloadToken: req.query.token?.toString(),
         urlSignature: req.query["X-Firebase-Signature"] as string,
-        urlUsableMs: req.query["X-Firebase-Date"] as string | undefined,
-        urlTtlMs: Number(req.query["X-Firebase-Expires"]),
+        urlUsableSeconds: req.query["X-Firebase-Date"] as string | undefined,
+        urlTtlSeconds: Number(req.query["X-Firebase-Expires"]),
       }));
     } catch (err) {
       if (err instanceof NotFoundError) {
@@ -149,8 +149,8 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         decodedObjectId: decodeURIComponent(req.params.objectId),
         authorization: req.header("authorization"),
         originalUrl: `${req.protocol}://${req.hostname}:${req.socket.localPort}`,
-        ttlInMillis:
-          req.body.ttlInMillis === undefined ? SIGNED_URL_DEFAULT_TTL_MILLIS : req.body.ttlInMillis,
+        ttlSeconds:
+          req.body.ttlSeconds === undefined ? SIGNED_URL_DEFAULT_TTL_SECONDS : req.body.ttlSeconds,
       });
     } catch (err) {
       if (err instanceof NotFoundError) {
@@ -172,7 +172,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         return res.status(400).json({
           error: {
             code: 400,
-            message: `TTL specified is less than 0 or more than allowed max (1 week)`,
+            message: err.message,
           },
         });
       }
