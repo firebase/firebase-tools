@@ -146,17 +146,21 @@ export function DeployPanel({
   const channelInfo = channels.find((channel) => channel.id === deployTarget);
 
   let deployedText = "not deployed yet";
-  // If we have server data about last deploy from listChannels()
-  if (channelInfo && channelInfo.updateTime) {
+  if (deployedInfo && !deployedInfo?.succeeded) {
+    // Priority 1: most recent deploy failed
+    deployedText = `Failed deploy to ${deployedInfo.channelId} at ${deployedInfo.date}`;
+  } else if (channelInfo && channelInfo.updateTime) {
+    // Priority 2: if we have server data about last deploy from listChannels()
+    // Takes priority over local deploy success in case someone else deployed
+    // after our most recent local deploy.
     deployedText = `Last deployed to ${deployTarget} at ${new Date(
       channelInfo.updateTime
     ).toLocaleString()}`;
-  // If a deploy just succeeded locally
   } else if (deployedInfo?.succeeded) {
+    // Priority 3: If most recent local deploy succeeded and there's no server
+    // data about other successful deploys
     deployedText = `Deployed to ${deployedInfo.channelId} at ${deployedInfo.date}`;
-  } else if (deployedInfo && !deployedInfo?.succeeded) {
-    deployedText = `Failed deploy to ${deployedInfo.channelId} at ${deployedInfo.date}`;
-  }
+  } 
 
   return (
     <>

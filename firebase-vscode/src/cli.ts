@@ -173,19 +173,19 @@ export async function getChannels(firebaseJSON: Config): Promise<ChannelWithId[]
   if (!options.project) {
     return [];
   }
-  const site = await getDefaultHostingSite(options);
-  pluginLogger.debug(
-    'Calling listChannels with params',
-    options.project,
-    site
-  );
   try {
+    const site = await getDefaultHostingSite(options);
+    pluginLogger.debug(
+      'Calling listChannels with params',
+      options.project,
+      site
+    );
     const channels = await listChannels(options.project, site);
     return channels.map(channel => ({
       ...channel, id: channel.name.split("/").pop()
     }));
   } catch (e) {
-    pluginLogger.error('Error on listChannels()', e);
+    pluginLogger.error('Error in getChannels()', e);
     vscode.window.showErrorMessage("Error finding hosting channels", {
       modal: true,
       detail: `Error finding hosting channels: ${e}`,

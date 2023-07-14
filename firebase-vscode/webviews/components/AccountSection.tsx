@@ -117,23 +117,33 @@ function UserSelectionMenu({
   const allUsersSorted = [...allUsers].sort((user1, user2) =>
     (user1 as ServiceAccountUser).type !== "service_account" ? -1 : 1
   );
+  /**
+   * Some temporary fixes here to not show google signin option in
+   * Monospace. This includes not showing "Default credentials" as
+   * a selectable dropdown option since there shouldn't be any other
+   * options. Instead, show the "show service account email" option
+   * and show it in a primary text size.
+   * If google signin in Monospace is solved, these can be reverted.
+   */
   return (
     <>
       <PopupMenu show onClose={onClose} autoClose={true}>
-        <MenuItem
-          onClick={() => {
-            broker.send("addUser");
-            onClose();
-          }}
-        >
-          {hasNonServiceAccountUser
-            ? TEXT.ADDITIONAL_USER_SIGN_IN
-            : TEXT.GOOGLE_SIGN_IN}
-        </MenuItem>
-        <VSCodeDivider />
+        {!isMonospace && (
+          <MenuItem
+            onClick={() => {
+              broker.send("addUser");
+              onClose();
+            }}
+          >
+            {hasNonServiceAccountUser
+              ? TEXT.ADDITIONAL_USER_SIGN_IN
+              : TEXT.GOOGLE_SIGN_IN}
+          </MenuItem>
+        )}
+        {!isMonospace && <VSCodeDivider />}
         {allUsersSorted.map((user: UserWithType | ServiceAccountUser) => (
           <>
-            <MenuItem
+            {!isMonospace && (<MenuItem
               onClick={() => {
                 broker.send("requestChangeUser", { user });
                 onClose();
@@ -145,7 +155,7 @@ function UserSelectionMenu({
                   ? TEXT.MONOSPACE_LOGIN_SELECTION_ITEM
                   : TEXT.VSCE_SERVICE_ACCOUNT_SELECTION_ITEM
                 : user.email}
-            </MenuItem>
+            </MenuItem>)}
             {user?.type === "service_account" && (
               <MenuItem
                 onClick={() => {
@@ -159,7 +169,7 @@ function UserSelectionMenu({
                 }}
                 key="service-account-email"
               >
-                <Label level={3}>{TEXT.SHOW_SERVICE_ACCOUNT}</Label>
+                <Label level={isMonospace ? 3 : 2}>{TEXT.SHOW_SERVICE_ACCOUNT}</Label>
               </MenuItem>
             )}
           </>

@@ -1,8 +1,10 @@
 # Change Log
 
-## 0.0.24-alpha
+## 0.0.24-alpha.0
 
-- Ensure Google login flow works in Monospace.
+- Remove Google sign-in option from Monospace.
+- Fix some Google sign-in login/logout logic.
+- Prioritize showing latest failed deploy if it failed.
 
 ## 0.0.23 (July 13, 2023)
 
