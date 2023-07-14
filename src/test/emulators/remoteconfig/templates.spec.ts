@@ -12,8 +12,6 @@ describe("templates", () => {
 
   it("can prepare template for emulator", () => {
     const emulatorReadyTemplate = RemoteConfigEmulator.prepareEmulatorTemplate(prodTemplate);
-    console.log(JSON.stringify(emulatorReadyTemplate, null, 2));
-    console.log(JSON.stringify(emulatorTemplate, null, 2));
     expect(emulatorReadyTemplate).to.deep.equal(emulatorTemplate);
   });
 });
