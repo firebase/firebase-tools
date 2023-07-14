@@ -67,8 +67,9 @@ function updateCurrentUser(
   broker: ExtensionBrokerImpl,
   newUser?: User | ServiceAccountUser
 ) {
+  const previousCurrentUser = currentUser;
   if (newUser) {
-    if (newUser.email !== currentUser.email) {
+    if (newUser.email !== currentUser?.email) {
       currentUser = newUser;
     }
   }
@@ -80,7 +81,18 @@ function updateCurrentUser(
     }
   }
   broker.send("notifyUserChanged", { user: currentUser });
+  if (currentUser && previousCurrentUser?.email !== currentUser.email) {
+    fetchChannels(broker);
+  }
   return currentUser;
+}
+
+async function fetchChannels(broker: ExtensionBrokerImpl, force = false) {
+  if (force || !channels) {
+    pluginLogger.debug('Fetching hosting channels');
+    channels = await getChannels(currentOptions.config);
+  };
+  broker.send("notifyChannels", { channels });
 }
 
 export async function setupWorkflow(
@@ -138,7 +150,7 @@ export async function setupWorkflow(
     broker.send("notifyUsers", { users });
     currentUser = updateCurrentUser(users, broker, currentUser);
     if (users.length > 0) {
-      await fetchChannels();
+      await fetchChannels(broker);
     }
 
     // Project
@@ -206,7 +218,7 @@ export async function setupWorkflow(
     );
     broker.send("notifyHostingDeploy", { success, consoleUrl, hostingUrl });
     if (success) {
-      fetchChannels(true);
+      fetchChannels(broker, true);
     }
   });
 
@@ -221,14 +233,6 @@ export async function setupWorkflow(
   context.subscriptions.push(
     setupFirebaseJsonAndRcFileSystemWatcher(broker, context)
   );
-
-  async function fetchChannels(force = false) {
-    if (force || !channels) {
-      pluginLogger.debug('Fetching hosting channels');
-      channels = await getChannels(currentOptions.config);
-    };
-    broker.send("notifyChannels", { channels });
-  }
 
   async function selectProject() {
     let projectId;
@@ -291,7 +295,7 @@ export async function setupWorkflow(
     if (projectId) {
       await updateFirebaseRCProject(context, "default", projectId);
       broker.send("notifyProjectChanged", { projectId });
-      fetchChannels(true);
+      fetchChannels(broker, true);
     }
   }
 
