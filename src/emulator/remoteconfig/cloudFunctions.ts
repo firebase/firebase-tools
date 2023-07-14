@@ -72,8 +72,14 @@ export class RemoteConfigCloudFunctions {
       this.logger.logLabeled(
         "WARN",
         "functions",
-        "Firebase Remote Config function was not triggered due to emulation error. Please file a bug."
+        `Firebase Remote Config function was not triggered due to emulation error. Please file a bug.`
       );
+      if (err) {
+        this.logger.logLabeled("DEBUG", "functions", `Error: ${err.message}`);
+      }
+      if (errStatus.length > 0) {
+        this.logger.logLabeled("DEBUG", "functions", `Error status: ${errStatus.join(",")}`);
+      }
     }
   }
 
