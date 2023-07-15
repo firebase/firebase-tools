@@ -86,7 +86,7 @@ export interface EventTrigger {
    * The region of a trigger, which may not be the same region as the function.
    * Cross-regional triggers are not permitted, i.e. triggers that are in a
    * single-region location that is different from the function's region.
-   * When omitted, the region defults to the function's region.
+   * When omitted, the region defaults to the function's region.
    */
   region?: string;
 
@@ -349,10 +349,12 @@ export type Endpoint = TargetIds &
     // "Codebase" is not part of the container contract. Instead, it's value is provided by firebase.json or derived
     // from function labels.
     codebase?: string;
-    // URI is available on GCFv1 for HTTPS triggers and
-    // on GCFv2 always
+    // URI is available on GCFv1 for HTTPS triggers and on GCFv2 always
     uri?: string;
+    // sourceUploadUrl is available on GCFv1 only
     sourceUploadUrl?: string;
+    // source is available on GCFv2 only
+    source?: gcfV2.Source;
     // TODO(colerogers): yank this field and set securityLevel to SECURE_ALWAYS
     // in functionFromEndpoint during a breaking change release.
     // This is a temporary fix to address https://github.com/firebase/firebase-tools/issues/4171

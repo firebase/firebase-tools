@@ -64,7 +64,7 @@ export interface WebviewToExtensionParamsMap {
   /** 
    * Equivalent to the `firebase emulators:start` command.
   */
-  launchEmulators : {
+  launchEmulators: {
     emulatorUiSelections: EmulatorUiSelections,
   };
 
@@ -96,7 +96,12 @@ export interface ExtensionToWebviewParamsMap {
    * Notifies webview when user has successfully selected a hosting folder
    * and it has been written to firebase.json.
    */
-  notifyHostingInitDone: { projectId: string, folderPath?: string };
+  notifyHostingInitDone: {
+    success: boolean,
+    projectId: string,
+    folderPath?: string
+    framework?: string
+  };
 
   /**
    * Notify webview of status of deployment attempt.
@@ -119,7 +124,7 @@ export interface ExtensionToWebviewParamsMap {
   notifyPreviewChannelResponse: { id: string };
 
   notifyEmulatorsStopped: {};
-  notifyRunningEmulatorInfo: RunningEmulatorInfo ;
+  notifyRunningEmulatorInfo: RunningEmulatorInfo;
   notifyEmulatorImportFolder: { folder: string };
 }
 
