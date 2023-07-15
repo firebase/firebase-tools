@@ -10,7 +10,6 @@ import * as commandUtils from "./emulator/commandUtils";
 import { FunctionsServer } from "./serve/functions";
 import LocalFunction from "./localFunction";
 import * as utils from "./utils";
-import { FunctionsServer } from "./serve/functions";
 import { logger } from "./logger";
 import { EMULATORS_SUPPORTED_BY_FUNCTIONS, EmulatorInfo, Emulators } from "./emulator/types";
 import { EmulatorHubClient } from "./emulator/hubClient";
