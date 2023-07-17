@@ -14,8 +14,6 @@ import {
   SIGNED_URL_MAX_TTL_SECONDS,
   SIGNED_URL_MIN_TTL_SECONDS,
 } from "../../../emulator/storage/constants";
-import { upload } from "../../../gcp/storage";
-import { tryStringify } from "../../../utils";
 
 const ALWAYS_TRUE_RULES_VALIDATOR = {
   validate: () => Promise.resolve(true),
