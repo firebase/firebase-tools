@@ -340,6 +340,23 @@ describe.only("files", () => {
           })
         ).to.be.rejectedWith(BadRequestError);
       });
+
+      it("should throw an error if TTL is below the min or above the max time", () => {
+        const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
+
+        const cases = [SIGNED_URL_MIN_TTL_SECONDS, SIGNED_URL_MAX_TTL_SECONDS];
+
+        cases.forEach((time) => {
+          expect(
+            storageLayer.generateSignedUrl({
+              bucketId: "10",
+              decodedObjectId: "dir%2Fobject",
+              originalUrl: "localhost:9000",
+              ttlSeconds: time === SIGNED_URL_MAX_TTL_SECONDS ? SIGNED_URL_MAX_TTL_SECONDS + 1 : 0,
+            })
+          ).to.be.rejectedWith(BadRequestError);
+        });
+      });
     });
 
     const getStorageLayer = (rulesValidator: FirebaseRulesValidator) =>
