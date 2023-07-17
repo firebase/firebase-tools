@@ -357,6 +357,19 @@ describe.only("files", () => {
           ).to.be.rejectedWith(BadRequestError);
         });
       });
+
+      it("should throw an error if request is not authorized", () => {
+        const storageLayer = getStorageLayer(ALWAYS_FALSE_RULES_VALIDATOR);
+
+        expect(
+          storageLayer.generateSignedUrl({
+            bucketId: "10",
+            decodedObjectId: "dir%2Fobject",
+            originalUrl: "localhost:9000",
+            ttlSeconds: 10,
+          })
+        ).to.be.rejectedWith(ForbiddenError);
+      });
     });
 
     const getStorageLayer = (rulesValidator: FirebaseRulesValidator) =>
