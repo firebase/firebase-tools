@@ -27,7 +27,7 @@ const ALWAYS_TRUE_ADMIN_CREDENTIAL_VALIDATOR = {
   validate: () => true,
 };
 
-describe.only("files", () => {
+describe("files", () => {
   it("can serialize and deserialize metadata", () => {
     const cf = new StorageCloudFunctions("demo-project");
     const metadata = new StoredFileMetadata(
@@ -125,7 +125,7 @@ describe.only("files", () => {
       });
     });
 
-    describe.only("#getObject()", () => {
+    describe("#getObject()", () => {
       it("should return data and metadata when only authenticated", async () => {
         const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
         await uploadFile(storageLayer, "bucket", "dir/object", {
@@ -197,7 +197,7 @@ describe.only("files", () => {
         ).to.be.rejectedWith(NotFoundError);
       });
 
-      it("should throw an error if TTL in Seconds aren't passed", async () => {
+      it("should throw an error if TTL in Seconds aren't passed", () => {
         const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
 
         expect(
@@ -328,7 +328,7 @@ describe.only("files", () => {
       });
     });
 
-    describe.only("#generateSignedUrl", () => {
+    describe("#generateSignedUrl", () => {
       it("should throw an error if TTL is not an integer", () => {
         const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
         expect(
@@ -371,9 +371,8 @@ describe.only("files", () => {
         ).to.be.rejectedWith(ForbiddenError);
       });
 
-	  it("should throw an error if object does not exist", () => {
+      it("should throw an error if object does not exist", () => {
         const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
-
         expect(
           storageLayer.generateSignedUrl({
             bucketId: "10",
