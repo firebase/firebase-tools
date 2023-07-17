@@ -370,6 +370,19 @@ describe.only("files", () => {
           })
         ).to.be.rejectedWith(ForbiddenError);
       });
+
+	  it("should throw an error if object does not exist", () => {
+        const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
+
+        expect(
+          storageLayer.generateSignedUrl({
+            bucketId: "10",
+            decodedObjectId: "dir%2Fobject",
+            originalUrl: "localhost:9000",
+            ttlSeconds: 10,
+          })
+        ).to.be.rejectedWith(NotFoundError);
+      });
     });
 
     const getStorageLayer = (rulesValidator: FirebaseRulesValidator) =>
