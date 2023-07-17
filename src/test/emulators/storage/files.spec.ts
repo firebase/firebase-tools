@@ -328,6 +328,20 @@ describe.only("files", () => {
       });
     });
 
+    describe.only("#generateSignedUrl", () => {
+      it("should throw an error if TTL is not an integer", () => {
+        const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
+        expect(
+          storageLayer.generateSignedUrl({
+            bucketId: "10",
+            decodedObjectId: "dir%2Fobject",
+            originalUrl: "localhost:9000",
+            ttlSeconds: 1.4,
+          })
+        ).to.be.rejectedWith(BadRequestError);
+      });
+    });
+
     const getStorageLayer = (rulesValidator: FirebaseRulesValidator) =>
       new StorageLayer(
         "project",
