@@ -14,6 +14,8 @@ import {
   SIGNED_URL_MAX_TTL_SECONDS,
   SIGNED_URL_MIN_TTL_SECONDS,
 } from "../../../emulator/storage/constants";
+import { upload } from "../../../gcp/storage";
+import { tryStringify } from "../../../utils";
 
 const ALWAYS_TRUE_RULES_VALIDATOR = {
   validate: () => Promise.resolve(true),
@@ -381,6 +383,43 @@ describe("files", () => {
             ttlSeconds: 10,
           })
         ).to.be.rejectedWith(NotFoundError);
+      });
+
+      it("should return a valid signed URL", async () => {
+        const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
+        const regexToReplace = /X-Firebase-Date=([^&]+)/;
+
+        await uploadFile(storageLayer, "bucket", "dir/object", {
+          data: "Hello, World!",
+          metadata: { contentType: "mime/type" },
+        });
+
+        const tempUnsignedUrl = createUnsignedUrl({
+          bucketId: "bucket",
+          decodedObjectId: "dir%2Fobject",
+          urlTtlSeconds: 1,
+          urlUsableSeconds: "*",
+          url: "localhost:9000",
+        });
+
+        const signedUrlObject = await storageLayer.generateSignedUrl({
+          bucketId: "bucket",
+          decodedObjectId: "dir%2Fobject",
+          originalUrl: "localhost:9000",
+          ttlSeconds: 1,
+        });
+
+        const signedDate = regexToReplace.exec(signedUrlObject.signed_url);
+
+        const unsignedUrl = `${tempUnsignedUrl.replace("X-Firebase-Date=*", signedDate![0])}`;
+
+        const signature = createSignature(unsignedUrl);
+
+        const actualSignedUrl = `${unsignedUrl}&X-Firebase-Signature=${encodeURIComponent(
+          signature
+        )}`;
+
+        expect(signedUrlObject.signed_url).to.equal(actualSignedUrl);
       });
     });
 
