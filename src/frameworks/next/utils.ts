@@ -1,9 +1,11 @@
-import { existsSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { pathExists } from "fs-extra";
 import { basename, extname, join, posix } from "path";
+import { readFile } from "fs/promises";
+import * as glob from "glob";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
 
-import { isUrl, readJSON } from "../utils";
+import { findDependency, isUrl, readJSON } from "../utils";
 import type {
   RoutesManifest,
   ExportMarker,
@@ -26,7 +28,7 @@ import {
   MIDDLEWARE_MANIFEST,
 } from "./constants";
 import { dirExistsSync, fileExistsSync } from "../../fsutils";
-import { readFile } from "fs/promises";
+import { SemVer, gte, minVersion } from "semver";
 
 export const I18N_SOURCE = /\/:nextInternalLocale(\([^\)]+\))?/;
 
@@ -159,6 +161,7 @@ export function usesAppDirRouter(sourceDir: string): boolean {
   const appPathRoutesManifestPath = join(sourceDir, APP_PATH_ROUTES_MANIFEST);
   return existsSync(appPathRoutesManifestPath);
 }
+
 /**
  * Check if the project is using the next/image component based on the export-marker.json file.
  * @param sourceDir location of the source directory
@@ -209,23 +212,78 @@ export async function isUsingMiddleware(dir: string, isDevMode: boolean): Promis
 /**
  * Whether image optimization is being used
  *
- * @param dir path to `distDir` - where the manifests are located
+ * @param dir project directory
+ * @param distDir path to `distDir` - where the manifests are located
  */
-export async function isUsingImageOptimization(dir: string): Promise<boolean> {
-  let { isNextImageImported } = await readJSON<ExportMarker>(join(dir, EXPORT_MARKER));
+export async function isUsingImageOptimization(
+  projectDir: string,
+  distDir: string
+): Promise<boolean> {
+  let { isNextImageImported } = await readJSON<ExportMarker>(join(distDir, EXPORT_MARKER));
   // App directory doesn't use the export marker, look it up manually
-  if (!isNextImageImported && isUsingAppDirectory(dir)) {
-    isNextImageImported = (await readFile(join(dir, "server", "client-reference-manifest.js")))
-      .toString()
-      .includes("node_modules/next/dist/client/image.js");
+  if (!isNextImageImported && isUsingAppDirectory(distDir)) {
+    if (await isUsingNextImageInAppDirectory(projectDir, distDir)) {
+      isNextImageImported = true;
+    }
   }
 
   if (isNextImageImported) {
-    const imagesManifest = await readJSON<ImagesManifest>(join(dir, IMAGES_MANIFEST));
+    const imagesManifest = await readJSON<ImagesManifest>(join(distDir, IMAGES_MANIFEST));
     return !imagesManifest.images.unoptimized;
   }
 
   return false;
+}
+
+/**
+ * Whether next/image is being used in the app directory
+ */
+async function isUsingNextImageInAppDirectory(
+  projectDir: string,
+  nextDir: string
+): Promise<boolean> {
+  function fileIncludesNextImageComponent(fileContents: string): boolean {
+    return fileContents.includes("node_modules/next/dist/client/image");
+  }
+
+  // Note: casting the types here as this function is called after the Next.js build is done,
+  // so Next.js was already identified as a dependency. In this case getNextVersion
+  // will always return a valid string
+  const nextVersion = getNextVersion(projectDir) as string;
+  const nextVersionSemver = minVersion(nextVersion) as SemVer;
+
+  // Note: canary Next.js versions e.g. 13.4.10-canary.0 are identified as lower than 13.4.10 by SemVer.
+  // Here we use only the major, minor and patch versions for comparison.
+  const nextVersionString = `${nextVersionSemver.major}.${nextVersionSemver.minor}.${nextVersionSemver.patch}`;
+
+  if (gte(nextVersionString, "13.4.10")) {
+    // Next.js >= 13.4.10 has one client-reference-manifest file per entry
+    const files = await new Promise<string[]>((resolve) => {
+      glob(
+        join(nextDir, "server", "app", "**", "*client-reference-manifest.js"),
+        (err, matches) => {
+          resolve(matches);
+        }
+      );
+    });
+
+    // Return true when the first file containing the next/image component is found
+    for (const filepath of files) {
+      const fileContents = readFileSync(filepath);
+      if (fileIncludesNextImageComponent(fileContents.toString())) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  // Next.js < 13.4.10 has a single client-reference-manifest.js file
+  const clientReferenceManifest = await readFile(
+    join(nextDir, "server", "client-reference-manifest.js")
+  );
+
+  return fileIncludesNextImageComponent(clientReferenceManifest.toString());
 }
 
 /**
@@ -359,4 +417,8 @@ export async function getBuildId(distDir: string): Promise<string> {
   const buildId = await readFile(join(distDir, "BUILD_ID"));
 
   return buildId.toString();
+}
+
+export function getNextVersion(cwd: string): string | undefined {
+  return findDependency("next", { cwd, depth: 0, omitDev: false })?.version;
 }
