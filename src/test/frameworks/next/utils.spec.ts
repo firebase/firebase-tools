@@ -245,14 +245,14 @@ describe("Next.js utils", () => {
       stub.withArgs(EXPORT_MARKER).resolves(exportMarkerWithImage);
       stub.withArgs(IMAGES_MANIFEST).resolves(imagesManifest);
 
-      expect(await isUsingImageOptimization("")).to.be.true;
+      expect(await isUsingImageOptimization("", "")).to.be.true;
     });
 
     it("should return false if isNextImageImported is false", async () => {
       const stub = sandbox.stub(frameworksUtils, "readJSON");
       stub.withArgs(EXPORT_MARKER).resolves(exportMarkerWithoutImage);
 
-      expect(await isUsingImageOptimization("")).to.be.false;
+      expect(await isUsingImageOptimization("", "")).to.be.false;
     });
 
     it("should return false if `unoptimized` option is used", async () => {
@@ -260,7 +260,7 @@ describe("Next.js utils", () => {
       stub.withArgs(EXPORT_MARKER).resolves(exportMarkerWithImage);
       stub.withArgs(IMAGES_MANIFEST).resolves(imagesManifestUnoptimized);
 
-      expect(await isUsingImageOptimization("")).to.be.false;
+      expect(await isUsingImageOptimization("", "")).to.be.false;
     });
   });
 
