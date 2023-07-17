@@ -1,4 +1,4 @@
-export const SIGNED_URL_MIN_TTL_SECONDS = 0;
+export const SIGNED_URL_MIN_TTL_SECONDS = 1;
 export const SIGNED_URL_MAX_TTL_SECONDS = 7 * 24 * 60 * 60;
 export const SIGNED_URL_DEFAULT_TTL_SECONDS = 60 * 60;
 export const SECONDS_TO_MS_FACTOR = 1000;

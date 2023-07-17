@@ -12,6 +12,7 @@ import {
   SECONDS_TO_MS_FACTOR,
   SIGNED_URL_DEFAULT_TTL_SECONDS,
   SIGNED_URL_MAX_TTL_SECONDS,
+  SIGNED_URL_MIN_TTL_SECONDS,
 } from "../../../emulator/storage/constants";
 
 const ALWAYS_TRUE_RULES_VALIDATOR = {
@@ -125,7 +126,7 @@ describe.only("files", () => {
     });
 
     describe.only("#getObject()", () => {
-      it("should return data and metadata", async () => {
+      it("should return data and metadata when only authenticated", async () => {
         const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
         await uploadFile(storageLayer, "bucket", "dir/object", {
           data: "Hello, World!",
@@ -135,6 +136,39 @@ describe.only("files", () => {
         const { metadata, data } = await storageLayer.getObject({
           bucketId: "bucket",
           decodedObjectId: "dir%2Fobject",
+        });
+
+        expect(metadata.contentType).to.equal("mime/type");
+        expect(data.toString()).to.equal("Hello, World!");
+      });
+
+      it("should return data and metadata when passed a valid signature", async () => {
+        const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
+
+        await uploadFile(storageLayer, "bucket", "dir/object", {
+          data: "Hello, World!",
+          metadata: { contentType: "mime/type" },
+        });
+
+        const currentDate = getCurrentDate();
+
+        const unsignedUrl = createUnsignedUrl({
+          bucketId: "bucket",
+          decodedObjectId: "dir%2Fobject",
+          urlTtlSeconds: 100,
+          urlUsableSeconds: currentDate,
+          url: "localhost:9000",
+        });
+
+        const signature = createSignature(unsignedUrl);
+
+        const { metadata, data } = await storageLayer.getObject({
+          bucketId: "bucket",
+          decodedObjectId: "dir%2Fobject",
+          urlSignature: signature,
+          urlTtlSeconds: 100,
+          urlUsableSeconds: currentDate,
+          url: "localhost:9000",
         });
 
         expect(metadata.contentType).to.equal("mime/type");
@@ -193,11 +227,11 @@ describe.only("files", () => {
         const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
 
         expect(
-			storageLayer.getObject({
-			  bucketId: "bucket",
+          storageLayer.getObject({
+            bucketId: "bucket",
             decodedObjectId: "dir%2Fobject",
             urlSignature: "mockSignature",
-            urlTtlSeconds: 1,
+            urlTtlSeconds: SIGNED_URL_MIN_TTL_SECONDS,
             urlUsableSeconds: getAdjustedDate(-1),
           })
         ).to.be.rejectedWith(BadRequestError);

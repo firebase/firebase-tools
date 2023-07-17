@@ -174,7 +174,7 @@ export class StorageLayer {
       throw new BadRequestError("Invalid TTL Parameter");
     }
 
-    if (timeToLive <= SIGNED_URL_MIN_TTL_SECONDS || timeToLive > SIGNED_URL_MAX_TTL_SECONDS) {
+    if (timeToLive < SIGNED_URL_MIN_TTL_SECONDS || timeToLive > SIGNED_URL_MAX_TTL_SECONDS) {
       throw new BadRequestError(`TTL specified is less than 0 or more than allowed max (2 week)`);
     }
 
@@ -247,10 +247,6 @@ export class StorageLayer {
     const hasValidDownloadToken = (metadata?.downloadTokens || []).includes(
       request.downloadToken ?? ""
     );
-
-    if (hasValidDownloadToken) {
-      console.log("trumps");
-    }
 
     let checkAuth = false;
 
