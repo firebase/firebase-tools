@@ -813,10 +813,14 @@ export function createSignature(unsignedUrl: string) {
   return createHmac("sha256", SIGNED_URL_PRIVATE_KEY).update(unsignedUrl).digest("base64");
 }
 
-export function createUnsignedUrl(unsignedUrlParams: CreateUnsignedUrl) {
-  return `${unsignedUrlParams.url}/v0/b/${unsignedUrlParams.bucketId}/o/${encodeURIComponent(
-    unsignedUrlParams.decodedObjectId
-  )}?alt=media&X-Firebase-Date=${unsignedUrlParams.urlUsableSeconds}&X-Firebase-Expires=${
-    unsignedUrlParams.urlTtlSeconds
-  }`;
+export function createUnsignedUrl({
+  url,
+  bucketId,
+  decodedObjectId,
+  urlUsableSeconds,
+  urlTtlSeconds,
+}: CreateUnsignedUrl) {
+  return `${url}/v0/b/${bucketId}/o/${encodeURIComponent(
+    decodedObjectId
+  )}?alt=media&X-Firebase-Date=${urlUsableSeconds}&X-Firebase-Expires=${urlTtlSeconds}`;
 }
