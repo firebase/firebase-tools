@@ -2,9 +2,9 @@ import { existsSync } from "fs";
 import { pathExists } from "fs-extra";
 import { basename, extname, join, posix } from "path";
 import { readFile } from "fs/promises";
-import { sync as globSync } from "glob";
+import { Glob } from "glob";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
-import { coerce, lt } from "semver";
+import { coerce } from "semver";
 
 import { findDependency, isUrl, readJSON } from "../utils";
 import type {
@@ -244,34 +244,15 @@ export async function isUsingNextImageInAppDirectory(
   projectDir: string,
   nextDir: string
 ): Promise<boolean> {
-  function includesNextImageComponent(fileContents: string): boolean {
-    return fileContents.includes("node_modules/next/dist/client/image");
-  }
-
-  // Note: casting the types here as this function is called after the Next.js build is done,
-  // so Next.js was already identified as a dependency. In this case getNextVersion
-  // will always return a valid string
-  const nextVersion = getNextVersion(projectDir) as string;
-
-  // Next.js < 13.4.10 has a single client-reference-manifest.js file
-  if (lt(nextVersion, "13.4.10")) {
-    const clientReferenceManifest = await readFile(
-      join(projectDir, nextDir, "server", "client-reference-manifest.js")
-    );
-
-    return includesNextImageComponent(clientReferenceManifest.toString());
-  }
-
-  // Next.js >= 13.4.10 has one client-reference-manifest file per entry
-  const files = globSync(
-    join(projectDir, nextDir, "server", "app", "**", "*client-reference-manifest.js")
+  const { found: files } = new Glob(
+    join(projectDir, nextDir, "server", "**", "*client-reference-manifest.js")
   );
 
-  // Return true when the first file containing the next/image component is found
-  for (const filepath of files) {
+  for await (const filepath of files) {
     const fileContents = await readFile(filepath);
 
-    if (includesNextImageComponent(fileContents.toString())) {
+    // Return true when the first file containing the next/image component is found
+    if (fileContents.includes("node_modules/next/dist/client/image")) {
       return true;
     }
   }
