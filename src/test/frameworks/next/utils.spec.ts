@@ -1,13 +1,16 @@
 import { expect } from "chai";
 import * as fs from "fs";
+import * as fsPromises from "fs/promises";
 import * as fsExtra from "fs-extra";
 import * as sinon from "sinon";
+import * as glob from "glob";
 
 import {
   EXPORT_MARKER,
   IMAGES_MANIFEST,
   APP_PATH_ROUTES_MANIFEST,
 } from "../../../frameworks/next/constants";
+
 import {
   cleanEscapedChars,
   isRewriteSupportedByHosting,
@@ -27,7 +30,9 @@ import {
   getNonStaticRoutes,
   getNonStaticServerComponents,
   getHeadersFromMetaFiles,
+  isUsingNextImageInAppDirectory,
 } from "../../../frameworks/next/utils";
+
 import * as frameworksUtils from "../../../frameworks/utils";
 import * as fsUtils from "../../../fsutils";
 
@@ -53,6 +58,10 @@ import {
   appPathsManifest,
   appPathRoutesManifest,
   metaFileContents,
+  pageClientReferenceManifestWithImage,
+  pageClientReferenceManifestWithoutImage,
+  clientReferenceManifestWithImage,
+  clientReferenceManifestWithoutImage,
 } from "./helpers";
 import { pathsWithCustomRoutesInternalPrefix } from "./helpers/i18n";
 
@@ -261,6 +270,64 @@ describe("Next.js utils", () => {
       stub.withArgs(IMAGES_MANIFEST).resolves(imagesManifestUnoptimized);
 
       expect(await isUsingImageOptimization("", "")).to.be.false;
+    });
+  });
+
+  describe("isUsingNextImageInAppDirectory", () => {
+    describe("Next.js >= 13.4.10", () => {
+      let sandbox: sinon.SinonSandbox;
+      beforeEach(() => (sandbox = sinon.createSandbox()));
+      afterEach(() => sandbox.restore());
+
+      const nextVersion = "13.4.10";
+
+      it("should return true when using next/image in the app directory", async () => {
+        sandbox.stub(frameworksUtils, "findDependency").returns({ version: nextVersion });
+        sandbox
+          .stub(glob, "sync")
+          .returns(["/path-to-app/.next/server/app/page_client-reference-manifest.js"]);
+        sandbox.stub(fsPromises, "readFile").resolves(pageClientReferenceManifestWithImage);
+
+        expect(await isUsingNextImageInAppDirectory("", "")).to.be.true;
+      });
+
+      it("should return false when not using next/image in the app directory", async () => {
+        sandbox.stub(frameworksUtils, "findDependency").returns({ version: nextVersion });
+        sandbox.stub(fsPromises, "readFile").resolves(pageClientReferenceManifestWithoutImage);
+
+        const globSyncStub = sandbox
+          .stub(glob, "sync")
+          .returns(["/path-to-app/.next/server/app/page_client-reference-manifest.js"]);
+
+        expect(await isUsingNextImageInAppDirectory("", "")).to.be.false;
+
+        globSyncStub.restore();
+        globSyncStub.returns([]);
+
+        expect(await isUsingNextImageInAppDirectory("", "")).to.be.false;
+      });
+    });
+
+    describe("Next.js < 13.4.10", () => {
+      let sandbox: sinon.SinonSandbox;
+      beforeEach(() => (sandbox = sinon.createSandbox()));
+      afterEach(() => sandbox.restore());
+
+      const nextVersion = "13.4.9";
+
+      it("should return true when using next/image in the app directory", async () => {
+        sandbox.stub(frameworksUtils, "findDependency").returns({ version: nextVersion });
+        sandbox.stub(fsPromises, "readFile").resolves(clientReferenceManifestWithImage);
+
+        expect(await isUsingNextImageInAppDirectory("", "")).to.be.true;
+      });
+
+      it("should return false when not using next/image in the app directory", async () => {
+        sandbox.stub(frameworksUtils, "findDependency").returns({ version: nextVersion });
+        sandbox.stub(fsPromises, "readFile").resolves(clientReferenceManifestWithoutImage);
+
+        expect(await isUsingNextImageInAppDirectory("", "")).to.be.false;
+      });
     });
   });
 
