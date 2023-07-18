@@ -1,8 +1,8 @@
-import { existsSync, readFileSync } from "fs";
+import { existsSync } from "fs";
 import { pathExists } from "fs-extra";
 import { basename, extname, join, posix } from "path";
 import { readFile } from "fs/promises";
-import * as glob from "glob";
+import { sync as globSync } from "glob";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
 
 import { findDependency, isUrl, readJSON } from "../utils";
@@ -28,7 +28,7 @@ import {
   MIDDLEWARE_MANIFEST,
 } from "./constants";
 import { dirExistsSync, fileExistsSync } from "../../fsutils";
-import { SemVer, gte, minVersion } from "semver";
+import { SemVer, lt, minVersion } from "semver";
 
 export const I18N_SOURCE = /\/:nextInternalLocale(\([^\)]+\))?/;
 
@@ -212,7 +212,7 @@ export async function isUsingMiddleware(dir: string, isDevMode: boolean): Promis
 /**
  * Whether image optimization is being used
  *
- * @param dir project directory
+ * @param projectDir path to the project directory
  * @param distDir path to `distDir` - where the manifests are located
  */
 export async function isUsingImageOptimization(
@@ -221,14 +221,16 @@ export async function isUsingImageOptimization(
 ): Promise<boolean> {
   let { isNextImageImported } = await readJSON<ExportMarker>(join(distDir, EXPORT_MARKER));
   // App directory doesn't use the export marker, look it up manually
-  if (!isNextImageImported && isUsingAppDirectory(distDir)) {
+  if (!isNextImageImported && isUsingAppDirectory(join(projectDir, distDir))) {
     if (await isUsingNextImageInAppDirectory(projectDir, distDir)) {
       isNextImageImported = true;
     }
   }
 
   if (isNextImageImported) {
-    const imagesManifest = await readJSON<ImagesManifest>(join(distDir, IMAGES_MANIFEST));
+    const imagesManifest = await readJSON<ImagesManifest>(
+      join(projectDir, distDir, IMAGES_MANIFEST)
+    );
     return !imagesManifest.images.unoptimized;
   }
 
@@ -254,36 +256,32 @@ export async function isUsingNextImageInAppDirectory(
 
   // Note: canary Next.js versions e.g. 13.4.10-canary.0 are identified as lower than 13.4.10 by SemVer.
   // Here we use only the major, minor and patch versions for comparison.
-  const nextVersionString = `${nextVersionSemver.major}.${nextVersionSemver.minor}.${nextVersionSemver.patch}`;
-
-  if (gte(nextVersionString, "13.4.10")) {
-    // Next.js >= 13.4.10 has one client-reference-manifest file per entry
-    const files = await new Promise<string[]>((resolve) => {
-      glob(
-        join(nextDir, "server", "app", "**", "*client-reference-manifest.js"),
-        (err, matches) => {
-          resolve(matches);
-        }
-      );
-    });
-
-    // Return true when the first file containing the next/image component is found
-    for (const filepath of files) {
-      const fileContents = readFileSync(filepath);
-      if (fileIncludesNextImageComponent(fileContents.toString())) {
-        return true;
-      }
-    }
-
-    return false;
-  }
+  const nextMajorMinorPatchVersion = `${nextVersionSemver.major}.${nextVersionSemver.minor}.${nextVersionSemver.patch}`;
 
   // Next.js < 13.4.10 has a single client-reference-manifest.js file
-  const clientReferenceManifest = await readFile(
-    join(nextDir, "server", "client-reference-manifest.js")
+  if (lt(nextMajorMinorPatchVersion, "13.4.10")) {
+    const clientReferenceManifest = await readFile(
+      join(projectDir, nextDir, "server", "client-reference-manifest.js")
+    );
+
+    return includesNextImageComponent(clientReferenceManifest.toString());
+  }
+
+  // Next.js >= 13.4.10 has one client-reference-manifest file per entry
+  const files = globSync(
+    join(projectDir, nextDir, "server", "app", "**", "*client-reference-manifest.js")
   );
 
-  return fileIncludesNextImageComponent(clientReferenceManifest.toString());
+  // Return true when the first file containing the next/image component is found
+  for (const filepath of files) {
+    const fileContents = await readFile(filepath);
+
+    if (includesNextImageComponent(fileContents.toString())) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /**
