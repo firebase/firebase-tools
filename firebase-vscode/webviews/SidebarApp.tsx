@@ -84,7 +84,7 @@ export function SidebarApp() {
     });
 
     broker.on("notifyUserChanged", ({ user }) => {
-      webLogger.debug("notifyUserChanged:", user.email);
+      webLogger.debug("notifyUserChanged:", user?.email);
       setUser(user);
     });
 
