@@ -242,7 +242,7 @@ async function isUsingNextImageInAppDirectory(
   projectDir: string,
   nextDir: string
 ): Promise<boolean> {
-  function fileIncludesNextImageComponent(fileContents: string): boolean {
+  function includesNextImageComponent(fileContents: string): boolean {
     return fileContents.includes("node_modules/next/dist/client/image");
   }
 
