@@ -1,4 +1,4 @@
-- Enable preferRest option by default for Firestore functions. (#6147)
+- Enable [preferRest](https://firebase.google.com/docs/reference/admin/node/firebase-admin.firestore.firestoresettings.md#firestoresettingspreferrest) option by default for Firestore functions. (#6147)
 - Fixed bug where `functions:secrets:set` didn't remove stale versions of a secret. (#6080)
 - Fixed bug where `firebase deploy --only firestore:named-db` didn't update rules. (#6129)
 - Fixed issue where Flutter Web is not detected as a web framework. (#6085)
