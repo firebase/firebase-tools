@@ -76,7 +76,6 @@ https://console.firebase.google.com/project/${projectId}/usage/details`);
       const apiPermissionDeniedRegex = new RegExp(
         /Permission denied to enable service \[([.a-zA-Z]+)\]/
       );
-      (err as Error).message.match(/f/);
       // Recognize permission denied errors on APIs and provide users the
       // GCP console link to easily enable the API.
       const permissionsError = apiPermissionDeniedRegex.exec((err as Error).message);
