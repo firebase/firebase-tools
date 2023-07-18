@@ -1,7 +1,11 @@
 import { expect } from "chai";
 import { tmpdir } from "os";
 import { StoredFileMetadata } from "../../../emulator/storage/metadata";
-import { createSignature, createUnsignedUrl } from "../../../emulator/storage/files";
+import {
+  createSignature,
+  createUnsignedUrl,
+  getCurrentDate,
+} from "../../../emulator/storage/files";
 import { StorageCloudFunctions } from "../../../emulator/storage/cloudFunctions";
 import { StorageLayer } from "../../../emulator/storage/files";
 import { ForbiddenError, NotFoundError, BadRequestError } from "../../../emulator/storage/errors";
@@ -157,7 +161,7 @@ describe("files", () => {
           decodedObjectId: "dir%2Fobject",
           urlTtlSeconds: 100,
           urlUsableSeconds: currentDate,
-          url: "localhost:9000",
+          url: "http://localhost:9000",
         });
 
         const signature = createSignature(unsignedUrl);
@@ -165,10 +169,12 @@ describe("files", () => {
         const { metadata, data } = await storageLayer.getObject({
           bucketId: "bucket",
           decodedObjectId: "dir%2Fobject",
-          urlSignature: signature,
-          urlTtlSeconds: 100,
-          urlUsableSeconds: currentDate,
-          url: "localhost:9000",
+          signedUrl: {
+            urlSignature: signature,
+            urlTtlSeconds: 100,
+            urlUsableSeconds: currentDate,
+          },
+          baseUrl: "http://localhost:9000",
         });
 
         expect(metadata.contentType).to.equal("mime/type");
@@ -197,15 +203,17 @@ describe("files", () => {
         ).to.be.rejectedWith(NotFoundError);
       });
 
-      it("should throw an error if TTL in Seconds aren't passed", () => {
+      it("should throw an error if missing TTL", () => {
         const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
 
         expect(
           storageLayer.getObject({
             bucketId: "bucket",
             decodedObjectId: "dir%2Fobject",
-            urlSignature: "mockSignature",
-            urlUsableSeconds: getCurrentDate(),
+            signedUrl: {
+              urlSignature: "mockSignature",
+              urlUsableSeconds: getCurrentDate(),
+            },
           })
         ).to.be.rejectedWith(BadRequestError);
       });
@@ -217,8 +225,10 @@ describe("files", () => {
           storageLayer.getObject({
             bucketId: "bucket",
             decodedObjectId: "dir%2Fobject",
-            urlSignature: "mockSignature",
-            urlTtlSeconds: 10,
+            signedUrl: {
+              urlSignature: "mockSignature",
+              urlTtlSeconds: 10,
+            },
           })
         ).to.be.rejectedWith(BadRequestError);
       });
@@ -230,9 +240,11 @@ describe("files", () => {
           storageLayer.getObject({
             bucketId: "bucket",
             decodedObjectId: "dir%2Fobject",
-            urlSignature: "mockSignature",
-            urlTtlSeconds: SIGNED_URL_MIN_TTL_SECONDS,
-            urlUsableSeconds: getAdjustedDate(-1),
+            signedUrl: {
+              urlSignature: "mockSignature",
+              urlTtlSeconds: SIGNED_URL_MIN_TTL_SECONDS,
+              urlUsableSeconds: getAdjustedDate(-1),
+            },
           })
         ).to.be.rejectedWith(BadRequestError);
       });
@@ -244,9 +256,11 @@ describe("files", () => {
           storageLayer.getObject({
             bucketId: "bucket",
             decodedObjectId: "dir%2Fobject",
-            urlSignature: "mockSignature",
-            urlTtlSeconds: SIGNED_URL_MAX_TTL_SECONDS,
-            urlUsableSeconds: getAdjustedDate(-SIGNED_URL_MAX_TTL_SECONDS),
+            signedUrl: {
+              urlSignature: "mockSignature",
+              urlTtlSeconds: SIGNED_URL_MAX_TTL_SECONDS,
+              urlUsableSeconds: getAdjustedDate(-SIGNED_URL_MAX_TTL_SECONDS),
+            },
           })
         ).to.be.rejectedWith(BadRequestError);
       });
@@ -257,9 +271,11 @@ describe("files", () => {
           storageLayer.getObject({
             bucketId: "bucket",
             decodedObjectId: "dir%2Fobject",
-            urlSignature: "mockSignature",
-            urlTtlSeconds: 10,
-            urlUsableSeconds: getAdjustedDate(1),
+            signedUrl: {
+              urlSignature: "mockSignature",
+              urlTtlSeconds: 10,
+              urlUsableSeconds: getAdjustedDate(1),
+            },
           })
         ).to.be.rejectedWith(BadRequestError);
       });
@@ -269,7 +285,7 @@ describe("files", () => {
         const unsignedUrl = createUnsignedUrl({
           bucketId: "10",
           decodedObjectId: "dir%2Fobject",
-          url: "localhost:9000",
+          url: "http://localhost:9000",
           urlUsableSeconds: getCurrentDate(),
           urlTtlSeconds: SIGNED_URL_DEFAULT_TTL_SECONDS,
         });
@@ -290,12 +306,14 @@ describe("files", () => {
               bucketId: paramToChange === "bucketId" ? "11" : "10",
               decodedObjectId:
                 paramToChange === "decodedObjectId" ? "dir%2FBadobject" : "dir%2Fobject",
-              urlSignature: signature,
-              url: paramToChange === "url" ? "badurl:0000" : "localhost:9000",
-              urlTtlSeconds:
-                paramToChange === "urlTtlSeconds" ? 10 : SIGNED_URL_DEFAULT_TTL_SECONDS,
-              urlUsableSeconds:
-                paramToChange === "urlUsableSeconds" ? getAdjustedDate(-1) : getCurrentDate(),
+              baseUrl: paramToChange === "url" ? "badurl:0000" : "http://localhost:9000",
+              signedUrl: {
+                urlSignature: signature,
+                urlTtlSeconds:
+                  paramToChange === "urlTtlSeconds" ? 10 : SIGNED_URL_DEFAULT_TTL_SECONDS,
+                urlUsableSeconds:
+                  paramToChange === "urlUsableSeconds" ? getAdjustedDate(-1) : getCurrentDate(),
+              },
             })
           ).to.be.rejectedWith(ForbiddenError);
         });
@@ -307,9 +325,11 @@ describe("files", () => {
           storageLayer.getObject({
             bucketId: "bucket",
             decodedObjectId: "dir%2Fobject",
-            urlSignature: "mockSignature",
-            urlTtlSeconds: 1.3,
-            urlUsableSeconds: getCurrentDate(),
+            signedUrl: {
+              urlSignature: "mockSignature",
+              urlTtlSeconds: 1.3,
+              urlUsableSeconds: getCurrentDate(),
+            },
           })
         ).to.be.rejectedWith(BadRequestError);
       });
@@ -320,9 +340,11 @@ describe("files", () => {
           storageLayer.getObject({
             bucketId: "bucket",
             decodedObjectId: "dir%2Fobject",
-            urlSignature: "mockSignature",
-            urlTtlSeconds: 1.3,
-            urlUsableSeconds: "invalid date",
+            signedUrl: {
+              urlSignature: "mockSignature",
+              urlTtlSeconds: 1.3,
+              urlUsableSeconds: "invalid date",
+            },
           })
         ).to.be.rejectedWith(BadRequestError);
       });
@@ -335,7 +357,7 @@ describe("files", () => {
           storageLayer.generateSignedUrl({
             bucketId: "10",
             decodedObjectId: "dir%2Fobject",
-            originalUrl: "localhost:9000",
+            baseUrl: "http://localhost:9000",
             ttlSeconds: 1.4,
           })
         ).to.be.rejectedWith(BadRequestError);
@@ -344,14 +366,14 @@ describe("files", () => {
       it("should throw an error if TTL is below the min or above the max time", () => {
         const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
 
-        const cases = [SIGNED_URL_MIN_TTL_SECONDS, SIGNED_URL_MAX_TTL_SECONDS];
+        const times = [SIGNED_URL_MIN_TTL_SECONDS, SIGNED_URL_MAX_TTL_SECONDS];
 
-        cases.forEach((time) => {
+        times.forEach((time) => {
           expect(
             storageLayer.generateSignedUrl({
               bucketId: "10",
               decodedObjectId: "dir%2Fobject",
-              originalUrl: "localhost:9000",
+              baseUrl: "http://localhost:9000",
               ttlSeconds: time === SIGNED_URL_MAX_TTL_SECONDS ? SIGNED_URL_MAX_TTL_SECONDS + 1 : 0,
             })
           ).to.be.rejectedWith(BadRequestError);
@@ -365,7 +387,7 @@ describe("files", () => {
           storageLayer.generateSignedUrl({
             bucketId: "10",
             decodedObjectId: "dir%2Fobject",
-            originalUrl: "localhost:9000",
+            baseUrl: "http://localhost:9000",
             ttlSeconds: 10,
           })
         ).to.be.rejectedWith(ForbiddenError);
@@ -377,7 +399,7 @@ describe("files", () => {
           storageLayer.generateSignedUrl({
             bucketId: "10",
             decodedObjectId: "dir%2Fobject",
-            originalUrl: "localhost:9000",
+            baseUrl: "http://localhost:9000",
             ttlSeconds: 10,
           })
         ).to.be.rejectedWith(NotFoundError);
@@ -397,13 +419,13 @@ describe("files", () => {
           decodedObjectId: "dir%2Fobject",
           urlTtlSeconds: 1,
           urlUsableSeconds: "*",
-          url: "localhost:9000",
+          url: "http://localhost:9000",
         });
 
         const signedUrlObject = await storageLayer.generateSignedUrl({
           bucketId: "bucket",
           decodedObjectId: "dir%2Fobject",
-          originalUrl: "localhost:9000",
+          baseUrl: "http://localhost:9000",
           ttlSeconds: 1,
         });
 
@@ -435,9 +457,6 @@ describe("files", () => {
     const getPersistenceTmpDir = () => `${tmpdir()}/firebase/storage/blobs`;
   });
 });
-function getCurrentDate(): string {
-  return new Date().toISOString().replaceAll("-", "").replaceAll(":", "").replaceAll(".", "");
-}
 
 /**
  * get the current date + changeBy SECONDS

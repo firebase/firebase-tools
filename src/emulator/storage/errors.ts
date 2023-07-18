@@ -1,7 +1,7 @@
 /** Error that signals that a resource could not be found */
 export class NotFoundError extends Error {}
 
-/** Error that signals that a necessary permission was lacking. */
+/** Error that signals an invalid Url trying to be accessed*/
 export class ForbiddenError extends Error {}
 
 /** Error that signals an invalid Url trying to be accessed*/

@@ -15,7 +15,7 @@ import {
   UploadPreviouslyFinalizedError,
 } from "../upload";
 import { reqBodyToBuffer } from "../../shared/request";
-import { ListObjectsResponse, SignedUrlResponse } from "../files";
+import { ListObjectsResponse, CreateSignedUrlResponse } from "../files";
 import { SIGNED_URL_DEFAULT_TTL_SECONDS } from "../constants";
 /**
  * @param emulator
@@ -99,12 +99,14 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       ({ metadata, data } = await storageLayer.getObject({
         bucketId: req.params.bucketId,
         decodedObjectId: decodeURIComponent(req.params.objectId),
-        url: `${req.protocol}://${req.hostname}:${req.socket.localPort}`,
+        baseUrl: `${req.protocol}://${req.hostname}:${req.socket.localPort}`,
         authorization: req.header("authorization"),
         downloadToken: req.query.token?.toString(),
-        urlSignature: req.query["X-Firebase-Signature"] as string,
-        urlUsableSeconds: req.query["X-Firebase-Date"] as string | undefined,
-        urlTtlSeconds: Number(req.query["X-Firebase-Expires"]),
+        signedUrl: {
+          urlSignature: req.query["X-Firebase-Signature"] as string,
+          urlUsableSeconds: req.query["X-Firebase-Date"] as string,
+          urlTtlSeconds: Number(req.query["X-Firebase-Expires"]),
+        },
       }));
     } catch (err) {
       if (err instanceof NotFoundError) {
@@ -141,23 +143,21 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   });
 
   firebaseStorageAPI.post(`/b/:bucketId/o/:objectId[(:)]generateSignedUrl`, async (req, res) => {
-    let signedUrlObject: SignedUrlResponse;
-
+    let signedUrlResponse: CreateSignedUrlResponse;
     try {
-      signedUrlObject = await storageLayer.generateSignedUrl({
+      signedUrlResponse = await storageLayer.generateSignedUrl({
         bucketId: req.params.bucketId,
         decodedObjectId: decodeURIComponent(req.params.objectId),
         authorization: req.header("authorization"),
-        originalUrl: `${req.protocol}://${req.hostname}:${req.socket.localPort}`,
-        ttlSeconds:
-          req.body.ttlSeconds === undefined ? SIGNED_URL_DEFAULT_TTL_SECONDS : req.body.ttlSeconds,
+        baseUrl: `${req.protocol}://${req.hostname}:${req.socket.localPort}`,
+        ttlSeconds: req.body.ttlSeconds ?? SIGNED_URL_DEFAULT_TTL_SECONDS,
       });
     } catch (err) {
       if (err instanceof NotFoundError) {
         return res.status(404).json({
           error: {
             code: 404,
-            message: `Object in bucket does not exist`,
+            message: err.message,
           },
         });
       }
@@ -165,7 +165,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         return res.status(403).json({
           error: {
             code: 403,
-            message: `Permission denied. No WRITE permission.`,
+            message: err.message,
           },
         });
       } else if (err instanceof BadRequestError) {
@@ -178,7 +178,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       }
       throw err;
     }
-    return res.json(signedUrlObject);
+    return res.json(signedUrlResponse);
   });
 
   // list object handler

@@ -46,29 +46,34 @@ export class StoredFile {
   }
 }
 
-/**  Parsed request object for {@link StorageLayer#authenticateUser}. */
-export type CreateSignedUrl = {
+/**  Parsed request object for {@link StorageLayer#generateSignedUrl}. */
+export type CreateSignedUrlRequest = {
   bucketId: string;
   decodedObjectId: string;
   authorization?: string;
-  originalUrl: string;
+  baseUrl: string;
   ttlSeconds: number;
 };
 
-export type SignedUrlResponse = {
+/** Response object for {@link StorageLayer#generateSignedUrl}. */
+export type CreateSignedUrlResponse = {
   signed_url: string;
+};
+
+export type SignedUrlParams = {
+  urlSignature?: string;
+  urlUsableSeconds?: string;
+  urlTtlSeconds?: number;
 };
 
 /**  Parsed request object for {@link StorageLayer#getObject}. */
 export type GetObjectRequest = {
   bucketId: string;
   decodedObjectId: string;
-  url?: string;
+  baseUrl?: string;
   authorization?: string;
   downloadToken?: string;
-  urlSignature?: string;
-  urlUsableSeconds?: string | undefined;
-  urlTtlSeconds?: number;
+  signedUrl?: SignedUrlParams;
 };
 
 /** Response object for {@link StorageLayer#getObject}. */
@@ -164,18 +169,20 @@ export class StorageLayer {
    * @param {GetObjectRequest} request
    * @returns {Promise<boolean>}
    */
-  async generateSignedUrl(request: CreateSignedUrl): Promise<SignedUrlResponse> {
+  async generateSignedUrl(request: CreateSignedUrlRequest): Promise<CreateSignedUrlResponse> {
     const metadata = this.getMetadata(request.bucketId, request.decodedObjectId);
 
-    const currentDate = this.getCurrentDate();
+    const currentDate = getCurrentDate();
 
     const timeToLive = request.ttlSeconds;
     if (!Number.isInteger(timeToLive)) {
-      throw new BadRequestError("Invalid TTL Parameter");
+      throw new BadRequestError(`Invalid TTL: ${timeToLive} is not an integer.`);
     }
 
     if (timeToLive < SIGNED_URL_MIN_TTL_SECONDS || timeToLive > SIGNED_URL_MAX_TTL_SECONDS) {
-      throw new BadRequestError(`TTL specified is less than 0 or more than allowed max (2 week)`);
+      throw new BadRequestError(
+        `Invalid TTL: ${timeToLive} is out of range. Must be > ${SIGNED_URL_MIN_TTL_SECONDS} and < ${SIGNED_URL_MAX_TTL_SECONDS}`
+      );
     }
 
     const authorized = await this._rulesValidator.validate(
@@ -192,23 +199,23 @@ export class StorageLayer {
     }
 
     if (!metadata) {
-      throw new NotFoundError("Object in bucket does not exist");
+      throw new NotFoundError(
+        `Object /b/${request.bucketId}/o/${request.decodedObjectId} does not exist.`
+      );
     }
 
     const unsignedUrl = createUnsignedUrl({
       bucketId: request.bucketId,
       decodedObjectId: request.decodedObjectId,
-      url: request.originalUrl,
+      url: request.baseUrl,
       urlUsableSeconds: currentDate,
       urlTtlSeconds: request.ttlSeconds,
     });
 
     const signature = createSignature(unsignedUrl);
 
-    const signedUrl = `${unsignedUrl}&X-Firebase-Signature=${encodeURIComponent(signature)}`;
-
     return {
-      signed_url: signedUrl,
+      signed_url: `${unsignedUrl}&X-Firebase-Signature=${encodeURIComponent(signature)}`,
     };
   }
 
@@ -216,10 +223,6 @@ export class StorageLayer {
     if (!this._buckets.has(id)) {
       this._buckets.set(id, new CloudStorageBucketMetadata(id));
     }
-  }
-
-  getCurrentDate() {
-    return new Date().toISOString().replaceAll("-", "").replaceAll(":", "").replaceAll(".", "");
   }
 
   async listBuckets(): Promise<CloudStorageBucketMetadata[]> {
@@ -251,21 +254,14 @@ export class StorageLayer {
     let checkAuth = false;
 
     if (!hasValidDownloadToken) {
-      if (request.urlSignature) {
-        const prevSignature = request.urlSignature;
+      if (request.signedUrl) {
+        const prevSignature = request.signedUrl.urlSignature;
 
-        if (!request.urlUsableSeconds || !request.urlTtlSeconds) {
-          throw new BadRequestError(`Invalid ${!request.urlUsableSeconds ? "Date" : "TTL"}`);
-        }
-        const start = convertDateToMS(request.urlUsableSeconds);
+        const start = validateSignedUrl(request.signedUrl);
 
-        if (!start || !Number.isInteger(request.urlTtlSeconds)) {
-          throw new BadRequestError(`Invalid ${!start ? "Date" : "TTL"}`);
-        }
-
-        const changeInTime = request.urlTtlSeconds * SECONDS_TO_MS_FACTOR;
+        const changeInTime = request.signedUrl.urlTtlSeconds! * SECONDS_TO_MS_FACTOR;
         const end = start + changeInTime;
-        const now = convertDateToMS(this.getCurrentDate());
+        const now = convertDateToMS(getCurrentDate());
 
         const isLive = now >= start && now < end;
 
@@ -276,9 +272,9 @@ export class StorageLayer {
         const unsignedUrl = createUnsignedUrl({
           bucketId: request.bucketId,
           decodedObjectId: request.decodedObjectId,
-          url: request.url as string,
-          urlUsableSeconds: request.urlUsableSeconds,
-          urlTtlSeconds: request.urlTtlSeconds,
+          url: request.baseUrl as string,
+          urlUsableSeconds: request.signedUrl.urlUsableSeconds!,
+          urlTtlSeconds: request.signedUrl.urlTtlSeconds!,
         });
 
         const isCorrect = createSignature(unsignedUrl) === prevSignature;
@@ -303,7 +299,7 @@ export class StorageLayer {
     }
 
     if (!authorized) {
-      throw new ForbiddenError("Permission denied. No READ permission");
+      throw new ForbiddenError();
     }
 
     if (!metadata) {
@@ -823,4 +819,44 @@ export function createUnsignedUrl({
   return `${url}/v0/b/${bucketId}/o/${encodeURIComponent(
     decodedObjectId
   )}?alt=media&X-Firebase-Date=${urlUsableSeconds}&X-Firebase-Expires=${urlTtlSeconds}`;
+}
+
+/**
+ * Returns the current date is ISO format: YYYYMMDD'T'HHMMSS'Z
+ * @date 7/18/2023 - 10:14:44 AM
+ *
+ * @export
+ * @returns {Date}
+ */
+export function getCurrentDate() {
+  return new Date().toISOString().replaceAll("-", "").replaceAll(":", "").replaceAll(".", "");
+}
+
+/**
+ * Validates the parameters of the signedUrlParams. If everything is valid, returns the start time of the URL
+ * @date 7/18/2023 - 10:35:56 AM
+ *
+ * @param {SignedUrlParams} signedUrl
+ * @returns {number}
+ */
+function validateSignedUrl(signedUrl: SignedUrlParams) {
+  if (!signedUrl.urlUsableSeconds || !signedUrl.urlTtlSeconds) {
+    throw new BadRequestError(
+      `Missing required parameter ${
+        signedUrl.urlUsableSeconds
+          ? "X-Firebase-Date: YYYYMMDD'T'HHMMSS'Z'"
+          : "X-Firebase-Expires: TTL"
+      }`
+    );
+  }
+  const start = convertDateToMS(signedUrl.urlUsableSeconds);
+
+  if (!start) {
+    throw new BadRequestError(`Invalid format for X-Firebase-Date, expected YYYYMMDD'T'HHMMSS'Z'`);
+  }
+  if (!Number.isInteger(signedUrl.urlTtlSeconds)) {
+    throw new BadRequestError(`Invalid format for X-Firebase-Expires, not an integer.'`);
+  }
+
+  return start;
 }
