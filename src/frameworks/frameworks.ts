@@ -10,6 +10,7 @@ import * as svelte from "./svelte";
 import * as svelekit from "./sveltekit";
 import * as react from "./react";
 import * as vite from "./vite";
+import * as flutter from "./flutter";
 
 import { Framework } from "./interfaces";
 
@@ -26,4 +27,5 @@ export const WebFrameworks: Record<string, Framework> = {
   svelekit,
   react,
   vite,
+  flutter,
 };

@@ -451,10 +451,7 @@ export async function deleteFunction(cloudFunction: string): Promise<Operation> 
 /**
  * Generate a v2 Cloud Function API object from a versionless Endpoint object.
  */
-export function functionFromEndpoint(
-  endpoint: backend.Endpoint,
-  source: StorageSource
-): InputCloudFunction {
+export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunction {
   if (endpoint.platform !== "gcfv2") {
     throw new FirebaseError(
       "Trying to create a v2 CloudFunction with v1 API. This should never happen"
@@ -474,7 +471,7 @@ export function functionFromEndpoint(
       runtime: endpoint.runtime,
       entryPoint: endpoint.entryPoint,
       source: {
-        storageSource: source,
+        storageSource: endpoint.source?.storageSource,
       },
       // We don't use build environment variables,
       environmentVariables: {},
@@ -686,6 +683,7 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
     ...trigger,
     entryPoint: gcfFunction.buildConfig.entryPoint,
     runtime: gcfFunction.buildConfig.runtime,
+    source: gcfFunction.buildConfig.source,
   };
   if (gcfFunction.serviceConfig) {
     proto.copyIfPresent(
@@ -715,7 +713,7 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
         }
         const mem = mebibytes(prod);
         if (!backend.isValidMemoryOption(mem)) {
-          logger.warn("Converting a function to an endpoint with an invalid memory option", mem);
+          logger.debug("Converting a function to an endpoint with an invalid memory option", mem);
         }
         return mem as backend.MemoryOptions;
       }

@@ -21,14 +21,13 @@ export interface WebviewToExtensionParamsMap {
   requestChangeUser: { user: User | ServiceAccountUser };
 
   /** Trigger project selection */
-  selectProject: { email: string };
+  selectProject: {};
   /**
    * Runs `firebase init hosting` command.
    * TODO(hsubox76): Generalize to work for all `firebase init` products.
    */
   selectAndInitHostingFolder: {
     projectId: string,
-    email: string,
     singleAppSupport: boolean
   };
 
@@ -65,7 +64,7 @@ export interface WebviewToExtensionParamsMap {
   /** 
    * Equivalent to the `firebase emulators:start` command.
   */
-  launchEmulators : {
+  launchEmulators: {
     emulatorUiSelections: EmulatorUiSelections,
   };
 
@@ -91,13 +90,18 @@ export interface ExtensionToWebviewParamsMap {
   /**
    * This can potentially call multiple webviews to notify of user selection.
    */
-  notifyUserChanged: { email: string };
+  notifyUserChanged: { user: User | ServiceAccountUser };
 
   /**
    * Notifies webview when user has successfully selected a hosting folder
    * and it has been written to firebase.json.
    */
-  notifyHostingInitDone: { projectId: string, folderPath?: string };
+  notifyHostingInitDone: {
+    success: boolean,
+    projectId: string,
+    folderPath?: string
+    framework?: string
+  };
 
   /**
    * Notify webview of status of deployment attempt.
@@ -120,7 +124,7 @@ export interface ExtensionToWebviewParamsMap {
   notifyPreviewChannelResponse: { id: string };
 
   notifyEmulatorsStopped: {};
-  notifyRunningEmulatorInfo: RunningEmulatorInfo ;
+  notifyRunningEmulatorInfo: RunningEmulatorInfo;
   notifyEmulatorImportFolder: { folder: string };
 }
 
