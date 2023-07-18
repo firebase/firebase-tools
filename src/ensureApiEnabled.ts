@@ -40,8 +40,6 @@ export async function check(
   return isEnabled;
 }
 
-const apiPermissionDeniedRegex = new RegExp(/Permission denied to enable service \[([.a-zA-Z]+)\]/);
-
 function isPermissionError(e: { context?: { body?: { error?: { status?: string } } } }): boolean {
   return e.context?.body?.error?.status === "PERMISSION_DENIED";
 }
@@ -75,6 +73,10 @@ async function enable(projectId: string, apiName: string): Promise<void> {
 
 https://console.firebase.google.com/project/${projectId}/usage/details`);
     } else if (isPermissionError(err)) {
+      const apiPermissionDeniedRegex = new RegExp(
+        /Permission denied to enable service \[([.a-zA-Z]+)\]/
+      );
+      (err as Error).message.match(/f/);
       // Recognize permission denied errors on APIs and provide users the
       // GCP console link to easily enable the API.
       const permissionsError = apiPermissionDeniedRegex.exec((err as Error).message);

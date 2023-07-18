@@ -1,1 +1,2 @@
 - Fix bug where `functions:secrets:set` didn't remove stale versions of a secret. (#6080)
+- Add better messages for API permissions failures that direct the user to the URL to enable the API.
