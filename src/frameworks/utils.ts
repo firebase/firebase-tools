@@ -194,13 +194,18 @@ export function findPythonCLI() {
   return pythonCLI;
 }
 
+export function getVenvDir(cwd: string = process.cwd(), files: string[]) {
+  const venvDir = files.find((it) => fileExistsSync(join(cwd, it, "pyvenv.cfg")));
+  return venvDir;
+}
+
 export async function spawnPython(
   originalCommand: string,
   args: string[],
   cwd: string = process.cwd()
 ) {
   const files = await readdir(cwd);
-  const venvDir = files.find((it) => fileExistsSync(join(cwd, it, "pyvenv.cfg")));
+  const venvDir = getVenvDir(cwd, files);
   logger.debug(
     `Running "${originalCommand} ${args.join(" ").replace('"', '\\"')}" in ${cwd} ${
       venvDir ? `with venv (${venvDir})` : "without venv"
