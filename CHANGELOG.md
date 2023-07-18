@@ -1,2 +1,4 @@
 - Fix bug where `functions:secrets:set` didn't remove stale versions of a secret. (#6080)
 - Fix issue where Flutter Web is not detected as a web framework. (#6085)
+- Fix `next/image` component in app directory for Next.js > 13.4.9. (#6143)
+- Fix bug where Next.js Image Optimization in the app directory was not requiring a Cloud Function. (#6143)
