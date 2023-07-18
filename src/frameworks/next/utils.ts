@@ -4,6 +4,7 @@ import { basename, extname, join, posix } from "path";
 import { readFile } from "fs/promises";
 import { sync as globSync } from "glob";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
+import { coerce, lt } from "semver";
 
 import { findDependency, isUrl, readJSON } from "../utils";
 import type {
@@ -28,7 +29,6 @@ import {
   MIDDLEWARE_MANIFEST,
 } from "./constants";
 import { dirExistsSync, fileExistsSync } from "../../fsutils";
-import { SemVer, lt, minVersion } from "semver";
 
 export const I18N_SOURCE = /\/:nextInternalLocale(\([^\)]+\))?/;
 
@@ -252,14 +252,9 @@ export async function isUsingNextImageInAppDirectory(
   // so Next.js was already identified as a dependency. In this case getNextVersion
   // will always return a valid string
   const nextVersion = getNextVersion(projectDir) as string;
-  const nextVersionSemver = minVersion(nextVersion) as SemVer;
-
-  // Note: canary Next.js versions e.g. 13.4.10-canary.0 are identified as lower than 13.4.10 by SemVer.
-  // Here we use only the major, minor and patch versions for comparison.
-  const nextMajorMinorPatchVersion = `${nextVersionSemver.major}.${nextVersionSemver.minor}.${nextVersionSemver.patch}`;
 
   // Next.js < 13.4.10 has a single client-reference-manifest.js file
-  if (lt(nextMajorMinorPatchVersion, "13.4.10")) {
+  if (lt(nextVersion, "13.4.10")) {
     const clientReferenceManifest = await readFile(
       join(projectDir, nextDir, "server", "client-reference-manifest.js")
     );
@@ -417,6 +412,16 @@ export async function getBuildId(distDir: string): Promise<string> {
   return buildId.toString();
 }
 
+/**
+ * Get Next.js version in the following format: `major.minor.patch`, ignoring
+ * canary versions as it causes issues with semver comparisons.
+ */
 export function getNextVersion(cwd: string): string | undefined {
-  return findDependency("next", { cwd, depth: 0, omitDev: false })?.version;
+  const dependency = findDependency("next", { cwd, depth: 0, omitDev: false });
+  if (!dependency) return undefined;
+
+  const nextVersionSemver = coerce(dependency.version);
+  if (!nextVersionSemver) return dependency.version;
+
+  return nextVersionSemver.toString();
 }
