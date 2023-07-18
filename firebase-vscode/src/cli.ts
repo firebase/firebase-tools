@@ -20,11 +20,15 @@ import { currentOptions, getCommandOptions } from "./options";
 import { setInquirerOptions } from "./stubs/inquirer-stub";
 import { ServiceAccount } from "../common/types";
 import { listChannels } from "../../src/hosting/api";
-import { ChannelWithId } from "../common/messaging/types";
+import { EmulatorUiSelections, ChannelWithId } from "../common/messaging/types";
 import { pluginLogger } from "./logger-wrapper";
 import { Config } from "../../src/config";
 import { currentUser } from "./workflow";
 import { setAccessToken } from "../../src/apiv2";
+import { startAll as startAllEmulators, cleanShutdown as stopAllEmulators } from "../../src/emulator/controller";
+import { EmulatorRegistry } from "../../src/emulator/registry";
+import { EmulatorInfo, Emulators } from "../../src/emulator/types";
+import * as commandUtils from "../../src/emulator/commandUtils";
 
 /**
  * Try to get a service account by calling requireAuth() without
@@ -288,4 +292,30 @@ export async function deployToHosting(
     return { success: false, hostingUrl: "", consoleUrl: "" };
   }
   return { success: true, hostingUrl: "", consoleUrl: "" };
+}
+
+export async function emulatorsStart(emulatorUiSelections: EmulatorUiSelections) {
+  const commandOptions = await getCommandOptions(undefined, {
+    ...currentOptions,
+    project: emulatorUiSelections.projectId,
+    exportOnExit: emulatorUiSelections.exportStateOnExit,
+    import: emulatorUiSelections.importStateFolderPath,
+    only: emulatorUiSelections.mode === "hosting" ? "hosting" : ""
+  });
+  // Adjusts some options, export on exit can be a boolean or a path.
+  commandUtils.setExportOnExitOptions(commandOptions as commandUtils.ExportOnExitOptions);
+  return startAllEmulators(commandOptions, /*showUi=*/ true);
+}
+
+export async function stopEmulators() {
+  await stopAllEmulators();
+}
+
+export function listRunningEmulators(): EmulatorInfo[] {
+  return EmulatorRegistry.listRunningWithInfo();
+}
+
+export function getEmulatorUiUrl(): string | undefined {
+  const url: URL = EmulatorRegistry.url(Emulators.UI);
+  return url.hostname === "unknown" ? undefined : url.toString();
 }
