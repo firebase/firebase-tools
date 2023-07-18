@@ -280,10 +280,7 @@ describe("Next.js utils", () => {
       beforeEach(() => (sandbox = sinon.createSandbox()));
       afterEach(() => sandbox.restore());
 
-      const nextVersion = "13.4.10";
-
       it("should return true when using next/image in the app directory", async () => {
-        sandbox.stub(frameworksUtils, "findDependency").returns({ version: nextVersion });
         sandbox
           .stub(glob, "Glob")
           .returns({ found: ["/path-to-app/.next/server/app/page_client-reference-manifest.js"] });
@@ -293,7 +290,6 @@ describe("Next.js utils", () => {
       });
 
       it("should return false when not using next/image in the app directory", async () => {
-        sandbox.stub(frameworksUtils, "findDependency").returns({ version: nextVersion });
         sandbox.stub(fsPromises, "readFile").resolves(pageClientReferenceManifestWithoutImage);
         const globStub = sandbox
           .stub(glob, "Glob")
@@ -313,10 +309,7 @@ describe("Next.js utils", () => {
       beforeEach(() => (sandbox = sinon.createSandbox()));
       afterEach(() => sandbox.restore());
 
-      const nextVersion = "13.4.9";
-
       it("should return true when using next/image in the app directory", async () => {
-        sandbox.stub(frameworksUtils, "findDependency").returns({ version: nextVersion });
         sandbox.stub(fsPromises, "readFile").resolves(clientReferenceManifestWithImage);
         sandbox
           .stub(glob, "Glob")
@@ -326,7 +319,6 @@ describe("Next.js utils", () => {
       });
 
       it("should return false when not using next/image in the app directory", async () => {
-        sandbox.stub(frameworksUtils, "findDependency").returns({ version: nextVersion });
         sandbox.stub(fsPromises, "readFile").resolves(clientReferenceManifestWithoutImage);
         sandbox.stub(glob, "Glob").returns({ found: [] });
 
