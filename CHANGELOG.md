@@ -1,1 +1,2 @@
 - Fix bug where `functions:secrets:set` didn't remove stale versions of a secret. (#6080)
+- Fix issue where Flutter Web is not detected as a web framework. (#6085)
