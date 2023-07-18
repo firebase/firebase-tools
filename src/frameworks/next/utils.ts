@@ -238,7 +238,7 @@ export async function isUsingImageOptimization(
 /**
  * Whether next/image is being used in the app directory
  */
-async function isUsingNextImageInAppDirectory(
+export async function isUsingNextImageInAppDirectory(
   projectDir: string,
   nextDir: string
 ): Promise<boolean> {
