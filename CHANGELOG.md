@@ -2,3 +2,4 @@
 - Fixed bug where `firebase deploy --only firestore:named-db` didn't update rules. (#6129)
 - Fixed issue where Flutter Web is not detected as a web framework. (#6085)
 - Add better messages for API permissions failures that direct the user to the URL to enable the API. (#6130)
+- Fixes issue caused by adding type checks in #5906.
