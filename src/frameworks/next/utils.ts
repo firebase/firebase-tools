@@ -219,7 +219,8 @@ export async function isUsingImageOptimization(
   projectDir: string,
   distDir: string
 ): Promise<boolean> {
-  let { isNextImageImported } = await readJSON<ExportMarker>(join(distDir, EXPORT_MARKER));
+  let isNextImageImported = await usesNextImage(projectDir, distDir);
+
   // App directory doesn't use the export marker, look it up manually
   if (!isNextImageImported && isUsingAppDirectory(join(projectDir, distDir))) {
     if (await isUsingNextImageInAppDirectory(projectDir, distDir)) {
