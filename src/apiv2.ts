@@ -1,7 +1,7 @@
 import { AbortSignal } from "abort-controller";
 import { URL, URLSearchParams } from "url";
 import { Readable } from "stream";
-import * as ProxyAgent from "proxy-agent";
+import { ProxyAgent } from "proxy-agent";
 import * as retry from "retry";
 import AbortController from "abort-controller";
 import fetch, { HeadersInit, Response, RequestInit, Headers } from "node-fetch";
@@ -326,12 +326,8 @@ export class Client {
       compress: options.compress,
     };
 
-    if (this.opts.proxy) {
-      fetchOptions.agent = new ProxyAgent(this.opts.proxy);
-    }
-    const envProxy = proxyURIFromEnv();
-    if (envProxy) {
-      fetchOptions.agent = new ProxyAgent(envProxy);
+    if (proxyURIFromEnv()) {
+      fetchOptions.agent = new ProxyAgent();
     }
 
     if (options.signal) {
