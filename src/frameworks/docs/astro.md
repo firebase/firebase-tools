@@ -61,7 +61,7 @@ shown in
 [converting a static site to hybrid rendering](https://docs.astro.build/en/guides/server-side-rendering/#converting-a-static-site-to-hybrid-rendering`).
 
 With these settings prerendering is still the default, but you can opt in to SSR by
-adding `const prerender = false` at the top of any Astro page. Similarly,  where
+adding `const prerender = false` at the top of any Astro page. Similarly, in `output: 'server'` where
 server rendering is the default you can opt in to prerendering by adding 
 `const prerender = true`.
 
