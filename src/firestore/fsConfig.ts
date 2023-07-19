@@ -31,9 +31,23 @@ export function getFirestoreConfig(projectId: string, options: Options): ParsedF
     }
   }
 
+  // If user specifies firestore:rules or firestore:indexes make sure we don't throw an error if this doesn't match a database name
+  if (onlyDatabases.has("rules")) {
+    onlyDatabases.delete("rules");
+    allDatabases = true;
+  }
+  if (onlyDatabases.has("indexes")) {
+    onlyDatabases.delete("indexes");
+    allDatabases = true;
+  }
+
   // single DB
   if (!Array.isArray(fsConfig)) {
-    if (fsConfig) {
+    if (onlyDatabases) {
+      throw new FirebaseError(
+        "Please use multiple database firebase.json format to specify database names in --only option. Refer to https://firebase.google.com/docs/cli#firestore-multiple-dbs for more details"
+      );
+    } else if (fsConfig) {
       // databaseId is (default) if none provided
       const databaseId = fsConfig.database || `(default)`;
       return [{ rules: fsConfig.rules, indexes: fsConfig.indexes, database: databaseId }];
@@ -41,16 +55,6 @@ export function getFirestoreConfig(projectId: string, options: Options): ParsedF
       logger.debug("Possibly invalid database config: ", JSON.stringify(fsConfig));
       return [];
     }
-  }
-
-  // If user specifies firestore:rules or firestore:indexes make sure we don't throw an error if this doesn't match a database name
-  if (onlyDatabases.has("rules")) {
-    onlyDatabases.delete("rules");
-    allDatabases = true;
-  }
-  if (onlyDatabases.has("indexes")) {
-    allDatabases = true;
-    onlyDatabases.delete("indexes");
   }
 
   const results: ParsedFirestoreConfig[] = [];
