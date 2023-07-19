@@ -1,12 +1,12 @@
 {
   "name": "firebase-tools",
-  "version": "12.4.4",
+  "version": "12.4.5",
   "lockfileVersion": 2,
   "requires": true,
   "packages": {
     "": {
       "name": "firebase-tools",
-      "version": "12.4.4",
+      "version": "12.4.5",
       "license": "MIT",
       "dependencies": {
         "@google-cloud/pubsub": "^3.0.1",
