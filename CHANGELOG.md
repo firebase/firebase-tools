@@ -3,3 +3,5 @@
 - Fixed issue where Flutter Web is not detected as a web framework. (#6085)
 - Add better messages for API permissions failures that direct the user to the URL to enable the API. (#6130)
 - Fixes issue caused by adding type checks in #5906.
+- Fixed `next/image` component in app directory for Next.js > 13.4.9. (#6143)
+- Fixed bug where Next.js Image Optimization in the app directory was not requiring a Cloud Function. (#6143)
