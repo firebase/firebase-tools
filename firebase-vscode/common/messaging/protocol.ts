@@ -97,6 +97,7 @@ export interface ExtensionToWebviewParamsMap {
    * and it has been written to firebase.json.
    */
   notifyHostingInitDone: {
+    success: boolean,
     projectId: string,
     folderPath?: string
     framework?: string
