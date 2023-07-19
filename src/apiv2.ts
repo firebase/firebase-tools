@@ -117,7 +117,6 @@ export type ClientOptions = {
   urlPrefix: string;
   apiVersion?: string;
   auth?: boolean;
-  proxy?: string;
 };
 
 export class Client {
