@@ -1,5 +1,9 @@
 # Change Log
 
+## 0.0.24-alpha.1
+
+- Add more user-friendly API permission denied messages
+
 ## 0.0.24-alpha.0
 
 - Remove Google sign-in option from Monospace.
