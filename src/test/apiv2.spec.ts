@@ -451,9 +451,9 @@ describe("apiv2", () => {
       });
 
       it("should be able to make a basic GET request", async () => {
+        process.env.HTTP_PROXY = "http://127.0.0.1:52672";
         const c = new Client({
           urlPrefix: "http://127.0.0.1:52673",
-          proxy: "http://127.0.0.1:52672",
         });
         const r = await c.request({
           method: "GET",
