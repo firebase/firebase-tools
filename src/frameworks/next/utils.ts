@@ -1,9 +1,12 @@
 import { existsSync } from "fs";
 import { pathExists } from "fs-extra";
 import { basename, extname, join, posix } from "path";
+import { readFile } from "fs/promises";
+import { Glob } from "glob";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
+import { coerce } from "semver";
 
-import { isUrl, readJSON } from "../utils";
+import { findDependency, isUrl, readJSON } from "../utils";
 import type {
   RoutesManifest,
   ExportMarker,
@@ -26,7 +29,6 @@ import {
   MIDDLEWARE_MANIFEST,
 } from "./constants";
 import { dirExistsSync, fileExistsSync } from "../../fsutils";
-import { readFile } from "fs/promises";
 
 export const I18N_SOURCE = /\/:nextInternalLocale(\([^\)]+\))?/;
 
@@ -159,6 +161,7 @@ export function usesAppDirRouter(sourceDir: string): boolean {
   const appPathRoutesManifestPath = join(sourceDir, APP_PATH_ROUTES_MANIFEST);
   return existsSync(appPathRoutesManifestPath);
 }
+
 /**
  * Check if the project is using the next/image component based on the export-marker.json file.
  * @param sourceDir location of the source directory
@@ -209,20 +212,50 @@ export async function isUsingMiddleware(dir: string, isDevMode: boolean): Promis
 /**
  * Whether image optimization is being used
  *
- * @param dir path to `distDir` - where the manifests are located
+ * @param projectDir path to the project directory
+ * @param distDir path to `distDir` - where the manifests are located
  */
-export async function isUsingImageOptimization(dir: string): Promise<boolean> {
-  let { isNextImageImported } = await readJSON<ExportMarker>(join(dir, EXPORT_MARKER));
+export async function isUsingImageOptimization(
+  projectDir: string,
+  distDir: string
+): Promise<boolean> {
+  let isNextImageImported = await usesNextImage(projectDir, distDir);
+
   // App directory doesn't use the export marker, look it up manually
-  if (!isNextImageImported && isUsingAppDirectory(dir)) {
-    isNextImageImported = (await readFile(join(dir, "server", "client-reference-manifest.js")))
-      .toString()
-      .includes("node_modules/next/dist/client/image.js");
+  if (!isNextImageImported && isUsingAppDirectory(join(projectDir, distDir))) {
+    if (await isUsingNextImageInAppDirectory(projectDir, distDir)) {
+      isNextImageImported = true;
+    }
   }
 
   if (isNextImageImported) {
-    const imagesManifest = await readJSON<ImagesManifest>(join(dir, IMAGES_MANIFEST));
+    const imagesManifest = await readJSON<ImagesManifest>(
+      join(projectDir, distDir, IMAGES_MANIFEST)
+    );
     return !imagesManifest.images.unoptimized;
+  }
+
+  return false;
+}
+
+/**
+ * Whether next/image is being used in the app directory
+ */
+export async function isUsingNextImageInAppDirectory(
+  projectDir: string,
+  nextDir: string
+): Promise<boolean> {
+  const { found: files } = new Glob(
+    join(projectDir, nextDir, "server", "**", "*client-reference-manifest.js")
+  );
+
+  for await (const filepath of files) {
+    const fileContents = await readFile(filepath);
+
+    // Return true when the first file containing the next/image component is found
+    if (fileContents.includes("node_modules/next/dist/client/image")) {
+      return true;
+    }
   }
 
   return false;
@@ -359,4 +392,18 @@ export async function getBuildId(distDir: string): Promise<string> {
   const buildId = await readFile(join(distDir, "BUILD_ID"));
 
   return buildId.toString();
+}
+
+/**
+ * Get Next.js version in the following format: `major.minor.patch`, ignoring
+ * canary versions as it causes issues with semver comparisons.
+ */
+export function getNextVersion(cwd: string): string | undefined {
+  const dependency = findDependency("next", { cwd, depth: 0, omitDev: false });
+  if (!dependency) return undefined;
+
+  const nextVersionSemver = coerce(dependency.version);
+  if (!nextVersionSemver) return dependency.version;
+
+  return nextVersionSemver.toString();
 }
