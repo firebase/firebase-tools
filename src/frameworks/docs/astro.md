@@ -54,13 +54,15 @@ on its live site.
 
 ## Pre-render dynamic content
 
-Astro will prerender all pages to static files and will work on Firebase Hosting
-when hybrid rendering is enable for the project. Configure `output: 'hybrid'` as
+Astro will prerender all pages to static files and will work on Firebase Hosting without any configuration changes.
+
+If you need a small set of pages to SSR, configure `output: 'hybrid'` as
 shown in
 [converting a static site to hybrid rendering](https://docs.astro.build/en/guides/server-side-rendering/#converting-a-static-site-to-hybrid-rendering`).
 
 With these settings prerendering is still the default, but you can opt in to SSR by
-adding `const prerender = false` at the top of any Astro page. Similarly,  where
+adding `const prerender = false` at the top of any Astro page. Similarly, 
+in `output: 'server'` where
 server rendering is the default you can opt in to prerendering by adding 
 `const prerender = true`.
 
