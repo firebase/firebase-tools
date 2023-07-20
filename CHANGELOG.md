@@ -1,0 +1,1 @@
+- Fixed an issue where extension instances could not be deployed when authenticated as a service account (#6060).
