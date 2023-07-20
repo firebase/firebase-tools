@@ -161,7 +161,7 @@ describe("files", () => {
           decodedObjectId: "dir%2Fobject",
           urlTtlSeconds: 100,
           urlUsableSeconds: currentDate,
-          url: "http://localhost:9000",
+          url: "localhost:9000",
         });
 
         const signature = createSignature(unsignedUrl);
@@ -174,7 +174,7 @@ describe("files", () => {
             urlTtlSeconds: 100,
             urlUsableSeconds: currentDate,
           },
-          baseUrl: "http://localhost:9000",
+          baseUrl: "localhost:9000",
         });
 
         expect(metadata.contentType).to.equal("mime/type");
@@ -183,7 +183,6 @@ describe("files", () => {
 
       it("should throw an error if request is not authorized", () => {
         const storageLayer = getStorageLayer(ALWAYS_FALSE_RULES_VALIDATOR);
-
         expect(
           storageLayer.getObject({
             bucketId: "bucket",
@@ -285,7 +284,7 @@ describe("files", () => {
         const unsignedUrl = createUnsignedUrl({
           bucketId: "10",
           decodedObjectId: "dir%2Fobject",
-          url: "http://localhost:9000",
+          url: "localhost:9000",
           urlUsableSeconds: getCurrentDate(),
           urlTtlSeconds: SIGNED_URL_DEFAULT_TTL_SECONDS,
         });
@@ -306,7 +305,7 @@ describe("files", () => {
               bucketId: paramToChange === "bucketId" ? "11" : "10",
               decodedObjectId:
                 paramToChange === "decodedObjectId" ? "dir%2FBadobject" : "dir%2Fobject",
-              baseUrl: paramToChange === "url" ? "badurl:0000" : "http://localhost:9000",
+              baseUrl: paramToChange === "url" ? "badurl:0000" : "localhost:9000",
               signedUrl: {
                 urlSignature: signature,
                 urlTtlSeconds:
@@ -357,7 +356,7 @@ describe("files", () => {
           storageLayer.generateSignedUrl({
             bucketId: "10",
             decodedObjectId: "dir%2Fobject",
-            baseUrl: "http://localhost:9000",
+            baseUrl: "localhost:9000",
             ttlSeconds: 1.4,
           })
         ).to.be.rejectedWith(BadRequestError);
@@ -373,7 +372,7 @@ describe("files", () => {
             storageLayer.generateSignedUrl({
               bucketId: "10",
               decodedObjectId: "dir%2Fobject",
-              baseUrl: "http://localhost:9000",
+              baseUrl: "localhost:9000",
               ttlSeconds: time === SIGNED_URL_MAX_TTL_SECONDS ? SIGNED_URL_MAX_TTL_SECONDS + 1 : 0,
             })
           ).to.be.rejectedWith(BadRequestError);
@@ -387,7 +386,7 @@ describe("files", () => {
           storageLayer.generateSignedUrl({
             bucketId: "10",
             decodedObjectId: "dir%2Fobject",
-            baseUrl: "http://localhost:9000",
+            baseUrl: "localhost:9000",
             ttlSeconds: 10,
           })
         ).to.be.rejectedWith(ForbiddenError);
@@ -399,7 +398,7 @@ describe("files", () => {
           storageLayer.generateSignedUrl({
             bucketId: "10",
             decodedObjectId: "dir%2Fobject",
-            baseUrl: "http://localhost:9000",
+            baseUrl: "localhost:9000",
             ttlSeconds: 10,
           })
         ).to.be.rejectedWith(NotFoundError);
@@ -419,13 +418,13 @@ describe("files", () => {
           decodedObjectId: "dir%2Fobject",
           urlTtlSeconds: 1,
           urlUsableSeconds: "*",
-          url: "http://localhost:9000",
+          url: "localhost:9000",
         });
 
         const signedUrlObject = await storageLayer.generateSignedUrl({
           bucketId: "bucket",
           decodedObjectId: "dir%2Fobject",
-          baseUrl: "http://localhost:9000",
+          baseUrl: "localhost:9000",
           ttlSeconds: 1,
         });
 
