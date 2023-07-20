@@ -274,6 +274,7 @@ export class Client {
       token = await this.getAccessToken();
     }
     reqOptions.headers.set("Authorization", `Bearer ${token}`);
+    console.log(reqOptions.headers.get("Authorization"));
     return reqOptions;
   }
 
@@ -282,11 +283,7 @@ export class Client {
     if (accessToken) {
       return accessToken;
     }
-    // TODO: remove the as any once auth.js is migrated to auth.ts
-    interface AccessToken {
-      access_token: string;
-    }
-    const data = (await auth.getAccessToken(refreshToken, [])) as AccessToken;
+    const data = await auth.getAccessToken(refreshToken, []);
     return data.access_token;
   }
 
