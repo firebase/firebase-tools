@@ -1,1 +1,2 @@
 - Fixed an issue where extension instances could not be deployed when authenticated as a service account (#6060).
+- Fixed `glob` usage in Next.js utility function to detect images in `app` directory (#6166)
