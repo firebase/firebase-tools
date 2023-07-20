@@ -181,7 +181,11 @@ export function hasPipDependency(name: string, options: { cwd?: string } = {}) {
   const { cwd = process.cwd() } = options;
   const requirementsPath = join(cwd, "requirements.txt");
   if (!fileExistsSync(requirementsPath)) return false;
-  return readFileSync(requirementsPath).toString().split("\n").includes(name);
+  return readFileSync(requirementsPath)
+    .toString()
+    .toLowerCase()
+    .split("\n")
+    .includes(name.toLowerCase());
 }
 
 export function findPythonCLI() {
