@@ -305,6 +305,7 @@ describe("webframeworks", function (this) {
                 `/${NEXT_BASE_PATH}/_next/static/${buildId}/_buildManifest.js`,
                 `/${NEXT_BASE_PATH}/_next/static/${buildId}/_ssgManifest.js`,
                 `/${NEXT_BASE_PATH}/app/api/static`,
+                `/${NEXT_BASE_PATH}/app/image.html`,
                 `/${NEXT_BASE_PATH}/app/ssg.html`,
               ]),
           `/${I18N_BASE}/${locale}/${NEXT_BASE_PATH}/pages/fallback/1.html`,
