@@ -6,6 +6,7 @@ import { dirExistsSync } from "../../fsutils";
 import { findPythonCLI, getVenvDir, hasPipDependency, spawnPython } from "../utils";
 import { spawnSync } from "child_process";
 import { DEFAULT_VENV_DIR } from "../../functions/python";
+import { logger } from "../../logger";
 
 export const name = "Flask";
 export const support = SupportLevel.Experimental;
@@ -14,7 +15,18 @@ export const type = FrameworkType.Framework;
 export async function discover(cwd: string) {
   if (!hasPipDependency("Flask", { cwd })) return;
   const results = await getDiscoveryResults(cwd).catch(() => undefined);
-  if (!results) return;
+  if (!results) {
+    logger.debug(
+      "It seems that the codebase is a Flask project. Here're some tips that will help us to sucessfully initialize a Flask project:"
+    );
+    logger.debug("\t1. Make sure that your app is in a main.py file in the root of your project.");
+    logger.debug(
+      '\t2. You have created and activated and virtual environment "python -m venv venv && . venv/bin/activate"'
+    );
+    logger.debug('\t3. You have run "pip install -t requirements.txt"');
+
+    return;
+  }
   const publicDirectory = relative(cwd, results.staticFolder);
   return { mayWantBackend: true, publicDirectory };
 }
