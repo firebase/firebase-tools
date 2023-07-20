@@ -2,7 +2,7 @@ import { existsSync } from "fs";
 import { pathExists } from "fs-extra";
 import { basename, extname, join, posix } from "path";
 import { readFile } from "fs/promises";
-import { Glob } from "glob";
+import * as glob from "glob";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
 import { coerce } from "semver";
 
@@ -245,9 +245,14 @@ export async function isUsingNextImageInAppDirectory(
   projectDir: string,
   nextDir: string
 ): Promise<boolean> {
-  const { found: files } = new Glob(
-    join(projectDir, nextDir, "server", "**", "*client-reference-manifest.js")
-  );
+  const files = await new Promise<string[]>((resolve) => {
+    glob(
+      join(projectDir, nextDir, "server", "**", "*client-reference-manifest.js"),
+      (err, matches) => {
+        resolve(matches);
+      }
+    );
+  });
 
   for await (const filepath of files) {
     const fileContents = await readFile(filepath);
