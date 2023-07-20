@@ -1,0 +1,1 @@
+- Fixed `glob` usage in Next.js utility function to detect images in `app` directory (#6166)
