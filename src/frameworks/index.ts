@@ -27,7 +27,6 @@ import {
   frameworksCallToAction,
   getFrameworksBuildTarget,
   getVenvDir,
-  spawnPython,
 } from "./utils";
 import {
   ALLOWED_SSR_REGIONS,
@@ -577,8 +576,16 @@ def ${functionId}(req: https_fn.Request) -> https_fn.Response:
     return https_fn.Response(body, status, headers)
 `
         );
+        // get python cli from the root venv dir
+        const root = getProjectPath();
+        const files = await readdir(root);
+        const venvDir = getVenvDir(root, files);
+        const python = venvDir ? getProjectPath(venvDir, "bin", "python") : "python";
+        // create a virtual env for the functions if not exists
         if (!dirExistsSync(join(functionsDist, DEFAULT_VENV_DIR))) {
-          await spawnPython("python", ["-m", "venv", DEFAULT_VENV_DIR], functionsDist);
+          spawnSync(python, ["-m", "venv", DEFAULT_VENV_DIR], {
+            cwd: functionsDist,
+          });
         }
         await new Promise<void>((resolve) => {
           const child = runWithVirtualEnv(
@@ -589,7 +596,10 @@ def ${functionId}(req: https_fn.Request) -> https_fn.Response:
           );
           child.on("exit", () => resolve());
         });
-        const pythonVersion = (await spawnPython("python", ["--version"])).trim().split(" ")[1];
+        const pythonVersion = spawnSync(python, ["--version"])
+          .stdout.toString()
+          .trim()
+          .split(" ")[1];
         runtime = `python${pythonVersion.split(".").slice(0, 2).join("")}`;
 
         ignore = [
