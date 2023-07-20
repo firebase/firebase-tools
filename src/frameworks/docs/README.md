@@ -1,13 +1,27 @@
 # Web frameworks docs on firebase.google.com
 
-This directory contains the source of the Web frameworks documentation on
-https://firebase.google.com/docs/.
+This directory contains the documentation
+for experimental framework support as well as source that is used for
+preview-level support on https://firebase.google.com/docs/.
 
 We welcome your contributions! See [`CONTRIBUTING.md`](../CONTRIBUTING.md) for general
-guidelines.
+guidelines. This README has some information on how our documentation is organized and
+some non-standard extensions we use.
 
-This file has some information on how our documentation is organized and some
-non-standard extensions we use.
+## Docs for preview-level vs experimental framework support
+
+If you are developing **experimental** support for a web framework, you should
+follow the outline and example presented in `astro.md`. Details for your framework are
+likely to be different, but the overall outline should probably be similar.
+
+If your framwork is entering **preview** status, its documentation will be displayed
+on firebase.google.com, which may entail some extra work regarding page fragments
+(see next section). Preview docs should follow the outline and example presented in
+`angular.md`. Make sure to add all key details specific to your particular framework.
+
+Firebase follows the [Google developer documentation style guide](https://developers.google.com/style),
+which you should read before writing substantial contributions.
+
 
 ## Standalone files vs. page fragments
 
@@ -59,16 +73,6 @@ Book: /docs/_book.yaml
 These are non-standard metadata declarations used by our internal publishing
 system. There's nothing you can really do with this, but it has to be on every
 standalone page.
-
-### Getting started writing
-
-Unless the needs of your framework are radically different, you should
-follow the outline and example presented in `angular.md`, which to date is
-the most completely fleshed-out integration. Details for your framework are
-likely to be different, but the overall outline should probably be similar.
-
-Firebase follows the [Google developer documentation style guide](https://developers.google.com/style),
-which you should read before writing substantial contributions.
 
 Footer
 © 2023 GitHub, Inc.
