@@ -233,6 +233,12 @@ describe("webframeworks", function (this) {
         expect(apiDynamicResponse.headers.get("cache-control")).to.eql("private");
         expect(await apiDynamicResponse.json()).to.eql([1, 2, 3]);
       });
+
+      it("should have working image", async () => {
+        const response = await fetch(`${NEXTJS_HOST}/app/image`);
+        expect(response.ok).to.be.true;
+        expect(await response.text()).to.include("<body><img");
+      });
     });
 
     describe("pages directory", () => {
