@@ -249,7 +249,7 @@ export async function isUsingNextImageInAppDirectory(
     join(projectDir, nextDir, "server", "**", "*client-reference-manifest.js")
   );
 
-  for await (const filepath of files) {
+  for (const filepath of files) {
     const fileContents = await readFile(filepath);
 
     // Return true when the first file containing the next/image component is found
