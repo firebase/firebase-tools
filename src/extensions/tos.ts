@@ -110,16 +110,17 @@ export async function acceptLatestAppDeveloperTOS(
     if (currentAcceptance.lastAcceptedVersion) {
       logger.debug(`User Terms of Service aready accepted on project ${projectId}.`);
     } else if (
-      await confirm({
+      !(await confirm({
         ...options,
         message: "Do you accept the Firebase Extensions User Terms of Service?",
-      })
+      }))
     ) {
-      const tosPromises = instanceIds.map((instanceId) => {
-        return acceptAppDeveloperTOS(projectId, currentAcceptance.latestTosVersion, instanceId);
-      });
-      return Promise.all(tosPromises);
+      throw new FirebaseError("You must accept the terms of service to continue.");
     }
+    const tosPromises = instanceIds.map((instanceId) => {
+      return acceptAppDeveloperTOS(projectId, currentAcceptance.latestTosVersion, instanceId);
+    });
+    return Promise.all(tosPromises);
   } catch (err: any) {
     // This is a best effort check. When authenticated via a service account instead of OAuth, we cannot
     // make calls to a private API. The extensions backend will also check TOS acceptance at instance CRUD time.
@@ -128,7 +129,6 @@ export async function acceptLatestAppDeveloperTOS(
     );
     return [];
   }
-  throw new FirebaseError("You must accept the terms of service to continue.");
 }
 
 export function displayDeveloperTOSWarning(): void {

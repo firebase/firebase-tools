@@ -274,7 +274,6 @@ export class Client {
       token = await this.getAccessToken();
     }
     reqOptions.headers.set("Authorization", `Bearer ${token}`);
-    console.log(reqOptions.headers.get("Authorization"));
     return reqOptions;
   }
 
