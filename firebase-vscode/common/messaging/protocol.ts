@@ -72,6 +72,9 @@ export interface WebviewToExtensionParamsMap {
   stopEmulators: {};
 
   selectEmulatorImportFolder: {};
+
+  /**Sends a message to the console */
+  sendMessageToTerminal: { message: string };
 }
 
 export interface ExtensionToWebviewParamsMap {

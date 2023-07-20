@@ -206,6 +206,8 @@ export async function setupWorkflow(
 
   broker.on("selectProject", selectProject);
 
+  broker.on("sendMessageToTerminal", echoMessageToConsole);
+
   broker.on("selectAndInitHostingFolder", selectAndInitHosting);
 
   broker.on("hostingDeploy", async ({ target: deployTarget }) => {
@@ -344,5 +346,9 @@ export async function setupWorkflow(
       broker.send("notifyHostingInitDone",
         { success, projectId, folderPath: currentOptions.cwd });
     }
+  }
+
+  async function echoMessageToConsole({ message }) {
+    vscode.window.showInformationMessage(message);
   }
 }
