@@ -11,7 +11,6 @@ import { EmulatorRegistry } from "./registry";
 import { FunctionsEmulator } from "./functionsEmulator";
 import { ExpressBasedEmulator } from "./ExpressBasedEmulator";
 import { PortName } from "./portUtils";
-import { ALL_EXPERIMENTS, ExperimentName, isEnabled } from "../experiments";
 
 // We use the CLI version from package.json
 const pkg = require("../../package.json");
@@ -36,7 +35,6 @@ export class EmulatorHub extends ExpressBasedEmulator {
   static PATH_DISABLE_FUNCTIONS = "/functions/disableBackgroundTriggers";
   static PATH_ENABLE_FUNCTIONS = "/functions/enableBackgroundTriggers";
   static PATH_EMULATORS = "/emulators";
-  static PATH_ENABLED_EXPERIMENTS = "/enabled-experiments";
 
   /**
    * Given a project ID, find and read the Locator file for the emulator hub.
