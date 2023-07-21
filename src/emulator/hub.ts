@@ -30,8 +30,6 @@ export interface EmulatorHubArgs {
 
 export type GetEmulatorsResponse = Record<string, EmulatorInfo>;
 
-export type GetEnabledExperimentsResponse = { experiments: Array<ExperimentName> };
-
 export class EmulatorHub extends ExpressBasedEmulator {
   static CLI_VERSION = pkg.version;
   static PATH_EXPORT = "/_admin/export";
@@ -98,18 +96,6 @@ export class EmulatorHub extends ExpressBasedEmulator {
           ...info,
         };
       }
-      res.json(body);
-    });
-
-    /**
-     * Send any experiments set by `firebase experiments:enable`
-     */
-    app.get(EmulatorHub.PATH_ENABLED_EXPERIMENTS, (req, res) => {
-      const body: GetEnabledExperimentsResponse = {
-        experiments: (Object.keys(ALL_EXPERIMENTS) as Array<ExperimentName>).filter(
-          (experimentName) => isEnabled(experimentName)
-        ),
-      };
       res.json(body);
     });
 
