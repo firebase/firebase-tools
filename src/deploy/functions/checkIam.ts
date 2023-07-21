@@ -27,8 +27,9 @@ export const EVENTARC_EVENT_RECEIVER_ROLE = "roles/eventarc.eventReceiver";
 export async function checkServiceAccountIam(projectId: string): Promise<void> {
   const saEmail = `${projectId}@appspot.gserviceaccount.com`;
   let passed = false;
+  let iamResult;
   try {
-    const iamResult = await iam.testResourceIamPermissions(
+    iamResult = await iam.testResourceIamPermissions(
       "https://iam.googleapis.com",
       "v1",
       `projects/${projectId}/serviceAccounts/${saEmail}`,
@@ -47,7 +48,8 @@ export async function checkServiceAccountIam(projectId: string): Promise<void> {
         "iam.serviceAccounts.ActAs"
       )} on service account ${bold(saEmail)}.\n\n` +
         `To address this error, ask a project Owner to assign your account the "Service Account User" role from this URL:\n\n` +
-        `https://console.cloud.google.com/iam-admin/iam?project=${projectId}`
+        `https://console.cloud.google.com/iam-admin/iam?project=${projectId}\n\n` +
+        `${JSON.stringify(iamResult)}`
     );
   }
 }
