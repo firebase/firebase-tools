@@ -1,2 +1,2 @@
-- Disables KeepAlive timeout when debugger is attached to the functions emulator. (#6069)
-- Fixed an issue where `database:list` would have inaccurate results. (#6063)
+- Fixed an issue where extension instances could not be deployed when authenticated as a service account (#6060).
+- Fixed `glob` usage in Next.js utility function to detect images in `app` directory (#6166)
