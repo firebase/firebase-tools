@@ -11,6 +11,7 @@ import { EmulatorRegistry } from "./registry";
 import { FunctionsEmulator } from "./functionsEmulator";
 import { ExpressBasedEmulator } from "./ExpressBasedEmulator";
 import { PortName } from "./portUtils";
+import { ALL_EXPERIMENTS, ExperimentName, isEnabled } from "../experiments";
 
 // We use the CLI version from package.json
 const pkg = require("../../package.json");
@@ -29,12 +30,15 @@ export interface EmulatorHubArgs {
 
 export type GetEmulatorsResponse = Record<string, EmulatorInfo>;
 
+export type GetEnabledExperimentsResponse = { experiments: Array<ExperimentName> };
+
 export class EmulatorHub extends ExpressBasedEmulator {
   static CLI_VERSION = pkg.version;
   static PATH_EXPORT = "/_admin/export";
   static PATH_DISABLE_FUNCTIONS = "/functions/disableBackgroundTriggers";
   static PATH_ENABLE_FUNCTIONS = "/functions/enableBackgroundTriggers";
   static PATH_EMULATORS = "/emulators";
+  static PATH_ENABLED_EXPERIMENTS = "/enabled-experiments";
 
   /**
    * Given a project ID, find and read the Locator file for the emulator hub.
@@ -94,6 +98,18 @@ export class EmulatorHub extends ExpressBasedEmulator {
           ...info,
         };
       }
+      res.json(body);
+    });
+
+    /**
+     * Send any experiments set by `firebase experiments:enable`
+     */
+    app.get(EmulatorHub.PATH_ENABLED_EXPERIMENTS, (req, res) => {
+      const body: GetEnabledExperimentsResponse = {
+        experiments: (Object.keys(ALL_EXPERIMENTS) as Array<ExperimentName>).filter(
+          (experimentName) => isEnabled(experimentName)
+        ),
+      };
       res.json(body);
     });
 
