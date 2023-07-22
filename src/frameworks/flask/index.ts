@@ -17,13 +17,13 @@ export async function discover(cwd: string) {
   const results = await getDiscoveryResults(cwd).catch(() => undefined);
   if (!results) {
     logger.debug(
-      "It seems that the codebase is a Flask project. Here're some tips that will help us to sucessfully initialize a Flask project:"
+      "Looks like you might be using Flask. Here're some tips that will help our tools work with your Python project:"
     );
-    logger.debug("\t1. Make sure that your app is in a main.py file in the root of your project.");
+    logger.debug('\t1. You have your app entry point in a "main.py" file in the hosting root folder.');
     logger.debug(
-      '\t2. You have created and activated and virtual environment "python -m venv venv && . venv/bin/activate"'
+      '\t2. You have created and activated a virtual environment "python -m venv venv && . venv/bin/activate"'
     );
-    logger.debug('\t3. You have run "pip install -t requirements.txt"');
+    logger.debug('\t3. You have run "pip install -t requirements.txt" at least once and are able to start a standalone Flask server');
 
     return;
   }
