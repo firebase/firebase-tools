@@ -20,12 +20,14 @@ export async function discover(cwd: string) {
       "Looks like you might be using Flask. Here're some tips that will help our tools work with your Python project:"
     );
     logger.debug(
-      '\t1. You have your app entry point in a "main.py" file in the hosting root folder.');
+      '\t1. You have your app entry point in a "main.py" file in the hosting root folder.'
+    );
     logger.debug(
       '\t2. You have created and activated a virtual environment "python -m venv venv && . venv/bin/activate"'
     );
     logger.debug(
-      '\t3. You have run "pip install -t requirements.txt" at least once and are able to start a standalone Flask server');
+      '\t3. You have run "pip install -t requirements.txt" at least once and are able to start a standalone Flask server'
+    );
 
     return;
   }
