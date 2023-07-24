@@ -109,23 +109,16 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         },
       }));
     } catch (err) {
-      if (err instanceof NotFoundError) {
-        return res.sendStatus(404);
-      } else if (err instanceof ForbiddenError) {
-        return res.status(403).json({
+      const errorCode = errorToHttpCode(err);
+      if (errorCode != -1) {
+        return {
           error: {
-            code: 403,
-            message: err.message,
+            code: errorToHttpCode(err),
+            message: (err as Error).message,
           },
-        });
-      } else if (err instanceof BadRequestError) {
-        return res.status(400).json({
-          error: {
-            code: 400,
-            message: err.message,
-          },
-        });
+        };
       }
+
       throw err;
     }
 
@@ -153,29 +146,16 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         ttlSeconds: req.body.ttlSeconds ?? SIGNED_URL_DEFAULT_TTL_SECONDS,
       });
     } catch (err) {
-      if (err instanceof NotFoundError) {
-        return res.status(404).json({
+      const errorCode = errorToHttpCode(err);
+      if (errorCode != -1) {
+        return {
           error: {
-            code: 404,
-            message: err.message,
+            code: errorToHttpCode(err),
+            message: (err as Error).message,
           },
-        });
+        };
       }
-      if (err instanceof ForbiddenError) {
-        return res.status(403).json({
-          error: {
-            code: 403,
-            message: err.message,
-          },
-        });
-      } else if (err instanceof BadRequestError) {
-        return res.status(400).json({
-          error: {
-            code: 400,
-            message: err.message,
-          },
-        });
-      }
+
       throw err;
     }
     return res.json(signedUrlResponse);
@@ -601,4 +581,18 @@ function isValidNonEncodedPathString(path: string): boolean {
 
 function removeAtMostOneTrailingSlash(path: string): string {
   return path.replace(/\/$/, "");
+}
+
+function errorToHttpCode(err: unknown) {
+  if (err instanceof ForbiddenError) {
+    return 403;
+  }
+  if (err instanceof NotFoundError) {
+    return 404;
+  }
+  if (err instanceof BadRequestError) {
+    return 400;
+  }
+
+  return -1;
 }
