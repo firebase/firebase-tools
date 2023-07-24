@@ -460,10 +460,8 @@ describe("files", () => {
  */
 function getAdjustedDate(changeBy: number): string {
   return getSignedUrlTimestampFor(new Date(new Date().getTime() + changeBy * SECONDS_TO_MS_FACTOR));
-
-  const adjutedDate = new Date(new Date().getTime() + changeBy * SECONDS_TO_MS_FACTOR);
-
-  const currentDate = new Date().getTime();
-  const adjutedDate2 = new Date(currentDate + changeBy * SECONDS_TO_MS_FACTOR);
-  return adjutedDate.toISOString().replaceAll("-", "").replaceAll(":", "").replaceAll(".", "");
+  //   const adjutedDate = new Date(new Date().getTime() + changeBy * SECONDS_TO_MS_FACTOR);
+  //   const currentDate = new Date().getTime();
+  //   const adjutedDate2 = new Date(currentDate + changeBy * SECONDS_TO_MS_FACTOR);
+  //   return adjutedDate.toISOString().replaceAll("-", "").replaceAll(":", "").replaceAll(".", "");
 }

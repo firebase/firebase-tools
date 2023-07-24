@@ -110,13 +110,13 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       }));
     } catch (err) {
       const errorCode = errorToHttpCode(err);
-      if (errorCode != -1) {
-        return {
+      if (errorCode !== -1) {
+        return res.status(errorCode).json({
           error: {
-            code: errorToHttpCode(err),
+            code: errorCode,
             message: (err as Error).message,
           },
-        };
+        });
       }
 
       throw err;
@@ -147,13 +147,13 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       });
     } catch (err) {
       const errorCode = errorToHttpCode(err);
-      if (errorCode != -1) {
-        return {
+      if (errorCode !== -1) {
+        return res.status(errorCode).json({
           error: {
             code: errorToHttpCode(err),
             message: (err as Error).message,
           },
-        };
+        });
       }
 
       throw err;
