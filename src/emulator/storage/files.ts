@@ -22,6 +22,8 @@ import { trackEmulator } from "../../track";
 import { Emulators } from "../types";
 import { createHmac } from "crypto";
 import {
+  INVALID_DATE_PARAM,
+  INVALID_TTL_PARAM,
   SECONDS_TO_MS_FACTOR,
   SIGNED_URL_MAX_TTL_SECONDS,
   SIGNED_URL_MIN_TTL_SECONDS,
@@ -255,8 +257,6 @@ export class StorageLayer {
 
     if (!hasValidDownloadToken) {
       if (request.signedUrl?.signature) {
-        const prevSignature = request.signedUrl.signature;
-
         const start = validateSignedUrl(request.signedUrl);
 
         const changeInTime = request.signedUrl.ttlSeconds! * SECONDS_TO_MS_FACTOR;
@@ -264,7 +264,6 @@ export class StorageLayer {
         const now = convertDateToMS(getCurrentDate());
 
         const isLive = now >= start && now < end;
-
         if (!isLive) {
           throw new BadRequestError("Url has Expired");
         }
@@ -277,8 +276,7 @@ export class StorageLayer {
           ttlSeconds: request.signedUrl.ttlSeconds!,
         });
 
-        const isCorrect = createSignature(unsignedUrl) === prevSignature;
-
+        const isCorrect = createSignature(unsignedUrl) === request.signedUrl.signature;
         if (!isCorrect) {
           throw new ForbiddenError("Invalid Url");
         }
@@ -847,9 +845,7 @@ function validateSignedUrl(signedUrl: SignedUrlParams) {
   if (!signedUrl.usableSeconds || !signedUrl.ttlSeconds) {
     throw new BadRequestError(
       `Missing required parameter ${
-        signedUrl.usableSeconds
-          ? "X-Firebase-Date: YYYYMMDD'T'HHMMSS'Z'"
-          : "X-Firebase-Expires: TTL"
+        signedUrl.usableSeconds ? INVALID_DATE_PARAM : INVALID_TTL_PARAM
       }`
     );
   }
