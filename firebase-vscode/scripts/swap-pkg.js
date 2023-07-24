@@ -23,12 +23,6 @@ if (releaseType === 'canary') {
   // Should we use sha or timestamp? Does sha read as always incrementing?
   // Pros: sha lets you trace back to the exact commit
   pkg.version = `${nextPatchVersion}-alpha.${headSha}`;
-
-  writeFileSync(
-    path.join(__dirname, "../package.json"),
-    JSON.stringify(pkg, null, 2),
-    { encoding: "utf8" }
-  );
 }
 
 if (platform === "vsce") {
