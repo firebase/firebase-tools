@@ -254,7 +254,7 @@ export class StorageLayer {
     let checkAuth = false;
 
     if (!hasValidDownloadToken) {
-      if (request.signedUrl) {
+      if (request.signedUrl?.urlSignature) {
         const prevSignature = request.signedUrl.urlSignature;
 
         const start = validateSignedUrl(request.signedUrl);
