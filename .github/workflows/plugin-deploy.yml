@@ -1,0 +1,36 @@
+name: VSCode Plugin Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      release-type:
+        description: "Release Type"
+        type: choice
+        default: "canary"
+        required: true
+        options:
+          - canary
+          - production
+
+jobs:
+  deploy:
+    name: Canary Deploy
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set up node (16)
+      uses: actions/setup-node@v3
+      with:
+        node-version: 16.x
+    - name: Checkout current branch (with history)
+      uses: actions/checkout@master
+    - name: Install top level
+      run: npm install
+    - name: Bump version and package the plugin for Monospace
+      run: |
+        cd firebase-vscode
+        npm install
+        npm run pkg:monospace
+    - name: Upload to GCS
+      run: #TODO
+
+        

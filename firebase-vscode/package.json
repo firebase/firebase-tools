@@ -3,7 +3,7 @@
   "displayName": "firebase-vscode",
   "publisher": "firebase",
   "description": "VSCode Extension for Firebase",
-  "version": "0.0.24-alpha.1",
+  "version": "0.0.25-alpha.8e3e2161",
   "engines": {
     "vscode": "^1.69.0"
   },
@@ -85,8 +85,8 @@
   "scripts": {
     "vscode:prepublish": "npm run build",
     "copyfiles": "cp -r node_modules/@vscode/codicons/dist resources/dist",
-    "pkg:vsce": "node scripts/swap-pkg.js vsce && vsce package",
-    "pkg:monospace": "node scripts/swap-pkg.js monospace && vsce package",
+    "pkg:vsce": "node scripts/swap-pkg.js --platform vsce && vsce package",
+    "pkg:monospace": "node scripts/swap-pkg.js --platform monospace && vsce package",
     "dev": "npm run copyfiles && webpack --config webpack.dev.js",
     "dev:extension": "npm run copyfiles && webpack --config webpack.dev.js --config-name extension",
     "dev:sidebar": "npm run copyfiles && webpack --config webpack.dev.js --config-name sidebar",
