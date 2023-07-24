@@ -5,6 +5,7 @@ import {
   createSignature,
   createUnsignedUrl,
   getCurrentDate,
+  getSignedUrlTimestampFor,
 } from "../../../emulator/storage/files";
 import { StorageCloudFunctions } from "../../../emulator/storage/cloudFunctions";
 import { StorageLayer } from "../../../emulator/storage/files";
@@ -159,8 +160,8 @@ describe("files", () => {
         const unsignedUrl = createUnsignedUrl({
           bucketId: "bucket",
           decodedObjectId: "dir%2Fobject",
-          urlTtlSeconds: 100,
-          urlUsableSeconds: currentDate,
+          ttlSeconds: 100,
+          usableSeconds: currentDate,
           url: "localhost:9000",
         });
 
@@ -170,9 +171,9 @@ describe("files", () => {
           bucketId: "bucket",
           decodedObjectId: "dir%2Fobject",
           signedUrl: {
-            urlSignature: signature,
-            urlTtlSeconds: 100,
-            urlUsableSeconds: currentDate,
+            signature: signature,
+            ttlSeconds: 100,
+            usableSeconds: currentDate,
           },
           baseUrl: "localhost:9000",
         });
@@ -210,8 +211,8 @@ describe("files", () => {
             bucketId: "bucket",
             decodedObjectId: "dir%2Fobject",
             signedUrl: {
-              urlSignature: "mockSignature",
-              urlUsableSeconds: getCurrentDate(),
+              signature: "mockSignature",
+              usableSeconds: getCurrentDate(),
             },
           })
         ).to.be.rejectedWith(BadRequestError);
@@ -225,8 +226,8 @@ describe("files", () => {
             bucketId: "bucket",
             decodedObjectId: "dir%2Fobject",
             signedUrl: {
-              urlSignature: "mockSignature",
-              urlTtlSeconds: 10,
+              signature: "mockSignature",
+              ttlSeconds: 10,
             },
           })
         ).to.be.rejectedWith(BadRequestError);
@@ -240,9 +241,9 @@ describe("files", () => {
             bucketId: "bucket",
             decodedObjectId: "dir%2Fobject",
             signedUrl: {
-              urlSignature: "mockSignature",
-              urlTtlSeconds: SIGNED_URL_MIN_TTL_SECONDS,
-              urlUsableSeconds: getAdjustedDate(-1),
+              signature: "mockSignature",
+              ttlSeconds: SIGNED_URL_MIN_TTL_SECONDS,
+              usableSeconds: getAdjustedDate(-1),
             },
           })
         ).to.be.rejectedWith(BadRequestError);
@@ -256,9 +257,9 @@ describe("files", () => {
             bucketId: "bucket",
             decodedObjectId: "dir%2Fobject",
             signedUrl: {
-              urlSignature: "mockSignature",
-              urlTtlSeconds: SIGNED_URL_MAX_TTL_SECONDS,
-              urlUsableSeconds: getAdjustedDate(-SIGNED_URL_MAX_TTL_SECONDS),
+              signature: "mockSignature",
+              ttlSeconds: SIGNED_URL_MAX_TTL_SECONDS,
+              usableSeconds: getAdjustedDate(-SIGNED_URL_MAX_TTL_SECONDS),
             },
           })
         ).to.be.rejectedWith(BadRequestError);
@@ -271,9 +272,9 @@ describe("files", () => {
             bucketId: "bucket",
             decodedObjectId: "dir%2Fobject",
             signedUrl: {
-              urlSignature: "mockSignature",
-              urlTtlSeconds: 10,
-              urlUsableSeconds: getAdjustedDate(1),
+              signature: "mockSignature",
+              ttlSeconds: 10,
+              usableSeconds: getAdjustedDate(1),
             },
           })
         ).to.be.rejectedWith(BadRequestError);
@@ -285,19 +286,13 @@ describe("files", () => {
           bucketId: "10",
           decodedObjectId: "dir%2Fobject",
           url: "localhost:9000",
-          urlUsableSeconds: getCurrentDate(),
-          urlTtlSeconds: SIGNED_URL_DEFAULT_TTL_SECONDS,
+          usableSeconds: getCurrentDate(),
+          ttlSeconds: SIGNED_URL_DEFAULT_TTL_SECONDS,
         });
 
         const signature = createSignature(unsignedUrl);
 
-        const toChange = [
-          "bucketId",
-          "decodedObjectId",
-          "url",
-          "urlTtlSeconds",
-          "urlUsableSeconds",
-        ];
+        const toChange = ["bucketId", "decodedObjectId", "url", "ttlSeconds", "usableSeconds"];
 
         toChange.forEach((paramToChange) => {
           expect(
@@ -307,11 +302,10 @@ describe("files", () => {
                 paramToChange === "decodedObjectId" ? "dir%2FBadobject" : "dir%2Fobject",
               baseUrl: paramToChange === "url" ? "badurl:0000" : "localhost:9000",
               signedUrl: {
-                urlSignature: signature,
-                urlTtlSeconds:
-                  paramToChange === "urlTtlSeconds" ? 10 : SIGNED_URL_DEFAULT_TTL_SECONDS,
-                urlUsableSeconds:
-                  paramToChange === "urlUsableSeconds" ? getAdjustedDate(-1) : getCurrentDate(),
+                signature: signature,
+                ttlSeconds: paramToChange === "ttlSeconds" ? 10 : SIGNED_URL_DEFAULT_TTL_SECONDS,
+                usableSeconds:
+                  paramToChange === "usableSeconds" ? getAdjustedDate(-1) : getCurrentDate(),
               },
             })
           ).to.be.rejectedWith(ForbiddenError);
@@ -325,9 +319,9 @@ describe("files", () => {
             bucketId: "bucket",
             decodedObjectId: "dir%2Fobject",
             signedUrl: {
-              urlSignature: "mockSignature",
-              urlTtlSeconds: 1.3,
-              urlUsableSeconds: getCurrentDate(),
+              signature: "mockSignature",
+              ttlSeconds: 1.3,
+              usableSeconds: getCurrentDate(),
             },
           })
         ).to.be.rejectedWith(BadRequestError);
@@ -340,9 +334,9 @@ describe("files", () => {
             bucketId: "bucket",
             decodedObjectId: "dir%2Fobject",
             signedUrl: {
-              urlSignature: "mockSignature",
-              urlTtlSeconds: 1.3,
-              urlUsableSeconds: "invalid date",
+              signature: "mockSignature",
+              ttlSeconds: 1.3,
+              usableSeconds: "invalid date",
             },
           })
         ).to.be.rejectedWith(BadRequestError);
@@ -416,8 +410,8 @@ describe("files", () => {
         const tempUnsignedUrl = createUnsignedUrl({
           bucketId: "bucket",
           decodedObjectId: "dir%2Fobject",
-          urlTtlSeconds: 1,
-          urlUsableSeconds: "*",
+          ttlSeconds: 1,
+          usableSeconds: "*",
           url: "localhost:9000",
         });
 
@@ -465,8 +459,11 @@ describe("files", () => {
  * @returns {string}
  */
 function getAdjustedDate(changeBy: number): string {
-  const newDate = new Date();
-  const adjutedDate = new Date(newDate.getTime() + changeBy * SECONDS_TO_MS_FACTOR);
+  return getSignedUrlTimestampFor(new Date(new Date().getTime() + changeBy * SECONDS_TO_MS_FACTOR));
 
+  const adjutedDate = new Date(new Date().getTime() + changeBy * SECONDS_TO_MS_FACTOR);
+
+  const currentDate = new Date().getTime();
+  const adjutedDate2 = new Date(currentDate + changeBy * SECONDS_TO_MS_FACTOR);
   return adjutedDate.toISOString().replaceAll("-", "").replaceAll(":", "").replaceAll(".", "");
 }

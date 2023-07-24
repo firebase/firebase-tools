@@ -40,8 +40,7 @@
     "test:triggers-end-to-end:inspect": "bash ./scripts/triggers-end-to-end-tests/run.sh inspect",
     "test:storage-deploy": "bash ./scripts/storage-deploy-tests/run.sh",
     "test:storage-emulator-integration": "bash ./scripts/storage-emulator-integration/run.sh",
-	"mocha-units": "mocha 'src/test/emulators/storage/files.spec.ts'",
-	"mocha-units2": "mocha 'scripts/storage-emulator-integration/import/tests.ts'"
+	"test:storage-emulator": "mocha 'src/test/emulators/storage/**/*.spec.{ts, js}'"
 },
   "files": [
     "lib",

@@ -61,9 +61,9 @@ export type CreateSignedUrlResponse = {
 };
 
 export type SignedUrlParams = {
-  urlSignature?: string;
-  urlUsableSeconds?: string;
-  urlTtlSeconds?: number;
+  signature?: string;
+  usableSeconds?: string;
+  ttlSeconds?: number;
 };
 
 /**  Parsed request object for {@link StorageLayer#getObject}. */
@@ -143,8 +143,8 @@ export type CreateUnsignedUrl = {
   bucketId: string;
   decodedObjectId: string;
   url: string;
-  urlUsableSeconds: string;
-  urlTtlSeconds: number;
+  usableSeconds: string;
+  ttlSeconds: number;
 };
 
 // Matches any number of "/" at the end of a string.
@@ -208,8 +208,8 @@ export class StorageLayer {
       bucketId: request.bucketId,
       decodedObjectId: request.decodedObjectId,
       url: request.baseUrl,
-      urlUsableSeconds: currentDate,
-      urlTtlSeconds: request.ttlSeconds,
+      usableSeconds: currentDate,
+      ttlSeconds: request.ttlSeconds,
     });
 
     const signature = createSignature(unsignedUrl);
@@ -254,12 +254,12 @@ export class StorageLayer {
     let checkAuth = false;
 
     if (!hasValidDownloadToken) {
-      if (request.signedUrl?.urlSignature) {
-        const prevSignature = request.signedUrl.urlSignature;
+      if (request.signedUrl?.signature) {
+        const prevSignature = request.signedUrl.signature;
 
         const start = validateSignedUrl(request.signedUrl);
 
-        const changeInTime = request.signedUrl.urlTtlSeconds! * SECONDS_TO_MS_FACTOR;
+        const changeInTime = request.signedUrl.ttlSeconds! * SECONDS_TO_MS_FACTOR;
         const end = start + changeInTime;
         const now = convertDateToMS(getCurrentDate());
 
@@ -273,8 +273,8 @@ export class StorageLayer {
           bucketId: request.bucketId,
           decodedObjectId: request.decodedObjectId,
           url: request.baseUrl as string,
-          urlUsableSeconds: request.signedUrl.urlUsableSeconds!,
-          urlTtlSeconds: request.signedUrl.urlTtlSeconds!,
+          usableSeconds: request.signedUrl.usableSeconds!,
+          ttlSeconds: request.signedUrl.ttlSeconds!,
         });
 
         const isCorrect = createSignature(unsignedUrl) === prevSignature;
@@ -813,12 +813,12 @@ export function createUnsignedUrl({
   url,
   bucketId,
   decodedObjectId,
-  urlUsableSeconds,
-  urlTtlSeconds,
+  usableSeconds,
+  ttlSeconds,
 }: CreateUnsignedUrl) {
   return `${url}/v0/b/${bucketId}/o/${encodeURIComponent(
     decodedObjectId
-  )}?alt=media&X-Firebase-Date=${urlUsableSeconds}&X-Firebase-Expires=${urlTtlSeconds}`;
+  )}?alt=media&X-Firebase-Date=${usableSeconds}&X-Firebase-Expires=${ttlSeconds}`;
 }
 
 /**
@@ -829,7 +829,11 @@ export function createUnsignedUrl({
  * @returns {Date}
  */
 export function getCurrentDate() {
-  return new Date().toISOString().replaceAll("-", "").replaceAll(":", "").replaceAll(".", "");
+  return getSignedUrlTimestampFor(new Date());
+}
+
+export function getSignedUrlTimestampFor(date: Date): string {
+  return date.toISOString().replaceAll("-", "").replaceAll(":", "").replaceAll(".", "");
 }
 
 /**
@@ -840,21 +844,21 @@ export function getCurrentDate() {
  * @returns {number}
  */
 function validateSignedUrl(signedUrl: SignedUrlParams) {
-  if (!signedUrl.urlUsableSeconds || !signedUrl.urlTtlSeconds) {
+  if (!signedUrl.usableSeconds || !signedUrl.ttlSeconds) {
     throw new BadRequestError(
       `Missing required parameter ${
-        signedUrl.urlUsableSeconds
+        signedUrl.usableSeconds
           ? "X-Firebase-Date: YYYYMMDD'T'HHMMSS'Z'"
           : "X-Firebase-Expires: TTL"
       }`
     );
   }
-  const start = convertDateToMS(signedUrl.urlUsableSeconds);
+  const start = convertDateToMS(signedUrl.usableSeconds);
 
   if (!start) {
     throw new BadRequestError(`Invalid format for X-Firebase-Date, expected YYYYMMDD'T'HHMMSS'Z'`);
   }
-  if (!Number.isInteger(signedUrl.urlTtlSeconds)) {
+  if (!Number.isInteger(signedUrl.ttlSeconds)) {
     throw new BadRequestError(`Invalid format for X-Firebase-Expires, not an integer.'`);
   }
 

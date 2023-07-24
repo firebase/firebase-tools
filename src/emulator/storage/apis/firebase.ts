@@ -103,9 +103,9 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         authorization: req.header("authorization"),
         downloadToken: req.query.token?.toString(),
         signedUrl: {
-          urlSignature: req.query["X-Firebase-Signature"] as string,
-          urlUsableSeconds: req.query["X-Firebase-Date"] as string,
-          urlTtlSeconds: Number(req.query["X-Firebase-Expires"]),
+          signature: req.query["X-Firebase-Signature"] as string,
+          usableSeconds: req.query["X-Firebase-Date"] as string,
+          ttlSeconds: Number(req.query["X-Firebase-Expires"]),
         },
       }));
     } catch (err) {
