@@ -66,7 +66,7 @@ export type SignedUrlParams = {
   signature?: string;
   usableSeconds?: string;
   ttlSeconds?: number;
-  url?: string;
+  base?: string;
 };
 
 /**  Parsed request object for {@link StorageLayer#getObject}. */
@@ -257,7 +257,7 @@ export class StorageLayer {
 
     if (!hasValidDownloadToken) {
       if (request.signedUrl?.signature) {
-        const start = validateSignedUrl(request.signedUrl);
+        const start = validateSignedUrlAndReturnStartTs(request.signedUrl);
 
         const changeInTime = request.signedUrl.ttlSeconds! * SECONDS_TO_MS_FACTOR;
         const end = start + changeInTime;
@@ -271,7 +271,7 @@ export class StorageLayer {
         const unsignedUrl = createUnsignedUrl({
           bucketId: request.bucketId,
           decodedObjectId: request.decodedObjectId,
-          url: request.signedUrl.url as string,
+          url: request.signedUrl.base as string,
           usableSeconds: request.signedUrl.usableSeconds!,
           ttlSeconds: request.signedUrl.ttlSeconds!,
         });
@@ -841,7 +841,7 @@ export function getSignedUrlTimestampFor(date: Date): string {
  * @param {SignedUrlParams} signedUrl
  * @returns {number}
  */
-function validateSignedUrl(signedUrl: SignedUrlParams) {
+function validateSignedUrlAndReturnStartTs(signedUrl: SignedUrlParams) {
   if (!signedUrl.usableSeconds || !signedUrl.ttlSeconds) {
     throw new BadRequestError(
       `Missing required parameter ${

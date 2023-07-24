@@ -105,7 +105,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           signature: req.query["X-Firebase-Signature"] as string,
           usableSeconds: req.query["X-Firebase-Date"] as string,
           ttlSeconds: Number(req.query["X-Firebase-Expires"]),
-          url: `${req.protocol}://${req.hostname}:${req.socket.localPort}`,
+          base: `${req.protocol}://${req.hostname}:${req.socket.localPort}`,
         },
       }));
     } catch (err) {

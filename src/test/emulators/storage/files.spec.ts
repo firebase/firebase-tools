@@ -174,7 +174,7 @@ describe("files", () => {
             signature: signature,
             ttlSeconds: 100,
             usableSeconds: currentDate,
-            url: "localhost:9000",
+            base: "localhost:9000",
           },
         });
 
@@ -305,7 +305,7 @@ describe("files", () => {
                 ttlSeconds: paramToChange === "ttlSeconds" ? 10 : SIGNED_URL_DEFAULT_TTL_SECONDS,
                 usableSeconds:
                   paramToChange === "usableSeconds" ? getAdjustedDate(-1) : getCurrentDate(),
-                url: paramToChange === "url" ? "badurl:0000" : "localhost:9000",
+                base: paramToChange === "url" ? "badurl:0000" : "localhost:9000",
               },
             })
           ).to.be.rejectedWith(ForbiddenError);
