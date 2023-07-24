@@ -99,13 +99,13 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       ({ metadata, data } = await storageLayer.getObject({
         bucketId: req.params.bucketId,
         decodedObjectId: decodeURIComponent(req.params.objectId),
-        baseUrl: `${req.protocol}://${req.hostname}:${req.socket.localPort}`,
         authorization: req.header("authorization"),
         downloadToken: req.query.token?.toString(),
         signedUrl: {
           signature: req.query["X-Firebase-Signature"] as string,
           usableSeconds: req.query["X-Firebase-Date"] as string,
           ttlSeconds: Number(req.query["X-Firebase-Expires"]),
+          url: `${req.protocol}://${req.hostname}:${req.socket.localPort}`,
         },
       }));
     } catch (err) {

@@ -64,13 +64,13 @@ export type SignedUrlParams = {
   signature?: string;
   usableSeconds?: string;
   ttlSeconds?: number;
+  url?: string;
 };
 
 /**  Parsed request object for {@link StorageLayer#getObject}. */
 export type GetObjectRequest = {
   bucketId: string;
   decodedObjectId: string;
-  baseUrl?: string;
   authorization?: string;
   downloadToken?: string;
   signedUrl?: SignedUrlParams;
@@ -272,7 +272,7 @@ export class StorageLayer {
         const unsignedUrl = createUnsignedUrl({
           bucketId: request.bucketId,
           decodedObjectId: request.decodedObjectId,
-          url: request.baseUrl as string,
+          url: request.signedUrl.url as string,
           usableSeconds: request.signedUrl.usableSeconds!,
           ttlSeconds: request.signedUrl.ttlSeconds!,
         });

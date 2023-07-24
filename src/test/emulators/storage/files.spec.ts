@@ -174,8 +174,8 @@ describe("files", () => {
             signature: signature,
             ttlSeconds: 100,
             usableSeconds: currentDate,
+            url: "localhost:9000",
           },
-          baseUrl: "localhost:9000",
         });
 
         expect(metadata.contentType).to.equal("mime/type");
@@ -300,12 +300,12 @@ describe("files", () => {
               bucketId: paramToChange === "bucketId" ? "11" : "10",
               decodedObjectId:
                 paramToChange === "decodedObjectId" ? "dir%2FBadobject" : "dir%2Fobject",
-              baseUrl: paramToChange === "url" ? "badurl:0000" : "localhost:9000",
               signedUrl: {
                 signature: signature,
                 ttlSeconds: paramToChange === "ttlSeconds" ? 10 : SIGNED_URL_DEFAULT_TTL_SECONDS,
                 usableSeconds:
                   paramToChange === "usableSeconds" ? getAdjustedDate(-1) : getCurrentDate(),
+                url: paramToChange === "url" ? "badurl:0000" : "localhost:9000",
               },
             })
           ).to.be.rejectedWith(ForbiddenError);
