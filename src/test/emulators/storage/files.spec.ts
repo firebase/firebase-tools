@@ -461,5 +461,5 @@ describe("files", () => {
 function getAdjustedDate(changeBy: number): string {
   const currentDate = new Date().getTime();
   const adjutedDate = new Date(currentDate + changeBy * SECONDS_TO_MS_FACTOR);
-  return adjutedDate.toISOString().replaceAll("-", "").replaceAll(":", "").replaceAll(".", "");
+  return getSignedUrlTimestampFor(adjutedDate);
 }
