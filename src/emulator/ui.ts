@@ -5,6 +5,7 @@ import { FirebaseError } from "../error";
 import { Constants } from "./constants";
 import { emulatorSession } from "../track";
 import { ExpressBasedEmulator } from "./ExpressBasedEmulator";
+import { ALL_EXPERIMENTS, ExperimentName, isEnabled } from "../experiments";
 
 export interface EmulatorUIOptions {
   listen: ListenSpec[];
@@ -34,6 +35,11 @@ export class EmulatorUI implements EmulatorInstance {
     if (session) {
       env[Constants.FIREBASE_GA_SESSION] = JSON.stringify(session);
     }
+
+    const enabledExperiments = (Object.keys(ALL_EXPERIMENTS) as Array<ExperimentName>).filter(
+      (experimentName) => isEnabled(experimentName)
+    );
+    env[Constants.FIREBASE_ENABLED_EXPERIMENTS] = JSON.stringify(enabledExperiments);
 
     return downloadableEmulators.start(Emulators.UI, { auto_download: autoDownload }, env);
   }
