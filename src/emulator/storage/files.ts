@@ -176,14 +176,14 @@ export class StorageLayer {
 
     const currentDate = getCurrentDate();
 
-    const timeToLive = request.ttlSeconds;
-    if (!Number.isInteger(timeToLive)) {
-      throw new BadRequestError(`Invalid TTL: ${timeToLive} is not an integer.`);
+    const ttl = request.ttlSeconds;
+    if (!Number.isInteger(ttl)) {
+      throw new BadRequestError(`Invalid TTL: ${ttl} is not an integer.`);
     }
 
-    if (timeToLive < SIGNED_URL_MIN_TTL_SECONDS || timeToLive > SIGNED_URL_MAX_TTL_SECONDS) {
+    if (ttl < SIGNED_URL_MIN_TTL_SECONDS || ttl > SIGNED_URL_MAX_TTL_SECONDS) {
       throw new BadRequestError(
-        `Invalid TTL: ${timeToLive} is out of range. Must be > ${SIGNED_URL_MIN_TTL_SECONDS} and < ${SIGNED_URL_MAX_TTL_SECONDS}`
+        `Invalid TTL: ${ttl} is out of range. Must be > ${SIGNED_URL_MIN_TTL_SECONDS} and < ${SIGNED_URL_MAX_TTL_SECONDS}`
       );
     }
 
@@ -214,10 +214,10 @@ export class StorageLayer {
       ttlSeconds: request.ttlSeconds,
     });
 
-    const signature = createSignature(unsignedUrl);
-
     return {
-      signed_url: `${unsignedUrl}&X-Firebase-Signature=${encodeURIComponent(signature)}`,
+      signed_url: `${unsignedUrl}&X-Firebase-Signature=${encodeURIComponent(
+        createSignature(unsignedUrl)
+      )}`,
     };
   }
 
