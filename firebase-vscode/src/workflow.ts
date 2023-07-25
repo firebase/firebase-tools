@@ -206,7 +206,7 @@ export async function setupWorkflow(
 
   broker.on("selectProject", selectProject);
 
-  broker.on("sendMessageToTerminal", echoMessageToConsole);
+  broker.on("chooseQuickstartDir", selectDirectory);
 
   broker.on("selectAndInitHostingFolder", selectAndInitHosting);
 
@@ -348,7 +348,14 @@ export async function setupWorkflow(
     }
   }
 
-  async function echoMessageToConsole({ message }) {
-    vscode.window.showInformationMessage(message);
+  // Opens a dialog prompting the user to select a directory.
+  // @returns string file path with directory location
+  async function selectDirectory() {
+    const selectedURI = await vscode.window.showOpenDialog(
+      { canSelectFiles: false, canSelectFolders: true, canSelectMany: false });
+
+    if (selectedURI && selectedURI[0]) {
+      vscode.window.showInformationMessage(selectedURI[0].path);
+    }
   }
 }

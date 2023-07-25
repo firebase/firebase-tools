@@ -134,8 +134,8 @@ export function SidebarApp() {
     );
   }
 
-  function sendMessageToTerminal(text: string) {
-    broker.send("sendMessageToTerminal", { message: text });
+  function sendMessageToTerminal() {
+    broker.send("chooseQuickstartDir", {});
   }
 
   return (

@@ -73,8 +73,8 @@ export interface WebviewToExtensionParamsMap {
 
   selectEmulatorImportFolder: {};
 
-  /**Sends a message to the console */
-  sendMessageToTerminal: { message: string };
+  /** Prompts the user to select a directory in which to place the quickstart */
+  chooseQuickstartDir: {};
 }
 
 export interface ExtensionToWebviewParamsMap {
