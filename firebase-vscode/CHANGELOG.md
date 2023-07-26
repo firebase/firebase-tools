@@ -1,5 +1,10 @@
 # Change Log
 
+## 0.0.24
+
+- Fix the proxy-agent 
+- Pull in latest CLI changes
+
 ## 0.0.24-alpha.1
 
 - Add more user-friendly API permission denied messages
