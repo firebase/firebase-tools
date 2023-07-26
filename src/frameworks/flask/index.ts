@@ -17,7 +17,7 @@ export async function discover(cwd: string) {
   const results = await getDiscoveryResults(cwd).catch(() => undefined);
   if (!results) {
     logger.debug(
-      "Looks like you might be using Flask. Here're some tips that will help our tools work with your Python project:"
+      "Looks like you might be using Flask. Here are some tips on using our tools with your Python project:"
     );
     logger.debug(
       '\t1. You have your app entry point in a "main.py" file in the hosting root folder.'
