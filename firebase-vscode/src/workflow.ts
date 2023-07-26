@@ -209,7 +209,7 @@ export async function setupWorkflow(
     showOutputChannel();
     pluginLogger.info(
       `Starting deployment of project ` +
-        `${currentOptions.projectId} to channel: ${deployTarget}`
+      `${currentOptions.projectId} to channel: ${deployTarget}`
     );
     const { success, consoleUrl, hostingUrl } = await deployToHosting(
       currentOptions.config,
@@ -241,7 +241,7 @@ export async function setupWorkflow(
     if (process.env.MONOSPACE_ENV) {
       pluginLogger.debug(
         "selectProject: found MONOSPACE_ENV, " +
-          "prompting user using external flow"
+        "prompting user using external flow"
       );
       /**
        * Monospace case: use Monospace flow
@@ -266,7 +266,7 @@ export async function setupWorkflow(
        */
       pluginLogger.debug(
         "selectProject: MONOSPACE_ENV not found, " +
-          " but service account found"
+        " but service account found"
       );
       const projects = (await listProjects()) as FirebaseProjectMetadata[];
       projectsUserMapping.set(email, projects);
@@ -279,7 +279,7 @@ export async function setupWorkflow(
        */
       pluginLogger.debug(
         "selectProject: no service account or MONOSPACE_ENV " +
-          "found, using firebase account to list projects"
+        "found, using firebase account to list projects"
       );
       let projects = [];
       if (projectsUserMapping.has(email)) {
@@ -371,15 +371,9 @@ export async function setupWorkflow(
     if (selectedURI && selectedURI[0]) {
       //const output: string = execSync("pwd").toString();
       // vscode.window.showInformationMessage(output.toString());
-
-      //`cd ${selectedURI[0]} && git clone https://github.com/firebase/quickstart-js.git`
-      //execSync('git status', {cwd: '/home/ubuntu/distro'}
-
-      // console.log(output);
-      console.log(selectedURI[0].path);
       console.log(
-        execSync("git clone https://github.com/firebase/quickstart-js.git", {
-          cwd: selectedURI[0].path,
+        execSync(`git clone https://github.com/firebase/quickstart-js.git && cd quickstart-js && ls | grep -xv "firestore" | xargs rm -rf && cd firestore && ls | grep -xv "angular-rewrite" | xargs rm -rf && mv -v angular-rewrite/* "${selectedURI[0].fsPath}" && cd "${selectedURI[0].fsPath}" && rm -rf quickstart-js`, {
+          cwd: selectedURI[0].fsPath,
         }).toString()
       );
 
