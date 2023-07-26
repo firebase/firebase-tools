@@ -21,9 +21,10 @@ import { setEnabled } from "../../src/experiments";
 import {
   readAndSendFirebaseConfigs,
   setupFirebaseJsonAndRcFileSystemWatcher,
-  updateFirebaseRCProject
+  updateFirebaseRCProject,
 } from "./config-files";
 import { ServiceAccountUser } from "../common/types";
+import { exec, execSync } from "child_process";
 
 let users: Array<ServiceAccountUser | User> = [];
 export let currentUser: User | ServiceAccountUser;
@@ -40,9 +41,7 @@ async function fetchUsers() {
 /**
  * Get the user to select a project.
  */
-async function promptUserForProject(
-  projects: FirebaseProjectMetadata[]
-) {
+async function promptUserForProject(projects: FirebaseProjectMetadata[]) {
   const items = projects.map(({ projectId }) => projectId);
 
   return new Promise<null | string>((resolve, reject) => {
@@ -89,9 +88,9 @@ function updateCurrentUser(
 
 async function fetchChannels(broker: ExtensionBrokerImpl, force = false) {
   if (force || !channels) {
-    pluginLogger.debug('Fetching hosting channels');
+    pluginLogger.debug("Fetching hosting channels");
     channels = await getChannels(currentOptions.config);
-  };
+  }
   broker.send("notifyChannels", { channels });
 }
 
@@ -99,28 +98,27 @@ export async function setupWorkflow(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl
 ) {
-
   // Get user-defined VSCode settings if workspace is found.
   let shouldWriteDebug: boolean = false;
-  let debugLogPath: string = '';
+  let debugLogPath: string = "";
   let useFrameworks: boolean = false;
-  let npmPath: string = '';
+  let npmPath: string = "";
   if (vscode.workspace.workspaceFolders) {
     const workspaceConfig = workspace.getConfiguration(
-      'firebase',
+      "firebase",
       vscode.workspace.workspaceFolders[0].uri
     );
-    shouldWriteDebug = workspaceConfig.get('debug');
-    debugLogPath = workspaceConfig.get('debugLogPath');
-    useFrameworks = workspaceConfig.get('useFrameworks');
-    npmPath = workspaceConfig.get('npmPath');
+    shouldWriteDebug = workspaceConfig.get("debug");
+    debugLogPath = workspaceConfig.get("debugLogPath");
+    useFrameworks = workspaceConfig.get("useFrameworks");
+    npmPath = workspaceConfig.get("npmPath");
     if (npmPath) {
       process.env.PATH += `:${npmPath}`;
     }
   }
 
   if (useFrameworks) {
-    setEnabled('webframeworks', true);
+    setEnabled("webframeworks", true);
   }
 
   logSetup({ shouldWriteDebug, debugLogPath });
@@ -129,17 +127,18 @@ export async function setupWorkflow(
    * Call pluginLogger with log arguments received from webview.
    */
   broker.on("writeLog", async ({ level, args }) => {
-    pluginLogger[level]('(Webview)', ...args);
+    pluginLogger[level]("(Webview)", ...args);
   });
 
   broker.on("getInitialData", async () => {
     // Env
-    pluginLogger.debug(`Value of process.env.MONOSPACE_ENV: `
-      + `${process.env.MONOSPACE_ENV}`);
+    pluginLogger.debug(
+      `Value of process.env.MONOSPACE_ENV: ` + `${process.env.MONOSPACE_ENV}`
+    );
     broker.send("notifyEnv", {
       env: {
         isMonospace: Boolean(process.env.MONOSPACE_ENV),
-      }
+      },
     });
 
     // Firebase JSON and RC
@@ -156,7 +155,7 @@ export async function setupWorkflow(
     // Project
     if (currentOptions.rc?.projects?.default) {
       broker.send("notifyProjectChanged", {
-        projectId: currentOptions.rc.projects.default
+        projectId: currentOptions.rc.projects.default,
       });
     }
   });
@@ -186,23 +185,19 @@ export async function setupWorkflow(
     users.push(user);
     if (users) {
       broker.send("notifyUsers", { users });
-      currentUser = updateCurrentUser(
-        users,
-        broker,
-        user
-      );
+      currentUser = updateCurrentUser(users, broker, user);
     }
   });
 
-  broker.on("requestChangeUser", (
-    { user: requestedUser }:
-      { user: User | ServiceAccountUser }
-  ) => {
-    if (users.some((user) => user.email === requestedUser.email)) {
-      currentUser = requestedUser;
-      broker.send("notifyUserChanged", { user: currentUser });
+  broker.on(
+    "requestChangeUser",
+    ({ user: requestedUser }: { user: User | ServiceAccountUser }) => {
+      if (users.some((user) => user.email === requestedUser.email)) {
+        currentUser = requestedUser;
+        broker.send("notifyUserChanged", { user: currentUser });
+      }
     }
-  });
+  );
 
   broker.on("selectProject", selectProject);
 
@@ -212,8 +207,10 @@ export async function setupWorkflow(
 
   broker.on("hostingDeploy", async ({ target: deployTarget }) => {
     showOutputChannel();
-    pluginLogger.info(`Starting deployment of project `
-      + `${currentOptions.projectId} to channel: ${deployTarget}`);
+    pluginLogger.info(
+      `Starting deployment of project ` +
+        `${currentOptions.projectId} to channel: ${deployTarget}`
+    );
     const { success, consoleUrl, hostingUrl } = await deployToHosting(
       currentOptions.config,
       deployTarget
@@ -227,7 +224,7 @@ export async function setupWorkflow(
   broker.on("promptUserForInput", async () => {
     const response = await vscode.window.showInputBox({
       title: "New Preview Channel",
-      prompt: "Enter a name for the new preview channel"
+      prompt: "Enter a name for the new preview channel",
     });
     broker.send("notifyPreviewChannelResponse", { id: response });
   });
@@ -242,20 +239,22 @@ export async function setupWorkflow(
       (currentUser as ServiceAccountUser).type === "service_account";
     const email = currentUser.email;
     if (process.env.MONOSPACE_ENV) {
-      pluginLogger.debug('selectProject: found MONOSPACE_ENV, '
-        + 'prompting user using external flow');
+      pluginLogger.debug(
+        "selectProject: found MONOSPACE_ENV, " +
+          "prompting user using external flow"
+      );
       /**
        * Monospace case: use Monospace flow
        */
       const monospaceExtension =
-        vscode.extensions.getExtension('google.monospace');
+        vscode.extensions.getExtension("google.monospace");
       process.env.MONOSPACE_DAEMON_PORT =
         monospaceExtension.exports.getMonospaceDaemonPort();
       try {
         projectId = await selectProjectInMonospace({
           projectRoot: currentOptions.cwd,
           project: undefined,
-          isVSCE: true
+          isVSCE: true,
         });
       } catch (e) {
         pluginLogger.error(e);
@@ -265,8 +264,10 @@ export async function setupWorkflow(
        * Non-Monospace service account case: get the service account's only
        * linked project.
        */
-      pluginLogger.debug('selectProject: MONOSPACE_ENV not found, '
-        + ' but service account found');
+      pluginLogger.debug(
+        "selectProject: MONOSPACE_ENV not found, " +
+          " but service account found"
+      );
       const projects = (await listProjects()) as FirebaseProjectMetadata[];
       projectsUserMapping.set(email, projects);
       // Service accounts should only have one project.
@@ -276,8 +277,10 @@ export async function setupWorkflow(
        * Default Firebase login case, let user choose from projects that
        * Firebase login has access to.
        */
-      pluginLogger.debug('selectProject: no service account or MONOSPACE_ENV '
-        + 'found, using firebase account to list projects');
+      pluginLogger.debug(
+        "selectProject: no service account or MONOSPACE_ENV " +
+          "found, using firebase account to list projects"
+      );
       let projects = [];
       if (projectsUserMapping.has(email)) {
         pluginLogger.info(`using cached projects list for ${email}`);
@@ -307,15 +310,16 @@ export async function setupWorkflow(
     // Note: discover() takes a few seconds. No need to block users that don't
     // have frameworks support enabled.
     if (useFrameworks) {
-      currentFramework = useFrameworks && await discover(currentOptions.cwd, false);
-      pluginLogger.debug('Searching for a web framework in this project.');
+      currentFramework =
+        useFrameworks && (await discover(currentOptions.cwd, false));
+      pluginLogger.debug("Searching for a web framework in this project.");
     }
     let success = false;
     if (currentFramework) {
-      pluginLogger.debug('Detected web framework, launching frameworks init.');
+      pluginLogger.debug("Detected web framework, launching frameworks init.");
       success = await initHosting({
         spa: singleAppSupport,
-        useFrameworks: true
+        useFrameworks: true,
       });
     } else {
       const options: vscode.OpenDialogOptions = {
@@ -333,29 +337,53 @@ export async function setupWorkflow(
         success = await initHosting({
           spa: singleAppSupport,
           public: publicFolder,
-          useFrameworks: false
+          useFrameworks: false,
         });
       }
     }
     if (success) {
       readAndSendFirebaseConfigs(broker, context);
-      broker.send("notifyHostingInitDone",
-        { success, projectId, folderPath: currentOptions.cwd, framework: currentFramework });
+      broker.send("notifyHostingInitDone", {
+        success,
+        projectId,
+        folderPath: currentOptions.cwd,
+        framework: currentFramework,
+      });
       await fetchChannels(broker, true);
     } else {
-      broker.send("notifyHostingInitDone",
-        { success, projectId, folderPath: currentOptions.cwd });
+      broker.send("notifyHostingInitDone", {
+        success,
+        projectId,
+        folderPath: currentOptions.cwd,
+      });
     }
   }
 
   // Opens a dialog prompting the user to select a directory.
   // @returns string file path with directory location
   async function selectDirectory() {
-    const selectedURI = await vscode.window.showOpenDialog(
-      { canSelectFiles: false, canSelectFolders: true, canSelectMany: false });
+    const selectedURI = await vscode.window.showOpenDialog({
+      canSelectFiles: false,
+      canSelectFolders: true,
+      canSelectMany: false,
+    });
 
     if (selectedURI && selectedURI[0]) {
-      vscode.window.showInformationMessage(selectedURI[0].path);
+      //const output: string = execSync("pwd").toString();
+      // vscode.window.showInformationMessage(output.toString());
+
+      //`cd ${selectedURI[0]} && git clone https://github.com/firebase/quickstart-js.git`
+      //execSync('git status', {cwd: '/home/ubuntu/distro'}
+
+      // console.log(output);
+      console.log(selectedURI[0].path);
+      console.log(
+        execSync("git clone https://github.com/firebase/quickstart-js.git", {
+          cwd: selectedURI[0].path,
+        }).toString()
+      );
+
+      vscode.commands.executeCommand(`vscode.openFolder`, selectedURI[0]);
     }
   }
 }
