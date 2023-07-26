@@ -341,7 +341,7 @@ export function getFunctionsEventProvider(eventType: string): string {
     const provider = last(parts[1].split("."));
     return _.capitalize(provider);
   }
-  // v1 event types:
+  // 1st gen event types:
   if (/google.*pubsub/.exec(eventType)) {
     return "PubSub";
   } else if (/google.storage/.exec(eventType)) {
