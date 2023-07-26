@@ -138,7 +138,7 @@ export async function prepare(
       } else if (endpoint.platform === "gcfv2") {
         // N.B. If GCF starts allowing v1's allowable characters in IDs they're
         // going to need to have a transform to create a service ID (which has a
-        // more restrictive cahracter set). We'll need to reimplement that here.
+        // more restrictive character set). We'll need to reimplement that here.
         resource = `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.id}`;
       } else {
         assertExhaustive(endpoint.platform);
@@ -316,7 +316,7 @@ export function inferDetailsFromExisting(
     // N.B. concurrency has different defaults based on CPU. If the customer
     // only specifies CPU and they change that specification to < 1, we should
     // turn off concurrency.
-    // We'll hanndle this in setCpuAndConcurrency
+    // We'll handle this in setCpuAndConcurrency
 
     wantE.securityLevel = haveE.securityLevel ? haveE.securityLevel : "SECURE_ALWAYS";
 
@@ -451,7 +451,7 @@ export async function loadCodebases(
     const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
     logLabeledBullet(
       "functions",
-      `Loading and anaylzing source code for codebase ${codebase} to determine what to deploy`
+      `Loading and analyzing source code for codebase ${codebase} to determine what to deploy`
     );
     wantBuilds[codebase] = await runtimeDelegate.discoverBuild(runtimeConfig, {
       ...firebaseEnvs,

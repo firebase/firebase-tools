@@ -277,12 +277,12 @@ export class Fabricator {
   }
 
   async createV2Function(endpoint: backend.Endpoint): Promise<void> {
-    const storage = this.sources[endpoint.codebase!]?.storage;
-    if (!storage) {
+    const storageSource = this.sources[endpoint.codebase!]?.storage;
+    if (!storageSource) {
       logger.debug("Precondition failed. Cannot create a GCFv2 function without storage");
       throw new Error("Precondition failed");
     }
-    const apiFunction = gcfV2.functionFromEndpoint(endpoint, storage);
+    const apiFunction = gcfV2.functionFromEndpoint({ ...endpoint, source: { storageSource } });
 
     // N.B. As of GCFv2 private preview GCF no longer creates Pub/Sub topics
     // for Pub/Sub event handlers. This may change, at which point this code
@@ -323,7 +323,7 @@ export class Fabricator {
             // eventarc.createChannel doesn't always return 409 when channel already exists.
             // Ex. when channel exists and has active triggers the API will return 400 (bad
             // request) with message saying something about active triggers. So instead of
-            // relying on 409 response we explicitly check for channel existense.
+            // relying on 409 response we explicitly check for channel existence.
             if ((await eventarc.getChannel(channel)) !== undefined) {
               return;
             }
@@ -464,12 +464,12 @@ export class Fabricator {
   }
 
   async updateV2Function(endpoint: backend.Endpoint): Promise<void> {
-    const storage = this.sources[endpoint.codebase!]?.storage;
-    if (!storage) {
+    const storageSource = this.sources[endpoint.codebase!]?.storage;
+    if (!storageSource) {
       logger.debug("Precondition failed. Cannot update a GCFv2 function without storage");
       throw new Error("Precondition failed");
     }
-    const apiFunction = gcfV2.functionFromEndpoint(endpoint, storage);
+    const apiFunction = gcfV2.functionFromEndpoint({ ...endpoint, source: { storageSource } });
 
     // N.B. As of GCFv2 private preview the API chokes on any update call that
     // includes the pub/sub topic even if that topic is unchanged.
@@ -622,8 +622,8 @@ export class Fabricator {
       await this.unregisterBlockingTrigger(endpoint);
     }
     // N.B. Like Pub/Sub topics, we don't delete Eventarc channels because we
-    // don't know if there are any subscriers or not. If we start supporting 2P
-    // channels, we might need to revist this or else the events will still get
+    // don't know if there are any subscribers or not. If we start supporting 2P
+    // channels, we might need to revisit this or else the events will still get
     // published and the customer will still get charged.
   }
 

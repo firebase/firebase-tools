@@ -10,11 +10,12 @@ import { Label } from "./ui/Text";
 import { broker } from "../globals/html-broker";
 import styles from "../sidebar.entry.scss";
 import { PanelSection } from "./ui/PanelSection";
-import { HostingState } from "../webview-types";
+import { DeployState as DeployState } from "../webview-types";
 import { ChannelWithId } from "../messaging/types";
 import { ExternalLink } from "./ui/ExternalLink";
 import { SplitButton } from "./ui/SplitButton";
 import { MenuItem } from "./ui/popup-menu/PopupMenu";
+import { TEXT } from "../globals/ux-text";
 
 interface DeployInfo {
   date: string;
@@ -23,30 +24,32 @@ interface DeployInfo {
 }
 
 export function DeployPanel({
-  hostingState,
-  setHostingState,
+  deployState,
+  setDeployState,
   projectId,
   channels,
+  framework,
 }: {
-  hostingState: HostingState;
-  setHostingState: (hostingState: HostingState) => void;
+  deployState: DeployState;
+  setDeployState: (deployState: DeployState) => void;
   projectId: string;
   channels: ChannelWithId[];
+  framework: string;
 }) {
   const [deployTarget, setDeployTarget] = useState<string>("live");
   const [newPreviewChannel, setNewPreviewChannel] = useState<string>("");
   const [deployedInfo, setDeployedInfo] = useState<DeployInfo>(null);
 
   useEffect(() => {
-    if (hostingState === "success" || hostingState === "failure") {
+    if (deployState === "success" || deployState === "failure") {
       setDeployedInfo({
-        date: new Date().toLocaleDateString(),
+        date: new Date().toLocaleString(),
         channelId: deployTarget === "new" ? newPreviewChannel : deployTarget,
-        succeeded: hostingState === "success",
+        succeeded: deployState === "success",
       });
       setNewPreviewChannel("");
     }
-  }, [hostingState]);
+  }, [deployState]);
 
   useEffect(() => {
     broker.on("notifyPreviewChannelResponse", ({ id }: { id: string }) => {
@@ -114,7 +117,7 @@ export function DeployPanel({
     <SplitButton
       appearance="primary"
       onClick={() => {
-        setHostingState("deploying");
+        setDeployState("deploying");
         broker.send("hostingDeploy", {
           target: deployTarget === "new" ? newPreviewChannel : deployTarget,
         });
@@ -127,7 +130,7 @@ export function DeployPanel({
               key={newPreviewChannel}
               onClick={() => setDeployTarget(newPreviewChannel)}
             >
-              {`Deploy to ${newPreviewChannel}`}
+              {`Deploy to "${newPreviewChannel}"`}
             </MenuItem>
           )}
           <MenuItem key="new" onClick={getNewPreviewChannelName}>
@@ -140,13 +143,24 @@ export function DeployPanel({
     </SplitButton>
   );
 
-  //TODO(chholland): Fill this in based on what was fetched from listChannels()
+  const channelInfo = channels.find((channel) => channel.id === deployTarget);
+
   let deployedText = "not deployed yet";
-  if (deployedInfo?.succeeded) {
-    deployedText = `Deployed ${deployedInfo.date} to ${deployedInfo.channelId}`;
-  } else if (deployedInfo && !deployedInfo?.succeeded) {
-    deployedText = `Failed deploy at ${deployedInfo.date} to ${deployedInfo.channelId}`;
-  }
+  if (deployedInfo && !deployedInfo?.succeeded) {
+    // Priority 1: most recent deploy failed
+    deployedText = `Failed deploy to ${deployedInfo.channelId} at ${deployedInfo.date}`;
+  } else if (channelInfo && channelInfo.updateTime) {
+    // Priority 2: if we have server data about last deploy from listChannels()
+    // Takes priority over local deploy success in case someone else deployed
+    // after our most recent local deploy.
+    deployedText = `Last deployed to ${deployTarget} at ${new Date(
+      channelInfo.updateTime
+    ).toLocaleString()}`;
+  } else if (deployedInfo?.succeeded) {
+    // Priority 3: If most recent local deploy succeeded and there's no server
+    // data about other successful deploys
+    deployedText = `Deployed to ${deployedInfo.channelId} at ${deployedInfo.date}`;
+  } 
 
   return (
     <>
@@ -156,7 +170,7 @@ export function DeployPanel({
         <>
           {DeploySplitButton}
           <Spacer size="xsmall" />
-          {hostingState !== "deploying" && (
+          {deployState !== "deploying" && (
             <>
               <Spacer size="xsmall" />
               <div>
@@ -172,7 +186,7 @@ export function DeployPanel({
               </div>
             </>
           )}
-          {hostingState === "deploying" && (
+          {deployState === "deploying" && (
             <>
               <Spacer size="medium" />
               <div className={styles.integrationStatus}>
@@ -182,7 +196,12 @@ export function DeployPanel({
                     styles.integrationStatusLoading
                   )}
                 />
-                <Label level={3}> Deploying...</Label>
+                <Label level={3}>
+                  {" "}
+                  {framework
+                    ? TEXT.DEPLOYING_IN_PROGRESS
+                    : TEXT.DEPLOYING_PROGRESS_FRAMEWORK}
+                </Label>
               </div>
             </>
           )}
