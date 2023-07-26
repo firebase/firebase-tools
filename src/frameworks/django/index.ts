@@ -3,8 +3,9 @@ import { mkdir, readFile, readdir, writeFile } from "fs/promises";
 import { join } from "path";
 import { BuildResult, FrameworkType, SupportLevel } from "../interfaces";
 import { dirExistsSync } from "../../fsutils";
-import { findPythonCLI, hasPipDependency, spawnPython } from "../utils";
+import { findPythonCLI, getVenvDir, hasPipDependency, spawnPython } from "../utils";
 import { spawnSync } from "child_process";
+import { DEFAULT_VENV_DIR } from "../../functions/python";
 
 export const name = "Django";
 export const support = SupportLevel.Experimental;
@@ -24,10 +25,14 @@ export async function init(setup: any, config: any) {
   const cwd = join(config.projectDir, setup.hosting.source);
   await mkdirp(cwd);
   const cli = findPythonCLI();
-  spawnSync(cli, ["-m", "venv", "venv"], { stdio: "ignore", cwd });
+  spawnSync(cli, ["-m", "venv", DEFAULT_VENV_DIR], { stdio: "ignore", cwd });
   writeFile(join(cwd, "requirements.txt"), "Django");
   await spawnPython("pip", ["install", "-r", "requirements.txt"], cwd);
-  await spawnPython("django-admin", ["startproject", setup.projectId.replace("-", "_"), "."], cwd);
+  await spawnPython(
+    "django-admin",
+    ["startproject", setup.projectId.replaceAll("-", "_"), "."],
+    cwd
+  );
 }
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
@@ -73,11 +78,12 @@ export async function ɵcodegenFunctionsDirectory(root: string, dest: string) {
     splitWsgiApplication.slice(-1)[0],
   ];
   const requirementsTxt = (await readFile(join(root, "requirements.txt"))).toString();
-  // COPY everything except venv
+  // COPY everything except venv and .firebase
   const files = await readdir(root);
+  const venvDir = getVenvDir(root, files);
   await Promise.all(
     files.map(async (file) => {
-      if (file !== "venv") {
+      if (file !== venvDir && file !== ".firebase") {
         await copy(join(root, file), join(dest, file), { recursive: true });
       }
     })

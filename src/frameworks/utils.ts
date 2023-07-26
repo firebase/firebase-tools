@@ -181,7 +181,11 @@ export function hasPipDependency(name: string, options: { cwd?: string } = {}) {
   const { cwd = process.cwd() } = options;
   const requirementsPath = join(cwd, "requirements.txt");
   if (!fileExistsSync(requirementsPath)) return false;
-  return readFileSync(requirementsPath).toString().split("\n").includes(name);
+  return readFileSync(requirementsPath)
+    .toString()
+    .toLowerCase()
+    .split("\n")
+    .includes(name.toLowerCase());
 }
 
 export function findPythonCLI() {
@@ -194,13 +198,18 @@ export function findPythonCLI() {
   return pythonCLI;
 }
 
+export function getVenvDir(cwd: string = process.cwd(), files: string[]) {
+  const venvDir = files.find((it) => fileExistsSync(join(cwd, it, "pyvenv.cfg")));
+  return venvDir;
+}
+
 export async function spawnPython(
   originalCommand: string,
   args: string[],
   cwd: string = process.cwd()
 ) {
   const files = await readdir(cwd);
-  const venvDir = files.find((it) => fileExistsSync(join(cwd, it, "pyvenv.cfg")));
+  const venvDir = getVenvDir(cwd, files);
   logger.debug(
     `Running "${originalCommand} ${args.join(" ").replace('"', '\\"')}" in ${cwd} ${
       venvDir ? `with venv (${venvDir})` : "without venv"

@@ -3,8 +3,10 @@ import { mkdir, readFile, readdir, writeFile } from "fs/promises";
 import { join, relative } from "path";
 import { BuildResult, FrameworkType, SupportLevel } from "../interfaces";
 import { dirExistsSync } from "../../fsutils";
-import { findPythonCLI, hasPipDependency, spawnPython } from "../utils";
+import { findPythonCLI, getVenvDir, hasPipDependency, spawnPython } from "../utils";
 import { spawnSync } from "child_process";
+import { DEFAULT_VENV_DIR } from "../../functions/python";
+import { logger } from "../../logger";
 
 export const name = "Flask";
 export const support = SupportLevel.Experimental;
@@ -13,7 +15,22 @@ export const type = FrameworkType.Framework;
 export async function discover(cwd: string) {
   if (!hasPipDependency("Flask", { cwd })) return;
   const results = await getDiscoveryResults(cwd).catch(() => undefined);
-  if (!results) return;
+  if (!results) {
+    logger.debug(
+      "Looks like you might be using Flask. Here are some tips on using our tools with your Python project:"
+    );
+    logger.debug(
+      '\t1. You have your app entry point in a "main.py" file in the hosting root folder.'
+    );
+    logger.debug(
+      '\t2. You have created and activated a virtual environment "python -m venv venv && . venv/bin/activate"'
+    );
+    logger.debug(
+      '\t3. You have run "pip install -t requirements.txt" at least once and are able to start a standalone Flask server'
+    );
+
+    return;
+  }
   const publicDirectory = relative(cwd, results.staticFolder);
   return { mayWantBackend: true, publicDirectory };
 }
@@ -22,7 +39,7 @@ export async function init(setup: any, config: any) {
   const cwd = join(config.projectDir, setup.hosting.source);
   await mkdirp(cwd);
   const cli = findPythonCLI();
-  spawnSync(cli, ["-m", "venv", "venv"], { stdio: "ignore", cwd });
+  spawnSync(cli, ["-m", "venv", DEFAULT_VENV_DIR], { stdio: "ignore", cwd });
   writeFile(join(cwd, "requirements.txt"), "Flask");
   await spawnPython("pip", ["install", "-r", "requirements.txt"], cwd);
   await writeFile(
@@ -53,11 +70,12 @@ export async function ɵcodegenPublicDirectory(root: string, dest: string) {
 
 export async function ɵcodegenFunctionsDirectory(root: string, dest: string) {
   await mkdir(join(dest, "src"), { recursive: true });
-  // COPY everything except venv
+  // COPY everything except venv and .firebase
   const files = await readdir(root);
+  const venvDir = getVenvDir(root, files);
   await Promise.all(
     files.map(async (file) => {
-      if (file !== "venv") {
+      if (file !== venvDir && file !== ".firebase") {
         await copy(join(root, file), join(dest, "src", file), { recursive: true });
       }
     })

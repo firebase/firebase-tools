@@ -34,7 +34,7 @@ describe("webframeworks", function (this) {
   this.timeout(10_000);
   let NEXTJS_HOST: string;
   let ANGULAR_HOST: string;
-  //let FLASK_HOST: string;
+  // let FLASK_HOST: string;
 
   before(async () => {
     expect(FIREBASE_EMULATOR_HUB, "$FIREBASE_EMULATOR_HUB").to.not.be.empty;
@@ -44,7 +44,7 @@ describe("webframeworks", function (this) {
     } = await hubResponse.json();
     NEXTJS_HOST = `http://${host}:${port}/${NEXT_BASE_PATH}`;
     ANGULAR_HOST = `http://${host}:${port + 5}/${ANGULAR_BASE_PATH}`;
-    //FLASK_HOST = `http://${host}:${port + 6}`;
+    // FLASK_HOST = `http://${host}:${port + 6}`;
   });
 
   after(() => {

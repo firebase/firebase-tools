@@ -26,6 +26,7 @@ import {
   conjoinOptions,
   frameworksCallToAction,
   getFrameworksBuildTarget,
+  getVenvDir,
 } from "./utils";
 import {
   ALLOWED_SSR_REGIONS,
@@ -54,7 +55,7 @@ import { ensureTargeted } from "../functions/ensureTargeted";
 import { isDeepStrictEqual } from "util";
 import { resolveProjectPath } from "../projectPath";
 import { logger } from "../logger";
-import { runWithVirtualEnv } from "../functions/python";
+import { DEFAULT_VENV_DIR, runWithVirtualEnv } from "../functions/python";
 import { dirExistsSync } from "../fsutils";
 
 export { WebFrameworks };
@@ -353,8 +354,9 @@ export async function prepareFrameworks(
         const functionsDistStat = await stat(functionsDist);
         if (functionsDistStat?.isDirectory()) {
           const files = await readdir(functionsDist);
+          const venvDir = getVenvDir(functionsDist, files);
           for (const file of files) {
-            if (file !== "venv" && file !== "node_modules" && file !== "package-lock.json")
+            if (file !== venvDir && file !== "node_modules" && file !== "package-lock.json")
               await rm(join(functionsDist, file), { recursive: true });
           }
         } else {
@@ -574,9 +576,16 @@ def ${functionId}(req: https_fn.Request) -> https_fn.Response:
     return https_fn.Response(body, status, headers)
 `
         );
-        const python = getProjectPath("venv", "bin", "python");
-        if (!dirExistsSync(join(functionsDist, "venv"))) {
-          spawnSync(python, ["-m", "venv", "venv"], { cwd: functionsDist });
+        // get python cli from the root venv dir
+        const root = getProjectPath();
+        const files = await readdir(root);
+        const venvDir = getVenvDir(root, files);
+        const python = venvDir ? getProjectPath(venvDir, "bin", "python") : "python";
+        // create a virtual env for the functions if not exists
+        if (!dirExistsSync(join(functionsDist, DEFAULT_VENV_DIR))) {
+          spawnSync(python, ["-m", "venv", DEFAULT_VENV_DIR], {
+            cwd: functionsDist,
+          });
         }
         await new Promise<void>((resolve) => {
           const child = runWithVirtualEnv(
@@ -593,7 +602,13 @@ def ${functionId}(req: https_fn.Request) -> https_fn.Response:
           .split(" ")[1];
         runtime = `python${pythonVersion.split(".").slice(0, 2).join("")}`;
 
-        ignore = ["venv", "__pycache__", ".git", "firebase-debug.log", "firebase-debug.*.log"];
+        ignore = [
+          DEFAULT_VENV_DIR,
+          "__pycache__",
+          ".git",
+          "firebase-debug.log",
+          "firebase-debug.*.log",
+        ];
       }
 
       const existingFunctionsConfig = options.config.get("functions")
