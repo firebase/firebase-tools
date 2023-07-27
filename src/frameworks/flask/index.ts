@@ -4,7 +4,7 @@ import { join, relative } from "path";
 import { BuildResult, FrameworkType, SupportLevel } from "../interfaces";
 import { dirExistsSync } from "../../fsutils";
 import { findPythonCLI, getVenvDir, hasPipDependency, spawnPython } from "../utils";
-import { spawnSync } from "child_process";
+import { sync as spawnSync } from "cross-spawn";
 import { DEFAULT_VENV_DIR } from "../../functions/python";
 import { logger } from "../../logger";
 
