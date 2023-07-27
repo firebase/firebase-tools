@@ -1,0 +1,1 @@
+- Improve error message raised when `firebase init hosting:github` fails due to max number of keys limit for a service account. (#6145)
