@@ -276,6 +276,12 @@ describe("webframeworks", function (this) {
         expect(apiDynamicResponse.headers.get("cache-control")).to.eql("private");
         expect(await apiDynamicResponse.json()).to.eql([1, 2, 3]);
       });
+
+      it("should have working image", async () => {
+        const response = await fetch(`${NEXTJS_HOST}/app/image`);
+        expect(response.ok).to.be.true;
+        expect(await response.text()).to.include("<body><img");
+      });
     });
 
     describe("pages directory", () => {
@@ -342,6 +348,7 @@ describe("webframeworks", function (this) {
                 `/${NEXT_BASE_PATH}/_next/static/${buildId}/_buildManifest.js`,
                 `/${NEXT_BASE_PATH}/_next/static/${buildId}/_ssgManifest.js`,
                 `/${NEXT_BASE_PATH}/app/api/static`,
+                `/${NEXT_BASE_PATH}/app/image.html`,
                 `/${NEXT_BASE_PATH}/app/ssg.html`,
               ]),
           `/${I18N_BASE}/${locale}/${NEXT_BASE_PATH}/pages/fallback/1.html`,

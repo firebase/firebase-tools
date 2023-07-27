@@ -16,6 +16,12 @@ describe("cloudfunctionsv2", () => {
     project: "project",
   };
 
+  const CLOUD_FUNCTION_V2_SOURCE: cloudfunctionsv2.StorageSource = {
+    bucket: "sample",
+    object: "source.zip",
+    generation: 42,
+  };
+
   // Omit a random trigger to get this fragment to compile.
   const ENDPOINT: Omit<backend.Endpoint, "httpsTrigger"> = {
     platform: "gcfv2",
@@ -24,12 +30,7 @@ describe("cloudfunctionsv2", () => {
     runtime: "nodejs16",
     codebase: projectConfig.DEFAULT_CODEBASE,
     runServiceId: "service",
-  };
-
-  const CLOUD_FUNCTION_V2_SOURCE: cloudfunctionsv2.StorageSource = {
-    bucket: "sample",
-    object: "source.zip",
-    generation: 42,
+    source: { storageSource: CLOUD_FUNCTION_V2_SOURCE },
   };
 
   const CLOUD_FUNCTION_V2: cloudfunctionsv2.InputCloudFunction = {
@@ -85,23 +86,17 @@ describe("cloudfunctionsv2", () => {
   describe("functionFromEndpoint", () => {
     it("should guard against version mixing", () => {
       expect(() => {
-        cloudfunctionsv2.functionFromEndpoint(
-          { ...ENDPOINT, httpsTrigger: {}, platform: "gcfv1" },
-          CLOUD_FUNCTION_V2_SOURCE
-        );
+        cloudfunctionsv2.functionFromEndpoint({ ...ENDPOINT, httpsTrigger: {}, platform: "gcfv1" });
       }).to.throw();
     });
 
     it("should copy a minimal function", () => {
       expect(
-        cloudfunctionsv2.functionFromEndpoint(
-          {
-            ...ENDPOINT,
-            platform: "gcfv2",
-            httpsTrigger: {},
-          },
-          CLOUD_FUNCTION_V2_SOURCE
-        )
+        cloudfunctionsv2.functionFromEndpoint({
+          ...ENDPOINT,
+          platform: "gcfv2",
+          httpsTrigger: {},
+        })
       ).to.deep.equal(CLOUD_FUNCTION_V2);
 
       const eventEndpoint: backend.Endpoint = {
@@ -138,28 +133,23 @@ describe("cloudfunctionsv2", () => {
           environmentVariables: { FUNCTION_SIGNATURE_TYPE: "cloudevent" },
         },
       };
-      expect(
-        cloudfunctionsv2.functionFromEndpoint(eventEndpoint, CLOUD_FUNCTION_V2_SOURCE)
-      ).to.deep.equal(eventGcfFunction);
+      expect(cloudfunctionsv2.functionFromEndpoint(eventEndpoint)).to.deep.equal(eventGcfFunction);
 
       expect(
-        cloudfunctionsv2.functionFromEndpoint(
-          {
-            ...ENDPOINT,
-            platform: "gcfv2",
-            eventTrigger: {
-              eventType: "google.firebase.database.ref.v1.written",
-              eventFilters: {
-                instance: "my-db-1",
-              },
-              eventFilterPathPatterns: {
-                path: "foo/{bar}",
-              },
-              retry: false,
+        cloudfunctionsv2.functionFromEndpoint({
+          ...ENDPOINT,
+          platform: "gcfv2",
+          eventTrigger: {
+            eventType: "google.firebase.database.ref.v1.written",
+            eventFilters: {
+              instance: "my-db-1",
             },
+            eventFilterPathPatterns: {
+              path: "foo/{bar}",
+            },
+            retry: false,
           },
-          CLOUD_FUNCTION_V2_SOURCE
-        )
+        })
       ).to.deep.equal({
         ...CLOUD_FUNCTION_V2,
         eventTrigger: {
@@ -183,14 +173,11 @@ describe("cloudfunctionsv2", () => {
       });
 
       expect(
-        cloudfunctionsv2.functionFromEndpoint(
-          {
-            ...ENDPOINT,
-            platform: "gcfv2",
-            taskQueueTrigger: {},
-          },
-          CLOUD_FUNCTION_V2_SOURCE
-        )
+        cloudfunctionsv2.functionFromEndpoint({
+          ...ENDPOINT,
+          platform: "gcfv2",
+          taskQueueTrigger: {},
+        })
       ).to.deep.equal({
         ...CLOUD_FUNCTION_V2,
         labels: {
@@ -200,16 +187,13 @@ describe("cloudfunctionsv2", () => {
       });
 
       expect(
-        cloudfunctionsv2.functionFromEndpoint(
-          {
-            ...ENDPOINT,
-            platform: "gcfv2",
-            blockingTrigger: {
-              eventType: events.v1.BEFORE_CREATE_EVENT,
-            },
+        cloudfunctionsv2.functionFromEndpoint({
+          ...ENDPOINT,
+          platform: "gcfv2",
+          blockingTrigger: {
+            eventType: events.v1.BEFORE_CREATE_EVENT,
           },
-          CLOUD_FUNCTION_V2_SOURCE
-        )
+        })
       ).to.deep.equal({
         ...CLOUD_FUNCTION_V2,
         labels: {
@@ -219,16 +203,13 @@ describe("cloudfunctionsv2", () => {
       });
 
       expect(
-        cloudfunctionsv2.functionFromEndpoint(
-          {
-            ...ENDPOINT,
-            platform: "gcfv2",
-            blockingTrigger: {
-              eventType: events.v1.BEFORE_SIGN_IN_EVENT,
-            },
+        cloudfunctionsv2.functionFromEndpoint({
+          ...ENDPOINT,
+          platform: "gcfv2",
+          blockingTrigger: {
+            eventType: events.v1.BEFORE_SIGN_IN_EVENT,
           },
-          CLOUD_FUNCTION_V2_SOURCE
-        )
+        })
       ).to.deep.equal({
         ...CLOUD_FUNCTION_V2,
         labels: {
@@ -289,9 +270,7 @@ describe("cloudfunctionsv2", () => {
         },
       };
 
-      expect(
-        cloudfunctionsv2.functionFromEndpoint(fullEndpoint, CLOUD_FUNCTION_V2_SOURCE)
-      ).to.deep.equal(fullGcfFunction);
+      expect(cloudfunctionsv2.functionFromEndpoint(fullEndpoint)).to.deep.equal(fullGcfFunction);
     });
 
     it("should calculate non-trivial fields", () => {
@@ -334,9 +313,9 @@ describe("cloudfunctionsv2", () => {
         },
       };
 
-      expect(
-        cloudfunctionsv2.functionFromEndpoint(complexEndpoint, CLOUD_FUNCTION_V2_SOURCE)
-      ).to.deep.equal(complexGcfFunction);
+      expect(cloudfunctionsv2.functionFromEndpoint(complexEndpoint)).to.deep.equal(
+        complexGcfFunction
+      );
     });
 
     it("should correctly convert CPU and concurrency values", () => {
@@ -355,17 +334,16 @@ describe("cloudfunctionsv2", () => {
           availableCpu: "2",
         },
       };
-      expect(
-        cloudfunctionsv2.functionFromEndpoint(endpoint, CLOUD_FUNCTION_V2_SOURCE)
-      ).to.deep.equal(gcfFunction);
+      expect(cloudfunctionsv2.functionFromEndpoint(endpoint)).to.deep.equal(gcfFunction);
     });
 
     it("should export codebase as label", () => {
       expect(
-        cloudfunctionsv2.functionFromEndpoint(
-          { ...ENDPOINT, codebase: "my-codebase", httpsTrigger: {} },
-          CLOUD_FUNCTION_V2_SOURCE
-        )
+        cloudfunctionsv2.functionFromEndpoint({
+          ...ENDPOINT,
+          codebase: "my-codebase",
+          httpsTrigger: {},
+        })
       ).to.deep.equal({
         ...CLOUD_FUNCTION_V2,
         labels: { ...CLOUD_FUNCTION_V2.labels, [CODEBASE_LABEL]: "my-codebase" },
@@ -374,10 +352,7 @@ describe("cloudfunctionsv2", () => {
 
     it("should export hash as label", () => {
       expect(
-        cloudfunctionsv2.functionFromEndpoint(
-          { ...ENDPOINT, hash: "my-hash", httpsTrigger: {} },
-          CLOUD_FUNCTION_V2_SOURCE
-        )
+        cloudfunctionsv2.functionFromEndpoint({ ...ENDPOINT, hash: "my-hash", httpsTrigger: {} })
       ).to.deep.equal({
         ...CLOUD_FUNCTION_V2,
         labels: { ...CLOUD_FUNCTION_V2.labels, [HASH_LABEL]: "my-hash" },

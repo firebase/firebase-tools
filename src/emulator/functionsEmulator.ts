@@ -11,7 +11,7 @@ import { EventEmitter } from "events";
 
 import { Account } from "../types/auth";
 import { logger } from "../logger";
-import { track, trackEmulator } from "../track";
+import { trackEmulator } from "../track";
 import { Constants } from "./constants";
 import { EmulatorInfo, EmulatorInstance, Emulators, FunctionsExecutionMode } from "./types";
 import * as chokidar from "chokidar";
@@ -63,7 +63,6 @@ import { resolveBackend } from "../deploy/functions/build";
 import { setEnvVarsForEmulators } from "./env";
 import { runWithVirtualEnv } from "../functions/python";
 
-const EVENT_INVOKE = "functions:invoke"; // event name for UA
 const EVENT_INVOKE_GA4 = "functions_invoke"; // event name GA4 (alphanumertic)
 
 /*
@@ -1168,6 +1167,9 @@ export class FunctionsEmulator implements EmulatorInstance {
     envs.GCLOUD_PROJECT = this.args.projectId;
     envs.K_REVISION = "1";
     envs.PORT = "80";
+    // Quota project is required when using GCP's Client-based APIs.
+    // Some GCP client SDKs, like Vertex AI, requires appropriate quota project setup.
+    envs.GOOGLE_CLOUD_QUOTA_PROJECT = this.args.projectId;
 
     if (trigger) {
       const target = trigger.entryPoint;
@@ -1553,7 +1555,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       }
     }
     // For analytics, track the invoked service
-    void track(EVENT_INVOKE, getFunctionService(trigger));
     void trackEmulator(EVENT_INVOKE_GA4, {
       function_service: getFunctionService(trigger),
     });

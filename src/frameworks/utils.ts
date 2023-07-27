@@ -65,20 +65,97 @@ export async function warnIfCustomBuildScript(
   }
 }
 
-function proxyResponse(original: ServerResponse, next: () => void) {
-  return (response: IncomingMessage | ServerResponse) => {
-    const { statusCode, statusMessage } = response;
-    if (!statusCode) {
-      original.end();
-      return;
-    }
-    if (statusCode === 404) {
-      return next();
-    }
-    const headers = "getHeaders" in response ? response.getHeaders() : response.headers;
-    original.writeHead(statusCode, statusMessage, headers);
-    response.pipe(original);
-  };
+/**
+ * Proxy a HTTP response
+ * It uses the Proxy object to intercept the response and buffer it until the
+ * response is finished. This allows us to modify the response before sending
+ * it back to the client.
+ */
+export function proxyResponse(
+  req: IncomingMessage,
+  res: ServerResponse,
+  next: () => void
+): ServerResponse {
+  const proxiedRes = new ServerResponse(req);
+  // Object to store the original response methods
+  const buffer: [
+    string,
+    Parameters<ServerResponse["write" | "setHeader" | "removeHeader" | "writeHead" | "end"]>
+  ][] = [];
+
+  // Proxy the response methods
+  // The apply handler is called when the method e.g. write, setHeader, etc. is called
+  // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy/handler/apply
+  // The target is the original method
+  // The thisArg is the proxied response
+  // The args are the arguments passed to the method
+  proxiedRes.write = new Proxy(proxiedRes.write.bind(proxiedRes), {
+    apply: (
+      target: ServerResponse["write"],
+      thisArg: ServerResponse,
+      args: Parameters<ServerResponse["write"]>
+    ) => {
+      // call the original write method on the proxied response
+      target.call(thisArg, ...args);
+      // store the method call in the buffer
+      buffer.push(["write", args]);
+    },
+  });
+
+  proxiedRes.setHeader = new Proxy(proxiedRes.setHeader.bind(proxiedRes), {
+    apply: (
+      target: ServerResponse["setHeader"],
+      thisArg: ServerResponse,
+      args: Parameters<ServerResponse["setHeader"]>
+    ) => {
+      target.call(thisArg, ...args);
+      buffer.push(["setHeader", args]);
+    },
+  });
+  proxiedRes.removeHeader = new Proxy(proxiedRes.removeHeader.bind(proxiedRes), {
+    apply: (
+      target: ServerResponse["removeHeader"],
+      thisArg: ServerResponse,
+      args: Parameters<ServerResponse["removeHeader"]>
+    ) => {
+      target.call(thisArg, ...args);
+      buffer.push(["removeHeader", args]);
+    },
+  });
+  proxiedRes.writeHead = new Proxy(proxiedRes.writeHead.bind(proxiedRes), {
+    apply: (
+      target: ServerResponse["writeHead"],
+      thisArg: ServerResponse,
+      args: Parameters<ServerResponse["writeHead"]>
+    ) => {
+      target.call(thisArg, ...args);
+      buffer.push(["writeHead", args]);
+    },
+  });
+  proxiedRes.end = new Proxy(proxiedRes.end.bind(proxiedRes), {
+    apply: (
+      target: ServerResponse["end"],
+      thisArg: ServerResponse,
+      args: Parameters<ServerResponse["end"]>
+    ) => {
+      // call the original end method on the proxied response
+      target.call(thisArg, ...args);
+      // if the proxied response is a 404, call next to continue down the middleware chain
+      // otherwise, send the buffered response i.e. call the original response methods: write, setHeader, etc.
+      // and then end the response and clear the buffer
+      if (proxiedRes.statusCode === 404) {
+        next();
+      } else {
+        for (const [fn, args] of buffer) {
+          (res as any)[fn](...args);
+        }
+        res.end(...args);
+        buffer.length = 0;
+      }
+    },
+  });
+
+  return proxiedRes;
 }
 
 export function simpleProxy(hostOrRequestHandler: string | RequestHandler) {
@@ -129,9 +206,8 @@ export function simpleProxy(hostOrRequestHandler: string | RequestHandler) {
         originalRes.end();
       });
     } else {
-      await Promise.resolve(hostOrRequestHandler(originalReq, originalRes, next));
-      const proxiedRes = new ServerResponse(originalReq);
-      proxyResponse(originalRes, next)(proxiedRes);
+      const proxiedRes = proxyResponse(originalReq, originalRes, next);
+      await hostOrRequestHandler(originalReq, proxiedRes, next);
     }
   };
 }
@@ -314,11 +390,22 @@ export function relativeRequire(dir: string, mod: "@nuxt/kit"): Promise<any>;
  */
 export function relativeRequire(dir: string, mod: string) {
   try {
-    const path = require.resolve(mod, { paths: [dir] });
+    // If being compiled with webpack, use non webpack require for these calls.
+    // (VSCode plugin uses webpack which by default replaces require calls
+    // with its own require, which doesn't work on files)
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const requireFunc: typeof require =
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore prevent VSCE webpack from erroring on non_webpack_require
+      // eslint-disable-next-line camelcase
+      typeof __webpack_require__ === "function" ? __non_webpack_require__ : require;
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore prevent VSCE webpack from erroring on non_webpack_require
+    const path = requireFunc.resolve(mod, { paths: [dir] });
     if (extname(path) === ".mjs") {
       return dynamicImport(pathToFileURL(path).toString());
     } else {
-      return require(path);
+      return requireFunc(path);
     }
   } catch (e) {
     const path = relative(process.cwd(), dir);

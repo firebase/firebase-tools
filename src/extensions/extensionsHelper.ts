@@ -42,7 +42,6 @@ import { envOverride } from "../utils";
 import { getLocalChangelog } from "./change-log";
 import { getProjectNumber } from "../getProjectNumber";
 import { Constants } from "../emulator/constants";
-import { resolveVersion } from "../deploy/extensions/planner";
 
 /**
  * SpecParamType represents the exact strings that the extensions
@@ -409,24 +408,17 @@ export async function promptForValidRepoURI(): Promise<string> {
 }
 
 /**
- * Prompts for a valid extension root.
+ * Prompts for an extension root.
  *
  * @param defaultRoot the default extension root
  */
-export async function promptForValidExtensionRoot(defaultRoot: string): Promise<string> {
-  let rootIsValid = false;
-  let extensionRoot = "";
-  while (!rootIsValid) {
-    extensionRoot = await promptOnce({
-      type: "input",
-      message:
-        "Enter this extension's root directory in the repo (defaults to previous root if set):",
-      default: defaultRoot,
-    });
-    // TODO: Add real directory path validation.
-    rootIsValid = true;
-  }
-  return extensionRoot;
+export async function promptForExtensionRoot(defaultRoot: string): Promise<string> {
+  return await promptOnce({
+    type: "input",
+    message:
+      "Enter this extension's root directory in the repo (defaults to previous root if set):",
+    default: defaultRoot,
+  });
 }
 
 /**
@@ -737,17 +729,21 @@ async function fetchExtensionSource(
   logger.info(`Validating source code at ${clc.bold(sourceUri)}...`);
   const archiveUri = `${repoUri}/archive/${sourceRef}.zip`;
   const tempDirectory = tmp.dirSync({ unsafeCleanup: true });
+  const archiveErrorMessage = `Failed to extract archive from ${clc.bold(
+    archiveUri
+  )}. Please check that the repo is public and that the source ref is valid.`;
   try {
     const response = await fetch(archiveUri);
     if (response.ok) {
       await response.body.pipe(createUnzipTransform(tempDirectory.name)).promise();
     }
   } catch (err: any) {
-    throw new FirebaseError(
-      `Failed to fetch extension archive from ${archiveUri}. Please check the repo URI and source ref. ${err}`
-    );
+    throw new FirebaseError(archiveErrorMessage);
   }
   const archiveName = fs.readdirSync(tempDirectory.name)[0];
+  if (!archiveName) {
+    throw new FirebaseError(archiveErrorMessage);
+  }
   const rootDirectory = path.join(tempDirectory.name, archiveName, extensionRoot);
   // Pre-validation to show a more useful error message in the context of a temp directory.
   try {
@@ -818,11 +814,17 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
   if (!extensionRoot) {
     const defaultRoot = "/";
     if (!args.nonInteractive) {
-      extensionRoot = await promptForValidExtensionRoot(defaultRoot);
+      extensionRoot = await promptForExtensionRoot(defaultRoot);
     } else {
       extensionRoot = defaultRoot;
     }
   }
+  // Normalize root path and strip leading and trailing slashes and all `../`.
+  const normalizedRoot = path
+    .normalize(extensionRoot)
+    .replaceAll(/^\/|\/$/g, "")
+    .replaceAll(/^(\.\.\/)*/g, "");
+  extensionRoot = normalizedRoot || "/";
 
   // Prompt for source ref and default to HEAD.
   let sourceRef = args.sourceRef;
@@ -1244,26 +1246,4 @@ export async function diagnoseAndFixProject(options: any): Promise<void> {
   if (!ok) {
     throw new FirebaseError("Unable to proceed until all issues are resolved.");
   }
-}
-
-/**
- * Canonicalize a user-inputted ref string.
- * 1. Infer firebase publisher if not provided
- * 2. Infer "latest-approved" as the version if not provided
- */
-export async function canonicalizeRefInput(refInput: string): Promise<string> {
-  let inferredRef = refInput;
-  // TODO: Stop defaulting to 'firebase' publisher ID if none provided.
-  // Infer 'firebase' if publisher ID not provided.
-  if (refInput.split("/").length < 2) {
-    inferredRef = `firebase/${inferredRef}`;
-  }
-  // Infer 'latest-approved' if no version provided.
-  if (refInput.split("@").length < 2) {
-    inferredRef = `${inferredRef}@latest-approved`;
-  }
-  // Get the correct version for a given extension reference from the Registry API.
-  const ref = refs.parse(inferredRef);
-  ref.version = await resolveVersion(ref);
-  return refs.toExtensionVersionRef(ref);
 }

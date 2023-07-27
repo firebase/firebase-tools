@@ -41,7 +41,6 @@ import {
   SupportLevelWarnings,
   VALID_ENGINES,
 } from "./constants";
-import { WebFrameworks } from "./frameworks";
 import {
   BUILD_TARGET_PURPOSE,
   BuildResult,
@@ -57,6 +56,7 @@ import { resolveProjectPath } from "../projectPath";
 import { logger } from "../logger";
 import { DEFAULT_VENV_DIR, runWithVirtualEnv } from "../functions/python";
 import { dirExistsSync } from "../fsutils";
+import { WebFrameworks } from "./frameworks";
 
 export { WebFrameworks };
 
@@ -107,6 +107,14 @@ function memoizeBuild(
   const value = build(dir, target);
   BUILD_MEMO.set(key, value);
   return value;
+}
+
+/**
+ * Use a function to ensure the same codebase name is used here and
+ * during hosting deploy.
+ */
+export function generateSSRCodebaseId(site: string) {
+  return `firebase-frameworks-${site}`;
 }
 
 /**
@@ -335,7 +343,7 @@ export async function prepareFrameworks(
         );
       }
 
-      const codebase = `firebase-frameworks-${site}`;
+      const codebase = generateSSRCodebaseId(site);
 
       // N.B. the pin-tags experiment already does this holistically later.
       // This is just a fallback for previous behavior if the user manually
