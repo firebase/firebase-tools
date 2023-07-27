@@ -224,12 +224,12 @@ export async function spawnPython(
     let err = "";
     child.stderr?.on("data", (chunk: Buffer) => {
       const chunkString = chunk.toString();
-      err = err + chunkString;
+      err += chunkString;
       logger.debug(chunkString);
     });
     child.stdout?.on("data", (chunk: Buffer) => {
       const chunkString = chunk.toString();
-      out = out + chunkString;
+      out += chunkString;
       logger.debug(chunkString);
     });
     child.on("error", () => {
