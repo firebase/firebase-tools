@@ -76,7 +76,7 @@ export async function release(
 
   const summary = await fab.applyPlan(plan);
 
-  await reporter.logAndTrackDeployStats(summary);
+  await reporter.logAndTrackDeployStats(summary, context);
   reporter.printErrors(summary);
 
   // N.B. Fabricator::applyPlan updates the endpoints it deploys to include the
@@ -105,7 +105,7 @@ export async function release(
 
 /**
  * Prints the URLs of HTTPS functions.
- * Caller must eitehr force refresh the backend or assume the fabricator
+ * Caller must either force refresh the backend or assume the fabricator
  * has updated the URI of endpoints after deploy.
  */
 export function printTriggerUrls(results: backend.Backend): void {
