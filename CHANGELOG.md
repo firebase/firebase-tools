@@ -1,3 +1,1 @@
-- Fixed an issue where extension instances could not be deployed when authenticated as a service account (#6060).
-- Fixed `glob` usage in Next.js utility function to detect images in `app` directory (#6166)
-- Send experiments activated with `firebase experiments:enable` to the emulator suite UI (#6169)
+- Fix bug where functions:secrets:\* family of commands did not work when Firebase CLI is authenticated via GOOGLE_APPLICATION_CREDENTIALS (#6190)

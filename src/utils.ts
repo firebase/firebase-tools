@@ -341,8 +341,8 @@ export function getFunctionsEventProvider(eventType: string): string {
     const provider = last(parts[1].split("."));
     return _.capitalize(provider);
   }
-  // New event types:
-  if (/google.pubsub/.exec(eventType)) {
+  // 1st gen event types:
+  if (/google.*pubsub/.exec(eventType)) {
     return "PubSub";
   } else if (/google.storage/.exec(eventType)) {
     return "Storage";
@@ -354,7 +354,7 @@ export function getFunctionsEventProvider(eventType: string): string {
     return "Auth";
   } else if (/google.firebase.crashlytics/.exec(eventType)) {
     return "Crashlytics";
-  } else if (/google.firestore/.exec(eventType)) {
+  } else if (/google.*firestore/.exec(eventType)) {
     return "Firestore";
   }
   return _.capitalize(eventType.split(".")[1]);
