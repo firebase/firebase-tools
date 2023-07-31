@@ -3,7 +3,7 @@ import * as sinon from "sinon";
 import * as fs from "fs-extra";
 
 import { FirebaseError } from "../../error";
-import { ExtensionInstance, Param, ParamType } from "../../extensions/types";
+import { Param, ParamType } from "../../extensions/types";
 import * as extensionsHelper from "../../extensions/extensionsHelper";
 import * as paramHelper from "../../extensions/paramHelper";
 import * as prompt from "../../prompt";
@@ -152,96 +152,6 @@ describe("paramHelper", () => {
     });
   });
 
-  describe("getParamsWithCurrentValuesAsDefaults", () => {
-    let params: { [key: string]: string };
-    let testInstance: ExtensionInstance;
-    beforeEach(() => {
-      params = { A_PARAMETER: "new default" };
-      testInstance = {
-        config: {
-          source: {
-            state: "ACTIVE",
-            name: "",
-            packageUri: "",
-            hash: "",
-            spec: {
-              name: "",
-              version: "0.1.0",
-              roles: [],
-              resources: [],
-              params: [...TEST_PARAMS],
-              systemParams: [],
-              sourceUrl: "",
-            },
-          },
-          name: "test",
-          createTime: "now",
-          params,
-          systemParams: {},
-        },
-        name: "test",
-        createTime: "now",
-        updateTime: "now",
-        state: "ACTIVE",
-        serviceAccountEmail: "test@test.com",
-      };
-
-      it("should add defaults to params without them using the current state and leave other values unchanged", () => {
-        const newParams = paramHelper.getParamsWithCurrentValuesAsDefaults(testInstance);
-
-        expect(newParams).to.eql([
-          {
-            param: "A_PARAMETER",
-            label: "Param",
-            default: "new default",
-            type: ParamType.STRING,
-            required: true,
-          },
-          {
-            param: "ANOTHER_PARAMETER",
-            label: "Another",
-            default: "default",
-            type: ParamType.STRING,
-          },
-        ]);
-      });
-    });
-
-    it("should change existing defaults to the current state and leave other values unchanged", () => {
-      (testInstance.config?.source?.spec?.params || []).push({
-        param: "THIRD",
-        label: "3rd",
-        default: "default",
-        type: ParamType.STRING,
-      });
-      testInstance.config.params.THIRD = "New Default";
-      const newParams = paramHelper.getParamsWithCurrentValuesAsDefaults(testInstance);
-
-      expect(newParams).to.eql([
-        {
-          param: "A_PARAMETER",
-          label: "Param",
-          default: "new default",
-          type: ParamType.STRING,
-          required: true,
-        },
-        {
-          param: "ANOTHER_PARAMETER",
-          label: "Another Param",
-          default: "default",
-          required: true,
-          type: ParamType.STRING,
-        },
-        {
-          param: "THIRD",
-          label: "3rd",
-          default: "New Default",
-          type: ParamType.STRING,
-        },
-      ]);
-    });
-  });
-
   describe("promptForNewParams", () => {
     let promptStub: sinon.SinonStub;
 
@@ -317,6 +227,36 @@ describe("paramHelper", () => {
         THIRD_PARAMETER: { baseValue: "user input" },
       };
       expect(newParams).to.eql(expected);
+    });
+
+    it("should map LOCATION to system param location and not prompt for it", async () => {
+      promptStub.resolves("user input");
+      const oldSpec = cloneDeep(SPEC);
+      const newSpec = cloneDeep(SPEC);
+      oldSpec.params.push({
+        param: "LOCATION",
+        label: "",
+      });
+      newSpec.params.push({
+        param: "firebaseextensions.v1beta.function/location",
+        label: "",
+      });
+
+      const newParams = await paramHelper.promptForNewParams({
+        spec: SPEC,
+        newSpec,
+        currentParams: {
+          LOCATION: "us-east1",
+        },
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+      });
+
+      const expected = {
+        "firebaseextensions.v1beta.function/location": { baseValue: "us-east1" },
+      };
+      expect(newParams).to.eql(expected);
+      expect(promptStub).not.to.have.been.called;
     });
 
     it("should not prompt the user for params that did not change type or param", async () => {
