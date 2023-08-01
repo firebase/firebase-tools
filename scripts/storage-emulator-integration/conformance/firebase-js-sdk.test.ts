@@ -489,8 +489,9 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
         });
       });
 
-      emulatorOnly.it("serves content successfully when spammed with calls", async () => {
-        const NUMBER_OF_FILES = 50;
+      emulatorOnly.it("serves content successfully when spammed with calls", async function (this) {
+        this.timeout(10_000);
+        const NUMBER_OF_FILES = 100;
         const allFileNames: string[] = [];
         for (let i = 0; i < NUMBER_OF_FILES; i++) {
           const fileName = TEST_FILE_NAME.concat(i.toString());
@@ -509,7 +510,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
         }
         const values: string[] = await Promise.all(getDownloadUrlPromises);
 
-        expect(values.length).to.be.equal(10);
+        expect(values.length).to.be.equal(NUMBER_OF_FILES);
       });
     });
 
