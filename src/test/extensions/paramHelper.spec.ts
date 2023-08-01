@@ -233,14 +233,18 @@ describe("paramHelper", () => {
       promptStub.resolves("user input");
       const oldSpec = cloneDeep(SPEC);
       const newSpec = cloneDeep(SPEC);
-      oldSpec.params = [{
-        param: "LOCATION",
-        label: "",
-      }];
-      newSpec.params = [{
-        param: "firebaseextensions.v1beta.function/location",
-        label: "",
-      }];
+      oldSpec.params = [
+        {
+          param: "LOCATION",
+          label: "",
+        },
+      ];
+      newSpec.params = [
+        {
+          param: "firebaseextensions.v1beta.function/location",
+          label: "",
+        },
+      ];
 
       const newParams = await paramHelper.promptForNewParams({
         spec: SPEC,
