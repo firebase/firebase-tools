@@ -13,6 +13,7 @@ import {
   createServiceAccount,
   createServiceAccountKey,
   deleteServiceAccount,
+  listServiceAccountKeys,
 } from "../../../gcp/iam";
 import { addServiceAccountToRoles, firebaseRoles } from "../../../gcp/resourceManager";
 import { logger } from "../../../logger";
@@ -20,6 +21,7 @@ import { prompt } from "../../../prompt";
 import { logBullet, logLabeledBullet, logSuccess, logWarning, reject } from "../../../utils";
 import { githubApiOrigin, githubClientId } from "../../../api";
 import { Client } from "../../../apiv2";
+import { FirebaseError } from "../../../error";
 
 let GIT_DIR: string;
 let GITHUB_DIR: string;
@@ -32,6 +34,8 @@ const YML_MERGE_FILENAME = "firebase-hosting-merge.yml";
 
 const CHECKOUT_GITHUB_ACTION_NAME = "actions/checkout@v3";
 const HOSTING_GITHUB_ACTION_NAME = "FirebaseExtended/action-hosting-deploy@v0";
+
+const SERVICE_ACCOUNT_MAX_KEY_NUMBER = 10;
 
 const githubApiClient = new Client({ urlPrefix: githubApiOrigin, auth: false });
 
@@ -547,6 +551,18 @@ async function createServiceAccountAndKeyWithRetry(
   } catch (e: any) {
     spinnerServiceAccount.stop();
     if (!e.message.includes("429")) {
+      const serviceAccountKeys = await listServiceAccountKeys(options.projectId, accountId);
+      if (serviceAccountKeys.length >= SERVICE_ACCOUNT_MAX_KEY_NUMBER) {
+        throw new FirebaseError(
+          `You cannot add another key because the service account ${bold(
+            accountId
+          )} already contains the max number of keys: ${SERVICE_ACCOUNT_MAX_KEY_NUMBER}.`,
+          {
+            original: e,
+            exit: 1,
+          }
+        );
+      }
       throw e;
     }
 
