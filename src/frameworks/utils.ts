@@ -230,11 +230,11 @@ export function getNpmRoot(cwd: string) {
 export function getNodeModuleBin(name: string, cwd: string) {
   const npmRoot = getNpmRoot(cwd);
   if (!npmRoot) {
-    throw new FirebaseError(`Error finding ${name} executable: failed to spawn 'npm'`);;
+    throw new FirebaseError(`Error finding ${name} executable: failed to spawn 'npm'`);
   }
   const path = join(npmRoot, ".bin", name);
   if (!fileExistsSync(path)) {
-    throw new FirebaseError(`Could not find the ${name} executable.`);;
+    throw new FirebaseError(`Could not find the ${name} executable.`);
   }
   return path;
 }
