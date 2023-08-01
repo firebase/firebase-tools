@@ -35,6 +35,8 @@ const YML_MERGE_FILENAME = "firebase-hosting-merge.yml";
 const CHECKOUT_GITHUB_ACTION_NAME = "actions/checkout@v3";
 const HOSTING_GITHUB_ACTION_NAME = "FirebaseExtended/action-hosting-deploy@v0";
 
+const SERVICE_ACCOUNT_MAX_KEY_NUMBER = 10;
+
 const githubApiClient = new Client({ urlPrefix: githubApiOrigin, auth: false });
 
 /**
@@ -550,11 +552,11 @@ async function createServiceAccountAndKeyWithRetry(
     spinnerServiceAccount.stop();
     if (!e.message.includes("429")) {
       const serviceAccountKeys = await listServiceAccountKeys(options.projectId, accountId);
-      if (serviceAccountKeys.length >= 10) {
+      if (serviceAccountKeys.length >= SERVICE_ACCOUNT_MAX_KEY_NUMBER) {
         throw new FirebaseError(
           `You cannot add another key because the service account ${bold(
             accountId
-          )} already contains the max number of keys: 10.`,
+          )} already contains the max number of keys: ${SERVICE_ACCOUNT_MAX_KEY_NUMBER}.`,
           {
             original: e,
             exit: 1,
