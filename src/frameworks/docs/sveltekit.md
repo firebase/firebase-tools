@@ -1,6 +1,6 @@
 # Integrate SvelteKit
 
-Using the Firebase CLI, you can deploy your SvelteKit Web apps to Firebase and
+Using the Firebase CLI, you can deploy your SvelteKit apps to Firebase and
 serve them with Firebase Hosting. The CLI respects your SvelteKit settings and
 translates them to Firebase settings with zero or minimal extra configuration on
 your part. If your app includes dynamic server-side logic, the CLI deploys that
@@ -40,14 +40,18 @@ existing project.
 1.  Choose your hosting source directory.  If there is an existing SvelteKit codebase,
     the CLI detects it and the process completes.
 
-## SSR and SSG
+## Serve static content
 
-Firebase Hosting supports both server-side rending and static site generation with SvelteKit. Pages are rendered on the server by default but you can opt-in to prerending for certain routes by adding `export const prerender = true` to `+layout.js` or `+page.js` files. See detailed instructions in the [SvelteKit documentation](https://kit.svelte.dev/docs/page-options).
+If your app uses [`@sveltejs/adapter-static`](https://kit.svelte.dev/docs/adapter-static), the Firebase CLI will correctly detect and configure your build to serve fully static content on Firebase Hosting.
+
+## Server-side rendering
+
+Firebase supports both server-side rendering and a mix of prerendering and SSR. Pages are rendered on the server at runtime by default but you can opt-in to prerendering for certain routes by adding `export const prerender = true` to the relevant `+layout.js` or `+page.js` files. See detailed instructions in the [SvelteKit documentation](https://kit.svelte.dev/docs/page-options).
 
 ## Deployment
 
 If you wish to deploy an entirely static site, install and configure `@sveltejs/adapter-static`.
 
- If you have a mix of static and server-rendered pages, it is not necessary to install a special deployment adapter. Leave the default configuration of `@sveltejs/adapter-auto`. 
+If you have a mix of static and server-rendered pages, it is not necessary to install a special deployment adapter. Leave the default configuration of `@sveltejs/adapter-auto`. 
 
 Run `firebase deploy` to build and deploy your SvelteKit app.
