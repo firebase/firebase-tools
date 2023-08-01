@@ -1,2 +1,3 @@
 - Fixed bug where `functions:secrets:\*` family of commands did not work when Firebase CLI is authenticated via GOOGLE_APPLICATION_CREDENTIALS (#6190)
 - Fixed bug where some extension instance updates would default to the wrong location.
+- Increased HTTPS body size limit to 32mb to match production. (#6201)
