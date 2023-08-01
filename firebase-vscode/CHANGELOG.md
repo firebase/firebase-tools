@@ -2,8 +2,8 @@
 
 ## 0.0.24
 
-- Remove proxy-agent stub #6172
-- Pull in latest CLI changes (July 25, 2023)
+- Fix the proxy-agent 
+- Pull in latest CLI changes
 
 ## 0.0.24-alpha.1
 
