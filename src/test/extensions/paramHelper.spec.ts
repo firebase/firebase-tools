@@ -3,7 +3,7 @@ import * as sinon from "sinon";
 import * as fs from "fs-extra";
 
 import { FirebaseError } from "../../error";
-import { Param, ParamType } from "../../extensions/types";
+import { ExtensionSpec, Param, ParamType } from "../../extensions/types";
 import * as extensionsHelper from "../../extensions/extensionsHelper";
 import * as paramHelper from "../../extensions/paramHelper";
 import * as prompt from "../../prompt";
@@ -63,7 +63,7 @@ const TEST_PARAMS_3: Param[] = [
   },
 ];
 
-const SPEC = {
+const SPEC: ExtensionSpec = {
   name: "test",
   version: "0.1.0",
   roles: [],
@@ -239,7 +239,8 @@ describe("paramHelper", () => {
           label: "",
         },
       ];
-      newSpec.params = [
+      newSpec.params = [];
+      newSpec.systemParams = [
         {
           param: "firebaseextensions.v1beta.function/location",
           label: "",
@@ -247,7 +248,7 @@ describe("paramHelper", () => {
       ];
 
       const newParams = await paramHelper.promptForNewParams({
-        spec: SPEC,
+        spec: oldSpec,
         newSpec,
         currentParams: {
           LOCATION: "us-east1",
