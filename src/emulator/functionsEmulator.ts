@@ -517,7 +517,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         isEmulator: true,
       };
       const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
-      const discoveredBuild = await runtimeDelegate.discoverBuild(runtimeConfig, environment);
+      const discoveredBuild = await runtimeDelegate.discoverBuild(runtimeConfig, { ...environment, ...userEnvs });
       const resolution = await resolveBackend(
         discoveredBuild,
         JSON.parse(firebaseConfig),
