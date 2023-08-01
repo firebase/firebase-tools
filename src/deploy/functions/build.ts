@@ -7,6 +7,7 @@ import { assertExhaustive, mapObject, nullsafeVisitor } from "../../functional";
 import { UserEnvsOpts, writeUserEnvs } from "../../functions/env";
 import { FirebaseConfig } from "./args";
 import { Runtime } from "./runtimes";
+import { ExprParseError } from "./cel";
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
 export interface Build {
@@ -434,8 +435,21 @@ export function toBackend(
     let regions: string[] = [];
     if (!bdEndpoint.region) {
       regions = [api.functionsDefaultRegion];
-    } else {
+    } else if (Array.isArray(bdEndpoint.region)) {
       regions = params.resolveList(bdEndpoint.region, paramValues);
+    } else {
+      // N.B. setting region via GlobalOptions only accepts a String param.
+      // Therefore if we raise an exception by attempting to resolve a
+      // List param, we try resolving a String param instead.
+      try {
+        regions = params.resolveList(bdEndpoint.region, paramValues);
+      } catch (err: any) {
+        if (err instanceof ExprParseError) {
+          regions = [params.resolveString(bdEndpoint.region, paramValues)];
+        } else {
+          throw err;
+        }
+      }
     }
     for (const region of regions) {
       const trigger = discoverTrigger(bdEndpoint, region, r);
