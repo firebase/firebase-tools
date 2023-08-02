@@ -108,13 +108,13 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           base: `${req.protocol}://${req.hostname}:${req.socket.localPort}`,
         },
       }));
-    } catch (err) {
+    } catch (err as Error) {
       const errorCode = errorToHttpCode(err);
       if (errorCode !== -1) {
         return res.status(errorCode).json({
           error: {
             code: errorCode,
-            message: (err as Error).message,
+            message: err.message,
           },
         });
       }
@@ -145,13 +145,13 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         baseUrl: `${req.protocol}://${req.hostname}:${req.socket.localPort}`,
         ttlSeconds: req.body.ttlSeconds ?? SIGNED_URL_DEFAULT_TTL_SECONDS,
       });
-    } catch (err) {
+    } catch (err as Error) {
       const errorCode = errorToHttpCode(err);
       if (errorCode !== -1) {
         return res.status(errorCode).json({
           error: {
-            code: errorToHttpCode(err),
-            message: (err as Error).message,
+            code: errorCode,
+            message: err.message,
           },
         });
       }
@@ -583,7 +583,7 @@ function removeAtMostOneTrailingSlash(path: string): string {
   return path.replace(/\/$/, "");
 }
 
-function errorToHttpCode(err: unknown) {
+function errorToHttpCode(err: Error) {
   if (err instanceof ForbiddenError) {
     return 403;
   }
