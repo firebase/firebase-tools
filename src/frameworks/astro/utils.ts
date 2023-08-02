@@ -1,5 +1,4 @@
 import { dirname, join, relative } from "path";
-import fs from "fs/promises";
 import { findDependency } from "../utils";
 import { gte } from "semver";
 
