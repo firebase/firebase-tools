@@ -16,7 +16,7 @@ export async function getConfig(cwd: string) {
   const version = getAstroVersion(cwd);
 
   let config;
-  if (gte(version!, "2.9.6")) {
+  if (gte(version!, "2.9.7")) {
     const { resolveConfig } = await dynamicImport(
       join(astroDirectory, "dist", "core", "config", "config.js")
     );
