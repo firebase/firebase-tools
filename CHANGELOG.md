@@ -1,0 +1,1 @@
+- Increase Next.js config bundle timeout to 60 seconds (#6214)
