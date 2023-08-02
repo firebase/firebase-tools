@@ -1,2 +1,3 @@
-- Disables KeepAlive timeout when debugger is attached to the functions emulator. (#6069)
-- Fixed an issue where `database:list` would have inaccurate results. (#6063)
+- Improve error message raised when `firebase init hosting:github` fails due to max number of keys limit for a service account. (#6145)
+- Fixed bug where `functions:secrets:\*` family of commands did not work when Firebase CLI is authenticated via GOOGLE_APPLICATION_CREDENTIALS (#6190)
+- Fixed bug where some extension instance updates would default to the wrong location.

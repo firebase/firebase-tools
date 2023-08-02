@@ -33,7 +33,6 @@ const extensionConfig = {
     extensions: [".ts", ".js"],
     alias: {
       // provides alternate implementation for node module and source files
-      "proxy-agent": path.resolve(__dirname, 'src/stubs/empty-class.js'),
       "marked-terminal": path.resolve(__dirname, 'src/stubs/empty-class.js'),
       // "ora": path.resolve(__dirname, 'src/stubs/empty-function.js'),
       "commander": path.resolve(__dirname, 'src/stubs/empty-class.js'),
