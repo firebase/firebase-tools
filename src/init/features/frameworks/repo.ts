@@ -53,7 +53,7 @@ export async function linkGitHubRepository(
     await promptOnce({
       type: "input",
       message:
-        "Press any key once you have finished configuring your installation's access settings.",
+        "Press ENTER once you have finished configuring your installation's access settings.",
     });
     remoteUri = await promptRepositoryURI(projectId, location, connectionId);
   }
