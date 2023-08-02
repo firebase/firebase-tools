@@ -16,7 +16,7 @@ import {
 } from "../upload";
 import { reqBodyToBuffer } from "../../shared/request";
 import { ListObjectsResponse, CreateSignedUrlResponse } from "../files";
-import { SIGNED_URL_DEFAULT_TTL_SECONDS } from "../constants";
+import { SIGNED_URL_DEFAULT_TTL_SECONDS, UNEXPECTED_ERROR } from "../constants";
 /**
  * @param emulator
  */
@@ -110,7 +110,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       }));
     } catch (err as Error) {
       const errorCode = errorToHttpCode(err);
-      if (errorCode !== -1) {
+      if (errorCode !== UNEXPECTED_ERROR) {
         return res.status(errorCode).json({
           error: {
             code: errorCode,
@@ -147,7 +147,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       });
     } catch (err as Error) {
       const errorCode = errorToHttpCode(err);
-      if (errorCode !== -1) {
+      if (errorCode !== UNEXPECTED_ERROR) {
         return res.status(errorCode).json({
           error: {
             code: errorCode,
@@ -594,5 +594,5 @@ function errorToHttpCode(err: Error) {
     return 400;
   }
 
-  return -1;
+  return UNEXPECTED_ERROR;
 }
