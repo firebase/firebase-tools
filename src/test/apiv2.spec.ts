@@ -427,6 +427,7 @@ describe("apiv2", () => {
     describe("with a proxy", () => {
       let proxyServer: Server;
       let targetServer: Server;
+      let oldProxy: string | undefined;
       before(async () => {
         proxyServer = proxySetup(createServer());
         targetServer = createServer((req, res) => {
@@ -441,6 +442,8 @@ describe("apiv2", () => {
             targetServer.listen(52673, () => resolve());
           }),
         ]);
+        oldProxy = process.env.HTTP_PROXY;
+        process.env.HTTP_PROXY = "http://127.0.0.1:52672";
       });
 
       after(async () => {
@@ -448,12 +451,12 @@ describe("apiv2", () => {
           new Promise((resolve) => proxyServer.close(resolve)),
           new Promise((resolve) => targetServer.close(resolve)),
         ]);
+        process.env.HTTP_PROXY = oldProxy;
       });
 
       it("should be able to make a basic GET request", async () => {
         const c = new Client({
           urlPrefix: "http://127.0.0.1:52673",
-          proxy: "http://127.0.0.1:52672",
         });
         const r = await c.request({
           method: "GET",

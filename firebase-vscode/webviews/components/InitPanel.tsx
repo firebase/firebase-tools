@@ -7,14 +7,18 @@ import { TEXT } from "../globals/ux-text";
 import { PanelSection } from "./ui/PanelSection";
 import { Spacer } from "./ui/Spacer";
 import styles from "../sidebar.entry.scss";
+import { HostingInitState } from "../webview-types";
 
 export function InitFirebasePanel({
   onHostingInit,
+  hostingInitState,
+  setHostingInitState
 }: {
   onHostingInit: Function;
+  hostingInitState: HostingInitState;
+  setHostingInitState: (state: HostingInitState) => void;
 }) {
-  const [ initInProgress, setInitInProgress ] = useState<boolean>(false);
-  if (initInProgress) {
+  if (hostingInitState === 'pending') {
     return (
       <PanelSection isLast>
         <Spacer size="medium" />
@@ -35,7 +39,7 @@ export function InitFirebasePanel({
       <VSCodeButton
         onClick={() => {
           onHostingInit();
-          setInitInProgress(true);
+          setHostingInitState('pending');
         }}
       >
         {TEXT.INIT_HOSTING_BUTTON}

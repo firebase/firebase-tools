@@ -341,8 +341,8 @@ export function getFunctionsEventProvider(eventType: string): string {
     const provider = last(parts[1].split("."));
     return _.capitalize(provider);
   }
-  // New event types:
-  if (/google.pubsub/.exec(eventType)) {
+  // 1st gen event types:
+  if (/google.*pubsub/.exec(eventType)) {
     return "PubSub";
   } else if (/google.storage/.exec(eventType)) {
     return "Storage";
@@ -354,7 +354,7 @@ export function getFunctionsEventProvider(eventType: string): string {
     return "Auth";
   } else if (/google.firebase.crashlytics/.exec(eventType)) {
     return "Crashlytics";
-  } else if (/google.firestore/.exec(eventType)) {
+  } else if (/google.*firestore/.exec(eventType)) {
     return "Firestore";
   }
   return _.capitalize(eventType.split(".")[1]);
@@ -596,21 +596,6 @@ export function thirtyDaysFromNow(): Date {
   return new Date(Date.now() + THIRTY_DAYS_IN_MILLISECONDS);
 }
 
-/**
- * See:
- * https://www.typescriptlang.org/docs/handbook/release-notes/typescript-3-7.html#assertion-functions
- */
-export function assertDefined<T>(val: T, message?: string): asserts val is NonNullable<T> {
-  if (val === undefined || val === null) {
-    throw new AssertionError({
-      message: message || `expected value to be defined but got "${val}"`,
-    });
-  }
-}
-
-/**
- *
- */
 export function assertIsString(val: any, message?: string): asserts val is string {
   if (typeof val !== "string") {
     throw new AssertionError({
@@ -619,9 +604,6 @@ export function assertIsString(val: any, message?: string): asserts val is strin
   }
 }
 
-/**
- *
- */
 export function assertIsNumber(val: any, message?: string): asserts val is number {
   if (typeof val !== "number") {
     throw new AssertionError({
@@ -630,9 +612,6 @@ export function assertIsNumber(val: any, message?: string): asserts val is numbe
   }
 }
 
-/**
- *
- */
 export function assertIsStringOrUndefined(
   val: any,
   message?: string

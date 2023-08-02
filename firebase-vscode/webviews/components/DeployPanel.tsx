@@ -10,7 +10,7 @@ import { Label } from "./ui/Text";
 import { broker } from "../globals/html-broker";
 import styles from "../sidebar.entry.scss";
 import { PanelSection } from "./ui/PanelSection";
-import { HostingState } from "../webview-types";
+import { DeployState as DeployState } from "../webview-types";
 import { ChannelWithId } from "../messaging/types";
 import { ExternalLink } from "./ui/ExternalLink";
 import { SplitButton } from "./ui/SplitButton";
@@ -24,14 +24,14 @@ interface DeployInfo {
 }
 
 export function DeployPanel({
-  hostingState,
-  setHostingState,
+  deployState,
+  setDeployState,
   projectId,
   channels,
   framework,
 }: {
-  hostingState: HostingState;
-  setHostingState: (hostingState: HostingState) => void;
+  deployState: DeployState;
+  setDeployState: (deployState: DeployState) => void;
   projectId: string;
   channels: ChannelWithId[];
   framework: string;
@@ -41,15 +41,15 @@ export function DeployPanel({
   const [deployedInfo, setDeployedInfo] = useState<DeployInfo>(null);
 
   useEffect(() => {
-    if (hostingState === "success" || hostingState === "failure") {
+    if (deployState === "success" || deployState === "failure") {
       setDeployedInfo({
         date: new Date().toLocaleString(),
         channelId: deployTarget === "new" ? newPreviewChannel : deployTarget,
-        succeeded: hostingState === "success",
+        succeeded: deployState === "success",
       });
       setNewPreviewChannel("");
     }
-  }, [hostingState]);
+  }, [deployState]);
 
   useEffect(() => {
     broker.on("notifyPreviewChannelResponse", ({ id }: { id: string }) => {
@@ -117,7 +117,7 @@ export function DeployPanel({
     <SplitButton
       appearance="primary"
       onClick={() => {
-        setHostingState("deploying");
+        setDeployState("deploying");
         broker.send("hostingDeploy", {
           target: deployTarget === "new" ? newPreviewChannel : deployTarget,
         });
@@ -146,17 +146,21 @@ export function DeployPanel({
   const channelInfo = channels.find((channel) => channel.id === deployTarget);
 
   let deployedText = "not deployed yet";
-  // If we have server data about last deploy from listChannels()
-  if (channelInfo && channelInfo.updateTime) {
+  if (deployedInfo && !deployedInfo?.succeeded) {
+    // Priority 1: most recent deploy failed
+    deployedText = `Failed deploy to ${deployedInfo.channelId} at ${deployedInfo.date}`;
+  } else if (channelInfo && channelInfo.updateTime) {
+    // Priority 2: if we have server data about last deploy from listChannels()
+    // Takes priority over local deploy success in case someone else deployed
+    // after our most recent local deploy.
     deployedText = `Last deployed to ${deployTarget} at ${new Date(
       channelInfo.updateTime
     ).toLocaleString()}`;
-  // If a deploy just succeeded locally
   } else if (deployedInfo?.succeeded) {
+    // Priority 3: If most recent local deploy succeeded and there's no server
+    // data about other successful deploys
     deployedText = `Deployed to ${deployedInfo.channelId} at ${deployedInfo.date}`;
-  } else if (deployedInfo && !deployedInfo?.succeeded) {
-    deployedText = `Failed deploy to ${deployedInfo.channelId} at ${deployedInfo.date}`;
-  }
+  } 
 
   return (
     <>
@@ -166,7 +170,7 @@ export function DeployPanel({
         <>
           {DeploySplitButton}
           <Spacer size="xsmall" />
-          {hostingState !== "deploying" && (
+          {deployState !== "deploying" && (
             <>
               <Spacer size="xsmall" />
               <div>
@@ -182,7 +186,7 @@ export function DeployPanel({
               </div>
             </>
           )}
-          {hostingState === "deploying" && (
+          {deployState === "deploying" && (
             <>
               <Spacer size="medium" />
               <div className={styles.integrationStatus}>

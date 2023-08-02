@@ -18,7 +18,7 @@ import { Account, User } from "../../src/types/auth";
 import { Options } from "../../src/options";
 import { currentOptions, getCommandOptions } from "./options";
 import { setInquirerOptions } from "./stubs/inquirer-stub";
-import { ServiceAccount, ServiceAccountUser } from "../common/types";
+import { ServiceAccount } from "../common/types";
 import { listChannels } from "../../src/hosting/api";
 import { ChannelWithId } from "../common/messaging/types";
 import { pluginLogger } from "./logger-wrapper";
@@ -33,11 +33,45 @@ import { setAccessToken } from "../../src/apiv2";
 async function getServiceAccount() {
   let email = null;
   try {
-    email = (await requireAuth({})) || null;
+    // Make sure no user/token is sent
+    // to requireAuth which would prevent autoAuth() from being reached.
+    // We do need to send isVSCE to prevent project selection popup
+    const optionsMinusUser = await getCommandOptions(undefined, {
+      ...currentOptions
+    });
+    delete optionsMinusUser.user;
+    delete optionsMinusUser.tokens;
+    delete optionsMinusUser.token;
+    email = (await requireAuth(optionsMinusUser)) || null;
   } catch (e) {
-    pluginLogger.debug('No service account found (this may be normal), requireAuth error output:',
-      e.original || e);
+    let errorMessage = e.message;
+    if (e.original?.message) {
+      errorMessage += ` (original: ${e.original.message})`;
+    }
+    if (process.env.MONOSPACE_ENV) {
+      // If it can't find a service account in Monospace, that's a blocking
+      // error and we should throw.
+      throw new Error(`Unable to find service account. `
+        +`requireAuthError: ${errorMessage}`);
+    } else {
+      // In other environments, it is common to not find a service account.
+      pluginLogger.debug(`No service account found (this may be normal), `
+        +`requireAuth error output: ${errorMessage}`);
+    }
+    return null;
   }
+  if (process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL) {
+    // If Monospace, get service account email using env variable as
+    // the metadata server doesn't currently return the credentials
+    // for the workspace service account. Remove when Monospace is
+    // updated to return credentials through the metadata server.
+    pluginLogger.debug(`Using WORKSPACE_SERVICE_ACCOUNT_EMAIL env `
+      + `variable to get service account email: `
+      + `${process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL}`);
+    return process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL;
+  }
+  pluginLogger.debug(`Got service account email through credentials:`
+    + ` ${email}`);
   return email;
 }
 
@@ -50,7 +84,6 @@ async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
   // Try to get global default from configstore. For some reason this is
   // often overwritten when restarting the extension.
   pluginLogger.debug('requireAuthWrapper');
-  let authFound = false;
   let account = getGlobalDefaultAccount();
   if (!account) {
     // If nothing in configstore top level, grab the first "additionalAccount"
@@ -61,9 +94,6 @@ async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
         setGlobalDefaultAccount(account);
       }
     }
-  }
-  if (account) {
-    authFound = true;
   }
   const commandOptions = await getCommandOptions(undefined, {
     ...currentOptions
@@ -77,34 +107,43 @@ async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
     const serviceAccountEmail = await getServiceAccount();
     // Priority 1: Service account exists and is the current selected user
     if (serviceAccountEmail && currentUser.email === serviceAccountEmail) {
-      await requireAuth(commandOptions);
+      // requireAuth should have been run and apiv2 token should be stored
+      // already due to getServiceAccount() call above.
+      return true;
     } else if (account) {
       // Priority 2: Google login account exists and is the currently selected
       // user
       // Priority 3: Google login account exists and there is no selected user
       // Clear service account access token from memory in apiv2.
       setAccessToken();
-      await requireAuth({...commandOptions, ...account});
+      await requireAuth({ ...commandOptions, ...account });
+      return true;
+    } else if (serviceAccountEmail) {
+      // Priority 4: There is a service account but it's not set as
+      // currentUser for some reason, but there also isn't an oauth account.
+      // requireAuth was already run as part of getServiceAccount() above
+      return true;
     }
+    pluginLogger.debug('No user found (this may be normal)');
+    return false;
   } catch (e) {
-    // No service account or google login found.
     if (showError) {
-      pluginLogger.error('requireAuth error', e.original || e);
+      // Show error to user - show a popup and log it with log level
+      // "error". Usually set on user-triggered actions such as
+      // init hosting and deploy.
+      pluginLogger.error(`requireAuth error: ${e.original?.message || e.message}`);
       vscode.window.showErrorMessage("Not logged in", {
         modal: true,
         detail: `Log in by clicking "Sign in with Google" in the sidebar.`,
       });
     } else {
-      // If "showError" is false, this may not be an error, just an indication
-      // no one is logged in. Log to "debug".
-      pluginLogger.debug('No user found (this may be normal), requireAuth error output:',
-        e.original || e);
+      // User shouldn't need to see this error - not actionable,
+      // but we should log it for debugging purposes.
+      pluginLogger.debug('requireAuth error output: ',
+        e.original?.message || e.message);
     }
     return false;
   }
-  // If we reach here, there is either a google account or no error on
-  // requireAuth (which means there is a service account or glogin)
-  return authFound;
 }
 
 export async function getAccounts(): Promise<Array<Account | ServiceAccount>> {
@@ -134,19 +173,19 @@ export async function getChannels(firebaseJSON: Config): Promise<ChannelWithId[]
   if (!options.project) {
     return [];
   }
-  const site = await getDefaultHostingSite(options);
-  pluginLogger.debug(
-    'Calling listChannels with params',
-    options.project,
-    site
-  );
   try {
+    const site = await getDefaultHostingSite(options);
+    pluginLogger.debug(
+      'Calling listChannels with params',
+      options.project,
+      site
+    );
     const channels = await listChannels(options.project, site);
     return channels.map(channel => ({
       ...channel, id: channel.name.split("/").pop()
     }));
   } catch (e) {
-    pluginLogger.error('Error on listChannels()', e);
+    pluginLogger.error('Error in getChannels()', e);
     vscode.window.showErrorMessage("Error finding hosting channels", {
       modal: true,
       detail: `Error finding hosting channels: ${e}`,
@@ -178,8 +217,12 @@ export async function listProjects() {
 
 export async function initHosting(
   options: { spa: boolean; public?: string, useFrameworks: boolean }
-) {
-  await requireAuthWrapper();
+): Promise<boolean> {
+  const loggedIn = await requireAuthWrapper(true);
+  if (!loggedIn) {
+    pluginLogger.error('No user found, canceling hosting init');
+    return false;
+  }
   let webFrameworksOptions = {};
   if (options.useFrameworks) {
     pluginLogger.debug('Setting web frameworks options');
@@ -200,17 +243,25 @@ export async function initHosting(
   };
   pluginLogger.debug('Calling hosting init with inquirer options', inspect(inquirerOptions));
   setInquirerOptions(inquirerOptions);
-  await initAction("hosting", commandOptions);
+  try {
+    await initAction("hosting", commandOptions);
+  } catch(e) {
+    pluginLogger.error(e.message);
+    return false;
+  }
+  return true;
 }
+
 export async function deployToHosting(
   firebaseJSON: Config,
   deployTarget: string
 ) {
-  if (!(await requireAuthWrapper())) {
+  if (!(await requireAuthWrapper(true))) {
+    pluginLogger.error('No user found, canceling deployment');
     return { success: false, hostingUrl: "", consoleUrl: "" };
   }
 
-  // TODO(hsubox76): throw if it doesn't find firebaseJSON or the hosting field
+  // TODO(hsubox76): throw if it doesn't find firebaseJSON
   try {
     const options = { ...currentOptions };
     // TODO(hsubox76): handle multiple hosting configs
