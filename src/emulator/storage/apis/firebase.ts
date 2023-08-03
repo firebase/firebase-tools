@@ -16,15 +16,15 @@ import {
 } from "../upload";
 import { reqBodyToBuffer } from "../../shared/request";
 import { ListObjectsResponse, CreateSignedUrlResponse } from "../files";
-import { SIGNED_URL_DEFAULT_TTL_SECONDS, UNEXPECTED_ERROR } from "../constants";
+import { SIGNED_URL_DEFAULT_TTL_SECONDS, UNEXPECTED_ERROR, X_FIREBASE_DATE, X_FIREBASE_EXPIRES, X_FIREBASE_SIGNATURE } from "../constants";
 /**
+ *
  * @param emulator
  */
 export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   // eslint-disable-next-line new-cap
   const firebaseStorageAPI = Router();
   const { storageLayer, uploadService } = emulator;
-
   if (process.env.STORAGE_EMULATOR_DEBUG) {
     firebaseStorageAPI.use((req, res, next) => {
       console.log("--------------INCOMING FIREBASE REQUEST--------------");
@@ -34,7 +34,6 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       console.log("-- headers:");
       console.log(JSON.stringify(req.headers, undefined, 2));
       console.log("-- body:");
-
       if (req.body instanceof Buffer) {
         console.log(`Buffer of ${req.body.length}`);
       } else if (req.body) {
@@ -102,19 +101,19 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         authorization: req.header("authorization"),
         downloadToken: req.query.token?.toString(),
         signedUrl: {
-          signature: req.query["X-Firebase-Signature"] as string,
-          usableSeconds: req.query["X-Firebase-Date"] as string,
-          ttlSeconds: Number(req.query["X-Firebase-Expires"]),
+          signature: req.query[X_FIREBASE_SIGNATURE] as string,
+          usableSeconds: req.query[X_FIREBASE_DATE] as string,
+          ttlSeconds: Number(req.query[X_FIREBASE_EXPIRES]),
           base: `${req.protocol}://${req.hostname}:${req.socket.localPort}`,
         },
       }));
-    } catch (err as Error) {
+    } catch (err) {
       const errorCode = errorToHttpCode(err);
       if (errorCode !== UNEXPECTED_ERROR) {
         return res.status(errorCode).json({
           error: {
             code: errorCode,
-            message: err.message,
+            message: (err as Error).message,
           },
         });
       }
@@ -145,13 +144,13 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         baseUrl: `${req.protocol}://${req.hostname}:${req.socket.localPort}`,
         ttlSeconds: req.body.ttlSeconds ?? SIGNED_URL_DEFAULT_TTL_SECONDS,
       });
-    } catch (err as Error) {
+    } catch (err) {
       const errorCode = errorToHttpCode(err);
       if (errorCode !== UNEXPECTED_ERROR) {
         return res.status(errorCode).json({
           error: {
             code: errorCode,
-            message: err.message,
+            message: (err as Error).message,
           },
         });
       }
@@ -169,7 +168,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     let prefix = "";
     if (req.query.prefix) {
       prefix = req.query.prefix.toString();
-      if (prefix.charAt(prefix.length - 1) !== "/") {
+      if (!prefix.endsWith("/")) {
         return res.status(400).json({
           error: {
             code: 400,
@@ -376,7 +375,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       let dataRaw: Buffer;
       try {
         ({ metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(
-          contentTypeHeader!,
+          contentTypeHeader,
           await reqBodyToBuffer(req)
         ));
       } catch (err) {
@@ -583,7 +582,7 @@ function removeAtMostOneTrailingSlash(path: string): string {
   return path.replace(/\/$/, "");
 }
 
-function errorToHttpCode(err: Error) {
+function errorToHttpCode(err: any) {
   if (err instanceof ForbiddenError) {
     return 403;
   }

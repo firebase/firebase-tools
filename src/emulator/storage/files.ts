@@ -22,12 +22,12 @@ import { trackEmulator } from "../../track";
 import { Emulators } from "../types";
 import { createHmac } from "crypto";
 import {
-  INVALID_DATE_PARAM,
-  INVALID_TTL_PARAM,
   SECONDS_TO_MS_FACTOR,
   SIGNED_URL_MAX_TTL_SECONDS,
   SIGNED_URL_MIN_TTL_SECONDS,
   SIGNED_URL_PRIVATE_KEY,
+  X_FIREBASE_DATE,
+  X_FIREBASE_EXPIRES,
 } from "./constants";
 interface BucketsList {
   buckets: {
@@ -845,7 +845,7 @@ function validateSignedUrlAndReturnStartTs(signedUrl: SignedUrlParams) {
   if (!signedUrl.usableSeconds || !signedUrl.ttlSeconds) {
     throw new BadRequestError(
       `Missing required parameter ${
-        signedUrl.usableSeconds ? INVALID_DATE_PARAM : INVALID_TTL_PARAM
+        signedUrl.usableSeconds ? `${X_FIREBASE_DATE}: YYYYMMDD'T'HHMMSS'Z'` : `${X_FIREBASE_EXPIRES}: TTL`
       }`
     );
   }
