@@ -16,7 +16,13 @@ import {
 } from "../upload";
 import { reqBodyToBuffer } from "../../shared/request";
 import { ListObjectsResponse, CreateSignedUrlResponse } from "../files";
-import { SIGNED_URL_DEFAULT_TTL_SECONDS, UNEXPECTED_ERROR, X_FIREBASE_DATE, X_FIREBASE_EXPIRES, X_FIREBASE_SIGNATURE } from "../constants";
+import {
+  SIGNED_URL_DEFAULT_TTL_SECONDS,
+  UNEXPECTED_ERROR,
+  X_FIREBASE_DATE,
+  X_FIREBASE_EXPIRES,
+  X_FIREBASE_SIGNATURE,
+} from "../constants";
 /**
  *
  * @param emulator

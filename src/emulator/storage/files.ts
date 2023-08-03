@@ -845,7 +845,9 @@ function validateSignedUrlAndReturnStartTs(signedUrl: SignedUrlParams) {
   if (!signedUrl.usableSeconds || !signedUrl.ttlSeconds) {
     throw new BadRequestError(
       `Missing required parameter ${
-        signedUrl.usableSeconds ? `${X_FIREBASE_DATE}: YYYYMMDD'T'HHMMSS'Z'` : `${X_FIREBASE_EXPIRES}: TTL`
+        signedUrl.usableSeconds
+          ? `${X_FIREBASE_DATE}: YYYYMMDD'T'HHMMSS'Z'`
+          : `${X_FIREBASE_EXPIRES}: TTL`
       }`
     );
   }
