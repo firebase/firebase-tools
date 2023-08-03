@@ -1,2 +1,3 @@
 - Fixed Astro web framework bug when loading configuration for version `2.9.7` and above. (#6213)
 - Increase Next.js config bundle timeout to 60 seconds (#6214)
+- Fixes issue where auth emulator multi-tenant mode exports/imports only users tied to the default tenant (#5623)
