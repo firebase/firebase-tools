@@ -172,7 +172,7 @@ export function registerHandlers(
     res.set("Content-Type", "text/html; charset=utf-8");
     const apiKey = req.query.apiKey as string | undefined;
     const providerId = req.query.providerId as string | undefined;
-    const tenantId = req.query.tenantId as string | undefined;
+    const tenantId = (req.query.tenantId || req.query.tid) as string | undefined;
     if (!apiKey || !providerId) {
       return res.status(400).json({
         authEmulator: {
