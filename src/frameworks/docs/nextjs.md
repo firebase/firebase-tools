@@ -14,14 +14,12 @@ Using the {{firebase_cli}}, you can deploy your Next.js Web apps to Firebase and
 serve them with {{firebase_hosting}}. The {{cli}} respects your Next.js settings and
 translates them to Firebase settings with zero or minimal extra configuration on
 your part. If your app includes dynamic server-side logic, the {{cli}} deploys that
-logic to {{cloud_functions_full}}.
+logic to {{cloud_functions_full}}. The latest supported Next.js version is 13.4.7.
 
 <<_includes/_preview-disclaimer.md>>
 
 <<_includes/_before-you-begin.md>>
 
-- Optional: Billing enabled on your Firebase project
-  (required if you plan to use SSR)
 - Optional: use the experimental ReactFire library to benefit from its
   Firebase-friendly features
 
