@@ -1,4 +1,3 @@
-- Improve error message raised when `firebase init hosting:github` fails due to max number of keys limit for a service account. (#6145)
-- Fixed bug where `functions:secrets:\*` family of commands did not work when Firebase CLI is authenticated via GOOGLE_APPLICATION_CREDENTIALS (#6190)
-- Fixed bug where some extension instance updates would default to the wrong location.
 - Increased functions emulator HTTPS body size limit to 32mb to match production. (#6201)
+- Fixed Astro web framework bug when loading configuration for version `2.9.7` and above. (#6213)
+- Increase Next.js config bundle timeout to 60 seconds. (#6214)
