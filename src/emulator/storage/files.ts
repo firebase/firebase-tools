@@ -846,11 +846,12 @@ function validateSignedUrlAndReturnStartTs(signedUrl: SignedUrlParams) {
     throw new BadRequestError(
       `Missing required parameter ${
         signedUrl.usableSeconds
-          ? `${X_FIREBASE_DATE}: YYYYMMDD'T'HHMMSS'Z'`
-          : `${X_FIREBASE_EXPIRES}: TTL`
+          ? `${X_FIREBASE_EXPIRES}: TTL`
+          : `${X_FIREBASE_DATE}: YYYYMMDD'T'HHMMSS'Z'`
       }`
     );
   }
+
   const start = convertDateToMS(signedUrl.usableSeconds);
 
   if (!start) {

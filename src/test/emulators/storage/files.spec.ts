@@ -143,8 +143,8 @@ describe("files", () => {
           decodedObjectId: "dir%2Fobject",
         });
 
-        expect(metadata.contentType).to.equal("mime/type");
-        expect(data.toString()).to.equal("Hello, World!");
+        expect("mime/type").to.equal(metadata.contentType);
+        expect("Hello, World!").to.equal(data.toString());
       });
 
       it("should return data and metadata when passed a valid signature", async () => {
@@ -178,8 +178,8 @@ describe("files", () => {
           },
         });
 
-        expect(metadata.contentType).to.equal("mime/type");
-        expect(data.toString()).to.equal("Hello, World!");
+        expect("mime/type").to.equal(metadata.contentType);
+        expect("Hello, World!").to.equal(data.toString());
       });
 
       it("should throw an error if request is not authorized", () => {
@@ -432,7 +432,7 @@ describe("files", () => {
           signature
         )}`;
 
-        expect(signedUrlObject.signed_url).to.equal(actualSignedUrl);
+        expect(actualSignedUrl).to.equal(signedUrlObject.signed_url);
       });
     });
 
