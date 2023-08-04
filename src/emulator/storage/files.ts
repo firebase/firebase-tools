@@ -263,8 +263,7 @@ export class StorageLayer {
         const end = start + changeInTime;
         const now = convertDateToMS(getCurrentDate());
 
-        const isLive = now >= start && now < end;
-        if (!isLive) {
+        if (!(now >= start && now < end)) {
           throw new BadRequestError("Url has Expired");
         }
 
@@ -276,8 +275,7 @@ export class StorageLayer {
           ttlSeconds: request.signedUrl.ttlSeconds!,
         });
 
-        const isCorrect = createSignature(unsignedUrl) === request.signedUrl.signature;
-        if (!isCorrect) {
+        if (!(createSignature(unsignedUrl) === request.signedUrl.signature)) {
           throw new ForbiddenError("Invalid Url");
         }
       } else {

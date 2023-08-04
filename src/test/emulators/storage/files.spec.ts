@@ -459,7 +459,5 @@ describe("files", () => {
  * @returns {string}
  */
 function getAdjustedDate(changeBy: number): string {
-  const currentDate = new Date().getTime();
-  const adjutedDate = new Date(currentDate + changeBy * SECONDS_TO_MS_FACTOR);
-  return getSignedUrlTimestampFor(adjutedDate);
+  return getSignedUrlTimestampFor(new Date(new Date().getTime() + changeBy * SECONDS_TO_MS_FACTOR));
 }
