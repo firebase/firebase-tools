@@ -27,8 +27,7 @@ const frameworksPollerOptions: Omit<poller.OperationPollerOptions, "operationRes
 /**
  * Setup new frameworks project.
  */
-export async function doSetup(setup: any): Promise<void> {
-  const projectId: string = setup?.rcfile?.projects?.default;
+export async function doSetup(setup: any, projectId: string): Promise<void> {
   setup.frameworks = {};
 
   utils.logBullet("First we need a few details to create your service.");
@@ -71,7 +70,10 @@ export async function doSetup(setup: any): Promise<void> {
     setup.frameworks
   );
 
-  await getOrCreateStack(projectId, setup);
+  const stack: Stack | undefined = await getOrCreateStack(projectId, setup);
+  if (stack) {
+    utils.logSuccess(`Successfully created a stack: ${stack.name}`);
+  }
 }
 
 function toStack(
@@ -80,6 +82,10 @@ function toStack(
 ): Omit<Stack, StackOutputOnlyFields> {
   return {
     name: stackId,
+    codebase: {
+      repository: `cloudbuild.googleapis.com/v2/${cloudBuildConnRepo.name}`,
+      rootDirectory: ".",
+    },
     labels: {},
   };
 }
@@ -96,11 +102,7 @@ export async function getOrCreateStack(projectId: string, setup: any): Promise<S
     if ((err as FirebaseError).status === 404) {
       logger.info("Creating new stack.");
       if (deployMethod === "github") {
-        const cloudBuildConnRepo = await repo.linkGitHubRepository(
-          projectId,
-          location,
-          setup.frameworks.serviceName
-        );
+        const cloudBuildConnRepo = await repo.linkGitHubRepository(projectId, location);
         const stackDetails = toStack(cloudBuildConnRepo, setup.frameworks.serviceName);
         return await createStack(projectId, location, stackDetails);
       }

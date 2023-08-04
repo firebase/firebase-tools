@@ -32,8 +32,12 @@ function extractRepoSlugFromURI(remoteUri: string): string | undefined {
  * The current implementation is subject to change in the event that
  * the 1:1 Connection-to-Resource relationship no longer holds.
  */
-function generateRepositoryId(): string | undefined {
-  return `composer-repo`;
+function generateRepositoryId(remoteUri: string): string | undefined {
+  return extractRepoSlugFromURI(remoteUri)?.replaceAll("/", "-");
+}
+
+function generateConnectionId(location: string): string {
+  return `frameworks-${location}`;
 }
 
 /**
@@ -41,10 +45,9 @@ function generateRepositoryId(): string | undefined {
  */
 export async function linkGitHubRepository(
   projectId: string,
-  location: string,
-  stackId: string
+  location: string
 ): Promise<gcb.Repository> {
-  const connectionId = stackId;
+  const connectionId = generateConnectionId(location);
   await getOrCreateConnection(projectId, location, connectionId);
 
   let remoteUri = await promptRepositoryURI(projectId, location, connectionId);
@@ -147,7 +150,7 @@ export async function getOrCreateRepository(
   connectionId: string,
   remoteUri: string
 ): Promise<gcb.Repository> {
-  const repositoryId = generateRepositoryId();
+  const repositoryId = generateRepositoryId(remoteUri);
   if (!repositoryId) {
     throw new FirebaseError(`Failed to generate repositoryId for URI "${remoteUri}".`);
   }

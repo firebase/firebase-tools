@@ -27,7 +27,7 @@ export interface Stack {
   uri: string;
 }
 
-export type StackOutputOnlyFields = "createTime" | "updateTime" | "uri" | "codebase";
+export type StackOutputOnlyFields = "createTime" | "updateTime" | "uri";
 
 export interface Build {
   name: string;
@@ -81,6 +81,12 @@ export interface Operation {
   // end oneof result
 }
 
+export interface ListStacksResponse {
+  stacks: Stack[];
+  nextPageToken: string;
+  unreachable: string[];
+}
+
 /**
  * Creates a new Stack in a given project and location.
  */
@@ -113,6 +119,29 @@ export async function getStack(
   return res.body;
 }
 
+/**
+ * List a all stacks present in a project and region.
+ */
+export async function listStack(projectId: string, location: string): Promise<ListStacksResponse> {
+  const name = `projects/${projectId}/locations/${location}/stacks/`;
+  const res = await client.get<ListStacksResponse>(name);
+
+  return res.body;
+}
+
+/**
+ * Creates a new Stack in a given project and location.
+ */
+export async function deleteStack(
+  projectId: string,
+  location: string,
+  stackId: string
+): Promise<Operation> {
+  const name = `projects/${projectId}/locations/${location}/stacks/${stackId}`;
+  const res = await client.delete<Operation>(name);
+
+  return res.body;
+}
 /**
  * Creates a new Build in a given project and location.
  */

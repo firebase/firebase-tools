@@ -36,6 +36,10 @@ describe("operationsConverter", () => {
     const stackId = "stackId";
     const stackInput = {
       name: stackId,
+      codebase: {
+        repository: `cloudbuild.googleapis.com/v2/projects/projectId/locations/us-central1/connections/frameworks-us-central1/repositories/repoId`,
+        rootDirectory: ".",
+      },
       labels: {},
     };
     const op = {

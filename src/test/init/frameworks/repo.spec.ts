@@ -128,7 +128,7 @@ describe("composer", () => {
       getConnectionStub.resolves(pendingConn);
       fetchLinkableRepositoriesStub.resolves({ repositories: [] });
 
-      await expect(repo.linkGitHubRepository(projectId, location, stackId)).to.be.rejected;
+      await expect(repo.linkGitHubRepository(projectId, location)).to.be.rejected;
     });
   });
 });
