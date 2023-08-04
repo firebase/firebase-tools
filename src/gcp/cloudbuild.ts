@@ -101,7 +101,6 @@ export async function getConnection(
   location: string,
   connectionId: string
 ): Promise<Connection> {
-  console.log(projectId);
   const name = `projects/${projectId}/locations/${location}/connections/${connectionId}`;
   const res = await client.get<Connection>(name);
   return res.body;
