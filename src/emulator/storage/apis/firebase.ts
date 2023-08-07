@@ -109,7 +109,10 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         signedUrl: {
           signature: req.query[X_FIREBASE_SIGNATURE] as string,
           usableSeconds: req.query[X_FIREBASE_DATE] as string,
-          ttlSeconds: Number(req.query[X_FIREBASE_EXPIRES]),
+          ttlSeconds:
+            typeof req.query[X_FIREBASE_EXPIRES] === "string"
+              ? Number(req.query[X_FIREBASE_EXPIRES])
+              : undefined,
           base: `${req.protocol}://${req.hostname}:${req.socket.localPort}`,
         },
       }));

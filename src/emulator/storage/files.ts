@@ -177,7 +177,7 @@ export class StorageLayer {
     const currentDate = getCurrentDate();
 
     const ttl = request.ttlSeconds;
-    if (!Number.isInteger(ttl)) {
+    if (!(typeof ttl === "number" && Number.isInteger(ttl))) {
       throw new BadRequestError(`Invalid TTL: ${ttl} is not an integer.`);
     }
 
@@ -253,8 +253,6 @@ export class StorageLayer {
       request.downloadToken ?? ""
     );
 
-    let checkAuth = false;
-
     if (!hasValidDownloadToken) {
       if (request.signedUrl?.signature) {
         const start = validateSignedUrlAndReturnStartTs(request.signedUrl);
@@ -278,12 +276,10 @@ export class StorageLayer {
         if (!(createSignature(unsignedUrl) === request.signedUrl.signature)) {
           throw new ForbiddenError("Invalid Url");
         }
-      } else {
-        checkAuth = true;
       }
     }
 
-    if (checkAuth) {
+    if (!(hasValidDownloadToken || request.signedUrl?.signature)) {
       authorized = await this._rulesValidator.validate(
         ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
         request.bucketId,

@@ -344,7 +344,7 @@ describe("files", () => {
     });
 
     describe("#generateSignedUrl", () => {
-      it("should throw an error if TTL is not an integer", () => {
+      it("should throw an error if TTL is a decimal", () => {
         const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
         expect(
           storageLayer.generateSignedUrl({
