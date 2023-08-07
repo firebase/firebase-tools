@@ -23,6 +23,7 @@ import {
   X_FIREBASE_EXPIRES,
   X_FIREBASE_SIGNATURE,
 } from "../constants";
+import { ParsedQs } from "qs";
 /**
  *
  * @param emulator
@@ -109,10 +110,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         signedUrl: {
           signature: req.query[X_FIREBASE_SIGNATURE] as string,
           usableSeconds: req.query[X_FIREBASE_DATE] as string,
-          ttlSeconds:
-            typeof req.query[X_FIREBASE_EXPIRES] === "string"
-              ? Number(req.query[X_FIREBASE_EXPIRES])
-              : undefined,
+          ttlSeconds: validateNumber(req.query[X_FIREBASE_EXPIRES]),
           base: `${req.protocol}://${req.hostname}:${req.socket.localPort}`,
         },
       }));
@@ -603,4 +601,19 @@ function errorToHttpCode(err: any) {
   }
 
   return UNEXPECTED_ERROR;
+}
+function validateNumber(
+  reqTTLSeconds: string | ParsedQs | string[] | ParsedQs[] | undefined
+): number {
+  if (
+    !(
+      typeof reqTTLSeconds === "string" &&
+      reqTTLSeconds.length > 0 &&
+      !isNaN(Number(reqTTLSeconds))
+    )
+  ) {
+    throw new BadRequestError(`Invalid format for ${X_FIREBASE_EXPIRES}, expected an integer`);
+  }
+
+  return Number(reqTTLSeconds);
 }

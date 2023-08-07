@@ -849,10 +849,12 @@ function validateSignedUrlAndReturnStartTs(signedUrl: SignedUrlParams) {
   const start = convertDateToMS(signedUrl.usableSeconds);
 
   if (!start) {
-    throw new BadRequestError(`Invalid format for X-Firebase-Date, expected YYYYMMDD'T'HHMMSS'Z'`);
+    throw new BadRequestError(
+      `Invalid format for ${X_FIREBASE_DATE}, expected YYYYMMDD'T'HHMMSS'Z'`
+    );
   }
   if (!Number.isInteger(signedUrl.ttlSeconds)) {
-    throw new BadRequestError(`Invalid format for X-Firebase-Expires, not an integer.'`);
+    throw new BadRequestError(`Invalid format for ${X_FIREBASE_EXPIRES}, not an integer.'`);
   }
 
   return start;
