@@ -50,8 +50,8 @@ Firebase supports both server-side rendering and a mix of prerendering and SSR. 
 
 ## Deployment
 
-If you wish to deploy an entirely static site, install and configure `@sveltejs/adapter-static`.
+If you wish to deploy an entirely static site, install and configure `@sveltejs/adapter-static`. The static files will be hosted entirely on Firebase Hosting, no Cloud Functions required.
 
-If you have a mix of static and server-rendered pages, it is not necessary to install a special deployment adapter. Leave the default configuration of `@sveltejs/adapter-auto`. 
+If you have a mix of static and server-rendered pages, it is not necessary to install a special deployment adapter. Leave the default configuration of `@sveltejs/adapter-auto`. The necessary Cloud Functions will be created and deployed.
 
 Run `firebase deploy` to build and deploy your SvelteKit app.
