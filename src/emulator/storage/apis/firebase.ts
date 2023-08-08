@@ -604,7 +604,7 @@ function errorToHttpCode(err: any) {
 }
 function validateNumber(
   reqTTLSeconds: string | ParsedQs | string[] | ParsedQs[] | undefined
-): number {
+): number | undefined {
   if (
     !(
       typeof reqTTLSeconds === "string" &&
@@ -612,7 +612,7 @@ function validateNumber(
       !isNaN(Number(reqTTLSeconds))
     )
   ) {
-    throw new BadRequestError(`Invalid format for ${X_FIREBASE_EXPIRES}, expected an integer`);
+    return undefined;
   }
 
   return Number(reqTTLSeconds);
