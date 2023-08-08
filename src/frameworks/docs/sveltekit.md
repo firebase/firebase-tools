@@ -37,21 +37,36 @@ existing project.
 1. Run the initialization command from the CLI and then follow the prompts:
    <pre class="devsite-terminal">firebase init hosting</pre>
 1.  Answer yes to "Do you want to use a web framework? (experimental)"
-1.  Choose your hosting source directory.  If there is an existing SvelteKit codebase,
+1.  Choose your hosting source directory. 
+    If there is an existing SvelteKit codebase,
     the CLI detects it and the process completes.
 
 ## Serve static content
 
-If your app uses [`@sveltejs/adapter-static`](https://kit.svelte.dev/docs/adapter-static), the Firebase CLI will correctly detect and configure your build to serve fully static content on Firebase Hosting.
+If your app uses 
+[`@sveltejs/adapter-static`](https://kit.svelte.dev/docs/adapter-static), 
+the Firebase CLI will correctly detect and configure your build to serve fully
+static content on Firebase Hosting.
 
 ## Server-side rendering
 
-Firebase supports both server-side rendering and a mix of prerendering and SSR. Unless you are using `@sveltejs/adapter-static`, all pages are rendered on the server at runtime by default but you can opt-in to prerendering for certain routes by adding `export const prerender = true` to the relevant `+layout.js` or `+page.js` files. See detailed instructions in the [SvelteKit documentation](https://kit.svelte.dev/docs/page-options).
+Firebase supports both server-side rendering and a mix of prerendering and SSR. 
+Unless you are using `@sveltejs/adapter-static`, all pages are rendered on the 
+server at runtime by default, but you can opt in to prerendering for certain 
+routes by adding `export const prerender = true` to the relevant `+layout.js` 
+or `+page.js` files. 
+See detailed instructions for setting 
+[page options](https://kit.svelte.dev/docs/page-options).
 
 ## Deployment
 
-If you wish to deploy an entirely static site, install and configure `@sveltejs/adapter-static`. The static files will be deployed entirely on Firebase Hosting, no Cloud Functions required.
+If you want to deploy an entirely static site, 
+install and configure `@sveltejs/adapter-static`. 
+The static files will be deployed to Firebase Hosting, no Cloud Functions required.
 
-If you have a mix of static and server-rendered pages, it is not necessary to install a special deployment adapter. Leave the default configuration of `@sveltejs/adapter-auto`. The necessary Cloud Functions will be created and deployed.
+If you have a mix of static and server-rendered pages, 
+it is not necessary to install a special deployment adapter. 
+Leave the default configuration of `@sveltejs/adapter-auto`. 
+The necessary dynamic logic will be created and deployed to Cloud Functions.
 
 Run `firebase deploy` to build and deploy your SvelteKit app.
