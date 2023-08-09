@@ -12,6 +12,7 @@ import { setupSidebar } from "./sidebar";
 import { setupWorkflow } from "./workflow";
 import { pluginLogger } from "./logger-wrapper";
 import { ExecutionHistoryTreeDataProvider as FirematExecutionHistoryTreeDataProvider } from "./firemat/execution-history-provider";
+import { CodeLensProvider as FirematCodeLensProvider } from "./firemat/code-lens-provider";
 
 const broker = createBroker<
   ExtensionToWebviewParamsMap,
@@ -31,5 +32,24 @@ export function activate(context: vscode.ExtensionContext) {
   const firematExecutionHistoryTreeView = vscode.window.createTreeView(
     "firemat-execution-history-view",
     { treeDataProvider: firematExecutionHistoryTreeDataProvider }
+  const firematCodeLensProvider = new FirematCodeLensProvider();
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "firebase.firemat.executeOperation",
+      () => {}
+    ),
+    vscode.commands.registerCommand(
+      "firebase.firemat.executeOperationAtCursor",
+      () => {}
+    ),
+    vscode.languages.registerCodeLensProvider(
+      { scheme: "file", language: "graphql" },
+      firematCodeLensProvider
+    ),
+    vscode.languages.registerCodeLensProvider(
+      { scheme: "file", language: "gql" },
+      firematCodeLensProvider
+    )
   );
 }
