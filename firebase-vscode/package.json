@@ -42,6 +42,14 @@
         }
       }
     },
+    "keybindings": [
+      {
+        "command": "firebase.firemat.executeOperationAtCursor",
+        "key": "ctrl+enter",
+        "mac": "cmd+enter",
+        "when": "editorLangId == gql || editorLangId == graphql"
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {
@@ -122,6 +130,7 @@
     "eslint-plugin-react": "^7.32.2",
     "fork-ts-checker-webpack-plugin": "^7.3.0",
     "glob": "^8.0.3",
+    "graphql": "^16.7.1",
     "mini-css-extract-plugin": "^2.6.0",
     "mocha": "^10.1.0",
     "postcss-loader": "^7.0.0",
