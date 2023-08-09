@@ -11,6 +11,7 @@ import {
 import { setupSidebar } from "./sidebar";
 import { setupWorkflow } from "./workflow";
 import { pluginLogger } from "./logger-wrapper";
+import { CodeLensProvider as FirematCodeLensProvider } from "./firemat/code-lens-provider";
 
 const broker = createBroker<
   ExtensionToWebviewParamsMap,
@@ -20,8 +21,29 @@ const broker = createBroker<
 
 // This method is called when your extension is activated
 export function activate(context: vscode.ExtensionContext) {
-  pluginLogger.debug('Activating Firebase extension.');
+  pluginLogger.debug("Activating Firebase extension.");
 
   setupWorkflow(context, broker);
   setupSidebar(context, broker);
+
+  const firematCodeLensProvider = new FirematCodeLensProvider();
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "firebase.firemat.executeOperation",
+      () => {}
+    ),
+    vscode.commands.registerCommand(
+      "firebase.firemat.executeOperationAtCursor",
+      () => {}
+    ),
+    vscode.languages.registerCodeLensProvider(
+      { scheme: "file", language: "graphql" },
+      firematCodeLensProvider
+    ),
+    vscode.languages.registerCodeLensProvider(
+      { scheme: "file", language: "gql" },
+      firematCodeLensProvider
+    )
+  );
 }
