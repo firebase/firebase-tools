@@ -17,18 +17,6 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
-    "commands": [
-      {
-        "command": "firebase.firemat.executeOperationAtCursor",
-        "title": "Run GQL Operation at Cursor",
-        "category": "Firebase Firemat"
-      },
-      {
-        "command": "firebase.firemat.executeOperation",
-        "title": "Run GQL Operation",
-        "category": "Firebase Firemat"
-      }
-    ],
     "configuration": {
       "title": "Firebase VS Code Extension",
       "properties": {
