@@ -17,8 +17,8 @@ review the following requirements and options:
   [install the CLI](/docs/cli#install_the_firebase_cli) using your preferred 
 	method.
 - Optional: An existing React project using Vite. You can create one with 
-	`npm create vite@latest -- --template react` or you can let the Firebase CLI
-	to [initialize one](#initialize-a-new-project) for you.
+	`npm create vite@latest -- --template react` or let the Firebase CLI
+	 [initialize a new project](#initialize-a-new-project) for you.
 
 
 ## Initialize Firebase
