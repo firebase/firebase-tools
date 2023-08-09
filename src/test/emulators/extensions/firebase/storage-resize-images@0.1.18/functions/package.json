@@ -3,6 +3,6 @@
     "vresion": "0.1.18",
     "description": "Package file for testing only",
     "dependencies": {
-        "firebase-tools": "file:../../../../../../.."
+        "firebase-functions": "4.4.1"
     }
 }
