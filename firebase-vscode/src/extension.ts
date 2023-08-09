@@ -11,6 +11,7 @@ import {
 import { setupSidebar } from "./sidebar";
 import { setupWorkflow } from "./workflow";
 import { pluginLogger } from "./logger-wrapper";
+import { ExecutionHistoryTreeDataProvider as FirematExecutionHistoryTreeDataProvider } from "./firemat/execution-history-provider";
 
 const broker = createBroker<
   ExtensionToWebviewParamsMap,
@@ -20,8 +21,15 @@ const broker = createBroker<
 
 // This method is called when your extension is activated
 export function activate(context: vscode.ExtensionContext) {
-  pluginLogger.debug('Activating Firebase extension.');
+  pluginLogger.debug("Activating Firebase extension.");
 
   setupWorkflow(context, broker);
   setupSidebar(context, broker);
+
+  const firematExecutionHistoryTreeDataProvider =
+    new FirematExecutionHistoryTreeDataProvider();
+  const firematExecutionHistoryTreeView = vscode.window.createTreeView(
+    "firemat-execution-history-view",
+    { treeDataProvider: firematExecutionHistoryTreeDataProvider }
+  );
 }
