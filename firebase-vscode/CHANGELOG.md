@@ -1,5 +1,8 @@
 # Change Log
 
+## 0.0.25 (unreleased)
+- Replace predeploy hack with something more robust.
+
 ## 0.0.24
 
 - Remove proxy-agent stub #6172
