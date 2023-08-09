@@ -16,7 +16,7 @@ export class CodeLensProvider implements vscode.CodeLensProvider {
     const documentNode = parse(document.getText());
 
     for (const x of documentNode.definitions) {
-      if (x.kind === Kind.OPERATION_DEFINITION) {
+      if (x.kind === Kind.OPERATION_DEFINITION && x.loc) {
         const line = x.loc.startToken.line - 1;
         const range = new vscode.Range(line, 0, line, 0);
         codeLenses.push(
