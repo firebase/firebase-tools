@@ -53,7 +53,8 @@ fetching/get-static-paths).
 
 When including Firebase JS SDK methods in both server and client bundles, guard
 against runtime errors by checking `isSupported()` before using the product.
-Not all products are [supported in all environments](/docs/web/environments-js-sdk#other_environments).
+Not all products are 
+[supported in all environments](/docs/web/environments-js-sdk#other_environments).
 
 Tip: consider using
 [ReactFire](https://github.com/FirebaseExtended/reactfire#reactfire), which does
@@ -69,8 +70,9 @@ and [getStaticPaths](https://nextjs.org/docs/basic-features/data-fetching/get-st
 
 The {{firebase_cli}} will detect usage of
 [getServerSideProps](https://nextjs.org/docs/basic-features/data-fetching/get-server-side-props).
-In such cases the {{cli}} will deploy functions to {{cloud_functions_full}} to run dynamic 
-server code. You can view information about these functions, such as their domain and runtime configuration, in the [Firebase console](https://console.firebase.google.com/project/_/functions).
+In such cases, the {{cli}} will deploy functions to {{cloud_functions_full}} to run dynamic 
+server code. You can view information about these functions, such as their domain and runtime
+configuration, in the [Firebase console](https://console.firebase.google.com/project/_/functions).
 
 
 ## Configure {{hosting}} behavior with `next.config.js`
@@ -86,7 +88,8 @@ interoperate well together.
 
 ### Redirects, Rewrites, and Headers
 
-The {{firebase_cli}} respects [redirects](https://nextjs.org/docs/api-reference/next.config.js/redirects),
+The {{firebase_cli}} respects 
+[redirects](https://nextjs.org/docs/api-reference/next.config.js/redirects),
 [rewrites](https://nextjs.org/docs/api-reference/next.config.js/rewrites), and
 [headers](https://nextjs.org/docs/api-reference/next.config.js/headers) in
 `next.config.js`, converting them to their
