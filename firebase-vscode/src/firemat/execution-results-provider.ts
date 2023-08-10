@@ -23,7 +23,7 @@ export class ExecutionResultsViewProvider
     };
 
     webviewView.webview.html = getHtmlForWebview(
-      "firemat_execution_results",
+      "firemat-execution-results",
       this.extensionUri,
       webviewView.webview
     );
