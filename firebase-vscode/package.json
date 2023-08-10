@@ -83,11 +83,15 @@
           "name": "Firebase"
         }
       ],
-      "firemat-execution-view": [
+      "firebase.firemat.executionView": [
         {
           "type": "webview",
-          "id": "firemat.executionResultsView",
+          "id": "firebase.firemat.executionResultsView",
           "name": "Firemat Execution Results"
+        },
+        {
+          "id": "firebase.firemat.executionHistoryView",
+          "name": "Firemat Execution History"
         }
       ]
     },
