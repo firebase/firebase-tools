@@ -13,6 +13,7 @@ import { setupWorkflow } from "./workflow";
 import { pluginLogger } from "./logger-wrapper";
 import { CodeLensProvider as FirematCodeLensProvider } from "./firemat/code-lens-provider";
 import { ExecutionResultsViewProvider as FirematExecutionResultsViewProvider } from "./firemat/execution-results-provider";
+import { ExecutionService as FirematExecutionService } from "./firemat/execution-service";
 
 const broker = createBroker<
   ExtensionToWebviewParamsMap,
@@ -30,6 +31,7 @@ export function activate(context: vscode.ExtensionContext) {
   const firematCodeLensProvider = new FirematCodeLensProvider();
   const firematExecutionResultsViewProvider =
     new FirematExecutionResultsViewProvider(context.extensionUri, broker);
+  const firematExecutionService = new FirematExecutionService();
 
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
