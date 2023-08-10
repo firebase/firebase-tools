@@ -12,6 +12,7 @@ import { setupSidebar } from "./sidebar";
 import { setupWorkflow } from "./workflow";
 import { pluginLogger } from "./logger-wrapper";
 import { CodeLensProvider as FirematCodeLensProvider } from "./firemat/code-lens-provider";
+import { ExecutionService as FirematExecutionService } from "./firemat/execution-service";
 
 const broker = createBroker<
   ExtensionToWebviewParamsMap,
@@ -27,6 +28,7 @@ export function activate(context: vscode.ExtensionContext) {
   setupSidebar(context, broker);
 
   const firematCodeLensProvider = new FirematCodeLensProvider();
+  const firematExecutionService = new FirematExecutionService();
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
