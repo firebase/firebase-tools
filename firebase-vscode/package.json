@@ -75,6 +75,12 @@
           "id": "firebase.sidebarView",
           "name": "Firebase"
         }
+      ],
+      "firebase.firemat.executionView": [
+        {
+          "id": "firebase.firemat.executionHistoryView",
+          "name": "Firemat Execution History"
+        }
       ]
     },
     "jsonValidation": [

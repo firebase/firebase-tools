@@ -11,6 +11,7 @@ import {
 import { setupSidebar } from "./sidebar";
 import { setupWorkflow } from "./workflow";
 import { pluginLogger } from "./logger-wrapper";
+import { ExecutionHistoryTreeDataProvider as FirematExecutionHistoryTreeDataProvider } from "./firemat/execution-history-provider";
 import { CodeLensProvider as FirematCodeLensProvider } from "./firemat/code-lens-provider";
 import { ExecutionService as FirematExecutionService } from "./firemat/execution-service";
 
@@ -27,6 +28,12 @@ export function activate(context: vscode.ExtensionContext) {
   setupWorkflow(context, broker);
   setupSidebar(context, broker);
 
+  const firematExecutionHistoryTreeDataProvider =
+    new FirematExecutionHistoryTreeDataProvider();
+  const firematExecutionHistoryTreeView = vscode.window.createTreeView(
+    "firebase.firemat.executionHistoryView",
+    { treeDataProvider: firematExecutionHistoryTreeDataProvider }
+  );
   const firematCodeLensProvider = new FirematCodeLensProvider();
   const firematExecutionService = new FirematExecutionService();
 
