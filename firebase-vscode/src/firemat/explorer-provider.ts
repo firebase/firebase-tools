@@ -54,14 +54,14 @@ export class ExplorerTreeItem extends vscode.TreeItem {
 export class ExplorerTreeDataProvider
   implements vscode.TreeDataProvider<ExplorerTreeItem>
 {
-  private readonly onDidChangeTreeDataImitter = new vscode.EventEmitter<void>();
+  private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<void>();
   readonly onDidChangeTreeData: vscode.Event<void> =
-    this.onDidChangeTreeDataImitter.event;
+    this.onDidChangeTreeDataEmitter.event;
   explorerItems: ExplorerTreeItem[] = [];
 
   refresh(explorerItems: ExplorerTreeItem[]) {
     this.explorerItems = explorerItems;
-    this.onDidChangeTreeDataImitter.fire(undefined);
+    this.onDidChangeTreeDataEmitter.fire(undefined);
   }
 
   getTreeItem(element: ExplorerTreeItem): vscode.TreeItem {
