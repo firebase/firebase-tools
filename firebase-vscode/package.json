@@ -76,6 +76,12 @@
           "name": "Firebase"
         }
       ],
+      "firebase.firemat.explorerView": [
+        {
+          "id": "firebase.firemat.explorerView",
+          "name": "Firemat Explorer"
+        }
+      ],
       "firebase.firemat.executionView": [
         {
           "id": "firebase.firemat.executionHistoryView",

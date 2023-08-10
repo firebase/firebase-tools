@@ -1,5 +1,3 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
 
 import { ExtensionBroker } from "./extension-broker";
@@ -13,6 +11,7 @@ import { setupWorkflow } from "./workflow";
 import { pluginLogger } from "./logger-wrapper";
 import { ExecutionHistoryTreeDataProvider as FirematExecutionHistoryTreeDataProvider } from "./firemat/execution-history-provider";
 import { CodeLensProvider as FirematCodeLensProvider } from "./firemat/code-lens-provider";
+import { ExplorerTreeDataProvider as FirematExplorerTreeDataProvider } from "./firemat/explorer-provider";
 import { ExecutionService as FirematExecutionService } from "./firemat/execution-service";
 
 const broker = createBroker<
@@ -35,6 +34,11 @@ export function activate(context: vscode.ExtensionContext) {
     { treeDataProvider: firematExecutionHistoryTreeDataProvider }
   );
   const firematCodeLensProvider = new FirematCodeLensProvider();
+  const firematExplorerTreeDataProvider = new FirematExplorerTreeDataProvider();
+  const firematExplorerTreeView = vscode.window.createTreeView(
+    "firebase.firemat.explorerView",
+    { treeDataProvider: firematExplorerTreeDataProvider }
+  );
   const firematExecutionService = new FirematExecutionService();
 
   context.subscriptions.push(
