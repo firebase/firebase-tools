@@ -76,9 +76,9 @@
           "name": "Firebase"
         }
       ],
-      "firemat-execution-view": [
+      "firebase.firemat.executionView": [
         {
-          "id": "firemat-execution-history-view",
+          "id": "firebase.firemat.executionHistoryView",
           "name": "Firemat Execution History"
         }
       ]

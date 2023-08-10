@@ -30,7 +30,7 @@ export function activate(context: vscode.ExtensionContext) {
   const firematExecutionHistoryTreeDataProvider =
     new FirematExecutionHistoryTreeDataProvider();
   const firematExecutionHistoryTreeView = vscode.window.createTreeView(
-    "firemat-execution-history-view",
+    "firebase.firemat.executionHistoryView",
     { treeDataProvider: firematExecutionHistoryTreeDataProvider }
   );
   const firematCodeLensProvider = new FirematCodeLensProvider();

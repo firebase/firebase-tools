@@ -15,7 +15,7 @@ export class ExecutionTreeItem extends vscode.TreeItem {
   parent?: ExecutionTreeItem;
   children: ExecutionTreeItem[] = [];
   executionId?: string;
-  exeuctionState = ExecutionState.INIT;
+  executionState = ExecutionState.INIT;
   private isFinished: boolean;
 
   constructor(
@@ -45,7 +45,7 @@ export class ExecutionTreeItem extends vscode.TreeItem {
 
   setState(isFinished: boolean, executionState: ExecutionState) {
     this.isFinished = isFinished;
-    this.exeuctionState = executionState;
+    this.executionState = executionState;
     this.updateContext();
   }
 
@@ -63,12 +63,12 @@ export class ExecutionTreeItem extends vscode.TreeItem {
   updateContext() {
     if (this.isFinished) {
       this.contextValue = "executionTreeItem-finished";
-      if (this.exeuctionState === ExecutionState.FINISHED) {
+      if (this.executionState === ExecutionState.FINISHED) {
         this.iconPath = new vscode.ThemeIcon(
           "pass",
           new vscode.ThemeColor("testing.iconPassed")
         );
-      } else if (this.exeuctionState === ExecutionState.CANCELLED) {
+      } else if (this.executionState === ExecutionState.CANCELLED) {
         this.iconPath = new vscode.ThemeIcon(
           "warning",
           new vscode.ThemeColor("testing.iconErrored")
@@ -95,14 +95,14 @@ export class ExecutionTreeItem extends vscode.TreeItem {
 export class ExecutionHistoryTreeDataProvider
   implements vscode.TreeDataProvider<ExecutionTreeItem>
 {
-  private readonly onDidChangeTreeDataImitter = new vscode.EventEmitter<void>();
+  private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<void>();
   readonly onDidChangeTreeData: vscode.Event<void> =
-    this.onDidChangeTreeDataImitter.event;
+    this.onDidChangeTreeDataEmitter.event;
   executionItems: ExecutionTreeItem[] = [];
 
   refresh(executionItems: ExecutionTreeItem[]) {
     this.executionItems = executionItems;
-    this.onDidChangeTreeDataImitter.fire(undefined);
+    this.onDidChangeTreeDataEmitter.fire(undefined);
   }
 
   getTreeItem(element: ExecutionTreeItem): vscode.TreeItem {
