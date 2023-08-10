@@ -12,6 +12,7 @@ import { setupSidebar } from "./sidebar";
 import { setupWorkflow } from "./workflow";
 import { pluginLogger } from "./logger-wrapper";
 import { CodeLensProvider as FirematCodeLensProvider } from "./firemat/code-lens-provider";
+import { ExecutionResultsViewProvider as FirematExecutionResultsViewProvider } from "./firemat/execution-results-provider";
 
 const broker = createBroker<
   ExtensionToWebviewParamsMap,
@@ -27,8 +28,15 @@ export function activate(context: vscode.ExtensionContext) {
   setupSidebar(context, broker);
 
   const firematCodeLensProvider = new FirematCodeLensProvider();
+  const firematExecutionResultsViewProvider =
+    new FirematExecutionResultsViewProvider(context.extensionUri, broker);
 
   context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      "firemat.executionResultsView",
+      firematExecutionResultsViewProvider,
+      { webviewOptions: { retainContextWhenHidden: true } }
+    ),
     vscode.commands.registerCommand(
       "firebase.firemat.executeOperation",
       () => {}

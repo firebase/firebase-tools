@@ -57,6 +57,13 @@
           "title": "Firebase",
           "icon": "$(mono-firebase)"
         }
+      ],
+      "panel": [
+        {
+          "id": "firemat-execution-view",
+          "title": "Firemat Execution",
+          "icon": "$(mono-firebase)"
+        }
       ]
     },
     "icons": {
@@ -74,6 +81,13 @@
           "type": "webview",
           "id": "firebase.sidebarView",
           "name": "Firebase"
+        }
+      ],
+      "firemat-execution-view": [
+        {
+          "type": "webview",
+          "id": "firemat.executionResultsView",
+          "name": "Firemat Execution Results"
         }
       ]
     },
