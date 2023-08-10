@@ -57,6 +57,13 @@
           "title": "Firebase",
           "icon": "$(mono-firebase)"
         }
+      ],
+      "panel": [
+        {
+          "id": "firemat-execution-view",
+          "title": "Firemat Execution",
+          "icon": "$(mono-firebase)"
+        }
       ]
     },
     "icons": {
@@ -83,6 +90,11 @@
         }
       ],
       "firebase.firemat.executionView": [
+        {
+          "type": "webview",
+          "id": "firebase.firemat.executionResultsView",
+          "name": "Firemat Execution Results"
+        },
         {
           "id": "firebase.firemat.executionHistoryView",
           "name": "Firemat Execution History"
