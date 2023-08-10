@@ -75,6 +75,12 @@
           "id": "firebase.sidebarView",
           "name": "Firebase"
         }
+      ],
+      "firemat-explorer-view": [
+        {
+          "id": "firemat-explorer-view",
+          "name": "Firemat Explorer"
+        }
       ]
     },
     "jsonValidation": [

@@ -12,6 +12,7 @@ import { setupSidebar } from "./sidebar";
 import { setupWorkflow } from "./workflow";
 import { pluginLogger } from "./logger-wrapper";
 import { CodeLensProvider as FirematCodeLensProvider } from "./firemat/code-lens-provider";
+import { ExplorerTreeDataProvider as FirematExplorerTreeDataProvider } from "./firemat/explorer-provider";
 
 const broker = createBroker<
   ExtensionToWebviewParamsMap,
@@ -27,6 +28,11 @@ export function activate(context: vscode.ExtensionContext) {
   setupSidebar(context, broker);
 
   const firematCodeLensProvider = new FirematCodeLensProvider();
+  const firematExplorerTreeDataProvider = new FirematExplorerTreeDataProvider();
+  const firematExplorerTreeView = vscode.window.createTreeView(
+    "firemat-explorer-view",
+    { treeDataProvider: firematExplorerTreeDataProvider }
+  );
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
