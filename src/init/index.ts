@@ -22,6 +22,7 @@ const featureFns = new Map<string, (setup: any, config: any, options?: any) => P
   ["account", features.account],
   ["database", features.database],
   ["firestore", features.firestore],
+  ["firemat", features.firemat],
   ["functions", features.functions],
   ["hosting", features.hosting],
   ["storage", features.storage],

@@ -1,0 +1,18 @@
+mutation createOrder($name: String!) {
+  order_insert(name: $name) {
+    id
+    name
+  }
+}
+
+mutation addOrderItem($orderId: ID!, $productId: ID!, $quantity: Int = 1) {
+  orderItem_insert(
+    orderId: $orderID,
+    productId: $productId,
+    quantity: $quantity
+  ) {
+    order { id, name }
+    product { id, name, price }
+    quantity
+  }
+}

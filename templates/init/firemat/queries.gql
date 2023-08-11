@@ -1,0 +1,9 @@
+query listOrders {
+  orders(orderBy: {createTime: DESC}) {
+    createTime
+    items: orderItems {
+      product { name, price }
+      quantity
+    }
+  }
+}

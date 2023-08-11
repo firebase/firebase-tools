@@ -429,6 +429,15 @@
         "extensions": {
             "$ref": "#/definitions/ExtensionsConfig"
         },
+        "firemat": {
+            "additionalProperties": false,
+            "properties": {
+                "source": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
         "firestore": {
             "anyOf": [
                 {

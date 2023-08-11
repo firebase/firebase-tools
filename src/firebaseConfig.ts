@@ -233,6 +233,10 @@ export type EmulatorsConfig = {
 
 export type ExtensionsConfig = Record<string, string>;
 
+export type FirematConfig = {
+  source?: string;
+};
+
 export type FirebaseConfig = {
   /**
    * @TJS-format uri
@@ -246,4 +250,5 @@ export type FirebaseConfig = {
   remoteconfig?: RemoteConfigConfig;
   emulators?: EmulatorsConfig;
   extensions?: ExtensionsConfig;
+  firemat?: FirematConfig;
 };

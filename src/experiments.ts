@@ -103,6 +103,12 @@ export const ALL_EXPERIMENTS = experiments({
     default: true,
     public: false,
   },
+
+  firemat: {
+    shortDescription: "Enable FireMAT-related features.",
+    fullDescription: "Enable FireMAT-related features.",
+    public: false,
+  },
 });
 
 export type ExperimentName = keyof typeof ALL_EXPERIMENTS;

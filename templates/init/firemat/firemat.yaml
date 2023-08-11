@@ -1,0 +1,7 @@
+specVersion: v1alpha
+schema:
+  main:
+    sourceDir: ./schema
+operationSet:
+  app:
+    sourceDir: ./operations

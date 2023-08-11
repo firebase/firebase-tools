@@ -81,6 +81,14 @@ if (isEnabled("frameworks")) {
   });
 }
 
+if (isEnabled("firemat")) {
+  choices.push({
+    value: "firemat",
+    name: "FireMAT: Start a new MAT project.",
+    checked: false,
+  });
+}
+
 const featureNames = choices.map((choice) => choice.value);
 
 const DESCRIPTION = `Interactively configure the current directory as a Firebase project or initialize new features in an already configured Firebase project directory.

@@ -32,6 +32,7 @@ export class Config {
     "hosting",
     "storage",
     "remoteconfig",
+    "firemat",
   ];
 
   public options: any;
