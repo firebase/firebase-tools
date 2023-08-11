@@ -144,6 +144,9 @@ export function validateOptions(options: any, fileName: string): any {
       "Please specify data file format in file name, or use `format` parameter"
     );
   }
+  if (options.tenantId) {
+        exportOptions.tenantId = options.tenantId;
+  }
   return exportOptions;
 }
 
@@ -177,6 +180,7 @@ export async function serialExportUsers(projectId: string, options: any): Promis
   const postBody: any = {
     targetProjectId: projectId,
     maxResults: options.batchSize,
+    tenantId: options.tenantId
   };
   if (options.nextPageToken) {
     postBody.nextPageToken = options.nextPageToken;

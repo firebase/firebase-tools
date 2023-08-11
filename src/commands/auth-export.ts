@@ -14,6 +14,7 @@ interface exportOptions {
   format: string;
   writeStream: fs.WriteStream;
   batchSize: number;
+  tenantId: string;
 }
 
 export const command = new Command("auth:export [dataFile]")
@@ -22,6 +23,7 @@ export const command = new Command("auth:export [dataFile]")
     "--format <format>",
     "Format of exported data (csv, json). Ignored if <dataFile> has format extension."
   )
+  .option("--tenantId <tenantId>", "tenantId to collect")
   .before(requirePermissions, ["firebaseauth.users.get"])
   .action((dataFile, options) => {
     const projectId = needProjectId(options);
@@ -37,6 +39,7 @@ export const command = new Command("auth:export [dataFile]")
       format: checkRes.format,
       writeStream,
       batchSize: MAX_BATCH_SIZE,
+      tenantId: checkRes.tenantId
     };
     logger.info("Exporting accounts to " + clc.bold(dataFile));
     return serialExportUsers(projectId, exportOptions).then(() => {
