@@ -54,6 +54,11 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
     expectedSize: 65137179,
     expectedChecksum: "b59a6e705031a54a69e5e1dced7ca9bf",
   },
+  firemat: {
+    version: "0.0.0",
+    expectedSize: 15343616,
+    expectedChecksum: "2e4ff6cd3b8f4cbcd54909d37eb9e755",
+  },
 };
 
 export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
@@ -139,6 +144,22 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
       namePrefix: "pubsub-emulator",
     },
   },
+  firemat: {
+    downloadPath: path.join(
+      CACHE_DIR,
+      `firemat-emulator-${EMULATOR_UPDATE_DETAILS.firemat.version}`
+    ),
+    version: EMULATOR_UPDATE_DETAILS.firemat.version,
+    binaryPath: path.join(CACHE_DIR, `firemat-emulator-${EMULATOR_UPDATE_DETAILS.firemat.version}`),
+    opts: {
+      cacheDir: CACHE_DIR,
+      remoteUrl: `https://storage.googleapis.com/firemat-preview-drop/emulator/firemat-emulator-v${EMULATOR_UPDATE_DETAILS.firemat.version}`,
+      expectedSize: EMULATOR_UPDATE_DETAILS.firemat.expectedSize,
+      expectedChecksum: EMULATOR_UPDATE_DETAILS.firemat.expectedChecksum,
+      namePrefix: "firemat-emulator",
+      auth: true,
+    },
+  },
 };
 
 const EmulatorDetails: { [s in DownloadableEmulators]: DownloadableEmulatorDetails } = {
@@ -164,6 +185,11 @@ const EmulatorDetails: { [s in DownloadableEmulators]: DownloadableEmulatorDetai
   },
   ui: {
     name: Emulators.UI,
+    instance: null,
+    stdout: null,
+  },
+  firemat: {
+    name: Emulators.FIREMAT,
     instance: null,
     stdout: null,
   },
@@ -231,6 +257,12 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     args: [getExecPath(Emulators.UI)],
     optionalArgs: [],
     joinArgs: false,
+  },
+  firemat: {
+    binary: getExecPath(Emulators.FIREMAT),
+    args: [],
+    optionalArgs: ["port"],
+    joinArgs: true,
   },
 };
 

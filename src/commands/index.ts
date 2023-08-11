@@ -175,6 +175,9 @@ export function load(client: any): any {
   client.setup.emulators.pubsub = loadCommand("setup-emulators-pubsub");
   client.setup.emulators.storage = loadCommand("setup-emulators-storage");
   client.setup.emulators.ui = loadCommand("setup-emulators-ui");
+  if (experiments.isEnabled("firemat")) {
+    client.setup.emulators.firemat = loadCommand("setup-emulators-firemat");
+  }
   client.target = loadCommand("target");
   client.target.apply = loadCommand("target-apply");
   client.target.clear = loadCommand("target-clear");

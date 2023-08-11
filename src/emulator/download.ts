@@ -21,7 +21,7 @@ export async function downloadEmulator(name: DownloadableEmulators): Promise<voi
   );
   fs.ensureDirSync(emulator.opts.cacheDir);
 
-  const tmpfile = await downloadUtils.downloadToTmp(emulator.opts.remoteUrl);
+  const tmpfile = await downloadUtils.downloadToTmp(emulator.opts.remoteUrl, !!emulator.opts.auth);
 
   if (!emulator.opts.skipChecksumAndSize) {
     await validateSize(tmpfile, emulator.opts.expectedSize);

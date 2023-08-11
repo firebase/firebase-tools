@@ -315,6 +315,18 @@
                     },
                     "type": "object"
                 },
+                "firemat": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "host": {
+                            "type": "string"
+                        },
+                        "port": {
+                            "type": "number"
+                        }
+                    },
+                    "type": "object"
+                },
                 "firestore": {
                     "additionalProperties": false,
                     "properties": {

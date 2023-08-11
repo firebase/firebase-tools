@@ -229,6 +229,10 @@ export type EmulatorsConfig = {
     port?: number;
   };
   singleProjectMode?: boolean;
+  firemat?: {
+    host?: string;
+    port?: number;
+  };
 };
 
 export type ExtensionsConfig = Record<string, string>;
