@@ -18,14 +18,8 @@ import {
 } from "./types";
 import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "./constants";
 import { EmulatableBackend, FunctionsEmulator } from "./functionsEmulator";
-import { AuthEmulator, SingleProjectMode } from "./auth";
-import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
-import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
-import { HostingEmulator } from "./hostingEmulator";
-import { EventarcEmulator } from "./eventarcEmulator";
 import { FirebaseError } from "../error";
 import { getProjectId, needProjectId, getAliases, needProjectNumber } from "../projectUtils";
-import { PubsubEmulator } from "./pubsubEmulator";
 import * as commandUtils from "./commandUtils";
 import { EmulatorHub } from "./hub";
 import { ExportMetadata, HubExport } from "./hubExport";
@@ -41,7 +35,6 @@ import {
   MIN_SUPPORTED_JAVA_MAJOR_VERSION,
 } from "./commandUtils";
 import { fileExistsSync } from "../fsutils";
-import { StorageEmulator } from "./storage";
 import { getStorageRulesConfig } from "./storage/rules/config";
 import { getDefaultDatabaseInstance } from "../getDefaultDatabaseInstance";
 import { getProjectDefaultAccount } from "../auth";
@@ -53,6 +46,15 @@ import { requiresJava } from "./downloadableEmulators";
 import { prepareFrameworks } from "../frameworks";
 import * as experiments from "../experiments";
 import { EmulatorListenConfig, PortName, resolveHostAndAssignPorts } from "./portUtils";
+
+import { AuthEmulator, SingleProjectMode } from "./auth";
+import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
+import { EventarcEmulator } from "./eventarcEmulator";
+import { FirematEmulator } from "./firematEmulator";
+import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
+import { HostingEmulator } from "./hostingEmulator";
+import { PubsubEmulator } from "./pubsubEmulator";
+import { StorageEmulator } from "./storage";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
@@ -801,6 +803,17 @@ export async function startAll(
       auto_download: true,
     });
     await startEmulator(pubsubEmulator);
+  }
+
+  if (listenForEmulator.firemat) {
+    const firematAddr = legacyGetFirstAddr(Emulators.FIREMAT);
+    const firematEmulator = new FirematEmulator({
+      host: firematAddr.host,
+      port: firematAddr.port,
+      projectId,
+      auto_download: true,
+    });
+    await startEmulator(firematEmulator);
   }
 
   if (listenForEmulator.storage) {
