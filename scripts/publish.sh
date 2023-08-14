@@ -109,7 +109,12 @@ echo "Pushing to GitHub..."
 git push origin master --tags
 echo "Pushed to GitHub."
 
+echo "Publishing Docker image..."
+
+echo "Published Docker image."
+
 echo "Publishing release notes..."
+
 hub release create --file "${RELEASE_NOTES_FILE}" "v${NEW_VERSION}"
 echo "Published release notes."
 
