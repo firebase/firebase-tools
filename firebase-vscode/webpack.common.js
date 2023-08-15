@@ -36,7 +36,8 @@ const extensionConfig = {
       "marked-terminal": path.resolve(__dirname, 'src/stubs/empty-class.js'),
       // "ora": path.resolve(__dirname, 'src/stubs/empty-function.js'),
       "commander": path.resolve(__dirname, 'src/stubs/empty-class.js'),
-      "proxy-agent": path.resolve(__dirname, 'src/stubs/empty-class.js'),
+      //    "proxy-agent": path.resolve(__dirname, 'src/stubs/empty-class.js'),
+      "superstatic": path.resolve(__dirname, 'src/stubs/empty-class.js'),
       "inquirer": path.resolve(__dirname, 'src/stubs/inquirer-stub.js'),
       // This is used for Github deploy to hosting - will need to restore
       // or find another solution if we add that feature.
