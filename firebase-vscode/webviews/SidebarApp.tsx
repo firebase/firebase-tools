@@ -1,4 +1,4 @@
-import React, { StrictMode, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Spacer } from "./components/ui/Spacer";
 import { broker } from "./globals/html-broker";
 import { User } from "../../src/types/auth";

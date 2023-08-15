@@ -4,13 +4,13 @@ import { signal, computed } from "@preact/signals-react";
 import { User } from "../types/auth";
 
 export enum Environment {
-  UNESPECIFIED,
+  UNSPECIFIED,
   VSC,
   IDX,
 }
 
 function createExtensionState() {
-  const environment = signal(Environment.UNESPECIFIED);
+  const environment = signal(Environment.UNSPECIFIED);
   const users = signal<User[]>([]);
   const selectedUserEmail = signal("");
   const projectId = signal("");
@@ -25,6 +25,7 @@ function createExtensionState() {
 const ExtensionState =
   createContext<ReturnType<typeof createExtensionState>>(null);
 
+/** Global extension state, this should live high in the react-tree to minimize superfluous renders */
 export function ExtensionStateProvider({
   children,
 }: {
