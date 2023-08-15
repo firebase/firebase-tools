@@ -36,8 +36,6 @@ const extensionConfig = {
       "marked-terminal": path.resolve(__dirname, 'src/stubs/empty-class.js'),
       // "ora": path.resolve(__dirname, 'src/stubs/empty-function.js'),
       "commander": path.resolve(__dirname, 'src/stubs/empty-class.js'),
-      //    "proxy-agent": path.resolve(__dirname, 'src/stubs/empty-class.js'),
-      "superstatic": path.resolve(__dirname, 'src/stubs/empty-class.js'),
       "inquirer": path.resolve(__dirname, 'src/stubs/inquirer-stub.js'),
       // This is used for Github deploy to hosting - will need to restore
       // or find another solution if we add that feature.
@@ -125,6 +123,26 @@ const extensionConfig = {
           ],
         },
       },
+      {
+        test: /\.js$/,
+        loader: "string-replace-loader",
+        options: {
+          multiple: [
+            // firebase-tools/node_modules/superstatic/lib/utils/patterns.js
+            // Stub out the optional RE2 dependency
+            {
+              search: 'RE2 = require("re2");',
+              replace: 'RE2 = null;'
+            },
+            // firebase-tools/node_modules/superstatic/lib/middleware/index.js
+            // Stub out these runtime requirements
+            {
+              search: 'const mware = require("./" + _.kebabCase(name))(spec, config);',
+              replace: 'return "";'
+            }
+          ],
+        }
+      }
     ],
   },
   plugins: [
@@ -144,6 +162,11 @@ const extensionConfig = {
           from: "*.js",
           to: './',
           context: "../src/deploy/functions/runtimes/node",
+        },
+        {
+          from: "*.js",
+          to: './',
+          context: "../node_modules/superstatic/lib/middleware",
         }
       ],
     })

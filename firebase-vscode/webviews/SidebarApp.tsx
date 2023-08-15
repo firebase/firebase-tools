@@ -161,7 +161,7 @@ export function SidebarApp() {
         // Only load the emulator panel if we have a user, firebase.json and this isn't Monospace
         // The user login requirement can be removed in the future but the panel will have to
         // be restricted to full-offline emulation only.
-        !!user && !!firebaseJson && !process.env.MONOSPACE_ENV && (
+        !!user && !!firebaseJson && !env?.isMonospace && (
           <EmulatorPanel firebaseJson={firebaseJson} projectId={projectId} />
         )
       }
