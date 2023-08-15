@@ -10,4 +10,4 @@ RUN apk add --no-cache python3 py3-pip openjdk11-jre bash && \
     firebase setup:emulators:ui && \
     rm -rf /var/cache/apk/*
 
-ENTRYPOINT [ "cd /usr/local/lib/node_modules/firebase-tools/node_modules" ]
+ENTRYPOINT [ "firebase" ]

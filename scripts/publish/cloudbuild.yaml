@@ -127,13 +127,11 @@ steps:
   - name: "gcr.io/cloud-builders/docker"
     entrypoint: "sh"
     args:
-      [
-        "-c",
-        "docker build -t gcr.io/$PROJECT_ID/firebase:$(cat /workspace/version_number.txt) -t gcr.io/$PROJECT_ID/firebase:latest -f ./firebase-docker-image/Dockerfile .",
-      ]
+      - "-c"
+      - "docker build -t gcr.io/$PROJECT_ID/firebase:$(cat /workspace/version_number.txt) -t gcr.io/${_ARTIFACT_REGISTRY_PROJECT}firebase:latest -f ./firebase-docker-image/Dockerfile ."
 
 images:
-  - "gcr.io/$PROJECT_ID/firebase"
+  - "gcr.io/$_ARTIFACT_REGISTRY_PROJECT/firebase"
 
 timeout: 1200s # 20 minutes
 
@@ -148,3 +146,4 @@ substitutions:
   _KEY_NAME: "publish"
   _REPOSITORY_ORG: "firebase"
   _REPOSITORY_NAME: "firebase-tools"
+  _ARTIFACT_REGISTRY_PROJECT: "firebase-cli"
