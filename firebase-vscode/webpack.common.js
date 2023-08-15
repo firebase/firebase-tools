@@ -162,11 +162,6 @@ const extensionConfig = {
           from: "*.js",
           to: './',
           context: "../src/deploy/functions/runtimes/node",
-        },
-        {
-          from: "*.js",
-          to: './',
-          context: "../node_modules/superstatic/lib/middleware",
         }
       ],
     })
