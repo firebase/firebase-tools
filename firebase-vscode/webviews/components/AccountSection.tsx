@@ -143,19 +143,21 @@ function UserSelectionMenu({
         {!isMonospace && <VSCodeDivider />}
         {allUsersSorted.map((user: UserWithType | ServiceAccountUser) => (
           <>
-            {!isMonospace && (<MenuItem
-              onClick={() => {
-                broker.send("requestChangeUser", { user });
-                onClose();
-              }}
-              key={user.email}
-            >
-              {user?.type === "service_account"
-                ? isMonospace
-                  ? TEXT.MONOSPACE_LOGIN_SELECTION_ITEM
-                  : TEXT.VSCE_SERVICE_ACCOUNT_SELECTION_ITEM
-                : user.email}
-            </MenuItem>)}
+            {!isMonospace && (
+              <MenuItem
+                onClick={() => {
+                  broker.send("requestChangeUser", { user });
+                  onClose();
+                }}
+                key={user.email}
+              >
+                {user?.type === "service_account"
+                  ? isMonospace
+                    ? TEXT.MONOSPACE_LOGIN_SELECTION_ITEM
+                    : TEXT.VSCE_SERVICE_ACCOUNT_SELECTION_ITEM
+                  : user.email}
+              </MenuItem>
+            )}
             {user?.type === "service_account" && (
               <MenuItem
                 onClick={() => {
@@ -169,7 +171,9 @@ function UserSelectionMenu({
                 }}
                 key="service-account-email"
               >
-                <Label level={isMonospace ? 3 : 2}>{TEXT.SHOW_SERVICE_ACCOUNT}</Label>
+                <Label level={isMonospace ? 3 : 2}>
+                  {TEXT.SHOW_SERVICE_ACCOUNT}
+                </Label>
               </MenuItem>
             )}
           </>
