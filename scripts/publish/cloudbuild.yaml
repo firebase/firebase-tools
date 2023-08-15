@@ -122,16 +122,16 @@ steps:
     name: "node"
     entrypoint: "sh"
     args: ["-c", "npm view firebase-tools version > /workspace/version_number.txt"]
-  # Publish the Firebase docker image
+
   # Publish the Firebase docker image
   - name: "gcr.io/cloud-builders/docker"
     entrypoint: "sh"
     args:
       - "-c"
-      - "docker build -t gcr.io/$PROJECT_ID/firebase:$(cat /workspace/version_number.txt) -t gcr.io/${_ARTIFACT_REGISTRY_PROJECT}firebase:latest -f ./firebase-docker-image/Dockerfile ."
+      - "docker build -t us-central1-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase:$(cat /workspace/version_number.txt) -t us-central1-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase:latest -f ./firebase-docker-image/Dockerfile ."
 
 images:
-  - "gcr.io/$_ARTIFACT_REGISTRY_PROJECT/firebase"
+  - "us-central1-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase"
 
 timeout: 1200s # 20 minutes
 
