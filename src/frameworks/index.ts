@@ -175,7 +175,8 @@ export async function prepareFrameworks(
       );
     }
     const getProjectPath = (...args: string[]) => join(projectRoot, source, ...args);
-    const functionId = `ssr${site.toLowerCase().replace(/-/g, "")}`;
+    // Combined traffic tag (19 chars) and functionId cannot exceed 46 characters.
+    const functionId = `ssr${site.toLowerCase().replace(/-/g, "").substring(0, 20)}`;
     const usesFirebaseAdminSdk = !!findDependency("firebase-admin", { cwd: getProjectPath() });
     const usesFirebaseJsSdk = !!findDependency("@firebase/app", { cwd: getProjectPath() });
     if (usesFirebaseAdminSdk) {
