@@ -1,4 +1,0 @@
-- Increased functions emulator HTTPS body size limit to 32mb to match production. (#6201)
-- Fixed Astro web framework bug when loading configuration for version `2.9.7` and above. (#6213)
-- Increase Next.js config bundle timeout to 60 seconds. (#6214)
-- Hides "shutdown requested via /\_\_/quitquitquit" log during functions deploy when `--debug` flag is not passed. (#6212)
