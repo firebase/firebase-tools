@@ -130,12 +130,14 @@ const extensionConfig = {
           multiple: [
             // firebase-tools/node_modules/superstatic/lib/utils/patterns.js
             // Stub out the optional RE2 dependency
+            // TODO: copy the dependency into dist instead of removing them via search/replace.
             {
               search: 'RE2 = require("re2");',
               replace: 'RE2 = null;'
             },
             // firebase-tools/node_modules/superstatic/lib/middleware/index.js
             // Stub out these runtime requirements
+            // TODO: copy the dependencies into dist instead of removing them via search/replace.
             {
               search: 'const mware = require("./" + _.kebabCase(name))(spec, config);',
               replace: 'return "";'
