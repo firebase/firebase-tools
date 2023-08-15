@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "12.4.4",
+  "version": "12.4.7",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -134,7 +134,7 @@
     "p-limit": "^3.0.1",
     "portfinder": "^1.0.32",
     "progress": "^2.0.3",
-    "proxy-agent": "^5.0.0",
+    "proxy-agent": "^6.3.0",
     "request": "^2.87.0",
     "retry": "^0.13.1",
     "rimraf": "^3.0.0",

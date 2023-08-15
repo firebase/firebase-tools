@@ -702,8 +702,8 @@ async function refreshTokens(
   }
 }
 
-export async function getAccessToken(refreshToken: string, authScopes: string[]) {
-  if (haveValidTokens(refreshToken, authScopes)) {
+export async function getAccessToken(refreshToken: string, authScopes: string[]): Promise<Tokens> {
+  if (haveValidTokens(refreshToken, authScopes) && lastAccessToken) {
     return lastAccessToken;
   }
 
