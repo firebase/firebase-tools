@@ -222,7 +222,6 @@ export class Command {
               ])
             );
           }
-          process.exit();
         })
         .catch(async (err) => {
           if (getInheritedOption(options, "json")) {
