@@ -64,7 +64,7 @@
       "firebase": [
         {
           "type": "webview",
-          "id": "firebase.sidebarView",
+          "id": "sidebar",
           "name": "Firebase"
         }
       ]
