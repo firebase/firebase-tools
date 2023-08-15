@@ -132,6 +132,19 @@ export async function deleteServiceAccount(projectId: string, accountEmail: stri
 }
 
 /**
+ * Lists every key for a given service account.
+ */
+export async function listServiceAccountKeys(
+  projectId: string,
+  serviceAccountName: string
+): Promise<ServiceAccountKey[]> {
+  const response = await apiClient.get<{ keys: ServiceAccountKey[] }>(
+    `/projects/${projectId}/serviceAccounts/${serviceAccountName}@${projectId}.iam.gserviceaccount.com/keys`
+  );
+  return response.body.keys;
+}
+
+/**
  * Given a name, returns corresponding Role, see
  * https://cloud.google.com/iam/reference/rest/v1/organizations.roles#Role
  * for more details.

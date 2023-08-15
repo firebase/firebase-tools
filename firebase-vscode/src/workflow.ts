@@ -339,7 +339,7 @@ export async function setupWorkflow(
       readAndSendFirebaseConfigs(broker, context);
       broker.send("notifyHostingInitDone",
         { success, projectId, folderPath: currentOptions.cwd, framework: currentFramework });
-      await fetchChannels(true);
+      await fetchChannels(broker, true);
     } else {
       broker.send("notifyHostingInitDone",
         { success, projectId, folderPath: currentOptions.cwd });
