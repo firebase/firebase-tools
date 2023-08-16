@@ -1,0 +1,1 @@
+- Fixed issue where the Extensions emulator would error when emualting local extensions with no params. (#6271)
