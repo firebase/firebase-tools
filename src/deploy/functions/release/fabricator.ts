@@ -191,7 +191,7 @@ export class Fabricator {
     if (update.endpoint.platform === "gcfv1") {
       await this.updateV1Function(update.endpoint, scraper);
     } else if (update.endpoint.platform === "gcfv2") {
-      await this.updateV2Function(update.endpoint);
+      await this.updateV2Function(update.endpoint, scraper);
     } else {
       assertExhaustive(update.endpoint.platform);
     }
@@ -276,7 +276,7 @@ export class Fabricator {
     }
   }
 
-  async createV2Function(endpoint: backend.Endpoint, scraper?: SourceTokenScraper): Promise<void> {
+  async createV2Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
     const storageSource = this.sources[endpoint.codebase!]?.storage;
     if (!storageSource) {
       logger.debug("Precondition failed. Cannot create a GCFv2 function without storage");
@@ -351,16 +351,13 @@ export class Fabricator {
     while (!resultFunction) {
       resultFunction = await this.functionExecutor
         .run(async () => {
-          apiFunction.buildConfig.sourceToken = await scraper?.getToken();
-          console.log(
-            `${apiFunction.name} source token: ${apiFunction.buildConfig.sourceToken || "none"}`
-          );
+          apiFunction.buildConfig.sourceToken = await scraper.getToken();
           const op: { name: string } = await gcfV2.createFunction(apiFunction);
           return await poller.pollOperation<gcfV2.OutputCloudFunction>({
             ...gcfV2PollerOptions,
             pollerName: `create-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
             operationResourceName: op.name,
-            onPoll: scraper?.poller,
+            onPoll: scraper.poller,
           });
         })
         .catch(async (err: any) => {
@@ -468,7 +465,7 @@ export class Fabricator {
     }
   }
 
-  async updateV2Function(endpoint: backend.Endpoint): Promise<void> {
+  async updateV2Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
     const storageSource = this.sources[endpoint.codebase!]?.storage;
     if (!storageSource) {
       logger.debug("Precondition failed. Cannot update a GCFv2 function without storage");
@@ -487,11 +484,13 @@ export class Fabricator {
     const resultFunction = await this.functionExecutor
       .run(
         async () => {
+          apiFunction.buildConfig.sourceToken = await scraper.getToken();
           const op: { name: string } = await gcfV2.updateFunction(apiFunction);
           return await poller.pollOperation<gcfV2.OutputCloudFunction>({
             ...gcfV2PollerOptions,
             pollerName: `update-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
             operationResourceName: op.name,
+            onPoll: scraper.poller,
           });
         },
         { retryCodes: [...DEFAULT_RETRY_CODES, CLOUD_RUN_RESOURCE_EXHAUSTED_CODE] }
