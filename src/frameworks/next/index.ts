@@ -76,6 +76,7 @@ export const support = SupportLevel.Preview;
 export const type = FrameworkType.MetaFramework;
 export const docsUrl = "https://firebase.google.com/docs/hosting/frameworks/nextjs";
 
+const BUNDLE_NEXT_CONFIG_TIMEOUT = 60_000;
 const DEFAULT_NUMBER_OF_REASONS_TO_LIST = 5;
 
 function getReactVersion(cwd: string): string | undefined {
@@ -471,8 +472,6 @@ export async function ɵcodegenPublicDirectory(
     })
   );
 }
-
-const BUNDLE_NEXT_CONFIG_TIMEOUT = 10_000;
 
 /**
  * Create a directory for SSR content.

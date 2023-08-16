@@ -17,6 +17,7 @@ import {
   toSecretVersionResourceName,
 } from "../gcp/secretManager";
 import { check } from "../ensureApiEnabled";
+import { requireAuth } from "../requireAuth";
 import * as secrets from "../functions/secrets";
 import * as backend from "../deploy/functions/backend";
 import * as args from "../deploy/functions/args";
@@ -24,6 +25,7 @@ import * as args from "../deploy/functions/args";
 export const command = new Command("functions:secrets:set <KEY>")
   .description("Create or update a secret for use in Cloud Functions for Firebase.")
   .withForce("Automatically updates functions to use the new secret.")
+  .before(requireAuth)
   .before(secrets.ensureApi)
   .before(requirePermissions, [
     "secretmanager.secrets.create",

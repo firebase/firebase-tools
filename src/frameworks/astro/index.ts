@@ -10,15 +10,11 @@ import {
   findNPMDependency,
   getNodeModuleBin,
 } from "../utils";
-import { getBootstrapScript, getConfig } from "./utils";
+import { getAstroVersion, getBootstrapScript, getConfig } from "./utils";
 
 export const name = "Astro";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.MetaFramework;
-
-function getAstroVersion(cwd: string): string | undefined {
-  return findNPMDependency("astro", { cwd, depth: 0, omitDev: false })?.version;
-}
 
 export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!existsSync(join(dir, "package.json"))) return;

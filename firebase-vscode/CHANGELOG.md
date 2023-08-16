@@ -1,5 +1,14 @@
 # Change Log
 
+## 0.0.25 (unreleased)
+
+- Replace predeploy hack with something more robust.
+
+## 0.0.24
+
+- Remove proxy-agent stub #6172
+- Pull in latest CLI changes (July 25, 2023)
+
 ## 0.0.24-alpha.1
 
 - Add more user-friendly API permission denied messages
