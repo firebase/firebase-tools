@@ -208,7 +208,7 @@ export class Delegate {
           stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "pipe"],
         });
         childProcess.stdout?.on("data", (chunk: Buffer) => {
-          logger.debug(chunk.toString("utf8"));
+          logger.info(chunk.toString("utf8"));
         });
         childProcess.stderr?.on("data", (chunk: Buffer) => {
           logger.error(chunk.toString("utf8"));
