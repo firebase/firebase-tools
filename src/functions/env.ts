@@ -410,13 +410,13 @@ export async function loadFirebaseEnvs(
   projectId: string
 ): Promise<Record<string, string>> {
   let defaultCredPath = "";
-  const account = getProjectDefaultAccount()
+  const account = getProjectDefaultAccount();
   if (account !== undefined) {
-    defaultCredPath = await getCredentialPathAsync(account) || "";
+    defaultCredPath = (await getCredentialPathAsync(account)) || "";
   }
   return {
     FIREBASE_CONFIG: JSON.stringify(firebaseConfig),
     GCLOUD_PROJECT: projectId,
-    GOOGLE_APPLICATION_CREDENTIALS: defaultCredPath
+    GOOGLE_APPLICATION_CREDENTIALS: defaultCredPath,
   };
 }
