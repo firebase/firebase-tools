@@ -1,12 +1,10 @@
 import * as vscode from "vscode"; // from //third_party/vscode/src/vs:vscode
+import { effect } from "@preact/signals-core";
+import { ExecutionItem, ExecutionState, executions } from "./execution-store";
 
-enum ExecutionState {
-  INIT,
-  RUNNING,
-  CANCELLED,
-  ERRORED,
-  FINISHED,
-}
+const timeFormatter = new Intl.DateTimeFormat("default", {
+  timeStyle: "long",
+});
 
 /**
  * The TreeItem for an execution.
@@ -14,72 +12,37 @@ enum ExecutionState {
 export class ExecutionTreeItem extends vscode.TreeItem {
   parent?: ExecutionTreeItem;
   children: ExecutionTreeItem[] = [];
-  executionId?: string;
-  executionState = ExecutionState.INIT;
-  private isFinished: boolean;
 
-  constructor(
-    label: string | vscode.TreeItemLabel,
-    collapsibleState: vscode.TreeItemCollapsibleState,
-    children: ExecutionTreeItem[],
-    isFinished: boolean,
-    executionId?: string,
-    description?: string,
-    tooltip?: string,
-    command?: vscode.Command,
-    readonly startLine?: number,
-    readonly startColumn?: number
-  ) {
-    super(label, collapsibleState);
-    this.children = children;
-    this.isFinished = isFinished;
-    this.executionId = executionId;
-    this.description = description;
-    this.tooltip = tooltip;
-    this.command = command;
-    for (const c of children) {
-      c.parent = this;
-    }
+  constructor(readonly item: ExecutionItem) {
+    super(item.label, vscode.TreeItemCollapsibleState.None);
+    this.item = item;
+    this.description = timeFormatter.format(item.timestamp);
+    this.command = {
+      title: "Show result",
+      command: "firebase.firemat.selectExecutionResultToShow",
+      arguments: [item.executionId],
+    };
     this.updateContext();
-  }
-
-  setState(isFinished: boolean, executionState: ExecutionState) {
-    this.isFinished = isFinished;
-    this.executionState = executionState;
-    this.updateContext();
-  }
-
-  updateChildren(children: ExecutionTreeItem[]) {
-    this.children = children;
-    for (const c of children) {
-      c.parent = this;
-    }
-    this.collapsibleState =
-      children.length > 0
-        ? vscode.TreeItemCollapsibleState.Collapsed
-        : vscode.TreeItemCollapsibleState.None;
   }
 
   updateContext() {
-    if (this.isFinished) {
-      this.contextValue = "executionTreeItem-finished";
-      if (this.executionState === ExecutionState.FINISHED) {
-        this.iconPath = new vscode.ThemeIcon(
-          "pass",
-          new vscode.ThemeColor("testing.iconPassed")
-        );
-      } else if (this.executionState === ExecutionState.CANCELLED) {
-        this.iconPath = new vscode.ThemeIcon(
-          "warning",
-          new vscode.ThemeColor("testing.iconErrored")
-        );
-      } else {
-        this.iconPath = new vscode.ThemeIcon(
-          "close",
-          new vscode.ThemeColor("testing.iconFailed")
-        );
-      }
-    } else {
+    this.contextValue = "executionTreeItem-finished";
+    if (this.item.state === ExecutionState.FINISHED) {
+      this.iconPath = new vscode.ThemeIcon(
+        "pass",
+        new vscode.ThemeColor("testing.iconPassed")
+      );
+    } else if (this.item.state === ExecutionState.CANCELLED) {
+      this.iconPath = new vscode.ThemeIcon(
+        "warning",
+        new vscode.ThemeColor("testing.iconErrored")
+      );
+    } else if (this.item.state === ExecutionState.ERRORED) {
+      this.iconPath = new vscode.ThemeIcon(
+        "close",
+        new vscode.ThemeColor("testing.iconFailed")
+      );
+    } else if (this.item.state === ExecutionState.RUNNING) {
       this.contextValue = "executionTreeItem-running";
       this.iconPath = new vscode.ThemeIcon(
         "sync~spin",
@@ -100,9 +63,14 @@ export class ExecutionHistoryTreeDataProvider
     this.onDidChangeTreeDataEmitter.event;
   executionItems: ExecutionTreeItem[] = [];
 
-  refresh(executionItems: ExecutionTreeItem[]) {
-    this.executionItems = executionItems;
-    this.onDidChangeTreeDataEmitter.fire(undefined);
+  constructor() {
+    effect(() => {
+      this.executionItems = Object.values(executions.value)
+        .sort((a, b) => b.timestamp - a.timestamp)
+        .map((item) => new ExecutionTreeItem(item));
+
+      this.onDidChangeTreeDataEmitter.fire();
+    });
   }
 
   getTreeItem(element: ExecutionTreeItem): vscode.TreeItem {

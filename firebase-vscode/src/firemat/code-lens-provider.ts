@@ -26,7 +26,7 @@ export class CodeLensProvider implements vscode.CodeLensProvider {
             }`,
             command: "firebase.firemat.executeOperation",
             tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
-            arguments: [],
+            arguments: [x],
           })
         );
       }

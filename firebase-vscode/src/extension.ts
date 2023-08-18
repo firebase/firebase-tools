@@ -1,19 +1,17 @@
 import * as vscode from "vscode";
 
+import { LanguageClient } from "vscode-languageclient/node";
+
 import { ExtensionBroker } from "./extension-broker";
 import { createBroker } from "../common/messaging/broker";
 import {
   ExtensionToWebviewParamsMap,
   WebviewToExtensionParamsMap,
 } from "../common/messaging/protocol";
-import { setupSidebar } from "./sidebar";
 import { setupWorkflow } from "./workflow";
 import { pluginLogger } from "./logger-wrapper";
-import { ExecutionHistoryTreeDataProvider as FirematExecutionHistoryTreeDataProvider } from "./firemat/execution-history-provider";
-import { CodeLensProvider as FirematCodeLensProvider } from "./firemat/code-lens-provider";
-import { ExecutionResultsViewProvider as FirematExecutionResultsViewProvider } from "./firemat/execution-results-provider";
-import { ExplorerTreeDataProvider as FirematExplorerTreeDataProvider } from "./firemat/explorer-provider";
-import { ExecutionService as FirematExecutionService } from "./firemat/execution-service";
+import { registerWebview } from "./webview";
+import { registerFiremat } from "./firemat";
 
 const broker = createBroker<
   ExtensionToWebviewParamsMap,
@@ -26,45 +24,17 @@ export function activate(context: vscode.ExtensionContext) {
   pluginLogger.debug("Activating Firebase extension.");
 
   setupWorkflow(context, broker);
-  setupSidebar(context, broker);
-
-  const firematExecutionHistoryTreeDataProvider =
-    new FirematExecutionHistoryTreeDataProvider();
-  const firematExecutionHistoryTreeView = vscode.window.createTreeView(
-    "firebase.firemat.executionHistoryView",
-    { treeDataProvider: firematExecutionHistoryTreeDataProvider }
-  );
-  const firematCodeLensProvider = new FirematCodeLensProvider();
-  const firematExecutionResultsViewProvider =
-    new FirematExecutionResultsViewProvider(context.extensionUri, broker);
-  const firematExplorerTreeDataProvider = new FirematExplorerTreeDataProvider();
-  const firematExplorerTreeView = vscode.window.createTreeView(
-    "firebase.firemat.explorerView",
-    { treeDataProvider: firematExplorerTreeDataProvider }
-  );
-  const firematExecutionService = new FirematExecutionService();
 
   context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider(
-      "firemat.executionResultsView",
-      firematExecutionResultsViewProvider,
-      { webviewOptions: { retainContextWhenHidden: true } }
-    ),
-    vscode.commands.registerCommand(
-      "firebase.firemat.executeOperation",
-      () => {}
-    ),
-    vscode.commands.registerCommand(
-      "firebase.firemat.executeOperationAtCursor",
-      () => {}
-    ),
-    vscode.languages.registerCodeLensProvider(
-      { scheme: "file", language: "graphql" },
-      firematCodeLensProvider
-    ),
-    vscode.languages.registerCodeLensProvider(
-      { scheme: "file", language: "gql" },
-      firematCodeLensProvider
-    )
+    registerWebview({
+      name: "sidebar",
+      broker,
+      context,
+    }),
+    registerFiremat(context, broker)
   );
+
+  // Initial data load for schema explorer, needs to be after registration
+  // TODO: rethink this logic in relation to connecting to emulator
+  vscode.commands.executeCommand('firebase.firemat.executeIntrospection');
 }
