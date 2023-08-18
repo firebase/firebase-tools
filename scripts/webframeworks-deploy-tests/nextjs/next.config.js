@@ -10,6 +10,9 @@ const nextConfig = {
     locales: ['en', 'fr'],
     defaultLocale: 'en',
   },
+  images: {
+    domains: ['google.com'],
+  },
   rewrites: () => [{
     source: '/about',
     destination: '/',

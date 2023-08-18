@@ -23,6 +23,7 @@ export function SidebarApp() {
   const [channels, setChannels] = useState<ChannelWithId[]>(null);
   const [user, setUser] = useState<User | ServiceAccountUser | null>(null);
   const [framework, setFramework] = useState<string | null>(null);
+
   /**
    * null - has not finished checking yet
    * empty array - finished checking, no users logged in

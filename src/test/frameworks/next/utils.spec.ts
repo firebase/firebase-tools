@@ -282,8 +282,8 @@ describe("Next.js utils", () => {
 
       it("should return true when using next/image in the app directory", async () => {
         sandbox
-          .stub(glob, "Glob")
-          .returns({ found: ["/path-to-app/.next/server/app/page_client-reference-manifest.js"] });
+          .stub(glob, "sync")
+          .returns(["/path-to-app/.next/server/app/page_client-reference-manifest.js"]);
         sandbox.stub(fsPromises, "readFile").resolves(pageClientReferenceManifestWithImage);
 
         expect(await isUsingNextImageInAppDirectory("", "")).to.be.true;
@@ -292,13 +292,13 @@ describe("Next.js utils", () => {
       it("should return false when not using next/image in the app directory", async () => {
         sandbox.stub(fsPromises, "readFile").resolves(pageClientReferenceManifestWithoutImage);
         const globStub = sandbox
-          .stub(glob, "Glob")
-          .returns({ found: ["/path-to-app/.next/server/app/page_client-reference-manifest.js"] });
+          .stub(glob, "sync")
+          .returns(["/path-to-app/.next/server/app/page_client-reference-manifest.js"]);
 
         expect(await isUsingNextImageInAppDirectory("", "")).to.be.false;
 
         globStub.restore();
-        sandbox.stub(glob, "Glob").returns({ found: [] });
+        sandbox.stub(glob, "sync").returns([]);
 
         expect(await isUsingNextImageInAppDirectory("", "")).to.be.false;
       });
@@ -312,15 +312,15 @@ describe("Next.js utils", () => {
       it("should return true when using next/image in the app directory", async () => {
         sandbox.stub(fsPromises, "readFile").resolves(clientReferenceManifestWithImage);
         sandbox
-          .stub(glob, "Glob")
-          .returns({ found: ["/path-to-app/.next/server/client-reference-manifest.js"] });
+          .stub(glob, "sync")
+          .returns(["/path-to-app/.next/server/client-reference-manifest.js"]);
 
         expect(await isUsingNextImageInAppDirectory("", "")).to.be.true;
       });
 
       it("should return false when not using next/image in the app directory", async () => {
         sandbox.stub(fsPromises, "readFile").resolves(clientReferenceManifestWithoutImage);
-        sandbox.stub(glob, "Glob").returns({ found: [] });
+        sandbox.stub(glob, "sync").returns([]);
 
         expect(await isUsingNextImageInAppDirectory("", "")).to.be.false;
       });

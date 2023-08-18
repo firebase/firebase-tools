@@ -1,22 +1,11 @@
+import * as uuid from "uuid";
 import * as request from "request";
 
-import * as utils from "./utils";
 import { encodeFirestoreValue } from "./firestore/encodeFirestoreValue";
+import * as utils from "./utils";
 import { EmulatedTriggerDefinition } from "./emulator/functionsEmulatorShared";
 import { FunctionsEmulatorShell } from "./emulator/functionsEmulatorShell";
-import { AuthMode } from "./emulator/events/types";
-
-type AuthType = "USER" | "ADMIN" | "UNAUTHENTICATED";
-
-type EventOptions = {
-  params?: Record<string, string>;
-  authType?: AuthType;
-  auth?: Partial<AuthMode> & {
-    uid?: string;
-    token?: string;
-  };
-  resource?: string;
-};
+import { AuthMode, AuthType, EventOptions } from "./emulator/events/types";
 
 /**
  * LocalFunction produces EmulatedTriggerDefinition into a function that can be called inside the nodejs repl.
@@ -40,7 +29,7 @@ export default class LocalFunction {
     return resource.replace(this.paramWildcardRegex, (wildcard: string) => {
       const wildcardNoBraces = wildcard.slice(1, -1); // .slice removes '{' and '}' from wildcard
       const sub = params?.[wildcardNoBraces];
-      return sub || `${wildcardNoBraces}${utils.randomInt(1, 9)}`;
+      return sub || wildcardNoBraces + utils.randomInt(1, 9);
     });
   }
 
@@ -111,11 +100,7 @@ export default class LocalFunction {
     return { admin: true };
   }
 
-  makeFirestoreValue(input?: unknown): {
-    fields?: Record<string, any>;
-    createTime?: string;
-    updateTime?: string;
-  } {
+  makeFirestoreValue(input?: unknown) {
     if (
       typeof input === "undefined" ||
       input === null ||
@@ -135,7 +120,7 @@ export default class LocalFunction {
     };
   }
 
-  private requestCallBack(err: unknown, response: request.Response, body: string | object): void {
+  private requestCallBack(err: unknown, response: request.Response, body: string | object) {
     if (err) {
       return console.warn("\nERROR SENDING REQUEST: " + err);
     }
@@ -158,77 +143,95 @@ export default class LocalFunction {
     return console.log("\nRESPONSE RECEIVED FROM FUNCTION: " + status + bodyString);
   }
 
-  private isDatabaseFn(eventTrigger: Required<EmulatedTriggerDefinition>["eventTrigger"]): boolean {
+  private isDatabaseFn(eventTrigger: Required<EmulatedTriggerDefinition>["eventTrigger"]) {
     return utils.getFunctionsEventProvider(eventTrigger.eventType) === "Database";
   }
-  private isFirestoreFunc(
-    eventTrigger: Required<EmulatedTriggerDefinition>["eventTrigger"]
-  ): boolean {
+  private isFirestoreFunc(eventTrigger: Required<EmulatedTriggerDefinition>["eventTrigger"]) {
     return utils.getFunctionsEventProvider(eventTrigger.eventType) === "Firestore";
   }
 
-  private triggerEvent(data: unknown, opts?: EventOptions): void {
+  private isPubsubFunc(eventTrigger: Required<EmulatedTriggerDefinition>["eventTrigger"]) {
+    return utils.getFunctionsEventProvider(eventTrigger.eventType) === "PubSub";
+  }
+
+  private triggerEvent(data: unknown, opts?: EventOptions) {
     opts = opts || {};
     let operationType;
     let dataPayload;
 
     if (this.trigger.httpsTrigger) {
-      this.controller.call(this.trigger.name, data || {}, opts);
+      this.controller.call(this.trigger, data || {}, opts);
     } else if (this.trigger.eventTrigger) {
       if (this.isDatabaseFn(this.trigger.eventTrigger)) {
         operationType = utils.last(this.trigger.eventTrigger.eventType.split("."));
         switch (operationType) {
           case "create":
+          case "created":
             dataPayload = {
               data: null,
               delta: data,
             };
             break;
           case "delete":
+          case "deleted":
             dataPayload = {
               data: data,
               delta: null,
             };
             break;
           default:
-            // 'update' or 'write'
+            // 'update', 'updated', 'write', or 'written'
             dataPayload = {
               data: (data as any).before,
               delta: (data as any).after,
             };
         }
-        opts.resource = this.substituteParams(this.trigger.eventTrigger.resource!, opts.params);
+        const resource =
+          this.trigger.eventTrigger.resource ??
+          this.trigger.eventTrigger.eventFilterPathPatterns?.ref;
+        opts.resource = this.substituteParams(resource!, opts.params);
         opts.auth = this.constructAuth(opts.auth, opts.authType);
-        this.controller.call(this.trigger.name, dataPayload, opts);
+        this.controller.call(this.trigger, dataPayload, opts);
       } else if (this.isFirestoreFunc(this.trigger.eventTrigger)) {
         operationType = utils.last(this.trigger.eventTrigger.eventType.split("."));
         switch (operationType) {
           case "create":
+          case "created":
             dataPayload = {
               value: this.makeFirestoreValue(data),
               oldValue: {},
             };
             break;
           case "delete":
+          case "deleted":
             dataPayload = {
               value: {},
               oldValue: this.makeFirestoreValue(data),
             };
             break;
           default:
-            // 'update' or 'write'
+            // 'update', 'updated', 'write' or 'written'
             dataPayload = {
               value: this.makeFirestoreValue((data as any).after),
               oldValue: this.makeFirestoreValue((data as any).before),
             };
         }
-        opts.resource = this.substituteParams(this.trigger.eventTrigger.resource!, opts.params);
-        this.controller.call(this.trigger.name, dataPayload, opts);
+        const resource =
+          this.trigger.eventTrigger.resource ??
+          this.trigger.eventTrigger.eventFilterPathPatterns?.document;
+        opts.resource = this.substituteParams(resource!, opts.params);
+        this.controller.call(this.trigger, dataPayload, opts);
+      } else if (this.isPubsubFunc(this.trigger.eventTrigger)) {
+        dataPayload = data;
+        if (this.trigger.platform === "gcfv2") {
+          dataPayload = { message: { ...(data as any), messageId: uuid.v4() } };
+        }
+        this.controller.call(this.trigger, dataPayload || {}, opts);
       } else {
-        this.controller.call(this.trigger.name, data || {}, opts);
+        this.controller.call(this.trigger, data || {}, opts);
       }
     }
-    return console.log("Successfully invoked function.");
+    return "Successfully invoked function.";
   }
 
   makeFn() {

@@ -9,14 +9,13 @@ import { Options } from "../options";
 
 function runCommand(command: string, childOptions: childProcess.SpawnOptions) {
   const escapedCommand = command.replace(/\"/g, '\\"');
+  const isVSCode = utils.isVSCodeExtension();
+  const nodeExecutable = isVSCode ? "node" : process.execPath;
+  const crossEnvShellPath = isVSCode
+    ? path.resolve(__dirname, "./cross-env/dist/bin/cross-env-shell.js")
+    : path.resolve(require.resolve("cross-env"), "..", "bin", "cross-env-shell.js");
   const translatedCommand =
-    '"' +
-    process.execPath +
-    '" "' +
-    path.resolve(require.resolve("cross-env"), "..", "bin", "cross-env-shell.js") +
-    '" "' +
-    escapedCommand +
-    '"';
+    '"' + nodeExecutable + '" "' + crossEnvShellPath + '" "' + escapedCommand + '"';
 
   return new Promise<void>((resolve, reject) => {
     logger.info("Running command: " + command);

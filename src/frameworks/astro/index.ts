@@ -3,22 +3,12 @@ import { copy, existsSync } from "fs-extra";
 import { join } from "path";
 import { BuildResult, Discovery, FrameworkType, SupportLevel } from "../interfaces";
 import { FirebaseError } from "../../error";
-import {
-  readJSON,
-  simpleProxy,
-  warnIfCustomBuildScript,
-  findDependency,
-  getNodeModuleBin,
-} from "../utils";
-import { getBootstrapScript, getConfig } from "./utils";
+import { readJSON, simpleProxy, warnIfCustomBuildScript, getNodeModuleBin } from "../utils";
+import { getAstroVersion, getBootstrapScript, getConfig } from "./utils";
 
 export const name = "Astro";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.MetaFramework;
-
-function getAstroVersion(cwd: string): string | undefined {
-  return findDependency("astro", { cwd, depth: 0, omitDev: false })?.version;
-}
 
 export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!existsSync(join(dir, "package.json"))) return;

@@ -11,7 +11,6 @@ import * as _ from "lodash";
 import { EmulatorLog } from "./types";
 import { Constants } from "./constants";
 import {
-  EmulatedTriggerMap,
   findModuleRoot,
   FunctionsRuntimeBundle,
   HttpConstants,
@@ -862,7 +861,7 @@ function logDebug(msg: string, data?: any): void {
   new EmulatorLog("DEBUG", "runtime-status", `[${process.pid}] ${msg}`, data).log();
 }
 
-async function initializeRuntime(): Promise<EmulatedTriggerMap | undefined> {
+async function initializeRuntime(): Promise<void> {
   FUNCTION_DEBUG_MODE = process.env.FUNCTION_DEBUG_MODE || "";
 
   if (!FUNCTION_DEBUG_MODE) {
@@ -979,32 +978,33 @@ async function main(): Promise<void> {
     ).log();
     await flushAndExit(1);
   }
-
   const app = express();
   app.enable("trust proxy");
+  // TODO: This should be 10mb for v1 functions, 32mb for v2, but there is not an easy way to check platform from here.
+  const bodyParserLimit = "32mb";
   app.use(
     bodyParser.json({
-      limit: "10mb",
+      limit: bodyParserLimit,
       verify: rawBodySaver,
     })
   );
   app.use(
     bodyParser.text({
-      limit: "10mb",
+      limit: bodyParserLimit,
       verify: rawBodySaver,
     })
   );
   app.use(
     bodyParser.urlencoded({
       extended: true,
-      limit: "10mb",
+      limit: bodyParserLimit,
       verify: rawBodySaver,
     })
   );
   app.use(
     bodyParser.raw({
       type: "*/*",
-      limit: "10mb",
+      limit: bodyParserLimit,
       verify: rawBodySaver,
     })
   );
