@@ -372,7 +372,7 @@ export async function setupWorkflow(
       //const output: string = execSync("pwd").toString();
       // vscode.window.showInformationMessage(output.toString());
       console.log(
-        execSync(`git clone https://github.com/firebase/quickstart-js.git && cd quickstart-js && ls | grep -xv "firestore" | xargs rm -rf && cd firestore && ls | grep -xv "angular-rewrite" | xargs rm -rf && mv -v angular-rewrite/* "${selectedURI[0].fsPath}" && cd "${selectedURI[0].fsPath}" && rm -rf quickstart-js`, {
+        execSync(`git clone https://github.com/firebase/quickstart-js.git && cd quickstart-js && ls | grep -xv "firestore" | xargs rm -rf && mv -v firestore/* "${selectedURI[0].fsPath}" && cd "${selectedURI[0].fsPath}" && rm -rf quickstart-js`, {
           cwd: selectedURI[0].fsPath,
         }).toString()
       );

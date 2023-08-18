@@ -164,8 +164,18 @@ export function SidebarApp() {
           setHostingInitState={setHostingInitState}
         />
       )}
-      <Spacer size="medium" />
-      <QuickstartPanel onQuickstartButtonClicked={sendMessageToTerminal} />
+
+      {
+        // Only load quickstart panel if this isn't a Monospace workspace
+        !env?.isMonospace && (
+          <>
+            <Spacer size="medium" />
+            <QuickstartPanel
+              onQuickstartButtonClicked={sendMessageToTerminal}
+            />
+          </>
+        )
+      }
     </>
   );
 }
