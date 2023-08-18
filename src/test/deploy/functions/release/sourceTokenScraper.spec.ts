@@ -66,7 +66,7 @@ describe("SourceTokenScraper", () => {
     await expect(scraper.getToken()).to.eventually.equal("magic token #2");
   });
 
-  it.only("resets fetch state after timeout and returns undefined token", async () => {
+  it("resets fetch state after timeout and returns undefined token", async () => {
     const scraper = new SourceTokenScraper(100000, 10);
     await expect(scraper.getToken()).to.eventually.be.undefined;
     await expect(scraper.getToken()).to.eventually.be.undefined;
