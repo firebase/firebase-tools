@@ -369,12 +369,12 @@ export async function setupWorkflow(
     });
 
     if (selectedURI && selectedURI[0]) {
-      //const output: string = execSync("pwd").toString();
-      // vscode.window.showInformationMessage(output.toString());
-      console.log(
-        execSync(`git clone https://github.com/firebase/quickstart-js.git && cd quickstart-js && ls | grep -xv "firestore" | xargs rm -rf && mv -v firestore/* "${selectedURI[0].fsPath}" && cd "${selectedURI[0].fsPath}" && rm -rf quickstart-js`, {
-          cwd: selectedURI[0].fsPath,
-        }).toString()
+      execSync(`git clone https://github.com/firebase/quickstart-js.git ` +
+        `&& cd quickstart-js && ls | grep -xv "firestore" | xargs rm -rf ` +
+        `&& mv -v firestore/* "${selectedURI[0].fsPath}" ` +
+        `&& cd "${selectedURI[0].fsPath}" && rm -rf quickstart-js`, {
+        cwd: selectedURI[0].fsPath,
+      }
       );
 
       vscode.commands.executeCommand(`vscode.openFolder`, selectedURI[0]);
