@@ -272,7 +272,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
   },
   firemat: {
     binary: getExecPath(Emulators.FIREMAT),
-    args: [],
+    args: ["dev"],
     optionalArgs: ["http_port", "grpc_port"],
     joinArgs: true,
   },
