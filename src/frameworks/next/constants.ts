@@ -18,3 +18,5 @@ export const PAGES_MANIFEST: typeof PAGES_MANIFEST_TYPE = "pages-manifest.json";
 export const PRERENDER_MANIFEST: typeof PRERENDER_MANIFEST_TYPE = "prerender-manifest.json";
 export const ROUTES_MANIFEST: typeof ROUTES_MANIFEST_TYPE = "routes-manifest.json";
 export const APP_PATHS_MANIFEST: typeof APP_PATHS_MANIFEST_TYPE = "app-paths-manifest.json";
+
+export const ESBUILD_VERSION = "^0.19.2";
