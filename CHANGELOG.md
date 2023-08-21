@@ -1,1 +1,2 @@
 - Improve performance and reliability when deploying multiple 2nd gen functions using single builds. (#6275)
+- Fix bundle next.config.js (#6287)
