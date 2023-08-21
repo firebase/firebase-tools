@@ -1,7 +1,5 @@
 import * as vscode from "vscode";
 
-import { LanguageClient } from "vscode-languageclient/node";
-
 import { ExtensionBroker } from "./extension-broker";
 import { createBroker } from "../common/messaging/broker";
 import {
@@ -12,6 +10,7 @@ import { setupWorkflow } from "./workflow";
 import { pluginLogger } from "./logger-wrapper";
 import { registerWebview } from "./webview";
 import { registerFiremat } from "./firemat";
+import { onShutdown } from "./workflow";
 
 const broker = createBroker<
   ExtensionToWebviewParamsMap,
@@ -37,4 +36,10 @@ export function activate(context: vscode.ExtensionContext) {
   // Initial data load for schema explorer, needs to be after registration
   // TODO: rethink this logic in relation to connecting to emulator
   vscode.commands.executeCommand('firebase.firemat.executeIntrospection');
+}
+
+// This method is called when the extension is deactivated
+export async function deactivate() {
+  // This await is optimistic but it might wait for a moment longer while we run cleanup activities
+  await onShutdown();
 }
