@@ -152,48 +152,26 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
     },
   },
   // TODO: Add Windows bianry here as well
-  firemat:
-    process.platform === "darwin"
-      ? {
-          downloadPath: path.join(
-            CACHE_DIR,
-            `firemat-emulator-${EMULATOR_UPDATE_DETAILS.firemat.version}`
-          ),
-          version: EMULATOR_UPDATE_DETAILS.firemat.version,
-          binaryPath: path.join(
-            CACHE_DIR,
-            `firemat-emulator-${EMULATOR_UPDATE_DETAILS.firemat.version}`
-          ),
-          opts: {
-            cacheDir: CACHE_DIR,
-            remoteUrl: `https://storage.googleapis.com/firemat-preview-drop/emulator/firemat-emulator-macos-v${EMULATOR_UPDATE_DETAILS.firemat.version}`,
-            expectedSize: EMULATOR_UPDATE_DETAILS.firemat.expectedSize,
-            expectedChecksum: EMULATOR_UPDATE_DETAILS.firemat.expectedChecksum,
-            skipChecksumAndSize: true, // TODO: reenable checksumAndSize before release.
-            namePrefix: "firemat-emulator",
-            auth: true,
-          },
-        }
-      : {
-          downloadPath: path.join(
-            CACHE_DIR,
-            `firemat-emulator-${EMULATOR_UPDATE_DETAILS.firemat.version}`
-          ),
-          version: EMULATOR_UPDATE_DETAILS.firemat.version,
-          binaryPath: path.join(
-            CACHE_DIR,
-            `firemat-emulator-${EMULATOR_UPDATE_DETAILS.firemat.version}`
-          ),
-          opts: {
-            cacheDir: CACHE_DIR,
-            remoteUrl: `https://storage.googleapis.com/firemat-preview-drop/emulator/firemat-emulator-linux-v${EMULATOR_UPDATE_DETAILS.firemat.version}`,
-            expectedSize: EMULATOR_UPDATE_DETAILS.firemat.expectedSize,
-            expectedChecksum: EMULATOR_UPDATE_DETAILS.firemat.expectedChecksum,
-            skipChecksumAndSize: true, // TODO: reenable checksumAndSize before release.
-            namePrefix: "firemat-emulator",
-            auth: true,
-          },
-        },
+  firemat: {
+    downloadPath: path.join(
+      CACHE_DIR,
+      `firemat-emulator-${EMULATOR_UPDATE_DETAILS.firemat.version}`
+    ),
+    version: EMULATOR_UPDATE_DETAILS.firemat.version,
+    binaryPath: path.join(CACHE_DIR, `firemat-emulator-${EMULATOR_UPDATE_DETAILS.firemat.version}`),
+    opts: {
+      cacheDir: CACHE_DIR,
+      remoteUrl:
+        process.platform === "darwin"
+          ? `https://storage.googleapis.com/firemat-preview-drop/emulator/firemat-emulator-macos-v${EMULATOR_UPDATE_DETAILS.firemat.version}`
+          : `https://storage.googleapis.com/firemat-preview-drop/emulator/firemat-emulator-linux-v${EMULATOR_UPDATE_DETAILS.firemat.version}`,
+      expectedSize: EMULATOR_UPDATE_DETAILS.firemat.expectedSize,
+      expectedChecksum: EMULATOR_UPDATE_DETAILS.firemat.expectedChecksum,
+      skipChecksumAndSize: true, // TODO: reenable checksumAndSize before release.
+      namePrefix: "firemat-emulator",
+      auth: true,
+    },
+  },
 };
 
 const EmulatorDetails: { [s in DownloadableEmulators]: DownloadableEmulatorDetails } = {
