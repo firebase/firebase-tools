@@ -19,4 +19,4 @@ export const PRERENDER_MANIFEST: typeof PRERENDER_MANIFEST_TYPE = "prerender-man
 export const ROUTES_MANIFEST: typeof ROUTES_MANIFEST_TYPE = "routes-manifest.json";
 export const APP_PATHS_MANIFEST: typeof APP_PATHS_MANIFEST_TYPE = "app-paths-manifest.json";
 
-export const ESBUILD_VERSION = "^0.19.2";
+export const ESBUILD_VERSION = "0.19.2";
