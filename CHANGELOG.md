@@ -1,1 +1,2 @@
-- Improve performance and reliability when deploying multiple 2nd gen functions using single builds. (#6275)
+- Fixed issue where the Extensions emulator would error when emualting local extensions with no params. (#6271)
+- Improved performance and reliability when deploying multiple 2nd gen functions using single builds. (#6275)
