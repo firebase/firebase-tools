@@ -9,6 +9,7 @@ import {
   selectExecutionId,
   selectedExecution,
   selectedExecutionId,
+  setExecutionArgs,
   updateExecution,
 } from "./execution-store";
 import { batch, effect } from "@preact/signals-core";
@@ -57,7 +58,6 @@ export function registerExecution(
       operation: ast,
       args: executionArgs.value,
     });
-
     const results = await firematService.executeGraphQL({
       query: print(ast),
       variables: executionArgs.value,
@@ -72,6 +72,8 @@ export function registerExecution(
       selectExecutionId(item.executionId);
     });
   }
+
+  broker.on("definedFirematArgs", setExecutionArgs);
 
   return Disposable.from(
     registerWebview({

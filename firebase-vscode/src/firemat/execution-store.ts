@@ -34,6 +34,10 @@ export const selectedExecutionId = signal("");
 
 export const executionArgs = signal({});
 
+export const setExecutionArgs = ({ args }) => {
+  executionArgs.value = args;
+}
+
 export function createExecution(
   executionItem: Omit<ExecutionItem, "executionId">
 ) {

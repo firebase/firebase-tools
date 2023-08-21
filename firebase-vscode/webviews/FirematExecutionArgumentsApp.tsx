@@ -1,33 +1,36 @@
 import React, { FormEvent, FormEventHandler, useEffect, useState } from "react";
 import { broker } from "./globals/html-broker";
-import { VSCodeTextArea } from "@vscode/webview-ui-toolkit/react";
+import { VSCodeButton, VSCodeTextArea } from "@vscode/webview-ui-toolkit/react";
 import { Label } from "./components/ui/Text";
-
 export function FirematExecutionArgumentsApp() {
-  const [args, setArguments] = useState({});
+  let input = "{}";
 
-  useEffect(() => {
-    broker.send("definedFirematArgs", { args });
-  });
+  const handleInput = (e) => {
+    input = e.target.value;
+  };
 
-  const handleInput = (input: string) => {
+  const handleClick = (e) => {
+    e.preventDefault();
     try {
-      const json = JSON.parse(input);
-      setArguments(json);
-    } catch {}
+      const args = JSON.parse(input);
+      broker.send("definedFirematArgs", { args });
+    } catch (e) {
+      console.log(e);
+    }
   };
 
   return (
     <>
       <VSCodeTextArea
         rows={10}
-        cols={40}
+        cols={80}
         resize={"both"}
-        initialValue={"{}"}
-        onInput={(e) => handleInput(e.target.value)}
+        value={input}
+        onInput={handleInput}
       >
         <Label>Arguments used in operations (needs to be valid JSON)</Label>
       </VSCodeTextArea>
+      <VSCodeButton onClick={handleClick}>Save</VSCodeButton>
     </>
   );
 }
