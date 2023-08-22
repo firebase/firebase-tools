@@ -57,12 +57,12 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   firemat:
     process.platform === "darwin"
       ? {
-          version: "0.0.1",
+          version: "0.0.2",
           expectedSize: 17208896,
           expectedChecksum: "7be9b500bdd739757215121ccf7bab53",
         }
       : {
-          version: "0.0.1",
+          version: "0.0.2",
           expectedSize: 17149952,
           expectedChecksum: "de228b379bcb5ba451d2cd4d7a259a78",
         },
@@ -273,7 +273,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
   firemat: {
     binary: getExecPath(Emulators.FIREMAT),
     args: ["dev"],
-    optionalArgs: ["http_port", "grpc_port"],
+    optionalArgs: ["http_port", "grpc_port", "config_dir"],
     joinArgs: true,
   },
 };

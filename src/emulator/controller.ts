@@ -807,11 +807,16 @@ export async function startAll(
 
   if (listenForEmulator.firemat) {
     const firematAddr = legacyGetFirstAddr(Emulators.FIREMAT);
+    let configDir = options.config.get("firemat")?.source || "firemat";
+    if (!path.isAbsolute(configDir)) {
+      configDir = path.resolve(path.join(options.cwd), configDir);
+    }
     const firematEmulator = new FirematEmulator({
       host: firematAddr.host,
       port: firematAddr.port,
       projectId,
       auto_download: true,
+      configDir,
     });
     await startEmulator(firematEmulator);
   }
