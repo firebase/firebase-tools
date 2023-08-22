@@ -295,12 +295,17 @@ export async function deployToHosting(
 }
 
 export async function emulatorsStart(emulatorUiSelections: EmulatorUiSelections) {
+  const only = emulatorUiSelections.mode === "hosting"
+    ? "hosting"
+    : emulatorUiSelections.mode === "firemat"
+      ? "firemat"
+      : "";
   const commandOptions = await getCommandOptions(undefined, {
     ...currentOptions,
     project: emulatorUiSelections.projectId,
     exportOnExit: emulatorUiSelections.exportStateOnExit,
     import: emulatorUiSelections.importStateFolderPath,
-    only: emulatorUiSelections.mode === "hosting" ? "hosting" : ""
+    only,
   });
   // Adjusts some options, export on exit can be a boolean or a path.
   commandUtils.setExportOnExitOptions(commandOptions as commandUtils.ExportOnExitOptions);

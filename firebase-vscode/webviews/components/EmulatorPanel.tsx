@@ -229,6 +229,7 @@ export function EmulatorPanel({
         {!!firebaseJson.hosting && (
           <VSCodeOption value="hosting">Only hosting</VSCodeOption>
         )}
+        <VSCodeOption value="firemat">Only firemat</VSCodeOption>
       </VSCodeDropdown>
       {runningEmulatorInfo ? (
         <>
@@ -274,7 +275,7 @@ export function EmulatorPanel({
  */
 function getProjectIdForMode(
   projectId: string | undefined,
-  mode: "all" | "hosting"
+  mode: "all" | "hosting" | "firemat"
 ): string {
   if (!projectId) {
     return "demo-something";
