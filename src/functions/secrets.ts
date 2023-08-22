@@ -78,7 +78,7 @@ function toUpperSnakeCase(key: string): string {
  */
 export function ensureApi(options: any): Promise<void> {
   const projectId = needProjectId(options);
-  return ensureApiEnabled.ensure(projectId, "secretmanager.googleapis.com", "runtimeconfig", true);
+  return ensureApiEnabled.ensure(projectId, "secretmanager.googleapis.com", "secretmanager", true);
 }
 
 /**

@@ -55,6 +55,9 @@ export class Constants {
 
   static DEFAULT_DATABASE_EMULATOR_NAMESPACE = "fake-server";
 
+  // Environment variable for a list of active CLI experiments
+  static FIREBASE_ENABLED_EXPERIMENTS = "FIREBASE_ENABLED_EXPERIMENTS";
+
   // Environment variable to override SDK/CLI to point at the Firestore emulator.
   static FIRESTORE_EMULATOR_HOST = "FIRESTORE_EMULATOR_HOST";
 

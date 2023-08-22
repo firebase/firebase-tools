@@ -2,7 +2,7 @@ import { existsSync } from "fs";
 import { pathExists } from "fs-extra";
 import { basename, extname, join, posix } from "path";
 import { readFile } from "fs/promises";
-import { Glob } from "glob";
+import { sync as globSync } from "glob";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
 import { coerce } from "semver";
 
@@ -245,11 +245,11 @@ export async function isUsingNextImageInAppDirectory(
   projectDir: string,
   nextDir: string
 ): Promise<boolean> {
-  const { found: files } = new Glob(
+  const files = globSync(
     join(projectDir, nextDir, "server", "**", "*client-reference-manifest.js")
   );
 
-  for await (const filepath of files) {
+  for (const filepath of files) {
     const fileContents = await readFile(filepath);
 
     // Return true when the first file containing the next/image component is found
