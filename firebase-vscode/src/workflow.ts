@@ -127,7 +127,7 @@ export async function setupWorkflow(
    * Call pluginLogger with log arguments received from webview.
    */
   broker.on("writeLog", async ({ level, args }) => {
-    pluginLogger[level]("(Webview)", ...args);
+    pluginLogger[level]('(Webview)', ...args);
   });
 
   broker.on("getInitialData", async () => {
@@ -368,6 +368,17 @@ export async function setupWorkflow(
       canSelectMany: false,
     });
 
+    /**
+     * If the user did not prematurely close the dialog and a directory in 
+     * which to put the new quickstart was selected, execute a sequence of
+     * shell commands that:
+     * 1. Downloads the quickstart into the selected directory with `git clone`
+     * 2. Enters the downloaded repo and deletes all unnecessary files and dirs
+     * 3. Moves all remaining files to the root of the selected directory
+     * 
+     * Once this download and configuration is complete, a new vscode window
+     * is opened to the selected directory.
+     */
     if (selectedURI && selectedURI[0]) {
       execSync(`git clone https://github.com/firebase/quickstart-js.git ` +
         `&& cd quickstart-js && ls | grep -xv "firestore" | xargs rm -rf ` +
