@@ -57,14 +57,14 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   firemat:
     process.platform === "darwin"
       ? {
-          version: "0.0.0",
-          expectedSize: -1,
-          expectedChecksum: "",
+          version: "0.0.1",
+          expectedSize: 17208896,
+          expectedChecksum: "7be9b500bdd739757215121ccf7bab53",
         }
       : {
-          version: "0.0.0",
-          expectedSize: -1,
-          expectedChecksum: "",
+          version: "0.0.1",
+          expectedSize: 17149952,
+          expectedChecksum: "de228b379bcb5ba451d2cd4d7a259a78",
         },
 };
 
