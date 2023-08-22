@@ -64,6 +64,7 @@ import {
   ROUTES_MANIFEST,
   APP_PATH_ROUTES_MANIFEST,
   APP_PATHS_MANIFEST,
+  ESBUILD_VERSION,
 } from "./constants";
 import { getAllSiteDomains } from "../../hosting/api";
 import { logger } from "../../logger";
@@ -76,6 +77,7 @@ export const support = SupportLevel.Preview;
 export const type = FrameworkType.MetaFramework;
 export const docsUrl = "https://firebase.google.com/docs/hosting/frameworks/nextjs";
 
+const BUNDLE_NEXT_CONFIG_TIMEOUT = 60_000;
 const DEFAULT_NUMBER_OF_REASONS_TO_LIST = 5;
 
 function getReactVersion(cwd: string): string | undefined {
@@ -472,8 +474,6 @@ export async function ɵcodegenPublicDirectory(
   );
 }
 
-const BUNDLE_NEXT_CONFIG_TIMEOUT = 10_000;
-
 /**
  * Create a directory for SSR content.
  */
@@ -518,10 +518,14 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
           `--outdir=${destDir}`,
           "--log-level=error"
         );
-      const bundle = spawnSync("npx", ["--yes", "esbuild", "next.config.js", ...esbuildArgs], {
-        cwd: sourceDir,
-        timeout: BUNDLE_NEXT_CONFIG_TIMEOUT,
-      });
+      const bundle = spawnSync(
+        "npx",
+        ["--yes", `esbuild@${ESBUILD_VERSION}`, "next.config.js", ...esbuildArgs],
+        {
+          cwd: sourceDir,
+          timeout: BUNDLE_NEXT_CONFIG_TIMEOUT,
+        }
+      );
       if (bundle.status !== 0) {
         throw new FirebaseError(bundle.stderr.toString());
       }

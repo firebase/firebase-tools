@@ -11,13 +11,15 @@ type TokenFetchState = "NONE" | "FETCHING" | "VALID";
  */
 export class SourceTokenScraper {
   private tokenValidDurationMs;
+  private fetchTimeoutMs;
   private resolve!: (token?: string) => void;
   private promise: Promise<string | undefined>;
   private expiry: number | undefined;
   private fetchState: TokenFetchState;
 
-  constructor(validDurationMs = 1500000) {
+  constructor(validDurationMs = 1500000, fetchTimeoutMs = 180_000) {
     this.tokenValidDurationMs = validDurationMs;
+    this.fetchTimeoutMs = fetchTimeoutMs;
     this.promise = new Promise((resolve) => (this.resolve = resolve));
     this.fetchState = "NONE";
   }
@@ -27,7 +29,15 @@ export class SourceTokenScraper {
       this.fetchState = "FETCHING";
       return undefined;
     } else if (this.fetchState === "FETCHING") {
-      return this.promise; // wait until we get a source token
+      const timeout = new Promise<undefined>((resolve) => {
+        setTimeout(() => {
+          this.fetchState = "NONE";
+          resolve(undefined);
+        }, this.fetchTimeoutMs);
+      });
+      // wait until we get a source token, or the timeout occurs
+      // and we reset the fetch state and return an undefined token.
+      return Promise.race([this.promise, timeout]);
     } else if (this.fetchState === "VALID") {
       if (this.isTokenExpired()) {
         this.fetchState = "FETCHING";
