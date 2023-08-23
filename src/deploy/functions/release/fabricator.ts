@@ -365,9 +365,6 @@ export class Fabricator {
       resultFunction = await this.functionExecutor
         .run(async () => {
           apiFunction.buildConfig.sourceToken = await scraper.getToken();
-          console.log(
-            `${apiFunction.name} source token: ${apiFunction.buildConfig.sourceToken || "none"}`
-          );
           const op: { name: string } = await gcfV2.createFunction(apiFunction);
           return await poller.pollOperation<gcfV2.OutputCloudFunction>({
             ...gcfV2PollerOptions,
