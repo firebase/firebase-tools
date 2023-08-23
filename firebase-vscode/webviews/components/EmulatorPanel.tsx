@@ -24,7 +24,7 @@ const DEFAULT_EMULATOR_UI_SELECTIONS: EmulatorUiSelections = {
   projectId: "demo-something",
   importStateFolderPath: "",
   exportStateOnExit: false,
-  mode: "all",
+  mode: "firemat",
   debugLogging: false,
 };
 
@@ -200,48 +200,6 @@ export function EmulatorPanel({
         value={emulatorUiSelections.projectId}
         onChange={(event) => projectIdChanged(event)}
       ></VSCodeTextField>
-      <Spacer size="xxlarge" />
-      Import emulator state from directory:
-      <VSCodeTextField
-        disabled={true}
-        value={emulatorUiSelections.importStateFolderPath}
-      ></VSCodeTextField>
-      <Spacer size="small" />
-      <input
-        disabled={!!runningEmulatorInfo}
-        type="file"
-        id="import-folder-picker"
-        onClick={(event) => selectedImportFolder(event)}
-      />
-      <Spacer size="small" />
-      <VSCodeButton
-        disabled={!!runningEmulatorInfo}
-        appearance="secondary"
-        onClick={clearImportFolder}
-      >
-        Clear
-      </VSCodeButton>
-      <Spacer size="xxlarge" />
-      <VSCodeCheckbox
-        disabled={!emulatorUiSelections.importStateFolderPath}
-        value={emulatorUiSelections.exportStateOnExit}
-        onChange={() => toggleExportOnExit()}
-      >
-        Export emulator state on exit
-      </VSCodeCheckbox>
-      <Spacer size="xxlarge" />
-      {showEmulatorProgressIndicator ? <VSCodeProgressRing /> : <></>}
-      Emulator "mode"
-      <VSCodeDropdown
-        disabled={!!runningEmulatorInfo}
-        onChange={(event) => emulatorModeChanged(event)}
-      >
-        <VSCodeOption value="all">All emulators</VSCodeOption>
-        {!!firebaseJson.hosting && (
-          <VSCodeOption value="hosting">Only hosting</VSCodeOption>
-        )}
-        <VSCodeOption value="firemat">Only firemat</VSCodeOption>
-      </VSCodeDropdown>
       {runningEmulatorInfo ? (
         <>
           <VSCodeDivider />
@@ -273,7 +231,7 @@ export function EmulatorPanel({
           onClick={() => launchEmulators()}
           disabled={showEmulatorProgressIndicator ? true : false}
         >
-          Launch emulators
+          Launch FireMAT emulator
         </VSCodeButton>
       )}
     </PanelSection>
