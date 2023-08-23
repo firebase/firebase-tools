@@ -15,15 +15,17 @@ export class FirematEmulator implements EmulatorInstance {
   private gqlWatcher?: chokidar.FSWatcher;
   constructor(private args: FirematEmulatorArgs) {
     if (this.args.configDir) {
-      this.gqlWatcher = chokidar.watch(this.args.configDir)
+      this.gqlWatcher = chokidar.watch(this.args.configDir);
       this.gqlWatcher.on("change", async () => {
-        console.log(`Detected change in config directory ${this.args.configDir}, restarting fireMAT emulator`);
+        console.log(
+          `Detected change in config directory ${this.args.configDir}, restarting fireMAT emulator`
+        );
         await this.stop();
         console.log("Stopped fireMAT emulator");
         await this.start();
         console.log("Started fireMAT emulator");
         return;
-      })
+      });
     }
   }
 
