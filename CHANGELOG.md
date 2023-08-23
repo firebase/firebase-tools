@@ -1,1 +1,0 @@
-- Fix issue with mixed v1 and v2 functions deployments. (#6293)
