@@ -17,7 +17,7 @@ import {
 } from "../../common/messaging/types";
 import { VSCodeDropdown } from "@vscode/webview-ui-toolkit/react";
 import { VSCodeOption } from "@vscode/webview-ui-toolkit/react";
-import { EmulatorInfo } from "../../../src/emulator/types";
+import { EmulatorInfo, Emulators } from "../../../src/emulator/types";
 import { webLogger } from "../globals/web-logger";
 
 const DEFAULT_EMULATOR_UI_SELECTIONS: EmulatorUiSelections = {
@@ -77,6 +77,15 @@ export function EmulatorPanel({
     setShowEmulatorProgressIndicator(false);
     webLogger.debug(`notifyRunningEmulatorInfo received in sidebar`);
     setRunningEmulatorInfo(info);
+
+    let endpoint = "";
+    // send firemat endpoint
+    for (const emulatorInfo of info.displayInfo) {
+      if (emulatorInfo.name === Emulators.FIREMAT) {
+        endpoint = emulatorInfo.host + emulatorInfo.port;
+      }
+    }
+    broker.send("notifyFirematEmulatorEndpoint", { endpoint });
   });
 
   broker.on("notifyEmulatorImportFolder", ({ folder }) => {

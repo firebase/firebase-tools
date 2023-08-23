@@ -6,6 +6,7 @@ interface FirematResults {
   args: {};
   query: string;
   results: {};
+  displayName: string;
 }
 
 export function FirematExecutionResultsApp() {
@@ -17,10 +18,7 @@ export function FirematExecutionResultsApp() {
 
   return results ? (
     <>
-      <VSCodeTextArea value={results.query} readOnly={true} cols={80} rows={10}>
-        Query
-      </VSCodeTextArea>
-
+      <h3>{results.displayName}</h3>
       <VSCodeTextArea
         value={JSON.stringify(results.args, null, 2)}
         readOnly={true}
@@ -29,7 +27,6 @@ export function FirematExecutionResultsApp() {
       >
         Arguments
       </VSCodeTextArea>
-
       <VSCodeTextArea
         value={JSON.stringify(results.results, null, 2)}
         readOnly={true}

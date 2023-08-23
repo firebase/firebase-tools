@@ -10,7 +10,7 @@ export function registerFiremat(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl
 ): Disposable {
-  const firematService = new FirematService();
+  const firematService = new FirematService(broker);
   const codeLensProvider = new CodeLensProvider();
   const client = setupLanguageClient(context);
   client.start();
