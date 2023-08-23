@@ -23,8 +23,7 @@ export class CodeLensProvider implements vscode.CodeLensProvider {
 
         codeLenses.push(
           new vscode.CodeLens(range, {
-            title: `$(play) Execute ${x.operation === OPERATION_TYPE.query as string ? OPERATION_TYPE.query : OPERATION_TYPE.mutation
-              }`,
+            title: `$(play) Execute ${x.operation as string}`,
             command: "firebase.firemat.executeOperation",
             tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
             arguments: [x, operationLocation],
