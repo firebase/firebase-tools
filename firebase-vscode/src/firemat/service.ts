@@ -7,7 +7,7 @@ import { ExtensionBrokerImpl } from "../extension-broker";
  * Firemat Emulator service
  */
 export class FirematService {
-  private firematEndpoint = signal("http://127.0.0.1:9399");
+  private firematEndpoint = signal("");
 
   constructor(private broker: ExtensionBrokerImpl) {
     effect(() => {

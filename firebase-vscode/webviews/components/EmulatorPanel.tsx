@@ -79,12 +79,14 @@ export function EmulatorPanel({
     setRunningEmulatorInfo(info);
 
     let endpoint = "";
+    // TODO: should this logic be here?
     // send firemat endpoint
     for (const emulatorInfo of info.displayInfo) {
       if (emulatorInfo.name === Emulators.FIREMAT) {
-        endpoint = emulatorInfo.host + emulatorInfo.port;
+        endpoint = "http://" + emulatorInfo.host + ":" + emulatorInfo.port;
       }
     }
+    webLogger.debug(`notifyFirematEmulatorEndpoint sending: `, endpoint);
     broker.send("notifyFirematEmulatorEndpoint", { endpoint });
   });
 
