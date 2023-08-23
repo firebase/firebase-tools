@@ -1,3 +1,4 @@
+import * as chokidar from "chokidar";
 import { Constants } from "./constants";
 import { getPID, start, stop } from "./downloadableEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
@@ -11,7 +12,20 @@ export interface FirematEmulatorArgs {
 }
 
 export class FirematEmulator implements EmulatorInstance {
-  constructor(private args: FirematEmulatorArgs) {}
+  private gqlWatcher?: chokidar.FSWatcher;
+  constructor(private args: FirematEmulatorArgs) {
+    if (this.args.configDir) {
+      this.gqlWatcher = chokidar.watch(this.args.configDir)
+      this.gqlWatcher.on("change", async () => {
+        console.log(`Detected change in config directory ${this.args.configDir}, restarting fireMAT emulator`);
+        await this.stop();
+        console.log("Stopped fireMAT emulator");
+        await this.start();
+        console.log("Started fireMAT emulator");
+        return;
+      })
+    }
+  }
 
   start(): Promise<void> {
     // Find firemat dir?
