@@ -1,1 +1,1 @@
-- Improve performance and reliability when deploying multiple 2nd gen functions using single builds. (#6275)
+- Fix issue with mixed v1 and v2 functions deployments. (#6293)
