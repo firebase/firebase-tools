@@ -997,11 +997,7 @@ export function setAccountInfoImpl(
   { privileged = false, emulatorUrl = undefined }: { privileged?: boolean; emulatorUrl?: URL } = {}
 ): Schemas["GoogleCloudIdentitytoolkitV1SetAccountInfoResponse"] {
   // TODO: Implement these.
-  const unimplementedFields: (keyof typeof reqBody)[] = [
-    "provider",
-    "upgradeToFederatedLogin",
-    "linkProviderUserInfo",
-  ];
+  const unimplementedFields: (keyof typeof reqBody)[] = ["provider", "upgradeToFederatedLogin"];
   for (const field of unimplementedFields) {
     if (field in reqBody) {
       throw new NotImplementedError(`${field} is not implemented yet.`);
@@ -1185,8 +1181,22 @@ export function setAccountInfoImpl(
     }
   }
 
+  if (reqBody.linkProviderUserInfo) {
+    assert(
+      reqBody.linkProviderUserInfo.providerId && reqBody.linkProviderUserInfo.providerId !== "",
+      "linkProviderUserInfo.providerId of properties argument must be a non-empty string."
+    );
+    assert(
+      reqBody.linkProviderUserInfo.rawId && reqBody.linkProviderUserInfo.rawId !== "",
+      "linkProviderUserInfo.providerId of properties argument must be a non-empty string."
+    );
+  }
+
   user = state.updateUserByLocalId(user.localId, updates, {
     deleteProviders: reqBody.deleteProvider,
+    upsertProviders: reqBody.linkProviderUserInfo
+      ? [reqBody.linkProviderUserInfo as ProviderUserInfo]
+      : undefined,
   });
 
   // Only initiate the recover email OOB flow for non-anonymous users
