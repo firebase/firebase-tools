@@ -5,14 +5,9 @@ import { Label } from "./components/ui/Text";
 export function FirematExecutionArgumentsApp() {
   let input = "{}";
 
-  const handleInput = (e) => {
-    input = e.target.value;
-  };
-
-  const handleClick = (e) => {
-    e.preventDefault();
+  const handleChange = (e) => {
     try {
-      const args = JSON.parse(input);
+      const args = JSON.parse(e.target.value);
       broker.send("definedFirematArgs", { args });
     } catch (e) {
       console.log(e);
@@ -26,11 +21,10 @@ export function FirematExecutionArgumentsApp() {
         cols={80}
         resize={"both"}
         value={input}
-        onInput={handleInput}
+        onChange={handleChange}
       >
         <Label>Arguments used in operations (needs to be valid JSON)</Label>
       </VSCodeTextArea>
-      <VSCodeButton onClick={handleClick}>Save</VSCodeButton>
     </>
   );
 }

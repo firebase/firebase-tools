@@ -12,15 +12,11 @@ import {
 } from "graphql";
 import { effect } from "@preact/signals-core";
 import { introspectionQuery } from './explorer';
-
-enum BASE_TYPE {
-  query = "query",
-  mutation = "mutation",
-}
+import { OPERATION_TYPE } from "./types";
 
 interface Element {
   name: string;
-  baseType: BASE_TYPE;
+  baseType: OPERATION_TYPE;
 }
 
 export class ExplorerTreeDataProvider
@@ -75,7 +71,7 @@ export class ExplorerTreeDataProvider
 
   getTreeItem(element: Element): vscode.TreeItem {
     // special cases for query and mutation root folders
-    if (Object.values(BASE_TYPE).includes(element.name as BASE_TYPE)) {
+    if (Object.values(OPERATION_TYPE).includes(element.name as OPERATION_TYPE)) {
       return new vscode.TreeItem(
         element.name,
         vscode.TreeItemCollapsibleState.Collapsed
@@ -108,23 +104,23 @@ export class ExplorerTreeDataProvider
     // init the tree with two elements, query and mutation
     if (!element) {
       return [
-        { name: BASE_TYPE.query, baseType: BASE_TYPE.query },
-        { name: BASE_TYPE.mutation, baseType: BASE_TYPE.mutation },
+        { name: OPERATION_TYPE.query, baseType: OPERATION_TYPE.query },
+        { name: OPERATION_TYPE.mutation, baseType: OPERATION_TYPE.mutation },
       ];
     }
 
     // TODO: use non-mantle introspection
-    if (element.name === BASE_TYPE.query) {
+    if (element.name === OPERATION_TYPE.query) {
       return this._unref(this.typeSystem.introspection.__schema.queryType)
         .fields.filter((f) => f.name !== "_mantle")
         .map((f) => {
-          return { name: f.name, baseType: BASE_TYPE.query };
+          return { name: f.name, baseType: OPERATION_TYPE.query };
         });
-    } else if (element.name === BASE_TYPE.mutation) {
+    } else if (element.name === OPERATION_TYPE.mutation) {
       return this._unref(this.typeSystem.introspection.__schema.mutationType)
         .fields.filter((f) => f.name !== "_mantle")
         .map((f) => {
-          return { name: f.name, baseType: BASE_TYPE.mutation };
+          return { name: f.name, baseType: OPERATION_TYPE.mutation };
         });
     }
 
@@ -171,7 +167,7 @@ export class ExplorerTreeDataProvider
   private _field(element: Element): IntrospectionField | undefined {
     const path = element.name.split(".");
     const typeRef =
-      element.baseType === BASE_TYPE.query
+      element.baseType === OPERATION_TYPE.query
         ? this.typeSystem.introspection.__schema.queryType
         : this.typeSystem.introspection.__schema.mutationType;
 
