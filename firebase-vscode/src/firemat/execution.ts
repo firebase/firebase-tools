@@ -15,6 +15,7 @@ import {
 import { batch, effect } from "@preact/signals-core";
 import { OperationDefinitionNode, print } from "graphql";
 import { FirematService } from "./service";
+import { OPERATION_TYPE } from "./types";
 
 export function registerExecution(
   context: ExtensionContext,
@@ -46,27 +47,37 @@ export function registerExecution(
         args: item.args,
         query: print(item.operation),
         results: item.results,
+        displayName: item.operation.operation + ": " + item.label,
       });
     }
   });
 
-  async function executeOperation(ast: OperationDefinitionNode) {
+  async function executeOperation(ast: OperationDefinitionNode, { documentPath, position }) {
     const item = createExecution({
       label: ast.name.value,
       timestamp: Date.now(),
       state: ExecutionState.RUNNING,
       operation: ast,
       args: executionArgs.value,
+      documentPath,
+      position,
     });
-    const results = await firematService.executeGraphQL({
+
+    // execute query or mutation 
+    const results = ast.operation === OPERATION_TYPE.query as string ? await firematService.executeQuery({
+      operation_name: ast.name.value,
       query: print(ast),
+      variables: executionArgs.value,
+    }) : await firematService.executeMutation({
+      operation_name: ast.name.value,
+      mutation: print(ast),
       variables: executionArgs.value,
     });
 
     batch(() => {
       updateExecution(item.executionId, {
         ...item,
-        state: ExecutionState.FINISHED,
+        state: !results.code ? ExecutionState.FINISHED : ExecutionState.ERRORED,
         results,
       });
       selectExecutionId(item.executionId);
