@@ -130,17 +130,22 @@ export class Fabricator {
     };
 
     const upserts: Array<Promise<void>> = [];
-    const scraper = new SourceTokenScraper();
+    const scraperV1 = new SourceTokenScraper();
+    const scraperV2 = new SourceTokenScraper();
     for (const endpoint of changes.endpointsToCreate) {
       this.logOpStart("creating", endpoint);
-      upserts.push(handle("create", endpoint, () => this.createEndpoint(endpoint, scraper)));
+      upserts.push(
+        handle("create", endpoint, () => this.createEndpoint(endpoint, scraperV1, scraperV2))
+      );
     }
     for (const endpoint of changes.endpointsToSkip) {
       utils.logSuccess(this.getLogSuccessMessage("skip", endpoint));
     }
     for (const update of changes.endpointsToUpdate) {
       this.logOpStart("updating", update.endpoint);
-      upserts.push(handle("update", update.endpoint, () => this.updateEndpoint(update, scraper)));
+      upserts.push(
+        handle("update", update.endpoint, () => this.updateEndpoint(update, scraperV1, scraperV2))
+      );
     }
     await utils.allSettled(upserts);
 
@@ -167,12 +172,16 @@ export class Fabricator {
     return deployResults;
   }
 
-  async createEndpoint(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
+  async createEndpoint(
+    endpoint: backend.Endpoint,
+    scraperV1: SourceTokenScraper,
+    scraperV2: SourceTokenScraper
+  ): Promise<void> {
     endpoint.labels = { ...endpoint.labels, ...deploymentTool.labels() };
     if (endpoint.platform === "gcfv1") {
-      await this.createV1Function(endpoint, scraper);
+      await this.createV1Function(endpoint, scraperV1);
     } else if (endpoint.platform === "gcfv2") {
-      await this.createV2Function(endpoint, scraper);
+      await this.createV2Function(endpoint, scraperV2);
     } else {
       assertExhaustive(endpoint.platform);
     }
@@ -180,18 +189,22 @@ export class Fabricator {
     await this.setTrigger(endpoint);
   }
 
-  async updateEndpoint(update: planner.EndpointUpdate, scraper: SourceTokenScraper): Promise<void> {
+  async updateEndpoint(
+    update: planner.EndpointUpdate,
+    scraperV1: SourceTokenScraper,
+    scraperV2: SourceTokenScraper
+  ): Promise<void> {
     update.endpoint.labels = { ...update.endpoint.labels, ...deploymentTool.labels() };
     if (update.deleteAndRecreate) {
       await this.deleteEndpoint(update.deleteAndRecreate);
-      await this.createEndpoint(update.endpoint, scraper);
+      await this.createEndpoint(update.endpoint, scraperV1, scraperV2);
       return;
     }
 
     if (update.endpoint.platform === "gcfv1") {
-      await this.updateV1Function(update.endpoint, scraper);
+      await this.updateV1Function(update.endpoint, scraperV1);
     } else if (update.endpoint.platform === "gcfv2") {
-      await this.updateV2Function(update.endpoint, scraper);
+      await this.updateV2Function(update.endpoint, scraperV2);
     } else {
       assertExhaustive(update.endpoint.platform);
     }
@@ -352,6 +365,9 @@ export class Fabricator {
       resultFunction = await this.functionExecutor
         .run(async () => {
           apiFunction.buildConfig.sourceToken = await scraper.getToken();
+          console.log(
+            `${apiFunction.name} source token: ${apiFunction.buildConfig.sourceToken || "none"}`
+          );
           const op: { name: string } = await gcfV2.createFunction(apiFunction);
           return await poller.pollOperation<gcfV2.OutputCloudFunction>({
             ...gcfV2PollerOptions,
