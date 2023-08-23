@@ -12,7 +12,6 @@ export function registerFiremat(
 ): Disposable {
   const firematService = new FirematService(broker);
   const codeLensProvider = new CodeLensProvider();
-
   const client = setupLanguageClient(context);
   client.start();
 
