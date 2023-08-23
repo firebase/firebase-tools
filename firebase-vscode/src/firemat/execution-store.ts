@@ -1,5 +1,6 @@
 import { signal, computed } from "@preact/signals-core";
 import { OperationDefinitionNode } from "graphql";
+import * as vscode from "vscode";
 
 export enum ExecutionState {
   INIT,
@@ -17,6 +18,8 @@ export interface ExecutionItem {
   operation: OperationDefinitionNode;
   args?: {};
   results?: {};
+  documentPath: string;
+  position: vscode.Position;
 }
 
 let executionId = 0;
@@ -64,8 +67,15 @@ export function updateExecution(
   };
 }
 
-export function selectExecutionId(executionId: string) {
+export async function selectExecutionId(executionId: string) {
   selectedExecutionId.value = executionId;
+
+  // take user to operation location in editor
+  const { documentPath, position } = selectedExecution.value;
+  await vscode.window.showTextDocument(
+    vscode.Uri.file(documentPath),
+    { selection: new vscode.Range(position, position) }
+  );
 }
 
 export const selectedExecution = computed(
