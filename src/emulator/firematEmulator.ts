@@ -2,6 +2,7 @@ import * as chokidar from "chokidar";
 import { Constants } from "./constants";
 import { getPID, start, stop } from "./downloadableEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
+import { EmulatorLogger } from "./emulatorLogger";
 
 export interface FirematEmulatorArgs {
   projectId?: string;
@@ -12,18 +13,20 @@ export interface FirematEmulatorArgs {
 }
 
 export class FirematEmulator implements EmulatorInstance {
+  private logger: EmulatorLogger;
   private gqlWatcher?: chokidar.FSWatcher;
   constructor(private args: FirematEmulatorArgs) {
+    this.logger = EmulatorLogger.forEmulator(Emulators.FIREMAT);
     if (this.args.configDir) {
       this.gqlWatcher = chokidar.watch(this.args.configDir);
       this.gqlWatcher.on("change", async () => {
-        console.log(
+        this.logger.log(
+          "INFO",
           `Detected change in config directory ${this.args.configDir}, restarting fireMAT emulator`
         );
         await this.stop();
-        console.log("Stopped fireMAT emulator");
         await this.start();
-        console.log("Started fireMAT emulator");
+        this.logger.log("INFO", "Restarted fireMAT emulator");
         return;
       });
     }
