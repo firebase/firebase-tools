@@ -70,7 +70,7 @@ export function updateExecution(
 export async function selectExecutionId(executionId: string) {
   selectedExecutionId.value = executionId;
 
-  // 
+  // take user to operation location in editor
   const { documentPath, position } = selectedExecution.value;
   await vscode.window.showTextDocument(
     vscode.Uri.file(documentPath),
