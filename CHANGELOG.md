@@ -1,1 +1,1 @@
-- Fixed issue causing unexpected behavior and errors on functions deploy. (#6290)
+- Fixed an issue causing unexpected behavior and errors on functions deploy. (#6290)
