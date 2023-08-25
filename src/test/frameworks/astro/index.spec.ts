@@ -117,7 +117,7 @@ describe("Astro", () => {
 
       const copy = sandbox.stub(fsExtra, "copy");
 
-      await ɵcodegenPublicDirectory(root, dist);
+      await ɵcodegenPublicDirectory(root, { dest: dist });
       expect(copy.getCalls().map((it) => it.args)).to.deep.equal([[join(root, outDir), dist]]);
     });
 
@@ -142,7 +142,7 @@ describe("Astro", () => {
 
       const copy = sandbox.stub(fsExtra, "copy");
 
-      await ɵcodegenPublicDirectory(root, dist);
+      await ɵcodegenPublicDirectory(root, { dest: dist });
       expect(copy.getCalls().map((it) => it.args)).to.deep.equal([
         [join(root, outDir, "client"), dist],
       ]);
@@ -186,7 +186,7 @@ describe("Astro", () => {
 
       const copy = sandbox.stub(fsExtra, "copy");
       const bootstrapScript = astroUtils.getBootstrapScript();
-      expect(await ɵcodegenFunctionsDirectory(root, dist)).to.deep.equal({
+      expect(await ɵcodegenFunctionsDirectory(root, { dest: dist })).to.deep.equal({
         packageJson,
         bootstrapScript,
       });

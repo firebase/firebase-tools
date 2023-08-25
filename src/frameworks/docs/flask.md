@@ -21,9 +21,10 @@ to Firebase and serve dynamic content to your users.
 
 <<_includes/_initialize-firebase.md>>
 
-1. Choose your hosting source directory; this could be an existing Flask app.
-1. Choose "Dynamic web hosting with web framework."
-1. Choose Flask.
+1. Answer yes to "Do you want to use a web framework? (experimental)"
+1. Choose your hosting source directory; this could be an existing Flask app, 
+in this case you can specify the name of the app entry point file (e.g. main.py)
+1. If prompted, choose Flask.
 
 ### Initialize an existing project
 
@@ -37,6 +38,18 @@ than a `public` option. For example:
   }
 }
 ```
+
+#### Troubleshooting initialization
+
+If you experience any issues while initializing your application, 
+here are some tips on using our tools with your Flask project:
+
+1. You have correctly specified your app entry point file (e.g. main.py) and it
+exists in firebase.json under `hosting.frameworksBackend.flask.entryFile`.
+1. You have created and activated a virtual environment
+`python -m venv venv && . venv/bin/activate`.
+1. You have run `pip install -t requirements.txt` at least once and are able 
+to start a standalone Flask server.
 
 ## Serve fully dynamic content
 

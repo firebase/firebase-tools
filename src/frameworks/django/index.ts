@@ -1,7 +1,13 @@
 import { copy, mkdirp, pathExists } from "fs-extra";
 import { mkdir, readFile, readdir, writeFile } from "fs/promises";
 import { join } from "path";
-import { BuildResult, FrameworkType, SupportLevel } from "../interfaces";
+import {
+  BuildResult,
+  CodegenFunctionsDirectoryOptions,
+  CodegenPublicDirectoryOptions,
+  FrameworkType,
+  SupportLevel,
+} from "../interfaces";
 import { dirExistsSync } from "../../fsutils";
 import { findPythonCLI, getVenvDir, hasPipDependency, spawnPython } from "../utils";
 import { sync as spawnSync } from "cross-spawn";
@@ -35,7 +41,13 @@ export async function init(setup: any, config: any) {
   );
 }
 
-export async function ɵcodegenPublicDirectory(root: string, dest: string) {
+export async function ɵcodegenPublicDirectory(
+  root: string,
+  options?: CodegenPublicDirectoryOptions
+) {
+  const { dest } = options || {};
+  if (!dest) throw new Error("Missing dest in options");
+
   const output = await spawnPython(
     "python",
     [
@@ -58,7 +70,13 @@ export async function ɵcodegenPublicDirectory(root: string, dest: string) {
   }
 }
 
-export async function ɵcodegenFunctionsDirectory(root: string, dest: string) {
+export async function ɵcodegenFunctionsDirectory(
+  root: string,
+  options?: CodegenFunctionsDirectoryOptions
+) {
+  const { dest } = options || {};
+  if (!dest) throw new Error("Missing dest in options");
+
   await mkdir(dest, { recursive: true });
   const wsgiApplication = await spawnPython(
     "python",

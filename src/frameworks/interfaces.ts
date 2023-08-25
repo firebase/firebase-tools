@@ -1,6 +1,6 @@
 import { IncomingMessage, ServerResponse } from "http";
 import { EmulatorInfo } from "../emulator/types";
-import { HostingHeaders, HostingRedirects, HostingRewrites } from "../firebaseConfig";
+import { HostingBase, HostingHeaders, HostingRedirects, HostingRewrites } from "../firebaseConfig";
 import { HostingOptions } from "../hosting/options";
 import { Options } from "../options";
 
@@ -23,6 +23,7 @@ export const enum SupportLevel {
 export interface Discovery {
   mayWantBackend: boolean;
   publicDirectory: string;
+  entryFile?: string;
 }
 
 export interface BuildResult {
@@ -66,8 +67,13 @@ interface PythonFramework {
   rewriteSource?: string;
 }
 
+export type DiscoverOptions = {
+  plugin?: string;
+  npmDependency?: string;
+  flaskConfig?: NonNullable<HostingBase["frameworksBackend"]>["flask"];
+};
 export interface Framework {
-  discover: (dir: string) => Promise<Discovery | undefined>;
+  discover: (dir: string, options?: DiscoverOptions) => Promise<Discovery | undefined>;
   type: FrameworkType;
   name: string;
   build: (dir: string, target: string) => Promise<BuildResult | void>;
@@ -79,23 +85,31 @@ export interface Framework {
     target: string,
     hostingEmulatorInfo?: EmulatorInfo
   ) => Promise<RequestHandler>;
-  ɵcodegenPublicDirectory: (
-    dir: string,
-    dest: string,
-    target: string,
-    context: {
-      project: string;
-      site: string;
-    }
-  ) => Promise<void>;
+  ɵcodegenPublicDirectory: (dir: string, options?: CodegenPublicDirectoryOptions) => Promise<void>;
   ɵcodegenFunctionsDirectory?: (
     dir: string,
-    dest: string,
-    target: string
+    options?: CodegenFunctionsDirectoryOptions
   ) => Promise<NodeJSFramework | PythonFramework>;
   getValidBuildTargets?: (purpose: BUILD_TARGET_PURPOSE, dir: string) => Promise<string[]>;
   shouldUseDevModeHandle?: (target: string, dir: string) => Promise<boolean>;
 }
+
+export type CodegenFunctionsDirectoryOptions = {
+  dest?: string;
+  target?: string;
+  configuration?: string;
+  frameworksBackend?: HostingBase["frameworksBackend"];
+};
+
+export type CodegenPublicDirectoryOptions = {
+  dest?: string;
+  target?: string;
+  context?: {
+    project: string;
+    site: string;
+  };
+  frameworksBackend?: HostingBase["frameworksBackend"];
+};
 
 export type BUILD_TARGET_PURPOSE = "deploy" | "test" | "emulate";
 

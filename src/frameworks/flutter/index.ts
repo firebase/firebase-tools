@@ -4,7 +4,13 @@ import { join } from "path";
 import { load as loadYaml } from "js-yaml";
 import { readFile } from "fs/promises";
 
-import { BuildResult, Discovery, FrameworkType, SupportLevel } from "../interfaces";
+import {
+  BuildResult,
+  CodegenPublicDirectoryOptions,
+  Discovery,
+  FrameworkType,
+  SupportLevel,
+} from "../interfaces";
 import { FirebaseError } from "../../error";
 import { assertFlutterCliExists } from "./utils";
 import { DART_RESERVED_WORDS, FALLBACK_PROJECT_NAME } from "./constants";
@@ -57,6 +63,12 @@ export function build(cwd: string): Promise<BuildResult> {
   return Promise.resolve({ wantsBackend: false });
 }
 
-export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: string) {
+export async function ɵcodegenPublicDirectory(
+  sourceDir: string,
+  options?: CodegenPublicDirectoryOptions
+) {
+  const { dest: destDir } = options || {};
+  if (!destDir) throw new FirebaseError("Missing destDir in options");
+
   await copy(join(sourceDir, "build", "web"), destDir);
 }

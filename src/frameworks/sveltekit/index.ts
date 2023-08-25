@@ -1,6 +1,11 @@
 import { copy, pathExists, readFile } from "fs-extra";
 import { join } from "path";
-import { FrameworkType, SupportLevel } from "../interfaces";
+import {
+  CodegenFunctionsDirectoryOptions,
+  CodegenPublicDirectoryOptions,
+  FrameworkType,
+  SupportLevel,
+} from "../interfaces";
 import { viteDiscoverWithNpmDependency, build as viteBuild } from "../vite";
 import { SvelteKitConfig } from "./interfaces";
 import { fileExistsSync } from "../../fsutils";
@@ -20,7 +25,13 @@ export async function build(root: string) {
   return { wantsBackend };
 }
 
-export async function ɵcodegenPublicDirectory(root: string, dest: string) {
+export async function ɵcodegenPublicDirectory(
+  root: string,
+  options?: CodegenPublicDirectoryOptions
+) {
+  const { dest } = options || {};
+  if (!dest) throw new Error("Missing dest in options");
+
   const config = await getConfig(root);
   const output = join(root, config.kit.outDir, "output");
   await copy(join(output, "client"), dest);
@@ -31,7 +42,13 @@ export async function ɵcodegenPublicDirectory(root: string, dest: string) {
   }
 }
 
-export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
+export async function ɵcodegenFunctionsDirectory(
+  sourceDir: string,
+  options?: CodegenFunctionsDirectoryOptions
+) {
+  const { dest: destDir } = options || {};
+  if (!destDir) throw new Error("Missing destDir in options");
+
   const packageJsonBuffer = await readFile(join(sourceDir, "package.json"));
   const packageJson = JSON.parse(packageJsonBuffer.toString());
   packageJson.dependencies ||= {};

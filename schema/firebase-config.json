@@ -38,6 +38,15 @@
                     "description": "Determines whether Firebase AppCheck is enforced. Defaults to false.",
                     "type": "boolean"
                 },
+                "flask": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "entryFile": {
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
                 "ingressSettings": {
                     "description": "Ingress settings which control where this function can be called from.",
                     "enum": [
@@ -120,6 +129,9 @@
                     "type": "string"
                 }
             },
+            "required": [
+                "flask"
+            ],
             "type": "object"
         },
         "Record<string,string>": {

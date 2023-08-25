@@ -110,6 +110,10 @@ interface FrameworksBackendOptions extends HttpsOptions {
   region?: string;
   // Invoker can only be public
   invoker?: "public";
+  // To allow dynamic entry file for Flask apps
+  flask: {
+    entryFile?: string;
+  };
 }
 
 export type HostingBase = {

@@ -3,7 +3,7 @@ import { readFile } from "fs/promises";
 import { join, posix } from "path";
 import { lt } from "semver";
 import { spawn, sync as spawnSync } from "cross-spawn";
-import { FrameworkType, SupportLevel } from "../interfaces";
+import { CodegenPublicDirectoryOptions, FrameworkType, SupportLevel } from "../interfaces";
 import { simpleProxy, warnIfCustomBuildScript, getNodeModuleBin, relativeRequire } from "../utils";
 import { getNuxtVersion } from "./utils";
 
@@ -64,7 +64,13 @@ export async function build(cwd: string) {
   return { wantsBackend, rewrites, baseUrl };
 }
 
-export async function ɵcodegenPublicDirectory(root: string, dest: string) {
+export async function ɵcodegenPublicDirectory(
+  root: string,
+  options?: CodegenPublicDirectoryOptions
+) {
+  const { dest } = options || {};
+  if (!dest) throw new FirebaseError("Missing destDir in options");
+
   const {
     app: { baseURL },
   } = await getConfig(root);

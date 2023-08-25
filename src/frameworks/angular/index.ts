@@ -10,6 +10,8 @@ import {
   FrameworkType,
   SupportLevel,
   BUILD_TARGET_PURPOSE,
+  CodegenFunctionsDirectoryOptions,
+  CodegenPublicDirectoryOptions,
 } from "../interfaces";
 import { promptOnce } from "../../prompt";
 import {
@@ -123,9 +125,13 @@ export async function getDevModeHandle(dir: string, configuration: string) {
 
 export async function ɵcodegenPublicDirectory(
   sourceDir: string,
-  destDir: string,
-  configuration: string
+  options?: CodegenPublicDirectoryOptions
 ) {
+  const { dest: destDir, target: configuration } = options || {};
+  if (!destDir || !configuration) {
+    throw new FirebaseError("Missing required options for Angular ɵcodegenPublicDirectory");
+  }
+
   const { outputPath, baseHref, defaultLocale, locales } = await getBrowserConfig(
     sourceDir,
     configuration
@@ -168,9 +174,13 @@ export async function shouldUseDevModeHandle(targetOrConfiguration: string, dir:
 
 export async function ɵcodegenFunctionsDirectory(
   sourceDir: string,
-  destDir: string,
-  configuration: string
+  options?: CodegenFunctionsDirectoryOptions
 ) {
+  const { dest: destDir, configuration } = options || {};
+  if (!destDir || !configuration) {
+    throw new FirebaseError("Missing required options for Angular ɵcodegenFunctionsDirectory");
+  }
+
   const {
     packageJson,
     serverOutputPath,
