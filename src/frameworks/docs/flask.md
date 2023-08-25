@@ -41,7 +41,8 @@ than a `public` option. For example:
 
 #### Troubleshooting initialization
 
-If you experience any issues while initializing your application, here are some tips on using our tools with your Flask project:
+If you experience any issues while initializing your application, 
+here are some tips on using our tools with your Flask project:
 
 1. You have correctly specified your app entry point file (e.g. main.py) and it
 exists in firebase.json under `hosting.frameworksBackend.flask.entryFile`.
