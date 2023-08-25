@@ -24,28 +24,13 @@ export async function discover(cwd: string, options?: DiscoverOptions) {
   const { flaskConfig } = options || {};
 
   if (!hasPipDependency("Flask", { cwd })) return;
-  // if (flaskConfig) {
-  const results = await getDiscoveryResults(cwd, flaskConfig).catch(() => undefined);
-  if (!results) {
-    logger.debug(
-      "Looks like you might be using Flask. Here are some tips on using our tools with your Python project:"
-    );
-    logger.debug(
-      '\t1. You have your app entry point in a "main.py" file in the hosting root folder.'
-    );
-    logger.debug(
-      '\t2. You have created and activated a virtual environment "python -m venv venv && . venv/bin/activate"'
-    );
-    logger.debug(
-      '\t3. You have run "pip install -t requirements.txt" at least once and are able to start a standalone Flask server'
-    );
 
-    return;
-  }
+  const results = await getDiscoveryResults(cwd, flaskConfig).catch(() => undefined);
+  if (!results) return;
+
   const publicDirectory = relative(cwd, results.staticFolder);
   const entryFile = results.entryFile;
   return { mayWantBackend: true, publicDirectory, entryFile };
-  // }
 }
 
 export async function init(setup: any, config: any) {
