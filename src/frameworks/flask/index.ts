@@ -118,8 +118,6 @@ async function getDiscoveryResults(
   cwd: string,
   flaskConfig?: NonNullable<HostingBase["frameworksBackend"]>["flask"]
 ) {
-  console.log("flaskConfig", flaskConfig);
-
   let entryFile = flaskConfig?.entryFile;
   if (!entryFile) {
     entryFile = await promptOnce({

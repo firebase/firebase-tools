@@ -125,24 +125,6 @@ export async function doSetup(setup: any, config: any): Promise<void> {
       if (discoveredFramework) {
         rimraf(setup.hosting.source);
       }
-      //  else if (setup.hosting.whichFramework === WebFrameworks.flask.name) {
-      //   await promptOnce(
-      //     {
-      //       name: "entryFile",
-      //       type: "input",
-      //       message:
-      //         "What file in the project root do you want to use as the entry point to your Flask application?",
-      //       default: "main.py",
-      //     },
-      //     setup.hosting
-      //   );
-
-      //   discoveredFramework = await discover(
-      //     join(config.projectDir, setup.hosting.source),
-      //     config.frameworksBackend
-      //   );
-      //   setup.hosting.webFramework = discoveredFramework.framework;
-      // }
 
       await WebFrameworks[setup.hosting.whichFramework].init!(setup, config);
     }
@@ -167,9 +149,12 @@ export async function doSetup(setup: any, config: any): Promise<void> {
       },
     };
 
-    if (discoveredFramework?.framework.toLowerCase() === WebFrameworks.flask.name.toLowerCase()) {
+    if (
+      discoveredFramework?.framework.toLowerCase() === WebFrameworks.flask.name.toLowerCase() ||
+      setup.hosting.whichFramework.toLowerCase() === WebFrameworks.flask.name.toLowerCase()
+    ) {
       setup.config.hosting.frameworksBackend.flask = {
-        entryFile: discoveredFramework.entryFile || "main.py",
+        entryFile: discoveredFramework?.entryFile || "main.py",
       };
     }
   } else {
