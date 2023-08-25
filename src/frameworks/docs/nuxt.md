@@ -21,7 +21,7 @@ review the following requirements and options:
   using your preferred method.
 - Optional: Billing enabled on your Firebase project
   (required if you plan to use SSR)
-- An existing Nuxt project. You can create one with `npx nuxi@latest init <project-name>`.
+- An existing Nuxt (version 3+) project. You can create one with `npx nuxi@latest init <project-name>`.
 
 
 ## Initialize Firebase
@@ -41,19 +41,24 @@ existing project.
     If there is an existing Nuxt codebase,
     the CLI detects it and the process completes.
 
+## Deployment
+
+After initializing Firebase, you can deploy your Nuxt app with the standard
+deployment command:
+
+```shell
+firebase deploy
+```
+
 ## Serve static content
 
-If your app uses [`ssr: false`](https://nuxt.com/docs/api/configuration/nuxt-config#ssr), 
+If your Nuxt app uses [`ssr: false`](https://nuxt.com/docs/api/configuration/nuxt-config#ssr), 
 the Firebase CLI will correctly detect and configure your build to serve fully
 static content on Firebase Hosting.
 
 ## Server-side rendering
 
 The Firebase CLI will detect usage of [`ssr: true`](https://nuxt.com/docs/api/configuration/nuxt-config#ssr). 
-In such cases, the {{cli}} will deploy functions to {{cloud_functions_full}} to run dynamic 
+In such cases, the Firebase CLI will deploy functions to Cloud Functions for Firebase to run dynamic 
 server code. You can view information about these functions, such as their domain and runtime
 configuration, in the [Firebase console](https://console.firebase.google.com/project/_/functions).
-
-## Deployment
-
-TODO
