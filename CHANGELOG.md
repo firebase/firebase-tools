@@ -1,0 +1,1 @@
+- Fixed an issue where builds from https://firebase.tools could not run commands that spawn `npm`. (#6132)
