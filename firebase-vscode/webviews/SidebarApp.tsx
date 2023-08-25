@@ -135,10 +135,6 @@ export function SidebarApp() {
     );
   }
 
-  function sendMessageToTerminal() {
-    broker.send("chooseQuickstartDir", {});
-  }
-
   return (
     <>
       <Spacer size="medium" />
@@ -172,7 +168,9 @@ export function SidebarApp() {
           <>
             <Spacer size="medium" />
             <QuickstartPanel
-              onQuickstartButtonClicked={sendMessageToTerminal}
+              onQuickstartButtonClicked={() =>
+                broker.send("chooseQuickstartDir", {})
+              }
             />
           </>
         )

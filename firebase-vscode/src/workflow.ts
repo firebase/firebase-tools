@@ -377,18 +377,24 @@ export async function setupWorkflow(
      * 3. Moves all remaining files to the root of the selected directory
      * 
      * Once this download and configuration is complete, a new vscode window
-     * is opened to the selected directory.
+     * is opened to the selected directory. 
      */
     if (selectedURI && selectedURI[0]) {
-      execSync(`git clone https://github.com/firebase/quickstart-js.git ` +
-        `&& cd quickstart-js && ls | grep -xv "firestore" | xargs rm -rf ` +
-        `&& mv -v firestore/* "${selectedURI[0].fsPath}" ` +
-        `&& cd "${selectedURI[0].fsPath}" && rm -rf quickstart-js`, {
-        cwd: selectedURI[0].fsPath,
+      try {
+        pluginLogger.info('[Quickstart] Downloading Quickstart Project:\n' +
+          execSync(`git clone https://github.com/firebase/quickstart-js.git ` +
+            `&& cd quickstart-js && ls | grep -xv "firestore" | xargs rm -rf ` +
+            `&& mv -v firestore/* "${selectedURI[0].fsPath}" ` +
+            `&& cd "${selectedURI[0].fsPath}" && rm -rf quickstart-js`, {
+            cwd: selectedURI[0].fsPath,
+            encoding: "utf8"
+          }
+          ));
+        vscode.commands.executeCommand(`vscode.openFolder`, selectedURI[0]);
+      } catch (error) {
+        pluginLogger.error('[Quickstart] Error downloading Quickstart:\n' +
+          error);
       }
-      );
-
-      vscode.commands.executeCommand(`vscode.openFolder`, selectedURI[0]);
     }
   }
 }
