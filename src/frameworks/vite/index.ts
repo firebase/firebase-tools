@@ -52,7 +52,6 @@ export const vitePluginDiscover = (plugin: string) => async (dir: string) =>
 
 export async function discover(dir: string, options?: DiscoverOptions) {
   const { plugin, npmDependency } = options || {};
-  if (!plugin && !npmDependency) throw new Error("Missing plugin or npmDependency");
 
   if (!existsSync(join(dir, "package.json"))) return;
   // If we're not searching for a vite plugin, depth has to be zero
