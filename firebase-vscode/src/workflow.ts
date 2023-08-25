@@ -381,7 +381,7 @@ export async function setupWorkflow(
      */
     if (selectedURI && selectedURI[0]) {
       try {
-        pluginLogger.info('[Quickstart] Downloading Quickstart Project:\n' +
+        pluginLogger.info('(Quickstart) Downloading Quickstart Project:\n' +
           execSync(`git clone https://github.com/firebase/quickstart-js.git ` +
             `&& cd quickstart-js && ls | grep -xv "firestore" | xargs rm -rf ` +
             `&& mv -v firestore/* "${selectedURI[0].fsPath}" ` +
@@ -392,7 +392,7 @@ export async function setupWorkflow(
           ));
         vscode.commands.executeCommand(`vscode.openFolder`, selectedURI[0]);
       } catch (error) {
-        pluginLogger.error('[Quickstart] Error downloading Quickstart:\n' +
+        pluginLogger.error('(Quickstart) Error downloading Quickstart:\n' +
           error);
       }
     }
