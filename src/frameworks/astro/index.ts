@@ -1,15 +1,16 @@
 import { sync as spawnSync, spawn } from "cross-spawn";
 import { copy, existsSync } from "fs-extra";
 import { join } from "path";
-import { BuildResult, Discovery, FrameworkType, SupportLevel } from "../interfaces";
-import { FirebaseError } from "../../error";
 import {
-  readJSON,
-  simpleProxy,
-  warnIfCustomBuildScript,
-  findNPMDependency,
-  getNodeModuleBin,
-} from "../utils";
+  BuildResult,
+  CodegenFunctionsDirectoryOptions,
+  CodegenPublicDirectoryOptions,
+  Discovery,
+  FrameworkType,
+  SupportLevel,
+} from "../interfaces";
+import { FirebaseError } from "../../error";
+import { readJSON, simpleProxy, warnIfCustomBuildScript, getNodeModuleBin } from "../utils";
 import { getAstroVersion, getBootstrapScript, getConfig } from "./utils";
 
 export const name = "Astro";
@@ -43,14 +44,25 @@ export async function build(cwd: string): Promise<BuildResult> {
   return { wantsBackend };
 }
 
-export async function ɵcodegenPublicDirectory(root: string, dest: string) {
+export async function ɵcodegenPublicDirectory(
+  root: string,
+  options?: CodegenPublicDirectoryOptions
+) {
+  const { dest } = options || {};
+  if (!dest) throw new FirebaseError("Missing destDir in options");
+
   const { outDir, output } = await getConfig(root);
   // output: "server" in astro.config builds "client" and "server" folders, otherwise assets are in top-level outDir
   const assetPath = join(root, outDir, output !== "static" ? "client" : "");
   await copy(assetPath, dest);
 }
 
-export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
+export async function ɵcodegenFunctionsDirectory(
+  sourceDir: string,
+  options?: CodegenFunctionsDirectoryOptions
+) {
+  const { dest: destDir } = options || {};
+  if (!destDir) throw new FirebaseError("Missing destDir in options");
   const { outDir } = await getConfig(sourceDir);
   const packageJson = await readJSON(join(sourceDir, "package.json"));
   await copy(join(sourceDir, outDir, "server"), join(destDir));

@@ -3,7 +3,12 @@ import { readFile } from "fs/promises";
 import { basename, join, relative } from "path";
 import { gte } from "semver";
 
-import { SupportLevel, FrameworkType } from "../interfaces";
+import {
+  SupportLevel,
+  FrameworkType,
+  CodegenFunctionsDirectoryOptions,
+  CodegenPublicDirectoryOptions,
+} from "../interfaces";
 import { getNodeModuleBin, relativeRequire } from "../utils";
 import { getNuxtVersion } from "../nuxt/utils";
 import { simpleProxy } from "../utils";
@@ -67,22 +72,34 @@ export async function build(rootDir: string) {
  * @param rootDir
  * @param dest
  */
-export async function ɵcodegenPublicDirectory(rootDir: string, dest: string) {
+export async function ɵcodegenPublicDirectory(
+  rootDir: string,
+  options?: CodegenPublicDirectoryOptions
+) {
+  const { dest } = options || {};
+  if (!dest) throw new Error("Missing dest in options");
+
   const {
-    app: { options },
+    app: { options: nuxtOptions },
   } = await getAndLoadNuxt({ rootDir, for: "build" });
-  await copy(options.generate.dir, dest);
+  await copy(nuxtOptions.generate.dir, dest);
 }
 
-export async function ɵcodegenFunctionsDirectory(rootDir: string, destDir: string) {
+export async function ɵcodegenFunctionsDirectory(
+  rootDir: string,
+  options?: CodegenFunctionsDirectoryOptions
+) {
+  const { dest: destDir } = options || {};
+  if (!destDir) throw new Error("Missing destDir in options");
+
   const packageJsonBuffer = await readFile(join(rootDir, "package.json"));
   const packageJson = JSON.parse(packageJsonBuffer.toString());
 
   // Get the nuxt config into an object so we can check the `target` and `ssr` properties.
   const {
-    app: { options },
+    app: { options: nuxtOptions },
   } = await getAndLoadNuxt({ rootDir, for: "build" });
-  const { buildDir, _nuxtConfigFile: configFilePath } = options;
+  const { buildDir, _nuxtConfigFile: configFilePath } = nuxtOptions;
 
   // When starting the Nuxt 2 server, we need to copy the `.nuxt` to the destination directory (`functions`)
   // with the same folder name (.firebase/<project-name>/functions/.nuxt).

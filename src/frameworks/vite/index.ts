@@ -3,7 +3,12 @@ import { spawn } from "cross-spawn";
 import { existsSync } from "fs";
 import { copy, pathExists } from "fs-extra";
 import { join } from "path";
-import { FrameworkType, SupportLevel } from "../interfaces";
+import {
+  CodegenPublicDirectoryOptions,
+  DiscoverOptions,
+  FrameworkType,
+  SupportLevel,
+} from "../interfaces";
 import { promptOnce } from "../../prompt";
 import {
   simpleProxy,
@@ -40,12 +45,15 @@ export async function init(setup: any, config: any, baseTemplate: string = "vani
 }
 
 export const viteDiscoverWithNpmDependency = (dep: string) => async (dir: string) =>
-  await discover(dir, undefined, dep);
+  await discover(dir, { npmDependency: dep });
 
 export const vitePluginDiscover = (plugin: string) => async (dir: string) =>
-  await discover(dir, plugin);
+  await discover(dir, { plugin });
 
-export async function discover(dir: string, plugin?: string, npmDependency?: string) {
+export async function discover(dir: string, options?: DiscoverOptions) {
+  const { plugin, npmDependency } = options || {};
+  if (!plugin && !npmDependency) throw new Error("Missing plugin or npmDependency");
+
   if (!existsSync(join(dir, "package.json"))) return;
   // If we're not searching for a vite plugin, depth has to be zero
   const additionalDep =
@@ -78,7 +86,13 @@ export async function build(root: string) {
   return { rewrites: [{ source: "**", destination: "/index.html" }] };
 }
 
-export async function ɵcodegenPublicDirectory(root: string, dest: string) {
+export async function ɵcodegenPublicDirectory(
+  root: string,
+  options?: CodegenPublicDirectoryOptions
+) {
+  const { dest } = options || {};
+  if (!dest) throw new Error("Missing destDir in options");
+
   const viteConfig = await getConfig(root);
   const viteDistPath = join(root, viteConfig.build.outDir);
   await copy(viteDistPath, dest);

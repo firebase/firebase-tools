@@ -2,7 +2,13 @@ import { execSync } from "child_process";
 import { copy, pathExists } from "fs-extra";
 import { mkdir, readFile } from "fs/promises";
 import { join } from "path";
-import { BuildResult, FrameworkType, SupportLevel } from "../interfaces";
+import {
+  BuildResult,
+  CodegenFunctionsDirectoryOptions,
+  CodegenPublicDirectoryOptions,
+  FrameworkType,
+  SupportLevel,
+} from "../interfaces";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -34,7 +40,13 @@ export async function build(cwd: string): Promise<BuildResult> {
   return { wantsBackend };
 }
 
-export async function ɵcodegenPublicDirectory(root: string, dest: string) {
+export async function ɵcodegenPublicDirectory(
+  root: string,
+  options?: CodegenPublicDirectoryOptions
+) {
+  const { dest } = options || {};
+  if (!dest) throw new Error("Missing destDir in options");
+
   const { serveDir } = await getConfig(root);
   await copy(serveDir!, dest);
 }
@@ -93,7 +105,13 @@ async function getBootstrapScript(
   return undefined;
 }
 
-export async function ɵcodegenFunctionsDirectory(root: string, dest: string) {
+export async function ɵcodegenFunctionsDirectory(
+  root: string,
+  options?: CodegenFunctionsDirectoryOptions
+) {
+  const { dest } = options || {};
+  if (!dest) throw new Error("Missing dest in options");
+
   const bootstrapScript = await getBootstrapScript(root);
   if (!bootstrapScript) throw new Error("Cloud not find bootstrapScript");
   await mkdir(dest, { recursive: true });

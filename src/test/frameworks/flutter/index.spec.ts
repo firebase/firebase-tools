@@ -73,7 +73,7 @@ describe("Flutter", () => {
       const root = Math.random().toString(36).split(".")[1];
       const dist = Math.random().toString(36).split(".")[1];
       const copy = sandbox.stub(fsExtra, "copy");
-      await ɵcodegenPublicDirectory(root, dist);
+      await ɵcodegenPublicDirectory(root, { dest: dist });
       expect(copy.getCalls().map((it) => it.args)).to.deep.equal([
         [join(root, "build", "web"), dist],
       ]);

@@ -30,7 +30,13 @@ import {
   validateLocales,
   getNodeModuleBin,
 } from "../utils";
-import { BuildResult, FrameworkType, SupportLevel } from "../interfaces";
+import {
+  BuildResult,
+  CodegenFunctionsDirectoryOptions,
+  CodegenPublicDirectoryOptions,
+  FrameworkType,
+  SupportLevel,
+} from "../interfaces";
 
 import {
   cleanEscapedChars,
@@ -320,10 +326,11 @@ export async function init(setup: any, config: any) {
  */
 export async function ɵcodegenPublicDirectory(
   sourceDir: string,
-  destDir: string,
-  _: string,
-  context: { site: string; project: string }
+  options?: CodegenPublicDirectoryOptions
 ) {
+  const { dest: destDir, context } = options || {};
+  if (!destDir || !context) throw new Error("Missing destDir or context in options");
+
   const { distDir, i18n, basePath } = await getConfig(sourceDir);
 
   let matchingI18nDomain: DomainLocale | undefined = undefined;
@@ -476,7 +483,13 @@ export async function ɵcodegenPublicDirectory(
 /**
  * Create a directory for SSR content.
  */
-export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
+export async function ɵcodegenFunctionsDirectory(
+  sourceDir: string,
+  options?: CodegenFunctionsDirectoryOptions
+) {
+  const { dest: destDir } = options || {};
+  if (!destDir) throw new Error("Missing dest in options");
+
   const { distDir } = await getConfig(sourceDir);
   const packageJson = await readJSON(join(sourceDir, "package.json"));
   // Bundle their next.config.js with esbuild via NPX, pinned version was having troubles on m1

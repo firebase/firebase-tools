@@ -57,13 +57,18 @@ import { logger } from "../logger";
 import { DEFAULT_VENV_DIR, runWithVirtualEnv } from "../functions/python";
 import { dirExistsSync } from "../fsutils";
 import { WebFrameworks } from "./frameworks";
+import { HostingBase } from "../firebaseConfig";
 
 export { WebFrameworks };
 
 /**
  *
  */
-export async function discover(dir: string, warn = true) {
+export async function discover(
+  dir: string,
+  frameworksBackendConfig: HostingBase["frameworksBackend"],
+  warn = true
+) {
   const allFrameworkTypes = [
     ...new Set(Object.values(WebFrameworks).map(({ type }) => type)),
   ].sort();
@@ -73,7 +78,7 @@ export async function discover(dir: string, warn = true) {
       if (WebFrameworks[framework]) {
         const { discover, type } = WebFrameworks[framework];
         if (type !== discoveryType) continue;
-        const result = await discover(dir);
+        const result = await discover(dir, { flaskConfig: frameworksBackendConfig?.flask });
         if (result) frameworksDiscovered.push({ framework, ...result });
       }
     }
@@ -249,7 +254,7 @@ export async function prepareFrameworks(
     if (firebaseDefaults) {
       process.env.__FIREBASE_DEFAULTS__ = JSON.stringify(firebaseDefaults);
     }
-    const results = await discover(getProjectPath());
+    const results = await discover(getProjectPath(), config.frameworksBackend);
     if (!results) {
       throw new FirebaseError(
         frameworksCallToAction(
@@ -320,9 +325,14 @@ export async function prepareFrameworks(
       if (await pathExists(hostingDist)) await rm(hostingDist, { recursive: true });
       await mkdirp(hostingDist);
 
-      await ɵcodegenPublicDirectory(getProjectPath(), hostingDist, frameworksBuildTarget, {
-        project,
-        site,
+      await ɵcodegenPublicDirectory(getProjectPath(), {
+        dest: hostingDist,
+        target: frameworksBuildTarget,
+        context: {
+          project,
+          site,
+        },
+        frameworksBackend,
       });
 
       config.public = relative(projectRoot, hostingDist);
@@ -374,11 +384,11 @@ export async function prepareFrameworks(
         await mkdirp(functionsDist);
       }
 
-      const codegenFunctionsResult = await codegenFunctionsDirectory(
-        getProjectPath(),
-        functionsDist,
-        frameworksBuildTarget
-      );
+      const codegenFunctionsResult = await codegenFunctionsDirectory(getProjectPath(), {
+        dest: functionsDist,
+        target: frameworksBuildTarget,
+        frameworksBackend,
+      });
       const { rewriteSource } = codegenFunctionsResult;
 
       const rewrite = {

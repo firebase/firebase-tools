@@ -1,20 +1,31 @@
 import { copy, mkdirp } from "fs-extra";
 import { mkdir, readFile, readdir, writeFile } from "fs/promises";
 import { join, relative } from "path";
-import { BuildResult, FrameworkType, SupportLevel } from "../interfaces";
+import {
+  BuildResult,
+  CodegenFunctionsDirectoryOptions,
+  DiscoverOptions,
+  FrameworkType,
+  SupportLevel,
+} from "../interfaces";
 import { dirExistsSync } from "../../fsutils";
 import { findPythonCLI, getVenvDir, hasPipDependency, spawnPython } from "../utils";
 import { sync as spawnSync } from "cross-spawn";
 import { DEFAULT_VENV_DIR } from "../../functions/python";
 import { logger } from "../../logger";
+import { promptOnce } from "../../prompt";
+import { HostingBase } from "../../firebaseConfig";
 
 export const name = "Flask";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Framework;
 
-export async function discover(cwd: string) {
+export async function discover(cwd: string, options?: DiscoverOptions) {
+  const { flaskConfig } = options || {};
+
   if (!hasPipDependency("Flask", { cwd })) return;
-  const results = await getDiscoveryResults(cwd).catch(() => undefined);
+  // if (flaskConfig) {
+  const results = await getDiscoveryResults(cwd, flaskConfig).catch(() => undefined);
   if (!results) {
     logger.debug(
       "Looks like you might be using Flask. Here are some tips on using our tools with your Python project:"
@@ -32,7 +43,9 @@ export async function discover(cwd: string) {
     return;
   }
   const publicDirectory = relative(cwd, results.staticFolder);
-  return { mayWantBackend: true, publicDirectory };
+  const entryFile = results.entryFile;
+  return { mayWantBackend: true, publicDirectory, entryFile };
+  // }
 }
 
 export async function init(setup: any, config: any) {
@@ -59,8 +72,14 @@ export function build(): Promise<BuildResult> {
   return Promise.resolve({ wantsBackend: true });
 }
 
-export async function ɵcodegenPublicDirectory(root: string, dest: string) {
-  const { staticFolder, staticUrlPath } = await getDiscoveryResults(root);
+export async function ɵcodegenPublicDirectory(
+  root: string,
+  options?: CodegenFunctionsDirectoryOptions
+) {
+  const { dest, frameworksBackend } = options || {};
+  if (!dest) throw new Error("Missing dest in options");
+
+  const { staticFolder, staticUrlPath } = await getDiscoveryResults(root, frameworksBackend?.flask);
   const staticDest = join(dest, staticUrlPath);
   await mkdirp(staticDest);
   if (dirExistsSync(staticFolder)) {
@@ -68,7 +87,13 @@ export async function ɵcodegenPublicDirectory(root: string, dest: string) {
   }
 }
 
-export async function ɵcodegenFunctionsDirectory(root: string, dest: string) {
+export async function ɵcodegenFunctionsDirectory(
+  root: string,
+  options?: CodegenFunctionsDirectoryOptions
+) {
+  const { dest, frameworksBackend } = options || {};
+  if (!dest) throw new Error("Missing dest in options");
+
   await mkdir(join(dest, "src"), { recursive: true });
   // COPY everything except venv and .firebase
   const files = await readdir(root);
@@ -81,17 +106,41 @@ export async function ɵcodegenFunctionsDirectory(root: string, dest: string) {
     })
   );
   const requirementsTxt = (await readFile(join(root, "requirements.txt"))).toString();
-  const { appName } = await getDiscoveryResults(root);
-  const imports: [string, string] = ["src.main", appName];
+  const { appName } = await getDiscoveryResults(root, frameworksBackend?.flask);
+  const imports: [string, string] = [
+    `src.${frameworksBackend?.flask.entryFile?.split(".")[0]}`,
+    appName,
+  ];
   return { imports, requirementsTxt };
 }
 
-async function getDiscoveryResults(cwd: string) {
-  const discovery = await spawnPython("python", [join(__dirname, "discover.py")], cwd);
+async function getDiscoveryResults(
+  cwd: string,
+  flaskConfig?: NonNullable<HostingBase["frameworksBackend"]>["flask"]
+) {
+  console.log("flaskConfig", flaskConfig);
+
+  let entryFile = flaskConfig?.entryFile;
+  if (!entryFile) {
+    entryFile = await promptOnce({
+      name: "entryFile",
+      type: "input",
+      message:
+        "Detected an existing Flask codebase in the current directory. What file in the project root do you want to use as the entry point to your Flask application?",
+      default: "main.py",
+    });
+  }
+
+  const discovery = await spawnPython(
+    "python",
+    [join(__dirname, "discover.py"), "--entry_file", entryFile],
+    cwd
+  );
   const [appName, staticFolder, staticUrlPath = "/"] = discovery.split("\n");
   return {
     appName,
     staticFolder,
     staticUrlPath,
+    entryFile,
   };
 }

@@ -28,21 +28,25 @@ export async function doSetup(setup: any, config: any): Promise<void> {
   setup.hosting = {};
 
   let discoveredFramework = experiments.isEnabled("webframeworks")
-    ? await discover(config.projectDir, false)
+    ? await discover(config.projectDir, config.frameworksBackend, false)
     : undefined;
 
   if (experiments.isEnabled("webframeworks")) {
     if (discoveredFramework) {
-      const name = WebFrameworks[discoveredFramework.framework].name;
-      await promptOnce(
-        {
-          name: "useDiscoveredFramework",
-          type: "confirm",
-          default: true,
-          message: `Detected an existing ${name} codebase in the current directory, should we use this?`,
-        },
-        setup.hosting
-      );
+      if (discoveredFramework.framework !== "flask") {
+        const name = WebFrameworks[discoveredFramework.framework].name;
+        await promptOnce(
+          {
+            name: "useDiscoveredFramework",
+            type: "confirm",
+            default: true,
+            message: `Detected an existing ${name} codebase in the current directory, should we use this?`,
+          },
+          setup.hosting
+        );
+      } else {
+        setup.hosting.useDiscoveredFramework = true;
+      }
     }
     if (setup.hosting.useDiscoveredFramework) {
       setup.hosting.source = ".";
@@ -72,7 +76,12 @@ export async function doSetup(setup: any, config: any): Promise<void> {
     );
 
     if (setup.hosting.source !== ".") delete setup.hosting.useDiscoveredFramework;
-    discoveredFramework = await discover(join(config.projectDir, setup.hosting.source));
+    if (!discoveredFramework) {
+      discoveredFramework = await discover(
+        join(config.projectDir, setup.hosting.source),
+        config.frameworksBackend
+      );
+    }
 
     if (discoveredFramework) {
       const name = WebFrameworks[discoveredFramework.framework].name;
@@ -113,7 +122,28 @@ export async function doSetup(setup: any, config: any): Promise<void> {
         setup.hosting
       );
 
-      if (discoveredFramework) rimraf(setup.hosting.source);
+      if (discoveredFramework) {
+        rimraf(setup.hosting.source);
+      }
+      //  else if (setup.hosting.whichFramework === WebFrameworks.flask.name) {
+      //   await promptOnce(
+      //     {
+      //       name: "entryFile",
+      //       type: "input",
+      //       message:
+      //         "What file in the project root do you want to use as the entry point to your Flask application?",
+      //       default: "main.py",
+      //     },
+      //     setup.hosting
+      //   );
+
+      //   discoveredFramework = await discover(
+      //     join(config.projectDir, setup.hosting.source),
+      //     config.frameworksBackend
+      //   );
+      //   setup.hosting.webFramework = discoveredFramework.framework;
+      // }
+
       await WebFrameworks[setup.hosting.whichFramework].init!(setup, config);
     }
 
@@ -136,6 +166,12 @@ export async function doSetup(setup: any, config: any): Promise<void> {
         region: setup.hosting.region,
       },
     };
+
+    if (discoveredFramework?.framework.toLowerCase() === WebFrameworks.flask.name.toLowerCase()) {
+      setup.config.hosting.frameworksBackend.flask = {
+        entryFile: discoveredFramework.entryFile || "main.py",
+      };
+    }
   } else {
     logger.info();
     logger.info(
