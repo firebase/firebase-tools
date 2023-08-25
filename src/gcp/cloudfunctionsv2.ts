@@ -41,7 +41,6 @@ export interface BuildConfig {
   runtime: runtimes.Runtime;
   entryPoint: string;
   source: Source;
-  sourceToken?: string;
   environmentVariables: Record<string, string>;
 
   // Output only
