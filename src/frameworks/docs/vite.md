@@ -15,11 +15,11 @@ Before you get started deploying your app to Firebase,
 review the following requirements and options:
 
 - Firebase CLI version 12.1.0 or later. Make sure to
-  [install the CLI](/docs/cli#install_the_firebase_cli) using your preferred 
+  [install the CLI](https://firebase.google.com/docs/cli#install_the_firebase_cli) using your preferred 
 	method.
 - Optional: An existing Vite project. You can create one with 
 	`npm create vite@latest` or let the Firebase CLI
-	 [initialize a new project](#initialize-a-new-project) for you.
+	initialize a new project for you.
 
 
 ## Initialize Firebase
@@ -47,5 +47,5 @@ deployment command:
 firebase deploy
 ```
 
-You can [view your deployed app](/docs/hosting/test-preview-deploy#view-changes)
+You can [view your deployed app](https://firebase.google.com/docs/hosting/test-preview-deploy#view-changes)
 on its live site.
