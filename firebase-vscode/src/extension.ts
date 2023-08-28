@@ -10,11 +10,8 @@ import {
 } from "../common/messaging/protocol";
 import { setupWorkflow } from "./workflow";
 import { pluginLogger } from "./logger-wrapper";
-<<<<<<< HEAD
 import { onShutdown } from "./workflow";
-=======
 import { registerWebview } from "./webview";
->>>>>>> master
 
 const broker = createBroker<
   ExtensionToWebviewParamsMap,
