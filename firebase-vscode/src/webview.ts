@@ -1,6 +1,7 @@
-import { Uri, Webview } from "vscode";
+import vscode, { Disposable, Uri, Webview, WebviewView } from "vscode";
+import { ExtensionBrokerImpl } from "./extension-broker";
 
-export function getHtmlForWebview(
+function getHtmlForWebview(
   entryName: string,
   extensionUri: Uri,
   webview: Webview
@@ -65,4 +66,36 @@ function getNonce() {
     text += possible.charAt(Math.floor(Math.random() * possible.length));
   }
   return text;
+}
+
+interface RegisterWebviewParams {
+  name: string;
+  broker: ExtensionBrokerImpl;
+  context: vscode.ExtensionContext;
+  onResolve?: (view: Webview) => void;
+}
+
+export function registerWebview(params: RegisterWebviewParams): Disposable {
+  function resolveWebviewView(
+    webviewView: vscode.WebviewView
+  ): void | Thenable<void> {
+    params.broker.registerReceiver(webviewView.webview);
+
+    webviewView.webview.options = {
+      enableScripts: true,
+      localResourceRoots: [params.context.extensionUri],
+    };
+
+    webviewView.webview.html = getHtmlForWebview(
+      params.name,
+      params.context.extensionUri,
+      webviewView.webview
+    );
+
+    params.onResolve?.(webviewView.webview);
+  }
+
+  return vscode.window.registerWebviewViewProvider(params.name, {
+    resolveWebviewView,
+  });
 }

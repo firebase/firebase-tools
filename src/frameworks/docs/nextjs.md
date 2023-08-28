@@ -45,9 +45,8 @@ on its live site.
 ## Pre-render dynamic content
 
 The {{firebase_cli}} will detect usage of
-[getStaticProps](https://nextjs.org/docs/basic-features/data-fetching/get-
-static-props) and [getStaticPaths](https://nextjs.org/docs/basic-features/data-
-fetching/get-static-paths).
+[getStaticProps](https://nextjs.org/docs/pages/building-your-application/data-fetching/get-static-props) 
+and [getStaticPaths](https://nextjs.org/docs/pages/building-your-application/data-fetching/get-static-paths).
 
 ### Optional: integrate with the Firebase JS SDK
 

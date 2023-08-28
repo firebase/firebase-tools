@@ -412,7 +412,7 @@ export function of(...endpoints: Endpoint[]): Backend {
   for (const endpoint of endpoints) {
     bkend.endpoints[endpoint.region] = bkend.endpoints[endpoint.region] || {};
     if (bkend.endpoints[endpoint.region][endpoint.id]) {
-      throw new Error("Trying to create a backend with the same endpiont twice");
+      throw new Error("Trying to create a backend with the same endpoint twice");
     }
     bkend.endpoints[endpoint.region][endpoint.id] = endpoint;
   }
