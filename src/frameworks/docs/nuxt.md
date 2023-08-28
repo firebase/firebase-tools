@@ -30,17 +30,6 @@ To get started, initialize Firebase for your framework project.
 Use the Firebase CLI for a new project, or modify `firebase.json` for an
 existing project.
 
-### Initialize a new project
-
-1. In the Firebase CLI, enable the web frameworks preview:
-   <pre class="devsite-terminal">firebase experiments:enable webframeworks</pre>
-2. Run the initialization command from the CLI and then follow the prompts:
-   <pre class="devsite-terminal">firebase init hosting</pre>
-3.  Answer yes to "Do you want to use a web framework? (experimental)"
-4.  Choose your hosting source directory.
-    If there is an existing Nuxt codebase,
-    the CLI detects it and the process completes.
-
 ## Deployment
 
 After initializing Firebase, you can deploy your Nuxt app with the standard
