@@ -8,10 +8,13 @@ import {
   ExtensionToWebviewParamsMap,
   WebviewToExtensionParamsMap,
 } from "../common/messaging/protocol";
-import { setupSidebar } from "./sidebar";
 import { setupWorkflow } from "./workflow";
 import { pluginLogger } from "./logger-wrapper";
+<<<<<<< HEAD
 import { onShutdown } from "./workflow";
+=======
+import { registerWebview } from "./webview";
+>>>>>>> master
 
 const broker = createBroker<
   ExtensionToWebviewParamsMap,
@@ -21,10 +24,17 @@ const broker = createBroker<
 
 // This method is called when your extension is activated
 export function activate(context: vscode.ExtensionContext) {
-  pluginLogger.debug('Activating Firebase extension.');
+  pluginLogger.debug("Activating Firebase extension.");
 
   setupWorkflow(context, broker);
-  setupSidebar(context, broker);
+
+  context.subscriptions.push(
+    registerWebview({
+      name: "sidebar",
+      broker,
+      context,
+    })
+  );
 }
 
 // This method is called when the extension is deactivated
