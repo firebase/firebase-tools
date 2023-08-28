@@ -12,6 +12,7 @@ import { ChannelWithId } from "./messaging/types";
 
 import { webLogger } from "./globals/web-logger";
 import { InitFirebasePanel } from "./components/InitPanel";
+import { QuickstartPanel } from "./components/QuickstartPanel";
 
 export function SidebarApp() {
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -160,6 +161,20 @@ export function SidebarApp() {
           setHostingInitState={setHostingInitState}
         />
       )}
+
+      {
+        // Only load quickstart panel if this isn't a Monospace workspace
+        !env?.isMonospace && (
+          <>
+            <Spacer size="medium" />
+            <QuickstartPanel
+              onQuickstartButtonClicked={() =>
+                broker.send("chooseQuickstartDir", {})
+              }
+            />
+          </>
+        )
+      }
     </>
   );
 }
