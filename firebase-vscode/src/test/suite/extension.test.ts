@@ -10,6 +10,6 @@ suite("Extension Test Suite", () => {
 
   test("getChannels() returns an empty array if no firebaseJSON provided", async () => {
     const result = await getChannels(null);
-    assert.strictEqual(result, []);
+    assert.deepStrictEqual(result, []);
   });
 });

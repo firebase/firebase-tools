@@ -30,13 +30,15 @@ async function getTestConfig() {
     output: {
       // the bundle is stored in the 'dist' folder (check package.json), 📖 -> https://webpack.js.org/configuration/output/
       path: path.resolve(__dirname, "../../dist/test"),
-      filename: (pathData) => {
-        console.log(pathData);
-        return "[name].js";
-      },
+      filename: "[name].js",
       libraryTarget: "commonjs2",
       devtoolModuleFilenameTemplate: "../[resource-path]",
     },
+    optimization: {
+      splitChunks: {
+        chunks: 'all'
+      }
+    }
   });
 
   return testConfig;
