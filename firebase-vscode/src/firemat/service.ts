@@ -1,20 +1,11 @@
 import fetch from "node-fetch";
 import { buildSchema, introspectionFromSchema } from "graphql";
-import { effect, signal } from "@preact/signals-core";
-import { ExtensionBrokerImpl } from "../extension-broker";
-
+import { Signal } from "@preact/signals-core";
 /**
  * Firemat Emulator service
  */
 export class FirematService {
-  private firematEndpoint = signal("");
-
-  constructor(private broker: ExtensionBrokerImpl) {
-    effect(() => {
-      broker.on("notifyFirematEmulatorEndpoint", ({ endpoint }) => {
-        this.firematEndpoint.value = endpoint;
-      });
-    });
+  constructor(private firematEndpoint: Signal<string>) {
   }
 
   async executeMutation(params: {
@@ -24,7 +15,7 @@ export class FirematService {
   }) {
     // TODO: get operationSet name from firemat.yaml
     const body = { ...params, name: "projects/p/locations/l/services/s/operationSets/app/revisions/r" };
-    const resp = await fetch(this.firematEndpoint + "/v0/projects/p/locations/l/services/s/operationSets/app/revisions/r:executeMutation", {
+    const resp = await fetch(this.firematEndpoint.value + "/v0/projects/p/locations/l/services/s/operationSets/app/revisions/r:executeMutation", {
       method: "POST",
       headers: {
         Accept: "application/json",
@@ -44,7 +35,7 @@ export class FirematService {
   }) {
     // TODO: get operationSet name from firemat.yaml
     const body = { ...params, name: "projects/p/locations/l/services/s/operationSets/app/revisions/r" };
-    const resp = await fetch(this.firematEndpoint + "/v0/projects/p/locations/l/services/s/operationSets/app/revisions/r:executeQuery", {
+    const resp = await fetch(this.firematEndpoint.value + "/v0/projects/p/locations/l/services/s/operationSets/app/revisions/r:executeQuery", {
       method: "POST",
       headers: {
         Accept: "application/json",
