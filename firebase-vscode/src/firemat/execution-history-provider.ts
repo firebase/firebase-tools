@@ -16,7 +16,7 @@ export class ExecutionTreeItem extends vscode.TreeItem {
   constructor(readonly item: ExecutionItem) {
     super(item.label, vscode.TreeItemCollapsibleState.None);
     this.item = item;
-    this.description = timeFormatter.format(item.timestamp);
+    this.description = timeFormatter.format(item.timestamp) + " | Arguments: " + JSON.stringify(this.item.args);
     this.command = {
       title: "Show result",
       command: "firebase.firemat.selectExecutionResultToShow",

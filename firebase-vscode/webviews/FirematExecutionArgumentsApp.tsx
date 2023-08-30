@@ -5,7 +5,7 @@ import { Label } from "./components/ui/Text";
 export function FirematExecutionArgumentsApp() {
   let input = "{}";
 
-  const handleChange = (e) => {
+  const handleInput = (e) => {
     try {
       const args = JSON.parse(e.target.value);
       broker.send("definedFirematArgs", { args });
@@ -21,7 +21,7 @@ export function FirematExecutionArgumentsApp() {
         cols={80}
         resize={"both"}
         value={input}
-        onChange={handleChange}
+        onInput={handleInput}
       >
         <Label>Arguments used in operations (needs to be valid JSON)</Label>
       </VSCodeTextArea>
