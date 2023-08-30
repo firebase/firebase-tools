@@ -7,5 +7,6 @@
 		"sourceMap": true,
 		"rootDir": "./",
 		"strict": true,
+		"files": ["./runTest.ts", ]
 	}
 }
