@@ -7,8 +7,9 @@ import {
   LanguageClient,
 } from "vscode-languageclient/node";
 import * as path from "node:path";
+import { Signal } from "@preact/signals-core";
 
-export function setupLanguageClient(context) {
+export function setupLanguageClient(context, firematEndpoint: Signal<string>) {
   // activate language client/serer
   const outputChannel: vscode.OutputChannel = vscode.window.createOutputChannel(
     "FireMAT GraphQL Language Server"
@@ -77,6 +78,12 @@ export function setupLanguageClient(context) {
     clientOptions
   );
 
+  // send endpoint to language server
+  const sendFirematEndpointToLSP = (endpoint: string) => {
+    client.sendNotification("firemat-endpoint", endpoint);
+  };
+  vscode.commands.registerCommand("sendFirematEndpointToLSP", sendFirematEndpointToLSP);
+
   // register commands
   const commandShowOutputChannel = vscode.commands.registerCommand(
     "firemat-graphql.showOutputChannel",
@@ -92,6 +99,10 @@ export function setupLanguageClient(context) {
     outputChannel.appendLine("Restarting FireMAT GraphQL LSP");
     await client.start();
     outputChannel.appendLine("FireMAT GraphQL LSP restarted");
+
+    // re-send firemat endpoint
+    sendFirematEndpointToLSP(firematEndpoint.value);
+    outputChannel.appendLine("Sending Firemat endpoint to LSP");
   });
 
   const restartGraphqlLSP = () => {
