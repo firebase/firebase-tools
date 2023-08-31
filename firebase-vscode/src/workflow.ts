@@ -26,7 +26,7 @@ import {
 import { ServiceAccountUser } from "../common/types";
 import { downloadToTmp } from "../../src/downloadUtils";
 import { unzip } from "../../src/unzip";
-import * as  fs from "fs-extra";
+import * as fs from "fs-extra";
 import path from "path";
 
 let users: Array<ServiceAccountUser | User> = [];
