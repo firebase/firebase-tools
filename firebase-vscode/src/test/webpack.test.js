@@ -26,7 +26,6 @@ const getTestFiles = () =>
 
 async function getTestConfig() {
   const testFiles = await getTestFiles();
-  console.log(testFiles);
 
   const testConfig = merge(extensionConfig, {
     mode: "development",
