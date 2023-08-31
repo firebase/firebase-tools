@@ -169,7 +169,13 @@ export function SidebarApp() {
             <Spacer size="medium" />
             <QuickstartPanel
               onQuickstartButtonClicked={() =>
-                broker.send("chooseQuickstartDir", {})
+                broker.send("chooseQuickstartDir", {
+                  downloadURL:
+                    "https://storage.mtls.cloud.google.com/" +
+                    "firebase-preview-drop/quickstart-vscode-downloads/" +
+                    "friendly-eats-quickstart.zip",
+                  archiveDirName: "firestore",
+                })
               }
             />
           </>

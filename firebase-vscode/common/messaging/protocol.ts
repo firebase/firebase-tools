@@ -74,7 +74,10 @@ export interface WebviewToExtensionParamsMap {
   selectEmulatorImportFolder: {};
 
   /** Prompts the user to select a directory in which to place the quickstart */
-  chooseQuickstartDir: {};
+  chooseQuickstartDir: {
+    downloadURL: string,
+    archiveDirName: String
+  };
 }
 
 export interface ExtensionToWebviewParamsMap {
