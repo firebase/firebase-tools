@@ -170,6 +170,7 @@ export function SidebarApp() {
             <QuickstartPanel
               onQuickstartButtonClicked={() =>
                 broker.send("chooseQuickstartDir", {
+                  // TODO(abradham): Change to public GCS link when available
                   downloadURL:
                     "https://storage.mtls.cloud.google.com/" +
                     "firebase-preview-drop/quickstart-vscode-downloads/" +
