@@ -10,6 +10,7 @@ import {
 } from "../common/messaging/protocol";
 import { setupWorkflow } from "./workflow";
 import { pluginLogger } from "./logger-wrapper";
+import { onShutdown } from "./workflow";
 import { registerWebview } from "./webview";
 
 const broker = createBroker<
@@ -31,4 +32,10 @@ export function activate(context: vscode.ExtensionContext) {
       context,
     })
   );
+}
+
+// This method is called when the extension is deactivated
+export async function deactivate() {
+  // This await is optimistic but it might wait for a moment longer while we run cleanup activities
+  await onShutdown();
 }
