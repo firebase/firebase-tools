@@ -5,6 +5,11 @@ import * as assert from "assert";
 import * as vscode from "vscode";
 import { getChannels } from '../../cli';
 
+/**
+ * Second test to ensure test pipeline can handle multiple test files
+ * correctly and use code-splitting for shared code.
+ */
+
 suite("Extension Test Suite", () => {
   vscode.window.showInformationMessage("Start all tests.");
 
