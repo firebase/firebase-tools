@@ -113,7 +113,7 @@ export async function setVariablesRecursive(
 export async function materializeConfig(configName: string, output: any): Promise<any> {
   const materializeVariable = async function (varName: string) {
     const variable = await runtimeconfig.variables.get(varName);
-    const id = exports.varNameToIds(variable.name);
+    const id = varNameToIds(variable.name);
     const key = id.config + "." + id.variable.split("/").join(".");
     _.set(output, key, variable.text);
   };
@@ -143,7 +143,7 @@ export async function materializeAll(projectId: string): Promise<Record<string, 
         // ignore firebase config
         return;
       }
-      return exports.materializeConfig(config.name, output);
+      return materializeConfig(config.name, output);
     })
   );
   return output;

@@ -9,7 +9,7 @@ import { isCelExpression, resolveExpression } from "./cel";
 import { FirebaseConfig } from "./args";
 import { labels as secretLabels } from "../../functions/secrets";
 
-// A convinience type containing options for Prompt's select
+// A convenience type containing options for Prompt's select
 interface ListItem {
   name?: string; // User friendly display name for the option
   value: string; // Value of the option

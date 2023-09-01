@@ -234,6 +234,10 @@ export type EmulatorsConfig = {
 export type ExtensionsConfig = Record<string, string>;
 
 export type FirebaseConfig = {
+  /**
+   * @TJS-format uri
+   */
+  $schema?: string;
   database?: DatabaseConfig;
   firestore?: FirestoreConfig;
   functions?: FunctionsConfig;

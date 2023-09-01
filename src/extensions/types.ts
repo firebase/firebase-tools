@@ -122,6 +122,12 @@ export interface ExtensionSpec {
   readmeContent?: string;
   externalServices?: ExternalService[];
   events?: EventDescriptor[];
+  lifecycleEvents?: LifecycleEvent[];
+}
+
+export interface LifecycleEvent {
+  stage: "STAGE_UNSPECIFIED" | "ON_INSTALL" | "ON_UPDATE" | "ON_CONFIGURE";
+  taskQueueTriggerFunction: string;
 }
 
 export interface EventDescriptor {

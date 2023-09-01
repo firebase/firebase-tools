@@ -489,8 +489,9 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
         });
       });
 
-      emulatorOnly.it("serves content successfully when spammed with calls", async () => {
-        const NUMBER_OF_FILES = 10;
+      emulatorOnly.it("serves content successfully when spammed with calls", async function (this) {
+        this.timeout(10_000);
+        const NUMBER_OF_FILES = 100;
         const allFileNames: string[] = [];
         for (let i = 0; i < NUMBER_OF_FILES; i++) {
           const fileName = TEST_FILE_NAME.concat(i.toString());
@@ -499,16 +500,17 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
         }
         await signInToFirebaseAuth(page);
 
-        const values: string[] = [];
+        const getDownloadUrlPromises: Promise<string>[] = [];
         for (const singleFileName of allFileNames) {
-          values.push(
-            await page.evaluate((filename) => {
+          getDownloadUrlPromises.push(
+            page.evaluate((filename) => {
               return firebase.storage().ref(filename).getDownloadURL();
             }, singleFileName)
           );
         }
+        const values: string[] = await Promise.all(getDownloadUrlPromises);
 
-        expect(values.length).to.be.equal(10);
+        expect(values.length).to.be.equal(NUMBER_OF_FILES);
       });
     });
 

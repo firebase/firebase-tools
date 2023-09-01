@@ -8,7 +8,6 @@ import { logLabeledBullet, logLabeledSuccess } from "../../utils";
 import { ensureServiceAgentRole } from "../../gcp/secretManager";
 import { getFirebaseProject } from "../../management/projects";
 import { assertExhaustive } from "../../functional";
-import { track } from "../../track";
 import * as backend from "./backend";
 
 const FAQ_URL = "https://firebase.google.com/support/faq#functions-runtime";
@@ -37,7 +36,6 @@ export async function defaultServiceAccount(e: backend.Endpoint): Promise<string
 }
 
 function nodeBillingError(projectId: string): FirebaseError {
-  void track("functions_runtime_notices", "nodejs10_billing_error");
   return new FirebaseError(
     `Cloud Functions deployment requires the pay-as-you-go (Blaze) billing plan. To upgrade your project, visit the following URL:
 
@@ -51,7 +49,6 @@ ${FAQ_URL}`,
 }
 
 function nodePermissionError(projectId: string): FirebaseError {
-  void track("functions_runtime_notices", "nodejs10_permission_error");
   return new FirebaseError(`Cloud Functions deployment requires the Cloud Build API to be enabled. The current credentials do not have permission to enable APIs for project ${clc.bold(
     projectId
   )}.

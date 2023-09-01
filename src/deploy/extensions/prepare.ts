@@ -17,6 +17,7 @@ import { checkSpecForV2Functions, ensureNecessaryV2ApisAndRoles } from "./v2Func
 import { acceptLatestAppDeveloperTOS } from "../../extensions/tos";
 
 export async function prepare(context: Context, options: Options, payload: Payload) {
+  context.extensionsStartTime = Date.now();
   const projectId = needProjectId(options);
   const projectNumber = await needProjectNumber(options);
   const aliases = getAliases(options, projectId);

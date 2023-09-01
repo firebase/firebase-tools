@@ -77,7 +77,8 @@ export function functionResourceToEmulatedTriggerDefintion(
     proto.convertIfPresent(etd, properties, "timeoutSeconds", "timeout", proto.secondsFromDuration);
     proto.convertIfPresent(etd, properties, "regions", "location", (str: string) => [str]);
     proto.copyIfPresent(etd, properties, "availableMemoryMb");
-    if (properties.httpsTrigger) {
+    if (properties.httpsTrigger !== undefined) {
+      // Need to explcitly check undefined since {} is falsey
       etd.httpsTrigger = properties.httpsTrigger;
     }
     if (properties.eventTrigger) {

@@ -1,4 +1,6 @@
 import { dirname, join, relative } from "path";
+import { gte } from "semver";
+import { findDependency } from "../utils";
 
 const { dynamicImport } = require(true && "../../dynamicImport");
 
@@ -10,21 +12,30 @@ export function getBootstrapScript() {
 
 export async function getConfig(cwd: string) {
   const astroDirectory = dirname(require.resolve("astro/package.json", { paths: [cwd] }));
-  const { openConfig }: typeof import("astro/dist/core/config/config") = await dynamicImport(
-    join(astroDirectory, "dist", "core", "config", "config.js")
-  );
-  const logging: any = undefined; // TODO figure out the types here
-  const { astroConfig: config } = await openConfig({ cmd: "build", cwd, logging });
-  const outDirPath = config.outDir.pathname.startsWith("/")
-    ? config.outDir.pathname.substring(1)
-    : config.outDir.pathname;
-  const PublicDirPath = config.publicDir.pathname.startsWith("/")
-    ? config.publicDir.pathname.substring(1)
-    : config.publicDir.pathname;
+  const version = getAstroVersion(cwd);
+
+  let config;
+  const configPath = join(astroDirectory, "dist", "core", "config", "config.js");
+  if (gte(version!, "2.9.7")) {
+    const { resolveConfig } = await dynamicImport(configPath);
+    const { astroConfig } = await resolveConfig({ root: cwd }, "build");
+    config = astroConfig;
+  } else {
+    const { openConfig }: typeof import("astro/dist/core/config/config") = await dynamicImport(
+      configPath
+    );
+    const logging: any = undefined; // TODO figure out the types here
+    const { astroConfig } = await openConfig({ cmd: "build", cwd, logging });
+    config = astroConfig;
+  }
   return {
     outDir: relative(cwd, outDirPath),
     publicDir: relative(cwd, PublicDirPath),
     output: config.output,
     adapter: config.adapter,
   };
+}
+
+export function getAstroVersion(cwd: string): string | undefined {
+  return findDependency("astro", { cwd, depth: 0, omitDev: false })?.version;
 }

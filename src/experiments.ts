@@ -97,6 +97,12 @@ export const ALL_EXPERIMENTS = experiments({
       "These commands are not meant for public consumption and may break or disappear " +
       "without a notice.",
   },
+
+  frameworks: {
+    shortDescription: "Allow CLI option for Frameworks",
+    default: true,
+    public: false,
+  },
 });
 
 export type ExperimentName = keyof typeof ALL_EXPERIMENTS;

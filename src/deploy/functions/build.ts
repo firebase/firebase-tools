@@ -6,12 +6,14 @@ import { FirebaseError } from "../../error";
 import { assertExhaustive, mapObject, nullsafeVisitor } from "../../functional";
 import { UserEnvsOpts, writeUserEnvs } from "../../functions/env";
 import { FirebaseConfig } from "./args";
+import { Runtime } from "./runtimes";
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
 export interface Build {
   requiredAPIs: RequiredApi[];
   endpoints: Record<string, Endpoint>;
   params: params.Param[];
+  runtime?: Runtime;
 }
 
 /**

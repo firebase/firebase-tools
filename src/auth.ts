@@ -19,7 +19,7 @@ import * as scopes from "./scopes";
 import { clearCredentials } from "./defaultCredentials";
 import { v4 as uuidv4 } from "uuid";
 import { randomBytes, createHash } from "crypto";
-import { track } from "./track";
+import { trackGA4 } from "./track";
 import {
   authOrigin,
   authProxyOrigin,
@@ -444,7 +444,7 @@ async function loginRemotely(): Promise<UserCredentials> {
       codeVerifier
     );
 
-    void track("login", "google_remote");
+    void trackGA4("login", { method: "google_remote" });
 
     return {
       user: jwt.decode(tokens.id_token!) as User,
@@ -468,7 +468,7 @@ async function loginWithLocalhostGoogle(port: number, userHint?: string): Promis
     getTokensFromAuthorizationCode
   );
 
-  void track("login", "google_localhost");
+  void trackGA4("login", { method: "google_localhost" });
   // getTokensFromAuthoirzationCode doesn't handle the --token case, so we know we'll
   // always have an id_token.
   return {
@@ -489,7 +489,7 @@ async function loginWithLocalhostGitHub(port: number): Promise<string> {
     successTemplate,
     getGithubTokensFromAuthorizationCode
   );
-  void track("login", "google_localhost");
+  void trackGA4("login", { method: "github_localhost" });
   return tokens;
 }
 
@@ -702,8 +702,8 @@ async function refreshTokens(
   }
 }
 
-export async function getAccessToken(refreshToken: string, authScopes: string[]) {
-  if (haveValidTokens(refreshToken, authScopes)) {
+export async function getAccessToken(refreshToken: string, authScopes: string[]): Promise<Tokens> {
+  if (haveValidTokens(refreshToken, authScopes) && lastAccessToken) {
     return lastAccessToken;
   }
 

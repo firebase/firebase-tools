@@ -76,9 +76,10 @@ export const command = new Command("ext:configure <extensionInstanceId>")
       instanceId,
       projectDir: config.projectDir,
     });
+    const params = (spec.params ?? []).concat(spec.systemParams ?? []);
     const [immutableParams, tbdParams] = partition(
-      (spec.params ?? []).concat(spec.systemParams ?? []),
-      (param) => param.immutable ?? false
+      params,
+      (param) => (param.immutable && !!oldParamValues[param.param]) ?? false
     );
     infoImmutableParams(immutableParams, oldParamValues);
 
@@ -88,8 +89,6 @@ export const command = new Command("ext:configure <extensionInstanceId>")
       projectId,
       paramSpecs: tbdParams,
       nonInteractive: false,
-      // TODO(b/230598656): Clean up paramsEnvPath after v11 launch.
-      paramsEnvPath: "",
       instanceId,
       reconfiguring: true,
     });

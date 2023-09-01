@@ -28,6 +28,7 @@ import {
   relativeRequire,
   findDependency,
   validateLocales,
+  getNodeModuleBin,
 } from "../utils";
 import { BuildResult, FrameworkType, SupportLevel } from "../interfaces";
 
@@ -45,9 +46,7 @@ import {
   getNonStaticServerComponents,
   getHeadersFromMetaFiles,
   cleanI18n,
-  usesAppDirRouter,
-  usesNextImage,
-  hasUnoptimizedImage,
+  getNextVersion,
 } from "./utils";
 import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES, SHARP_VERSION, I18N_ROOT } from "../constants";
 import type {
@@ -65,6 +64,7 @@ import {
   ROUTES_MANIFEST,
   APP_PATH_ROUTES_MANIFEST,
   APP_PATHS_MANIFEST,
+  ESBUILD_VERSION,
 } from "./constants";
 import { getAllSiteDomains } from "../../hosting/api";
 import { logger } from "../../logger";
@@ -77,11 +77,8 @@ export const support = SupportLevel.Preview;
 export const type = FrameworkType.MetaFramework;
 export const docsUrl = "https://firebase.google.com/docs/hosting/frameworks/nextjs";
 
+const BUNDLE_NEXT_CONFIG_TIMEOUT = 60_000;
 const DEFAULT_NUMBER_OF_REASONS_TO_LIST = 5;
-
-function getNextVersion(cwd: string): string | undefined {
-  return findDependency("next", { cwd, depth: 0, omitDev: false })?.version;
-}
 
 function getReactVersion(cwd: string): string | undefined {
   return findDependency("react-dom", { cwd, omitDev: false })?.version;
@@ -101,8 +98,6 @@ export async function discover(dir: string) {
  * Build a next.js application.
  */
 export async function build(dir: string): Promise<BuildResult> {
-  const { default: nextBuild } = relativeRequire(dir, "next/dist/build");
-
   await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
 
   const reactVersion = getReactVersion(dir);
@@ -111,12 +106,20 @@ export async function build(dir: string): Promise<BuildResult> {
     process.env.__NEXT_REACT_ROOT = "true";
   }
 
-  await nextBuild(dir, null, false, false, true).catch((e) => {
-    // Err on the side of displaying this error, since this is likely a bug in
-    // the developer's code that we want to display immediately
-    console.error(e.message);
-    throw e;
+  const cli = getNodeModuleBin("next", dir);
+
+  const nextBuild = new Promise((resolve, reject) => {
+    const buildProcess = spawn(cli, ["build"], { cwd: dir });
+    buildProcess.stdout?.on("data", (data) => logger.info(data.toString()));
+    buildProcess.stderr?.on("data", (data) => logger.info(data.toString()));
+    buildProcess.on("error", (err) => {
+      reject(new FirebaseError(`Unable to build your Next.js app: ${err}`));
+    });
+    buildProcess.on("exit", (code) => {
+      resolve(code);
+    });
   });
+  await nextBuild;
 
   const reasonsForBackend = new Set();
   const { distDir, trailingSlash, basePath: baseUrl } = await getConfig(dir);
@@ -125,7 +128,7 @@ export async function build(dir: string): Promise<BuildResult> {
     reasonsForBackend.add("middleware");
   }
 
-  if (await isUsingImageOptimization(join(dir, distDir))) {
+  if (await isUsingImageOptimization(dir, distDir)) {
     reasonsForBackend.add(`Image Optimization`);
   }
 
@@ -471,8 +474,6 @@ export async function ɵcodegenPublicDirectory(
   );
 }
 
-const BUNDLE_NEXT_CONFIG_TIMEOUT = 10_000;
-
 /**
  * Create a directory for SSR content.
  */
@@ -517,10 +518,14 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
           `--outdir=${destDir}`,
           "--log-level=error"
         );
-      const bundle = spawnSync("npx", ["--yes", "esbuild", "next.config.js", ...esbuildArgs], {
-        cwd: sourceDir,
-        timeout: BUNDLE_NEXT_CONFIG_TIMEOUT,
-      });
+      const bundle = spawnSync(
+        "npx",
+        ["--yes", `esbuild@${ESBUILD_VERSION}`, "next.config.js", ...esbuildArgs],
+        {
+          cwd: sourceDir,
+          timeout: BUNDLE_NEXT_CONFIG_TIMEOUT,
+        }
+      );
       if (bundle.status !== 0) {
         throw new FirebaseError(bundle.stderr.toString());
       }
@@ -537,14 +542,8 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
     await copy(join(sourceDir, "public"), join(destDir, "public"));
   }
 
-  // Add the `sharp` library if `/app` folder exists (i.e. Next.js 13+)
-  // or usesNextImage in `export-marker.json` is set to true.
-  // As of (10/2021) the new Next.js 13 route is in beta, and usesNextImage is always being set to false
-  // if the image component is used in pages coming from the new `/app` routes.
-  if (
-    !(await hasUnoptimizedImage(sourceDir, distDir)) &&
-    (usesAppDirRouter(sourceDir) || (await usesNextImage(sourceDir, distDir)))
-  ) {
+  // Add the `sharp` library if app is using image optimization
+  if (await isUsingImageOptimization(sourceDir, distDir)) {
     packageJson.dependencies["sharp"] = SHARP_VERSION;
   }
 

@@ -61,7 +61,7 @@ export type WireEndpoint = build.Triggered &
     serviceAccount?: string | null;
     // Note: Historically we used "serviceAccountEmail" to refer to a thing that
     // might not be an email (e.g. it might be "myAccount@"" to be project-relative)
-    // We now use "serviceAccount" but maintain backwards compatability in the
+    // We now use "serviceAccount" but maintain backwards compatibility in the
     // wire format for the time being.
     serviceAccountEmail?: string | null;
     region?: build.ListField;
@@ -209,7 +209,7 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
         minBackoffSeconds: "Field<number>?",
         maxBackoffSeconds: "Field<number>?",
         maxRetrySeconds: "Field<number>?",
-        // The "duration" key types are supported for legacy compability reasons only.
+        // The "duration" key types are supported for legacy compatibility reasons only.
         // They are not parametized and are automatically converted by the parser to seconds.
         maxRetryDuration: "string?",
         minBackoffDuration: "string?",

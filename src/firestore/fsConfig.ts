@@ -58,12 +58,21 @@ export function getFirestoreConfig(projectId: string, options: Options): ParsedF
         onlyDatabases.delete(target);
       }
     } else if (database) {
-      if (allDatabases) {
+      if (allDatabases || onlyDatabases.has(database)) {
         results.push(c as ParsedFirestoreConfig);
+        onlyDatabases.delete(database);
       }
     } else {
       throw new FirebaseError('Must supply either "target" or "databaseId" in firestore config');
     }
+  }
+
+  // If user specifies firestore:rules or firestore:indexes make sure we don't throw an error if this doesn't match a database name
+  if (onlyDatabases.has("rules")) {
+    onlyDatabases.delete("rules");
+  }
+  if (onlyDatabases.has("indexes")) {
+    onlyDatabases.delete("indexes");
   }
 
   if (!allDatabases && onlyDatabases.size !== 0) {

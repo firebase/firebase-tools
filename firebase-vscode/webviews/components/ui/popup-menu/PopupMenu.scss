@@ -1,0 +1,57 @@
+.menu {
+  position: absolute;
+  right: 0;
+  background-color: var(--vscode-sideBar-background);
+  padding: 4px 0;
+  margin: 0;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px var(--divider-background, black),
+    0 4px 12px var(--vscode-widget-shadow);
+  color: var(--vscode-foreground);
+  z-index: 2;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.scrim {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  cursor: default;
+  z-index: 1;
+}
+
+.item {
+  width: 100%;
+  text-align: left;
+  background-color: transparent;
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--color-ink);
+  padding: 4px 16px;
+  display: flex;
+  align-items: center;
+
+  :global(.material-icons) {
+    margin-right: 12px;
+    color: var(--color-ink-2);
+  }
+
+  &[disabled] {
+    cursor: not-allowed;
+    color: var(--color-ink-disabled);
+  }
+
+  &:not([disabled]):hover {
+    background-color: var(--vscode-list-hoverBackground);
+  }
+  &:not([disabled]):active {
+    background-color: var(--vscode-list-activeSelectionBackground);
+  }
+}

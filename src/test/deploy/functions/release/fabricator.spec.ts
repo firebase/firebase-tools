@@ -612,6 +612,20 @@ describe("Fabricator", () => {
       await expect(fab.createV2Function(ep)).to.be.rejectedWith(reporter.DeploymentError, "create");
     });
 
+    it("deletes broken function and retries on cloud run quota exhaustion", async () => {
+      gcfv2.createFunction.onFirstCall().rejects({ message: "Cloud Run quota exhausted", code: 8 });
+      gcfv2.createFunction.resolves({ name: "op", done: false });
+
+      gcfv2.deleteFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ name: "op" });
+
+      const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
+      await fab.createV2Function(ep);
+
+      expect(gcfv2.createFunction).to.have.been.calledTwice;
+      expect(gcfv2.deleteFunction).to.have.been.called;
+    });
+
     it("throws on set invoker failure", async () => {
       gcfv2.createFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });

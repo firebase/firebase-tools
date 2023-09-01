@@ -1,6 +1,6 @@
 import * as clc from "colorette";
 
-import { Executor } from "./executor";
+import { DEFAULT_RETRY_CODES, Executor } from "./executor";
 import { FirebaseError } from "../../../error";
 import { SourceTokenScraper } from "./sourceTokenScraper";
 import { Timer } from "./timer";
@@ -49,6 +49,8 @@ const eventarcPollerOptions: Omit<poller.OperationPollerOptions, "operationResou
   masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
   maxBackoff: 10_000,
 };
+
+const CLOUD_RUN_RESOURCE_EXHAUSTED_CODE = 8;
 
 export interface FabricatorArgs {
   executor: Executor;
@@ -275,12 +277,12 @@ export class Fabricator {
   }
 
   async createV2Function(endpoint: backend.Endpoint): Promise<void> {
-    const storage = this.sources[endpoint.codebase!]?.storage;
-    if (!storage) {
+    const storageSource = this.sources[endpoint.codebase!]?.storage;
+    if (!storageSource) {
       logger.debug("Precondition failed. Cannot create a GCFv2 function without storage");
       throw new Error("Precondition failed");
     }
-    const apiFunction = gcfV2.functionFromEndpoint(endpoint, storage);
+    const apiFunction = gcfV2.functionFromEndpoint({ ...endpoint, source: { storageSource } });
 
     // N.B. As of GCFv2 private preview GCF no longer creates Pub/Sub topics
     // for Pub/Sub event handlers. This may change, at which point this code
@@ -321,7 +323,7 @@ export class Fabricator {
             // eventarc.createChannel doesn't always return 409 when channel already exists.
             // Ex. when channel exists and has active triggers the API will return 400 (bad
             // request) with message saying something about active triggers. So instead of
-            // relying on 409 response we explicitly check for channel existense.
+            // relying on 409 response we explicitly check for channel existence.
             if ((await eventarc.getChannel(channel)) !== undefined) {
               return;
             }
@@ -345,16 +347,31 @@ export class Fabricator {
         .catch(rethrowAs(endpoint, "upsert eventarc channel"));
     }
 
-    const resultFunction = await this.functionExecutor
-      .run(async () => {
-        const op: { name: string } = await gcfV2.createFunction(apiFunction);
-        return await poller.pollOperation<gcfV2.OutputCloudFunction>({
-          ...gcfV2PollerOptions,
-          pollerName: `create-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
-          operationResourceName: op.name,
+    let resultFunction: gcfV2.OutputCloudFunction | null = null;
+    while (!resultFunction) {
+      resultFunction = await this.functionExecutor
+        .run(async () => {
+          const op: { name: string } = await gcfV2.createFunction(apiFunction);
+          return await poller.pollOperation<gcfV2.OutputCloudFunction>({
+            ...gcfV2PollerOptions,
+            pollerName: `create-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+            operationResourceName: op.name,
+          });
+        })
+        .catch(async (err: any) => {
+          // If the createFunction call returns RPC error code RESOURCE_EXHAUSTED (8),
+          // we have exhausted the underlying Cloud Run API quota. To retry, we need to
+          // first delete the GCF function resource, then call createFunction again.
+          if (err.code === CLOUD_RUN_RESOURCE_EXHAUSTED_CODE) {
+            // we have to delete the broken function before we can re-create it
+            await this.deleteV2Function(endpoint);
+            return null;
+          } else {
+            logger.error((err as Error).message);
+            throw new reporter.DeploymentError(endpoint, "create", err);
+          }
         });
-      })
-      .catch(rethrowAs<gcfV2.OutputCloudFunction>(endpoint, "create"));
+    }
 
     endpoint.uri = resultFunction.serviceConfig?.uri;
     const serviceName = resultFunction.serviceConfig?.service;
@@ -447,12 +464,12 @@ export class Fabricator {
   }
 
   async updateV2Function(endpoint: backend.Endpoint): Promise<void> {
-    const storage = this.sources[endpoint.codebase!]?.storage;
-    if (!storage) {
+    const storageSource = this.sources[endpoint.codebase!]?.storage;
+    if (!storageSource) {
       logger.debug("Precondition failed. Cannot update a GCFv2 function without storage");
       throw new Error("Precondition failed");
     }
-    const apiFunction = gcfV2.functionFromEndpoint(endpoint, storage);
+    const apiFunction = gcfV2.functionFromEndpoint({ ...endpoint, source: { storageSource } });
 
     // N.B. As of GCFv2 private preview the API chokes on any update call that
     // includes the pub/sub topic even if that topic is unchanged.
@@ -463,14 +480,17 @@ export class Fabricator {
     }
 
     const resultFunction = await this.functionExecutor
-      .run(async () => {
-        const op: { name: string } = await gcfV2.updateFunction(apiFunction);
-        return await poller.pollOperation<gcfV2.OutputCloudFunction>({
-          ...gcfV2PollerOptions,
-          pollerName: `update-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
-          operationResourceName: op.name,
-        });
-      })
+      .run(
+        async () => {
+          const op: { name: string } = await gcfV2.updateFunction(apiFunction);
+          return await poller.pollOperation<gcfV2.OutputCloudFunction>({
+            ...gcfV2PollerOptions,
+            pollerName: `update-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+            operationResourceName: op.name,
+          });
+        },
+        { retryCodes: [...DEFAULT_RETRY_CODES, CLOUD_RUN_RESOURCE_EXHAUSTED_CODE] }
+      )
       .catch(rethrowAs<gcfV2.OutputCloudFunction>(endpoint, "update"));
 
     endpoint.uri = resultFunction.serviceConfig?.uri;
@@ -523,15 +543,18 @@ export class Fabricator {
   async deleteV2Function(endpoint: backend.Endpoint): Promise<void> {
     const fnName = backend.functionName(endpoint);
     await this.functionExecutor
-      .run(async () => {
-        const op: { name: string } = await gcfV2.deleteFunction(fnName);
-        const pollerOptions = {
-          ...gcfV2PollerOptions,
-          pollerName: `delete-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
-          operationResourceName: op.name,
-        };
-        await poller.pollOperation<void>(pollerOptions);
-      })
+      .run(
+        async () => {
+          const op: { name: string } = await gcfV2.deleteFunction(fnName);
+          const pollerOptions = {
+            ...gcfV2PollerOptions,
+            pollerName: `delete-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+            operationResourceName: op.name,
+          };
+          await poller.pollOperation<void>(pollerOptions);
+        },
+        { retryCodes: [...DEFAULT_RETRY_CODES, CLOUD_RUN_RESOURCE_EXHAUSTED_CODE] }
+      )
       .catch(rethrowAs(endpoint, "delete"));
   }
 
@@ -599,8 +622,8 @@ export class Fabricator {
       await this.unregisterBlockingTrigger(endpoint);
     }
     // N.B. Like Pub/Sub topics, we don't delete Eventarc channels because we
-    // don't know if there are any subscriers or not. If we start supporting 2P
-    // channels, we might need to revist this or else the events will still get
+    // don't know if there are any subscribers or not. If we start supporting 2P
+    // channels, we might need to revisit this or else the events will still get
     // published and the customer will still get charged.
   }
 

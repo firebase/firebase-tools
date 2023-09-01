@@ -488,6 +488,20 @@ describe("convertConfig", () => {
   }
 
   describe("rewrites errors", () => {
+    let existingBackendStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      existingBackendStub = sinon
+        .stub(backend, "existingBackend")
+        .rejects(
+          new FirebaseError("Some permissions 403 error (that should be caught)", { status: 403 })
+        );
+    });
+
+    afterEach(() => {
+      existingBackendStub.restore();
+    });
+
     it("should throw when rewrite points to function in the wrong region", async () => {
       await expect(
         convertConfig(
@@ -520,7 +534,6 @@ describe("convertConfig", () => {
         )
       ).to.eventually.be.rejectedWith(FirebaseError);
     });
-
     it("should throw when rewrite points to function being deleted", async () => {
       await expect(
         convertConfig(

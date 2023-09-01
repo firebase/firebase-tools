@@ -18,9 +18,6 @@ to extend integration support to frameworks other than Angular and Next.js.
 
 <<_includes/_before-you-begin.md>>
 
-- Optional: Billing enabled on your Firebase project
-  (required if you plan to use SSR)
-
 <<_includes/_initialize-firebase.md>>
 
 1. Answer yes to "Do you want to use a web framework? (experimental)"

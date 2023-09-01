@@ -8,7 +8,7 @@ import { loadRC } from "./rc";
 import { Config } from "./config";
 import { configstore } from "./configstore";
 import { detectProjectRoot } from "./detectProjectRoot";
-import { track, trackEmulator } from "./track";
+import { trackEmulator, trackGA4 } from "./track";
 import { selectAccount, setActiveAccount } from "./auth";
 import { getFirebaseProject } from "./management/projects";
 import { requireAuth } from "./requireAuth";
@@ -202,7 +202,12 @@ export class Command {
             );
           }
           const duration = Math.floor((process.uptime() - start) * 1000);
-          const trackSuccess = track(this.name, "success", duration);
+          const trackSuccess = trackGA4("command_execution", {
+            command_name: this.name,
+            result: "success",
+            duration,
+            interactive: getInheritedOption(options, "nonInteractive") ? "false" : "true",
+          });
           if (!isEmulator) {
             await withTimeout(5000, trackSuccess);
           } else {
@@ -236,8 +241,15 @@ export class Command {
           await withTimeout(
             5000,
             Promise.all([
-              track(this.name, "error", duration),
-              track(err.exit === 1 ? "Error (User)" : "Error (Unexpected)", "", duration),
+              trackGA4(
+                "command_execution",
+                {
+                  command_name: this.name,
+                  result: "error",
+                  interactive: getInheritedOption(options, "nonInteractive") ? "false" : "true",
+                },
+                duration
+              ),
               isEmulator
                 ? trackEmulator("command_error", {
                     command_name: this.name,
@@ -400,7 +412,10 @@ export function validateProjectId(project: string): void {
   if (PROJECT_ID_REGEX.test(project)) {
     return;
   }
-  track("Project ID Check", "invalid");
+  trackGA4("error", {
+    error_type: "Error (User)",
+    details: "Invalid project ID",
+  });
   const invalidMessage = "Invalid project id: " + clc.bold(project) + ".";
   if (project.toLowerCase() !== project) {
     // Attempt to be more helpful in case uppercase letters are used.

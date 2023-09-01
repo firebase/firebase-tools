@@ -104,7 +104,9 @@ describe("hosting prepare", () => {
     };
     await prepare(context, options);
 
-    expect(trackingStub.track).to.have.been.calledOnceWith("hosting_deploy", "fake-framework");
+    expect(trackingStub.trackGA4).to.have.been.calledOnceWith("hosting_version", {
+      framework: "fake-framework",
+    });
     expect(hostingStub.createVersion).to.have.been.calledOnce;
     expect(context.hosting).to.deep.equal({
       deploys: [
@@ -138,7 +140,9 @@ describe("hosting prepare", () => {
     };
     await prepare(context, options);
 
-    expect(trackingStub.track).to.have.been.calledOnceWith("hosting_deploy", "classic");
+    expect(trackingStub.trackGA4).to.have.been.calledOnceWith("hosting_version", {
+      framework: "classic",
+    });
     expect(hostingStub.createVersion).to.have.been.calledOnce;
     expect(context.hosting).to.deep.equal({
       deploys: [

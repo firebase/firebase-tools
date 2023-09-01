@@ -2,7 +2,6 @@ import * as path from "path";
 import * as clc from "colorette";
 
 import { FirebaseError } from "../../../../error";
-import { track } from "../../../../track";
 import * as runtimes from "../../runtimes";
 
 // have to require this because no @types/cjson available
@@ -80,7 +79,6 @@ export function getRuntimeChoice(sourceDir: string, runtimeFromConfig?: string):
       : UNSUPPORTED_NODE_VERSION_PACKAGE_JSON_MSG) + DEPRECATED_NODE_VERSION_INFO;
 
   if (!runtime || !ENGINE_RUNTIMES_NAMES.includes(runtime)) {
-    void track("functions_runtime_notices", "package_missing_runtime");
     throw new FirebaseError(errorMessage, { exit: 1 });
   }
 
@@ -88,7 +86,6 @@ export function getRuntimeChoice(sourceDir: string, runtimeFromConfig?: string):
   // it's in ENGINE_RUNTIME_NAMES and not in DEPRECATED_RUNTIMES. This is still a
   // good defense in depth and also lets us upcast the response to Runtime safely.
   if (runtimes.isDeprecatedRuntime(runtime) || !runtimes.isValidRuntime(runtime)) {
-    void track("functions_runtime_notices", `${runtime}_deploy_prohibited`);
     throw new FirebaseError(errorMessage, { exit: 1 });
   }
 
