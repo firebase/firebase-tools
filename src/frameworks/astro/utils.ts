@@ -28,9 +28,15 @@ export async function getConfig(cwd: string) {
     const { astroConfig } = await openConfig({ cmd: "build", cwd, logging });
     config = astroConfig;
   }
+  const outDirPath = config.outDir.pathname.startsWith("/")
+    ? config.outDir.pathname.substring(1)
+    : config.outDir.pathname;
+  const publicDirPath = config.publicDir.pathname.startsWith("/")
+    ? config.publicDir.pathname.substring(1)
+    : config.publicDir.pathname;
   return {
     outDir: relative(cwd, outDirPath),
-    publicDir: relative(cwd, PublicDirPath),
+    publicDir: relative(cwd, publicDirPath),
     output: config.output,
     adapter: config.adapter,
   };
