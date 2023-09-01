@@ -83,9 +83,10 @@ function toStack(
   return {
     name: stackId,
     codebase: {
-      repository: `cloudbuild.googleapis.com/v2/${cloudBuildConnRepo.name}`,
-      rootDirectory: ".",
+      repository: `${cloudBuildConnRepo.name}`,
+      rootDirectory: "src",
     },
+    mode: "prod",
     labels: {},
   };
 }
