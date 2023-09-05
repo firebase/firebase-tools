@@ -28,7 +28,10 @@ import {
   updateFirebaseRCProject,
 } from "./config-files";
 import { ServiceAccountUser } from "../common/types";
-import { exec, execSync } from "child_process";
+import { downloadToTmp } from "../../src/downloadUtils";
+import { unzip } from "../../src/unzip";
+import * as fs from "fs-extra";
+import path from "path";
 
 let users: Array<ServiceAccountUser | User> = [];
 export let currentUser: User | ServiceAccountUser;
@@ -96,6 +99,25 @@ async function fetchChannels(broker: ExtensionBrokerImpl, force = false) {
     channels = await getChannels(currentOptions.config);
   }
   broker.send("notifyChannels", { channels });
+}
+
+/**
+ * Copies the contents of one directory to another using node's FS library
+ * 
+ * @param source Source directory with files you want to copy
+ * @param destination Directory in which to copy contents of source directory 
+ */
+function copyDirectory(source, destination) {
+  fs.mkdirSync(destination, { recursive: true });
+
+  fs.readdirSync(source, { withFileTypes: true }).forEach((entry) => {
+    let sourcePath = path.join(source, entry.name);
+    let destinationPath = path.join(destination, entry.name);
+
+    entry.isDirectory()
+      ? copyDirectory(sourcePath, destinationPath)
+      : fs.copyFileSync(sourcePath, destinationPath);
+  });
 }
 
 export async function setupWorkflow(
@@ -401,8 +423,7 @@ export async function setupWorkflow(
   }
 
   // Opens a dialog prompting the user to select a directory.
-  // @returns string file path with directory location
-  async function selectDirectory() {
+  async function selectDirectory({ downloadURL, archiveDirName }) {
     const selectedURI = await vscode.window.showOpenDialog({
       canSelectFiles: false,
       canSelectFolders: true,
@@ -413,7 +434,8 @@ export async function setupWorkflow(
      * If the user did not prematurely close the dialog and a directory in 
      * which to put the new quickstart was selected, execute a sequence of
      * shell commands that:
-     * 1. Downloads the quickstart into the selected directory with `git clone`
+     * 1. Downloads the quickstart into the selected directory from the given 
+     *    URL
      * 2. Enters the downloaded repo and deletes all unnecessary files and dirs
      * 3. Moves all remaining files to the root of the selected directory
      * 
@@ -423,17 +445,22 @@ export async function setupWorkflow(
     if (selectedURI && selectedURI[0]) {
       pluginLogger.info('(Quickstart) Downloading Quickstart Project');
       try {
-        pluginLogger.info(execSync(
-          `git clone https://github.com/firebase/quickstart-js.git ` +
-          `&& cd quickstart-js && ls | grep -xv "firestore" | xargs rm -rf ` +
-          `&& mv -v firestore/* "${selectedURI[0].fsPath}" ` +
-          `&& cd "${selectedURI[0].fsPath}" && rm -rf quickstart-js`, {
-          cwd: selectedURI[0].fsPath,
-          encoding: "utf8",
-        }
-        ));
+        // Download zip file and save in temp location
+        const tempFile = await downloadToTmp(downloadURL);
+
+        //Unzip temp file and extract contents of archive to specified dir
+        await unzip(tempFile, selectedURI[0].fsPath.toString());
+        copyDirectory(`${selectedURI[0].fsPath.toString()}/${archiveDirName}`,
+          `${selectedURI[0].fsPath.toString()}`);
+
+        // Clean up
+        fs.removeSync(tempFile);
+        fs.removeSync(`${selectedURI[0].fsPath.toString()}/${archiveDirName}`);
+
+        // Open new VSCode window
         vscode.commands.executeCommand(`vscode.openFolder`, selectedURI[0]);
       } catch (error) {
+        vscode.window.showErrorMessage("Error downloading Quickstart");
         pluginLogger.error('(Quickstart) Error downloading Quickstart:\n' +
           error);
       }
