@@ -22,7 +22,7 @@ export function registerFiremat(
 
   // keep global endpoint signal updated
   broker.on("notifyFirematEmulatorEndpoint", ({ endpoint }) => {
-    // basic cacheing to avoid duplicate calls during emulator startup
+    // basic caching to avoid duplicate calls during emulator startup
     if (firematEndpoint.value !== endpoint) {
       firematEndpoint.value = endpoint;
       // also update LSP
