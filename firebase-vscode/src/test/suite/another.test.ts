@@ -4,10 +4,10 @@ import * as assert from "assert";
 // as well as import your extension to test it
 import * as vscode from "vscode";
 import { getChannels } from '../../cli';
-import { Config } from "../../config";
 
 /**
- * Sample unit test using extension code
+ * Second test to ensure test pipeline can handle multiple test files
+ * correctly and use code-splitting for shared code.
  */
 
 suite("Extension Test Suite", () => {
@@ -15,11 +15,6 @@ suite("Extension Test Suite", () => {
 
   test("getChannels() returns an empty array if no firebaseJSON provided", async () => {
     const result = await getChannels(null);
-    assert.deepStrictEqual(result, []);
-  });
-
-  test("getChannels() returns an empty array if no project provided", async () => {
-    const result = await getChannels({} as Config);
     assert.deepStrictEqual(result, []);
   });
 });
