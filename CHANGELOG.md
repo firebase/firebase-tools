@@ -1,1 +1,2 @@
 - Fixed an issue where builds from https://firebase.tools could not run commands that spawn `npm`. (#6132)
+- Fixed the regex in extensions changelog parser to lazy match the version prefix to allow matching higher versions (#6326)
