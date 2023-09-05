@@ -1,11 +1,12 @@
 import vscode, { Disposable, ExtensionContext } from "vscode";
+import { signal } from "@preact/signals-core";
+
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { registerExecution } from "./execution";
 import { registerExplorer } from "./explorer";
 import { FirematService } from "./service";
 import { CodeLensProvider } from "./code-lens-provider";
 import { setupLanguageClient } from "./language-client";
-import { signal } from "@preact/signals-core";
 
 const firematEndpoint = signal<string>("");
 
@@ -21,9 +22,13 @@ export function registerFiremat(
 
   // keep global endpoint signal updated
   broker.on("notifyFirematEmulatorEndpoint", ({ endpoint }) => {
-    firematEndpoint.value = endpoint;
-    // also update LSP
-    vscode.commands.executeCommand("sendFirematEndpointToLSP", endpoint);
+    // basic caching to avoid duplicate calls during emulator startup
+    if (firematEndpoint.value !== endpoint) {
+      firematEndpoint.value = endpoint;
+      // also update LSP
+      vscode.commands.executeCommand("firemat-graphql.restart");
+      vscode.commands.executeCommand('firebase.firemat.executeIntrospection');
+    }
   });
 
   return Disposable.from(

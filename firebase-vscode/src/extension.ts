@@ -32,10 +32,6 @@ export function activate(context: vscode.ExtensionContext) {
     }),
     registerFiremat(context, broker)
   );
-
-  // Initial data load for schema explorer, needs to be after registration
-  // TODO: rethink this logic in relation to connecting to emulator
-  vscode.commands.executeCommand('firebase.firemat.executeIntrospection');
 }
 
 // This method is called when the extension is deactivated
