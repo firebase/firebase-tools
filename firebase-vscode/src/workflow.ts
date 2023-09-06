@@ -28,7 +28,9 @@ import {
   updateFirebaseRCProject,
 } from "./config-files";
 import { ServiceAccountUser } from "../common/types";
-import { exec, execSync } from "child_process";
+import { execSync } from "child_process";
+import { FeaturesEnabled } from "./messaging/types";
+
 
 let users: Array<ServiceAccountUser | User> = [];
 export let currentUser: User | ServiceAccountUser;
@@ -105,7 +107,7 @@ export async function setupWorkflow(
   // Get user-defined VSCode settings if workspace is found.
   let shouldWriteDebug: boolean = false;
   let debugLogPath: string = "";
-  let useFrameworks: boolean = false;
+  let featuresEnabled: FeaturesEnabled = {};
   let npmPath: string = "";
   if (vscode.workspace.workspaceFolders) {
     const workspaceConfig = workspace.getConfiguration(
@@ -114,14 +116,17 @@ export async function setupWorkflow(
     );
     shouldWriteDebug = workspaceConfig.get("debug");
     debugLogPath = workspaceConfig.get("debugLogPath");
-    useFrameworks = workspaceConfig.get("useFrameworks");
+    featuresEnabled.frameworks = workspaceConfig.get("features.enableFrameworks");
+    featuresEnabled.hosting = workspaceConfig.get("features.enableHosting");
+    featuresEnabled.emulators = workspaceConfig.get("features.enableEmulators");
+    featuresEnabled.quickstart = workspaceConfig.get("features.enableQuickstart");
     npmPath = workspaceConfig.get("npmPath");
     if (npmPath) {
       process.env.PATH += `:${npmPath}`;
     }
   }
 
-  if (useFrameworks) {
+  if (featuresEnabled.frameworks) {
     setEnabled("webframeworks", true);
   }
 
@@ -142,6 +147,7 @@ export async function setupWorkflow(
     broker.send("notifyEnv", {
       env: {
         isMonospace: Boolean(process.env.MONOSPACE_ENV),
+        featuresEnabled
       },
     });
 
@@ -205,70 +211,82 @@ export async function setupWorkflow(
 
   broker.on("selectProject", selectProject);
 
-  broker.on("chooseQuickstartDir", selectDirectory);
+  if (featuresEnabled.quickstart) {
+    broker.on("chooseQuickstartDir", selectDirectory);
+  }
 
+  /**
+   * This should be gated by featuresEnabled.hosting but it creates
+   * the firebase.json file, which emulators needs, so if you were
+   * to turn on emulators but not hosting, you would need this.
+   */
   broker.on("selectAndInitHostingFolder", selectAndInitHosting);
 
-  broker.on("hostingDeploy", async ({ target: deployTarget }) => {
-    showOutputChannel();
-    pluginLogger.info(
-      `Starting deployment of project ` +
-      `${currentOptions.projectId} to channel: ${deployTarget}`
-    );
-    const { success, consoleUrl, hostingUrl } = await deployToHosting(
-      currentOptions.config,
-      deployTarget
-    );
-    broker.send("notifyHostingDeploy", { success, consoleUrl, hostingUrl });
-    if (success) {
-      fetchChannels(broker, true);
-    }
-  });
-
-  broker.on("promptUserForInput", async () => {
-    const response = await vscode.window.showInputBox({
-      title: "New Preview Channel",
-      prompt: "Enter a name for the new preview channel",
-    });
-    broker.send("notifyPreviewChannelResponse", { id: response });
-  });
-
-  broker.on(
-    "launchEmulators",
-    async ({ emulatorUiSelections }) => {
-      await emulatorsStart(emulatorUiSelections);
-      broker.send("notifyRunningEmulatorInfo", { uiUrl: getEmulatorUiUrl(), displayInfo: listRunningEmulators() });
-    }
-  );
-
-  broker.on(
-    "stopEmulators",
-    async () => {
-      await stopEmulators();
-      // Update the UI
-      broker.send("notifyEmulatorsStopped");
-    }
-  );
-
-  broker.on(
-    "selectEmulatorImportFolder",
-    async () => {
-      const options: vscode.OpenDialogOptions = {
-        canSelectMany: false,
-        openLabel: `Pick an import folder`,
-        title: `Pick an import folder`,
-        canSelectFiles: false,
-        canSelectFolders: true,
-      };
-      const fileUri = await vscode.window.showOpenDialog(options);
-      // Update the UI of the selection
-      if (!fileUri || fileUri.length < 1) {
-        vscode.window.showErrorMessage("Invalid import folder selected.");
-        return;
+  if (featuresEnabled.hosting) {
+    broker.on("hostingDeploy", async ({ target: deployTarget }) => {
+      showOutputChannel();
+      pluginLogger.info(
+        `Starting deployment of project ` +
+        `${currentOptions.projectId} to channel: ${deployTarget}`
+      );
+      const { success, consoleUrl, hostingUrl } = await deployToHosting(
+        currentOptions.config,
+        deployTarget
+      );
+      broker.send("notifyHostingDeploy", { success, consoleUrl, hostingUrl });
+      if (success) {
+        fetchChannels(broker, true);
       }
-      broker.send("notifyEmulatorImportFolder", { folder: fileUri[0].fsPath });
-    }
-  );
+    });
+
+    broker.on("promptUserForInput", async () => {
+      const response = await vscode.window.showInputBox({
+        title: "New Preview Channel",
+        prompt: "Enter a name for the new preview channel",
+      });
+      broker.send("notifyPreviewChannelResponse", { id: response });
+    });
+  }
+
+  if (featuresEnabled.emulators) {
+    broker.on(
+      "launchEmulators",
+      async ({ emulatorUiSelections }) => {
+        await emulatorsStart(emulatorUiSelections);
+        broker.send("notifyRunningEmulatorInfo", { uiUrl: getEmulatorUiUrl(), displayInfo: listRunningEmulators() });
+      }
+    );
+
+    broker.on(
+      "stopEmulators",
+      async () => {
+        await stopEmulators();
+        // Update the UI
+        broker.send("notifyEmulatorsStopped");
+      }
+    );
+
+    broker.on(
+      "selectEmulatorImportFolder",
+      async () => {
+        const options: vscode.OpenDialogOptions = {
+          canSelectMany: false,
+          openLabel: `Pick an import folder`,
+          title: `Pick an import folder`,
+          canSelectFiles: false,
+          canSelectFolders: true,
+        };
+        const fileUri = await vscode.window.showOpenDialog(options);
+        // Update the UI of the selection
+        if (!fileUri || fileUri.length < 1) {
+          vscode.window.showErrorMessage("Invalid import folder selected.");
+          return;
+        }
+        broker.send("notifyEmulatorImportFolder", { folder: fileUri[0].fsPath });
+      }
+    );
+
+  }
 
   context.subscriptions.push(
     setupFirebaseJsonAndRcFileSystemWatcher(broker, context)
@@ -350,9 +368,9 @@ export async function setupWorkflow(
     currentFramework = undefined;
     // Note: discover() takes a few seconds. No need to block users that don't
     // have frameworks support enabled.
-    if (useFrameworks) {
+    if (featuresEnabled.frameworks) {
       currentFramework =
-        useFrameworks && (await discover(currentOptions.cwd, false));
+        featuresEnabled.frameworks && (await discover(currentOptions.cwd, false));
       pluginLogger.debug("Searching for a web framework in this project.");
     }
     let success = false;

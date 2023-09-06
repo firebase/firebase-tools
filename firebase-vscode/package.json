@@ -35,10 +35,25 @@
           "default": "",
           "description": "Path to NPM executable in local environment"
         },
-        "firebase.useFrameworks": {
+        "firebase.features.enableFrameworks": {
           "type": "boolean",
-          "default": true,
+          "default": false,
           "description": "Enable web frameworks"
+        },
+        "firebase.features.enableHosting": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable hosting deploy feature"
+        },
+        "firebase.features.enableEmulators": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable emulators feature"
+        },
+        "firebase.features.enableQuickstart": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable quickstart feature"
         }
       }
     },

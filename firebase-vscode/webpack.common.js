@@ -24,7 +24,10 @@ const extensionConfig = {
   },
   devtool: "source-map",
   externals: {
-    vscode: 'commonjs vscode' // the vscode-module is created on-the-fly and must be excluded. Add other modules that cannot be webpack'ed, 📖 -> https://webpack.js.org/configuration/externals/
+    vscode: 'commonjs vscode', // the vscode-module is created on-the-fly and must be excluded. Add other modules that cannot be webpack'ed, 📖 -> https://webpack.js.org/configuration/externals/
+    // This causes an error in compilation. It is brought in by emulators CLI code
+    // and it should be double checked that doing this doesn't break emulators.
+    fsevents: "require('fsevents')",
   },
   resolve: {
     // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader

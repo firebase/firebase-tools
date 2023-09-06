@@ -17,28 +17,53 @@ process.argv.forEach((arg) => {
   }
 });
 
+/**
+ * These settings override defaults in package.json. If the defaults
+ * should be the same in both the standalone and IDX build, there's no
+ * need to include them in the swap set here.
+ */
+const SETTINGS = {
+  /**
+   * Settings for standalone extension
+   */
+  vsce: {
+    "firebase.debug": false,
+    "firebase.debugLogPath": "",
+    "firebase.features.enableFrameworks": false,
+    "firebase.features.enableHosting": false,
+  },
+  /**
+   * Settings for IDX
+   */
+  monospace: {
+    "firebase.debug": true,
+    "firebase.debugLogPath": "/tmp/firebase-plugin.log",
+    "firebase.features.enableFrameworks": true,
+    "firebase.features.enableHosting": true,
+  }
+};
+
+function assignDefaultSettings(pkg, target) {
+  console.log(`Setting default settings for: ${target}`);
+  const newDefaultSettings = SETTINGS[target];
+  for (const settingField in newDefaultSettings) {
+    console.log(`Setting: [${settingField}]: ${newDefaultSettings[settingField]}`);
+    pkg.contributes.configuration.properties[settingField].default = newDefaultSettings[settingField];
+  }
+}
+
 if (target === "vsce") {
   delete pkg.extensionDependencies;
   console.log(
-    "Removing google.monospace extensionDependency for VSCE packaging."
-  );
-  pkg.contributes.configuration.properties['firebase.debug'].default = false;
-  pkg.contributes.configuration.properties['firebase.debugLogPath'].default = "";
-  console.log(
-    "Setting default debug log settings to off for VSCE packaging."
+    "Removed google.monospace extensionDependency for VSCE packaging."
   );
 } else if (target === "monospace") {
   pkg.extensionDependencies = ["google.monospace"];
   console.log(
-    "Adding google.monospace extensionDependency for Monospace packaging."
-  );
-  pkg.contributes.configuration.properties['firebase.debug'].default = true;
-  pkg.contributes.configuration.properties['firebase.debugLogPath'].default =
-    "/tmp/firebase-plugin.log";
-  console.log(
-    "Setting default debug log settings to on for Monospace packaging."
+    "Added google.monospace extensionDependency for Monospace packaging."
   );
 }
+assignDefaultSettings(pkg, target);
 
 writeFileSync(
   path.join(__dirname, "../package.json"),

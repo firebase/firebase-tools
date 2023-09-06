@@ -8,7 +8,7 @@ import { FirebaseConfig } from "../../src/firebaseConfig";
 import { ServiceAccountUser } from "../common/types";
 import { DeployPanel } from "./components/DeployPanel";
 import { HostingInitState, DeployState } from "./webview-types";
-import { ChannelWithId } from "./messaging/types";
+import { ChannelWithId, FeaturesEnabled } from "./messaging/types";
 import { EmulatorPanel } from "./components/EmulatorPanel";
 
 import { webLogger } from "./globals/web-logger";
@@ -20,7 +20,10 @@ export function SidebarApp() {
   const [deployState, setDeployState] = useState<DeployState>(null);
   const [hostingInitState, setHostingInitState] =
     useState<HostingInitState>(null);
-  const [env, setEnv] = useState<{ isMonospace: boolean }>();
+  const [env, setEnv] = useState<{
+    isMonospace: boolean;
+    featuresEnabled: FeaturesEnabled;
+  }>();
   const [channels, setChannels] = useState<ChannelWithId[]>(null);
   const [user, setUser] = useState<User | ServiceAccountUser | null>(null);
   const [framework, setFramework] = useState<string | null>(null);
@@ -143,36 +146,52 @@ export function SidebarApp() {
       {!!user && (
         <ProjectSection userEmail={user.email} projectId={projectId} />
       )}
-      {hostingInitState === "success" && !!user && !!projectId && (
-        <DeployPanel
-          deployState={deployState}
-          setDeployState={setDeployState}
-          projectId={projectId}
-          channels={channels}
-          framework={framework}
-        />
-      )}
-      <Spacer size="large" />
-      {hostingInitState !== "success" && !!user && !!projectId && (
-        <InitFirebasePanel
-          onHostingInit={() => {
-            setupHosting();
-          }}
-          hostingInitState={hostingInitState}
-          setHostingInitState={setHostingInitState}
-        />
-      )}
       {
-        // Only load the emulator panel if we have a user, firebase.json and this isn't Monospace
-        // The user login requirement can be removed in the future but the panel will have to
-        // be restricted to full-offline emulation only.
-        !!user && !!firebaseJson && !env?.isMonospace && (
+        // Only display hosting panel if hosting is enabled in settings.
+        env?.featuresEnabled.hosting && (
+          <>
+            {hostingInitState === "success" && !!user && !!projectId && (
+              <DeployPanel
+                deployState={deployState}
+                setDeployState={setDeployState}
+                projectId={projectId}
+                channels={channels}
+                framework={framework}
+              />
+            )}
+            <Spacer size="large" />
+            {hostingInitState !== "success" && !!user && !!projectId && (
+              <InitFirebasePanel
+                onHostingInit={() => {
+                  setupHosting();
+                }}
+                hostingInitState={hostingInitState}
+                setHostingInitState={setHostingInitState}
+              />
+            )}
+          </>
+        )
+      }
+      {
+        // NOTE: The display of the emulator panel depends on the existence
+        // of a firebase.json, but in this UI, the firebase.json can only
+        // be created by the button currently labeled "Host your Web App".
+        // If emulators are going to be a standalone feature, the creation
+        // of the firebase.json file needs to be decoupled from the hosting
+        // feature, hopefully in some way that doesn't involve collisions or
+        // duplicate code.
+        //
+        // Only display emulator panel if we have a user, firebase.json,
+        // and emulators are enabled in settings.
+        // The user login requirement can be removed in the future but the panel
+        // will have to be restricted to full-offline emulation only.
+        !!user && !!firebaseJson && env?.featuresEnabled.emulators && (
           <EmulatorPanel firebaseJson={firebaseJson} projectId={projectId} />
         )
       }
       {
-        // Only load quickstart panel if this isn't a Monospace workspace
-        !env?.isMonospace && (
+        // Only display quickstart panel if quickstart is enabled in settings.
+        env?.featuresEnabled.quickstart && (
           <>
             <Spacer size="medium" />
             <QuickstartPanel

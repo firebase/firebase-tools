@@ -7,7 +7,7 @@ import { FirebaseConfig } from '../../../src/firebaseConfig';
 import { User } from "../../../src/types/auth";
 import { ServiceAccountUser } from "../types";
 import { RCData } from '../../../src/rc';
-import { EmulatorUiSelections, RunningEmulatorInfo } from "./types";
+import { EmulatorUiSelections, FeaturesEnabled, RunningEmulatorInfo } from "./types";
 
 export interface WebviewToExtensionParamsMap {
   /**
@@ -79,7 +79,9 @@ export interface WebviewToExtensionParamsMap {
 
 export interface ExtensionToWebviewParamsMap {
   /** Triggered when new environment variables values are found. */
-  notifyEnv: { env: { isMonospace: boolean } };
+  notifyEnv: {
+    env: { isMonospace: boolean, featuresEnabled: FeaturesEnabled }
+  };
 
   /** Triggered when users have been updated. */
   notifyUsers: { users: User[] };
