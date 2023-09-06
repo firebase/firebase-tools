@@ -457,7 +457,9 @@ export async function stop(targetName: DownloadableEmulators): Promise<void> {
   const emulator = get(targetName);
   return new Promise((resolve, reject) => {
     const logger = EmulatorLogger.forEmulator(emulator.name);
-    if (emulator.instance) {
+
+    // kill(0) does not end the process, it just checks for existence. See https://man7.org/linux/man-pages/man2/kill.2.html#:~:text=If%20sig%20is%200%2C%20
+    if (emulator.instance && emulator.instance.kill(0)) {
       const killTimeout = setTimeout(() => {
         const pid = emulator.instance ? emulator.instance.pid : -1;
         const errorMsg =
@@ -465,7 +467,6 @@ export async function stop(targetName: DownloadableEmulators): Promise<void> {
         logger.log("DEBUG", errorMsg);
         reject(new FirebaseError(emulator.name + ": " + errorMsg));
       }, EMULATOR_INSTANCE_KILL_TIMEOUT);
-
       emulator.instance.once("exit", () => {
         clearTimeout(killTimeout);
         resolve();
