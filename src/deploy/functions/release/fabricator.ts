@@ -660,6 +660,7 @@ export class Fabricator {
   async registerBlockingTrigger(
     endpoint: backend.Endpoint & backend.BlockingTriggered
   ): Promise<void> {
+    console.log("*****\nRegistering blocking trigger:", endpoint);
     await this.executor
       .run(() => services.serviceForEndpoint(endpoint).registerTrigger(endpoint))
       .catch(rethrowAs(endpoint, "register blocking trigger"));

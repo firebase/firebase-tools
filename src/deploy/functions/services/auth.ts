@@ -52,7 +52,10 @@ export class AuthBlockingService implements Service {
     if (
       newConfig.triggers?.beforeCreate?.functionUri !==
         config.triggers?.beforeCreate?.functionUri ||
-      newConfig.triggers?.beforeSignIn?.functionUri !== config.triggers?.beforeSignIn?.functionUri
+      newConfig.triggers?.beforeSignIn?.functionUri !==
+        config.triggers?.beforeSignIn?.functionUri ||
+      newConfig.triggers?.beforeSendEmail?.functionUri !==
+        config.triggers?.beforeSendEmail?.functionUri
     ) {
       return true;
     }
@@ -75,6 +78,9 @@ export class AuthBlockingService implements Service {
     const newBlockingConfig = await identityPlatform.getBlockingFunctionsConfig(endpoint.project);
     const oldBlockingConfig = cloneDeep(newBlockingConfig);
 
+    console.log("***** trigger type:", endpoint.blockingTrigger.eventType);
+    console.log("*****\n old config:", oldBlockingConfig);
+
     if (endpoint.blockingTrigger.eventType === events.v1.BEFORE_CREATE_EVENT) {
       newBlockingConfig.triggers = {
         ...newBlockingConfig.triggers,
@@ -82,13 +88,23 @@ export class AuthBlockingService implements Service {
           functionUri: endpoint.uri!,
         },
       };
-    } else {
+    } else if (endpoint.blockingTrigger.eventType === events.v1.BEFORE_SIGN_IN_EVENT) {
       newBlockingConfig.triggers = {
         ...newBlockingConfig.triggers,
         beforeSignIn: {
           functionUri: endpoint.uri!,
         },
       };
+    } else if (endpoint.blockingTrigger.eventType === events.v1.BEFORE_SEND_EMAIL_EVENT) {
+      newBlockingConfig.triggers = {
+        ...newBlockingConfig.triggers,
+        beforeSendEmail: {
+          functionUri: endpoint.uri!,
+        },
+      };
+      console.log("Is this changing?", newBlockingConfig.triggers);
+    } else {
+      // throw error here
     }
 
     newBlockingConfig.forwardInboundCredentials = {
@@ -96,9 +112,13 @@ export class AuthBlockingService implements Service {
       ...endpoint.blockingTrigger.options,
     };
 
+    console.log("*****\n new config:", newBlockingConfig);
+
     if (!this.configChanged(newBlockingConfig, oldBlockingConfig)) {
       return;
     }
+
+    console.log("*****\nUpdating blocking functions config to:", newBlockingConfig);
 
     await identityPlatform.setBlockingFunctionsConfig(endpoint.project, newBlockingConfig);
   }

@@ -10,4 +10,5 @@ export const BLOCKING_LABEL_KEY_TO_EVENT: Record<string, (typeof AUTH_BLOCKING_E
 export const BLOCKING_EVENT_TO_LABEL_KEY: Record<(typeof AUTH_BLOCKING_EVENTS)[number], string> = {
   "providers/cloud.auth/eventTypes/user.beforeCreate": "before-create",
   "providers/cloud.auth/eventTypes/user.beforeSignIn": "before-sign-in",
+  "providers/cloud.auth/eventTypes/user.beforeSendEmail": "before-send-email",
 };
