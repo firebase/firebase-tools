@@ -33,10 +33,3 @@ export interface EmulatorUiSelections {
   mode: "hosting" | "all"
   debugLogging: boolean
 }
-
-export interface FeaturesEnabled {
-  hosting?: boolean,
-  emulators?: boolean,
-  frameworks?: boolean,
-  quickstart?: boolean
-}

@@ -5,10 +5,10 @@ import { User } from "../../src/types/auth";
 import { AccountSection } from "./components/AccountSection";
 import { ProjectSection } from "./components/ProjectSection";
 import { FirebaseConfig } from "../../src/firebaseConfig";
-import { ServiceAccountUser } from "../common/types";
+import { ServiceAccountUser, Settings } from "../common/types";
 import { DeployPanel } from "./components/DeployPanel";
 import { HostingInitState, DeployState } from "./webview-types";
-import { ChannelWithId, FeaturesEnabled } from "./messaging/types";
+import { ChannelWithId } from "./messaging/types";
 import { EmulatorPanel } from "./components/EmulatorPanel";
 
 import { webLogger } from "./globals/web-logger";
@@ -22,8 +22,8 @@ export function SidebarApp() {
     useState<HostingInitState>(null);
   const [env, setEnv] = useState<{
     isMonospace: boolean;
-    featuresEnabled: FeaturesEnabled;
   }>();
+  const [settings, setSettings] = useState<Settings>();
   const [channels, setChannels] = useState<ChannelWithId[]>(null);
   const [user, setUser] = useState<User | ServiceAccountUser | null>(null);
   const [framework, setFramework] = useState<string | null>(null);
@@ -45,6 +45,11 @@ export function SidebarApp() {
     broker.on("notifyEnv", ({ env }) => {
       webLogger.debug(`notifyEnv() returned ${JSON.stringify(env)}`);
       setEnv(env);
+    });
+
+    broker.on("notifySettings", (settings) => {
+      webLogger.debug(`notifySettings() returned ${JSON.stringify(settings)}`);
+      setSettings(settings);
     });
 
     broker.on("notifyChannels", ({ channels }) => {
@@ -148,7 +153,7 @@ export function SidebarApp() {
       )}
       {
         // Only display hosting panel if hosting is enabled in settings.
-        env?.featuresEnabled.hosting && (
+        settings?.featuresEnabled.hosting && (
           <>
             {hostingInitState === "success" && !!user && !!projectId && (
               <DeployPanel
@@ -185,13 +190,13 @@ export function SidebarApp() {
         // and emulators are enabled in settings.
         // The user login requirement can be removed in the future but the panel
         // will have to be restricted to full-offline emulation only.
-        !!user && !!firebaseJson && env?.featuresEnabled.emulators && (
+        !!user && !!firebaseJson && settings?.featuresEnabled.emulators && (
           <EmulatorPanel firebaseJson={firebaseJson} projectId={projectId} />
         )
       }
       {
         // Only display quickstart panel if quickstart is enabled in settings.
-        env?.featuresEnabled.quickstart && (
+        settings?.featuresEnabled.quickstart && (
           <>
             <Spacer size="medium" />
             <QuickstartPanel

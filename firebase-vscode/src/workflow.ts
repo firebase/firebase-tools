@@ -11,10 +11,6 @@ import {
   listProjects,
   login,
   logoutUser,
-  stopEmulators,
-  listRunningEmulators,
-  getEmulatorUiUrl,
-  emulatorsStart
 } from "./cli";
 import { User } from "../../src/types/auth";
 import { currentOptions } from "./options";
@@ -29,8 +25,7 @@ import {
 } from "./config-files";
 import { ServiceAccountUser } from "../common/types";
 import { execSync } from "child_process";
-import { FeaturesEnabled } from "./messaging/types";
-
+import { Settings } from "../common/types";
 
 let users: Array<ServiceAccountUser | User> = [];
 export let currentUser: User | ServiceAccountUser;
@@ -102,54 +97,28 @@ async function fetchChannels(broker: ExtensionBrokerImpl, force = false) {
 
 export async function setupWorkflow(
   context: ExtensionContext,
-  broker: ExtensionBrokerImpl
+  broker: ExtensionBrokerImpl,
+  settings: Settings
 ) {
-  // Get user-defined VSCode settings if workspace is found.
-  let shouldWriteDebug: boolean = false;
-  let debugLogPath: string = "";
-  let featuresEnabled: FeaturesEnabled = {};
-  let npmPath: string = "";
-  if (vscode.workspace.workspaceFolders) {
-    const workspaceConfig = workspace.getConfiguration(
-      "firebase",
-      vscode.workspace.workspaceFolders[0].uri
-    );
-    shouldWriteDebug = workspaceConfig.get("debug");
-    debugLogPath = workspaceConfig.get("debugLogPath");
-    featuresEnabled.frameworks = workspaceConfig.get("features.enableFrameworks");
-    featuresEnabled.hosting = workspaceConfig.get("features.enableHosting");
-    featuresEnabled.emulators = workspaceConfig.get("features.enableEmulators");
-    featuresEnabled.quickstart = workspaceConfig.get("features.enableQuickstart");
-    npmPath = workspaceConfig.get("npmPath");
-    if (npmPath) {
-      process.env.PATH += `:${npmPath}`;
-    }
-  }
-
-  if (featuresEnabled.frameworks) {
+  if (settings.featuresEnabled.frameworks) {
     setEnabled("webframeworks", true);
   }
 
-  logSetup({ shouldWriteDebug, debugLogPath });
+  logSetup({
+    shouldWriteDebug: settings.shouldWriteDebug,
+    debugLogPath: settings.debugLogPath
+  });
 
   /**
    * Call pluginLogger with log arguments received from webview.
    */
   broker.on("writeLog", async ({ level, args }) => {
-    pluginLogger[level]('(Webview)', ...args);
+    pluginLogger[level]("(Webview)", ...args);
   });
 
   broker.on("getInitialData", async () => {
-    // Env
-    pluginLogger.debug(
-      `Value of process.env.MONOSPACE_ENV: ` + `${process.env.MONOSPACE_ENV}`
-    );
-    broker.send("notifyEnv", {
-      env: {
-        isMonospace: Boolean(process.env.MONOSPACE_ENV),
-        featuresEnabled
-      },
-    });
+    // VSCode settings
+    broker.send("notifySettings", settings);
 
     // Firebase JSON and RC
     readAndSendFirebaseConfigs(broker, context);
@@ -211,7 +180,7 @@ export async function setupWorkflow(
 
   broker.on("selectProject", selectProject);
 
-  if (featuresEnabled.quickstart) {
+  if (settings.featuresEnabled.quickstart) {
     broker.on("chooseQuickstartDir", selectDirectory);
   }
 
@@ -222,7 +191,7 @@ export async function setupWorkflow(
    */
   broker.on("selectAndInitHostingFolder", selectAndInitHosting);
 
-  if (featuresEnabled.hosting) {
+  if (settings.featuresEnabled.hosting) {
     broker.on("hostingDeploy", async ({ target: deployTarget }) => {
       showOutputChannel();
       pluginLogger.info(
@@ -246,46 +215,6 @@ export async function setupWorkflow(
       });
       broker.send("notifyPreviewChannelResponse", { id: response });
     });
-  }
-
-  if (featuresEnabled.emulators) {
-    broker.on(
-      "launchEmulators",
-      async ({ emulatorUiSelections }) => {
-        await emulatorsStart(emulatorUiSelections);
-        broker.send("notifyRunningEmulatorInfo", { uiUrl: getEmulatorUiUrl(), displayInfo: listRunningEmulators() });
-      }
-    );
-
-    broker.on(
-      "stopEmulators",
-      async () => {
-        await stopEmulators();
-        // Update the UI
-        broker.send("notifyEmulatorsStopped");
-      }
-    );
-
-    broker.on(
-      "selectEmulatorImportFolder",
-      async () => {
-        const options: vscode.OpenDialogOptions = {
-          canSelectMany: false,
-          openLabel: `Pick an import folder`,
-          title: `Pick an import folder`,
-          canSelectFiles: false,
-          canSelectFolders: true,
-        };
-        const fileUri = await vscode.window.showOpenDialog(options);
-        // Update the UI of the selection
-        if (!fileUri || fileUri.length < 1) {
-          vscode.window.showErrorMessage("Invalid import folder selected.");
-          return;
-        }
-        broker.send("notifyEmulatorImportFolder", { folder: fileUri[0].fsPath });
-      }
-    );
-
   }
 
   context.subscriptions.push(
@@ -368,9 +297,9 @@ export async function setupWorkflow(
     currentFramework = undefined;
     // Note: discover() takes a few seconds. No need to block users that don't
     // have frameworks support enabled.
-    if (featuresEnabled.frameworks) {
+    if (settings.featuresEnabled.frameworks) {
       currentFramework =
-        featuresEnabled.frameworks && (await discover(currentOptions.cwd, false));
+        settings.featuresEnabled.frameworks && (await discover(currentOptions.cwd, false));
       pluginLogger.debug("Searching for a web framework in this project.");
     }
     let success = false;
@@ -428,40 +357,37 @@ export async function setupWorkflow(
     });
 
     /**
-     * If the user did not prematurely close the dialog and a directory in 
+     * If the user did not prematurely close the dialog and a directory in
      * which to put the new quickstart was selected, execute a sequence of
      * shell commands that:
      * 1. Downloads the quickstart into the selected directory with `git clone`
      * 2. Enters the downloaded repo and deletes all unnecessary files and dirs
      * 3. Moves all remaining files to the root of the selected directory
-     * 
+     *
      * Once this download and configuration is complete, a new vscode window
-     * is opened to the selected directory. 
+     * is opened to the selected directory.
      */
     if (selectedURI && selectedURI[0]) {
-      pluginLogger.info('(Quickstart) Downloading Quickstart Project');
+      pluginLogger.info("(Quickstart) Downloading Quickstart Project");
       try {
-        pluginLogger.info(execSync(
-          `git clone https://github.com/firebase/quickstart-js.git ` +
-          `&& cd quickstart-js && ls | grep -xv "firestore" | xargs rm -rf ` +
-          `&& mv -v firestore/* "${selectedURI[0].fsPath}" ` +
-          `&& cd "${selectedURI[0].fsPath}" && rm -rf quickstart-js`, {
-          cwd: selectedURI[0].fsPath,
-          encoding: "utf8",
-        }
-        ));
+        pluginLogger.info(
+          execSync(
+            `git clone https://github.com/firebase/quickstart-js.git ` +
+            `&& cd quickstart-js && ls | grep -xv "firestore" | xargs rm -rf ` +
+            `&& mv -v firestore/* "${selectedURI[0].fsPath}" ` +
+            `&& cd "${selectedURI[0].fsPath}" && rm -rf quickstart-js`,
+            {
+              cwd: selectedURI[0].fsPath,
+              encoding: "utf8",
+            }
+          )
+        );
         vscode.commands.executeCommand(`vscode.openFolder`, selectedURI[0]);
       } catch (error) {
-        pluginLogger.error('(Quickstart) Error downloading Quickstart:\n' +
-          error);
+        pluginLogger.error(
+          "(Quickstart) Error downloading Quickstart:\n" + error
+        );
       }
     }
   }
-}
-
-/**
- * Cleans up any open resources before shutting down.
- */
-export async function onShutdown() {
-  await stopEmulators();
 }
