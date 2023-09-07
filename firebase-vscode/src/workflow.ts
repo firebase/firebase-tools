@@ -15,9 +15,8 @@ import {
 import { User } from "../../src/types/auth";
 import { currentOptions } from "./options";
 import { selectProjectInMonospace } from "../../src/monospace";
-import { logSetup, pluginLogger, showOutputChannel } from "./logger-wrapper";
+import { pluginLogger, showOutputChannel } from "./logger-wrapper";
 import { discover } from "../../src/frameworks";
-import { setEnabled } from "../../src/experiments";
 import {
   readAndSendFirebaseConfigs,
   setupFirebaseJsonAndRcFileSystemWatcher,
@@ -25,13 +24,13 @@ import {
 } from "./config-files";
 import { ServiceAccountUser } from "../common/types";
 import { execSync } from "child_process";
+import { getSettings } from "./utils/settings";
 
 let users: Array<ServiceAccountUser | User> = [];
 export let currentUser: User | ServiceAccountUser;
 // Stores a mapping from user email to list of projects for that user
 let projectsUserMapping = new Map<string, FirebaseProjectMetadata[]>();
 let channels = null;
-let currentFramework: string | undefined;
 
 async function fetchUsers() {
   const accounts = await getAccounts();
@@ -98,38 +97,6 @@ export async function setupWorkflow(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl
 ) {
-  // Get user-defined VSCode settings if workspace is found.
-  let shouldWriteDebug: boolean = false;
-  let debugLogPath: string = "";
-  let useFrameworks: boolean = false;
-  let npmPath: string = "";
-  if (vscode.workspace.workspaceFolders) {
-    const workspaceConfig = workspace.getConfiguration(
-      "firebase",
-      vscode.workspace.workspaceFolders[0].uri
-    );
-    shouldWriteDebug = workspaceConfig.get("debug");
-    debugLogPath = workspaceConfig.get("debugLogPath");
-    useFrameworks = workspaceConfig.get("useFrameworks");
-    npmPath = workspaceConfig.get("npmPath");
-    if (npmPath) {
-      process.env.PATH += `:${npmPath}`;
-    }
-  }
-
-  if (useFrameworks) {
-    setEnabled("webframeworks", true);
-  }
-
-  logSetup({ shouldWriteDebug, debugLogPath });
-
-  /**
-   * Call pluginLogger with log arguments received from webview.
-   */
-  broker.on("writeLog", async ({ level, args }) => {
-    pluginLogger[level]("(Webview)", ...args);
-  });
-
   broker.on("getInitialData", async () => {
     // Firebase JSON and RC
     readAndSendFirebaseConfigs(broker, context);
@@ -160,14 +127,6 @@ export async function setupWorkflow(
     } catch (e) {
       // ignored
     }
-  });
-
-  broker.on("showMessage", async ({ msg, options }) => {
-    vscode.window.showInformationMessage(msg, options);
-  });
-
-  broker.on("openLink", async ({ href }) => {
-    vscode.env.openExternal(vscode.Uri.parse(href));
   });
 
   broker.on("addUser", async () => {
@@ -296,12 +255,12 @@ export async function setupWorkflow(
 
   async function selectAndInitHosting({ projectId, singleAppSupport }) {
     showOutputChannel();
-    currentFramework = undefined;
+    let currentFramework: string | undefined = undefined;
     // Note: discover() takes a few seconds. No need to block users that don't
     // have frameworks support enabled.
+    const { useFrameworks } = getSettings();
     if (useFrameworks) {
-      currentFramework =
-        useFrameworks && (await discover(currentOptions.cwd, false));
+      currentFramework = await discover(currentOptions.cwd, false);
       pluginLogger.debug("Searching for a web framework in this project.");
     }
     let success = false;
