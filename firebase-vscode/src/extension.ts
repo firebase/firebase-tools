@@ -10,8 +10,10 @@ import {
 } from "../common/messaging/protocol";
 import { setupWorkflow } from "./workflow";
 import { pluginLogger } from "./logger-wrapper";
-import { onShutdown } from "./workflow";
 import { registerWebview } from "./webview";
+import { registerEmulators } from "./core/emulators";
+import { registerConfig } from "./core/config";
+import { registerEnv } from "./core/env";
 
 const broker = createBroker<
   ExtensionToWebviewParamsMap,
@@ -26,16 +28,13 @@ export function activate(context: vscode.ExtensionContext) {
   setupWorkflow(context, broker);
 
   context.subscriptions.push(
+    registerEnv(broker),
+    registerEmulators(broker),
+    registerConfig(broker),
     registerWebview({
       name: "sidebar",
       broker,
       context,
     })
   );
-}
-
-// This method is called when the extension is deactivated
-export async function deactivate() {
-  // This await is optimistic but it might wait for a moment longer while we run cleanup activities
-  await onShutdown();
 }
