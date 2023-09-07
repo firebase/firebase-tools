@@ -12,6 +12,7 @@ import { setupWorkflow } from "./workflow";
 import { pluginLogger } from "./logger-wrapper";
 import { registerWebview } from "./webview";
 import { registerEmulators } from "./core/emulators";
+import { registerConfig } from "./core/config";
 
 const broker = createBroker<
   ExtensionToWebviewParamsMap,
@@ -27,6 +28,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     registerEmulators(broker),
+    registerConfig(broker),
     registerWebview({
       name: "sidebar",
       broker,
