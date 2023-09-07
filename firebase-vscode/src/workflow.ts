@@ -31,7 +31,6 @@ export let currentUser: User | ServiceAccountUser;
 // Stores a mapping from user email to list of projects for that user
 let projectsUserMapping = new Map<string, FirebaseProjectMetadata[]>();
 let channels = null;
-let currentFramework: string | undefined;
 
 async function fetchUsers() {
   const accounts = await getAccounts();
@@ -256,7 +255,7 @@ export async function setupWorkflow(
 
   async function selectAndInitHosting({ projectId, singleAppSupport }) {
     showOutputChannel();
-    currentFramework = undefined;
+    let currentFramework: string | undefined = undefined;
     // Note: discover() takes a few seconds. No need to block users that don't
     // have frameworks support enabled.
     const { useFrameworks } = getSettings();
