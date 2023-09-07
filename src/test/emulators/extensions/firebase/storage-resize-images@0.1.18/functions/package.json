@@ -1,8 +1,5 @@
 {
     "name": "storage-resize-images",
     "vresion": "0.1.18",
-    "description": "Package file for testing only",
-    "dependencies": {
-        "firebase-tools": "file:../../../../../../.."
-    }
+    "description": "Package file for testing only"
 }

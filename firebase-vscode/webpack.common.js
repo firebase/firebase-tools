@@ -84,18 +84,6 @@ const extensionConfig = {
               search: /Configstore\(pkg\.name\)/g,
               replace: "Configstore('firebase-tools')",
             },
-            // TODO(hsubox76): replace with something more robust
-            // This is an issue with a local call to cross-env-shell.js
-            // and a dependency on calling the Node executable using an env
-            // variable which returns a string with a lot of unusual characters
-            // if called inside VSCode.
-            // We may be able to copy cross-env-shell.js into dist?
-            // For the node executable we can probably just call Node, still
-            // need to search/replace though
-            {
-              search: "childProcess.spawn(translatedCommand",
-              replace: "childProcess.spawn(escapedCommand"
-            },
             // Some CLI code uses module.exports for test stubbing.
             // We are using ES2020 and it doesn't recognize functions called
             // as exports.functionName() or module.exports.functionName().
@@ -123,6 +111,28 @@ const extensionConfig = {
           ],
         },
       },
+      {
+        test: /\.js$/,
+        loader: "string-replace-loader",
+        options: {
+          multiple: [
+            // firebase-tools/node_modules/superstatic/lib/utils/patterns.js
+            // Stub out the optional RE2 dependency
+            // TODO: copy the dependency into dist instead of removing them via search/replace.
+            {
+              search: 'RE2 = require("re2");',
+              replace: 'RE2 = null;'
+            },
+            // firebase-tools/node_modules/superstatic/lib/middleware/index.js
+            // Stub out these runtime requirements
+            // TODO: copy the dependencies into dist instead of removing them via search/replace.
+            {
+              search: 'const mware = require("./" + _.kebabCase(name))(spec, config);',
+              replace: 'return "";'
+            }
+          ],
+        }
+      }
     ],
   },
   plugins: [
@@ -142,7 +152,13 @@ const extensionConfig = {
           from: "*.js",
           to: './',
           context: "../src/deploy/functions/runtimes/node",
-        }
+        },
+        // Copy cross-env-shell.js used to run predeploy scripts
+        // to ensure they work in Windows
+        {
+          from: "../node_modules/cross-env/dist",
+          to: './cross-env/dist',
+        },
       ],
     })
   ],

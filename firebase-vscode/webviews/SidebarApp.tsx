@@ -9,9 +9,11 @@ import { ServiceAccountUser } from "../common/types";
 import { DeployPanel } from "./components/DeployPanel";
 import { HostingInitState, DeployState } from "./webview-types";
 import { ChannelWithId } from "./messaging/types";
+import { EmulatorPanel } from "./components/EmulatorPanel";
 
 import { webLogger } from "./globals/web-logger";
 import { InitFirebasePanel } from "./components/InitPanel";
+import { QuickstartPanel } from "./components/QuickstartPanel";
 
 export function SidebarApp() {
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -22,6 +24,7 @@ export function SidebarApp() {
   const [channels, setChannels] = useState<ChannelWithId[]>(null);
   const [user, setUser] = useState<User | ServiceAccountUser | null>(null);
   const [framework, setFramework] = useState<string | null>(null);
+
   /**
    * null - has not finished checking yet
    * empty array - finished checking, no users logged in
@@ -57,7 +60,7 @@ export function SidebarApp() {
       }
       if (firebaseJson?.hosting) {
         webLogger.debug("Detected firebase.json");
-        setHostingInitState('success');
+        setHostingInitState("success");
         broker.send("showMessage", {
           msg: "Auto-detected hosting setup in this folder",
         });
@@ -88,21 +91,24 @@ export function SidebarApp() {
       setUser(user);
     });
 
-    broker.on("notifyHostingInitDone", ({ success, projectId, folderPath, framework }) => {
-      if (success) {
-        webLogger.debug(`notifyHostingInitDone: ${projectId}, ${folderPath}`);
-        setHostingInitState('success');
-        if (framework) {
-          setFramework(framework);
+    broker.on(
+      "notifyHostingInitDone",
+      ({ success, projectId, folderPath, framework }) => {
+        if (success) {
+          webLogger.debug(`notifyHostingInitDone: ${projectId}, ${folderPath}`);
+          setHostingInitState("success");
+          if (framework) {
+            setFramework(framework);
+          }
+        } else {
+          setHostingInitState(null);
         }
-      } else {
-        setHostingInitState(null);
       }
-    });
+    );
 
     broker.on("notifyHostingDeploy", ({ success }) => {
       webLogger.debug(`notifyHostingDeploy: ${success}`);
-      setDeployState(success ? 'success' : 'failure');
+      setDeployState(success ? "success" : "failure");
     });
   }, []);
 
@@ -137,7 +143,7 @@ export function SidebarApp() {
       {!!user && (
         <ProjectSection userEmail={user.email} projectId={projectId} />
       )}
-      {hostingInitState === 'success' && !!user && !!projectId && (
+      {hostingInitState === "success" && !!user && !!projectId && (
         <DeployPanel
           deployState={deployState}
           setDeployState={setDeployState}
@@ -147,7 +153,7 @@ export function SidebarApp() {
         />
       )}
       <Spacer size="large" />
-      {hostingInitState !== 'success' && !!user && !!projectId && (
+      {hostingInitState !== "success" && !!user && !!projectId && (
         <InitFirebasePanel
           onHostingInit={() => {
             setupHosting();
@@ -156,6 +162,27 @@ export function SidebarApp() {
           setHostingInitState={setHostingInitState}
         />
       )}
+      {
+        // Only load the emulator panel if we have a user, firebase.json and this isn't Monospace
+        // The user login requirement can be removed in the future but the panel will have to
+        // be restricted to full-offline emulation only.
+        !!user && !!firebaseJson && !env?.isMonospace && (
+          <EmulatorPanel firebaseJson={firebaseJson} projectId={projectId} />
+        )
+      }
+      {
+        // Only load quickstart panel if this isn't a Monospace workspace
+        !env?.isMonospace && (
+          <>
+            <Spacer size="medium" />
+            <QuickstartPanel
+              onQuickstartButtonClicked={() =>
+                broker.send("chooseQuickstartDir", {})
+              }
+            />
+          </>
+        )
+      }
     </>
   );
 }
