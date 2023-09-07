@@ -11,10 +11,6 @@ import {
   listProjects,
   login,
   logoutUser,
-  stopEmulators,
-  listRunningEmulators,
-  getEmulatorUiUrl,
-  emulatorsStart
 } from "./cli";
 import { User } from "../../src/types/auth";
 import { currentOptions } from "./options";
@@ -28,7 +24,7 @@ import {
   updateFirebaseRCProject,
 } from "./config-files";
 import { ServiceAccountUser } from "../common/types";
-import { exec, execSync } from "child_process";
+import { execSync } from "child_process";
 
 let users: Array<ServiceAccountUser | User> = [];
 export let currentUser: User | ServiceAccountUser;
@@ -131,7 +127,7 @@ export async function setupWorkflow(
    * Call pluginLogger with log arguments received from webview.
    */
   broker.on("writeLog", async ({ level, args }) => {
-    pluginLogger[level]('(Webview)', ...args);
+    pluginLogger[level]("(Webview)", ...args);
   });
 
   broker.on("getInitialData", async () => {
@@ -213,7 +209,7 @@ export async function setupWorkflow(
     showOutputChannel();
     pluginLogger.info(
       `Starting deployment of project ` +
-      `${currentOptions.projectId} to channel: ${deployTarget}`
+        `${currentOptions.projectId} to channel: ${deployTarget}`
     );
     const { success, consoleUrl, hostingUrl } = await deployToHosting(
       currentOptions.config,
@@ -233,43 +229,6 @@ export async function setupWorkflow(
     broker.send("notifyPreviewChannelResponse", { id: response });
   });
 
-  broker.on(
-    "launchEmulators",
-    async ({ emulatorUiSelections }) => {
-      await emulatorsStart(emulatorUiSelections);
-      broker.send("notifyRunningEmulatorInfo", { uiUrl: getEmulatorUiUrl(), displayInfo: listRunningEmulators() });
-    }
-  );
-
-  broker.on(
-    "stopEmulators",
-    async () => {
-      await stopEmulators();
-      // Update the UI
-      broker.send("notifyEmulatorsStopped");
-    }
-  );
-
-  broker.on(
-    "selectEmulatorImportFolder",
-    async () => {
-      const options: vscode.OpenDialogOptions = {
-        canSelectMany: false,
-        openLabel: `Pick an import folder`,
-        title: `Pick an import folder`,
-        canSelectFiles: false,
-        canSelectFolders: true,
-      };
-      const fileUri = await vscode.window.showOpenDialog(options);
-      // Update the UI of the selection
-      if (!fileUri || fileUri.length < 1) {
-        vscode.window.showErrorMessage("Invalid import folder selected.");
-        return;
-      }
-      broker.send("notifyEmulatorImportFolder", { folder: fileUri[0].fsPath });
-    }
-  );
-
   context.subscriptions.push(
     setupFirebaseJsonAndRcFileSystemWatcher(broker, context)
   );
@@ -282,7 +241,7 @@ export async function setupWorkflow(
     if (process.env.MONOSPACE_ENV) {
       pluginLogger.debug(
         "selectProject: found MONOSPACE_ENV, " +
-        "prompting user using external flow"
+          "prompting user using external flow"
       );
       /**
        * Monospace case: use Monospace flow
@@ -307,7 +266,7 @@ export async function setupWorkflow(
        */
       pluginLogger.debug(
         "selectProject: MONOSPACE_ENV not found, " +
-        " but service account found"
+          " but service account found"
       );
       const projects = (await listProjects()) as FirebaseProjectMetadata[];
       projectsUserMapping.set(email, projects);
@@ -320,7 +279,7 @@ export async function setupWorkflow(
        */
       pluginLogger.debug(
         "selectProject: no service account or MONOSPACE_ENV " +
-        "found, using firebase account to list projects"
+          "found, using firebase account to list projects"
       );
       let projects = [];
       if (projectsUserMapping.has(email)) {
@@ -410,40 +369,37 @@ export async function setupWorkflow(
     });
 
     /**
-     * If the user did not prematurely close the dialog and a directory in 
+     * If the user did not prematurely close the dialog and a directory in
      * which to put the new quickstart was selected, execute a sequence of
      * shell commands that:
      * 1. Downloads the quickstart into the selected directory with `git clone`
      * 2. Enters the downloaded repo and deletes all unnecessary files and dirs
      * 3. Moves all remaining files to the root of the selected directory
-     * 
+     *
      * Once this download and configuration is complete, a new vscode window
-     * is opened to the selected directory. 
+     * is opened to the selected directory.
      */
     if (selectedURI && selectedURI[0]) {
-      pluginLogger.info('(Quickstart) Downloading Quickstart Project');
+      pluginLogger.info("(Quickstart) Downloading Quickstart Project");
       try {
-        pluginLogger.info(execSync(
-          `git clone https://github.com/firebase/quickstart-js.git ` +
-          `&& cd quickstart-js && ls | grep -xv "firestore" | xargs rm -rf ` +
-          `&& mv -v firestore/* "${selectedURI[0].fsPath}" ` +
-          `&& cd "${selectedURI[0].fsPath}" && rm -rf quickstart-js`, {
-          cwd: selectedURI[0].fsPath,
-          encoding: "utf8",
-        }
-        ));
+        pluginLogger.info(
+          execSync(
+            `git clone https://github.com/firebase/quickstart-js.git ` +
+              `&& cd quickstart-js && ls | grep -xv "firestore" | xargs rm -rf ` +
+              `&& mv -v firestore/* "${selectedURI[0].fsPath}" ` +
+              `&& cd "${selectedURI[0].fsPath}" && rm -rf quickstart-js`,
+            {
+              cwd: selectedURI[0].fsPath,
+              encoding: "utf8",
+            }
+          )
+        );
         vscode.commands.executeCommand(`vscode.openFolder`, selectedURI[0]);
       } catch (error) {
-        pluginLogger.error('(Quickstart) Error downloading Quickstart:\n' +
-          error);
+        pluginLogger.error(
+          "(Quickstart) Error downloading Quickstart:\n" + error
+        );
       }
     }
   }
-}
-
-/**
- * Cleans up any open resources before shutting down.
- */
-export async function onShutdown() {
-  await stopEmulators();
 }
