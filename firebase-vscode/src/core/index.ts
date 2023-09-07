@@ -3,14 +3,12 @@ import { ExtensionBrokerImpl } from "../extension-broker";
 import { registerConfig } from "./config";
 import { registerEmulators } from "./emulators";
 import { registerEnv } from "./env";
-import { logSetup, pluginLogger } from "../logger-wrapper";
+import { pluginLogger } from "../logger-wrapper";
 import { getSettings } from "../utils/settings";
 import { setEnabled } from "../../../src/experiments";
 
 export function registerCore(broker: ExtensionBrokerImpl): Disposable {
   const settings = getSettings();
-
-  logSetup(settings);
 
   if (settings.npmPath) {
     process.env.PATH += `:${settings.npmPath}`;

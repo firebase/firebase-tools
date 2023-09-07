@@ -9,19 +9,22 @@ import {
   WebviewToExtensionParamsMap,
 } from "../common/messaging/protocol";
 import { setupWorkflow } from "./workflow";
-import { pluginLogger } from "./logger-wrapper";
+import { logSetup, pluginLogger } from "./logger-wrapper";
 import { registerWebview } from "./webview";
 import { registerCore } from "./core";
-
-const broker = createBroker<
-  ExtensionToWebviewParamsMap,
-  WebviewToExtensionParamsMap,
-  vscode.Webview
->(new ExtensionBroker());
+import { getSettings } from "./utils/settings";
 
 // This method is called when your extension is activated
 export function activate(context: vscode.ExtensionContext) {
+  const settings = getSettings();
+  logSetup(settings);
   pluginLogger.debug("Activating Firebase extension.");
+
+  const broker = createBroker<
+    ExtensionToWebviewParamsMap,
+    WebviewToExtensionParamsMap,
+    vscode.Webview
+  >(new ExtensionBroker());
 
   setupWorkflow(context, broker);
 
