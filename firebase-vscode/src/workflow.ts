@@ -131,16 +131,6 @@ export async function setupWorkflow(
   });
 
   broker.on("getInitialData", async () => {
-    // Env
-    pluginLogger.debug(
-      `Value of process.env.MONOSPACE_ENV: ` + `${process.env.MONOSPACE_ENV}`
-    );
-    broker.send("notifyEnv", {
-      env: {
-        isMonospace: Boolean(process.env.MONOSPACE_ENV),
-      },
-    });
-
     // Firebase JSON and RC
     readAndSendFirebaseConfigs(broker, context);
 
