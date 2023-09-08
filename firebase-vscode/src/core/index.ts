@@ -8,6 +8,7 @@ import { getSettings } from "../utils/settings";
 import { setEnabled } from "../../../src/experiments";
 import { registerUser } from "./user";
 import { registerProject } from "./project";
+import { registerQuickstart } from "./quickstart";
 
 export function registerCore(broker: ExtensionBrokerImpl): Disposable {
   const settings = getSettings();
@@ -38,5 +39,6 @@ export function registerCore(broker: ExtensionBrokerImpl): Disposable {
     registerEnv(broker),
     registerUser(broker),
     registerProject(broker)
+    registerQuickstart(broker)
   );
 }
