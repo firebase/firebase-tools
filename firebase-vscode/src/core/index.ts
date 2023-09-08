@@ -6,6 +6,7 @@ import { registerEnv } from "./env";
 import { pluginLogger } from "../logger-wrapper";
 import { getSettings } from "../utils/settings";
 import { setEnabled } from "../../../src/experiments";
+import { registerUser } from "./user";
 
 export function registerCore(broker: ExtensionBrokerImpl): Disposable {
   const settings = getSettings();
@@ -33,6 +34,7 @@ export function registerCore(broker: ExtensionBrokerImpl): Disposable {
   return Disposable.from(
     registerConfig(broker),
     registerEmulators(broker),
-    registerEnv(broker)
+    registerEnv(broker),
+    registerUser(broker)
   );
 }
