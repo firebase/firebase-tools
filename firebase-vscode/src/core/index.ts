@@ -38,7 +38,7 @@ export function registerCore(broker: ExtensionBrokerImpl): Disposable {
     registerEmulators(broker),
     registerEnv(broker),
     registerUser(broker),
-    registerProject(broker)
+    registerProject(broker),
     registerQuickstart(broker)
   );
 }
