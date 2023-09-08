@@ -15,21 +15,18 @@ import {
 import { User } from "../../src/types/auth";
 import { currentOptions } from "./options";
 import { selectProjectInMonospace } from "../../src/monospace";
-import { pluginLogger, showOutputChannel } from "./logger-wrapper";
-import { discover } from "../../src/frameworks";
+import { pluginLogger } from "./logger-wrapper";
 import {
   readAndSendFirebaseConfigs,
   setupFirebaseJsonAndRcFileSystemWatcher,
   updateFirebaseRCProject,
 } from "./config-files";
 import { ServiceAccountUser } from "../common/types";
-import { getSettings } from "./utils/settings";
 
 let users: Array<ServiceAccountUser | User> = [];
 export let currentUser: User | ServiceAccountUser;
 // Stores a mapping from user email to list of projects for that user
 let projectsUserMapping = new Map<string, FirebaseProjectMetadata[]>();
-let channels = null;
 
 async function fetchUsers() {
   const accounts = await getAccounts();
@@ -78,18 +75,7 @@ function updateCurrentUser(
     }
   }
   broker.send("notifyUserChanged", { user: currentUser });
-  if (currentUser && previousCurrentUser?.email !== currentUser.email) {
-    fetchChannels(broker);
-  }
   return currentUser;
-}
-
-async function fetchChannels(broker: ExtensionBrokerImpl, force = false) {
-  if (force || !channels) {
-    pluginLogger.debug("Fetching hosting channels");
-    channels = await getChannels(currentOptions.config);
-  }
-  broker.send("notifyChannels", { channels });
 }
 
 export async function setupWorkflow(
@@ -104,9 +90,6 @@ export async function setupWorkflow(
     await fetchUsers();
     broker.send("notifyUsers", { users });
     currentUser = updateCurrentUser(users, broker, currentUser);
-    if (users.length > 0) {
-      await fetchChannels(broker);
-    }
 
     // Project
     if (currentOptions.rc?.projects?.default) {
@@ -148,32 +131,6 @@ export async function setupWorkflow(
   );
 
   broker.on("selectProject", selectProject);
-
-  broker.on("selectAndInitHostingFolder", selectAndInitHosting);
-
-  broker.on("hostingDeploy", async ({ target: deployTarget }) => {
-    showOutputChannel();
-    pluginLogger.info(
-      `Starting deployment of project ` +
-        `${currentOptions.projectId} to channel: ${deployTarget}`
-    );
-    const { success, consoleUrl, hostingUrl } = await deployToHosting(
-      currentOptions.config,
-      deployTarget
-    );
-    broker.send("notifyHostingDeploy", { success, consoleUrl, hostingUrl });
-    if (success) {
-      fetchChannels(broker, true);
-    }
-  });
-
-  broker.on("promptUserForInput", async () => {
-    const response = await vscode.window.showInputBox({
-      title: "New Preview Channel",
-      prompt: "Enter a name for the new preview channel",
-    });
-    broker.send("notifyPreviewChannelResponse", { id: response });
-  });
 
   context.subscriptions.push(
     setupFirebaseJsonAndRcFileSystemWatcher(broker, context)
@@ -246,62 +203,6 @@ export async function setupWorkflow(
     if (projectId) {
       await updateFirebaseRCProject(context, "default", projectId);
       broker.send("notifyProjectChanged", { projectId });
-      fetchChannels(broker, true);
-    }
-  }
-
-  async function selectAndInitHosting({ projectId, singleAppSupport }) {
-    showOutputChannel();
-    let currentFramework: string | undefined = undefined;
-    // Note: discover() takes a few seconds. No need to block users that don't
-    // have frameworks support enabled.
-    const { useFrameworks } = getSettings();
-    if (useFrameworks) {
-      currentFramework = await discover(currentOptions.cwd, false);
-      pluginLogger.debug("Searching for a web framework in this project.");
-    }
-    let success = false;
-    if (currentFramework) {
-      pluginLogger.debug("Detected web framework, launching frameworks init.");
-      success = await initHosting({
-        spa: singleAppSupport,
-        useFrameworks: true,
-      });
-    } else {
-      const options: vscode.OpenDialogOptions = {
-        canSelectMany: false,
-        openLabel: `Select distribution/public folder for ${projectId}`,
-        canSelectFiles: false,
-        canSelectFolders: true,
-      };
-      const fileUri = await vscode.window.showOpenDialog(options);
-      if (fileUri && fileUri[0] && fileUri[0].fsPath) {
-        const publicFolderFull = fileUri[0].fsPath;
-        const publicFolder = publicFolderFull.substring(
-          currentOptions.cwd.length + 1
-        );
-        success = await initHosting({
-          spa: singleAppSupport,
-          public: publicFolder,
-          useFrameworks: false,
-        });
-      }
-    }
-    if (success) {
-      readAndSendFirebaseConfigs(broker, context);
-      broker.send("notifyHostingInitDone", {
-        success,
-        projectId,
-        folderPath: currentOptions.cwd,
-        framework: currentFramework,
-      });
-      await fetchChannels(broker, true);
-    } else {
-      broker.send("notifyHostingInitDone", {
-        success,
-        projectId,
-        folderPath: currentOptions.cwd,
-      });
     }
   }
 }
