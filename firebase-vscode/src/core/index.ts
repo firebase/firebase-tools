@@ -7,6 +7,7 @@ import { pluginLogger } from "../logger-wrapper";
 import { getSettings } from "../utils/settings";
 import { setEnabled } from "../../../src/experiments";
 import { registerUser } from "./user";
+import { registerProject } from "./project";
 import { registerQuickstart } from "./quickstart";
 
 export function registerCore(broker: ExtensionBrokerImpl): Disposable {
@@ -37,6 +38,7 @@ export function registerCore(broker: ExtensionBrokerImpl): Disposable {
     registerEmulators(broker),
     registerEnv(broker),
     registerUser(broker),
+    registerProject(broker),
     registerQuickstart(broker)
   );
 }
