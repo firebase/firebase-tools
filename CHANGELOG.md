@@ -1,3 +1,3 @@
 - Fixed an issue where builds from https://firebase.tools could not run commands that spawn `npm`. (#6132)
-- Fixed an issue where `--noninteractive` and `--force` were not respected in some extension deploys. (#6321)
+- Fixed an issue where `--non-interactive` and `--force` were not respected in some extension deploys. (#6321)
 - Fixed the regex in extensions changelog parser to lazy match the version prefix to allow matching higher versions (#6326)
