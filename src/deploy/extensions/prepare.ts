@@ -41,6 +41,8 @@ export async function prepare(context: Context, options: Options, payload: Paylo
       !(await prompt.confirm({
         message: `Do you wish to continue deploying these extension instances?`,
         default: false,
+        force: options.force,
+        nonInteractive: options.nonInteractive,
       }))
     ) {
       throw new FirebaseError("Deployment cancelled");
