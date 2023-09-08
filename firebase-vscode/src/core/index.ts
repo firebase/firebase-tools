@@ -7,6 +7,7 @@ import { pluginLogger } from "../logger-wrapper";
 import { getSettings } from "../utils/settings";
 import { setEnabled } from "../../../src/experiments";
 import { registerUser } from "./user";
+import { registerQuickstart } from "./quickstart";
 
 export function registerCore(broker: ExtensionBrokerImpl): Disposable {
   const settings = getSettings();
@@ -35,6 +36,7 @@ export function registerCore(broker: ExtensionBrokerImpl): Disposable {
     registerConfig(broker),
     registerEmulators(broker),
     registerEnv(broker),
-    registerUser(broker)
+    registerUser(broker),
+    registerQuickstart(broker)
   );
 }
