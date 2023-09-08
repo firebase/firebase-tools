@@ -8,13 +8,13 @@ import { getAccounts, login, logoutUser } from "../cli";
 type User = ServiceAccountUser | AuthUser;
 
 /** Available user accounts */
-const users = signal<Record<string /** email */, User>>({});
+export const users = signal<Record<string /** email */, User>>({});
 
 /** Currently selected user email */
-const currentUserId = signal("");
+export const currentUserId = signal("");
 
 /** Gets the currently selected user, fallback to first available user */
-const currentUser = computed<User | undefined>(() => {
+export const currentUser = computed<User | undefined>(() => {
   return users.value[currentUserId.value] ?? Object.values(users.value)[0];
 });
 
