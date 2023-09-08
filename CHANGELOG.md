@@ -1,6 +1,2 @@
-- Fixed an issue where builds from https://firebase.tools could not run commands that spawn `npm`. (#6132)
-- Fixed an issue where `--non-interactive` and `--force` were not respected in some extension deploys. (#6321)
-- Fixed the regex in extensions changelog parser to lazy match the version prefix to allow matching higher versions (#6326)
 - Removed nano precision in timestamp used in Firestore emulator. (#5893)
 - Fixed a bug where query behaves different from production.
-
