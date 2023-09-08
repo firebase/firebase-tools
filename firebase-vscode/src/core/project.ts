@@ -3,9 +3,8 @@ import { ExtensionBrokerImpl } from "../extension-broker";
 import { computed, effect, signal } from "@preact/signals-react";
 import { firebaseRC } from "./config";
 import { FirebaseProjectMetadata } from "../types/project";
-import { currentUserId } from "./user";
+import { currentUser } from "./user";
 import { listProjects } from "../cli";
-import { debuglog } from "util";
 import { pluginLogger } from "../logger-wrapper";
 
 /** Available projects */
@@ -17,7 +16,7 @@ export const currentProjectId = signal("");
 /** Gets the currently selected project, fallback to first default project in RC file */
 export const currentProject = computed<FirebaseProjectMetadata | undefined>(
   () => {
-    const userProjects = projects.value[currentUserId.value] ?? [];
+    const userProjects = projects.value[currentUser.value?.email ?? ""] ?? [];
     const wantProjectId =
       currentProjectId.value || firebaseRC.value.projects["default"];
     return userProjects.find((p) => p.projectId === wantProjectId);
@@ -25,6 +24,18 @@ export const currentProject = computed<FirebaseProjectMetadata | undefined>(
 );
 
 export function registerProject(broker: ExtensionBrokerImpl): Disposable {
+  effect(async () => {
+    const user = currentUser.value;
+    if (user) {
+      pluginLogger.info("(Core:Project) New user detected, fetching projects");
+      const userProjects = await listProjects();
+      projects.value = {
+        ...projects.value,
+        [user.email]: userProjects,
+      };
+    }
+  });
+
   effect(() => {
     broker.send("notifyProjectChanged", {
       projectId: currentProject.value?.projectId ?? "",

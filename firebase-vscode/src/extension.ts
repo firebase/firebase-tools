@@ -13,6 +13,7 @@ import { logSetup, pluginLogger } from "./logger-wrapper";
 import { registerWebview } from "./webview";
 import { registerCore } from "./core";
 import { getSettings } from "./utils/settings";
+import { registerHosting } from "./hosting";
 
 // This method is called when your extension is activated
 export function activate(context: vscode.ExtensionContext) {
@@ -34,6 +35,7 @@ export function activate(context: vscode.ExtensionContext) {
       name: "sidebar",
       broker,
       context,
-    })
+    }),
+    registerHosting(broker)
   );
 }
