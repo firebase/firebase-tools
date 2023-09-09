@@ -1,4 +1,4 @@
-import vscode, { Disposable } from "vscode";
+import vscode, { Disposable, ExtensionContext } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { registerConfig } from "./config";
 import { registerEmulators } from "./emulators";
@@ -10,7 +10,13 @@ import { registerUser } from "./user";
 import { registerProject } from "./project";
 import { registerQuickstart } from "./quickstart";
 
-export function registerCore(broker: ExtensionBrokerImpl): Disposable {
+export function registerCore({
+  broker,
+  context,
+}: {
+  broker: ExtensionBrokerImpl;
+  context: ExtensionContext;
+}): Disposable {
   const settings = getSettings();
 
   if (settings.npmPath) {
@@ -38,7 +44,7 @@ export function registerCore(broker: ExtensionBrokerImpl): Disposable {
     registerEmulators(broker),
     registerEnv(broker),
     registerUser(broker),
-    registerProject(broker),
+    registerProject({ context, broker }),
     registerQuickstart(broker)
   );
 }

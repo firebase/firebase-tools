@@ -8,7 +8,6 @@ import {
   ExtensionToWebviewParamsMap,
   WebviewToExtensionParamsMap,
 } from "../common/messaging/protocol";
-import { setupWorkflow } from "./workflow";
 import { logSetup, pluginLogger } from "./logger-wrapper";
 import { registerWebview } from "./webview";
 import { registerCore } from "./core";
@@ -27,10 +26,8 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.Webview
   >(new ExtensionBroker());
 
-  setupWorkflow(context, broker);
-
   context.subscriptions.push(
-    registerCore(broker),
+    registerCore({ broker, context }),
     registerWebview({
       name: "sidebar",
       broker,
