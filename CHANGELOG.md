@@ -1,0 +1,4 @@
+- Released Firestore emulator v1.18.2.
+  - Removed nano precision in timestamp used in Firestore emulator (#5893)
+  - Fixed a bug where query behaves differently from production.
+- Fixed an issue where very long command outputs would be cut off. (#3286)

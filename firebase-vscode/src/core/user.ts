@@ -18,6 +18,10 @@ export const currentUser = computed<User | undefined>(() => {
   return users.value[currentUserId.value] ?? Object.values(users.value)[0];
 });
 
+export const isServiceAccount = computed(() => {
+  return (currentUser.value as ServiceAccountUser)?.type === "service_account";
+});
+
 export function registerUser(broker: ExtensionBrokerImpl): Disposable {
   effect(() => {
     broker.send("notifyUsers", { users: Object.values(users.value) });
