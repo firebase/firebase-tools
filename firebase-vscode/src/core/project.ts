@@ -1,11 +1,14 @@
-import vscode, { Disposable, QuickPickItem } from "vscode";
+import vscode, { Disposable, ExtensionContext, QuickPickItem } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { computed, effect, signal } from "@preact/signals-react";
 import { firebaseRC } from "./config";
 import { FirebaseProjectMetadata } from "../types/project";
-import { currentUser } from "./user";
+import { currentUser, isServiceAccount } from "./user";
 import { listProjects } from "../cli";
 import { pluginLogger } from "../logger-wrapper";
+import { selectProjectInMonospace } from "../../../src/monospace";
+import { currentOptions } from "../options";
+import { updateFirebaseRCProject } from "../config-files";
 
 /** Available projects */
 export const projects = signal<Record<string, FirebaseProjectMetadata[]>>({});
@@ -13,17 +16,31 @@ export const projects = signal<Record<string, FirebaseProjectMetadata[]>>({});
 /** Currently selected project ID */
 export const currentProjectId = signal("");
 
+const userScopedProjects = computed(() => {
+  return projects.value[currentUser.value?.email ?? ""] ?? [];
+});
+
 /** Gets the currently selected project, fallback to first default project in RC file */
 export const currentProject = computed<FirebaseProjectMetadata | undefined>(
   () => {
-    const userProjects = projects.value[currentUser.value?.email ?? ""] ?? [];
+    // Service accounts should only have one project
+    if (isServiceAccount.value) {
+      return userScopedProjects.value[0];
+    }
+
     const wantProjectId =
       currentProjectId.value || firebaseRC.value.projects["default"];
-    return userProjects.find((p) => p.projectId === wantProjectId);
+    return userScopedProjects.value.find((p) => p.projectId === wantProjectId);
   }
 );
 
-export function registerProject(broker: ExtensionBrokerImpl): Disposable {
+export function registerProject({
+  context,
+  broker,
+}: {
+  context: ExtensionContext;
+  broker: ExtensionBrokerImpl;
+}): Disposable {
   effect(async () => {
     const user = currentUser.value;
     if (user) {
@@ -42,6 +59,14 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
     });
   });
 
+  // Update .firebaserc with defined project ID
+  effect(() => {
+    const projectId = currentProjectId.value;
+    if (projectId) {
+      updateFirebaseRCProject(context, "default", currentProjectId.value);
+    }
+  });
+
   broker.on("getInitialData", () => {
     broker.send("notifyProjectChanged", {
       projectId: currentProject.value?.projectId ?? "",
@@ -49,10 +74,42 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
   });
 
   broker.on("selectProject", async () => {
-    // TODO: implement at the same time we teardown the old picker
-    // const projects = await listProjects();
-    // const id = await promptUserForProject(projects);
-    // pluginLogger.info("foo:", { id });
+    if (process.env.MONOSPACE_ENV) {
+      pluginLogger.debug(
+        "selectProject: found MONOSPACE_ENV, " +
+          "prompting user using external flow"
+      );
+      /**
+       * Monospace case: use Monospace flow
+       */
+      const monospaceExtension =
+        vscode.extensions.getExtension("google.monospace");
+      process.env.MONOSPACE_DAEMON_PORT =
+        monospaceExtension.exports.getMonospaceDaemonPort();
+      try {
+        const projectId = await selectProjectInMonospace({
+          projectRoot: currentOptions.cwd,
+          project: undefined,
+          isVSCE: true,
+        });
+
+        if (projectId) {
+          currentProjectId.value = projectId;
+        }
+      } catch (e) {
+        pluginLogger.error(e);
+      }
+    } else if (isServiceAccount.value) {
+      return;
+    } else {
+      try {
+        currentProjectId.value = await promptUserForProject(
+          userScopedProjects.value
+        );
+      } catch (e) {
+        vscode.window.showErrorMessage(e.message);
+      }
+    }
   });
 
   return {
@@ -67,6 +124,6 @@ async function promptUserForProject(projects: FirebaseProjectMetadata[]) {
     description: p.displayName,
   }));
 
-  const projectId = await vscode.window.showQuickPick(items);
-  return projectId;
+  const item = await vscode.window.showQuickPick(items);
+  return item.label;
 }
