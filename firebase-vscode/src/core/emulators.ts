@@ -18,7 +18,6 @@ export function registerEmulators(broker: ExtensionBrokerImpl): Disposable {
       async (progress) => {
         progress.report({ increment: 0 });
         try {
-          // vscode.window.showInformationMessage("Firebase Extension: Starting Emulators");
           await emulatorsStart(emulatorUiSelections);
           broker.send("notifyRunningEmulatorInfo", {
             uiUrl: getEmulatorUiUrl(),
