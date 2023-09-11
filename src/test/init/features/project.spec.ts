@@ -7,8 +7,9 @@ import { doSetup } from "../../../init/features/project";
 import * as projectManager from "../../../management/projects";
 import * as prompt from "../../../prompt";
 import { Config } from "../../../config";
+import { FirebaseProjectMetadata } from "../../../types/project";
 
-const TEST_FIREBASE_PROJECT: projectManager.FirebaseProjectMetadata = {
+const TEST_FIREBASE_PROJECT: FirebaseProjectMetadata = {
   projectId: "my-project-123",
   projectNumber: "123456789",
   displayName: "my-project",

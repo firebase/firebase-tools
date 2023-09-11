@@ -5,8 +5,8 @@ import * as refs from "../extensions/refs";
 import * as utils from "../utils";
 import { Command } from "../command";
 import { promptOnce } from "../prompt";
-import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
-import { undeprecateExtensionVersion, listExtensionVersions } from "../extensions/extensionsApi";
+import { ensureExtensionsPublisherApiEnabled, logPrefix } from "../extensions/extensionsHelper";
+import { undeprecateExtensionVersion, listExtensionVersions } from "../extensions/publisherApi";
 import { parseVersionPredicate } from "../extensions/versionHelper";
 import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
@@ -17,7 +17,7 @@ import { FirebaseError } from "../error";
 export const command = new Command("ext:dev:undeprecate <extensionRef> <versionPredicate>")
   .description("undeprecate extension versions that match the version predicate")
   .before(requireAuth)
-  .before(ensureExtensionsApiEnabled)
+  .before(ensureExtensionsPublisherApiEnabled)
   .action(async (extensionRef: string, versionPredicate: string, options: any) => {
     const { publisherId, extensionId, version } = refs.parse(extensionRef);
     if (version) {

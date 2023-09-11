@@ -58,7 +58,16 @@ async function getProjectAdminSdkConfig(projectId: string): Promise<AdminSdkConf
     apiVersion: "v1beta1",
     urlPrefix: firebaseApiOrigin,
   });
-
+  if (projectId.startsWith("demo-")) {
+    logger.debug(
+      `Detected demo- project: ${projectId}. Using default adminSdkConfig instead of calling firebase API.`
+    );
+    return {
+      projectId,
+      databaseURL: `${projectId}-default-rtdb.firebaseio.com`,
+      storageBucket: `${projectId}.appspot.com`,
+    };
+  }
   try {
     const res = await apiClient.get<AdminSdkConfig>(`projects/${projectId}/adminSdkConfig`);
     return res.body;

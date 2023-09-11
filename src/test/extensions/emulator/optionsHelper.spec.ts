@@ -28,6 +28,7 @@ describe("optionsHelper", () => {
         resources: [],
         sourceUrl: "https://my.stuff.com",
         params: [],
+        systemParams: [],
       };
       readEnvFileStub = sinon.stub(paramHelper, "readEnvFile");
     });

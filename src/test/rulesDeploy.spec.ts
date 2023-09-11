@@ -9,7 +9,7 @@ import * as projectNumber from "../getProjectNumber";
 import { readFileSync } from "fs-extra";
 import { RulesetFile } from "../gcp/rules";
 import { Config } from "../config";
-import gcp = require("../gcp");
+import * as gcp from "../gcp";
 
 import { RulesDeploy, RulesetServiceType } from "../rulesDeploy";
 

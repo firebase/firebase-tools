@@ -538,9 +538,7 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
       expect(jwt.user_record).to.have.property("email_verified").to.be.false;
       expect(jwt.user_record).to.have.property("display_name").eql(DISPLAY_NAME);
       expect(jwt.user_record).to.have.property("photo_url").eql(PHOTO_URL);
-      expect(jwt.user_record)
-        .to.have.property("custom_claims")
-        .eql(JSON.stringify({ customAttribute: "custom" }));
+      expect(jwt.user_record).to.have.property("custom_claims").eql({ customAttribute: "custom" });
       expect(jwt.user_record).to.have.property("metadata");
       expect(jwt.user_record.metadata).to.have.property("creation_time").that.is.a("string");
     });

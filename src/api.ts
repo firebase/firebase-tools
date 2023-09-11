@@ -37,10 +37,6 @@ export const appDistributionOrigin = utils.envOverride(
   "FIREBASE_APP_DISTRIBUTION_URL",
   "https://firebaseappdistribution.googleapis.com"
 );
-export const appengineOrigin = utils.envOverride(
-  "FIREBASE_APPENGINE_URL",
-  "https://appengine.googleapis.com"
-);
 export const authOrigin = utils.envOverride("FIREBASE_AUTH_URL", "https://accounts.google.com");
 export const consoleOrigin = utils.envOverride(
   "FIREBASE_CONSOLE_URL",
@@ -98,6 +94,12 @@ export const functionsDefaultRegion = utils.envOverride(
   "FIREBASE_FUNCTIONS_DEFAULT_REGION",
   "us-central1"
 );
+
+export const cloudbuildOrigin = utils.envOverride(
+  "FIREBASE_CLOUDBUILD_URL",
+  "https://cloudbuild.googleapis.com"
+);
+
 export const cloudschedulerOrigin = utils.envOverride(
   "FIREBASE_CLOUDSCHEDULER_URL",
   "https://cloudscheduler.googleapis.com"
@@ -123,6 +125,14 @@ export const iamOrigin = utils.envOverride("FIREBASE_IAM_URL", "https://iam.goog
 export const extensionsOrigin = utils.envOverride(
   "FIREBASE_EXT_URL",
   "https://firebaseextensions.googleapis.com"
+);
+export const extensionsPublisherOrigin = utils.envOverride(
+  "FIREBASE_EXT_PUBLISHER_URL",
+  "https://firebaseextensionspublisher.googleapis.com"
+);
+export const extensionsTOSOrigin = utils.envOverride(
+  "FIREBASE_EXT_TOS_URL",
+  "https://firebaseextensionstos-pa.googleapis.com"
 );
 export const realtimeOrigin = utils.envOverride("FIREBASE_REALTIME_URL", "https://firebaseio.com");
 export const rtdbManagementOrigin = utils.envOverride(
@@ -168,6 +178,10 @@ export const cloudRunApiOrigin = utils.envOverride(
 export const serviceUsageOrigin = utils.envOverride(
   "FIREBASE_SERVICE_USAGE_URL",
   "https://serviceusage.googleapis.com"
+);
+export const frameworksOrigin = utils.envOverride(
+  "FRAMEWORKS_URL",
+  "https://placeholder.googleapis.com"
 );
 export const githubOrigin = utils.envOverride("GITHUB_URL", "https://github.com");
 export const githubApiOrigin = utils.envOverride("GITHUB_API_URL", "https://api.github.com");

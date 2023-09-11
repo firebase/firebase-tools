@@ -24,6 +24,7 @@ const STORAGE_BUCKET_FUNCTION_V2_FINALIZED_LOG =
 const STORAGE_BUCKET_FUNCTION_V2_METADATA_LOG =
   "========== STORAGE BUCKET V2 FUNCTION METADATA ==========";
 const RTDB_V2_FUNCTION_LOG = "========== RTDB V2 FUNCTION ==========";
+const FIRESTORE_V2_LOG = "========== FIRESTORE V2 FUNCTION ==========";
 /* Functions V1 */
 const RTDB_FUNCTION_LOG = "========== RTDB FUNCTION ==========";
 const FIRESTORE_FUNCTION_LOG = "========== FIRESTORE FUNCTION ==========";
@@ -65,17 +66,17 @@ export interface FrameworkOptions {
 
 export class EmulatorEndToEndTest {
   emulatorHubPort = 0;
-  rtdbEmulatorHost = "localhost";
+  rtdbEmulatorHost = "127.0.0.1";
   rtdbEmulatorPort = 0;
-  firestoreEmulatorHost = "localhost";
+  firestoreEmulatorHost = "127.0.0.1";
   firestoreEmulatorPort = 0;
-  functionsEmulatorHost = "localhost";
+  functionsEmulatorHost = "127.0.0.1";
   functionsEmulatorPort = 0;
-  pubsubEmulatorHost = "localhost";
+  pubsubEmulatorHost = "127.0.0.1";
   pubsubEmulatorPort = 0;
-  authEmulatorHost = "localhost";
+  authEmulatorHost = "127.0.0.1";
   authEmulatorPort = 0;
-  storageEmulatorHost = "localhost";
+  storageEmulatorHost = "127.0.0.1";
   storageEmulatorPort = 0;
   allEmulatorsStarted = false;
 
@@ -146,6 +147,7 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
   authBlockingCreateV2TriggerCount = 0;
   authBlockingSignInV2TriggerCount = 0;
   rtdbV2TriggerCount = 0;
+  firestoreV2TriggerCount = 0;
 
   rtdbFromFirestore = false;
   firestoreFromRtdb = false;
@@ -182,6 +184,7 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
     this.authBlockingCreateV2TriggerCount = 0;
     this.authBlockingSignInV2TriggerCount = 0;
     this.rtdbV2TriggerCount = 0;
+    this.firestoreV2TriggerCount = 0;
   }
 
   /*
@@ -277,6 +280,9 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
       if (data.includes(RTDB_V2_FUNCTION_LOG)) {
         this.rtdbV2TriggerCount++;
       }
+      if (data.includes(FIRESTORE_V2_LOG)) {
+        this.firestoreV2TriggerCount++;
+      }
     });
 
     return startEmulators;
@@ -318,7 +324,7 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
   }
 
   invokeHttpFunction(name: string, zone = FIREBASE_PROJECT_ZONE): Promise<Response> {
-    const url = `http://localhost:${[this.functionsEmulatorPort, this.project, zone, name].join(
+    const url = `http://127.0.0.1:${[this.functionsEmulatorPort, this.project, zone, name].join(
       "/"
     )}`;
     return fetch(url);
@@ -329,7 +335,7 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
     body: Record<string, unknown>,
     zone = FIREBASE_PROJECT_ZONE
   ): Promise<Response> {
-    const url = `http://localhost:${this.functionsEmulatorPort}/${[this.project, zone, name].join(
+    const url = `http://127.0.0.1:${this.functionsEmulatorPort}/${[this.project, zone, name].join(
       "/"
     )}`;
     return fetch(url, {
@@ -414,12 +420,12 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
   }
 
   disableBackgroundTriggers(): Promise<Response> {
-    const url = `http://localhost:${this.emulatorHubPort}/functions/disableBackgroundTriggers`;
+    const url = `http://127.0.0.1:${this.emulatorHubPort}/functions/disableBackgroundTriggers`;
     return fetch(url, { method: "PUT" });
   }
 
   enableBackgroundTriggers(): Promise<Response> {
-    const url = `http://localhost:${this.emulatorHubPort}/functions/enableBackgroundTriggers`;
+    const url = `http://127.0.0.1:${this.emulatorHubPort}/functions/enableBackgroundTriggers`;
     return fetch(url, { method: "PUT" });
   }
 }

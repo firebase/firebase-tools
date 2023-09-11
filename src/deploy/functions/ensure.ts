@@ -1,16 +1,19 @@
 import * as clc from "colorette";
 
+import type { FirebaseProjectMetadata } from "../../types/project";
+
 import { ensure } from "../../ensureApiEnabled";
 import { FirebaseError, isBillingError } from "../../error";
 import { logLabeledBullet, logLabeledSuccess } from "../../utils";
 import { ensureServiceAgentRole } from "../../gcp/secretManager";
 import { getFirebaseProject } from "../../management/projects";
 import { assertExhaustive } from "../../functional";
-import { track } from "../../track";
 import * as backend from "./backend";
 
 const FAQ_URL = "https://firebase.google.com/support/faq#functions-runtime";
 const CLOUD_BUILD_API = "cloudbuild.googleapis.com";
+
+const metadataCallCache: Map<string, Promise<FirebaseProjectMetadata>> = new Map();
 
 /**
  *  By default:
@@ -18,7 +21,12 @@ const CLOUD_BUILD_API = "cloudbuild.googleapis.com";
  *    2. GCFv2 (Cloud Run) uses Compute Engine default service account.
  */
 export async function defaultServiceAccount(e: backend.Endpoint): Promise<string> {
-  const metadata = await getFirebaseProject(e.project);
+  let metadataCall = metadataCallCache.get(e.project);
+  if (!metadataCall) {
+    metadataCall = getFirebaseProject(e.project);
+    metadataCallCache.set(e.project, metadataCall);
+  }
+  const metadata = await metadataCall;
   if (e.platform === "gcfv1") {
     return `${metadata.projectId}@appspot.gserviceaccount.com`;
   } else if (e.platform === "gcfv2") {
@@ -28,7 +36,6 @@ export async function defaultServiceAccount(e: backend.Endpoint): Promise<string
 }
 
 function nodeBillingError(projectId: string): FirebaseError {
-  void track("functions_runtime_notices", "nodejs10_billing_error");
   return new FirebaseError(
     `Cloud Functions deployment requires the pay-as-you-go (Blaze) billing plan. To upgrade your project, visit the following URL:
 
@@ -42,7 +49,6 @@ ${FAQ_URL}`,
 }
 
 function nodePermissionError(projectId: string): FirebaseError {
-  void track("functions_runtime_notices", "nodejs10_permission_error");
   return new FirebaseError(`Cloud Functions deployment requires the Cloud Build API to be enabled. The current credentials do not have permission to enable APIs for project ${clc.bold(
     projectId
   )}.

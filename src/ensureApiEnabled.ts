@@ -1,6 +1,6 @@
 import { bold } from "colorette";
 
-import { track } from "./track";
+import { trackGA4 } from "./track";
 import { serviceUsageOrigin } from "./api";
 import { Client } from "./apiv2";
 import * as utils from "./utils";
@@ -40,6 +40,10 @@ export async function check(
   return isEnabled;
 }
 
+function isPermissionError(e: { context?: { body?: { error?: { status?: string } } } }): boolean {
+  return e.context?.body?.error?.status === "PERMISSION_DENIED";
+}
+
 /**
  * Attempt to enable an API on the specified project (just once).
  *
@@ -68,8 +72,30 @@ async function enable(projectId: string, apiName: string): Promise<void> {
       )} can't be enabled until the upgrade is complete. To upgrade, visit the following URL:
 
 https://console.firebase.google.com/project/${projectId}/usage/details`);
+    } else if (isPermissionError(err)) {
+      const apiPermissionDeniedRegex = new RegExp(
+        /Permission denied to enable service \[([.a-zA-Z]+)\]/
+      );
+      // Recognize permission denied errors on APIs and provide users the
+      // GCP console link to easily enable the API.
+      const permissionsError = apiPermissionDeniedRegex.exec((err as Error).message);
+      if (permissionsError && permissionsError[1]) {
+        const serviceUrl = permissionsError[1];
+        // Expand the error message instead of creating a new error so that
+        // all the other error properties (status, context, etc) are passed
+        // downstream to anything that uses them.
+        (err as Error).message = `Permissions denied enabling ${serviceUrl}.
+        Please ask a project owner to visit the following URL to enable this service:
+        
+        https://console.cloud.google.com/apis/library/${serviceUrl}?project=${projectId}`;
+        throw err;
+      } else {
+        // Regex failed somehow - show the raw permissions error.
+        throw err;
+      }
+    } else {
+      throw err;
     }
-    throw err;
   }
 }
 
@@ -91,7 +117,9 @@ async function pollCheckEnabled(
   });
   const isEnabled = await check(projectId, apiName, prefix, silent);
   if (isEnabled) {
-    void track("api_enabled", apiName);
+    void trackGA4("api_enabled", {
+      api_name: apiName,
+    });
     return;
   }
   if (!silent) {

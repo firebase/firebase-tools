@@ -11,6 +11,7 @@ const apiClient = new Client({ urlPrefix: resourceManagerOrigin, apiVersion: API
 export const firebaseRoles = {
   apiKeysViewer: "roles/serviceusage.apiKeysViewer",
   authAdmin: "roles/firebaseauth.admin",
+  functionsDeveloper: "roles/cloudfunctions.developer",
   hostingAdmin: "roles/firebasehosting.admin",
   runViewer: "roles/run.viewer",
 };

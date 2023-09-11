@@ -158,6 +158,7 @@ describe("FunctionsEmulatorShared", () => {
       resources: [],
       sourceUrl: "test.com",
       params: [],
+      systemParams: [],
       postinstallContent: "Should subsitute ${param:KEY}",
     };
     const testSubbedSpec: ExtensionSpec = {
@@ -166,11 +167,13 @@ describe("FunctionsEmulatorShared", () => {
       resources: [],
       sourceUrl: "test.com",
       params: [],
+      systemParams: [],
       postinstallContent: "Should subsitute value",
     };
     const testExtension: Extension = {
       name: "my-extension",
       ref: "pubby/my-extensions",
+      state: "PUBLISHED",
       createTime: "",
       visibility: Visibility.PUBLIC,
       registryLaunchStage: RegistryLaunchStage.BETA,

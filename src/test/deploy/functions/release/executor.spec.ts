@@ -45,5 +45,16 @@ describe("Executor", () => {
       };
       await expect(exec.run(handler)).to.eventually.be.rejectedWith("Retryable");
     });
+
+    it("retries on custom specified retry codes", async () => {
+      const handler = (): Promise<void> => {
+        const err = new Error("Retryable");
+        (err as any).code = 8;
+        throw err;
+      };
+      await expect(
+        exec.run(handler, { retryCodes: [...executor.DEFAULT_RETRY_CODES, 8] })
+      ).to.eventually.be.rejectedWith("Retryable");
+    });
   });
 });

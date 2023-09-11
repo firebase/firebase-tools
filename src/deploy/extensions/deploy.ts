@@ -59,7 +59,6 @@ export async function deploy(context: Context, options: Options, payload: Payloa
 
   validationQueue.process();
   validationQueue.close();
-
   await validationPromise;
 
   if (errorHandler.hasErrors()) {

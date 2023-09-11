@@ -1,19 +1,17 @@
-import type { Manifest } from "../../../../frameworks/next/interfaces";
+import type { RoutesManifestRedirect } from "../../../../frameworks/next/interfaces";
 import { supportedPaths, unsupportedPaths } from "./paths";
 
-export const supportedRedirects: NonNullable<Manifest["redirects"]> = supportedPaths.map(
-  (path) => ({
-    source: path,
-    destination: `${path}/redirect`,
-    regex: "",
-    statusCode: 301,
-  })
-);
+export const supportedRedirects: RoutesManifestRedirect[] = supportedPaths.map((path) => ({
+  source: path,
+  destination: `/redirect`,
+  regex: "",
+  statusCode: 301,
+}));
 
-export const unsupportedRedirects: NonNullable<Manifest["redirects"]> = [
+export const unsupportedRedirects: RoutesManifestRedirect[] = [
   ...unsupportedPaths.map((path) => ({
     source: path,
-    destination: `/${path}/redirect`,
+    destination: `/redirect`,
     regex: "",
     statusCode: 301,
   })),
@@ -27,7 +25,7 @@ export const unsupportedRedirects: NonNullable<Manifest["redirects"]> = [
       },
     ],
     destination: "/another?myHeader=:myHeader",
-    permanent: false,
+    statusCode: 307,
     regex: "",
   },
   {
@@ -39,7 +37,7 @@ export const unsupportedRedirects: NonNullable<Manifest["redirects"]> = [
       },
     ],
     destination: "/another?value=:myquery",
-    permanent: false,
+    statusCode: 307,
     regex: "",
   },
   {
@@ -52,7 +50,7 @@ export const unsupportedRedirects: NonNullable<Manifest["redirects"]> = [
       },
     ],
     destination: "/another?authorized=1",
-    permanent: false,
+    statusCode: 307,
     regex: "",
   },
   {
@@ -64,7 +62,7 @@ export const unsupportedRedirects: NonNullable<Manifest["redirects"]> = [
       },
     ],
     destination: "/another?host=1",
-    permanent: false,
+    statusCode: 307,
     regex: "",
   },
   {
@@ -76,7 +74,7 @@ export const unsupportedRedirects: NonNullable<Manifest["redirects"]> = [
       },
     ],
     destination: "/somewhere",
-    permanent: false,
+    statusCode: 307,
     regex: "",
   },
   {
@@ -88,7 +86,7 @@ export const unsupportedRedirects: NonNullable<Manifest["redirects"]> = [
       },
     ],
     destination: "https://:subdomain.example.com/some-path/end?a=b",
-    permanent: false,
+    statusCode: 307,
     regex: "",
   },
   {
@@ -101,7 +99,101 @@ export const unsupportedRedirects: NonNullable<Manifest["redirects"]> = [
       },
     ],
     destination: "/somewhere?value=:hello",
-    permanent: false,
+    statusCode: 307,
+    regex: "",
+  },
+  {
+    source: "/internal-redirect-1",
+    internal: true,
+    destination: "/somewhere?value=:hello",
+    statusCode: 307,
+    regex: "",
+  },
+  {
+    source: "/missing-redirect-1",
+    missing: [
+      {
+        type: "header",
+        key: "x-my-header",
+        value: "(?<myHeader>.*)",
+      },
+    ],
+    destination: "/another?myHeader=:myHeader",
+    statusCode: 307,
+    regex: "",
+  },
+  {
+    source: "/missing-redirect-2",
+    missing: [
+      {
+        type: "query",
+        key: "my-query",
+      },
+    ],
+    destination: "/another?value=:myquery",
+    statusCode: 307,
+    regex: "",
+  },
+  {
+    source: "/missing-redirect-3",
+    missing: [
+      {
+        type: "cookie",
+        key: "loggedIn",
+        value: "true",
+      },
+    ],
+    destination: "/another?authorized=1",
+    statusCode: 307,
+    regex: "",
+  },
+  {
+    source: "/missing-redirect-4",
+    missing: [
+      {
+        type: "host",
+        value: "example.com",
+      },
+    ],
+    destination: "/another?host=1",
+    statusCode: 307,
+    regex: "",
+  },
+  {
+    source: "/:path/missing-redirect-5",
+    missing: [
+      {
+        type: "header",
+        key: "x-test-next",
+      },
+    ],
+    destination: "/somewhere",
+    statusCode: 307,
+    regex: "",
+  },
+  {
+    source: "/missing-redirect-6",
+    missing: [
+      {
+        type: "host",
+        value: "(?<subdomain>.*)-test.example.com",
+      },
+    ],
+    destination: "https://:subdomain.example.com/some-path/end?a=b",
+    statusCode: 307,
+    regex: "",
+  },
+  {
+    source: "/missing-redirect-7",
+    missing: [
+      {
+        type: "query",
+        key: "hello",
+        value: "(?<hello>.*)",
+      },
+    ],
+    destination: "/somewhere?value=:hello",
+    statusCode: 307,
     regex: "",
   },
 ];

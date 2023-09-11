@@ -2,6 +2,7 @@ import * as backend from "./backend";
 import * as gcfV2 from "../../gcp/cloudfunctionsv2";
 import * as projectConfig from "../../functions/projectConfig";
 import * as deployHelper from "./functionsDeployHelper";
+import { Runtime } from "./runtimes";
 
 // These types should probably be in a root deploy.ts, but we can only boil the ocean one bit at a time.
 interface CodebasePayload {
@@ -49,6 +50,19 @@ export interface Context {
     gcfV1: string[];
     gcfV2: string[];
   };
+
+  // Tracks metrics about codebase deployments to send to GA4
+  codebaseDeployEvents?: Record<string, CodebaseDeployEvent>;
+}
+
+export interface CodebaseDeployEvent {
+  params?: "env_only" | "with_secrets" | "none";
+  runtime?: Runtime;
+  runtime_notice?: string;
+  fn_deploy_num_successes: number;
+  fn_deploy_num_failures: number;
+  fn_deploy_num_canceled: number;
+  fn_deploy_num_skipped: number;
 }
 
 export interface FirebaseConfig {

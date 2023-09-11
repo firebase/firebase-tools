@@ -13,6 +13,7 @@ import {
   createServiceAccount,
   createServiceAccountKey,
   deleteServiceAccount,
+  listServiceAccountKeys,
 } from "../../../gcp/iam";
 import { addServiceAccountToRoles, firebaseRoles } from "../../../gcp/resourceManager";
 import { logger } from "../../../logger";
@@ -20,6 +21,7 @@ import { prompt } from "../../../prompt";
 import { logBullet, logLabeledBullet, logSuccess, logWarning, reject } from "../../../utils";
 import { githubApiOrigin, githubClientId } from "../../../api";
 import { Client } from "../../../apiv2";
+import { FirebaseError } from "../../../error";
 
 let GIT_DIR: string;
 let GITHUB_DIR: string;
@@ -30,8 +32,10 @@ let YML_FULL_PATH_MERGE: string;
 const YML_PULL_REQUEST_FILENAME = "firebase-hosting-pull-request.yml";
 const YML_MERGE_FILENAME = "firebase-hosting-merge.yml";
 
-const CHECKOUT_GITHUB_ACTION_NAME = "actions/checkout@v2";
+const CHECKOUT_GITHUB_ACTION_NAME = "actions/checkout@v3";
 const HOSTING_GITHUB_ACTION_NAME = "FirebaseExtended/action-hosting-deploy@v0";
+
+const SERVICE_ACCOUNT_MAX_KEY_NUMBER = 10;
 
 const githubApiClient = new Client({ urlPrefix: githubApiOrigin, auth: false });
 
@@ -418,7 +422,7 @@ async function promptForRepo(
           key = body.key;
           keyId = body.key_id;
         } catch (e: any) {
-          if (e.status === 403) {
+          if ([403, 404].includes(e.status)) {
             logger.info();
             logger.info();
             logWarning(
@@ -547,6 +551,18 @@ async function createServiceAccountAndKeyWithRetry(
   } catch (e: any) {
     spinnerServiceAccount.stop();
     if (!e.message.includes("429")) {
+      const serviceAccountKeys = await listServiceAccountKeys(options.projectId, accountId);
+      if (serviceAccountKeys.length >= SERVICE_ACCOUNT_MAX_KEY_NUMBER) {
+        throw new FirebaseError(
+          `You cannot add another key because the service account ${bold(
+            accountId
+          )} already contains the max number of keys: ${SERVICE_ACCOUNT_MAX_KEY_NUMBER}.`,
+          {
+            original: e,
+            exit: 1,
+          }
+        );
+      }
       throw e;
     }
 
@@ -571,7 +587,7 @@ async function createServiceAccountAndKey(
     await createServiceAccount(
       options.projectId,
       accountId,
-      `A service account with permission to deploy to Firebase Hosting for the GitHub repository ${repo}`,
+      `A service account with permission to deploy to Firebase Hosting and Cloud Functions for the GitHub repository ${repo}`,
       `GitHub Actions (${repo})`
     );
   } catch (e: any) {
@@ -595,6 +611,9 @@ async function createServiceAccountAndKey(
 
     // Required for projects that use Hosting rewrites to Cloud Run
     firebaseRoles.runViewer,
+
+    // Required for previewing backends (Web Frameworks and pinTags)
+    firebaseRoles.functionsDeveloper,
   ];
   await addServiceAccountToRoles(options.projectId, accountId, requiredRoles);
 
@@ -632,4 +651,8 @@ async function encryptServiceAccountJSON(serviceAccountJSON: string, key: string
 
   // Base64 the encrypted secret
   return Buffer.from(encryptedBytes).toString("base64");
+}
+
+export function isRunningInGithubAction() {
+  return process.env.GITHUB_ACTION_REPOSITORY === HOSTING_GITHUB_ACTION_NAME.split("@")[0];
 }

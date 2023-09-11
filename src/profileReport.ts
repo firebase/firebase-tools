@@ -1,5 +1,5 @@
 import * as clc from "colorette";
-import Table = require("cli-table");
+const Table = require("cli-table");
 import * as fs from "fs";
 import * as _ from "lodash";
 import * as readline from "readline";
@@ -597,7 +597,7 @@ export class ProfileReport {
         write(clc.bold(clc.yellow(title)) + "\n");
       }
     };
-    const writeTable = (title: string, table: Table) => {
+    const writeTable = (title: string, table: typeof Table) => {
       writeTitle(title);
       write(table.toString() + "\n");
     };

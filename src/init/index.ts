@@ -4,6 +4,7 @@ import * as clc from "colorette";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import * as features from "./features";
+import { isEnabled } from "../experiments";
 
 export interface Setup {
   config: Record<string, any>;
@@ -25,10 +26,15 @@ const featureFns = new Map<string, (setup: any, config: any, options?: any) => P
   ["hosting", features.hosting],
   ["storage", features.storage],
   ["emulators", features.emulators],
+  ["extensions", features.extensions],
   ["project", features.project], // always runs, sets up .firebaserc
   ["remoteconfig", features.remoteconfig],
   ["hosting:github", features.hostingGithub],
 ]);
+
+if (isEnabled("frameworks")) {
+  featureFns.set("frameworks", features.frameworks);
+}
 
 export async function init(setup: Setup, config: any, options: any): Promise<any> {
   const nextFeature = setup.features?.shift();

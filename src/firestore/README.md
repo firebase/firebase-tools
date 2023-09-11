@@ -61,7 +61,7 @@ The schema for one object in the `fieldOverrides` array is as follows. Optional 
 
 Note that Cloud Firestore document fields can only be indexed in one [mode](https://firebase.google.com/docs/firestore/query-data/index-overview#index_modes), thus a field object cannot contain both the `order` and `arrayConfig` properties.
 
-For more information about time-to-live (TTL) policies review the [official documention](https://cloud.google.com/firestore/docs/ttl).
+For more information about time-to-live (TTL) policies review the [official documentation](https://cloud.google.com/firestore/docs/ttl).
 
 ```javascript
   collectionGroup: string  // Labeled "Collection ID" in the Firebase console

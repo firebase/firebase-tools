@@ -36,11 +36,11 @@ export function cloudEventFromProtoToJson(ce: any): CloudEvent<any> {
 }
 
 function getOptionalAttribute(ce: any, attr: string, type: string): string | undefined {
-  return ce["attributes"][attr][type];
+  return ce?.["attributes"]?.[attr]?.[type];
 }
 
 function getRequiredAttribute(ce: any, attr: string, type: string): string {
-  const val = ce["attributes"][attr][type];
+  const val = ce?.["attributes"]?.[attr]?.[type];
   if (val === undefined) {
     throw new FirebaseError("CloudEvent must contain " + attr + " attribute");
   }

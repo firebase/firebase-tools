@@ -30,6 +30,7 @@ function fakeInstanceSpecWithAPI(instanceId: string, apiName: string): Deploymen
   return {
     instanceId,
     params: {},
+    systemParams: {},
     ref: {
       publisherId: "test",
       extensionId: "test",
@@ -47,6 +48,7 @@ function fakeInstanceSpecWithAPI(instanceId: string, apiName: string): Deploymen
         sourceUrl: "test.com",
         resources: [],
         params: [],
+        systemParams: [],
         apis: [{ apiName, reason: "because" }],
       },
     },

@@ -82,10 +82,6 @@ describe("validate", () => {
           id: "my-function$%#",
           platform: "gcfv1",
         },
-        {
-          id: "my-function-2",
-          platform: "gcfv2",
-        },
       ];
 
       expect(() => {
@@ -103,18 +99,18 @@ describe("validate", () => {
       }).to.throw(FirebaseError);
     });
 
-    it("should throw error on capital letters in v2 function names", () => {
+    it("should not throw error on capital letters in v2 function names", () => {
       const functions = [{ id: "Hi", platform: "gcfv2" }];
       expect(() => {
         validate.functionIdsAreValid(functions);
-      }).to.throw(FirebaseError);
+      }).to.not.throw();
     });
 
-    it("should throw error on underscores in v2 function names", () => {
+    it("should not throw error on underscores in v2 function names", () => {
       const functions = [{ id: "o_O", platform: "gcfv2" }];
       expect(() => {
         validate.functionIdsAreValid(functions);
-      }).to.throw(FirebaseError);
+      }).to.not.throw();
     });
   });
 

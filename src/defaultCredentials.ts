@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import { clientId, clientSecret } from "./api";
-import { Tokens, User, Account } from "./auth";
+import { Tokens, User, Account } from "./types/auth";
 import { logger } from "./logger";
 
 // Interface for a valid JSON refresh token credential, so the

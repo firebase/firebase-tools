@@ -28,26 +28,26 @@ const CACHE_DIR =
 
 const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDetails } = {
   database: {
-    version: "4.11.0",
-    expectedSize: 34318940,
-    expectedChecksum: "311609538bd65666eb724ef47c2e6466",
+    version: "4.11.2",
+    expectedSize: 34495935,
+    expectedChecksum: "2fd771101c0e1f7898c04c9204f2ce63",
   },
   firestore: {
-    version: "1.15.1",
-    expectedSize: 61475851,
-    expectedChecksum: "4f41d24a3c0f3b55ea22804a424cc0ee",
+    version: "1.18.2",
+    expectedSize: 63929486,
+    expectedChecksum: "7b066cd684baf9bcd4a56a258be344a5",
   },
   storage: {
-    version: "1.1.1",
-    expectedSize: 46448285,
-    expectedChecksum: "691982db4019d49d345a97151bdea7e2",
+    version: "1.1.3",
+    expectedSize: 52892936,
+    expectedChecksum: "2ca11ec1193003bea89f806cc085fa25",
   },
   ui: experiments.isEnabled("emulatoruisnapshot")
     ? { version: "SNAPSHOT", expectedSize: -1, expectedChecksum: "" }
     : {
-        version: "1.11.1",
-        expectedSize: 3061713,
-        expectedChecksum: "a4944414518be206280b495f526f18bf",
+        version: "1.11.7",
+        expectedSize: 3064105,
+        expectedChecksum: "bd2bcc331cbf613a5b3b55a1ce08998b",
       },
   pubsub: {
     version: "0.7.1",
@@ -457,7 +457,9 @@ export async function stop(targetName: DownloadableEmulators): Promise<void> {
   const emulator = get(targetName);
   return new Promise((resolve, reject) => {
     const logger = EmulatorLogger.forEmulator(emulator.name);
-    if (emulator.instance) {
+
+    // kill(0) does not end the process, it just checks for existence. See https://man7.org/linux/man-pages/man2/kill.2.html#:~:text=If%20sig%20is%200%2C%20
+    if (emulator.instance && emulator.instance.kill(0)) {
       const killTimeout = setTimeout(() => {
         const pid = emulator.instance ? emulator.instance.pid : -1;
         const errorMsg =
@@ -465,7 +467,6 @@ export async function stop(targetName: DownloadableEmulators): Promise<void> {
         logger.log("DEBUG", errorMsg);
         reject(new FirebaseError(emulator.name + ": " + errorMsg));
       }, EMULATOR_INSTANCE_KILL_TIMEOUT);
-
       emulator.instance.once("exit", () => {
         clearTimeout(killTimeout);
         resolve();

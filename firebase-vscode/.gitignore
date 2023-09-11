@@ -1,0 +1,5 @@
+*.vsix
+dist/
+*.scss.d.ts
+resources/dist
+.vscode-test

@@ -35,7 +35,7 @@ export const command = new Command("functions:delete [filters...]")
 
     const context: args.Context = {
       projectId: needProjectId(options),
-      filters: filters.map((f) => ({ idChunks: f.split(".") })),
+      filters: filters.map((f) => ({ idChunks: f.split(/[-.]/) })),
     };
 
     const [config, existingBackend] = await Promise.all([

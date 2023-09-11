@@ -106,7 +106,7 @@ export class StorageCloudFunctions {
       time = typeof data.updated === "string" ? data.updated : data.updated.toISOString();
     }
     return {
-      specversion: "1",
+      specversion: "1.0",
       id: uuid.v4(),
       type: `google.cloud.storage.object.v1.${ceAction}`,
       source: `//storage.googleapis.com/projects/_/buckets/${objectMetadataPayload.bucket}/objects/${objectMetadataPayload.name}`,
@@ -255,9 +255,9 @@ export interface ObjectMetadataPayload {
    * Customer-supplied encryption key.
    *
    * This object contains the following properties:
-   * * `encryptionAlgorithm` (`string|undefined`): The encryption algorithm that
+   * `encryptionAlgorithm` (`string|undefined`): The encryption algorithm that
    *   was used. Always contains the value `AES256`.
-   * * `keySha256` (`string|undefined`): An RFC 4648 base64-encoded string of the
+   * `keySha256` (`string|undefined`): An RFC 4648 base64-encoded string of the
    *   SHA256 hash of your encryption key. You can use this SHA256 hash to
    *   uniquely identify the AES-256 encryption key required to decrypt the
    *   object, which you must store securely.

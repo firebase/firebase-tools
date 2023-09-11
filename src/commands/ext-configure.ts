@@ -1,6 +1,5 @@
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
-import TerminalRenderer = require("marked-terminal");
+import { marked } from "marked";
+import * as TerminalRenderer from "marked-terminal";
 
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
@@ -24,6 +23,7 @@ import { Options } from "../options";
 import { partition } from "../functional";
 import { buildBindingOptionsWithBaseValue } from "../extensions/paramHelper";
 import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
+import { displayDeveloperTOSWarning } from "../extensions/tos";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -76,10 +76,10 @@ export const command = new Command("ext:configure <extensionInstanceId>")
       instanceId,
       projectDir: config.projectDir,
     });
-
+    const params = (spec.params ?? []).concat(spec.systemParams ?? []);
     const [immutableParams, tbdParams] = partition(
-      spec.params,
-      (param) => param.immutable ?? false
+      params,
+      (param) => (param.immutable && !!oldParamValues[param.param]) ?? false
     );
     infoImmutableParams(immutableParams, oldParamValues);
 
@@ -89,8 +89,6 @@ export const command = new Command("ext:configure <extensionInstanceId>")
       projectId,
       paramSpecs: tbdParams,
       nonInteractive: false,
-      // TODO(b/230598656): Clean up paramsEnvPath after v11 launch.
-      paramsEnvPath: "",
       instanceId,
       reconfiguring: true,
     });
@@ -115,7 +113,6 @@ export const command = new Command("ext:configure <extensionInstanceId>")
       ...buildBindingOptionsWithBaseValue(oldParamValues),
       ...mutableParamsBindingOptions,
     };
-
     await manifest.writeToManifest(
       [
         {
@@ -132,7 +129,7 @@ export const command = new Command("ext:configure <extensionInstanceId>")
         force: true, // Skip asking for permission again
       }
     );
-    manifest.showPostDeprecationNotice();
+    displayDeveloperTOSWarning();
     return;
   });
 

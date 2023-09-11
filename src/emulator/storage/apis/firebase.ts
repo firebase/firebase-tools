@@ -267,6 +267,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           throw err;
         }
         res.header("X-Goog-Upload-Size-Received", upload.size.toString());
+        res.header("x-goog-upload-status", upload.status);
         return res.sendStatus(200);
       }
 

@@ -20,11 +20,12 @@ const TARGETS: {
  * @param options Firebase CLI options.
  */
 export async function serve(options: any): Promise<void> {
-  const targetNames: string[] = options.targets || [];
+  options.targets ||= [];
+  const targetNames: string[] = options.targets;
   options.port = parseInt(options.port, 10);
   if (targetNames.includes("hosting") && config.extract(options).some((it: any) => it.source)) {
     experiments.assertEnabled("webframeworks", "emulate a web framework");
-    await prepareFrameworks(targetNames, options, options);
+    await prepareFrameworks("emulate", targetNames, undefined, options);
   }
   const isDemoProject = Constants.isDemoProject(getProjectId(options) || "");
   targetNames.forEach((targetName) => {

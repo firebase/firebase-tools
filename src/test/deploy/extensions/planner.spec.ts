@@ -3,8 +3,18 @@ import * as sinon from "sinon";
 
 import * as planner from "../../../deploy/extensions/planner";
 import * as extensionsApi from "../../../extensions/extensionsApi";
-import { ExtensionInstance } from "../../../extensions/types";
+import { ExtensionInstance, Extension } from "../../../extensions/types";
 
+function extension(latest?: string, latestApproved?: string): Extension {
+  return {
+    name: `publishers/test/extensions/test`,
+    ref: `test/test`,
+    state: "PUBLISHED",
+    latestVersion: latest,
+    latestApprovedVersion: latestApproved,
+    createTime: "",
+  };
+}
 function extensionVersion(version?: string): any {
   return {
     name: `publishers/test/extensions/test/versions/${version}`,
@@ -18,13 +28,13 @@ function extensionVersion(version?: string): any {
       resources: [],
       sourceUrl: "https://google.com",
       params: [],
+      systemParam: [],
     },
   };
 }
 describe("Extensions Deployment Planner", () => {
   describe("resolveSemver", () => {
     let listExtensionVersionsStub: sinon.SinonStub;
-
     before(() => {
       listExtensionVersionsStub = sinon.stub(extensionsApi, "listExtensionVersions").resolves([
         extensionVersion("0.1.0"),
@@ -58,8 +68,14 @@ describe("Extensions Deployment Planner", () => {
         err: false,
       },
       {
-        description: "should default to latest version",
-        out: "0.2.0",
+        description: "should default to latest-approved version",
+        out: "0.1.1",
+        err: false,
+      },
+      {
+        description: "should resolve explicit latest-approved",
+        in: "latest-approved",
+        out: "0.1.1",
         err: false,
       },
       {
@@ -73,19 +89,25 @@ describe("Extensions Deployment Planner", () => {
       it(c.description, () => {
         if (!c.err) {
           expect(
-            planner.resolveVersion({
-              publisherId: "test",
-              extensionId: "test",
-              version: c.in,
-            })
+            planner.resolveVersion(
+              {
+                publisherId: "test",
+                extensionId: "test",
+                version: c.in,
+              },
+              extension("0.2.0", "0.1.1")
+            )
           ).to.eventually.equal(c.out);
         } else {
           expect(
-            planner.resolveVersion({
-              publisherId: "test",
-              extensionId: "test",
-              version: c.in,
-            })
+            planner.resolveVersion(
+              {
+                publisherId: "test",
+                extensionId: "test",
+                version: c.in,
+              },
+              extension("0.2.0", "0.1.1")
+            )
           ).to.eventually.be.rejected;
         }
       });
@@ -105,6 +127,7 @@ describe("Extensions Deployment Planner", () => {
       name: "",
       sourceUrl: "",
       params: [],
+      systemParams: [],
     };
 
     const INSTANCE_WITH_EVENTS: ExtensionInstance = {
@@ -116,6 +139,7 @@ describe("Extensions Deployment Planner", () => {
       etag: "123456",
       config: {
         params: {},
+        systemParams: {},
         extensionRef: "firebase/image-resizer",
         extensionVersion: "0.1.0",
         name: "projects/my-test-proj/instances/image-resizer/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
@@ -135,6 +159,7 @@ describe("Extensions Deployment Planner", () => {
     const INSTANCE_SPEC_WITH_EVENTS: planner.DeploymentInstanceSpec = {
       instanceId: "image-resizer",
       params: {},
+      systemParams: {},
       allowedEventTypes: ["google.firebase.custom-event-occurred"],
       eventarcChannel: "projects/my-test-proj/locations/us-central1/channels/firebase",
       etag: "123456",

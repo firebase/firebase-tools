@@ -61,10 +61,10 @@ export type WireEndpoint = build.Triggered &
     serviceAccount?: string | null;
     // Note: Historically we used "serviceAccountEmail" to refer to a thing that
     // might not be an email (e.g. it might be "myAccount@"" to be project-relative)
-    // We now use "serviceAccount" but maintain backwards compatability in the
+    // We now use "serviceAccount" but maintain backwards compatibility in the
     // wire format for the time being.
     serviceAccountEmail?: string | null;
-    region?: string[];
+    region?: build.ListField;
     entryPoint: string;
     platform?: build.FunctionsPlatform;
     secretEnvironmentVariables?: Array<ManifestSecretEnv> | null;
@@ -122,7 +122,7 @@ function parseRequiredAPIs(manifest: WireManifest): build.RequiredApi[] {
 function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
   const prefix = `endpoints[${id}]`;
   assertKeyTypes(prefix, ep, {
-    region: "array",
+    region: "List",
     platform: (platform) => build.AllFunctionsPlatforms.includes(platform),
     entryPoint: "string",
     omit: "Field<boolean>?",
@@ -209,7 +209,7 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
         minBackoffSeconds: "Field<number>?",
         maxBackoffSeconds: "Field<number>?",
         maxRetrySeconds: "Field<number>?",
-        // The "duration" key types are supported for legacy compability reasons only.
+        // The "duration" key types are supported for legacy compatibility reasons only.
         // They are not parametized and are automatically converted by the parser to seconds.
         maxRetryDuration: "string?",
         minBackoffDuration: "string?",

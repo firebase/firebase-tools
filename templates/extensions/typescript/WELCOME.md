@@ -1,9 +1,22 @@
-This directory now contains the source files for a simple extension called **greet-the-world**. To try out this extension right away, install it in an existing Firebase project by running:
+This directory now contains the source files for a simple extension called **greet-the-world**. You can try it out right away in the Firebase Emulator suite: first, compile your code by running:
 
-`npm run build --prefix=functions && firebase ext:install . --project=<project-id>`
+`npm run build --prefix=functions`
 
-If you want to jump into the code to customize your extension, then modify **index.ts** and **extension.yaml** in your favorite editor. When you're ready to try out your fancy new extension, run:
+Then, navigate to the `functions/integration-test` directory and run:
 
-`npm run build --prefix=functions && firebase ext:install . --project=<project-id>`
+`firebase emulators:start --project=<project-id>`
 
-As always, in the docs, you can find detailed instructions for creating and testing your extension (including using the emulator!).
+If you don't have a project to use, you can instead use '--project=demo-test' to run against a fake project.
+
+The `integration-test` directory also includes an end to end test (in the file **integration-test.spec.ts**) that verifies that the extension responds back with the expected greeting. You can see it in action by running:
+
+`npm run test`
+
+If you want to jump into the code to customize your extension, then modify **index.ts** and **extension.yaml** in your favorite editor. 
+
+If you want to deploy your extension to test on a real project, go to a Firebase project directory (or create a new one with `firebase init`) and run:
+
+`firebase ext:install ./path/to/extension/directory --project=<project-id>`
+`firebase deploy --only extensions`
+
+You can find more information about building extensions in the publisher docs: https://firebase.google.com/docs/extensions/publishers/get-started

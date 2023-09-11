@@ -2,15 +2,16 @@ import { execSync } from "child_process";
 import { copy, pathExists } from "fs-extra";
 import { mkdir, readFile } from "fs/promises";
 import { join } from "path";
-import { BuildResult, FrameworkType, SupportLevel } from "..";
+import { BuildResult, FrameworkType, SupportLevel } from "../interfaces";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
 const { dynamicImport } = require(true && "../../dynamicImport");
 
 export const name = "Express.js";
-export const support = SupportLevel.Experimental;
+export const support = SupportLevel.Preview;
 export const type = FrameworkType.Custom;
+export const docsUrl = "https://firebase.google.com/docs/hosting/frameworks/express";
 
 async function getConfig(root: string) {
   const packageJsonBuffer = await readFile(join(root, "package.json"));
@@ -22,9 +23,9 @@ async function getConfig(root: string) {
 
 export async function discover(dir: string) {
   if (!(await pathExists(join(dir, "package.json")))) return;
-  const { serveDir } = await getConfig(dir);
-  if (!serveDir) return;
-  return { mayWantBackend: true };
+  const { serveDir: publicDirectory } = await getConfig(dir);
+  if (!publicDirectory) return;
+  return { mayWantBackend: true, publicDirectory };
 }
 
 export async function build(cwd: string): Promise<BuildResult> {
@@ -94,7 +95,7 @@ async function getBootstrapScript(
 
 export async function ɵcodegenFunctionsDirectory(root: string, dest: string) {
   const bootstrapScript = await getBootstrapScript(root);
-  if (!bootstrapScript) return;
+  if (!bootstrapScript) throw new Error("Cloud not find bootstrapScript");
   await mkdir(dest, { recursive: true });
 
   const { packageJson } = await getConfig(root);

@@ -190,14 +190,14 @@ export async function convertConfig(
       if (endpoint.platform === "gcfv1") {
         if (!backend.isHttpsTriggered(endpoint) && !backend.isCallableTriggered(endpoint)) {
           throw new FirebaseError(
-            `Function ${endpoint.id} is a gen 1 function and therefore must be an https function type`
+            `Function ${endpoint.id} is a 1st gen function and therefore must be an https function type`
           );
         }
         if (rewrite.function.pinTag) {
           throw new FirebaseError(
-            `Function ${endpoint.id} is a gen 1 function and therefore does not support the ${bold(
-              "pinTag"
-            )} option`
+            `Function ${
+              endpoint.id
+            } is a 1st gen function and therefore does not support the ${bold("pinTag")} option`
           );
         }
         return {
@@ -213,7 +213,7 @@ export async function convertConfig(
       const apiRewrite: api.Rewrite = {
         ...target,
         run: {
-          serviceId: endpoint.id,
+          serviceId: endpoint.runServiceId ?? endpoint.id,
           region: endpoint.region,
         },
       };
@@ -235,19 +235,27 @@ export async function convertConfig(
       const apiRewrite: api.Rewrite = {
         ...target,
         run: {
-          region: "us-central1",
-          ...rewrite.run,
+          serviceId: rewrite.run.serviceId,
+          region: rewrite.run.region || "us-central1",
         },
       };
-      if (apiRewrite.run.tag) {
+      if (rewrite.run.pinTag) {
         experiments.assertEnabled("pintags", "pin to a run service revision");
+        apiRewrite.run.tag = runTags.TODO_TAG_NAME;
       }
       return apiRewrite;
     }
 
     // This line makes sure this function breaks if there is ever added a new
     // kind of rewrite and we haven't yet handled it.
-    assertExhaustive(rewrite);
+    try {
+      assertExhaustive(rewrite);
+    } catch (e: any) {
+      throw new FirebaseError(
+        "Invalid hosting rewrite config in firebase.json. " +
+          "A rewrite config must specify 'destination', 'function', 'dynamicLinks', or 'run'"
+      );
+    }
   });
 
   if (config.rewrites) {

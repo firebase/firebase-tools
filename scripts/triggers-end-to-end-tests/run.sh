@@ -19,7 +19,7 @@ function cleanup() {
 trap cleanup EXIT
 
 source scripts/set-default-credentials.sh
-./scripts/npm-link.sh
+./scripts/clean-install.sh
 
 for dir in triggers v1 v2; do
   (

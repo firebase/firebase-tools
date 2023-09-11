@@ -1,5 +1,5 @@
 import { promptOnce } from "../../prompt";
-import fsutils = require("../../fsutils");
+import * as fsutils from "../../fsutils";
 import * as clc from "colorette";
 import { Config } from "../../config";
 

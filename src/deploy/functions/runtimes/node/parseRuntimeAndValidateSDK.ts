@@ -2,7 +2,6 @@ import * as path from "path";
 import * as clc from "colorette";
 
 import { FirebaseError } from "../../../../error";
-import { track } from "../../../../track";
 import * as runtimes from "../../runtimes";
 
 // have to require this because no @types/cjson available
@@ -17,6 +16,7 @@ const ENGINE_RUNTIMES: Record<number, runtimes.Runtime | runtimes.DeprecatedRunt
   14: "nodejs14",
   16: "nodejs16",
   18: "nodejs18",
+  20: "nodejs20",
 };
 
 const ENGINE_RUNTIMES_NAMES = Object.values(ENGINE_RUNTIMES);
@@ -24,16 +24,16 @@ const ENGINE_RUNTIMES_NAMES = Object.values(ENGINE_RUNTIMES);
 export const RUNTIME_NOT_SET =
   "`runtime` field is required but was not found in firebase.json.\n" +
   "To fix this, add the following lines to the `functions` section of your firebase.json:\n" +
-  '"runtime": "nodejs16"\n';
+  '"runtime": "nodejs18"\n';
 
 export const UNSUPPORTED_NODE_VERSION_FIREBASE_JSON_MSG = clc.bold(
   `functions.runtime value is unsupported. ` +
-    `Valid choices are: ${clc.bold("nodejs{10|12|14|16}")}.`
+    `Valid choices are: ${clc.bold("nodejs{10|12|14|16|18}")}.`
 );
 
 export const UNSUPPORTED_NODE_VERSION_PACKAGE_JSON_MSG = clc.bold(
   `package.json in functions directory has an engines field which is unsupported. ` +
-    `Valid choices are: ${clc.bold('{"node": 10|12|14|16}')}`
+    `Valid choices are: ${clc.bold('{"node": 10|12|14|16|18}')}`
 );
 
 export const DEPRECATED_NODE_VERSION_INFO =
@@ -79,7 +79,6 @@ export function getRuntimeChoice(sourceDir: string, runtimeFromConfig?: string):
       : UNSUPPORTED_NODE_VERSION_PACKAGE_JSON_MSG) + DEPRECATED_NODE_VERSION_INFO;
 
   if (!runtime || !ENGINE_RUNTIMES_NAMES.includes(runtime)) {
-    void track("functions_runtime_notices", "package_missing_runtime");
     throw new FirebaseError(errorMessage, { exit: 1 });
   }
 
@@ -87,7 +86,6 @@ export function getRuntimeChoice(sourceDir: string, runtimeFromConfig?: string):
   // it's in ENGINE_RUNTIME_NAMES and not in DEPRECATED_RUNTIMES. This is still a
   // good defense in depth and also lets us upcast the response to Runtime safely.
   if (runtimes.isDeprecatedRuntime(runtime) || !runtimes.isValidRuntime(runtime)) {
-    void track("functions_runtime_notices", `${runtime}_deploy_prohibited`);
     throw new FirebaseError(errorMessage, { exit: 1 });
   }
 

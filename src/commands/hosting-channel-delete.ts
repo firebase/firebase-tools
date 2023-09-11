@@ -1,6 +1,5 @@
 import { bold, underline } from "colorette";
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
+import { marked } from "marked";
 
 import { Command } from "../command";
 import { consoleUrl, logLabeledSuccess, logLabeledWarning } from "../utils";

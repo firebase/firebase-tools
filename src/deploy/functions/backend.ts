@@ -1,11 +1,10 @@
 import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfV2 from "../../gcp/cloudfunctionsv2";
-import * as run from "../../gcp/run";
 import * as utils from "../../utils";
 import * as runtimes from "./runtimes";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
-import { flattenArray, zip } from "../../functional";
+import { flattenArray } from "../../functional";
 
 /** Retry settings for a ScheduleSpec. */
 export interface ScheduleRetryConfig {
@@ -87,7 +86,7 @@ export interface EventTrigger {
    * The region of a trigger, which may not be the same region as the function.
    * Cross-regional triggers are not permitted, i.e. triggers that are in a
    * single-region location that is different from the function's region.
-   * When omitted, the region defults to the function's region.
+   * When omitted, the region defaults to the function's region.
    */
   region?: string;
 
@@ -350,10 +349,12 @@ export type Endpoint = TargetIds &
     // "Codebase" is not part of the container contract. Instead, it's value is provided by firebase.json or derived
     // from function labels.
     codebase?: string;
-    // URI is available on GCFv1 for HTTPS triggers and
-    // on GCFv2 always
+    // URI is available on GCFv1 for HTTPS triggers and on GCFv2 always
     uri?: string;
+    // sourceUploadUrl is available on GCFv1 only
     sourceUploadUrl?: string;
+    // source is available on GCFv2 only
+    source?: gcfV2.Source;
     // TODO(colerogers): yank this field and set securityLevel to SECURE_ALWAYS
     // in functionFromEndpoint during a breaking change release.
     // This is a temporary fix to address https://github.com/firebase/firebase-tools/issues/4171
@@ -366,6 +367,11 @@ export type Endpoint = TargetIds &
 
     // Marked as true if a user specifically called this function or codebase with the --only flag.
     targetedByOnly?: boolean;
+
+    // Output only. For v2 functions, this is the run service ID.
+    // This may eventually be different than id because GCF is going to start
+    // doing name translations
+    runServiceId?: string;
   };
 
 export interface RequiredAPI {
@@ -406,7 +412,7 @@ export function of(...endpoints: Endpoint[]): Backend {
   for (const endpoint of endpoints) {
     bkend.endpoints[endpoint.region] = bkend.endpoints[endpoint.region] || {};
     if (bkend.endpoints[endpoint.region][endpoint.id]) {
-      throw new Error("Trying to create a backend with the same endpiont twice");
+      throw new Error("Trying to create a backend with the same endpoint twice");
     }
     bkend.endpoints[endpoint.region][endpoint.id] = endpoint;
   }
@@ -527,20 +533,8 @@ async function loadExistingBackend(ctx: Context): Promise<void> {
   let gcfV2Results;
   try {
     gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
-    const runResults = await Promise.all(
-      gcfV2Results.functions.map((fn) => run.getService(fn.serviceConfig.service!))
-    );
-    for (const [apiFunction, runService] of zip(gcfV2Results.functions, runResults)) {
-      // I don't know why but code complete knows apiFunction is a gcfv2.CloudFunction
-      // and the compiler thinks it's type {}.
-      const endpoint = gcfV2.endpointFromFunction(apiFunction as any);
-      endpoint.concurrency = runService.spec.template.spec.containerConcurrency || 1;
-      // N.B. We don't generally do anything with multiple containers, but we
-      // might have to figure out WTF to do here if we're updating multiple containers
-      // and our only reference point is the image. Hopefully by then we'll be
-      // on the next gen infrastructure and have state we can refer back to.
-      endpoint.cpu = +runService.spec.template.spec.containers[0].resources.limits.cpu;
-
+    for (const apiFunction of gcfV2Results.functions) {
+      const endpoint = gcfV2.endpointFromFunction(apiFunction);
       ctx.existingBackend.endpoints[endpoint.region] =
         ctx.existingBackend.endpoints[endpoint.region] || {};
       ctx.existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;

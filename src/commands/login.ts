@@ -10,6 +10,7 @@ import { promptOnce } from "../prompt";
 
 import * as auth from "../auth";
 import { isCloudEnvironment } from "../utils";
+import { User, Tokens } from "../types/auth";
 
 export const command = new Command("login")
   .description("log the CLI into Firebase")
@@ -25,8 +26,8 @@ export const command = new Command("login")
       );
     }
 
-    const user = options.user as auth.User | undefined;
-    const tokens = options.tokens as auth.Tokens | undefined;
+    const user = options.user as User | undefined;
+    const tokens = options.tokens as Tokens | undefined;
 
     if (user && tokens && !options.reauth) {
       logger.info("Already logged in as", clc.bold(user.email));

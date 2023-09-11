@@ -84,7 +84,10 @@ function transUserToArray(user: any): any[] {
   arr[24] = user.lastLoginAt;
   arr[25] = user.phoneNumber;
   arr[26] = user.disabled;
-  arr[27] = user.customAttributes;
+  // quote entire custom claims object and escape inner quotes with quotes
+  arr[27] = user.customAttributes
+    ? `"${user.customAttributes.replace(/(?<!\\)"/g, '""')}"`
+    : user.customAttributes;
   return arr;
 }
 

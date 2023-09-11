@@ -19,7 +19,7 @@ import * as scopes from "./scopes";
 import { clearCredentials } from "./defaultCredentials";
 import { v4 as uuidv4 } from "uuid";
 import { randomBytes, createHash } from "crypto";
-import { track } from "./track";
+import { trackGA4 } from "./track";
 import {
   authOrigin,
   authProxyOrigin,
@@ -30,57 +30,15 @@ import {
   githubOrigin,
   googleOrigin,
 } from "./api";
-
-// The wire protocol for an access token returned by Google.
-// When we actually refresh from the server we should always have
-// these optional fields, but when a user passes --token we may
-// only have access_token.
-export interface Tokens {
-  id_token?: string;
-  access_token: string;
-  refresh_token?: string;
-  scopes?: string[];
-}
-
-export interface User {
-  email: string;
-
-  iss?: string;
-  azp?: string;
-  aud?: string;
-  sub?: number;
-  hd?: string;
-  email_verified?: boolean;
-  at_hash?: string;
-  iat?: number;
-  exp?: number;
-}
-
-export interface Account {
-  user: User;
-  tokens: Tokens;
-}
-
-interface TokensWithExpiration extends Tokens {
-  expires_at?: number;
-}
-
-interface TokensWithTTL extends Tokens {
-  expires_in?: number;
-}
-
-interface UserCredentials {
-  user: string | User;
-  tokens: TokensWithExpiration;
-  scopes: string[];
-}
-
-// https://docs.github.com/en/developers/apps/authorizing-oauth-apps
-interface GitHubAuthResponse {
-  access_token: string;
-  scope: string;
-  token_type: string;
-}
+import {
+  Account,
+  User,
+  Tokens,
+  TokensWithExpiration,
+  TokensWithTTL,
+  GitHubAuthResponse,
+  UserCredentials,
+} from "./types/auth";
 
 portfinder.setBasePort(9005);
 
@@ -486,7 +444,7 @@ async function loginRemotely(): Promise<UserCredentials> {
       codeVerifier
     );
 
-    void track("login", "google_remote");
+    void trackGA4("login", { method: "google_remote" });
 
     return {
       user: jwt.decode(tokens.id_token!) as User,
@@ -510,7 +468,7 @@ async function loginWithLocalhostGoogle(port: number, userHint?: string): Promis
     getTokensFromAuthorizationCode
   );
 
-  void track("login", "google_localhost");
+  void trackGA4("login", { method: "google_localhost" });
   // getTokensFromAuthoirzationCode doesn't handle the --token case, so we know we'll
   // always have an id_token.
   return {
@@ -531,7 +489,7 @@ async function loginWithLocalhostGitHub(port: number): Promise<string> {
     successTemplate,
     getGithubTokensFromAuthorizationCode
   );
-  void track("login", "google_localhost");
+  void trackGA4("login", { method: "github_localhost" });
   return tokens;
 }
 
@@ -744,8 +702,8 @@ async function refreshTokens(
   }
 }
 
-export async function getAccessToken(refreshToken: string, authScopes: string[]) {
-  if (haveValidTokens(refreshToken, authScopes)) {
+export async function getAccessToken(refreshToken: string, authScopes: string[]): Promise<Tokens> {
+  if (haveValidTokens(refreshToken, authScopes) && lastAccessToken) {
     return lastAccessToken;
   }
 

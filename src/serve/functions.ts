@@ -4,7 +4,6 @@ import {
   FunctionsEmulator,
   FunctionsEmulatorArgs,
 } from "../emulator/functionsEmulator";
-import { parseRuntimeVersion } from "../emulator/functionsEmulatorUtils";
 import { needProjectId } from "../projectUtils";
 import { getProjectDefaultAccount } from "../auth";
 import { Options } from "../options";
@@ -30,11 +29,10 @@ export class FunctionsServer {
     const backends: EmulatableBackend[] = [];
     for (const cfg of config) {
       const functionsDir = path.join(options.config.projectDir, cfg.source);
-      const nodeMajorVersion = parseRuntimeVersion(cfg.runtime);
       backends.push({
         functionsDir,
         codebase: cfg.codebase,
-        nodeMajorVersion,
+        runtime: cfg.runtime,
         env: {},
         secretEnv: [],
       });

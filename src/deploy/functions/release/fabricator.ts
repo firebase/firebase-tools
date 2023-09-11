@@ -1,6 +1,6 @@
 import * as clc from "colorette";
 
-import { Executor } from "./executor";
+import { DEFAULT_RETRY_CODES, Executor } from "./executor";
 import { FirebaseError } from "../../../error";
 import { SourceTokenScraper } from "./sourceTokenScraper";
 import { Timer } from "./timer";
@@ -26,6 +26,7 @@ import * as utils from "../../../utils";
 import * as services from "../services";
 import { AUTH_BLOCKING_EVENTS } from "../../../functions/events/v1";
 import { getDefaultComputeServiceAgent } from "../checkIam";
+import { getHumanFriendlyPlatformName } from "../functionsDeployHelper";
 
 // TODO: Tune this for better performance.
 const gcfV1PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
@@ -48,6 +49,8 @@ const eventarcPollerOptions: Omit<poller.OperationPollerOptions, "operationResou
   masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
   maxBackoff: 10_000,
 };
+
+const CLOUD_RUN_RESOURCE_EXHAUSTED_CODE = 8;
 
 export interface FabricatorArgs {
   executor: Executor;
@@ -230,7 +233,7 @@ export class Fabricator {
           onPoll: scraper.poller,
         });
       })
-      .catch(rethrowAs(endpoint, "create"));
+      .catch(rethrowAs<gcf.CloudFunction>(endpoint, "create"));
 
     endpoint.uri = resultFunction?.httpsTrigger?.url;
     if (backend.isHttpsTriggered(endpoint)) {
@@ -274,12 +277,12 @@ export class Fabricator {
   }
 
   async createV2Function(endpoint: backend.Endpoint): Promise<void> {
-    const storage = this.sources[endpoint.codebase!]?.storage;
-    if (!storage) {
+    const storageSource = this.sources[endpoint.codebase!]?.storage;
+    if (!storageSource) {
       logger.debug("Precondition failed. Cannot create a GCFv2 function without storage");
       throw new Error("Precondition failed");
     }
-    const apiFunction = gcfV2.functionFromEndpoint(endpoint, storage);
+    const apiFunction = gcfV2.functionFromEndpoint({ ...endpoint, source: { storageSource } });
 
     // N.B. As of GCFv2 private preview GCF no longer creates Pub/Sub topics
     // for Pub/Sub event handlers. This may change, at which point this code
@@ -298,6 +301,7 @@ export class Fabricator {
             }
             throw new FirebaseError("Unexpected error creating Pub/Sub topic", {
               original: err as Error,
+              status: err.status,
             });
           }
         })
@@ -316,6 +320,13 @@ export class Fabricator {
       await this.executor
         .run(async () => {
           try {
+            // eventarc.createChannel doesn't always return 409 when channel already exists.
+            // Ex. when channel exists and has active triggers the API will return 400 (bad
+            // request) with message saying something about active triggers. So instead of
+            // relying on 409 response we explicitly check for channel existence.
+            if ((await eventarc.getChannel(channel)) !== undefined) {
+              return;
+            }
             const op: { name: string } = await eventarc.createChannel({ name: channel });
             return await poller.pollOperation<eventarc.Channel>({
               ...eventarcPollerOptions,
@@ -329,25 +340,50 @@ export class Fabricator {
             }
             throw new FirebaseError("Unexpected error creating Eventarc channel", {
               original: err as Error,
+              status: err.status,
             });
           }
         })
         .catch(rethrowAs(endpoint, "upsert eventarc channel"));
     }
 
-    const resultFunction = await this.functionExecutor
-      .run(async () => {
-        const op: { name: string } = await gcfV2.createFunction(apiFunction);
-        return await poller.pollOperation<gcfV2.CloudFunction>({
-          ...gcfV2PollerOptions,
-          pollerName: `create-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
-          operationResourceName: op.name,
+    let resultFunction: gcfV2.OutputCloudFunction | null = null;
+    while (!resultFunction) {
+      resultFunction = await this.functionExecutor
+        .run(async () => {
+          const op: { name: string } = await gcfV2.createFunction(apiFunction);
+          return await poller.pollOperation<gcfV2.OutputCloudFunction>({
+            ...gcfV2PollerOptions,
+            pollerName: `create-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+            operationResourceName: op.name,
+          });
+        })
+        .catch(async (err: any) => {
+          // If the createFunction call returns RPC error code RESOURCE_EXHAUSTED (8),
+          // we have exhausted the underlying Cloud Run API quota. To retry, we need to
+          // first delete the GCF function resource, then call createFunction again.
+          if (err.code === CLOUD_RUN_RESOURCE_EXHAUSTED_CODE) {
+            // we have to delete the broken function before we can re-create it
+            await this.deleteV2Function(endpoint);
+            return null;
+          } else {
+            logger.error((err as Error).message);
+            throw new reporter.DeploymentError(endpoint, "create", err);
+          }
         });
-      })
-      .catch(rethrowAs(endpoint, "create"));
+    }
 
-    endpoint.uri = resultFunction.serviceConfig.uri;
-    const serviceName = resultFunction.serviceConfig.service!;
+    endpoint.uri = resultFunction.serviceConfig?.uri;
+    const serviceName = resultFunction.serviceConfig?.service;
+    endpoint.runServiceId = utils.last(serviceName?.split("/"));
+    if (!serviceName) {
+      logger.debug("Result function unexpectedly didn't have a service name.");
+      utils.logLabeledWarning(
+        "functions",
+        "Updated function is not associated with a service. This deployment is in an unexpected state - please re-deploy your functions."
+      );
+      return;
+    }
     if (backend.isHttpsTriggered(endpoint)) {
       const invoker = endpoint.httpsTrigger.invoker || ["public"];
       if (!invoker.includes("private")) {
@@ -385,26 +421,6 @@ export class Fabricator {
         .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
         .catch(rethrowAs(endpoint, "set invoker"));
     }
-
-    const mem = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
-
-    // "CustomCPU" here means "not the CPU that GCF gives us". GCF automatically
-    // sets the CPU for a Run service based on the RAM settings. The value GCF
-    // uses is memoryToGen1Cpu.
-    const hasCustomCPU = endpoint.cpu !== backend.memoryToGen1Cpu(mem);
-    // I don't love editing an input in this function, but the code gets ugly
-    // otherwise. It's nice to not resolve concurrency in the prepare stage
-    // because it helps us know whether we should call setRunTraits on update.
-    if (!endpoint.concurrency) {
-      endpoint.concurrency =
-        (endpoint.cpu as number) >= backend.MIN_CPU_FOR_CONCURRENCY
-          ? backend.DEFAULT_CONCURRENCY
-          : 1;
-    }
-    const hasConcurrency = endpoint.concurrency !== 1;
-    if (hasCustomCPU || hasConcurrency) {
-      await this.setRunTraits(serviceName, endpoint);
-    }
   }
 
   async updateV1Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
@@ -426,7 +442,7 @@ export class Fabricator {
           onPoll: scraper.poller,
         });
       })
-      .catch(rethrowAs(endpoint, "update"));
+      .catch(rethrowAs<gcf.CloudFunction>(endpoint, "update"));
 
     endpoint.uri = resultFunction?.httpsTrigger?.url;
     let invoker: string[] | undefined;
@@ -448,12 +464,12 @@ export class Fabricator {
   }
 
   async updateV2Function(endpoint: backend.Endpoint): Promise<void> {
-    const storage = this.sources[endpoint.codebase!]?.storage;
-    if (!storage) {
+    const storageSource = this.sources[endpoint.codebase!]?.storage;
+    if (!storageSource) {
       logger.debug("Precondition failed. Cannot update a GCFv2 function without storage");
       throw new Error("Precondition failed");
     }
-    const apiFunction = gcfV2.functionFromEndpoint(endpoint, storage);
+    const apiFunction = gcfV2.functionFromEndpoint({ ...endpoint, source: { storageSource } });
 
     // N.B. As of GCFv2 private preview the API chokes on any update call that
     // includes the pub/sub topic even if that topic is unchanged.
@@ -464,18 +480,30 @@ export class Fabricator {
     }
 
     const resultFunction = await this.functionExecutor
-      .run(async () => {
-        const op: { name: string } = await gcfV2.updateFunction(apiFunction);
-        return await poller.pollOperation<gcfV2.CloudFunction>({
-          ...gcfV2PollerOptions,
-          pollerName: `update-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
-          operationResourceName: op.name,
-        });
-      })
-      .catch(rethrowAs(endpoint, "update"));
+      .run(
+        async () => {
+          const op: { name: string } = await gcfV2.updateFunction(apiFunction);
+          return await poller.pollOperation<gcfV2.OutputCloudFunction>({
+            ...gcfV2PollerOptions,
+            pollerName: `update-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+            operationResourceName: op.name,
+          });
+        },
+        { retryCodes: [...DEFAULT_RETRY_CODES, CLOUD_RUN_RESOURCE_EXHAUSTED_CODE] }
+      )
+      .catch(rethrowAs<gcfV2.OutputCloudFunction>(endpoint, "update"));
 
-    endpoint.uri = resultFunction.serviceConfig.uri;
-    const serviceName = resultFunction.serviceConfig.service!;
+    endpoint.uri = resultFunction.serviceConfig?.uri;
+    const serviceName = resultFunction.serviceConfig?.service;
+    endpoint.runServiceId = utils.last(serviceName?.split("/"));
+    if (!serviceName) {
+      logger.debug("Result function unexpectedly didn't have a service name.");
+      utils.logLabeledWarning(
+        "functions",
+        "Updated function is not associated with a service. This deployment is in an unexpected state - please re-deploy your functions."
+      );
+      return;
+    }
     let invoker: string[] | undefined;
     if (backend.isHttpsTriggered(endpoint)) {
       invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
@@ -494,26 +522,6 @@ export class Fabricator {
       await this.executor
         .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!))
         .catch(rethrowAs(endpoint, "set invoker"));
-    }
-
-    // Ideally we'd avoid a read of the Cloud Run service. We need to read if we
-    // believe a setting (CPU or concurrency) has changed because the user
-    // changed their mind or if GCF has stamped over the user's choice (we're
-    // using custom VM shapes).
-    const hasCustomCPU =
-      endpoint.cpu !==
-      backend.memoryToGen1Cpu(endpoint.availableMemoryMb || backend.DEFAULT_MEMORY);
-    const explicitConcurrency = endpoint.concurrency !== undefined;
-    if (hasCustomCPU || explicitConcurrency) {
-      // GCF may have stamped over the CPU to be <1 which would reset concurrency.
-      // We may have to reapply defaults.
-      if (endpoint.concurrency === undefined) {
-        endpoint.concurrency =
-          (endpoint.cpu as number) < backend.MIN_CPU_FOR_CONCURRENCY
-            ? 1
-            : backend.DEFAULT_CONCURRENCY;
-      }
-      await this.setRunTraits(serviceName, endpoint);
     }
   }
 
@@ -535,15 +543,18 @@ export class Fabricator {
   async deleteV2Function(endpoint: backend.Endpoint): Promise<void> {
     const fnName = backend.functionName(endpoint);
     await this.functionExecutor
-      .run(async () => {
-        const op: { name: string } = await gcfV2.deleteFunction(fnName);
-        const pollerOptions = {
-          ...gcfV2PollerOptions,
-          pollerName: `delete-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
-          operationResourceName: op.name,
-        };
-        await poller.pollOperation<void>(pollerOptions);
-      })
+      .run(
+        async () => {
+          const op: { name: string } = await gcfV2.deleteFunction(fnName);
+          const pollerOptions = {
+            ...gcfV2PollerOptions,
+            pollerName: `delete-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+            operationResourceName: op.name,
+          };
+          await poller.pollOperation<void>(pollerOptions);
+        },
+        { retryCodes: [...DEFAULT_RETRY_CODES, CLOUD_RUN_RESOURCE_EXHAUSTED_CODE] }
+      )
       .catch(rethrowAs(endpoint, "delete"));
   }
 
@@ -611,8 +622,8 @@ export class Fabricator {
       await this.unregisterBlockingTrigger(endpoint);
     }
     // N.B. Like Pub/Sub topics, we don't delete Eventarc channels because we
-    // don't know if there are any subscriers or not. If we start supporting 2P
-    // channels, we might need to revist this or else the events will still get
+    // don't know if there are any subscribers or not. If we start supporting 2P
+    // channels, we might need to revisit this or else the events will still get
     // published and the customer will still get charged.
   }
 
@@ -693,8 +704,12 @@ export class Fabricator {
 
   logOpStart(op: string, endpoint: backend.Endpoint): void {
     const runtime = getHumanFriendlyRuntimeName(endpoint.runtime);
+    const platform = getHumanFriendlyPlatformName(endpoint.platform);
     const label = helper.getFunctionLabel(endpoint);
-    utils.logLabeledBullet("functions", `${op} ${runtime} function ${clc.bold(label)}...`);
+    utils.logLabeledBullet(
+      "functions",
+      `${op} ${runtime} (${platform}) function ${clc.bold(label)}...`
+    );
   }
 
   logOpSuccess(op: string, endpoint: backend.Endpoint): void {

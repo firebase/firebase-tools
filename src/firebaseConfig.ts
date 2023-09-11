@@ -6,9 +6,17 @@
 //
 
 import { RequireAtLeastOne } from "./metaprogramming";
+import type { HttpsOptions } from "firebase-functions/v2/https";
+import { IngressSetting, MemoryOption, VpcEgressSetting } from "firebase-functions/v2/options";
 
 // should be sourced from - https://github.com/firebase/firebase-tools/blob/master/src/deploy/functions/runtimes/index.ts#L15
-type CloudFunctionRuntimes = "nodejs10" | "nodejs12" | "nodejs14" | "nodejs16" | "nodejs18";
+type CloudFunctionRuntimes =
+  | "nodejs10"
+  | "nodejs12"
+  | "nodejs14"
+  | "nodejs16"
+  | "nodejs18"
+  | "nodejs20";
 
 export type Deployable = {
   predeploy?: string | string[];
@@ -27,9 +35,24 @@ type DatabaseMultiple = ({
 }> &
   Deployable)[];
 
+type FirestoreSingle = {
+  database?: string;
+  rules?: string;
+  indexes?: string;
+} & Deployable;
+
+type FirestoreMultiple = ({
+  rules?: string;
+  indexes?: string;
+} & RequireAtLeastOne<{
+  database: string;
+  target: string;
+}> &
+  Deployable)[];
+
 export type HostingSource = { glob: string } | { source: string } | { regex: string };
 
-type HostingRedirects = HostingSource & {
+export type HostingRedirects = HostingSource & {
   destination: string;
   type?: number;
 };
@@ -67,6 +90,28 @@ export type HostingHeaders = HostingSource & {
   }[];
 };
 
+// Allow only serializable options, since this is in firebase.json
+// TODO(jamesdaniels) look into allowing serialized CEL expressions, params, and regexp
+//                    and if we can build this interface automatically via Typescript silliness
+interface FrameworksBackendOptions extends HttpsOptions {
+  omit?: boolean;
+  cors?: string | boolean;
+  memory?: MemoryOption;
+  timeoutSeconds?: number;
+  minInstances?: number;
+  maxInstances?: number;
+  concurrency?: number;
+  vpcConnector?: string;
+  vpcConnectorEgressSettings?: VpcEgressSetting;
+  serviceAccount?: string;
+  ingressSettings?: IngressSetting;
+  secrets?: string[];
+  // Only allow a single region to be specified
+  region?: string;
+  // Invoker can only be public
+  invoker?: "public";
+}
+
 export type HostingBase = {
   public?: string;
   source?: string;
@@ -80,6 +125,7 @@ export type HostingBase = {
   i18n?: {
     root: string;
   };
+  frameworksBackend?: FrameworksBackendOptions;
 };
 
 export type HostingSingle = HostingBase & {
@@ -115,10 +161,7 @@ type StorageMultiple = ({
 // Full Configs
 export type DatabaseConfig = DatabaseSingle | DatabaseMultiple;
 
-export type FirestoreConfig = {
-  rules?: string;
-  indexes?: string;
-} & Deployable;
+export type FirestoreConfig = FirestoreSingle | FirestoreMultiple;
 
 export type FunctionConfig = {
   source?: string;
@@ -191,6 +234,10 @@ export type EmulatorsConfig = {
 export type ExtensionsConfig = Record<string, string>;
 
 export type FirebaseConfig = {
+  /**
+   * @TJS-format uri
+   */
+  $schema?: string;
   database?: DatabaseConfig;
   firestore?: FirestoreConfig;
   functions?: FunctionsConfig;

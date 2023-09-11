@@ -17,7 +17,6 @@ const TEST_CHANNELS_RESPONSE = {
 };
 const TEST_GET_DOMAINS_RESPONSE = {
   authorizedDomains: [
-    "my-site.firebaseapp.com",
     "localhost",
     "randomurl.com",
     "my-site--ch1-4iyrl1uo.web.app",
@@ -26,14 +25,26 @@ const TEST_GET_DOMAINS_RESPONSE = {
   ],
 };
 
-const EXPECTED_DOMAINS_RESPONSE = [
-  "my-site.firebaseapp.com",
-  "localhost",
-  "randomurl.com",
-  "my-site--ch1-4iyrl1uo.web.app",
-];
+const EXPECTED_DOMAINS_RESPONSE = ["localhost", "randomurl.com", "my-site--ch1-4iyrl1uo.web.app"];
 const PROJECT_ID = "test-project";
 const SITE = "my-site";
+
+const SITE_DOMAINS_API = `/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/domains`;
+
+// reuse domains from EXPECTED_DOMAINS_RESPONSE
+const GET_SITE_DOMAINS_BODY = EXPECTED_DOMAINS_RESPONSE.map((domain) => ({
+  site: `projects/${PROJECT_ID}/sites/${SITE}`,
+  domainName: domain,
+  updateTime: "2023-01-11T15:28:08.980038900Z",
+  provisioning: [
+    {
+      certStatus: "CERT_ACTIVE",
+      dnsStatus: "DNS_MATCH",
+      expectedIps: ["0.0.0.0"],
+    },
+  ],
+  status: "DOMAIN_ACTIVE",
+}));
 
 describe("hosting", () => {
   describe("getChannel", () => {
@@ -698,6 +709,80 @@ describe("hosting", () => {
       const res = await hostingApi.getCleanDomains(PROJECT_ID, SITE);
 
       expect(res).to.deep.equal(EXPECTED_DOMAINS_RESPONSE);
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("getSiteDomains", () => {
+    afterEach(nock.cleanAll);
+
+    it("should get the site domains", async () => {
+      nock(hostingApiOrigin).get(SITE_DOMAINS_API).reply(200, { domains: GET_SITE_DOMAINS_BODY });
+
+      const res = await hostingApi.getSiteDomains(PROJECT_ID, SITE);
+
+      expect(res).to.deep.equal(GET_SITE_DOMAINS_BODY);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should throw an error if the site doesn't exist", async () => {
+      nock(hostingApiOrigin).get(SITE_DOMAINS_API).reply(404, {});
+
+      await expect(hostingApi.getSiteDomains(PROJECT_ID, SITE)).to.eventually.be.rejectedWith(
+        FirebaseError,
+        /could not find site/
+      );
+
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should throw an error if the server returns an error", async () => {
+      nock(hostingApiOrigin).get(SITE_DOMAINS_API).reply(500, { error: "server boo-boo" });
+
+      await expect(hostingApi.getSiteDomains(PROJECT_ID, SITE)).to.eventually.be.rejectedWith(
+        FirebaseError,
+        /server boo-boo/
+      );
+
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("getAllSiteDomains", () => {
+    afterEach(nock.cleanAll);
+
+    it("should get the site domains", async () => {
+      nock(hostingApiOrigin).get(SITE_DOMAINS_API).reply(200, { domains: GET_SITE_DOMAINS_BODY });
+
+      const GET_SITE_BODY = {
+        name: `projects/${PROJECT_ID}/sites/${SITE}`,
+        defaultUrl: EXPECTED_DOMAINS_RESPONSE[0],
+        type: "DEFAULT_SITE",
+      };
+      nock(hostingApiOrigin)
+        .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`)
+        .reply(200, GET_SITE_BODY);
+
+      const allDomainsPlusWebAppAndFirebaseApp = [
+        ...EXPECTED_DOMAINS_RESPONSE,
+        `${SITE}.web.app`,
+        `${SITE}.firebaseapp.com`,
+      ];
+
+      expect(await hostingApi.getAllSiteDomains(PROJECT_ID, SITE)).to.have.members(
+        allDomainsPlusWebAppAndFirebaseApp
+      );
+    });
+
+    it("should throw an error if the site doesn't exist", async () => {
+      nock(hostingApiOrigin).get(SITE_DOMAINS_API).reply(404, {});
+      nock(hostingApiOrigin).get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`).reply(404, {});
+
+      await expect(hostingApi.getAllSiteDomains(PROJECT_ID, SITE)).to.eventually.be.rejectedWith(
+        FirebaseError,
+        /could not find site/
+      );
+
       expect(nock.isDone()).to.be.true;
     });
   });

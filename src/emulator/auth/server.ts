@@ -32,7 +32,7 @@ import {
 import { logError } from "./utils";
 import { camelCase } from "lodash";
 import { registerHandlers } from "./handlers";
-import bodyParser = require("body-parser");
+import * as bodyParser from "body-parser";
 import { URLSearchParams } from "url";
 import { decode, JwtHeader } from "jsonwebtoken";
 const apiSpec = apiSpecUntyped as OpenAPIObject;

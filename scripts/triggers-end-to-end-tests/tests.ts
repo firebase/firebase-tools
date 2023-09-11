@@ -56,13 +56,13 @@ describe("function triggers", () => {
     firestore = new Firestore({
       port: test.firestoreEmulatorPort,
       projectId: FIREBASE_PROJECT,
-      servicePath: "localhost",
+      servicePath: "127.0.0.1",
       ssl: false,
     });
 
     admin.initializeApp({
       projectId: FIREBASE_PROJECT,
-      databaseURL: `http://localhost:${test.rtdbEmulatorPort}?ns=${FIREBASE_PROJECT}`,
+      databaseURL: `http://127.0.0.1:${test.rtdbEmulatorPort}?ns=${FIREBASE_PROJECT}`,
       credential: ADMIN_CREDENTIAL,
     });
 
@@ -164,6 +164,7 @@ describe("function triggers", () => {
       expect(test.rtdbTriggerCount).to.equal(1);
       expect(test.rtdbV2TriggerCount).to.eq(1);
       expect(test.firestoreTriggerCount).to.equal(1);
+      expect(test.firestoreV2TriggerCount).to.equal(1);
       /*
        * Check for the presence of all expected documents in the firestore
        * and database emulators.

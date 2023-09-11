@@ -1,5 +1,5 @@
 {
   "name": "yarn-workspace",
   "private": true,
-  "workspaces": ["packages/functions", "packages/a"]
+  "workspaces": ["packages/functions", "packages/a-test-pkg"]
 }

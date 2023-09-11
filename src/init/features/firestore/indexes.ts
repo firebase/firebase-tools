@@ -1,13 +1,13 @@
 import * as clc from "colorette";
-import fs = require("fs");
+import * as fs from "fs";
 
 import { FirebaseError } from "../../../error";
-import iv2 = require("../../../firestore/indexes");
-import fsutils = require("../../../fsutils");
+import * as api from "../../../firestore/api";
+import * as fsutils from "../../../fsutils";
 import { prompt, promptOnce } from "../../../prompt";
 import { logger } from "../../../logger";
 
-const indexes = new iv2.FirestoreIndexes();
+const indexes = new api.FirestoreApi();
 
 const INDEXES_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../../templates/init/firestore/firestore.indexes.json",

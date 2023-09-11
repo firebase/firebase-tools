@@ -1,8 +1,15 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import * as auth from "../auth";
+import {
+  getAdditionalAccounts,
+  getAllAccounts,
+  getGlobalDefaultAccount,
+  getProjectDefaultAccount,
+  selectAccount,
+} from "../auth";
 import { configstore } from "../configstore";
+import { Account } from "../types/auth";
 
 describe("auth", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
@@ -33,13 +40,13 @@ describe("auth", () => {
 
   describe("no accounts", () => {
     it("returns no global account when config is empty", () => {
-      const account = auth.getGlobalDefaultAccount();
+      const account = getGlobalDefaultAccount();
       expect(account).to.be.undefined;
     });
   });
 
   describe("single account", () => {
-    const defaultAccount: auth.Account = {
+    const defaultAccount: Account = {
       user: {
         email: "test@test.com",
       },
@@ -54,24 +61,24 @@ describe("auth", () => {
     });
 
     it("returns global default account", () => {
-      const account = auth.getGlobalDefaultAccount();
+      const account = getGlobalDefaultAccount();
       expect(account).to.deep.equal(defaultAccount);
     });
 
     it("returns no additional accounts", () => {
-      const additional = auth.getAdditionalAccounts();
+      const additional = getAdditionalAccounts();
       expect(additional.length).to.equal(0);
     });
 
     it("returns exactly one total account", () => {
-      const all = auth.getAllAccounts();
+      const all = getAllAccounts();
       expect(all.length).to.equal(1);
       expect(all[0]).to.deep.equal(defaultAccount);
     });
   });
 
   describe("multi account", () => {
-    const defaultAccount: auth.Account = {
+    const defaultAccount: Account = {
       user: {
         email: "test@test.com",
       },
@@ -80,7 +87,7 @@ describe("auth", () => {
       },
     };
 
-    const additionalUser1: auth.Account = {
+    const additionalUser1: Account = {
       user: {
         email: "test1@test.com",
       },
@@ -89,7 +96,7 @@ describe("auth", () => {
       },
     };
 
-    const additionalUser2: auth.Account = {
+    const additionalUser2: Account = {
       user: {
         email: "test2@test.com",
       },
@@ -98,7 +105,7 @@ describe("auth", () => {
       },
     };
 
-    const additionalAccounts: auth.Account[] = [additionalUser1, additionalUser2];
+    const additionalAccounts: Account[] = [additionalUser1, additionalUser2];
 
     const activeAccounts = {
       "/path/project1": "test1@test.com",
@@ -112,32 +119,32 @@ describe("auth", () => {
     });
 
     it("returns global default account", () => {
-      const account = auth.getGlobalDefaultAccount();
+      const account = getGlobalDefaultAccount();
       expect(account).to.deep.equal(defaultAccount);
     });
 
     it("returns additional accounts", () => {
-      const additional = auth.getAdditionalAccounts();
+      const additional = getAdditionalAccounts();
       expect(additional).to.deep.equal(additionalAccounts);
     });
 
     it("returns all accounts", () => {
-      const all = auth.getAllAccounts();
+      const all = getAllAccounts();
       expect(all).to.deep.equal([defaultAccount, ...additionalAccounts]);
     });
 
     it("respects project default when present", () => {
-      const account = auth.getProjectDefaultAccount("/path/project1");
+      const account = getProjectDefaultAccount("/path/project1");
       expect(account).to.deep.equal(additionalUser1);
     });
 
     it("ignores project default when not present", () => {
-      const account = auth.getProjectDefaultAccount("/path/project2");
+      const account = getProjectDefaultAccount("/path/project2");
       expect(account).to.deep.equal(defaultAccount);
     });
 
     it("prefers account flag to project root", () => {
-      const account = auth.selectAccount("test2@test.com", "/path/project1");
+      const account = selectAccount("test2@test.com", "/path/project1");
       expect(account).to.deep.equal(additionalUser2);
     });
   });

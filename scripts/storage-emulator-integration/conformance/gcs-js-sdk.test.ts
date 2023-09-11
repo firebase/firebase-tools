@@ -330,10 +330,11 @@ describe("GCS Javascript SDK conformance tests", () => {
       });
 
       it("should list files in sub-directory (using directory)", async () => {
-        const [files, , { prefixes }] = await testBucket.getFiles({
+        const res = await testBucket.getFiles({
           autoPaginate: false,
-          directory: "testing/",
+          prefix: "testing/",
         });
+        const [files, , { prefixes }] = res;
 
         expect(prefixes).to.be.undefined;
         expect(files.map((file) => file.name)).to.deep.equal([TESTING_FILE]);

@@ -27,9 +27,9 @@ export enum UploadType {
 
 /** The status of an upload. Multipart uploads can only ever be FINISHED. */
 export enum UploadStatus {
-  ACTIVE,
-  CANCELLED,
-  FINISHED,
+  ACTIVE = "active",
+  CANCELLED = "cancelled",
+  FINISHED = "final",
 }
 
 /** Request object for {@link UploadService#mediaUpload}. */

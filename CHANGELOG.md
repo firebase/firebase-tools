@@ -1,4 +1,3 @@
-- Add sharp NPM module to Cloud Functions when using Next.js Image Optimization (#5238)
-- Adds user-defined env vars into the functions emulator (#5330).
-- Support Next.js Middleware (#5320)
-- Log the reason for a Cloud Function if needed in Next.js (#5320)
+- Released Firestore emulator v1.18.2.
+  - Removed nano precision in timestamp used in Firestore emulator (#5893)
+  - Fixed a bug where query behaves differently from production.

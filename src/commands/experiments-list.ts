@@ -1,5 +1,5 @@
 import { Command } from "../command";
-import Table = require("cli-table");
+const Table = require("cli-table");
 import * as experiments from "../experiments";
 import { partition } from "../functional";
 import { logger } from "../logger";
