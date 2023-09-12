@@ -2,3 +2,4 @@
   - Removed nano precision in timestamp used in Firestore emulator (#5893)
   - Fixed a bug where query behaves differently from production.
 - Fixed an issue where very long command outputs would be cut off. (#3286)
+- Fixed an issue where `emulators:export` does not check if the target folder is empty. (#6313)
