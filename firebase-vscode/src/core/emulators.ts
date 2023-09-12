@@ -9,17 +9,53 @@ import { ExtensionBrokerImpl } from "../extension-broker";
 
 export function registerEmulators(broker: ExtensionBrokerImpl): Disposable {
   broker.on("launchEmulators", async ({ emulatorUiSelections }) => {
-    await emulatorsStart(emulatorUiSelections);
-    broker.send("notifyRunningEmulatorInfo", {
-      uiUrl: getEmulatorUiUrl(),
-      displayInfo: listRunningEmulators(),
-    });
+    vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Window,
+        cancellable: false,
+        title: "Starting emulators",
+      },
+      async (progress) => {
+        progress.report({ increment: 0 });
+        try {
+          await emulatorsStart(emulatorUiSelections);
+          broker.send("notifyRunningEmulatorInfo", {
+            uiUrl: getEmulatorUiUrl(),
+            displayInfo: listRunningEmulators(),
+          });
+          vscode.window.showInformationMessage(
+            "Firebase Extension: Emulators started successfully"
+          );
+        } catch (e) {
+          broker.send("notifyEmulatorStartFailed");
+          vscode.window.showErrorMessage(
+            "Firebase Extension: Emulators start failed - " + e
+          );
+        }
+        progress.report({ increment: 100 });
+      }
+    );
   });
 
   broker.on("stopEmulators", async () => {
-    await stopEmulators();
-    // Update the UI
-    broker.send("notifyEmulatorsStopped");
+    vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Window,
+        cancellable: false,
+        title: "Stopping emulators",
+      },
+      async (progress) => {
+        progress.report({ increment: 0 });
+
+        await stopEmulators();
+        broker.send("notifyEmulatorsStopped");
+        vscode.window.showInformationMessage(
+          "Firebase Extension: Emulators stopped successfully"
+        );
+
+        progress.report({ increment: 100 });
+      }
+    );
   });
 
   broker.on("selectEmulatorImportFolder", async () => {
