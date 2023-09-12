@@ -202,7 +202,7 @@ export class Command {
                 ),
                 resolve
               );
-            })
+            });
           }
           const duration = Math.floor((process.uptime() - start) * 1000);
           const trackSuccess = trackGA4("command_execution", {
