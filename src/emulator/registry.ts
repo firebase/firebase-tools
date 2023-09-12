@@ -43,8 +43,16 @@ export class EmulatorRegistry {
       return;
     }
 
-    await instance.stop();
-    this.clear(instance.getName());
+    try {
+      await instance.stop();
+      this.clear(instance.getName());
+    } catch (e: any) {
+      EmulatorLogger.forEmulator(name).logLabeled(
+        "WARN",
+        name,
+        `Error stopping ${Constants.description(name)}`
+      );
+    }
   }
 
   static async stopAll(): Promise<void> {
@@ -85,15 +93,7 @@ export class EmulatorRegistry {
     });
 
     for (const name of emulatorsToStop) {
-      try {
-        await this.stop(name);
-      } catch (e: any) {
-        EmulatorLogger.forEmulator(name).logLabeled(
-          "WARN",
-          name,
-          `Error stopping ${Constants.description(name)}`
-        );
-      }
+      await this.stop(name);
     }
   }
 
