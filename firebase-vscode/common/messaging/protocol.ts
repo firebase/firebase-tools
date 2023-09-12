@@ -3,10 +3,10 @@
  * between two environments (VScode and Webview)
  */
 
-import { FirebaseConfig } from '../../../src/firebaseConfig';
+import { FirebaseConfig } from "../../../src/firebaseConfig";
 import { User } from "../../../src/types/auth";
 import { ServiceAccountUser } from "../types";
-import { RCData } from '../../../src/rc';
+import { RCData } from "../../../src/rc";
 import { EmulatorUiSelections, RunningEmulatorInfo } from "./types";
 
 export interface WebviewToExtensionParamsMap {
@@ -27,8 +27,8 @@ export interface WebviewToExtensionParamsMap {
    * TODO(hsubox76): Generalize to work for all `firebase init` products.
    */
   selectAndInitHostingFolder: {
-    projectId: string,
-    singleAppSupport: boolean
+    projectId: string;
+    singleAppSupport: boolean;
   };
 
   /**
@@ -36,42 +36,45 @@ export interface WebviewToExtensionParamsMap {
    * TODO(hsubox76): Generalize to work for all `firebase deploy` targets.
    */
   hostingDeploy: {
-    target: string
+    target: string;
   };
 
   /**
    * Prompt user for text input
    */
-  promptUserForInput: { title: string, prompt: string };
+  promptUserForInput: { title: string; prompt: string };
 
   /**
    * Show a UI message using the vscode interface
    */
-  showMessage: { msg: string, options?: {} };
+  showMessage: { msg: string; options?: {} };
 
   /**
    * Write a log to the extension logger.
    */
-  writeLog: { level: string, args: string[] };
+  writeLog: { level: string; args: string[] };
 
   /**
    * Call extension runtime to open a link (a href does not work in Monospace)
    */
   openLink: {
-    href: string
+    href: string;
   };
 
-  /** 
+  /**
    * Equivalent to the `firebase emulators:start` command.
-  */
+   */
   launchEmulators: {
-    emulatorUiSelections: EmulatorUiSelections,
+    emulatorUiSelections: EmulatorUiSelections;
   };
 
   /** Stops the emulators gracefully allowing for data export if required. */
   stopEmulators: {};
 
   selectEmulatorImportFolder: {};
+
+  /** Prompts the user to select a directory in which to place the quickstart */
+  chooseQuickstartDir: {};
 }
 
 export interface ExtensionToWebviewParamsMap {
@@ -97,26 +100,26 @@ export interface ExtensionToWebviewParamsMap {
    * and it has been written to firebase.json.
    */
   notifyHostingInitDone: {
-    success: boolean,
-    projectId: string,
-    folderPath?: string
-    framework?: string
+    success: boolean;
+    projectId: string;
+    folderPath?: string;
+    framework?: string;
   };
 
   /**
    * Notify webview of status of deployment attempt.
    */
   notifyHostingDeploy: {
-    success: boolean,
-    consoleUrl?: string,
-    hostingUrl?: string
+    success: boolean;
+    consoleUrl?: string;
+    hostingUrl?: string;
   };
 
   /**
    * Notify webview of initial discovery or change in firebase.json or
    * .firebaserc
    */
-  notifyFirebaseConfig: { firebaseJson: FirebaseConfig, firebaseRC: RCData };
+  notifyFirebaseConfig: { firebaseJson: FirebaseConfig; firebaseRC: RCData };
 
   /**
    * Return user-selected preview channel name
@@ -124,8 +127,11 @@ export interface ExtensionToWebviewParamsMap {
   notifyPreviewChannelResponse: { id: string };
 
   notifyEmulatorsStopped: {};
+  notifyEmulatorStartFailed: {};
   notifyRunningEmulatorInfo: RunningEmulatorInfo;
   notifyEmulatorImportFolder: { folder: string };
 }
 
-export type MessageParamsMap = WebviewToExtensionParamsMap | ExtensionToWebviewParamsMap;
+export type MessageParamsMap =
+  | WebviewToExtensionParamsMap
+  | ExtensionToWebviewParamsMap;

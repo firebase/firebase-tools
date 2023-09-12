@@ -1,2 +1,4 @@
-- Fixed Astro web framework bug when loading configuration for version `2.9.7` and above. (#6213)
-- Increase Next.js config bundle timeout to 60 seconds (#6214)
+- Released Firestore emulator v1.18.2.
+  - Removed nano precision in timestamp used in Firestore emulator (#5893)
+  - Fixed a bug where query behaves differently from production.
+- Fixed an issue where very long command outputs would be cut off. (#3286)
