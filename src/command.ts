@@ -200,7 +200,7 @@ export class Command {
                   null,
                   2
                 ),
-                resolve,
+                resolve
               );
             })
           }
@@ -227,9 +227,6 @@ export class Command {
           }
           process.exit();
         })
-        .then(async (result) => {
-
-        })
         .catch(async (err) => {
           if (getInheritedOption(options, "json")) {
             await new Promise((resolve) => {
@@ -242,7 +239,7 @@ export class Command {
                   null,
                   2
                 ),
-                resolve,
+                resolve
               );
             });
           }
