@@ -125,7 +125,7 @@ export class Command {
   }
 
   /**
-   * Registers the command with the client. This is used to initially set up
+   * Registers the command with the client. This is used to inisially set up
    * all the commands and wraps their functionality with analytics and error
    * handling.
    * @param client the client object (from src/index.js).
@@ -190,7 +190,7 @@ export class Command {
       runner(...args)
         .then(async (result) => {
           if (getInheritedOption(options, "json")) {
-            process.stdout.write(
+            console.log(
               JSON.stringify(
                 {
                   status: "success",
@@ -222,6 +222,7 @@ export class Command {
               ])
             );
           }
+          process.exit();
         })
         .catch(async (err) => {
           if (getInheritedOption(options, "json")) {
