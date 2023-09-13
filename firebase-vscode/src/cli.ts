@@ -29,10 +29,10 @@ import {
   cleanShutdown as stopAllEmulators,
 } from "../../src/emulator/controller";
 import { EmulatorRegistry } from "../../src/emulator/registry";
-import { EmulatorInfo, Emulators } from "../../src/emulator/types";
+import { DownloadableEmulatorDetails, EmulatorInfo, DownloadableEmulators, Emulators } from "../../src/emulator/types";
 import * as commandUtils from "../../src/emulator/commandUtils";
 import { currentUser } from "./core/user";
-
+export { Emulators };
 /**
  * Try to get a service account by calling requireAuth() without
  * providing any account info.
@@ -359,4 +359,8 @@ export function listRunningEmulators(): EmulatorInfo[] {
 export function getEmulatorUiUrl(): string | undefined {
   const url: URL = EmulatorRegistry.url(Emulators.UI);
   return url.hostname === "unknown" ? undefined : url.toString();
+}
+
+export function getEmulatorDetails(emulator: DownloadableEmulators): DownloadableEmulatorDetails {
+  return EmulatorRegistry.getDetails(emulator);
 }

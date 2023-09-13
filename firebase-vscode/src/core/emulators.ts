@@ -4,10 +4,15 @@ import {
   getEmulatorUiUrl,
   listRunningEmulators,
   stopEmulators,
+  getEmulatorDetails,
+  Emulators,
 } from "../cli";
 import { ExtensionBrokerImpl } from "../extension-broker";
 
 export function registerEmulators(broker: ExtensionBrokerImpl): Disposable {
+
+  const outputChannel = vscode.window.createOutputChannel("Firebase Emulators");
+
   broker.on("launchEmulators", async ({ emulatorUiSelections }) => {
     vscode.window.withProgress(
       {
@@ -26,6 +31,19 @@ export function registerEmulators(broker: ExtensionBrokerImpl): Disposable {
           vscode.window.showInformationMessage(
             "Firebase Extension: Emulators started successfully"
           );
+
+          // firemat trial run of logging
+          if (listRunningEmulators().filter((emulatorInfos) => { emulatorInfos.name === Emulators.FIREMAT })) {
+            const firematEmulatorDetails = getEmulatorDetails(Emulators.FIREMAT);
+
+            firematEmulatorDetails.instance.stdout?.on("data", (data) => {
+              outputChannel.appendLine("DEBUG: " + data.toString());
+            });
+            firematEmulatorDetails.instance.stderr?.on("data", (data) => {
+              outputChannel.appendLine("ERROR: " + data.toString());
+              outputChannel.show();
+            });
+          }
         } catch (e) {
           broker.send("notifyEmulatorStartFailed");
           vscode.window.showErrorMessage(

@@ -1,4 +1,4 @@
-import { ALL_EMULATORS, EmulatorInstance, Emulators, EmulatorInfo } from "./types";
+import { ALL_EMULATORS, EmulatorInstance, Emulators, EmulatorInfo, DownloadableEmulatorDetails, DownloadableEmulators } from "./types";
 import { FirebaseError } from "../error";
 import * as portUtils from "./portUtils";
 import { Constants } from "./constants";
@@ -6,7 +6,7 @@ import { EmulatorLogger } from "./emulatorLogger";
 import * as express from "express";
 import { connectableHostname } from "../utils";
 import { Client, ClientOptions } from "../apiv2";
-
+import { get as getDetails } from "./downloadableEmulators";
 /**
  * Static registry for running emulators to discover each other.
  *
@@ -133,6 +133,10 @@ export class EmulatorRegistry {
       ...info,
       host: connectableHostname(info.host),
     };
+  }
+
+  static getDetails(emulator: DownloadableEmulators): DownloadableEmulatorDetails {
+    return getDetails(emulator);
   }
 
   /**

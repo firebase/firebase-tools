@@ -160,11 +160,11 @@ export async function checkListenable(
 }
 
 /**
- * Wait for a port to be available on the given host. Checks every 250ms for up to 60s.
+ * Wait for a port to be available on the given host. Checks every 250ms for up to 5s.
  */
 export async function waitForPortUsed(port: number, host: string): Promise<void> {
-  const interval = 250;
-  const timeout = 60_000;
+  const interval = 200;
+  const timeout = 5_000;
   try {
     await tcpport.waitUntilUsedOnHost(port, host, interval, timeout);
   } catch (e: any) {
@@ -348,8 +348,7 @@ export async function resolveHostAndAssignPorts(
             emuLogger.logLabeled(
               "DEBUG",
               name,
-              `${portDescription(name)} only supports listening on one address (${
-                available[0].address
+              `${portDescription(name)} only supports listening on one address (${available[0].address
               }). Not listening on ${addrs
                 .slice(1)
                 .map((s) => s.address)
@@ -390,8 +389,8 @@ function warnPartiallyAvailablePort(
   emuLogger.logLabeled(
     "WARN",
     `Port ${port} is available on ` +
-      available.map((s) => s.address).join(",") +
-      ` but not ${unavailable.join(",")}. This may cause issues with some clients.`
+    available.map((s) => s.address).join(",") +
+    ` but not ${unavailable.join(",")}. This may cause issues with some clients.`
   );
   emuLogger.logLabeled(
     "WARN",
