@@ -13,6 +13,7 @@ import { EmulatorPanel } from "./components/EmulatorPanel";
 
 import { webLogger } from "./globals/web-logger";
 import { InitFirebasePanel } from "./components/InitPanel";
+import { QuickstartPanel } from "./components/QuickstartPanel";
 
 export function SidebarApp() {
   const [projectId, setProjectId] = useState<string | null>(null);

@@ -37,7 +37,19 @@ function wrappedSafeLoad(source: string): any {
 export async function readExtensionYaml(directory: string): Promise<ExtensionSpec> {
   const extensionYaml = await readFileFromDirectory(directory, SPEC_FILE);
   const source = extensionYaml.source;
-  return wrappedSafeLoad(source);
+  const spec = wrappedSafeLoad(source);
+  // Ensure that any omitted array fields are initialized as empty arrays
+  spec.params = spec.params ?? [];
+  spec.systemParams = spec.systemParams ?? [];
+  spec.resources = spec.resources ?? [];
+  spec.apis = spec.apis ?? [];
+  spec.roles = spec.roles ?? [];
+  spec.externalServices = spec.externalServices ?? [];
+  spec.events = spec.events ?? [];
+  spec.lifecycleEvents = spec.lifecycleEvents ?? [];
+  spec.contributors = spec.contributors ?? [];
+
+  return spec;
 }
 
 /**

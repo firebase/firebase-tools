@@ -23,12 +23,15 @@ import { listChannels } from "../../src/hosting/api";
 import { EmulatorUiSelections, ChannelWithId } from "../common/messaging/types";
 import { pluginLogger } from "./logger-wrapper";
 import { Config } from "../../src/config";
-import { currentUser } from "./workflow";
 import { setAccessToken } from "../../src/apiv2";
-import { startAll as startAllEmulators, cleanShutdown as stopAllEmulators } from "../../src/emulator/controller";
+import {
+  startAll as startAllEmulators,
+  cleanShutdown as stopAllEmulators,
+} from "../../src/emulator/controller";
 import { EmulatorRegistry } from "../../src/emulator/registry";
 import { EmulatorInfo, Emulators } from "../../src/emulator/types";
 import * as commandUtils from "../../src/emulator/commandUtils";
+import { currentUser } from "./core/user";
 
 /**
  * Try to get a service account by calling requireAuth() without
@@ -41,7 +44,7 @@ async function getServiceAccount() {
     // to requireAuth which would prevent autoAuth() from being reached.
     // We do need to send isVSCE to prevent project selection popup
     const optionsMinusUser = await getCommandOptions(undefined, {
-      ...currentOptions
+      ...currentOptions,
     });
     delete optionsMinusUser.user;
     delete optionsMinusUser.tokens;
@@ -55,12 +58,15 @@ async function getServiceAccount() {
     if (process.env.MONOSPACE_ENV) {
       // If it can't find a service account in Monospace, that's a blocking
       // error and we should throw.
-      throw new Error(`Unable to find service account. `
-        +`requireAuthError: ${errorMessage}`);
+      throw new Error(
+        `Unable to find service account. ` + `requireAuthError: ${errorMessage}`
+      );
     } else {
       // In other environments, it is common to not find a service account.
-      pluginLogger.debug(`No service account found (this may be normal), `
-        +`requireAuth error output: ${errorMessage}`);
+      pluginLogger.debug(
+        `No service account found (this may be normal), ` +
+        `requireAuth error output: ${errorMessage}`
+      );
     }
     return null;
   }
@@ -69,13 +75,16 @@ async function getServiceAccount() {
     // the metadata server doesn't currently return the credentials
     // for the workspace service account. Remove when Monospace is
     // updated to return credentials through the metadata server.
-    pluginLogger.debug(`Using WORKSPACE_SERVICE_ACCOUNT_EMAIL env `
-      + `variable to get service account email: `
-      + `${process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL}`);
+    pluginLogger.debug(
+      `Using WORKSPACE_SERVICE_ACCOUNT_EMAIL env ` +
+      `variable to get service account email: ` +
+      `${process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL}`
+    );
     return process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL;
   }
-  pluginLogger.debug(`Got service account email through credentials:`
-    + ` ${email}`);
+  pluginLogger.debug(
+    `Got service account email through credentials:` + ` ${email}`
+  );
   return email;
 }
 
@@ -87,20 +96,20 @@ async function getServiceAccount() {
 async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
   // Try to get global default from configstore. For some reason this is
   // often overwritten when restarting the extension.
-  pluginLogger.debug('requireAuthWrapper');
+  pluginLogger.debug("requireAuthWrapper");
   let account = getGlobalDefaultAccount();
   if (!account) {
     // If nothing in configstore top level, grab the first "additionalAccount"
     const accounts = getAllAccounts();
     for (const additionalAccount of accounts) {
-      if (additionalAccount.user.email === currentUser.email) {
+      if (additionalAccount.user.email === currentUser.value.email) {
         account = additionalAccount;
         setGlobalDefaultAccount(account);
       }
     }
   }
   const commandOptions = await getCommandOptions(undefined, {
-    ...currentOptions
+    ...currentOptions,
   });
   // `requireAuth()` is not just a check, but will also register SERVICE
   // ACCOUNT tokens in memory as a variable in apiv2.ts, which is needed
@@ -110,7 +119,10 @@ async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
   try {
     const serviceAccountEmail = await getServiceAccount();
     // Priority 1: Service account exists and is the current selected user
-    if (serviceAccountEmail && currentUser.email === serviceAccountEmail) {
+    if (
+      serviceAccountEmail &&
+      currentUser.value.email === serviceAccountEmail
+    ) {
       // requireAuth should have been run and apiv2 token should be stored
       // already due to getServiceAccount() call above.
       return true;
@@ -128,14 +140,16 @@ async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
       // requireAuth was already run as part of getServiceAccount() above
       return true;
     }
-    pluginLogger.debug('No user found (this may be normal)');
+    pluginLogger.debug("No user found (this may be normal)");
     return false;
   } catch (e) {
     if (showError) {
       // Show error to user - show a popup and log it with log level
       // "error". Usually set on user-triggered actions such as
       // init hosting and deploy.
-      pluginLogger.error(`requireAuth error: ${e.original?.message || e.message}`);
+      pluginLogger.error(
+        `requireAuth error: ${e.original?.message || e.message}`
+      );
       vscode.window.showErrorMessage("Not logged in", {
         modal: true,
         detail: `Log in by clicking "Sign in with Google" in the sidebar.`,
@@ -143,8 +157,10 @@ async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
     } else {
       // User shouldn't need to see this error - not actionable,
       // but we should log it for debugging purposes.
-      pluginLogger.debug('requireAuth error output: ',
-        e.original?.message || e.message);
+      pluginLogger.debug(
+        "requireAuth error output: ",
+        e.original?.message || e.message
+      );
     }
     return false;
   }
@@ -165,7 +181,9 @@ export async function getAccounts(): Promise<Array<Account | ServiceAccount>> {
   return accounts;
 }
 
-export async function getChannels(firebaseJSON: Config): Promise<ChannelWithId[]> {
+export async function getChannels(
+  firebaseJSON: Config
+): Promise<ChannelWithId[]> {
   if (!firebaseJSON) {
     return [];
   }
@@ -180,16 +198,17 @@ export async function getChannels(firebaseJSON: Config): Promise<ChannelWithId[]
   try {
     const site = await getDefaultHostingSite(options);
     pluginLogger.debug(
-      'Calling listChannels with params',
+      "Calling listChannels with params",
       options.project,
       site
     );
     const channels = await listChannels(options.project, site);
-    return channels.map(channel => ({
-      ...channel, id: channel.name.split("/").pop()
+    return channels.map((channel) => ({
+      ...channel,
+      id: channel.name.split("/").pop(),
     }));
   } catch (e) {
-    pluginLogger.error('Error in getChannels()', e);
+    pluginLogger.error("Error in getChannels()", e);
     vscode.window.showErrorMessage("Error finding hosting channels", {
       modal: true,
       detail: `Error finding hosting channels: ${e}`,
@@ -219,22 +238,24 @@ export async function listProjects() {
   return listFirebaseProjects();
 }
 
-export async function initHosting(
-  options: { spa: boolean; public?: string, useFrameworks: boolean }
-): Promise<boolean> {
+export async function initHosting(options: {
+  spa: boolean;
+  public?: string;
+  useFrameworks: boolean;
+}): Promise<boolean> {
   const loggedIn = await requireAuthWrapper(true);
   if (!loggedIn) {
-    pluginLogger.error('No user found, canceling hosting init');
+    pluginLogger.error("No user found, canceling hosting init");
     return false;
   }
   let webFrameworksOptions = {};
   if (options.useFrameworks) {
-    pluginLogger.debug('Setting web frameworks options');
+    pluginLogger.debug("Setting web frameworks options");
     webFrameworksOptions = {
       // Should use auto-discovered framework
       useDiscoveredFramework: true,
       // Should set up a new framework - do not do this on Monospace
-      useWebFrameworks: false
+      useWebFrameworks: false,
     };
   }
   const commandOptions = await getCommandOptions(undefined, currentOptions);
@@ -243,13 +264,16 @@ export async function initHosting(
     ...options,
     ...webFrameworksOptions,
     // False for now, we can let the user decide if needed
-    github: false
+    github: false,
   };
-  pluginLogger.debug('Calling hosting init with inquirer options', inspect(inquirerOptions));
+  pluginLogger.debug(
+    "Calling hosting init with inquirer options",
+    inspect(inquirerOptions)
+  );
   setInquirerOptions(inquirerOptions);
   try {
     await initAction("hosting", commandOptions);
-  } catch(e) {
+  } catch (e) {
     pluginLogger.error(e.message);
     return false;
   }
@@ -261,7 +285,7 @@ export async function deployToHosting(
   deployTarget: string
 ) {
   if (!(await requireAuthWrapper(true))) {
-    pluginLogger.error('No user found, canceling deployment');
+    pluginLogger.error("No user found, canceling deployment");
     return { success: false, hostingUrl: "", consoleUrl: "" };
   }
 
@@ -269,17 +293,29 @@ export async function deployToHosting(
   try {
     const options = { ...currentOptions };
     // TODO(hsubox76): handle multiple hosting configs
-    pluginLogger.debug('Calling getDefaultHostingSite() with options', inspect(options));
-    firebaseJSON.set('hosting', { ...firebaseJSON.get('hosting'), site: await getDefaultHostingSite(options) });
-    pluginLogger.debug('Calling getCommandOptions() with options', inspect(options));
+    pluginLogger.debug(
+      "Calling getDefaultHostingSite() with options",
+      inspect(options)
+    );
+    firebaseJSON.set("hosting", {
+      ...firebaseJSON.get("hosting"),
+      site: await getDefaultHostingSite(options),
+    });
+    pluginLogger.debug(
+      "Calling getCommandOptions() with options",
+      inspect(options)
+    );
     const commandOptions = await getCommandOptions(firebaseJSON, options);
-    pluginLogger.debug('Calling hosting deploy with command options', inspect(commandOptions));
-    if (deployTarget === 'live') {
+    pluginLogger.debug(
+      "Calling hosting deploy with command options",
+      inspect(commandOptions)
+    );
+    if (deployTarget === "live") {
       await deploy(["hosting"], commandOptions);
     } else {
       await hostingChannelDeployAction(deployTarget, commandOptions);
     }
-    pluginLogger.debug('Hosting deploy complete');
+    pluginLogger.debug("Hosting deploy complete");
   } catch (e) {
     let message = `Error deploying to hosting`;
     if (e.message) {

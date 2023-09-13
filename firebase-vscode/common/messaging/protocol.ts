@@ -76,6 +76,9 @@ export interface WebviewToExtensionParamsMap {
   definedFirematArgs: { args: {} };
 
   notifyFirematEmulatorEndpoint: { endpoint: string };
+
+  /** Prompts the user to select a directory in which to place the quickstart */
+  chooseQuickstartDir: {};
 }
 
 export interface ExtensionToWebviewParamsMap {
@@ -128,6 +131,7 @@ export interface ExtensionToWebviewParamsMap {
   notifyPreviewChannelResponse: { id: string };
 
   notifyEmulatorsStopped: {};
+  notifyEmulatorStartFailed: {};
   notifyRunningEmulatorInfo: RunningEmulatorInfo;
   notifyEmulatorImportFolder: { folder: string };
 

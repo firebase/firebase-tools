@@ -143,11 +143,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
   private hasValidSource(args: { path: string; extTarget: string }): boolean {
     // TODO(lihes): Source code can technically exist in other than "functions" dir.
     // https://source.corp.google.com/piper///depot/google3/firebase/mods/go/worker/fetch_mod_source.go;l=451
-    const requiredFiles = [
-      "./extension.yaml",
-      "./functions/package.json",
-      "./functions/node_modules",
-    ];
+    const requiredFiles = ["./extension.yaml", "./functions/package.json"];
     // If the directory isn't found, no need to check for files or print errors.
     if (!fs.existsSync(args.path)) {
       return false;
@@ -226,10 +222,12 @@ export class ExtensionsEmulator implements EmulatorInstance {
     instance: planner.DeploymentInstanceSpec
   ): Promise<EmulatableBackend> {
     const extensionDir = await this.ensureSourceCode(instance);
+
     // TODO: This should find package.json, then use that as functionsDir.
     const functionsDir = path.join(extensionDir, "functions");
     // TODO(b/213335255): For local extensions, this should include extensionSpec instead of extensionVersion
     const env = Object.assign(this.autoPopulatedParams(instance), instance.params);
+
     const { extensionTriggers, runtime, nonSecretEnv, secretEnvVariables } =
       await getExtensionFunctionInfo(instance, env);
     const emulatableBackend: EmulatableBackend = {
@@ -248,6 +246,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
     } else if (instance.localPath) {
       emulatableBackend.extensionSpec = await planner.getExtensionSpec(instance);
     }
+
     return emulatableBackend;
   }
 

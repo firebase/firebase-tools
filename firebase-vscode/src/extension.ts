@@ -6,36 +6,33 @@ import {
   ExtensionToWebviewParamsMap,
   WebviewToExtensionParamsMap,
 } from "../common/messaging/protocol";
-import { setupWorkflow } from "./workflow";
-import { pluginLogger } from "./logger-wrapper";
+import { logSetup, pluginLogger } from "./logger-wrapper";
 import { registerWebview } from "./webview";
+import { registerCore } from "./core";
+import { getSettings } from "./utils/settings";
+import { registerHosting } from "./hosting";
 import { registerFiremat } from "./firemat";
-import { onShutdown } from "./workflow";
-
-const broker = createBroker<
-  ExtensionToWebviewParamsMap,
-  WebviewToExtensionParamsMap,
-  vscode.Webview
->(new ExtensionBroker());
 
 // This method is called when your extension is activated
 export function activate(context: vscode.ExtensionContext) {
+  const settings = getSettings();
+  logSetup(settings);
   pluginLogger.debug("Activating Firebase extension.");
 
-  setupWorkflow(context, broker);
+  const broker = createBroker<
+    ExtensionToWebviewParamsMap,
+    WebviewToExtensionParamsMap,
+    vscode.Webview
+  >(new ExtensionBroker());
 
   context.subscriptions.push(
+    registerCore({ broker, context }),
     registerWebview({
       name: "sidebar",
       broker,
       context,
     }),
-    registerFiremat(context, broker)
+    registerHosting(broker),
+    registerFiremat(context, broker),
   );
-}
-
-// This method is called when the extension is deactivated
-export async function deactivate() {
-  // This await is optimistic but it might wait for a moment longer while we run cleanup activities
-  await onShutdown();
 }

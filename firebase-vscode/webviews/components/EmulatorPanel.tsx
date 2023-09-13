@@ -73,6 +73,11 @@ export function EmulatorPanel({
     setRunningEmulatorInfo(null);
   });
 
+  broker.on("notifyEmulatorStartFailed", () => {
+    setShowEmulatorProgressIndicator(false);
+    webLogger.debug(`notifyEmulatorStartFailed received in sidebar`);
+  });
+
   broker.on("notifyRunningEmulatorInfo", (info: RunningEmulatorInfo) => {
     setShowEmulatorProgressIndicator(false);
     webLogger.debug(`notifyRunningEmulatorInfo received in sidebar`);

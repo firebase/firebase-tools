@@ -160,9 +160,9 @@ export async function checkListenable(
 }
 
 /**
- * Wait for a port to close on the given host. Checks every 250ms for up to 60s.
+ * Wait for a port to be available on the given host. Checks every 250ms for up to 60s.
  */
-export async function waitForPortClosed(port: number, host: string): Promise<void> {
+export async function waitForPortUsed(port: number, host: string): Promise<void> {
   const interval = 250;
   const timeout = 60_000;
   try {
