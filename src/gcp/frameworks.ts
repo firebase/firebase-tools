@@ -27,7 +27,7 @@ export interface Stack {
   uri: string;
 }
 
-export type StackOutputOnlyFields = "createTime" | "updateTime" | "uri";
+export type StackOutputOnlyFields = "name" | "createTime" | "updateTime" | "uri";
 
 export interface Build {
   name: string;
@@ -93,12 +93,12 @@ export interface ListStacksResponse {
 export async function createStack(
   projectId: string,
   location: string,
-  stackInput: Omit<Stack, StackOutputOnlyFields>
+  stackReqBoby: Omit<Stack, StackOutputOnlyFields>,
+  stackId: string
 ): Promise<Operation> {
-  const stackId = stackInput.name;
   const res = await client.post<Omit<Stack, StackOutputOnlyFields>, Operation>(
     `projects/${projectId}/locations/${location}/stacks`,
-    stackInput,
+    stackReqBoby,
     { queryParams: { stackId } }
   );
 
@@ -120,7 +120,7 @@ export async function getStack(
 }
 
 /**
- * List a all stacks present in a project and region.
+ * List all stacks present in a project and region.
  */
 export async function listStack(projectId: string, location: string): Promise<ListStacksResponse> {
   const name = `projects/${projectId}/locations/${location}/stacks/`;
@@ -142,6 +142,7 @@ export async function deleteStack(
 
   return res.body;
 }
+
 /**
  * Creates a new Build in a given project and location.
  */

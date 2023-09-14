@@ -76,15 +76,11 @@ export async function doSetup(setup: any, projectId: string): Promise<void> {
   }
 }
 
-function toStack(
-  cloudBuildConnRepo: Repository,
-  stackId: string
-): Omit<Stack, StackOutputOnlyFields> {
+function toStack(cloudBuildConnRepo: Repository): Omit<Stack, StackOutputOnlyFields> {
   return {
-    name: stackId,
     codebase: {
       repository: `${cloudBuildConnRepo.name}`,
-      rootDirectory: "src",
+      rootDirectory: "/",
     },
     mode: "prod",
     labels: {},
@@ -104,8 +100,10 @@ export async function getOrCreateStack(projectId: string, setup: any): Promise<S
       logger.info("Creating new stack.");
       if (deployMethod === "github") {
         const cloudBuildConnRepo = await repo.linkGitHubRepository(projectId, location);
-        const stackDetails = toStack(cloudBuildConnRepo, setup.frameworks.serviceName);
-        return await createStack(projectId, location, stackDetails);
+        const stackDetails = toStack(cloudBuildConnRepo);
+        console.log(stackDetails);
+        console.log(cloudBuildConnRepo);
+        return await createStack(projectId, location, stackDetails, setup.frameworks.serviceName);
       }
     } else {
       throw new FirebaseError(
@@ -157,12 +155,13 @@ async function getExistingStack(projectId: string, setup: any, location: string)
 export async function createStack(
   projectId: string,
   location: string,
-  stackInput: Omit<Stack, StackOutputOnlyFields>
+  stackReqBoby: Omit<Stack, StackOutputOnlyFields>,
+  stackId: string
 ): Promise<Stack> {
-  const op = await gcp.createStack(projectId, location, stackInput);
+  const op = await gcp.createStack(projectId, location, stackReqBoby, stackId);
   const stack = await poller.pollOperation<Stack>({
     ...frameworksPollerOptions,
-    pollerName: `create-${projectId}-${location}-${stackInput.name}`,
+    pollerName: `create-${projectId}-${location}-${stackId}`,
     operationResourceName: op.name,
   });
 

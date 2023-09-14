@@ -6,12 +6,13 @@ import * as gcp from "../gcp/frameworks";
 import { ListStacksResponse } from "../gcp/frameworks";
 
 export const command = new Command("stacks:list")
+  .description("List stacks for you Firebase project.")
   .option("-l, --location <location>", "Stack backend location", "us-central1")
-  .description("list stacks for a project")
   .before(requireInteractive)
   .action(async (options: Options) => {
     const projectId = needProjectId(options);
     const location = options.location as string;
-    const resp: ListStacksResponse = await gcp.listStack(projectId, location);
-    console.log(resp);
+    const stacks: ListStacksResponse = await gcp.listStack(projectId, location);
+    console.log(stacks);
+    return stacks;
   });

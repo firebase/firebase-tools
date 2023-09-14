@@ -46,8 +46,7 @@ describe("composer", () => {
   describe("connect GitHub repo", () => {
     const projectId = "projectId";
     const location = "us-central1";
-    const stackId = "stack0";
-    const connectionId = `composer-${stackId}-conn`;
+    const connectionId = `frameworks-${location}`;
 
     const op = {
       name: `projects/${projectId}/locations/${location}/connections/${connectionId}`,
@@ -119,7 +118,7 @@ describe("composer", () => {
         projectId,
         location,
         connectionId,
-        "composer-repo",
+        "test-repo0",
         repos.repositories[0].remoteUri
       );
     });

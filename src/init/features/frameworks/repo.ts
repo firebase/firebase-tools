@@ -27,15 +27,19 @@ function extractRepoSlugFromURI(remoteUri: string): string | undefined {
 
 /**
  * Generates a repository ID.
- * N.B. The deterministic nature of the repository ID implies that each
- * Cloud Build Connection will have one Cloud Build Repo child resource.
- * The current implementation is subject to change in the event that
- * the 1:1 Connection-to-Resource relationship no longer holds.
+ * The relation is 1:* between Cloud Build Connection and Github Repositories.
  */
 function generateRepositoryId(remoteUri: string): string | undefined {
   return extractRepoSlugFromURI(remoteUri)?.replaceAll("/", "-");
 }
 
+/**
+ * The 'frameworks-' is prefixed, to seperate the Cloud Build connections created from
+ * AppHosting platforms with rest of manually created Cloud Build connections.
+ *
+ * The reason suffix 'location' is because of
+ * 1:1 relation between location and Cloud Build connection.
+ */
 function generateConnectionId(location: string): string {
   return `frameworks-${location}`;
 }
