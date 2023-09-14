@@ -6,7 +6,7 @@ import * as gcp from "../gcp/frameworks";
 import { Stack } from "../gcp/frameworks";
 
 export const command = new Command("stacks:get")
-  .description("Get stack details of your Firebase project")
+  .description("Get stack details of a Firebase project")
   .option("-l, --location <location>", "Stack backend location", "us-central1")
   .option("--stack, --stackId <stackId>", "Id for the stack", "")
   .before(requireInteractive)
@@ -15,6 +15,6 @@ export const command = new Command("stacks:get")
     const location = options.location as string;
     const stackId = options.stackId as string;
     const stack: Stack = await gcp.getStack(projectId, location, stackId);
-    console.log(stack);
+
     return stack;
   });

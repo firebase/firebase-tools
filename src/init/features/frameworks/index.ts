@@ -82,7 +82,6 @@ function toStack(cloudBuildConnRepo: Repository): Omit<Stack, StackOutputOnlyFie
       repository: `${cloudBuildConnRepo.name}`,
       rootDirectory: "/",
     },
-    mode: "prod",
     labels: {},
   };
 }
@@ -101,8 +100,6 @@ export async function getOrCreateStack(projectId: string, setup: any): Promise<S
       if (deployMethod === "github") {
         const cloudBuildConnRepo = await repo.linkGitHubRepository(projectId, location);
         const stackDetails = toStack(cloudBuildConnRepo);
-        console.log(stackDetails);
-        console.log(cloudBuildConnRepo);
         return await createStack(projectId, location, stackDetails, setup.frameworks.serviceName);
       }
     } else {

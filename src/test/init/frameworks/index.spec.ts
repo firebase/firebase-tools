@@ -64,7 +64,6 @@ describe("operationsConverter", () => {
         repository: cloudBuildConnRepo.name,
         rootDirectory: "/",
       },
-      mode: "prod",
       labels: {},
     };
     it("should createStack", async () => {

@@ -83,8 +83,6 @@ export interface Operation {
 
 export interface ListStacksResponse {
   stacks: Stack[];
-  nextPageToken: string;
-  unreachable: string[];
 }
 
 /**

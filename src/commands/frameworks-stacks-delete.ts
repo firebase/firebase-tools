@@ -5,7 +5,7 @@ import requireInteractive from "../requireInteractive";
 import * as gcp from "../gcp/frameworks";
 
 export const command = new Command("stacks:delete")
-  .description("Delete a stack from your Firebase project")
+  .description("Delete a stack from a Firebase project")
   .option("-l, --location <location>", "Stack backend location", "us-central1")
   .option("-stack, --stackId <stackId>", "Stack backend location", "")
   .before(requireInteractive)
