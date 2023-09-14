@@ -348,7 +348,8 @@ export async function resolveHostAndAssignPorts(
             emuLogger.logLabeled(
               "DEBUG",
               name,
-              `${portDescription(name)} only supports listening on one address (${available[0].address
+              `${portDescription(name)} only supports listening on one address (${
+                available[0].address
               }). Not listening on ${addrs
                 .slice(1)
                 .map((s) => s.address)
@@ -389,8 +390,8 @@ function warnPartiallyAvailablePort(
   emuLogger.logLabeled(
     "WARN",
     `Port ${port} is available on ` +
-    available.map((s) => s.address).join(",") +
-    ` but not ${unavailable.join(",")}. This may cause issues with some clients.`
+      available.map((s) => s.address).join(",") +
+      ` but not ${unavailable.join(",")}. This may cause issues with some clients.`
   );
   emuLogger.logLabeled(
     "WARN",
