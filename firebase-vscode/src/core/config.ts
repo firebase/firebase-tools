@@ -18,21 +18,26 @@ export function registerConfig(broker: ExtensionBrokerImpl): Disposable {
   firebaseRC.value = readRC();
   firebaseConfig.value = readConfig();
 
-  effect(() => {
+  const notifyFirebaseConfig = () =>
     broker.send("notifyFirebaseConfig", {
       firebaseJson: firebaseConfig.value.data,
       firebaseRC: firebaseRC.value.data,
     });
+
+  broker.on("getInitialData", () => {
+    notifyFirebaseConfig();
   });
 
   const rcWatcher = createWatcher(".firebaserc");
   rcWatcher.onDidChange(() => {
     firebaseRC.value = readRC();
+    notifyFirebaseConfig();
   });
 
   const jsonWatcher = createWatcher("firebase.json");
   jsonWatcher.onDidChange(() => {
     firebaseConfig.value = readConfig();
+    notifyFirebaseConfig();
   });
 
   return {
