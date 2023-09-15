@@ -33,9 +33,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
     expectedChecksum: "2fd771101c0e1f7898c04c9204f2ce63",
   },
   firestore: {
-    version: "1.18.1",
-    expectedSize: 64866257,
-    expectedChecksum: "743211a3e33217fe71dc20aff1fa26a5",
+    version: "1.18.2",
+    expectedSize: 63929486,
+    expectedChecksum: "7b066cd684baf9bcd4a56a258be344a5",
   },
   storage: {
     version: "1.1.3",
@@ -457,7 +457,9 @@ export async function stop(targetName: DownloadableEmulators): Promise<void> {
   const emulator = get(targetName);
   return new Promise((resolve, reject) => {
     const logger = EmulatorLogger.forEmulator(emulator.name);
-    if (emulator.instance) {
+
+    // kill(0) does not end the process, it just checks for existence. See https://man7.org/linux/man-pages/man2/kill.2.html#:~:text=If%20sig%20is%200%2C%20
+    if (emulator.instance && emulator.instance.kill(0)) {
       const killTimeout = setTimeout(() => {
         const pid = emulator.instance ? emulator.instance.pid : -1;
         const errorMsg =
@@ -465,7 +467,6 @@ export async function stop(targetName: DownloadableEmulators): Promise<void> {
         logger.log("DEBUG", errorMsg);
         reject(new FirebaseError(emulator.name + ": " + errorMsg));
       }, EMULATOR_INSTANCE_KILL_TIMEOUT);
-
       emulator.instance.once("exit", () => {
         clearTimeout(killTimeout);
         resolve();
