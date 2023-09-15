@@ -1,1 +1,1 @@
-- Fixed an issue where `emulators:export` does not check if the target folder is empty. (#6313)
+- Fixed an issue where `emulators:export` did not check if the target folder is empty. (#6313)
