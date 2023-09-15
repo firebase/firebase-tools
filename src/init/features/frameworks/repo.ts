@@ -35,7 +35,7 @@ function generateRepositoryId(remoteUri: string): string | undefined {
 
 /**
  * The 'frameworks-' is prefixed, to seperate the Cloud Build connections created from
- * AppHosting platforms with rest of manually created Cloud Build connections.
+ * Frameworks platforms with rest of manually created Cloud Build connections.
  *
  * The reason suffix 'location' is because of
  * 1:1 relation between location and Cloud Build connection.
