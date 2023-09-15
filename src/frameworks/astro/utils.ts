@@ -1,6 +1,6 @@
 import { dirname, join, relative } from "path";
-import { gte } from "semver";
 import { findDependency } from "../utils";
+import { gte } from "semver";
 
 const { dynamicImport } = require(true && "../../dynamicImport");
 
