@@ -324,7 +324,7 @@ export async function createFunction(cloudFunction: InputCloudFunction): Promise
   cloudFunction.serviceConfig.environmentVariables = {
     ...cloudFunction.serviceConfig.environmentVariables,
     FUNCTION_TARGET: functionId,
-  }
+  };
 
   try {
     const res = await client.post<typeof cloudFunction, Operation>(
