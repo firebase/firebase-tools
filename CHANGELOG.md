@@ -1,1 +1,2 @@
 - Improve performance and reliability when deploying multiple 2nd gen functions using single builds. (#6376)
+- Fix "Could not find the next executable" on Next.js deployments (#6372)
