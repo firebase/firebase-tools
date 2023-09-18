@@ -25,6 +25,7 @@ import { BUILD_TARGET_PURPOSE, RequestHandler } from "./interfaces";
 const { dynamicImport } = require(true && "../dynamicImport");
 
 const NPM_ROOT_TIMEOUT_MILLIES = 5_000;
+const NPM_ROOT_MEMO = new Map<string, string>();
 
 /**
  * Whether the given string starts with http:// or https://
@@ -222,9 +223,19 @@ function scanDependencyTree(searchingFor: string, dependencies = {}): any {
 }
 
 export function getNpmRoot(cwd: string) {
-  return spawnSync("npm", ["root"], { cwd, timeout: NPM_ROOT_TIMEOUT_MILLIES })
+  let npmRoot = NPM_ROOT_MEMO.get(cwd);
+  if (npmRoot) return npmRoot;
+
+  npmRoot = spawnSync("npm", ["root"], {
+    cwd,
+    timeout: NPM_ROOT_TIMEOUT_MILLIES,
+  })
     .stdout?.toString()
     .trim();
+
+  NPM_ROOT_MEMO.set(cwd, npmRoot);
+
+  return npmRoot;
 }
 
 export function getNodeModuleBin(name: string, cwd: string) {
