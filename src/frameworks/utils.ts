@@ -24,7 +24,7 @@ import { BUILD_TARGET_PURPOSE, RequestHandler } from "./interfaces";
 // the import statement into a require
 const { dynamicImport } = require(true && "../dynamicImport");
 
-const NPM_ROOT_TIMEOUT_MILLIES = 2_000;
+const NPM_ROOT_TIMEOUT_MILLIES = 5_000;
 
 /**
  * Whether the given string starts with http:// or https://
