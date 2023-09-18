@@ -1,0 +1,1 @@
+- Fix "Could not find the next executable" on Next.js deployments (#6372)
