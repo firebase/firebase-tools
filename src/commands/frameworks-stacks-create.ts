@@ -9,5 +9,5 @@ export const command = new Command("stacks:create")
   .before(requireInteractive)
   .action(async (options: Options) => {
     const projectId = needProjectId(options);
-    await doSetup({}, projectId);
+    await doSetup(options, projectId);
   });
