@@ -10,29 +10,34 @@ import { FirebaseConfig } from "../../../src/firebaseConfig";
 import { RC, RCData } from "../../../src/rc";
 import { Config } from "../../../src/config";
 
-export const firebaseRC = signal<RCData | undefined>(undefined);
+export const firebaseRC = signal<RC | undefined>(undefined);
 
-export const firebaseJSON = signal<FirebaseConfig | undefined>(undefined);
+export const firebaseConfig = signal<Config | undefined>(undefined);
 
 export function registerConfig(broker: ExtensionBrokerImpl): Disposable {
   firebaseRC.value = readRC();
-  firebaseJSON.value = readJSON();
+  firebaseConfig.value = readConfig();
 
-  effect(() => {
+  const notifyFirebaseConfig = () =>
     broker.send("notifyFirebaseConfig", {
-      firebaseJson: firebaseJSON.value,
-      firebaseRC: firebaseRC.value,
+      firebaseJson: firebaseConfig.value.data,
+      firebaseRC: firebaseRC.value.data,
     });
+
+  broker.on("getInitialData", () => {
+    notifyFirebaseConfig();
   });
 
   const rcWatcher = createWatcher(".firebaserc");
   rcWatcher.onDidChange(() => {
     firebaseRC.value = readRC();
+    notifyFirebaseConfig();
   });
 
   const jsonWatcher = createWatcher("firebase.json");
   jsonWatcher.onDidChange(() => {
-    firebaseJSON.value = readJSON();
+    firebaseConfig.value = readConfig();
+    notifyFirebaseConfig();
   });
 
   return {
@@ -48,20 +53,20 @@ function readRC() {
   try {
     const rc = RC.loadFile(path.join(configPath, ".firebaserc"));
     // RC.loadFile doesn't throw if not found, it just returns an empty object
-    return isEmpty(rc.data) ? undefined : rc.data;
+    return isEmpty(rc.data) ? undefined : rc;
   } catch (e) {
     pluginLogger.error(e.message);
     throw e;
   }
 }
 
-function readJSON() {
+function readConfig() {
   const configPath = getConfigPath();
   try {
     const json = Config.load({
       configPath: path.join(configPath, "firebase.json"),
     });
-    return json.data;
+    return json;
   } catch (e) {
     if (e.status === 404) {
       return undefined;

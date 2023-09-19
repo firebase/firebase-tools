@@ -125,7 +125,7 @@ export class Command {
   }
 
   /**
-   * Registers the command with the client. This is used to inisially set up
+   * Registers the command with the client. This is used to initially set up
    * all the commands and wraps their functionality with analytics and error
    * handling.
    * @param client the client object (from src/index.js).
@@ -190,16 +190,19 @@ export class Command {
       runner(...args)
         .then(async (result) => {
           if (getInheritedOption(options, "json")) {
-            console.log(
-              JSON.stringify(
-                {
-                  status: "success",
-                  result: result,
-                },
-                null,
-                2
-              )
-            );
+            await new Promise((resolve) => {
+              process.stdout.write(
+                JSON.stringify(
+                  {
+                    status: "success",
+                    result: result,
+                  },
+                  null,
+                  2
+                ),
+                resolve
+              );
+            });
           }
           const duration = Math.floor((process.uptime() - start) * 1000);
           const trackSuccess = trackGA4("command_execution", {
@@ -226,16 +229,19 @@ export class Command {
         })
         .catch(async (err) => {
           if (getInheritedOption(options, "json")) {
-            console.log(
-              JSON.stringify(
-                {
-                  status: "error",
-                  error: err.message,
-                },
-                null,
-                2
-              )
-            );
+            await new Promise((resolve) => {
+              process.stdout.write(
+                JSON.stringify(
+                  {
+                    status: "error",
+                    error: err.message,
+                  },
+                  null,
+                  2
+                ),
+                resolve
+              );
+            });
           }
           const duration = Math.floor((process.uptime() - start) * 1000);
           await withTimeout(
@@ -371,7 +377,7 @@ export class Command {
    * @return an async function that executes the command.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  runner(): (...a: any[]) => Promise<void> {
+  runner(): (...a: any[]) => Promise<any> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return async (...args: any[]) => {
       // Make sure the last argument is an object for options, add {} if none

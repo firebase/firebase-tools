@@ -1,2 +1,2 @@
-- Fixed an issue where builds from https://firebase.tools could not run commands that spawn `npm`. (#6132)
-- Fixed the regex in extensions changelog parser to lazy match the version prefix to allow matching higher versions (#6326)
+- Fixed an issue where `emulators:export` did not check if the target folder is empty. (#6313)
+- Fix "Could not find the next executable" on Next.js deployments (#6372)
