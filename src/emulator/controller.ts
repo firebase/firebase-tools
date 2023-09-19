@@ -34,7 +34,7 @@ import { LoggingEmulator } from "./loggingEmulator";
 import * as dbRulesConfig from "../database/rulesConfig";
 import { EmulatorLogger } from "./emulatorLogger";
 import { EmulatorHubClient } from "./hubClient";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import {
   FLAG_EXPORT_ON_EXIT_NAME,
   JAVA_DEPRECATION_WARNING,
@@ -970,9 +970,10 @@ export async function exportEmulatorData(exportPath: string, options: any, initi
       );
     }
 
-    const prompt = await promptOnce({
-      type: "confirm",
+    const prompt = await confirm({
       message: `The directory ${exportAbsPath} is not empty. Existing files in this directory will be overwritten. Do you want to continue?`,
+      nonInteractive: options.nonInteractive,
+      force: options.force,
       default: false,
     });
 
