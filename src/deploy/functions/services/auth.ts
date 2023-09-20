@@ -141,7 +141,8 @@ export class AuthBlockingService implements Service {
     const blockingConfig = await identityPlatform.getBlockingFunctionsConfig(endpoint.project);
     if (
       endpoint.uri !== blockingConfig.triggers?.beforeCreate?.functionUri &&
-      endpoint.uri !== blockingConfig.triggers?.beforeSignIn?.functionUri
+      endpoint.uri !== blockingConfig.triggers?.beforeSignIn?.functionUri &&
+      endpoint.uri !== blockingConfig.triggers?.beforeSendEmail?.functionUri
     ) {
       return;
     }
@@ -154,6 +155,9 @@ export class AuthBlockingService implements Service {
     }
     if (endpoint.uri === blockingConfig.triggers?.beforeSignIn?.functionUri) {
       delete blockingConfig.triggers?.beforeSignIn;
+    }
+    if (endpoint.uri === blockingConfig.triggers?.beforeSendEmail?.functionUri) {
+      delete blockingConfig.triggers?.beforeSendEmail;
     }
 
     await identityPlatform.setBlockingFunctionsConfig(endpoint.project, blockingConfig);
