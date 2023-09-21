@@ -1,2 +1,3 @@
 - Fixed an issue where `emulators:export` did not check if the target folder is empty. (#6313)
 - Fix "Could not find the next executable" on Next.js deployments (#6372)
+- Fix an issue where the functions service account option was not treated as a param (#6389).
