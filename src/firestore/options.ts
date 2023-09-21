@@ -16,4 +16,5 @@ export interface FirestoreOptions extends Options {
   location?: string;
   type?: types.DatabaseType;
   deleteProtection?: types.DatabaseDeleteProtectionStateOption;
+  pointInTimeRecoveryEnablement?: types.PointInTimeRecoveryEnablementOption;
 }
