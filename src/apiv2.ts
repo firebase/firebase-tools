@@ -407,7 +407,7 @@ export class Client {
               } catch (err: unknown) {
                 // JSON-parse errors are useless. Log the response for better debugging.
                 // Force skipBody to false
-                this.logResponse(res, text, {...options, skipLog: {}});
+                this.logResponse(res, text, { ...options, skipLog: {} });
                 throw new FirebaseError(`Unable to parse JSON: ${err}`);
               }
             }
