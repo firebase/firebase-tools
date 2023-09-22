@@ -16,8 +16,8 @@ export class FirematService {
     variables: {};
   }) {
     // TODO: get operationSet name from firemat.yaml
-    const body = { ...params, name: "projects/p/locations/l/services/s/operationSets/app/revisions/r" };
-    const resp = await fetch(this.firematEndpoint.value + "/v0/projects/p/locations/l/services/s/operationSets/app/revisions/r:executeMutation", {
+    const body = { ...params, name: "projects/p/locations/l/services/s/operationSets/crud/revisions/r" };
+    const resp = await fetch(this.firematEndpoint.value + "/v0/projects/p/locations/l/services/s/operationSets/crud/revisions/r:executeMutation", {
       method: "POST",
       headers: {
         Accept: "application/json",
@@ -36,8 +36,8 @@ export class FirematService {
     variables: {};
   }) {
     // TODO: get operationSet name from firemat.yaml
-    const body = { ...params, name: "projects/p/locations/l/services/s/operationSets/app/revisions/r" };
-    const resp = await fetch(this.firematEndpoint.value + "/v0/projects/p/locations/l/services/s/operationSets/app/revisions/r:executeQuery", {
+    const body = { ...params, name: "projects/p/locations/l/services/s/operationSets/crud/revisions/r" };
+    const resp = await fetch(this.firematEndpoint.value + "/v0/projects/p/locations/l/services/s/operationSets/crud/revisions/r:executeQuery", {
       method: "POST",
       headers: {
         Accept: "application/json",
@@ -55,7 +55,7 @@ export class FirematService {
   async introspect() {
     try {
       const introspectionResults = await this.executeGraphQLRead({ query: getIntrospectionQuery(), operationName: "IntrospectionQuery", variables: {} });
-
+      console.log("introspection: ", introspectionResults);
       // TODO: handle errors
       if (introspectionResults.errors.length > 0) {
         return { data: null };

@@ -6,7 +6,7 @@ import { registerExecution } from "./execution";
 import { registerExplorer } from "./explorer";
 import { FirematService } from "./service";
 import { CodeLensProvider } from "./code-lens-provider";
-import { setupLanguageClient } from "./language-client";
+// import { setupLanguageClient } from "./language-client";
 
 const firematEndpoint = signal<string>("");
 
@@ -17,8 +17,8 @@ export function registerFiremat(
   const firematService = new FirematService(firematEndpoint);
   const codeLensProvider = new CodeLensProvider();
 
-  const client = setupLanguageClient(context, firematEndpoint);
-  client.start();
+  // const client = setupLanguageClient(context, firematEndpoint);
+  // client.start();
 
   // keep global endpoint signal updated
   broker.on("notifyFirematEmulatorEndpoint", ({ endpoint }) => {
@@ -44,7 +44,7 @@ export function registerFiremat(
     ),
     {
       dispose: () => {
-        client.stop();
+        // client.stop();
       },
     }
   );

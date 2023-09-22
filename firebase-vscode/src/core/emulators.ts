@@ -40,8 +40,12 @@ export function registerEmulators(broker: ExtensionBrokerImpl): Disposable {
               outputChannel.appendLine("DEBUG: " + data.toString());
             });
             firematEmulatorDetails.instance.stderr?.on("data", (data) => {
-              outputChannel.appendLine("ERROR: " + data.toString());
-              outputChannel.show();
+              if (data.toString().includes("Finished reload server")) {
+                vscode.commands.executeCommand("firebase.firemat.executeIntrospection");
+              } else {
+                outputChannel.appendLine("ERROR: " + data.toString());
+                outputChannel.show(true);
+              }
             });
           }
         } catch (e) {

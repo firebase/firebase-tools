@@ -179,6 +179,7 @@
     "graphql": "^16.7.1",
     "mini-css-extract-plugin": "^2.6.0",
     "mocha": "^10.1.0",
+    "node-loader": "2.0.0",
     "postcss-loader": "^7.0.0",
     "sass": "^1.52.0",
     "sass-loader": "^13.0.0",
