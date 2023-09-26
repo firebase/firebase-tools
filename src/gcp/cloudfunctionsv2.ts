@@ -36,6 +36,12 @@ export type FunctionState = "ACTIVE" | "FAILED" | "DEPLOYING" | "DELETING" | "UN
 // Values allowed for the operator field in EventFilter
 export type EventFilterOperator = "match-path-pattern";
 
+// Values allowed for the event trigger retry policy in case of a function's execution failure.
+export type RetryPolicy =
+  | "RETRY_POLICY_UNSPECIFIED"
+  | "RETRY_POLICY_DO_NOT_RETRY"
+  | "RETRY_POLICY_RETRY";
+
 /** Settings for building a container out of the customer source. */
 export interface BuildConfig {
   runtime: runtimes.Runtime;
@@ -139,6 +145,8 @@ export interface EventTrigger {
   // run.routes.invoke permission on the target service. Defaults
   // to the defualt compute service account.
   serviceAccountEmail?: string;
+
+  retryPolicy?: RetryPolicy;
 
   // The name of the channel associated with the trigger in
   // `projects/{project}/locations/{location}/channels/{channel}` format.
@@ -542,6 +550,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
   if (backend.isEventTriggered(endpoint)) {
     gcfFunction.eventTrigger = {
       eventType: endpoint.eventTrigger.eventType,
+      retryPolicy: "RETRY_POLICY_UNSPECIFIED",
     };
     if (gcfFunction.eventTrigger.eventType === PUBSUB_PUBLISH_EVENT) {
       if (!endpoint.eventTrigger.eventFilters?.topic) {
@@ -579,9 +588,10 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
     );
     proto.copyIfPresent(gcfFunction.eventTrigger, endpoint.eventTrigger, "channel");
 
-    if (endpoint.eventTrigger.retry) {
-      logger.warn("Cannot set a retry policy on Cloud Function", endpoint.id);
-    }
+    endpoint.eventTrigger.retry
+      ? (gcfFunction.eventTrigger.retryPolicy = "RETRY_POLICY_RETRY")
+      : (gcfFunction.eventTrigger!.retryPolicy = "RETRY_POLICY_DO_NOT_RETRY");
+
     // By default, Functions Framework in GCFv2 opts to downcast incoming cloudevent messages to legacy formats.
     // Since Firebase Functions SDK expects messages in cloudevent format, we set FUNCTION_SIGNATURE_TYPE to tell
     // Functions Framework to disable downcast before passing the cloudevent message to function handler.
@@ -665,7 +675,7 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
     trigger = {
       eventTrigger: {
         eventType: gcfFunction.eventTrigger.eventType,
-        retry: false,
+        retry: gcfFunction.eventTrigger.retryPolicy === "RETRY_POLICY_RETRY" ? true : false,
       },
     };
     if (Object.keys(eventFilters).length) {
