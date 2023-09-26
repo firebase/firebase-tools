@@ -41,6 +41,7 @@ export interface BuildConfig {
   runtime: runtimes.Runtime;
   entryPoint: string;
   source: Source;
+  sourceToken?: string;
   environmentVariables: Record<string, string>;
 
   // Output only
@@ -320,6 +321,11 @@ export async function createFunction(cloudFunction: InputCloudFunction): Promise
     GOOGLE_NODE_RUN_SCRIPTS: "",
   };
 
+  cloudFunction.serviceConfig.environmentVariables = {
+    ...cloudFunction.serviceConfig.environmentVariables,
+    FUNCTION_TARGET: functionId,
+  };
+
   try {
     const res = await client.post<typeof cloudFunction, Operation>(
       components.join("/"),
@@ -404,6 +410,8 @@ async function listFunctionsInternal(
  * Customers can force a field to be deleted by setting that field to `undefined`
  */
 export async function updateFunction(cloudFunction: InputCloudFunction): Promise<Operation> {
+  const components = cloudFunction.name.split("/");
+  const functionId = components.splice(-1, 1)[0];
   // Keys in labels and environmentVariables and secretEnvironmentVariables are user defined, so we don't recurse
   // for field masks.
   const fieldMasks = proto.fieldMasks(
@@ -420,6 +428,12 @@ export async function updateFunction(cloudFunction: InputCloudFunction): Promise
     GOOGLE_NODE_RUN_SCRIPTS: "",
   };
   fieldMasks.push("buildConfig.buildEnvironmentVariables");
+
+  cloudFunction.serviceConfig.environmentVariables = {
+    ...cloudFunction.serviceConfig.environmentVariables,
+    FUNCTION_TARGET: functionId,
+  };
+
   try {
     const queryParams = {
       updateMask: fieldMasks.join(","),
