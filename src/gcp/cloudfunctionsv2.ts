@@ -331,7 +331,7 @@ export async function createFunction(cloudFunction: InputCloudFunction): Promise
 
   cloudFunction.serviceConfig.environmentVariables = {
     ...cloudFunction.serviceConfig.environmentVariables,
-    FUNCTION_TARGET: functionId,
+    FUNCTION_TARGET: functionId.replace("-", "."),
   };
 
   try {
@@ -439,7 +439,7 @@ export async function updateFunction(cloudFunction: InputCloudFunction): Promise
 
   cloudFunction.serviceConfig.environmentVariables = {
     ...cloudFunction.serviceConfig.environmentVariables,
-    FUNCTION_TARGET: functionId,
+    FUNCTION_TARGET: functionId.replace("-", "."),
   };
 
   try {
