@@ -1,2 +1,3 @@
-- Fix an issue where the functions service account option was not treated as a param (#6389).
+- Fixed an issue where the functions service account option was not treated as a param (#6389).
+- Fixed an issue with deploying function groups containing v2 functions. (#6408)
 - Use GetDefaultBucket endpoint to fetch Storage Default Bucket.
