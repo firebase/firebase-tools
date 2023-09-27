@@ -1,1 +1,2 @@
 - Fixed an issue with deploying function groups containing v2 functions. (#6408)
+- Use GetDefaultBucket endpoint to fetch Storage Default Bucket.
