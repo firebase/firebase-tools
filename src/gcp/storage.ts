@@ -162,22 +162,6 @@ export async function getDefaultBucket(projectId: string): Promise<string> {
   }
 }
 
-//     const metadata = await getFirebaseProject(projectId);
-//     if (!metadata.resources?.storageBucket) {
-//       logger.debug("Default storage bucket is undefined.");
-//       throw new FirebaseError(
-//         "Your project is being set up. Please wait a minute before deploying again."
-//       );
-//     }
-//     return metadata.resources.storageBucket;
-//   } catch (err: any) {
-//     logger.info(
-//       "\n\nThere was an issue deploying your functions. Verify that your project has a Google App Engine instance setup at https://console.cloud.google.com/appengine and try again. If this issue persists, please contact support."
-//     );
-//     throw err;
-//   }
-// }
-
 export async function upload(
   source: any,
   uploadUrl: string,
