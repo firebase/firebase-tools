@@ -6,7 +6,6 @@ import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { ensure } from "../ensureApiEnabled";
-// import { getFirebaseProject } from "../management/projects";
 
 /** Bucket Interface */
 interface BucketResponse {
