@@ -6,7 +6,7 @@ import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { ensure } from "../ensureApiEnabled";
-//import { getFirebaseProject } from "../management/projects";
+// import { getFirebaseProject } from "../management/projects";
 
 /** Bucket Interface */
 interface BucketResponse {
@@ -144,7 +144,7 @@ export async function getDefaultBucket(projectId: string): Promise<string> {
   await ensure(projectId, "firebasestorage.googleapis.com", "storage", false);
   try {
     const localAPIClient = new Client({ urlPrefix: firebaseStorageOrigin, apiVersion: "v1alpha" });
-    const response = await localAPIClient.get<{name: string}>(
+    const response = await localAPIClient.get<{ name: string }>(
       `/projects/${projectId}/defaultBucket`
     );
     if (!response.body?.name) {
