@@ -1,5 +1,1 @@
-- Improve performance and reliability when deploying multiple 2nd gen functions using single builds. (#6376)
-- Fixed an issue where `emulators:export` did not check if the target folder is empty. (#6313)
-- Fixed an issue where retry could not be set for event triggered functions. (#6391)
-- Fixed "Could not find the next executable" on Next.js deployments (#6372)
-- Fixed issues caused by breaking changes in Next >=v13.5.0. (#6382)
+- Fixed an issue with deploying function groups containing v2 functions. (#6408)
