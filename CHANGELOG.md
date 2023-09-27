@@ -1,0 +1,1 @@
+- Use GetDefaultBucket endpoint to fetch Storage Default Bucket
