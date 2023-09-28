@@ -1,1 +1,1 @@
-- Fixed an issue cuasing errors due to incorrectly formatted Storage bucket data during functions deployments. (#6416)
+- Fixed an issue causing errors due to incorrectly formatted Storage bucket data during functions deployments. (#6416)
