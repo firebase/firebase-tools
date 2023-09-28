@@ -3,6 +3,7 @@ import { spawn } from "cross-spawn";
 import { existsSync } from "fs";
 import { copy, pathExists } from "fs-extra";
 import { join } from "path";
+const stripAnsi = require("strip-ansi");
 import { FrameworkType, SupportLevel } from "../interfaces";
 import { promptOnce } from "../../prompt";
 import {
@@ -91,7 +92,8 @@ export async function getDevModeHandle(dir: string) {
     const serve = spawn(cli, [], { cwd: dir });
     serve.stdout.on("data", (data: any) => {
       process.stdout.write(data);
-      const match = data.toString().match(/(http:\/\/.+:\d+)/);
+      const dataWithoutAnsiCodes = stripAnsi(data.toString());
+      const match = dataWithoutAnsiCodes.match(/(http:\/\/.+:\d+)/);
       if (match) resolve(match[1]);
     });
     serve.stderr.on("data", (data: any) => {
