@@ -148,6 +148,14 @@ describe("changelog", () => {
           "0.1.1-release-candidate.1.2": "New notes",
         },
       },
+      {
+        description: "should handle higher version number",
+        in: "Some random words\n## Version 10.1.0-rc.1\nNotes\n## Version 10.1.1-release-candidate.1.2\nNew notes",
+        want: {
+          "10.1.0-rc.1": "Notes",
+          "10.1.1-release-candidate.1.2": "New notes",
+        },
+      },
     ];
     for (const testCase of testCases) {
       it(testCase.description, () => {

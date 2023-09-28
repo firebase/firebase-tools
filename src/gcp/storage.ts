@@ -1,11 +1,11 @@
 import { Readable } from "stream";
 import * as path from "path";
 
-import { storageOrigin } from "../api";
+import { firebaseStorageOrigin, storageOrigin } from "../api";
 import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
-import { getFirebaseProject } from "../management/projects";
+import { ensure } from "../ensureApiEnabled";
 
 /** Bucket Interface */
 interface BucketResponse {
@@ -140,18 +140,22 @@ interface StorageServiceAccountResponse {
 }
 
 export async function getDefaultBucket(projectId: string): Promise<string> {
+  await ensure(projectId, "firebasestorage.googleapis.com", "storage", false);
   try {
-    const metadata = await getFirebaseProject(projectId);
-    if (!metadata.resources?.storageBucket) {
+    const localAPIClient = new Client({ urlPrefix: firebaseStorageOrigin, apiVersion: "v1alpha" });
+    const response = await localAPIClient.get<{ name: string }>(
+      `/projects/${projectId}/defaultBucket`
+    );
+    if (!response.body?.name) {
       logger.debug("Default storage bucket is undefined.");
       throw new FirebaseError(
         "Your project is being set up. Please wait a minute before deploying again."
       );
     }
-    return metadata.resources.storageBucket;
+    return response.body.name;
   } catch (err: any) {
     logger.info(
-      "\n\nThere was an issue deploying your functions. Verify that your project has a Google App Engine instance setup at https://console.cloud.google.com/appengine and try again. If this issue persists, please contact support."
+      "\n\nThere was an issue deploying your Storage rules. Verify that your project has a Google App Engine instance setup at https://console.cloud.google.com/appengine and try again. If this issue persists, please contact support."
     );
     throw err;
   }
