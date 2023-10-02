@@ -1,0 +1,1 @@
+- Fixed an issue with deploying multilevel grouped functions containing v2 functions. (#6419)
