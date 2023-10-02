@@ -1,0 +1,1 @@
+- Fixed an issue where functions deployment required a new permission.
