@@ -39,10 +39,14 @@ export type ExtensionLogInfo = {
 };
 
 export class EmulatorLogger {
-  static verbosity: Verbosity = Verbosity.DEBUG;
+  private static verbosity: Verbosity = Verbosity.DEBUG;
   static warnOnceCache = new Set<string>();
 
   constructor(public readonly name: string, private data: LogData = {}) {}
+
+  static setVerbosity(verbosity: Verbosity) {
+    EmulatorLogger.verbosity = verbosity;
+  }
 
   static forEmulator(emulator: Emulators) {
     return new EmulatorLogger(emulator, {

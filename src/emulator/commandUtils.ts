@@ -47,6 +47,10 @@ export const EXPORT_ON_EXIT_USAGE_ERROR =
 
 export const EXPORT_ON_EXIT_CWD_DANGER = `"${FLAG_EXPORT_ON_EXIT_NAME}" must not point to the current directory or parents. Please choose a new/dedicated directory for exports.`;
 
+export const FLAG_VERBOSITY_NAME = "--verbosity";
+export const FLAG_VERBOSITY = `${FLAG_VERBOSITY_NAME} <verbosity>`;
+export const DESC_VERBOSITY = "One of: DEBUG, INFO, QUIET. This is in an experimental state";
+
 export const FLAG_UI = "--ui";
 export const DESC_UI = "run the Emulator UI";
 
