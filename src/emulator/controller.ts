@@ -247,7 +247,7 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
 
 interface EmulatorOptions extends Options {
   extDevEnv?: Record<string, string>;
-  verbosity?: "DEBUG" | "INFO" | "QUIET"; // FIXME think if this should be non-optional and set higher?
+  verbosity?: "DEBUG" | "INFO" | "QUIET";
 }
 
 /**
