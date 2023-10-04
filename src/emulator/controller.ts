@@ -247,7 +247,7 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
 
 interface EmulatorOptions extends Options {
   extDevEnv?: Record<string, string>;
-  verbosity?: "DEBUG" | "INFO" | "QUIET";
+  logVerbosity?: "DEBUG" | "INFO" | "QUIET" | "SILENT";
 }
 
 /**
@@ -287,8 +287,8 @@ export async function startAll(
       throw new FirebaseError(JAVA_DEPRECATION_WARNING);
     }
   }
-  if (options.verbosity) {
-    EmulatorLogger.setVerbosity(Verbosity[options.verbosity]);
+  if (options.logVerbosity) {
+    EmulatorLogger.setVerbosity(Verbosity[options.logVerbosity]);
   }
 
   const hubLogger = EmulatorLogger.forEmulator(Emulators.HUB);

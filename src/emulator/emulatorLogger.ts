@@ -32,6 +32,7 @@ export enum Verbosity {
   DEBUG = 0,
   INFO = 1,
   QUIET = 2,
+  SILENT = 3,
 }
 export type ExtensionLogInfo = {
   ref?: string;
