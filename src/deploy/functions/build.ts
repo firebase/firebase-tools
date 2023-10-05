@@ -498,7 +498,7 @@ export function toBackend(
         if (bdEndpoint.vpc.connector && !bdEndpoint.vpc.connector.includes("/")) {
           bdEndpoint.vpc.connector = `projects/${bdEndpoint.project}/locations/${region}/connectors/${bdEndpoint.vpc.connector}`;
         }
-        
+
         bkEndpoint.vpc = { connector: bdEndpoint.vpc.connector };
         proto.copyIfPresent(bkEndpoint.vpc, bdEndpoint.vpc, "egressSettings");
       } else if (bdEndpoint.vpc === null) {
