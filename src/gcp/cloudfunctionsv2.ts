@@ -553,16 +553,16 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
       retryPolicy: "RETRY_POLICY_UNSPECIFIED",
     };
     if (gcfFunction.eventTrigger.eventType === PUBSUB_PUBLISH_EVENT) {
-      if (!endpoint.eventTrigger.eventFilters?.topic) {
+      if (!endpoint.eventTrigger.eventFilters?.resource) {
         throw new FirebaseError(
           "Error: Pub/Sub event trigger is missing topic: " +
             JSON.stringify(endpoint.eventTrigger, null, 2)
         );
       }
-      gcfFunction.eventTrigger.pubsubTopic = endpoint.eventTrigger.eventFilters.topic;
+      gcfFunction.eventTrigger.pubsubTopic = endpoint.eventTrigger.eventFilters.resource;
       gcfFunction.eventTrigger.eventFilters = [];
       for (const [attribute, value] of Object.entries(endpoint.eventTrigger.eventFilters)) {
-        if (attribute === "topic") continue;
+        if (attribute === "resource") continue;
         gcfFunction.eventTrigger.eventFilters.push({ attribute, value });
       }
     } else {
@@ -662,7 +662,7 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
     const eventFilters: Record<string, string> = {};
     const eventFilterPathPatterns: Record<string, string> = {};
     if (gcfFunction.eventTrigger.pubsubTopic) {
-      eventFilters.topic = gcfFunction.eventTrigger.pubsubTopic;
+      eventFilters.resource = gcfFunction.eventTrigger.pubsubTopic;
     } else {
       for (const eventFilter of gcfFunction.eventTrigger.eventFilters || []) {
         if (eventFilter.operator === "match-path-pattern") {
