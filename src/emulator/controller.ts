@@ -32,7 +32,7 @@ import { ExportMetadata, HubExport } from "./hubExport";
 import { EmulatorUI } from "./ui";
 import { LoggingEmulator } from "./loggingEmulator";
 import * as dbRulesConfig from "../database/rulesConfig";
-import { EmulatorLogger } from "./emulatorLogger";
+import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 import { EmulatorHubClient } from "./hubClient";
 import { confirm } from "../prompt";
 import {
@@ -247,6 +247,7 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
 
 interface EmulatorOptions extends Options {
   extDevEnv?: Record<string, string>;
+  logVerbosity?: "DEBUG" | "INFO" | "QUIET" | "SILENT";
 }
 
 /**
@@ -286,6 +287,10 @@ export async function startAll(
       throw new FirebaseError(JAVA_DEPRECATION_WARNING);
     }
   }
+  if (options.logVerbosity) {
+    EmulatorLogger.setVerbosity(Verbosity[options.logVerbosity]);
+  }
+
   const hubLogger = EmulatorLogger.forEmulator(Emulators.HUB);
   hubLogger.logLabeled("BULLET", "emulators", `Starting emulators: ${targets.join(", ")}`);
 

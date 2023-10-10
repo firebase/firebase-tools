@@ -194,7 +194,7 @@ export function logLabeledWarning(
 }
 
 /**
- * Log an rror statement with a red bullet at the start of the line.
+ * Log an error statement with a red bullet at the start of the line.
  */
 export function logLabeledError(
   label: string,
