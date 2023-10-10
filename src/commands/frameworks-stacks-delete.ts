@@ -4,6 +4,7 @@ import { needProjectId } from "../projectUtils";
 import { FirebaseError } from "../error";
 import * as gcp from "../gcp/frameworks";
 import { promptOnce } from "../prompt";
+import * as utils from "../utils";
 
 export const command = new Command("stacks:delete")
   .description("Delete a stack from a Firebase project")
@@ -20,7 +21,6 @@ export const command = new Command("stacks:delete")
     if (!location) {
       throw new FirebaseError("Location can't be empty.");
     }
-    console.log(options);
     const confirmDeletion = await promptOnce(
       {
         type: "confirm",
@@ -34,5 +34,12 @@ export const command = new Command("stacks:delete")
       throw new FirebaseError("Deletion aborted.");
     }
 
-    await gcp.deleteStack(projectId, location, stackId);
+    try {
+      await gcp.deleteStack(projectId, location, stackId);
+      utils.logSuccess(`Successfully deleted the stack: ${stackId}`);
+    } catch (err: any) {
+      throw new FirebaseError(
+        `Failed to delete stack: ${stackId}. Please check the parameters you have provided.`
+      );
+    }
   });

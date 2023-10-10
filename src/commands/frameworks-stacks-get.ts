@@ -18,8 +18,13 @@ export const command = new Command("stacks:get")
     if (!location) {
       throw new FirebaseError("Location can't be empty.");
     }
-    const stack = await gcp.getStack(projectId, location, stackId);
-    console.log(stack);
 
-    return stack;
+    try {
+      const stack = await gcp.getStack(projectId, location, stackId);
+      console.log(stack);
+    } catch (err: any) {
+      throw new FirebaseError(
+        `Failed to get stack: ${stackId}. Please check the parameters you have provided.`
+      );
+    }
   });
