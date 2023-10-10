@@ -32,8 +32,8 @@ const featureFns = new Map<string, (setup: any, config: any, options?: any) => P
   ["hosting:github", features.hostingGithub],
 ]);
 
-if (isEnabled("frameworks")) {
-  featureFns.set("frameworks", features.frameworks);
+if (isEnabled("internalframeworks")) {
+  featureFns.set("internalframeworks", features.frameworks);
 }
 
 export async function init(setup: Setup, config: any, options: any): Promise<any> {

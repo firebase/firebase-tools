@@ -3,6 +3,10 @@ import { assertExhaustive } from "../../../functional";
 import { logger } from "../../../logger";
 
 type TokenFetchState = "NONE" | "FETCHING" | "VALID";
+interface TokenFetchResult {
+  token?: string;
+  aborted: boolean;
+}
 
 /**
  * GCF v1 deploys support reusing a build between function deploys.
@@ -11,17 +15,19 @@ type TokenFetchState = "NONE" | "FETCHING" | "VALID";
  */
 export class SourceTokenScraper {
   private tokenValidDurationMs;
-  private fetchTimeoutMs;
-  private resolve!: (token?: string) => void;
-  private promise: Promise<string | undefined>;
+  private resolve!: (token: TokenFetchResult) => void;
+  private promise: Promise<TokenFetchResult>;
   private expiry: number | undefined;
   private fetchState: TokenFetchState;
 
-  constructor(validDurationMs = 1500000, fetchTimeoutMs = 180_000) {
+  constructor(validDurationMs = 1500000) {
     this.tokenValidDurationMs = validDurationMs;
-    this.fetchTimeoutMs = fetchTimeoutMs;
     this.promise = new Promise((resolve) => (this.resolve = resolve));
     this.fetchState = "NONE";
+  }
+
+  abort(): void {
+    this.resolve({ aborted: true });
   }
 
   async getToken(): Promise<string | undefined> {
@@ -29,22 +35,20 @@ export class SourceTokenScraper {
       this.fetchState = "FETCHING";
       return undefined;
     } else if (this.fetchState === "FETCHING") {
-      const timeout = new Promise<undefined>((resolve) => {
-        setTimeout(() => {
-          this.fetchState = "NONE";
-          resolve(undefined);
-        }, this.fetchTimeoutMs);
-      });
-      // wait until we get a source token, or the timeout occurs
-      // and we reset the fetch state and return an undefined token.
-      return Promise.race([this.promise, timeout]);
+      const tokenResult = await this.promise;
+      if (tokenResult.aborted) {
+        this.promise = new Promise((resolve) => (this.resolve = resolve));
+        return undefined;
+      }
+      return tokenResult.token;
     } else if (this.fetchState === "VALID") {
+      const tokenResult = await this.promise;
       if (this.isTokenExpired()) {
         this.fetchState = "FETCHING";
         this.promise = new Promise((resolve) => (this.resolve = resolve));
         return undefined;
       }
-      return this.promise;
+      return tokenResult.token;
     } else {
       assertExhaustive(this.fetchState);
     }
@@ -68,7 +72,10 @@ export class SourceTokenScraper {
         const [, , , /* projects*/ /* project*/ /* regions*/ region] =
           op.metadata?.target?.split("/") || [];
         logger.debug(`Got source token ${op.metadata?.sourceToken} for region ${region as string}`);
-        this.resolve(op.metadata?.sourceToken);
+        this.resolve({
+          token: op.metadata?.sourceToken,
+          aborted: false,
+        });
         this.fetchState = "VALID";
         this.expiry = Date.now() + this.tokenValidDurationMs;
       }
