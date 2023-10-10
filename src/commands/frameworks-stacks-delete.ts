@@ -3,6 +3,7 @@ import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { FirebaseError } from "../error";
 import * as gcp from "../gcp/frameworks";
+import { promptOnce } from "../prompt";
 
 export const command = new Command("stacks:delete")
   .description("Delete a stack from a Firebase project")
@@ -17,6 +18,18 @@ export const command = new Command("stacks:delete")
     }
     if (!location) {
       throw new FirebaseError("Location can't be empty.");
+    }
+    const confirmDeletion = await promptOnce(
+      {
+        type: "confirm",
+        name: "force",
+        default: false,
+        message: "You are about to delete the Stack with id:\n" + stackId + "\n  Are you sure?",
+      },
+      options
+    );
+    if (!confirmDeletion) {
+      throw new FirebaseError("Command aborted.");
     }
 
     await gcp.deleteStack(projectId, location, stackId);
