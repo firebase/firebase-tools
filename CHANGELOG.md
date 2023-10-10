@@ -1,1 +1,3 @@
 - Added support for enabling, disabling, and displaying Point In Time Recovery enablement state on Firestore databases (#6388)
+- Added a `--verbosity` flag to `emulators:*` commands that limits what logs are printed (#2859)
+- Fixed an issue where params would not be resolved when used to set VPC connector during functions deployment (#6327)
