@@ -17,12 +17,16 @@ export const command = new Command("firestore:databases:update <database>")
     "--delete-protection <deleteProtectionState>",
     "Whether or not to prevent deletion of database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'"
   )
+  .option(
+    "--point-in-time-recovery <enablement>",
+    "Whether to enable the PITR feature on this database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'"
+  )
   .before(requirePermissions, ["datastore.databases.update"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
   .action(async (database: string, options: FirestoreOptions) => {
     const api = new fsi.FirestoreApi();
 
-    if (!options.type && !options.deleteProtection) {
+    if (!options.type && !options.deleteProtection && !options.pointInTimeRecovery) {
       logger.error(
         "Missing properties to update. See firebase firestore:databases:update --help for more info."
       );
@@ -44,11 +48,27 @@ export const command = new Command("firestore:databases:update <database>")
         ? types.DatabaseDeleteProtectionState.ENABLED
         : types.DatabaseDeleteProtectionState.DISABLED;
 
+    if (
+      options.pointInTimeRecovery &&
+      options.pointInTimeRecovery !== types.PointInTimeRecoveryEnablementOption.ENABLED &&
+      options.pointInTimeRecovery !== types.PointInTimeRecoveryEnablementOption.DISABLED
+    ) {
+      logger.error(
+        "Invalid value for flag --point-in-time-recovery. See firebase firestore:databases:update --help for more info."
+      );
+      return;
+    }
+    const pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement =
+      options.pointInTimeRecovery === types.PointInTimeRecoveryEnablementOption.ENABLED
+        ? types.PointInTimeRecoveryEnablement.ENABLED
+        : types.PointInTimeRecoveryEnablement.DISABLED;
+
     const databaseResp: types.DatabaseResp = await api.updateDatabase(
       options.project,
       database,
       type,
-      deleteProtectionState
+      deleteProtectionState,
+      pointInTimeRecoveryEnablement
     );
 
     if (options.json) {
