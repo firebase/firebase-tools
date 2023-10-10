@@ -3,7 +3,6 @@ import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { FirebaseError } from "../error";
 import * as gcp from "../gcp/frameworks";
-import isEmpty from "lodash/isEmpty";
 
 export const command = new Command("stacks:delete")
   .description("Delete a stack from a Firebase project")
@@ -13,10 +12,10 @@ export const command = new Command("stacks:delete")
     const projectId = needProjectId(options);
     const location = options.location as string;
     const stackId = options.stackId as string;
-    if (isEmpty(stackId)) {
-      throw new FirebaseError("StackId can't be empty.");
+    if (!stackId) {
+      throw new FirebaseError("Stack id can't be empty.");
     }
-    if (isEmpty(location)) {
+    if (!location) {
       throw new FirebaseError("Location can't be empty.");
     }
 

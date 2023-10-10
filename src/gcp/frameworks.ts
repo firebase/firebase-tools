@@ -128,15 +128,17 @@ export async function listStack(projectId: string, location: string): Promise<Li
 }
 
 /**
- * Creates a new Stack in a given project and location.
+ * Deletes a Stack with stackId in a given project and location.
  */
 export async function deleteStack(
   projectId: string,
   location: string,
   stackId: string
 ): Promise<Operation> {
+  console.log("HI i am in list");
   const name = `projects/${projectId}/locations/${location}/stacks/${stackId}`;
   const res = await client.delete<Operation>(name);
+  console.log(res);
 
   return res.body;
 }

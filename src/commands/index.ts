@@ -151,7 +151,7 @@ export function load(client: any): any {
     client.internaltesting.functions = {};
     client.internaltesting.functions.discover = loadCommand("internaltesting-functions-discover");
   }
-  if (experiments.isEnabled("frameworks")) {
+  if (experiments.isEnabled("internalframeworks")) {
     client.frameworks = {};
     client.frameworks.stacks = {};
     client.frameworks.stacks.list = loadCommand("frameworks-stacks-list");
