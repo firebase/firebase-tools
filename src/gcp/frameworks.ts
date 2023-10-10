@@ -135,10 +135,8 @@ export async function deleteStack(
   location: string,
   stackId: string
 ): Promise<Operation> {
-  console.log("HI i am in list");
   const name = `projects/${projectId}/locations/${location}/stacks/${stackId}`;
   const res = await client.delete<Operation>(name);
-  console.log(res);
 
   return res.body;
 }
