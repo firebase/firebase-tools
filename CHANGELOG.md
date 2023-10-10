@@ -1,2 +1,1 @@
-- Fixed an issue with deploying multilevel grouped functions containing v2 functions. (#6419)
-- Fixed an issue where functions deployment required a new permission.
+- Added support for enabling, disabling, and displaying Point In Time Recovery enablement state on Firestore databases (#6388)
