@@ -235,7 +235,7 @@ export type Endpoint = Triggered & {
   // The services account that this function should run as.
   // defaults to the GAE service account when a function is first created as a GCF gen 1 function.
   // Defaults to the compute service account when a function is first created as a GCF gen 2 function.
-  serviceAccount?: ServiceAccount | null;
+  serviceAccount?: Field<string> | ServiceAccount | null;
 
   // defaults to ["us-central1"], overridable in firebase-tools with
   //  process.env.FIREBASE_FUNCTIONS_DEFAULT_REGION
@@ -457,8 +457,7 @@ export function toBackend(
         bdEndpoint,
         "environmentVariables",
         "labels",
-        "secretEnvironmentVariables",
-        "serviceAccount"
+        "secretEnvironmentVariables"
       );
 
       proto.convertIfPresent(bkEndpoint, bdEndpoint, "ingressSettings", (from) => {
@@ -479,6 +478,7 @@ export function toBackend(
         return (mem as backend.MemoryOptions) || null;
       });
 
+      r.resolveStrings(bkEndpoint, bdEndpoint, "serviceAccount");
       r.resolveInts(
         bkEndpoint,
         bdEndpoint,

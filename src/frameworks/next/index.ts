@@ -594,7 +594,7 @@ async function getConfig(
     if (gte(version, "12.0.0")) {
       const { default: loadConfig } = relativeRequire(dir, "next/dist/server/config");
       const { PHASE_PRODUCTION_BUILD } = relativeRequire(dir, "next/constants");
-      config = await loadConfig(PHASE_PRODUCTION_BUILD, dir, null);
+      config = await loadConfig(PHASE_PRODUCTION_BUILD, dir);
     } else {
       try {
         config = await import(pathToFileURL(join(dir, "next.config.js")).toString());
