@@ -92,12 +92,12 @@ export async function createStack(
   projectId: string,
   location: string,
   stackReqBoby: Omit<Stack, StackOutputOnlyFields>,
-  stackId: string
+  backendId: string
 ): Promise<Operation> {
   const res = await client.post<Omit<Stack, StackOutputOnlyFields>, Operation>(
-    `projects/${projectId}/locations/${location}/stacks`,
+    `projects/${projectId}/locations/${location}/backends`,
     stackReqBoby,
-    { queryParams: { stackId } }
+    { queryParams: { backendId } }
   );
 
   return res.body;
@@ -111,7 +111,7 @@ export async function getStack(
   location: string,
   stackId: string
 ): Promise<Stack> {
-  const name = `projects/${projectId}/locations/${location}/stacks/${stackId}`;
+  const name = `projects/${projectId}/locations/${location}/backends/${stackId}`;
   const res = await client.get<Stack>(name);
 
   return res.body;
@@ -121,7 +121,7 @@ export async function getStack(
  * List all stacks present in a project and region.
  */
 export async function listStack(projectId: string, location: string): Promise<ListStacksResponse> {
-  const name = `projects/${projectId}/locations/${location}/stacks/`;
+  const name = `projects/${projectId}/locations/${location}/backends/`;
   const res = await client.get<ListStacksResponse>(name);
 
   return res.body;
@@ -135,7 +135,7 @@ export async function deleteStack(
   location: string,
   stackId: string
 ): Promise<Operation> {
-  const name = `projects/${projectId}/locations/${location}/stacks/${stackId}`;
+  const name = `projects/${projectId}/locations/${location}/backends/${stackId}`;
   const res = await client.delete<Operation>(name);
 
   return res.body;
@@ -152,7 +152,7 @@ export async function createBuild(
 ): Promise<Operation> {
   const buildId = buildInput.name;
   const res = await client.post<Omit<Build, BuildOutputOnlyFields>, Operation>(
-    `projects/${projectId}/locations/${location}/stacks/${stackId}/builds`,
+    `projects/${projectId}/locations/${location}/backends/${stackId}/builds`,
     buildInput,
     { queryParams: { buildId } }
   );
