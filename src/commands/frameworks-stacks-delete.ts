@@ -8,7 +8,8 @@ import { promptOnce } from "../prompt";
 export const command = new Command("stacks:delete")
   .description("Delete a stack from a Firebase project")
   .option("-l, --location <location>", "Stack backend location", "us-central1")
-  .option("-stack, --stackId <stackId>", "Stack backend location", "")
+  .option("-s, --stackId <stackId>", "Stack backend location", "")
+  .withForce()
   .action(async (options: Options) => {
     const projectId = needProjectId(options);
     const location = options.location as string;
@@ -19,17 +20,18 @@ export const command = new Command("stacks:delete")
     if (!location) {
       throw new FirebaseError("Location can't be empty.");
     }
+    console.log(options);
     const confirmDeletion = await promptOnce(
       {
         type: "confirm",
         name: "force",
         default: false,
-        message: "You are about to delete the Stack with id:\n" + stackId + "\n  Are you sure?",
+        message: "You are about to delete the Stack with id: " + stackId + "\n  Are you sure?",
       },
       options
     );
     if (!confirmDeletion) {
-      throw new FirebaseError("Command aborted.");
+      throw new FirebaseError("Deletion aborted.");
     }
 
     await gcp.deleteStack(projectId, location, stackId);
