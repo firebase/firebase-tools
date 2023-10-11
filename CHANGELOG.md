@@ -1,2 +1,2 @@
-- Ignore Firestore emulator host on functions deploy. (#6442)
+- Ignore `FIRESTORE_EMULATOR_HOST` environment variable on functions deploy. (#6442)
 - Added support for enabling, disabling, and displaying Point In Time Recovery enablement state on Firestore databases (#6388)
