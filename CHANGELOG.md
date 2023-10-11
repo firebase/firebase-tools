@@ -1,3 +1,4 @@
+- Fix type mismatch for parametrized function region. (#6205)
 - Ignore `FIRESTORE_EMULATOR_HOST` environment variable on functions deploy. (#6442)
 - Added support for enabling, disabling, and displaying Point In Time Recovery enablement state on Firestore databases (#6388)
 - Added a `--verbosity` flag to `emulators:*` commands that limits what logs are printed (#2859)
