@@ -1,2 +1,2 @@
 - Fix type mismatch for parametrized function region. (#6205)
-- Added support for enabling, disabling, and displaying Point In Time Recovery enablement state on Firestore databases (#6388)
+- Ignore `FIRESTORE_EMULATOR_HOST` environment variable on functions deploy. (#6442)
