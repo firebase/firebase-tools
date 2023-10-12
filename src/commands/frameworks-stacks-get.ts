@@ -3,6 +3,7 @@ import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import * as gcp from "../gcp/frameworks";
 import { FirebaseError } from "../error";
+import { logger } from "../logger";
 
 export const command = new Command("stacks:get")
   .description("Get stack details of a Firebase project")
@@ -15,13 +16,10 @@ export const command = new Command("stacks:get")
     if (!stackId) {
       throw new FirebaseError("Stack id can't be empty.");
     }
-    if (!location) {
-      throw new FirebaseError("Location can't be empty.");
-    }
 
     try {
       const stack = await gcp.getStack(projectId, location, stackId);
-      console.log(stack);
+      logger.info(stack);
     } catch (err: any) {
       throw new FirebaseError(
         `Failed to get stack: ${stackId}. Please check the parameters you have provided.`

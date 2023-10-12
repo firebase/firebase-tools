@@ -18,9 +18,6 @@ export const command = new Command("stacks:delete")
     if (!stackId) {
       throw new FirebaseError("Stack id can't be empty.");
     }
-    if (!location) {
-      throw new FirebaseError("Location can't be empty.");
-    }
     const confirmDeletion = await promptOnce(
       {
         type: "confirm",
