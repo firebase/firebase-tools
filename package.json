@@ -64,7 +64,7 @@
   ],
   "preferGlobal": true,
   "engines": {
-    "node": ">=16.13.0 || >=18.0.0"
+    "node": ">=18.0.0 || >=20.0.0"
   },
   "author": "Firebase (https://firebase.google.com/)",
   "license": "MIT",
