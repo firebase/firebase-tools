@@ -4,11 +4,10 @@ import * as fs from "fs-extra";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
-import { ExtensionInstance, ExtensionSpec, Param } from "./types";
+import { ExtensionSpec, Param } from "./types";
 import { getFirebaseProjectParams, substituteParams } from "./extensionsHelper";
 import * as askUserForParam from "./askUserForParam";
 import * as env from "../functions/env";
-import { cloneDeep } from "../utils";
 
 const NONINTERACTIVE_ERROR_MESSAGE =
   "As of firebase-tools@11, `ext:install`, `ext:update` and `ext:configure` are interactive only commands. " +
@@ -61,24 +60,17 @@ export function buildBindingOptionsWithBaseValue(baseParams: { [key: string]: st
  * @param newDefaults a map of { PARAM_NAME: default_value }
  */
 export function setNewDefaults(params: Param[], newDefaults: { [key: string]: string }): Param[] {
-  params.forEach((param) => {
-    if (newDefaults[param.param.toUpperCase()]) {
-      param.default = newDefaults[param.param.toUpperCase()];
+  for (const param of params) {
+    if (newDefaults[param.param]) {
+      param.default = newDefaults[param.param];
+    } else if (
+      (param.param = `firebaseextensions.v1beta.function/location` && newDefaults["LOCATION"])
+    ) {
+      // Special case handling for when we are updating from LOCATION to system param location.
+      param.default = newDefaults["LOCATION"];
     }
-  });
+  }
   return params;
-}
-
-/**
- * Returns a copy of the params for a extension instance with the defaults set to the instance's current param values
- * @param extensionInstance the extension instance to change the default params of
- */
-export function getParamsWithCurrentValuesAsDefaults(
-  extensionInstance: ExtensionInstance
-): Param[] {
-  const specParams = cloneDeep(extensionInstance?.config?.source?.spec?.params || []);
-  const currentParams = cloneDeep(extensionInstance?.config?.params || {});
-  return setNewDefaults(specParams, currentParams);
 }
 
 /**
@@ -160,15 +152,37 @@ export async function promptForNewParams(args: {
     return left.filter((aLeft) => !right.find(sameParam(aLeft)));
   };
 
-  // Some params are in the spec but not in currentParams, remove so we can prompt for them.
-  const oldParams = args.spec.params.filter((p) =>
-    Object.keys(args.currentParams).includes(p.param)
+  let combinedOldParams = args.spec.params.concat(
+    args.spec.systemParams.filter((p) => !p.advanced) ?? []
+  );
+  let combinedNewParams = args.newSpec.params.concat(
+    args.newSpec.systemParams.filter((p) => !p.advanced) ?? []
   );
 
-  let paramsDiffDeletions = paramDiff(oldParams, args.newSpec.params);
+  // Special case for updating from LOCATION to system param location
+  if (
+    combinedOldParams.some((p) => p.param === "LOCATION") &&
+    combinedNewParams.some((p) => p.param === "firebaseextensions.v1beta.function/location") &&
+    !!args.currentParams["LOCATION"]
+  ) {
+    newParamBindingOptions["firebaseextensions.v1beta.function/location"] = {
+      baseValue: args.currentParams["LOCATION"],
+    };
+    delete newParamBindingOptions["LOCATION"];
+    combinedOldParams = combinedOldParams.filter((p) => p.param !== "LOCATION");
+    combinedNewParams = combinedNewParams.filter(
+      (p) => p.param !== "firebaseextensions.v1beta.function/location"
+    );
+  }
+
+  // Some params are in the spec but not in currentParams, remove so we can prompt for them.
+  const oldParams = combinedOldParams.filter((p) =>
+    Object.keys(args.currentParams).includes(p.param)
+  );
+  let paramsDiffDeletions = paramDiff(oldParams, combinedNewParams);
   paramsDiffDeletions = substituteParams<Param[]>(paramsDiffDeletions, firebaseProjectParams);
 
-  let paramsDiffAdditions = paramDiff(args.newSpec.params, oldParams);
+  let paramsDiffAdditions = paramDiff(combinedNewParams, oldParams);
   paramsDiffAdditions = substituteParams<Param[]>(paramsDiffAdditions, firebaseProjectParams);
 
   if (paramsDiffDeletions.length) {

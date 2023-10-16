@@ -92,7 +92,7 @@ export class AppDistributionClient {
       method: "POST",
       path: `/upload/v1/${appName}/releases:upload`,
       headers: {
-        "X-Goog-Upload-File-Name": distribution.getFileName(),
+        "X-Goog-Upload-File-Name": encodeURIComponent(distribution.getFileName()),
         "X-Goog-Upload-Protocol": "raw",
         "Content-Type": "application/octet-stream",
       },

@@ -108,7 +108,7 @@ describe("cloudfunctionsv2", () => {
             resource: "projects/p/regions/r/instances/i",
             serviceName: "compute.googleapis.com",
           },
-          retry: false,
+          retry: true,
           channel: "projects/myproject/locations/us-wildwest11/channels/mychannel",
         },
       };
@@ -126,6 +126,7 @@ describe("cloudfunctionsv2", () => {
               value: "compute.googleapis.com",
             },
           ],
+          retryPolicy: "RETRY_POLICY_RETRY",
           channel: "projects/myproject/locations/us-wildwest11/channels/mychannel",
         },
         serviceConfig: {
@@ -165,6 +166,7 @@ describe("cloudfunctionsv2", () => {
               operator: "match-path-pattern",
             },
           ],
+          retryPolicy: "RETRY_POLICY_DO_NOT_RETRY",
         },
         serviceConfig: {
           ...CLOUD_FUNCTION_V2.serviceConfig,
@@ -302,6 +304,7 @@ describe("cloudfunctionsv2", () => {
               value: "pubsub.googleapis.com",
             },
           ],
+          retryPolicy: "RETRY_POLICY_DO_NOT_RETRY",
         },
         serviceConfig: {
           ...CLOUD_FUNCTION_V2.serviceConfig,

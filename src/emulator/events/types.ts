@@ -76,6 +76,11 @@ export interface CloudEvent<T> {
    */
   params?: Record<string, string>;
 
+  /**
+   * The type of data that has been passed, e.g. application/json.
+   */
+  datacontenttype?: string;
+
   /** Custom attributes. */
   [key: string]: any;
 }
@@ -88,6 +93,18 @@ export type CloudEventContext = Omit<CloudEvent<unknown>, "data" | "params">;
 export interface AuthMode {
   admin: boolean;
   variable?: any;
+}
+
+export type AuthType = "USER" | "ADMIN" | "UNAUTHENTICATED";
+
+export interface EventOptions {
+  params?: Record<string, string>;
+  authType?: AuthType;
+  auth?: Partial<AuthMode> & {
+    uid?: string;
+    token?: string;
+  };
+  resource?: string | { name: string; service: string };
 }
 
 /**

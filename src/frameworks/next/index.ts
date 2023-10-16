@@ -46,9 +46,7 @@ import {
   getNonStaticServerComponents,
   getHeadersFromMetaFiles,
   cleanI18n,
-  usesAppDirRouter,
-  usesNextImage,
-  hasUnoptimizedImage,
+  getNextVersion,
 } from "./utils";
 import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES, SHARP_VERSION, I18N_ROOT } from "../constants";
 import type {
@@ -66,6 +64,7 @@ import {
   ROUTES_MANIFEST,
   APP_PATH_ROUTES_MANIFEST,
   APP_PATHS_MANIFEST,
+  ESBUILD_VERSION,
 } from "./constants";
 import { getAllSiteDomains } from "../../hosting/api";
 import { logger } from "../../logger";
@@ -78,11 +77,8 @@ export const support = SupportLevel.Preview;
 export const type = FrameworkType.MetaFramework;
 export const docsUrl = "https://firebase.google.com/docs/hosting/frameworks/nextjs";
 
+const BUNDLE_NEXT_CONFIG_TIMEOUT = 60_000;
 const DEFAULT_NUMBER_OF_REASONS_TO_LIST = 5;
-
-function getNextVersion(cwd: string): string | undefined {
-  return findDependency("next", { cwd, depth: 0, omitDev: false })?.version;
-}
 
 function getReactVersion(cwd: string): string | undefined {
   return findDependency("react-dom", { cwd, omitDev: false })?.version;
@@ -132,7 +128,7 @@ export async function build(dir: string): Promise<BuildResult> {
     reasonsForBackend.add("middleware");
   }
 
-  if (await isUsingImageOptimization(join(dir, distDir))) {
+  if (await isUsingImageOptimization(dir, distDir)) {
     reasonsForBackend.add(`Image Optimization`);
   }
 
@@ -478,8 +474,6 @@ export async function ɵcodegenPublicDirectory(
   );
 }
 
-const BUNDLE_NEXT_CONFIG_TIMEOUT = 10_000;
-
 /**
  * Create a directory for SSR content.
  */
@@ -524,10 +518,14 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
           `--outdir=${destDir}`,
           "--log-level=error"
         );
-      const bundle = spawnSync("npx", ["--yes", "esbuild", "next.config.js", ...esbuildArgs], {
-        cwd: sourceDir,
-        timeout: BUNDLE_NEXT_CONFIG_TIMEOUT,
-      });
+      const bundle = spawnSync(
+        "npx",
+        ["--yes", `esbuild@${ESBUILD_VERSION}`, "next.config.js", ...esbuildArgs],
+        {
+          cwd: sourceDir,
+          timeout: BUNDLE_NEXT_CONFIG_TIMEOUT,
+        }
+      );
       if (bundle.status !== 0) {
         throw new FirebaseError(bundle.stderr.toString());
       }
@@ -544,14 +542,8 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
     await copy(join(sourceDir, "public"), join(destDir, "public"));
   }
 
-  // Add the `sharp` library if `/app` folder exists (i.e. Next.js 13+)
-  // or usesNextImage in `export-marker.json` is set to true.
-  // As of (10/2021) the new Next.js 13 route is in beta, and usesNextImage is always being set to false
-  // if the image component is used in pages coming from the new `/app` routes.
-  if (
-    !(await hasUnoptimizedImage(sourceDir, distDir)) &&
-    (usesAppDirRouter(sourceDir) || (await usesNextImage(sourceDir, distDir)))
-  ) {
+  // Add the `sharp` library if app is using image optimization
+  if (await isUsingImageOptimization(sourceDir, distDir)) {
     packageJson.dependencies["sharp"] = SHARP_VERSION;
   }
 
@@ -602,7 +594,7 @@ async function getConfig(
     if (gte(version, "12.0.0")) {
       const { default: loadConfig } = relativeRequire(dir, "next/dist/server/config");
       const { PHASE_PRODUCTION_BUILD } = relativeRequire(dir, "next/constants");
-      config = await loadConfig(PHASE_PRODUCTION_BUILD, dir, null);
+      config = await loadConfig(PHASE_PRODUCTION_BUILD, dir);
     } else {
       try {
         config = await import(pathToFileURL(join(dir, "next.config.js")).toString());
