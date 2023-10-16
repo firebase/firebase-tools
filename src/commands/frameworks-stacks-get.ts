@@ -20,7 +20,7 @@ export const command = new Command("stacks:get")
     try {
       const stack = await gcp.getStack(projectId, location, stackId);
       logger.info(stack);
-    } catch (err: any) {
+    } catch (err) {
       throw new FirebaseError(
         `Failed to get stack: ${stackId}. Please check the parameters you have provided.`
       );

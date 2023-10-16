@@ -34,7 +34,7 @@ export const command = new Command("stacks:delete")
     try {
       await gcp.deleteStack(projectId, location, stackId);
       utils.logSuccess(`Successfully deleted the stack: ${stackId}`);
-    } catch (err: any) {
+    } catch (err) {
       throw new FirebaseError(
         `Failed to delete stack: ${stackId}. Please check the parameters you have provided.`
       );

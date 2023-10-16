@@ -15,7 +15,7 @@ export const command = new Command("stacks:list")
     try {
       const stacks = await gcp.listStack(projectId, location);
       logger.info(stacks);
-    } catch (err: any) {
+    } catch (err) {
       throw new FirebaseError(
         `Unable to list stacks present in project: ${projectId}. Please check the parameters you have provided.`
       );
