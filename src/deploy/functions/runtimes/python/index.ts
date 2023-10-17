@@ -13,7 +13,7 @@ import { DEFAULT_VENV_DIR, runWithVirtualEnv, virtualEnvCmd } from "../../../../
 import { FirebaseError } from "../../../../error";
 import { Build } from "../../build";
 
-export const LATEST_VERSION: runtimes.Runtime = "python311";
+export const LATEST_VERSION: runtimes.Runtime = "python312";
 
 /**
  * Create a runtime delegate for the Python runtime, if applicable.
@@ -47,12 +47,12 @@ export function getPythonBinary(runtime: runtimes.Runtime): string {
     // There is no easy way to get specific version of python executable in Windows.
     return "python.exe";
   }
-  if (runtime === "python310") {
-    return "python3.10";
-  } else if (runtime === "python311") {
-    return "python3.11";
-  }
-  return "python";
+  const binaryMap: Record<string, string> = {
+    python310: "python3.10",
+    python311: "python3.11",
+    python312: "python3.12",
+  };
+  return binaryMap[runtime] ?? "python";
 }
 
 export class Delegate implements runtimes.RuntimeDelegate {
