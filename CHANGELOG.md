@@ -1,1 +1,2 @@
 - Fixed an issue with deploying multilevel grouped functions containing v2 functions. (#6419)
+- Fix bug where re-deploying 2nd Gen Firestore function fails after updating secrets. (#6456)
