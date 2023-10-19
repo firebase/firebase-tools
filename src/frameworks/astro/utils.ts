@@ -28,14 +28,14 @@ export async function getConfig(cwd: string) {
     const { astroConfig } = await openConfig({ cmd: "build", cwd, logging });
     config = astroConfig;
   }
-  const outDirPath = 
-	process.platform === "win32" &&  config.outDir.pathname.startsWith("/")
-    ? config.outDir.pathname.substring(1)
-    : config.outDir.pathname;
-  const publicDirPath = 
-	process.platform === "win32" &&  config.publicDir.pathname.startsWith("/")
-    ? config.publicDir.pathname.substring(1)
-    : config.publicDir.pathname;
+  const outDirPath =
+    process.platform === "win32" && config.outDir.pathname.startsWith("/")
+      ? config.outDir.pathname.substring(1)
+      : config.outDir.pathname;
+  const publicDirPath =
+    process.platform === "win32" && config.publicDir.pathname.startsWith("/")
+      ? config.publicDir.pathname.substring(1)
+      : config.publicDir.pathname;
   return {
     outDir: relative(cwd, outDirPath),
     publicDir: relative(cwd, publicDirPath),
