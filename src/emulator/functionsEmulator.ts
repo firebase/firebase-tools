@@ -215,7 +215,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   constructor(private args: FunctionsEmulatorArgs) {
     // TODO: Would prefer not to have static state but here we are!
-    EmulatorLogger.verbosity = this.args.quiet ? Verbosity.QUIET : Verbosity.DEBUG;
+    EmulatorLogger.setVerbosity(this.args.quiet ? Verbosity.QUIET : Verbosity.DEBUG);
     // When debugging is enabled, the "timeout" feature needs to be disabled so that
     // functions don't timeout while a breakpoint is active.
     if (this.args.debugPort) {
