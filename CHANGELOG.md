@@ -1,1 +1,2 @@
 - Enable [preferRest](https://firebase.google.com/docs/reference/admin/node/firebase-admin.firestore.firestoresettings.md#firestoresettingspreferrest) option by default for Firestore functions. (#6147)
+- Fixed an issue with deploying multilevel grouped functions containing v2 functions. (#6419)

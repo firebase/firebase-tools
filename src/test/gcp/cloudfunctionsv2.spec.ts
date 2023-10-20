@@ -475,6 +475,46 @@ describe("cloudfunctionsv2", () => {
           },
         })
       ).to.deep.equal(want);
+
+      // And again with a pattern match event trigger
+      want = {
+        ...want,
+        eventTrigger: {
+          eventType: "google.cloud.firestore.document.v1.written",
+          eventFilters: {
+            database: "(default)",
+            namespace: "(default)",
+          },
+          eventFilterPathPatterns: {
+            document: "users/{userId}",
+          },
+          retry: false,
+        },
+      };
+      expect(
+        cloudfunctionsv2.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION_V2,
+          eventTrigger: {
+            eventType: "google.cloud.firestore.document.v1.written",
+            eventFilters: [
+              {
+                attribute: "database",
+                value: "(default)",
+              },
+              {
+                attribute: "namespace",
+                value: "(default)",
+              },
+              {
+                attribute: "document",
+                value: "users/{userId}",
+                operator: "match-path-pattern",
+              },
+            ],
+            pubsubTopic: "eventarc-us-central1-abc", // firestore triggers use pubsub as transport
+          },
+        })
+      ).to.deep.equal(want);
     });
 
     it("should translate custom event triggers", () => {

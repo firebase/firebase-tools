@@ -661,7 +661,10 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
   } else if (gcfFunction.eventTrigger) {
     const eventFilters: Record<string, string> = {};
     const eventFilterPathPatterns: Record<string, string> = {};
-    if (gcfFunction.eventTrigger.pubsubTopic) {
+    if (
+      gcfFunction.eventTrigger.pubsubTopic &&
+      gcfFunction.eventTrigger.eventType === PUBSUB_PUBLISH_EVENT
+    ) {
       eventFilters.topic = gcfFunction.eventTrigger.pubsubTopic;
     } else {
       for (const eventFilter of gcfFunction.eventTrigger.eventFilters || []) {
