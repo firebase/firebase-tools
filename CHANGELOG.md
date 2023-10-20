@@ -1,2 +1,2 @@
 - Enable [preferRest](https://firebase.google.com/docs/reference/admin/node/firebase-admin.firestore.firestoresettings.md#firestoresettingspreferrest) option by default for Firestore functions. (#6147)
-- Fix bug where re-deploying 2nd Gen Firestore function fails after updating secrets. (#6456)
+- Fixed a bug where re-deploying 2nd Gen Firestore function failed after updating secrets. (#6456)
