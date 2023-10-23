@@ -1,2 +1,3 @@
 - Enable [preferRest](https://firebase.google.com/docs/reference/admin/node/firebase-admin.firestore.firestoresettings.md#firestoresettingspreferrest) option by default for Firestore functions. (#6147)
 - Fixed a bug where re-deploying 2nd Gen Firestore function failed after updating secrets. (#6456)
+- Use GetDefaultBucket endpoint to fetch Storage Default Bucket. (#6467)

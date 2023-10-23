@@ -1,11 +1,11 @@
 import { Readable } from "stream";
 import * as path from "path";
 
-import { storageOrigin } from "../api";
+import { firebaseStorageOrigin, storageOrigin } from "../api";
 import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
-import { getFirebaseProject } from "../management/projects";
+import { ensure } from "../ensureApiEnabled";
 
 /** Bucket Interface */
 interface BucketResponse {
@@ -133,6 +133,14 @@ interface ListBucketsResponse {
   ];
 }
 
+interface GetDefaultBucketResponse {
+  name: string;
+  location: string;
+  bucket: {
+    name: string;
+  };
+}
+
 /** Response type for obtaining the storage service agent */
 interface StorageServiceAccountResponse {
   email_address: string;
@@ -140,15 +148,19 @@ interface StorageServiceAccountResponse {
 }
 
 export async function getDefaultBucket(projectId: string): Promise<string> {
+  await ensure(projectId, "firebasestorage.googleapis.com", "storage", false);
   try {
-    const metadata = await getFirebaseProject(projectId);
-    if (!metadata.resources?.storageBucket) {
-      logger.debug("Default storage bucket is undefined.");
-      throw new FirebaseError(
-        "Your project is being set up. Please wait a minute before deploying again."
+      const localAPIClient = new Client({ urlPrefix: firebaseStorageOrigin, apiVersion: "v1alpha" });
+      const response = await localAPIClient.get<GetDefaultBucketResponse>(
+        `/projects/${projectId}/defaultBucket`
       );
-    }
-    return metadata.resources.storageBucket;
+      if (!response.body?.bucket.name) {
+        logger.debug("Default storage bucket is undefined.");
+        throw new FirebaseError(
+          "Your project is being set up. Please wait a minute before deploying again."
+        );
+      }
+      return response.body.bucket.name.split("/").pop()!;
   } catch (err: any) {
     logger.info(
       "\n\nThere was an issue deploying your functions. Verify that your project has a Google App Engine instance setup at https://console.cloud.google.com/appengine and try again. If this issue persists, please contact support."
