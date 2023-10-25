@@ -8,8 +8,8 @@ import * as utils from "../utils";
 
 export const command = new Command("stacks:delete")
   .description("Delete a stack from a Firebase project")
-  .option("-l, --location <location>", "Stack backend location", "us-central1")
-  .option("-s, --stackId <stackId>", "Stack backend location", "")
+  .option("-l, --location <location>", "App Backend location", "us-central1")
+  .option("-s, --stackId <stackId>", "Stack Id", "")
   .withForce()
   .action(async (options: Options) => {
     const projectId = needProjectId(options);

@@ -7,8 +7,8 @@ import { logger } from "../logger";
 
 export const command = new Command("stacks:get")
   .description("Get stack details of a Firebase project")
-  .option("-l, --location <location>", "Stack backend location", "us-central1")
-  .option("--s, --stackId <stackId>", "Id for the stack", "")
+  .option("-l, --location <location>", "App Backend location", "us-central1")
+  .option("--s, --stackId <stackId>", "Stack Id", "")
   .action(async (options: Options) => {
     const projectId = needProjectId(options);
     const location = options.location as string;
