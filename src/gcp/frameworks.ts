@@ -121,7 +121,7 @@ export async function getStack(
  * List all stacks present in a project and region.
  */
 export async function listStack(projectId: string, location: string): Promise<ListStacksResponse> {
-  const name = `projects/${projectId}/locations/${location}/backends/`;
+  const name = `projects/${projectId}/locations/${location}/backends`;
   const res = await client.get<ListStacksResponse>(name);
 
   return res.body;
