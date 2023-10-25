@@ -17,14 +17,15 @@ export const command = new Command("stacks:get")
       throw new FirebaseError("Stack id can't be empty.");
     }
 
-    let stack;
     try {
-      stack = await gcp.getStack(projectId, location, stackId);
+      const stack = await gcp.getStack(projectId, location, stackId);
+      /**
+       * TODO print this in a prettier way.
+       */
       logger.info(stack);
+      return stack;
     } catch (err: any) {
       throw new FirebaseError(`Failed to get stack: ${stackId}. Please check the parameters you have provided.`, 
       { original: err });
     }
-
-    return stack;
   });
