@@ -97,12 +97,9 @@ export async function getOrCreateStack(projectId: string, setup: any): Promise<S
   } catch (err: unknown) {
     if ((err as FirebaseError).status === 404) {
       logger.info("Creating new stack.");
-      logger.info(deployMethod);
       if (deployMethod === "github") {
         const cloudBuildConnRepo = await repo.linkGitHubRepository(projectId, location);
-        logger.info(cloudBuildConnRepo);
         const stackDetails = toStack(cloudBuildConnRepo);
-        logger.info(stackDetails);
         return await createStack(projectId, location, stackDetails, setup.frameworks.serviceName);
       }
     } else {
