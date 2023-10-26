@@ -386,7 +386,7 @@ export async function getServerConfig(sourceDir: string, configuration: string) 
       "It's required that your source locale to be one of the localize options"
     );
   }
-  const serverEntry = buildTarget ? "main.server.mjs" : serverTarget && "main.js";
+  const serverEntry = buildTarget ? "server.mjs" : serverTarget && "main.js";
   const externalDependencies: string[] = (buildOrServerTargetOptions.externalDependencies as any) || [];
   const bundleDependencies = buildOrServerTargetOptions.bundleDependencies ?? true;
   const { locales: browserLocales } = await localesForTarget(
