@@ -67,10 +67,11 @@ export async function init(setup: any, config: any) {
 export async function build(dir: string, configuration: string): Promise<BuildResult> {
   const {
     targets,
-    serverTarget,
+    buildTarget,
     serveOptimizedImages,
     locales,
     baseHref: baseUrl,
+    ssr,
   } = await getBuildConfig(dir, configuration);
   await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
   for (const target of targets) {
@@ -84,8 +85,8 @@ export async function build(dir: string, configuration: string): Promise<BuildRe
     if (result.status !== 0) throw new FirebaseError(`Unable to build ${target}`);
   }
 
-  const wantsBackend = !!serverTarget || serveOptimizedImages;
-  const rewrites = serverTarget
+  const wantsBackend = ssr || serveOptimizedImages;
+  const rewrites = ssr
     ? []
     : [
         {
@@ -94,6 +95,7 @@ export async function build(dir: string, configuration: string): Promise<BuildRe
         },
       ];
   const i18n = !!locales;
+  console.log({ buildTarget, wantsBackend, ssr, i18n, rewrites, baseUrl });
   return { wantsBackend, i18n, rewrites, baseUrl };
 }
 
@@ -149,8 +151,8 @@ export async function ɵcodegenPublicDirectory(
 export async function getValidBuildTargets(purpose: BUILD_TARGET_PURPOSE, dir: string) {
   const validTargetNames = new Set(["development", "production"]);
   try {
-    const { workspaceProject, browserTarget, serverTarget, serveTarget } = await getContext(dir);
-    const { target } = ((purpose === "emulate" && serveTarget) || serverTarget || browserTarget)!;
+    const { workspaceProject, buildTarget, browserTarget, serverTarget, serveTarget } = await getContext(dir);
+    const { target } = ((purpose === "emulate" && serveTarget) || buildTarget || serverTarget || browserTarget)!;
     const workspaceTarget = workspaceProject.targets.get(target)!;
     Object.keys(workspaceTarget.configurations || {}).forEach((it) => validTargetNames.add(it));
   } catch (e) {
@@ -182,6 +184,7 @@ export async function ɵcodegenFunctionsDirectory(
     externalDependencies,
     baseHref,
     serveOptimizedImages,
+    serverEntry,
   } = await getServerConfig(sourceDir, configuration);
 
   const dotEnv = { __NG_BROWSER_OUTPUT_PATH__: browserOutputPath };
@@ -220,7 +223,8 @@ export async function ɵcodegenFunctionsDirectory(
   let bootstrapScript: string;
   if (browserLocales) {
     const locales = serverLocales?.filter((it) => browserLocales.includes(it));
-    bootstrapScript = `const localizedApps = new Map();
+    bootstrapScript = `
+const localizedApps = new Map();
 const ffi18n = import("firebase-frameworks/i18n");
 exports.handle = function(req,res) {
   ffi18n.then(({ getPreferredLocale }) => {
@@ -232,14 +236,17 @@ exports.handle = function(req,res) {
     if (localizedApps.has(locale)) {
       localizedApps.get(locale)(req,res);
     } else {
-      const app = require(\`./${serverOutputPath}/\${locale}/main.js\`).app(locale);
-      localizedApps.set(locale, app);
-      app(req,res);
+      ${serverEntry?.endsWith(".mjs") ? `import(\`./${serverOutputPath}/\${locale}/${serverEntry}\`)` : `Promise.resolve(require(\`./${serverOutputPath}/\${locale}/${serverEntry}\`))`}.then(server => {
+        const app = server.app(locale);
+        localizedApps.set(locale, app);
+        app(req,res);
+      });
     }
   });
 };\n`;
   } else if (serverOutputPath) {
-    bootstrapScript = `exports.handle = require('./${serverOutputPath}/main.js').app();\n`;
+    bootstrapScript = `const app = ${serverEntry?.endsWith(".mjs") ? `import(\`./${serverOutputPath}/${serverEntry}\`)` : `Promise.resolve(require('./${serverOutputPath}/${serverEntry}'))`}.then(server => server.app());
+exports.handle = (req,res) => app.then(it => it(req,res));\n`;
   } else {
     bootstrapScript = `exports.handle = (res, req) => req.sendStatus(404);\n`;
     rewriteSource = posix.join(baseHref, "__image__");
