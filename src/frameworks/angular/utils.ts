@@ -434,7 +434,6 @@ export async function getBuildConfig(sourceDir: string, configuration: string) {
   return {
     targets,
     baseHref,
-    buildTarget,
     locales,
     serveOptimizedImages,
     ssr,

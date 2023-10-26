@@ -67,7 +67,6 @@ export async function init(setup: any, config: any) {
 export async function build(dir: string, configuration: string): Promise<BuildResult> {
   const {
     targets,
-    buildTarget,
     serveOptimizedImages,
     locales,
     baseHref: baseUrl,
@@ -95,7 +94,6 @@ export async function build(dir: string, configuration: string): Promise<BuildRe
         },
       ];
   const i18n = !!locales;
-  console.log({ buildTarget, wantsBackend, ssr, i18n, rewrites, baseUrl });
   return { wantsBackend, i18n, rewrites, baseUrl };
 }
 
