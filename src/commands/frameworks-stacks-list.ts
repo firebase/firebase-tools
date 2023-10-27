@@ -17,7 +17,7 @@ export const command = new Command("stacks:list")
       stacks = await gcp.listStack(projectId, location);
       /**
        * TODO print this in a prettier way.
-       */ //fasdfas//
+       */
       logger.info(stacks);
     } catch (err: any) {
       throw new FirebaseError(
