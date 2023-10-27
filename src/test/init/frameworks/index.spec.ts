@@ -34,10 +34,6 @@ describe("operationsConverter", () => {
     const projectId = "projectId";
     const location = "us-central1";
     const stackId = "stackId";
-    const stackInput = {
-      name: stackId,
-      labels: {},
-    };
     const op = {
       name: `projects/${projectId}/locations/${location}/stacks/${stackId}`,
       done: true,
@@ -58,17 +54,23 @@ describe("operationsConverter", () => {
       },
     };
     const cloudBuildConnRepo = {
-      name: `projects/${projectId}/locations/${location}/stacks/${stackId}`,
+      name: `projects/${projectId}/locations/${location}/connections/framework-${location}/repositories/repoId`,
       remoteUri: "remoteUri",
       createTime: "0",
       updateTime: "1",
     };
-
+    const stackInput = {
+      codebase: {
+        repository: cloudBuildConnRepo.name,
+        rootDirectory: "/",
+      },
+      labels: {},
+    };
     it("should createStack", async () => {
       createStackStub.resolves(op);
       pollOperationStub.resolves(completeStack);
 
-      await createStack(projectId, location, stackInput);
+      await createStack(projectId, location, stackInput, stackId);
 
       expect(createStackStub).to.be.calledWith(projectId, location, stackInput);
     });
@@ -86,10 +88,8 @@ describe("operationsConverter", () => {
       const newStackId = "newStackId";
       const newPath = `projects/${projectId}/locations/${location}/stacks/${newStackId}`;
       setup.frameworks.serviceName = newStackId;
-      stackInput.name = newStackId;
       op.name = newPath;
       completeStack.name = newPath;
-      cloudBuildConnRepo.name = newPath;
       getStackStub.throws(new FirebaseError("error", { status: 404 }));
       linkGitHubRepositoryStub.resolves(cloudBuildConnRepo);
       createStackStub.resolves(op);
