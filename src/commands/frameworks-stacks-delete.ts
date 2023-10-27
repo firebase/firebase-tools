@@ -37,7 +37,7 @@ export const command = new Command("stacks:delete")
     } catch (err: any) {
       throw new FirebaseError(
         `Failed to delete stack: ${stackId}. Please check the parameters you have provided.`,
-        {original: err}
+        { original: err }
       );
     }
   });

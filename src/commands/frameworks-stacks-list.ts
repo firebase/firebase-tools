@@ -15,13 +15,14 @@ export const command = new Command("stacks:list")
     let stacks;
     try {
       stacks = await gcp.listStack(projectId, location);
-    /**
-     * TODO print this in a prettier way.
-     */
-    logger.info(stacks);    
+      /**
+       * TODO print this in a prettier way.
+       */ //fasdfas//
+      logger.info(stacks);
     } catch (err: any) {
-      throw new FirebaseError(`Unable to list stacks present in project: ${projectId}. Please check the parameters you have provided.`, 
-      { original: err }
+      throw new FirebaseError(
+        `Unable to list stacks present in project: ${projectId}. Please check the parameters you have provided.`,
+        { original: err }
       );
     }
 

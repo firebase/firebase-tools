@@ -25,8 +25,10 @@ export const command = new Command("stacks:get")
        */
       logger.info(stack);
     } catch (err: any) {
-      throw new FirebaseError(`Failed to get stack: ${stackId}. Please check the parameters you have provided.`, 
-      { original: err });
+      throw new FirebaseError(
+        `Failed to get stack: ${stackId}. Please check the parameters you have provided.`,
+        { original: err }
+      );
     }
 
     return stack;
