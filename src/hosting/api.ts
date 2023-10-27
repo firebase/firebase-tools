@@ -633,8 +633,8 @@ export async function getCleanDomains(project: string, site: string): Promise<st
       return acc;
     }, {});
 
-  // match any string that has ${site}--*
-  const siteMatch = new RegExp(`${site}--`, "i");
+  // match any string that starts with ${site}--*
+  const siteMatch = new RegExp(`^${site}--`, "i");
   // match any string that ends in firebaseapp.com
   const firebaseAppMatch = new RegExp(/firebaseapp.com$/);
   const domains = await getAuthDomains(project);
