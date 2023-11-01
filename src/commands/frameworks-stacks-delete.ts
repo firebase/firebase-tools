@@ -32,7 +32,7 @@ export const command = new Command("backends:delete")
     }
 
     try {
-      await gcp.deleteStack(projectId, location, backendId);
+      await gcp.deleteBackend(projectId, location, backendId);
       utils.logSuccess(`Successfully deleted the backend: ${backendId}`);
     } catch (err: any) {
       throw new FirebaseError(

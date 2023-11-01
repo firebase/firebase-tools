@@ -128,14 +128,14 @@ export async function listStack(projectId: string, location: string): Promise<Li
 }
 
 /**
- * Deletes a Stack with stackId in a given project and location.
+ * Deletes a Backend with backendId in a given project and location.
  */
-export async function deleteStack(
+export async function deleteBackend(
   projectId: string,
   location: string,
-  stackId: string
+  backendId: string
 ): Promise<Operation> {
-  const name = `projects/${projectId}/locations/${location}/backends/${stackId}`;
+  const name = `projects/${projectId}/locations/${location}/backends/${backendId}`;
   const res = await client.delete<Operation>(name);
 
   return res.body;
