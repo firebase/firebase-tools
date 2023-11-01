@@ -4,6 +4,7 @@ import { needProjectId } from "../projectUtils";
 import * as gcp from "../gcp/frameworks";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
+import { bold } from "colorette";
 const Table = require("cli-table");
 
 export const command = new Command("backends:list")
@@ -30,6 +31,7 @@ export const command = new Command("backends:list")
         ];
         table.push(entry);
       }
+      logger.info(`Backends for project ${bold(projectId)}`);
       logger.info(table.toString());
     } catch (err: any) {
       throw new FirebaseError(
