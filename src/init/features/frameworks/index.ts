@@ -2,12 +2,7 @@ import * as clc from "colorette";
 import * as utils from "../../../utils";
 import { logger } from "../../../logger";
 import { promptOnce } from "../../../prompt";
-import {
-  DEFAULT_REGION,
-  ALLOWED_REGIONS,
-  DEFAULT_DEPLOY_METHOD,
-  ALLOWED_DEPLOY_METHODS,
-} from "./constants";
+import { DEFAULT_REGION, ALLOWED_REGIONS } from "./constants";
 import * as repo from "./repo";
 import { Backend, BackendOutputOnlyFields } from "../../../gcp/frameworks";
 import { Repository } from "../../../gcp/cloudbuild";
@@ -57,19 +52,6 @@ export async function doSetup(setup: any, projectId: string): Promise<void> {
 
   utils.logSuccess(`Region set to ${setup.frameworks.region}.`);
 
-  logger.info(clc.bold(`\n${clc.white("===")} Deploy Setup`));
-
-  await promptOnce(
-    {
-      name: "deployMethod",
-      type: "list",
-      default: DEFAULT_DEPLOY_METHOD,
-      message: "How do you want to deploy",
-      choices: ALLOWED_DEPLOY_METHODS,
-    },
-    setup.frameworks
-  );
-
   const backend: Backend | undefined = await getOrCreateBackend(projectId, setup);
   if (backend) {
     utils.logSuccess(`Successfully created a backend: ${backend.name}`);
@@ -94,22 +76,23 @@ export async function getOrCreateBackend(
   setup: any
 ): Promise<Backend | undefined> {
   const location: string = setup.frameworks.region;
-  const deployMethod: string = setup.frameworks.deployMethod;
   try {
     return await getExistingBackend(projectId, setup, location);
   } catch (err: unknown) {
     if ((err as FirebaseError).status === 404) {
-      logger.info("Creating new backend.");
-      if (deployMethod === "github") {
-        const cloudBuildConnRepo = await repo.linkGitHubRepository(projectId, location);
-        const backendDetails = toBackend(cloudBuildConnRepo);
-        return await createBackend(
-          projectId,
-          location,
-          backendDetails,
-          setup.frameworks.serviceName
-        );
-      }
+      const cloudBuildConnRepo = await repo.linkGitHubRepository(projectId, location);
+      await promptOnce(
+        {
+          name: "branchName",
+          type: "input",
+          default: "main",
+          message: "Which branch do you want to deploy?",
+        },
+        setup.frameworks
+      );
+      const backendDetails = toBackend(cloudBuildConnRepo);
+      logger.info(clc.bold(`\n${clc.white("===")} Creating your backend`));
+      return await createBackend(projectId, location, backendDetails, setup.frameworks.serviceName);
     } else {
       throw new FirebaseError(
         `Failed to get or create a backend using the given initialization details: ${err}`
