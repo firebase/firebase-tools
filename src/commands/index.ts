@@ -155,9 +155,9 @@ export function load(client: any): any {
     client.frameworks = {};
     client.frameworks.backends = {};
     client.frameworks.backends.list = loadCommand("frameworks-backends-list");
-    client.frameworks.backends.create = loadCommand("frameworks-stacks-create");
-    client.frameworks.backends.create = loadCommand("frameworks-backends-get");
-    client.frameworks.backends.create = loadCommand("frameworks-stacks-delete");
+    client.frameworks.backends.create = loadCommand("frameworks-backends-create");
+    client.frameworks.backends.get = loadCommand("frameworks-backends-get");
+    client.frameworks.backends.delete = loadCommand("frameworks-backends-delete");
   }
   client.login = loadCommand("login");
   client.login.add = loadCommand("login-add");

@@ -131,7 +131,7 @@ export async function listBackends(
 }
 
 /**
- * Deletes a Backend with backendId in a given project and location.
+ * Deletes a backend with backendId in a given project and location.
  */
 export async function deleteBackend(
   projectId: string,
