@@ -155,9 +155,9 @@ export function load(client: any): any {
     client.frameworks = {};
     client.frameworks.stacks = {};
     client.frameworks.stacks.list = loadCommand("frameworks-stacks-list");
-    client.frameworks.stacks.create = loadCommand("frameworks-stacks-create");
+    client.frameworks.stacks.create = loadCommand("frameworks-backends-create");
     client.frameworks.stacks.create = loadCommand("frameworks-stacks-get");
-    client.frameworks.stacks.create = loadCommand("frameworks-stacks-delete");
+    client.frameworks.stacks.create = loadCommand("frameworks-backends-delete");
   }
   client.login = loadCommand("login");
   client.login.add = loadCommand("login-add");

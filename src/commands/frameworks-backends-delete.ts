@@ -23,7 +23,7 @@ export const command = new Command("backends:delete")
         type: "confirm",
         name: "force",
         default: false,
-        message: "You are about to delete the Backend with id: " + backendId + "\n  Are you sure?",
+        message: "You are about to delete the backend with id: " + backendId + "\n  Are you sure?",
       },
       options
     );
