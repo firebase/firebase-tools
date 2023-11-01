@@ -6,24 +6,24 @@ import * as gcp from "../gcp/frameworks";
 import { promptOnce } from "../prompt";
 import * as utils from "../utils";
 
-export const command = new Command("stacks:delete")
-  .description("Delete a stack from a Firebase project")
+export const command = new Command("backends:delete")
+  .description("Delete a backend from a Firebase project")
   .option("-l, --location <location>", "App Backend location", "us-central1")
-  .option("-s, --stackId <stackId>", "Stack Id", "")
+  .option("-s, --backendId <backendId>", "Backend Id", "")
   .withForce()
   .action(async (options: Options) => {
     const projectId = needProjectId(options);
     const location = options.location as string;
-    const stackId = options.stackId as string;
-    if (!stackId) {
-      throw new FirebaseError("Stack id can't be empty.");
+    const backendId = options.backendId as string;
+    if (!backendId) {
+      throw new FirebaseError("Backend id can't be empty.");
     }
     const confirmDeletion = await promptOnce(
       {
         type: "confirm",
         name: "force",
         default: false,
-        message: "You are about to delete the Stack with id: " + stackId + "\n  Are you sure?",
+        message: "You are about to delete the Backend with id: " + backendId + "\n  Are you sure?",
       },
       options
     );
@@ -32,11 +32,11 @@ export const command = new Command("stacks:delete")
     }
 
     try {
-      await gcp.deleteStack(projectId, location, stackId);
-      utils.logSuccess(`Successfully deleted the stack: ${stackId}`);
+      await gcp.deleteStack(projectId, location, backendId);
+      utils.logSuccess(`Successfully deleted the backend: ${backendId}`);
     } catch (err: any) {
       throw new FirebaseError(
-        `Failed to delete stack: ${stackId}. Please check the parameters you have provided.`,
+        `Failed to delete backend: ${backendId}. Please check the parameters you have provided.`,
         { original: err }
       );
     }
