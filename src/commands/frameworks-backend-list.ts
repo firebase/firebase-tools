@@ -15,12 +15,12 @@ export const command = new Command("backends:list")
     const location = options.location as string;
     const table = new Table({
       head: ["Backend Id", "Repository Name", "URL", "Location", "Created Date", "Updated Date"],
-      style: { head: ["yellow"] },
+      style: { head: ["green"] },
     });
 
     let backendsList;
     try {
-      backendsList = await gcp.listBackend(projectId, location);
+      backendsList = await gcp.listBackends(projectId, location);
       for (const backend of backendsList.backends) {
         const entry = [
           backend.name,

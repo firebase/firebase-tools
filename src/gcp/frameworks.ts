@@ -120,7 +120,7 @@ export async function getBackend(
 /**
  * List all backends present in a project and region.
  */
-export async function listBackend(
+export async function listBackends(
   projectId: string,
   location: string
 ): Promise<ListBackendsResponse> {

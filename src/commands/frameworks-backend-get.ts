@@ -23,7 +23,7 @@ export const command = new Command("backends:get")
       backend = await gcp.getBackend(projectId, location, backendId);
       const table = new Table({
         head: ["Backend Id", "Repository Name", "URL", "Location", "Created Date", "Updated Date"],
-        style: { head: ["yellow"] },
+        style: { head: ["green"] },
       });
       table.push([
         backend.name,
