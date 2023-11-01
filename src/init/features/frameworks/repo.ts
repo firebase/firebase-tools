@@ -45,7 +45,7 @@ function generateConnectionId(location: string): string {
 }
 
 /**
- * Prompts the user to link their stack to a GitHub repository.
+ * Prompts the user to link their backend to a GitHub repository.
  */
 export async function linkGitHubRepository(
   projectId: string,
