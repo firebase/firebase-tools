@@ -81,8 +81,8 @@ export interface Operation {
   // end oneof result
 }
 
-export interface ListStacksResponse {
-  stacks: Stack[];
+export interface ListBackendsResponse {
+  backends: Stack[];
 }
 
 /**
@@ -120,9 +120,9 @@ export async function getBackend(
 /**
  * List all backends present in a project and region.
  */
-export async function listBackend(projectId: string, location: string): Promise<ListStacksResponse> {
+export async function listBackend(projectId: string, location: string): Promise<ListBackendsResponse> {
   const name = `projects/${projectId}/locations/${location}/backends`;
-  const res = await client.get<ListStacksResponse>(name);
+  const res = await client.get<ListBackendsResponse>(name);
 
   return res.body;
 }
