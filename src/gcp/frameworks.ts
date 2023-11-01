@@ -104,23 +104,23 @@ export async function createStack(
 }
 
 /**
- * Gets stack details.
+ * Gets backend details.
  */
-export async function getStack(
+export async function getBackend(
   projectId: string,
   location: string,
-  stackId: string
+  backendId: string
 ): Promise<Stack> {
-  const name = `projects/${projectId}/locations/${location}/backends/${stackId}`;
+  const name = `projects/${projectId}/locations/${location}/backends/${backendId}`;
   const res = await client.get<Stack>(name);
 
   return res.body;
 }
 
 /**
- * List all stacks present in a project and region.
+ * List all backends present in a project and region.
  */
-export async function listStack(projectId: string, location: string): Promise<ListStacksResponse> {
+export async function listBackend(projectId: string, location: string): Promise<ListStacksResponse> {
   const name = `projects/${projectId}/locations/${location}/backends`;
   const res = await client.get<ListStacksResponse>(name);
 

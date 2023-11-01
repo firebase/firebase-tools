@@ -4,32 +4,41 @@ import { needProjectId } from "../projectUtils";
 import * as gcp from "../gcp/frameworks";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
+const Table = require("cli-table");
 
-export const command = new Command("stacks:get")
-  .description("Get stack details of a Firebase project")
+export const command = new Command("backends:get")
+  .description("Get backend details of a Firebase project")
   .option("-l, --location <location>", "App Backend location", "us-central1")
-  .option("--s, --stackId <stackId>", "Stack Id", "")
+  .option("--s, --backendId <backendId>", "Backend Id", "")
   .action(async (options: Options) => {
     const projectId = needProjectId(options);
     const location = options.location as string;
-    const stackId = options.stackId as string;
-    if (!stackId) {
-      throw new FirebaseError("Stack id can't be empty.");
+    const backendId = options.backendId as string;
+    if (!backendId) {
+      throw new FirebaseError("Backend id can't be empty.");
     }
 
-    let stack;
+    let backend;
     try {
-      stack = await gcp.getStack(projectId, location, stackId);
-      /**
-       * TODO print this in a prettier way.
-       */
-      logger.info(stack);
+      backend = await gcp.getBackend(projectId, location, backendId);
+      const table = new Table({
+        head: ["Backend Id", "Repository Name", "URL", "Location", "Created Date", "Updated Date"],
+        style: { head: ["yellow"] },
+      });
+      table.push([
+        backend.name,
+        backend.codebase.repository,
+        backend.uri,
+        backend.createTime,
+        backend.updateTime,
+      ]);
+      logger.info(table.toString());
     } catch (err: any) {
       throw new FirebaseError(
-        `Failed to get stack: ${stackId}. Please check the parameters you have provided.`,
+        `Failed to get backend: ${backendId}. Please check the parameters you have provided.`,
         { original: err }
       );
     }
 
-    return stack;
+    return backend;
   });
