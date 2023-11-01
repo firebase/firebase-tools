@@ -120,7 +120,10 @@ export async function getBackend(
 /**
  * List all backends present in a project and region.
  */
-export async function listBackend(projectId: string, location: string): Promise<ListBackendsResponse> {
+export async function listBackend(
+  projectId: string,
+  location: string
+): Promise<ListBackendsResponse> {
   const name = `projects/${projectId}/locations/${location}/backends`;
   const res = await client.get<ListBackendsResponse>(name);
 
