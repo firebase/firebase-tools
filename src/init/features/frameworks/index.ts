@@ -89,7 +89,10 @@ function toBackend(cloudBuildConnRepo: Repository): Omit<Backend, BackendOutputO
 /**
  * Creates backend if it doesn't exist.
  */
-export async function getOrCreateBackend(projectId: string, setup: any): Promise<Backend | undefined> {
+export async function getOrCreateBackend(
+  projectId: string,
+  setup: any
+): Promise<Backend | undefined> {
   const location: string = setup.frameworks.region;
   const deployMethod: string = setup.frameworks.deployMethod;
   try {
@@ -100,7 +103,12 @@ export async function getOrCreateBackend(projectId: string, setup: any): Promise
       if (deployMethod === "github") {
         const cloudBuildConnRepo = await repo.linkGitHubRepository(projectId, location);
         const backendDetails = toBackend(cloudBuildConnRepo);
-        return await createBackend(projectId, location, backendDetails, setup.frameworks.serviceName);
+        return await createBackend(
+          projectId,
+          location,
+          backendDetails,
+          setup.frameworks.serviceName
+        );
       }
     } else {
       throw new FirebaseError(
@@ -112,7 +120,11 @@ export async function getOrCreateBackend(projectId: string, setup: any): Promise
   return undefined;
 }
 
-async function getExistingBackend(projectId: string, setup: any, location: string): Promise<Backend> {
+async function getExistingBackend(
+  projectId: string,
+  setup: any,
+  location: string
+): Promise<Backend> {
   let backend = await gcp.getBackend(projectId, location, setup.frameworks.serviceName);
   while (backend) {
     setup.frameworks.serviceName = undefined;
