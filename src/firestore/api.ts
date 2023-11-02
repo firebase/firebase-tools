@@ -321,7 +321,10 @@ export class FirestoreApi {
       ["Last Update Time", clc.yellow(database.updateTime)],
       ["Type", clc.yellow(database.type)],
       ["Location", clc.yellow(database.locationId)],
-      ["Delete Protection State", clc.yellow(database.deleteProtectionState)]
+      ["Delete Protection State", clc.yellow(database.deleteProtectionState)],
+      ["Point In Time Recovery", clc.yellow(database.pointInTimeRecoveryEnablement)],
+      ["Earliest Version Time", clc.yellow(database.earliestVersionTime)],
+      ["Version Retention Period", clc.yellow(database.versionRetentionPeriod)]
     );
     logger.info(table.toString());
   }
@@ -716,19 +719,22 @@ export class FirestoreApi {
    * @param locationId the id of the region the database will be created in
    * @param type FIRESTORE_NATIVE or DATASTORE_MODE
    * @param deleteProtectionState DELETE_PROTECTION_ENABLED or DELETE_PROTECTION_DISABLED
+   * @param pointInTimeRecoveryEnablement POINT_IN_TIME_RECOVERY_ENABLED or POINT_IN_TIME_RECOVERY_DISABLED
    */
   async createDatabase(
     project: string,
     databaseId: string,
     locationId: string,
     type: types.DatabaseType,
-    deleteProtectionState: types.DatabaseDeleteProtectionState
+    deleteProtectionState: types.DatabaseDeleteProtectionState,
+    pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement
   ): Promise<types.DatabaseResp> {
     const url = `/projects/${project}/databases`;
     const payload: types.DatabaseReq = {
       type,
       locationId,
       deleteProtectionState,
+      pointInTimeRecoveryEnablement,
     };
     const options = { queryParams: { databaseId: databaseId } };
     const res = await this.apiClient.post<types.DatabaseReq, { response?: types.DatabaseResp }>(
@@ -748,19 +754,19 @@ export class FirestoreApi {
    * Update a named Firestore Database
    * @param project the Firebase project id.
    * @param databaseId the name of the Firestore Database
-   * @param type FIRESTORE_NATIVE or DATASTORE_MODE
    * @param deleteProtectionState DELETE_PROTECTION_ENABLED or DELETE_PROTECTION_DISABLED
+   * @param pointInTimeRecoveryEnablement POINT_IN_TIME_RECOVERY_ENABLED or POINT_IN_TIME_RECOVERY_DISABLED
    */
   async updateDatabase(
     project: string,
     databaseId: string,
-    type?: types.DatabaseType,
-    deleteProtectionState?: types.DatabaseDeleteProtectionState
+    deleteProtectionState?: types.DatabaseDeleteProtectionState,
+    pointInTimeRecoveryEnablement?: types.PointInTimeRecoveryEnablement
   ): Promise<types.DatabaseResp> {
     const url = `/projects/${project}/databases/${databaseId}`;
     const payload: types.DatabaseReq = {
-      type,
       deleteProtectionState,
+      pointInTimeRecoveryEnablement,
     };
     const res = await this.apiClient.patch<types.DatabaseReq, { response?: types.DatabaseResp }>(
       url,

@@ -17,18 +17,21 @@ export const command = new Command("firestore:databases:update <database>")
     "--delete-protection <deleteProtectionState>",
     "Whether or not to prevent deletion of database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'"
   )
+  .option(
+    "--point-in-time-recovery <enablement>",
+    "Whether to enable the PITR feature on this database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'"
+  )
   .before(requirePermissions, ["datastore.databases.update"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
   .action(async (database: string, options: FirestoreOptions) => {
     const api = new fsi.FirestoreApi();
 
-    if (!options.type && !options.deleteProtection) {
+    if (!options.deleteProtection && !options.pointInTimeRecovery) {
       logger.error(
         "Missing properties to update. See firebase firestore:databases:update --help for more info."
       );
       return;
     }
-    const type: types.DatabaseType = types.DatabaseType.FIRESTORE_NATIVE;
     if (
       options.deleteProtection &&
       options.deleteProtection !== types.DatabaseDeleteProtectionStateOption.ENABLED &&
@@ -39,16 +42,35 @@ export const command = new Command("firestore:databases:update <database>")
       );
       return;
     }
-    const deleteProtectionState: types.DatabaseDeleteProtectionState =
-      options.deleteProtection === types.DatabaseDeleteProtectionStateOption.ENABLED
-        ? types.DatabaseDeleteProtectionState.ENABLED
-        : types.DatabaseDeleteProtectionState.DISABLED;
+    let deleteProtectionState: types.DatabaseDeleteProtectionState | undefined;
+    if (options.deleteProtection === types.DatabaseDeleteProtectionStateOption.ENABLED) {
+      deleteProtectionState = types.DatabaseDeleteProtectionState.ENABLED;
+    } else if (options.deleteProtection === types.DatabaseDeleteProtectionStateOption.DISABLED) {
+      deleteProtectionState = types.DatabaseDeleteProtectionState.DISABLED;
+    }
+
+    if (
+      options.pointInTimeRecovery &&
+      options.pointInTimeRecovery !== types.PointInTimeRecoveryEnablementOption.ENABLED &&
+      options.pointInTimeRecovery !== types.PointInTimeRecoveryEnablementOption.DISABLED
+    ) {
+      logger.error(
+        "Invalid value for flag --point-in-time-recovery. See firebase firestore:databases:update --help for more info."
+      );
+      return;
+    }
+    let pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement | undefined;
+    if (options.pointInTimeRecovery === types.PointInTimeRecoveryEnablementOption.ENABLED) {
+      pointInTimeRecoveryEnablement = types.PointInTimeRecoveryEnablement.ENABLED;
+    } else if (options.pointInTimeRecovery === types.PointInTimeRecoveryEnablementOption.DISABLED) {
+      pointInTimeRecoveryEnablement = types.PointInTimeRecoveryEnablement.DISABLED;
+    }
 
     const databaseResp: types.DatabaseResp = await api.updateDatabase(
       options.project,
       database,
-      type,
-      deleteProtectionState
+      deleteProtectionState,
+      pointInTimeRecoveryEnablement
     );
 
     if (options.json) {

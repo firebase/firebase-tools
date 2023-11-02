@@ -1,2 +1,1 @@
-- Fixed an issue where `emulators:export` did not check if the target folder is empty. (#6313)
-- Fix "Could not find the next executable" on Next.js deployments (#6372)
+- Fixed 2 bugs (unintended database mode changes and disabling of PITR or delete-protection) when updating Firestore databases (#6478)

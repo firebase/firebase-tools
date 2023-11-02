@@ -27,8 +27,7 @@ const frameworksPollerOptions: Omit<poller.OperationPollerOptions, "operationRes
 /**
  * Setup new frameworks project.
  */
-export async function doSetup(setup: any): Promise<void> {
-  const projectId: string = setup?.rcfile?.projects?.default;
+export async function doSetup(setup: any, projectId: string): Promise<void> {
   setup.frameworks = {};
 
   utils.logBullet("First we need a few details to create your service.");
@@ -71,15 +70,18 @@ export async function doSetup(setup: any): Promise<void> {
     setup.frameworks
   );
 
-  await getOrCreateStack(projectId, setup);
+  const stack: Stack | undefined = await getOrCreateStack(projectId, setup);
+  if (stack) {
+    utils.logSuccess(`Successfully created a stack: ${stack.name}`);
+  }
 }
 
-function toStack(
-  cloudBuildConnRepo: Repository,
-  stackId: string
-): Omit<Stack, StackOutputOnlyFields> {
+function toStack(cloudBuildConnRepo: Repository): Omit<Stack, StackOutputOnlyFields> {
   return {
-    name: stackId,
+    codebase: {
+      repository: `${cloudBuildConnRepo.name}`,
+      rootDirectory: "/",
+    },
     labels: {},
   };
 }
@@ -96,13 +98,9 @@ export async function getOrCreateStack(projectId: string, setup: any): Promise<S
     if ((err as FirebaseError).status === 404) {
       logger.info("Creating new stack.");
       if (deployMethod === "github") {
-        const cloudBuildConnRepo = await repo.linkGitHubRepository(
-          projectId,
-          location,
-          setup.frameworks.serviceName
-        );
-        const stackDetails = toStack(cloudBuildConnRepo, setup.frameworks.serviceName);
-        return await createStack(projectId, location, stackDetails);
+        const cloudBuildConnRepo = await repo.linkGitHubRepository(projectId, location);
+        const stackDetails = toStack(cloudBuildConnRepo);
+        return await createStack(projectId, location, stackDetails, setup.frameworks.serviceName);
       }
     } else {
       throw new FirebaseError(
@@ -154,12 +152,13 @@ async function getExistingStack(projectId: string, setup: any, location: string)
 export async function createStack(
   projectId: string,
   location: string,
-  stackInput: Omit<Stack, StackOutputOnlyFields>
+  stackReqBoby: Omit<Stack, StackOutputOnlyFields>,
+  stackId: string
 ): Promise<Stack> {
-  const op = await gcp.createStack(projectId, location, stackInput);
+  const op = await gcp.createStack(projectId, location, stackReqBoby, stackId);
   const stack = await poller.pollOperation<Stack>({
     ...frameworksPollerOptions,
-    pollerName: `create-${projectId}-${location}-${stackInput.name}`,
+    pollerName: `create-${projectId}-${location}-${stackId}`,
     operationResourceName: op.name,
   });
 
