@@ -20,10 +20,10 @@ describe("operationsConverter", () => {
       .stub(poller, "pollOperation")
       .throws("Unexpected pollOperation call");
     createStackStub = sandbox.stub(gcp, "createStack").throws("Unexpected createStack call");
-    getStackStub = sandbox.stub(gcp, "getStack").throws("Unexpected getStack call");
+    getStackStub = sandbox.stub(gcp, "getBackend").throws("Unexpected getBackend call");
     linkGitHubRepositoryStub = sandbox
       .stub(repo, "linkGitHubRepository")
-      .throws("Unexpected getStack call");
+      .throws("Unexpected getBackend call");
   });
 
   afterEach(() => {
