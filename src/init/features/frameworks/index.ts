@@ -54,7 +54,8 @@ export async function doSetup(setup: any, projectId: string): Promise<void> {
 
   const backend: Backend | undefined = await getOrCreateBackend(projectId, setup);
   if (backend) {
-    utils.logSuccess(`Successfully created a backend: ${backend.name}`);
+    utils.logSuccess(`Successfully created a backend:\n ${backend.name}`);
+    utils.logSuccess(`Your site is being deployed at:\n ${backend.uri}`);
   }
 }
 
