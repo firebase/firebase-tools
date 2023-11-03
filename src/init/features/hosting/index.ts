@@ -53,7 +53,6 @@ export async function doSetup(setup: any, config: any, options: Options): Promis
       logSuccess(`Firebase Hosting site ${last(newSite.name.split("/"))} created!`);
       logger.info();
     }
-    return;
   }
 
   let discoveredFramework = experiments.isEnabled("webframeworks")
