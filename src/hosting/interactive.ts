@@ -14,7 +14,6 @@ export async function interactiveCreateHostingSite(
   options: Options
 ): Promise<Site> {
   const nameSuggestion = new RegExp("try something like `(.+)`");
-  console.error("HELLO NEW FLOW");
 
   const projectNumber = await needProjectNumber(options);
   let id = siteId;
@@ -35,6 +34,9 @@ export async function interactiveCreateHostingSite(
     } catch (err: unknown) {
       if (err instanceof FirebaseError) {
         if (err.status === 400 && err.message.includes("Invalid name:")) {
+          if (options.nonInteractive) {
+            throw err;
+          }
           const i = err.message.indexOf("Invalid name:");
           logWarning(err.message.substring(i));
           const match = nameSuggestion.exec(err.message);

@@ -8,6 +8,7 @@ import { needProjectId } from "../projectUtils";
 import { Options } from "../options";
 import { requirePermissions } from "../requirePermissions";
 import { Site } from "../hosting/api";
+import { FirebaseError } from "../error";
 
 const LOG_TAG = "hosting:sites";
 
@@ -18,6 +19,10 @@ export const command = new Command("hosting:sites:create [siteId]")
   .action(async (siteId: string, options: Options & { app: string }): Promise<Site> => {
     const projectId = needProjectId(options);
     const appId = options.app;
+
+    if (options.nonInteractive && !siteId) {
+      throw new FirebaseError(`${bold(siteId)} is required in a non-interactive environment`);
+    }
 
     const site = await interactiveCreateHostingSite(siteId, appId, options);
     siteId = last(site.name.split("/"));
