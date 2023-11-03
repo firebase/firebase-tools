@@ -1,6 +1,7 @@
 import * as clc from "colorette";
 import * as fs from "fs";
 import { sync as rimraf } from "rimraf";
+import { join } from "path";
 
 import { Client } from "../../../apiv2";
 import { initGitHub } from "./github";
@@ -9,7 +10,12 @@ import { logger } from "../../../logger";
 import { discover, WebFrameworks } from "../../../frameworks";
 import { ALLOWED_SSR_REGIONS, DEFAULT_REGION } from "../../../frameworks/constants";
 import * as experiments from "../../../experiments";
-import { join } from "path";
+import { errNoDefaultSite, getDefaultHostingSite } from "../../../getDefaultHostingSite";
+import { Options } from "../../../options";
+import { last, logSuccess, logWarning } from "../../../utils";
+import { Site, createSite } from "../../../hosting/api";
+import { needProjectNumber } from "../../../projectUtils";
+import { FirebaseError } from "../../../error";
 
 const INDEX_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../../templates/init/hosting/index.html",
@@ -21,11 +27,61 @@ const MISSING_TEMPLATE = fs.readFileSync(
 );
 const DEFAULT_IGNORES = ["firebase.json", "**/.*", "**/node_modules/**"];
 
+const nameSuggestion = new RegExp("try something like `(.+)`");
+
 /**
- *
+ * Does the setup steps for Firebase Hosting.
  */
-export async function doSetup(setup: any, config: any): Promise<void> {
+export async function doSetup(setup: any, config: any, options: Options): Promise<void> {
   setup.hosting = {};
+
+  try {
+    await getDefaultHostingSite(options);
+  } catch (err: unknown) {
+    if (err !== errNoDefaultSite) {
+      throw err;
+    }
+    const confirmCreate = await promptOnce({
+      type: "confirm",
+      message:
+        "A Firebase Hosting site is required to deploy to. Would you like to create one now?",
+      default: true,
+    });
+    if (confirmCreate) {
+      const projectNumber = await needProjectNumber(options);
+      let newSite: Site | undefined;
+      let suggestion: string | undefined;
+      while (!newSite) {
+        const siteId = await promptOnce({
+          type: "input",
+          message: "Please provide an unique, URL-friendly id for the site (<id>.web.app):",
+          // TODO: bkendall@ - it should be possible to use validate_only to check the availability of the site ID.
+          validate: (s: string) => s.length > 0, // Prevents an empty string from being submitted!
+          default: suggestion,
+        });
+        try {
+          newSite = await createSite(projectNumber, siteId);
+        } catch (err: unknown) {
+          if (err instanceof FirebaseError) {
+            if (err.status === 400 && err.message.includes("Invalid name:")) {
+              const i = err.message.indexOf("Invalid name:");
+              logWarning(err.message.substring(i));
+              const match = nameSuggestion.exec(err.message);
+              if (match) {
+                suggestion = match[1];
+              }
+            }
+          } else {
+            throw err;
+          }
+        }
+      }
+      logger.info();
+      logSuccess(`Firebase Hosting site ${last(newSite.name.split("/"))} created!`);
+      logger.info();
+    }
+    return;
+  }
 
   let discoveredFramework = experiments.isEnabled("webframeworks")
     ? await discover(config.projectDir, false)
