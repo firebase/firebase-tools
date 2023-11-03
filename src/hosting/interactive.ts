@@ -32,20 +32,20 @@ export async function interactiveCreateHostingSite(
     try {
       newSite = await createSite(projectNumber, id, appId);
     } catch (err: unknown) {
-      if (err instanceof FirebaseError) {
-        if (err.status === 400 && err.message.includes("Invalid name:")) {
-          if (options.nonInteractive) {
-            throw err;
-          }
-          const i = err.message.indexOf("Invalid name:");
-          logWarning(err.message.substring(i));
-          const match = nameSuggestion.exec(err.message);
-          if (match) {
-            suggestion = match[1];
-          }
-        }
-      } else {
+      if (!(err instanceof FirebaseError)) {
         throw err;
+      }
+
+      if (err.status === 400 && err.message.includes("Invalid name:")) {
+        if (options.nonInteractive) {
+          throw err;
+        }
+        const i = err.message.indexOf("Invalid name:");
+        logWarning(err.message.substring(i));
+        const match = nameSuggestion.exec(err.message);
+        if (match) {
+          suggestion = match[1];
+        }
       }
     }
   }
