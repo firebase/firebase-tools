@@ -562,7 +562,7 @@ export async function getSite(project: string, site: string): Promise<Site> {
  * @param project project name or number.
  * @param site the site name to create.
  * @param appId the Firebase Web App ID (https://firebase.google.com/docs/projects/learn-more#config-files-objects)
-  * @return site information.
+ * @return site information.
  */
 export async function createSite(project: string, site: string, appId = ""): Promise<Site> {
   const res = await apiClient.post<{ appId: string }, Site>(
