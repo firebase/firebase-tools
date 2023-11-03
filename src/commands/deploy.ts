@@ -11,7 +11,7 @@ import { errNoDefaultSite } from "../getDefaultHostingSite";
 import { FirebaseError } from "../error";
 import { bold } from "colorette";
 import { interactiveCreateHostingSite } from "../hosting/interactive";
-import { logBullet, logLabeledBullet } from "../utils";
+import { logBullet } from "../utils";
 
 // in order of least time-consuming to most time-consuming
 export const VALID_DEPLOY_TARGETS = [
