@@ -1,21 +1,16 @@
 import { dirname, join, relative } from "path";
-import { gte } from "semver";
 import { findDependency } from "../utils";
+import { gte } from "semver";
+import { fileURLToPath } from "url";
 
 const { dynamicImport } = require(true && "../../dynamicImport");
 
-/**
- *
- */
 export function getBootstrapScript() {
   // `astro build` with node adapter in middleware mode will generate a middleware at entry.mjs
   // need to convert the export to `handle` to work with express integration
   return `const entry = import('./entry.mjs');\nexport const handle = async (req, res) => (await entry).handler(req, res)`;
 }
 
-/**
- *
- */
 export async function getConfig(cwd: string) {
   const astroDirectory = dirname(require.resolve("astro/package.json", { paths: [cwd] }));
   const version = getAstroVersion(cwd);
@@ -42,9 +37,6 @@ export async function getConfig(cwd: string) {
   };
 }
 
-/**
- *
- */
 export function getAstroVersion(cwd: string): string | undefined {
   return findDependency("astro", { cwd, depth: 0, omitDev: false })?.version;
 }
