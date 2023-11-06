@@ -36,18 +36,12 @@ export const docsUrl = "https://firebase.google.com/docs/hosting/frameworks/angu
 
 const DEFAULT_BUILD_SCRIPT = ["ng build"];
 
-/**
- *
- */
 export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!(await pathExists(join(dir, "package.json")))) return;
   if (!(await pathExists(join(dir, "angular.json")))) return;
   return { mayWantBackend: true, publicDirectory: join(dir, "src", "assets") };
 }
 
-/**
- *
- */
 export async function init(setup: any, config: any) {
   execSync(
     `npx --yes -p @angular/cli@latest ng new ${setup.projectId} --directory ${setup.hosting.source} --skip-git`,
@@ -70,9 +64,6 @@ export async function init(setup: any, config: any) {
   }
 }
 
-/**
- *
- */
 export async function build(dir: string, configuration: string): Promise<BuildResult> {
   const {
     targets,
@@ -106,9 +97,6 @@ export async function build(dir: string, configuration: string): Promise<BuildRe
   return { wantsBackend, i18n, rewrites, baseUrl };
 }
 
-/**
- *
- */
 export async function getDevModeHandle(dir: string, configuration: string) {
   const { targetStringFromTarget } = relativeRequire(dir, "@angular-devkit/architect");
   const { serveTarget } = await getContext(dir, configuration);
@@ -133,9 +121,6 @@ export async function getDevModeHandle(dir: string, configuration: string) {
   return simpleProxy(await host);
 }
 
-/**
- *
- */
 export async function ɵcodegenPublicDirectory(
   sourceDir: string,
   destDir: string,
@@ -161,9 +146,6 @@ export async function ɵcodegenPublicDirectory(
   }
 }
 
-/**
- *
- */
 export async function getValidBuildTargets(purpose: BUILD_TARGET_PURPOSE, dir: string) {
   const validTargetNames = new Set(["development", "production"]);
   try {
@@ -182,18 +164,12 @@ export async function getValidBuildTargets(purpose: BUILD_TARGET_PURPOSE, dir: s
   return [...validTargetNames, ...allTargets];
 }
 
-/**
- *
- */
 export async function shouldUseDevModeHandle(targetOrConfiguration: string, dir: string) {
   const { serveTarget } = await getContext(dir, targetOrConfiguration);
   if (!serveTarget) return false;
   return serveTarget.configuration !== "production";
 }
 
-/**
- *
- */
 export async function ɵcodegenFunctionsDirectory(
   sourceDir: string,
   destDir: string,

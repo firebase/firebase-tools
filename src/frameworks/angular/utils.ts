@@ -88,9 +88,6 @@ function getValidBuilders(purpose: BUILD_TARGET_PURPOSE): string[] {
   ];
 }
 
-/**
- *
- */
 export async function getAllTargets(purpose: BUILD_TARGET_PURPOSE, dir: string) {
   const validBuilders = getValidBuilders(purpose);
   const { NodeJsAsyncHost } = relativeRequire(dir, "@angular-devkit/core/node");
@@ -117,9 +114,6 @@ export async function getAllTargets(purpose: BUILD_TARGET_PURPOSE, dir: string) 
 }
 
 // TODO(jamesdaniels) memoize, dry up
-/**
- *
- */
 export async function getContext(dir: string, targetOrConfiguration?: string) {
   const { NodeJsAsyncHost } = relativeRequire(dir, "@angular-devkit/core/node");
   const { workspaces } = relativeRequire(dir, "@angular-devkit/core");
@@ -298,13 +292,13 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
   if (!buildOrBrowserTarget) {
     throw new FirebaseError(`No build target on ${project}`);
   }
-  const buildOrBrowserTargetOptions = await architectHost.getOptionsForTarget(buildOrBrowserTarget);
-  if (!buildOrBrowserTargetOptions) {
+  const browserTargetOptions = await architectHost.getOptionsForTarget(buildOrBrowserTarget);
+  if (!browserTargetOptions) {
     const targetString = targetStringFromTarget(buildOrBrowserTarget);
     throw new FirebaseError(`Couldn't find options for ${targetString}.`);
   }
 
-  const baseHref = buildOrBrowserTarget.baseHref || "/";
+  const baseHref = browserTargetOptions.baseHref || "/";
   if (typeof baseHref !== "string") {
     const targetString = targetStringFromTarget(buildOrBrowserTarget);
     throw new FirebaseError(`baseHref on ${targetString} was not a string`);
@@ -329,9 +323,6 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
   };
 }
 
-/**
- *
- */
 export async function getBrowserConfig(sourceDir: string, configuration: string) {
   const { architectHost, browserTarget, buildTarget, baseHref, workspaceProject } =
     await getContext(sourceDir, configuration);
@@ -351,9 +342,6 @@ export async function getBrowserConfig(sourceDir: string, configuration: string)
   return { locales, baseHref, outputPath, defaultLocale };
 }
 
-/**
- *
- */
 export async function getServerConfig(sourceDir: string, configuration: string) {
   const {
     architectHost,
@@ -370,12 +358,9 @@ export async function getServerConfig(sourceDir: string, configuration: string) 
   if (!buildOrBrowserTarget) {
     throw new AssertionError({ message: "expected build or browser target to be defined" });
   }
-  const buildOrBrowserTargetOptions = await architectHost.getOptionsForTarget(buildOrBrowserTarget);
-  assertIsString(buildOrBrowserTargetOptions?.outputPath);
-  const browserOutputPath = join(
-    buildOrBrowserTargetOptions.outputPath,
-    buildTarget ? "browser" : ""
-  );
+  const browserTargetOptions = await architectHost.getOptionsForTarget(buildOrBrowserTarget);
+  assertIsString(browserTargetOptions?.outputPath);
+  const browserOutputPath = join(browserTargetOptions.outputPath, buildTarget ? "browser" : "");
   const packageJson = JSON.parse(await host.readFile(join(sourceDir, "package.json")));
   if (!ssr) {
     return {
@@ -401,18 +386,17 @@ export async function getServerConfig(sourceDir: string, configuration: string) 
     buildOrServerTarget,
     workspaceProject
   );
-  const buildOrServerTargetOptions = await architectHost.getOptionsForTarget(buildOrServerTarget);
-  assertIsString(buildOrServerTargetOptions?.outputPath);
-  const serverOutputPath = join(buildOrServerTargetOptions.outputPath, buildTarget ? "server" : "");
+  const serverTargetOptions = await architectHost.getOptionsForTarget(buildOrServerTarget);
+  assertIsString(serverTargetOptions?.outputPath);
+  const serverOutputPath = join(serverTargetOptions.outputPath, buildTarget ? "server" : "");
   if (serverLocales && !defaultLocale) {
     throw new FirebaseError(
       "It's required that your source locale to be one of the localize options"
     );
   }
   const serverEntry = buildTarget ? "server.mjs" : serverTarget && "main.js";
-  const externalDependencies: string[] =
-    (buildOrServerTargetOptions.externalDependencies as any) || [];
-  const bundleDependencies = buildOrServerTargetOptions.bundleDependencies ?? true;
+  const externalDependencies: string[] = (serverTargetOptions.externalDependencies as any) || [];
+  const bundleDependencies = serverTargetOptions.bundleDependencies ?? true;
   const { locales: browserLocales } = await localesForTarget(
     sourceDir,
     architectHost,
@@ -434,9 +418,6 @@ export async function getServerConfig(sourceDir: string, configuration: string) 
   };
 }
 
-/**
- *
- */
 export async function getBuildConfig(sourceDir: string, configuration: string) {
   const { targetStringFromTarget } = relativeRequire(sourceDir, "@angular-devkit/architect");
   const {
