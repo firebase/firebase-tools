@@ -1,15 +1,21 @@
 import { dirname, join, relative } from "path";
-import { findDependency } from "../utils";
 import { gte } from "semver";
+import { findDependency } from "../utils";
 
 const { dynamicImport } = require(true && "../../dynamicImport");
 
+/**
+ *
+ */
 export function getBootstrapScript() {
   // `astro build` with node adapter in middleware mode will generate a middleware at entry.mjs
   // need to convert the export to `handle` to work with express integration
   return `const entry = import('./entry.mjs');\nexport const handle = async (req, res) => (await entry).handler(req, res)`;
 }
 
+/**
+ *
+ */
 export async function getConfig(cwd: string) {
   const astroDirectory = dirname(require.resolve("astro/package.json", { paths: [cwd] }));
   const version = getAstroVersion(cwd);
@@ -28,22 +34,17 @@ export async function getConfig(cwd: string) {
     const { astroConfig } = await openConfig({ cmd: "build", cwd, logging });
     config = astroConfig;
   }
-  const outDirPath =
-    process.platform === "win32" && config.outDir.pathname.startsWith("/")
-      ? config.outDir.pathname.substring(1)
-      : config.outDir.pathname;
-  const publicDirPath =
-    process.platform === "win32" && config.publicDir.pathname.startsWith("/")
-      ? config.publicDir.pathname.substring(1)
-      : config.publicDir.pathname;
   return {
-    outDir: relative(cwd, outDirPath),
-    publicDir: relative(cwd, publicDirPath),
+    outDir: relative(cwd, fileURLToPath(config.outDir)),
+    publicDir: relative(cwd, fileURLToPath(config.publicDir)),
     output: config.output,
     adapter: config.adapter,
   };
 }
 
+/**
+ *
+ */
 export function getAstroVersion(cwd: string): string | undefined {
   return findDependency("astro", { cwd, depth: 0, omitDev: false })?.version;
 }
