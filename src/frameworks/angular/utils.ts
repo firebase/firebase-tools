@@ -305,7 +305,7 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
   }
 
   const buildTargetOptions = buildTarget && (await architectHost.getOptionsForTarget(buildTarget));
-  const ssr = !!buildTargetOptions?.ssr || !!serverTarget;
+  const ssr = buildTarget ? !!buildTargetOptions?.ssr : !!serverTarget;
 
   return {
     architect,
