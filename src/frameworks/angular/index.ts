@@ -36,12 +36,18 @@ export const docsUrl = "https://firebase.google.com/docs/hosting/frameworks/angu
 
 const DEFAULT_BUILD_SCRIPT = ["ng build"];
 
+/**
+ *
+ */
 export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!(await pathExists(join(dir, "package.json")))) return;
   if (!(await pathExists(join(dir, "angular.json")))) return;
   return { mayWantBackend: true, publicDirectory: join(dir, "src", "assets") };
 }
 
+/**
+ *
+ */
 export async function init(setup: any, config: any) {
   execSync(
     `npx --yes -p @angular/cli@latest ng new ${setup.projectId} --directory ${setup.hosting.source} --skip-git`,
@@ -64,6 +70,9 @@ export async function init(setup: any, config: any) {
   }
 }
 
+/**
+ *
+ */
 export async function build(dir: string, configuration: string): Promise<BuildResult> {
   const {
     targets,
@@ -97,6 +106,9 @@ export async function build(dir: string, configuration: string): Promise<BuildRe
   return { wantsBackend, i18n, rewrites, baseUrl };
 }
 
+/**
+ *
+ */
 export async function getDevModeHandle(dir: string, configuration: string) {
   const { targetStringFromTarget } = relativeRequire(dir, "@angular-devkit/architect");
   const { serveTarget } = await getContext(dir, configuration);
@@ -121,6 +133,9 @@ export async function getDevModeHandle(dir: string, configuration: string) {
   return simpleProxy(await host);
 }
 
+/**
+ *
+ */
 export async function ɵcodegenPublicDirectory(
   sourceDir: string,
   destDir: string,
@@ -146,11 +161,18 @@ export async function ɵcodegenPublicDirectory(
   }
 }
 
+/**
+ *
+ */
 export async function getValidBuildTargets(purpose: BUILD_TARGET_PURPOSE, dir: string) {
   const validTargetNames = new Set(["development", "production"]);
   try {
-    const { workspaceProject, buildTarget, browserTarget, serverTarget, serveTarget } = await getContext(dir);
-    const { target } = ((purpose === "emulate" && serveTarget) || buildTarget || serverTarget || browserTarget)!;
+    const { workspaceProject, buildTarget, browserTarget, serverTarget, serveTarget } =
+      await getContext(dir);
+    const { target } = ((purpose === "emulate" && serveTarget) ||
+      buildTarget ||
+      serverTarget ||
+      browserTarget)!;
     const workspaceTarget = workspaceProject.targets.get(target)!;
     Object.keys(workspaceTarget.configurations || {}).forEach((it) => validTargetNames.add(it));
   } catch (e) {
@@ -160,12 +182,18 @@ export async function getValidBuildTargets(purpose: BUILD_TARGET_PURPOSE, dir: s
   return [...validTargetNames, ...allTargets];
 }
 
+/**
+ *
+ */
 export async function shouldUseDevModeHandle(targetOrConfiguration: string, dir: string) {
   const { serveTarget } = await getContext(dir, targetOrConfiguration);
   if (!serveTarget) return false;
   return serveTarget.configuration !== "production";
 }
 
+/**
+ *
+ */
 export async function ɵcodegenFunctionsDirectory(
   sourceDir: string,
   destDir: string,
@@ -221,8 +249,7 @@ export async function ɵcodegenFunctionsDirectory(
   let bootstrapScript: string;
   if (browserLocales) {
     const locales = serverLocales?.filter((it) => browserLocales.includes(it));
-    bootstrapScript = `
-const localizedApps = new Map();
+    bootstrapScript = `const localizedApps = new Map();
 const ffi18n = import("firebase-frameworks/i18n");
 exports.handle = function(req,res) {
   ffi18n.then(({ getPreferredLocale }) => {
@@ -234,7 +261,11 @@ exports.handle = function(req,res) {
     if (localizedApps.has(locale)) {
       localizedApps.get(locale)(req,res);
     } else {
-      ${serverEntry?.endsWith(".mjs") ? `import(\`./${serverOutputPath}/\${locale}/${serverEntry}\`)` : `Promise.resolve(require(\`./${serverOutputPath}/\${locale}/${serverEntry}\`))`}.then(server => {
+      ${
+        serverEntry?.endsWith(".mjs")
+          ? `import(\`./${serverOutputPath}/\${locale}/${serverEntry}\`)`
+          : `Promise.resolve(require(\`./${serverOutputPath}/\${locale}/${serverEntry}\`))`
+      }.then(server => {
         const app = server.app(locale);
         localizedApps.set(locale, app);
         app(req,res);
@@ -243,7 +274,11 @@ exports.handle = function(req,res) {
   });
 };\n`;
   } else if (serverOutputPath) {
-    bootstrapScript = `const app = ${serverEntry?.endsWith(".mjs") ? `import(\`./${serverOutputPath}/${serverEntry}\`)` : `Promise.resolve(require('./${serverOutputPath}/${serverEntry}'))`}.then(server => server.app());
+    bootstrapScript = `const app = ${
+      serverEntry?.endsWith(".mjs")
+        ? `import(\`./${serverOutputPath}/${serverEntry}\`)`
+        : `Promise.resolve(require('./${serverOutputPath}/${serverEntry}'))`
+    }.then(server => server.app());
 exports.handle = (req,res) => app.then(it => it(req,res));\n`;
   } else {
     bootstrapScript = `exports.handle = (res, req) => req.sendStatus(404);\n`;

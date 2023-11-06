@@ -7,6 +7,8 @@ import { relativeRequire, validateLocales } from "../utils";
 import { FirebaseError } from "../../error";
 import { join } from "path";
 import { BUILD_TARGET_PURPOSE } from "../interfaces";
+import { AssertionError } from "assert";
+import { assertIsString } from "../../utils";
 
 async function localesForTarget(
   dir: string,
@@ -16,8 +18,10 @@ async function localesForTarget(
 ) {
   const { targetStringFromTarget } = relativeRequire(dir, "@angular-devkit/architect");
   const targetOptions = await architectHost.getOptionsForTarget(target);
-  if (!targetOptions)
-    throw new FirebaseError(`Couldn't find options for ${targetStringFromTarget(target)}.`);
+  if (!targetOptions) {
+    const targetString = targetStringFromTarget(target);
+    throw new FirebaseError(`Couldn't find options for ${targetString}.`);
+  }
 
   let locales: string[] | undefined = undefined;
   let defaultLocale: string | undefined = undefined;
@@ -84,6 +88,9 @@ function getValidBuilders(purpose: BUILD_TARGET_PURPOSE): string[] {
   ];
 }
 
+/**
+ *
+ */
 export async function getAllTargets(purpose: BUILD_TARGET_PURPOSE, dir: string) {
   const validBuilders = getValidBuilders(purpose);
   const { NodeJsAsyncHost } = relativeRequire(dir, "@angular-devkit/core/node");
@@ -110,6 +117,9 @@ export async function getAllTargets(purpose: BUILD_TARGET_PURPOSE, dir: string) 
 }
 
 // TODO(jamesdaniels) memoize, dry up
+/**
+ *
+ */
 export async function getContext(dir: string, targetOrConfiguration?: string) {
   const { NodeJsAsyncHost } = relativeRequire(dir, "@angular-devkit/core/node");
   const { workspaces } = relativeRequire(dir, "@angular-devkit/core");
@@ -199,8 +209,9 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
     if (options?.serveOptimizedImages) {
       serveOptimizedImages = true;
     }
-    if (!buildTarget || !browserTarget)
-      throw new Error("ng-deploy is missing a build or browser target. Plase check your angular.json.");
+    if (!buildTarget || !browserTarget) {
+      throw new Error("ng-deploy is missing a build target. Plase check your angular.json.");
+    }
     if (prerenderTarget) {
       const prerenderOptions = await architectHost.getOptionsForTarget(prerenderTarget);
       if (targetStringFromTarget(browserTarget) !== prerenderOptions?.browserTarget)
@@ -284,20 +295,22 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
   }
 
   const buildOrBrowserTarget = buildTarget || browserTarget;
-  if (!buildOrBrowserTarget) throw new FirebaseError(`No build or browser target on ${project}`);
+  if (!buildOrBrowserTarget) {
+    throw new FirebaseError(`No build target on ${project}`);
+  }
   const buildOrBrowserTargetOptions = await architectHost.getOptionsForTarget(buildOrBrowserTarget);
   if (!buildOrBrowserTargetOptions) {
-    throw new FirebaseError(`Couldn't find options for ${targetStringFromTarget(buildOrBrowserTarget)}.`);
+    const targetString = targetStringFromTarget(buildOrBrowserTarget);
+    throw new FirebaseError(`Couldn't find options for ${targetString}.`);
   }
 
   const baseHref = buildOrBrowserTarget.baseHref || "/";
   if (typeof baseHref !== "string") {
-    throw new FirebaseError(
-      `baseHref on ${targetStringFromTarget(buildOrBrowserTarget)} was not a string`
-    );
+    const targetString = targetStringFromTarget(buildOrBrowserTarget);
+    throw new FirebaseError(`baseHref on ${targetString} was not a string`);
   }
 
-  const buildTargetOptions = buildTarget && await architectHost.getOptionsForTarget(buildOrBrowserTarget);
+  const buildTargetOptions = buildTarget && (await architectHost.getOptionsForTarget(buildTarget));
   const ssr = !!buildTargetOptions?.ssr || !!serverTarget;
 
   return {
@@ -316,13 +329,16 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
   };
 }
 
+/**
+ *
+ */
 export async function getBrowserConfig(sourceDir: string, configuration: string) {
-  const { architectHost, browserTarget, buildTarget, baseHref, workspaceProject } = await getContext(
-    sourceDir,
-    configuration
-  );
+  const { architectHost, browserTarget, buildTarget, baseHref, workspaceProject } =
+    await getContext(sourceDir, configuration);
   const buildOrBrowserTarget = buildTarget || browserTarget;
-  if (!buildOrBrowserTarget) throw "TODO error";
+  if (!buildOrBrowserTarget) {
+    throw new AssertionError({ message: "expected build or browser target defined" });
+  }
   const { locales, defaultLocale } = await localesForTarget(
     sourceDir,
     architectHost,
@@ -330,12 +346,14 @@ export async function getBrowserConfig(sourceDir: string, configuration: string)
     workspaceProject
   );
   const targetOptions = await architectHost.getOptionsForTarget(buildOrBrowserTarget);
-  if (typeof targetOptions?.outputPath !== "string")
-    throw new Error("browserTarget output path is not a string"); // TODO use target name, dont hardcode browser
+  assertIsString(targetOptions?.outputPath);
   const outputPath = join(targetOptions.outputPath, buildTarget ? "browser" : "");
   return { locales, baseHref, outputPath, defaultLocale };
 }
 
+/**
+ *
+ */
 export async function getServerConfig(sourceDir: string, configuration: string) {
   const {
     architectHost,
@@ -349,11 +367,15 @@ export async function getServerConfig(sourceDir: string, configuration: string) 
     ssr,
   } = await getContext(sourceDir, configuration);
   const buildOrBrowserTarget = buildTarget || browserTarget;
-  if (!buildOrBrowserTarget) throw "TODO error";
+  if (!buildOrBrowserTarget) {
+    throw new AssertionError({ message: "expected build or browser target to be defined" });
+  }
   const buildOrBrowserTargetOptions = await architectHost.getOptionsForTarget(buildOrBrowserTarget);
-  if (typeof buildOrBrowserTargetOptions?.outputPath !== "string")
-    throw new Error("browserTarget output path is not a string"); // TODO use target name, dont hardcode browser
-  const browserOutputPath = join(buildOrBrowserTargetOptions.outputPath, buildTarget ? "browser" : "");
+  assertIsString(buildOrBrowserTargetOptions?.outputPath);
+  const browserOutputPath = join(
+    buildOrBrowserTargetOptions.outputPath,
+    buildTarget ? "browser" : ""
+  );
   const packageJson = JSON.parse(await host.readFile(join(sourceDir, "package.json")));
   if (!ssr) {
     return {
@@ -370,7 +392,9 @@ export async function getServerConfig(sourceDir: string, configuration: string) 
     };
   }
   const buildOrServerTarget = buildTarget || serverTarget;
-  if (!buildOrServerTarget) throw "TODO error or assert";
+  if (!buildOrServerTarget) {
+    throw new AssertionError({ message: "expected build or server target to be defined" });
+  }
   const { locales: serverLocales, defaultLocale } = await localesForTarget(
     sourceDir,
     architectHost,
@@ -378,8 +402,7 @@ export async function getServerConfig(sourceDir: string, configuration: string) 
     workspaceProject
   );
   const buildOrServerTargetOptions = await architectHost.getOptionsForTarget(buildOrServerTarget);
-  if (typeof buildOrServerTargetOptions?.outputPath !== "string")
-    throw new Error("serverTarget output path is not a string"); // TODO don't hardcode serverTarget
+  assertIsString(buildOrServerTargetOptions?.outputPath);
   const serverOutputPath = join(buildOrServerTargetOptions.outputPath, buildTarget ? "server" : "");
   if (serverLocales && !defaultLocale) {
     throw new FirebaseError(
@@ -387,7 +410,8 @@ export async function getServerConfig(sourceDir: string, configuration: string) 
     );
   }
   const serverEntry = buildTarget ? "server.mjs" : serverTarget && "main.js";
-  const externalDependencies: string[] = (buildOrServerTargetOptions.externalDependencies as any) || [];
+  const externalDependencies: string[] =
+    (buildOrServerTargetOptions.externalDependencies as any) || [];
   const bundleDependencies = buildOrServerTargetOptions.bundleDependencies ?? true;
   const { locales: browserLocales } = await localesForTarget(
     sourceDir,
@@ -410,6 +434,9 @@ export async function getServerConfig(sourceDir: string, configuration: string) 
   };
 }
 
+/**
+ *
+ */
 export async function getBuildConfig(sourceDir: string, configuration: string) {
   const { targetStringFromTarget } = relativeRequire(sourceDir, "@angular-devkit/architect");
   const {
@@ -424,13 +451,22 @@ export async function getBuildConfig(sourceDir: string, configuration: string) {
     ssr,
   } = await getContext(sourceDir, configuration);
   const targets = (
-    buildTarget ? [buildTarget] :
-    prerenderTarget ? [prerenderTarget] :
-    [browserTarget, serverTarget].filter((it) => !!it)
+    buildTarget
+      ? [buildTarget]
+      : prerenderTarget
+      ? [prerenderTarget]
+      : [browserTarget, serverTarget].filter((it) => !!it)
   ).map((it) => targetStringFromTarget(it!));
   const buildOrBrowserTarget = buildTarget || browserTarget;
-  if (!buildOrBrowserTarget) throw "TODO better error";
-  const locales = await localesForTarget(sourceDir, architectHost, buildOrBrowserTarget, workspaceProject);
+  if (!buildOrBrowserTarget) {
+    throw new AssertionError({ message: "expected build or browser target defined" });
+  }
+  const locales = await localesForTarget(
+    sourceDir,
+    architectHost,
+    buildOrBrowserTarget,
+    workspaceProject
+  );
   return {
     targets,
     baseHref,
