@@ -66,24 +66,26 @@ async function localesForTarget(
 
 const enum ExpectedBuilder {
   ANGULAR_FIRE_DEPLOY_TARGET = "@angular/fire:deploy",
-  BUILD_TARGET = "@angular-devkit/build-angular:application",
-  BROWSER_TARGET = "@angular-devkit/build-angular:browser",
-  PRERENDER_TARGET = "@nguniversal/builders:prerender",
-  DEV_SERVER_TARGET = "@angular-devkit/build-angular:dev-server",
-  SSR_DEV_SERVER_TARGET = "@nguniversal/builders:ssr-dev-server",
+  APPLICATION = "@angular-devkit/build-angular:application",
+  BROWSER_ESBUILD = "@angular-devkit/build-angular:browser-esbuild",
+  LEGACY_BROWSER = "@angular-devkit/build-angular:browser",
+  LEGACY_PRERENDER = "@nguniversal/builders:prerender",
+  DEV_SERVER = "@angular-devkit/build-angular:dev-server",
+  LEGACY_SSR_DEV_SERVER = "@nguniversal/builders:ssr-dev-server",
 }
 
 const DEV_SERVER_TARGETS: string[] = [
-  ExpectedBuilder.DEV_SERVER_TARGET,
-  ExpectedBuilder.SSR_DEV_SERVER_TARGET,
+  ExpectedBuilder.DEV_SERVER,
+  ExpectedBuilder.LEGACY_SSR_DEV_SERVER,
 ];
 
 function getValidBuilders(purpose: BUILD_TARGET_PURPOSE): string[] {
   return [
-    ExpectedBuilder.BUILD_TARGET,
+    ExpectedBuilder.APPLICATION,
     ExpectedBuilder.ANGULAR_FIRE_DEPLOY_TARGET,
-    ExpectedBuilder.BROWSER_TARGET,
-    ExpectedBuilder.PRERENDER_TARGET,
+    ExpectedBuilder.BROWSER_ESBUILD,
+    ExpectedBuilder.LEGACY_BROWSER,
+    ExpectedBuilder.LEGACY_PRERENDER,
     ...(purpose === "deploy" ? [] : DEV_SERVER_TARGETS),
   ];
 }
@@ -180,9 +182,10 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
     const builder = target.builder;
     if (builder === ExpectedBuilder.ANGULAR_FIRE_DEPLOY_TARGET)
       deployTargetName = overrideTarget.target;
-    if (builder === ExpectedBuilder.BUILD_TARGET) buildTarget = overrideTarget;
-    if (builder === ExpectedBuilder.BROWSER_TARGET) browserTarget = overrideTarget;
-    if (builder === ExpectedBuilder.PRERENDER_TARGET) prerenderTarget = overrideTarget;
+    if (builder === ExpectedBuilder.APPLICATION) buildTarget = overrideTarget;
+    if (builder === ExpectedBuilder.BROWSER_ESBUILD) browserTarget = overrideTarget;
+    if (builder === ExpectedBuilder.LEGACY_BROWSER) browserTarget = overrideTarget;
+    if (builder === ExpectedBuilder.LEGACY_PRERENDER) prerenderTarget = overrideTarget;
     if (typeof builder === "string" && DEV_SERVER_TARGETS.includes(builder))
       serveTarget = overrideTarget;
   }
@@ -225,12 +228,15 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
 
   if (!buildTarget && workspaceProject.targets.has("build")) {
     const { defaultConfiguration = "production", builder } = workspaceProject.targets.get("build")!;
-    if (builder === ExpectedBuilder.BUILD_TARGET) {
+    if (builder === ExpectedBuilder.APPLICATION) {
       buildTarget = { project, target: "build", configuration: defaultConfiguration };
+    }
+    if (builder === ExpectedBuilder.BROWSER_ESBUILD) {
+      browserTarget = { project, target: "build", configuration: defaultConfiguration };
     }
   }
 
-  if (!buildTarget) {
+  if (!buildTarget && !browserTarget) {
     if (!overrideTarget && !prerenderTarget && workspaceProject.targets.has("prerender")) {
       const { defaultConfiguration = "production" } = workspaceProject.targets.get("prerender")!;
       prerenderTarget = { project, target: "prerender", configuration: defaultConfiguration };
@@ -269,15 +275,15 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
       const { defaultConfiguration = "production" } = workspaceProject.targets.get("server")!;
       serverTarget = { project, target: "server", configuration: defaultConfiguration };
     }
+  }
 
-    if (!serveTarget) {
-      if (serverTarget && workspaceProject.targets.has("serve-ssr")) {
-        const { defaultConfiguration = "development" } = workspaceProject.targets.get("serve-ssr")!;
-        serveTarget = { project, target: "serve-ssr", configuration: defaultConfiguration };
-      } else if (workspaceProject.targets.has("serve")) {
-        const { defaultConfiguration = "development" } = workspaceProject.targets.get("serve")!;
-        serveTarget = { project, target: "serve", configuration: defaultConfiguration };
-      }
+  if (!serveTarget) {
+    if (serverTarget && workspaceProject.targets.has("serve-ssr")) {
+      const { defaultConfiguration = "development" } = workspaceProject.targets.get("serve-ssr")!;
+      serveTarget = { project, target: "serve-ssr", configuration: defaultConfiguration };
+    } else if (workspaceProject.targets.has("serve")) {
+      const { defaultConfiguration = "development" } = workspaceProject.targets.get("serve")!;
+      serveTarget = { project, target: "serve", configuration: defaultConfiguration };
     }
   }
 
