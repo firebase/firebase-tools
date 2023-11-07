@@ -78,9 +78,6 @@ export class AuthBlockingService implements Service {
     const newBlockingConfig = await identityPlatform.getBlockingFunctionsConfig(endpoint.project);
     const oldBlockingConfig = cloneDeep(newBlockingConfig);
 
-    console.log("***** trigger type:", endpoint.blockingTrigger.eventType);
-    console.log("*****\n old config:", oldBlockingConfig);
-
     if (endpoint.blockingTrigger.eventType === events.v1.BEFORE_CREATE_EVENT) {
       newBlockingConfig.triggers = {
         ...newBlockingConfig.triggers,
@@ -102,9 +99,10 @@ export class AuthBlockingService implements Service {
           functionUri: endpoint.uri!,
         },
       };
-      console.log("Is this changing?", newBlockingConfig.triggers);
     } else {
-      // throw error here
+      throw new FirebaseError(
+        `Received invalid blocking trigger event type ${endpoint.blockingTrigger.eventType}`
+      );
     }
 
     newBlockingConfig.forwardInboundCredentials = {
@@ -112,13 +110,9 @@ export class AuthBlockingService implements Service {
       ...endpoint.blockingTrigger.options,
     };
 
-    console.log("*****\n new config:", newBlockingConfig);
-
     if (!this.configChanged(newBlockingConfig, oldBlockingConfig)) {
       return;
     }
-
-    console.log("*****\nUpdating blocking functions config to:", newBlockingConfig);
 
     await identityPlatform.setBlockingFunctionsConfig(endpoint.project, newBlockingConfig);
   }
