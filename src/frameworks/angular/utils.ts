@@ -67,9 +67,9 @@ async function localesForTarget(
 const enum ExpectedBuilder {
   APPLICATION = "@angular-devkit/build-angular:application",
   BROWSER_ESBUILD = "@angular-devkit/build-angular:browser-esbuild",
-  BROWSER_WEBPACK = "@angular-devkit/build-angular:browser",
   DEPLOY = "@angular/fire:deploy",
   DEV_SERVER = "@angular-devkit/build-angular:dev-server",
+  LEGACY_BROWSER = "@angular-devkit/build-angular:browser",
   LEGACY_PRERENDER = "@nguniversal/builders:prerender",
   LEGACY_SERVER = "@angular-devkit/build-angular:server",
   LEGACY_SSR_DEV_SERVER = "@nguniversal/builders:ssr-dev-server",
@@ -84,8 +84,8 @@ function getValidBuilders(purpose: BUILD_TARGET_PURPOSE): string[] {
   return [
     ExpectedBuilder.APPLICATION,
     ExpectedBuilder.BROWSER_ESBUILD,
-    ExpectedBuilder.BROWSER_WEBPACK,
     ExpectedBuilder.DEPLOY,
+    ExpectedBuilder.LEGACY_BROWSER,
     ExpectedBuilder.LEGACY_PRERENDER,
     ...(purpose === "deploy" ? [] : DEV_SERVER_TARGETS),
   ];
@@ -188,7 +188,7 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
         buildTarget = overrideTarget;
         break;
       case ExpectedBuilder.BROWSER_ESBUILD:
-      case ExpectedBuilder.BROWSER_WEBPACK:
+      case ExpectedBuilder.LEGACY_BROWSER:
         browserTarget = overrideTarget;
         break;
       case ExpectedBuilder.LEGACY_PRERENDER:
@@ -284,7 +284,7 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
         configuration: configuration || defaultConfiguration,
       };
       if (
-        builder === ExpectedBuilder.BROWSER_WEBPACK ||
+        builder === ExpectedBuilder.LEGACY_BROWSER ||
         builder === ExpectedBuilder.BROWSER_ESBUILD
       ) {
         browserTarget = target;
@@ -340,7 +340,7 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
       if (target === deployTarget && builder === ExpectedBuilder.DEPLOY) continue;
       if (target === buildTarget && builder === ExpectedBuilder.APPLICATION) continue;
       if (target === browserTarget && builder === ExpectedBuilder.BROWSER_ESBUILD) continue;
-      if (target === browserTarget && builder === ExpectedBuilder.BROWSER_WEBPACK) continue;
+      if (target === browserTarget && builder === ExpectedBuilder.LEGACY_BROWSER) continue;
       if (target === prerenderTarget && builder === ExpectedBuilder.LEGACY_PRERENDER) continue;
       if (target === serverTarget && builder === ExpectedBuilder.LEGACY_SERVER) continue;
       if (target === serveTarget && builder === ExpectedBuilder.LEGACY_SSR_DEV_SERVER) continue;
