@@ -205,7 +205,7 @@ export async function createExtensionVersionFromGitHubSource(args: {
     ExtensionVersion
   >(`/${refs.toExtensionName(ref)}/versions:createFromSource`, {
     versionId: ref.version,
-    extensionRoot: args.extensionRoot ?? "/",
+    extensionRoot: args.extensionRoot || "/",
     githubRepositorySource: {
       uri: args.repoUri,
       sourceRef: args.sourceRef,

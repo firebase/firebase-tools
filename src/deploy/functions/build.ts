@@ -6,12 +6,15 @@ import { FirebaseError } from "../../error";
 import { assertExhaustive, mapObject, nullsafeVisitor } from "../../functional";
 import { UserEnvsOpts, writeUserEnvs } from "../../functions/env";
 import { FirebaseConfig } from "./args";
+import { Runtime } from "./runtimes";
+import { ExprParseError } from "./cel";
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
 export interface Build {
   requiredAPIs: RequiredApi[];
   endpoints: Record<string, Endpoint>;
   params: params.Param[];
+  runtime?: Runtime;
 }
 
 /**
@@ -233,7 +236,7 @@ export type Endpoint = Triggered & {
   // The services account that this function should run as.
   // defaults to the GAE service account when a function is first created as a GCF gen 1 function.
   // Defaults to the compute service account when a function is first created as a GCF gen 2 function.
-  serviceAccount?: ServiceAccount | null;
+  serviceAccount?: Field<string> | ServiceAccount | null;
 
   // defaults to ["us-central1"], overridable in firebase-tools with
   //  process.env.FIREBASE_FUNCTIONS_DEFAULT_REGION
@@ -432,8 +435,21 @@ export function toBackend(
     let regions: string[] = [];
     if (!bdEndpoint.region) {
       regions = [api.functionsDefaultRegion];
-    } else {
+    } else if (Array.isArray(bdEndpoint.region)) {
       regions = params.resolveList(bdEndpoint.region, paramValues);
+    } else {
+      // N.B. setting region via GlobalOptions only accepts a String param.
+      // Therefore if we raise an exception by attempting to resolve a
+      // List param, we try resolving a String param instead.
+      try {
+        regions = params.resolveList(bdEndpoint.region, paramValues);
+      } catch (err: any) {
+        if (err instanceof ExprParseError) {
+          regions = [params.resolveString(bdEndpoint.region, paramValues)];
+        } else {
+          throw err;
+        }
+      }
     }
     for (const region of regions) {
       const trigger = discoverTrigger(bdEndpoint, region, r);
@@ -455,8 +471,7 @@ export function toBackend(
         bdEndpoint,
         "environmentVariables",
         "labels",
-        "secretEnvironmentVariables",
-        "serviceAccount"
+        "secretEnvironmentVariables"
       );
 
       proto.convertIfPresent(bkEndpoint, bdEndpoint, "ingressSettings", (from) => {
@@ -477,6 +492,7 @@ export function toBackend(
         return (mem as backend.MemoryOptions) || null;
       });
 
+      r.resolveStrings(bkEndpoint, bdEndpoint, "serviceAccount");
       r.resolveInts(
         bkEndpoint,
         bdEndpoint,
@@ -492,10 +508,12 @@ export function toBackend(
         nullsafeVisitor((cpu) => (cpu === "gcf_gen1" ? cpu : r.resolveInt(cpu)))
       );
       if (bdEndpoint.vpc) {
+        bdEndpoint.vpc.connector = params.resolveString(bdEndpoint.vpc.connector, paramValues);
         if (bdEndpoint.vpc.connector && !bdEndpoint.vpc.connector.includes("/")) {
           bdEndpoint.vpc.connector = `projects/${bdEndpoint.project}/locations/${region}/connectors/${bdEndpoint.vpc.connector}`;
         }
-        bkEndpoint.vpc = { connector: params.resolveString(bdEndpoint.vpc.connector, paramValues) };
+
+        bkEndpoint.vpc = { connector: bdEndpoint.vpc.connector };
         proto.copyIfPresent(bkEndpoint.vpc, bdEndpoint.vpc, "egressSettings");
       } else if (bdEndpoint.vpc === null) {
         bkEndpoint.vpc = null;

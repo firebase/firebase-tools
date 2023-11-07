@@ -8,7 +8,7 @@ import { flattenArray } from "../../functional";
 import * as iam from "../../gcp/iam";
 import * as args from "./args";
 import * as backend from "./backend";
-import { track } from "../../track";
+import { trackGA4 } from "../../track";
 import * as utils from "../../utils";
 
 import { getIamPolicy, setIamPolicy } from "../../gcp/resourceManager";
@@ -101,7 +101,10 @@ export async function checkHttpIam(
   }
 
   if (!passed) {
-    void track("Error (User)", "deploy:functions:http_create_missing_iam");
+    void trackGA4("error", {
+      error_type: "Error (User)",
+      details: "deploy:functions:http_create_missing_iam",
+    });
     throw new FirebaseError(
       `Missing required permission on project ${bold(
         context.projectId

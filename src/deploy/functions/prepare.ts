@@ -21,7 +21,6 @@ import { logLabeledBullet } from "../../utils";
 import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
 import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import { needProjectId, needProjectNumber } from "../../projectUtils";
-import { track } from "../../track";
 import { logger } from "../../logger";
 import { ensureTriggerRegions } from "./triggerRegionHelper";
 import { ensureServiceAgentRoles } from "./checkIam";
@@ -38,11 +37,6 @@ import { allEndpoints, Backend } from "./backend";
 import { assertExhaustive } from "../../functional";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
-function hasUserConfig(config: Record<string, unknown>): boolean {
-  // "firebase" key is always going to exist in runtime config.
-  // If any other key exists, we can assume that user is using runtime config.
-  return Object.keys(config).length > 1;
-}
 
 /**
  * Prepare functions codebases for deploy.
@@ -87,6 +81,8 @@ export async function prepare(
     // If runtime config API is enabled, load the runtime config.
     runtimeConfig = { ...runtimeConfig, ...(await getFunctionsConfig(projectId)) };
   }
+
+  context.codebaseDeployEvents = {};
 
   // ===Phase 1. Load codebases from source.
   const wantBuilds = await loadCodebases(
@@ -142,7 +138,7 @@ export async function prepare(
       } else if (endpoint.platform === "gcfv2") {
         // N.B. If GCF starts allowing v1's allowable characters in IDs they're
         // going to need to have a transform to create a service ID (which has a
-        // more restrictive cahracter set). We'll need to reimplement that here.
+        // more restrictive character set). We'll need to reimplement that here.
         resource = `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.id}`;
       } else {
         assertExhaustive(endpoint.platform);
@@ -155,15 +151,23 @@ export async function prepare(
       codebaseUsesEnvs.push(codebase);
     }
 
+    context.codebaseDeployEvents[codebase] = {
+      fn_deploy_num_successes: 0,
+      fn_deploy_num_failures: 0,
+      fn_deploy_num_canceled: 0,
+      fn_deploy_num_skipped: 0,
+    };
+
     if (wantBuild.params.length > 0) {
       if (wantBuild.params.every((p) => p.type !== "secret")) {
-        void track("functions_params_in_build", "env_only");
+        context.codebaseDeployEvents[codebase].params = "env_only";
       } else {
-        void track("functions_params_in_build", "with_secrets");
+        context.codebaseDeployEvents[codebase].params = "with_secrets";
       }
     } else {
-      void track("functions_params_in_build", "none");
+      context.codebaseDeployEvents[codebase].params = "none";
     }
+    context.codebaseDeployEvents[codebase].runtime = wantBuild.runtime;
   }
 
   // ===Phase 2.5. Before proceeding further, let's make sure that we don't have conflicting function names.
@@ -213,18 +217,6 @@ export async function prepare(
     validate.endpointsAreValid(wantBackend);
     inferBlockingDetails(wantBackend);
   }
-
-  const tag = hasUserConfig(runtimeConfig)
-    ? codebaseUsesEnvs.length > 0
-      ? "mixed"
-      : "runtime_config"
-    : codebaseUsesEnvs.length > 0
-    ? "dotenv"
-    : "none";
-  void track("functions_codebase_deploy_env_method", tag);
-
-  const codebaseCnt = Object.keys(payload.functions).length;
-  void track("functions_codebase_deploy_count", codebaseCnt >= 5 ? "5+" : codebaseCnt.toString());
 
   // ===Phase 5. Enable APIs required by the deploying backends.
   const wantBackend = backend.merge(...Object.values(wantBackends));
@@ -324,7 +316,7 @@ export function inferDetailsFromExisting(
     // N.B. concurrency has different defaults based on CPU. If the customer
     // only specifies CPU and they change that specification to < 1, we should
     // turn off concurrency.
-    // We'll hanndle this in setCpuAndConcurrency
+    // We'll handle this in setCpuAndConcurrency
 
     wantE.securityLevel = haveE.securityLevel ? haveE.securityLevel : "SECURE_ALWAYS";
 
@@ -457,7 +449,18 @@ export async function loadCodebases(
     await runtimeDelegate.build();
 
     const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
-    wantBuilds[codebase] = await runtimeDelegate.discoverBuild(runtimeConfig, firebaseEnvs);
+    logLabeledBullet(
+      "functions",
+      `Loading and analyzing source code for codebase ${codebase} to determine what to deploy`
+    );
+    wantBuilds[codebase] = await runtimeDelegate.discoverBuild(runtimeConfig, {
+      ...firebaseEnvs,
+      // Quota project is required when using GCP's Client-based APIs
+      // Some GCP client SDKs, like Vertex AI, requires appropriate quota project setup
+      // in order for .init() calls to succeed.
+      GOOGLE_CLOUD_QUOTA_PROJECT: projectId,
+    });
+    wantBuilds[codebase].runtime = codebaseConfig.runtime;
   }
   return wantBuilds;
 }

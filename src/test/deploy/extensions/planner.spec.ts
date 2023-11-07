@@ -3,8 +3,18 @@ import * as sinon from "sinon";
 
 import * as planner from "../../../deploy/extensions/planner";
 import * as extensionsApi from "../../../extensions/extensionsApi";
-import { ExtensionInstance } from "../../../extensions/types";
+import { ExtensionInstance, Extension } from "../../../extensions/types";
 
+function extension(latest?: string, latestApproved?: string): Extension {
+  return {
+    name: `publishers/test/extensions/test`,
+    ref: `test/test`,
+    state: "PUBLISHED",
+    latestVersion: latest,
+    latestApprovedVersion: latestApproved,
+    createTime: "",
+  };
+}
 function extensionVersion(version?: string): any {
   return {
     name: `publishers/test/extensions/test/versions/${version}`,
@@ -25,7 +35,6 @@ function extensionVersion(version?: string): any {
 describe("Extensions Deployment Planner", () => {
   describe("resolveSemver", () => {
     let listExtensionVersionsStub: sinon.SinonStub;
-
     before(() => {
       listExtensionVersionsStub = sinon.stub(extensionsApi, "listExtensionVersions").resolves([
         extensionVersion("0.1.0"),
@@ -59,8 +68,14 @@ describe("Extensions Deployment Planner", () => {
         err: false,
       },
       {
-        description: "should default to latest version",
-        out: "0.2.0",
+        description: "should default to latest-approved version",
+        out: "0.1.1",
+        err: false,
+      },
+      {
+        description: "should resolve explicit latest-approved",
+        in: "latest-approved",
+        out: "0.1.1",
         err: false,
       },
       {
@@ -74,19 +89,25 @@ describe("Extensions Deployment Planner", () => {
       it(c.description, () => {
         if (!c.err) {
           expect(
-            planner.resolveVersion({
-              publisherId: "test",
-              extensionId: "test",
-              version: c.in,
-            })
+            planner.resolveVersion(
+              {
+                publisherId: "test",
+                extensionId: "test",
+                version: c.in,
+              },
+              extension("0.2.0", "0.1.1")
+            )
           ).to.eventually.equal(c.out);
         } else {
           expect(
-            planner.resolveVersion({
-              publisherId: "test",
-              extensionId: "test",
-              version: c.in,
-            })
+            planner.resolveVersion(
+              {
+                publisherId: "test",
+                extensionId: "test",
+                version: c.in,
+              },
+              extension("0.2.0", "0.1.1")
+            )
           ).to.eventually.be.rejected;
         }
       });

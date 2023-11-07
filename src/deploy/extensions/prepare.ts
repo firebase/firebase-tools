@@ -17,6 +17,7 @@ import { checkSpecForV2Functions, ensureNecessaryV2ApisAndRoles } from "./v2Func
 import { acceptLatestAppDeveloperTOS } from "../../extensions/tos";
 
 export async function prepare(context: Context, options: Options, payload: Payload) {
+  context.extensionsStartTime = Date.now();
   const projectId = needProjectId(options);
   const projectNumber = await needProjectNumber(options);
   const aliases = getAliases(options, projectId);
@@ -40,6 +41,8 @@ export async function prepare(context: Context, options: Options, payload: Paylo
       !(await prompt.confirm({
         message: `Do you wish to continue deploying these extension instances?`,
         default: false,
+        nonInteractive: options.nonInteractive,
+        force: options.force,
       }))
     ) {
       throw new FirebaseError("Deployment cancelled");
@@ -68,6 +71,8 @@ export async function prepare(context: Context, options: Options, payload: Paylo
       !(await prompt.confirm({
         message: `Do you wish to continue deploying these extension instances?`,
         default: true,
+        nonInteractive: options.nonInteractive,
+        force: options.force,
       }))
     ) {
       throw new FirebaseError("Deployment cancelled");
@@ -96,6 +101,8 @@ export async function prepare(context: Context, options: Options, payload: Paylo
           .map((i) => i.instanceId)
           .join(", ")}?`,
         default: false,
+        nonInteractive: options.nonInteractive,
+        force: options.force,
       }))
     ) {
       payload.instancesToDelete = [];

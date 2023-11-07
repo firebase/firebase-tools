@@ -20,7 +20,6 @@ import { fileExistsSync } from "../../fsutils";
 
 import { promptOnce } from "../../prompt";
 import { FirebaseError } from "../../error";
-import { I18N_ROOT, NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES } from "../constants";
 import type { EmulatorInfo } from "../../emulator/types";
 import {
   readJSON,
@@ -28,6 +27,8 @@ import {
   warnIfCustomBuildScript,
   relativeRequire,
   findDependency,
+  validateLocales,
+  getNodeModuleBin,
 } from "../utils";
 import { BuildResult, FrameworkType, SupportLevel } from "../interfaces";
 
@@ -45,10 +46,9 @@ import {
   getNonStaticServerComponents,
   getHeadersFromMetaFiles,
   cleanI18n,
-  usesAppDirRouter,
-  usesNextImage,
-  hasUnoptimizedImage,
+  getNextVersion,
 } from "./utils";
+import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES, SHARP_VERSION, I18N_ROOT } from "../constants";
 import type {
   AppPathRoutesManifest,
   AppPathsManifest,
@@ -64,8 +64,10 @@ import {
   ROUTES_MANIFEST,
   APP_PATH_ROUTES_MANIFEST,
   APP_PATHS_MANIFEST,
+  ESBUILD_VERSION,
 } from "./constants";
 import { getAllSiteDomains } from "../../hosting/api";
+import { logger } from "../../logger";
 
 const DEFAULT_BUILD_SCRIPT = ["next build"];
 const PUBLIC_DIR = "public";
@@ -75,11 +77,8 @@ export const support = SupportLevel.Preview;
 export const type = FrameworkType.MetaFramework;
 export const docsUrl = "https://firebase.google.com/docs/hosting/frameworks/nextjs";
 
+const BUNDLE_NEXT_CONFIG_TIMEOUT = 60_000;
 const DEFAULT_NUMBER_OF_REASONS_TO_LIST = 5;
-
-function getNextVersion(cwd: string): string | undefined {
-  return findDependency("next", { cwd, depth: 0, omitDev: false })?.version;
-}
 
 function getReactVersion(cwd: string): string | undefined {
   return findDependency("react-dom", { cwd, omitDev: false })?.version;
@@ -99,8 +98,6 @@ export async function discover(dir: string) {
  * Build a next.js application.
  */
 export async function build(dir: string): Promise<BuildResult> {
-  const { default: nextBuild } = relativeRequire(dir, "next/dist/build");
-
   await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
 
   const reactVersion = getReactVersion(dir);
@@ -109,21 +106,29 @@ export async function build(dir: string): Promise<BuildResult> {
     process.env.__NEXT_REACT_ROOT = "true";
   }
 
-  await nextBuild(dir, null, false, false, true).catch((e) => {
-    // Err on the side of displaying this error, since this is likely a bug in
-    // the developer's code that we want to display immediately
-    console.error(e.message);
-    throw e;
+  const cli = getNodeModuleBin("next", dir);
+
+  const nextBuild = new Promise((resolve, reject) => {
+    const buildProcess = spawn(cli, ["build"], { cwd: dir });
+    buildProcess.stdout?.on("data", (data) => logger.info(data.toString()));
+    buildProcess.stderr?.on("data", (data) => logger.info(data.toString()));
+    buildProcess.on("error", (err) => {
+      reject(new FirebaseError(`Unable to build your Next.js app: ${err}`));
+    });
+    buildProcess.on("exit", (code) => {
+      resolve(code);
+    });
   });
+  await nextBuild;
 
   const reasonsForBackend = new Set();
-  const { distDir, trailingSlash, basePath } = await getConfig(dir);
+  const { distDir, trailingSlash, basePath: baseUrl } = await getConfig(dir);
 
   if (await isUsingMiddleware(join(dir, distDir), false)) {
     reasonsForBackend.add("middleware");
   }
 
-  if (await isUsingImageOptimization(join(dir, distDir))) {
+  if (await isUsingImageOptimization(dir, distDir)) {
     reasonsForBackend.add(`Image Optimization`);
   }
 
@@ -197,7 +202,7 @@ export async function build(dir: string): Promise<BuildResult> {
     const headersFromMetaFiles = await getHeadersFromMetaFiles(
       dir,
       distDir,
-      basePath,
+      baseUrl,
       appPathRoutesManifest
     );
     headers.push(...headersFromMetaFiles);
@@ -260,19 +265,24 @@ export async function build(dir: string): Promise<BuildResult> {
   const wantsBackend = reasonsForBackend.size > 0;
 
   if (wantsBackend) {
-    const numberOfReasonsToList = process.env.DEBUG ? Infinity : DEFAULT_NUMBER_OF_REASONS_TO_LIST;
-    console.log("Building a Cloud Function to run this application. This is needed due to:");
-    for (const reason of Array.from(reasonsForBackend).slice(0, numberOfReasonsToList)) {
-      console.log(` • ${reason}`);
+    logger.info("Building a Cloud Function to run this application. This is needed due to:");
+    for (const reason of Array.from(reasonsForBackend).slice(
+      0,
+      DEFAULT_NUMBER_OF_REASONS_TO_LIST
+    )) {
+      logger.info(` • ${reason}`);
     }
-    if (reasonsForBackend.size > numberOfReasonsToList) {
-      console.log(
+    for (const reason of Array.from(reasonsForBackend).slice(DEFAULT_NUMBER_OF_REASONS_TO_LIST)) {
+      logger.debug(` • ${reason}`);
+    }
+    if (reasonsForBackend.size > DEFAULT_NUMBER_OF_REASONS_TO_LIST && !process.env.DEBUG) {
+      logger.info(
         ` • and ${
-          reasonsForBackend.size - numberOfReasonsToList
+          reasonsForBackend.size - DEFAULT_NUMBER_OF_REASONS_TO_LIST
         } other reasons, use --debug to see more`
       );
     }
-    console.log("");
+    logger.info("");
   }
 
   const i18n = !!nextjsI18n;
@@ -284,6 +294,7 @@ export async function build(dir: string): Promise<BuildResult> {
     rewrites,
     trailingSlash,
     i18n,
+    baseUrl,
   };
 }
 
@@ -311,6 +322,7 @@ export async function init(setup: any, config: any) {
 export async function ɵcodegenPublicDirectory(
   sourceDir: string,
   destDir: string,
+  _: string,
   context: { site: string; project: string }
 ) {
   const { distDir, i18n, basePath } = await getConfig(sourceDir);
@@ -389,14 +401,13 @@ export async function ɵcodegenPublicDirectory(
   await Promise.all(
     Object.entries(routesToCopy).map(async ([path, route]) => {
       if (route.initialRevalidateSeconds) {
-        if (process.env.DEBUG) console.log(`skipping ${path} due to revalidate`);
+        logger.debug(`skipping ${path} due to revalidate`);
         return;
       }
       if (pathsUsingsFeaturesNotSupportedByHosting.some((it) => path.match(it))) {
-        if (process.env.DEBUG)
-          console.log(
-            `skipping ${path} due to it matching an unsupported rewrite/redirect/header or middlware`
-          );
+        logger.debug(
+          `skipping ${path} due to it matching an unsupported rewrite/redirect/header or middlware`
+        );
         return;
       }
       const appPathRoute =
@@ -413,8 +424,7 @@ export async function ɵcodegenPublicDirectory(
         matchingI18nDomain.locales.includes(locale);
 
       if (!includeOnThisDomain) {
-        if (process.env.DEBUG)
-          console.log(`skipping ${path} since it is for a locale not deployed on this domain`);
+        logger.debug(`skipping ${path} since it is for a locale not deployed on this domain`);
         return;
       }
 
@@ -464,8 +474,6 @@ export async function ɵcodegenPublicDirectory(
   );
 }
 
-const BUNDLE_NEXT_CONFIG_TIMEOUT = 10_000;
-
 /**
  * Create a directory for SSR content.
  */
@@ -510,11 +518,15 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
           `--outdir=${destDir}`,
           "--log-level=error"
         );
-      const bundle = spawnSync("npx", ["--yes", "esbuild", "next.config.js", ...esbuildArgs], {
-        cwd: sourceDir,
-        timeout: BUNDLE_NEXT_CONFIG_TIMEOUT,
-      });
-      if (bundle.status) {
+      const bundle = spawnSync(
+        "npx",
+        ["--yes", `esbuild@${ESBUILD_VERSION}`, "next.config.js", ...esbuildArgs],
+        {
+          cwd: sourceDir,
+          timeout: BUNDLE_NEXT_CONFIG_TIMEOUT,
+        }
+      );
+      if (bundle.status !== 0) {
         throw new FirebaseError(bundle.stderr.toString());
       }
     } catch (e: any) {
@@ -530,15 +542,9 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
     await copy(join(sourceDir, "public"), join(destDir, "public"));
   }
 
-  // Add the `sharp` library if `/app` folder exists (i.e. Next.js 13+)
-  // or usesNextImage in `export-marker.json` is set to true.
-  // As of (10/2021) the new Next.js 13 route is in beta, and usesNextImage is always being set to false
-  // if the image component is used in pages coming from the new `/app` routes.
-  if (
-    !(await hasUnoptimizedImage(sourceDir, distDir)) &&
-    (usesAppDirRouter(sourceDir) || (await usesNextImage(sourceDir, distDir)))
-  ) {
-    packageJson.dependencies["sharp"] = "latest";
+  // Add the `sharp` library if app is using image optimization
+  if (await isUsingImageOptimization(sourceDir, distDir)) {
+    packageJson.dependencies["sharp"] = SHARP_VERSION;
   }
 
   await mkdirp(join(destDir, distDir));
@@ -549,7 +555,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
 /**
  * Create a dev server.
  */
-export async function getDevModeHandle(dir: string, hostingEmulatorInfo?: EmulatorInfo) {
+export async function getDevModeHandle(dir: string, _: string, hostingEmulatorInfo?: EmulatorInfo) {
   // throw error when using Next.js middleware with firebase serve
   if (!hostingEmulatorInfo) {
     if (await isUsingMiddleware(dir, true)) {
@@ -588,7 +594,7 @@ async function getConfig(
     if (gte(version, "12.0.0")) {
       const { default: loadConfig } = relativeRequire(dir, "next/dist/server/config");
       const { PHASE_PRODUCTION_BUILD } = relativeRequire(dir, "next/constants");
-      config = await loadConfig(PHASE_PRODUCTION_BUILD, dir, null);
+      config = await loadConfig(PHASE_PRODUCTION_BUILD, dir);
     } else {
       try {
         config = await import(pathToFileURL(join(dir, "next.config.js")).toString());
@@ -597,6 +603,7 @@ async function getConfig(
       }
     }
   }
+  validateLocales(config.i18n?.locales);
   return {
     distDir: ".next",
     // trailingSlash defaults to false in Next.js: https://nextjs.org/docs/api-reference/next.config.js/trailing-slash

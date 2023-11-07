@@ -3,7 +3,7 @@
   "description": "Cloud Functions for Firebase",
   "scripts": {},
   "engines": {
-    "node": "16"
+    "node": "18"
   },
   "dependencies": {
     "@firebase/database-compat": "0.1.2",

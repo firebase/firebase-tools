@@ -1,0 +1,61 @@
+# Learn detailed information about the fields of an extension.yaml file in the docs:
+# https://firebase.google.com/docs/extensions/reference/extension-yaml
+
+# Identifier for your extension
+# TODO: Replace this with an descriptive name for your extension.
+name: greet-the-world
+version: 0.0.1 # Follow semver versioning
+specVersion: v1beta # Version of the Firebase Extensions specification
+
+# Friendly display name for your extension (~3-5 words)
+displayName: Greet the world
+
+# Brief description of the task your extension performs (~1 sentence)
+description: >-
+  Sends the world a greeting.
+
+license: Apache-2.0 # https://spdx.org/licenses/
+
+# Public URL for the source code of your extension.
+# TODO:  Replace this with your GitHub repo.
+sourceUrl: https://github.com/ORG_OR_USER/REPO_NAME
+
+# Specify whether a paid-tier billing plan is required to use your extension.
+# Learn more in the docs: https://firebase.google.com/docs/extensions/reference/extension-yaml#billing-required-field
+billingRequired: true
+
+# In an `apis` field, list any Google APIs (like Cloud Translation, BigQuery, etc.)
+# required for your extension to operate.
+# Learn more in the docs:
+# https://firebase.google.com/docs/extensions/reference/extension-yaml#apis-field
+
+# In a `roles` field, list any IAM access roles required for your extension to operate.
+# Learn more in the docs:
+# https://firebase.google.com/docs/extensions/reference/extension-yaml#roles-field
+
+# In the `resources` field, list each of your extension's functions, including the trigger for each function.
+# Learn more in the docs:
+# https://firebase.google.com/docs/extensions/reference/extension-yaml#resources-field
+resources:
+  - name: greetTheWorld
+    type: firebaseextensions.v1beta.function
+    description: >-
+      HTTP request-triggered function that responds with a specified greeting message
+    properties:
+      # httpsTrigger is used for an HTTP triggered function.
+      httpsTrigger: {}
+      runtime: "nodejs16"
+
+# In the `params` field, set up your extension's user-configured parameters.
+# Learn more in the docs:
+# https://firebase.google.com/docs/extensions/reference/extension-yaml#params-field
+params:
+  - param: GREETING
+    label: Greeting for the world
+    description: >-
+      What do you want to say to the world?
+      For example, Hello world? or What's up, world?
+    type: string
+    default: Hello
+    required: true
+    immutable: false

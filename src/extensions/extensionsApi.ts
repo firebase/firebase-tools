@@ -1,6 +1,5 @@
 import * as yaml from "js-yaml";
 import * as clc from "colorette";
-import { marked } from "marked";
 
 import { Client } from "../apiv2";
 import { extensionsOrigin } from "../api";
@@ -59,7 +58,7 @@ async function createInstanceHelper(
     apiOrigin: extensionsOrigin,
     apiVersion: EXTENSIONS_API_VERSION,
     operationResourceName: createRes.body.name,
-    masterTimeout: 600000,
+    masterTimeout: 3600000,
   });
   return pollRes;
 }
@@ -551,11 +550,7 @@ export function refNotFoundError(ref: refs.Ref): FirebaseError {
       )}' doesn't exist or could be misspelled\n\n` +
       `Please correct the extension reference and try again. If you meant to install an extension from a local source, please provide a relative path prefixed with '${clc.bold(
         "./"
-      )}', '${clc.bold("../")}', or '${clc.bold(
-        "~/"
-      )}'. Learn more about local extension installation at ${marked(
-        "[https://firebase.google.com/docs/extensions/alpha/install-extensions_community#install](https://firebase.google.com/docs/extensions/alpha/install-extensions_community#install)."
-      )}`,
+      )}', '${clc.bold("../")}', or '${clc.bold("~/")}'.}`,
     { status: 404 }
   );
 }

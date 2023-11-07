@@ -72,12 +72,12 @@ function prepareIndexes(
 export default async function (context: any, options: any): Promise<void> {
   if (options.only) {
     const targets = options.only.split(",");
-    const onlyIndexes = targets.indexOf("firestore:indexes") >= 0;
-    const onlyRules = targets.indexOf("firestore:rules") >= 0;
+    const excludeRules = targets.indexOf("firestore:indexes") >= 0;
+    const excludeIndexes = targets.indexOf("firestore:rules") >= 0;
     const onlyFirestore = targets.indexOf("firestore") >= 0;
 
-    context.firestoreIndexes = onlyIndexes || onlyFirestore;
-    context.firestoreRules = onlyRules || onlyFirestore;
+    context.firestoreIndexes = !excludeIndexes || onlyFirestore;
+    context.firestoreRules = !excludeRules || onlyFirestore;
   } else {
     context.firestoreIndexes = true;
     context.firestoreRules = true;

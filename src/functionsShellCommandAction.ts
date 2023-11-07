@@ -4,18 +4,19 @@ import * as repl from "repl";
 import * as _ from "lodash";
 import * as util from "util";
 
+import * as shell from "./emulator/functionsEmulatorShell";
+import * as commandUtils from "./emulator/commandUtils";
+import { FunctionsServer } from "./serve/functions";
+import LocalFunction from "./localFunction";
+import * as utils from "./utils";
+import { logger } from "./logger";
+import { EMULATORS_SUPPORTED_BY_FUNCTIONS, EmulatorInfo, Emulators } from "./emulator/types";
 import { EmulatorHubClient } from "./emulator/hubClient";
 import { resolveHostAndAssignPorts } from "./emulator/portUtils";
 import { Constants } from "./emulator/constants";
-import { EMULATORS_SUPPORTED_BY_FUNCTIONS, EmulatorInfo, Emulators } from "./emulator/types";
-import { FunctionsServer } from "./serve/functions";
-import { logger } from "./logger";
 import { Options } from "./options";
-import * as commandUtils from "./emulator/commandUtils";
-import * as LocalFunction from "./localFunction";
 import { HTTPS_SENTINAL } from "./localFunction";
-import * as shell from "./emulator/functionsEmulatorShell";
-import * as utils from "./utils";
+import { needProjectId } from "./projectUtils";
 
 const serveFunctions = new FunctionsServer();
 
@@ -29,8 +30,8 @@ export const actionFunction = async (options: Options) => {
     debugPort = commandUtils.parseInspectionPort(options);
   }
 
-  utils.assertDefined(options.project);
-  const hubClient = new EmulatorHubClient(options.project);
+  needProjectId(options);
+  const hubClient = new EmulatorHubClient(options.project!);
 
   let remoteEmulators: Record<string, EmulatorInfo> = {};
   if (hubClient.foundHub()) {
@@ -99,7 +100,7 @@ export const actionFunction = async (options: Options) => {
           if (emulator.emulatedFunctions.includes(trigger.id)) {
             const localFunction = new LocalFunction(trigger, emulator.urls, emulator);
             const triggerNameDotNotation = trigger.name.replace(/-/g, ".");
-            _.set(context, triggerNameDotNotation, localFunction.call);
+            _.set(context, triggerNameDotNotation, localFunction.makeFn());
           }
         }
         context.help =

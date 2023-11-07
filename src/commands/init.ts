@@ -13,6 +13,7 @@ import { requireAuth } from "../requireAuth";
 import * as fsutils from "../fsutils";
 import * as utils from "../utils";
 import { Options } from "../options";
+import { isEnabled } from "../experiments";
 
 const homeDir = os.homedir();
 
@@ -71,11 +72,20 @@ const choices = [
     checked: false,
   },
 ];
+
+if (isEnabled("internalframeworks")) {
+  choices.push({
+    value: "internalframeworks",
+    name: "Frameworks: Get started with Frameworks projects.",
+    checked: false,
+  });
+}
+
 const featureNames = choices.map((choice) => choice.value);
 
 const DESCRIPTION = `Interactively configure the current directory as a Firebase project or initialize new features in an already configured Firebase project directory.
 
-This command will create or update 'firebase.json' and '.firebaserc' configuration files in the current directory. 
+This command will create or update 'firebase.json' and '.firebaserc' configuration files in the current directory.
 
 To initialize a specific Firebase feature, run 'firebase init [feature]'. Valid features are:
 ${[...featureNames]

@@ -4,7 +4,7 @@ import * as path from "path";
 import * as fsConfig from "../firestore/fsConfig";
 
 import { logger } from "../logger";
-import { track, trackEmulator } from "../track";
+import { trackEmulator, trackGA4 } from "../track";
 import * as utils from "../utils";
 import { EmulatorRegistry } from "./registry";
 import {
@@ -32,9 +32,9 @@ import { ExportMetadata, HubExport } from "./hubExport";
 import { EmulatorUI } from "./ui";
 import { LoggingEmulator } from "./loggingEmulator";
 import * as dbRulesConfig from "../database/rulesConfig";
-import { EmulatorLogger } from "./emulatorLogger";
+import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 import { EmulatorHubClient } from "./hubClient";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import {
   FLAG_EXPORT_ON_EXIT_NAME,
   JAVA_DEPRECATION_WARNING,
@@ -105,10 +105,9 @@ export async function cleanShutdown(): Promise<void> {
  * Filters a list of emulators to only those specified in the config
  * @param options
  */
-export function filterEmulatorTargets(options: any): Emulators[] {
+export function filterEmulatorTargets(options: { only: string; config: any }): Emulators[] {
   let targets = [...ALL_SERVICE_EMULATORS];
   targets.push(Emulators.EXTENSIONS);
-
   targets = targets.filter((e) => {
     return options.config.has(e) || options.config.has(`emulators.${e}`);
   });
@@ -186,6 +185,11 @@ export function shouldStart(options: Options, name: Emulators): boolean {
 }
 
 function findExportMetadata(importPath: string): ExportMetadata | undefined {
+  const pathExists = fs.existsSync(importPath);
+  if (!pathExists) {
+    throw new FirebaseError(`Directory "${importPath}" does not exist.`);
+  }
+
   const pathIsDirectory = fs.lstatSync(importPath).isDirectory();
   if (!pathIsDirectory) {
     return;
@@ -243,6 +247,7 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
 
 interface EmulatorOptions extends Options {
   extDevEnv?: Record<string, string>;
+  logVerbosity?: "DEBUG" | "INFO" | "QUIET" | "SILENT";
 }
 
 /**
@@ -250,7 +255,8 @@ interface EmulatorOptions extends Options {
  */
 export async function startAll(
   options: EmulatorOptions,
-  showUI = true
+  showUI = true,
+  runningTestScript = false
 ): Promise<{ deprecationNotices: string[] }> {
   // Emulators config is specified in firebase.json as:
   // "emulators": {
@@ -281,6 +287,10 @@ export async function startAll(
       throw new FirebaseError(JAVA_DEPRECATION_WARNING);
     }
   }
+  if (options.logVerbosity) {
+    EmulatorLogger.setVerbosity(Verbosity[options.logVerbosity]);
+  }
+
   const hubLogger = EmulatorLogger.forEmulator(Emulators.HUB);
   hubLogger.logLabeled("BULLET", "emulators", `Starting emulators: ${targets.join(", ")}`);
 
@@ -312,7 +322,7 @@ export async function startAll(
         );
       } else {
         // this should not work:
-        // firebase emulators:start --only doesnotexit
+        // firebase emulators:start --only doesnotexist
         throw new FirebaseError(
           `${name} is not a valid emulator name, valid options are: ${JSON.stringify(
             ALL_SERVICE_EMULATORS
@@ -346,6 +356,10 @@ export async function startAll(
       extensionsBackends
     );
     emulatableBackends.push(...filteredExtensionsBackends);
+    trackGA4("extensions_emulated", {
+      number_of_extensions_emulated: filteredExtensionsBackends.length,
+      number_of_extensions_ignored: extensionsBackends.length - filteredExtensionsBackends.length,
+    });
   }
 
   const listenConfig = {} as Record<PortName, EmulatorListenConfig>;
@@ -396,7 +410,6 @@ export async function startAll(
     const name = instance.getName();
 
     // Log the command for analytics
-    void track("Emulator Run", name);
     void trackEmulator("emulator_run", {
       emulator_name: name,
       is_demo_project: String(isDemoProject),
@@ -416,7 +429,6 @@ export async function startAll(
     // since we originally mistakenly reported emulators:start events
     // for each emulator, by reporting the "hub" we ensure that our
     // historical data can still be viewed.
-    void track("emulators:start", "hub");
     await startEmulator(hub);
   }
 
@@ -463,7 +475,13 @@ export async function startAll(
       }
     }
     // This may add additional sources for Functions emulator and must be done before it.
-    await prepareFrameworks(targets, options, options, emulators);
+    await prepareFrameworks(
+      runningTestScript ? "test" : "emulate",
+      targets,
+      undefined,
+      options,
+      emulators
+    );
   }
 
   const projectDir = (options.extDevDir || options.config.projectDir) as string;
@@ -822,16 +840,6 @@ export async function startAll(
     await startEmulator(hostingEmulator);
   }
 
-  if (showUI && !shouldStart(options, Emulators.UI)) {
-    hubLogger.logLabeled(
-      "WARN",
-      "emulators",
-      "The Emulator UI is not starting, either because none of the emulated " +
-        "products have an interaction layer in Emulator UI or it cannot " +
-        "determine the Project ID. Pass the --project flag to specify a project."
-    );
-  }
-
   if (listenForEmulator.logging) {
     const loggingAddr = legacyGetFirstAddr(Emulators.LOGGING);
     const loggingEmulator = new LoggingEmulator({
@@ -840,6 +848,16 @@ export async function startAll(
     });
 
     await startEmulator(loggingEmulator);
+  }
+
+  if (showUI && !shouldStart(options, Emulators.UI)) {
+    hubLogger.logLabeled(
+      "WARN",
+      "emulators",
+      "The Emulator UI is not starting, either because none of the running " +
+        "emulators have a UI component or the Emulator UI cannot " +
+        "determine the Project ID. Pass the --project flag to specify a project."
+    );
   }
 
   if (listenForEmulator.ui) {
@@ -948,7 +966,8 @@ export async function exportEmulatorData(exportPath: string, options: any, initi
 
   // Check if there is already an export there and prompt the user about deleting it
   const existingMetadata = HubExport.readMetadata(exportAbsPath);
-  if (existingMetadata && !(options.force || options.exportOnExit)) {
+  const isExportDirEmpty = fs.readdirSync(exportAbsPath).length === 0;
+  if ((existingMetadata || !isExportDirEmpty) && !(options.force || options.exportOnExit)) {
     if (options.noninteractive) {
       throw new FirebaseError(
         "Export already exists in the target directory, re-run with --force to overwrite.",
@@ -956,9 +975,10 @@ export async function exportEmulatorData(exportPath: string, options: any, initi
       );
     }
 
-    const prompt = await promptOnce({
-      type: "confirm",
-      message: `The directory ${exportAbsPath} already contains export data. Exporting again to the same directory will overwrite all data. Do you want to continue?`,
+    const prompt = await confirm({
+      message: `The directory ${exportAbsPath} is not empty. Existing files in this directory will be overwritten. Do you want to continue?`,
+      nonInteractive: options.nonInteractive,
+      force: options.force,
       default: false,
     });
 

@@ -14,23 +14,21 @@ Using the {{firebase_cli}}, you can deploy your Next.js Web apps to Firebase and
 serve them with {{firebase_hosting}}. The {{cli}} respects your Next.js settings and
 translates them to Firebase settings with zero or minimal extra configuration on
 your part. If your app includes dynamic server-side logic, the {{cli}} deploys that
-logic to {{cloud_functions_full}}.
+logic to {{cloud_functions_full}}. The latest supported Next.js version is 13.4.7.
 
 <<_includes/_preview-disclaimer.md>>
 
 <<_includes/_before-you-begin.md>>
 
-- Optional: Billing enabled on your Firebase project
-  (required if you plan to use SSR)
 - Optional: use the experimental ReactFire library to benefit from its
   Firebase-friendly features
 
 <<_includes/_initialize-firebase.md>>
 
+1.  Answer yes to "Do you want to use a web framework? (experimental)"
 1.  Choose your hosting source directory. If this an existing Next.js app,
     the {{cli}} process completes, and you can proceed to the next section.
-1.  Choose "Dynamic web hosting with web framework"
-1.  Choose Next.js.
+1.  If prompted, choose Next.js.
 
 ## Serve static content
 
@@ -47,15 +45,15 @@ on its live site.
 ## Pre-render dynamic content
 
 The {{firebase_cli}} will detect usage of
-[getStaticProps](https://nextjs.org/docs/basic-features/data-fetching/get-
-static-props) and [getStaticPaths](https://nextjs.org/docs/basic-features/data-
-fetching/get-static-paths).
+[getStaticProps](https://nextjs.org/docs/pages/building-your-application/data-fetching/get-static-props) 
+and [getStaticPaths](https://nextjs.org/docs/pages/building-your-application/data-fetching/get-static-paths).
 
 ### Optional: integrate with the Firebase JS SDK
 
 When including Firebase JS SDK methods in both server and client bundles, guard
 against runtime errors by checking `isSupported()` before using the product.
-Not all products are [supported in all environments](/docs/web/environments-js-sdk#other_environments).
+Not all products are 
+[supported in all environments](/docs/web/environments-js-sdk#other_environments).
 
 Tip: consider using
 [ReactFire](https://github.com/FirebaseExtended/reactfire#reactfire), which does
@@ -71,6 +69,10 @@ and [getStaticPaths](https://nextjs.org/docs/basic-features/data-fetching/get-st
 
 The {{firebase_cli}} will detect usage of
 [getServerSideProps](https://nextjs.org/docs/basic-features/data-fetching/get-server-side-props).
+In such cases, the {{cli}} will deploy functions to {{cloud_functions_full}} to run dynamic 
+server code. You can view information about these functions, such as their domain and runtime
+configuration, in the [Firebase console](https://console.firebase.google.com/project/_/functions).
+
 
 ## Configure {{hosting}} behavior with `next.config.js`
 
@@ -85,7 +87,8 @@ interoperate well together.
 
 ### Redirects, Rewrites, and Headers
 
-The {{firebase_cli}} respects [redirects](https://nextjs.org/docs/api-reference/next.config.js/redirects),
+The {{firebase_cli}} respects 
+[redirects](https://nextjs.org/docs/api-reference/next.config.js/redirects),
 [rewrites](https://nextjs.org/docs/api-reference/next.config.js/rewrites), and
 [headers](https://nextjs.org/docs/api-reference/next.config.js/headers) in
 `next.config.js`, converting them to their

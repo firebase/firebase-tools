@@ -129,7 +129,7 @@ function preprocessLists(
 }
 
 /**
- * A List in Functions CEL is a []-bracketed string with comma-seperated values that can be:
+ * A List in Functions CEL is a []-bracketed string with comma-separated values that can be:
  * - A double quoted string literal
  * - A reference to a param value (params.FOO) which must resolve with type string
  * - A sub-CEL expression {{ params.BAR == 0 ? "a" : "b" }} which must resolve with type string

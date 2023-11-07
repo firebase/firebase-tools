@@ -1,14 +1,18 @@
 const Table = require("cli-table");
 
+import { requireAuth } from "../requireAuth";
 import { Command } from "../command";
 import { logger } from "../logger";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { listSecretVersions } from "../gcp/secretManager";
 import { requirePermissions } from "../requirePermissions";
+import * as secrets from "../functions/secrets";
 
 export const command = new Command("functions:secrets:get <KEY>")
   .description("Get metadata for secret and its versions")
+  .before(requireAuth)
+  .before(secrets.ensureApi)
   .before(requirePermissions, ["secretmanager.secrets.get"])
   .action(async (key: string, options: Options) => {
     const projectId = needProjectId(options);

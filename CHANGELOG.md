@@ -1,3 +1,1 @@
-- Support for Next.js i18n, basePath, and more advanced rewrites/redirects/headers (#5788)
-- hosting.frameworksBackend now respects omit: true (#5788)
-- Web Frameworks now memoizes framework builds for single builds across multiple hosting sites (#5788)
+- Fixed 2 bugs (unintended database mode changes and disabling of PITR or delete-protection) when updating Firestore databases (#6478)

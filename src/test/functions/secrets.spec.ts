@@ -371,6 +371,55 @@ describe("functions/secret", () => {
     });
   });
 
+  describe("versionInUse", () => {
+    const projectId = "project";
+    const projectNumber = "12345";
+    const sv: secretManager.SecretVersion = {
+      versionId: "5",
+      secret: {
+        projectId,
+        name: "MY_SECRET",
+      },
+    };
+
+    it("returns true if secret version is in use", () => {
+      expect(
+        secrets.versionInUse({ projectId, projectNumber }, sv, {
+          ...ENDPOINT,
+          secretEnvironmentVariables: [
+            { projectId, key: sv.secret.name, secret: sv.secret.name, version: "5" },
+          ],
+        })
+      ).to.be.true;
+    });
+
+    it("returns true if secret version is in use by project number", () => {
+      expect(
+        secrets.versionInUse({ projectId, projectNumber }, sv, {
+          ...ENDPOINT,
+          secretEnvironmentVariables: [
+            { projectId: projectNumber, key: sv.secret.name, secret: sv.secret.name, version: "5" },
+          ],
+        })
+      ).to.be.true;
+    });
+
+    it("returns false if secret version is not in use", () => {
+      expect(secrets.versionInUse({ projectId, projectNumber }, sv, ENDPOINT)).to.be.false;
+    });
+
+    it("returns false if a different version of the secret is in use", () => {
+      expect(
+        secrets.versionInUse({ projectId, projectNumber }, sv, {
+          ...ENDPOINT,
+          secretEnvironmentVariables: [
+            { projectId, key: sv.secret.name, secret: sv.secret.name, version: "1" },
+          ],
+        })
+      ).to.be.false;
+    });
+  });
+
   describe("pruneAndDestroySecrets", () => {
     let pruneSecretsStub: sinon.SinonStub;
     let destroySecretVersionStub: sinon.SinonStub;

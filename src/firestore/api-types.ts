@@ -105,10 +105,21 @@ export enum DatabaseDeleteProtectionState {
   DISABLED = "DELETE_PROTECTION_DISABLED",
 }
 
+export enum PointInTimeRecoveryEnablementOption {
+  ENABLED = "ENABLED",
+  DISABLED = "DISABLED",
+}
+
+export enum PointInTimeRecoveryEnablement {
+  ENABLED = "POINT_IN_TIME_RECOVERY_ENABLED",
+  DISABLED = "POINT_IN_TIME_RECOVERY_DISABLED",
+}
+
 export interface DatabaseReq {
   locationId?: string;
   type?: DatabaseType;
   deleteProtectionState?: DatabaseDeleteProtectionState;
+  pointInTimeRecoveryEnablement?: PointInTimeRecoveryEnablement;
 }
 
 export interface DatabaseResp {
@@ -122,5 +133,8 @@ export interface DatabaseResp {
   appEngineIntegrationMode: string;
   keyPrefix: string;
   deleteProtectionState: DatabaseDeleteProtectionState;
+  pointInTimeRecoveryEnablement: PointInTimeRecoveryEnablement;
   etag: string;
+  versionRetentionPeriod: string;
+  earliestVersionTime: string;
 }

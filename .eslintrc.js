@@ -122,10 +122,13 @@ module.exports = {
   // TODO(jamesdaniels): add this to overrides instead
   ignorePatterns: [
     "src/dynamicImport.js",
-    "scripts/webframeworks-deploy-tests/hosting/**",
+    "scripts/webframeworks-deploy-tests/nextjs/**",
+    "scripts/webframeworks-deploy-tests/angular/**",
     "scripts/frameworks-tests/vite-project/**",
     "/src/frameworks/docs/**",
     // This file is taking a very long time to lint, 2-4m
     "src/emulator/auth/schema.ts",
+    // TODO(hsubox76): Set up a job to run eslint separately on vscode dir
+    "firebase-vscode/",
   ],
 };

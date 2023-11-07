@@ -125,6 +125,16 @@ export function getEndpointFilters(options: { only?: string }): EndpointFilter[]
 }
 
 /**
+ * Get human friendly name for the given function platform
+ */
+export function getHumanFriendlyPlatformName(platform: backend.Endpoint["platform"]): string {
+  if (platform === "gcfv1") {
+    return "1st Gen";
+  }
+  return "2nd Gen";
+}
+
+/**
  * Generate label for a function.
  */
 export function getFunctionLabel(fn: backend.TargetIds & { codebase?: string }): string {
@@ -166,7 +176,7 @@ export function targetCodebases(config: ValidatedConfig, filters?: EndpointFilte
  *
  * An endpoint is part a codebase if:
  *   1. Endpoint is associated w/ the current codebase (duh).
- *   2. Endpoint name matches name of an endoint we want to deploy
+ *   2. Endpoint name matches name of an endpoint we want to deploy
  *
  * Condition (2) might feel wrong but is a practical conflict resolution strategy as it makes migrating a function
  * from one codebase to another straightforward.

@@ -170,7 +170,7 @@ export function createDeploymentPlan(args: PlanArgs): DeploymentPlan {
   return deployment;
 }
 
-/** Whether a user upgraded any endpionts to GCFv2 without setting concurrency. */
+/** Whether a user upgraded any endpoints to GCFv2 without setting concurrency. */
 export function upgradedToGCFv2WithoutSettingConcurrency(
   want: backend.Backend,
   have: backend.Backend
@@ -194,7 +194,7 @@ export function upgradedToGCFv2WithoutSettingConcurrency(
 }
 
 /**
- * Whether a trigger chagned regions. This can happen if, for example,
+ * Whether a trigger changed regions. This can happen if, for example,
  *  a user listens to a different bucket, which happens to have a different region.
  */
 export function changedTriggerRegion(want: backend.Endpoint, have: backend.Endpoint): boolean {

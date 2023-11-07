@@ -207,24 +207,36 @@ export async function want(args: {
 }
 
 /**
- * resolveVersion resolves a semver string to the max matching version.
- * Exported for testing.
- * @param publisherId
- * @param extensionId
- * @param version a semver or semver range
+ * Resolves a semver string to the max matching version. If no version is specified,
+ * it will default to the extension's latest approved version if set, otherwise to the latest version.
+ *
+ * @param ref the extension version ref
+ * @param extension the extension (optional)
  */
-export async function resolveVersion(ref: refs.Ref): Promise<string> {
+export async function resolveVersion(ref: refs.Ref, extension?: Extension): Promise<string> {
   const extensionRef = refs.toExtensionRef(ref);
+  if (!ref.version && extension?.latestApprovedVersion) {
+    return extension.latestApprovedVersion;
+  }
+  if (ref.version === "latest-approved") {
+    if (!extension?.latestApprovedVersion) {
+      throw new FirebaseError(
+        `${extensionRef} has not been published to Extensions Hub (https://extensions.dev). To install it, you must specify the version you want to install.`
+      );
+    }
+    return extension.latestApprovedVersion;
+  }
+  if (!ref.version || ref.version === "latest") {
+    if (!extension?.latestVersion) {
+      throw new FirebaseError(
+        `${extensionRef} has no stable non-deprecated versions. If you wish to install a prerelease version, you must specify the version you want to install.`
+      );
+    }
+    return extension.latestVersion;
+  }
   const versions = await extensionsApi.listExtensionVersions(extensionRef, undefined, true);
   if (versions.length === 0) {
     throw new FirebaseError(`No versions found for ${extensionRef}`);
-  }
-  if (!ref.version || ref.version === "latest") {
-    return versions
-      .filter((ev) => ev.spec.version !== undefined)
-      .map((ev) => ev.spec.version)
-      .sort(semver.compare)
-      .pop()!;
   }
   const maxSatisfying = semver.maxSatisfying(
     versions.map((ev) => ev.spec.version),

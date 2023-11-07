@@ -83,6 +83,8 @@ export const ALL_EXPERIMENTS = experiments({
       "exist per region. firebase-tools aggressively garbage collects tags it creates " +
       "if any service exceeds 500 tags, but it is theoretically possible that a project " +
       "exceeds the region-wide limit of tags and an old site version fails",
+    public: true,
+    default: true,
   },
   // Access experiments
   crossservicerules: {
@@ -94,6 +96,12 @@ export const ALL_EXPERIMENTS = experiments({
       "Exposes Firebase CLI commands intended for internal testing purposes. " +
       "These commands are not meant for public consumption and may break or disappear " +
       "without a notice.",
+  },
+
+  internalframeworks: {
+    shortDescription: "Allow CLI option for Frameworks",
+    default: true,
+    public: false,
   },
 });
 

@@ -3,7 +3,7 @@ import type { ReadOptions } from "fs-extra";
 import { extname, join, relative } from "path";
 import { readFile } from "fs/promises";
 import { IncomingMessage, request as httpRequest, ServerResponse, Agent } from "http";
-import { spawnSync } from "child_process";
+import { sync as spawnSync } from "cross-spawn";
 import * as clc from "colorette";
 
 import { logger } from "../logger";
@@ -16,13 +16,16 @@ import {
   FILE_BUG_URL,
   MAILING_LIST_URL,
   NPM_COMMAND_TIMEOUT_MILLIES,
+  VALID_LOCALE_FORMATS,
 } from "./constants";
+import { BUILD_TARGET_PURPOSE, RequestHandler } from "./interfaces";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
 const { dynamicImport } = require(true && "../dynamicImport");
 
-const NPM_ROOT_TIMEOUT_MILLIES = 2_000;
+const NPM_ROOT_TIMEOUT_MILLIES = 5_000;
+const NPM_ROOT_MEMO = new Map<string, string>();
 
 /**
  * Whether the given string starts with http:// or https://
@@ -61,19 +64,111 @@ export async function warnIfCustomBuildScript(
   }
 }
 
-type RequestHandler = (req: IncomingMessage, res: ServerResponse) => Promise<void>;
+/**
+ * Proxy a HTTP response
+ * It uses the Proxy object to intercept the response and buffer it until the
+ * response is finished. This allows us to modify the response before sending
+ * it back to the client.
+ */
+export function proxyResponse(
+  req: IncomingMessage,
+  res: ServerResponse,
+  next: () => void
+): ServerResponse {
+  const proxiedRes = new ServerResponse(req);
+  // Object to store the original response methods
+  const buffer: [
+    string,
+    Parameters<ServerResponse["write" | "setHeader" | "removeHeader" | "writeHead" | "end"]>
+  ][] = [];
+
+  // Proxy the response methods
+  // The apply handler is called when the method e.g. write, setHeader, etc. is called
+  // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy/handler/apply
+  // The target is the original method
+  // The thisArg is the proxied response
+  // The args are the arguments passed to the method
+  proxiedRes.write = new Proxy(proxiedRes.write.bind(proxiedRes), {
+    apply: (
+      target: ServerResponse["write"],
+      thisArg: ServerResponse,
+      args: Parameters<ServerResponse["write"]>
+    ) => {
+      // call the original write method on the proxied response
+      target.call(thisArg, ...args);
+      // store the method call in the buffer
+      buffer.push(["write", args]);
+    },
+  });
+
+  proxiedRes.setHeader = new Proxy(proxiedRes.setHeader.bind(proxiedRes), {
+    apply: (
+      target: ServerResponse["setHeader"],
+      thisArg: ServerResponse,
+      args: Parameters<ServerResponse["setHeader"]>
+    ) => {
+      target.call(thisArg, ...args);
+      buffer.push(["setHeader", args]);
+    },
+  });
+  proxiedRes.removeHeader = new Proxy(proxiedRes.removeHeader.bind(proxiedRes), {
+    apply: (
+      target: ServerResponse["removeHeader"],
+      thisArg: ServerResponse,
+      args: Parameters<ServerResponse["removeHeader"]>
+    ) => {
+      target.call(thisArg, ...args);
+      buffer.push(["removeHeader", args]);
+    },
+  });
+  proxiedRes.writeHead = new Proxy(proxiedRes.writeHead.bind(proxiedRes), {
+    apply: (
+      target: ServerResponse["writeHead"],
+      thisArg: ServerResponse,
+      args: Parameters<ServerResponse["writeHead"]>
+    ) => {
+      target.call(thisArg, ...args);
+      buffer.push(["writeHead", args]);
+    },
+  });
+  proxiedRes.end = new Proxy(proxiedRes.end.bind(proxiedRes), {
+    apply: (
+      target: ServerResponse["end"],
+      thisArg: ServerResponse,
+      args: Parameters<ServerResponse["end"]>
+    ) => {
+      // call the original end method on the proxied response
+      target.call(thisArg, ...args);
+      // if the proxied response is a 404, call next to continue down the middleware chain
+      // otherwise, send the buffered response i.e. call the original response methods: write, setHeader, etc.
+      // and then end the response and clear the buffer
+      if (proxiedRes.statusCode === 404) {
+        next();
+      } else {
+        for (const [fn, args] of buffer) {
+          (res as any)[fn](...args);
+        }
+        res.end(...args);
+        buffer.length = 0;
+      }
+    },
+  });
+
+  return proxiedRes;
+}
 
 export function simpleProxy(hostOrRequestHandler: string | RequestHandler) {
   const agent = new Agent({ keepAlive: true });
+  // If the path is a the auth token sync URL pass through to Cloud Functions
+  const firebaseDefaultsJSON = process.env.__FIREBASE_DEFAULTS__;
+  const authTokenSyncURL: string | undefined =
+    firebaseDefaultsJSON && JSON.parse(firebaseDefaultsJSON)._authTokenSyncURL;
   return async (originalReq: IncomingMessage, originalRes: ServerResponse, next: () => void) => {
     const { method, headers, url: path } = originalReq;
     if (!method || !path) {
-      return originalRes.end();
+      originalRes.end();
+      return;
     }
-    // If the path is a the auth token sync URL pass through to Cloud Functions
-    const firebaseDefaultsJSON = process.env.__FIREBASE_DEFAULTS__;
-    const authTokenSyncURL: string | undefined =
-      firebaseDefaultsJSON && JSON.parse(firebaseDefaultsJSON)._authTokenSyncURL;
     if (path === authTokenSyncURL) {
       return next();
     }
@@ -97,8 +192,12 @@ export function simpleProxy(hostOrRequestHandler: string | RequestHandler) {
       };
       const req = httpRequest(opts, (response) => {
         const { statusCode, statusMessage, headers } = response;
-        originalRes.writeHead(statusCode!, statusMessage, headers);
-        response.pipe(originalRes);
+        if (statusCode === 404) {
+          next();
+        } else {
+          originalRes.writeHead(statusCode!, statusMessage, headers);
+          response.pipe(originalRes);
+        }
       });
       originalReq.pipe(req);
       req.on("error", (err) => {
@@ -106,7 +205,8 @@ export function simpleProxy(hostOrRequestHandler: string | RequestHandler) {
         originalRes.end();
       });
     } else {
-      await hostOrRequestHandler(originalReq, originalRes);
+      const proxiedRes = proxyResponse(originalReq, originalRes, next);
+      await hostOrRequestHandler(originalReq, proxiedRes, next);
     }
   };
 }
@@ -123,20 +223,29 @@ function scanDependencyTree(searchingFor: string, dependencies = {}): any {
 }
 
 export function getNpmRoot(cwd: string) {
-  return spawnSync("npm", ["root"], { cwd, timeout: NPM_ROOT_TIMEOUT_MILLIES })
+  let npmRoot = NPM_ROOT_MEMO.get(cwd);
+  if (npmRoot) return npmRoot;
+
+  npmRoot = spawnSync("npm", ["root"], {
+    cwd,
+    timeout: NPM_ROOT_TIMEOUT_MILLIES,
+  })
     .stdout?.toString()
     .trim();
+
+  NPM_ROOT_MEMO.set(cwd, npmRoot);
+
+  return npmRoot;
 }
 
 export function getNodeModuleBin(name: string, cwd: string) {
-  const cantFindExecutable = new FirebaseError(`Could not find the ${name} executable.`);
   const npmRoot = getNpmRoot(cwd);
   if (!npmRoot) {
-    throw cantFindExecutable;
+    throw new FirebaseError(`Error finding ${name} executable: failed to spawn 'npm'`);
   }
   const path = join(npmRoot, ".bin", name);
   if (!fileExistsSync(path)) {
-    throw cantFindExecutable;
+    throw new FirebaseError(`Could not find the ${name} executable.`);
   }
   return path;
 }
@@ -223,11 +332,22 @@ export function relativeRequire(dir: string, mod: "@nuxt/kit"): Promise<any>;
  */
 export function relativeRequire(dir: string, mod: string) {
   try {
-    const path = require.resolve(mod, { paths: [dir] });
+    // If being compiled with webpack, use non webpack require for these calls.
+    // (VSCode plugin uses webpack which by default replaces require calls
+    // with its own require, which doesn't work on files)
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const requireFunc: typeof require =
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore prevent VSCE webpack from erroring on non_webpack_require
+      // eslint-disable-next-line camelcase
+      typeof __webpack_require__ === "function" ? __non_webpack_require__ : require;
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore prevent VSCE webpack from erroring on non_webpack_require
+    const path = requireFunc.resolve(mod, { paths: [dir] });
     if (extname(path) === ".mjs") {
       return dynamicImport(pathToFileURL(path).toString());
     } else {
-      return require(path);
+      return requireFunc(path);
     }
   } catch (e) {
     const path = relative(process.cwd(), dir);
@@ -261,4 +381,48 @@ ${prefix}${clc.bold("File a bug:")} ${FILE_BUG_URL}
 ${prefix}${clc.bold("Submit a feature request:")} ${FEATURE_REQUEST_URL}
 
 ${prefix}We'd love to learn from you. Express your interest in helping us shape the future of Firebase Hosting: ${MAILING_LIST_URL}`;
+}
+
+export function validateLocales(locales: string[] | undefined = []) {
+  const invalidLocales = locales.filter(
+    (locale) => !VALID_LOCALE_FORMATS.some((format) => locale.match(format))
+  );
+  if (invalidLocales.length) {
+    throw new FirebaseError(
+      `Invalid i18n locales (${invalidLocales.join(
+        ", "
+      )}) for Firebase. See our docs for more information https://firebase.google.com/docs/hosting/i18n-rewrites#country-and-language-codes`
+    );
+  }
+}
+
+export function getFrameworksBuildTarget(purpose: BUILD_TARGET_PURPOSE, validOptions: string[]) {
+  const frameworksBuild = process.env.FIREBASE_FRAMEWORKS_BUILD_TARGET;
+  if (frameworksBuild) {
+    if (!validOptions.includes(frameworksBuild)) {
+      throw new FirebaseError(
+        `Invalid value for FIREBASE_FRAMEWORKS_BUILD_TARGET environment variable: ${frameworksBuild}. Valid values are: ${validOptions.join(
+          ", "
+        )}`
+      );
+    }
+    return frameworksBuild;
+  } else if (["test", "deploy"].includes(purpose)) {
+    return "production";
+  }
+  // TODO handle other language / frameworks environment variables
+  switch (process.env.NODE_ENV) {
+    case undefined:
+    case "development":
+      return "development";
+    case "production":
+    case "test":
+      return "production";
+    default:
+      throw new FirebaseError(
+        `We cannot infer your build target from a non-standard NODE_ENV. Please set the FIREBASE_FRAMEWORKS_BUILD_TARGET environment variable. Valid values are: ${validOptions.join(
+          ", "
+        )}`
+      );
+  }
 }

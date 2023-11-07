@@ -12,6 +12,7 @@ const RUNTIMES: string[] = [
   "nodejs14",
   "nodejs16",
   "nodejs18",
+  "nodejs20",
   "python310",
   "python311",
 ];
@@ -43,6 +44,7 @@ const MESSAGE_FRIENDLY_RUNTIMES: Record<Runtime | DeprecatedRuntime, string> = {
   nodejs14: "Node.js 14",
   nodejs16: "Node.js 16",
   nodejs18: "Node.js 18",
+  nodejs20: "Node.js 20",
   python310: "Python 3.10",
   python311: "Python 3.11",
 };
