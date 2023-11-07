@@ -16,8 +16,8 @@ interface Codebase {
   rootDirectory: string;
 }
 
-/** A Stack, the primary resource of Frameworks. */
-export interface Stack {
+/** A Backend, the primary resource of Frameworks. */
+export interface Backend {
   name: string;
   mode?: string;
   codebase: Codebase;
@@ -27,7 +27,7 @@ export interface Stack {
   uri: string;
 }
 
-export type StackOutputOnlyFields = "name" | "createTime" | "updateTime" | "uri";
+export type BackendOutputOnlyFields = "name" | "createTime" | "updateTime" | "uri";
 
 export interface Build {
   name: string;
@@ -82,21 +82,21 @@ export interface Operation {
 }
 
 export interface ListBackendsResponse {
-  backends: Stack[];
+  backends: Backend[];
 }
 
 /**
- * Creates a new Stack in a given project and location.
+ * Creates a new Backend in a given project and location.
  */
-export async function createStack(
+export async function createBackend(
   projectId: string,
   location: string,
-  stackReqBoby: Omit<Stack, StackOutputOnlyFields>,
+  backendReqBoby: Omit<Backend, BackendOutputOnlyFields>,
   backendId: string
 ): Promise<Operation> {
-  const res = await client.post<Omit<Stack, StackOutputOnlyFields>, Operation>(
+  const res = await client.post<Omit<Backend, BackendOutputOnlyFields>, Operation>(
     `projects/${projectId}/locations/${location}/backends`,
-    stackReqBoby,
+    backendReqBoby,
     { queryParams: { backendId } }
   );
 
@@ -110,9 +110,9 @@ export async function getBackend(
   projectId: string,
   location: string,
   backendId: string
-): Promise<Stack> {
+): Promise<Backend> {
   const name = `projects/${projectId}/locations/${location}/backends/${backendId}`;
-  const res = await client.get<Stack>(name);
+  const res = await client.get<Backend>(name);
 
   return res.body;
 }
@@ -150,12 +150,12 @@ export async function deleteBackend(
 export async function createBuild(
   projectId: string,
   location: string,
-  stackId: string,
+  backendId: string,
   buildInput: Omit<Build, BuildOutputOnlyFields>
 ): Promise<Operation> {
   const buildId = buildInput.name;
   const res = await client.post<Omit<Build, BuildOutputOnlyFields>, Operation>(
-    `projects/${projectId}/locations/${location}/backends/${stackId}/builds`,
+    `projects/${projectId}/locations/${location}/backends/${backendId}/builds`,
     buildInput,
     { queryParams: { buildId } }
   );
