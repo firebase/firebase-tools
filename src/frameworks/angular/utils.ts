@@ -65,12 +65,13 @@ async function localesForTarget(
 }
 
 const enum ExpectedBuilder {
-  ANGULAR_FIRE_DEPLOY_TARGET = "@angular/fire:deploy",
   APPLICATION = "@angular-devkit/build-angular:application",
   BROWSER_ESBUILD = "@angular-devkit/build-angular:browser-esbuild",
-  LEGACY_BROWSER = "@angular-devkit/build-angular:browser",
-  LEGACY_PRERENDER = "@nguniversal/builders:prerender",
+  BROWSER_WEBPACK = "@angular-devkit/build-angular:browser",
+  DEPLOY = "@angular/fire:deploy",
   DEV_SERVER = "@angular-devkit/build-angular:dev-server",
+  LEGACY_PRERENDER = "@nguniversal/builders:prerender",
+  LEGACY_SERVER = "@angular-devkit/build-angular:server",
   LEGACY_SSR_DEV_SERVER = "@nguniversal/builders:ssr-dev-server",
 }
 
@@ -82,9 +83,9 @@ const DEV_SERVER_TARGETS: string[] = [
 function getValidBuilders(purpose: BUILD_TARGET_PURPOSE): string[] {
   return [
     ExpectedBuilder.APPLICATION,
-    ExpectedBuilder.ANGULAR_FIRE_DEPLOY_TARGET,
     ExpectedBuilder.BROWSER_ESBUILD,
-    ExpectedBuilder.LEGACY_BROWSER,
+    ExpectedBuilder.BROWSER_WEBPACK,
+    ExpectedBuilder.DEPLOY,
     ExpectedBuilder.LEGACY_PRERENDER,
     ...(purpose === "deploy" ? [] : DEV_SERVER_TARGETS),
   ];
@@ -135,6 +136,7 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
   const architect = new Architect(architectHost);
 
   let overrideTarget: Target | undefined;
+  let deployTarget: Target | undefined;
   let project: string | undefined;
   let buildTarget: Target | undefined;
   let browserTarget: Target | undefined;
@@ -143,7 +145,6 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
   let serveTarget: Target | undefined;
   let serveOptimizedImages = false;
 
-  let deployTargetName;
   let configuration: string | undefined = undefined;
   if (targetOrConfiguration) {
     try {
@@ -151,7 +152,6 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
       configuration = overrideTarget.configuration;
       project = overrideTarget.project;
     } catch (e) {
-      deployTargetName = "deploy";
       configuration = targetOrConfiguration;
     }
   }
@@ -180,118 +180,175 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
   if (overrideTarget) {
     const target = workspaceProject.targets.get(overrideTarget.target)!;
     const builder = target.builder;
-    if (builder === ExpectedBuilder.ANGULAR_FIRE_DEPLOY_TARGET)
-      deployTargetName = overrideTarget.target;
-    if (builder === ExpectedBuilder.APPLICATION) buildTarget = overrideTarget;
-    if (builder === ExpectedBuilder.BROWSER_ESBUILD) browserTarget = overrideTarget;
-    if (builder === ExpectedBuilder.LEGACY_BROWSER) browserTarget = overrideTarget;
-    if (builder === ExpectedBuilder.LEGACY_PRERENDER) prerenderTarget = overrideTarget;
-    if (typeof builder === "string" && DEV_SERVER_TARGETS.includes(builder))
-      serveTarget = overrideTarget;
+    switch (builder) {
+      case ExpectedBuilder.DEPLOY:
+        deployTarget = overrideTarget;
+        break;
+      case ExpectedBuilder.APPLICATION:
+        buildTarget = overrideTarget;
+        break;
+      case ExpectedBuilder.BROWSER_ESBUILD:
+      case ExpectedBuilder.BROWSER_WEBPACK:
+        browserTarget = overrideTarget;
+        break;
+      case ExpectedBuilder.LEGACY_PRERENDER:
+        prerenderTarget = overrideTarget;
+        break;
+      case ExpectedBuilder.DEV_SERVER:
+      case ExpectedBuilder.LEGACY_SSR_DEV_SERVER:
+        serveTarget = overrideTarget;
+        break;
+      default:
+        throw new FirebaseError(`builder ${builder} not known.`);
+    }
+  } else if (workspaceProject.targets.has("deploy")) {
+    const { builder, defaultConfiguration = "production" } =
+      workspaceProject.targets.get("deploy")!;
+    if (builder === ExpectedBuilder.DEPLOY) {
+      deployTarget = {
+        project,
+        target: "deploy",
+        configuration: configuration || defaultConfiguration,
+      };
+    }
   }
 
-  const deployTargetDefinition = deployTargetName
-    ? workspaceProject.targets.get(deployTargetName)
-    : undefined;
-  if (deployTargetDefinition?.builder === ExpectedBuilder.ANGULAR_FIRE_DEPLOY_TARGET) {
-    const options = deployTargetDefinition.options;
-    if (typeof options?.buildTarget === "string")
+  if (deployTarget) {
+    const options = await architectHost.getOptionsForTarget(deployTarget);
+    if (!options) throw new FirebaseError("Unable to get options for ng-deploy.");
+    if (options.buildTarget) {
+      assertIsString(options.buildTarget);
       buildTarget = targetFromTargetString(options.buildTarget);
-    if (typeof options?.prerenderTarget === "string")
-      prerenderTarget = targetFromTargetString(options.prerenderTarget);
-    if (typeof options?.browserTarget === "string")
-      browserTarget = targetFromTargetString(options.browserTarget);
-    if (typeof options?.serverTarget === "string")
-      serverTarget = targetFromTargetString(options.serverTarget);
-    if (options?.serveOptimizedImages) {
-      serveOptimizedImages = true;
     }
-    if (!buildTarget || !browserTarget) {
-      throw new Error("ng-deploy is missing a build target. Plase check your angular.json.");
+    if (options.prerenderTarget) {
+      assertIsString(options.prerenderTarget);
+      prerenderTarget = targetFromTargetString(options.prerenderTarget);
+    }
+    if (options.browserTarget) {
+      assertIsString(options.browserTarget);
+      browserTarget = targetFromTargetString(options.browserTarget);
+    }
+    if (options.serverTarget) {
+      assertIsString(options.serverTarget);
+      serverTarget = targetFromTargetString(options.serverTarget);
+    }
+    if (options.serveOptimizedImages) {
+      serveOptimizedImages = true;
     }
     if (prerenderTarget) {
       const prerenderOptions = await architectHost.getOptionsForTarget(prerenderTarget);
-      if (targetStringFromTarget(browserTarget) !== prerenderOptions?.browserTarget)
-        throw new Error(
+      if (!browserTarget) {
+        throw new FirebaseError("ng-deploy with prerenderTarget requires a browserTarget");
+      }
+      if (targetStringFromTarget(browserTarget) !== prerenderOptions?.browserTarget) {
+        throw new FirebaseError(
           "ng-deploy's browserTarget and prerender's browserTarget do not match. Please check your angular.json"
         );
-      if (serverTarget && targetStringFromTarget(serverTarget) !== prerenderOptions?.serverTarget)
-        throw new Error(
+      }
+      if (serverTarget && targetStringFromTarget(serverTarget) !== prerenderOptions?.serverTarget) {
+        throw new FirebaseError(
           "ng-deploy's serverTarget and prerender's serverTarget do not match. Please check your angular.json"
         );
-      if (!serverTarget)
+      }
+      if (!serverTarget) {
         console.warn(
           "Treating the application as fully rendered. Add a serverTarget to your deploy target in angular.json to utilize server-side rendering."
         );
-    }
-  }
-
-  if (!buildTarget && workspaceProject.targets.has("build")) {
-    const { defaultConfiguration = "production", builder } = workspaceProject.targets.get("build")!;
-    if (builder === ExpectedBuilder.APPLICATION) {
-      buildTarget = { project, target: "build", configuration: defaultConfiguration };
-    }
-    if (builder === ExpectedBuilder.BROWSER_ESBUILD) {
-      browserTarget = { project, target: "build", configuration: defaultConfiguration };
-    }
-  }
-
-  if (!buildTarget && !browserTarget) {
-    if (!overrideTarget && !prerenderTarget && workspaceProject.targets.has("prerender")) {
-      const { defaultConfiguration = "production" } = workspaceProject.targets.get("prerender")!;
-      prerenderTarget = { project, target: "prerender", configuration: defaultConfiguration };
-    }
-
-    if (serveTarget) {
-      const options = await architectHost.getOptionsForTarget(serveTarget);
-      if (typeof options?.browserTarget !== "string")
-        throw new Error(
-          `${serveTarget.target} browserTarget expected to be string, check your angular.json.`
-        );
-      browserTarget = targetFromTargetString(options.browserTarget);
-      if (options?.serverTarget) {
-        if (typeof options.serverTarget !== "string")
-          throw new Error(
-            `${serveTarget.target} serverTarget expected to be string, check your angular.json.`
-          );
-        serverTarget = targetFromTargetString(options.serverTarget);
       }
-    } else if (prerenderTarget) {
+    }
+    if (!buildTarget && !browserTarget) {
+      throw new FirebaseError(
+        "ng-deploy is missing a build target. Plase check your angular.json."
+      );
+    }
+  } else if (!overrideTarget) {
+    if (workspaceProject.targets.has("prerender")) {
+      const { defaultConfiguration = "production" } = workspaceProject.targets.get("prerender")!;
+      prerenderTarget = {
+        project,
+        target: "prerender",
+        configuration: configuration || defaultConfiguration,
+      };
       const options = await architectHost.getOptionsForTarget(prerenderTarget);
-      if (typeof options?.browserTarget !== "string")
-        throw new Error("Prerender browserTarget expected to be string, check your angular.json.");
+      assertIsString(options?.browserTarget);
       browserTarget = targetFromTargetString(options.browserTarget);
-      if (typeof options?.serverTarget !== "string")
-        throw new Error("Prerender serverTarget expected to be string, check your angular.json.");
+      assertIsString(options?.serverTarget);
       serverTarget = targetFromTargetString(options.serverTarget);
     }
-
-    if (!browserTarget && workspaceProject.targets.has("build")) {
-      const { defaultConfiguration = "production" } = workspaceProject.targets.get("build")!;
-      browserTarget = { project, target: "build", configuration: defaultConfiguration };
+    if (!buildTarget && !browserTarget && workspaceProject.targets.has("build")) {
+      const { builder, defaultConfiguration = "production" } =
+        workspaceProject.targets.get("build")!;
+      const target = {
+        project,
+        target: "build",
+        configuration: configuration || defaultConfiguration,
+      };
+      if (
+        builder === ExpectedBuilder.BROWSER_WEBPACK ||
+        builder === ExpectedBuilder.BROWSER_ESBUILD
+      ) {
+        browserTarget = target;
+      } else {
+        buildTarget = target;
+      }
     }
-
     if (!serverTarget && workspaceProject.targets.has("server")) {
       const { defaultConfiguration = "production" } = workspaceProject.targets.get("server")!;
-      serverTarget = { project, target: "server", configuration: defaultConfiguration };
+      serverTarget = {
+        project,
+        target: "server",
+        configuration: configuration || defaultConfiguration,
+      };
     }
   }
 
   if (!serveTarget) {
     if (serverTarget && workspaceProject.targets.has("serve-ssr")) {
       const { defaultConfiguration = "development" } = workspaceProject.targets.get("serve-ssr")!;
-      serveTarget = { project, target: "serve-ssr", configuration: defaultConfiguration };
+      serveTarget = {
+        project,
+        target: "serve-ssr",
+        configuration: configuration || defaultConfiguration,
+      };
     } else if (workspaceProject.targets.has("serve")) {
       const { defaultConfiguration = "development" } = workspaceProject.targets.get("serve")!;
-      serveTarget = { project, target: "serve", configuration: defaultConfiguration };
+      serveTarget = {
+        project,
+        target: "serve",
+        configuration: configuration || defaultConfiguration,
+      };
     }
   }
 
-  if (configuration) {
-    if (prerenderTarget) prerenderTarget.configuration = configuration;
-    if (serverTarget) serverTarget.configuration = configuration;
-    if (browserTarget) browserTarget.configuration = configuration;
-    if (serveTarget) serveTarget.configuration = configuration;
+  for (const target of [
+    deployTarget,
+    buildTarget,
+    prerenderTarget,
+    serverTarget,
+    browserTarget,
+    serveTarget,
+  ]) {
+    if (target) {
+      const targetString = targetStringFromTarget(target);
+      if (target.project !== project)
+        throw new FirebaseError(
+          `${targetString} is not in project ${project}. Please check your angular.json`
+        );
+      const definition = workspaceProject.targets.get(target.target);
+      if (!definition) throw new FirebaseError(`${target} could not be found in your angular.json`);
+      const { builder } = definition;
+      if (target === deployTarget && builder === ExpectedBuilder.DEPLOY) continue;
+      if (target === buildTarget && builder === ExpectedBuilder.APPLICATION) continue;
+      if (target === browserTarget && builder === ExpectedBuilder.BROWSER_ESBUILD) continue;
+      if (target === browserTarget && builder === ExpectedBuilder.BROWSER_WEBPACK) continue;
+      if (target === prerenderTarget && builder === ExpectedBuilder.LEGACY_PRERENDER) continue;
+      if (target === serverTarget && builder === ExpectedBuilder.LEGACY_SERVER) continue;
+      if (target === serveTarget && builder === ExpectedBuilder.LEGACY_SSR_DEV_SERVER) continue;
+      if (target === serveTarget && builder === ExpectedBuilder.DEV_SERVER) continue;
+      throw new FirebaseError(
+        `${definition.builder} (${targetString}) is not a recognized builder. Please check your angular.json`
+      );
+    }
   }
 
   const buildOrBrowserTarget = buildTarget || browserTarget;
@@ -305,10 +362,7 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
   }
 
   const baseHref = browserTargetOptions.baseHref || "/";
-  if (typeof baseHref !== "string") {
-    const targetString = targetStringFromTarget(buildOrBrowserTarget);
-    throw new FirebaseError(`baseHref on ${targetString} was not a string`);
-  }
+  assertIsString(baseHref);
 
   const buildTargetOptions = buildTarget && (await architectHost.getOptionsForTarget(buildTarget));
   const ssr = buildTarget ? !!buildTargetOptions?.ssr : !!serverTarget;
@@ -323,9 +377,9 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
     prerenderTarget,
     serverTarget,
     serveTarget,
-    ssr,
     workspaceProject,
     serveOptimizedImages,
+    ssr,
   };
 }
 
@@ -368,6 +422,7 @@ export async function getServerConfig(sourceDir: string, configuration: string) 
   assertIsString(browserTargetOptions?.outputPath);
   const browserOutputPath = join(browserTargetOptions.outputPath, buildTarget ? "browser" : "");
   const packageJson = JSON.parse(await host.readFile(join(sourceDir, "package.json")));
+
   if (!ssr) {
     return {
       packageJson,
