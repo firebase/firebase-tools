@@ -149,11 +149,11 @@ export async function ɵcodegenPublicDirectory(
 export async function getValidBuildTargets(purpose: BUILD_TARGET_PURPOSE, dir: string) {
   const validTargetNames = new Set(["development", "production"]);
   try {
-    const { workspaceProject, buildTarget, browserTarget, serverTarget, serveTarget } =
+    const { workspaceProject, buildTarget, browserTarget, prerenderTarget, serveTarget } =
       await getContext(dir);
     const { target } = ((purpose === "emulate" && serveTarget) ||
       buildTarget ||
-      serverTarget ||
+      prerenderTarget ||
       browserTarget)!;
     const workspaceTarget = workspaceProject.targets.get(target)!;
     Object.keys(workspaceTarget.configurations || {}).forEach((it) => validTargetNames.add(it));
