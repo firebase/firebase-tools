@@ -1,11 +1,12 @@
-import * as uuid from "uuid";
-import { EmulatorLogger } from "../emulatorLogger";
-import { Emulators } from "../types";
-import { Client } from "../../apiv2";
-import { EmulatorRegistry } from "../registry";
-import { toSerializedDate } from "../storage/metadata";
-import { CloudEvent } from "../events/types";
 import { RemoteConfigEventData } from "@google/events/firebase/remoteconfig/v1/RemoteConfigEventData";
+import * as uuid from "uuid";
+
+import { Client } from "../../apiv2";
+import { CloudEvent } from "../events/types";
+import { EmulatorLogger } from "../emulatorLogger";
+import { EmulatorRegistry } from "../registry";
+import { Emulators } from "../types";
+import { toSerializedDate } from "../storage/metadata";
 
 type RemoteConfigFunctionAction = "update";
 const REMOTE_CONFIG_V2_ACTION_MAP: Record<RemoteConfigFunctionAction, string> = {
@@ -42,13 +43,22 @@ export class RemoteConfigCloudFunctions {
     if (!this.enabled) {
       return;
     }
+    if (!this.client) {
+      // throw or log and error as you see appropriate
+      this.logger.logLabeled(
+        "ERROR",
+        "remote config",
+        "Tried to dispatch events but did not have a functions client. This is likely a bug with initializing the remote config emulator - please report"
+      );
+      return;
+    }
 
     const errStatus: Array<number> = [];
     let err: Error | undefined;
     try {
       /** Legacy Google Events */
       const eventBody = this.createLegacyEventRequestBody(action, object);
-      const eventRes = await this.client!.post(this.multicastPath, eventBody);
+      const eventRes = await this.client.post(this.multicastPath, eventBody);
       if (eventRes.status !== 200) {
         errStatus.push(eventRes.status);
       }
@@ -70,7 +80,7 @@ export class RemoteConfigCloudFunctions {
 
     if (err || errStatus.length > 0) {
       this.logger.logLabeled(
-        "WARN",
+        "ERROR",
         "functions",
         `Firebase Remote Config function was not triggered due to emulation error. Please file a bug.`
       );

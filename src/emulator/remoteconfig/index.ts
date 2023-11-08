@@ -133,8 +133,7 @@ export class RemoteConfigEmulator implements EmulatorInstance {
   static prepareEmulatorTemplate(template: any): any {
     const emulatorTemplate = cloneDeep(template);
     const emulatorParameters = emulatorTemplate["parameters"] || {};
-    for (const parameterName of Object.keys(emulatorParameters)) {
-      const emulatorParameter = emulatorParameters[parameterName];
+    for (const [parameterName, emulatorParameter] of Object.entries(emulatorParameters)) {
       if (emulatorParameter.hasOwnProperty("conditionalValues")) {
         // add is_emulator
         const conditionalValues = emulatorParameter["conditionalValues"];
@@ -171,8 +170,7 @@ export class RemoteConfigEmulator implements EmulatorInstance {
     }
     const templateCopy = cloneDeep(template);
     // parameters must contain an active value
-    for (const parameterName of Object.keys(templateCopy.parameters)) {
-      const parameter = templateCopy.parameters[parameterName];
+    for (const [parameterName, parameter] of Object.entries(templateCopy.parameters)) {
       if (typeof parameter.conditionalValues !== "object") {
         return {
           valid: false,
@@ -190,11 +188,11 @@ export class RemoteConfigEmulator implements EmulatorInstance {
       if (parameter.defaultValue.value === isEmulatorValue) {
         hasMatch = true;
       } else {
-        for (const conditionalValueKey of Object.keys(parameter.conditionalValues)) {
+        for (const [conditionalValueKey, conditionalValue] of Object.entries(parameter.conditionalValues)) {
           if (conditionalValueKey === "!isEmulator") {
             continue;
           }
-          if (parameter.conditionalValues[conditionalValueKey].value === isEmulatorValue) {
+          if (conditionalValue.value === isEmulatorValue) {
             hasMatch = true;
           }
         }
@@ -249,7 +247,7 @@ export class RemoteConfigEmulator implements EmulatorInstance {
   static extractEmulator(emulatorTemplate: any): any {
     const nonEmulatorTemplate = cloneDeep(emulatorTemplate);
     const emulatorParameters = nonEmulatorTemplate["parameters"] || {};
-    for (const parameterName of Object.keys(emulatorParameters)) {
+    for (const [parameterName, emulatorParameter] of Object.entries(emulatorParameters)) {
       const emulatorParameter = emulatorParameters[parameterName];
       const conditionalValues = emulatorParameter["conditionalValues"];
       if (Object.values(conditionalValues).length > 1) {

@@ -21,7 +21,7 @@ export function createApp(
 
   // Please note you should set the Remote Config minimal fetch interval to 0, so it refreshes every time
   // Otherwise caching will cause you headaches
-  app.post("/v1/projects/:projectId/namespaces/firebase:fetch", (req, res) => {
+  app.post("/v1/projects/:projectId/namespaces/firebase[:]fetch", (req, res) => {
     res.header("etag", `etag-${req.params["projectId"]}-firebase-fetch--${new Date().getTime()}`);
     res.header(
       "Access-Control-Expose-Headers",
@@ -69,8 +69,8 @@ export function createApp(
 function generateClientResponse(template: any): any {
   const parameters = template["parameters"];
   const entriesObj: any = {};
-  for (const parameterName of Object.keys(parameters)) {
-    entriesObj[parameterName] = parameters[parameterName].conditionalValues["!isEmulator"].value;
+  for (const [parameterName, parameter] of Object.entries(parameters)) {
+    entriesObj[parameterName] = parameter.conditionalValues["!isEmulator"].value;
   }
   return {
     entries: entriesObj,
