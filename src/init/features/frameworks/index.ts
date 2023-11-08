@@ -81,7 +81,6 @@ export async function getOrCreateBackend(
     return await getExistingBackend(projectId, setup, location);
   } catch (err: unknown) {
     if ((err as FirebaseError).status === 404) {
-<<<<<<< HEAD
       const cloudBuildConnRepo = await repo.linkGitHubRepository(projectId, location);
       await promptOnce(
         {
@@ -95,19 +94,6 @@ export async function getOrCreateBackend(
       const backendDetails = toBackend(cloudBuildConnRepo);
       logger.info(clc.bold(`\n${clc.white("===")} Creating your backend`));
       return await createBackend(projectId, location, backendDetails, setup.frameworks.serviceName);
-=======
-      logger.info("Creating new backend.");
-      if (deployMethod === "github") {
-        const cloudBuildConnRepo = await repo.linkGitHubRepository(projectId, location);
-        const backendDetails = toBackend(cloudBuildConnRepo);
-        return await createBackend(
-          projectId,
-          location,
-          backendDetails,
-          setup.frameworks.serviceName
-        );
-      }
->>>>>>> origin/master
     } else {
       throw new FirebaseError(
         `Failed to get or create a backend using the given initialization details: ${err}`
