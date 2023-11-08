@@ -1,7 +1,5 @@
 import * as uuid from "uuid";
-import * as request from "request";
 
-import { RequestShim } from "./emulator/requestShim"
 import { encodeFirestoreValue } from "./firestore/encodeFirestoreValue";
 import * as utils from "./utils";
 import { EmulatedTriggerDefinition } from "./emulator/functionsEmulatorShared";
@@ -49,51 +47,28 @@ export default class LocalFunction {
     }
 
     if (!this.url) {
-      this.requestCallBack(new Error("No URL provided"))
-      return
+      throw new Error("No URL provided");
     }
 
     const client = new Client({ urlPrefix: this.url, auth: false });
     void client
-      .post<string|object|undefined, string|object>("", data, { headers })
+      .post<body, body>("", data, { headers })
       .then((res) => {
-        this.requestCallBack<string|object>(undefined, res, res.body);
+        this.requestCallBack<body>(undefined, res, res.body);
       })
       .catch((err) => {
         this.requestCallBack(err);
       });
   }
 
-  private constructHttpsFunc(
-    path?: string
-  ) {
-    const callClient = new Client({ urlPrefix: this.url, auth: false });
-    const shim = (path: string) => {
-      callClient
-        .get<string|object|undefined>(path || "/")
-        .then((res) => {
-          this.requestCallBack(undefined, res, res.body);
-        })
-        .catch((err) => {
-          this.requestCallBack(err);
-        });
-      return HTTPS_SENTINEL;
-    };
-    Object.assign(shim, )
-    const verbs: Record<string, (...args: any) => string> = {
-      "get": (path: string) => {
-        callClient["get"]<string|object>(path || "/")
-          .then((res) => {
-            this.requestCallBack(undefined, res, res.body);
-          })
-          .catch((err) => {
-            this.requestCallBack(err, );
-          });
-        return HTTPS_SENTINEL;
-      }
+  private constructHttpsFunc(): requestShim {
+    if (!this.url) {
+      throw new Error("No URL provided");
     }
-    for (const method of ["post", "put", "patch", "delete"]) {
-      verbs[method] = (...args) => {
+    const callClient = new Client({ urlPrefix: this.url, auth: false });
+    type verbFn  = (...args: any) => string; 
+    const verbWithReqBodyFactory = (method: (path:string, data?: body) => Promise<ClientResponse<body>>) : verbFn => {
+      return (...args: any) => { 
         let path = "/";
         let data = {};
         if (args.length === 1 && typeof args[0] !== "string") {
@@ -102,7 +77,19 @@ export default class LocalFunction {
           path = args[0];
           data = args[1];
         }
-        callClient[method]<string | object | undefined, string | object >(path, data)
+        method(path, data)
+        .then((res) => {
+          this.requestCallBack(undefined, res, res.body);
+        })
+        .catch((err) => {
+          this.requestCallBack(err);
+        });
+        return HTTPS_SENTINEL;
+      }
+    };
+    const verbWithoutReqBodyFactory = (method: (path:string) => Promise<ClientResponse<body>>): verbFn => {
+      return (path: string) => {
+        method(path || "/")
           .then((res) => {
             this.requestCallBack(undefined, res, res.body);
           })
@@ -111,7 +98,18 @@ export default class LocalFunction {
           });
         return HTTPS_SENTINEL;
       };
+    };
+    const shim = verbWithoutReqBodyFactory(callClient.get)
+    const verbs: verbMethods = {
+      "post": verbWithReqBodyFactory(callClient.post),
+      "put": verbWithReqBodyFactory(callClient.put),
+      "patch": verbWithReqBodyFactory(callClient.patch),
+      "get": verbWithoutReqBodyFactory(callClient.get),
+      "del": verbWithoutReqBodyFactory(callClient.delete),
+      "delete": verbWithoutReqBodyFactory(callClient.delete),
+      "options": verbWithoutReqBodyFactory(callClient.options)
     }
+    return Object.assign(shim, verbs)
   }
 
   constructAuth(auth?: EventOptions["auth"], authType?: AuthType): AuthMode {
@@ -300,14 +298,30 @@ export default class LocalFunction {
       if (isCallable) {
         return (data: any, opt: any) => this.constructCallableFunc(data, opt);
       } else {
-        return request.defaults({
-          callback: (...args) => this.requestCallBack(...args),
-          baseUrl: this.url,
-          uri: "",
-        });
+        return this.constructHttpsFunc();
       }
     } else {
       return (data: any, opt: any) => this.triggerEvent(data, opt);
     }
   }
 }
+
+// requestShim is a minimal implementation of the public API of the deprecated `request` package
+// We expose it as part of `functions:shell` so that we can keep the previous API while removing
+// our dependency on `request`.
+interface requestShim extends verbMethods {
+  (...args: any): any;
+  // TODO(taeold/blidd/joehan) What other methods do we need to add? form? json? multipart?
+}
+
+interface verbMethods {
+  get(...args: any): any;
+  post(...args: any): any;
+  put(...args: any): any;
+  patch(...args: any): any;
+  del(...args: any): any;
+  delete(...args: any): any;
+  options(...args: any): any;
+}
+
+type body = string|object|undefined;

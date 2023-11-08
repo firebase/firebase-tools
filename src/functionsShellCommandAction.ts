@@ -15,7 +15,7 @@ import { EmulatorHubClient } from "./emulator/hubClient";
 import { resolveHostAndAssignPorts } from "./emulator/portUtils";
 import { Constants } from "./emulator/constants";
 import { Options } from "./options";
-import { HTTPS_SENTINAL } from "./localFunction";
+import { HTTPS_SENTINEL } from "./localFunction";
 import { needProjectId } from "./projectUtils";
 
 const serveFunctions = new FunctionsServer();
@@ -125,8 +125,8 @@ export const actionFunction = async (options: Options) => {
       );
 
       const writer = (output: any) => {
-        if (output === HTTPS_SENTINAL) {
-          return HTTPS_SENTINAL;
+        if (output === HTTPS_SENTINEL) {
+          return HTTPS_SENTINEL;
         }
         return util.inspect(output);
       };
