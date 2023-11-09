@@ -566,8 +566,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     } else {
       this.workerPools[emulatableBackend.codebase].refresh();
     }
-    // reset blocking functions config for reloads
-    this.blockingFunctionsConfig = {};
 
     // When force is true we set up all triggers, otherwise we only set up
     // triggers which have a unique function name
@@ -1436,6 +1434,8 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   async reloadTriggers() {
     this.triggerGeneration++;
+    // reset blocking functions config for reloads
+    this.blockingFunctionsConfig = {};
     for (const backend of this.args.emulatableBackends) {
       await this.loadTriggers(backend);
     }
