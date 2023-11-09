@@ -564,11 +564,20 @@ export async function getSite(project: string, site: string): Promise<Site> {
  * @param appId the Firebase Web App ID (https://firebase.google.com/docs/projects/learn-more#config-files-objects)
  * @return site information.
  */
-export async function createSite(project: string, site: string, appId = ""): Promise<Site> {
+export async function createSite(
+  project: string,
+  site: string,
+  appId = "",
+  validateOnly = false
+): Promise<Site> {
+  const queryParams: Record<string, string> = { siteId: site };
+  if (validateOnly) {
+    queryParams.validateOnly = "true";
+  }
   const res = await apiClient.post<{ appId: string }, Site>(
     `/projects/${project}/sites`,
     { appId: appId },
-    { queryParams: { siteId: site } }
+    { queryParams }
   );
   return res.body;
 }
