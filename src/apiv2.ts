@@ -20,7 +20,7 @@ const CLI_VERSION: string = pkg.version;
 
 const GOOG_QUOTA_USER = "x-goog-quota-user";
 
-export type HttpMethod = "GET" | "PUT" | "POST" | "DELETE" | "PATCH" | "OPTIONS";
+export type HttpMethod = "GET" | "PUT" | "POST" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD";
 
 interface BaseRequestOptions<T> extends VerbOptions {
   method: HttpMethod;

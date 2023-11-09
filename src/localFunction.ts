@@ -5,7 +5,7 @@ import * as utils from "./utils";
 import { EmulatedTriggerDefinition } from "./emulator/functionsEmulatorShared";
 import { FunctionsEmulatorShell } from "./emulator/functionsEmulatorShell";
 import { AuthMode, AuthType, EventOptions } from "./emulator/events/types";
-import { Client, ClientResponse } from "./apiv2";
+import { Client, ClientResponse, ClientVerbOptions } from "./apiv2";
 
 export const HTTPS_SENTINEL = "Request sent to function.";
 
@@ -35,10 +35,7 @@ export default class LocalFunction {
     });
   }
 
-  private constructCallableFunc(
-    data: string | object,
-    opts: { instanceIdToken?: string }
-  ): void {
+  private constructCallableFunc(data: string | object, opts: { instanceIdToken?: string }): void {
     opts = opts || {};
 
     const headers: Record<string, string> = {};
@@ -52,9 +49,9 @@ export default class LocalFunction {
 
     const client = new Client({ urlPrefix: this.url, auth: false });
     void client
-      .post<body, body>("", data, { headers })
+      .post<any, any>("", data, { headers })
       .then((res) => {
-        this.requestCallBack<body>(undefined, res, res.body);
+        this.requestCallBack<any>(undefined, res, res.body);
       })
       .catch((err) => {
         this.requestCallBack(err);
@@ -66,30 +63,31 @@ export default class LocalFunction {
       throw new Error("No URL provided");
     }
     const callClient = new Client({ urlPrefix: this.url, auth: false });
-    type verbFn  = (...args: any) => string; 
-    const verbWithReqBodyFactory = (method: (path:string, data?: body) => Promise<ClientResponse<body>>) : verbFn => {
-      return (...args: any) => { 
+    type verbFn = (...args: any) => Promise<string>;
+    const verbWithReqBodyFactory = (
+      method: (path: string, body?: any, opts?: ClientVerbOptions) => Promise<ClientResponse<any>>
+    ): verbFn => {
+      return async (pathOrOptions?: string | HttpsOptions, options?: HttpsOptions) => {
         let path = "/";
-        let data = {};
-        if (args.length === 1 && typeof args[0] !== "string") {
-          data = args[0];
-        } else if (args.length === 2) {
-          path = args[0];
-          data = args[1];
+        let opts: HttpsOptions = {};
+        // Just path
+        if (typeof pathOrOptions === "string" && !options) {
+          path = pathOrOptions;
+        } // error case, 2 options
+        else if (!!pathOrOptions && !!options && typeof pathOrOptions !== "string") {
+          throw new Error(
+            `Expected args of type string, HttpsOptions, got ${typeof pathOrOptions}, ${typeof options}`
+          );
+        }  // path and options
+        else if (!!pathOrOptions && !!options && typeof pathOrOptions === "string") {
+          path = pathOrOptions;
+          opts = options;
         }
-        method(path, data)
-        .then((res) => {
-          this.requestCallBack(undefined, res, res.body);
-        })
-        .catch((err) => {
-          this.requestCallBack(err);
-        });
-        return HTTPS_SENTINEL;
-      }
-    };
-    const verbWithoutReqBodyFactory = (method: (path:string) => Promise<ClientResponse<body>>): verbFn => {
-      return (path: string) => {
-        method(path || "/")
+        else if (!!pathOrOptions && typeof pathOrOptions != "string") {
+          opts = pathOrOptions
+        }
+        console.log(`path: ${path}, options: ${opts}`)
+        await method(path, opts.body, toClientVerbOptions(opts))
           .then((res) => {
             this.requestCallBack(undefined, res, res.body);
           })
@@ -99,17 +97,52 @@ export default class LocalFunction {
         return HTTPS_SENTINEL;
       };
     };
-    const shim = verbWithoutReqBodyFactory(callClient.get)
+    const verbWithoutReqBodyFactory = (
+      method: (path: string, options?: ClientVerbOptions) => Promise<ClientResponse<any>>
+    ): verbFn => {
+      return async (pathOrOptions?: string | HttpsOptions, options?: HttpsOptions) => {
+        let path = "/";
+        let opts: HttpsOptions = {};
+        // Just path
+        if (typeof pathOrOptions === "string" && !options) {
+          path = pathOrOptions;
+        } // error case, 2 options
+        else if (!!pathOrOptions && !!options && typeof pathOrOptions !== "string") {
+          throw new Error(
+            `Expected args of type string, HttpsOptions, got ${typeof pathOrOptions}, ${typeof options}`
+          );
+        }  // path and options
+        else if (!!pathOrOptions && !!options && typeof pathOrOptions === "string") {
+          path = pathOrOptions;
+          opts = options;
+        }
+        else if (!!pathOrOptions && typeof pathOrOptions != "string") {
+          opts = pathOrOptions
+        }
+        await method(path, toClientVerbOptions(opts))
+          .then((res) => {
+            this.requestCallBack(undefined, res, res.body);
+          })
+          .catch((err) => {
+            this.requestCallBack(err);
+          });
+        return HTTPS_SENTINEL;
+      };
+    };
+    const shim = verbWithReqBodyFactory((path: string, json?: any, opts?: ClientVerbOptions) => {
+      const req = Object.assign(opts || {} , {path: path, body: json, method: opts?.method || "GET"});
+      return callClient.request(req);
+    });
     const verbs: verbMethods = {
-      "post": verbWithReqBodyFactory(callClient.post),
-      "put": verbWithReqBodyFactory(callClient.put),
-      "patch": verbWithReqBodyFactory(callClient.patch),
-      "get": verbWithoutReqBodyFactory(callClient.get),
-      "del": verbWithoutReqBodyFactory(callClient.delete),
-      "delete": verbWithoutReqBodyFactory(callClient.delete),
-      "options": verbWithoutReqBodyFactory(callClient.options)
-    }
-    return Object.assign(shim, verbs)
+      post: verbWithReqBodyFactory((path: string, json?: any, opts?: ClientVerbOptions) => callClient.post(path, json, opts)),
+      put: verbWithReqBodyFactory((path: string, json?: any, opts?: ClientVerbOptions) => callClient.put(path, json, opts)),
+      patch: verbWithReqBodyFactory((path: string, json?: any, opts?: ClientVerbOptions) => callClient.patch(path, json, opts)),
+      get: verbWithoutReqBodyFactory((path: string, opts?: ClientVerbOptions) => callClient.get(path, opts)),
+      del: verbWithoutReqBodyFactory((path: string, opts?: ClientVerbOptions) => callClient.delete(path, opts)),
+      delete: verbWithoutReqBodyFactory((path: string, opts?: ClientVerbOptions) => callClient.delete(path, opts)),
+      options: verbWithoutReqBodyFactory((path: string, opts?: ClientVerbOptions) => callClient.options(path, opts)),
+    };
+    return Object.assign(shim, verbs);
   }
 
   constructAuth(auth?: EventOptions["auth"], authType?: AuthType): AuthMode {
@@ -324,4 +357,21 @@ interface verbMethods {
   options(...args: any): any;
 }
 
-type body = string|object|undefined;
+// HttpsOptions is a subset of request's CoreOptions
+// https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/request/index.d.ts#L107
+// We intentionally omit options that are likely useless for `functions:shell`
+type HttpsOptions = {
+  method?: "GET" | "PUT" | "POST" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD";
+  headers?: Record<string, any>;
+  body?: any;
+  qs?: any;
+  encoding?: string;
+};
+
+function toClientVerbOptions(opts: HttpsOptions): ClientVerbOptions {
+  return {
+    method: opts.method,
+    headers: opts.headers,
+    queryParams: opts.qs,
+  };
+}
