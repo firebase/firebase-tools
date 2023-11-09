@@ -1,0 +1,1 @@
+- Fix blocking functions in the emulator when using multiple codebases (#6504).
