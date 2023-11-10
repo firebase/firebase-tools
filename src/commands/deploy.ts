@@ -46,7 +46,7 @@ export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], s
 export const command = new Command("deploy")
   .description("deploy code and assets to your Firebase project")
   .withForce(
-    "delete Cloud Functions missing from the current working directory and/or increase minimum instances without confirmation"
+    "delete Cloud Functions missing from the current working directory and bypass interactive prompts"
   )
   .option("-p, --public <path>", "override the Hosting public directory specified in firebase.json")
   .option("-m, --message <message>", "an optional message describing this deploy")

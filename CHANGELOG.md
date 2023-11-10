@@ -1,2 +1,2 @@
 - Fix blocking functions in the emulator when using multiple codebases (#6504).
-- Add min instances call-out to force flag (#6506).
+- Add force flag call-out for bypassing prompts (#6506).
