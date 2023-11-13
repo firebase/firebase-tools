@@ -83,7 +83,7 @@ export default class LocalFunction {
       method: (path: string, options?: ClientVerbOptions) => Promise<ClientResponse<any>>
     ): verbFn => {
       return async (pathOrOptions?: string | HttpsOptions, options?: HttpsOptions) => {
-       const { path, opts } = this.extractArgs(pathOrOptions, options);
+        const { path, opts } = this.extractArgs(pathOrOptions, options);
         await method(path, toClientVerbOptions(opts))
           .then((res) => {
             this.requestCallBack(undefined, res, res.body);
@@ -95,22 +95,43 @@ export default class LocalFunction {
       };
     };
     const shim = verbWithReqBodyFactory((path: string, json?: any, opts?: ClientVerbOptions) => {
-      const req = Object.assign(opts || {} , {path: path, body: json, method: opts?.method || "GET"});
+      const req = Object.assign(opts || {}, {
+        path: path,
+        body: json,
+        method: opts?.method || "GET",
+      });
       return callClient.request(req);
     });
     const verbs: verbMethods = {
-      post: verbWithReqBodyFactory((path: string, json?: any, opts?: ClientVerbOptions) => callClient.post(path, json, opts)),
-      put: verbWithReqBodyFactory((path: string, json?: any, opts?: ClientVerbOptions) => callClient.put(path, json, opts)),
-      patch: verbWithReqBodyFactory((path: string, json?: any, opts?: ClientVerbOptions) => callClient.patch(path, json, opts)),
-      get: verbWithoutReqBodyFactory((path: string, opts?: ClientVerbOptions) => callClient.get(path, opts)),
-      del: verbWithoutReqBodyFactory((path: string, opts?: ClientVerbOptions) => callClient.delete(path, opts)),
-      delete: verbWithoutReqBodyFactory((path: string, opts?: ClientVerbOptions) => callClient.delete(path, opts)),
-      options: verbWithoutReqBodyFactory((path: string, opts?: ClientVerbOptions) => callClient.options(path, opts)),
+      post: verbWithReqBodyFactory((path: string, json?: any, opts?: ClientVerbOptions) =>
+        callClient.post(path, json, opts)
+      ),
+      put: verbWithReqBodyFactory((path: string, json?: any, opts?: ClientVerbOptions) =>
+        callClient.put(path, json, opts)
+      ),
+      patch: verbWithReqBodyFactory((path: string, json?: any, opts?: ClientVerbOptions) =>
+        callClient.patch(path, json, opts)
+      ),
+      get: verbWithoutReqBodyFactory((path: string, opts?: ClientVerbOptions) =>
+        callClient.get(path, opts)
+      ),
+      del: verbWithoutReqBodyFactory((path: string, opts?: ClientVerbOptions) =>
+        callClient.delete(path, opts)
+      ),
+      delete: verbWithoutReqBodyFactory((path: string, opts?: ClientVerbOptions) =>
+        callClient.delete(path, opts)
+      ),
+      options: verbWithoutReqBodyFactory((path: string, opts?: ClientVerbOptions) =>
+        callClient.options(path, opts)
+      ),
     };
     return Object.assign(shim, verbs);
   }
 
-  private extractArgs(pathOrOptions?: string | HttpsOptions, options?: HttpsOptions): {path: string, opts: HttpsOptions} {
+  private extractArgs(
+    pathOrOptions?: string | HttpsOptions,
+    options?: HttpsOptions
+  ): { path: string; opts: HttpsOptions } {
     let path = "/";
     let opts: HttpsOptions = {};
     // Just path
@@ -121,15 +142,14 @@ export default class LocalFunction {
       throw new Error(
         `Expected args of type string, HttpsOptions, got ${typeof pathOrOptions}, ${typeof options}`
       );
-    }  // path and options
+    } // path and options
     else if (!!pathOrOptions && !!options && typeof pathOrOptions === "string") {
       path = pathOrOptions;
       opts = options;
+    } else if (!!pathOrOptions && typeof pathOrOptions !== "string") {
+      opts = pathOrOptions;
     }
-    else if (!!pathOrOptions && typeof pathOrOptions != "string") {
-      opts = pathOrOptions
-    }
-    return {path, opts}
+    return { path, opts };
   }
 
   constructAuth(auth?: EventOptions["auth"], authType?: AuthType): AuthMode {
