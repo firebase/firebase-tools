@@ -49,7 +49,7 @@ firebase deploy
 
 ## Pre-render dynamic content
 
-To prerender dynamic content in Angular, you need to set up Angular Universal.
+To prerender dynamic content in Angular, you need to set up Angular SSR.
 
 ```shell
 ng add @angular/ssr
