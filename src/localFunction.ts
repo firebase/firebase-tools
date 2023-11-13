@@ -68,25 +68,7 @@ export default class LocalFunction {
       method: (path: string, body?: any, opts?: ClientVerbOptions) => Promise<ClientResponse<any>>
     ): verbFn => {
       return async (pathOrOptions?: string | HttpsOptions, options?: HttpsOptions) => {
-        let path = "/";
-        let opts: HttpsOptions = {};
-        // Just path
-        if (typeof pathOrOptions === "string" && !options) {
-          path = pathOrOptions;
-        } // error case, 2 options
-        else if (!!pathOrOptions && !!options && typeof pathOrOptions !== "string") {
-          throw new Error(
-            `Expected args of type string, HttpsOptions, got ${typeof pathOrOptions}, ${typeof options}`
-          );
-        }  // path and options
-        else if (!!pathOrOptions && !!options && typeof pathOrOptions === "string") {
-          path = pathOrOptions;
-          opts = options;
-        }
-        else if (!!pathOrOptions && typeof pathOrOptions != "string") {
-          opts = pathOrOptions
-        }
-        console.log(`path: ${path}, options: ${opts}`)
+        const { path, opts } = this.extractArgs(pathOrOptions, options);
         await method(path, opts.body, toClientVerbOptions(opts))
           .then((res) => {
             this.requestCallBack(undefined, res, res.body);
@@ -101,24 +83,7 @@ export default class LocalFunction {
       method: (path: string, options?: ClientVerbOptions) => Promise<ClientResponse<any>>
     ): verbFn => {
       return async (pathOrOptions?: string | HttpsOptions, options?: HttpsOptions) => {
-        let path = "/";
-        let opts: HttpsOptions = {};
-        // Just path
-        if (typeof pathOrOptions === "string" && !options) {
-          path = pathOrOptions;
-        } // error case, 2 options
-        else if (!!pathOrOptions && !!options && typeof pathOrOptions !== "string") {
-          throw new Error(
-            `Expected args of type string, HttpsOptions, got ${typeof pathOrOptions}, ${typeof options}`
-          );
-        }  // path and options
-        else if (!!pathOrOptions && !!options && typeof pathOrOptions === "string") {
-          path = pathOrOptions;
-          opts = options;
-        }
-        else if (!!pathOrOptions && typeof pathOrOptions != "string") {
-          opts = pathOrOptions
-        }
+       const { path, opts } = this.extractArgs(pathOrOptions, options);
         await method(path, toClientVerbOptions(opts))
           .then((res) => {
             this.requestCallBack(undefined, res, res.body);
@@ -143,6 +108,28 @@ export default class LocalFunction {
       options: verbWithoutReqBodyFactory((path: string, opts?: ClientVerbOptions) => callClient.options(path, opts)),
     };
     return Object.assign(shim, verbs);
+  }
+
+  private extractArgs(pathOrOptions?: string | HttpsOptions, options?: HttpsOptions): {path: string, opts: HttpsOptions} {
+    let path = "/";
+    let opts: HttpsOptions = {};
+    // Just path
+    if (typeof pathOrOptions === "string" && !options) {
+      path = pathOrOptions;
+    } // error case, 2 options
+    else if (!!pathOrOptions && !!options && typeof pathOrOptions !== "string") {
+      throw new Error(
+        `Expected args of type string, HttpsOptions, got ${typeof pathOrOptions}, ${typeof options}`
+      );
+    }  // path and options
+    else if (!!pathOrOptions && !!options && typeof pathOrOptions === "string") {
+      path = pathOrOptions;
+      opts = options;
+    }
+    else if (!!pathOrOptions && typeof pathOrOptions != "string") {
+      opts = pathOrOptions
+    }
+    return {path, opts}
   }
 
   constructAuth(auth?: EventOptions["auth"], authType?: AuthType): AuthMode {
