@@ -94,6 +94,7 @@ export default class LocalFunction {
         return HTTPS_SENTINEL;
       };
     };
+
     const shim = verbWithReqBodyFactory((path: string, json?: any, opts?: ClientVerbOptions) => {
       const req = Object.assign(opts || {}, {
         path: path,
@@ -372,7 +373,6 @@ type HttpsOptions = {
   headers?: Record<string, any>;
   body?: any;
   qs?: any;
-  encoding?: string;
 };
 
 function toClientVerbOptions(opts: HttpsOptions): ClientVerbOptions {
