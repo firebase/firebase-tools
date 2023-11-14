@@ -32,12 +32,12 @@ export const command = new Command("backends:list")
     try {
       if (!location) {
         for (const region of ALLOWED_REGIONS) {
-          const backendsPerRegion = await gcp.listBackends(projectId, region.value)
+          const backendsPerRegion = await gcp.listBackends(projectId, region.value);
           backendsList.push(backendsPerRegion);
           populateTable(backendsPerRegion, region.name, table);
         }
       } else {
-        const backendsPerRegion = await gcp.listBackends(projectId, location)
+        const backendsPerRegion = await gcp.listBackends(projectId, location);
         backendsList.push(backendsPerRegion);
         populateTable(backendsPerRegion, location, table);
       }
@@ -56,28 +56,24 @@ export const command = new Command("backends:list")
     return backendsList;
   });
 
-function populateTable(
-  backendsLists: gcp.ListBackendsResponse,
-  location: string,
-  table: any
-) {
-    for (const backend of backendsLists.backends) {
-      const entry = [
-        backend.name.split("/").pop(),
-        backend.codebase.repository?.split("/").pop(),
-        backend.uri,
-        location,
-        backend.createTime,
-        backend.updateTime,
-      ];
-      const newRow = entry.map((name) => {
-        const maxCellWidth = COLUMN_LENGTH - 2;
-        const chunks = [];
-        for (let i = 0; name && i < name.length; i += maxCellWidth) {
-          chunks.push(name.substring(i, i + maxCellWidth));
-        }
-        return chunks.join("\n");
-      });
-      table.push(newRow);
-    }
+function populateTable(backendsLists: gcp.ListBackendsResponse, location: string, table: any) {
+  for (const backend of backendsLists.backends) {
+    const entry = [
+      backend.name.split("/").pop(),
+      backend.codebase.repository?.split("/").pop(),
+      backend.uri,
+      location,
+      backend.createTime,
+      backend.updateTime,
+    ];
+    const newRow = entry.map((name) => {
+      const maxCellWidth = COLUMN_LENGTH - 2;
+      const chunks = [];
+      for (let i = 0; name && i < name.length; i += maxCellWidth) {
+        chunks.push(name.substring(i, i + maxCellWidth));
+      }
+      return chunks.join("\n");
+    });
+    table.push(newRow);
+  }
 }
