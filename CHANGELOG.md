@@ -1,2 +1,3 @@
+- Revert enabling preferRest by default to avoid performance degradations for some users (#6520).
 - Fix blocking functions in the emulator when using multiple codebases (#6504).
 - Add force flag call-out for bypassing prompts (#6506).
