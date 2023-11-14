@@ -81,7 +81,7 @@ export function writeToFile(filename: string, contents: Buffer, tmpDir: string):
  * Resets the storage layer of the Storage Emulator.
  */
 export async function resetStorageEmulator(emulatorHost: string) {
-  await fetch(`${emulatorHost}/internal/reset`, {method: "POST"});
+  await fetch(`${emulatorHost}/internal/reset`, { method: "POST" });
 }
 
 export async function getProdAccessToken(serviceAccountKey: any): Promise<string> {
