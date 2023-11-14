@@ -1,3 +1,6 @@
 - Fix blocking functions in the emulator when using multiple codebases (#6504).
 - Add force flag call-out for bypassing prompts (#6506).
 - Fixed an issue where the functions emulator did not respect the `--log-verbosity` flag (#2859).
+- Add the ability to look for the default Hosting site via Hosting's API.
+- Add logic to create a Hosting site when one is not available in a project.
+- Add checks for the default Hosting site when one is assumed to exist.

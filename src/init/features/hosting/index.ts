@@ -1,6 +1,7 @@
 import * as clc from "colorette";
 import * as fs from "fs";
 import { sync as rimraf } from "rimraf";
+import { join } from "path";
 
 import { Client } from "../../../apiv2";
 import { initGitHub } from "./github";
@@ -9,7 +10,10 @@ import { logger } from "../../../logger";
 import { discover, WebFrameworks } from "../../../frameworks";
 import { ALLOWED_SSR_REGIONS, DEFAULT_REGION } from "../../../frameworks/constants";
 import * as experiments from "../../../experiments";
-import { join } from "path";
+import { errNoDefaultSite, getDefaultHostingSite } from "../../../getDefaultHostingSite";
+import { Options } from "../../../options";
+import { last, logSuccess } from "../../../utils";
+import { interactiveCreateHostingSite } from "../../../hosting/interactive";
 
 const INDEX_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../../templates/init/hosting/index.html",
@@ -22,10 +26,34 @@ const MISSING_TEMPLATE = fs.readFileSync(
 const DEFAULT_IGNORES = ["firebase.json", "**/.*", "**/node_modules/**"];
 
 /**
- *
+ * Does the setup steps for Firebase Hosting.
  */
-export async function doSetup(setup: any, config: any): Promise<void> {
+export async function doSetup(setup: any, config: any, options: Options): Promise<void> {
   setup.hosting = {};
+
+  let hasHostingSite = true;
+  try {
+    await getDefaultHostingSite(options);
+  } catch (err: unknown) {
+    if (err !== errNoDefaultSite) {
+      throw err;
+    }
+    hasHostingSite = false;
+  }
+
+  if (!hasHostingSite) {
+    const confirmCreate = await promptOnce({
+      type: "confirm",
+      message: "A Firebase Hosting site is required to deploy. Would you like to create one now?",
+      default: true,
+    });
+    if (confirmCreate) {
+      const newSite = await interactiveCreateHostingSite("", "", options);
+      logger.info();
+      logSuccess(`Firebase Hosting site ${last(newSite.name.split("/"))} created!`);
+      logger.info();
+    }
+  }
 
   let discoveredFramework = experiments.isEnabled("webframeworks")
     ? await discover(config.projectDir, false)
