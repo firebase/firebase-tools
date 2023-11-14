@@ -57,10 +57,6 @@ export const ALL_EXPERIMENTS = experiments({
     public: true,
   },
 
-  deferredhosting: {
-    shortDescription: "Causes errors to surface if a default Hosting site does not exist.",
-  },
-
   // Emulator experiments
   emulatoruisnapshot: {
     shortDescription: "Load pre-release versions of the emulator UI",
