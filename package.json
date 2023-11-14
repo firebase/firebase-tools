@@ -113,6 +113,7 @@
     "exegesis-express": "^4.0.0",
     "express": "^4.16.4",
     "filesize": "^6.1.0",
+    "firebase-tools": "^12.8.1",
     "form-data": "^4.0.0",
     "fs-extra": "^10.1.0",
     "glob": "^7.1.2",
