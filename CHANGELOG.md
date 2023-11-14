@@ -1,2 +1,3 @@
 - Fix blocking functions in the emulator when using multiple codebases (#6504).
 - Add force flag call-out for bypassing prompts (#6506).
+- Fixed an issue where the functions emulator did not respect the `--log-verbosity` flag (#2859).
