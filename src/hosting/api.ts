@@ -229,6 +229,19 @@ interface LongRunningOperation<T> {
   readonly metadata: T | undefined;
 }
 
+// The possible types of a site.
+export enum SiteType {
+  // Unknown state, likely the result of an error on the backend.
+  TYPE_UNSPECIFIED = "TYPE_UNSPECIFIED",
+
+  // The default Hosting site that is provisioned when a Firebase project is
+  // created.
+  DEFAULT_SITE = "DEFAULT_SITE",
+
+  // A Hosting site that the user created.
+  USER_SITE = "USER_SITE",
+}
+
 export type Site = {
   // Fully qualified name of the site.
   name: string;
@@ -236,6 +249,8 @@ export type Site = {
   readonly defaultUrl: string;
 
   readonly appId: string;
+
+  readonly type?: SiteType;
 
   labels: { [key: string]: string };
 };
@@ -549,11 +564,20 @@ export async function getSite(project: string, site: string): Promise<Site> {
  * @param appId the Firebase Web App ID (https://firebase.google.com/docs/projects/learn-more#config-files-objects)
  * @return site information.
  */
-export async function createSite(project: string, site: string, appId = ""): Promise<Site> {
+export async function createSite(
+  project: string,
+  site: string,
+  appId = "",
+  validateOnly = false
+): Promise<Site> {
+  const queryParams: Record<string, string> = { siteId: site };
+  if (validateOnly) {
+    queryParams.validateOnly = "true";
+  }
   const res = await apiClient.post<{ appId: string }, Site>(
     `/projects/${project}/sites`,
     { appId: appId },
-    { queryParams: { siteId: site } }
+    { queryParams }
   );
   return res.body;
 }
