@@ -5,21 +5,20 @@ import * as gcp from "../gcp/frameworks";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { bold } from "colorette";
-import { ALLOWED_REGIONS } from "../init/features/frameworks/constants";
 
 const Table = require("cli-table");
 const COLUMN_LENGTH = 20;
 const TABLE_HEAD = [
   "Backend Id",
   "Repository Name",
-  "URL",
   "Location",
+  "URL",
   "Created Date",
   "Updated Date",
 ];
 export const command = new Command("backends:list")
   .description("List backends of a Firebase project.")
-  .option("-l, --location <location>", "App Backend location", "")
+  .option("-l, --location <location>", "App Backend location", "-")
   .action(async (options: Options) => {
     const projectId = needProjectId(options);
     const location = options.location as string;
@@ -30,17 +29,9 @@ export const command = new Command("backends:list")
     table.colWidths = COLUMN_LENGTH;
     let backendsList: gcp.ListBackendsResponse[] = [];
     try {
-      if (!location) {
-        for (const region of ALLOWED_REGIONS) {
-          const backendsPerRegion = await gcp.listBackends(projectId, region.value);
-          backendsList.push(backendsPerRegion);
-          populateTable(backendsPerRegion, region.name, table);
-        }
-      } else {
-        const backendsPerRegion = await gcp.listBackends(projectId, location);
-        backendsList.push(backendsPerRegion);
-        populateTable(backendsPerRegion, location, table);
-      }
+      const backendsPerRegion = await gcp.listBackends(projectId, location);
+      backendsList.push(backendsPerRegion);
+      populateTable(backendsPerRegion, location, table);
 
       logger.info();
       logger.info(`Backends for project ${bold(projectId)}`);
@@ -48,7 +39,7 @@ export const command = new Command("backends:list")
       logger.info(table.toString());
     } catch (err: any) {
       throw new FirebaseError(
-        `Unable to list backends present in project: ${projectId}. Please check the parameters you have provided.`,
+        `Unable to list backends present for project: ${projectId}. Please check the parameters you have provided.`,
         { original: err }
       );
     }
@@ -58,11 +49,12 @@ export const command = new Command("backends:list")
 
 function populateTable(backendsLists: gcp.ListBackendsResponse, location: string, table: any) {
   for (const backend of backendsLists.backends) {
+    const [location, _, backendId] = backend.name.split("/").slice(3,6);
     const entry = [
-      backend.name.split("/").pop(),
+      backendId,
       backend.codebase.repository?.split("/").pop(),
-      backend.uri,
       location,
+      backend.uri,
       backend.createTime,
       backend.updateTime,
     ];
