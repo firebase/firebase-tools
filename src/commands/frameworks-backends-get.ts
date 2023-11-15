@@ -4,14 +4,13 @@ import { needProjectId } from "../projectUtils";
 import * as gcp from "../gcp/frameworks";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
-import { ALLOWED_REGIONS } from "../init/features/frameworks/constants";
 const Table = require("cli-table");
 const COLUMN_LENGTH = 20;
 const TABLE_HEAD = [
   "Backend Id",
   "Repository Name",
-  "URL",
   "Location",
+  "URL",
   "Created Date",
   "Updated Date",
 ];
@@ -67,8 +66,8 @@ function populateTable(backend: gcp.Backend, location: string, table: any) {
   const entry = [
     backend.name.split("/").pop(),
     backend.codebase.repository?.split("/").pop(),
-    backend.uri,
     location,
+    backend.uri,
     backend.createTime,
     backend.updateTime,
   ];
