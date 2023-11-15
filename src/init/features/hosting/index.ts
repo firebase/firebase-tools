@@ -27,31 +27,40 @@ const DEFAULT_IGNORES = ["firebase.json", "**/.*", "**/node_modules/**"];
 
 /**
  * Does the setup steps for Firebase Hosting.
+ * WARNING: #6527 - `options` may not have all the things you think it does.
  */
 export async function doSetup(setup: any, config: any, options: Options): Promise<void> {
   setup.hosting = {};
 
-  let hasHostingSite = true;
-  try {
-    await getDefaultHostingSite(options);
-  } catch (err: unknown) {
-    if (err !== errNoDefaultSite) {
-      throw err;
+  // There's a path where we can set up Hosting without a project, so if
+  // if setup.projectId is empty, we don't do any checking for a Hosting site.
+  if (setup.projectId) {
+    let hasHostingSite = true;
+    try {
+      await getDefaultHostingSite({ projectId: setup.projectId });
+    } catch (err: unknown) {
+      if (err !== errNoDefaultSite) {
+        throw err;
+      }
+      hasHostingSite = false;
     }
-    hasHostingSite = false;
-  }
 
-  if (!hasHostingSite) {
-    const confirmCreate = await promptOnce({
-      type: "confirm",
-      message: "A Firebase Hosting site is required to deploy. Would you like to create one now?",
-      default: true,
-    });
-    if (confirmCreate) {
-      const newSite = await interactiveCreateHostingSite("", "", options);
-      logger.info();
-      logSuccess(`Firebase Hosting site ${last(newSite.name.split("/"))} created!`);
-      logger.info();
+    if (!hasHostingSite) {
+      const confirmCreate = await promptOnce({
+        type: "confirm",
+        message: "A Firebase Hosting site is required to deploy. Would you like to create one now?",
+        default: true,
+      });
+      if (confirmCreate) {
+        const createOptions = {
+          projectId: setup.projectId,
+          nonInteractive: options.nonInteractive,
+        };
+        const newSite = await interactiveCreateHostingSite("", "", createOptions);
+        logger.info();
+        logSuccess(`Firebase Hosting site ${last(newSite.name.split("/"))} created!`);
+        logger.info();
+      }
     }
   }
 
