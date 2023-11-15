@@ -1,1 +1,0 @@
-- Fixes issue where initializing Hosting fails when selecting a project. (#6527)
