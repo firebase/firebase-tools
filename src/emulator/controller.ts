@@ -565,6 +565,7 @@ export async function startAll(
       host: functionsAddr.host,
       port: functionsAddr.port,
       debugPort: inspectFunctions,
+      verbosity: options.logVerbosity,
       projectAlias: options.projectAlias,
     });
     await startEmulator(functionsEmulator);
