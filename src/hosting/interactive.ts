@@ -16,7 +16,7 @@ const prompt =
 export async function interactiveCreateHostingSite(
   siteId: string,
   appId: string,
-  options: { projectId?: string, nonInteractive?: boolean }
+  options: { projectId?: string; nonInteractive?: boolean }
 ): Promise<Site> {
   const projectId = needProjectId(options);
   const projectNumber = await needProjectNumber(options);
