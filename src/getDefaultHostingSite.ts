@@ -14,7 +14,7 @@ export const errNoDefaultSite = new FirebaseError(
  * @param options The command-line options object
  * @return The hosting site ID
  */
-export async function getDefaultHostingSite(options: any): Promise<string> {
+export async function getDefaultHostingSite(options: { projectId?: string }): Promise<string> {
   const projectId = needProjectId(options);
   const project = await getFirebaseProject(projectId);
   let site = project.resources?.hostingSite;
