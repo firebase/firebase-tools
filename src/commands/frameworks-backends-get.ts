@@ -47,10 +47,9 @@ export const command = new Command("backends:get")
         logger.info(table.toString());
       } else {
         logger.info();
-        logger.info(
+        throw new FirebaseError(
           `No backends found with the given parameters. Please check the parameters you have provided.`
         );
-        logger.info();
       }
     } catch (err: any) {
       throw new FirebaseError(
