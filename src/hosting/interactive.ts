@@ -1,7 +1,6 @@
 import { FirebaseError } from "../error";
 import { logWarning } from "../utils";
 import { needProjectId, needProjectNumber } from "../projectUtils";
-import { Options } from "../options";
 import { promptOnce } from "../prompt";
 import { Site, createSite } from "./api";
 
@@ -17,7 +16,7 @@ const prompt =
 export async function interactiveCreateHostingSite(
   siteId: string,
   appId: string,
-  options: Options
+  options: { projectId?: string; nonInteractive?: boolean }
 ): Promise<Site> {
   const projectId = needProjectId(options);
   const projectNumber = await needProjectNumber(options);
