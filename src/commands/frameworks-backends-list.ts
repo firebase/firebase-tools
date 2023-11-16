@@ -27,7 +27,7 @@ export const command = new Command("backends:list")
       style: { head: ["green"] },
     });
     table.colWidths = COLUMN_LENGTH;
-    let backendsList: gcp.ListBackendsResponse[] = [];
+    const backendsList: gcp.ListBackendsResponse[] = [];
     try {
       const backendsPerRegion = await gcp.listBackends(projectId, location);
       backendsList.push(backendsPerRegion);
@@ -49,7 +49,7 @@ export const command = new Command("backends:list")
 
 function populateTable(backendsLists: gcp.ListBackendsResponse, location: string, table: any) {
   for (const backend of backendsLists.backends) {
-    const [location, _, backendId] = backend.name.split("/").slice(3,6);
+    const [location, , backendId] = backend.name.split("/").slice(3, 6);
     const entry = [
       backendId,
       backend.codebase.repository?.split("/").pop(),
