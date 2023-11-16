@@ -33,7 +33,7 @@ export const command = new Command("backends:get")
     });
     table.colWidths = COLUMN_LENGTH;
     try {
-      if (location != "-") {
+      if (location !== "-") {
         const backendInRegion = await gcp.getBackend(projectId, location, backendId);
         backendsList.push(backendInRegion);
         populateTable(backendInRegion, table);
@@ -43,7 +43,7 @@ export const command = new Command("backends:get")
         backendsList.forEach((bkd) => populateTable(bkd, table));
       }
 
-      if (backendsList.length != 0) {
+      if (backendsList.length !== 0) {
         logger.info(table.toString());
       } else {
         logger.info();
@@ -62,7 +62,7 @@ export const command = new Command("backends:get")
   });
 
 function populateTable(backend: gcp.Backend, table: any) {
-  const [location, _, backendId] = backend.name.split("/").slice(3, 6);
+  const [location, , backendId] = backend.name.split("/").slice(3, 6);
   const entry = [
     backendId,
     backend.codebase.repository?.split("/").pop(),
