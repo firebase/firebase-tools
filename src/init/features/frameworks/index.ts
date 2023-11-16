@@ -9,7 +9,7 @@ import {
   ALLOWED_DEPLOY_METHODS,
 } from "./constants";
 import * as repo from "./repo";
-import { Stack, StackOutputOnlyFields } from "../../../gcp/frameworks";
+import { Backend, BackendOutputOnlyFields } from "../../../gcp/frameworks";
 import { Repository } from "../../../gcp/cloudbuild";
 import * as poller from "../../../operation-poller";
 import { frameworksOrigin } from "../../../api";
@@ -27,8 +27,7 @@ const frameworksPollerOptions: Omit<poller.OperationPollerOptions, "operationRes
 /**
  * Setup new frameworks project.
  */
-export async function doSetup(setup: any): Promise<void> {
-  const projectId: string = setup?.rcfile?.projects?.default;
+export async function doSetup(setup: any, projectId: string): Promise<void> {
   setup.frameworks = {};
 
   utils.logBullet("First we need a few details to create your service.");
@@ -71,42 +70,49 @@ export async function doSetup(setup: any): Promise<void> {
     setup.frameworks
   );
 
-  await getOrCreateStack(projectId, setup);
+  const backend: Backend | undefined = await getOrCreateBackend(projectId, setup);
+  if (backend) {
+    utils.logSuccess(`Successfully created a backend: ${backend.name}`);
+  }
 }
 
-function toStack(
-  cloudBuildConnRepo: Repository,
-  stackId: string
-): Omit<Stack, StackOutputOnlyFields> {
+function toBackend(cloudBuildConnRepo: Repository): Omit<Backend, BackendOutputOnlyFields> {
   return {
-    name: stackId,
+    codebase: {
+      repository: `${cloudBuildConnRepo.name}`,
+      rootDirectory: "/",
+    },
     labels: {},
   };
 }
 
 /**
- * Creates stack if it doesn't exist.
+ * Creates backend if it doesn't exist.
  */
-export async function getOrCreateStack(projectId: string, setup: any): Promise<Stack | undefined> {
+export async function getOrCreateBackend(
+  projectId: string,
+  setup: any
+): Promise<Backend | undefined> {
   const location: string = setup.frameworks.region;
   const deployMethod: string = setup.frameworks.deployMethod;
   try {
-    return await getExistingStack(projectId, setup, location);
+    return await getExistingBackend(projectId, setup, location);
   } catch (err: unknown) {
     if ((err as FirebaseError).status === 404) {
-      logger.info("Creating new stack.");
+      logger.info("Creating new backend.");
       if (deployMethod === "github") {
-        const cloudBuildConnRepo = await repo.linkGitHubRepository(
+        const cloudBuildConnRepo = await repo.linkGitHubRepository(projectId, location);
+        const backendDetails = toBackend(cloudBuildConnRepo);
+        return await createBackend(
           projectId,
           location,
+          backendDetails,
           setup.frameworks.serviceName
         );
-        const stackDetails = toStack(cloudBuildConnRepo, setup.frameworks.serviceName);
-        return await createStack(projectId, location, stackDetails);
       }
     } else {
       throw new FirebaseError(
-        `Failed to get or create a stack using the given initialization details: ${err}`
+        `Failed to get or create a backend using the given initialization details: ${err}`
       );
     }
   }
@@ -114,23 +120,27 @@ export async function getOrCreateStack(projectId: string, setup: any): Promise<S
   return undefined;
 }
 
-async function getExistingStack(projectId: string, setup: any, location: string): Promise<Stack> {
-  let stack = await gcp.getStack(projectId, location, setup.frameworks.serviceName);
-  while (stack) {
+async function getExistingBackend(
+  projectId: string,
+  setup: any,
+  location: string
+): Promise<Backend> {
+  let backend = await gcp.getBackend(projectId, location, setup.frameworks.serviceName);
+  while (backend) {
     setup.frameworks.serviceName = undefined;
     await promptOnce(
       {
-        name: "existingStack",
+        name: "existingBackend",
         type: "confirm",
         default: true,
         message:
-          "A stack already exists for the given serviceName, do you want to use existing stack? (yes/no)",
+          "A backend already exists for the given serviceName, do you want to use existing backend? (yes/no)",
       },
       setup.frameworks
     );
-    if (setup.frameworks.existingStack) {
-      logger.info("Using the existing stack.");
-      return stack;
+    if (setup.frameworks.existingBackend) {
+      logger.info("Using the existing backend.");
+      return backend;
     }
     await promptOnce(
       {
@@ -141,27 +151,28 @@ async function getExistingStack(projectId: string, setup: any, location: string)
       },
       setup.frameworks
     );
-    stack = await gcp.getStack(projectId, location, setup.frameworks.serviceName);
-    setup.frameworks.existingStack = undefined;
+    backend = await gcp.getBackend(projectId, location, setup.frameworks.serviceName);
+    setup.frameworks.existingBackend = undefined;
   }
 
-  return stack;
+  return backend;
 }
 
 /**
- * Creates Stack object from long running operations.
+ * Creates backend object from long running operations.
  */
-export async function createStack(
+export async function createBackend(
   projectId: string,
   location: string,
-  stackInput: Omit<Stack, StackOutputOnlyFields>
-): Promise<Stack> {
-  const op = await gcp.createStack(projectId, location, stackInput);
-  const stack = await poller.pollOperation<Stack>({
+  backendReqBoby: Omit<Backend, BackendOutputOnlyFields>,
+  backendId: string
+): Promise<Backend> {
+  const op = await gcp.createBackend(projectId, location, backendReqBoby, backendId);
+  const backend = await poller.pollOperation<Backend>({
     ...frameworksPollerOptions,
-    pollerName: `create-${projectId}-${location}-${stackInput.name}`,
+    pollerName: `create-${projectId}-${location}-${backendId}`,
     operationResourceName: op.name,
   });
 
-  return stack;
+  return backend;
 }

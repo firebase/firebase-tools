@@ -27,24 +27,31 @@ function extractRepoSlugFromURI(remoteUri: string): string | undefined {
 
 /**
  * Generates a repository ID.
- * N.B. The deterministic nature of the repository ID implies that each
- * Cloud Build Connection will have one Cloud Build Repo child resource.
- * The current implementation is subject to change in the event that
- * the 1:1 Connection-to-Resource relationship no longer holds.
+ * The relation is 1:* between Cloud Build Connection and Github Repositories.
  */
-function generateRepositoryId(): string | undefined {
-  return `composer-repo`;
+function generateRepositoryId(remoteUri: string): string | undefined {
+  return extractRepoSlugFromURI(remoteUri)?.replaceAll("/", "-");
 }
 
 /**
- * Prompts the user to link their stack to a GitHub repository.
+ * The 'frameworks-' is prefixed, to seperate the Cloud Build connections created from
+ * Frameworks platforms with rest of manually created Cloud Build connections.
+ *
+ * The reason suffix 'location' is because of
+ * 1:1 relation between location and Cloud Build connection.
+ */
+function generateConnectionId(location: string): string {
+  return `frameworks-${location}`;
+}
+
+/**
+ * Prompts the user to link their backend to a GitHub repository.
  */
 export async function linkGitHubRepository(
   projectId: string,
-  location: string,
-  stackId: string
+  location: string
 ): Promise<gcb.Repository> {
-  const connectionId = stackId;
+  const connectionId = generateConnectionId(location);
   await getOrCreateConnection(projectId, location, connectionId);
 
   let remoteUri = await promptRepositoryURI(projectId, location, connectionId);
@@ -147,7 +154,7 @@ export async function getOrCreateRepository(
   connectionId: string,
   remoteUri: string
 ): Promise<gcb.Repository> {
-  const repositoryId = generateRepositoryId();
+  const repositoryId = generateRepositoryId(remoteUri);
   if (!repositoryId) {
     throw new FirebaseError(`Failed to generate repositoryId for URI "${remoteUri}".`);
   }
