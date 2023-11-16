@@ -53,7 +53,7 @@ export const command = new Command("backends:delete")
       backend = await gcp.getBackend(projectId, location, backendId);
       populateTable(backend, table);
     } catch (err: any) {
-      throw new FirebaseError(`No backends found with given parameters. Deletion aborted.`, {
+      throw new FirebaseError(`No backends found with given parameters. Command aborted.`, {
         original: err,
       });
     }
@@ -88,7 +88,7 @@ export const command = new Command("backends:delete")
   });
 
 function populateTable(backend: gcp.Backend, table: any) {
-  const [location, _, backendId] = backend.name.split("/").slice(3, 6);
+  const [location, , backendId] = backend.name.split("/").slice(3, 6);
   const entry = [
     backendId,
     backend.codebase.repository?.split("/").pop(),
