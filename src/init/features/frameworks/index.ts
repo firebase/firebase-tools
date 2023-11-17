@@ -60,9 +60,7 @@ export async function doSetup(setup: any, projectId: string): Promise<void> {
     utils.logSuccess(`Your site is being deployed at:\n https://${backend.uri}`);
     logger.info();
     utils.logSuccess(
-      `View the rollout status by running:\n firebase backends:get --backend=${backend.name
-        .split("/")
-        .pop()}`
+      `View the rollout status by running:\n firebase backends:get --backend=${backend.name}`
     );
     logger.info();
   }
