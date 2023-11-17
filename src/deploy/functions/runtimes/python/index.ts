@@ -142,6 +142,8 @@ export class Delegate implements runtimes.RuntimeDelegate {
     const envWithAdminPort = {
       ...envs,
       ADMIN_PORT: port.toString(),
+      // Allow imports to work normally
+      PYTHONPATH: this.sourceDir,
     };
     const args = [this.bin, `"${path.join(modulesDir, "private", "serving.py")}"`];
     logger.debug(

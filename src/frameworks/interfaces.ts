@@ -52,6 +52,20 @@ export type FrameworkContext = {
   hostingChannel?: string;
 };
 
+interface NodeJSFramework {
+  bootstrapScript?: string;
+  packageJson: any;
+  frameworksEntry?: string;
+  dotEnv?: Record<string, string>;
+  rewriteSource?: string;
+}
+
+interface PythonFramework {
+  imports: [string, string];
+  requirementsTxt: string;
+  rewriteSource?: string;
+}
+
 export interface Framework {
   discover: (dir: string) => Promise<Discovery | undefined>;
   type: FrameworkType;
@@ -78,13 +92,7 @@ export interface Framework {
     dir: string,
     dest: string,
     target: string
-  ) => Promise<{
-    bootstrapScript?: string;
-    packageJson: any;
-    frameworksEntry?: string;
-    dotEnv?: Record<string, string>;
-    rewriteSource?: string;
-  }>;
+  ) => Promise<NodeJSFramework | PythonFramework>;
   getValidBuildTargets?: (purpose: BUILD_TARGET_PURPOSE, dir: string) => Promise<string[]>;
   shouldUseDevModeHandle?: (target: string, dir: string) => Promise<boolean>;
 }

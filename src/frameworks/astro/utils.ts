@@ -1,5 +1,5 @@
 import { dirname, join, relative } from "path";
-import { findDependency } from "../utils";
+import { findNPMDependency } from "../utils";
 import { gte } from "semver";
 
 const { dynamicImport } = require(true && "../../dynamicImport");
@@ -37,5 +37,5 @@ export async function getConfig(cwd: string) {
 }
 
 export function getAstroVersion(cwd: string): string | undefined {
-  return findDependency("astro", { cwd, depth: 0, omitDev: false })?.version;
+  return findNPMDependency("astro", { cwd, depth: 0, omitDev: false })?.version;
 }

@@ -6,7 +6,7 @@ import { sync as globSync } from "glob";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
 import { coerce } from "semver";
 
-import { findDependency, isUrl, readJSON } from "../utils";
+import { findNPMDependency, isUrl, readJSON } from "../utils";
 import type {
   RoutesManifest,
   ExportMarker,
@@ -399,7 +399,7 @@ export async function getBuildId(distDir: string): Promise<string> {
  * canary versions as it causes issues with semver comparisons.
  */
 export function getNextVersion(cwd: string): string | undefined {
-  const dependency = findDependency("next", { cwd, depth: 0, omitDev: false });
+  const dependency = findNPMDependency("next", { cwd, depth: 0, omitDev: false });
   if (!dependency) return undefined;
 
   const nextVersionSemver = coerce(dependency.version);

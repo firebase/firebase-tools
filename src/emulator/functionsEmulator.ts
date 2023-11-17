@@ -1385,6 +1385,8 @@ export class FunctionsEmulator implements EmulatorInstance {
       DEBUG: "False",
       HOST: "127.0.0.1",
       PORT: port.toString(),
+      // Allow imports to work normally in the emulator
+      PYTHONPATH: backend.functionsDir,
     });
 
     return {

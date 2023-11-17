@@ -3,7 +3,13 @@ import { copy, existsSync } from "fs-extra";
 import { join } from "path";
 import { BuildResult, Discovery, FrameworkType, SupportLevel } from "../interfaces";
 import { FirebaseError } from "../../error";
-import { readJSON, simpleProxy, warnIfCustomBuildScript, getNodeModuleBin } from "../utils";
+import {
+  readJSON,
+  simpleProxy,
+  warnIfCustomBuildScript,
+  findNPMDependency,
+  getNodeModuleBin,
+} from "../utils";
 import { getAstroVersion, getBootstrapScript, getConfig } from "./utils";
 
 export const name = "Astro";

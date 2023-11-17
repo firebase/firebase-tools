@@ -8,7 +8,7 @@ import { promptOnce } from "../../prompt";
 import {
   simpleProxy,
   warnIfCustomBuildScript,
-  findDependency,
+  findNPMDependency,
   getNodeModuleBin,
   relativeRequire,
 } from "../utils";
@@ -49,14 +49,15 @@ export async function discover(dir: string, plugin?: string, npmDependency?: str
   if (!existsSync(join(dir, "package.json"))) return;
   // If we're not searching for a vite plugin, depth has to be zero
   const additionalDep =
-    npmDependency && findDependency(npmDependency, { cwd: dir, depth: 0, omitDev: false });
+    npmDependency && findNPMDependency(npmDependency, { cwd: dir, depth: 0, omitDev: false });
   const depth = plugin ? undefined : 0;
   const configFilesExist = await Promise.all([
     pathExists(join(dir, "vite.config.js")),
     pathExists(join(dir, "vite.config.ts")),
   ]);
   const anyConfigFileExists = configFilesExist.some((it) => it);
-  if (!anyConfigFileExists && !findDependency("vite", { cwd: dir, depth, omitDev: false })) return;
+  if (!anyConfigFileExists && !findNPMDependency("vite", { cwd: dir, depth, omitDev: false }))
+    return;
   if (npmDependency && !additionalDep) return;
   const { appType, publicDir: publicDirectory, plugins } = await getConfig(dir);
   if (plugin && !plugins.find(({ name }) => name === plugin)) return;

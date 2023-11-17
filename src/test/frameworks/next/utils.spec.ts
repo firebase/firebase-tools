@@ -506,19 +506,19 @@ describe("Next.js utils", () => {
     afterEach(() => sandbox.restore());
 
     it("should get version", () => {
-      sandbox.stub(frameworksUtils, "findDependency").returns({ version: "13.4.10" });
+      sandbox.stub(frameworksUtils, "findNPMDependency").returns({ version: "13.4.10" });
 
       expect(getNextVersion("")).to.equal("13.4.10");
     });
 
     it("should ignore canary version", () => {
-      sandbox.stub(frameworksUtils, "findDependency").returns({ version: "13.4.10-canary.0" });
+      sandbox.stub(frameworksUtils, "findNPMDependency").returns({ version: "13.4.10-canary.0" });
 
       expect(getNextVersion("")).to.equal("13.4.10");
     });
 
     it("should return undefined if unable to get version", () => {
-      sandbox.stub(frameworksUtils, "findDependency").returns(undefined);
+      sandbox.stub(frameworksUtils, "findNPMDependency").returns(undefined);
 
       expect(getNextVersion("")).to.be.undefined;
     });

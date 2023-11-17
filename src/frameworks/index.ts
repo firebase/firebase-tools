@@ -22,10 +22,11 @@ import { requireHostingSite } from "../requireHostingSite";
 import * as experiments from "../experiments";
 import { implicitInit } from "../hosting/implicitInit";
 import {
-  findDependency,
+  findNPMDependency,
   conjoinOptions,
   frameworksCallToAction,
   getFrameworksBuildTarget,
+  getVenvDir,
 } from "./utils";
 import {
   ALLOWED_SSR_REGIONS,
@@ -53,6 +54,8 @@ import { ensureTargeted } from "../functions/ensureTargeted";
 import { isDeepStrictEqual } from "util";
 import { resolveProjectPath } from "../projectPath";
 import { logger } from "../logger";
+import { DEFAULT_VENV_DIR, runWithVirtualEnv } from "../functions/python";
+import { dirExistsSync } from "../fsutils";
 import { WebFrameworks } from "./frameworks";
 
 export { WebFrameworks };
@@ -75,7 +78,9 @@ export async function discover(dir: string, warn = true) {
       }
     }
     if (frameworksDiscovered.length > 1) {
-      if (warn) console.error("Multiple conflicting frameworks discovered.");
+      const frameworkNames = frameworksDiscovered.map((it) => it.framework);
+      if (warn)
+        console.error(`Multiple conflicting frameworks discovered ${frameworkNames.join(", ")}`);
       return;
     }
     if (frameworksDiscovered.length === 1) return frameworksDiscovered[0];
@@ -176,8 +181,8 @@ export async function prepareFrameworks(
     }
     const getProjectPath = (...args: string[]) => join(projectRoot, source, ...args);
     const functionId = `ssr${site.toLowerCase().replace(/-/g, "")}`;
-    const usesFirebaseAdminSdk = !!findDependency("firebase-admin", { cwd: getProjectPath() });
-    const usesFirebaseJsSdk = !!findDependency("@firebase/app", { cwd: getProjectPath() });
+    const usesFirebaseAdminSdk = !!findNPMDependency("firebase-admin", { cwd: getProjectPath() });
+    const usesFirebaseJsSdk = !!findNPMDependency("@firebase/app", { cwd: getProjectPath() });
     if (usesFirebaseAdminSdk) {
       process.env.GOOGLE_CLOUD_PROJECT = project;
       if (account && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
@@ -339,28 +344,16 @@ export async function prepareFrameworks(
       }
 
       const codebase = generateSSRCodebaseId(site);
-      const existingFunctionsConfig = options.config.get("functions")
-        ? [].concat(options.config.get("functions"))
-        : [];
-      options.config.set("functions", [
-        ...existingFunctionsConfig,
-        {
-          source: relative(projectRoot, functionsDist),
-          codebase,
-        },
-      ]);
 
       // N.B. the pin-tags experiment already does this holistically later.
       // This is just a fallback for previous behavior if the user manually
       // disables the pintags experiment (e.g. there is a break and they would
       // rather disable the experiment than roll back).
-      if (!experiments.isEnabled("pintags") || purpose !== "deploy") {
-        if (!targetNames.includes("functions")) {
-          targetNames.unshift("functions");
-        }
-        if (options.only) {
-          options.only = ensureTargeted(options.only, codebase);
-        }
+      if (!targetNames.includes("functions")) {
+        targetNames.unshift("functions");
+      }
+      if (options.only) {
+        options.only = ensureTargeted(options.only, codebase);
       }
 
       // if exists, delete everything but the node_modules directory and package-lock.json
@@ -369,8 +362,9 @@ export async function prepareFrameworks(
         const functionsDistStat = await stat(functionsDist);
         if (functionsDistStat?.isDirectory()) {
           const files = await readdir(functionsDist);
+          const venvDir = getVenvDir(functionsDist, files);
           for (const file of files) {
-            if (file !== "node_modules" && file !== "package-lock.json")
+            if (file !== venvDir && file !== "node_modules" && file !== "package-lock.json")
               await rm(join(functionsDist, file), { recursive: true });
           }
         } else {
@@ -380,13 +374,12 @@ export async function prepareFrameworks(
         await mkdirp(functionsDist);
       }
 
-      const {
-        packageJson,
-        bootstrapScript,
-        frameworksEntry = framework,
-        dotEnv = {},
-        rewriteSource,
-      } = await codegenFunctionsDirectory(getProjectPath(), functionsDist, frameworksBuildTarget);
+      const codegenFunctionsResult = await codegenFunctionsDirectory(
+        getProjectPath(),
+        functionsDist,
+        frameworksBuildTarget
+      );
+      const { rewriteSource } = codegenFunctionsResult;
 
       const rewrite = {
         source: rewriteSource || posix.join(baseUrl, "**"),
@@ -406,136 +399,238 @@ export async function prepareFrameworks(
         rewrites.push(rewrite);
       }
 
-      // Set the framework entry in the env variables to handle generation of the functions.yaml
-      process.env.__FIREBASE_FRAMEWORKS_ENTRY__ = frameworksEntry;
+      let runtime: string | undefined;
+      let ignore: string[] | undefined;
 
-      packageJson.main = "server.js";
-      packageJson.dependencies ||= {};
-      packageJson.dependencies["firebase-frameworks"] ||= FIREBASE_FRAMEWORKS_VERSION;
-      packageJson.dependencies["firebase-functions"] ||= FIREBASE_FUNCTIONS_VERSION;
-      packageJson.dependencies["firebase-admin"] ||= FIREBASE_ADMIN_VERSION;
-      packageJson.engines ||= {};
-      const validEngines = VALID_ENGINES.node.filter((it) => it <= NODE_VERSION);
-      const engine = validEngines[validEngines.length - 1] || VALID_ENGINES.node[0];
-      if (engine !== NODE_VERSION) {
-        logWarning(
-          `This integration expects Node version ${conjoinOptions(
-            VALID_ENGINES.node,
-            "or"
-          )}. You're running version ${NODE_VERSION}, problems may be encountered.`
-        );
-      }
-      packageJson.engines.node ||= engine.toString();
-      delete packageJson.scripts;
-      delete packageJson.devDependencies;
+      if ("packageJson" in codegenFunctionsResult) {
+        const {
+          packageJson,
+          bootstrapScript,
+          frameworksEntry = framework,
+          dotEnv = {},
+        } = codegenFunctionsResult;
 
-      const bundledDependencies: Record<string, string> = packageJson.bundledDependencies || {};
-      if (Object.keys(bundledDependencies).length) {
-        logWarning(
-          "Bundled dependencies aren't supported in Cloud Functions, converting to dependencies."
-        );
-        for (const [dep, version] of Object.entries(bundledDependencies)) {
-          packageJson.dependencies[dep] ||= version;
+        // Set the framework entry in the env variables to handle generation of the functions.yaml
+        process.env.__FIREBASE_FRAMEWORKS_ENTRY__ = frameworksEntry;
+
+        if (await pathExists(getProjectPath(".npmrc"))) {
+          await copyFile(getProjectPath(".npmrc"), join(functionsDist, ".npmrc"));
         }
-        delete packageJson.bundledDependencies;
-      }
 
-      for (const [name, version] of Object.entries(
-        packageJson.dependencies as Record<string, string>
-      )) {
-        if (version.startsWith("file:")) {
-          const path = version.replace(/^file:/, "");
-          if (!(await pathExists(path))) continue;
-          const stats = await stat(path);
-          if (stats.isDirectory()) {
-            const result = spawnSync(
-              "npm",
-              ["pack", relative(functionsDist, path), "--json=true"],
-              {
-                cwd: functionsDist,
-              }
-            );
-            if (result.status !== 0)
-              throw new FirebaseError(`Error running \`npm pack\` at ${path}`);
-            const { filename } = JSON.parse(result.stdout.toString())[0];
-            packageJson.dependencies[name] = `file:${filename}`;
-          } else {
-            const filename = basename(path);
-            await copyFile(path, join(functionsDist, filename));
-            packageJson.dependencies[name] = `file:${filename}`;
+        let dotEnvContents = "";
+        if (await pathExists(getProjectPath(".env"))) {
+          dotEnvContents = (await readFile(getProjectPath(".env"))).toString();
+        }
+
+        for (const [key, value] of Object.entries(dotEnv)) {
+          dotEnvContents += `\n${key}=${value}`;
+        }
+
+        await writeFile(
+          join(functionsDist, ".env"),
+          `${dotEnvContents}
+  __FIREBASE_FRAMEWORKS_ENTRY__=${frameworksEntry}
+  ${
+    firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\n` : ""
+  }`.trimStart()
+        );
+
+        const envs = await new Promise<string[]>((resolve, reject) =>
+          glob(getProjectPath(".env.*"), (err, matches) => {
+            if (err) reject(err);
+            resolve(matches);
+          })
+        );
+
+        await Promise.all(envs.map((path) => copyFile(path, join(functionsDist, basename(path)))));
+
+        packageJson.main = "server.js";
+        packageJson.dependencies ||= {};
+        packageJson.dependencies["firebase-frameworks"] ||= FIREBASE_FRAMEWORKS_VERSION;
+        packageJson.dependencies["firebase-functions"] ||= FIREBASE_FUNCTIONS_VERSION;
+        packageJson.dependencies["firebase-admin"] ||= FIREBASE_ADMIN_VERSION;
+        packageJson.engines ||= {};
+        const validEngines = VALID_ENGINES.node.filter((it) => it <= NODE_VERSION);
+        const engine = validEngines[validEngines.length - 1] || VALID_ENGINES.node[0];
+        if (engine !== NODE_VERSION) {
+          logWarning(
+            `This integration expects Node version ${conjoinOptions(
+              VALID_ENGINES.node,
+              "or"
+            )}. You're running version ${NODE_VERSION}, problems may be encountered.`
+          );
+        }
+        packageJson.engines.node ||= engine.toString();
+        delete packageJson.scripts;
+        delete packageJson.devDependencies;
+        runtime = `nodejs${engine.toString()}`;
+
+        const bundledDependencies: Record<string, string> = packageJson.bundledDependencies || {};
+        if (Object.keys(bundledDependencies).length) {
+          logWarning(
+            "Bundled dependencies aren't supported in Cloud Functions, converting to dependencies."
+          );
+          for (const [dep, version] of Object.entries(bundledDependencies)) {
+            packageJson.dependencies[dep] ||= version;
+          }
+          delete packageJson.bundledDependencies;
+        }
+
+        for (const [name, version] of Object.entries(
+          packageJson.dependencies as Record<string, string>
+        )) {
+          if (version.startsWith("file:")) {
+            const path = version.replace(/^file:/, "");
+            if (!(await pathExists(path))) continue;
+            const stats = await stat(path);
+            if (stats.isDirectory()) {
+              const result = spawnSync(
+                "npm",
+                ["pack", relative(functionsDist, path), "--json=true"],
+                {
+                  cwd: functionsDist,
+                }
+              );
+              if (result.status !== 0)
+                throw new FirebaseError(`Error running \`npm pack\` at ${path}`);
+              const { filename } = JSON.parse(result.stdout.toString())[0];
+              packageJson.dependencies[name] = `file:${filename}`;
+            } else {
+              const filename = basename(path);
+              await copyFile(path, join(functionsDist, filename));
+              packageJson.dependencies[name] = `file:${filename}`;
+            }
           }
         }
-      }
-      await writeFile(join(functionsDist, "package.json"), JSON.stringify(packageJson, null, 2));
+        await writeFile(join(functionsDist, "package.json"), JSON.stringify(packageJson, null, 2));
 
-      await copyFile(
-        getProjectPath("package-lock.json"),
-        join(functionsDist, "package-lock.json")
-      ).catch(() => {
-        // continue
-      });
+        await copyFile(
+          getProjectPath("package-lock.json"),
+          join(functionsDist, "package-lock.json")
+        ).catch(() => {
+          // continue
+        });
 
-      if (await pathExists(getProjectPath(".npmrc"))) {
-        await copyFile(getProjectPath(".npmrc"), join(functionsDist, ".npmrc"));
-      }
+        if (await pathExists(getProjectPath(".npmrc"))) {
+          await copyFile(getProjectPath(".npmrc"), join(functionsDist, ".npmrc"));
+        }
 
-      let dotEnvContents = "";
-      if (await pathExists(getProjectPath(".env"))) {
-        dotEnvContents = (await readFile(getProjectPath(".env"))).toString();
-      }
+        if (bootstrapScript) await writeFile(join(functionsDist, "bootstrap.js"), bootstrapScript);
 
-      for (const [key, value] of Object.entries(dotEnv)) {
-        dotEnvContents += `\n${key}=${value}`;
-      }
+        execSync(`npm i --omit dev --no-audit`, {
+          cwd: functionsDist,
+          stdio: "inherit",
+        });
 
-      await writeFile(
-        join(functionsDist, ".env"),
-        `${dotEnvContents}
-__FIREBASE_FRAMEWORKS_ENTRY__=${frameworksEntry}
-${
-  firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\n` : ""
-}`.trimStart()
-      );
-
-      const envs = await new Promise<string[]>((resolve, reject) =>
-        glob(getProjectPath(".env.*"), (err, matches) => {
-          if (err) reject(err);
-          resolve(matches);
-        })
-      );
-
-      await Promise.all(envs.map((path) => copyFile(path, join(functionsDist, basename(path)))));
-
-      execSync(`npm i --omit dev --no-audit`, {
-        cwd: functionsDist,
-        stdio: "inherit",
-      });
-
-      if (bootstrapScript) await writeFile(join(functionsDist, "bootstrap.js"), bootstrapScript);
-
-      // TODO move to templates
-
-      if (packageJson.type === "module") {
-        await writeFile(
-          join(functionsDist, "server.js"),
-          `import { onRequest } from 'firebase-functions/v2/https';
+        // TODO move to templates
+        if (packageJson.type === "module") {
+          await writeFile(
+            join(functionsDist, "server.js"),
+            `import { onRequest } from 'firebase-functions/v2/https';
   const server = import('firebase-frameworks');
   export const ${functionId} = onRequest(${JSON.stringify(
-            frameworksBackend || {}
-          )}, (req, res) => server.then(it => it.handle(req, res)));
+              frameworksBackend || {}
+            )}, (req, res) => server.then(it => it.handle(req, res)));
   `
-        );
-      } else {
-        await writeFile(
-          join(functionsDist, "server.js"),
-          `const { onRequest } = require('firebase-functions/v2/https');
+          );
+        } else {
+          await writeFile(
+            join(functionsDist, "server.js"),
+            `const { onRequest } = require('firebase-functions/v2/https');
   const server = import('firebase-frameworks');
   exports.${functionId} = onRequest(${JSON.stringify(
-            frameworksBackend || {}
-          )}, (req, res) => server.then(it => it.handle(req, res)));
+              frameworksBackend || {}
+            )}, (req, res) => server.then(it => it.handle(req, res)));
   `
+          );
+        }
+
+        ignore = ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"];
+      } else {
+        const { requirementsTxt, imports } = codegenFunctionsResult;
+
+        await writeFile(
+          join(functionsDist, "requirements.txt"),
+          `${requirementsTxt.trim()}\nfirebase_functions`.trimStart()
         );
+        await writeFile(
+          join(functionsDist, "main.py"),
+          `from firebase_functions import https_fn
+from io import BytesIO
+from ${imports![0]} import ${imports![1]} as discoveredApp
+def handle(app, environ):
+    status = None
+    headers = None
+    body = BytesIO()
+    
+    def start_response(rstatus, rheaders):
+        nonlocal status, headers
+        status, headers = rstatus, rheaders
+        
+    app_iter = app(environ, start_response)
+    try:
+        for data in app_iter:
+            assert status is not None and headers is not None, \\
+                "start_response() was not called"
+            body.write(data)
+    finally:
+        if hasattr(app_iter, 'close'):
+            app_iter.close()
+    return status, headers, body.getvalue()
+
+@https_fn.on_request()
+def ${functionId}(req: https_fn.Request) -> https_fn.Response:
+    status, headers, body = handle(discoveredApp, req.environ)
+    return https_fn.Response(body, status, headers)
+`
+        );
+        // get python cli from the root venv dir
+        const root = getProjectPath();
+        const files = await readdir(root);
+        const venvDir = getVenvDir(root, files);
+        const python = venvDir ? getProjectPath(venvDir, "bin", "python") : "python";
+        // create a virtual env for the functions if not exists
+        if (!dirExistsSync(join(functionsDist, DEFAULT_VENV_DIR))) {
+          spawnSync(python, ["-m", "venv", DEFAULT_VENV_DIR], {
+            cwd: functionsDist,
+          });
+        }
+        await new Promise<void>((resolve) => {
+          const child = runWithVirtualEnv(
+            ["pip", "install", "-r", "requirements.txt"],
+            functionsDist,
+            {},
+            { stdio: ["inherit", "ignore", "inherit"] }
+          );
+          child.on("exit", () => resolve());
+        });
+        const pythonVersion = spawnSync(python, ["--version"])
+          .stdout.toString()
+          .trim()
+          .split(" ")[1];
+        runtime = `python${pythonVersion.split(".").slice(0, 2).join("")}`;
+
+        ignore = [
+          DEFAULT_VENV_DIR,
+          "__pycache__",
+          ".git",
+          "firebase-debug.log",
+          "firebase-debug.*.log",
+        ];
       }
+
+      const existingFunctionsConfig = options.config.get("functions")
+        ? [].concat(options.config.get("functions"))
+        : [];
+      options.config.set("functions", [
+        ...existingFunctionsConfig,
+        {
+          source: relative(projectRoot, functionsDist),
+          codebase,
+          runtime,
+          ignore,
+        },
+      ]);
     } else {
       if (await pathExists(functionsDist)) {
         await rm(functionsDist, { recursive: true });

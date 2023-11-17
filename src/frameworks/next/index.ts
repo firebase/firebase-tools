@@ -26,7 +26,7 @@ import {
   simpleProxy,
   warnIfCustomBuildScript,
   relativeRequire,
-  findDependency,
+  findNPMDependency,
   validateLocales,
   getNodeModuleBin,
 } from "../utils";
@@ -81,7 +81,7 @@ const BUNDLE_NEXT_CONFIG_TIMEOUT = 60_000;
 const DEFAULT_NUMBER_OF_REASONS_TO_LIST = 5;
 
 function getReactVersion(cwd: string): string | undefined {
-  return findDependency("react-dom", { cwd, omitDev: false })?.version;
+  return findNPMDependency("react-dom", { cwd, omitDev: false })?.version;
 }
 
 /**

@@ -11,6 +11,8 @@ import * as svelekit from "./sveltekit";
 import * as react from "./react";
 import * as vite from "./vite";
 import * as flutter from "./flutter";
+import * as flask from "./flask";
+import * as django from "./django";
 
 import { Framework } from "./interfaces";
 
@@ -28,4 +30,6 @@ export const WebFrameworks: Record<string, Framework> = {
   react,
   vite,
   flutter,
+  flask,
+  django,
 };
