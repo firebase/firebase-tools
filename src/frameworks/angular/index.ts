@@ -11,7 +11,6 @@ import {
   SupportLevel,
   BUILD_TARGET_PURPOSE,
 } from "../interfaces";
-import { promptOnce } from "../../prompt";
 import {
   simpleProxy,
   relativeRequire,
@@ -42,7 +41,7 @@ export async function discover(dir: string): Promise<Discovery | undefined> {
   return { mayWantBackend: true, publicDirectory: join(dir, "src", "assets") };
 }
 
-export async function init(setup: any, config: any) {
+export function init(setup: any, config: any) {
   execSync(
     `npx --yes -p @angular/cli@latest ng new ${setup.projectId} --directory ${setup.hosting.source} --skip-git`,
     {
@@ -50,6 +49,7 @@ export async function init(setup: any, config: any) {
       cwd: config.projectDir,
     }
   );
+  return Promise.resolve();
 }
 
 export async function build(dir: string, configuration: string): Promise<BuildResult> {
