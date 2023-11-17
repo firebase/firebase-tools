@@ -51,6 +51,7 @@ describe("operationsConverter", () => {
         serviceName: backendId,
         existingBackend: true,
         deployMethod: "github",
+        branchName: "main",
       },
     };
     const cloudBuildConnRepo = {
