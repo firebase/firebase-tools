@@ -8,7 +8,7 @@ page_type: guide
 
 <link rel="stylesheet" type="text/css" href="/styles/docs.css" />
 
-# Integrate Angular Universal
+# Integrate Angular
 
 With the Firebase framework-aware {{cli}}, you can deploy your Angular application
 to Firebase and serve dynamic content to your users.

@@ -50,18 +50,6 @@ export async function init(setup: any, config: any) {
       cwd: config.projectDir,
     }
   );
-  const useAngularUniversal = await promptOnce({
-    name: "useAngularUniversal",
-    type: "confirm",
-    default: false,
-    message: `Would you like to setup Angular Universal?`,
-  });
-  if (useAngularUniversal) {
-    execSync("ng add @nguniversal/express-engine --skip-confirmation", {
-      stdio: "inherit",
-      cwd: join(config.projectDir, setup.hosting.source),
-    });
-  }
 }
 
 export async function build(dir: string, configuration: string): Promise<BuildResult> {
