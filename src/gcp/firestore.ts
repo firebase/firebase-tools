@@ -1,11 +1,11 @@
-import { firestoreOriginOrEmulator } from "../api";
+import { firestoreOrigin } from "../api";
 import { Client } from "../apiv2";
 import { logger } from "../logger";
 
 const apiClient = new Client({
   auth: true,
   apiVersion: "v1",
-  urlPrefix: firestoreOriginOrEmulator,
+  urlPrefix: firestoreOrigin,
 });
 
 interface Database {

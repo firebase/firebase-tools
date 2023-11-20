@@ -1,1 +1,1 @@
-- Added support for enabling, disabling, and displaying Point In Time Recovery enablement state on Firestore databases (#6388)
+- Added the ability to deploy Angular apps using [the new application-builder](https://angular.dev/tools/cli/esbuild). (#6480)

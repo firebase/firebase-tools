@@ -115,7 +115,7 @@ export interface FunctionsEmulatorArgs {
   account?: Account;
   port?: number;
   host?: string;
-  quiet?: boolean;
+  verbosity?: "SILENT" | "QUIET" | "INFO" | "DEBUG";
   disabledRuntimeFeatures?: FunctionsRuntimeFeatures;
   debugPort?: number;
   remoteEmulators?: Record<string, EmulatorInfo>;
@@ -215,7 +215,9 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   constructor(private args: FunctionsEmulatorArgs) {
     // TODO: Would prefer not to have static state but here we are!
-    EmulatorLogger.setVerbosity(this.args.quiet ? Verbosity.QUIET : Verbosity.DEBUG);
+    EmulatorLogger.setVerbosity(
+      this.args.verbosity ? Verbosity[this.args.verbosity] : Verbosity["DEBUG"]
+    );
     // When debugging is enabled, the "timeout" feature needs to be disabled so that
     // functions don't timeout while a breakpoint is active.
     if (this.args.debugPort) {
@@ -566,8 +568,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     } else {
       this.workerPools[emulatableBackend.codebase].refresh();
     }
-    // reset blocking functions config for reloads
-    this.blockingFunctionsConfig = {};
 
     // When force is true we set up all triggers, otherwise we only set up
     // triggers which have a unique function name
@@ -1436,6 +1436,8 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   async reloadTriggers() {
     this.triggerGeneration++;
+    // reset blocking functions config for reloads
+    this.blockingFunctionsConfig = {};
     for (const backend of this.args.emulatableBackends) {
       await this.loadTriggers(backend);
     }
