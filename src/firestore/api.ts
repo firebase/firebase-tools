@@ -12,6 +12,7 @@ import { confirm } from "../prompt";
 import { firestoreOrigin } from "../api";
 import { FirebaseError } from "../error";
 import { Client } from "../apiv2";
+import { Backup, BackupSchedule } from "../gcp/firestore";
 
 export class FirestoreApi {
   apiClient = new Client({ urlPrefix: firestoreOrigin, apiVersion: "v1" });
@@ -28,7 +29,7 @@ export class FirestoreApi {
     options: { project: string; nonInteractive: boolean; force: boolean },
     indexes: any[],
     fieldOverrides: any[],
-    databaseId: string = "(default)",
+    databaseId = "(default)",
   ): Promise<void> {
     const spec = this.upgradeOldSpec({
       indexes,
@@ -173,7 +174,7 @@ export class FirestoreApi {
    * List all indexes that exist on a given project.
    * @param project the Firebase project id.
    */
-  async listIndexes(project: string, databaseId: string = "(default)"): Promise<types.Index[]> {
+  async listIndexes(project: string, databaseId = "(default)"): Promise<types.Index[]> {
     const url = `/projects/${project}/databases/${databaseId}/collectionGroups/-/indexes`;
     const res = await this.apiClient.get<{ indexes?: types.Index[] }>(url);
     const indexes = res.body.indexes;
@@ -201,10 +202,7 @@ export class FirestoreApi {
    * List all field configuration overrides defined on the given project.
    * @param project the Firebase project.
    */
-  async listFieldOverrides(
-    project: string,
-    databaseId: string = "(default)",
-  ): Promise<types.Field[]> {
+  async listFieldOverrides(project: string, databaseId = "(default)"): Promise<types.Field[]> {
     const parent = `projects/${project}/databases/${databaseId}/collectionGroups/-`;
     const url = `/${parent}/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:*`;
 
@@ -219,7 +217,7 @@ export class FirestoreApi {
 
     // Ignore the default config, only list other fields.
     return fields.filter((field) => {
-      return field.name.indexOf("__default__") < 0;
+      return !field.name.includes("__default__");
     });
   }
 
@@ -325,6 +323,111 @@ export class FirestoreApi {
       ["Point In Time Recovery", clc.yellow(database.pointInTimeRecoveryEnablement)],
       ["Earliest Version Time", clc.yellow(database.earliestVersionTime)],
       ["Version Retention Period", clc.yellow(database.versionRetentionPeriod)],
+    );
+    logger.info(table.toString());
+  }
+
+  /**
+   * Print an array of backups to the console as an ASCII table.
+   * @param backups the array of Firestore backups.
+   */
+  prettyPrintBackups(backups: Backup[]): void {
+    if (backups.length === 0) {
+      logger.info("No backups found.");
+      return;
+    }
+    const sortedBackups: Backup[] = backups.sort(sort.compareApiBackup);
+    const Table = require("cli-table");
+    const table = new Table({
+      head: ["Backup Name", "Database Name", "Snapshot Time", "State"],
+      colWidths: [
+        Math.max(...sortedBackups.map((backup) => backup.name!.length + 5), 20),
+        Math.max(...sortedBackups.map((backup) => backup.database!.length + 5), 20),
+        30,
+        10,
+      ],
+    });
+
+    table.push(
+      ...sortedBackups.map((backup) => [
+        this.prettyBackupString(backup),
+        this.prettyDatabaseString(backup.database || ""),
+        backup.snapshotTime,
+        backup.state,
+      ]),
+    );
+    logger.info(table.toString());
+  }
+
+  /**
+   * Print an array of backup schedules to the console as an ASCII table.
+   * @param backupSchedules the array of Firestore backup schedules.
+   * @param databaseId the database these schedules are associated with.
+   */
+  prettyPrintBackupSchedules(backupSchedules: BackupSchedule[], databaseId: string): void {
+    if (backupSchedules.length === 0) {
+      logger.info(`No backup schedules for database ${databaseId} found.`);
+      return;
+    }
+    const sortedBackupSchedules: BackupSchedule[] = backupSchedules.sort(
+      sort.compareApiBackupSchedule,
+    );
+    sortedBackupSchedules.forEach((schedule) => this.prettyPrintBackupSchedule(schedule));
+  }
+
+  /**
+   * Print important fields of a backup schedule to the console as an ASCII table.
+   * @param backupSchedule the Firestore backup schedule.
+   */
+  prettyPrintBackupSchedule(backupSchedule: BackupSchedule): void {
+    const Table = require("cli-table");
+    const table = new Table({
+      head: ["Field", "Value"],
+      colWidths: [25, Math.max(50, 5 + backupSchedule.name!.length)],
+    });
+
+    table.push(
+      ["Name", clc.yellow(backupSchedule.name!)],
+      ["Create Time", clc.yellow(backupSchedule.createTime!)],
+      ["Last Update Time", clc.yellow(backupSchedule.updateTime!)],
+      ["Retention", clc.yellow(backupSchedule.retention)],
+      ["Recurrence", this.prettyRecurrenceString(backupSchedule)],
+    );
+    logger.info(table.toString());
+  }
+
+  /**
+   * Returns a pretty representation of the Recurrence of the given backup schedule.
+   * @param {BackupSchedule} backupSchedule the backup schedule.
+   */
+  prettyRecurrenceString(backupSchedule: BackupSchedule): string {
+    if (backupSchedule.dailyRecurrence) {
+      return clc.yellow("DAILY");
+    } else if (backupSchedule.weeklyRecurrence) {
+      return clc.yellow(`WEEKLY (${backupSchedule.weeklyRecurrence.day})`);
+    }
+    return "";
+  }
+
+  /**
+   * Print important fields of a backup to the console as an ASCII table.
+   * @param backup the Firestore backup.
+   */
+  prettyPrintBackup(backup: Backup) {
+    const Table = require("cli-table");
+    const table = new Table({
+      head: ["Field", "Value"],
+      colWidths: [25, Math.max(50, 5 + backup.name!.length, 5 + backup.database!.length)],
+    });
+
+    table.push(
+      ["Name", clc.yellow(backup.name!)],
+      ["Database", clc.yellow(backup.database!)],
+      ["Database UID", clc.yellow(backup.databaseUid!)],
+      ["State", clc.yellow(backup.state!)],
+      ["Snapshot Time", clc.yellow(backup.snapshotTime!)],
+      ["Expire Time", clc.yellow(backup.expireTime!)],
+      ["Stats", clc.yellow(backup.stats!)],
     );
     logger.info(table.toString());
   }
@@ -451,7 +554,7 @@ export class FirestoreApi {
   async patchField(
     project: string,
     spec: Spec.FieldOverride,
-    databaseId: string = "(default)",
+    databaseId = "(default)",
   ): Promise<any> {
     const url = `/projects/${project}/databases/${databaseId}/collectionGroups/${spec.collectionGroup}/fields/${spec.fieldPath}`;
 
@@ -500,7 +603,7 @@ export class FirestoreApi {
   /**
    * Create a new index on the specified project.
    */
-  createIndex(project: string, index: Spec.Index, databaseId: string = "(default)"): Promise<any> {
+  createIndex(project: string, index: Spec.Index, databaseId = "(default)"): Promise<any> {
     const url = `/projects/${project}/databases/${databaseId}/collectionGroups/${index.collectionGroup}/indexes`;
     return this.apiClient.post(url, {
       fields: index.fields,
@@ -597,7 +700,7 @@ export class FirestoreApi {
     // Confirms that the two objects have the same set of enabled indexes without
     // caring about specification order.
     for (const mode of fieldModes) {
-      if (specModes.indexOf(mode) < 0) {
+      if (!specModes.includes(mode)) {
         return false;
       }
     }
@@ -793,13 +896,42 @@ export class FirestoreApi {
       throw new FirebaseError("Not found");
     }
 
-    return database as types.DatabaseResp;
+    return database;
+  }
+
+  /**
+   * Restore a Firestore Database from a backup.
+   * @param project the Firebase project id.
+   * @param databaseId the ID of the Firestore Database to be restored into
+   * @param backupName Name of the backup from which to restore
+   */
+  async restoreDatabase(
+    project: string,
+    databaseId: string,
+    backupName: string,
+  ): Promise<types.DatabaseResp> {
+    const url = `/projects/${project}/databases:restore`;
+    const payload: types.RestoreDatabaseReq = {
+      databaseId,
+      backup: backupName,
+    };
+    const options = { queryParams: { databaseId: databaseId } };
+    const res = await this.apiClient.post<
+      types.RestoreDatabaseReq,
+      { response?: types.DatabaseResp }
+    >(url, payload, options);
+    const database = res.body.response;
+    if (!database) {
+      throw new FirebaseError("Not found");
+    }
+
+    return database;
   }
 
   /**
    * Get a colored, pretty-printed representation of an index.
    */
-  private prettyIndexString(index: types.Index, includeState: boolean = true): string {
+  private prettyIndexString(index: types.Index, includeState = true): string {
     let result = "";
 
     if (index.state && includeState) {
@@ -834,10 +966,24 @@ export class FirestoreApi {
   }
 
   /**
+   * Get a colored, pretty-printed representation of a backup
+   */
+  prettyBackupString(backup: Backup): string {
+    return clc.yellow(backup.name || "");
+  }
+
+  /**
+   * Get a colored, pretty-printed representation of a backup schedule
+   */
+  prettyBackupScheduleString(backupSchedule: BackupSchedule): string {
+    return clc.yellow(backupSchedule.name || "");
+  }
+
+  /**
    * Get a colored, pretty-printed representation of a database
    */
-  prettyDatabaseString(database: types.DatabaseResp): string {
-    return clc.yellow(database.name);
+  prettyDatabaseString(database: string | types.DatabaseResp): string {
+    return clc.yellow(typeof database === "string" ? database : database.name);
   }
 
   /**
