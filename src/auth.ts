@@ -725,7 +725,11 @@ export async function logout(refreshToken: string) {
   }
 }
 
-export function addAdditionalAccount(account: Account) {
+/**
+ * adds an account to the list of additional accounts.
+ * @param account the account to add.
+ */
+export function addAdditionalAccount(account: Account): void {
   const additionalAccounts = getAdditionalAccounts();
   additionalAccounts.push(account);
   configstore.set("additionalAccounts", additionalAccounts);

@@ -6,7 +6,9 @@ import * as auth from "../auth";
 import { FirebaseError } from "../error";
 
 export const command = new Command("login:use <email>")
-  .description("set the default account to use for this project directory or the global default account if not in a Firebase project directory")
+  .description(
+    "set the default account to use for this project directory or the global default account if not in a Firebase project directory"
+  )
   .action((email: string, options: any) => {
     const allAccounts = auth.getAllAccounts();
     const accountExists = allAccounts.some((a) => a.user.email === email);
@@ -19,13 +21,12 @@ export const command = new Command("login:use <email>")
     }
 
     const projectDir = options.projectRoot as string | null;
-    utils.logWarning(`projectDir: ${projectDir}`);
 
     // if current directory is a Firebase project directory, set the default account for this project directory
     // otherwise, set the global default account
     if (projectDir) {
       if (options.user.email === email) {
-        throw new FirebaseError(`Already using account ${email} for this project directory.`)
+        throw new FirebaseError(`Already using account ${email} for this project directory.`);
       }
 
       auth.setProjectAccount(projectDir, email);
@@ -34,7 +35,7 @@ export const command = new Command("login:use <email>")
       return email;
     } else {
       if (options.user.email === email) {
-        throw new FirebaseError(`Already using account ${email} for the global default account.`)
+        throw new FirebaseError(`Already using account ${email} for the global default account.`);
       }
       const newDefaultAccount = allAccounts.find((a) => a.user.email === email);
       if (!newDefaultAccount) {
@@ -51,9 +52,9 @@ export const command = new Command("login:use <email>")
         throw new FirebaseError("Could not determine global default account");
       }
       // set new default account and removes it from additional accounts
-      auth.setGlobalDefaultAccount(newDefaultAccount!);
+      auth.setGlobalDefaultAccount(newDefaultAccount);
       // add old default account as additional account
-      auth.addAdditionalAccount(oldDefaultAccount!);
+      auth.addAdditionalAccount(oldDefaultAccount);
 
       utils.logSuccess(`Set global default account to ${email}.`);
 
