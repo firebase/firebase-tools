@@ -1,8 +1,7 @@
 import vscode from 'vscode';
 import fetch from "node-fetch";
-import { getIntrospectionQuery, printSchema, buildClientSchema } from "graphql";
+import { getIntrospectionQuery } from "graphql";
 import { Signal } from "@preact/signals-core";
-import { TextEncoder } from 'util';
 /**
  * Firemat Emulator service
  */
@@ -16,8 +15,8 @@ export class FirematService {
     variables: {};
   }) {
     // TODO: get operationSet name from firemat.yaml
-    const body = { ...params, name: "projects/p/locations/l/services/s/operationSets/crud/revisions/r" };
-    const resp = await fetch(this.firematEndpoint.value + "/v0/projects/p/locations/l/services/s/operationSets/crud/revisions/r:executeMutation", {
+    const body = { ...params, name: "projects/p/locations/l/services/local/operationSets/crud/revisions/r" };
+    const resp = await fetch(this.firematEndpoint.value + "/v0/projects/p/locations/l/services/local/operationSets/crud/revisions/r:executeMutation", {
       method: "POST",
       headers: {
         Accept: "application/json",
@@ -36,8 +35,8 @@ export class FirematService {
     variables: {};
   }) {
     // TODO: get operationSet name from firemat.yaml
-    const body = { ...params, name: "projects/p/locations/l/services/s/operationSets/crud/revisions/r" };
-    const resp = await fetch(this.firematEndpoint.value + "/v0/projects/p/locations/l/services/s/operationSets/crud/revisions/r:executeQuery", {
+    const body = { ...params, name: "projects/p/locations/l/services/local/operationSets/crud/revisions/r" };
+    const resp = await fetch(this.firematEndpoint.value + "/v0/projects/p/locations/l/services/local/operationSets/crud/revisions/r:executeQuery", {
       method: "POST",
       headers: {
         Accept: "application/json",
@@ -64,13 +63,6 @@ export class FirematService {
       for (let type of introspectionResults.data.__schema.types) {
         type.interfaces = [];
       }
-      // const schema = buildSchema(resp.__schema.toString());
-      const schema = buildClientSchema(introspectionResults.data);
-
-      // TODO: this will eventually be done by the emulator
-      // update schema types gql file to be used by language server
-      const wsPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
-      await vscode.workspace.fs.writeFile(vscode.Uri.file(wsPath + "/gen/schema.graphql"), new TextEncoder().encode(printSchema(schema)));
 
       return { data: introspectionResults.data };
     } catch (e) {
@@ -87,8 +79,8 @@ export class FirematService {
   }) {
     try {
       // TODO: get name programatically
-      const body = { ...params, name: "projects/p/locations/l/services/s" };
-      const resp = await fetch(this.firematEndpoint.value + "/v0/projects/p/locations/l/services/s:executeGraphqlRead", {
+      const body = { ...params, name: "projects/p/locations/l/services/local" };
+      const resp = await fetch(this.firematEndpoint.value + "/v0/projects/p/locations/l/services/local:executeGraphqlRead", {
         method: "POST",
         headers: {
           Accept: "application/json",

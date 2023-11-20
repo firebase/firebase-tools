@@ -97,5 +97,5 @@ export function registerWebview(params: RegisterWebviewParams): Disposable {
 
   return vscode.window.registerWebviewViewProvider(params.name, {
     resolveWebviewView,
-  });
+  }, { webviewOptions: { retainContextWhenHidden: true } });
 }

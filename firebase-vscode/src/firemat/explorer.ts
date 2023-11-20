@@ -1,15 +1,13 @@
 import vscode, { Disposable, ExtensionContext } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
-import { registerWebview } from "../webview";
 import { ExplorerTreeDataProvider } from "./explorer-provider";
-import { signal, effect } from "@preact/signals-core";
-import { IntrospectionQuery, OperationDefinitionNode, print } from "graphql";
+import { signal } from "@preact/signals-core";
+import { IntrospectionQuery } from "graphql";
 import { FirematService } from "./service";
 
 
 // explorer store
 export const introspectionQuery = signal<IntrospectionQuery>(null);
-
 
 export function registerExplorer(
     context: ExtensionContext,

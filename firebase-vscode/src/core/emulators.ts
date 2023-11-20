@@ -8,6 +8,9 @@ import {
   Emulators,
 } from "../cli";
 import { ExtensionBrokerImpl } from "../extension-broker";
+import { Signal } from "@preact/signals-core";
+
+export const isFirematEmulatorRunning = new Signal<boolean>(false);
 
 export function registerEmulators(broker: ExtensionBrokerImpl): Disposable {
 
@@ -32,9 +35,10 @@ export function registerEmulators(broker: ExtensionBrokerImpl): Disposable {
             "Firebase Extension: Emulators started successfully"
           );
 
-          // firemat trial run of logging
+          // firemat specifics; including temp logging implementation
           if (listRunningEmulators().filter((emulatorInfos) => { emulatorInfos.name === Emulators.FIREMAT })) {
             const firematEmulatorDetails = getEmulatorDetails(Emulators.FIREMAT);
+            isFirematEmulatorRunning.value = true;
 
             firematEmulatorDetails.instance.stdout?.on("data", (data) => {
               outputChannel.appendLine("DEBUG: " + data.toString());
@@ -44,12 +48,14 @@ export function registerEmulators(broker: ExtensionBrokerImpl): Disposable {
                 vscode.commands.executeCommand("firebase.firemat.executeIntrospection");
               } else {
                 outputChannel.appendLine("ERROR: " + data.toString());
-                outputChannel.show(true);
+                outputChannel.show(true); // TODO: decide if necessary to jump to output channel on error
               }
             });
           }
         } catch (e) {
           broker.send("notifyEmulatorStartFailed");
+          isFirematEmulatorRunning.value = false; // TODO: verify firemat is not running once other emulators come into play
+
           vscode.window.showErrorMessage(
             "Firebase Extension: Emulators start failed - " + e
           );
@@ -74,7 +80,7 @@ export function registerEmulators(broker: ExtensionBrokerImpl): Disposable {
         vscode.window.showInformationMessage(
           "Firebase Extension: Emulators stopped successfully"
         );
-
+        isFirematEmulatorRunning.value = false;
         progress.report({ increment: 100 });
       }
     );
