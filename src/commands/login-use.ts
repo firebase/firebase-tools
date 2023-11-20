@@ -20,14 +20,6 @@ export const command = new Command("login:use <email>")
 
     const projectDir = options.projectRoot as string | null;
     utils.logWarning(`projectDir: ${projectDir}`);
-    // if (!projectDir) {
-    //   throw new FirebaseError("Could not determine active Firebase project directory");
-    // }
-
-    // auth.setProjectAccount(projectDir, email);
-    // utils.logSuccess(`Set default account ${email} for current project directory.`);
-
-    // return email;
 
     // if current directory is a Firebase project directory, set the default account for this project directory
     // otherwise, set the global default account
