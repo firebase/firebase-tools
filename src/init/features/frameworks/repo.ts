@@ -5,6 +5,7 @@ import { logger } from "../../../logger";
 import * as poller from "../../../operation-poller";
 import * as utils from "../../../utils";
 import { promptOnce } from "../../../prompt";
+import * as clc from "colorette";
 
 const gcbPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: cloudbuildOrigin,
@@ -45,12 +46,13 @@ function generateConnectionId(location: string): string {
 }
 
 /**
- * Prompts the user to link their stack to a GitHub repository.
+ * Prompts the user to link their backend to a GitHub repository.
  */
 export async function linkGitHubRepository(
   projectId: string,
   location: string
 ): Promise<gcb.Repository> {
+  logger.info(clc.bold(`\n${clc.white("===")} Connect a github repository`));
   const connectionId = generateConnectionId(location);
   await getOrCreateConnection(projectId, location, connectionId);
 
@@ -66,7 +68,8 @@ export async function linkGitHubRepository(
   }
 
   const repo = await getOrCreateRepository(projectId, location, connectionId, remoteUri);
-  logger.info(`Successfully linked GitHub repository at remote URI ${remoteUri}.`);
+  logger.info();
+  utils.logSuccess(`Successfully linked GitHub repository at remote URI:\n ${remoteUri}`);
   return repo;
 }
 
@@ -93,7 +96,7 @@ async function promptRepositoryURI(
 
   return await promptOnce({
     type: "list",
-    message: "Which of the following repositories would you like to link?",
+    message: "Which of the following repositories would you like to deploy?",
     choices,
   });
 }
@@ -104,13 +107,13 @@ async function promptConnectionAuth(
   location: string,
   connectionId: string
 ): Promise<gcb.Connection> {
-  logger.info(conn.installationState.message);
+  logger.info("First, log in to GitHub, install and authorize Cloud Build app:");
   logger.info(conn.installationState.actionUri);
   await utils.openInBrowser(conn.installationState.actionUri);
   await promptOnce({
     type: "input",
     message:
-      "Press any key once you have authorized the app (Cloud Build) to access your GitHub repo.",
+      "Press Enter once you have authorized the app (Cloud Build) to access your GitHub repo.",
   });
   return await gcb.getConnection(projectId, location, connectionId);
 }

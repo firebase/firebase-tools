@@ -153,11 +153,11 @@ export function load(client: any): any {
   }
   if (experiments.isEnabled("internalframeworks")) {
     client.frameworks = {};
-    client.frameworks.stacks = {};
-    client.frameworks.stacks.list = loadCommand("frameworks-stacks-list");
-    client.frameworks.stacks.create = loadCommand("frameworks-backends-create");
-    client.frameworks.stacks.create = loadCommand("frameworks-stacks-get");
-    client.frameworks.stacks.create = loadCommand("frameworks-backends-delete");
+    client.frameworks.backends = {};
+    client.frameworks.backends.list = loadCommand("frameworks-backends-list");
+    client.frameworks.backends.create = loadCommand("frameworks-backends-create");
+    client.frameworks.backends.get = loadCommand("frameworks-backends-get");
+    client.frameworks.backends.delete = loadCommand("frameworks-backends-delete");
   }
   client.login = loadCommand("login");
   client.login.add = loadCommand("login-add");

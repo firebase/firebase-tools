@@ -1,1 +1,1 @@
-- Fixed 2 bugs (unintended database mode changes and disabling of PITR or delete-protection) when updating Firestore databases (#6478)
+- Added the ability to deploy Angular apps using [the new application-builder](https://angular.dev/tools/cli/esbuild). (#6480)
