@@ -85,14 +85,15 @@ interface LinkableRepositories {
 export async function createConnection(
   projectId: string,
   location: string,
-  connectionId: string
+  connectionId: string,
+  githubConfig: GitHubConfig = {}
 ): Promise<Operation> {
   const res = await client.post<
     Omit<Omit<Connection, "name">, ConnectionOutputOnlyFields>,
     Operation
   >(
     `projects/${projectId}/locations/${location}/connections`,
-    { githubConfig: {} },
+    { githubConfig },
     { queryParams: { connectionId } }
   );
   return res.body;
