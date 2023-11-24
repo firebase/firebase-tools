@@ -1,1 +1,2 @@
 - Added the ability to deploy Angular apps using [the new application-builder](https://angular.dev/tools/cli/esbuild). (#6480)
+- Fixed an issue where `--non-interactive` flag is not respected in Firestore indexes deploys. (#6539)
