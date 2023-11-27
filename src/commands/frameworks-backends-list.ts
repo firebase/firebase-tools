@@ -5,6 +5,7 @@ import * as gcp from "../gcp/frameworks";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { bold } from "colorette";
+import { ensureApiEnabled } from "../gcp/frameworks";
 
 const Table = require("cli-table");
 const COLUMN_LENGTH = 20;
@@ -12,6 +13,7 @@ const TABLE_HEAD = ["Backend Id", "Repository", "Location", "URL", "Created Date
 export const command = new Command("backends:list")
   .description("List backends of a Firebase project.")
   .option("-l, --location <location>", "App Backend location", "-")
+  .before(ensureApiEnabled)
   .action(async (options: Options) => {
     const projectId = needProjectId(options);
     const location = options.location as string;

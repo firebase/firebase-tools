@@ -1,6 +1,9 @@
 import { Client } from "../apiv2";
+import { needProjectId } from "../projectUtils";
 import { frameworksOrigin } from "../api";
+import { ensure } from "../ensureApiEnabled";
 
+export const API_HOST = new URL(frameworksOrigin).host;
 export const API_VERSION = "v1alpha";
 
 const client = new Client({
@@ -161,4 +164,12 @@ export async function createBuild(
   );
 
   return res.body;
+}
+
+/**
+ * Ensure that Frameworks API is enabled on the project.
+ */
+export async function ensureApiEnabled(options: any): Promise<void> {
+  const projectId = needProjectId(options);
+  return await ensure(projectId, API_HOST, "frameworks", true);
 }
