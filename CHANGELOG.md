@@ -1,1 +1,2 @@
 - Added the ability to deploy Angular apps using [the new application-builder](https://angular.dev/tools/cli/esbuild). (#6480)
+- Fixed an issue where `login:use` would not work outside of a Firebase project directory. (#6526)
