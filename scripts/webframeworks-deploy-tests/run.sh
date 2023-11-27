@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e # Immediately exit on failure
 
+echo "Skipping test because it is running indefinitely"
+exit 1
+
 # Globally link the CLI for the testing framework
 ./scripts/clean-install.sh
 

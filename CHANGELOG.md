@@ -1,2 +1,5 @@
-- Fix blocking functions in the emulator when using multiple codebases (#6504).
-- Add force flag call-out for bypassing prompts (#6506).
+- Breaking: dropped support for running the CLI on Node.js v16.
+- Added support for running the CLI on Node.js v20. Installations from https://firebase.tools will now use Node.js 20.
+- Switched Storage deployment to use GetDefaultBucket endpoint to fetch default Storage bucket. (#6467)
+- Fixed an issue with emulating blocking functions when using multiple codebases (#6504).
+- Added force flag call-out for bypassing prompts (#6506).
