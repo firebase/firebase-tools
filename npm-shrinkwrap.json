@@ -1,12 +1,12 @@
 {
   "name": "firebase-tools",
-  "version": "12.7.0",
+  "version": "12.8.1",
   "lockfileVersion": 2,
   "requires": true,
   "packages": {
     "": {
       "name": "firebase-tools",
-      "version": "12.7.0",
+      "version": "12.8.1",
       "license": "MIT",
       "dependencies": {
         "@google-cloud/pubsub": "^3.0.1",
@@ -161,7 +161,7 @@
         "vite": "^4.2.1"
       },
       "engines": {
-        "node": ">=16.13.0 || >=18.0.0"
+        "node": ">=18.0.0 || >=20.0.0"
       }
     },
     "node_modules/@ampproject/remapping": {
