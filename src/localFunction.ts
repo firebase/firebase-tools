@@ -7,6 +7,7 @@ import { FunctionsEmulatorShell } from "./emulator/functionsEmulatorShell";
 import { AuthMode, AuthType, EventOptions } from "./emulator/events/types";
 import { Client, ClientResponse, ClientVerbOptions } from "./apiv2";
 
+// HTTPS_SENTINEL is sent when a HTTPS call is made via functions:shell.
 export const HTTPS_SENTINEL = "Request sent to function.";
 
 /**
@@ -64,38 +65,29 @@ export default class LocalFunction {
     }
     const callClient = new Client({ urlPrefix: this.url, auth: false });
     type verbFn = (...args: any) => Promise<string>;
-    const verbWithReqBodyFactory = (
-      method: (path: string, body?: any, opts?: ClientVerbOptions) => Promise<ClientResponse<any>>
+    const verbFactory = (
+      hasRequestBody: boolean,
+      method: (
+        path: string,
+        bodyOrOpts?: any,
+        opts?: ClientVerbOptions
+      ) => Promise<ClientResponse<any>>
     ): verbFn => {
       return async (pathOrOptions?: string | HttpsOptions, options?: HttpsOptions) => {
         const { path, opts } = this.extractArgs(pathOrOptions, options);
-        await method(path, opts.body, toClientVerbOptions(opts))
-          .then((res) => {
-            this.requestCallBack(undefined, res, res.body);
-          })
-          .catch((err) => {
-            this.requestCallBack(err);
-          });
-        return HTTPS_SENTINEL;
-      };
-    };
-    const verbWithoutReqBodyFactory = (
-      method: (path: string, options?: ClientVerbOptions) => Promise<ClientResponse<any>>
-    ): verbFn => {
-      return async (pathOrOptions?: string | HttpsOptions, options?: HttpsOptions) => {
-        const { path, opts } = this.extractArgs(pathOrOptions, options);
-        await method(path, toClientVerbOptions(opts))
-          .then((res) => {
-            this.requestCallBack(undefined, res, res.body);
-          })
-          .catch((err) => {
-            this.requestCallBack(err);
-          });
+        try {
+          const res = hasRequestBody
+            ? await method(path, opts.body, toClientVerbOptions(opts))
+            : await method(path, toClientVerbOptions(opts));
+          this.requestCallBack(undefined, res, res.body);
+        } catch (err) {
+          this.requestCallBack(err);
+        }
         return HTTPS_SENTINEL;
       };
     };
 
-    const shim = verbWithReqBodyFactory((path: string, json?: any, opts?: ClientVerbOptions) => {
+    const shim = verbFactory(true, (path: string, json?: any, opts?: ClientVerbOptions) => {
       const req = Object.assign(opts || {}, {
         path: path,
         body: json,
@@ -104,25 +96,25 @@ export default class LocalFunction {
       return callClient.request(req);
     });
     const verbs: verbMethods = {
-      post: verbWithReqBodyFactory((path: string, json?: any, opts?: ClientVerbOptions) =>
+      post: verbFactory(true, (path: string, json?: any, opts?: ClientVerbOptions) =>
         callClient.post(path, json, opts)
       ),
-      put: verbWithReqBodyFactory((path: string, json?: any, opts?: ClientVerbOptions) =>
+      put: verbFactory(true, (path: string, json?: any, opts?: ClientVerbOptions) =>
         callClient.put(path, json, opts)
       ),
-      patch: verbWithReqBodyFactory((path: string, json?: any, opts?: ClientVerbOptions) =>
+      patch: verbFactory(true, (path: string, json?: any, opts?: ClientVerbOptions) =>
         callClient.patch(path, json, opts)
       ),
-      get: verbWithoutReqBodyFactory((path: string, opts?: ClientVerbOptions) =>
+      get: verbFactory(false, (path: string, opts?: ClientVerbOptions) =>
         callClient.get(path, opts)
       ),
-      del: verbWithoutReqBodyFactory((path: string, opts?: ClientVerbOptions) =>
+      del: verbFactory(false, (path: string, opts?: ClientVerbOptions) =>
         callClient.delete(path, opts)
       ),
-      delete: verbWithoutReqBodyFactory((path: string, opts?: ClientVerbOptions) =>
+      delete: verbFactory(false, (path: string, opts?: ClientVerbOptions) =>
         callClient.delete(path, opts)
       ),
-      options: verbWithoutReqBodyFactory((path: string, opts?: ClientVerbOptions) =>
+      options: verbFactory(false, (path: string, opts?: ClientVerbOptions) =>
         callClient.options(path, opts)
       ),
     };
@@ -133,24 +125,30 @@ export default class LocalFunction {
     pathOrOptions?: string | HttpsOptions,
     options?: HttpsOptions
   ): { path: string; opts: HttpsOptions } {
-    let path = "/";
-    let opts: HttpsOptions = {};
-    // Just path
-    if (typeof pathOrOptions === "string" && !options) {
-      path = pathOrOptions;
-    } // error case, 2 options
-    else if (!!pathOrOptions && !!options && typeof pathOrOptions !== "string") {
-      throw new Error(
-        `Expected args of type string, HttpsOptions, got ${typeof pathOrOptions}, ${typeof options}`
-      );
-    } // path and options
-    else if (!!pathOrOptions && !!options && typeof pathOrOptions === "string") {
-      path = pathOrOptions;
-      opts = options;
-    } else if (!!pathOrOptions && typeof pathOrOptions !== "string") {
-      opts = pathOrOptions;
+    // Case: No arguments provided
+    if (!pathOrOptions && !options) {
+      return { path: "/", opts: {} };
     }
-    return { path, opts };
+
+    // Case: pathOrOptions is provided as a string
+    if (typeof pathOrOptions === "string") {
+      return { path: pathOrOptions, opts: options || {} };
+    }
+
+    // Case: pathOrOptions is an object (HttpsOptions), and options is not provided
+    if (typeof pathOrOptions !== "string" && !!pathOrOptions && !options) {
+      return { path: "/", opts: pathOrOptions };
+    }
+
+    // Error case: Invalid combination of arguments
+    if (typeof pathOrOptions !== "string" || !options) {
+      throw new Error(
+        `Invalid argument combination: Expected a string and/or HttpsOptions, got ${typeof pathOrOptions} and ${typeof options}`
+      );
+    }
+
+    // Default return, though this point should not be reached
+    return { path: "/", opts: {} };
   }
 
   constructAuth(auth?: EventOptions["auth"], authType?: AuthType): AuthMode {
