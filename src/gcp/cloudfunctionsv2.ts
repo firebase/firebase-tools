@@ -331,7 +331,7 @@ export async function createFunction(cloudFunction: InputCloudFunction): Promise
 
   cloudFunction.serviceConfig.environmentVariables = {
     ...cloudFunction.serviceConfig.environmentVariables,
-    FUNCTION_TARGET: functionId.replace("-", "."),
+    FUNCTION_TARGET: functionId.replaceAll("-", "."),
   };
 
   try {
@@ -439,7 +439,7 @@ export async function updateFunction(cloudFunction: InputCloudFunction): Promise
 
   cloudFunction.serviceConfig.environmentVariables = {
     ...cloudFunction.serviceConfig.environmentVariables,
-    FUNCTION_TARGET: functionId.replace("-", "."),
+    FUNCTION_TARGET: functionId.replaceAll("-", "."),
   };
 
   try {
@@ -661,7 +661,10 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
   } else if (gcfFunction.eventTrigger) {
     const eventFilters: Record<string, string> = {};
     const eventFilterPathPatterns: Record<string, string> = {};
-    if (gcfFunction.eventTrigger.pubsubTopic) {
+    if (
+      gcfFunction.eventTrigger.pubsubTopic &&
+      gcfFunction.eventTrigger.eventType === PUBSUB_PUBLISH_EVENT
+    ) {
       eventFilters.topic = gcfFunction.eventTrigger.pubsubTopic;
     } else {
       for (const eventFilter of gcfFunction.eventTrigger.eventFilters || []) {

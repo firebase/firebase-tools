@@ -7,6 +7,11 @@ import { deploy } from "../deploy";
 import { requireConfig } from "../requireConfig";
 import { filterTargets } from "../filterTargets";
 import { requireHostingSite } from "../requireHostingSite";
+import { errNoDefaultSite } from "../getDefaultHostingSite";
+import { FirebaseError } from "../error";
+import { bold } from "colorette";
+import { interactiveCreateHostingSite } from "../hosting/interactive";
+import { logBullet } from "../utils";
 
 // in order of least time-consuming to most time-consuming
 export const VALID_DEPLOY_TARGETS = [
@@ -46,7 +51,7 @@ export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], s
 export const command = new Command("deploy")
   .description("deploy code and assets to your Firebase project")
   .withForce(
-    "delete Cloud Functions missing from the current working directory without confirmation"
+    "delete Cloud Functions missing from the current working directory and bypass interactive prompts"
   )
   .option("-p, --public <path>", "override the Hosting public directory specified in firebase.json")
   .option("-m, --message <message>", "an optional message describing this deploy")
@@ -78,7 +83,26 @@ export const command = new Command("deploy")
     }
 
     if (options.filteredTargets.includes("hosting")) {
-      await requireHostingSite(options);
+      let createSite = false;
+      try {
+        await requireHostingSite(options);
+      } catch (err: unknown) {
+        if (err === errNoDefaultSite) {
+          createSite = true;
+        }
+      }
+      if (!createSite) {
+        return;
+      }
+      if (options.nonInteractive) {
+        throw new FirebaseError(
+          `Unable to deploy to Hosting as there is no Hosting site. Use ${bold(
+            "firebase hosting:sites:create"
+          )} to create a site.`
+        );
+      }
+      logBullet("No Hosting site detected.");
+      await interactiveCreateHostingSite("", "", options);
     }
   })
   .before(checkValidTargetFilters)

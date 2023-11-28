@@ -5,6 +5,7 @@ import { logger } from "../../../logger";
 import * as poller from "../../../operation-poller";
 import * as utils from "../../../utils";
 import { promptOnce } from "../../../prompt";
+import * as clc from "colorette";
 
 const gcbPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: cloudbuildOrigin,
@@ -27,24 +28,32 @@ function extractRepoSlugFromURI(remoteUri: string): string | undefined {
 
 /**
  * Generates a repository ID.
- * N.B. The deterministic nature of the repository ID implies that each
- * Cloud Build Connection will have one Cloud Build Repo child resource.
- * The current implementation is subject to change in the event that
- * the 1:1 Connection-to-Resource relationship no longer holds.
+ * The relation is 1:* between Cloud Build Connection and Github Repositories.
  */
-function generateRepositoryId(): string | undefined {
-  return `composer-repo`;
+function generateRepositoryId(remoteUri: string): string | undefined {
+  return extractRepoSlugFromURI(remoteUri)?.replaceAll("/", "-");
 }
 
 /**
- * Prompts the user to link their stack to a GitHub repository.
+ * The 'frameworks-' is prefixed, to seperate the Cloud Build connections created from
+ * Frameworks platforms with rest of manually created Cloud Build connections.
+ *
+ * The reason suffix 'location' is because of
+ * 1:1 relation between location and Cloud Build connection.
+ */
+function generateConnectionId(location: string): string {
+  return `frameworks-${location}`;
+}
+
+/**
+ * Prompts the user to link their backend to a GitHub repository.
  */
 export async function linkGitHubRepository(
   projectId: string,
-  location: string,
-  stackId: string
+  location: string
 ): Promise<gcb.Repository> {
-  const connectionId = stackId;
+  logger.info(clc.bold(`\n${clc.white("===")} Connect a github repository`));
+  const connectionId = generateConnectionId(location);
   await getOrCreateConnection(projectId, location, connectionId);
 
   let remoteUri = await promptRepositoryURI(projectId, location, connectionId);
@@ -59,7 +68,8 @@ export async function linkGitHubRepository(
   }
 
   const repo = await getOrCreateRepository(projectId, location, connectionId, remoteUri);
-  logger.info(`Successfully linked GitHub repository at remote URI ${remoteUri}.`);
+  logger.info();
+  utils.logSuccess(`Successfully linked GitHub repository at remote URI:\n ${remoteUri}`);
   return repo;
 }
 
@@ -86,7 +96,7 @@ async function promptRepositoryURI(
 
   return await promptOnce({
     type: "list",
-    message: "Which of the following repositories would you like to link?",
+    message: "Which of the following repositories would you like to deploy?",
     choices,
   });
 }
@@ -97,13 +107,13 @@ async function promptConnectionAuth(
   location: string,
   connectionId: string
 ): Promise<gcb.Connection> {
-  logger.info(conn.installationState.message);
+  logger.info("First, log in to GitHub, install and authorize Cloud Build app:");
   logger.info(conn.installationState.actionUri);
   await utils.openInBrowser(conn.installationState.actionUri);
   await promptOnce({
     type: "input",
     message:
-      "Press any key once you have authorized the app (Cloud Build) to access your GitHub repo.",
+      "Press Enter once you have authorized the app (Cloud Build) to access your GitHub repo.",
   });
   return await gcb.getConnection(projectId, location, connectionId);
 }
@@ -147,7 +157,7 @@ export async function getOrCreateRepository(
   connectionId: string,
   remoteUri: string
 ): Promise<gcb.Repository> {
-  const repositoryId = generateRepositoryId();
+  const repositoryId = generateRepositoryId(remoteUri);
   if (!repositoryId) {
     throw new FirebaseError(`Failed to generate repositoryId for URI "${remoteUri}".`);
   }
