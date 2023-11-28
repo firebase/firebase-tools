@@ -109,7 +109,7 @@ export function filterEmulatorTargets(options: { only: string; config: any }): E
   let targets = [...ALL_SERVICE_EMULATORS];
   targets.push(Emulators.EXTENSIONS);
   targets = targets.filter((e) => {
-    return options.config.has(e) || options.config.has(`emulators.${e}`);
+    return options.config.has(`emulators.${e}`);
   });
 
   const onlyOptions: string = options.only;
