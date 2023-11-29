@@ -8,7 +8,7 @@ import * as types from "./api-types";
 import * as Spec from "./api-spec";
 import * as sort from "./api-sort";
 import * as util from "./util";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import { firestoreOrigin } from "../api";
 import { FirebaseError } from "../error";
 import { Client } from "../apiv2";
@@ -89,9 +89,9 @@ export class FirestoreApi {
       }
 
       if (!shouldDeleteIndexes) {
-        shouldDeleteIndexes = await promptOnce({
-          type: "confirm",
-          name: "confirm",
+        shouldDeleteIndexes = await confirm({
+          nonInteractive: options.nonInteractive,
+          force: options.force,
           default: false,
           message:
             "Would you like to delete these indexes? Selecting no will continue the rest of the deployment.",
@@ -135,9 +135,9 @@ export class FirestoreApi {
       }
 
       if (!shouldDeleteFields) {
-        shouldDeleteFields = await promptOnce({
-          type: "confirm",
-          name: "confirm",
+        shouldDeleteFields = await confirm({
+          nonInteractive: options.nonInteractive,
+          force: options.force,
           default: false,
           message:
             "Would you like to delete these field overrides? Selecting no will continue the rest of the deployment.",
