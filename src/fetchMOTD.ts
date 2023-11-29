@@ -51,7 +51,9 @@ export function fetchMOTD(): void {
         configstore.set("motd.fetched", Date.now());
       })
       .catch((err) => {
-        utils.logWarning("Unable to fetch the CLI MOTD and remote config.");
+        utils.logWarning(
+          "Unable to fetch the CLI MOTD and remote config. This is not a fatal error, but may indicate an issue with your network connection."
+        );
         logger.debug(`Failed to fetch MOTD ${err}`);
       });
   }
