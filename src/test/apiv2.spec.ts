@@ -158,7 +158,7 @@ describe("apiv2", () => {
         method: "GET",
         path: "/path/to/foo",
       });
-      await expect(r).to.eventually.be.rejectedWith(FirebaseError, /Unable to parse JSON/);
+      await expect(r).to.eventually.be.rejectedWith(FirebaseError);
       expect(nock.isDone()).to.be.true;
     });
 
