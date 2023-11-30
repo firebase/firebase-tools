@@ -105,7 +105,7 @@
         {
           "type": "webview",
           "id": "firemat-execution-arguments",
-          "name": "Firemat Execution Arguments"
+          "name": "Firemat Execution Variables"
         },
         {
           "id": "firemat-execution-history",
