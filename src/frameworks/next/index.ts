@@ -47,6 +47,7 @@ import {
   getHeadersFromMetaFiles,
   cleanI18n,
   getNextVersion,
+  hasStaticAppNotFoundComponent,
 } from "./utils";
 import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES, SHARP_VERSION, I18N_ROOT } from "../constants";
 import type {
@@ -208,12 +209,20 @@ export async function build(dir: string): Promise<BuildResult> {
     headers.push(...headersFromMetaFiles);
 
     if (appPathsManifest) {
-      const unrenderedServerComponents = getNonStaticServerComponents(
+      let unrenderedServerComponents = getNonStaticServerComponents(
         appPathsManifest,
         appPathRoutesManifest,
         prerenderedRoutes,
         dynamicRoutes
       );
+
+      if (unrenderedServerComponents.includes("/_not-found")) {
+        if (await hasStaticAppNotFoundComponent(dir, distDir)) {
+          unrenderedServerComponents = unrenderedServerComponents.filter(
+            (path) => path !== "/_not-found"
+          );
+        }
+      }
 
       for (const key of unrenderedServerComponents) {
         reasonsForBackend.add(`non-static component ${key}`);
