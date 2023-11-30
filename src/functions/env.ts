@@ -410,6 +410,5 @@ export function loadFirebaseEnvs(
   return {
     FIREBASE_CONFIG: JSON.stringify(firebaseConfig),
     GCLOUD_PROJECT: projectId,
-    FIRESTORE_PREFER_REST: "true",
   };
 }

@@ -6,3 +6,6 @@
 - Switched Storage deployment to use GetDefaultBucket endpoint to fetch default Storage bucket. (#6467)
 - Fixed an issue with emulating blocking functions when using multiple codebases (#6504).
 - Added force flag call-out for bypassing prompts (#6506).
+- Added the ability to deploy Angular apps using [the new application-builder](https://angular.dev/tools/cli/esbuild). (#6480)
+- Fixed an issue where `--non-interactive` flag is not respected in Firestore indexes deploys. (#6539)
+- Fixed an issue where `login:use` would not work outside of a Firebase project directory. (#6526)

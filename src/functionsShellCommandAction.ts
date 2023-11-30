@@ -79,7 +79,7 @@ export const actionFunction = async (options: Options) => {
 
   return serveFunctions
     .start(options, {
-      quiet: true,
+      verbosity: "QUIET",
       remoteEmulators,
       debugPort,
     })
