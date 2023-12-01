@@ -209,18 +209,16 @@ export async function build(dir: string): Promise<BuildResult> {
     headers.push(...headersFromMetaFiles);
 
     if (appPathsManifest) {
-      let unrenderedServerComponents = getNonStaticServerComponents(
+      const unrenderedServerComponents = getNonStaticServerComponents(
         appPathsManifest,
         appPathRoutesManifest,
         prerenderedRoutes,
         dynamicRoutes
       );
 
-      if (unrenderedServerComponents.includes("/_not-found")) {
+      if (unrenderedServerComponents.has("/_not-found")) {
         if (await hasStaticAppNotFoundComponent(dir, distDir)) {
-          unrenderedServerComponents = unrenderedServerComponents.filter(
-            (path) => path !== "/_not-found"
-          );
+          unrenderedServerComponents.delete("/_not-found");
         }
       }
 

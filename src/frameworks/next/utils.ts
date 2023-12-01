@@ -338,7 +338,7 @@ export function getNonStaticServerComponents(
   appPathRoutesManifest: AppPathRoutesManifest,
   prerenderedRoutes: string[],
   dynamicRoutes: string[]
-): string[] {
+): Set<string> {
   const nonStaticServerComponents = Object.entries(appPathsManifest)
     .filter(([it, src]) => {
       if (extname(src) !== ".js") return;
@@ -347,7 +347,7 @@ export function getNonStaticServerComponents(
     })
     .map(([it]) => it);
 
-  return nonStaticServerComponents;
+  return new Set(nonStaticServerComponents);
 }
 
 /**
