@@ -1,3 +1,4 @@
 - Added the ability to deploy Angular apps using [the new application-builder](https://angular.dev/tools/cli/esbuild). (#6480)
 - Fixed an issue where `--non-interactive` flag is not respected in Firestore indexes deploys. (#6539)
 - Fixed an issue where `login:use` would not work outside of a Firebase project directory. (#6526)
+- Add Node 20 to error messages when using an unsupported Node version
