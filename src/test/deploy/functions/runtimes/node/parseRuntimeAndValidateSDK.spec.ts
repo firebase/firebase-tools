@@ -49,7 +49,22 @@ describe("getRuntimeChoice", () => {
       expect(runtime.getRuntimeChoice("path/to/source", "nodejs16")).to.equal("nodejs16");
     });
 
+    it("should return node 18 if runtime field is set to node 18", () => {
+      expect(runtime.getRuntimeChoice("path/to/source", "nodejs18")).to.equal("nodejs18");
+    });
+
+    it("should return node 20 if runtime field is set to node 20", () => {
+      expect(runtime.getRuntimeChoice("path/to/source", "nodejs20")).to.equal("nodejs20");
+    });
+
     it("should throw error if unsupported node version set", () => {
+      expect(() => runtime.getRuntimeChoice("path/to/source", "nodejs11")).to.throw(
+        FirebaseError,
+        runtime.UNSUPPORTED_NODE_VERSION_FIREBASE_JSON_MSG
+      );
+    });
+
+    it("should throw error if runtime field is set to node 22", () => {
       expect(() => runtime.getRuntimeChoice("path/to/source", "nodejs11")).to.throw(
         FirebaseError,
         runtime.UNSUPPORTED_NODE_VERSION_FIREBASE_JSON_MSG
@@ -98,6 +113,18 @@ describe("getRuntimeChoice", () => {
       expect(runtime.getRuntimeChoice("path/to/source", "")).to.equal("nodejs16");
     });
 
+    it("should return node 18 if engines field is set to node 18", () => {
+      cjsonStub.returns({ engines: { node: "18" } });
+
+      expect(runtime.getRuntimeChoice("path/to/source", "")).to.equal("nodejs18");
+    });
+
+    it("should return node 20 if engines field is set to node 20", () => {
+      cjsonStub.returns({ engines: { node: "20" } });
+
+      expect(runtime.getRuntimeChoice("path/to/source", "")).to.equal("nodejs20");
+    });
+
     it("should print warning when firebase-functions version is below 2.0.0", () => {
       cjsonStub.returns({ engines: { node: "16" } });
 
@@ -113,6 +140,16 @@ describe("getRuntimeChoice", () => {
     it("should throw error if unsupported node version set", () => {
       cjsonStub.returns({
         engines: { node: "11" },
+      });
+      expect(() => runtime.getRuntimeChoice("path/to/source", "")).to.throw(
+        FirebaseError,
+        runtime.UNSUPPORTED_NODE_VERSION_PACKAGE_JSON_MSG
+      );
+    });
+
+    it("should throw error if engines field is set to node 22", () => {
+      cjsonStub.returns({
+        engines: { node: "22" },
       });
       expect(() => runtime.getRuntimeChoice("path/to/source", "")).to.throw(
         FirebaseError,
