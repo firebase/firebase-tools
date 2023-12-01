@@ -52,7 +52,10 @@ export function registerExecution(
     }
   });
 
-  async function executeOperation(ast: OperationDefinitionNode, { documentPath, position }) {
+  async function executeOperation(
+    ast: OperationDefinitionNode,
+    { documentPath, position }
+  ) {
     const item = createExecution({
       label: ast.name.value,
       timestamp: Date.now(),
@@ -63,25 +66,36 @@ export function registerExecution(
       position,
     });
 
-    // execute query or mutation 
-    const results = ast.operation === OPERATION_TYPE.query as string ? await firematService.executeQuery({
-      operation_name: ast.name.value,
-      query: print(ast),
-      variables: executionArgs.value,
-    }) : await firematService.executeMutation({
-      operation_name: ast.name.value,
-      mutation: print(ast),
-      variables: executionArgs.value,
-    });
+    let results;
+    try {
+      // execute query or mutation
+      results =
+        ast.operation === (OPERATION_TYPE.query as string)
+          ? await firematService.executeQuery({
+              operation_name: ast.name.value,
+              query: print(ast),
+              variables: executionArgs.value,
+            })
+          : await firematService.executeMutation({
+              operation_name: ast.name.value,
+              mutation: print(ast),
+              variables: executionArgs.value,
+            });
 
-    batch(() => {
-      updateExecution(item.executionId, {
-        ...item,
-        state: !results.code ? ExecutionState.FINISHED : ExecutionState.ERRORED,
-        results,
+      // We always update the execution item, no matter what happens beforehand.
+    } finally {
+      batch(() => {
+        updateExecution(item.executionId, {
+          ...item,
+          state:
+            !results || results.code
+              ? ExecutionState.ERRORED
+              : ExecutionState.FINISHED,
+          results,
+        });
+        selectExecutionId(item.executionId);
       });
-      selectExecutionId(item.executionId);
-    });
+    }
   }
 
   broker.on("definedFirematArgs", setExecutionArgs);
