@@ -72,6 +72,8 @@ import { logger } from "../../logger";
 const DEFAULT_BUILD_SCRIPT = ["next build"];
 const PUBLIC_DIR = "public";
 
+export const supportedRange = "14.0 || 13 || 12";
+
 export const name = "Next.js";
 export const support = SupportLevel.Preview;
 export const type = FrameworkType.MetaFramework;
@@ -89,9 +91,10 @@ function getReactVersion(cwd: string): string | undefined {
  */
 export async function discover(dir: string) {
   if (!(await pathExists(join(dir, "package.json")))) return;
-  if (!(await pathExists("next.config.js")) && !getNextVersion(dir)) return;
+  const version = getNextVersion(dir);
+  if (!(await pathExists("next.config.js")) && !version) return;
 
-  return { mayWantBackend: true, publicDirectory: join(dir, PUBLIC_DIR) };
+  return { mayWantBackend: true, publicDirectory: join(dir, PUBLIC_DIR), version };
 }
 
 /**

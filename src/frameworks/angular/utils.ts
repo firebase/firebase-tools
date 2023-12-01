@@ -3,12 +3,13 @@ import type { ProjectDefinition } from "@angular-devkit/core/src/workspace";
 import type { WorkspaceNodeModulesArchitectHost } from "@angular-devkit/architect/node";
 
 import { AngularI18nConfig } from "./interfaces";
-import { relativeRequire, validateLocales } from "../utils";
+import { findDependency, relativeRequire, validateLocales } from "../utils";
 import { FirebaseError } from "../../error";
 import { join, posix, sep } from "path";
 import { BUILD_TARGET_PURPOSE } from "../interfaces";
 import { AssertionError } from "assert";
 import { assertIsString } from "../../utils";
+import { coerce } from "semver";
 
 async function localesForTarget(
   dir: string,
@@ -520,4 +521,18 @@ export async function getBuildConfig(sourceDir: string, configuration: string) {
     serveOptimizedImages,
     ssr,
   };
+}
+
+/**
+ * Get Angular version in the following format: `major.minor.patch`, ignoring
+ * canary versions as it causes issues with semver comparisons.
+ */
+export function getAngularVersion(cwd: string): string | undefined {
+  const dependency = findDependency("@angular/core", { cwd, depth: 0, omitDev: false });
+  if (!dependency) return undefined;
+
+  const angularVersionSemver = coerce(dependency.version);
+  if (!angularVersionSemver) return dependency.version;
+
+  return angularVersionSemver.toString();
 }

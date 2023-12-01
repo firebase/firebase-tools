@@ -56,11 +56,16 @@ export async function discover(dir: string, plugin?: string, npmDependency?: str
     pathExists(join(dir, "vite.config.ts")),
   ]);
   const anyConfigFileExists = configFilesExist.some((it) => it);
-  if (!anyConfigFileExists && !findDependency("vite", { cwd: dir, depth, omitDev: false })) return;
+  const viteVersion: string = findDependency("vite", { cwd: dir, depth, omitDev: false });
+  if (!anyConfigFileExists && !viteVersion) return;
   if (npmDependency && !additionalDep) return;
   const { appType, publicDir: publicDirectory, plugins } = await getConfig(dir);
   if (plugin && !plugins.find(({ name }) => name === plugin)) return;
-  return { mayWantBackend: appType !== "spa", publicDirectory };
+  return {
+    mayWantBackend: appType !== "spa",
+    publicDirectory,
+    version: plugin ? undefined : viteVersion,
+  };
 }
 
 export async function build(root: string) {

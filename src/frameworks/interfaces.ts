@@ -23,6 +23,7 @@ export const enum SupportLevel {
 export interface Discovery {
   mayWantBackend: boolean;
   publicDirectory: string;
+  version?: string;
 }
 
 export interface BuildResult {
@@ -53,6 +54,7 @@ export type FrameworkContext = {
 };
 
 export interface Framework {
+  supportedRange?: string;
   discover: (dir: string) => Promise<Discovery | undefined>;
   type: FrameworkType;
   name: string;

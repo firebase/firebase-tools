@@ -261,11 +261,16 @@ export async function prepareFrameworks(
       name,
       support,
       docsUrl,
+      supportedRange,
       getValidBuildTargets = GET_DEFAULT_BUILD_TARGETS,
       shouldUseDevModeHandle = DEFAULT_SHOULD_USE_DEV_MODE_HANDLE,
     } = WebFrameworks[framework];
     logger.info(
-      `\n${frameworksCallToAction(SupportLevelWarnings[support](name), docsUrl, "   ")}\n`
+      `\n${frameworksCallToAction(
+        SupportLevelWarnings[support](name, results.version, supportedRange),
+        docsUrl,
+        "   "
+      )}\n`
     );
 
     const hostingEmulatorInfo = emulators.find((e) => e.name === Emulators.HOSTING);
