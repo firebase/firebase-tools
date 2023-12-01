@@ -216,10 +216,11 @@ export async function build(dir: string): Promise<BuildResult> {
         dynamicRoutes
       );
 
-      if (unrenderedServerComponents.has("/_not-found")) {
-        if (await hasStaticAppNotFoundComponent(dir, distDir)) {
-          unrenderedServerComponents.delete("/_not-found");
-        }
+      if (
+        unrenderedServerComponents.has("/_not-found") &&
+        (await hasStaticAppNotFoundComponent(dir, distDir))
+      ) {
+        unrenderedServerComponents.delete("/_not-found");
       }
 
       for (const key of unrenderedServerComponents) {
