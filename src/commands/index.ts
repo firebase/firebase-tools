@@ -137,6 +137,10 @@ export function load(client: any): any {
   client.hosting.channel.list = loadCommand("hosting-channel-list");
   client.hosting.channel.open = loadCommand("hosting-channel-open");
   client.hosting.clone = loadCommand("hosting-clone");
+  if (experiments.isEnabled("customdomains")) {
+    client.hosting.domains = {};
+    client.hosting.domains.list = loadCommand("hosting-domains-list");
+  }
   client.hosting.disable = loadCommand("hosting-disable");
   client.hosting.sites = {};
   client.hosting.sites.create = loadCommand("hosting-sites-create");

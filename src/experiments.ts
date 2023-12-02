@@ -86,6 +86,13 @@ export const ALL_EXPERIMENTS = experiments({
     public: true,
     default: true,
   },
+  customdomains: {
+    shortDescription: "Adds commands for handling Hosting custom domains.",
+    fullDescription: "Adds commands for handling Hosting custom domains.",
+    public: false,
+    default: false,
+  },
+
   // Access experiments
   crossservicerules: {
     shortDescription: "Allow Firebase Rules to reference resources in other services",
