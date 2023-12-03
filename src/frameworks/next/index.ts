@@ -312,9 +312,9 @@ export async function init(setup: any, config: any) {
     choices: ["JavaScript", "TypeScript"],
   });
   execSync(
-    `npx --yes create-next-app@latest -e hello-world ${setup.hosting.source} --use-npm ${
-      language === "TypeScript" ? "--ts" : "--js"
-    }`,
+    `npx --yes create-next-app@"${supportedRange}" -e hello-world ${
+      setup.hosting.source
+    } --use-npm ${language === "TypeScript" ? "--ts" : "--js"}`,
     { stdio: "inherit", cwd: config.projectDir }
   );
 }

@@ -33,10 +33,13 @@ export async function init(setup: any, config: any, baseTemplate: string = "vani
       { name: "TypeScript", value: `${baseTemplate}-ts` },
     ],
   });
-  execSync(`npm create vite@latest ${setup.hosting.source} --yes -- --template ${template}`, {
-    stdio: "inherit",
-    cwd: config.projectDir,
-  });
+  execSync(
+    `npm create vite@"${supportedRange}" ${setup.hosting.source} --yes -- --template ${template}`,
+    {
+      stdio: "inherit",
+      cwd: config.projectDir,
+    }
+  );
   execSync(`npm install`, { stdio: "inherit", cwd: join(config.projectDir, setup.hosting.source) });
 }
 
@@ -57,7 +60,11 @@ export async function discover(dir: string, plugin?: string, npmDependency?: str
     pathExists(join(dir, "vite.config.ts")),
   ]);
   const anyConfigFileExists = configFilesExist.some((it) => it);
-  const version: string | undefined  = findDependency("vite", { cwd: dir, depth, omitDev: false })?.version;
+  const version: string | undefined = findDependency("vite", {
+    cwd: dir,
+    depth,
+    omitDev: false,
+  })?.version;
   if (!anyConfigFileExists && !version) return;
   if (npmDependency && !additionalDep) return;
   const { appType, publicDir: publicDirectory, plugins } = await getConfig(dir);
