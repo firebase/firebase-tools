@@ -16,6 +16,7 @@ import {
 export const name = "Vite";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Toolchain;
+export const supportedRange = "3 - 5";
 
 export const DEFAULT_BUILD_SCRIPT = ["vite build", "tsc && vite build"];
 
@@ -56,15 +57,16 @@ export async function discover(dir: string, plugin?: string, npmDependency?: str
     pathExists(join(dir, "vite.config.ts")),
   ]);
   const anyConfigFileExists = configFilesExist.some((it) => it);
-  const viteVersion: string = findDependency("vite", { cwd: dir, depth, omitDev: false });
-  if (!anyConfigFileExists && !viteVersion) return;
+  const version: string | undefined  = findDependency("vite", { cwd: dir, depth, omitDev: false })?.version;
+  if (!anyConfigFileExists && !version) return;
   if (npmDependency && !additionalDep) return;
   const { appType, publicDir: publicDirectory, plugins } = await getConfig(dir);
   if (plugin && !plugins.find(({ name }) => name === plugin)) return;
   return {
     mayWantBackend: appType !== "spa",
     publicDirectory,
-    version: plugin ? undefined : viteVersion,
+    version,
+    vite: true,
   };
 }
 

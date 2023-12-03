@@ -24,6 +24,7 @@ export interface Discovery {
   mayWantBackend: boolean;
   publicDirectory: string;
   version?: string;
+  vite?: boolean;
 }
 
 export interface BuildResult {

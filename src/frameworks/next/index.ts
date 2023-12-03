@@ -72,7 +72,7 @@ import { logger } from "../../logger";
 const DEFAULT_BUILD_SCRIPT = ["next build"];
 const PUBLIC_DIR = "public";
 
-export const supportedRange = "14.0 || 13 || 12";
+export const supportedRange = "12 - 14.0";
 
 export const name = "Next.js";
 export const support = SupportLevel.Preview;

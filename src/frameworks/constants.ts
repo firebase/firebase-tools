@@ -1,51 +1,20 @@
 import { SupportLevel } from "./interfaces";
-import { satisfies as semverSatisfied } from "semver";
 import * as clc from "colorette";
 
 export const NPM_COMMAND_TIMEOUT_MILLIES = 10_000;
 
 export const SupportLevelWarnings = {
-  [SupportLevel.Experimental]: (
-    framework: string,
-    version: string | undefined,
-    supportedRange: string | undefined
-  ) => `Thank you for trying our ${clc.italic(
+  [SupportLevel.Experimental]: (framework: string) => `Thank you for trying our ${clc.italic(
     "experimental"
   )} support for ${framework} on Firebase Hosting.
    ${clc.red(`While this integration is maintained by Googlers it is not a supported Firebase product.
-   Issues filed on GitHub will be addressed on a best-effort basis by maintainers and other community members.`)}${
-    supportedRange && (!version || !semverSatisfied(version, supportedRange))
-      ? clc.yellow(`
-   The integration is known to work against ${framework} versions ${clc.italic(
-          supportedRange
-            .split("||")
-            .map((it) => it.trim())
-            .join(", ")
-        )}. You may encounter errors.
-   `)
-      : ``
-  }`,
-  [SupportLevel.Preview]: (
-    framework: string,
-    version: string | undefined,
-    supportedRange: string | undefined
-  ) => `Thank you for trying our ${clc.italic(
+   Issues filed on GitHub will be addressed on a best-effort basis by maintainers and other community members.`)}`,
+  [SupportLevel.Preview]: (framework: string) => `Thank you for trying our ${clc.italic(
     "early preview"
   )} of ${framework} support on Firebase Hosting.
    ${clc.red(
      "During the preview, support is best-effort and breaking changes can be expected. Proceed with caution."
-   )}${
-    supportedRange && (!version || !semverSatisfied(version, supportedRange))
-      ? clc.yellow(`
-   The integration is known to work against ${framework} versions ${clc.italic(
-          supportedRange
-            .split("||")
-            .map((it) => it.trim())
-            .join(", ")
-        )}. You may encounter errors.
-   `)
-      : ``
-  }`,
+   )}`,
 };
 
 export const DEFAULT_DOCS_URL =

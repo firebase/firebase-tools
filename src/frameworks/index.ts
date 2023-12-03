@@ -265,11 +265,16 @@ export async function prepareFrameworks(
       getValidBuildTargets = GET_DEFAULT_BUILD_TARGETS,
       shouldUseDevModeHandle = DEFAULT_SHOULD_USE_DEV_MODE_HANDLE,
     } = WebFrameworks[framework];
+
     logger.info(
       `\n${frameworksCallToAction(
-        SupportLevelWarnings[support](name, results.version, supportedRange),
+        SupportLevelWarnings[support](name),
         docsUrl,
-        "   "
+        "   ",
+        name,
+        results.version,
+        supportedRange,
+        results.vite
       )}\n`
     );
 
