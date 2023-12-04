@@ -69,13 +69,13 @@ export interface WebviewToExtensionParamsMap {
   };
 
   /** Stops the emulators gracefully allowing for data export if required. */
-  stopEmulators: {};
+  stopEmulators: void;
 
   selectEmulatorImportFolder: {};
 
   definedFirematArgs: string;
 
-  notifyFirematEmulatorEndpoint: { endpoint: string };
+  notifyFirematEmulatorEndpoint: { endpoint: string | undefined };
 
   /** Prompts the user to select a directory in which to place the quickstart */
   chooseQuickstartDir: {};

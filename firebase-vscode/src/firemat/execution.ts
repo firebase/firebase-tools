@@ -43,9 +43,9 @@ export function registerExecution(
     const item = selectedExecution.value;
     if (item) {
       broker.send("notifyFirematResults", {
-        args: item.args,
+        args: item.args ?? {},
         query: print(item.operation),
-        results: item.results,
+        results: item.results ?? {},
         displayName: item.operation.operation + ": " + item.label,
       });
     }

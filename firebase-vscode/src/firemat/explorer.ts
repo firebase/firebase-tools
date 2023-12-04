@@ -7,7 +7,7 @@ import { FirematService } from "./service";
 
 
 // explorer store
-export const introspectionQuery = signal<IntrospectionQuery>(null);
+export const introspectionQuery = signal<IntrospectionQuery | undefined>(undefined);
 
 export function registerExplorer(
     context: ExtensionContext,
@@ -21,7 +21,7 @@ export function registerExplorer(
 
     async function executeIntrospection() {
         const results = await firematService.introspect();
-        introspectionQuery.value = results.data as IntrospectionQuery;
+        introspectionQuery.value = results.data;
     }
 
     return Disposable.from(

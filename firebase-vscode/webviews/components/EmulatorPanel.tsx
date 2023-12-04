@@ -71,6 +71,11 @@ export function EmulatorPanel({
     setShowEmulatorProgressIndicator(false);
     webLogger.debug(`notifyEmulatorsStopped received in sidebar`);
     setRunningEmulatorInfo(null);
+
+    // When the emulator stops, clear the firemat endpoint.
+    // This ensures that the following query executions will fail with a
+    // "No emulator running" instead of "Failed to connect to <endpoint>".
+    broker.send("notifyFirematEmulatorEndpoint", { endpoint: undefined });
   });
 
   broker.on("notifyEmulatorStartFailed", () => {
