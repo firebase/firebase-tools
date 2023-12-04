@@ -2,3 +2,4 @@
 - Fixed an issue where `--non-interactive` flag is not respected in Firestore indexes deploys. (#6539)
 - Fixed an issue where `login:use` would not work outside of a Firebase project directory. (#6526)
 - Prevent app router static `not-found` requiring a Cloud Function in Next.js deployments. (#6558)
+- Use only site id from site name in list versions API. (#6565)
