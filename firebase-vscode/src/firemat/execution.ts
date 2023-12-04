@@ -43,7 +43,7 @@ export function registerExecution(
     const item = selectedExecution.value;
     if (item) {
       broker.send("notifyFirematResults", {
-        args: item.args ?? {},
+        args: item.args ?? "{}",
         query: print(item.operation),
         results: item.results ?? {},
         displayName: item.operation.operation + ": " + item.label,
@@ -53,10 +53,14 @@ export function registerExecution(
 
   async function executeOperation(
     ast: OperationDefinitionNode,
-    { documentPath, position }
+    {
+      document,
+      documentPath,
+      position,
+    }: { documentPath: string; position: vscode.Position; document: string }
   ) {
     const item = createExecution({
-      label: ast.name.value,
+      label: ast.name?.value ?? "anonymous",
       timestamp: Date.now(),
       state: ExecutionState.RUNNING,
       operation: ast,
@@ -67,19 +71,16 @@ export function registerExecution(
 
     let results;
     try {
-      // execute query or mutation
-      results =
-        ast.operation === (OPERATION_TYPE.query as string)
-          ? await firematService.executeQuery({
-              operation_name: ast.name.value,
-              query: print(ast),
-              variables: executionArgsJSON.value,
-            })
-          : await firematService.executeMutation({
-              operation_name: ast.name.value,
-              mutation: print(ast),
-              variables: executionArgsJSON.value,
-            });
+      // Execute queries/mutations from their source code.
+      // That ensures that we can execute queries in unsaved files.
+      const results = await firematService.executeGraphQL({
+        operationName: ast.name?.value,
+        // We send the whole unparsed document to guarantee
+        // that there are no formatting differences between the real document
+        // and the document that is sent to the emulator.
+        query: document,
+        variables: executionArgsJSON.value,
+      });
 
       // We always update the execution item, no matter what happens beforehand.
     } finally {

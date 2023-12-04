@@ -50,9 +50,9 @@ export class FirematService {
   }
 
   /** Encode a body while handling the fact that "variables" is raw JSON.
-    *
-    * If the JSON is invalid, will throw.
-    */
+   *
+   * If the JSON is invalid, will throw.
+   */
   private _serializeBody(body: { variables?: string; [key: string]: unknown }) {
     if (!body.variables) {
       return JSON.stringify(body);
@@ -65,60 +65,6 @@ export class FirematService {
       ...rest,
       variables: JSON.parse(variables),
     });
-  }
-
-  async executeMutation(params: {
-    operation_name: String;
-    mutation: String;
-    variables: string;
-  }) {
-    // TODO: get operationSet name from firemat.yaml
-    const body = this._serializeBody({
-      ...params,
-      name: "projects/p/locations/l/services/local/operationSets/crud/revisions/r",
-    });
-    const resp = await fetch(
-      (await this.getFirematEndpoint()) +
-        "/v0/projects/p/locations/l/services/local/operationSets/crud/revisions/r:executeMutation",
-      {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          "x-mantle-admin": "all",
-        },
-        body,
-      }
-    );
-    const result = await resp.json().catch(() => resp.text());
-    return result;
-  }
-
-  async executeQuery(params: {
-    operation_name: String;
-    query: String;
-    variables: string;
-  }) {
-    // TODO: get operationSet name from firemat.yaml
-    const body = this._serializeBody({
-      ...params,
-      name: "projects/p/locations/l/services/local/operationSets/crud/revisions/r",
-    });
-    const resp = await fetch(
-      (await this.getFirematEndpoint()) +
-        "/v0/projects/p/locations/l/services/local/operationSets/crud/revisions/r:executeQuery",
-      {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          "x-mantle-admin": "all",
-        },
-        body,
-      }
-    );
-    const result = await resp.json().catch(() => resp.text());
-    return result;
   }
 
   // This introspection is used to generate a basic graphql schema
@@ -149,8 +95,8 @@ export class FirematService {
   }
 
   async executeGraphQLRead(params: {
-    query: String;
-    operationName: String;
+    query: string;
+    operationName: string;
     variables: string;
   }) {
     try {
@@ -179,5 +125,32 @@ export class FirematService {
       console.log(e);
       return null;
     }
+  }
+
+  async executeGraphQL(params: {
+    query: string;
+    operationName?: string;
+    variables: string;
+  }) {
+    // TODO: get name programmatically
+    const body = this._serializeBody({
+      ...params,
+      name: "projects/p/locations/l/services/local",
+    });
+    const resp = await fetch(
+      (await this.getFirematEndpoint()) +
+        "/v0/projects/p/locations/l/services/local:executeGraphql",
+      {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "x-mantle-admin": "all",
+        },
+        body: body,
+      }
+    );
+    const result = await resp.json().catch(() => resp.text());
+    return result;
   }
 }
