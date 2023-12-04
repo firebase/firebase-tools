@@ -8,6 +8,8 @@ import { User } from "../../../src/types/auth";
 import { ServiceAccountUser } from "../types";
 import { RCData } from "../../../src/rc";
 import { EmulatorUiSelections, RunningEmulatorInfo } from "./types";
+import { ExecutionResult } from "graphql";
+import { FirematError } from "../error";
 
 export interface WebviewToExtensionParamsMap {
   /**
@@ -81,6 +83,13 @@ export interface WebviewToExtensionParamsMap {
   chooseQuickstartDir: {};
 }
 
+export interface FirematResults {
+  query: string;
+  displayName: string;
+  results?: ExecutionResult<unknown> | FirematError;
+  args?: unknown;
+}
+
 export interface ExtensionToWebviewParamsMap {
   /** Triggered when new environment variables values are found. */
   notifyEnv: { env: { isMonospace: boolean } };
@@ -136,7 +145,7 @@ export interface ExtensionToWebviewParamsMap {
   notifyEmulatorImportFolder: { folder: string };
 
   // firemat specific
-  notifyFirematResults: { args: {}; query: string; results: {}; displayName: string };
+  notifyFirematResults: FirematResults;
   notifyFirematRequiredArgs: { args: string[] };
 }
 

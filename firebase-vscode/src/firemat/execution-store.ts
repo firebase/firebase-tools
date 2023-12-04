@@ -1,6 +1,7 @@
 import { signal, computed } from "@preact/signals-core";
-import { OperationDefinitionNode } from "graphql";
+import { ExecutionResult, OperationDefinitionNode } from "graphql";
 import * as vscode from "vscode";
+import { FirematError } from "../../common/error";
 
 export enum ExecutionState {
   INIT,
@@ -16,8 +17,8 @@ export interface ExecutionItem {
   timestamp: number;
   state: ExecutionState;
   operation: OperationDefinitionNode;
-  args?: {};
-  results?: {};
+  args?: unknown;
+  results?: ExecutionResult<unknown> | FirematError;
   documentPath: string;
   position: vscode.Position;
 }
@@ -39,7 +40,7 @@ export const executionArgs = signal({});
 
 export const setExecutionArgs = ({ args }) => {
   executionArgs.value = args;
-}
+};
 
 export function createExecution(
   executionItem: Omit<ExecutionItem, "executionId">
@@ -72,10 +73,9 @@ export async function selectExecutionId(executionId: string) {
 
   // take user to operation location in editor
   const { documentPath, position } = selectedExecution.value;
-  await vscode.window.showTextDocument(
-    vscode.Uri.file(documentPath),
-    { selection: new vscode.Range(position, position) }
-  );
+  await vscode.window.showTextDocument(vscode.Uri.file(documentPath), {
+    selection: new vscode.Range(position, position),
+  });
 }
 
 export const selectedExecution = computed(

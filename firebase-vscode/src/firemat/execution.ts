@@ -3,6 +3,7 @@ import { ExtensionBrokerImpl } from "../extension-broker";
 import { registerWebview } from "../webview";
 import { ExecutionHistoryTreeDataProvider } from "./execution-history-provider";
 import {
+  ExecutionItem,
   ExecutionState,
   createExecution,
   executionArgs,
@@ -16,6 +17,7 @@ import { batch, effect } from "@preact/signals-core";
 import { OperationDefinitionNode, print } from "graphql";
 import { FirematService } from "./service";
 import { OPERATION_TYPE } from "./types";
+import { FirematError } from "../../common/error";
 
 export function registerExecution(
   context: ExtensionContext,
@@ -66,10 +68,16 @@ export function registerExecution(
       position,
     });
 
-    let results;
+    function updateAndSelect(updates: Partial<ExecutionItem>) {
+      batch(() => {
+        updateExecution(item.executionId, { ...item, ...updates });
+        selectExecutionId(item.executionId);
+      });
+    }
+
     try {
       // execute query or mutation
-      results =
+      const results =
         ast.operation === (OPERATION_TYPE.query as string)
           ? await firematService.executeQuery({
               operation_name: ast.name.value,
@@ -82,18 +90,26 @@ export function registerExecution(
               variables: executionArgs.value,
             });
 
-      // We always update the execution item, no matter what happens beforehand.
-    } finally {
-      batch(() => {
-        updateExecution(item.executionId, {
-          ...item,
-          state:
-            !results || results.code
-              ? ExecutionState.ERRORED
-              : ExecutionState.FINISHED,
-          results,
-        });
-        selectExecutionId(item.executionId);
+        console.log('results', results)
+
+      updateAndSelect({
+        state:
+          // Executing queries may return a response which contains errors
+          // without throwing.
+          // In that case, we mark the execution as errored.
+          (results.errors?.length ?? 0) > 0
+            ? ExecutionState.ERRORED
+            : ExecutionState.FINISHED,
+        results,
+      });
+    } catch (error) {
+      console.log('on error', error)
+      updateAndSelect({
+        state: ExecutionState.ERRORED,
+        results:
+          error instanceof FirematError
+            ? error
+            : new FirematError("Unknown error", undefined, error),
       });
     }
   }
