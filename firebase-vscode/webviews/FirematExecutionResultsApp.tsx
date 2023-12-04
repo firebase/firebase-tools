@@ -19,8 +19,8 @@ export function FirematExecutionResultsApp() {
   let response: unknown;
   let errorsDisplay: JSX.Element | undefined;
 
-  console.log('received', results)
-  throw new Error('stop')
+  console.log("received", results);
+  throw new Error("stop");
 
   if (results?.results instanceof FirematError) {
     // We don't display a "response" here, because this is an
@@ -57,12 +57,7 @@ export function FirematExecutionResultsApp() {
   return (
     <>
       <h3>{results.displayName}</h3>
-      <VSCodeTextArea
-        value={JSON.stringify(results.args, null, 2)}
-        readOnly={true}
-        cols={80}
-        rows={5}
-      >
+      <VSCodeTextArea value={results.args} readOnly={true} cols={80} rows={5}>
         Arguments
       </VSCodeTextArea>
       {errorsDisplay}

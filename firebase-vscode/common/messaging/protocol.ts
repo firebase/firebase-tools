@@ -71,13 +71,13 @@ export interface WebviewToExtensionParamsMap {
   };
 
   /** Stops the emulators gracefully allowing for data export if required. */
-  stopEmulators: {};
+  stopEmulators: void;
 
   selectEmulatorImportFolder: {};
 
-  definedFirematArgs: { args: {} };
+  definedFirematArgs: string;
 
-  notifyFirematEmulatorEndpoint: { endpoint: string };
+  notifyFirematEmulatorEndpoint: { endpoint: string | undefined };
 
   /** Prompts the user to select a directory in which to place the quickstart */
   chooseQuickstartDir: {};
@@ -87,7 +87,7 @@ export interface FirematResults {
   query: string;
   displayName: string;
   results?: ExecutionResult<unknown> | FirematError;
-  args?: unknown;
+  args?: string;
 }
 
 export interface ExtensionToWebviewParamsMap {

@@ -17,7 +17,7 @@ export interface ExecutionItem {
   timestamp: number;
   state: ExecutionState;
   operation: OperationDefinitionNode;
-  args?: unknown;
+  args?: string;
   results?: ExecutionResult<unknown> | FirematError;
   documentPath: string;
   position: vscode.Position;
@@ -36,11 +36,11 @@ export const executions = signal<
 
 export const selectedExecutionId = signal("");
 
-export const executionArgs = signal({});
-
-export const setExecutionArgs = ({ args }) => {
-  executionArgs.value = args;
-};
+/** The unparsed JSON object mutation/query variables.
+ *
+ * The JSON may be invalid.
+ */
+export const executionArgsJSON = signal("{}");
 
 export function createExecution(
   executionItem: Omit<ExecutionItem, "executionId">

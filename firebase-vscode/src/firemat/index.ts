@@ -8,7 +8,7 @@ import { FirematService } from "./service";
 import { CodeLensProvider } from "./code-lens-provider";
 // import { setupLanguageClient } from "./language-client";
 
-const firematEndpoint = signal<string>("");
+const firematEndpoint = signal<string | undefined>(undefined);
 
 export function registerFiremat(
   context: ExtensionContext,

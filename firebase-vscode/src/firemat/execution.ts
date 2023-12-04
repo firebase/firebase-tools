@@ -6,11 +6,10 @@ import {
   ExecutionItem,
   ExecutionState,
   createExecution,
-  executionArgs,
+  executionArgsJSON,
   selectExecutionId,
   selectedExecution,
   selectedExecutionId,
-  setExecutionArgs,
   updateExecution,
 } from "./execution-store";
 import { batch, effect } from "@preact/signals-core";
@@ -46,9 +45,9 @@ export function registerExecution(
     const item = selectedExecution.value;
     if (item) {
       broker.send("notifyFirematResults", {
-        args: item.args,
+        args: item.args ?? "{}",
         query: print(item.operation),
-        results: item.results,
+        results: item.results ?? {},
         displayName: item.operation.operation + ": " + item.label,
       });
     }
@@ -56,14 +55,18 @@ export function registerExecution(
 
   async function executeOperation(
     ast: OperationDefinitionNode,
-    { documentPath, position }
+    {
+      document,
+      documentPath,
+      position,
+    }: { documentPath: string; position: vscode.Position; document: string }
   ) {
     const item = createExecution({
-      label: ast.name.value,
+      label: ast.name?.value ?? "anonymous",
       timestamp: Date.now(),
       state: ExecutionState.RUNNING,
       operation: ast,
-      args: executionArgs.value,
+      args: executionArgsJSON.value,
       documentPath,
       position,
     });
@@ -76,19 +79,16 @@ export function registerExecution(
     }
 
     try {
-      // execute query or mutation
-      const results =
-        ast.operation === (OPERATION_TYPE.query as string)
-          ? await firematService.executeQuery({
-              operation_name: ast.name.value,
-              query: print(ast),
-              variables: executionArgs.value,
-            })
-          : await firematService.executeMutation({
-              operation_name: ast.name.value,
-              mutation: print(ast),
-              variables: executionArgs.value,
-            });
+      // Execute queries/mutations from their source code.
+      // That ensures that we can execute queries in unsaved files.
+      const results = await firematService.executeGraphQL({
+        operationName: ast.name?.value,
+        // We send the whole unparsed document to guarantee
+        // that there are no formatting differences between the real document
+        // and the document that is sent to the emulator.
+        query: document,
+        variables: executionArgsJSON.value,
+      });
 
         console.log('results', results)
 
@@ -114,7 +114,7 @@ export function registerExecution(
     }
   }
 
-  broker.on("definedFirematArgs", setExecutionArgs);
+  broker.on("definedFirematArgs", (value) => (executionArgsJSON.value = value));
 
   return Disposable.from(
     registerWebview({
