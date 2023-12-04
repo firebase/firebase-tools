@@ -5,11 +5,10 @@ import { ExecutionHistoryTreeDataProvider } from "./execution-history-provider";
 import {
   ExecutionState,
   createExecution,
-  executionArgs,
+  executionArgsJSON,
   selectExecutionId,
   selectedExecution,
   selectedExecutionId,
-  setExecutionArgs,
   updateExecution,
 } from "./execution-store";
 import { batch, effect } from "@preact/signals-core";
@@ -61,7 +60,7 @@ export function registerExecution(
       timestamp: Date.now(),
       state: ExecutionState.RUNNING,
       operation: ast,
-      args: executionArgs.value,
+      args: executionArgsJSON.value,
       documentPath,
       position,
     });
@@ -74,12 +73,12 @@ export function registerExecution(
           ? await firematService.executeQuery({
               operation_name: ast.name.value,
               query: print(ast),
-              variables: executionArgs.value,
+              variables: executionArgsJSON.value,
             })
           : await firematService.executeMutation({
               operation_name: ast.name.value,
               mutation: print(ast),
-              variables: executionArgs.value,
+              variables: executionArgsJSON.value,
             });
 
       // We always update the execution item, no matter what happens beforehand.
@@ -98,7 +97,7 @@ export function registerExecution(
     }
   }
 
-  broker.on("definedFirematArgs", setExecutionArgs);
+  broker.on("definedFirematArgs", (value) => (executionArgsJSON.value = value));
 
   return Disposable.from(
     registerWebview({

@@ -1,30 +1,55 @@
-import vscode from 'vscode';
+import vscode from "vscode";
 import fetch from "node-fetch";
 import { getIntrospectionQuery } from "graphql";
 import { Signal } from "@preact/signals-core";
+import { r } from "tar";
 /**
  * Firemat Emulator service
  */
 export class FirematService {
-  constructor(private firematEndpoint: Signal<string>) {
+  constructor(private firematEndpoint: Signal<string>) {}
+
+  /** Encode a body while handling the fact that "variables" is raw JSON.
+    *
+    * If the JSON is invalid, will throw.
+    */
+  private _serializeBody(body: { variables?: string; [key: string]: unknown }) {
+    if (!body.variables) {
+      return JSON.stringify(body);
+    }
+
+    // TODO: make this more efficient than a plain JSON decode+encode.
+    const { variables, ...rest } = body;
+
+    return JSON.stringify({
+      ...rest,
+      variables: JSON.parse(variables),
+    });
   }
 
   async executeMutation(params: {
     operation_name: String;
     mutation: String;
-    variables: {};
+    variables: string;
   }) {
     // TODO: get operationSet name from firemat.yaml
-    const body = { ...params, name: "projects/p/locations/l/services/local/operationSets/crud/revisions/r" };
-    const resp = await fetch(this.firematEndpoint.value + "/v0/projects/p/locations/l/services/local/operationSets/crud/revisions/r:executeMutation", {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        "x-mantle-admin": "all",
-      },
-      body: JSON.stringify(body),
+    const body = this._serializeBody({
+      ...params,
+      name: "projects/p/locations/l/services/local/operationSets/crud/revisions/r",
     });
+    const resp = await fetch(
+      this.firematEndpoint.value +
+        "/v0/projects/p/locations/l/services/local/operationSets/crud/revisions/r:executeMutation",
+      {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "x-mantle-admin": "all",
+        },
+        body,
+      }
+    );
     const result = await resp.json().catch(() => resp.text());
     return result;
   }
@@ -32,19 +57,26 @@ export class FirematService {
   async executeQuery(params: {
     operation_name: String;
     query: String;
-    variables: {};
+    variables: string;
   }) {
     // TODO: get operationSet name from firemat.yaml
-    const body = { ...params, name: "projects/p/locations/l/services/local/operationSets/crud/revisions/r" };
-    const resp = await fetch(this.firematEndpoint.value + "/v0/projects/p/locations/l/services/local/operationSets/crud/revisions/r:executeQuery", {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        "x-mantle-admin": "all",
-      },
-      body: JSON.stringify(body),
+    const body = this._serializeBody({
+      ...params,
+      name: "projects/p/locations/l/services/local/operationSets/crud/revisions/r",
     });
+    const resp = await fetch(
+      this.firematEndpoint.value +
+        "/v0/projects/p/locations/l/services/local/operationSets/crud/revisions/r:executeQuery",
+      {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "x-mantle-admin": "all",
+        },
+        body,
+      }
+    );
     const result = await resp.json().catch(() => resp.text());
     return result;
   }
@@ -53,7 +85,11 @@ export class FirematService {
   // It will not include our predefined operations, which requires a Firemat specific introspection query
   async introspect() {
     try {
-      const introspectionResults = await this.executeGraphQLRead({ query: getIntrospectionQuery(), operationName: "IntrospectionQuery", variables: {} });
+      const introspectionResults = await this.executeGraphQLRead({
+        query: getIntrospectionQuery(),
+        operationName: "IntrospectionQuery",
+        variables: "{}",
+      });
       console.log("introspection: ", introspectionResults);
       // TODO: handle errors
       if (introspectionResults.errors.length > 0) {
@@ -75,25 +111,31 @@ export class FirematService {
   async executeGraphQLRead(params: {
     query: String;
     operationName: String;
-    variables: {};
+    variables: string;
   }) {
     try {
       // TODO: get name programatically
-      const body = { ...params, name: "projects/p/locations/l/services/local" };
-      const resp = await fetch(this.firematEndpoint.value + "/v0/projects/p/locations/l/services/local:executeGraphqlRead", {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          "x-mantle-admin": "all",
-        },
-        body: JSON.stringify(body),
+      const body = this._serializeBody({
+        ...params,
+        name: "projects/p/locations/l/services/local",
       });
+      const resp = await fetch(
+        this.firematEndpoint.value +
+          "/v0/projects/p/locations/l/services/local:executeGraphqlRead",
+        {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            "x-mantle-admin": "all",
+          },
+          body,
+        }
+      );
       const result = await resp.json().catch(() => resp.text());
       return result;
-    }
-    // TODO: actual error handling
-    catch (e) {
+    } catch (e) {
+      // TODO: actual error handling
       console.log(e);
       return null;
     }

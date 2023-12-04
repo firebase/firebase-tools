@@ -3,7 +3,7 @@ import { broker } from "./globals/html-broker";
 import { VSCodeTextArea } from "@vscode/webview-ui-toolkit/react";
 
 interface FirematResults {
-  args: {};
+  args: string;
   query: string;
   results: {};
   displayName: string;
@@ -20,7 +20,7 @@ export function FirematExecutionResultsApp() {
     <>
       <h3>{results.displayName}</h3>
       <VSCodeTextArea
-        value={JSON.stringify(results.args, null, 2)}
+        value={results.args}
         readOnly={true}
         cols={80}
         rows={5}

@@ -73,7 +73,7 @@ export interface WebviewToExtensionParamsMap {
 
   selectEmulatorImportFolder: {};
 
-  definedFirematArgs: { args: {} };
+  definedFirematArgs: string;
 
   notifyFirematEmulatorEndpoint: { endpoint: string };
 
@@ -136,7 +136,7 @@ export interface ExtensionToWebviewParamsMap {
   notifyEmulatorImportFolder: { folder: string };
 
   // firemat specific
-  notifyFirematResults: { args: {}; query: string; results: {}; displayName: string };
+  notifyFirematResults: { args: string; query: string; results: {}; displayName: string };
   notifyFirematRequiredArgs: { args: string[] };
 }
 

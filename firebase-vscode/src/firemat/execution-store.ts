@@ -16,7 +16,7 @@ export interface ExecutionItem {
   timestamp: number;
   state: ExecutionState;
   operation: OperationDefinitionNode;
-  args?: {};
+  args?: string;
   results?: {};
   documentPath: string;
   position: vscode.Position;
@@ -35,11 +35,11 @@ export const executions = signal<
 
 export const selectedExecutionId = signal("");
 
-export const executionArgs = signal({});
-
-export const setExecutionArgs = ({ args }) => {
-  executionArgs.value = args;
-}
+/** The unparsed JSON object mutation/query variables.
+ *
+ * The JSON may be invalid.
+ */
+export const executionArgsJSON = signal("{}");
 
 export function createExecution(
   executionItem: Omit<ExecutionItem, "executionId">
@@ -72,10 +72,9 @@ export async function selectExecutionId(executionId: string) {
 
   // take user to operation location in editor
   const { documentPath, position } = selectedExecution.value;
-  await vscode.window.showTextDocument(
-    vscode.Uri.file(documentPath),
-    { selection: new vscode.Range(position, position) }
-  );
+  await vscode.window.showTextDocument(vscode.Uri.file(documentPath), {
+    selection: new vscode.Range(position, position),
+  });
 }
 
 export const selectedExecution = computed(
