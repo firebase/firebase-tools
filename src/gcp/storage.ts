@@ -1,5 +1,6 @@
 import { Readable } from "stream";
 import * as path from "path";
+import * as clc from "colorette";
 
 import { firebaseStorageOrigin, storageOrigin } from "../api";
 import { Client } from "../apiv2";
@@ -162,9 +163,15 @@ export async function getDefaultBucket(projectId: string): Promise<string> {
     }
     return response.body.bucket.name.split("/").pop()!;
   } catch (err: any) {
-    logger.info(
-      "\n\nThere was an issue deploying your functions. Verify that your project has a Google App Engine instance setup at https://console.cloud.google.com/appengine and try again. If this issue persists, please contact support."
-    );
+    if (err?.status == 404) {
+      throw new FirebaseError(
+        `Firebase Storage has not been set up on project '${clc.bold(
+          projectId
+        )}'. Go to https://console.firebase.google.com/project/${projectId}/storage and click 'Get Started' to set up Firebase Storage.`
+      );
+    } else {
+      logger.info("\n\nUnexpected error when fetching default storage bucket.");
+    }
     throw err;
   }
 }
