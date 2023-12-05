@@ -163,7 +163,7 @@ export async function getDefaultBucket(projectId: string): Promise<string> {
     }
     return response.body.bucket.name.split("/").pop()!;
   } catch (err: any) {
-    if (err?.status == 404) {
+    if (err?.status === 404) {
       throw new FirebaseError(
         `Firebase Storage has not been set up on project '${clc.bold(
           projectId
