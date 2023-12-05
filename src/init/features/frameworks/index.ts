@@ -1,16 +1,16 @@
 import * as clc from "colorette";
 import * as utils from "../../../utils";
+import * as repo from "./repo";
+import * as poller from "../../../operation-poller";
+import * as gcp from "../../../gcp/frameworks";
+import { frameworksOrigin } from "../../../api";
+import { Backend, BackendOutputOnlyFields } from "../../../gcp/frameworks";
+import { Repository } from "../../../gcp/cloudbuild";
+import { API_VERSION } from "../../../gcp/frameworks";
+import { FirebaseError } from "../../../error";
 import { logger } from "../../../logger";
 import { promptOnce } from "../../../prompt";
 import { DEFAULT_REGION, ALLOWED_REGIONS } from "./constants";
-import * as repo from "./repo";
-import { Backend, BackendOutputOnlyFields } from "../../../gcp/frameworks";
-import { Repository } from "../../../gcp/cloudbuild";
-import * as poller from "../../../operation-poller";
-import { frameworksOrigin } from "../../../api";
-import * as gcp from "../../../gcp/frameworks";
-import { API_VERSION } from "../../../gcp/frameworks";
-import { FirebaseError } from "../../../error";
 
 const frameworksPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: frameworksOrigin,
@@ -53,6 +53,7 @@ export async function doSetup(setup: any, projectId: string): Promise<void> {
   utils.logSuccess(`Region set to ${setup.frameworks.region}.`);
 
   const backend: Backend | undefined = await getOrCreateBackend(projectId, setup);
+
   if (backend) {
     logger.info();
     utils.logSuccess(`Successfully created backend:\n ${backend.name}`);

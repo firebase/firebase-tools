@@ -136,6 +136,29 @@ describe("composer", () => {
     });
   });
 
+  describe("parseConnectionName", () => {
+    it("should parse valid connection name", () => {
+      const str = "projects/my-project/locations/us-central1/connections/my-conn";
+
+      const expected = {
+        projectId: "my-project",
+        location: "us-central1",
+        id: "my-conn",
+      };
+
+      expect(repo.parseConnectionName(str)).to.deep.equal(expected);
+    });
+
+    it("should return undefined for invalid", () => {
+      expect(
+        repo.parseConnectionName(
+          "projects/my-project/locations/us-central1/connections/my-conn/repositories/repo"
+        )
+      ).to.be.undefined;
+      expect(repo.parseConnectionName("foobar")).to.be.undefined;
+    });
+  });
+
   describe("listFrameworksConnections", () => {
     const sandbox: sinon.SinonSandbox = sinon.createSandbox();
     let listConnectionsStub: sinon.SinonStub;
