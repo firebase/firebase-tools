@@ -29,6 +29,8 @@ export function FirematExecutionResultsApp() {
   let errorsDisplay: JSX.Element | undefined;
 
   if (isExecutionResult(results)) {
+    // We display the response even if there are errors, just
+    // in case the user wants to see the response anyway.
     response = results;
     const errors = results.errors;
 
@@ -78,6 +80,9 @@ export function FirematExecutionResultsApp() {
   );
 }
 
+/** A view for when executions either fail before the HTTP request is sent,
+ * or when the HTTP response is an error.
+ */
 function InternalErrorView({ error }: { error: SerializedError }) {
   const body = error.body;
   let bodyView: JSX.Element | undefined;
@@ -108,6 +113,7 @@ function InternalErrorView({ error }: { error: SerializedError }) {
   );
 }
 
+/** A view for when an execution returns status 200 but contains errors. */
 function GraphQLErrorView({ error }: { error: GraphQLError }) {
   let pathDisplay: JSX.Element | undefined;
   if (error.path) {
