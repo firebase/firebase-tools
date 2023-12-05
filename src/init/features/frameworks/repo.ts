@@ -7,6 +7,8 @@ import * as utils from "../../../utils";
 import { promptOnce } from "../../../prompt";
 import * as clc from "colorette";
 
+const FRAMEWORKS_CONN_PATTERN = /.+\/frameworks-github-conn-.+$/;
+
 const gcbPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: cloudbuildOrigin,
   apiVersion: "v2",
@@ -187,4 +189,9 @@ export async function getOrCreateRepository(
     }
   }
   return repo;
+}
+
+export async function listFrameworksConnections(projectId: string) {
+  const conns = await gcb.listConnections(projectId, "-");
+  return conns.filter((conn) => FRAMEWORKS_CONN_PATTERN.test(conn.name));
 }

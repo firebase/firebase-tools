@@ -4,46 +4,51 @@ import { expect } from "chai";
 import * as gcb from "../../../gcp/cloudbuild";
 import * as prompt from "../../../prompt";
 import * as poller from "../../../operation-poller";
-import { FirebaseError } from "../../../error";
 import * as repo from "../../../init/features/frameworks/repo";
 import * as utils from "../../../utils";
+import { Connection } from "../../../gcp/cloudbuild";
+import { FirebaseError } from "../../../error";
 
 describe("composer", () => {
-  const sandbox: sinon.SinonSandbox = sinon.createSandbox();
-
-  let promptOnceStub: sinon.SinonStub;
-  let pollOperationStub: sinon.SinonStub;
-  let getConnectionStub: sinon.SinonStub;
-  let getRepositoryStub: sinon.SinonStub;
-  let createConnectionStub: sinon.SinonStub;
-  let createRepositoryStub: sinon.SinonStub;
-  let fetchLinkableRepositoriesStub: sinon.SinonStub;
-
-  beforeEach(() => {
-    promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
-    pollOperationStub = sandbox
-      .stub(poller, "pollOperation")
-      .throws("Unexpected pollOperation call");
-    getConnectionStub = sandbox.stub(gcb, "getConnection").throws("Unexpected getConnection call");
-    getRepositoryStub = sandbox.stub(gcb, "getRepository").throws("Unexpected getRepository call");
-    createConnectionStub = sandbox
-      .stub(gcb, "createConnection")
-      .throws("Unexpected createConnection call");
-    createRepositoryStub = sandbox
-      .stub(gcb, "createRepository")
-      .throws("Unexpected createRepository call");
-    fetchLinkableRepositoriesStub = sandbox
-      .stub(gcb, "fetchLinkableRepositories")
-      .throws("Unexpected fetchLinkableRepositories call");
-
-    sandbox.stub(utils, "openInBrowser").resolves();
-  });
-
-  afterEach(() => {
-    sandbox.verifyAndRestore();
-  });
-
   describe("connect GitHub repo", () => {
+    const sandbox: sinon.SinonSandbox = sinon.createSandbox();
+
+    let promptOnceStub: sinon.SinonStub;
+    let pollOperationStub: sinon.SinonStub;
+    let getConnectionStub: sinon.SinonStub;
+    let getRepositoryStub: sinon.SinonStub;
+    let createConnectionStub: sinon.SinonStub;
+    let createRepositoryStub: sinon.SinonStub;
+    let fetchLinkableRepositoriesStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
+      pollOperationStub = sandbox
+        .stub(poller, "pollOperation")
+        .throws("Unexpected pollOperation call");
+      getConnectionStub = sandbox
+        .stub(gcb, "getConnection")
+        .throws("Unexpected getConnection call");
+      getRepositoryStub = sandbox
+        .stub(gcb, "getRepository")
+        .throws("Unexpected getRepository call");
+      createConnectionStub = sandbox
+        .stub(gcb, "createConnection")
+        .throws("Unexpected createConnection call");
+      createRepositoryStub = sandbox
+        .stub(gcb, "createRepository")
+        .throws("Unexpected createRepository call");
+      fetchLinkableRepositoriesStub = sandbox
+        .stub(gcb, "fetchLinkableRepositories")
+        .throws("Unexpected fetchLinkableRepositories call");
+
+      sandbox.stub(utils, "openInBrowser").resolves();
+    });
+
+    afterEach(() => {
+      sandbox.verifyAndRestore();
+    });
+
     const projectId = "projectId";
     const location = "us-central1";
     const connectionId = `frameworks-${location}`;
@@ -128,6 +133,60 @@ describe("composer", () => {
       fetchLinkableRepositoriesStub.resolves({ repositories: [] });
 
       await expect(repo.linkGitHubRepository(projectId, location)).to.be.rejected;
+    });
+  });
+
+  describe("listFrameworksConnections", () => {
+    const sandbox: sinon.SinonSandbox = sinon.createSandbox();
+    let listConnectionsStub: sinon.SinonStub;
+
+    const projectId = "projectId";
+    const location = "us-central1";
+
+    function mockConn(id: string): Connection {
+      return {
+        name: `projects/${projectId}/locations/${location}/connections/${id}`,
+        disabled: false,
+        createTime: "0",
+        updateTime: "1",
+        installationState: {
+          stage: "COMPLETE",
+          message: "complete",
+          actionUri: "https://google.com",
+        },
+        reconciling: false,
+      };
+    }
+
+    function extractId(name: string): string {
+      const parts = name.split("/");
+      return parts.pop() ?? "";
+    }
+
+    beforeEach(() => {
+      listConnectionsStub = sandbox
+        .stub(gcb, "listConnections")
+        .throws("Unexpected getConnection call");
+    });
+
+    afterEach(() => {
+      sandbox.verifyAndRestore();
+    });
+
+    it("filters out non-frameworks connections", async () => {
+      listConnectionsStub.resolves([
+        mockConn("frameworks-github-conn-baddcafe"),
+        mockConn("hooray-conn"),
+        mockConn("frameworks-github-conn-deadbeef"),
+        mockConn("frameworks-github-oauth"),
+      ]);
+
+      const conns = await repo.listFrameworksConnections(projectId);
+      expect(conns).to.have.length(2);
+      expect(conns.map((c) => extractId(c.name))).to.include.members([
+        "frameworks-github-conn-baddcafe",
+        "frameworks-github-conn-deadbeef",
+      ]);
     });
   });
 });

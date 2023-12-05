@@ -1,6 +1,8 @@
 import { Client } from "../apiv2";
 import { cloudbuildOrigin } from "../api";
 
+const PAGE_SIZE_MAX = 100;
+
 const client = new Client({
   urlPrefix: cloudbuildOrigin,
   auth: true,
@@ -42,7 +44,7 @@ type InstallationStage =
 type ConnectionOutputOnlyFields = "createTime" | "updateTime" | "installationState" | "reconciling";
 
 export interface Connection {
-  name?: string;
+  name: string;
   disabled?: boolean;
   annotations?: {
     [key: string]: string;
@@ -62,7 +64,7 @@ export interface Connection {
 type RepositoryOutputOnlyFields = "createTime" | "updateTime";
 
 export interface Repository {
-  name?: string;
+  name: string;
   remoteUri: string;
   annotations?: {
     [key: string]: string;
@@ -85,7 +87,10 @@ export async function createConnection(
   location: string,
   connectionId: string
 ): Promise<Operation> {
-  const res = await client.post<Omit<Connection, ConnectionOutputOnlyFields>, Operation>(
+  const res = await client.post<
+    Omit<Omit<Connection, "name">, ConnectionOutputOnlyFields>,
+    Operation
+  >(
     `projects/${projectId}/locations/${location}/connections`,
     { githubConfig: {} },
     { queryParams: { connectionId } }
@@ -104,6 +109,32 @@ export async function getConnection(
   const name = `projects/${projectId}/locations/${location}/connections/${connectionId}`;
   const res = await client.get<Connection>(name);
   return res.body;
+}
+
+/**
+ * List metadata for a Cloud Build V2 Connection.
+ */
+export async function listConnections(projectId: string, location: string): Promise<Connection[]> {
+  const conns: Connection[] = [];
+  const getNextPage = async (pageToken = ""): Promise<void> => {
+    const res = await client.get<{
+      connections: Connection[];
+      nextPageToken?: string;
+    }>(`/projects/${projectId}/locations/${location}/connections`, {
+      queryParams: {
+        pageSize: PAGE_SIZE_MAX,
+        pageToken,
+      },
+    });
+    if (Array.isArray(res.body.connections)) {
+      conns.push(...res.body.connections);
+    }
+    if (res.body.nextPageToken) {
+      await getNextPage(res.body.nextPageToken);
+    }
+  };
+  await getNextPage();
+  return conns;
 }
 
 /**
@@ -142,7 +173,7 @@ export async function createRepository(
   repositoryId: string,
   remoteUri: string
 ): Promise<Operation> {
-  const res = await client.post<Omit<Repository, RepositoryOutputOnlyFields>, Operation>(
+  const res = await client.post<Omit<Repository, RepositoryOutputOnlyFields | "name">, Operation>(
     `projects/${projectId}/locations/${location}/connections/${connectionId}/repositories`,
     { remoteUri },
     { queryParams: { repositoryId } }
