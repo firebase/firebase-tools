@@ -3,8 +3,7 @@ import { ExecutionResult, GraphQLError } from "graphql";
 /** Asserts that an unknown object is a {@link ExecutionResult} */
 export function assertExecutionResult(
   response: any,
-  dataValidator?: (data: unknown) => asserts data is number
-): asserts response is ExecutionResult<unknown> {
+): asserts response is ExecutionResult {
   if (!response) {
     throw new Error(`Expected ExecutionResult but got ${response}`);
   }
@@ -30,6 +29,15 @@ export function assertExecutionResult(
     for (const error of errors) {
       assertGraphQLError(error);
     }
+  }
+}
+
+export function isExecutionResult(response: any): response is ExecutionResult {
+  try {
+    assertExecutionResult(response);
+    return true;
+  } catch {
+    return false;
   }
 }
 

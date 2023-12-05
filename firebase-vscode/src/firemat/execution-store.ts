@@ -1,7 +1,6 @@
 import { signal, computed } from "@preact/signals-core";
 import { ExecutionResult, OperationDefinitionNode } from "graphql";
 import * as vscode from "vscode";
-import { FirematError } from "../../common/error";
 
 export enum ExecutionState {
   INIT,
@@ -18,7 +17,7 @@ export interface ExecutionItem {
   state: ExecutionState;
   operation: OperationDefinitionNode;
   args?: string;
-  results?: ExecutionResult<unknown> | FirematError;
+  results?: ExecutionResult | Error;
   documentPath: string;
   position: vscode.Position;
 }

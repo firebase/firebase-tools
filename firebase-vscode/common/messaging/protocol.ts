@@ -9,7 +9,7 @@ import { ServiceAccountUser } from "../types";
 import { RCData } from "../../../src/rc";
 import { EmulatorUiSelections, RunningEmulatorInfo } from "./types";
 import { ExecutionResult } from "graphql";
-import { FirematError } from "../error";
+import { SerializedError } from "../error";
 
 export interface WebviewToExtensionParamsMap {
   /**
@@ -86,7 +86,7 @@ export interface WebviewToExtensionParamsMap {
 export interface FirematResults {
   query: string;
   displayName: string;
-  results?: ExecutionResult<unknown> | FirematError;
+  results?: ExecutionResult | SerializedError;
   args?: string;
 }
 

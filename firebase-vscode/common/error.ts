@@ -9,7 +9,7 @@ export interface FirematErrorMeta {
 }
 
 /** Verified that an unknown object is a {@link FirematErrorMeta} */
-export function isFirematServerError(error: any): error is FirematErrorMeta {
+export function isFirematErrorMeta(error: any): error is FirematErrorMeta {
   if (typeof error !== "object" || error === null) {
     return false;
   }
@@ -44,4 +44,24 @@ export class FirematError extends Error {
    * This can be checked with {@link isFirebaseServerError}.
    */
   readonly body: unknown;
+}
+
+/** Encode an error into a {@link SerializedError} */
+export function toSerializedError(error: Error): SerializedError {
+  return {
+    name: error.name,
+    message: error.message,
+    stack: error.stack,
+    body: error instanceof FirematError ? error.body : undefined,
+    cause: error.cause instanceof Error ? toSerializedError(error.cause) : undefined,
+  };
+}
+
+/** An error object that can be sent across webview boundaries */
+export interface SerializedError {
+  name?: string;
+  message: string;
+  stack?: string;
+  body?: unknown;
+  cause?: SerializedError;
 }

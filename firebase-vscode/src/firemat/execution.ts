@@ -15,8 +15,7 @@ import {
 import { batch, effect } from "@preact/signals-core";
 import { OperationDefinitionNode, print } from "graphql";
 import { FirematService } from "./service";
-import { OPERATION_TYPE } from "./types";
-import { FirematError } from "../../common/error";
+import { FirematError, toSerializedError } from "../../common/error";
 
 export function registerExecution(
   context: ExtensionContext,
@@ -47,7 +46,10 @@ export function registerExecution(
       broker.send("notifyFirematResults", {
         args: item.args ?? "{}",
         query: print(item.operation),
-        results: item.results ?? {},
+        results:
+          item.results instanceof Error
+            ? toSerializedError(item.results)
+            : item.results,
         displayName: item.operation.operation + ": " + item.label,
       });
     }
@@ -90,8 +92,6 @@ export function registerExecution(
         variables: executionArgsJSON.value,
       });
 
-        console.log('results', results)
-
       updateAndSelect({
         state:
           // Executing queries may return a response which contains errors
@@ -103,11 +103,10 @@ export function registerExecution(
         results,
       });
     } catch (error) {
-      console.log('on error', error)
       updateAndSelect({
         state: ExecutionState.ERRORED,
         results:
-          error instanceof FirematError
+          error instanceof Error
             ? error
             : new FirematError("Unknown error", undefined, error),
       });

@@ -34,7 +34,7 @@ constructor(private firematEndpoint: Signal<string | undefined>) {}
 
   private async handleValidResponse(
     response: Response
-  ): Promise<ExecutionResult<unknown>> {
+  ): Promise<ExecutionResult> {
     const json = await this.decodeResponse(response, "application/json");
     assertExecutionResult(json);
 
@@ -56,7 +56,7 @@ constructor(private firematEndpoint: Signal<string | undefined>) {}
 
   private handleResponse(
     response: Response
-  ): Promise<ExecutionResult<unknown>> {
+  ): Promise<ExecutionResult> {
     if (response.status >= 200 && response.status < 300) {
       return this.handleValidResponse(response);
     }

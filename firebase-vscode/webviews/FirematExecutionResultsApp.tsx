@@ -2,32 +2,35 @@ import React, { useEffect, useState } from "react";
 import { broker } from "./globals/html-broker";
 import { VSCodeTextArea } from "@vscode/webview-ui-toolkit/react";
 import { FirematResults } from "../common/messaging/protocol";
-import { FirematError } from "../common/error";
-import { GraphQLError } from "graphql";
+import {
+  FirematError,
+  SerializedError,
+  isFirematErrorMeta,
+} from "../common/error";
+import { ExecutionResult, GraphQLError } from "graphql";
+import { isExecutionResult } from "../common/graphql";
 
 export function FirematExecutionResultsApp() {
-  const [results, setResults] = useState<FirematResults | undefined>(undefined);
+  const [firematResults, setResults] = useState<FirematResults | undefined>(
+    undefined
+  );
+  const results: ExecutionResult | SerializedError | undefined =
+    firematResults?.results;
 
   useEffect(() => {
     broker.on("notifyFirematResults", setResults);
   }, []);
 
-  if (!results) {
+  if (!firematResults || !results) {
     return null;
   }
 
   let response: unknown;
   let errorsDisplay: JSX.Element | undefined;
 
-  console.log("received", results);
-  throw new Error("stop");
-
-  if (results?.results instanceof FirematError) {
-    // We don't display a "response" here, because this is an
-    errorsDisplay = <InternalErrorView error={results.results} />;
-  } else if (results?.results) {
-    response = results.results;
-    const errors = results.results.errors;
+  if (isExecutionResult(results)) {
+    response = results;
+    const errors = results.errors;
 
     if (errors && errors.length !== 0) {
       errorsDisplay = (
@@ -38,13 +41,17 @@ export function FirematExecutionResultsApp() {
         </p>
       );
     }
+  } else {
+    // We don't display a "response" here, because this is an error
+    // that occurred without returning a valid GraphQL response.
+    errorsDisplay = <InternalErrorView error={results} />;
   }
 
   let resultsDisplay: JSX.Element | undefined;
   if (response) {
     resultsDisplay = (
       <VSCodeTextArea
-        value={JSON.stringify(results.results, null, 2)}
+        value={JSON.stringify(results, null, 2)}
         readOnly={true}
         cols={80}
         rows={20}
@@ -56,8 +63,13 @@ export function FirematExecutionResultsApp() {
 
   return (
     <>
-      <h3>{results.displayName}</h3>
-      <VSCodeTextArea value={results.args} readOnly={true} cols={80} rows={5}>
+      <h3>{firematResults.displayName}</h3>
+      <VSCodeTextArea
+        value={firematResults.args}
+        readOnly={true}
+        cols={80}
+        rows={5}
+      >
         Arguments
       </VSCodeTextArea>
       {errorsDisplay}
@@ -66,11 +78,33 @@ export function FirematExecutionResultsApp() {
   );
 }
 
-function InternalErrorView({ error }: { error: Error }) {
+function InternalErrorView({ error }: { error: SerializedError }) {
+  const body = error.body;
+  let bodyView: JSX.Element | undefined;
+  if (isFirematErrorMeta(body)) {
+    bodyView = (
+      <>
+        {body.code}: {body.message}
+        {body.details}
+      </>
+    );
+  }
+
   return (
-    <>
-      {error.name}: {error.message}
-    </>
+    <p>
+      {
+        // Stacktraces usually already include the message, so we only
+        // display the message if there is no stacktrace.
+        error.stack ? <StackView stack={error.stack} /> : error.message
+      }
+      {error.cause && (
+        <>
+          <br />
+          <h4>Cause:</h4>
+          <InternalErrorView error={error.cause} />
+        </>
+      )}
+    </p>
   );
 }
 
@@ -90,16 +124,24 @@ function GraphQLErrorView({ error }: { error: GraphQLError }) {
   }
 
   return (
-    <>
+    <p style={{ whiteSpace: "pre-wrap" }}>
+      <h4>GraphQL Error:</h4>
       {pathDisplay}
-      {error.name && `${error.name}: `}
       {error.message}
-      {error.stack}
-    </>
+      {error.stack && <StackView stack={error.stack} />}
+    </p>
   );
 }
 
-// TODO: error cases to handl
-// - no emulator yet executign -> http fail
-// - invalid json > proto error
-// - graphQL errors
+function StackView({ stack }: { stack: string }) {
+  return (
+    <span
+      style={{
+        // Preserve stacktrace formatting
+        whiteSpace: "pre-wrap",
+      }}
+    >
+      {stack}
+    </span>
+  );
+}
