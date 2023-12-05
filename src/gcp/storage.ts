@@ -169,9 +169,8 @@ export async function getDefaultBucket(projectId: string): Promise<string> {
           projectId
         )}'. Go to https://console.firebase.google.com/project/${projectId}/storage and click 'Get Started' to set up Firebase Storage.`
       );
-    } else {
-      logger.info("\n\nUnexpected error when fetching default storage bucket.");
     }
+    logger.info("\n\nUnexpected error when fetching default storage bucket.");
     throw err;
   }
 }
