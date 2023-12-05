@@ -5,7 +5,7 @@ import type { WorkspaceNodeModulesArchitectHost } from "@angular-devkit/architec
 import { AngularI18nConfig } from "./interfaces";
 import { relativeRequire, validateLocales } from "../utils";
 import { FirebaseError } from "../../error";
-import { join } from "path";
+import { join, posix, sep } from "path";
 import { BUILD_TARGET_PURPOSE } from "../interfaces";
 import { AssertionError } from "assert";
 import { assertIsString } from "../../utils";
@@ -420,7 +420,9 @@ export async function getServerConfig(sourceDir: string, configuration: string) 
   }
   const browserTargetOptions = await architectHost.getOptionsForTarget(buildOrBrowserTarget);
   assertIsString(browserTargetOptions?.outputPath);
-  const browserOutputPath = join(browserTargetOptions.outputPath, buildTarget ? "browser" : "");
+  const browserOutputPath = join(browserTargetOptions.outputPath, buildTarget ? "browser" : "")
+    .split(sep)
+    .join(posix.sep);
   const packageJson = JSON.parse(await host.readFile(join(sourceDir, "package.json")));
 
   if (!ssr) {
@@ -449,7 +451,9 @@ export async function getServerConfig(sourceDir: string, configuration: string) 
   );
   const serverTargetOptions = await architectHost.getOptionsForTarget(buildOrServerTarget);
   assertIsString(serverTargetOptions?.outputPath);
-  const serverOutputPath = join(serverTargetOptions.outputPath, buildTarget ? "server" : "");
+  const serverOutputPath = join(serverTargetOptions.outputPath, buildTarget ? "server" : "")
+    .split(sep)
+    .join(posix.sep);
   if (serverLocales && !defaultLocale) {
     throw new FirebaseError(
       "It's required that your source locale to be one of the localize options"
