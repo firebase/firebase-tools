@@ -108,7 +108,7 @@ export function registerExecution(
         results:
           error instanceof Error
             ? error
-            : new FirematError("Unknown error", undefined, error),
+            : new FirematError("Unknown error", error),
       });
     }
   }

@@ -38,19 +38,15 @@ constructor(private firematEndpoint: Signal<string | undefined>) {}
     const json = await this.decodeResponse(response, "application/json");
     assertExecutionResult(json);
 
-    console.log("handle valid", json);
-
     return json;
   }
 
   private async handleInvalidResponse(response: Response): Promise<never> {
-    const body = await this.decodeResponse(response);
-
-    console.log("handle error", body);
+    const cause = await this.decodeResponse(response);
 
     throw new FirematError(
       `Request failed with status ${response.status}`,
-      body
+      cause
     );
   }
 

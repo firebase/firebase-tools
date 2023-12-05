@@ -84,17 +84,6 @@ export function FirematExecutionResultsApp() {
  * or when the HTTP response is an error.
  */
 function InternalErrorView({ error }: { error: SerializedError }) {
-  const body = error.body;
-  let bodyView: JSX.Element | undefined;
-  if (isFirematErrorMeta(body)) {
-    bodyView = (
-      <>
-        {body.code}: {body.message}
-        {body.details}
-      </>
-    );
-  }
-
   return (
     <p>
       {
