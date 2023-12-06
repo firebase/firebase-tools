@@ -240,10 +240,6 @@ export async function getOrCreateRepository(
   let repo: gcb.Repository;
   try {
     repo = await gcb.getRepository(projectId, location, connectionId, repositoryId);
-    const repoSlug = extractRepoSlugFromUri(repo.remoteUri);
-    if (repoSlug) {
-      throw new FirebaseError(`${repoSlug} has already been linked.`);
-    }
   } catch (err: unknown) {
     if ((err as FirebaseError).status === 404) {
       const op = await gcb.createRepository(
