@@ -6,7 +6,6 @@ import * as poller from "../../../operation-poller";
 import * as utils from "../../../utils";
 import { cloudbuildOrigin } from "../../../api";
 import { FirebaseError } from "../../../error";
-import { logger } from "../../../logger";
 import { promptOnce } from "../../../prompt";
 import { getProjectNumber } from "../../../getProjectNumber";
 
@@ -124,7 +123,6 @@ export async function linkGitHubRepository(
     appInstallationId: connection.githubConfig?.appInstallationId,
   });
   const repo = await getOrCreateRepository(projectId, location, connectionId, remoteUri);
-  logger.info();
   utils.logSuccess(`Successfully linked GitHub repository at remote URI:\n ${remoteUri}`);
   return repo;
 }
@@ -188,15 +186,13 @@ async function promptSecretManagerAdminGrant(projectId: string): Promise<Boolean
 }
 
 async function promptConnectionAuth(conn: gcb.Connection): Promise<gcb.Connection> {
-  logger.info("You must authorize the Cloud Build GitHub app.");
-  logger.info();
-  logger.info("Sign in to GitHub and authorize Cloud Build GitHub app:");
+  utils.logBullet("You must authorize the Cloud Build GitHub app.\n");
+  utils.logBullet("Sign in to GitHub and authorize Cloud Build GitHub app:");
   const { url, cleanup } = await utils.openInBrowserPopup(
     conn.installationState.actionUri,
     "Authorize the GitHub app"
   );
-  logger.info(`\t${url}`);
-  logger.info();
+  utils.logBullet(`\t${url}\n`);
   await promptOnce({
     type: "input",
     message: "Press Enter once you have authorized the app",
@@ -207,9 +203,9 @@ async function promptConnectionAuth(conn: gcb.Connection): Promise<gcb.Connectio
 }
 
 async function promptAppInstall(conn: gcb.Connection): Promise<gcb.Connection> {
-  logger.info("Now, install the Cloud Build GitHub app:");
+  utils.logBullet("Now, install the Cloud Build GitHub app:");
   const targetUri = conn.installationState.actionUri.replace("install_v2", "direct_install_v2");
-  logger.info(targetUri);
+  utils.logBullet(targetUri);
   await utils.openInBrowser(targetUri);
   await promptOnce({
     type: "input",
