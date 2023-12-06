@@ -80,7 +80,7 @@ export async function linkGitHubRepository(
   projectId: string,
   location: string
 ): Promise<gcb.Repository> {
-  logger.info(clc.bold(`\n${clc.yellow("===")} Connect a GitHub repository`));
+  utils.logBullet(clc.bold(`${clc.yellow("===")} Connect a GitHub repository`));
   const existingConns = await listFrameworksConnections(projectId);
   if (existingConns.length < 1) {
     const grantSuccess = await promptSecretManagerAdminGrant(projectId);
@@ -165,7 +165,7 @@ async function promptRepositoryUri(
 async function promptSecretManagerAdminGrant(projectId: string): Promise<Boolean> {
   const projectNumber = await getProjectNumber({ projectId });
   const cbsaEmail = gcb.serviceAgentEmail(projectNumber);
-  logger.info(
+  utils.logBullet(
     "To create a new GitHub connection, Secret Manager Admin role (roles/secretmanager.admin) is required on the Cloud Build Service Agent."
   );
   const grant = await promptOnce({
@@ -173,8 +173,9 @@ async function promptSecretManagerAdminGrant(projectId: string): Promise<Boolean
     message: "Grant the required role to the Cloud Build Service Agent?",
   });
   if (!grant) {
-    logger.info(
+    utils.logBullet(
       "You, or your project administrator, should run the following command to grant the required role:\n\n" +
+        "You, or your project adminstrator, can run the following command to grant the required role manually:\n\n" +
         `\tgcloud projects add-iam-policy-binding ${projectId} \\\n` +
         `\t  --member="serviceAccount:${cbsaEmail} \\\n` +
         `\t  --role="roles/secretmanager.admin\n`
@@ -182,7 +183,7 @@ async function promptSecretManagerAdminGrant(projectId: string): Promise<Boolean
     return false;
   }
   await rm.addServiceAccountToRoles(projectId, cbsaEmail, ["roles/secretmanager.admin"], true);
-  logger.info("Successfully granted the required role to the Cloud Build Service Agent!");
+  utils.logSuccess("Successfully granted the required role to the Cloud Build Service Agent!");
   return true;
 }
 
