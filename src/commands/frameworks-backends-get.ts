@@ -16,18 +16,13 @@ const TABLE_HEAD = [
   "Created Date",
   "Updated Date",
 ];
-export const command = new Command("backends:get")
+export const command = new Command("backends:get <backendId>")
   .description("Get backend details of a Firebase project")
   .option("-l, --location <location>", "App Backend location", "-")
-  .option("-b, --backend <backend>", "Backend Id", "")
   .before(ensureApiEnabled)
-  .action(async (options: Options) => {
+  .action(async (backendId: string, options: Options) => {
     const projectId = needProjectId(options);
     const location = options.location as string;
-    const backendId = options.backend as string;
-    if (!backendId) {
-      throw new FirebaseError("Backend id can't be empty.");
-    }
 
     let backendsList: gcp.Backend[] = [];
     const table = new Table({

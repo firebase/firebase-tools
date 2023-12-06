@@ -65,7 +65,7 @@ export async function doSetup(setup: any, projectId: string): Promise<void> {
     logSuccess(`Successfully created backend:\n\t${backend.name}`);
     logSuccess(`Your site is being deployed at:\n\thttps://${backend.uri}`);
     logSuccess(
-      `View the rollout status by running:\n\tfirebase backends:get --backend=${backend.name}`
+      `View the rollout status by running:\n\tfirebase backends:get ${backendId} --project ${projectId}`
     );
   }
 }
