@@ -6,7 +6,6 @@ import * as poller from "../../../operation-poller";
 import * as utils from "../../../utils";
 import { cloudbuildOrigin } from "../../../api";
 import { FirebaseError } from "../../../error";
-import { logger } from "../../../logger";
 import { promptOnce } from "../../../prompt";
 import { getProjectNumber } from "../../../getProjectNumber";
 
@@ -80,7 +79,7 @@ export async function linkGitHubRepository(
   projectId: string,
   location: string
 ): Promise<gcb.Repository> {
-  logger.info(clc.bold(`\n${clc.yellow("===")} Connect a GitHub repository`));
+  utils.logBullet(clc.bold(`${clc.yellow("===")} Set up a GitHub connection`));
   const existingConns = await listFrameworksConnections(projectId);
   if (existingConns.length < 1) {
     const grantSuccess = await promptSecretManagerAdminGrant(projectId);
@@ -124,8 +123,8 @@ export async function linkGitHubRepository(
     appInstallationId: connection.githubConfig?.appInstallationId,
   });
   const repo = await getOrCreateRepository(projectId, location, connectionId, remoteUri);
-  logger.info();
-  utils.logSuccess(`Successfully linked GitHub repository at remote URI:\n ${remoteUri}`);
+  utils.logSuccess(`Successfully linked GitHub repository at remote URI`);
+  utils.logSuccess(`\t${remoteUri}`);
   return repo;
 }
 
@@ -165,7 +164,18 @@ async function promptRepositoryUri(
 async function promptSecretManagerAdminGrant(projectId: string): Promise<Boolean> {
   const projectNumber = await getProjectNumber({ projectId });
   const cbsaEmail = gcb.serviceAgentEmail(projectNumber);
-  logger.info(
+
+  const alreadyGranted = await rm.serviceAccountHasRoles(
+    projectId,
+    cbsaEmail,
+    ["roles/secretmanager.admin"],
+    true
+  );
+  if (alreadyGranted) {
+    return true;
+  }
+
+  utils.logBullet(
     "To create a new GitHub connection, Secret Manager Admin role (roles/secretmanager.admin) is required on the Cloud Build Service Agent."
   );
   const grant = await promptOnce({
@@ -173,8 +183,9 @@ async function promptSecretManagerAdminGrant(projectId: string): Promise<Boolean
     message: "Grant the required role to the Cloud Build Service Agent?",
   });
   if (!grant) {
-    logger.info(
+    utils.logBullet(
       "You, or your project administrator, should run the following command to grant the required role:\n\n" +
+        "You, or your project adminstrator, can run the following command to grant the required role manually:\n\n" +
         `\tgcloud projects add-iam-policy-binding ${projectId} \\\n` +
         `\t  --member="serviceAccount:${cbsaEmail} \\\n` +
         `\t  --role="roles/secretmanager.admin\n`
@@ -182,20 +193,18 @@ async function promptSecretManagerAdminGrant(projectId: string): Promise<Boolean
     return false;
   }
   await rm.addServiceAccountToRoles(projectId, cbsaEmail, ["roles/secretmanager.admin"], true);
-  logger.info("Successfully granted the required role to the Cloud Build Service Agent!");
+  utils.logSuccess("Successfully granted the required role to the Cloud Build Service Agent!");
   return true;
 }
 
 async function promptConnectionAuth(conn: gcb.Connection): Promise<gcb.Connection> {
-  logger.info("You must authorize the Cloud Build GitHub app.");
-  logger.info();
-  logger.info("Sign in to GitHub and authorize Cloud Build GitHub app:");
+  utils.logBullet("You must authorize the Cloud Build GitHub app.");
+  utils.logBullet("Sign in to GitHub and authorize Cloud Build GitHub app:");
   const { url, cleanup } = await utils.openInBrowserPopup(
     conn.installationState.actionUri,
     "Authorize the GitHub app"
   );
-  logger.info(`\t${url}`);
-  logger.info();
+  utils.logBullet(`\t${url}`);
   await promptOnce({
     type: "input",
     message: "Press Enter once you have authorized the app",
@@ -206,9 +215,9 @@ async function promptConnectionAuth(conn: gcb.Connection): Promise<gcb.Connectio
 }
 
 async function promptAppInstall(conn: gcb.Connection): Promise<gcb.Connection> {
-  logger.info("Now, install the Cloud Build GitHub app:");
+  utils.logBullet("Install the Cloud Build GitHub app to enable access to GitHub repositories");
   const targetUri = conn.installationState.actionUri.replace("install_v2", "direct_install_v2");
-  logger.info(targetUri);
+  utils.logBullet(targetUri);
   await utils.openInBrowser(targetUri);
   await promptOnce({
     type: "input",

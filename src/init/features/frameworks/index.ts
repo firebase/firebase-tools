@@ -1,14 +1,13 @@
 import * as clc from "colorette";
-import * as utils from "../../../utils";
 import * as repo from "./repo";
 import * as poller from "../../../operation-poller";
 import * as gcp from "../../../gcp/frameworks";
+import { logBullet, logSuccess } from "../../../utils";
 import { frameworksOrigin } from "../../../api";
 import { Backend, BackendOutputOnlyFields } from "../../../gcp/frameworks";
 import { Repository } from "../../../gcp/cloudbuild";
 import { API_VERSION } from "../../../gcp/frameworks";
 import { FirebaseError } from "../../../error";
-import { logger } from "../../../logger";
 import { promptOnce } from "../../../prompt";
 import { DEFAULT_REGION, ALLOWED_REGIONS } from "./constants";
 
@@ -25,7 +24,7 @@ const frameworksPollerOptions: Omit<poller.OperationPollerOptions, "operationRes
 export async function doSetup(setup: any, projectId: string): Promise<void> {
   setup.frameworks = {};
 
-  utils.logBullet("First we need a few details to create your backend.");
+  logBullet("First we need a few details to create your backend.");
 
   await promptOnce(
     {
@@ -50,20 +49,16 @@ export async function doSetup(setup: any, projectId: string): Promise<void> {
     setup.frameworks
   );
 
-  utils.logSuccess(`Region set to ${setup.frameworks.region}.`);
+  logSuccess(`Region set to ${setup.frameworks.region}.\n`);
 
   const backend: Backend | undefined = await getOrCreateBackend(projectId, setup);
 
   if (backend) {
-    logger.info();
-    utils.logSuccess(`Successfully created backend:\n ${backend.name}`);
-    logger.info();
-    utils.logSuccess(`Your site is being deployed at:\n https://${backend.uri}`);
-    logger.info();
-    utils.logSuccess(
-      `View the rollout status by running:\n firebase backends:get --backend=${backend.name}`
+    logSuccess(`Successfully created backend:\n\t${backend.name}`);
+    logSuccess(`Your site is being deployed at:\n\thttps://${backend.uri}`);
+    logSuccess(
+      `View the rollout status by running:\n\tfirebase backends:get --backend=${backend.name}`
     );
-    logger.info();
   }
 }
 
@@ -91,7 +86,6 @@ export async function getOrCreateBackend(
   } catch (err: unknown) {
     if ((err as FirebaseError).status === 404) {
       const cloudBuildConnRepo = await repo.linkGitHubRepository(projectId, location);
-      logger.info();
       await promptOnce(
         {
           name: "branchName",
@@ -102,7 +96,6 @@ export async function getOrCreateBackend(
         setup.frameworks
       );
       const backendDetails = toBackend(cloudBuildConnRepo);
-      logger.info(clc.bold(`\n${clc.white("===")} Creating your backend`));
       return await createBackend(projectId, location, backendDetails, setup.frameworks.serviceName);
     } else {
       throw new FirebaseError(
@@ -133,7 +126,7 @@ async function getExistingBackend(
       setup.frameworks
     );
     if (setup.frameworks.existingBackend) {
-      logger.info("Using the existing backend.");
+      logBullet("Using the existing backend.");
       return backend;
     }
     await promptOnce(
