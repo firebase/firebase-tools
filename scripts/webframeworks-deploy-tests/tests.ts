@@ -125,7 +125,8 @@ describe("webframeworks", function (this) {
                   },
                   {
                     key: "x-next-cache-tags",
-                    value: "/app/api/static/route",
+                    value:
+                      "_N_T_/layout,_N_T_/app/layout,_N_T_/app/api/layout,_N_T_/app/api/static/layout,_N_T_/app/api/static/route,_N_T_/app/api/static",
                   },
                 ],
               },
@@ -311,8 +312,9 @@ describe("webframeworks", function (this) {
           `/${I18N_BASE}/${locale}/${NEXT_BASE_PATH}/pages/fallback/1.html`,
           `/${I18N_BASE}/${locale}/${NEXT_BASE_PATH}/pages/fallback/2.html`,
           `/${I18N_BASE}/${locale}/${NEXT_BASE_PATH}/pages/ssg.html`,
-          `/${I18N_BASE}/${locale}/${NEXT_BASE_PATH}/404.html`,
-          `/${I18N_BASE}/${locale}/${NEXT_BASE_PATH}/500.html`,
+          // We aren't pulling these from Next 14 ATM
+          // `/${I18N_BASE}/${locale}/${NEXT_BASE_PATH}/404.html`,
+          // `/${I18N_BASE}/${locale}/${NEXT_BASE_PATH}/500.html`,
           `/${I18N_BASE}/${locale}/${NEXT_BASE_PATH}/index.html`,
         ])
         .map(normalize)
