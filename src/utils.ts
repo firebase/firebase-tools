@@ -767,7 +767,10 @@ export async function openInBrowser(url: string): Promise<void> {
 /**
  * Like openInBrowser but opens the url in a popup.
  */
-export async function openInBrowserPopup(url: string, buttonText: string): Promise<() => void> {
+export async function openInBrowserPopup(
+  url: string,
+  buttonText: string
+): Promise<{ url: string; cleanup: () => void }> {
   const popupPage = fs
     .readFileSync(path.join(__dirname, "../templates/popup.html"), { encoding: "utf-8" })
     .replace("${url}", url)
@@ -787,10 +790,12 @@ export async function openInBrowserPopup(url: string, buttonText: string): Promi
   server.listen(port);
 
   const popupPageUri = `http://localhost:${port}`;
-  logger.info(popupPageUri);
   await openInBrowser(popupPageUri);
 
-  return () => {
-    server.close();
+  return {
+    url: popupPageUri,
+    cleanup: () => {
+      server.close();
+    },
   };
 }

@@ -209,3 +209,10 @@ export async function deleteRepository(
   const res = await client.delete<Operation>(name);
   return res.body;
 }
+
+/**
+ * Returns email associated with the Cloud Build Service Agent.
+ */
+export function serviceAgentEmail(projectNumber: string): string {
+  return `service-${projectNumber}@gcp-sa-cloudbuild.iam.gserviceaccount.com`;
+}

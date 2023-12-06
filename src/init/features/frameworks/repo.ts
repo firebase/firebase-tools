@@ -1,12 +1,14 @@
 import * as clc from "colorette";
 
 import * as gcb from "../../../gcp/cloudbuild";
+import * as rm from "../../../gcp/resourceManager";
 import * as poller from "../../../operation-poller";
 import * as utils from "../../../utils";
 import { cloudbuildOrigin } from "../../../api";
 import { FirebaseError } from "../../../error";
 import { logger } from "../../../logger";
 import { promptOnce } from "../../../prompt";
+import { getProjectNumber } from "../../../getProjectNumber";
 
 export interface ConnectionNameParts {
   projectId: string;
@@ -81,6 +83,10 @@ export async function linkGitHubRepository(
   logger.info(clc.bold(`\n${clc.yellow("===")} Connect a GitHub repository`));
   const existingConns = await listFrameworksConnections(projectId);
   if (existingConns.length < 1) {
+    const grantSuccess = await promptSecretManagerAdminGrant(projectId);
+    if (!grantSuccess) {
+      throw new FirebaseError("Insufficient IAM permissions to create a new connection to GitHub");
+    }
     let oauthConn = await getOrCreateConnection(projectId, location, FRAMEWORKS_OAUTH_CONN_NAME);
     while (oauthConn.installationState.stage === "PENDING_USER_OAUTH") {
       oauthConn = await promptConnectionAuth(oauthConn);
@@ -156,14 +162,40 @@ async function promptRepositoryUri(
   return { remoteUri, connection: remoteUriToConnection[remoteUri] };
 }
 
+async function promptSecretManagerAdminGrant(projectId: string): Promise<Boolean> {
+  const projectNumber = await getProjectNumber({ projectId });
+  const cbsaEmail = gcb.serviceAgentEmail(projectNumber);
+  logger.info(
+    "To create a new GitHub connection, Secret Manager Admin role (roles/secretmanager.admin) is required on the Cloud Build Service Agent."
+  );
+  const grant = await promptOnce({
+    type: "confirm",
+    message: "Grant the required role to the Cloud Build Service Agent?",
+  });
+  if (!grant) {
+    logger.info(
+      "You, or your project administrator, should run the following command to grant the required role:\n\n" +
+        `\tgcloud projects add-iam-policy-binding ${projectId} \\\n` +
+        `\t  --member="serviceAccount:${cbsaEmail} \\\n` +
+        `\t  --role="roles/secretmanager.admin\n`
+    );
+    return false;
+  }
+  await rm.addServiceAccountToRoles(projectId, cbsaEmail, ["roles/secretmanager.admin"], true);
+  logger.info("Successfully granted the required role to the Cloud Build Service Agent!");
+  return true;
+}
+
 async function promptConnectionAuth(conn: gcb.Connection): Promise<gcb.Connection> {
   logger.info("You must authorize the Cloud Build GitHub app.");
   logger.info();
-  logger.info("First, sign in to GitHub and authorize Cloud Build GitHub app:");
-  const cleanup = await utils.openInBrowserPopup(
+  logger.info("Sign in to GitHub and authorize Cloud Build GitHub app:");
+  const { url, cleanup } = await utils.openInBrowserPopup(
     conn.installationState.actionUri,
     "Authorize the GitHub app"
   );
+  logger.info(`\t${url}`);
+  logger.info();
   await promptOnce({
     type: "input",
     message: "Press Enter once you have authorized the app",
@@ -215,7 +247,7 @@ export async function getOrCreateConnection(
   try {
     conn = await gcb.getConnection(projectId, location, connectionId);
   } catch (err: unknown) {
-    if ((err as FirebaseError).status === 404) {
+    if ((err as any).status === 404) {
       conn = await createConnection(projectId, location, connectionId, githubConfig);
     } else {
       throw err;
