@@ -163,6 +163,17 @@ async function promptRepositoryUri(
 async function promptSecretManagerAdminGrant(projectId: string): Promise<Boolean> {
   const projectNumber = await getProjectNumber({ projectId });
   const cbsaEmail = gcb.serviceAgentEmail(projectNumber);
+
+  const alreadyGranted = await rm.serviceAccountHasRoles(
+    projectId,
+    cbsaEmail,
+    ["roles/secretmanager.admin"],
+    true
+  );
+  if (alreadyGranted) {
+    return true;
+  }
+
   utils.logBullet(
     "To create a new GitHub connection, Secret Manager Admin role (roles/secretmanager.admin) is required on the Cloud Build Service Agent."
   );
@@ -205,7 +216,7 @@ async function promptConnectionAuth(conn: gcb.Connection): Promise<gcb.Connectio
 async function promptAppInstall(conn: gcb.Connection): Promise<gcb.Connection> {
   utils.logBullet("Now, install the Cloud Build GitHub app:");
   const targetUri = conn.installationState.actionUri.replace("install_v2", "direct_install_v2");
-  utils.logBullet(targetUri);
+  utils.logBullet(`\t${targetUri}`);
   await utils.openInBrowser(targetUri);
   await promptOnce({
     type: "input",
