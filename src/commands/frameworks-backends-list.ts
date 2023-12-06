@@ -8,14 +8,7 @@ import { bold } from "colorette";
 
 const Table = require("cli-table");
 const COLUMN_LENGTH = 20;
-const TABLE_HEAD = [
-  "Backend Id",
-  "Repository Name",
-  "Location",
-  "URL",
-  "Created Date",
-  "Updated Date",
-];
+const TABLE_HEAD = ["Backend Id", "Repository", "Location", "URL", "Created Date", "Updated Date"];
 export const command = new Command("backends:list")
   .description("List backends of a Firebase project.")
   .option("-l, --location <location>", "App Backend location", "-")
@@ -27,11 +20,11 @@ export const command = new Command("backends:list")
       style: { head: ["green"] },
     });
     table.colWidths = COLUMN_LENGTH;
-    const backendsList: gcp.ListBackendsResponse[] = [];
+    const backendsList: gcp.Backend[] = [];
     try {
       const backendsPerRegion = await gcp.listBackends(projectId, location);
-      backendsList.push(backendsPerRegion);
-      populateTable(backendsPerRegion, location, table);
+      backendsList.push(...backendsPerRegion.backends);
+      populateTable(backendsList, table);
 
       logger.info();
       logger.info(`Backends for project ${bold(projectId)}`);
@@ -47,8 +40,8 @@ export const command = new Command("backends:list")
     return backendsList;
   });
 
-function populateTable(backendsLists: gcp.ListBackendsResponse, location: string, table: any) {
-  for (const backend of backendsLists.backends) {
+function populateTable(backends: gcp.Backend[], table: any) {
+  for (const backend of backends) {
     const [location, , backendId] = backend.name.split("/").slice(3, 6);
     const entry = [
       backendId,
