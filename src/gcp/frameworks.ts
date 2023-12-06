@@ -19,11 +19,20 @@ interface Codebase {
   rootDirectory: string;
 }
 
+/**
+ * Specifies how Backend's data is replicated and served.
+ *   GLOBAL_ACCESS: Stores and serves content from multiple points-of-presence (POP)
+ *   REGIONAL_STRICT: Restricts data and serving infrastructure in Backend's region
+ *
+ */
+export type ServingLocality = "GLOBAL_ACCESS" | "REGIONAL_STRICT";
+
 /** A Backend, the primary resource of Frameworks. */
 export interface Backend {
   name: string;
   mode?: string;
   codebase: Codebase;
+  servingLocality: ServingLocality;
   labels: Record<string, string>;
   createTime: string;
   updateTime: string;
