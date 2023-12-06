@@ -26,7 +26,7 @@ export const FEATURE_REQUEST_URL =
   "https://github.com/firebase/firebase-tools/issues/new?template=feature_request.md";
 export const MAILING_LIST_URL = "https://goo.gle/41enW5X";
 
-const DEFAULT_FIREBASE_FRAMEWORKS_VERSION =  "^0.11.0";
+const DEFAULT_FIREBASE_FRAMEWORKS_VERSION = "^0.11.0";
 export const FIREBASE_FRAMEWORKS_VERSION =
   (experiments.isEnabled("internaltesting") && process.env.FIREBASE_FRAMEWORKS_VERSION) ||
   DEFAULT_FIREBASE_FRAMEWORKS_VERSION;
