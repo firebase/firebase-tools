@@ -19,11 +19,14 @@ interface Codebase {
   rootDirectory: string;
 }
 
+export type ServingLocality = "GLOBAL_ACCESS" | "REGIONAL_STRICT";
+
 /** A Backend, the primary resource of Frameworks. */
 export interface Backend {
   name: string;
   mode?: string;
   codebase: Codebase;
+  servingLocality: ServingLocality;
   labels: Record<string, string>;
   createTime: string;
   updateTime: string;

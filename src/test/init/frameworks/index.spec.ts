@@ -60,7 +60,8 @@ describe("operationsConverter", () => {
       createTime: "0",
       updateTime: "1",
     };
-    const backendInput = {
+    const backendInput: Omit<gcp.Backend, gcp.BackendOutputOnlyFields> = {
+      servingLocality: "GLOBAL_ACCESS",
       codebase: {
         repository: cloudBuildConnRepo.name,
         rootDirectory: "/",
