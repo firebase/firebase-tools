@@ -79,7 +79,7 @@ export async function linkGitHubRepository(
   projectId: string,
   location: string
 ): Promise<gcb.Repository> {
-  utils.logBullet(clc.bold(`${clc.yellow("===")} Connect a GitHub repository`));
+  utils.logBullet(clc.bold(`${clc.yellow("===")} Set up a GitHub connection`));
   const existingConns = await listFrameworksConnections(projectId);
   if (existingConns.length < 1) {
     const grantSuccess = await promptSecretManagerAdminGrant(projectId);
@@ -123,7 +123,8 @@ export async function linkGitHubRepository(
     appInstallationId: connection.githubConfig?.appInstallationId,
   });
   const repo = await getOrCreateRepository(projectId, location, connectionId, remoteUri);
-  utils.logSuccess(`Successfully linked GitHub repository at remote URI:\n ${remoteUri}`);
+  utils.logSuccess(`Successfully linked GitHub repository at remote URI`);
+  utils.logSuccess(`\t${remoteUri}`);
   return repo;
 }
 
@@ -197,13 +198,13 @@ async function promptSecretManagerAdminGrant(projectId: string): Promise<Boolean
 }
 
 async function promptConnectionAuth(conn: gcb.Connection): Promise<gcb.Connection> {
-  utils.logBullet("You must authorize the Cloud Build GitHub app.\n");
+  utils.logBullet("You must authorize the Cloud Build GitHub app.");
   utils.logBullet("Sign in to GitHub and authorize Cloud Build GitHub app:");
   const { url, cleanup } = await utils.openInBrowserPopup(
     conn.installationState.actionUri,
     "Authorize the GitHub app"
   );
-  utils.logBullet(`\t${url}\n`);
+  utils.logBullet(`\t${url}`);
   await promptOnce({
     type: "input",
     message: "Press Enter once you have authorized the app",
@@ -214,9 +215,9 @@ async function promptConnectionAuth(conn: gcb.Connection): Promise<gcb.Connectio
 }
 
 async function promptAppInstall(conn: gcb.Connection): Promise<gcb.Connection> {
-  utils.logBullet("Now, install the Cloud Build GitHub app:");
+  utils.logBullet("Install the Cloud Build GitHub app to enable access to GitHub repositories");
   const targetUri = conn.installationState.actionUri.replace("install_v2", "direct_install_v2");
-  utils.logBullet(`\t${targetUri}`);
+  utils.logBullet(targetUri);
   await utils.openInBrowser(targetUri);
   await promptOnce({
     type: "input",

@@ -54,10 +54,10 @@ export async function doSetup(setup: any, projectId: string): Promise<void> {
   const backend: Backend | undefined = await getOrCreateBackend(projectId, setup);
 
   if (backend) {
-    logSuccess(`Successfully created backend:\n ${backend.name}`);
-    logSuccess(`Your site is being deployed at:\n https://${backend.uri}\n`);
+    logSuccess(`Successfully created backend:\n\t${backend.name}`);
+    logSuccess(`Your site is being deployed at:\n\thttps://${backend.uri}`);
     logSuccess(
-      `View the rollout status by running:\n firebase backends:get --backend=${backend.name}\n`
+      `View the rollout status by running:\n\tfirebase backends:get --backend=${backend.name}`
     );
   }
 }
@@ -96,7 +96,6 @@ export async function getOrCreateBackend(
         setup.frameworks
       );
       const backendDetails = toBackend(cloudBuildConnRepo);
-      logBullet(clc.bold(`${clc.white("===")} Creating your backend`));
       return await createBackend(projectId, location, backendDetails, setup.frameworks.serviceName);
     } else {
       throw new FirebaseError(
