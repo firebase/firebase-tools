@@ -2,7 +2,6 @@
 import * as clc from "colorette";
 import * as repl from "repl";
 import * as _ from "lodash";
-import * as request from "request";
 import * as util from "util";
 
 import * as shell from "./emulator/functionsEmulatorShell";
@@ -14,8 +13,9 @@ import { logger } from "./logger";
 import { EMULATORS_SUPPORTED_BY_FUNCTIONS, EmulatorInfo, Emulators } from "./emulator/types";
 import { EmulatorHubClient } from "./emulator/hubClient";
 import { resolveHostAndAssignPorts } from "./emulator/portUtils";
-import { Options } from "./options";
 import { Constants } from "./emulator/constants";
+import { Options } from "./options";
+import { HTTPS_SENTINEL } from "./localFunction";
 import { needProjectId } from "./projectUtils";
 
 const serveFunctions = new FunctionsServer();
@@ -125,10 +125,8 @@ export const actionFunction = async (options: Options) => {
       );
 
       const writer = (output: any) => {
-        // Prevent full print out of Request object when a request is made
-        // @ts-ignore
-        if (output instanceof request.Request) {
-          return "Sent request to function.";
+        if (output === HTTPS_SENTINEL) {
+          return HTTPS_SENTINEL;
         }
         return util.inspect(output);
       };

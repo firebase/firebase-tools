@@ -26,12 +26,12 @@ export const FEATURE_REQUEST_URL =
   "https://github.com/firebase/firebase-tools/issues/new?template=feature_request.md";
 export const MAILING_LIST_URL = "https://goo.gle/41enW5X";
 
-const DEFAULT_FIREBASE_FRAMEWORKS_VERSION = "^0.10.4";
+const DEFAULT_FIREBASE_FRAMEWORKS_VERSION = "^0.11.0";
 export const FIREBASE_FRAMEWORKS_VERSION =
   (experiments.isEnabled("internaltesting") && process.env.FIREBASE_FRAMEWORKS_VERSION) ||
   DEFAULT_FIREBASE_FRAMEWORKS_VERSION;
-export const FIREBASE_FUNCTIONS_VERSION = "^4.3.0";
-export const FIREBASE_ADMIN_VERSION = "^11.0.1";
+export const FIREBASE_FUNCTIONS_VERSION = "^4.5.0";
+export const FIREBASE_ADMIN_VERSION = "^11.11.1";
 export const SHARP_VERSION = "^0.32.1";
 export const NODE_VERSION = parseInt(process.versions.node, 10);
 export const VALID_ENGINES = { node: [16, 18, 20] };
