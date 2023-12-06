@@ -70,14 +70,17 @@ const enum ExpectedBuilder {
   DEPLOY = "@angular/fire:deploy",
   DEV_SERVER = "@angular-devkit/build-angular:dev-server",
   LEGACY_BROWSER = "@angular-devkit/build-angular:browser",
-  LEGACY_PRERENDER = "@nguniversal/builders:prerender",
+  LEGACY_NGUNIVERSAL_PRERENDER = "@nguniversal/builders:prerender",
+  LEGACY_DEVKIT_PRERENDER = "@angular-devkit/build-angular:prerender",
   LEGACY_SERVER = "@angular-devkit/build-angular:server",
-  LEGACY_SSR_DEV_SERVER = "@nguniversal/builders:ssr-dev-server",
+  LEGACY_NGUNIVERSAL_SSR_DEV_SERVER = "@nguniversal/builders:ssr-dev-server",
+  LEGACY_DEVKIT_SSR_DEV_SERVER = "@angular-devkit/build-angular:ssr-dev-server",
 }
 
 const DEV_SERVER_TARGETS: string[] = [
   ExpectedBuilder.DEV_SERVER,
-  ExpectedBuilder.LEGACY_SSR_DEV_SERVER,
+  ExpectedBuilder.LEGACY_NGUNIVERSAL_SSR_DEV_SERVER,
+  ExpectedBuilder.LEGACY_DEVKIT_SSR_DEV_SERVER,
 ];
 
 function getValidBuilders(purpose: BUILD_TARGET_PURPOSE): string[] {
@@ -86,7 +89,8 @@ function getValidBuilders(purpose: BUILD_TARGET_PURPOSE): string[] {
     ExpectedBuilder.BROWSER_ESBUILD,
     ExpectedBuilder.DEPLOY,
     ExpectedBuilder.LEGACY_BROWSER,
-    ExpectedBuilder.LEGACY_PRERENDER,
+    ExpectedBuilder.LEGACY_DEVKIT_PRERENDER,
+    ExpectedBuilder.LEGACY_NGUNIVERSAL_PRERENDER,
     ...(purpose === "deploy" ? [] : DEV_SERVER_TARGETS),
   ];
 }
@@ -191,11 +195,13 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
       case ExpectedBuilder.LEGACY_BROWSER:
         browserTarget = overrideTarget;
         break;
-      case ExpectedBuilder.LEGACY_PRERENDER:
+      case ExpectedBuilder.LEGACY_DEVKIT_PRERENDER:
+      case ExpectedBuilder.LEGACY_NGUNIVERSAL_PRERENDER:
         prerenderTarget = overrideTarget;
         break;
       case ExpectedBuilder.DEV_SERVER:
-      case ExpectedBuilder.LEGACY_SSR_DEV_SERVER:
+      case ExpectedBuilder.LEGACY_NGUNIVERSAL_SSR_DEV_SERVER:
+      case ExpectedBuilder.LEGACY_DEVKIT_SSR_DEV_SERVER:
         serveTarget = overrideTarget;
         break;
       default:
@@ -341,9 +347,11 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
       if (target === buildTarget && builder === ExpectedBuilder.APPLICATION) continue;
       if (target === browserTarget && builder === ExpectedBuilder.BROWSER_ESBUILD) continue;
       if (target === browserTarget && builder === ExpectedBuilder.LEGACY_BROWSER) continue;
-      if (target === prerenderTarget && builder === ExpectedBuilder.LEGACY_PRERENDER) continue;
+      if (target === prerenderTarget && builder === ExpectedBuilder.LEGACY_DEVKIT_PRERENDER) continue;
+      if (target === prerenderTarget && builder === ExpectedBuilder.LEGACY_NGUNIVERSAL_PRERENDER) continue;
       if (target === serverTarget && builder === ExpectedBuilder.LEGACY_SERVER) continue;
-      if (target === serveTarget && builder === ExpectedBuilder.LEGACY_SSR_DEV_SERVER) continue;
+      if (target === serveTarget && builder === ExpectedBuilder.LEGACY_NGUNIVERSAL_SSR_DEV_SERVER) continue;
+      if (target === serveTarget && builder === ExpectedBuilder.LEGACY_DEVKIT_SSR_DEV_SERVER) continue;
       if (target === serveTarget && builder === ExpectedBuilder.DEV_SERVER) continue;
       throw new FirebaseError(
         `${definition.builder} (${targetString}) is not a recognized builder. Please check your angular.json`
