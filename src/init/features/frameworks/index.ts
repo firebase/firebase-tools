@@ -69,6 +69,7 @@ export async function doSetup(setup: any, projectId: string): Promise<void> {
 
 function toBackend(cloudBuildConnRepo: Repository): Omit<Backend, BackendOutputOnlyFields> {
   return {
+    servingLocality: "GLOBAL_ACCESS",
     codebase: {
       repository: `${cloudBuildConnRepo.name}`,
       rootDirectory: "/",
