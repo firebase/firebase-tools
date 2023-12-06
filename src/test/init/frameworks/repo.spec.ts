@@ -128,6 +128,21 @@ describe("composer", () => {
       );
     });
 
+    it("re-uses existing repository it already exists", async () => {
+      getConnectionStub.resolves(completeConn);
+      fetchLinkableRepositoriesStub.resolves(repos);
+      promptOnceStub.onFirstCall().resolves(repos.repositories[0].remoteUri);
+      getRepositoryStub.resolves(repos.repositories[0]);
+
+      const r = await repo.getOrCreateRepository(
+        projectId,
+        location,
+        connectionId,
+        repos.repositories[0].remoteUri
+      );
+      expect(r).to.be.deep.equal(repos.repositories[0]);
+    });
+
     it("throws error if no linkable repositories are available", async () => {
       getConnectionStub.resolves(pendingConn);
       fetchLinkableRepositoriesStub.resolves({ repositories: [] });
