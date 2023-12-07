@@ -107,7 +107,11 @@ export async function discover(dir: string) {
 /**
  * Build a next.js application.
  */
-export async function build(dir: string): Promise<BuildResult> {
+export async function build(
+  dir: string,
+  target: string,
+  context?: FrameworkContext
+): Promise<BuildResult> {
   await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
 
   const reactVersion = getReactVersion(dir);

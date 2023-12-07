@@ -60,7 +60,7 @@ export interface Framework {
   discover: (dir: string) => Promise<Discovery | undefined>;
   type: FrameworkType;
   name: string;
-  build: (dir: string, target: string) => Promise<BuildResult | void>;
+  build: (dir: string, target: string, context?: FrameworkContext) => Promise<BuildResult | void>;
   support: SupportLevel;
   docsUrl?: string;
   init?: (setup: any, config: any) => Promise<void>;
