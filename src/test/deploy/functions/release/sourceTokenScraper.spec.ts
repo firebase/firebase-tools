@@ -66,6 +66,20 @@ describe("SourceTokenScraper", () => {
     await expect(scraper.getToken()).to.eventually.equal("magic token #2");
   });
 
+  it("tries to fetch a new source token upon abort", async () => {
+    const scraper = new SourceTokenScraper();
+    await expect(scraper.getToken()).to.eventually.be.undefined;
+    scraper.abort();
+    await expect(scraper.getToken()).to.eventually.be.undefined;
+    scraper.poller({
+      metadata: {
+        sourceToken: "magic token",
+        target: "projects/p/locations/l/functions/f",
+      },
+    });
+    await expect(scraper.getToken()).to.eventually.equal("magic token");
+  });
+
   it("concurrent requests for source token", async () => {
     const scraper = new SourceTokenScraper();
 

@@ -54,7 +54,7 @@ live site:
 
 See the detailed guide for your preferred framework:
 
-* [Angular Universal](/docs/hosting/frameworks/angular)
+* [Angular](/docs/hosting/frameworks/angular)
 * [Next.js] (/docs/hosting/frameworks/nextjs)
 * [Flutter Web] (/docs/hosting/frameworks/flutter)
 * [Frameworks with Express.js](/docs/hosting/frameworks/express)

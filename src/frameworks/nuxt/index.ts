@@ -10,6 +10,7 @@ import { getNuxtVersion } from "./utils";
 export const name = "Nuxt";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Toolchain;
+export const supportedRange = "3";
 
 import { nuxtConfigFilesExist } from "./utils";
 import type { NuxtOptions } from "./interfaces";
@@ -28,16 +29,16 @@ export async function discover(dir: string) {
 
   const anyConfigFileExists = await nuxtConfigFilesExist(dir);
 
-  const nuxtVersion = getNuxtVersion(dir);
-  if (!anyConfigFileExists && !nuxtVersion) return;
-  if (nuxtVersion && lt(nuxtVersion, "3.0.0-0")) return;
+  const version = getNuxtVersion(dir);
+  if (!anyConfigFileExists && !version) return;
+  if (version && lt(version, "3.0.0-0")) return;
 
   const {
     dir: { public: publicDirectory },
     ssr: mayWantBackend,
   } = await getConfig(dir);
 
-  return { publicDirectory, mayWantBackend };
+  return { publicDirectory, mayWantBackend, version };
 }
 
 export async function build(cwd: string) {

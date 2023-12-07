@@ -4,101 +4,93 @@ import { expect } from "chai";
 import * as gcp from "../../../gcp/frameworks";
 import * as repo from "../../../init/features/frameworks/repo";
 import * as poller from "../../../operation-poller";
-import { createStack, getOrCreateStack } from "../../../init/features/frameworks/index";
+import * as prompt from "../../../prompt";
+import { createBackend, onboardBackend } from "../../../init/features/frameworks/index";
 import { FirebaseError } from "../../../error";
 
 describe("operationsConverter", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
 
   let pollOperationStub: sinon.SinonStub;
-  let createStackStub: sinon.SinonStub;
-  let getStackStub: sinon.SinonStub;
+  let createBackendStub: sinon.SinonStub;
+  let getBackendStub: sinon.SinonStub;
   let linkGitHubRepositoryStub: sinon.SinonStub;
+  let promptOnce: sinon.SinonStub;
 
   beforeEach(() => {
     pollOperationStub = sandbox
       .stub(poller, "pollOperation")
       .throws("Unexpected pollOperation call");
-    createStackStub = sandbox.stub(gcp, "createStack").throws("Unexpected createStack call");
-    getStackStub = sandbox.stub(gcp, "getStack").throws("Unexpected getStack call");
+    createBackendStub = sandbox.stub(gcp, "createBackend").throws("Unexpected createBackend call");
+    getBackendStub = sandbox.stub(gcp, "getBackend").throws("Unexpected getBackend call");
     linkGitHubRepositoryStub = sandbox
       .stub(repo, "linkGitHubRepository")
-      .throws("Unexpected getStack call");
+      .throws("Unexpected getBackend call");
+    promptOnce = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
   });
 
   afterEach(() => {
     sandbox.verifyAndRestore();
   });
 
-  describe("createStack", () => {
+  describe("onboardBackend", () => {
     const projectId = "projectId";
     const location = "us-central1";
-    const stackId = "stackId";
-    const stackInput = {
-      name: stackId,
-      labels: {},
-    };
+    const backendId = "backendId";
+
     const op = {
-      name: `projects/${projectId}/locations/${location}/stacks/${stackId}`,
+      name: `projects/${projectId}/locations/${location}/backends/${backendId}`,
       done: true,
     };
-    const completeStack = {
-      name: `projects/${projectId}/locations/${location}/stacks/${stackId}`,
+
+    const completeBackend = {
+      name: `projects/${projectId}/locations/${location}/backends/${backendId}`,
       labels: {},
       createTime: "0",
       updateTime: "1",
       uri: "https://placeholder.com",
     };
-    const setup = {
-      frameworks: {
-        region: location,
-        serviceName: stackId,
-        existingStack: true,
-        deployMethod: "github",
-      },
-    };
+
     const cloudBuildConnRepo = {
-      name: `projects/${projectId}/locations/${location}/stacks/${stackId}`,
+      name: `projects/${projectId}/locations/${location}/connections/framework-${location}/repositories/repoId`,
       remoteUri: "remoteUri",
       createTime: "0",
       updateTime: "1",
     };
 
-    it("should createStack", async () => {
-      createStackStub.resolves(op);
-      pollOperationStub.resolves(completeStack);
+    const backendInput: Omit<gcp.Backend, gcp.BackendOutputOnlyFields> = {
+      servingLocality: "GLOBAL_ACCESS",
+      codebase: {
+        repository: cloudBuildConnRepo.name,
+        rootDirectory: "/",
+      },
+      labels: {},
+    };
 
-      await createStack(projectId, location, stackInput);
+    it("should createBackend", async () => {
+      createBackendStub.resolves(op);
+      pollOperationStub.resolves(completeBackend);
 
-      expect(createStackStub).to.be.calledWith(projectId, location, stackInput);
+      await createBackend(projectId, location, backendInput, backendId);
+
+      expect(createBackendStub).to.be.calledWith(projectId, location, backendInput);
     });
 
-    it("should return a stack, if user wants use the exiting stack", async () => {
-      getStackStub.resolves(completeStack);
-
-      const result = await getOrCreateStack("projectId", setup);
-
-      expect(result).to.deep.equal(completeStack);
-      expect(getStackStub.calledOnceWithExactly(projectId, location, stackId)).to.be.true;
-    });
-
-    it("should create a new stack, if stack doesn't exist", async () => {
-      const newStackId = "newStackId";
-      const newPath = `projects/${projectId}/locations/${location}/stacks/${newStackId}`;
-      setup.frameworks.serviceName = newStackId;
-      stackInput.name = newStackId;
+    it("should onboard a new backend", async () => {
+      const newBackendId = "newBackendId";
+      const newPath = `projects/${projectId}/locations/${location}/backends/${newBackendId}`;
       op.name = newPath;
-      completeStack.name = newPath;
-      cloudBuildConnRepo.name = newPath;
-      getStackStub.throws(new FirebaseError("error", { status: 404 }));
+      completeBackend.name = newPath;
+      getBackendStub.throws(new FirebaseError("error", { status: 404 }));
       linkGitHubRepositoryStub.resolves(cloudBuildConnRepo);
-      createStackStub.resolves(op);
-      pollOperationStub.resolves(completeStack);
+      createBackendStub.resolves(op);
+      pollOperationStub.resolves(completeBackend);
+      promptOnce.resolves("main");
 
-      const result = await getOrCreateStack(projectId, setup);
+      const result = await onboardBackend(projectId, location, backendId);
 
-      expect(result).to.deep.equal(completeStack);
-      expect(createStackStub).to.be.calledWith(projectId, location, stackInput);
+      expect(result).to.deep.equal(completeBackend);
+      expect(createBackendStub).to.be.calledWith(projectId, location, backendInput);
     });
   });
 });

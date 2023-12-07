@@ -8,7 +8,7 @@ page_type: guide
 
 <link rel="stylesheet" type="text/css" href="/styles/docs.css" />
 
-# Integrate Angular Universal
+# Integrate Angular
 
 With the Firebase framework-aware {{cli}}, you can deploy your Angular application
 to Firebase and serve dynamic content to your users.
@@ -49,42 +49,14 @@ firebase deploy
 
 ## Pre-render dynamic content
 
-To prerender dynamic content in Angular, you need to set up Angular Universal.
-The {{firebase_cli}} expects Express Engine:
+To prerender dynamic content in Angular, you need to set up Angular SSR.
 
 ```shell
-ng add @nguniversal/express-engine
+ng add @angular/ssr
 ```
 
-See the [Angular Universal guide](https://angular.io/guide/universal)
+See the [Angular Prerendering (SSG) guide](https://angular.dev/guide/prerendering)
 for more information.
-
-### Add prerender URLs
-
-By default, only the root directory will be prerendered. You can add additional
-routes by locating the prerender step in `angular.json` and adding more routes:
-
-```json
-{
-  "prerender": {
-    "builder": "@nguniversal/builders:prerender",
-    "options": {
-      "routes": ["/", "ANOTHER_ROUTE", "AND_ANOTHER"]
-    },
-    "configurations": {
-      /* ... */
-    },
-    "defaultConfiguration": "production"
-  }
-}
-```
-
-Firebase also respects `guessRoutes` or a `routes.txt` file in the hosting root,
-if you need to customize further. See [Angular’s prerendering
-guide](https://angular.io/guide/prerendering) for more information on those
-options.
-
-### Optional: add a server module
 
 #### Deploy
 
@@ -94,21 +66,21 @@ to {{hosting}} and {{cloud_functions_full}}.
 
 #### Custom deploy
 
-The {{firebase_cli}} assumes that you have server, build, and prerender steps in
-your schematics with a production configuration.
+The {{firebase_cli}} assumes that you have a single application defined in your
+`angular.json` with a production build configuration.
 
-If you want to tailor the {{cli}}'s assumptions, configure `ng deploy` and edit the
-configuration in `angular.json`. For example, you could disable SSR and serve
-pre-rendered content exclusively by removing `serverTarget`:
+If need to tailor the {{cli}}'s assumptions, you can either use the
+`FIREBASE_FRAMEWORKS_BUILD_TARGET` environment variable or add
+[AngularFire](https://github.com/angular/angularfire#readme) and modify your
+`angular.json`:
 
 ```json
 {
   "deploy": {
     "builder": "@angular/fire:deploy",
     "options": {
-      "browserTarget": "app:build:production",
-      "serverTarget": "app:server:production",
-      "prerenderTarget": "app:prerender:production"
+      "version": 2,
+      "buildTarget": "OVERRIDE_YOUR_BUILD_TARGET"
     }
   }
 }
@@ -120,7 +92,8 @@ When including Firebase JS SDK methods in both server and client bundles, guard
 against runtime errors by checking `isSupported()` before using the product.
 Not all products are [supported in all environments](/docs/web/environments-js-sdk#other_environments).
 
-Tip: consider using AngularFire, which does this for you automatically.
+Tip: consider using [AngularFire](https://github.com/angular/angularfire#readme),
+which does this for you automatically.
 
 ### Optional: integrate with the Firebase Admin SDK
 
