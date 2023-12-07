@@ -10,6 +10,7 @@ import { API_VERSION } from "../../../gcp/frameworks";
 import { FirebaseError } from "../../../error";
 import { promptOnce } from "../../../prompt";
 import { DEFAULT_REGION, ALLOWED_REGIONS } from "./constants";
+import { ensure } from "../../../ensureApiEnabled";
 
 const frameworksPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: frameworksOrigin,
@@ -23,6 +24,13 @@ const frameworksPollerOptions: Omit<poller.OperationPollerOptions, "operationRes
  */
 export async function doSetup(setup: any, projectId: string): Promise<void> {
   setup.frameworks = {};
+
+  await Promise.all([
+    ensure(projectId, "cloudbuild.googleapis.com", "frameworks", true),
+    ensure(projectId, "secretmanager.googleapis.com", "frameworks", true),
+    ensure(projectId, "run.googleapis.com", "frameworks", true),
+    ensure(projectId, "artifactregistry.googleapis.com", "frameworks", true),
+  ]);
 
   logBullet("First we need a few details to create your backend.");
 
