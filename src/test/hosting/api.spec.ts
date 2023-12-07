@@ -872,6 +872,12 @@ describe("hosting", () => {
 
       expect(await hostingApi.getDeploymentDomain(PROJECT_ID, SITE, channelId)).to.be.undefined;
     });
+
+    it("should return undefined if site not found", async () => {
+      nock(hostingApiOrigin).get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`).reply(404, {});
+
+      expect(await hostingApi.getDeploymentDomain(PROJECT_ID, SITE)).to.be.undefined;
+    });
   });
 });
 
