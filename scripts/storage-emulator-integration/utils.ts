@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import * as request from "request";
+import fetch from "node-fetch";
 import * as crypto from "crypto";
 import * as os from "os";
 import { FrameworkOptions } from "../integration-helpers/framework";
@@ -81,11 +81,7 @@ export function writeToFile(filename: string, contents: Buffer, tmpDir: string):
  * Resets the storage layer of the Storage Emulator.
  */
 export async function resetStorageEmulator(emulatorHost: string) {
-  await new Promise<void>((resolve) => {
-    request.post(`${emulatorHost}/internal/reset`, () => {
-      resolve();
-    });
-  });
+  await fetch(`${emulatorHost}/internal/reset`, { method: "POST" });
 }
 
 export async function getProdAccessToken(serviceAccountKey: any): Promise<string> {
