@@ -764,7 +764,16 @@ export async function getDeploymentDomain(
 ): Promise<string | undefined> {
   const deploymentUrl = hostingChannel
     ? await getChannel(projectId, siteId, hostingChannel).then((channel) => channel?.url)
-    : await getSite(projectId, siteId).then((site) => site.defaultUrl);
+    : await getSite(projectId, siteId)
+        .then((site) => site.defaultUrl)
+        .catch((e: unknown) => {
+          // return undefined if the site doesn't exist
+          if (e instanceof FirebaseError && e.status === 404) {
+            return undefined;
+          }
+
+          throw e;
+        });
 
   return deploymentUrl?.replace(/^https?:\/\//, "");
 }
