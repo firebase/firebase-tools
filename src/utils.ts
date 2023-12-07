@@ -1,3 +1,7 @@
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { Socket } from "node:net";
+
 import * as _ from "lodash";
 import * as url from "url";
 import * as http from "http";
@@ -10,12 +14,12 @@ import * as winston from "winston";
 import { SPLAT } from "triple-beam";
 import { AssertionError } from "assert";
 const stripAnsi = require("strip-ansi");
+import { getPortPromise as getPort } from "portfinder";
 
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
 import { logger, LogLevel } from "./logger";
 import { LogDataOrUndefined } from "./emulator/loggingEmulator";
-import { Socket } from "net";
 
 const IS_WINDOWS = process.platform === "win32";
 const SUCCESS_CHAR = IS_WINDOWS ? "+" : "✔";
@@ -758,4 +762,40 @@ export function connectableHostname(hostname: string): string {
  */
 export async function openInBrowser(url: string): Promise<void> {
   await open(url);
+}
+
+/**
+ * Like openInBrowser but opens the url in a popup.
+ */
+export async function openInBrowserPopup(
+  url: string,
+  buttonText: string
+): Promise<{ url: string; cleanup: () => void }> {
+  const popupPage = fs
+    .readFileSync(path.join(__dirname, "../templates/popup.html"), { encoding: "utf-8" })
+    .replace("${url}", url)
+    .replace("${buttonText}", buttonText);
+
+  const port = await getPort();
+
+  const server = http.createServer((req, res) => {
+    res.writeHead(200, {
+      "Content-Length": popupPage.length,
+      "Content-Type": "text/html",
+    });
+    res.end(popupPage);
+    req.socket.destroy();
+  });
+
+  server.listen(port);
+
+  const popupPageUri = `http://localhost:${port}`;
+  await openInBrowser(popupPageUri);
+
+  return {
+    url: popupPageUri,
+    cleanup: () => {
+      server.close();
+    },
+  };
 }

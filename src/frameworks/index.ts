@@ -175,7 +175,8 @@ export async function prepareFrameworks(
       );
     }
     const getProjectPath = (...args: string[]) => join(projectRoot, source, ...args);
-    const functionId = `ssr${site.toLowerCase().replace(/-/g, "")}`;
+    // Combined traffic tag (19 chars) and functionId cannot exceed 46 characters.
+    const functionId = `ssr${site.toLowerCase().replace(/-/g, "").substring(0, 20)}`;
     const usesFirebaseAdminSdk = !!findDependency("firebase-admin", { cwd: getProjectPath() });
     const usesFirebaseJsSdk = !!findDependency("@firebase/app", { cwd: getProjectPath() });
     if (usesFirebaseAdminSdk) {
@@ -261,11 +262,21 @@ export async function prepareFrameworks(
       name,
       support,
       docsUrl,
+      supportedRange,
       getValidBuildTargets = GET_DEFAULT_BUILD_TARGETS,
       shouldUseDevModeHandle = DEFAULT_SHOULD_USE_DEV_MODE_HANDLE,
     } = WebFrameworks[framework];
+
     logger.info(
-      `\n${frameworksCallToAction(SupportLevelWarnings[support](name), docsUrl, "   ")}\n`
+      `\n${frameworksCallToAction(
+        SupportLevelWarnings[support](name),
+        docsUrl,
+        "   ",
+        name,
+        results.version,
+        supportedRange,
+        results.vite
+      )}\n`
     );
 
     const hostingEmulatorInfo = emulators.find((e) => e.name === Emulators.HOSTING);

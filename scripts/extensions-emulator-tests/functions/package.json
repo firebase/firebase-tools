@@ -3,7 +3,7 @@
   "description": "Cloud Functions for Firebase",
   "scripts": {},
   "engines": {
-    "node": "14"
+    "node": "20"
   },
   "dependencies": {
     "firebase-admin": "^9.3.0",

@@ -1,6 +1,9 @@
 import { Client } from "../apiv2";
+import { needProjectId } from "../projectUtils";
 import { frameworksOrigin } from "../api";
+import { ensure } from "../ensureApiEnabled";
 
+export const API_HOST = new URL(frameworksOrigin).host;
 export const API_VERSION = "v1alpha";
 
 const client = new Client({
@@ -16,11 +19,20 @@ interface Codebase {
   rootDirectory: string;
 }
 
+/**
+ * Specifies how Backend's data is replicated and served.
+ *   GLOBAL_ACCESS: Stores and serves content from multiple points-of-presence (POP)
+ *   REGIONAL_STRICT: Restricts data and serving infrastructure in Backend's region
+ *
+ */
+export type ServingLocality = "GLOBAL_ACCESS" | "REGIONAL_STRICT";
+
 /** A Backend, the primary resource of Frameworks. */
 export interface Backend {
   name: string;
   mode?: string;
   codebase: Codebase;
+  servingLocality: ServingLocality;
   labels: Record<string, string>;
   createTime: string;
   updateTime: string;
@@ -161,4 +173,12 @@ export async function createBuild(
   );
 
   return res.body;
+}
+
+/**
+ * Ensure that Frameworks API is enabled on the project.
+ */
+export async function ensureApiEnabled(options: any): Promise<void> {
+  const projectId = needProjectId(options);
+  return await ensure(projectId, API_HOST, "frameworks", true);
 }

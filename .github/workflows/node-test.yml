@@ -24,9 +24,9 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - "18"
+          - "20"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: actions/setup-node@v3
@@ -44,10 +44,10 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - "16"
           - "18"
+          - "20"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
@@ -59,7 +59,7 @@ jobs:
       - run: npm test -- -- --forbid-only
 
       - uses: codecov/codecov-action@v3
-        if: matrix.node-version == '16'
+        if: matrix.node-version == '20'
 
   integration:
     needs: unit
@@ -79,7 +79,7 @@ jobs:
       fail-fast: false
       matrix:
         node-version:
-          - "18"
+          - "20"
         script:
           - npm run test:client-integration
           - npm run test:emulator
@@ -94,7 +94,7 @@ jobs:
           - npm run test:triggers-end-to-end
           - npm run test:triggers-end-to-end:inspect
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
@@ -135,7 +135,7 @@ jobs:
       fail-fast: false
       matrix:
         node-version:
-          - "18"
+          - "20"
         script:
           - npm run test:hosting
           # - npm run test:hosting-rewrites # Long-running test that might conflict across test runs. Run this manually.
@@ -155,7 +155,7 @@ jobs:
           java-version: 17
           distribution: temurin
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
@@ -184,10 +184,10 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - "18"
+          - "20"
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
@@ -203,10 +203,10 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - "18"
+          - "20"
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
@@ -222,10 +222,10 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - "18"
+          - "20"
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
