@@ -1,0 +1,1 @@
+- Fix an issue preventing Vite applications from being emulated on Windows. (#6411)
