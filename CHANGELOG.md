@@ -1,4 +1,5 @@
 - Fix an issue preventing Vite applications from being emulated on Windows. (#6411)
+- Addressed an issue preventing Astro applications from being deployed from Windows. (#5709)
 - Fixed an issue preventing Angular apps using ng-deploy from being emulated or deployed. (#6584)
 - Warn if a Web Framework is outside a well known version range on deploy/emulate. (#6562)
 - Use Web Framework's well known version range in `firebase init hosting`. (#6562)
