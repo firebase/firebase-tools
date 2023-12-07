@@ -3,12 +3,13 @@ import type { ProjectDefinition } from "@angular-devkit/core/src/workspace";
 import type { WorkspaceNodeModulesArchitectHost } from "@angular-devkit/architect/node";
 
 import { AngularI18nConfig } from "./interfaces";
-import { relativeRequire, validateLocales } from "../utils";
+import { findDependency, relativeRequire, validateLocales } from "../utils";
 import { FirebaseError } from "../../error";
-import { join } from "path";
+import { join, posix, sep } from "path";
 import { BUILD_TARGET_PURPOSE } from "../interfaces";
 import { AssertionError } from "assert";
 import { assertIsString } from "../../utils";
+import { coerce } from "semver";
 
 async function localesForTarget(
   dir: string,
@@ -70,14 +71,17 @@ const enum ExpectedBuilder {
   DEPLOY = "@angular/fire:deploy",
   DEV_SERVER = "@angular-devkit/build-angular:dev-server",
   LEGACY_BROWSER = "@angular-devkit/build-angular:browser",
-  LEGACY_PRERENDER = "@nguniversal/builders:prerender",
+  LEGACY_NGUNIVERSAL_PRERENDER = "@nguniversal/builders:prerender",
+  LEGACY_DEVKIT_PRERENDER = "@angular-devkit/build-angular:prerender",
   LEGACY_SERVER = "@angular-devkit/build-angular:server",
-  LEGACY_SSR_DEV_SERVER = "@nguniversal/builders:ssr-dev-server",
+  LEGACY_NGUNIVERSAL_SSR_DEV_SERVER = "@nguniversal/builders:ssr-dev-server",
+  LEGACY_DEVKIT_SSR_DEV_SERVER = "@angular-devkit/build-angular:ssr-dev-server",
 }
 
 const DEV_SERVER_TARGETS: string[] = [
   ExpectedBuilder.DEV_SERVER,
-  ExpectedBuilder.LEGACY_SSR_DEV_SERVER,
+  ExpectedBuilder.LEGACY_NGUNIVERSAL_SSR_DEV_SERVER,
+  ExpectedBuilder.LEGACY_DEVKIT_SSR_DEV_SERVER,
 ];
 
 function getValidBuilders(purpose: BUILD_TARGET_PURPOSE): string[] {
@@ -86,7 +90,8 @@ function getValidBuilders(purpose: BUILD_TARGET_PURPOSE): string[] {
     ExpectedBuilder.BROWSER_ESBUILD,
     ExpectedBuilder.DEPLOY,
     ExpectedBuilder.LEGACY_BROWSER,
-    ExpectedBuilder.LEGACY_PRERENDER,
+    ExpectedBuilder.LEGACY_DEVKIT_PRERENDER,
+    ExpectedBuilder.LEGACY_NGUNIVERSAL_PRERENDER,
     ...(purpose === "deploy" ? [] : DEV_SERVER_TARGETS),
   ];
 }
@@ -191,11 +196,13 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
       case ExpectedBuilder.LEGACY_BROWSER:
         browserTarget = overrideTarget;
         break;
-      case ExpectedBuilder.LEGACY_PRERENDER:
+      case ExpectedBuilder.LEGACY_DEVKIT_PRERENDER:
+      case ExpectedBuilder.LEGACY_NGUNIVERSAL_PRERENDER:
         prerenderTarget = overrideTarget;
         break;
       case ExpectedBuilder.DEV_SERVER:
-      case ExpectedBuilder.LEGACY_SSR_DEV_SERVER:
+      case ExpectedBuilder.LEGACY_NGUNIVERSAL_SSR_DEV_SERVER:
+      case ExpectedBuilder.LEGACY_DEVKIT_SSR_DEV_SERVER:
         serveTarget = overrideTarget;
         break;
       default:
@@ -214,7 +221,9 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
   }
 
   if (deployTarget) {
-    const options = await architectHost.getOptionsForTarget(deployTarget);
+    const options = await architectHost
+      .getOptionsForTarget(deployTarget)
+      .catch(() => workspaceProject.targets.get(deployTarget!.target)?.options);
     if (!options) throw new FirebaseError("Unable to get options for ng-deploy.");
     if (options.buildTarget) {
       assertIsString(options.buildTarget);
@@ -231,6 +240,10 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
     if (options.serverTarget) {
       assertIsString(options.serverTarget);
       serverTarget = targetFromTargetString(options.serverTarget);
+    }
+    if (options.serveTarget) {
+      assertIsString(options.serveTarget);
+      serveTarget = targetFromTargetString(options.serveTarget);
     }
     if (options.serveOptimizedImages) {
       serveOptimizedImages = true;
@@ -341,9 +354,15 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
       if (target === buildTarget && builder === ExpectedBuilder.APPLICATION) continue;
       if (target === browserTarget && builder === ExpectedBuilder.BROWSER_ESBUILD) continue;
       if (target === browserTarget && builder === ExpectedBuilder.LEGACY_BROWSER) continue;
-      if (target === prerenderTarget && builder === ExpectedBuilder.LEGACY_PRERENDER) continue;
+      if (target === prerenderTarget && builder === ExpectedBuilder.LEGACY_DEVKIT_PRERENDER)
+        continue;
+      if (target === prerenderTarget && builder === ExpectedBuilder.LEGACY_NGUNIVERSAL_PRERENDER)
+        continue;
       if (target === serverTarget && builder === ExpectedBuilder.LEGACY_SERVER) continue;
-      if (target === serveTarget && builder === ExpectedBuilder.LEGACY_SSR_DEV_SERVER) continue;
+      if (target === serveTarget && builder === ExpectedBuilder.LEGACY_NGUNIVERSAL_SSR_DEV_SERVER)
+        continue;
+      if (target === serveTarget && builder === ExpectedBuilder.LEGACY_DEVKIT_SSR_DEV_SERVER)
+        continue;
       if (target === serveTarget && builder === ExpectedBuilder.DEV_SERVER) continue;
       throw new FirebaseError(
         `${definition.builder} (${targetString}) is not a recognized builder. Please check your angular.json`
@@ -420,7 +439,9 @@ export async function getServerConfig(sourceDir: string, configuration: string) 
   }
   const browserTargetOptions = await architectHost.getOptionsForTarget(buildOrBrowserTarget);
   assertIsString(browserTargetOptions?.outputPath);
-  const browserOutputPath = join(browserTargetOptions.outputPath, buildTarget ? "browser" : "");
+  const browserOutputPath = join(browserTargetOptions.outputPath, buildTarget ? "browser" : "")
+    .split(sep)
+    .join(posix.sep);
   const packageJson = JSON.parse(await host.readFile(join(sourceDir, "package.json")));
 
   if (!ssr) {
@@ -449,7 +470,9 @@ export async function getServerConfig(sourceDir: string, configuration: string) 
   );
   const serverTargetOptions = await architectHost.getOptionsForTarget(buildOrServerTarget);
   assertIsString(serverTargetOptions?.outputPath);
-  const serverOutputPath = join(serverTargetOptions.outputPath, buildTarget ? "server" : "");
+  const serverOutputPath = join(serverTargetOptions.outputPath, buildTarget ? "server" : "")
+    .split(sep)
+    .join(posix.sep);
   if (serverLocales && !defaultLocale) {
     throw new FirebaseError(
       "It's required that your source locale to be one of the localize options"
@@ -516,4 +539,18 @@ export async function getBuildConfig(sourceDir: string, configuration: string) {
     serveOptimizedImages,
     ssr,
   };
+}
+
+/**
+ * Get Angular version in the following format: `major.minor.patch`, ignoring
+ * canary versions as it causes issues with semver comparisons.
+ */
+export function getAngularVersion(cwd: string): string | undefined {
+  const dependency = findDependency("@angular/core", { cwd, depth: 0, omitDev: false });
+  if (!dependency) return undefined;
+
+  const angularVersionSemver = coerce(dependency.version);
+  if (!angularVersionSemver) return dependency.version;
+
+  return angularVersionSemver.toString();
 }

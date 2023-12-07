@@ -1,5 +1,6 @@
 import { SupportLevel } from "./interfaces";
 import * as clc from "colorette";
+import * as experiments from "../experiments";
 
 export const NPM_COMMAND_TIMEOUT_MILLIES = 10_000;
 
@@ -7,12 +8,12 @@ export const SupportLevelWarnings = {
   [SupportLevel.Experimental]: (framework: string) => `Thank you for trying our ${clc.italic(
     "experimental"
   )} support for ${framework} on Firebase Hosting.
-   ${clc.yellow(`While this integration is maintained by Googlers it is not a supported Firebase product.
+   ${clc.red(`While this integration is maintained by Googlers it is not a supported Firebase product.
    Issues filed on GitHub will be addressed on a best-effort basis by maintainers and other community members.`)}`,
   [SupportLevel.Preview]: (framework: string) => `Thank you for trying our ${clc.italic(
     "early preview"
   )} of ${framework} support on Firebase Hosting.
-   ${clc.yellow(
+   ${clc.red(
      "During the preview, support is best-effort and breaking changes can be expected. Proceed with caution."
    )}`,
 };
@@ -25,9 +26,12 @@ export const FEATURE_REQUEST_URL =
   "https://github.com/firebase/firebase-tools/issues/new?template=feature_request.md";
 export const MAILING_LIST_URL = "https://goo.gle/41enW5X";
 
-export const FIREBASE_FRAMEWORKS_VERSION = "^0.10.4";
-export const FIREBASE_FUNCTIONS_VERSION = "^4.3.0";
-export const FIREBASE_ADMIN_VERSION = "^11.0.1";
+const DEFAULT_FIREBASE_FRAMEWORKS_VERSION = "^0.11.0";
+export const FIREBASE_FRAMEWORKS_VERSION =
+  (experiments.isEnabled("internaltesting") && process.env.FIREBASE_FRAMEWORKS_VERSION) ||
+  DEFAULT_FIREBASE_FRAMEWORKS_VERSION;
+export const FIREBASE_FUNCTIONS_VERSION = "^4.5.0";
+export const FIREBASE_ADMIN_VERSION = "^11.11.1";
 export const SHARP_VERSION = "^0.32.1";
 export const NODE_VERSION = parseInt(process.versions.node, 10);
 export const VALID_ENGINES = { node: [16, 18, 20] };

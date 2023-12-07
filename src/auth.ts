@@ -188,9 +188,7 @@ export async function loginAdditionalAccount(useLocalhost: boolean, email?: stri
     utils.logWarning(`Already logged in as ${resultEmail}.`);
     updateAccount(newAccount);
   } else {
-    const additionalAccounts = getAdditionalAccounts();
-    additionalAccounts.push(newAccount);
-    configstore.set("additionalAccounts", additionalAccounts);
+    addAdditionalAccount(newAccount);
   }
 
   return newAccount;
@@ -725,4 +723,14 @@ export async function logout(refreshToken: string) {
       original: err,
     });
   }
+}
+
+/**
+ * adds an account to the list of additional accounts.
+ * @param account the account to add.
+ */
+export function addAdditionalAccount(account: Account): void {
+  const additionalAccounts = getAdditionalAccounts();
+  additionalAccounts.push(account);
+  configstore.set("additionalAccounts", additionalAccounts);
 }
