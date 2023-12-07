@@ -8,7 +8,7 @@ const apiClient = new Client({
   urlPrefix: firestoreOrigin,
 });
 
-interface Database {
+export interface Database {
   name: string;
   uid: string;
   createTime: string;
