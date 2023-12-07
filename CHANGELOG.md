@@ -1,0 +1,1 @@
+- Fix bug where deploying Firestore function resulted in redudant API calls to the Firestore API (#6583).
