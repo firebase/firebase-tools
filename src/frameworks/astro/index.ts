@@ -9,14 +9,17 @@ import { getAstroVersion, getBootstrapScript, getConfig } from "./utils";
 export const name = "Astro";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.MetaFramework;
+export const supportedRange = "2 - 3";
 
 export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!existsSync(join(dir, "package.json"))) return;
-  if (!getAstroVersion(dir)) return;
+  const version = getAstroVersion(dir);
+  if (!version) return;
   const { output, publicDir: publicDirectory } = await getConfig(dir);
   return {
     mayWantBackend: output !== "static",
     publicDirectory,
+    version,
   };
 }
 

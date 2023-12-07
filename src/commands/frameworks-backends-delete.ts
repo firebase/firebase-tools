@@ -7,6 +7,8 @@ import { promptOnce } from "../prompt";
 import * as utils from "../utils";
 import { logger } from "../logger";
 import { DEFAULT_REGION, ALLOWED_REGIONS } from "../init/features/frameworks/constants";
+import { ensureApiEnabled } from "../gcp/frameworks";
+
 const Table = require("cli-table");
 
 const COLUMN_LENGTH = 20;
@@ -24,6 +26,7 @@ export const command = new Command("backends:delete")
   .option("-l, --location <location>", "App Backend location", "")
   .option("-s, --backend <backend>", "Backend Id", "")
   .withForce()
+  .before(ensureApiEnabled)
   .action(async (options: Options) => {
     const projectId = needProjectId(options);
     let location = options.location as string;

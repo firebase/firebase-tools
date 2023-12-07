@@ -23,6 +23,7 @@ describe("Angular", () => {
       expect(await discover(cwd)).to.deep.equal({
         mayWantBackend: true,
         publicDirectory: join(cwd, "src", "assets"),
+        version: undefined,
       });
     });
   });

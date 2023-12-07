@@ -461,7 +461,7 @@ describe("Next.js utils", () => {
           Object.keys(prerenderManifest.routes),
           Object.keys(prerenderManifest.dynamicRoutes)
         )
-      ).to.deep.equal(["/api/test/route"]);
+      ).to.deep.equal(new Set(["/api/test/route"]));
     });
   });
 

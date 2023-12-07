@@ -1,4 +1,4 @@
-import fetch from "node-fetch";
+import fetch, { Response } from "node-fetch";
 import * as fs from "fs";
 import * as path from "path";
 import * as yaml from "js-yaml";
@@ -71,8 +71,7 @@ export async function detectFromPort(
   runtime: runtimes.Runtime,
   timeout = 10_000 /* 10s to boot up */
 ): Promise<build.Build> {
-  // The result type of fetch isn't exported
-  let res: { text(): Promise<string>; status: number };
+  let res: Response;
   const timedOut = new Promise<never>((resolve, reject) => {
     setTimeout(() => {
       reject(new FirebaseError("User code failed to load. Cannot determine backend specification"));
