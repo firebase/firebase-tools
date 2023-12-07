@@ -28,12 +28,12 @@ export const RUNTIME_NOT_SET =
 
 export const UNSUPPORTED_NODE_VERSION_FIREBASE_JSON_MSG = clc.bold(
   `functions.runtime value is unsupported. ` +
-    `Valid choices are: ${clc.bold("nodejs{10|12|14|16|18}")}.`
+    `Valid choices are: ${clc.bold("nodejs{10|12|14|16|18|20}")}.`
 );
 
 export const UNSUPPORTED_NODE_VERSION_PACKAGE_JSON_MSG = clc.bold(
   `package.json in functions directory has an engines field which is unsupported. ` +
-    `Valid choices are: ${clc.bold('{"node": 10|12|14|16|18}')}`
+    `Valid choices are: ${clc.bold('{"node": 10|12|14|16|18|20}')}`
 );
 
 export const DEPRECATED_NODE_VERSION_INFO =

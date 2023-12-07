@@ -1,4 +1,4 @@
-FROM node:18
+FROM node:20
 
 # Install dependencies
 RUN apt-get update && \
