@@ -551,6 +551,7 @@ export async function getSite(project: string, site: string): Promise<Site> {
     if (e instanceof FirebaseError && e.status === 404) {
       throw new FirebaseError(`could not find site "${site}" for project "${project}"`, {
         original: e,
+        status: e.status,
       });
     }
     throw e;
@@ -762,22 +763,23 @@ export async function getDeploymentDomain(
   siteId: string,
   hostingChannel?: string | undefined
 ): Promise<string | undefined> {
-  const deploymentUrl = hostingChannel
-    ? await getChannel(projectId, siteId, hostingChannel).then((channel) => channel?.url)
-    : await getSite(projectId, siteId)
-        .then((site) => site.defaultUrl)
-        .catch((e: unknown) => {
-          // return undefined if the site doesn't exist
-          if (
-            e instanceof FirebaseError &&
-            e.original instanceof FirebaseError &&
-            e.original.status === 404
-          ) {
-            return undefined;
-          }
+  const channel = hostingChannel ? await getChannel(projectId, siteId, hostingChannel) : undefined;
 
-          throw e;
-        });
+  const site = channel
+    ? undefined
+    : await getSite(projectId, siteId).catch((e: unknown) => {
+        if (
+          e instanceof FirebaseError &&
+          e.original instanceof FirebaseError &&
+          e.original.status === 404
+        ) {
+          return undefined;
+        }
+
+        throw e;
+      });
+
+  const deploymentUrl = channel?.url || site?.defaultUrl;
 
   return deploymentUrl?.replace(/^https?:\/\//, "");
 }
