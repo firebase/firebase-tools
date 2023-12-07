@@ -1,6 +1,7 @@
 import { dirname, join, relative } from "path";
 import { findDependency } from "../utils";
 import { gte } from "semver";
+import { fileURLToPath } from "url";
 
 const { dynamicImport } = require(true && "../../dynamicImport");
 
@@ -29,8 +30,8 @@ export async function getConfig(cwd: string) {
     config = astroConfig;
   }
   return {
-    outDir: relative(cwd, config.outDir.pathname),
-    publicDir: relative(cwd, config.publicDir.pathname),
+    outDir: relative(cwd, fileURLToPath(config.outDir)),
+    publicDir: relative(cwd, fileURLToPath(config.publicDir)),
     output: config.output,
     adapter: config.adapter,
   };

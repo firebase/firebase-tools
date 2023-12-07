@@ -102,8 +102,8 @@ describe("Frameworks utils", () => {
     const defaultSeparator = ",";
     const defaultConjunction = "and";
 
-    it("should return undefined if there's no options", () => {
-      expect(conjoinOptions([])).to.be.undefined;
+    it("should return empty string if there's no options", () => {
+      expect(conjoinOptions([])).to.be.eql("");
     });
 
     it("should return option if there's only one", () => {
