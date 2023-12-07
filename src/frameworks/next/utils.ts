@@ -338,7 +338,7 @@ export function getNonStaticServerComponents(
   appPathRoutesManifest: AppPathRoutesManifest,
   prerenderedRoutes: string[],
   dynamicRoutes: string[]
-): string[] {
+): Set<string> {
   const nonStaticServerComponents = Object.entries(appPathsManifest)
     .filter(([it, src]) => {
       if (extname(src) !== ".js") return;
@@ -347,7 +347,7 @@ export function getNonStaticServerComponents(
     })
     .map(([it]) => it);
 
-  return nonStaticServerComponents;
+  return new Set(nonStaticServerComponents);
 }
 
 /**
@@ -406,4 +406,18 @@ export function getNextVersion(cwd: string): string | undefined {
   if (!nextVersionSemver) return dependency.version;
 
   return nextVersionSemver.toString();
+}
+
+/**
+ * Whether the Next.js project has a static `not-found` page in the app directory.
+ *
+ * The Next.js build manifests are misleading regarding the existence of a static
+ * `not-found` component. Therefore, we check if a `_not-found.html` file exists
+ * in the generated app directory files to know whether `not-found` is static.
+ */
+export async function hasStaticAppNotFoundComponent(
+  sourceDir: string,
+  distDir: string
+): Promise<boolean> {
+  return pathExists(join(sourceDir, distDir, "server", "app", "_not-found.html"));
 }

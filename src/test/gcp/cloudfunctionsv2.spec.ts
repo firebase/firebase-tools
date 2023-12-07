@@ -108,7 +108,7 @@ describe("cloudfunctionsv2", () => {
             resource: "projects/p/regions/r/instances/i",
             serviceName: "compute.googleapis.com",
           },
-          retry: false,
+          retry: true,
           channel: "projects/myproject/locations/us-wildwest11/channels/mychannel",
         },
       };
@@ -126,6 +126,7 @@ describe("cloudfunctionsv2", () => {
               value: "compute.googleapis.com",
             },
           ],
+          retryPolicy: "RETRY_POLICY_RETRY",
           channel: "projects/myproject/locations/us-wildwest11/channels/mychannel",
         },
         serviceConfig: {
@@ -165,6 +166,7 @@ describe("cloudfunctionsv2", () => {
               operator: "match-path-pattern",
             },
           ],
+          retryPolicy: "RETRY_POLICY_DO_NOT_RETRY",
         },
         serviceConfig: {
           ...CLOUD_FUNCTION_V2.serviceConfig,
@@ -302,6 +304,7 @@ describe("cloudfunctionsv2", () => {
               value: "pubsub.googleapis.com",
             },
           ],
+          retryPolicy: "RETRY_POLICY_DO_NOT_RETRY",
         },
         serviceConfig: {
           ...CLOUD_FUNCTION_V2.serviceConfig,
@@ -469,6 +472,46 @@ describe("cloudfunctionsv2", () => {
                 operator: "match-path-pattern",
               },
             ],
+          },
+        })
+      ).to.deep.equal(want);
+
+      // And again with a pattern match event trigger
+      want = {
+        ...want,
+        eventTrigger: {
+          eventType: "google.cloud.firestore.document.v1.written",
+          eventFilters: {
+            database: "(default)",
+            namespace: "(default)",
+          },
+          eventFilterPathPatterns: {
+            document: "users/{userId}",
+          },
+          retry: false,
+        },
+      };
+      expect(
+        cloudfunctionsv2.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION_V2,
+          eventTrigger: {
+            eventType: "google.cloud.firestore.document.v1.written",
+            eventFilters: [
+              {
+                attribute: "database",
+                value: "(default)",
+              },
+              {
+                attribute: "namespace",
+                value: "(default)",
+              },
+              {
+                attribute: "document",
+                value: "users/{userId}",
+                operator: "match-path-pattern",
+              },
+            ],
+            pubsubTopic: "eventarc-us-central1-abc", // firestore triggers use pubsub as transport
           },
         })
       ).to.deep.equal(want);

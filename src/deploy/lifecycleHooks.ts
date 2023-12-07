@@ -19,6 +19,13 @@ function runCommand(command: string, childOptions: childProcess.SpawnOptions) {
 
   return new Promise<void>((resolve, reject) => {
     logger.info("Running command: " + command);
+    if (command.includes("=")) {
+      utils.logWarning(
+        clc.yellow(clc.bold("Warning: ")) +
+          "Your command contains '=', it may result in the command not running." +
+          " Please consider removing it."
+      );
+    }
     if (translatedCommand === "") {
       return resolve();
     }

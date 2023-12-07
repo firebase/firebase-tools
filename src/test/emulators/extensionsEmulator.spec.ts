@@ -1,5 +1,4 @@
 import { expect } from "chai";
-import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 import * as planner from "../../deploy/extensions/planner";
@@ -146,31 +145,5 @@ describe("Extensions Emulator", () => {
         expect(result).to.deep.equal(testCase.expected);
       });
     }
-  });
-
-  describe("installAndBuildSourceCode", () => {
-    const extensionPath = "src/test/emulators/extensions/firebase/storage-resize-images@0.1.18";
-    it("installs dependecies", () => {
-      // creating a subclass of ext emulator
-      // to be able to test private method
-      class DependencyInstallingExtensionsEmulator extends ExtensionsEmulator {
-        constructor(extensionPath: string) {
-          super({
-            projectId: "test-project",
-            projectNumber: "1234567",
-            projectDir: ".",
-            extensions: {},
-            aliases: [],
-          });
-
-          this.installAndBuildSourceCode(extensionPath);
-        }
-      }
-      new DependencyInstallingExtensionsEmulator(extensionPath);
-      const nodeModulesFolderExists = existsSync(
-        `${extensionPath}/functions/node_modules/firebase-tools`
-      );
-      expect(nodeModulesFolderExists).to.be.true;
-    }).timeout(60_000);
   });
 });

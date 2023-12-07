@@ -6,6 +6,7 @@
 		"outDir": "../../dist/test",
 		"sourceMap": true,
 		"rootDir": "./",
-		"strict": true,
-	}
+		"strict": true
+	},
+	"exclude": ["**/*.test.ts"]
 }

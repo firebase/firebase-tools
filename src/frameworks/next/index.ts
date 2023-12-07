@@ -47,6 +47,7 @@ import {
   getHeadersFromMetaFiles,
   cleanI18n,
   getNextVersion,
+  hasStaticAppNotFoundComponent,
 } from "./utils";
 import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES, SHARP_VERSION, I18N_ROOT } from "../constants";
 import type {
@@ -64,6 +65,7 @@ import {
   ROUTES_MANIFEST,
   APP_PATH_ROUTES_MANIFEST,
   APP_PATHS_MANIFEST,
+  ESBUILD_VERSION,
 } from "./constants";
 import { getAllSiteDomains } from "../../hosting/api";
 import { logger } from "../../logger";
@@ -213,6 +215,13 @@ export async function build(dir: string): Promise<BuildResult> {
         prerenderedRoutes,
         dynamicRoutes
       );
+
+      if (
+        unrenderedServerComponents.has("/_not-found") &&
+        (await hasStaticAppNotFoundComponent(dir, distDir))
+      ) {
+        unrenderedServerComponents.delete("/_not-found");
+      }
 
       for (const key of unrenderedServerComponents) {
         reasonsForBackend.add(`non-static component ${key}`);
@@ -517,10 +526,14 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
           `--outdir=${destDir}`,
           "--log-level=error"
         );
-      const bundle = spawnSync("npx", ["--yes", "esbuild", "next.config.js", ...esbuildArgs], {
-        cwd: sourceDir,
-        timeout: BUNDLE_NEXT_CONFIG_TIMEOUT,
-      });
+      const bundle = spawnSync(
+        "npx",
+        ["--yes", `esbuild@${ESBUILD_VERSION}`, "next.config.js", ...esbuildArgs],
+        {
+          cwd: sourceDir,
+          timeout: BUNDLE_NEXT_CONFIG_TIMEOUT,
+        }
+      );
       if (bundle.status !== 0) {
         throw new FirebaseError(bundle.stderr.toString());
       }
@@ -589,7 +602,7 @@ async function getConfig(
     if (gte(version, "12.0.0")) {
       const { default: loadConfig } = relativeRequire(dir, "next/dist/server/config");
       const { PHASE_PRODUCTION_BUILD } = relativeRequire(dir, "next/constants");
-      config = await loadConfig(PHASE_PRODUCTION_BUILD, dir, null);
+      config = await loadConfig(PHASE_PRODUCTION_BUILD, dir);
     } else {
       try {
         config = await import(pathToFileURL(join(dir, "next.config.js")).toString());
