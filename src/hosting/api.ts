@@ -5,6 +5,7 @@ import * as operationPoller from "../operation-poller";
 import { DEFAULT_DURATION } from "../hosting/expireUtils";
 import { getAuthDomains, updateAuthDomains } from "../gcp/auth";
 import * as proto from "../gcp/proto";
+import { getHostnameFromUrl } from "../utils";
 
 const ONE_WEEK_MS = 604800000; // 7 * 24 * 60 * 60 * 1000
 
@@ -762,24 +763,25 @@ export async function getDeploymentDomain(
   projectId: string,
   siteId: string,
   hostingChannel?: string | undefined
-): Promise<string | undefined> {
-  const channel = hostingChannel ? await getChannel(projectId, siteId, hostingChannel) : undefined;
+): Promise<string | null> {
+  if (hostingChannel) {
+    const channel = await getChannel(projectId, siteId, hostingChannel);
 
-  const site = channel
-    ? undefined
-    : await getSite(projectId, siteId).catch((e: unknown) => {
-        if (
-          e instanceof FirebaseError &&
-          e.original instanceof FirebaseError &&
-          e.original.status === 404
-        ) {
-          return undefined;
-        }
+    return channel && getHostnameFromUrl(channel?.url);
+  }
 
-        throw e;
-      });
+  const site = await getSite(projectId, siteId).catch((e: unknown) => {
+    // return null if the site doesn't exist
+    if (
+      e instanceof FirebaseError &&
+      e.original instanceof FirebaseError &&
+      e.original.status === 404
+    ) {
+      return null;
+    }
 
-  const deploymentUrl = channel?.url || site?.defaultUrl;
+    throw e;
+  });
 
-  return deploymentUrl?.replace(/^https?:\/\//, "");
+  return site && getHostnameFromUrl(site?.defaultUrl);
 }
