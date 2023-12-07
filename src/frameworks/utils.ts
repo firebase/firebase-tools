@@ -5,6 +5,7 @@ import { readFile } from "fs/promises";
 import { IncomingMessage, request as httpRequest, ServerResponse, Agent } from "http";
 import { sync as spawnSync } from "cross-spawn";
 import * as clc from "colorette";
+import { satisfies as semverSatisfied } from "semver";
 
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
@@ -360,21 +361,36 @@ export function relativeRequire(dir: string, mod: string) {
   }
 }
 
-export function conjoinOptions(
-  opts: any[],
-  conjunction: string = "and",
-  separator: string = ","
-): string | undefined {
-  if (!opts.length) return;
-  if (opts.length === 1) return opts[0].toString();
-  if (opts.length === 2) return `${opts[0].toString()} ${conjunction} ${opts[1].toString()}`;
-  const lastElement = opts.slice(-1)[0].toString();
-  const allButLast = opts.slice(0, -1).map((it) => it.toString());
+export function conjoinOptions(_opts: any[], conjunction = "and", separator = ","): string {
+  if (!_opts.length) return "";
+  const opts: string[] = _opts.map((it) => it.toString().trim());
+  if (opts.length === 1) return opts[0];
+  if (opts.length === 2) return `${opts[0]} ${conjunction} ${opts[1]}`;
+  const lastElement = opts.slice(-1)[0];
+  const allButLast = opts.slice(0, -1);
   return `${allButLast.join(`${separator} `)}${separator} ${conjunction} ${lastElement}`;
 }
 
-export function frameworksCallToAction(message: string, docsUrl = DEFAULT_DOCS_URL, prefix = "") {
-  return `${prefix}${message}
+export function frameworksCallToAction(
+  message: string,
+  docsUrl = DEFAULT_DOCS_URL,
+  prefix = "",
+  framework?: string,
+  version?: string,
+  supportedRange?: string,
+  vite = false
+): string {
+  return `${prefix}${message}${
+    framework && supportedRange && (!version || !semverSatisfied(version, supportedRange))
+      ? clc.yellow(
+          `\n${prefix}The integration is known to work with ${
+            vite ? "Vite" : framework
+          } version ${clc.italic(
+            conjoinOptions(supportedRange.split("||"))
+          )}. You may encounter errors.`
+        )
+      : ``
+  }
 
 ${prefix}${clc.bold("Documentation:")} ${docsUrl}
 ${prefix}${clc.bold("File a bug:")} ${FILE_BUG_URL}

@@ -73,6 +73,8 @@ import { logger } from "../../logger";
 const DEFAULT_BUILD_SCRIPT = ["next build"];
 const PUBLIC_DIR = "public";
 
+export const supportedRange = "12 - 14.0";
+
 export const name = "Next.js";
 export const support = SupportLevel.Preview;
 export const type = FrameworkType.MetaFramework;
@@ -90,9 +92,10 @@ function getReactVersion(cwd: string): string | undefined {
  */
 export async function discover(dir: string) {
   if (!(await pathExists(join(dir, "package.json")))) return;
-  if (!(await pathExists("next.config.js")) && !getNextVersion(dir)) return;
+  const version = getNextVersion(dir);
+  if (!(await pathExists("next.config.js")) && !version) return;
 
-  return { mayWantBackend: true, publicDirectory: join(dir, PUBLIC_DIR) };
+  return { mayWantBackend: true, publicDirectory: join(dir, PUBLIC_DIR), version };
 }
 
 /**
@@ -317,9 +320,9 @@ export async function init(setup: any, config: any) {
     choices: ["JavaScript", "TypeScript"],
   });
   execSync(
-    `npx --yes create-next-app@latest -e hello-world ${setup.hosting.source} --use-npm ${
-      language === "TypeScript" ? "--ts" : "--js"
-    }`,
+    `npx --yes create-next-app@"${supportedRange}" -e hello-world ${
+      setup.hosting.source
+    } --use-npm ${language === "TypeScript" ? "--ts" : "--js"}`,
     { stdio: "inherit", cwd: config.projectDir }
   );
 }
