@@ -826,41 +826,40 @@ describe("hosting", () => {
     afterEach(nock.cleanAll);
 
     it("should get the default site domain when hostingChannel is omitted", async () => {
-      const defaultUrl = `https://${
-        EXPECTED_DOMAINS_RESPONSE[EXPECTED_DOMAINS_RESPONSE.length - 1]
-      }`;
+      const defaultDomain = EXPECTED_DOMAINS_RESPONSE[EXPECTED_DOMAINS_RESPONSE.length - 1];
+      const defaultUrl = `https://${defaultDomain}`;
 
       nock(hostingApiOrigin)
         .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`)
         .reply(200, { defaultUrl });
 
-      expect(await hostingApi.getDeploymentDomain(PROJECT_ID, SITE)).to.equal(defaultUrl);
+      expect(await hostingApi.getDeploymentDomain(PROJECT_ID, SITE)).to.equal(defaultDomain);
     });
 
     it("should get the default site domain when hostingChannel is undefined", async () => {
-      const defaultUrl = `https://${
-        EXPECTED_DOMAINS_RESPONSE[EXPECTED_DOMAINS_RESPONSE.length - 1]
-      }`;
+      const defaultDomain = EXPECTED_DOMAINS_RESPONSE[EXPECTED_DOMAINS_RESPONSE.length - 1];
+      const defaultUrl = `https://${defaultDomain}`;
 
       nock(hostingApiOrigin)
         .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`)
         .reply(200, { defaultUrl });
 
       expect(await hostingApi.getDeploymentDomain(PROJECT_ID, SITE, undefined)).to.equal(
-        defaultUrl
+        defaultDomain
       );
     });
 
     it("should get the channel domain", async () => {
       const channelId = "my-channel";
-      const channel = { url: `https://${PROJECT_ID}--${channelId}-123123.web.app` };
+      const channelDomain = `${PROJECT_ID}--${channelId}-123123.web.app`;
+      const channel = { url: `https://${channelDomain}` };
 
       nock(hostingApiOrigin)
         .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels/${channelId}`)
         .reply(200, channel);
 
       expect(await hostingApi.getDeploymentDomain(PROJECT_ID, SITE, channelId)).to.equal(
-        channel.url
+        channelDomain
       );
     });
 
