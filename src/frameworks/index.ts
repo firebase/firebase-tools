@@ -397,7 +397,11 @@ export async function prepareFrameworks(
         frameworksEntry = framework,
         dotEnv = {},
         rewriteSource,
-      } = await codegenFunctionsDirectory(getProjectPath(), functionsDist, frameworksBuildTarget);
+      } = await codegenFunctionsDirectory(getProjectPath(), functionsDist, frameworksBuildTarget, {
+        projectId: project,
+        site: options.site,
+        hostingChannel: context?.hostingChannel,
+      });
 
       const rewrite = {
         source: rewriteSource || posix.join(baseUrl, "**"),

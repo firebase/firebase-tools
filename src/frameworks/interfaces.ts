@@ -52,6 +52,7 @@ export type FrameworksOptions = HostingOptions &
 export type FrameworkContext = {
   projectId?: string;
   hostingChannel?: string;
+  site?: string;
 };
 
 export interface Framework {
@@ -80,7 +81,8 @@ export interface Framework {
   ɵcodegenFunctionsDirectory?: (
     dir: string,
     dest: string,
-    target: string
+    target: string,
+    context?: FrameworkContext
   ) => Promise<{
     bootstrapScript?: string;
     packageJson: any;
