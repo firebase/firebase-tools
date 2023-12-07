@@ -15,6 +15,7 @@ export const supportedRange = "3";
 import { nuxtConfigFilesExist } from "./utils";
 import type { NuxtOptions } from "./interfaces";
 import { FirebaseError } from "../../error";
+import { execSync } from "child_process";
 
 const DEFAULT_BUILD_SCRIPT = ["nuxt build", "nuxi build"];
 
@@ -111,4 +112,15 @@ export async function getDevModeHandle(cwd: string) {
 export async function getConfig(dir: string): Promise<NuxtOptions> {
   const { loadNuxtConfig } = await relativeRequire(dir, "@nuxt/kit");
   return await loadNuxtConfig(dir);
+}
+
+/**
+ * Utility method used during project initialization.
+ */
+export function init(setup: any, config: any) {
+  execSync(`npx --yes nuxi@"${supportedRange}" init ${setup.hosting.source}`, {
+    stdio: "inherit",
+    cwd: config.projectDir,
+  });
+  return Promise.resolve();
 }
