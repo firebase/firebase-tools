@@ -1,3 +1,4 @@
+- Fix bug where deploying Firestore function resulted in redudant API calls to the Firestore API (#6583).
 - Fix an issue preventing Vite applications from being emulated on Windows. (#6411)
 - Addressed an issue preventing Astro applications from being deployed from Windows. (#5709)
 - Fixed an issue preventing Angular apps using ng-deploy from being emulated or deployed. (#6584)
