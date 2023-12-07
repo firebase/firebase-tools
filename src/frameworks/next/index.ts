@@ -120,10 +120,27 @@ export async function build(
     process.env.__NEXT_REACT_ROOT = "true";
   }
 
+  const env = { ...process.env };
+
+  if (context?.projectId && context?.site) {
+    const deploymentDomain = await getDeploymentDomain(
+      context.projectId,
+      context.site,
+      context.hostingChannel
+    );
+
+    if (deploymentDomain) {
+      // Add the deployment domain to VERCEL_URL env variable, which is
+      // required for dynamic OG images to work without manual configuration.
+      // See: https://nextjs.org/docs/app/api-reference/functions/generate-metadata#default-value
+      env["VERCEL_URL"] = deploymentDomain;
+    }
+  }
+
   const cli = getNodeModuleBin("next", dir);
 
   const nextBuild = new Promise((resolve, reject) => {
-    const buildProcess = spawn(cli, ["build"], { cwd: dir });
+    const buildProcess = spawn(cli, ["build"], { cwd: dir, env });
     buildProcess.stdout?.on("data", (data) => logger.info(data.toString()));
     buildProcess.stderr?.on("data", (data) => logger.info(data.toString()));
     buildProcess.on("error", (err) => {
