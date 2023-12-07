@@ -1,0 +1,1 @@
+- Fixed an issue preventing Angular apps using ng-deploy from being emulated or deployed. (#6584)
