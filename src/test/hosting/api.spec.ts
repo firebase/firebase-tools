@@ -821,6 +821,55 @@ describe("hosting", () => {
       expect(nock.isDone()).to.be.true;
     });
   });
+
+  describe("getDeploymentDomain", () => {
+    afterEach(nock.cleanAll);
+
+    it("should get the default site domain when hostingChannel is omitted", async () => {
+      const defaultUrl = `https://${
+        EXPECTED_DOMAINS_RESPONSE[EXPECTED_DOMAINS_RESPONSE.length - 1]
+      }`;
+
+      nock(hostingApiOrigin)
+        .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`)
+        .reply(200, { defaultUrl });
+
+      expect(await hostingApi.getDeploymentDomain(PROJECT_ID, SITE)).to.be(defaultUrl);
+    });
+
+    it("should get the default site domain when hostingChannel is undefined", async () => {
+      const defaultUrl = `https://${
+        EXPECTED_DOMAINS_RESPONSE[EXPECTED_DOMAINS_RESPONSE.length - 1]
+      }`;
+
+      nock(hostingApiOrigin)
+        .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`)
+        .reply(200, { defaultUrl });
+
+      expect(await hostingApi.getDeploymentDomain(PROJECT_ID, SITE, undefined)).to.be(defaultUrl);
+    });
+
+    it("should get the channel domain", async () => {
+      const channelId = "my-channel";
+      const channel = { url: `https://${PROJECT_ID}--${channelId}-123123.web.app` };
+
+      nock(hostingApiOrigin)
+        .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels/${channelId}`)
+        .reply(200, channel);
+
+      expect(await hostingApi.getDeploymentDomain(PROJECT_ID, SITE, channelId)).to.be(channel.url);
+    });
+
+    it("should return undefined if channel not found", async () => {
+      const channelId = "my-channel";
+
+      nock(hostingApiOrigin)
+        .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels/${channelId}`)
+        .reply(404, {});
+
+      expect(await hostingApi.getDeploymentDomain(PROJECT_ID, SITE, channelId)).to.be.undefined;
+    });
+  });
 });
 
 describe("normalizeName", () => {
