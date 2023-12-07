@@ -6,3 +6,4 @@
 - Permit use of more SSR regions in Web Frameworks deploys. (#6086)
 - Limit Web Framework's generated Cloud Function name to 23 characters, fixing deploys for some. (#6260)
 - Allow Nuxt as an option during `firebase init hosting`. (#6309)
+- Display meaningful error message when cannot determine target. (#6594)
