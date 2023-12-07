@@ -160,7 +160,7 @@ export async function doSetup(setup: any, config: any, options: Options): Promis
         type: "list",
         message: "In which region would you like to host server-side content, if applicable?",
         default: DEFAULT_REGION,
-        choices: ALLOWED_SSR_REGIONS,
+        choices: ALLOWED_SSR_REGIONS.filter((region) => region.recommended),
       },
       setup.hosting
     );
