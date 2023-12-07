@@ -768,7 +768,11 @@ export async function getDeploymentDomain(
         .then((site) => site.defaultUrl)
         .catch((e: unknown) => {
           // return undefined if the site doesn't exist
-          if (e instanceof FirebaseError && e.status === 404) {
+          if (
+            e instanceof FirebaseError &&
+            e.original instanceof FirebaseError &&
+            e.original.status === 404
+          ) {
             return undefined;
           }
 
