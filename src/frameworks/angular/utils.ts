@@ -220,7 +220,9 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
   }
 
   if (deployTarget) {
-    const options = await architectHost.getOptionsForTarget(deployTarget);
+    const options = await architectHost
+      .getOptionsForTarget(deployTarget)
+      .catch(() => workspaceProject.targets.get(deployTarget!.target)?.options);
     if (!options) throw new FirebaseError("Unable to get options for ng-deploy.");
     if (options.buildTarget) {
       assertIsString(options.buildTarget);
@@ -237,6 +239,10 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
     if (options.serverTarget) {
       assertIsString(options.serverTarget);
       serverTarget = targetFromTargetString(options.serverTarget);
+    }
+    if (options.serveTarget) {
+      assertIsString(options.serveTarget);
+      serveTarget = targetFromTargetString(options.serveTarget);
     }
     if (options.serveOptimizedImages) {
       serveOptimizedImages = true;
