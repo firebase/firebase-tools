@@ -2,7 +2,7 @@ import * as clc from "colorette";
 import * as repo from "./repo";
 import * as poller from "../../../operation-poller";
 import * as gcp from "../../../gcp/frameworks";
-import { logBullet, logSuccess } from "../../../utils";
+import { logBullet, logSuccess, logWarning } from "../../../utils";
 import { frameworksOrigin } from "../../../api";
 import { Backend, BackendOutputOnlyFields } from "../../../gcp/frameworks";
 import { Repository } from "../../../gcp/cloudbuild";
@@ -26,32 +26,40 @@ export async function doSetup(setup: any, projectId: string): Promise<void> {
 
   logBullet("First we need a few details to create your backend.");
 
-  await promptOnce(
-    {
-      name: "serviceName",
+  const location = await promptOnce({
+    name: "region",
+    type: "list",
+    default: DEFAULT_REGION,
+    message:
+      "Please select a region " +
+      `(${clc.yellow("info")}: Your region determines where your backend is located):\n`,
+    choices: ALLOWED_REGIONS,
+  });
+
+  logSuccess(`Region set to ${location}.\n`);
+
+  let backendId: string;
+  while (true) {
+    backendId = await promptOnce({
+      name: "backendId",
       type: "input",
       default: "acme-inc-web",
       message: "Create a name for your backend [1-30 characters]",
-    },
-    setup.frameworks
-  );
-
-  await promptOnce(
-    {
-      name: "region",
-      type: "list",
-      default: DEFAULT_REGION,
-      message:
-        "Please select a region " +
-        `(${clc.yellow("info")}: Your region determines where your backend is located):\n`,
-      choices: ALLOWED_REGIONS,
-    },
-    setup.frameworks
-  );
-
-  logSuccess(`Region set to ${setup.frameworks.region}.\n`);
-
-  const backend: Backend | undefined = await getOrCreateBackend(projectId, setup);
+    });
+    try {
+      await gcp.getBackend(projectId, location, backendId);
+    } catch (err: any) {
+      if (err.status === 404) {
+        break;
+      }
+      throw new FirebaseError(
+        `Failed to check if backend with id ${backendId} already exists in ${location}`,
+        { original: err }
+      );
+    }
+    logWarning(`Backend with id ${backendId} already exists in ${location}`);
+  }
+  const backend: Backend = await onboardBackend(projectId, location, backendId);
 
   if (backend) {
     logSuccess(`Successfully created backend:\n\t${backend.name}`);
@@ -74,75 +82,24 @@ function toBackend(cloudBuildConnRepo: Repository): Omit<Backend, BackendOutputO
 }
 
 /**
- * Creates backend if it doesn't exist.
+ * Walkthrough the flow for creating a new backend.
  */
-export async function getOrCreateBackend(
+export async function onboardBackend(
   projectId: string,
-  setup: any
-): Promise<Backend | undefined> {
-  const location: string = setup.frameworks.region;
-  try {
-    return await getExistingBackend(projectId, setup, location);
-  } catch (err: unknown) {
-    if ((err as FirebaseError).status === 404) {
-      const cloudBuildConnRepo = await repo.linkGitHubRepository(projectId, location);
-      await promptOnce(
-        {
-          name: "branchName",
-          type: "input",
-          default: "main",
-          message: "Which branch do you want to deploy?",
-        },
-        setup.frameworks
-      );
-      const backendDetails = toBackend(cloudBuildConnRepo);
-      return await createBackend(projectId, location, backendDetails, setup.frameworks.serviceName);
-    } else {
-      throw new FirebaseError(
-        `Failed to get or create a backend using the given initialization details: ${err}`
-      );
-    }
-  }
-
-  return undefined;
-}
-
-async function getExistingBackend(
-  projectId: string,
-  setup: any,
-  location: string
+  location: string,
+  backendId: string
 ): Promise<Backend> {
-  let backend = await gcp.getBackend(projectId, location, setup.frameworks.serviceName);
-  while (backend) {
-    setup.frameworks.serviceName = undefined;
-    await promptOnce(
-      {
-        name: "existingBackend",
-        type: "confirm",
-        default: true,
-        message:
-          "A backend already exists for the given serviceName, do you want to use existing backend? (yes/no)",
-      },
-      setup.frameworks
-    );
-    if (setup.frameworks.existingBackend) {
-      logBullet("Using the existing backend.");
-      return backend;
-    }
-    await promptOnce(
-      {
-        name: "serviceName",
-        type: "input",
-        default: "acme-inc-web",
-        message: "Please enter a new service name [1-30 characters]",
-      },
-      setup.frameworks
-    );
-    backend = await gcp.getBackend(projectId, location, setup.frameworks.serviceName);
-    setup.frameworks.existingBackend = undefined;
-  }
-
-  return backend;
+  const cloudBuildConnRepo = await repo.linkGitHubRepository(projectId, location);
+  const barnchName = await promptOnce({
+    name: "branchName",
+    type: "input",
+    default: "main",
+    message: "Which branch do you want to deploy?",
+  });
+  // branchName unused for now.
+  void barnchName;
+  const backendDetails = toBackend(cloudBuildConnRepo);
+  return await createBackend(projectId, location, backendDetails, backendId);
 }
 
 /**
