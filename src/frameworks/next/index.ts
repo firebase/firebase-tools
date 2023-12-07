@@ -579,7 +579,8 @@ export async function ɵcodegenFunctionsDirectory(
 
     if (deploymentDomain) {
       // Add the deployment domain to VERCEL_URL env variable, which is
-      // required for dynamic OG images to work.
+      // required for dynamic OG images to work without manual configuration.
+      // See: https://nextjs.org/docs/app/api-reference/functions/generate-metadata#default-value
       dotEnv["VERCEL_URL"] = deploymentDomain;
     }
   }
