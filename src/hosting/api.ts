@@ -751,3 +751,20 @@ export async function getAllSiteDomains(projectId: string, siteId: string): Prom
 
   return Array.from(allSiteDomains);
 }
+
+/**
+ * Get the deployment domain.
+ * If hostingChannel is provided, get the channel url, otherwise get the
+ * default site url.
+ */
+export async function getDeploymentDomain(
+  projectId: string,
+  siteId: string,
+  hostingChannel?: string | undefined
+): Promise<string | undefined> {
+  const deploymentUrl = hostingChannel
+    ? await getChannel(projectId, siteId, hostingChannel).then((channel) => channel?.url)
+    : await getSite(projectId, siteId).then((site) => site.defaultUrl);
+
+  return deploymentUrl?.replace(/^https?:\/\//, "");
+}
