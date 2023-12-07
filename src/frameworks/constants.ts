@@ -40,14 +40,14 @@ export const VALID_LOCALE_FORMATS = [/^ALL_[a-z]+$/, /^[a-z]+_ALL$/, /^[a-z]+(_[
 
 export const DEFAULT_REGION = "us-central1";
 export const ALLOWED_SSR_REGIONS = [
-  { name: "us-central1 (Iowa)", value: "us-central1" },
-  { name: "us-east1 (South Carolina)", value: "us-east1" },
+  { name: "us-central1 (Iowa)", value: "us-central1", recommended: true },
+  { name: "us-east1 (South Carolina)", value: "us-east1", recommended: true },
   { name: "us-east4 (Northern Virginia)", value: "us-east4" },
-  { name: "us-west1 (Oregon)", value: "us-west1" },
+  { name: "us-west1 (Oregon)", value: "us-west1", recommended: true },
   { name: "us-west2 (Los Angeles)", value: "us-west2" },
   { name: "us-west3 (Salt Lake City)", value: "us-west3" },
   { name: "us-west4 (Las Vegas)", value: "us-west4" },
-  { name: "asia-east1 (Taiwan)", value: "asia-east1" },
+  { name: "asia-east1 (Taiwan)", value: "asia-east1", recommended: true },
   { name: "asia-east2 (Hong Kong)", value: "asia-east2" },
   { name: "asia-northeast1 (Tokyo)", value: "asia-northeast1" },
   { name: "asia-northeast2 (Osaka)", value: "asia-northeast2" },
@@ -60,7 +60,7 @@ export const ALLOWED_SSR_REGIONS = [
   { name: "australia-southeast2 (Melbourne)", value: "australia-southeast2" },
   { name: "europe-central2 (Warsaw)", value: "europe-central2" },
   { name: "europe-north1 (Finland)", value: "europe-north1" },
-  { name: "europe-west1 (Belgium)", value: "europe-west1" },
+  { name: "europe-west1 (Belgium)", value: "europe-west1", recommended: true },
   { name: "europe-west2 (London)", value: "europe-west2" },
   { name: "europe-west3 (Frankfurt)", value: "europe-west3" },
   { name: "europe-west4 (Netherlands)", value: "europe-west4" },
