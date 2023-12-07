@@ -222,7 +222,7 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
   if (deployTarget) {
     const options = await architectHost
       .getOptionsForTarget(deployTarget)
-      .catch(() => workspaceProject.targets.get("deploy")?.options);
+      .catch(() => workspaceProject.targets.get(deployTarget!.target)?.options);
     if (!options) throw new FirebaseError("Unable to get options for ng-deploy.");
     if (options.buildTarget) {
       assertIsString(options.buildTarget);
