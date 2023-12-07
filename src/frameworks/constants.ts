@@ -8,12 +8,12 @@ export const SupportLevelWarnings = {
   [SupportLevel.Experimental]: (framework: string) => `Thank you for trying our ${clc.italic(
     "experimental"
   )} support for ${framework} on Firebase Hosting.
-   ${clc.yellow(`While this integration is maintained by Googlers it is not a supported Firebase product.
+   ${clc.red(`While this integration is maintained by Googlers it is not a supported Firebase product.
    Issues filed on GitHub will be addressed on a best-effort basis by maintainers and other community members.`)}`,
   [SupportLevel.Preview]: (framework: string) => `Thank you for trying our ${clc.italic(
     "early preview"
   )} of ${framework} support on Firebase Hosting.
-   ${clc.yellow(
+   ${clc.red(
      "During the preview, support is best-effort and breaking changes can be expected. Proceed with caution."
    )}`,
 };
