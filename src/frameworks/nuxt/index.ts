@@ -118,11 +118,9 @@ export async function getConfig(dir: string): Promise<NuxtOptions> {
  * Utility method used during project initialization.
  */
 export function init(setup: any, config: any) {
-  return new Promise<void>((resolve) => {
-    execSync(`npx --yes nuxi@latest init ${setup.hosting.source}`, {
-      stdio: "inherit",
-      cwd: config.projectDir,
-    });
-    resolve();
+  execSync(`npx --yes nuxi@"${supportedRange}" init ${setup.hosting.source}`, {
+    stdio: "inherit",
+    cwd: config.projectDir,
   });
+  return Promise.resolve();
 }

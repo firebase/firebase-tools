@@ -4,3 +4,4 @@
 - Warn if a Web Framework is outside a well known version range on deploy/emulate. (#6562)
 - Use Web Framework's well known version range in `firebase init hosting`. (#6562)
 - Limit Web Framework's generated Cloud Function name to 23 characters, fixing deploys for some. (#6260)
+- Allow Nuxt as an option during `firebase init hosting`. (#6309)
