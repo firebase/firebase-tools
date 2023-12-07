@@ -1,23 +1,23 @@
+
 import 'zone.js/node';
 
 import { APP_BASE_HREF } from '@angular/common';
-import { ngExpressEngine } from '@nguniversal/express-engine';
+import { CommonEngine } from '@angular/ssr';
 import * as express from 'express';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { AppServerModule } from './src/main.server';
+import bootstrap from './src/main.server';
 import { LOCALE_ID } from '@angular/core';
 
 // The Express app is exported so that it can be used by serverless Functions.
 export function app(locale: string): express.Express {
   const server = express();
   const distFolder = join(process.cwd(), `dist/angular/browser/${locale}`);
-  const indexHtml = existsSync(join(distFolder, 'index.original.html')) ? 'index.original.html' : 'index';
+  const indexHtml = existsSync(join(distFolder, 'index.original.html'))
+    ? join(distFolder, 'index.original.html')
+    : join(distFolder, 'index.html');
 
-  // Our Universal express-engine (found @ https://github.com/angular/universal/tree/main/modules/express-engine)
-  server.engine('html', ngExpressEngine({
-    bootstrap: AppServerModule
-  }));
+  const commonEngine = new CommonEngine();
 
   server.set('view engine', 'html');
   server.set('views', distFolder);
@@ -29,12 +29,22 @@ export function app(locale: string): express.Express {
     maxAge: '1y'
   }));
 
-  // All regular routes use the Universal engine
-  server.get('*', (req, res) => {
-    res.render(indexHtml, { req, providers: [
-      { provide: APP_BASE_HREF, useValue: req.baseUrl },
-      { provide: LOCALE_ID, useValue: locale },
-    ] });
+  // All regular routes use the Angular engine
+  server.get('*', (req, res, next) => {
+    const { protocol, originalUrl, baseUrl, headers } = req;
+
+    commonEngine
+      .render({
+        bootstrap,
+        documentFilePath: indexHtml,
+        url: `${protocol}://${headers.host}${originalUrl}`,
+        publicPath: distFolder,
+        providers: [
+          { provide: APP_BASE_HREF, useValue: baseUrl },
+          { provide: LOCALE_ID, useValue: locale },],
+      })
+      .then((html) => res.send(html))
+      .catch((err) => next(err));
   });
 
   return server;
@@ -60,4 +70,4 @@ if (moduleFilename === __filename || moduleFilename.includes('iisnode')) {
   run();
 }
 
-export * from './src/main.server';
+export default bootstrap;

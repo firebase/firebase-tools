@@ -32,9 +32,9 @@ import { ExportMetadata, HubExport } from "./hubExport";
 import { EmulatorUI } from "./ui";
 import { LoggingEmulator } from "./loggingEmulator";
 import * as dbRulesConfig from "../database/rulesConfig";
-import { EmulatorLogger } from "./emulatorLogger";
+import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 import { EmulatorHubClient } from "./hubClient";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import {
   FLAG_EXPORT_ON_EXIT_NAME,
   JAVA_DEPRECATION_WARNING,
@@ -247,6 +247,7 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
 
 interface EmulatorOptions extends Options {
   extDevEnv?: Record<string, string>;
+  logVerbosity?: "DEBUG" | "INFO" | "QUIET" | "SILENT";
 }
 
 /**
@@ -286,6 +287,10 @@ export async function startAll(
       throw new FirebaseError(JAVA_DEPRECATION_WARNING);
     }
   }
+  if (options.logVerbosity) {
+    EmulatorLogger.setVerbosity(Verbosity[options.logVerbosity]);
+  }
+
   const hubLogger = EmulatorLogger.forEmulator(Emulators.HUB);
   hubLogger.logLabeled("BULLET", "emulators", `Starting emulators: ${targets.join(", ")}`);
 
@@ -560,6 +565,7 @@ export async function startAll(
       host: functionsAddr.host,
       port: functionsAddr.port,
       debugPort: inspectFunctions,
+      verbosity: options.logVerbosity,
       projectAlias: options.projectAlias,
     });
     await startEmulator(functionsEmulator);
@@ -961,7 +967,8 @@ export async function exportEmulatorData(exportPath: string, options: any, initi
 
   // Check if there is already an export there and prompt the user about deleting it
   const existingMetadata = HubExport.readMetadata(exportAbsPath);
-  if (existingMetadata && !(options.force || options.exportOnExit)) {
+  const isExportDirEmpty = fs.readdirSync(exportAbsPath).length === 0;
+  if ((existingMetadata || !isExportDirEmpty) && !(options.force || options.exportOnExit)) {
     if (options.noninteractive) {
       throw new FirebaseError(
         "Export already exists in the target directory, re-run with --force to overwrite.",
@@ -969,9 +976,10 @@ export async function exportEmulatorData(exportPath: string, options: any, initi
       );
     }
 
-    const prompt = await promptOnce({
-      type: "confirm",
-      message: `The directory ${exportAbsPath} already contains export data. Exporting again to the same directory will overwrite all data. Do you want to continue?`,
+    const prompt = await confirm({
+      message: `The directory ${exportAbsPath} is not empty. Existing files in this directory will be overwritten. Do you want to continue?`,
+      nonInteractive: options.nonInteractive,
+      force: options.force,
       default: false,
     });
 

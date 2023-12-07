@@ -12,6 +12,7 @@ import { logger } from "../logger";
 import { requireConfig } from "../requireConfig";
 import { marked } from "marked";
 import { requireHostingSite } from "../requireHostingSite";
+import { errNoDefaultSite } from "../getDefaultHostingSite";
 
 const LOG_TAG = "hosting:channel";
 
@@ -24,7 +25,20 @@ export const command = new Command("hosting:channel:create [channelId]")
   .option("--site <siteId>", "site for which to create the channel")
   .before(requireConfig)
   .before(requirePermissions, ["firebasehosting.sites.update"])
-  .before(requireHostingSite)
+  .before(async (options) => {
+    try {
+      await requireHostingSite(options);
+    } catch (err: unknown) {
+      if (err === errNoDefaultSite) {
+        throw new FirebaseError(
+          `Unable to deploy to Hosting as there is no Hosting site. Use ${bold(
+            "firebase hosting:sites:create"
+          )} to create a site.`
+        );
+      }
+      throw err;
+    }
+  })
   .action(
     async (
       channelId: string,

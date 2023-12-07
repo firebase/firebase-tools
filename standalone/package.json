@@ -19,7 +19,8 @@
   },
   "pkg": {
     "scripts": [
-      "node_modules/npm/src/**/*.js"
+      "node_modules/npm/lib/*.js",
+      "node_modules/npm/lib/**/*.js"
     ],
     "assets": [
       "node_modules/.bin/**",

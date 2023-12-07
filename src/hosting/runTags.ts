@@ -1,3 +1,4 @@
+import { posix } from "node:path";
 import * as run from "../gcp/run";
 import * as api from "./api";
 import { FirebaseError } from "../error";
@@ -23,7 +24,9 @@ export async function gcTagsForServices(project: string, services: run.Service[]
   // id and number.
   const validTagsByServiceByRegion: Record<string, Record<string, Set<string>>> = {};
   const sites = await api.listSites(project);
-  const allVersionsNested = await Promise.all(sites.map((site) => api.listVersions(site.name)));
+  const allVersionsNested = await Promise.all(
+    sites.map((site) => api.listVersions(posix.basename(site.name)))
+  );
   const activeVersions = [...flattenArray(allVersionsNested)].filter((version) => {
     return version.status === "CREATED" || version.status === "FINALIZED";
   });

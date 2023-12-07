@@ -1,6 +1,9 @@
 import { Client } from "../apiv2";
+import { needProjectId } from "../projectUtils";
 import { frameworksOrigin } from "../api";
+import { ensure } from "../ensureApiEnabled";
 
+export const API_HOST = new URL(frameworksOrigin).host;
 export const API_VERSION = "v1alpha";
 
 const client = new Client({
@@ -16,18 +19,27 @@ interface Codebase {
   rootDirectory: string;
 }
 
-/** A Stack, the primary resource of Frameworks. */
-export interface Stack {
+/**
+ * Specifies how Backend's data is replicated and served.
+ *   GLOBAL_ACCESS: Stores and serves content from multiple points-of-presence (POP)
+ *   REGIONAL_STRICT: Restricts data and serving infrastructure in Backend's region
+ *
+ */
+export type ServingLocality = "GLOBAL_ACCESS" | "REGIONAL_STRICT";
+
+/** A Backend, the primary resource of Frameworks. */
+export interface Backend {
   name: string;
   mode?: string;
   codebase: Codebase;
+  servingLocality: ServingLocality;
   labels: Record<string, string>;
   createTime: string;
   updateTime: string;
   uri: string;
 }
 
-export type StackOutputOnlyFields = "createTime" | "updateTime" | "uri" | "codebase";
+export type BackendOutputOnlyFields = "name" | "createTime" | "updateTime" | "uri";
 
 export interface Build {
   name: string;
@@ -81,34 +93,65 @@ export interface Operation {
   // end oneof result
 }
 
+export interface ListBackendsResponse {
+  backends: Backend[];
+}
+
 /**
- * Creates a new Stack in a given project and location.
+ * Creates a new Backend in a given project and location.
  */
-export async function createStack(
+export async function createBackend(
   projectId: string,
   location: string,
-  stackInput: Omit<Stack, StackOutputOnlyFields>
+  backendReqBoby: Omit<Backend, BackendOutputOnlyFields>,
+  backendId: string
 ): Promise<Operation> {
-  const stackId = stackInput.name;
-  const res = await client.post<Omit<Stack, StackOutputOnlyFields>, Operation>(
-    `projects/${projectId}/locations/${location}/stacks`,
-    stackInput,
-    { queryParams: { stackId } }
+  const res = await client.post<Omit<Backend, BackendOutputOnlyFields>, Operation>(
+    `projects/${projectId}/locations/${location}/backends`,
+    backendReqBoby,
+    { queryParams: { backendId } }
   );
 
   return res.body;
 }
 
 /**
- * Gets stack details.
+ * Gets backend details.
  */
-export async function getStack(
+export async function getBackend(
   projectId: string,
   location: string,
-  stackId: string
-): Promise<Stack> {
-  const name = `projects/${projectId}/locations/${location}/stacks/${stackId}`;
-  const res = await client.get<Stack>(name);
+  backendId: string
+): Promise<Backend> {
+  const name = `projects/${projectId}/locations/${location}/backends/${backendId}`;
+  const res = await client.get<Backend>(name);
+
+  return res.body;
+}
+
+/**
+ * List all backends present in a project and region.
+ */
+export async function listBackends(
+  projectId: string,
+  location: string
+): Promise<ListBackendsResponse> {
+  const name = `projects/${projectId}/locations/${location}/backends`;
+  const res = await client.get<ListBackendsResponse>(name);
+
+  return res.body;
+}
+
+/**
+ * Deletes a backend with backendId in a given project and location.
+ */
+export async function deleteBackend(
+  projectId: string,
+  location: string,
+  backendId: string
+): Promise<Operation> {
+  const name = `projects/${projectId}/locations/${location}/backends/${backendId}`;
+  const res = await client.delete<Operation>(name);
 
   return res.body;
 }
@@ -119,15 +162,23 @@ export async function getStack(
 export async function createBuild(
   projectId: string,
   location: string,
-  stackId: string,
+  backendId: string,
   buildInput: Omit<Build, BuildOutputOnlyFields>
 ): Promise<Operation> {
   const buildId = buildInput.name;
   const res = await client.post<Omit<Build, BuildOutputOnlyFields>, Operation>(
-    `projects/${projectId}/locations/${location}/stacks/${stackId}/builds`,
+    `projects/${projectId}/locations/${location}/backends/${backendId}/builds`,
     buildInput,
     { queryParams: { buildId } }
   );
 
   return res.body;
+}
+
+/**
+ * Ensure that Frameworks API is enabled on the project.
+ */
+export async function ensureApiEnabled(options: any): Promise<void> {
+  const projectId = needProjectId(options);
+  return await ensure(projectId, API_HOST, "frameworks", true);
 }

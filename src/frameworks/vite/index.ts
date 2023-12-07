@@ -16,6 +16,7 @@ import {
 export const name = "Vite";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Toolchain;
+export const supportedRange = "3 - 5";
 
 export const DEFAULT_BUILD_SCRIPT = ["vite build", "tsc && vite build"];
 
@@ -32,10 +33,13 @@ export async function init(setup: any, config: any, baseTemplate: string = "vani
       { name: "TypeScript", value: `${baseTemplate}-ts` },
     ],
   });
-  execSync(`npm create vite@latest ${setup.hosting.source} --yes -- --template ${template}`, {
-    stdio: "inherit",
-    cwd: config.projectDir,
-  });
+  execSync(
+    `npm create vite@"${supportedRange}" ${setup.hosting.source} --yes -- --template ${template}`,
+    {
+      stdio: "inherit",
+      cwd: config.projectDir,
+    }
+  );
   execSync(`npm install`, { stdio: "inherit", cwd: join(config.projectDir, setup.hosting.source) });
 }
 
@@ -56,11 +60,21 @@ export async function discover(dir: string, plugin?: string, npmDependency?: str
     pathExists(join(dir, "vite.config.ts")),
   ]);
   const anyConfigFileExists = configFilesExist.some((it) => it);
-  if (!anyConfigFileExists && !findDependency("vite", { cwd: dir, depth, omitDev: false })) return;
+  const version: string | undefined = findDependency("vite", {
+    cwd: dir,
+    depth,
+    omitDev: false,
+  })?.version;
+  if (!anyConfigFileExists && !version) return;
   if (npmDependency && !additionalDep) return;
   const { appType, publicDir: publicDirectory, plugins } = await getConfig(dir);
   if (plugin && !plugins.find(({ name }) => name === plugin)) return;
-  return { mayWantBackend: appType !== "spa", publicDirectory };
+  return {
+    mayWantBackend: appType !== "spa",
+    publicDirectory,
+    version,
+    vite: true,
+  };
 }
 
 export async function build(root: string) {
