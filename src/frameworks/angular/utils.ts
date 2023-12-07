@@ -240,6 +240,10 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
       assertIsString(options.serverTarget);
       serverTarget = targetFromTargetString(options.serverTarget);
     }
+    if (options.serveTarget) {
+      assertIsString(options.serveTarget);
+      serveTarget = targetFromTargetString(options.serveTarget);
+    }
     if (options.serveOptimizedImages) {
       serveOptimizedImages = true;
     }
