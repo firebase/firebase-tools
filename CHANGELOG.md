@@ -1,0 +1,1 @@
+- Addressed an issue preventing Astro applications from being deployed from Windows. (#5709)
