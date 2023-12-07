@@ -208,7 +208,7 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
         throw new FirebaseError(`builder ${builder} not known.`);
     }
   } else if (workspaceProject.targets.has("deploy")) {
-    const { builder, defaultConfiguration = "production" } =
+    const { builder, defaultConfiguration = "development" } =
       workspaceProject.targets.get("deploy")!;
     if (builder === ExpectedBuilder.DEPLOY) {
       deployTarget = {
