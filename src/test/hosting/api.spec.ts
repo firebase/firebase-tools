@@ -834,7 +834,7 @@ describe("hosting", () => {
         .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`)
         .reply(200, { defaultUrl });
 
-      expect(await hostingApi.getDeploymentDomain(PROJECT_ID, SITE)).to.be(defaultUrl);
+      expect(await hostingApi.getDeploymentDomain(PROJECT_ID, SITE)).to.equal(defaultUrl);
     });
 
     it("should get the default site domain when hostingChannel is undefined", async () => {
@@ -846,7 +846,9 @@ describe("hosting", () => {
         .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`)
         .reply(200, { defaultUrl });
 
-      expect(await hostingApi.getDeploymentDomain(PROJECT_ID, SITE, undefined)).to.be(defaultUrl);
+      expect(await hostingApi.getDeploymentDomain(PROJECT_ID, SITE, undefined)).to.equal(
+        defaultUrl
+      );
     });
 
     it("should get the channel domain", async () => {
@@ -857,7 +859,9 @@ describe("hosting", () => {
         .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels/${channelId}`)
         .reply(200, channel);
 
-      expect(await hostingApi.getDeploymentDomain(PROJECT_ID, SITE, channelId)).to.be(channel.url);
+      expect(await hostingApi.getDeploymentDomain(PROJECT_ID, SITE, channelId)).to.equal(
+        channel.url
+      );
     });
 
     it("should return undefined if channel not found", async () => {
