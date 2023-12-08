@@ -3,7 +3,7 @@ import { spawn } from "cross-spawn";
 import { existsSync } from "fs";
 import { copy, pathExists } from "fs-extra";
 import { join } from "path";
-import stripAnsi from "strip-ansi";
+const stripAnsi = require("strip-ansi");
 import { FrameworkType, SupportLevel } from "../interfaces";
 import { promptOnce } from "../../prompt";
 import {
