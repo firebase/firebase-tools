@@ -4,7 +4,6 @@ import { needProjectId } from "../projectUtils";
 import * as gcp from "../gcp/frameworks";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
-import { bold } from "colorette";
 import { ensureApiEnabled } from "../gcp/frameworks";
 
 const Table = require("cli-table");
@@ -25,12 +24,8 @@ export const command = new Command("backends:list")
     const backendsList: gcp.Backend[] = [];
     try {
       const backendsPerRegion = await gcp.listBackends(projectId, location);
-      backendsList.push(...backendsPerRegion.backends);
+      backendsList.push(...(backendsPerRegion.backends || []));
       populateTable(backendsList, table);
-
-      logger.info();
-      logger.info(`Backends for project ${bold(projectId)}`);
-      logger.info();
       logger.info(table.toString());
     } catch (err: any) {
       throw new FirebaseError(
