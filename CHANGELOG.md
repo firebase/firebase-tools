@@ -1,1 +1,2 @@
 - Fix Next.js dynamic and static OG images. (#6592)
+- Address a regression introduced in 3.0.1 when emulating Vite applications. (#6599)
