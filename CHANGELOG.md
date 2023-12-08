@@ -1,0 +1,1 @@
+- Fix Next.js dynamic and static OG images. (#6592)

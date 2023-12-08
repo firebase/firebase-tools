@@ -821,6 +821,64 @@ describe("hosting", () => {
       expect(nock.isDone()).to.be.true;
     });
   });
+
+  describe("getDeploymentDomain", () => {
+    afterEach(nock.cleanAll);
+
+    it("should get the default site domain when hostingChannel is omitted", async () => {
+      const defaultDomain = EXPECTED_DOMAINS_RESPONSE[EXPECTED_DOMAINS_RESPONSE.length - 1];
+      const defaultUrl = `https://${defaultDomain}`;
+
+      nock(hostingApiOrigin)
+        .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`)
+        .reply(200, { defaultUrl });
+
+      expect(await hostingApi.getDeploymentDomain(PROJECT_ID, SITE)).to.equal(defaultDomain);
+    });
+
+    it("should get the default site domain when hostingChannel is undefined", async () => {
+      const defaultDomain = EXPECTED_DOMAINS_RESPONSE[EXPECTED_DOMAINS_RESPONSE.length - 1];
+      const defaultUrl = `https://${defaultDomain}`;
+
+      nock(hostingApiOrigin)
+        .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`)
+        .reply(200, { defaultUrl });
+
+      expect(await hostingApi.getDeploymentDomain(PROJECT_ID, SITE, undefined)).to.equal(
+        defaultDomain
+      );
+    });
+
+    it("should get the channel domain", async () => {
+      const channelId = "my-channel";
+      const channelDomain = `${PROJECT_ID}--${channelId}-123123.web.app`;
+      const channel = { url: `https://${channelDomain}` };
+
+      nock(hostingApiOrigin)
+        .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels/${channelId}`)
+        .reply(200, channel);
+
+      expect(await hostingApi.getDeploymentDomain(PROJECT_ID, SITE, channelId)).to.equal(
+        channelDomain
+      );
+    });
+
+    it("should return null if channel not found", async () => {
+      const channelId = "my-channel";
+
+      nock(hostingApiOrigin)
+        .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels/${channelId}`)
+        .reply(404, {});
+
+      expect(await hostingApi.getDeploymentDomain(PROJECT_ID, SITE, channelId)).to.be.null;
+    });
+
+    it("should return null if site not found", async () => {
+      nock(hostingApiOrigin).get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`).reply(404, {});
+
+      expect(await hostingApi.getDeploymentDomain(PROJECT_ID, SITE)).to.be.null;
+    });
+  });
 });
 
 describe("normalizeName", () => {
