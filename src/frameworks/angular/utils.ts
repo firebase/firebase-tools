@@ -176,7 +176,7 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
   }
 
   if (!project) {
-    cannotDetermineTarget();
+    throwCannotDetermineTarget();
   }
 
   const workspaceProject = workspace.projects.get(project);
@@ -564,15 +564,12 @@ export async function tryToGetOptionsForTarget(
   architectHost: WorkspaceNodeModulesArchitectHost,
   target: Target
 ): Promise<JsonObject | null> {
-  try {
-    return await architectHost.getOptionsForTarget(target);
-  } catch {
-    cannotDetermineTarget();
-  }
+  return await architectHost.getOptionsForTarget(target).catch(throwCannotDetermineTarget);
 }
 
-function cannotDetermineTarget(): never {
+function throwCannotDetermineTarget(error?: Error): never {
   throw new FirebaseError(
-    "Unable to determine the application to deploy, specify a target via the FIREBASE_FRAMEWORKS_BUILD_TARGET environment variable"
+    `Unable to determine the application to deploy, specify a target via the FIREBASE_FRAMEWORKS_BUILD_TARGET environment variable.`,
+    { original: error }
   );
 }
