@@ -30,7 +30,13 @@ import {
   validateLocales,
   getNodeModuleBin,
 } from "../utils";
-import { BuildResult, FrameworkType, SupportLevel } from "../interfaces";
+import {
+  BuildResult,
+  Framework,
+  FrameworkContext,
+  FrameworkType,
+  SupportLevel,
+} from "../interfaces";
 
 import {
   cleanEscapedChars,
@@ -67,7 +73,7 @@ import {
   APP_PATHS_MANIFEST,
   ESBUILD_VERSION,
 } from "./constants";
-import { getAllSiteDomains } from "../../hosting/api";
+import { getAllSiteDomains, getDeploymentDomain } from "../../hosting/api";
 import { logger } from "../../logger";
 
 const DEFAULT_BUILD_SCRIPT = ["next build"];
@@ -101,7 +107,11 @@ export async function discover(dir: string) {
 /**
  * Build a next.js application.
  */
-export async function build(dir: string): Promise<BuildResult> {
+export async function build(
+  dir: string,
+  target: string,
+  context?: FrameworkContext
+): Promise<BuildResult> {
   await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
 
   const reactVersion = getReactVersion(dir);
@@ -110,10 +120,27 @@ export async function build(dir: string): Promise<BuildResult> {
     process.env.__NEXT_REACT_ROOT = "true";
   }
 
+  const env = { ...process.env };
+
+  if (context?.projectId && context?.site) {
+    const deploymentDomain = await getDeploymentDomain(
+      context.projectId,
+      context.site,
+      context.hostingChannel
+    );
+
+    if (deploymentDomain) {
+      // Add the deployment domain to VERCEL_URL env variable, which is
+      // required for dynamic OG images to work without manual configuration.
+      // See: https://nextjs.org/docs/app/api-reference/functions/generate-metadata#default-value
+      env["VERCEL_URL"] = deploymentDomain;
+    }
+  }
+
   const cli = getNodeModuleBin("next", dir);
 
   const nextBuild = new Promise((resolve, reject) => {
-    const buildProcess = spawn(cli, ["build"], { cwd: dir });
+    const buildProcess = spawn(cli, ["build"], { cwd: dir, env });
     buildProcess.stdout?.on("data", (data) => logger.info(data.toString()));
     buildProcess.stderr?.on("data", (data) => logger.info(data.toString()));
     buildProcess.on("error", (err) => {
@@ -488,7 +515,12 @@ export async function ɵcodegenPublicDirectory(
 /**
  * Create a directory for SSR content.
  */
-export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
+export async function ɵcodegenFunctionsDirectory(
+  sourceDir: string,
+  destDir: string,
+  target: string,
+  context?: FrameworkContext
+): ReturnType<NonNullable<Framework["ɵcodegenFunctionsDirectory"]>> {
   const { distDir } = await getConfig(sourceDir);
   const packageJson = await readJSON(join(sourceDir, "package.json"));
   // Bundle their next.config.js with esbuild via NPX, pinned version was having troubles on m1
@@ -558,9 +590,25 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
     packageJson.dependencies["sharp"] = SHARP_VERSION;
   }
 
+  const dotEnv: Record<string, string> = {};
+  if (context?.projectId && context?.site) {
+    const deploymentDomain = await getDeploymentDomain(
+      context.projectId,
+      context.site,
+      context.hostingChannel
+    );
+
+    if (deploymentDomain) {
+      // Add the deployment domain to VERCEL_URL env variable, which is
+      // required for dynamic OG images to work without manual configuration.
+      // See: https://nextjs.org/docs/app/api-reference/functions/generate-metadata#default-value
+      dotEnv["VERCEL_URL"] = deploymentDomain;
+    }
+  }
+
   await mkdirp(join(destDir, distDir));
   await copy(join(sourceDir, distDir), join(destDir, distDir));
-  return { packageJson, frameworksEntry: "next.js" };
+  return { packageJson, frameworksEntry: "next.js", dotEnv };
 }
 
 /**
