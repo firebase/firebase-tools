@@ -5,6 +5,7 @@ import * as operationPoller from "../operation-poller";
 import { DEFAULT_DURATION } from "../hosting/expireUtils";
 import { getAuthDomains, updateAuthDomains } from "../gcp/auth";
 import * as proto from "../gcp/proto";
+import { getHostnameFromUrl } from "../utils";
 
 const ONE_WEEK_MS = 604800000; // 7 * 24 * 60 * 60 * 1000
 
@@ -551,6 +552,7 @@ export async function getSite(project: string, site: string): Promise<Site> {
     if (e instanceof FirebaseError && e.status === 404) {
       throw new FirebaseError(`could not find site "${site}" for project "${project}"`, {
         original: e,
+        status: e.status,
       });
     }
     throw e;
@@ -750,4 +752,36 @@ export async function getAllSiteDomains(projectId: string, siteId: string): Prom
   ]);
 
   return Array.from(allSiteDomains);
+}
+
+/**
+ * Get the deployment domain.
+ * If hostingChannel is provided, get the channel url, otherwise get the
+ * default site url.
+ */
+export async function getDeploymentDomain(
+  projectId: string,
+  siteId: string,
+  hostingChannel?: string | undefined
+): Promise<string | null> {
+  if (hostingChannel) {
+    const channel = await getChannel(projectId, siteId, hostingChannel);
+
+    return channel && getHostnameFromUrl(channel?.url);
+  }
+
+  const site = await getSite(projectId, siteId).catch((e: unknown) => {
+    // return null if the site doesn't exist
+    if (
+      e instanceof FirebaseError &&
+      e.original instanceof FirebaseError &&
+      e.original.status === 404
+    ) {
+      return null;
+    }
+
+    throw e;
+  });
+
+  return site && getHostnameFromUrl(site?.defaultUrl);
 }

@@ -799,3 +799,14 @@ export async function openInBrowserPopup(
     },
   };
 }
+
+/**
+ * Get hostname from a given url or null if the url is invalid
+ */
+export function getHostnameFromUrl(url: string): string | null {
+  try {
+    return new URL(url).hostname;
+  } catch (e: unknown) {
+    return null;
+  }
+}
