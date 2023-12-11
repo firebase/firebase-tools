@@ -187,33 +187,31 @@ export class StorageRulesRuntime {
 
     this._childprocess.stdout?.on("data", (buf: Buffer) => {
       const serializedRuntimeActionResponse = buf.toString("utf-8").trim();
-      if (serializedRuntimeActionResponse !== "") {
-        for (const parsedRap of parseStr(serializedRuntimeActionResponse)) {
-          if (parsedRap.type === "parse-error") {
-            EmulatorLogger.forEmulator(Emulators.STORAGE).log("INFO", parsedRap.value);
-            return;
-          }
-          const rap = parsedRap.value as RuntimeActionResponse;
+      for (const parsedRap of parseStr(serializedRuntimeActionResponse || "")) {
+        if (parsedRap.type === "parse-error") {
+          EmulatorLogger.forEmulator(Emulators.STORAGE).log("INFO", parsedRap.value);
+          continue;
+        }
+        const rap = parsedRap.value as RuntimeActionResponse;
 
-          const id = rap.id ?? rap.server_request_id;
-          if (id === undefined) {
-            console.log(`Received no ID from server response ${serializedRuntimeActionResponse}`);
-            return;
-          }
+        const id = rap.id ?? rap.server_request_id;
+        if (id === undefined) {
+          console.log(`Received no ID from server response ${serializedRuntimeActionResponse}`);
+          continue;
+        }
 
-          const request = this._requests[id];
+        const request = this._requests[id];
 
-          if (rap.status !== "ok" && !("action" in rap)) {
-            console.warn(`[RULES] ${rap.status}: ${rap.message}`);
-            rap.errors.forEach(console.warn.bind(console));
-            return;
-          }
+        if (rap.status !== "ok" && !("action" in rap)) {
+          console.warn(`[RULES] ${rap.status}: ${rap.message}`);
+          rap.errors.forEach(console.warn.bind(console));
+          continue;
+        }
 
-          if (request) {
-            request.handler(rap);
-          } else {
-            console.log(`No handler for event ${serializedRuntimeActionResponse}`);
-          }
+        if (request) {
+          request.handler(rap);
+        } else {
+          console.log(`No handler for event ${serializedRuntimeActionResponse}`);
         }
       }
     });
