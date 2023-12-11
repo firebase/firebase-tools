@@ -98,7 +98,7 @@ export const ALL_EXPERIMENTS = experiments({
       "without a notice.",
   },
 
-  frameworks: {
+  internalframeworks: {
     shortDescription: "Allow CLI option for Frameworks",
     default: true,
     public: false,

@@ -73,9 +73,9 @@ const choices = [
   },
 ];
 
-if (isEnabled("frameworks")) {
+if (isEnabled("internalframeworks")) {
   choices.push({
-    value: "frameworks",
+    value: "internalframeworks",
     name: "Frameworks: Get started with Frameworks projects.",
     checked: false,
   });
@@ -93,7 +93,7 @@ const featureNames = choices.map((choice) => choice.value);
 
 const DESCRIPTION = `Interactively configure the current directory as a Firebase project or initialize new features in an already configured Firebase project directory.
 
-This command will create or update 'firebase.json' and '.firebaserc' configuration files in the current directory. 
+This command will create or update 'firebase.json' and '.firebaserc' configuration files in the current directory.
 
 To initialize a specific Firebase feature, run 'firebase init [feature]'. Valid features are:
 ${[...featureNames]

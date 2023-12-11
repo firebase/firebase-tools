@@ -89,17 +89,18 @@ const BUILD_MEMO = new Map<string[], Promise<BuildResult | void>>();
 // Memoize the build based on both the dir and the environment variables
 function memoizeBuild(
   dir: string,
-  build: (dir: string, target: string) => Promise<BuildResult | void>,
+  build: Framework["build"],
   deps: any[],
-  target: string
-) {
+  target: string,
+  context: FrameworkContext
+): ReturnType<Framework["build"]> {
   const key = [dir, ...deps];
   for (const existingKey of BUILD_MEMO.keys()) {
     if (isDeepStrictEqual(existingKey, key)) {
-      return BUILD_MEMO.get(existingKey);
+      return BUILD_MEMO.get(existingKey) as ReturnType<Framework["build"]>;
     }
   }
-  const value = build(dir, target);
+  const value = build(dir, target, context);
   BUILD_MEMO.set(key, value);
   return value;
 }
@@ -175,7 +176,8 @@ export async function prepareFrameworks(
       );
     }
     const getProjectPath = (...args: string[]) => join(projectRoot, source, ...args);
-    const functionId = `ssr${site.toLowerCase().replace(/-/g, "")}`;
+    // Combined traffic tag (19 chars) and functionId cannot exceed 46 characters.
+    const functionId = `ssr${site.toLowerCase().replace(/-/g, "").substring(0, 20)}`;
     const usesFirebaseAdminSdk = !!findDependency("firebase-admin", { cwd: getProjectPath() });
     const usesFirebaseJsSdk = !!findDependency("@firebase/app", { cwd: getProjectPath() });
     if (usesFirebaseAdminSdk) {
@@ -261,11 +263,21 @@ export async function prepareFrameworks(
       name,
       support,
       docsUrl,
+      supportedRange,
       getValidBuildTargets = GET_DEFAULT_BUILD_TARGETS,
       shouldUseDevModeHandle = DEFAULT_SHOULD_USE_DEV_MODE_HANDLE,
     } = WebFrameworks[framework];
+
     logger.info(
-      `\n${frameworksCallToAction(SupportLevelWarnings[support](name), docsUrl, "   ")}\n`
+      `\n${frameworksCallToAction(
+        SupportLevelWarnings[support](name),
+        docsUrl,
+        "   ",
+        name,
+        results.version,
+        supportedRange,
+        results.vite
+      )}\n`
     );
 
     const hostingEmulatorInfo = emulators.find((e) => e.name === Emulators.HOSTING);
@@ -274,6 +286,12 @@ export async function prepareFrameworks(
     const useDevModeHandle =
       purpose !== "deploy" &&
       (await shouldUseDevModeHandle(frameworksBuildTarget, getProjectPath()));
+
+    const frameworkContext: FrameworkContext = {
+      projectId: project,
+      site: options.site,
+      hostingChannel: context?.hostingChannel,
+    };
 
     let codegenFunctionsDirectory: Framework["ɵcodegenFunctionsDirectory"];
     let baseUrl = "";
@@ -298,7 +316,8 @@ export async function prepareFrameworks(
         getProjectPath(),
         build,
         [firebaseDefaults, frameworksBuildTarget],
-        frameworksBuildTarget
+        frameworksBuildTarget,
+        frameworkContext
       );
       const { wantsBackend = false, trailingSlash, i18n = false }: BuildResult = buildResult || {};
 
@@ -386,7 +405,12 @@ export async function prepareFrameworks(
         frameworksEntry = framework,
         dotEnv = {},
         rewriteSource,
-      } = await codegenFunctionsDirectory(getProjectPath(), functionsDist, frameworksBuildTarget);
+      } = await codegenFunctionsDirectory(
+        getProjectPath(),
+        functionsDist,
+        frameworksBuildTarget,
+        frameworkContext
+      );
 
       const rewrite = {
         source: rewriteSource || posix.join(baseUrl, "**"),

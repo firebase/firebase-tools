@@ -5,6 +5,7 @@ import * as operationPoller from "../operation-poller";
 import { DEFAULT_DURATION } from "../hosting/expireUtils";
 import { getAuthDomains, updateAuthDomains } from "../gcp/auth";
 import * as proto from "../gcp/proto";
+import { getHostnameFromUrl } from "../utils";
 
 const ONE_WEEK_MS = 604800000; // 7 * 24 * 60 * 60 * 1000
 
@@ -229,6 +230,19 @@ interface LongRunningOperation<T> {
   readonly metadata: T | undefined;
 }
 
+// The possible types of a site.
+export enum SiteType {
+  // Unknown state, likely the result of an error on the backend.
+  TYPE_UNSPECIFIED = "TYPE_UNSPECIFIED",
+
+  // The default Hosting site that is provisioned when a Firebase project is
+  // created.
+  DEFAULT_SITE = "DEFAULT_SITE",
+
+  // A Hosting site that the user created.
+  USER_SITE = "USER_SITE",
+}
+
 export type Site = {
   // Fully qualified name of the site.
   name: string;
@@ -236,6 +250,8 @@ export type Site = {
   readonly defaultUrl: string;
 
   readonly appId: string;
+
+  readonly type?: SiteType;
 
   labels: { [key: string]: string };
 };
@@ -536,6 +552,7 @@ export async function getSite(project: string, site: string): Promise<Site> {
     if (e instanceof FirebaseError && e.status === 404) {
       throw new FirebaseError(`could not find site "${site}" for project "${project}"`, {
         original: e,
+        status: e.status,
       });
     }
     throw e;
@@ -549,11 +566,20 @@ export async function getSite(project: string, site: string): Promise<Site> {
  * @param appId the Firebase Web App ID (https://firebase.google.com/docs/projects/learn-more#config-files-objects)
  * @return site information.
  */
-export async function createSite(project: string, site: string, appId = ""): Promise<Site> {
+export async function createSite(
+  project: string,
+  site: string,
+  appId = "",
+  validateOnly = false
+): Promise<Site> {
+  const queryParams: Record<string, string> = { siteId: site };
+  if (validateOnly) {
+    queryParams.validateOnly = "true";
+  }
   const res = await apiClient.post<{ appId: string }, Site>(
     `/projects/${project}/sites`,
     { appId: appId },
-    { queryParams: { siteId: site } }
+    { queryParams }
   );
   return res.body;
 }
@@ -633,8 +659,8 @@ export async function getCleanDomains(project: string, site: string): Promise<st
       return acc;
     }, {});
 
-  // match any string that has ${site}--*
-  const siteMatch = new RegExp(`${site}--`, "i");
+  // match any string that starts with ${site}--*
+  const siteMatch = new RegExp(`^${site}--`, "i");
   // match any string that ends in firebaseapp.com
   const firebaseAppMatch = new RegExp(/firebaseapp.com$/);
   const domains = await getAuthDomains(project);
@@ -726,4 +752,36 @@ export async function getAllSiteDomains(projectId: string, siteId: string): Prom
   ]);
 
   return Array.from(allSiteDomains);
+}
+
+/**
+ * Get the deployment domain.
+ * If hostingChannel is provided, get the channel url, otherwise get the
+ * default site url.
+ */
+export async function getDeploymentDomain(
+  projectId: string,
+  siteId: string,
+  hostingChannel?: string | undefined
+): Promise<string | null> {
+  if (hostingChannel) {
+    const channel = await getChannel(projectId, siteId, hostingChannel);
+
+    return channel && getHostnameFromUrl(channel?.url);
+  }
+
+  const site = await getSite(projectId, siteId).catch((e: unknown) => {
+    // return null if the site doesn't exist
+    if (
+      e instanceof FirebaseError &&
+      e.original instanceof FirebaseError &&
+      e.original.status === 404
+    ) {
+      return null;
+    }
+
+    throw e;
+  });
+
+  return site && getHostnameFromUrl(site?.defaultUrl);
 }

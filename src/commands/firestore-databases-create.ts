@@ -18,6 +18,10 @@ export const command = new Command("firestore:databases:create <database>")
     "--delete-protection <deleteProtectionState>",
     "Whether or not to prevent deletion of database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'"
   )
+  .option(
+    "--point-in-time-recovery <enablement>",
+    "Whether to enable the PITR feature on this database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'"
+  )
   .before(requirePermissions, ["datastore.databases.create"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
   .action(async (database: string, options: FirestoreOptions) => {
@@ -45,12 +49,28 @@ export const command = new Command("firestore:databases:create <database>")
         ? types.DatabaseDeleteProtectionState.ENABLED
         : types.DatabaseDeleteProtectionState.DISABLED;
 
+    if (
+      options.pointInTimeRecovery &&
+      options.pointInTimeRecovery !== types.PointInTimeRecoveryEnablementOption.ENABLED &&
+      options.pointInTimeRecovery !== types.PointInTimeRecoveryEnablementOption.DISABLED
+    ) {
+      logger.error(
+        "Invalid value for flag --point-in-time-recovery. See firebase firestore:databases:create --help for more info."
+      );
+      return;
+    }
+    const pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement =
+      options.pointInTimeRecovery === types.PointInTimeRecoveryEnablementOption.ENABLED
+        ? types.PointInTimeRecoveryEnablement.ENABLED
+        : types.PointInTimeRecoveryEnablement.DISABLED;
+
     const databaseResp: types.DatabaseResp = await api.createDatabase(
       options.project,
       database,
       options.location,
       type,
-      deleteProtectionState
+      deleteProtectionState,
+      pointInTimeRecoveryEnablement
     );
 
     if (options.json) {

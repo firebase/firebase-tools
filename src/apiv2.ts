@@ -20,7 +20,7 @@ const CLI_VERSION: string = pkg.version;
 
 const GOOG_QUOTA_USER = "x-goog-quota-user";
 
-export type HttpMethod = "GET" | "PUT" | "POST" | "DELETE" | "PATCH";
+export type HttpMethod = "GET" | "PUT" | "POST" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD";
 
 interface BaseRequestOptions<T> extends VerbOptions {
   method: HttpMethod;
@@ -184,6 +184,13 @@ export class Client {
     return this.request<unknown, ResT>(reqOptions);
   }
 
+  options<ResT>(path: string, options: ClientVerbOptions = {}): Promise<ClientResponse<ResT>> {
+    const reqOptions: ClientRequestOptions<unknown> = Object.assign(options, {
+      method: "OPTIONS",
+      path,
+    });
+    return this.request<unknown, ResT>(reqOptions);
+  }
   /**
    * Makes a request as specified by the options.
    * By default, this will:
