@@ -51,7 +51,7 @@ export async function doSetup(setup: any, projectId: string): Promise<void> {
     backendId = await promptOnce({
       name: "backendId",
       type: "input",
-      default: "acme-inc-web",
+      default: "my-web-app",
       message: "Create a name for your backend [1-30 characters]",
     });
     try {
