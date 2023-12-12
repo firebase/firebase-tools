@@ -1,13 +1,13 @@
 import { Client } from "../apiv2";
 import { needProjectId } from "../projectUtils";
-import { frameworksOrigin } from "../api";
+import { apphostingOrigin } from "../api";
 import { ensure } from "../ensureApiEnabled";
 
-export const API_HOST = new URL(frameworksOrigin).host;
+export const API_HOST = new URL(apphostingOrigin).host;
 export const API_VERSION = "v1alpha";
 
 const client = new Client({
-  urlPrefix: frameworksOrigin,
+  urlPrefix: apphostingOrigin,
   auth: true,
   apiVersion: API_VERSION,
 });
