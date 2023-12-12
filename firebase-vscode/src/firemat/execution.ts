@@ -73,7 +73,7 @@ export function registerExecution(
     try {
       // Execute queries/mutations from their source code.
       // That ensures that we can execute queries in unsaved files.
-      const results = await firematService.executeGraphQL({
+      results = await firematService.executeGraphQL({
         operationName: ast.name?.value,
         // We send the whole unparsed document to guarantee
         // that there are no formatting differences between the real document
