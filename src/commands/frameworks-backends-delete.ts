@@ -6,7 +6,7 @@ import * as gcp from "../gcp/frameworks";
 import { promptOnce } from "../prompt";
 import * as utils from "../utils";
 import { logger } from "../logger";
-import { DEFAULT_REGION, ALLOWED_REGIONS } from "../init/features/frameworks/constants";
+import { DEFAULT_REGION } from "../init/features/frameworks/constants";
 import { ensureApiEnabled } from "../gcp/frameworks";
 
 const Table = require("cli-table");
@@ -36,12 +36,13 @@ export const command = new Command("backends:delete")
     }
 
     if (!location) {
+      const allowedLocations = (await gcp.listLocations(projectId)).map((loc) => loc.locationId);
       location = await promptOnce({
         name: "region",
         type: "list",
         default: DEFAULT_REGION,
         message: "Please select the region of the backend you'd like to delete:",
-        choices: ALLOWED_REGIONS,
+        choices: allowedLocations,
       });
     }
 

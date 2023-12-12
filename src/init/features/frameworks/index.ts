@@ -9,7 +9,7 @@ import { Repository } from "../../../gcp/cloudbuild";
 import { API_VERSION } from "../../../gcp/frameworks";
 import { FirebaseError } from "../../../error";
 import { promptOnce } from "../../../prompt";
-import { DEFAULT_REGION, ALLOWED_REGIONS } from "./constants";
+import { DEFAULT_REGION } from "./constants";
 import { ensure } from "../../../ensureApiEnabled";
 
 const frameworksPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
@@ -32,17 +32,19 @@ export async function doSetup(setup: any, projectId: string): Promise<void> {
     ensure(projectId, "artifactregistry.googleapis.com", "frameworks", true),
   ]);
 
+  const allowedLocations = (await gcp.listLocations(projectId)).map((loc) => loc.locationId);
+
+  if (setup.location) {
+    if (!allowedLocations.includes(setup.location)) {
+      throw new FirebaseError(
+        `Invalid location ${setup.location}. Valid choices are ${allowedLocations.join(", ")}`
+      );
+    }
+  }
+
   logBullet("First we need a few details to create your backend.");
 
-  const location = await promptOnce({
-    name: "region",
-    type: "list",
-    default: DEFAULT_REGION,
-    message:
-      "Please select a region " +
-      `(${clc.yellow("info")}: Your region determines where your backend is located):\n`,
-    choices: ALLOWED_REGIONS,
-  });
+  const location: string = setup.location || (await promptLocation(projectId, allowedLocations));
 
   logSuccess(`Region set to ${location}.\n`);
 
@@ -76,6 +78,18 @@ export async function doSetup(setup: any, projectId: string): Promise<void> {
       `View the rollout status by running:\n\tfirebase backends:get ${backendId} --project ${projectId}`
     );
   }
+}
+
+async function promptLocation(projectId: string, locations: string[]): Promise<string> {
+  return await promptOnce({
+    name: "region",
+    type: "list",
+    default: DEFAULT_REGION,
+    message:
+      "Please select a region " +
+      `(${clc.yellow("info")}: Your region determines where your backend is located):\n`,
+    choices: locations.map((loc) => ({ value: loc })),
+  });
 }
 
 function toBackend(cloudBuildConnRepo: Repository): Omit<Backend, BackendOutputOnlyFields> {

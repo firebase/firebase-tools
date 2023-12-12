@@ -125,7 +125,6 @@ export async function getBackend(
 ): Promise<Backend> {
   const name = `projects/${projectId}/locations/${location}/backends/${backendId}`;
   const res = await client.get<Backend>(name);
-
   return res.body;
 }
 
@@ -173,6 +172,32 @@ export async function createBuild(
   );
 
   return res.body;
+}
+
+export interface Location {
+  name: string;
+  locationId: string;
+}
+
+interface ListLocationsResponse {
+  locations: Location[];
+  nextPageToken?: string;
+}
+
+/**
+ * Lists information about the supported locations.
+ */
+export async function listLocations(projectId: string): Promise<Location[]> {
+  let pageToken;
+  let locations: Location[] = [];
+  do {
+    const response = await client.get<ListLocationsResponse>(`projects/${projectId}/locations`);
+    if (response.body.locations && response.body.locations.length > 0) {
+      locations = locations.concat(response.body.locations);
+    }
+    pageToken = response.body.nextPageToken;
+  } while (pageToken);
+  return locations;
 }
 
 /**
