@@ -1,21 +1,15 @@
+import * as gcp from "../gcp/frameworks";
 import { Command } from "../command";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
-import * as gcp from "../gcp/frameworks";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { ensureApiEnabled } from "../gcp/frameworks";
+import { logWarning } from "../utils";
 
 const Table = require("cli-table");
 const COLUMN_LENGTH = 20;
-const TABLE_HEAD = [
-  "Backend Id",
-  "Repository Name",
-  "Location",
-  "URL",
-  "Created Date",
-  "Updated Date",
-];
+const TABLE_HEAD = ["Backend Id", "Repository", "Location", "URL", "Created Date", "Updated Date"];
 export const command = new Command("backends:get <backendId>")
   .description("Get backend details of a Firebase project")
   .option("-l, --location <location>", "App Backend location", "-")
@@ -36,16 +30,10 @@ export const command = new Command("backends:get <backendId>")
         backendsList.push(backendInRegion);
         populateTable(backendInRegion, table);
       } else {
-        const allBackend = await gcp.listBackends(projectId, location);
-        backendsList = allBackend.backends.filter((bkd) => bkd.name.split("/").pop() === backendId);
+        const resp = await gcp.listBackends(projectId, "-");
+        const allBackends = resp.backends || [];
+        backendsList = allBackends.filter((bkd) => bkd.name.split("/").pop() === backendId);
         backendsList.forEach((bkd) => populateTable(bkd, table));
-      }
-
-      if (backendsList.length !== 0) {
-        logger.info(table.toString());
-      } else {
-        logger.info();
-        logger.info(`There are no backends with id: ${backendId}`);
       }
     } catch (err: any) {
       throw new FirebaseError(
@@ -53,8 +41,12 @@ export const command = new Command("backends:get <backendId>")
         { original: err }
       );
     }
-
-    return backendsList;
+    if (backendsList.length === 0) {
+      logWarning(`Found no backend with id: ${backendId}`);
+      return;
+    }
+    logger.info(table.toString());
+    return backendsList[0];
   });
 
 function populateTable(backend: gcp.Backend, table: any) {
