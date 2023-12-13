@@ -103,7 +103,7 @@ export async function linkGitHubRepository(
     existingConns.push(refreshedConn);
   }
 
-  let { remoteUri, connection } = await promptRepositoryUri(projectId, location, existingConns);
+  let { remoteUri, connection } = await promptRepositoryUri(projectId, existingConns);
   while (remoteUri === "") {
     await utils.openInBrowser("https://github.com/apps/google-cloud-build/installations/new");
     await promptOnce({
@@ -111,7 +111,7 @@ export async function linkGitHubRepository(
       message:
         "Press ENTER once you have finished configuring your installation's access settings.",
     });
-    const selection = await promptRepositoryUri(projectId, location, existingConns);
+    const selection = await promptRepositoryUri(projectId, existingConns);
     remoteUri = selection.remoteUri;
     connection = selection.connection;
   }
@@ -130,12 +130,11 @@ export async function linkGitHubRepository(
 
 async function promptRepositoryUri(
   projectId: string,
-  location: string,
   connections: gcb.Connection[]
 ): Promise<{ remoteUri: string; connection: gcb.Connection }> {
   const remoteUriToConnection: Record<string, gcb.Connection> = {};
   for (const conn of connections) {
-    const { id } = parseConnectionName(conn.name)!;
+    const { location, id } = parseConnectionName(conn.name)!;
     const resp = await gcb.fetchLinkableRepositories(projectId, location, id);
     if (resp.repositories && resp.repositories.length > 0) {
       for (const repo of resp.repositories) {
