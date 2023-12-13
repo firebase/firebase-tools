@@ -80,6 +80,7 @@ export function registerExecution(
       });
     }
 
+    let results;
     try {
       // Execute queries/mutations from their source code.
       // That ensures that we can execute queries in unsaved files.
