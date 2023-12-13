@@ -3,6 +3,7 @@ import { ExtensionBrokerImpl } from "../extension-broker";
 import { registerWebview } from "../webview";
 import { ExecutionHistoryTreeDataProvider } from "./execution-history-provider";
 import {
+  ExecutionItem,
   ExecutionState,
   createExecution,
   executionArgsJSON,
@@ -14,7 +15,7 @@ import {
 import { batch, effect } from "@preact/signals-core";
 import { OperationDefinitionNode, print } from "graphql";
 import { FirematService } from "./service";
-import { OPERATION_TYPE } from "./types";
+import { FirematError, toSerializedError } from "../../common/error";
 
 export function registerExecution(
   context: ExtensionContext,
@@ -45,7 +46,10 @@ export function registerExecution(
       broker.send("notifyFirematResults", {
         args: item.args ?? "{}",
         query: print(item.operation),
-        results: item.results ?? {},
+        results:
+          item.results instanceof Error
+            ? toSerializedError(item.results)
+            : item.results,
         displayName: item.operation.operation + ": " + item.label,
       });
     }
@@ -69,7 +73,13 @@ export function registerExecution(
       position,
     });
 
-    let results;
+    function updateAndSelect(updates: Partial<ExecutionItem>) {
+      batch(() => {
+        updateExecution(item.executionId, { ...item, ...updates });
+        selectExecutionId(item.executionId);
+      });
+    }
+
     try {
       // Execute queries/mutations from their source code.
       // That ensures that we can execute queries in unsaved files.
@@ -82,18 +92,23 @@ export function registerExecution(
         variables: executionArgsJSON.value,
       });
 
-      // We always update the execution item, no matter what happens beforehand.
-    } finally {
-      batch(() => {
-        updateExecution(item.executionId, {
-          ...item,
-          state:
-            !results || results.code
-              ? ExecutionState.ERRORED
-              : ExecutionState.FINISHED,
-          results,
-        });
-        selectExecutionId(item.executionId);
+      updateAndSelect({
+        state:
+          // Executing queries may return a response which contains errors
+          // without throwing.
+          // In that case, we mark the execution as errored.
+          (results.errors?.length ?? 0) > 0
+            ? ExecutionState.ERRORED
+            : ExecutionState.FINISHED,
+        results,
+      });
+    } catch (error) {
+      updateAndSelect({
+        state: ExecutionState.ERRORED,
+        results:
+          error instanceof Error
+            ? error
+            : new FirematError("Unknown error", error),
       });
     }
   }

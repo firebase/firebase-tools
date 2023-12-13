@@ -1,12 +1,64 @@
-import fetch from "node-fetch";
-import { IntrospectionQuery, getIntrospectionQuery } from "graphql";
+import fetch, { Response } from "node-fetch";
+import { ExecutionResult, IntrospectionQuery, getIntrospectionQuery } from "graphql";
 import { Signal } from "@preact/signals-core";
+import { assertExecutionResult } from "../../common/graphql";
+import { FirematError } from "../../common/error";
 
 /**
  * Firemat Emulator service
  */
 export class FirematService {
-  constructor(private firematEndpoint: Signal<string | undefined>) {}
+constructor(private firematEndpoint: Signal<string | undefined>) {}
+
+  private async decodeResponse(
+    response: Response,
+    format?: "application/json"
+  ): Promise<unknown> {
+    const contentType = response.headers.get("Content-Type");
+    if (!contentType) {
+      throw new Error("Invalid content type");
+    }
+
+    if (format && !contentType.includes(format)) {
+      throw new Error(
+        `Invalid content type. Expected ${format} but got ${contentType}`
+      );
+    }
+
+    if (contentType.includes("application/json")) {
+      return response.json();
+    }
+
+    return response.text();
+  }
+
+  private async handleValidResponse(
+    response: Response
+  ): Promise<ExecutionResult> {
+    const json = await this.decodeResponse(response, "application/json");
+    assertExecutionResult(json);
+
+    return json;
+  }
+
+  private async handleInvalidResponse(response: Response): Promise<never> {
+    const cause = await this.decodeResponse(response);
+
+    throw new FirematError(
+      `Request failed with status ${response.status}`,
+      cause
+    );
+  }
+
+  private handleResponse(
+    response: Response
+  ): Promise<ExecutionResult> {
+    if (response.status >= 200 && response.status < 300) {
+      return this.handleValidResponse(response);
+    }
+
+    return this.handleInvalidResponse(response);
+  }
 
   /**
    * Obtains the current Firemat endpoint.
@@ -82,7 +134,7 @@ export class FirematService {
         return { data: undefined };
       }
       // TODO: remove after core server handles this
-      for (let type of introspectionResults.data.__schema.types) {
+      for (let type of (introspectionResults.data as any).__schema.types) {
         type.interfaces = [];
       }
 
@@ -147,10 +199,10 @@ export class FirematService {
           "Content-Type": "application/json",
           "x-mantle-admin": "all",
         },
-        body: body,
+        body,
       }
     );
-    const result = await resp.json().catch(() => resp.text());
-    return result;
+
+    return this.handleResponse(resp);
   }
 }
