@@ -7,6 +7,7 @@ import { ensureApiEnabled } from "../gcp/frameworks";
 
 export const command = new Command("backends:create")
   .description("Create a backend in a Firebase project")
+  .option("-l, --location <location>", "Specify the region of the backend", "")
   .before(ensureApiEnabled)
   .before(requireInteractive)
   .action(async (options: Options) => {
