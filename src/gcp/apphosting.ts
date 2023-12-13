@@ -1,3 +1,4 @@
+import * as proto from "../gcp/proto";
 import { Client } from "../apiv2";
 import { needProjectId } from "../projectUtils";
 import { apphostingOrigin } from "../api";
@@ -12,7 +13,7 @@ const client = new Client({
   apiVersion: API_VERSION,
 });
 
-type State = "BUILDING" | "BUILD" | "DEPLOYING" | "READY" | "FAILED";
+type BuildState = "BUILDING" | "BUILD" | "DEPLOYING" | "READY" | "FAILED";
 
 interface Codebase {
   repository?: string;
@@ -43,35 +44,182 @@ export type BackendOutputOnlyFields = "name" | "createTime" | "updateTime" | "ur
 
 export interface Build {
   name: string;
-  state: State;
+  state: BuildState;
   error: Status;
   image: string;
+  config?: BuildConfig;
   source: BuildSource;
-  buildLogsUri: string;
-  createTime: Date;
-  updateTime: Date;
   sourceRef: string;
+  buildLogsUri?: string;
+  displayName?: string;
+  labels?: Record<string, string>;
+  annotations?: Record<string, string>;
+  uuid: string;
+  etag: string;
+  reconciling: boolean;
+  createTime: string;
+  updateTime: string;
+  deleteTime: string;
 }
 
-export type BuildOutputOnlyFields = "createTime" | "updateTime" | "sourceRef";
+export type BuildOutputOnlyFields =
+  | "state"
+  | "error"
+  | "image"
+  | "sourceRef"
+  | "buildLogUri"
+  | "reconciling"
+  | "uuid"
+  | "etag"
+  | "createTime"
+  | "updateTime"
+  | "deleteTime";
+
+export interface BuildConfig {
+  minInstances?: number;
+  memory?: string;
+}
 
 interface BuildSource {
-  codeBaseSource?: CodebaseSource;
-}
-
-interface Status {
-  code: number;
-  message: string;
-  details: any[];
+  codebase: CodebaseSource;
 }
 
 interface CodebaseSource {
   // oneof reference
-  branch: string;
-  commit: string;
-  tag: string;
+  branch?: string;
+  commit?: string;
+  tag?: string;
   // end oneof reference
+  displayName: string;
+  hash: string;
+  commitMessage: string;
+  uri: string;
+  commitTime: string;
 }
+
+export type CodebaseSourceOutputOnlyFields =
+  | "displayName"
+  | "hash"
+  | "commitMessage"
+  | "uri"
+  | "commitTime";
+
+export type BuildInput = Omit<Build, BuildOutputOnlyFields | "source"> & {
+  source: Omit<BuildSource, "codebase"> & {
+    codebase: Omit<CodebaseSource, CodebaseSourceOutputOnlyFields>;
+  };
+};
+
+interface Status {
+  code: number;
+  message: string;
+  details: unknown;
+}
+
+type RolloutState =
+  | "STATE_UNSPECIFIED"
+  | "QUEUED"
+  | "PENDING_BUILD"
+  | "PROGRESSING"
+  | "PAUSED"
+  | "SUCCEEDED"
+  | "FAILED"
+  | "CANCELLED";
+
+export interface Rollout {
+  name: string;
+  state: RolloutState;
+  paused?: boolean;
+  pauseTime: string;
+  error?: Error;
+  build: string;
+  stages?: RolloutStage[];
+  displayName?: string;
+  createTime: string;
+  updateTime: string;
+  deleteTime?: string;
+  purgeTime?: string;
+  labels?: Record<string, string>;
+  annotations?: Record<string, string>;
+  uid: string;
+  etag: string;
+  reconciling: boolean;
+}
+
+export type RolloutOutputOnlyFields =
+  | "state"
+  | "pauseTime"
+  | "createTime"
+  | "updateTime"
+  | "deleteTime"
+  | "purgeTime"
+  | "uid"
+  | "etag"
+  | "reconciling";
+
+export interface Traffic {
+  name: string;
+  // oneof traffic_management
+  target?: TrafficSet;
+  rolloutPolicy?: RolloutPolicy;
+  // end oneof traffic_management
+  current: TrafficSet;
+  reconciling: boolean;
+  createTime: string;
+  updateTime: string;
+  annotations?: Record<string, string>;
+  etag: string;
+  uid: string;
+}
+
+export type TrafficOutputOnlyFields =
+  | "current"
+  | "reconciling"
+  | "createTime"
+  | "updateTime"
+  | "etag"
+  | "uid";
+
+export interface TrafficSet {
+  splits: TrafficSplit[];
+}
+
+export interface TrafficSplit {
+  build: string;
+  percent: number;
+}
+
+export interface RolloutPolicy {
+  // oneof trigger
+  codebaseBranch?: string;
+  codebaseTagPattern?: string;
+  // end oneof trigger
+  stages?: RolloutStage[];
+  disabled?: boolean;
+  disabledTime: string;
+}
+
+export type RolloutPolicyOutputOnlyFields = "disabledtime";
+
+export type RolloutProgression =
+  | "PROGRESSION_UNSPECIFIED"
+  | "IMMEDIATE"
+  | "LINEAR"
+  | "EXPONENTIAL"
+  | "PAUSE";
+
+export interface RolloutStage {
+  progression: RolloutProgression;
+  duration?: {
+    seconds: number;
+    nanos: number;
+  };
+  targetPercent?: number;
+  startTime: string;
+  endTime: string;
+}
+
+export type RolloutStageOutputOnlyFields = "startTime" | "endTime";
 
 interface OperationMetadata {
   createTime: string;
@@ -162,15 +310,56 @@ export async function createBuild(
   projectId: string,
   location: string,
   backendId: string,
-  buildInput: Omit<Build, BuildOutputOnlyFields>
+  buildId: string,
+  buildInput: Omit<BuildInput, "name">
 ): Promise<Operation> {
-  const buildId = buildInput.name;
-  const res = await client.post<Omit<Build, BuildOutputOnlyFields>, Operation>(
+  const res = await client.post<Omit<BuildInput, "name">, Operation>(
     `projects/${projectId}/locations/${location}/backends/${backendId}/builds`,
     buildInput,
     { queryParams: { buildId } }
   );
+  return res.body;
+}
 
+/**
+ * Create a new rollout for a backend
+ */
+export async function createRollout(
+  projectId: string,
+  location: string,
+  backendId: string,
+  rolloutId: string,
+  rollout: Omit<Rollout, RolloutOutputOnlyFields | "name">
+): Promise<Operation> {
+  const res = await client.post<Omit<Rollout, RolloutOutputOnlyFields | "name">, Operation>(
+    `projects/${projectId}/locations/${location}/backends/${backendId}/rollouts`,
+    rollout,
+    { queryParams: { rolloutId } }
+  );
+  return res.body;
+}
+
+/**
+ * Update traffic of a backend
+ */
+export async function updateTraffic(
+  projectId: string,
+  location: string,
+  backendId: string,
+  traffic: Omit<Traffic, TrafficOutputOnlyFields | "name">
+): Promise<Operation> {
+  const fieldMasks = proto.fieldMasks(traffic);
+  const queryParams = {
+    updateMask: fieldMasks.join(","),
+  };
+  const name = `projects/${projectId}/locations/${location}/backends/${backendId}/traffic`;
+  const res = await client.patch<Omit<Traffic, TrafficOutputOnlyFields>, Operation>(
+    name,
+    { ...traffic, name },
+    {
+      queryParams,
+    }
+  );
   return res.body;
 }
 
