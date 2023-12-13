@@ -2,7 +2,7 @@ import * as clc from "colorette";
 import * as repo from "./repo";
 import * as poller from "../../../operation-poller";
 import * as apphosting from "../../../gcp/apphosting";
-import { logBullet, logSuccess, logWarning } from "../../../utils";
+import { generateId, logBullet, logSuccess, logWarning } from "../../../utils";
 import { apphostingOrigin } from "../../../api";
 import {
   Backend,
@@ -204,18 +204,4 @@ export async function onboardRollout(
   const [rollout, build] = await Promise.all([rolloutPoll, buildPoll]);
   logSuccess("Rollout completed.");
   return { rollout, build };
-}
-
-/**
- * Only lowercase, digits, and hyphens; must begin with letter, and cannot end with hyphen
- */
-function generateId(n = 6): string {
-  const letters = "abcdefghijklmnopqrstuvwxyz";
-  const allChars = "01234567890-abcdefghijklmnopqrstuvwxyz";
-  let id = letters[Math.floor(Math.random() * letters.length)];
-  for (let i = 1; i < n; i++) {
-    const idx = Math.floor(Math.random() * allChars.length);
-    id += allChars[idx];
-  }
-  return id;
 }

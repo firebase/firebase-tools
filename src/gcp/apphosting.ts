@@ -304,6 +304,20 @@ export async function deleteBackend(
 }
 
 /**
+ * Get a Build by Id
+ */
+export async function getBuild(
+  projectId: string,
+  location: string,
+  backendId: string,
+  buildId: string
+): Promise<Build> {
+  const name = `projects/${projectId}/locations/${location}/backends/${backendId}/builds/${buildId}`;
+  const res = await client.get<Build>(name);
+  return res.body;
+}
+
+/**
  * Creates a new Build in a given project and location.
  */
 export async function createBuild(
@@ -322,7 +336,7 @@ export async function createBuild(
 }
 
 /**
- * Create a new rollout for a backend
+ * Create a new rollout for a backend.
  */
 export async function createRollout(
   projectId: string,
@@ -340,7 +354,21 @@ export async function createRollout(
 }
 
 /**
- * Update traffic of a backend
+ * List all rollouts for a backend.
+ */
+export async function listRollouts(
+  projectId: string,
+  location: string,
+  backendId: string
+): Promise<Rollout[]> {
+  const res = await client.get<{ rollouts: Rollout[] }>(
+    `projects/${projectId}/locations/${location}/backends/${backendId}/rollouts`
+  );
+  return res.body.rollouts;
+}
+
+/**
+ * Update traffic of a backend.
  */
 export async function updateTraffic(
   projectId: string,
