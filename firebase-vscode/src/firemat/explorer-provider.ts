@@ -109,16 +109,15 @@ export class ExplorerTreeDataProvider
       ];
     }
 
-    // TODO: use non-mantle introspection
     if (element.name === OPERATION_TYPE.query) {
       return this._unref(this.typeSystem.introspection.__schema.queryType)
-        .fields.filter((f) => f.name !== "_mantle")
+        .fields.filter((f) => f.name !== "_firebase")
         .map((f) => {
           return { name: f.name, baseType: OPERATION_TYPE.query };
         });
     } else if (element.name === OPERATION_TYPE.mutation) {
       return this._unref(this.typeSystem.introspection.__schema.mutationType)
-        .fields.filter((f) => f.name !== "_mantle")
+        .fields.filter((f) => f.name !== "_firebase")
         .map((f) => {
           return { name: f.name, baseType: OPERATION_TYPE.mutation };
         });
