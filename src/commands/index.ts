@@ -157,6 +157,12 @@ export function load(client: any): any {
     client.apphosting.backends.create = loadCommand("apphosting-backends-create");
     client.apphosting.backends.get = loadCommand("apphosting-backends-get");
     client.apphosting.backends.delete = loadCommand("apphosting-backends-delete");
+    client.apphosting.builds = {};
+    client.apphosting.builds.get = loadCommand("apphosting-builds-get");
+    client.apphosting.builds.create = loadCommand("apphosting-builds-create");
+    client.apphosting.rollouts = {};
+    client.apphosting.rollouts.create = loadCommand("apphosting-rollouts-create");
+    client.apphosting.rollouts.list = loadCommand("apphosting-rollouts-list");
   }
   client.login = loadCommand("login");
   client.login.add = loadCommand("login-add");
