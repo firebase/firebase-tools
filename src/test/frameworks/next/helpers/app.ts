@@ -3,6 +3,7 @@ import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manife
 import type {
   AppPathRoutesManifest,
   AppPathsManifest,
+  RoutesManifest,
 } from "../../../../frameworks/next/interfaces";
 
 export const appPathsManifest: AppPathsManifest = {
@@ -15,6 +16,43 @@ export const appPathRoutesManifest: AppPathRoutesManifest = {
   "/api/test/route": "/api/test",
   "/api/static/route": "/api/static",
   "/page": "/",
+};
+
+export const routesManifest: RoutesManifest = {
+  version: 3,
+  pages404: true,
+  caseSensitive: false,
+  basePath: "",
+  redirects: [
+    {
+      source: "/:path+/",
+      destination: "/:path+",
+      internal: true,
+      statusCode: 308,
+      regex: "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$",
+    },
+  ],
+  headers: [],
+  dynamicRoutes: [],
+  staticRoutes: [
+    {
+      page: "/",
+      regex: "^/(?:/)?$",
+      routeKeys: {},
+      namedRegex: "^/(?:/)?$",
+    },
+  ],
+  dataRoutes: [],
+  rsc: {
+    header: "RSC",
+    varyHeader: "RSC, Next-Router-State-Tree, Next-Router-Prefetch, Next-Url",
+    prefetchHeader: "Next-Router-Prefetch",
+    didPostponeHeader: "x-nextjs-postponed",
+    contentTypeHeader: "text/x-component",
+    suffix: ".rsc",
+    prefetchSuffix: ".prefetch.rsc",
+  },
+  rewrites: [],
 };
 
 export const pagesManifest: PagesManifest = {

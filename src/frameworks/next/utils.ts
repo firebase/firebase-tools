@@ -357,7 +357,8 @@ export async function getHeadersFromMetaFiles(
   sourceDir: string,
   distDir: string,
   basePath: string,
-  appPathRoutesManifest: AppPathRoutesManifest
+  appPathRoutesManifest: AppPathRoutesManifest,
+  routesManifestRsc: RoutesManifest["rsc"]
 ): Promise<HostingHeadersWithSource[]> {
   const headers: HostingHeadersWithSource[] = [];
 
@@ -372,7 +373,15 @@ export async function getHeadersFromMetaFiles(
 
       if (dirExistsSync(routePath) && fileExistsSync(metadataPath)) {
         const meta = await readJSON<{ headers?: Record<string, string> }>(metadataPath);
-        if (meta.headers)
+
+        meta.headers ||= {};
+        if (routesManifestRsc.varyHeader) {
+          meta.headers["Vary"] =
+            (meta.headers["Vary"] ? `${meta.headers["Vary"]}, ` : "") +
+            routesManifestRsc.varyHeader;
+        }
+
+        if (Object.entries(meta.headers).length > 0)
           headers.push({
             source: posix.join(basePath, source),
             headers: Object.entries(meta.headers).map(([key, value]) => ({ key, value })),
