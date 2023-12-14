@@ -1,5 +1,5 @@
 import { signal, computed } from "@preact/signals-core";
-import { OperationDefinitionNode } from "graphql";
+import { ExecutionResult, OperationDefinitionNode } from "graphql";
 import * as vscode from "vscode";
 
 export enum ExecutionState {
@@ -17,7 +17,7 @@ export interface ExecutionItem {
   state: ExecutionState;
   operation: OperationDefinitionNode;
   args?: string;
-  results?: {};
+  results?: ExecutionResult | Error;
   documentPath: string;
   position: vscode.Position;
 }

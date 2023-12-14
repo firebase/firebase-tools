@@ -29,4 +29,9 @@ body {
       font-family: monospace;
     }
   }
+
+  // Placing in "body" to override the global styles
+  p {
+    margin-bottom: 1em;
+  }
 }
