@@ -7,8 +7,6 @@ export function registerAdHoc(
     broker: ExtensionBrokerImpl,
 ): Disposable {
 
-
-    const fileMap = {};
     const pathSuffix = "_insert.gql";
 
     /** 
@@ -18,8 +16,8 @@ export function registerAdHoc(
      * */
     async function schemaAddData(ast: ObjectTypeDefinitionNode, { documentPath, position }) {
         // generate content for the file
-        const preamble = '# This is a file for you to write an un-named mutation. \n # Only one un-named mutation is allowed per file.';
-        const dupeMutationInfo = "# Please save this in the operations/ folder with your other un-named mutations."
+        const preamble = '# This is a file for you to write an un-named mutation. \n# Only one un-named mutation is allowed per file.';
+        const dupeMutationInfo = "# Please save this in the operations/ folder with your other un-named mutations in order to execute the mutation."
         const adhocMutation = generateMutation(ast);
 
         const basePath = vscode.workspace.rootPath + "/api/";
@@ -63,11 +61,15 @@ export function registerAdHoc(
         const fieldSpacing = "\t\t";
         const mutation = [];
 
-        mutation.push("mutation {", functionSpacing + name + "_insert(data: {");
+        mutation.push("mutation {"); // mutation header
+        mutation.push(`${functionSpacing}${name}_insert(data: {`); // insert function
         for (const field of ast.fields) {
-            mutation.push(fieldSpacing + field.name.value + ": " + '""')
+            const type: any = field.type;
+            const fieldType: string = type.type.name.value;
+
+            mutation.push(`${fieldSpacing}${field.name.value}:  "" # ${fieldType}`) // field name + temp value + comment
         }
-        mutation.push(functionSpacing + "})", "}")
+        mutation.push(`${functionSpacing}})`, "}") // closing braces/paren
         return mutation.join("\n");
     }
 
