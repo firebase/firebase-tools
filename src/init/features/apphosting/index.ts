@@ -4,7 +4,14 @@ import * as poller from "../../../operation-poller";
 import * as apphosting from "../../../gcp/apphosting";
 import { logBullet, logSuccess, logWarning } from "../../../utils";
 import { apphostingOrigin } from "../../../api";
-import { Backend, BackendOutputOnlyFields, API_VERSION } from "../../../gcp/apphosting";
+import {
+  Backend,
+  BackendOutputOnlyFields,
+  API_VERSION,
+  Build,
+  BuildInput,
+  Rollout,
+} from "../../../gcp/apphosting";
 import { Repository } from "../../../gcp/cloudbuild";
 import { FirebaseError } from "../../../error";
 import { promptOnce } from "../../../prompt";
@@ -66,19 +73,53 @@ export async function doSetup(setup: any, projectId: string): Promise<void> {
     }
     logWarning(`Backend with id ${backendId} already exists in ${location}`);
   }
-  const backend: Backend = await onboardBackend(projectId, location, backendId);
 
-  if (backend) {
+  const backend = await onboardBackend(projectId, location, backendId);
+
+  const confirmRollout = await promptOnce({
+    type: "confirm",
+    name: "rollout",
+    default: true,
+    message: "Do you want to deploy now?",
+  });
+
+  if (!confirmRollout) {
     logSuccess(`Successfully created backend:\n\t${backend.name}`);
-    logSuccess(`Your site is being deployed at:\n\thttps://${backend.uri}`);
-    logSuccess(
-      `View the rollout status by running:\n\tfirebase apphosting:backends:get ${backendId} --project ${projectId}`
+    logSuccess(`Your site will be deployed at:\n\thttps://${backend.uri}`);
+    return;
+  }
+
+  const branch = await promptOnce({
+    name: "branch",
+    type: "input",
+    default: "main",
+    message: "Which branch do you want to deploy?",
+  });
+
+  const { build } = await onboardRollout(projectId, location, backendId, {
+    source: {
+      codebase: {
+        branch,
+      },
+    },
+  });
+
+  if (build.state !== "READY") {
+    throw new FirebaseError(
+      `Failed to build your app. Please inspect the build logs at ${build.buildLogsUri}.`,
+      { children: [build.error] }
     );
   }
+
+  logSuccess(`Successfully created backend:\n\t${backend.name}`);
+  logSuccess(`Your site is now deployed at:\n\thttps://${backend.uri}`);
+  logSuccess(
+    `View the rollout status by running:\n\tfirebase apphosting:backends:get ${backendId} --project ${projectId}`
+  );
 }
 
 async function promptLocation(projectId: string, locations: string[]): Promise<string> {
-  return await promptOnce({
+  return (await promptOnce({
     name: "region",
     type: "list",
     default: DEFAULT_REGION,
@@ -86,7 +127,7 @@ async function promptLocation(projectId: string, locations: string[]): Promise<s
       "Please select a region " +
       `(${clc.yellow("info")}: Your region determines where your backend is located):\n`,
     choices: locations.map((loc) => ({ value: loc })),
-  });
+  })) as string;
 }
 
 function toBackend(cloudBuildConnRepo: Repository): Omit<Backend, BackendOutputOnlyFields> {
@@ -109,20 +150,12 @@ export async function onboardBackend(
   backendId: string
 ): Promise<Backend> {
   const cloudBuildConnRepo = await repo.linkGitHubRepository(projectId, location);
-  const barnchName = await promptOnce({
-    name: "branchName",
-    type: "input",
-    default: "main",
-    message: "Which branch do you want to deploy?",
-  });
-  // branchName unused for now.
-  void barnchName;
   const backendDetails = toBackend(cloudBuildConnRepo);
   return await createBackend(projectId, location, backendDetails, backendId);
 }
 
 /**
- * Creates backend object from long running operations.
+ * Creates (and waits for) a new backend.
  */
 export async function createBackend(
   projectId: string,
@@ -136,6 +169,53 @@ export async function createBackend(
     pollerName: `create-${projectId}-${location}-${backendId}`,
     operationResourceName: op.name,
   });
-
   return backend;
+}
+
+/**
+ * Onboard a new rollout by creating a build and rollout
+ */
+export async function onboardRollout(
+  projectId: string,
+  location: string,
+  backendId: string,
+  buildInput: Omit<BuildInput, "name">
+): Promise<{ rollout: Rollout; build: Build }> {
+  logBullet("Starting a new rollout... this may take a few minutes.");
+  const buildId = generateId();
+  const buildOp = await apphosting.createBuild(projectId, location, backendId, buildId, buildInput);
+
+  const rolloutId = generateId();
+  const rolloutOp = await apphosting.createRollout(projectId, location, backendId, rolloutId, {
+    build: `projects/${projectId}/locations/${location}/backends/${backendId}/builds/${buildId}`,
+  });
+
+  const rolloutPoll = poller.pollOperation<Rollout>({
+    ...apphostingPollerOptions,
+    pollerName: `create-${projectId}-${location}-backend-${backendId}-rollout-${rolloutId}`,
+    operationResourceName: rolloutOp.name,
+  });
+  const buildPoll = poller.pollOperation<Build>({
+    ...apphostingPollerOptions,
+    pollerName: `create-${projectId}-${location}-backend-${backendId}-build-${buildId}`,
+    operationResourceName: buildOp.name,
+  });
+
+  const [rollout, build] = await Promise.all([rolloutPoll, buildPoll]);
+  logSuccess("Rollout completed.");
+  return { rollout, build };
+}
+
+/**
+ * Only lowercase, digits, and hyphens; must begin with letter, and cannot end with hyphen
+ */
+function generateId(n = 6): string {
+  const letters = "abcdefghijklmnopqrstuvwxyz";
+  const allChars = "01234567890-abcdefghijklmnopqrstuvwxyz";
+  let id = letters[Math.floor(Math.random() * letters.length)];
+  for (let i = 1; i < n; i++) {
+    const idx = Math.floor(Math.random() * allChars.length);
+    id += allChars[idx];
+  }
+  return id;
 }
