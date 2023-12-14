@@ -1,11 +1,11 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
 
-import * as gcp from "../../../gcp/frameworks";
-import * as repo from "../../../init/features/frameworks/repo";
+import * as apphosting from "../../../gcp/apphosting";
+import * as repo from "../../../init/features/apphosting/repo";
 import * as poller from "../../../operation-poller";
 import * as prompt from "../../../prompt";
-import { createBackend, onboardBackend } from "../../../init/features/frameworks/index";
+import { createBackend, onboardBackend } from "../../../init/features/apphosting/index";
 import { FirebaseError } from "../../../error";
 
 describe("operationsConverter", () => {
@@ -21,8 +21,10 @@ describe("operationsConverter", () => {
     pollOperationStub = sandbox
       .stub(poller, "pollOperation")
       .throws("Unexpected pollOperation call");
-    createBackendStub = sandbox.stub(gcp, "createBackend").throws("Unexpected createBackend call");
-    getBackendStub = sandbox.stub(gcp, "getBackend").throws("Unexpected getBackend call");
+    createBackendStub = sandbox
+      .stub(apphosting, "createBackend")
+      .throws("Unexpected createBackend call");
+    getBackendStub = sandbox.stub(apphosting, "getBackend").throws("Unexpected getBackend call");
     linkGitHubRepositoryStub = sandbox
       .stub(repo, "linkGitHubRepository")
       .throws("Unexpected getBackend call");
@@ -58,7 +60,7 @@ describe("operationsConverter", () => {
       updateTime: "1",
     };
 
-    const backendInput: Omit<gcp.Backend, gcp.BackendOutputOnlyFields> = {
+    const backendInput: Omit<apphosting.Backend, apphosting.BackendOutputOnlyFields> = {
       servingLocality: "GLOBAL_ACCESS",
       codebase: {
         repository: cloudBuildConnRepo.name,

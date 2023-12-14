@@ -151,12 +151,12 @@ export function load(client: any): any {
     client.internaltesting.functions.discover = loadCommand("internaltesting-functions-discover");
   }
   if (experiments.isEnabled("internalframeworks")) {
-    client.frameworks = {};
-    client.frameworks.backends = {};
-    client.frameworks.backends.list = loadCommand("frameworks-backends-list");
-    client.frameworks.backends.create = loadCommand("frameworks-backends-create");
-    client.frameworks.backends.get = loadCommand("frameworks-backends-get");
-    client.frameworks.backends.delete = loadCommand("frameworks-backends-delete");
+    client.apphosting = {};
+    client.apphosting.backends = {};
+    client.apphosting.backends.list = loadCommand("apphosting-backends-list");
+    client.apphosting.backends.create = loadCommand("apphosting-backends-create");
+    client.apphosting.backends.get = loadCommand("apphosting-backends-get");
+    client.apphosting.backends.delete = loadCommand("apphosting-backends-delete");
   }
   client.login = loadCommand("login");
   client.login.add = loadCommand("login-add");

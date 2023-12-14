@@ -1,38 +1,35 @@
 import * as clc from "colorette";
 import * as repo from "./repo";
 import * as poller from "../../../operation-poller";
-import * as gcp from "../../../gcp/frameworks";
+import * as apphosting from "../../../gcp/apphosting";
 import { logBullet, logSuccess, logWarning } from "../../../utils";
-import { frameworksOrigin } from "../../../api";
-import { Backend, BackendOutputOnlyFields } from "../../../gcp/frameworks";
+import { apphostingOrigin } from "../../../api";
+import { Backend, BackendOutputOnlyFields, API_VERSION } from "../../../gcp/apphosting";
 import { Repository } from "../../../gcp/cloudbuild";
-import { API_VERSION } from "../../../gcp/frameworks";
 import { FirebaseError } from "../../../error";
 import { promptOnce } from "../../../prompt";
 import { DEFAULT_REGION } from "./constants";
 import { ensure } from "../../../ensureApiEnabled";
 
-const frameworksPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
-  apiOrigin: frameworksOrigin,
+const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
+  apiOrigin: apphostingOrigin,
   apiVersion: API_VERSION,
   masterTimeout: 25 * 60 * 1_000,
   maxBackoff: 10_000,
 };
 
 /**
- * Setup new frameworks project.
+ * Set up a new App Hosting backend.
  */
 export async function doSetup(setup: any, projectId: string): Promise<void> {
-  setup.frameworks = {};
-
   await Promise.all([
-    ensure(projectId, "cloudbuild.googleapis.com", "frameworks", true),
-    ensure(projectId, "secretmanager.googleapis.com", "frameworks", true),
-    ensure(projectId, "run.googleapis.com", "frameworks", true),
-    ensure(projectId, "artifactregistry.googleapis.com", "frameworks", true),
+    ensure(projectId, "cloudbuild.googleapis.com", "apphosting", true),
+    ensure(projectId, "secretmanager.googleapis.com", "apphosting", true),
+    ensure(projectId, "run.googleapis.com", "apphosting", true),
+    ensure(projectId, "artifactregistry.googleapis.com", "apphosting", true),
   ]);
 
-  const allowedLocations = (await gcp.listLocations(projectId)).map((loc) => loc.locationId);
+  const allowedLocations = (await apphosting.listLocations(projectId)).map((loc) => loc.locationId);
 
   if (setup.location) {
     if (!allowedLocations.includes(setup.location)) {
@@ -57,7 +54,7 @@ export async function doSetup(setup: any, projectId: string): Promise<void> {
       message: "Create a name for your backend [1-30 characters]",
     });
     try {
-      await gcp.getBackend(projectId, location, backendId);
+      await apphosting.getBackend(projectId, location, backendId);
     } catch (err: any) {
       if (err.status === 404) {
         break;
@@ -75,7 +72,7 @@ export async function doSetup(setup: any, projectId: string): Promise<void> {
     logSuccess(`Successfully created backend:\n\t${backend.name}`);
     logSuccess(`Your site is being deployed at:\n\thttps://${backend.uri}`);
     logSuccess(
-      `View the rollout status by running:\n\tfirebase backends:get ${backendId} --project ${projectId}`
+      `View the rollout status by running:\n\tfirebase apphosting:backends:get ${backendId} --project ${projectId}`
     );
   }
 }
@@ -133,9 +130,9 @@ export async function createBackend(
   backendReqBoby: Omit<Backend, BackendOutputOnlyFields>,
   backendId: string
 ): Promise<Backend> {
-  const op = await gcp.createBackend(projectId, location, backendReqBoby, backendId);
+  const op = await apphosting.createBackend(projectId, location, backendReqBoby, backendId);
   const backend = await poller.pollOperation<Backend>({
-    ...frameworksPollerOptions,
+    ...apphostingPollerOptions,
     pollerName: `create-${projectId}-${location}-${backendId}`,
     operationResourceName: op.name,
   });
