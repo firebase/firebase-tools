@@ -50,7 +50,7 @@ export function registerExecution(
           item.results instanceof Error
             ? toSerializedError(item.results)
             : item.results,
-        displayName: item.operation.operation + ": " + item.label,
+        displayName: item.operation.operation,
       });
     }
   });

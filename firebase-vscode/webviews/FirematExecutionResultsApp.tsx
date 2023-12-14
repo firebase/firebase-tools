@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { broker } from "./globals/html-broker";
-import { VSCodeTextArea } from "@vscode/webview-ui-toolkit/react";
+import { Label } from "./components/ui/Text";
+import style from "./firemat-execution-results.entry.scss";
 import { FirematResults } from "../common/messaging/protocol";
-import {
-  FirematError,
-  SerializedError,
-  isFirematErrorMeta,
-} from "../common/error";
+import { SerializedError } from "../common/error";
 import { ExecutionResult, GraphQLError } from "graphql";
 import { isExecutionResult } from "../common/graphql";
+
+// Prevent webpack from removing the `style` import above
+style;
 
 export function FirematExecutionResultsApp() {
   const [firematResults, setResults] = useState<FirematResults | undefined>(
@@ -36,11 +36,12 @@ export function FirematExecutionResultsApp() {
 
     if (errors && errors.length !== 0) {
       errorsDisplay = (
-        <p>
+        <>
+          <Label>Error</Label>
           {errors.map((error) => (
             <GraphQLErrorView error={error} />
           ))}
-        </p>
+        </>
       );
     }
   } else {
@@ -52,30 +53,31 @@ export function FirematExecutionResultsApp() {
   let resultsDisplay: JSX.Element | undefined;
   if (response) {
     resultsDisplay = (
-      <VSCodeTextArea
-        value={JSON.stringify(results, null, 2)}
-        readOnly={true}
-        cols={80}
-        rows={20}
-      >
-        Results
-      </VSCodeTextArea>
+      <>
+        <Label>Results</Label>
+        <code>
+          <pre>{JSON.stringify(response, null, 2)}</pre>
+        </code>
+      </>
     );
   }
 
   return (
     <>
-      <h3>{firematResults.displayName}</h3>
-      <VSCodeTextArea
-        value={firematResults.args}
-        readOnly={true}
-        cols={80}
-        rows={5}
-      >
-        Arguments
-      </VSCodeTextArea>
       {errorsDisplay}
       {resultsDisplay}
+
+      <Label style={{ textTransform: "capitalize" }}>
+        {firematResults.displayName}
+      </Label>
+      <code>
+        <pre>{firematResults.query}</pre>
+      </code>
+
+      <Label>Arguments</Label>
+      <code>
+        <pre>{firematResults.args}</pre>
+      </code>
     </>
   );
 }
@@ -86,6 +88,7 @@ export function FirematExecutionResultsApp() {
 function InternalErrorView({ error }: { error: SerializedError }) {
   return (
     <p>
+      <Label>Error</Label>
       {
         // Stacktraces usually already include the message, so we only
         // display the message if there is no stacktrace.
@@ -120,7 +123,6 @@ function GraphQLErrorView({ error }: { error: GraphQLError }) {
 
   return (
     <p style={{ whiteSpace: "pre-wrap" }}>
-      <h4>GraphQL Error:</h4>
       {pathDisplay}
       {error.message}
       {error.stack && <StackView stack={error.stack} />}
