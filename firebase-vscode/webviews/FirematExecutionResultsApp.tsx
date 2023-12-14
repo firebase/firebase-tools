@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { broker } from "./globals/html-broker";
-import { VSCodeTextArea } from "@vscode/webview-ui-toolkit/react";
+import { Label } from "./components/ui/Text";
+import style from "./firemat-execution-results.entry.scss";
+
+// Prevent webpack from removing the `style` import above
+style;
 
 interface FirematResults {
   args: string;
@@ -18,23 +22,20 @@ export function FirematExecutionResultsApp() {
 
   return results ? (
     <>
-      <h3>{results.displayName}</h3>
-      <VSCodeTextArea
-        value={results.args}
-        readOnly={true}
-        cols={80}
-        rows={5}
-      >
-        Arguments
-      </VSCodeTextArea>
-      <VSCodeTextArea
-        value={JSON.stringify(results.results, null, 2)}
-        readOnly={true}
-        cols={80}
-        rows={20}
-      >
-        Results
-      </VSCodeTextArea>
+      <Label style={{ textTransform: "capitalize" }}>
+        {results.displayName}
+      </Label>
+      <code>
+        <pre>{results.query}</pre>
+      </code>
+      <Label>Arguments</Label>
+      <code>
+        <pre>{results.args}</pre>
+      </code>
+      <Label>Results</Label>
+      <code>
+        <pre>{JSON.stringify(results.results, null, 2)}</pre>
+      </code>
     </>
   ) : null;
 }

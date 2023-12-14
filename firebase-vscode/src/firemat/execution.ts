@@ -46,7 +46,7 @@ export function registerExecution(
         args: item.args ?? "{}",
         query: print(item.operation),
         results: item.results ?? {},
-        displayName: item.operation.operation + ": " + item.label,
+        displayName: item.operation.operation,
       });
     }
   });
