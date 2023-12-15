@@ -8,7 +8,22 @@ export function registerAdHoc(
 ): Disposable {
 
     const pathSuffix = "_insert.gql";
+    const defaultScalarValues = {
+        "Any": '{}',
+        "AuthUID": '""',
+        "Boolean": 'false',
+        "Date": `"${new Date().toISOString().substring(0, 10)}"`,
+        "Float": '0',
+        "ID": '""',
+        "Int": '0',
+        "Int64": '0',
+        "String": '""',
+        "Timestamp": `"${new Date().toISOString()}"`,
+    }
 
+    function isFirematScalarType(fieldType: string): boolean {
+        return fieldType in defaultScalarValues;
+    }
     /** 
      * Creates a playground file with an ad-hoc mutation
      * File will be created (unsaved) in operations/ folder, with an auto-generated named based on the schema type
@@ -65,10 +80,17 @@ export function registerAdHoc(
         mutation.push(`${functionSpacing}${name}_insert(data: {`); // insert function
         for (const field of ast.fields) {
             // necessary to avoid type error
-            const type: any = field.type;
-            const fieldType: string = type.type.name.value;
+            const fieldType: any = field.type;
+            let fieldTypeName: string = fieldType.type.name.value;
+            let fieldName: string = field.name.value;
+            let defaultValue = defaultScalarValues[fieldTypeName] as string;
 
-            mutation.push(`${fieldSpacing}${field.name.value}:  # ${fieldType}`) // field name + temp value + comment
+            if (!isFirematScalarType(fieldTypeName)) {
+                fieldTypeName += "Id";
+                fieldName += "Id";
+                defaultValue = '""';
+            }
+            mutation.push(`${fieldSpacing}${fieldName}: ${defaultValue} # ${fieldTypeName}`) // field name + temp value + comment
         }
         mutation.push(`${functionSpacing}})`, "}") // closing braces/paren
         return mutation.join("\n");
