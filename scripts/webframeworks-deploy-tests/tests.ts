@@ -131,6 +131,36 @@ describe("webframeworks", function (this) {
                   },
                 ],
               },
+              {
+                headers: [
+                  {
+                    key: "x-next-cache-tags",
+                    value:
+                      "_N_T_/layout,_N_T_/app/layout,_N_T_/app/image/layout,_N_T_/app/image/page,_N_T_/app/image",
+                  },
+                ],
+                source: "/base/app/image",
+              },
+              {
+                headers: [
+                  {
+                    key: "x-next-cache-tags",
+                    value:
+                      "_N_T_/layout,_N_T_/app/layout,_N_T_/app/ssg/layout,_N_T_/app/ssg/page,_N_T_/app/ssg",
+                  },
+                ],
+                source: "/base/app/ssg",
+              },
+              {
+                headers: [
+                  {
+                    key: "x-next-cache-tags",
+                    value:
+                      "_N_T_/layout,_N_T_/app/layout,_N_T_/app/isr/layout,_N_T_/app/isr/page,_N_T_/app/isr",
+                  },
+                ],
+                source: "/base/app/isr",
+              },
             ],
             cleanUrls: true,
             trailingSlash: false,

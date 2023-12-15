@@ -4,7 +4,7 @@ import { expect } from "chai";
 import * as gcb from "../../../gcp/cloudbuild";
 import * as prompt from "../../../prompt";
 import * as poller from "../../../operation-poller";
-import * as repo from "../../../init/features/frameworks/repo";
+import * as repo from "../../../init/features/apphosting/repo";
 import * as utils from "../../../utils";
 import { Connection } from "../../../gcp/cloudbuild";
 import { FirebaseError } from "../../../error";
@@ -51,7 +51,7 @@ describe("composer", () => {
 
     const projectId = "projectId";
     const location = "us-central1";
-    const connectionId = `frameworks-${location}`;
+    const connectionId = `apphosting-${location}`;
 
     const op = {
       name: `projects/${projectId}/locations/${location}/connections/${connectionId}`,
@@ -174,7 +174,7 @@ describe("composer", () => {
     });
   });
 
-  describe("listFrameworksConnections", () => {
+  describe("listAppHostingConnections", () => {
     const sandbox: sinon.SinonSandbox = sinon.createSandbox();
     let listConnectionsStub: sinon.SinonStub;
 
@@ -211,19 +211,19 @@ describe("composer", () => {
       sandbox.verifyAndRestore();
     });
 
-    it("filters out non-frameworks connections", async () => {
+    it("filters out non-apphosting connections", async () => {
       listConnectionsStub.resolves([
-        mockConn("frameworks-github-conn-baddcafe"),
+        mockConn("apphosting-github-conn-baddcafe"),
         mockConn("hooray-conn"),
-        mockConn("frameworks-github-conn-deadbeef"),
-        mockConn("frameworks-github-oauth"),
+        mockConn("apphosting-github-conn-deadbeef"),
+        mockConn("apphosting-github-oauth"),
       ]);
 
-      const conns = await repo.listFrameworksConnections(projectId);
+      const conns = await repo.listAppHostingConnections(projectId);
       expect(conns).to.have.length(2);
       expect(conns.map((c) => extractId(c.name))).to.include.members([
-        "frameworks-github-conn-baddcafe",
-        "frameworks-github-conn-deadbeef",
+        "apphosting-github-conn-baddcafe",
+        "apphosting-github-conn-deadbeef",
       ]);
     });
   });

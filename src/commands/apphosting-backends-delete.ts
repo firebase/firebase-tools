@@ -2,12 +2,11 @@ import { Command } from "../command";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { FirebaseError } from "../error";
-import * as gcp from "../gcp/frameworks";
 import { promptOnce } from "../prompt";
-import * as utils from "../utils";
 import { logger } from "../logger";
-import { DEFAULT_REGION, ALLOWED_REGIONS } from "../init/features/frameworks/constants";
-import { ensureApiEnabled } from "../gcp/frameworks";
+import { DEFAULT_REGION } from "../init/features/apphosting/constants";
+import * as utils from "../utils";
+import * as apphosting from "../gcp/apphosting";
 
 const Table = require("cli-table");
 
@@ -21,12 +20,12 @@ const TABLE_HEAD = [
   "Updated Date",
 ];
 
-export const command = new Command("backends:delete")
+export const command = new Command("apphosting:backends:delete")
   .description("Delete a backend from a Firebase project")
   .option("-l, --location <location>", "App Backend location", "")
   .option("-s, --backend <backend>", "Backend Id", "")
   .withForce()
-  .before(ensureApiEnabled)
+  .before(apphosting.ensureApiEnabled)
   .action(async (options: Options) => {
     const projectId = needProjectId(options);
     let location = options.location as string;
@@ -36,12 +35,15 @@ export const command = new Command("backends:delete")
     }
 
     if (!location) {
+      const allowedLocations = (await apphosting.listLocations(projectId)).map(
+        (loc) => loc.locationId
+      );
       location = await promptOnce({
         name: "region",
         type: "list",
         default: DEFAULT_REGION,
         message: "Please select the region of the backend you'd like to delete:",
-        choices: ALLOWED_REGIONS,
+        choices: allowedLocations,
       });
     }
 
@@ -53,7 +55,7 @@ export const command = new Command("backends:delete")
 
     let backend;
     try {
-      backend = await gcp.getBackend(projectId, location, backendId);
+      backend = await apphosting.getBackend(projectId, location, backendId);
       populateTable(backend, table);
     } catch (err: any) {
       throw new FirebaseError(`No backends found with given parameters. Command aborted.`, {
@@ -78,7 +80,7 @@ export const command = new Command("backends:delete")
     }
 
     try {
-      await gcp.deleteBackend(projectId, location, backendId);
+      await apphosting.deleteBackend(projectId, location, backendId);
       utils.logSuccess(`Successfully deleted the backend: ${backendId}`);
     } catch (err: any) {
       throw new FirebaseError(
@@ -90,7 +92,7 @@ export const command = new Command("backends:delete")
     return backend;
   });
 
-function populateTable(backend: gcp.Backend, table: any) {
+function populateTable(backend: apphosting.Backend, table: any) {
   const [location, , backendId] = backend.name.split("/").slice(3, 6);
   const entry = [
     backendId,

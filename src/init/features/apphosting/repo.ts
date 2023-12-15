@@ -15,8 +15,8 @@ export interface ConnectionNameParts {
   id: string;
 }
 
-const FRAMEWORKS_CONN_PATTERN = /.+\/frameworks-github-conn-.+$/;
-const FRAMEWORKS_OAUTH_CONN_NAME = "frameworks-github-oauth";
+const APPHOSTING_CONN_PATTERN = /.+\/apphosting-github-conn-.+$/;
+const APPHOSTING_OAUTH_CONN_NAME = "apphosting-github-oauth";
 const CONNECTION_NAME_REGEX =
   /^projects\/(?<projectId>[^\/]+)\/locations\/(?<location>[^\/]+)\/connections\/(?<id>[^\/]+)$/;
 
@@ -69,7 +69,7 @@ function generateRepositoryId(remoteUri: string): string | undefined {
  */
 function generateConnectionId(): string {
   const randomHash = Math.random().toString(36).slice(6);
-  return `frameworks-github-conn-${randomHash}`;
+  return `apphosting-github-conn-${randomHash}`;
 }
 
 /**
@@ -80,13 +80,13 @@ export async function linkGitHubRepository(
   location: string
 ): Promise<gcb.Repository> {
   utils.logBullet(clc.bold(`${clc.yellow("===")} Set up a GitHub connection`));
-  const existingConns = await listFrameworksConnections(projectId);
+  const existingConns = await listAppHostingConnections(projectId);
   if (existingConns.length < 1) {
     const grantSuccess = await promptSecretManagerAdminGrant(projectId);
     if (!grantSuccess) {
       throw new FirebaseError("Insufficient IAM permissions to create a new connection to GitHub");
     }
-    let oauthConn = await getOrCreateConnection(projectId, location, FRAMEWORKS_OAUTH_CONN_NAME);
+    let oauthConn = await getOrCreateConnection(projectId, location, APPHOSTING_OAUTH_CONN_NAME);
     while (oauthConn.installationState.stage === "PENDING_USER_OAUTH") {
       oauthConn = await promptConnectionAuth(oauthConn);
     }
@@ -103,7 +103,7 @@ export async function linkGitHubRepository(
     existingConns.push(refreshedConn);
   }
 
-  let { remoteUri, connection } = await promptRepositoryUri(projectId, location, existingConns);
+  let { remoteUri, connection } = await promptRepositoryUri(projectId, existingConns);
   while (remoteUri === "") {
     await utils.openInBrowser("https://github.com/apps/google-cloud-build/installations/new");
     await promptOnce({
@@ -111,7 +111,7 @@ export async function linkGitHubRepository(
       message:
         "Press ENTER once you have finished configuring your installation's access settings.",
     });
-    const selection = await promptRepositoryUri(projectId, location, existingConns);
+    const selection = await promptRepositoryUri(projectId, existingConns);
     remoteUri = selection.remoteUri;
     connection = selection.connection;
   }
@@ -130,12 +130,11 @@ export async function linkGitHubRepository(
 
 async function promptRepositoryUri(
   projectId: string,
-  location: string,
   connections: gcb.Connection[]
 ): Promise<{ remoteUri: string; connection: gcb.Connection }> {
   const remoteUriToConnection: Record<string, gcb.Connection> = {};
   for (const conn of connections) {
-    const { id } = parseConnectionName(conn.name)!;
+    const { location, id } = parseConnectionName(conn.name)!;
     const resp = await gcb.fetchLinkableRepositories(projectId, location, id);
     if (resp.repositories && resp.repositories.length > 0) {
       for (const repo of resp.repositories) {
@@ -301,11 +300,11 @@ export async function getOrCreateRepository(
   return repo;
 }
 
-export async function listFrameworksConnections(projectId: string) {
+export async function listAppHostingConnections(projectId: string) {
   const conns = await gcb.listConnections(projectId, "-");
   return conns.filter(
     (conn) =>
-      FRAMEWORKS_CONN_PATTERN.test(conn.name) &&
+      APPHOSTING_CONN_PATTERN.test(conn.name) &&
       conn.installationState.stage === "COMPLETE" &&
       !conn.disabled
   );

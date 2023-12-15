@@ -1,3 +1,1 @@
-- Fix Next.js dynamic and static OG images. (#6592)
-- Address a regression introduced in 13.0.1 when emulating Vite applications. (#6599)
 - Display meaningful error message when cannot determine target. (#6594)
