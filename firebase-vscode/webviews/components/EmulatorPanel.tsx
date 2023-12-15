@@ -187,21 +187,15 @@ export function EmulatorPanel({
     setEmulatorUiSelectionsAndSaveToWorkspace(newSelections);
   }
 
-  // Make it pretty for the screen. Filter out the logging emulator since it's
-  // an implementation detail.
-  // TODO(christhompson): Add more info and sort this.
-  function formatEmulatorRunningInfo(emulatorInfos: EmulatorInfo[]): string {
-    return emulatorInfos
-      .map((info) => info.name)
-      .filter((name) => name !== "logging")
-      .join("<br/>");
-  }
-
   return (
-    <PanelSection title="Emulators">
-      <h2>Launch the Emulator Suite</h2>
+    <PanelSection
+      title="Emulators"
+      style={{
+        // Align with the other panels.
+        marginLeft: "calc(var(--container-padding) * -1)",
+      }}
+    >
       {/* TODO(christhompson): Insert some education links or tooltips here. */}
-      <Spacer size="xxlarge" />
       Current project ID:
       {/* TODO(christhompson): convert this into a demo- prefix checkbox or something. */}
       <VSCodeTextField
@@ -212,26 +206,18 @@ export function EmulatorPanel({
       ></VSCodeTextField>
       {runningEmulatorInfo ? (
         <>
-          <VSCodeDivider />
-          <Spacer size="xxlarge" />
-          The emulators are running.
+          <Spacer size="medium" />
+          Running Emulators:
+          <FormatEmulatorRunningInfo infos={runningEmulatorInfo.displayInfo} />
           <Spacer size="xxlarge" />
           {!!runningEmulatorInfo.uiUrl && (
-            <VSCodeLink href={runningEmulatorInfo.uiUrl}>
-              View them in the Emulator Suite UI
-            </VSCodeLink>
+            <>
+              <Spacer size="xxlarge" />
+              <VSCodeLink href={runningEmulatorInfo.uiUrl}>
+                View them in the Emulator Suite UI
+              </VSCodeLink>
+            </>
           )}
-          <Spacer size="xxlarge" />
-          Running Emulators:
-          <Spacer size="medium" />
-          <div
-            dangerouslySetInnerHTML={{
-              __html: formatEmulatorRunningInfo(
-                runningEmulatorInfo.displayInfo
-              ),
-            }}
-          ></div>
-          <Spacer size="xxlarge" />
           <VSCodeButton onClick={() => stopEmulators()}>
             Click to stop the emulators
           </VSCodeButton>
@@ -245,6 +231,21 @@ export function EmulatorPanel({
         </VSCodeButton>
       )}
     </PanelSection>
+  );
+}
+
+// Make it pretty for the screen. Filter out the logging emulator since it's
+// an implementation detail.
+// TODO(christhompson): Add more info and sort this.
+function FormatEmulatorRunningInfo({ infos }: { infos: EmulatorInfo[] }) {
+  return (
+    <ul>
+      {infos
+        .filter((info) => info.name !== "logging")
+        .map((info) => (
+          <li key={info.pid}>{info.name}</li>
+        ))}
+    </ul>
   );
 }
 
