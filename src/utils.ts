@@ -810,3 +810,20 @@ export function getHostnameFromUrl(url: string): string | null {
     return null;
   }
 }
+
+/**
+ * Generate id meeting the following criterias:
+ *  - Lowercase, digits, and hyphens only
+ *  - Must begin with letter
+ *  - Cannot end with hyphen
+ */
+export function generateId(n = 6): string {
+  const letters = "abcdefghijklmnopqrstuvwxyz";
+  const allChars = "01234567890-abcdefghijklmnopqrstuvwxyz";
+  let id = letters[Math.floor(Math.random() * letters.length)];
+  for (let i = 1; i < n; i++) {
+    const idx = Math.floor(Math.random() * allChars.length);
+    id += allChars[idx];
+  }
+  return id;
+}

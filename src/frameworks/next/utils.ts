@@ -363,7 +363,7 @@ export async function getHeadersFromMetaFiles(
 
   await Promise.all(
     Object.entries(appPathRoutesManifest).map(async ([key, source]) => {
-      if (basename(key) !== "route") return;
+      if (!["route", "page"].includes(basename(key))) return;
       const parts = source.split("/").filter((it) => !!it);
       const partsOrIndex = parts.length > 0 ? parts : ["index"];
 
