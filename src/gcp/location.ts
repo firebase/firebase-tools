@@ -64,8 +64,8 @@ export const CLOUD_SCHEDULER_REGIONS: Array<string> = [
   "us-west1",
   "us-west2",
   "us-west3",
-  "us-west4", 
-]
+  "us-west4",
+];
 
 /**
  * Helper function to determine if the given region is inside the multi-region or dual-region location.

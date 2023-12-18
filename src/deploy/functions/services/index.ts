@@ -36,7 +36,9 @@ export interface Service {
 
   // dispatch functions
   requiredProjectBindings?: (projectNumber: string) => Promise<Array<iam.Binding>>;
-  ensureTriggerRegion: ((ep: backend.Endpoint & backend.EventTriggered)  => Promise<void>) | ((ep: backend.Endpoint & backend.ScheduleTriggered) => Promise<void>);
+  ensureTriggerRegion:
+    | ((ep: backend.Endpoint & backend.EventTriggered) => Promise<void>)
+    | ((ep: backend.Endpoint & backend.ScheduleTriggered) => Promise<void>);
   validateTrigger: (ep: backend.Endpoint, want: backend.Backend) => void;
   registerTrigger: (ep: backend.Endpoint) => Promise<void>;
   unregisterTrigger: (ep: backend.Endpoint) => Promise<void>;
@@ -141,7 +143,7 @@ const scheduleService: Service = {
   validateTrigger: noop,
   registerTrigger: noop,
   unregisterTrigger: noop,
-}
+};
 
 /** Mapping from event type string to service object */
 const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
