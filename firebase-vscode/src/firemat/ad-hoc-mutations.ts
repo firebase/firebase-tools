@@ -32,9 +32,8 @@ export function registerAdHoc(
     async function schemaAddData(ast: ObjectTypeDefinitionNode, { documentPath, position }) {
         // generate content for the file
         const preamble = '# This is a file for you to write an un-named mutation. \n# Only one un-named mutation is allowed per file.';
-        const saveInfo = "# Please save this in the operations/ folder with your other un-named mutations in order to execute the mutation."
         const adhocMutation = generateMutation(ast);
-        const content = [preamble, saveInfo, adhocMutation].join("\n");
+        const content = [preamble, adhocMutation].join("\n");
 
         const basePath = vscode.workspace.rootPath + "/api/";
         const filePath = vscode.Uri.file(basePath + ast.name.value + pathSuffix);
@@ -51,11 +50,8 @@ export function registerAdHoc(
                 });
             });
         } else {
-            // Opens untitled text document
-            vscode.workspace.openTextDocument({
-                content,
-                language: "graphql"
-            }).then(doc => {
+            // Opens existing text document
+            vscode.workspace.openTextDocument(filePath).then(doc => {
                 vscode.window.showTextDocument(doc);
             });
         }
