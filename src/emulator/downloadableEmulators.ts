@@ -45,10 +45,10 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   ui: experiments.isEnabled("emulatoruisnapshot")
     ? { version: "SNAPSHOT", expectedSize: -1, expectedChecksum: "" }
     : {
-        version: "1.11.7",
-        expectedSize: 3064105,
-        expectedChecksum: "bd2bcc331cbf613a5b3b55a1ce08998b",
-      },
+      version: "1.11.7",
+      expectedSize: 3064105,
+      expectedChecksum: "bd2bcc331cbf613a5b3b55a1ce08998b",
+    },
   pubsub: {
     version: "0.7.1",
     expectedSize: 65137179,
@@ -57,15 +57,15 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   firemat:
     process.platform === "darwin"
       ? {
-          version: "0.1.1",
-          expectedSize: 17798656,
-          expectedChecksum: "a94cbba815f5960dab2a9ecdf98997fb",
-        }
+        version: "0.1.2",
+        expectedSize: 17798656,
+        expectedChecksum: "a94cbba815f5960dab2a9ecdf98997fb",
+      }
       : {
-          version: "0.1.1",
-          expectedSize: 17727488,
-          expectedChecksum: "41b169aa4765fe2d5a5d85ddd8125956",
-        },
+        version: "0.1.2",
+        expectedSize: 17727488,
+        expectedChecksum: "41b169aa4765fe2d5a5d85ddd8125956",
+      },
 };
 
 export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
