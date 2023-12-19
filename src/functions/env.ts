@@ -45,7 +45,7 @@ const RESERVED_KEYS = [
 const LINE_RE = new RegExp(
   "^" +                      // begin line
   "\\s*" +                   //   leading whitespaces
-  "(export)?" +                       // Optional 'export'
+  "(?:export)?" +                       // Optional 'export' in a non-capture group
   "\\s*" +                   //   more whitespaces
   "([\\w./]+)" +                 //   key
   "\\s*=[\\f\\t\\v]*" +              //   separator (=)
