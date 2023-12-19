@@ -6,7 +6,10 @@ import { registerExecution } from "./execution";
 import { registerExplorer } from "./explorer";
 import { registerAdHoc } from "./ad-hoc-mutations";
 import { FirematService } from "./service";
-import { OperationCodeLensProvider, SchemaCodeLensProvider } from "./code-lens-provider";
+import {
+  OperationCodeLensProvider,
+  SchemaCodeLensProvider,
+} from "./code-lens-provider";
 // import { setupLanguageClient } from "./language-client";
 
 const firematEndpoint = signal<string | undefined>(undefined);
@@ -29,7 +32,7 @@ export function registerFiremat(
       firematEndpoint.value = endpoint;
       // also update LSP
       vscode.commands.executeCommand("firemat-graphql.restart");
-      vscode.commands.executeCommand('firebase.firemat.executeIntrospection');
+      vscode.commands.executeCommand("firebase.firemat.executeIntrospection");
     }
   });
 
@@ -38,20 +41,18 @@ export function registerFiremat(
     registerExplorer(context, broker, firematService),
     registerAdHoc(context, broker),
     vscode.languages.registerCodeLensProvider(
-      { scheme: "file", language: "graphql" },
+      [
+        { scheme: "file", language: "graphql" },
+        { scheme: "untitled", language: "graphql" },
+      ],
       operationCodeLensProvider
     ),
     vscode.languages.registerCodeLensProvider(
-      { scheme: "file", language: "gql" },
-      operationCodeLensProvider,
-    ),
-    vscode.languages.registerCodeLensProvider(
-      { scheme: "file", language: "graphql" },
+      [
+        { scheme: "file", language: "graphql" },
+        // Don't show in untitled files since the provider needs the file name.
+      ],
       schemaCodeLensProvider
-    ),
-    vscode.languages.registerCodeLensProvider(
-      { scheme: "file", language: "gql" },
-      schemaCodeLensProvider,
     ),
     {
       dispose: () => {
