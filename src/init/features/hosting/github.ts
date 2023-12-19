@@ -32,7 +32,7 @@ let YML_FULL_PATH_MERGE: string;
 const YML_PULL_REQUEST_FILENAME = "firebase-hosting-pull-request.yml";
 const YML_MERGE_FILENAME = "firebase-hosting-merge.yml";
 
-const CHECKOUT_GITHUB_ACTION_NAME = "actions/checkout@v3";
+const CHECKOUT_GITHUB_ACTION_NAME = "actions/checkout@v4";
 const HOSTING_GITHUB_ACTION_NAME = "FirebaseExtended/action-hosting-deploy@v0";
 
 const SERVICE_ACCOUNT_MAX_KEY_NUMBER = 10;
