@@ -1,9 +1,9 @@
 const inquirer = module.exports;
 
 let pluginLogger = {
-  debug: () => {}
+  debug: () => {},
 };
-const optionsKey = Symbol('options');
+const optionsKey = Symbol("options");
 inquirer[optionsKey] = {};
 
 inquirer.setInquirerOptions = (inquirerOptions) => {

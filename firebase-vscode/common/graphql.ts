@@ -2,7 +2,7 @@ import { ExecutionResult, GraphQLError } from "graphql";
 
 /** Asserts that an unknown object is a {@link ExecutionResult} */
 export function assertExecutionResult(
-  response: any,
+  response: any
 ): asserts response is ExecutionResult {
   if (!response) {
     throw new Error(`Expected ExecutionResult but got ${response}`);

@@ -11,9 +11,9 @@ import { getRootFolders } from "./config-files";
 
 export const pluginLogger: Record<string, (...args) => void> = {};
 
-const logLevels = ['debug', 'info', 'log', 'warn', 'error'];
+const logLevels = ["debug", "info", "log", "warn", "error"];
 
-const outputChannel = vscode.window.createOutputChannel('Firebase');
+const outputChannel = vscode.window.createOutputChannel("Firebase");
 
 export function showOutputChannel() {
   outputChannel.show();
@@ -21,7 +21,7 @@ export function showOutputChannel() {
 
 for (const logLevel of logLevels) {
   pluginLogger[logLevel] = (...args) => {
-    const prefixedArgs = ['[Firebase Plugin]', ...args];
+    const prefixedArgs = ["[Firebase Plugin]", ...args];
     cliLogger[logLevel](...prefixedArgs);
   };
 }
@@ -29,12 +29,15 @@ for (const logLevel of logLevels) {
 /**
  * Logging setup for logging to console and to file.
  */
-export function logSetup({ shouldWriteDebug, debugLogPath }: {
-  shouldWriteDebug: boolean,
-  debugLogPath: string
+export function logSetup({
+  shouldWriteDebug,
+  debugLogPath,
+}: {
+  shouldWriteDebug: boolean;
+  debugLogPath: string;
 }) {
   // Log to console (use built in CLI functionality)
-  process.env.DEBUG = 'true';
+  process.env.DEBUG = "true";
   setupLoggers();
 
   // Log to file
@@ -43,22 +46,22 @@ export function logSetup({ shouldWriteDebug, debugLogPath }: {
     // Re-implement file logger call from ../../src/bin/firebase.ts to not bring
     // in the entire firebase.ts file
     const rootFolders = getRootFolders();
-    const filePath = debugLogPath || path.join(rootFolders[0], 'firebase-plugin-debug.log');
-    pluginLogger.info('Logging to path', filePath);
+    const filePath =
+      debugLogPath || path.join(rootFolders[0], "firebase-plugin-debug.log");
+    pluginLogger.info("Logging to path", filePath);
     cliLogger.add(
       new transports.File({
         level: "debug",
         filename: filePath,
         format: format.printf((info) => {
-          const segments = [info.message, ...(info[SPLAT] || [])]
-            .map(tryStringify);
+          const segments = [info.message, ...(info[SPLAT] || [])].map(
+            tryStringify
+          );
           return `[${info.level}] ${stripAnsi(segments.join(" "))}`;
         }),
       })
     );
-    cliLogger.add(
-      new VSCodeOutputTransport({ level: "info" })
-    );
+    cliLogger.add(new VSCodeOutputTransport({ level: "info" }));
   }
 }
 
@@ -72,13 +75,12 @@ class VSCodeOutputTransport extends Transport {
   }
   log(info, callback) {
     setImmediate(() => {
-      this.emit('logged', info);
+      this.emit("logged", info);
     });
-    const segments = [info.message, ...(info[SPLAT] || [])]
-      .map(tryStringify);
+    const segments = [info.message, ...(info[SPLAT] || [])].map(tryStringify);
     const text = `[${info.level}] ${stripAnsi(segments.join(" "))}`;
 
-    if (info.level !== 'debug') {
+    if (info.level !== "debug") {
       // info or greater: write to output window
       outputChannel.appendLine(text);
     }

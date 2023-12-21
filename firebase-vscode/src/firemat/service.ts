@@ -1,5 +1,9 @@
 import fetch, { Response } from "node-fetch";
-import { ExecutionResult, IntrospectionQuery, getIntrospectionQuery } from "graphql";
+import {
+  ExecutionResult,
+  IntrospectionQuery,
+  getIntrospectionQuery,
+} from "graphql";
 import { Signal } from "@preact/signals-core";
 import { assertExecutionResult } from "../../common/graphql";
 import { FirematError } from "../../common/error";
@@ -8,7 +12,7 @@ import { FirematError } from "../../common/error";
  * Firemat Emulator service
  */
 export class FirematService {
-constructor(private firematEndpoint: Signal<string | undefined>) {}
+  constructor(private firematEndpoint: Signal<string | undefined>) {}
 
   private async decodeResponse(
     response: Response,
@@ -50,9 +54,7 @@ constructor(private firematEndpoint: Signal<string | undefined>) {}
     );
   }
 
-  private handleResponse(
-    response: Response
-  ): Promise<ExecutionResult> {
+  private handleResponse(response: Response): Promise<ExecutionResult> {
     if (response.status >= 200 && response.status < 300) {
       return this.handleValidResponse(response);
     }

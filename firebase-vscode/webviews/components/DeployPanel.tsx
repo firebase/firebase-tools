@@ -160,7 +160,7 @@ export function DeployPanel({
     // Priority 3: If most recent local deploy succeeded and there's no server
     // data about other successful deploys
     deployedText = `Deployed to ${deployedInfo.channelId} at ${deployedInfo.date}`;
-  } 
+  }
 
   return (
     <>

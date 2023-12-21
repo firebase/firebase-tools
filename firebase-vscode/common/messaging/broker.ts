@@ -13,8 +13,11 @@ export abstract class Broker<
 > {
   protected readonly listeners: MessageListeners<IncomingMessages> = {};
 
-  abstract sendMessage<T extends keyof OutgoingMessages>(message: T, data: OutgoingMessages[T]): void;
-  registerReceiver(receiver: R): void { }
+  abstract sendMessage<T extends keyof OutgoingMessages>(
+    message: T,
+    data: OutgoingMessages[T]
+  ): void;
+  registerReceiver(receiver: R): void {}
 
   addListener(message: string, cb: Listener<IncomingMessages>): void {
     if (!this.listeners[message]) {
@@ -36,10 +39,10 @@ export abstract class Broker<
 
     for (const listener of this.listeners[d.command].listeners) {
       d.data === undefined ? listener() : listener(d.data);
-    };
+    }
   }
 
-  delete(): void { }
+  delete(): void {}
 }
 
 export interface BrokerImpl<
@@ -63,7 +66,9 @@ export function createBroker<
   OutgoingMessages extends MessageParamsMap,
   IncomingMessages extends MessageParamsMap,
   R extends Receiver
->(broker: Broker<OutgoingMessages, IncomingMessages, R>): BrokerImpl<OutgoingMessages, IncomingMessages, Receiver> {
+>(
+  broker: Broker<OutgoingMessages, IncomingMessages, R>
+): BrokerImpl<OutgoingMessages, IncomingMessages, Receiver> {
   return {
     send<E extends keyof OutgoingMessages>(
       message: Extract<E, string>,
@@ -82,6 +87,6 @@ export function createBroker<
     },
     delete(): void {
       broker.delete();
-    }
+    },
   };
 }

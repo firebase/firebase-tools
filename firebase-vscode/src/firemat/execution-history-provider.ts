@@ -16,10 +16,12 @@ export class ExecutionTreeItem extends vscode.TreeItem {
   constructor(readonly item: ExecutionItem) {
     super(item.label, vscode.TreeItemCollapsibleState.None);
     this.item = item;
-  
+
     // Renders arguments in a single line
-    const prettyArgs = this.item.args?.replaceAll(/[\n \t]+/g, ' ');
-    this.description = `${timeFormatter.format(item.timestamp)} | Arguments: ${prettyArgs}`;
+    const prettyArgs = this.item.args?.replaceAll(/[\n \t]+/g, " ");
+    this.description = `${timeFormatter.format(
+      item.timestamp
+    )} | Arguments: ${prettyArgs}`;
     this.command = {
       title: "Show result",
       command: "firebase.firemat.selectExecutionResultToShow",
