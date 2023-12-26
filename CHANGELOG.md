@@ -1,0 +1,1 @@
+- Fixed an issue where including `export` in .env files caused parsing errors. (#6629)
