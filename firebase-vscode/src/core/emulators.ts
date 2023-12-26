@@ -13,6 +13,7 @@ import { Signal } from "@preact/signals-core";
 export const isFirematEmulatorRunning = new Signal<boolean>(false);
 
 export function registerEmulators(broker: ExtensionBrokerImpl): Disposable {
+
   const outputChannel = vscode.window.createOutputChannel("Firebase Emulators");
 
   broker.on("launchEmulators", async ({ emulatorUiSelections }) => {
@@ -35,14 +36,8 @@ export function registerEmulators(broker: ExtensionBrokerImpl): Disposable {
           );
 
           // firemat specifics; including temp logging implementation
-          if (
-            listRunningEmulators().filter((emulatorInfos) => {
-              emulatorInfos.name === Emulators.FIREMAT;
-            })
-          ) {
-            const firematEmulatorDetails = getEmulatorDetails(
-              Emulators.FIREMAT
-            );
+          if (listRunningEmulators().filter((emulatorInfos) => { emulatorInfos.name === Emulators.FIREMAT })) {
+            const firematEmulatorDetails = getEmulatorDetails(Emulators.FIREMAT);
             isFirematEmulatorRunning.value = true;
 
             firematEmulatorDetails.instance.stdout?.on("data", (data) => {
@@ -50,9 +45,7 @@ export function registerEmulators(broker: ExtensionBrokerImpl): Disposable {
             });
             firematEmulatorDetails.instance.stderr?.on("data", (data) => {
               if (data.toString().includes("Finished reload server")) {
-                vscode.commands.executeCommand(
-                  "firebase.firemat.executeIntrospection"
-                );
+                vscode.commands.executeCommand("firebase.firemat.executeIntrospection");
               } else {
                 outputChannel.appendLine("ERROR: " + data.toString());
                 outputChannel.show(true); // TODO: decide if necessary to jump to output channel on error

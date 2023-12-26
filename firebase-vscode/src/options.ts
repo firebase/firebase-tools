@@ -32,7 +32,7 @@ export let currentOptions: Options & { isVSCE: boolean } = {
   exportOnExit: false,
   import: "",
 
-  isVSCE: true,
+  isVSCE: true
 };
 
 export function updateOptions(
@@ -43,10 +43,10 @@ export function updateOptions(
   if (firebaseJSON) {
     currentOptions.config = firebaseJSON;
     currentOptions.configPath = `${currentOptions.cwd}/firebase.json`;
-    if (firebaseJSON.has("hosting")) {
+    if (firebaseJSON.has('hosting')) {
       currentOptions = {
         ...currentOptions,
-        ...firebaseJSON.get("hosting"),
+        ...firebaseJSON.get('hosting'),
       };
     }
   } else {
@@ -75,8 +75,8 @@ export async function getCommandOptions(
   // Use any string, it doesn't affect `prepare()`.
   const command = new Command("deploy");
   let newOptions = Object.assign(options, { config: options.configPath });
-  if (firebaseJSON?.has("hosting")) {
-    newOptions = Object.assign(newOptions, firebaseJSON.get("hosting"));
+  if (firebaseJSON?.has('hosting')) {
+    newOptions = Object.assign(newOptions, firebaseJSON.get('hosting'));
   }
   await command.prepare(newOptions);
   return newOptions as Options;

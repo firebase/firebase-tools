@@ -33,6 +33,6 @@ export function activate(context: vscode.ExtensionContext) {
       context,
     }),
     registerHosting(broker),
-    registerFiremat(context, broker)
+    registerFiremat(context, broker),
   );
 }

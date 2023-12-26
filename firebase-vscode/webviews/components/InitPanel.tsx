@@ -1,7 +1,4 @@
-import {
-  VSCodeButton,
-  VSCodeProgressRing,
-} from "@vscode/webview-ui-toolkit/react";
+import { VSCodeButton, VSCodeProgressRing } from "@vscode/webview-ui-toolkit/react";
 import cn from "classnames";
 
 import { Body, Label } from "./ui/Text";
@@ -15,13 +12,13 @@ import { HostingInitState } from "../webview-types";
 export function InitFirebasePanel({
   onHostingInit,
   hostingInitState,
-  setHostingInitState,
+  setHostingInitState
 }: {
   onHostingInit: Function;
   hostingInitState: HostingInitState;
   setHostingInitState: (state: HostingInitState) => void;
 }) {
-  if (hostingInitState === "pending") {
+  if (hostingInitState === 'pending') {
     return (
       <PanelSection isLast>
         <Spacer size="medium" />
@@ -42,7 +39,7 @@ export function InitFirebasePanel({
       <VSCodeButton
         onClick={() => {
           onHostingInit();
-          setHostingInitState("pending");
+          setHostingInitState('pending');
         }}
       >
         {TEXT.INIT_HOSTING_BUTTON}

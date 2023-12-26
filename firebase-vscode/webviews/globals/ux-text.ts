@@ -1,9 +1,8 @@
 export const TEXT = {
   INIT_HOSTING_BUTTON: "Host your Web App",
 
-  INIT_HOSTING_DESCRIPTION:
-    "Deploy your app with Firebase Hosting" +
-    ", a high-performance static web host backed by a global CDN",
+  INIT_HOSTING_DESCRIPTION: "Deploy your app with Firebase Hosting"
+    + ", a high-performance static web host backed by a global CDN",
 
   INIT_HOSTING_PROGRESS: "Initializing...",
 
@@ -31,5 +30,5 @@ export const TEXT = {
 
   DEPLOYING_IN_PROGRESS: "Deploying...",
 
-  DEPLOYING_PROGRESS_FRAMEWORK: "Deploying... this may take a few minutes.",
+  DEPLOYING_PROGRESS_FRAMEWORK: "Deploying... this may take a few minutes."
 };

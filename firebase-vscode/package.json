@@ -146,8 +146,7 @@
     "test-compile": "npm run copyfiles && webpack --config src/test/webpack.test.js",
     "pretest": "npm run test-compile && npm run lint && tsc -p src/test/tsconfig.test.json",
     "lint": "eslint src --ext ts",
-    "test": "node ./dist/test/runTest.js",
-    "format": "npx prettier . -w"
+    "test": "node ./dist/test/runTest.js"
   },
   "dependencies": {
     "@preact/signals-core": "^1.4.0",

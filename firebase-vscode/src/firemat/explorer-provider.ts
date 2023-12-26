@@ -11,7 +11,7 @@ import {
   TypeKind,
 } from "graphql";
 import { effect } from "@preact/signals-core";
-import { introspectionQuery } from "./explorer";
+import { introspectionQuery } from './explorer';
 import { OPERATION_TYPE } from "./types";
 
 interface Element {
@@ -27,9 +27,9 @@ export class ExplorerTreeDataProvider
 
   private typeSystem:
     | {
-        introspection: IntrospectionQuery;
-        typeForName: Map<string, IntrospectionType>;
-      }
+      introspection: IntrospectionQuery;
+      typeForName: Map<string, IntrospectionType>;
+    }
     | undefined = undefined;
 
   constructor() {
@@ -71,9 +71,7 @@ export class ExplorerTreeDataProvider
 
   getTreeItem(element: Element): vscode.TreeItem {
     // special cases for query and mutation root folders
-    if (
-      Object.values(OPERATION_TYPE).includes(element.name as OPERATION_TYPE)
-    ) {
+    if (Object.values(OPERATION_TYPE).includes(element.name as OPERATION_TYPE)) {
       return new vscode.TreeItem(
         element.name,
         vscode.TreeItemCollapsibleState.Collapsed

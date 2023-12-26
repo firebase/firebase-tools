@@ -64,10 +64,7 @@ export class SchemaCodeLensProvider implements vscode.CodeLensProvider {
         const line = x.loc.startToken.line - 1;
         const range = new vscode.Range(line, 0, line, 0);
         const position = new vscode.Position(line, 0);
-        const schemaLocation = {
-          documentPath: document.fileName,
-          position: position,
-        };
+        const schemaLocation = { documentPath: document.fileName, position: position };
 
         if (isFirematEmulatorRunning.value) {
           codeLenses.push(

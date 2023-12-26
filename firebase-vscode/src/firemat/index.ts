@@ -41,19 +41,17 @@ export function registerFiremat(
     registerExplorer(context, broker, firematService),
     registerAdHoc(context, broker),
     vscode.languages.registerCodeLensProvider(
-      { scheme: "file", language: "graphql" },
+      [
+        { scheme: "file", language: "graphql" },
+        { scheme: "untitled", language: "graphql" },
+      ],
       operationCodeLensProvider
     ),
     vscode.languages.registerCodeLensProvider(
-      { scheme: "file", language: "gql" },
-      operationCodeLensProvider
-    ),
-    vscode.languages.registerCodeLensProvider(
-      { scheme: "file", language: "graphql" },
-      schemaCodeLensProvider
-    ),
-    vscode.languages.registerCodeLensProvider(
-      { scheme: "file", language: "gql" },
+      [
+        { scheme: "file", language: "graphql" },
+        // Don't show in untitled files since the provider needs the file name.
+      ],
       schemaCodeLensProvider
     ),
     {

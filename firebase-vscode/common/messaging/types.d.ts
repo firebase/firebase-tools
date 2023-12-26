@@ -26,10 +26,10 @@ export interface RunningEmulatorInfo {
 }
 
 export interface EmulatorUiSelections {
-  projectId: string;
-  firebaseJsonPath?: string;
-  importStateFolderPath?: string;
-  exportStateOnExit: boolean;
-  mode: "hosting" | "all" | "firemat";
-  debugLogging: boolean;
+  projectId: string
+  firebaseJsonPath?: string
+  importStateFolderPath?: string
+  exportStateOnExit: boolean
+  mode: "hosting" | "all" | "firemat"
+  debugLogging: boolean
 }

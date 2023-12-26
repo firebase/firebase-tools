@@ -29,12 +29,7 @@ import {
   cleanShutdown as stopAllEmulators,
 } from "../../src/emulator/controller";
 import { EmulatorRegistry } from "../../src/emulator/registry";
-import {
-  DownloadableEmulatorDetails,
-  EmulatorInfo,
-  DownloadableEmulators,
-  Emulators,
-} from "../../src/emulator/types";
+import { DownloadableEmulatorDetails, EmulatorInfo, DownloadableEmulators, Emulators } from "../../src/emulator/types";
 import * as commandUtils from "../../src/emulator/commandUtils";
 import { currentUser } from "./core/user";
 export { Emulators };
@@ -70,7 +65,7 @@ async function getServiceAccount() {
       // In other environments, it is common to not find a service account.
       pluginLogger.debug(
         `No service account found (this may be normal), ` +
-          `requireAuth error output: ${errorMessage}`
+        `requireAuth error output: ${errorMessage}`
       );
     }
     return null;
@@ -82,8 +77,8 @@ async function getServiceAccount() {
     // updated to return credentials through the metadata server.
     pluginLogger.debug(
       `Using WORKSPACE_SERVICE_ACCOUNT_EMAIL env ` +
-        `variable to get service account email: ` +
-        `${process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL}`
+      `variable to get service account email: ` +
+      `${process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL}`
     );
     return process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL;
   }
@@ -335,13 +330,10 @@ export async function deployToHosting(
   return { success: true, hostingUrl: "", consoleUrl: "" };
 }
 
-export async function emulatorsStart(
-  emulatorUiSelections: EmulatorUiSelections
-) {
-  const only =
-    emulatorUiSelections.mode === "hosting"
-      ? "hosting"
-      : emulatorUiSelections.mode === "firemat"
+export async function emulatorsStart(emulatorUiSelections: EmulatorUiSelections) {
+  const only = emulatorUiSelections.mode === "hosting"
+    ? "hosting"
+    : emulatorUiSelections.mode === "firemat"
       ? "firemat"
       : "";
   const commandOptions = await getCommandOptions(undefined, {
@@ -352,9 +344,7 @@ export async function emulatorsStart(
     only,
   });
   // Adjusts some options, export on exit can be a boolean or a path.
-  commandUtils.setExportOnExitOptions(
-    commandOptions as commandUtils.ExportOnExitOptions
-  );
+  commandUtils.setExportOnExitOptions(commandOptions as commandUtils.ExportOnExitOptions);
   return startAllEmulators(commandOptions, /*showUi=*/ true);
 }
 
@@ -371,8 +361,6 @@ export function getEmulatorUiUrl(): string | undefined {
   return url.hostname === "unknown" ? undefined : url.toString();
 }
 
-export function getEmulatorDetails(
-  emulator: DownloadableEmulators
-): DownloadableEmulatorDetails {
+export function getEmulatorDetails(emulator: DownloadableEmulators): DownloadableEmulatorDetails {
   return EmulatorRegistry.getDetails(emulator);
 }
