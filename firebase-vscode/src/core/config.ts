@@ -83,7 +83,7 @@ function createWatcher(file: string) {
   }
 
   const watcher = workspace.createFileSystemWatcher(
-    path.join(currentOptions.cwd, file)
+    path.join(currentOptions.cwd, file),
   );
   return watcher;
 }

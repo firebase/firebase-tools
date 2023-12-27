@@ -12,7 +12,7 @@ style;
 
 export function FirematExecutionResultsApp() {
   const [firematResults, setResults] = useState<FirematResults | undefined>(
-    undefined
+    undefined,
   );
   const results: ExecutionResult | SerializedError | undefined =
     firematResults?.results;

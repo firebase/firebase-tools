@@ -112,10 +112,10 @@ function UserSelectionMenu({
   isMonospace: boolean;
 }) {
   const hasNonServiceAccountUser = allUsers.some(
-    (user) => (user as ServiceAccountUser).type !== "service_account"
+    (user) => (user as ServiceAccountUser).type !== "service_account",
   );
   const allUsersSorted = [...allUsers].sort((user1, user2) =>
-    (user1 as ServiceAccountUser).type !== "service_account" ? -1 : 1
+    (user1 as ServiceAccountUser).type !== "service_account" ? -1 : 1,
   );
   /**
    * Some temporary fixes here to not show google signin option in

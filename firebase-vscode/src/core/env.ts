@@ -14,7 +14,7 @@ export const env = signal<Environment>({
 export function registerEnv(broker: ExtensionBrokerImpl): Disposable {
   broker.on("getInitialData", async () => {
     pluginLogger.debug(
-      `Value of process.env.MONOSPACE_ENV: ` + `${process.env.MONOSPACE_ENV}`
+      `Value of process.env.MONOSPACE_ENV: ` + `${process.env.MONOSPACE_ENV}`,
     );
 
     broker.send("notifyEnv", {

@@ -20,7 +20,7 @@ const getTestFiles = () =>
           testFiles[fileName] = path.resolve(__dirname, "suite", file);
         }
         resolve(testFiles);
-      }
+      },
     );
   });
 

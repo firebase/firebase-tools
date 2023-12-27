@@ -11,7 +11,7 @@ import {
   TypeKind,
 } from "graphql";
 import { effect } from "@preact/signals-core";
-import { introspectionQuery } from './explorer';
+import { introspectionQuery } from "./explorer";
 import { OPERATION_TYPE } from "./types";
 
 interface Element {
@@ -27,9 +27,9 @@ export class ExplorerTreeDataProvider
 
   private typeSystem:
     | {
-      introspection: IntrospectionQuery;
-      typeForName: Map<string, IntrospectionType>;
-    }
+        introspection: IntrospectionQuery;
+        typeForName: Map<string, IntrospectionType>;
+      }
     | undefined = undefined;
 
   constructor() {
@@ -71,10 +71,12 @@ export class ExplorerTreeDataProvider
 
   getTreeItem(element: Element): vscode.TreeItem {
     // special cases for query and mutation root folders
-    if (Object.values(OPERATION_TYPE).includes(element.name as OPERATION_TYPE)) {
+    if (
+      Object.values(OPERATION_TYPE).includes(element.name as OPERATION_TYPE)
+    ) {
       return new vscode.TreeItem(
         element.name,
-        vscode.TreeItemCollapsibleState.Collapsed
+        vscode.TreeItemCollapsibleState.Collapsed,
       );
     }
 
@@ -89,7 +91,7 @@ export class ExplorerTreeDataProvider
       label,
       hasChildren
         ? vscode.TreeItemCollapsibleState.Collapsed
-        : vscode.TreeItemCollapsibleState.None
+        : vscode.TreeItemCollapsibleState.None,
     );
 
     treeItem.description = this._formatType(field.type);
@@ -152,7 +154,7 @@ export class ExplorerTreeDataProvider
   resolveTreeItem(
     item: vscode.TreeItem,
     element: Element,
-    token: CancellationToken
+    token: CancellationToken,
   ): vscode.ProviderResult<vscode.TreeItem> {
     const field = this._field(element);
     item.tooltip =
@@ -194,19 +196,19 @@ export class ExplorerTreeDataProvider
     const type = this.typeSystem.typeForName.get(ref.name);
     if (!type) {
       throw new Error(
-        `Introspection invariant violation: Ref type ${ref.name} does not exist`
+        `Introspection invariant violation: Ref type ${ref.name} does not exist`,
       );
     }
     if (ref.kind && type.kind !== ref.kind) {
       throw new Error(
-        `Introspection invariant violation: Ref kind ${ref.kind} does not match Type kind ${type.kind}`
+        `Introspection invariant violation: Ref kind ${ref.kind} does not match Type kind ${type.kind}`,
       );
     }
     return type as T;
   }
 
   _baseType(
-    field: IntrospectionField
+    field: IntrospectionField,
   ): IntrospectionNamedTypeRef<IntrospectionOutputType> {
     let unwrapped = field.type;
     while (

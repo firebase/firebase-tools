@@ -12,7 +12,7 @@ export function getSettings(): Settings {
   if (vscode.workspace.workspaceFolders) {
     const workspaceConfig = workspace.getConfiguration(
       "firebase",
-      vscode.workspace.workspaceFolders[0].uri
+      vscode.workspace.workspaceFolders[0].uri,
     );
 
     return {

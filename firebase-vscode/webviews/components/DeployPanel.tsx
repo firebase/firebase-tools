@@ -88,7 +88,7 @@ export function DeployPanel({
   let siteLink = null;
 
   const existingChannel = channels.find(
-    (channel) => channel.id === deployTarget
+    (channel) => channel.id === deployTarget,
   );
 
   if (existingChannel) {
@@ -154,13 +154,13 @@ export function DeployPanel({
     // Takes priority over local deploy success in case someone else deployed
     // after our most recent local deploy.
     deployedText = `Last deployed to ${deployTarget} at ${new Date(
-      channelInfo.updateTime
+      channelInfo.updateTime,
     ).toLocaleString()}`;
   } else if (deployedInfo?.succeeded) {
     // Priority 3: If most recent local deploy succeeded and there's no server
     // data about other successful deploys
     deployedText = `Deployed to ${deployedInfo.channelId} at ${deployedInfo.date}`;
-  } 
+  }
 
   return (
     <>
@@ -193,7 +193,7 @@ export function DeployPanel({
                 <VSCodeProgressRing
                   className={cn(
                     styles.integrationStatusIcon,
-                    styles.integrationStatusLoading
+                    styles.integrationStatusLoading,
                   )}
                 />
                 <Label level={3}>

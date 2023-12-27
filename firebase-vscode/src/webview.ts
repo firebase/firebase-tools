@@ -4,19 +4,19 @@ import { ExtensionBrokerImpl } from "./extension-broker";
 function getHtmlForWebview(
   entryName: string,
   extensionUri: Uri,
-  webview: Webview
+  webview: Webview,
 ) {
   const scriptUri = webview.asWebviewUri(
-    Uri.joinPath(extensionUri, `dist/web-${entryName}.js`)
+    Uri.joinPath(extensionUri, `dist/web-${entryName}.js`),
   );
   const styleUri = webview.asWebviewUri(
-    Uri.joinPath(extensionUri, `dist/web-${entryName}.css`)
+    Uri.joinPath(extensionUri, `dist/web-${entryName}.css`),
   );
   const moniconWoffUri = webview.asWebviewUri(
-    Uri.joinPath(extensionUri, "resources/Monicons.woff")
+    Uri.joinPath(extensionUri, "resources/Monicons.woff"),
   );
   const codiconsUri = webview.asWebviewUri(
-    Uri.joinPath(extensionUri, "resources/dist/codicon.css")
+    Uri.joinPath(extensionUri, "resources/dist/codicon.css"),
   );
   // Use a nonce to only allow a specific script to be run.
   const nonce = getNonce();
@@ -77,7 +77,7 @@ interface RegisterWebviewParams {
 
 export function registerWebview(params: RegisterWebviewParams): Disposable {
   function resolveWebviewView(
-    webviewView: vscode.WebviewView
+    webviewView: vscode.WebviewView,
   ): void | Thenable<void> {
     params.broker.registerReceiver(webviewView.webview);
 
@@ -89,13 +89,17 @@ export function registerWebview(params: RegisterWebviewParams): Disposable {
     webviewView.webview.html = getHtmlForWebview(
       params.name,
       params.context.extensionUri,
-      webviewView.webview
+      webviewView.webview,
     );
 
     params.onResolve?.(webviewView.webview);
   }
 
-  return vscode.window.registerWebviewViewProvider(params.name, {
-    resolveWebviewView,
-  }, { webviewOptions: { retainContextWhenHidden: true } });
+  return vscode.window.registerWebviewViewProvider(
+    params.name,
+    {
+      resolveWebviewView,
+    },
+    { webviewOptions: { retainContextWhenHidden: true } },
+  );
 }

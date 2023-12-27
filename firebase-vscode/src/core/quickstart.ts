@@ -43,13 +43,13 @@ async function selectDirectory() {
           {
             cwd: selectedURI[0].fsPath,
             encoding: "utf8",
-          }
-        )
+          },
+        ),
       );
       vscode.commands.executeCommand(`vscode.openFolder`, selectedURI[0]);
     } catch (error) {
       pluginLogger.error(
-        "(Quickstart) Error downloading Quickstart:\n" + error
+        "(Quickstart) Error downloading Quickstart:\n" + error,
       );
     }
   }

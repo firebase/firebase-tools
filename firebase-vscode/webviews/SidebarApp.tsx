@@ -52,7 +52,7 @@ export function SidebarApp() {
     broker.on("notifyFirebaseConfig", ({ firebaseJson, firebaseRC }) => {
       webLogger.debug(
         "got firebase hosting",
-        JSON.stringify(firebaseJson?.hosting)
+        JSON.stringify(firebaseJson?.hosting),
       );
       if (firebaseJson) {
         setFirebaseJson(firebaseJson);
@@ -103,7 +103,7 @@ export function SidebarApp() {
         } else {
           setHostingInitState(null);
         }
-      }
+      },
     );
 
     broker.on("notifyHostingDeploy", ({ success }) => {

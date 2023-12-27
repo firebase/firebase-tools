@@ -36,14 +36,14 @@ export function registerHosting(broker: ExtensionBrokerImpl): Disposable {
     if (useFrameworks) {
       currentFramework = await discover(currentOptions.cwd, false);
       pluginLogger.debug(
-        "(Hosting) Searching for a web framework in this project."
+        "(Hosting) Searching for a web framework in this project.",
       );
     }
 
     let success = false;
     if (currentFramework) {
       pluginLogger.debug(
-        "(Hosting) Detected web framework, launching frameworks init."
+        "(Hosting) Detected web framework, launching frameworks init.",
       );
       success = await initHosting({
         spa: singleAppSupport,
@@ -60,7 +60,7 @@ export function registerHosting(broker: ExtensionBrokerImpl): Disposable {
       if (fileUri && fileUri[0] && fileUri[0].fsPath) {
         const publicFolderFull = fileUri[0].fsPath;
         const publicFolder = publicFolderFull.substring(
-          currentOptions.cwd.length + 1
+          currentOptions.cwd.length + 1,
         );
         success = await initHosting({
           spa: singleAppSupport,
@@ -87,12 +87,12 @@ export function registerHosting(broker: ExtensionBrokerImpl): Disposable {
 
     pluginLogger.info(
       `(Hosting) Starting deployment of project ` +
-        `${currentProject.value?.projectId} to channel: ${deployTarget}`
+        `${currentProject.value?.projectId} to channel: ${deployTarget}`,
     );
 
     const deployResponse = await deployToHosting(
       firebaseConfig.value,
-      deployTarget
+      deployTarget,
     );
 
     if (deployResponse.success) {

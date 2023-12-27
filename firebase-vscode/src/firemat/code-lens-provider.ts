@@ -9,7 +9,7 @@ import { isFirematEmulatorRunning } from "../core/emulators";
 export class OperationCodeLensProvider implements vscode.CodeLensProvider {
   async provideCodeLenses(
     document: vscode.TextDocument,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): Promise<vscode.CodeLens[]> {
     const codeLenses: vscode.CodeLens[] = [];
 
@@ -36,7 +36,7 @@ export class OperationCodeLensProvider implements vscode.CodeLensProvider {
               command: "firebase.firemat.executeOperation",
               tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
               arguments: [x, operationLocation],
-            })
+            }),
           );
         }
       }
@@ -52,7 +52,7 @@ export class OperationCodeLensProvider implements vscode.CodeLensProvider {
 export class SchemaCodeLensProvider implements vscode.CodeLensProvider {
   async provideCodeLenses(
     document: vscode.TextDocument,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): Promise<vscode.CodeLens[]> {
     const codeLenses: vscode.CodeLens[] = [];
 
@@ -64,7 +64,10 @@ export class SchemaCodeLensProvider implements vscode.CodeLensProvider {
         const line = x.loc.startToken.line - 1;
         const range = new vscode.Range(line, 0, line, 0);
         const position = new vscode.Position(line, 0);
-        const schemaLocation = { documentPath: document.fileName, position: position };
+        const schemaLocation = {
+          documentPath: document.fileName,
+          position: position,
+        };
 
         if (isFirematEmulatorRunning.value) {
           codeLenses.push(
@@ -73,7 +76,7 @@ export class SchemaCodeLensProvider implements vscode.CodeLensProvider {
               command: "firebase.firemat.schemaAddData",
               tooltip: "Generate a mutation to add data of this type",
               arguments: [x, schemaLocation],
-            })
+            }),
           );
         }
       }

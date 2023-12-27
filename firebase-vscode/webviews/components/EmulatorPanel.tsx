@@ -49,10 +49,10 @@ export function EmulatorPanel({
     useState<EmulatorUiSelections>(defaultState);
 
   webLogger.debug(
-    "initial state ui selections:" + JSON.stringify(emulatorUiSelections)
+    "initial state ui selections:" + JSON.stringify(emulatorUiSelections),
   );
   function setEmulatorUiSelectionsAndSaveToWorkspace(
-    uiSelections: EmulatorUiSelections
+    uiSelections: EmulatorUiSelections,
   ) {
     // TODO(christhompson): Save UI selections in the current workspace.
     // Requires context object.
@@ -102,7 +102,7 @@ export function EmulatorPanel({
 
   broker.on("notifyEmulatorImportFolder", ({ folder }) => {
     webLogger.debug(
-      `notifyEmulatorImportFolder received in sidebar: ${folder}`
+      `notifyEmulatorImportFolder received in sidebar: ${folder}`,
     );
     const newSelections = {
       ...emulatorUiSelections,
@@ -173,7 +173,7 @@ export function EmulatorPanel({
     newSelections.mode = event.target.value as typeof emulatorUiSelections.mode;
     newSelections.projectId = getProjectIdForMode(
       projectId,
-      newSelections.mode
+      newSelections.mode,
     );
     setEmulatorUiSelectionsAndSaveToWorkspace(newSelections);
   }
@@ -255,7 +255,7 @@ function FormatEmulatorRunningInfo({ infos }: { infos: EmulatorInfo[] }) {
  */
 function getProjectIdForMode(
   projectId: string | undefined,
-  mode: "all" | "hosting" | "firemat"
+  mode: "all" | "hosting" | "firemat",
 ): string {
   if (!projectId) {
     return "demo-something";

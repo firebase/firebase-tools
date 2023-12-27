@@ -1,5 +1,9 @@
 import fetch, { Response } from "node-fetch";
-import { ExecutionResult, IntrospectionQuery, getIntrospectionQuery } from "graphql";
+import {
+  ExecutionResult,
+  IntrospectionQuery,
+  getIntrospectionQuery,
+} from "graphql";
 import { Signal } from "@preact/signals-core";
 import { assertExecutionResult } from "../../common/graphql";
 import { FirematError } from "../../common/error";
@@ -8,11 +12,11 @@ import { FirematError } from "../../common/error";
  * Firemat Emulator service
  */
 export class FirematService {
-constructor(private firematEndpoint: Signal<string | undefined>) {}
+  constructor(private firematEndpoint: Signal<string | undefined>) {}
 
   private async decodeResponse(
     response: Response,
-    format?: "application/json"
+    format?: "application/json",
   ): Promise<unknown> {
     const contentType = response.headers.get("Content-Type");
     if (!contentType) {
@@ -21,7 +25,7 @@ constructor(private firematEndpoint: Signal<string | undefined>) {}
 
     if (format && !contentType.includes(format)) {
       throw new Error(
-        `Invalid content type. Expected ${format} but got ${contentType}`
+        `Invalid content type. Expected ${format} but got ${contentType}`,
       );
     }
 
@@ -33,7 +37,7 @@ constructor(private firematEndpoint: Signal<string | undefined>) {}
   }
 
   private async handleValidResponse(
-    response: Response
+    response: Response,
   ): Promise<ExecutionResult> {
     const json = await this.decodeResponse(response, "application/json");
     assertExecutionResult(json);
@@ -46,13 +50,11 @@ constructor(private firematEndpoint: Signal<string | undefined>) {}
 
     throw new FirematError(
       `Request failed with status ${response.status}`,
-      cause
+      cause,
     );
   }
 
-  private handleResponse(
-    response: Response
-  ): Promise<ExecutionResult> {
+  private handleResponse(response: Response): Promise<ExecutionResult> {
     if (response.status >= 200 && response.status < 300) {
       return this.handleValidResponse(response);
     }
@@ -87,8 +89,8 @@ constructor(private firematEndpoint: Signal<string | undefined>) {}
         cleanup();
         reject(
           new Error(
-            "Failed to connect to the emulator. Did you forget to start it?"
-          )
+            "Failed to connect to the emulator. Did you forget to start it?",
+          ),
         );
       }, 30 * 1000);
 
@@ -168,7 +170,7 @@ constructor(private firematEndpoint: Signal<string | undefined>) {}
             "x-mantle-admin": "all",
           },
           body,
-        }
+        },
       );
       const result = await resp.json().catch(() => resp.text());
       return result;
@@ -200,7 +202,7 @@ constructor(private firematEndpoint: Signal<string | undefined>) {}
           "x-mantle-admin": "all",
         },
         body,
-      }
+      },
     );
 
     return this.handleResponse(resp);

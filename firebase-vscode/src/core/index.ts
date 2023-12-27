@@ -45,6 +45,6 @@ export function registerCore({
     registerEnv(broker),
     registerUser(broker),
     registerProject({ context, broker }),
-    registerQuickstart(broker)
+    registerQuickstart(broker),
   );
 }

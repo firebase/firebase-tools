@@ -1,9 +1,9 @@
 const inquirer = module.exports;
 
 let pluginLogger = {
-  debug: () => {}
+  debug: () => {},
 };
-const optionsKey = Symbol('options');
+const optionsKey = Symbol("options");
 inquirer[optionsKey] = {};
 
 inquirer.setInquirerOptions = (inquirerOptions) => {
@@ -22,7 +22,7 @@ inquirer.prompt = async (prompts) => {
     } else {
       pluginLogger.debug(
         `Didn't find "${prompt.name}" in options (message:` +
-          ` "${prompt.message}"), defaulting to value "${prompt.default}"`
+          ` "${prompt.message}"), defaulting to value "${prompt.default}"`,
       );
       answers[prompt.name] = prompt.default;
     }

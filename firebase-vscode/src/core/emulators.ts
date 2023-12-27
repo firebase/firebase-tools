@@ -13,7 +13,6 @@ import { Signal } from "@preact/signals-core";
 export const isFirematEmulatorRunning = new Signal<boolean>(false);
 
 export function registerEmulators(broker: ExtensionBrokerImpl): Disposable {
-
   const outputChannel = vscode.window.createOutputChannel("Firebase Emulators");
 
   broker.on("launchEmulators", async ({ emulatorUiSelections }) => {
@@ -32,12 +31,18 @@ export function registerEmulators(broker: ExtensionBrokerImpl): Disposable {
             displayInfo: listRunningEmulators(),
           });
           vscode.window.showInformationMessage(
-            "Firebase Extension: Emulators started successfully"
+            "Firebase Extension: Emulators started successfully",
           );
 
           // firemat specifics; including temp logging implementation
-          if (listRunningEmulators().filter((emulatorInfos) => { emulatorInfos.name === Emulators.FIREMAT })) {
-            const firematEmulatorDetails = getEmulatorDetails(Emulators.FIREMAT);
+          if (
+            listRunningEmulators().filter((emulatorInfos) => {
+              emulatorInfos.name === Emulators.FIREMAT;
+            })
+          ) {
+            const firematEmulatorDetails = getEmulatorDetails(
+              Emulators.FIREMAT,
+            );
             isFirematEmulatorRunning.value = true;
 
             firematEmulatorDetails.instance.stdout?.on("data", (data) => {
@@ -45,7 +50,9 @@ export function registerEmulators(broker: ExtensionBrokerImpl): Disposable {
             });
             firematEmulatorDetails.instance.stderr?.on("data", (data) => {
               if (data.toString().includes("Finished reload server")) {
-                vscode.commands.executeCommand("firebase.firemat.executeIntrospection");
+                vscode.commands.executeCommand(
+                  "firebase.firemat.executeIntrospection",
+                );
               } else {
                 outputChannel.appendLine("ERROR: " + data.toString());
                 outputChannel.show(true); // TODO: decide if necessary to jump to output channel on error
@@ -57,11 +64,11 @@ export function registerEmulators(broker: ExtensionBrokerImpl): Disposable {
           isFirematEmulatorRunning.value = false; // TODO: verify firemat is not running once other emulators come into play
 
           vscode.window.showErrorMessage(
-            "Firebase Extension: Emulators start failed - " + e
+            "Firebase Extension: Emulators start failed - " + e,
           );
         }
         progress.report({ increment: 100 });
-      }
+      },
     );
   });
 
@@ -78,11 +85,11 @@ export function registerEmulators(broker: ExtensionBrokerImpl): Disposable {
         await stopEmulators();
         broker.send("notifyEmulatorsStopped");
         vscode.window.showInformationMessage(
-          "Firebase Extension: Emulators stopped successfully"
+          "Firebase Extension: Emulators stopped successfully",
         );
         isFirematEmulatorRunning.value = false;
         progress.report({ increment: 100 });
-      }
+      },
     );
   });
 

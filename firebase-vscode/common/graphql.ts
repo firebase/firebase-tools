@@ -16,14 +16,14 @@ export function assertExecutionResult(
   const { data, errors } = response;
   if (!data && !errors) {
     throw new Error(
-      `Expected ExecutionResult to have either "data" or "errors" set but none found`
+      `Expected ExecutionResult to have either "data" or "errors" set but none found`,
     );
   }
 
   if (errors) {
     if (!Array.isArray(errors)) {
       throw new Error(
-        `Expected errors to be an array but got ${typeof errors}`
+        `Expected errors to be an array but got ${typeof errors}`,
       );
     }
     for (const error of errors) {
@@ -43,7 +43,7 @@ export function isExecutionResult(response: any): response is ExecutionResult {
 
 /** Asserts that an unknown object is a {@link GraphQLError} */
 export function assertGraphQLError(
-  error: unknown
+  error: unknown,
 ): asserts error is GraphQLError {
   if (!error) {
     throw new Error(`Expected GraphQLError but got ${error}`);
@@ -57,7 +57,7 @@ export function assertGraphQLError(
   const { message } = error as GraphQLError;
   if (typeof message !== "string") {
     throw new Error(
-      `Expected GraphQLError to have "message" set but got ${typeof message}`
+      `Expected GraphQLError to have "message" set but got ${typeof message}`,
     );
   }
 }

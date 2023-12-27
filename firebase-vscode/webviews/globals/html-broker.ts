@@ -13,7 +13,7 @@ export class HtmlBroker extends Broker<
   constructor(readonly vscode: any) {
     super();
     window.addEventListener("message", (event) =>
-      this.executeListeners(event.data)
+      this.executeListeners(event.data),
     );
 
     // Log uncaught errors and unhandled rejections
@@ -21,7 +21,7 @@ export class HtmlBroker extends Broker<
       webLogger.error(
         event.error.message,
         event.error.stack && "\n",
-        event.error.stack
+        event.error.stack,
       );
     });
     window.addEventListener("unhandledrejection", (event) => {
@@ -29,14 +29,14 @@ export class HtmlBroker extends Broker<
         "Unhandled rejected promise:",
         event.reason,
         event.reason.stack && "\n",
-        event.reason.stack
+        event.reason.stack,
       );
     });
   }
 
   sendMessage(
     command: keyof WebviewToExtensionParamsMap,
-    data: WebviewToExtensionParamsMap[keyof WebviewToExtensionParamsMap]
+    data: WebviewToExtensionParamsMap[keyof WebviewToExtensionParamsMap],
   ): void {
     this.vscode.postMessage({ command, data });
   }

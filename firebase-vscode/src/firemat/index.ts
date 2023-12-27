@@ -16,7 +16,7 @@ const firematEndpoint = signal<string | undefined>(undefined);
 
 export function registerFiremat(
   context: ExtensionContext,
-  broker: ExtensionBrokerImpl
+  broker: ExtensionBrokerImpl,
 ): Disposable {
   const firematService = new FirematService(firematEndpoint);
   const operationCodeLensProvider = new OperationCodeLensProvider();
@@ -45,19 +45,19 @@ export function registerFiremat(
         { scheme: "file", language: "graphql" },
         { scheme: "untitled", language: "graphql" },
       ],
-      operationCodeLensProvider
+      operationCodeLensProvider,
     ),
     vscode.languages.registerCodeLensProvider(
       [
         { scheme: "file", language: "graphql" },
         // Don't show in untitled files since the provider needs the file name.
       ],
-      schemaCodeLensProvider
+      schemaCodeLensProvider,
     ),
     {
       dispose: () => {
         // client.stop();
       },
-    }
+    },
   );
 }

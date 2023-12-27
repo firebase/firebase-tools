@@ -31,7 +31,7 @@ export const currentProject = computed<FirebaseProjectMetadata | undefined>(
     const wantProjectId =
       currentProjectId.value || firebaseRC.value.projects["default"];
     return userScopedProjects.value.find((p) => p.projectId === wantProjectId);
-  }
+  },
 );
 
 export function registerProject({
@@ -77,7 +77,7 @@ export function registerProject({
     if (process.env.MONOSPACE_ENV) {
       pluginLogger.debug(
         "selectProject: found MONOSPACE_ENV, " +
-          "prompting user using external flow"
+          "prompting user using external flow",
       );
       /**
        * Monospace case: use Monospace flow
@@ -104,7 +104,7 @@ export function registerProject({
     } else {
       try {
         currentProjectId.value = await promptUserForProject(
-          userScopedProjects.value
+          userScopedProjects.value,
         );
       } catch (e) {
         vscode.window.showErrorMessage(e.message);
