@@ -38,7 +38,7 @@ export function registerAdHoc(
     const adhocMutation = generateMutation(ast);
     const content = [preamble, adhocMutation].join("\n");
 
-    const basePath = vscode.workspace.rootPath + "/api/";
+    const basePath = vscode.workspace.rootPath + "/dataconnect/";
     const filePath = vscode.Uri.file(basePath + ast.name.value + pathSuffix);
     const doesFileExist = await checkIfFileExists(filePath);
 
