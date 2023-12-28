@@ -10,6 +10,7 @@ import {
   OperationCodeLensProvider,
   SchemaCodeLensProvider,
 } from "./code-lens-provider";
+import { registerConnectors } from "./connectors";
 // import { setupLanguageClient } from "./language-client";
 
 const firematEndpoint = signal<string | undefined>(undefined);
@@ -40,6 +41,7 @@ export function registerFiremat(
     registerExecution(context, broker, firematService),
     registerExplorer(context, broker, firematService),
     registerAdHoc(context, broker),
+    registerConnectors(context, broker, firematService),
     vscode.languages.registerCodeLensProvider(
       [
         { scheme: "file", language: "graphql" },

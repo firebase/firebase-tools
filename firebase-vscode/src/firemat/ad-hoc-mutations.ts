@@ -2,9 +2,10 @@ import vscode, { Disposable, ExtensionContext } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { ObjectTypeDefinitionNode } from "graphql";
 import { Uri } from "vscode";
+import { checkIfFileExists } from "./utils";
 export function registerAdHoc(
   context: ExtensionContext,
-  broker: ExtensionBrokerImpl,
+  broker: ExtensionBrokerImpl
 ): Disposable {
   const pathSuffix = "_insert.gql";
   const defaultScalarValues = {
@@ -30,7 +31,7 @@ export function registerAdHoc(
    * */
   async function schemaAddData(
     ast: ObjectTypeDefinitionNode,
-    { documentPath, position },
+    { documentPath, position }
   ) {
     // generate content for the file
     const preamble =
@@ -62,15 +63,6 @@ export function registerAdHoc(
     }
   }
 
-  async function checkIfFileExists(file: Uri) {
-    try {
-      await vscode.workspace.fs.stat(file);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
   function generateMutation(ast: ObjectTypeDefinitionNode): string {
     const name = ast.name.value.toLowerCase();
     const functionSpacing = "\t";
@@ -92,7 +84,7 @@ export function registerAdHoc(
         defaultValue = '""';
       }
       mutation.push(
-        `${fieldSpacing}${fieldName}: ${defaultValue} # ${fieldTypeName}`,
+        `${fieldSpacing}${fieldName}: ${defaultValue} # ${fieldTypeName}`
       ); // field name + temp value + comment
     }
     mutation.push(`${functionSpacing}})`, "}"); // closing braces/paren
@@ -102,7 +94,7 @@ export function registerAdHoc(
   return Disposable.from(
     vscode.commands.registerCommand(
       "firebase.firemat.schemaAddData",
-      schemaAddData,
-    ),
+      schemaAddData
+    )
   );
 }
