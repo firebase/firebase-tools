@@ -343,7 +343,7 @@ export async function emulatorsStart(
     emulatorUiSelections.mode === "hosting"
       ? "hosting"
       : emulatorUiSelections.mode === "firemat"
-        ? "firemat"
+        ? "firemat,auth"
         : "";
   const commandOptions = await getCommandOptions(undefined, {
     ...currentOptions,
