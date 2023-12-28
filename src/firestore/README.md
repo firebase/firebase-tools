@@ -76,16 +76,16 @@ Note that Cloud Firestore document fields can only be indexed in one [mode](http
 A TTL policy can be enabled or disabled using the `fieldOverrides` array as it follows:
 
 ```javascript
-  // Optional, disable index single-field collection group indexes
-  fieldOverrides: [
-    {
-      collectionGroup: "posts",
-      fieldPath: "ttlField",
-      ttl: "true",  // Explicitly enable TTL on this Field.
-      // Disable indexing so empty the indexes array
-      indexes: []
-    }
-  ]
+// Optional, disable index single-field collection group indexes
+fieldOverrides: [
+  {
+    collectionGroup: "posts",
+    fieldPath: "ttlField",
+    ttl: "true", // Explicitly enable TTL on this Field.
+    // Disable indexing so empty the indexes array
+    indexes: [],
+  },
+];
 ```
 
 To keep the default indexing in the field and enable a TTL policy:
