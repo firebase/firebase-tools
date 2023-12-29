@@ -1,0 +1,1 @@
+- Fix typo in Cloud storage bucket metadata location type (#6648)
