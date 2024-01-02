@@ -1,18 +1,15 @@
 import { execSync } from "child_process";
 import { spawn } from "cross-spawn";
+// Use "true &&"" to keep typescript from compiling this file and rewriting
+// the import statement into a require
+const { dynamicImport } = require(true && "../../dynamicImport");
 import { existsSync } from "fs";
 import { copy, pathExists } from "fs-extra";
 import { join } from "path";
 const stripAnsi = require("strip-ansi");
 import { FrameworkType, SupportLevel } from "../interfaces";
 import { promptOnce } from "../../prompt";
-import {
-  simpleProxy,
-  warnIfCustomBuildScript,
-  findDependency,
-  getNodeModuleBin,
-  relativeRequire,
-} from "../utils";
+import { simpleProxy, warnIfCustomBuildScript, findDependency, getNodeModuleBin } from "../utils";
 
 export const name = "Vite";
 export const support = SupportLevel.Experimental;
@@ -79,7 +76,7 @@ export async function discover(dir: string, plugin?: string, npmDependency?: str
 }
 
 export async function build(root: string) {
-  const { build } = relativeRequire(root, "vite");
+  const { build } = await dynamicImportVite(root);
 
   await warnIfCustomBuildScript(root, name, DEFAULT_BUILD_SCRIPT);
 
@@ -120,11 +117,20 @@ export async function getDevModeHandle(dir: string) {
 }
 
 async function getConfig(root: string) {
-  const { resolveConfig } = relativeRequire(root, "vite");
+  const { resolveConfig } = await dynamicImportVite(root);
   // SvelteKit uses process.cwd() unfortunately, we should be defensive here
   const cwd = process.cwd();
   process.chdir(root);
   const config = await resolveConfig({ root }, "build", "production");
   process.chdir(cwd);
   return config;
+}
+
+/**
+ * Dynamically import Vite to prevent issues with Vite's CJS API.
+ *
+ * @see https://vitejs.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated
+ */
+function dynamicImportVite(root: string): Promise<typeof import("vite")> {
+  return dynamicImport(join(root, "node_modules", "vite", "dist", "node", "index.js"));
 }
