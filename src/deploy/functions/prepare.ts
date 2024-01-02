@@ -293,7 +293,7 @@ export function inferDetailsFromExisting(
     }
 
     // Copy the service id over to the new endpoint.
-    wantE.runServiceId = haveE.runServiceId
+    wantE.runServiceId = haveE.runServiceId;
 
     // By default, preserve existing environment variables.
     // Only overwrite environment variables when there are user specified environment variables.
