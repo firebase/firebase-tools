@@ -16,6 +16,11 @@ describe("functions/env", () => {
         want: { FOO: "foo" },
       },
       {
+        description: "should parse exported values",
+        input: "export FOO=foo",
+        want: { FOO: "foo" },
+      },
+      {
         description: "should parse values with trailing spaces (single quotes)",
         input: "FOO='foo'        ",
         want: { FOO: "foo" },
