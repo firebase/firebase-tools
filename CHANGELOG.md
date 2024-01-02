@@ -1,1 +1,2 @@
-- Fix typo in Cloud storage bucket metadata location type (#6648)
+- Fixed typo in Cloud storage bucket metadata location type. (#6648)
+- Fixed an issue where including `export` in .env files caused parsing errors. (#6629)
