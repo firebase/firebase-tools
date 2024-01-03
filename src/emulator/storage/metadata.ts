@@ -381,7 +381,7 @@ export class CloudStorageBucketMetadata {
     this.location = "US";
     this.storageClass = "STANDARD";
     this.etag = "====";
-    this.locationType = "mutli-region";
+    this.locationType = "multi-region";
   }
 }
 
