@@ -41,7 +41,7 @@ function populateTable(backends: apphosting.Backend[], table: any) {
     const [location, , backendId] = backend.name.split("/").slice(3, 6);
     const entry = [
       backendId,
-      backend.codebase.repository?.split("/").pop(),
+      backend.codebase?.repository?.split("/").pop(),
       location,
       backend.uri,
       backend.createTime,
