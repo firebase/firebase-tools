@@ -19,11 +19,24 @@ export abstract class Broker<
   ): void;
   registerReceiver(receiver: R): void {}
 
-  addListener(message: string, cb: Listener<IncomingMessages>): void {
+  addListener(message: string, cb: Listener<IncomingMessages>): () => void {
     if (!this.listeners[message]) {
       this.listeners[message] = { listeners: [] };
     }
     this.listeners[message].listeners.push(cb);
+
+    return () => {
+      const listeners = this.listeners[message];
+      if (!listeners) {
+        return;
+      }
+
+      const index = listeners.listeners.indexOf(cb);
+      if (index === -1) {
+        return;
+      }
+      listeners.listeners.splice(index, 1);
+    };
   }
 
   executeListeners(message: Message<IncomingMessages>) {
@@ -58,7 +71,7 @@ export interface BrokerImpl<
   on<E extends keyof IncomingMessages>(
     message: Extract<E, string>,
     listener: (params: IncomingMessages[E]) => void,
-  ): void;
+  ): () => void;
   delete(): void;
 }
 
@@ -82,8 +95,8 @@ export function createBroker<
     on<E extends keyof IncomingMessages>(
       message: Extract<E, string>,
       listener: (params: IncomingMessages[E]) => void,
-    ): void {
-      broker.addListener(message, listener);
+    ): () => void {
+      return broker.addListener(message, listener);
     },
     delete(): void {
       broker.delete();

@@ -7,12 +7,16 @@ import {
 import { Signal } from "@preact/signals-core";
 import { assertExecutionResult } from "../../common/graphql";
 import { FirematError } from "../../common/error";
+import { AuthService } from "../auth/service";
 
 /**
  * Firemat Emulator service
  */
 export class FirematService {
-  constructor(private firematEndpoint: Signal<string | undefined>) {}
+  constructor(
+    private firematEndpoint: Signal<string | undefined>,
+    private authService: AuthService,
+  ) {}
 
   private async decodeResponse(
     response: Response,
@@ -153,11 +157,15 @@ export class FirematService {
     operationName: string;
     variables: string;
   }) {
+    const userMock = this.authService.userMock;
+
     try {
       // TODO: get name programmatically
       const body = this._serializeBody({
         ...params,
         name: "projects/p/locations/l/services/local",
+        // TODO(rrousselGit): handle unauthenticated case once the API supports it.
+        auth: userMock.kind === "authenticated" ? userMock.claims : undefined,
       });
       const resp = await fetch(
         (await this.getFirematEndpoint()) +
@@ -186,10 +194,14 @@ export class FirematService {
     operationName?: string;
     variables: string;
   }) {
+    const userMock = this.authService.userMock;
+
     // TODO: get name programmatically
     const body = this._serializeBody({
       ...params,
       name: "projects/p/locations/l/services/local",
+      // TODO(rrousselGit): handle unauthenticated case once the API supports it.
+      auth: userMock.kind === "authenticated" ? userMock.claims : undefined,
     });
     const resp = await fetch(
       (await this.getFirematEndpoint()) +

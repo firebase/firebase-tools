@@ -12,6 +12,7 @@ import { registerCore } from "./core";
 import { getSettings } from "./utils/settings";
 import { registerHosting } from "./hosting";
 import { registerFiremat } from "./firemat";
+import { AuthService } from "./auth/service";
 
 // This method is called when your extension is activated
 export function activate(context: vscode.ExtensionContext) {
@@ -25,6 +26,8 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.Webview
   >(new ExtensionBroker());
 
+  const authService = new AuthService(broker);
+
   context.subscriptions.push(
     registerCore({ broker, context }),
     registerWebview({
@@ -33,6 +36,7 @@ export function activate(context: vscode.ExtensionContext) {
       context,
     }),
     registerHosting(broker),
-    registerFiremat(context, broker),
+    authService,
+    registerFiremat(context, broker, authService),
   );
 }
