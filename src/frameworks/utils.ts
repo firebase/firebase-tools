@@ -1,6 +1,6 @@
-import { readJSON as originalReadJSON } from "fs-extra";
+import { readJSON as originalReadJSON, readJsonSync } from "fs-extra";
 import type { ReadOptions } from "fs-extra";
-import { extname, join, relative } from "path";
+import { dirname, extname, join, relative } from "path";
 import { readFile } from "fs/promises";
 import { IncomingMessage, request as httpRequest, ServerResponse, Agent } from "http";
 import { sync as spawnSync } from "cross-spawn";
@@ -19,7 +19,7 @@ import {
   NPM_COMMAND_TIMEOUT_MILLIES,
   VALID_LOCALE_FORMATS,
 } from "./constants";
-import { BUILD_TARGET_PURPOSE, RequestHandler } from "./interfaces";
+import { BUILD_TARGET_PURPOSE, PackageJson, RequestHandler } from "./interfaces";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -319,7 +319,7 @@ export function relativeRequire(
   dir: string,
   mod: "next"
 ): typeof import("next") | typeof import("next")["default"];
-export function relativeRequire(dir: string, mod: "vite"): typeof import("vite");
+export function relativeRequire(dir: string, mod: "vite"): Promise<typeof import("vite")>;
 export function relativeRequire(dir: string, mod: "jsonc-parser"): typeof import("jsonc-parser");
 
 // TODO the types for @nuxt/kit are causing a lot of troubles, need to do something other than any
@@ -345,7 +345,19 @@ export function relativeRequire(dir: string, mod: string) {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore prevent VSCE webpack from erroring on non_webpack_require
     const path = requireFunc.resolve(mod, { paths: [dir] });
-    if (extname(path) === ".mjs") {
+
+    let packageJson: PackageJson | undefined;
+    const isEsm =
+      extname(path) === ".mjs" ||
+      (packageJson = readJsonSync(join(dirname(path), "package.json"), { throws: false }))?.type ===
+        "module";
+
+    if (isEsm) {
+      // in case path resolves to a cjs file, use main from package.json
+      if (extname(path) === ".cjs" && packageJson?.main) {
+        return dynamicImport(join(dirname(path), packageJson.main));
+      }
+
       return dynamicImport(pathToFileURL(path).toString());
     } else {
       return requireFunc(path);

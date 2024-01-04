@@ -102,3 +102,9 @@ export interface FirebaseDefaults {
   emulatorHosts?: Record<string, string>;
   _authTokenSyncURL?: string;
 }
+
+// Only the fields being used are defined here
+export interface PackageJson {
+  main: string;
+  type?: "commonjs" | "module";
+}
