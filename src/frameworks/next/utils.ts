@@ -21,12 +21,14 @@ import type {
   AppPathsManifest,
   AppPathRoutesManifest,
   HostingHeadersWithSource,
+  ServerReferenceManifest,
 } from "./interfaces";
 import {
   APP_PATH_ROUTES_MANIFEST,
   EXPORT_MARKER,
   IMAGES_MANIFEST,
   MIDDLEWARE_MANIFEST,
+  WEBPACK_LAYERS_NAMES,
 } from "./constants";
 import { dirExistsSync, fileExistsSync } from "../../fsutils";
 
@@ -420,4 +422,26 @@ export async function hasStaticAppNotFoundComponent(
   distDir: string
 ): Promise<boolean> {
   return pathExists(join(sourceDir, distDir, "server", "app", "_not-found.html"));
+}
+
+/**
+ * Find routes that are using server actions by checking the server-reference-manifest.json
+ */
+export function getRoutesWithServerAction(
+  serverReferenceManifest: ServerReferenceManifest,
+  appPathRoutesManifest: AppPathRoutesManifest
+): string[] {
+  const routesWithServerAction = new Set<string>();
+
+  const serverReferenceNodeKeys = Object.keys(serverReferenceManifest.node);
+
+  for (const key of serverReferenceNodeKeys) {
+    for (const [route, type] of Object.entries(serverReferenceManifest.node[key].layer)) {
+      if (type === WEBPACK_LAYERS_NAMES.actionBrowser) {
+        routesWithServerAction.add(appPathRoutesManifest[route.replace("app", "")]);
+      }
+    }
+  }
+
+  return Array.from(routesWithServerAction);
 }

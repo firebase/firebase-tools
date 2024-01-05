@@ -2,6 +2,7 @@ import type { RouteHas } from "next/dist/lib/load-custom-routes";
 import type { ImageConfigComplete } from "next/dist/shared/lib/image-config";
 import type { MiddlewareManifest as MiddlewareManifestV2FromNext } from "next/dist/build/webpack/plugins/middleware-plugin";
 import type { HostingHeaders } from "../../firebaseConfig";
+import { WEBPACK_LAYERS_NAMES } from "./constants";
 
 export interface RoutesManifestRewriteObject {
   beforeFiles?: RoutesManifestRewrite[];
@@ -137,4 +138,19 @@ export interface AppPathRoutesManifest {
 export interface HostingHeadersWithSource {
   source: string;
   headers: HostingHeaders["headers"];
+}
+
+interface Actions {
+  [actionId: string]: {
+    workers: {
+      [name: string]: string | number;
+    };
+    layer: Record<string, (typeof WEBPACK_LAYERS_NAMES)[keyof typeof WEBPACK_LAYERS_NAMES]>;
+  };
+}
+
+export interface ServerReferenceManifest {
+  node: Actions;
+  edge: Actions;
+  encryptionKey: string;
 }
