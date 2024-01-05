@@ -425,7 +425,7 @@ export async function hasStaticAppNotFoundComponent(
 }
 
 /**
- * Find routes that are using server actions by checking the server-reference-manifest.json
+ * Find routes using server actions by checking the server-reference-manifest.json
  */
 export function getRoutesWithServerAction(
   serverReferenceManifest: ServerReferenceManifest,
