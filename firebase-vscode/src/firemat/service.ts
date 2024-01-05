@@ -125,6 +125,15 @@ export class FirematService {
     });
   }
 
+  private _auth() {
+    const userMock = this.authService.userMock;
+
+    // TODO(rrousselGit): handle unauthenticated case once the API supports it.
+    return userMock.kind === "authenticated"
+      ? JSON.parse(userMock.claims)
+      : undefined;
+  }
+
   // This introspection is used to generate a basic graphql schema
   // It will not include our predefined operations, which requires a Firemat specific introspection query
   async introspect(): Promise<{ data?: IntrospectionQuery }> {
@@ -157,15 +166,12 @@ export class FirematService {
     operationName: string;
     variables: string;
   }) {
-    const userMock = this.authService.userMock;
-
     try {
       // TODO: get name programmatically
       const body = this._serializeBody({
         ...params,
         name: "projects/p/locations/l/services/local",
-        // TODO(rrousselGit): handle unauthenticated case once the API supports it.
-        auth: userMock.kind === "authenticated" ? userMock.claims : undefined,
+        auth: this._auth(),
       });
       const resp = await fetch(
         (await this.getFirematEndpoint()) +
@@ -194,14 +200,11 @@ export class FirematService {
     operationName?: string;
     variables: string;
   }) {
-    const userMock = this.authService.userMock;
-
     // TODO: get name programmatically
     const body = this._serializeBody({
       ...params,
       name: "projects/p/locations/l/services/local",
-      // TODO(rrousselGit): handle unauthenticated case once the API supports it.
-      auth: userMock.kind === "authenticated" ? userMock.claims : undefined,
+      auth: this._auth(),
     });
     const resp = await fetch(
       (await this.getFirematEndpoint()) +

@@ -16,7 +16,7 @@ export type UserMock =
   | { kind: "admin" | "unauthenticated" }
   | {
       kind: "authenticated";
-      claims: String;
+      claims: string;
     };
 
 export interface WebviewToExtensionParamsMap {

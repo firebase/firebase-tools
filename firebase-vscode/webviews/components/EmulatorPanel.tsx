@@ -217,7 +217,7 @@ type MockAuthRole = "admin" | "unauthenticated" | "authenticated";
 function AuthUserMockForm(props: { disabled: boolean }) {
   const disabled = props.disabled ?? false;
   const [selectedKind, setSelectedMockKind] = useState<MockAuthRole>("admin");
-  const [claims, setClaims] = useState<String>(
+  const [claims, setClaims] = useState<string>(
     `{\n  "email_verified": true,\n  "sub": "exampleUserId"\n}`,
   );
 
