@@ -19,6 +19,7 @@ export const appPathRoutesManifest: AppPathRoutesManifest = {
   "/another-s-a/page": "/another-s-a",
   "/server-action/page": "/server-action",
   "/ssr/page": "/ssr",
+  "/server-action/edge/page": "/server-action/edge",
 };
 
 export const pagesManifest: PagesManifest = {
@@ -77,6 +78,11 @@ export const serverReferenceManifest: ServerReferenceManifest = {
       },
     },
   },
-  edge: {},
-  encryptionKey: "123",
+  edge: {
+    "123": {
+      workers: { "app/server-action/edge/page": 123 },
+      layer: { "app/server-action/edge/page": "action-browser" },
+    },
+  },
+  encryptionKey: "456",
 };

@@ -530,7 +530,7 @@ describe("Next.js utils", () => {
     it("should get routes with server action", () => {
       expect(
         getRoutesWithServerAction(serverReferenceManifest, appPathRoutesManifest)
-      ).to.deep.equal(["/another-s-a", "/server-action"]);
+      ).to.deep.equal(["/another-s-a", "/server-action", "/server-action/edge"]);
     });
   });
 });
