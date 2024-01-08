@@ -1,6 +1,6 @@
 import vscode, { Disposable } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
-import { effect, signal } from "@preact/signals-react";
+import { effect } from "@preact/signals-react";
 import { ChannelWithId } from "../messaging/types";
 import { deployToHosting, getChannels, initHosting } from "../cli";
 import { firebaseConfig } from "../core/config";
@@ -9,8 +9,9 @@ import { currentOptions } from "../options";
 import { currentProject, currentProjectId } from "../core/project";
 import { getSettings } from "../utils/settings";
 import { discover } from "../../../src/frameworks";
+import { globalSignal } from "../utils/globals";
 
-const channels = signal<ChannelWithId[]>([]);
+const channels = globalSignal<ChannelWithId[]>([]);
 
 export function registerHosting(broker: ExtensionBrokerImpl): Disposable {
   // Refresh channels when project changes

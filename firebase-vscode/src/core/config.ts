@@ -1,4 +1,3 @@
-import { effect, signal } from "@preact/signals-react";
 import { Disposable, workspace } from "vscode";
 import path from "path";
 import fs from "fs";
@@ -9,10 +8,10 @@ import { ExtensionBrokerImpl } from "../extension-broker";
 import { FirebaseConfig } from "../../../src/firebaseConfig";
 import { RC, RCData } from "../../../src/rc";
 import { Config } from "../../../src/config";
+import { globalSignal } from "../utils/globals";
 
-export const firebaseRC = signal<RC | undefined>(undefined);
-
-export const firebaseConfig = signal<Config | undefined>(undefined);
+export const firebaseRC = globalSignal<RC | undefined>(undefined);
+export const firebaseConfig = globalSignal<Config | undefined>(undefined);
 
 export function registerConfig(broker: ExtensionBrokerImpl): Disposable {
   firebaseRC.value = readRC();
