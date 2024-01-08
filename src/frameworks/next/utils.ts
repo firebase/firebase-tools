@@ -433,12 +433,18 @@ export function getRoutesWithServerAction(
 ): string[] {
   const routesWithServerAction = new Set<string>();
 
-  const serverReferenceNodeKeys = Object.keys(serverReferenceManifest.node);
+  for (const key of Object.keys(serverReferenceManifest)) {
+    if (key !== "edge" && key !== "node") continue;
 
-  for (const key of serverReferenceNodeKeys) {
-    for (const [route, type] of Object.entries(serverReferenceManifest.node[key].layer)) {
-      if (type === WEBPACK_LAYERS_NAMES.actionBrowser) {
-        routesWithServerAction.add(appPathRoutesManifest[route.replace("app", "")]);
+    const edgeOrNode = serverReferenceManifest[key];
+
+    for (const actionId of Object.keys(edgeOrNode)) {
+      if (!edgeOrNode[actionId].layer) continue;
+
+      for (const [route, type] of Object.entries(edgeOrNode[actionId].layer)) {
+        if (type === WEBPACK_LAYERS_NAMES.actionBrowser) {
+          routesWithServerAction.add(appPathRoutesManifest[route.replace("app", "")]);
+        }
       }
     }
   }
