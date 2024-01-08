@@ -77,12 +77,12 @@ function readConfig() {
 }
 
 function createWatcher(file: string) {
-  if (!currentOptions.cwd) {
+  if (!currentOptions.value.cwd) {
     return null;
   }
 
   const watcher = workspace.createFileSystemWatcher(
-    path.join(currentOptions.cwd, file)
+    path.join(currentOptions.value.cwd, file)
   );
   return watcher;
 }
@@ -114,10 +114,10 @@ function getConfigPath(): string {
       fs.existsSync(path.join(folder, ".firebaserc")) ||
       fs.existsSync(path.join(folder, "firebase.json"))
     ) {
-      currentOptions.cwd = folder;
+      currentOptions.value.cwd = folder;
       return folder;
     }
   }
-  currentOptions.cwd = rootFolders[0];
+  currentOptions.value.cwd = rootFolders[0];
   return rootFolders[0];
 }

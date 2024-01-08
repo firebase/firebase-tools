@@ -35,7 +35,7 @@ export function registerHosting(broker: ExtensionBrokerImpl): Disposable {
     // have frameworks support enabled.
     const { useFrameworks } = getSettings();
     if (useFrameworks) {
-      currentFramework = await discover(currentOptions.cwd, false);
+      currentFramework = await discover(currentOptions.value.cwd, false);
       pluginLogger.debug(
         "(Hosting) Searching for a web framework in this project."
       );
@@ -61,7 +61,7 @@ export function registerHosting(broker: ExtensionBrokerImpl): Disposable {
       if (fileUri && fileUri[0] && fileUri[0].fsPath) {
         const publicFolderFull = fileUri[0].fsPath;
         const publicFolder = publicFolderFull.substring(
-          currentOptions.cwd.length + 1
+          currentOptions.value.cwd.length + 1
         );
         success = await initHosting({
           spa: singleAppSupport,
@@ -74,7 +74,7 @@ export function registerHosting(broker: ExtensionBrokerImpl): Disposable {
     broker.send("notifyHostingInitDone", {
       success,
       projectId: currentProject.value?.projectId,
-      folderPath: currentOptions.cwd,
+      folderPath: currentOptions.value.cwd,
       framework: currentFramework,
     });
 

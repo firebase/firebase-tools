@@ -89,7 +89,7 @@ export function registerProject({
         monospaceExtension.exports.getMonospaceDaemonPort();
       try {
         const projectId = await selectProjectInMonospace({
-          projectRoot: currentOptions.cwd,
+          projectRoot: currentOptions.value.cwd,
           project: undefined,
           isVSCE: true,
         });
