@@ -3,7 +3,6 @@ import * as sinon from "sinon";
 import * as fsExtra from "fs-extra";
 
 import { discover } from "../../../frameworks/angular";
-import { join } from "path";
 
 describe("Angular", () => {
   describe("discovery", () => {
@@ -22,7 +21,6 @@ describe("Angular", () => {
       sandbox.stub(fsExtra, "pathExists").resolves(true);
       expect(await discover(cwd)).to.deep.equal({
         mayWantBackend: true,
-        publicDirectory: join(cwd, "src", "assets"),
         version: undefined,
       });
     });
