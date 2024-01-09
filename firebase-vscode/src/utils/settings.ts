@@ -1,4 +1,3 @@
-import vscode from "vscode";
 import { workspace } from "./test_hooks";
 
 interface Settings {
