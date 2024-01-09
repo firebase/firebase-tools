@@ -1,14 +1,14 @@
-import { Disposable, workspace } from "vscode";
+import { Disposable } from "vscode";
 import path from "path";
 import fs from "fs";
 import { currentOptions } from "../options";
 import { pluginLogger } from "../logger-wrapper";
 import { isEmpty } from "lodash";
 import { ExtensionBrokerImpl } from "../extension-broker";
-import { FirebaseConfig } from "../../../src/firebaseConfig";
-import { RC, RCData } from "../../../src/rc";
+import { RC } from "../../../src/rc";
 import { Config } from "../../../src/config";
 import { globalSignal } from "../utils/globals";
+import { workspace } from "../utils/test_hooks";
 
 export const firebaseRC = globalSignal<RC | undefined>(undefined);
 export const firebaseConfig = globalSignal<Config | undefined>(undefined);
@@ -81,21 +81,21 @@ function createWatcher(file: string) {
     return null;
   }
 
-  const watcher = workspace.createFileSystemWatcher(
+  const watcher = workspace.value.createFileSystemWatcher(
     path.join(currentOptions.value.cwd, file)
   );
   return watcher;
 }
 
 export function getRootFolders() {
-  if (!workspace) {
+  if (!workspace.value) {
     return [];
   }
-  const folders = workspace.workspaceFolders
-    ? workspace.workspaceFolders.map((wf) => wf.uri.fsPath)
+  const folders = workspace.value.workspaceFolders
+    ? workspace.value.workspaceFolders.map((wf) => wf.uri.fsPath)
     : [];
-  if (workspace.workspaceFile) {
-    folders.push(path.dirname(workspace.workspaceFile.fsPath));
+  if (workspace.value.workspaceFile) {
+    folders.push(path.dirname(workspace.value.workspaceFile.fsPath));
   }
   return Array.from(new Set(folders));
 }

@@ -1,23 +1,23 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
-import { workspace } from "vscode";
 import { ExtensionBrokerImpl } from "./extension-broker";
 import { updateOptions, currentOptions } from "./options";
 import { RC } from "../../src/rc";
 import { Config } from "../../src/config";
 import { pluginLogger } from "./logger-wrapper";
 import isEmpty from "lodash/isEmpty";
+import { workspace } from "./utils/test_hooks";
 
 export function getRootFolders() {
-  if (!workspace) {
+  if (!workspace.value) {
     return [];
   }
-  const folders = workspace.workspaceFolders
-    ? workspace.workspaceFolders.map((wf) => wf.uri.fsPath)
+  const folders = workspace.value.workspaceFolders
+    ? workspace.value.workspaceFolders.map((wf) => wf.uri.fsPath)
     : [];
-  if (workspace.workspaceFile) {
-    folders.push(path.dirname(workspace.workspaceFile.fsPath));
+  if (workspace.value.workspaceFile) {
+    folders.push(path.dirname(workspace.value.workspaceFile.fsPath));
   }
   return Array.from(new Set(folders));
 }
@@ -32,8 +32,10 @@ function getConfigPath(): string {
   // a cwd we won't know where to put it.
   const rootFolders = getRootFolders();
   for (const folder of rootFolders) {
-    if (fs.existsSync(path.join(folder, '.firebaserc'))
-      || fs.existsSync(path.join(folder, 'firebase.json'))) {
+    if (
+      fs.existsSync(path.join(folder, ".firebaserc")) ||
+      fs.existsSync(path.join(folder, "firebase.json"))
+    ) {
       currentOptions.value.cwd = folder;
       return folder;
     }
@@ -51,21 +53,22 @@ export function readFirebaseConfigs(context: vscode.ExtensionContext) {
   let firebaseRC: RC;
   let firebaseJSON: Config;
   try {
-    firebaseRC = RC.loadFile(path.join(configPath, '.firebaserc'));
+    firebaseRC = RC.loadFile(path.join(configPath, ".firebaserc"));
   } catch (e) {
     pluginLogger.error(e.message);
     throw e;
   }
-  
+
   // RC.loadFile doesn't throw if not found, it just returns an empty object
   if (isEmpty(firebaseRC.data)) {
     firebaseRC = null;
   }
 
   try {
-    firebaseJSON = Config.load({ configPath: path.join(configPath, 'firebase.json') });
-  }
-  catch (e) {
+    firebaseJSON = Config.load({
+      configPath: path.join(configPath, "firebase.json"),
+    });
+  } catch (e) {
     if (e.status === 404) {
       firebaseJSON = null;
     } else {
@@ -75,7 +78,6 @@ export function readFirebaseConfigs(context: vscode.ExtensionContext) {
   }
   updateOptions(context, firebaseJSON, firebaseRC);
   return { firebaseJSON, firebaseRC };
-
 }
 
 /**
@@ -83,12 +85,13 @@ export function readFirebaseConfigs(context: vscode.ExtensionContext) {
  */
 export async function readAndSendFirebaseConfigs(
   broker: ExtensionBrokerImpl,
-  context: vscode.ExtensionContext) {
+  context: vscode.ExtensionContext
+) {
   const { firebaseJSON, firebaseRC } = readFirebaseConfigs(context);
-  broker.send("notifyFirebaseConfig",
-    {
-      firebaseJson: firebaseJSON?.data, firebaseRC: firebaseRC?.data
-    });
+  broker.send("notifyFirebaseConfig", {
+    firebaseJson: firebaseJSON?.data,
+    firebaseRC: firebaseRC?.data,
+  });
 }
 
 /**
@@ -103,8 +106,10 @@ export async function updateFirebaseRCProject(
     if (!currentOptions.value.cwd) {
       currentOptions.value.cwd = getConfigPath();
     }
-    currentOptions.value.rc = new RC(path.join(currentOptions.value.cwd, ".firebaserc"),
-      {});
+    currentOptions.value.rc = new RC(
+      path.join(currentOptions.value.cwd, ".firebaserc"),
+      {}
+    );
   }
   currentOptions.value.rc.addProjectAlias(alias, projectId);
   currentOptions.value.rc.save();
@@ -135,7 +140,7 @@ export function setupFirebaseJsonAndRcFileSystemWatcher(
       return null;
     }
 
-    let watcher = workspace.createFileSystemWatcher(
+    let watcher = workspace.value.createFileSystemWatcher(
       path.join(currentOptions.value.cwd, "{firebase.json,.firebaserc}")
     );
     watcher.onDidChange(async () => {
