@@ -6,6 +6,7 @@ import { copyFile, readdir, readFile, rm, writeFile } from "fs/promises";
 import { mkdirp, pathExists, stat } from "fs-extra";
 import * as process from "node:process";
 import * as glob from "glob";
+import { tmpdir } from "os";
 
 import { needProjectId } from "../projectUtils";
 import { hostingConfig } from "../hosting/config";
@@ -254,7 +255,7 @@ export async function prepareFrameworks(
         )
       );
     }
-    const { framework, mayWantBackend, publicDirectory } = results;
+    const { framework, mayWantBackend } = results;
     const {
       build,
       ɵcodegenPublicDirectory,
@@ -304,7 +305,9 @@ export async function prepareFrameworks(
       getDevModeHandle &&
       (await getDevModeHandle(getProjectPath(), frameworksBuildTarget, hostingEmulatorInfo));
     if (devModeHandle) {
-      config.public = relative(projectRoot, publicDirectory);
+      // Note: using tmpdir here so the framework dev server handles the public directory.
+      // This avoid issues with Vite file imports from the public directory.
+      config.public = tmpdir();
       // Attach the handle to options, it will be used when spinning up superstatic
       options.frameworksDevModeHandle = devModeHandle;
       // null is the dev-mode entry for firebase-framework-tools
