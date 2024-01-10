@@ -4,7 +4,7 @@ import { Webview } from "vscode";
 
 const isObject = (val: any): boolean => typeof val === "object" && val !== null;
 
-type Receiver = {} | Webview;
+export type Receiver = {} | Webview;
 
 export abstract class Broker<
   OutgoingMessages extends MessageParamsMap,
