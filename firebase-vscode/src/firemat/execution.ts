@@ -124,6 +124,11 @@ export function registerExecution(
       context,
       broker,
     }),
+    registerWebview({
+      name: "firemat-auth-mock",
+      context,
+      broker,
+    }),
     executionHistoryTreeView,
     vscode.commands.registerCommand(
       "firebase.firemat.executeOperation",

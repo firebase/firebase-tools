@@ -179,14 +179,6 @@ export function EmulatorPanel({
           Running Emulators:
           <FormatEmulatorRunningInfo infos={runningEmulatorInfo.displayInfo} />
           <Spacer size="xxlarge" />
-          <AuthUserMockForm
-            disabled={
-              // No auth emulator enabled, so we disable the dropdown
-              runningEmulatorInfo?.displayInfo?.every(
-                (e) => e.name !== Emulators.AUTH,
-              ) ?? true
-            }
-          />
           {!!runningEmulatorInfo.uiUrl && (
             <>
               <Spacer size="xxlarge" />
@@ -209,59 +201,6 @@ export function EmulatorPanel({
         </VSCodeButton>
       )}
     </PanelSection>
-  );
-}
-
-type MockAuthRole = "admin" | "unauthenticated" | "authenticated";
-
-function AuthUserMockForm(props: { disabled: boolean }) {
-  const disabled = props.disabled ?? false;
-  const [selectedKind, setSelectedMockKind] = useState<MockAuthRole>("admin");
-  const [claims, setClaims] = useState<string>(
-    `{\n  "email_verified": true,\n  "sub": "exampleUserId"\n}`,
-  );
-
-  useEffect(() => {
-    if (disabled) {
-      return;
-    }
-
-    broker.send("notifyAuthUserMockChange", {
-      kind: selectedKind,
-      claims: selectedKind === "authenticated" ? claims : undefined,
-    });
-  }, [disabled, selectedKind, claims]);
-
-  let expandedForm: JSX.Element | undefined;
-  if (selectedKind === "authenticated") {
-    expandedForm = (
-      <>
-        <Spacer size="medium" />
-        <span>Auth claims</span>
-        <VSCodeTextArea
-          resize={"vertical"}
-          value={claims}
-          rows={4}
-          onChange={(event) => setClaims(event.target.value)}
-        />
-      </>
-    );
-  }
-
-  return (
-    <>
-      <span>Authentication mode</span>
-      <VSCodeDropdown
-        disabled={disabled}
-        value={selectedKind}
-        onChange={(event) => setSelectedMockKind(event.target.value)}
-      >
-        <VSCodeOption value={"admin"}>Admin</VSCodeOption>
-        <VSCodeOption value={"unauthenticated"}>Unauthenticated</VSCodeOption>
-        <VSCodeOption value={"authenticated"}>authenticated</VSCodeOption>
-      </VSCodeDropdown>
-      {expandedForm}
-    </>
   );
 }
 
