@@ -11,6 +11,7 @@ import {
   SchemaCodeLensProvider,
 } from "./code-lens-provider";
 import { registerConnectors } from "./connectors";
+import { AuthService } from "../auth/service";
 // import { setupLanguageClient } from "./language-client";
 
 const firematEndpoint = signal<string | undefined>(undefined);
@@ -18,8 +19,9 @@ const firematEndpoint = signal<string | undefined>(undefined);
 export function registerFiremat(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl,
+  authService: AuthService,
 ): Disposable {
-  const firematService = new FirematService(firematEndpoint);
+  const firematService = new FirematService(firematEndpoint, authService);
   const operationCodeLensProvider = new OperationCodeLensProvider();
   const schemaCodeLensProvider = new SchemaCodeLensProvider();
 

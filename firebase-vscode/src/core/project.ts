@@ -29,7 +29,11 @@ export const currentProject = computed<FirebaseProjectMetadata | undefined>(
     }
 
     const wantProjectId =
-      currentProjectId.value || firebaseRC.value.projects["default"];
+      currentProjectId.value || firebaseRC.value?.projects["default"];
+    if (!wantProjectId) {
+      return undefined;
+    }
+
     return userScopedProjects.value.find((p) => p.projectId === wantProjectId);
   },
 );

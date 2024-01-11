@@ -7,12 +7,16 @@ import {
 import { Signal } from "@preact/signals-core";
 import { assertExecutionResult } from "../../common/graphql";
 import { FirematError } from "../../common/error";
+import { AuthService } from "../auth/service";
 
 /**
  * Firemat Emulator service
  */
 export class FirematService {
-  constructor(private firematEndpoint: Signal<string | undefined>) {}
+  constructor(
+    private firematEndpoint: Signal<string | undefined>,
+    private authService: AuthService,
+  ) {}
 
   private async decodeResponse(
     response: Response,
@@ -121,6 +125,15 @@ export class FirematService {
     });
   }
 
+  private _auth() {
+    const userMock = this.authService.userMock;
+
+    // TODO(rrousselGit): handle unauthenticated case once the API supports it.
+    return userMock.kind === "authenticated"
+      ? JSON.parse(userMock.claims)
+      : undefined;
+  }
+
   // This introspection is used to generate a basic graphql schema
   // It will not include our predefined operations, which requires a Firemat specific introspection query
   async introspect(): Promise<{ data?: IntrospectionQuery }> {
@@ -158,6 +171,7 @@ export class FirematService {
       const body = this._serializeBody({
         ...params,
         name: "projects/p/locations/l/services/local",
+        auth: this._auth(),
       });
       const resp = await fetch(
         (await this.getFirematEndpoint()) +
@@ -190,6 +204,7 @@ export class FirematService {
     const body = this._serializeBody({
       ...params,
       name: "projects/p/locations/l/services/local",
+      auth: this._auth(),
     });
     const resp = await fetch(
       (await this.getFirematEndpoint()) +

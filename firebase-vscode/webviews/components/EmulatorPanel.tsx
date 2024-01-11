@@ -1,22 +1,20 @@
 import {
   VSCodeButton,
-  VSCodeCheckbox,
-  VSCodeDivider,
   VSCodeLink,
-  VSCodeProgressRing,
   VSCodeTextField,
+  VSCodeDropdown,
+  VSCodeOption,
+  VSCodeTextArea,
 } from "@vscode/webview-ui-toolkit/react";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Spacer } from "./ui/Spacer";
-import { broker } from "../globals/html-broker";
+import { broker, useBrokerListener } from "../globals/html-broker";
 import { PanelSection } from "./ui/PanelSection";
 import { FirebaseConfig } from "../../../src/firebaseConfig";
 import {
   RunningEmulatorInfo,
   EmulatorUiSelections,
 } from "../../common/messaging/types";
-import { VSCodeDropdown } from "@vscode/webview-ui-toolkit/react";
-import { VSCodeOption } from "@vscode/webview-ui-toolkit/react";
 import { EmulatorInfo, Emulators } from "../../../src/emulator/types";
 import { webLogger } from "../globals/web-logger";
 
@@ -48,9 +46,12 @@ export function EmulatorPanel({
   const [emulatorUiSelections, setEmulatorUiSelections] =
     useState<EmulatorUiSelections>(defaultState);
 
-  webLogger.debug(
-    "initial state ui selections:" + JSON.stringify(emulatorUiSelections),
-  );
+  useEffect(() => {
+    webLogger.debug(
+      "initial state ui selections:" + JSON.stringify(emulatorUiSelections),
+    );
+  }, [emulatorUiSelections]);
+
   function setEmulatorUiSelectionsAndSaveToWorkspace(
     uiSelections: EmulatorUiSelections,
   ) {
@@ -67,7 +68,7 @@ export function EmulatorPanel({
   const [runningEmulatorInfo, setRunningEmulatorInfo] =
     useState<RunningEmulatorInfo>();
 
-  broker.on("notifyEmulatorsStopped", () => {
+  useBrokerListener("notifyEmulatorsStopped", () => {
     setShowEmulatorProgressIndicator(false);
     webLogger.debug(`notifyEmulatorsStopped received in sidebar`);
     setRunningEmulatorInfo(null);
@@ -78,29 +79,32 @@ export function EmulatorPanel({
     broker.send("notifyFirematEmulatorEndpoint", { endpoint: undefined });
   });
 
-  broker.on("notifyEmulatorStartFailed", () => {
+  useBrokerListener("notifyEmulatorStartFailed", () => {
     setShowEmulatorProgressIndicator(false);
     webLogger.debug(`notifyEmulatorStartFailed received in sidebar`);
   });
 
-  broker.on("notifyRunningEmulatorInfo", (info: RunningEmulatorInfo) => {
-    setShowEmulatorProgressIndicator(false);
-    webLogger.debug(`notifyRunningEmulatorInfo received in sidebar`);
-    setRunningEmulatorInfo(info);
+  useBrokerListener(
+    "notifyRunningEmulatorInfo",
+    (info: RunningEmulatorInfo) => {
+      setShowEmulatorProgressIndicator(false);
+      webLogger.debug(`notifyRunningEmulatorInfo received in sidebar`);
+      setRunningEmulatorInfo(info);
 
-    let endpoint = "";
-    // TODO: should this logic be here?
-    // send firemat endpoint
-    for (const emulatorInfo of info.displayInfo) {
-      if (emulatorInfo.name === Emulators.FIREMAT) {
-        endpoint = "http://" + emulatorInfo.host + ":" + emulatorInfo.port;
+      let endpoint = "";
+      // TODO: should this logic be here?
+      // send firemat endpoint
+      for (const emulatorInfo of info.displayInfo) {
+        if (emulatorInfo.name === Emulators.FIREMAT) {
+          endpoint = "http://" + emulatorInfo.host + ":" + emulatorInfo.port;
+        }
       }
-    }
-    webLogger.debug(`notifyFirematEmulatorEndpoint sending: `, endpoint);
-    broker.send("notifyFirematEmulatorEndpoint", { endpoint });
-  });
+      webLogger.debug(`notifyFirematEmulatorEndpoint sending: `, endpoint);
+      broker.send("notifyFirematEmulatorEndpoint", { endpoint });
+    },
+  );
 
-  broker.on("notifyEmulatorImportFolder", ({ folder }) => {
+  useBrokerListener("notifyEmulatorImportFolder", ({ folder }) => {
     webLogger.debug(
       `notifyEmulatorImportFolder received in sidebar: ${folder}`,
     );
@@ -124,7 +128,7 @@ export function EmulatorPanel({
     }
     if (!firebaseJson) {
       // TODO(christhompson): Consider using a default config in the case that
-      // firebase.json doesnt exist.
+      // firebase.json doesn't exist.
       broker.send("showMessage", {
         msg: "Missing firebase.json",
         options: {
@@ -145,46 +149,11 @@ export function EmulatorPanel({
     broker.send("stopEmulators");
   }
 
-  /**
-   * Called when import folder changes.
-   */
-  function selectedImportFolder(event: any) {
-    event.preventDefault();
-    broker.send("selectEmulatorImportFolder");
-  }
-
-  function toggleExportOnExit() {
-    const selections: EmulatorUiSelections = emulatorUiSelections;
-    selections.exportStateOnExit = !selections.exportStateOnExit;
-    webLogger.debug(`toggle export on exit : ${!selections.exportStateOnExit}`);
-    setEmulatorUiSelectionsAndSaveToWorkspace(selections);
-  }
-
   function projectIdChanged(event: React.ChangeEvent<HTMLInputElement>) {
     webLogger.debug("projectIdChanged: " + event.target.value);
     const selections: EmulatorUiSelections = emulatorUiSelections;
     selections.projectId = event.target.value;
     setEmulatorUiSelectionsAndSaveToWorkspace(selections);
-  }
-
-  function emulatorModeChanged(event: React.ChangeEvent<HTMLSelectElement>) {
-    webLogger.debug("emulatorModeChanged: " + event.target.value);
-    const newSelections: EmulatorUiSelections = { ...emulatorUiSelections };
-    newSelections.mode = event.target.value as typeof emulatorUiSelections.mode;
-    newSelections.projectId = getProjectIdForMode(
-      projectId,
-      newSelections.mode,
-    );
-    setEmulatorUiSelectionsAndSaveToWorkspace(newSelections);
-  }
-
-  function clearImportFolder() {
-    console.log(`clearImportFolder`);
-    const newSelections = {
-      ...emulatorUiSelections,
-      importStateFolderPath: "",
-    };
-    setEmulatorUiSelectionsAndSaveToWorkspace(newSelections);
   }
 
   return (
@@ -204,9 +173,9 @@ export function EmulatorPanel({
         value={emulatorUiSelections.projectId}
         onChange={(event) => projectIdChanged(event)}
       ></VSCodeTextField>
+      <Spacer size="xxlarge" />
       {runningEmulatorInfo ? (
         <>
-          <Spacer size="medium" />
           Running Emulators:
           <FormatEmulatorRunningInfo infos={runningEmulatorInfo.displayInfo} />
           <Spacer size="xxlarge" />
@@ -218,6 +187,7 @@ export function EmulatorPanel({
               </VSCodeLink>
             </>
           )}
+          <Spacer size="xxlarge" />
           <VSCodeButton onClick={() => stopEmulators()}>
             Click to stop the emulators
           </VSCodeButton>
@@ -225,7 +195,7 @@ export function EmulatorPanel({
       ) : (
         <VSCodeButton
           onClick={() => launchEmulators()}
-          disabled={showEmulatorProgressIndicator ? true : false}
+          disabled={showEmulatorProgressIndicator}
         >
           Launch FireMAT emulator
         </VSCodeButton>

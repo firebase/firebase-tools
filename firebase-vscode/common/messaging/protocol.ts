@@ -11,6 +11,14 @@ import { EmulatorUiSelections, RunningEmulatorInfo } from "./types";
 import { ExecutionResult } from "graphql";
 import { SerializedError } from "../error";
 
+export type UserMockKind = "admin" | "unauthenticated" | "authenticated";
+export type UserMock =
+  | { kind: "admin" | "unauthenticated" }
+  | {
+      kind: "authenticated";
+      claims: string;
+    };
+
 export interface WebviewToExtensionParamsMap {
   /**
    * Ask extension for initial data
@@ -81,6 +89,8 @@ export interface WebviewToExtensionParamsMap {
 
   /** Prompts the user to select a directory in which to place the quickstart */
   chooseQuickstartDir: {};
+
+  notifyAuthUserMockChange: UserMock;
 }
 
 export interface FirematResults {
@@ -139,8 +149,8 @@ export interface ExtensionToWebviewParamsMap {
    */
   notifyPreviewChannelResponse: { id: string };
 
-  notifyEmulatorsStopped: {};
-  notifyEmulatorStartFailed: {};
+  notifyEmulatorsStopped: void;
+  notifyEmulatorStartFailed: void;
   notifyRunningEmulatorInfo: RunningEmulatorInfo;
   notifyEmulatorImportFolder: { folder: string };
 

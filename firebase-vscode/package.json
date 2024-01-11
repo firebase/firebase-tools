@@ -105,16 +105,21 @@
         {
           "type": "webview",
           "id": "firemat-execution-arguments",
-          "name": "Firemat Execution Variables"
+          "name": "Variables"
+        },
+        {
+          "type": "webview",
+          "id": "firemat-auth-mock",
+          "name": "User Mock"
         },
         {
           "id": "firemat-execution-history",
-          "name": "Firemat Execution History"
+          "name": "History"
         },
         {
           "type": "webview",
           "id": "firemat-execution-results",
-          "name": "Firemat Execution Results"
+          "name": "Results"
         }
       ]
     },
