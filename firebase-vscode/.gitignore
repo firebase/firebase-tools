@@ -3,3 +3,5 @@ dist/
 *.scss.d.ts
 resources/dist
 .vscode-test
+.wdio-vscode-service
+logs
