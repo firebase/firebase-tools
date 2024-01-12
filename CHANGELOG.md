@@ -1,0 +1,1 @@
+- Fixed issue where Auth emulator sign in with Google only shows default tenant. (#6683)
