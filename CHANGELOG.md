@@ -1,0 +1,1 @@
+- Fix python function discovery where credentials are needed (#6274).

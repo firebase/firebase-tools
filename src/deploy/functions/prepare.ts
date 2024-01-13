@@ -98,7 +98,8 @@ export async function prepare(
   const wantBackends: Record<string, backend.Backend> = {};
   for (const [codebase, wantBuild] of Object.entries(wantBuilds)) {
     const config = configForCodebase(context.config, codebase);
-    const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
+    const firebaseEnvs = await functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
+
     const userEnvOpt: functionsEnv.UserEnvsOpts = {
       functionsSource: options.config.path(config.source),
       projectId: projectId,
@@ -448,7 +449,7 @@ export async function loadCodebases(
     logger.debug(`Building ${runtimeDelegate.name} source`);
     await runtimeDelegate.build();
 
-    const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
+    const firebaseEnvs = await functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
     logLabeledBullet(
       "functions",
       `Loading and analyzing source code for codebase ${codebase} to determine what to deploy`

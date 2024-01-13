@@ -5,6 +5,8 @@ import * as path from "path";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { logBullet, logWarning } from "../utils";
+import { getProjectDefaultAccount } from "../auth";
+import { getCredentialPathAsync } from "../defaultCredentials";
 
 const FUNCTIONS_EMULATOR_DOTENV = ".env.local";
 
@@ -405,12 +407,18 @@ export function loadUserEnvs({
  *
  * @return Environment varibles for functions.
  */
-export function loadFirebaseEnvs(
+export async function loadFirebaseEnvs(
   firebaseConfig: Record<string, any>,
   projectId: string
-): Record<string, string> {
+): Promise<Record<string, string>> {
+  let defaultCredPath = "";
+  const account = getProjectDefaultAccount();
+  if (account !== undefined) {
+    defaultCredPath = (await getCredentialPathAsync(account)) || "";
+  }
   return {
     FIREBASE_CONFIG: JSON.stringify(firebaseConfig),
     GCLOUD_PROJECT: projectId,
+    GOOGLE_APPLICATION_CREDENTIALS: defaultCredPath,
   };
 }
