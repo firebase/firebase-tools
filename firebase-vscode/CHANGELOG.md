@@ -1,8 +1,9 @@
 # Change Log
 
-## 0.0.25 (unreleased)
+## 0.0.25
 
 - Replace predeploy hack with something more robust.
+- Pull in latest CLI changes (January 16, 2024)
 
 ## 0.0.24
 
