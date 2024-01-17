@@ -1,1 +1,2 @@
-Prevent the use of pinTags + minInstances on the same function, as the features are not mutually compatible (#6684)
+- Fixed issue where Auth emulator sign in with Google only shows default tenant. (#6683)
+- Prevent the use of pinTags + minInstances on the same function, as the features are not mutually compatible (#6684)
