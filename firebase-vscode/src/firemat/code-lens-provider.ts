@@ -3,18 +3,39 @@ import { Kind, parse } from "graphql";
 import { OPERATION_TYPE, OperationLocation } from "./types";
 
 import { isFirematEmulatorRunning } from "../core/emulators";
+import { computed, effect, signal } from "@preact/signals-core";
 /**
  * CodeLensProvider provides codelens for actions in graphql files.
  */
-export class OperationCodeLensProvider implements vscode.CodeLensProvider {
-  async provideCodeLenses(
-    document: vscode.TextDocument,
-    token: vscode.CancellationToken
-  ): Promise<vscode.CodeLens[]> {
+export class OperationCodeLensProvider
+  implements vscode.CodeLensProvider, vscode.Disposable
+{
+  constructor() {
+    const disposable = this.codeLenses.subscribe(() => {
+      // By making the codeLenses a computed, we can react to changes
+      // in the various signals it depends on. This enables us to
+      // update the code lenses when those dependencies change.
+      // For example, when the firemat.yaml is edited.
+      this._onChangeCodeLensesEmitter.fire();
+    });
+    this.disposable = vscode.Disposable.from({ dispose: disposable });
+  }
+
+  private readonly disposable: vscode.Disposable;
+
+  private readonly document = signal<vscode.TextDocument | undefined>(
+    undefined,
+  );
+
+  private readonly codeLenses = computed(() => {
+    const document = this.document.value;
+    if (!document) {
+      return [];
+    }
+
     const codeLenses: vscode.CodeLens[] = [];
 
     const documentText = document.getText();
-
     // TODO: replace w/ online-parser to work with malformed documents
     const documentNode = parse(documentText);
 
@@ -37,7 +58,7 @@ export class OperationCodeLensProvider implements vscode.CodeLensProvider {
               command: "firebase.firemat.executeOperation",
               tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
               arguments: [x, operationLocation],
-            })
+            }),
           );
 
           // HACK: This assumes the connector is in a directory called
@@ -50,7 +71,7 @@ export class OperationCodeLensProvider implements vscode.CodeLensProvider {
                 command: "firebase.firemat.moveOperationToConnector",
                 tooltip: `Expose this ${opKind} to client apps through the SDK.`,
                 arguments: [i, operationLocation],
-              })
+              }),
             );
           }
         }
@@ -58,6 +79,23 @@ export class OperationCodeLensProvider implements vscode.CodeLensProvider {
     }
 
     return codeLenses;
+  });
+
+  private readonly _onChangeCodeLensesEmitter = new vscode.EventEmitter<void>();
+  onDidChangeCodeLenses = this._onChangeCodeLensesEmitter.event;
+
+  async provideCodeLenses(
+    document: vscode.TextDocument,
+    token: vscode.CancellationToken,
+  ): Promise<vscode.CodeLens[]> {
+    this.document.value = document;
+
+    return this.codeLenses.value;
+  }
+
+  dispose() {
+    this._onChangeCodeLensesEmitter.dispose();
+    this.disposable.dispose();
   }
 }
 
@@ -67,7 +105,7 @@ export class OperationCodeLensProvider implements vscode.CodeLensProvider {
 export class SchemaCodeLensProvider implements vscode.CodeLensProvider {
   async provideCodeLenses(
     document: vscode.TextDocument,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): Promise<vscode.CodeLens[]> {
     const codeLenses: vscode.CodeLens[] = [];
 
@@ -91,7 +129,7 @@ export class SchemaCodeLensProvider implements vscode.CodeLensProvider {
               command: "firebase.firemat.schemaAddData",
               tooltip: "Generate a mutation to add data of this type",
               arguments: [x, schemaLocation],
-            })
+            }),
           );
         }
       }
