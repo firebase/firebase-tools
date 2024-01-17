@@ -4,9 +4,6 @@ import { VSCodeDropdown, VSCodeOption, VSCodeTextArea } from "@vscode/webview-ui
 import { Spacer } from "./components/ui/Spacer";
 import { broker } from "./globals/html-broker";
 
-// Prevent webpack from removing the `style` import above
-style;
-
 const root = createRoot(document.getElementById("root")!);
 root.render(<Test />);
 
