@@ -52,6 +52,7 @@ export function registerFiremat(
       ],
       operationCodeLensProvider,
     ),
+    schemaCodeLensProvider,
     vscode.languages.registerCodeLensProvider(
       [
         { scheme: "file", language: "graphql" },

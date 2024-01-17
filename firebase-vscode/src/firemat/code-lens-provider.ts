@@ -3,11 +3,9 @@ import { Kind, parse } from "graphql";
 import { OPERATION_TYPE, OperationLocation } from "./types";
 
 import { isFirematEmulatorRunning } from "../core/emulators";
-import { computed, effect, signal } from "@preact/signals-core";
-/**
- * CodeLensProvider provides codelens for actions in graphql files.
- */
-export class OperationCodeLensProvider
+import { Signal, computed, effect, signal } from "@preact/signals-core";
+
+abstract class ComputedCodeLensProvider
   implements vscode.CodeLensProvider, vscode.Disposable
 {
   constructor() {
@@ -23,16 +21,49 @@ export class OperationCodeLensProvider
 
   private readonly disposable: vscode.Disposable;
 
-  private readonly document = signal<vscode.TextDocument | undefined>(
-    undefined,
-  );
+  private readonly params = signal<
+    [document: vscode.TextDocument, token: vscode.CancellationToken] | undefined
+  >(undefined);
+
+  private readonly _onChangeCodeLensesEmitter = new vscode.EventEmitter<void>();
+  onDidChangeCodeLenses = this._onChangeCodeLensesEmitter.event;
 
   private readonly codeLenses = computed(() => {
-    const document = this.document.value;
-    if (!document) {
+    const params = this.params.value;
+    if (!params) {
       return [];
     }
+    return this.computeCodeLenses(...params);
+  });
 
+  provideCodeLenses(
+    document: vscode.TextDocument,
+    token: vscode.CancellationToken,
+  ): vscode.CodeLens[] {
+    this.params.value = [document, token];
+
+    return this.codeLenses.value;
+  }
+
+  abstract computeCodeLenses(
+    document: vscode.TextDocument,
+    token: vscode.CancellationToken,
+  ): vscode.CodeLens[];
+
+  dispose() {
+    this._onChangeCodeLensesEmitter.dispose();
+    this.disposable.dispose();
+  }
+}
+
+/**
+ * CodeLensProvider provides codelens for actions in graphql files.
+ */
+export class OperationCodeLensProvider extends ComputedCodeLensProvider {
+  computeCodeLenses(
+    document: vscode.TextDocument,
+    token: vscode.CancellationToken,
+  ): vscode.CodeLens[] {
     const codeLenses: vscode.CodeLens[] = [];
 
     const documentText = document.getText();
@@ -79,34 +110,17 @@ export class OperationCodeLensProvider
     }
 
     return codeLenses;
-  });
-
-  private readonly _onChangeCodeLensesEmitter = new vscode.EventEmitter<void>();
-  onDidChangeCodeLenses = this._onChangeCodeLensesEmitter.event;
-
-  async provideCodeLenses(
-    document: vscode.TextDocument,
-    token: vscode.CancellationToken,
-  ): Promise<vscode.CodeLens[]> {
-    this.document.value = document;
-
-    return this.codeLenses.value;
-  }
-
-  dispose() {
-    this._onChangeCodeLensesEmitter.dispose();
-    this.disposable.dispose();
   }
 }
 
 /**
  * CodeLensProvider for actions on the schema file
  */
-export class SchemaCodeLensProvider implements vscode.CodeLensProvider {
-  async provideCodeLenses(
+export class SchemaCodeLensProvider extends ComputedCodeLensProvider {
+  computeCodeLenses(
     document: vscode.TextDocument,
     token: vscode.CancellationToken,
-  ): Promise<vscode.CodeLens[]> {
+  ): vscode.CodeLens[] {
     const codeLenses: vscode.CodeLens[] = [];
 
     // TODO: replace w/ online-parser to work with malformed documents
