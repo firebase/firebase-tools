@@ -39,7 +39,7 @@ function AuthUserMockForm() {
     expandedForm = (
       <>
         <Spacer size="medium" />
-        <div>Auth claims</div>
+        <span>Auth claims</span>
         <VSCodeTextArea
           resize={"vertical"}
           value={claims}
@@ -52,7 +52,7 @@ function AuthUserMockForm() {
 
   return (
     <>
-      <div>Authentication mode</div>
+      <span>Authentication mode</span>
       <VSCodeDropdown
         value={selectedKind}
         onChange={(event) => setSelectedMockKind(event.target.value)}
