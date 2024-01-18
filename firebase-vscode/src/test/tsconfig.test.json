@@ -4,9 +4,14 @@
     "target": "es2020",
     "lib": ["es2020"],
     "outDir": "../../dist/test",
+    "allowSyntheticDefaultImports": true,
     "sourceMap": true,
-    "rootDir": "./",
-    "strict": true
+    "rootDirs": ["../", "../../../src", "../../common"],
+    "jsx": "react",
+    /* Cannot be enabled until we enable it in the root tsconfig.json */
+    "strict": false,
+    "skipLibCheck": true
   },
-  "exclude": ["**/*.test.ts"]
+  "exclude": ["**/*.test.ts"],
+  "include": ["../**/*", "../../common/**/*"]
 }

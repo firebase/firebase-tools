@@ -1,13 +1,13 @@
 import { Disposable } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { pluginLogger } from "../logger-wrapper";
-import { signal } from "@preact/signals-react";
+import { globalSignal } from "../utils/globals";
 
 interface Environment {
   isMonospace: boolean;
 }
 
-export const env = signal<Environment>({
+export const env = globalSignal<Environment>({
   isMonospace: Boolean(process.env.MONOSPACE_ENV),
 });
 

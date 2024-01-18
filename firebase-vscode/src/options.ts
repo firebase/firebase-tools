@@ -4,11 +4,12 @@ import { Command } from "../../src/command";
 import { ExtensionContext } from "vscode";
 import { setInquirerOptions } from "./stubs/inquirer-stub";
 import { Config } from "../../src/config";
+import { globalSignal } from "./utils/globals";
 
 /**
  * User-facing CLI options
  */
-export let currentOptions: Options & { isVSCE: boolean } = {
+const defaultOptions: Options = {
   cwd: "",
   configPath: "",
   only: "",
@@ -35,33 +36,38 @@ export let currentOptions: Options & { isVSCE: boolean } = {
   isVSCE: true,
 };
 
+/**
+ * User-facing CLI options
+ */
+export const currentOptions = globalSignal({ ...defaultOptions });
+
 export function updateOptions(
   context: ExtensionContext,
   firebaseJSON: Config,
   firebaseRC: RC,
 ) {
   if (firebaseJSON) {
-    currentOptions.config = firebaseJSON;
-    currentOptions.configPath = `${currentOptions.cwd}/firebase.json`;
+    currentOptions.value.config = firebaseJSON;
+    currentOptions.value.configPath = `${currentOptions.value.cwd}/firebase.json`;
     if (firebaseJSON.has("hosting")) {
-      currentOptions = {
-        ...currentOptions,
+      currentOptions.value = {
+        ...currentOptions.value,
         ...firebaseJSON.get("hosting"),
       };
     }
   } else {
-    currentOptions.configPath = "";
+    currentOptions.value.configPath = "";
   }
   if (firebaseRC) {
-    currentOptions.rc = firebaseRC;
-    currentOptions.project = firebaseRC.projects?.default;
+    currentOptions.value.rc = firebaseRC;
+    currentOptions.value.project = firebaseRC.projects?.default;
   } else {
-    currentOptions.rc = null;
-    currentOptions.project = "";
+    currentOptions.value.rc = null;
+    currentOptions.value.project = "";
   }
   context.globalState.setKeysForSync(["currentOptions"]);
-  context.globalState.update("currentOptions", currentOptions);
-  setInquirerOptions(currentOptions);
+  context.globalState.update("currentOptions", currentOptions.value);
+  setInquirerOptions(currentOptions.value);
 }
 
 /**
@@ -70,7 +76,7 @@ export function updateOptions(
  */
 export async function getCommandOptions(
   firebaseJSON: Config,
-  options: Options = currentOptions,
+  options: Options = currentOptions.value
 ): Promise<Options> {
   // Use any string, it doesn't affect `prepare()`.
   const command = new Command("deploy");
