@@ -48,7 +48,7 @@ type RequestOptions<T> = RequestOptionsWithSignal<T> | RequestOptionsWithTimeout
 interface VerbOptions {
   method?: HttpMethod;
   headers?: HeadersInit;
-  queryParams?: URLSearchParams | { [key: string]: string | number };
+  queryParams?: URLSearchParams | { [key: string]: string | number | boolean };
 }
 
 interface ClientHandlingOptions {
