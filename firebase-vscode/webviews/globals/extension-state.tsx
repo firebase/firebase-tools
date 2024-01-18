@@ -1,4 +1,10 @@
-import React, { createContext, ReactNode, useContext, useEffect } from "react";
+import React, {
+  createContext,
+  ReactNode,
+  useContext,
+  useEffect,
+  useMemo,
+} from "react";
 import { broker } from "./html-broker";
 import { signal, computed } from "@preact/signals-react";
 import { User } from "../types/auth";
@@ -31,7 +37,7 @@ export function ExtensionStateProvider({
 }: {
   children: ReactNode;
 }): JSX.Element {
-  const state = createExtensionState();
+  const state = useMemo(() => createExtensionState(), []);
 
   useEffect(() => {
     broker.on("notifyEnv", ({ env }) => {
