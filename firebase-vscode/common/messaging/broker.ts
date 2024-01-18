@@ -4,7 +4,7 @@ import { Webview } from "vscode";
 
 const isObject = (val: any): boolean => typeof val === "object" && val !== null;
 
-type Receiver = {} | Webview;
+export type Receiver = {} | Webview;
 
 export abstract class Broker<
   OutgoingMessages extends MessageParamsMap,
@@ -20,22 +20,19 @@ export abstract class Broker<
   registerReceiver(receiver: R): void {}
 
   addListener(message: string, cb: Listener<IncomingMessages>): () => void {
-    if (!this.listeners[message]) {
-      this.listeners[message] = { listeners: [] };
-    }
-    this.listeners[message].listeners.push(cb);
+    const messageListeners = (this.listeners[message] ??= []);
+
+    messageListeners.push(cb);
 
     return () => {
-      const listeners = this.listeners[message];
-      if (!listeners) {
-        return;
+      const index = messageListeners.indexOf(cb);
+      if (index !== -1) {
+        messageListeners.splice(index, 1);
       }
 
-      const index = listeners.listeners.indexOf(cb);
-      if (index === -1) {
-        return;
+      if (messageListeners.length === 0) {
+        delete this.listeners[message];
       }
-      listeners.listeners.splice(index, 1);
     };
   }
 
@@ -50,7 +47,7 @@ export abstract class Broker<
       return;
     }
 
-    for (const listener of this.listeners[d.command].listeners) {
+    for (const listener of this.listeners[d.command]) {
       d.data === undefined ? listener() : listener(d.data);
     }
   }

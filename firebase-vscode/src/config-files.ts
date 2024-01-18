@@ -1,23 +1,23 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
-import { workspace } from "vscode";
 import { ExtensionBrokerImpl } from "./extension-broker";
 import { updateOptions, currentOptions } from "./options";
 import { RC } from "../../src/rc";
 import { Config } from "../../src/config";
 import { pluginLogger } from "./logger-wrapper";
 import isEmpty from "lodash/isEmpty";
+import { workspace } from "./utils/test_hooks";
 
 export function getRootFolders() {
-  if (!workspace) {
+  if (!workspace.value) {
     return [];
   }
-  const folders = workspace.workspaceFolders
-    ? workspace.workspaceFolders.map((wf) => wf.uri.fsPath)
+  const folders = workspace.value.workspaceFolders
+    ? workspace.value.workspaceFolders.map((wf) => wf.uri.fsPath)
     : [];
-  if (workspace.workspaceFile) {
-    folders.push(path.dirname(workspace.workspaceFile.fsPath));
+  if (workspace.value.workspaceFile) {
+    folders.push(path.dirname(workspace.value.workspaceFile.fsPath));
   }
   return Array.from(new Set(folders));
 }
@@ -36,11 +36,11 @@ function getConfigPath(): string {
       fs.existsSync(path.join(folder, ".firebaserc")) ||
       fs.existsSync(path.join(folder, "firebase.json"))
     ) {
-      currentOptions.cwd = folder;
+      currentOptions.value.cwd = folder;
       return folder;
     }
   }
-  currentOptions.cwd = rootFolders[0];
+  currentOptions.value.cwd = rootFolders[0];
   return rootFolders[0];
 }
 
@@ -102,18 +102,18 @@ export async function updateFirebaseRCProject(
   alias: string,
   projectId: string,
 ) {
-  if (!currentOptions.rc) {
-    if (!currentOptions.cwd) {
-      currentOptions.cwd = getConfigPath();
+  if (!currentOptions.value.rc) {
+    if (!currentOptions.value.cwd) {
+      currentOptions.value.cwd = getConfigPath();
     }
-    currentOptions.rc = new RC(
-      path.join(currentOptions.cwd, ".firebaserc"),
-      {},
+    currentOptions.value.rc = new RC(
+      path.join(currentOptions.value.cwd, ".firebaserc"),
+      {}
     );
   }
-  currentOptions.rc.addProjectAlias(alias, projectId);
-  currentOptions.rc.save();
-  updateOptions(context, undefined, currentOptions.rc);
+  currentOptions.value.rc.addProjectAlias(alias, projectId);
+  currentOptions.value.rc.save();
+  updateOptions(context, undefined, currentOptions.value.rc);
 }
 
 /**
@@ -136,12 +136,12 @@ export function setupFirebaseJsonAndRcFileSystemWatcher(
 
   // HelperFunction to create a new watcher
   function newWatcher() {
-    if (!currentOptions.cwd) {
+    if (!currentOptions.value.cwd) {
       return null;
     }
 
-    let watcher = workspace.createFileSystemWatcher(
-      path.join(currentOptions.cwd, "{firebase.json,.firebaserc}"),
+    let watcher = workspace.value.createFileSystemWatcher(
+      path.join(currentOptions.value.cwd, "{firebase.json,.firebaserc}")
     );
     watcher.onDidChange(async () => {
       readAndSendFirebaseConfigs(broker, context);

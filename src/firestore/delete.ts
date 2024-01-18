@@ -536,7 +536,7 @@ export class FirestoreDelete {
    * Check if a path has any children. Useful for determining
    * if deleting a path will affect more than one document.
    *
-   * @return a promise that retruns true if the path has children and false otherwise.
+   * @return a promise that returns true if the path has children and false otherwise.
    */
   public checkHasChildren(): Promise<boolean> {
     return this.getDescendantBatch(true, 1).then((docs) => {
