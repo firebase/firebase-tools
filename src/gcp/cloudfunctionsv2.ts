@@ -331,7 +331,7 @@ export async function createFunction(cloudFunction: InputCloudFunction): Promise
 
   cloudFunction.serviceConfig.environmentVariables = {
     ...cloudFunction.serviceConfig.environmentVariables,
-    FUNCTION_TARGET: functionId.replaceAll("-", "."),
+    FUNCTION_TARGET: cloudFunction.buildConfig.entryPoint.replaceAll("-", "."),
   };
 
   try {
@@ -418,8 +418,6 @@ async function listFunctionsInternal(
  * Customers can force a field to be deleted by setting that field to `undefined`
  */
 export async function updateFunction(cloudFunction: InputCloudFunction): Promise<Operation> {
-  const components = cloudFunction.name.split("/");
-  const functionId = components.splice(-1, 1)[0];
   // Keys in labels and environmentVariables and secretEnvironmentVariables are user defined, so we don't recurse
   // for field masks.
   const fieldMasks = proto.fieldMasks(
@@ -439,7 +437,7 @@ export async function updateFunction(cloudFunction: InputCloudFunction): Promise
 
   cloudFunction.serviceConfig.environmentVariables = {
     ...cloudFunction.serviceConfig.environmentVariables,
-    FUNCTION_TARGET: functionId.replaceAll("-", "."),
+    FUNCTION_TARGET: cloudFunction.buildConfig.entryPoint.replaceAll("-", "."),
   };
 
   try {
