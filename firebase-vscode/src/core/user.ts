@@ -1,17 +1,18 @@
-import { computed, effect, signal } from "@preact/signals-react";
+import { computed, effect } from "@preact/signals-react";
 import { Disposable } from "vscode";
 import { ServiceAccountUser } from "../types";
 import { User as AuthUser } from "../../../src/types/auth";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { getAccounts, login, logoutUser } from "../cli";
+import { globalSignal } from "../utils/globals";
 
 type User = ServiceAccountUser | AuthUser;
 
 /** Available user accounts */
-export const users = signal<Record<string /** email */, User>>({});
+export const users = globalSignal<Record<string /** email */, User>>({});
 
 /** Currently selected user email */
-export const currentUserId = signal("");
+export const currentUserId = globalSignal("");
 
 /** Gets the currently selected user, fallback to first available user */
 export const currentUser = computed<User | undefined>(() => {

@@ -218,6 +218,19 @@ export async function convertConfig(
         },
       };
       if (rewrite.function.pinTag) {
+        // b/319616292. Functions currently set min instances at the revision
+        // level and Run will maintain all those min instances for each revision
+        // whenever that revision is accessible (e.g. via a traffic tag). This
+        // can lead to customers paying lots of money with zero benefit. Until
+        // Run makes min instances dynamic, we must not allow both features to
+        // be used at the same time.
+        if (endpoint.minInstances) {
+          throw new FirebaseError(
+            `Function ${endpoint.id} has minInstances set and is in a rewrite ` +
+              "pinTags=true. These features are not currently compatible with each " +
+              "other."
+          );
+        }
         experiments.assertEnabled("pintags", "pin a function version");
         apiRewrite.run.tag = runTags.TODO_TAG_NAME;
       }
