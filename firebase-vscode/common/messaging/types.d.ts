@@ -10,7 +10,7 @@ export interface Message<M> {
 export type Listener<M> = (args?: M[keyof M]) => void;
 
 export interface MessageListeners<M> {
-  [message: string]: { listeners: Listener<M>[] };
+  [message: string]: Listener<M>[];
 }
 
 export interface ChannelWithId extends Channel {
@@ -26,10 +26,10 @@ export interface RunningEmulatorInfo {
 }
 
 export interface EmulatorUiSelections {
-  projectId: string
-  firebaseJsonPath?: string
-  importStateFolderPath?: string
-  exportStateOnExit: boolean
-  mode: "hosting" | "all"
-  debugLogging: boolean
+  projectId: string;
+  firebaseJsonPath?: string;
+  importStateFolderPath?: string;
+  exportStateOnExit: boolean;
+  mode: "hosting" | "all";
+  debugLogging: boolean;
 }
