@@ -428,4 +428,39 @@ describe("GCS endpoint conformance tests", () => {
       });
     });
   });
+
+  describe("Delete protocols", () => {
+    describe("delete objects", () => {
+      it("should delete objects in the provided bucket", async () => {
+        const pathPatterns = [
+          `/b/${storageBucket}/o/${TEST_FILE_NAME}`,
+          `/storage/v1/b/${storageBucket}/o/${TEST_FILE_NAME}`,
+        ];
+
+        for (const deletePathPattern of pathPatterns) {
+          await supertest(storageHost)
+            .post(`/upload/storage/v1/b/${storageBucket}/o?name=${TEST_FILE_NAME}`)
+            .set(authHeader)
+            .send(Buffer.from("hello world"))
+            .expect(200);
+
+          let data = await supertest(storageHost)
+            .get(`/storage/v1/b/${storageBucket}/o`)
+            .set(authHeader)
+            .expect(200)
+            .then((res) => res.body);
+          expect(data.items.length).to.equal(1);
+
+          await supertest(storageHost).delete(deletePathPattern).set(authHeader).expect(204);
+
+          data = await supertest(storageHost)
+            .get(`/storage/v1/b/${storageBucket}/o`)
+            .set(authHeader)
+            .expect(200)
+            .then((res) => res.body);
+          expect(data.items.length).to.equal(0);
+        }
+      });
+    });
+  });
 });
