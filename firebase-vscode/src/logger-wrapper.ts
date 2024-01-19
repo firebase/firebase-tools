@@ -9,9 +9,15 @@ import { setupLoggers, tryStringify } from "../../src/utils";
 import { setInquirerLogger } from "./stubs/inquirer-stub";
 import { getRootFolders } from "./config-files";
 
-export const pluginLogger: Record<string, (...args) => void> = {};
+export type LogLevel = "debug" | "info" | "log" | "warn" | "error";
 
-const logLevels = ['debug', 'info', 'log', 'warn', 'error'];
+export const pluginLogger: Record<LogLevel, (...args) => void> = {
+  debug: () => {},
+  info: () => {},
+  log: () => {},
+  warn: () => {},
+  error: () => {},
+};
 
 const outputChannel = vscode.window.createOutputChannel('Firebase');
 
@@ -19,7 +25,7 @@ export function showOutputChannel() {
   outputChannel.show();
 }
 
-for (const logLevel of logLevels) {
+for (const logLevel in pluginLogger) {
   pluginLogger[logLevel] = (...args) => {
     const prefixedArgs = ['[Firebase Plugin]', ...args];
     cliLogger[logLevel](...prefixedArgs);

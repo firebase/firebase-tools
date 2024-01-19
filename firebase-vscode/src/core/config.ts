@@ -1,73 +1,117 @@
-import { effect, signal } from "@preact/signals-react";
-import { Disposable, workspace } from "vscode";
+import { Disposable, FileSystemWatcher } from "vscode";
+import * as vscode from "vscode";
 import path from "path";
 import fs from "fs";
 import { currentOptions } from "../options";
 import { pluginLogger } from "../logger-wrapper";
-import { isEmpty } from "lodash";
 import { ExtensionBrokerImpl } from "../extension-broker";
-import { FirebaseConfig } from "../../../src/firebaseConfig";
-import { RC, RCData } from "../../../src/rc";
+import { RC } from "../../../src/rc";
 import { Config } from "../../../src/config";
+import { globalSignal } from "../utils/globals";
+import { workspace } from "../utils/test_hooks";
 
-export const firebaseRC = signal<RC | undefined>(undefined);
-
-export const firebaseConfig = signal<Config | undefined>(undefined);
+export const firebaseRC = globalSignal<RC | undefined>(undefined);
+export const firebaseConfig = globalSignal<Config | undefined>(undefined);
 
 export function registerConfig(broker: ExtensionBrokerImpl): Disposable {
-  firebaseRC.value = readRC();
-  firebaseConfig.value = readConfig();
+  firebaseRC.value = _readRC();
+  firebaseConfig.value = _readConfig();
 
-  const notifyFirebaseConfig = () =>
+  function notifyFirebaseConfig() {
     broker.send("notifyFirebaseConfig", {
-      firebaseJson: firebaseConfig.value.data,
-      firebaseRC: firebaseRC.value.data,
+      firebaseJson: firebaseConfig.value?.data,
+      firebaseRC: firebaseRC.value?.data,
     });
+  }
 
-  broker.on("getInitialData", () => {
-    notifyFirebaseConfig();
+  // "subscribe" immediately calls the callback with the current value.
+  // We want to skip this.
+  var shouldNotify = false;
+
+  // When configs change, notify the extension.
+  // We do so after the config is initially updated, to not notify
+  // the extension on startup.
+  const rcRemoveListener = firebaseRC.subscribe(() => {
+    if (!shouldNotify) {
+      return;
+    }
+    return notifyFirebaseConfig();
+  });
+  const configRemoveListener = firebaseConfig.subscribe(() => {
+    if (!shouldNotify) {
+      return;
+    }
+    return notifyFirebaseConfig();
   });
 
-  const rcWatcher = createWatcher(".firebaserc");
-  rcWatcher.onDidChange(() => {
-    firebaseRC.value = readRC();
-    notifyFirebaseConfig();
-  });
+  shouldNotify = true;
 
-  const jsonWatcher = createWatcher("firebase.json");
-  jsonWatcher.onDidChange(() => {
-    firebaseConfig.value = readConfig();
-    notifyFirebaseConfig();
-  });
+  // On getInitialData, forcibly notifies the extension.
+  const getInitialDataRemoveListener = broker.on(
+    "getInitialData",
+    notifyFirebaseConfig,
+  );
+
+  const rcWatcher = _createWatcher(".firebaserc");
+  rcWatcher?.onDidChange(() => (firebaseRC.value = _readRC()));
+  rcWatcher?.onDidCreate(() => (firebaseRC.value = _readRC()));
+  // TODO handle deletion of .firebaserc/.firebase.json
+
+  const jsonWatcher = _createWatcher("firebase.json");
+  jsonWatcher?.onDidChange(() => (firebaseConfig.value = _readConfig()));
+  jsonWatcher?.onDidCreate(() => (firebaseConfig.value = _readConfig()));
 
   return {
     dispose: () => {
-      rcWatcher.dispose();
-      jsonWatcher.dispose();
+      getInitialDataRemoveListener();
+      rcRemoveListener();
+      configRemoveListener();
+      rcWatcher?.dispose();
+      jsonWatcher?.dispose();
     },
   };
 }
 
-function readRC() {
-  const configPath = getConfigPath();
+/** @internal */
+export function _readRC(): RC | undefined {
+  const configPath = _getConfigPath();
+  if (!configPath) {
+    return undefined;
+  }
   try {
-    const rc = RC.loadFile(path.join(configPath, ".firebaserc"));
-    // RC.loadFile doesn't throw if not found, it just returns an empty object
-    return isEmpty(rc.data) ? undefined : rc;
-  } catch (e) {
+    // RC.loadFile silences errors and returns a non-empty object if the rc file is
+    // missing. Let's load it ourselves.
+
+    const rcPath = path.join(configPath, ".firebaserc");
+
+    if (!fs.existsSync(rcPath)) {
+      return undefined;
+    }
+
+    const json = fs.readFileSync(rcPath);
+    const data = JSON.parse(json.toString());
+
+    return new RC(rcPath, data);
+  } catch (e: any) {
     pluginLogger.error(e.message);
     throw e;
   }
 }
 
-function readConfig() {
-  const configPath = getConfigPath();
+/** @internal */
+export function _readConfig(): Config | undefined {
+  const configPath = _getConfigPath();
+  if (!configPath) {
+    return undefined;
+  }
   try {
     const json = Config.load({
       configPath: path.join(configPath, "firebase.json"),
     });
-    return json;
-  } catch (e) {
+    // "null" is non-reachable when specifying a configPath.
+    // If the file is missing, load() will throw (even if "allowMissing" is true).
+    return json!;
+  } catch (e: any) {
     if (e.status === 404) {
       return undefined;
     } else {
@@ -77,31 +121,34 @@ function readConfig() {
   }
 }
 
-function createWatcher(file: string) {
-  if (!currentOptions.cwd) {
-    return null;
+/** @internal */
+export function _createWatcher(file: string): FileSystemWatcher | undefined {
+  if (!currentOptions.value.cwd) {
+    return undefined;
   }
 
-  const watcher = workspace.createFileSystemWatcher(
-    path.join(currentOptions.cwd, file)
+  return workspace.value?.createFileSystemWatcher(
+    // Using RelativePattern enables tests to use watchers too.
+    new vscode.RelativePattern(vscode.Uri.file(currentOptions.value.cwd), file),
   );
-  return watcher;
 }
 
 export function getRootFolders() {
-  if (!workspace) {
+  const ws = workspace.value;
+  if (!ws) {
     return [];
   }
-  const folders = workspace.workspaceFolders
-    ? workspace.workspaceFolders.map((wf) => wf.uri.fsPath)
+  const folders = ws.workspaceFolders
+    ? ws.workspaceFolders.map((wf) => wf.uri.fsPath)
     : [];
-  if (workspace.workspaceFile) {
-    folders.push(path.dirname(workspace.workspaceFile.fsPath));
+  if (ws.workspaceFile) {
+    folders.push(path.dirname(ws.workspaceFile.fsPath));
   }
   return Array.from(new Set(folders));
 }
 
-function getConfigPath(): string {
+/** @internal */
+export function _getConfigPath(): string | undefined {
   // Usually there's only one root folder unless someone is using a
   // multi-root VS Code workspace.
   // https://code.visualstudio.com/docs/editor/multi-root-workspaces
@@ -110,15 +157,16 @@ function getConfigPath(): string {
   // the user hasn't run firebase init there won't be one, and without
   // a cwd we won't know where to put it.
   const rootFolders = getRootFolders();
-  for (const folder of rootFolders) {
-    if (
+
+  let folder = rootFolders.find((folder) => {
+    return (
       fs.existsSync(path.join(folder, ".firebaserc")) ||
       fs.existsSync(path.join(folder, "firebase.json"))
-    ) {
-      currentOptions.cwd = folder;
-      return folder;
-    }
-  }
-  currentOptions.cwd = rootFolders[0];
-  return rootFolders[0];
+    );
+  });
+
+  folder ??= rootFolders[0];
+
+  currentOptions.value.cwd = folder;
+  return folder;
 }
