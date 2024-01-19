@@ -1654,7 +1654,7 @@ async function signInWithIdp(
     }
   } else {
     if (!response.localId) {
-      throw new Error("Internal assertion error: localId not set for exising user.");
+      throw new Error("Internal assertion error: localId not set for existing user.");
     }
 
     const maybeUser = state.getUserByLocalId(response.localId);
@@ -3332,7 +3332,7 @@ export interface IdpJwtPayload {
   /** Unique identifier of user at IDP. Also known as "rawId" in Firebase Auth. */
   sub: string;
 
-  // Issuer (IDP identifer / URL) and Audience (Developer app ID), ignored.
+  // Issuer (IDP identifier / URL) and Audience (Developer app ID), ignored.
   iss: string; // Ignored
   aud: string; // Ignored
 

@@ -1,2 +1,3 @@
-- Fixed typo in Cloud storage bucket metadata location type. (#6648)
-- Fixed an issue where including `export` in .env files caused parsing errors. (#6629)
+- Fixed issue where Auth emulator sign in with Google only shows default tenant. (#6683)
+- Prevent the use of pinTags + minInstances on the same function, as the features are not mutually compatible (#6684)
+- Add force flag to delete backend (#6635).
