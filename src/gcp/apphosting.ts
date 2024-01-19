@@ -297,7 +297,7 @@ export async function deleteBackend(
   location: string,
   backendId: string
 ): Promise<Operation> {
-  const name = `projects/${projectId}/locations/${location}/backends/${backendId}`;
+  const name = `projects/${projectId}/locations/${location}/backends/${backendId}?force=true`;
   const res = await client.delete<Operation>(name);
 
   return res.body;

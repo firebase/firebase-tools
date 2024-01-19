@@ -1,6 +1,6 @@
 import vscode, { Disposable, ExtensionContext, QuickPickItem } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
-import { computed, effect, signal } from "@preact/signals-react";
+import { computed, effect } from "@preact/signals-react";
 import { firebaseRC } from "./config";
 import { FirebaseProjectMetadata } from "../types/project";
 import { currentUser, isServiceAccount } from "./user";
@@ -9,12 +9,13 @@ import { pluginLogger } from "../logger-wrapper";
 import { selectProjectInMonospace } from "../../../src/monospace";
 import { currentOptions } from "../options";
 import { updateFirebaseRCProject } from "../config-files";
+import { globalSignal } from "../utils/globals";
 
 /** Available projects */
-export const projects = signal<Record<string, FirebaseProjectMetadata[]>>({});
+export const projects = globalSignal<Record<string, FirebaseProjectMetadata[]>>({});
 
 /** Currently selected project ID */
-export const currentProjectId = signal("");
+export const currentProjectId = globalSignal("");
 
 const userScopedProjects = computed(() => {
   return projects.value[currentUser.value?.email ?? ""] ?? [];
@@ -88,7 +89,7 @@ export function registerProject({
         monospaceExtension.exports.getMonospaceDaemonPort();
       try {
         const projectId = await selectProjectInMonospace({
-          projectRoot: currentOptions.cwd,
+          projectRoot: currentOptions.value.cwd,
           project: undefined,
           isVSCE: true,
         });

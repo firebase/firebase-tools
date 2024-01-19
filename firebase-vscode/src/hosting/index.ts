@@ -1,6 +1,6 @@
 import vscode, { Disposable } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
-import { effect, signal } from "@preact/signals-react";
+import { effect } from "@preact/signals-react";
 import { ChannelWithId } from "../messaging/types";
 import { deployToHosting, getChannels, initHosting } from "../cli";
 import { firebaseConfig } from "../core/config";
@@ -9,8 +9,9 @@ import { currentOptions } from "../options";
 import { currentProject, currentProjectId } from "../core/project";
 import { getSettings } from "../utils/settings";
 import { discover } from "../../../src/frameworks";
+import { globalSignal } from "../utils/globals";
 
-const channels = signal<ChannelWithId[]>([]);
+const channels = globalSignal<ChannelWithId[]>([]);
 
 export function registerHosting(broker: ExtensionBrokerImpl): Disposable {
   // Refresh channels when project changes
@@ -34,7 +35,7 @@ export function registerHosting(broker: ExtensionBrokerImpl): Disposable {
     // have frameworks support enabled.
     const { useFrameworks } = getSettings();
     if (useFrameworks) {
-      currentFramework = await discover(currentOptions.cwd, false);
+      currentFramework = await discover(currentOptions.value.cwd, false);
       pluginLogger.debug(
         "(Hosting) Searching for a web framework in this project."
       );
@@ -60,7 +61,7 @@ export function registerHosting(broker: ExtensionBrokerImpl): Disposable {
       if (fileUri && fileUri[0] && fileUri[0].fsPath) {
         const publicFolderFull = fileUri[0].fsPath;
         const publicFolder = publicFolderFull.substring(
-          currentOptions.cwd.length + 1
+          currentOptions.value.cwd.length + 1
         );
         success = await initHosting({
           spa: singleAppSupport,
@@ -73,7 +74,7 @@ export function registerHosting(broker: ExtensionBrokerImpl): Disposable {
     broker.send("notifyHostingInitDone", {
       success,
       projectId: currentProject.value?.projectId,
-      folderPath: currentOptions.cwd,
+      folderPath: currentOptions.value.cwd,
       framework: currentFramework,
     });
 
