@@ -33,7 +33,10 @@ async function getTestConfig() {
     entry: testFiles,
     output: {
       // the bundle is stored in the 'dist' folder (check package.json), 📖 -> https://webpack.js.org/configuration/output/
-      path: path.resolve(__dirname, "../../dist/test"),
+      path: path.resolve(
+        __dirname,
+        "../../dist/test/firebase-vscode/src/test/"
+      ),
       filename: "[name].js",
       libraryTarget: "commonjs2",
       devtoolModuleFilenameTemplate: "../[resource-path]",

@@ -8,6 +8,7 @@ import { Signal } from "@preact/signals-core";
 import { assertExecutionResult } from "../../common/graphql";
 import { FirematError } from "../../common/error";
 import { AuthService } from "../auth/service";
+import { UserMockKind } from "../../common/messaging/protocol";
 
 /**
  * Firemat Emulator service
@@ -16,7 +17,7 @@ export class FirematService {
   constructor(
     private firematEndpoint: Signal<string | undefined>,
     private authService: AuthService,
-  ) {}
+  ) { }
 
   private async decodeResponse(
     response: Response,
@@ -111,7 +112,7 @@ export class FirematService {
    *
    * If the JSON is invalid, will throw.
    */
-  private _serializeBody(body: { variables?: string; [key: string]: unknown }) {
+  private _serializeBody(body: { variables?: string;[key: string]: unknown }) {
     if (!body.variables) {
       return JSON.stringify(body);
     }
@@ -127,11 +128,14 @@ export class FirematService {
 
   private _auth() {
     const userMock = this.authService.userMock;
-
-    // TODO(rrousselGit): handle unauthenticated case once the API supports it.
-    return userMock.kind === "authenticated"
-      ? JSON.parse(userMock.claims)
-      : undefined;
+    if (userMock.kind === UserMockKind.ADMIN) {
+      return {};
+    }
+    return {
+      "impersonate": userMock.kind === UserMockKind.AUTHENTICATED
+        ? { "authClaims": JSON.parse(userMock.claims) }
+        : { "unauthenticated": true }
+    };
   }
 
   // This introspection is used to generate a basic graphql schema
@@ -171,11 +175,11 @@ export class FirematService {
       const body = this._serializeBody({
         ...params,
         name: "projects/p/locations/l/services/local",
-        auth: this._auth(),
+        extensions: this._auth(),
       });
       const resp = await fetch(
         (await this.getFirematEndpoint()) +
-          "/v0/projects/p/locations/l/services/local:executeGraphqlRead",
+        "/v1/projects/p/locations/l/services/local:executeGraphqlRead",
         {
           method: "POST",
           headers: {
@@ -204,11 +208,11 @@ export class FirematService {
     const body = this._serializeBody({
       ...params,
       name: "projects/p/locations/l/services/local",
-      auth: this._auth(),
+      extensions: this._auth(),
     });
     const resp = await fetch(
       (await this.getFirematEndpoint()) +
-        "/v0/projects/p/locations/l/services/local:executeGraphql",
+      "/v1/projects/p/locations/l/services/local:executeGraphql",
       {
         method: "POST",
         headers: {
