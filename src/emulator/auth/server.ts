@@ -123,7 +123,7 @@ export async function createApp(
   const app = express();
   app.set("json spaces", 2);
 
-  // Retrun access-control-allow-private-network heder if requested
+  // Return access-control-allow-private-network heder if requested
   // Enables accessing locahost when site is exposed via tunnel see https://github.com/firebase/firebase-tools/issues/4227
   // Aligns with https://wicg.github.io/private-network-access/#headers
   // Replace with cors option if adopted, see https://github.com/expressjs/cors/issues/236
@@ -298,7 +298,7 @@ export async function createApp(
         return true;
       },
       byte() {
-        // Disable the "byte" format validation to allow stuffing arbitary
+        // Disable the "byte" format validation to allow stuffing arbitrary
         // strings in passwordHash etc. Needed because the emulator generates
         // non-base64 hash strings like "fakeHash:salt=foo:password=bar".
         return true;
