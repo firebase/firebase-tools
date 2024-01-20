@@ -20,6 +20,7 @@ export const firematConfig = globalSignal<FirematConfig | undefined>(undefined);
 export function registerConfig(broker: ExtensionBrokerImpl): Disposable {
   firebaseRC.value = _readRC();
   firebaseConfig.value = _readFirebaseConfig();
+  firematConfig.value = _readFirematConfig();
 
   function notifyFirebaseConfig() {
     broker.send("notifyFirebaseConfig", {
@@ -159,8 +160,13 @@ function assignIfType<T extends TypeOf>(
   );
 }
 
+function asAbsolutePath(relativePath: string, from: string): string {
+  return path.normalize(path.join(from, relativePath));
+}
+
 /** @internal */
 export function _readFirematConfig(): FirematConfig | undefined {
+  // TODO refactor parsing as soon as firemat.yaml syntax is changed
   const configPath = _getConfigPath();
   if (!configPath) {
     return undefined;
@@ -182,11 +188,14 @@ export function _readFirematConfig(): FirematConfig | undefined {
       ),
       schema: {
         main: {
-          source: assignIfType(
-            "string",
-            "firemat.yaml#schema.main.source",
-            yaml?.schema?.main?.source,
-            defaultFirematConfig.schema.main.source,
+          source: asAbsolutePath(
+            assignIfType(
+              "string",
+              "firemat.yaml#schema.main.source",
+              yaml?.schema?.main?.source,
+              defaultFirematConfig.schema.main.source,
+            ),
+            configPath,
           ),
           connection: {
             connectionString: assignIfType(
@@ -199,11 +208,14 @@ export function _readFirematConfig(): FirematConfig | undefined {
       },
       operationSet: {
         crud: {
-          source: assignIfType(
-            "string",
-            "firemat.yaml#operationSet.crud.source",
-            yaml?.operationSet?.crud?.source,
-            defaultFirematConfig.operationSet.crud.source,
+          source: asAbsolutePath(
+            assignIfType(
+              "string",
+              "firemat.yaml#operationSet.crud.source",
+              yaml?.operationSet?.crud?.source,
+              defaultFirematConfig.operationSet.crud.source,
+            ),
+            configPath,
           ),
         },
       },
