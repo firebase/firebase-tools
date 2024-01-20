@@ -359,9 +359,8 @@ describeAuthEmulator("accounts:sendOobCode", ({ authApi, getClock }) => {
       });
   });
 
-  it("should error when sending a password reset with improved email privacy disabled", async () => {
+  it("should error when sending a password reset to non-existent user with improved email privacy disabled", async () => {
     const user = { email: "alice@example.com", password: "notasecret" };
-    // await registerUser(authApi(), user);
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:sendOobCode")
       .set("Authorization", "Bearer owner")
@@ -372,7 +371,7 @@ describeAuthEmulator("accounts:sendOobCode", ({ authApi, getClock }) => {
       });
   });
 
-  it("should error when sending a password reset with improved email privacy enabled", async () => {
+  it("should return email when sending a password reset to non-existent user with improved email privacy enabled", async () => {
     const user = { email: "alice@example.com", password: "notasecret" };
     await updateConfig(
       authApi(),
