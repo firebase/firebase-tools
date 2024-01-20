@@ -203,7 +203,7 @@ operationSet:
       specVersion: "v1alpha",
       schema: {
         main: {
-          source: "./api/schema",
+          source: path.join(dir, "api", "schema"),
           connection: {
             connectionString:
               "postgresql://postgres:mypassword@localhost:5432/emulator?sslmode=disable",
@@ -212,7 +212,7 @@ operationSet:
       },
       operationSet: {
         crud: {
-          source: "./api/operations",
+          source: path.join(dir, "api", "operations"),
         },
       },
     });
@@ -280,7 +280,7 @@ operationSet:
       specVersion: "v1alpha",
       schema: {
         main: {
-          source: "./api/schema",
+          source: path.join(dir, "api", "schema"),
           connection: {
             connectionString: undefined,
           },
@@ -288,7 +288,7 @@ operationSet:
       },
       operationSet: {
         crud: {
-          source: "./api/operations",
+          source: path.join(dir, "api", "operations"),
         },
       },
     });
@@ -326,7 +326,7 @@ operationSet:
       specVersion: "v2",
       schema: {
         main: {
-          source: "./foo",
+          source: path.join(dir, "foo"),
           connection: {
             connectionString: "password",
           },
@@ -334,7 +334,7 @@ operationSet:
       },
       operationSet: {
         crud: {
-          source: "./bar",
+          source: path.join(dir, "bar"),
         },
       },
     });
@@ -372,7 +372,7 @@ operationSet:
       specVersion: "v1alpha",
       schema: {
         main: {
-          source: "./api/schema",
+          source: path.join(dir, "api", "schema"),
           connection: {
             connectionString: undefined,
           },
@@ -380,7 +380,7 @@ operationSet:
       },
       operationSet: {
         crud: {
-          source: "./api/operations",
+          source: path.join(dir, "api", "operations"),
         },
       },
     });
