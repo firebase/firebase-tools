@@ -9,13 +9,17 @@ import { RC } from "../../../src/rc";
 import { Config } from "../../../src/config";
 import { globalSignal } from "../utils/globals";
 import { workspace } from "../utils/test_hooks";
+import { FirematConfig } from "../messaging/protocol";
+import * as jsYaml from "js-yaml";
+import { stdout } from "process";
 
 export const firebaseRC = globalSignal<RC | undefined>(undefined);
 export const firebaseConfig = globalSignal<Config | undefined>(undefined);
+export const firematConfig = globalSignal<FirematConfig | undefined>(undefined);
 
 export function registerConfig(broker: ExtensionBrokerImpl): Disposable {
   firebaseRC.value = _readRC();
-  firebaseConfig.value = _readConfig();
+  firebaseConfig.value = _readFirebaseConfig();
 
   function notifyFirebaseConfig() {
     broker.send("notifyFirebaseConfig", {
@@ -37,7 +41,7 @@ export function registerConfig(broker: ExtensionBrokerImpl): Disposable {
     }
     return notifyFirebaseConfig();
   });
-  const configRemoveListener = firebaseConfig.subscribe(() => {
+  const firebaseConfigRemoveListener = firebaseConfig.subscribe(() => {
     if (!shouldNotify) {
       return;
     }
@@ -55,21 +59,163 @@ export function registerConfig(broker: ExtensionBrokerImpl): Disposable {
   const rcWatcher = _createWatcher(".firebaserc");
   rcWatcher?.onDidChange(() => (firebaseRC.value = _readRC()));
   rcWatcher?.onDidCreate(() => (firebaseRC.value = _readRC()));
-  // TODO handle deletion of .firebaserc/.firebase.json
+  // TODO handle deletion of .firebaserc/.firebase.json/firemat.yaml
 
-  const jsonWatcher = _createWatcher("firebase.json");
-  jsonWatcher?.onDidChange(() => (firebaseConfig.value = _readConfig()));
-  jsonWatcher?.onDidCreate(() => (firebaseConfig.value = _readConfig()));
+  const configWatcher = _createWatcher("firebase.json");
+  configWatcher?.onDidChange(
+    () => (firebaseConfig.value = _readFirebaseConfig()),
+  );
+  configWatcher?.onDidCreate(
+    () => (firebaseConfig.value = _readFirebaseConfig()),
+  );
+
+  const firematWatcher = _createWatcher("firemat.yaml");
+  firematWatcher?.onDidChange(
+    () => (firematConfig.value = _readFirematConfig()),
+  );
+  firematWatcher?.onDidCreate(
+    () => (firematConfig.value = _readFirematConfig()),
+  );
 
   return {
     dispose: () => {
       getInitialDataRemoveListener();
       rcRemoveListener();
-      configRemoveListener();
+      firebaseConfigRemoveListener();
+      firematWatcher?.dispose();
       rcWatcher?.dispose();
-      jsonWatcher?.dispose();
+      configWatcher?.dispose();
     },
   };
+}
+
+const defaultFirematConfig: FirematConfig = {
+  specVersion: "v1alpha",
+  schema: {
+    main: {
+      source: "./api/schema",
+      connection: {
+        connectionString: undefined,
+      },
+    },
+  },
+  operationSet: {
+    crud: {
+      source: "./api/operations",
+    },
+  },
+};
+
+const value = 42;
+const typeOfValue = typeof value;
+/** All the possible values for "typeof", as a TS union. */
+type TypeOf = typeof typeOfValue;
+
+/** The TS type for a given "typeof" value */
+type ValueOf<T extends TypeOf> = T extends "string"
+  ? string
+  : T extends "number"
+    ? number
+    : T extends "bigint"
+      ? bigint
+      : T extends "boolean"
+        ? boolean
+        : T extends "symbol"
+          ? symbol
+          : T extends "undefined"
+            ? undefined
+            : T extends "object"
+              ? object
+              : T extends "function"
+                ? Function
+                : never;
+
+function assignIfType<T extends TypeOf>(
+  type: T,
+  path: string,
+  value: unknown,
+): T | undefined;
+function assignIfType<T extends TypeOf>(
+  type: T,
+  path: string,
+  value: unknown,
+  fallback: ValueOf<T>,
+): T;
+function assignIfType<T extends TypeOf>(
+  type: T,
+  path: string,
+  value: unknown,
+  fallback?: T,
+): T | undefined {
+  if (value === undefined || value === null) {
+    return fallback;
+  }
+  if (typeof value === type) {
+    return value as T;
+  }
+
+  throw new Error(
+    `Expected field at ${path} to be of type ${type} but got ${typeof value}`,
+  );
+}
+
+/** @internal */
+export function _readFirematConfig(): FirematConfig | undefined {
+  const configPath = _getConfigPath();
+  if (!configPath) {
+    return undefined;
+  }
+
+  try {
+    const firematYaml = fs.readFileSync(
+      path.join(configPath, "firemat.yaml"),
+      "utf-8",
+    );
+    const yaml = jsYaml.load(firematYaml);
+
+    return {
+      specVersion: assignIfType(
+        "string",
+        "firemat.yaml#specVersion",
+        yaml?.specVersion,
+        defaultFirematConfig.specVersion,
+      ),
+      schema: {
+        main: {
+          source: assignIfType(
+            "string",
+            "firemat.yaml#schema.main.source",
+            yaml?.schema?.main?.source,
+            defaultFirematConfig.schema.main.source,
+          ),
+          connection: {
+            connectionString: assignIfType(
+              "string",
+              "firemat.yaml#schema.main.connection.connectionString",
+              yaml?.schema?.main?.connection?.connectionString,
+            ),
+          },
+        },
+      },
+      operationSet: {
+        crud: {
+          source: assignIfType(
+            "string",
+            "firemat.yaml#operationSet.crud.source",
+            yaml?.operationSet?.crud?.source,
+            defaultFirematConfig.operationSet.crud.source,
+          ),
+        },
+      },
+    };
+  } catch (e: any) {
+    if (e.code === "ENOENT") {
+      return undefined;
+    }
+
+    pluginLogger.error(e);
+    throw e;
+  }
 }
 
 /** @internal */
@@ -99,7 +245,7 @@ export function _readRC(): RC | undefined {
 }
 
 /** @internal */
-export function _readConfig(): Config | undefined {
+export function _readFirebaseConfig(): Config | undefined {
   const configPath = _getConfigPath();
   if (!configPath) {
     return undefined;

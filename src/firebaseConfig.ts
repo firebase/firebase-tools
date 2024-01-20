@@ -237,7 +237,7 @@ export type EmulatorsConfig = {
 
 export type ExtensionsConfig = Record<string, string>;
 
-export type FirematConfig = {
+export type FirematFirebaseConfig = {
   source?: string;
 };
 
@@ -254,5 +254,5 @@ export type FirebaseConfig = {
   remoteconfig?: RemoteConfigConfig;
   emulators?: EmulatorsConfig;
   extensions?: ExtensionsConfig;
-  firemat?: FirematConfig;
+  firemat?: FirematFirebaseConfig;
 };

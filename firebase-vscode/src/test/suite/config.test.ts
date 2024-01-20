@@ -5,10 +5,12 @@ import * as fs from "fs";
 import {
   _createWatcher,
   _getConfigPath,
-  _readConfig,
+  _readFirebaseConfig,
+  _readFirematConfig,
   _readRC,
   firebaseConfig,
   firebaseRC,
+  firematConfig,
   getRootFolders,
   registerConfig,
 } from "../../core/config";
@@ -171,6 +173,289 @@ firematSuite("_getConfigPath", () => {
   });
 });
 
+firematSuite("_readFirematConfig", () => {
+  const defaultConfigYaml = `
+specVersion: v1alpha
+schema:
+  main:
+    source: ./api/schema
+    connection:
+      connectionString: postgresql://postgres:mypassword@localhost:5432/emulator?sslmode=disable
+operationSet:
+  crud:
+    source: ./api/operations
+`;
+
+  firematTest("parses firemat.yaml", () => {
+    const dir = createTemporaryDirectory();
+    createFile(dir, "firemat.yaml", defaultConfigYaml);
+
+    mock(workspace, {
+      workspaceFolders: [
+        createFake<vscode.WorkspaceFolder>({
+          uri: vscode.Uri.file(dir),
+        }),
+      ],
+    });
+
+    const config = _readFirematConfig();
+    assert.deepEqual(config, {
+      specVersion: "v1alpha",
+      schema: {
+        main: {
+          source: "./api/schema",
+          connection: {
+            connectionString:
+              "postgresql://postgres:mypassword@localhost:5432/emulator?sslmode=disable",
+          },
+        },
+      },
+      operationSet: {
+        crud: {
+          source: "./api/operations",
+        },
+      },
+    });
+  });
+
+  firematTest("returns undefined if firemat.yaml is not found", () => {
+    const dir = createTemporaryDirectory();
+
+    mock(workspace, {
+      workspaceFolders: [
+        createFake<vscode.WorkspaceFolder>({
+          uri: vscode.Uri.file(dir),
+        }),
+      ],
+    });
+
+    const config = _readFirematConfig();
+    assert.deepEqual(config, undefined);
+  });
+
+  firematTest("throws if firemat.yaml is invalid", () => {
+    const logs = spyLogs();
+    const dir = createTemporaryDirectory();
+    createFile(dir, "firemat.yaml", "||");
+
+    mock(workspace, {
+      workspaceFolders: [
+        createFake<vscode.WorkspaceFolder>({
+          uri: vscode.Uri.file(dir),
+        }),
+      ],
+    });
+
+    assert.equal(logs.error.length, 0);
+
+    assert.throws(
+      () => _readFirematConfig(),
+      (thrown) =>
+        thrown
+          .toString()
+          .startsWith(`YAMLException: a line break is expected (1:2)`),
+    );
+
+    assert.equal(logs.error.length, 1);
+    assert.ok(
+      logs.error[0].startsWith(`YAMLException: a line break is expected (1:2)`),
+    );
+  });
+
+  firematTest("specifies default value when fields are missing", () => {
+    const dir = createTemporaryDirectory();
+    createFile(dir, "firemat.yaml", `unknown: 42`);
+
+    mock(workspace, {
+      workspaceFolders: [
+        createFake<vscode.WorkspaceFolder>({
+          uri: vscode.Uri.file(dir),
+        }),
+      ],
+    });
+
+    const config = _readFirematConfig();
+
+    assert.deepEqual(config, {
+      specVersion: "v1alpha",
+      schema: {
+        main: {
+          source: "./api/schema",
+          connection: {
+            connectionString: undefined,
+          },
+        },
+      },
+      operationSet: {
+        crud: {
+          source: "./api/operations",
+        },
+      },
+    });
+  });
+
+  firematTest("decodes the yaml", () => {
+    const dir = createTemporaryDirectory();
+    createFile(
+      dir,
+      "firemat.yaml",
+      `
+specVersion: v2
+schema:
+  main:
+    source: './foo'
+    connection:
+      connectionString: 'password'
+operationSet:
+  crud:
+    source: './bar'
+`,
+    );
+
+    mock(workspace, {
+      workspaceFolders: [
+        createFake<vscode.WorkspaceFolder>({
+          uri: vscode.Uri.file(dir),
+        }),
+      ],
+    });
+
+    const config = _readFirematConfig();
+
+    assert.deepEqual(config, {
+      specVersion: "v2",
+      schema: {
+        main: {
+          source: "./foo",
+          connection: {
+            connectionString: "password",
+          },
+        },
+      },
+      operationSet: {
+        crud: {
+          source: "./bar",
+        },
+      },
+    });
+  });
+
+  firematTest("converts null values into the associated default", () => {
+    const dir = createTemporaryDirectory();
+    createFile(
+      dir,
+      "firemat.yaml",
+      `
+specVersion: null
+schema:
+  main:
+    source: null
+    connection:
+      connectionString: null
+operationSet:
+  crud:
+    source: null
+`,
+    );
+
+    mock(workspace, {
+      workspaceFolders: [
+        createFake<vscode.WorkspaceFolder>({
+          uri: vscode.Uri.file(dir),
+        }),
+      ],
+    });
+
+    const config = _readFirematConfig();
+
+    assert.deepEqual(config, {
+      specVersion: "v1alpha",
+      schema: {
+        main: {
+          source: "./api/schema",
+          connection: {
+            connectionString: undefined,
+          },
+        },
+      },
+      operationSet: {
+        crud: {
+          source: "./api/operations",
+        },
+      },
+    });
+  });
+
+  firematTest("asserts that values are of the correct type", () => {
+    const dir = createTemporaryDirectory();
+    mock(workspace, {
+      workspaceFolders: [
+        createFake<vscode.WorkspaceFolder>({
+          uri: vscode.Uri.file(dir),
+        }),
+      ],
+    });
+
+    createFile(dir, "firemat.yaml", `specVersion: 42`);
+    assert.throws(
+      () => _readFirematConfig(),
+      (thrown) =>
+        thrown
+          .toString()
+          .startsWith(
+            `Error: Expected field at firemat.yaml#specVersion to be of type string but got number`,
+          ),
+    );
+
+    createFile(
+      dir,
+      "firemat.yaml",
+      `
+schema:
+  main:
+    source: 42
+`,
+    );
+    assert.throws(
+      () => _readFirematConfig(),
+      (thrown) => thrown.toString().includes(`firemat.yaml#schema.main.source`),
+    );
+
+    createFile(
+      dir,
+      "firemat.yaml",
+      `
+schema:
+  main:
+    connection:
+      connectionString: 42
+`,
+    );
+    assert.throws(
+      () => _readFirematConfig(),
+      (thrown) =>
+        thrown
+          .toString()
+          .includes(`firemat.yaml#schema.main.connection.connectionString`),
+    );
+
+    createFile(
+      dir,
+      "firemat.yaml",
+      `
+operationSet:
+  crud:
+    source: 42
+`,
+    );
+    assert.throws(
+      () => _readFirematConfig(),
+      (thrown) =>
+        thrown.toString().includes(`firemat.yaml#operationSet.crud.source`),
+    );
+  });
+});
+
 firematSuite("_readConfig", () => {
   firematTest("parses firebase.json", () => {
     const expectedConfig = {
@@ -192,7 +477,7 @@ firematSuite("_readConfig", () => {
       ],
     });
 
-    const config = _readConfig();
+    const config = _readFirebaseConfig();
     assert.deepEqual(config.data, expectedConfig);
   });
 
@@ -207,7 +492,7 @@ firematSuite("_readConfig", () => {
       ],
     });
 
-    const config = _readConfig();
+    const config = _readFirebaseConfig();
     assert.deepEqual(config, undefined);
   });
 
@@ -227,7 +512,7 @@ firematSuite("_readConfig", () => {
     assert.equal(logs.error.length, 0);
 
     assert.throws(
-      () => _readConfig(),
+      () => _readFirebaseConfig(),
       (thrown) =>
         thrown
           .toString()
@@ -426,7 +711,7 @@ firematSuite("registerConfig", () => {
         workspaces.byIndex(0).firebaseConfigPath,
         JSON.stringify(newConfig),
       );
-      firebaseConfig.value = _readConfig()!;
+      firebaseConfig.value = _readFirebaseConfig()!;
 
       assert.deepEqual(broker.sentLogs, [
         {
@@ -489,7 +774,7 @@ firematSuite("registerConfig", () => {
     const disposable = registerConfig(broker);
     addDisposable(disposable);
 
-    assert.equal(pendingWatchers.length, 2);
+    assert.equal(pendingWatchers.length, 3);
     assert.deepEqual(Object.keys(broker.onListeners), ["getInitialData"]);
 
     disposable.dispose();
@@ -505,7 +790,7 @@ firematSuite("registerConfig", () => {
   });
 
   firematTest(
-    "listens to create/update/delete events on firebase.json and .firebaserc",
+    "listens to create/update/delete events on firebase.json/.firebaserc/firemat.yaml",
     () => {
       const watcherListeners: Record<
         string,
@@ -556,28 +841,32 @@ firematSuite("registerConfig", () => {
       const rcFile = path.join(dir, ".firebaserc");
       const configListeners = watcherListeners["firebase.json"]!;
       const configFile = path.join(dir, "firebase.json");
+      const firematListeners = watcherListeners["firemat.yaml"]!;
+      const firematFile = path.join(dir, "firemat.yaml");
+
+      function testEvent(
+        index: number,
+        file: string,
+        content: string,
+        fireWatcher: () => void,
+      ) {
+        assert.equal(broker.sentLogs.length, index);
+
+        fs.writeFileSync(file, content);
+        fireWatcher();
+
+        assert.equal(broker.sentLogs.length, index + 1);
+      }
 
       function testRcEvent(
         event: "create" | "update" | "delete",
         index: number,
       ) {
-        assert.equal(
-          broker.sentLogs.length,
+        testEvent(
           index,
-          `history for RC ${event} starts at ${index}`,
-        );
-
-        fs.writeFileSync(
           rcFile,
           JSON.stringify({ projects: { default: event } }),
-        );
-
-        rcListeners[event]!(vscode.Uri.file(rcFile));
-
-        assert.equal(
-          broker.sentLogs.length,
-          index + 1,
-          `history for RC ${event} ends at ${index}`,
+          () => rcListeners[event]!(vscode.Uri.file(rcFile)),
         );
 
         assert.deepEqual(broker.sentLogs[index].args[0].firebaseRC.projects, {
@@ -589,38 +878,39 @@ firematSuite("registerConfig", () => {
         event: "create" | "update" | "delete",
         index: number,
       ) {
-        assert.equal(broker.sentLogs.length, index);
-
-        fs.writeFileSync(
+        testEvent(
+          index,
           configFile,
           JSON.stringify({ emulators: { firemat: { port: index } } }),
+          () => configListeners[event]!(vscode.Uri.file(configFile)),
         );
 
-        configListeners[event]!(vscode.Uri.file(configFile));
-
-        assert.equal(broker.sentLogs.length, index + 1);
         assert.deepEqual(broker.sentLogs[index].args[0].firebaseJson, {
-          emulators: {
-            firemat: {
-              port: index,
-            },
-          },
+          emulators: { firemat: { port: index } },
         });
+      }
+
+      function testFirematEvent(event: "create" | "update" | "delete") {
+        fs.writeFileSync(firematFile, `specVersion: ${event}`);
+        firematListeners[event]!(vscode.Uri.file(firematFile));
+
+        assert.deepEqual(firematConfig.value.specVersion, event);
       }
 
       testRcEvent("create", 0);
       testRcEvent("update", 1);
-      // testRcEvent("delete", 2);
 
       testConfigEvent("create", 2);
       testConfigEvent("update", 3);
-      // testConfigEvent("delete", 5);
+
+      testFirematEvent("create");
+      testFirematEvent("update");
     },
   );
 
   firematTest("handles getInitialData requests", () => {
     const broker = createTestBroker();
-    const workspaces = setupMockTestWorkspaces({
+    setupMockTestWorkspaces({
       firebaseRc: { projects: { default: "my-project" } },
       firebaseConfig: { emulators: { firemat: { port: 9399 } } },
     });
