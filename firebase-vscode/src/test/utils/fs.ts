@@ -50,6 +50,7 @@ export function createFile(
   }
 
   fs.writeFileSync(filePath, content);
+  // Using "force" in case the file is deleted before tearDown is ran
   addTearDown(() => fs.rmSync(filePath, { force: true }));
 
   return filePath;
