@@ -23,10 +23,6 @@
   "contributes": {
     "commands": [
       {
-        "command": "firemat-graphql.restart",
-        "title": "FireMAT GraphQL Language Server Restart"
-      },
-      {
         "command": "firemat-graphql.showOutputChannel",
         "title": "FireMAT GraphQL Language Server show output channel"
       }

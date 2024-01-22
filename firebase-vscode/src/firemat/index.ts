@@ -34,7 +34,6 @@ export function registerFiremat(
     if (firematEndpoint.value !== endpoint) {
       firematEndpoint.value = endpoint;
       // also update LSP
-      vscode.commands.executeCommand("firemat-graphql.restart");
       vscode.commands.executeCommand("firebase.firemat.executeIntrospection");
     }
   });
