@@ -1,8 +1,8 @@
-import { Disposable, ExtensionContext, FileSystemWatcher } from "vscode";
+import { Disposable, FileSystemWatcher } from "vscode";
 import * as vscode from "vscode";
 import path from "path";
 import fs from "fs";
-import { currentOptions, updateOptions } from "../options";
+import { currentOptions } from "../options";
 import { pluginLogger } from "../logger-wrapper";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { RC } from "../../../src/rc";
@@ -13,16 +13,9 @@ import { workspace } from "../utils/test_hooks";
 export const firebaseRC = globalSignal<RC | undefined>(undefined);
 export const firebaseConfig = globalSignal<Config | undefined>(undefined);
 
-export function registerConfig({
-  context,
-  broker,
-}: {
-  context: ExtensionContext;
-  broker: ExtensionBrokerImpl;
-}): Disposable {
+export function registerConfig(broker: ExtensionBrokerImpl): Disposable {
   firebaseRC.value = _readRC();
   firebaseConfig.value = _readConfig();
-  updateOptions(context, firebaseConfig.value, firebaseRC.value);
 
   function notifyFirebaseConfig() {
     broker.send("notifyFirebaseConfig", {

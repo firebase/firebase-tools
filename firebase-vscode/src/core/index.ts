@@ -40,7 +40,7 @@ export function registerCore({
   });
 
   return Disposable.from(
-    registerConfig({ context, broker }),
+    registerConfig(broker),
     registerEmulators(broker),
     registerEnv(broker),
     registerUser(broker),
