@@ -1,4 +1,4 @@
-import { effect, signal } from "@preact/signals-react";
+import { signal } from "@preact/signals-react";
 import { Disposable, workspace } from "vscode";
 import path from "path";
 import fs from "fs";
@@ -6,8 +6,7 @@ import { currentOptions } from "../options";
 import { pluginLogger } from "../logger-wrapper";
 import { isEmpty } from "lodash";
 import { ExtensionBrokerImpl } from "../extension-broker";
-import { FirebaseConfig } from "../../../src/firebaseConfig";
-import { RC, RCData } from "../../../src/rc";
+import { RC } from "../../../src/rc";
 import { Config } from "../../../src/config";
 
 export const firebaseRC = signal<RC | undefined>(undefined);
