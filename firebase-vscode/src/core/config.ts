@@ -1,8 +1,8 @@
 import { signal } from "@preact/signals-react";
-import { Disposable, workspace } from "vscode";
+import { Disposable, ExtensionContext, workspace } from "vscode";
 import path from "path";
 import fs from "fs";
-import { currentOptions } from "../options";
+import { currentOptions, updateOptions } from "../options";
 import { pluginLogger } from "../logger-wrapper";
 import { isEmpty } from "lodash";
 import { ExtensionBrokerImpl } from "../extension-broker";
@@ -13,9 +13,16 @@ export const firebaseRC = signal<RC | undefined>(undefined);
 
 export const firebaseConfig = signal<Config | undefined>(undefined);
 
-export function registerConfig(broker: ExtensionBrokerImpl): Disposable {
+export function registerConfig({
+  context,
+  broker,
+}: {
+  context: ExtensionContext;
+  broker: ExtensionBrokerImpl;
+}): Disposable {
   firebaseRC.value = readRC();
   firebaseConfig.value = readConfig();
+  updateOptions(context, firebaseConfig.value, firebaseRC.value);
 
   const notifyFirebaseConfig = () =>
     broker.send("notifyFirebaseConfig", {
