@@ -100,5 +100,14 @@ async function loadModule(packageDir) {
     process.send({ error: err.message }, EXIT);
   }
 
-  process.send({ triggers: triggers }, EXIT);
+  let spec = null;
+  try {
+    const optsModule = await loadModule("firebase-functions/v2/options");
+    if (optsModule && optsModule.__getSpec) {
+      spec = optsModule.__getSpec();
+    }
+  } catch (e) {
+    process.send({ error: e.message }, EXIT);
+  }
+  process.send({ triggers: triggers, spec }, EXIT);
 })();
