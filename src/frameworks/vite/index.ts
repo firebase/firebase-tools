@@ -89,7 +89,7 @@ export async function build(root: string, target: string) {
 
   const originalNodeEnv = process.env.NODE_ENV;
 
-  let envKey = "NODE_ENV";
+  const envKey = "NODE_ENV";
   // Voluntarily making .env[key] not statically analyzable to avoid
   // Webpack from converting it to "development" = target;
   process.env[envKey] = target;
