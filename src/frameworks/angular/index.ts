@@ -90,7 +90,7 @@ export async function build(dir: string, configuration: string): Promise<BuildRe
 }
 
 export async function getDevModeHandle(dir: string, configuration: string) {
-  const { targetStringFromTarget } = relativeRequire(dir, "@angular-devkit/architect");
+  const { targetStringFromTarget } = await relativeRequire(dir, "@angular-devkit/architect");
   const { serveTarget } = await getContext(dir, configuration);
   if (!serveTarget) throw new Error("Could not find the serveTarget");
   const host = new Promise<string>((resolve, reject) => {
