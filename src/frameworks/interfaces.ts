@@ -22,7 +22,6 @@ export const enum SupportLevel {
 
 export interface Discovery {
   mayWantBackend: boolean;
-  publicDirectory: string;
   version?: string;
   vite?: boolean;
 }

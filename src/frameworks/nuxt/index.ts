@@ -33,12 +33,9 @@ export async function discover(dir: string) {
   if (!anyConfigFileExists && !version) return;
   if (version && lt(version, "3.0.0-0")) return;
 
-  const {
-    dir: { public: publicDirectory },
-    ssr: mayWantBackend,
-  } = await getConfig(dir);
+  const { ssr: mayWantBackend } = await getConfig(dir);
 
-  return { publicDirectory, mayWantBackend, version };
+  return { mayWantBackend, version };
 }
 
 export async function build(cwd: string) {

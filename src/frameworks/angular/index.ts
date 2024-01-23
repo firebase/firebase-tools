@@ -42,7 +42,7 @@ export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!(await pathExists(join(dir, "package.json")))) return;
   if (!(await pathExists(join(dir, "angular.json")))) return;
   const version = getAngularVersion(dir);
-  return { mayWantBackend: true, publicDirectory: join(dir, "src", "assets"), version };
+  return { mayWantBackend: true, version };
 }
 
 export function init(setup: any, config: any) {

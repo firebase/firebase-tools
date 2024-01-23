@@ -53,7 +53,6 @@ describe("Astro", () => {
         });
       expect(await discover(cwd)).to.deep.equal({
         mayWantBackend: false,
-        publicDirectory: publicDir,
         version: "2.2.2",
       });
     });
@@ -84,7 +83,6 @@ describe("Astro", () => {
         });
       expect(await discover(cwd)).to.deep.equal({
         mayWantBackend: true,
-        publicDirectory: publicDir,
         version: "2.2.2",
       });
     });

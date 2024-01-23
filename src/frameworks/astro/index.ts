@@ -15,10 +15,9 @@ export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!existsSync(join(dir, "package.json"))) return;
   const version = getAstroVersion(dir);
   if (!version) return;
-  const { output, publicDir: publicDirectory } = await getConfig(dir);
+  const { output } = await getConfig(dir);
   return {
     mayWantBackend: output !== "static",
-    publicDirectory,
     version,
   };
 }

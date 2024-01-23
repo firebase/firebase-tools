@@ -254,7 +254,7 @@ export async function prepareFrameworks(
         )
       );
     }
-    const { framework, mayWantBackend, publicDirectory } = results;
+    const { framework, mayWantBackend } = results;
     const {
       build,
       ɵcodegenPublicDirectory,
@@ -304,7 +304,6 @@ export async function prepareFrameworks(
       getDevModeHandle &&
       (await getDevModeHandle(getProjectPath(), frameworksBuildTarget, hostingEmulatorInfo));
     if (devModeHandle) {
-      config.public = relative(projectRoot, publicDirectory);
       // Attach the handle to options, it will be used when spinning up superstatic
       options.frameworksDevModeHandle = devModeHandle;
       // null is the dev-mode entry for firebase-framework-tools
@@ -339,10 +338,10 @@ export async function prepareFrameworks(
         site,
       });
 
-      config.public = relative(projectRoot, hostingDist);
       if (wantsBackend && !omitCloudFunction)
         codegenFunctionsDirectory = codegenProdModeFunctionsDirectory;
     }
+    config.public = relative(projectRoot, hostingDist);
     config.webFramework = `${framework}${codegenFunctionsDirectory ? "_ssr" : ""}`;
     if (codegenFunctionsDirectory) {
       if (firebaseDefaults) {
