@@ -1,4 +1,4 @@
-import { readJSON as originalReadJSON, readJsonSync } from "fs-extra";
+import { readJSON as originalReadJSON } from "fs-extra";
 import type { ReadOptions } from "fs-extra";
 import { dirname, extname, join, relative } from "path";
 import { readFile } from "fs/promises";
@@ -290,37 +290,40 @@ export function findDependency(name: string, options: Partial<FindDepOptions> = 
 export function relativeRequire(
   dir: string,
   mod: "@angular-devkit/core"
-): typeof import("@angular-devkit/core");
+): Promise<typeof import("@angular-devkit/core")>;
 export function relativeRequire(
   dir: string,
   mod: "@angular-devkit/core/node"
-): typeof import("@angular-devkit/core/node");
+): Promise<typeof import("@angular-devkit/core/node")>;
 export function relativeRequire(
   dir: string,
   mod: "@angular-devkit/architect"
-): typeof import("@angular-devkit/architect");
+): Promise<typeof import("@angular-devkit/architect")>;
 export function relativeRequire(
   dir: string,
   mod: "@angular-devkit/architect/node"
-): typeof import("@angular-devkit/architect/node");
+): Promise<typeof import("@angular-devkit/architect/node")>;
 export function relativeRequire(
   dir: string,
   mod: "next/dist/build"
-): typeof import("next/dist/build");
+): Promise<typeof import("next/dist/build")>;
 export function relativeRequire(
   dir: string,
   mod: "next/dist/server/config"
-): typeof import("next/dist/server/config");
+): Promise<typeof import("next/dist/server/config")>;
 export function relativeRequire(
   dir: string,
   mod: "next/constants"
-): typeof import("next/constants");
+): Promise<typeof import("next/constants")>;
 export function relativeRequire(
   dir: string,
   mod: "next"
-): typeof import("next") | typeof import("next")["default"];
+): Promise<typeof import("next") | typeof import("next")["default"]>;
 export function relativeRequire(dir: string, mod: "vite"): Promise<typeof import("vite")>;
-export function relativeRequire(dir: string, mod: "jsonc-parser"): typeof import("jsonc-parser");
+export function relativeRequire(
+  dir: string,
+  mod: "jsonc-parser"
+): Promise<typeof import("jsonc-parser")>;
 
 // TODO the types for @nuxt/kit are causing a lot of troubles, need to do something other than any
 // Nuxt 2
@@ -331,7 +334,7 @@ export function relativeRequire(dir: string, mod: "@nuxt/kit"): Promise<any>;
 /**
  *
  */
-export function relativeRequire(dir: string, mod: string) {
+export async function relativeRequire(dir: string, mod: string) {
   try {
     // If being compiled with webpack, use non webpack require for these calls.
     // (VSCode plugin uses webpack which by default replaces require calls
@@ -347,10 +350,13 @@ export function relativeRequire(dir: string, mod: string) {
     const path = requireFunc.resolve(mod, { paths: [dir] });
 
     let packageJson: PackageJson | undefined;
-    const isEsm =
-      extname(path) === ".mjs" ||
-      (packageJson = readJsonSync(join(dirname(path), "package.json"), { throws: false }))?.type ===
-        "module";
+    let isEsm = extname(path) === ".mjs";
+    if (!isEsm) {
+      packageJson = await readJSON<PackageJson>(join(dirname(path), "package.json"), {
+        throws: false,
+      });
+      isEsm = packageJson?.type === "module";
+    }
 
     if (isEsm) {
       // in case path resolves to a cjs file, use main from package.json
