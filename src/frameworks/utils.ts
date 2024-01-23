@@ -1,6 +1,6 @@
 import { readJSON as originalReadJSON } from "fs-extra";
 import type { ReadOptions } from "fs-extra";
-import { extname, join, relative } from "path";
+import { dirname, extname, join, relative } from "path";
 import { readFile } from "fs/promises";
 import { IncomingMessage, request as httpRequest, ServerResponse, Agent } from "http";
 import { sync as spawnSync } from "cross-spawn";
@@ -19,7 +19,7 @@ import {
   NPM_COMMAND_TIMEOUT_MILLIES,
   VALID_LOCALE_FORMATS,
 } from "./constants";
-import { BUILD_TARGET_PURPOSE, RequestHandler } from "./interfaces";
+import { BUILD_TARGET_PURPOSE, PackageJson, RequestHandler } from "./interfaces";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -37,6 +37,8 @@ export function isUrl(url: string): boolean {
 
 /**
  * add type to readJSON
+ *
+ * Note: `throws: false` won't work with the async function: https://github.com/jprichardson/node-fs-extra/issues/542
  */
 export function readJSON<JsonType = any>(
   file: string,
@@ -290,37 +292,40 @@ export function findDependency(name: string, options: Partial<FindDepOptions> = 
 export function relativeRequire(
   dir: string,
   mod: "@angular-devkit/core"
-): typeof import("@angular-devkit/core");
+): Promise<typeof import("@angular-devkit/core")>;
 export function relativeRequire(
   dir: string,
   mod: "@angular-devkit/core/node"
-): typeof import("@angular-devkit/core/node");
+): Promise<typeof import("@angular-devkit/core/node")>;
 export function relativeRequire(
   dir: string,
   mod: "@angular-devkit/architect"
-): typeof import("@angular-devkit/architect");
+): Promise<typeof import("@angular-devkit/architect")>;
 export function relativeRequire(
   dir: string,
   mod: "@angular-devkit/architect/node"
-): typeof import("@angular-devkit/architect/node");
+): Promise<typeof import("@angular-devkit/architect/node")>;
 export function relativeRequire(
   dir: string,
   mod: "next/dist/build"
-): typeof import("next/dist/build");
+): Promise<typeof import("next/dist/build")>;
 export function relativeRequire(
   dir: string,
   mod: "next/dist/server/config"
-): typeof import("next/dist/server/config");
+): Promise<typeof import("next/dist/server/config")>;
 export function relativeRequire(
   dir: string,
   mod: "next/constants"
-): typeof import("next/constants");
+): Promise<typeof import("next/constants")>;
 export function relativeRequire(
   dir: string,
   mod: "next"
-): typeof import("next") | typeof import("next")["default"];
-export function relativeRequire(dir: string, mod: "vite"): typeof import("vite");
-export function relativeRequire(dir: string, mod: "jsonc-parser"): typeof import("jsonc-parser");
+): Promise<typeof import("next") | typeof import("next")["default"]>;
+export function relativeRequire(dir: string, mod: "vite"): Promise<typeof import("vite")>;
+export function relativeRequire(
+  dir: string,
+  mod: "jsonc-parser"
+): Promise<typeof import("jsonc-parser")>;
 
 // TODO the types for @nuxt/kit are causing a lot of troubles, need to do something other than any
 // Nuxt 2
@@ -331,7 +336,7 @@ export function relativeRequire(dir: string, mod: "@nuxt/kit"): Promise<any>;
 /**
  *
  */
-export function relativeRequire(dir: string, mod: string) {
+export async function relativeRequire(dir: string, mod: string) {
   try {
     // If being compiled with webpack, use non webpack require for these calls.
     // (VSCode plugin uses webpack which by default replaces require calls
@@ -345,7 +350,23 @@ export function relativeRequire(dir: string, mod: string) {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore prevent VSCE webpack from erroring on non_webpack_require
     const path = requireFunc.resolve(mod, { paths: [dir] });
-    if (extname(path) === ".mjs") {
+
+    let packageJson: PackageJson | undefined;
+    let isEsm = extname(path) === ".mjs";
+    if (!isEsm) {
+      packageJson = await readJSON<PackageJson | undefined>(
+        join(dirname(path), "package.json")
+      ).catch(() => undefined);
+
+      isEsm = packageJson?.type === "module";
+    }
+
+    if (isEsm) {
+      // in case path resolves to a cjs file, use main from package.json
+      if (extname(path) === ".cjs" && packageJson?.main) {
+        return dynamicImport(join(dirname(path), packageJson.main));
+      }
+
       return dynamicImport(pathToFileURL(path).toString());
     } else {
       return requireFunc(path);

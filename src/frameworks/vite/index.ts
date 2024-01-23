@@ -79,7 +79,7 @@ export async function discover(dir: string, plugin?: string, npmDependency?: str
 }
 
 export async function build(root: string, target: string) {
-  const { build } = relativeRequire(root, "vite");
+  const { build } = await relativeRequire(root, "vite");
 
   await warnIfCustomBuildScript(root, name, DEFAULT_BUILD_SCRIPT);
 
@@ -129,7 +129,7 @@ export async function getDevModeHandle(dir: string) {
 }
 
 async function getConfig(root: string) {
-  const { resolveConfig } = relativeRequire(root, "vite");
+  const { resolveConfig } = await relativeRequire(root, "vite");
   // SvelteKit uses process.cwd() unfortunately, we should be defensive here
   const cwd = process.cwd();
   process.chdir(root);
