@@ -89,6 +89,8 @@ export async function build(root: string, target: string) {
 
   const originalNodeEnv = process.env.NODE_ENV;
 
+  // Downcasting as `string` as otherwise it is inferred as `readonly 'NODE_ENV'`,
+  // but `env[key]` expects a non-readonly variable.
   const envKey: string = "NODE_ENV";
   // Voluntarily making .env[key] not statically analyzable to avoid
   // Webpack from converting it to "development" = target;
