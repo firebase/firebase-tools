@@ -37,6 +37,8 @@ export function isUrl(url: string): boolean {
 
 /**
  * add type to readJSON
+ *
+ * Note: `throws: false` won't work with the async function: https://github.com/jprichardson/node-fs-extra/issues/542
  */
 export function readJSON<JsonType = any>(
   file: string,
@@ -352,9 +354,10 @@ export async function relativeRequire(dir: string, mod: string) {
     let packageJson: PackageJson | undefined;
     let isEsm = extname(path) === ".mjs";
     if (!isEsm) {
-      packageJson = await readJSON<PackageJson>(join(dirname(path), "package.json"), {
-        throws: false,
-      });
+      packageJson = await readJSON<PackageJson | undefined>(
+        join(dirname(path), "package.json")
+      ).catch(() => undefined);
+
       isEsm = packageJson?.type === "module";
     }
 
