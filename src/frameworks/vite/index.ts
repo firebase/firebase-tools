@@ -78,7 +78,7 @@ export async function discover(dir: string, plugin?: string, npmDependency?: str
   };
 }
 
-export async function build(root: string) {
+export async function build(root: string, target: string) {
   const { build } = relativeRequire(root, "vite");
 
   await warnIfCustomBuildScript(root, name, DEFAULT_BUILD_SCRIPT);
@@ -86,7 +86,7 @@ export async function build(root: string) {
   // SvelteKit uses process.cwd() unfortunately, chdir
   const cwd = process.cwd();
   process.chdir(root);
-  await build({ root, mode: "production" });
+  await build({ root, mode: target });
   process.chdir(cwd);
 
   return { rewrites: [{ source: "**", destination: "/index.html" }] };
