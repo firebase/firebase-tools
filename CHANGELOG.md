@@ -4,3 +4,4 @@
 - Use framework build target in Vite builds (#6643).
 - Use framework build target in NODE_ENV for production Vite builds (#6644)
 - Let framework handle public directory with emulator. (#6674)
+- Dynamically import Vite to fix deprecated CJS build warning. (#6660)
