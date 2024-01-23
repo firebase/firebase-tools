@@ -912,7 +912,7 @@ function sendOobCode(
         email = user.email;
       }
       break;
-
+    // TODO: implement case for requestType VERIFY_AND_CHANGE_EMAIL.
     default:
       throw new NotImplementedError(reqBody.requestType);
   }
