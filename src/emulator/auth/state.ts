@@ -672,6 +672,8 @@ export class AgentProjectState extends ProjectState {
     if (!updateMask) {
       this.oneAccountPerEmail = !update.signIn?.allowDuplicateEmails ?? true;
       this.blockingFunctionsConfig = update.blockingFunctions ?? {};
+      this.enableImprovedEmailPrivacy =
+        update.emailPrivacyConfig?.enableImprovedEmailPrivacy ?? false;
       return this.config;
     }
     return applyMask(updateMask, this.config, update);

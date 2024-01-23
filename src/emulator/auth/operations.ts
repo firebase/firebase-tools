@@ -1929,6 +1929,9 @@ function getEmulatorProjectConfig(state: ProjectState): Schemas["EmulatorV1Proje
     signIn: {
       allowDuplicateEmails: !state.oneAccountPerEmail,
     },
+    emailPrivacyConfig: {
+      enableImprovedEmailPrivacy: state.enableImprovedEmailPrivacy,
+    },
   };
 }
 
@@ -1942,6 +1945,9 @@ function updateEmulatorProjectConfig(
   const updateMask = [];
   if (reqBody.signIn?.allowDuplicateEmails != null) {
     updateMask.push("signIn.allowDuplicateEmails");
+  }
+  if (reqBody.emailPrivacyConfig?.enableImprovedEmailPrivacy != null) {
+    updateMask.push("emailPrivacyConfig.enableImprovedEmailPrivacy");
   }
   ctx.params.query.updateMask = updateMask.join();
 
