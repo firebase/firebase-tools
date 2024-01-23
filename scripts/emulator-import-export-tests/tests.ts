@@ -277,6 +277,9 @@ describe("import/export end to end", () => {
         signIn: {
           allowDuplicateEmails: false,
         },
+        emailPrivacyConfig: {
+          enableImprovedEmailPrivacy: false,
+        },
       });
 
       const accountsPath = path.join(exportPath, "auth_export", "accounts.json");
@@ -382,6 +385,9 @@ describe("import/export end to end", () => {
         signIn: {
           allowDuplicateEmails: false,
         },
+        emailPrivacyConfig: {
+          enableImprovedEmailPrivacy: false,
+        },
       });
 
       const accountsPath = path.join(exportPath, "auth_export", "accounts.json");
@@ -446,6 +452,9 @@ describe("import/export end to end", () => {
     expect(configData).to.deep.equal({
       signIn: {
         allowDuplicateEmails: false,
+      },
+      emailPrivacyConfig: {
+        enableImprovedEmailPrivacy: false,
       },
     });
 
