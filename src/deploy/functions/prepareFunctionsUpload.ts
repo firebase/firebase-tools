@@ -7,14 +7,11 @@ import * as tmp from "tmp";
 
 import { FirebaseError } from "../../error";
 import { logger } from "../../logger";
-import { getSourceHash } from "./cache/hash";
 import * as backend from "./backend";
 import * as functionsConfig from "../../functionsConfig";
 import * as utils from "../../utils";
-import * as fsAsync from "../../fsAsync";
 import * as projectConfig from "../../functions/projectConfig";
-
-const CONFIG_DEST_FILE = ".runtimeconfig.json";
+import { prepareSource } from "./packaging/prepareSource";
 
 interface PackagedSourceInfo {
   pathToSource: string;
@@ -24,6 +21,9 @@ interface PackagedSourceInfo {
 type SortedConfig = string | { key: string; value: SortedConfig }[];
 
 // TODO(inlined): move to a file that's not about uploading source code
+/**
+ *
+ */
 export async function getFunctionsConfig(projectId: string): Promise<Record<string, unknown>> {
   try {
     return await functionsConfig.materializeAll(projectId);
@@ -60,56 +60,18 @@ async function packageSource(
   config: projectConfig.ValidatedSingle,
   runtimeConfig: any
 ): Promise<PackagedSourceInfo | undefined> {
-  const tmpFile = tmp.fileSync({ prefix: "firebase-functions-", postfix: ".zip" }).name;
+  const { hash, dir } = await prepareSource(sourceDir, config, runtimeConfig);
+  const tmpFile = tmp.fileSync({ name: `${path.basename(dir)}.zip` }).name;
   const fileStream = fs.createWriteStream(tmpFile, {
     flags: "w",
     encoding: "binary",
   });
   const archive = archiver("zip");
-  const hashes: string[] = [];
+  archive.directory(dir, false);
+  await pipeAsync(archive, fileStream);
 
-  // We must ignore firebase-debug.log or weird things happen if
-  // you're in the public dir when you deploy.
-  // We ignore any CONFIG_DEST_FILE that already exists, and write another one
-  // with current config values into the archive in the "end" handler for reader
-  const ignore = config.ignore || ["node_modules", ".git"];
-  ignore.push(
-    "firebase-debug.log",
-    "firebase-debug.*.log",
-    CONFIG_DEST_FILE /* .runtimeconfig.json */
-  );
-  try {
-    const files = await fsAsync.readdirRecursive({ path: sourceDir, ignore: ignore });
-    for (const file of files) {
-      const name = path.relative(sourceDir, file.name);
-      const fileHash = await getSourceHash(file.name);
-      hashes.push(fileHash);
-      archive.file(file.name, {
-        name,
-        mode: file.mode,
-      });
-    }
-    if (typeof runtimeConfig !== "undefined") {
-      // In order for hash to be consistent, configuration object tree must be sorted by key, only possible with arrays.
-      const runtimeConfigHashString = JSON.stringify(convertToSortedKeyValueArray(runtimeConfig));
-      hashes.push(runtimeConfigHashString);
-
-      const runtimeConfigString = JSON.stringify(runtimeConfig, null, 2);
-      archive.append(runtimeConfigString, {
-        name: CONFIG_DEST_FILE,
-        mode: 420 /* 0o644 */,
-      });
-    }
-    await pipeAsync(archive, fileStream);
-  } catch (err: any) {
-    throw new FirebaseError(
-      "Could not read source directory. Remove links and shortcuts and try again.",
-      {
-        original: err,
-        exit: 1,
-      }
-    );
-  }
+  // Delete tmp directory
+  fs.rmSync(dir, { recursive: true });
 
   utils.logBullet(
     clc.cyan(clc.bold("functions:")) +
@@ -119,10 +81,12 @@ async function packageSource(
       filesize(archive.pointer()) +
       ") for uploading"
   );
-  const hash = hashes.join(".");
   return { pathToSource: tmpFile, hash };
 }
 
+/**
+ *
+ */
 export async function prepareFunctionsUpload(
   sourceDir: string,
   config: projectConfig.ValidatedSingle,
@@ -131,6 +95,9 @@ export async function prepareFunctionsUpload(
   return packageSource(sourceDir, config, runtimeConfig);
 }
 
+/**
+ *
+ */
 export function convertToSortedKeyValueArray(config: any): SortedConfig {
   if (typeof config !== "object" || config === null) return config;
 
