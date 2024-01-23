@@ -35,7 +35,6 @@ describe("Flutter", () => {
         );
       expect(await discover(cwd)).to.deep.equal({
         mayWantBackend: false,
-        publicDirectory: "web",
       });
     });
 

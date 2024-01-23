@@ -20,7 +20,7 @@ export async function discover(dir: string): Promise<Discovery | undefined> {
   const pubSpec = loadYaml(pubSpecBuffer.toString());
   const usingFlutter = pubSpec.dependencies?.flutter;
   if (!usingFlutter) return;
-  return { mayWantBackend: false, publicDirectory: join(dir, "web") };
+  return { mayWantBackend: false };
 }
 
 export function init(setup: any, config: any) {
