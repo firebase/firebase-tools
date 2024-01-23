@@ -86,8 +86,16 @@ export async function build(root: string, target: string) {
   // SvelteKit uses process.cwd() unfortunately, chdir
   const cwd = process.cwd();
   process.chdir(root);
+
+  const originalNodeEnv = process.env.NODE_ENV;
+
+  let envKey = 'NODE_ENV'
+  process.env[envKey] = target;
+
   await build({ root, mode: target });
   process.chdir(cwd);
+
+  process.env[envKey] = originalNodeEnv;
 
   return { rewrites: [{ source: "**", destination: "/index.html" }] };
 }
