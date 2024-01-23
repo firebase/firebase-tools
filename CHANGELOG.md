@@ -1,4 +1,5 @@
 - Fixed issue where Auth emulator sign in with Google only shows default tenant. (#6683)
 - Prevent the use of pinTags + minInstances on the same function, as the features are not mutually compatible (#6684)
 - Add force flag to delete backend (#6635).
+- Use framework build target in Vite builds (#6643).
 - Use framework build target in NODE_ENV for production Vite builds (#6644)
