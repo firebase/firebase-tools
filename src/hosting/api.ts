@@ -449,8 +449,8 @@ export async function listVersions(site: string): Promise<Version[]> {
     const res = await apiClient.get<ListVersionsResponse>(`projects/-/sites/${site}/versions`, {
       queryParams,
     });
-    versions.push(...res.body.versions);
-    pageToken = res.body.nextPageToken;
+    versions.push(...(res.body?.versions || []));
+    pageToken = res.body?.nextPageToken;
   } while (pageToken);
   return versions;
 }
@@ -519,7 +519,7 @@ export async function listSites(project: string): Promise<Site[]> {
         `/projects/${project}/sites`,
         { queryParams: { pageToken: nextPageToken, pageSize: 10 } }
       );
-      const c = res.body.sites;
+      const c = res.body?.sites || [];
       if (c) {
         sites.push(...c);
       }
