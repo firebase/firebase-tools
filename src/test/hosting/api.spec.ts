@@ -104,6 +104,18 @@ describe("hosting", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("should return 0 channels if none are returned", async () => {
+      nock(hostingApiOrigin)
+        .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels`)
+        .query({ pageToken: "", pageSize: 10 })
+        .reply(200, {});
+
+      const res = await hostingApi.listChannels(PROJECT_ID, SITE);
+
+      expect(res).to.deep.equal([]);
+      expect(nock.isDone()).to.be.true;
+    });
+
     it("should make multiple API requests to list channels", async () => {
       nock(hostingApiOrigin)
         .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels`)
@@ -358,6 +370,15 @@ describe("hosting", () => {
       name: `projects/-/sites/${SITE}/versions/v2`,
     };
 
+    it("returns no versions if no versions are returned", async () => {
+      nock(hostingApiOrigin).get(`/v1beta1/projects/-/sites/${SITE}/versions`).reply(200, {});
+      nock(hostingApiOrigin);
+
+      const versions = await hostingApi.listVersions(SITE);
+      expect(versions).deep.equals([]);
+      expect(nock.isDone()).to.be.true;
+    });
+
     it("returns a single page of versions", async () => {
       nock(hostingApiOrigin)
         .get(`/v1beta1/projects/-/sites/${SITE}/versions`)
@@ -549,6 +570,18 @@ describe("hosting", () => {
       const res = await hostingApi.listSites(PROJECT_ID);
 
       expect(res).to.deep.equal([{ name: "site01" }]);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should return no sites if none are returned", async () => {
+      nock(hostingApiOrigin)
+        .get(`/v1beta1/projects/${PROJECT_ID}/sites`)
+        .query({ pageToken: "", pageSize: 10 })
+        .reply(200, {});
+
+      const res = await hostingApi.listSites(PROJECT_ID);
+
+      expect(res).to.deep.equal([]);
       expect(nock.isDone()).to.be.true;
     });
 

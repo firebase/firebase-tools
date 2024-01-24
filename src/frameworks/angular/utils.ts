@@ -17,7 +17,7 @@ async function localesForTarget(
   target: Target,
   workspaceProject: ProjectDefinition
 ) {
-  const { targetStringFromTarget } = relativeRequire(dir, "@angular-devkit/architect");
+  const { targetStringFromTarget } = await relativeRequire(dir, "@angular-devkit/architect");
   const targetOptions = await architectHost.getOptionsForTarget(target);
   if (!targetOptions) {
     const targetString = targetStringFromTarget(target);
@@ -98,10 +98,11 @@ function getValidBuilders(purpose: BUILD_TARGET_PURPOSE): string[] {
 
 export async function getAllTargets(purpose: BUILD_TARGET_PURPOSE, dir: string) {
   const validBuilders = getValidBuilders(purpose);
-  const { NodeJsAsyncHost } = relativeRequire(dir, "@angular-devkit/core/node");
-  const { workspaces } = relativeRequire(dir, "@angular-devkit/core");
-  const { targetStringFromTarget } = relativeRequire(dir, "@angular-devkit/architect");
-
+  const [{ NodeJsAsyncHost }, { workspaces }, { targetStringFromTarget }] = await Promise.all([
+    relativeRequire(dir, "@angular-devkit/core/node"),
+    relativeRequire(dir, "@angular-devkit/core"),
+    relativeRequire(dir, "@angular-devkit/architect"),
+  ]);
   const host = workspaces.createWorkspaceHost(new NodeJsAsyncHost());
   const { workspace } = await workspaces.readWorkspace(dir, host);
 
@@ -123,17 +124,19 @@ export async function getAllTargets(purpose: BUILD_TARGET_PURPOSE, dir: string) 
 
 // TODO(jamesdaniels) memoize, dry up
 export async function getContext(dir: string, targetOrConfiguration?: string) {
-  const { NodeJsAsyncHost } = relativeRequire(dir, "@angular-devkit/core/node");
-  const { workspaces } = relativeRequire(dir, "@angular-devkit/core");
-  const { WorkspaceNodeModulesArchitectHost } = relativeRequire(
-    dir,
-    "@angular-devkit/architect/node"
-  );
-  const { Architect, targetFromTargetString, targetStringFromTarget } = relativeRequire(
-    dir,
-    "@angular-devkit/architect"
-  );
-  const { parse } = relativeRequire(dir, "jsonc-parser");
+  const [
+    { NodeJsAsyncHost },
+    { workspaces },
+    { WorkspaceNodeModulesArchitectHost },
+    { Architect, targetFromTargetString, targetStringFromTarget },
+    { parse },
+  ] = await Promise.all([
+    relativeRequire(dir, "@angular-devkit/core/node"),
+    relativeRequire(dir, "@angular-devkit/core"),
+    relativeRequire(dir, "@angular-devkit/architect/node"),
+    relativeRequire(dir, "@angular-devkit/architect"),
+    relativeRequire(dir, "jsonc-parser"),
+  ]);
 
   const host = workspaces.createWorkspaceHost(new NodeJsAsyncHost());
   const { workspace } = await workspaces.readWorkspace(dir, host);
@@ -503,7 +506,7 @@ export async function getServerConfig(sourceDir: string, configuration: string) 
 }
 
 export async function getBuildConfig(sourceDir: string, configuration: string) {
-  const { targetStringFromTarget } = relativeRequire(sourceDir, "@angular-devkit/architect");
+  const { targetStringFromTarget } = await relativeRequire(sourceDir, "@angular-devkit/architect");
   const {
     buildTarget,
     browserTarget,
