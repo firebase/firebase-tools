@@ -7,15 +7,6 @@ import { assertKeyTypes, requireKeys } from "./parsing";
 import { FirebaseError } from "../../../../error";
 import { nullsafeVisitor } from "../../../../functional";
 
-const CHANNEL_NAME_REGEX = new RegExp(
-  "(projects\\/" +
-    "(?<project>(?:\\d+)|(?:[A-Za-z]+[A-Za-z\\d-]*[A-Za-z\\d]?))\\/)?" +
-    "locations\\/" +
-    "(?<location>[A-Za-z\\d\\-_]+)\\/" +
-    "channels\\/" +
-    "(?<channel>[A-Za-z\\d\\-_]+)"
-);
-
 export interface ManifestSecretEnv {
   key: string;
   secret?: string;
@@ -188,7 +179,7 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
       region: "Field<string>",
       serviceAccount: "string?",
       serviceAccountEmail: "string?",
-      channel: "string",
+      channel: "Field<string>?",
     });
   } else if (build.isHttpsTriggered(ep)) {
     assertKeyTypes(prefix + ".httpsTrigger", ep.httpsTrigger, {
@@ -273,10 +264,8 @@ function parseEndpointForBuild(
       ep.eventTrigger,
       "serviceAccount",
       "eventFilterPathPatterns",
-      "region"
-    );
-    convertIfPresent(eventTrigger, ep.eventTrigger, "channel", (c) =>
-      resolveChannelName(project, c, defaultRegion)
+      "region",
+      "channel"
     );
     convertIfPresent(eventTrigger, ep.eventTrigger, "eventFilters", (filters) => {
       const copy = { ...filters };
@@ -419,26 +408,6 @@ function parseEndpointForBuild(
     });
   });
   return parsed;
-}
-
-function resolveChannelName(projectId: string, channel: string, defaultRegion: string): string {
-  if (!channel.includes("/")) {
-    const location = defaultRegion;
-    const channelId = channel;
-    return "projects/" + projectId + "/locations/" + location + "/channels/" + channelId;
-  }
-  const match = CHANNEL_NAME_REGEX.exec(channel);
-  if (!match?.groups) {
-    throw new FirebaseError("Invalid channel name format.");
-  }
-  const matchedProjectId = match.groups.project;
-  const location = match.groups.location;
-  const channelId = match.groups.channel;
-  if (matchedProjectId) {
-    return "projects/" + matchedProjectId + "/locations/" + location + "/channels/" + channelId;
-  } else {
-    return "projects/" + projectId + "/locations/" + location + "/channels/" + channelId;
-  }
 }
 
 function isCEL(expr: any) {
