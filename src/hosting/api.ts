@@ -312,14 +312,11 @@ export async function listChannels(
   let nextPageToken = "";
   for (;;) {
     try {
-      const res = await apiClient.get<{ nextPageToken?: string; channels: Channel[] }>(
+      const res = await apiClient.get<{ nextPageToken?: string; channels?: Channel[] }>(
         `/projects/${project}/sites/${site}/channels`,
         { queryParams: { pageToken: nextPageToken, pageSize: 10 } }
       );
-      const c = res.body.channels;
-      if (c) {
-        channels.push(...c);
-      }
+      channels.push(...(res.body.channels ?? []));
       nextPageToken = res.body.nextPageToken || "";
       if (!nextPageToken) {
         return channels;
@@ -431,7 +428,7 @@ export async function updateVersion(
 }
 
 interface ListVersionsResponse {
-  versions: Version[];
+  versions?: Version[];
   nextPageToken?: string;
 }
 
@@ -449,8 +446,8 @@ export async function listVersions(site: string): Promise<Version[]> {
     const res = await apiClient.get<ListVersionsResponse>(`projects/-/sites/${site}/versions`, {
       queryParams,
     });
-    versions.push(...(res.body?.versions || []));
-    pageToken = res.body?.nextPageToken;
+    versions.push(...(res.body.versions ?? []));
+    pageToken = res.body.nextPageToken;
   } while (pageToken);
   return versions;
 }
@@ -515,14 +512,11 @@ export async function listSites(project: string): Promise<Site[]> {
   let nextPageToken = "";
   for (;;) {
     try {
-      const res = await apiClient.get<{ sites: Site[]; nextPageToken?: string }>(
+      const res = await apiClient.get<{ sites?: Site[]; nextPageToken?: string }>(
         `/projects/${project}/sites`,
         { queryParams: { pageToken: nextPageToken, pageSize: 10 } }
       );
-      const c = res.body?.sites || [];
-      if (c) {
-        sites.push(...c);
-      }
+      sites.push(...(res.body.sites ?? []));
       nextPageToken = res.body.nextPageToken || "";
       if (!nextPageToken) {
         return sites;
