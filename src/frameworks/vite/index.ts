@@ -88,15 +88,20 @@ export async function build(root: string, target: string) {
   process.chdir(root);
 
   const originalNodeEnv = process.env.NODE_ENV;
-  // @ts-expect-error - NODE_ENV is `development` when building for production
-  // temporarily replace with target during build
-  process.env.NODE_ENV = target;
+
+  // Downcasting as `string` as otherwise it is inferred as `readonly 'NODE_ENV'`,
+  // but `env[key]` expects a non-readonly variable.
+  const envKey: string = "NODE_ENV";
+  // Voluntarily making .env[key] not statically analyzable to avoid
+  // Webpack from converting it to "development" = target;
+  process.env[envKey] = target;
 
   await build({ root, mode: target });
   process.chdir(cwd);
 
-  // @ts-expect-error - restore NODE_ENV after build
-  process.env.NODE_ENV = originalNodeEnv;
+  // Voluntarily making .env[key] not statically analyzable to avoid
+  // Webpack from converting it to "development" = target;
+  process.env[envKey] = originalNodeEnv;
 
   return { rewrites: [{ source: "**", destination: "/index.html" }] };
 }
