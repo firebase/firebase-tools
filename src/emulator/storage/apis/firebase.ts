@@ -7,7 +7,7 @@ import { StorageEmulator } from "../index";
 import { sendFileBytes } from "./shared";
 import { EmulatorRegistry } from "../../registry";
 import { parseObjectUploadMultipartRequest } from "../multipart";
-import { NotFoundError, ForbiddenError } from "../errors";
+import { NotFoundError, ForbiddenError, BadRequestError } from "../errors";
 import {
   NotCancellableError,
   Upload,
@@ -15,16 +15,23 @@ import {
   UploadPreviouslyFinalizedError,
 } from "../upload";
 import { reqBodyToBuffer } from "../../shared/request";
-import { ListObjectsResponse } from "../files";
-
+import { ListObjectsResponse, CreateSignedUrlResponse } from "../files";
+import {
+  SIGNED_URL_DEFAULT_TTL_SECONDS,
+  UNEXPECTED_ERROR,
+  X_FIREBASE_DATE,
+  X_FIREBASE_EXPIRES,
+  X_FIREBASE_SIGNATURE,
+} from "../constants";
+import { ParsedQs } from "qs";
 /**
+ *
  * @param emulator
  */
 export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   // eslint-disable-next-line new-cap
   const firebaseStorageAPI = Router();
   const { storageLayer, uploadService } = emulator;
-
   if (process.env.STORAGE_EMULATOR_DEBUG) {
     firebaseStorageAPI.use((req, res, next) => {
       console.log("--------------INCOMING FIREBASE REQUEST--------------");
@@ -34,7 +41,6 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       console.log("-- headers:");
       console.log(JSON.stringify(req.headers, undefined, 2));
       console.log("-- body:");
-
       if (req.body instanceof Buffer) {
         console.log(`Buffer of ${req.body.length}`);
       } else if (req.body) {
@@ -93,6 +99,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   firebaseStorageAPI.get("/b/:bucketId/o/:objectId", async (req, res) => {
     let metadata: StoredFileMetadata;
     let data: Buffer;
+
     try {
       // Both object data and metadata get can use the same handler since they share auth logic.
       ({ metadata, data } = await storageLayer.getObject({
@@ -100,18 +107,24 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         decodedObjectId: decodeURIComponent(req.params.objectId),
         authorization: req.header("authorization"),
         downloadToken: req.query.token?.toString(),
+        signedUrl: {
+          signature: req.query[X_FIREBASE_SIGNATURE] as string,
+          usableSeconds: req.query[X_FIREBASE_DATE] as string,
+          ttlSeconds: validateNumber(req.query[X_FIREBASE_EXPIRES]),
+          base: `${req.protocol}://${req.hostname}:${req.socket.localPort}`,
+        },
       }));
     } catch (err) {
-      if (err instanceof NotFoundError) {
-        return res.sendStatus(404);
-      } else if (err instanceof ForbiddenError) {
-        return res.status(403).json({
+      const errorCode = errorToHttpCode(err);
+      if (errorCode !== UNEXPECTED_ERROR) {
+        return res.status(errorCode).json({
           error: {
-            code: 403,
-            message: `Permission denied. No READ permission.`,
+            code: errorCode,
+            message: (err as Error).message,
           },
         });
       }
+
       throw err;
     }
 
@@ -128,6 +141,32 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     return res.json(new OutgoingFirebaseMetadata(metadata));
   });
 
+  firebaseStorageAPI.post(`/b/:bucketId/o/:objectId[(:)]generateSignedUrl`, async (req, res) => {
+    let signedUrlResponse: CreateSignedUrlResponse;
+    try {
+      signedUrlResponse = await storageLayer.generateSignedUrl({
+        bucketId: req.params.bucketId,
+        decodedObjectId: decodeURIComponent(req.params.objectId),
+        authorization: req.header("authorization"),
+        baseUrl: `${req.protocol}://${req.hostname}:${req.socket.localPort}`,
+        ttlSeconds: req.body.ttlSeconds ?? SIGNED_URL_DEFAULT_TTL_SECONDS,
+      });
+    } catch (err) {
+      const errorCode = errorToHttpCode(err);
+      if (errorCode !== UNEXPECTED_ERROR) {
+        return res.status(errorCode).json({
+          error: {
+            code: errorCode,
+            message: (err as Error).message,
+          },
+        });
+      }
+
+      throw err;
+    }
+    return res.json(signedUrlResponse);
+  });
+
   // list object handler
   firebaseStorageAPI.get("/b/:bucketId/o", async (req, res) => {
     const maxResults = req.query.maxResults?.toString();
@@ -136,7 +175,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     let prefix = "";
     if (req.query.prefix) {
       prefix = req.query.prefix.toString();
-      if (prefix.charAt(prefix.length - 1) !== "/") {
+      if (!prefix.endsWith("/")) {
         return res.status(400).json({
           error: {
             code: 400,
@@ -343,7 +382,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       let dataRaw: Buffer;
       try {
         ({ metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(
-          contentTypeHeader!,
+          contentTypeHeader,
           await reqBodyToBuffer(req)
         ));
       } catch (err) {
@@ -548,4 +587,33 @@ function isValidNonEncodedPathString(path: string): boolean {
 
 function removeAtMostOneTrailingSlash(path: string): string {
   return path.replace(/\/$/, "");
+}
+
+function errorToHttpCode(err: any) {
+  if (err instanceof ForbiddenError) {
+    return 403;
+  }
+  if (err instanceof NotFoundError) {
+    return 404;
+  }
+  if (err instanceof BadRequestError) {
+    return 400;
+  }
+
+  return UNEXPECTED_ERROR;
+}
+function validateNumber(
+  reqTTLSeconds: string | ParsedQs | string[] | ParsedQs[] | undefined
+): number | undefined {
+  if (
+    !(
+      typeof reqTTLSeconds === "string" &&
+      reqTTLSeconds.length > 0 &&
+      !isNaN(Number(reqTTLSeconds))
+    )
+  ) {
+    return undefined;
+  }
+
+  return Number(reqTTLSeconds);
 }

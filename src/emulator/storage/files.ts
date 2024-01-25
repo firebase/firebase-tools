@@ -5,7 +5,7 @@ import {
   IncomingMetadata,
   StoredFileMetadata,
 } from "./metadata";
-import { NotFoundError, ForbiddenError } from "./errors";
+import { NotFoundError, ForbiddenError, BadRequestError } from "./errors";
 import * as path from "path";
 import * as fse from "fs-extra";
 import { StorageCloudFunctions } from "./cloudFunctions";
@@ -20,7 +20,15 @@ import { Persistence } from "./persistence";
 import { Upload, UploadStatus } from "./upload";
 import { trackEmulator } from "../../track";
 import { Emulators } from "../types";
-
+import { createHmac } from "crypto";
+import {
+  SECONDS_TO_MS_FACTOR,
+  SIGNED_URL_MAX_TTL_SECONDS,
+  SIGNED_URL_MIN_TTL_SECONDS,
+  SIGNED_URL_PRIVATE_KEY,
+  X_FIREBASE_DATE,
+  X_FIREBASE_EXPIRES,
+} from "./constants";
 interface BucketsList {
   buckets: {
     id: string;
@@ -40,12 +48,34 @@ export class StoredFile {
   }
 }
 
+/**  Parsed request object for {@link StorageLayer#generateSignedUrl}. */
+export type CreateSignedUrlRequest = {
+  bucketId: string;
+  decodedObjectId: string;
+  authorization?: string;
+  baseUrl: string;
+  ttlSeconds: number;
+};
+
+/** Response object for {@link StorageLayer#generateSignedUrl}. */
+export type CreateSignedUrlResponse = {
+  signed_url: string;
+};
+
+export type SignedUrlParams = {
+  signature?: string;
+  usableSeconds?: string;
+  ttlSeconds?: number;
+  base?: string;
+};
+
 /**  Parsed request object for {@link StorageLayer#getObject}. */
 export type GetObjectRequest = {
   bucketId: string;
   decodedObjectId: string;
   authorization?: string;
   downloadToken?: string;
+  signedUrl?: SignedUrlParams;
 };
 
 /** Response object for {@link StorageLayer#getObject}. */
@@ -111,6 +141,14 @@ export type CopyObjectRequest = {
   authorization?: string;
 };
 
+export type CreateUnsignedUrl = {
+  bucketId: string;
+  decodedObjectId: string;
+  url: string;
+  usableSeconds: string;
+  ttlSeconds: number;
+};
+
 // Matches any number of "/" at the end of a string.
 const TRAILING_SLASHES_PATTERN = /\/+$/;
 
@@ -124,6 +162,64 @@ export class StorageLayer {
     private _persistence: Persistence,
     private _cloudFunctions: StorageCloudFunctions
   ) {}
+
+  /**
+   * Create SignedUrl
+   * @date 6/28/2023 - 2:56:09 PM
+   *
+   * @async
+   * @param {GetObjectRequest} request
+   * @returns {Promise<boolean>}
+   */
+  async generateSignedUrl(request: CreateSignedUrlRequest): Promise<CreateSignedUrlResponse> {
+    const metadata = this.getMetadata(request.bucketId, request.decodedObjectId);
+
+    const currentDate = getCurrentDate();
+
+    const ttl = request.ttlSeconds;
+    if (!(typeof ttl === "number" && Number.isInteger(ttl))) {
+      throw new BadRequestError(`Invalid TTL: ${ttl} is not an integer.`);
+    }
+
+    if (ttl < SIGNED_URL_MIN_TTL_SECONDS || ttl > SIGNED_URL_MAX_TTL_SECONDS) {
+      throw new BadRequestError(
+        `Invalid TTL: ${ttl} is out of range. Must be > ${SIGNED_URL_MIN_TTL_SECONDS} and < ${SIGNED_URL_MAX_TTL_SECONDS}`
+      );
+    }
+
+    const authorized = await this._rulesValidator.validate(
+      ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
+      request.bucketId,
+      RulesetOperationMethod.GET,
+      { before: metadata?.asRulesResource() },
+      this._projectId,
+      request.authorization
+    );
+
+    if (!authorized) {
+      throw new ForbiddenError();
+    }
+
+    if (!metadata) {
+      throw new NotFoundError(
+        `Object /b/${request.bucketId}/o/${request.decodedObjectId} does not exist.`
+      );
+    }
+
+    const unsignedUrl = createUnsignedUrl({
+      bucketId: request.bucketId,
+      decodedObjectId: request.decodedObjectId,
+      url: request.baseUrl,
+      usableSeconds: currentDate,
+      ttlSeconds: request.ttlSeconds,
+    });
+
+    return {
+      signed_url: `${unsignedUrl}&X-Firebase-Signature=${encodeURIComponent(
+        createSignature(unsignedUrl)
+      )}`,
+    };
+  }
 
   createBucket(id: string): void {
     if (!this._buckets.has(id)) {
@@ -149,14 +245,41 @@ export class StorageLayer {
    * @throws {ForbiddenError} if request is unauthorized
    */
   public async getObject(request: GetObjectRequest): Promise<GetObjectResponse> {
+    let authorized = true;
     const metadata = this.getMetadata(request.bucketId, request.decodedObjectId);
 
     // If a valid download token is present, skip Firebase Rules auth. Mainly used by the js sdk.
     const hasValidDownloadToken = (metadata?.downloadTokens || []).includes(
       request.downloadToken ?? ""
     );
-    let authorized = hasValidDownloadToken;
-    if (!authorized) {
+
+    if (!hasValidDownloadToken) {
+      if (request.signedUrl?.signature) {
+        const start = validateSignedUrlAndReturnStartTs(request.signedUrl);
+
+        const changeInTime = request.signedUrl.ttlSeconds! * SECONDS_TO_MS_FACTOR;
+        const end = start + changeInTime;
+        const now = convertDateToMS(getCurrentDate());
+
+        if (!(now >= start && now < end)) {
+          throw new BadRequestError("Url has Expired");
+        }
+
+        const unsignedUrl = createUnsignedUrl({
+          bucketId: request.bucketId,
+          decodedObjectId: request.decodedObjectId,
+          url: request.signedUrl.base as string,
+          usableSeconds: request.signedUrl.usableSeconds!,
+          ttlSeconds: request.signedUrl.ttlSeconds!,
+        });
+
+        if (!(createSignature(unsignedUrl) === request.signedUrl.signature)) {
+          throw new ForbiddenError("Invalid Url");
+        }
+      }
+    }
+
+    if (!(hasValidDownloadToken || request.signedUrl?.signature)) {
       authorized = await this._rulesValidator.validate(
         ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
         request.bucketId,
@@ -166,8 +289,9 @@ export class StorageLayer {
         request.authorization
       );
     }
+
     if (!authorized) {
-      throw new ForbiddenError("Failed auth");
+      throw new ForbiddenError();
     }
 
     if (!metadata) {
@@ -660,4 +784,78 @@ function getPathSep(decodedPath: string): string {
   // Checks for the first matching file separator
   const firstSepIndex = decodedPath.search(/[\/|\\\\]/g);
   return decodedPath[firstSepIndex];
+}
+export function convertDateToMS(currentDate: string) {
+  const year = +currentDate.slice(0, 4);
+  const month = +currentDate.slice(4, 6) - 1;
+  const day = +currentDate.slice(6, 8);
+  const hour = +currentDate.slice(9, 11);
+  const minute = +currentDate.slice(11, 13);
+  const second = +currentDate.slice(13, 15);
+
+  const date = new Date(Date.UTC(year, month, day, hour, minute, second));
+
+  return date.getTime();
+}
+export function createSignature(unsignedUrl: string) {
+  return createHmac("sha256", SIGNED_URL_PRIVATE_KEY).update(unsignedUrl).digest("base64");
+}
+
+export function createUnsignedUrl({
+  url,
+  bucketId,
+  decodedObjectId,
+  usableSeconds,
+  ttlSeconds,
+}: CreateUnsignedUrl) {
+  return `${url}/v0/b/${bucketId}/o/${encodeURIComponent(
+    decodedObjectId
+  )}?alt=media&X-Firebase-Date=${usableSeconds}&X-Firebase-Expires=${ttlSeconds}`;
+}
+
+/**
+ * Returns the current date is ISO format: YYYYMMDD'T'HHMMSS'Z
+ * @date 7/18/2023 - 10:14:44 AM
+ *
+ * @export
+ * @returns {Date}
+ */
+export function getCurrentDate() {
+  return getSignedUrlTimestampFor(new Date());
+}
+
+export function getSignedUrlTimestampFor(date: Date): string {
+  return date.toISOString().replaceAll("-", "").replaceAll(":", "").replaceAll(".", "");
+}
+
+/**
+ * Validates the parameters of the signedUrlParams. If everything is valid, returns the start time of the URL
+ * @date 7/18/2023 - 10:35:56 AM
+ *
+ * @param {SignedUrlParams} signedUrl
+ * @returns {number}
+ */
+function validateSignedUrlAndReturnStartTs(signedUrl: SignedUrlParams) {
+  if (!signedUrl.usableSeconds || !signedUrl.ttlSeconds) {
+    throw new BadRequestError(
+      `Missing required parameter ${
+        signedUrl.usableSeconds
+          ? `${X_FIREBASE_EXPIRES}: TTL`
+          : `${X_FIREBASE_DATE}: YYYYMMDD'T'HHMMSS'Z'`
+      }`
+    );
+  }
+
+  const start = convertDateToMS(signedUrl.usableSeconds);
+
+  if (!start) {
+    throw new BadRequestError(
+      `Invalid format for ${X_FIREBASE_DATE}, expected YYYYMMDD'T'HHMMSS'Z'`
+    );
+  }
+  if (!Number.isInteger(signedUrl.ttlSeconds)) {
+    throw new BadRequestError(`Invalid format for ${X_FIREBASE_EXPIRES}, not an integer.'`);
+  }
+
+  return start;
 }
