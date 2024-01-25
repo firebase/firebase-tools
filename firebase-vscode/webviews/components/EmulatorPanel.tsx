@@ -182,7 +182,7 @@ export function EmulatorPanel({
       <span>
         {"Current project ID: "}
         {/* TODO(christhompson): convert this into a demo- prefix checkbox or something. */}
-        <kbd>{emulatorUiSelections.projectId}</kbd>
+        <b>{emulatorUiSelections.projectId}</b>
       </span>
       <Spacer size="xxlarge" />
       Import emulator state from directory:
