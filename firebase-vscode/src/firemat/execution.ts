@@ -1,4 +1,8 @@
-import vscode, { Disposable, ExtensionContext } from "vscode";
+import vscode, {
+  ConfigurationTarget,
+  Disposable,
+  ExtensionContext,
+} from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { registerWebview } from "../webview";
 import { ExecutionHistoryTreeDataProvider } from "./execution-history-provider";
@@ -13,29 +17,30 @@ import {
   updateExecution,
 } from "./execution-store";
 import { batch, effect } from "@preact/signals-core";
-import { OperationDefinitionNode, print } from "graphql";
+import { OperationDefinitionNode, OperationTypeNode, print } from "graphql";
 import { FirematService } from "./service";
 import { FirematError, toSerializedError } from "../../common/error";
 import { OperationLocation } from "./types";
+import { isFirematEmulatorRunning } from "../core/emulators";
 
 export function registerExecution(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl,
-  firematService: FirematService
+  firematService: FirematService,
 ): Disposable {
   const treeDataProvider = new ExecutionHistoryTreeDataProvider();
   const executionHistoryTreeView = vscode.window.createTreeView(
     "firemat-execution-history",
     {
       treeDataProvider,
-    }
+    },
   );
 
   // Select the corresponding tree-item when the selected-execution-id updates
   effect(() => {
     const id = selectedExecutionId.value;
     const selectedItem = treeDataProvider.executionItems.find(
-      ({ item }) => item.executionId === id
+      ({ item }) => item.executionId === id,
     );
     executionHistoryTreeView.reveal(selectedItem, { select: true });
   });
@@ -58,8 +63,36 @@ export function registerExecution(
 
   async function executeOperation(
     ast: OperationDefinitionNode,
-    { document, documentPath, position }: OperationLocation
+    { document, documentPath, position }: OperationLocation,
   ) {
+    const configs = vscode.workspace.getConfiguration("firebase.firemat");
+    const alwaysSettingsKey = "alwaysAllowMutationsInProduction";
+
+    // Warn against using mutations in production.
+    if (
+      !isFirematEmulatorRunning.value &&
+      !configs.get(alwaysSettingsKey) &&
+      ast.operation === OperationTypeNode.MUTATION
+    ) {
+      const always = "Yes (always)";
+      const yes = "Yes";
+      const result = await vscode.window.showWarningMessage(
+        "You are about to perform a mutation in production environment. Are you sure?",
+        { modal: true },
+        yes,
+        always,
+      );
+
+      if (result !== always && result !== yes) {
+        return;
+      }
+
+      // If the user selects "always", we update User settings.
+      if (result === always) {
+        configs.update(alwaysSettingsKey, true, ConfigurationTarget.Global);
+      }
+    }
+
     const item = createExecution({
       label: ast.name?.value ?? "anonymous",
       timestamp: Date.now(),
@@ -132,13 +165,13 @@ export function registerExecution(
     executionHistoryTreeView,
     vscode.commands.registerCommand(
       "firebase.firemat.executeOperation",
-      executeOperation
+      executeOperation,
     ),
     vscode.commands.registerCommand(
       "firebase.firemat.selectExecutionResultToShow",
       (executionId) => {
         selectExecutionId(executionId);
-      }
-    )
+      },
+    ),
   );
 }

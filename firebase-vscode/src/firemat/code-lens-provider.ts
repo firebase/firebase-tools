@@ -60,7 +60,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
   ): vscode.CodeLens[] {
     // Wait for configs to be loaded and emulator to be running
     const configs = this.watch(firematConfig);
-    if (!configs || !this.watch(isFirematEmulatorRunning)) {
+    if (!configs) {
       return [];
     }
 
@@ -82,12 +82,22 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
           position: position,
         };
         const opKind = x.operation as string; // query or mutation
-        const schemaPath = configs.schema.main.source;
 
-        if (isPathInside(document.fileName, schemaPath)) {
+        const isInSchemaFolder = isPathInside(
+          document.fileName,
+          configs.schema.main.source,
+        );
+        const isInOperationFolder = isPathInside(
+          document.fileName,
+          configs.operationSet.crud.source,
+        );
+
+        if (isInSchemaFolder || isInOperationFolder) {
           codeLenses.push(
             new vscode.CodeLens(range, {
-              title: `$(play) Execute ${opKind}`,
+              title: isFirematEmulatorRunning.value
+                ? `$(play) Run`
+                : `$(play) Run (production)`,
               command: "firebase.firemat.executeOperation",
               tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
               arguments: [x, operationLocation],
@@ -95,8 +105,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
           );
         }
 
-        const connectorPath = configs.operationSet.crud.source;
-        if (!isPathInside(document.fileName, connectorPath)) {
+        if (this.watch(isFirematEmulatorRunning) && !isInOperationFolder) {
           codeLenses.push(
             new vscode.CodeLens(range, {
               title: `$(plug) Move to connector`,
