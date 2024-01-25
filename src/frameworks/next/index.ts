@@ -626,7 +626,7 @@ export async function getDevModeHandle(dir: string, _: string, hostingEmulatorIn
     }
   }
 
-  let next = relativeRequire(dir, "next");
+  let next = await relativeRequire(dir, "next");
   if ("default" in next) next = next.default;
   const nextApp = next({
     dev: true,
@@ -651,8 +651,10 @@ async function getConfig(
     const version = getNextVersion(dir);
     if (!version) throw new Error("Unable to find the next dep, try NPM installing?");
     if (gte(version, "12.0.0")) {
-      const { default: loadConfig } = relativeRequire(dir, "next/dist/server/config");
-      const { PHASE_PRODUCTION_BUILD } = relativeRequire(dir, "next/constants");
+      const [{ default: loadConfig }, { PHASE_PRODUCTION_BUILD }] = await Promise.all([
+        relativeRequire(dir, "next/dist/server/config"),
+        relativeRequire(dir, "next/constants"),
+      ]);
       config = await loadConfig(PHASE_PRODUCTION_BUILD, dir);
     } else {
       try {
