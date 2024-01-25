@@ -371,7 +371,7 @@ describeAuthEmulator("accounts:sendOobCode", ({ authApi, getClock }) => {
       });
   });
 
-  it("should return email when sending a password reset to non-existent user with improved email privacy enabled", async () => {
+  it("should return email address when sending a password reset to non-existent user with improved email privacy enabled", async () => {
     const user = { email: "alice@example.com", password: "notasecret" };
     await updateConfig(
       authApi(),
