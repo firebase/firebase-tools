@@ -18,7 +18,7 @@ export interface BillingAccount {
 export async function checkBillingEnabled(projectId: string): Promise<boolean> {
   const res = await client.get<{ billingEnabled: boolean }>(
     utils.endpoint(["projects", projectId, "billingInfo"]),
-    { retryCodes: [500, 503] }
+    { retryCodes: [500, 503] },
   );
   return res.body.billingEnabled;
 }
@@ -30,14 +30,14 @@ export async function checkBillingEnabled(projectId: string): Promise<boolean> {
  */
 export async function setBillingAccount(
   projectId: string,
-  billingAccountName: string
+  billingAccountName: string,
 ): Promise<boolean> {
   const res = await client.put<{ billingAccountName: string }, { billingEnabled: boolean }>(
     utils.endpoint(["projects", projectId, "billingInfo"]),
     {
       billingAccountName: billingAccountName,
     },
-    { retryCodes: [500, 503] }
+    { retryCodes: [500, 503] },
   );
   return res.body.billingEnabled;
 }
@@ -49,7 +49,7 @@ export async function setBillingAccount(
 export async function listBillingAccounts(): Promise<BillingAccount[]> {
   const res = await client.get<{ billingAccounts: BillingAccount[] }>(
     utils.endpoint(["billingAccounts"]),
-    { retryCodes: [500, 503] }
+    { retryCodes: [500, 503] },
   );
   return res.body.billingAccounts || [];
 }

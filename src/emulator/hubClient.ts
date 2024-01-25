@@ -42,7 +42,7 @@ export class EmulatorHubClient {
 
   async getEmulators(): Promise<GetEmulatorsResponse> {
     const res = await this.tryOrigins((client) =>
-      client.get<GetEmulatorsResponse>(EmulatorHub.PATH_EMULATORS)
+      client.get<GetEmulatorsResponse>(EmulatorHub.PATH_EMULATORS),
     );
     return res.body;
   }

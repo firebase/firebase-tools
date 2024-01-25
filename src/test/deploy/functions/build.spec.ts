@@ -40,7 +40,7 @@ describe("toBackend", () => {
           ? endpointDef.func.httpsTrigger.invoker
             ? endpointDef.func.httpsTrigger.invoker[0]
             : ""
-          : ""
+          : "",
       ).to.equal("public");
     }
   });
@@ -107,7 +107,7 @@ describe("toBackend", () => {
       expect(endpointDef.func.project).to.equal("project");
       expect(endpointDef.func.region).to.equal("us-central1");
       expect(
-        "httpsTrigger" in endpointDef.func ? endpointDef.func.httpsTrigger.invoker : []
+        "httpsTrigger" in endpointDef.func ? endpointDef.func.httpsTrigger.invoker : [],
       ).to.have.members(["service-account-1@", "service-account-2@"]);
     }
   });
@@ -152,7 +152,7 @@ describe("toBackend", () => {
       expect(endpointDef.func.minInstances).to.equal(1);
       expect(endpointDef.func.serviceAccount).to.equal("service-account-1@");
       expect(
-        "httpsTrigger" in endpointDef.func ? endpointDef.func.httpsTrigger.invoker : []
+        "httpsTrigger" in endpointDef.func ? endpointDef.func.httpsTrigger.invoker : [],
       ).to.have.members(["service-account-2@", "service-account-3@"]);
     }
   });

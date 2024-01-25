@@ -20,7 +20,7 @@ describe("Command", () => {
         (arr: string[]) => {
           return arr;
         },
-        ["foo", "bar"]
+        ["foo", "bar"],
       );
       command.help("here's how!");
       command.action(() => {

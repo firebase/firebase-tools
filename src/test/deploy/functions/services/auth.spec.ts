@@ -54,7 +54,7 @@ describe("authBlocking", () => {
       };
 
       expect(() => authBlockingService.validateTrigger(ep1, backend.of(ep1, ep2))).to.throw(
-        `Can only create at most one Auth Blocking Trigger for ${BEFORE_CREATE_EVENT} events`
+        `Can only create at most one Auth Blocking Trigger for ${BEFORE_CREATE_EVENT} events`,
       );
     });
 
@@ -79,7 +79,7 @@ describe("authBlocking", () => {
       };
 
       expect(() => authBlockingService.validateTrigger(ep1, backend.of(ep1, ep2))).to.throw(
-        `Can only create at most one Auth Blocking Trigger for ${BEFORE_SIGN_IN_EVENT} events`
+        `Can only create at most one Auth Blocking Trigger for ${BEFORE_SIGN_IN_EVENT} events`,
       );
     });
 

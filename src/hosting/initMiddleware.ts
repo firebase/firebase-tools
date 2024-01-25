@@ -14,7 +14,7 @@ const SDK_PATH_REGEXP = /^\/__\/firebase\/([^/]+)\/([^/]+)$/;
  * @return the middleware function.
  */
 export function initMiddleware(
-  init: TemplateServerResponse
+  init: TemplateServerResponse,
 ): (req: IncomingMessage, res: ServerResponse, next: () => void) => void {
   return (req, res, next) => {
     const parsedUrl = new URL(req.url || "", `http://${req.headers.host}`);
@@ -49,7 +49,7 @@ export function initMiddleware(
         .catch((e) => {
           utils.logLabeledWarning(
             "hosting",
-            `Could not load Firebase SDK ${sdkName} v${version}, check your internet connection.`
+            `Could not load Firebase SDK ${sdkName} v${version}, check your internet connection.`,
           );
           logger.debug(e);
         });

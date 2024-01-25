@@ -7,7 +7,7 @@ import { FirebaseError } from "../error";
 
 export const command = new Command("login:use <email>")
   .description(
-    "set the default account to use for this project directory or the global default account if not in a Firebase project directory"
+    "set the default account to use for this project directory or the global default account if not in a Firebase project directory",
   )
   .action((email: string, options: any) => {
     const allAccounts = auth.getAllAccounts();
@@ -15,8 +15,8 @@ export const command = new Command("login:use <email>")
     if (!accountExists) {
       throw new FirebaseError(
         `Account ${email} does not exist, run "${clc.bold(
-          "firebase login:list"
-        )}" to see valid accounts`
+          "firebase login:list",
+        )}" to see valid accounts`,
       );
     }
 
@@ -42,8 +42,8 @@ export const command = new Command("login:use <email>")
         // should never happen
         throw new FirebaseError(
           `Account ${email} does not exist, run "${clc.bold(
-            "firebase login:list"
-          )}" to see valid accounts`
+            "firebase login:list",
+          )}" to see valid accounts`,
         );
       }
       const oldDefaultAccount = auth.getGlobalDefaultAccount();

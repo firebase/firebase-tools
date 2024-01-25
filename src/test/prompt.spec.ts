@@ -29,7 +29,7 @@ describe("prompt", () => {
 
       await expect(prompt.prompt(o, qs)).to.be.rejectedWith(
         FirebaseError,
-        /required.+non-interactive/
+        /required.+non-interactive/,
       );
     });
 

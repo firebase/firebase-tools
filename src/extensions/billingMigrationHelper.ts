@@ -52,7 +52,7 @@ function hasRuntime(spec: ExtensionSpec, runtime: string): boolean {
  */
 export function displayNode10UpdateBillingNotice(
   curSpec: ExtensionSpec,
-  newSpec: ExtensionSpec
+  newSpec: ExtensionSpec,
 ): void {
   if (hasRuntime(curSpec, "nodejs8") && hasRuntime(newSpec, "nodejs10")) {
     utils.logLabeledWarning(logPrefix, marked(billingMsgUpdate));
@@ -67,7 +67,7 @@ export function displayNode10UpdateBillingNotice(
  */
 export async function displayNode10CreateBillingNotice(
   spec: ExtensionSpec,
-  prompt: boolean
+  prompt: boolean,
 ): Promise<void> {
   if (hasRuntime(spec, "nodejs10")) {
     utils.logLabeledWarning(logPrefix, marked(billingMsgCreate));

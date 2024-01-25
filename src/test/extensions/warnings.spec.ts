@@ -47,7 +47,7 @@ const testExtension = (publisherId: string): Extension => {
 const testInstanceSpec = (
   publisherId: string,
   instanceId: string,
-  listingState: ListingState
+  listingState: ListingState,
 ): DeploymentInstanceSpec => {
   return {
     instanceId,
@@ -97,7 +97,7 @@ describe("displayWarningsForDeploy", () => {
     expect(warned).to.be.true;
     expect(loggerStub).to.have.been.calledWithMatch(
       "extensions",
-      "have not been published to the Firebase Extensions Hub"
+      "have not been published to the Firebase Extensions Hub",
     );
   });
 });

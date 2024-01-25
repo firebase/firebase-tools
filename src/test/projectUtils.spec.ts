@@ -65,7 +65,7 @@ describe("needProjectNumber", () => {
 
     await expect(needProjectNumber({ project: "foo" })).to.eventually.be.rejectedWith(
       Error,
-      "oh no"
+      "oh no",
     );
   });
 });

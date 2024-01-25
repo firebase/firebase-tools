@@ -26,7 +26,7 @@ describe("accountImporter", () => {
 
     it("should not reject when passwordHash is valid base64", () => {
       expect(
-        transArrayToUser(["123", undefined, undefined, "Jlf7onfLbzqPNFP/1pqhx6fQF/w="])
+        transArrayToUser(["123", undefined, undefined, "Jlf7onfLbzqPNFP/1pqhx6fQF/w="]),
       ).to.not.have.property("error");
     });
   });
@@ -47,7 +47,7 @@ describe("accountImporter", () => {
         validateUserJson({
           uid: "123",
           email: "test@test.org",
-        })
+        }),
       ).to.have.property("error");
     });
 
@@ -63,7 +63,7 @@ describe("accountImporter", () => {
               email: "test@test.org",
             },
           ],
-        })
+        }),
       ).to.have.property("error");
     });
 
@@ -79,7 +79,7 @@ describe("accountImporter", () => {
               email: "test@test.org",
             },
           ],
-        })
+        }),
       ).to.have.property("error");
     });
 
@@ -88,7 +88,7 @@ describe("accountImporter", () => {
         validateUserJson({
           localId: "123",
           passwordHash: "false",
-        })
+        }),
       ).to.have.property("error");
     });
 
@@ -97,7 +97,7 @@ describe("accountImporter", () => {
         validateUserJson({
           localId: "123",
           passwordHash: "Jlf7onfLbzqPNFP/1pqhx6fQF/w=",
-        })
+        }),
       ).to.not.have.property("error");
     });
   });

@@ -20,7 +20,7 @@ import { requirePermissions } from "../requirePermissions";
 
 export const command = new Command("ext:export")
   .description(
-    "export all Extension instances installed on a project to a local Firebase directory"
+    "export all Extension instances installed on a project to a local Firebase directory",
   )
   .before(requirePermissions, ["firebaseextensions.instances.list"])
   .before(ensureExtensionsApiEnabled)
@@ -36,7 +36,7 @@ export const command = new Command("ext:export")
 
     if (have.length === 0) {
       logger.info(
-        `No extension instances installed on ${projectId}, so there is nothing to export.`
+        `No extension instances installed on ${projectId}, so there is nothing to export.`,
       );
       return;
     }
@@ -47,7 +47,7 @@ export const command = new Command("ext:export")
       withRef.map(async (i) => {
         const subbed = await setSecretParamsToLatest(i);
         return parameterizeProject(projectId, projectNumber, subbed);
-      })
+      }),
     );
 
     displayExportInfo(withRefSubbed, withoutRef);
@@ -88,7 +88,7 @@ export const command = new Command("ext:export")
         nonInteractive: options.nonInteractive,
         force: options.force,
       },
-      true /** allowOverwrite */
+      true /** allowOverwrite */,
     );
 
     saveEtags(options.rc, projectId, have);

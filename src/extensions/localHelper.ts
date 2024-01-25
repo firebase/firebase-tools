@@ -35,7 +35,7 @@ export function findExtensionYaml(directory: string): string {
     const parentDir = path.dirname(directory);
     if (parentDir === directory) {
       throw new FirebaseError(
-        "Couldn't find an extension.yaml file. Check that you are in the root directory of your extension."
+        "Couldn't find an extension.yaml file. Check that you are in the root directory of your extension.",
       );
     }
     directory = parentDir;

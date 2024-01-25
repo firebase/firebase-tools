@@ -9,11 +9,11 @@ const TEMPLATE_ROOT = path.resolve(__dirname, "../../../../templates/init/functi
 const INDEX_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "index.js"), "utf8");
 const PACKAGE_LINTING_TEMPLATE = fs.readFileSync(
   path.join(TEMPLATE_ROOT, "package.lint.json"),
-  "utf8"
+  "utf8",
 );
 const PACKAGE_NO_LINTING_TEMPLATE = fs.readFileSync(
   path.join(TEMPLATE_ROOT, "package.nolint.json"),
-  "utf8"
+  "utf8",
 );
 const ESLINT_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_eslintrc"), "utf8");
 const GITIGNORE_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_gitignore"), "utf8");
@@ -39,7 +39,7 @@ export function setup(setup: any, config: any): Promise<any> {
       }
       return config.askWriteProjectFile(
         `${setup.functions.source}/package.json`,
-        PACKAGE_NO_LINTING_TEMPLATE
+        PACKAGE_NO_LINTING_TEMPLATE,
       );
     })
     .then(() => {

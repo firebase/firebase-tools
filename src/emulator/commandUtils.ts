@@ -72,12 +72,12 @@ export const DEFAULT_CONFIG = new Config(
     hosting: {},
     emulators: { auth: {}, pubsub: {} },
   },
-  {}
+  {},
 );
 
 export function printNoticeIfEmulated(
   options: any,
-  emulator: Emulators.DATABASE | Emulators.FIRESTORE
+  emulator: Emulators.DATABASE | Emulators.FIRESTORE,
 ): void {
   if (emulator !== Emulators.DATABASE && emulator !== Emulators.FIRESTORE) {
     return;
@@ -92,15 +92,15 @@ export function printNoticeIfEmulated(
   if (envVal) {
     utils.logBullet(
       `You have set ${clc.bold(
-        `${envKey}=${envVal}`
-      )}, this command will execute against the ${emuName} running at that address.`
+        `${envKey}=${envVal}`,
+      )}, this command will execute against the ${emuName} running at that address.`,
     );
   }
 }
 
 export function warnEmulatorNotSupported(
   options: any,
-  emulator: Emulators.DATABASE | Emulators.FIRESTORE
+  emulator: Emulators.DATABASE | Emulators.FIRESTORE,
 ): void | Promise<void> {
   if (emulator !== Emulators.DATABASE && emulator !== Emulators.FIRESTORE) {
     return;
@@ -116,8 +116,8 @@ export function warnEmulatorNotSupported(
   if (envVal) {
     utils.logWarning(
       `You have set ${clc.bold(
-        `${envKey}=${envVal}`
-      )}, however this command does not support running against the ${emuName} so this action will affect production.`
+        `${envKey}=${envVal}`,
+      )}, however this command does not support running against the ${emuName} so this action will affect production.`,
     );
 
     const opts = {
@@ -157,8 +157,8 @@ export async function beforeEmulatorCommand(options: any): Promise<any> {
     utils.logLabeledWarning(
       "emulators",
       `You are not currently authenticated so some features may not work correctly. Please run ${clc.bold(
-        "firebase login"
-      )} to authenticate the CLI.`
+        "firebase login",
+      )} to authenticate the CLI.`,
     );
   }
 
@@ -179,7 +179,7 @@ export function parseInspectionPort(options: any): number {
   const parsed = Number(port);
   if (isNaN(parsed) || parsed < 1024 || parsed > 65535) {
     throw new FirebaseError(
-      `"${port}" is not a valid port for debugging, please pass an integer between 1024 and 65535.`
+      `"${port}" is not a valid port for debugging, please pass an integer between 1024 and 65535.`,
     );
   }
 
@@ -233,7 +233,7 @@ function processKillSignal(
   signal: Signals,
   res: (value?: void) => void,
   rej: (value?: unknown) => void,
-  options: any
+  options: any,
 ): SignalsListener {
   let lastSignal = new Date().getTime();
   let signalCount = 0;
@@ -257,11 +257,11 @@ function processKillSignal(
       if (signalCount === 1) {
         utils.logLabeledBullet(
           "emulators",
-          `Received ${signalDisplay} for the first time. Starting a clean shutdown.`
+          `Received ${signalDisplay} for the first time. Starting a clean shutdown.`,
         );
         utils.logLabeledBullet(
           "emulators",
-          `Please wait for a clean shutdown or send the ${signalDisplay} signal again to stop right now.`
+          `Please wait for a clean shutdown or send the ${signalDisplay} signal again to stop right now.`,
         );
         // in case of a double 'Ctrl-C' we do not want to cleanly exit with onExit/cleanShutdown
         await controller.onExit(options);
@@ -269,7 +269,7 @@ function processKillSignal(
       } else {
         logger.debug(`Skipping clean onExit() and cleanShutdown()`);
         const runningEmulatorsInfosWithPid = EmulatorRegistry.listRunningWithInfo().filter((i) =>
-          Boolean(i.pid)
+          Boolean(i.pid),
         );
 
         utils.logLabeledWarning(
@@ -278,7 +278,7 @@ function processKillSignal(
             runningEmulatorsInfosWithPid.length
           } subprocess${
             runningEmulatorsInfosWithPid.length > 1 ? "es" : ""
-          } to finish. These processes ${clc.bold("may")} still be running on your machine: `
+          } to finish. These processes ${clc.bold("may")} still be running on your machine: `,
         );
 
         const pids: number[] = [];
@@ -328,7 +328,7 @@ export function shutdownWhenKilled(options: any): Promise<void> {
     logger.debug(e);
     utils.logLabeledWarning(
       "emulators",
-      "emulators failed to shut down cleanly, see firebase-debug.log for details."
+      "emulators failed to shut down cleanly, see firebase-debug.log for details.",
     );
     throw e;
   });
@@ -480,11 +480,11 @@ export async function checkJavaMajorVersion(): Promise<number> {
         ["-Duser.language=en", "-Dfile.encoding=UTF-8", "-version"],
         {
           stdio: ["inherit", "pipe", "pipe"],
-        }
+        },
       );
     } catch (err: any) {
       return reject(
-        new FirebaseError(`Could not spawn \`java -version\`. ${JAVA_HINT}`, { original: err })
+        new FirebaseError(`Could not spawn \`java -version\`. ${JAVA_HINT}`, { original: err }),
       );
     }
 
@@ -503,7 +503,7 @@ export async function checkJavaMajorVersion(): Promise<number> {
 
     child.once("error", (err) => {
       reject(
-        new FirebaseError(`Could not spawn \`java -version\`. ${JAVA_HINT}`, { original: err })
+        new FirebaseError(`Could not spawn \`java -version\`. ${JAVA_HINT}`, { original: err }),
       );
     });
 
@@ -520,8 +520,8 @@ export async function checkJavaMajorVersion(): Promise<number> {
           new FirebaseError(
             `Process \`java -version\` has exited with code ${code}. ${JAVA_HINT}\n` +
               `-----Original stdout-----\n${output}` +
-              `-----Original stderr-----\n${error}`
-          )
+              `-----Original stderr-----\n${error}`,
+          ),
         );
       } else {
         // Join child process stdout and stderr for further parsing. Order does
@@ -539,7 +539,7 @@ export async function checkJavaMajorVersion(): Promise<number> {
         utils.logLabeledWarning(
           "emulators",
           `Failed to parse Java version. Got "${match[0]}".`,
-          "warn"
+          "warn",
         );
       } else {
         logger.debug(`Parsed Java major version: ${versionInt}`);

@@ -27,7 +27,7 @@ export function fetchMOTD(): void {
         ", need at least",
         clc.bold(motd.minVersion) + ")\n\nRun",
         clc.bold("npm install -g firebase-tools"),
-        "to upgrade."
+        "to upgrade.",
       );
       process.exit(1);
     }
@@ -52,7 +52,7 @@ export function fetchMOTD(): void {
       })
       .catch((err) => {
         utils.logWarning(
-          "Unable to fetch the CLI MOTD and remote config. This is not a fatal error, but may indicate an issue with your network connection."
+          "Unable to fetch the CLI MOTD and remote config. This is not a fatal error, but may indicate an issue with your network connection.",
         );
         logger.debug(`Failed to fetch MOTD ${err}`);
       });

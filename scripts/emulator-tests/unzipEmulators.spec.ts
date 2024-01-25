@@ -57,13 +57,13 @@ describe("unzipEmulators", () => {
     expect(pubsubFiles).to.include("pubsub-emulator");
 
     const pubsubEmulatorFiles = await fs.promises.readdir(
-      path.join(ZIP_TEMPORARY_PATH, "pubsub", "pubsub-emulator")
+      path.join(ZIP_TEMPORARY_PATH, "pubsub", "pubsub-emulator"),
     );
     expect(pubsubEmulatorFiles).to.include("bin");
     expect(pubsubEmulatorFiles).to.include("lib");
 
     const binFiles = await fs.promises.readdir(
-      path.join(ZIP_TEMPORARY_PATH, "pubsub", "pubsub-emulator", "bin")
+      path.join(ZIP_TEMPORARY_PATH, "pubsub", "pubsub-emulator", "bin"),
     );
     expect(binFiles).to.include("cloud-pubsub-emulator");
   }).timeout(10000);
@@ -90,9 +90,9 @@ async function downloadFile(url: string, targetPath: string): Promise<string> {
       }: ${await res.response.text()}`,
       {
         cause: new Error(
-          `Object DownloadDetails from src${path.sep}emulator${path.sep}downloadableEmulators.ts contains invalid URL: ${url}`
+          `Object DownloadDetails from src${path.sep}emulator${path.sep}downloadableEmulators.ts contains invalid URL: ${url}`,
         ),
-      }
+      },
     );
   }
 

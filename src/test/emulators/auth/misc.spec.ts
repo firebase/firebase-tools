@@ -319,7 +319,7 @@ describeAuthEmulator("createSessionCookie", ({ authApi }) => {
         expect(decoded, "session cookie is invalid").not.to.be.null;
         expect(decoded!.header.alg).to.eql("none");
         expect(decoded!.payload.exp).to.equal(
-          toUnixTimestamp(new Date()) + SESSION_COOKIE_MAX_VALID_DURATION
+          toUnixTimestamp(new Date()) + SESSION_COOKIE_MAX_VALID_DURATION,
         );
       });
   });
@@ -599,5 +599,5 @@ describeAuthEmulator(
         });
     });
   },
-  SingleProjectMode.ERROR
+  SingleProjectMode.ERROR,
 );

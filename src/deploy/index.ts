@@ -49,7 +49,7 @@ const chain = async function (fns: Chain, context: any, options: any, payload: a
 export const deploy = async function (
   targetNames: (keyof typeof TARGETS)[],
   options: any,
-  customContext = {}
+  customContext = {},
 ) {
   const projectId = needProjectId(options);
   const payload = {};
@@ -83,7 +83,7 @@ export const deploy = async function (
               "using a GitHub action version that did not include Cloud Functions " +
               "permissions. Please reinstall the GitHub action with" +
               clc.bold("firebase init hosting:github"),
-            { original: e as Error }
+            { original: e as Error },
           );
         } else {
           throw e;

@@ -55,7 +55,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
     this.logger.logLabeled(
       "DEBUG",
       "Extensions",
-      "Connecting Extensions emulator, this is a noop."
+      "Connecting Extensions emulator, this is a noop.",
     );
     return Promise.resolve();
   }
@@ -64,7 +64,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
     const functionsEmulator = EmulatorRegistry.get(Emulators.FUNCTIONS);
     if (!functionsEmulator) {
       throw new FirebaseError(
-        "Extensions Emulator is running but Functions emulator is not. This should never happen."
+        "Extensions Emulator is running but Functions emulator is not. This should never happen.",
       );
     }
     return { ...functionsEmulator.getInfo(), name: this.getName() };
@@ -93,7 +93,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
     if (instance.localPath) {
       if (!this.hasValidSource({ path: instance.localPath, extTarget: instance.localPath })) {
         throw new FirebaseError(
-          `Tried to emulate local extension at ${instance.localPath}, but it was missing required files.`
+          `Tried to emulate local extension at ${instance.localPath}, but it was missing required files.`,
         );
       }
       return path.resolve(instance.localPath);
@@ -120,7 +120,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
       return sourceCodePath;
     } else {
       throw new FirebaseError(
-        "Tried to emulate an extension instance without a ref or localPath. This should never happen."
+        "Tried to emulate an extension instance without a ref or localPath. This should never happen.",
       );
     }
   }
@@ -128,7 +128,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
   private async downloadSource(
     instance: planner.InstanceSpec,
     ref: string,
-    sourceCodePath: string
+    sourceCodePath: string,
   ): Promise<void> {
     const extensionVersion = await planner.getExtensionVersion(instance);
     await downloadExtensionVersion(ref, extensionVersion.sourceDownloadUri, sourceCodePath);
@@ -154,7 +154,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
         this.logger.logLabeled(
           "BULLET",
           "extensions",
-          `Detected invalid source code for ${args.extTarget}, expected to find ${f}`
+          `Detected invalid source code for ${args.extTarget}, expected to find ${f}`,
         );
         return false;
       }
@@ -179,7 +179,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
     this.logger.logLabeled(
       "DEBUG",
       "Extensions",
-      `Running "npm run gcp-build" for ${sourceCodePath}`
+      `Running "npm run gcp-build" for ${sourceCodePath}`,
     );
     const npmRunGCPBuild = spawn.sync("npm", ["run", "gcp-build"], {
       encoding: "utf8",
@@ -193,7 +193,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
     this.logger.logLabeled(
       "DEBUG",
       "Extensions",
-      `Finished "npm run gcp-build" for ${sourceCodePath}`
+      `Finished "npm run gcp-build" for ${sourceCodePath}`,
     );
   }
 
@@ -209,7 +209,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
     this.backends = await Promise.all(
       this.want.map((i: planner.DeploymentInstanceSpec) => {
         return this.toEmulatableBackend(i);
-      })
+      }),
     );
     return this.backends;
   }
@@ -219,7 +219,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
    * It is exported for testing.
    */
   public async toEmulatableBackend(
-    instance: planner.DeploymentInstanceSpec
+    instance: planner.DeploymentInstanceSpec,
   ): Promise<EmulatableBackend> {
     const extensionDir = await this.ensureSourceCode(instance);
 
@@ -279,7 +279,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
       for (const apiToWarn of apisToWarn) {
         // We use a shortened link here instead of a alias because cli-table behaves poorly with aliased links
         const enablementUri = await shortenUrl(
-          enableApiURI(this.args.projectId, apiToWarn.apiName)
+          enableApiURI(this.args.projectId, apiToWarn.apiName),
         );
         table.push([
           apiToWarn.apiName,
@@ -294,9 +294,9 @@ export class ExtensionsEmulator implements EmulatorInstance {
           "Extensions",
           "The following Extensions make calls to Google Cloud APIs that do not have Emulators. " +
             `${clc.bold(
-              this.args.projectId
+              this.args.projectId,
             )} is a demo project, so these Extensions may not work as expected.\n` +
-            table.toString()
+            table.toString(),
         );
       } else {
         this.logger.logLabeled(
@@ -304,9 +304,9 @@ export class ExtensionsEmulator implements EmulatorInstance {
           "Extensions",
           "The following Extensions make calls to Google Cloud APIs that do not have Emulators. " +
             `These calls will go to production Google Cloud APIs which may have real effects on ${clc.bold(
-              this.args.projectId
+              this.args.projectId,
             )}.\n` +
-            table.toString()
+            table.toString(),
         );
       }
     }
@@ -319,7 +319,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
    */
   public filterUnemulatedTriggers(
     options: Options,
-    backends: EmulatableBackend[]
+    backends: EmulatableBackend[],
   ): EmulatableBackend[] {
     let foundUnemulatedTrigger = false;
     const filteredBackends = backends.filter((backend) => {
@@ -327,9 +327,9 @@ export class ExtensionsEmulator implements EmulatorInstance {
       if (unemulatedServices.length) {
         foundUnemulatedTrigger = true;
         const msg = ` ignored becuase it includes ${unemulatedServices.join(
-          ", "
+          ", ",
         )} triggered functions, and the ${unemulatedServices.join(
-          ", "
+          ", ",
         )} emulator does not exist or is not running.`;
         this.logger.logLabeled("WARN", `extensions[${backend.extensionInstanceId}]`, msg);
       }

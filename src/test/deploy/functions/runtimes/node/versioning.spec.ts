@@ -42,7 +42,7 @@ describe("checkFunctionsSDKVersion", () => {
     versioning.checkFunctionsSDKVersion("5.9.9");
     expect(warningSpy).to.have.been.calledWith(sinon.match("Please upgrade"));
     expect(warningSpy).to.have.been.calledWith(
-      sinon.match("Please note that there will be breaking changes")
+      sinon.match("Please note that there will be breaking changes"),
     );
   });
 });

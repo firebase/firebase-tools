@@ -11,7 +11,7 @@ const DEFAULT_RULES_FILE = "firestore.rules";
 
 const RULES_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../../templates/init/firestore/firestore.rules",
-  "utf8"
+  "utf8",
 );
 
 export function initRules(setup: any, config: any): Promise<any> {

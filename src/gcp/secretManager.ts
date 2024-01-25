@@ -10,12 +10,12 @@ const SECRET_NAME_REGEX = new RegExp(
   "projects\\/" +
     "(?<project>(?:\\d+)|(?:[A-Za-z]+[A-Za-z\\d-]*[A-Za-z\\d]?))\\/" +
     "secrets\\/" +
-    "(?<secret>[A-Za-z\\d\\-_]+)"
+    "(?<secret>[A-Za-z\\d\\-_]+)",
 );
 
 // Matches projects/{PROJECT}/secrets/{SECRET}/versions/{latest|VERSION}
 const SECRET_VERSION_NAME_REGEX = new RegExp(
-  SECRET_NAME_REGEX.source + "\\/versions\\/" + "(?<version>latest|[0-9]+)"
+  SECRET_NAME_REGEX.source + "\\/versions\\/" + "(?<version>latest|[0-9]+)",
 );
 
 export const secretManagerConsoleUri = (projectId: string) =>
@@ -112,7 +112,7 @@ export async function listSecrets(projectId: string, filter?: string): Promise<S
 export async function getSecretMetadata(
   projectId: string,
   secretName: string,
-  version: string
+  version: string,
 ): Promise<{
   secret?: Secret;
   secretVersion?: SecretVersion;
@@ -136,7 +136,7 @@ export async function getSecretMetadata(
 export async function listSecretVersions(
   projectId: string,
   name: string,
-  filter?: string
+  filter?: string,
 ): Promise<Required<SecretVersion[]>> {
   type Response = { versions: SecretVersionResponse[]; nextPageToken?: string };
   const secrets: Required<SecretVersion[]> = [];
@@ -172,10 +172,10 @@ export async function listSecretVersions(
 export async function getSecretVersion(
   projectId: string,
   name: string,
-  version: string
+  version: string,
 ): Promise<Required<SecretVersion>> {
   const getRes = await client.get<SecretVersionResponse>(
-    `projects/${projectId}/secrets/${name}/versions/${version}`
+    `projects/${projectId}/secrets/${name}/versions/${version}`,
   );
   return {
     ...parseSecretVersionResourceName(getRes.body.name),
@@ -189,10 +189,10 @@ export async function getSecretVersion(
 export async function accessSecretVersion(
   projectId: string,
   name: string,
-  version: string
+  version: string,
 ): Promise<string> {
   const res = await client.get<AccessSecretVersionResponse>(
-    `projects/${projectId}/secrets/${name}/versions/${version}:access`
+    `projects/${projectId}/secrets/${name}/versions/${version}:access`,
   );
   return Buffer.from(res.body.payload.data, "base64").toString();
 }
@@ -203,7 +203,7 @@ export async function accessSecretVersion(
 export async function destroySecretVersion(
   projectId: string,
   name: string,
-  version: string
+  version: string,
 ): Promise<void> {
   if (version === "latest") {
     const sv = await getSecretVersion(projectId, name, "latest");
@@ -271,7 +271,7 @@ export function toSecretVersionResourceName(secretVersion: SecretVersion): strin
 export async function createSecret(
   projectId: string,
   name: string,
-  labels: Record<string, string>
+  labels: Record<string, string>,
 ): Promise<Secret> {
   const createRes = await client.post<CreateSecretRequest, Secret>(
     `projects/${projectId}/secrets`,
@@ -282,7 +282,7 @@ export async function createSecret(
       },
       labels,
     },
-    { queryParams: { secretId: name } }
+    { queryParams: { secretId: name } },
   );
   return {
     ...parseSecretResourceName(createRes.body.name),
@@ -296,13 +296,13 @@ export async function createSecret(
 export async function patchSecret(
   projectId: string,
   name: string,
-  labels: Record<string, string>
+  labels: Record<string, string>,
 ): Promise<Secret> {
   const fullName = `projects/${projectId}/secrets/${name}`;
   const res = await client.patch<Omit<Secret, "projectId">, Secret>(
     fullName,
     { name: fullName, labels },
-    { queryParams: { updateMask: "labels" } } // Only allow patching labels for now.
+    { queryParams: { updateMask: "labels" } }, // Only allow patching labels for now.
   );
   return parseSecretResourceName(res.body.name);
 }
@@ -321,7 +321,7 @@ export async function deleteSecret(projectId: string, name: string): Promise<voi
 export async function addVersion(
   projectId: string,
   name: string,
-  payloadData: string
+  payloadData: string,
 ): Promise<Required<SecretVersion>> {
   const res = await client.post<AddVersionRequest, { name: string; state: SecretVersionState }>(
     `projects/${projectId}/secrets/${name}:addVersion`,
@@ -329,7 +329,7 @@ export async function addVersion(
       payload: {
         data: Buffer.from(payloadData).toString("base64"),
       },
-    }
+    },
   );
   return {
     ...parseSecretVersionResourceName(res.body.name),
@@ -342,7 +342,7 @@ export async function addVersion(
  */
 export async function getIamPolicy(secret: Secret): Promise<iam.Policy> {
   const res = await client.get<iam.Policy>(
-    `projects/${secret.projectId}/secrets/${secret.name}:getIamPolicy`
+    `projects/${secret.projectId}/secrets/${secret.name}:getIamPolicy`,
   );
   return res.body;
 }
@@ -358,7 +358,7 @@ export async function setIamPolicy(secret: Secret, bindings: iam.Binding[]): Pro
         bindings,
       },
       updateMask: "bindings",
-    }
+    },
   );
 }
 
@@ -368,7 +368,7 @@ export async function setIamPolicy(secret: Secret, bindings: iam.Binding[]): Pro
 export async function ensureServiceAgentRole(
   secret: Secret,
   serviceAccountEmails: string[],
-  role: string
+  role: string,
 ): Promise<void> {
   const policy = await module.exports.getIamPolicy(secret);
   const bindings: iam.Binding[] = policy.bindings || [];
@@ -396,6 +396,6 @@ export async function ensureServiceAgentRole(
     "secretmanager",
     `Granted ${role} on projects/${secret.projectId}/secrets/${
       secret.name
-    } to ${serviceAccountEmails.join(", ")}`
+    } to ${serviceAccountEmails.join(", ")}`,
   );
 }

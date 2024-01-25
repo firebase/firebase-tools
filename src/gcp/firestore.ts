@@ -38,7 +38,7 @@ export async function getDatabase(project: string, database: string): Promise<Da
     return resp.body;
   } catch (err: unknown) {
     logger.info(
-      `There was an error retrieving the Firestore database. Currently, the database id is set to ${database}, make sure it exists.`
+      `There was an error retrieving the Firestore database. Currently, the database id is set to ${database}, make sure it exists.`,
     );
     throw err;
   }

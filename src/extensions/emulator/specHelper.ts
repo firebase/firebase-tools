@@ -66,18 +66,18 @@ export async function readPostinstall(directory: string): Promise<string> {
  */
 export function readFileFromDirectory(
   directory: string,
-  file: string
+  file: string,
 ): Promise<{ source: string; sourceDirectory: string }> {
   return new Promise<string>((resolve, reject) => {
     fs.readFile(path.resolve(directory, file), "utf8", (err, data) => {
       if (err) {
         if (err.code === "ENOENT") {
           return reject(
-            new FirebaseError(`Could not find "${file}" in "${directory}"`, { original: err })
+            new FirebaseError(`Could not find "${file}" in "${directory}"`, { original: err }),
           );
         }
         reject(
-          new FirebaseError(`Failed to read file "${file}" in "${directory}"`, { original: err })
+          new FirebaseError(`Failed to read file "${file}" in "${directory}"`, { original: err }),
         );
       } else {
         resolve(data);
@@ -96,10 +96,10 @@ export function readFileFromDirectory(
  */
 export function getFunctionResourcesWithParamSubstitution(
   extensionSpec: ExtensionSpec,
-  params: { [key: string]: string }
+  params: { [key: string]: string },
 ): Resource[] {
   const rawResources = extensionSpec.resources.filter((resource) =>
-    validFunctionTypes.includes(resource.type)
+    validFunctionTypes.includes(resource.type),
   );
   return substituteParams<Resource[]>(rawResources, params);
 }
@@ -137,8 +137,8 @@ export function getRuntime(resources: Resource[]): string {
   if (invalidRuntimes.length) {
     throw new FirebaseError(
       `The following runtimes are not supported by the Emulator Suite: ${invalidRuntimes.join(
-        ", "
-      )}. \n Only Node runtimes are supported.`
+        ", ",
+      )}. \n Only Node runtimes are supported.`,
     );
   }
   // Assumes that all runtimes target the nodejs.

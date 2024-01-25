@@ -175,7 +175,7 @@ function validateRequiredParameters(options: any): any {
     case "HMAC_MD5":
       if (!options.hashKey || options.hashKey === "") {
         throw new FirebaseError(
-          "Must provide hash key(base64 encoded) for hash algorithm " + options.hashAlgo
+          "Must provide hash key(base64 encoded) for hash algorithm " + options.hashAlgo,
         );
       }
       return { hashAlgo: hashAlgo, hashKey: options.hashKey, valid: true };
@@ -188,7 +188,7 @@ function validateRequiredParameters(options: any): any {
       const minRounds = hashAlgo === "MD5" ? 0 : 1;
       if (isNaN(roundsNum) || roundsNum < minRounds || roundsNum > 8192) {
         throw new FirebaseError(
-          `Must provide valid rounds(${minRounds}..8192) for hash algorithm ${options.hashAlgo}`
+          `Must provide valid rounds(${minRounds}..8192) for hash algorithm ${options.hashAlgo}`,
         );
       }
       return { hashAlgo: hashAlgo, rounds: options.rounds, valid: true };
@@ -197,26 +197,26 @@ function validateRequiredParameters(options: any): any {
       roundsNum = parseInt(options.rounds, 10);
       if (isNaN(roundsNum) || roundsNum < 0 || roundsNum > 120000) {
         throw new FirebaseError(
-          "Must provide valid rounds(0..120000) for hash algorithm " + options.hashAlgo
+          "Must provide valid rounds(0..120000) for hash algorithm " + options.hashAlgo,
         );
       }
       return { hashAlgo: hashAlgo, rounds: options.rounds, valid: true };
     case "SCRYPT":
       if (!options.hashKey || options.hashKey === "") {
         throw new FirebaseError(
-          "Must provide hash key(base64 encoded) for hash algorithm " + options.hashAlgo
+          "Must provide hash key(base64 encoded) for hash algorithm " + options.hashAlgo,
         );
       }
       roundsNum = parseInt(options.rounds, 10);
       if (isNaN(roundsNum) || roundsNum <= 0 || roundsNum > 8) {
         throw new FirebaseError(
-          "Must provide valid rounds(1..8) for hash algorithm " + options.hashAlgo
+          "Must provide valid rounds(1..8) for hash algorithm " + options.hashAlgo,
         );
       }
       const memCost = parseInt(options.memCost, 10);
       if (isNaN(memCost) || memCost <= 0 || memCost > 14) {
         throw new FirebaseError(
-          "Must provide valid memory cost(1..14) for hash algorithm " + options.hashAlgo
+          "Must provide valid memory cost(1..14) for hash algorithm " + options.hashAlgo,
         );
       }
       let saltSeparator = "";
@@ -260,7 +260,7 @@ function validateProviderUserInfo(providerUserInfo: { providerId: string; error?
     };
   }
   const keydiff = Object.keys(providerUserInfo).filter(
-    (k) => !ALLOWED_PROVIDER_USER_INFO_KEYS.includes(k)
+    (k) => !ALLOWED_PROVIDER_USER_INFO_KEYS.includes(k),
   );
   if (keydiff.length) {
     return {
@@ -316,7 +316,7 @@ async function sendRequest(projectId: string, userList: any[], hashOptions: any)
               account: JSON.stringify(userList[parseInt(rawInfo.index, 10)], null, 2),
               reason: rawInfo.message,
             };
-          })
+          }),
         );
       } else {
         utils.logSuccess("Imported successfully.");
@@ -329,7 +329,7 @@ export function serialImportUsers(
   projectId: string,
   hashOptions: any,
   userListArr: any[],
-  index: number
+  index: number,
 ): Promise<any> {
   return sendRequest(projectId, userListArr[index], hashOptions).then(() => {
     if (index < userListArr.length - 1) {

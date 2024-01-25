@@ -51,7 +51,7 @@ export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], s
 export const command = new Command("deploy")
   .description("deploy code and assets to your Firebase project")
   .withForce(
-    "delete Cloud Functions missing from the current working directory and bypass interactive prompts"
+    "delete Cloud Functions missing from the current working directory and bypass interactive prompts",
   )
   .option("-p, --public <path>", "override the Hosting public directory specified in firebase.json")
   .option("-m, --message <message>", "an optional message describing this deploy")
@@ -60,7 +60,7 @@ export const command = new Command("deploy")
     'only deploy to specified, comma-separated targets (e.g. "hosting,storage"). For functions, ' +
       'can specify filters with colons to scope function deploys to only those functions (e.g. "--only functions:func1,functions:func2"). ' +
       "When filtering based on export groups (the exported module object keys), use dots to specify group names " +
-      '(e.g. "--only functions:group1.subgroup1,functions:group2)"'
+      '(e.g. "--only functions:group1.subgroup1,functions:group2)"',
   )
   .option("--except <targets>", 'deploy to all targets except specified (e.g. "database")')
   .before(requireConfig)
@@ -97,8 +97,8 @@ export const command = new Command("deploy")
       if (options.nonInteractive) {
         throw new FirebaseError(
           `Unable to deploy to Hosting as there is no Hosting site. Use ${bold(
-            "firebase hosting:sites:create"
-          )} to create a site.`
+            "firebase hosting:sites:create",
+          )} to create a site.`,
         );
       }
       logBullet("No Hosting site detected.");

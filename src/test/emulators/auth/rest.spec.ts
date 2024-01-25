@@ -168,7 +168,7 @@ describeAuthEmulator("authentication", ({ authApi }) => {
       .set(
         "Authorization",
         // Not an actual token. Breaking it down to avoid linter false positives.
-        "Bearer ya" + "29.AHES0ZZZZZ0fff" + "ff0XXXX0mmmm0wwwww0-LL_l-0bb0b0bbbbbb"
+        "Bearer ya" + "29.AHES0ZZZZZ0fff" + "ff0XXXX0mmmm0wwwww0-LL_l-0bb0b0bbbbbb",
       )
       .send({
         // This field requires OAuth 2 and should work correctly.
@@ -193,7 +193,7 @@ describeAuthEmulator("authentication", ({ authApi }) => {
         expect(res.body.error)
           .to.have.property("message")
           .equals(
-            "INSUFFICIENT_PERMISSION : Only authenticated requests can specify target_project_id."
+            "INSUFFICIENT_PERMISSION : Only authenticated requests can specify target_project_id.",
           );
       });
   });
@@ -201,7 +201,7 @@ describeAuthEmulator("authentication", ({ authApi }) => {
   it("should deny requests where tenant IDs do not match in the request body and path", async () => {
     await authApi()
       .post(
-        "/identitytoolkit.googleapis.com/v1/projects/project-id/tenants/tenant-id/accounts:delete"
+        "/identitytoolkit.googleapis.com/v1/projects/project-id/tenants/tenant-id/accounts:delete",
       )
       .set("Authorization", "Bearer owner")
       .send({ localId: "local-id", tenantId: "mismatching-tenant-id" })
@@ -224,7 +224,7 @@ describeAuthEmulator("authentication", ({ authApi }) => {
 
     await authApi()
       .post(
-        `/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/tenants/not-matching-tenant-id/accounts:lookup`
+        `/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/tenants/not-matching-tenant-id/accounts:lookup`,
       )
       .send({ idToken })
       .set("Authorization", "Bearer owner")

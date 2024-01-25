@@ -36,7 +36,7 @@ export class EmulatorRegistry {
     EmulatorLogger.forEmulator(name).logLabeled(
       "BULLET",
       name,
-      `Stopping ${Constants.description(name)}`
+      `Stopping ${Constants.description(name)}`,
     );
     const instance = this.get(name);
     if (!instance) {
@@ -50,7 +50,7 @@ export class EmulatorRegistry {
       EmulatorLogger.forEmulator(name).logLabeled(
         "WARN",
         name,
-        `Error stopping ${Constants.description(name)}`
+        `Error stopping ${Constants.description(name)}`,
       );
     }
   }

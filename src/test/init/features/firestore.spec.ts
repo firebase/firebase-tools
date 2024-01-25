@@ -53,7 +53,7 @@ describe("firestore", () => {
 
       await expect(firestore.doSetup(setup, {}, {})).to.eventually.be.rejectedWith(
         FirebaseError,
-        "It looks like you haven't used Cloud Firestore"
+        "It looks like you haven't used Cloud Firestore",
       );
     });
 
@@ -65,7 +65,7 @@ describe("firestore", () => {
 
       await expect(firestore.doSetup(setup, {}, {})).to.eventually.be.rejectedWith(
         FirebaseError,
-        "It looks like this project is using Cloud Datastore or Cloud Firestore in Datastore mode."
+        "It looks like this project is using Cloud Datastore or Cloud Firestore in Datastore mode.",
       );
     });
   });

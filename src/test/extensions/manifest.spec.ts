@@ -24,7 +24,7 @@ function generateBaseConfig(): Config {
         "delete-user-data-gm2h": "firebase/delete-user-data@0.1.12",
       },
     },
-    {}
+    {},
   );
 }
 function generateConfigWithLocal(): Config {
@@ -36,7 +36,7 @@ function generateConfigWithLocal(): Config {
         "delete-user-data-local": "./delete-user-data",
       },
     },
-    {}
+    {},
   );
 }
 
@@ -61,7 +61,7 @@ describe("manifest", () => {
     it("should return the correct source for a local instance", () => {
       const result = manifest.getInstanceTarget(
         "delete-user-data-local",
-        generateConfigWithLocal()
+        generateConfigWithLocal(),
       );
 
       expect(result).to.equal("./delete-user-data");
@@ -75,7 +75,7 @@ describe("manifest", () => {
 
     it("should throw when looking for a non-existing instance", () => {
       expect(() =>
-        manifest.getInstanceTarget("does-not-exist", generateConfigWithLocal())
+        manifest.getInstanceTarget("does-not-exist", generateConfigWithLocal()),
       ).to.throw(FirebaseError);
     });
   });
@@ -89,19 +89,19 @@ describe("manifest", () => {
           publisherId: "firebase",
           extensionId: "delete-user-data",
           version: "0.1.12",
-        })
+        }),
       );
     });
 
     it("should throw when looking for a non-existing instance", () => {
       expect(() => manifest.getInstanceRef("does-not-exist", generateConfigWithLocal())).to.throw(
-        FirebaseError
+        FirebaseError,
       );
     });
 
     it("should throw when looking for a instance with local source", () => {
       expect(() =>
-        manifest.getInstanceRef("delete-user-data-local", generateConfigWithLocal())
+        manifest.getInstanceRef("delete-user-data-local", generateConfigWithLocal()),
       ).to.throw(FirebaseError);
     });
   });
@@ -208,7 +208,7 @@ describe("manifest", () => {
           },
         ],
         generateBaseConfig(),
-        { nonInteractive: false, force: false }
+        { nonInteractive: false, force: false },
       );
       expect(writeProjectFileStub).calledWithExactly("firebase.json", {
         extensions: {
@@ -223,12 +223,12 @@ describe("manifest", () => {
       expect(askWriteProjectFileStub).calledWithExactly(
         "extensions/instance-1.env",
         `a=pikachu\nb=bulbasaur`,
-        false
+        false,
       );
       expect(askWriteProjectFileStub).calledWithExactly(
         "extensions/instance-2.env",
         `a=eevee\nb=squirtle`,
-        false
+        false,
       );
     });
 
@@ -293,7 +293,7 @@ describe("manifest", () => {
           },
         ],
         generateBaseConfig(),
-        { nonInteractive: false, force: false }
+        { nonInteractive: false, force: false },
       );
       expect(writeProjectFileStub).calledWithExactly("firebase.json", {
         extensions: {
@@ -308,12 +308,12 @@ describe("manifest", () => {
       expect(askWriteProjectFileStub).calledWithExactly(
         "extensions/instance-1.env",
         `a=absol\nb=bulbasaur`,
-        false
+        false,
       );
       expect(askWriteProjectFileStub).calledWithExactly(
         "extensions/instance-2.env",
         `e=eevee\ns=squirtle`,
-        false
+        false,
       );
     });
 
@@ -404,7 +404,7 @@ describe("manifest", () => {
           },
         ],
         generateBaseConfig(),
-        { nonInteractive: false, force: false }
+        { nonInteractive: false, force: false },
       );
       expect(writeProjectFileStub).calledWithExactly("firebase.json", {
         extensions: {
@@ -422,7 +422,7 @@ describe("manifest", () => {
           "ALLOWED_EVENT_TYPES=google.firebase.custom-event-occurred\n" +
           "b=bulbasaur\n" +
           "EVENTARC_CHANNEL=projects/test-project/locations/us-central1/channels/firebase",
-        false
+        false,
       );
       expect(askWriteProjectFileStub).calledWithExactly(
         "extensions/instance-2.env",
@@ -430,7 +430,7 @@ describe("manifest", () => {
           "e=eevee\n" +
           "EVENTARC_CHANNEL=projects/test-project/locations/us-central1/channels/firebase\n" +
           "s=squirtle",
-        false
+        false,
       );
     });
 
@@ -499,7 +499,7 @@ describe("manifest", () => {
         ],
         generateBaseConfig(),
         { nonInteractive: false, force: false },
-        true /** allowOverwrite */
+        true /** allowOverwrite */,
       );
       expect(writeProjectFileStub).calledWithExactly("firebase.json", {
         extensions: {
@@ -513,12 +513,12 @@ describe("manifest", () => {
       expect(askWriteProjectFileStub).calledWithExactly(
         "extensions/instance-1.env",
         `a=pikachu\nb=bulbasaur`,
-        false
+        false,
       );
       expect(askWriteProjectFileStub).calledWithExactly(
         "extensions/instance-2.env",
         `a=eevee\nb=squirtle`,
-        false
+        false,
       );
     });
 
@@ -559,7 +559,7 @@ describe("manifest", () => {
         ],
         generateBaseConfig(),
         { nonInteractive: false, force: false },
-        true /** allowOverwrite */
+        true /** allowOverwrite */,
       );
       expect(writeProjectFileStub).calledWithExactly("firebase.json", {
         extensions: {
@@ -572,7 +572,7 @@ describe("manifest", () => {
       expect(askWriteProjectFileStub).calledWithExactly(
         "extensions/instance-1.env",
         `a=pikachu`,
-        false
+        false,
       );
     });
   });
@@ -655,19 +655,19 @@ describe("manifest", () => {
           },
         ],
         generateBaseConfig(),
-        true
+        true,
       );
 
       expect(askWriteProjectFileStub).to.have.been.calledTwice;
       expect(askWriteProjectFileStub).calledWithExactly(
         "extensions/instance-1.secret.local",
         `a=pikachu\nb=bulbasaur`,
-        true
+        true,
       );
       expect(askWriteProjectFileStub).calledWithExactly(
         "extensions/instance-2.secret.local",
         `a=eevee\nb=squirtle`,
-        true
+        true,
       );
     });
 
@@ -707,14 +707,14 @@ describe("manifest", () => {
           },
         ],
         generateBaseConfig(),
-        true
+        true,
       );
 
       expect(askWriteProjectFileStub).to.have.been.calledOnce;
       expect(askWriteProjectFileStub).calledWithExactly(
         "extensions/instance-1.secret.local",
         `a=pikachu`,
-        true
+        true,
       );
     });
 
@@ -754,14 +754,14 @@ describe("manifest", () => {
           },
         ],
         generateBaseConfig(),
-        true
+        true,
       );
 
       expect(askWriteProjectFileStub).to.have.been.calledOnce;
       expect(askWriteProjectFileStub).calledWithExactly(
         "extensions/instance-1.secret.local",
         `a=pikachu`,
-        true
+        true,
       );
     });
 
@@ -802,7 +802,7 @@ describe("manifest", () => {
           },
         ],
         generateBaseConfig(),
-        true
+        true,
       );
 
       expect(askWriteProjectFileStub).to.not.have.been.called;
@@ -836,7 +836,7 @@ describe("manifest", () => {
           projectId: testProjectId,
           projectNumber: testProjectNumber,
           aliases: [],
-        })
+        }),
       ).to.deep.equal({ param: "otherValue", param2: "value2" });
     });
 
@@ -852,7 +852,7 @@ describe("manifest", () => {
           projectId: testProjectId,
           projectNumber: testProjectNumber,
           aliases: [],
-        })
+        }),
       ).to.deep.equal({ param: "otherValue", param2: "value2" });
     });
 
@@ -868,7 +868,7 @@ describe("manifest", () => {
           projectId: testProjectId,
           projectNumber: testProjectNumber,
           aliases: [],
-        })
+        }),
       ).to.deep.equal({ param: "otherValue", param2: "value2" });
     });
 
@@ -884,7 +884,7 @@ describe("manifest", () => {
           projectId: testProjectId,
           projectNumber: testProjectNumber,
           aliases: ["prod"],
-        })
+        }),
       ).to.deep.equal({ param: "otherValue", param2: "value2" });
     });
 
@@ -903,7 +903,7 @@ describe("manifest", () => {
           projectId: testProjectId,
           projectNumber: testProjectNumber,
           aliases: [],
-        })
+        }),
       ).to.deep.equal({ param: "value", param2: "value2" });
     });
   });
