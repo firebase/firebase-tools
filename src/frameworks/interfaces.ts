@@ -22,7 +22,6 @@ export const enum SupportLevel {
 
 export interface Discovery {
   mayWantBackend: boolean;
-  publicDirectory: string;
   version?: string;
   vite?: boolean;
 }
@@ -101,4 +100,10 @@ export interface FirebaseDefaults {
   config?: Object;
   emulatorHosts?: Record<string, string>;
   _authTokenSyncURL?: string;
+}
+
+// Only the fields being used are defined here
+export interface PackageJson {
+  main: string;
+  type?: "commonjs" | "module";
 }
