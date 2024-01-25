@@ -10,6 +10,7 @@ import { BUILD_TARGET_PURPOSE } from "../interfaces";
 import { AssertionError } from "assert";
 import { assertIsString } from "../../utils";
 import { coerce } from "semver";
+import { JsonObject } from "@angular-devkit/core";
 
 async function localesForTarget(
   dir: string,
@@ -177,10 +178,9 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
     if (apps.length === 1) project = apps[0];
   }
 
-  if (!project)
-    throw new FirebaseError(
-      "Unable to determine the application to deploy, specify a target via the FIREBASE_FRAMEWORKS_BUILD_TARGET environment variable"
-    );
+  if (!project) {
+    throwCannotDetermineTarget();
+  }
 
   const workspaceProject = workspace.projects.get(project);
   if (!workspaceProject) throw new FirebaseError(`No project ${project} found.`);
@@ -377,7 +377,8 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
   if (!buildOrBrowserTarget) {
     throw new FirebaseError(`No build target on ${project}`);
   }
-  const browserTargetOptions = await architectHost.getOptionsForTarget(buildOrBrowserTarget);
+
+  const browserTargetOptions = await tryToGetOptionsForTarget(architectHost, buildOrBrowserTarget);
   if (!browserTargetOptions) {
     const targetString = targetStringFromTarget(buildOrBrowserTarget);
     throw new FirebaseError(`Couldn't find options for ${targetString}.`);
@@ -386,7 +387,8 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
   const baseHref = browserTargetOptions.baseHref || "/";
   assertIsString(baseHref);
 
-  const buildTargetOptions = buildTarget && (await architectHost.getOptionsForTarget(buildTarget));
+  const buildTargetOptions =
+    buildTarget && (await tryToGetOptionsForTarget(architectHost, buildTarget));
   const ssr = buildTarget ? !!buildTargetOptions?.ssr : !!serverTarget;
 
   return {
@@ -556,4 +558,21 @@ export function getAngularVersion(cwd: string): string | undefined {
   if (!angularVersionSemver) return dependency.version;
 
   return angularVersionSemver.toString();
+}
+
+/**
+ * Try to get options for target, throw an error when expected target doesn't exist in the configuration.
+ */
+export async function tryToGetOptionsForTarget(
+  architectHost: WorkspaceNodeModulesArchitectHost,
+  target: Target
+): Promise<JsonObject | null> {
+  return await architectHost.getOptionsForTarget(target).catch(throwCannotDetermineTarget);
+}
+
+function throwCannotDetermineTarget(error?: Error): never {
+  throw new FirebaseError(
+    `Unable to determine the application to deploy, specify a target via the FIREBASE_FRAMEWORKS_BUILD_TARGET environment variable.`,
+    { original: error }
+  );
 }
