@@ -2,6 +2,15 @@ import type { RouteHas } from "next/dist/lib/load-custom-routes";
 import type { ImageConfigComplete } from "next/dist/shared/lib/image-config";
 import type { MiddlewareManifest as MiddlewareManifestV2FromNext } from "next/dist/build/webpack/plugins/middleware-plugin";
 import type { HostingHeaders } from "../../firebaseConfig";
+import {
+  NEXT_DID_POSTPONE_HEADER,
+  NEXT_ROUTER_PREFETCH_HEADER,
+  RSC_CONTENT_TYPE_HEADER,
+  RSC_HEADER,
+  RSC_PREFETCH_SUFFIX,
+  RSC_SUFFIX,
+  RSC_VARY_HEADER,
+} from "./constants";
 
 export interface RoutesManifestRewriteObject {
   beforeFiles?: RoutesManifestRewrite[];
@@ -40,6 +49,7 @@ export interface RoutesManifestHeader {
 export interface RoutesManifest {
   version: number;
   pages404: boolean;
+  caseSensitive?: boolean;
   basePath: string;
   redirects: Array<RoutesManifestRedirect>;
   rewrites?: Array<RoutesManifestRewrite> | RoutesManifestRewriteObject;
@@ -72,6 +82,15 @@ export interface RoutesManifest {
     locales: string[];
     defaultLocale: string;
     localeDetection?: false;
+  };
+  rsc: {
+    header: typeof RSC_HEADER;
+    didPostponeHeader: typeof NEXT_DID_POSTPONE_HEADER;
+    varyHeader: typeof RSC_VARY_HEADER;
+    prefetchHeader: typeof NEXT_ROUTER_PREFETCH_HEADER;
+    suffix: typeof RSC_SUFFIX;
+    prefetchSuffix: typeof RSC_PREFETCH_SUFFIX;
+    contentTypeHeader: typeof RSC_CONTENT_TYPE_HEADER;
   };
 }
 

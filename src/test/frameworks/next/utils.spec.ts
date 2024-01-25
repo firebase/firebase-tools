@@ -9,6 +9,7 @@ import {
   EXPORT_MARKER,
   IMAGES_MANIFEST,
   APP_PATH_ROUTES_MANIFEST,
+  RSC_VARY_HEADER,
 } from "../../../frameworks/next/constants";
 
 import {
@@ -63,6 +64,7 @@ import {
   pageClientReferenceManifestWithoutImage,
   clientReferenceManifestWithImage,
   clientReferenceManifestWithoutImage,
+  routesManifest,
 } from "./helpers";
 import { pathsWithCustomRoutesInternalPrefix } from "./helpers/i18n";
 
@@ -481,7 +483,13 @@ describe("Next.js utils", () => {
       readJsonStub.withArgs(`${distDir}/server/app/api/static.meta`).resolves(metaFileContents);
 
       expect(
-        await getHeadersFromMetaFiles(".", distDir, "/asdf", appPathRoutesManifest)
+        await getHeadersFromMetaFiles(
+          ".",
+          distDir,
+          "/asdf",
+          appPathRoutesManifest,
+          routesManifest.rsc
+        )
       ).to.deep.equal([
         {
           source: "/asdf/api/static",
@@ -493,6 +501,10 @@ describe("Next.js utils", () => {
             {
               key: "custom-header",
               value: "custom-value",
+            },
+            {
+              key: "Vary",
+              value: RSC_VARY_HEADER,
             },
           ],
         },
