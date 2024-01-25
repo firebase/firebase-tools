@@ -31,6 +31,7 @@ import {
   handleEmulatorProcessError,
 } from "../../downloadableEmulators";
 import { EmulatorRegistry } from "../../registry";
+import { parseStr } from "../../jsonUtils";
 
 const lock = new AsyncLock();
 const synchonizationKey = "key";
@@ -186,22 +187,17 @@ export class StorageRulesRuntime {
 
     this._childprocess.stdout?.on("data", (buf: Buffer) => {
       const serializedRuntimeActionResponse = buf.toString("utf-8").trim();
-      if (serializedRuntimeActionResponse !== "") {
-        let rap;
-        try {
-          rap = JSON.parse(serializedRuntimeActionResponse) as RuntimeActionResponse;
-        } catch (err: any) {
-          EmulatorLogger.forEmulator(Emulators.STORAGE).log(
-            "INFO",
-            serializedRuntimeActionResponse
-          );
-          return;
+      for (const parsedRap of parseStr(serializedRuntimeActionResponse || "")) {
+        if (parsedRap.type === "parse-error") {
+          EmulatorLogger.forEmulator(Emulators.STORAGE).log("INFO", parsedRap.value);
+          continue;
         }
+        const rap = parsedRap.value as RuntimeActionResponse;
 
         const id = rap.id ?? rap.server_request_id;
         if (id === undefined) {
           console.log(`Received no ID from server response ${serializedRuntimeActionResponse}`);
-          return;
+          continue;
         }
 
         const request = this._requests[id];
@@ -209,7 +205,7 @@ export class StorageRulesRuntime {
         if (rap.status !== "ok" && !("action" in rap)) {
           console.warn(`[RULES] ${rap.status}: ${rap.message}`);
           rap.errors.forEach(console.warn.bind(console));
-          return;
+          continue;
         }
 
         if (request) {
