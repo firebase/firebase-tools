@@ -100,13 +100,8 @@
       "firebase-firemat-execution-view": [
         {
           "type": "webview",
-          "id": "firemat-execution-arguments",
-          "name": "Variables"
-        },
-        {
-          "type": "webview",
-          "id": "firemat-auth-mock",
-          "name": "User Mock"
+          "id": "firemat-execution-configuration",
+          "name": "Configuration"
         },
         {
           "id": "firemat-execution-history",
