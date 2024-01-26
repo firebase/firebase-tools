@@ -32,4 +32,8 @@ export const TEXT = {
   DEPLOYING_IN_PROGRESS: "Deploying...",
 
   DEPLOYING_PROGRESS_FRAMEWORK: "Deploying... this may take a few minutes.",
+
+  DEPLOY_FIREMAT: "Deploy to production",
+
+  CONNECT_TO_INSTANCE: "Connect to instance",
 };

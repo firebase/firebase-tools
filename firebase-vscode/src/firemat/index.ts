@@ -12,6 +12,7 @@ import {
 } from "./code-lens-provider";
 import { registerConnectors } from "./connectors";
 import { AuthService } from "../auth/service";
+import { registerWebview } from "../webview";
 // import { setupLanguageClient } from "./language-client";
 
 const firematEndpoint = signal<string | undefined>(undefined);
@@ -42,6 +43,7 @@ export function registerFiremat(
   return Disposable.from(
     registerExecution(context, broker, firematService),
     registerExplorer(context, broker, firematService),
+    registerWebview({ name: "firemat", context, broker }),
     registerAdHoc(context, broker),
     registerConnectors(context, broker, firematService),
     operationCodeLensProvider,

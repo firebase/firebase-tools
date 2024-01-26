@@ -102,8 +102,13 @@
           "name": "Firebase"
         },
         {
+          "type": "webview",
+          "id": "firemat",
+          "name": "Firebase Data Connect"
+        },
+        {
           "id": "firebase.firemat.explorerView",
-          "name": "Firemat Explorer"
+          "name": "FDC Explorer"
         }
       ],
       "firebase-firemat-execution-view": [
