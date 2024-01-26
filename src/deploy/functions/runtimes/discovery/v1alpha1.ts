@@ -13,7 +13,7 @@ const CHANNEL_NAME_REGEX = new RegExp(
     "locations\\/" +
     "(?<location>[A-Za-z\\d\\-_]+)\\/" +
     "channels\\/" +
-    "(?<channel>[A-Za-z\\d\\-_]+)"
+    "(?<channel>[A-Za-z\\d\\-_]+)",
 );
 
 export interface ManifestSecretEnv {
@@ -82,7 +82,7 @@ export function buildFromV1Alpha1(
   yaml: unknown,
   project: string,
   region: string,
-  runtime: runtimes.Runtime
+  runtime: runtimes.Runtime,
 ): build.Build {
   const manifest = JSON.parse(JSON.stringify(yaml)) as WireManifest;
   requireKeys("", manifest, "endpoints");
@@ -112,7 +112,7 @@ function parseRequiredAPIs(manifest: WireManifest): build.RequiredApi[] {
     }
     if (typeof reason !== "string") {
       throw new FirebaseError(
-        `Invalid reason "${JSON.stringify(reason)} for API ${api}. Expected string`
+        `Invalid reason "${JSON.stringify(reason)} for API ${api}. Expected string`,
       );
     }
   }
@@ -246,7 +246,7 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
   } else {
     throw new FirebaseError(
       `Do not recognize trigger type for endpoint ${id}. Try upgrading ` +
-        "firebase-tools with npm install -g firebase-tools@latest"
+        "firebase-tools with npm install -g firebase-tools@latest",
     );
   }
 }
@@ -256,7 +256,7 @@ function parseEndpointForBuild(
   ep: WireEndpoint,
   project: string,
   defaultRegion: string,
-  runtime: runtimes.Runtime
+  runtime: runtimes.Runtime,
 ): build.Endpoint {
   let triggered: build.Triggered;
   if (build.isEventTriggered(ep)) {
@@ -273,10 +273,10 @@ function parseEndpointForBuild(
       ep.eventTrigger,
       "serviceAccount",
       "eventFilterPathPatterns",
-      "region"
+      "region",
     );
     convertIfPresent(eventTrigger, ep.eventTrigger, "channel", (c) =>
-      resolveChannelName(project, c, defaultRegion)
+      resolveChannelName(project, c, defaultRegion),
     );
     convertIfPresent(eventTrigger, ep.eventTrigger, "eventFilters", (filters) => {
       const copy = { ...filters };
@@ -305,21 +305,21 @@ function parseEndpointForBuild(
         ep.scheduleTrigger.retryConfig,
         "maxBackoffSeconds",
         "maxBackoffDuration",
-        (duration) => (duration === null ? null : secondsFromDuration(duration))
+        (duration) => (duration === null ? null : secondsFromDuration(duration)),
       );
       convertIfPresent(
         st.retryConfig,
         ep.scheduleTrigger.retryConfig,
         "minBackoffSeconds",
         "minBackoffDuration",
-        (duration) => (duration === null ? null : secondsFromDuration(duration))
+        (duration) => (duration === null ? null : secondsFromDuration(duration)),
       );
       convertIfPresent(
         st.retryConfig,
         ep.scheduleTrigger.retryConfig,
         "maxRetrySeconds",
         "maxRetryDuration",
-        (duration) => (duration === null ? null : secondsFromDuration(duration))
+        (duration) => (duration === null ? null : secondsFromDuration(duration)),
       );
       copyIfPresent(
         st.retryConfig,
@@ -328,28 +328,28 @@ function parseEndpointForBuild(
         "minBackoffSeconds",
         "maxBackoffSeconds",
         "maxRetrySeconds",
-        "maxDoublings"
+        "maxDoublings",
       );
       convertIfPresent(
         st.retryConfig,
         ep.scheduleTrigger.retryConfig,
         "minBackoffSeconds",
         "minBackoffDuration",
-        nullsafeVisitor(secondsFromDuration)
+        nullsafeVisitor(secondsFromDuration),
       );
       convertIfPresent(
         st.retryConfig,
         ep.scheduleTrigger.retryConfig,
         "maxBackoffSeconds",
         "maxBackoffDuration",
-        nullsafeVisitor(secondsFromDuration)
+        nullsafeVisitor(secondsFromDuration),
       );
       convertIfPresent(
         st.retryConfig,
         ep.scheduleTrigger.retryConfig,
         "maxRetrySeconds",
         "maxRetryDuration",
-        nullsafeVisitor(secondsFromDuration)
+        nullsafeVisitor(secondsFromDuration),
       );
     } else if (ep.scheduleTrigger.retryConfig === null) {
       st.retryConfig = null;
@@ -378,7 +378,7 @@ function parseEndpointForBuild(
   } else {
     throw new FirebaseError(
       `Do not recognize trigger type for endpoint ${id}. Try upgrading ` +
-        "firebase-tools with npm install -g firebase-tools@latest"
+        "firebase-tools with npm install -g firebase-tools@latest",
     );
   }
 
@@ -408,7 +408,7 @@ function parseEndpointForBuild(
     "labels",
     "ingressSettings",
     "environmentVariables",
-    "serviceAccount"
+    "serviceAccount",
   );
   convertIfPresent(parsed, ep, "secretEnvironmentVariables", (senvs) => {
     if (!senvs) {

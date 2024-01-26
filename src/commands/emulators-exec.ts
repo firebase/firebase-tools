@@ -6,7 +6,7 @@ export const command = new Command("emulators:exec <script>")
   .before(commandUtils.setExportOnExitOptions)
   .before(commandUtils.beforeEmulatorCommand)
   .description(
-    "start the local Firebase emulators, " + "run a test script, then shut down the emulators"
+    "start the local Firebase emulators, " + "run a test script, then shut down the emulators",
   )
   .option(commandUtils.FLAG_ONLY, commandUtils.DESC_ONLY)
   .option(commandUtils.FLAG_INSPECT_FUNCTIONS, commandUtils.DESC_INSPECT_FUNCTIONS)

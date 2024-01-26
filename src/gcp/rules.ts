@@ -26,7 +26,7 @@ function _handleErrorResponse(response: any): any {
  */
 export async function getLatestRulesetName(
   projectId: string,
-  service: string
+  service: string,
 ): Promise<string | null> {
   const releases = await listAllReleases(projectId);
   const prefix = `projects/${projectId}/releases/${service}`;
@@ -45,7 +45,7 @@ const MAX_RELEASES_PAGE_SIZE = 10;
  */
 export async function listReleases(
   projectId: string,
-  pageToken = ""
+  pageToken = "",
 ): Promise<ListReleasesResponse> {
   const response = await apiClient.get<ListReleasesResponse>(`/projects/${projectId}/releases`, {
     queryParams: {
@@ -122,7 +122,7 @@ const MAX_RULESET_PAGE_SIZE = 100;
  */
 export async function listRulesets(
   projectId: string,
-  pageToken: string = ""
+  pageToken: string = "",
 ): Promise<ListRulesetsResponse> {
   const response = await apiClient.get<ListRulesetsResponse>(`/projects/${projectId}/rulesets`, {
     queryParams: {
@@ -193,7 +193,7 @@ export async function createRuleset(projectId: string, files: RulesetFile[]): Pr
   const response = await apiClient.post<unknown, { name: string }>(
     `/projects/${projectId}/rulesets`,
     payload,
-    { skipLog: { body: true } }
+    { skipLog: { body: true } },
   );
   if (response.status === 200) {
     logger.debug("[rules] created ruleset", response.body.name);
@@ -212,7 +212,7 @@ export async function createRuleset(projectId: string, files: RulesetFile[]): Pr
 export async function createRelease(
   projectId: string,
   rulesetName: string,
-  releaseName: string
+  releaseName: string,
 ): Promise<string> {
   const payload = {
     name: `projects/${projectId}/releases/${releaseName}`,
@@ -221,7 +221,7 @@ export async function createRelease(
 
   const response = await apiClient.post<unknown, { name: string }>(
     `/projects/${projectId}/releases`,
-    payload
+    payload,
   );
   if (response.status === 200) {
     logger.debug("[rules] created release", response.body.name);
@@ -240,7 +240,7 @@ export async function createRelease(
 export async function updateRelease(
   projectId: string,
   rulesetName: string,
-  releaseName: string
+  releaseName: string,
 ): Promise<string> {
   const payload = {
     release: {
@@ -251,7 +251,7 @@ export async function updateRelease(
 
   const response = await apiClient.patch<unknown, { name: string }>(
     `/projects/${projectId}/releases/${releaseName}`,
-    payload
+    payload,
   );
   if (response.status === 200) {
     logger.debug("[rules] updated release", response.body.name);
@@ -264,7 +264,7 @@ export async function updateRelease(
 export async function updateOrCreateRelease(
   projectId: string,
   rulesetName: string,
-  releaseName: string
+  releaseName: string,
 ): Promise<string> {
   logger.debug("[rules] releasing", releaseName, "with ruleset", rulesetName);
   return updateRelease(projectId, rulesetName, releaseName).catch(() => {
@@ -277,6 +277,6 @@ export function testRuleset(projectId: string, files: RulesetFile[]): Promise<an
   return apiClient.post(
     `/projects/${encodeURIComponent(projectId)}:test`,
     { source: { files } },
-    { skipLog: { body: true } }
+    { skipLog: { body: true } },
   );
 }

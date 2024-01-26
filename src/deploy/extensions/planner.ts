@@ -60,7 +60,7 @@ export async function getExtensionVersion(i: InstanceSpec): Promise<ExtensionVer
   if (!i.extensionVersion) {
     if (!i.ref) {
       throw new FirebaseError(
-        `Can't get ExtensionVersion for ${i.instanceId} because it has no ref`
+        `Can't get ExtensionVersion for ${i.instanceId} because it has no ref`,
       );
     }
     i.extensionVersion = await extensionsApi.getExtensionVersion(refs.toExtensionVersionRef(i.ref));
@@ -221,7 +221,7 @@ export async function resolveVersion(ref: refs.Ref, extension?: Extension): Prom
   if (ref.version === "latest-approved") {
     if (!extension?.latestApprovedVersion) {
       throw new FirebaseError(
-        `${extensionRef} has not been published to Extensions Hub (https://extensions.dev). To install it, you must specify the version you want to install.`
+        `${extensionRef} has not been published to Extensions Hub (https://extensions.dev). To install it, you must specify the version you want to install.`,
       );
     }
     return extension.latestApprovedVersion;
@@ -229,7 +229,7 @@ export async function resolveVersion(ref: refs.Ref, extension?: Extension): Prom
   if (!ref.version || ref.version === "latest") {
     if (!extension?.latestVersion) {
       throw new FirebaseError(
-        `${extensionRef} has no stable non-deprecated versions. If you wish to install a prerelease version, you must specify the version you want to install.`
+        `${extensionRef} has no stable non-deprecated versions. If you wish to install a prerelease version, you must specify the version you want to install.`,
       );
     }
     return extension.latestVersion;
@@ -240,11 +240,11 @@ export async function resolveVersion(ref: refs.Ref, extension?: Extension): Prom
   }
   const maxSatisfying = semver.maxSatisfying(
     versions.map((ev) => ev.spec.version),
-    ref.version
+    ref.version,
   );
   if (!maxSatisfying) {
     throw new FirebaseError(
-      `No version of ${extensionRef} matches requested version ${ref.version}`
+      `No version of ${extensionRef} matches requested version ${ref.version}`,
     );
   }
   return maxSatisfying;

@@ -176,7 +176,7 @@ describe("proto", () => {
     it("should return formatted service accounts with invoker array", () => {
       const invokerMembers = proto.getInvokerMembers(
         ["service-account1@", "service-account2@project.iam.gserviceaccount.com"],
-        "project"
+        "project",
       );
 
       expect(invokerMembers).to.deep.eq([

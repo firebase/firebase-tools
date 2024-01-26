@@ -102,7 +102,7 @@ export function partition<T>(arr: T[], predicate: (elem: T) => boolean): [T[], T
       acc[predicate(elem) ? 0 : 1].push(elem);
       return acc;
     },
-    [[], []]
+    [[], []],
   );
 }
 
@@ -113,14 +113,14 @@ export function partition<T>(arr: T[], predicate: (elem: T) => boolean): [T[], T
  */
 export function partitionRecord<T>(
   rec: Record<string, T>,
-  predicate: (key: string, val: T) => boolean
+  predicate: (key: string, val: T) => boolean,
 ): [Record<string, T>, Record<string, T>] {
   return Object.entries(rec).reduce<[Record<string, T>, Record<string, T>]>(
     (acc, [key, val]) => {
       acc[predicate(key, val) ? 0 : 1][key] = val;
       return acc;
     },
-    [{}, {}]
+    [{}, {}],
   );
 }
 
@@ -129,7 +129,7 @@ export function partitionRecord<T>(
  */
 export function mapObject<T, V>(
   input: Record<string, T>,
-  transform: (t: T) => V
+  transform: (t: T) => V,
 ): Record<string, V> {
   const result: Record<string, V> = {};
   for (const [k, v] of Object.entries(input)) {

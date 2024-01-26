@@ -18,7 +18,7 @@ export function readEmulatorConfig(config = FIREBASE_EMULATOR_CONFIG): Framework
     return readJson(config);
   } catch (error) {
     throw new Error(
-      `Cannot read the emulator config. Please ensure that the file ${config} is present in the current directory.`
+      `Cannot read the emulator config. Please ensure that the file ${config} is present in the current directory.`,
     );
   }
 }
@@ -90,7 +90,7 @@ export async function getProdAccessToken(serviceAccountKey: any): Promise<string
     null,
     serviceAccountKey.private_key,
     ["https://www.googleapis.com/auth/cloud-platform"],
-    null
+    null,
   );
   const credentials = await jwtClient.authorize();
   return credentials.access_token!;

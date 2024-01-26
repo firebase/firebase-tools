@@ -137,7 +137,7 @@ export class PubsubEmulator implements EmulatorInstance {
     this.logger.logLabeled(
       "DEBUG",
       "pubsub",
-      `addTrigger(${topicName}, ${triggerKey}, ${signatureType})`
+      `addTrigger(${topicName}, ${triggerKey}, ${signatureType})`,
     );
 
     const sub = await this.maybeCreateTopicAndSub(topicName);
@@ -161,7 +161,7 @@ export class PubsubEmulator implements EmulatorInstance {
 
     if (!EmulatorRegistry.isRunning(Emulators.FUNCTIONS)) {
       throw new FirebaseError(
-        `Attempted to execute pubsub trigger but could not find the Functions emulator`
+        `Attempted to execute pubsub trigger but could not find the Functions emulator`,
       );
     }
     this.client = EmulatorRegistry.client(Emulators.FUNCTIONS);
@@ -187,7 +187,7 @@ export class PubsubEmulator implements EmulatorInstance {
 
   private createCloudEventRequestBody(
     topic: string,
-    message: Message
+    message: Message,
   ): CloudEvent<MessagePublishedData> {
     // Pubsub events from Pubsub Emulator include a date with nanoseconds.
     // Prod Pubsub doesn't publish timestamp at that level of precision. Timestamp with nanosecond precision also
@@ -229,8 +229,8 @@ export class PubsubEmulator implements EmulatorInstance {
       "DEBUG",
       "pubsub",
       `Executing ${triggers.length} matching triggers (${JSON.stringify(
-        triggers.map((t) => t.triggerKey)
-      )})`
+        triggers.map((t) => t.triggerKey),
+      )})`,
     );
 
     this.ensureFunctionsClient();
@@ -244,7 +244,7 @@ export class PubsubEmulator implements EmulatorInstance {
           await this.client!.post<CloudEvent<MessagePublishedData>, unknown>(
             path,
             this.createCloudEventRequestBody(topicName, message),
-            { headers: { "Content-Type": "application/cloudevents+json; charset=UTF-8" } }
+            { headers: { "Content-Type": "application/cloudevents+json; charset=UTF-8" } },
           );
         } else {
           throw new FirebaseError(`Unsupported trigger signature: ${signatureType}`);

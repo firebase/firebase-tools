@@ -11,9 +11,9 @@ import * as clc from "colorette";
 async function checkProjectSetup(setup: any, config: any, options: any) {
   const firestoreUnusedError = new FirebaseError(
     `It looks like you haven't used Cloud Firestore in this project before. Go to ${clc.bold(
-      clc.underline(`https://console.firebase.google.com/project/${setup.projectId}/firestore`)
+      clc.underline(`https://console.firebase.google.com/project/${setup.projectId}/firestore`),
     )} to create your Cloud Firestore database.`,
-    { exit: 1 }
+    { exit: 1 },
   );
 
   // First check if the Firestore API is enabled. If it's not, then the developer needs
@@ -22,7 +22,7 @@ async function checkProjectSetup(setup: any, config: any, options: any) {
     setup.projectId,
     "firestore.googleapis.com",
     "",
-    true
+    true,
   );
   if (!isFirestoreEnabled) {
     throw firestoreUnusedError;
@@ -38,7 +38,7 @@ async function checkProjectSetup(setup: any, config: any, options: any) {
   } else if (dbType !== "FIRESTORE_NATIVE") {
     throw new FirebaseError(
       `It looks like this project is using Cloud Datastore or Cloud Firestore in Datastore mode. The Firebase CLI can only manage projects using Cloud Firestore in Native mode. For more information, visit https://cloud.google.com/datastore/docs/firestore-or-datastore`,
-      { exit: 1 }
+      { exit: 1 },
     );
   }
 

@@ -17,7 +17,7 @@ export const command = new Command("help [command]")
     } else if (commandName) {
       logger.warn();
       utils.logWarning(
-        clc.bold(commandName) + " is not a valid command. See below for valid commands"
+        clc.bold(commandName) + " is not a valid command. See below for valid commands",
       );
       client.cli.outputHelp();
     } else {
@@ -25,7 +25,7 @@ export const command = new Command("help [command]")
       logger.info();
       logger.info(
         "  To get help with a specific command, type",
-        clc.bold("firebase help [command_name]")
+        clc.bold("firebase help [command_name]"),
       );
       logger.info();
     }

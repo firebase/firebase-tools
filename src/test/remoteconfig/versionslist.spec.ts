@@ -98,7 +98,7 @@ describe("RemoteConfig ListVersions", () => {
 
       expect(err).to.not.be.undefined;
       expect(err.message).to.equal(
-        `Failed to get Remote Config template versions for Firebase project ${PROJECT_ID}. `
+        `Failed to get Remote Config template versions for Firebase project ${PROJECT_ID}. `,
       );
     });
   });

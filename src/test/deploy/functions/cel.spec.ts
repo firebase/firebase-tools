@@ -31,7 +31,7 @@ describe("CEL evaluation", () => {
       expect(
         resolveExpression("string[]", "{{ params.FOO }}", {
           FOO: listV(["1"]),
-        })
+        }),
       ).to.deep.equal(["1"]);
     });
 
@@ -39,7 +39,7 @@ describe("CEL evaluation", () => {
       expect(
         resolveExpression("string[]", '{{ params.FOO == params.FOO ? ["asdf"] : [] }}', {
           FOO: numberV(1),
-        })
+        }),
       ).to.deep.equal(["asdf"]);
     });
 
@@ -48,7 +48,7 @@ describe("CEL evaluation", () => {
         resolveExpression("string[]", "{{ params.FOO == params.FOO ? [{{ params.BAR }}] : [] }}", {
           FOO: numberV(1),
           BAR: stringV("asdf"),
-        })
+        }),
       ).to.deep.equal(["asdf"]);
     });
 
@@ -57,7 +57,7 @@ describe("CEL evaluation", () => {
         resolveExpression("string[]", "{{ params.FOO == params.FOO ? [params.BAR] : [] }}", {
           FOO: numberV(1),
           BAR: stringV("asdf"),
-        })
+        }),
       ).to.deep.equal(["asdf"]);
     });
 
@@ -69,8 +69,8 @@ describe("CEL evaluation", () => {
           {
             FOO: numberV(1),
             BAR: stringV("asdf"),
-          }
-        )
+          },
+        ),
       ).to.deep.equal(["foo", "asdf", "asdf"]);
     });
 
@@ -82,8 +82,8 @@ describe("CEL evaluation", () => {
           {
             FOO: numberV(1),
             BAR: stringV("asdf"),
-          }
-        )
+          },
+        ),
       ).to.deep.equal(["foo  ", "asdf", "asdf"]);
     });
 
@@ -91,44 +91,44 @@ describe("CEL evaluation", () => {
       expect(
         resolveExpression("boolean", "{{ params.FOO == params.FOO }}", {
           FOO: listV(["a", "2", "false"]),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", '{{ params.FOO == ["a", "2", "false"] }}', {
           FOO: listV(["a", "2", "false"]),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO != params.FOO }}", {
           FOO: listV(["a", "2", "false"]),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", '{{ params.FOO != ["a", "2", "false"] }}', {
           FOO: listV(["a", "2", "false"]),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO == params.BAR }}", {
           FOO: listV(["a", "2", "false"]),
           BAR: listV(["b", "-2", "true"]),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", '{{ params.FOO == ["a", "2", "false"] }}', {
           FOO: listV(["b", "-2", "true"]),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO != params.BAR }}", {
           FOO: listV(["a", "2", "false"]),
           BAR: listV(["b", "-2", "true"]),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", '{{ params.FOO != ["a", "2", "false"] }}', {
           FOO: listV(["b", "-2", "true"]),
-        })
+        }),
       ).to.be.true;
     });
 
@@ -137,25 +137,25 @@ describe("CEL evaluation", () => {
         resolveExpression("boolean", "{{ params.FOO > params.BAR }}", {
           FOO: listV(["a", "2", "false"]),
           BAR: listV(["b", "-2", "true"]),
-        })
+        }),
       ).to.throw(ExprParseError);
       expect(() =>
         resolveExpression("boolean", "{{ params.FOO >= params.BAR }}", {
           FOO: listV(["a", "2", "false"]),
           BAR: listV(["b", "-2", "true"]),
-        })
+        }),
       ).to.throw(ExprParseError);
       expect(() =>
         resolveExpression("boolean", "{{ params.FOO < params.BAR }}", {
           FOO: listV(["a", "2", "false"]),
           BAR: listV(["b", "-2", "true"]),
-        })
+        }),
       ).to.throw(ExprParseError);
       expect(() =>
         resolveExpression("boolean", "{{ params.FOO <= params.BAR }}", {
           FOO: listV(["a", "2", "false"]),
           BAR: listV(["b", "-2", "true"]),
-        })
+        }),
       ).to.throw(ExprParseError);
     });
   });
@@ -207,32 +207,32 @@ describe("CEL evaluation", () => {
       expect(
         resolveExpression("boolean", "{{ params.FOO == 22 }}", {
           FOO: numberV(22),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO == 11 }}", {
           FOO: numberV(22),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", '{{ params.FOO == "bar" }}', {
           FOO: stringV("bar"),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", '{{ params.FOO == "baz" }}', {
           FOO: stringV("bar"),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO == true }}", {
           FOO: boolV(true),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO == false }}", {
           FOO: boolV(true),
-        })
+        }),
       ).to.be.false;
     });
 
@@ -240,194 +240,194 @@ describe("CEL evaluation", () => {
       expect(
         resolveExpression("boolean", "{{ params.FOO != 22 }}", {
           FOO: numberV(22),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO != 22 }}", {
           FOO: numberV(22),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO >= 22 }}", {
           FOO: numberV(33),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO >= 22 }}", {
           FOO: numberV(22),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO >= 22 }}", {
           FOO: numberV(11),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO <= 22 }}", {
           FOO: numberV(33),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO <= 22 }}", {
           FOO: numberV(22),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO <= 22 }}", {
           FOO: numberV(11),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO > 22 }}", {
           FOO: numberV(33),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO > 22 }}", {
           FOO: numberV(22),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO > 22 }}", {
           FOO: numberV(11),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO < 22 }}", {
           FOO: numberV(33),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO < 22 }}", {
           FOO: numberV(22),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO <= 22 }}", {
           FOO: numberV(11),
-        })
+        }),
       ).to.be.true;
 
       expect(
         resolveExpression("boolean", '{{ params.FOO != "b" }}', {
           FOO: stringV("a"),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", '{{ params.FOO != "b" }}', {
           FOO: stringV("b"),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", '{{ params.FOO >= "b" }}', {
           FOO: stringV("a"),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", '{{ params.FOO >= "b" }}', {
           FOO: stringV("b"),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", '{{ params.FOO >= "b" }}', {
           FOO: stringV("c"),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", '{{ params.FOO <= "b" }}', {
           FOO: stringV("a"),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", '{{ params.FOO <= "b" }}', {
           FOO: stringV("b"),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", '{{ params.FOO <= "b" }}', {
           FOO: stringV("c"),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", '{{ params.FOO > "b" }}', {
           FOO: stringV("a"),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", '{{ params.FOO > "b" }}', {
           FOO: stringV("b"),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", '{{ params.FOO > "b" }}', {
           FOO: stringV("c"),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", '{{ params.FOO < "b" }}', {
           FOO: stringV("a"),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", '{{ params.FOO < "b" }}', {
           FOO: stringV("b"),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", '{{ params.FOO <= "b" }}', {
           FOO: stringV("c"),
-        })
+        }),
       ).to.be.false;
 
       expect(
         resolveExpression("boolean", "{{ params.FOO != true }}", {
           FOO: boolV(true),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO != true }}", {
           FOO: boolV(false),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO >= true }}", {
           FOO: boolV(true),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO >= true }}", {
           FOO: boolV(false),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO <= true }}", {
           FOO: boolV(true),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO <= true }}", {
           FOO: boolV(false),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO > true }}", {
           FOO: boolV(true),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO > true }}", {
           FOO: boolV(false),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO < true }}", {
           FOO: boolV(true),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO < true }}", {
           FOO: boolV(false),
-        })
+        }),
       ).to.be.true;
     });
   });
@@ -469,37 +469,37 @@ describe("CEL evaluation", () => {
         resolveExpression("boolean", "{{ params.FOO == params.BAR }}", {
           FOO: numberV(22),
           BAR: numberV(22),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO == params.BAR }}", {
           FOO: numberV(22),
           BAR: numberV(11),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO == params.BAR }}", {
           FOO: stringV("bar"),
           BAR: stringV("bar"),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO == params.BAR }}", {
           FOO: stringV("bar"),
           BAR: stringV("baz"),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO == params.BAR }}", {
           FOO: boolV(true),
           BAR: boolV(true),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO == params.BAR }}", {
           FOO: boolV(true),
           BAR: boolV(false),
-        })
+        }),
       ).to.be.false;
     });
 
@@ -508,219 +508,219 @@ describe("CEL evaluation", () => {
         resolveExpression("boolean", "{{ params.FOO != params.BAR }}", {
           FOO: numberV(33),
           BAR: numberV(22),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO != params.BAR }}", {
           FOO: numberV(22),
           BAR: numberV(22),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO >= params.BAR }}", {
           FOO: numberV(33),
           BAR: numberV(22),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO >= params.BAR }}", {
           FOO: numberV(22),
           BAR: numberV(22),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO >= params.BAR }}", {
           FOO: numberV(11),
           BAR: numberV(22),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO <= params.BAR }}", {
           FOO: numberV(33),
           BAR: numberV(22),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO <= params.BAR }}", {
           FOO: numberV(22),
           BAR: numberV(22),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO <= params.BAR }}", {
           FOO: numberV(11),
           BAR: numberV(22),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO > params.BAR }}", {
           FOO: numberV(33),
           BAR: numberV(22),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO > params.BAR }}", {
           FOO: numberV(22),
           BAR: numberV(22),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO > params.BAR }}", {
           FOO: numberV(11),
           BAR: numberV(22),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO < params.BAR }}", {
           FOO: numberV(33),
           BAR: numberV(22),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO < params.BAR }}", {
           FOO: numberV(22),
           BAR: numberV(22),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO <= params.BAR }}", {
           FOO: numberV(11),
           BAR: numberV(22),
-        })
+        }),
       ).to.be.true;
 
       expect(
         resolveExpression("boolean", "{{ params.FOO >= params.BAR }}", {
           FOO: stringV("a"),
           BAR: stringV("b"),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO >= params.BAR }}", {
           FOO: stringV("b"),
           BAR: stringV("b"),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO >= params.BAR }}", {
           FOO: stringV("c"),
           BAR: stringV("b"),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO <= params.BAR }}", {
           FOO: stringV("a"),
           BAR: stringV("b"),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO <= params.BAR }}", {
           FOO: stringV("b"),
           BAR: stringV("b"),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO <= params.BAR }}", {
           FOO: stringV("c"),
           BAR: stringV("b"),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO > params.BAR }}", {
           FOO: stringV("a"),
           BAR: stringV("b"),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO > params.BAR }}", {
           FOO: stringV("b"),
           BAR: stringV("b"),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO > params.BAR }}", {
           FOO: stringV("c"),
           BAR: stringV("b"),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO < params.BAR }}", {
           FOO: stringV("a"),
           BAR: stringV("b"),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO < params.BAR }}", {
           FOO: stringV("b"),
           BAR: stringV("b"),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO <= params.BAR }}", {
           FOO: stringV("c"),
           BAR: stringV("b"),
-        })
+        }),
       ).to.be.false;
 
       expect(
         resolveExpression("boolean", "{{ params.FOO != params.BAR }}", {
           FOO: boolV(true),
           BAR: boolV(true),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO != params.BAR }}", {
           FOO: boolV(false),
           BAR: boolV(true),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO >= params.BAR }}", {
           FOO: boolV(true),
           BAR: boolV(true),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO >= params.BAR }}", {
           FOO: boolV(false),
           BAR: boolV(true),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO <= params.BAR }}", {
           FOO: boolV(true),
           BAR: boolV(true),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO <= params.BAR }}", {
           FOO: boolV(false),
           BAR: boolV(true),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO > params.BAR }}", {
           FOO: boolV(true),
           BAR: boolV(true),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO > params.BAR }}", {
           FOO: boolV(false),
           BAR: boolV(true),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO < params.BAR }}", {
           FOO: boolV(true),
           BAR: boolV(true),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO < params.BAR }}", {
           FOO: boolV(false),
           BAR: boolV(true),
-        })
+        }),
       ).to.be.true;
     });
   });
@@ -767,42 +767,42 @@ describe("CEL evaluation", () => {
           FOO: numberV(22),
           IF_T: numberV(10),
           IF_F: numberV(0),
-        })
+        }),
       ).to.equal(10);
       expect(
         resolveExpression("number", "{{ params.FOO == 22 ? params.IF_T : params.IF_F }}", {
           FOO: numberV(11),
           IF_T: numberV(10),
           IF_F: numberV(0),
-        })
+        }),
       ).to.equal(0);
       expect(
         resolveExpression("boolean", "{{ params.FOO == 22 ? params.IF_T : params.IF_F }}", {
           FOO: numberV(22),
           IF_T: boolV(true),
           IF_F: boolV(false),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO == 22 ? params.IF_T : params.IF_F }}", {
           FOO: numberV(11),
           IF_T: boolV(true),
           IF_F: boolV(false),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("string", "{{ params.FOO == 22 ? params.IF_T : params.IF_F }}", {
           FOO: numberV(22),
           IF_T: stringV("bar"),
           IF_F: stringV("baz"),
-        })
+        }),
       ).to.equal("bar");
       expect(
         resolveExpression("string", "{{ params.FOO == 22 ? params.IF_T : params.IF_F }}", {
           FOO: numberV(11),
           IF_T: stringV("bar"),
           IF_F: stringV("baz"),
-        })
+        }),
       ).to.equal("baz");
     });
 
@@ -810,32 +810,32 @@ describe("CEL evaluation", () => {
       expect(
         resolveExpression("number", "{{ params.FOO == 22 ? 10 : 0 }}", {
           FOO: numberV(22),
-        })
+        }),
       ).to.equal(10);
       expect(
         resolveExpression("number", "{{ params.FOO == 22 ? 10 : 0 }}", {
           FOO: numberV(11),
-        })
+        }),
       ).to.equal(0);
       expect(
         resolveExpression("boolean", "{{ params.FOO == 22 ? true : false }}", {
           FOO: numberV(22),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO == 22 ? true : false }}", {
           FOO: numberV(11),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("string", '{{ params.FOO == 22 ? "bar" : "baz" }}', {
           FOO: numberV(22),
-        })
+        }),
       ).to.equal("bar");
       expect(
         resolveExpression("string", '{{ params.FOO == 22 ? "bar" : "baz" }}', {
           FOO: numberV(11),
-        })
+        }),
       ).to.equal("baz");
     });
 
@@ -845,35 +845,35 @@ describe("CEL evaluation", () => {
           FOO: numberV(33),
           IF_T: numberV(10),
           IF_F: numberV(0),
-        })
+        }),
       ).to.equal(10);
       expect(
         resolveExpression("number", "{{ params.FOO >= 22 ? params.IF_T : params.IF_F }}", {
           FOO: numberV(33),
           IF_T: numberV(10),
           IF_F: numberV(0),
-        })
+        }),
       ).to.equal(10);
       expect(
         resolveExpression("number", "{{ params.FOO <= 22 ? params.IF_T : params.IF_F }}", {
           FOO: numberV(11),
           IF_T: numberV(10),
           IF_F: numberV(0),
-        })
+        }),
       ).to.equal(10);
       expect(
         resolveExpression("number", "{{ params.FOO > 22 ? params.IF_T : params.IF_F }}", {
           FOO: numberV(22),
           IF_T: numberV(10),
           IF_F: numberV(0),
-        })
+        }),
       ).to.equal(0);
       expect(
         resolveExpression("number", "{{ params.FOO < 22 ? params.IF_T : params.IF_F }}", {
           FOO: numberV(22),
           IF_T: numberV(10),
           IF_F: numberV(0),
-        })
+        }),
       ).to.equal(0);
     });
   });
@@ -935,7 +935,7 @@ describe("CEL evaluation", () => {
           BAR: numberV(22),
           IF_T: numberV(10),
           IF_F: numberV(0),
-        })
+        }),
       ).to.equal(10);
       expect(
         resolveExpression("number", "{{ params.FOO == params.BAR ? params.IF_T : params.IF_F }}", {
@@ -943,7 +943,7 @@ describe("CEL evaluation", () => {
           BAR: numberV(22),
           IF_T: numberV(10),
           IF_F: numberV(0),
-        })
+        }),
       ).to.equal(0);
       expect(
         resolveExpression("boolean", "{{ params.FOO == params.BAR ? params.IF_T : params.IF_F }}", {
@@ -951,7 +951,7 @@ describe("CEL evaluation", () => {
           BAR: numberV(22),
           IF_T: boolV(true),
           IF_F: boolV(false),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO == params.BAR ? params.IF_T : params.IF_F }}", {
@@ -959,7 +959,7 @@ describe("CEL evaluation", () => {
           BAR: numberV(22),
           IF_T: boolV(true),
           IF_F: boolV(false),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("string", "{{ params.FOO == params.BAR ? params.IF_T : params.IF_F }}", {
@@ -967,7 +967,7 @@ describe("CEL evaluation", () => {
           BAR: numberV(22),
           IF_T: stringV("bar"),
           IF_F: stringV("baz"),
-        })
+        }),
       ).to.equal("bar");
       expect(
         resolveExpression("string", "{{ params.FOO == params.BAR ? params.IF_T : params.IF_F }}", {
@@ -975,7 +975,7 @@ describe("CEL evaluation", () => {
           BAR: numberV(22),
           IF_T: stringV("bar"),
           IF_F: stringV("baz"),
-        })
+        }),
       ).to.equal("baz");
     });
 
@@ -984,37 +984,37 @@ describe("CEL evaluation", () => {
         resolveExpression("number", "{{ params.FOO == params.BAR ? 10 : 0 }}", {
           FOO: numberV(22),
           BAR: numberV(22),
-        })
+        }),
       ).to.equal(10);
       expect(
         resolveExpression("number", "{{ params.FOO == params.BAR ? 10 : 0 }}", {
           FOO: numberV(11),
           BAR: numberV(22),
-        })
+        }),
       ).to.equal(0);
       expect(
         resolveExpression("boolean", "{{ params.FOO == params.BAR ? true : false }}", {
           FOO: numberV(22),
           BAR: numberV(22),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO == params.BAR ? true : false }}", {
           FOO: numberV(11),
           BAR: numberV(22),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("string", '{{ params.FOO == params.BAR ? "bar" : "baz" }}', {
           FOO: numberV(22),
           BAR: numberV(22),
-        })
+        }),
       ).to.equal("bar");
       expect(
         resolveExpression("string", '{{ params.FOO == params.BAR ? "bar" : "baz" }}', {
           FOO: numberV(11),
           BAR: numberV(22),
-        })
+        }),
       ).to.equal("baz");
     });
 
@@ -1025,7 +1025,7 @@ describe("CEL evaluation", () => {
           BAR: numberV(22),
           IF_T: numberV(10),
           IF_F: numberV(0),
-        })
+        }),
       ).to.equal(10);
       expect(
         resolveExpression("number", "{{ params.FOO >= params.BAR ? params.IF_T : params.IF_F }}", {
@@ -1033,7 +1033,7 @@ describe("CEL evaluation", () => {
           BAR: numberV(22),
           IF_T: numberV(10),
           IF_F: numberV(0),
-        })
+        }),
       ).to.equal(10);
       expect(
         resolveExpression("number", "{{ params.FOO <= params.BAR ? params.IF_T : params.IF_F }}", {
@@ -1041,7 +1041,7 @@ describe("CEL evaluation", () => {
           BAR: numberV(22),
           IF_T: numberV(10),
           IF_F: numberV(0),
-        })
+        }),
       ).to.equal(10);
       expect(
         resolveExpression("number", "{{ params.FOO > params.BAR ? params.IF_T : params.IF_F }}", {
@@ -1049,7 +1049,7 @@ describe("CEL evaluation", () => {
           BAR: numberV(22),
           IF_T: numberV(10),
           IF_F: numberV(0),
-        })
+        }),
       ).to.equal(0);
       expect(
         resolveExpression("number", "{{ params.FOO < params.BAR ? params.IF_T : params.IF_F }}", {
@@ -1057,7 +1057,7 @@ describe("CEL evaluation", () => {
           BAR: numberV(22),
           IF_T: numberV(10),
           IF_F: numberV(0),
-        })
+        }),
       ).to.equal(0);
     });
   });
@@ -1099,42 +1099,42 @@ describe("CEL evaluation", () => {
           FOO: boolV(true),
           IF_T: numberV(10),
           IF_F: numberV(0),
-        })
+        }),
       ).to.equal(10);
       expect(
         resolveExpression("number", "{{ params.FOO ? params.IF_T : params.IF_F }}", {
           FOO: boolV(false),
           IF_T: numberV(10),
           IF_F: numberV(0),
-        })
+        }),
       ).to.equal(0);
       expect(
         resolveExpression("boolean", "{{ params.FOO ? params.IF_T : params.IF_F }}", {
           FOO: boolV(true),
           IF_T: boolV(true),
           IF_F: boolV(false),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO ? params.IF_T : params.IF_F }}", {
           FOO: boolV(false),
           IF_T: boolV(true),
           IF_F: boolV(false),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("string", "{{ params.FOO ? params.IF_T : params.IF_F }}", {
           FOO: boolV(true),
           IF_T: stringV("bar"),
           IF_F: stringV("baz"),
-        })
+        }),
       ).to.equal("bar");
       expect(
         resolveExpression("string", "{{ params.FOO ? params.IF_T : params.IF_F }}", {
           FOO: boolV(false),
           IF_T: stringV("bar"),
           IF_F: stringV("baz"),
-        })
+        }),
       ).to.equal("baz");
     });
 
@@ -1142,32 +1142,32 @@ describe("CEL evaluation", () => {
       expect(
         resolveExpression("number", "{{ params.FOO ? 10 : 0 }}", {
           FOO: boolV(true),
-        })
+        }),
       ).to.equal(10);
       expect(
         resolveExpression("number", "{{ params.FOO ? 10 : 0 }}", {
           FOO: boolV(false),
-        })
+        }),
       ).to.equal(0);
       expect(
         resolveExpression("boolean", "{{ params.FOO ? true : false }}", {
           FOO: boolV(true),
-        })
+        }),
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO ? true : false }}", {
           FOO: boolV(false),
-        })
+        }),
       ).to.be.false;
       expect(
         resolveExpression("string", '{{ params.FOO ? "bar" : "baz" }}', {
           FOO: boolV(true),
-        })
+        }),
       ).to.equal("bar");
       expect(
         resolveExpression("string", '{{ params.FOO ? "bar" : "baz" }}', {
           FOO: boolV(false),
-        })
+        }),
       ).to.equal("baz");
     });
   });

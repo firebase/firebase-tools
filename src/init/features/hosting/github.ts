@@ -60,7 +60,7 @@ export async function initGitHub(setup: Setup): Promise<void> {
 
   if (!setup.config.hosting) {
     return reject(
-      `Didn't find a Hosting config in firebase.json. Run ${bold("firebase init hosting")} instead.`
+      `Didn't find a Hosting config in firebase.json. Run ${bold("firebase init hosting")} instead.`,
     );
   }
 
@@ -76,7 +76,7 @@ export async function initGitHub(setup: Setup): Promise<void> {
 
   // GitHub Oauth
   logBullet(
-    "Authorizing with GitHub to upload your service account to a GitHub repository's secrets store."
+    "Authorizing with GitHub to upload your service account to a GitHub repository's secrets store.",
   );
 
   const ghAccessToken = await signInWithGitHub();
@@ -105,12 +105,12 @@ export async function initGitHub(setup: Setup): Promise<void> {
   const serviceAccountJSON = await createServiceAccountAndKeyWithRetry(
     setup,
     repo,
-    serviceAccountName
+    serviceAccountName,
   );
 
   logger.info();
   logSuccess(
-    `Created service account ${bold(serviceAccountName)} with Firebase Hosting admin permissions.`
+    `Created service account ${bold(serviceAccountName)} with Firebase Hosting admin permissions.`,
   );
 
   const spinnerSecrets = ora(`Uploading service account secrets to repository: ${repo}`);
@@ -123,7 +123,7 @@ export async function initGitHub(setup: Setup): Promise<void> {
     ghAccessToken,
     await encryptedServiceAccountJSON,
     keyId,
-    githubSecretName
+    githubSecretName,
   );
   spinnerSecrets.stop();
 
@@ -158,7 +158,7 @@ export async function initGitHub(setup: Setup): Promise<void> {
       YML_FULL_PATH_PULL_REQUEST,
       githubSecretName,
       setup.projectId,
-      script
+      script,
     );
 
     logger.info();
@@ -192,7 +192,7 @@ export async function initGitHub(setup: Setup): Promise<void> {
         branch,
         githubSecretName,
         setup.projectId,
-        script
+        script,
       );
 
       logger.info();
@@ -203,10 +203,10 @@ export async function initGitHub(setup: Setup): Promise<void> {
   logger.info();
   logLabeledBullet(
     "Action required",
-    `Visit this URL to revoke authorization for the Firebase CLI GitHub OAuth App:`
+    `Visit this URL to revoke authorization for the Firebase CLI GitHub OAuth App:`,
   );
   logger.info(
-    bold(underline(`https://github.com/settings/connections/applications/${githubClientId}`))
+    bold(underline(`https://github.com/settings/connections/applications/${githubClientId}`)),
   );
   logLabeledBullet("Action required", `Push any new workflow file(s) to your repo`);
 }
@@ -295,7 +295,7 @@ function writeChannelActionYMLFile(
   ymlPath: string,
   secretName: string,
   projectId: string,
-  script?: string
+  script?: string,
 ): void {
   const workflowConfig: GitHubWorkflowConfig = {
     name: "Deploy to Firebase Hosting on PR",
@@ -339,7 +339,7 @@ function writeDeployToProdActionYMLFile(
   branch: string | undefined,
   secretName: string,
   projectId: string,
-  script?: string
+  script?: string,
 ): void {
   const workflowConfig: GitHubWorkflowConfig = {
     name: "Deploy to Firebase Hosting on merge",
@@ -383,7 +383,7 @@ async function uploadSecretToGitHub(
   ghAccessToken: string,
   encryptedServiceAccountJSON: string,
   keyId: string,
-  secretName: string
+  secretName: string,
 ): Promise<{ status: any }> {
   const data = {
     ["encrypted_value"]: encryptedServiceAccountJSON,
@@ -393,13 +393,13 @@ async function uploadSecretToGitHub(
   return await githubApiClient.put<any, { status: any }>(
     `/repos/${repo}/actions/secrets/${secretName}`,
     data,
-    { headers }
+    { headers },
   );
 }
 
 async function promptForRepo(
   options: any,
-  ghAccessToken: string
+  ghAccessToken: string,
 ): Promise<{ repo: string; key: string; keyId: string }> {
   let key = "";
   let keyId = "";
@@ -417,7 +417,7 @@ async function promptForRepo(
             {
               headers: { Authorization: `token ${ghAccessToken}`, "User-Agent": "Firebase CLI" },
               queryParams: { type: "owner" },
-            }
+            },
           );
           key = body.key;
           keyId = body.key_id;
@@ -427,17 +427,17 @@ async function promptForRepo(
             logger.info();
             logWarning(
               "The provided authorization cannot be used with this repository. If this repository is in an organization, did you remember to grant access?",
-              "error"
+              "error",
             );
             logger.info();
             logLabeledBullet(
               "Action required",
-              `Visit this URL to ensure access has been granted to the appropriate organization(s) for the Firebase CLI GitHub OAuth App:`
+              `Visit this URL to ensure access has been granted to the appropriate organization(s) for the Firebase CLI GitHub OAuth App:`,
             );
             logger.info(
               bold(
-                underline(`https://github.com/settings/connections/applications/${githubClientId}`)
-              )
+                underline(`https://github.com/settings/connections/applications/${githubClientId}`),
+              ),
             );
             logger.info();
           }
@@ -477,7 +477,7 @@ async function promptForBuildScript(): Promise<{ script?: string }> {
 }
 
 async function promptToSetupDeploys(
-  defaultBranch: string
+  defaultBranch: string,
 ): Promise<{ setupDeploys: boolean; branch?: string }> {
   const { setupDeploys } = await prompt({}, [
     {
@@ -527,7 +527,7 @@ async function getRepoDetails(repo: string, ghAccessToken: string) {
     `/repos/${repo}`,
     {
       headers: { Authorization: `token ${ghAccessToken}`, "User-Agent": "Firebase CLI" },
-    }
+    },
   );
   return body;
 }
@@ -539,7 +539,7 @@ async function signInWithGitHub() {
 async function createServiceAccountAndKeyWithRetry(
   options: any,
   repo: string,
-  accountId: string
+  accountId: string,
 ): Promise<string> {
   const spinnerServiceAccount = ora("Retrieving a service account.");
   spinnerServiceAccount.start();
@@ -555,12 +555,12 @@ async function createServiceAccountAndKeyWithRetry(
       if (serviceAccountKeys.length >= SERVICE_ACCOUNT_MAX_KEY_NUMBER) {
         throw new FirebaseError(
           `You cannot add another key because the service account ${bold(
-            accountId
+            accountId,
           )} already contains the max number of keys: ${SERVICE_ACCOUNT_MAX_KEY_NUMBER}.`,
           {
             original: e,
             exit: 1,
-          }
+          },
         );
       }
       throw e;
@@ -570,7 +570,7 @@ async function createServiceAccountAndKeyWithRetry(
     spinnerServiceAccount.start();
     await deleteServiceAccount(
       options.projectId,
-      `${accountId}@${options.projectId}.iam.gserviceaccount.com`
+      `${accountId}@${options.projectId}.iam.gserviceaccount.com`,
     );
     const serviceAccountJSON = await createServiceAccountAndKey(options, repo, accountId);
     spinnerServiceAccount.stop();
@@ -581,14 +581,14 @@ async function createServiceAccountAndKeyWithRetry(
 async function createServiceAccountAndKey(
   options: any,
   repo: string,
-  accountId: string
+  accountId: string,
 ): Promise<string> {
   try {
     await createServiceAccount(
       options.projectId,
       accountId,
       `A service account with permission to deploy to Firebase Hosting and Cloud Functions for the GitHub repository ${repo}`,
-      `GitHub Actions (${repo})`
+      `GitHub Actions (${repo})`,
     );
   } catch (e: any) {
     // No need to throw if there is an existing service account

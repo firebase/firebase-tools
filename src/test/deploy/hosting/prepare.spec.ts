@@ -119,7 +119,7 @@ describe("hosting prepare", () => {
     expect(loggerStub).to.have.been.calledWith(
       "hosting",
       `The site ${clc.bold("site")} will pin rewrites to the current latest ` +
-        `revision of service(s) ${clc.bold("service")}`
+        `revision of service(s) ${clc.bold("service")}`,
     );
   });
 
@@ -227,42 +227,42 @@ describe("hosting prepare", () => {
     it("does not care about modifying live (implicit)", async () => {
       stubUnpinnedRewrite();
       await expect(unsafePins({ projectId: "project" }, configWithRunPin)).to.eventually.deep.equal(
-        []
+        [],
       );
     });
 
     it("does not care about modifying live (explicit)", async () => {
       stubUnpinnedRewrite();
       await expect(
-        unsafePins({ projectId: "project", hostingChannel: "live" }, configWithRunPin)
+        unsafePins({ projectId: "project", hostingChannel: "live" }, configWithRunPin),
       ).to.eventually.deep.equal([]);
     });
 
     it("does not care about already pinned rewrites (run)", async () => {
       stubPinnedRewrite();
       await expect(
-        unsafePins({ projectId: "project", hostingChannel: "test" }, configWithRunPin)
+        unsafePins({ projectId: "project", hostingChannel: "test" }, configWithRunPin),
       ).to.eventually.deep.equal([]);
     });
 
     it("does not care about already pinned rewrites (gcf)", async () => {
       stubPinnedRewrite();
       await expect(
-        unsafePins({ projectId: "project", hostingChannel: "test" }, configWithFuncPin)
+        unsafePins({ projectId: "project", hostingChannel: "test" }, configWithFuncPin),
       ).to.eventually.deep.equal([]);
     });
 
     it("rejects about newly pinned rewrites (run)", async () => {
       stubUnpinnedRewrite();
       await expect(
-        unsafePins({ projectId: "project", hostingChannel: "test" }, configWithRunPin)
+        unsafePins({ projectId: "project", hostingChannel: "test" }, configWithRunPin),
       ).to.eventually.deep.equal(["**"]);
     });
 
     it("rejects about newly pinned rewrites (gcf)", async () => {
       stubUnpinnedRewrite();
       await expect(
-        unsafePins({ projectId: "project", hostingChannel: "test" }, configWithFuncPin)
+        unsafePins({ projectId: "project", hostingChannel: "test" }, configWithFuncPin),
       ).to.eventually.deep.equal(["**"]);
     });
   });
@@ -300,7 +300,7 @@ describe("hosting prepare", () => {
       expect(loggerStub).to.have.been.calledWith(
         "hosting",
         `The following function(s) are pinned to site ${clc.bold("site")} ` +
-          `and will be deployed as well: ${clc.bold("function")}`
+          `and will be deployed as well: ${clc.bold("function")}`,
       );
     });
 

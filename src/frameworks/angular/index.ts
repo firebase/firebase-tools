@@ -51,7 +51,7 @@ export function init(setup: any, config: any) {
     {
       stdio: "inherit",
       cwd: config.projectDir,
-    }
+    },
   );
   return Promise.resolve();
 }
@@ -116,11 +116,11 @@ export async function getDevModeHandle(dir: string, configuration: string) {
 export async function ɵcodegenPublicDirectory(
   sourceDir: string,
   destDir: string,
-  configuration: string
+  configuration: string,
 ) {
   const { outputPath, baseHref, defaultLocale, locales } = await getBrowserConfig(
     sourceDir,
-    configuration
+    configuration,
   );
   await mkdir(join(destDir, baseHref), { recursive: true });
   if (locales) {
@@ -165,7 +165,7 @@ export async function shouldUseDevModeHandle(targetOrConfiguration: string, dir:
 export async function ɵcodegenFunctionsDirectory(
   sourceDir: string,
   destDir: string,
-  configuration: string
+  configuration: string,
 ) {
   const {
     packageJson,
@@ -187,11 +187,11 @@ export async function ɵcodegenFunctionsDirectory(
   await Promise.all([
     serverOutputPath
       ? mkdir(join(destDir, serverOutputPath), { recursive: true }).then(() =>
-          copy(join(sourceDir, serverOutputPath), join(destDir, serverOutputPath))
+          copy(join(sourceDir, serverOutputPath), join(destDir, serverOutputPath)),
         )
       : Promise.resolve(),
     mkdir(join(destDir, browserOutputPath), { recursive: true }).then(() =>
-      copy(join(sourceDir, browserOutputPath), join(destDir, browserOutputPath))
+      copy(join(sourceDir, browserOutputPath), join(destDir, browserOutputPath)),
     ),
   ]);
 

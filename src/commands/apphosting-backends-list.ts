@@ -24,7 +24,7 @@ export const command = new Command("apphosting:backends:list")
     } catch (err: unknown) {
       throw new FirebaseError(
         `Unable to list backends present for project: ${projectId}. Please check the parameters you have provided.`,
-        { original: err as Error }
+        { original: err as Error },
       );
     }
 

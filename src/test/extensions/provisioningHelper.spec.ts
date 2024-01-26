@@ -180,7 +180,7 @@ describe("provisioningHelper", () => {
       await expect(
         provisioningHelper.checkProductsProvisioned(PROJECT_ID, {
           resources: [] as Resource[],
-        } as ExtensionSpec)
+        } as ExtensionSpec),
       ).to.be.fulfilled;
     });
 
@@ -193,7 +193,7 @@ describe("provisioningHelper", () => {
         .reply(200, FIREBASE_STORAGE_DEFAULT_BUCKET_LINKED_RESPONSE);
 
       await expect(
-        provisioningHelper.checkProductsProvisioned(PROJECT_ID, SPEC_WITH_STORAGE_AND_AUTH)
+        provisioningHelper.checkProductsProvisioned(PROJECT_ID, SPEC_WITH_STORAGE_AND_AUTH),
       ).to.be.fulfilled;
 
       expect(nock.isDone()).to.be.true;
@@ -214,7 +214,7 @@ describe("provisioningHelper", () => {
         });
 
       await expect(
-        provisioningHelper.checkProductsProvisioned(PROJECT_ID, SPEC_WITH_STORAGE_AND_AUTH)
+        provisioningHelper.checkProductsProvisioned(PROJECT_ID, SPEC_WITH_STORAGE_AND_AUTH),
       ).to.be.rejectedWith(FirebaseError, "Firebase Storage: store and retrieve user-generated");
 
       expect(nock.isDone()).to.be.true;
@@ -227,7 +227,7 @@ describe("provisioningHelper", () => {
       nock(api.firebaseStorageOrigin).get(`/v1beta/projects/${PROJECT_ID}/buckets`).reply(200, {});
 
       await expect(
-        provisioningHelper.checkProductsProvisioned(PROJECT_ID, SPEC_WITH_STORAGE_AND_AUTH)
+        provisioningHelper.checkProductsProvisioned(PROJECT_ID, SPEC_WITH_STORAGE_AND_AUTH),
       ).to.be.rejectedWith(FirebaseError, "Firebase Storage: store and retrieve user-generated");
 
       expect(nock.isDone()).to.be.true;
@@ -240,10 +240,10 @@ describe("provisioningHelper", () => {
         .reply(200, FIREBASE_STORAGE_DEFAULT_BUCKET_LINKED_RESPONSE);
 
       await expect(
-        provisioningHelper.checkProductsProvisioned(PROJECT_ID, SPEC_WITH_STORAGE_AND_AUTH)
+        provisioningHelper.checkProductsProvisioned(PROJECT_ID, SPEC_WITH_STORAGE_AND_AUTH),
       ).to.be.rejectedWith(
         FirebaseError,
-        "Firebase Authentication: authenticate and manage users from"
+        "Firebase Authentication: authenticate and manage users from",
       );
 
       expect(nock.isDone()).to.be.true;
@@ -257,7 +257,7 @@ describe("provisioningHelper", () => {
         .reply(200, extensionVersionResponse("0.1.0", SPEC_WITH_NOTHING));
 
       await expect(
-        provisioningHelper.bulkCheckProductsProvisioned(PROJECT_ID, [instanceSpec("0.1.0")])
+        provisioningHelper.bulkCheckProductsProvisioned(PROJECT_ID, [instanceSpec("0.1.0")]),
       ).to.be.fulfilled;
     });
 
@@ -273,7 +273,7 @@ describe("provisioningHelper", () => {
         .reply(200, FIREBASE_STORAGE_DEFAULT_BUCKET_LINKED_RESPONSE);
 
       await expect(
-        provisioningHelper.bulkCheckProductsProvisioned(PROJECT_ID, [instanceSpec("0.1.0")])
+        provisioningHelper.bulkCheckProductsProvisioned(PROJECT_ID, [instanceSpec("0.1.0")]),
       ).to.be.fulfilled;
 
       expect(nock.isDone()).to.be.true;
@@ -297,7 +297,7 @@ describe("provisioningHelper", () => {
         provisioningHelper.bulkCheckProductsProvisioned(PROJECT_ID, [
           instanceSpec("0.1.0"),
           instanceSpec("0.1.1"),
-        ])
+        ]),
       ).to.be.fulfilled;
 
       expect(nock.isDone()).to.be.true;
@@ -318,7 +318,7 @@ describe("provisioningHelper", () => {
         });
 
       await expect(
-        provisioningHelper.bulkCheckProductsProvisioned(PROJECT_ID, [instanceSpec("0.1.0")])
+        provisioningHelper.bulkCheckProductsProvisioned(PROJECT_ID, [instanceSpec("0.1.0")]),
       ).to.be.rejectedWith(FirebaseError, "Firebase Storage: store and retrieve user-generated");
 
       expect(nock.isDone()).to.be.true;
@@ -331,10 +331,10 @@ describe("provisioningHelper", () => {
       nock(api.firedataOrigin).get(`/v1/projects/${PROJECT_ID}/products`).reply(200, {});
 
       await expect(
-        provisioningHelper.bulkCheckProductsProvisioned(PROJECT_ID, [instanceSpec("0.1.0")])
+        provisioningHelper.bulkCheckProductsProvisioned(PROJECT_ID, [instanceSpec("0.1.0")]),
       ).to.be.rejectedWith(
         FirebaseError,
-        "Firebase Authentication: authenticate and manage users from"
+        "Firebase Authentication: authenticate and manage users from",
       );
 
       expect(nock.isDone()).to.be.true;

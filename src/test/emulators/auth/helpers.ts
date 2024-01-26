@@ -70,7 +70,7 @@ export function expectStatusCode(expected: number, res: supertest.Response): voi
     throw new AssertionError(
       `expected ${expected} "${STATUS_CODES[expected]}", got ${res.status} "${
         STATUS_CODES[res.status]
-      }", with response body:\n${body}`
+      }", with response body:\n${body}`,
     );
   }
 }
@@ -88,7 +88,7 @@ export function fakeClaims(input: Partial<IdpJwtPayload> & { sub: string }): Idp
       exp: 1597974008,
       iat: 1597970408,
     },
-    input
+    input,
   );
 }
 
@@ -103,7 +103,7 @@ export function registerUser(
     displayName?: string;
     mfaInfo?: MfaEnrollments;
     tenantId?: string;
-  }
+  },
 ): Promise<{ idToken: string; localId: string; refreshToken: string; email: string }> {
   return testAgent
     .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
@@ -121,7 +121,7 @@ export function registerUser(
 }
 
 export function registerAnonUser(
-  testAgent: TestAgent
+  testAgent: TestAgent,
 ): Promise<{ idToken: string; localId: string; refreshToken: string }> {
   return testAgent
     .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
@@ -140,7 +140,7 @@ export function registerAnonUser(
 export async function signInWithEmailLink(
   testAgent: TestAgent,
   email: string,
-  idTokenToLink?: string
+  idTokenToLink?: string,
 ): Promise<{ idToken: string; localId: string; refreshToken: string; email: string }> {
   const { oobCode } = await createEmailSignInOob(testAgent, email);
 
@@ -162,7 +162,7 @@ export function signInWithPassword(
   testAgent: TestAgent,
   email: string,
   password: string,
-  extractMfaPending: boolean = false
+  extractMfaPending: boolean = false,
 ): Promise<{
   idToken?: string;
   localId?: string;
@@ -200,7 +200,7 @@ export function signInWithPassword(
 
 export async function signInWithPhoneNumber(
   testAgent: TestAgent,
-  phoneNumber: string
+  phoneNumber: string,
 ): Promise<{ idToken: string; localId: string; refreshToken: string }> {
   const sessionInfo = await testAgent
     .post("/identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode")
@@ -231,7 +231,7 @@ export function signInWithFakeClaims(
   testAgent: TestAgent,
   providerId: string,
   claims: Partial<IdpJwtPayload> & { sub: string },
-  tenantId?: string
+  tenantId?: string,
 ): Promise<{ idToken: string; localId: string; refreshToken: string; email?: string }> {
   const fakeIdToken = JSON.stringify(fakeClaims(claims));
   return testAgent
@@ -239,7 +239,7 @@ export function signInWithFakeClaims(
     .query({ key: "fake-api-key" })
     .send({
       postBody: `providerId=${encodeURIComponent(providerId)}&id_token=${encodeURIComponent(
-        fakeIdToken
+        fakeIdToken,
       )}`,
       requestUri: "http://localhost",
       returnIdpCredential: true,
@@ -260,7 +260,7 @@ export function signInWithFakeClaims(
 export async function expectUserNotExistsForIdToken(
   testAgent: TestAgent,
   idToken: string,
-  tenantId?: string
+  tenantId?: string,
 ): Promise<void> {
   await testAgent
     .post("/identitytoolkit.googleapis.com/v1/accounts:lookup")
@@ -286,7 +286,7 @@ export async function expectIdTokenExpired(testAgent: TestAgent, idToken: string
 export function getAccountInfoByIdToken(
   testAgent: TestAgent,
   idToken: string,
-  tenantId?: string
+  tenantId?: string,
 ): Promise<UserInfo> {
   return testAgent
     .post("/identitytoolkit.googleapis.com/v1/accounts:lookup")
@@ -302,7 +302,7 @@ export function getAccountInfoByIdToken(
 export function getAccountInfoByLocalId(
   testAgent: TestAgent,
   localId: string,
-  tenantId?: string
+  tenantId?: string,
 ): Promise<UserInfo> {
   return testAgent
     .post("/identitytoolkit.googleapis.com/v1/accounts:lookup")
@@ -327,7 +327,7 @@ export function inspectOobs(testAgent: TestAgent, tenantId?: string): Promise<Oo
 
 export function inspectVerificationCodes(
   testAgent: TestAgent,
-  tenantId?: string
+  tenantId?: string,
 ): Promise<PhoneVerificationRecord[]> {
   const path = tenantId
     ? `/emulator/v1/projects/${PROJECT_ID}/tenants/${tenantId}/verificationCodes`
@@ -341,7 +341,7 @@ export function inspectVerificationCodes(
 export function createEmailSignInOob(
   testAgent: TestAgent,
   email: string,
-  tenantId?: string
+  tenantId?: string,
 ): Promise<{ oobCode: string; oobLink: string }> {
   return testAgent
     .post("/identitytoolkit.googleapis.com/v1/accounts:sendOobCode")
@@ -380,7 +380,7 @@ export function updateProjectConfig(testAgent: TestAgent, config: {}): Promise<v
 export function updateAccountByLocalId(
   testAgent: TestAgent,
   localId: string,
-  fields: {}
+  fields: {},
 ): Promise<void> {
   return testAgent
     .post("/identitytoolkit.googleapis.com/v1/accounts:update")
@@ -395,7 +395,7 @@ export async function enrollPhoneMfa(
   testAgent: TestAgent,
   idToken: string,
   phoneNumber: string,
-  tenantId?: string
+  tenantId?: string,
 ): Promise<{ idToken: string; refreshToken: string }> {
   const sessionInfo = await testAgent
     .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:start")
@@ -436,7 +436,7 @@ export function deleteAccount(testAgent: TestAgent, reqBody: {}): Promise<string
 export function registerTenant(
   testAgent: TestAgent,
   projectId: string,
-  tenant?: Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"]
+  tenant?: Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"],
 ): Promise<Tenant> {
   return testAgent
     .post(`/identitytoolkit.googleapis.com/v2/projects/${projectId}/tenants`)
@@ -453,7 +453,7 @@ export async function updateConfig(
   testAgent: TestAgent,
   projectId: string,
   config: Schemas["GoogleCloudIdentitytoolkitAdminV2Config"],
-  updateMask?: string
+  updateMask?: string,
 ): Promise<void> {
   await testAgent
     .patch(`/identitytoolkit.googleapis.com/v2/projects/${projectId}/config`)

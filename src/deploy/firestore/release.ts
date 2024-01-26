@@ -22,12 +22,12 @@ export default async function (context: any, options: Options): Promise<void> {
       if (!rulesFile) {
         logger.error(
           `Invalid firestore config for ${databaseId} database: ${JSON.stringify(
-            options.config.src.firestore
-          )}`
+            options.config.src.firestore,
+          )}`,
         );
         return;
       }
       return rulesDeploy.release(rulesFile, RulesetServiceType.CLOUD_FIRESTORE, databaseId);
-    })
+    }),
   );
 }

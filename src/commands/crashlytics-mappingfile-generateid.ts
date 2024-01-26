@@ -15,11 +15,11 @@ interface JarOptions {
 
 export const command = new Command("crashlytics:mappingfile:generateid")
   .description(
-    "generate a mapping file id and write it to an Android resource file, which will be built into the app"
+    "generate a mapping file id and write it to an Android resource file, which will be built into the app",
   )
   .option(
     "--resource-file <resourceFile>",
-    "path to the Android resource XML file that will be created or updated."
+    "path to the Android resource XML file that will be created or updated.",
   )
   .action(async (options: CommandOptions) => {
     const debug = !!options.debug;
@@ -27,7 +27,7 @@ export const command = new Command("crashlytics:mappingfile:generateid")
     const resourceFilePath = options.resourceFile;
     if (!resourceFilePath) {
       throw new FirebaseError(
-        "set --resource-file <resourceFile> to an Android resource file path, e.g. app/src/main/res/values/crashlytics.xml"
+        "set --resource-file <resourceFile> to an Android resource file path, e.g. app/src/main/res/values/crashlytics.xml",
       );
     }
     const jarFile = await fetchBuildtoolsJar();

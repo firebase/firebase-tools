@@ -60,7 +60,7 @@ export class SourceTokenScraper {
         "Your deployment is checking the expiration of a source token that has not yet been polled. " +
           "Hitting this case should never happen and should be considered a bug. " +
           "Please file an issue at https://github.com/firebase/firebase-tools/issues " +
-          "and try deploying your functions again."
+          "and try deploying your functions again.",
       );
     }
     return Date.now() >= this.expiry;

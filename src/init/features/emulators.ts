@@ -79,7 +79,7 @@ export async function doSetup(setup: any, config: any) {
             type: "input",
             name: "port",
             message: `Which port do you want to use for the ${clc.underline(
-              uiDesc
+              uiDesc,
             )} (leave empty to use any available port)?`,
           },
         ]);

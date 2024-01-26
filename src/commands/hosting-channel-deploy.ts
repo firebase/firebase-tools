@@ -38,7 +38,7 @@ export const command = new Command("hosting:channel:deploy [channelId]")
   .description("deploy to a specific Firebase Hosting channel")
   .option(
     "-e, --expires <duration>",
-    "duration string (e.g. 12h, 30d) for channel expiration, max 30d; defaults to 7d"
+    "duration string (e.g. 12h, 30d) for channel expiration, max 30d; defaults to 7d",
   )
   .option("--only <target1,target2...>", "only create previews for specified targets")
   .option("--open", "open a browser to the channel after deploying")
@@ -56,7 +56,7 @@ export const command = new Command("hosting:channel:deploy [channelId]")
  */
 export async function hostingChannelDeployAction(
   channelId: string,
-  options: Options & HostingOptions
+  options: Options & HostingOptions,
 ): Promise<{ [targetOrSite: string]: ChannelInfo }> {
   const projectId = needProjectId(options);
 
@@ -82,8 +82,8 @@ export async function hostingChannelDeployAction(
   if (channelId.toLowerCase().trim() === "live") {
     throw new FirebaseError(
       `Cannot deploy to the ${bold("live")} channel using this command. Please use ${bold(
-        yellow("firebase deploy")
-      )} instead.`
+        yellow("firebase deploy"),
+      )} instead.`,
     );
   }
 
@@ -135,13 +135,13 @@ export async function hostingChannelDeployAction(
         logger.debug("[hosting] created new channnel for site", site, chan);
         logLabeledSuccess(
           LOG_TAG,
-          `Channel ${bold(channelId)} has been created on site ${bold(site)}.`
+          `Channel ${bold(channelId)} has been created on site ${bold(site)}.`,
         );
       }
       siteInfo.url = chan.url;
       siteInfo.expireTime = chan.expireTime;
       return;
-    })
+    }),
   );
 
   const { hosting } = await deploy(["hosting"], options, { hostingChannel: channelId });
@@ -187,7 +187,7 @@ export async function hostingChannelDeployAction(
     }
     logLabeledSuccess(
       LOG_TAG,
-      `Channel URL (${bold(d.site || d.target || "")}): ${d.url} ${expires}${version}`
+      `Channel URL (${bold(d.site || d.target || "")}): ${d.url} ${expires}${version}`,
     );
   });
   return deploys;
@@ -209,9 +209,9 @@ async function syncAuthState(projectId: string, sites: ChannelInfo[]) {
       marked(
         `Unable to add channel domain to Firebase Auth. Visit the Firebase Console at ${consoleUrl(
           projectId,
-          "/authentication/providers"
-        )}`
-      )
+          "/authentication/providers",
+        )}`,
+      ),
     );
     logger.debug("[hosting] unable to add auth domain", e);
   }

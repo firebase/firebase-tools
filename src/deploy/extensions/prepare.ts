@@ -115,7 +115,7 @@ export async function prepare(context: Context, options: Options, payload: Paylo
   await acceptLatestAppDeveloperTOS(
     options,
     projectId,
-    context.want.map((i) => i.instanceId)
+    context.want.map((i) => i.instanceId),
   );
 }
 const matchesInstanceId = (dep: planner.InstanceSpec) => (test: planner.InstanceSpec) => {

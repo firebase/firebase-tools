@@ -612,7 +612,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_CREATE_PATH)
@@ -667,7 +667,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_SIGN_IN_PATH)
@@ -727,7 +727,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_CREATE_PATH)
@@ -794,7 +794,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_CREATE_PATH)
@@ -833,7 +833,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_CREATE_PATH)

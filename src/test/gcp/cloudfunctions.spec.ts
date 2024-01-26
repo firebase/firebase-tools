@@ -56,14 +56,14 @@ describe("cloudfunctions", () => {
       expect(() => {
         cloudfunctions.functionFromEndpoint(
           { ...ENDPOINT, platform: "gcfv2", httpsTrigger: {} },
-          UPLOAD_URL
+          UPLOAD_URL,
         );
       }).to.throw();
     });
 
     it("should copy a minimal function", () => {
       expect(
-        cloudfunctions.functionFromEndpoint({ ...ENDPOINT, httpsTrigger: {} }, UPLOAD_URL)
+        cloudfunctions.functionFromEndpoint({ ...ENDPOINT, httpsTrigger: {} }, UPLOAD_URL),
       ).to.deep.equal({
         ...CLOUD_FUNCTION,
         sourceUploadUrl: UPLOAD_URL,
@@ -88,7 +88,7 @@ describe("cloudfunctions", () => {
         },
       };
       expect(cloudfunctions.functionFromEndpoint(eventEndpoint, UPLOAD_URL)).to.deep.equal(
-        eventGcfFunction
+        eventGcfFunction,
       );
     });
 
@@ -134,7 +134,7 @@ describe("cloudfunctions", () => {
       };
 
       expect(cloudfunctions.functionFromEndpoint(fullEndpoint, UPLOAD_URL)).to.deep.equal(
-        fullGcfFunction
+        fullGcfFunction,
       );
     });
 
@@ -163,7 +163,7 @@ describe("cloudfunctions", () => {
       };
 
       expect(cloudfunctions.functionFromEndpoint(complexEndpoint, UPLOAD_URL)).to.deep.equal(
-        complexGcfFunction
+        complexGcfFunction,
       );
     });
 
@@ -184,7 +184,7 @@ describe("cloudfunctions", () => {
         };
 
       expect(cloudfunctions.functionFromEndpoint(taskEndpoint, UPLOAD_URL)).to.deep.equal(
-        taskQueueFunction
+        taskQueueFunction,
       );
     });
 
@@ -207,7 +207,7 @@ describe("cloudfunctions", () => {
         };
 
       expect(cloudfunctions.functionFromEndpoint(blockingEndpoint, UPLOAD_URL)).to.deep.equal(
-        blockingFunction
+        blockingFunction,
       );
     });
 
@@ -230,7 +230,7 @@ describe("cloudfunctions", () => {
         };
 
       expect(cloudfunctions.functionFromEndpoint(blockingEndpoint, UPLOAD_URL)).to.deep.equal(
-        blockingFunction
+        blockingFunction,
       );
     });
 
@@ -242,8 +242,8 @@ describe("cloudfunctions", () => {
             codebase: "my-codebase",
             httpsTrigger: {},
           },
-          UPLOAD_URL
-        )
+          UPLOAD_URL,
+        ),
       ).to.deep.equal({
         ...CLOUD_FUNCTION,
         sourceUploadUrl: UPLOAD_URL,
@@ -260,8 +260,8 @@ describe("cloudfunctions", () => {
             hash: "my-hash",
             httpsTrigger: {},
           },
-          UPLOAD_URL
-        )
+          UPLOAD_URL,
+        ),
       ).to.deep.equal({
         ...CLOUD_FUNCTION,
         sourceUploadUrl: UPLOAD_URL,
@@ -277,7 +277,7 @@ describe("cloudfunctions", () => {
         cloudfunctions.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION,
           httpsTrigger: {},
-        })
+        }),
       ).to.deep.equal({ ...ENDPOINT, httpsTrigger: {} });
     });
 
@@ -300,7 +300,7 @@ describe("cloudfunctions", () => {
               retry: {},
             },
           },
-        })
+        }),
       ).to.deep.equal(want);
 
       // And again w/o the failure policy
@@ -318,7 +318,7 @@ describe("cloudfunctions", () => {
             eventType: "google.pubsub.topic.publish",
             resource: "projects/p/topics/t",
           },
-        })
+        }),
       ).to.deep.equal(want);
     });
 
@@ -336,7 +336,7 @@ describe("cloudfunctions", () => {
           labels: {
             "deployment-scheduled": "true",
           },
-        })
+        }),
       ).to.deep.equal({
         ...ENDPOINT,
         scheduleTrigger: {},
@@ -354,7 +354,7 @@ describe("cloudfunctions", () => {
           labels: {
             "deployment-taskqueue": "true",
           },
-        })
+        }),
       ).to.deep.equal({
         ...ENDPOINT,
         taskQueueTrigger: {},
@@ -372,7 +372,7 @@ describe("cloudfunctions", () => {
           labels: {
             "deployment-blocking": "before-create",
           },
-        })
+        }),
       ).to.deep.equal({
         ...ENDPOINT,
         blockingTrigger: {
@@ -392,7 +392,7 @@ describe("cloudfunctions", () => {
           labels: {
             "deployment-blocking": "before-sign-in",
           },
-        })
+        }),
       ).to.deep.equal({
         ...ENDPOINT,
         blockingTrigger: {
@@ -443,7 +443,7 @@ describe("cloudfunctions", () => {
           vpcConnector,
           vpcConnectorEgressSettings,
           httpsTrigger: {},
-        } as cloudfunctions.CloudFunction)
+        } as cloudfunctions.CloudFunction),
       ).to.deep.equal({
         ...ENDPOINT,
         ...wantExtraFields,
@@ -464,7 +464,7 @@ describe("cloudfunctions", () => {
             ...CLOUD_FUNCTION.labels,
             [CODEBASE_LABEL]: "my-codebase",
           },
-        })
+        }),
       ).to.deep.equal({
         ...ENDPOINT,
         httpsTrigger: {},
@@ -486,7 +486,7 @@ describe("cloudfunctions", () => {
             [CODEBASE_LABEL]: "my-codebase",
             [HASH_LABEL]: "my-hash",
           },
-        })
+        }),
       ).to.deep.equal({
         ...ENDPOINT,
         httpsTrigger: {},
@@ -519,7 +519,7 @@ describe("cloudfunctions", () => {
         .reply(418, {});
 
       await expect(
-        cloudfunctions.setInvokerCreate("project", "function", ["public"])
+        cloudfunctions.setInvokerCreate("project", "function", ["public"]),
       ).to.be.rejectedWith("Failed to set the IAM Policy on the function function");
     });
 
@@ -581,7 +581,7 @@ describe("cloudfunctions", () => {
           "service-account1@",
           "service-account2@project.iam.gserviceaccount.com",
           "service-account3@",
-        ])
+        ]),
       ).to.not.be.rejected;
     });
   });
@@ -595,7 +595,7 @@ describe("cloudfunctions", () => {
       nock(functionsOrigin).get("/v1/function:getIamPolicy").reply(404, {});
 
       await expect(
-        cloudfunctions.setInvokerUpdate("project", "function", ["public"])
+        cloudfunctions.setInvokerUpdate("project", "function", ["public"]),
       ).to.be.rejectedWith("Failed to get the IAM Policy on the function function");
     });
 
@@ -613,7 +613,7 @@ describe("cloudfunctions", () => {
         .reply(418, {});
 
       await expect(
-        cloudfunctions.setInvokerUpdate("project", "function", ["public"])
+        cloudfunctions.setInvokerUpdate("project", "function", ["public"]),
       ).to.be.rejectedWith("Failed to set the IAM Policy on the function function");
     });
 
@@ -690,7 +690,7 @@ describe("cloudfunctions", () => {
           "service-account1@",
           "service-account2@project.iam.gserviceaccount.com",
           "service-account3@",
-        ])
+        ]),
       ).to.not.be.rejected;
     });
 
@@ -717,7 +717,7 @@ describe("cloudfunctions", () => {
           "service-account2@project.iam.gserviceaccount.com",
           "service-account3@",
           "service-account1@",
-        ])
+        ]),
       ).to.not.be.rejected;
     });
   });

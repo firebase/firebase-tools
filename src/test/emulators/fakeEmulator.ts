@@ -6,7 +6,10 @@ import { resolveHostAndAssignPorts } from "../../emulator/portUtils";
  * A thing that acts like an emulator by just occupying a port.
  */
 export class FakeEmulator extends ExpressBasedEmulator {
-  constructor(public name: Emulators, listen: ListenSpec[]) {
+  constructor(
+    public name: Emulators,
+    listen: ListenSpec[],
+  ) {
     super({ listen, noBodyParser: true, noCors: true });
   }
   getName(): Emulators {

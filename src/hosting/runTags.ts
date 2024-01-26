@@ -25,7 +25,7 @@ export async function gcTagsForServices(project: string, services: run.Service[]
   const validTagsByServiceByRegion: Record<string, Record<string, Set<string>>> = {};
   const sites = await api.listSites(project);
   const allVersionsNested = await Promise.all(
-    sites.map((site) => api.listVersions(posix.basename(site.name)))
+    sites.map((site) => api.listVersions(posix.basename(site.name))),
   );
   const activeVersions = [...flattenArray(allVersionsNested)].filter((version) => {
     return version.status === "CREATED" || version.status === "FINALIZED";
@@ -85,7 +85,7 @@ export function setGarbageCollectionThreshold(threshold: number): void {
 export async function setRewriteTags(
   rewrites: api.Rewrite[],
   project: string,
-  version: string
+  version: string,
 ): Promise<void> {
   // Note: this is sub-optimal in the case where there are multiple rewrites
   // to the same service. Should we deduplicate this?
@@ -100,11 +100,11 @@ export async function setRewriteTags(
         }
 
         return run.getService(
-          `projects/${project}/locations/${rewrite.run.region}/services/${rewrite.run.serviceId}`
+          `projects/${project}/locations/${rewrite.run.region}/services/${rewrite.run.serviceId}`,
         );
       })
       // filter does not drop the null annotation
-      .filter((s) => s !== null) as Array<Promise<run.Service>>
+      .filter((s) => s !== null) as Array<Promise<run.Service>>,
   );
   // Unnecessary due to functional programming, but creates an observable side effect for tests
   if (!services.length) {
@@ -123,7 +123,7 @@ export async function setRewriteTags(
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
   const tags: Record<string, Record<string, string>> = await exports.ensureLatestRevisionTagged(
     services,
-    `fh-${version}`
+    `fh-${version}`,
   );
   for (const rewrite of rewrites) {
     if (!("run" in rewrite) || rewrite.run.tag !== TODO_TAG_NAME) {
@@ -143,7 +143,7 @@ export async function setRewriteTags(
  */
 export async function ensureLatestRevisionTagged(
   services: run.Service[],
-  defaultTag: string
+  defaultTag: string,
 ): Promise<Record<string, Record<string, string>>> {
   // Region -> Service -> Tag
   const tags: Record<string, Record<string, string>> = {};
@@ -154,11 +154,11 @@ export async function ensureLatestRevisionTagged(
     const latestRevision = service.status?.latestReadyRevisionName;
     if (!latestRevision) {
       throw new FirebaseError(
-        `Assertion failed: service ${service.metadata.name} has no ready revision`
+        `Assertion failed: service ${service.metadata.name} has no ready revision`,
       );
     }
     const alreadyTagged = service.spec.traffic.find(
-      (target) => target.revisionName === latestRevision && target.tag
+      (target) => target.revisionName === latestRevision && target.tag,
     );
     if (alreadyTagged) {
       // Null assertion is safe because the predicate that found alreadyTagged
@@ -174,8 +174,8 @@ export async function ensureLatestRevisionTagged(
     updateServices.push(
       run.updateService(
         `projects/${projectNumber}/locations/${region}/services/${serviceId}`,
-        service
-      )
+        service,
+      ),
     );
   }
 

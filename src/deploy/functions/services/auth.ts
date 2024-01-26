@@ -36,18 +36,18 @@ export class AuthBlockingService implements Service {
       blockingEndpoints.find(
         (ep) =>
           ep.blockingTrigger.eventType === endpoint.blockingTrigger.eventType &&
-          ep.id !== endpoint.id
+          ep.id !== endpoint.id,
       )
     ) {
       throw new FirebaseError(
-        `Can only create at most one Auth Blocking Trigger for ${endpoint.blockingTrigger.eventType} events`
+        `Can only create at most one Auth Blocking Trigger for ${endpoint.blockingTrigger.eventType} events`,
       );
     }
   }
 
   private configChanged(
     newConfig: identityPlatform.BlockingFunctionsConfig,
-    config: identityPlatform.BlockingFunctionsConfig
+    config: identityPlatform.BlockingFunctionsConfig,
   ) {
     if (
       newConfig.triggers?.beforeCreate?.functionUri !==
@@ -70,7 +70,7 @@ export class AuthBlockingService implements Service {
   }
 
   private async registerTriggerLocked(
-    endpoint: backend.Endpoint & backend.BlockingTriggered
+    endpoint: backend.Endpoint & backend.BlockingTriggered,
   ): Promise<void> {
     const newBlockingConfig = await identityPlatform.getBlockingFunctionsConfig(endpoint.project);
     const oldBlockingConfig = cloneDeep(newBlockingConfig);
@@ -116,7 +116,7 @@ export class AuthBlockingService implements Service {
   }
 
   private async unregisterTriggerLocked(
-    endpoint: backend.Endpoint & backend.BlockingTriggered
+    endpoint: backend.Endpoint & backend.BlockingTriggered,
   ): Promise<void> {
     const blockingConfig = await identityPlatform.getBlockingFunctionsConfig(endpoint.project);
     if (

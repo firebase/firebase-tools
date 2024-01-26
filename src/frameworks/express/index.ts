@@ -42,7 +42,7 @@ export async function ɵcodegenPublicDirectory(root: string, dest: string) {
 async function getBootstrapScript(
   root: string,
   _bootstrapScript = "",
-  _entry?: any
+  _entry?: any,
 ): Promise<string | undefined> {
   let entry = _entry;
   let bootstrapScript = _bootstrapScript;

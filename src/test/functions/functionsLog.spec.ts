@@ -9,7 +9,7 @@ describe("functionsLog", () => {
       expect(functionsLog.getApiFilter(undefined)).to.eq(
         'resource.type="cloud_function" OR ' +
           '(resource.type="cloud_run_revision" AND ' +
-          'labels."goog-managed-by"="cloudfunctions")'
+          'labels."goog-managed-by"="cloudfunctions")',
       );
     });
 
@@ -21,7 +21,7 @@ describe("functionsLog", () => {
           '(resource.labels.function_name="fn1" OR ' +
           'resource.labels.service_name="fn1" OR ' +
           'resource.labels.function_name="fn2" OR ' +
-          'resource.labels.service_name="fn2")'
+          'resource.labels.service_name="fn2")',
       );
     });
   });

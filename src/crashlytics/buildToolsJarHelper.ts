@@ -36,13 +36,13 @@ export async function fetchBuildtoolsJar(): Promise<string> {
   // delete the old version.
   if (fs.existsSync(JAR_CACHE_DIR)) {
     logger.debug(
-      `Deleting Jar cache at ${JAR_CACHE_DIR} because the CLI was run with a newer Jar version`
+      `Deleting Jar cache at ${JAR_CACHE_DIR} because the CLI was run with a newer Jar version`,
     );
     rimraf.sync(JAR_CACHE_DIR);
   }
   utils.logBullet("Downloading crashlytics-buildtools.jar to " + jarPath);
   utils.logBullet(
-    "For open source licenses used by this command, look in the META-INF directory in the buildtools.jar file"
+    "For open source licenses used by this command, look in the META-INF directory in the buildtools.jar file",
   );
   const tmpfile = await downloadUtils.downloadToTmp(JAR_URL);
   fs.mkdirSync(JAR_CACHE_DIR, { recursive: true });

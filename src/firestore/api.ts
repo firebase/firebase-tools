@@ -28,7 +28,7 @@ export class FirestoreApi {
     options: { project: string; nonInteractive: boolean; force: boolean },
     indexes: any[],
     fieldOverrides: any[],
-    databaseId: string = "(default)"
+    databaseId: string = "(default)",
   ): Promise<void> {
     const spec = this.upgradeOldSpec({
       indexes,
@@ -44,7 +44,7 @@ export class FirestoreApi {
     const existingIndexes: types.Index[] = await this.listIndexes(options.project, databaseId);
     const existingFieldOverrides: types.Field[] = await this.listFieldOverrides(
       options.project,
-      databaseId
+      databaseId,
     );
 
     const indexesToDelete = existingIndexes.filter((index) => {
@@ -76,7 +76,7 @@ export class FirestoreApi {
         utils.logLabeledBullet(
           "firestore",
           `there are ${indexesToDelete.length} indexes defined in your project that are not present in your ` +
-            "firestore indexes file. To delete them, run this command with the --force flag."
+            "firestore indexes file. To delete them, run this command with the --force flag.",
         );
       } else if (!options.force) {
         const indexesString = indexesToDelete
@@ -84,7 +84,7 @@ export class FirestoreApi {
           .join("\n\t");
         utils.logLabeledBullet(
           "firestore",
-          `The following indexes are defined in your project but are not present in your firestore indexes file:\n\t${indexesString}`
+          `The following indexes are defined in your project but are not present in your firestore indexes file:\n\t${indexesString}`,
         );
       }
 
@@ -122,7 +122,7 @@ export class FirestoreApi {
         utils.logLabeledBullet(
           "firestore",
           `there are ${fieldOverridesToDelete.length} field overrides defined in your project that are not present in your ` +
-            "firestore indexes file. To delete them, run this command with the --force flag."
+            "firestore indexes file. To delete them, run this command with the --force flag.",
         );
       } else if (!options.force) {
         const indexesString = fieldOverridesToDelete
@@ -130,7 +130,7 @@ export class FirestoreApi {
           .join("\n\t");
         utils.logLabeledBullet(
           "firestore",
-          `The following field overrides are defined in your project but are not present in your firestore indexes file:\n\t${indexesString}`
+          `The following field overrides are defined in your project but are not present in your firestore indexes file:\n\t${indexesString}`,
         );
       }
 
@@ -161,7 +161,7 @@ export class FirestoreApi {
     if (shouldDeleteFields && fieldOverridesToDelete.length > 0) {
       utils.logLabeledBullet(
         "firestore",
-        `Deleting ${fieldOverridesToDelete.length} field overrides...`
+        `Deleting ${fieldOverridesToDelete.length} field overrides...`,
       );
       for (const field of fieldOverridesToDelete) {
         await this.deleteField(field);
@@ -203,7 +203,7 @@ export class FirestoreApi {
    */
   async listFieldOverrides(
     project: string,
-    databaseId: string = "(default)"
+    databaseId: string = "(default)",
   ): Promise<types.Field[]> {
     const parent = `projects/${project}/databases/${databaseId}/collectionGroups/-`;
     const url = `/${parent}/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:*`;
@@ -324,7 +324,7 @@ export class FirestoreApi {
       ["Delete Protection State", clc.yellow(database.deleteProtectionState)],
       ["Point In Time Recovery", clc.yellow(database.pointInTimeRecoveryEnablement)],
       ["Earliest Version Time", clc.yellow(database.earliestVersionTime)],
-      ["Version Retention Period", clc.yellow(database.versionRetentionPeriod)]
+      ["Version Retention Period", clc.yellow(database.versionRetentionPeriod)],
     );
     logger.info(table.toString());
   }
@@ -348,7 +348,7 @@ export class FirestoreApi {
     table.push(
       ...locations
         .sort(sort.compareLocation)
-        .map((location) => [location.displayName, location.locationId])
+        .map((location) => [location.displayName, location.locationId]),
     );
     logger.info(table.toString());
   }
@@ -451,7 +451,7 @@ export class FirestoreApi {
   async patchField(
     project: string,
     spec: Spec.FieldOverride,
-    databaseId: string = "(default)"
+    databaseId: string = "(default)",
   ): Promise<any> {
     const url = `/projects/${project}/databases/${databaseId}/collectionGroups/${spec.collectionGroup}/fields/${spec.fieldPath}`;
 
@@ -576,7 +576,7 @@ export class FirestoreApi {
       utils.logLabeledBullet(
         "firestore",
         `there are TTL field overrides for collection ${spec.collectionGroup} defined in your project that are not present in your ` +
-          "firestore indexes file. The TTL policy won't be deleted since is not specified as false."
+          "firestore indexes file. The TTL policy won't be deleted since is not specified as false.",
       );
     }
 
@@ -629,7 +629,7 @@ export class FirestoreApi {
           " your indexes indexes are specified in the v1beta1 API format. " +
           "Please upgrade to the new index API format by running " +
           clc.bold("firebase firestore:indexes") +
-          " again and saving the result."
+          " again and saving the result.",
       );
     }
 
@@ -727,7 +727,7 @@ export class FirestoreApi {
     locationId: string,
     type: types.DatabaseType,
     deleteProtectionState: types.DatabaseDeleteProtectionState,
-    pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement
+    pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement,
   ): Promise<types.DatabaseResp> {
     const url = `/projects/${project}/databases`;
     const payload: types.DatabaseReq = {
@@ -740,7 +740,7 @@ export class FirestoreApi {
     const res = await this.apiClient.post<types.DatabaseReq, { response?: types.DatabaseResp }>(
       url,
       payload,
-      options
+      options,
     );
     const database = res.body.response;
     if (!database) {
@@ -761,7 +761,7 @@ export class FirestoreApi {
     project: string,
     databaseId: string,
     deleteProtectionState?: types.DatabaseDeleteProtectionState,
-    pointInTimeRecoveryEnablement?: types.PointInTimeRecoveryEnablement
+    pointInTimeRecoveryEnablement?: types.PointInTimeRecoveryEnablement,
   ): Promise<types.DatabaseResp> {
     const url = `/projects/${project}/databases/${databaseId}`;
     const payload: types.DatabaseReq = {
@@ -770,7 +770,7 @@ export class FirestoreApi {
     };
     const res = await this.apiClient.patch<types.DatabaseReq, { response?: types.DatabaseResp }>(
       url,
-      payload
+      payload,
     );
     const database = res.body.response;
     if (!database) {

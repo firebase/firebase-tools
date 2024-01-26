@@ -50,7 +50,7 @@ const firebaseAPIClient = new Client({
 
 export async function createFirebaseProjectAndLog(
   projectId: string,
-  options: { displayName?: string; parentResource?: ProjectParentResource }
+  options: { displayName?: string; parentResource?: ProjectParentResource },
 ): Promise<FirebaseProjectMetadata> {
   const spinner = ora("Creating Google Cloud Platform project").start();
 
@@ -66,7 +66,7 @@ export async function createFirebaseProjectAndLog(
 }
 
 export async function addFirebaseToCloudProjectAndLog(
-  projectId: string
+  projectId: string,
 ): Promise<FirebaseProjectMetadata> {
   let projectInfo;
   const spinner = ora("Adding Firebase resources to Google Cloud Platform project").start();
@@ -97,7 +97,7 @@ function logNewFirebaseProjectInfo(projectInfo: FirebaseProjectMetadata): void {
   logger.info("");
   logger.info("Firebase console is available at");
   logger.info(
-    `https://console.firebase.google.com/project/${clc.bold(projectInfo.projectId)}/overview`
+    `https://console.firebase.google.com/project/${clc.bold(projectInfo.projectId)}/overview`,
   );
 }
 
@@ -112,7 +112,7 @@ export async function getOrPromptProject(options: any): Promise<FirebaseProjectM
 }
 
 async function selectProjectInteractively(
-  pageSize: number = MAXIMUM_PROMPT_LIST
+  pageSize: number = MAXIMUM_PROMPT_LIST,
 ): Promise<FirebaseProjectMetadata> {
   const { projects, nextPageToken } = await getFirebaseProjectPage(pageSize);
   if (projects.length === 0) {
@@ -139,7 +139,7 @@ async function selectProjectByPrompting(): Promise<FirebaseProjectMetadata> {
  * Presents user with list of projects to choose from and gets project information for chosen project.
  */
 async function selectProjectFromList(
-  projects: FirebaseProjectMetadata[] = []
+  projects: FirebaseProjectMetadata[] = [],
 ): Promise<FirebaseProjectMetadata> {
   const choices = projects
     .filter((p: FirebaseProjectMetadata) => !!p)
@@ -155,8 +155,8 @@ async function selectProjectFromList(
     utils.logBullet(
       `Don't want to scroll through all your projects? If you know your project ID, ` +
         `you can initialize it directly using ${clc.bold(
-          "firebase init --project <project_id>"
-        )}.\n`
+          "firebase init --project <project_id>",
+        )}.\n`,
     );
   }
   const projectId: string = await promptOnce({
@@ -190,7 +190,7 @@ export async function promptAvailableProjectId(): Promise<string> {
   const { projects, nextPageToken } = await getAvailableCloudProjectPage(MAXIMUM_PROMPT_LIST);
   if (projects.length === 0) {
     throw new FirebaseError(
-      "There are no available Google Cloud projects to add Firebase services."
+      "There are no available Google Cloud projects to add Firebase services.",
     );
   }
 
@@ -227,7 +227,7 @@ export async function promptAvailableProjectId(): Promise<string> {
  */
 export async function createCloudProject(
   projectId: string,
-  options: { displayName?: string; parentResource?: ProjectParentResource }
+  options: { displayName?: string; parentResource?: ProjectParentResource },
 ): Promise<any> {
   try {
     const client = new Client({ urlPrefix: api.resourceManagerOrigin, apiVersion: "v1" });
@@ -253,12 +253,12 @@ export async function createCloudProject(
     if (err.status === 409) {
       throw new FirebaseError(
         `Failed to create project because there is already a project with ID ${clc.bold(
-          projectId
+          projectId,
         )}. Please try again with a unique project ID.`,
         {
           exit: 2,
           original: err,
-        }
+        },
       );
     } else {
       throw new FirebaseError("Failed to create project. See firebase-debug.log for more info.", {
@@ -275,7 +275,7 @@ export async function createCloudProject(
  * @return a promise that resolves to the new firebase project information
  */
 export async function addFirebaseToCloudProject(
-  projectId: string
+  projectId: string,
 ): Promise<FirebaseProjectMetadata> {
   try {
     const response = await firebaseAPIClient.request<any, { name: string }>({
@@ -294,7 +294,7 @@ export async function addFirebaseToCloudProject(
     logger.debug(err.message);
     throw new FirebaseError(
       "Failed to add Firebase to Google Cloud Platform project. See firebase-debug.log for more info.",
-      { exit: 2, original: err }
+      { exit: 2, original: err },
     );
   }
 }
@@ -305,7 +305,7 @@ async function getProjectPage<T>(
     responseKey: string; // The list is located at "apiResponse.body[responseKey]"
     pageSize: number;
     pageToken?: string;
-  }
+  },
 ): Promise<ProjectPage<T>> {
   const queryParams: { [key: string]: string } = {
     pageSize: `${options.pageSize}`,
@@ -334,7 +334,7 @@ async function getProjectPage<T>(
  */
 export async function getFirebaseProjectPage(
   pageSize: number = PROJECT_LIST_PAGE_SIZE,
-  pageToken?: string
+  pageToken?: string,
 ): Promise<ProjectPage<FirebaseProjectMetadata>> {
   let projectPage;
 
@@ -348,7 +348,7 @@ export async function getFirebaseProjectPage(
     logger.debug(err.message);
     throw new FirebaseError(
       "Failed to list Firebase projects. See firebase-debug.log for more info.",
-      { exit: 2, original: err }
+      { exit: 2, original: err },
     );
   }
 
@@ -361,7 +361,7 @@ export async function getFirebaseProjectPage(
  */
 export async function getAvailableCloudProjectPage(
   pageSize: number = PROJECT_LIST_PAGE_SIZE,
-  pageToken?: string
+  pageToken?: string,
 ): Promise<ProjectPage<CloudProjectInfo>> {
   try {
     return await getProjectPage<CloudProjectInfo>("/availableProjects", {
@@ -373,7 +373,7 @@ export async function getAvailableCloudProjectPage(
     logger.debug(err.message);
     throw new FirebaseError(
       "Failed to list available Google Cloud Platform projects. See firebase-debug.log for more info.",
-      { exit: 2, original: err }
+      { exit: 2, original: err },
     );
   }
 }
@@ -390,7 +390,7 @@ export async function listFirebaseProjects(pageSize?: number): Promise<FirebaseP
   do {
     const projectPage: ProjectPage<FirebaseProjectMetadata> = await getFirebaseProjectPage(
       pageSize,
-      nextPageToken
+      nextPageToken,
     );
     projects.push(...projectPage.projects);
     nextPageToken = projectPage.nextPageToken;
@@ -419,7 +419,7 @@ export async function getFirebaseProject(projectId: string): Promise<FirebasePro
     throw new FirebaseError(
       `Failed to get Firebase project ${projectId}. ` +
         "Please make sure the project exists and your account has permission to access it.",
-      { exit: 2, original: err }
+      { exit: 2, original: err },
     );
   }
 }

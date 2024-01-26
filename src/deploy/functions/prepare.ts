@@ -44,7 +44,7 @@ export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 export async function prepare(
   context: args.Context,
   options: Options,
-  payload: args.Payload
+  payload: args.Payload,
 ): Promise<void> {
   const projectId = needProjectId(options);
   const projectNumber = await needProjectNumber(options);
@@ -67,7 +67,7 @@ export async function prepare(
       projectId,
       "runtimeconfig.googleapis.com",
       "runtimeconfig",
-      /* silent=*/ true
+      /* silent=*/ true,
     ),
     ensure.cloudBuildEnabled(projectId),
     ensureApiEnabled.ensure(projectId, "artifactregistry.googleapis.com", "artifactregistry"),
@@ -90,7 +90,7 @@ export async function prepare(
     options,
     firebaseConfig,
     runtimeConfig,
-    context.filters
+    context.filters,
   );
 
   // == Phase 2. Resolve build to backend.
@@ -112,7 +112,7 @@ export async function prepare(
       firebaseConfig,
       userEnvOpt,
       userEnvs,
-      options.nonInteractive
+      options.nonInteractive,
     );
 
     let hasEnvsFromParams = false;
@@ -183,7 +183,7 @@ export async function prepare(
     if (backend.someEndpoint(wantBackend, () => true)) {
       logLabeledBullet(
         "functions",
-        `preparing ${clc.bold(sourceDirName)} directory for uploading...`
+        `preparing ${clc.bold(sourceDirName)} directory for uploading...`,
       );
     }
     if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
@@ -204,7 +204,7 @@ export async function prepare(
   payload.functions = {};
   const haveBackends = groupEndpointsByCodebase(
     wantBackends,
-    backend.allEndpoints(await backend.existingBackend(context))
+    backend.allEndpoints(await backend.existingBackend(context)),
   );
   for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
     const haveBackend = haveBackends[codebase] || backend.empty();
@@ -228,7 +228,7 @@ export async function prepare(
   await Promise.all(
     Object.values(wantBackend.requiredAPIs).map(({ api }) => {
       return ensureApiEnabled.ensure(projectId, api, "functions", /* silent=*/ false);
-    })
+    }),
   );
   if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
     // Note: Some of these are premium APIs that require billing to be enabled.
@@ -284,7 +284,7 @@ export async function prepare(
 export function inferDetailsFromExisting(
   want: backend.Backend,
   have: backend.Backend,
-  usedDotenv: boolean
+  usedDotenv: boolean,
 ): void {
   for (const wantE of backend.allEndpoints(want)) {
     const haveE = have.endpoints[wantE.region]?.[wantE.id];
@@ -348,7 +348,7 @@ function maybeCopyTriggerRegion(wantE: backend.Endpoint, haveE: backend.Endpoint
  */
 export function updateEndpointTargetedStatus(
   wantBackends: Record<string, Backend>,
-  endpointFilters: EndpointFilter[]
+  endpointFilters: EndpointFilter[],
 ): void {
   for (const wantBackend of Object.values(wantBackends)) {
     for (const endpoint of allEndpoints(wantBackend)) {
@@ -364,7 +364,7 @@ export function inferBlockingDetails(want: backend.Backend): void {
     .filter(
       (ep) =>
         backend.isBlockingTriggered(ep) &&
-        AUTH_BLOCKING_EVENTS.includes(ep.blockingTrigger.eventType as any)
+        AUTH_BLOCKING_EVENTS.includes(ep.blockingTrigger.eventType as any),
     ) as (backend.Endpoint & backend.BlockingTriggered)[];
 
   if (authBlockingEndpoints.length === 0) {
@@ -421,7 +421,7 @@ export async function loadCodebases(
   options: Options,
   firebaseConfig: args.FirebaseConfig,
   runtimeConfig: Record<string, unknown>,
-  filters?: EndpointFilter[]
+  filters?: EndpointFilter[],
 ): Promise<Record<string, build.Build>> {
   const codebases = targetCodebases(config, filters);
   const projectId = needProjectId(options);
@@ -432,7 +432,7 @@ export async function loadCodebases(
     const sourceDirName = codebaseConfig.source;
     if (!sourceDirName) {
       throw new FirebaseError(
-        `No functions code detected at default location (./functions), and no functions source defined in firebase.json`
+        `No functions code detected at default location (./functions), and no functions source defined in firebase.json`,
       );
     }
     const sourceDir = options.config.path(sourceDirName);
@@ -451,7 +451,7 @@ export async function loadCodebases(
     const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
     logLabeledBullet(
       "functions",
-      `Loading and analyzing source code for codebase ${codebase} to determine what to deploy`
+      `Loading and analyzing source code for codebase ${codebase} to determine what to deploy`,
     );
     wantBuilds[codebase] = await runtimeDelegate.discoverBuild(runtimeConfig, {
       ...firebaseEnvs,
