@@ -4,9 +4,10 @@ import { OperationLocation } from "./types";
 import { Disposable } from "vscode";
 
 import { isFirematEmulatorRunning } from "../core/emulators";
-import { Signal, computed } from "@preact/signals-core";
+import { Signal } from "@preact/signals-core";
 import { firematConfig } from "../core/config";
 import path from "path";
+import { selectedInstance } from "./firebase-data-connect";
 
 abstract class ComputedCodeLensProvider implements vscode.CodeLensProvider {
   private readonly _onChangeCodeLensesEmitter = new vscode.EventEmitter<void>();
@@ -91,13 +92,12 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
           document.fileName,
           configs.operationSet.crud.source,
         );
+        const instance = this.watch(selectedInstance);
 
-        if (isInSchemaFolder || isInOperationFolder) {
+        if (instance && (isInSchemaFolder || isInOperationFolder)) {
           codeLenses.push(
             new vscode.CodeLens(range, {
-              title: isFirematEmulatorRunning.value
-                ? `$(play) Run`
-                : `$(play) Run (production)`,
+              title: `$(play) Run (${instance})`,
               command: "firebase.firemat.executeOperation",
               tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
               arguments: [x, operationLocation],

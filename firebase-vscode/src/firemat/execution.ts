@@ -21,7 +21,7 @@ import { OperationDefinitionNode, OperationTypeNode, print } from "graphql";
 import { FirematService } from "./service";
 import { FirematError, toSerializedError } from "../../common/error";
 import { OperationLocation } from "./types";
-import { isFirematEmulatorRunning } from "../core/emulators";
+import { selectedInstance } from "./firebase-data-connect";
 
 export function registerExecution(
   context: ExtensionContext,
@@ -70,7 +70,7 @@ export function registerExecution(
 
     // Warn against using mutations in production.
     if (
-      !isFirematEmulatorRunning.value &&
+      selectedInstance.value !== "emulator" &&
       !configs.get(alwaysSettingsKey) &&
       ast.operation === OperationTypeNode.MUTATION
     ) {
