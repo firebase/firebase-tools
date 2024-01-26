@@ -1,16 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { createRoot } from "react-dom/client";
-import {
-  VSCodeButton,
-  VSCodeDropdown,
-  VSCodeOption,
-  VSCodeTextArea,
-} from "@vscode/webview-ui-toolkit/react";
+import { VSCodeButton } from "@vscode/webview-ui-toolkit/react";
 import { Spacer } from "./components/ui/Spacer";
-import { broker } from "./globals/html-broker";
 import styles from "./globals/index.scss";
-import { UserMockKind } from "../common/messaging/protocol";
 import { TEXT } from "./globals/ux-text";
+import { broker } from "./globals/html-broker";
 
 // Prevent webpack from removing the `style` import above
 styles;
@@ -24,7 +18,9 @@ function Firemat() {
       <Spacer size="small" />
       <VSCodeButton>{TEXT.DEPLOY_FIREMAT}</VSCodeButton>
       <Spacer size="xlarge" />
-      <VSCodeButton>{TEXT.CONNECT_TO_INSTANCE}</VSCodeButton>
+      <VSCodeButton onClick={() => broker.send("connectToInstance")}>
+        {TEXT.CONNECT_TO_INSTANCE}
+      </VSCodeButton>
     </>
   );
 }
