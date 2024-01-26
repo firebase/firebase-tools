@@ -18,6 +18,10 @@ abstract class ComputedCodeLensProvider implements vscode.CodeLensProvider {
     if (!this.subscriptions.has(signal)) {
       let initialFire = true;
       const disposable = signal.subscribe(() => {
+        // Signals notify their listeners immediately, even if no change were detected.
+        // This is undesired here as such notification would be picked up by vscode,
+        // triggering an infinite reload loop of the codelenses.
+        // We therefore skip this notification and only keep actual "change" notifications
         if (initialFire) {
           initialFire = false;
           return;
