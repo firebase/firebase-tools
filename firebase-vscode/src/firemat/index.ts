@@ -12,7 +12,6 @@ import {
 } from "./code-lens-provider";
 import { registerConnectors } from "./connectors";
 import { AuthService } from "../auth/service";
-import { registerWebview } from "../webview";
 import { registerFirebaseDataConnectView } from "./firebase-data-connect";
 // import { setupLanguageClient } from "./language-client";
 
