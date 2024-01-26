@@ -69,7 +69,7 @@ export async function detectFromPort(
   port: number,
   project: string,
   runtime: runtimes.Runtime,
-  timeout = 10_000 /* 10s to boot up */
+  timeout = 50_000 /* 50s to boot up */
 ): Promise<build.Build> {
   let res: Response;
   const timedOut = new Promise<never>((resolve, reject) => {
