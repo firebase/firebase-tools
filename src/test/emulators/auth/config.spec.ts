@@ -6,7 +6,7 @@ describeAuthEmulator("config management", ({ authApi }) => {
   describe("updateConfig", () => {
     it("updates the project level config", async () => {
       const updateMask =
-        "signIn.allowDuplicateEmails,blockingFunctions.forwardInboundCredentials.idToken";
+        "signIn.allowDuplicateEmails,notification.sendEmail.callbackUri,blockingFunctions.forwardInboundCredentials.idToken";
 
       await authApi()
         .patch(`/identitytoolkit.googleapis.com/v2/projects/${PROJECT_ID}/config`)
@@ -14,11 +14,15 @@ describeAuthEmulator("config management", ({ authApi }) => {
         .query({ updateMask })
         .send({
           signIn: { allowDuplicateEmails: true },
+          notification: { sendEmail: { callbackUri: "https://example.com" } },
           blockingFunctions: { forwardInboundCredentials: { idToken: true } },
         })
         .then((res) => {
           expectStatusCode(200, res);
           expect(res.body.signIn?.allowDuplicateEmails).to.be.true;
+          expect(res.body.notification).to.eql({
+            sendEmail: { callbackUri: "https://example.com" },
+          });
           expect(res.body.blockingFunctions).to.eql({
             forwardInboundCredentials: { idToken: true },
           });
@@ -43,11 +47,15 @@ describeAuthEmulator("config management", ({ authApi }) => {
         .set("Authorization", "Bearer owner")
         .send({
           signIn: { allowDuplicateEmails: true },
+          notification: { sendEmail: { callbackUri: "https://example.com" } },
           blockingFunctions: { forwardInboundCredentials: { idToken: true } },
         })
         .then((res) => {
           expectStatusCode(200, res);
           expect(res.body.signIn?.allowDuplicateEmails).to.be.true;
+          expect(res.body.notification).to.eql({
+            sendEmail: { callbackUri: "https://example.com" },
+          });
           expect(res.body.blockingFunctions).to.eql({
             forwardInboundCredentials: { idToken: true },
           });
@@ -61,11 +69,15 @@ describeAuthEmulator("config management", ({ authApi }) => {
         .set("Authorization", "Bearer owner")
         .send({
           signIn: { allowDuplicateEmails: true },
+          notification: { sendEmail: { callbackUri: "https://example.com" } },
           blockingFunctions: { forwardInboundCredentials: { idToken: true } },
         })
         .then((res) => {
           expectStatusCode(200, res);
           expect(res.body.signIn?.allowDuplicateEmails).to.be.true;
+          expect(res.body.notification).to.eql({
+            sendEmail: { callbackUri: "https://example.com" },
+          });
           expect(res.body.blockingFunctions).to.eql({
             forwardInboundCredentials: { idToken: true },
           });
@@ -79,6 +91,9 @@ describeAuthEmulator("config management", ({ authApi }) => {
         .then((res) => {
           expectStatusCode(200, res);
           expect(res.body.signIn?.allowDuplicateEmails).to.be.false;
+          expect(res.body.notification).to.eql({
+            sendEmail: { callbackUri: "" },
+          });
           expect(res.body.blockingFunctions).to.eql({});
         });
     });
@@ -133,6 +148,11 @@ describeAuthEmulator("config management", ({ authApi }) => {
           expect(res.body).to.have.property("signIn").eql({
             allowDuplicateEmails: false /* default value */,
           });
+          expect(res.body)
+            .to.have.property("notification")
+            .eql({
+              sendEmail: { callbackUri: "" },
+            });
           expect(res.body).to.have.property("blockingFunctions").eql({});
         });
     });
@@ -144,6 +164,7 @@ describeAuthEmulator("config management", ({ authApi }) => {
         .send({
           signIn: { allowDuplicateEmails: true },
           blockingFunctions: { forwardInboundCredentials: { idToken: true } },
+          notification: { sendEmail: { callbackUri: "https://example.com" } },
         });
 
       await authApi()
@@ -155,6 +176,11 @@ describeAuthEmulator("config management", ({ authApi }) => {
           expect(res.body).to.have.property("signIn").eql({
             allowDuplicateEmails: true,
           });
+          expect(res.body)
+            .to.have.property("notification")
+            .eql({
+              sendEmail: { callbackUri: "https://example.com" },
+            });
           expect(res.body)
             .to.have.property("blockingFunctions")
             .eql({

@@ -4139,10 +4139,27 @@ export interface components {
       /** @description The local user ID */
       user_id?: string;
     };
+    /**
+     * Emulator-specific configuration.
+     */
+    EmulatorV1ProjectsConfig: {
+      signIn?: { allowDuplicateEmails?: boolean };
+      notification?: { sendEmail?: { callbackUri?: string } };
+    };
+    /**
+     * Details of all pending confirmation codes.
+     */
+    EmulatorV1ProjectsOobCodes: {
+      oobCodes?: { email?: string; oobCode?: string; oobLink?: string; requestType?: string }[];
     /** @description Emulator-specific configuration. */
     EmulatorV1ProjectsConfig: {
       signIn?: {
         allowDuplicateEmails?: boolean;
+      };
+      notification?: {
+        sendEmail?: {
+          callbackUri?: string
+        }
       };
     };
     /** @description Details of all pending confirmation codes. */

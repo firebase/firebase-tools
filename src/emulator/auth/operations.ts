@@ -1233,11 +1233,11 @@ function createOobRecord(
   },
 ): OobRecord {
   const oobRecord = state.createOob(email, params.requestType, (oobCode) => {
-    url.pathname = "/emulator/action";
+    if (state.customAuthActionUri) url = new URL(state.customAuthActionUri);
+    else url.pathname = "/emulator/action";
     url.searchParams.set("mode", params.mode);
     url.searchParams.set("lang", "en");
     url.searchParams.set("oobCode", oobCode);
-    // TODO: Support custom handler links.
 
     // This doesn't matter for now, since any API key works for defaultProject.
     // TODO: What if reqBody.targetProjectId is set?
@@ -1904,6 +1904,11 @@ function getEmulatorProjectConfig(state: ProjectState): Schemas["EmulatorV1Proje
     signIn: {
       allowDuplicateEmails: !state.oneAccountPerEmail,
     },
+    notification: {
+      sendEmail: {
+        callbackUri: state.customAuthActionUri,
+      },
+    },
   };
 }
 
@@ -1913,10 +1918,13 @@ function updateEmulatorProjectConfig(
   ctx: ExegesisContext,
 ): Schemas["EmulatorV1ProjectsConfig"] {
   // New developers should not use updateEmulatorProjectConfig to update the
-  // allowDuplicateEmails setting and should instead use updateConfig to do so.
+  // allowDuplicateEmails or callbackUri settings and should instead use updateConfig to do so.
   const updateMask = [];
   if (reqBody.signIn?.allowDuplicateEmails != null) {
     updateMask.push("signIn.allowDuplicateEmails");
+  }
+  if (reqBody.notification?.sendEmail?.callbackUri != null) {
+    updateMask.push("notification.sendEmail.callbackUri");
   }
   ctx.params.query.updateMask = updateMask.join();
 

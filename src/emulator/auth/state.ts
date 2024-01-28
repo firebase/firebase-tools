@@ -41,6 +41,8 @@ export abstract class ProjectState {
 
   abstract get oneAccountPerEmail(): boolean;
 
+  abstract get customAuthActionUri(): string;
+
   abstract get authCloudFunction(): AuthCloudFunction;
 
   abstract get allowPasswordSignup(): boolean;
@@ -577,6 +579,7 @@ export class AgentProjectState extends ProjectState {
   private readonly _authCloudFunction = new AuthCloudFunction(this.projectId);
   private _config: Config = {
     signIn: { allowDuplicateEmails: false },
+    notification: { sendEmail: { callbackUri: "" } },
     blockingFunctions: {},
   };
 
@@ -594,6 +597,14 @@ export class AgentProjectState extends ProjectState {
 
   set oneAccountPerEmail(oneAccountPerEmail: boolean) {
     this._config.signIn.allowDuplicateEmails = !oneAccountPerEmail;
+  }
+
+  get customAuthActionUri() {
+    return this._config.notification.sendEmail.callbackUri ?? "";
+  }
+
+  set customAuthActionUri(customAuthActionUri: string) {
+    this._config.notification.sendEmail.callbackUri = customAuthActionUri;
   }
 
   get allowPasswordSignup() {
@@ -659,6 +670,7 @@ export class AgentProjectState extends ProjectState {
     if (!updateMask) {
       this.oneAccountPerEmail = !update.signIn?.allowDuplicateEmails ?? true;
       this.blockingFunctionsConfig = update.blockingFunctions ?? {};
+      this.customAuthActionUri = update.notification?.sendEmail?.callbackUri ?? "";
       return this.config;
     }
     return applyMask(updateMask, this.config, update);
@@ -746,6 +758,10 @@ export class TenantProjectState extends ProjectState {
 
   get oneAccountPerEmail() {
     return this.parentProject.oneAccountPerEmail;
+  }
+
+  get customAuthActionUri() {
+    return this.parentProject.customAuthActionUri;
   }
 
   get authCloudFunction() {
@@ -850,6 +866,11 @@ export type SignInConfig = MakeRequired<
   "allowDuplicateEmails"
 >;
 
+export type NotificationConfig = MakeRequired<
+  Schemas["GoogleCloudIdentitytoolkitAdminV2NotificationConfig"],
+  "sendEmail"
+>;
+
 export type BlockingFunctionsConfig =
   Schemas["GoogleCloudIdentitytoolkitAdminV2BlockingFunctionsConfig"];
 
@@ -859,6 +880,7 @@ export type BlockingFunctionsConfig =
 // behavior, Config only stores the configurable fields.
 export type Config = {
   signIn: SignInConfig;
+  notification: NotificationConfig;
   blockingFunctions: BlockingFunctionsConfig;
 };
 

@@ -552,6 +552,9 @@ describeAuthEmulator("emulator utility APIs", ({ authApi }) => {
         expect(res.body).to.have.property("signIn").eql({
           allowDuplicateEmails: false /* default value */,
         });
+        expect(res.body.notification).to.eql({
+          sendEmail: { callbackUri: "" },
+        });
       });
   });
 
@@ -564,24 +567,40 @@ describeAuthEmulator("emulator utility APIs", ({ authApi }) => {
       });
   });
 
-  it("should update allowDuplicateEmails on PATCH /emulator/v1/projects/{PROJECT_ID}/config", async () => {
+  it("should update allowDuplicateEmails and callbackUri on PATCH /emulator/v1/projects/{PROJECT_ID}/config", async () => {
     await authApi()
       .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
-      .send({ signIn: { allowDuplicateEmails: true } })
+      .send({
+        signIn: { allowDuplicateEmails: true },
+        notification: { sendEmail: { callbackUri: "https://example.com" } },
+      })
       .then((res) => {
         expectStatusCode(200, res);
         expect(res.body).to.have.property("signIn").eql({
           allowDuplicateEmails: true,
         });
+        expect(res.body)
+          .to.have.property("notification")
+          .eql({
+            sendEmail: { callbackUri: "https://example.com" },
+          });
       });
     await authApi()
       .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
-      .send({ signIn: { allowDuplicateEmails: false } })
+      .send({
+        signIn: { allowDuplicateEmails: false },
+        notification: { sendEmail: { callbackUri: "" } },
+      })
       .then((res) => {
         expectStatusCode(200, res);
         expect(res.body).to.have.property("signIn").eql({
           allowDuplicateEmails: false,
         });
+        expect(res.body)
+          .to.have.property("notification")
+          .eql({
+            sendEmail: { callbackUri: "" }
+          });
       });
   });
 });
