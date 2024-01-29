@@ -23,6 +23,31 @@ export type UserMock =
       claims: string;
     };
 
+type DeepReadOnly<T> =
+  T extends Record<any, unknown>
+    ? { readonly [K in keyof T]: DeepReadOnly<T[K]> }
+    : T extends Array<any>
+      ? ReadonlyArray<DeepReadOnly<T[number]>>
+      : T;
+
+/** The `firemat.yaml` content */
+export type FirematConfig = DeepReadOnly<{
+  specVersion: string;
+  schema: {
+    main: {
+      source: string;
+      connection: {
+        connectionString?: string;
+      };
+    };
+  };
+  operationSet: {
+    [key: string]: {
+      source: string;
+    };
+  };
+}>;
+
 export interface WebviewToExtensionParamsMap {
   /**
    * Ask extension for initial data

@@ -37,6 +37,8 @@ import { camelCase } from "lodash";
 import { FirematService } from "./service";
 import { OperationLocation } from "./types";
 import { checkIfFileExists } from "./utils";
+import { firematConfig } from "../core/config";
+import * as path from "path";
 
 export function registerConnectors(
   context: ExtensionContext,
@@ -64,10 +66,10 @@ export function registerConnectors(
       return;
     }
     const opKind = def.operation as string; // query or mutation
-    // HACK: This assumes one connector under this path.
-    // TODO: Parse dataconnect.yaml and support multiple connectors.
-    const connectorPath = "/dataconnect/connector/";
-    const basePath = vscode.workspace.rootPath + connectorPath;
+    let connectorPath =
+      firematConfig.value.operationSet[
+        Object.keys(firematConfig.value.operationSet)[0]
+      ]!.source;
 
     let opName = def.name?.value;
     if (!opName || (await validateOpName(opName)) !== null) {
@@ -165,7 +167,7 @@ export function registerConnectors(
     }
 
     function getFilePath(opName: string) {
-      return vscode.Uri.file(basePath + opName + ".gql");
+      return vscode.Uri.file(path.join(connectorPath, `${opName}.gql`));
     }
   }
 
