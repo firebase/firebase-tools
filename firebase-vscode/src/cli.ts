@@ -264,7 +264,10 @@ export async function initHosting(options: {
       useWebFrameworks: false,
     };
   }
-  const commandOptions = await getCommandOptions(undefined, currentOptions.value);
+  const commandOptions = await getCommandOptions(
+    undefined,
+    currentOptions.value,
+  );
   const inquirerOptions = {
     ...commandOptions,
     ...options,

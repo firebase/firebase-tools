@@ -12,7 +12,9 @@ import { updateFirebaseRCProject } from "../config-files";
 import { globalSignal } from "../utils/globals";
 
 /** Available projects */
-export const projects = globalSignal<Record<string, FirebaseProjectMetadata[]>>({});
+export const projects = globalSignal<Record<string, FirebaseProjectMetadata[]>>(
+  {},
+);
 
 /** Currently selected project ID */
 export const currentProjectId = globalSignal("");

@@ -17,7 +17,7 @@ export class FirematService {
   constructor(
     private firematEndpoint: Signal<string | undefined>,
     private authService: AuthService,
-  ) { }
+  ) {}
 
   private async decodeResponse(
     response: Response,
@@ -112,7 +112,7 @@ export class FirematService {
    *
    * If the JSON is invalid, will throw.
    */
-  private _serializeBody(body: { variables?: string;[key: string]: unknown }) {
+  private _serializeBody(body: { variables?: string; [key: string]: unknown }) {
     if (!body.variables) {
       return JSON.stringify(body);
     }
@@ -132,9 +132,10 @@ export class FirematService {
       return {};
     }
     return {
-      "impersonate": userMock.kind === UserMockKind.AUTHENTICATED
-        ? { "authClaims": JSON.parse(userMock.claims) }
-        : { "unauthenticated": true }
+      impersonate:
+        userMock.kind === UserMockKind.AUTHENTICATED
+          ? { authClaims: JSON.parse(userMock.claims) }
+          : { unauthenticated: true },
     };
   }
 
@@ -179,7 +180,7 @@ export class FirematService {
       });
       const resp = await fetch(
         (await this.getFirematEndpoint()) +
-        "/v1/projects/p/locations/l/services/local:executeGraphqlRead",
+          "/v1/projects/p/locations/l/services/local:executeGraphqlRead",
         {
           method: "POST",
           headers: {
@@ -212,7 +213,7 @@ export class FirematService {
     });
     const resp = await fetch(
       (await this.getFirematEndpoint()) +
-      "/v1/projects/p/locations/l/services/local:executeGraphql",
+        "/v1/projects/p/locations/l/services/local:executeGraphql",
       {
         method: "POST",
         headers: {

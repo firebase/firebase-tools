@@ -21,21 +21,21 @@ import { OperationLocation } from "./types";
 export function registerExecution(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl,
-  firematService: FirematService
+  firematService: FirematService,
 ): Disposable {
   const treeDataProvider = new ExecutionHistoryTreeDataProvider();
   const executionHistoryTreeView = vscode.window.createTreeView(
     "firemat-execution-history",
     {
       treeDataProvider,
-    }
+    },
   );
 
   // Select the corresponding tree-item when the selected-execution-id updates
   effect(() => {
     const id = selectedExecutionId.value;
     const selectedItem = treeDataProvider.executionItems.find(
-      ({ item }) => item.executionId === id
+      ({ item }) => item.executionId === id,
     );
     executionHistoryTreeView.reveal(selectedItem, { select: true });
   });
@@ -58,7 +58,7 @@ export function registerExecution(
 
   async function executeOperation(
     ast: OperationDefinitionNode,
-    { document, documentPath, position }: OperationLocation
+    { document, documentPath, position }: OperationLocation,
   ) {
     const item = createExecution({
       label: ast.name?.value ?? "anonymous",
@@ -115,7 +115,7 @@ export function registerExecution(
 
   return Disposable.from(
     registerWebview({
-      name: "firemat-execution-arguments",
+      name: "firemat-execution-configuration",
       context,
       broker,
     }),
@@ -124,21 +124,16 @@ export function registerExecution(
       context,
       broker,
     }),
-    registerWebview({
-      name: "firemat-auth-mock",
-      context,
-      broker,
-    }),
     executionHistoryTreeView,
     vscode.commands.registerCommand(
       "firebase.firemat.executeOperation",
-      executeOperation
+      executeOperation,
     ),
     vscode.commands.registerCommand(
       "firebase.firemat.selectExecutionResultToShow",
       (executionId) => {
         selectExecutionId(executionId);
-      }
-    )
+      },
+    ),
   );
 }

@@ -35,7 +35,7 @@ async function getTestConfig() {
       // the bundle is stored in the 'dist' folder (check package.json), 📖 -> https://webpack.js.org/configuration/output/
       path: path.resolve(
         __dirname,
-        "../../dist/test/firebase-vscode/src/test/"
+        "../../dist/test/firebase-vscode/src/test/",
       ),
       filename: "[name].js",
       libraryTarget: "commonjs2",

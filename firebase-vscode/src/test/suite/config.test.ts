@@ -24,8 +24,7 @@ import { createFake, mock } from "../utils/mock";
 import { resetGlobals } from "../../utils/globals";
 import { workspace } from "../../utils/test_hooks";
 import { createFile, createTemporaryDirectory } from "../utils/fs";
-import { currentOptions } from "../../options";
-import { Options } from "../../../../src/options";
+import { VsCodeOptions, currentOptions } from "../../options";
 import { spyLogs } from "../utils/logs";
 import { createTestBroker } from "../utils/broker";
 import { setupMockTestWorkspaces } from "../utils/workspace";
@@ -602,7 +601,7 @@ firematSuite("_createWatcher", () => {
   teardown(() => resetGlobals());
 
   firematTest("returns undefined if cwd is not set", () => {
-    mock(currentOptions, createFake<Options>({ cwd: undefined }));
+    mock(currentOptions, createFake<VsCodeOptions>({ cwd: undefined }));
 
     const watcher = _createWatcher("file");
 
@@ -613,7 +612,7 @@ firematSuite("_createWatcher", () => {
     const dir = createTemporaryDirectory();
     const file = createFile(dir, "file", "content");
 
-    mock(currentOptions, createFake<Options>({ cwd: dir }));
+    mock(currentOptions, createFake<VsCodeOptions>({ cwd: dir }));
 
     const watcher = _createWatcher("file")!;
     addTearDown(() => watcher.dispose());

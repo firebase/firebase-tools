@@ -12,7 +12,7 @@ export function getSettings(): Settings {
   if (workspace.value.workspaceFolders) {
     const workspaceConfig = workspace.value.getConfiguration(
       "firebase",
-      workspace.value.workspaceFolders[0].uri
+      workspace.value.workspaceFolders[0].uri,
     );
 
     return {
