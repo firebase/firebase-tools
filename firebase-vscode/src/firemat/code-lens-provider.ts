@@ -9,7 +9,7 @@ import { isFirematEmulatorRunning } from "../core/emulators";
 export class OperationCodeLensProvider implements vscode.CodeLensProvider {
   async provideCodeLenses(
     document: vscode.TextDocument,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): Promise<vscode.CodeLens[]> {
     const codeLenses: vscode.CodeLens[] = [];
 
@@ -37,7 +37,7 @@ export class OperationCodeLensProvider implements vscode.CodeLensProvider {
               command: "firebase.firemat.executeOperation",
               tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
               arguments: [x, operationLocation],
-            })
+            }),
           );
 
           // HACK: This assumes the connector is in a directory called
@@ -50,7 +50,7 @@ export class OperationCodeLensProvider implements vscode.CodeLensProvider {
                 command: "firebase.firemat.moveOperationToConnector",
                 tooltip: `Expose this ${opKind} to client apps through the SDK.`,
                 arguments: [i, operationLocation],
-              })
+              }),
             );
           }
         }
@@ -67,7 +67,7 @@ export class OperationCodeLensProvider implements vscode.CodeLensProvider {
 export class SchemaCodeLensProvider implements vscode.CodeLensProvider {
   async provideCodeLenses(
     document: vscode.TextDocument,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): Promise<vscode.CodeLens[]> {
     const codeLenses: vscode.CodeLens[] = [];
 
@@ -91,7 +91,7 @@ export class SchemaCodeLensProvider implements vscode.CodeLensProvider {
               command: "firebase.firemat.schemaAddData",
               tooltip: "Generate a mutation to add data of this type",
               arguments: [x, schemaLocation],
-            })
+            }),
           );
         }
       }

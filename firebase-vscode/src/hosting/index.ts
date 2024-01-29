@@ -61,7 +61,7 @@ export function registerHosting(broker: ExtensionBrokerImpl): Disposable {
       if (fileUri && fileUri[0] && fileUri[0].fsPath) {
         const publicFolderFull = fileUri[0].fsPath;
         const publicFolder = publicFolderFull.substring(
-          currentOptions.value.cwd.length + 1
+          currentOptions.value.cwd.length + 1,
         );
         success = await initHosting({
           spa: singleAppSupport,

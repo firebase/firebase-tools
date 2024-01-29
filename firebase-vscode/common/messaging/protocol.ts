@@ -11,13 +11,17 @@ import { EmulatorUiSelections, RunningEmulatorInfo } from "./types";
 import { ExecutionResult } from "graphql";
 import { SerializedError } from "../error";
 
-export enum UserMockKind { ADMIN = "admin", UNAUTHENTICATED = "unauthenticated", AUTHENTICATED = "authenticated" };
+export enum UserMockKind {
+  ADMIN = "admin",
+  UNAUTHENTICATED = "unauthenticated",
+  AUTHENTICATED = "authenticated",
+}
 export type UserMock =
   | { kind: UserMockKind.ADMIN | UserMockKind.UNAUTHENTICATED }
   | {
-    kind: UserMockKind.AUTHENTICATED;
-    claims: string;
-  };
+      kind: UserMockKind.AUTHENTICATED;
+      claims: string;
+    };
 
 export interface WebviewToExtensionParamsMap {
   /**

@@ -1,5 +1,4 @@
 import vscode, { Disposable, ExtensionContext } from "vscode";
-import { signal } from "@preact/signals-core";
 
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { registerExecution } from "./execution";
@@ -10,11 +9,12 @@ import {
   OperationCodeLensProvider,
   SchemaCodeLensProvider,
 } from "./code-lens-provider";
+import { globalSignal } from "../utils/globals";
 import { registerConnectors } from "./connectors";
 import { AuthService } from "../auth/service";
 // import { setupLanguageClient } from "./language-client";
 
-const firematEndpoint = signal<string | undefined>(undefined);
+const firematEndpoint = globalSignal<string | undefined>(undefined);
 
 export function registerFiremat(
   context: ExtensionContext,
