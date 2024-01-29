@@ -148,17 +148,12 @@ export function registerExecution(
 
   return Disposable.from(
     registerWebview({
-      name: "firemat-execution-arguments",
+      name: "firemat-execution-configuration",
       context,
       broker,
     }),
     registerWebview({
       name: "firemat-execution-results",
-      context,
-      broker,
-    }),
-    registerWebview({
-      name: "firemat-auth-mock",
       context,
       broker,
     }),

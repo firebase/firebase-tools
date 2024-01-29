@@ -1,12 +1,12 @@
 import vscode, { Disposable, ExtensionContext } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { ExplorerTreeDataProvider } from "./explorer-provider";
-import { signal } from "@preact/signals-core";
 import { IntrospectionQuery } from "graphql";
 import { FirematService } from "./service";
+import { globalSignal } from "../utils/globals";
 
 // explorer store
-export const introspectionQuery = signal<IntrospectionQuery | undefined>(
+export const introspectionQuery = globalSignal<IntrospectionQuery | undefined>(
   undefined,
 );
 

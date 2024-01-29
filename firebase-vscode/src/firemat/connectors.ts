@@ -41,11 +41,11 @@ import { checkIfFileExists } from "./utils";
 export function registerConnectors(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl,
-  firematService: FirematService
+  firematService: FirematService,
 ): Disposable {
   async function moveOperationToConnector(
     defIndex: number, // The index of the definition to move.
-    { documentPath, document }: OperationLocation
+    { documentPath, document }: OperationLocation,
   ) {
     const ast = parse(new Source(document, documentPath));
 
@@ -59,7 +59,7 @@ export function registerConnectors(
     const introspect = (await firematService.introspect())?.data;
     if (!introspect) {
       vscode.window.showErrorMessage(
-        "Failed to introspect the types. (Is the emulator running?)"
+        "Failed to introspect the types. (Is the emulator running?)",
       );
       return;
     }
@@ -100,7 +100,7 @@ export function registerConnectors(
             },
           };
         },
-      })
+      }),
     )[opName];
     // opAst contains only the operation we care about plus fragments used.
     if (!opAst) {
@@ -137,11 +137,11 @@ export function registerConnectors(
     // TODO: Consider removing the operation from the original document?
 
     vscode.window.showInformationMessage(
-      `Moved ${opName} to ${vscode.workspace.asRelativePath(filePath)}`
+      `Moved ${opName} to ${vscode.workspace.asRelativePath(filePath)}`,
     );
 
     async function validateOpName(
-      value: string
+      value: string,
     ): Promise<InputBoxValidationMessage | null> {
       if (!value) {
         return {
@@ -188,7 +188,7 @@ export function registerConnectors(
 
   function findExtractCandidates(
     ast: DocumentNode,
-    introspect: IntrospectionQuery
+    introspect: IntrospectionQuery,
   ): ExtractCandidate[] {
     const candidates: ExtractCandidate[] = [];
     const seenVarNames = new Set<string>();
@@ -240,7 +240,7 @@ export function registerConnectors(
             if (argName) {
               // This should be impossible to reach.
               throw new Error(
-                `Found Argument within Argument: (${argName} > ${node.name.value}).`
+                `Found Argument within Argument: (${argName} > ${node.name.value}).`,
               );
             }
             argName = node.name.value;
@@ -250,8 +250,8 @@ export function registerConnectors(
                 `Cannot resolve argument type for ${displayPath(
                   fieldPath,
                   directiveName,
-                  argName
-                )}.`
+                  argName,
+                )}.`,
               );
             }
             if (addCandidate(node, arg.type)) {
@@ -291,13 +291,13 @@ export function registerConnectors(
             return false;
           },
         },
-      })
+      }),
     );
     return candidates;
 
     function addCandidate(
       node: ObjectFieldNode | ArgumentNode,
-      type: GraphQLInputType
+      type: GraphQLInputType,
     ): boolean {
       if (!isConstValueNode(node.value)) {
         return false;
@@ -310,7 +310,7 @@ export function registerConnectors(
         fieldPath,
         directiveName,
         argName,
-        valuePath
+        valuePath,
       );
       seenVarNames.add(varName);
       candidates.push({
@@ -325,7 +325,7 @@ export function registerConnectors(
           directiveName,
           argName,
           valuePath,
-          "$" + varName
+          "$" + varName,
         ),
         // Typical enums such as OrderBy are unlikely to be made variables.
         // Similarly, null literals aren't usually meant to be changed.
@@ -337,7 +337,7 @@ export function registerConnectors(
 
   function extractVariables(
     opAst: DocumentNode,
-    picked: ExtractCandidate[]
+    picked: ExtractCandidate[],
   ): DocumentNode {
     const pickedByParent = new Map<ASTNode, ExtractCandidate>();
     for (const p of picked) {
@@ -410,7 +410,7 @@ export function registerConnectors(
     directiveName?: string,
     argName?: string,
     valuePath?: string[],
-    valueDisp = "<value>"
+    valueDisp = "<value>",
   ): string {
     let fieldDisp = fieldPath.join(".");
     if (directiveName) {
@@ -436,7 +436,7 @@ export function registerConnectors(
     fieldPath: string[],
     directiveName?: string,
     argName?: string,
-    valuePath?: string[]
+    valuePath?: string[],
   ): string {
     const path = [...fieldPath];
     if (argName) {
@@ -473,8 +473,8 @@ export function registerConnectors(
   return Disposable.from(
     vscode.commands.registerCommand(
       "firebase.firemat.moveOperationToConnector",
-      moveOperationToConnector
-    )
+      moveOperationToConnector,
+    ),
   );
 }
 

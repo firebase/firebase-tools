@@ -1,5 +1,5 @@
 import vscode, { Disposable, ExtensionContext } from "vscode";
-import { effect, signal } from "@preact/signals-core";
+import { effect } from "@preact/signals-core";
 
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { registerExecution } from "./execution";
@@ -10,13 +10,14 @@ import {
   OperationCodeLensProvider,
   SchemaCodeLensProvider,
 } from "./code-lens-provider";
+import { globalSignal } from "../utils/globals";
 import { registerConnectors } from "./connectors";
 import { AuthService } from "../auth/service";
 import { registerFirebaseDataConnectView } from "./firebase-data-connect";
 import { currentProjectId } from "../core/project";
 // import { setupLanguageClient } from "./language-client";
 
-const firematEndpoint = signal<string | undefined>(undefined);
+const firematEndpoint = globalSignal<string | undefined>(undefined);
 
 export function registerFiremat(
   context: ExtensionContext,
@@ -36,7 +37,6 @@ export function registerFiremat(
     if (firematEndpoint.value !== endpoint) {
       firematEndpoint.value = endpoint;
       // also update LSP
-      vscode.commands.executeCommand("firemat-graphql.restart");
       vscode.commands.executeCommand("firebase.firemat.executeIntrospection");
     }
   });

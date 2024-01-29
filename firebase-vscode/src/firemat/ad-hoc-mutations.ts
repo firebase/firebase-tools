@@ -5,7 +5,7 @@ import { Uri } from "vscode";
 import { checkIfFileExists } from "./utils";
 export function registerAdHoc(
   context: ExtensionContext,
-  broker: ExtensionBrokerImpl
+  broker: ExtensionBrokerImpl,
 ): Disposable {
   const pathSuffix = "_insert.gql";
   const defaultScalarValues = {
@@ -31,7 +31,7 @@ export function registerAdHoc(
    * */
   async function schemaAddData(
     ast: ObjectTypeDefinitionNode,
-    { documentPath, position }
+    { documentPath, position },
   ) {
     // generate content for the file
     const preamble =
@@ -84,7 +84,7 @@ export function registerAdHoc(
         defaultValue = '""';
       }
       mutation.push(
-        `${fieldSpacing}${fieldName}: ${defaultValue} # ${fieldTypeName}`
+        `${fieldSpacing}${fieldName}: ${defaultValue} # ${fieldTypeName}`,
       ); // field name + temp value + comment
     }
     mutation.push(`${functionSpacing}})`, "}"); // closing braces/paren
@@ -94,7 +94,7 @@ export function registerAdHoc(
   return Disposable.from(
     vscode.commands.registerCommand(
       "firebase.firemat.schemaAddData",
-      schemaAddData
-    )
+      schemaAddData,
+    ),
   );
 }

@@ -10,14 +10,15 @@ import isEmpty from "lodash/isEmpty";
 import { workspace } from "./utils/test_hooks";
 
 export function getRootFolders() {
-  if (!workspace.value) {
+  const ws = workspace.value;
+  if (!ws) {
     return [];
   }
-  const folders = workspace.value.workspaceFolders
-    ? workspace.value.workspaceFolders.map((wf) => wf.uri.fsPath)
+  const folders = ws.workspaceFolders
+    ? ws.workspaceFolders.map((wf) => wf.uri.fsPath)
     : [];
-  if (workspace.value.workspaceFile) {
-    folders.push(path.dirname(workspace.value.workspaceFile.fsPath));
+  if (ws.workspaceFile) {
+    folders.push(path.dirname(ws.workspaceFile.fsPath));
   }
   return Array.from(new Set(folders));
 }
@@ -108,7 +109,7 @@ export async function updateFirebaseRCProject(
     }
     currentOptions.value.rc = new RC(
       path.join(currentOptions.value.cwd, ".firebaserc"),
-      {}
+      {},
     );
   }
   currentOptions.value.rc.addProjectAlias(alias, projectId);
@@ -140,8 +141,8 @@ export function setupFirebaseJsonAndRcFileSystemWatcher(
       return null;
     }
 
-    let watcher = workspace.value.createFileSystemWatcher(
-      path.join(currentOptions.value.cwd, "{firebase.json,.firebaserc}")
+    let watcher = workspace.value?.createFileSystemWatcher(
+      path.join(currentOptions.value.cwd, "{firebase.json,.firebaserc}"),
     );
     watcher.onDidChange(async () => {
       readAndSendFirebaseConfigs(broker, context);

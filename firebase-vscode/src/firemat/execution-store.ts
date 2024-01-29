@@ -1,6 +1,7 @@
-import { signal, computed } from "@preact/signals-core";
+import { computed } from "@preact/signals-core";
 import { ExecutionResult, OperationDefinitionNode } from "graphql";
 import * as vscode from "vscode";
+import { globalSignal } from "../utils/globals";
 
 export enum ExecutionState {
   INIT,
@@ -29,17 +30,17 @@ function nextExecutionId() {
   return `${executionId}`;
 }
 
-export const executions = signal<
+export const executions = globalSignal<
   Record<string /** executionId */, ExecutionItem>
 >({});
 
-export const selectedExecutionId = signal("");
+export const selectedExecutionId = globalSignal("");
 
 /** The unparsed JSON object mutation/query variables.
  *
  * The JSON may be invalid.
  */
-export const executionArgsJSON = signal("{}");
+export const executionArgsJSON = globalSignal("{}");
 
 export function createExecution(
   executionItem: Omit<ExecutionItem, "executionId">,

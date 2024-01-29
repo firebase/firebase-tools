@@ -6,10 +6,9 @@ import { setInquirerOptions } from "./stubs/inquirer-stub";
 import { Config } from "../../src/config";
 import { globalSignal } from "./utils/globals";
 
-/**
- * User-facing CLI options
- */
-const defaultOptions: Options = {
+export type VsCodeOptions = Options & { isVSCE: boolean; rc: RC | null };
+
+const defaultOptions: Readonly<VsCodeOptions> = {
   cwd: "",
   configPath: "",
   only: "",
@@ -76,7 +75,7 @@ export function updateOptions(
  */
 export async function getCommandOptions(
   firebaseJSON: Config,
-  options: Options = currentOptions.value
+  options: Options = currentOptions.value,
 ): Promise<Options> {
   // Use any string, it doesn't affect `prepare()`.
   const command = new Command("deploy");
