@@ -10,28 +10,33 @@ import { selectProjectInMonospace } from "../../../src/monospace";
 import { currentOptions } from "../options";
 import { updateFirebaseRCProject } from "../config-files";
 import { globalSignal } from "../utils/globals";
+import { firstWhereDefined } from "../utils/signal";
 
 /** Available projects */
-export const projects = globalSignal<Record<string, FirebaseProjectMetadata[]>>({});
+export const projects = globalSignal<Record<string, FirebaseProjectMetadata[]>>(
+  {}
+);
 
 /** Currently selected project ID */
 export const currentProjectId = globalSignal("");
 
-const userScopedProjects = computed(() => {
-  return projects.value[currentUser.value?.email ?? ""] ?? [];
-});
+const userScopedProjects = computed<FirebaseProjectMetadata[] | undefined>(
+  () => {
+    return projects.value[currentUser.value?.email ?? ""];
+  }
+);
 
 /** Gets the currently selected project, fallback to first default project in RC file */
 export const currentProject = computed<FirebaseProjectMetadata | undefined>(
   () => {
     // Service accounts should only have one project
     if (isServiceAccount.value) {
-      return userScopedProjects.value[0];
+      return userScopedProjects.value?.[0];
     }
 
     const wantProjectId =
       currentProjectId.value || firebaseRC.value.projects["default"];
-    return userScopedProjects.value.find((p) => p.projectId === wantProjectId);
+    return userScopedProjects.value?.find((p) => p.projectId === wantProjectId);
   }
 );
 
@@ -104,9 +109,10 @@ export function registerProject({
       return;
     } else {
       try {
-        currentProjectId.value = await promptUserForProject(
-          userScopedProjects.value
-        );
+        const projects = firstWhereDefined(userScopedProjects);
+
+        currentProjectId.value =
+          (await promptUserForProject(projects)) ?? currentProjectId.value;
       } catch (e) {
         vscode.window.showErrorMessage(e.message);
       }
@@ -119,12 +125,16 @@ export function registerProject({
 }
 
 /** Get the user to select a project */
-async function promptUserForProject(projects: FirebaseProjectMetadata[]) {
-  const items: QuickPickItem[] = projects.map((p) => ({
-    label: p.projectId,
-    description: p.displayName,
-  }));
+async function promptUserForProject(
+  projects: Thenable<FirebaseProjectMetadata[]>
+): Promise<string | undefined> {
+  const items = projects.then((projects) => {
+    return projects.map((p) => ({
+      label: p.projectId,
+      description: p.displayName,
+    }));
+  });
 
   const item = await vscode.window.showQuickPick(items);
-  return item.label;
+  return item?.label;
 }
