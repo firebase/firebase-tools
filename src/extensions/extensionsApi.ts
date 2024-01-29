@@ -34,7 +34,7 @@ async function createInstanceHelper(
   projectId: string,
   instanceId: string,
   config: any,
-  validateOnly = false
+  validateOnly = false,
 ): Promise<ExtensionInstance> {
   const createRes = await extensionsApiClient.post<
     { name: string; config: unknown },
@@ -49,7 +49,7 @@ async function createInstanceHelper(
       queryParams: {
         validateOnly: validateOnly ? "true" : "false",
       },
-    }
+    },
   );
   if (validateOnly) {
     return createRes.body;
@@ -92,7 +92,7 @@ export async function createInstance(args: {
 
   if (args.extensionSource && args.extensionVersionRef) {
     throw new FirebaseError(
-      "ExtensionSource and ExtensionVersion both provided, but only one should be."
+      "ExtensionSource and ExtensionVersion both provided, but only one should be.",
     );
   } else if (args.extensionSource) {
     config.source = { name: args.extensionSource?.name };
@@ -120,7 +120,7 @@ export async function createInstance(args: {
  */
 export async function deleteInstance(projectId: string, instanceId: string): Promise<any> {
   const deleteRes = await extensionsApiClient.delete<{ name: string }>(
-    `/projects/${projectId}/instances/${instanceId}`
+    `/projects/${projectId}/instances/${instanceId}`,
   );
   const pollRes = await operationPoller.pollOperation({
     apiOrigin: extensionsOrigin,
@@ -144,9 +144,9 @@ export async function getInstance(projectId: string, instanceId: string): Promis
     if (err.status === 404) {
       throw new FirebaseError(
         `Extension instance '${clc.bold(instanceId)}' not found in project '${clc.bold(
-          projectId
+          projectId,
         )}'.`,
-        { status: 404 }
+        { status: 404 },
       );
     }
     throw err;
@@ -215,7 +215,7 @@ export async function configureInstance(args: {
   if (args.canEmitEvents) {
     if (args.allowedEventTypes === undefined || args.eventarcChannel === undefined) {
       throw new FirebaseError(
-        `This instance is configured to emit events, but either allowed event types or eventarc channel is undefined.`
+        `This instance is configured to emit events, but either allowed event types or eventarc channel is undefined.`,
       );
     }
     reqBody.data.config.allowedEventTypes = args.allowedEventTypes;
@@ -268,7 +268,7 @@ export async function updateInstance(args: {
   if (args.canEmitEvents) {
     if (args.allowedEventTypes === undefined || args.eventarcChannel === undefined) {
       throw new FirebaseError(
-        `This instance is configured to emit events, but either allowed event types or eventarc channel is undefined.`
+        `This instance is configured to emit events, but either allowed event types or eventarc channel is undefined.`,
       );
     }
     body.config.allowedEventTypes = args.allowedEventTypes;
@@ -325,7 +325,7 @@ export async function updateInstanceFromRegistry(args: {
   if (args.canEmitEvents) {
     if (args.allowedEventTypes === undefined || args.eventarcChannel === undefined) {
       throw new FirebaseError(
-        `This instance is configured to emit events, but either allowed event types or eventarc channel is undefined.`
+        `This instance is configured to emit events, but either allowed event types or eventarc channel is undefined.`,
       );
     }
     body.config.allowedEventTypes = args.allowedEventTypes;
@@ -356,7 +356,7 @@ async function patchInstance(args: {
         updateMask: args.updateMask,
         validateOnly: args.validateOnly ? "true" : "false",
       },
-    }
+    },
   );
   if (args.validateOnly) {
     return updateRes;
@@ -397,7 +397,7 @@ export function populateSpec(spec: ExtensionSpec): void {
 export async function createSource(
   projectId: string,
   packageUri: string,
-  extensionRoot: string
+  extensionRoot: string,
 ): Promise<ExtensionSource> {
   const createRes = await extensionsApiClient.post<
     { packageUri: string; extensionRoot: string },
@@ -441,7 +441,7 @@ export async function getExtensionVersion(extensionVersionRef: string): Promise<
   }
   try {
     const res = await extensionsApiClient.get<ExtensionVersion>(
-      `/${refs.toExtensionVersionName(ref)}`
+      `/${refs.toExtensionVersionName(ref)}`,
     );
     if (res.body.spec) {
       populateSpec(res.body.spec);
@@ -454,7 +454,7 @@ export async function getExtensionVersion(extensionVersionRef: string): Promise<
       throw err;
     }
     throw new FirebaseError(
-      `Failed to query the extension version '${clc.bold(extensionVersionRef)}': ${err}`
+      `Failed to query the extension version '${clc.bold(extensionVersionRef)}': ${err}`,
     );
   }
 }
@@ -472,7 +472,7 @@ export async function listExtensions(publisherId: string): Promise<Extension[]> 
           pageSize: PAGE_SIZE_MAX,
           pageToken,
         },
-      }
+      },
     );
     if (Array.isArray(res.body.extensions)) {
       extensions.push(...res.body.extensions);
@@ -491,7 +491,7 @@ export async function listExtensions(publisherId: string): Promise<Extension[]> 
 export async function listExtensionVersions(
   ref: string,
   filter = "",
-  showPrereleases = false
+  showPrereleases = false,
 ): Promise<ExtensionVersion[]> {
   const { publisherId, extensionId } = refs.parse(ref);
   const extensionVersions: ExtensionVersion[] = [];
@@ -542,15 +542,15 @@ export async function getExtension(extensionRef: string): Promise<Extension> {
 export function refNotFoundError(ref: refs.Ref): FirebaseError {
   return new FirebaseError(
     `The extension reference '${clc.bold(
-      ref.version ? refs.toExtensionVersionRef(ref) : refs.toExtensionRef(ref)
+      ref.version ? refs.toExtensionVersionRef(ref) : refs.toExtensionRef(ref),
     )}' doesn't exist. This could happen for two reasons:\n` +
       `  -The publisher ID '${clc.bold(ref.publisherId)}' doesn't exist or could be misspelled\n` +
       `  -The name of the ${ref.version ? "extension version" : "extension"} '${clc.bold(
-        ref.version ? `${ref.extensionId}@${ref.version}` : ref.extensionId
+        ref.version ? `${ref.extensionId}@${ref.version}` : ref.extensionId,
       )}' doesn't exist or could be misspelled\n\n` +
       `Please correct the extension reference and try again. If you meant to install an extension from a local source, please provide a relative path prefixed with '${clc.bold(
-        "./"
+        "./",
       )}', '${clc.bold("../")}', or '${clc.bold("~/")}'.}`,
-    { status: 404 }
+    { status: 404 },
   );
 }

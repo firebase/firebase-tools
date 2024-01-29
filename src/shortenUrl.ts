@@ -40,7 +40,7 @@ export async function shortenUrl(url: string, guessable = false): Promise<string
           domainUriPrefix: DYNAMIC_LINKS_PREFIX,
         },
         suffix: { option: guessable ? "SHORT" : "UNGUESSABLE" },
-      }
+      },
     );
 
     return response.body.shortLink;

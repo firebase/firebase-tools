@@ -28,7 +28,7 @@ function prepareRules(
   context: any,
   rulesDeploy: RulesDeploy,
   databaseId: string,
-  rulesFile: string
+  rulesFile: string,
 ): void {
   rulesDeploy.addFile(rulesFile);
   context.firestore.rules.push({
@@ -48,13 +48,13 @@ function prepareIndexes(
   context: any,
   options: Options,
   databaseId: string,
-  indexesFileName: string
+  indexesFileName: string,
 ): void {
   const indexesPath = options.config.path(indexesFileName);
   const indexesRawSpec = loadCJSON(indexesPath);
 
   utils.logBullet(
-    `${clc.bold(clc.cyan("firestore:"))} reading indexes from ${clc.bold(indexesFileName)}...`
+    `${clc.bold(clc.cyan("firestore:"))} reading indexes from ${clc.bold(indexesFileName)}...`,
   );
 
   context.firestore.indexes.push({
@@ -85,7 +85,7 @@ export default async function (context: any, options: any): Promise<void> {
 
   const firestoreConfigs: fsConfig.ParsedFirestoreConfig[] = fsConfig.getFirestoreConfig(
     context.projectId,
-    options
+    options,
   );
   if (!firestoreConfigs || firestoreConfigs.length === 0) {
     return;

@@ -20,7 +20,7 @@ const apiClient = new Client({
  * @return {string} Parses the template and returns a formatted string that concatenates items and limits the number of items outputted that is used in the table
  */
 export function parseTemplateForTable(
-  templateItems: RemoteConfigTemplate["parameters"] | RemoteConfigTemplate["parameterGroups"]
+  templateItems: RemoteConfigTemplate["parameters"] | RemoteConfigTemplate["parameterGroups"],
 ): string {
   let outputStr = "";
   let counter = 0;
@@ -45,7 +45,7 @@ export function parseTemplateForTable(
  */
 export async function getTemplate(
   projectId: string,
-  versionNumber?: string
+  versionNumber?: string,
 ): Promise<RemoteConfigTemplate> {
   try {
     const params = new URLSearchParams();
@@ -63,7 +63,7 @@ export async function getTemplate(
     logger.debug(err.message);
     throw new FirebaseError(
       `Failed to get Firebase Remote Config template for project ${projectId}. `,
-      { original: err }
+      { original: err },
     );
   }
 }

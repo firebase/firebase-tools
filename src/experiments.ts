@@ -42,7 +42,7 @@ export const ALL_EXPERIMENTS = experiments({
   },
   deletegcfartifacts: {
     shortDescription: `Add the ${bold(
-      "functions:deletegcfartifacts"
+      "functions:deletegcfartifacts",
     )} command to purge docker build images`,
     fullDescription:
       `Add the ${bold("functions:deletegcfartifacts")}` +
@@ -122,7 +122,7 @@ export function experimentNameAutocorrect(malformed: string): string[] {
   if (isValidExperiment(malformed)) {
     throw new FirebaseError(
       "Assertion failed: experimentNameAutocorrect given actual experiment name",
-      { exit: 2 }
+      { exit: 2 },
     );
   }
 
@@ -130,7 +130,7 @@ export function experimentNameAutocorrect(malformed: string): string[] {
   // but this logic matches src/index.ts. I neither want to change something
   // with such potential impact nor to create divergent behavior.
   return Object.keys(ALL_EXPERIMENTS).filter(
-    (name) => leven(name, malformed) < malformed.length * 0.4
+    (name) => leven(name, malformed) < malformed.length * 0.4,
   );
 }
 
@@ -199,7 +199,7 @@ export function assertEnabled(name: ExperimentName, task: string): void {
       const newValue = [process.env.FIREBASE_CLI_EXPERIMENTS, name].filter((it) => !!it).join(",");
       throw new FirebaseError(
         `${prefix} To enable add a ${bold(
-          "FIREBASE_CLI_EXPERIMENTS"
+          "FIREBASE_CLI_EXPERIMENTS",
         )} environment variable to ${filename}, like so: ${italic(`
 
 - uses: FirebaseExtended/action-hosting-deploy@v0
@@ -207,11 +207,11 @@ export function assertEnabled(name: ExperimentName, task: string): void {
     ...
   env:
     FIREBASE_CLI_EXPERIMENTS: ${newValue}
-`)}`
+`)}`,
       );
     } else {
       throw new FirebaseError(
-        `${prefix} To enable ${bold(name)} run ${bold(`firebase experiments:enable ${name}`)}`
+        `${prefix} To enable ${bold(name)} run ${bold(`firebase experiments:enable ${name}`)}`,
       );
     }
   }

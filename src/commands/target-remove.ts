@@ -13,7 +13,7 @@ export const command = new Command("target:remove <type> <resource>")
       utils.logSuccess(`Removed ${type} target ${clc.bold(name)} from ${clc.bold(resource)}`);
     } else {
       utils.logWarning(
-        `No action taken. No target found for ${type} resource ${clc.bold(resource)}`
+        `No action taken. No target found for ${type} resource ${clc.bold(resource)}`,
       );
     }
     return Promise.resolve(name);

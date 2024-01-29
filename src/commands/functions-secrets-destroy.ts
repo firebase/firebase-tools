@@ -44,7 +44,7 @@ export const command = new Command("functions:secrets:destroy <KEY>[@version]")
         .map((e) => `${e.id}[${e.platform}](${e.region})`)
         .join("\t\n");
       logWarning(
-        `Secret ${name}@${version} is currently in use by following functions:\n\t${endpointsMsg}`
+        `Secret ${name}@${version} is currently in use by following functions:\n\t${endpointsMsg}`,
       );
       if (!options.force) {
         logWarning("Refusing to destroy secret in use. Use -f to destroy the secret anyway.");
@@ -60,7 +60,7 @@ export const command = new Command("functions:secrets:destroy <KEY>[@version]")
           default: true,
           message: `Are you sure you want to destroy ${sv.secret.name}@${sv.versionId}`,
         },
-        options
+        options,
       );
       if (!confirm) {
         return;

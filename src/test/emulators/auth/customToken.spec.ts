@@ -181,7 +181,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
         subject: "fake-service-account@example.com",
         issuer: "fake-service-account@example.com",
         audience: CUSTOM_TOKEN_AUDIENCE,
-      }
+      },
     );
 
     await authApi()

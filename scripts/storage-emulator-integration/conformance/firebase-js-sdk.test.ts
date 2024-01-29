@@ -48,7 +48,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
     filename: string,
     text: string,
     format?: string,
-    metadata?: firebasePkg.storage.UploadMetadata
+    metadata?: firebasePkg.storage.UploadMetadata,
   ): Promise<string> {
     return page.evaluate(
       async (filename, text, format, metadata) => {
@@ -66,7 +66,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
       filename,
       text,
       format ?? "raw",
-      JSON.stringify(metadata ?? {})
+      JSON.stringify(metadata ?? {}),
     )!;
   }
 
@@ -135,7 +135,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
         TEST_ENV.appConfig,
         TEST_ENV.useProductionServers,
         TEST_ENV.authEmulatorHost,
-        TEST_ENV.storageEmulatorHost.replace(/^(https?:|)\/\//, "")
+        TEST_ENV.storageEmulatorHost.replace(/^(https?:|)\/\//, ""),
       )
       .catch((reason) => {
         console.error("*** ", reason);
@@ -200,7 +200,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
           page,
           `testing/${"long".repeat(180)}image.png`,
           IMAGE_FILE_BASE64,
-          "base64"
+          "base64",
         );
 
         expect(uploadState).to.equal("success");
@@ -393,7 +393,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
     describe("#list()", () => {
       async function uploadFiles(paths: string[]): Promise<void> {
         await Promise.all(
-          paths.map((destination) => testBucket.upload(smallFilePath, { destination }))
+          paths.map((destination) => testBucket.upload(smallFilePath, { destination })),
         );
       }
       const itemNames = [...Array(10)].map((_, i) => `item#${i}`);
@@ -457,7 +457,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
           return firebase.storage().ref(filename).getDownloadURL();
         }, TEST_FILE_NAME);
         expect(downloadUrl).to.contain(
-          `${expectedFirebaseHost}/v0/b/${storageBucket}/o/testing%2Fstorage_ref%2FtestFile?alt=media&token=`
+          `${expectedFirebaseHost}/v0/b/${storageBucket}/o/testing%2Fstorage_ref%2FtestFile?alt=media&token=`,
         );
       });
 
@@ -474,7 +474,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
           TEST_ENV.requestClient.get(downloadUrl, (response) => {
             let data = Buffer.alloc(0);
             expect(response.headers["content-disposition"]).to.be.eql(
-              "attachment; filename=testFile"
+              "attachment; filename=testFile",
             );
             response
               .on("data", (chunk) => {
@@ -505,7 +505,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
           getDownloadUrlPromises.push(
             page.evaluate((filename) => {
               return firebase.storage().ref(filename).getDownloadURL();
-            }, singleFileName)
+            }, singleFileName),
           );
         }
         const values: string[] = await Promise.all(getDownloadUrlPromises);

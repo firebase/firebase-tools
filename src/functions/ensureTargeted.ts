@@ -27,7 +27,7 @@ export function ensureTargeted(only: string, codebase: string, functionId: strin
 export function ensureTargeted(
   only: string,
   codebaseOrFunction: string,
-  functionId?: string
+  functionId?: string,
 ): string {
   const parts = only.split(",");
   if (parts.includes("functions")) {

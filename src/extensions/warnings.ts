@@ -33,7 +33,7 @@ export async function displayWarningsForDeploy(instancesToCreate: InstanceSpec[]
     await getExtensionVersion(i);
   }
   const unpublishedExtensions = uploadedExtensionInstances.filter(
-    (i) => i.extensionVersion?.listing?.state !== "APPROVED"
+    (i) => i.extensionVersion?.listing?.state !== "APPROVED",
   );
 
   if (unpublishedExtensions.length) {
@@ -44,8 +44,8 @@ export async function displayWarningsForDeploy(instancesToCreate: InstanceSpec[]
         `The following extension versions have not been published to the Firebase Extensions Hub:\n${humanReadableList}\n.` +
           "Unpublished extensions have not been reviewed by " +
           "Firebase. Please make sure you trust the extension publisher before installing this extension.",
-        { gfm: false }
-      )
+        { gfm: false },
+      ),
     );
   }
   return unpublishedExtensions.length > 0;
@@ -55,6 +55,6 @@ export function outOfBandChangesWarning(instanceIds: string[]) {
   logger.warn(
     "The following instances may have been changed in the Firebase console or by another machine since the last deploy from this machine.\n\t" +
       clc.bold(instanceIds.join("\n\t")) +
-      "\nIf you proceed with this deployment, those changes will be overwritten. To avoid this, run `firebase ext:export` to sync these changes to your local extensions manifest."
+      "\nIf you proceed with this deployment, those changes will be overwritten. To avoid this, run `firebase ext:export` to sync these changes to your local extensions manifest.",
   );
 }

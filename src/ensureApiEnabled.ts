@@ -27,7 +27,7 @@ export async function check(
   projectId: string,
   apiName: string,
   prefix: string,
-  silent = false
+  silent = false,
 ): Promise<boolean> {
   const res = await apiClient.get<{ state: string }>(`/projects/${projectId}/services/${apiName}`, {
     headers: { "x-goog-quota-user": `projects/${projectId}` },
@@ -61,20 +61,20 @@ async function enable(projectId: string, apiName: string): Promise<void> {
       {
         headers: { "x-goog-quota-user": `projects/${projectId}` },
         skipLog: { resBody: true },
-      }
+      },
     );
   } catch (err: any) {
     if (isBillingError(err)) {
       throw new FirebaseError(`Your project ${bold(
-        projectId
+        projectId,
       )} must be on the Blaze (pay-as-you-go) plan to complete this command. Required API ${bold(
-        apiName
+        apiName,
       )} can't be enabled until the upgrade is complete. To upgrade, visit the following URL:
 
 https://console.firebase.google.com/project/${projectId}/usage/details`);
     } else if (isPermissionError(err)) {
       const apiPermissionDeniedRegex = new RegExp(
-        /Permission denied to enable service \[([.a-zA-Z]+)\]/
+        /Permission denied to enable service \[([.a-zA-Z]+)\]/,
       );
       // Recognize permission denied errors on APIs and provide users the
       // GCP console link to easily enable the API.
@@ -105,7 +105,7 @@ async function pollCheckEnabled(
   prefix: string,
   silent: boolean,
   enablementRetries: number,
-  pollRetries = 0
+  pollRetries = 0,
 ): Promise<void> {
   if (pollRetries > POLL_SETTINGS.pollsBeforeRetry) {
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
@@ -133,11 +133,11 @@ async function enableApiWithRetries(
   apiName: string,
   prefix: string,
   silent: boolean,
-  enablementRetries = 0
+  enablementRetries = 0,
 ): Promise<void> {
   if (enablementRetries > 1) {
     throw new FirebaseError(
-      `Timed out waiting for API ${bold(apiName)} to enable. Please try again in a few minutes.`
+      `Timed out waiting for API ${bold(apiName)} to enable. Please try again in a few minutes.`,
     );
   }
   await enable(projectId, apiName);
@@ -156,7 +156,7 @@ export async function ensure(
   projectId: string,
   apiName: string,
   prefix: string,
-  silent = false
+  silent = false,
 ): Promise<void> {
   if (!silent) {
     utils.logLabeledBullet(prefix, `ensuring required API ${bold(apiName)} is enabled...`);

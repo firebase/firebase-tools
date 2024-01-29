@@ -39,7 +39,7 @@ export async function init(setup: any, config: any, baseTemplate: string = "vani
     {
       stdio: "inherit",
       cwd: config.projectDir,
-    }
+    },
   );
   execSync(`npm install`, { stdio: "inherit", cwd: join(config.projectDir, setup.hosting.source) });
 }

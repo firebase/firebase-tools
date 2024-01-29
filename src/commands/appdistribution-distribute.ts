@@ -36,12 +36,12 @@ export const command = new Command("appdistribution:distribute <release-binary-f
   .option("--testers <string>", "a comma separated list of tester emails to distribute to")
   .option(
     "--testers-file <file>",
-    "path to file with a comma separated list of tester emails to distribute to"
+    "path to file with a comma separated list of tester emails to distribute to",
   )
   .option("--groups <string>", "a comma separated list of group aliases to distribute to")
   .option(
     "--groups-file <file>",
-    "path to file with a comma separated list of group aliases to distribute to"
+    "path to file with a comma separated list of group aliases to distribute to",
   )
   .before(requireAuth)
   .action(async (file: string, options: any) => {
@@ -63,7 +63,7 @@ export const command = new Command("appdistribution:distribute <release-binary-f
               `Make sure to onboard your app by pressing the "Get started" ` +
               "button on the App Distribution page in the Firebase console: " +
               "https://console.firebase.google.com/project/_/appdistribution",
-            { exit: 1 }
+            { exit: 1 },
           );
         }
         throw new FirebaseError(`failed to determine AAB info. ${err.message}`, { exit: 1 });
@@ -82,17 +82,17 @@ export const command = new Command("appdistribution:distribute <release-binary-f
           }
           case IntegrationState.NO_APP_WITH_GIVEN_BUNDLE_ID_IN_PLAY_ACCOUNT: {
             throw new FirebaseError(
-              "App with matching package name does not exist in Google Play."
+              "App with matching package name does not exist in Google Play.",
             );
           }
           case IntegrationState.PLAY_IAS_TERMS_NOT_ACCEPTED: {
             throw new FirebaseError(
-              "You must accept the Play Internal App Sharing (IAS) terms to upload AABs."
+              "You must accept the Play Internal App Sharing (IAS) terms to upload AABs.",
             );
           }
           default: {
             throw new FirebaseError(
-              "App Distribution failed to process the AAB: " + aabInfo.integrationState
+              "App Distribution failed to process the AAB: " + aabInfo.integrationState,
             );
           }
         }
@@ -111,28 +111,28 @@ export const command = new Command("appdistribution:distribute <release-binary-f
       switch (uploadResponse.result) {
         case UploadReleaseResult.RELEASE_CREATED:
           utils.logSuccess(
-            `uploaded new release ${release.displayVersion} (${release.buildVersion}) successfully!`
+            `uploaded new release ${release.displayVersion} (${release.buildVersion}) successfully!`,
           );
           break;
         case UploadReleaseResult.RELEASE_UPDATED:
           utils.logSuccess(
-            `uploaded update to existing release ${release.displayVersion} (${release.buildVersion}) successfully!`
+            `uploaded update to existing release ${release.displayVersion} (${release.buildVersion}) successfully!`,
           );
           break;
         case UploadReleaseResult.RELEASE_UNMODIFIED:
           utils.logSuccess(
-            `re-uploaded already existing release ${release.displayVersion} (${release.buildVersion}) successfully!`
+            `re-uploaded already existing release ${release.displayVersion} (${release.buildVersion}) successfully!`,
           );
           break;
         default:
           utils.logSuccess(
-            `uploaded release ${release.displayVersion} (${release.buildVersion}) successfully!`
+            `uploaded release ${release.displayVersion} (${release.buildVersion}) successfully!`,
           );
       }
       utils.logSuccess(`View this release in the Firebase console: ${release.firebaseConsoleUri}`);
       utils.logSuccess(`Share this release with testers who have access: ${release.testingUri}`);
       utils.logSuccess(
-        `Download the release binary (link expires in 1 hour): ${release.binaryDownloadUri}`
+        `Download the release binary (link expires in 1 hour): ${release.binaryDownloadUri}`,
       );
       releaseName = uploadResponse.release.name;
     } catch (err: any) {
@@ -142,7 +142,7 @@ export const command = new Command("appdistribution:distribute <release-binary-f
             `Make sure to onboard your app by pressing the "Get started" ` +
             "button on the App Distribution page in the Firebase console: " +
             "https://console.firebase.google.com/project/_/appdistribution",
-          { exit: 1 }
+          { exit: 1 },
         );
       }
       throw new FirebaseError(`failed to upload release. ${err.message}`, { exit: 1 });
@@ -160,7 +160,7 @@ export const command = new Command("appdistribution:distribute <release-binary-f
             "signing key with API providers, such as Google Sign-In and Google Maps.\n" +
             `MD-1 certificate fingerprint: ${aabInfo.testCertificate.hashMd5}\n` +
             `SHA-1 certificate fingerprint: ${aabInfo.testCertificate.hashSha1}\n` +
-            `SHA-256 certificate fingerprint: ${aabInfo.testCertificate.hashSha256}`
+            `SHA-256 certificate fingerprint: ${aabInfo.testCertificate.hashSha256}`,
         );
       }
     }

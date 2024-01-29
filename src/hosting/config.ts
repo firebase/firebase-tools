@@ -33,7 +33,7 @@ export type HostingResolved = HostingBase & {
 function matchingConfigs(
   configs: HostingMultiple,
   targets: string[],
-  assertMatches: boolean
+  assertMatches: boolean,
 ): HostingMultiple {
   const matches: HostingMultiple = [];
   const [hasSite, hasTarget] = partition(configs, (c) => "site" in c);
@@ -46,7 +46,7 @@ function matchingConfigs(
       matches.push(targetMatch);
     } else if (assertMatches) {
       throw new FirebaseError(
-        `Hosting site or target ${bold(target)} not detected in firebase.json`
+        `Hosting site or target ${bold(target)} not detected in firebase.json`,
       );
     }
   }
@@ -110,7 +110,7 @@ export function extract(options: HostingOptions): HostingMultiple {
   const assertOneTarget = (config: HostingSingle): void => {
     if (config.target && config.site) {
       throw new FirebaseError(
-        `Hosting configs should only include either "site" or "target", not both.`
+        `Hosting configs should only include either "site" or "target", not both.`,
       );
     }
   };
@@ -162,13 +162,13 @@ function validateOne(config: HostingMultiple[number], options: HostingOptions): 
 
   if (!root && hasAnyStaticRewrites) {
     throw new FirebaseError(
-      `Must supply a "public" or "source" directory when using "destination" rewrites.`
+      `Must supply a "public" or "source" directory when using "destination" rewrites.`,
     );
   }
 
   if (!root && !hasAnyDynamicRewrites && !hasAnyRedirects) {
     throw new FirebaseError(
-      `Must supply a "public" or "source" directory or at least one rewrite or redirect in each "hosting" config.`
+      `Must supply a "public" or "source" directory or at least one rewrite or redirect in each "hosting" config.`,
     );
   }
 
@@ -178,7 +178,7 @@ function validateOne(config: HostingMultiple[number], options: HostingOptions): 
         config.source ? "source" : "public"
       }" directory "${root}" does not exist; Deploy to Hosting site "${
         config.site || config.target || ""
-      }" may fail or be empty.`
+      }" may fail or be empty.`,
     );
   }
 
@@ -188,14 +188,14 @@ function validateOne(config: HostingMultiple[number], options: HostingOptions): 
   const violation = config.rewrites?.find(regionWithoutFunction);
   if (violation) {
     throw new FirebaseError(
-      "Rewrites only support 'region' as a top-level field when 'function' is set as a string"
+      "Rewrites only support 'region' as a top-level field when 'function' is set as a string",
     );
   }
 
   if (config.i18n) {
     if (!root) {
       throw new FirebaseError(
-        `Must supply a "public" or "source" directory when using "i18n" configuration.`
+        `Must supply a "public" or "source" directory when using "i18n" configuration.`,
       );
     }
 
@@ -208,8 +208,8 @@ function validateOne(config: HostingMultiple[number], options: HostingOptions): 
       logLabeledWarning(
         "hosting",
         `Couldn't find specified i18n root directory ${bold(
-          config.i18n.root
-        )} in public directory ${bold(root)}`
+          config.i18n.root,
+        )} in public directory ${bold(root)}`,
       );
     }
   }
@@ -220,7 +220,7 @@ function validateOne(config: HostingMultiple[number], options: HostingOptions): 
  */
 export function resolveTargets(
   configs: HostingMultiple,
-  options: HostingOptions
+  options: HostingOptions,
 ): HostingResolved[] {
   return configs.map((config) => {
     const newConfig = cloneDeep(config);
@@ -231,13 +231,13 @@ export function resolveTargets(
       throw new FirebaseError(
         "Assertion failed: resolving hosting target of a site with no site name " +
           "or target name. This should have caused an error earlier",
-        { exit: 2 }
+        { exit: 2 },
       );
     }
     if (!options.project) {
       throw new FirebaseError(
         "Assertion failed: options.project is not set. Commands depending on hosting.config should use requireProject",
-        { exit: 2 }
+        { exit: 2 },
       );
     }
     const matchingTargets = options.rc.requireTarget(options.project, "hosting", config.target);
@@ -245,7 +245,7 @@ export function resolveTargets(
       throw new FirebaseError(
         `Hosting target ${bold(config.target)} is linked to multiple sites, ` +
           `but only one is permitted. ` +
-          `To clear, run:\n\n  ${bold(`firebase target:clear hosting ${config.target}`)}`
+          `To clear, run:\n\n  ${bold(`firebase target:clear hosting ${config.target}`)}`,
       );
     }
     newConfig.site = matchingTargets[0];
@@ -254,7 +254,7 @@ export function resolveTargets(
 }
 
 function isLegacyFunctionsRewrite(
-  rewrite: HostingRewrites
+  rewrite: HostingRewrites,
 ): rewrite is HostingSource & LegacyFunctionsRewrite {
   return "function" in rewrite && typeof rewrite.function === "string";
 }

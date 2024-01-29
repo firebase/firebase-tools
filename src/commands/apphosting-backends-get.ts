@@ -37,7 +37,7 @@ export const command = new Command("apphosting:backends:get <backendId>")
     } catch (err: any) {
       throw new FirebaseError(
         `Failed to get backend: ${backendId}. Please check the parameters you have provided.`,
-        { original: err }
+        { original: err },
       );
     }
     if (backendsList.length === 0) {

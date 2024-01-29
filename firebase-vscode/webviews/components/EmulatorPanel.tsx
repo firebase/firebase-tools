@@ -144,13 +144,6 @@ export function EmulatorPanel({
     setEmulatorUiSelectionsAndSaveToWorkspace(selections);
   }
 
-  function projectIdChanged(event: React.ChangeEvent<HTMLInputElement>) {
-    webLogger.debug("projectIdChanged: " + event.target.value);
-    const selections: EmulatorUiSelections = emulatorUiSelections;
-    selections.projectId = event.target.value;
-    setEmulatorUiSelectionsAndSaveToWorkspace(selections);
-  }
-
   function emulatorModeChanged(event: React.ChangeEvent<HTMLSelectElement>) {
     webLogger.debug("emulatorModeChanged: " + event.target.value);
     const newSelections: EmulatorUiSelections = { ...emulatorUiSelections };
@@ -186,14 +179,11 @@ export function EmulatorPanel({
       <h2>Launch the Emulator Suite</h2>
       {/* TODO(christhompson): Insert some education links or tooltips here. */}
       <Spacer size="xxlarge" />
-      Current project ID:
-      {/* TODO(christhompson): convert this into a demo- prefix checkbox or something. */}
-      <VSCodeTextField
-        disabled={true}
-        className="in-line"
-        value={emulatorUiSelections.projectId}
-        onChange={(event) => projectIdChanged(event)}
-      ></VSCodeTextField>
+      <span>
+        {"Current project ID: "}
+        {/* TODO(christhompson): convert this into a demo- prefix checkbox or something. */}
+        <b>{emulatorUiSelections.projectId}</b>
+      </span>
       <Spacer size="xxlarge" />
       Import emulator state from directory:
       <VSCodeTextField

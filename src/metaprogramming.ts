@@ -36,8 +36,8 @@ export type RecursiveKeyOf<T> = T extends Primitive
 type RecursiveSubKeys<T, P extends keyof T & string> = T[P] extends (infer Elem)[]
   ? `${P}.${RecursiveKeyOf<Elem>}`
   : T[P] extends object
-  ? `${P}.${RecursiveKeyOf<T[P]>}`
-  : never;
+    ? `${P}.${RecursiveKeyOf<T[P]>}`
+    : never;
 
 /**
  * LeafKeysOf is like RecursiveKeysOf but omits the keys for any object.
@@ -48,8 +48,8 @@ export type LeafKeysOf<T extends object> = {
   [Key in keyof T & (string | number)]: T[Key] extends unknown[]
     ? `${Key}`
     : T[Key] extends object
-    ? `${Key}.${RecursiveKeyOf<T[Key]>}`
-    : `${Key}`;
+      ? `${Key}.${RecursiveKeyOf<T[Key]>}`
+      : `${Key}`;
 }[keyof T & (string | number)];
 
 /**
@@ -64,7 +64,7 @@ export type SameType<T, V> = T extends V ? (V extends T ? true : false) : false;
 type HeadOf<T extends string> = [T extends `${infer Head}.${infer Tail}` ? Head : T][number];
 
 type TailsOf<T extends string, Head extends string> = [
-  T extends `${Head}.${infer Tail}` ? Tail : never
+  T extends `${Head}.${infer Tail}` ? Tail : never,
 ][number];
 
 /**
@@ -76,8 +76,8 @@ type DeepOmitUnsafe<T, Keys extends string> = {
   [Key in Exclude<keyof T, Keys>]: Key extends Keys
     ? T[Key] | undefined
     : Key extends HeadOf<Keys>
-    ? DeepOmitUnsafe<T[Key], TailsOf<Keys, Key>>
-    : T[Key];
+      ? DeepOmitUnsafe<T[Key], TailsOf<Keys, Key>>
+      : T[Key];
 };
 
 export type DeepPick<T extends object, Keys extends RecursiveKeyOf<T>> = DeepPickUnsafe<T, Keys>;
@@ -105,11 +105,8 @@ export type RequireKeys<T extends object, Keys extends keyof T> = T & {
 };
 
 /** In the array LeafElems<[[["a"], "b"], ["c"]]> is "a" | "b" | "c" */
-export type LeafElems<T> = T extends Array<infer Elem>
-  ? Elem extends unknown[]
-    ? LeafElems<Elem>
-    : Elem
-  : T;
+export type LeafElems<T> =
+  T extends Array<infer Elem> ? (Elem extends unknown[] ? LeafElems<Elem> : Elem) : T;
 
 /**
  * In the object {a: number, b: { c: string } },

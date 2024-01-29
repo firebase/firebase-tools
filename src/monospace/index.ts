@@ -120,7 +120,7 @@ async function getInitFirebaseResponse(rid: string): Promise<GetInitFirebaseResp
   if (!port) throw new FirebaseError("Undefined MONOSPACE_DAEMON_PORT");
 
   const getInitFirebaseRes = await fetch(
-    `http://localhost:${port}/get-init-firebase-response?rid=${rid}`
+    `http://localhost:${port}/get-init-firebase-response?rid=${rid}`,
   );
 
   const getInitFirebaseJson = (await getInitFirebaseRes.json()) as GetInitFirebaseResponse;

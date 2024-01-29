@@ -82,7 +82,7 @@ describe("hosting", () => {
         .reply(500, { error: "server boo-boo" });
 
       await expect(
-        hostingApi.getChannel(PROJECT_ID, SITE, CHANNEL_ID)
+        hostingApi.getChannel(PROJECT_ID, SITE, CHANNEL_ID),
       ).to.eventually.be.rejectedWith(FirebaseError, /server boo-boo/);
 
       expect(nock.isDone()).to.be.true;
@@ -140,7 +140,7 @@ describe("hosting", () => {
 
       await expect(hostingApi.listChannels(PROJECT_ID, SITE)).to.eventually.be.rejectedWith(
         FirebaseError,
-        /could not find channels/
+        /could not find channels/,
       );
 
       expect(nock.isDone()).to.be.true;
@@ -154,7 +154,7 @@ describe("hosting", () => {
 
       await expect(hostingApi.listChannels(PROJECT_ID, SITE)).to.eventually.be.rejectedWith(
         FirebaseError,
-        /server boo-boo/
+        /server boo-boo/,
       );
 
       expect(nock.isDone()).to.be.true;
@@ -201,7 +201,7 @@ describe("hosting", () => {
         .reply(500, { error: "server boo-boo" });
 
       await expect(
-        hostingApi.createChannel(PROJECT_ID, SITE, CHANNEL_ID)
+        hostingApi.createChannel(PROJECT_ID, SITE, CHANNEL_ID),
       ).to.eventually.be.rejectedWith(FirebaseError, /server boo-boo/);
 
       expect(nock.isDone()).to.be.true;
@@ -252,7 +252,7 @@ describe("hosting", () => {
         .reply(500, { error: "server boo-boo" });
 
       await expect(
-        hostingApi.updateChannelTtl(PROJECT_ID, SITE, CHANNEL_ID)
+        hostingApi.updateChannelTtl(PROJECT_ID, SITE, CHANNEL_ID),
       ).to.eventually.be.rejectedWith(FirebaseError, /server boo-boo/);
 
       expect(nock.isDone()).to.be.true;
@@ -282,7 +282,7 @@ describe("hosting", () => {
         .reply(500, { error: "server boo-boo" });
 
       await expect(
-        hostingApi.deleteChannel(PROJECT_ID, SITE, CHANNEL_ID)
+        hostingApi.deleteChannel(PROJECT_ID, SITE, CHANNEL_ID),
       ).to.eventually.be.rejectedWith(FirebaseError, /server boo-boo/);
 
       expect(nock.isDone()).to.be.true;
@@ -313,7 +313,7 @@ describe("hosting", () => {
 
       await expect(hostingApi.createVersion(SITE, VERSION)).to.eventually.be.rejectedWith(
         FirebaseError,
-        /server boo-boo/
+        /server boo-boo/,
       );
 
       expect(nock.isDone()).to.be.true;
@@ -344,7 +344,7 @@ describe("hosting", () => {
         .reply(500, { error: "server boo-boo" });
 
       await expect(
-        hostingApi.updateVersion(SITE, "my-version", VERSION)
+        hostingApi.updateVersion(SITE, "my-version", VERSION),
       ).to.eventually.be.rejectedWith(FirebaseError, /server boo-boo/);
 
       expect(nock.isDone()).to.be.true;
@@ -410,7 +410,7 @@ describe("hosting", () => {
 
       await expect(hostingApi.listVersions(SITE)).to.eventually.be.rejectedWith(
         FirebaseError,
-        /server boo-boo/
+        /server boo-boo/,
       );
 
       expect(nock.isDone()).to.be.true;
@@ -454,7 +454,7 @@ describe("hosting", () => {
 
       await expect(hostingApi.cloneVersion(SITE, SOURCE_VERSION)).to.eventually.be.rejectedWith(
         FirebaseError,
-        /server boo-boo/
+        /server boo-boo/,
       );
 
       expect(nock.isDone()).to.be.true;
@@ -511,7 +511,7 @@ describe("hosting", () => {
         .reply(500, { error: "server boo-boo" });
 
       await expect(
-        hostingApi.createRelease(SITE, CHANNEL_ID, VERSION_NAME)
+        hostingApi.createRelease(SITE, CHANNEL_ID, VERSION_NAME),
       ).to.eventually.be.rejectedWith(FirebaseError, /server boo-boo/);
 
       expect(nock.isDone()).to.be.true;
@@ -538,7 +538,7 @@ describe("hosting", () => {
 
       await expect(hostingApi.getSite(PROJECT_ID, SITE)).to.eventually.be.rejectedWith(
         FirebaseError,
-        /could not find site/
+        /could not find site/,
       );
 
       expect(nock.isDone()).to.be.true;
@@ -551,7 +551,7 @@ describe("hosting", () => {
 
       await expect(hostingApi.getSite(PROJECT_ID, SITE)).to.eventually.be.rejectedWith(
         FirebaseError,
-        /server boo-boo/
+        /server boo-boo/,
       );
 
       expect(nock.isDone()).to.be.true;
@@ -609,7 +609,7 @@ describe("hosting", () => {
 
       await expect(hostingApi.listSites(PROJECT_ID)).to.eventually.be.rejectedWith(
         FirebaseError,
-        /could not find sites/
+        /could not find sites/,
       );
 
       expect(nock.isDone()).to.be.true;
@@ -623,7 +623,7 @@ describe("hosting", () => {
 
       await expect(hostingApi.listSites(PROJECT_ID)).to.eventually.be.rejectedWith(
         FirebaseError,
-        /server boo-boo/
+        /server boo-boo/,
       );
 
       expect(nock.isDone()).to.be.true;
@@ -654,7 +654,7 @@ describe("hosting", () => {
 
       await expect(hostingApi.createSite(PROJECT_ID, SITE)).to.eventually.be.rejectedWith(
         FirebaseError,
-        /server boo-boo/
+        /server boo-boo/,
       );
 
       expect(nock.isDone()).to.be.true;
@@ -690,7 +690,7 @@ describe("hosting", () => {
         .reply(500, { error: "server boo-boo" });
 
       await expect(
-        hostingApi.updateSite(PROJECT_ID, SITE_OBJ, ["appId"])
+        hostingApi.updateSite(PROJECT_ID, SITE_OBJ, ["appId"]),
       ).to.eventually.be.rejectedWith(FirebaseError, /server boo-boo/);
 
       expect(nock.isDone()).to.be.true;
@@ -716,7 +716,7 @@ describe("hosting", () => {
 
       await expect(hostingApi.deleteSite(PROJECT_ID, SITE)).to.eventually.be.rejectedWith(
         FirebaseError,
-        /server boo-boo/
+        /server boo-boo/,
       );
 
       expect(nock.isDone()).to.be.true;
@@ -798,7 +798,7 @@ describe("hosting", () => {
 
       await expect(hostingApi.getSiteDomains(PROJECT_ID, SITE)).to.eventually.be.rejectedWith(
         FirebaseError,
-        /could not find site/
+        /could not find site/,
       );
 
       expect(nock.isDone()).to.be.true;
@@ -809,7 +809,7 @@ describe("hosting", () => {
 
       await expect(hostingApi.getSiteDomains(PROJECT_ID, SITE)).to.eventually.be.rejectedWith(
         FirebaseError,
-        /server boo-boo/
+        /server boo-boo/,
       );
 
       expect(nock.isDone()).to.be.true;
@@ -838,7 +838,7 @@ describe("hosting", () => {
       ];
 
       expect(await hostingApi.getAllSiteDomains(PROJECT_ID, SITE)).to.have.members(
-        allDomainsPlusWebAppAndFirebaseApp
+        allDomainsPlusWebAppAndFirebaseApp,
       );
     });
 
@@ -848,7 +848,7 @@ describe("hosting", () => {
 
       await expect(hostingApi.getAllSiteDomains(PROJECT_ID, SITE)).to.eventually.be.rejectedWith(
         FirebaseError,
-        /could not find site/
+        /could not find site/,
       );
 
       expect(nock.isDone()).to.be.true;
@@ -878,7 +878,7 @@ describe("hosting", () => {
         .reply(200, { defaultUrl });
 
       expect(await hostingApi.getDeploymentDomain(PROJECT_ID, SITE, undefined)).to.equal(
-        defaultDomain
+        defaultDomain,
       );
     });
 
@@ -892,7 +892,7 @@ describe("hosting", () => {
         .reply(200, channel);
 
       expect(await hostingApi.getDeploymentDomain(PROJECT_ID, SITE, channelId)).to.equal(
-        channelDomain
+        channelDomain,
       );
     });
 

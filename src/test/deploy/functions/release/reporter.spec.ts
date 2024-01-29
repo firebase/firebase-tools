@@ -25,7 +25,7 @@ describe("reporter", () => {
         reporter.triggerTag({
           ...ENDPOINT_BASE,
           httpsTrigger: {},
-        })
+        }),
       ).to.equal("v1.https");
     });
 
@@ -35,7 +35,7 @@ describe("reporter", () => {
           ...ENDPOINT_BASE,
           platform: "gcfv2",
           httpsTrigger: {},
-        })
+        }),
       ).to.equal("v2.https");
     });
 
@@ -47,7 +47,7 @@ describe("reporter", () => {
           labels: {
             "deployment-callable": "true",
           },
-        })
+        }),
       ).to.equal("v1.callable");
     });
 
@@ -60,7 +60,7 @@ describe("reporter", () => {
           labels: {
             "deployment-callable": "true",
           },
-        })
+        }),
       ).to.equal("v2.callable");
     });
 
@@ -69,7 +69,7 @@ describe("reporter", () => {
         reporter.triggerTag({
           ...ENDPOINT_BASE,
           scheduleTrigger: {},
-        })
+        }),
       ).to.equal("v1.scheduled");
     });
 
@@ -79,7 +79,7 @@ describe("reporter", () => {
           ...ENDPOINT_BASE,
           platform: "gcfv2",
           scheduleTrigger: {},
-        })
+        }),
       ).to.equal("v2.scheduled");
     });
 
@@ -88,7 +88,7 @@ describe("reporter", () => {
         reporter.triggerTag({
           ...ENDPOINT_BASE,
           blockingTrigger: { eventType: events.v1.BEFORE_CREATE_EVENT },
-        })
+        }),
       ).to.equal("v1.blocking");
     });
 
@@ -98,7 +98,7 @@ describe("reporter", () => {
           ...ENDPOINT_BASE,
           platform: "gcfv2",
           blockingTrigger: { eventType: events.v1.BEFORE_CREATE_EVENT },
-        })
+        }),
       ).to.equal("v2.blocking");
     });
 
@@ -112,7 +112,7 @@ describe("reporter", () => {
             eventFilters: {},
             retry: false,
           },
-        })
+        }),
       ).to.equal("google.pubsub.topic.publish");
     });
   });
@@ -144,7 +144,7 @@ describe("reporter", () => {
             error: new reporter.DeploymentError(
               { ...ENDPOINT, codebase: "codebase1" },
               "update",
-              undefined
+              undefined,
             ),
           },
           {
@@ -282,7 +282,7 @@ describe("reporter", () => {
       // pass the "s" modifier to regexes to make . capture newlines.
       expect(infoStub).to.have.been.calledWithMatch(/Functions deploy had errors.*failedCreate/s);
       expect(infoStub).to.not.have.been.calledWithMatch(
-        /Functions deploy had errors.*abortedDelete/s
+        /Functions deploy had errors.*abortedDelete/s,
       );
     });
 
@@ -309,7 +309,7 @@ describe("reporter", () => {
 
       expect(infoStub).to.have.been.calledWithMatch("Unable to set the invoker for the IAM policy");
       expect(infoStub).to.not.have.been.calledWithMatch(
-        "One or more functions were being implicitly made publicly available"
+        "One or more functions were being implicitly made publicly available",
       );
 
       infoStub.resetHistory();
@@ -319,7 +319,7 @@ describe("reporter", () => {
 
       expect(infoStub).to.have.been.calledWithMatch("Unable to set the invoker for the IAM policy");
       expect(infoStub).to.have.been.calledWithMatch(
-        "One or more functions were being implicitly made publicly available"
+        "One or more functions were being implicitly made publicly available",
       );
     });
 
@@ -339,7 +339,7 @@ describe("reporter", () => {
 
       reporter.printErrors(summary);
       expect(infoStub).to.have.been.calledWithMatch(
-        "Exceeded maximum retries while deploying functions."
+        "Exceeded maximum retries while deploying functions.",
       );
     });
 
@@ -362,10 +362,10 @@ describe("reporter", () => {
 
       reporter.printErrors(summary);
       expect(infoStub).to.have.been.calledWithMatch(
-        /the following functions were not deleted.*abortedDelete/s
+        /the following functions were not deleted.*abortedDelete/s,
       );
       expect(infoStub).to.not.have.been.calledWith(
-        /the following functions were not deleted.*failedCreate/s
+        /the following functions were not deleted.*failedCreate/s,
       );
     });
   });

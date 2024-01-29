@@ -41,7 +41,7 @@ export function calculateChannelExpireTTL(flag: NonNullable<HostingOptions["expi
   const match = DURATION_REGEX.exec(flag);
   if (!match) {
     throw new FirebaseError(
-      `"expires" flag must be a duration string (e.g. 24h or 7d) at most 30d`
+      `"expires" flag must be a duration string (e.g. 24h or 7d) at most 30d`,
     );
   }
   const d = parseInt(match[1], 10) * DURATIONS[match[2]];

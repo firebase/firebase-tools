@@ -155,7 +155,7 @@ const ENQUEUER_ROLE = "roles/cloudtasks.enqueuer";
 export async function setEnqueuer(
   name: string,
   invoker: string[],
-  assumeEmpty = false
+  assumeEmpty = false,
 ): Promise<void> {
   let existing: iam.Policy;
   if (assumeEmpty) {
@@ -201,7 +201,7 @@ export async function setEnqueuer(
 
 /** The name of the Task Queue we will use for this endpoint. */
 export function queueNameForEndpoint(
-  endpoint: backend.Endpoint & backend.TaskQueueTriggered
+  endpoint: backend.Endpoint & backend.TaskQueueTriggered,
 ): string {
   return `projects/${endpoint.project}/locations/${endpoint.region}/queues/${endpoint.id}`;
 }
@@ -217,7 +217,7 @@ export function queueFromEndpoint(endpoint: backend.Endpoint & backend.TaskQueue
       queue.rateLimits,
       endpoint.taskQueueTrigger.rateLimits,
       "maxConcurrentDispatches",
-      "maxDispatchesPerSecond"
+      "maxDispatchesPerSecond",
     );
   }
   if (endpoint.taskQueueTrigger.retryConfig) {
@@ -225,28 +225,28 @@ export function queueFromEndpoint(endpoint: backend.Endpoint & backend.TaskQueue
       queue.retryConfig,
       endpoint.taskQueueTrigger.retryConfig,
       "maxAttempts",
-      "maxDoublings"
+      "maxDoublings",
     );
     proto.convertIfPresent(
       queue.retryConfig,
       endpoint.taskQueueTrigger.retryConfig,
       "maxRetryDuration",
       "maxRetrySeconds",
-      nullsafeVisitor(proto.durationFromSeconds)
+      nullsafeVisitor(proto.durationFromSeconds),
     );
     proto.convertIfPresent(
       queue.retryConfig,
       endpoint.taskQueueTrigger.retryConfig,
       "maxBackoff",
       "maxBackoffSeconds",
-      nullsafeVisitor(proto.durationFromSeconds)
+      nullsafeVisitor(proto.durationFromSeconds),
     );
     proto.convertIfPresent(
       queue.retryConfig,
       endpoint.taskQueueTrigger.retryConfig,
       "minBackoff",
       "minBackoffSeconds",
-      nullsafeVisitor(proto.durationFromSeconds)
+      nullsafeVisitor(proto.durationFromSeconds),
     );
   }
   return queue;
@@ -261,7 +261,7 @@ export function triggerFromQueue(queue: Queue): backend.TaskQueueTriggered["task
       taskQueueTrigger.rateLimits,
       queue.rateLimits,
       "maxConcurrentDispatches",
-      "maxDispatchesPerSecond"
+      "maxDispatchesPerSecond",
     );
   }
   if (queue.retryConfig) {
@@ -270,28 +270,28 @@ export function triggerFromQueue(queue: Queue): backend.TaskQueueTriggered["task
       taskQueueTrigger.retryConfig,
       queue.retryConfig,
       "maxAttempts",
-      "maxDoublings"
+      "maxDoublings",
     );
     proto.convertIfPresent(
       taskQueueTrigger.retryConfig,
       queue.retryConfig,
       "maxRetrySeconds",
       "maxRetryDuration",
-      nullsafeVisitor(proto.secondsFromDuration)
+      nullsafeVisitor(proto.secondsFromDuration),
     );
     proto.convertIfPresent(
       taskQueueTrigger.retryConfig,
       queue.retryConfig,
       "maxBackoffSeconds",
       "maxBackoff",
-      nullsafeVisitor(proto.secondsFromDuration)
+      nullsafeVisitor(proto.secondsFromDuration),
     );
     proto.convertIfPresent(
       taskQueueTrigger.retryConfig,
       queue.retryConfig,
       "minBackoffSeconds",
       "minBackoff",
-      nullsafeVisitor(proto.secondsFromDuration)
+      nullsafeVisitor(proto.secondsFromDuration),
     );
   }
   return taskQueueTrigger;

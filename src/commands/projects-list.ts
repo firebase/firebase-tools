@@ -66,5 +66,5 @@ export const command = new Command("projects:list")
       logProjectsList(projects, options.project);
       logProjectCount(projects);
       return projects;
-    }
+    },
   );

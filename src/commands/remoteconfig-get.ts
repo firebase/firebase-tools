@@ -31,7 +31,7 @@ export const command = new Command("remoteconfig:get")
   .option("-v, --version-number <versionNumber>", "grabs the specified version of the template")
   .option(
     "-o, --output [filename]",
-    "write config output to a filename (if omitted, will use the default file path)"
+    "write config output to a filename (if omitted, will use the default file path)",
   )
   .before(requireAuth)
   .before(requirePermissions, ["cloudconfig.configs.get"])
@@ -39,7 +39,7 @@ export const command = new Command("remoteconfig:get")
     utils.assertIsStringOrUndefined(options.versionNumber);
     const template: RemoteConfigTemplate = await rcGet.getTemplate(
       needProjectId(options),
-      checkValidOptionalNumber(options.versionNumber)
+      checkValidOptionalNumber(options.versionNumber),
     );
     const table = new Table({ head: tableHead, style: { head: ["green"] } });
     if (template.conditions) {

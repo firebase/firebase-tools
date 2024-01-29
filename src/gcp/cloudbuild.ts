@@ -86,7 +86,7 @@ export async function createConnection(
   projectId: string,
   location: string,
   connectionId: string,
-  githubConfig: GitHubConfig = {}
+  githubConfig: GitHubConfig = {},
 ): Promise<Operation> {
   const res = await client.post<
     Omit<Omit<Connection, "name">, ConnectionOutputOnlyFields>,
@@ -94,7 +94,7 @@ export async function createConnection(
   >(
     `projects/${projectId}/locations/${location}/connections`,
     { githubConfig },
-    { queryParams: { connectionId } }
+    { queryParams: { connectionId } },
   );
   return res.body;
 }
@@ -105,7 +105,7 @@ export async function createConnection(
 export async function getConnection(
   projectId: string,
   location: string,
-  connectionId: string
+  connectionId: string,
 ): Promise<Connection> {
   const name = `projects/${projectId}/locations/${location}/connections/${connectionId}`;
   const res = await client.get<Connection>(name);
@@ -144,7 +144,7 @@ export async function listConnections(projectId: string, location: string): Prom
 export async function deleteConnection(
   projectId: string,
   location: string,
-  connectionId: string
+  connectionId: string,
 ): Promise<Operation> {
   const name = `projects/${projectId}/locations/${location}/connections/${connectionId}`;
   const res = await client.delete<Operation>(name);
@@ -157,7 +157,7 @@ export async function deleteConnection(
 export async function fetchLinkableRepositories(
   projectId: string,
   location: string,
-  connectionId: string
+  connectionId: string,
 ): Promise<LinkableRepositories> {
   const name = `projects/${projectId}/locations/${location}/connections/${connectionId}:fetchLinkableRepositories`;
   const res = await client.get<LinkableRepositories>(name);
@@ -172,12 +172,12 @@ export async function createRepository(
   location: string,
   connectionId: string,
   repositoryId: string,
-  remoteUri: string
+  remoteUri: string,
 ): Promise<Operation> {
   const res = await client.post<Omit<Repository, RepositoryOutputOnlyFields | "name">, Operation>(
     `projects/${projectId}/locations/${location}/connections/${connectionId}/repositories`,
     { remoteUri },
-    { queryParams: { repositoryId } }
+    { queryParams: { repositoryId } },
   );
   return res.body;
 }
@@ -189,7 +189,7 @@ export async function getRepository(
   projectId: string,
   location: string,
   connectionId: string,
-  repositoryId: string
+  repositoryId: string,
 ): Promise<Repository> {
   const name = `projects/${projectId}/locations/${location}/connections/${connectionId}/repositories/${repositoryId}`;
   const res = await client.get<Repository>(name);
@@ -203,7 +203,7 @@ export async function deleteRepository(
   projectId: string,
   location: string,
   connectionId: string,
-  repositoryId: string
+  repositoryId: string,
 ) {
   const name = `projects/${projectId}/locations/${location}/connections/${connectionId}/repositories/${repositoryId}`;
   const res = await client.delete<Operation>(name);

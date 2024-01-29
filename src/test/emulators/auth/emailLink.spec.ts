@@ -131,7 +131,7 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error.message).to.equal(
-          "INVALID_EMAIL : The email provided does not match the sign-in email address."
+          "INVALID_EMAIL : The email provided does not match the sign-in email address.",
         );
       });
   });
@@ -336,7 +336,7 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_CREATE_PATH)
@@ -390,7 +390,7 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       let jwtStr;
       nock(BLOCKING_FUNCTION_HOST)
@@ -440,7 +440,7 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       let jwtStr;
       nock(BLOCKING_FUNCTION_HOST)
@@ -493,7 +493,7 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       let jwtStr;
       nock(BLOCKING_FUNCTION_HOST)
@@ -556,7 +556,7 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_SIGN_IN_PATH)
@@ -615,7 +615,7 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_CREATE_PATH)
@@ -684,7 +684,7 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_SIGN_IN_PATH)
@@ -738,7 +738,7 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_CREATE_PATH)

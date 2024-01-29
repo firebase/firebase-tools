@@ -22,7 +22,7 @@ describe("RulesDeploy", () => {
   };
   BASE_OPTIONS.config = Config.load(BASE_OPTIONS, false);
   const FIRESTORE_RULES_CONTENT = readFileSync(
-    path.resolve(FIXTURE_DIR, "firestore.rules")
+    path.resolve(FIXTURE_DIR, "firestore.rules"),
   ).toString();
 
   describe("addFile", () => {
@@ -127,7 +127,7 @@ describe("RulesDeploy", () => {
       const result = rd.compile();
       await expect(result).to.eventually.be.rejectedWith(
         Error,
-        /Compilation error in .*storage.rules.*:\n\[E\] 0:0 - oopsie/
+        /Compilation error in .*storage.rules.*:\n\[E\] 0:0 - oopsie/,
       );
     });
 
@@ -158,7 +158,7 @@ describe("RulesDeploy", () => {
       const result = rd.compile();
       await expect(result).to.eventually.be.rejectedWith(
         Error,
-        /Compilation errors in .*storage.rules.*:\n\[E\] 0:0 - oopsie\n\[E\] 1:1 - daisey/
+        /Compilation errors in .*storage.rules.*:\n\[E\] 0:0 - oopsie\n\[E\] 1:1 - daisey/,
       );
     });
 
@@ -386,7 +386,7 @@ describe("RulesDeploy", () => {
           "12345",
           "service-12345@gcp-sa-firebasestorage.iam.gserviceaccount.com",
           ["roles/firebaserules.firestoreServiceAgent"],
-          true
+          true,
         );
       });
 
@@ -479,7 +479,7 @@ describe("RulesDeploy", () => {
         it("should prompt for a choice (yes) and delete and retry creation", async () => {
           (gcp.rules.createRuleset as sinon.SinonStub).onFirstCall().rejects(QUOTA_ERROR);
           (gcp.rules.listAllRulesets as sinon.SinonStub).resolves(
-            new Array(1001).fill(0).map(() => ({ name: "foo" }))
+            new Array(1001).fill(0).map(() => ({ name: "foo" })),
           );
           (prompt.promptOnce as sinon.SinonStub).onFirstCall().resolves(true);
           (gcp.rules.listAllReleases as sinon.SinonStub).resolves([
@@ -521,7 +521,7 @@ describe("RulesDeploy", () => {
       expect(gcp.rules.updateOrCreateRelease).calledOnceWithExactly(
         BASE_OPTIONS.project,
         undefined, // Because we didn't compile anything.
-        RulesetServiceType.CLOUD_FIRESTORE
+        RulesetServiceType.CLOUD_FIRESTORE,
       );
     });
 
@@ -529,7 +529,7 @@ describe("RulesDeploy", () => {
       const result = rd.release("firestore.rules", RulesetServiceType.FIREBASE_STORAGE);
       await expect(result).to.eventually.be.rejectedWith(
         FirebaseError,
-        /Cannot release resource type "firebase.storage"/
+        /Cannot release resource type "firebase.storage"/,
       );
 
       expect(gcp.rules.updateOrCreateRelease).not.called;
@@ -544,7 +544,7 @@ describe("RulesDeploy", () => {
       expect(gcp.rules.updateOrCreateRelease).calledOnceWithExactly(
         BASE_OPTIONS.project,
         undefined, // Because we didn't compile anything.
-        `${RulesetServiceType.FIREBASE_STORAGE}/bar`
+        `${RulesetServiceType.FIREBASE_STORAGE}/bar`,
       );
     });
   });

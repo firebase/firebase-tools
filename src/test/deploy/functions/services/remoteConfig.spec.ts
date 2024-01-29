@@ -41,7 +41,7 @@ describe("ensureRemoteConfigTriggerRegion", () => {
     ep.eventTrigger.region = "us-west1";
 
     expect(() => remoteConfig.ensureRemoteConfigTriggerRegion(ep)).to.throw(
-      "A remote config trigger must specify 'global' trigger location"
+      "A remote config trigger must specify 'global' trigger location",
     );
   });
 });

@@ -41,11 +41,11 @@ export function init(setup: any, config: any) {
       "--platforms=web",
       setup.hosting.source,
     ],
-    { stdio: "inherit", cwd: config.projectDir }
+    { stdio: "inherit", cwd: config.projectDir },
   );
   if (result.status !== 0)
     throw new FirebaseError(
-      "We were not able to create your flutter app, create the application yourself https://docs.flutter.dev/get-started/test-drive?tab=terminal before trying again."
+      "We were not able to create your flutter app, create the application yourself https://docs.flutter.dev/get-started/test-drive?tab=terminal before trying again.",
     );
   return Promise.resolve();
 }

@@ -284,11 +284,11 @@ const apiClient = new Client({
 export async function getChannel(
   project: string | number = "-",
   site: string,
-  channelId: string
+  channelId: string,
 ): Promise<Channel | null> {
   try {
     const res = await apiClient.get<Channel>(
-      `/projects/${project}/sites/${site}/channels/${channelId}`
+      `/projects/${project}/sites/${site}/channels/${channelId}`,
     );
     return res.body;
   } catch (e: unknown) {
@@ -306,7 +306,7 @@ export async function getChannel(
  */
 export async function listChannels(
   project: string | number = "-",
-  site: string
+  site: string,
 ): Promise<Channel[]> {
   const channels: Channel[] = [];
   let nextPageToken = "";
@@ -314,7 +314,7 @@ export async function listChannels(
     try {
       const res = await apiClient.get<{ nextPageToken?: string; channels?: Channel[] }>(
         `/projects/${project}/sites/${site}/channels`,
-        { queryParams: { pageToken: nextPageToken, pageSize: 10 } }
+        { queryParams: { pageToken: nextPageToken, pageSize: 10 } },
       );
       channels.push(...(res.body.channels ?? []));
       nextPageToken = res.body.nextPageToken || "";
@@ -343,11 +343,11 @@ export async function createChannel(
   project: string | number = "-",
   site: string,
   channelId: string,
-  ttlMillis: number = DEFAULT_DURATION
+  ttlMillis: number = DEFAULT_DURATION,
 ): Promise<Channel> {
   const res = await apiClient.post<{ ttl: string }, Channel>(
     `/projects/${project}/sites/${site}/channels?channelId=${channelId}`,
-    { ttl: `${ttlMillis / 1000}s` }
+    { ttl: `${ttlMillis / 1000}s` },
   );
   return res.body;
 }
@@ -363,12 +363,12 @@ export async function updateChannelTtl(
   project: string | number = "-",
   site: string,
   channelId: string,
-  ttlMillis: number = ONE_WEEK_MS
+  ttlMillis: number = ONE_WEEK_MS,
 ): Promise<Channel> {
   const res = await apiClient.patch<{ ttl: string }, Channel>(
     `/projects/${project}/sites/${site}/channels/${channelId}`,
     { ttl: `${ttlMillis / 1000}s` },
-    { queryParams: { updateMask: "ttl" } }
+    { queryParams: { updateMask: "ttl" } },
   );
   return res.body;
 }
@@ -382,7 +382,7 @@ export async function updateChannelTtl(
 export async function deleteChannel(
   project: string | number = "-",
   site: string,
-  channelId: string
+  channelId: string,
 ): Promise<void> {
   await apiClient.delete(`/projects/${project}/sites/${site}/channels/${channelId}`);
 }
@@ -392,11 +392,11 @@ export async function deleteChannel(
  */
 export async function createVersion(
   siteId: string,
-  version: Omit<Version, VERSION_OUTPUT_FIELDS>
+  version: Omit<Version, VERSION_OUTPUT_FIELDS>,
 ): Promise<string> {
   const res = await apiClient.post<typeof version, { name: string }>(
     `projects/-/sites/${siteId}/versions`,
-    version
+    version,
   );
   return res.body.name;
 }
@@ -407,7 +407,7 @@ export async function createVersion(
 export async function updateVersion(
   site: string,
   versionId: string,
-  version: Partial<Version>
+  version: Partial<Version>,
 ): Promise<Version> {
   const res = await apiClient.patch<Partial<Version>, Version>(
     `projects/-/sites/${site}/versions/${versionId}`,
@@ -422,7 +422,7 @@ export async function updateVersion(
         // "HTTP Error: 40 Unknown path in `updateMask`: `config.rewrites`"
         updateMask: proto.fieldMasks(version, "labels", "config").join(","),
       },
-    }
+    },
   );
   return res.body;
 }
@@ -461,14 +461,14 @@ export async function listVersions(site: string): Promise<Version[]> {
 export async function cloneVersion(
   site: string,
   versionName: string,
-  finalize = false
+  finalize = false,
 ): Promise<Version> {
   const res = await apiClient.post<CloneVersionRequest, LongRunningOperation<Version>>(
     `/projects/-/sites/${site}/versions:clone`,
     {
       sourceVersion: versionName,
       finalize,
-    }
+    },
   );
   const { name: operationName } = res.body;
   const pollRes = await operationPoller.pollOperation<Version>({
@@ -492,12 +492,12 @@ export async function createRelease(
   site: string,
   channel: string,
   version: string,
-  partialRelease?: PartialRelease
+  partialRelease?: PartialRelease,
 ): Promise<Release> {
   const res = await apiClient.post<PartialRelease, Release>(
     `/projects/-/sites/${site}/channels/${channel}/releases`,
     partialRelease,
-    { queryParams: { versionName: version } }
+    { queryParams: { versionName: version } },
   );
   return res.body;
 }
@@ -514,7 +514,7 @@ export async function listSites(project: string): Promise<Site[]> {
     try {
       const res = await apiClient.get<{ sites?: Site[]; nextPageToken?: string }>(
         `/projects/${project}/sites`,
-        { queryParams: { pageToken: nextPageToken, pageSize: 10 } }
+        { queryParams: { pageToken: nextPageToken, pageSize: 10 } },
       );
       sites.push(...(res.body.sites ?? []));
       nextPageToken = res.body.nextPageToken || "";
@@ -564,7 +564,7 @@ export async function createSite(
   project: string,
   site: string,
   appId = "",
-  validateOnly = false
+  validateOnly = false,
 ): Promise<Site> {
   const queryParams: Record<string, string> = { siteId: site };
   if (validateOnly) {
@@ -573,7 +573,7 @@ export async function createSite(
   const res = await apiClient.post<{ appId: string }, Site>(
     `/projects/${project}/sites`,
     { appId: appId },
-    { queryParams }
+    { queryParams },
   );
   return res.body;
 }
@@ -688,7 +688,7 @@ export async function getCleanDomains(project: string, site: string): Promise<st
  */
 export async function cleanAuthState(
   project: string,
-  sites: string[]
+  sites: string[],
 ): Promise<Map<string, Array<string>>> {
   const siteDomainMap = new Map();
   for (const site of sites) {
@@ -709,7 +709,7 @@ export async function cleanAuthState(
 export async function getSiteDomains(project: string, site: string): Promise<Domain[]> {
   try {
     const res = await apiClient.get<{ domains: Domain[] }>(
-      `/projects/${project}/sites/${site}/domains`
+      `/projects/${project}/sites/${site}/domains`,
     );
 
     return res.body.domains ?? [];
@@ -756,7 +756,7 @@ export async function getAllSiteDomains(projectId: string, siteId: string): Prom
 export async function getDeploymentDomain(
   projectId: string,
   siteId: string,
-  hostingChannel?: string | undefined
+  hostingChannel?: string | undefined,
 ): Promise<string | null> {
   if (hostingChannel) {
     const channel = await getChannel(projectId, siteId, hostingChannel);

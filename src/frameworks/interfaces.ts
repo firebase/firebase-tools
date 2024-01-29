@@ -39,7 +39,7 @@ export interface BuildResult {
 export type RequestHandler = (
   req: IncomingMessage,
   res: ServerResponse,
-  next: () => void
+  next: () => void,
 ) => void | Promise<void>;
 
 export type FrameworksOptions = HostingOptions &
@@ -66,7 +66,7 @@ export interface Framework {
   getDevModeHandle?: (
     dir: string,
     target: string,
-    hostingEmulatorInfo?: EmulatorInfo
+    hostingEmulatorInfo?: EmulatorInfo,
   ) => Promise<RequestHandler>;
   ɵcodegenPublicDirectory: (
     dir: string,
@@ -75,13 +75,13 @@ export interface Framework {
     context: {
       project: string;
       site: string;
-    }
+    },
   ) => Promise<void>;
   ɵcodegenFunctionsDirectory?: (
     dir: string,
     dest: string,
     target: string,
-    context?: FrameworkContext
+    context?: FrameworkContext,
   ) => Promise<{
     bootstrapScript?: string;
     packageJson: any;
