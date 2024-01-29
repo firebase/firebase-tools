@@ -140,7 +140,7 @@ describeAuthEmulator("accounts:signInWithPassword", ({ authApi, getClock }) => {
           enableImprovedEmailPrivacy: true,
         },
       },
-      "emailPrivacyConfig"
+      "emailPrivacyConfig",
     );
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
@@ -176,7 +176,7 @@ describeAuthEmulator("accounts:signInWithPassword", ({ authApi, getClock }) => {
           enableImprovedEmailPrivacy: true,
         },
       },
-      "emailPrivacyConfig"
+      "emailPrivacyConfig",
     );
     await registerUser(authApi(), user);
     await authApi()

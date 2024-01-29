@@ -33,7 +33,7 @@ describeAuthEmulator("accounts:createAuthUri", ({ authApi }) => {
           enableImprovedEmailPrivacy: true,
         },
       },
-      "emailPrivacyConfig"
+      "emailPrivacyConfig",
     );
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:createAuthUri")
@@ -72,7 +72,7 @@ describeAuthEmulator("accounts:createAuthUri", ({ authApi }) => {
           enableImprovedEmailPrivacy: true,
         },
       },
-      "emailPrivacyConfig"
+      "emailPrivacyConfig",
     );
     await registerUser(authApi(), user);
     await authApi()

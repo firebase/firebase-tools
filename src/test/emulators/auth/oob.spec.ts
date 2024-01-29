@@ -381,7 +381,7 @@ describeAuthEmulator("accounts:sendOobCode", ({ authApi, getClock }) => {
           enableImprovedEmailPrivacy: true,
         },
       },
-      "emailPrivacyConfig"
+      "emailPrivacyConfig",
     );
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:sendOobCode")

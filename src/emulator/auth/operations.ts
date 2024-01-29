@@ -1747,7 +1747,7 @@ async function signInWithPassword(
     assert(user.passwordHash && user.salt, "INVALID_LOGIN_CREDENTIALS");
     assert(
       user.passwordHash === hashPassword(reqBody.password, user.salt),
-      "INVALID_LOGIN_CREDENTIALS"
+      "INVALID_LOGIN_CREDENTIALS",
     );
   } else {
     assert(user, "EMAIL_NOT_FOUND");
