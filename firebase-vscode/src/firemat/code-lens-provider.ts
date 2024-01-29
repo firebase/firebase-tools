@@ -99,8 +99,12 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
           );
         }
 
-        const connectorPath = configs.operationSet.crud.source;
-        if (!isPathInside(document.fileName, connectorPath)) {
+        const connectorPaths = Object.keys(configs.operationSet).map(
+          (key) => configs.operationSet[key]!.source,
+        );
+        if (
+          connectorPaths.every((path) => !isPathInside(document.fileName, path))
+        ) {
           codeLenses.push(
             new vscode.CodeLens(range, {
               title: `$(plug) Move to connector`,

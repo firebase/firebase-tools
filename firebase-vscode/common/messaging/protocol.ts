@@ -23,11 +23,12 @@ export type UserMock =
       claims: string;
     };
 
-type DeepReadOnly<T> = T extends Record<any, unknown>
-  ? { readonly [K in keyof T]: DeepReadOnly<T[K]> }
-  : T extends Array<any>
-    ? ReadonlyArray<DeepReadOnly<T[number]>>
-    : T;
+type DeepReadOnly<T> =
+  T extends Record<any, unknown>
+    ? { readonly [K in keyof T]: DeepReadOnly<T[K]> }
+    : T extends Array<any>
+      ? ReadonlyArray<DeepReadOnly<T[number]>>
+      : T;
 
 /** The `firemat.yaml` content */
 export type FirematConfig = DeepReadOnly<{
@@ -41,7 +42,7 @@ export type FirematConfig = DeepReadOnly<{
     };
   };
   operationSet: {
-    crud: {
+    [key: string]: {
       source: string;
     };
   };

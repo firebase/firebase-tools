@@ -11,7 +11,6 @@ import { globalSignal } from "../utils/globals";
 import { workspace } from "../utils/test_hooks";
 import { FirematConfig } from "../messaging/protocol";
 import * as jsYaml from "js-yaml";
-import { stdout } from "process";
 
 export const firebaseRC = globalSignal<RC | undefined>(undefined);
 export const firebaseConfig = globalSignal<Config | undefined>(undefined);
@@ -94,7 +93,7 @@ const defaultFirematConfig: FirematConfig = {
   specVersion: "v1alpha",
   schema: {
     main: {
-      source: "./api/schema",
+      source: "./dataconnect/schema",
       connection: {
         connectionString: undefined,
       },
@@ -102,7 +101,7 @@ const defaultFirematConfig: FirematConfig = {
   },
   operationSet: {
     crud: {
-      source: "./api/operations",
+      source: "./dataconnect/operations",
     },
   },
 };
@@ -179,6 +178,24 @@ export function _readFirematConfig(): FirematConfig | undefined {
     );
     const yaml = jsYaml.load(firematYaml);
 
+    let operations: Record<string, FirematConfig["operationSet"][string]> = {};
+
+    const operationSet =
+      yaml?.operationSet ?? defaultFirematConfig.operationSet;
+    for (const key of Object.keys(operationSet)) {
+      operations[key] = {
+        source: asAbsolutePath(
+          assignIfType(
+            "string",
+            `firemat.yaml#operationSet.${key}.source`,
+            operationSet[key]?.source,
+            defaultFirematConfig.operationSet[key]?.source,
+          ),
+          configPath,
+        ),
+      };
+    }
+
     return {
       specVersion: assignIfType(
         "string",
@@ -206,19 +223,7 @@ export function _readFirematConfig(): FirematConfig | undefined {
           },
         },
       },
-      operationSet: {
-        crud: {
-          source: asAbsolutePath(
-            assignIfType(
-              "string",
-              "firemat.yaml#operationSet.crud.source",
-              yaml?.operationSet?.crud?.source,
-              defaultFirematConfig.operationSet.crud.source,
-            ),
-            configPath,
-          ),
-        },
-      },
+      operationSet: operations,
     };
   } catch (e: any) {
     if (e.code === "ENOENT") {
