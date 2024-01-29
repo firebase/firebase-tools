@@ -17,6 +17,12 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "commands": [
+      {
+        "command": "firebase.selectProject",
+        "title": "Switch project"
+      }
+    ],
     "configuration": {
       "title": "Firebase VS Code Extension",
       "properties": {
