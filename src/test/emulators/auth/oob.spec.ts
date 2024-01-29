@@ -8,6 +8,7 @@ import {
   expectIdTokenExpired,
   inspectOobs,
   registerTenant,
+  updateConfig,
 } from "./helpers";
 
 describeAuthEmulator("accounts:sendOobCode", ({ authApi, getClock }) => {
@@ -355,6 +356,43 @@ describeAuthEmulator("accounts:sendOobCode", ({ authApi, getClock }) => {
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error).to.have.property("message").equals("PASSWORD_LOGIN_DISABLED");
+      });
+  });
+
+  it("should error when sending a password reset to non-existent user with improved email privacy disabled", async () => {
+    const user = { email: "alice@example.com", password: "notasecret" };
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:sendOobCode")
+      .set("Authorization", "Bearer owner")
+      .send({ email: user.email, requestType: "PASSWORD_RESET", returnOobLink: true })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("EMAIL_NOT_FOUND");
+      });
+  });
+
+  it("should return email address when sending a password reset to non-existent user with improved email privacy enabled", async () => {
+    const user = { email: "alice@example.com", password: "notasecret" };
+    await updateConfig(
+      authApi(),
+      PROJECT_ID,
+      {
+        emailPrivacyConfig: {
+          enableImprovedEmailPrivacy: true,
+        },
+      },
+      "emailPrivacyConfig",
+    );
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:sendOobCode")
+      .set("Authorization", "Bearer owner")
+      .send({ email: user.email, requestType: "PASSWORD_RESET", returnOobLink: true })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body)
+          .to.have.property("kind")
+          .equals("identitytoolkit#GetOobConfirmationCodeResponse");
+        expect(res.body).to.have.property("email").equals(user.email);
       });
   });
 });

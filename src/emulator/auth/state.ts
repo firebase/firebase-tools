@@ -41,6 +41,8 @@ export abstract class ProjectState {
 
   abstract get oneAccountPerEmail(): boolean;
 
+  abstract get enableImprovedEmailPrivacy(): boolean;
+
   abstract get authCloudFunction(): AuthCloudFunction;
 
   abstract get allowPasswordSignup(): boolean;
@@ -578,6 +580,9 @@ export class AgentProjectState extends ProjectState {
   private _config: Config = {
     signIn: { allowDuplicateEmails: false },
     blockingFunctions: {},
+    emailPrivacyConfig: {
+      enableImprovedEmailPrivacy: false,
+    },
   };
 
   constructor(projectId: string) {
@@ -594,6 +599,14 @@ export class AgentProjectState extends ProjectState {
 
   set oneAccountPerEmail(oneAccountPerEmail: boolean) {
     this._config.signIn.allowDuplicateEmails = !oneAccountPerEmail;
+  }
+
+  get enableImprovedEmailPrivacy() {
+    return !!this._config.emailPrivacyConfig.enableImprovedEmailPrivacy;
+  }
+
+  set enableImprovedEmailPrivacy(improveEmailPrivacy: boolean) {
+    this._config.emailPrivacyConfig.enableImprovedEmailPrivacy = improveEmailPrivacy;
   }
 
   get allowPasswordSignup() {
@@ -659,6 +672,8 @@ export class AgentProjectState extends ProjectState {
     if (!updateMask) {
       this.oneAccountPerEmail = !update.signIn?.allowDuplicateEmails ?? true;
       this.blockingFunctionsConfig = update.blockingFunctions ?? {};
+      this.enableImprovedEmailPrivacy =
+        update.emailPrivacyConfig?.enableImprovedEmailPrivacy ?? false;
       return this.config;
     }
     return applyMask(updateMask, this.config, update);
@@ -746,6 +761,10 @@ export class TenantProjectState extends ProjectState {
 
   get oneAccountPerEmail() {
     return this.parentProject.oneAccountPerEmail;
+  }
+
+  get enableImprovedEmailPrivacy() {
+    return this.parentProject.enableImprovedEmailPrivacy;
   }
 
   get authCloudFunction() {
@@ -853,6 +872,8 @@ export type SignInConfig = MakeRequired<
 export type BlockingFunctionsConfig =
   Schemas["GoogleCloudIdentitytoolkitAdminV2BlockingFunctionsConfig"];
 
+export type EmailPrivacyConfig = Schemas["GoogleCloudIdentitytoolkitAdminV2EmailPrivacyConfig"];
+
 // Serves as a substitute for Schemas["GoogleCloudIdentitytoolkitAdminV2Config"],
 // i.e. the configuration object for top-level AgentProjectStates. Emulator
 // fixes certain configurations for ease of use / testing, so as non-standard
@@ -860,6 +881,7 @@ export type BlockingFunctionsConfig =
 export type Config = {
   signIn: SignInConfig;
   blockingFunctions: BlockingFunctionsConfig;
+  emailPrivacyConfig: EmailPrivacyConfig;
 };
 
 export interface RefreshTokenRecord {
