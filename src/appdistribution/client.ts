@@ -72,17 +72,70 @@ export interface Group {
   inviteLinkCount?: number;
 }
 
+export interface CreateReleaseTestRequest {
+  releaseTest: ReleaseTest;
+}
+
+export enum TestState {
+  IN_PROGRESS = "IN_PROGRESS",
+  PASSED = "PASSED",
+  FAILED = "FAILED",
+  INCONCLUSIVE = "INCONCLUSIVE",
+}
+
+export interface TestDevice {
+  model: string;
+  version: string;
+  locale: string;
+  orientation: string;
+}
+
+export interface DeviceExecution {
+  device: TestDevice;
+  state?: TestState;
+  failedReason?: string;
+  inconclusiveReason?: string;
+}
+
+export interface FieldHints {
+  usernameResource?: string;
+  passwordResource?: string;
+}
+
+export interface LoginCredential {
+  username?: string;
+  password?: string;
+  fieldHints?: FieldHints;
+}
+
+export interface ReleaseTest {
+  name?: string;
+  deviceExecutions: DeviceExecution[];
+  loginCredential?: LoginCredential;
+}
+
+export interface TestConfig {
+  username?: string;
+  password?: string;
+  usernameResource?: string;
+  passwordResource?: string;
+}
+
 /**
  * Makes RPCs to the App Distribution server backend.
  */
 export class AppDistributionClient {
-  appDistroV2Client = new Client({
+  appDistroV1Client = new Client({
     urlPrefix: appDistributionOrigin,
     apiVersion: "v1",
   });
+  appDistroV1AlphaClient = new Client({
+    urlPrefix: appDistributionOrigin,
+    apiVersion: "v1alpha",
+  });
 
   async getAabInfo(appName: string): Promise<AabInfo> {
-    const apiResponse = await this.appDistroV2Client.get<AabInfo>(`/${appName}/aabInfo`);
+    const apiResponse = await this.appDistroV1Client.get<AabInfo>(`/${appName}/aabInfo`);
     return apiResponse.body;
   }
 
@@ -131,7 +184,7 @@ export class AppDistributionClient {
     const queryParams = { updateMask: "release_notes.text" };
 
     try {
-      await this.appDistroV2Client.patch(`/${releaseName}`, data, { queryParams });
+      await this.appDistroV1Client.patch(`/${releaseName}`, data, { queryParams });
     } catch (err: any) {
       throw new FirebaseError(`failed to update release notes with ${err?.message}`);
     }
@@ -157,7 +210,7 @@ export class AppDistributionClient {
     };
 
     try {
-      await this.appDistroV2Client.post(`/${releaseName}:distribute`, data);
+      await this.appDistroV1Client.post(`/${releaseName}:distribute`, data);
     } catch (err: any) {
       let errorMessage = err.message;
       const errorStatus = err?.context?.body?.error?.status;
@@ -176,7 +229,7 @@ export class AppDistributionClient {
 
   async addTesters(projectName: string, emails: string[]): Promise<void> {
     try {
-      await this.appDistroV2Client.request({
+      await this.appDistroV1Client.request({
         method: "POST",
         path: `${projectName}/testers:batchAdd`,
         body: { emails: emails },
@@ -191,7 +244,7 @@ export class AppDistributionClient {
   async removeTesters(projectName: string, emails: string[]): Promise<BatchRemoveTestersResponse> {
     let apiResponse;
     try {
-      apiResponse = await this.appDistroV2Client.request<
+      apiResponse = await this.appDistroV1Client.request<
         { emails: string[] },
         BatchRemoveTestersResponse
       >({
@@ -208,7 +261,7 @@ export class AppDistributionClient {
   async createGroup(projectName: string, displayName: string, alias?: string): Promise<Group> {
     let apiResponse;
     try {
-      apiResponse = await this.appDistroV2Client.request<{ displayName: string }, Group>({
+      apiResponse = await this.appDistroV1Client.request<{ displayName: string }, Group>({
         method: "POST",
         path:
           alias === undefined ? `${projectName}/groups` : `${projectName}/groups?groupId=${alias}`,
@@ -222,7 +275,7 @@ export class AppDistributionClient {
 
   async deleteGroup(groupName: string): Promise<void> {
     try {
-      await this.appDistroV2Client.request({
+      await this.appDistroV1Client.request({
         method: "DELETE",
         path: groupName,
       });
@@ -235,7 +288,7 @@ export class AppDistributionClient {
 
   async addTestersToGroup(groupName: string, emails: string[]): Promise<void> {
     try {
-      await this.appDistroV2Client.request({
+      await this.appDistroV1Client.request({
         method: "POST",
         path: `${groupName}:batchJoin`,
         body: { emails: emails },
@@ -249,7 +302,7 @@ export class AppDistributionClient {
 
   async removeTestersFromGroup(groupName: string, emails: string[]): Promise<void> {
     try {
-      await this.appDistroV2Client.request({
+      await this.appDistroV1Client.request({
         method: "POST",
         path: `${groupName}:batchLeave`,
         body: { emails: emails },
@@ -259,5 +312,42 @@ export class AppDistributionClient {
     }
 
     utils.logSuccess(`Testers removed from group successfully`);
+  }
+
+  async createReleaseTest(
+    releaseName: string,
+    devices: TestDevice[],
+    loginCredential?: LoginCredential,
+  ): Promise<ReleaseTest> {
+    try {
+      const response = await this.appDistroV1AlphaClient.request<ReleaseTest, ReleaseTest>({
+        method: "POST",
+        path: `${releaseName}/tests`,
+        body: {
+          deviceExecutions: devices.map(d => this.mapDeviceToExecution(d)),
+          loginCredential,
+        },
+      });
+      utils.logSuccess(`Release test created successfully`);
+      return response.body
+    } catch (err: any) {
+      throw new FirebaseError(`Failed to create release test ${err}`);
+    }
+  }
+
+  async getReleaseTest(releaseTestName: string): Promise<ReleaseTest> {
+    const response = await this.appDistroV1AlphaClient.get<ReleaseTest>(releaseTestName);
+    return response.body;
+  }
+
+  private mapDeviceToExecution(device: TestDevice): DeviceExecution {
+    return {
+      device: {
+        model: device.model,
+        version: device.version,
+        orientation: device.orientation,
+        locale: device.locale,
+      }
+    };
   }
 }

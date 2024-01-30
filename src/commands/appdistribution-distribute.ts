@@ -8,14 +8,21 @@ import {
   IntegrationState,
   AppDistributionClient,
   UploadReleaseResult,
+  TestState,
+  TestDevice,
 } from "../appdistribution/client";
 import { FirebaseError } from "../error";
 import { Distribution, DistributionFileType } from "../appdistribution/distribution";
 import {
   ensureFileExists,
   getAppName,
+  getLoginCredential,
+  getTestDevices,
   getTestersOrGroups,
 } from "../appdistribution/options-parser-util";
+
+const TEST_MAX_POLLING_RETRIES = 25;
+const TEST_POLLING_INTERVAL_MILLIS = 30_000;
 
 function getReleaseNotes(releaseNotes: string, releaseNotesFile: string): string {
   if (releaseNotes) {
@@ -31,7 +38,7 @@ function getReleaseNotes(releaseNotes: string, releaseNotesFile: string): string
 export const command = new Command("appdistribution:distribute <release-binary-file>")
   .description("upload a release binary")
   .option("--app <app_id>", "the app id of your Firebase app")
-  .option("--release-notes <string>", "release notes to include")
+  // .option("--release-notes <string>", "release notes to include")
   .option("--release-notes-file <file>", "path to file with release notes")
   .option("--testers <string>", "a comma separated list of tester emails to distribute to")
   .option(
@@ -43,6 +50,19 @@ export const command = new Command("appdistribution:distribute <release-binary-f
     "--groups-file <file>",
     "path to file with a comma separated list of group aliases to distribute to",
   )
+  .option(
+    "--test-devices <string>",
+    "semicolon-separated list of devices to run automated tests on, in the format 'model=<model-id>,version=<os-version-id>,locale=<locale>,orientation=<orientation>'. Run 'gcloud firebase test android|ios models list' to see available devices",
+  )
+  .option(
+    "--test-devices-file <string>",
+    "path to file containing a list of semicolon- or newline-separated devices to run automated tests on, in the format 'model=<model-id>,version=<os-version-id>,locale=<locale>,orientation=<orientation>'. Run 'gcloud firebase test android|ios models list' to see available devices",
+  )
+  .option("--test-username", "username for automatic login")
+  .option("--test-password", "password for automatic login")
+  .option("--test-username-resource", "resource name of the username field for automatic login")
+  .option("--test-password-resource", "resource name of the password field for automatic login")
+  .option("--test-async", "don't wait for automatic test results")
   .before(requireAuth)
   .action(async (file: string, options: any) => {
     const appName = getAppName(options);
@@ -50,6 +70,8 @@ export const command = new Command("appdistribution:distribute <release-binary-f
     const releaseNotes = getReleaseNotes(options.releaseNotes, options.releaseNotesFile);
     const testers = getTestersOrGroups(options.testers, options.testersFile);
     const groups = getTestersOrGroups(options.groups, options.groupsFile);
+    const testDevices = getTestDevices(options.testDevices, options.testDevicesFile);
+    const loginCredential = getLoginCredential(options.testUsername, options.testPassword, options.testUsernameResource, options.testPasswordResource);
     const requests = new AppDistributionClient();
     let aabInfo: AabInfo | undefined;
 
@@ -168,4 +190,45 @@ export const command = new Command("appdistribution:distribute <release-binary-f
     // Add release notes and distribute to testers/groups
     await requests.updateReleaseNotes(releaseName, releaseNotes);
     await requests.distribute(releaseName, testers, groups);
+
+    // Run automated tests
+    if (testDevices) {
+      const releaseTest =
+        await requests.createReleaseTest(releaseName, testDevices, loginCredential);
+      await awaitTestResults(releaseTest.name!, requests);
+    }
   });
+
+async function awaitTestResults(releaseTestName: string, requests: AppDistributionClient): Promise<void> {
+  for (let i = 0; i < TEST_MAX_POLLING_RETRIES; i++) {
+    utils.logBullet("waiting for test(s) to complete…");
+    await delay(TEST_POLLING_INTERVAL_MILLIS);
+    const releaseTest = await requests.getReleaseTest(releaseTestName);
+    if (releaseTest.deviceExecutions.every(e => e.state === TestState.PASSED)) {
+      utils.logSuccess("automated test(s) passed!")
+      return
+    }
+    for (let execution of releaseTest.deviceExecutions) {
+      switch(execution.state) {
+        case TestState.PASSED:
+        case TestState.IN_PROGRESS:
+          continue
+        case TestState.FAILED:
+          throw new FirebaseError(`automated test failed for ${deviceToString(execution.device)}: ${execution.failedReason}`, { exit: 1 });
+        case TestState.INCONCLUSIVE:
+          throw new FirebaseError(`automated test inconclusive for ${deviceToString(execution.device)}: ${execution.inconclusiveReason}`, { exit: 1 });
+        default:
+          throw new FirebaseError(`unsupported automated test state for ${deviceToString(execution.device)}: ${execution.state}`, { exit: 1 });
+      }
+    }
+  }
+  throw new FirebaseError("tests are running for longer than expected", { exit: 1 });
+}
+
+function delay(ms: number) {
+    return new Promise( resolve => setTimeout(resolve, ms) );
+}
+
+function deviceToString(device: TestDevice): string {
+  return `${device.model} (${device.version}/${device.orientation}/${device.locale})`;
+}
