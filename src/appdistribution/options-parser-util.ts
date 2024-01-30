@@ -85,12 +85,10 @@ export function getTestDevices(value: string, file: string): TestDevice[] {
   }
 
   // The value is split into a string[]
-  utils.logWarning(`DEBUG - value: ${value}`);
   let deviceStrings = value
       .split(/[;\n]/)
       .map((entry) => entry.trim())
       .filter((entry) => !!entry);
-  utils.logWarning(`DEBUG - deviceStrings: ${deviceStrings}`);
 
   return deviceStrings.map(str => parseTestDevice(str))
 }
@@ -132,15 +130,15 @@ function parseTestDevice(testDeviceString: string): TestDevice {
 export function getLoginCredential(
   username?: string,
   password?: string,
-  usernameResource?: string,
-  passwordResource?: string,
+  usernameResourceName?: string,
+  passwordResourceName?: string,
 ) {
-  if (isPresenceMismatched(usernameResource, passwordResource)) {
+  if (isPresenceMismatched(usernameResourceName, passwordResourceName)) {
     throw new FirebaseError("Username and password resource names for automated tests need to be specified together.");
   }
   let fieldHints: FieldHints|undefined;
-  if (usernameResource && passwordResource) {
-    fieldHints = { usernameResource, passwordResource };
+  if (usernameResourceName && passwordResourceName) {
+    fieldHints = { usernameResourceName, passwordResourceName };
   }
 
   if (isPresenceMismatched(username, password)) {

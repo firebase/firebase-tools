@@ -58,10 +58,10 @@ export const command = new Command("appdistribution:distribute <release-binary-f
     "--test-devices-file <string>",
     "path to file containing a list of semicolon- or newline-separated devices to run automated tests on, in the format 'model=<model-id>,version=<os-version-id>,locale=<locale>,orientation=<orientation>'. Run 'gcloud firebase test android|ios models list' to see available devices",
   )
-  .option("--test-username", "username for automatic login")
-  .option("--test-password", "password for automatic login")
-  .option("--test-username-resource", "resource name of the username field for automatic login")
-  .option("--test-password-resource", "resource name of the password field for automatic login")
+  .option("--test-username <string>", "username for automatic login")
+  .option("--test-password <string>", "password for automatic login")
+  .option("--test-username-resource <string>", "resource name of the username field for automatic login")
+  .option("--test-password-resource <string>", "resource name of the password field for automatic login")
   .option("--test-async", "don't wait for automatic test results")
   .before(requireAuth)
   .action(async (file: string, options: any) => {
@@ -195,7 +195,9 @@ export const command = new Command("appdistribution:distribute <release-binary-f
     if (testDevices) {
       const releaseTest =
         await requests.createReleaseTest(releaseName, testDevices, loginCredential);
-      await awaitTestResults(releaseTest.name!, requests);
+      if (!options.testAsync) {
+        await awaitTestResults(releaseTest.name!, requests);
+      }
     }
   });
 

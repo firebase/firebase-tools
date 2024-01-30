@@ -98,8 +98,8 @@ export interface DeviceExecution {
 }
 
 export interface FieldHints {
-  usernameResource?: string;
-  passwordResource?: string;
+  usernameResourceName?: string;
+  passwordResourceName?: string;
 }
 
 export interface LoginCredential {
@@ -112,13 +112,6 @@ export interface ReleaseTest {
   name?: string;
   deviceExecutions: DeviceExecution[];
   loginCredential?: LoginCredential;
-}
-
-export interface TestConfig {
-  username?: string;
-  password?: string;
-  usernameResource?: string;
-  passwordResource?: string;
 }
 
 /**
