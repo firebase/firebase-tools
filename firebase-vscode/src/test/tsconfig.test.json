@@ -10,7 +10,8 @@
     "jsx": "react",
     /* Cannot be enabled until we enable it in the root tsconfig.json */
     "strict": false,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "types": ["node", "expect-webdriverio", "wdio-vscode-service", "mocha"]
   },
   "exclude": ["**/*.test.ts"],
   "include": ["../**/*", "../../common/**/*"]

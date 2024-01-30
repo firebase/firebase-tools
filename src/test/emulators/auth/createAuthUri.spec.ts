@@ -8,6 +8,7 @@ import {
   signInWithEmailLink,
   updateProjectConfig,
   registerTenant,
+  updateConfig,
 } from "./helpers";
 
 describeAuthEmulator("accounts:createAuthUri", ({ authApi }) => {
@@ -19,6 +20,28 @@ describeAuthEmulator("accounts:createAuthUri", ({ authApi }) => {
       .then((res) => {
         expectStatusCode(200, res);
         expect(res.body).to.have.property("registered").equals(false);
+        expect(res.body).to.have.property("sessionId").that.is.a("string");
+      });
+  });
+
+  it("should not show registered field with improved email privacy enabled", async () => {
+    await updateConfig(
+      authApi(),
+      PROJECT_ID,
+      {
+        emailPrivacyConfig: {
+          enableImprovedEmailPrivacy: true,
+        },
+      },
+      "emailPrivacyConfig",
+    );
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:createAuthUri")
+      .send({ continueUri: "http://example.com/", identifier: "notregistered@example.com" })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body).to.not.have.property("registered");
         expect(res.body).to.have.property("sessionId").that.is.a("string");
       });
   });
@@ -35,6 +58,32 @@ describeAuthEmulator("accounts:createAuthUri", ({ authApi }) => {
         expect(res.body).to.have.property("registered").equals(true);
         expect(res.body).to.have.property("allProviders").eql(["password"]);
         expect(res.body).to.have.property("signinMethods").eql(["password"]);
+        expect(res.body).to.have.property("sessionId").that.is.a("string");
+      });
+  });
+
+  it("should not return providers for a registered user with improved email privacy enabled", async () => {
+    const user = { email: "alice@example.com", password: "notasecret" };
+    await updateConfig(
+      authApi(),
+      PROJECT_ID,
+      {
+        emailPrivacyConfig: {
+          enableImprovedEmailPrivacy: true,
+        },
+      },
+      "emailPrivacyConfig",
+    );
+    await registerUser(authApi(), user);
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:createAuthUri")
+      .send({ continueUri: "http://example.com/", identifier: user.email })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body).to.not.have.property("registered");
+        expect(res.body).to.not.have.property("allProviders").eql(["password"]);
+        expect(res.body).to.not.have.property("signinMethods").eql(["password"]);
         expect(res.body).to.have.property("sessionId").that.is.a("string");
       });
   });
