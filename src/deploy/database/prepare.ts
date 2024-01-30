@@ -55,9 +55,9 @@ export function prepare(context: any, options: Options): Promise<any> {
             clc.bold(clc.green("database: ")) +
               "rules syntax for database " +
               clc.bold(deploy.instance) +
-              " is valid"
+              " is valid",
           );
         });
-    })
+    }),
   );
 }

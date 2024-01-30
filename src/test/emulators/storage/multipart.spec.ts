@@ -35,7 +35,7 @@ Content-Type: text/plain\r
 `);
       const data = Buffer.concat(
         [Buffer.from(randomBytes(100)), Buffer.from("\r\n"), Buffer.from(randomBytes(100))],
-        202
+        202,
       );
       const bodyPart2 = Buffer.from(`\r\n--b1d5b2e3-1845-4338-9400-6ac07ce53c1e--\r\n`);
       const body = Buffer.concat([bodyPart1, data, bodyPart2]);
@@ -67,14 +67,14 @@ hello there!
     it("fails to parse with invalid Content-Type value", () => {
       const invalidContentTypeHeader = "blah";
       expect(() => parseObjectUploadMultipartRequest(invalidContentTypeHeader, BODY)).to.throw(
-        "Bad content type."
+        "Bad content type.",
       );
     });
 
     it("fails to parse with invalid boundary value", () => {
       const invalidContentTypeHeader = "multipart/related; boundary=";
       expect(() => parseObjectUploadMultipartRequest(invalidContentTypeHeader, BODY)).to.throw(
-        "Bad content type."
+        "Bad content type.",
       );
     });
 
@@ -83,7 +83,7 @@ hello there!
 
       let { metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(
         contentTypeHeaderWithDoubleQuotes,
-        BODY
+        BODY,
       );
 
       expect(metadataRaw).to.equal('{"contentType":"text/plain"}');
@@ -93,7 +93,7 @@ hello there!
 
       ({ metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(
         contentTypeHeaderWithSingleQuotes,
-        BODY
+        BODY,
       ));
 
       expect(metadataRaw).to.equal('{"contentType":"text/plain"}');
@@ -108,7 +108,7 @@ Content-Type: application/json\r
 --b1d5b2e3-1845-4338-9400-6ac07ce53c1e--\r
 `);
       expect(() => parseObjectUploadMultipartRequest(CONTENT_TYPE_HEADER, invalidBody)).to.throw(
-        "Unexpected number of parts"
+        "Unexpected number of parts",
       );
     });
 
@@ -125,7 +125,7 @@ hello there!
 --b1d5b2e3-1845-4338-9400-6ac07ce53c1e--\r
 `);
       expect(() => parseObjectUploadMultipartRequest(CONTENT_TYPE_HEADER, invalidBody)).to.throw(
-        "Missing content type."
+        "Missing content type.",
       );
     });
 
@@ -138,7 +138,7 @@ hello there!
 --b1d5b2e3-1845-4338-9400-6ac07ce53c1e--\r
 `);
       expect(() => parseObjectUploadMultipartRequest(CONTENT_TYPE_HEADER, invalidBody)).to.throw(
-        "Failed to parse multipart request body part"
+        "Failed to parse multipart request body part",
       );
     });
   });

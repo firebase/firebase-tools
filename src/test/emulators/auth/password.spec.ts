@@ -131,6 +131,27 @@ describeAuthEmulator("accounts:signInWithPassword", ({ authApi, getClock }) => {
       });
   });
 
+  it("should error if email is not found with improved email privacy enabled", async () => {
+    await updateConfig(
+      authApi(),
+      PROJECT_ID,
+      {
+        emailPrivacyConfig: {
+          enableImprovedEmailPrivacy: true,
+        },
+      },
+      "emailPrivacyConfig",
+    );
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
+      .query({ key: "fake-api-key" })
+      .send({ email: "nosuchuser@example.com", password: "notasecret" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).equals("INVALID_LOGIN_CREDENTIALS");
+      });
+  });
+
   it("should error if password is wrong", async () => {
     const user = { email: "alice@example.com", password: "notasecret" };
     await registerUser(authApi(), user);
@@ -142,6 +163,30 @@ describeAuthEmulator("accounts:signInWithPassword", ({ authApi, getClock }) => {
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error.message).equals("INVALID_PASSWORD");
+      });
+  });
+
+  it("should error if password is wrong with improved email privacy enabled", async () => {
+    const user = { email: "alice@example.com", password: "notasecret" };
+    await updateConfig(
+      authApi(),
+      PROJECT_ID,
+      {
+        emailPrivacyConfig: {
+          enableImprovedEmailPrivacy: true,
+        },
+      },
+      "emailPrivacyConfig",
+    );
+    await registerUser(authApi(), user);
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
+      .query({ key: "fake-api-key" })
+      // Passwords are case sensitive. The uppercase one below doesn't match.
+      .send({ email: user.email, password: "NOTASECRET" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).equals("INVALID_LOGIN_CREDENTIALS");
       });
   });
 
@@ -260,7 +305,7 @@ describeAuthEmulator("accounts:signInWithPassword", ({ authApi, getClock }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_SIGN_IN_PATH)
@@ -317,7 +362,7 @@ describeAuthEmulator("accounts:signInWithPassword", ({ authApi, getClock }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_SIGN_IN_PATH)
@@ -357,7 +402,7 @@ describeAuthEmulator("accounts:signInWithPassword", ({ authApi, getClock }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_SIGN_IN_PATH)

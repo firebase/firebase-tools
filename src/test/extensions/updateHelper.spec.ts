@@ -123,7 +123,7 @@ describe("updateHelper", () => {
         "test-project",
         "test-instance",
         ".",
-        SPEC
+        SPEC,
       );
       expect(name).to.equal(SOURCE.name);
     });
@@ -131,7 +131,7 @@ describe("updateHelper", () => {
     it("should throw an error for an invalid source", async () => {
       createSourceStub.throwsException("Invalid source");
       await expect(
-        updateHelper.updateFromLocalSource("test-project", "test-instance", ".", SPEC)
+        updateHelper.updateFromLocalSource("test-project", "test-instance", ".", SPEC),
       ).to.be.rejectedWith(FirebaseError, "Unable to update from the source");
     });
   });
@@ -166,7 +166,7 @@ describe("updateHelper", () => {
         "test-project",
         "test-instance",
         "https://valid-source.tar.gz",
-        SPEC
+        SPEC,
       );
       expect(name).to.equal(SOURCE.name);
     });
@@ -178,8 +178,8 @@ describe("updateHelper", () => {
           "test-project",
           "test-instance",
           "https://valid-source.tar.gz",
-          SPEC
-        )
+          SPEC,
+        ),
       ).to.be.rejectedWith(FirebaseError, "Unable to update from the source");
     });
   });
@@ -199,7 +199,7 @@ describe("inferUpdateSource", () => {
   it("should infer update source from ref and extension name", () => {
     const result = updateHelper.inferUpdateSource(
       "storage-resize-images",
-      "firebase/storage-resize-images"
+      "firebase/storage-resize-images",
     );
     expect(result).to.equal("firebase/storage-resize-images@latest");
   });
@@ -207,7 +207,7 @@ describe("inferUpdateSource", () => {
   it("should infer update source if it is a ref distinct from the input ref", () => {
     const result = updateHelper.inferUpdateSource(
       "notfirebase/storage-resize-images",
-      "firebase/storage-resize-images"
+      "firebase/storage-resize-images",
     );
     expect(result).to.equal("notfirebase/storage-resize-images@latest");
   });
@@ -225,7 +225,7 @@ describe("getExistingSourceOrigin", () => {
 
     const result = await updateHelper.getExistingSourceOrigin(
       "invader-zim",
-      "instance-of-registry-ext"
+      "instance-of-registry-ext",
     );
 
     expect(result).to.equal(extensionsHelper.SourceOrigin.PUBLISHED_EXTENSION);
@@ -236,7 +236,7 @@ describe("getExistingSourceOrigin", () => {
 
     const result = await updateHelper.getExistingSourceOrigin(
       "invader-zim",
-      "instance-of-local-ext"
+      "instance-of-local-ext",
     );
 
     expect(result).to.equal(extensionsHelper.SourceOrigin.LOCAL);

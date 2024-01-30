@@ -40,7 +40,7 @@ interface BucketResponse {
         team: string;
       };
       etag: string;
-    }
+    },
   ];
   defaultObjectAcl: [
     {
@@ -55,7 +55,7 @@ interface BucketResponse {
         team: string;
       };
       etag: string;
-    }
+    },
   ];
   iamConfiguration: {
     publicAccessPrevention: string;
@@ -91,7 +91,7 @@ interface BucketResponse {
       method: [string];
       responseHeader: [string];
       maxAgeSeconds: number;
-    }
+    },
   ];
   lifecycle: {
     rule: [
@@ -111,7 +111,7 @@ interface BucketResponse {
           noncurrentTimeBefore: string;
           numNewerVersions: number;
         };
-      }
+      },
     ];
   };
   labels: {
@@ -130,7 +130,7 @@ interface ListBucketsResponse {
   items: [
     {
       name: string;
-    }
+    },
   ];
 }
 
@@ -153,12 +153,12 @@ export async function getDefaultBucket(projectId: string): Promise<string> {
   try {
     const localAPIClient = new Client({ urlPrefix: firebaseStorageOrigin, apiVersion: "v1alpha" });
     const response = await localAPIClient.get<GetDefaultBucketResponse>(
-      `/projects/${projectId}/defaultBucket`
+      `/projects/${projectId}/defaultBucket`,
     );
     if (!response.body?.bucket.name) {
       logger.debug("Default storage bucket is undefined.");
       throw new FirebaseError(
-        "Your project is being set up. Please wait a minute before deploying again."
+        "Your project is being set up. Please wait a minute before deploying again.",
       );
     }
     return response.body.bucket.name.split("/").pop()!;
@@ -166,8 +166,8 @@ export async function getDefaultBucket(projectId: string): Promise<string> {
     if (err?.status === 404) {
       throw new FirebaseError(
         `Firebase Storage has not been set up on project '${clc.bold(
-          projectId
-        )}'. Go to https://console.firebase.google.com/project/${projectId}/storage and click 'Get Started' to set up Firebase Storage.`
+          projectId,
+        )}'. Go to https://console.firebase.google.com/project/${projectId}/storage and click 'Get Started' to set up Firebase Storage.`,
       );
     }
     logger.info("\n\nUnexpected error when fetching default storage bucket.");
@@ -178,7 +178,7 @@ export async function getDefaultBucket(projectId: string): Promise<string> {
 export async function upload(
   source: any,
   uploadUrl: string,
-  extraHeaders?: Record<string, string>
+  extraHeaders?: Record<string, string>,
 ): Promise<any> {
   const url = new URL(uploadUrl);
   const localAPIClient = new Client({ urlPrefix: url.origin, auth: false });
@@ -206,7 +206,7 @@ export async function uploadObject(
   /** Source with file (name) to upload, and stream of file. */
   source: { file: string; stream: Readable },
   /** Bucket to upload to. */
-  bucketName: string
+  bucketName: string,
 ): Promise<{ bucket: string; object: string; generation: string | null }> {
   if (path.extname(source.file) !== ".zip") {
     throw new FirebaseError(`Expected a file name ending in .zip, got ${source.file}`);
@@ -267,7 +267,7 @@ export async function listBuckets(projectId: string): Promise<Array<string>> {
   try {
     const localAPIClient = new Client({ urlPrefix: storageOrigin });
     const result = await localAPIClient.get<ListBucketsResponse>(
-      `/storage/v1/b?project=${projectId}`
+      `/storage/v1/b?project=${projectId}`,
     );
     return result.body.items.map((bucket: { name: string }) => bucket.name);
   } catch (err: any) {
@@ -291,7 +291,7 @@ export async function getServiceAccount(projectId: string): Promise<StorageServi
   try {
     const localAPIClient = new Client({ urlPrefix: storageOrigin });
     const response = await localAPIClient.get<StorageServiceAccountResponse>(
-      `/storage/v1/projects/${projectId}/serviceAccount`
+      `/storage/v1/projects/${projectId}/serviceAccount`,
     );
     return response.body;
   } catch (err: any) {

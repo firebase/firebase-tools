@@ -27,12 +27,12 @@ describe("DatabaseImporter", () => {
       utils.stringToStream(INVALID_JSON)!,
       /* importPath= */ "/",
       payloadSize,
-      concurrencyLimit
+      concurrencyLimit,
     );
 
     await expect(importer.execute()).to.be.rejectedWith(
       FirebaseError,
-      "Invalid data; couldn't parse JSON object, array, or value."
+      "Invalid data; couldn't parse JSON object, array, or value.",
     );
   });
 
@@ -52,7 +52,7 @@ describe("DatabaseImporter", () => {
       DATA_STREAM,
       /* importPath= */ "/",
       /* payloadSize= */ 40,
-      concurrencyLimit
+      concurrencyLimit,
     );
 
     const responses = await importer.execute();
@@ -70,7 +70,7 @@ describe("DatabaseImporter", () => {
           a: 100,
           b: [true, "bar", { f: { g: 0, h: 1 }, i: "baz" }],
           c: { d: false },
-        })
+        }),
       )
       .reply(200);
     const importer = new DatabaseImporter(
@@ -78,7 +78,7 @@ describe("DatabaseImporter", () => {
       DATA_STREAM,
       /* importPath= */ "/",
       payloadSize,
-      concurrencyLimit
+      concurrencyLimit,
     );
 
     const responses = await importer.execute();
@@ -97,7 +97,7 @@ describe("DatabaseImporter", () => {
       DATA_STREAM,
       /* importPath= */ "/c",
       payloadSize,
-      concurrencyLimit
+      concurrencyLimit,
     );
 
     const responses = await importer.execute();
@@ -116,7 +116,7 @@ describe("DatabaseImporter", () => {
       DATA_STREAM,
       /* importPath= */ "/a",
       payloadSize,
-      concurrencyLimit
+      concurrencyLimit,
     );
 
     const responses = await importer.execute();
@@ -130,7 +130,7 @@ describe("DatabaseImporter", () => {
     nock("https://test-db.firebaseio.com")
       .patch(
         "/foo/b.json",
-        JSON.stringify({ "0": true, "1": "bar", "2": { f: { g: 0, h: 1 }, i: "baz" } })
+        JSON.stringify({ "0": true, "1": "bar", "2": { f: { g: 0, h: 1 }, i: "baz" } }),
       )
       .reply(200);
     const importer = new DatabaseImporter(
@@ -138,7 +138,7 @@ describe("DatabaseImporter", () => {
       DATA_STREAM,
       /* importPath= */ "/b",
       payloadSize,
-      concurrencyLimit
+      concurrencyLimit,
     );
 
     const responses = await importer.execute();
@@ -154,12 +154,12 @@ describe("DatabaseImporter", () => {
       DATA_STREAM,
       /* importPath= */ "/",
       payloadSize,
-      concurrencyLimit
+      concurrencyLimit,
     );
 
     await expect(importer.execute()).to.be.rejectedWith(
       FirebaseError,
-      /Importing is only allowed for an empty location./
+      /Importing is only allowed for an empty location./,
     );
   });
 
@@ -175,7 +175,7 @@ describe("DatabaseImporter", () => {
           a: 100,
           b: [true, "bar", { f: { g: 0, h: 1 }, i: "baz" }],
           c: { d: false },
-        })
+        }),
       )
       .once()
       .replyWithError(timeoutErr);
@@ -186,7 +186,7 @@ describe("DatabaseImporter", () => {
           a: 100,
           b: [true, "bar", { f: { g: 0, h: 1 }, i: "baz" }],
           c: { d: false },
-        })
+        }),
       )
       .once()
       .reply(200);
@@ -196,7 +196,7 @@ describe("DatabaseImporter", () => {
       DATA_STREAM,
       /* importPath= */ "/",
       payloadSize,
-      concurrencyLimit
+      concurrencyLimit,
     );
     importer.nonFatalRetryTimeout = 0;
 

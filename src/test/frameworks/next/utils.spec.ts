@@ -101,8 +101,8 @@ describe("Next.js utils", () => {
   it("should allow supported rewrites", () => {
     expect(
       [...supportedRewritesArray, ...unsupportedRewritesArray].filter((it) =>
-        isRewriteSupportedByHosting(it)
-      )
+        isRewriteSupportedByHosting(it),
+      ),
     ).to.have.members(supportedRewritesArray);
   });
 
@@ -110,8 +110,8 @@ describe("Next.js utils", () => {
     it("should allow supported redirects", () => {
       expect(
         [...supportedRedirects, ...unsupportedRedirects].filter((it) =>
-          isRedirectSupportedByHosting(it)
-        )
+          isRedirectSupportedByHosting(it),
+        ),
       ).to.have.members(supportedRedirects);
     });
   });
@@ -119,7 +119,7 @@ describe("Next.js utils", () => {
   describe("isHeaderSupportedByFirebase", () => {
     it("should allow supported headers", () => {
       expect(
-        [...supportedHeaders, ...unsupportedHeaders].filter((it) => isHeaderSupportedByHosting(it))
+        [...supportedHeaders, ...unsupportedHeaders].filter((it) => isHeaderSupportedByHosting(it)),
       ).to.have.members(supportedHeaders);
     });
   });
@@ -446,8 +446,8 @@ describe("Next.js utils", () => {
         getNonStaticRoutes(
           pagesManifest,
           Object.keys(prerenderManifest.routes),
-          Object.keys(prerenderManifest.dynamicRoutes)
-        )
+          Object.keys(prerenderManifest.dynamicRoutes),
+        ),
       ).to.deep.equal(["/dynamic/[dynamic-slug]"]);
     });
   });
@@ -459,8 +459,8 @@ describe("Next.js utils", () => {
           appPathsManifest,
           appPathRoutesManifest,
           Object.keys(prerenderManifest.routes),
-          Object.keys(prerenderManifest.dynamicRoutes)
-        )
+          Object.keys(prerenderManifest.dynamicRoutes),
+        ),
       ).to.deep.equal(new Set(["/api/test/route"]));
     });
   });
@@ -481,7 +481,7 @@ describe("Next.js utils", () => {
       readJsonStub.withArgs(`${distDir}/server/app/api/static.meta`).resolves(metaFileContents);
 
       expect(
-        await getHeadersFromMetaFiles(".", distDir, "/asdf", appPathRoutesManifest)
+        await getHeadersFromMetaFiles(".", distDir, "/asdf", appPathRoutesManifest),
       ).to.deep.equal([
         {
           source: "/asdf/api/static",

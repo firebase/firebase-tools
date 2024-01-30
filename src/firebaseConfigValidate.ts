@@ -18,7 +18,7 @@ export function getValidator(): ValidateFunction {
   if (!_VALIDATOR) {
     const schemaStr = fs.readFileSync(
       path.resolve(__dirname, "../schema/firebase-config.json"),
-      "utf-8"
+      "utf-8",
     );
     const schema = JSON.parse(schemaStr);
 
@@ -31,7 +31,7 @@ export function getValidator(): ValidateFunction {
 export function getErrorMessage(e: ErrorObject) {
   if (e.keyword === "additionalProperties") {
     return `Object "${e.dataPath}" in "firebase.json" has unknown property: ${JSON.stringify(
-      e.params
+      e.params,
     )}`;
   } else if (e.keyword === "required") {
     return `Object "${

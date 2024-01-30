@@ -38,14 +38,14 @@ export const command = new Command("ext:dev:upload <extensionRef>")
   .option(`--ref <ref>`, `commit hash, branch, or tag to build from the repo (defaults to HEAD)`)
   .option(
     `--root <root>`,
-    `root directory that contains this extension (defaults to last uploaded root or "/" if none set)`
+    `root directory that contains this extension (defaults to last uploaded root or "/" if none set)`,
   )
   .option(`--local`, `upload from local source instead`)
   .withForce()
   .help(
     "if you have not previously uploaded a version of this extension, this will " +
       "create the extension. If you have previously uploaded a version of this extension, this version must " +
-      "be greater than previous versions."
+      "be greater than previous versions.",
   )
   .before(requireAuth)
   .before(ensureExtensionsPublisherApiEnabled)
@@ -59,21 +59,21 @@ export interface UploadExtensionOptions extends Options {
 }
 export async function uploadExtensionAction(
   extensionRef: string,
-  options: UploadExtensionOptions
+  options: UploadExtensionOptions,
 ): Promise<ExtensionVersion | undefined> {
   const { publisherId, extensionId, version } = refs.parse(extensionRef);
   if (version) {
     throw new FirebaseError(
       `The input extension reference must be of the format ${clc.bold(
-        "<publisherId>/<extensionId>"
-      )}. Version should not be supplied and will be inferred directly from extension.yaml. Please increment the version in extension.yaml if you would like to bump/specify a version.`
+        "<publisherId>/<extensionId>",
+      )}. Version should not be supplied and will be inferred directly from extension.yaml. Please increment the version in extension.yaml if you would like to bump/specify a version.`,
     );
   }
   if (!publisherId || !extensionId) {
     throw new FirebaseError(
       `Error parsing publisher ID and extension ID from extension reference '${clc.bold(
-        extensionRef
-      )}'. Please use the format '${clc.bold("<publisherId>/<extensionId>")}'.`
+        extensionRef,
+      )}'. Please use the format '${clc.bold("<publisherId>/<extensionId>")}'.`,
     );
   }
 
@@ -122,9 +122,9 @@ export async function uploadExtensionAction(
       marked(
         `[View in Console](${utils.consoleUrl(
           projectId,
-          `/publisher/extensions/${extensionId}/v/${version}`
-        )})`
-      )
+          `/publisher/extensions/${extensionId}/v/${version}`,
+        )})`,
+      ),
     );
   }
   return res;

@@ -20,8 +20,8 @@ export class EmulatorUI implements EmulatorInstance {
     if (!EmulatorRegistry.isRunning(Emulators.HUB)) {
       throw new FirebaseError(
         `Cannot start ${Constants.description(Emulators.UI)} without ${Constants.description(
-          Emulators.HUB
-        )}!`
+          Emulators.HUB,
+        )}!`,
       );
     }
     const { auto_download: autoDownload, projectId } = this.args;
@@ -37,7 +37,7 @@ export class EmulatorUI implements EmulatorInstance {
     }
 
     const enabledExperiments = (Object.keys(ALL_EXPERIMENTS) as Array<ExperimentName>).filter(
-      (experimentName) => isEnabled(experimentName)
+      (experimentName) => isEnabled(experimentName),
     );
     env[Constants.FIREBASE_ENABLED_EXPERIMENTS] = JSON.stringify(enabledExperiments);
 

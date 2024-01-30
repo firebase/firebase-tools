@@ -73,7 +73,7 @@ describe("accountExporter", () => {
       expect(spyWrite.getCall(0).args[0]).to.eq(JSON.stringify(userList[0], null, 2));
       for (let j = 1; j < 7; j++) {
         expect(spyWrite.getCall(j).args[0]).to.eq(
-          "," + os.EOL + JSON.stringify(userList[j], null, 2)
+          "," + os.EOL + JSON.stringify(userList[j], null, 2),
         );
       }
       expect(nock.isDone()).to.be.true;
@@ -163,7 +163,7 @@ describe("accountExporter", () => {
       });
       expect(firstWriteSpy.args[0][0]).to.be.eq(
         correctString,
-        "The first call did not emit the correct string"
+        "The first call did not emit the correct string",
       );
 
       mockAllUsersRequests();
@@ -176,7 +176,7 @@ describe("accountExporter", () => {
       });
       expect(secondWriteSpy.args[0][0]).to.be.eq(
         correctString,
-        "The second call did not emit the correct string"
+        "The second call did not emit the correct string",
       );
       expect(nock.isDone()).to.be.true;
     });
@@ -201,10 +201,10 @@ describe("accountExporter", () => {
       });
       expect(spyWrite.getCall(0).args[0]).to.eq(JSON.stringify(userList[0], null, 2));
       expect(spyWrite.getCall(1).args[0]).to.eq(
-        "," + os.EOL + JSON.stringify(userList[1], null, 2)
+        "," + os.EOL + JSON.stringify(userList[1], null, 2),
       );
       expect(spyWrite.getCall(2).args[0]).to.eq(
-        "," + os.EOL + JSON.stringify(userList[2], null, 2)
+        "," + os.EOL + JSON.stringify(userList[2], null, 2),
       );
       expect(nock.isDone()).to.be.true;
     });
@@ -228,10 +228,10 @@ describe("accountExporter", () => {
       });
       expect(spyWrite.getCall(0).args[0]).to.eq(JSON.stringify(userList[0], null, 2));
       expect(spyWrite.getCall(1).args[0]).to.eq(
-        "," + os.EOL + JSON.stringify(userList[1], null, 2)
+        "," + os.EOL + JSON.stringify(userList[1], null, 2),
       );
       expect(spyWrite.getCall(2).args[0]).to.eq(
-        "," + os.EOL + JSON.stringify(userList[2], null, 2)
+        "," + os.EOL + JSON.stringify(userList[2], null, 2),
       );
       expect(nock.isDone()).to.be.true;
     });

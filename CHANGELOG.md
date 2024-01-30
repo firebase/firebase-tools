@@ -1,0 +1,1 @@
+- Added rudimentary email enumeration protection for auth emulator. (#6702)

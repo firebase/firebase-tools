@@ -52,7 +52,7 @@ export function hasPinnedFunctions(options: HostingOptions & Options): boolean {
  */
 export async function addPinnedFunctionsToOnlyString(
   context: Context,
-  options: HostingOptions & Options
+  options: HostingOptions & Options,
 ): Promise<boolean> {
   if (!options.only) {
     return false;
@@ -79,7 +79,7 @@ export async function addPinnedFunctionsToOnlyString(
         options.only = ensureTargeted(
           options.only,
           generateSSRCodebaseId(c.site),
-          r.function.functionId
+          r.function.functionId,
         );
       } else {
         // This endpoint is just being added in this push. We don't know what codebase it is.
@@ -92,7 +92,7 @@ export async function addPinnedFunctionsToOnlyString(
         "hosting",
         "The following function(s) are pinned to site " +
           `${clc.bold(c.site)} and will be deployed as well: ` +
-          addedFunctionsPerSite.map(clc.bold).join(",")
+          addedFunctionsPerSite.map(clc.bold).join(","),
       );
       addedFunctions.push(...addedFunctionsPerSite);
     }
@@ -136,7 +136,7 @@ export async function prepare(context: Context, options: HostingOptions & Option
         utils.logLabeledBullet(
           "hosting",
           `The site ${clc.bold(config.site)} will pin rewrites to the current ` +
-            `latest revision of service(s) ${runPins.map(clc.bold).join(",")}`
+            `latest revision of service(s) ${runPins.map(clc.bold).join(",")}`,
         );
       }
       const version: Omit<api.Version, api.VERSION_OUTPUT_FIELDS> = {
@@ -150,7 +150,7 @@ export async function prepare(context: Context, options: HostingOptions & Option
         api.createVersion(config.site, version),
       ]);
       return versionName;
-    })
+    }),
   );
   context.hosting = {
     deploys: [],
@@ -181,7 +181,7 @@ function rewriteTarget(source: HostingSource): string {
  */
 export async function unsafePins(
   context: Context,
-  config: config.HostingResolved
+  config: config.HostingResolved,
 ): Promise<string[]> {
   // Overwriting prod won't break prod
   if ((context.hostingChannel || "live") === "live") {
@@ -217,15 +217,14 @@ export async function unsafePins(
   const existingUntaggedRewrites: Record<string, string> = {};
   for (const rewrite of channelConfig?.release?.version?.config?.rewrites || []) {
     if ("run" in rewrite && !rewrite.run.tag) {
-      existingUntaggedRewrites[
-        rewriteTarget(rewrite)
-      ] = `${rewrite.run.region}/${rewrite.run.serviceId}`;
+      existingUntaggedRewrites[rewriteTarget(rewrite)] =
+        `${rewrite.run.region}/${rewrite.run.serviceId}`;
     }
   }
 
   // There is only a problem if we're targeting the same exact run service but
   // live isn't tagged.
   return Object.keys(targetTaggedRewrites).filter(
-    (target) => targetTaggedRewrites[target] === existingUntaggedRewrites[target]
+    (target) => targetTaggedRewrites[target] === existingUntaggedRewrites[target],
   );
 }

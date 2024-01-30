@@ -25,7 +25,7 @@ function createConfig(projectId: string, configId: string): Promise<any> {
       },
       {
         retryCodes: [500, 503],
-      }
+      },
     )
     .catch((err) => {
       if (_.get(err, "context.response.statusCode") === 409) {
@@ -74,7 +74,7 @@ function createVariable(
   projectId: string,
   configId: string,
   varId: string,
-  value: any
+  value: any,
 ): Promise<any> {
   const path = `/projects/${projectId}/configs/${configId}/variables`;
   return apiClient
@@ -86,7 +86,7 @@ function createVariable(
       },
       {
         retryCodes: [500, 503],
-      }
+      },
     )
     .catch((err) => {
       if (_.get(err, "context.response.statusCode") === 404) {
@@ -103,7 +103,7 @@ function updateVariable(
   projectId: string,
   configId: string,
   varId: string,
-  value: any
+  value: any,
 ): Promise<any> {
   const path = `/projects/${projectId}/configs/${configId}/variables/${varId}`;
   return apiClient.put(
@@ -114,7 +114,7 @@ function updateVariable(
     },
     {
       retryCodes: [500, 503],
-    }
+    },
   );
 }
 

@@ -88,7 +88,7 @@ describe("tos", () => {
           force: true,
         },
         testProjectId,
-        ["my-instance"]
+        ["my-instance"],
       );
 
       expect(appDevTos).to.deep.equal([t]);
@@ -108,7 +108,7 @@ describe("tos", () => {
           force: true,
         },
         testProjectId,
-        ["my-instance"]
+        ["my-instance"],
       );
 
       expect(appDevTos).to.deep.equal([t]);
@@ -131,7 +131,7 @@ describe("tos", () => {
           force: true,
         },
         testProjectId,
-        ["my-instance", "my-other-instance"]
+        ["my-instance", "my-other-instance"],
       );
 
       expect(appDevTos).to.deep.equal([t, t]);
@@ -152,7 +152,7 @@ describe("tos", () => {
           nonInteractive: true,
           force: true,
         },
-        testProjectId
+        testProjectId,
       );
 
       expect(publisherTos).to.deep.equal(t);
@@ -169,7 +169,7 @@ describe("tos", () => {
         nonInteractive: true,
         force: true,
       },
-      testProjectId
+      testProjectId,
     );
 
     expect(publisherTos).to.deep.equal(t);

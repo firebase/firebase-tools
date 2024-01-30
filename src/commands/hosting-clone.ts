@@ -23,7 +23,7 @@ export const command = new Command("hosting:clone <source> <targetChannel>")
 
 For example, to copy the content for a site \`my-site\` from a preview channel \`staging\` to a \`live\` channel, the command would look be:
 
-  firebase hosting:clone my-site:foo my-site:live`
+  firebase hosting:clone my-site:foo my-site:live`,
   )
   .before(requireAuth)
   .action(async (source = "", targetChannel = "") => {
@@ -36,14 +36,14 @@ For example, to copy the content for a site \`my-site\` from a preview channel \
       [sourceSiteId, sourceVersion] = source.split("@");
       if (!sourceSiteId || !sourceVersion) {
         throw new FirebaseError(
-          `"${source}" is not a valid source. Must be in the form "<site>:<channel>" or "<site>@<version>"`
+          `"${source}" is not a valid source. Must be in the form "<site>:<channel>" or "<site>@<version>"`,
         );
       }
       sourceVersionName = `sites/${sourceSiteId}/versions/${sourceVersion}`;
     }
     if (!targetSiteId || !targetChannelId) {
       throw new FirebaseError(
-        `"${targetChannel}" is not a valid target channel. Must be in the form "<site>:<channel>" (to clone to the active website, use "live" as the channel).`
+        `"${targetChannel}" is not a valid target channel. Must be in the form "<site>:<channel>" (to clone to the active website, use "live" as the channel).`,
       );
     }
 
@@ -56,7 +56,7 @@ For example, to copy the content for a site \`my-site\` from a preview channel \
     const equalChannelIds = sourceChannelId === targetChannelId;
     if (equalSiteIds && equalChannelIds) {
       throw new FirebaseError(
-        `Source and destination cannot be equal. Please pick a different source or desination.`
+        `Source and destination cannot be equal. Please pick a different source or desination.`,
       );
     }
 
@@ -65,15 +65,15 @@ For example, to copy the content for a site \`my-site\` from a preview channel \
       const sChannel = await getChannel("-", sourceSiteId, sourceChannelId);
       if (!sChannel) {
         throw new FirebaseError(
-          `Could not find the channel ${bold(sourceChannelId)} for site ${bold(sourceSiteId)}.`
+          `Could not find the channel ${bold(sourceChannelId)} for site ${bold(sourceSiteId)}.`,
         );
       }
       sourceVersionName = sChannel.release?.version?.name;
       if (!sourceVersionName) {
         throw new FirebaseError(
           `Could not find a version on the channel ${bold(sourceChannelId)} for site ${bold(
-            sourceSiteId
-          )}.`
+            sourceSiteId,
+          )}.`,
         );
       }
     }
@@ -82,15 +82,15 @@ For example, to copy the content for a site \`my-site\` from a preview channel \
     if (!tChannel) {
       utils.logBullet(
         `could not find channel ${bold(targetChannelId)} in site ${bold(
-          targetSiteId
-        )}, creating it...`
+          targetSiteId,
+        )}, creating it...`,
       );
       try {
         tChannel = await createChannel("-", targetSiteId, targetChannelId);
       } catch (e: any) {
         throw new FirebaseError(
           `Could not create the channel ${bold(targetChannelId)} for site ${bold(targetSiteId)}.`,
-          { original: e }
+          { original: e },
         );
       }
       utils.logSuccess(`Created new channel ${targetChannelId}`);
@@ -103,9 +103,9 @@ For example, to copy the content for a site \`my-site\` from a preview channel \
           marked(
             `Unable to add channel domain to Firebase Auth. Visit the Firebase Console at ${utils.consoleUrl(
               targetSiteId,
-              "/authentication/providers"
-            )}`
-          )
+              "/authentication/providers",
+            )}`,
+          ),
         );
         logger.debug("[hosting] unable to add auth domain", e);
       }
@@ -115,8 +115,8 @@ For example, to copy the content for a site \`my-site\` from a preview channel \
     if (equalSiteIds && sourceVersionName === currentTargetVersionName) {
       utils.logSuccess(
         `Channels ${bold(sourceChannelId)} and ${bold(
-          targetChannel
-        )} are serving identical versions. No need to clone.`
+          targetChannel,
+        )} are serving identical versions. No need to clone.`,
       );
       return;
     }
@@ -128,7 +128,7 @@ For example, to copy the content for a site \`my-site\` from a preview channel \
         const targetVersion = await cloneVersion(targetSiteId, sourceVersionName, true);
         if (!targetVersion) {
           throw new FirebaseError(
-            `Could not clone the version ${bold(sourceVersion)} for site ${bold(targetSiteId)}.`
+            `Could not clone the version ${bold(sourceVersion)} for site ${bold(targetSiteId)}.`,
           );
         }
         targetVersionName = targetVersion.name;
@@ -142,8 +142,8 @@ For example, to copy the content for a site \`my-site\` from a preview channel \
     spinner.succeed();
     utils.logSuccess(
       `Site ${bold(sourceSiteId)} ${sourceChannelId ? "channel" : "version"} ${bold(
-        sourceChannelId || sourceVersion
-      )} has been cloned to site ${bold(targetSiteId)} channel ${bold(targetChannelId)}.`
+        sourceChannelId || sourceVersion,
+      )} has been cloned to site ${bold(targetSiteId)} channel ${bold(targetChannelId)}.`,
     );
     utils.logSuccess(`Channel URL (${targetChannelId}): ${tChannel.url}`);
   });

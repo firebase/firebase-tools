@@ -96,7 +96,7 @@ describe("Storage Rules Config", () => {
     const config = getOptions({ data: {}, path: resolvePath });
     expect(() => getStorageRulesConfig(PROJECT_ID, config)).to.throw(
       FirebaseError,
-      "Cannot start the Storage emulator without rules file specified in firebase.json: run 'firebase init' and set up your Storage configuration"
+      "Cannot start the Storage emulator without rules file specified in firebase.json: run 'firebase init' and set up your Storage configuration",
     );
   });
 
@@ -104,7 +104,7 @@ describe("Storage Rules Config", () => {
     const config = getOptions({ data: { storage: {} }, path: resolvePath });
     expect(() => getStorageRulesConfig(PROJECT_ID, config)).to.throw(
       FirebaseError,
-      "Cannot start the Storage emulator without rules file specified in firebase.json: run 'firebase init' and set up your Storage configuration"
+      "Cannot start the Storage emulator without rules file specified in firebase.json: run 'firebase init' and set up your Storage configuration",
     );
   });
 
@@ -113,7 +113,7 @@ describe("Storage Rules Config", () => {
     const config = getOptions({ data: { storage: { rules: invalidFileName } }, path: resolvePath });
     expect(() => getStorageRulesConfig(PROJECT_ID, config)).to.throw(
       FirebaseError,
-      `File not found: ${resolvePath(invalidFileName)}`
+      `File not found: ${resolvePath(invalidFileName)}`,
     );
   });
 });

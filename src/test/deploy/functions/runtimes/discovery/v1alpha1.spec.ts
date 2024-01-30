@@ -27,7 +27,7 @@ describe("buildFromV1Alpha", () => {
   describe("parser errors", () => {
     function assertParserError(obj: unknown): void {
       expect(() => v1alpha1.buildFromV1Alpha1(obj, PROJECT, REGION, RUNTIME)).to.throw(
-        FirebaseError
+        FirebaseError,
       );
     }
 
@@ -438,7 +438,7 @@ describe("buildFromV1Alpha", () => {
       };
 
       expect(v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME)).to.deep.equal(
-        build.of({ id: expected })
+        build.of({ id: expected }),
       );
 
       yaml.endpoints.id.taskQueueTrigger = {
@@ -469,7 +469,7 @@ describe("buildFromV1Alpha", () => {
       };
 
       expect(v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME)).to.deep.equal(
-        build.of({ id: expected })
+        build.of({ id: expected }),
       );
     });
 
@@ -498,7 +498,7 @@ describe("buildFromV1Alpha", () => {
       };
 
       expect(v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME)).to.deep.equal(
-        build.of({ id: expected })
+        build.of({ id: expected }),
       );
 
       yaml.endpoints.id.scheduleTrigger = {
@@ -524,7 +524,7 @@ describe("buildFromV1Alpha", () => {
       };
 
       expect(v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME)).to.deep.equal(
-        build.of({ id: expected })
+        build.of({ id: expected }),
       );
     });
   });

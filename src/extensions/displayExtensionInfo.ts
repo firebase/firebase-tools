@@ -48,7 +48,7 @@ export async function displayExtensionVersionInfo(args: {
   lines.push(
     `${clc.bold("Extension:")} ${spec.displayName ?? "Unnamed extension"} ${
       extensionRef ? `(${extensionRef})` : ""
-    }`
+    }`,
   );
   if (spec.description) {
     lines.push(`${clc.bold("Description:")} ${spec.description}`);
@@ -77,19 +77,19 @@ export async function displayExtensionVersionInfo(args: {
     lines.push(`${clc.bold("Review status:")} ${reviewStatus}`);
     if (latestApprovedVersion) {
       lines.push(
-        `${clc.bold("View in Extensions Hub:")} https://extensions.dev/extensions/${extensionRef}`
+        `${clc.bold("View in Extensions Hub:")} https://extensions.dev/extensions/${extensionRef}`,
       );
     }
     if (extensionVersion.buildSourceUri) {
       const buildSourceUri = new URL(extensionVersion.buildSourceUri!);
       buildSourceUri.pathname = path.join(
         buildSourceUri.pathname,
-        extensionVersion.extensionRoot ?? ""
+        extensionVersion.extensionRoot ?? "",
       );
       lines.push(`${clc.bold("Source in GitHub:")} ${buildSourceUri}`);
     } else {
       lines.push(
-        `${clc.bold("Source download URI:")} ${extensionVersion.sourceDownloadUri ?? "-"}`
+        `${clc.bold("Source download URI:")} ${extensionVersion.sourceDownloadUri ?? "-"}`,
       );
     }
   }
@@ -149,8 +149,8 @@ export function displayResources(spec: ExtensionSpec) {
     ...new Set(
       spec.lifecycleEvents?.map((event: LifecycleEvent) => {
         return `  - ${clc.blue(`${event.taskQueueTriggerFunction} (Cloud Task queue)`)}`;
-      })
-    )
+      }),
+    ),
   );
   lines.push(
     ...spec.params
@@ -159,7 +159,7 @@ export function displayResources(spec: ExtensionSpec) {
       })
       .map((param: Param) => {
         return `  - ${clc.blue(`${param.param} (Cloud Secret Manager secret)`)}`;
-      })
+      }),
   );
   return clc.bold("Resources created:\n") + (lines.length ? lines.join("\n") : " - None");
 }
@@ -180,7 +180,7 @@ async function displayRoles(roles: Role[]): Promise<string> {
   const lines: string[] = await Promise.all(
     roles.map((role: Role) => {
       return retrieveRoleInfo(role.role);
-    })
+    }),
   );
   return clc.bold("Roles granted:\n") + lines.join("\n");
 }
@@ -195,7 +195,7 @@ function displayApis(apis: Api[]): string {
 function usesTasks(spec: ExtensionSpec): boolean {
   return spec.resources.some(
     (r: Resource) =>
-      r.type === FUNCTIONS_RESOURCE_TYPE && r.properties?.taskQueueTrigger !== undefined
+      r.type === FUNCTIONS_RESOURCE_TYPE && r.properties?.taskQueueTrigger !== undefined,
   );
 }
 

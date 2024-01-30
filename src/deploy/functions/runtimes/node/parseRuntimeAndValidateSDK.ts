@@ -28,22 +28,22 @@ export const RUNTIME_NOT_SET =
 
 export const UNSUPPORTED_NODE_VERSION_FIREBASE_JSON_MSG = clc.bold(
   `functions.runtime value is unsupported. ` +
-    `Valid choices are: ${clc.bold("nodejs{10|12|14|16|18|20}")}.`
+    `Valid choices are: ${clc.bold("nodejs{10|12|14|16|18|20}")}.`,
 );
 
 export const UNSUPPORTED_NODE_VERSION_PACKAGE_JSON_MSG = clc.bold(
   `package.json in functions directory has an engines field which is unsupported. ` +
-    `Valid choices are: ${clc.bold('{"node": 10|12|14|16|18|20}')}`
+    `Valid choices are: ${clc.bold('{"node": 10|12|14|16|18|20}')}`,
 );
 
 export const DEPRECATED_NODE_VERSION_INFO =
   `\n\nDeploys to runtimes below Node.js 10 are now disabled in the Firebase CLI. ` +
   `${clc.bold(
-    `Existing Node.js 8 functions ${clc.underline("will stop executing at a future date")}`
+    `Existing Node.js 8 functions ${clc.underline("will stop executing at a future date")}`,
   )}. Update existing functions to Node.js 10 or greater as soon as possible.`;
 
 function getRuntimeChoiceFromPackageJson(
-  sourceDir: string
+  sourceDir: string,
 ): runtimes.Runtime | runtimes.DeprecatedRuntime {
   const packageJsonPath = path.join(sourceDir, "package.json");
   let loaded;

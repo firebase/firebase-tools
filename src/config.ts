@@ -57,7 +57,7 @@ export class Config {
         clc.bold('"firebase"') +
           " key in firebase.json is deprecated. Run " +
           clc.bold("firebase use --add") +
-          " instead"
+          " instead",
       );
     }
 
@@ -146,7 +146,7 @@ export class Config {
       default:
         throw new FirebaseError(
           "Parse Error: " + filePath + " is not of a supported config file type",
-          { exit: 1 }
+          { exit: 1 },
         );
     }
   }

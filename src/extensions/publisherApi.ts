@@ -23,7 +23,7 @@ const extensionsPublisherApiClient = new Client({
  */
 export async function getPublisherProfile(
   projectId: string,
-  publisherId?: string
+  publisherId?: string,
 ): Promise<PublisherProfile> {
   const res = await extensionsPublisherApiClient.get(`/projects/${projectId}/publisherProfile`, {
     queryParams:
@@ -42,7 +42,7 @@ export async function getPublisherProfile(
  */
 export async function registerPublisherProfile(
   projectId: string,
-  publisherId: string
+  publisherId: string,
 ): Promise<PublisherProfile> {
   const res = await extensionsPublisherApiClient.patch<Partial<PublisherProfile>, PublisherProfile>(
     `/projects/${projectId}/publisherProfile`,
@@ -54,7 +54,7 @@ export async function registerPublisherProfile(
       queryParams: {
         updateMask: "publisher_id,display_name",
       },
-    }
+    },
   );
   return res.body;
 }
@@ -65,7 +65,7 @@ export async function registerPublisherProfile(
  */
 export async function deprecateExtensionVersion(
   extensionRef: string,
-  deprecationMessage: string
+  deprecationMessage: string,
 ): Promise<ExtensionVersion> {
   const ref = refs.parse(extensionRef);
   try {
@@ -80,9 +80,9 @@ export async function deprecateExtensionVersion(
     if (err.status === 403) {
       throw new FirebaseError(
         `You are not the owner of extension '${clc.bold(
-          extensionRef
+          extensionRef,
         )}' and don’t have the correct permissions to deprecate this extension version.` + err,
-        { status: err.status }
+        { status: err.status },
       );
     } else if (err.status === 404) {
       throw new FirebaseError(`Extension version ${clc.bold(extensionRef)} was not found.`);
@@ -93,7 +93,7 @@ export async function deprecateExtensionVersion(
       `Error occurred deprecating extension version '${extensionRef}': ${err}`,
       {
         status: err.status,
-      }
+      },
     );
   }
 }
@@ -105,16 +105,16 @@ export async function undeprecateExtensionVersion(extensionRef: string): Promise
   const ref = refs.parse(extensionRef);
   try {
     const res = await extensionsPublisherApiClient.post<void, ExtensionVersion>(
-      `/${refs.toExtensionVersionName(ref)}:undeprecate`
+      `/${refs.toExtensionVersionName(ref)}:undeprecate`,
     );
     return res.body;
   } catch (err: any) {
     if (err.status === 403) {
       throw new FirebaseError(
         `You are not the owner of extension '${clc.bold(
-          extensionRef
+          extensionRef,
         )}' and don’t have the correct permissions to undeprecate this extension version.`,
-        { status: err.status }
+        { status: err.status },
       );
     } else if (err.status === 404) {
       throw new FirebaseError(`Extension version ${clc.bold(extensionRef)} was not found.`);
@@ -125,7 +125,7 @@ export async function undeprecateExtensionVersion(extensionRef: string): Promise
       `Error occurred undeprecating extension version '${extensionRef}': ${err}`,
       {
         status: err.status,
-      }
+      },
     );
   }
 }
@@ -143,7 +143,7 @@ export async function createExtensionVersionFromLocalSource(args: {
   const ref = refs.parse(args.extensionVersionRef);
   if (!ref.version) {
     throw new FirebaseError(
-      `Extension version ref "${args.extensionVersionRef}" must supply a version.`
+      `Extension version ref "${args.extensionVersionRef}" must supply a version.`,
     );
   }
   // TODO(b/185176470): Publishing an extension with a previously deleted name will return 409.
@@ -188,7 +188,7 @@ export async function createExtensionVersionFromGitHubSource(args: {
   const ref = refs.parse(args.extensionVersionRef);
   if (!ref.version) {
     throw new FirebaseError(
-      `Extension version ref "${args.extensionVersionRef}" must supply a version.`
+      `Extension version ref "${args.extensionVersionRef}" must supply a version.`,
     );
   }
   // TODO(b/185176470): Publishing an extension with a previously deleted name will return 409.
@@ -230,7 +230,7 @@ export async function getExtensionVersion(extensionVersionRef: string): Promise<
   }
   try {
     const res = await extensionsPublisherApiClient.get<ExtensionVersion>(
-      `/${refs.toExtensionVersionName(ref)}`
+      `/${refs.toExtensionVersionName(ref)}`,
     );
     if (res.body.spec) {
       populateSpec(res.body.spec);
@@ -243,7 +243,7 @@ export async function getExtensionVersion(extensionVersionRef: string): Promise<
       throw err;
     }
     throw new FirebaseError(
-      `Failed to query the extension version '${clc.bold(extensionVersionRef)}': ${err}`
+      `Failed to query the extension version '${clc.bold(extensionVersionRef)}': ${err}`,
     );
   }
 }
@@ -280,7 +280,7 @@ export async function listExtensions(publisherId: string): Promise<Extension[]> 
 export async function listExtensionVersions(
   ref: string,
   filter = "",
-  showPrereleases = false
+  showPrereleases = false,
 ): Promise<ExtensionVersion[]> {
   const { publisherId, extensionId } = refs.parse(ref);
   const extensionVersions: ExtensionVersion[] = [];

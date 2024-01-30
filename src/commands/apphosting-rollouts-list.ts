@@ -9,7 +9,7 @@ export const command = new Command("apphosting:rollouts:list <backendId>")
   .option(
     "-l, --location <location>",
     "Rgion of the rollouts. Defaults to listing rollouts from all regions",
-    "-"
+    "-",
   )
   .before(apphosting.ensureApiEnabled)
   .action(async (backendId: string, options: Options) => {

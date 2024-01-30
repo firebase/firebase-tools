@@ -28,7 +28,7 @@ const SUPPORTED_SYSTEM_PARAMS = {
  */
 export function functionResourceToEmulatedTriggerDefintion(
   resource: Resource,
-  systemParams: Record<string, string> = {}
+  systemParams: Record<string, string> = {},
 ): ParsedTriggerDefinition {
   const resourceType = resource.type;
   if (resource.type === FUNCTIONS_RESOURCE_TYPE) {
@@ -43,21 +43,21 @@ export function functionResourceToEmulatedTriggerDefintion(
       systemParams,
       "regions",
       SUPPORTED_SYSTEM_PARAMS[FUNCTIONS_RESOURCE_TYPE].regions,
-      (str: string) => [str]
+      (str: string) => [str],
     );
     proto.convertIfPresent(
       etd,
       systemParams,
       "timeoutSeconds",
       SUPPORTED_SYSTEM_PARAMS[FUNCTIONS_RESOURCE_TYPE].timeoutSeconds,
-      (d) => +d
+      (d) => +d,
     );
     proto.convertIfPresent(
       etd,
       systemParams,
       "availableMemoryMb",
       SUPPORTED_SYSTEM_PARAMS[FUNCTIONS_RESOURCE_TYPE].availableMemoryMb,
-      (d) => +d as backend.MemoryOptions
+      (d) => +d as backend.MemoryOptions,
     );
     // These don't, but we inject them anyway for consistency and forward compatability
     proto.convertIfPresent(
@@ -71,7 +71,7 @@ export function functionResourceToEmulatedTriggerDefintion(
           ret[key] = value;
         }
         return ret;
-      }
+      },
     );
     const properties = resource.properties || {};
     proto.convertIfPresent(etd, properties, "timeoutSeconds", "timeout", proto.secondsFromDuration);
@@ -99,7 +99,7 @@ export function functionResourceToEmulatedTriggerDefintion(
     } else {
       EmulatorLogger.forEmulator(Emulators.FUNCTIONS).log(
         "WARN",
-        `Function '${resource.name} is missing a trigger in extension.yaml. Please add one, as triggers defined in code are ignored.`
+        `Function '${resource.name} is missing a trigger in extension.yaml. Please add one, as triggers defined in code are ignored.`,
       );
     }
     return etd;
@@ -119,7 +119,7 @@ export function functionResourceToEmulatedTriggerDefintion(
         properties.serviceConfig,
         "availableMemoryMb",
         "availableMemory",
-        (mem: string) => parseInt(mem) as backend.MemoryOptions
+        (mem: string) => parseInt(mem) as backend.MemoryOptions,
       );
     }
     if (properties.eventTrigger) {
@@ -144,7 +144,7 @@ export function functionResourceToEmulatedTriggerDefintion(
     } else {
       EmulatorLogger.forEmulator(Emulators.FUNCTIONS).log(
         "WARN",
-        `Function '${resource.name} is missing a trigger in extension.yaml. Please add one, as triggers defined in code are ignored.`
+        `Function '${resource.name} is missing a trigger in extension.yaml. Please add one, as triggers defined in code are ignored.`,
       );
     }
     return etd;

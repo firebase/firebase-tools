@@ -36,7 +36,7 @@ export const command = new Command("apphosting:backends:delete")
 
     if (!location) {
       const allowedLocations = (await apphosting.listLocations(projectId)).map(
-        (loc) => loc.locationId
+        (loc) => loc.locationId,
       );
       location = await promptOnce({
         name: "region",
@@ -73,7 +73,7 @@ export const command = new Command("apphosting:backends:delete")
         default: false,
         message: "Are you sure?",
       },
-      options
+      options,
     );
     if (!confirmDeletion) {
       throw new FirebaseError("Deletion Aborted");
@@ -85,7 +85,7 @@ export const command = new Command("apphosting:backends:delete")
     } catch (err: any) {
       throw new FirebaseError(
         `Failed to delete backend: ${backendId}. Please check the parameters you have provided.`,
-        { original: err }
+        { original: err },
       );
     }
 

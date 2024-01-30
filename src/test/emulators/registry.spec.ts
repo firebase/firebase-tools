@@ -116,7 +116,7 @@ describe("EmulatorRegistry", () => {
       const req = { protocol: "https", headers: {} } as express.Request;
       expect(EmulatorRegistry.url(name, req).protocol).to.eql(`https:`);
       expect(EmulatorRegistry.url(name, req).host).to.eql(
-        `${emu.getInfo().host}:${emu.getInfo().port}`
+        `${emu.getInfo().host}:${emu.getInfo().port}`,
       );
     });
 
