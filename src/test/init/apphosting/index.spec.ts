@@ -14,7 +14,6 @@ describe("operationsConverter", () => {
 
   let pollOperationStub: sinon.SinonStub;
   let createBackendStub: sinon.SinonStub;
-  let updateTrafficStub: sinon.SinonStub;
   let getBackendStub: sinon.SinonStub;
   let linkGitHubRepositoryStub: sinon.SinonStub;
   let promptOnce: sinon.SinonStub;
@@ -27,9 +26,6 @@ describe("operationsConverter", () => {
       .stub(apphosting, "createBackend")
       .throws("Unexpected createBackend call");
     getBackendStub = sandbox.stub(apphosting, "getBackend").throws("Unexpected getBackend call");
-    updateTrafficStub = sandbox
-      .stub(apphosting, "updateTraffic")
-      .throws("Unexpected updateTraffic call");
     linkGitHubRepositoryStub = sandbox
       .stub(repo, "linkGitHubRepository")
       .throws("Unexpected getBackend call");
