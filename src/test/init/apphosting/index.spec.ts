@@ -7,12 +7,14 @@ import * as poller from "../../../operation-poller";
 import * as prompt from "../../../prompt";
 import { createBackend, onboardBackend } from "../../../init/features/apphosting/index";
 import { FirebaseError } from "../../../error";
+import * as deploymentTool from "../../../deploymentTool";
 
 describe("operationsConverter", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
 
   let pollOperationStub: sinon.SinonStub;
   let createBackendStub: sinon.SinonStub;
+  let updateTrafficStub: sinon.SinonStub;
   let getBackendStub: sinon.SinonStub;
   let linkGitHubRepositoryStub: sinon.SinonStub;
   let promptOnce: sinon.SinonStub;
@@ -25,6 +27,9 @@ describe("operationsConverter", () => {
       .stub(apphosting, "createBackend")
       .throws("Unexpected createBackend call");
     getBackendStub = sandbox.stub(apphosting, "getBackend").throws("Unexpected getBackend call");
+    updateTrafficStub = sandbox
+      .stub(apphosting, "updateTraffic")
+      .throws("Unexpected updateTraffic call");
     linkGitHubRepositoryStub = sandbox
       .stub(repo, "linkGitHubRepository")
       .throws("Unexpected getBackend call");
@@ -66,10 +71,10 @@ describe("operationsConverter", () => {
         repository: cloudBuildConnRepo.name,
         rootDirectory: "/",
       },
-      labels: {},
+      labels: deploymentTool.labels(),
     };
 
-    it("should createBackend", async () => {
+    it("should createBackend with rollout policy", async () => {
       createBackendStub.resolves(op);
       pollOperationStub.resolves(completeBackend);
 
