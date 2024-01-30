@@ -279,7 +279,7 @@ operationSet:
       specVersion: "v1alpha",
       schema: {
         main: {
-          source: path.join(dir, "api", "schema"),
+          source: path.join(dir, "dataconnect", "schema"),
           connection: {
             connectionString: undefined,
           },
@@ -287,7 +287,7 @@ operationSet:
       },
       operationSet: {
         crud: {
-          source: path.join(dir, "api", "operations"),
+          source: path.join(dir, "dataconnect", "operations"),
         },
       },
     });
@@ -306,8 +306,10 @@ schema:
     connection:
       connectionString: 'password'
 operationSet:
-  crud:
-    source: './bar'
+  foo:
+    source: './foo'
+  bar:
+    source: './path/to/bar'
 `,
     );
 
@@ -332,8 +334,11 @@ operationSet:
         },
       },
       operationSet: {
-        crud: {
-          source: path.join(dir, "bar"),
+        foo: {
+          source: path.join(dir, "foo"),
+        },
+        bar: {
+          source: path.join(dir, "path", "to", "bar"),
         },
       },
     });
@@ -371,7 +376,7 @@ operationSet:
       specVersion: "v1alpha",
       schema: {
         main: {
-          source: path.join(dir, "api", "schema"),
+          source: path.join(dir, "dataconnect", "schema"),
           connection: {
             connectionString: undefined,
           },
@@ -379,7 +384,7 @@ operationSet:
       },
       operationSet: {
         crud: {
-          source: path.join(dir, "api", "operations"),
+          source: path.join(dir, "dataconnect", "operations"),
         },
       },
     });

@@ -19,6 +19,10 @@ abstract class ComputedCodeLensProvider implements vscode.CodeLensProvider {
     if (!this.subscriptions.has(signal)) {
       let initialFire = true;
       const disposable = signal.subscribe(() => {
+        // Signals notify their listeners immediately, even if no change were detected.
+        // This is undesired here as such notification would be picked up by vscode,
+        // triggering an infinite reload loop of the codelenses.
+        // We therefore skip this notification and only keep actual "change" notifications
         if (initialFire) {
           initialFire = false;
           return;
@@ -88,9 +92,11 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
           document.fileName,
           configs.schema.main.source,
         );
-        const isInOperationFolder = isPathInside(
-          document.fileName,
-          configs.operationSet.crud.source,
+        const connectorPaths = Object.keys(configs.operationSet).map(
+          (key) => configs.operationSet[key]!.source,
+        );
+        const isInOperationFolder = connectorPaths.every(
+          (path) => !isPathInside(document.fileName, path),
         );
         const instance = this.watch(selectedInstance);
 
@@ -105,7 +111,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
           );
         }
 
-        if (!isInOperationFolder) {
+        if (isInOperationFolder) {
           codeLenses.push(
             new vscode.CodeLens(range, {
               title: `$(plug) Move to connector`,

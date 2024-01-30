@@ -42,7 +42,7 @@ export type FirematConfig = DeepReadOnly<{
     };
   };
   operationSet: {
-    crud: {
+    [key: string]: {
       source: string;
     };
   };
