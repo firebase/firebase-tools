@@ -5,6 +5,7 @@ import { apphostingOrigin } from "../api";
 import { ensure } from "../ensureApiEnabled";
 import * as deploymentTool from "../deploymentTool";
 import { FirebaseError } from "../error";
+import { DeepOmit, RecursiveKeyOf, assertImplements } from "../metaprogramming";
 
 export const API_HOST = new URL(apphostingOrigin).host;
 export const API_VERSION = "v1alpha";
@@ -44,6 +45,8 @@ export interface Backend {
 
 export type BackendOutputOnlyFields = "name" | "createTime" | "updateTime" | "uri";
 
+assertImplements<BackendOutputOnlyFields, RecursiveKeyOf<Backend>>();
+
 export interface Build {
   name: string;
   state: BuildState;
@@ -81,7 +84,14 @@ export type BuildOutputOnlyFields =
   | "etag"
   | "createTime"
   | "updateTime"
-  | "deleteTime";
+  | "deleteTime"
+  | "source.codebase.displayName"
+  | "source.codebase.hash"
+  | "source.codebase.commitMessage"
+  | "source.codebase.uri"
+  | "source.codebase.commitTime";
+
+assertImplements<BuildOutputOnlyFields, RecursiveKeyOf<Build>>();
 
 export interface BuildConfig {
   minInstances?: number;
@@ -104,19 +114,6 @@ interface CodebaseSource {
   uri: string;
   commitTime: string;
 }
-
-export type CodebaseSourceOutputOnlyFields =
-  | "displayName"
-  | "hash"
-  | "commitMessage"
-  | "uri"
-  | "commitTime";
-
-export type BuildInput = Omit<Build, BuildOutputOnlyFields | "source"> & {
-  source: Omit<BuildSource, "codebase"> & {
-    codebase: Omit<CodebaseSource, CodebaseSourceOutputOnlyFields>;
-  };
-};
 
 interface Status {
   code: number;
@@ -165,6 +162,8 @@ export type RolloutOutputOnlyFields =
   | "etag"
   | "reconciling";
 
+assertImplements<RolloutOutputOnlyFields, RecursiveKeyOf<Rollout>>();
+
 export interface ListRolloutsResponse {
   rollouts: Rollout[];
   unreachable: string[];
@@ -192,7 +191,12 @@ export type TrafficOutputOnlyFields =
   | "createTime"
   | "updateTime"
   | "etag"
-  | "uid";
+  | "uid"
+  | "rolloutPolicy.disabledTime"
+  | "rolloutPolicy.stages.startTime"
+  | "rolloutPolicy.stages.endTime";
+
+assertImplements<TrafficOutputOnlyFields, RecursiveKeyOf<Traffic>>();
 
 export interface TrafficSet {
   splits: TrafficSplit[];
@@ -215,16 +219,6 @@ export interface RolloutPolicy {
   disabledTime: string;
 }
 
-export type RolloutPolicyOutputOnlyFields = "disabledTime";
-
-export type RolloutPolicyInput = Omit<RolloutPolicy, RolloutPolicyOutputOnlyFields | "stages"> & {
-  stages: Omit<RolloutStage, "startTime" | "endTime">[];
-};
-
-export type TrafficInput = Omit<Traffic, TrafficOutputOnlyFields | "rolloutPolicy"> & {
-  rolloutPolicy: RolloutPolicyInput;
-};
-
 export type RolloutProgression =
   | "PROGRESSION_UNSPECIFIED"
   | "IMMEDIATE"
@@ -242,8 +236,6 @@ export interface RolloutStage {
   startTime: string;
   endTime: string;
 }
-
-export type RolloutStageOutputOnlyFields = "startTime" | "endTime";
 
 interface OperationMetadata {
   createTime: string;
@@ -275,10 +267,10 @@ export interface ListBackendsResponse {
 export async function createBackend(
   projectId: string,
   location: string,
-  backendReqBoby: Omit<Backend, BackendOutputOnlyFields>,
+  backendReqBoby: DeepOmit<Backend, BackendOutputOnlyFields>,
   backendId: string,
 ): Promise<Operation> {
-  const res = await client.post<Omit<Backend, BackendOutputOnlyFields>, Operation>(
+  const res = await client.post<DeepOmit<Backend, BackendOutputOnlyFields>, Operation>(
     `projects/${projectId}/locations/${location}/backends`,
     {
       ...backendReqBoby,
@@ -327,8 +319,8 @@ export async function deleteBackend(
   location: string,
   backendId: string,
 ): Promise<Operation> {
-  const name = `projects/${projectId}/locations/${location}/backends/${backendId}`;
-  const res = await client.delete<Operation>(name, { queryParams: { force: "true" } });
+  const name = `projects/${projectId}/locations/${location}/backends/${backendId}?force=true`;
+  const res = await client.delete<Operation>(name);
 
   return res.body;
 }
@@ -382,9 +374,9 @@ export async function createBuild(
   location: string,
   backendId: string,
   buildId: string,
-  buildInput: Omit<BuildInput, "name">,
+  buildInput: DeepOmit<Build, BuildOutputOnlyFields | "name">,
 ): Promise<Operation> {
-  const res = await client.post<Omit<BuildInput, "name">, Operation>(
+  const res = await client.post<DeepOmit<Build, BuildOutputOnlyFields | "name">, Operation>(
     `projects/${projectId}/locations/${location}/backends/${backendId}/builds`,
     {
       ...buildInput,
@@ -406,9 +398,9 @@ export async function createRollout(
   location: string,
   backendId: string,
   rolloutId: string,
-  rollout: Omit<Rollout, RolloutOutputOnlyFields | "name">,
+  rollout: DeepOmit<Rollout, RolloutOutputOnlyFields | "name">,
 ): Promise<Operation> {
-  const res = await client.post<Omit<Rollout, RolloutOutputOnlyFields | "name">, Operation>(
+  const res = await client.post<DeepOmit<Rollout, RolloutOutputOnlyFields | "name">, Operation>(
     `projects/${projectId}/locations/${location}/backends/${backendId}/rollouts`,
     {
       ...rollout,
@@ -456,21 +448,14 @@ export async function updateTraffic(
   projectId: string,
   location: string,
   backendId: string,
-  traffic: Omit<TrafficInput, "name">,
+  traffic: DeepOmit<Traffic, TrafficOutputOnlyFields | "name">,
 ): Promise<Operation> {
-  // BUG(b/322891558): setting deep fields on rolloutPolicy doesn't work for some
-  // reason. Create a copy without deep fields to force the updateMask to be
-  // correct.
-  const trafficCopy = { ...traffic };
-  if ("rolloutPolicy" in traffic) {
-    trafficCopy.rolloutPolicy = {} as any;
-  }
-  const fieldMasks = proto.fieldMasks(trafficCopy);
+  const fieldMasks = proto.fieldMasks(traffic);
   const queryParams = {
     updateMask: fieldMasks.join(","),
   };
   const name = `projects/${projectId}/locations/${location}/backends/${backendId}/traffic`;
-  const res = await client.patch<TrafficInput, Operation>(
+  const res = await client.patch<DeepOmit<Traffic, TrafficOutputOnlyFields>, Operation>(
     name,
     { ...traffic, name },
     {
@@ -510,11 +495,11 @@ export async function listLocations(projectId: string): Promise<Location[]> {
 }
 
 /**
- * Ensure that Frameworks API is enabled on the project.
+ * Ensure that the App Hosting API is enabled on the project.
  */
 export async function ensureApiEnabled(options: any): Promise<void> {
   const projectId = needProjectId(options);
-  return await ensure(projectId, API_HOST, "frameworks", true);
+  return await ensure(projectId, API_HOST, "app hosting", true);
 }
 
 /**
