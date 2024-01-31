@@ -31,6 +31,28 @@ export function registerFirebaseDataConnectView(
   selectedInstanceStatus.tooltip = "Select a Firebase instance";
   selectedInstanceStatus.command = "firebase.firemat.connectToInstance";
 
+  function syncStatusBarWithSelectedInstance() {
+    return effect(() => {
+      selectedInstanceStatus.text = selectedInstance.value ?? "<No instance>";
+      selectedInstanceStatus.show();
+    });
+  }
+
+  // Handle cases where the emulator is the currently selected instance,
+  // and the emulator is stopped.
+  // This also initializes the selectedInstance value to the first instance.
+  function syncSelectedInstance() {
+    return effect(() => {
+      const isSelectedInstanceInOptions = instanceOptions.value?.includes(
+        selectedInstance.value,
+      );
+
+      if (!isSelectedInstanceInOptions) {
+        selectedInstance.value = instanceOptions.value?.[0];
+      }
+    });
+  }
+
   return vscode.Disposable.from(
     vscode.commands.registerCommand(
       "firebase.firemat.connectToInstance",
@@ -47,27 +69,8 @@ export function registerFirebaseDataConnectView(
     ),
 
     selectedInstanceStatus,
-    {
-      // Sync the status bar with the selected instance
-      dispose: effect(() => {
-        selectedInstanceStatus.text = selectedInstance.value ?? "<No instance>";
-        selectedInstanceStatus.show();
-      }),
-    },
-    {
-      // Handle cases where the emulator is the currently selected instance,
-      // and the emulator is stopped.
-      // This also initializes the selectedInstance value to the first instance.
-      dispose: effect(() => {
-        const isSelectedInstanceInOptions = instanceOptions.value?.includes(
-          selectedInstance.value,
-        );
-
-        if (!isSelectedInstanceInOptions) {
-          selectedInstance.value = instanceOptions.value?.[0];
-        }
-      }),
-    },
+    { dispose: syncStatusBarWithSelectedInstance() },
+    { dispose: syncSelectedInstance() },
     {
       dispose: broker.on("connectToInstance", async () => {
         vscode.commands.executeCommand("firebase.firemat.connectToInstance");
