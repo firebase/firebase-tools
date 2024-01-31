@@ -2,9 +2,6 @@ import * as fs from "fs-extra";
 import { FirebaseError } from "../error";
 import { needProjectNumber } from "../projectUtils";
 import { FieldHints, LoginCredential, TestDevice } from "./client";
-import * as utils from "../utils";
-
-const testDeviceRegex = /model=([^,]+),version=([^,]+),locale=([^,]+),orientation=([^,]+)/
 
 /**
  * Takes in comma separated string or a path to a comma/new line separated file
@@ -85,23 +82,23 @@ export function getTestDevices(value: string, file: string): TestDevice[] {
   }
 
   // The value is split into a string[]
-  let deviceStrings = value
-      .split(/[;\n]/)
-      .map((entry) => entry.trim())
-      .filter((entry) => !!entry);
+  const deviceStrings = value
+    .split(/[;\n]/)
+    .map((entry) => entry.trim())
+    .filter((entry) => !!entry);
 
-  return deviceStrings.map(str => parseTestDevice(str))
+  return deviceStrings.map((str) => parseTestDevice(str));
 }
 
 function parseTestDevice(testDeviceString: string): TestDevice {
-  const entries = testDeviceString.split(',');
+  const entries = testDeviceString.split(",");
   const allowedKeys = new Set(["model", "version", "orientation", "locale"]);
-  let model: string|undefined;
-  let version: string|undefined;
-  let orientation: string|undefined;
-  let locale: string|undefined;
-  for (let entry of entries) {
-    const keyAndValue = entry.split('=');
+  let model: string | undefined;
+  let version: string | undefined;
+  let orientation: string | undefined;
+  let locale: string | undefined;
+  for (const entry of entries) {
+    const keyAndValue = entry.split("=");
     switch (keyAndValue[0]) {
       case "model":
         model = keyAndValue[1];
@@ -116,13 +113,16 @@ function parseTestDevice(testDeviceString: string): TestDevice {
         locale = keyAndValue[1];
         break;
       default:
-        throw new FirebaseError(`Unrecognized key in test devices. Can only contain ${Array.from(allowedKeys).join(',')}`);
+        throw new FirebaseError(
+          `Unrecognized key in test devices. Can only contain ${Array.from(allowedKeys).join(",")}`,
+        );
     }
   }
-  const match = testDeviceString.match(testDeviceRegex)
 
   if (!model || !version || !orientation || !locale) {
-    throw new FirebaseError("Test devices must be in the format 'model=<model-id>,version=<os-version-id>,locale=<locale>,orientation=<orientation>'");
+    throw new FirebaseError(
+      "Test devices must be in the format 'model=<model-id>,version=<os-version-id>,locale=<locale>,orientation=<orientation>'",
+    );
   }
   return { model, version, locale, orientation };
 }
@@ -134,21 +134,27 @@ export function getLoginCredential(
   passwordResourceName?: string,
 ) {
   if (isPresenceMismatched(usernameResourceName, passwordResourceName)) {
-    throw new FirebaseError("Username and password resource names for automated tests need to be specified together.");
+    throw new FirebaseError(
+      "Username and password resource names for automated tests need to be specified together.",
+    );
   }
-  let fieldHints: FieldHints|undefined;
+  let fieldHints: FieldHints | undefined;
   if (usernameResourceName && passwordResourceName) {
     fieldHints = { usernameResourceName, passwordResourceName };
   }
 
   if (isPresenceMismatched(username, password)) {
-    throw new FirebaseError("Username and password for automated tests need to be specified together.");
+    throw new FirebaseError(
+      "Username and password for automated tests need to be specified together.",
+    );
   }
-  let loginCredential: LoginCredential|undefined;
+  let loginCredential: LoginCredential | undefined;
   if (username && password) {
     loginCredential = { username, password, fieldHints };
   } else if (fieldHints) {
-    throw new FirebaseError("Must specify username and password for automated tests if resource names are set");
+    throw new FirebaseError(
+      "Must specify username and password for automated tests if resource names are set",
+    );
   }
   return loginCredential;
 }

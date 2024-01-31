@@ -38,7 +38,7 @@ function getReleaseNotes(releaseNotes: string, releaseNotesFile: string): string
 export const command = new Command("appdistribution:distribute <release-binary-file>")
   .description("upload a release binary")
   .option("--app <app_id>", "the app id of your Firebase app")
-  // .option("--release-notes <string>", "release notes to include")
+  .option("--release-notes <string>", "release notes to include")
   .option("--release-notes-file <file>", "path to file with release notes")
   .option("--testers <string>", "a comma separated list of tester emails to distribute to")
   .option(
@@ -60,8 +60,14 @@ export const command = new Command("appdistribution:distribute <release-binary-f
   )
   .option("--test-username <string>", "username for automatic login")
   .option("--test-password <string>", "password for automatic login")
-  .option("--test-username-resource <string>", "resource name of the username field for automatic login")
-  .option("--test-password-resource <string>", "resource name of the password field for automatic login")
+  .option(
+    "--test-username-resource <string>",
+    "resource name of the username field for automatic login",
+  )
+  .option(
+    "--test-password-resource <string>",
+    "resource name of the password field for automatic login",
+  )
   .option("--test-async", "don't wait for automatic test results")
   .before(requireAuth)
   .action(async (file: string, options: any) => {
@@ -71,7 +77,12 @@ export const command = new Command("appdistribution:distribute <release-binary-f
     const testers = getTestersOrGroups(options.testers, options.testersFile);
     const groups = getTestersOrGroups(options.groups, options.groupsFile);
     const testDevices = getTestDevices(options.testDevices, options.testDevicesFile);
-    const loginCredential = getLoginCredential(options.testUsername, options.testPassword, options.testUsernameResource, options.testPasswordResource);
+    const loginCredential = getLoginCredential(
+      options.testUsername,
+      options.testPassword,
+      options.testUsernameResource,
+      options.testPasswordResource,
+    );
     const requests = new AppDistributionClient();
     let aabInfo: AabInfo | undefined;
 
@@ -193,34 +204,49 @@ export const command = new Command("appdistribution:distribute <release-binary-f
 
     // Run automated tests
     if (testDevices) {
-      const releaseTest =
-        await requests.createReleaseTest(releaseName, testDevices, loginCredential);
+      const releaseTest = await requests.createReleaseTest(
+        releaseName,
+        testDevices,
+        loginCredential,
+      );
       if (!options.testAsync) {
         await awaitTestResults(releaseTest.name!, requests);
       }
     }
   });
 
-async function awaitTestResults(releaseTestName: string, requests: AppDistributionClient): Promise<void> {
+async function awaitTestResults(
+  releaseTestName: string,
+  requests: AppDistributionClient,
+): Promise<void> {
   for (let i = 0; i < TEST_MAX_POLLING_RETRIES; i++) {
     utils.logBullet("waiting for test(s) to complete…");
     await delay(TEST_POLLING_INTERVAL_MILLIS);
     const releaseTest = await requests.getReleaseTest(releaseTestName);
-    if (releaseTest.deviceExecutions.every(e => e.state === TestState.PASSED)) {
-      utils.logSuccess("automated test(s) passed!")
-      return
+    if (releaseTest.deviceExecutions.every((e) => e.state === TestState.PASSED)) {
+      utils.logSuccess("automated test(s) passed!");
+      return;
     }
-    for (let execution of releaseTest.deviceExecutions) {
-      switch(execution.state) {
+    for (const execution of releaseTest.deviceExecutions) {
+      switch (execution.state) {
         case TestState.PASSED:
         case TestState.IN_PROGRESS:
-          continue
+          continue;
         case TestState.FAILED:
-          throw new FirebaseError(`automated test failed for ${deviceToString(execution.device)}: ${execution.failedReason}`, { exit: 1 });
+          throw new FirebaseError(
+            `automated test failed for ${deviceToString(execution.device)}: ${execution.failedReason}`,
+            { exit: 1 },
+          );
         case TestState.INCONCLUSIVE:
-          throw new FirebaseError(`automated test inconclusive for ${deviceToString(execution.device)}: ${execution.inconclusiveReason}`, { exit: 1 });
+          throw new FirebaseError(
+            `automated test inconclusive for ${deviceToString(execution.device)}: ${execution.inconclusiveReason}`,
+            { exit: 1 },
+          );
         default:
-          throw new FirebaseError(`unsupported automated test state for ${deviceToString(execution.device)}: ${execution.state}`, { exit: 1 });
+          throw new FirebaseError(
+            `unsupported automated test state for ${deviceToString(execution.device)}: ${execution.state}`,
+            { exit: 1 },
+          );
       }
     }
   }
@@ -228,7 +254,7 @@ async function awaitTestResults(releaseTestName: string, requests: AppDistributi
 }
 
 function delay(ms: number) {
-    return new Promise( resolve => setTimeout(resolve, ms) );
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function deviceToString(device: TestDevice): string {

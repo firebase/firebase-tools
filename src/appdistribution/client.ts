@@ -317,12 +317,12 @@ export class AppDistributionClient {
         method: "POST",
         path: `${releaseName}/tests`,
         body: {
-          deviceExecutions: devices.map(d => this.mapDeviceToExecution(d)),
+          deviceExecutions: devices.map((d) => this.mapDeviceToExecution(d)),
           loginCredential,
         },
       });
       utils.logSuccess(`Release test created successfully`);
-      return response.body
+      return response.body;
     } catch (err: any) {
       throw new FirebaseError(`Failed to create release test ${err}`);
     }
@@ -340,7 +340,7 @@ export class AppDistributionClient {
         version: device.version,
         orientation: device.orientation,
         locale: device.locale,
-      }
+      },
     };
   }
 }

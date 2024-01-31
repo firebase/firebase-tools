@@ -336,9 +336,7 @@ describe("distribution", () => {
     });
 
     it("should resolve with ReleaseTest when request succeeds", async () => {
-      nock(appDistributionOrigin)
-        .post(`/v1alpha/${releaseName}`)
-        .reply(200, mockReleaseTest);
+      nock(appDistributionOrigin).post(`/v1alpha/${releaseName}`).reply(200, mockReleaseTest);
       await expect(
         appDistributionClient.createReleaseTest(releaseName, mockDevices),
       ).to.be.eventually.deep.eq(mockReleaseTest);
@@ -372,19 +370,15 @@ describe("distribution", () => {
       nock(appDistributionOrigin)
         .get(`/v1alpha/${releaseTestName}`)
         .reply(400, { error: { status: "FAILED_PRECONDITION" } });
-      await expect(
-        appDistributionClient.getReleaseTest(releaseTestName),
-      ).to.be.rejected;
+      await expect(appDistributionClient.getReleaseTest(releaseTestName)).to.be.rejected;
       expect(nock.isDone()).to.be.true;
     });
 
     it("should resolve with ReleaseTest when request succeeds", async () => {
-      nock(appDistributionOrigin)
-        .get(`/v1alpha/${releaseTestName}`)
-        .reply(200, mockReleaseTest);
-      await expect(
-        appDistributionClient.getReleaseTest(releaseTestName),
-      ).to.be.eventually.deep.eq(mockReleaseTest);
+      nock(appDistributionOrigin).get(`/v1alpha/${releaseTestName}`).reply(200, mockReleaseTest);
+      await expect(appDistributionClient.getReleaseTest(releaseTestName)).to.be.eventually.deep.eq(
+        mockReleaseTest,
+      );
       expect(nock.isDone()).to.be.true;
     });
   });
