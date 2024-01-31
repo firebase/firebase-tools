@@ -114,7 +114,7 @@ function parseTestDevice(testDeviceString: string): TestDevice {
         break;
       default:
         throw new FirebaseError(
-          `Unrecognized key in test devices. Can only contain ${Array.from(allowedKeys).join(",")}`,
+          `Unrecognized key in test devices. Can only contain ${Array.from(allowedKeys).join(", ")}`,
         );
     }
   }
@@ -127,12 +127,16 @@ function parseTestDevice(testDeviceString: string): TestDevice {
   return { model, version, locale, orientation };
 }
 
+/**
+ * Takes option values for username and password related options and returns a LoginCredential
+ * object that can be passed to the API.
+ */
 export function getLoginCredential(
   username?: string,
   password?: string,
   usernameResourceName?: string,
   passwordResourceName?: string,
-) {
+): LoginCredential | undefined {
   if (isPresenceMismatched(usernameResourceName, passwordResourceName)) {
     throw new FirebaseError(
       "Username and password resource names for automated tests need to be specified together.",
