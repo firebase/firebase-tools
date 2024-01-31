@@ -41,7 +41,7 @@ export function registerFirebaseDataConnectView(
   // Handle cases where the emulator is the currently selected instance,
   // and the emulator is stopped.
   // This also initializes the selectedInstance value to the first instance.
-  function syncSelectedInstance() {
+  function initializeSelectedInstance() {
     return effect(() => {
       const isSelectedInstanceInOptions = instanceOptions.value?.includes(
         selectedInstance.value,
@@ -70,7 +70,7 @@ export function registerFirebaseDataConnectView(
 
     selectedInstanceStatus,
     { dispose: syncStatusBarWithSelectedInstance() },
-    { dispose: syncSelectedInstance() },
+    { dispose: initializeSelectedInstance() },
     {
       dispose: broker.on("connectToInstance", async () => {
         vscode.commands.executeCommand("firebase.firemat.connectToInstance");
