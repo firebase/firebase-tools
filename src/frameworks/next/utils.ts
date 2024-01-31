@@ -1,7 +1,7 @@
 import { existsSync } from "fs";
 import { pathExists } from "fs-extra";
 import { basename, extname, join, posix } from "path";
-import { readFile } from "fs/promises";
+import { readFile, rm } from "fs/promises";
 import { sync as globSync } from "glob";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
 import { coerce } from "semver";
@@ -420,4 +420,18 @@ export async function hasStaticAppNotFoundComponent(
   distDir: string,
 ): Promise<boolean> {
   return pathExists(join(sourceDir, distDir, "server", "app", "_not-found.html"));
+}
+
+/**
+ * Remove development files from the .next directory for production deployments.
+ */
+export async function removeDevFiles(distDirPath: string): Promise<void> {
+  const cacheDevFiles = join(distDirPath, "cache", "**", "*-development*");
+  const cacheEslintFiles = join(distDirPath, "cache", "eslint");
+
+  const filesToRemove = globSync(`{${cacheDevFiles},${cacheEslintFiles}}`, {
+    stat: true,
+  });
+
+  await Promise.all(filesToRemove.map((file) => rm(file, { recursive: true, force: true })));
 }

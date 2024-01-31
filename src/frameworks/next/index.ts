@@ -54,6 +54,7 @@ import {
   cleanI18n,
   getNextVersion,
   hasStaticAppNotFoundComponent,
+  removeDevFiles,
 } from "./utils";
 import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES, SHARP_VERSION, I18N_ROOT } from "../constants";
 import type {
@@ -608,6 +609,8 @@ export async function ɵcodegenFunctionsDirectory(
 
   await mkdirp(join(destDir, distDir));
   await copy(join(sourceDir, distDir), join(destDir, distDir));
+  await removeDevFiles(join(destDir, distDir));
+
   return { packageJson, frameworksEntry: "next.js", dotEnv };
 }
 
