@@ -13,7 +13,7 @@ import {
 import { globalSignal } from "../utils/globals";
 import { registerConnectors } from "./connectors";
 import { AuthService } from "../auth/service";
-import { registerFirebaseDataConnectView } from "./firebase-data-connect";
+import { registerFirebaseDataConnectView } from "./connect-instance";
 import { currentProjectId } from "../core/project";
 // import { setupLanguageClient } from "./language-client";
 

@@ -7,7 +7,7 @@ import { isFirematEmulatorRunning } from "../core/emulators";
 import { Signal } from "@preact/signals-core";
 import { firematConfig } from "../core/config";
 import path from "path";
-import { selectedInstance } from "./firebase-data-connect";
+import { selectedInstance } from "./connect-instance";
 
 abstract class ComputedCodeLensProvider implements vscode.CodeLensProvider {
   private readonly _onChangeCodeLensesEmitter = new vscode.EventEmitter<void>();

@@ -21,7 +21,7 @@ import { OperationDefinitionNode, OperationTypeNode, print } from "graphql";
 import { FirematService } from "./service";
 import { FirematError, toSerializedError } from "../../common/error";
 import { OperationLocation } from "./types";
-import { selectedInstance } from "./firebase-data-connect";
+import { selectedInstance } from "./connect-instance";
 
 export function registerExecution(
   context: ExtensionContext,
