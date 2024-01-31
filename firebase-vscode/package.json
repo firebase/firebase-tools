@@ -101,9 +101,9 @@
     "build:extension": "webpack --config webpack.prod.js --config-name extension",
     "build:sidebar": "npm run copyfiles && webpack --config webpack.prod.js --config-name sidebar",
     "test-compile": "npm run copyfiles && webpack --config src/test/webpack.test.js",
-    "pretest": "npm run test-compile && npm run lint && tsc -p src/test/tsconfig.test.json",
     "lint": "eslint src --ext ts",
     "test": "npm run test:unit && npm run test:e2e",
+    "pretest:unit": "npm run test-compile && npm run lint && tsc -p src/test/tsconfig.test.json",
     "test:unit": "node ./dist/test/firebase-vscode/src/test/runTest.js",
     "test:e2e": "TS_NODE_PROJECT=\"./src/test/tsconfig.test.json\" wdio run ./src/test/wdio.conf.ts"
   },
