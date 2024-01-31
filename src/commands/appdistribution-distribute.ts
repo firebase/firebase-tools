@@ -21,7 +21,7 @@ import {
   getTestersOrGroups,
 } from "../appdistribution/options-parser-util";
 
-const TEST_MAX_POLLING_RETRIES = 25;
+const TEST_MAX_POLLING_RETRIES = 40;
 const TEST_POLLING_INTERVAL_MILLIS = 30_000;
 
 function getReleaseNotes(releaseNotes: string, releaseNotesFile: string): string {
