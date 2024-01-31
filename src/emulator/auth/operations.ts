@@ -638,13 +638,20 @@ function createAuthUri(
     }
   }
 
-  return {
-    kind: "identitytoolkit#CreateAuthUriResponse",
-    registered,
-    allProviders,
-    sessionId,
-    signinMethods,
-  };
+  if (state.enableImprovedEmailPrivacy) {
+    return {
+      kind: "identitytoolkit#CreateAuthUriResponse",
+      sessionId,
+    };
+  } else {
+    return {
+      kind: "identitytoolkit#CreateAuthUriResponse",
+      registered,
+      allProviders,
+      sessionId,
+      signinMethods,
+    };
+  }
 }
 
 const SESSION_COOKIE_MIN_VALID_DURATION = 5 * 60; /* 5 minutes in seconds */
@@ -879,7 +886,14 @@ function sendOobCode(
       mode = "resetPassword";
       assert(reqBody.email, "MISSING_EMAIL");
       email = canonicalizeEmailAddress(reqBody.email);
-      assert(state.getUserByEmail(email), "EMAIL_NOT_FOUND");
+      const maybeUser = state.getUserByEmail(email);
+      if (state.enableImprovedEmailPrivacy && !maybeUser) {
+        return {
+          kind: "identitytoolkit#GetOobConfirmationCodeResponse",
+          email,
+        };
+      }
+      assert(maybeUser, "EMAIL_NOT_FOUND");
       break;
     case "VERIFY_EMAIL":
       mode = "verifyEmail";
@@ -898,7 +912,7 @@ function sendOobCode(
         email = user.email;
       }
       break;
-
+    // TODO: implement case for requestType VERIFY_AND_CHANGE_EMAIL.
     default:
       throw new NotImplementedError(reqBody.requestType);
   }
@@ -1726,10 +1740,21 @@ async function signInWithPassword(
 
   const email = canonicalizeEmailAddress(reqBody.email);
   let user = state.getUserByEmail(email);
-  assert(user, "EMAIL_NOT_FOUND");
-  assert(!user.disabled, "USER_DISABLED");
-  assert(user.passwordHash && user.salt, "INVALID_PASSWORD");
-  assert(user.passwordHash === hashPassword(reqBody.password, user.salt), "INVALID_PASSWORD");
+
+  if (state.enableImprovedEmailPrivacy) {
+    assert(user, "INVALID_LOGIN_CREDENTIALS");
+    assert(!user.disabled, "USER_DISABLED");
+    assert(user.passwordHash && user.salt, "INVALID_LOGIN_CREDENTIALS");
+    assert(
+      user.passwordHash === hashPassword(reqBody.password, user.salt),
+      "INVALID_LOGIN_CREDENTIALS",
+    );
+  } else {
+    assert(user, "EMAIL_NOT_FOUND");
+    assert(!user.disabled, "USER_DISABLED");
+    assert(user.passwordHash && user.salt, "INVALID_PASSWORD");
+    assert(user.passwordHash === hashPassword(reqBody.password, user.salt), "INVALID_PASSWORD");
+  }
 
   const response = {
     kind: "identitytoolkit#VerifyPasswordResponse",
@@ -1904,6 +1929,9 @@ function getEmulatorProjectConfig(state: ProjectState): Schemas["EmulatorV1Proje
     signIn: {
       allowDuplicateEmails: !state.oneAccountPerEmail,
     },
+    emailPrivacyConfig: {
+      enableImprovedEmailPrivacy: state.enableImprovedEmailPrivacy,
+    },
   };
 }
 
@@ -1917,6 +1945,9 @@ function updateEmulatorProjectConfig(
   const updateMask = [];
   if (reqBody.signIn?.allowDuplicateEmails != null) {
     updateMask.push("signIn.allowDuplicateEmails");
+  }
+  if (reqBody.emailPrivacyConfig?.enableImprovedEmailPrivacy != null) {
+    updateMask.push("emailPrivacyConfig.enableImprovedEmailPrivacy");
   }
   ctx.params.query.updateMask = updateMask.join();
 

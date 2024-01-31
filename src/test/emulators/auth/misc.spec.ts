@@ -552,6 +552,9 @@ describeAuthEmulator("emulator utility APIs", ({ authApi }) => {
         expect(res.body).to.have.property("signIn").eql({
           allowDuplicateEmails: false /* default value */,
         });
+        expect(res.body).to.have.property("emailPrivacyConfig").eql({
+          enableImprovedEmailPrivacy: false /* default value */,
+        });
       });
   });
 
@@ -564,7 +567,7 @@ describeAuthEmulator("emulator utility APIs", ({ authApi }) => {
       });
   });
 
-  it("should update allowDuplicateEmails on PATCH /emulator/v1/projects/{PROJECT_ID}/config", async () => {
+  it("should only update allowDuplicateEmails on PATCH /emulator/v1/projects/{PROJECT_ID}/config", async () => {
     await authApi()
       .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
       .send({ signIn: { allowDuplicateEmails: true } })
@@ -572,6 +575,9 @@ describeAuthEmulator("emulator utility APIs", ({ authApi }) => {
         expectStatusCode(200, res);
         expect(res.body).to.have.property("signIn").eql({
           allowDuplicateEmails: true,
+        });
+        expect(res.body).to.have.property("emailPrivacyConfig").eql({
+          enableImprovedEmailPrivacy: false,
         });
       });
     await authApi()
@@ -581,6 +587,69 @@ describeAuthEmulator("emulator utility APIs", ({ authApi }) => {
         expectStatusCode(200, res);
         expect(res.body).to.have.property("signIn").eql({
           allowDuplicateEmails: false,
+        });
+        expect(res.body).to.have.property("emailPrivacyConfig").eql({
+          enableImprovedEmailPrivacy: false,
+        });
+      });
+  });
+
+  it("should only update enableImprovedEmailPrivacy on PATCH /emulator/v1/projects/{PROJECT_ID}/config", async () => {
+    await authApi()
+      .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
+      .send({ emailPrivacyConfig: { enableImprovedEmailPrivacy: true } })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body).to.have.property("signIn").eql({
+          allowDuplicateEmails: false,
+        });
+        expect(res.body).to.have.property("emailPrivacyConfig").eql({
+          enableImprovedEmailPrivacy: true,
+        });
+      });
+    await authApi()
+      .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
+      .send({ emailPrivacyConfig: { enableImprovedEmailPrivacy: false } })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body).to.have.property("signIn").eql({
+          allowDuplicateEmails: false,
+        });
+        expect(res.body).to.have.property("emailPrivacyConfig").eql({
+          enableImprovedEmailPrivacy: false,
+        });
+      });
+  });
+
+  it("should update both allowDuplicateEmails and enableImprovedEmailPrivacy on PATCH /emulator/v1/projects/{PROJECT_ID}/config", async () => {
+    await authApi()
+      .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
+      .send({
+        signIn: { allowDuplicateEmails: true },
+        emailPrivacyConfig: { enableImprovedEmailPrivacy: true },
+      })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body).to.have.property("signIn").eql({
+          allowDuplicateEmails: true,
+        });
+        expect(res.body).to.have.property("emailPrivacyConfig").eql({
+          enableImprovedEmailPrivacy: true,
+        });
+      });
+    await authApi()
+      .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
+      .send({
+        signIn: { allowDuplicateEmails: false },
+        emailPrivacyConfig: { enableImprovedEmailPrivacy: false },
+      })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body).to.have.property("signIn").eql({
+          allowDuplicateEmails: false,
+        });
+        expect(res.body).to.have.property("emailPrivacyConfig").eql({
+          enableImprovedEmailPrivacy: false,
         });
       });
   });
