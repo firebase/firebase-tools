@@ -70,7 +70,7 @@ export const command = new Command("open [link]")
     let link = LINKS.find((l) => l.arg === linkName);
     if (linkName && !link) {
       throw new FirebaseError(
-        "Unrecognized link name. Valid links are:\n\n" + LINKS.map((l) => l.arg).join("\n")
+        "Unrecognized link name. Valid links are:\n\n" + LINKS.map((l) => l.arg).join("\n"),
       );
     }
 
@@ -84,7 +84,7 @@ export const command = new Command("open [link]")
     }
     if (!link) {
       throw new FirebaseError(
-        "Unrecognized link name. Valid links are:\n\n" + LINKS.map((l) => l.arg).join("\n")
+        "Unrecognized link name. Valid links are:\n\n" + LINKS.map((l) => l.arg).join("\n"),
       );
     }
 
@@ -104,8 +104,8 @@ export const command = new Command("open [link]")
     if (link.arg !== linkName) {
       logger.info(
         `${clc.bold(clc.cyan("Tip:"))} You can also run ${clc.bold(
-          clc.underline(`firebase open ${link.arg}`)
-        )}`
+          clc.underline(`firebase open ${link.arg}`),
+        )}`,
       );
       logger.info();
     }

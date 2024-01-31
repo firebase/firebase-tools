@@ -252,12 +252,12 @@ export async function createBackend(
   projectId: string,
   location: string,
   backendReqBoby: Omit<Backend, BackendOutputOnlyFields>,
-  backendId: string
+  backendId: string,
 ): Promise<Operation> {
   const res = await client.post<Omit<Backend, BackendOutputOnlyFields>, Operation>(
     `projects/${projectId}/locations/${location}/backends`,
     backendReqBoby,
-    { queryParams: { backendId } }
+    { queryParams: { backendId } },
   );
 
   return res.body;
@@ -269,7 +269,7 @@ export async function createBackend(
 export async function getBackend(
   projectId: string,
   location: string,
-  backendId: string
+  backendId: string,
 ): Promise<Backend> {
   const name = `projects/${projectId}/locations/${location}/backends/${backendId}`;
   const res = await client.get<Backend>(name);
@@ -281,7 +281,7 @@ export async function getBackend(
  */
 export async function listBackends(
   projectId: string,
-  location: string
+  location: string,
 ): Promise<ListBackendsResponse> {
   const name = `projects/${projectId}/locations/${location}/backends`;
   const res = await client.get<ListBackendsResponse>(name);
@@ -295,7 +295,7 @@ export async function listBackends(
 export async function deleteBackend(
   projectId: string,
   location: string,
-  backendId: string
+  backendId: string,
 ): Promise<Operation> {
   const name = `projects/${projectId}/locations/${location}/backends/${backendId}?force=true`;
   const res = await client.delete<Operation>(name);
@@ -310,7 +310,7 @@ export async function getBuild(
   projectId: string,
   location: string,
   backendId: string,
-  buildId: string
+  buildId: string,
 ): Promise<Build> {
   const name = `projects/${projectId}/locations/${location}/backends/${backendId}/builds/${buildId}`;
   const res = await client.get<Build>(name);
@@ -325,12 +325,12 @@ export async function createBuild(
   location: string,
   backendId: string,
   buildId: string,
-  buildInput: Omit<BuildInput, "name">
+  buildInput: Omit<BuildInput, "name">,
 ): Promise<Operation> {
   const res = await client.post<Omit<BuildInput, "name">, Operation>(
     `projects/${projectId}/locations/${location}/backends/${backendId}/builds`,
     buildInput,
-    { queryParams: { buildId } }
+    { queryParams: { buildId } },
   );
   return res.body;
 }
@@ -343,12 +343,12 @@ export async function createRollout(
   location: string,
   backendId: string,
   rolloutId: string,
-  rollout: Omit<Rollout, RolloutOutputOnlyFields | "name">
+  rollout: Omit<Rollout, RolloutOutputOnlyFields | "name">,
 ): Promise<Operation> {
   const res = await client.post<Omit<Rollout, RolloutOutputOnlyFields | "name">, Operation>(
     `projects/${projectId}/locations/${location}/backends/${backendId}/rollouts`,
     rollout,
-    { queryParams: { rolloutId } }
+    { queryParams: { rolloutId } },
   );
   return res.body;
 }
@@ -359,10 +359,10 @@ export async function createRollout(
 export async function listRollouts(
   projectId: string,
   location: string,
-  backendId: string
+  backendId: string,
 ): Promise<Rollout[]> {
   const res = await client.get<{ rollouts: Rollout[] }>(
-    `projects/${projectId}/locations/${location}/backends/${backendId}/rollouts`
+    `projects/${projectId}/locations/${location}/backends/${backendId}/rollouts`,
   );
   return res.body.rollouts;
 }
@@ -374,7 +374,7 @@ export async function updateTraffic(
   projectId: string,
   location: string,
   backendId: string,
-  traffic: Omit<Traffic, TrafficOutputOnlyFields | "name">
+  traffic: Omit<Traffic, TrafficOutputOnlyFields | "name">,
 ): Promise<Operation> {
   const fieldMasks = proto.fieldMasks(traffic);
   const queryParams = {
@@ -386,7 +386,7 @@ export async function updateTraffic(
     { ...traffic, name },
     {
       queryParams,
-    }
+    },
   );
   return res.body;
 }

@@ -113,7 +113,7 @@ describe("Nuxt 2 utils", () => {
         > Local:    http://localhost:3000/
         > Network:  http://0.0.0.0:3000/
         > Network:  http://[some:ipv6::::::]:3000/
-        > Network:  http://[some:other:ipv6:::::]:3000/`
+        > Network:  http://[some:other:ipv6:::::]:3000/`,
       );
 
       await expect(devModeHandle).eventually.be.fulfilled;

@@ -15,7 +15,7 @@ export interface RegistryEntry {
  * @param onlyFeatured If true, only return the featured extensions.
  */
 export async function getExtensionRegistry(
-  onlyFeatured = false
+  onlyFeatured = false,
 ): Promise<Record<string, RegistryEntry>> {
   const client = new Client({ urlPrefix: firebaseExtensionsRegistryOrigin });
   const res = await client.get<{

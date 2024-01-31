@@ -104,7 +104,7 @@ describe("Remote Config Deploy", () => {
         PROJECT_NUMBER,
         currentTemplate,
         etag,
-        options
+        options,
       );
 
       expect(RCtemplate).to.deep.equal(expectedTemplateInfo);
@@ -120,7 +120,7 @@ describe("Remote Config Deploy", () => {
         .reply(400);
 
       await expect(
-        rcDeploy.publishTemplate(PROJECT_NUMBER, currentTemplate, ETAG)
+        rcDeploy.publishTemplate(PROJECT_NUMBER, currentTemplate, ETAG),
       ).to.eventually.be.rejectedWith(FirebaseError, "Unknown Error");
       expect(nock.isDone()).to.be.true;
     });

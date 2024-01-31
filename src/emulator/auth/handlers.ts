@@ -12,7 +12,7 @@ import { PROVIDERS_LIST_PLACEHOLDER, WIDGET_UI } from "./widget_ui";
  */
 export function registerHandlers(
   app: express.Express,
-  getProjectStateByApiKey: (apiKey: string, tenantId?: string) => ProjectState
+  getProjectStateByApiKey: (apiKey: string, tenantId?: string) => ProjectState,
 ): void {
   app.get(`/emulator/action`, (req, res) => {
     const { mode, oobCode, continueUrl, apiKey, tenantId } = req.query as Record<
@@ -186,9 +186,9 @@ export function registerHandlers(
     const options = providerInfos
       .map(
         (
-          info
+          info,
         ) => `<li class="js-reuse-account mdc-list-item mdc-ripple-upgraded" tabindex="0" data-id-token="${encodeURIComponent(
-          createFakeClaims(info)
+          createFakeClaims(info),
         )}">
           <span class="mdc-list-item__ripple"></span>
           ${
@@ -204,7 +204,7 @@ export function registerHandlers(
           <span class="mdc-list-item__secondary-text fallback-secondary-text" id="reuse-email">${
             info.email || ""
           }</span>
-      </li>`
+      </li>`,
       )
       .join("\n");
 
@@ -291,7 +291,7 @@ export function registerHandlers(
   }
 </script>
 <script src="https://apis.google.com/js/api.js"></script>
-`
+`,
     );
   });
 }

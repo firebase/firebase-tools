@@ -156,7 +156,7 @@ export async function createOrReplaceJob(job: Job): Promise<any> {
       if (err?.context?.response?.statusCode === 404) {
         throw new FirebaseError(
           `Cloud resource location is not set for this project but scheduled functions require it. ` +
-            `Please see this documentation for more details: https://firebase.google.com/docs/projects/locations.`
+            `Please see this documentation for more details: https://firebase.google.com/docs/projects/locations.`,
         );
       }
       throw new FirebaseError(`Failed to create scheduler job ${job.name}: ${err.message}`);
@@ -209,7 +209,7 @@ function needUpdate(existingJob: Job, newJob: Job): boolean {
 /** The name of the Cloud Scheduler job we will use for this endpoint. */
 export function jobNameForEndpoint(
   endpoint: backend.Endpoint & backend.ScheduleTriggered,
-  location: string
+  location: string,
 ): string {
   const id = backend.scheduleIdForFunction(endpoint);
   return `projects/${endpoint.project}/locations/${location}/jobs/${id}`;
@@ -217,7 +217,7 @@ export function jobNameForEndpoint(
 
 /** The name of the pubsub topic that the Cloud Scheduler job will use for this endpoint. */
 export function topicNameForEndpoint(
-  endpoint: backend.Endpoint & backend.ScheduleTriggered
+  endpoint: backend.Endpoint & backend.ScheduleTriggered,
 ): string {
   const id = backend.scheduleIdForFunction(endpoint);
   return `projects/${endpoint.project}/topics/${id}`;
@@ -227,7 +227,7 @@ export function topicNameForEndpoint(
 export function jobFromEndpoint(
   endpoint: backend.Endpoint & backend.ScheduleTriggered,
   location: string,
-  projectNumber: string
+  projectNumber: string,
 ): Job {
   const job: Partial<Job> = {};
   job.name = jobNameForEndpoint(endpoint, location);
@@ -255,7 +255,7 @@ export function jobFromEndpoint(
   }
   if (!endpoint.scheduleTrigger.schedule) {
     throw new FirebaseError(
-      "Cannot create a scheduler job without a schedule:" + JSON.stringify(endpoint)
+      "Cannot create a scheduler job without a schedule:" + JSON.stringify(endpoint),
     );
   }
   job.schedule = endpoint.scheduleTrigger.schedule;
@@ -265,28 +265,28 @@ export function jobFromEndpoint(
       job.retryConfig,
       endpoint.scheduleTrigger.retryConfig,
       "maxDoublings",
-      "retryCount"
+      "retryCount",
     );
     proto.convertIfPresent(
       job.retryConfig,
       endpoint.scheduleTrigger.retryConfig,
       "maxBackoffDuration",
       "maxBackoffSeconds",
-      nullsafeVisitor(proto.durationFromSeconds)
+      nullsafeVisitor(proto.durationFromSeconds),
     );
     proto.convertIfPresent(
       job.retryConfig,
       endpoint.scheduleTrigger.retryConfig,
       "minBackoffDuration",
       "minBackoffSeconds",
-      nullsafeVisitor(proto.durationFromSeconds)
+      nullsafeVisitor(proto.durationFromSeconds),
     );
     proto.convertIfPresent(
       job.retryConfig,
       endpoint.scheduleTrigger.retryConfig,
       "maxRetryDuration",
       "maxRetrySeconds",
-      nullsafeVisitor(proto.durationFromSeconds)
+      nullsafeVisitor(proto.durationFromSeconds),
     );
     // If no retry configuration exists, delete the key to preserve existing retry config.
     if (!Object.keys(job.retryConfig).length) {

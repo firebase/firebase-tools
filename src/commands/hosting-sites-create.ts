@@ -30,7 +30,7 @@ export const command = new Command("hosting:sites:create [siteId]")
     logger.info();
     logLabeledSuccess(
       LOG_TAG,
-      `Site ${bold(siteId)} has been created in project ${bold(projectId)}.`
+      `Site ${bold(siteId)} has been created in project ${bold(projectId)}.`,
     );
     if (appId) {
       logLabeledSuccess(LOG_TAG, `Site ${bold(siteId)} has been linked to web app ${bold(appId)}`);
@@ -38,7 +38,7 @@ export const command = new Command("hosting:sites:create [siteId]")
     logLabeledSuccess(LOG_TAG, `Site URL: ${site.defaultUrl}`);
     logger.info();
     logger.info(
-      `To deploy to this site, follow the guide at https://firebase.google.com/docs/hosting/multisites.`
+      `To deploy to this site, follow the guide at https://firebase.google.com/docs/hosting/multisites.`,
     );
     return site;
   });

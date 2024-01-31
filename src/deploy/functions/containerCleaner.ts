@@ -41,7 +41,7 @@ async function retry<Return>(func: () => Promise<Return>): Promise<Return> {
 export async function cleanupBuildImages(
   haveFunctions: backend.TargetIds[],
   deletedFunctions: backend.TargetIds[],
-  cleaners: { gcr?: ContainerRegistryCleaner; ar?: ArtifactRegistryCleaner } = {}
+  cleaners: { gcr?: ContainerRegistryCleaner; ar?: ArtifactRegistryCleaner } = {},
 ): Promise<void> {
   utils.logBullet(clc.bold(clc.cyan("functions: ")) + "cleaning up build files...");
   const failedDomains: Set<string> = new Set();
@@ -58,7 +58,7 @@ export async function cleanupBuildImages(
         const path = `${func.project}/${func.region}/gcf-artifacts`;
         failedDomains.add(`https://console.cloud.google.com/artifacts/docker/${path}`);
       }
-    })
+    }),
   );
   cleanup.push(
     ...deletedFunctions.map(async (func) => {
@@ -68,7 +68,7 @@ export async function cleanupBuildImages(
         const path = `${func.project}/${func.region}/gcf-artifacts`;
         failedDomains.add(`https://console.cloud.google.com/artifacts/docker/${path}`);
       }
-    })
+    }),
   );
   const gcrCleaner = cleaners.gcr || new ContainerRegistryCleaner();
   cleanup.push(
@@ -79,7 +79,7 @@ export async function cleanupBuildImages(
         const path = `${func.project}/${docker.GCR_SUBDOMAIN_MAPPING[func.region]}/gcf`;
         failedDomains.add(`https://console.cloud.google.com/gcr/images/${path}`);
       }
-    })
+    }),
   );
   await Promise.all(cleanup);
   if (failedDomains.size) {
@@ -156,7 +156,7 @@ export class ArtifactRegistryCleaner {
     // GCF uses "<id>/cache" as their pacakge name, but AR percent-encodes this to
     // avoid parsing issues with OP.
     const op = await artifactregistry.deletePackage(
-      `${ArtifactRegistryCleaner.packagePath(func)}%2Fcache`
+      `${ArtifactRegistryCleaner.packagePath(func)}%2Fcache`,
     );
     if (op.done) {
       return;
@@ -219,7 +219,7 @@ export class ContainerRegistryCleaner {
           const path = `${func.project}/gcf/${func.region}/${uuid}`;
           const tags = (await helper.ls(path)).tags;
           uuidTags[path] = tags;
-        })()
+        })(),
       );
     }
     await Promise.all(loadUuidTags);
@@ -255,7 +255,7 @@ function getHelper(cache: Record<string, DockerHelper>, subdomain: string): Dock
 export async function listGcfPaths(
   projectId: string,
   locations?: string[],
-  dockerHelpers: Record<string, DockerHelper> = {}
+  dockerHelpers: Record<string, DockerHelper> = {},
 ): Promise<string[]> {
   if (!locations) {
     locations = Object.keys(docker.GCR_SUBDOMAIN_MAPPING);
@@ -284,7 +284,7 @@ export async function listGcfPaths(
           };
           return Promise.resolve(stat);
         }
-      })()
+      })(),
     );
   }
 
@@ -297,7 +297,7 @@ export async function listGcfPaths(
     throw new FirebaseError("Failed to search all subdomains.");
   } else if (failedSubdomains.length > 0) {
     throw new FirebaseError(
-      `Failed to search the following subdomains: ${failedSubdomains.join(",")}`
+      `Failed to search the following subdomains: ${failedSubdomains.join(",")}`,
     );
   }
 
@@ -317,7 +317,7 @@ export async function listGcfPaths(
 export async function deleteGcfArtifacts(
   projectId: string,
   locations?: string[],
-  dockerHelpers: Record<string, DockerHelper> = {}
+  dockerHelpers: Record<string, DockerHelper> = {},
 ): Promise<void> {
   if (!locations) {
     locations = Object.keys(docker.GCR_SUBDOMAIN_MAPPING);
@@ -344,7 +344,7 @@ export async function deleteGcfArtifacts(
     throw new FirebaseError("Failed to search all subdomains.");
   } else if (failedSubdomains.length > 0) {
     throw new FirebaseError(
-      `Failed to search the following subdomains: ${failedSubdomains.join(",")}`
+      `Failed to search the following subdomains: ${failedSubdomains.join(",")}`,
     );
   }
 }

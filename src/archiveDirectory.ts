@@ -37,7 +37,7 @@ export interface ArchiveResult {
  */
 export async function archiveDirectory(
   sourceDirectory: string,
-  options: ArchiveOptions = {}
+  options: ArchiveOptions = {},
 ): Promise<ArchiveResult> {
   let postfix = ".tar.gz";
   if (options.type === "zip") {
@@ -76,7 +76,7 @@ export async function archiveDirectory(
 async function tarDirectory(
   sourceDirectory: string,
   tempFile: tmp.FileResult,
-  options: ArchiveOptions
+  options: ArchiveOptions,
 ): Promise<ArchiveResult> {
   const allFiles = listFiles(sourceDirectory, options.ignore);
 
@@ -91,7 +91,7 @@ async function tarDirectory(
   }
   if (!allFiles.length) {
     throw new FirebaseError(
-      `Cannot create a tar archive with 0 files from directory "${sourceDirectory}"`
+      `Cannot create a tar archive with 0 files from directory "${sourceDirectory}"`,
     );
   }
 
@@ -104,7 +104,7 @@ async function tarDirectory(
       noDirRecurse: true,
       portable: true,
     },
-    allFiles
+    allFiles,
   );
   const stats = fs.statSync(tempFile.name);
   return {
@@ -122,7 +122,7 @@ async function tarDirectory(
 async function zipDirectory(
   sourceDirectory: string,
   tempFile: tmp.FileResult,
-  options: ArchiveOptions
+  options: ArchiveOptions,
 ): Promise<ArchiveResult> {
   const archiveFileStream = fs.createWriteStream(tempFile.name, {
     flags: "w",

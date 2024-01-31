@@ -16,7 +16,7 @@ const FUNCTION_TYPE_REGEX = /\..+\.function/;
 
 export const command = new Command("ext:info <extensionName>")
   .description(
-    "display information about an extension by name (extensionName@x.y.z for a specific version)"
+    "display information about an extension by name (extensionName@x.y.z for a specific version)",
   )
   .option("--markdown", "output info in Markdown suitable for constructing a README file")
   .before(checkMinRequiredVersion, "extMinVersion")
@@ -121,7 +121,7 @@ export const command = new Command("ext:info <extensionName>")
       utils.logLabeledBullet(
         logPrefix,
         `to install this extension, type ` +
-          clc.bold(`firebase ext:install ${extensionName} --project=YOUR_PROJECT`)
+          clc.bold(`firebase ext:install ${extensionName} --project=YOUR_PROJECT`),
       );
     }
   });

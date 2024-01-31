@@ -62,7 +62,7 @@ describe("IndexValidation", () => {
             ],
           },
         ],
-      })
+      }),
     );
   });
 

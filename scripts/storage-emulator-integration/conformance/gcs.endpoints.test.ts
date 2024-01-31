@@ -139,10 +139,10 @@ describe("GCS endpoint conformance tests", () => {
       expect(metadata.kind).to.be.eql("storage#object");
       expect(metadata.id).to.be.include(`${storageBucket}/${TEST_FILE_NAME}`);
       expect(metadata.selfLink).to.be.eql(
-        `${googleapisHost}/storage/v1/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}`
+        `${googleapisHost}/storage/v1/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}`,
       );
       expect(metadata.mediaLink).to.include(
-        `${storageHost}/download/storage/v1/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}`
+        `${storageHost}/download/storage/v1/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}`,
       );
       expect(metadata.mediaLink).to.include(`alt=media`);
       expect(metadata.name).to.be.eql(TEST_FILE_NAME);
@@ -183,7 +183,7 @@ describe("GCS endpoint conformance tests", () => {
       emulatorOnly.it("should handle resumable uploads", async () => {
         const uploadURL = await supertest(storageHost)
           .post(
-            `/upload/storage/v1/b/${storageBucket}/o?name=${TEST_FILE_NAME}&uploadType=resumable`
+            `/upload/storage/v1/b/${storageBucket}/o?name=${TEST_FILE_NAME}&uploadType=resumable`,
           )
           .set(authHeader)
           .expect(200)
@@ -235,7 +235,7 @@ describe("GCS endpoint conformance tests", () => {
 
         const uploadURL = await supertest(storageHost)
           .post(
-            `/upload/storage/v1/b/${storageBucket}/o?name=${TEST_FILE_NAME}&uploadType=resumable`
+            `/upload/storage/v1/b/${storageBucket}/o?name=${TEST_FILE_NAME}&uploadType=resumable`,
           )
           .set(authHeader)
           .send(customMetadata)
@@ -255,7 +255,7 @@ describe("GCS endpoint conformance tests", () => {
       it("should upload content type properly from x-upload-content-type headers", async () => {
         const uploadURL = await supertest(storageHost)
           .post(
-            `/upload/storage/v1/b/${storageBucket}/o?name=${TEST_FILE_NAME}&uploadType=resumable`
+            `/upload/storage/v1/b/${storageBucket}/o?name=${TEST_FILE_NAME}&uploadType=resumable`,
           )
           .set(authHeader)
           .set({
@@ -362,7 +362,7 @@ describe("GCS endpoint conformance tests", () => {
               })
               .on("close", resolve)
               .on("error", reject);
-          }
+          },
         );
       });
     });
@@ -397,7 +397,7 @@ describe("GCS endpoint conformance tests", () => {
               })
               .on("close", resolve)
               .on("error", reject);
-          }
+          },
         );
       });
     });

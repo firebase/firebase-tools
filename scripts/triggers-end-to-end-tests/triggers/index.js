@@ -38,7 +38,7 @@ const app = initializeApp(
     storageBucket: `${FIREBASE_PROJECT}.appspot.com`,
     appId: "fake-app-id",
   },
-  "TRIGGERS_END_TO_END"
+  "TRIGGERS_END_TO_END",
 );
 const auth = getAuth(app);
 connectAuthEmulator(auth, `http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}`);

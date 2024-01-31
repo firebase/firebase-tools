@@ -142,7 +142,7 @@ export class AppDistributionClient {
   async distribute(
     releaseName: string,
     testerEmails: string[] = [],
-    groupAliases: string[] = []
+    groupAliases: string[] = [],
   ): Promise<void> {
     if (testerEmails.length === 0 && groupAliases.length === 0) {
       utils.logWarning("no testers or groups specified, skipping");

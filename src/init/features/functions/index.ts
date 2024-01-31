@@ -80,7 +80,7 @@ async function initNewCodebase(setup: any, config: Config): Promise<any> {
     while (true) {
       if (attempts++ >= MAX_ATTEMPTS) {
         throw new FirebaseError(
-          "Exceeded max number of attempts to input valid codebase name. Please restart."
+          "Exceeded max number of attempts to input valid codebase name. Please restart.",
         );
       }
       codebase = await promptOnce({
@@ -100,14 +100,14 @@ async function initNewCodebase(setup: any, config: Config): Promise<any> {
     while (true) {
       if (attempts >= MAX_ATTEMPTS) {
         throw new FirebaseError(
-          "Exceeded max number of attempts to input valid source. Please restart."
+          "Exceeded max number of attempts to input valid source. Please restart.",
         );
       }
       attempts++;
       source = await promptOnce({
         type: "input",
         message: `In what sub-directory would you like to initialize your functions for codebase ${clc.bold(
-          codebase
+          codebase,
         )}?`,
         default: codebase,
       });

@@ -643,7 +643,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error.message).to.eq(
-          "INVALID_MFA_ENROLLMENT_ID : mfaEnrollmentId must be defined."
+          "INVALID_MFA_ENROLLMENT_ID : mfaEnrollmentId must be defined.",
         );
       });
   });
@@ -917,7 +917,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error.message).to.eq(
-          "Invalid JSON payload received. /mfa/enrollments must be array"
+          "Invalid JSON payload received. /mfa/enrollments must be array",
         );
       });
   });
@@ -987,7 +987,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
 
   function itShouldDeleteProvider(
     createUser: () => Promise<{ idToken: string; email?: string }>,
-    providerId: string
+    providerId: string,
   ): void {
     it(`should delete ${providerId} provider from user`, async () => {
       const user = await createUser();
@@ -998,7 +998,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
         .then((res) => {
           expectStatusCode(200, res);
           const providers = (res.body.providerUserInfo || []).map(
-            (info: ProviderUserInfo) => info.providerId
+            (info: ProviderUserInfo) => info.providerId,
           );
           expect(providers).not.to.include(providerId);
         });
@@ -1012,7 +1012,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
 
   itShouldDeleteProvider(
     () => registerUser(authApi(), { email: "alice@example.com", password: "notasecret" }),
-    PROVIDER_PASSWORD
+    PROVIDER_PASSWORD,
   );
   itShouldDeleteProvider(() => signInWithPhoneNumber(authApi(), TEST_PHONE_NUMBER), PROVIDER_PHONE);
   itShouldDeleteProvider(
@@ -1021,7 +1021,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
         sub: "12345",
         email: "bob@example.com",
       }),
-    "google.com"
+    "google.com",
   );
 
   it("should update user by localId when authenticated", async () => {

@@ -41,7 +41,7 @@ describe("Astro", () => {
             publicDir,
             output: "static",
             adapter: undefined,
-          })
+          }),
         );
       sandbox
         .stub(frameworkUtils, "findDependency")
@@ -71,7 +71,7 @@ describe("Astro", () => {
               name: "@astrojs/node",
               hooks: {},
             },
-          })
+          }),
         );
       sandbox
         .stub(frameworkUtils, "findDependency")
@@ -112,7 +112,7 @@ describe("Astro", () => {
             publicDir: "xxx",
             output: "static",
             adapter: undefined,
-          })
+          }),
         );
 
       const copy = sandbox.stub(fsExtra, "copy");
@@ -137,7 +137,7 @@ describe("Astro", () => {
               name: "@astrojs/node",
               hooks: {},
             },
-          })
+          }),
         );
 
       const copy = sandbox.stub(fsExtra, "copy");
@@ -177,7 +177,7 @@ describe("Astro", () => {
               name: "@astrojs/node",
               hooks: {},
             },
-          })
+          }),
         );
       sandbox
         .stub(frameworkUtils, "readJSON")
@@ -228,7 +228,7 @@ describe("Astro", () => {
               name: "@astrojs/node",
               hooks: {},
             },
-          })
+          }),
         );
 
       const cli = Math.random().toString(36).split(".")[1];
@@ -260,7 +260,7 @@ describe("Astro", () => {
               name: "EPIC FAIL",
               hooks: {},
             },
-          })
+          }),
         );
 
       const cli = Math.random().toString(36).split(".")[1];
@@ -268,7 +268,7 @@ describe("Astro", () => {
 
       await expect(build(cwd)).to.eventually.rejectedWith(
         FirebaseError,
-        "Deploying an Astro application with SSR on Firebase Hosting requires the @astrojs/node adapter in middleware mode. https://docs.astro.build/en/guides/integrations-guide/node/"
+        "Deploying an Astro application with SSR on Firebase Hosting requires the @astrojs/node adapter in middleware mode. https://docs.astro.build/en/guides/integrations-guide/node/",
       );
     });
 
@@ -290,7 +290,7 @@ describe("Astro", () => {
             publicDir,
             output: "static",
             adapter: undefined,
-          })
+          }),
         );
 
       const cli = Math.random().toString(36).split(".")[1];
@@ -339,7 +339,7 @@ describe("Astro", () => {
   ┃ Local    http://localhost:3000/
   ┃ Network  use --host to expose
   
-`
+`,
       );
 
       await expect(devModeHandle).eventually.be.fulfilled;

@@ -42,13 +42,13 @@ describe("functionsDeployHelper", () => {
         helper.endpointMatchesFilter(func, {
           ...BASE_FILTER,
           idChunks: ["group", "subgroup", "func"],
-        })
+        }),
       ).to.be.true;
       expect(
         helper.endpointMatchesFilter(func, {
           ...BASE_FILTER,
           idChunks: ["group", "subgroup"],
-        })
+        }),
       ).to.be.true;
       expect(helper.endpointMatchesFilter(func, { ...BASE_FILTER, idChunks: ["group"] })).to.be
         .true;
@@ -68,21 +68,21 @@ describe("functionsDeployHelper", () => {
           ...BASE_FILTER,
           codebase: "another-codebase",
           idChunks: ["group", "subgroup", "func"],
-        })
+        }),
       ).to.be.false;
       expect(
         helper.endpointMatchesFilter(func, {
           ...BASE_FILTER,
           codebase: "another-codebase",
           idChunks: ["group", "subgroup"],
-        })
+        }),
       ).to.be.false;
       expect(
         helper.endpointMatchesFilter(func, {
           ...BASE_FILTER,
           codebase: "another-codebase",
           idChunks: ["group"],
-        })
+        }),
       ).to.be.false;
     });
 
@@ -95,14 +95,14 @@ describe("functionsDeployHelper", () => {
           ...BASE_FILTER,
           codebase: "my-codebase",
           idChunks: ["group", "subgroup", "func"],
-        })
+        }),
       ).to.be.true;
       expect(
         helper.endpointMatchesFilter(func, {
           ...BASE_FILTER,
           codebase: "my-codebase",
           idChunks: ["group", "subgroup"],
-        })
+        }),
       ).to.be.true;
       expect(helper.endpointMatchesFilter(func, { ...BASE_FILTER, idChunks: ["group"] })).to.be
         .true;
@@ -116,21 +116,21 @@ describe("functionsDeployHelper", () => {
           ...BASE_FILTER,
           codebase: undefined,
           idChunks: ["group", "subgroup", "func"],
-        })
+        }),
       ).to.be.true;
       expect(
         helper.endpointMatchesFilter(func, {
           ...BASE_FILTER,
           codebase: undefined,
           idChunks: ["group", "subgroup"],
-        })
+        }),
       ).to.be.true;
       expect(
         helper.endpointMatchesFilter(func, {
           ...BASE_FILTER,
           codebase: undefined,
           idChunks: ["group"],
-        })
+        }),
       ).to.be.true;
     });
   });
@@ -147,7 +147,7 @@ describe("functionsDeployHelper", () => {
         helper.endpointMatchesAnyFilter(func, [
           { ...BASE_FILTER, idChunks: ["id"] },
           { ...BASE_FILTER, idChunks: ["group"] },
-        ])
+        ]),
       ).to.be.true;
     });
 
@@ -157,7 +157,7 @@ describe("functionsDeployHelper", () => {
         helper.endpointMatchesAnyFilter(func, [
           { ...BASE_FILTER, idChunks: ["group"] },
           { ...BASE_FILTER, idChunks: ["other-group"] },
-        ])
+        ]),
       ).to.be.false;
     });
   });
@@ -376,11 +376,11 @@ describe("functionsDeployHelper", () => {
       const wantBackends: Record<string, backend.Backend> = {
         default: backend.of(
           { ...ENDPOINT, id: "default-0", codebase: "default" },
-          { ...ENDPOINT, id: "default-1", codebase: "default" }
+          { ...ENDPOINT, id: "default-1", codebase: "default" },
         ),
         cb: backend.of(
           { ...ENDPOINT, id: "cb-0", codebase: "cb" },
-          { ...ENDPOINT, id: "cb-1", codebase: "cb" }
+          { ...ENDPOINT, id: "cb-1", codebase: "cb" },
         ),
       };
       const haveBackend = backend.of(
@@ -388,7 +388,7 @@ describe("functionsDeployHelper", () => {
         { ...ENDPOINT, id: "default-1", codebase: "default" },
         { ...ENDPOINT, id: "cb-0", codebase: "cb" },
         { ...ENDPOINT, id: "cb-1", codebase: "cb" },
-        { ...ENDPOINT, id: "orphan", codebase: "orphan" }
+        { ...ENDPOINT, id: "orphan", codebase: "orphan" },
       );
 
       const got = helper.groupEndpointsByCodebase(wantBackends, backend.allEndpoints(haveBackend));
@@ -401,11 +401,11 @@ describe("functionsDeployHelper", () => {
       const wantBackends: Record<string, backend.Backend> = {
         default: backend.of(
           { ...ENDPOINT, id: "default-0", codebase: "default" },
-          { ...ENDPOINT, id: "default-1", codebase: "default" }
+          { ...ENDPOINT, id: "default-1", codebase: "default" },
         ),
         cb: backend.of(
           { ...ENDPOINT, id: "cb-0", codebase: "cb" },
-          { ...ENDPOINT, id: "cb-1", codebase: "cb" }
+          { ...ENDPOINT, id: "cb-1", codebase: "cb" },
         ),
       };
       let haveBackend = backend.of(
@@ -413,7 +413,7 @@ describe("functionsDeployHelper", () => {
         { ...ENDPOINT, id: "default-1", codebase: "cb" },
         { ...ENDPOINT, id: "cb-0", codebase: "cb" },
         { ...ENDPOINT, id: "cb-1", codebase: "cb" },
-        { ...ENDPOINT, id: "orphan", codebase: "orphan" }
+        { ...ENDPOINT, id: "orphan", codebase: "orphan" },
       );
 
       let got = helper.groupEndpointsByCodebase(wantBackends, backend.allEndpoints(haveBackend));
@@ -427,7 +427,7 @@ describe("functionsDeployHelper", () => {
         { ...ENDPOINT, id: "default-1", codebase: "default" },
         { ...ENDPOINT, id: "cb-0", codebase: "default" },
         { ...ENDPOINT, id: "cb-1", codebase: "default" },
-        { ...ENDPOINT, id: "orphan", codebase: "orphan" }
+        { ...ENDPOINT, id: "orphan", codebase: "orphan" },
       );
       got = helper.groupEndpointsByCodebase(wantBackends, backend.allEndpoints(haveBackend));
       for (const codebase of Object.keys(got)) {

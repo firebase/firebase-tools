@@ -317,7 +317,7 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error.message).to.equal(
-          "UNSUPPORTED_FIRST_FACTOR : A phone number cannot be set as a first factor on an SMS based MFA user."
+          "UNSUPPORTED_FIRST_FACTOR : A phone number cannot be set as a first factor on an SMS based MFA user.",
         );
       });
   });
@@ -341,7 +341,7 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error.message).to.equal(
-          "UNSUPPORTED_FIRST_FACTOR : A phone number cannot be set as a first factor on an SMS based MFA user."
+          "UNSUPPORTED_FIRST_FACTOR : A phone number cannot be set as a first factor on an SMS based MFA user.",
         );
         return res.body.sessionInfo;
       });
@@ -441,7 +441,7 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_CREATE_PATH)
@@ -504,7 +504,7 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_SIGN_IN_PATH)
@@ -572,7 +572,7 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_CREATE_PATH)
@@ -647,7 +647,7 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_CREATE_PATH)

@@ -12,7 +12,7 @@ describe("shortenUrl", () => {
       .post(
         `/v1/shortLinks`,
         (body: { dynamicLinkInfo?: { link: string }; suffix?: { option: string } }) =>
-          body.dynamicLinkInfo?.link === url && body.suffix?.option === suffix
+          body.dynamicLinkInfo?.link === url && body.suffix?.option === suffix,
       )
       .query({ key: dynamicLinksKey })
       .reply(code, {

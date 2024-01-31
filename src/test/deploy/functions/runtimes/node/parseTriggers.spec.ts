@@ -18,7 +18,7 @@ async function resolveBackend(bd: build.Build): Promise<backend.Backend> {
         databaseURL: "https://foo.firebaseio.com",
       },
       { functionsSource: "", projectId: "PROJECT" },
-      {}
+      {},
     )
   ).backend;
 }
@@ -278,7 +278,7 @@ describe("addResourcesToBuild", () => {
         ...BASIC_BACKEND_ENDPOINT,
         httpsTrigger: {},
         region: "europe-west1",
-      }
+      },
     );
     const convertedBackend = resolveBackend(expected);
     await expect(convertedBackend).to.eventually.deep.equal(expectedBackend);
@@ -367,7 +367,7 @@ describe("addResourcesToBuild", () => {
             test: "testing",
           },
           scheduleTrigger: schedule,
-        }
+        },
       ),
       requiredAPIs: [
         {
@@ -526,7 +526,7 @@ describe("addResourcesToBackend", () => {
             service: "pubsub.googleapis.com",
           },
         },
-        backend.empty()
+        backend.empty(),
       );
     }).to.throw(FirebaseError);
   });
@@ -725,7 +725,7 @@ describe("addResourcesToBackend", () => {
         ...BASIC_ENDPOINT,
         httpsTrigger: {},
         region: "europe-west1",
-      }
+      },
     );
 
     expect(result).to.deep.equal(expected);
@@ -777,7 +777,7 @@ describe("addResourcesToBackend", () => {
             test: "testing",
           },
           scheduleTrigger: schedule,
-        }
+        },
       ),
       requiredAPIs: [
         {

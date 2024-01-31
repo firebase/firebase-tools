@@ -31,7 +31,7 @@ describe("calculateChannelExpireTTL", () => {
     it(`should be able to parse time ${test.input || "undefined"}`, () => {
       expect(() => calculateChannelExpireTTL(test.input as any)).to.throw(
         FirebaseError,
-        /flag must be a duration string/
+        /flag must be a duration string/,
       );
     });
   }
@@ -39,11 +39,11 @@ describe("calculateChannelExpireTTL", () => {
   it("should throw if greater than 30d", () => {
     expect(() => calculateChannelExpireTTL("31d")).to.throw(
       FirebaseError,
-      /not be longer than 30d/
+      /not be longer than 30d/,
     );
     expect(() => calculateChannelExpireTTL(`${31 * 24}h`)).to.throw(
       FirebaseError,
-      /not be longer than 30d/
+      /not be longer than 30d/,
     );
   });
 });

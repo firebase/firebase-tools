@@ -37,8 +37,8 @@ export function assertOneOf<T>(typename: string, obj: T, oneof: string, ...field
   if (defined.length > 1) {
     throw new FirebaseError(
       `Invalid ${typename} definition. ${oneof} can only have one field defined, but found ${defined.join(
-        ","
-      )}`
+        ",",
+      )}`,
     );
   }
 }
@@ -67,12 +67,12 @@ export function copyIfPresent<Dest extends object, Keys extends (keyof Dest)[]>(
 export function convertIfPresent<
   Dest extends object,
   Src extends object,
-  Key extends keyof Src & keyof Dest
+  Key extends keyof Src & keyof Dest,
 >(
   dest: Dest,
   src: Src,
   key: Key,
-  converter: (from: Required<Src>[Key]) => Required<Dest>[Key]
+  converter: (from: Required<Src>[Key]) => Required<Dest>[Key],
 ): void;
 
 /**
@@ -82,13 +82,13 @@ export function convertIfPresent<
   Dest extends object,
   Src extends object,
   DestKey extends keyof Dest,
-  SrcKey extends keyof Src
+  SrcKey extends keyof Src,
 >(
   dest: Dest,
   src: Src,
   destKey: DestKey,
   srcKey: SrcKey,
-  converter: (from: Required<Src>[SrcKey]) => Required<Dest>[DestKey]
+  converter: (from: Required<Src>[SrcKey]) => Required<Dest>[DestKey],
 ): void;
 
 /** Overload */
@@ -97,21 +97,21 @@ export function convertIfPresent<
   Src extends object,
   DestKey extends keyof Dest,
   SrcKey extends keyof Src,
-  MutualKey extends keyof Dest & keyof Src
+  MutualKey extends keyof Dest & keyof Src,
 >(
   ...args:
     | [
         dest: Dest,
         src: Src,
         key: MutualKey,
-        converter: (from: Required<Src>[MutualKey]) => Required<Dest>[MutualKey]
+        converter: (from: Required<Src>[MutualKey]) => Required<Dest>[MutualKey],
       ]
     | [
         dest: Dest,
         src: Src,
         destKey: DestKey,
         srcKey: SrcKey,
-        converter: (from: Required<Src>[SrcKey]) => Required<Dest>[DestKey]
+        converter: (from: Required<Src>[SrcKey]) => Required<Dest>[DestKey],
       ]
 ): void {
   if (args.length === 4) {
@@ -132,7 +132,7 @@ export function renameIfPresent<DestKey extends string, SrcKey extends string, V
   dest: { [Key in DestKey]?: ValType },
   src: { [Key in SrcKey]?: ValType },
   destKey: DestKey,
-  srcKey: SrcKey
+  srcKey: SrcKey,
 ): void {
   if (!Object.prototype.hasOwnProperty.call(src, srcKey)) {
     return;
@@ -163,7 +163,7 @@ function fieldMasksHelper(
   prefixes: string[],
   cursor: unknown,
   doNotRecurseIn: string[],
-  masks: string[]
+  masks: string[],
 ): void {
   // Empty arrays should never be sent because they're dropped by the one platform
   // gateway and then services get confused why there's an update mask for a missing field"
@@ -225,7 +225,7 @@ export function formatServiceAccount(serviceAccount: string, projectId: string):
   }
   if (!serviceAccount.includes("@")) {
     throw new FirebaseError(
-      "Service account must be of the form 'service-account@' or 'service-account@{project-id}.iam.gserviceaccount.com'"
+      "Service account must be of the form 'service-account@' or 'service-account@{project-id}.iam.gserviceaccount.com'",
     );
   }
 

@@ -35,7 +35,7 @@ export async function getEtag(projectNumber: string, versionNumber?: string): Pr
  * @return Returns a Promise of the valid Remote Config template
  */
 export function validateInputRemoteConfigTemplate(
-  template: RemoteConfigTemplate
+  template: RemoteConfigTemplate,
 ): RemoteConfigTemplate {
   const templateCopy = JSON.parse(JSON.stringify(template));
   if (!templateCopy || templateCopy === "null" || templateCopy === "undefined") {
@@ -64,7 +64,7 @@ export async function deployTemplate(
   projectNumber: string,
   template: RemoteConfigTemplate,
   etag: string,
-  options?: { force: boolean }
+  options?: { force: boolean },
 ): Promise<RemoteConfigTemplate> {
   const reqPath = `/projects/${projectNumber}/remoteConfig`;
   if (options?.force) {
@@ -96,7 +96,7 @@ export function publishTemplate(
   projectNumber: string,
   template: RemoteConfigTemplate,
   etag: string,
-  options?: { force: boolean }
+  options?: { force: boolean },
 ): Promise<RemoteConfigTemplate> {
   const temporaryTemplate = {
     conditions: template.conditions,

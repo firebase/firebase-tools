@@ -28,7 +28,7 @@ export async function getAppDeveloperTOSStatus(projectId: string): Promise<AppDe
 export async function acceptAppDeveloperTOS(
   projectId: string,
   tosVersion: string,
-  instanceId: string = ""
+  instanceId: string = "",
 ): Promise<AppDevTOS> {
   const res = await apiClient.post<
     { name: string; instanceId: string; version: string },
@@ -48,35 +48,35 @@ export async function getPublisherTOSStatus(projectId: string): Promise<Publishe
 
 export async function acceptPublisherTOS(
   projectId: string,
-  tosVersion: string
+  tosVersion: string,
 ): Promise<PublisherTOS> {
   const res = await apiClient.post<{ name: string; version: string }, PublisherTOS>(
     `/projects/${projectId}/publishertos:accept`,
     {
       name: `project/${projectId}/publishertos`,
       version: tosVersion,
-    }
+    },
   );
   return res.body;
 }
 
 export async function acceptLatestPublisherTOS(
   options: { force?: boolean; nonInteractive?: boolean },
-  projectId: string
+  projectId: string,
 ): Promise<PublisherTOS | undefined> {
   try {
     logger.debug(`Checking if latest publisher TOS has been accepted by ${projectId}...`);
     const currentAcceptance = await getPublisherTOSStatus(projectId);
     if (currentAcceptance.lastAcceptedVersion) {
       logger.debug(
-        `Already accepted version ${currentAcceptance.lastAcceptedVersion} of Extensions publisher TOS.`
+        `Already accepted version ${currentAcceptance.lastAcceptedVersion} of Extensions publisher TOS.`,
       );
       return currentAcceptance;
     } else {
       // Display link to TOS, prompt for acceptance
       const tosLink = extensionsTosUrl("publisher");
       logger.info(
-        `To continue, you must accept the Firebase Extensions Publisher Terms of Service: ${tosLink}`
+        `To continue, you must accept the Firebase Extensions Publisher Terms of Service: ${tosLink}`,
       );
       if (
         await confirm({
@@ -91,7 +91,7 @@ export async function acceptLatestPublisherTOS(
     // This is a best effort check. When authenticated via a service account instead of OAuth, we cannot
     // make calls to a private API. The extensions backend will also check TOS acceptance at instance CRUD time.
     logger.debug(
-      `Error when checking Publisher TOS for ${projectId}. This is expected if authenticated via a service account: ${err}`
+      `Error when checking Publisher TOS for ${projectId}. This is expected if authenticated via a service account: ${err}`,
     );
     return;
   }
@@ -101,7 +101,7 @@ export async function acceptLatestPublisherTOS(
 export async function acceptLatestAppDeveloperTOS(
   options: { force?: boolean; nonInteractive?: boolean },
   projectId: string,
-  instanceIds: string[]
+  instanceIds: string[],
 ): Promise<AppDevTOS[]> {
   try {
     logger.debug(`Checking if latest AppDeveloper TOS has been accepted by ${projectId}...`);
@@ -125,7 +125,7 @@ export async function acceptLatestAppDeveloperTOS(
     // This is a best effort check. When authenticated via a service account instead of OAuth, we cannot
     // make calls to a private API. The extensions backend will also check TOS acceptance at instance CRUD time.
     logger.debug(
-      `Error when checking App Developer TOS for ${projectId}. This is expected if authenticated via a service account: ${err}`
+      `Error when checking App Developer TOS for ${projectId}. This is expected if authenticated via a service account: ${err}`,
     );
     return [];
   }
@@ -135,6 +135,6 @@ export function displayDeveloperTOSWarning(): void {
   const tosLink = extensionsTosUrl("user");
   utils.logLabeledBullet(
     logPrefix,
-    `By installing an extension instance onto a Firebase project, you accept the Firebase Extensions User Terms of Service: ${tosLink}`
+    `By installing an extension instance onto a Firebase project, you accept the Firebase Extensions User Terms of Service: ${tosLink}`,
   );
 }

@@ -104,7 +104,7 @@ export function compareApiField(a: API.Field, b: API.Field): number {
   return compareArraysSorted(
     a.indexConfig.indexes || [],
     b.indexConfig.indexes || [],
-    compareApiIndex
+    compareApiIndex,
   );
 }
 

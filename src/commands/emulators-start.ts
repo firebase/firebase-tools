@@ -74,11 +74,11 @@ function printEmulatorOverview(options: any): void {
 
   const successMessageTable = new Table();
   let successMsg = `${clc.green("✔")}  ${clc.bold(
-    "All emulators ready! It is now safe to connect your app."
+    "All emulators ready! It is now safe to connect your app.",
   )}`;
   if (uiRunning) {
     successMsg += `\n${clc.cyan("i")}  View Emulator UI at ${stylizeLink(
-      EmulatorRegistry.url(Emulators.UI).toString()
+      EmulatorRegistry.url(Emulators.UI).toString(),
     )}`;
   }
   successMessageTable.push([successMsg]);
@@ -114,12 +114,12 @@ function printEmulatorOverview(options: any): void {
         return [emulatorName, listen, uiLink];
       })
       .map((col) => col.slice(0, head.length))
-      .filter((v) => v)
+      .filter((v) => v),
   );
   let extensionsTable = "";
   if (EmulatorRegistry.isRunning(Emulators.EXTENSIONS)) {
     const extensionsEmulatorInstance = EmulatorRegistry.get(
-      Emulators.EXTENSIONS
+      Emulators.EXTENSIONS,
     ) as ExtensionsEmulator;
     extensionsTable = extensionsEmulatorInstance.extensionsInfoTable(options);
   }
@@ -134,7 +134,7 @@ ${
 ${clc.blackBright("  Other reserved ports:")} ${reservedPortsString}
 ${extensionsTable}
 Issues? Report them at ${stylizeLink(
-    "https://github.com/firebase/firebase-tools/issues"
+    "https://github.com/firebase/firebase-tools/issues",
   )} and attach the *-debug.log files.
  `);
 

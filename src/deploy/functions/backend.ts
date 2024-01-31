@@ -571,16 +571,16 @@ export async function checkAvailability(context: Context, want: Backend): Promis
   }
 
   const neededUnreachableV1 = context.unreachableRegions?.gcfV1.filter((region) =>
-    gcfV1Regions.has(region)
+    gcfV1Regions.has(region),
   );
   const neededUnreachableV2 = context.unreachableRegions?.gcfV2.filter((region) =>
-    gcfV2Regions.has(region)
+    gcfV2Regions.has(region),
   );
   if (neededUnreachableV1?.length) {
     throw new FirebaseError(
       "The following Cloud Functions regions are currently unreachable:\n\t" +
         neededUnreachableV1.join("\n\t") +
-        "\nThis deployment contains functions in those regions. Please try again in a few minutes, or exclude these regions from your deployment."
+        "\nThis deployment contains functions in those regions. Please try again in a few minutes, or exclude these regions from your deployment.",
     );
   }
 
@@ -588,7 +588,7 @@ export async function checkAvailability(context: Context, want: Backend): Promis
     throw new FirebaseError(
       "The following Cloud Functions V2 regions are currently unreachable:\n\t" +
         neededUnreachableV2.join("\n\t") +
-        "\nThis deployment contains functions in those regions. Please try again in a few minutes, or exclude these regions from your deployment."
+        "\nThis deployment contains functions in those regions. Please try again in a few minutes, or exclude these regions from your deployment.",
     );
   }
 
@@ -597,7 +597,7 @@ export async function checkAvailability(context: Context, want: Backend): Promis
       "functions",
       "The following Cloud Functions regions are currently unreachable:\n" +
         context.unreachableRegions.gcfV1.join("\n") +
-        "\nCloud Functions in these regions won't be deleted."
+        "\nCloud Functions in these regions won't be deleted.",
     );
   }
 
@@ -606,7 +606,7 @@ export async function checkAvailability(context: Context, want: Backend): Promis
       "functions",
       "The following Cloud Functions V2 regions are currently unreachable:\n" +
         context.unreachableRegions.gcfV2.join("\n") +
-        "\nCloud Functions in these regions won't be deleted."
+        "\nCloud Functions in these regions won't be deleted.",
     );
   }
 }
@@ -621,7 +621,7 @@ export function allEndpoints(backend: Backend): Endpoint[] {
 /** A helper utility for checking whether an endpoint matches a predicate. */
 export function someEndpoint(
   backend: Backend,
-  predicate: (endpoint: Endpoint) => boolean
+  predicate: (endpoint: Endpoint) => boolean,
 ): boolean {
   for (const endpoints of Object.values(backend.endpoints)) {
     if (Object.values<Endpoint>(endpoints).some(predicate)) {
@@ -634,7 +634,7 @@ export function someEndpoint(
 /** A helper utility for finding an endpoint that matches the predicate. */
 export function findEndpoint(
   backend: Backend,
-  predicate: (endpoint: Endpoint) => boolean
+  predicate: (endpoint: Endpoint) => boolean,
 ): Endpoint | undefined {
   for (const endpoints of Object.values(backend.endpoints)) {
     const endpoint = Object.values<Endpoint>(endpoints).find(predicate);
@@ -645,7 +645,7 @@ export function findEndpoint(
 /** A helper utility function that returns a subset of the backend that includes only matching endpoints */
 export function matchingBackend(
   backend: Backend,
-  predicate: (endpoint: Endpoint) => boolean
+  predicate: (endpoint: Endpoint) => boolean,
 ): Backend {
   const filtered: Backend = {
     ...backend,
@@ -689,7 +689,7 @@ export const missingEndpoint =
  */
 export function compareFunctions(
   left: TargetIds & { platform: FunctionsPlatform },
-  right: TargetIds & { platform: FunctionsPlatform }
+  right: TargetIds & { platform: FunctionsPlatform },
 ): number {
   if (left.platform !== right.platform) {
     return right.platform < left.platform ? -1 : 1;

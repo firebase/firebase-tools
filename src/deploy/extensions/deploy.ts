@@ -49,7 +49,7 @@ export async function deploy(context: Context, options: Options, payload: Payloa
     const task = tasks.configureExtensionInstanceTask(
       projectId,
       configure,
-      /* validateOnly=*/ true
+      /* validateOnly=*/ true,
     );
     void validationQueue.run(task);
   }
@@ -64,7 +64,7 @@ export async function deploy(context: Context, options: Options, payload: Payloa
   if (errorHandler.hasErrors()) {
     errorHandler.print();
     throw new FirebaseError(
-      `Extensions deployment failed validation. No changes have been made to the Extension instances on ${projectId}`
+      `Extensions deployment failed validation. No changes have been made to the Extension instances on ${projectId}`,
     );
   }
 }

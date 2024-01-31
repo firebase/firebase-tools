@@ -32,7 +32,7 @@ export function validateCodebase(codebase: string): void {
   if (codebase.length === 0 || codebase.length > 63 || !/^[a-z0-9_-]+$/.test(codebase)) {
     throw new FirebaseError(
       "Invalid codebase name. Codebase must be less than 64 characters and " +
-        "can contain only lowercase letters, numeric characters, underscores, and dashes."
+        "can contain only lowercase letters, numeric characters, underscores, and dashes.",
     );
   }
 }
@@ -55,7 +55,7 @@ function validateSingle(config: FunctionConfig): ValidatedSingle {
 export function assertUnique(
   config: ValidatedConfig,
   property: keyof ValidatedSingle,
-  propval?: string
+  propval?: string,
 ): void {
   const values = new Set();
   if (propval) {
@@ -65,7 +65,7 @@ export function assertUnique(
     const value = single[property];
     if (values.has(value)) {
       throw new FirebaseError(
-        `functions.${property} must be unique but '${value}' was used more than once.`
+        `functions.${property} must be unique but '${value}' was used more than once.`,
       );
     }
     values.add(value);

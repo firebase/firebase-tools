@@ -18,7 +18,7 @@ setGracefulCleanup();
 async function uploadSourceV1(
   projectId: string,
   source: args.Source,
-  wantBackend: backend.Backend
+  wantBackend: backend.Backend,
 ): Promise<string | undefined> {
   const v1Endpoints = backend.allEndpoints(wantBackend).filter((e) => e.platform === "gcfv1");
   if (v1Endpoints.length === 0) {
@@ -39,7 +39,7 @@ async function uploadSourceV1(
 async function uploadSourceV2(
   projectId: string,
   source: args.Source,
-  wantBackend: backend.Backend
+  wantBackend: backend.Backend,
 ): Promise<gcfv2.StorageSource | undefined> {
   const v2Endpoints = backend.allEndpoints(wantBackend).filter((e) => e.platform === "gcfv2");
   if (v2Endpoints.length === 0) {
@@ -58,7 +58,7 @@ async function uploadSourceV2(
 async function uploadCodebase(
   context: args.Context,
   codebase: string,
-  wantBackend: backend.Backend
+  wantBackend: backend.Backend,
 ): Promise<void> {
   const source = context.sources?.[codebase];
   if (!source || (!source.functionsSourceV1 && !source.functionsSourceV2)) {
@@ -81,7 +81,7 @@ async function uploadCodebase(
     const sourceDir = configForCodebase(context.config!, codebase).source;
     if (uploads.length) {
       logSuccess(
-        `${clc.green(clc.bold("functions:"))} ${clc.bold(sourceDir)} folder uploaded successfully`
+        `${clc.green(clc.bold("functions:"))} ${clc.bold(sourceDir)} folder uploaded successfully`,
       );
     }
   } catch (err: any) {
@@ -99,7 +99,7 @@ async function uploadCodebase(
 export async function deploy(
   context: args.Context,
   options: Options,
-  payload: args.Payload
+  payload: args.Payload,
 ): Promise<void> {
   if (!context.config) {
     return;
@@ -126,7 +126,7 @@ export async function deploy(
 export function shouldUploadBeSkipped(
   context: args.Context,
   wantBackend: backend.Backend,
-  haveBackend: backend.Backend
+  haveBackend: backend.Backend,
 ): boolean {
   // If function targets are specified by --only flag, assume that function will be deployed
   // and go ahead and upload the source.

@@ -157,7 +157,7 @@ describe("checkIam", () => {
         projectId,
         projectNumber,
         backend.of(wantFn),
-        backend.of(v1EventFn, v2CallableFn, wantFn)
+        backend.of(v1EventFn, v2CallableFn, wantFn),
       );
 
       expect(storageStub).to.not.have.been.called;
@@ -185,8 +185,8 @@ describe("checkIam", () => {
           projectId,
           projectNumber,
           backend.of(wantFn),
-          backend.empty()
-        )
+          backend.empty(),
+        ),
       ).to.not.be.rejected;
       expect(storageStub).to.have.been.calledOnce;
       expect(getIamStub).to.have.been.calledOnce;
@@ -218,12 +218,12 @@ describe("checkIam", () => {
           projectId,
           projectNumber,
           backend.of(wantFn),
-          backend.empty()
-        )
+          backend.empty(),
+        ),
       ).to.be.rejectedWith(
         "We failed to modify the IAM policy for the project. The functions " +
           "deployment requires specific roles to be granted to service agents," +
-          " otherwise the deployment will fail."
+          " otherwise the deployment will fail.",
       );
       expect(storageStub).to.have.been.calledOnce;
       expect(getIamStub).to.have.been.calledOnce;
@@ -280,7 +280,7 @@ describe("checkIam", () => {
         projectId,
         projectNumber,
         backend.of(wantFn),
-        backend.empty()
+        backend.empty(),
       );
 
       expect(storageStub).to.have.been.calledOnce;
@@ -336,7 +336,7 @@ describe("checkIam", () => {
       projectId,
       projectNumber,
       backend.of(wantFn),
-      backend.of(haveFn)
+      backend.of(haveFn),
     );
 
     expect(storageStub).to.have.been.calledOnce;
@@ -389,7 +389,7 @@ describe("checkIam", () => {
       projectId,
       projectNumber,
       backend.of(wantFn),
-      backend.empty()
+      backend.empty(),
     );
 
     expect(getIamStub).to.have.been.calledOnce;
@@ -425,7 +425,7 @@ describe("checkIam", () => {
       projectId,
       projectNumber,
       backend.of(wantFn),
-      backend.of(haveFn)
+      backend.of(haveFn),
     );
 
     expect(getIamStub).to.not.have.been.called;
@@ -476,7 +476,7 @@ describe("checkIam", () => {
       projectId,
       projectNumber,
       backend.of(wantFn),
-      backend.empty()
+      backend.empty(),
     );
 
     expect(getIamStub).to.have.been.calledOnce;
@@ -512,7 +512,7 @@ describe("checkIam", () => {
       projectId,
       projectNumber,
       backend.of(wantFn),
-      backend.of(haveFn)
+      backend.of(haveFn),
     );
 
     expect(getIamStub).to.not.have.been.called;
@@ -563,7 +563,7 @@ describe("checkIam", () => {
       projectId,
       projectNumber,
       backend.of(wantFn),
-      backend.empty()
+      backend.empty(),
     );
 
     expect(getIamStub).to.have.been.calledOnce;
@@ -599,7 +599,7 @@ describe("checkIam", () => {
       projectId,
       projectNumber,
       backend.of(wantFn),
-      backend.of(haveFn)
+      backend.of(haveFn),
     );
 
     expect(getIamStub).to.not.have.been.called;

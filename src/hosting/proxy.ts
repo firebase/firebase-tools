@@ -42,7 +42,7 @@ function makeVary(vary: string | null = ""): string {
 export function proxyRequestHandler(
   url: string,
   rewriteIdentifier: string,
-  options: { forceCascade?: boolean } = {}
+  options: { forceCascade?: boolean } = {},
 ): RequestHandler {
   return async (req: IncomingMessage, res: ServerResponse, next: () => void): Promise<unknown> => {
     logger.info(`[hosting] Rewriting ${req.url} to ${url} for ${rewriteIdentifier}`);
@@ -165,7 +165,7 @@ export function proxyRequestHandler(
         }
       } catch (e: any) {
         logger.debug(
-          `[hosting] had trouble parsing location header, but this may be okay: "${location}"`
+          `[hosting] had trouble parsing location header, but this may be okay: "${location}"`,
         );
       }
     }

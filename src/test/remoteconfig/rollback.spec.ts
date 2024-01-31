@@ -78,7 +78,7 @@ describe("RemoteConfig Rollback", () => {
         .reply(404, {});
       await expect(remoteconfig.rollbackTemplate(PROJECT_ID, 4)).to.eventually.be.rejectedWith(
         FirebaseError,
-        /Not Found/
+        /Not Found/,
       );
     });
   });
