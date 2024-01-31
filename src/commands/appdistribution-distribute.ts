@@ -52,23 +52,26 @@ export const command = new Command("appdistribution:distribute <release-binary-f
   )
   .option(
     "--test-devices <string>",
-    "semicolon-separated list of devices to run automated tests on, in the format 'model=<model-id>,version=<os-version-id>,locale=<locale>,orientation=<orientation>'. Run 'gcloud firebase test android|ios models list' to see available devices",
+    "semicolon-separated list of devices to run automated tests on, in the format 'model=<model-id>,version=<os-version-id>,locale=<locale>,orientation=<orientation>'. Run 'gcloud firebase test android|ios models list' to see available devices. Note: This feature is in beta.",
   )
   .option(
     "--test-devices-file <string>",
-    "path to file containing a list of semicolon- or newline-separated devices to run automated tests on, in the format 'model=<model-id>,version=<os-version-id>,locale=<locale>,orientation=<orientation>'. Run 'gcloud firebase test android|ios models list' to see available devices",
+    "path to file containing a list of semicolon- or newline-separated devices to run automated tests on, in the format 'model=<model-id>,version=<os-version-id>,locale=<locale>,orientation=<orientation>'. Run 'gcloud firebase test android|ios models list' to see available devices. Note: This feature is in beta.",
   )
   .option("--test-username <string>", "username for automatic login")
   .option("--test-password <string>", "password for automatic login")
   .option(
     "--test-username-resource <string>",
-    "resource name of the username field for automatic login",
+    "resource name for the username field for automatic login",
   )
   .option(
     "--test-password-resource <string>",
-    "resource name of the password field for automatic login",
+    "resource name for the password field for automatic login",
   )
-  .option("--test-async", "don't wait for automatic test results")
+  .option(
+    "--test-async",
+    "run tests asynchronously. Visit the Firebase console for the automatic test results.",
+  )
   .before(requireAuth)
   .action(async (file: string, options: any) => {
     const appName = getAppName(options);
@@ -178,7 +181,7 @@ export const command = new Command("appdistribution:distribute <release-binary-f
           { exit: 1 },
         );
       }
-      throw new FirebaseError(`failed to upload release. ${err.message}`, { exit: 1 });
+      throw new FirebaseError(`Failed to upload release. ${err.message}`, { exit: 1 });
     }
 
     // If this is an app bundle and the certificate was originally blank fetch the updated
@@ -204,6 +207,7 @@ export const command = new Command("appdistribution:distribute <release-binary-f
 
     // Run automated tests
     if (testDevices) {
+      utils.logBullet("starting automated tests (note: this feature is in beta)");
       const releaseTest = await requests.createReleaseTest(
         releaseName,
         testDevices,
@@ -220,7 +224,7 @@ async function awaitTestResults(
   requests: AppDistributionClient,
 ): Promise<void> {
   for (let i = 0; i < TEST_MAX_POLLING_RETRIES; i++) {
-    utils.logBullet("waiting for test(s) to complete…");
+    utils.logBullet("the automated tests results are pending");
     await delay(TEST_POLLING_INTERVAL_MILLIS);
     const releaseTest = await requests.getReleaseTest(releaseTestName);
     if (releaseTest.deviceExecutions.every((e) => e.state === TestState.PASSED)) {
@@ -234,23 +238,25 @@ async function awaitTestResults(
           continue;
         case TestState.FAILED:
           throw new FirebaseError(
-            `automated test failed for ${deviceToString(execution.device)}: ${execution.failedReason}`,
+            `Automated test failed for ${deviceToString(execution.device)}: ${execution.failedReason}`,
             { exit: 1 },
           );
         case TestState.INCONCLUSIVE:
           throw new FirebaseError(
-            `automated test inconclusive for ${deviceToString(execution.device)}: ${execution.inconclusiveReason}`,
+            `Automated test inconclusive for ${deviceToString(execution.device)}: ${execution.inconclusiveReason}`,
             { exit: 1 },
           );
         default:
           throw new FirebaseError(
-            `unsupported automated test state for ${deviceToString(execution.device)}: ${execution.state}`,
+            `Unsupported automated test state for ${deviceToString(execution.device)}: ${execution.state}`,
             { exit: 1 },
           );
       }
     }
   }
-  throw new FirebaseError("tests are running for longer than expected", { exit: 1 });
+  throw new FirebaseError("It took longer than expected to process your test, please try again.", {
+    exit: 1,
+  });
 }
 
 function delay(ms: number) {
