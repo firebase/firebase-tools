@@ -327,7 +327,7 @@ describe("distribution", () => {
 
     it("should throw error if request fails", async () => {
       nock(appDistributionOrigin)
-        .post(`/v1alpha/${releaseName}`)
+        .post(`/v1alpha/${releaseName}/tests`)
         .reply(400, { error: { status: "FAILED_PRECONDITION" } });
       await expect(
         appDistributionClient.createReleaseTest(releaseName, mockDevices),
@@ -336,7 +336,7 @@ describe("distribution", () => {
     });
 
     it("should resolve with ReleaseTest when request succeeds", async () => {
-      nock(appDistributionOrigin).post(`/v1alpha/${releaseName}`).reply(200, mockReleaseTest);
+      nock(appDistributionOrigin).post(`/v1alpha/${releaseName}/tests`).reply(200, mockReleaseTest);
       await expect(
         appDistributionClient.createReleaseTest(releaseName, mockDevices),
       ).to.be.eventually.deep.eq(mockReleaseTest);
