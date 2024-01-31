@@ -120,6 +120,9 @@ export interface WebviewToExtensionParamsMap {
   chooseQuickstartDir: {};
 
   notifyAuthUserMockChange: UserMock;
+
+  /** Opens the "connect to instance" picker */
+  connectToInstance: void;
 }
 
 export interface FirematResults {

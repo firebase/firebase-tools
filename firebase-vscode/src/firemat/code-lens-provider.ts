@@ -4,9 +4,10 @@ import { OperationLocation } from "./types";
 import { Disposable } from "vscode";
 
 import { isFirematEmulatorRunning } from "../core/emulators";
-import { Signal, computed } from "@preact/signals-core";
+import { Signal } from "@preact/signals-core";
 import { firematConfig } from "../core/config";
 import path from "path";
+import { selectedInstance } from "./connect-instance";
 
 abstract class ComputedCodeLensProvider implements vscode.CodeLensProvider {
   private readonly _onChangeCodeLensesEmitter = new vscode.EventEmitter<void>();
@@ -86,12 +87,23 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
           position: position,
         };
         const opKind = x.operation as string; // query or mutation
-        const schemaPath = configs.schema.main.source;
 
-        if (isPathInside(document.fileName, schemaPath)) {
+        const isInSchemaFolder = isPathInside(
+          document.fileName,
+          configs.schema.main.source,
+        );
+        const connectorPaths = Object.keys(configs.operationSet).map(
+          (key) => configs.operationSet[key]!.source,
+        );
+        const isInOperationFolder = connectorPaths.every(
+          (path) => !isPathInside(document.fileName, path),
+        );
+        const instance = this.watch(selectedInstance);
+
+        if (instance && (isInSchemaFolder || isInOperationFolder)) {
           codeLenses.push(
             new vscode.CodeLens(range, {
-              title: `$(play) Execute ${opKind}`,
+              title: `$(play) Run (${instance})`,
               command: "firebase.firemat.executeOperation",
               tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
               arguments: [x, operationLocation],
@@ -99,12 +111,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
           );
         }
 
-        const connectorPaths = Object.keys(configs.operationSet).map(
-          (key) => configs.operationSet[key]!.source,
-        );
-        if (
-          connectorPaths.every((path) => !isPathInside(document.fileName, path))
-        ) {
+        if (isInOperationFolder) {
           codeLenses.push(
             new vscode.CodeLens(range, {
               title: `$(plug) Move to connector`,

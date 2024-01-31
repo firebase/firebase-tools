@@ -1,4 +1,5 @@
 import vscode, { Disposable, ExtensionContext } from "vscode";
+import { effect } from "@preact/signals-core";
 
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { registerExecution } from "./execution";
@@ -12,6 +13,8 @@ import {
 import { globalSignal } from "../utils/globals";
 import { registerConnectors } from "./connectors";
 import { AuthService } from "../auth/service";
+import { registerFirebaseDataConnectView } from "./connect-instance";
+import { currentProjectId } from "../core/project";
 // import { setupLanguageClient } from "./language-client";
 
 const firematEndpoint = globalSignal<string | undefined>(undefined);
@@ -38,9 +41,23 @@ export function registerFiremat(
     }
   });
 
+  const selectedProjectStatus = vscode.window.createStatusBarItem(
+    vscode.StatusBarAlignment.Left,
+  );
+  selectedProjectStatus.tooltip = "Select a Firebase project";
+  selectedProjectStatus.command = "firebase.selectProject";
+
   return Disposable.from(
+    selectedProjectStatus,
+    {
+      dispose: effect(() => {
+        selectedProjectStatus.text = currentProjectId.value ?? "<No project>";
+        selectedProjectStatus.show();
+      }),
+    },
     registerExecution(context, broker, firematService),
     registerExplorer(context, broker, firematService),
+    registerFirebaseDataConnectView(context, broker),
     registerAdHoc(context, broker),
     registerConnectors(context, broker, firematService),
     operationCodeLensProvider,

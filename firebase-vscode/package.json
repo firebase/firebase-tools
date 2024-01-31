@@ -49,6 +49,11 @@
           "type": "boolean",
           "default": true,
           "description": "Enable web frameworks"
+        },
+        "firebase.firemat.alwaysAllowMutationsInProduction": {
+          "type": "boolean",
+          "default": false,
+          "description": "Always allow mutations in production. If false (default), trying to run a mutation in production will open a confirmation modal."
         }
       }
     },
@@ -93,8 +98,13 @@
           "name": "Firebase"
         },
         {
+          "type": "webview",
+          "id": "firemat",
+          "name": "Firebase Data Connect"
+        },
+        {
           "id": "firebase.firemat.explorerView",
-          "name": "Firemat Explorer"
+          "name": "FDC Explorer"
         }
       ],
       "firebase-firemat-execution-view": [

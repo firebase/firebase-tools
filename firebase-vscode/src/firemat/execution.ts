@@ -1,4 +1,8 @@
-import vscode, { Disposable, ExtensionContext } from "vscode";
+import vscode, {
+  ConfigurationTarget,
+  Disposable,
+  ExtensionContext,
+} from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { registerWebview } from "../webview";
 import { ExecutionHistoryTreeDataProvider } from "./execution-history-provider";
@@ -13,10 +17,11 @@ import {
   updateExecution,
 } from "./execution-store";
 import { batch, effect } from "@preact/signals-core";
-import { OperationDefinitionNode, print } from "graphql";
+import { OperationDefinitionNode, OperationTypeNode, print } from "graphql";
 import { FirematService } from "./service";
 import { FirematError, toSerializedError } from "../../common/error";
 import { OperationLocation } from "./types";
+import { selectedInstance } from "./connect-instance";
 
 export function registerExecution(
   context: ExtensionContext,
@@ -60,6 +65,34 @@ export function registerExecution(
     ast: OperationDefinitionNode,
     { document, documentPath, position }: OperationLocation,
   ) {
+    const configs = vscode.workspace.getConfiguration("firebase.firemat");
+    const alwaysSettingsKey = "alwaysAllowMutationsInProduction";
+
+    // Warn against using mutations in production.
+    if (
+      selectedInstance.value !== "emulator" &&
+      !configs.get(alwaysSettingsKey) &&
+      ast.operation === OperationTypeNode.MUTATION
+    ) {
+      const always = "Yes (always)";
+      const yes = "Yes";
+      const result = await vscode.window.showWarningMessage(
+        "You are about to perform a mutation in production environment. Are you sure?",
+        { modal: true },
+        yes,
+        always,
+      );
+
+      if (result !== always && result !== yes) {
+        return;
+      }
+
+      // If the user selects "always", we update User settings.
+      if (result === always) {
+        configs.update(alwaysSettingsKey, true, ConfigurationTarget.Global);
+      }
+    }
+
     const item = createExecution({
       label: ast.name?.value ?? "anonymous",
       timestamp: Date.now(),

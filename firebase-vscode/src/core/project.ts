@@ -48,7 +48,7 @@ export function registerProject({
   context: ExtensionContext;
   broker: ExtensionBrokerImpl;
 }): Disposable {
-  effect(async () => {
+  const effect1 = effect(async () => {
     const user = currentUser.value;
     if (user) {
       pluginLogger.info("(Core:Project) New user detected, fetching projects");
@@ -60,68 +60,88 @@ export function registerProject({
     }
   });
 
-  effect(() => {
+  const effect2 = effect(() => {
     broker.send("notifyProjectChanged", {
       projectId: currentProject.value?.projectId ?? "",
     });
   });
 
   // Update .firebaserc with defined project ID
-  effect(() => {
+  const effect3 = effect(() => {
     const projectId = currentProjectId.value;
     if (projectId) {
       updateFirebaseRCProject(context, "default", currentProjectId.value);
     }
   });
 
-  broker.on("getInitialData", () => {
+  // Initialize currentProjectId to default project ID
+  const effect4 = effect(() => {
+    if (!currentProjectId.value) {
+      currentProjectId.value = firebaseRC.value?.projects.default;
+    }
+  });
+
+  const onGetInitialData = broker.on("getInitialData", () => {
     broker.send("notifyProjectChanged", {
       projectId: currentProject.value?.projectId ?? "",
     });
   });
 
-  broker.on("selectProject", async () => {
-    if (process.env.MONOSPACE_ENV) {
-      pluginLogger.debug(
-        "selectProject: found MONOSPACE_ENV, " +
-          "prompting user using external flow",
-      );
-      /**
-       * Monospace case: use Monospace flow
-       */
-      const monospaceExtension =
-        vscode.extensions.getExtension("google.monospace");
-      process.env.MONOSPACE_DAEMON_PORT =
-        monospaceExtension.exports.getMonospaceDaemonPort();
-      try {
-        const projectId = await selectProjectInMonospace({
-          projectRoot: currentOptions.value.cwd,
-          project: undefined,
-          isVSCE: true,
-        });
-
-        if (projectId) {
-          currentProjectId.value = projectId;
-        }
-      } catch (e) {
-        pluginLogger.error(e);
-      }
-    } else if (isServiceAccount.value) {
-      return;
-    } else {
-      try {
-        currentProjectId.value = await promptUserForProject(
-          userScopedProjects.value,
+  const selectProjectCommand = vscode.commands.registerCommand(
+    "firebase.selectProject",
+    async () => {
+      if (process.env.MONOSPACE_ENV) {
+        pluginLogger.debug(
+          "selectProject: found MONOSPACE_ENV, " +
+            "prompting user using external flow",
         );
-      } catch (e) {
-        vscode.window.showErrorMessage(e.message);
-      }
-    }
-  });
+        /**
+         * Monospace case: use Monospace flow
+         */
+        const monospaceExtension =
+          vscode.extensions.getExtension("google.monospace");
+        process.env.MONOSPACE_DAEMON_PORT =
+          monospaceExtension.exports.getMonospaceDaemonPort();
+        try {
+          const projectId = await selectProjectInMonospace({
+            projectRoot: currentOptions.value.cwd,
+            project: undefined,
+            isVSCE: true,
+          });
 
-  return {
-    dispose() {},
-  };
+          if (projectId) {
+            currentProjectId.value = projectId;
+          }
+        } catch (e) {
+          pluginLogger.error(e);
+        }
+      } else if (isServiceAccount.value) {
+        return;
+      } else {
+        try {
+          currentProjectId.value = await promptUserForProject(
+            userScopedProjects.value,
+          );
+        } catch (e) {
+          vscode.window.showErrorMessage(e.message);
+        }
+      }
+    },
+  );
+
+  const onSelectProject = broker.on("selectProject", () =>
+    vscode.commands.executeCommand("firebase.selectProject"),
+  );
+
+  return vscode.Disposable.from(
+    selectProjectCommand,
+    { dispose: onGetInitialData },
+    { dispose: onSelectProject },
+    { dispose: effect1 },
+    { dispose: effect2 },
+    { dispose: effect3 },
+    { dispose: effect4 },
+  );
 }
 
 /** Get the user to select a project */
