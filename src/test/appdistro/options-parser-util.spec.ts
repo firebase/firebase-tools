@@ -2,19 +2,21 @@ import { expect } from "chai";
 import { getLoginCredential, getTestDevices } from "../../appdistribution/options-parser-util";
 import { FirebaseError } from "../../error";
 
-describe.only("options-parser-util", () => {
+describe("options-parser-util", () => {
   describe("getTestDevices", () => {
     it("parses a test device", () => {
       const optionValue = "model=modelname,version=123,orientation=landscape,locale=en_US";
 
       const result = getTestDevices(optionValue, "");
 
-      expect(result).to.deep.equal([{
-        model: "modelname",
-        version: "123",
-        orientation: "landscape",
-        locale: "en_US",
-      }]);
+      expect(result).to.deep.equal([
+        {
+          model: "modelname",
+          version: "123",
+          orientation: "landscape",
+          locale: "en_US",
+        },
+      ]);
     });
 
     it("parses multiple semicolon-separated test devices", () => {
@@ -35,7 +37,7 @@ describe.only("options-parser-util", () => {
           version: "456",
           orientation: "portrait",
           locale: "es",
-        }
+        },
       ]);
     });
 
@@ -57,7 +59,7 @@ describe.only("options-parser-util", () => {
           version: "456",
           orientation: "portrait",
           locale: "es",
-        }
+        },
       ]);
     });
 
@@ -71,7 +73,8 @@ describe.only("options-parser-util", () => {
     });
 
     it("throws an error with expected fields when field is unexpected", () => {
-      const optionValue = "model=modelname,version=123,orientation=landscape,locale=en_US,notafield=blah";
+      const optionValue =
+        "model=modelname,version=123,orientation=landscape,locale=en_US,notafield=blah";
 
       expect(() => getTestDevices(optionValue, "")).to.throw(
         FirebaseError,
@@ -94,11 +97,16 @@ describe.only("options-parser-util", () => {
     it("returns undefined when no options provided", () => {
       const result = getLoginCredential();
 
-      expect(result).to.be.undefined
+      expect(result).to.be.undefined;
     });
 
     it("returns credential for username, password, and resource names", () => {
-      const result = getLoginCredential("user", "123", "username_resource_id", "password_resource_id");
+      const result = getLoginCredential(
+        "user",
+        "123",
+        "username_resource_id",
+        "password_resource_id",
+      );
 
       expect(result).to.deep.equal({
         username: "user",
@@ -113,22 +121,21 @@ describe.only("options-parser-util", () => {
     it("throws error when username and password not provided together", () => {
       expect(() => getLoginCredential("user", undefined)).to.throw(
         FirebaseError,
-        "Username and password for automated tests need to be specified together"
+        "Username and password for automated tests need to be specified together",
       );
     });
 
     it("throws error when username but not password resources not provided together", () => {
       expect(() => getLoginCredential("user", "123", undefined, "password_resource_id")).to.throw(
         FirebaseError,
-        "Username and password resource names for automated tests need to be specified together"
+        "Username and password resource names for automated tests need to be specified together",
       );
     });
 
     it("throws error when resource names provided without username and password", () => {
-      expect(() => getLoginCredential(undefined, undefined, "username_resource_id", "password_resource_id")).to.throw(
-        FirebaseError,
-        "Must specify username and password"
-      );
+      expect(() =>
+        getLoginCredential(undefined, undefined, "username_resource_id", "password_resource_id"),
+      ).to.throw(FirebaseError, "Must specify username and password");
     });
   });
 });
