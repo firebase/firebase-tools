@@ -416,7 +416,7 @@ describe("planner", () => {
   });
 
   describe("checkForUnsafeUpdate", () => {
-    it.only("returns true when upgrading from 2nd gen firestore to firestore auth context triggers", () => {
+    it("returns true when upgrading from 2nd gen firestore to firestore auth context triggers", () => {
       const have: backend.Endpoint = {
         ...func("id", "region"),
         platform: "gcfv2",

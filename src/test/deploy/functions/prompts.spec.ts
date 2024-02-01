@@ -456,7 +456,7 @@ describe("promptForUnsafeMigration", () => {
     eventTrigger: firestoreEventTrigger,
   };
 
-  it.only("should prompt if there are potentially unsafe function updates", async () => {
+  it("should prompt if there are potentially unsafe function updates", async () => {
     promptStub.resolves(false);
     const epUpdates = [
       {
@@ -472,7 +472,7 @@ describe("promptForUnsafeMigration", () => {
     expect(promptStub).to.have.been.calledOnce;
   });
 
-  it.only("should only keep function updates that have been confirmed by user", async () => {
+  it("should only keep function updates that have been confirmed by user", async () => {
     promptStub.onFirstCall().resolves(true);
     promptStub.onSecondCall().resolves(false);
 
@@ -492,7 +492,7 @@ describe("promptForUnsafeMigration", () => {
     ).to.eventually.deep.equal([{ endpoint: v2Endpoint0, unsafe: true }]);
   });
 
-  it.only("should force unsafe function updates when flag is set", async () => {
+  it("should force unsafe function updates when flag is set", async () => {
     const epUpdates = [
       {
         endpoint: v2Endpoint0,
@@ -511,7 +511,7 @@ describe("promptForUnsafeMigration", () => {
     expect(promptStub).to.have.not.been.called;
   });
 
-  it.only("should not proceed with unsafe function updates in non-interactive mode", async () => {
+  it("should not proceed with unsafe function updates in non-interactive mode", async () => {
     const epUpdates = [
       {
         endpoint: v2Endpoint0,
