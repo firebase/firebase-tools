@@ -488,7 +488,7 @@ describe("promptForUnsafeMigration", () => {
     ];
 
     await expect(
-      functionPrompts.promptForUnsafeMigration(epUpdates, SAMPLE_OPTIONS)
+      functionPrompts.promptForUnsafeMigration(epUpdates, SAMPLE_OPTIONS),
     ).to.eventually.deep.equal([{ endpoint: v2Endpoint0, unsafe: true }]);
   });
 
@@ -506,7 +506,7 @@ describe("promptForUnsafeMigration", () => {
     const options = { ...SAMPLE_OPTIONS, force: true };
 
     await expect(functionPrompts.promptForUnsafeMigration(epUpdates, options)).to.eventually.equal(
-      epUpdates
+      epUpdates,
     );
     expect(promptStub).to.have.not.been.called;
   });
@@ -524,7 +524,7 @@ describe("promptForUnsafeMigration", () => {
     ];
     const options = { ...SAMPLE_OPTIONS, nonInteractive: true };
     await expect(
-      functionPrompts.promptForUnsafeMigration(epUpdates, options)
+      functionPrompts.promptForUnsafeMigration(epUpdates, options),
     ).to.eventually.deep.equal([{ endpoint: v2Endpoint1, unsafe: false }]);
     expect(promptStub).to.have.not.been.called;
   });
