@@ -55,7 +55,9 @@ export class AuthBlockingService implements Service {
       newConfig.triggers?.beforeSignIn?.functionUri !==
         config.triggers?.beforeSignIn?.functionUri ||
       newConfig.triggers?.beforeSendEmail?.functionUri !==
-        config.triggers?.beforeSendEmail?.functionUri
+        config.triggers?.beforeSendEmail?.functionUri ||
+      newConfig.triggers?.beforeSendSms?.functionUri !==
+        config.triggers?.beforeSendSms?.functionUri
     ) {
       return true;
     }
@@ -99,6 +101,13 @@ export class AuthBlockingService implements Service {
           functionUri: endpoint.uri!,
         },
       };
+    } else if (endpoint.blockingTrigger.eventType === events.v1.BEFORE_SEND_EMAIL_EVENT) {
+      newBlockingConfig.triggers = {
+        ...newBlockingConfig.triggers,
+        beforeSendSms: {
+          functionUri: endpoint.uri!,
+        },
+      };
     } else {
       throw new FirebaseError(
         `Received invalid blocking trigger event type ${endpoint.blockingTrigger.eventType}`
@@ -136,7 +145,8 @@ export class AuthBlockingService implements Service {
     if (
       endpoint.uri !== blockingConfig.triggers?.beforeCreate?.functionUri &&
       endpoint.uri !== blockingConfig.triggers?.beforeSignIn?.functionUri &&
-      endpoint.uri !== blockingConfig.triggers?.beforeSendEmail?.functionUri
+      endpoint.uri !== blockingConfig.triggers?.beforeSendEmail?.functionUri &&
+      endpoint.uri !== blockingConfig.triggers?.beforeSendSms?.functionUri
     ) {
       return;
     }
@@ -152,6 +162,9 @@ export class AuthBlockingService implements Service {
     }
     if (endpoint.uri === blockingConfig.triggers?.beforeSendEmail?.functionUri) {
       delete blockingConfig.triggers?.beforeSendEmail;
+    }
+    if (endpoint.uri === blockingConfig.triggers?.beforeSendSms?.functionUri) {
+      delete blockingConfig.triggers?.beforeSendSms;
     }
 
     await identityPlatform.setBlockingFunctionsConfig(endpoint.project, blockingConfig);
