@@ -3,6 +3,7 @@ import { Client } from "../apiv2";
 import { needProjectId } from "../projectUtils";
 import { apphostingOrigin } from "../api";
 import { ensure } from "../ensureApiEnabled";
+import * as deploymentTool from "../deploymentTool";
 
 export const API_HOST = new URL(apphostingOrigin).host;
 export const API_VERSION = "v1alpha";
@@ -266,7 +267,13 @@ export async function createBackend(
 ): Promise<Operation> {
   const res = await client.post<Omit<Backend, BackendOutputOnlyFields>, Operation>(
     `projects/${projectId}/locations/${location}/backends`,
-    backendReqBoby,
+    {
+      ...backendReqBoby,
+      labels: {
+        ...backendReqBoby.labels,
+        ...deploymentTool.labels(),
+      },
+    },
     { queryParams: { backendId } },
   );
 
@@ -339,7 +346,13 @@ export async function createBuild(
 ): Promise<Operation> {
   const res = await client.post<Omit<BuildInput, "name">, Operation>(
     `projects/${projectId}/locations/${location}/backends/${backendId}/builds`,
-    buildInput,
+    {
+      ...buildInput,
+      labels: {
+        ...buildInput.labels,
+        ...deploymentTool.labels(),
+      },
+    },
     { queryParams: { buildId } },
   );
   return res.body;
@@ -357,7 +370,13 @@ export async function createRollout(
 ): Promise<Operation> {
   const res = await client.post<Omit<Rollout, RolloutOutputOnlyFields | "name">, Operation>(
     `projects/${projectId}/locations/${location}/backends/${backendId}/rollouts`,
-    rollout,
+    {
+      ...rollout,
+      labels: {
+        ...rollout.labels,
+        ...deploymentTool.labels(),
+      },
+    },
     { queryParams: { rolloutId } },
   );
   return res.body;
