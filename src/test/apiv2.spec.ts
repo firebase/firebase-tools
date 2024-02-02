@@ -288,6 +288,22 @@ describe("apiv2", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("should make a basic GET request with a boolean query string param", async () => {
+      nock("https://example.com")
+        .get("/path/to/foo")
+        .query({ key: true })
+        .reply(200, { success: true });
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = await c.request({
+        method: "GET",
+        path: "/path/to/foo",
+        queryParams: { key: true },
+      });
+      expect(r.body).to.deep.equal({ success: true });
+      expect(nock.isDone()).to.be.true;
+    });
+
     it("should make a basic GET request and not override the user-agent", async () => {
       nock("https://example.com")
         .get("/path/to/foo")
