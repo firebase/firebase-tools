@@ -5,7 +5,6 @@ import { FirebaseError } from "../error";
 import { promptOnce } from "../prompt";
 import { logger } from "../logger";
 import { DEFAULT_REGION } from "../init/features/apphosting/constants";
-import { last } from "../utils";
 import * as utils from "../utils";
 import * as apphosting from "../gcp/apphosting";
 
@@ -30,7 +29,10 @@ export const command = new Command("apphosting:backends:delete")
   .action(async (options: Options) => {
     const projectId = needProjectId(options);
     let location = options.location as string;
-    let backendId = options.backend as string;
+    const backendId = options.backend as string;
+    if (!backendId) {
+      throw new FirebaseError("Backend id can't be empty.");
+    }
 
     if (!location) {
       const allowedLocations = (await apphosting.listLocations(projectId)).map(
@@ -45,27 +47,21 @@ export const command = new Command("apphosting:backends:delete")
       });
     }
 
-    let backend: apphosting.Backend;
-    if (backendId) {
-      try {
-        backend = await apphosting.getBackend(projectId, location, backendId);
-      } catch (err: any) {
-        throw new FirebaseError(`No backends found with given parameters. Command aborted.`, {
-          original: err,
-        });
-      }
-    } else {
-      backend = await pickBackend(projectId, location);
-      backendId = last(backend.name.split("/"));
-    }
-
     const table = new Table({
       head: TABLE_HEAD,
       style: { head: ["green"] },
     });
     table.colWidths = COLUMN_LENGTH;
 
-    populateTable(backend, table);
+    let backend;
+    try {
+      backend = await apphosting.getBackend(projectId, location, backendId);
+      populateTable(backend, table);
+    } catch (err: any) {
+      throw new FirebaseError(`No backends found with given parameters. Command aborted.`, {
+        original: err,
+      });
+    }
 
     utils.logWarning("You are about to permanently delete the backend:");
     logger.info(table.toString());
@@ -115,22 +111,4 @@ function populateTable(backend: apphosting.Backend, table: any) {
     return chunks.join("\n");
   });
   table.push(newRow);
-}
-
-async function pickBackend(projectId: string, location: string): Promise<apphosting.Backend> {
-  const backendList = await apphosting.listBackends(projectId, location);
-  if (!backendList.backends.length) {
-    throw new FirebaseError(`No backends found in location ${location}`);
-  }
-  if (backendList.backends.length === 1) {
-    return backendList.backends[0];
-  }
-  const backendIds = backendList.backends.map((backend) => last(backend.name.split("/")));
-  const backendId = await promptOnce({
-    name: "backend",
-    type: "list",
-    message: "Please select the backend you'd like to delete:",
-    choices: backendIds,
-  });
-  return backendList.backends.find((backend) => last(backend.name.split("/")) === backendId)!;
 }

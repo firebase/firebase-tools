@@ -70,7 +70,7 @@ describe("operationsConverter", () => {
       labels: deploymentTool.labels(),
     };
 
-    it("should createBackend with rollout policy", async () => {
+    it("should createBackend", async () => {
       createBackendStub.resolves(op);
       pollOperationStub.resolves(completeBackend);
 
