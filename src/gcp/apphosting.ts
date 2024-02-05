@@ -75,7 +75,7 @@ export type BuildOutputOnlyFields =
   | "error"
   | "image"
   | "sourceRef"
-  | "buildLogUri"
+  | "buildLogsUri"
   | "reconciling"
   | "uuid"
   | "etag"
@@ -210,10 +210,20 @@ export interface RolloutPolicy {
   // end oneof trigger
   stages?: RolloutStage[];
   disabled?: boolean;
+
+  // TODO: This will be undefined if disabled is not true, right?
   disabledTime: string;
 }
 
-export type RolloutPolicyOutputOnlyFields = "disabledtime";
+export type RolloutPolicyOutputOnlyFields = "disabledTime";
+
+export type RolloutPolicyInput = Omit<RolloutPolicy, RolloutPolicyOutputOnlyFields | "stages"> & {
+  stages: Omit<RolloutStage, "startTime" | "endTime">[];
+};
+
+export type TrafficInput = Omit<Traffic, TrafficOutputOnlyFields | "rolloutPolicy"> & {
+  rolloutPolicy: RolloutPolicyInput;
+};
 
 export type RolloutProgression =
   | "PROGRESSION_UNSPECIFIED"
@@ -317,8 +327,8 @@ export async function deleteBackend(
   location: string,
   backendId: string,
 ): Promise<Operation> {
-  const name = `projects/${projectId}/locations/${location}/backends/${backendId}?force=true`;
-  const res = await client.delete<Operation>(name);
+  const name = `projects/${projectId}/locations/${location}/backends/${backendId}`;
+  const res = await client.delete<Operation>(name, { queryParams: { force: "true" } });
 
   return res.body;
 }
@@ -446,14 +456,21 @@ export async function updateTraffic(
   projectId: string,
   location: string,
   backendId: string,
-  traffic: Omit<Traffic, TrafficOutputOnlyFields | "name">,
+  traffic: Omit<TrafficInput, "name">,
 ): Promise<Operation> {
-  const fieldMasks = proto.fieldMasks(traffic);
+  // BUG(b/322891558): setting deep fields on rolloutPolicy doesn't work for some
+  // reason. Create a copy without deep fields to force the updateMask to be
+  // correct.
+  const trafficCopy = { ...traffic };
+  if ("rolloutPolicy" in traffic) {
+    trafficCopy.rolloutPolicy = {} as any;
+  }
+  const fieldMasks = proto.fieldMasks(trafficCopy);
   const queryParams = {
     updateMask: fieldMasks.join(","),
   };
   const name = `projects/${projectId}/locations/${location}/backends/${backendId}/traffic`;
-  const res = await client.patch<Omit<Traffic, TrafficOutputOnlyFields>, Operation>(
+  const res = await client.patch<TrafficInput, Operation>(
     name,
     { ...traffic, name },
     {
