@@ -88,19 +88,15 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
         };
         const opKind = x.operation as string; // query or mutation
 
-        const isInSchemaFolder = isPathInside(
-          document.fileName,
-          configs.schema.main.source,
-        );
         const connectorPaths = Object.keys(configs.operationSet).map(
           (key) => configs.operationSet[key]!.source,
         );
-        const isInOperationFolder = connectorPaths.every(
-          (path) => !isPathInside(document.fileName, path),
+        const isInOperationFolder = connectorPaths.every((path) =>
+          isPathInside(document.fileName, path),
         );
         const instance = this.watch(selectedInstance);
 
-        if (instance && (isInSchemaFolder || isInOperationFolder)) {
+        if (instance && isInOperationFolder) {
           codeLenses.push(
             new vscode.CodeLens(range, {
               title: `$(play) Run (${instance})`,
@@ -111,7 +107,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
           );
         }
 
-        if (isInOperationFolder) {
+        if (!isInOperationFolder) {
           codeLenses.push(
             new vscode.CodeLens(range, {
               title: `$(plug) Move to connector`,
