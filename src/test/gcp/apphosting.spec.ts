@@ -46,7 +46,7 @@ describe("apphosting", () => {
       });
 
       const id = await apphosting.getNextRolloutId("project", "location", "backend");
-      expect(id).equals(`${idPrefix(new Date())}-1`);
+      expect(id).equals(`${idPrefix(new Date())}-001`);
       expect(listRollouts).to.have.been.calledWith("project", "location", "backend");
     });
 
@@ -127,7 +127,7 @@ describe("apphosting", () => {
       });
       expect(get).to.have.been.calledTwice;
       expect(get).to.have.been.calledWithMatch("projects/p/locations/l/backends/b/builds", {
-        queryParams: { nextPageToken: "2" },
+        queryParams: { pageToken: "2" },
       });
     });
 
@@ -157,7 +157,7 @@ describe("apphosting", () => {
       });
       expect(get).to.have.been.calledTwice;
       expect(get).to.have.been.calledWithMatch("projects/p/locations/l/backends/b/rollouts", {
-        queryParams: { nextPageToken: "2" },
+        queryParams: { pageToken: "2" },
       });
     });
   });

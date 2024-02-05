@@ -346,26 +346,19 @@ export async function listBuilds(
   backendId: string,
 ): Promise<ListBuildsResponse> {
   const name = `projects/${projectId}/locations/${location}/backends/${backendId}/builds`;
-  let nextPageToken: string | null = null;
+  let pageToken: string | undefined = undefined;
   const res: ListBuildsResponse = {
     builds: [],
     unreachable: [],
   };
 
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    const queryParams: Record<string, string> = {};
-    if (nextPageToken) {
-      queryParams["nextPageToken"] = nextPageToken;
-    }
+  do {
+    const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
     const int = await client.get<ListBuildsResponse>(name, { queryParams });
     res.builds.splice(res.builds.length, 0, ...(int.body.builds || []));
     res.unreachable?.splice(res.unreachable.length, 0, ...(int.body.unreachable || []));
-    if (!int.body.nextPageToken) {
-      break;
-    }
-    nextPageToken = int.body.nextPageToken;
-  }
+    pageToken = int.body.nextPageToken;
+  } while (pageToken);
 
   res.unreachable = [...new Set(res.unreachable)];
   return res;
@@ -428,26 +421,19 @@ export async function listRollouts(
   backendId: string,
 ): Promise<ListRolloutsResponse> {
   const name = `projects/${projectId}/locations/${location}/backends/${backendId}/rollouts`;
-  let nextPageToken: string | undefined = undefined;
+  let pageToken: string | undefined = undefined;
   const res: ListRolloutsResponse = {
     rollouts: [],
     unreachable: [],
   };
 
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    const queryParams: Record<string, string> = {};
-    if (nextPageToken) {
-      queryParams["nextPageToken"] = nextPageToken;
-    }
+  do {
+    const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
     const int = await client.get<ListRolloutsResponse>(name, { queryParams });
     res.rollouts.splice(res.rollouts.length, 0, ...(int.body.rollouts || []));
     res.unreachable?.splice(res.unreachable.length, 0, ...(int.body.unreachable || []));
-    if (!int.body.nextPageToken) {
-      break;
-    }
-    nextPageToken = int.body.nextPageToken;
-  }
+    pageToken = int.body.nextPageToken;
+  } while (pageToken);
 
   res.unreachable = [...new Set(res.unreachable)];
   return res;
@@ -491,10 +477,13 @@ interface ListLocationsResponse {
  * Lists information about the supported locations.
  */
 export async function listLocations(projectId: string): Promise<Location[]> {
-  let pageToken;
+  let pageToken: string | undefined = undefined;
   let locations: Location[] = [];
   do {
-    const response = await client.get<ListLocationsResponse>(`projects/${projectId}/locations`);
+    const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
+    const response = await client.get<ListLocationsResponse>(`projects/${projectId}/locations`, {
+      queryParams,
+    });
     if (response.body.locations && response.body.locations.length > 0) {
       locations = locations.concat(response.body.locations);
     }
@@ -529,7 +518,7 @@ export async function getNextRolloutId(
   const day = String(date.getUTCDay()).padStart(2, "0");
 
   if (counter) {
-    return `build-${year}-${month}-${day}-${counter}`;
+    return `build-${year}-${month}-${day}-${String(counter).padStart(3, "0")}`;
   }
 
   // Note: must use exports here so that listRollouts can be stubbed in tests.
