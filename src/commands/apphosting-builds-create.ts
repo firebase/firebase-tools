@@ -15,7 +15,7 @@ export const command = new Command("apphosting:builds:create <backendId>")
     const location = options.location as string;
     const buildId =
       (options.buildId as string) ||
-      (await apphosting.getNextBuildId(projectId, location, backendId));
+      (await apphosting.getNextRolloutId(projectId, location, backendId));
     const branch = options.branch as string;
 
     const op = await apphosting.createBuild(projectId, location, backendId, buildId, {

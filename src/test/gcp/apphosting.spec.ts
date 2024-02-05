@@ -22,7 +22,7 @@ describe("apphosting", () => {
     }
 
     it("Should handle explicit counters", async () => {
-      const id = await apphosting.getNextBuildId("unused", "unused", "unused", 1);
+      const id = await apphosting.getNextRolloutId("unused", "unused", "unused", 1);
       expect(id).matches(new RegExp(`^${idPrefix(new Date())}-1$`));
       expect(listRollouts).to.not.have.been.called;
     });
@@ -34,7 +34,7 @@ describe("apphosting", () => {
       });
 
       await expect(
-        apphosting.getNextBuildId("project", "us-central1", "backend"),
+        apphosting.getNextRolloutId("project", "us-central1", "backend"),
       ).to.be.rejectedWith(/unreachable .*us-central1/);
       expect(listRollouts).to.have.been.calledWith("project", "us-central1", "backend");
     });
@@ -45,7 +45,7 @@ describe("apphosting", () => {
         unreachable: [],
       });
 
-      const id = await apphosting.getNextBuildId("project", "location", "backend");
+      const id = await apphosting.getNextRolloutId("project", "location", "backend");
       expect(id).equals(`${idPrefix(new Date())}-1`);
       expect(listRollouts).to.have.been.calledWith("project", "location", "backend");
     });
@@ -67,7 +67,7 @@ describe("apphosting", () => {
         unreachable: [],
       });
 
-      const id = await apphosting.getNextBuildId("project", "location", "backend");
+      const id = await apphosting.getNextRolloutId("project", "location", "backend");
       expect(id).to.equal(`${idPrefix(today)}-2`);
     });
 
@@ -85,7 +85,7 @@ describe("apphosting", () => {
         unreachable: [],
       });
 
-      const id = await apphosting.getNextBuildId("project", "location", "backend");
+      const id = await apphosting.getNextRolloutId("project", "location", "backend");
       expect(id).to.equal(`${idPrefix(today)}-1`);
     });
   });

@@ -15,7 +15,7 @@ export const command = new Command("apphosting:rollouts:create <backendId> <buil
     // TODO: Should we just reuse the buildId?
     const rolloutId =
       (options.buildId as string) ||
-      (await apphosting.getNextBuildId(projectId, location, backendId));
+      (await apphosting.getNextRolloutId(projectId, location, backendId));
     const build = `projects/${projectId}/backends/${backendId}/builds/${buildId}`;
     const op = await apphosting.createRollout(projectId, location, backendId, rolloutId, {
       build,

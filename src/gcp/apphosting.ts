@@ -516,7 +516,7 @@ export async function ensureApiEnabled(options: any): Promise<void> {
  * @param counter Overrides the counter to use, avoiding an API call.
  * @return
  */
-export async function getNextBuildId(
+export async function getNextRolloutId(
   projectId: string,
   location: string,
   backendId: string,

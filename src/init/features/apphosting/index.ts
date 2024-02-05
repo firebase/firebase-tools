@@ -182,7 +182,7 @@ export async function onboardRollout(
   buildInput: Omit<BuildInput, "name">,
 ): Promise<{ rollout: Rollout; build: Build }> {
   logBullet("Starting a new rollout... this may take a few minutes.");
-  const buildId = await apphosting.getNextBuildId(projectId, location, backendId, 1);
+  const buildId = await apphosting.getNextRolloutId(projectId, location, backendId, 1);
   const buildOp = await apphosting.createBuild(projectId, location, backendId, buildId, buildInput);
 
   const rolloutOp = await apphosting.createRollout(projectId, location, backendId, buildId, {
