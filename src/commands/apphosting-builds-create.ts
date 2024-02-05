@@ -2,7 +2,6 @@ import * as apphosting from "../gcp/apphosting";
 import { logger } from "../logger";
 import { Command } from "../command";
 import { Options } from "../options";
-import { generateId } from "../utils";
 import { needProjectId } from "../projectUtils";
 
 export const command = new Command("apphosting:builds:create <backendId>")
@@ -14,7 +13,9 @@ export const command = new Command("apphosting:builds:create <backendId>")
   .action(async (backendId: string, options: Options) => {
     const projectId = needProjectId(options);
     const location = options.location as string;
-    const buildId = (options.buildId as string) || generateId();
+    const buildId =
+      (options.buildId as string) ||
+      (await apphosting.getNextBuildId(projectId, location, backendId));
     const branch = options.branch as string;
 
     const op = await apphosting.createBuild(projectId, location, backendId, buildId, {

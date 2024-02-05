@@ -2,7 +2,7 @@ import * as clc from "colorette";
 import * as repo from "./repo";
 import * as poller from "../../../operation-poller";
 import * as apphosting from "../../../gcp/apphosting";
-import { generateId, logBullet, logSuccess, logWarning } from "../../../utils";
+import { logBullet, logSuccess, logWarning } from "../../../utils";
 import { apphostingOrigin } from "../../../api";
 import {
   Backend,
@@ -182,17 +182,16 @@ export async function onboardRollout(
   buildInput: Omit<BuildInput, "name">,
 ): Promise<{ rollout: Rollout; build: Build }> {
   logBullet("Starting a new rollout... this may take a few minutes.");
-  const buildId = generateId();
+  const buildId = await apphosting.getNextBuildId(projectId, location, backendId, 1);
   const buildOp = await apphosting.createBuild(projectId, location, backendId, buildId, buildInput);
 
-  const rolloutId = generateId();
-  const rolloutOp = await apphosting.createRollout(projectId, location, backendId, rolloutId, {
+  const rolloutOp = await apphosting.createRollout(projectId, location, backendId, buildId, {
     build: `projects/${projectId}/locations/${location}/backends/${backendId}/builds/${buildId}`,
   });
 
   const rolloutPoll = poller.pollOperation<Rollout>({
     ...apphostingPollerOptions,
-    pollerName: `create-${projectId}-${location}-backend-${backendId}-rollout-${rolloutId}`,
+    pollerName: `create-${projectId}-${location}-backend-${backendId}-rollout-${buildId}`,
     operationResourceName: rolloutOp.name,
   });
   const buildPoll = poller.pollOperation<Build>({
