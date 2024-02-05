@@ -27,7 +27,7 @@ describe("eventarcEmulatorUtils", () => {
           specVersion: "1.0",
           textData: '{"hello":"world"}',
           type: "some.custom.event",
-        })
+        }),
       ).to.deep.eq({
         type: "some.custom.event",
         specversion: "1.0",
@@ -65,7 +65,7 @@ describe("eventarcEmulatorUtils", () => {
           specVersion: "1.0",
           textData: '{"hello":"world"}',
           type: "some.custom.event",
-        })
+        }),
       ).throws("CloudEvent 'source' is required.");
     });
 
@@ -143,7 +143,7 @@ describe("eventarcEmulatorUtils", () => {
           specVersion: "1.0",
           textData: '{"hello":"world"}',
           type: "some.custom.event",
-        })
+        }),
       ).to.deep.eq({
         type: "some.custom.event",
         specversion: "1.0",

@@ -119,7 +119,7 @@ describe("billingMigrationHelper", () => {
       const newSpec = cloneDeep(NODE10_SPEC);
 
       await expect(
-        nodejsMigrationHelper.displayNode10CreateBillingNotice(newSpec, true)
+        nodejsMigrationHelper.displayNode10CreateBillingNotice(newSpec, true),
       ).to.be.rejectedWith(FirebaseError, "Cancelled");
     });
   });

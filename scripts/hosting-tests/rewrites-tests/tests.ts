@@ -60,7 +60,7 @@ function functionRegionString(functionRegions: string[]): string {
 function writeHelloWorldFunctionWithRegions(
   functionName: string,
   functionsDirectory: string,
-  functionRegions?: string[]
+  functionRegions?: string[],
 ): void {
   ensureDirSync(functionsDirectory);
 
@@ -103,7 +103,7 @@ function writeBasicHostingFile(hostingDirectory: string): void {
 < body >
 Rabbit
 < /body>
-< /html>`
+< /html>`,
   );
 }
 
@@ -158,7 +158,7 @@ describe("deploy function-targeted rewrites And functions", () => {
 
     writeHelloWorldFunctionWithRegions(
       functionName,
-      join(tempDirInfo.tempDir.name, ".", "functions")
+      join(tempDirInfo.tempDir.name, ".", "functions"),
     );
 
     await client.deploy({
@@ -169,12 +169,12 @@ describe("deploy function-targeted rewrites And functions", () => {
     });
 
     const staticResponse = await fetch(
-      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/index.html`
+      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/index.html`,
     );
     expect(await staticResponse.text()).to.contain("Rabbit");
 
     const functionsRequest = new Request(
-      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/helloWorld`
+      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/helloWorld`,
     );
 
     const functionsResponse = await fetch(functionsRequest);
@@ -203,7 +203,7 @@ describe("deploy function-targeted rewrites And functions", () => {
 
     writeHelloWorldFunctionWithRegions(
       functionName,
-      join(tempDirInfo.tempDir.name, ".", "functions")
+      join(tempDirInfo.tempDir.name, ".", "functions"),
     );
 
     await client.deploy({
@@ -214,12 +214,12 @@ describe("deploy function-targeted rewrites And functions", () => {
     });
 
     const staticResponse = await fetch(
-      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/index.html`
+      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/index.html`,
     );
     expect(await staticResponse.text()).to.contain("Rabbit");
 
     const functionsRequest = new Request(
-      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/helloWorld`
+      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/helloWorld`,
     );
 
     const functionsResponse = await fetch(functionsRequest);
@@ -248,7 +248,7 @@ describe("deploy function-targeted rewrites And functions", () => {
     writeHelloWorldFunctionWithRegions(
       functionName,
       join(tempDirInfo.tempDir.name, ".", "functions"),
-      ["europe-west1"]
+      ["europe-west1"],
     );
 
     await client.deploy({
@@ -259,12 +259,12 @@ describe("deploy function-targeted rewrites And functions", () => {
     });
 
     const staticResponse = await fetch(
-      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/index.html`
+      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/index.html`,
     );
     expect(await staticResponse.text()).to.contain("Rabbit");
 
     const functionsRequest = new Request(
-      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/helloWorld`
+      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/helloWorld`,
     );
 
     const functionsResponse = await fetch(functionsRequest);
@@ -294,7 +294,7 @@ describe("deploy function-targeted rewrites And functions", () => {
     writeHelloWorldFunctionWithRegions(
       functionName,
       join(tempDirInfo.tempDir.name, ".", "functions"),
-      ["asia-northeast1"]
+      ["asia-northeast1"],
     );
 
     await client.deploy({
@@ -305,12 +305,12 @@ describe("deploy function-targeted rewrites And functions", () => {
     });
 
     const staticResponse = await fetch(
-      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/index.html`
+      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/index.html`,
     );
     expect(await staticResponse.text()).to.contain("Rabbit");
 
     const functionsRequest = new Request(
-      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/helloWorld`
+      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/helloWorld`,
     );
 
     const functionsResponse = await fetch(functionsRequest);
@@ -340,7 +340,7 @@ describe("deploy function-targeted rewrites And functions", () => {
     writeHelloWorldFunctionWithRegions(
       functionName,
       join(tempDirInfo.tempDir.name, ".", "functions"),
-      ["europe-west2"]
+      ["europe-west2"],
     );
 
     await expect(
@@ -349,7 +349,7 @@ describe("deploy function-targeted rewrites And functions", () => {
         cwd: tempDirInfo.tempDir.name,
         only: "hosting,functions",
         force: true,
-      })
+      }),
     ).to.eventually.be.rejectedWith(FirebaseError, "Unable to find a valid endpoint for function");
   }).timeout(1000 * 1e3);
 
@@ -375,7 +375,7 @@ describe("deploy function-targeted rewrites And functions", () => {
     writeHelloWorldFunctionWithRegions(
       functionName,
       join(tempDirInfo.tempDir.name, ".", "functions"),
-      ["asia-northeast1"]
+      ["asia-northeast1"],
     );
 
     await client.deploy({
@@ -388,7 +388,7 @@ describe("deploy function-targeted rewrites And functions", () => {
     writeHelloWorldFunctionWithRegions(
       functionName,
       join(tempDirInfo.tempDir.name, ".", "functions"),
-      ["europe-west1"]
+      ["europe-west1"],
     );
     await expect(
       client.deploy({
@@ -396,7 +396,7 @@ describe("deploy function-targeted rewrites And functions", () => {
         cwd: tempDirInfo.tempDir.name,
         only: "functions,hosting",
         force: true,
-      })
+      }),
     ).to.eventually.be.rejectedWith(FirebaseError, "Unable to find a valid endpoint for function");
   }).timeout(1000 * 1e3);
 
@@ -426,7 +426,7 @@ describe("deploy function-targeted rewrites And functions", () => {
     });
 
     const staticResponse = await fetch(
-      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/index.html`
+      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/index.html`,
     );
     expect(await staticResponse.text()).to.contain("Rabbit");
   }).timeout(1000 * 1e3);
@@ -453,7 +453,7 @@ describe("deploy function-targeted rewrites And functions", () => {
     writeHelloWorldFunctionWithRegions(
       functionName,
       join(tempDirInfo.tempDir.name, ".", "functions"),
-      ["asia-northeast1", "europe-west1"]
+      ["asia-northeast1", "europe-west1"],
     );
 
     await client.deploy({
@@ -464,12 +464,12 @@ describe("deploy function-targeted rewrites And functions", () => {
     });
 
     const staticResponse = await fetch(
-      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/index.html`
+      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/index.html`,
     );
     expect(await staticResponse.text()).to.contain("Rabbit");
 
     const functionsRequest = new Request(
-      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/helloWorld`
+      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/helloWorld`,
     );
 
     const functionsResponse = await fetch(functionsRequest);
@@ -498,7 +498,7 @@ describe("deploy function-targeted rewrites And functions", () => {
     writeHelloWorldFunctionWithRegions(
       functionName,
       join(tempDirInfo.tempDir.name, ".", "functions"),
-      ["asia-northeast1", "us-central1"]
+      ["asia-northeast1", "us-central1"],
     );
 
     await client.deploy({
@@ -509,12 +509,12 @@ describe("deploy function-targeted rewrites And functions", () => {
     });
 
     const staticResponse = await fetch(
-      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/index.html`
+      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/index.html`,
     );
     expect(await staticResponse.text()).to.contain("Rabbit");
 
     const functionsRequest = new Request(
-      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/helloWorld`
+      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/helloWorld`,
     );
 
     const functionsResponse = await fetch(functionsRequest);
@@ -544,7 +544,7 @@ describe("deploy function-targeted rewrites And functions", () => {
     writeHelloWorldFunctionWithRegions(
       functionName,
       join(tempDirInfo.tempDir.name, ".", "functions"),
-      ["asia-northeast1", "europe-west1"]
+      ["asia-northeast1", "europe-west1"],
     );
 
     await expect(
@@ -552,7 +552,7 @@ describe("deploy function-targeted rewrites And functions", () => {
         project: process.env.FBTOOLS_TARGET_PROJECT,
         cwd: tempDirInfo.tempDir.name,
         only: "hosting,functions",
-      })
+      }),
     ).to.eventually.be.rejectedWith(FirebaseError, "Unable to find a valid endpoint for function");
   }).timeout(1000 * 1e3);
 
@@ -577,7 +577,7 @@ describe("deploy function-targeted rewrites And functions", () => {
     writeHelloWorldFunctionWithRegions(
       functionName,
       join(tempDirInfo.tempDir.name, ".", "functions"),
-      ["asia-northeast1", "europe-west1"]
+      ["asia-northeast1", "europe-west1"],
     );
 
     await expect(
@@ -586,7 +586,7 @@ describe("deploy function-targeted rewrites And functions", () => {
         cwd: tempDirInfo.tempDir.name,
         only: "hosting,functions",
         force: true,
-      })
+      }),
     ).to.eventually.be.rejectedWith(FirebaseError, "More than one backend found for function");
   }).timeout(1000 * 1e3);
 
@@ -611,7 +611,7 @@ describe("deploy function-targeted rewrites And functions", () => {
     writeHelloWorldFunctionWithRegions(
       functionName,
       join(tempDirInfo.tempDir.name, ".", "functions"),
-      ["europe-west1"]
+      ["europe-west1"],
     );
 
     await client.deploy({
@@ -622,12 +622,12 @@ describe("deploy function-targeted rewrites And functions", () => {
     });
 
     const staticResponse = await fetch(
-      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/index.html`
+      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/index.html`,
     );
     expect(await staticResponse.text()).to.contain("Rabbit");
 
     const functionsRequest = new Request(
-      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/helloWorld`
+      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/helloWorld`,
     );
 
     const functionsResponse = await fetch(functionsRequest);
@@ -638,7 +638,7 @@ describe("deploy function-targeted rewrites And functions", () => {
     writeHelloWorldFunctionWithRegions(
       functionName,
       join(tempDirInfo.tempDir.name, ".", "functions"),
-      ["asia-northeast1"]
+      ["asia-northeast1"],
     );
 
     await client.deploy({
@@ -649,7 +649,7 @@ describe("deploy function-targeted rewrites And functions", () => {
     });
 
     const staticResponse2 = await fetch(
-      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/index.html`
+      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/index.html`,
     );
     expect(await staticResponse2.text()).to.contain("Rabbit");
     const functionsResponse2 = await fetch(functionsRequest);
@@ -682,11 +682,11 @@ describe("deploy function-targeted rewrites And functions", () => {
     writeHelloWorldFunctionWithRegions(
       functionName,
       join(tempDirInfo.tempDir.name, ".", "functions"),
-      ["europe-west1"]
+      ["europe-west1"],
     );
 
     const functionsRequest = new Request(
-      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/helloWorld`
+      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/helloWorld`,
     );
 
     {
@@ -697,7 +697,7 @@ describe("deploy function-targeted rewrites And functions", () => {
       });
 
       const staticResponse = await fetch(
-        `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/index.html`
+        `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/index.html`,
       );
       expect(await staticResponse.text()).to.contain("Rabbit");
 
@@ -725,7 +725,7 @@ describe("deploy function-targeted rewrites And functions", () => {
     writeHelloWorldFunctionWithRegions(
       functionName,
       join(tempDirInfo.tempDir.name, ".", "functions"),
-      ["asia-northeast1"]
+      ["asia-northeast1"],
     );
 
     {
@@ -737,7 +737,7 @@ describe("deploy function-targeted rewrites And functions", () => {
       });
 
       const staticResponse = await fetch(
-        `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/index.html`
+        `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/index.html`,
       );
       expect(await staticResponse.text()).to.contain("Rabbit");
       const functionsResponse = await fetch(functionsRequest);
@@ -771,11 +771,11 @@ describe("deploy function-targeted rewrites And functions", () => {
     writeHelloWorldFunctionWithRegions(
       functionName,
       join(tempDirInfo.tempDir.name, ".", "functions"),
-      ["europe-west1"]
+      ["europe-west1"],
     );
 
     const functionsRequest = new Request(
-      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/helloWorld`
+      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/helloWorld`,
     );
 
     {
@@ -787,7 +787,7 @@ describe("deploy function-targeted rewrites And functions", () => {
       });
 
       const staticResponse = await fetch(
-        `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/index.html`
+        `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/index.html`,
       );
       expect(await staticResponse.text()).to.contain("Rabbit");
 
@@ -819,7 +819,7 @@ describe("deploy function-targeted rewrites And functions", () => {
           cwd: tempDirInfo.tempDir.name,
           only: "hosting",
           force: true,
-        })
+        }),
       ).to.eventually.be.rejectedWith(FirebaseError);
     }
   }).timeout(1000 * 1e3);
@@ -831,7 +831,7 @@ describe("deploy function-targeted rewrites And functions", () => {
     writeHelloWorldFunctionWithRegions(
       functionName,
       join(tempDirInfo.tempDir.name, ".", "functions"),
-      ["europe-west1"]
+      ["europe-west1"],
     );
 
     await client.deploy({
@@ -863,7 +863,7 @@ describe("deploy function-targeted rewrites And functions", () => {
         cwd: tempDirInfo.tempDir.name,
         only: "hosting",
         force: true,
-      })
+      }),
     ).to.eventually.be.rejectedWith(FirebaseError);
   }).timeout(1000 * 1e3);
 
@@ -872,7 +872,7 @@ describe("deploy function-targeted rewrites And functions", () => {
     writeFileSync(firebaseJsonFilePath, "{}");
     writeHelloWorldFunctionWithRegions(
       functionName,
-      join(tempDirInfo.tempDir.name, ".", "functions")
+      join(tempDirInfo.tempDir.name, ".", "functions"),
     );
 
     await client.deploy({
@@ -907,7 +907,7 @@ describe("deploy function-targeted rewrites And functions", () => {
     });
 
     const functionsRequest = new Request(
-      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/helloWorld`
+      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/helloWorld`,
     );
 
     const functionsResponse = await fetch(functionsRequest);
@@ -919,7 +919,7 @@ describe("deploy function-targeted rewrites And functions", () => {
     writeHelloWorldFunctionWithRegions(
       functionName,
       join(tempDirInfo.tempDir.name, ".", "functions"),
-      ["asia-northeast1"]
+      ["asia-northeast1"],
     );
     writeFileSync(firebaseJsonFilePath, "{}");
 
@@ -953,7 +953,7 @@ describe("deploy function-targeted rewrites And functions", () => {
         cwd: tempDirInfo.tempDir.name,
         only: "hosting", // Including functions here will prompt for deletion.
         // Forcing the prompt will delete the function.
-      })
+      }),
     ).to.eventually.be.rejectedWith(FirebaseError);
   }).timeout(1000 * 1e3);
 
@@ -963,7 +963,7 @@ describe("deploy function-targeted rewrites And functions", () => {
     writeHelloWorldFunctionWithRegions(
       functionName,
       join(tempDirInfo.tempDir.name, ".", "functions"),
-      ["asia-northeast1"]
+      ["asia-northeast1"],
     );
 
     await client.deploy({
@@ -997,7 +997,7 @@ describe("deploy function-targeted rewrites And functions", () => {
 
     {
       const functionsRequest = new Request(
-        `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/helloWorld`
+        `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/helloWorld`,
       );
 
       const functionsResponse = await fetch(functionsRequest);

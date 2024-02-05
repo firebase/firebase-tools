@@ -107,7 +107,7 @@ describe("App management", () => {
     it("should throw if the platform is unknown", () => {
       expect(() => getAppPlatform("unknown")).to.throw(
         FirebaseError,
-        "Unexpected platform. Only iOS, Android, and Web apps are supported"
+        "Unexpected platform. Only iOS, Android, and Web apps are supported",
       );
     });
   });
@@ -156,7 +156,7 @@ describe("App management", () => {
       }
 
       expect(err.message).to.equal(
-        `Failed to create iOS app for project ${PROJECT_ID}. See firebase-debug.log for more info.`
+        `Failed to create iOS app for project ${PROJECT_ID}. See firebase-debug.log for more info.`,
       );
       expect(err.original).to.be.an.instanceOf(FirebaseError, "Not Found");
       expect(nock.isDone()).to.be.true;
@@ -182,7 +182,7 @@ describe("App management", () => {
       }
 
       expect(err.message).to.equal(
-        `Failed to create iOS app for project ${PROJECT_ID}. See firebase-debug.log for more info.`
+        `Failed to create iOS app for project ${PROJECT_ID}. See firebase-debug.log for more info.`,
       );
       expect(err.original).to.equal(expectedError);
       expect(nock.isDone()).to.be.true;
@@ -236,7 +236,7 @@ describe("App management", () => {
       }
 
       expect(err.message).to.equal(
-        `Failed to create Android app for project ${PROJECT_ID}. See firebase-debug.log for more info.`
+        `Failed to create Android app for project ${PROJECT_ID}. See firebase-debug.log for more info.`,
       );
       expect(err.original).to.be.an.instanceOf(FirebaseError, "Not Found");
       expect(nock.isDone()).to.be.true;
@@ -261,7 +261,7 @@ describe("App management", () => {
       }
 
       expect(err.message).to.equal(
-        `Failed to create Android app for project ${PROJECT_ID}. See firebase-debug.log for more info.`
+        `Failed to create Android app for project ${PROJECT_ID}. See firebase-debug.log for more info.`,
       );
       expect(err.original).to.equal(expectedError);
       expect(nock.isDone()).to.be.true;
@@ -308,7 +308,7 @@ describe("App management", () => {
       }
 
       expect(err.message).to.equal(
-        `Failed to create Web app for project ${PROJECT_ID}. See firebase-debug.log for more info.`
+        `Failed to create Web app for project ${PROJECT_ID}. See firebase-debug.log for more info.`,
       );
       expect(err.original).to.be.an.instanceOf(FirebaseError, "Not Found");
       expect(nock.isDone()).to.be.true;
@@ -330,7 +330,7 @@ describe("App management", () => {
       }
 
       expect(err.message).to.equal(
-        `Failed to create Web app for project ${PROJECT_ID}. See firebase-debug.log for more info.`
+        `Failed to create Web app for project ${PROJECT_ID}. See firebase-debug.log for more info.`,
       );
       expect(err.original).to.equal(expectedError);
       expect(nock.isDone()).to.be.true;
@@ -460,7 +460,7 @@ describe("App management", () => {
       }
 
       expect(err.message).to.equal(
-        "Failed to list Firebase apps. See firebase-debug.log for more info."
+        "Failed to list Firebase apps. See firebase-debug.log for more info.",
       );
       expect(err.original).to.be.an.instanceOf(FirebaseError, "Not Found");
       expect(nock.isDone()).to.be.true;
@@ -488,7 +488,7 @@ describe("App management", () => {
       }
 
       expect(err.message).to.equal(
-        "Failed to list Firebase apps. See firebase-debug.log for more info."
+        "Failed to list Firebase apps. See firebase-debug.log for more info.",
       );
       expect(err.original).to.be.an.instanceOf(FirebaseError, "Not Found");
       expect(nock.isDone()).to.be.true;
@@ -508,7 +508,7 @@ describe("App management", () => {
       }
 
       expect(err.message).to.equal(
-        "Failed to list Firebase IOS apps. See firebase-debug.log for more info."
+        "Failed to list Firebase IOS apps. See firebase-debug.log for more info.",
       );
       expect(err.original).to.be.an.instanceOf(FirebaseError, "Not Found");
       expect(nock.isDone()).to.be.true;
@@ -528,7 +528,7 @@ describe("App management", () => {
       }
 
       expect(err.message).to.equal(
-        "Failed to list Firebase ANDROID apps. See firebase-debug.log for more info."
+        "Failed to list Firebase ANDROID apps. See firebase-debug.log for more info.",
       );
       expect(err.original).to.be.an.instanceOf(FirebaseError, "Not Found");
       expect(nock.isDone()).to.be.true;
@@ -548,7 +548,7 @@ describe("App management", () => {
       }
 
       expect(err.message).to.equal(
-        "Failed to list Firebase WEB apps. See firebase-debug.log for more info."
+        "Failed to list Firebase WEB apps. See firebase-debug.log for more info.",
       );
       expect(err.original).to.be.an.instanceOf(FirebaseError, "Not Found");
       expect(nock.isDone()).to.be.true;
@@ -657,7 +657,7 @@ describe("App management", () => {
       }
 
       expect(err.message).to.equal(
-        "Failed to get ANDROID app configuration. See firebase-debug.log for more info."
+        "Failed to get ANDROID app configuration. See firebase-debug.log for more info.",
       );
       expect(err.original).to.be.an.instanceOf(FirebaseError, "Not Found");
       expect(nock.isDone()).to.be.true;

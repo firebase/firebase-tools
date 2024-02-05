@@ -13,7 +13,7 @@ import { selectProjectInMonospace, isMonospaceEnv } from "./monospace";
 import type { Options } from "./options";
 
 const AUTH_ERROR_MESSAGE = `Command requires authentication, please run ${clc.bold(
-  "firebase login"
+  "firebase login",
 )}`;
 
 let authClient: GoogleAuth | undefined;
@@ -79,13 +79,13 @@ export async function requireAuth(options: any): Promise<string | void> {
     logger.debug("> authorizing via --token option");
     utils.logWarning(
       "Authenticating with `--token` is deprecated and will be removed in a future major version of `firebase-tools`. " +
-        "Instead, use a service account key with `GOOGLE_APPLICATION_CREDENTIALS`: https://cloud.google.com/docs/authentication/getting-started"
+        "Instead, use a service account key with `GOOGLE_APPLICATION_CREDENTIALS`: https://cloud.google.com/docs/authentication/getting-started",
     );
   } else if (process.env.FIREBASE_TOKEN) {
     logger.debug("> authorizing via FIREBASE_TOKEN environment variable");
     utils.logWarning(
       "Authenticating with `FIREBASE_TOKEN` is deprecated and will be removed in a future major version of `firebase-tools`. " +
-        "Instead, use a service account key with `GOOGLE_APPLICATION_CREDENTIALS`: https://cloud.google.com/docs/authentication/getting-started"
+        "Instead, use a service account key with `GOOGLE_APPLICATION_CREDENTIALS`: https://cloud.google.com/docs/authentication/getting-started",
     );
   } else if (user) {
     logger.debug(`> authorizing via signed-in user (${user.email})`);
@@ -95,7 +95,7 @@ export async function requireAuth(options: any): Promise<string | void> {
     } catch (e: any) {
       throw new FirebaseError(
         `Failed to authenticate, have you run ${clc.bold("firebase login")}?`,
-        { original: e }
+        { original: e },
       );
     }
   }

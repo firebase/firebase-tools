@@ -77,7 +77,7 @@ function generateConnectionId(): string {
  */
 export async function linkGitHubRepository(
   projectId: string,
-  location: string
+  location: string,
 ): Promise<gcb.Repository> {
   utils.logBullet(clc.bold(`${clc.yellow("===")} Set up a GitHub connection`));
   const existingConns = await listAppHostingConnections(projectId);
@@ -130,7 +130,7 @@ export async function linkGitHubRepository(
 
 async function promptRepositoryUri(
   projectId: string,
-  connections: gcb.Connection[]
+  connections: gcb.Connection[],
 ): Promise<{ remoteUri: string; connection: gcb.Connection }> {
   const remoteUriToConnection: Record<string, gcb.Connection> = {};
   for (const conn of connections) {
@@ -167,14 +167,14 @@ async function promptSecretManagerAdminGrant(projectId: string): Promise<Boolean
     projectId,
     cbsaEmail,
     ["roles/secretmanager.admin"],
-    true
+    true,
   );
   if (alreadyGranted) {
     return true;
   }
 
   utils.logBullet(
-    "To create a new GitHub connection, Secret Manager Admin role (roles/secretmanager.admin) is required on the Cloud Build Service Agent."
+    "To create a new GitHub connection, Secret Manager Admin role (roles/secretmanager.admin) is required on the Cloud Build Service Agent.",
   );
   const grant = await promptOnce({
     type: "confirm",
@@ -186,7 +186,7 @@ async function promptSecretManagerAdminGrant(projectId: string): Promise<Boolean
         "You, or your project adminstrator, can run the following command to grant the required role manually:\n\n" +
         `\tgcloud projects add-iam-policy-binding ${projectId} \\\n` +
         `\t  --member="serviceAccount:${cbsaEmail} \\\n` +
-        `\t  --role="roles/secretmanager.admin\n`
+        `\t  --role="roles/secretmanager.admin\n`,
     );
     return false;
   }
@@ -200,7 +200,7 @@ async function promptConnectionAuth(conn: gcb.Connection): Promise<gcb.Connectio
   utils.logBullet("Sign in to GitHub and authorize Cloud Build GitHub app:");
   const { url, cleanup } = await utils.openInBrowserPopup(
     conn.installationState.actionUri,
-    "Authorize the GitHub app"
+    "Authorize the GitHub app",
   );
   utils.logBullet(`\t${url}`);
   await promptOnce({
@@ -230,7 +230,7 @@ export async function createConnection(
   projectId: string,
   location: string,
   connectionId: string,
-  githubConfig?: gcb.GitHubConfig
+  githubConfig?: gcb.GitHubConfig,
 ): Promise<gcb.Connection> {
   const op = await gcb.createConnection(projectId, location, connectionId, githubConfig);
   const conn = await poller.pollOperation<gcb.Connection>({
@@ -248,7 +248,7 @@ export async function getOrCreateConnection(
   projectId: string,
   location: string,
   connectionId: string,
-  githubConfig?: gcb.GitHubConfig
+  githubConfig?: gcb.GitHubConfig,
 ): Promise<gcb.Connection> {
   let conn: gcb.Connection;
   try {
@@ -270,7 +270,7 @@ export async function getOrCreateRepository(
   projectId: string,
   location: string,
   connectionId: string,
-  remoteUri: string
+  remoteUri: string,
 ): Promise<gcb.Repository> {
   const repositoryId = generateRepositoryId(remoteUri);
   if (!repositoryId) {
@@ -286,7 +286,7 @@ export async function getOrCreateRepository(
         location,
         connectionId,
         repositoryId,
-        remoteUri
+        remoteUri,
       );
       repo = await poller.pollOperation<gcb.Repository>({
         ...gcbPollerOptions,
@@ -306,6 +306,6 @@ export async function listAppHostingConnections(projectId: string) {
     (conn) =>
       APPHOSTING_CONN_PATTERN.test(conn.name) &&
       conn.installationState.stage === "COMPLETE" &&
-      !conn.disabled
+      !conn.disabled,
   );
 }

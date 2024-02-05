@@ -43,7 +43,7 @@ describe("ensureFirestoreTriggerRegion", () => {
     };
 
     await expect(ensureFirestoreTriggerRegion(ep)).to.be.rejectedWith(
-      "A firestore trigger location must match the firestore database region."
+      "A firestore trigger location must match the firestore database region.",
     );
   });
 

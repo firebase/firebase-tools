@@ -174,10 +174,10 @@ export class Command {
         client.errorOut(
           new FirebaseError(
             `Too many arguments. Run ${clc.bold(
-              "firebase help " + this.name
+              "firebase help " + this.name,
             )} for usage instructions`,
-            { exit: 1 }
-          )
+            { exit: 1 },
+          ),
         );
         return;
       }
@@ -198,9 +198,9 @@ export class Command {
                     result: result,
                   },
                   null,
-                  2
+                  2,
                 ),
-                resolve
+                resolve,
               );
             });
           }
@@ -222,7 +222,7 @@ export class Command {
                   command_name: this.name,
                   duration,
                 }),
-              ])
+              ]),
             );
           }
           process.exit();
@@ -237,9 +237,9 @@ export class Command {
                     error: err.message,
                   },
                   null,
-                  2
+                  2,
                 ),
-                resolve
+                resolve,
               );
             });
           }
@@ -254,7 +254,7 @@ export class Command {
                   result: "error",
                   interactive: getInheritedOption(options, "nonInteractive") ? "false" : "true",
                 },
-                duration
+                duration,
               ),
               isEmulator
                 ? trackEmulator("command_error", {
@@ -263,7 +263,7 @@ export class Command {
                     error_type: err.exit === 1 ? "user" : "unexpected",
                   })
                 : Promise.resolve(),
-            ])
+            ]),
           );
 
           client.errorOut(err);

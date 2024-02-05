@@ -7,7 +7,7 @@ import { logger } from "../../../logger";
  */
 export function filterFrameworksWithDependencies(
   allFrameworkSpecs: FrameworkSpec[],
-  dependencies: Record<string, string>
+  dependencies: Record<string, string>,
 ): FrameworkSpec[] {
   return allFrameworkSpecs.filter((framework) => {
     return framework.requiredDependencies.every((dependency) => {
@@ -21,7 +21,7 @@ export function filterFrameworksWithDependencies(
  */
 export async function filterFrameworksWithFiles(
   allFrameworkSpecs: FrameworkSpec[],
-  fs: FileSystem
+  fs: FileSystem,
 ): Promise<FrameworkSpec[]> {
   try {
     const filteredFrameworks = [];
@@ -79,13 +79,13 @@ export async function frameworkMatcher(
   runtime: string,
   fs: FileSystem,
   frameworks: FrameworkSpec[],
-  dependencies: Record<string, string>
+  dependencies: Record<string, string>,
 ): Promise<FrameworkSpec | null> {
   try {
     const filterRuntimeFramework = frameworks.filter((framework) => framework.runtime === runtime);
     const frameworksWithDependencies = filterFrameworksWithDependencies(
       filterRuntimeFramework,
-      dependencies
+      dependencies,
     );
     const frameworkWithFiles = await filterFrameworksWithFiles(frameworksWithDependencies, fs);
     const allMatches = removeEmbededFrameworks(frameworkWithFiles);
@@ -97,8 +97,8 @@ export async function frameworkMatcher(
       const frameworkNames = allMatches.map((framework) => framework.id);
       throw new FirebaseError(
         `Multiple Frameworks are matched: ${frameworkNames.join(
-          ", "
-        )} Manually set up override commands in firebase.json`
+          ", ",
+        )} Manually set up override commands in firebase.json`,
       );
     }
 

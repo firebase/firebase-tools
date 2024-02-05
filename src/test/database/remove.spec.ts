@@ -61,7 +61,7 @@ describe("DatabaseRemove", () => {
           "test-nested-tree",
           "/",
           HOST,
-          /* disableTriggers= */ false
+          /* disableTriggers= */ false,
         );
         removeOps.remote = fakeDb;
         removeOps.listRemote = fakeLister;
@@ -77,7 +77,7 @@ describe("DatabaseRemove", () => {
           "test-remover",
           "/",
           HOST,
-          /* disableTriggers= */ false
+          /* disableTriggers= */ false,
         );
         removeOps.remote = fakeDb;
         removeOps.listRemote = fakeList;

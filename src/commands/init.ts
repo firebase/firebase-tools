@@ -117,7 +117,7 @@ export function initAction(feature: string, options: Options): Promise<void> {
       clc.bold(feature) +
         " is not a supported feature; must be one of " +
         featureNames.join(", ") +
-        "."
+        ".",
     );
   }
 
@@ -153,7 +153,7 @@ export function initAction(feature: string, options: Options): Promise<void> {
       "\nYou're about to initialize a Firebase project in this directory:\n\n  " +
       clc.bold(config.projectDir) +
       "\n" +
-      warningText
+      warningText,
   );
 
   const setup: Setup = {
@@ -204,7 +204,7 @@ export function initAction(feature: string, options: Options): Promise<void> {
           "Must select at least one feature. Use " +
             clc.bold(clc.underline("SPACEBAR")) +
             " to select features, or specify a feature by running " +
-            clc.bold("firebase init [feature_name]")
+            clc.bold("firebase init [feature_name]"),
         );
       }
 

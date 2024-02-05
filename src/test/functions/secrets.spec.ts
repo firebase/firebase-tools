@@ -66,7 +66,7 @@ describe("functions/secret", () => {
 
     it("throws error if given non-conventional key w/ forced option", () => {
       expect(secrets.ensureValidKey("throwError", { ...options, force: true })).to.be.rejectedWith(
-        FirebaseError
+        FirebaseError,
       );
     });
 
@@ -108,7 +108,7 @@ describe("functions/secret", () => {
       getStub.resolves(secret);
 
       await expect(
-        secrets.ensureSecret("project-id", "MY_SECRET", options)
+        secrets.ensureSecret("project-id", "MY_SECRET", options),
       ).to.eventually.deep.equal(secret);
       expect(getStub).to.have.been.calledOnce;
     });
@@ -118,7 +118,7 @@ describe("functions/secret", () => {
       patchStub.resolves(secret);
 
       await expect(
-        secrets.ensureSecret("project-id", "MY_SECRET", options)
+        secrets.ensureSecret("project-id", "MY_SECRET", options),
       ).to.eventually.deep.equal(secret);
       expect(warnStub).to.have.been.calledOnce;
       expect(promptStub).to.have.been.calledOnce;
@@ -129,7 +129,7 @@ describe("functions/secret", () => {
       patchStub.resolves(secret);
 
       await expect(
-        secrets.ensureSecret("project-id", "MY_SECRET", options)
+        secrets.ensureSecret("project-id", "MY_SECRET", options),
       ).to.eventually.deep.equal(secret);
       expect(warnStub).not.to.have.been.calledOnce;
       expect(promptStub).not.to.have.been.calledOnce;
@@ -140,7 +140,7 @@ describe("functions/secret", () => {
       createStub.resolves(secret);
 
       await expect(
-        secrets.ensureSecret("project-id", "MY_SECRET", options)
+        secrets.ensureSecret("project-id", "MY_SECRET", options),
       ).to.eventually.deep.equal(secret);
     });
 
@@ -274,7 +274,7 @@ describe("functions/secret", () => {
       listSecretsStub.resolves([]);
 
       await expect(
-        secrets.pruneSecrets({ projectId: "project", projectNumber: "12345" }, [])
+        secrets.pruneSecrets({ projectId: "project", projectNumber: "12345" }, []),
       ).to.eventually.deep.equal([]);
     });
 
@@ -285,11 +285,11 @@ describe("functions/secret", () => {
 
       const pruned = await secrets.pruneSecrets(
         { projectId: "project", projectNumber: "12345" },
-        []
+        [],
       );
 
       expect(pruned).to.have.deep.members(
-        [secretVersion11, secretVersion12, secretVersion21].map(toSecretEnvVar)
+        [secretVersion11, secretVersion12, secretVersion21].map(toSecretEnvVar),
       );
       expect(pruned).to.have.length(3);
     });
@@ -340,7 +340,7 @@ describe("functions/secret", () => {
           secretEnvironmentVariables: [
             { projectId, key: secret.name, secret: secret.name, version: "1" },
           ],
-        })
+        }),
       ).to.be.true;
     });
 
@@ -351,7 +351,7 @@ describe("functions/secret", () => {
           secretEnvironmentVariables: [
             { projectId: projectNumber, key: secret.name, secret: secret.name, version: "1" },
           ],
-        })
+        }),
       ).to.be.true;
     });
 
@@ -366,7 +366,7 @@ describe("functions/secret", () => {
           secretEnvironmentVariables: [
             { projectId: "another-project", key: secret.name, secret: secret.name, version: "1" },
           ],
-        })
+        }),
       ).to.be.false;
     });
   });
@@ -389,7 +389,7 @@ describe("functions/secret", () => {
           secretEnvironmentVariables: [
             { projectId, key: sv.secret.name, secret: sv.secret.name, version: "5" },
           ],
-        })
+        }),
       ).to.be.true;
     });
 
@@ -400,7 +400,7 @@ describe("functions/secret", () => {
           secretEnvironmentVariables: [
             { projectId: projectNumber, key: sv.secret.name, secret: sv.secret.name, version: "5" },
           ],
-        })
+        }),
       ).to.be.true;
     });
 
@@ -415,7 +415,7 @@ describe("functions/secret", () => {
           secretEnvironmentVariables: [
             { projectId, key: sv.secret.name, secret: sv.secret.name, version: "1" },
           ],
-        })
+        }),
       ).to.be.false;
     });
   });
@@ -465,7 +465,7 @@ describe("functions/secret", () => {
             ...ENDPOINT,
             secretEnvironmentVariables: [secret1],
           },
-        ])
+        ]),
       ).to.eventually.deep.equal({ erred: [], destroyed: [secret1] });
     });
 
@@ -484,7 +484,7 @@ describe("functions/secret", () => {
             ...ENDPOINT,
             secretEnvironmentVariables: [secret1],
           },
-        ])
+        ]),
       ).to.eventually.deep.equal({ erred: [{ message: "an error" }], destroyed: [secret0] });
     });
   });

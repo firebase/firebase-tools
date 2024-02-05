@@ -110,13 +110,13 @@ describe("Database management", () => {
       const expectedDatabaseInstance = SOME_DATABASE_INSTANCE;
       nock(api.rtdbManagementOrigin)
         .get(
-          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/-/instances/${DATABASE_INSTANCE_NAME}`
+          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/-/instances/${DATABASE_INSTANCE_NAME}`,
         )
         .reply(200, INSTANCE_RESPONSE_US_CENTRAL1);
 
       const resultDatabaseInstance = await getDatabaseInstanceDetails(
         PROJECT_ID,
-        DATABASE_INSTANCE_NAME
+        DATABASE_INSTANCE_NAME,
       );
 
       expect(resultDatabaseInstance).to.deep.equal(expectedDatabaseInstance);
@@ -135,7 +135,7 @@ describe("Database management", () => {
         err = e;
       }
       expect(err.message).to.equal(
-        `Failed to get instance details for instance: ${badInstanceName}. See firebase-debug.log for more details.`
+        `Failed to get instance details for instance: ${badInstanceName}. See firebase-debug.log for more details.`,
       );
       expect(err.original).to.be.an.instanceOf(FirebaseError, "Not Found");
       expect(nock.isDone()).to.be.true;
@@ -147,7 +147,7 @@ describe("Database management", () => {
       const expectedDatabaseInstance = SOME_DATABASE_INSTANCE_EUROPE_WEST1;
       nock(api.rtdbManagementOrigin)
         .post(
-          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.EUROPE_WEST1}/instances`
+          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.EUROPE_WEST1}/instances`,
         )
         .query({ databaseId: DATABASE_INSTANCE_NAME })
         .reply(200, INSTANCE_RESPONSE_EUROPE_WEST1);
@@ -155,7 +155,7 @@ describe("Database management", () => {
         PROJECT_ID,
         DATABASE_INSTANCE_NAME,
         DatabaseLocation.EUROPE_WEST1,
-        DatabaseInstanceType.USER_DATABASE
+        DatabaseInstanceType.USER_DATABASE,
       );
       expect(resultDatabaseInstance).to.deep.equal(expectedDatabaseInstance);
       expect(nock.isDone()).to.be.true;
@@ -165,7 +165,7 @@ describe("Database management", () => {
       const badInstanceName = "non-existent-instance";
       nock(api.rtdbManagementOrigin)
         .post(
-          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.US_CENTRAL1}/instances`
+          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.US_CENTRAL1}/instances`,
         )
         .query({ databaseId: badInstanceName })
         .reply(404);
@@ -176,14 +176,14 @@ describe("Database management", () => {
           PROJECT_ID,
           badInstanceName,
           DatabaseLocation.US_CENTRAL1,
-          DatabaseInstanceType.DEFAULT_DATABASE
+          DatabaseInstanceType.DEFAULT_DATABASE,
         );
       } catch (e: any) {
         err = e;
       }
 
       expect(err.message).to.equal(
-        `Failed to create instance: ${badInstanceName}. See firebase-debug.log for more details.`
+        `Failed to create instance: ${badInstanceName}. See firebase-debug.log for more details.`,
       );
       expect(err.original).to.be.an.instanceOf(FirebaseError, "Not Found");
       expect(nock.isDone()).to.be.true;
@@ -194,7 +194,7 @@ describe("Database management", () => {
     it("should resolve with new DatabaseInstance if specified instance name is available and API call succeeds", async () => {
       nock(api.rtdbManagementOrigin)
         .post(
-          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.EUROPE_WEST1}/instances`
+          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.EUROPE_WEST1}/instances`,
         )
         .query({ databaseId: DATABASE_INSTANCE_NAME, validateOnly: true })
         .reply(200, INSTANCE_RESPONSE_EUROPE_WEST1);
@@ -203,7 +203,7 @@ describe("Database management", () => {
         PROJECT_ID,
         DATABASE_INSTANCE_NAME,
         DatabaseInstanceType.USER_DATABASE,
-        DatabaseLocation.EUROPE_WEST1
+        DatabaseLocation.EUROPE_WEST1,
       );
 
       expect(output).to.deep.equal({ available: true });
@@ -225,7 +225,7 @@ describe("Database management", () => {
       };
       nock(api.rtdbManagementOrigin)
         .post(
-          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.EUROPE_WEST1}/instances`
+          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.EUROPE_WEST1}/instances`,
         )
         .query({ databaseId: badInstanceName, validateOnly: true })
         .reply(409, expectedErrorObj);
@@ -234,7 +234,7 @@ describe("Database management", () => {
         PROJECT_ID,
         badInstanceName,
         DatabaseInstanceType.USER_DATABASE,
-        DatabaseLocation.EUROPE_WEST1
+        DatabaseLocation.EUROPE_WEST1,
       );
 
       expect(output).to.deep.equal({
@@ -257,7 +257,7 @@ describe("Database management", () => {
       };
       nock(api.rtdbManagementOrigin)
         .post(
-          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.US_CENTRAL1}/instances`
+          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.US_CENTRAL1}/instances`,
         )
         .query({ databaseId: badInstanceName, validateOnly: true })
         .reply(409, expectedErrorObj);
@@ -268,14 +268,14 @@ describe("Database management", () => {
           PROJECT_ID,
           badInstanceName,
           DatabaseInstanceType.DEFAULT_DATABASE,
-          DatabaseLocation.US_CENTRAL1
+          DatabaseLocation.US_CENTRAL1,
         );
       } catch (e: any) {
         err = e;
       }
 
       expect(err.message).to.equal(
-        `Failed to validate Realtime Database instance name: ${badInstanceName}.`
+        `Failed to validate Realtime Database instance name: ${badInstanceName}.`,
       );
       expect(err.original).to.be.an.instanceOf(FirebaseError, "409");
       expect(nock.isDone()).to.be.true;
@@ -292,7 +292,7 @@ describe("Database management", () => {
       ];
       nock(api.rtdbManagementOrigin)
         .get(
-          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.ANY}/instances`
+          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.ANY}/instances`,
         )
         .query({ pageSize })
         .reply(200, {
@@ -312,11 +312,11 @@ describe("Database management", () => {
       const instancesPerLocation = 2;
       const expectedInstancesList = generateInstanceList(
         instancesPerLocation,
-        DatabaseLocation.US_CENTRAL1
+        DatabaseLocation.US_CENTRAL1,
       );
       nock(api.rtdbManagementOrigin)
         .get(
-          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.US_CENTRAL1}/instances`
+          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.US_CENTRAL1}/instances`,
         )
         .query({ pageSize: APP_LIST_PAGE_SIZE })
         .reply(200, {
@@ -347,7 +347,7 @@ describe("Database management", () => {
       ];
       nock(api.rtdbManagementOrigin)
         .get(
-          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.ANY}/instances`
+          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.ANY}/instances`,
         )
         .query({ pageSize: pageSize })
         .reply(200, {
@@ -356,7 +356,7 @@ describe("Database management", () => {
         });
       nock(api.rtdbManagementOrigin)
         .get(
-          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.ANY}/instances`
+          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.ANY}/instances`,
         )
         .query({ pageSize: pageSize, pageToken: nextPageToken })
         .reply(200, {
@@ -372,7 +372,7 @@ describe("Database management", () => {
     it("should reject if the first api call fails", async () => {
       nock(api.rtdbManagementOrigin)
         .get(
-          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.ANY}/instances`
+          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.ANY}/instances`,
         )
         .query({ pageSize: APP_LIST_PAGE_SIZE })
         .reply(404);
@@ -385,7 +385,7 @@ describe("Database management", () => {
       }
 
       expect(err.message).to.equal(
-        "Failed to list Firebase Realtime Database instances. See firebase-debug.log for more info."
+        "Failed to list Firebase Realtime Database instances. See firebase-debug.log for more info.",
       );
       expect(err.original).to.be.an.instanceOf(FirebaseError, "Not Found");
       expect(nock.isDone()).to.be.true;
@@ -397,7 +397,7 @@ describe("Database management", () => {
       const nextPageToken = "next-page-token";
       nock(api.rtdbManagementOrigin)
         .get(
-          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.US_CENTRAL1}/instances`
+          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.US_CENTRAL1}/instances`,
         )
         .query({ pageSize: pageSize })
         .reply(200, {
@@ -408,7 +408,7 @@ describe("Database management", () => {
         });
       nock(api.rtdbManagementOrigin)
         .get(
-          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.US_CENTRAL1}/instances`
+          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.US_CENTRAL1}/instances`,
         )
         .query({ pageSize: pageSize, pageToken: nextPageToken })
         .reply(404);
@@ -421,7 +421,7 @@ describe("Database management", () => {
       }
 
       expect(err.message).to.equal(
-        `Failed to list Firebase Realtime Database instances for location ${DatabaseLocation.US_CENTRAL1}. See firebase-debug.log for more info.`
+        `Failed to list Firebase Realtime Database instances for location ${DatabaseLocation.US_CENTRAL1}. See firebase-debug.log for more info.`,
       );
       expect(err.original).to.be.an.instanceOf(FirebaseError, "Not Found");
       expect(nock.isDone()).to.be.true;

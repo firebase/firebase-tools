@@ -80,14 +80,14 @@ describe("Backend", () => {
         backend.isEmptyBackend({
           ...backend.empty(),
           requiredAPIs: [{ api: "foo.googleapis.com", reason: "foo" }],
-        })
+        }),
       ).to.be.false;
       expect(backend.isEmptyBackend(backend.of({ ...ENDPOINT, httpsTrigger: {} })));
     });
 
     it("names", () => {
       expect(backend.functionName(ENDPOINT)).to.equal(
-        "projects/project/locations/region/functions/id"
+        "projects/project/locations/region/functions/id",
       );
     });
 
@@ -200,11 +200,11 @@ describe("Backend", () => {
           unreachable: [],
         });
         listAllFunctionsV2.throws(
-          new FirebaseError("HTTP Error: 500, Internal Error", { status: 500 })
+          new FirebaseError("HTTP Error: 500, Internal Error", { status: 500 }),
         );
 
         await expect(backend.existingBackend(newContext())).to.be.rejectedWith(
-          "HTTP Error: 500, Internal Error"
+          "HTTP Error: 500, Internal Error",
         );
       });
 
@@ -219,7 +219,7 @@ describe("Backend", () => {
           unreachable: [],
         });
         listAllFunctionsV2.throws(
-          new FirebaseError("HTTP Error: 404, Method not found", { status: 404 })
+          new FirebaseError("HTTP Error: 404, Method not found", { status: 404 }),
         );
 
         const have = await backend.existingBackend(newContext());
@@ -233,11 +233,11 @@ describe("Backend", () => {
           unreachable: [],
         });
         listAllFunctionsV2.throws(
-          new FirebaseError("HTTP Error: 500, Internal Error", { status: 500 })
+          new FirebaseError("HTTP Error: 500, Internal Error", { status: 500 }),
         );
 
         await expect(backend.existingBackend(newContext())).to.be.rejectedWith(
-          "HTTP Error: 500, Internal Error"
+          "HTTP Error: 500, Internal Error",
         );
       });
 
@@ -252,7 +252,7 @@ describe("Backend", () => {
           unreachable: [],
         });
         listAllFunctionsV2.throws(
-          new FirebaseError("HTTP Error: 404, Method not found", { status: 404 })
+          new FirebaseError("HTTP Error: 404, Method not found", { status: 404 }),
         );
 
         const have = await backend.existingBackend(newContext());
@@ -281,7 +281,7 @@ describe("Backend", () => {
             runServiceId: HAVE_CLOUD_FUNCTION_V2.serviceConfig?.service,
             source: HAVE_CLOUD_FUNCTION_V2.buildConfig.source,
             uri: HAVE_CLOUD_FUNCTION_V2.serviceConfig?.uri,
-          })
+          }),
         );
       });
 
@@ -389,7 +389,7 @@ describe("Backend", () => {
         const want = backend.of({ ...ENDPOINT, httpsTrigger: {} });
         await expect(backend.checkAvailability(newContext(), want)).to.eventually.be.rejectedWith(
           FirebaseError,
-          /The following Cloud Functions regions are currently unreachable:/
+          /The following Cloud Functions regions are currently unreachable:/,
         );
       });
 
@@ -410,7 +410,7 @@ describe("Backend", () => {
 
         await expect(backend.checkAvailability(newContext(), want)).to.eventually.be.rejectedWith(
           FirebaseError,
-          /The following Cloud Functions V2 regions are currently unreachable:/
+          /The following Cloud Functions V2 regions are currently unreachable:/,
         );
       });
 
@@ -590,7 +590,7 @@ describe("Backend", () => {
 
     it("findEndpoint", () => {
       expect(backend.findEndpoint(bkend, (fn) => fn.id === "endpointUS")).to.be.deep.equal(
-        endpointUS
+        endpointUS,
       );
       expect(backend.findEndpoint(bkend, (fn) => fn.id === "missing")).to.be.undefined;
     });

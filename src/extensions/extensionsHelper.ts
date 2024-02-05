@@ -72,7 +72,7 @@ const VALID_LICENSES = ["apache-2.0"];
 export const URL_REGEX = /^https:/;
 export const EXTENSIONS_BUCKET_NAME = envOverride(
   "FIREBASE_EXTENSIONS_UPLOAD_BUCKET",
-  "firebase-ext-eap-uploads"
+  "firebase-ext-eap-uploads",
 );
 const AUTOPOPULATED_PARAM_NAMES = [
   "PROJECT_ID",
@@ -115,7 +115,7 @@ export function getDBInstanceFromURL(databaseUrl = ""): string {
  */
 export async function getFirebaseProjectParams(
   projectId: string | undefined,
-  emulatorMode: boolean = false
+  emulatorMode: boolean = false,
 ): Promise<Record<string, string>> {
   if (!projectId) {
     return {};
@@ -167,7 +167,7 @@ export function substituteParams<T>(original: T, params: Record<string, string>)
   };
   const s = Object.entries(params).reduce(
     (str, [key, val]) => applySubstitution(str, val, key),
-    startingString
+    startingString,
   );
   return JSON.parse(s);
 }
@@ -181,7 +181,7 @@ export function substituteParams<T>(original: T, params: Record<string, string>)
  */
 export function populateDefaultParams(
   paramVars: Record<string, string>,
-  paramSpecs: Param[]
+  paramSpecs: Param[],
 ): Record<string, string> {
   const newParams = paramVars;
 
@@ -192,7 +192,7 @@ export function populateDefaultParams(
       } else if (param.required) {
         throw new FirebaseError(
           `${param.param} has not been set in the given params file` +
-            " and there is no default available. Please set this variable before installing again."
+            " and there is no default available. Please set this variable before installing again.",
         );
       }
     }
@@ -208,7 +208,7 @@ export function populateDefaultParams(
  */
 export function validateCommandLineParams(
   envVars: Record<string, string>,
-  paramSpec: Param[]
+  paramSpec: Param[],
 ): void {
   const paramNames = paramSpec.map((p) => p.param);
   const misnamedParams = Object.keys(envVars).filter((key: string) => {
@@ -217,7 +217,7 @@ export function validateCommandLineParams(
   if (misnamedParams.length) {
     logger.warn(
       "Warning: The following params were specified in your env file but do not exist in the extension spec: " +
-        `${misnamedParams.join(", ")}.`
+        `${misnamedParams.join(", ")}.`,
     );
   }
   let allParamsValid = true;
@@ -253,7 +253,7 @@ export function validateSpec(spec: any) {
     const version = semver.parse(spec.version)!;
     if (version.prerelease.length > 0 || version.build.length > 0) {
       errors.push(
-        "version field in extension.yaml does not support pre-release annotations; instead, set a pre-release stage using the --stage flag"
+        "version field in extension.yaml does not support pre-release annotations; instead, set a pre-release stage using the --stage flag",
       );
     }
   }
@@ -263,7 +263,7 @@ export function validateSpec(spec: any) {
     const formattedLicense = String(spec.license).toLocaleLowerCase();
     if (!VALID_LICENSES.includes(formattedLicense)) {
       errors.push(
-        `license field in extension.yaml is invalid. Valid value(s): ${VALID_LICENSES.join(", ")}`
+        `license field in extension.yaml is invalid. Valid value(s): ${VALID_LICENSES.join(", ")}`,
       );
     }
   }
@@ -276,7 +276,7 @@ export function validateSpec(spec: any) {
       }
       if (!resource.type) {
         errors.push(
-          `Resource${resource.name ? ` ${resource.name}` : ""} is missing required field: type`
+          `Resource${resource.name ? ` ${resource.name}` : ""} is missing required field: type`,
         );
       }
     }
@@ -302,7 +302,7 @@ export function validateSpec(spec: any) {
       errors.push(
         `Invalid type ${param.type} for param${
           param.param ? ` ${param.param}` : ""
-        }. Valid types are ${Object.values(SpecParamType).join(", ")}`
+        }. Valid types are ${Object.values(SpecParamType).join(", ")}`,
       );
     }
     if (!param.type || param.type === SpecParamType.STRING) {
@@ -311,7 +311,7 @@ export function validateSpec(spec: any) {
         errors.push(
           `Param${
             param.param ? ` ${param.param}` : ""
-          } cannot have options because it is type STRING`
+          } cannot have options because it is type STRING`,
         );
       }
     }
@@ -323,14 +323,14 @@ export function validateSpec(spec: any) {
         errors.push(
           `Param${
             param.param ? ` ${param.param}` : ""
-          } cannot have validationRegex because it is type ${param.type}`
+          } cannot have validationRegex because it is type ${param.type}`,
         );
       }
       if (!param.options) {
         errors.push(
           `Param${param.param ? ` ${param.param}` : ""} requires options because it is type ${
             param.type
-          }`
+          }`,
         );
       }
       for (const opt of param.options || []) {
@@ -338,7 +338,7 @@ export function validateSpec(spec: any) {
           errors.push(
             `Option for param${
               param.param ? ` ${param.param}` : ""
-            } is missing required field: value`
+            } is missing required field: value`,
           );
         }
       }
@@ -348,7 +348,7 @@ export function validateSpec(spec: any) {
         errors.push(
           `Param${param.param ? ` ${param.param}` : ""} must have resourceType because it is type ${
             param.type
-          }`
+          }`,
         );
       }
     }
@@ -378,7 +378,7 @@ export async function promptForValidInstanceId(instanceId: string): Promise<stri
     } else if (!instanceIdRegex.test(newInstanceId)) {
       logger.info(
         "Invalid instance ID. Instance ID must start with a lowercase letter, " +
-          "end with a lowercase letter or number, and only contain lowercase letters, numbers, or -"
+          "end with a lowercase letter or number, and only contain lowercase letters, numbers, or -",
       );
     } else {
       instanceIdIsValid = true;
@@ -462,8 +462,8 @@ async function promptForReleaseStage(args: {
     if (stage === "stable" && !args.hasVersions) {
       logger.info(
         `${clc.bold(
-          clc.yellow("Warning:")
-        )} It's highly recommended to first upload a pre-release version before choosing stable.`
+          clc.yellow("Warning:"),
+        )} It's highly recommended to first upload a pre-release version before choosing stable.`,
       );
       const confirmed = await confirm({
         nonInteractive: args.nonInteractive,
@@ -492,7 +492,7 @@ export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
     projectId,
     "firebaseextensions.googleapis.com",
     "extensions",
-    options.markdown
+    options.markdown,
   );
 }
 
@@ -505,7 +505,7 @@ export async function ensureExtensionsPublisherApiEnabled(options: any): Promise
     projectId,
     "firebaseextensionspublisher.googleapis.com",
     "extensions",
-    options.markdown
+    options.markdown,
   );
 }
 
@@ -532,7 +532,7 @@ async function archiveAndUploadSource(extPath: string, bucketName: string): Prom
  */
 export async function getNextVersionByStage(
   extensionRef: string,
-  newVersion: string
+  newVersion: string,
 ): Promise<{ versionByStage: Map<string, string>; hasVersions: boolean }> {
   let extensionVersions: ExtensionVersion[] = [];
   try {
@@ -545,7 +545,7 @@ export async function getNextVersionByStage(
     ["rc", "alpha", "beta"].map((stage) => [
       stage,
       semver.inc(`${newVersion}-${stage}`, "prerelease", undefined, stage)!,
-    ])
+    ]),
   );
   for (const extensionVersion of extensionVersions) {
     const version = semver.parse(extensionVersion.spec.version)!;
@@ -572,21 +572,21 @@ export async function getNextVersionByStage(
  */
 async function validateExtensionSpec(
   rootDirectory: string,
-  extensionId: string
+  extensionId: string,
 ): Promise<ExtensionSpec> {
   const extensionSpec = await getLocalExtensionSpec(rootDirectory);
   if (extensionSpec.name !== extensionId) {
     throw new FirebaseError(
       `Extension ID '${clc.bold(
-        extensionId
-      )}' does not match the name in extension.yaml '${clc.bold(extensionSpec.name)}'.`
+        extensionId,
+      )}' does not match the name in extension.yaml '${clc.bold(extensionSpec.name)}'.`,
     );
   }
   // Substitute deepcopied spec with autopopulated params, and make sure that it passes basic extension.yaml validation.
   const subbedSpec = JSON.parse(JSON.stringify(extensionSpec));
   subbedSpec.params = substituteParams<Param[]>(
     extensionSpec.params || [],
-    AUTOPOULATED_PARAM_PLACEHOLDERS
+    AUTOPOULATED_PARAM_PLACEHOLDERS,
   );
   validateSpec(subbedSpec);
   return extensionSpec;
@@ -608,8 +608,8 @@ function validateReleaseNotes(rootDirectory: string, newVersion: string, extensi
       "No CHANGELOG.md file found. " +
         "Please create one and add an entry for this version. " +
         marked(
-          "See https://firebase.google.com/docs/extensions/publishers/user-documentation#writing-changelog for more details."
-        )
+          "See https://firebase.google.com/docs/extensions/publishers/user-documentation#writing-changelog for more details.",
+        ),
     );
   }
   // Notes are required for all stable versions after the initial release.
@@ -618,8 +618,8 @@ function validateReleaseNotes(rootDirectory: string, newVersion: string, extensi
       `No entry for version ${newVersion} found in CHANGELOG.md. ` +
         "Please add one so users know what has changed in this version. " +
         marked(
-          "See https://firebase.google.com/docs/extensions/publishers/user-documentation#writing-changelog for more details."
-        )
+          "See https://firebase.google.com/docs/extensions/publishers/user-documentation#writing-changelog for more details.",
+        ),
     );
   }
   return notes;
@@ -637,24 +637,24 @@ function validateVersion(extensionRef: string, newVersion: string, latestVersion
     if (semver.lt(newVersion, latestVersion)) {
       throw new FirebaseError(
         `The version you are trying to publish (${clc.bold(
-          newVersion
+          newVersion,
         )}) is lower than the current version (${clc.bold(
-          latestVersion
+          latestVersion,
         )}) for the extension '${clc.bold(
-          extensionRef
+          extensionRef,
         )}'. Make sure this version is greater than the current version (${clc.bold(
-          latestVersion
+          latestVersion,
         )}) inside of extension.yaml and try again.\n`,
-        { exit: 104 }
+        { exit: 104 },
       );
     } else if (semver.eq(newVersion, latestVersion)) {
       throw new FirebaseError(
         `The version you are trying to upload (${clc.bold(
-          newVersion
+          newVersion,
         )}) already exists for extension '${clc.bold(
-          extensionRef
+          extensionRef,
         )}'. Increment the version inside of extension.yaml and try again.\n`,
-        { exit: 103 }
+        { exit: 103 },
       );
     }
   }
@@ -689,7 +689,7 @@ export function unpackExtensionState(extension: Extension) {
 function displayExtensionHeader(
   extensionRef: string,
   extension?: Extension,
-  extensionRoot?: string
+  extensionRoot?: string,
 ) {
   if (extension) {
     let source = "Local source";
@@ -703,12 +703,12 @@ function displayExtensionHeader(
         `${clc.bold("State:")} ${unpackExtensionState(extension)}\n` +
         `${clc.bold("Latest Version:")} ${extension.latestVersion ?? "-"}\n` +
         `${clc.bold("Version in Extensions Hub:")} ${extension.latestApprovedVersion ?? "-"}\n` +
-        `${clc.bold("Source in GitHub:")} ${source}\n`
+        `${clc.bold("Source in GitHub:")} ${source}\n`,
     );
   } else {
     logger.info(
       `\n${clc.bold("Extension:")} ${extensionRef}\n` +
-        `${clc.bold("State:")} ${clc.bold(clc.blue("New"))}\n`
+        `${clc.bold("State:")} ${clc.bold(clc.blue("New"))}\n`,
     );
   }
 }
@@ -723,14 +723,14 @@ function displayExtensionHeader(
 async function fetchExtensionSource(
   repoUri: string,
   sourceRef: string,
-  extensionRoot: string
+  extensionRoot: string,
 ): Promise<string> {
   const sourceUri = repoUri + path.join("/tree", sourceRef, extensionRoot);
   logger.info(`Validating source code at ${clc.bold(sourceUri)}...`);
   const archiveUri = `${repoUri}/archive/${sourceRef}.zip`;
   const tempDirectory = tmp.dirSync({ unsafeCleanup: true });
   const archiveErrorMessage = `Failed to extract archive from ${clc.bold(
-    archiveUri
+    archiveUri,
   )}. Please check that the repo is public and that the source ref is valid.`;
   try {
     const response = await fetch(archiveUri);
@@ -751,8 +751,8 @@ async function fetchExtensionSource(
   } catch (err: any) {
     throw new FirebaseError(
       `Failed to find ${clc.bold(EXTENSIONS_SPEC_FILE)} in directory ${clc.bold(
-        extensionRoot
-      )}. Please verify the root and try again.`
+        extensionRoot,
+      )}. Please verify the root and try again.`,
     );
   }
   return rootDirectory;
@@ -793,7 +793,7 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
 
   if (args.stage && !stageOptions.includes(args.stage)) {
     throw new FirebaseError(
-      `--stage only supports the following values: ${stageOptions.join(", ")}`
+      `--stage only supports the following values: ${stageOptions.join(", ")}`,
     );
   }
 
@@ -846,7 +846,7 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
   validateVersion(extensionRef, extensionSpec.version, extension?.latestVersion);
   const { versionByStage, hasVersions } = await getNextVersionByStage(
     extensionRef,
-    extensionSpec.version
+    extensionSpec.version,
   );
   const autoReview =
     !!extension?.latestApprovedVersion ||
@@ -942,8 +942,8 @@ export async function uploadExtensionVersionFromLocalSource(args: {
   if (args.stage && !localStageOptions.includes(args.stage)) {
     throw new FirebaseError(
       `--stage only supports the following values when used with --local: ${localStageOptions.join(
-        ", "
-      )}`
+        ", ",
+      )}`,
     );
   }
 
@@ -1016,9 +1016,9 @@ export function getMissingPublisherError(publisherId: string): FirebaseError {
   return new FirebaseError(
     marked(
       `Couldn't find publisher ID '${clc.bold(
-        publisherId
-      )}'. Please ensure that you have registered this ID. For step-by-step instructions on getting started as a publisher, see https://firebase.google.com/docs/extensions/publishers/get-started.`
-    )
+        publisherId,
+      )}'. Please ensure that you have registered this ID. For step-by-step instructions on getting started as a publisher, see https://firebase.google.com/docs/extensions/publishers/get-started.`,
+    ),
   );
 }
 
@@ -1030,7 +1030,7 @@ export function getMissingPublisherError(publisherId: string): FirebaseError {
  */
 export async function createSourceFromLocation(
   projectId: string,
-  sourceUri: string
+  sourceUri: string,
 ): Promise<ExtensionSource> {
   const extensionRoot = "/";
   let packageUri: string;
@@ -1055,7 +1055,7 @@ export async function createSourceFromLocation(
       `Failed to archive and upload extension source from ${sourceUri}, ${err}`,
       {
         original: err,
-      }
+      },
     );
   }
 }
@@ -1144,10 +1144,10 @@ export async function promptForOfficialExtension(message: string): Promise<strin
  */
 export async function promptForRepeatInstance(
   projectName: string,
-  extensionName: string
+  extensionName: string,
 ): Promise<"updateExisting" | "installNew" | "cancel"> {
   const message = `An extension with the ID '${clc.bold(
-    extensionName
+    extensionName,
   )}' already exists in the project '${clc.bold(projectName)}'. What would you like to do?`;
   const choices = [
     { name: "Update or reconfigure the existing instance", value: "updateExisting" },
@@ -1232,8 +1232,8 @@ export function getSourceOrigin(sourceOrVersion: string): SourceOrigin {
   }
   throw new FirebaseError(
     `Could not find source '${clc.bold(
-      sourceOrVersion
-    )}'. Check to make sure the source is correct, and then please try again.`
+      sourceOrVersion,
+    )}'. Check to make sure the source is correct, and then please try again.`,
   );
 }
 

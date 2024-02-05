@@ -112,7 +112,7 @@ export interface RuntimeDelegate {
   // to figure out as we go.
   discoverBuild(
     configValues: backend.RuntimeConfigValues,
-    envs: backend.EnvironmentVariables
+    envs: backend.EnvironmentVariables,
   ): Promise<build.Build>;
 }
 

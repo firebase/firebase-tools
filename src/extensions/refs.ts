@@ -31,7 +31,7 @@ export function parse(refOrName: string): Ref {
     !["latest", "latest-approved"].includes(ret.version)
   ) {
     throw new FirebaseError(
-      `Extension reference ${ret} contains an invalid version ${ret.version}.`
+      `Extension reference ${ret} contains an invalid version ${ret.version}.`,
     );
   }
   return ret;

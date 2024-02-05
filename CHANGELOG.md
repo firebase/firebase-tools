@@ -2,3 +2,4 @@
 - Address a regression introduced in 13.0.1 when emulating Vite applications. (#6599)
 - Fixed issue where Auth emulator sign in with Google only shows default tenant. (#6683)
 - Prevent the use of pinTags + minInstances on the same function, as the features are not mutually compatible (#6684)
+- Added rudimentary email enumeration protection for auth emulator. (#6702)

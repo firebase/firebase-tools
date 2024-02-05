@@ -232,7 +232,7 @@ export class EmulatorLog {
     emitter: EventEmitter,
     level: string,
     type: string,
-    filter?: (el: EmulatorLog) => boolean
+    filter?: (el: EmulatorLog) => boolean,
   ): Promise<EmulatorLog> {
     return new Promise((resolve) => {
       const listener = (el: EmulatorLog) => {
@@ -280,7 +280,7 @@ export class EmulatorLog {
       parsedLog.type,
       parsedLog.text,
       parsedLog.data,
-      parsedLog.timestamp
+      parsedLog.timestamp,
     );
   }
 
@@ -292,7 +292,7 @@ export class EmulatorLog {
     public type: string,
     public text: string,
     public data?: any,
-    public timestamp?: string
+    public timestamp?: string,
   ) {
     this.timestamp = this.timestamp || new Date().toISOString();
     this.data = this.data || {};
@@ -342,7 +342,7 @@ export class EmulatorLog {
       });
     } else {
       process.stderr.write(
-        "subprocess.send() is undefined, cannot communicate with Functions Runtime."
+        "subprocess.send() is undefined, cannot communicate with Functions Runtime.",
       );
     }
   }
@@ -357,7 +357,7 @@ export class EmulatorLog {
         type: this.type,
       },
       undefined,
-      pretty ? 2 : 0
+      pretty ? 2 : 0,
     );
   }
 }

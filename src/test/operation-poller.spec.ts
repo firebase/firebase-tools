@@ -64,7 +64,7 @@ describe("OperationPoller", () => {
 
       await expect(pollOperation<string>(pollerOptions)).to.eventually.be.rejectedWith(
         FirebaseError,
-        "404"
+        "404",
       );
       expect(nock.isDone()).to.be.true;
     });

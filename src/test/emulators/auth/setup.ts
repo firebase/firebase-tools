@@ -16,7 +16,7 @@ export const PROJECT_ID = "example";
 export function describeAuthEmulator(
   title: string,
   fn: (this: Suite, utils: AuthTestUtils) => void,
-  singleProjectMode = SingleProjectMode.NO_WARNING
+  singleProjectMode = SingleProjectMode.NO_WARNING,
 ): Suite {
   return describe(`Auth Emulator: ${title}`, function (this) {
     let authApp: Express.Application;
@@ -46,7 +46,7 @@ const cachedAuthAppMap = new Map<SingleProjectMode, Express.Application>();
 const projectStateForId = new Map<string, AgentProjectState>();
 
 async function createOrReuseApp(
-  singleProjectMode: SingleProjectMode
+  singleProjectMode: SingleProjectMode,
 ): Promise<Express.Application> {
   let cachedAuthApp: Express.Application | undefined = cachedAuthAppMap.get(singleProjectMode);
   if (cachedAuthApp === undefined) {

@@ -53,7 +53,7 @@ export default async function (context: any, options: Options): Promise<void> {
 
   if (!allStorage && onlyTargets.size !== 0) {
     throw new FirebaseError(
-      `Could not find rules for the following storage targets: ${[...onlyTargets].join(", ")}`
+      `Could not find rules for the following storage targets: ${[...onlyTargets].join(", ")}`,
     );
   }
 

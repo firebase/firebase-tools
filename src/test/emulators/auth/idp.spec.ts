@@ -51,7 +51,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
         expect(res.body.email).to.equal(FAKE_GOOGLE_ACCOUNT.email);
         expect(res.body.emailVerified).to.equal(FAKE_GOOGLE_ACCOUNT.emailVerified);
         expect(res.body.federatedId).to.equal(
-          `https://accounts.google.com/${FAKE_GOOGLE_ACCOUNT.rawId}`
+          `https://accounts.google.com/${FAKE_GOOGLE_ACCOUNT.rawId}`,
         );
         expect(res.body.oauthIdToken).to.equal(FAKE_GOOGLE_ACCOUNT.idToken);
         expect(res.body.providerId).to.equal("google.com");
@@ -109,7 +109,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
         expect(res.body.email).to.equal(REAL_GOOGLE_ACCOUNT.email);
         expect(res.body.emailVerified).to.equal(REAL_GOOGLE_ACCOUNT.emailVerified);
         expect(res.body.federatedId).to.equal(
-          `https://accounts.google.com/${REAL_GOOGLE_ACCOUNT.rawId}`
+          `https://accounts.google.com/${REAL_GOOGLE_ACCOUNT.rawId}`,
         );
         expect(res.body.oauthIdToken).to.equal(REAL_GOOGLE_ACCOUNT.idToken);
         expect(res.body.providerId).to.equal("google.com");
@@ -189,7 +189,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
         expect(raw.family_name).to.equal(claims.family_name);
         expect(raw.picture).to.equal(claims.picture);
         expect(raw.granted_scopes.split(" ")).not.to.contain(
-          "https://www.googleapis.com/auth/userinfo.email"
+          "https://www.googleapis.com/auth/userinfo.email",
         );
 
         const idToken = res.body.idToken;
@@ -220,7 +220,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
       .send({
         // No postBody, all params in requestUri below.
         requestUri: `http://localhost?providerId=google.com&id_token=${encodeURIComponent(
-          fakeIdToken
+          fakeIdToken,
         )}`,
         returnIdpCredential: true,
       })
@@ -457,7 +457,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
         email_verified: false,
         name: "Foo",
         picture: "http://localhost/photo-from-idp.png",
-      })
+      }),
     );
 
     await authApi()
@@ -465,7 +465,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
       .query({ key: "fake-api-key" })
       .send({
         requestUri: `http://localhost?providerId=${providerId2}&id_token=${encodeURIComponent(
-          fakeIdToken
+          fakeIdToken,
         )}`,
         returnIdpCredential: true,
       })
@@ -524,7 +524,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error.message).to.contain(
-          "INVALID_CREDENTIAL_OR_PROVIDER_ID : Invalid IdP response/credential:"
+          "INVALID_CREDENTIAL_OR_PROVIDER_ID : Invalid IdP response/credential:",
         );
       });
   });
@@ -831,7 +831,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
       fakeClaims({
         sub: "12345",
         email,
-      })
+      }),
     );
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
@@ -858,7 +858,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
         sub: "12345",
         email,
         email_verified: true,
-      })
+      }),
     );
     const newIdToken = await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
@@ -893,7 +893,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
       fakeClaims({
         sub: "12345",
         email,
-      })
+      }),
     );
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
@@ -963,7 +963,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
       authApi(),
       "google.com",
       claims,
-      tenant.tenantId
+      tenant.tenantId,
     );
     await enrollPhoneMfa(authApi(), idToken, TEST_PHONE_NUMBER, tenant.tenantId);
     const beforeSignIn = await getAccountInfoByLocalId(authApi(), localId, tenant.tenantId);
@@ -1154,7 +1154,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_CREATE_PATH)
@@ -1215,7 +1215,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_SIGN_IN_PATH)
@@ -1281,7 +1281,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_CREATE_PATH)
@@ -1363,7 +1363,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_SIGN_IN_PATH)
@@ -1426,7 +1426,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_CREATE_PATH)

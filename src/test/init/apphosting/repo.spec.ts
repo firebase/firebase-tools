@@ -117,14 +117,14 @@ describe("composer", () => {
         projectId,
         location,
         connectionId,
-        repos.repositories[0].remoteUri
+        repos.repositories[0].remoteUri,
       );
       expect(createRepositoryStub).to.be.calledWith(
         projectId,
         location,
         connectionId,
         "test-repo0",
-        repos.repositories[0].remoteUri
+        repos.repositories[0].remoteUri,
       );
     });
 
@@ -138,7 +138,7 @@ describe("composer", () => {
         projectId,
         location,
         connectionId,
-        repos.repositories[0].remoteUri
+        repos.repositories[0].remoteUri,
       );
       expect(r).to.be.deep.equal(repos.repositories[0]);
     });
@@ -167,8 +167,8 @@ describe("composer", () => {
     it("should return undefined for invalid", () => {
       expect(
         repo.parseConnectionName(
-          "projects/my-project/locations/us-central1/connections/my-conn/repositories/repo"
-        )
+          "projects/my-project/locations/us-central1/connections/my-conn/repositories/repo",
+        ),
       ).to.be.undefined;
       expect(repo.parseConnectionName("foobar")).to.be.undefined;
     });

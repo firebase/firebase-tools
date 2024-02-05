@@ -10,7 +10,7 @@ describe("secretManager", () => {
   describe("parseSecretResourceName", () => {
     it("parses valid secret resource name", () => {
       expect(
-        secretManager.parseSecretResourceName("projects/my-project/secrets/my-secret")
+        secretManager.parseSecretResourceName("projects/my-project/secrets/my-secret"),
       ).to.deep.equal({ projectId: "my-project", name: "my-secret" });
     });
 
@@ -20,13 +20,13 @@ describe("secretManager", () => {
 
     it("throws given incomplete resource name", () => {
       expect(() => secretManager.parseSecretResourceName("projects/my-project")).to.throw(
-        FirebaseError
+        FirebaseError,
       );
     });
 
     it("parse secret version resource name", () => {
       expect(
-        secretManager.parseSecretResourceName("projects/my-project/secrets/my-secret/versions/8")
+        secretManager.parseSecretResourceName("projects/my-project/secrets/my-secret/versions/8"),
       ).to.deep.equal({ projectId: "my-project", name: "my-secret" });
     });
   });
@@ -35,8 +35,8 @@ describe("secretManager", () => {
     it("parses valid secret resource name", () => {
       expect(
         secretManager.parseSecretVersionResourceName(
-          "projects/my-project/secrets/my-secret/versions/7"
-        )
+          "projects/my-project/secrets/my-secret/versions/7",
+        ),
       ).to.deep.equal({ secret: { projectId: "my-project", name: "my-secret" }, versionId: "7" });
     });
 
@@ -46,13 +46,13 @@ describe("secretManager", () => {
 
     it("throws given incomplete resource name", () => {
       expect(() => secretManager.parseSecretVersionResourceName("projects/my-project")).to.throw(
-        FirebaseError
+        FirebaseError,
       );
     });
 
     it("throws given secret resource name", () => {
       expect(() =>
-        secretManager.parseSecretVersionResourceName("projects/my-project/secrets/my-secret")
+        secretManager.parseSecretVersionResourceName("projects/my-project/secrets/my-secret"),
       ).to.throw(FirebaseError);
     });
   });

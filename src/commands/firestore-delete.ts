@@ -71,23 +71,23 @@ export const command = new Command("firestore:delete [path]")
   .option(
     "-r, --recursive",
     "Recursive. Delete all documents and subcollections at and under the " +
-      "specified level. May not be passed along with --shallow."
+      "specified level. May not be passed along with --shallow.",
   )
   .option(
     "--shallow",
     "Shallow. Delete only documents at the specified level and ignore documents in " +
       "subcollections. This action can potentially orphan documents nested in " +
-      "subcollections. May not be passed along with -r."
+      "subcollections. May not be passed along with -r.",
   )
   .option(
     "--all-collections",
     "Delete all. Deletes the entire Firestore database, " +
-      "including all collections and documents. Any other flags or arguments will be ignored."
+      "including all collections and documents. Any other flags or arguments will be ignored.",
   )
   .option("-f, --force", "No confirmation. Otherwise, a confirmation prompt will appear.")
   .option(
     "--database <databaseId>",
-    'Database ID for database to delete from. "(default)" if none is provided.'
+    'Database ID for database to delete from. "(default)" if none is provided.',
   )
   .before(printNoticeIfEmulated, Emulators.FIRESTORE)
   .before(requirePermissions, ["datastore.entities.list", "datastore.entities.delete"])
@@ -115,7 +115,7 @@ export const command = new Command("firestore:delete [path]")
         default: false,
         message: confirmationMessage(deleteOp, options),
       },
-      options
+      options,
     );
     if (!confirm) {
       return utils.reject("Command aborted.", { exit: 1 });

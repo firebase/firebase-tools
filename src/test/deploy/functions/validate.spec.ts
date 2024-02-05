@@ -144,7 +144,7 @@ describe("validate", () => {
       };
 
       expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
-        /concurrent execution and less than one full CPU/
+        /concurrent execution and less than one full CPU/,
       );
     });
 
@@ -190,7 +190,7 @@ describe("validate", () => {
         };
 
         expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
-          /have > 4 CPU in a region that supports a maximum 4 CPU/
+          /have > 4 CPU in a region that supports a maximum 4 CPU/,
         );
       });
     }
@@ -239,7 +239,7 @@ describe("validate", () => {
         };
 
         expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
-          /Valid CPU options are \(0.08, 1], 2, 4, 6, 8, or "gcf_gen1"/
+          /Valid CPU options are \(0.08, 1], 2, 4, 6, 8, or "gcf_gen1"/,
         );
       });
     }
@@ -253,7 +253,7 @@ describe("validate", () => {
       };
 
       expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
-        /A minimum of 0.5 CPU is needed to set a memory limit greater than 512MiB/
+        /A minimum of 0.5 CPU is needed to set a memory limit greater than 512MiB/,
       );
     });
 
@@ -266,7 +266,7 @@ describe("validate", () => {
       };
 
       expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
-        /A minimum of 1 CPU is needed to set a memory limit greater than 1GiB/
+        /A minimum of 1 CPU is needed to set a memory limit greater than 1GiB/,
       );
     });
 
@@ -284,7 +284,7 @@ describe("validate", () => {
         };
 
         expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
-          /too little memory for their CPU/
+          /too little memory for their CPU/,
         );
       });
     }
@@ -354,7 +354,7 @@ describe("validate", () => {
       };
       resolveCpuAndConcurrency(backend.of(ep));
       expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
-        /concurrent execution and less than one full CPU/
+        /concurrent execution and less than one full CPU/,
       );
     });
 
@@ -365,7 +365,7 @@ describe("validate", () => {
         cpu: 0.5,
       };
       expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
-        /concurrent execution and less than one full CPU/
+        /concurrent execution and less than one full CPU/,
       );
     });
 
@@ -394,7 +394,7 @@ describe("validate", () => {
       };
 
       expect(() => validate.endpointsAreValid(backend.of(ep1, ep2))).to.throw(
-        `Can only create at most one Auth Blocking Trigger for ${BEFORE_CREATE_EVENT} events`
+        `Can only create at most one Auth Blocking Trigger for ${BEFORE_CREATE_EVENT} events`,
       );
     });
 
@@ -423,7 +423,7 @@ describe("validate", () => {
       };
 
       expect(() => validate.endpointsAreValid(backend.of(ep1, ep2))).to.throw(
-        `Can only create at most one Auth Blocking Trigger for ${BEFORE_SIGN_IN_EVENT} events`
+        `Can only create at most one Auth Blocking Trigger for ${BEFORE_SIGN_IN_EVENT} events`,
       );
     });
 
@@ -479,11 +479,11 @@ describe("validate", () => {
     it("passes given unqiue ids", () => {
       const b1 = backend.of(
         { ...ENDPOINT_BASE, id: "i1", region: "r1" },
-        { ...ENDPOINT_BASE, id: "i2", region: "r1" }
+        { ...ENDPOINT_BASE, id: "i2", region: "r1" },
       );
       const b2 = backend.of(
         { ...ENDPOINT_BASE, id: "i3", region: "r2" },
-        { ...ENDPOINT_BASE, id: "i4", region: "r2" }
+        { ...ENDPOINT_BASE, id: "i4", region: "r2" },
       );
       expect(() => validate.endpointsAreUnique({ b1, b2 })).to.not.throw();
     });
@@ -491,11 +491,11 @@ describe("validate", () => {
     it("passes given unique id, region pairs", () => {
       const b1 = backend.of(
         { ...ENDPOINT_BASE, id: "i1", region: "r1" },
-        { ...ENDPOINT_BASE, id: "i2", region: "r1" }
+        { ...ENDPOINT_BASE, id: "i2", region: "r1" },
       );
       const b2 = backend.of(
         { ...ENDPOINT_BASE, id: "i1", region: "r2" },
-        { ...ENDPOINT_BASE, id: "i2", region: "r2" }
+        { ...ENDPOINT_BASE, id: "i2", region: "r2" },
       );
       expect(() => validate.endpointsAreUnique({ b1, b2 })).to.not.throw();
     });
@@ -504,7 +504,7 @@ describe("validate", () => {
       const b1 = backend.of({ ...ENDPOINT_BASE, id: "i1", region: "r1" });
       const b2 = backend.of({ ...ENDPOINT_BASE, id: "i1", region: "r1" });
       expect(() => validate.endpointsAreUnique({ b1, b2 })).to.throw(
-        /projects\/project\/locations\/r1\/functions\/i1: b1,b2/
+        /projects\/project\/locations\/r1\/functions\/i1: b1,b2/,
       );
     });
 
@@ -513,14 +513,14 @@ describe("validate", () => {
       const b2 = backend.of({ ...ENDPOINT_BASE, id: "i1", region: "r1" });
       const b3 = backend.of({ ...ENDPOINT_BASE, id: "i1", region: "r1" });
       expect(() => validate.endpointsAreUnique({ b1, b2, b3 })).to.throw(
-        /projects\/project\/locations\/r1\/functions\/i1: b1,b2,b3/
+        /projects\/project\/locations\/r1\/functions\/i1: b1,b2,b3/,
       );
     });
 
     it("throws given multiple conflicts", () => {
       const b1 = backend.of(
         { ...ENDPOINT_BASE, id: "i1", region: "r1" },
-        { ...ENDPOINT_BASE, id: "i2", region: "r2" }
+        { ...ENDPOINT_BASE, id: "i2", region: "r2" },
       );
       const b2 = backend.of({ ...ENDPOINT_BASE, id: "i1", region: "r1" });
       const b3 = backend.of({ ...ENDPOINT_BASE, id: "i2", region: "r2" });
@@ -584,7 +584,7 @@ describe("validate", () => {
       });
       expect(validate.secretsAreValid(project, b)).to.be.rejectedWith(
         FirebaseError,
-        /Failed to validate secret version/
+        /Failed to validate secret version/,
       );
     });
 
@@ -604,7 +604,7 @@ describe("validate", () => {
       });
       expect(validate.secretsAreValid(project, b)).to.be.rejectedWith(
         FirebaseError,
-        /Failed to validate secret versions/
+        /Failed to validate secret versions/,
       );
     });
 
@@ -628,7 +628,7 @@ describe("validate", () => {
       });
       expect(validate.secretsAreValid(project, b)).to.be.rejectedWith(
         FirebaseError,
-        /Failed to validate secret versions/
+        /Failed to validate secret versions/,
       );
     });
 

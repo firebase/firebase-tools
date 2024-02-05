@@ -19,7 +19,7 @@ export const command = new Command("hosting:sites:delete <siteId>")
   .action(
     async (
       siteId: string,
-      options: any // eslint-disable-line @typescript-eslint/no-explicit-any
+      options: any, // eslint-disable-line @typescript-eslint/no-explicit-any
     ): Promise<void> => {
       const projectId = needProjectId(options);
       if (!siteId) {
@@ -27,8 +27,8 @@ export const command = new Command("hosting:sites:delete <siteId>")
       }
       logger.info(
         `Deleting a site is a permanent action. If you delete a site, Firebase doesn't maintain records of deployed files or deployment history, and the site ${underline(
-          siteId
-        )} cannot be reactivated by you or anyone else.`
+          siteId,
+        )} cannot be reactivated by you or anyone else.`,
       );
       logger.info();
 
@@ -37,11 +37,11 @@ export const command = new Command("hosting:sites:delete <siteId>")
           name: "force",
           type: "confirm",
           message: `Are you sure you want to delete the Hosting site ${underline(
-            siteId
+            siteId,
           )} for project ${underline(projectId)}? `,
           default: false,
         },
-        options
+        options,
       );
       if (!confirmed) {
         return;
@@ -52,7 +52,7 @@ export const command = new Command("hosting:sites:delete <siteId>")
       await deleteSite(projectId, siteId);
       logLabeledSuccess(
         LOG_TAG,
-        `Successfully deleted site ${bold(siteId)} from project ${bold(projectId)}`
+        `Successfully deleted site ${bold(siteId)} from project ${bold(projectId)}`,
       );
-    }
+    },
   );

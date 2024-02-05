@@ -20,7 +20,7 @@ export function exec(
   project: string,
   additionalArgs: string[],
   cwd: string,
-  quiet = true
+  quiet = true,
 ): Promise<Result> {
   const args = [cmd, "--project", project];
 

@@ -14,10 +14,10 @@ export const discover = viteDiscoverWithNpmDependency("@sveltejs/kit");
 
 export { getDevModeHandle, supportedRange } from "../vite";
 
-export async function build(root: string) {
+export async function build(root: string, target: string) {
   const config = await getConfig(root);
   const wantsBackend = config.kit.adapter?.name !== "@sveltejs/adapter-static";
-  await viteBuild(root);
+  await viteBuild(root, target);
   return { wantsBackend };
 }
 

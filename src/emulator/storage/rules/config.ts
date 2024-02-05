@@ -20,7 +20,7 @@ function getSourceFile(rules: string, options: Options): SourceFile {
  */
 export function getStorageRulesConfig(
   projectId: string,
-  options: Options
+  options: Options,
 ): SourceFile | RulesConfig[] {
   const storageConfig = options.config.data.storage;
   const storageLogger = EmulatorLogger.forEmulator(Emulators.STORAGE);
@@ -29,12 +29,12 @@ export function getStorageRulesConfig(
       storageLogger.logLabeled(
         "BULLET",
         "storage",
-        `Detected demo project ID "${projectId}", using a default (open) rules configuration.`
+        `Detected demo project ID "${projectId}", using a default (open) rules configuration.`,
       );
       return defaultStorageRules();
     }
     throw new FirebaseError(
-      "Cannot start the Storage emulator without rules file specified in firebase.json: run 'firebase init' and set up your Storage configuration"
+      "Cannot start the Storage emulator without rules file specified in firebase.json: run 'firebase init' and set up your Storage configuration",
     );
   }
 
@@ -42,7 +42,7 @@ export function getStorageRulesConfig(
   if (!Array.isArray(storageConfig)) {
     if (!storageConfig.rules) {
       throw new FirebaseError(
-        "Cannot start the Storage emulator without rules file specified in firebase.json: run 'firebase init' and set up your Storage configuration"
+        "Cannot start the Storage emulator without rules file specified in firebase.json: run 'firebase init' and set up your Storage configuration",
       );
     }
 
@@ -62,7 +62,7 @@ export function getStorageRulesConfig(
         storageLogger.logLabeled(
           "BULLET",
           "storage",
-          `Detected demo project ID "${projectId}", using a default (open) rules configuration. Storage targets in firebase.json will be ignored.`
+          `Detected demo project ID "${projectId}", using a default (open) rules configuration. Storage targets in firebase.json will be ignored.`,
         );
         return defaultStorageRules();
       }
@@ -72,7 +72,7 @@ export function getStorageRulesConfig(
     results.push(
       ...rc.target(projectId, "storage", targetConfig.target).map((resource: string) => {
         return { resource, rules: getSourceFile(targetConfig.rules, options) };
-      })
+      }),
     );
   }
   return results;

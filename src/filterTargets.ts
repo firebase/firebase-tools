@@ -17,7 +17,7 @@ export function filterTargets(options: Options, validTargets: string[]): string[
       targets,
       options.only.split(",").map((opt: string) => {
         return opt.split(":")[0];
-      })
+      }),
     );
   } else if (options.except) {
     targets = difference(targets, options.except.split(","));

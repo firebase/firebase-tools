@@ -44,7 +44,7 @@ function toProjectInfo(projectMetaData: FirebaseProjectMetadata): ProjectInfo {
 async function promptAndCreateNewProject(): Promise<FirebaseProjectMetadata> {
   utils.logBullet(
     "If you want to create a project in a Google Cloud organization or folder, please use " +
-      `"firebase projects:create" instead, and return to this command when you've created the project.`
+      `"firebase projects:create" instead, and return to this command when you've created the project.`,
   );
   const promptAnswer: { projectId?: string; displayName?: string } = {};
   await prompt(promptAnswer, PROJECTS_CREATE_QUESTIONS);
@@ -109,7 +109,7 @@ export async function doSetup(setup: any, config: any, options: any): Promise<vo
   logger.info();
   logger.info(`First, let's associate this project directory with a Firebase project.`);
   logger.info(
-    `You can create multiple project aliases by running ${clc.bold("firebase use --add")}, `
+    `You can create multiple project aliases by running ${clc.bold("firebase use --add")}, `,
   );
   logger.info(`but for now we'll just set up a default project.`);
   logger.info();

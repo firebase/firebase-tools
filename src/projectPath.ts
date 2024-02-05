@@ -10,7 +10,7 @@ import { FirebaseError } from "./error";
  */
 export function resolveProjectPath(
   options: { cwd?: string; configPath?: string },
-  filePath: string
+  filePath: string,
 ): string {
   const projectRoot = detectProjectRoot(options);
   if (!projectRoot) {

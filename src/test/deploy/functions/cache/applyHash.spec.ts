@@ -75,16 +75,16 @@ describe("applyHash", () => {
 
       const getEnvironmentVariablesHash = sinon.stub(hash, "getEnvironmentVariablesHash");
       getEnvironmentVariablesHash.callsFake(
-        (backend: backend.Backend) => "env=" + backend.environmentVariables.test
+        (backend: backend.Backend) => "env=" + backend.environmentVariables.test,
       );
       const getSecretsHash = sinon.stub(hash, "getSecretsHash");
       getSecretsHash.callsFake(
-        (endpoint: backend.Endpoint) => "secret=" + endpoint.secretEnvironmentVariables?.[0].secret
+        (endpoint: backend.Endpoint) => "secret=" + endpoint.secretEnvironmentVariables?.[0].secret,
       );
 
       const getEndpointHash = sinon.stub(hash, "getEndpointHash");
       getEndpointHash.callsFake((source?: string, env?: string, secrets?: string) =>
-        [source, env, secrets].join("&")
+        [source, env, secrets].join("&"),
       );
 
       // Execute
@@ -94,13 +94,13 @@ describe("applyHash", () => {
       expect(getEndpointHash).to.have.been.calledWith(
         "backend1_sourceV1",
         "env=backend1_env_hash",
-        "secret=secret1"
+        "secret=secret1",
       );
       expect(endpoint1.hash).to.equal("backend1_sourceV1&env=backend1_env_hash&secret=secret1");
       expect(getEndpointHash).to.have.been.calledWith(
         "backend2_sourceV2",
         "env=backend2_env_hash",
-        "secret=secret2"
+        "secret=secret2",
       );
       expect(endpoint2.hash).to.equal("backend2_sourceV2&env=backend2_env_hash&secret=secret2");
       expect(getEnvironmentVariablesHash).to.have.been.calledWith(backend1);

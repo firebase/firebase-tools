@@ -24,17 +24,17 @@ export const command = new Command("auth:import [dataFile]")
   .description("import users into your Firebase project from a data file(.csv or .json)")
   .option(
     "--hash-algo <hashAlgo>",
-    "specify the hash algorithm used in password for these accounts"
+    "specify the hash algorithm used in password for these accounts",
   )
   .option("--hash-key <hashKey>", "specify the key used in hash algorithm")
   .option(
     "--salt-separator <saltSeparator>",
-    "specify the salt separator which will be appended to salt when verifying password. only used by SCRYPT now."
+    "specify the salt separator which will be appended to salt when verifying password. only used by SCRYPT now.",
   )
   .option("--rounds <rounds>", "specify how many rounds for hash calculation.")
   .option(
     "--mem-cost <memCost>",
-    "specify the memory cost for firebase scrypt, or cpu/memory cost for standard scrypt"
+    "specify the memory cost for firebase scrypt, or cpu/memory cost for standard scrypt",
   )
   .option("--parallelization <parallelization>", "specify the parallelization for standard scrypt.")
   .option("--block-size <blockSize>", "specify the block size (normally is 8) for standard scrypt.")
@@ -42,7 +42,7 @@ export const command = new Command("auth:import [dataFile]")
   .option(
     "--hash-input-order <hashInputOrder>",
     "specify the order of password and salt. Possible values are SALT_FIRST and PASSWORD_FIRST. " +
-      "MD5, SHA1, SHA256, SHA512, HMAC_MD5, HMAC_SHA1, HMAC_SHA256, HMAC_SHA512 support this flag."
+      "MD5, SHA1, SHA256, SHA512, HMAC_MD5, HMAC_SHA1, HMAC_SHA256, HMAC_SHA512 support this flag.",
   )
   .before(requirePermissions, ["firebaseauth.users.create", "firebaseauth.users.update"])
   .action(async (dataFile: string, options: Options) => {
@@ -83,8 +83,8 @@ export const command = new Command("auth:import [dataFile]")
               if (err) {
                 return reject(
                   new FirebaseError(
-                    `Line ${counter} (${record.join(",")}) has invalid data format: ${err}`
-                  )
+                    `Line ${counter} (${record.join(",")}) has invalid data format: ${err}`,
+                  ),
                 );
               }
               currentBatch.push(user);

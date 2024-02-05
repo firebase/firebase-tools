@@ -19,16 +19,18 @@ export const projects = globalSignal<Record<string, FirebaseProjectMetadata[]>>(
 /** Currently selected project ID */
 export const currentProjectId = globalSignal("");
 
-const userScopedProjects = computed(() => {
-  return projects.value[currentUser.value?.email ?? ""] ?? [];
-});
+const userScopedProjects = computed<FirebaseProjectMetadata[] | undefined>(
+  () => {
+    return projects.value[currentUser.value?.email ?? ""];
+  }
+);
 
 /** Gets the currently selected project, fallback to first default project in RC file */
 export const currentProject = computed<FirebaseProjectMetadata | undefined>(
   () => {
     // Service accounts should only have one project
     if (isServiceAccount.value) {
-      return userScopedProjects.value[0];
+      return userScopedProjects.value?.[0];
     }
 
     const wantProjectId =
@@ -37,7 +39,7 @@ export const currentProject = computed<FirebaseProjectMetadata | undefined>(
       return undefined;
     }
 
-    return userScopedProjects.value.find((p) => p.projectId === wantProjectId);
+    return userScopedProjects.value?.find((p) => p.projectId === wantProjectId);
   },
 );
 

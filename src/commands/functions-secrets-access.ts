@@ -8,7 +8,7 @@ import * as secrets from "../functions/secrets";
 
 export const command = new Command("functions:secrets:access <KEY>[@version]")
   .description(
-    "Access secret value given secret and its version. Defaults to accessing the latest version."
+    "Access secret value given secret and its version. Defaults to accessing the latest version.",
   )
   .before(requireAuth)
   .before(secrets.ensureApi)

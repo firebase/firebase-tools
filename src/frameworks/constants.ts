@@ -6,15 +6,15 @@ export const NPM_COMMAND_TIMEOUT_MILLIES = 10_000;
 
 export const SupportLevelWarnings = {
   [SupportLevel.Experimental]: (framework: string) => `Thank you for trying our ${clc.italic(
-    "experimental"
+    "experimental",
   )} support for ${framework} on Firebase Hosting.
    ${clc.red(`While this integration is maintained by Googlers it is not a supported Firebase product.
    Issues filed on GitHub will be addressed on a best-effort basis by maintainers and other community members.`)}`,
   [SupportLevel.Preview]: (framework: string) => `Thank you for trying our ${clc.italic(
-    "early preview"
+    "early preview",
   )} of ${framework} support on Firebase Hosting.
    ${clc.red(
-     "During the preview, support is best-effort and breaking changes can be expected. Proceed with caution."
+     "During the preview, support is best-effort and breaking changes can be expected. Proceed with caution.",
    )}`,
 };
 

@@ -368,7 +368,7 @@ describe("paramHelper", () => {
           },
           projectId: PROJECT_ID,
           instanceId: INSTANCE_ID,
-        })
+        }),
       ).to.be.rejectedWith(FirebaseError, "this is an error");
       // Ensure that we don't continue prompting if one fails
       expect(promptStub).to.have.been.calledOnce;

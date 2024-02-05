@@ -23,14 +23,14 @@ function checkForApps(apps: AppMetadata[], appPlatform: AppPlatform): void {
   if (!apps.length) {
     throw new FirebaseError(
       `There are no ${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}apps ` +
-        "associated with this Firebase project"
+        "associated with this Firebase project",
     );
   }
 }
 
 async function selectAppInteractively(
   apps: AppMetadata[],
-  appPlatform: AppPlatform
+  appPlatform: AppPlatform,
 ): Promise<AppMetadata> {
   checkForApps(apps, appPlatform);
 
@@ -56,7 +56,7 @@ async function selectAppInteractively(
 export const command = new Command("apps:sdkconfig [platform] [appId]")
   .description(
     "print the Google Services config of a Firebase app. " +
-      "[platform] can be IOS, ANDROID or WEB (case insensitive)"
+      "[platform] can be IOS, ANDROID or WEB (case insensitive)",
   )
   .option("-o, --out [file]", "(optional) write config output to a file")
   .before(requireAuth)
@@ -93,7 +93,7 @@ export const command = new Command("apps:sdkconfig [platform] [appId]")
 
     let configData;
     const spinner = ora(
-      `Downloading configuration data of your Firebase ${appPlatform} app`
+      `Downloading configuration data of your Firebase ${appPlatform} app`,
     ).start();
     try {
       configData = await getAppConfig(appId, appPlatform);
