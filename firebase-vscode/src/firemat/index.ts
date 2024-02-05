@@ -51,7 +51,7 @@ export function registerFiremat(
     selectedProjectStatus,
     {
       dispose: effect(() => {
-        selectedProjectStatus.text = currentProjectId.value ?? "<No project>";
+        selectedProjectStatus.text = `$(mono-firebase) ${currentProjectId.value ?? "<No project>"}`;
         selectedProjectStatus.show();
       }),
     },
