@@ -17,6 +17,7 @@ import { FirebaseError } from "../../../error";
 import { promptOnce } from "../../../prompt";
 import { DEFAULT_REGION } from "./constants";
 import { ensure } from "../../../ensureApiEnabled";
+import * as deploymentTool from "../../../deploymentTool";
 
 const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: apphostingOrigin,
@@ -76,6 +77,33 @@ export async function doSetup(setup: any, projectId: string): Promise<void> {
 
   const backend = await onboardBackend(projectId, location, backendId);
 
+  // TODO: Once tag patterns are implemented, prompt which method the user
+  // prefers. We could reduce the nubmer of questions asked by letting people
+  // enter tag:<pattern>?
+  const branch = await promptOnce({
+    name: "branch",
+    type: "input",
+    default: "main",
+    message: "Pick a branch for continuous deployment",
+  });
+  const traffic: Omit<apphosting.TrafficInput, "name"> = {
+    rolloutPolicy: {
+      codebaseBranch: branch,
+      stages: [
+        {
+          progression: "IMMEDIATE",
+          targetPercent: 100,
+        },
+      ],
+    },
+  };
+  const op = await apphosting.updateTraffic(projectId, location, backendId, traffic);
+  await poller.pollOperation<apphosting.Traffic>({
+    ...apphostingPollerOptions,
+    pollerName: `updateTraffic-${projectId}-${location}-${backendId}`,
+    operationResourceName: op.name,
+  });
+
   const confirmRollout = await promptOnce({
     type: "confirm",
     name: "rollout",
@@ -89,13 +117,6 @@ export async function doSetup(setup: any, projectId: string): Promise<void> {
     return;
   }
 
-  const branch = await promptOnce({
-    name: "branch",
-    type: "input",
-    default: "main",
-    message: "Which branch do you want to deploy?",
-  });
-
   const { build } = await onboardRollout(projectId, location, backendId, {
     source: {
       codebase: {
@@ -105,6 +126,12 @@ export async function doSetup(setup: any, projectId: string): Promise<void> {
   });
 
   if (build.state !== "READY") {
+    if (!build.buildLogsUri) {
+      throw new FirebaseError(
+        "Failed to build your app, but failed to get build logs as well. " +
+          "This is an internal error and should be reported",
+      );
+    }
     throw new FirebaseError(
       `Failed to build your app. Please inspect the build logs at ${build.buildLogsUri}.`,
       { children: [build.error] },
@@ -137,7 +164,7 @@ function toBackend(cloudBuildConnRepo: Repository): Omit<Backend, BackendOutputO
       repository: `${cloudBuildConnRepo.name}`,
       rootDirectory: "/",
     },
-    labels: {},
+    labels: deploymentTool.labels(),
   };
 }
 
