@@ -22,7 +22,7 @@ export const currentProjectId = globalSignal("");
 const userScopedProjects = computed<FirebaseProjectMetadata[] | undefined>(
   () => {
     return projects.value[currentUser.value?.email ?? ""];
-  }
+  },
 );
 
 /** Gets the currently selected project, fallback to first default project in RC file */
@@ -121,7 +121,7 @@ export function registerProject({
         return;
       } else {
         try {
-          currentProjectId.value = await promptUserForProject(
+          currentProjectId.value = await _promptUserForProject(
             userScopedProjects.value,
           );
         } catch (e) {
@@ -146,13 +146,19 @@ export function registerProject({
   );
 }
 
-/** Get the user to select a project */
-async function promptUserForProject(projects: FirebaseProjectMetadata[]) {
+/**
+ * Get the user to select a project
+ * @internal
+ **/
+export async function _promptUserForProject(
+  projects: FirebaseProjectMetadata[],
+  token?: vscode.CancellationToken,
+) {
   const items: QuickPickItem[] = projects.map((p) => ({
     label: p.projectId,
     description: p.displayName,
   }));
 
-  const item = await vscode.window.showQuickPick(items);
+  const item = await vscode.window.showQuickPick(items, {}, token);
   return item.label;
 }
