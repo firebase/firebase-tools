@@ -151,7 +151,10 @@ export function parse(data: string): ParseResult {
 }
 
 export class KeyValidationError extends Error {
-  constructor(public key: string, public message: string) {
+  constructor(
+    public key: string,
+    public message: string,
+  ) {
     super(`Failed to validate key ${key}: ${message}`);
   }
 }
@@ -170,13 +173,13 @@ export function validateKey(key: string): void {
     throw new KeyValidationError(
       key,
       `Key ${key} must start with an uppercase ASCII letter or underscore` +
-        ", and then consist of uppercase ASCII letters, digits, and underscores."
+        ", and then consist of uppercase ASCII letters, digits, and underscores.",
     );
   }
   if (RESERVED_PREFIXES.some((prefix) => key.startsWith(prefix))) {
     throw new KeyValidationError(
       key,
-      `Key ${key} starts with a reserved prefix (${RESERVED_PREFIXES.join(" ")})`
+      `Key ${key} starts with a reserved prefix (${RESERVED_PREFIXES.join(" ")})`,
     );
   }
 }
@@ -218,7 +221,7 @@ function findEnvfiles(
   functionsSource: string,
   projectId: string,
   projectAlias?: string,
-  isEmulator?: boolean
+  isEmulator?: boolean,
 ): string[] {
   const files: string[] = [".env"];
   files.push(`.env.${projectId}`);
@@ -278,7 +281,7 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
     fs.writeFileSync(path.join(envOpts.functionsSource, targetEnvFile), "", { flag: "wx" });
     logBullet(
       clc.yellow(clc.bold("functions: ")) +
-        `Created new local file ${targetEnvFile} to store param values. We suggest explicitly adding or excluding this file from version control.`
+        `Created new local file ${targetEnvFile} to store param values. We suggest explicitly adding or excluding this file from version control.`,
     );
   }
 
@@ -294,7 +297,7 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
 
   // Write all the keys in a single filesystem access
   logBullet(
-    clc.cyan(clc.bold("functions: ")) + `Writing new parameter values to disk: ${targetEnvFile}`
+    clc.cyan(clc.bold("functions: ")) + `Writing new parameter values to disk: ${targetEnvFile}`,
   );
   let lines = "";
   for (const k of Object.keys(toWrite)) {
@@ -315,7 +318,7 @@ export function checkForDuplicateKeys(
   isEmulator: boolean,
   keys: string[],
   fullEnv: Record<string, string>,
-  envsWithoutLocal?: Record<string, string>
+  envsWithoutLocal?: Record<string, string>,
 ): void {
   for (const key of keys) {
     const definedInEnv = fullEnv.hasOwnProperty(key);
@@ -323,12 +326,12 @@ export function checkForDuplicateKeys(
       if (envsWithoutLocal && isEmulator && envsWithoutLocal.hasOwnProperty(key)) {
         logWarning(
           clc.cyan(clc.yellow("functions: ")) +
-            `Writing parameter ${key} to emulator-specific config .env.local. This will overwrite your existing definition only when emulating.`
+            `Writing parameter ${key} to emulator-specific config .env.local. This will overwrite your existing definition only when emulating.`,
         );
         continue;
       }
       throw new FirebaseError(
-        `Attempted to write param-defined key ${key} to .env files, but it was already defined.`
+        `Attempted to write param-defined key ${key} to .env files, but it was already defined.`,
       );
     }
   }
@@ -337,7 +340,7 @@ export function checkForDuplicateKeys(
 function formatUserEnvForWrite(key: string, value: string): string {
   const escapedValue = value.replace(
     ALL_ESCAPABLE_CHARACTERS_RE,
-    (match) => CHARACTERS_TO_ESCAPE_SEQUENCES[match]
+    (match) => CHARACTERS_TO_ESCAPE_SEQUENCES[match],
   );
   if (escapedValue !== value) {
     return `${key}="${escapedValue}"\n`;
@@ -376,7 +379,7 @@ export function loadUserEnvs({
     if (envFiles.includes(`.env.${projectId}`) && envFiles.includes(`.env.${projectAlias}`)) {
       throw new FirebaseError(
         `Can't have both dotenv files with projectId (env.${projectId}) ` +
-          `and projectAlias (.env.${projectAlias}) as extensions.`
+          `and projectAlias (.env.${projectAlias}) as extensions.`,
       );
     }
   }
@@ -394,7 +397,7 @@ export function loadUserEnvs({
     }
   }
   logBullet(
-    clc.cyan(clc.bold("functions: ")) + `Loaded environment variables from ${envFiles.join(", ")}.`
+    clc.cyan(clc.bold("functions: ")) + `Loaded environment variables from ${envFiles.join(", ")}.`,
   );
 
   return envs;
@@ -407,7 +410,7 @@ export function loadUserEnvs({
  */
 export function loadFirebaseEnvs(
   firebaseConfig: Record<string, any>,
-  projectId: string
+  projectId: string,
 ): Record<string, string> {
   return {
     FIREBASE_CONFIG: JSON.stringify(firebaseConfig),

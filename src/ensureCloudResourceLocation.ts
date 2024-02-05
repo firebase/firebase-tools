@@ -14,7 +14,7 @@ export function ensureLocationSet(location: string, feature: string): void {
     throw new FirebaseError(
       `Cloud resource location is not set for this project but the operation ` +
         `you are attempting to perform in ${feature} requires it. ` +
-        `Please see this documentation for more details: https://firebase.google.com/docs/projects/locations`
+        `Please see this documentation for more details: https://firebase.google.com/docs/projects/locations`,
     );
   }
 }

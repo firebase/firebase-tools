@@ -25,11 +25,11 @@ async function getDatabase(project: string, databaseId: string): Promise<firesto
  * @param endpoint the firestore endpoint
  */
 export async function ensureFirestoreTriggerRegion(
-  endpoint: backend.Endpoint & backend.EventTriggered
+  endpoint: backend.Endpoint & backend.EventTriggered,
 ): Promise<void> {
   const db = await getDatabase(
     endpoint.project,
-    endpoint.eventTrigger.eventFilters?.database || "(default)"
+    endpoint.eventTrigger.eventFilters?.database || "(default)",
   );
   const dbRegion = db.locationId;
   if (!endpoint.eventTrigger.region) {
@@ -37,7 +37,7 @@ export async function ensureFirestoreTriggerRegion(
   }
   if (endpoint.eventTrigger.region !== dbRegion) {
     throw new FirebaseError(
-      "A firestore trigger location must match the firestore database region."
+      "A firestore trigger location must match the firestore database region.",
     );
   }
 }

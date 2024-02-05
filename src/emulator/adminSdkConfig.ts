@@ -32,7 +32,7 @@ export function constructDefaultAdminSdkConfig(projectId: string): AdminSdkConfi
  * Get the Admin SDK configuration associated with a project, falling back to a cache when offline.
  */
 export async function getProjectAdminSdkConfigOrCached(
-  projectId: string
+  projectId: string,
 ): Promise<AdminSdkConfig | undefined> {
   // When using the emulators with a fake project Id, use a fake project config.
   if (Constants.isDemoProject(projectId)) {
@@ -60,7 +60,7 @@ async function getProjectAdminSdkConfig(projectId: string): Promise<AdminSdkConf
   });
   if (projectId.startsWith("demo-")) {
     logger.debug(
-      `Detected demo- project: ${projectId}. Using default adminSdkConfig instead of calling firebase API.`
+      `Detected demo- project: ${projectId}. Using default adminSdkConfig instead of calling firebase API.`,
     );
     return {
       projectId,
@@ -75,7 +75,7 @@ async function getProjectAdminSdkConfig(projectId: string): Promise<AdminSdkConf
     throw new FirebaseError(
       `Failed to get Admin SDK for Firebase project ${projectId}. ` +
         "Please make sure the project exists and your account has permission to access it.",
-      { exit: 2, original: err }
+      { exit: 2, original: err },
     );
   }
 }

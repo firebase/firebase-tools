@@ -35,7 +35,7 @@ describe("files", () => {
         },
       },
       cf,
-      Buffer.from("Hello, World!")
+      Buffer.from("Hello, World!"),
     );
 
     const json = StoredFileMetadata.toJSON(metadata);
@@ -57,7 +57,7 @@ describe("files", () => {
         downloadTokens: ["token123"],
       },
       cf,
-      Buffer.from("Hello, World!")
+      Buffer.from("Hello, World!"),
     );
     const json = StoredFileMetadata.toJSON(metadata);
     const deserialized = StoredFileMetadata.fromJSON(json, cf);
@@ -77,7 +77,7 @@ describe("files", () => {
       storageLayer: StorageLayer,
       bucketId: string,
       objectId: string,
-      opts?: UploadFileOptions
+      opts?: UploadFileOptions,
     ) {
       const upload = _uploadService.multipartUpload({
         bucketId,
@@ -143,7 +143,7 @@ describe("files", () => {
           storageLayer.getObject({
             bucketId: "bucket",
             decodedObjectId: "dir%2Fobject",
-          })
+          }),
         ).to.be.rejectedWith(ForbiddenError);
       });
 
@@ -154,7 +154,7 @@ describe("files", () => {
           storageLayer.getObject({
             bucketId: "bucket",
             decodedObjectId: "dir%2Fobject",
-          })
+          }),
         ).to.be.rejectedWith(NotFoundError);
       });
     });
@@ -167,7 +167,7 @@ describe("files", () => {
         rulesValidator,
         ALWAYS_TRUE_ADMIN_CREDENTIAL_VALIDATOR,
         _persistence,
-        new StorageCloudFunctions("project")
+        new StorageCloudFunctions("project"),
       );
 
     const getPersistenceTmpDir = () => `${tmpdir()}/firebase/storage/blobs`;

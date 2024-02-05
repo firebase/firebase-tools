@@ -128,7 +128,7 @@ describe("Remote Config GET", () => {
     it("should return a correctly parsed entry value with two parameters", () => {
       const expectRCParameters = "RCTestkey\nenterNumber\n";
       const RCParameters = remoteconfig.parseTemplateForTable(
-        projectInfoWithTwoParameters.parameters
+        projectInfoWithTwoParameters.parameters,
       );
 
       expect(RCParameters).to.deep.equal(expectRCParameters);
@@ -139,7 +139,7 @@ describe("Remote Config GET", () => {
 
       await expect(remoteconfig.getTemplate(PROJECT_ID)).to.eventually.be.rejectedWith(
         FirebaseError,
-        /Failed to get Firebase Remote Config template/
+        /Failed to get Firebase Remote Config template/,
       );
     });
   });

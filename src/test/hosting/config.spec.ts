@@ -11,7 +11,7 @@ import { setEnabled } from "../../experiments";
 function options(
   hostingConfig: HostingConfig,
   base?: Omit<HostingOptions, "config" | "rc">,
-  targetsToSites?: Record<string, string[]>
+  targetsToSites?: Record<string, string[]>,
 ): HostingOptions {
   return {
     project: "project",
@@ -43,13 +43,13 @@ describe("config", () => {
       const singleSiteOpts = options({ site: "site", target: "target" });
       expect(() => config.extract(singleSiteOpts)).throws(
         FirebaseError,
-        /configs should only include either/
+        /configs should only include either/,
       );
 
       const manySiteOpts = options([{ site: "site", target: "target" }]);
       expect(() => config.extract(manySiteOpts)).throws(
         FirebaseError,
-        /configs should only include either/
+        /configs should only include either/,
       );
     });
 
@@ -92,7 +92,7 @@ describe("config", () => {
       const opts = options(cfg, {}, { target: ["site", "other-site"] });
       expect(() => config.resolveTargets(cfg, opts)).to.throw(
         FirebaseError,
-        /is linked to multiple sites, but only one is permitted/
+        /is linked to multiple sites, but only one is permitted/,
       );
     });
   });
@@ -410,7 +410,7 @@ describe("config", () => {
         if (t.wantErr) {
           expect(() => config.validate(configs, options(t.site))).to.throw(
             FirebaseError,
-            t.wantErr
+            t.wantErr,
           );
         } else {
           expect(() => config.validate(configs, options(t.site))).to.not.throw();

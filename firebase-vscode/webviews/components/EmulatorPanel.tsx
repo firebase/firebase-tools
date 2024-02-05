@@ -149,13 +149,6 @@ export function EmulatorPanel({
     broker.send("stopEmulators");
   }
 
-  function projectIdChanged(event: React.ChangeEvent<HTMLInputElement>) {
-    webLogger.debug("projectIdChanged: " + event.target.value);
-    const selections: EmulatorUiSelections = emulatorUiSelections;
-    selections.projectId = event.target.value;
-    setEmulatorUiSelectionsAndSaveToWorkspace(selections);
-  }
-
   return (
     <PanelSection
       title="Emulators"
@@ -165,14 +158,12 @@ export function EmulatorPanel({
       }}
     >
       {/* TODO(christhompson): Insert some education links or tooltips here. */}
-      Current project ID:
-      {/* TODO(christhompson): convert this into a demo- prefix checkbox or something. */}
-      <VSCodeTextField
-        disabled={true}
-        className="in-line"
-        value={emulatorUiSelections.projectId}
-        onChange={(event) => projectIdChanged(event)}
-      ></VSCodeTextField>
+      <Spacer size="xxlarge" />
+      <span>
+        {"Current project ID: "}
+        {/* TODO(christhompson): convert this into a demo- prefix checkbox or something. */}
+        <b>{emulatorUiSelections.projectId}</b>
+      </span>
       <Spacer size="xxlarge" />
       {runningEmulatorInfo ? (
         <>

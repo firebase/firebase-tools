@@ -36,7 +36,7 @@ const apiClient = new Client({ urlPrefix: rtdbMetadataOrigin });
 export async function listAllRulesets(databaseName: string): Promise<Ruleset[]> {
   const response = await apiClient.get<{ rulesets: Ruleset[] }>(
     `/namespaces/${databaseName}/rulesets`,
-    { resolveOnHTTPError: true }
+    { resolveOnHTTPError: true },
   );
   if (response.status === 200) {
     return response.body.rulesets;
@@ -47,7 +47,7 @@ export async function listAllRulesets(databaseName: string): Promise<Ruleset[]> 
 export async function getRuleset(databaseName: string, rulesetId: string): Promise<Ruleset> {
   const response = await apiClient.get<Ruleset>(
     `/namespaces/${databaseName}/rulesets/${rulesetId}`,
-    { resolveOnHTTPError: true }
+    { resolveOnHTTPError: true },
   );
   if (response.status === 200) {
     return response.body;
@@ -67,7 +67,7 @@ export async function getRulesetLabels(databaseName: string): Promise<LabelIds> 
 
 export async function createRuleset(
   databaseName: string,
-  source: RulesetSource
+  source: RulesetSource,
 ): Promise<RulesetId> {
   const localApiClient = new Client({
     urlPrefix: utils.addSubdomain(realtimeOrigin, databaseName),
@@ -75,7 +75,7 @@ export async function createRuleset(
   const response = await localApiClient.post<RulesetSource, { id: RulesetId }>(
     `/.settings/rulesets.json`,
     source,
-    { resolveOnHTTPError: true }
+    { resolveOnHTTPError: true },
   );
   if (response.status === 200) {
     return response.body.id;
@@ -92,7 +92,7 @@ export async function setRulesetLabels(databaseName: string, labels: LabelIds): 
     labels,
     {
       resolveOnHTTPError: true,
-    }
+    },
   );
   if (response.status === 200) {
     return response.body;

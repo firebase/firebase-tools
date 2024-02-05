@@ -120,7 +120,7 @@ describe("createExtensionVersionFromGitHubSource", () => {
   it("should throw a FirebaseError if createExtensionVersionFromLocalSource returns an error response", async () => {
     nock(api.extensionsPublisherOrigin)
       .post(
-        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions:createFromSource`
+        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions:createFromSource`,
       )
       .reply(500);
 
@@ -130,7 +130,7 @@ describe("createExtensionVersionFromGitHubSource", () => {
         repoUri: "https://github.com/username/repo",
         sourceRef: "HEAD",
         extensionRoot: "/",
-      })
+      }),
     ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500, Unknown Error");
     expect(nock.isDone()).to.be.true;
   });
@@ -138,7 +138,7 @@ describe("createExtensionVersionFromGitHubSource", () => {
   it("stop polling and throw if the operation call throws an unexpected error", async () => {
     nock(api.extensionsPublisherOrigin)
       .post(
-        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions:createFromSource`
+        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions:createFromSource`,
       )
       .reply(200, { name: "operations/abc123" });
     nock(api.extensionsPublisherOrigin).get(`/${VERSION}/operations/abc123`).reply(502, {});
@@ -149,7 +149,7 @@ describe("createExtensionVersionFromGitHubSource", () => {
         repoUri: "https://github.com/username/repo",
         sourceRef: "HEAD",
         extensionRoot: "/",
-      })
+      }),
     ).to.be.rejectedWith(FirebaseError, "HTTP Error: 502, Unknown Error");
     expect(nock.isDone()).to.be.true;
   });
@@ -161,7 +161,7 @@ describe("createExtensionVersionFromGitHubSource", () => {
         repoUri: "https://github.com/username/repo",
         sourceRef: "HEAD",
         extensionRoot: "/",
-      })
+      }),
     ).to.be.rejectedWith(FirebaseError, "Extension version ref");
   });
 });
@@ -191,7 +191,7 @@ describe("createExtensionVersionFromLocalSource", () => {
   it("should throw a FirebaseError if createExtensionVersionFromLocalSource returns an error response", async () => {
     nock(api.extensionsPublisherOrigin)
       .post(
-        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions:createFromSource`
+        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions:createFromSource`,
       )
       .reply(500);
 
@@ -200,7 +200,7 @@ describe("createExtensionVersionFromLocalSource", () => {
         extensionVersionRef: `${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`,
         packageUri: "www.google.com/test-extension.zip",
         extensionRoot: "/",
-      })
+      }),
     ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500, Unknown Error");
     expect(nock.isDone()).to.be.true;
   });
@@ -208,7 +208,7 @@ describe("createExtensionVersionFromLocalSource", () => {
   it("stop polling and throw if the operation call throws an unexpected error", async () => {
     nock(api.extensionsPublisherOrigin)
       .post(
-        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions:createFromSource`
+        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions:createFromSource`,
       )
       .reply(200, { name: "operations/abc123" });
     nock(api.extensionsPublisherOrigin).get(`/${VERSION}/operations/abc123`).reply(502, {});
@@ -218,7 +218,7 @@ describe("createExtensionVersionFromLocalSource", () => {
         extensionVersionRef: `${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`,
         packageUri: "www.google.com/test-extension.zip",
         extensionRoot: "/",
-      })
+      }),
     ).to.be.rejectedWith(FirebaseError, "HTTP Error: 502, Unknown Error");
     expect(nock.isDone()).to.be.true;
   });
@@ -229,7 +229,7 @@ describe("createExtensionVersionFromLocalSource", () => {
         extensionVersionRef: `${PUBLISHER_ID}/${EXTENSION_ID}`,
         packageUri: "www.google.com/test-extension.zip",
         extensionRoot: "/",
-      })
+      }),
     ).to.be.rejectedWith(FirebaseError, "Extension version ref");
   });
 });
@@ -254,7 +254,7 @@ describe("getExtension", () => {
       .reply(404);
 
     await expect(publisherApi.getExtension(`${PUBLISHER_ID}/${EXTENSION_ID}`)).to.be.rejectedWith(
-      FirebaseError
+      FirebaseError,
     );
     expect(nock.isDone()).to.be.true;
   });
@@ -262,7 +262,7 @@ describe("getExtension", () => {
   it("should throw an error for an invalid ref", async () => {
     await expect(publisherApi.getExtension(`${PUBLISHER_ID}`)).to.be.rejectedWith(
       FirebaseError,
-      "Unable to parse"
+      "Unable to parse",
     );
   });
 });
@@ -275,12 +275,12 @@ describe("getExtensionVersion", () => {
   it("should make a GET call to the correct endpoint", async () => {
     nock(api.extensionsPublisherOrigin)
       .get(
-        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions/${EXTENSION_VERSION}`
+        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions/${EXTENSION_VERSION}`,
       )
       .reply(200, TEST_EXTENSION_1);
 
     const got = await publisherApi.getExtensionVersion(
-      `${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`
+      `${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`,
     );
     expect(got).to.deep.equal(TEST_EXTENSION_1);
     expect(nock.isDone()).to.be.true;
@@ -289,19 +289,19 @@ describe("getExtensionVersion", () => {
   it("should throw a FirebaseError if the endpoint returns an error response", async () => {
     nock(api.extensionsPublisherOrigin)
       .get(
-        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions/${EXTENSION_VERSION}`
+        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions/${EXTENSION_VERSION}`,
       )
       .reply(404);
 
     await expect(
-      publisherApi.getExtensionVersion(`${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`)
+      publisherApi.getExtensionVersion(`${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`),
     ).to.be.rejectedWith(FirebaseError);
     expect(nock.isDone()).to.be.true;
   });
 
   it("should throw an error for an invalid ref", async () => {
     await expect(
-      publisherApi.getExtensionVersion(`${PUBLISHER_ID}//${EXTENSION_ID}`)
+      publisherApi.getExtensionVersion(`${PUBLISHER_ID}//${EXTENSION_ID}`),
     ).to.be.rejectedWith(FirebaseError, "Unable to parse");
   });
 });
@@ -406,7 +406,7 @@ describe("listExtensionVersions", () => {
 
     const extensions = await publisherApi.listExtensionVersions(
       `${PUBLISHER_ID}/${EXTENSION_ID}`,
-      "id<1.0.0"
+      "id<1.0.0",
     );
     expect(extensions).to.deep.equal(PUBLISHED_EXT_VERSIONS.extensionVersions);
     expect(nock.isDone()).to.be.true;
@@ -443,7 +443,7 @@ describe("listExtensionVersions", () => {
     const extensions = await publisherApi.listExtensionVersions(`${PUBLISHER_ID}/${EXTENSION_ID}`);
 
     const expected = PUBLISHED_VERSIONS_WITH_TOKEN.extensionVersions.concat(
-      NEXT_PAGE_VERSIONS.extensionVersions
+      NEXT_PAGE_VERSIONS.extensionVersions,
     );
     expect(extensions).to.deep.equal(expected);
     expect(nock.isDone()).to.be.true;
@@ -464,7 +464,7 @@ describe("listExtensionVersions", () => {
       .reply(500);
 
     await expect(
-      publisherApi.listExtensionVersions(`${PUBLISHER_ID}/${EXTENSION_ID}`)
+      publisherApi.listExtensionVersions(`${PUBLISHER_ID}/${EXTENSION_ID}`),
     ).to.be.rejectedWith(FirebaseError);
     expect(nock.isDone()).to.be.true;
   });
@@ -472,7 +472,7 @@ describe("listExtensionVersions", () => {
   it("should throw an error for an invalid ref", async () => {
     await expect(publisherApi.listExtensionVersions("")).to.be.rejectedWith(
       FirebaseError,
-      "Unable to parse"
+      "Unable to parse",
     );
   });
 });
@@ -522,7 +522,7 @@ describe("registerPublisherProfile", () => {
   it("should make a POST call to the correct endpoint", async () => {
     nock(api.extensionsPublisherOrigin)
       .patch(
-        `/${VERSION}/projects/${PROJECT_ID}/publisherProfile?updateMask=publisher_id%2Cdisplay_name`
+        `/${VERSION}/projects/${PROJECT_ID}/publisherProfile?updateMask=publisher_id%2Cdisplay_name`,
       )
       .reply(200, PUBLISHER_PROFILE);
 
@@ -534,11 +534,11 @@ describe("registerPublisherProfile", () => {
   it("should throw a FirebaseError if the endpoint returns an error response", async () => {
     nock(api.extensionsPublisherOrigin)
       .patch(
-        `/${VERSION}/projects/${PROJECT_ID}/publisherProfile?updateMask=publisher_id%2Cdisplay_name`
+        `/${VERSION}/projects/${PROJECT_ID}/publisherProfile?updateMask=publisher_id%2Cdisplay_name`,
       )
       .reply(404);
     await expect(
-      publisherApi.registerPublisherProfile(PROJECT_ID, PUBLISHER_ID)
+      publisherApi.registerPublisherProfile(PROJECT_ID, PUBLISHER_ID),
     ).to.be.rejectedWith(FirebaseError);
     expect(nock.isDone()).to.be.true;
   });
@@ -554,13 +554,13 @@ describe("deprecateExtensionVersion", () => {
     nock(api.extensionsPublisherOrigin)
       .persist()
       .post(
-        `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions/${version}:deprecate`
+        `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions/${version}:deprecate`,
       )
       .reply(200, TEST_EXT_VERSION_4);
 
     const res = await publisherApi.deprecateExtensionVersion(
       TEST_EXT_VERSION_4.ref,
-      "This version is deprecated."
+      "This version is deprecated.",
     );
     expect(res).to.deep.equal(TEST_EXT_VERSION_4);
     expect(nock.isDone()).to.be.true;
@@ -571,11 +571,11 @@ describe("deprecateExtensionVersion", () => {
     nock(api.extensionsPublisherOrigin)
       .persist()
       .post(
-        `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions/${version}:deprecate`
+        `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions/${version}:deprecate`,
       )
       .reply(404);
     await expect(
-      publisherApi.deprecateExtensionVersion(TEST_EXT_VERSION_4.ref, "This version is deprecated.")
+      publisherApi.deprecateExtensionVersion(TEST_EXT_VERSION_4.ref, "This version is deprecated."),
     ).to.be.rejectedWith(FirebaseError);
     expect(nock.isDone()).to.be.true;
   });
@@ -591,7 +591,7 @@ describe("undeprecateExtensionVersion", () => {
     nock(api.extensionsPublisherOrigin)
       .persist()
       .post(
-        `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions/${version}:undeprecate`
+        `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions/${version}:undeprecate`,
       )
       .reply(200, TEST_EXT_VERSION_3);
 
@@ -605,11 +605,11 @@ describe("undeprecateExtensionVersion", () => {
     nock(api.extensionsPublisherOrigin)
       .persist()
       .post(
-        `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions/${version}:undeprecate`
+        `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions/${version}:undeprecate`,
       )
       .reply(404);
     await expect(
-      publisherApi.undeprecateExtensionVersion(TEST_EXT_VERSION_3.ref)
+      publisherApi.undeprecateExtensionVersion(TEST_EXT_VERSION_3.ref),
     ).to.be.rejectedWith(FirebaseError);
     expect(nock.isDone()).to.be.true;
   });

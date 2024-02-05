@@ -23,13 +23,13 @@ describe("checkAllowedEventTypesResponse", () => {
     expect(
       checkAllowedEventTypesResponse(
         ["google.firebase.nonexistent-event-occurred"],
-        [{ type: "google.firebase.custom-event-occurred", description: "A custom event occurred" }]
-      )
+        [{ type: "google.firebase.custom-event-occurred", description: "A custom event occurred" }],
+      ),
     ).to.equal(false);
     expect(
       logWarningSpy.calledWith(
-        "Unexpected event type 'google.firebase.nonexistent-event-occurred' was configured to be emitted. This event type is not part of the extension spec."
-      )
+        "Unexpected event type 'google.firebase.nonexistent-event-occurred' was configured to be emitted. This event type is not part of the extension spec.",
+      ),
     ).to.equal(true);
   });
 
@@ -37,8 +37,8 @@ describe("checkAllowedEventTypesResponse", () => {
     expect(
       checkAllowedEventTypesResponse(
         ["google.firebase.custom-event-occurred"],
-        [{ type: "google.firebase.custom-event-occurred", description: "A custom event occurred" }]
-      )
+        [{ type: "google.firebase.custom-event-occurred", description: "A custom event occurred" }],
+      ),
     ).to.equal(true);
   });
 });

@@ -98,7 +98,7 @@ export async function ensureValidKey(key: string, options: Options): Promise<str
         default: true,
         message: `Would you like to use ${transformedKey} as key instead?`,
       },
-      options
+      options,
     );
     if (!confirm) {
       throw new FirebaseError("Secret key must be in UPPER_SNAKE_CASE.");
@@ -118,7 +118,7 @@ export async function ensureValidKey(key: string, options: Options): Promise<str
 export async function ensureSecret(
   projectId: string,
   name: string,
-  options: Options
+  options: Options,
 ): Promise<Secret> {
   try {
     const secret = await getSecret(projectId, name);
@@ -126,7 +126,7 @@ export async function ensureSecret(
       if (!options.force) {
         logWarning(
           "Your secret is not managed by Firebase. " +
-            "Firebase managed secrets are automatically pruned to reduce your monthly cost for using Secret Manager. "
+            "Firebase managed secrets are automatically pruned to reduce your monthly cost for using Secret Manager. ",
         );
         const confirm = await promptOnce(
           {
@@ -135,7 +135,7 @@ export async function ensureSecret(
             default: true,
             message: `Would you like to have your secret ${secret.name} managed by Firebase?`,
           },
-          options
+          options,
         );
         if (confirm) {
           return patchSecret(projectId, secret.name, {
@@ -160,7 +160,7 @@ export async function ensureSecret(
 export function of(endpoints: backend.Endpoint[]): backend.SecretEnvVar[] {
   return endpoints.reduce(
     (envs, endpoint) => [...envs, ...(endpoint.secretEnvironmentVariables || [])],
-    [] as backend.SecretEnvVar[]
+    [] as backend.SecretEnvVar[],
   );
 }
 
@@ -168,10 +168,13 @@ export function of(endpoints: backend.Endpoint[]): backend.SecretEnvVar[] {
  * Generates an object mapping secret's with their versions.
  */
 export function getSecretVersions(endpoint: backend.Endpoint): Record<string, string> {
-  return (endpoint.secretEnvironmentVariables || []).reduce((memo, { secret, version }) => {
-    memo[secret] = version || "";
-    return memo;
-  }, {} as Record<string, string>);
+  return (endpoint.secretEnvironmentVariables || []).reduce(
+    (memo, { secret, version }) => {
+      memo[secret] = version || "";
+      return memo;
+    },
+    {} as Record<string, string>,
+  );
 }
 
 /**
@@ -196,7 +199,7 @@ export function inUse(projectInfo: ProjectInfo, secret: Secret, endpoint: backen
 export function versionInUse(
   projectInfo: ProjectInfo,
   sv: SecretVersion,
-  endpoint: backend.Endpoint
+  endpoint: backend.Endpoint,
 ): boolean {
   const { projectId, projectNumber } = projectInfo;
   for (const sev of of([endpoint])) {
@@ -216,7 +219,7 @@ export function versionInUse(
  */
 export async function pruneSecrets(
   projectInfo: ProjectInfo,
-  endpoints: backend.Endpoint[]
+  endpoints: backend.Endpoint[],
 ): Promise<Required<backend.SecretEnvVar>[]> {
   const { projectId, projectNumber } = projectInfo;
   const pruneKey = (name: string, version: string) => `${name}@${version}`;
@@ -279,14 +282,14 @@ type PruneResult = {
  */
 export async function pruneAndDestroySecrets(
   projectInfo: ProjectInfo,
-  endpoints: backend.Endpoint[]
+  endpoints: backend.Endpoint[],
 ): Promise<PruneResult> {
   const { projectId, projectNumber } = projectInfo;
 
   logger.debug("Pruning secrets to find unused secret versions...");
   const unusedSecrets: Required<backend.SecretEnvVar>[] = await module.exports.pruneSecrets(
     { projectId, projectNumber },
-    endpoints
+    endpoints,
   );
 
   if (unusedSecrets.length === 0) {
@@ -301,7 +304,7 @@ export async function pruneAndDestroySecrets(
     unusedSecrets.map(async (sev) => {
       await destroySecretVersion(sev.projectId, sev.secret, sev.version);
       return sev;
-    })
+    }),
   );
 
   for (const result of destroyResults) {
@@ -320,7 +323,7 @@ export async function pruneAndDestroySecrets(
 export async function updateEndpointSecret(
   projectInfo: ProjectInfo,
   secretVersion: SecretVersion,
-  endpoint: backend.Endpoint
+  endpoint: backend.Endpoint,
 ): Promise<backend.Endpoint> {
   const { projectId, projectNumber } = projectInfo;
 

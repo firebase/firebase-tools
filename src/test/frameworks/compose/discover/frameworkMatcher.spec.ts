@@ -38,7 +38,7 @@ describe("frameworkMatcher", () => {
         NODE_ID,
         fileSystem,
         frameworkSpecs,
-        expressDependency
+        expressDependency,
       );
       const expressFrameworkSpec: FrameworkSpec = {
         id: "express",

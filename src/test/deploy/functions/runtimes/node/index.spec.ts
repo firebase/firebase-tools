@@ -40,7 +40,7 @@ describe("NodeDelegate", () => {
       expect(delegate.getNodeBinary()).to.equal(path.join(SOURCE_DIR, "node_modules", "node"));
       expect(successSpy).to.have.been.calledWith(
         "functions",
-        sinon.match("node@12 from local cache.")
+        sinon.match("node@12 from local cache."),
       );
       expect(warnSpy).to.not.have.been.called;
     });

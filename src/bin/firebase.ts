@@ -6,7 +6,7 @@ const pkg = require("../../package.json");
 const nodeVersion = process.version;
 if (!semver.satisfies(nodeVersion, pkg.engines.node)) {
   console.error(
-    `Firebase CLI v${pkg.version} is incompatible with Node.js ${nodeVersion} Please upgrade Node.js to version ${pkg.engines.node}`
+    `Firebase CLI v${pkg.version} is incompatible with Node.js ${nodeVersion} Please upgrade Node.js to version ${pkg.engines.node}`,
   );
   process.exit(1);
 }
@@ -81,7 +81,7 @@ logger.add(
       const segments = [info.message, ...(info[SPLAT] || [])].map(utils.tryStringify);
       return `[${info.level}] ${stripAnsi(segments.join(" "))}`;
     }),
-  })
+  }),
 );
 
 logger.debug("-".repeat(70));
@@ -134,10 +134,10 @@ process.on("exit", (code) => {
     const updateMessage =
       `Update available ${clc.gray("{currentVersion}")} → ${clc.green("{latestVersion}")}\n` +
       `To update to the latest version using npm, run\n${clc.cyan(
-        "npm install -g firebase-tools"
+        "npm install -g firebase-tools",
       )}\n` +
       `For other CLI management options, visit the ${marked(
-        "[CLI documentation](https://firebase.google.com/docs/cli#update-cli)"
+        "[CLI documentation](https://firebase.google.com/docs/cli#update-cli)",
       )}`;
     // `defer: true` would interfere with commands that perform tasks (emulators etc.)
     // before exit since it installs a SIGINT handler that immediately exits. See:

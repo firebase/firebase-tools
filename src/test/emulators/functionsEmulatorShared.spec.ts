@@ -92,7 +92,7 @@ describe("FunctionsEmulatorShared", () => {
         },
       };
       expect(functionsEmulatorShared.getFunctionService(def)).to.be.eql(
-        "firebaseauth.googleapis.com"
+        "firebaseauth.googleapis.com",
       );
     });
   });
@@ -130,7 +130,7 @@ describe("FunctionsEmulatorShared", () => {
     for (const t of tests) {
       it(t.desc, () => {
         expect(functionsEmulatorShared.getSecretLocalPath(t.in, testProjectDir)).to.equal(
-          t.expected
+          t.expected,
         );
       });
     }
@@ -290,7 +290,7 @@ describe("FunctionsEmulatorShared", () => {
     for (const tc of tests) {
       it(tc.desc, () => {
         expect(functionsEmulatorShared.toBackendInfo(tc.in, testCF3Triggers)).to.deep.equal(
-          tc.expected
+          tc.expected,
         );
       });
     }

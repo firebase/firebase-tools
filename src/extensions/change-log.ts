@@ -69,7 +69,7 @@ export function displayReleaseNotes(releaseNotes: Record<string, string>, fromVe
     logLabeledWarning(
       "warning",
       "This is a major version update, which means it may contain breaking changes." +
-        " Read the release notes carefully before continuing with this update."
+        " Read the release notes carefully before continuing with this update.",
     );
   }
   logger.info(table.toString());

@@ -132,7 +132,7 @@ export enum ValueType {
  */
 export async function queryTimeSeries(
   query: CmQuery,
-  projectNumber: number
+  projectNumber: number,
 ): Promise<TimeSeriesResponse> {
   const client = new Client({
     urlPrefix: cloudMonitoringOrigin,
@@ -143,7 +143,7 @@ export async function queryTimeSeries(
       `/projects/${projectNumber}/timeSeries/`,
       {
         queryParams: query as { [key: string]: any },
-      }
+      },
     );
     return res.body.timeSeries;
   } catch (err: any) {

@@ -10,16 +10,16 @@ import { FirestoreOptions } from "../firestore/options";
 
 export const command = new Command("firestore:databases:update <database>")
   .description(
-    "Update a database in your Firebase project. Must specify at least one property to update."
+    "Update a database in your Firebase project. Must specify at least one property to update.",
   )
   .option("--json", "Prints raw json response of the create API call if specified")
   .option(
     "--delete-protection <deleteProtectionState>",
-    "Whether or not to prevent deletion of database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'"
+    "Whether or not to prevent deletion of database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'",
   )
   .option(
     "--point-in-time-recovery <enablement>",
-    "Whether to enable the PITR feature on this database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'"
+    "Whether to enable the PITR feature on this database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'",
   )
   .before(requirePermissions, ["datastore.databases.update"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
@@ -28,7 +28,7 @@ export const command = new Command("firestore:databases:update <database>")
 
     if (!options.deleteProtection && !options.pointInTimeRecovery) {
       logger.error(
-        "Missing properties to update. See firebase firestore:databases:update --help for more info."
+        "Missing properties to update. See firebase firestore:databases:update --help for more info.",
       );
       return;
     }
@@ -38,7 +38,7 @@ export const command = new Command("firestore:databases:update <database>")
       options.deleteProtection !== types.DatabaseDeleteProtectionStateOption.DISABLED
     ) {
       logger.error(
-        "Invalid value for flag --delete-protection. See firebase firestore:databases:update --help for more info."
+        "Invalid value for flag --delete-protection. See firebase firestore:databases:update --help for more info.",
       );
       return;
     }
@@ -55,7 +55,7 @@ export const command = new Command("firestore:databases:update <database>")
       options.pointInTimeRecovery !== types.PointInTimeRecoveryEnablementOption.DISABLED
     ) {
       logger.error(
-        "Invalid value for flag --point-in-time-recovery. See firebase firestore:databases:update --help for more info."
+        "Invalid value for flag --point-in-time-recovery. See firebase firestore:databases:update --help for more info.",
       );
       return;
     }
@@ -70,7 +70,7 @@ export const command = new Command("firestore:databases:update <database>")
       options.project,
       database,
       deleteProtectionState,
-      pointInTimeRecoveryEnablement
+      pointInTimeRecoveryEnablement,
     );
 
     if (options.json) {

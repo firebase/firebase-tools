@@ -14,14 +14,14 @@ describe("api", () => {
   it("should add HTTP to emulator URL with no protocol", () => {
     process.env.FIREBASE_DATABASE_EMULATOR_HOST = "localhost:8080";
     expect(realtimeOriginOrEmulatorOrCustomUrl("http://my-custom-url")).to.eq(
-      "http://localhost:8080"
+      "http://localhost:8080",
     );
   });
 
   it("should not add HTTP to emulator URL with https:// protocol", () => {
     process.env.FIREBASE_DATABASE_EMULATOR_HOST = "https://localhost:8080";
     expect(realtimeOriginOrEmulatorOrCustomUrl("http://my-custom-url")).to.eq(
-      "https://localhost:8080"
+      "https://localhost:8080",
     );
   });
 
@@ -34,7 +34,7 @@ describe("api", () => {
     process.env.FIREBASE_DATABASE_EMULATOR_HOST = "localhost:8080";
     process.env.FIREBASE_REALTIME_URL = "http://foobar.com";
     expect(realtimeOriginOrEmulatorOrCustomUrl("http://my-custom-url")).to.eq(
-      "http://localhost:8080"
+      "http://localhost:8080",
     );
   });
 

@@ -53,7 +53,7 @@ describe("Executor", () => {
         throw err;
       };
       await expect(
-        exec.run(handler, { retryCodes: [...executor.DEFAULT_RETRY_CODES, 8] })
+        exec.run(handler, { retryCodes: [...executor.DEFAULT_RETRY_CODES, 8] }),
       ).to.eventually.be.rejectedWith("Retryable");
     });
   });

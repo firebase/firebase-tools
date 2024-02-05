@@ -59,7 +59,7 @@ export function getInheritedOption(options: any, key: string): any {
 export function envOverride(
   envname: string,
   value: string,
-  coerce?: (value: string, defaultValue: string) => any
+  coerce?: (value: string, defaultValue: string) => any,
 ): string {
   const currentEnvValue = process.env[envname];
   if (currentEnvValue && currentEnvValue.length) {
@@ -93,7 +93,7 @@ export function getDatabaseViewDataUrl(
   origin: string,
   project: string,
   namespace: string,
-  pathname: string
+  pathname: string,
 ): string {
   const urlObj = new url.URL(origin);
   if (urlObj.hostname.includes("firebaseio") || urlObj.hostname.includes("firebasedatabase")) {
@@ -134,7 +134,7 @@ export function addSubdomain(origin: string, subdomain: string): string {
 export function logSuccess(
   message: string,
   type: LogLevel = "info",
-  data: LogDataOrUndefined = undefined
+  data: LogDataOrUndefined = undefined,
 ): void {
   logger[type](clc.green(clc.bold(`${SUCCESS_CHAR} `)), message, data);
 }
@@ -146,7 +146,7 @@ export function logLabeledSuccess(
   label: string,
   message: string,
   type: LogLevel = "info",
-  data: LogDataOrUndefined = undefined
+  data: LogDataOrUndefined = undefined,
 ): void {
   logger[type](clc.green(clc.bold(`${SUCCESS_CHAR}  ${label}:`)), message, data);
 }
@@ -157,7 +157,7 @@ export function logLabeledSuccess(
 export function logBullet(
   message: string,
   type: LogLevel = "info",
-  data: LogDataOrUndefined = undefined
+  data: LogDataOrUndefined = undefined,
 ): void {
   logger[type](clc.cyan(clc.bold("i ")), message, data);
 }
@@ -169,7 +169,7 @@ export function logLabeledBullet(
   label: string,
   message: string,
   type: LogLevel = "info",
-  data: LogDataOrUndefined = undefined
+  data: LogDataOrUndefined = undefined,
 ): void {
   logger[type](clc.cyan(clc.bold(`i  ${label}:`)), message, data);
 }
@@ -180,7 +180,7 @@ export function logLabeledBullet(
 export function logWarning(
   message: string,
   type: LogLevel = "warn",
-  data: LogDataOrUndefined = undefined
+  data: LogDataOrUndefined = undefined,
 ): void {
   logger[type](clc.yellow(clc.bold(`${WARNING_CHAR} `)), message, data);
 }
@@ -192,7 +192,7 @@ export function logLabeledWarning(
   label: string,
   message: string,
   type: LogLevel = "warn",
-  data: LogDataOrUndefined = undefined
+  data: LogDataOrUndefined = undefined,
 ): void {
   logger[type](clc.yellow(clc.bold(`${WARNING_CHAR}  ${label}:`)), message, data);
 }
@@ -204,7 +204,7 @@ export function logLabeledError(
   label: string,
   message: string,
   type: LogLevel = "error",
-  data: LogDataOrUndefined = undefined
+  data: LogDataOrUndefined = undefined,
 ): void {
   logger[type](clc.red(clc.bold(`${ERROR_CHAR}  ${label}:`)), message, data);
 }
@@ -260,7 +260,7 @@ export function allSettled<T>(promises: Array<Promise<T>>): Promise<Array<Promis
               status: "rejected",
               reason: err,
             };
-          }
+          },
         )
         .then(() => {
           if (!--remaining) {
@@ -399,7 +399,7 @@ export function promiseAllSettled(promises: Array<Promise<any>>): Promise<Settle
 export async function promiseWhile<T>(
   action: () => Promise<T>,
   check: (value: T) => boolean,
-  interval = 2500
+  interval = 2500,
 ): Promise<T> {
   return new Promise<T>((resolve, promiseReject) => {
     const run = async () => {
@@ -434,7 +434,7 @@ export function withTimeout<T>(timeoutMs: number, promise: Promise<T>): Promise<
       (err) => {
         clearTimeout(timeout);
         reject(err);
-      }
+      },
     );
   });
 }
@@ -496,7 +496,7 @@ export function setupLoggers() {
           const segments = [info.message, ...(info[SPLAT] || [])].map(tryStringify);
           return `${stripAnsi(segments.join(" "))}`;
         }),
-      })
+      }),
     );
   } else if (process.env.IS_FIREBASE_CLI) {
     logger.add(
@@ -505,9 +505,9 @@ export function setupLoggers() {
         format: winston.format.printf((info) =>
           [info.message, ...(info[SPLAT] || [])]
             .filter((chunk) => typeof chunk === "string")
-            .join(" ")
+            .join(" "),
         ),
-      })
+      }),
     );
   }
 }
@@ -625,7 +625,7 @@ export function assertIsNumber(val: any, message?: string): asserts val is numbe
 
 export function assertIsStringOrUndefined(
   val: any,
-  message?: string
+  message?: string,
 ): asserts val is string | undefined {
   if (!(val === undefined || typeof val === "string")) {
     throw new AssertionError({
@@ -639,17 +639,20 @@ export function assertIsStringOrUndefined(
  */
 export function groupBy<T, K extends string | number | symbol>(
   arr: T[],
-  f: (item: T) => K
+  f: (item: T) => K,
 ): Record<K, T[]> {
-  return arr.reduce((result, item) => {
-    const key = f(item);
-    if (result[key]) {
-      result[key].push(item);
-    } else {
-      result[key] = [item];
-    }
-    return result;
-  }, {} as Record<K, T[]>);
+  return arr.reduce(
+    (result, item) => {
+      const key = f(item);
+      if (result[key]) {
+        result[key].push(item);
+      } else {
+        result[key] = [item];
+      }
+      return result;
+    },
+    {} as Record<K, T[]>,
+  );
 }
 
 function cloneArray<T>(arr: T[]): T[] {
@@ -714,7 +717,7 @@ type DebounceOptions = {
 export function debounce<T>(
   fn: (...args: T[]) => void,
   delay: number,
-  { leading }: DebounceOptions = {}
+  { leading }: DebounceOptions = {},
 ): (...args: T[]) => void {
   let timer: NodeJS.Timeout;
   return (...args) => {
@@ -769,7 +772,7 @@ export async function openInBrowser(url: string): Promise<void> {
  */
 export async function openInBrowserPopup(
   url: string,
-  buttonText: string
+  buttonText: string,
 ): Promise<{ url: string; cleanup: () => void }> {
   const popupPage = fs
     .readFileSync(path.join(__dirname, "../templates/popup.html"), { encoding: "utf-8" })

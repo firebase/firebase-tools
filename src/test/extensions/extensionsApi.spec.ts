@@ -178,7 +178,7 @@ describe("extensions", () => {
       const instances = await extensionsApi.listInstances(PROJECT_ID);
 
       const expected = TEST_INSTANCES_RESPONSE.instances.concat(
-        TEST_INSTANCES_RESPONSE_NEXT_PAGE_TOKEN.instances
+        TEST_INSTANCES_RESPONSE_NEXT_PAGE_TOKEN.instances,
       );
       expect(instances).to.deep.equal(expected);
       expect(nock.isDone()).to.be.true;
@@ -297,7 +297,7 @@ describe("extensions", () => {
             },
           },
           params: {},
-        })
+        }),
       ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500, Unknown Error");
       expect(nock.isDone()).to.be.true;
     });
@@ -365,7 +365,7 @@ describe("extensions", () => {
           instanceId: INSTANCE_ID,
           params: { MY_PARAM: "value" },
           canEmitEvents: false,
-        })
+        }),
       ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500");
       expect(nock.isDone()).to.be.true;
     });
@@ -392,7 +392,7 @@ describe("extensions", () => {
         .reply(404);
 
       await expect(extensionsApi.deleteInstance(PROJECT_ID, INSTANCE_ID)).to.be.rejectedWith(
-        FirebaseError
+        FirebaseError,
       );
       expect(nock.isDone()).to.be.true;
     });
@@ -566,7 +566,7 @@ describe("extensions", () => {
             MY_PARAM: "value",
           },
           canEmitEvents: false,
-        })
+        }),
       ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500");
 
       expect(nock.isDone()).to.be.true;
@@ -593,7 +593,7 @@ describe("extensions", () => {
         .reply(404);
 
       await expect(extensionsApi.getInstance(PROJECT_ID, INSTANCE_ID)).to.be.rejectedWith(
-        FirebaseError
+        FirebaseError,
       );
       expect(nock.isDone()).to.be.true;
     });
@@ -645,7 +645,7 @@ describe("extensions", () => {
 
       await expect(extensionsApi.createSource(PROJECT_ID, PACKAGE_URI, "./")).to.be.rejectedWith(
         FirebaseError,
-        "HTTP Error: 500, Unknown Error"
+        "HTTP Error: 500, Unknown Error",
       );
       expect(nock.isDone()).to.be.true;
     });
@@ -658,7 +658,7 @@ describe("extensions", () => {
 
       await expect(extensionsApi.createSource(PROJECT_ID, PACKAGE_URI, "./")).to.be.rejectedWith(
         FirebaseError,
-        "HTTP Error: 502, Unknown Error"
+        "HTTP Error: 502, Unknown Error",
       );
       expect(nock.isDone()).to.be.true;
     });
@@ -685,7 +685,7 @@ describe("getExtension", () => {
       .reply(404);
 
     await expect(extensionsApi.getExtension(`${PUBLISHER_ID}/${EXTENSION_ID}`)).to.be.rejectedWith(
-      FirebaseError
+      FirebaseError,
     );
     expect(nock.isDone()).to.be.true;
   });
@@ -693,7 +693,7 @@ describe("getExtension", () => {
   it("should throw an error for an invalid ref", async () => {
     await expect(extensionsApi.getExtension(`${PUBLISHER_ID}`)).to.be.rejectedWith(
       FirebaseError,
-      "Unable to parse"
+      "Unable to parse",
     );
   });
 });
@@ -706,12 +706,12 @@ describe("getExtensionVersion", () => {
   it("should make a GET call to the correct endpoint", async () => {
     nock(api.extensionsOrigin)
       .get(
-        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions/${EXTENSION_VERSION}`
+        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions/${EXTENSION_VERSION}`,
       )
       .reply(200, TEST_EXTENSION_1);
 
     const got = await extensionsApi.getExtensionVersion(
-      `${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`
+      `${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`,
     );
     expect(got).to.deep.equal(TEST_EXTENSION_1);
     expect(nock.isDone()).to.be.true;
@@ -720,19 +720,19 @@ describe("getExtensionVersion", () => {
   it("should throw a FirebaseError if the endpoint returns an error response", async () => {
     nock(api.extensionsOrigin)
       .get(
-        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions/${EXTENSION_VERSION}`
+        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions/${EXTENSION_VERSION}`,
       )
       .reply(404);
 
     await expect(
-      extensionsApi.getExtensionVersion(`${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`)
+      extensionsApi.getExtensionVersion(`${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`),
     ).to.be.rejectedWith(FirebaseError);
     expect(nock.isDone()).to.be.true;
   });
 
   it("should throw an error for an invalid ref", async () => {
     await expect(
-      extensionsApi.getExtensionVersion(`${PUBLISHER_ID}//${EXTENSION_ID}`)
+      extensionsApi.getExtensionVersion(`${PUBLISHER_ID}//${EXTENSION_ID}`),
     ).to.be.rejectedWith(FirebaseError, "Unable to parse");
   });
 });
@@ -837,7 +837,7 @@ describe("listExtensionVersions", () => {
 
     const extensions = await extensionsApi.listExtensionVersions(
       `${PUBLISHER_ID}/${EXTENSION_ID}`,
-      "id<1.0.0"
+      "id<1.0.0",
     );
     expect(extensions).to.deep.equal(PUBLISHED_EXT_VERSIONS.extensionVersions);
     expect(nock.isDone()).to.be.true;
@@ -874,7 +874,7 @@ describe("listExtensionVersions", () => {
     const extensions = await extensionsApi.listExtensionVersions(`${PUBLISHER_ID}/${EXTENSION_ID}`);
 
     const expected = PUBLISHED_VERSIONS_WITH_TOKEN.extensionVersions.concat(
-      NEXT_PAGE_VERSIONS.extensionVersions
+      NEXT_PAGE_VERSIONS.extensionVersions,
     );
     expect(extensions).to.deep.equal(expected);
     expect(nock.isDone()).to.be.true;
@@ -895,7 +895,7 @@ describe("listExtensionVersions", () => {
       .reply(500);
 
     await expect(
-      extensionsApi.listExtensionVersions(`${PUBLISHER_ID}/${EXTENSION_ID}`)
+      extensionsApi.listExtensionVersions(`${PUBLISHER_ID}/${EXTENSION_ID}`),
     ).to.be.rejectedWith(FirebaseError);
     expect(nock.isDone()).to.be.true;
   });
@@ -903,7 +903,7 @@ describe("listExtensionVersions", () => {
   it("should throw an error for an invalid ref", async () => {
     await expect(extensionsApi.listExtensionVersions("")).to.be.rejectedWith(
       FirebaseError,
-      "Unable to parse"
+      "Unable to parse",
     );
   });
 });

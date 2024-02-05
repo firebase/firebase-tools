@@ -141,7 +141,7 @@ export function validateOptions(options: any, fileName: string): any {
     }
   } else {
     throw new FirebaseError(
-      "Please specify data file format in file name, or use `format` parameter"
+      "Please specify data file format in file name, or use `format` parameter",
     );
   }
   return exportOptions;
@@ -150,7 +150,7 @@ export function validateOptions(options: any, fileName: string): any {
 function createWriteUsersToFile(): (
   userList: any[],
   format: "csv" | "json",
-  writeStream: Writable
+  writeStream: Writable,
 ) => void {
   let jsonSep = "";
   return (userList: any[], format: "csv" | "json", writeStream: Writable) => {
@@ -190,7 +190,7 @@ export async function serialExportUsers(projectId: string, options: any): Promis
       postBody,
       {
         skipLog: { resBody: true }, // This contains a lot of PII - don't log it.
-      }
+      },
     );
     options.timeoutRetryCount = 0;
     const userList = ret.body.users;

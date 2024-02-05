@@ -81,7 +81,7 @@ describe("functions-config-export", () => {
     it("should convert valid functions config ", () => {
       const { success, errors } = configExport.configToEnv(
         { foo: { bar: "foobar" }, service: { api: { url: "foobar", name: "a service" } } },
-        ""
+        "",
       );
       expect(success).to.have.deep.members([
         { origKey: "service.api.url", newKey: "SERVICE_API_URL", value: "foobar" },
@@ -94,7 +94,7 @@ describe("functions-config-export", () => {
     it("should collect errors for invalid conversions", () => {
       const { success, errors } = configExport.configToEnv(
         { firebase: { name: "foobar" }, service: { api: { url: "foobar", name: "a service" } } },
-        ""
+        "",
       );
       expect(success).to.have.deep.members([
         { origKey: "service.api.url", newKey: "SERVICE_API_URL", value: "foobar" },
@@ -106,7 +106,7 @@ describe("functions-config-export", () => {
     it("should use prefix to fix invalid keys", () => {
       const { success, errors } = configExport.configToEnv(
         { firebase: { name: "foobar" }, service: { api: { url: "foobar", name: "a service" } } },
-        "CONFIG_"
+        "CONFIG_",
       );
       expect(success).to.have.deep.members([
         { origKey: "service.api.url", newKey: "SERVICE_API_URL", value: "foobar" },
@@ -146,13 +146,13 @@ describe("functions-config-export", () => {
   describe("generateDotenvFilename", () => {
     it("should generate dotenv filename using project alias", () => {
       expect(
-        configExport.generateDotenvFilename({ projectId: "my-project", alias: "prod" })
+        configExport.generateDotenvFilename({ projectId: "my-project", alias: "prod" }),
       ).to.equal(".env.prod");
     });
 
     it("should generate dotenv filename using project id if alias doesn't exist", () => {
       expect(configExport.generateDotenvFilename({ projectId: "my-project" })).to.equal(
-        ".env.my-project"
+        ".env.my-project",
       );
     });
   });

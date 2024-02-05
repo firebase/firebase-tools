@@ -22,10 +22,10 @@ export const command = new Command("hosting:disable")
         type: "confirm",
         name: "force",
         message: `Are you sure you want to disable Firebase Hosting for the site ${clc.underline(
-          siteToDisable
+          siteToDisable,
         )}\n${clc.underline("This will immediately make your site inaccessible!")}`,
       },
-      options
+      options,
     );
 
     if (!confirm) {
@@ -36,6 +36,6 @@ export const command = new Command("hosting:disable")
     await c.post(`/sites/${siteToDisable}/releases`, { type: "SITE_DISABLE" });
 
     utils.logSuccess(
-      `Hosting has been disabled for ${clc.bold(siteToDisable)}. Deploy a new version to re-enable.`
+      `Hosting has been disabled for ${clc.bold(siteToDisable)}. Deploy a new version to re-enable.`,
     );
   });
