@@ -23,7 +23,7 @@ describe("apphosting", () => {
 
     it("Should handle explicit counters", async () => {
       const id = await apphosting.getNextRolloutId("unused", "unused", "unused", 1);
-      expect(id).matches(new RegExp(`^${idPrefix(new Date())}-1$`));
+      expect(id).matches(new RegExp(`^${idPrefix(new Date())}-001$`));
       expect(listRollouts).to.not.have.been.called;
     });
 
@@ -58,17 +58,17 @@ describe("apphosting", () => {
       listRollouts.returns({
         rollouts: [
           {
-            name: `projects/project/locations/location/backends/backend/rollouts/${idPrefix(yesterday)}-5`,
+            name: `projects/project/locations/location/backends/backend/rollouts/${idPrefix(yesterday)}-005`,
           },
           {
-            name: `projects/project/locations/location/backends/backend/rollouts/${idPrefix(today)}-1`,
+            name: `projects/project/locations/location/backends/backend/rollouts/${idPrefix(today)}-001`,
           },
         ],
         unreachable: [],
       });
 
       const id = await apphosting.getNextRolloutId("project", "location", "backend");
-      expect(id).to.equal(`${idPrefix(today)}-2`);
+      expect(id).to.equal(`${idPrefix(today)}-002`);
     });
 
     it("Should handle the first build of the day", async () => {
@@ -79,14 +79,14 @@ describe("apphosting", () => {
       listRollouts.returns({
         rollouts: [
           {
-            name: `projects/project/locations/location/backends/backend/rollouts/${idPrefix(yesterday)}-5`,
+            name: `projects/project/locations/location/backends/backend/rollouts/${idPrefix(yesterday)}-005`,
           },
         ],
         unreachable: [],
       });
 
       const id = await apphosting.getNextRolloutId("project", "location", "backend");
-      expect(id).to.equal(`${idPrefix(today)}-1`);
+      expect(id).to.equal(`${idPrefix(today)}-001`);
     });
   });
 

@@ -558,5 +558,5 @@ export async function getNextRolloutId(
       highest = n;
     }
   }
-  return `build-${year}-${month}-${day}-${highest + 1}`;
+  return `build-${year}-${month}-${day}-${String(highest + 1).padStart(3, "0")}`;
 }
