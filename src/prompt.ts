@@ -33,7 +33,7 @@ export async function prompt(
   options: Options,
   // NB: If Observables are to be added here, the for loop below will need to
   // be adjusted as well.
-  questions: ReadonlyArray<inquirer.DistinctQuestion>
+  questions: ReadonlyArray<inquirer.DistinctQuestion>,
 ): Promise<any> {
   const prompts = [];
   // For each of our questions, if Options already has an answer,
@@ -50,7 +50,7 @@ export async function prompt(
       `Missing required options (${missingOptions}) while running in non-interactive mode`,
       {
         children: prompts,
-      }
+      },
     );
   }
 
@@ -63,26 +63,26 @@ export async function prompt(
 
 export async function promptOnce<A extends inquirer.Answers>(
   question: QuestionsThatReturnAString<A>,
-  options?: Options
+  options?: Options,
 ): Promise<string>;
 export async function promptOnce<A extends inquirer.Answers>(
   question: inquirer.CheckboxQuestion<A>,
-  options?: Options
+  options?: Options,
 ): Promise<string[]>;
 export async function promptOnce<A extends inquirer.Answers>(
   question: inquirer.ConfirmQuestion<A>,
-  options?: Options
+  options?: Options,
 ): Promise<boolean>;
 export async function promptOnce<A extends inquirer.Answers>(
   question: inquirer.NumberQuestion<A>,
-  options?: Options
+  options?: Options,
 ): Promise<number>;
 
 // This one is a bit hard to type out. Choices can be many things, including a generator function. Even if we decided to limit
 // the ListQuestion to have a choices of ReadonlyArray<ChoiceOption<A>>, a ChoiceOption<A> still has a `.value` of `any`
 export async function promptOnce<A extends inquirer.Answers>(
   question: inquirer.ListQuestion<A>,
-  options?: Options
+  options?: Options,
 ): Promise<any>;
 
 /**

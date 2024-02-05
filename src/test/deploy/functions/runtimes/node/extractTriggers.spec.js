@@ -22,7 +22,7 @@ describe("extractTriggers", function () {
         bar: fnWithoutTrigger,
         baz: fnWithTrigger,
       },
-      triggers
+      triggers,
     );
 
     expect(triggers.length).to.eq(2);
@@ -33,7 +33,7 @@ describe("extractTriggers", function () {
       {
         foo: fnWithTrigger,
       },
-      triggers
+      triggers,
     );
     expect(triggers[0].name).to.eq("foo");
     expect(triggers[0].entryPoint).to.eq("foo");
@@ -51,7 +51,7 @@ describe("extractTriggers", function () {
         },
         baz: fnWithTrigger,
       },
-      triggers
+      triggers,
     );
 
     expect(triggers[0].name).to.eq("foo-bar");
@@ -68,8 +68,8 @@ describe("extractTriggers", function () {
             baz: null,
           },
         },
-        triggers
-      )
+        triggers,
+      ),
     ).not.to.throw();
 
     expect(triggers[0].name).to.eq("foo-bar");

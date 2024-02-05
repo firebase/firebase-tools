@@ -68,7 +68,7 @@ describe("fetchWebSetup module", () => {
 
       await expect(fetchWebSetup({ project: projectId })).to.eventually.be.rejectedWith(
         FirebaseError,
-        "Not Found"
+        "Not Found",
       );
     });
 

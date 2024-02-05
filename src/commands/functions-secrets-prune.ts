@@ -44,7 +44,7 @@ export const command = new Command("functions:secrets:prune")
     // prompt to get them all deleted
     logBullet(
       `Found ${pruned.length} unused active secret versions:\n\t` +
-        pruned.map((sv) => `${sv.secret}@${sv.version}`).join("\n\t")
+        pruned.map((sv) => `${sv.secret}@${sv.version}`).join("\n\t"),
     );
 
     if (!options.force) {
@@ -55,14 +55,14 @@ export const command = new Command("functions:secrets:prune")
           default: true,
           message: `Do you want to destroy unused secret versions?`,
         },
-        options
+        options,
       );
       if (!confirm) {
         logBullet(
           "Run the following commands to destroy each unused secret version:\n\t" +
             pruned
               .map((sv) => `firebase functions:secrets:destroy ${sv.secret}@${sv.version}`)
-              .join("\n\t")
+              .join("\n\t"),
         );
         return;
       }

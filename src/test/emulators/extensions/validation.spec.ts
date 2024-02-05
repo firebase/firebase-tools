@@ -56,7 +56,7 @@ function fakeInstanceSpecWithAPI(instanceId: string, apiName: string): Deploymen
 }
 
 function getTestEmulatableBackend(
-  predefinedTriggers: ParsedTriggerDefinition[]
+  predefinedTriggers: ParsedTriggerDefinition[],
 ): EmulatableBackend {
   return {
     functionsDir: ".",
@@ -247,7 +247,7 @@ describe("ExtensionsEmulator validation", () => {
       it(test.desc, () => {
         const result = validation.checkForUnemulatedTriggerTypes(
           getTestEmulatableBackend(test.input),
-          TEST_OPTIONS
+          TEST_OPTIONS,
         );
 
         expect(result).to.have.members(test.want);

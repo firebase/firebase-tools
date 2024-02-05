@@ -56,7 +56,10 @@ export class RulesDeploy {
    * @param options The CLI options object.
    * @param type The service type for which this ruleset is associated.
    */
-  constructor(public options: any, private type: RulesetServiceType) {
+  constructor(
+    public options: any,
+    private type: RulesetServiceType,
+  ) {
     this.project = options.project;
     this.rulesFiles = {};
     this.rulesetNames = {};
@@ -88,7 +91,7 @@ export class RulesDeploy {
     await Promise.all(
       Object.keys(this.rulesFiles).map((filename) => {
         return this.compileRuleset(filename, this.rulesFiles[filename]);
-      })
+      }),
     );
   }
 
@@ -98,7 +101,7 @@ export class RulesDeploy {
    * @return An object containing the latest name and content of the current rules.
    */
   private async getCurrentRules(
-    service: RulesetServiceType
+    service: RulesetServiceType,
   ): Promise<{ latestName: string | null; latestContent: RulesetFile[] | null }> {
     const latestName = await gcp.rules.getLatestRulesetName(this.options.project, service);
     let latestContent: RulesetFile[] | null = null;
@@ -135,7 +138,7 @@ export class RulesDeploy {
           message: `Cloud Storage for Firebase needs an IAM Role to use cross-service rules. Grant the new role?`,
           default: true,
         },
-        this.options
+        this.options,
       );
 
       // Try to add the role to the service account
@@ -143,12 +146,12 @@ export class RulesDeploy {
         await addServiceAccountToRoles(projectNumber, saEmail, [CROSS_SERVICE_RULES_ROLE], true);
         utils.logLabeledBullet(
           RulesetType[this.type],
-          "updated service account for cross-service rules..."
+          "updated service account for cross-service rules...",
         );
       }
     } catch (e: any) {
       logger.warn(
-        "[rules] Error checking or updating Cloud Storage for Firebase service account permissions."
+        "[rules] Error checking or updating Cloud Storage for Firebase service account permissions.",
       );
       logger.warn("[rules] Cross-service Storage rules may not function properly", e.message);
     }
@@ -177,7 +180,7 @@ export class RulesDeploy {
       if (latestRulesetName && _.isEqual(files, latestRulesetContent)) {
         utils.logLabeledBullet(
           RulesetType[this.type],
-          `latest version of ${bold(filename)} already up to date, skipping upload...`
+          `latest version of ${bold(filename)} already up to date, skipping upload...`,
         );
         this.rulesetNames[filename] = latestRulesetName;
         continue;
@@ -213,7 +216,7 @@ export class RulesDeploy {
             message: `You have ${history.length} rules, do you want to delete the oldest ${RULESETS_TO_GC} to free up space?`,
             default: false,
           },
-          this.options
+          this.options,
         );
         if (confirm) {
           // Find the oldest unreleased rulesets. The rulesets are sorted reverse-chronlogically.
@@ -245,7 +248,7 @@ export class RulesDeploy {
   async release(
     filename: string,
     resourceName: RulesetServiceType,
-    subResourceName?: string
+    subResourceName?: string,
   ): Promise<void> {
     // Cast as a RulesetServiceType to test the value against known types.
     if (resourceName === RulesetServiceType.FIREBASE_STORAGE && !subResourceName) {
@@ -254,11 +257,11 @@ export class RulesDeploy {
     await gcp.rules.updateOrCreateRelease(
       this.options.project,
       this.rulesetNames[filename],
-      subResourceName ? `${resourceName}/${subResourceName}` : resourceName
+      subResourceName ? `${resourceName}/${subResourceName}` : resourceName,
     );
     utils.logLabeledSuccess(
       RulesetType[this.type],
-      `released rules ${bold(filename)} to ${bold(resourceName)}`
+      `released rules ${bold(filename)} to ${bold(resourceName)}`,
     );
   }
 

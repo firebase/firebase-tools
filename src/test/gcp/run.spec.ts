@@ -31,7 +31,7 @@ describe("run", () => {
       apiRequestStub.onFirstCall().throws("Error calling set api.");
 
       await expect(
-        run.setInvokerCreate("project", "service", ["public"], client)
+        run.setInvokerCreate("project", "service", ["public"], client),
       ).to.be.rejectedWith("Failed to set the IAM Policy on the Service service");
       expect(apiRequestStub).to.be.calledOnce;
     });
@@ -99,8 +99,8 @@ describe("run", () => {
             "service-account2@project.iam.gserviceaccount.com",
             "service-account3@",
           ],
-          client
-        )
+          client,
+        ),
       ).to.not.be.rejected;
       expect(apiRequestStub).to.be.calledOnce;
     });
@@ -136,7 +136,7 @@ describe("run", () => {
         apiGetStub.onFirstCall().throws("Error calling get api.");
 
         await expect(
-          run.setInvokerUpdate("project", "service", ["public"], client)
+          run.setInvokerUpdate("project", "service", ["public"], client),
         ).to.be.rejectedWith("Failed to get the IAM Policy on the Service service");
 
         expect(apiGetStub).to.be.called;
@@ -147,7 +147,7 @@ describe("run", () => {
         apiPostStub.throws("Error calling set api.");
 
         await expect(
-          run.setInvokerUpdate("project", "service", ["public"], client)
+          run.setInvokerUpdate("project", "service", ["public"], client),
         ).to.be.rejectedWith("Failed to set the IAM Policy on the Service service");
         expect(apiGetStub).to.be.calledOnce;
         expect(apiPostStub).to.be.calledOnce;
@@ -228,8 +228,8 @@ describe("run", () => {
               "service-account2@project.iam.gserviceaccount.com",
               "service-account3@",
             ],
-            client
-          )
+            client,
+          ),
         ).to.not.be.rejected;
         expect(apiGetStub).to.be.calledOnce;
         expect(apiPostStub).to.be.calledOnce;
@@ -262,8 +262,8 @@ describe("run", () => {
               "service-account3@",
               "service-account1@",
             ],
-            client
-          )
+            client,
+          ),
         ).to.not.be.rejected;
         expect(apiGetStub).to.be.calledOnce;
         expect(apiPostStub).to.not.be.called;

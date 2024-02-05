@@ -25,7 +25,7 @@ export async function requirePermissions(options: any, permissions: string[] = [
   await requireAuth(options);
 
   logger.debug(
-    `[iam] checking project ${projectId} for permissions ${JSON.stringify(requiredPermissions)}`
+    `[iam] checking project ${projectId} for permissions ${JSON.stringify(requiredPermissions)}`,
   );
 
   try {
@@ -33,8 +33,8 @@ export async function requirePermissions(options: any, permissions: string[] = [
     if (!iamResult.passed) {
       throw new FirebaseError(
         `Authorization failed. This account is missing the following required permissions on project ${bold(
-          projectId
-        )}:\n\n  ${iamResult.missing.join("\n  ")}`
+          projectId,
+        )}:\n\n  ${iamResult.missing.join("\n  ")}`,
       );
     }
   } catch (err: any) {

@@ -21,11 +21,11 @@ function readCommonTemplates() {
   return {
     integrationTestFirebaseJsonTemplate: fs.readFileSync(
       path.join(TEMPLATE_ROOT, "integration-test.json"),
-      "utf8"
+      "utf8",
     ),
     integrationTestEnvTemplate: fs.readFileSync(
       path.join(TEMPLATE_ROOT, "integration-test.env"),
-      "utf8"
+      "utf8",
     ),
     extSpecTemplate: fs.readFileSync(path.join(TEMPLATE_ROOT, "extension.yaml"), "utf8"),
     preinstallTemplate: fs.readFileSync(path.join(TEMPLATE_ROOT, "PREINSTALL.md"), "utf8"),
@@ -85,7 +85,7 @@ export const command = new Command("ext:dev:init")
           `Error occurred when initializing files for new extension: ${err.message}`,
           {
             original: err,
-          }
+          },
         );
       }
       throw err;
@@ -99,36 +99,36 @@ export const command = new Command("ext:dev:init")
 async function typescriptSelected(config: Config): Promise<void> {
   const packageLintingTemplate = fs.readFileSync(
     path.join(TEMPLATE_ROOT, "typescript", "package.lint.json"),
-    "utf8"
+    "utf8",
   );
   const packageNoLintingTemplate = fs.readFileSync(
     path.join(TEMPLATE_ROOT, "typescript", "package.nolint.json"),
-    "utf8"
+    "utf8",
   );
   const tsconfigTemplate = fs.readFileSync(
     path.join(TEMPLATE_ROOT, "typescript", "tsconfig.json"),
-    "utf8"
+    "utf8",
   );
   const tsconfigDevTemplate = fs.readFileSync(
     path.join(TEMPLATE_ROOT, "typescript", "tsconfig.dev.json"),
-    "utf8"
+    "utf8",
   );
   const indexTemplate = fs.readFileSync(path.join(TEMPLATE_ROOT, "typescript", "index.ts"), "utf8");
   const integrationTestTemplate = fs.readFileSync(
     path.join(TEMPLATE_ROOT, "typescript", "integration-test.ts"),
-    "utf8"
+    "utf8",
   );
   const gitignoreTemplate = fs.readFileSync(
     path.join(TEMPLATE_ROOT, "typescript", "_gitignore"),
-    "utf8"
+    "utf8",
   );
   const mocharcTemplate = fs.readFileSync(
     path.join(TEMPLATE_ROOT, "typescript", "_mocharc"),
-    "utf8"
+    "utf8",
   );
   const eslintTemplate = fs.readFileSync(
     path.join(FUNCTIONS_ROOT, "typescript", "_eslintrc"),
-    "utf8"
+    "utf8",
   );
 
   const lint = await promptOnce({
@@ -146,15 +146,15 @@ async function typescriptSelected(config: Config): Promise<void> {
   await config.askWriteProjectFile("functions/src/index.ts", indexTemplate);
   await config.askWriteProjectFile(
     "functions/integration-tests/integration-test.spec.ts",
-    integrationTestTemplate
+    integrationTestTemplate,
   );
   await config.askWriteProjectFile(
     "functions/integration-tests/firebase.json",
-    templates.integrationTestFirebaseJsonTemplate
+    templates.integrationTestFirebaseJsonTemplate,
   );
   await config.askWriteProjectFile(
     "functions/integration-tests/extensions/greet-the-world.env",
-    templates.integrationTestEnvTemplate
+    templates.integrationTestEnvTemplate,
   );
   if (lint) {
     await config.askWriteProjectFile("functions/package.json", packageLintingTemplate);
@@ -177,23 +177,23 @@ async function javascriptSelected(config: Config): Promise<void> {
   const indexTemplate = fs.readFileSync(path.join(TEMPLATE_ROOT, "javascript", "index.js"), "utf8");
   const integrationTestTemplate = fs.readFileSync(
     path.join(TEMPLATE_ROOT, "javascript", "integration-test.js"),
-    "utf8"
+    "utf8",
   );
   const packageLintingTemplate = fs.readFileSync(
     path.join(TEMPLATE_ROOT, "javascript", "package.lint.json"),
-    "utf8"
+    "utf8",
   );
   const packageNoLintingTemplate = fs.readFileSync(
     path.join(TEMPLATE_ROOT, "javascript", "package.nolint.json"),
-    "utf8"
+    "utf8",
   );
   const gitignoreTemplate = fs.readFileSync(
     path.join(TEMPLATE_ROOT, "javascript", "_gitignore"),
-    "utf8"
+    "utf8",
   );
   const eslintTemplate = fs.readFileSync(
     path.join(FUNCTIONS_ROOT, "javascript", "_eslintrc"),
-    "utf8"
+    "utf8",
   );
 
   const lint = await promptOnce({
@@ -211,15 +211,15 @@ async function javascriptSelected(config: Config): Promise<void> {
   await config.askWriteProjectFile("functions/index.js", indexTemplate);
   await config.askWriteProjectFile(
     "functions/integration-tests/integration-test.spec.js",
-    integrationTestTemplate
+    integrationTestTemplate,
   );
   await config.askWriteProjectFile(
     "functions/integration-tests/firebase.json",
-    templates.integrationTestFirebaseJsonTemplate
+    templates.integrationTestFirebaseJsonTemplate,
   );
   await config.askWriteProjectFile(
     "functions/integration-tests/extensions/greet-the-world.env",
-    templates.integrationTestEnvTemplate
+    templates.integrationTestEnvTemplate,
   );
   if (lint) {
     await config.askWriteProjectFile("functions/package.json", packageLintingTemplate);

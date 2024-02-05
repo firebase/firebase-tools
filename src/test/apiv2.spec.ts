@@ -186,7 +186,7 @@ describe("apiv2", () => {
       });
       await expect(r).to.eventually.be.rejectedWith(
         FirebaseError,
-        /Unable to interpret response.+/
+        /Unable to interpret response.+/,
       );
       expect(nock.isDone()).to.be.true;
     });
@@ -325,7 +325,7 @@ describe("apiv2", () => {
           method: "GET",
           path: "/path/to/foo",
           timeout: 10,
-        })
+        }),
       ).to.eventually.be.rejectedWith(FirebaseError, "Timeout reached making request");
       expect(nock.isDone()).to.be.true;
     });
@@ -341,7 +341,7 @@ describe("apiv2", () => {
           method: "GET",
           path: "/path/to/foo",
           signal: controller.signal,
-        })
+        }),
       ).to.eventually.be.rejectedWith(FirebaseError, "Timeout reached making request");
       expect(nock.isDone()).to.be.true;
     });
@@ -419,7 +419,7 @@ describe("apiv2", () => {
           method: "GET",
           path: "/path/to/foo",
           responseType: "xml",
-        })
+        }),
       ).to.eventually.be.rejectedWith(FirebaseError, /EntityTooLarge/);
       expect(nock.isDone()).to.be.true;
     });

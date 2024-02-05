@@ -17,7 +17,7 @@ describe("requireKeys", () => {
     } as any;
     expect(() => parsing.requireKeys("", obj, "foo", "bar")).to.throw(
       FirebaseError,
-      "Expected key bar"
+      "Expected key bar",
     );
   });
 
@@ -29,7 +29,7 @@ describe("requireKeys", () => {
     } as any;
     expect(() => parsing.requireKeys("foo", obj.foo, "baz")).to.throw(
       FirebaseError,
-      "Expected key foo.baz"
+      "Expected key foo.baz",
     );
   });
 });
@@ -108,7 +108,7 @@ describe("assertKeyTypes", () => {
     expect(() =>
       parsing.assertKeyTypes("", obj, {
         foo: "string",
-      })
+      }),
     ).to.throw(FirebaseError, /Unexpected key number/);
   });
 
@@ -121,7 +121,7 @@ describe("assertKeyTypes", () => {
       parsing.assertKeyTypes("", obj, {
         foo: "string",
         number: "omit",
-      })
+      }),
     ).to.throw(/Unexpected key/);
   });
 
@@ -132,7 +132,7 @@ describe("assertKeyTypes", () => {
     expect(() =>
       parsing.assertKeyTypes("outer", obj, {
         foo: "array",
-      })
+      }),
     ).to.throw(FirebaseError, "Expected outer.foo to be type array");
   });
 });

@@ -122,7 +122,7 @@ export class Uploader {
     this.uploadQueue.wait().catch((err: Error) => {
       if (err.message.includes("content hash")) {
         logger.debug(
-          "[hosting][upload queue] upload failed with content hash error. Deleting hash cache"
+          "[hosting][upload queue] upload failed with content hash error. Deleting hash cache",
         );
         dump(this.projectRoot, this.hashcacheName(), new Map());
       }
@@ -149,13 +149,13 @@ export class Uploader {
       return progressMessage(
         "adding files to version",
         this.populateQueue.complete * 1000,
-        this.fileCount
+        this.fileCount,
       );
     } else if (!this.uploadQueue.finished) {
       return progressMessage(
         "uploading new files",
         this.uploadQueue.complete,
-        this.uploadQueue.stats().total
+        this.uploadQueue.stats().total,
       );
     } else {
       return "upload complete";
@@ -250,7 +250,7 @@ export class Uploader {
       logger.debug(
         `[hosting][upload] ${this.hashMap[toUpload]} (${toUpload}) HTTP ERROR ${
           res.status
-        }: headers=${JSON.stringify(res.response.headers)} ${errorMessage}`
+        }: headers=${JSON.stringify(res.response.headers)} ${errorMessage}`,
       );
       throw new Error(`Unexpected error while uploading file: ${errorMessage}`);
     }

@@ -29,7 +29,7 @@ describe("commandUtils", () => {
     it("Should not block if destination contains a match to the CWD", () => {
       const directoryToAllow = mockDestinationDir;
       expect(testSetExportOnExitOptions({ exportOnExit: directoryToAllow }).exportOnExit).to.equal(
-        directoryToAllow
+        directoryToAllow,
       );
     });
   });
@@ -49,47 +49,47 @@ describe("commandUtils", () => {
   directoriesThatShouldFail.forEach((dir) => {
     it(`Should disallow the user to set the current folder (ex: ${dir}) as --export-on-exit option`, () => {
       expect(() => testSetExportOnExitOptions({ exportOnExit: dir })).to.throw(
-        EXPORT_ON_EXIT_CWD_DANGER
+        EXPORT_ON_EXIT_CWD_DANGER,
       );
       const cwdSubDir = path.join(dir, "some-dir");
       expect(testSetExportOnExitOptions({ exportOnExit: cwdSubDir }).exportOnExit).to.equal(
-        cwdSubDir
+        cwdSubDir,
       );
     });
   });
 
   it("Should disallow the user to set the current folder via the --import flag", () => {
     expect(() => testSetExportOnExitOptions({ import: ".", exportOnExit: true })).to.throw(
-      EXPORT_ON_EXIT_CWD_DANGER
+      EXPORT_ON_EXIT_CWD_DANGER,
     );
     const cwdSubDir = path.join(".", "some-dir");
     expect(
-      testSetExportOnExitOptions({ import: cwdSubDir, exportOnExit: true }).exportOnExit
+      testSetExportOnExitOptions({ import: cwdSubDir, exportOnExit: true }).exportOnExit,
     ).to.equal(cwdSubDir);
   });
 
   it("should validate --export-on-exit options", () => {
     expect(testSetExportOnExitOptions({ import: "./data" }).exportOnExit).to.be.undefined;
     expect(
-      testSetExportOnExitOptions({ import: "./data", exportOnExit: "./data" }).exportOnExit
+      testSetExportOnExitOptions({ import: "./data", exportOnExit: "./data" }).exportOnExit,
     ).to.eql("./data");
     expect(
-      testSetExportOnExitOptions({ import: "./data", exportOnExit: "./dataExport" }).exportOnExit
+      testSetExportOnExitOptions({ import: "./data", exportOnExit: "./dataExport" }).exportOnExit,
     ).to.eql("./dataExport");
     expect(
-      testSetExportOnExitOptions({ import: "./data", exportOnExit: true }).exportOnExit
+      testSetExportOnExitOptions({ import: "./data", exportOnExit: true }).exportOnExit,
     ).to.eql("./data");
     expect(() => testSetExportOnExitOptions({ exportOnExit: true })).to.throw(
       FirebaseError,
-      EXPORT_ON_EXIT_USAGE_ERROR
+      EXPORT_ON_EXIT_USAGE_ERROR,
     );
     expect(() => testSetExportOnExitOptions({ import: "", exportOnExit: true })).to.throw(
       FirebaseError,
-      EXPORT_ON_EXIT_USAGE_ERROR
+      EXPORT_ON_EXIT_USAGE_ERROR,
     );
     expect(() => testSetExportOnExitOptions({ import: "", exportOnExit: "" })).to.throw(
       FirebaseError,
-      EXPORT_ON_EXIT_USAGE_ERROR
+      EXPORT_ON_EXIT_USAGE_ERROR,
     );
   });
   it("should delete the --import option when the dir does not exist together with --export-on-exit", () => {
@@ -97,7 +97,7 @@ describe("commandUtils", () => {
       testSetExportOnExitOptions({
         import: "./dataDirThatDoesNotExist",
         exportOnExit: "./dataDirThatDoesNotExist",
-      }).import
+      }).import,
     ).to.be.undefined;
     const options = testSetExportOnExitOptions({
       import: "./dataDirThatDoesNotExist",
@@ -110,14 +110,14 @@ describe("commandUtils", () => {
     expect(
       testSetExportOnExitOptions({
         import: "./dataDirThatDoesNotExist",
-      }).import
+      }).import,
     ).to.eql("./dataDirThatDoesNotExist");
   });
   it("should keep other unrelated options when using setExportOnExitOptions", () => {
     expect(
       testSetExportOnExitOptions({
         someUnrelatedOption: "isHere",
-      }).someUnrelatedOption
+      }).someUnrelatedOption,
     ).to.eql("isHere");
   });
 });

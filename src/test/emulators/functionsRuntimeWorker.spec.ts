@@ -104,7 +104,7 @@ describe("FunctionsRuntimeWorker", () => {
       worker.readyForWork();
       await worker.request(
         { method: "GET", path: "/" },
-        httpMocks.createResponse({ eventEmitter: EventEmitter })
+        httpMocks.createResponse({ eventEmitter: EventEmitter }),
       );
       scope.done();
 
@@ -123,7 +123,7 @@ describe("FunctionsRuntimeWorker", () => {
       worker.readyForWork();
       await worker.request(
         { method: "GET", path: "/" },
-        httpMocks.createResponse({ eventEmitter: EventEmitter })
+        httpMocks.createResponse({ eventEmitter: EventEmitter }),
       );
       scope.done();
 
@@ -202,7 +202,7 @@ describe("FunctionsRuntimeWorker", () => {
       // Send request to the worker. Request should fail, killing the worker.
       await worker.request(
         { method: "GET", path: "/" },
-        httpMocks.createResponse({ eventEmitter: EventEmitter })
+        httpMocks.createResponse({ eventEmitter: EventEmitter }),
       );
       scope.done();
 

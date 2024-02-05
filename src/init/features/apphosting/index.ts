@@ -41,7 +41,7 @@ export async function doSetup(setup: any, projectId: string): Promise<void> {
   if (setup.location) {
     if (!allowedLocations.includes(setup.location)) {
       throw new FirebaseError(
-        `Invalid location ${setup.location}. Valid choices are ${allowedLocations.join(", ")}`
+        `Invalid location ${setup.location}. Valid choices are ${allowedLocations.join(", ")}`,
       );
     }
   }
@@ -68,7 +68,7 @@ export async function doSetup(setup: any, projectId: string): Promise<void> {
       }
       throw new FirebaseError(
         `Failed to check if backend with id ${backendId} already exists in ${location}`,
-        { original: err }
+        { original: err },
       );
     }
     logWarning(`Backend with id ${backendId} already exists in ${location}`);
@@ -107,14 +107,14 @@ export async function doSetup(setup: any, projectId: string): Promise<void> {
   if (build.state !== "READY") {
     throw new FirebaseError(
       `Failed to build your app. Please inspect the build logs at ${build.buildLogsUri}.`,
-      { children: [build.error] }
+      { children: [build.error] },
     );
   }
 
   logSuccess(`Successfully created backend:\n\t${backend.name}`);
   logSuccess(`Your site is now deployed at:\n\thttps://${backend.uri}`);
   logSuccess(
-    `View the rollout status by running:\n\tfirebase apphosting:backends:get ${backendId} --project ${projectId}`
+    `View the rollout status by running:\n\tfirebase apphosting:backends:get ${backendId} --project ${projectId}`,
   );
 }
 
@@ -147,7 +147,7 @@ function toBackend(cloudBuildConnRepo: Repository): Omit<Backend, BackendOutputO
 export async function onboardBackend(
   projectId: string,
   location: string,
-  backendId: string
+  backendId: string,
 ): Promise<Backend> {
   const cloudBuildConnRepo = await repo.linkGitHubRepository(projectId, location);
   const backendDetails = toBackend(cloudBuildConnRepo);
@@ -161,7 +161,7 @@ export async function createBackend(
   projectId: string,
   location: string,
   backendReqBoby: Omit<Backend, BackendOutputOnlyFields>,
-  backendId: string
+  backendId: string,
 ): Promise<Backend> {
   const op = await apphosting.createBackend(projectId, location, backendReqBoby, backendId);
   const backend = await poller.pollOperation<Backend>({
@@ -179,7 +179,7 @@ export async function onboardRollout(
   projectId: string,
   location: string,
   backendId: string,
-  buildInput: Omit<BuildInput, "name">
+  buildInput: Omit<BuildInput, "name">,
 ): Promise<{ rollout: Rollout; build: Build }> {
   logBullet("Starting a new rollout... this may take a few minutes.");
   const buildId = generateId();

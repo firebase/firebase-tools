@@ -15,7 +15,7 @@ export const command = new Command("internaltesting:functions:discover")
     const firebaseConfig = await getProjectAdminSdkConfigOrCached(projectId);
     if (!firebaseConfig) {
       throw new FirebaseError(
-        "Admin SDK config unexpectedly undefined - have you run firebase init?"
+        "Admin SDK config unexpectedly undefined - have you run firebase init?",
       );
     }
     const builds = await loadCodebases(fnConfig, options, firebaseConfig, {

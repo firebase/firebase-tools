@@ -7,7 +7,7 @@ describe("utils", () => {
   describe("consoleUrl", () => {
     it("should create a console URL", () => {
       expect(utils.consoleUrl("projectId", "/foo/bar")).to.equal(
-        "https://console.firebase.google.com/project/projectId/foo/bar"
+        "https://console.firebase.google.com/project/projectId/foo/bar",
       );
     });
   });
@@ -99,39 +99,39 @@ describe("utils", () => {
   describe("getDatabaseUrl", () => {
     it("should create a url for prod", () => {
       expect(utils.getDatabaseUrl("https://firebaseio.com", "fir-proj", "/")).to.equal(
-        "https://fir-proj.firebaseio.com/"
+        "https://fir-proj.firebaseio.com/",
       );
       expect(utils.getDatabaseUrl("https://firebaseio.com", "fir-proj", "/foo/bar")).to.equal(
-        "https://fir-proj.firebaseio.com/foo/bar"
+        "https://fir-proj.firebaseio.com/foo/bar",
       );
       expect(utils.getDatabaseUrl("https://firebaseio.com", "fir-proj", "/foo/bar.json")).to.equal(
-        "https://fir-proj.firebaseio.com/foo/bar.json"
+        "https://fir-proj.firebaseio.com/foo/bar.json",
       );
       expect(
         utils.getDatabaseUrl(
           "https://some-namespace.europe-west1.firebasedatabase.app",
           "some-namespace",
-          "/foo/bar.json"
-        )
+          "/foo/bar.json",
+        ),
       ).to.equal("https://some-namespace.europe-west1.firebasedatabase.app/foo/bar.json");
       expect(
         utils.getDatabaseUrl(
           "https://europe-west1.firebasedatabase.app",
           "some-namespace",
-          "/foo/bar.json"
-        )
+          "/foo/bar.json",
+        ),
       ).to.equal("https://some-namespace.europe-west1.firebasedatabase.app/foo/bar.json");
     });
 
     it("should create a url for the emulator", () => {
       expect(utils.getDatabaseUrl("http://localhost:9000", "fir-proj", "/")).to.equal(
-        "http://localhost:9000/?ns=fir-proj"
+        "http://localhost:9000/?ns=fir-proj",
       );
       expect(utils.getDatabaseUrl("http://localhost:9000", "fir-proj", "/foo/bar")).to.equal(
-        "http://localhost:9000/foo/bar?ns=fir-proj"
+        "http://localhost:9000/foo/bar?ns=fir-proj",
       );
       expect(utils.getDatabaseUrl("http://localhost:9000", "fir-proj", "/foo/bar.json")).to.equal(
-        "http://localhost:9000/foo/bar.json?ns=fir-proj"
+        "http://localhost:9000/foo/bar.json?ns=fir-proj",
       );
     });
   });
@@ -139,9 +139,9 @@ describe("utils", () => {
   describe("getDatabaseViewDataUrl", () => {
     it("should get a view data url for legacy prod URL", () => {
       expect(
-        utils.getDatabaseViewDataUrl("https://firebaseio.com", "fir-proj", "fir-ns", "/foo/bar")
+        utils.getDatabaseViewDataUrl("https://firebaseio.com", "fir-proj", "fir-ns", "/foo/bar"),
       ).to.equal(
-        "https://console.firebase.google.com/project/fir-proj/database/fir-ns/data/foo/bar"
+        "https://console.firebase.google.com/project/fir-proj/database/fir-ns/data/foo/bar",
       );
     });
 
@@ -151,16 +151,16 @@ describe("utils", () => {
           "https://firebasedatabase.app",
           "fir-proj",
           "fir-ns",
-          "/foo/bar"
-        )
+          "/foo/bar",
+        ),
       ).to.equal(
-        "https://console.firebase.google.com/project/fir-proj/database/fir-ns/data/foo/bar"
+        "https://console.firebase.google.com/project/fir-proj/database/fir-ns/data/foo/bar",
       );
     });
 
     it("should get a view data url for the emulator", () => {
       expect(
-        utils.getDatabaseViewDataUrl("http://localhost:9000", "fir-proj", "fir-ns", "/foo/bar")
+        utils.getDatabaseViewDataUrl("http://localhost:9000", "fir-proj", "fir-ns", "/foo/bar"),
       ).to.equal("http://localhost:9000/foo/bar.json?ns=fir-ns");
     });
   });
@@ -168,19 +168,19 @@ describe("utils", () => {
   describe("addDatabaseNamespace", () => {
     it("should add the namespace for prod", () => {
       expect(utils.addDatabaseNamespace("https://firebaseio.com/", "fir-proj")).to.equal(
-        "https://fir-proj.firebaseio.com/"
+        "https://fir-proj.firebaseio.com/",
       );
       expect(utils.addDatabaseNamespace("https://firebaseio.com/foo/bar", "fir-proj")).to.equal(
-        "https://fir-proj.firebaseio.com/foo/bar"
+        "https://fir-proj.firebaseio.com/foo/bar",
       );
     });
 
     it("should add the namespace for the emulator", () => {
       expect(utils.addDatabaseNamespace("http://localhost:9000/", "fir-proj")).to.equal(
-        "http://localhost:9000/?ns=fir-proj"
+        "http://localhost:9000/?ns=fir-proj",
       );
       expect(utils.addDatabaseNamespace("http://localhost:9000/foo/bar", "fir-proj")).to.equal(
-        "http://localhost:9000/foo/bar?ns=fir-proj"
+        "http://localhost:9000/foo/bar?ns=fir-proj",
       );
     });
   });
@@ -265,13 +265,13 @@ describe("utils", () => {
     it("should output the date in the correct format", () => {
       // Don't worry about the hour since timezones screw everything up.
       expect(utils.datetimeString(new Date("February 22, 2020 11:35:45-07:00"))).to.match(
-        /^2020-02-22 \d\d:35:45$/
+        /^2020-02-22 \d\d:35:45$/,
       );
       expect(utils.datetimeString(new Date("February 7, 2020 11:35:45-07:00"))).to.match(
-        /^2020-02-07 \d\d:35:45$/
+        /^2020-02-07 \d\d:35:45$/,
       );
       expect(utils.datetimeString(new Date("February 7, 2020 8:01:01-07:00"))).to.match(
-        /^2020-02-07 \d\d:01:01$/
+        /^2020-02-07 \d\d:01:01$/,
       );
     });
   });

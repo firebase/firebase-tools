@@ -41,7 +41,7 @@ describe("ensureTestLabTriggerRegion", () => {
     ep.eventTrigger.region = "us-west1";
 
     expect(() => testLab.ensureTestLabTriggerRegion(ep)).to.throw(
-      "A Test Lab trigger must specify 'global' trigger location"
+      "A Test Lab trigger must specify 'global' trigger location",
     );
   });
 });

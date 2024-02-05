@@ -54,7 +54,7 @@ async function getCloudRunUrl(rewrite: CloudRunProxyRewrite, projectId: string):
  * the live Cloud Run service running within the given project.
  */
 export default function (
-  options: CloudRunProxyOptions
+  options: CloudRunProxyOptions,
 ): (r: CloudRunProxyRewrite) => Promise<RequestHandler> {
   return async (rewrite: CloudRunProxyRewrite) => {
     if (!rewrite.run) {

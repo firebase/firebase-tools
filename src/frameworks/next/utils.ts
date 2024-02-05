@@ -139,7 +139,7 @@ export function isHeaderSupportedByHosting(header: RoutesManifestHeader): boolea
  * See: https://nextjs.org/docs/api-reference/next.config.js/rewrites
  */
 export function getNextjsRewritesToUse(
-  nextJsRewrites: RoutesManifest["rewrites"]
+  nextJsRewrites: RoutesManifest["rewrites"],
 ): RoutesManifestRewrite[] {
   if (Array.isArray(nextJsRewrites)) {
     return nextJsRewrites.map(cleanI18n);
@@ -202,7 +202,7 @@ export async function isUsingMiddleware(dir: string, isDevMode: boolean): Promis
     return middlewareJs || middlewareTs;
   } else {
     const middlewareManifest: MiddlewareManifest = await readJSON<MiddlewareManifest>(
-      join(dir, "server", MIDDLEWARE_MANIFEST)
+      join(dir, "server", MIDDLEWARE_MANIFEST),
     );
 
     return Object.keys(middlewareManifest.middleware).length > 0;
@@ -217,7 +217,7 @@ export async function isUsingMiddleware(dir: string, isDevMode: boolean): Promis
  */
 export async function isUsingImageOptimization(
   projectDir: string,
-  distDir: string
+  distDir: string,
 ): Promise<boolean> {
   let isNextImageImported = await usesNextImage(projectDir, distDir);
 
@@ -230,7 +230,7 @@ export async function isUsingImageOptimization(
 
   if (isNextImageImported) {
     const imagesManifest = await readJSON<ImagesManifest>(
-      join(projectDir, distDir, IMAGES_MANIFEST)
+      join(projectDir, distDir, IMAGES_MANIFEST),
     );
     return !imagesManifest.images.unoptimized;
   }
@@ -243,10 +243,10 @@ export async function isUsingImageOptimization(
  */
 export async function isUsingNextImageInAppDirectory(
   projectDir: string,
-  nextDir: string
+  nextDir: string,
 ): Promise<boolean> {
   const files = globSync(
-    join(projectDir, nextDir, "server", "**", "*client-reference-manifest.js")
+    join(projectDir, nextDir, "server", "**", "*client-reference-manifest.js"),
   );
 
   for (const filepath of files) {
@@ -281,7 +281,7 @@ export function allDependencyNames(mod: NpmLsDepdendency): string[] {
   if (!mod.dependencies) return [];
   const dependencyNames = Object.keys(mod.dependencies).reduce(
     (acc, it) => [...acc, it, ...allDependencyNames(mod.dependencies![it])],
-    [] as string[]
+    [] as string[],
   );
   return dependencyNames;
 }
@@ -296,7 +296,7 @@ export function getMiddlewareMatcherRegexes(middlewareManifest: MiddlewareManife
 
   if (middlewareManifest.version === 1) {
     middlewareMatchers = middlewareObjectValues.map(
-      (page: MiddlewareManifestV1["middleware"]["page"]) => ({ regexp: page.regexp })
+      (page: MiddlewareManifestV1["middleware"]["page"]) => ({ regexp: page.regexp }),
     );
   } else {
     middlewareMatchers = middlewareObjectValues
@@ -313,7 +313,7 @@ export function getMiddlewareMatcherRegexes(middlewareManifest: MiddlewareManife
 export function getNonStaticRoutes(
   pagesManifestJSON: PagesManifest,
   prerenderedRoutes: string[],
-  dynamicRoutes: string[]
+  dynamicRoutes: string[],
 ): string[] {
   const nonStaticRoutes = Object.entries(pagesManifestJSON)
     .filter(
@@ -323,7 +323,7 @@ export function getNonStaticRoutes(
           ["/_app", "/_error", "/_document"].includes(it) ||
           prerenderedRoutes.includes(it) ||
           dynamicRoutes.includes(it)
-        )
+        ),
     )
     .map(([it]) => it);
 
@@ -337,7 +337,7 @@ export function getNonStaticServerComponents(
   appPathsManifest: AppPathsManifest,
   appPathRoutesManifest: AppPathRoutesManifest,
   prerenderedRoutes: string[],
-  dynamicRoutes: string[]
+  dynamicRoutes: string[],
 ): Set<string> {
   const nonStaticServerComponents = Object.entries(appPathsManifest)
     .filter(([it, src]) => {
@@ -357,7 +357,7 @@ export async function getHeadersFromMetaFiles(
   sourceDir: string,
   distDir: string,
   basePath: string,
-  appPathRoutesManifest: AppPathRoutesManifest
+  appPathRoutesManifest: AppPathRoutesManifest,
 ): Promise<HostingHeadersWithSource[]> {
   const headers: HostingHeadersWithSource[] = [];
 
@@ -378,7 +378,7 @@ export async function getHeadersFromMetaFiles(
             headers: Object.entries(meta.headers).map(([key, value]) => ({ key, value })),
           });
       }
-    })
+    }),
   );
 
   return headers;
@@ -417,7 +417,7 @@ export function getNextVersion(cwd: string): string | undefined {
  */
 export async function hasStaticAppNotFoundComponent(
   sourceDir: string,
-  distDir: string
+  distDir: string,
 ): Promise<boolean> {
   return pathExists(join(sourceDir, distDir, "server", "app", "_not-found.html"));
 }

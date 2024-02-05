@@ -48,13 +48,13 @@ export const command = new Command("ext:configure <extensionInstanceId>")
     if (options.nonInteractive) {
       throw new FirebaseError(
         `Command not supported in non-interactive mode, edit ./extensions/${instanceId}.env directly instead. ` +
-          `See https://firebase.google.com/docs/extensions/manifest for more details.`
+          `See https://firebase.google.com/docs/extensions/manifest for more details.`,
       );
     }
     if (options.local) {
       utils.logLabeledWarning(
         logPrefix,
-        "As of firebase-tools@11.0.0, the `--local` flag is no longer required, as it is the default behavior."
+        "As of firebase-tools@11.0.0, the `--local` flag is no longer required, as it is the default behavior.",
       );
     }
 
@@ -79,7 +79,7 @@ export const command = new Command("ext:configure <extensionInstanceId>")
     const params = (spec.params ?? []).concat(spec.systemParams ?? []);
     const [immutableParams, tbdParams] = partition(
       params,
-      (param) => (param.immutable && !!oldParamValues[param.param]) ?? false
+      (param) => (param.immutable && !!oldParamValues[param.param]) ?? false,
     );
     infoImmutableParams(immutableParams, oldParamValues);
 
@@ -98,7 +98,7 @@ export const command = new Command("ext:configure <extensionInstanceId>")
       ? await askUserForEventsConfig.askForEventsConfig(
           spec.events,
           "${param:PROJECT_ID}",
-          instanceId
+          instanceId,
         )
       : undefined;
     if (eventsConfig) {
@@ -127,7 +127,7 @@ export const command = new Command("ext:configure <extensionInstanceId>")
       {
         nonInteractive: false,
         force: true, // Skip asking for permission again
-      }
+      },
     );
     displayDeveloperTOSWarning();
     return;
@@ -141,7 +141,7 @@ function infoImmutableParams(immutableParams: Param[], paramValues: { [key: stri
   const plural = immutableParams.length > 1;
   utils.logLabeledWarning(
     logPrefix,
-    marked(`The following param${plural ? "s are" : " is"} immutable and won't be changed:`)
+    marked(`The following param${plural ? "s are" : " is"} immutable and won't be changed:`),
   );
 
   for (const { param } of immutableParams) {
@@ -152,6 +152,6 @@ function infoImmutableParams(immutableParams: Param[], paramValues: { [key: stri
     (plural
       ? "To set different values for these params"
       : "To set a different value for this param") +
-      ", uninstall the extension, then install a new instance of this extension."
+      ", uninstall the extension, then install a new instance of this extension.",
   );
 }

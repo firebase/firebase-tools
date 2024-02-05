@@ -18,7 +18,7 @@ const GITIGNORE_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_gitignore"
 export async function setup(setup: any, config: Config): Promise<void> {
   await config.askWriteProjectFile(
     `${setup.functions.source}/requirements.txt`,
-    REQUIREMENTS_TEMPLATE
+    REQUIREMENTS_TEMPLATE,
   );
   await config.askWriteProjectFile(`${setup.functions.source}/.gitignore`, GITIGNORE_TEMPLATE);
   await config.askWriteProjectFile(`${setup.functions.source}/main.py`, MAIN_TEMPLATE);
@@ -51,7 +51,7 @@ export async function setup(setup: any, config: Config): Promise<void> {
       ["pip3", "install", "--upgrade", "pip"],
       config.path(setup.functions.source),
       {},
-      { stdio: ["inherit", "inherit", "inherit"] }
+      { stdio: ["inherit", "inherit", "inherit"] },
     );
     await new Promise((resolve, reject) => {
       upgradeProcess.on("exit", resolve);
@@ -61,7 +61,7 @@ export async function setup(setup: any, config: Config): Promise<void> {
       [getPythonBinary(LATEST_VERSION), "-m", "pip", "install", "-r", "requirements.txt"],
       config.path(setup.functions.source),
       {},
-      { stdio: ["inherit", "inherit", "inherit"] }
+      { stdio: ["inherit", "inherit", "inherit"] },
     );
     await new Promise((resolve, reject) => {
       installProcess.on("exit", resolve);

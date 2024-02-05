@@ -9,7 +9,7 @@ export const command = new Command("appdistribution:testers:add [emails...]")
   .option("--file <file>", "a path to a file containing a list of tester emails to be added")
   .option(
     "--group-alias <group-alias>",
-    "if specified, the testers are also added to the group identified by this alias"
+    "if specified, the testers are also added to the group identified by this alias",
   )
   .before(requireAuth)
   .action(async (emails: string[], options?: any) => {
@@ -22,7 +22,7 @@ export const command = new Command("appdistribution:testers:add [emails...]")
       utils.logBullet(`Adding ${emailsToAdd.length} testers to group`);
       await appDistroClient.addTestersToGroup(
         `${projectName}/groups/${options.groupAlias}`,
-        emailsToAdd
+        emailsToAdd,
       );
     }
   });

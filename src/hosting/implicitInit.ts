@@ -38,8 +38,8 @@ export async function implicitInit(options: any): Promise<TemplateServerResponse
       utils.logLabeledWarning(
         "hosting",
         `Authentication error when trying to fetch your current web app configuration, have you run ${clc.bold(
-          "firebase login"
-        )}?`
+          "firebase login",
+        )}?`,
       );
     }
   }
@@ -57,7 +57,7 @@ export async function implicitInit(options: any): Promise<TemplateServerResponse
       "hosting",
       "Could not fetch web app configuration and there is no cached configuration on this machine. " +
         "Check your internet connection and make sure you are authenticated. " +
-        "To continue, you must call firebase.initializeApp({...}) in your code before using Firebase."
+        "To continue, you must call firebase.initializeApp({...}) in your code before using Firebase.",
     );
   }
 
@@ -79,11 +79,11 @@ export async function implicitInit(options: any): Promise<TemplateServerResponse
 
   const js = INIT_TEMPLATE.replace("/*--CONFIG--*/", `var firebaseConfig = ${configJson};`).replace(
     "/*--EMULATORS--*/",
-    "var firebaseEmulators = undefined;"
+    "var firebaseEmulators = undefined;",
   );
   const emulatorsJs = INIT_TEMPLATE.replace(
     "/*--CONFIG--*/",
-    `var firebaseConfig = ${configJson};`
+    `var firebaseConfig = ${configJson};`,
   ).replace("/*--EMULATORS--*/", `var firebaseEmulators = ${emulatorsJson};`);
   return {
     js,

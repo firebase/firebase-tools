@@ -63,7 +63,7 @@ export async function populateInstanceDetails(options: any): Promise<void> {
  */
 export async function getDatabaseInstanceDetails(
   projectId: string,
-  instanceName: string
+  instanceName: string,
 ): Promise<DatabaseInstance> {
   try {
     const response = await apiClient.request({
@@ -92,7 +92,7 @@ export async function getDatabaseInstanceDetails(
       {
         exit: 2,
         original: err,
-      }
+      },
     );
   }
 }
@@ -108,7 +108,7 @@ export async function createInstance(
   projectId: string,
   instanceName: string,
   location: DatabaseLocation,
-  databaseType: DatabaseInstanceType
+  databaseType: DatabaseInstanceType,
 ): Promise<DatabaseInstance> {
   try {
     const response = await apiClient.request({
@@ -127,7 +127,7 @@ export async function createInstance(
       {
         code: 2,
         original: err,
-      }
+      },
     );
   }
 }
@@ -144,7 +144,7 @@ export async function checkInstanceNameAvailable(
   projectId: string,
   instanceName: string,
   databaseType: DatabaseInstanceType,
-  location?: DatabaseLocation
+  location?: DatabaseLocation,
 ): Promise<{ available: boolean; suggestedIds?: string[] }> {
   if (!location) {
     location = DatabaseLocation.US_CENTRAL1;
@@ -162,7 +162,7 @@ export async function checkInstanceNameAvailable(
     logger.debug(
       `Invalid Realtime Database instance name: ${instanceName}.${
         err.message ? " " + err.message : ""
-      }`
+      }`,
     );
     const errBody = err.context.body.error;
     if (errBody?.details?.[0]?.metadata?.suggested_database_ids) {
@@ -175,7 +175,7 @@ export async function checkInstanceNameAvailable(
       `Failed to validate Realtime Database instance name: ${instanceName}.`,
       {
         original: err,
-      }
+      },
     );
   }
 }
@@ -188,7 +188,7 @@ export async function checkInstanceNameAvailable(
  */
 export function parseDatabaseLocation(
   location: string,
-  defaultLocation: DatabaseLocation
+  defaultLocation: DatabaseLocation,
 ): DatabaseLocation {
   if (!location) {
     return defaultLocation;
@@ -204,7 +204,7 @@ export function parseDatabaseLocation(
       return defaultLocation;
     default:
       throw new FirebaseError(
-        `Unexpected location value: ${location}. Only us-central1, europe-west1, and asia-southeast1 locations are supported`
+        `Unexpected location value: ${location}. Only us-central1, europe-west1, and asia-southeast1 locations are supported`,
       );
   }
 }
@@ -220,7 +220,7 @@ export function parseDatabaseLocation(
 export async function listDatabaseInstances(
   projectId: string,
   location: DatabaseLocation,
-  pageSize: number = APP_LIST_PAGE_SIZE
+  pageSize: number = APP_LIST_PAGE_SIZE,
 ): Promise<DatabaseInstance[]> {
   const instances: DatabaseInstance[] = [];
   try {
@@ -252,7 +252,7 @@ export async function listDatabaseInstances(
       {
         exit: 2,
         original: err,
-      }
+      },
     );
   }
 }
@@ -265,7 +265,7 @@ function convertDatabaseInstance(serverInstance: any): DatabaseInstance {
   const m = serverInstance.name.match(INSTANCE_RESOURCE_NAME_REGEX);
   if (!m || m.length !== 4) {
     throw new FirebaseError(
-      `Error parsing instance resource name: ${serverInstance.name}, matches: ${m}`
+      `Error parsing instance resource name: ${serverInstance.name}, matches: ${m}`,
     );
   }
   return {

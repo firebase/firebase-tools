@@ -18,12 +18,12 @@ const apiClient = new Client({
 export async function generateServiceIdentity(
   projectNumber: string,
   service: string,
-  prefix: string
+  prefix: string,
 ) {
   utils.logLabeledBullet(prefix, `generating the service identity for ${bold(service)}...`);
   try {
     return await apiClient.post<unknown, unknown>(
-      `projects/${projectNumber}/services/${service}:generateServiceIdentity`
+      `projects/${projectNumber}/services/${service}:generateServiceIdentity`,
     );
   } catch (err: unknown) {
     throw new FirebaseError(`Error generating the service identity for ${service}.`, {
