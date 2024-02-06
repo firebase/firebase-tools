@@ -21,13 +21,13 @@ describe("apphosting", () => {
       return `build-${year}-${month}-${day}`;
     }
 
-    it("Should handle explicit counters", async () => {
+    it("should handle explicit counters", async () => {
       const id = await apphosting.getNextRolloutId("unused", "unused", "unused", 1);
       expect(id).matches(new RegExp(`^${idPrefix(new Date())}-001$`));
       expect(listRollouts).to.not.have.been.called;
     });
 
-    it("Should handle missing regions", async () => {
+    it("should handle missing regions", async () => {
       listRollouts.returns({
         rollouts: [],
         unreachable: ["us-central1"],
@@ -39,7 +39,7 @@ describe("apphosting", () => {
       expect(listRollouts).to.have.been.calledWith("project", "us-central1", "backend");
     });
 
-    it("Should handle the first build of a day", async () => {
+    it("should handle the first build of a day", async () => {
       listRollouts.returns({
         rollouts: [],
         unreachable: [],
@@ -50,7 +50,7 @@ describe("apphosting", () => {
       expect(listRollouts).to.have.been.calledWith("project", "location", "backend");
     });
 
-    it("Should increment from the correct date", async () => {
+    it("should increment from the correct date", async () => {
       const today = new Date();
       const yesterday = new Date();
       yesterday.setDate(today.getDate() - 1);
@@ -71,7 +71,7 @@ describe("apphosting", () => {
       expect(id).to.equal(`${idPrefix(today)}-002`);
     });
 
-    it("Should handle the first build of the day", async () => {
+    it("should handle the first build of the day", async () => {
       const today = new Date();
       const yesterday = new Date();
       yesterday.setDate(today.getDate() - 1);

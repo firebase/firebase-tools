@@ -356,8 +356,8 @@ export async function listBuilds(
   backendId: string,
 ): Promise<ListBuildsResponse> {
   const name = `projects/${projectId}/locations/${location}/backends/${backendId}/builds`;
-  let pageToken: string | undefined = undefined;
-  const res: ListBuildsResponse = {
+  let pageToken: string | undefined;
+  const res: implements ListBuildsResponse = {
     builds: [],
     unreachable: [],
   };
@@ -365,8 +365,8 @@ export async function listBuilds(
   do {
     const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
     const int = await client.get<ListBuildsResponse>(name, { queryParams });
-    res.builds.splice(res.builds.length, 0, ...(int.body.builds || []));
-    res.unreachable?.splice(res.unreachable.length, 0, ...(int.body.unreachable || []));
+    res.builds.push(...(int.body.builds || []));
+    res.unreachable.push(...(int.body.unreachable || []));
     pageToken = int.body.nextPageToken;
   } while (pageToken);
 
@@ -520,7 +520,6 @@ export async function ensureApiEnabled(options: any): Promise<void> {
 /**
  * Generates the next build ID to fit with the naming scheme of the backend API.
  * @param counter Overrides the counter to use, avoiding an API call.
- * @return
  */
 export async function getNextRolloutId(
   projectId: string,
@@ -531,7 +530,7 @@ export async function getNextRolloutId(
   const date = new Date();
   const year = date.getUTCFullYear();
   // Note: month is 0 based in JS
-  const month = String(date.getUTCMonth()).padStart(2, "0");
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
   const day = String(date.getUTCDay()).padStart(2, "0");
 
   if (counter) {
