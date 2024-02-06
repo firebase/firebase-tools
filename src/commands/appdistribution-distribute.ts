@@ -83,13 +83,13 @@ export const command = new Command("appdistribution:distribute <release-binary-f
     const testers = getTestersOrGroups(options.testers, options.testersFile);
     const groups = getTestersOrGroups(options.groups, options.groupsFile);
     const testDevices = getTestDevices(options.testDevices, options.testDevicesFile);
-    const loginCredential = getLoginCredential(
-      options.testUsername,
-      options.testPassword,
-      options.testPasswordFile,
-      options.testUsernameResource,
-      options.testPasswordResource,
-    );
+    const loginCredential = getLoginCredential({
+      username: options.testUsername,
+      password: options.testPassword,
+      passwordFile: options.testPasswordFile,
+      usernameResourceName: options.testUsernameResource,
+      passwordResourceName: options.testPasswordResource,
+    });
     const requests = new AppDistributionClient();
     let aabInfo: AabInfo | undefined;
 

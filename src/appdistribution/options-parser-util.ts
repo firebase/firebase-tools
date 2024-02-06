@@ -129,13 +129,15 @@ function parseTestDevice(testDeviceString: string): TestDevice {
  * Takes option values for username and password related options and returns a LoginCredential
  * object that can be passed to the API.
  */
-export function getLoginCredential(
-  username?: string,
-  password?: string,
-  passwordFile?: string,
-  usernameResourceName?: string,
-  passwordResourceName?: string,
-): LoginCredential | undefined {
+export function getLoginCredential(args: {
+  username?: string;
+  password?: string;
+  passwordFile?: string;
+  usernameResourceName?: string;
+  passwordResourceName?: string;
+}): LoginCredential | undefined {
+  const { username, passwordFile, usernameResourceName, passwordResourceName } = args;
+  let password = args.password;
   if (!password && passwordFile) {
     ensureFileExists(passwordFile);
     password = fs.readFileSync(passwordFile, "utf8").trim();
@@ -148,7 +150,10 @@ export function getLoginCredential(
   }
   let fieldHints: FieldHints | undefined;
   if (usernameResourceName && passwordResourceName) {
-    fieldHints = { usernameResourceName, passwordResourceName };
+    fieldHints = {
+      usernameResourceName: usernameResourceName,
+      passwordResourceName: passwordResourceName,
+    };
   }
 
   if (isPresenceMismatched(username, password)) {

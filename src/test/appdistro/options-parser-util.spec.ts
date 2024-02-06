@@ -99,7 +99,7 @@ describe("options-parser-util", () => {
 
   describe("getLoginCredential", () => {
     it("returns credential for username and password", () => {
-      const result = getLoginCredential("user", "123");
+      const result = getLoginCredential({ username: "user", password: "123" });
 
       expect(result).to.deep.equal({
         username: "user",
@@ -109,7 +109,7 @@ describe("options-parser-util", () => {
     });
 
     it("returns credential for username and passwordFile", () => {
-      const result = getLoginCredential("user", undefined, passwordFile);
+      const result = getLoginCredential({ username: "user", passwordFile });
 
       expect(result).to.deep.equal({
         username: "user",
@@ -119,19 +119,18 @@ describe("options-parser-util", () => {
     });
 
     it("returns undefined when no options provided", () => {
-      const result = getLoginCredential();
+      const result = getLoginCredential({});
 
       expect(result).to.be.undefined;
     });
 
     it("returns credential for username, password, and resource names", () => {
-      const result = getLoginCredential(
-        "user",
-        "123",
-        undefined,
-        "username_resource_id",
-        "password_resource_id",
-      );
+      const result = getLoginCredential({
+        username: "user",
+        password: "123",
+        usernameResourceName: "username_resource_id",
+        passwordResourceName: "password_resource_id",
+      });
 
       expect(result).to.deep.equal({
         username: "user",
@@ -144,13 +143,12 @@ describe("options-parser-util", () => {
     });
 
     it("returns credential for username, passwordFile, and resource names", () => {
-      const result = getLoginCredential(
-        "user",
-        undefined,
+      const result = getLoginCredential({
+        username: "user",
         passwordFile,
-        "username_resource_id",
-        "password_resource_id",
-      );
+        usernameResourceName: "username_resource_id",
+        passwordResourceName: "password_resource_id",
+      });
 
       expect(result).to.deep.equal({
         username: "user",
@@ -163,24 +161,32 @@ describe("options-parser-util", () => {
     });
 
     it("throws error when username and password not provided together", () => {
-      expect(() => getLoginCredential("user", undefined, undefined)).to.throw(
+      expect(() => getLoginCredential({ username: "user" })).to.throw(
         FirebaseError,
         "Username and password for automated tests need to be specified together",
       );
     });
 
-    it("throws error when username but not password resource provided", () => {
+    it("throws error when password (but not username) resource provided", () => {
       expect(() =>
-        getLoginCredential("user", "123", undefined, undefined, "password_resource_id"),
+        getLoginCredential({
+          username: "user",
+          password: "123",
+          passwordResourceName: "password_resource_id",
+        }),
       ).to.throw(
         FirebaseError,
         "Username and password resource names for automated tests need to be specified together",
       );
     });
 
-    it("throws error when password but not username resource provided", () => {
+    it("throws error when password file and password (but not username) resource provided", () => {
       expect(() =>
-        getLoginCredential("user", undefined, passwordFile, undefined, "password_resource_id"),
+        getLoginCredential({
+          username: "user",
+          passwordFile,
+          passwordResourceName: "password_resource_id",
+        }),
       ).to.throw(
         FirebaseError,
         "Username and password resource names for automated tests need to be specified together",
@@ -189,13 +195,10 @@ describe("options-parser-util", () => {
 
     it("throws error when resource names provided without username and password", () => {
       expect(() =>
-        getLoginCredential(
-          undefined,
-          undefined,
-          undefined,
-          "username_resource_id",
-          "password_resource_id",
-        ),
+        getLoginCredential({
+          usernameResourceName: "username_resource_id",
+          passwordResourceName: "password_resource_id",
+        }),
       ).to.throw(FirebaseError, "Must specify username and password");
     });
   });
