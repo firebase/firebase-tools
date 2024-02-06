@@ -6,13 +6,8 @@ import * as rimraf from "rimraf";
 import * as sinon from "sinon";
 import * as tmp from "tmp";
 
-import {
-  AppDistributionClient,
-  BatchRemoveTestersResponse,
-  Group,
-  TestDevice,
-  TestState,
-} from "../../appdistribution/client";
+import { AppDistributionClient } from "../../appdistribution/client";
+import { BatchRemoveTestersResponse, Group, TestDevice } from "../../appdistribution/types";
 import { appDistributionOrigin } from "../../api";
 import { Distribution } from "../../appdistribution/distribution";
 import { FirebaseError } from "../../error";
@@ -322,7 +317,7 @@ describe("distribution", () => {
     const mockReleaseTest = {
       name: `${releaseName}/tests/fake-test-id`,
       devices: mockDevices,
-      state: TestState.IN_PROGRESS,
+      state: "IN_PROGRESS",
     };
 
     it("should throw error if request fails", async () => {
@@ -363,7 +358,7 @@ describe("distribution", () => {
     const mockReleaseTest = {
       name: releaseTestName,
       devices: mockDevices,
-      state: TestState.IN_PROGRESS,
+      state: "IN_PROGRESS",
     };
 
     it("should throw error if request fails", async () => {

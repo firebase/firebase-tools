@@ -1,7 +1,7 @@
 import * as fs from "fs-extra";
 import { FirebaseError } from "../error";
 import { needProjectNumber } from "../projectUtils";
-import { FieldHints, LoginCredential, TestDevice } from "./client";
+import { FieldHints, LoginCredential, TestDevice } from "./types";
 
 /**
  * Takes in comma separated string or a path to a comma/new line separated file
@@ -81,13 +81,11 @@ export function getTestDevices(value: string, file: string): TestDevice[] {
     return [];
   }
 
-  // The value is split into a string[]
-  const deviceStrings = value
+  return value
     .split(/[;\n]/)
     .map((entry) => entry.trim())
-    .filter((entry) => !!entry);
-
-  return deviceStrings.map((str) => parseTestDevice(str));
+    .filter((entry) => !!entry)
+    .map((str) => parseTestDevice(str));
 }
 
 function parseTestDevice(testDeviceString: string): TestDevice {
@@ -134,9 +132,15 @@ function parseTestDevice(testDeviceString: string): TestDevice {
 export function getLoginCredential(
   username?: string,
   password?: string,
+  passwordFile?: string,
   usernameResourceName?: string,
   passwordResourceName?: string,
 ): LoginCredential | undefined {
+  if (!password && passwordFile) {
+    ensureFileExists(passwordFile);
+    password = fs.readFileSync(passwordFile, "utf8");
+  }
+
   if (isPresenceMismatched(usernameResourceName, passwordResourceName)) {
     throw new FirebaseError(
       "Username and password resource names for automated tests need to be specified together.",
