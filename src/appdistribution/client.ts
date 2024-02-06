@@ -9,9 +9,9 @@ import { appDistributionOrigin } from "../api";
 import {
   AabInfo,
   BatchRemoveTestersResponse,
-  DeviceExecution,
   Group,
   LoginCredential,
+  mapDeviceToExecution,
   ReleaseTest,
   TestDevice,
   UploadReleaseResponse,
@@ -220,7 +220,7 @@ export class AppDistributionClient {
         method: "POST",
         path: `${releaseName}/tests`,
         body: {
-          deviceExecutions: devices.map((d) => this.mapDeviceToExecution(d)),
+          deviceExecutions: devices.map(mapDeviceToExecution),
           loginCredential,
         },
       });
@@ -233,16 +233,5 @@ export class AppDistributionClient {
   async getReleaseTest(releaseTestName: string): Promise<ReleaseTest> {
     const response = await this.appDistroV1AlphaClient.get<ReleaseTest>(releaseTestName);
     return response.body;
-  }
-
-  private mapDeviceToExecution(device: TestDevice): DeviceExecution {
-    return {
-      device: {
-        model: device.model,
-        version: device.version,
-        orientation: device.orientation,
-        locale: device.locale,
-      },
-    };
   }
 }

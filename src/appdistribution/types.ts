@@ -83,6 +83,17 @@ export interface DeviceExecution {
   inconclusiveReason?: string;
 }
 
+export function mapDeviceToExecution(device: TestDevice): DeviceExecution {
+  return {
+    device: {
+      model: device.model,
+      version: device.version,
+      orientation: device.orientation,
+      locale: device.locale,
+    },
+  };
+}
+
 export interface FieldHints {
   usernameResourceName?: string;
   passwordResourceName?: string;
