@@ -72,8 +72,8 @@ export const command = new Command("appdistribution:distribute <release-binary-f
     "resource name for the password field for automatic login",
   )
   .option(
-    "--test-async",
-    "run tests asynchronously. Visit the Firebase console for the automatic test results.",
+    "--test-non-blocking",
+    "run automated tests without waiting for them to complete. Visit the Firebase console for the test results.",
   )
   .before(requireAuth)
   .action(async (file: string, options: any) => {
@@ -218,7 +218,7 @@ export const command = new Command("appdistribution:distribute <release-binary-f
         loginCredential,
       );
       utils.logSuccess(`Release test created successfully`);
-      if (!options.testAsync) {
+      if (!options.testNonBlocking) {
         await awaitTestResults(releaseTest.name!, requests);
       }
     }
