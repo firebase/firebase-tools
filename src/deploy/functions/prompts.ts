@@ -8,6 +8,7 @@ import * as backend from "./backend";
 import * as pricing from "./pricing";
 import * as utils from "../../utils";
 import { Options } from "../../options";
+import { EndpointUpdate } from "./release/planner";
 
 /**
  * Checks if a deployment will create any functions with a failure policy
@@ -75,11 +76,10 @@ export async function promptForFailurePolicies(
  */
 export async function promptForFunctionDeletion(
   functionsToDelete: (backend.TargetIds & { platform: backend.FunctionsPlatform })[],
-  force: boolean,
-  nonInteractive: boolean,
+  options: Options,
 ): Promise<boolean> {
   let shouldDeleteFns = true;
-  if (functionsToDelete.length === 0 || force) {
+  if (functionsToDelete.length === 0 || options.force) {
     return true;
   }
   const deleteList = functionsToDelete
@@ -87,7 +87,7 @@ export async function promptForFunctionDeletion(
     .map((fn) => "\t" + getFunctionLabel(fn))
     .join("\n");
 
-  if (nonInteractive) {
+  if (options.nonInteractive) {
     const deleteCommands = functionsToDelete
       .map((func) => {
         return "\tfirebase functions:delete " + func.id + " --region " + func.region;
@@ -117,6 +117,65 @@ export async function promptForFunctionDeletion(
     });
   }
   return shouldDeleteFns;
+}
+
+/**
+ * Prompts users to confirm potentially unsafe function updates.
+ * Cases include:
+ * Migrating from 2nd gen Firestore  triggers to Firestore triggers with auth context
+ * @param fnsToUpdate An array of endpoint updates
+ * @param options
+ * @returns An array of endpoints to proceed with updating
+ */
+export async function promptForUnsafeMigration(
+  fnsToUpdate: EndpointUpdate[],
+  options: Options,
+): Promise<EndpointUpdate[]> {
+  const unsafeUpdates = fnsToUpdate.filter((eu) => eu.unsafe);
+
+  if (unsafeUpdates.length === 0 || options.force) {
+    return fnsToUpdate;
+  }
+
+  const warnMessage =
+    "The following functions are unsafely changing event types: " +
+    clc.bold(
+      unsafeUpdates
+        .map((eu) => eu.endpoint)
+        .sort(backend.compareFunctions)
+        .map(getFunctionLabel)
+        .join(", "),
+    ) +
+    ". " +
+    "While automatic migration is allowed for these functions, updating the underlying event type may result in data loss. " +
+    "To avoid this, consider the best practices outlined in the migration guide: [TODO: link]";
+
+  utils.logLabeledWarning("functions", warnMessage);
+
+  const safeUpdates = fnsToUpdate.filter((eu) => !eu.unsafe);
+
+  if (options.nonInteractive) {
+    utils.logLabeledWarning(
+      "functions",
+      "Aborting updates for functions that may be unsafe to update. To update these functions anyway, deploy again in interactive mode or use the --force option.",
+    );
+    return safeUpdates;
+  }
+
+  for (const eu of unsafeUpdates) {
+    const shouldUpdate = await promptOnce({
+      type: "confirm",
+      name: "confirm",
+      default: false,
+      message: `[${getFunctionLabel(
+        eu.endpoint,
+      )}] Would you like to proceed with the unsafe migration?`,
+    });
+    if (shouldUpdate) {
+      safeUpdates.push(eu);
+    }
+  }
+  return safeUpdates;
 }
 
 /**

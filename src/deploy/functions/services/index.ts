@@ -150,6 +150,10 @@ const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
   "google.cloud.firestore.document.v1.created": firestoreService,
   "google.cloud.firestore.document.v1.updated": firestoreService,
   "google.cloud.firestore.document.v1.deleted": firestoreService,
+  "google.cloud.firestore.document.v1.written.withAuthContext": firestoreService,
+  "google.cloud.firestore.document.v1.created.withAuthContext": firestoreService,
+  "google.cloud.firestore.document.v1.updated.withAuthContext": firestoreService,
+  "google.cloud.firestore.document.v1.deleted.withAuthContext": firestoreService,
 };
 
 /**

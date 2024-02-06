@@ -10,10 +10,15 @@ import { FirebaseError } from "../../../error";
 import * as utils from "../../../utils";
 import * as backend from "../backend";
 import * as v2events from "../../../functions/events/v2";
+import {
+  FIRESTORE_EVENT_REGEX,
+  FIRESTORE_EVENT_WITH_AUTH_CONTEXT_REGEX,
+} from "../../../functions/events/v2";
 
 export interface EndpointUpdate {
   endpoint: backend.Endpoint;
   deleteAndRecreate?: backend.Endpoint;
+  unsafe?: boolean;
 }
 
 export interface Changeset {
@@ -119,6 +124,7 @@ export function calculateUpdate(want: backend.Endpoint, have: backend.Endpoint):
 
   const update: EndpointUpdate = {
     endpoint: want,
+    unsafe: checkForUnsafeUpdate(want, have),
   };
   const needsDelete =
     changedTriggerRegion(want, have) ||
@@ -256,6 +262,16 @@ export function upgradedScheduleFromV1ToV2(
   }
 
   return true;
+}
+
+/** Whether a function update is considered unsafe to perform automatically by the CLI */
+export function checkForUnsafeUpdate(want: backend.Endpoint, have: backend.Endpoint): boolean {
+  return (
+    backend.isEventTriggered(want) &&
+    FIRESTORE_EVENT_WITH_AUTH_CONTEXT_REGEX.test(want.eventTrigger.eventType) &&
+    backend.isEventTriggered(have) &&
+    FIRESTORE_EVENT_REGEX.test(have.eventTrigger.eventType)
+  );
 }
 
 /** Throws if there is an illegal update to a function. */
