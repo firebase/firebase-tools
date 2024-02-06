@@ -1,8 +1,22 @@
 import { expect } from "chai";
 import { getLoginCredential, getTestDevices } from "../../appdistribution/options-parser-util";
 import { FirebaseError } from "../../error";
+import * as fs from "fs-extra";
+import * as rimraf from "rimraf";
+import * as tmp from "tmp";
+import { join } from "path";
+
+tmp.setGracefulCleanup();
 
 describe("options-parser-util", () => {
+  const tempdir = tmp.dirSync();
+  const passwordFile = join(tempdir.name, "password.txt");
+  fs.outputFileSync(passwordFile, "password-from-file");
+
+  after(() => {
+    rimraf.sync(tempdir.name);
+  });
+
   describe("getTestDevices", () => {
     it("parses a test device", () => {
       const optionValue = "model=modelname,version=123,orientation=landscape,locale=en_US";
@@ -94,6 +108,16 @@ describe("options-parser-util", () => {
       });
     });
 
+    it("returns credential for username and passwordFile", () => {
+      const result = getLoginCredential("user", undefined, passwordFile);
+
+      expect(result).to.deep.equal({
+        username: "user",
+        password: "password-from-file",
+        fieldHints: undefined,
+      });
+    });
+
     it("returns undefined when no options provided", () => {
       const result = getLoginCredential();
 
@@ -104,6 +128,7 @@ describe("options-parser-util", () => {
       const result = getLoginCredential(
         "user",
         "123",
+        undefined,
         "username_resource_id",
         "password_resource_id",
       );
@@ -118,15 +143,45 @@ describe("options-parser-util", () => {
       });
     });
 
+    it("returns credential for username, passwordFile, and resource names", () => {
+      const result = getLoginCredential(
+        "user",
+        undefined,
+        passwordFile,
+        "username_resource_id",
+        "password_resource_id",
+      );
+
+      expect(result).to.deep.equal({
+        username: "user",
+        password: "password-from-file",
+        fieldHints: {
+          usernameResourceName: "username_resource_id",
+          passwordResourceName: "password_resource_id",
+        },
+      });
+    });
+
     it("throws error when username and password not provided together", () => {
-      expect(() => getLoginCredential("user", undefined)).to.throw(
+      expect(() => getLoginCredential("user", undefined, undefined)).to.throw(
         FirebaseError,
         "Username and password for automated tests need to be specified together",
       );
     });
 
-    it("throws error when username but not password resources not provided together", () => {
-      expect(() => getLoginCredential("user", "123", undefined, "password_resource_id")).to.throw(
+    it("throws error when username but not password resource provided", () => {
+      expect(() =>
+        getLoginCredential("user", "123", undefined, undefined, "password_resource_id"),
+      ).to.throw(
+        FirebaseError,
+        "Username and password resource names for automated tests need to be specified together",
+      );
+    });
+
+    it("throws error when password but not username resource provided", () => {
+      expect(() =>
+        getLoginCredential("user", undefined, passwordFile, undefined, "password_resource_id"),
+      ).to.throw(
         FirebaseError,
         "Username and password resource names for automated tests need to be specified together",
       );
@@ -134,7 +189,13 @@ describe("options-parser-util", () => {
 
     it("throws error when resource names provided without username and password", () => {
       expect(() =>
-        getLoginCredential(undefined, undefined, "username_resource_id", "password_resource_id"),
+        getLoginCredential(
+          undefined,
+          undefined,
+          undefined,
+          "username_resource_id",
+          "password_resource_id",
+        ),
       ).to.throw(FirebaseError, "Must specify username and password");
     });
   });
