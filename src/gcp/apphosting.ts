@@ -4,11 +4,12 @@ import { needProjectId } from "../projectUtils";
 import { apphostingOrigin } from "../api";
 import { ensure } from "../ensureApiEnabled";
 import * as deploymentTool from "../deploymentTool";
+import { FirebaseError } from "../error";
 
 export const API_HOST = new URL(apphostingOrigin).host;
 export const API_VERSION = "v1alpha";
 
-const client = new Client({
+export const client = new Client({
   urlPrefix: apphostingOrigin,
   auth: true,
   apiVersion: API_VERSION,
@@ -61,6 +62,12 @@ export interface Build {
   createTime: string;
   updateTime: string;
   deleteTime: string;
+}
+
+export interface ListBuildsResponse {
+  builds: Build[];
+  nextPageToken?: string;
+  unreachable?: string[];
 }
 
 export type BuildOutputOnlyFields =
@@ -157,6 +164,12 @@ export type RolloutOutputOnlyFields =
   | "uid"
   | "etag"
   | "reconciling";
+
+export interface ListRolloutsResponse {
+  rollouts: Rollout[];
+  unreachable: string[];
+  nextPageToken?: string;
+}
 
 export interface Traffic {
   name: string;
@@ -335,6 +348,33 @@ export async function getBuild(
 }
 
 /**
+ * List Builds by backend
+ */
+export async function listBuilds(
+  projectId: string,
+  location: string,
+  backendId: string,
+): Promise<ListBuildsResponse> {
+  const name = `projects/${projectId}/locations/${location}/backends/${backendId}/builds`;
+  let pageToken: string | undefined;
+  const res: ListBuildsResponse = {
+    builds: [],
+    unreachable: [],
+  };
+
+  do {
+    const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
+    const int = await client.get<ListBuildsResponse>(name, { queryParams });
+    res.builds.push(...(int.body.builds || []));
+    res.unreachable?.push(...(int.body.unreachable || []));
+    pageToken = int.body.nextPageToken;
+  } while (pageToken);
+
+  res.unreachable = [...new Set(res.unreachable)];
+  return res;
+}
+
+/**
  * Creates a new Build in a given project and location.
  */
 export async function createBuild(
@@ -389,11 +429,24 @@ export async function listRollouts(
   projectId: string,
   location: string,
   backendId: string,
-): Promise<Rollout[]> {
-  const res = await client.get<{ rollouts: Rollout[] }>(
-    `projects/${projectId}/locations/${location}/backends/${backendId}/rollouts`,
-  );
-  return res.body.rollouts;
+): Promise<ListRolloutsResponse> {
+  const name = `projects/${projectId}/locations/${location}/backends/${backendId}/rollouts`;
+  let pageToken: string | undefined = undefined;
+  const res: ListRolloutsResponse = {
+    rollouts: [],
+    unreachable: [],
+  };
+
+  do {
+    const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
+    const int = await client.get<ListRolloutsResponse>(name, { queryParams });
+    res.rollouts.splice(res.rollouts.length, 0, ...(int.body.rollouts || []));
+    res.unreachable.splice(res.unreachable.length, 0, ...(int.body.unreachable || []));
+    pageToken = int.body.nextPageToken;
+  } while (pageToken);
+
+  res.unreachable = [...new Set(res.unreachable)];
+  return res;
 }
 
 /**
@@ -441,10 +494,13 @@ interface ListLocationsResponse {
  * Lists information about the supported locations.
  */
 export async function listLocations(projectId: string): Promise<Location[]> {
-  let pageToken;
+  let pageToken: string | undefined = undefined;
   let locations: Location[] = [];
   do {
-    const response = await client.get<ListLocationsResponse>(`projects/${projectId}/locations`);
+    const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
+    const response = await client.get<ListLocationsResponse>(`projects/${projectId}/locations`, {
+      queryParams,
+    });
     if (response.body.locations && response.body.locations.length > 0) {
       locations = locations.concat(response.body.locations);
     }
@@ -459,4 +515,53 @@ export async function listLocations(projectId: string): Promise<Location[]> {
 export async function ensureApiEnabled(options: any): Promise<void> {
   const projectId = needProjectId(options);
   return await ensure(projectId, API_HOST, "frameworks", true);
+}
+
+/**
+ * Generates the next build ID to fit with the naming scheme of the backend API.
+ * @param counter Overrides the counter to use, avoiding an API call.
+ */
+export async function getNextRolloutId(
+  projectId: string,
+  location: string,
+  backendId: string,
+  counter?: number,
+): Promise<string> {
+  const date = new Date();
+  const year = date.getUTCFullYear();
+  // Note: month is 0 based in JS
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDay()).padStart(2, "0");
+
+  if (counter) {
+    return `build-${year}-${month}-${day}-${String(counter).padStart(3, "0")}`;
+  }
+
+  // Note: must use exports here so that listRollouts can be stubbed in tests.
+  const builds = await (exports as { listRollouts: typeof listRollouts }).listRollouts(
+    projectId,
+    location,
+    backendId,
+  );
+  if (builds.unreachable?.includes(location)) {
+    throw new FirebaseError(
+      `Firebase App Hosting is currently unreachable in location ${location}`,
+    );
+  }
+
+  let highest = 0;
+  const test = new RegExp(
+    `projects/${projectId}/locations/${location}/backends/${backendId}/rollouts/build-${year}-${month}-${day}-(\\d+)`,
+  );
+  for (const rollout of builds.rollouts) {
+    const match = rollout.name.match(test);
+    if (!match) {
+      continue;
+    }
+    const n = Number(match[1]);
+    if (n > highest) {
+      highest = n;
+    }
+  }
+  return `build-${year}-${month}-${day}-${String(highest + 1).padStart(3, "0")}`;
 }
