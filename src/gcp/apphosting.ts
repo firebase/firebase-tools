@@ -357,7 +357,7 @@ export async function listBuilds(
 ): Promise<ListBuildsResponse> {
   const name = `projects/${projectId}/locations/${location}/backends/${backendId}/builds`;
   let pageToken: string | undefined;
-  const res: implements ListBuildsResponse = {
+  const res: ListBuildsResponse = {
     builds: [],
     unreachable: [],
   };
@@ -366,7 +366,7 @@ export async function listBuilds(
     const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
     const int = await client.get<ListBuildsResponse>(name, { queryParams });
     res.builds.push(...(int.body.builds || []));
-    res.unreachable.push(...(int.body.unreachable || []));
+    res.unreachable?.push(...(int.body.unreachable || []));
     pageToken = int.body.nextPageToken;
   } while (pageToken);
 
@@ -441,7 +441,7 @@ export async function listRollouts(
     const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
     const int = await client.get<ListRolloutsResponse>(name, { queryParams });
     res.rollouts.splice(res.rollouts.length, 0, ...(int.body.rollouts || []));
-    res.unreachable?.splice(res.unreachable.length, 0, ...(int.body.unreachable || []));
+    res.unreachable.splice(res.unreachable.length, 0, ...(int.body.unreachable || []));
     pageToken = int.body.nextPageToken;
   } while (pageToken);
 
