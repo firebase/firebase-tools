@@ -138,7 +138,7 @@ export function getLoginCredential(
 ): LoginCredential | undefined {
   if (!password && passwordFile) {
     ensureFileExists(passwordFile);
-    password = fs.readFileSync(passwordFile, "utf8");
+    password = fs.readFileSync(passwordFile, "utf8").trim();
   }
 
   if (isPresenceMismatched(usernameResourceName, passwordResourceName)) {

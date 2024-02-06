@@ -11,7 +11,7 @@ tmp.setGracefulCleanup();
 describe("options-parser-util", () => {
   const tempdir = tmp.dirSync();
   const passwordFile = join(tempdir.name, "password.txt");
-  fs.outputFileSync(passwordFile, "password-from-file");
+  fs.outputFileSync(passwordFile, "password-from-file\n");
 
   after(() => {
     rimraf.sync(tempdir.name);
