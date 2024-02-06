@@ -1,2 +1,0 @@
-- Added rudimentary email enumeration protection for auth emulator. (#6702)
-- You can now run customized automated tests on your Android apps in App Distribution, with the Automated Tester feature (beta). This feature automatically runs tests on your Android apps on virtual and physical devices at different API levels. To learn how to run an automated test, see [Run an automated test for Android apps](https://firebase.google.com/docs/app-distribution/android-automated-tester). (#6730)
