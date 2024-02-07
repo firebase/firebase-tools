@@ -150,15 +150,15 @@ export class FirematService {
       });
       console.log("introspection: ", introspectionResults);
       // TODO: handle errors
-      if (introspectionResults.errors.length > 0) {
+      if ((introspectionResults as any).errors.length > 0) {
         return { data: undefined };
       }
       // TODO: remove after core server handles this
-      for (let type of (introspectionResults.data as any).__schema.types) {
+      for (let type of (introspectionResults as any).data.__schema.types) {
         type.interfaces = [];
       }
 
-      return { data: introspectionResults.data };
+      return { data: (introspectionResults as any).data };
     } catch (e) {
       // TODO: surface error that emulator is not connected
       console.error("error: ", e);

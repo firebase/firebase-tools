@@ -1,8 +1,5 @@
 import assert from "assert";
-import { getRootFolders } from "../../config-files";
 import { _promptUserForProject } from "../../core/project";
-import { workspace } from "../../utils/test_hooks";
-import { mock } from "../utils/mock";
 import { firematSuite, firematTest } from "../utils/test_hooks";
 import * as vscode from "vscode";
 

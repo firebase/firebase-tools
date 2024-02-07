@@ -1,0 +1,34 @@
+query getPost($id: String!) @auth(is: PUBLIC) {
+  post(id: $id) {
+    content
+    comments: comments_as_post {
+      id
+      content
+    }
+  }
+}
+
+# {
+#   "userId": "42",
+#   "variable": {"data": {"userId": "42"}},
+#   "data": {"userId": "42"}
+# }
+
+query listPostsForUser($userId: String!) @auth(is: PUBLIC) {
+  posts(where: { id: { eq: $userId } }) {
+    id
+    content
+  }
+}
+
+query test2 @auth(is: PUBLIC) {
+  posts {
+    id
+  }
+}
+
+query listPostsOnlyId @auth(is: PUBLIC) {
+  posts {
+    id
+  }
+}

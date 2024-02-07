@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "default": "dart-firebase-admin"
+  },
+  "targets": {},
+  "etags": {}
+}
