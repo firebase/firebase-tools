@@ -210,7 +210,7 @@ export const command = new Command("appdistribution:distribute <release-binary-f
     await requests.distribute(releaseName, testers, groups);
 
     // Run automated tests
-    if (testDevices) {
+    if (testDevices?.length) {
       utils.logBullet("starting automated tests (note: this feature is in beta)");
       const releaseTest = await requests.createReleaseTest(
         releaseName,
