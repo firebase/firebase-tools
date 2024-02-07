@@ -390,6 +390,18 @@
                     },
                     "type": "object"
                 },
+                "remoteconfig": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "host": {
+                            "type": "string"
+                        },
+                        "port": {
+                            "type": "number"
+                        }
+                    },
+                    "type": "object"
+                },
                 "singleProjectMode": {
                     "type": "boolean"
                 },

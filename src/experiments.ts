@@ -61,6 +61,11 @@ export const ALL_EXPERIMENTS = experiments({
   emulatoruisnapshot: {
     shortDescription: "Load pre-release versions of the emulator UI",
   },
+  rcemulator: {
+    shortDescription: "Enable the Remote Config Emulator",
+    public: true,
+    default: false,
+  },
 
   // Hosting experiments
   webframeworks: {

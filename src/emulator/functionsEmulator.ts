@@ -667,6 +667,9 @@ export class FunctionsEmulator implements EmulatorInstance {
           case Constants.SERVICE_STORAGE:
             added = this.addStorageTrigger(this.args.projectId, key, definition.eventTrigger);
             break;
+          case Constants.SERVICE_REMOTE_CONFIG:
+            added = this.addRemoteConfigTrigger(this.args.projectId, key, definition.eventTrigger);
+            break;
           default:
             this.logger.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
             break;
@@ -1049,6 +1052,17 @@ export class FunctionsEmulator implements EmulatorInstance {
       idToken: !!blockingTrigger.options!.idToken,
       refreshToken: !!blockingTrigger.options!.refreshToken,
     };
+
+    return true;
+  }
+
+  addRemoteConfigTrigger(projectId: string, key: string, eventTrigger: EventTrigger): boolean {
+    logger.debug(`addRemoteConfigTrigger`, JSON.stringify(eventTrigger));
+
+    const eventTriggerId = `${projectId}:${eventTrigger.eventType}`;
+    const triggers = this.multicastTriggers[eventTriggerId] || [];
+    triggers.push(key);
+    this.multicastTriggers[eventTriggerId] = triggers;
 
     return true;
   }

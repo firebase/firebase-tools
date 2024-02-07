@@ -94,6 +94,7 @@
   },
   "dependencies": {
     "@google-cloud/pubsub": "^3.0.1",
+    "@types/archiver": "^5.1.0",
     "abort-controller": "^3.0.0",
     "ajv": "^6.12.6",
     "archiver": "^5.0.0",
@@ -120,6 +121,7 @@
     "inquirer": "^8.2.0",
     "js-yaml": "^3.13.1",
     "jsonwebtoken": "^9.0.0",
+    "JSONStream": "^1.2.1",
     "leven": "^3.1.0",
     "libsodium-wrappers": "^0.7.10",
     "lodash": "^4.17.21",

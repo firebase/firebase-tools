@@ -53,6 +53,7 @@ import { requiresJava } from "./downloadableEmulators";
 import { prepareFrameworks } from "../frameworks";
 import * as experiments from "../experiments";
 import { EmulatorListenConfig, PortName, resolveHostAndAssignPorts } from "./portUtils";
+import { RemoteConfigEmulator } from "./remoteconfig";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
@@ -826,6 +827,25 @@ export async function startAll(
       const storageExportDir = path.resolve(importDirAbsPath, exportMetadata.storage.path);
       storageEmulator.storageLayer.import(storageExportDir, { initiatedBy: "start" });
     }
+  }
+
+  if (listenForEmulator.remoteconfig) {
+    const rcAddr = legacyGetFirstAddr(Emulators.REMOTE_CONFIG);
+    const rcConfig = options.config?.data?.remoteconfig;
+
+    if (!rcConfig?.template) {
+      throw new FirebaseError(
+        "Cannot start the Remote Config emulator without a template file specified in firebase.json; run 'firebase init' and set up your Remote Config configuration"
+      );
+    }
+
+    const rcEmulator = new RemoteConfigEmulator({
+      host: rcAddr.host,
+      port: rcAddr.port,
+      projectId: projectId,
+      template: options.config.path(rcConfig.template),
+    });
+    await startEmulator(rcEmulator);
   }
 
   // Hosting emulator needs to start after all of the others so that we can detect
