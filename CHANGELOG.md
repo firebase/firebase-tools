@@ -1,1 +1,1 @@
-- Various bug fixes.
+- Fixed an issue where `appdistribution:distribute` would always attempt to run tests. (#6749)
