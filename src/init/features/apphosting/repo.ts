@@ -9,6 +9,18 @@ import { FirebaseError } from "../../../error";
 import { promptOnce } from "../../../prompt";
 import { getProjectNumber } from "../../../getProjectNumber";
 
+import * as fuzzy from "fuzzy";
+import * as inquirer from "inquirer";
+import AutocompletePrompt from "inquirer-autocomplete-prompt";
+
+declare module "inquirer" {
+  interface QuestionMap<T> {
+    autocomplete: AutocompletePrompt.AutocompleteQuestionOptions<T>;
+  }
+}
+
+inquirer.registerPrompt("autocomplete", AutocompletePrompt);
+
 export interface ConnectionNameParts {
   projectId: string;
   location: string;
@@ -24,7 +36,7 @@ const CONNECTION_NAME_REGEX =
  * Exported for unit testing.
  */
 export function parseConnectionName(name: string): ConnectionNameParts | undefined {
-  const match = name.match(CONNECTION_NAME_REGEX);
+  const match = CONNECTION_NAME_REGEX.exec(name);
 
   if (!match || typeof match.groups === undefined) {
     return;
@@ -133,33 +145,63 @@ async function promptRepositoryUri(
   connections: gcb.Connection[],
 ): Promise<{ remoteUri: string; connection: gcb.Connection }> {
   const remoteUriToConnection: Record<string, gcb.Connection> = {};
+  const repos: gcb.Repository[] = [];
   for (const conn of connections) {
     const { location, id } = parseConnectionName(conn.name)!;
-    const resp = await gcb.fetchLinkableRepositories(projectId, location, id);
-    if (resp.repositories && resp.repositories.length > 0) {
-      for (const repo of resp.repositories) {
-        remoteUriToConnection[repo.remoteUri] = conn;
+    let resp;
+    let pageToken = "";
+    do {
+      resp = await gcb.fetchLinkableRepositories(projectId, location, id, pageToken);
+      if (resp.repositories && resp.repositories.length > 0) {
+        for (const repo of resp.repositories) {
+          repos.push(repo);
+          remoteUriToConnection[repo.remoteUri] = conn;
+        }
       }
-    }
+      console.log("NEXT PAGE TOKEN:", resp.nextPageToken);
+      pageToken = resp.nextPageToken;
+    } while (pageToken && pageToken.length > 0);
   }
-  const choices = Object.keys(remoteUriToConnection).map((remoteUri: string) => ({
-    name: extractRepoSlugFromUri(remoteUri) || remoteUri,
-    value: remoteUri,
-  }));
-  choices.push({
-    name: "Missing a repo? Select this option to configure your installation's access settings",
-    value: "",
+  // const choices = Object.keys(remoteUriToConnection).map((remoteUri: string) => ({
+  //   name: extractRepoSlugFromUri(remoteUri) || remoteUri,
+  //   value: remoteUri,
+  // }));
+  // choices.push({
+  //   name: "Missing a repo? Select this option to configure your installation's access settings",
+  //   value: "",
+  // });
+
+  console.log("REPOS", repos);
+
+  const searchRepos =
+    (repos: gcb.Repository[]) =>
+    // eslint-disable-next-line @typescript-eslint/require-await, @typescript-eslint/no-explicit-any
+    async (_: any, input?: string) => {
+      return fuzzy
+        .filter(input || "", repos, {
+          extract: (repo) => extractRepoSlugFromUri(repo.remoteUri) || "",
+        })
+        .map((result) => {
+          return {
+            name: extractRepoSlugFromUri(result.original.remoteUri) || "",
+            value: result.original.remoteUri,
+          };
+        });
+    };
+
+  const remoteUri = await inquirer.prompt({
+    type: "autocomplete",
+    name: "repo",
+    message: "Which of the following repositories would you like to deploy?",
+    // searchText: "We're searching for you!",
+    // emptyText: "Nothing found!",
+    source: searchRepos(repos),
   });
 
-  const remoteUri = await promptOnce({
-    type: "list",
-    message: "Which of the following repositories would you like to deploy?",
-    choices,
-  });
   return { remoteUri, connection: remoteUriToConnection[remoteUri] };
 }
 
-async function promptSecretManagerAdminGrant(projectId: string): Promise<Boolean> {
+async function promptSecretManagerAdminGrant(projectId: string): Promise<boolean> {
   const projectNumber = await getProjectNumber({ projectId });
   const cbsaEmail = gcb.serviceAgentEmail(projectNumber);
 
@@ -226,6 +268,9 @@ async function promptAppInstall(conn: gcb.Connection): Promise<gcb.Connection> {
   return await gcb.getConnection(projectId, location, id);
 }
 
+/**
+ *
+ */
 export async function createConnection(
   projectId: string,
   location: string,
@@ -300,6 +345,9 @@ export async function getOrCreateRepository(
   return repo;
 }
 
+/**
+ *
+ */
 export async function listAppHostingConnections(projectId: string) {
   const conns = await gcb.listConnections(projectId, "-");
   return conns.filter(

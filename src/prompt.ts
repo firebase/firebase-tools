@@ -1,6 +1,11 @@
 import * as inquirer from "inquirer";
+// import AutocompletePrompt from "inquirer-autocomplete-prompt";
 
 import { FirebaseError } from "./error";
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+// inquirer.registerPrompt("autocomplete", require("inquirer-autocomplete-prompt"));
+// inquirer.registerPrompt("autocomplete", AutocompletePrompt);
 
 /**
  * Question type for inquirer. See
