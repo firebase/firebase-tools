@@ -25,7 +25,6 @@ export function registerFiremat(
   broker: ExtensionBrokerImpl,
   authService: AuthService,
 ): Disposable {
-  console.log("here", "registerFiremat");
   const firematService = new FirematService(firematEndpoint, authService);
   const operationCodeLensProvider = new OperationCodeLensProvider();
   const schemaCodeLensProvider = new SchemaCodeLensProvider();
