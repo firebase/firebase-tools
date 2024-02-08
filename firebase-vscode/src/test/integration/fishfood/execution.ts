@@ -3,6 +3,8 @@ import { FirebaseSidebar } from "../../utils/sidebar";
 import * as vscode from "vscode";
 import * as path from "path";
 import { ExecutionPanel } from "../../utils/execution";
+import { firematTest } from "../../utils/test_hooks";
+import { EditorView } from "../../utils/editor";
 
 export const mutationsPath = path.resolve(
   process.cwd(),
@@ -14,38 +16,29 @@ export const queriesPath = path.resolve(
   "src/test/test_projects/fishfood/api/operations/queries.gql",
 );
 
-it("Can execute queries", async function () {
+firematTest("Can execute queries", async function () {
   const workbench = await browser.getWorkbench();
   const sidebar = new FirebaseSidebar(workbench);
   const execution = new ExecutionPanel(workbench);
+  const editor = new EditorView(workbench);
 
   await sidebar.startEmulators();
 
   // Update arguments
   await execution.open();
 
-  await execution.runInConfigurationContext(async (configs) => {
-    await configs.variablesTextarea.setValue(`{
+  await execution.setVariables(`{
   "id": "42"
 }`);
-  });
 
   // Execute query
-  await browser.executeWorkbench(async (vs: typeof vscode, queriesPath) => {
-    const doc = await vs.workspace.openTextDocument(queriesPath);
+  await editor.openFile(queriesPath);
 
-    return vs.window.showTextDocument(doc, 1, false);
-  }, queriesPath);
-
-  const editor = workbench.getEditorView();
-
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-
-  const codelense = await editor.elem.$(".codelens-decoration*=Run (");
-  await codelense.waitForDisplayed();
-  await codelense.click();
+  await editor.firstCodeLense.waitForDisplayed();
+  await editor.firstCodeLense.click();
 
   // Check the history entry
+  // TODO - revert history and result view after test
   const item = await execution.history.getSelectedItem();
 
   expect(await item.getLabel()).toBe("getPost");

@@ -14,6 +14,14 @@ export class ExecutionPanel {
     );
   }
 
+  async setVariables(variables: string): Promise<void> {
+    // TODO revert to the original value after test
+
+    await this.runInConfigurationContext(async (configs) => {
+      await configs.variablesTextarea.setValue(variables);
+    });
+  }
+
   async runInConfigurationContext<R>(
     cb: (configs: ConfigurationView) => Promise<R>,
   ): Promise<R> {
