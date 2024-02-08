@@ -1,4 +1,5 @@
-/** Used to statically check that a type extends another */
+// eslint-disable-next-line @typescript-eslint/ban-types
+type Primitive = number | string | null | undefined | Date | Function;
 
 /**
  * Statically verify that one type implements another.
@@ -7,8 +8,6 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function
 export function assertImplements<Test extends MaybeBase, MaybeBase>(): void {}
 
-// eslint-disable-next-line @typescript-eslint/ban-types
-type Primitive = number | string | null | undefined | Date | Function;
 /**
  * RecursiveKeyOf is a type for keys of an objet usind dots for subfields.
  * For a given object: {a: {b: {c: number}}, d } the RecursiveKeysOf are
