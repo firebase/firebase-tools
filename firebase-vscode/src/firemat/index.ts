@@ -44,6 +44,7 @@ export function registerFiremat(
   });
 
   const selectedProjectStatus = vscode.window.createStatusBarItem(
+    "projectPicker",
     vscode.StatusBarAlignment.Left,
   );
   selectedProjectStatus.tooltip = "Select a Firebase project";

@@ -1,20 +1,9 @@
 import { browser } from "@wdio/globals";
 import { FirebaseSidebar } from "../../utils/sidebar";
-import * as vscode from "vscode";
-import * as path from "path";
 import { ExecutionPanel } from "../../utils/execution";
 import { firematTest } from "../../utils/test_hooks";
 import { EditorView } from "../../utils/editor";
-
-export const mutationsPath = path.resolve(
-  process.cwd(),
-  "src/test/test_projects/fishfood/api/operations/mutations.gql",
-);
-
-export const queriesPath = path.resolve(
-  process.cwd(),
-  "src/test/test_projects/fishfood/api/operations/queries.gql",
-);
+import { queriesPath } from "../../utils/projects";
 
 firematTest("Can execute queries", async function () {
   const workbench = await browser.getWorkbench();

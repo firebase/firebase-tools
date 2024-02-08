@@ -1,11 +1,16 @@
 import { Workbench } from "wdio-vscode-service";
 import { findWebviewWithTitle, runInFrame } from "./webviews";
+import * as vscode from "vscode";
 
 export class FirebaseSidebar {
   constructor(readonly workbench: Workbench) {}
 
   async open() {
-    return $("a.codicon-mono-firebase").click();
+    await browser.executeWorkbench((vs: typeof vscode) => {
+      return vs.commands.executeCommand(
+        "firebase.firemat.explorerView.focus",
+      );
+    });
   }
 
   get hostBtn() {
@@ -25,9 +30,6 @@ export class FirebaseSidebar {
     await this.open();
 
     await this.runInFirebaseViewContext(async () => {
-      await this.hostBtn.waitForDisplayed();
-
-      await this.startEmulatorBtn.waitForDisplayed();
       await this.startEmulatorBtn.click();
 
       // Wait for the emulators to be started
