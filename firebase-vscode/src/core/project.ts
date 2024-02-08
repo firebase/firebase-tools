@@ -10,6 +10,7 @@ import { selectProjectInMonospace } from "../../../src/monospace";
 import { currentOptions } from "../options";
 import { updateFirebaseRCProject } from "../config-files";
 import { globalSignal } from "../utils/globals";
+import { firstWhereDefined } from "../utils/signal";
 
 /** Available projects */
 export const projects = globalSignal<Record<string, FirebaseProjectMetadata[]>>(
@@ -122,7 +123,7 @@ export function registerProject({
       } else {
         try {
           currentProjectId.value = await _promptUserForProject(
-            userScopedProjects.value,
+            firstWhereDefined(userScopedProjects),
           );
         } catch (e) {
           vscode.window.showErrorMessage(e.message);
@@ -151,13 +152,15 @@ export function registerProject({
  * @internal
  **/
 export async function _promptUserForProject(
-  projects: FirebaseProjectMetadata[],
+  projects: Promise<FirebaseProjectMetadata[]>,
   token?: vscode.CancellationToken,
 ) {
-  const items: QuickPickItem[] = projects.map((p) => ({
-    label: p.projectId,
-    description: p.displayName,
-  }));
+  const items = projects.then((projects) => {
+    return projects.map<QuickPickItem>((p) => ({
+      label: p.projectId,
+      description: p.displayName,
+    }));
+  });
 
   const item = await vscode.window.showQuickPick(items, {}, token);
   return item.label;

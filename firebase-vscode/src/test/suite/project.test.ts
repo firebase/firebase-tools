@@ -7,7 +7,10 @@ firematSuite("_promptUserForProject", () => {
   firematTest("supports not selecting a project", async () => {
     const tokenSource = new vscode.CancellationTokenSource();
 
-    const result = _promptUserForProject([], tokenSource.token);
+    const result = _promptUserForProject(
+      new Promise((resolve) => resolve([])),
+      tokenSource.token,
+    );
 
     // Cancel the prompt
     tokenSource.cancel();
