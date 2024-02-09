@@ -16,12 +16,12 @@ export const command = new Command("apphosting:builds:create <backendId>")
     const buildId =
       (options.buildId as string) ||
       (await apphosting.getNextRolloutId(projectId, location, backendId));
-    const branch = options.branch as string;
+    const branch = (options.branch as string | undefined) ?? "main";
 
     const op = await apphosting.createBuild(projectId, location, backendId, buildId, {
       source: {
         codebase: {
-          branch: "main",
+          branch,
         },
       },
     });

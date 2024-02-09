@@ -518,7 +518,7 @@ export async function getNextRolloutId(
   const year = date.getUTCFullYear();
   // Note: month is 0 based in JS
   const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(date.getUTCDay()).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
 
   if (counter) {
     return `build-${year}-${month}-${day}-${String(counter).padStart(3, "0")}`;
