@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { Workbench } from "wdio-vscode-service";
-import { addTearDown } from "./test_hooks";
+import { addTearDown } from "../test_hooks";
 
 export class EditorView {
   constructor(readonly workbench: Workbench) {}

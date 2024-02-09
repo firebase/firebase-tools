@@ -1,5 +1,5 @@
 import { browser } from "@wdio/globals";
-import { FirebaseSidebar } from "../../utils/sidebar";
+import { FirebaseSidebar } from "../../utils/page_objects/sidebar";
 
 describe("Select project command", () => {
   it("waits until projects are loaded", async function () {
@@ -9,7 +9,7 @@ describe("Select project command", () => {
     // This shouldn't be necessary. But at the moment,
     // users aren't loaded until the sidebar is opened –
     // which blocks the loading of projects.
-    sidebar.open();
+    await sidebar.open();
 
     const picker = await workbench.executeCommand("firebase.selectProject");
 

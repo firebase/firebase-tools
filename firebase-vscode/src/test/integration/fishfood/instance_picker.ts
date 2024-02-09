@@ -1,7 +1,7 @@
-import { StatusBar, findQuickPicks } from "../../utils/status_bar";
+import { StatusBar, findQuickPicks } from "../../utils/page_objects/status_bar";
 import { firematTest } from "../../utils/test_hooks";
-import { EditorView } from "../../utils/editor";
-import { FirebaseSidebar } from "../../utils/sidebar";
+import { EditorView } from "../../utils/page_objects/editor";
+import { FirebaseSidebar } from "../../utils/page_objects/sidebar";
 import { queriesPath } from "../../utils/projects";
 
 firematTest("Can pick an instance", async function () {

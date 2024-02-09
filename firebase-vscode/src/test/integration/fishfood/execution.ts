@@ -1,8 +1,8 @@
 import { browser } from "@wdio/globals";
-import { FirebaseSidebar } from "../../utils/sidebar";
-import { ExecutionPanel } from "../../utils/execution";
+import { FirebaseSidebar } from "../../utils/page_objects/sidebar";
+import { ExecutionPanel } from "../../utils/page_objects/execution";
 import { firematTest } from "../../utils/test_hooks";
-import { EditorView } from "../../utils/editor";
+import { EditorView } from "../../utils/page_objects/editor";
 import { queriesPath } from "../../utils/projects";
 
 firematTest("Can execute queries", async function () {

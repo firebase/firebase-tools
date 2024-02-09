@@ -1,5 +1,5 @@
 import { Workbench } from "wdio-vscode-service";
-import { findWebviewWithTitle, runInFrame } from "./webviews";
+import { findWebviewWithTitle, runInFrame } from "../webviews";
 import * as vscode from "vscode";
 
 export class FirebaseSidebar {

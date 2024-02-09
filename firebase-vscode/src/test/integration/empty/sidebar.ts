@@ -1,5 +1,5 @@
 import { browser, expect } from "@wdio/globals";
-import { FirebaseSidebar } from "../../utils/sidebar";
+import { FirebaseSidebar } from "../../utils/page_objects/sidebar";
 
 it("Supports opening empty projects", async function () {
   const workbench = await browser.getWorkbench();

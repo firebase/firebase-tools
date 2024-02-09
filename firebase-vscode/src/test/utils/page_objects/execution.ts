@@ -1,5 +1,5 @@
 import { Workbench } from "wdio-vscode-service";
-import { findWebviewWithTitle, runInFrame } from "./webviews";
+import { findWebviewWithTitle, runInFrame } from "../webviews";
 
 export class ExecutionPanel {
   constructor(readonly workbench: Workbench) {
