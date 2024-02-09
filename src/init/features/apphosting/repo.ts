@@ -158,45 +158,54 @@ async function promptRepositoryUri(
           remoteUriToConnection[repo.remoteUri] = conn;
         }
       }
-      console.log("NEXT PAGE TOKEN:", resp.nextPageToken);
       pageToken = resp.nextPageToken;
     } while (pageToken && pageToken.length > 0);
   }
-  // const choices = Object.keys(remoteUriToConnection).map((remoteUri: string) => ({
-  //   name: extractRepoSlugFromUri(remoteUri) || remoteUri,
-  //   value: remoteUri,
-  // }));
-  // choices.push({
-  //   name: "Missing a repo? Select this option to configure your installation's access settings",
-  //   value: "",
-  // });
 
   console.log("REPOS", repos);
 
-  const searchRepos =
-    (repos: gcb.Repository[]) =>
-    // eslint-disable-next-line @typescript-eslint/require-await, @typescript-eslint/no-explicit-any
-    async (_: any, input?: string) => {
-      return fuzzy
-        .filter(input || "", repos, {
-          extract: (repo) => extractRepoSlugFromUri(repo.remoteUri) || "",
-        })
-        .map((result) => {
-          return {
-            name: extractRepoSlugFromUri(result.original.remoteUri) || "",
-            value: result.original.remoteUri,
-          };
-        });
-    };
-
-  const { remoteUri } = await inquirer.prompt({
-    type: "autocomplete",
-    name: "remoteUri",
-    message: "Which of the following repositories would you like to deploy?",
-    // searchText: "We're searching for you!",
-    // emptyText: "Nothing found!",
-    source: searchRepos(repos),
-  });
+  let remoteUri: string;
+  if (repos.length < 20) {
+    // Use autocomplete prompt if user has access to >20 repos
+    const searchRepos =
+      (repos: gcb.Repository[]) =>
+      // eslint-disable-next-line @typescript-eslint/require-await, @typescript-eslint/no-explicit-any
+      async (_: any, input?: string) => {
+        return fuzzy
+          .filter(input || "", repos, {
+            extract: (repo) => extractRepoSlugFromUri(repo.remoteUri) || "",
+          })
+          .map((result) => {
+            return {
+              name: extractRepoSlugFromUri(result.original.remoteUri) || "",
+              value: result.original.remoteUri,
+            };
+          });
+      };
+    remoteUri = (await inquirer.prompt({
+      type: "autocomplete",
+      name: "remoteUri",
+      message: "Which of the following repositories would you like to deploy?",
+      // searchText: "We're searching for you!",
+      // emptyText: "Nothing found!",
+      source: searchRepos(repos),
+    })) as string;
+  } else {
+    // Use list prompt if user has access to <=20 repos
+    const choices = Object.keys(remoteUriToConnection).map((remoteUri: string) => ({
+      name: extractRepoSlugFromUri(remoteUri) || remoteUri,
+      value: remoteUri,
+    }));
+    choices.push({
+      name: "Missing a repo? Select this option to configure your installation's access settings",
+      value: "",
+    });
+    remoteUri = (await promptOnce({
+      type: "list",
+      message: "Which of the following repositories would you like to deploy?",
+      choices,
+    })) as string;
+  }
 
   return { remoteUri, connection: remoteUriToConnection[remoteUri] };
 }
