@@ -19,7 +19,7 @@ declare module "inquirer" {
   }
 }
 
-inquirer.registerPrompt("autocomplete", AutocompletePrompt);
+inquirer.registerPrompt("autocomplete", require("inquirer-autocomplete-prompt"));
 
 export interface ConnectionNameParts {
   projectId: string;
@@ -189,9 +189,9 @@ async function promptRepositoryUri(
         });
     };
 
-  const remoteUri = await inquirer.prompt({
+  const { remoteUri } = await inquirer.prompt({
     type: "autocomplete",
-    name: "repo",
+    name: "remoteUri",
     message: "Which of the following repositories would you like to deploy?",
     // searchText: "We're searching for you!",
     // emptyText: "Nothing found!",
