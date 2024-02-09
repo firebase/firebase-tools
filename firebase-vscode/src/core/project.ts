@@ -163,5 +163,5 @@ export async function _promptUserForProject(
   });
 
   const item = await vscode.window.showQuickPick(items, {}, token);
-  return item.label;
+  return item?.label;
 }
