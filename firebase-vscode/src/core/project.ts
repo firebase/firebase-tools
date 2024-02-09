@@ -152,7 +152,7 @@ export function registerProject({
  * @internal
  **/
 export async function _promptUserForProject(
-  projects: Promise<FirebaseProjectMetadata[]>,
+  projects: Thenable<FirebaseProjectMetadata[]>,
   token?: vscode.CancellationToken,
 ) {
   const items = projects.then((projects) => {
@@ -163,5 +163,5 @@ export async function _promptUserForProject(
   });
 
   const item = await vscode.window.showQuickPick(items, {}, token);
-  return item.label;
+  return item?.label;
 }
