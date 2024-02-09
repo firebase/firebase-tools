@@ -143,6 +143,9 @@ export async function doSetup(setup: any, projectId: string): Promise<void> {
   logSuccess(
     `View the rollout status by running:\n\tfirebase apphosting:backends:get ${backendId} --project ${projectId}`,
   );
+  logSuccess(
+    `See your new App Hosting backend in the Firebase console at:\n\thttps://console.firebase.google.com/project/${projectId}/apphosting`,
+  );
 }
 
 async function promptLocation(projectId: string, locations: string[]): Promise<string> {

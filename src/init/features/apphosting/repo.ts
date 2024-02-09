@@ -112,7 +112,7 @@ export async function linkGitHubRepository(
     await promptOnce({
       type: "input",
       message:
-        "Press ENTER once you have finished configuring your installation's access settings.",
+        "Press ENTER once you have provided the GitHub app installation with access to your desired repository.",
     });
     const selection = await promptRepositoryUri(projectId, existingConns);
     remoteUri = selection.remoteUri;
