@@ -1,0 +1,9 @@
+schema:
+  - ./api/schema/**/*.gql
+  - ./.dataconnect/**/*.gql
+documents:
+  - ./api/operations/**/*.gql
+extensions:
+  endpoints:
+    default:
+      url: http://127.0.0.1:8080/__/graphql

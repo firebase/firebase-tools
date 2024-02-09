@@ -15,6 +15,7 @@ import { registerConnectors } from "./connectors";
 import { AuthService } from "../auth/service";
 import { registerFirebaseDataConnectView } from "./connect-instance";
 import { currentProjectId } from "../core/project";
+import { isTest } from "../utils/env";
 // import { setupLanguageClient } from "./language-client";
 
 const firematEndpoint = globalSignal<string | undefined>(undefined);
@@ -42,6 +43,7 @@ export function registerFiremat(
   });
 
   const selectedProjectStatus = vscode.window.createStatusBarItem(
+    "projectPicker",
     vscode.StatusBarAlignment.Left,
   );
   selectedProjectStatus.tooltip = "Select a Firebase project";
@@ -62,10 +64,16 @@ export function registerFiremat(
     registerConnectors(context, broker, firematService),
     operationCodeLensProvider,
     vscode.languages.registerCodeLensProvider(
-      [
-        { scheme: "file", language: "graphql" },
-        { scheme: "untitled", language: "graphql" },
-      ],
+      // **Hack**: For testing purposes, enable code lenses on all graphql files
+      // inside the test_projects folder.
+      // This is because e2e tests start without graphQL installed,
+      // so code lenses would otherwise never show up.
+      isTest
+        ? [{ pattern: "/**/firebase-vscode/src/test/test_projects/**/*.gql" }]
+        : [
+            { scheme: "file", language: "graphql" },
+            { scheme: "untitled", language: "graphql" },
+          ],
       operationCodeLensProvider,
     ),
     schemaCodeLensProvider,

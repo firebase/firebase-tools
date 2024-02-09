@@ -1,0 +1,17 @@
+{
+  "firemat": {
+    "source": "api"
+  },
+  "emulators": {
+    "auth": {
+      "port": 9099
+    },
+    "firemat": {
+      "port": 9399
+    },
+    "ui": {
+      "enabled": false
+    },
+    "singleProjectMode": true
+  }
+}

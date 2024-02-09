@@ -26,6 +26,7 @@ export function registerFirebaseDataConnectView(
   });
 
   const selectedInstanceStatus = vscode.window.createStatusBarItem(
+    "instancePicker",
     vscode.StatusBarAlignment.Left,
   );
   selectedInstanceStatus.tooltip = "Select a Firebase instance";
