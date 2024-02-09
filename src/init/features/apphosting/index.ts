@@ -9,7 +9,6 @@ import {
   BackendOutputOnlyFields,
   API_VERSION,
   Build,
-  BuildInput,
   Rollout,
 } from "../../../gcp/apphosting";
 import { Repository } from "../../../gcp/cloudbuild";
@@ -18,6 +17,7 @@ import { promptOnce } from "../../../prompt";
 import { DEFAULT_REGION } from "./constants";
 import { ensure } from "../../../ensureApiEnabled";
 import * as deploymentTool from "../../../deploymentTool";
+import { DeepOmit } from "../../../metaprogramming";
 
 const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: apphostingOrigin,
@@ -86,7 +86,7 @@ export async function doSetup(setup: any, projectId: string): Promise<void> {
     default: "main",
     message: "Pick a branch for continuous deployment",
   });
-  const traffic: Omit<apphosting.TrafficInput, "name"> = {
+  const traffic: DeepOmit<apphosting.Traffic, apphosting.TrafficOutputOnlyFields | "name"> = {
     rolloutPolicy: {
       codebaseBranch: branch,
       stages: [
@@ -157,7 +157,7 @@ async function promptLocation(projectId: string, locations: string[]): Promise<s
   })) as string;
 }
 
-function toBackend(cloudBuildConnRepo: Repository): Omit<Backend, BackendOutputOnlyFields> {
+function toBackend(cloudBuildConnRepo: Repository): DeepOmit<Backend, BackendOutputOnlyFields> {
   return {
     servingLocality: "GLOBAL_ACCESS",
     codebase: {
@@ -206,7 +206,7 @@ export async function onboardRollout(
   projectId: string,
   location: string,
   backendId: string,
-  buildInput: Omit<BuildInput, "name">,
+  buildInput: DeepOmit<Build, apphosting.BuildOutputOnlyFields | "name">,
 ): Promise<{ rollout: Rollout; build: Build }> {
   logBullet("Starting a new rollout... this may take a few minutes.");
   const buildId = await apphosting.getNextRolloutId(projectId, location, backendId, 1);
