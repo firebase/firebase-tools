@@ -11,15 +11,6 @@ import { getProjectNumber } from "../../../getProjectNumber";
 
 import * as fuzzy from "fuzzy";
 import * as inquirer from "inquirer";
-import AutocompletePrompt from "inquirer-autocomplete-prompt";
-
-declare module "inquirer" {
-  interface QuestionMap<T> {
-    autocomplete: AutocompletePrompt.AutocompleteQuestionOptions<T>;
-  }
-}
-
-inquirer.registerPrompt("autocomplete", require("inquirer-autocomplete-prompt"));
 
 export interface ConnectionNameParts {
   projectId: string;
@@ -144,8 +135,8 @@ async function promptRepositoryUri(
   projectId: string,
   connections: gcb.Connection[],
 ): Promise<{ remoteUri: string; connection: gcb.Connection }> {
-  const remoteUriToConnection: Record<string, gcb.Connection> = {};
   const repos: gcb.Repository[] = [];
+  const remoteUriToConnection: Record<string, gcb.Connection> = {};
   for (const conn of connections) {
     const { location, id } = parseConnectionName(conn.name)!;
     let resp;
@@ -162,17 +153,18 @@ async function promptRepositoryUri(
     } while (pageToken && pageToken.length > 0);
   }
 
-  console.log("REPOS", repos);
-
-  let remoteUri: string;
-  if (repos.length < 20) {
-    // Use autocomplete prompt if user has access to >20 repos
-    const searchRepos =
-      (repos: gcb.Repository[]) =>
-      // eslint-disable-next-line @typescript-eslint/require-await, @typescript-eslint/no-explicit-any
-      async (_: any, input?: string) => {
-        return fuzzy
-          .filter(input || "", repos, {
+  const searchRepos =
+    (repos: gcb.Repository[]) =>
+    // eslint-disable-next-line @typescript-eslint/require-await, @typescript-eslint/no-explicit-any
+    async (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
+      return [
+        {
+          name: "Missing a repo? Select this option to configure your installation's access settings",
+          value: "",
+        },
+        new inquirer.Separator(),
+        ...fuzzy
+          .filter(input, repos, {
             extract: (repo) => extractRepoSlugFromUri(repo.remoteUri) || "",
           })
           .map((result) => {
@@ -180,33 +172,16 @@ async function promptRepositoryUri(
               name: extractRepoSlugFromUri(result.original.remoteUri) || "",
               value: result.original.remoteUri,
             };
-          });
-      };
-    remoteUri = (await inquirer.prompt({
-      type: "autocomplete",
-      name: "remoteUri",
-      message: "Which of the following repositories would you like to deploy?",
-      // searchText: "We're searching for you!",
-      // emptyText: "Nothing found!",
-      source: searchRepos(repos),
-    })) as string;
-  } else {
-    // Use list prompt if user has access to <=20 repos
-    const choices = Object.keys(remoteUriToConnection).map((remoteUri: string) => ({
-      name: extractRepoSlugFromUri(remoteUri) || remoteUri,
-      value: remoteUri,
-    }));
-    choices.push({
-      name: "Missing a repo? Select this option to configure your installation's access settings",
-      value: "",
-    });
-    remoteUri = (await promptOnce({
-      type: "list",
-      message: "Which of the following repositories would you like to deploy?",
-      choices,
-    })) as string;
-  }
+          }),
+      ];
+    };
 
+  const remoteUri = await promptOnce({
+    type: "autocomplete",
+    name: "remoteUri",
+    message: "Which of the following repositories would you like to deploy?",
+    source: searchRepos(repos),
+  });
   return { remoteUri, connection: remoteUriToConnection[remoteUri] };
 }
 
