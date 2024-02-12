@@ -75,6 +75,10 @@ function generateConnectionId(): string {
   return `apphosting-github-conn-${randomHash}`;
 }
 
+const ADD_REPO_CHOICE = "@ADD_REPO";
+const ADD_CONN_CHOICE = "@ADD_CONN";
+const CONFIGURE_REMOTE_URI_CHOICES = [ADD_REPO_CHOICE, ADD_CONN_CHOICE];
+
 /**
  * Prompts the user to link their backend to a GitHub repository.
  */
@@ -83,15 +87,15 @@ export async function linkGitHubRepository(
   location: string,
 ): Promise<gcb.Repository> {
   utils.logBullet(clc.bold(`${clc.yellow("===")} Set up a GitHub connection`));
+  let oauthConn = await getOrCreateConnection(projectId, location, APPHOSTING_OAUTH_CONN_NAME);
+  while (oauthConn.installationState.stage === "PENDING_USER_OAUTH") {
+    oauthConn = await promptConnectionAuth(oauthConn);
+  }
   const existingConns = await listAppHostingConnections(projectId);
   if (existingConns.length < 1) {
     const grantSuccess = await promptSecretManagerAdminGrant(projectId);
     if (!grantSuccess) {
       throw new FirebaseError("Insufficient IAM permissions to create a new connection to GitHub");
-    }
-    let oauthConn = await getOrCreateConnection(projectId, location, APPHOSTING_OAUTH_CONN_NAME);
-    while (oauthConn.installationState.stage === "PENDING_USER_OAUTH") {
-      oauthConn = await promptConnectionAuth(oauthConn);
     }
     // Create or get connection resource that contains reference to the GitHub oauth token.
     // Oauth token associated with this connection should be used to create other connection resources.
@@ -107,13 +111,26 @@ export async function linkGitHubRepository(
   }
 
   let { remoteUri, connection } = await promptRepositoryUri(projectId, existingConns);
-  while (remoteUri === "") {
-    await utils.openInBrowser("https://github.com/apps/google-cloud-build/installations/new");
-    await promptOnce({
-      type: "input",
-      message:
-        "Press ENTER once you have provided the GitHub app installation with access to your desired repository.",
-    });
+  while (CONFIGURE_REMOTE_URI_CHOICES.includes(remoteUri)) {
+    if (remoteUri === ADD_REPO_CHOICE) {
+      await utils.openInBrowser("https://github.com/apps/google-cloud-build/installations/new");
+      await promptOnce({
+        type: "input",
+        message:
+          "Press ENTER once you have provided the GitHub app installation with access to your desired repository.",
+      });
+    } else if (remoteUri === ADD_CONN_CHOICE) {
+      const connectionId = generateConnectionId();
+      const conn = await createConnection(projectId, location, connectionId, {
+        authorizerCredential: oauthConn.githubConfig?.authorizerCredential,
+      });
+      let refreshedConn = conn;
+      while (refreshedConn.installationState.stage !== "COMPLETE") {
+        refreshedConn = await promptAppInstall(conn);
+      }
+      existingConns.push(refreshedConn);
+    }
+
     const selection = await promptRepositoryUri(projectId, existingConns);
     remoteUri = selection.remoteUri;
     connection = selection.connection;
@@ -158,9 +175,14 @@ async function promptRepositoryUri(
     // eslint-disable-next-line @typescript-eslint/require-await, @typescript-eslint/no-explicit-any
     async (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
       return [
+        new inquirer.Separator(),
         {
           name: "Missing a repo? Select this option to configure your installation's access settings",
-          value: "",
+          value: ADD_REPO_CHOICE,
+        },
+        {
+          name: "Missing an account or org? Select this option to create a new connection",
+          value: ADD_CONN_CHOICE,
         },
         new inquirer.Separator(),
         ...fuzzy
