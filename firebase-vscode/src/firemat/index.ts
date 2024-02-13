@@ -16,28 +16,31 @@ import { AuthService } from "../auth/service";
 import { registerFirebaseDataConnectView } from "./connect-instance";
 import { currentProjectId } from "../core/project";
 import { isTest } from "../utils/env";
-// import { setupLanguageClient } from "./language-client";
+import { setupLanguageClient } from "./language-client";
 
-const firematEndpoint = globalSignal<string | undefined>(undefined);
+const fdcEndpoint = globalSignal<string | undefined>(undefined);
 
 export function registerFiremat(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl,
   authService: AuthService,
 ): Disposable {
-  const firematService = new FirematService(firematEndpoint, authService);
+  const firematService = new FirematService(fdcEndpoint, authService);
   const operationCodeLensProvider = new OperationCodeLensProvider();
   const schemaCodeLensProvider = new SchemaCodeLensProvider();
 
-  // const client = setupLanguageClient(context, firematEndpoint);
-  // client.start();
+  const client = setupLanguageClient(context, fdcEndpoint);
+  client.start();
 
+
+  // TODO: Move this out of the index.ts file
   // keep global endpoint signal updated
   broker.on("notifyFirematEmulatorEndpoint", ({ endpoint }) => {
     // basic caching to avoid duplicate calls during emulator startup
-    if (firematEndpoint.value !== endpoint) {
-      firematEndpoint.value = endpoint;
+    if (fdcEndpoint.value !== endpoint) {
+      fdcEndpoint.value = endpoint;
       // also update LSP
+      vscode.commands.executeCommand("firemat-graphql.restart");
       vscode.commands.executeCommand("firebase.firemat.executeIntrospection");
     }
   });
@@ -71,9 +74,9 @@ export function registerFiremat(
       isTest
         ? [{ pattern: "/**/firebase-vscode/src/test/test_projects/**/*.gql" }]
         : [
-            { scheme: "file", language: "graphql" },
-            { scheme: "untitled", language: "graphql" },
-          ],
+          { scheme: "file", language: "graphql" },
+          { scheme: "untitled", language: "graphql" },
+        ],
       operationCodeLensProvider,
     ),
     schemaCodeLensProvider,
@@ -86,7 +89,7 @@ export function registerFiremat(
     ),
     {
       dispose: () => {
-        // client.stop();
+        client.stop();
       },
     },
   );
