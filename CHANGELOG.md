@@ -1,1 +1,2 @@
-- Added rudimentary email enumeration protection for auth emulator. (#6702)
+- Add support for Python 3.12. (#6679)
+- Bugfixes to internal utilities. (#6754)

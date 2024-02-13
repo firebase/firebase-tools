@@ -534,7 +534,6 @@ export async function promiseWithSpinner<T>(action: () => Promise<T>, message: s
  * server creation (e.g. right after `.listen`), BEFORE any connections.
  *
  * Inspired by https://github.com/isaacs/server-destroy/blob/master/index.js
- *
  * @return a function that destroys all connections and closes the server
  */
 export function createDestroyer(server: http.Server): () => Promise<void> {
@@ -607,7 +606,10 @@ export function thirtyDaysFromNow(): Date {
   return new Date(Date.now() + THIRTY_DAYS_IN_MILLISECONDS);
 }
 
-export function assertIsString(val: any, message?: string): asserts val is string {
+/**
+ * Verifies val is a string.
+ */
+export function assertIsString(val: unknown, message?: string): asserts val is string {
   if (typeof val !== "string") {
     throw new AssertionError({
       message: message || `expected "string" but got "${typeof val}"`,
@@ -615,7 +617,10 @@ export function assertIsString(val: any, message?: string): asserts val is strin
   }
 }
 
-export function assertIsNumber(val: any, message?: string): asserts val is number {
+/**
+ * Verifies val is a number.
+ */
+export function assertIsNumber(val: unknown, message?: string): asserts val is number {
   if (typeof val !== "number") {
     throw new AssertionError({
       message: message || `expected "number" but got "${typeof val}"`,
@@ -623,8 +628,11 @@ export function assertIsNumber(val: any, message?: string): asserts val is numbe
   }
 }
 
+/**
+ * Assert val is a string or undefined.
+ */
 export function assertIsStringOrUndefined(
-  val: any,
+  val: unknown,
   message?: string,
 ): asserts val is string | undefined {
   if (!(val === undefined || typeof val === "string")) {
@@ -812,21 +820,4 @@ export function getHostnameFromUrl(url: string): string | null {
   } catch (e: unknown) {
     return null;
   }
-}
-
-/**
- * Generate id meeting the following criterias:
- *  - Lowercase, digits, and hyphens only
- *  - Must begin with letter
- *  - Cannot end with hyphen
- */
-export function generateId(n = 6): string {
-  const letters = "abcdefghijklmnopqrstuvwxyz";
-  const allChars = "01234567890-abcdefghijklmnopqrstuvwxyz";
-  let id = letters[Math.floor(Math.random() * letters.length)];
-  for (let i = 1; i < n; i++) {
-    const idx = Math.floor(Math.random() * allChars.length);
-    id += allChars[idx];
-  }
-  return id;
 }

@@ -2,14 +2,13 @@ import * as clc from "colorette";
 import * as repo from "./repo";
 import * as poller from "../../../operation-poller";
 import * as apphosting from "../../../gcp/apphosting";
-import { generateId, logBullet, logSuccess, logWarning } from "../../../utils";
+import { logBullet, logSuccess, logWarning } from "../../../utils";
 import { apphostingOrigin } from "../../../api";
 import {
   Backend,
   BackendOutputOnlyFields,
   API_VERSION,
   Build,
-  BuildInput,
   Rollout,
 } from "../../../gcp/apphosting";
 import { Repository } from "../../../gcp/cloudbuild";
@@ -18,6 +17,7 @@ import { promptOnce } from "../../../prompt";
 import { DEFAULT_REGION } from "./constants";
 import { ensure } from "../../../ensureApiEnabled";
 import * as deploymentTool from "../../../deploymentTool";
+import { DeepOmit } from "../../../metaprogramming";
 
 const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: apphostingOrigin,
@@ -86,7 +86,7 @@ export async function doSetup(setup: any, projectId: string): Promise<void> {
     default: "main",
     message: "Pick a branch for continuous deployment",
   });
-  const traffic: Omit<apphosting.TrafficInput, "name"> = {
+  const traffic: DeepOmit<apphosting.Traffic, apphosting.TrafficOutputOnlyFields | "name"> = {
     rolloutPolicy: {
       codebaseBranch: branch,
       stages: [
@@ -157,7 +157,7 @@ async function promptLocation(projectId: string, locations: string[]): Promise<s
   })) as string;
 }
 
-function toBackend(cloudBuildConnRepo: Repository): Omit<Backend, BackendOutputOnlyFields> {
+function toBackend(cloudBuildConnRepo: Repository): DeepOmit<Backend, BackendOutputOnlyFields> {
   return {
     servingLocality: "GLOBAL_ACCESS",
     codebase: {
@@ -206,20 +206,19 @@ export async function onboardRollout(
   projectId: string,
   location: string,
   backendId: string,
-  buildInput: Omit<BuildInput, "name">,
+  buildInput: DeepOmit<Build, apphosting.BuildOutputOnlyFields | "name">,
 ): Promise<{ rollout: Rollout; build: Build }> {
   logBullet("Starting a new rollout... this may take a few minutes.");
-  const buildId = generateId();
+  const buildId = await apphosting.getNextRolloutId(projectId, location, backendId, 1);
   const buildOp = await apphosting.createBuild(projectId, location, backendId, buildId, buildInput);
 
-  const rolloutId = generateId();
-  const rolloutOp = await apphosting.createRollout(projectId, location, backendId, rolloutId, {
+  const rolloutOp = await apphosting.createRollout(projectId, location, backendId, buildId, {
     build: `projects/${projectId}/locations/${location}/backends/${backendId}/builds/${buildId}`,
   });
 
   const rolloutPoll = poller.pollOperation<Rollout>({
     ...apphostingPollerOptions,
-    pollerName: `create-${projectId}-${location}-backend-${backendId}-rollout-${rolloutId}`,
+    pollerName: `create-${projectId}-${location}-backend-${backendId}-rollout-${buildId}`,
     operationResourceName: rolloutOp.name,
   });
   const buildPoll = poller.pollOperation<Build>({
