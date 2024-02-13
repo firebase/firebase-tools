@@ -192,6 +192,8 @@ export function EmulatorPanel({
     emulatorController.launchEmulators(emulatorUiSelections, firebaseJson);
   }
 
+  useEffect(() => broker.on("startEmulators", launchEmulators), []);
+
   /**
    * Called when import folder changes.
    */

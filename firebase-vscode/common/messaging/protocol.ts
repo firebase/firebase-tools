@@ -78,6 +78,9 @@ export interface WebviewToExtensionParamsMap {
 }
 
 export interface ExtensionToWebviewParamsMap {
+  /** Triggered by the `firebase.emulators.start` command. */
+  startEmulators: void;
+
   /** Triggered when new environment variables values are found. */
   notifyEnv: { env: { isMonospace: boolean } };
 
