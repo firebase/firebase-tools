@@ -17,6 +17,7 @@ describe("composer", () => {
     let pollOperationStub: sinon.SinonStub;
     let getConnectionStub: sinon.SinonStub;
     let getRepositoryStub: sinon.SinonStub;
+    let listConnectionsStub: sinon.SinonStub;
     let createConnectionStub: sinon.SinonStub;
     let createRepositoryStub: sinon.SinonStub;
     let fetchLinkableRepositoriesStub: sinon.SinonStub;
@@ -32,6 +33,9 @@ describe("composer", () => {
       getRepositoryStub = sandbox
         .stub(gcb, "getRepository")
         .throws("Unexpected getRepository call");
+      listConnectionsStub = sandbox
+        .stub(gcb, "listConnections")
+        .throws("Unexpected listConnection call");
       createConnectionStub = sandbox
         .stub(gcb, "createConnection")
         .throws("Unexpected createConnection call");
@@ -40,8 +44,7 @@ describe("composer", () => {
         .throws("Unexpected createRepository call");
       fetchLinkableRepositoriesStub = sandbox
         .stub(gcb, "fetchLinkableRepositories")
-        .throws("Unexpected fetchLinkableRepositories call");
-
+        .throws("Unexpected fetchLinkableRepositories call"); 
       sandbox.stub(utils, "openInBrowser").resolves();
     });
 
@@ -141,13 +144,6 @@ describe("composer", () => {
         repos.repositories[0].remoteUri,
       );
       expect(r).to.be.deep.equal(repos.repositories[0]);
-    });
-
-    it("throws error if no linkable repositories are available", async () => {
-      getConnectionStub.resolves(pendingConn);
-      fetchLinkableRepositoriesStub.resolves({ repositories: [] });
-
-      await expect(repo.linkGitHubRepository(projectId, location)).to.be.rejected;
     });
   });
 

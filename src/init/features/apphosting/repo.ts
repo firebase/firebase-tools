@@ -87,6 +87,8 @@ export async function linkGitHubRepository(
   location: string,
 ): Promise<gcb.Repository> {
   utils.logBullet(clc.bold(`${clc.yellow("===")} Set up a GitHub connection`));
+  // Create or get connection resource that contains reference to the GitHub oauth token.
+  // Oauth token associated with this connection should be used to create other connection resources.
   let oauthConn = await getOrCreateConnection(projectId, location, APPHOSTING_OAUTH_CONN_NAME);
   while (oauthConn.installationState.stage === "PENDING_USER_OAUTH") {
     oauthConn = await promptConnectionAuth(oauthConn);
@@ -97,8 +99,6 @@ export async function linkGitHubRepository(
     if (!grantSuccess) {
       throw new FirebaseError("Insufficient IAM permissions to create a new connection to GitHub");
     }
-    // Create or get connection resource that contains reference to the GitHub oauth token.
-    // Oauth token associated with this connection should be used to create other connection resources.
     const connectionId = generateConnectionId();
     const conn = await createConnection(projectId, location, connectionId, {
       authorizerCredential: oauthConn.githubConfig?.authorizerCredential,
@@ -148,28 +148,58 @@ export async function linkGitHubRepository(
   return repo;
 }
 
+/**
+ * Exported for unit testing.
+ */
+export async function fetchAppHostingRepositories(
+  projectId: string,
+  connections: gcb.Connection[],
+): Promise<{ repos: gcb.Repository[]; remoteUriToConnection: Record<string, gcb.Connection> }> {
+  const repos: gcb.Repository[] = [];
+  const remoteUriToConnection: Record<string, gcb.Connection> = {};
+
+  const getNextPage = async (conn: gcb.Connection, pageToken = ""): Promise<void> => {
+    const { location, id } = parseConnectionName(conn.name)!;
+    const resp = await gcb.fetchLinkableRepositories(projectId, location, id, pageToken);
+    if (resp.repositories && resp.repositories.length > 0) {
+      for (const repo of resp.repositories) {
+        repos.push(repo);
+        remoteUriToConnection[repo.remoteUri] = conn;
+      }
+    }
+    if (resp.nextPageToken) {
+      await getNextPage(conn, resp.nextPageToken);
+    }
+  };
+  for (const conn of connections) {
+    await getNextPage(conn);
+  }
+  // for (const conn of connections) {
+  //   const { location, id } = parseConnectionName(conn.name)!;
+  //   let resp;
+  //   let pageToken = "";
+  //   do {
+  //     resp = await gcb.fetchLinkableRepositories(projectId, location, id, pageToken);
+  //     if (resp.repositories && resp.repositories.length > 0) {
+  //       for (const repo of resp.repositories) {
+  //         repos.push(repo);
+  //         remoteUriToConnection[repo.remoteUri] = conn;
+  //       }
+  //     }
+  //     pageToken = resp.nextPageToken;
+  //   } while (pageToken && pageToken.length > 0);
+  // }
+  return { repos, remoteUriToConnection };
+}
+
 async function promptRepositoryUri(
   projectId: string,
   connections: gcb.Connection[],
 ): Promise<{ remoteUri: string; connection: gcb.Connection }> {
-  const repos: gcb.Repository[] = [];
-  const remoteUriToConnection: Record<string, gcb.Connection> = {};
-  for (const conn of connections) {
-    const { location, id } = parseConnectionName(conn.name)!;
-    let resp;
-    let pageToken = "";
-    do {
-      resp = await gcb.fetchLinkableRepositories(projectId, location, id, pageToken);
-      if (resp.repositories && resp.repositories.length > 0) {
-        for (const repo of resp.repositories) {
-          repos.push(repo);
-          remoteUriToConnection[repo.remoteUri] = conn;
-        }
-      }
-      pageToken = resp.nextPageToken;
-    } while (pageToken && pageToken.length > 0);
-  }
-
+  const { repos, remoteUriToConnection } = await fetchAppHostingRepositories(
+    projectId,
+    connections,
+  );
   const searchRepos =
     (repos: gcb.Repository[]) =>
     // eslint-disable-next-line @typescript-eslint/require-await, @typescript-eslint/no-explicit-any
