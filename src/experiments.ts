@@ -100,7 +100,7 @@ export const ALL_EXPERIMENTS = experiments({
 
   internalframeworks: {
     shortDescription: "Allow CLI option for Frameworks",
-    default: true,
+    default: false,
     public: false,
   },
 });
