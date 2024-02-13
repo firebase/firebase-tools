@@ -6,7 +6,7 @@ import {
   VSCodeProgressRing,
   VSCodeTextField,
 } from "@vscode/webview-ui-toolkit/react";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Spacer } from "./ui/Spacer";
 import { broker } from "../globals/html-broker";
 import { PanelSection } from "./ui/PanelSection";
@@ -27,6 +27,95 @@ const DEFAULT_EMULATOR_UI_SELECTIONS: EmulatorUiSelections = {
   mode: "all",
   debugLogging: false,
 };
+
+export interface EmulatorsController {
+  readonly status: "stopped" | "starting" | "stopping" | "running";
+  readonly emulators?: RunningEmulatorInfo;
+
+  launchEmulators(
+    selection: EmulatorUiSelections,
+    firebaseConfig: FirebaseConfig
+  ): void;
+
+  stopEmulators(): void;
+}
+
+const emulatorContext = React.createContext<EmulatorsController | undefined>(
+  undefined
+);
+
+export function useEmulator(): EmulatorsController {
+  return React.useContext(emulatorContext)!;
+}
+
+export function EmulatorProvider(props: React.PropsWithChildren<{}>) {
+  // TODO(christhompson): Load UI selections from the current workspace.
+  // Requires context object.
+  // TODO(christhompson): Check if the emulators are running on extension start.
+  const [emulators, setEmulators] =
+    useState<EmulatorsController["emulators"]>();
+
+  const [status, setStatus] =
+    useState<EmulatorsController["status"]>("stopped");
+
+  useEffect(() => {
+    return broker.on("notifyEmulatorsStopped", () => {
+      setStatus("stopped");
+      webLogger.debug(`notifyEmulatorsStopped received in webview`);
+      setEmulators(null);
+    });
+  }, []);
+
+  useEffect(() => {
+    return broker.on("notifyEmulatorStartFailed", () => {
+      setStatus("stopped");
+      webLogger.debug(`notifyEmulatorStartFailed received in webview`);
+    });
+  }, []);
+
+  useEffect(() => {
+    return broker.on(
+      "notifyRunningEmulatorInfo",
+      (info: RunningEmulatorInfo) => {
+        setStatus("running");
+        webLogger.debug(`notifyRunningEmulatorInfo received in webview`);
+        setEmulators(info);
+      }
+    );
+  }, []);
+
+  const controller: EmulatorsController = useMemo(
+    () => ({
+      status,
+      emulators,
+      launchEmulators(emulatorUiSelections, firebaseConfig) {
+        if (
+          !emulatorUiSelections ||
+          !firebaseConfig ||
+          !emulatorUiSelections.projectId
+        ) {
+          throw Error(
+            "Expected valid EmulatorUiSelections and FirebaseConfig."
+          );
+        }
+
+        setStatus("starting");
+        broker.send("launchEmulators", { emulatorUiSelections });
+      },
+      stopEmulators() {
+        setStatus("stopping");
+        broker.send("stopEmulators");
+      },
+    }),
+    [status, emulators]
+  );
+
+  return (
+    <emulatorContext.Provider value={controller}>
+      {props.children}
+    </emulatorContext.Provider>
+  );
+}
 
 /**
  * Emulator panel component for the VSCode extension. Handles start/stop,  import/export.
@@ -58,31 +147,12 @@ export function EmulatorPanel({
     // Requires context object.
     setEmulatorUiSelections(uiSelections);
   }
-  const [showEmulatorProgressIndicator, setShowEmulatorProgressIndicator] =
-    useState<boolean>(false);
 
-  // TODO(christhompson): Load UI selections from the current workspace.
-  // Requires context object.
-  // TODO(christhompson): Check if the emulators are running on extension start.
-  const [runningEmulatorInfo, setRunningEmulatorInfo] =
-    useState<RunningEmulatorInfo>();
+  const emulatorController = useEmulator();
 
-  broker.on("notifyEmulatorsStopped", () => {
-    setShowEmulatorProgressIndicator(false);
-    webLogger.debug(`notifyEmulatorsStopped received in sidebar`);
-    setRunningEmulatorInfo(null);
-  });
-
-  broker.on("notifyEmulatorStartFailed", () => {
-    setShowEmulatorProgressIndicator(false);
-    webLogger.debug(`notifyEmulatorStartFailed received in sidebar`);
-  });
-
-  broker.on("notifyRunningEmulatorInfo", (info: RunningEmulatorInfo) => {
-    setShowEmulatorProgressIndicator(false);
-    webLogger.debug(`notifyRunningEmulatorInfo received in sidebar`);
-    setRunningEmulatorInfo(info);
-  });
+  const showEmulatorProgressIndicator =
+    emulatorController.status === "starting" ||
+    emulatorController.status === "stopping";
 
   broker.on("notifyEmulatorImportFolder", ({ folder }) => {
     webLogger.debug(
@@ -118,15 +188,8 @@ export function EmulatorPanel({
       });
       return;
     }
-    setShowEmulatorProgressIndicator(true);
-    broker.send("launchEmulators", {
-      emulatorUiSelections,
-    });
-  }
 
-  function stopEmulators() {
-    setShowEmulatorProgressIndicator(true);
-    broker.send("stopEmulators");
+    emulatorController.launchEmulators(emulatorUiSelections, firebaseJson);
   }
 
   /**
@@ -192,14 +255,14 @@ export function EmulatorPanel({
       ></VSCodeTextField>
       <Spacer size="small" />
       <input
-        disabled={!!runningEmulatorInfo}
+        disabled={!!emulatorController.emulators}
         type="file"
         id="import-folder-picker"
         onClick={(event) => selectedImportFolder(event)}
       />
       <Spacer size="small" />
       <VSCodeButton
-        disabled={!!runningEmulatorInfo}
+        disabled={!!emulatorController.emulators}
         appearance="secondary"
         onClick={clearImportFolder}
       >
@@ -217,7 +280,7 @@ export function EmulatorPanel({
       {showEmulatorProgressIndicator ? <VSCodeProgressRing /> : <></>}
       Emulator "mode"
       <VSCodeDropdown
-        disabled={!!runningEmulatorInfo}
+        disabled={!!emulatorController.emulators}
         onChange={(event) => emulatorModeChanged(event)}
       >
         <VSCodeOption value="all">All emulators</VSCodeOption>
@@ -225,14 +288,14 @@ export function EmulatorPanel({
           <VSCodeOption value="hosting">Only hosting</VSCodeOption>
         )}
       </VSCodeDropdown>
-      {runningEmulatorInfo ? (
+      {emulatorController.emulators ? (
         <>
           <VSCodeDivider />
           <Spacer size="xxlarge" />
           The emulators are running.
           <Spacer size="xxlarge" />
-          {!!runningEmulatorInfo.uiUrl && (
-            <VSCodeLink href={runningEmulatorInfo.uiUrl}>
+          {!!emulatorController.emulators.uiUrl && (
+            <VSCodeLink href={emulatorController.emulators.uiUrl}>
               View them in the Emulator Suite UI
             </VSCodeLink>
           )}
@@ -242,12 +305,12 @@ export function EmulatorPanel({
           <div
             dangerouslySetInnerHTML={{
               __html: formatEmulatorRunningInfo(
-                runningEmulatorInfo.displayInfo
+                emulatorController.emulators.displayInfo
               ),
             }}
           ></div>
           <Spacer size="xxlarge" />
-          <VSCodeButton onClick={() => stopEmulators()}>
+          <VSCodeButton onClick={emulatorController.stopEmulators}>
             Click to stop the emulators
           </VSCodeButton>
         </>
