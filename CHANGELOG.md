@@ -1,2 +1,3 @@
 - Add support for Python 3.12. (#6679)
 - Bugfixes to internal utilities. (#6754)
+- Fixed an issue where `firestore:delete` wouldn't target the emulator when expected. (#6537)
