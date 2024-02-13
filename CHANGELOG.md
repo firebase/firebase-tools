@@ -1,2 +1,3 @@
-- Add support for Python 3.12. (#6679)
-- Bugfixes to internal utilities. (#6754)
+- Improved detection for when login has expired due to Google Cloud Session Control. (#1846)
+- Added support for Python 3.12. (#6679)
+- Fixed issues with internal utilities. (#6754)
