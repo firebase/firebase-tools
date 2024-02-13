@@ -6,7 +6,6 @@ import * as prompt from "../../../prompt";
 import * as poller from "../../../operation-poller";
 import * as repo from "../../../init/features/apphosting/repo";
 import * as utils from "../../../utils";
-import { Connection } from "../../../gcp/cloudbuild";
 import { FirebaseError } from "../../../error";
 
 describe("composer", () => {
@@ -17,7 +16,6 @@ describe("composer", () => {
     let pollOperationStub: sinon.SinonStub;
     let getConnectionStub: sinon.SinonStub;
     let getRepositoryStub: sinon.SinonStub;
-    let listConnectionsStub: sinon.SinonStub;
     let createConnectionStub: sinon.SinonStub;
     let createRepositoryStub: sinon.SinonStub;
     let fetchLinkableRepositoriesStub: sinon.SinonStub;
@@ -33,9 +31,6 @@ describe("composer", () => {
       getRepositoryStub = sandbox
         .stub(gcb, "getRepository")
         .throws("Unexpected getRepository call");
-      listConnectionsStub = sandbox
-        .stub(gcb, "listConnections")
-        .throws("Unexpected listConnection call");
       createConnectionStub = sandbox
         .stub(gcb, "createConnection")
         .throws("Unexpected createConnection call");
@@ -44,7 +39,7 @@ describe("composer", () => {
         .throws("Unexpected createRepository call");
       fetchLinkableRepositoriesStub = sandbox
         .stub(gcb, "fetchLinkableRepositories")
-        .throws("Unexpected fetchLinkableRepositories call"); 
+        .throws("Unexpected fetchLinkableRepositories call");
       sandbox.stub(utils, "openInBrowser").resolves();
     });
 
@@ -170,27 +165,99 @@ describe("composer", () => {
     });
   });
 
+  const projectId = "projectId";
+  const location = "us-central1";
+
+  function mockConn(id: string): gcb.Connection {
+    return {
+      name: `projects/${projectId}/locations/${location}/connections/${id}`,
+      disabled: false,
+      createTime: "0",
+      updateTime: "1",
+      installationState: {
+        stage: "COMPLETE",
+        message: "complete",
+        actionUri: "https://google.com",
+      },
+      reconciling: false,
+    };
+  }
+
+  function mockRepo(name: string): gcb.Repository {
+    return {
+      name: `${name}`,
+      remoteUri: `https://github.com/test/${name}.git`,
+      createTime: "",
+      updateTime: "",
+    };
+  }
+
+  function mockReposWithRandomUri(n: number): gcb.Repository[] {
+    const repos = [];
+    for (let i = 0; i < n; i++) {
+      const hash = Math.random().toString(36).slice(6);
+      repos.push(mockRepo(hash));
+    }
+    return repos;
+  }
+
+  describe("fetchAllRepositories", () => {
+    const sandbox: sinon.SinonSandbox = sinon.createSandbox();
+    let fetchLinkableRepositoriesStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      fetchLinkableRepositoriesStub = sandbox
+        .stub(gcb, "fetchLinkableRepositories")
+        .throws("Unexpected fetchLinkableRepositories call");
+    });
+
+    afterEach(() => {
+      sandbox.verifyAndRestore();
+    });
+
+    it("should fetch all repositories from multiple pages", async () => {
+      fetchLinkableRepositoriesStub.onFirstCall().resolves({
+        repositories: mockReposWithRandomUri(10),
+        nextPageToken: "1234",
+      });
+      fetchLinkableRepositoriesStub.onSecondCall().resolves({
+        repositories: mockReposWithRandomUri(10),
+      });
+
+      const { repos, remoteUriToConnection } = await repo.fetchAllRepositories(projectId, [
+        mockConn("conn0"),
+      ]);
+      expect(repos.length).to.equal(20);
+      expect(Object.keys(remoteUriToConnection).length).to.equal(20);
+    });
+
+    it("should fetch all linkable repositories from multiple connections", async () => {
+      const conn0 = mockConn("conn0");
+      const conn1 = mockConn("conn1");
+      const repo0 = mockRepo("repo-0");
+      const repo1 = mockRepo("repo-1");
+      fetchLinkableRepositoriesStub.onFirstCall().resolves({
+        repositories: [repo0],
+      });
+      fetchLinkableRepositoriesStub.onSecondCall().resolves({
+        repositories: [repo1],
+      });
+
+      const { repos, remoteUriToConnection } = await repo.fetchAllRepositories(projectId, [
+        conn0,
+        conn1,
+      ]);
+      expect(repos.length).to.equal(2);
+      expect(remoteUriToConnection).to.deep.equal({
+        [repo0.remoteUri]: conn0,
+        [repo1.remoteUri]: conn1,
+      });
+    });
+  });
+
   describe("listAppHostingConnections", () => {
     const sandbox: sinon.SinonSandbox = sinon.createSandbox();
     let listConnectionsStub: sinon.SinonStub;
-
-    const projectId = "projectId";
-    const location = "us-central1";
-
-    function mockConn(id: string): Connection {
-      return {
-        name: `projects/${projectId}/locations/${location}/connections/${id}`,
-        disabled: false,
-        createTime: "0",
-        updateTime: "1",
-        installationState: {
-          stage: "COMPLETE",
-          message: "complete",
-          actionUri: "https://google.com",
-        },
-        reconciling: false,
-      };
-    }
 
     function extractId(name: string): string {
       const parts = name.split("/");
