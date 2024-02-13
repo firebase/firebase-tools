@@ -18,6 +18,8 @@ export function ProjectSection({
 }) {
   const emulatorController = useEmulator();
 
+  const canSwitchProject = emulatorController.status === "stopped";
+
   return (
     <div className={styles.accountRow}>
       <Label className={styles.accountRowLabel}>
@@ -34,10 +36,15 @@ export function ProjectSection({
           )}
         </div>
       </Label>
-      {!!projectId && emulatorController.status === "stopped" && (
+      {!!projectId && (
         <IconButton
-          tooltip="Switch projects"
+          tooltip={
+            canSwitchProject
+              ? "Switch projects"
+              : "Switch projects (disabled while emulators are running)"
+          }
           icon="arrow-swap"
+          disabled={!canSwitchProject}
           onClick={() => initProjectSelection(userEmail)}
         />
       )}
