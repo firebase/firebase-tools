@@ -1,3 +1,4 @@
 - Improved detection for when login has expired due to Google Cloud Session Control. (#1846)
 - Added support for Python 3.12. (#6679)
 - Fixed issues with internal utilities. (#6754)
+- Fixed an issue where `firestore:delete` wouldn't target the emulator when expected. (#6537)
