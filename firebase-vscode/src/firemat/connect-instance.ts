@@ -34,23 +34,15 @@ export function registerFirebaseDataConnectView(
 
   function syncStatusBarWithSelectedInstance() {
     return effect(() => {
-      selectedInstanceStatus.text = selectedInstance.value ?? "<No instance>";
-      selectedInstanceStatus.show();
-    });
-  }
-
-  // Handle cases where the emulator is the currently selected instance,
-  // and the emulator is stopped.
-  // This also initializes the selectedInstance value to the first instance.
-  function initializeSelectedInstance() {
-    return effect(() => {
-      const isSelectedInstanceInOptions = instanceOptions.value?.includes(
-        selectedInstance.value,
-      );
-
-      if (!isSelectedInstanceInOptions) {
-        selectedInstance.value = instanceOptions.value?.[0];
+      selectedInstanceStatus.text = selectedInstance.value ?? "emulator";
+      if (!selectedInstance.value) {
+        selectedInstanceStatus.backgroundColor = new vscode.ThemeColor(
+          "statusBarItem.errorBackground",
+        );
+      } else {
+        selectedInstanceStatus.backgroundColor = undefined;
       }
+      selectedInstanceStatus.show();
     });
   }
 
@@ -71,7 +63,6 @@ export function registerFirebaseDataConnectView(
 
     selectedInstanceStatus,
     { dispose: syncStatusBarWithSelectedInstance() },
-    { dispose: initializeSelectedInstance() },
     {
       dispose: broker.on("connectToInstance", async () => {
         vscode.commands.executeCommand("firebase.firemat.connectToInstance");
