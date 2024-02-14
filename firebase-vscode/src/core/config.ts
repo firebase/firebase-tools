@@ -101,9 +101,10 @@ const defaultFirematConfig: FirematConfig = {
   },
   operationSet: {
     crud: {
-      source: "./dataconnect/operations",
+      source: "./dataconnect/connector",
     },
   },
+  adhoc: "./dataconnect", // TODO: Temporary until official data connect yaml
 };
 
 const value = 42;
@@ -115,20 +116,20 @@ type TypeOf = typeof typeOfValue;
 type ValueOf<T extends TypeOf> = T extends "string"
   ? string
   : T extends "number"
-    ? number
-    : T extends "bigint"
-      ? bigint
-      : T extends "boolean"
-        ? boolean
-        : T extends "symbol"
-          ? symbol
-          : T extends "undefined"
-            ? undefined
-            : T extends "object"
-              ? object
-              : T extends "function"
-                ? Function
-                : never;
+  ? number
+  : T extends "bigint"
+  ? bigint
+  : T extends "boolean"
+  ? boolean
+  : T extends "symbol"
+  ? symbol
+  : T extends "undefined"
+  ? undefined
+  : T extends "object"
+  ? object
+  : T extends "function"
+  ? Function
+  : never;
 
 function assignIfType<T extends TypeOf>(
   type: T,
@@ -224,6 +225,7 @@ export function _readFirematConfig(): FirematConfig | undefined {
         },
       },
       operationSet: operations,
+      adhoc: configPath + "/dataconnect", // TODO: Temporary until official data connect yaml
     };
   } catch (e: any) {
     if (e.code === "ENOENT") {

@@ -113,7 +113,7 @@ firematSuite("_getConfigPath", () => {
 
   firematTest(
     'Iterates over getRootFolders, and if a ".firebaserc" ' +
-      'or "firebase.json" is found, returns its path',
+    'or "firebase.json" is found, returns its path',
     () => {
       const a = createTemporaryDirectory({ debugLabel: "a" });
       const b = createTemporaryDirectory({ debugLabel: "b" });
@@ -290,6 +290,7 @@ operationSet:
           source: path.join(dir, "dataconnect", "operations"),
         },
       },
+      adhoc: path.join(dir, "dataconnect")
     });
   });
 
@@ -341,6 +342,7 @@ operationSet:
           source: path.join(dir, "path", "to", "bar"),
         },
       },
+      adhoc: path.join(dir, "dataconnect")
     });
   });
 
@@ -387,6 +389,7 @@ operationSet:
           source: path.join(dir, "dataconnect", "operations"),
         },
       },
+      adhoc: path.join(dir, "dataconnect")
     });
   });
 
@@ -761,8 +764,8 @@ firematSuite("registerConfig", () => {
         // Override "createFileSystemWatcher" to spy on the watchers.
         createFileSystemWatcher: () => {
           const watcher = createFake<vscode.FileSystemWatcher>({
-            onDidCreate: () => ({ dispose: () => {} }),
-            onDidChange: () => ({ dispose: () => {} }),
+            onDidCreate: () => ({ dispose: () => { } }),
+            onDidChange: () => ({ dispose: () => { } }),
             dispose: () => {
               const index = pendingWatchers.indexOf(watcher);
               pendingWatchers.splice(index, 1);
@@ -813,7 +816,7 @@ firematSuite("registerConfig", () => {
         const listeners = (watcherListeners[pattern] ??= {});
         assert.equal(watcherListeners[pattern]?.create, undefined);
         listeners[type] = cb;
-        return { dispose: () => {} };
+        return { dispose: () => { } };
       }
 
       const dir = createTemporaryDirectory();
@@ -830,7 +833,7 @@ firematSuite("registerConfig", () => {
               onDidCreate: (cb) => addFSListener(file, "create", cb),
               onDidChange: (cb) => addFSListener(file, "update", cb),
               onDidDelete: (cb) => addFSListener(file, "delete", cb),
-              dispose: () => {},
+              dispose: () => { },
             });
           },
         }),

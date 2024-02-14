@@ -91,12 +91,13 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
         const connectorPaths = Object.keys(configs.operationSet).map(
           (key) => configs.operationSet[key]!.source,
         );
-        const isInOperationFolder = connectorPaths.every((path) =>
+        const isInOperationFolder = connectorPaths.some((path) =>
           isPathInside(document.fileName, path),
         );
+        const isInAdhocFolder = isPathInside(document.fileName, configs.adhoc);
         const instance = this.watch(selectedInstance);
 
-        if (instance && isInOperationFolder) {
+        if (instance && (isInOperationFolder || isInAdhocFolder)) {
           codeLenses.push(
             new vscode.CodeLens(range, {
               title: `$(play) Run (${instance})`,
@@ -107,7 +108,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
           );
         }
 
-        if (!isInOperationFolder) {
+        if (isInAdhocFolder) {
           codeLenses.push(
             new vscode.CodeLens(range, {
               title: `$(plug) Move to connector`,
