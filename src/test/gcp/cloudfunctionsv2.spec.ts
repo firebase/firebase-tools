@@ -379,6 +379,7 @@ describe("cloudfunctionsv2", () => {
         serviceConfig: {
           ...HAVE_CLOUD_FUNCTION_V2.serviceConfig,
           service: "projects/p/locations/l/services/service-id",
+          uri: RUN_URI,
         },
       };
       expect(cloudfunctionsv2.endpointFromFunction(fn)).to.deep.equal({
@@ -617,6 +618,8 @@ describe("cloudfunctionsv2", () => {
             vpcConnector: vpc.connector,
             vpcConnectorEgressSettings: vpc.egressSettings,
             availableMemory: "128Mi",
+            uri: RUN_URI,
+            service: "service",
           },
           labels: {
             foo: "bar",
@@ -654,6 +657,8 @@ describe("cloudfunctionsv2", () => {
           serviceConfig: {
             ...HAVE_CLOUD_FUNCTION_V2.serviceConfig,
             ...extraGcfFields,
+            uri: RUN_URI,
+            service: "service",
           },
         }),
       ).to.deep.equal({

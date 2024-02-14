@@ -23,7 +23,8 @@ export const config: Options.Testrunner = {
   capabilities: [
     {
       browserName: "vscode",
-      browserVersion: "stable", // also possible: "insiders" or a specific version e.g. "1.80.0"
+      // Workaround for https://github.com/webdriverio-community/wdio-vscode-service/issues/101#issuecomment-1928159399
+      browserVersion: "1.85.0", // also possible: "insiders" or a specific version e.g. "1.80.0"
       "wdio:vscodeOptions": {
         // points to directory where extension package.json is located
         extensionPath: path.join(__dirname, "..", ".."),
