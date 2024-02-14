@@ -8,6 +8,42 @@ import * as repo from "../../../init/features/apphosting/repo";
 import * as utils from "../../../utils";
 import { FirebaseError } from "../../../error";
 
+const projectId = "projectId";
+const location = "us-central1";
+
+function mockConn(id: string): gcb.Connection {
+  return {
+    name: `projects/${projectId}/locations/${location}/connections/${id}`,
+    disabled: false,
+    createTime: "0",
+    updateTime: "1",
+    installationState: {
+      stage: "COMPLETE",
+      message: "complete",
+      actionUri: "https://google.com",
+    },
+    reconciling: false,
+  };
+}
+
+function mockRepo(name: string): gcb.Repository {
+  return {
+    name: `${name}`,
+    remoteUri: `https://github.com/test/${name}.git`,
+    createTime: "",
+    updateTime: "",
+  };
+}
+
+function mockReposWithRandomUris(n: number): gcb.Repository[] {
+  const repos = [];
+  for (let i = 0; i < n; i++) {
+    const hash = Math.random().toString(36).slice(6);
+    repos.push(mockRepo(hash));
+  }
+  return repos;
+}
+
 describe("composer", () => {
   describe("connect GitHub repo", () => {
     const sandbox: sinon.SinonSandbox = sinon.createSandbox();
@@ -165,42 +201,6 @@ describe("composer", () => {
     });
   });
 
-  const projectId = "projectId";
-  const location = "us-central1";
-
-  function mockConn(id: string): gcb.Connection {
-    return {
-      name: `projects/${projectId}/locations/${location}/connections/${id}`,
-      disabled: false,
-      createTime: "0",
-      updateTime: "1",
-      installationState: {
-        stage: "COMPLETE",
-        message: "complete",
-        actionUri: "https://google.com",
-      },
-      reconciling: false,
-    };
-  }
-
-  function mockRepo(name: string): gcb.Repository {
-    return {
-      name: `${name}`,
-      remoteUri: `https://github.com/test/${name}.git`,
-      createTime: "",
-      updateTime: "",
-    };
-  }
-
-  function mockReposWithRandomUri(n: number): gcb.Repository[] {
-    const repos = [];
-    for (let i = 0; i < n; i++) {
-      const hash = Math.random().toString(36).slice(6);
-      repos.push(mockRepo(hash));
-    }
-    return repos;
-  }
-
   describe("fetchAllRepositories", () => {
     const sandbox: sinon.SinonSandbox = sinon.createSandbox();
     let fetchLinkableRepositoriesStub: sinon.SinonStub;
@@ -217,16 +217,17 @@ describe("composer", () => {
 
     it("should fetch all repositories from multiple pages", async () => {
       fetchLinkableRepositoriesStub.onFirstCall().resolves({
-        repositories: mockReposWithRandomUri(10),
+        repositories: mockReposWithRandomUris(10),
         nextPageToken: "1234",
       });
       fetchLinkableRepositoriesStub.onSecondCall().resolves({
-        repositories: mockReposWithRandomUri(10),
+        repositories: mockReposWithRandomUris(10),
       });
 
       const { repos, remoteUriToConnection } = await repo.fetchAllRepositories(projectId, [
         mockConn("conn0"),
       ]);
+
       expect(repos.length).to.equal(20);
       expect(Object.keys(remoteUriToConnection).length).to.equal(20);
     });
@@ -247,6 +248,7 @@ describe("composer", () => {
         conn0,
         conn1,
       ]);
+
       expect(repos.length).to.equal(2);
       expect(remoteUriToConnection).to.deep.equal({
         [repo0.remoteUri]: conn0,
