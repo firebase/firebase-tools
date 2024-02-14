@@ -73,10 +73,10 @@ const choices = [
   },
 ];
 
-if (isEnabled("internalframeworks")) {
+if (isEnabled("apphosting")) {
   choices.push({
-    value: "internalframeworks",
-    name: "Frameworks: Get started with Frameworks projects.",
+    value: "apphosting",
+    name: "App Hosting: Get started with App Hosting projects.",
     checked: false,
   });
 }
