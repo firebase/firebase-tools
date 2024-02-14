@@ -394,7 +394,7 @@ export class FirestoreDelete {
 
       numPendingDeletes++;
       firestore
-        .deleteDocuments(this.project, toDelete)
+        .deleteDocuments(this.project, toDelete, true)
         .then((numDeleted) => {
           FirestoreDelete.progressBar.tick(numDeleted);
           numDocsDeleted += numDeleted;
@@ -481,7 +481,7 @@ export class FirestoreDelete {
     let initialDelete;
     if (this.isDocumentPath) {
       const doc = { name: this.root + "/" + this.path };
-      initialDelete = firestore.deleteDocument(doc).catch((err) => {
+      initialDelete = firestore.deleteDocument(doc, true).catch((err) => {
         logger.debug("deletePath:initialDelete:error", err);
         if (this.allDescendants) {
           // On a recursive delete, we are insensitive to
@@ -508,7 +508,7 @@ export class FirestoreDelete {
    */
   public deleteDatabase(): Promise<any[]> {
     return firestore
-      .listCollectionIds(this.project)
+      .listCollectionIds(this.project, true)
       .catch((err) => {
         logger.debug("deleteDatabase:listCollectionIds:error", err);
         return utils.reject("Unable to list collection IDs");
