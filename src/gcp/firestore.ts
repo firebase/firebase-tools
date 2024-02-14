@@ -1,4 +1,4 @@
-import { firestoreOrigin } from "../api";
+import { firestoreOrigin, firestoreOriginOrEmulator } from "../api";
 import { Client } from "../apiv2";
 import { logger } from "../logger";
 
@@ -11,7 +11,7 @@ const prodOnlyClient = new Client({
 const emuOrProdClient = new Client({
   auth: true,
   apiVersion: "v1",
-  urlPrefix: firestoreOrigin,
+  urlPrefix: firestoreOriginOrEmulator,
 });
 
 export interface Database {
@@ -40,9 +40,9 @@ export interface Database {
 export async function getDatabase(
   project: string,
   database: string,
-  allowEmualtor: boolean = false,
+  allowEmulator: boolean = false,
 ): Promise<Database> {
-  const apiClient = allowEmualtor ? emuOrProdClient : prodOnlyClient;
+  const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
   const url = `projects/${project}/databases/${database}`;
   try {
     const resp = await apiClient.get<Database>(url);
@@ -63,9 +63,9 @@ export async function getDatabase(
  */
 export function listCollectionIds(
   project: string,
-  allowEmualtor: boolean = false,
+  allowEmulator: boolean = false,
 ): Promise<string[]> {
-  const apiClient = allowEmualtor ? emuOrProdClient : prodOnlyClient;
+  const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
   const url = "projects/" + project + "/databases/(default)/documents:listCollectionIds";
   const data = {
     // Maximum 32-bit integer
@@ -86,8 +86,8 @@ export function listCollectionIds(
  * @param {object} doc a Document object to delete.
  * @return {Promise} a promise for the delete operation.
  */
-export async function deleteDocument(doc: any, allowEmualtor: boolean = false): Promise<any> {
-  const apiClient = allowEmualtor ? emuOrProdClient : prodOnlyClient;
+export async function deleteDocument(doc: any, allowEmulator: boolean = false): Promise<any> {
+  const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
   return apiClient.delete(doc.name);
 }
 
@@ -104,9 +104,9 @@ export async function deleteDocument(doc: any, allowEmualtor: boolean = false): 
 export async function deleteDocuments(
   project: string,
   docs: any[],
-  allowEmualtor: boolean = false,
+  allowEmulator: boolean = false,
 ): Promise<number> {
-  const apiClient = allowEmualtor ? emuOrProdClient : prodOnlyClient;
+  const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
   const url = "projects/" + project + "/databases/(default)/documents:commit";
 
   const writes = docs.map((doc) => {
