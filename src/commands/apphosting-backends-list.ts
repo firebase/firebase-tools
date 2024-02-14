@@ -28,7 +28,7 @@ export const command = new Command("apphosting:backends:list")
       );
     }
 
-    const backends = backendRes?.backends;
+    const backends = backendRes.backends ?? [];
     for (const backend of backends) {
       const [backendLocation, , backendId] = backend.name.split("/").slice(3, 6);
       table.push([
