@@ -55,7 +55,6 @@ export function registerEmulators(broker: ExtensionBrokerImpl): Disposable {
                 );
               } else {
                 outputChannel.appendLine("ERROR: " + data.toString());
-                outputChannel.show(true); // TODO: decide if necessary to jump to output channel on error
               }
             });
           }
