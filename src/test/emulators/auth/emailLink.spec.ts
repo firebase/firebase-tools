@@ -47,7 +47,7 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
         expect(res.body.isNewUser).to.equal(true);
 
         const idToken = res.body.idToken;
-        const decoded = decodeJwt(idToken, { complete: true }) as {
+        const decoded = decodeJwt(idToken, { complete: true, json: true }) as {
           header: JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
@@ -364,7 +364,7 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
           expect(res.body.isNewUser).to.equal(true);
 
           const idToken = res.body.idToken;
-          const decoded = decodeJwt(idToken, { complete: true }) as {
+          const decoded = decodeJwt(idToken, { complete: true, json: true }) as {
             header: JwtHeader;
             payload: FirebaseJwtPayload;
           } | null;

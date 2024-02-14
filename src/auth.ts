@@ -445,7 +445,7 @@ async function loginRemotely(): Promise<UserCredentials> {
     void trackGA4("login", { method: "google_remote" });
 
     return {
-      user: jwt.decode(tokens.id_token!) as User,
+      user: jwt.decode(tokens.id_token!, { json: true }) as User,
       tokens: tokens,
       scopes: SCOPES,
     };
@@ -470,7 +470,7 @@ async function loginWithLocalhostGoogle(port: number, userHint?: string): Promis
   // getTokensFromAuthoirzationCode doesn't handle the --token case, so we know we'll
   // always have an id_token.
   return {
-    user: jwt.decode(tokens.id_token!) as User,
+    user: jwt.decode(tokens.id_token!, { json: true }) as User,
     tokens: tokens,
     scopes: tokens.scopes!,
   };

@@ -1324,7 +1324,7 @@ function signInWithCustomToken(
     }
     // Don't check payload.aud for JSON strings, making them easier to construct.
   } else {
-    const decoded = decodeJwt(reqBody.token, { complete: true }) as {
+    const decoded = decodeJwt(reqBody.token, { complete: true, json: true }) as {
       header: JwtHeader;
       payload: typeof payload;
     } | null;
@@ -2324,7 +2324,7 @@ function parseIdToken(
   payload: FirebaseJwtPayload;
   signInProvider: string;
 } {
-  const decoded = decodeJwt(idToken, { complete: true }) as {
+  const decoded = decodeJwt(idToken, { complete: true, json: true }) as {
     header: JwtHeader;
     payload: FirebaseJwtPayload;
   } | null;
