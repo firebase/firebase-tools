@@ -21,7 +21,8 @@ import { OperationDefinitionNode, OperationTypeNode, print } from "graphql";
 import { FirematService } from "./service";
 import { FirematError, toSerializedError } from "../../common/error";
 import { OperationLocation } from "./types";
-import { selectedInstance } from "./connect-instance";
+import { emulatorInstance, selectedInstance } from "./connect-instance";
+import { isFirematEmulatorRunning } from "../core/emulators";
 
 export function registerExecution(
   context: ExtensionContext,
@@ -66,12 +67,43 @@ export function registerExecution(
     { document, documentPath, position }: OperationLocation,
   ) {
     const configs = vscode.workspace.getConfiguration("firebase.firemat");
-    const alwaysSettingsKey = "alwaysAllowMutationsInProduction";
+    const alwaysExecuteMutationsInProduction =
+      "alwaysAllowMutationsInProduction";
+    const alwaysStartEmulator = "alwaysStartEmulator";
+
+    // De-structure the selected instance, to avoid cases where we execute the
+    // operation in a different instance than the one selected, in the case
+    // where a user changes instance during an "await".
+    const targetedInstance = selectedInstance.value;
+
+    if (
+      targetedInstance === emulatorInstance &&
+      !isFirematEmulatorRunning.value
+    ) {
+      const always = "Yes (always)";
+      const yes = "Yes";
+      const result = await vscode.window.showWarningMessage(
+        "Trying to execute an operation on the emulator, but it isn't started yet. " +
+          "Do you wish to start it?",
+        { modal: true },
+        yes,
+        always,
+      );
+
+      // If the user selects "always", we update User settings.
+      if (result === always) {
+        configs.update(alwaysStartEmulator, true, ConfigurationTarget.Global);
+      }
+
+      if (result === yes || result === always) {
+        await vscode.commands.executeCommand("firebase.emulators.start");
+      }
+    }
 
     // Warn against using mutations in production.
     if (
-      selectedInstance.value !== "emulator" &&
-      !configs.get(alwaysSettingsKey) &&
+      targetedInstance !== emulatorInstance &&
+      !configs.get(alwaysExecuteMutationsInProduction) &&
       ast.operation === OperationTypeNode.MUTATION
     ) {
       const always = "Yes (always)";
@@ -89,7 +121,11 @@ export function registerExecution(
 
       // If the user selects "always", we update User settings.
       if (result === always) {
-        configs.update(alwaysSettingsKey, true, ConfigurationTarget.Global);
+        configs.update(
+          alwaysExecuteMutationsInProduction,
+          true,
+          ConfigurationTarget.Global,
+        );
       }
     }
 
