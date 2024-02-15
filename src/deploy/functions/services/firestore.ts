@@ -15,7 +15,7 @@ async function getDatabase(project: string, databaseId: string): Promise<firesto
   if (dbCache.has(key)) {
     return dbCache.get(key)!;
   }
-  const db = await firestore.getDatabase(project, databaseId);
+  const db = await firestore.getDatabase(project, databaseId, false);
   dbCache.set(key, db);
   return db;
 }

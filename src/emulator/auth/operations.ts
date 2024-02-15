@@ -1324,7 +1324,7 @@ function signInWithCustomToken(
     }
     // Don't check payload.aud for JSON strings, making them easier to construct.
   } else {
-    const decoded = decodeJwt(reqBody.token, { complete: true }) as {
+    const decoded = decodeJwt(reqBody.token, { complete: true }) as unknown as {
       header: JwtHeader;
       payload: typeof payload;
     } | null;
@@ -2324,7 +2324,7 @@ function parseIdToken(
   payload: FirebaseJwtPayload;
   signInProvider: string;
 } {
-  const decoded = decodeJwt(idToken, { complete: true }) as {
+  const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
     header: JwtHeader;
     payload: FirebaseJwtPayload;
   } | null;
@@ -2606,7 +2606,7 @@ function parseClaims(idTokenOrJsonClaims: string | undefined): IdpJwtPayload | u
       );
     }
   } else {
-    const decoded = decodeJwt(idTokenOrJsonClaims, { json: true });
+    const decoded = decodeJwt(idTokenOrJsonClaims, { json: true }) as any;
     if (!decoded) {
       return undefined;
     }
@@ -3294,7 +3294,7 @@ function generateBlockingFunctionJwt(
 }
 
 export function parseBlockingFunctionJwt(jwt: string): BlockingFunctionsJwtPayload {
-  const decoded = decodeJwt(jwt, { json: true }) as BlockingFunctionsJwtPayload;
+  const decoded = decodeJwt(jwt, { json: true }) as any as BlockingFunctionsJwtPayload;
   assert(decoded, "((Invalid blocking function jwt.))");
   assert(decoded.iss, "((Invalid blocking function jwt, missing `iss` claim.))");
   assert(decoded.aud, "((Invalid blocking function jwt, missing `aud` claim.))");

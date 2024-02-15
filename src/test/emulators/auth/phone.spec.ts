@@ -137,7 +137,7 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
         expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const idToken = res.body.idToken;
-        const decoded = decodeJwt(idToken, { complete: true }) as {
+        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
           header: JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
@@ -477,7 +477,7 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
           expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
           const idToken = res.body.idToken;
-          const decoded = decodeJwt(idToken, { complete: true }) as {
+          const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
             header: JwtHeader;
             payload: FirebaseJwtPayload;
           } | null;
@@ -541,7 +541,7 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
           expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
           const idToken = res.body.idToken;
-          const decoded = decodeJwt(idToken, { complete: true }) as {
+          const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
             header: JwtHeader;
             payload: FirebaseJwtPayload;
           } | null;
@@ -619,7 +619,7 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
           expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
           const idToken = res.body.idToken;
-          const decoded = decodeJwt(idToken, { complete: true }) as {
+          const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
             header: JwtHeader;
             payload: FirebaseJwtPayload;
           } | null;

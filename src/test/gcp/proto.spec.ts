@@ -108,7 +108,7 @@ describe("proto", () => {
         number: 1,
         string: "foo",
         array: ["hello", "world"],
-      };
+      } as const;
       expect(proto.fieldMasks(obj).sort()).to.deep.equal(["number", "string", "array"].sort());
     });
 
@@ -117,7 +117,7 @@ describe("proto", () => {
         undefined: undefined,
         null: null,
         empty: {},
-      };
+      } as const;
 
       expect(proto.fieldMasks(obj).sort()).to.deep.equal(["undefined", "null", "empty"].sort());
     });
@@ -128,7 +128,7 @@ describe("proto", () => {
         nested: {
           key: "value",
         },
-      };
+      } as const;
       expect(proto.fieldMasks(obj).sort()).to.deep.equal(["top", "nested.key"].sort());
     });
 
@@ -137,7 +137,7 @@ describe("proto", () => {
         failurePolicy: {
           retry: {},
         },
-      };
+      } as const;
       expect(proto.fieldMasks(obj)).to.deep.equal(["failurePolicy.retry"]);
     });
 

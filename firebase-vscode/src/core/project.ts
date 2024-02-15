@@ -122,9 +122,10 @@ export function registerProject({
         return;
       } else {
         try {
-          currentProjectId.value = await _promptUserForProject(
-            firstWhereDefined(userScopedProjects),
-          );
+          const projects = firstWhereDefined(userScopedProjects);
+
+          currentProjectId.value =
+            (await _promptUserForProject(projects)) ?? currentProjectId.value;
         } catch (e) {
           vscode.window.showErrorMessage(e.message);
         }
@@ -149,14 +150,15 @@ export function registerProject({
 
 /**
  * Get the user to select a project
+ *
  * @internal
- **/
+ */
 export async function _promptUserForProject(
   projects: Thenable<FirebaseProjectMetadata[]>,
-  token?: vscode.CancellationToken,
-) {
+  token?: vscode.CancellationToken
+): Promise<string | undefined> {
   const items = projects.then((projects) => {
-    return projects.map<QuickPickItem>((p) => ({
+    return projects.map((p) => ({
       label: p.projectId,
       description: p.displayName,
     }));

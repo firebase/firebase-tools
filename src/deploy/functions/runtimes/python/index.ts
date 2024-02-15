@@ -13,7 +13,7 @@ import { DEFAULT_VENV_DIR, runWithVirtualEnv, virtualEnvCmd } from "../../../../
 import { FirebaseError } from "../../../../error";
 import { Build } from "../../build";
 
-export const LATEST_VERSION: runtimes.Runtime = "python311";
+export const LATEST_VERSION: runtimes.Runtime = "python312";
 
 /**
  * Create a runtime delegate for the Python runtime, if applicable.
@@ -51,6 +51,8 @@ export function getPythonBinary(runtime: runtimes.Runtime): string {
     return "python3.10";
   } else if (runtime === "python311") {
     return "python3.11";
+  } else if (runtime === "python312") {
+    return "python3.12";
   }
   return "python";
 }

@@ -28,7 +28,7 @@ describe("PythonDelegate", () => {
 
     it("returns generic python binary given non-recognized python runtime", () => {
       platformMock.value("darwin");
-      const requestedRuntime = "python312";
+      const requestedRuntime = "python308";
       const delegate = new python.Delegate(PROJECT_ID, SOURCE_DIR, requestedRuntime);
 
       expect(delegate.getPythonBinary()).to.equal("python");

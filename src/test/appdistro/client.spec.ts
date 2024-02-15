@@ -6,11 +6,8 @@ import * as rimraf from "rimraf";
 import * as sinon from "sinon";
 import * as tmp from "tmp";
 
-import {
-  AppDistributionClient,
-  BatchRemoveTestersResponse,
-  Group,
-} from "../../appdistribution/client";
+import { AppDistributionClient } from "../../appdistribution/client";
+import { BatchRemoveTestersResponse, Group, TestDevice } from "../../appdistribution/types";
 import { appDistributionOrigin } from "../../api";
 import { Distribution } from "../../appdistribution/distribution";
 import { FirebaseError } from "../../error";
@@ -297,6 +294,86 @@ describe("distribution", () => {
       nock(appDistributionOrigin).post(`/v1/${groupName}:batchLeave`).reply(200, {});
       await expect(appDistributionClient.removeTestersFromGroup(groupName, emails)).to.be.eventually
         .fulfilled;
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("createReleaseTest", () => {
+    const releaseName = `${appName}/releases/fake-release-id`;
+    const mockDevices: TestDevice[] = [
+      {
+        model: "husky",
+        version: "34",
+        orientation: "portrait",
+        locale: "en-US",
+      },
+      {
+        model: "bluejay",
+        version: "32",
+        orientation: "landscape",
+        locale: "es",
+      },
+    ];
+    const mockReleaseTest = {
+      name: `${releaseName}/tests/fake-test-id`,
+      devices: mockDevices,
+      state: "IN_PROGRESS",
+    };
+
+    it("should throw error if request fails", async () => {
+      nock(appDistributionOrigin)
+        .post(`/v1alpha/${releaseName}/tests`)
+        .reply(400, { error: { status: "FAILED_PRECONDITION" } });
+      await expect(
+        appDistributionClient.createReleaseTest(releaseName, mockDevices),
+      ).to.be.rejectedWith(FirebaseError, "Failed to create release test");
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should resolve with ReleaseTest when request succeeds", async () => {
+      nock(appDistributionOrigin).post(`/v1alpha/${releaseName}/tests`).reply(200, mockReleaseTest);
+      await expect(
+        appDistributionClient.createReleaseTest(releaseName, mockDevices),
+      ).to.be.eventually.deep.eq(mockReleaseTest);
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("getReleaseTest", () => {
+    const releaseTestName = `${appName}/releases/fake-release-id/tests/fake-test-id`;
+    const mockDevices: TestDevice[] = [
+      {
+        model: "husky",
+        version: "34",
+        orientation: "portrait",
+        locale: "en-US",
+      },
+      {
+        model: "bluejay",
+        version: "32",
+        orientation: "landscape",
+        locale: "es",
+      },
+    ];
+    const mockReleaseTest = {
+      name: releaseTestName,
+      devices: mockDevices,
+      state: "IN_PROGRESS",
+    };
+
+    it("should throw error if request fails", async () => {
+      nock(appDistributionOrigin)
+        .get(`/v1alpha/${releaseTestName}`)
+        .reply(400, { error: { status: "FAILED_PRECONDITION" } });
+      await expect(appDistributionClient.getReleaseTest(releaseTestName)).to.be.rejected;
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should resolve with ReleaseTest when request succeeds", async () => {
+      nock(appDistributionOrigin).get(`/v1alpha/${releaseTestName}`).reply(200, mockReleaseTest);
+      await expect(appDistributionClient.getReleaseTest(releaseTestName)).to.be.eventually.deep.eq(
+        mockReleaseTest,
+      );
       expect(nock.isDone()).to.be.true;
     });
   });

@@ -25,9 +25,7 @@ export function createFake<T>(overrides: Partial<T> = {}): T {
 
 export function mock<T>(ref: Ref<T>, value: Partial<T> | undefined) {
   const current = ref.value;
-  addTearDown(() => {
-    ref.value = current;
-  });
+  addTearDown(() => (ref.value = current));
 
   const fake = !value ? value : createFake<T>(value);
 

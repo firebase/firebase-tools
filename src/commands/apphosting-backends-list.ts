@@ -24,11 +24,11 @@ export const command = new Command("apphosting:backends:list")
     } catch (err: unknown) {
       throw new FirebaseError(
         `Unable to list backends present for project: ${projectId}. Please check the parameters you have provided.`,
-        { original: err as Error }
+        { original: err as Error },
       );
     }
 
-    const backends = backendRes?.backends;
+    const backends = backendRes.backends ?? [];
     for (const backend of backends) {
       const [backendLocation, , backendId] = backend.name.split("/").slice(3, 6);
       table.push([
