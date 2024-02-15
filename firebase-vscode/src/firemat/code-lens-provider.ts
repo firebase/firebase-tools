@@ -65,7 +65,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
   ): vscode.CodeLens[] {
     // Wait for configs to be loaded and emulator to be running
     const configs = this.watch(firematConfig);
-    if (!configs || !this.watch(isFirematEmulatorRunning)) {
+    if (!configs) {
       return [];
     }
 
@@ -107,7 +107,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
           );
         }
 
-        if (!isInOperationFolder) {
+        if (!isInOperationFolder && this.watch(isFirematEmulatorRunning)) {
           codeLenses.push(
             new vscode.CodeLens(range, {
               title: `$(plug) Move to connector`,
