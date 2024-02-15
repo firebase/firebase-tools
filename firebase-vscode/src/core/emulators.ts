@@ -49,7 +49,8 @@ export function registerEmulators(broker: ExtensionBrokerImpl): Disposable {
               outputChannel.appendLine("DEBUG: " + data.toString());
             });
             firematEmulatorDetails.instance.stderr?.on("data", (data) => {
-              if (data.toString().includes("Finished reload server")) {
+              if (data.toString().includes("Finished reloading")) {
+                vscode.commands.executeCommand("fdc-graphql.restart");
                 vscode.commands.executeCommand(
                   "firebase.firemat.executeIntrospection",
                 );

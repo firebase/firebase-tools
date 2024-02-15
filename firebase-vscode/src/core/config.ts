@@ -116,20 +116,20 @@ type TypeOf = typeof typeOfValue;
 type ValueOf<T extends TypeOf> = T extends "string"
   ? string
   : T extends "number"
-  ? number
-  : T extends "bigint"
-  ? bigint
-  : T extends "boolean"
-  ? boolean
-  : T extends "symbol"
-  ? symbol
-  : T extends "undefined"
-  ? undefined
-  : T extends "object"
-  ? object
-  : T extends "function"
-  ? Function
-  : never;
+    ? number
+    : T extends "bigint"
+      ? bigint
+      : T extends "boolean"
+        ? boolean
+        : T extends "symbol"
+          ? symbol
+          : T extends "undefined"
+            ? undefined
+            : T extends "object"
+              ? object
+              : T extends "function"
+                ? Function
+                : never;
 
 function assignIfType<T extends TypeOf>(
   type: T,
