@@ -4,7 +4,8 @@ import { ExtensionBrokerImpl } from "../extension-broker";
 import { isFirematEmulatorRunning } from "../core/emulators";
 import { computed, effect, signal } from "@preact/signals-core";
 
-export const selectedInstance = signal<string | undefined>(undefined);
+export const emulatorInstance = "emulator";
+export const selectedInstance = signal<string>(emulatorInstance);
 
 export function registerFirebaseDataConnectView(
   context: vscode.ExtensionContext,
@@ -35,7 +36,10 @@ export function registerFirebaseDataConnectView(
   function syncStatusBarWithSelectedInstance() {
     return effect(() => {
       selectedInstanceStatus.text = selectedInstance.value ?? "emulator";
-      if (!selectedInstance.value) {
+      if (
+        selectedInstance.value === "emulator" &&
+        !isFirematEmulatorRunning.value
+      ) {
         selectedInstanceStatus.backgroundColor = new vscode.ThemeColor(
           "statusBarItem.errorBackground",
         );
@@ -43,6 +47,19 @@ export function registerFirebaseDataConnectView(
         selectedInstanceStatus.backgroundColor = undefined;
       }
       selectedInstanceStatus.show();
+    });
+  }
+
+  // Handle cases where the instance list changes and the selected instance is no longer in the list.
+  function initializeSelectedInstance() {
+    return effect(() => {
+      const isSelectedInstanceInOptions = instanceOptions.value?.includes(
+        selectedInstance.value,
+      );
+
+      if (!isSelectedInstanceInOptions) {
+        selectedInstance.value = "emulator";
+      }
     });
   }
 
@@ -63,6 +80,7 @@ export function registerFirebaseDataConnectView(
 
     selectedInstanceStatus,
     { dispose: syncStatusBarWithSelectedInstance() },
+    { dispose: initializeSelectedInstance() },
     {
       dispose: broker.on("connectToInstance", async () => {
         vscode.commands.executeCommand("firebase.firemat.connectToInstance");
