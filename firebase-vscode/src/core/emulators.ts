@@ -71,26 +71,9 @@ export function registerEmulators(broker: ExtensionBrokerImpl): Disposable {
     );
   });
 
-  broker.on("stopEmulators", async () => {
-    vscode.window.withProgress(
-      {
-        location: vscode.ProgressLocation.Window,
-        cancellable: false,
-        title: "Stopping emulators",
-      },
-      async (progress) => {
-        progress.report({ increment: 0 });
-
-        await stopEmulators();
-        broker.send("notifyEmulatorsStopped");
-        vscode.window.showInformationMessage(
-          "Firebase Extension: Emulators stopped successfully",
-        );
-        isFirematEmulatorRunning.value = false;
-        progress.report({ increment: 100 });
-      },
-    );
-  });
+  broker.on("stopEmulators", () =>
+    vscode.commands.executeCommand("firebase.emulators.stop"),
+  );
 
   broker.on("selectEmulatorImportFolder", async () => {
     const options: vscode.OpenDialogOptions = {
@@ -109,9 +92,33 @@ export function registerEmulators(broker: ExtensionBrokerImpl): Disposable {
     broker.send("notifyEmulatorImportFolder", { folder: fileUri[0].fsPath });
   });
 
-  return {
-    dispose: async () => {
-      await stopEmulators();
-    },
-  };
+  return Disposable.from(
+    { dispose: stopEmulators },
+    vscode.commands.registerCommand("firebase.emulators.start", () => {
+      // TODO: We shouldn't have to start the emulators by going through webviews.
+      // Webviews may not be active, in which case the command will fail to do anything.
+      // This would involve refactoring the Emulator webview to move the logic in here.
+      broker.send("startEmulators");
+    }),
+    vscode.commands.registerCommand("firebase.emulators.stop", () => {
+      return vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Window,
+          cancellable: false,
+          title: "Stopping emulators",
+        },
+        async (progress) => {
+          progress.report({ increment: 0 });
+
+          await stopEmulators();
+          broker.send("notifyEmulatorsStopped");
+          vscode.window.showInformationMessage(
+            "Firebase Extension: Emulators stopped successfully",
+          );
+
+          progress.report({ increment: 100 });
+        },
+      );
+    }),
+  );
 }

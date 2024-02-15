@@ -149,6 +149,8 @@ export function EmulatorPanel({
     broker.send("stopEmulators");
   }
 
+  useEffect(() => broker.on("startEmulators", launchEmulators), []);
+
   return (
     <PanelSection
       title="Emulators"
