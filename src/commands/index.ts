@@ -150,7 +150,7 @@ export function load(client: any): any {
     client.internaltesting.functions = {};
     client.internaltesting.functions.discover = loadCommand("internaltesting-functions-discover");
   }
-  if (experiments.isEnabled("internalframeworks")) {
+  if (experiments.isEnabled("apphosting")) {
     client.apphosting = {};
     client.apphosting.backends = {};
     client.apphosting.backends.list = loadCommand("apphosting-backends-list");

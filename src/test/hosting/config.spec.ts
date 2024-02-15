@@ -4,7 +4,6 @@ import { HostingConfig, HostingMultiple, HostingSingle } from "../../firebaseCon
 
 import * as config from "../../hosting/config";
 import { HostingOptions } from "../../hosting/options";
-import { RequireAtLeastOne } from "../../metaprogramming";
 import { cloneDeep } from "../../utils";
 import { setEnabled } from "../../experiments";
 
@@ -103,10 +102,7 @@ describe("config", () => {
         desc: string;
         cfg: HostingMultiple;
         only?: string;
-      } & RequireAtLeastOne<{
-        want?: HostingMultiple;
-        wantErr?: RegExp;
-      }>
+      } & ({ want: HostingMultiple } | { wantErr: RegExp })
     > = [
       {
         desc: "a normal hosting config, specifying the default site",
@@ -165,7 +161,7 @@ describe("config", () => {
 
     for (const t of tests) {
       it(`should be able to parse ${t.desc}`, () => {
-        if (t.wantErr) {
+        if ("wantErr" in t) {
           expect(() => config.filterOnly(t.cfg, t.only)).to.throw(FirebaseError, t.wantErr);
         } else {
           const got = config.filterOnly(t.cfg, t.only);
@@ -181,10 +177,7 @@ describe("config", () => {
         desc: string;
         cfg: HostingMultiple;
         except?: string;
-      } & RequireAtLeastOne<{
-        want: HostingMultiple;
-        wantErr: RegExp;
-      }>
+      } & ({ want: HostingMultiple } | { wantErr: RegExp })
     > = [
       {
         desc: "a hosting config with multiple sites, no targets, omitting the second site",
@@ -231,7 +224,7 @@ describe("config", () => {
 
     for (const t of tests) {
       it(`should be able to parse ${t.desc}`, () => {
-        if (t.wantErr) {
+        if ("wantErr" in t) {
           expect(() => config.filterExcept(t.cfg, t.except)).to.throw(FirebaseError, t.wantErr);
         } else {
           const got = config.filterExcept(t.cfg, t.except);

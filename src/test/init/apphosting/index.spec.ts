@@ -7,6 +7,7 @@ import * as poller from "../../../operation-poller";
 import * as prompt from "../../../prompt";
 import { createBackend, onboardBackend } from "../../../init/features/apphosting/index";
 import { FirebaseError } from "../../../error";
+import * as deploymentTool from "../../../deploymentTool";
 
 describe("operationsConverter", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
@@ -66,7 +67,7 @@ describe("operationsConverter", () => {
         repository: cloudBuildConnRepo.name,
         rootDirectory: "/",
       },
-      labels: {},
+      labels: deploymentTool.labels(),
     };
 
     it("should createBackend", async () => {
