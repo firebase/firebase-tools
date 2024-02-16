@@ -64,7 +64,7 @@ firematTest("Can pick an instance", async function () {
   await editor.openFile(queriesPath);
 
   // Check default value
-  expect(await statusBar.currentInstanceElement.getText()).toBe("emulator");
+  expect(await statusBar.currentInstanceElement.getText()).toBe(" emulator");
 
   // Verify that the code-lenses reflect the selected instance
   await editor.firstCodeLense.waitForDisplayed();

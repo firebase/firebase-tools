@@ -44,10 +44,15 @@ export function registerFirebaseDataConnectView(
   function syncStatusBarWithSelectedInstance() {
     return effect(() => {
       selectedInstanceStatus.text = `$(data-connect) ${selectedInstance.value ?? emulatorInstance}`;
-      if (!selectedInstance.value) {
+      if (
+        !selectedInstance.value ||
+        selectedInstance.value === emulatorInstance
+      ) {
         selectedInstanceStatus.backgroundColor = undefined;
       } else {
-        selectedInstanceStatus.backgroundColor = new vscode.ThemeColor("statusBarItem.warningBackground");
+        selectedInstanceStatus.backgroundColor = new vscode.ThemeColor(
+          "statusBarItem.warningBackground",
+        );
       }
       selectedInstanceStatus.show();
     });
