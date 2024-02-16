@@ -1,7 +1,7 @@
 import vscode, { Disposable, ExtensionContext } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { registerConfig } from "./config";
-import { registerEmulators } from "./emulators";
+import { EmulatorsController } from "./emulators";
 import { registerEnv } from "./env";
 import { pluginLogger } from "../logger-wrapper";
 import { getSettings } from "../utils/settings";
@@ -16,7 +16,7 @@ export function registerCore({
 }: {
   broker: ExtensionBrokerImpl;
   context: ExtensionContext;
-}): Disposable {
+}): [EmulatorsController, Disposable] {
   const settings = getSettings();
 
   if (settings.npmPath) {
@@ -39,12 +39,17 @@ export function registerCore({
     vscode.env.openExternal(vscode.Uri.parse(href));
   });
 
-  return Disposable.from(
-    registerConfig(broker),
-    registerEmulators(broker),
-    registerEnv(broker),
-    registerUser(broker),
-    registerProject({ context, broker }),
-    registerQuickstart(broker),
-  );
+  const emulatorsController = new EmulatorsController(broker);
+
+  return [
+    emulatorsController,
+    Disposable.from(
+      registerConfig(broker),
+      emulatorsController,
+      registerEnv(broker),
+      registerUser(broker),
+      registerProject({ context, broker }),
+      registerQuickstart(broker),
+    ),
+  ];
 }

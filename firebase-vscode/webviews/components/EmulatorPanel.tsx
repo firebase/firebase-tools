@@ -1,37 +1,18 @@
-import {
-  VSCodeButton,
-  VSCodeLink,
-  VSCodeTextField,
-  VSCodeDropdown,
-  VSCodeOption,
-  VSCodeTextArea,
-} from "@vscode/webview-ui-toolkit/react";
-import React, { useEffect, useState } from "react";
+import { VSCodeButton, VSCodeLink } from "@vscode/webview-ui-toolkit/react";
+import React, { useEffect } from "react";
 import { Spacer } from "./ui/Spacer";
-import { broker, useBrokerListener } from "../globals/html-broker";
+import { broker, useBroker, useBrokerListener } from "../globals/html-broker";
 import { PanelSection } from "./ui/PanelSection";
 import { FirebaseConfig } from "../../../src/firebaseConfig";
-import {
-  RunningEmulatorInfo,
-  EmulatorUiSelections,
-} from "../../common/messaging/types";
-import { EmulatorInfo, Emulators } from "../../../src/emulator/types";
+import { EmulatorInfo } from "../../../src/emulator/types";
 import { webLogger } from "../globals/web-logger";
-
-const DEFAULT_EMULATOR_UI_SELECTIONS: EmulatorUiSelections = {
-  projectId: "demo-something",
-  importStateFolderPath: "",
-  exportStateOnExit: false,
-  mode: "firemat",
-  debugLogging: false,
-};
+import { DEFAULT_EMULATOR_UI_SELECTIONS } from "../../common/messaging/protocol";
 
 /**
  * Emulator panel component for the VSCode extension. Handles start/stop,  import/export.
  */
 export function EmulatorPanel({
   firebaseJson,
-  projectId,
 }: {
   firebaseJson: FirebaseConfig;
   projectId?: string | undefined;
@@ -39,70 +20,26 @@ export function EmulatorPanel({
   if (!firebaseJson) {
     throw Error("Expected a valid FirebaseConfig.");
   }
-  const defaultState = DEFAULT_EMULATOR_UI_SELECTIONS;
-  if (projectId) {
-    defaultState.projectId = getProjectIdForMode(projectId, defaultState.mode);
-  }
-  const [emulatorUiSelections, setEmulatorUiSelections] =
-    useState<EmulatorUiSelections>(defaultState);
+  const emulatorUiSelections =
+    useBroker("notifyEmulatorUiSelectionsChanged", {
+      initialRequest: "getEmulatorUiSelections",
+    }) ?? DEFAULT_EMULATOR_UI_SELECTIONS;
 
   useEffect(() => {
-    webLogger.debug(
-      "initial state ui selections:" + JSON.stringify(emulatorUiSelections),
-    );
+    if (emulatorUiSelections) {
+      webLogger.debug(
+        `Emulator UI selections: ${JSON.stringify(emulatorUiSelections)}`,
+      );
+    }
   }, [emulatorUiSelections]);
 
-  function setEmulatorUiSelectionsAndSaveToWorkspace(
-    uiSelections: EmulatorUiSelections,
-  ) {
-    // TODO(christhompson): Save UI selections in the current workspace.
-    // Requires context object.
-    setEmulatorUiSelections(uiSelections);
-  }
-  const [showEmulatorProgressIndicator, setShowEmulatorProgressIndicator] =
-    useState<boolean>(false);
+  const emulators = useBroker("notifyEmulatorStateChanged", {
+    initialRequest: "getEmulatorInfos",
+  }) ?? { status: "stopped", infos: undefined };
+  const runningEmulatorInfo = emulators.infos;
 
-  // TODO(christhompson): Load UI selections from the current workspace.
-  // Requires context object.
-  // TODO(christhompson): Check if the emulators are running on extension start.
-  const [runningEmulatorInfo, setRunningEmulatorInfo] =
-    useState<RunningEmulatorInfo>();
-
-  useBrokerListener("notifyEmulatorsStopped", () => {
-    setShowEmulatorProgressIndicator(false);
-    webLogger.debug(`notifyEmulatorsStopped received in sidebar`);
-    setRunningEmulatorInfo(null);
-
-    // When the emulator stops, clear the firemat endpoint.
-    // This ensures that the following query executions will fail with a
-    // "No emulator running" instead of "Failed to connect to <endpoint>".
-    broker.send("notifyFirematEmulatorEndpoint", { endpoint: undefined });
-  });
-
-  useBrokerListener("notifyEmulatorStartFailed", () => {
-    setShowEmulatorProgressIndicator(false);
-    webLogger.debug(`notifyEmulatorStartFailed received in sidebar`);
-  });
-
-  useBrokerListener(
-    "notifyRunningEmulatorInfo",
-    (info: RunningEmulatorInfo) => {
-      setShowEmulatorProgressIndicator(false);
-      webLogger.debug(`notifyRunningEmulatorInfo received in sidebar`);
-      setRunningEmulatorInfo(info);
-
-      let endpoint = "";
-      // TODO: should this logic be here?
-      // send firemat endpoint
-      for (const emulatorInfo of info.displayInfo) {
-        if (emulatorInfo.name === Emulators.FIREMAT) {
-          endpoint = "http://" + emulatorInfo.host + ":" + emulatorInfo.port;
-        }
-      }
-      webLogger.debug(`notifyFirematEmulatorEndpoint sending: `, endpoint);
-      broker.send("notifyFirematEmulatorEndpoint", { endpoint });
-    },
-  );
+  const showEmulatorProgressIndicator =
+    emulators.status === "starting" || emulators.status === "stopping";
 
   useBrokerListener("notifyEmulatorImportFolder", ({ folder }) => {
     webLogger.debug(
@@ -112,7 +49,7 @@ export function EmulatorPanel({
       ...emulatorUiSelections,
       importStateFolderPath: folder,
     };
-    setEmulatorUiSelectionsAndSaveToWorkspace(newSelections);
+    broker.send("updateEmulatorUiSelections", newSelections);
   });
 
   function launchEmulators() {
@@ -138,18 +75,8 @@ export function EmulatorPanel({
       });
       return;
     }
-    setShowEmulatorProgressIndicator(true);
-    broker.send("launchEmulators", {
-      emulatorUiSelections,
-    });
+    broker.send("launchEmulators");
   }
-
-  function stopEmulators() {
-    setShowEmulatorProgressIndicator(true);
-    broker.send("stopEmulators");
-  }
-
-  useEffect(() => broker.on("startEmulators", launchEmulators), []);
 
   return (
     <PanelSection
@@ -181,7 +108,7 @@ export function EmulatorPanel({
             </>
           )}
           <Spacer size="xxlarge" />
-          <VSCodeButton onClick={() => stopEmulators()}>
+          <VSCodeButton onClick={() => broker.send("stopEmulators")}>
             Click to stop the emulators
           </VSCodeButton>
         </>
@@ -210,21 +137,4 @@ function FormatEmulatorRunningInfo({ infos }: { infos: EmulatorInfo[] }) {
         ))}
     </ul>
   );
-}
-
-/**
- * Formats a project ID with a demo prefix if we're in offline mode, or uses the
- * regular ID if we're in hosting only mode.
- */
-function getProjectIdForMode(
-  projectId: string | undefined,
-  mode: "all" | "hosting" | "firemat",
-): string {
-  if (!projectId) {
-    return "demo-something";
-  }
-  if (mode === "hosting") {
-    return projectId;
-  }
-  return "demo-" + projectId;
 }

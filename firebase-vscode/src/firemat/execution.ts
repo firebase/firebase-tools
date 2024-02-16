@@ -22,12 +22,13 @@ import { FirematService } from "./service";
 import { FirematError, toSerializedError } from "../../common/error";
 import { OperationLocation } from "./types";
 import { emulatorInstance, selectedInstance } from "./connect-instance";
-import { isFirematEmulatorRunning } from "../core/emulators";
+import { EmulatorsController } from "../core/emulators";
 
 export function registerExecution(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl,
   firematService: FirematService,
+  emulatorsController: EmulatorsController,
 ): Disposable {
   const treeDataProvider = new ExecutionHistoryTreeDataProvider();
   const executionHistoryTreeView = vscode.window.createTreeView(
@@ -78,7 +79,7 @@ export function registerExecution(
 
     if (
       targetedInstance === emulatorInstance &&
-      !isFirematEmulatorRunning.value
+      !emulatorsController.areEmulatorsRunning.value
     ) {
       const always = "Yes (always)";
       const yes = "Yes";

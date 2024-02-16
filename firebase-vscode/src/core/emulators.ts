@@ -8,14 +8,156 @@ import {
   Emulators,
 } from "../cli";
 import { ExtensionBrokerImpl } from "../extension-broker";
-import { Signal } from "@preact/signals-core";
+import { computed, effect, signal } from "@preact/signals-core";
+import {
+  DEFAULT_EMULATOR_UI_SELECTIONS,
+  ExtensionToWebviewParamsMap,
+} from "../../common/messaging/protocol";
+import { firebaseRC } from "./config";
 
-export const isFirematEmulatorRunning = new Signal<boolean>(false);
+export class EmulatorsController implements Disposable {
+  constructor(private broker: ExtensionBrokerImpl) {
+    this.subscriptions.push(
+      broker.on("getEmulatorUiSelections", () =>
+        this.notifyUISelectionChangedListeners(),
+      ),
+    );
+    // Notify the UI of the emulator selections changes
+    this.subscriptions.push(
+      effect(() => {
+        // Listen for changes.
+        this.uiSelections.value;
 
-export function registerEmulators(broker: ExtensionBrokerImpl): Disposable {
-  const outputChannel = vscode.window.createOutputChannel("Firebase Emulators");
+        // TODO(christhompson): Save UI selections in the current workspace.
+        // Requires context object.
+        this.notifyUISelectionChangedListeners();
+      }),
+    );
 
-  broker.on("launchEmulators", async ({ emulatorUiSelections }) => {
+    this.subscriptions.push(
+      broker.on("getEmulatorInfos", () => this.notifyEmulatorStateChanged()),
+    );
+    this.subscriptions.push(
+      effect(() => {
+        // Listen for changes.
+        this.emulators.value;
+
+        this.notifyEmulatorStateChanged();
+      }),
+    );
+
+    this.subscriptions.push(
+      broker.on("updateEmulatorUiSelections", (uiSelections) => {
+        this.uiSelections.value = {
+          ...this.uiSelections.peek(),
+          ...uiSelections,
+        };
+      }),
+    );
+
+    this.subscriptions.push(
+      broker.on("selectEmulatorImportFolder", async () => {
+        const options: vscode.OpenDialogOptions = {
+          canSelectMany: false,
+          openLabel: `Pick an import folder`,
+          title: `Pick an import folder`,
+          canSelectFiles: false,
+          canSelectFolders: true,
+        };
+        const fileUri = await vscode.window.showOpenDialog(options);
+        // Update the UI of the selection
+        if (!fileUri || fileUri.length < 1) {
+          vscode.window.showErrorMessage("Invalid import folder selected.");
+          return;
+        }
+        broker.send("notifyEmulatorImportFolder", {
+          folder: fileUri[0].fsPath,
+        });
+      }),
+    );
+
+    this.subscriptions.push(
+      broker.on("launchEmulators", this.startEmulators.bind(this)),
+    );
+    this.subscriptions.push(
+      broker.on("stopEmulators", this.stopEmulators.bind(this)),
+    );
+
+    this.subscriptions.push(
+      effect(() => {
+        const projectId = firebaseRC.value?.projects?.default;
+        this.uiSelections.value = {
+          ...this.uiSelections.peek(),
+          projectId: this.getProjectIdForMode(
+            projectId,
+            this.uiSelections.peek().mode,
+          ),
+        };
+      }),
+    );
+  }
+
+  private readonly startCommand = vscode.commands.registerCommand(
+    "firebase.emulators.start",
+    this.startEmulators.bind(this),
+  );
+
+  private readonly stopCommand = vscode.commands.registerCommand(
+    "firebase.emulators.stop",
+    this.stopEmulators.bind(this),
+  );
+
+  readonly outputChannel =
+    vscode.window.createOutputChannel("Firebase Emulators");
+
+  // TODO(christhompson): Load UI selections from the current workspace.
+  // Requires context object.
+  readonly uiSelections = signal(DEFAULT_EMULATOR_UI_SELECTIONS);
+
+  readonly emulators = signal<
+    ExtensionToWebviewParamsMap["notifyEmulatorStateChanged"]
+  >({
+    status: "stopped",
+    infos: undefined,
+  });
+
+  readonly areEmulatorsRunning = computed(() => {
+    return this.emulators.value.status === "running";
+  });
+
+  private readonly subscriptions: (() => void)[] = [];
+
+  /**
+   * Formats a project ID with a demo prefix if we're in offline mode, or uses the
+   * regular ID if we're in hosting only mode.
+   */
+  private getProjectIdForMode(
+    projectId: string | undefined,
+    mode: "all" | "hosting" | "firemat",
+  ): string {
+    if (!projectId) {
+      return "demo-something";
+    }
+    if (mode === "hosting") {
+      return projectId;
+    }
+    return "demo-" + projectId;
+  }
+
+  notifyUISelectionChangedListeners() {
+    this.broker.send(
+      "notifyEmulatorUiSelectionsChanged",
+      this.uiSelections.value,
+    );
+  }
+
+  notifyEmulatorStateChanged() {
+    this.broker.send("notifyEmulatorStateChanged", this.emulators.value);
+  }
+
+  async startEmulators() {
+    const uiSelections = this.uiSelections.value;
+
     vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Window,
@@ -25,11 +167,19 @@ export function registerEmulators(broker: ExtensionBrokerImpl): Disposable {
       async (progress) => {
         progress.report({ increment: 0 });
         try {
-          await emulatorsStart(emulatorUiSelections);
-          broker.send("notifyRunningEmulatorInfo", {
-            uiUrl: getEmulatorUiUrl(),
-            displayInfo: listRunningEmulators(),
-          });
+          this.emulators.value = {
+            status: "starting",
+            infos: this.emulators.value.infos,
+          };
+          await emulatorsStart(uiSelections);
+          this.emulators.value = {
+            status: "running",
+            infos: {
+              uiUrl: getEmulatorUiUrl(),
+              displayInfo: listRunningEmulators(),
+            },
+          };
+
           vscode.window.showInformationMessage(
             "Firebase Extension: Emulators started successfully",
           );
@@ -43,10 +193,9 @@ export function registerEmulators(broker: ExtensionBrokerImpl): Disposable {
             const firematEmulatorDetails = getEmulatorDetails(
               Emulators.FIREMAT,
             );
-            isFirematEmulatorRunning.value = true;
 
             firematEmulatorDetails.instance.stdout?.on("data", (data) => {
-              outputChannel.appendLine("DEBUG: " + data.toString());
+              this.outputChannel.appendLine("DEBUG: " + data.toString());
             });
             firematEmulatorDetails.instance.stderr?.on("data", (data) => {
               if (data.toString().includes("Finished reload server")) {
@@ -54,13 +203,15 @@ export function registerEmulators(broker: ExtensionBrokerImpl): Disposable {
                   "firebase.firemat.executeIntrospection",
                 );
               } else {
-                outputChannel.appendLine("ERROR: " + data.toString());
+                this.outputChannel.appendLine("ERROR: " + data.toString());
               }
             });
           }
         } catch (e) {
-          broker.send("notifyEmulatorStartFailed");
-          isFirematEmulatorRunning.value = false; // TODO: verify firemat is not running once other emulators come into play
+          this.emulators.value = {
+            status: "stopped",
+            infos: undefined,
+          };
 
           vscode.window.showErrorMessage(
             "Firebase Extension: Emulators start failed - " + e,
@@ -69,56 +220,41 @@ export function registerEmulators(broker: ExtensionBrokerImpl): Disposable {
         progress.report({ increment: 100 });
       },
     );
-  });
+  }
 
-  broker.on("stopEmulators", () =>
-    vscode.commands.executeCommand("firebase.emulators.stop"),
-  );
+  async stopEmulators() {
+    return vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Window,
+        cancellable: false,
+        title: "Stopping emulators",
+      },
+      async (progress) => {
+        progress.report({ increment: 0 });
 
-  broker.on("selectEmulatorImportFolder", async () => {
-    const options: vscode.OpenDialogOptions = {
-      canSelectMany: false,
-      openLabel: `Pick an import folder`,
-      title: `Pick an import folder`,
-      canSelectFiles: false,
-      canSelectFolders: true,
-    };
-    const fileUri = await vscode.window.showOpenDialog(options);
-    // Update the UI of the selection
-    if (!fileUri || fileUri.length < 1) {
-      vscode.window.showErrorMessage("Invalid import folder selected.");
-      return;
-    }
-    broker.send("notifyEmulatorImportFolder", { folder: fileUri[0].fsPath });
-  });
+        this.emulators.value = {
+          status: "stopping",
+          infos: this.emulators.value.infos,
+        };
+        await stopEmulators();
+        this.emulators.value = {
+          status: "stopped",
+          infos: undefined,
+        };
 
-  return Disposable.from(
-    { dispose: stopEmulators },
-    vscode.commands.registerCommand("firebase.emulators.start", () => {
-      // TODO: We shouldn't have to start the emulators by going through webviews.
-      // Webviews may not be active, in which case the command will fail to do anything.
-      // This would involve refactoring the Emulator webview to move the logic in here.
-      broker.send("startEmulators");
-    }),
-    vscode.commands.registerCommand("firebase.emulators.stop", () => {
-      return vscode.window.withProgress(
-        {
-          location: vscode.ProgressLocation.Window,
-          cancellable: false,
-          title: "Stopping emulators",
-        },
-        async (progress) => {
-          progress.report({ increment: 0 });
+        vscode.window.showInformationMessage(
+          "Firebase Extension: Emulators stopped successfully",
+        );
 
-          await stopEmulators();
-          broker.send("notifyEmulatorsStopped");
-          vscode.window.showInformationMessage(
-            "Firebase Extension: Emulators stopped successfully",
-          );
+        progress.report({ increment: 100 });
+      },
+    );
+  }
 
-          progress.report({ increment: 100 });
-        },
-      );
-    }),
-  );
+  dispose(): void {
+    this.stopEmulators();
+    this.subscriptions.forEach((subscription) => subscription());
+    this.startCommand.dispose();
+    this.stopCommand.dispose();
+  }
 }
