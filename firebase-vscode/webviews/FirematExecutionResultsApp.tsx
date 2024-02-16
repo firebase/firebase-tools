@@ -31,7 +31,7 @@ export function FirematExecutionResultsApp() {
   if (isExecutionResult(results)) {
     // We display the response even if there are errors, just
     // in case the user wants to see the response anyway.
-    response = results;
+    response = results.data;
     const errors = results.errors;
 
     if (errors && errors.length !== 0) {
