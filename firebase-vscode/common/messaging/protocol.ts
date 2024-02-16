@@ -54,6 +54,7 @@ export type FirematConfig = DeepReadOnly<{
       source: string;
     };
   };
+  adhoc: string; // TODO: Temporary until official data connect yaml
 }>;
 
 export interface WebviewToExtensionParamsMap {

@@ -39,7 +39,7 @@ export function registerFdc(
     dispose: effect(() => {
       if (fdcService.endpoint.value) {
         // TODO move to client.start or setupLanguageClient
-        vscode.commands.executeCommand("firemat-graphql.restart");
+        vscode.commands.executeCommand("fdc-graphql.restart");
 
         vscode.commands.executeCommand("firebase.firemat.executeIntrospection");
       }

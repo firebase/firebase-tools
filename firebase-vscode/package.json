@@ -104,6 +104,13 @@
           "fontPath": "./resources/Monicons.woff",
           "fontCharacter": "\\F101"
         }
+      },
+      "data-connect": {
+        "description": "Data Connect icon",
+        "default": {
+          "fontPath": "./resources/GMPIcons.woff2",
+          "fontCharacter": "\\gmp_nav20_dataconnect"
+        }
       }
     },
     "views": {
