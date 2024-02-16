@@ -5,7 +5,7 @@ import { ExtensionBrokerImpl } from "../extension-broker";
 import { registerExecution } from "./execution";
 import { registerExplorer } from "./explorer";
 import { registerAdHoc } from "./ad-hoc-mutations";
-import { FirematService } from "./service";
+import { FirematService as FdcService } from "./service";
 import {
   OperationCodeLensProvider,
   SchemaCodeLensProvider,
@@ -17,32 +17,33 @@ import { registerFirebaseDataConnectView } from "./connect-instance";
 import { currentProjectId } from "../core/project";
 import { isTest } from "../utils/env";
 import { setupLanguageClient } from "./language-client";
+import { EmulatorsController } from "../core/emulators";
 
-const fdcEndpoint = globalSignal<string | undefined>(undefined);
-
-export function registerFiremat(
+export function registerFdc(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl,
   authService: AuthService,
+  emulatorController: EmulatorsController,
 ): Disposable {
-  const firematService = new FirematService(fdcEndpoint, authService);
-  const operationCodeLensProvider = new OperationCodeLensProvider();
-  const schemaCodeLensProvider = new SchemaCodeLensProvider();
+  const fdcService = new FdcService(authService, emulatorController);
+  const operationCodeLensProvider = new OperationCodeLensProvider(
+    emulatorController,
+  );
+  const schemaCodeLensProvider = new SchemaCodeLensProvider(emulatorController);
 
-  const client = setupLanguageClient(context, fdcEndpoint);
+  const client = setupLanguageClient(context, fdcService.endpoint);
   client.start();
 
+  // Perform some side-effects when the endpoint changes
+  context.subscriptions.push({
+    dispose: effect(() => {
+      if (fdcService.endpoint.value) {
+        // TODO move to client.start or setupLanguageClient
+        vscode.commands.executeCommand("fdc-graphql.restart");
 
-  // TODO: Move this out of the index.ts file
-  // keep global endpoint signal updated
-  broker.on("notifyFirematEmulatorEndpoint", ({ endpoint }) => {
-    // basic caching to avoid duplicate calls during emulator startup
-    if (fdcEndpoint.value !== endpoint) {
-      fdcEndpoint.value = endpoint;
-      // also update LSP
-      vscode.commands.executeCommand("fdc-graphql.restart");
-      vscode.commands.executeCommand("firebase.firemat.executeIntrospection");
-    }
+        vscode.commands.executeCommand("firebase.firemat.executeIntrospection");
+      }
+    }),
   });
 
   const selectedProjectStatus = vscode.window.createStatusBarItem(
@@ -60,11 +61,11 @@ export function registerFiremat(
         selectedProjectStatus.show();
       }),
     },
-    registerExecution(context, broker, firematService),
-    registerExplorer(context, broker, firematService),
-    registerFirebaseDataConnectView(context, broker),
+    registerExecution(context, broker, fdcService, emulatorController),
+    registerExplorer(context, broker, fdcService),
+    registerFirebaseDataConnectView(context, broker, emulatorController),
     registerAdHoc(context, broker),
-    registerConnectors(context, broker, firematService),
+    registerConnectors(context, broker, fdcService),
     operationCodeLensProvider,
     vscode.languages.registerCodeLensProvider(
       // **Hack**: For testing purposes, enable code lenses on all graphql files
@@ -74,9 +75,9 @@ export function registerFiremat(
       isTest
         ? [{ pattern: "/**/firebase-vscode/src/test/test_projects/**/*.gql" }]
         : [
-          { scheme: "file", language: "graphql" },
-          { scheme: "untitled", language: "graphql" },
-        ],
+            { scheme: "file", language: "graphql" },
+            { scheme: "untitled", language: "graphql" },
+          ],
       operationCodeLensProvider,
     ),
     schemaCodeLensProvider,

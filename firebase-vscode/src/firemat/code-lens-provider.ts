@@ -3,11 +3,11 @@ import { Kind, parse } from "graphql";
 import { OperationLocation } from "./types";
 import { Disposable } from "vscode";
 
-import { isFirematEmulatorRunning } from "../core/emulators";
 import { Signal } from "@preact/signals-core";
 import { firematConfig } from "../core/config";
 import path from "path";
 import { selectedInstance } from "./connect-instance";
+import { EmulatorsController } from "../core/emulators";
 
 abstract class ComputedCodeLensProvider implements vscode.CodeLensProvider {
   private readonly _onChangeCodeLensesEmitter = new vscode.EventEmitter<void>();
@@ -59,13 +59,17 @@ function isPathInside(childPath: string, parentPath: string): boolean {
  * CodeLensProvider provides codelens for actions in graphql files.
  */
 export class OperationCodeLensProvider extends ComputedCodeLensProvider {
+  constructor(readonly emulatorsController: EmulatorsController) {
+    super();
+  }
+
   provideCodeLenses(
     document: vscode.TextDocument,
     token: vscode.CancellationToken,
   ): vscode.CodeLens[] {
     // Wait for configs to be loaded and emulator to be running
     const configs = this.watch(firematConfig);
-    if (!configs || !this.watch(isFirematEmulatorRunning)) {
+    if (!configs) {
       return [];
     }
 
@@ -129,11 +133,15 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
  * CodeLensProvider for actions on the schema file
  */
 export class SchemaCodeLensProvider extends ComputedCodeLensProvider {
+  constructor(readonly emulatorsController: EmulatorsController) {
+    super();
+  }
+
   provideCodeLenses(
     document: vscode.TextDocument,
     token: vscode.CancellationToken,
   ): vscode.CodeLens[] {
-    if (!this.watch(isFirematEmulatorRunning)) {
+    if (!this.watch(this.emulatorsController.areEmulatorsRunning)) {
       return [];
     }
 

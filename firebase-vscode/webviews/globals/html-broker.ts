@@ -30,27 +30,19 @@ export function useBroker<MessageT extends keyof ExtensionToWebviewParamsMap>(
   >();
 
   useEffect(() => {
-    webLogger.info("here", "mount", message);
     const unSub = broker.on(message, (value) => {
-      webLogger.info("here", "received", message, `${value}`);
       setValue(value);
     });
 
     // TODO return a cleanup function to remove the listener
-    return () => {
-      webLogger.info("here", "unmount");
-      unSub();
-    };
+    return unSub;
   }, [message]);
 
   useEffect(() => {
     if (options?.initialRequest) {
-      webLogger.info("here", "send", options.initialRequest);
       broker.send(options.initialRequest);
     }
   }, [options?.initialRequest]);
-
-  webLogger.info("here", "did useBroker");
 
   return value;
 }

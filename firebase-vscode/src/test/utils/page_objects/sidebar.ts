@@ -7,9 +7,7 @@ export class FirebaseSidebar {
 
   async open() {
     await browser.executeWorkbench((vs: typeof vscode) => {
-      return vs.commands.executeCommand(
-        "firebase.firemat.explorerView.focus",
-      );
+      return vs.commands.executeCommand("firebase.firemat.explorerView.focus");
     });
   }
 
@@ -25,7 +23,11 @@ export class FirebaseSidebar {
     return $("vscode-button=Click to stop the emulators");
   }
 
-  /** Starts the emulators and waits for the emulators to be started. */
+  /** Starts the emulators and waits for the emulators to be started.
+   *
+   * This starts emulators by clicking on the button instead of using
+   * the command.
+   */
   async startEmulators() {
     await this.open();
 

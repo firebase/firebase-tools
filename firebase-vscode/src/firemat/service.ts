@@ -4,20 +4,37 @@ import {
   IntrospectionQuery,
   getIntrospectionQuery,
 } from "graphql";
-import { Signal } from "@preact/signals-core";
+import { Signal, computed, signal } from "@preact/signals-core";
 import { assertExecutionResult } from "../../common/graphql";
 import { FirematError } from "../../common/error";
 import { AuthService } from "../auth/service";
 import { UserMockKind } from "../../common/messaging/protocol";
+import { firstWhereDefined } from "../utils/signal";
+import { EmulatorsController } from "../core/emulators";
+import { Emulators } from "../cli";
 
 /**
  * Firemat Emulator service
  */
 export class FirematService {
   constructor(
-    private firematEndpoint: Signal<string | undefined>,
     private authService: AuthService,
+    private emulatorsController: EmulatorsController,
   ) {}
+
+  readonly endpoint = computed<string | undefined>(() => {
+    const emulatorInfos =
+      this.emulatorsController.emulators.value.infos?.displayInfo;
+    const firematEmulator = emulatorInfos?.find(
+      (emulatorInfo) => emulatorInfo.name === Emulators.FIREMAT,
+    );
+
+    if (!firematEmulator) {
+      return undefined;
+    }
+
+    return "http://" + firematEmulator.host + ":" + firematEmulator.port;
+  });
 
   private async decodeResponse(
     response: Response,
@@ -65,47 +82,6 @@ export class FirematService {
     }
 
     return this.handleInvalidResponse(response);
-  }
-
-  /**
-   * Obtains the current Firemat endpoint.
-   *
-   * If the endpoint is not available, waits for it to become available.
-   * This will result in waiting for the emulator to start.
-   *
-   * If the endpoint is not available after 30 seconds, an error is thrown.
-   */
-  private async getFirematEndpoint(): Promise<string> {
-    let currentValue = this.firematEndpoint.value;
-    if (currentValue) {
-      return currentValue;
-    }
-
-    return new Promise((resolve, reject) => {
-      let timeout: NodeJS.Timeout;
-      let unsubscribe: () => void;
-
-      function cleanup() {
-        clearTimeout(timeout);
-        unsubscribe();
-      }
-
-      timeout = setTimeout(() => {
-        cleanup();
-        reject(
-          new Error(
-            "Failed to connect to the emulator. Did you forget to start it?",
-          ),
-        );
-      }, 30 * 1000);
-
-      unsubscribe = this.firematEndpoint.subscribe((value) => {
-        if (value !== undefined) {
-          resolve(value);
-          cleanup();
-        }
-      });
-    });
   }
 
   /** Encode a body while handling the fact that "variables" is raw JSON.
@@ -179,7 +155,7 @@ export class FirematService {
         extensions: this._auth(),
       });
       const resp = await fetch(
-        (await this.getFirematEndpoint()) +
+        (await firstWhereDefined(this.endpoint)) +
           "/v1/projects/p/locations/l/services/local:executeGraphqlRead",
         {
           method: "POST",
@@ -212,7 +188,7 @@ export class FirematService {
       extensions: this._auth(),
     });
     const resp = await fetch(
-      (await this.getFirematEndpoint()) +
+      (await firstWhereDefined(this.endpoint)) +
         "/v1/projects/p/locations/l/services/local:executeGraphql",
       {
         method: "POST",

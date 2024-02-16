@@ -11,7 +11,7 @@ import { registerWebview } from "./webview";
 import { registerCore } from "./core";
 import { getSettings } from "./utils/settings";
 import { registerHosting } from "./hosting";
-import { registerFiremat } from "./firemat";
+import { registerFdc } from "./firemat";
 import { AuthService } from "./auth/service";
 
 // This method is called when your extension is activated
@@ -28,8 +28,13 @@ export function activate(context: vscode.ExtensionContext) {
 
   const authService = new AuthService(broker);
 
+  const [emulatorsController, coreDisposable] = registerCore({
+    broker,
+    context,
+  });
+
   context.subscriptions.push(
-    registerCore({ broker, context }),
+    coreDisposable,
     registerWebview({
       name: "sidebar",
       broker,
@@ -37,6 +42,6 @@ export function activate(context: vscode.ExtensionContext) {
     }),
     registerHosting(broker),
     authService,
-    registerFiremat(context, broker, authService),
+    registerFdc(context, broker, authService, emulatorsController),
   );
 }

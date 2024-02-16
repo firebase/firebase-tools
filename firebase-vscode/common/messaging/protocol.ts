@@ -11,6 +11,14 @@ import { EmulatorUiSelections, RunningEmulatorInfo } from "./types";
 import { ExecutionResult } from "graphql";
 import { SerializedError } from "../error";
 
+export const DEFAULT_EMULATOR_UI_SELECTIONS: EmulatorUiSelections = {
+  projectId: "demo-something",
+  importStateFolderPath: "",
+  exportStateOnExit: false,
+  mode: "firemat",
+  debugLogging: false,
+};
+
 export enum UserMockKind {
   ADMIN = "admin",
   UNAUTHENTICATED = "unauthenticated",
@@ -57,6 +65,13 @@ export interface WebviewToExtensionParamsMap {
   addUser: {};
   logout: { email: string };
 
+  /* Emulator panel requests */
+  getEmulatorUiSelections: void;
+  getEmulatorInfos: void;
+  updateEmulatorUiSelections: Partial<EmulatorUiSelections>;
+  /* Equivalent to the `firebase emulators:start` command.*/
+  launchEmulators: void;
+
   /** Notify extension that current user has been changed in UI. */
   requestChangeUser: { user: User | ServiceAccountUser };
 
@@ -101,21 +116,12 @@ export interface WebviewToExtensionParamsMap {
     href: string;
   };
 
-  /**
-   * Equivalent to the `firebase emulators:start` command.
-   */
-  launchEmulators: {
-    emulatorUiSelections: EmulatorUiSelections;
-  };
-
   /** Stops the emulators gracefully allowing for data export if required. */
   stopEmulators: void;
 
   selectEmulatorImportFolder: {};
 
   definedFirematArgs: string;
-
-  notifyFirematEmulatorEndpoint: { endpoint: string | undefined };
 
   /** Prompts the user to select a directory in which to place the quickstart */
   chooseQuickstartDir: {};
@@ -134,6 +140,14 @@ export interface FirematResults {
 }
 
 export interface ExtensionToWebviewParamsMap {
+  /** Triggered when the emulator UI/state changes */
+  notifyEmulatorUiSelectionsChanged: EmulatorUiSelections;
+  notifyEmulatorStateChanged: {
+    status: "running" | "stopped" | "starting" | "stopping";
+    infos: RunningEmulatorInfo | undefined;
+  };
+  notifyEmulatorImportFolder: { folder: string };
+
   /** Triggered when new environment variables values are found. */
   notifyEnv: { env: { isMonospace: boolean } };
 
@@ -184,11 +198,6 @@ export interface ExtensionToWebviewParamsMap {
    * Return user-selected preview channel name
    */
   notifyPreviewChannelResponse: { id: string };
-
-  notifyEmulatorsStopped: void;
-  notifyEmulatorStartFailed: void;
-  notifyRunningEmulatorInfo: RunningEmulatorInfo;
-  notifyEmulatorImportFolder: { folder: string };
 
   // firemat specific
   notifyFirematResults: FirematResults;

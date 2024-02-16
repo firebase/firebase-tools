@@ -35,14 +35,14 @@ export function setup(cb: () => void | Promise<void>) {
 /** A custom "test" to work around "afterEach" not working with the current configs */
 export function firematTest(
   description: string,
-  cb: () => void | Promise<void>,
+  cb: (this: Mocha.Context) => void | Promise<void>,
 ) {
   // Since tests may execute in any order, we dereference the list of setup callbacks
   // to unsure that other suites' setups don't affect this test.
   const testSetups = [...setups];
   const testTearDowns = [...tearDowns];
 
-  it(description, async () => {
+  it(description, async function () {
     // Tests may call addTearDown to register a callback to run after the test ends.
     // We make sure those callbacks are applied only to this test.
     const previousTearDowns = tearDowns;
@@ -51,10 +51,10 @@ export function firematTest(
     await runGuarded(testSetups);
 
     try {
-      await cb();
+      await cb.call(this);
     } finally {
-      tearDowns = previousTearDowns;
       await runGuarded(testTearDowns.reverse());
+      tearDowns = previousTearDowns;
     }
   });
 }

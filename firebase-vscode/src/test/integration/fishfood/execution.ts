@@ -1,17 +1,20 @@
 import { browser } from "@wdio/globals";
 import { FirebaseSidebar } from "../../utils/page_objects/sidebar";
 import { ExecutionPanel } from "../../utils/page_objects/execution";
-import { firematTest } from "../../utils/test_hooks";
+import { addTearDown, firematTest } from "../../utils/test_hooks";
 import { EditorView } from "../../utils/page_objects/editor";
 import { queriesPath } from "../../utils/projects";
+import { FirebaseCommands } from "../../utils/page_objects/commands";
 
 firematTest("Can execute queries", async function () {
   const workbench = await browser.getWorkbench();
   const sidebar = new FirebaseSidebar(workbench);
   const execution = new ExecutionPanel(workbench);
   const editor = new EditorView(workbench);
+  const commands = new FirebaseCommands();
 
   await sidebar.startEmulators();
+  addTearDown(() => commands.stopEmulators());
 
   // Update arguments
   await execution.open();
@@ -30,6 +33,9 @@ firematTest("Can execute queries", async function () {
   // TODO - revert history and result view after test
   const item = await execution.history.getSelectedItem();
 
+  // TODO this should work without opening the sidebar
+  // While the emulator correctly starts without, some leftover state
+  // still needs the sidebar.
   expect(await item.getLabel()).toBe("getPost");
   expect(await item.getStatus()).toBe("success");
   expect(await item.getDescription()).toContain('Arguments: { "id": "42" }');
