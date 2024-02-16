@@ -538,7 +538,7 @@ function toExegesisController(
       // Perform initial token parsing to get correct project state
       if (ctx.requestBody?.idToken) {
         const idToken = ctx.requestBody?.idToken;
-        const decoded = decode(idToken, { complete: true }) as {
+        const decoded = decode(idToken, { complete: true }) as any as {
           header: JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
