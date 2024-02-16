@@ -112,7 +112,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
           );
         }
 
-        if (isInAdhocFolder) {
+        if (isInAdhocFolder && !isInOperationFolder) {
           codeLenses.push(
             new vscode.CodeLens(range, {
               title: `$(plug) Move to connector`,
