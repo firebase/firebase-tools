@@ -2,11 +2,8 @@ import * as sinon from "sinon";
 import { expect } from "chai";
 
 import * as apphosting from "../../../gcp/apphosting";
-import * as repo from "../../../init/features/apphosting/repo";
 import * as poller from "../../../operation-poller";
-import * as prompt from "../../../prompt";
-import { createBackend, onboardBackend } from "../../../init/features/apphosting/index";
-import { FirebaseError } from "../../../error";
+import { createBackend, setDefaultTrafficPolicy } from "../../../init/features/apphosting/index";
 import * as deploymentTool from "../../../deploymentTool";
 
 describe("operationsConverter", () => {
@@ -14,9 +11,7 @@ describe("operationsConverter", () => {
 
   let pollOperationStub: sinon.SinonStub;
   let createBackendStub: sinon.SinonStub;
-  let getBackendStub: sinon.SinonStub;
-  let linkGitHubRepositoryStub: sinon.SinonStub;
-  let promptOnce: sinon.SinonStub;
+  let updateTrafficStub: sinon.SinonStub;
 
   beforeEach(() => {
     pollOperationStub = sandbox
@@ -25,11 +20,9 @@ describe("operationsConverter", () => {
     createBackendStub = sandbox
       .stub(apphosting, "createBackend")
       .throws("Unexpected createBackend call");
-    getBackendStub = sandbox.stub(apphosting, "getBackend").throws("Unexpected getBackend call");
-    linkGitHubRepositoryStub = sandbox
-      .stub(repo, "linkGitHubRepository")
-      .throws("Unexpected getBackend call");
-    promptOnce = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
+    updateTrafficStub = sandbox
+      .stub(apphosting, "updateTraffic")
+      .throws("Unexpected updateTraffic call");
   });
 
   afterEach(() => {
@@ -70,30 +63,41 @@ describe("operationsConverter", () => {
       labels: deploymentTool.labels(),
     };
 
-    it("should createBackend", async () => {
+    it("should create a new backend", async () => {
       createBackendStub.resolves(op);
       pollOperationStub.resolves(completeBackend);
 
-      await createBackend(projectId, location, backendInput, backendId);
+      await createBackend(projectId, location, backendId, cloudBuildConnRepo);
 
       expect(createBackendStub).to.be.calledWith(projectId, location, backendInput);
     });
 
-    it("should onboard a new backend", async () => {
-      const newBackendId = "newBackendId";
-      const newPath = `projects/${projectId}/locations/${location}/backends/${newBackendId}`;
-      op.name = newPath;
-      completeBackend.name = newPath;
-      getBackendStub.throws(new FirebaseError("error", { status: 404 }));
-      linkGitHubRepositoryStub.resolves(cloudBuildConnRepo);
-      createBackendStub.resolves(op);
-      pollOperationStub.resolves(completeBackend);
-      promptOnce.resolves("main");
+    it("should set default rollout policy to 100% all at once", async () => {
+      const completeTraffic: apphosting.Traffic = {
+        name: `projects/${projectId}/locations/${location}/backends/${backendId}/traffic`,
+        current: { splits: [] },
+        reconciling: false,
+        createTime: "0",
+        updateTime: "1",
+        etag: "",
+        uid: "",
+      };
+      updateTrafficStub.resolves(op);
+      pollOperationStub.resolves(completeTraffic);
 
-      const result = await onboardBackend(projectId, location, backendId);
+      await setDefaultTrafficPolicy(projectId, location, backendId, "main");
 
-      expect(result).to.deep.equal(completeBackend);
-      expect(createBackendStub).to.be.calledWith(projectId, location, backendInput);
+      expect(updateTrafficStub).to.be.calledWith(projectId, location, backendId, {
+        rolloutPolicy: {
+          codebaseBranch: "main",
+          stages: [
+            {
+              progression: "IMMEDIATE",
+              targetPercent: 100,
+            },
+          ],
+        },
+      });
     });
   });
 });
