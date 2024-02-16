@@ -101,9 +101,10 @@ const defaultFirematConfig: FirematConfig = {
   },
   operationSet: {
     crud: {
-      source: "./dataconnect/operations",
+      source: "./dataconnect/connector",
     },
   },
+  adhoc: "./dataconnect", // TODO: Temporary until official data connect yaml
 };
 
 const value = 42;
@@ -224,6 +225,7 @@ export function _readFirematConfig(): FirematConfig | undefined {
         },
       },
       operationSet: operations,
+      adhoc: configPath + "/dataconnect", // TODO: Temporary until official data connect yaml
     };
   } catch (e: any) {
     if (e.code === "ENOENT") {

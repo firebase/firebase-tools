@@ -290,6 +290,7 @@ operationSet:
           source: path.join(dir, "dataconnect", "operations"),
         },
       },
+      adhoc: path.join(dir, "dataconnect"),
     });
   });
 
@@ -341,6 +342,7 @@ operationSet:
           source: path.join(dir, "path", "to", "bar"),
         },
       },
+      adhoc: path.join(dir, "dataconnect"),
     });
   });
 
@@ -387,6 +389,7 @@ operationSet:
           source: path.join(dir, "dataconnect", "operations"),
         },
       },
+      adhoc: path.join(dir, "dataconnect"),
     });
   });
 

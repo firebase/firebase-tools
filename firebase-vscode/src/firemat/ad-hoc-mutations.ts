@@ -19,6 +19,7 @@ export function registerAdHoc(
     Int64: "0",
     String: '""',
     Timestamp: `"${new Date().toISOString()}"`,
+    Vector: "[]",
   };
 
   function isFirematScalarType(fieldType: string): boolean {
@@ -64,7 +65,7 @@ export function registerAdHoc(
   }
 
   function generateMutation(ast: ObjectTypeDefinitionNode): string {
-    const name = ast.name.value.toLowerCase();
+    const name = ast.name.value.charAt(0).toLowerCase() + ast.name.value.slice(1);
     const functionSpacing = "\t";
     const fieldSpacing = "\t\t";
     const mutation = [];
