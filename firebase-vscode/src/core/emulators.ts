@@ -158,7 +158,7 @@ export class EmulatorsController implements Disposable {
   async startEmulators() {
     const uiSelections = this.uiSelections.value;
 
-    vscode.window.withProgress(
+    return vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Window,
         cancellable: false,
