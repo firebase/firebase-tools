@@ -1,3 +1,4 @@
+import { browser } from "@wdio/globals";
 import { StatusBar, findQuickPicks } from "../../utils/page_objects/status_bar";
 import { firematTest } from "../../utils/test_hooks";
 import { EditorView } from "../../utils/page_objects/editor";
@@ -14,11 +15,11 @@ firematTest("Can pick an instance", async function () {
   await editor.openFile(queriesPath);
 
   // Check default value
-  expect(await statusBar.currentInstanceElement.getText()).toBe("asia-east1");
+  expect(await statusBar.currentInstanceElement.getText()).toBe("emulator");
 
   // Verify that the code-lenses reflect the selected instance
   await editor.firstCodeLense.waitForDisplayed();
-  expect(await editor.firstCodeLense.getText()).toBe("Run (asia-east1)");
+  expect(await editor.firstCodeLense.getText()).toBe("Run (emulator)");
 
   await statusBar.currentInstanceElement.click();
 
@@ -26,7 +27,7 @@ firematTest("Can pick an instance", async function () {
   const pickTexts = await picks.mapSeries((p) => p.getText());
 
   expect(pickTexts).toEqual([
-    "emulator",
+    "Emulator",
     "asia-east1",
     "europe-north1",
     "wonderland2",
@@ -34,11 +35,13 @@ firematTest("Can pick an instance", async function () {
 
   await picks[3].click();
 
+  // The code-lenses and statusbar should update
   statusBar.currentInstanceElement.waitUntil(
     async () =>
       (await statusBar.currentInstanceElement.getText()) === "wonderland2",
   );
-
-  // The code-lenses should have updated
-  expect(await editor.firstCodeLense.getText()).toBe("Run (asia-east1)");
+  statusBar.currentInstanceElement.waitUntil(
+    async () =>
+      (await editor.firstCodeLense.getText()) === "Run (wonderland2)",
+  );
 });
