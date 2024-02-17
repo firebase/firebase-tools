@@ -81,18 +81,20 @@ describe("composer", () => {
       },
       reconciling: false,
     };
-    const repos = {
-      repositories: [
-        {
-          name: "repo0",
-          remoteUri: "https://github.com/test/repo0.git",
-        },
-        {
-          name: "repo1",
-          remoteUri: "https://github.com/test/repo1.git",
-        },
-      ],
-    };
+    const repos: gcb.Repository[] = [
+      {
+        name: "repo0",
+        remoteUri: "https://github.com/test/repo0.git",
+        createTime: "",
+        updateTime: "",
+      },
+      {
+        name: "repo1",
+        remoteUri: "https://github.com/test/repo1.git",
+        createTime: "",
+        updateTime: "",
+      },
+    ];
 
     it("creates a connection if it doesn't exist", async () => {
       getConnectionStub.onFirstCall().rejects(new FirebaseError("error", { status: 404 }));
@@ -108,39 +110,34 @@ describe("composer", () => {
     it("creates repository if it doesn't exist", async () => {
       getConnectionStub.resolves(completeConn);
       fetchLinkableRepositoriesStub.resolves(repos);
-      promptOnceStub.onFirstCall().resolves(repos.repositories[0].remoteUri);
+      promptOnceStub.onFirstCall().resolves(repos[0].remoteUri);
       getRepositoryStub.rejects(new FirebaseError("error", { status: 404 }));
       createRepositoryStub.resolves({ name: "op" });
-      pollOperationStub.resolves(repos.repositories[0]);
+      pollOperationStub.resolves(repos[0]);
 
-      await repo.getOrCreateRepository(
-        projectId,
-        location,
-        connectionId,
-        repos.repositories[0].remoteUri,
-      );
+      await repo.getOrCreateRepository(projectId, location, connectionId, repos[0].remoteUri);
       expect(createRepositoryStub).to.be.calledWith(
         projectId,
         location,
         connectionId,
         "test-repo0",
-        repos.repositories[0].remoteUri,
+        repos[0].remoteUri,
       );
     });
 
     it("re-uses existing repository it already exists", async () => {
       getConnectionStub.resolves(completeConn);
       fetchLinkableRepositoriesStub.resolves(repos);
-      promptOnceStub.onFirstCall().resolves(repos.repositories[0].remoteUri);
-      getRepositoryStub.resolves(repos.repositories[0]);
+      promptOnceStub.onFirstCall().resolves(repos[0].remoteUri);
+      getRepositoryStub.resolves(repos[0]);
 
       const r = await repo.getOrCreateRepository(
         projectId,
         location,
         connectionId,
-        repos.repositories[0].remoteUri,
+        repos[0].remoteUri,
       );
-      expect(r).to.be.deep.equal(repos.repositories[0]);
+      expect(r).to.be.deep.equal(repos[0]);
     });
 
     it("throws error if no linkable repositories are available", async () => {
