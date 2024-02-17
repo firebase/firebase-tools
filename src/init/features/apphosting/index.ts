@@ -1,4 +1,5 @@
 import * as clc from "colorette";
+
 import * as repo from "./repo";
 import * as poller from "../../../operation-poller";
 import * as apphosting from "../../../gcp/apphosting";
@@ -212,9 +213,32 @@ export async function onboardRollout(
   const buildId = await apphosting.getNextRolloutId(projectId, location, backendId, 1);
   const buildOp = await apphosting.createBuild(projectId, location, backendId, buildId, buildInput);
 
-  const rolloutOp = await apphosting.createRollout(projectId, location, backendId, buildId, {
+  const rolloutBody = {
     build: `projects/${projectId}/locations/${location}/backends/${backendId}/builds/${buildId}`,
-  });
+  };
+
+  let tries = 0;
+  let done = false;
+  while (!done) {
+    tries++;
+    try {
+      await apphosting.createRollout(projectId, location, backendId, buildId, rolloutBody, true);
+      done = true;
+    } catch (err: unknown) {
+      if (tries >= 5) {
+        throw err;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  }
+
+  const rolloutOp = await apphosting.createRollout(
+    projectId,
+    location,
+    backendId,
+    buildId,
+    rolloutBody,
+  );
 
   const rolloutPoll = poller.pollOperation<Rollout>({
     ...apphostingPollerOptions,

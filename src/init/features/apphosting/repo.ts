@@ -135,9 +135,9 @@ async function promptRepositoryUri(
   const remoteUriToConnection: Record<string, gcb.Connection> = {};
   for (const conn of connections) {
     const { location, id } = parseConnectionName(conn.name)!;
-    const resp = await gcb.fetchLinkableRepositories(projectId, location, id);
-    if (resp.repositories && resp.repositories.length > 0) {
-      for (const repo of resp.repositories) {
+    const repos = await gcb.fetchLinkableRepositories(projectId, location, id);
+    if (Array.isArray(repos)) {
+      for (const repo of repos) {
         remoteUriToConnection[repo.remoteUri] = conn;
       }
     }
