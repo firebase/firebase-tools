@@ -318,9 +318,10 @@ export async function deleteBackend(
   projectId: string,
   location: string,
   backendId: string,
+  force: boolean,
 ): Promise<Operation> {
   const name = `projects/${projectId}/locations/${location}/backends/${backendId}`;
-  const res = await client.delete<Operation>(name, { queryParams: { force: "true" } });
+  const res = await client.delete<Operation>(name, { queryParams: { force: force.toString() } });
 
   return res.body;
 }

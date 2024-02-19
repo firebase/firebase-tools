@@ -20,19 +20,14 @@ const TABLE_HEAD = [
   "Updated Date",
 ];
 
-export const command = new Command("apphosting:backends:delete")
-  .description("Delete a backend from a Firebase project")
-  .option("-l, --location <location>", "App Backend location", "")
-  .option("-s, --backend <backend>", "Backend Id", "")
-  .withForce()
+export const command = new Command("apphosting:backends:delete <backendId>")
+  .description("delete a backend from a Firebase project")
+  .option("-l, --location <location>", "app Backend location", "")
+  .withForce("deletes backend along with any nested resources without prompt")
   .before(apphosting.ensureApiEnabled)
-  .action(async (options: Options) => {
+  .action(async (backendId: string, options: Options) => {
     const projectId = needProjectId(options);
     let location = options.location as string;
-    const backendId = options.backend as string;
-    if (!backendId) {
-      throw new FirebaseError("Backend id can't be empty.");
-    }
 
     if (!location) {
       const allowedLocations = (await apphosting.listLocations(projectId)).map(
@@ -80,7 +75,7 @@ export const command = new Command("apphosting:backends:delete")
     }
 
     try {
-      await apphosting.deleteBackend(projectId, location, backendId);
+      await apphosting.deleteBackend(projectId, location, backendId, options.force);
       utils.logSuccess(`Successfully deleted the backend: ${backendId}`);
     } catch (err: any) {
       throw new FirebaseError(
