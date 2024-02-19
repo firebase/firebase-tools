@@ -5,9 +5,9 @@ import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 
 export const command = new Command("apphosting:rollouts:create <backendId> <buildId>")
-  .description("Create a build for an App Hosting backend")
-  .option("-l, --location <location>", "Specify the region of the backend", "us-central1")
-  .option("-i, --id <rolloutId>", "Id of the rollout. If not present, autogenerate a random id", "")
+  .description("create a rollout using a build for an App Hosting backend")
+  .option("-l, --location <location>", "specify the region of the backend", "us-central1")
+  .option("-i, --id <rolloutId>", "id of the rollout (defaults to autogenerating a random id)", "")
   .before(apphosting.ensureApiEnabled)
   .action(async (backendId: string, buildId: string, options: Options) => {
     const projectId = needProjectId(options);
