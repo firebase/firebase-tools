@@ -106,6 +106,8 @@ describe("operationsConverter", () => {
       );
 
       // CreateBackend should be called twice; once initially and once after the service account was created
+      expect(createServiceAccountStub).to.be.calledOnce;
+      expect(addServiceAccountToRolesStub).to.be.calledOnce;
       expect(createBackendStub).to.be.calledTwice;
     });
 

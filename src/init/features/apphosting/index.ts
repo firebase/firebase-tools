@@ -12,7 +12,7 @@ import {
   Rollout,
 } from "../../../gcp/apphosting";
 import { addServiceAccountToRoles } from "../../../gcp/resourceManager";
-import { ServiceAccount, createServiceAccount } from "../../../gcp/iam";
+import { createServiceAccount } from "../../../gcp/iam";
 import { Repository } from "../../../gcp/cloudbuild";
 import { FirebaseError } from "../../../error";
 import { promptOnce } from "../../../prompt";
