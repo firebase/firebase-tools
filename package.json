@@ -183,7 +183,6 @@
     "@types/multer": "^1.4.3",
     "@types/node": "^14.18.18",
     "@types/node-fetch": "^2.5.12",
-    "@types/prettier": "^3.0.0",
     "@types/progress": "^2.0.3",
     "@types/puppeteer": "^5.4.2",
     "@types/react": "^18.0.20",
