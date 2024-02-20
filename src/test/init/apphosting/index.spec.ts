@@ -102,14 +102,12 @@ describe("operationsConverter", () => {
         .onSecondCall()
         .resolves(completeBackend);
 
-      console.log(
-        await createBackend(
-          projectId,
-          location,
-          backendId,
-          cloudBuildConnRepo,
-          /* serviceAccount= */ null,
-        ),
+      await createBackend(
+        projectId,
+        location,
+        backendId,
+        cloudBuildConnRepo,
+        /* serviceAccount= */ null,
       );
 
       // CreateBackend should be called twice; once initially and once after the service account was created
