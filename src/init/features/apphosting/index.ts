@@ -214,13 +214,25 @@ export async function orchestrateRollout(
   while (!done) {
     tries++;
     try {
-      await apphosting.createRollout(projectId, location, backendId, buildId, rolloutBody, true);
+      const validateOnly = true;
+      await apphosting.createRollout(
+        projectId,
+        location,
+        backendId,
+        buildId,
+        rolloutBody,
+        validateOnly,
+      );
       done = true;
     } catch (err: unknown) {
-      if (tries >= 5) {
+      if (err instanceof FirebaseError && err.status === 400) {
+          if (tries >= 5) {
+            throw err;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+      } else {
         throw err;
       }
-      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
 
