@@ -30,7 +30,7 @@ const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationRes
 /**
  * Set up a new App Hosting backend.
  */
-export async function doSetup(setup: any, projectId: string): Promise<void> {
+export async function doSetup(projectId: string, location: string | null): Promise<void> {
   await Promise.all([
     ensure(projectId, "cloudbuild.googleapis.com", "apphosting", true),
     ensure(projectId, "secretmanager.googleapis.com", "apphosting", true),
@@ -40,46 +40,43 @@ export async function doSetup(setup: any, projectId: string): Promise<void> {
 
   const allowedLocations = (await apphosting.listLocations(projectId)).map((loc) => loc.locationId);
 
-  if (setup.location) {
-    if (!allowedLocations.includes(setup.location)) {
+  if (location) {
+    if (!allowedLocations.includes(location)) {
       throw new FirebaseError(
-        `Invalid location ${setup.location}. Valid choices are ${allowedLocations.join(", ")}`,
+        `Invalid location ${location}. Valid choices are ${allowedLocations.join(", ")}`,
       );
     }
   }
 
   logBullet("First we need a few details to create your backend.");
 
-  const location: string = setup.location || (await promptLocation(projectId, allowedLocations));
+  location =
+    location ||
+    ((await promptOnce({
+      name: "region",
+      type: "list",
+      default: DEFAULT_REGION,
+      message:
+        "Please select a region " +
+        `(${clc.yellow("info")}: Your region determines where your backend is located):\n`,
+      choices: allowedLocations.map((loc) => ({ value: loc })),
+    })) as string);
 
   logSuccess(`Region set to ${location}.\n`);
 
-  let backendId: string;
-  while (true) {
-    backendId = await promptOnce({
-      name: "backendId",
-      type: "input",
-      default: "my-web-app",
-      message: "Create a name for your backend [1-30 characters]",
-    });
-    try {
-      await apphosting.getBackend(projectId, location, backendId);
-    } catch (err: any) {
-      if (err.status === 404) {
-        break;
-      }
-      throw new FirebaseError(
-        `Failed to check if backend with id ${backendId} already exists in ${location}`,
-        { original: err },
-      );
-    }
-    logWarning(`Backend with id ${backendId} already exists in ${location}`);
-  }
+  const backendId = await promptNewBackendId(projectId, location, {
+    name: "backendId",
+    type: "input",
+    default: "my-web-app",
+    message: "Create a name for your backend [1-30 characters]",
+  });
 
-  const backend = await onboardBackend(projectId, location, backendId);
+  const cloudBuildConnRepo = await repo.linkGitHubRepository(projectId, location);
+
+  const backend = await createBackend(projectId, location, backendId, cloudBuildConnRepo);
 
   // TODO: Once tag patterns are implemented, prompt which method the user
-  // prefers. We could reduce the nubmer of questions asked by letting people
+  // prefers. We could reduce the number of questions asked by letting people
   // enter tag:<pattern>?
   const branch = await promptOnce({
     name: "branch",
@@ -87,23 +84,8 @@ export async function doSetup(setup: any, projectId: string): Promise<void> {
     default: "main",
     message: "Pick a branch for continuous deployment",
   });
-  const traffic: DeepOmit<apphosting.Traffic, apphosting.TrafficOutputOnlyFields | "name"> = {
-    rolloutPolicy: {
-      codebaseBranch: branch,
-      stages: [
-        {
-          progression: "IMMEDIATE",
-          targetPercent: 100,
-        },
-      ],
-    },
-  };
-  const op = await apphosting.updateTraffic(projectId, location, backendId, traffic);
-  await poller.pollOperation<apphosting.Traffic>({
-    ...apphostingPollerOptions,
-    pollerName: `updateTraffic-${projectId}-${location}-${backendId}`,
-    operationResourceName: op.name,
-  });
+
+  await setDefaultTrafficPolicy(projectId, location, backendId, branch);
 
   const confirmRollout = await promptOnce({
     type: "confirm",
@@ -118,7 +100,7 @@ export async function doSetup(setup: any, projectId: string): Promise<void> {
     return;
   }
 
-  const { build } = await onboardRollout(projectId, location, backendId, {
+  await orchestrateRollout(projectId, location, backendId, {
     source: {
       codebase: {
         branch,
@@ -126,60 +108,33 @@ export async function doSetup(setup: any, projectId: string): Promise<void> {
     },
   });
 
-  if (build.state !== "READY") {
-    if (!build.buildLogsUri) {
-      throw new FirebaseError(
-        "Failed to build your app, but failed to get build logs as well. " +
-          "This is an internal error and should be reported",
-      );
-    }
-    throw new FirebaseError(
-      `Failed to build your app. Please inspect the build logs at ${build.buildLogsUri}.`,
-      { children: [build.error] },
-    );
-  }
-
   logSuccess(`Successfully created backend:\n\t${backend.name}`);
   logSuccess(`Your site is now deployed at:\n\thttps://${backend.uri}`);
-  logSuccess(
-    `View the rollout status by running:\n\tfirebase apphosting:backends:get ${backendId} --project ${projectId}`,
-  );
-}
-
-async function promptLocation(projectId: string, locations: string[]): Promise<string> {
-  return (await promptOnce({
-    name: "region",
-    type: "list",
-    default: DEFAULT_REGION,
-    message:
-      "Please select a region " +
-      `(${clc.yellow("info")}: Your region determines where your backend is located):\n`,
-    choices: locations.map((loc) => ({ value: loc })),
-  })) as string;
-}
-
-function toBackend(cloudBuildConnRepo: Repository): DeepOmit<Backend, BackendOutputOnlyFields> {
-  return {
-    servingLocality: "GLOBAL_ACCESS",
-    codebase: {
-      repository: `${cloudBuildConnRepo.name}`,
-      rootDirectory: "/",
-    },
-    labels: deploymentTool.labels(),
-  };
 }
 
 /**
- * Walkthrough the flow for creating a new backend.
+ * Prompts the user for a backend id and verifies that it doesn't match a pre-existing backend.
  */
-export async function onboardBackend(
+async function promptNewBackendId(
   projectId: string,
   location: string,
-  backendId: string,
-): Promise<Backend> {
-  const cloudBuildConnRepo = await repo.linkGitHubRepository(projectId, location);
-  const backendDetails = toBackend(cloudBuildConnRepo);
-  return await createBackend(projectId, location, backendDetails, backendId);
+  prompt: any,
+): Promise<string> {
+  while (true) {
+    const backendId = await promptOnce(prompt);
+    try {
+      await apphosting.getBackend(projectId, location, backendId);
+    } catch (err: any) {
+      if (err.status === 404) {
+        return backendId;
+      }
+      throw new FirebaseError(
+        `Failed to check if backend with id ${backendId} already exists in ${location}`,
+        { original: err },
+      );
+    }
+    logWarning(`Backend with id ${backendId} already exists in ${location}`);
+  }
 }
 
 /**
@@ -188,10 +143,19 @@ export async function onboardBackend(
 export async function createBackend(
   projectId: string,
   location: string,
-  backendReqBoby: Omit<Backend, BackendOutputOnlyFields>,
   backendId: string,
+  repository: Repository,
 ): Promise<Backend> {
-  const op = await apphosting.createBackend(projectId, location, backendReqBoby, backendId);
+  const backendReqBody: Omit<Backend, BackendOutputOnlyFields> = {
+    servingLocality: "GLOBAL_ACCESS",
+    codebase: {
+      repository: `${repository.name}`,
+      rootDirectory: "/",
+    },
+    labels: deploymentTool.labels(),
+  };
+
+  const op = await apphosting.createBackend(projectId, location, backendReqBody, backendId);
   const backend = await poller.pollOperation<Backend>({
     ...apphostingPollerOptions,
     pollerName: `create-${projectId}-${location}-${backendId}`,
@@ -201,9 +165,37 @@ export async function createBackend(
 }
 
 /**
- * Onboard a new rollout by creating a build and rollout
+ * Sets the default rollout policy to route 100% of traffic to the latest deploy.
  */
-export async function onboardRollout(
+export async function setDefaultTrafficPolicy(
+  projectId: string,
+  location: string,
+  backendId: string,
+  codebaseBranch: string,
+): Promise<void> {
+  const traffic: DeepOmit<apphosting.Traffic, apphosting.TrafficOutputOnlyFields | "name"> = {
+    rolloutPolicy: {
+      codebaseBranch: codebaseBranch,
+      stages: [
+        {
+          progression: "IMMEDIATE",
+          targetPercent: 100,
+        },
+      ],
+    },
+  };
+  const op = await apphosting.updateTraffic(projectId, location, backendId, traffic);
+  await poller.pollOperation<apphosting.Traffic>({
+    ...apphostingPollerOptions,
+    pollerName: `updateTraffic-${projectId}-${location}-${backendId}`,
+    operationResourceName: op.name,
+  });
+}
+
+/**
+ * Creates a new build and rollout and polls both to completion.
+ */
+export async function orchestrateRollout(
   projectId: string,
   location: string,
   backendId: string,
@@ -253,5 +245,18 @@ export async function onboardRollout(
 
   const [rollout, build] = await Promise.all([rolloutPoll, buildPoll]);
   logSuccess("Rollout completed.");
+
+  if (build.state !== "READY") {
+    if (!build.buildLogsUri) {
+      throw new FirebaseError(
+        "Failed to build your app, but failed to get build logs as well. " +
+          "This is an internal error and should be reported",
+      );
+    }
+    throw new FirebaseError(
+      `Failed to build your app. Please inspect the build logs at ${build.buildLogsUri}.`,
+      { children: [build.error] },
+    );
+  }
   return { rollout, build };
 }

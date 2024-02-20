@@ -158,18 +158,17 @@ export async function fetchLinkableRepositories(
   projectId: string,
   location: string,
   connectionId: string,
-): Promise<Repository[]> {
+  pageToken = "",
+  pageSize = 1000,
+): Promise<LinkableRepositories> {
   const name = `projects/${projectId}/locations/${location}/connections/${connectionId}:fetchLinkableRepositories`;
-  let pageToken = "";
-  const repos: Repository[] = [];
-  do {
-    const res = await client.get<LinkableRepositories>(name, { queryParams: { pageToken } });
-    if (Array.isArray(res.body.repositories)) {
-      repos.push(...res.body.repositories);
-    }
-    pageToken = res.body.nextPageToken;
-  } while (pageToken);
-  return repos;
+  const res = await client.get<LinkableRepositories>(name, {
+    queryParams: {
+      pageSize,
+      pageToken,
+    },
+  });
+  return res.body;
 }
 
 /**
