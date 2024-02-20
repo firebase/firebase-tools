@@ -13,6 +13,7 @@ import {
   assertUnique,
 } from "../../../functions/projectConfig";
 import { FirebaseError } from "../../../error";
+import { LATEST_VERSION } from "../../../deploy/functions/runtimes/python";
 
 const MAX_ATTEMPTS = 5;
 
@@ -186,7 +187,14 @@ async function languageSetup(setup: any, config: Config): Promise<any> {
       cbconfig.ignore = ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"];
       break;
     case "python":
-      cbconfig.ignore = ["venv", ".git", "firebase-debug.log", "firebase-debug.*.log"];
+      cbconfig.ignore = [
+        "venv",
+        "__pycache__",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+      ];
+      cbconfig.runtime = LATEST_VERSION as any;
       break;
   }
   return require("./" + language).setup(setup, config);
