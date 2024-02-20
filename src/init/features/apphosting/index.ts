@@ -190,6 +190,7 @@ export async function createBackend(
   try {
     return await createBackendAndPoll();
   } catch (err: any) {
+    console.log(`error: ${err}`);
     if (err.status === 403 && err.message.includes(defaultServiceAccount)) {
       // Create the default service account if it doesn't exist and try again.
       await provisionDefaultComputeServiceAccount(projectId);
@@ -224,7 +225,7 @@ async function provisionDefaultComputeServiceAccount(projectId: string): Promise
       "roles/storage.objectAdmin",
       "roles/firebase.sdkAdminServiceAgent",
     ],
-    /*skipAccountLookup= */ true,
+    /* skipAccountLookup= */ true,
   );
 }
 

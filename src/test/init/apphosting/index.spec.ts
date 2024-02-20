@@ -74,7 +74,7 @@ describe("operationsConverter", () => {
         location,
         backendId,
         cloudBuildConnRepo,
-        /* serviceAccount= */ null,
+        "custom-service-account",
       );
 
       const backendInput: Omit<apphosting.Backend, apphosting.BackendOutputOnlyFields> = {
@@ -92,23 +92,57 @@ describe("operationsConverter", () => {
       createBackendStub.resolves(op);
       pollOperationStub
         // Initial CreateBackend operation should throw a permission denied to trigger service account creation.
+        .onFirstCall()
         .throws(
-          new FirebaseError("missing actAs permission on my-service-account", { status: 403 }),
+          new FirebaseError(
+            `missing actAs permission on firebase-app-hosting-compute@${projectId}.iam.gserviceaccount.com`,
+            { status: 403 },
+          ),
         )
+        .onSecondCall()
         .resolves(completeBackend);
 
-      await createBackend(
-        projectId,
-        location,
-        backendId,
-        cloudBuildConnRepo,
-        /* serviceAccount= */ "my-service-account",
+      console.log(
+        await createBackend(
+          projectId,
+          location,
+          backendId,
+          cloudBuildConnRepo,
+          /* serviceAccount= */ null,
+        ),
       );
 
       // CreateBackend should be called twice; once initially and once after the service account was created
+      expect(createBackendStub).to.be.calledTwice;
       expect(createServiceAccountStub).to.be.calledOnce;
       expect(addServiceAccountToRolesStub).to.be.calledOnce;
-      expect(createBackendStub).to.be.calledTwice;
+    });
+
+    it("does not try to provision a custom service account", async () => {
+      createBackendStub.resolves(op);
+      pollOperationStub
+        // Initial CreateBackend operation should throw a permission denied to
+        // potentially trigger service account creation.
+        .onFirstCall()
+        .throws(
+          new FirebaseError("missing actAs permission on my-service-account", { status: 403 }),
+        )
+        .onSecondCall()
+        .resolves(completeBackend);
+
+      expect(
+        createBackend(
+          projectId,
+          location,
+          backendId,
+          cloudBuildConnRepo,
+          /* serviceAccount= */ "my-service-account",
+        ),
+      ).to.be.rejectedWith(FirebaseError, "missing actAs permission on my-service-account");
+
+      expect(createBackendStub).to.be.calledOnce;
+      expect(createServiceAccountStub).to.not.have.been.called;
+      expect(addServiceAccountToRolesStub).to.not.have.been.called;
     });
 
     it("should set default rollout policy to 100% all at once", async () => {
