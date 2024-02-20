@@ -1,0 +1,1 @@
+- Fixed issue where GitHub actions would fail due to lack of permission. (#6791)
