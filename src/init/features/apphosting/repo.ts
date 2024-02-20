@@ -258,7 +258,7 @@ async function promptAppInstall(conn: gcb.Connection): Promise<gcb.Connection> {
 }
 
 /**
- *
+ * Creates a new Cloud Build Connection resource.
  */
 export async function createConnection(
   projectId: string,
