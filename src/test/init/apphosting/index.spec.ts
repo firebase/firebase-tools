@@ -2,9 +2,12 @@ import * as sinon from "sinon";
 import { expect } from "chai";
 
 import * as apphosting from "../../../gcp/apphosting";
+import * as iam from "../../../gcp/iam";
+import * as resourceManager from "../../../gcp/resourceManager";
 import * as poller from "../../../operation-poller";
 import { createBackend, setDefaultTrafficPolicy } from "../../../init/features/apphosting/index";
 import * as deploymentTool from "../../../deploymentTool";
+import { FirebaseError } from "../../../error";
 
 describe("operationsConverter", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
@@ -12,6 +15,8 @@ describe("operationsConverter", () => {
   let pollOperationStub: sinon.SinonStub;
   let createBackendStub: sinon.SinonStub;
   let updateTrafficStub: sinon.SinonStub;
+  let createServiceAccountStub: sinon.SinonStub;
+  let addServiceAccountToRolesStub: sinon.SinonStub;
 
   beforeEach(() => {
     pollOperationStub = sandbox
@@ -23,6 +28,12 @@ describe("operationsConverter", () => {
     updateTrafficStub = sandbox
       .stub(apphosting, "updateTraffic")
       .throws("Unexpected updateTraffic call");
+    createServiceAccountStub = sandbox
+      .stub(iam, "createServiceAccount")
+      .throws("Unexpected createServiceAccount call");
+    addServiceAccountToRolesStub = sandbox
+      .stub(resourceManager, "addServiceAccountToRoles")
+      .throws("Unexpected addServiceAccountToRoles call");
   });
 
   afterEach(() => {
@@ -54,22 +65,48 @@ describe("operationsConverter", () => {
       updateTime: "1",
     };
 
-    const backendInput: Omit<apphosting.Backend, apphosting.BackendOutputOnlyFields> = {
-      servingLocality: "GLOBAL_ACCESS",
-      codebase: {
-        repository: cloudBuildConnRepo.name,
-        rootDirectory: "/",
-      },
-      labels: deploymentTool.labels(),
-    };
-
     it("should create a new backend", async () => {
       createBackendStub.resolves(op);
       pollOperationStub.resolves(completeBackend);
 
-      await createBackend(projectId, location, backendId, cloudBuildConnRepo);
+      await createBackend(
+        projectId,
+        location,
+        backendId,
+        cloudBuildConnRepo,
+        /* serviceAccount= */ null,
+      );
 
+      const backendInput: Omit<apphosting.Backend, apphosting.BackendOutputOnlyFields> = {
+        servingLocality: "GLOBAL_ACCESS",
+        codebase: {
+          repository: cloudBuildConnRepo.name,
+          rootDirectory: "/",
+        },
+        labels: deploymentTool.labels(),
+      };
       expect(createBackendStub).to.be.calledWith(projectId, location, backendInput);
+    });
+
+    it("should provision the default compute service account", async () => {
+      createBackendStub.resolves(op);
+      pollOperationStub
+        // Initial CreateBackend operation should throw a permission denied to trigger service account creation.
+        .throws(
+          new FirebaseError("missing actAs permission on my-service-account", { status: 403 }),
+        )
+        .resolves(completeBackend);
+
+      await createBackend(
+        projectId,
+        location,
+        backendId,
+        cloudBuildConnRepo,
+        /* serviceAccount= */ "my-service-account",
+      );
+
+      // CreateBackend should be called twice; once initially and once after the service account was created
+      expect(createBackendStub).to.be.calledTwice;
     });
 
     it("should set default rollout policy to 100% all at once", async () => {
