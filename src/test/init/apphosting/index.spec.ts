@@ -101,6 +101,8 @@ describe("operationsConverter", () => {
         )
         .onSecondCall()
         .resolves(completeBackend);
+      createServiceAccountStub.resolves({});
+      addServiceAccountToRolesStub.resolves({});
 
       await createBackend(
         projectId,
