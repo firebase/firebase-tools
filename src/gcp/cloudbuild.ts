@@ -158,9 +158,16 @@ export async function fetchLinkableRepositories(
   projectId: string,
   location: string,
   connectionId: string,
+  pageToken = "",
+  pageSize = 1000,
 ): Promise<LinkableRepositories> {
   const name = `projects/${projectId}/locations/${location}/connections/${connectionId}:fetchLinkableRepositories`;
-  const res = await client.get<LinkableRepositories>(name);
+  const res = await client.get<LinkableRepositories>(name, {
+    queryParams: {
+      pageSize,
+      pageToken,
+    },
+  });
   return res.body;
 }
 
