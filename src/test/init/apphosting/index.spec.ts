@@ -116,7 +116,7 @@ describe("operationsConverter", () => {
       expect(addServiceAccountToRolesStub).to.be.calledOnce;
     });
 
-    it("does not try to provision a custom service account", async () => {
+    it("does not try to provision a custom service account", () => {
       createBackendStub.resolves(op);
       pollOperationStub
         // Initial CreateBackend operation should throw a permission denied to
