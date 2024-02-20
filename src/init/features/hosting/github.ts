@@ -277,6 +277,7 @@ function mkdirNotExists(dir: string): void {
 type GitHubWorkflowConfig = {
   name: string;
   on: string | { [key: string]: { [key: string]: string[] } };
+  permissions?: string | { [key: string]: string };
   jobs: {
     [key: string]: {
       if?: string;
@@ -300,6 +301,11 @@ function writeChannelActionYMLFile(
   const workflowConfig: GitHubWorkflowConfig = {
     name: "Deploy to Firebase Hosting on PR",
     on: "pull_request",
+    permissions: {
+      checks: "write",
+      contents: "read",
+      "pull-requests": "write",
+    },
     jobs: {
       ["build_and_preview"]: {
         if: "${{ github.event.pull_request.head.repo.full_name == github.repository }}", // secrets aren't accessible on PRs from forks
