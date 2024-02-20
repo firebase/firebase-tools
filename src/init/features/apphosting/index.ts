@@ -226,10 +226,10 @@ export async function orchestrateRollout(
       done = true;
     } catch (err: unknown) {
       if (err instanceof FirebaseError && err.status === 400) {
-          if (tries >= 5) {
-            throw err;
-          }
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+        if (tries >= 5) {
+          throw err;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       } else {
         throw err;
       }
