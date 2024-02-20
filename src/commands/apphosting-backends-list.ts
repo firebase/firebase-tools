@@ -1,5 +1,3 @@
-const Table = require("cli-table");
-
 import { Command } from "../command";
 import { datetimeString } from "../utils";
 import { FirebaseError } from "../error";
@@ -8,6 +6,7 @@ import { needProjectId } from "../projectUtils";
 import { Options } from "../options";
 import * as apphosting from "../gcp/apphosting";
 
+const Table = require("cli-table");
 const TABLE_HEAD = ["Backend ID", "Repository", "Location", "URL", "Created Date", "Updated Date"];
 
 export const command = new Command("apphosting:backends:list")
@@ -17,7 +16,6 @@ export const command = new Command("apphosting:backends:list")
   .action(async (options: Options) => {
     const projectId = needProjectId(options);
     const location = options.location as string;
-    const table = new Table({ head: TABLE_HEAD, style: { head: ["green"] } });
     let backendRes: apphosting.ListBackendsResponse;
     try {
       backendRes = await apphosting.listBackends(projectId, location);
@@ -29,18 +27,32 @@ export const command = new Command("apphosting:backends:list")
     }
 
     const backends = backendRes.backends ?? [];
-    for (const backend of backends) {
-      const [backendLocation, , backendId] = backend.name.split("/").slice(3, 6);
-      table.push([
-        backendId,
-        backend.codebase?.repository?.split("/").pop() ?? "",
-        backendLocation,
-        backend.uri.startsWith("https:") ? backend.uri : "https://" + backend.uri,
-        datetimeString(new Date(backend.createTime)),
-        datetimeString(new Date(backend.updateTime)),
-      ]);
-    }
-    logger.info(table.toString());
+    printBackendsTable(backends);
 
     return backends;
   });
+
+/**
+ * Prints a table given a list of backends
+ */
+export function printBackendsTable(backends: apphosting.Backend[]): void {
+  const table = new Table({
+    head: TABLE_HEAD,
+    style: { head: ["green"] },
+  });
+
+  for (const backend of backends) {
+    // sample backend.name value: "projects/<project-name>/locations/us-central1/backends/<backend-id>"
+    const [backendLocation, , backendId] = backend.name.split("/").slice(3, 6);
+    table.push([
+      backendId,
+      // sample repository value: "projects/<project-name>/locations/us-central1/connections/<connection-id>/repositories/<repository-name>"
+      backend.codebase?.repository?.split("/").pop() ?? "",
+      backendLocation,
+      backend.uri.startsWith("https:") ? backend.uri : "https://" + backend.uri,
+      datetimeString(new Date(backend.createTime)),
+      datetimeString(new Date(backend.updateTime)),
+    ]);
+  }
+  logger.info(table.toString());
+}
