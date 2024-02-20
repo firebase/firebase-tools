@@ -63,7 +63,7 @@ export async function doSetup(projectId: string, location: string | null): Promi
 
   logSuccess(`Region set to ${location}.\n`);
 
-  const backendId = await promptNonexistentBackend(projectId, location);
+  const backendId = await promptNewBackendId(projectId, location);
 
   const cloudBuildConnRepo = await repo.linkGitHubRepository(projectId, location);
 
@@ -109,7 +109,7 @@ export async function doSetup(projectId: string, location: string | null): Promi
 /**
  * Prompts the user for a backend id and verifies that it doesn't match a pre-existing backend.
  */
-async function promptNonexistentBackend(projectId: string, location: string): Promise<string> {
+async function promptNewBackendId(projectId: string, location: string): Promise<string> {
   while (true) {
     const backendId = await promptOnce({
       name: "backendId",
