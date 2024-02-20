@@ -27,6 +27,7 @@
     "test": "npm run lint:quiet && npm run test:compile && npm run mocha",
     "test:client-integration": "bash ./scripts/client-integration-tests/run.sh",
     "test:compile": "tsc --project tsconfig.compile.json",
+    "test:all-emulators": "npm run test:emulator && npm run test:extensions-emulator && npm run test:import-export && npm run test:storage-emulator-integration",
     "test:emulator": "bash ./scripts/emulator-tests/run.sh",
     "test:extensions-deploy": "bash ./scripts/extensions-deploy-tests/run.sh",
     "test:extensions-emulator": "bash ./scripts/extensions-emulator-tests/run.sh",
