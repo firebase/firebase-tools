@@ -104,38 +104,6 @@ export async function doSetup(projectId: string, location: string | null): Promi
 
   logSuccess(`Successfully created backend:\n\t${backend.name}`);
   logSuccess(`Your site is now deployed at:\n\thttps://${backend.uri}`);
-<<<<<<< HEAD
-=======
-  logSuccess(
-    `View the rollout status by running:\n\tfirebase apphosting:backends:get ${backendId} --project ${projectId}`,
-  );
-  logSuccess(
-    `See your new App Hosting backend in the Firebase console at:\n\thttps://console.firebase.google.com/project/${projectId}/apphosting`,
-  );
-}
-
-async function promptLocation(projectId: string, locations: string[]): Promise<string> {
-  return (await promptOnce({
-    name: "region",
-    type: "list",
-    default: DEFAULT_REGION,
-    message:
-      "Please select a region " +
-      `(${clc.yellow("info")}: Your region determines where your backend is located):\n`,
-    choices: locations.map((loc) => ({ value: loc })),
-  })) as string;
-}
-
-function toBackend(cloudBuildConnRepo: Repository): DeepOmit<Backend, BackendOutputOnlyFields> {
-  return {
-    servingLocality: "GLOBAL_ACCESS",
-    codebase: {
-      repository: `${cloudBuildConnRepo.name}`,
-      rootDirectory: "/",
-    },
-    labels: deploymentTool.labels(),
-  };
->>>>>>> master
 }
 
 /**
