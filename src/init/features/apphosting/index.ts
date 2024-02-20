@@ -155,7 +155,8 @@ function defaultComputeServiceAccountEmail(projectId: string): string {
 }
 
 /**
- * Creates (and waits for) a new backend.
+ * Creates (and waits for) a new backend. Optionally may create the default compute service account if
+ * it was requested and doesn't exist.
  */
 export async function createBackend(
   projectId: string,
