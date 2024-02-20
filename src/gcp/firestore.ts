@@ -1,11 +1,17 @@
-import { firestoreOrigin } from "../api";
+import { firestoreOrigin, firestoreOriginOrEmulator } from "../api";
 import { Client } from "../apiv2";
 import { logger } from "../logger";
 
-const apiClient = new Client({
+const prodOnlyClient = new Client({
   auth: true,
   apiVersion: "v1",
   urlPrefix: firestoreOrigin,
+});
+
+const emuOrProdClient = new Client({
+  auth: true,
+  apiVersion: "v1",
+  urlPrefix: firestoreOriginOrEmulator,
 });
 
 export interface Database {
@@ -31,7 +37,12 @@ export interface Database {
  * @param {string} project the Google Cloud project
  * @param {string} database the Firestore database name
  */
-export async function getDatabase(project: string, database: string): Promise<Database> {
+export async function getDatabase(
+  project: string,
+  database: string,
+  allowEmulator: boolean = false,
+): Promise<Database> {
+  const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
   const url = `projects/${project}/databases/${database}`;
   try {
     const resp = await apiClient.get<Database>(url);
@@ -50,7 +61,11 @@ export async function getDatabase(project: string, database: string): Promise<Da
  * @param {string} project the Google Cloud project ID.
  * @return {Promise<string[]>} a promise for an array of collection IDs.
  */
-export function listCollectionIds(project: string): Promise<string[]> {
+export function listCollectionIds(
+  project: string,
+  allowEmulator: boolean = false,
+): Promise<string[]> {
+  const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
   const url = "projects/" + project + "/databases/(default)/documents:listCollectionIds";
   const data = {
     // Maximum 32-bit integer
@@ -71,7 +86,8 @@ export function listCollectionIds(project: string): Promise<string[]> {
  * @param {object} doc a Document object to delete.
  * @return {Promise} a promise for the delete operation.
  */
-export async function deleteDocument(doc: any): Promise<any> {
+export async function deleteDocument(doc: any, allowEmulator: boolean = false): Promise<any> {
+  const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
   return apiClient.delete(doc.name);
 }
 
@@ -85,7 +101,12 @@ export async function deleteDocument(doc: any): Promise<any> {
  * @param {object[]} docs an array of Document objects to delete.
  * @return {Promise<number>} a promise for the number of deleted documents.
  */
-export async function deleteDocuments(project: string, docs: any[]): Promise<number> {
+export async function deleteDocuments(
+  project: string,
+  docs: any[],
+  allowEmulator: boolean = false,
+): Promise<number> {
+  const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
   const url = "projects/" + project + "/databases/(default)/documents:commit";
 
   const writes = docs.map((doc) => {

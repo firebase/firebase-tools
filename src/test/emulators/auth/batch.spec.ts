@@ -201,7 +201,9 @@ describeAuthEmulator("accounts:batchCreate", ({ authApi }) => {
     const user2SignIn = await signInWithPhoneNumber(authApi(), user2.phoneNumber);
     expect(user2SignIn.localId).to.equal(user2.localId);
 
-    expect(decodeJwt(user2SignIn.idToken)).to.have.property("hello").equal("world");
+    expect(decodeJwt(user2SignIn.idToken, { json: true }) as any)
+      .to.have.property("hello")
+      .equal("world");
   });
 
   it("should create specified accounts via legacy endpoint", async () => {

@@ -17,7 +17,7 @@ describe("apphosting", () => {
     function idPrefix(date: Date): string {
       const year = date.getUTCFullYear();
       const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-      const day = String(date.getUTCDay()).padStart(2, "0");
+      const day = String(date.getUTCDate()).padStart(2, "0");
       return `build-${year}-${month}-${day}`;
     }
 

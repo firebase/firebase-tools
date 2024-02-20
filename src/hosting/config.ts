@@ -13,7 +13,6 @@ import {
   HostingSource,
 } from "../firebaseConfig";
 import { partition } from "../functional";
-import { RequireAtLeastOne } from "../metaprogramming";
 import { dirExistsSync } from "../fsutils";
 import { resolveProjectPath } from "../projectPath";
 import { HostingOptions } from "./options";
@@ -117,10 +116,8 @@ export function extract(options: HostingOptions): HostingMultiple {
 
   if (!Array.isArray(config.hosting)) {
     // Upgrade the type because we pinky swear to ensure site exists as a backup.
-    const res = cloneDeep(config.hosting) as unknown as RequireAtLeastOne<{
-      site: string;
-      target: string;
-    }>;
+    const res = cloneDeep(config.hosting) as unknown as HostingMultiple[number];
+
     // earlier the default RTDB instance was used as the hosting site
     // because it used to be created along with the Firebase project.
     // RTDB instance creation is now deferred and decoupled from project creation.

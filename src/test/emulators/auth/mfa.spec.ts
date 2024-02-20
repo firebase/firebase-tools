@@ -79,7 +79,7 @@ describeAuthEmulator("mfa enrollment", ({ authApi, getClock }) => {
     expect(userInfo.mfaInfo![0].phoneInfo).to.equal(phoneNumber);
     const mfaEnrollmentId = userInfo.mfaInfo![0].mfaEnrollmentId;
 
-    const decoded = decodeJwt(res.body.idToken, { complete: true }) as {
+    const decoded = decodeJwt(res.body.idToken, { complete: true }) as unknown as {
       header: JwtHeader;
       payload: FirebaseJwtPayload;
     } | null;
@@ -313,7 +313,7 @@ describeAuthEmulator("mfa enrollment", ({ authApi, getClock }) => {
         expect(res.body.idToken).to.be.a("string");
         expect(res.body.refreshToken).to.be.a("string");
 
-        const decoded = decodeJwt(res.body.idToken, { complete: true }) as {
+        const decoded = decodeJwt(res.body.idToken, { complete: true }) as unknown as {
           header: JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
@@ -445,7 +445,7 @@ describeAuthEmulator("mfa enrollment", ({ authApi, getClock }) => {
         expect(res.body.idToken).to.be.a("string");
         expect(res.body.refreshToken).to.be.a("string");
 
-        const decoded = decodeJwt(res.body.idToken, { complete: true }) as {
+        const decoded = decodeJwt(res.body.idToken, { complete: true }) as unknown as {
           header: JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
@@ -562,7 +562,7 @@ describeAuthEmulator("mfa enrollment", ({ authApi, getClock }) => {
           expect(res.body.idToken).to.be.a("string");
           expect(res.body.refreshToken).to.be.a("string");
 
-          const decoded = decodeJwt(res.body.idToken, { complete: true }) as {
+          const decoded = decodeJwt(res.body.idToken, { complete: true }) as unknown as {
             header: JwtHeader;
             payload: FirebaseJwtPayload;
           } | null;
