@@ -12,5 +12,6 @@ export const command = new Command("apphosting:backends:create")
   .before(requireInteractive)
   .action(async (options: Options) => {
     const projectId = needProjectId(options);
-    await doSetup(options, projectId);
+    const location = options.location;
+    await doSetup(projectId, location as string | null);
   });
