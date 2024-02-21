@@ -4,3 +4,4 @@
     that this is a preview feature and if you find any bugs, please file them
     here: <https://github.com/firebase/firebase-tools/issues>.
 - Improve FAH onboarding flow to connect backends with SCMs (#6764).
+- Add python functions.runtime init value and throw error if unset (#6796).

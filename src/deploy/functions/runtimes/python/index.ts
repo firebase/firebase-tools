@@ -12,6 +12,7 @@ import { logger } from "../../../../logger";
 import { DEFAULT_VENV_DIR, runWithVirtualEnv, virtualEnvCmd } from "../../../../functions/python";
 import { FirebaseError } from "../../../../error";
 import { Build } from "../../build";
+import { logLabeledBullet } from "../../../../utils";
 
 export const LATEST_VERSION: runtimes.Runtime = "python312";
 
@@ -30,11 +31,19 @@ export async function tryCreateDelegate(
     logger.debug("Customer code is not Python code.");
     return;
   }
-  const runtime = context.runtime ? context.runtime : LATEST_VERSION;
-  if (!runtimes.isValidRuntime(runtime)) {
-    throw new FirebaseError(`Runtime ${runtime} is not a valid Python runtime`);
+  if (context.runtime === undefined || context.runtime === "") {
+    throw new FirebaseError(
+      `The functions.runtime value must be set in firebase.json, the latest python version is ${LATEST_VERSION}`,
+    );
   }
-  return Promise.resolve(new Delegate(context.projectId, context.sourceDir, runtime));
+  if (!runtimes.isValidRuntime(context.runtime)) {
+    throw new FirebaseError(`Runtime ${context.runtime} is not a valid Python runtime`);
+  }
+  logLabeledBullet(
+    "functions",
+    `Using Python runtime ${context.runtime}, value can be set in firebase.json`,
+  );
+  return Promise.resolve(new Delegate(context.projectId, context.sourceDir, context.runtime));
 }
 
 /**
