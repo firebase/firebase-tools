@@ -8,10 +8,16 @@ import { ensureApiEnabled } from "../gcp/apphosting";
 export const command = new Command("apphosting:backends:create")
   .description("Create a backend in a Firebase project")
   .option("-l, --location <location>", "Specify the region of the backend", "")
+  .option(
+    "-s, --service-account <serviceAccount>",
+    "Specify the service account used to run the server",
+    "",
+  )
   .before(ensureApiEnabled)
   .before(requireInteractive)
   .action(async (options: Options) => {
     const projectId = needProjectId(options);
     const location = options.location;
-    await doSetup(projectId, location as string | null);
+    const serviceAccount = options.serviceAccount;
+    await doSetup(projectId, location as string | null, serviceAccount as string | null);
   });

@@ -12,6 +12,8 @@ import {
   Build,
   Rollout,
 } from "../../../gcp/apphosting";
+import { addServiceAccountToRoles } from "../../../gcp/resourceManager";
+import { createServiceAccount } from "../../../gcp/iam";
 import { Repository } from "../../../gcp/cloudbuild";
 import { FirebaseError } from "../../../error";
 import { promptOnce } from "../../../prompt";
@@ -19,6 +21,8 @@ import { DEFAULT_REGION } from "./constants";
 import { ensure } from "../../../ensureApiEnabled";
 import * as deploymentTool from "../../../deploymentTool";
 import { DeepOmit } from "../../../metaprogramming";
+
+const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
 const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: apphostingOrigin,
@@ -30,7 +34,11 @@ const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationRes
 /**
  * Set up a new App Hosting backend.
  */
-export async function doSetup(projectId: string, location: string | null): Promise<void> {
+export async function doSetup(
+  projectId: string,
+  location: string | null,
+  serviceAccount: string | null,
+): Promise<void> {
   await Promise.all([
     ensure(projectId, "cloudbuild.googleapis.com", "apphosting", true),
     ensure(projectId, "secretmanager.googleapis.com", "apphosting", true),
@@ -73,7 +81,13 @@ export async function doSetup(projectId: string, location: string | null): Promi
 
   const cloudBuildConnRepo = await repo.linkGitHubRepository(projectId, location);
 
-  const backend = await createBackend(projectId, location, backendId, cloudBuildConnRepo);
+  const backend = await createBackend(
+    projectId,
+    location,
+    backendId,
+    cloudBuildConnRepo,
+    serviceAccount,
+  );
 
   // TODO: Once tag patterns are implemented, prompt which method the user
   // prefers. We could reduce the number of questions asked by letting people
@@ -137,15 +151,22 @@ async function promptNewBackendId(
   }
 }
 
+function defaultComputeServiceAccountEmail(projectId: string): string {
+  return `${DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME}@${projectId}.iam.gserviceaccount.com`;
+}
+
 /**
- * Creates (and waits for) a new backend.
+ * Creates (and waits for) a new backend. Optionally may create the default compute service account if
+ * it was requested and doesn't exist.
  */
 export async function createBackend(
   projectId: string,
   location: string,
   backendId: string,
   repository: Repository,
+  serviceAccount: string | null,
 ): Promise<Backend> {
+  const defaultServiceAccount = defaultComputeServiceAccountEmail(projectId);
   const backendReqBody: Omit<Backend, BackendOutputOnlyFields> = {
     servingLocality: "GLOBAL_ACCESS",
     codebase: {
@@ -153,15 +174,60 @@ export async function createBackend(
       rootDirectory: "/",
     },
     labels: deploymentTool.labels(),
+    computeServiceAccount: serviceAccount || defaultServiceAccount,
   };
 
-  const op = await apphosting.createBackend(projectId, location, backendReqBody, backendId);
-  const backend = await poller.pollOperation<Backend>({
-    ...apphostingPollerOptions,
-    pollerName: `create-${projectId}-${location}-${backendId}`,
-    operationResourceName: op.name,
-  });
-  return backend;
+  // TODO: remove computeServiceAccount when the backend supports the field.
+  delete backendReqBody.computeServiceAccount;
+
+  async function createBackendAndPoll() {
+    const op = await apphosting.createBackend(projectId, location, backendReqBody, backendId);
+    return await poller.pollOperation<Backend>({
+      ...apphostingPollerOptions,
+      pollerName: `create-${projectId}-${location}-${backendId}`,
+      operationResourceName: op.name,
+    });
+  }
+
+  try {
+    return await createBackendAndPoll();
+  } catch (err: any) {
+    if (err.status === 403 && err.message.includes(defaultServiceAccount)) {
+      // Create the default service account if it doesn't exist and try again.
+      await provisionDefaultComputeServiceAccount(projectId);
+      return await createBackendAndPoll();
+    }
+    throw err;
+  }
+}
+
+async function provisionDefaultComputeServiceAccount(projectId: string): Promise<void> {
+  try {
+    await createServiceAccount(
+      projectId,
+      DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME,
+      "Firebase App Hosting compute service account",
+      "Default service account used to run builds and deploys for Firebase App Hosting",
+    );
+  } catch (err: any) {
+    // 409 Already Exists errors can safely be ignored.
+    if (err.status !== 409) {
+      throw err;
+    }
+  }
+  await addServiceAccountToRoles(
+    projectId,
+    defaultComputeServiceAccountEmail(projectId),
+    [
+      // TODO: Update to roles/firebaseapphosting.computeRunner when it is available.
+      "roles/firebaseapphosting.viewer",
+      "roles/artifactregistry.createOnPushWriter",
+      "roles/logging.logWriter",
+      "roles/storage.objectAdmin",
+      "roles/firebase.sdkAdminServiceAgent",
+    ],
+    /* skipAccountLookup= */ true,
+  );
 }
 
 /**
