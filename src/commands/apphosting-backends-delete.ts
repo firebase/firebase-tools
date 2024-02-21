@@ -20,16 +20,14 @@ const TABLE_HEAD = [
   "Updated Date",
 ];
 
-export const command = new Command("apphosting:backends:delete")
-  .description("Delete a backend from a Firebase project")
+export const command = new Command("apphosting:backends:delete <backend>")
+  .description("delete a backend from a Firebase project")
   .option("-l, --location <location>", "App Backend location", "")
-  .option("-s, --backend <backend>", "Backend Id", "")
   .withForce()
   .before(apphosting.ensureApiEnabled)
-  .action(async (options: Options) => {
+  .action(async (backendId: string, options: Options) => {
     const projectId = needProjectId(options);
     let location = options.location as string;
-    const backendId = options.backend as string;
     if (!backendId) {
       throw new FirebaseError("Backend id can't be empty.");
     }
