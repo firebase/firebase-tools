@@ -3,6 +3,7 @@ import { logger } from "../logger";
 import { Command } from "../command";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
+import { DeepOmit } from "../metaprogramming";
 
 export const command = new Command("apphosting:builds:create <backendId>")
   .description("Create a build for an App Hosting backend")
@@ -16,7 +17,14 @@ export const command = new Command("apphosting:builds:create <backendId>")
     const buildId =
       (options.buildId as string) ||
       (await apphosting.getNextRolloutId(projectId, location, backendId));
-    const branch = (options.branch as string | undefined) ?? "main";
+    let branch = options.branch as string | undefined;
+    if (!branch) {
+      const traffic = await apphosting.getTraffic(projectId, location, buildId);
+      branch = traffic.rolloutPolicy?.codebaseBranch;
+    }
+    if (!branch) {
+      branch = "main";
+    }
 
     const op = await apphosting.createBuild(projectId, location, backendId, buildId, {
       source: {

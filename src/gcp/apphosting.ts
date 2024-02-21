@@ -469,6 +469,19 @@ export async function updateTraffic(
   return res.body;
 }
 
+/**
+ * Get traffic of a backend.
+ */
+export async function getTraffic(
+  projectId: string,
+  location: string,
+  backendId: string,
+): Promise<Traffic> {
+  const name = `projects/${projectId}/locations/${location}/backends/${backendId}/traffic`;
+  const res = await client.get<Traffic>(name);
+  return res.body;
+}
+
 export interface Location {
   name: string;
   locationId: string;
