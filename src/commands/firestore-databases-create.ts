@@ -1,5 +1,6 @@
-import { Command } from "../command";
 import * as clc from "colorette";
+
+import { Command } from "../command";
 import * as fsi from "../firestore/api";
 import * as types from "../firestore/api-types";
 import { logger } from "../logger";
@@ -7,6 +8,7 @@ import { requirePermissions } from "../requirePermissions";
 import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 import { FirestoreOptions } from "../firestore/options";
+import { PrettyPrint } from "../firestore/pretty-print";
 
 export const command = new Command("firestore:databases:create <database>")
   .description("Create a database in your Firebase project.")
@@ -26,6 +28,7 @@ export const command = new Command("firestore:databases:create <database>")
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
   .action(async (database: string, options: FirestoreOptions) => {
     const api = new fsi.FirestoreApi();
+    const printer = new PrettyPrint();
     if (!options.location) {
       logger.error(
         "Missing required flag --location. See firebase firestore:databases:create --help for more info.",
@@ -76,7 +79,7 @@ export const command = new Command("firestore:databases:create <database>")
     if (options.json) {
       logger.info(JSON.stringify(databaseResp, undefined, 2));
     } else {
-      logger.info(clc.bold(`Successfully created ${api.prettyDatabaseString(databaseResp)}`));
+      logger.info(clc.bold(`Successfully created ${printer.prettyDatabaseString(databaseResp)}`));
       logger.info(
         "Please be sure to configure Firebase rules in your Firebase config file for\n" +
           "the new database. By default, created databases will have closed rules that\n" +
