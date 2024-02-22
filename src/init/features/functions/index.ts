@@ -13,6 +13,7 @@ import {
   assertUnique,
 } from "../../../functions/projectConfig";
 import { FirebaseError } from "../../../error";
+import { functionsOrigin, runtimeconfigOrigin } from "../../../api";
 
 const MAX_ATTEMPTS = 5;
 
@@ -24,8 +25,8 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
   if (projectId) {
     await requirePermissions({ ...options, project: projectId });
     await Promise.all([
-      ensure(projectId, "cloudfunctions.googleapis.com", "unused", true),
-      ensure(projectId, "runtimeconfig.googleapis.com", "unused", true),
+      ensure(projectId, functionsOrigin, "unused", true),
+      ensure(projectId, runtimeconfigOrigin, "unused", true),
     ]);
   }
   setup.functions = {};

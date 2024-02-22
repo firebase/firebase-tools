@@ -149,7 +149,7 @@ interface StorageServiceAccountResponse {
 }
 
 export async function getDefaultBucket(projectId: string): Promise<string> {
-  await ensure(projectId, "firebasestorage.googleapis.com", "storage", false);
+  await ensure(projectId, firebaseStorageOrigin, "storage", false);
   try {
     const localAPIClient = new Client({ urlPrefix: firebaseStorageOrigin, apiVersion: "v1alpha" });
     const response = await localAPIClient.get<GetDefaultBucketResponse>(

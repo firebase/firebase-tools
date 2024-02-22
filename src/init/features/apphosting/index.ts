@@ -4,7 +4,13 @@ import * as repo from "./repo";
 import * as poller from "../../../operation-poller";
 import * as apphosting from "../../../gcp/apphosting";
 import { logBullet, logSuccess, logWarning } from "../../../utils";
-import { apphostingOrigin } from "../../../api";
+import {
+  apphostingOrigin,
+  artifactRegistryDomain,
+  cloudRunApiOrigin,
+  cloudbuildOrigin,
+  secretManagerOrigin,
+} from "../../../api";
 import {
   Backend,
   BackendOutputOnlyFields,
@@ -40,10 +46,10 @@ export async function doSetup(
   serviceAccount: string | null,
 ): Promise<void> {
   await Promise.all([
-    ensure(projectId, "cloudbuild.googleapis.com", "apphosting", true),
-    ensure(projectId, "secretmanager.googleapis.com", "apphosting", true),
-    ensure(projectId, "run.googleapis.com", "apphosting", true),
-    ensure(projectId, "artifactregistry.googleapis.com", "apphosting", true),
+    ensure(projectId, cloudbuildOrigin, "apphosting", true),
+    ensure(projectId, secretManagerOrigin, "apphosting", true),
+    ensure(projectId, cloudRunApiOrigin, "apphosting", true),
+    ensure(projectId, artifactRegistryDomain, "apphosting", true),
   ]);
 
   const allowedLocations = (await apphosting.listLocations(projectId)).map((loc) => loc.locationId);
