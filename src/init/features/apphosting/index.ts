@@ -199,7 +199,7 @@ export async function createBackend(
         return await createBackendAndPoll();
       } else if (serviceAccount && err.message.includes(serviceAccount)) {
         throw new FirebaseError(
-          `Missing permission to delegate to ${serviceAccount}. Make sure you have the iam.serviceAccounts.actAs permission.`,
+          `Failed to create backend due to missing delegation permissions for ${serviceAccount}. Make sure you have the iam.serviceAccounts.actAs permission.`,
           { children: [err] },
         );
       }

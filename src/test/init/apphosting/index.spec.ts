@@ -140,7 +140,7 @@ describe("operationsConverter", () => {
         ),
       ).to.be.rejectedWith(
         FirebaseError,
-        "Missing permission to delegate to my-service-account. Make sure you have the iam.serviceAccounts.actAs permission.",
+        "Failed to create backend due to missing delegation permissions for my-service-account. Make sure you have the iam.serviceAccounts.actAs permission.",
       );
 
       expect(createBackendStub).to.be.calledOnce;
