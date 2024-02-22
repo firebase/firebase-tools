@@ -10,8 +10,8 @@ const Table = require("cli-table");
 const COLUMN_LENGTH = 20;
 const TABLE_HEAD = ["Backend Id", "Repository", "Location", "URL", "Created Date", "Updated Date"];
 export const command = new Command("apphosting:backends:get <backendId>")
-  .description("Get backend details of a Firebase project")
-  .option("-l, --location <location>", "App Backend location", "-")
+  .description("get backend details of a Firebase project")
+  .option("-l, --location <location>", "app backend location", "-")
   .before(apphosting.ensureApiEnabled)
   .action(async (backendId: string, options: Options) => {
     const projectId = needProjectId(options);
