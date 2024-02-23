@@ -183,6 +183,10 @@ export const apphostingOrigin = utils.envOverride(
   "APPHOSTING_URL",
   "https://firebaseapphosting.googleapis.com",
 );
+export const dataconnectOrigin = utils.envOverride(
+  "FIREBASE_DATACONNECT_URL",
+  "https://firebasedataconnect.googleapis.com",
+);
 export const githubOrigin = utils.envOverride("GITHUB_URL", "https://github.com");
 export const githubApiOrigin = utils.envOverride("GITHUB_API_URL", "https://api.github.com");
 export const secretManagerOrigin = utils.envOverride(

@@ -237,7 +237,7 @@ export type EmulatorsConfig = {
     port?: number;
   };
   singleProjectMode?: boolean;
-  firemat?: {
+  dataconnect?: {
     host?: string;
     port?: number;
   };
@@ -245,8 +245,11 @@ export type EmulatorsConfig = {
 
 export type ExtensionsConfig = Record<string, string>;
 
-export type FirematFirebaseConfig = {
+export type DataConnectConfig = {
+  // The directory containing dataconnect.yaml for this service
   source?: string;
+  // The location to deploy this service to (ie 'us-central1')
+  location?: string;
 };
 
 export type FirebaseConfig = {
@@ -262,5 +265,5 @@ export type FirebaseConfig = {
   remoteconfig?: RemoteConfigConfig;
   emulators?: EmulatorsConfig;
   extensions?: ExtensionsConfig;
-  firemat?: FirematFirebaseConfig;
+  dataconnect?: DataConnectConfig;
 };

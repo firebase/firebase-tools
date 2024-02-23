@@ -271,6 +271,18 @@
                 }
             ]
         },
+        "dataconnect": {
+            "additionalProperties": false,
+            "properties": {
+                "location": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
         "emulators": {
             "additionalProperties": false,
             "properties": {
@@ -298,6 +310,18 @@
                     },
                     "type": "object"
                 },
+                "dataconnect": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "host": {
+                            "type": "string"
+                        },
+                        "port": {
+                            "type": "number"
+                        }
+                    },
+                    "type": "object"
+                },
                 "eventarc": {
                     "additionalProperties": false,
                     "properties": {
@@ -312,18 +336,6 @@
                 },
                 "extensions": {
                     "properties": {
-                    },
-                    "type": "object"
-                },
-                "firemat": {
-                    "additionalProperties": false,
-                    "properties": {
-                        "host": {
-                            "type": "string"
-                        },
-                        "port": {
-                            "type": "number"
-                        }
                     },
                     "type": "object"
                 },
@@ -440,15 +452,6 @@
         },
         "extensions": {
             "$ref": "#/definitions/ExtensionsConfig"
-        },
-        "firemat": {
-            "additionalProperties": false,
-            "properties": {
-                "source": {
-                    "type": "string"
-                }
-            },
-            "type": "object"
         },
         "firestore": {
             "anyOf": [

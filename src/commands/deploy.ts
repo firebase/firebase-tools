@@ -22,6 +22,7 @@ export const VALID_DEPLOY_TARGETS = [
   "hosting",
   "remoteconfig",
   "extensions",
+  "dataconnect",
 ];
 export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], string[]> = {
   database: ["firebasedatabase.instances.update"],
@@ -46,6 +47,7 @@ export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], s
     "firebaserules.releases.update",
   ],
   remoteconfig: ["cloudconfig.configs.get", "cloudconfig.configs.update"],
+  dataconnect: [], // TODO: add required permissions
 };
 
 export const command = new Command("deploy")

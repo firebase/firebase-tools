@@ -81,10 +81,10 @@ if (isEnabled("apphosting")) {
   });
 }
 
-if (isEnabled("firemat")) {
+if (isEnabled("dataconnect")) {
   choices.push({
-    value: "firemat",
-    name: "FireMAT: Start a new MAT project.",
+    value: "dataconnect",
+    name: "Data Connect: Set up a Firebase Data Connect service.",
     checked: false,
   });
 }

@@ -14,7 +14,7 @@ export enum Emulators {
   STORAGE = "storage",
   EXTENSIONS = "extensions",
   EVENTARC = "eventarc",
-  FIREMAT = "firemat",
+  DATACONNECT = "dataconnect",
 }
 
 export type DownloadableEmulators =
@@ -23,14 +23,14 @@ export type DownloadableEmulators =
   | Emulators.PUBSUB
   | Emulators.UI
   | Emulators.STORAGE
-  | Emulators.FIREMAT;
+  | Emulators.DATACONNECT;
 export const DOWNLOADABLE_EMULATORS = [
   Emulators.FIRESTORE,
   Emulators.DATABASE,
   Emulators.PUBSUB,
   Emulators.UI,
   Emulators.STORAGE,
-  Emulators.FIREMAT,
+  Emulators.DATACONNECT,
 ];
 
 export type ImportExportEmulators = Emulators.FIRESTORE | Emulators.DATABASE | Emulators.AUTH;
@@ -50,7 +50,7 @@ export const ALL_SERVICE_EMULATORS = [
   Emulators.PUBSUB,
   Emulators.STORAGE,
   Emulators.EVENTARC,
-  Emulators.FIREMAT,
+  Emulators.DATACONNECT,
 ].filter((v) => v);
 
 export const EMULATORS_SUPPORTED_BY_FUNCTIONS = [

@@ -45,27 +45,27 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   ui: experiments.isEnabled("emulatoruisnapshot")
     ? { version: "SNAPSHOT", expectedSize: -1, expectedChecksum: "" }
     : {
-      version: "1.11.7",
-      expectedSize: 3064105,
-      expectedChecksum: "bd2bcc331cbf613a5b3b55a1ce08998b",
-    },
+        version: "1.11.7",
+        expectedSize: 3064105,
+        expectedChecksum: "bd2bcc331cbf613a5b3b55a1ce08998b",
+      },
   pubsub: {
     version: "0.7.1",
     expectedSize: 65137179,
     expectedChecksum: "b59a6e705031a54a69e5e1dced7ca9bf",
   },
-  firemat:
+  dataconnect:
     process.platform === "darwin"
       ? {
-        version: "0.1.4",
-        expectedSize: 17798656,
-        expectedChecksum: "a94cbba815f5960dab2a9ecdf98997fb",
-      }
+          version: "0.1.4",
+          expectedSize: 17798656,
+          expectedChecksum: "a94cbba815f5960dab2a9ecdf98997fb",
+        }
       : {
-        version: "0.1.4",
-        expectedSize: 17727488,
-        expectedChecksum: "41b169aa4765fe2d5a5d85ddd8125956",
-      },
+          version: "0.1.4",
+          expectedSize: 17727488,
+          expectedChecksum: "41b169aa4765fe2d5a5d85ddd8125956",
+        },
 };
 
 export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
@@ -152,23 +152,26 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
     },
   },
   // TODO: Add Windows binary here as well
-  firemat: {
+  dataconnect: {
     downloadPath: path.join(
       CACHE_DIR,
-      `firemat-emulator-${EMULATOR_UPDATE_DETAILS.firemat.version}`
+      `dataconnect-emulator-${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
     ),
-    version: EMULATOR_UPDATE_DETAILS.firemat.version,
-    binaryPath: path.join(CACHE_DIR, `firemat-emulator-${EMULATOR_UPDATE_DETAILS.firemat.version}`),
+    version: EMULATOR_UPDATE_DETAILS.dataconnect.version,
+    binaryPath: path.join(
+      CACHE_DIR,
+      `dataconnect-emulator-${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
+    ),
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
         process.platform === "darwin"
-          ? `https://storage.googleapis.com/firemat-preview-drop/emulator/firemat-emulator-macos-v${EMULATOR_UPDATE_DETAILS.firemat.version}`
-          : `https://storage.googleapis.com/firemat-preview-drop/emulator/firemat-emulator-linux-v${EMULATOR_UPDATE_DETAILS.firemat.version}`,
-      expectedSize: EMULATOR_UPDATE_DETAILS.firemat.expectedSize,
-      expectedChecksum: EMULATOR_UPDATE_DETAILS.firemat.expectedChecksum,
+          ? `https://storage.googleapis.com/firemat-preview-drop/emulator/firemat-emulator-macos-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
+          : `https://storage.googleapis.com/firemat-preview-drop/emulator/firemat-emulator-linux-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
+      expectedSize: EMULATOR_UPDATE_DETAILS.dataconnect.expectedSize,
+      expectedChecksum: EMULATOR_UPDATE_DETAILS.dataconnect.expectedChecksum,
       skipChecksumAndSize: true, // TODO: reenable checksumAndSize before release.
-      namePrefix: "firemat-emulator",
+      namePrefix: "dataconnect-emulator",
       auth: true,
     },
   },
@@ -200,8 +203,8 @@ const EmulatorDetails: { [s in DownloadableEmulators]: DownloadableEmulatorDetai
     instance: null,
     stdout: null,
   },
-  firemat: {
-    name: Emulators.FIREMAT,
+  dataconnect: {
+    name: Emulators.DATACONNECT,
     instance: null,
     stdout: null,
   },
@@ -270,8 +273,8 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     optionalArgs: [],
     joinArgs: false,
   },
-  firemat: {
-    binary: getExecPath(Emulators.FIREMAT),
+  dataconnect: {
+    binary: getExecPath(Emulators.DATACONNECT),
     args: ["dev"],
     optionalArgs: ["http_port", "grpc_port", "config_dir"],
     joinArgs: true,

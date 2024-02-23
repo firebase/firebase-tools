@@ -104,9 +104,9 @@ export const ALL_EXPERIMENTS = experiments({
     public: false,
   },
 
-  firemat: {
-    shortDescription: "Enable FireMAT-related features.",
-    fullDescription: "Enable FireMAT-related features.",
+  dataconnect: {
+    shortDescription: "Enable Data Connect related features.",
+    fullDescription: "Enable Data Connect related features.",
     public: false,
   },
 });

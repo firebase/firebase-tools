@@ -23,7 +23,14 @@ function targetsHaveNoFilters(...targets: string[]): boolean {
   return targets.some((t) => !t.includes(":"));
 }
 
-const FILTERABLE_TARGETS = new Set(["hosting", "functions", "firestore", "storage", "database"]);
+const FILTERABLE_TARGETS = new Set([
+  "hosting",
+  "functions",
+  "firestore",
+  "storage",
+  "database",
+  "dataconnect",
+]);
 
 /**
  * Validates that the target filters in options.only are valid.

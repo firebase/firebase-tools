@@ -10,5 +10,5 @@ export { doSetup as extensions } from "./extensions";
 export { doSetup as project } from "./project";
 export { doSetup as remoteconfig } from "./remoteconfig";
 export { initGitHub as hostingGithub } from "./hosting/github";
-export { doSetup as firemat } from "./firemat";
+export { doSetup as dataconnect } from "./dataconnect";
 export { doSetup as apphosting } from "./apphosting";

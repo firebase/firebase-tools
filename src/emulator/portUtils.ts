@@ -181,7 +181,7 @@ const EMULATOR_CAN_LISTEN_ON_PRIMARY_ONLY: Record<PortName, boolean> = {
   firestore: true,
   "firestore.websocket": true,
   pubsub: true,
-  firemat: true,
+  dataconnect: true,
 
   // Listening on multiple addresses to maximize the chance of discovery.
   hub: false,

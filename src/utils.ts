@@ -1,5 +1,6 @@
-import * as fs from "node:fs";
+import * as fs from "fs-extra";
 import * as path from "node:path";
+import * as yaml from "js-yaml";
 import { Socket } from "node:net";
 
 import * as _ from "lodash";
@@ -820,4 +821,66 @@ export function getHostnameFromUrl(url: string): string | null {
   } catch (e: unknown) {
     return null;
   }
+}
+
+/**
+ * Retrieves a file from the directory.
+ */
+export function readFileFromDirectory(
+  directory: string,
+  file: string,
+): Promise<{ source: string; sourceDirectory: string }> {
+  return new Promise<string>((resolve, reject) => {
+    fs.readFile(path.resolve(directory, file), "utf8", (err, data) => {
+      if (err) {
+        if (err.code === "ENOENT") {
+          return reject(
+            new FirebaseError(`Could not find "${file}" in "${directory}"`, { original: err }),
+          );
+        }
+        reject(
+          new FirebaseError(`Failed to read file "${file}" in "${directory}"`, { original: err }),
+        );
+      } else {
+        resolve(data);
+      }
+    });
+  }).then((source) => {
+    return {
+      source,
+      sourceDirectory: directory,
+    };
+  });
+}
+
+/**
+ * Wrapps `yaml.safeLoad` with an error handler to present better YAML parsing
+ * errors.
+ */
+export function wrappedSafeLoad(source: string): any {
+  try {
+    return yaml.safeLoad(source);
+  } catch (err: any) {
+    if (err instanceof yaml.YAMLException) {
+      throw new FirebaseError(`YAML Error: ${err.message}`, { original: err });
+    }
+    throw err;
+  }
+}
+
+/**
+ * Generate id meeting the following criterias:
+ *  - Lowercase, digits, and hyphens only
+ *  - Must begin with letter
+ *  - Cannot end with hyphen
+ */
+export function generateId(n = 6): string {
+  const letters = "abcdefghijklmnopqrstuvwxyz";
+  const allChars = "01234567890-abcdefghijklmnopqrstuvwxyz";
+  let id = letters[Math.floor(Math.random() * letters.length)];
+  for (let i = 1; i < n; i++) {
+    const idx = Math.floor(Math.random() * allChars.length);
+    id += allChars[idx];
+  }
+  return id;
 }

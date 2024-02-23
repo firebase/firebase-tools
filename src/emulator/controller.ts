@@ -50,7 +50,7 @@ import { EmulatorListenConfig, PortName, resolveHostAndAssignPorts } from "./por
 import { AuthEmulator, SingleProjectMode } from "./auth";
 import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
 import { EventarcEmulator } from "./eventarcEmulator";
-import { FirematEmulator } from "./firematEmulator";
+import { DataConnectEmulator } from "./dataconnectEmulator";
 import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
 import { HostingEmulator } from "./hostingEmulator";
 import { PubsubEmulator } from "./pubsubEmulator";
@@ -811,20 +811,20 @@ export async function startAll(
     await startEmulator(pubsubEmulator);
   }
 
-  if (listenForEmulator.firemat) {
-    const firematAddr = legacyGetFirstAddr(Emulators.FIREMAT);
-    let configDir = options.config.get("firemat")?.source || "firemat";
+  if (listenForEmulator.dataconnect) {
+    const dataConnectAddr = legacyGetFirstAddr(Emulators.DATACONNECT);
+    let configDir = options.config.get("dataconnect")?.source || "dataconnect";
     if (!path.isAbsolute(configDir)) {
       configDir = path.resolve(path.join(options.cwd), configDir);
     }
-    const firematEmulator = new FirematEmulator({
-      host: firematAddr.host,
-      port: firematAddr.port,
+    const dataConnectEmulator = new DataConnectEmulator({
+      host: dataConnectAddr.host,
+      port: dataConnectAddr.port,
       projectId,
       auto_download: true,
       configDir,
     });
-    await startEmulator(firematEmulator);
+    await startEmulator(dataConnectEmulator);
   }
 
   if (listenForEmulator.storage) {
