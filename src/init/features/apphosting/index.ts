@@ -192,10 +192,17 @@ export async function createBackend(
   try {
     return await createBackendAndPoll();
   } catch (err: any) {
-    if (err.status === 403 && err.message.includes(defaultServiceAccount)) {
-      // Create the default service account if it doesn't exist and try again.
-      await provisionDefaultComputeServiceAccount(projectId);
-      return await createBackendAndPoll();
+    if (err.status === 403) {
+      if (err.message.includes(defaultServiceAccount)) {
+        // Create the default service account if it doesn't exist and try again.
+        await provisionDefaultComputeServiceAccount(projectId);
+        return await createBackendAndPoll();
+      } else if (serviceAccount && err.message.includes(serviceAccount)) {
+        throw new FirebaseError(
+          `Failed to create backend due to missing delegation permissions for ${serviceAccount}. Make sure you have the iam.serviceAccounts.actAs permission.`,
+          { children: [err] },
+        );
+      }
     }
     throw err;
   }

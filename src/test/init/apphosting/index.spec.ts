@@ -138,7 +138,10 @@ describe("operationsConverter", () => {
           cloudBuildConnRepo,
           /* serviceAccount= */ "my-service-account",
         ),
-      ).to.be.rejectedWith(FirebaseError, "missing actAs permission on my-service-account");
+      ).to.be.rejectedWith(
+        FirebaseError,
+        "Failed to create backend due to missing delegation permissions for my-service-account. Make sure you have the iam.serviceAccounts.actAs permission.",
+      );
 
       expect(createBackendStub).to.be.calledOnce;
       expect(createServiceAccountStub).to.not.have.been.called;
