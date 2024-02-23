@@ -11,8 +11,8 @@ import * as apphosting from "../gcp/apphosting";
 const TABLE_HEAD = ["Backend ID", "Repository", "Location", "URL", "Created Date", "Updated Date"];
 
 export const command = new Command("apphosting:backends:list")
-  .description("List backends of a Firebase project.")
-  .option("-l, --location <location>", "App Backend location", "-")
+  .description("list backends of a Firebase project")
+  .option("-l, --location <location>", "app Backend location", "-")
   .before(apphosting.ensureApiEnabled)
   .action(async (options: Options) => {
     const projectId = needProjectId(options);

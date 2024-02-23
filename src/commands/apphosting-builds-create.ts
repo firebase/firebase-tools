@@ -5,10 +5,10 @@ import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 
 export const command = new Command("apphosting:builds:create <backendId>")
-  .description("Create a build for an App Hosting backend")
-  .option("-l, --location <location>", "Specify the region of the backend", "us-central1")
-  .option("-i, --id <buildId>", "Id of the build. If not present, autogenerate a random id", "")
-  .option("-b, --branch <branch>", "Repository branch to deploy. Defaults to 'main'", "main")
+  .description("create a build for an App Hosting backend")
+  .option("-l, --location <location>", "specify the region of the backend", "us-central1")
+  .option("-i, --id <buildId>", "id of the build (defaults to autogenerating a random id)", "")
+  .option("-b, --branch <branch>", "repository branch to deploy (defaults to 'main')", "main")
   .before(apphosting.ensureApiEnabled)
   .action(async (backendId: string, options: Options) => {
     const projectId = needProjectId(options);
