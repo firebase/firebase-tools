@@ -59,7 +59,10 @@ describe("webframeworks", function (this) {
         .at(-1)
         ?.split(new RegExp(`(\\[\\S+\\] )?\\[${new Date().getFullYear()}`))[0]
         ?.trim();
-      expect(effectiveFirebaseJSON && JSON.parse(effectiveFirebaseJSON), "firebase.json").to.deep.equalInAnyOrder({
+      expect(
+        effectiveFirebaseJSON && JSON.parse(effectiveFirebaseJSON),
+        "firebase.json",
+      ).to.deep.equalInAnyOrder({
         hosting: [
           {
             target: "nextjs",
