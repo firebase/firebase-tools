@@ -231,7 +231,7 @@ export async function build(
       () => undefined,
     ),
     readJSON<ServerReferenceManifest>(
-      join(dir, distDir, "server", SERVER_REFERENCE_MANIFEST)
+      join(dir, distDir, "server", SERVER_REFERENCE_MANIFEST),
     ).catch(() => undefined),
   ]);
 
@@ -267,7 +267,7 @@ export async function build(
     if (serverReferenceManifest) {
       const routesWithServerAction = getRoutesWithServerAction(
         serverReferenceManifest,
-        appPathRoutesManifest
+        appPathRoutesManifest,
       );
 
       for (const key of routesWithServerAction) {
@@ -412,7 +412,7 @@ export async function ɵcodegenPublicDirectory(
       () => ({}),
     ),
     readJSON<ServerReferenceManifest>(
-      join(sourceDir, distDir, "server", SERVER_REFERENCE_MANIFEST)
+      join(sourceDir, distDir, "server", SERVER_REFERENCE_MANIFEST),
     ).catch(() => ({ node: {}, edge: {}, encryptionKey: "" })),
   ]);
 
@@ -446,7 +446,7 @@ export async function ɵcodegenPublicDirectory(
 
   const staticRoutesUsingServerActions = getRoutesWithServerAction(
     serverReferenceManifest,
-    appPathRoutesManifest
+    appPathRoutesManifest,
   );
 
   const pagesManifestLikePrerender: PrerenderManifest["routes"] = Object.fromEntries(

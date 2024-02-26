@@ -429,7 +429,7 @@ export async function hasStaticAppNotFoundComponent(
  */
 export function getRoutesWithServerAction(
   serverReferenceManifest: ServerReferenceManifest,
-  appPathRoutesManifest: AppPathRoutesManifest
+  appPathRoutesManifest: AppPathRoutesManifest,
 ): string[] {
   const routesWithServerAction = new Set<string>();
 
