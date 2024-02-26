@@ -26,7 +26,7 @@ export class FirematService {
     const emulatorInfos =
       this.emulatorsController.emulators.value.infos?.displayInfo;
     const firematEmulator = emulatorInfos?.find(
-      (emulatorInfo) => emulatorInfo.name === Emulators.FIREMAT,
+      (emulatorInfo) => emulatorInfo.name === Emulators.DATACONNECT,
     );
 
     if (!firematEmulator) {

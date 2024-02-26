@@ -187,11 +187,11 @@ export class EmulatorsController implements Disposable {
           // firemat specifics; including temp logging implementation
           if (
             listRunningEmulators().filter((emulatorInfos) => {
-              emulatorInfos.name === Emulators.FIREMAT;
+              emulatorInfos.name === Emulators.DATACONNECT;
             })
           ) {
             const firematEmulatorDetails = getEmulatorDetails(
-              Emulators.FIREMAT,
+              Emulators.DATACONNECT,
             );
 
             firematEmulatorDetails.instance.stdout?.on("data", (data) => {
