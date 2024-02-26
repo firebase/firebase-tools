@@ -1,0 +1,1 @@
+- Fix Next.js static routes with server actions (#6664)
