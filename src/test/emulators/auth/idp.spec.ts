@@ -76,7 +76,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
         ]);
 
         const idToken = res.body.idToken;
-        const decoded = decodeJwt(idToken, { complete: true }) as {
+        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
           header: JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
@@ -134,7 +134,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
         ]);
 
         const idToken = res.body.idToken;
-        const decoded = decodeJwt(idToken, { complete: true }) as {
+        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
           header: JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
@@ -193,7 +193,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
         );
 
         const idToken = res.body.idToken;
-        const decoded = decodeJwt(idToken, { complete: true }) as {
+        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
           header: JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
@@ -583,7 +583,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
         expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const idToken = res.body.idToken;
-        const decoded = decodeJwt(idToken, { complete: true }) as {
+        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
           header: JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
@@ -627,7 +627,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
         expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const idToken = res.body.idToken;
-        const decoded = decodeJwt(idToken, { complete: true }) as {
+        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
           header: JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
@@ -1081,7 +1081,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
         expect(res.body).not.to.have.property("photoUrl");
 
         const idToken = res.body.idToken;
-        const decoded = decodeJwt(idToken, { complete: true }) as {
+        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
           header: JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
@@ -1125,7 +1125,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
         expect(rawUserInfo).to.eql(attributeStatements);
 
         const idToken = res.body.idToken;
-        const decoded = decodeJwt(idToken, { complete: true }) as {
+        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
           header: JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
@@ -1182,7 +1182,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
           expect(res.body.isNewUser).to.equal(true);
 
           const idToken = res.body.idToken;
-          const decoded = decodeJwt(idToken, { complete: true }) as {
+          const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
             header: JwtHeader;
             payload: FirebaseJwtPayload;
           } | null;
@@ -1244,7 +1244,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
           expect(res.body.isNewUser).to.equal(true);
 
           const idToken = res.body.idToken;
-          const decoded = decodeJwt(idToken, { complete: true }) as {
+          const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
             header: JwtHeader;
             payload: FirebaseJwtPayload;
           } | null;
@@ -1320,7 +1320,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
           expect(res.body.isNewUser).to.equal(true);
 
           const idToken = res.body.idToken;
-          const decoded = decodeJwt(idToken, { complete: true }) as {
+          const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
             header: JwtHeader;
             payload: FirebaseJwtPayload;
           } | null;
@@ -1392,7 +1392,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
           expect(!!res.body.isNewUser).to.equal(false);
 
           const idToken = res.body.idToken;
-          const decoded = decodeJwt(idToken, { complete: true }) as {
+          const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
             header: JwtHeader;
             payload: FirebaseJwtPayload;
           } | null;

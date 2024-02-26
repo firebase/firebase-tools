@@ -41,6 +41,7 @@ export interface Backend {
   createTime: string;
   updateTime: string;
   uri: string;
+  computeServiceAccount?: string;
 }
 
 export type BackendOutputOnlyFields = "name" | "createTime" | "updateTime" | "uri";
@@ -399,6 +400,7 @@ export async function createRollout(
   backendId: string,
   rolloutId: string,
   rollout: DeepOmit<Rollout, RolloutOutputOnlyFields | "name">,
+  validateOnly = false,
 ): Promise<Operation> {
   const res = await client.post<DeepOmit<Rollout, RolloutOutputOnlyFields | "name">, Operation>(
     `projects/${projectId}/locations/${location}/backends/${backendId}/rollouts`,
@@ -409,7 +411,7 @@ export async function createRollout(
         ...deploymentTool.labels(),
       },
     },
-    { queryParams: { rolloutId } },
+    { queryParams: { rolloutId, validateOnly: validateOnly ? "true" : "false" } },
   );
   return res.body;
 }

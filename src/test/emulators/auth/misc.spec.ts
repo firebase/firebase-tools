@@ -104,7 +104,7 @@ describeAuthEmulator("token refresh", ({ authApi, getClock }) => {
     const user = await getAccountInfoByIdToken(authApi(), idToken);
     expect(user.lastLoginAt).not.to.be.undefined;
     const lastLoginAtSeconds = Math.floor(parseInt(user.lastLoginAt!, 10) / 1000);
-    const decoded = decodeJwt(idToken, { complete: true }) as {
+    const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
       header: JwtHeader;
       payload: FirebaseJwtPayload;
     } | null;
@@ -257,7 +257,7 @@ describeAuthEmulator("createSessionCookie", ({ authApi }) => {
         const sessionCookie = res.body.sessionCookie;
         expect(sessionCookie).to.be.a("string");
 
-        const decoded = decodeJwt(sessionCookie, { complete: true }) as {
+        const decoded = decodeJwt(sessionCookie, { complete: true }) as unknown as {
           header: JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
@@ -312,7 +312,7 @@ describeAuthEmulator("createSessionCookie", ({ authApi }) => {
         const sessionCookie = res.body.sessionCookie;
         expect(sessionCookie).to.be.a("string");
 
-        const decoded = decodeJwt(sessionCookie, { complete: true }) as {
+        const decoded = decodeJwt(sessionCookie, { complete: true }) as unknown as {
           header: JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;

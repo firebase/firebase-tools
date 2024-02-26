@@ -32,6 +32,7 @@ import {
 } from "./api";
 import {
   Account,
+  AuthError,
   User,
   Tokens,
   TokensWithExpiration,
@@ -445,7 +446,7 @@ async function loginRemotely(): Promise<UserCredentials> {
     void trackGA4("login", { method: "google_remote" });
 
     return {
-      user: jwt.decode(tokens.id_token!) as User,
+      user: jwt.decode(tokens.id_token!, { json: true }) as any as User,
       tokens: tokens,
       scopes: SCOPES,
     };
@@ -470,7 +471,7 @@ async function loginWithLocalhostGoogle(port: number, userHint?: string): Promis
   // getTokensFromAuthoirzationCode doesn't handle the --token case, so we know we'll
   // always have an id_token.
   return {
-    user: jwt.decode(tokens.id_token!) as User,
+    user: jwt.decode(tokens.id_token!, { json: true }) as any as User,
     tokens: tokens,
     scopes: tokens.scopes!,
   };
@@ -651,7 +652,7 @@ async function refreshTokens(
     for (const [k, v] of Object.entries(data)) {
       form.append(k, v);
     }
-    const res = await client.request<FormData, TokensWithTTL>({
+    const res = await client.request<FormData, TokensWithTTL & AuthError>({
       method: "POST",
       path: "/oauth2/v3/token",
       body: form,
@@ -659,6 +660,15 @@ async function refreshTokens(
       skipLog: { body: true, queryParams: true, resBody: true },
       resolveOnHTTPError: true,
     });
+    const forceReauthErrs: AuthError[] = [
+      { error: "invalid_grant", error_subtype: "invalid_rapt" }, // Cloud Session Control expiry
+    ];
+    const matches = (a: AuthError, b: AuthError) => {
+      return a.error === b.error && a.error_subtype === b.error_subtype;
+    };
+    if (forceReauthErrs.some((a) => matches(a, res.body))) {
+      throw invalidCredentialError();
+    }
     if (res.status === 401 || res.status === 400) {
       // Support --token <token> commands. In this case we won't have an expiration
       // time, scopes, etc.

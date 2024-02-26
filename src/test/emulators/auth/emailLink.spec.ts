@@ -47,7 +47,7 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
         expect(res.body.isNewUser).to.equal(true);
 
         const idToken = res.body.idToken;
-        const decoded = decodeJwt(idToken, { complete: true }) as {
+        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
           header: JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
@@ -364,7 +364,7 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
           expect(res.body.isNewUser).to.equal(true);
 
           const idToken = res.body.idToken;
-          const decoded = decodeJwt(idToken, { complete: true }) as {
+          const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
             header: JwtHeader;
             payload: FirebaseJwtPayload;
           } | null;
@@ -585,7 +585,7 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
           expect(res.body.isNewUser).to.equal(true);
 
           const idToken = res.body.idToken;
-          const decoded = decodeJwt(idToken, { complete: true }) as {
+          const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
             header: JwtHeader;
             payload: FirebaseJwtPayload;
           } | null;
@@ -654,7 +654,7 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
           expect(res.body.isNewUser).to.equal(true);
 
           const idToken = res.body.idToken;
-          const decoded = decodeJwt(idToken, { complete: true }) as {
+          const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
             header: JwtHeader;
             payload: FirebaseJwtPayload;
           } | null;
@@ -711,7 +711,7 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
           expect(res.body.isNewUser).to.equal(false);
 
           const idToken = res.body.idToken;
-          const decoded = decodeJwt(idToken, { complete: true }) as {
+          const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
             header: JwtHeader;
             payload: FirebaseJwtPayload;
           } | null;

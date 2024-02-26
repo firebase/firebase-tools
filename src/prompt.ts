@@ -1,6 +1,16 @@
 import * as inquirer from "inquirer";
+import AutocompletePrompt from "inquirer-autocomplete-prompt";
 
 import { FirebaseError } from "./error";
+
+declare module "inquirer" {
+  interface QuestionMap<T> {
+    autocomplete: AutocompletePrompt.AutocompleteQuestionOptions<T>;
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-argument
+inquirer.registerPrompt("autocomplete", require("inquirer-autocomplete-prompt"));
 
 /**
  * Question type for inquirer. See
@@ -13,7 +23,8 @@ type QuestionsThatReturnAString<T extends inquirer.Answers> =
   | inquirer.ExpandQuestion<T>
   | inquirer.InputQuestion<T>
   | inquirer.PasswordQuestion<T>
-  | inquirer.EditorQuestion<T>;
+  | inquirer.EditorQuestion<T>
+  | AutocompletePrompt.AutocompleteQuestionOptions<T>;
 
 type Options = Record<string, any> & { nonInteractive?: boolean };
 
