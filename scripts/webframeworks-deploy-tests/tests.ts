@@ -1,9 +1,11 @@
-import { expect } from "chai";
+import { expect, use } from "chai";
 import * as glob from "glob";
 import { join, normalize, relative } from "path";
 import { readFileSync } from "fs";
 import fetch from "node-fetch";
 import type { NextConfig } from "next";
+import * as deepEqualUnordered from "deep-equal-in-any-order";
+use(deepEqualUnordered);
 
 import { getBuildId } from "../../src/frameworks/next/utils";
 import { fileExistsSync } from "../../src/fsutils";
@@ -57,7 +59,10 @@ describe("webframeworks", function (this) {
         .at(-1)
         ?.split(new RegExp(`(\\[\\S+\\] )?\\[${new Date().getFullYear()}`))[0]
         ?.trim();
-      expect(effectiveFirebaseJSON && JSON.parse(effectiveFirebaseJSON), "firebase.json").to.eql({
+      expect(
+        effectiveFirebaseJSON && JSON.parse(effectiveFirebaseJSON),
+        "firebase.json",
+      ).to.deep.equalInAnyOrder({
         hosting: [
           {
             target: "nextjs",

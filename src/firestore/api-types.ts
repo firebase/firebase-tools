@@ -138,3 +138,13 @@ export interface DatabaseResp {
   versionRetentionPeriod: string;
   earliestVersionTime: string;
 }
+
+export interface RestoreDatabaseReq {
+  databaseId: string;
+  backup: string;
+}
+
+export enum RecurrenceType {
+  DAILY = "DAILY",
+  WEEKLY = "WEEKLY",
+}
