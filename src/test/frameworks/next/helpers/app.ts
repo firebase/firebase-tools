@@ -3,6 +3,7 @@ import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manife
 import type {
   AppPathRoutesManifest,
   AppPathsManifest,
+  PrerenderManifestV3,
 } from "../../../../frameworks/next/interfaces";
 
 export const appPathsManifest: AppPathsManifest = {
@@ -26,6 +27,33 @@ export const pagesManifest: PagesManifest = {
 };
 
 export const prerenderManifest: PrerenderManifest = {
+  version: 4,
+  routes: {
+    "/": {
+      initialRevalidateSeconds: false,
+      srcRoute: "/",
+      dataRoute: "/index.rsc",
+      experimentalPPR: false,
+      prefetchDataRoute: "",
+    },
+    "/api/static": {
+      initialRevalidateSeconds: false,
+      srcRoute: "/api/static",
+      dataRoute: "",
+      experimentalPPR: false,
+      prefetchDataRoute: "",
+    },
+  },
+  dynamicRoutes: {},
+  notFoundRoutes: [],
+  preview: {
+    previewModeId: "123",
+    previewModeSigningKey: "123",
+    previewModeEncryptionKey: "123",
+  },
+};
+
+export const prerenderManifestV3: PrerenderManifestV3 = {
   version: 3,
   routes: {
     "/": { initialRevalidateSeconds: false, srcRoute: "/", dataRoute: "/index.rsc" },

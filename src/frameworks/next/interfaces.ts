@@ -138,3 +138,32 @@ export interface HostingHeadersWithSource {
   source: string;
   headers: HostingHeaders["headers"];
 }
+
+/**
+ * Version 3 was used until Next.js v13.1.6.
+ * Version 4 was introduced in v13.2.0.
+ */
+export interface PrerenderManifestV3 {
+  version: 3;
+  routes: {
+    [route: string]: {
+      initialRevalidateSeconds: number | false;
+      srcRoute: string | null;
+      dataRoute: string;
+    };
+  };
+  dynamicRoutes: {
+    [route: string]: {
+      routeRegex: string;
+      fallback: string | null | false;
+      dataRoute: string;
+      dataRouteRegex: string;
+    };
+  };
+  notFoundRoutes: string[];
+  preview: {
+    previewModeId: string;
+    previewModeEncryptionKey: string;
+    previewModeSigningKey: string;
+  };
+}
