@@ -1,0 +1,1 @@
+* Fixed quota attribution for Firebase Auth API calls.
