@@ -29,7 +29,10 @@ export async function updateAuthDomains(project: string, authDomains: string[]):
   >(
     `/admin/v2/projects/${project}/config`,
     { authorizedDomains: authDomains },
-    { queryParams: { update_mask: "authorizedDomains" } }
+    {
+      queryParams: { update_mask: "authorizedDomains" },
+      headers: { "x-goog-user-project": project },
+    }
   );
   return res.body.authorizedDomains;
 }
