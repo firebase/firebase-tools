@@ -5,13 +5,14 @@ import { needProjectId } from "../projectUtils";
 import { ExtensionInstance, ExtensionSpec, ParamType } from "./types";
 import * as secretManagerApi from "../gcp/secretManager";
 import { logger } from "../logger";
+import { secretManagerOrigin } from "../api";
 
 export const SECRET_LABEL = "firebase-extensions-managed";
 export const SECRET_ROLE = "secretmanager.secretAccessor";
 
 export async function ensureSecretManagerApiEnabled(options: any): Promise<void> {
   const projectId = needProjectId(options);
-  return await ensure(projectId, "secretmanager.googleapis.com", "extensions", options.markdown);
+  return await ensure(projectId, secretManagerOrigin, "extensions", options.markdown);
 }
 
 export function usesSecrets(spec: ExtensionSpec): boolean {

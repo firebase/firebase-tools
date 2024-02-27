@@ -7,7 +7,6 @@ import * as deploymentTool from "../deploymentTool";
 import { FirebaseError } from "../error";
 import { DeepOmit, RecursiveKeyOf, assertImplements } from "../metaprogramming";
 
-export const API_HOST = new URL(apphostingOrigin).host;
 export const API_VERSION = "v1alpha";
 
 export const client = new Client({
@@ -503,7 +502,7 @@ export async function listLocations(projectId: string): Promise<Location[]> {
  */
 export async function ensureApiEnabled(options: any): Promise<void> {
   const projectId = needProjectId(options);
-  return await ensure(projectId, API_HOST, "app hosting", true);
+  return await ensure(projectId, apphostingOrigin, "app hosting", true);
 }
 
 /**
