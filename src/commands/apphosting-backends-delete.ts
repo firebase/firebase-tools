@@ -3,22 +3,10 @@ import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { FirebaseError } from "../error";
 import { promptOnce } from "../prompt";
-import { logger } from "../logger";
 import { DEFAULT_REGION } from "../init/features/apphosting/constants";
 import * as utils from "../utils";
 import * as apphosting from "../gcp/apphosting";
-
-const Table = require("cli-table");
-
-const COLUMN_LENGTH = 20;
-const TABLE_HEAD = [
-  "Backend Id",
-  "Repository Name",
-  "Location",
-  "URL",
-  "Created Date",
-  "Updated Date",
-];
+import { printBackendsTable } from "./apphosting-backends-list";
 
 export const command = new Command("apphosting:backends:delete <backend>")
   .description("delete a backend from a Firebase project")
@@ -45,16 +33,9 @@ export const command = new Command("apphosting:backends:delete <backend>")
       });
     }
 
-    const table = new Table({
-      head: TABLE_HEAD,
-      style: { head: ["green"] },
-    });
-    table.colWidths = COLUMN_LENGTH;
-
-    let backend;
+    let backend: apphosting.Backend;
     try {
       backend = await apphosting.getBackend(projectId, location, backendId);
-      populateTable(backend, table);
     } catch (err: any) {
       throw new FirebaseError(`No backends found with given parameters. Command aborted.`, {
         original: err,
@@ -62,7 +43,8 @@ export const command = new Command("apphosting:backends:delete <backend>")
     }
 
     utils.logWarning("You are about to permanently delete the backend:");
-    logger.info(table.toString());
+    const backends: apphosting.Backend[] = [backend];
+    printBackendsTable(backends);
 
     const confirmDeletion = await promptOnce(
       {
@@ -89,24 +71,3 @@ export const command = new Command("apphosting:backends:delete <backend>")
 
     return backend;
   });
-
-function populateTable(backend: apphosting.Backend, table: any) {
-  const [location, , backendId] = backend.name.split("/").slice(3, 6);
-  const entry = [
-    backendId,
-    backend.codebase.repository?.split("/").pop(),
-    location,
-    backend.uri,
-    backend.createTime,
-    backend.updateTime,
-  ];
-  const newRow = entry.map((name) => {
-    const maxCellWidth = COLUMN_LENGTH - 2;
-    const chunks = [];
-    for (let i = 0; name && i < name.length; i += maxCellWidth) {
-      chunks.push(name.substring(i, i + maxCellWidth));
-    }
-    return chunks.join("\n");
-  });
-  table.push(newRow);
-}
