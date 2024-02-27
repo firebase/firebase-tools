@@ -1,1 +1,2 @@
-- Added new commands for managing Firestore backups and restoring databases (#6778)
+- Added new commands for managing Firestore backups and restoring databases. (#6778)
+- Fixed quota attribution for Firebase Auth API calls. (#6819)
