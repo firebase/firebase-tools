@@ -1,0 +1,1 @@
+- Added new commands for managing Firestore backups and restoring databases (#6778)
