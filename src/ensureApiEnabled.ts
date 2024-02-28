@@ -19,16 +19,17 @@ const apiClient = new Client({
 /**
  * Check if the specified API is enabled.
  * @param projectId The project on which to check enablement.
- * @param apiName The name of the API e.g. `someapi.googleapis.com`.
+ * @param apiUri The name of the API e.g. `someapi.googleapis.com`.
  * @param prefix The logging prefix to use when printing messages about enablement.
  * @param silent Whether or not to print log messages.
  */
 export async function check(
   projectId: string,
-  apiName: string,
+  apiUri: string,
   prefix: string,
   silent = false,
 ): Promise<boolean> {
+  const apiName = apiUri.startsWith("http") ? new URL(apiUri).hostname : apiUri;
   const res = await apiClient.get<{ state: string }>(`/projects/${projectId}/services/${apiName}`, {
     headers: { "x-goog-quota-user": `projects/${projectId}` },
     skipLog: { resBody: true },
@@ -148,27 +149,28 @@ async function enableApiWithRetries(
  * Check if an API is enabled on a project, try to enable it if not with polling and retries.
  *
  * @param projectId The project on which to check enablement.
- * @param apiName The name of the API e.g. `someapi.googleapis.com`.
+ * @param apiUri The name of the API e.g. `someapi.googleapis.com`.
  * @param prefix The logging prefix to use when printing messages about enablement.
  * @param silent Whether or not to print log messages.
  */
 export async function ensure(
   projectId: string,
-  apiName: string,
+  apiUri: string,
   prefix: string,
   silent = false,
 ): Promise<void> {
+  const hostname = apiUri.startsWith("http") ? new URL(apiUri).hostname : apiUri;
   if (!silent) {
-    utils.logLabeledBullet(prefix, `ensuring required API ${bold(apiName)} is enabled...`);
+    utils.logLabeledBullet(prefix, `ensuring required API ${bold(hostname)} is enabled...`);
   }
-  const isEnabled = await check(projectId, apiName, prefix, silent);
+  const isEnabled = await check(projectId, hostname, prefix, silent);
   if (isEnabled) {
     return;
   }
   if (!silent) {
-    utils.logLabeledWarning(prefix, `missing required API ${bold(apiName)}. Enabling now...`);
+    utils.logLabeledWarning(prefix, `missing required API ${bold(hostname)}. Enabling now...`);
   }
-  return enableApiWithRetries(projectId, apiName, prefix, silent);
+  return enableApiWithRetries(projectId, hostname, prefix, silent);
 }
 
 /**

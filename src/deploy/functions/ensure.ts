@@ -8,10 +8,10 @@ import { logLabeledBullet, logLabeledSuccess } from "../../utils";
 import { ensureServiceAgentRole } from "../../gcp/secretManager";
 import { getFirebaseProject } from "../../management/projects";
 import { assertExhaustive } from "../../functional";
+import { cloudbuildOrigin } from "../../api";
 import * as backend from "./backend";
 
 const FAQ_URL = "https://firebase.google.com/support/faq#functions-runtime";
-const CLOUD_BUILD_API = "cloudbuild.googleapis.com";
 
 const metadataCallCache: Map<string, Promise<FirebaseProjectMetadata>> = new Map();
 
@@ -74,7 +74,7 @@ function isPermissionError(e: { context?: { body?: { error?: { status?: string }
  */
 export async function cloudBuildEnabled(projectId: string): Promise<void> {
   try {
-    await ensure(projectId, CLOUD_BUILD_API, "functions");
+    await ensure(projectId, cloudbuildOrigin, "functions");
   } catch (e: any) {
     if (isBillingError(e)) {
       throw nodeBillingError(projectId);
