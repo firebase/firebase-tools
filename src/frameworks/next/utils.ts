@@ -1,8 +1,9 @@
 import { existsSync } from "fs";
 import { pathExists } from "fs-extra";
 import { basename, extname, join, posix } from "path";
-import { readFile, rm } from "fs/promises";
+import { readFile } from "fs/promises";
 import { sync as globSync } from "glob";
+import * as glob from "glob";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
 import { coerce } from "semver";
 
@@ -423,15 +424,27 @@ export async function hasStaticAppNotFoundComponent(
 }
 
 /**
- * Remove development files from the .next directory for production deployments.
+ * Get files in the dist directory to be deployed to Firebase, ignoring development files.
  */
-export async function removeDevFiles(distDirPath: string): Promise<void> {
-  const cacheDevFiles = join(distDirPath, "cache", "**", "*-development*");
-  const cacheEslintFiles = join(distDirPath, "cache", "eslint");
+export async function getProductionDistDirFiles(
+  sourceDir: string,
+  distDir: string,
+): Promise<string[]> {
+  const productionDistDirFiles = await new Promise<string[]>((resolve, reject) =>
+    glob(
+      "**",
+      {
+        ignore: [join("cache", "webpack", "*-development", "**"), join("cache", "eslint", "**")],
+        cwd: join(sourceDir, distDir),
+        nodir: true,
+        absolute: true,
+      },
+      (err, matches) => {
+        if (err) reject(err);
+        resolve(matches);
+      },
+    ),
+  );
 
-  const filesToRemove = globSync(`{${cacheDevFiles},${cacheEslintFiles}}`, {
-    stat: true,
-  });
-
-  await Promise.all(filesToRemove.map((file) => rm(file, { recursive: true, force: true })));
+  return productionDistDirFiles;
 }
