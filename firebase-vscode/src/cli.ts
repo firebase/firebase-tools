@@ -345,8 +345,8 @@ export async function emulatorsStart(
   const only =
     emulatorUiSelections.mode === "hosting"
       ? "hosting"
-      : emulatorUiSelections.mode === "firemat"
-        ? "firemat,auth"
+      : emulatorUiSelections.mode === "dataconnect"
+        ? `${Emulators.DATACONNECT},${Emulators.AUTH}`
         : "";
   const commandOptions = await getCommandOptions(undefined, {
     ...currentOptions.value,

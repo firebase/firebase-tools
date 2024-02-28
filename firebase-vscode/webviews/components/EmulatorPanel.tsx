@@ -117,7 +117,7 @@ export function EmulatorPanel({
           onClick={() => launchEmulators()}
           disabled={showEmulatorProgressIndicator}
         >
-          Launch FireMAT emulator
+          Launch Data Connect emulator
         </VSCodeButton>
       )}
     </PanelSection>

@@ -14,6 +14,7 @@ import {
   ExtensionToWebviewParamsMap,
 } from "../../common/messaging/protocol";
 import { firebaseRC } from "./config";
+import { EmulatorUiSelections } from "../messaging/types";
 
 export class EmulatorsController implements Disposable {
   constructor(private broker: ExtensionBrokerImpl) {
@@ -133,7 +134,7 @@ export class EmulatorsController implements Disposable {
    */
   private getProjectIdForMode(
     projectId: string | undefined,
-    mode: "all" | "hosting" | "firemat",
+    mode: EmulatorUiSelections["mode"],
   ): string {
     if (!projectId) {
       return "demo-something";

@@ -16,7 +16,7 @@ export class FirebaseSidebar {
   }
 
   get startEmulatorBtn() {
-    return $("vscode-button=Launch FireMAT emulator");
+    return $("vscode-button=Launch Data Connect emulator");
   }
 
   get stopEmulatorBtn() {

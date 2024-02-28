@@ -15,7 +15,7 @@ export const DEFAULT_EMULATOR_UI_SELECTIONS: EmulatorUiSelections = {
   projectId: "demo-something",
   importStateFolderPath: "",
   exportStateOnExit: false,
-  mode: "firemat",
+  mode: 'dataconnect',
   debugLogging: false,
 };
 
