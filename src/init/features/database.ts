@@ -17,6 +17,7 @@ import { ensure } from "../../ensureApiEnabled";
 import { getDefaultDatabaseInstance } from "../../getDefaultDatabaseInstance";
 import { FirebaseError } from "../../error";
 import { Client } from "../../apiv2";
+import { rtdbManagementOrigin } from "../../api";
 
 interface DatabaseSetup {
   projectId?: string;
@@ -129,7 +130,7 @@ export async function doSetup(setup: DatabaseSetup, config: Config): Promise<voi
 
   let instanceDetails;
   if (setup.projectId) {
-    await ensure(setup.projectId, "firebasedatabase.googleapis.com", "database", false);
+    await ensure(setup.projectId, rtdbManagementOrigin, "database", false);
     logger.info();
     setup.instance =
       setup.instance || (await getDefaultDatabaseInstance({ project: setup.projectId }));

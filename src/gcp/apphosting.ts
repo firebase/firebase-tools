@@ -7,7 +7,6 @@ import * as deploymentTool from "../deploymentTool";
 import { FirebaseError } from "../error";
 import { DeepOmit, RecursiveKeyOf, assertImplements } from "../metaprogramming";
 
-export const API_HOST = new URL(apphostingOrigin).host;
 export const API_VERSION = "v1alpha";
 
 export const client = new Client({
@@ -41,6 +40,7 @@ export interface Backend {
   createTime: string;
   updateTime: string;
   uri: string;
+  computeServiceAccount?: string;
 }
 
 export type BackendOutputOnlyFields = "name" | "createTime" | "updateTime" | "uri";
@@ -399,6 +399,7 @@ export async function createRollout(
   backendId: string,
   rolloutId: string,
   rollout: DeepOmit<Rollout, RolloutOutputOnlyFields | "name">,
+  validateOnly = false,
 ): Promise<Operation> {
   const res = await client.post<DeepOmit<Rollout, RolloutOutputOnlyFields | "name">, Operation>(
     `projects/${projectId}/locations/${location}/backends/${backendId}/rollouts`,
@@ -409,7 +410,7 @@ export async function createRollout(
         ...deploymentTool.labels(),
       },
     },
-    { queryParams: { rolloutId } },
+    { queryParams: { rolloutId, validateOnly: validateOnly ? "true" : "false" } },
   );
   return res.body;
 }
@@ -501,7 +502,7 @@ export async function listLocations(projectId: string): Promise<Location[]> {
  */
 export async function ensureApiEnabled(options: any): Promise<void> {
   const projectId = needProjectId(options);
-  return await ensure(projectId, API_HOST, "app hosting", true);
+  return await ensure(projectId, apphostingOrigin, "app hosting", true);
 }
 
 /**

@@ -4,7 +4,7 @@ import * as gcfV1 from "../gcp/cloudfunctions";
 import * as gcfV2 from "../gcp/cloudfunctionsv2";
 import * as backend from "../deploy/functions/backend";
 import * as ensureApiEnabled from "../ensureApiEnabled";
-import { functionsOrigin, functionsV2Origin } from "../api";
+import { functionsOrigin, functionsV2Origin, secretManagerOrigin } from "../api";
 import {
   createSecret,
   destroySecretVersion,
@@ -78,7 +78,7 @@ function toUpperSnakeCase(key: string): string {
  */
 export function ensureApi(options: any): Promise<void> {
   const projectId = needProjectId(options);
-  return ensureApiEnabled.ensure(projectId, "secretmanager.googleapis.com", "secretmanager", true);
+  return ensureApiEnabled.ensure(projectId, secretManagerOrigin, "secretmanager", true);
 }
 
 /**
