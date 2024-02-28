@@ -427,7 +427,16 @@ export async function ɵcodegenPublicDirectory(
     Object.entries(pagesManifest)
       .filter(([, srcRoute]) => srcRoute.endsWith(".html"))
       .map(([path]) => {
-        return [path, { srcRoute: null, initialRevalidateSeconds: false, dataRoute: "" }];
+        return [
+          path,
+          {
+            srcRoute: null,
+            initialRevalidateSeconds: false,
+            dataRoute: "",
+            experimentalPPR: false,
+            prefetchDataRoute: "",
+          },
+        ];
       }),
   );
 
