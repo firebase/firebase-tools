@@ -13,7 +13,7 @@ marked.setOptions({
   renderer: new TerminalRenderer(),
 });
 
-import { storageOrigin } from "../api";
+import { extensionsOrigin, extensionsPublisherOrigin, storageOrigin } from "../api";
 import { archiveDirectory } from "../archiveDirectory";
 import { convertOfficialExtensionsToList } from "./utils";
 import { getFirebaseConfig } from "../functionsConfig";
@@ -488,12 +488,7 @@ export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
   if (!projectId) {
     return;
   }
-  return await ensure(
-    projectId,
-    "firebaseextensions.googleapis.com",
-    "extensions",
-    options.markdown,
-  );
+  return await ensure(projectId, extensionsOrigin, "extensions", options.markdown);
 }
 
 export async function ensureExtensionsPublisherApiEnabled(options: any): Promise<void> {
@@ -501,12 +496,7 @@ export async function ensureExtensionsPublisherApiEnabled(options: any): Promise
   if (!projectId) {
     return;
   }
-  return await ensure(
-    projectId,
-    "firebaseextensionspublisher.googleapis.com",
-    "extensions",
-    options.markdown,
-  );
+  return await ensure(projectId, extensionsPublisherOrigin, "extensions", options.markdown);
 }
 
 /**

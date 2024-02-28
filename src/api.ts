@@ -189,6 +189,7 @@ export const secretManagerOrigin = utils.envOverride(
   "CLOUD_SECRET_MANAGER_URL",
   "https://secretmanager.googleapis.com",
 );
+export const computeOrigin = utils.envOverride("COMPUTE_URL", "https://compute.googleapis.com");
 export const githubClientId = utils.envOverride("GITHUB_CLIENT_ID", "89cf50f02ac6aaed3484");
 export const githubClientSecret = utils.envOverride(
   "GITHUB_CLIENT_SECRET",
