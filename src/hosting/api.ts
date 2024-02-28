@@ -533,6 +533,20 @@ export async function listSites(project: string): Promise<Site[]> {
 }
 
 /**
+ * Get fake sites object for demo projects running with emulator
+ */
+export function listDemoSites(projectId: string): Site[] {
+  return [
+    {
+      name: `projects/${projectId}/sites/${projectId}`,
+      defaultUrl: `https://${projectId}.firebaseapp.com`,
+      appId: "fake-app-id",
+      labels: {},
+    },
+  ];
+}
+
+/**
  * Get a Hosting site.
  * @param project project name or number.
  * @param site site name.
