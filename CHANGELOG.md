@@ -1,1 +1,2 @@
 - Fix demo projects + web frameworks with emulators (#6737)
+- Remove development-only files from Next.js deployments (#6731)
