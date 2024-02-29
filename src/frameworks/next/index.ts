@@ -64,7 +64,7 @@ import type {
   RoutesManifest,
   NpmLsDepdendency,
   MiddlewareManifest,
-  ServerReferenceManifest,
+  ActionManifest,
 } from "./interfaces";
 import {
   MIDDLEWARE_MANIFEST,
@@ -230,9 +230,9 @@ export async function build(
     readJSON<AppPathRoutesManifest>(join(dir, distDir, APP_PATH_ROUTES_MANIFEST)).catch(
       () => undefined,
     ),
-    readJSON<ServerReferenceManifest>(
-      join(dir, distDir, "server", SERVER_REFERENCE_MANIFEST),
-    ).catch(() => undefined),
+    readJSON<ActionManifest>(join(dir, distDir, "server", SERVER_REFERENCE_MANIFEST)).catch(
+      () => undefined,
+    ),
   ]);
 
   if (appPathRoutesManifest) {
@@ -411,9 +411,9 @@ export async function ɵcodegenPublicDirectory(
     readJSON<AppPathRoutesManifest>(join(sourceDir, distDir, APP_PATH_ROUTES_MANIFEST)).catch(
       () => ({}),
     ),
-    readJSON<ServerReferenceManifest>(
-      join(sourceDir, distDir, "server", SERVER_REFERENCE_MANIFEST),
-    ).catch(() => ({ node: {}, edge: {}, encryptionKey: "" })),
+    readJSON<ActionManifest>(join(sourceDir, distDir, "server", SERVER_REFERENCE_MANIFEST)).catch(
+      () => ({ node: {}, edge: {}, encryptionKey: "" }),
+    ),
   ]);
 
   const appPathRoutesEntries = Object.entries(appPathRoutesManifest);
