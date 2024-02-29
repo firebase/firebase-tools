@@ -28,6 +28,7 @@ export const imagesManifest: ImagesManifest = {
     formats: ["image/avif", "image/webp"],
     dangerouslyAllowSVG: false,
     contentSecurityPolicy: "script-src 'none'; frame-src 'none'; sandbox;",
+    contentDispositionType: "inline",
     remotePatterns: [
       {
         protocol: "https",

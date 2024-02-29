@@ -80,7 +80,7 @@ async function listAllSites(projectId: string, nextPageToken?: string): Promise<
 /**
  * Construct a fake configuration based on the project ID.
  */
-function constructDefaultWebSetup(projectId: string): WebConfig {
+export function constructDefaultWebSetup(projectId: string): WebConfig {
   return {
     projectId,
     databaseURL: `https://${projectId}.firebaseio.com`,
