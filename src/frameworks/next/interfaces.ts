@@ -139,7 +139,7 @@ export type AppPathRoutesManifest = Record<string, string>;
 
 /**
  * Note: This is a copy of the type from `next/dist/build/webpack/plugins/flight-client-entry-plugin`.
- * It's copied here due to type errors caused by internal dependencies of Next.js when from importing that file.
+ * It's copied here due to type errors caused by internal dependencies of Next.js when importing that file.
  */
 export type ActionManifest = {
   encryptionKey: string;
