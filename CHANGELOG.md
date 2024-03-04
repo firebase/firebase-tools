@@ -1,1 +1,2 @@
 - Fix demo projects + web frameworks with emulators (#6737)
+- Fix Next.js static routes with server actions (#6664)
