@@ -1,3 +1,3 @@
-- Fix few bugs affecting client SDKs for DS Mode
+- Released Firestore emulator v1.19.2, which fixes some bugs affecting client SDKs when in Datastore Mode.
 - Fix demo projects + web frameworks with emulators (#6737)
 - Fix Next.js static routes with server actions (#6664)
