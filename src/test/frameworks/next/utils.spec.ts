@@ -32,6 +32,7 @@ import {
   getHeadersFromMetaFiles,
   isUsingNextImageInAppDirectory,
   getNextVersion,
+  getRoutesWithServerAction,
 } from "../../../frameworks/next/utils";
 
 import * as frameworksUtils from "../../../frameworks/utils";
@@ -63,6 +64,7 @@ import {
   pageClientReferenceManifestWithoutImage,
   clientReferenceManifestWithImage,
   clientReferenceManifestWithoutImage,
+  serverReferenceManifest,
 } from "./helpers";
 import { pathsWithCustomRoutesInternalPrefix } from "./helpers/i18n";
 
@@ -521,6 +523,14 @@ describe("Next.js utils", () => {
       sandbox.stub(frameworksUtils, "findDependency").returns(undefined);
 
       expect(getNextVersion("")).to.be.undefined;
+    });
+  });
+
+  describe("getRoutesWithServerAction", () => {
+    it("should get routes with server action", () => {
+      expect(
+        getRoutesWithServerAction(serverReferenceManifest, appPathRoutesManifest),
+      ).to.deep.equal(["/another-s-a", "/server-action", "/server-action/edge"]);
     });
   });
 });
