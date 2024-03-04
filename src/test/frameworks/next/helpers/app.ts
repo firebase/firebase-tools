@@ -26,13 +26,21 @@ export const pagesManifest: PagesManifest = {
 };
 
 export const prerenderManifest: PrerenderManifest = {
-  version: 3,
+  version: 4,
   routes: {
-    "/": { initialRevalidateSeconds: false, srcRoute: "/", dataRoute: "/index.rsc" },
+    "/": {
+      initialRevalidateSeconds: false,
+      srcRoute: "/",
+      dataRoute: "/index.rsc",
+      experimentalPPR: false,
+      prefetchDataRoute: "",
+    },
     "/api/static": {
       initialRevalidateSeconds: false,
       srcRoute: "/api/static",
-      dataRoute: "null",
+      dataRoute: "",
+      experimentalPPR: false,
+      prefetchDataRoute: "",
     },
   },
   dynamicRoutes: {},

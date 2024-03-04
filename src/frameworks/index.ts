@@ -9,7 +9,7 @@ import * as glob from "glob";
 
 import { needProjectId } from "../projectUtils";
 import { hostingConfig } from "../hosting/config";
-import { listSites } from "../hosting/api";
+import { listDemoSites, listSites } from "../hosting/api";
 import { getAppConfig, AppPlatform } from "../management/apps";
 import { promptOnce } from "../prompt";
 import { EmulatorInfo, Emulators, EMULATORS_SUPPORTED_BY_USE_EMULATOR } from "../emulator/types";
@@ -54,6 +54,7 @@ import { isDeepStrictEqual } from "util";
 import { resolveProjectPath } from "../projectPath";
 import { logger } from "../logger";
 import { WebFrameworks } from "./frameworks";
+import { constructDefaultWebSetup } from "../fetchWebSetup";
 
 export { WebFrameworks };
 
@@ -206,12 +207,16 @@ export async function prepareFrameworks(
     });
     let firebaseConfig = null;
     if (usesFirebaseJsSdk) {
-      const sites = await listSites(project);
+      const isDemoProject = Constants.isDemoProject(project);
+
+      const sites = isDemoProject ? listDemoSites(project) : await listSites(project);
       const selectedSite = sites.find((it) => it.name && it.name.split("/").pop() === site);
       if (selectedSite) {
         const { appId } = selectedSite;
         if (appId) {
-          firebaseConfig = await getAppConfig(appId, AppPlatform.WEB);
+          firebaseConfig = isDemoProject
+            ? constructDefaultWebSetup(project)
+            : await getAppConfig(appId, AppPlatform.WEB);
           firebaseDefaults ||= {};
           firebaseDefaults.config = firebaseConfig;
         } else {
