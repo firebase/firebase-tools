@@ -319,7 +319,7 @@ describe("apiv2", () => {
         headers: { "x-goog-user-project": "unit tests, silly" },
       });
       process.env["GOOGLE_CLOUD_QUOTA_PROJECT"] = prev;
-      
+
       expect(r.body).to.deep.equal({ success: true });
       expect(nock.isDone()).to.be.true;
     });
