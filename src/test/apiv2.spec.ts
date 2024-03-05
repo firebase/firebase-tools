@@ -304,6 +304,26 @@ describe("apiv2", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("should make a basic GET request and set x-goog-user-project if  GOOGLE_CLOUD_QUOTA_PROJECT is set", async () => {
+      nock("https://example.com")
+        .get("/path/to/foo")
+        .matchHeader("x-goog-user-project", "unit tests, silly")
+        .reply(200, { success: true });
+      const prev = process.env["GOOGLE_CLOUD_QUOTA_PROJECT"];
+      process.env["GOOGLE_CLOUD_QUOTA_PROJECT"] = "unit tests, silly";
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = await c.request({
+        method: "GET",
+        path: "/path/to/foo",
+        headers: { "x-goog-user-project": "unit tests, silly" },
+      });
+      process.env["GOOGLE_CLOUD_QUOTA_PROJECT"] = prev;
+
+      expect(r.body).to.deep.equal({ success: true });
+      expect(nock.isDone()).to.be.true;
+    });
+
     it("should handle a 204 response with no data", async () => {
       nock("https://example.com").get("/path/to/foo").reply(204);
 
