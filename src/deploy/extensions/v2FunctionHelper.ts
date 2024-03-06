@@ -5,6 +5,7 @@ import { FirebaseError } from "../../error";
 import { ensure } from "../../ensureApiEnabled";
 import * as planner from "./planner";
 import { needProjectId } from "../../projectUtils";
+import { computeOrigin } from "../../api";
 
 const SERVICE_AGENT_ROLE = "roles/eventarc.eventReceiver";
 
@@ -21,7 +22,7 @@ export async function checkSpecForV2Functions(i: planner.InstanceSpec): Promise<
  */
 export async function ensureNecessaryV2ApisAndRoles(options: any) {
   const projectId = needProjectId(options);
-  await ensure(projectId, "compute.googleapis.com", "extensions", options.markdown);
+  await ensure(projectId, computeOrigin, "extensions", options.markdown);
   await ensureComputeP4SARole(projectId);
 }
 

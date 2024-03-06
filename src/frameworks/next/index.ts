@@ -54,6 +54,7 @@ import {
   cleanI18n,
   getNextVersion,
   hasStaticAppNotFoundComponent,
+  getRoutesWithServerAction,
 } from "./utils";
 import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES, SHARP_VERSION, I18N_ROOT } from "../constants";
 import type {
@@ -63,6 +64,7 @@ import type {
   RoutesManifest,
   NpmLsDepdendency,
   MiddlewareManifest,
+  ActionManifest,
 } from "./interfaces";
 import {
   MIDDLEWARE_MANIFEST,
@@ -72,6 +74,7 @@ import {
   APP_PATH_ROUTES_MANIFEST,
   APP_PATHS_MANIFEST,
   ESBUILD_VERSION,
+  SERVER_REFERENCE_MANIFEST,
 } from "./constants";
 import { getAllSiteDomains, getDeploymentDomain } from "../../hosting/api";
 import { logger } from "../../logger";
@@ -220,11 +223,14 @@ export async function build(
       headers,
     }));
 
-  const [appPathsManifest, appPathRoutesManifest] = await Promise.all([
+  const [appPathsManifest, appPathRoutesManifest, serverReferenceManifest] = await Promise.all([
     readJSON<AppPathsManifest>(join(dir, distDir, "server", APP_PATHS_MANIFEST)).catch(
       () => undefined,
     ),
     readJSON<AppPathRoutesManifest>(join(dir, distDir, APP_PATH_ROUTES_MANIFEST)).catch(
+      () => undefined,
+    ),
+    readJSON<ActionManifest>(join(dir, distDir, "server", SERVER_REFERENCE_MANIFEST)).catch(
       () => undefined,
     ),
   ]);
@@ -255,6 +261,17 @@ export async function build(
 
       for (const key of unrenderedServerComponents) {
         reasonsForBackend.add(`non-static component ${key}`);
+      }
+    }
+
+    if (serverReferenceManifest) {
+      const routesWithServerAction = getRoutesWithServerAction(
+        serverReferenceManifest,
+        appPathRoutesManifest,
+      );
+
+      for (const key of routesWithServerAction) {
+        reasonsForBackend.add(`route with server action ${key}`);
       }
     }
   }
@@ -385,6 +402,7 @@ export async function ɵcodegenPublicDirectory(
     routesManifest,
     pagesManifest,
     appPathRoutesManifest,
+    serverReferenceManifest,
   ] = await Promise.all([
     readJSON<MiddlewareManifest>(join(sourceDir, distDir, "server", MIDDLEWARE_MANIFEST)),
     readJSON<PrerenderManifest>(join(sourceDir, distDir, PRERENDER_MANIFEST)),
@@ -392,6 +410,9 @@ export async function ɵcodegenPublicDirectory(
     readJSON<PagesManifest>(join(sourceDir, distDir, "server", PAGES_MANIFEST)),
     readJSON<AppPathRoutesManifest>(join(sourceDir, distDir, APP_PATH_ROUTES_MANIFEST)).catch(
       () => ({}),
+    ),
+    readJSON<ActionManifest>(join(sourceDir, distDir, "server", SERVER_REFERENCE_MANIFEST)).catch(
+      () => ({ node: {}, edge: {}, encryptionKey: "" }),
     ),
   ]);
 
@@ -423,11 +444,25 @@ export async function ɵcodegenPublicDirectory(
     ...headersRegexesNotSupportedByHosting,
   ];
 
+  const staticRoutesUsingServerActions = getRoutesWithServerAction(
+    serverReferenceManifest,
+    appPathRoutesManifest,
+  );
+
   const pagesManifestLikePrerender: PrerenderManifest["routes"] = Object.fromEntries(
     Object.entries(pagesManifest)
       .filter(([, srcRoute]) => srcRoute.endsWith(".html"))
       .map(([path]) => {
-        return [path, { srcRoute: null, initialRevalidateSeconds: false, dataRoute: "" }];
+        return [
+          path,
+          {
+            srcRoute: null,
+            initialRevalidateSeconds: false,
+            dataRoute: "",
+            experimentalPPR: false,
+            prefetchDataRoute: "",
+          },
+        ];
       }),
   );
 
@@ -448,6 +483,12 @@ export async function ɵcodegenPublicDirectory(
         );
         return;
       }
+
+      if (staticRoutesUsingServerActions.some((it) => path === it)) {
+        logger.debug(`skipping ${path} due to server action`);
+        return;
+      }
+
       const appPathRoute =
         route.srcRoute && appPathRoutesEntries.find(([, it]) => it === route.srcRoute)?.[0];
       const contentDist = join(sourceDir, distDir, "server", appPathRoute ? "app" : "pages");

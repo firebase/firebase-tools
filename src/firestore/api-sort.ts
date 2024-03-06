@@ -1,6 +1,7 @@
 import * as API from "./api-types";
 import * as Spec from "./api-spec";
 import * as util from "./util";
+import { Backup, BackupSchedule } from "../gcp/firestore";
 
 const QUERY_SCOPE_SEQUENCE = [
   API.QueryScope.COLLECTION_GROUP,
@@ -79,6 +80,42 @@ export function compareApiDatabase(a: API.DatabaseResp, b: API.DatabaseResp): nu
 export function compareLocation(a: API.Location, b: API.Location): number {
   // LocationId should always be unique and present
   return a.locationId > b.locationId ? 1 : -1;
+}
+
+/**
+ * Compare two Backup API entries for sorting.
+ * Ordered by: location, snapshotTime (descending), then name
+ */
+export function compareApiBackup(a: Backup, b: Backup): number {
+  // the location is embedded in the name (projects/myproject/locations/mylocation/backups/mybackup)
+  const aLocation = a.name!.split("/")[3];
+  const bLocation = b.name!.split("/")[3];
+  if (aLocation && bLocation && aLocation !== bLocation) {
+    return aLocation > bLocation ? 1 : -1;
+  }
+
+  if (a.snapshotTime && b.snapshotTime && a.snapshotTime !== b.snapshotTime) {
+    return a.snapshotTime > b.snapshotTime ? -1 : 1;
+  }
+
+  // Name should always be unique and present
+  return a.name! > b.name! ? 1 : -1;
+}
+
+/**
+ * Compare two BackupSchedule API entries for sorting.
+ *
+ * Daily schedules should precede weekly ones. Break ties by name.
+ */
+export function compareApiBackupSchedule(a: BackupSchedule, b: BackupSchedule): number {
+  if (a.dailyRecurrence && !b.dailyRecurrence) {
+    return -1;
+  } else if (a.weeklyRecurrence && b.dailyRecurrence) {
+    return 1;
+  }
+
+  // Name should always be unique and present
+  return a.name! > b.name! ? 1 : -1;
 }
 
 /**

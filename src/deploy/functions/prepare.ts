@@ -9,6 +9,15 @@ import * as functionsEnv from "../../functions/env";
 import * as runtimes from "./runtimes";
 import * as validate from "./validate";
 import * as ensure from "./ensure";
+import {
+  functionsOrigin,
+  artifactRegistryDomain,
+  runtimeconfigOrigin,
+  cloudRunApiOrigin,
+  eventarcOrigin,
+  pubsubOrigin,
+  storageOrigin,
+} from "../../api";
 import { Options } from "../../options";
 import {
   EndpointFilter,
@@ -62,15 +71,10 @@ export async function prepare(
 
   // ===Phase 0. Check that minimum APIs required for function deploys are enabled.
   const checkAPIsEnabled = await Promise.all([
-    ensureApiEnabled.ensure(projectId, "cloudfunctions.googleapis.com", "functions"),
-    ensureApiEnabled.check(
-      projectId,
-      "runtimeconfig.googleapis.com",
-      "runtimeconfig",
-      /* silent=*/ true,
-    ),
+    ensureApiEnabled.ensure(projectId, functionsOrigin, "functions"),
+    ensureApiEnabled.check(projectId, runtimeconfigOrigin, "runtimeconfig", /* silent=*/ true),
     ensure.cloudBuildEnabled(projectId),
-    ensureApiEnabled.ensure(projectId, "artifactregistry.googleapis.com", "artifactregistry"),
+    ensureApiEnabled.ensure(projectId, artifactRegistryDomain, "artifactregistry"),
   ]);
 
   // Get the Firebase Config, and set it on each function in the deployment.
@@ -234,12 +238,7 @@ export async function prepare(
     // Note: Some of these are premium APIs that require billing to be enabled.
     // We'd eventually have to add special error handling for billing APIs, but
     // enableCloudBuild is called above and has this special casing already.
-    const V2_APIS = [
-      "run.googleapis.com",
-      "eventarc.googleapis.com",
-      "pubsub.googleapis.com",
-      "storage.googleapis.com",
-    ];
+    const V2_APIS = [cloudRunApiOrigin, eventarcOrigin, pubsubOrigin, storageOrigin];
     const enablements = V2_APIS.map((api) => {
       return ensureApiEnabled.ensure(context.projectId, api, "functions");
     });

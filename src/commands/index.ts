@@ -107,6 +107,16 @@ export function load(client: any): any {
   client.firestore.databases.create = loadCommand("firestore-databases-create");
   client.firestore.databases.update = loadCommand("firestore-databases-update");
   client.firestore.databases.delete = loadCommand("firestore-databases-delete");
+  client.firestore.databases.restore = loadCommand("firestore-databases-restore");
+  client.firestore.backups = {};
+  client.firestore.backups.schedules = {};
+  client.firestore.backups.list = loadCommand("firestore-backups-list");
+  client.firestore.backups.get = loadCommand("firestore-backups-get");
+  client.firestore.backups.delete = loadCommand("firestore-backups-delete");
+  client.firestore.backups.schedules.list = loadCommand("firestore-backups-schedules-list");
+  client.firestore.backups.schedules.create = loadCommand("firestore-backups-schedules-create");
+  client.firestore.backups.schedules.update = loadCommand("firestore-backups-schedules-update");
+  client.firestore.backups.schedules.delete = loadCommand("firestore-backups-schedules-delete");
   client.functions = {};
   client.functions.config = {};
   client.functions.config.clone = loadCommand("functions-config-clone");
