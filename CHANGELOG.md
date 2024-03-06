@@ -1,3 +1,5 @@
+- Released Firestore emulator v1.19.2, which fixes some bugs affecting client SDKs when in Datastore Mode.
 - Fix demo projects + web frameworks with emulators (#6737)
 - Fix Next.js static routes with server actions (#6664)
+- Fixed an issue where `GOOGLE_CLOUD_QUOTA_PROJECT` was not correctly respected. (#6801)
 - Remove development-only files from Next.js deployments (#6731)
