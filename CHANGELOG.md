@@ -2,3 +2,4 @@
 - Fix demo projects + web frameworks with emulators (#6737)
 - Fix Next.js static routes with server actions (#6664)
 - Fixed an issue where `GOOGLE_CLOUD_QUOTA_PROJECT` was not correctly respected. (#6801)
+- Make VPC egress settings in functions parameterizeable (#6843)

@@ -177,6 +177,13 @@ export function isValidMemoryOption(mem: unknown): mem is MemoryOptions {
   return allMemoryOptions.includes(mem as MemoryOptions);
 }
 
+/**
+ * Is a given string a valid VpcEgressSettings?
+ */
+export function isValidEgressSetting(egress: unknown): egress is VpcEgressSettings {
+  return egress === "PRIVATE_RANGES_ONLY" || egress === "ALL_TRAFFIC";
+}
+
 /** Returns a human-readable name with MB or GB suffix for a MemoryOption (MB). */
 export function memoryOptionDisplayName(option: MemoryOptions): string {
   return {
