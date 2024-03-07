@@ -1,4 +1,5 @@
 import * as build from "../../build";
+import * as backend from "../../backend";
 import * as params from "../../params";
 import * as runtimes from "..";
 
@@ -126,7 +127,7 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
     platform: (platform) => build.AllFunctionsPlatforms.includes(platform),
     entryPoint: "string",
     omit: "Field<boolean>?",
-    availableMemoryMb: (mem) => mem === null || isCEL(mem) || build.isValidMemoryOption(mem),
+    availableMemoryMb: (mem) => mem === null || isCEL(mem) || backend.isValidMemoryOption(mem),
     maxInstances: "Field<number>?",
     minInstances: "Field<number>?",
     concurrency: "Field<number>?",

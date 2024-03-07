@@ -193,7 +193,7 @@ export function isBlockingTriggered(triggered: Triggered): triggered is Blocking
 
 export interface VpcSettings {
   connector: string | Expression<string>;
-  egressSettings?: "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC" | null;
+  egressSettings?: "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC" | Expression<string> | null;
 }
 
 export interface SecretEnvVar {
@@ -204,12 +204,6 @@ export interface SecretEnvVar {
 
 export type MemoryOption = 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192 | 16384 | 32768;
 const allMemoryOptions: MemoryOption[] = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768];
-/**
- * Is a given number a valid MemoryOption?
- */
-export function isValidMemoryOption(mem: unknown): mem is MemoryOption {
-  return allMemoryOptions.includes(mem as MemoryOption);
-}
 
 export type FunctionsPlatform = backend.FunctionsPlatform;
 export const AllFunctionsPlatforms: FunctionsPlatform[] = ["gcfv1", "gcfv2"];
@@ -514,7 +508,16 @@ export function toBackend(
         }
 
         bkEndpoint.vpc = { connector: bdEndpoint.vpc.connector };
-        proto.copyIfPresent(bkEndpoint.vpc, bdEndpoint.vpc, "egressSettings");
+        if (bdEndpoint.vpc.egressSettings) {
+          const egressSettings = r.resolveString(bdEndpoint.vpc.egressSettings);
+          if (!backend.isValidEgressSetting(egressSettings)) {
+            throw new FirebaseError(
+              `Value "${egressSettings}" is an invalid ` +
+                "egress setting. Valid values are PRIVATE_RANGES_ONLY and ALL_TRAFFIC",
+            );
+          }
+          bkEndpoint.vpc.egressSettings = egressSettings;
+        }
       } else if (bdEndpoint.vpc === null) {
         bkEndpoint.vpc = null;
       }
