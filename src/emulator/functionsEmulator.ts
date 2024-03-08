@@ -1349,6 +1349,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       cwd: backend.functionsDir,
       env: {
         node: backend.bin,
+        METADATA_SERVER_DETECTION: "none",
         ...process.env,
         ...envs,
         PORT: socketPath,
@@ -1451,7 +1452,6 @@ export class FunctionsEmulator implements EmulatorInstance {
   /**
    * Gets the address of a running emulator, either from explicit args or by
    * consulting the emulator registry.
-   *
    * @param emulator
    */
   private getEmulatorInfo(emulator: Emulators): EmulatorInfo | undefined {
