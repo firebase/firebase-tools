@@ -1334,8 +1334,10 @@ export class FunctionsEmulator implements EmulatorInstance {
         if (typeof this.args.debugPort === "number") {
           port = this.args.debugPort;
         } else {
-          // Start the search at port 9229 for reverse compatibility since we
-          // used to hard code that as the default.
+          // Start the search at port 9229 because that is the default node
+          // inspector port and Chrome et. al. will discover the process without
+          // additional configuration. Other dynamic ports will need to be added
+          // manually to the inspector.
           port = await portfinder.getPortPromise({ port: 9229 });
           this.logger.logLabeled(
             "SUCCESS",
