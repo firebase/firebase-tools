@@ -19,14 +19,16 @@ import type {
   MiddlewareManifestV1,
   MiddlewareManifestV2,
   AppPathsManifest,
-  AppPathRoutesManifest,
   HostingHeadersWithSource,
+  AppPathRoutesManifest,
+  ActionManifest,
 } from "./interfaces";
 import {
   APP_PATH_ROUTES_MANIFEST,
   EXPORT_MARKER,
   IMAGES_MANIFEST,
   MIDDLEWARE_MANIFEST,
+  WEBPACK_LAYERS,
 } from "./constants";
 import { dirExistsSync, fileExistsSync } from "../../fsutils";
 
@@ -420,4 +422,32 @@ export async function hasStaticAppNotFoundComponent(
   distDir: string,
 ): Promise<boolean> {
   return pathExists(join(sourceDir, distDir, "server", "app", "_not-found.html"));
+}
+
+/**
+ * Find routes using server actions by checking the server-reference-manifest.json
+ */
+export function getRoutesWithServerAction(
+  serverReferenceManifest: ActionManifest,
+  appPathRoutesManifest: AppPathRoutesManifest,
+): string[] {
+  const routesWithServerAction = new Set<string>();
+
+  for (const key of Object.keys(serverReferenceManifest)) {
+    if (key !== "edge" && key !== "node") continue;
+
+    const edgeOrNode = serverReferenceManifest[key];
+
+    for (const actionId of Object.keys(edgeOrNode)) {
+      if (!edgeOrNode[actionId].layer) continue;
+
+      for (const [route, type] of Object.entries(edgeOrNode[actionId].layer)) {
+        if (type === WEBPACK_LAYERS.actionBrowser) {
+          routesWithServerAction.add(appPathRoutesManifest[route.replace("app", "")]);
+        }
+      }
+    }
+  }
+
+  return Array.from(routesWithServerAction);
 }

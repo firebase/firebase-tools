@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import * as build from "../../../deploy/functions/build";
 import { ParamValue } from "../../../deploy/functions/params";
+import { FirebaseError } from "../../../error";
 
 describe("toBackend", () => {
   it("populates backend info from Build", () => {
@@ -124,8 +125,8 @@ describe("toBackend", () => {
         minInstances: "{{ params.mininstances }}",
         serviceAccount: "{{ params.serviceaccount }}",
         vpc: {
-          connector: "projects/project/locations/region/connectors/connector",
-          egressSettings: "PRIVATE_RANGES_ONLY",
+          connector: "{{ params.connector }}",
+          egressSettings: "{{ params.egressSettings }}",
         },
         ingressSettings: "ALLOW_ALL",
         labels: {
@@ -140,6 +141,8 @@ describe("toBackend", () => {
       maxinstances: new ParamValue("42", false, { number: true }),
       mininstances: new ParamValue("1", false, { number: true }),
       serviceaccount: new ParamValue("service-account-1@", false, { string: true }),
+      connector: new ParamValue("connector", false, { string: true }),
+      egressSettings: new ParamValue("ALL_TRAFFIC", false, { string: true }),
     });
     expect(Object.keys(backend.endpoints).length).to.equal(1);
     const endpointDef = Object.values(backend.endpoints)[0];
@@ -154,6 +157,32 @@ describe("toBackend", () => {
       expect(
         "httpsTrigger" in endpointDef.func ? endpointDef.func.httpsTrigger.invoker : [],
       ).to.have.members(["service-account-2@", "service-account-3@"]);
+      expect(endpointDef.func.vpc?.connector).to.equal(
+        "projects/project/locations/us-central1/connectors/connector",
+      );
+      expect(endpointDef.func.vpc?.egressSettings).to.equal("ALL_TRAFFIC");
     }
+  });
+
+  it("enforces enum correctness for VPC egress settings", () => {
+    const desiredBuild: build.Build = build.of({
+      func: {
+        platform: "gcfv2",
+        region: ["us-central1"],
+        project: "project",
+        runtime: "nodejs16",
+        entryPoint: "func",
+        vpc: {
+          connector: "connector",
+          egressSettings: "{{ params.egressSettings }}",
+        },
+        httpsTrigger: {},
+      },
+    });
+    expect(() => {
+      build.toBackend(desiredBuild, {
+        egressSettings: new ParamValue("INVALID", false, { string: true }),
+      });
+    }).to.throw(FirebaseError, /Value "INVALID" is an invalid egress setting./);
   });
 });
