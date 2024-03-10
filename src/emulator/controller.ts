@@ -53,6 +53,7 @@ import { requiresJava } from "./downloadableEmulators";
 import { prepareFrameworks } from "../frameworks";
 import * as experiments from "../experiments";
 import { EmulatorListenConfig, PortName, resolveHostAndAssignPorts } from "./portUtils";
+import { isRuntime } from "../deploy/functions/runtimes/supported";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
@@ -493,6 +494,16 @@ export async function startAll(
     for (const cfg of functionsCfg) {
       const functionsDir = path.join(projectDir, cfg.source);
       const runtime = (options.extDevRuntime as string | undefined) ?? cfg.runtime;
+      if (!runtime) {
+        throw new FirebaseError(
+          `Cannot load functions from ${functionsDir} because the runtime cannot be determined.`,
+        );
+      }
+      if (!isRuntime(runtime)) {
+        throw new FirebaseError(
+          `Cannot load functions from ${functionsDir} because it has invalid runtime ${runtime}`,
+        );
+      }
       emulatableBackends.push({
         functionsDir,
         runtime,

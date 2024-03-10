@@ -17,7 +17,7 @@ const ENDPOINT = {
   region: "region",
   project: "project",
   entryPoint: "id",
-  runtime: "nodejs16",
+  runtime: "nodejs16" as const,
   platform: "gcfv1" as const,
   httpsTrigger: {},
 };
@@ -64,14 +64,16 @@ describe("functions/secret", () => {
       expect(warnStub).to.have.been.calledOnce;
     });
 
-    it("throws error if given non-conventional key w/ forced option", () => {
-      expect(secrets.ensureValidKey("throwError", { ...options, force: true })).to.be.rejectedWith(
-        FirebaseError,
-      );
+    it("throws error if given non-conventional key w/ forced option", async () => {
+      await expect(
+        secrets.ensureValidKey("throwError", { ...options, force: true }),
+      ).to.be.rejectedWith(FirebaseError);
     });
 
-    it("throws error if given reserved key", () => {
-      expect(secrets.ensureValidKey("FIREBASE_CONFIG", options)).to.be.rejectedWith(FirebaseError);
+    it("throws error if given reserved key", async () => {
+      await expect(secrets.ensureValidKey("FIREBASE_CONFIG", options)).to.be.rejectedWith(
+        FirebaseError,
+      );
     });
   });
 

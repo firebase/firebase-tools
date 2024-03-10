@@ -21,7 +21,7 @@ const BINDING = {
 const SPEC = {
   region: "us-west1",
   project: projectNumber,
-  runtime: "nodejs14",
+  runtime: "nodejs14" as const,
 };
 
 describe("checkIam", () => {

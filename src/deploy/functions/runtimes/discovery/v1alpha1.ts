@@ -1,7 +1,7 @@
 import * as build from "../../build";
 import * as backend from "../../backend";
 import * as params from "../../params";
-import * as runtimes from "..";
+import { Runtime } from "../supported";
 
 import { copyIfPresent, convertIfPresent, secondsFromDuration } from "../../../../gcp/proto";
 import { assertKeyTypes, requireKeys } from "./parsing";
@@ -83,7 +83,7 @@ export function buildFromV1Alpha1(
   yaml: unknown,
   project: string,
   region: string,
-  runtime: runtimes.Runtime,
+  runtime: Runtime,
 ): build.Build {
   const manifest = JSON.parse(JSON.stringify(yaml)) as WireManifest;
   requireKeys("", manifest, "endpoints");
@@ -257,7 +257,7 @@ function parseEndpointForBuild(
   ep: WireEndpoint,
   project: string,
   defaultRegion: string,
-  runtime: runtimes.Runtime,
+  runtime: Runtime,
 ): build.Endpoint {
   let triggered: build.Triggered;
   if (build.isEventTriggered(ep)) {

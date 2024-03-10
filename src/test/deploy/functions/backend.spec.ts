@@ -455,7 +455,7 @@ describe("Backend", () => {
   describe("compareFunctions", () => {
     const fnMembers = {
       project: "project",
-      runtime: "nodejs14",
+      runtime: "nodejs14" as const,
       httpsTrigger: {},
     };
 
