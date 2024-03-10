@@ -1379,6 +1379,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       cwd: backend.functionsDir,
       env: {
         node: backend.bin,
+        METADATA_SERVER_DETECTION: "none",
         ...process.env,
         ...envs,
         PORT: socketPath,
