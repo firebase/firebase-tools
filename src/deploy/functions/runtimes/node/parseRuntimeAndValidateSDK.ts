@@ -7,11 +7,9 @@ import * as supported from "../supported";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const cjson = require("cjson");
 
-const now = new Date();
-
 const supportedNodeVersions: string[] = Object.keys(supported.RUNTIMES)
   .filter((s) => s.startsWith("nodejs"))
-  .filter((s) => !supported.isDecommissioned(s as supported.Runtime, now))
+  .filter((s) => !supported.isDecommissioned(s as supported.Runtime))
   .map((s) => s.substring("nodejs".length));
 
 export const RUNTIME_NOT_SET =
