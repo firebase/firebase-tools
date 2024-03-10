@@ -190,7 +190,9 @@ export async function beforeEmulatorCommand(options: any): Promise<any> {
  */
 export function parseInspectionPort(options: any): number | boolean {
   const port = options.inspectFunctions;
-  if (typeof port === "boolean") {
+  if (typeof port === "undefined") {
+    return false;
+  } else if (typeof port === "boolean") {
     return port;
   }
 
