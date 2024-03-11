@@ -5,7 +5,8 @@ import { computed, effect, signal } from "@preact/signals-core";
 import { EmulatorsController } from "../core/emulators";
 import { QuickPickItem } from "vscode";
 
-export const localInstance = "emulator";
+export const localInstance = "local";
+export const productionInstance = "prod";
 export const selectedInstance = signal<string>(localInstance);
 
 export function registerFirebaseDataConnectView(
@@ -22,9 +23,7 @@ export function registerFirebaseDataConnectView(
           : "$(play) Start Emulators",
         id: "emulator",
       },
-      { label: "asia-east1", id: "asia-east1" },
-      { label: "europe-north1", id: "europe-north1" },
-      { label: "wonderland2", id: "wonderland2" },
+      { label: "Production", id: productionInstance },
     ];
 
     for (const option of options) {

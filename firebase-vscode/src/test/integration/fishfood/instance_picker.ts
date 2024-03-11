@@ -2,7 +2,6 @@ import { browser } from "@wdio/globals";
 import { StatusBar, findQuickPicks } from "../../utils/page_objects/status_bar";
 import { addTearDown, firematTest } from "../../utils/test_hooks";
 import { EditorView } from "../../utils/page_objects/editor";
-import { FirebaseSidebar } from "../../utils/page_objects/sidebar";
 import { queriesPath } from "../../utils/projects";
 import { FirebaseCommands } from "../../utils/page_objects/commands";
 
@@ -30,9 +29,7 @@ firematTest(
 
     expect(pickTexts).toEqual([
       " Start Emulators",
-      "asia-east1",
-      "europe-north1",
-      "wonderland2",
+      "Production",
     ]);
 
     await picks[0].click();
@@ -77,9 +74,7 @@ firematTest("Can pick an instance", async function () {
 
   expect(pickTexts).toEqual([
     "Emulator",
-    "asia-east1",
-    "europe-north1",
-    "wonderland2",
+    "Production",
   ]);
 
   await picks[3].click();
