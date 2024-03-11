@@ -21,7 +21,7 @@ import { OperationDefinitionNode, OperationTypeNode, print } from "graphql";
 import { FirematService } from "./service";
 import { FirematError, toSerializedError } from "../../common/error";
 import { OperationLocation } from "./types";
-import { emulatorInstance, selectedInstance } from "./connect-instance";
+import { localInstance, selectedInstance } from "./connect-instance";
 import { EmulatorsController } from "../core/emulators";
 
 export function registerExecution(
@@ -78,7 +78,7 @@ export function registerExecution(
     const targetedInstance = selectedInstance.value;
 
     if (
-      targetedInstance === emulatorInstance &&
+      targetedInstance === localInstance &&
       !emulatorsController.areEmulatorsRunning.value
     ) {
       const always = "Yes (always)";
@@ -103,7 +103,7 @@ export function registerExecution(
 
     // Warn against using mutations in production.
     if (
-      targetedInstance !== emulatorInstance &&
+      targetedInstance !== localInstance &&
       !configs.get(alwaysExecuteMutationsInProduction) &&
       ast.operation === OperationTypeNode.MUTATION
     ) {

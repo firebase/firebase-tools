@@ -5,8 +5,8 @@ import { computed, effect, signal } from "@preact/signals-core";
 import { EmulatorsController } from "../core/emulators";
 import { QuickPickItem } from "vscode";
 
-export const emulatorInstance = "emulator";
-export const selectedInstance = signal<string>(emulatorInstance);
+export const localInstance = "emulator";
+export const selectedInstance = signal<string>(localInstance);
 
 export function registerFirebaseDataConnectView(
   context: vscode.ExtensionContext,
@@ -43,10 +43,10 @@ export function registerFirebaseDataConnectView(
 
   function syncStatusBarWithSelectedInstance() {
     return effect(() => {
-      selectedInstanceStatus.text = `$(data-connect) ${selectedInstance.value ?? emulatorInstance}`;
+      selectedInstanceStatus.text = `$(data-connect) ${selectedInstance.value ?? localInstance}`;
       if (
         !selectedInstance.value ||
-        selectedInstance.value === emulatorInstance
+        selectedInstance.value === localInstance
       ) {
         selectedInstanceStatus.backgroundColor = undefined;
       } else {
@@ -66,7 +66,7 @@ export function registerFirebaseDataConnectView(
       );
 
       if (!isSelectedInstanceInOptions) {
-        selectedInstance.value = emulatorInstance;
+        selectedInstance.value = localInstance;
       }
     });
   }
@@ -85,7 +85,7 @@ export function registerFirebaseDataConnectView(
         selectedInstance.value = selected.id;
 
         if (
-          selected.id === emulatorInstance &&
+          selected.id === localInstance &&
           !emulatorsController.areEmulatorsRunning.value
         ) {
           emulatorsController.startEmulators();
