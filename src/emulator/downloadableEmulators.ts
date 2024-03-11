@@ -33,9 +33,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
     expectedChecksum: "2fd771101c0e1f7898c04c9204f2ce63",
   },
   firestore: {
-    version: "1.19.2",
-    expectedSize: 67203281,
-    expectedChecksum: "167205aea99351c08ef293f35009a63c",
+    version: "1.19.3",
+    expectedSize: 67296394,
+    expectedChecksum: "08a9b882a5c38570b6333f3931b1e52b",
   },
   storage: {
     version: "1.1.3",
