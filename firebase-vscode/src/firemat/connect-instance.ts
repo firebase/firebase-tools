@@ -19,9 +19,9 @@ export function registerFirebaseDataConnectView(
     const options = <(QuickPickItem & { id: string })[]>[
       {
         label: emulatorsController.areEmulatorsRunning.value
-          ? "Emulator"
-          : "$(play) Start Emulators",
-        id: "emulator",
+          ? "Local"
+          : "$(play) Local",
+        id: localInstance,
       },
       { label: "Production", id: productionInstance },
     ];
