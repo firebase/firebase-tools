@@ -1,9 +1,5 @@
 specVersion: v1alpha
 schema:
   main:
-    source: ./api/schema
     connection:
       connectionString: postgresql://postgres:mypassword@localhost:5432/emulator?sslmode=disable
-operationSet:
-  crud:
-    source: ./api/operations
