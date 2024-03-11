@@ -53,7 +53,9 @@ export function FirematExecutionArgumentsApp() {
       <VSCodePanelTab>VARIABLES</VSCodePanelTab>
       <VSCodePanelTab>AUTHENTICATION</VSCodePanelTab>
       <VSCodePanelView className={style.variable}>
-        <textarea onChange={handleVariableChange}>{"{}"}</textarea>
+        <textarea defaultValue={"{}"} onChange={handleVariableChange}>
+          {"{}"}
+        </textarea>
       </VSCodePanelView>
       <VSCodePanelView className={style.authentication}>
         <AuthUserMockForm />

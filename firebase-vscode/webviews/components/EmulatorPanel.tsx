@@ -132,8 +132,8 @@ function FormatEmulatorRunningInfo({ infos }: { infos: EmulatorInfo[] }) {
     <ul>
       {infos
         .filter((info) => info.name !== "logging")
-        .map((info) => (
-          <li key={info.pid}>{info.name}</li>
+        .map((info, index) => (
+          <li key={info.pid ?? index}>{info.name}</li>
         ))}
     </ul>
   );
