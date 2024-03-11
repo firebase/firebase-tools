@@ -53,7 +53,7 @@ import { requiresJava } from "./downloadableEmulators";
 import { prepareFrameworks } from "../frameworks";
 import * as experiments from "../experiments";
 import { EmulatorListenConfig, PortName, resolveHostAndAssignPorts } from "./portUtils";
-import { isRuntime } from "../deploy/functions/runtimes/supported";
+import { Runtime, isRuntime, latest } from "../deploy/functions/runtimes/supported";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
@@ -493,15 +493,18 @@ export async function startAll(
 
     for (const cfg of functionsCfg) {
       const functionsDir = path.join(projectDir, cfg.source);
-      const runtime = (options.extDevRuntime as string | undefined) ?? cfg.runtime;
+      let runtime = (options.extDevRuntime ?? cfg.runtime) as Runtime | undefined;
       if (!runtime) {
-        throw new FirebaseError(
-          `Cannot load functions from ${functionsDir} because the runtime cannot be determined.`,
-        );
+        // N.B: extensions are wonky. They don't typically include an engine
+        // in package.json and there is no firebase.json for their runtime
+        // name. extensions.yaml has resources[].properties.runtime, but this
+        // varies per function! This default will work for now, but will break
+        // once extensions support python.
+        runtime = latest("nodejs");
       }
       if (!isRuntime(runtime)) {
         throw new FirebaseError(
-          `Cannot load functions from ${functionsDir} because it has invalid runtime ${runtime}`,
+          `Cannot load functions from ${functionsDir} because it has invalid runtime ${runtime as string}`,
         );
       }
       emulatableBackends.push({
