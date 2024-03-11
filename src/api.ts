@@ -103,7 +103,12 @@ export const cloudbuildOrigin = utils.envOverride(
 export const developerConnectOrigin = utils.envOverride(
   "FIREBASE_DEVELOPERCONNECT_URL",
   "https://developerconnect.googleapis.com",
-)
+);
+
+export const firebaseGithubAppInstallationURL = utils.envOverride(
+  "FIREBASE_GITHUB_INSTALLATION_URL",
+  "https://github.com/apps/firebase-staging/installations/new",
+);
 
 export const cloudschedulerOrigin = utils.envOverride(
   "FIREBASE_CLOUDSCHEDULER_URL",

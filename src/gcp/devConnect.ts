@@ -26,68 +26,64 @@ export interface Operation {
   response?: any;
 }
 
-
 export interface OAuthCredential {
   oauthTokenSecretVersion: string;
   username: string;
 }
 
-type GitHubApp =
-  "GIT_HUB_APP_UNSPECIFIED" |
-  "DEVELOPER_CONNECT" |
-  "FIREBASE"
+type GitHubApp = "GIT_HUB_APP_UNSPECIFIED" | "DEVELOPER_CONNECT" | "FIREBASE";
 
 export interface GitHubConfig {
-  githubApp?: GitHubApp
-  authorizerCredential: OAuthCredential
-  appInstallationId: string
-  installationUri?: string
+  githubApp?: GitHubApp;
+  authorizerCredential?: OAuthCredential;
+  appInstallationId?: string;
+  installationUri?: string;
 }
 
 // Configuration for the connection depending on the type of provider.
 export interface ConnectionConfig {
-  githubConfig: GitHubConfig
+  githubConfig: GitHubConfig;
 }
 
 type InstallationStage =
-  "STAGE_UNSPECIFIED" |
-  "PENDING_CREATE_APP" |
-  "PENDING_USER_OAUTH" |
-  "PENDING_INSTALL_APP" |
-  "COMPLETE";
+  | "STAGE_UNSPECIFIED"
+  | "PENDING_CREATE_APP"
+  | "PENDING_USER_OAUTH"
+  | "PENDING_INSTALL_APP"
+  | "COMPLETE";
 
 export interface InstallationState {
-  stage: InstallationStage
-  message: string
-  actionUri: string
+  stage: InstallationStage;
+  message: string;
+  actionUri: string;
 }
 
 export interface Connection {
-  name: string
-  createTime?: string
-  updateTime?: string
-  deleteTime?: string
+  name: string;
+  createTime?: string;
+  updateTime?: string;
+  deleteTime?: string;
   labels?: {
     [key: string]: string;
   };
-  connectionConfig: ConnectionConfig
-  installationState?: InstallationState
-  disabled?: boolean
-  reconciling?: boolean
+  connectionConfig: ConnectionConfig;
+  installationState: InstallationState;
+  disabled?: boolean;
+  reconciling?: boolean;
   annotations?: {
     [key: string]: string;
   };
   etag?: string;
-   uid?: string;
+  uid?: string;
 }
 
 type ConnectionOutputOnlyFields =
-  "createTime" |
-  "updateTime" |
-  "deleteTime" |
-  "installationState" |
-  "reconciling" |
-  "uid";
+  | "createTime"
+  | "updateTime"
+  | "deleteTime"
+  | "installationState"
+  | "reconciling"
+  | "uid";
 
 export interface GitRepositoryLink {
   name: string;
@@ -95,26 +91,31 @@ export interface GitRepositoryLink {
   createTime: string;
   updateTime: string;
   deleteTime: string;
-  labels?:  {
+  labels?: {
     [key: string]: string;
   };
   etag?: string;
-  reconciling: boolean
+  reconciling: boolean;
   annotations?: {
     [key: string]: string;
   };
-  uid: string
+  uid: string;
 }
 
 type GitRepositoryLinkOutputOnlyFields =
-  "createTime" |
-  "updateTime" |
-  "deleteTime" |
-  "reconciling" |
-  "uid";
+  | "createTime"
+  | "updateTime"
+  | "deleteTime"
+  | "reconciling"
+  | "uid";
 
-interface LinkableGitRepository {
-  cloneUri: string
+export interface LinkableGitRepositories {
+  repositories: LinkableGitRepository[];
+  nextPageToken: string;
+}
+
+export interface LinkableGitRepository {
+  cloneUri: string;
 }
 
 /**
@@ -124,12 +125,12 @@ export async function createConnection(
   projectId: string,
   location: string,
   connectionId: string,
-  githubConfig: GitHubConfig
+  githubConfig: GitHubConfig,
 ): Promise<Operation> {
   const config: GitHubConfig = {
     ...githubConfig,
-    githubApp: "FIREBASE"
-  }
+    githubApp: "FIREBASE",
+  };
   const res = await client.post<
     Omit<Omit<Connection, "name">, ConnectionOutputOnlyFields>,
     Operation
@@ -137,8 +138,8 @@ export async function createConnection(
     `projects/${projectId}/locations/${location}/connections`,
     {
       connectionConfig: {
-        githubConfig: config
-      }
+        githubConfig: config,
+      },
     },
     { queryParams: { connectionId } },
   );
@@ -193,17 +194,16 @@ export async function fetchLinkableGitRepositories(
   connectionId: string,
   pageToken = "",
   pageSize = 1000,
-): Promise<LinkableGitRepository[]> {
+): Promise<LinkableGitRepositories> {
   const name = `projects/${projectId}/locations/${location}/connections/${connectionId}:fetchLinkableRepositories`;
-  const res = await client.get<{linkableGitRepositories: LinkableGitRepository[], nextPageToken: string}>(name, {
+  const res = await client.get<LinkableGitRepositories>(name, {
     queryParams: {
       pageSize,
       pageToken,
     },
   });
 
-
-  return res.body.linkableGitRepositories;
+  return res.body;
 }
 
 /**
@@ -215,12 +215,15 @@ export async function createGitRepositoryLink(
   projectId: string,
   location: string,
   connectionId: string,
-  gitRepositoryLink: GitRepositoryLink,
   gitRepositoryLinkId: string,
+  cloneUri: string,
 ): Promise<Operation> {
-  const res = await client.post<Omit<GitRepositoryLink, GitRepositoryLinkOutputOnlyFields | "name">, Operation>(
+  const res = await client.post<
+    Omit<GitRepositoryLink, GitRepositoryLinkOutputOnlyFields | "name">,
+    Operation
+  >(
     `projects/${projectId}/locations/${location}/connections/${connectionId}/gitRepositoryLinks`,
-    gitRepositoryLink,
+    { cloneUri },
     { queryParams: { gitRepositoryLinkId } },
   );
   return res.body;
@@ -238,4 +241,11 @@ export async function getGitRepositoryLink(
   const name = `projects/${projectId}/locations/${location}/connections/${connectionId}/gitRepositoryLinks/${gitRepositoryLinkId}`;
   const res = await client.get<GitRepositoryLink>(name);
   return res.body;
+}
+
+/**
+ * Returns email associated with the Developer Connect Service Agent
+ */
+export function serviceAgentEmail(projectNumber: string): string {
+  return `service-${projectNumber}@gcp-sa-developerconnect.iam.gserviceaccount.com`;
 }
