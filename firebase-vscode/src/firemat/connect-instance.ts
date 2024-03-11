@@ -6,7 +6,7 @@ import { EmulatorsController } from "../core/emulators";
 import { QuickPickItem } from "vscode";
 
 export const localInstance = "local";
-export const productionInstance = "prod";
+export const productionInstance = "production";
 export const selectedInstance = signal<string>(localInstance);
 
 export function registerFirebaseDataConnectView(

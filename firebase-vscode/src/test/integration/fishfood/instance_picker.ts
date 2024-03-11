@@ -65,7 +65,7 @@ firematTest("Can pick an instance", async function () {
 
   // Verify that the code-lenses reflect the selected instance
   await editor.firstCodeLense.waitForDisplayed();
-  expect(await editor.firstCodeLense.getText()).toBe("Run (emulator)");
+  expect(await editor.firstCodeLense.getText()).toBe("Run (local)");
 
   await statusBar.currentInstanceElement.click();
 
@@ -77,14 +77,14 @@ firematTest("Can pick an instance", async function () {
     "Production",
   ]);
 
-  await picks[3].click();
+  await picks[1].click();
 
   // The code-lenses and statusbar should update
   statusBar.currentInstanceElement.waitUntil(
     async () =>
-      (await statusBar.currentInstanceElement.getText()) === "wonderland2",
+      (await statusBar.currentInstanceElement.getText()) === "Production",
   );
   statusBar.currentInstanceElement.waitUntil(
-    async () => (await editor.firstCodeLense.getText()) === "Run (wonderland2)",
+    async () => (await editor.firstCodeLense.getText()) === "Run (production)",
   );
 });
