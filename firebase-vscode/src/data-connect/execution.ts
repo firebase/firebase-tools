@@ -19,7 +19,7 @@ import {
 import { batch, effect } from "@preact/signals-core";
 import { OperationDefinitionNode, OperationTypeNode, print } from "graphql";
 import { FirematService } from "./service";
-import { FirematError, toSerializedError } from "../../common/error";
+import { FirematError, toSerializedError } from "../error";
 import { OperationLocation } from "./types";
 import { emulatorInstance, selectedInstance } from "./connect-instance";
 import { EmulatorsController } from "../core/emulators";

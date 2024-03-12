@@ -5,10 +5,10 @@ import {
   getIntrospectionQuery,
 } from "graphql";
 import { Signal, computed, signal } from "@preact/signals-core";
-import { assertExecutionResult } from "../../common/graphql";
-import { FirematError } from "../../common/error";
+import { assertExecutionResult } from "../graphql";
+import { FirematError } from "../error";
 import { AuthService } from "../auth/service";
-import { UserMockKind } from "../../common/messaging/protocol";
+import { UserMockKind } from "../messaging/protocol";
 import { firstWhereDefined } from "../utils/signal";
 import { EmulatorsController } from "../core/emulators";
 import { Emulators } from "../cli";

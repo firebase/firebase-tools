@@ -11,7 +11,7 @@ import { registerWebview } from "./webview";
 import { registerCore } from "./core";
 import { getSettings } from "./utils/settings";
 import { registerHosting } from "./hosting";
-import { registerFdc } from "./firemat";
+import { registerFdc } from "./data-connect";
 import { AuthService } from "./auth/service";
 
 // This method is called when your extension is activated
