@@ -1339,11 +1339,21 @@ export class FunctionsEmulator implements EmulatorInstance {
           // additional configuration. Other dynamic ports will need to be added
           // manually to the inspector.
           port = await portfinder.getPortPromise({ port: 9229 });
-          this.logger.logLabeled(
-            "SUCCESS",
-            "functions",
-            `Using debug port ${port} for functions codebase ${backend.codebase}`,
-          );
+          if (port === 9229) {
+            this.logger.logLabeled(
+              "SUCCESS",
+              "functions",
+              `Using debug port 9229 for functions codebase ${backend.codebase}`,
+            );
+          } else {
+            // Give a longer message to warn about non-default ports.
+            this.logger.logLabeled(
+              "SUCCESS",
+              "functions",
+              `Using debug port ${port} for functions codebase ${backend.codebase}. ` +
+                "You may need to add manually add this port to your inspector.",
+            );
+          }
         }
 
         const { host } = this.getInfo();
