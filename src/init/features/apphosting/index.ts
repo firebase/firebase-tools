@@ -27,8 +27,12 @@ import { DEFAULT_REGION } from "./constants";
 import { ensure } from "../../../ensureApiEnabled";
 import * as deploymentTool from "../../../deploymentTool";
 import { DeepOmit } from "../../../metaprogramming";
+import { AppPlatform, createWebApp, listFirebaseApps } from "../../../management/apps";
+import * as inquirer from "inquirer";
+import * as fuzzy from "fuzzy";
 
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
+const CREATE_NEW_WEB_APP_CHOICE = "CREATE_NEW_WEB_APP";
 
 const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: apphostingOrigin,
@@ -42,6 +46,7 @@ const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationRes
  */
 export async function doSetup(
   projectId: string,
+  webAppName: string | null,
   location: string | null,
   serviceAccount: string | null,
 ): Promise<void> {
@@ -53,7 +58,6 @@ export async function doSetup(
   ]);
 
   const allowedLocations = (await apphosting.listLocations(projectId)).map((loc) => loc.locationId);
-
   if (location) {
     if (!allowedLocations.includes(location)) {
       throw new FirebaseError(
@@ -62,7 +66,7 @@ export async function doSetup(
     }
   }
 
-  logBullet("First we need a few details to create your backend.");
+  logBullet("First we need a few details to create your backend.\n");
 
   location =
     location ||
@@ -85,6 +89,13 @@ export async function doSetup(
     message: "Create a name for your backend [1-30 characters]",
   });
 
+  const [selectedWebAppName, selectedWebAppId] = await getOrCreateWebAppId(
+    projectId,
+    webAppName,
+    backendId,
+  );
+  logSuccess(`Firebase web app set to ${selectedWebAppName}.\n`);
+
   const cloudBuildConnRepo = await repo.linkGitHubRepository(projectId, location);
 
   const backend = await createBackend(
@@ -93,6 +104,7 @@ export async function doSetup(
     backendId,
     cloudBuildConnRepo,
     serviceAccount,
+    selectedWebAppId,
   );
 
   // TODO: Once tag patterns are implemented, prompt which method the user
@@ -130,6 +142,96 @@ export async function doSetup(
 
   logSuccess(`Successfully created backend:\n\t${backend.name}`);
   logSuccess(`Your site is now deployed at:\n\thttps://${backend.uri}`);
+}
+
+/**
+ *
+ * @param projectId user's projectId
+ * @param webAppName (optional) name of web app
+ * @return app name and app id
+ */
+async function getOrCreateWebAppId(
+  projectId: string,
+  webAppName: string | null,
+  backendId: string,
+): Promise<string[]> {
+  let webAppId: string;
+
+  const existingUserProjectWebApps = new Map(
+    (await listFirebaseApps(projectId, AppPlatform.WEB)).map((obj) => [
+      // displayName can be null, use name instead if so. Example - displayName: "mathusan-web-app", name: "projects/mathusan-fwp/webApps/1:461896338144:web:426291191cccce65fede85"
+      obj.displayName ?? obj.name,
+      obj.appId,
+    ]),
+  );
+
+  if (existingUserProjectWebApps.size < 1) {
+    // create a web app using backend id
+    const newWebApp = await createWebApp(projectId, { displayName: backendId });
+    return [newWebApp.displayName, newWebApp.appId];
+  }
+
+  if (webAppName) {
+    if (!existingUserProjectWebApps.get(webAppName)) {
+      throw new FirebaseError(`The web app '${webAppName}' does not exist in project ${projectId}`);
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    webAppId = existingUserProjectWebApps.get(webAppName)!;
+  } else {
+    [webAppName, webAppId] = await promptFirebaseWebAppId(projectId, existingUserProjectWebApps);
+  }
+
+  return [webAppName, webAppId];
+}
+/**
+ * Prompts the user for the web app that they would like to associate their backend with
+ * @param projectId user's projectId
+ * @param existingUserProjectWebApps a map of a user's web apps to their ids
+ * @return the name and ID of a web app
+ */
+async function promptFirebaseWebAppId(
+  projectId: string,
+  existingUserProjectWebApps: Map<string, string>,
+): Promise<string[]> {
+  const searchWebApps =
+    (existingWebApps: string[]) =>
+    // eslint-disable-next-line @typescript-eslint/require-await, @typescript-eslint/no-explicit-any
+    async (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
+      return [
+        new inquirer.Separator(),
+        {
+          name: "Create a new Firebase web app.",
+          value: CREATE_NEW_WEB_APP_CHOICE,
+        },
+        new inquirer.Separator(),
+        ...fuzzy.filter(input, existingWebApps).map((result) => {
+          return result.original;
+        }),
+      ];
+    };
+
+  const webAppName = await promptOnce({
+    type: "autocomplete",
+    name: "app",
+    message:
+      "Which of the following Firebase web apps would you like to associate your backend with?",
+    source: searchWebApps(Array.from(existingUserProjectWebApps.keys())),
+  });
+
+  if (webAppName === CREATE_NEW_WEB_APP_CHOICE) {
+    const newAppDisplayName = await promptOnce({
+      type: "input",
+      name: "webAppName",
+      message: "Enter a unique name for your web app",
+    });
+
+    const newWebApp = await createWebApp(projectId, { displayName: newAppDisplayName });
+    return [newWebApp.displayName, newWebApp.appId];
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  return [webAppName, existingUserProjectWebApps.get(webAppName)!];
 }
 
 /**
@@ -171,6 +273,7 @@ export async function createBackend(
   backendId: string,
   repository: Repository,
   serviceAccount: string | null,
+  webAppId: string,
 ): Promise<Backend> {
   const defaultServiceAccount = defaultComputeServiceAccountEmail(projectId);
   const backendReqBody: Omit<Backend, BackendOutputOnlyFields> = {
@@ -181,6 +284,7 @@ export async function createBackend(
     },
     labels: deploymentTool.labels(),
     computeServiceAccount: serviceAccount || defaultServiceAccount,
+    appId: webAppId,
   };
 
   // TODO: remove computeServiceAccount when the backend supports the field.

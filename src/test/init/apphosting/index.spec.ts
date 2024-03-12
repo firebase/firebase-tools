@@ -44,6 +44,7 @@ describe("operationsConverter", () => {
     const projectId = "projectId";
     const location = "us-central1";
     const backendId = "backendId";
+    const webAppId = "webAppId";
 
     const op = {
       name: `projects/${projectId}/locations/${location}/backends/${backendId}`,
@@ -75,6 +76,7 @@ describe("operationsConverter", () => {
         backendId,
         cloudBuildConnRepo,
         "custom-service-account",
+        webAppId,
       );
 
       const backendInput: Omit<apphosting.Backend, apphosting.BackendOutputOnlyFields> = {
@@ -84,6 +86,7 @@ describe("operationsConverter", () => {
           rootDirectory: "/",
         },
         labels: deploymentTool.labels(),
+        appId: webAppId,
       };
       expect(createBackendStub).to.be.calledWith(projectId, location, backendInput);
     });
@@ -110,6 +113,7 @@ describe("operationsConverter", () => {
         backendId,
         cloudBuildConnRepo,
         /* serviceAccount= */ null,
+        webAppId,
       );
 
       // CreateBackend should be called twice; once initially and once after the service account was created
@@ -137,6 +141,7 @@ describe("operationsConverter", () => {
           backendId,
           cloudBuildConnRepo,
           /* serviceAccount= */ "my-service-account",
+          webAppId,
         ),
       ).to.be.rejectedWith(
         FirebaseError,
