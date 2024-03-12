@@ -24,7 +24,7 @@ export class ExecutionTreeItem extends vscode.TreeItem {
     )} | Arguments: ${prettyArgs}`;
     this.command = {
       title: "Show result",
-      command: "firebase.firemat.selectExecutionResultToShow",
+      command: "firebase.dataConnect.selectExecutionResultToShow",
       arguments: [item.executionId],
     };
     this.updateContext();
@@ -58,7 +58,7 @@ export class ExecutionTreeItem extends vscode.TreeItem {
 }
 
 /**
- * The TreeDataProvider for firemat execution history.
+ * The TreeDataProvider for data connect execution history.
  */
 export class ExecutionHistoryTreeDataProvider
   implements vscode.TreeDataProvider<ExecutionTreeItem>

@@ -38,8 +38,8 @@ type DeepReadOnly<T> =
       ? ReadonlyArray<DeepReadOnly<T[number]>>
       : T;
 
-/** The `firemat.yaml` content */
-export type FirematConfig = DeepReadOnly<{
+/** The `dataconnect.yaml` content */
+export type DataConnectConfig = DeepReadOnly<{
   specVersion: string;
   schema: {
     main: {
@@ -121,7 +121,7 @@ export interface WebviewToExtensionParamsMap {
 
   selectEmulatorImportFolder: {};
 
-  definedFirematArgs: string;
+  definedDataConnectArgs: string;
 
   /** Prompts the user to select a directory in which to place the quickstart */
   chooseQuickstartDir: {};
@@ -132,7 +132,7 @@ export interface WebviewToExtensionParamsMap {
   connectToInstance: void;
 }
 
-export interface FirematResults {
+export interface DataConnectResults {
   query: string;
   displayName: string;
   results?: ExecutionResult | SerializedError;
@@ -199,9 +199,9 @@ export interface ExtensionToWebviewParamsMap {
    */
   notifyPreviewChannelResponse: { id: string };
 
-  // firemat specific
-  notifyFirematResults: FirematResults;
-  notifyFirematRequiredArgs: { args: string[] };
+  // data connect specific
+  notifyDataConnectResults: DataConnectResults;
+  notifyDataConnectRequiredArgs: { args: string[] };
 }
 
 export type MessageParamsMap =

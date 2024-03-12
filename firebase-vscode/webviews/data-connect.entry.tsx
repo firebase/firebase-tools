@@ -11,10 +11,10 @@ import { Label } from "./components/ui/Text";
 styles;
 
 const root = createRoot(document.getElementById("root")!);
-root.render(<Firemat />);
+root.render(<DataConnect />);
 // TODO: deploy button should be enabled on valid production connection
 const isConnectedProduction = false;
-function Firemat() {
+function DataConnect() {
   return (
     <>
       <Spacer size="small" />

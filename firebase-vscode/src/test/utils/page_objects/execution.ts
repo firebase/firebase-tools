@@ -10,7 +10,7 @@ export class ExecutionPanel {
 
   async open(): Promise<void> {
     await this.workbench.executeCommand(
-      "firemat-execution-configuration.focus",
+      "data-connect-execution-configuration.focus",
     );
   }
 

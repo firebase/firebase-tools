@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import style from "./firemat-execution-configuration.entry.scss";
+import style from "./data-connect-execution-configuration.entry.scss";
 import {
   VSCodeDropdown,
   VSCodeOption,
@@ -14,11 +14,11 @@ import { Spacer } from "./components/ui/Spacer";
 import { UserMockKind } from "../common/messaging/protocol";
 
 const root = createRoot(document.getElementById("root")!);
-root.render(<FirematExecutionArgumentsApp />);
+root.render(<DataConnectExecutionArgumentsApp />);
 
-export function FirematExecutionArgumentsApp() {
+export function DataConnectExecutionArgumentsApp() {
   function handleVariableChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    broker.send("definedFirematArgs", e.target.value);
+    broker.send("definedDataConnectArgs", e.target.value);
   }
 
   // Due to webview-ui-toolkit adding shadow-roots, css alone is not

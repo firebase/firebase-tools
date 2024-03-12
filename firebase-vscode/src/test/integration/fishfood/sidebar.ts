@@ -1,9 +1,9 @@
 import { browser } from "@wdio/globals";
 import { FirebaseSidebar } from "../../utils/page_objects/sidebar";
-import { firematTest } from "../../utils/test_hooks";
+import { dataConnectTest } from "../../utils/test_hooks";
 import { FirebaseCommands } from "../../utils/page_objects/commands";
 
-firematTest(
+dataConnectTest(
   "If emulators are started before opening the sidebar, get a clean initial state",
   async function () {
     const workbench = await browser.getWorkbench();

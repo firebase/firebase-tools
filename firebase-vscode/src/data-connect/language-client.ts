@@ -100,7 +100,7 @@ export function setupLanguageClient(context, fdcEndpoint: Signal<string>) {
         await client.start();
         outputChannel.appendLine("Firebase GraphQL Language Server restarted");
 
-        // re-send firemat endpoint
+        // re-send data connect endpoint
         sendFDCEndpointToLSP(fdcEndpoint.value);
         outputChannel.appendLine("Sending Firebase Data Connect endpoint to LSP");
     });

@@ -2,7 +2,7 @@
  *
  * This could include HTTP errors or JSON parsing errors.
  */
-export class FirematError extends Error {
+export class DataConnectError extends Error {
   constructor(message: string, cause?: unknown) {
     super(message, { cause });
   }

@@ -17,7 +17,7 @@ const extensionConfig = {
   entry: {
     extension: "./src/extension.ts",
     server: {
-      import: "./src/firemat/language-server.ts",
+      import: "./src/data-connect/language-server.ts",
       filename: "[name].js",
     },
   }, // the entry point of this extension, 📖 -> https://webpack.js.org/configuration/entry-context/
