@@ -5,8 +5,9 @@ import { computed, effect, signal } from "@preact/signals-core";
 import { EmulatorsController } from "../core/emulators";
 import { QuickPickItem } from "vscode";
 
-export const emulatorInstance = "emulator";
-export const selectedInstance = signal<string>(emulatorInstance);
+export const localInstance = "local";
+export const productionInstance = "production";
+export const selectedInstance = signal<string>(localInstance);
 
 export function registerFirebaseDataConnectView(
   context: vscode.ExtensionContext,
@@ -18,13 +19,11 @@ export function registerFirebaseDataConnectView(
     const options = <(QuickPickItem & { id: string })[]>[
       {
         label: emulatorsController.areEmulatorsRunning.value
-          ? "Emulator"
-          : "$(play) Start Emulators",
-        id: "emulator",
+          ? "Local"
+          : "$(play) Local",
+        id: localInstance,
       },
-      { label: "asia-east1", id: "asia-east1" },
-      { label: "europe-north1", id: "europe-north1" },
-      { label: "wonderland2", id: "wonderland2" },
+      { label: "Production", id: productionInstance },
     ];
 
     for (const option of options) {
@@ -43,10 +42,10 @@ export function registerFirebaseDataConnectView(
 
   function syncStatusBarWithSelectedInstance() {
     return effect(() => {
-      selectedInstanceStatus.text = `$(data-connect) ${selectedInstance.value ?? emulatorInstance}`;
+      selectedInstanceStatus.text = `$(data-connect) ${selectedInstance.value ?? localInstance}`;
       if (
         !selectedInstance.value ||
-        selectedInstance.value === emulatorInstance
+        selectedInstance.value === localInstance
       ) {
         selectedInstanceStatus.backgroundColor = undefined;
       } else {
@@ -66,7 +65,7 @@ export function registerFirebaseDataConnectView(
       );
 
       if (!isSelectedInstanceInOptions) {
-        selectedInstance.value = emulatorInstance;
+        selectedInstance.value = localInstance;
       }
     });
   }
@@ -85,7 +84,7 @@ export function registerFirebaseDataConnectView(
         selectedInstance.value = selected.id;
 
         if (
-          selected.id === emulatorInstance &&
+          selected.id === localInstance &&
           !emulatorsController.areEmulatorsRunning.value
         ) {
           emulatorsController.startEmulators();

@@ -1,12 +1,12 @@
 {
-  "firemat": {
+  "dataconnect": {
     "source": "api"
   },
   "emulators": {
     "auth": {
       "port": 9099
     },
-    "firemat": {
+    "dataconnect": {
       "port": 9399
     },
     "ui": {
