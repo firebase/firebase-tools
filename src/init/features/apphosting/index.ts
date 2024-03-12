@@ -284,44 +284,9 @@ export async function orchestrateRollout(
   const buildId = await apphosting.getNextRolloutId(projectId, location, backendId, 1);
   const buildOp = await apphosting.createBuild(projectId, location, backendId, buildId, buildInput);
 
-  const rolloutBody = {
+  const rolloutOp = await apphosting.createRollout(projectId, location, backendId, buildId, {
     build: `projects/${projectId}/locations/${location}/backends/${backendId}/builds/${buildId}`,
-  };
-
-  let tries = 0;
-  let done = false;
-  while (!done) {
-    tries++;
-    try {
-      const validateOnly = true;
-      await apphosting.createRollout(
-        projectId,
-        location,
-        backendId,
-        buildId,
-        rolloutBody,
-        validateOnly,
-      );
-      done = true;
-    } catch (err: unknown) {
-      if (err instanceof FirebaseError && err.status === 400) {
-        if (tries >= 5) {
-          throw err;
-        }
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      } else {
-        throw err;
-      }
-    }
-  }
-
-  const rolloutOp = await apphosting.createRollout(
-    projectId,
-    location,
-    backendId,
-    buildId,
-    rolloutBody,
-  );
+  });
 
   const rolloutPoll = poller.pollOperation<Rollout>({
     ...apphostingPollerOptions,
