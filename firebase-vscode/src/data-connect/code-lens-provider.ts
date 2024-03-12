@@ -4,7 +4,7 @@ import { OperationLocation } from "./types";
 import { Disposable } from "vscode";
 
 import { Signal } from "@preact/signals-core";
-import { firematConfig } from "../core/config";
+import { dataConnectConfig } from "../core/config";
 import path from "path";
 import { selectedInstance } from "./connect-instance";
 import { EmulatorsController } from "../core/emulators";
@@ -68,7 +68,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
     token: vscode.CancellationToken,
   ): vscode.CodeLens[] {
     // Wait for configs to be loaded and emulator to be running
-    const configs = this.watch(firematConfig);
+    const configs = this.watch(dataConnectConfig);
     if (!configs) {
       return [];
     }
@@ -105,7 +105,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
           codeLenses.push(
             new vscode.CodeLens(range, {
               title: `$(play) Run (${instance})`,
-              command: "firebase.firemat.executeOperation",
+              command: "firebase.dataConnect.executeOperation",
               tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
               arguments: [x, operationLocation],
             }),
@@ -116,7 +116,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
           codeLenses.push(
             new vscode.CodeLens(range, {
               title: `$(plug) Move to connector`,
-              command: "firebase.firemat.moveOperationToConnector",
+              command: "firebase.dataConnect.moveOperationToConnector",
               tooltip: `Expose this ${opKind} to client apps through the SDK.`,
               arguments: [i, operationLocation],
             }),
@@ -163,7 +163,7 @@ export class SchemaCodeLensProvider extends ComputedCodeLensProvider {
         codeLenses.push(
           new vscode.CodeLens(range, {
             title: `$(database) Add data`,
-            command: "firebase.firemat.schemaAddData",
+            command: "firebase.dataConnect.schemaAddData",
             tooltip: "Generate a mutation to add data of this type",
             arguments: [x, schemaLocation],
           }),

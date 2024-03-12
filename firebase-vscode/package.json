@@ -66,7 +66,7 @@
           "default": true,
           "description": "Enable web frameworks"
         },
-        "firebase.firemat.alwaysAllowMutationsInProduction": {
+        "firebase.dataConnect.alwaysAllowMutationsInProduction": {
           "type": "boolean",
           "default": false,
           "description": "Always allow mutations in production. If false (default), trying to run a mutation in production will open a confirmation modal."
@@ -75,7 +75,7 @@
     },
     "keybindings": [
       {
-        "command": "firebase.firemat.executeOperationAtCursor",
+        "command": "firebase.dataConnect.executeOperationAtCursor",
         "key": "ctrl+enter",
         "mac": "cmd+enter",
         "when": "editorLangId == gql || editorLangId == graphql"
@@ -91,8 +91,8 @@
       ],
       "panel": [
         {
-          "id": "firebase-firemat-execution-view",
-          "title": "Firemat Execution",
+          "id": "firebase-data-connect-execution-view",
+          "title": "Data Connect Execution",
           "icon": "$(mono-firebase)"
         }
       ]
@@ -122,27 +122,27 @@
         },
         {
           "type": "webview",
-          "id": "firemat",
+          "id": "dataConnect",
           "name": "Firebase Data Connect"
         },
         {
-          "id": "firebase.firemat.explorerView",
+          "id": "firebase.dataConnect.explorerView",
           "name": "FDC Explorer"
         }
       ],
-      "firebase-firemat-execution-view": [
+      "firebase-data-connect-execution-view": [
         {
           "type": "webview",
-          "id": "firemat-execution-configuration",
+          "id": "data-connect-execution-configuration",
           "name": "Configuration"
         },
         {
-          "id": "firemat-execution-history",
+          "id": "data-connect-execution-history",
           "name": "History"
         },
         {
           "type": "webview",
-          "id": "firemat-execution-results",
+          "id": "data-connect-execution-results",
           "name": "Results"
         }
       ]

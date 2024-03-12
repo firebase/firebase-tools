@@ -9,17 +9,17 @@ import { RC } from "../../../src/rc";
 import { Config } from "../../../src/config";
 import { globalSignal } from "../utils/globals";
 import { workspace } from "../utils/test_hooks";
-import { FirematConfig } from "../messaging/protocol";
+import { DataConnectConfig } from "../../common/messaging/protocol";
 import * as jsYaml from "js-yaml";
 
 export const firebaseRC = globalSignal<RC | undefined>(undefined);
 export const firebaseConfig = globalSignal<Config | undefined>(undefined);
-export const firematConfig = globalSignal<FirematConfig | undefined>(undefined);
+export const dataConnectConfig = globalSignal<DataConnectConfig | undefined>(undefined);
 
 export function registerConfig(broker: ExtensionBrokerImpl): Disposable {
   firebaseRC.value = _readRC();
   firebaseConfig.value = _readFirebaseConfig();
-  firematConfig.value = _readFirematConfig();
+  dataConnectConfig.value = _readDataConnectConfig();
 
   function notifyFirebaseConfig() {
     broker.send("notifyFirebaseConfig", {
@@ -59,7 +59,7 @@ export function registerConfig(broker: ExtensionBrokerImpl): Disposable {
   const rcWatcher = _createWatcher(".firebaserc");
   rcWatcher?.onDidChange(() => (firebaseRC.value = _readRC()));
   rcWatcher?.onDidCreate(() => (firebaseRC.value = _readRC()));
-  // TODO handle deletion of .firebaserc/.firebase.json/firemat.yaml
+  // TODO handle deletion of .firebaserc/.firebase.json/dataconnect.yaml
 
   const configWatcher = _createWatcher("firebase.json");
   configWatcher?.onDidChange(
@@ -69,12 +69,12 @@ export function registerConfig(broker: ExtensionBrokerImpl): Disposable {
     () => (firebaseConfig.value = _readFirebaseConfig()),
   );
 
-  const firematWatcher = _createWatcher("firemat.yaml");
-  firematWatcher?.onDidChange(
-    () => (firematConfig.value = _readFirematConfig()),
+  const dataConnectWatcher = _createWatcher("dataconnect.yaml");
+  dataConnectWatcher?.onDidChange(
+    () => (dataConnectConfig.value = _readDataConnectConfig()),
   );
-  firematWatcher?.onDidCreate(
-    () => (firematConfig.value = _readFirematConfig()),
+  dataConnectWatcher?.onDidCreate(
+    () => (dataConnectConfig.value = _readDataConnectConfig()),
   );
 
   return {
@@ -82,14 +82,14 @@ export function registerConfig(broker: ExtensionBrokerImpl): Disposable {
       getInitialDataRemoveListener();
       rcRemoveListener();
       firebaseConfigRemoveListener();
-      firematWatcher?.dispose();
+      dataConnectWatcher?.dispose();
       rcWatcher?.dispose();
       configWatcher?.dispose();
     },
   };
 }
 
-const defaultFirematConfig: FirematConfig = {
+const defaultDataConnectConfig: DataConnectConfig = {
   specVersion: "v1alpha",
   schema: {
     main: {
@@ -165,32 +165,32 @@ function asAbsolutePath(relativePath: string, from: string): string {
 }
 
 /** @internal */
-export function _readFirematConfig(): FirematConfig | undefined {
-  // TODO refactor parsing as soon as firemat.yaml syntax is changed
+export function _readDataConnectConfig(): DataConnectConfig | undefined {
+  // TODO refactor parsing as soon as dataconnect.yaml syntax is changed
   const configPath = _getConfigPath();
   if (!configPath) {
     return undefined;
   }
 
   try {
-    const firematYaml = fs.readFileSync(
-      path.join(configPath, "firemat.yaml"),
+    const dataConnectYaml = fs.readFileSync(
+      path.join(configPath, "dataconnect.yaml"),
       "utf-8",
     );
-    const yaml = jsYaml.load(firematYaml);
+    const yaml = jsYaml.load(dataConnectYaml);
 
-    let operations: Record<string, FirematConfig["operationSet"][string]> = {};
+    let operations: Record<string, DataConnectConfig["operationSet"][string]> = {};
 
     const operationSet =
-      yaml?.operationSet ?? defaultFirematConfig.operationSet;
+      yaml?.operationSet ?? defaultDataConnectConfig.operationSet;
     for (const key of Object.keys(operationSet)) {
       operations[key] = {
         source: asAbsolutePath(
           assignIfType(
             "string",
-            `firemat.yaml#operationSet.${key}.source`,
+            `dataconnect.yaml#operationSet.${key}.source`,
             operationSet[key]?.source,
-            defaultFirematConfig.operationSet[key]?.source,
+            defaultDataConnectConfig.operationSet[key]?.source,
           ),
           configPath,
         ),
@@ -200,25 +200,25 @@ export function _readFirematConfig(): FirematConfig | undefined {
     return {
       specVersion: assignIfType(
         "string",
-        "firemat.yaml#specVersion",
+        "dataconnect.yaml#specVersion",
         yaml?.specVersion,
-        defaultFirematConfig.specVersion,
+        defaultDataConnectConfig.specVersion,
       ),
       schema: {
         main: {
           source: asAbsolutePath(
             assignIfType(
               "string",
-              "firemat.yaml#schema.main.source",
+              "dataconnect.yaml#schema.main.source",
               yaml?.schema?.main?.source,
-              defaultFirematConfig.schema.main.source,
+              defaultDataConnectConfig.schema.main.source,
             ),
             configPath,
           ),
           connection: {
             connectionString: assignIfType(
               "string",
-              "firemat.yaml#schema.main.connection.connectionString",
+              "dataconnect.yaml#schema.main.connection.connectionString",
               yaml?.schema?.main?.connection?.connectionString,
             ),
           },

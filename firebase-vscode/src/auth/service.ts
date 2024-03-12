@@ -1,6 +1,6 @@
 import { Disposable } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
-import { UserMock } from "../messaging/protocol";
+import { UserMock } from "../../common/messaging/protocol";
 
 export class AuthService implements Disposable {
   constructor(readonly broker: ExtensionBrokerImpl) {

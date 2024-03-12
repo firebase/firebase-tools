@@ -1,8 +1,8 @@
 import vscode, { Disposable, ExtensionContext } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { ObjectTypeDefinitionNode } from "graphql";
-import { Uri } from "vscode";
 import { checkIfFileExists } from "./utils";
+
 export function registerAdHoc(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl,
@@ -22,7 +22,7 @@ export function registerAdHoc(
     Vector: "[]",
   };
 
-  function isFirematScalarType(fieldType: string): boolean {
+  function isDataConnectScalarType(fieldType: string): boolean {
     return fieldType in defaultScalarValues;
   }
   /**
@@ -79,7 +79,7 @@ export function registerAdHoc(
       let fieldName: string = field.name.value;
       let defaultValue = defaultScalarValues[fieldTypeName] as string;
 
-      if (!isFirematScalarType(fieldTypeName)) {
+      if (!isDataConnectScalarType(fieldTypeName)) {
         fieldTypeName += "Id";
         fieldName += "Id";
         defaultValue = '""';
@@ -94,7 +94,7 @@ export function registerAdHoc(
 
   return Disposable.from(
     vscode.commands.registerCommand(
-      "firebase.firemat.schemaAddData",
+      "firebase.dataConnect.schemaAddData",
       schemaAddData,
     ),
   );

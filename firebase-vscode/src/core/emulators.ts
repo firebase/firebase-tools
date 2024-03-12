@@ -185,24 +185,24 @@ export class EmulatorsController implements Disposable {
             "Firebase Extension: Emulators started successfully",
           );
 
-          // firemat specifics; including temp logging implementation
+          // data connect specifics; including temp logging implementation
           if (
             listRunningEmulators().filter((emulatorInfos) => {
               emulatorInfos.name === Emulators.DATACONNECT;
             })
           ) {
-            const firematEmulatorDetails = getEmulatorDetails(
+            const dataConnectEmulatorDetails = getEmulatorDetails(
               Emulators.DATACONNECT,
             );
 
-            firematEmulatorDetails.instance.stdout?.on("data", (data) => {
+            dataConnectEmulatorDetails.instance.stdout?.on("data", (data) => {
               this.outputChannel.appendLine("DEBUG: " + data.toString());
             });
-            firematEmulatorDetails.instance.stderr?.on("data", (data) => {
+            dataConnectEmulatorDetails.instance.stderr?.on("data", (data) => {
               if (data.toString().includes("Finished reloading")) {
                 vscode.commands.executeCommand("fdc-graphql.restart");
                 vscode.commands.executeCommand(
-                  "firebase.firemat.executeIntrospection",
+                  "firebase.dataConnect.executeIntrospection",
                 );
               } else {
                 this.outputChannel.appendLine("ERROR: " + data.toString());

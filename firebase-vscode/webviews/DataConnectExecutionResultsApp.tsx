@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { broker } from "./globals/html-broker";
 import { Label } from "./components/ui/Text";
-import style from "./firemat-execution-results.entry.scss";
-import { FirematResults } from "../common/messaging/protocol";
+import style from "./data-connect-execution-results.entry.scss";
+import { DataConnectResults } from "../common/messaging/protocol";
 import { SerializedError } from "../common/error";
 import { ExecutionResult, GraphQLError } from "graphql";
 import { isExecutionResult } from "../common/graphql";
@@ -10,18 +10,18 @@ import { isExecutionResult } from "../common/graphql";
 // Prevent webpack from removing the `style` import above
 style;
 
-export function FirematExecutionResultsApp() {
-  const [firematResults, setResults] = useState<FirematResults | undefined>(
+export function DataConnectExecutionResultsApp() {
+  const [dataConnectResults, setResults] = useState<DataConnectResults | undefined>(
     undefined,
   );
   const results: ExecutionResult | SerializedError | undefined =
-    firematResults?.results;
+    dataConnectResults?.results;
 
   useEffect(() => {
-    broker.on("notifyFirematResults", setResults);
+    broker.on("notifyDataConnectResults", setResults);
   }, []);
 
-  if (!firematResults || !results) {
+  if (!dataConnectResults || !results) {
     return null;
   }
 
@@ -68,15 +68,15 @@ export function FirematExecutionResultsApp() {
       {resultsDisplay}
 
       <Label style={{ textTransform: "capitalize" }}>
-        {firematResults.displayName}
+        {dataConnectResults.displayName}
       </Label>
       <code>
-        <pre>{firematResults.query}</pre>
+        <pre>{dataConnectResults.query}</pre>
       </code>
 
       <Label>Arguments</Label>
       <code>
-        <pre>{firematResults.args}</pre>
+        <pre>{dataConnectResults.args}</pre>
       </code>
     </>
   );

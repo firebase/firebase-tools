@@ -34,16 +34,16 @@ import {
   visitWithTypeInfo,
 } from "graphql";
 import { camelCase } from "lodash";
-import { FirematService } from "./service";
+import { DataConnectService } from "./service";
 import { OperationLocation } from "./types";
 import { checkIfFileExists } from "./utils";
-import { firematConfig } from "../core/config";
+import { dataConnectConfig } from "../core/config";
 import * as path from "path";
 
 export function registerConnectors(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl,
-  firematService: FirematService,
+  dataConnectService: DataConnectService,
 ): Disposable {
   async function moveOperationToConnector(
     defIndex: number, // The index of the definition to move.
@@ -58,7 +58,7 @@ export function registerConnectors(
     if (def.kind !== Kind.OPERATION_DEFINITION) {
       throw new Error(`definitions[${defIndex}] is not an operation.`);
     }
-    const introspect = (await firematService.introspect())?.data;
+    const introspect = (await dataConnectService.introspect())?.data;
     if (!introspect) {
       vscode.window.showErrorMessage(
         "Failed to introspect the types. (Is the emulator running?)",
@@ -67,8 +67,8 @@ export function registerConnectors(
     }
     const opKind = def.operation as string; // query or mutation
     let connectorPath =
-      firematConfig.value.operationSet[
-        Object.keys(firematConfig.value.operationSet)[0]
+      dataConnectConfig.value.operationSet[
+        Object.keys(dataConnectConfig.value.operationSet)[0]
       ]!.source;
 
     let opName = def.name?.value;
@@ -221,7 +221,7 @@ export function registerConnectors(
               return false;
             }
             // @skip(if: $boolVar) and @include(if: $boolVar) are actually good
-            // targets to extract. We may want to revisit when FireMAT adds more
+            // targets to extract. We may want to revisit when Data Connect adds more
             // field-level directives.
             directiveName = node.name.value;
           },
@@ -474,7 +474,7 @@ export function registerConnectors(
 
   return Disposable.from(
     vscode.commands.registerCommand(
-      "firebase.firemat.moveOperationToConnector",
+      "firebase.dataConnect.moveOperationToConnector",
       moveOperationToConnector,
     ),
   );

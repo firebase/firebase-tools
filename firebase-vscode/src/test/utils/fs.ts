@@ -17,7 +17,7 @@ export function createTemporaryDirectory(
   options: CreateTemporaryDirectoryOptions = {},
 ) {
   const debugLabel = `${
-    options.debugLabel || "firemat-test"
+    options.debugLabel || "data-connect-test"
   }-${Date.now()}-${_increment++}`;
 
   const relativeDir = options.parent

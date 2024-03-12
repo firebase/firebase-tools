@@ -39,7 +39,7 @@ export function registerFirebaseDataConnectView(
     vscode.StatusBarAlignment.Left,
   );
   selectedInstanceStatus.tooltip = "Select a Firebase instance";
-  selectedInstanceStatus.command = "firebase.firemat.connectToInstance";
+  selectedInstanceStatus.command = "firebase.dataConnect.connectToInstance";
 
   function syncStatusBarWithSelectedInstance() {
     return effect(() => {
@@ -73,7 +73,7 @@ export function registerFirebaseDataConnectView(
 
   return vscode.Disposable.from(
     vscode.commands.registerCommand(
-      "firebase.firemat.connectToInstance",
+      "firebase.dataConnect.connectToInstance",
       async () => {
         const selected = await vscode.window.showQuickPick(
           instanceOptions.value,
@@ -98,10 +98,10 @@ export function registerFirebaseDataConnectView(
     { dispose: initializeSelectedInstance() },
     {
       dispose: broker.on("connectToInstance", async () => {
-        vscode.commands.executeCommand("firebase.firemat.connectToInstance");
+        vscode.commands.executeCommand("firebase.dataConnect.connectToInstance");
       }),
     },
 
-    registerWebview({ name: "firemat", context, broker }),
+    registerWebview({ name: "dataConnect", context, broker }),
   );
 }

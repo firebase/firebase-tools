@@ -5,7 +5,7 @@ import { ExtensionBrokerImpl } from "../extension-broker";
 import { registerExecution } from "./execution";
 import { registerExplorer } from "./explorer";
 import { registerAdHoc } from "./ad-hoc-mutations";
-import { FirematService as FdcService } from "./service";
+import { DataConnectService as FdcService } from "./service";
 import {
   OperationCodeLensProvider,
   SchemaCodeLensProvider,
@@ -41,7 +41,7 @@ export function registerFdc(
         // TODO move to client.start or setupLanguageClient
         vscode.commands.executeCommand("fdc-graphql.restart");
 
-        vscode.commands.executeCommand("firebase.firemat.executeIntrospection");
+        vscode.commands.executeCommand("firebase.dataConnect.executeIntrospection");
       }
     }),
   });

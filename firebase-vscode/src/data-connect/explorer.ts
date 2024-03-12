@@ -2,7 +2,7 @@ import vscode, { Disposable, ExtensionContext } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { ExplorerTreeDataProvider } from "./explorer-provider";
 import { IntrospectionQuery } from "graphql";
-import { FirematService } from "./service";
+import { DataConnectService } from "./service";
 import { globalSignal } from "../utils/globals";
 
 // explorer store
@@ -13,25 +13,25 @@ export const introspectionQuery = globalSignal<IntrospectionQuery | undefined>(
 export function registerExplorer(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl,
-  firematService: FirematService,
+  dataConnectService: DataConnectService,
 ): Disposable {
   const treeDataProvider = new ExplorerTreeDataProvider();
   const explorerTreeView = vscode.window.createTreeView(
-    "firebase.firemat.explorerView",
+    "firebase.dataConnect.explorerView",
     {
       treeDataProvider,
     },
   );
 
   async function executeIntrospection() {
-    const results = await firematService.introspect();
+    const results = await dataConnectService.introspect();
     introspectionQuery.value = results.data;
   }
 
   return Disposable.from(
     explorerTreeView,
     vscode.commands.registerCommand(
-      "firebase.firemat.executeIntrospection",
+      "firebase.dataConnect.executeIntrospection",
       executeIntrospection,
     ),
   );

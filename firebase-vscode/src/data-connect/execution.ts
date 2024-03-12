@@ -18,8 +18,8 @@ import {
 } from "./execution-store";
 import { batch, effect } from "@preact/signals-core";
 import { OperationDefinitionNode, OperationTypeNode, print } from "graphql";
-import { FirematService } from "./service";
-import { FirematError, toSerializedError } from "../error";
+import { DataConnectService } from "./service";
+import { DataConnectError, toSerializedError } from "../../common/error";
 import { OperationLocation } from "./types";
 import { emulatorInstance, selectedInstance } from "./connect-instance";
 import { EmulatorsController } from "../core/emulators";
@@ -27,12 +27,12 @@ import { EmulatorsController } from "../core/emulators";
 export function registerExecution(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl,
-  firematService: FirematService,
+  dataConnectService: DataConnectService,
   emulatorsController: EmulatorsController,
 ): Disposable {
   const treeDataProvider = new ExecutionHistoryTreeDataProvider();
   const executionHistoryTreeView = vscode.window.createTreeView(
-    "firemat-execution-history",
+    "data-connect-execution-history",
     {
       treeDataProvider,
     },
@@ -51,7 +51,7 @@ export function registerExecution(
   effect(() => {
     const item = selectedExecution.value;
     if (item) {
-      broker.send("notifyFirematResults", {
+      broker.send("notifyDataConnectResults", {
         args: item.args ?? "{}",
         query: print(item.operation),
         results:
@@ -67,7 +67,7 @@ export function registerExecution(
     ast: OperationDefinitionNode,
     { document, documentPath, position }: OperationLocation,
   ) {
-    const configs = vscode.workspace.getConfiguration("firebase.firemat");
+    const configs = vscode.workspace.getConfiguration("firebase.dataConnect");
     const alwaysExecuteMutationsInProduction =
       "alwaysAllowMutationsInProduction";
     const alwaysStartEmulator = "alwaysStartEmulator";
@@ -151,7 +151,7 @@ export function registerExecution(
     try {
       // Execute queries/mutations from their source code.
       // That ensures that we can execute queries in unsaved files.
-      results = await firematService.executeGraphQL({
+      results = await dataConnectService.executeGraphQL({
         operationName: ast.name?.value,
         // We send the whole unparsed document to guarantee
         // that there are no formatting differences between the real document
@@ -176,31 +176,31 @@ export function registerExecution(
         results:
           error instanceof Error
             ? error
-            : new FirematError("Unknown error", error),
+            : new DataConnectError("Unknown error", error),
       });
     }
   }
 
-  broker.on("definedFirematArgs", (value) => (executionArgsJSON.value = value));
+  broker.on("definedDataConnectArgs", (value) => (executionArgsJSON.value = value));
 
   return Disposable.from(
     registerWebview({
-      name: "firemat-execution-configuration",
+      name: "data-connect-execution-configuration",
       context,
       broker,
     }),
     registerWebview({
-      name: "firemat-execution-results",
+      name: "data-connect-execution-results",
       context,
       broker,
     }),
     executionHistoryTreeView,
     vscode.commands.registerCommand(
-      "firebase.firemat.executeOperation",
+      "firebase.dataConnect.executeOperation",
       executeOperation,
     ),
     vscode.commands.registerCommand(
-      "firebase.firemat.selectExecutionResultToShow",
+      "firebase.dataConnect.selectExecutionResultToShow",
       (executionId) => {
         selectExecutionId(executionId);
       },

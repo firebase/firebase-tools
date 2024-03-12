@@ -1,12 +1,12 @@
 import { browser } from "@wdio/globals";
 import { StatusBar, findQuickPicks } from "../../utils/page_objects/status_bar";
-import { addTearDown, firematTest } from "../../utils/test_hooks";
+import { addTearDown, dataConnectTest } from "../../utils/test_hooks";
 import { EditorView } from "../../utils/page_objects/editor";
 import { FirebaseSidebar } from "../../utils/page_objects/sidebar";
 import { queriesPath } from "../../utils/projects";
 import { FirebaseCommands } from "../../utils/page_objects/commands";
 
-firematTest(
+dataConnectTest(
   "If the emulator is not started, picking the emulator auto-starts it",
   async function () {
     const workbench = await browser.getWorkbench();
@@ -53,7 +53,7 @@ firematTest(
   },
 );
 
-firematTest("Can pick an instance", async function () {
+dataConnectTest("Can pick an instance", async function () {
   const workbench = await browser.getWorkbench();
   const commands = new FirebaseCommands();
   const statusBar = new StatusBar(workbench);

@@ -6,19 +6,19 @@ import {
   _createWatcher,
   _getConfigPath,
   _readFirebaseConfig,
-  _readFirematConfig,
+  _readDataConnectConfig,
   _readRC,
   firebaseConfig,
   firebaseRC,
-  firematConfig,
+  dataConnectConfig,
   getRootFolders,
   registerConfig,
 } from "../../core/config";
 import {
   addDisposable,
   addTearDown,
-  firematSuite,
-  firematTest,
+  dataConnectSuite,
+  dataConnectTest,
 } from "../utils/test_hooks";
 import { createFake, mock } from "../utils/mock";
 import { resetGlobals } from "../../utils/globals";
@@ -31,8 +31,8 @@ import { setupMockTestWorkspaces } from "../utils/workspace";
 import { RC } from "../../../../src/rc";
 import { Config } from "../../../../src/config";
 
-firematSuite("getRootFolders", () => {
-  firematTest("if workspace is empty, returns an empty array", () => {
+dataConnectSuite("getRootFolders", () => {
+  dataConnectTest("if workspace is empty, returns an empty array", () => {
     mock(workspace, undefined);
 
     const result = getRootFolders();
@@ -40,7 +40,7 @@ firematSuite("getRootFolders", () => {
     assert.deepEqual(result, []);
   });
 
-  firematTest(
+  dataConnectTest(
     "if workspace.workspaceFolders is undefined, returns an empty array",
     () => {
       mock(workspace, {
@@ -53,7 +53,7 @@ firematSuite("getRootFolders", () => {
     },
   );
 
-  firematTest("returns an array of paths", () => {
+  dataConnectTest("returns an array of paths", () => {
     mock(workspace, {
       workspaceFolders: [
         createFake<vscode.WorkspaceFolder>({
@@ -70,7 +70,7 @@ firematSuite("getRootFolders", () => {
     assert.deepEqual(result, ["/path/to/folder", "/path/to/another/folder"]);
   });
 
-  firematTest("includes workspaceFile's directory if set", () => {
+  dataConnectTest("includes workspaceFile's directory if set", () => {
     mock(workspace, {
       workspaceFile: vscode.Uri.file("/path/to/folder/file"),
       workspaceFolders: [
@@ -85,7 +85,7 @@ firematSuite("getRootFolders", () => {
     assert.deepEqual(result, ["/path/to/another/folder", "/path/to/folder"]);
   });
 
-  firematTest("filters path duplicates", () => {
+  dataConnectTest("filters path duplicates", () => {
     mock(workspace, {
       workspaceFile: vscode.Uri.file("/a/file"),
       workspaceFolders: [
@@ -107,11 +107,11 @@ firematSuite("getRootFolders", () => {
   });
 });
 
-firematSuite("_getConfigPath", () => {
+dataConnectSuite("_getConfigPath", () => {
   // Those tests will impact global variables. We need to reset them after each test.
   teardown(() => resetGlobals());
 
-  firematTest(
+  dataConnectTest(
     'Iterates over getRootFolders, and if a ".firebaserc" ' +
       'or "firebase.json" is found, returns its path',
     () => {
@@ -139,7 +139,7 @@ firematSuite("_getConfigPath", () => {
     },
   );
 
-  firematTest("if no firebase config found, returns the first folder", () => {
+  dataConnectTest("if no firebase config found, returns the first folder", () => {
     const a = createTemporaryDirectory({ debugLabel: "a" });
     const b = createTemporaryDirectory({ debugLabel: "b" });
     const c = createTemporaryDirectory({ debugLabel: "c" });
@@ -158,7 +158,7 @@ firematSuite("_getConfigPath", () => {
     assert.deepEqual(_getConfigPath(), a);
   });
 
-  firematTest('sets "cwd" global variable to the config path', () => {
+  dataConnectTest('sets "cwd" global variable to the config path', () => {
     const a = createTemporaryDirectory();
     const aFolder = createFake<vscode.WorkspaceFolder>({
       uri: vscode.Uri.file(a),
@@ -172,7 +172,7 @@ firematSuite("_getConfigPath", () => {
   });
 });
 
-firematSuite("_readFirematConfig", () => {
+dataConnectSuite("_readDataConnectConfig", () => {
   const defaultConfigYaml = `
 specVersion: v1alpha
 schema:
@@ -185,9 +185,9 @@ operationSet:
     source: ./api/operations
 `;
 
-  firematTest("parses firemat.yaml", () => {
+  dataConnectTest("parses dataconnect.yaml", () => {
     const dir = createTemporaryDirectory();
-    createFile(dir, "firemat.yaml", defaultConfigYaml);
+    createFile(dir, "dataconnect.yaml", defaultConfigYaml);
 
     mock(workspace, {
       workspaceFolders: [
@@ -197,7 +197,7 @@ operationSet:
       ],
     });
 
-    const config = _readFirematConfig();
+    const config = _readDataConnectConfig();
     assert.deepEqual(config, {
       specVersion: "v1alpha",
       schema: {
@@ -217,7 +217,7 @@ operationSet:
     });
   });
 
-  firematTest("returns undefined if firemat.yaml is not found", () => {
+  dataConnectTest("returns undefined if dataconnect.yaml is not found", () => {
     const dir = createTemporaryDirectory();
 
     mock(workspace, {
@@ -228,14 +228,14 @@ operationSet:
       ],
     });
 
-    const config = _readFirematConfig();
+    const config = _readDataConnectConfig();
     assert.deepEqual(config, undefined);
   });
 
-  firematTest("throws if firemat.yaml is invalid", () => {
+  dataConnectTest("throws if dataconnect.yaml is invalid", () => {
     const logs = spyLogs();
     const dir = createTemporaryDirectory();
-    createFile(dir, "firemat.yaml", "||");
+    createFile(dir, "dataconnect.yaml", "||");
 
     mock(workspace, {
       workspaceFolders: [
@@ -248,7 +248,7 @@ operationSet:
     assert.equal(logs.error.length, 0);
 
     assert.throws(
-      () => _readFirematConfig(),
+      () => _readDataConnectConfig(),
       (thrown) =>
         thrown
           .toString()
@@ -261,9 +261,9 @@ operationSet:
     );
   });
 
-  firematTest("specifies default value when fields are missing", () => {
+  dataConnectTest("specifies default value when fields are missing", () => {
     const dir = createTemporaryDirectory();
-    createFile(dir, "firemat.yaml", `unknown: 42`);
+    createFile(dir, "dataconnect.yaml", `unknown: 42`);
 
     mock(workspace, {
       workspaceFolders: [
@@ -273,7 +273,7 @@ operationSet:
       ],
     });
 
-    const config = _readFirematConfig();
+    const config = _readDataConnectConfig();
 
     assert.deepEqual(config, {
       specVersion: "v1alpha",
@@ -294,11 +294,11 @@ operationSet:
     });
   });
 
-  firematTest("decodes the yaml", () => {
+  dataConnectTest("decodes the yaml", () => {
     const dir = createTemporaryDirectory();
     createFile(
       dir,
-      "firemat.yaml",
+      "dataconnect.yaml",
       `
 specVersion: v2
 schema:
@@ -322,7 +322,7 @@ operationSet:
       ],
     });
 
-    const config = _readFirematConfig();
+    const config = _readDataConnectConfig();
 
     assert.deepEqual(config, {
       specVersion: "v2",
@@ -346,11 +346,11 @@ operationSet:
     });
   });
 
-  firematTest("converts null values into the associated default", () => {
+  dataConnectTest("converts null values into the associated default", () => {
     const dir = createTemporaryDirectory();
     createFile(
       dir,
-      "firemat.yaml",
+      "dataconnect.yaml",
       `
 specVersion: null
 schema:
@@ -372,7 +372,7 @@ operationSet:
       ],
     });
 
-    const config = _readFirematConfig();
+    const config = _readDataConnectConfig();
 
     assert.deepEqual(config, {
       specVersion: "v1alpha",
@@ -393,7 +393,7 @@ operationSet:
     });
   });
 
-  firematTest("asserts that values are of the correct type", () => {
+  dataConnectTest("asserts that values are of the correct type", () => {
     const dir = createTemporaryDirectory();
     mock(workspace, {
       workspaceFolders: [
@@ -403,20 +403,20 @@ operationSet:
       ],
     });
 
-    createFile(dir, "firemat.yaml", `specVersion: 42`);
+    createFile(dir, "dataconnect.yaml", `specVersion: 42`);
     assert.throws(
-      () => _readFirematConfig(),
+      () => _readDataConnectConfig(),
       (thrown) =>
         thrown
           .toString()
           .startsWith(
-            `Error: Expected field at firemat.yaml#specVersion to be of type string but got number`,
+            `Error: Expected field at dataconnect.yaml#specVersion to be of type string but got number`,
           ),
     );
 
     createFile(
       dir,
-      "firemat.yaml",
+      "dataconnect.yaml",
       `
 schema:
   main:
@@ -424,13 +424,13 @@ schema:
 `,
     );
     assert.throws(
-      () => _readFirematConfig(),
-      (thrown) => thrown.toString().includes(`firemat.yaml#schema.main.source`),
+      () => _readDataConnectConfig(),
+      (thrown) => thrown.toString().includes(`dataconnect.yaml#schema.main.source`),
     );
 
     createFile(
       dir,
-      "firemat.yaml",
+      "dataconnect.yaml",
       `
 schema:
   main:
@@ -439,16 +439,16 @@ schema:
 `,
     );
     assert.throws(
-      () => _readFirematConfig(),
+      () => _readDataConnectConfig(),
       (thrown) =>
         thrown
           .toString()
-          .includes(`firemat.yaml#schema.main.connection.connectionString`),
+          .includes(`dataconnect.yaml#schema.main.connection.connectionString`),
     );
 
     createFile(
       dir,
-      "firemat.yaml",
+      "dataconnect.yaml",
       `
 operationSet:
   crud:
@@ -456,18 +456,18 @@ operationSet:
 `,
     );
     assert.throws(
-      () => _readFirematConfig(),
+      () => _readDataConnectConfig(),
       (thrown) =>
-        thrown.toString().includes(`firemat.yaml#operationSet.crud.source`),
+        thrown.toString().includes(`dataconnect.yaml#operationSet.crud.source`),
     );
   });
 });
 
-firematSuite("_readConfig", () => {
-  firematTest("parses firebase.json", () => {
+dataConnectSuite("_readConfig", () => {
+  dataConnectTest("parses firebase.json", () => {
     const expectedConfig = {
       emulators: {
-        firemat: {
+        dataconnect: {
           port: 9399,
         },
       },
@@ -488,7 +488,7 @@ firematSuite("_readConfig", () => {
     assert.deepEqual(config.data, expectedConfig);
   });
 
-  firematTest("returns undefined if firebase.json is not found", () => {
+  dataConnectTest("returns undefined if firebase.json is not found", () => {
     const dir = createTemporaryDirectory();
 
     mock(workspace, {
@@ -503,7 +503,7 @@ firematSuite("_readConfig", () => {
     assert.deepEqual(config, undefined);
   });
 
-  firematTest("throws if firebase.json is invalid", () => {
+  dataConnectTest("throws if firebase.json is invalid", () => {
     const logs = spyLogs();
     const dir = createTemporaryDirectory();
     createFile(dir, "firebase.json", "invalid json");
@@ -536,8 +536,8 @@ firematSuite("_readConfig", () => {
   });
 });
 
-firematSuite("_readRC", () => {
-  firematTest("parses .firebaserc", () => {
+dataConnectSuite("_readRC", () => {
+  dataConnectTest("parses .firebaserc", () => {
     const expectedConfig = {
       projects: {
         default: "my-project",
@@ -559,7 +559,7 @@ firematSuite("_readRC", () => {
     assert.deepEqual(config?.data.projects, expectedConfig.projects);
   });
 
-  firematTest("returns undefined if .firebaserc is not found", () => {
+  dataConnectTest("returns undefined if .firebaserc is not found", () => {
     const dir = createTemporaryDirectory();
 
     mock(workspace, {
@@ -574,7 +574,7 @@ firematSuite("_readRC", () => {
     assert.deepEqual(config, undefined);
   });
 
-  firematTest("throws if .firebaserc is invalid", () => {
+  dataConnectTest("throws if .firebaserc is invalid", () => {
     const logs = spyLogs();
     const dir = createTemporaryDirectory();
     createFile(dir, ".firebaserc", "invalid json");
@@ -604,11 +604,11 @@ firematSuite("_readRC", () => {
   });
 });
 
-firematSuite("_createWatcher", () => {
+dataConnectSuite("_createWatcher", () => {
   // Those tests will impact global variables. We need to reset them after each test.
   teardown(() => resetGlobals());
 
-  firematTest("returns undefined if cwd is not set", () => {
+  dataConnectTest("returns undefined if cwd is not set", () => {
     mock(currentOptions, createFake<VsCodeOptions>({ cwd: undefined }));
 
     const watcher = _createWatcher("file");
@@ -616,7 +616,7 @@ firematSuite("_createWatcher", () => {
     assert.equal(watcher, undefined);
   });
 
-  firematTest("creates a watcher for the given file", async () => {
+  dataConnectTest("creates a watcher for the given file", async () => {
     const dir = createTemporaryDirectory();
     const file = createFile(dir, "file", "content");
 
@@ -635,14 +635,14 @@ firematSuite("_createWatcher", () => {
   });
 });
 
-firematSuite("registerConfig", () => {
+dataConnectSuite("registerConfig", () => {
   // Those tests will impact global variables. We need to reset them after each test.
   teardown(() => resetGlobals());
 
-  firematTest(
+  dataConnectTest(
     'sets "cwd" and firebaseRC/Config global variables on initial call',
     () => {
-      const expectedConfig = { emulators: { firemat: { port: 9399 } } };
+      const expectedConfig = { emulators: { dataconnect: { port: 9399 } } };
       const expectedRc = { projects: { default: "my-project" } };
       const broker = createTestBroker();
       const workspaces = setupMockTestWorkspaces({
@@ -662,7 +662,7 @@ firematSuite("registerConfig", () => {
     },
   );
 
-  firematTest(
+  dataConnectTest(
     "when firebaseRC signal changes, calls notifyFirebaseConfig",
     () => {
       const initialRC = { projects: { default: "my-project" } };
@@ -699,11 +699,11 @@ firematSuite("registerConfig", () => {
     },
   );
 
-  firematTest(
+  dataConnectTest(
     "when firebaseConfig signal changes, calls notifyFirebaseConfig",
     () => {
-      const initialConfig = { emulators: { firemat: { port: 9399 } } };
-      const newConfig = { emulators: { firemat: { port: 9499 } } };
+      const initialConfig = { emulators: { dataconnect: { port: 9399 } } };
+      const newConfig = { emulators: { dataconnect: { port: 9499 } } };
       const broker = createTestBroker();
       const workspaces = setupMockTestWorkspaces({
         firebaseConfig: initialConfig,
@@ -727,7 +727,7 @@ firematSuite("registerConfig", () => {
             {
               firebaseJson: {
                 emulators: {
-                  firemat: {
+                  dataconnect: {
                     port: 9499,
                   },
                 },
@@ -740,7 +740,7 @@ firematSuite("registerConfig", () => {
     },
   );
 
-  firematTest("supports undefined working directory", () => {
+  dataConnectTest("supports undefined working directory", () => {
     const broker = createTestBroker();
     mock(currentOptions, { ...currentOptions.value, cwd: undefined });
 
@@ -750,7 +750,7 @@ firematSuite("registerConfig", () => {
     // Should not throw.
   });
 
-  firematTest("disposes of the watchers when disposed", () => {
+  dataConnectTest("disposes of the watchers when disposed", () => {
     const broker = createTestBroker();
     const dir = createTemporaryDirectory();
 
@@ -796,8 +796,8 @@ firematSuite("registerConfig", () => {
     assert.deepEqual(broker.sentLogs, []);
   });
 
-  firematTest(
-    "listens to create/update/delete events on firebase.json/.firebaserc/firemat.yaml",
+  dataConnectTest(
+    "listens to create/update/delete events on firebase.json/.firebaserc/dataconnect.yaml",
     () => {
       const watcherListeners: Record<
         string,
@@ -848,8 +848,8 @@ firematSuite("registerConfig", () => {
       const rcFile = path.join(dir, ".firebaserc");
       const configListeners = watcherListeners["firebase.json"]!;
       const configFile = path.join(dir, "firebase.json");
-      const firematListeners = watcherListeners["firemat.yaml"]!;
-      const firematFile = path.join(dir, "firemat.yaml");
+      const dataConnectListeners = watcherListeners["dataconnect.yaml"]!;
+      const dataConnectFile = path.join(dir, "dataconnect.yaml");
 
       function testEvent(
         index: number,
@@ -888,20 +888,20 @@ firematSuite("registerConfig", () => {
         testEvent(
           index,
           configFile,
-          JSON.stringify({ emulators: { firemat: { port: index } } }),
+          JSON.stringify({ emulators: { dataconnect: { port: index } } }),
           () => configListeners[event]!(vscode.Uri.file(configFile)),
         );
 
         assert.deepEqual(broker.sentLogs[index].args[0].firebaseJson, {
-          emulators: { firemat: { port: index } },
+          emulators: { dataconnect: { port: index } },
         });
       }
 
-      function testFirematEvent(event: "create" | "update" | "delete") {
-        fs.writeFileSync(firematFile, `specVersion: ${event}`);
-        firematListeners[event]!(vscode.Uri.file(firematFile));
+      function testDataConnectEvent(event: "create" | "update" | "delete") {
+        fs.writeFileSync(dataConnectFile, `specVersion: ${event}`);
+        dataConnectListeners[event]!(vscode.Uri.file(dataConnectFile));
 
-        assert.deepEqual(firematConfig.value.specVersion, event);
+        assert.deepEqual(dataConnectConfig.value.specVersion, event);
       }
 
       testRcEvent("create", 0);
@@ -910,16 +910,16 @@ firematSuite("registerConfig", () => {
       testConfigEvent("create", 2);
       testConfigEvent("update", 3);
 
-      testFirematEvent("create");
-      testFirematEvent("update");
+      testDataConnectEvent("create");
+      testDataConnectEvent("update");
     },
   );
 
-  firematTest("handles getInitialData requests", () => {
+  dataConnectTest("handles getInitialData requests", () => {
     const broker = createTestBroker();
     setupMockTestWorkspaces({
       firebaseRc: { projects: { default: "my-project" } },
-      firebaseConfig: { emulators: { firemat: { port: 9399 } } },
+      firebaseConfig: { emulators: { dataconnect: { port: 9399 } } },
     });
 
     const disposable = registerConfig(broker);
@@ -934,7 +934,7 @@ firematSuite("registerConfig", () => {
           {
             firebaseJson: {
               emulators: {
-                firemat: {
+                dataconnect: {
                   port: 9399,
                 },
               },

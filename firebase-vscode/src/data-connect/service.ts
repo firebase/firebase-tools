@@ -5,18 +5,18 @@ import {
   getIntrospectionQuery,
 } from "graphql";
 import { Signal, computed, signal } from "@preact/signals-core";
-import { assertExecutionResult } from "../graphql";
-import { FirematError } from "../error";
+import { assertExecutionResult } from "../../common/graphql";
+import { DataConnectError } from "../../common/error";
 import { AuthService } from "../auth/service";
-import { UserMockKind } from "../messaging/protocol";
+import { UserMockKind } from "../../common/messaging/protocol";
 import { firstWhereDefined } from "../utils/signal";
 import { EmulatorsController } from "../core/emulators";
 import { Emulators } from "../cli";
 
 /**
- * Firemat Emulator service
+ * DataConnect Emulator service
  */
-export class FirematService {
+export class DataConnectService {
   constructor(
     private authService: AuthService,
     private emulatorsController: EmulatorsController,
@@ -25,15 +25,15 @@ export class FirematService {
   readonly endpoint = computed<string | undefined>(() => {
     const emulatorInfos =
       this.emulatorsController.emulators.value.infos?.displayInfo;
-    const firematEmulator = emulatorInfos?.find(
+    const dataConnectEmulator = emulatorInfos?.find(
       (emulatorInfo) => emulatorInfo.name === Emulators.DATACONNECT,
     );
 
-    if (!firematEmulator) {
+    if (!dataConnectEmulator) {
       return undefined;
     }
 
-    return "http://" + firematEmulator.host + ":" + firematEmulator.port;
+    return "http://" + dataConnectEmulator.host + ":" + dataConnectEmulator.port;
   });
 
   private async decodeResponse(
@@ -70,7 +70,7 @@ export class FirematService {
   private async handleInvalidResponse(response: Response): Promise<never> {
     const cause = await this.decodeResponse(response);
 
-    throw new FirematError(
+    throw new DataConnectError(
       `Request failed with status ${response.status}`,
       cause,
     );
@@ -116,7 +116,7 @@ export class FirematService {
   }
 
   // This introspection is used to generate a basic graphql schema
-  // It will not include our predefined operations, which requires a Firemat specific introspection query
+  // It will not include our predefined operations, which requires a DataConnect specific introspection query
   async introspect(): Promise<{ data?: IntrospectionQuery }> {
     try {
       const introspectionResults = await this.executeGraphQLRead({

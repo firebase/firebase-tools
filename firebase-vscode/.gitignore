@@ -5,4 +5,3 @@ resources/dist
 .vscode-test
 .wdio-vscode-service
 logs
-firemat-debug.log
