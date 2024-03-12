@@ -118,11 +118,11 @@
         {
           "type": "webview",
           "id": "sidebar",
-          "name": "Firebase"
+          "name": "Config"
         },
         {
           "type": "webview",
-          "id": "dataConnect",
+          "id": "data-connect",
           "name": "Firebase Data Connect"
         },
         {

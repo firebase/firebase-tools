@@ -101,6 +101,6 @@ export function registerFirebaseDataConnectView(
       }),
     },
 
-    registerWebview({ name: "dataConnect", context, broker }),
+    registerWebview({ name: "data-connect", context, broker }),
   );
 }

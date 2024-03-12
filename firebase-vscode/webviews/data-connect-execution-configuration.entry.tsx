@@ -53,9 +53,10 @@ export function DataConnectExecutionArgumentsApp() {
       <VSCodePanelTab>VARIABLES</VSCodePanelTab>
       <VSCodePanelTab>AUTHENTICATION</VSCodePanelTab>
       <VSCodePanelView className={style.variable}>
-        <textarea defaultValue={"{}"} onChange={handleVariableChange}>
-          {"{}"}
-        </textarea>
+        <textarea
+          defaultValue={"{}"}
+          onChange={handleVariableChange}
+        ></textarea>
       </VSCodePanelView>
       <VSCodePanelView className={style.authentication}>
         <AuthUserMockForm />
