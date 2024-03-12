@@ -2,7 +2,6 @@ import { browser } from "@wdio/globals";
 import { StatusBar, findQuickPicks } from "../../utils/page_objects/status_bar";
 import { addTearDown, dataConnectTest } from "../../utils/test_hooks";
 import { EditorView } from "../../utils/page_objects/editor";
-import { FirebaseSidebar } from "../../utils/page_objects/sidebar";
 import { queriesPath } from "../../utils/projects";
 import { FirebaseCommands } from "../../utils/page_objects/commands";
 
@@ -29,10 +28,8 @@ dataConnectTest(
     const pickTexts = await picks.mapSeries((p) => p.getText());
 
     expect(pickTexts).toEqual([
-      " Start Emulators",
-      "asia-east1",
-      "europe-north1",
-      "wonderland2",
+      " Local",
+      "Production",
     ]);
 
     await picks[0].click();
@@ -64,11 +61,11 @@ dataConnectTest("Can pick an instance", async function () {
   await editor.openFile(queriesPath);
 
   // Check default value
-  expect(await statusBar.currentInstanceElement.getText()).toBe(" emulator");
+  expect(await statusBar.currentInstanceElement.getText()).toBe(" local");
 
   // Verify that the code-lenses reflect the selected instance
   await editor.firstCodeLense.waitForDisplayed();
-  expect(await editor.firstCodeLense.getText()).toBe("Run (emulator)");
+  expect(await editor.firstCodeLense.getText()).toBe("Run (local) |  Move to connector");
 
   await statusBar.currentInstanceElement.click();
 
@@ -76,20 +73,18 @@ dataConnectTest("Can pick an instance", async function () {
   const pickTexts = await picks.mapSeries((p) => p.getText());
 
   expect(pickTexts).toEqual([
-    "Emulator",
-    "asia-east1",
-    "europe-north1",
-    "wonderland2",
+    "Local",
+    "Production",
   ]);
 
-  await picks[3].click();
+  await picks[1].click();
 
   // The code-lenses and statusbar should update
   statusBar.currentInstanceElement.waitUntil(
     async () =>
-      (await statusBar.currentInstanceElement.getText()) === "wonderland2",
+      (await statusBar.currentInstanceElement.getText()) === "Production",
   );
   statusBar.currentInstanceElement.waitUntil(
-    async () => (await editor.firstCodeLense.getText()) === "Run (wonderland2)",
+    async () => (await editor.firstCodeLense.getText()) === "Run (production) |  Move to connector",
   );
 });
