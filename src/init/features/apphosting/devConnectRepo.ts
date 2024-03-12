@@ -290,10 +290,12 @@ export async function getOrCreateConnection(
   githubConfig: devConnect.GitHubConfig = { githubApp: "FIREBASE" },
 ): Promise<devConnect.Connection> {
   let conn: devConnect.Connection;
+  utils.logBullet("getting or creating a connection");
   try {
     conn = await devConnect.getConnection(projectId, location, connectionId);
   } catch (err: unknown) {
     if ((err as any).status === 404) {
+      utils.logBullet("creating connection");
       conn = await createConnection(projectId, location, connectionId, githubConfig);
     } else {
       throw err;
