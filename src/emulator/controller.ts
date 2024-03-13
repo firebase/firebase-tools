@@ -528,15 +528,13 @@ export async function startAll(
     const functionsAddr = legacyGetFirstAddr(Emulators.FUNCTIONS);
     const projectId = needProjectId(options);
 
-    let inspectFunctions: number | undefined;
-    if (options.inspectFunctions) {
-      inspectFunctions = commandUtils.parseInspectionPort(options);
-
+    const inspectFunctions = commandUtils.parseInspectionPort(options);
+    if (inspectFunctions) {
       // TODO(samstern): Add a link to documentation
       functionsLogger.logLabeled(
         "WARN",
         "functions",
-        `You are running the Functions emulator in debug mode (port=${inspectFunctions}). This means that functions will execute in sequence rather than in parallel.`,
+        `You are running the Functions emulator in debug mode. This means that functions will execute in sequence rather than in parallel.`,
       );
     }
 
