@@ -7,7 +7,7 @@
 
 import type { HttpsOptions } from "firebase-functions/v2/https";
 import { IngressSetting, MemoryOption, VpcEgressSetting } from "firebase-functions/v2/options";
-import { Runtime as CloudFunctionRuntimes } from "./deploy/functions/runtimes/supported";
+import { Runtime, DecommissionedRuntime } from "./deploy/functions/runtimes/supported";
 
 /**
  * Creates a type that requires at least one key to be present in an interface
@@ -167,7 +167,7 @@ export type FirestoreConfig = FirestoreSingle | FirestoreMultiple;
 export type FunctionConfig = {
   source?: string;
   ignore?: string[];
-  runtime?: CloudFunctionRuntimes;
+  runtime?: Exclude<Runtime, DecommissionedRuntime>;
   codebase?: string;
 } & Deployable;
 

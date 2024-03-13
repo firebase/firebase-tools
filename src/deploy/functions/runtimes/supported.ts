@@ -3,6 +3,8 @@ import * as utils from "../../../utils";
 
 // N.B. The status "deprecated" and "decommmissioned" is informational only.
 // The deprecationDate and decommmissionDate are the canonical values.
+// Updating the definition to "decommissioned", however, will omit the runtime
+// name from firebaseConfig's json schema.
 export type RuntimeStatus = "experimental" | "beta" | "GA" | "deprecated" | "decommissioned";
 
 type Day = `${number}-${number}-${number}`;
@@ -26,11 +28,11 @@ export interface RuntimeData {
   decommissionDate: Day;
 }
 
-// Utility function to take a literal map and make its keys usable as a type
-function runtimes<T extends RuntimeOf<Language>>(
-  values: Record<T, RuntimeData>,
-): Record<T, RuntimeData> {
-  return Object.freeze(values);
+// We can neither use the "satisfies" keyword nor the metaprogramming library
+// in this file to ensure RUNTIMES implements the right interfaces, so we must
+// use the copied assertImplements below. Some day these hacks will go away.
+function runtimes<T extends Record<RuntimeOf<Language>, RuntimeData>>(r: T): T {
+  return r;
 }
 
 export const RUNTIMES = runtimes({
@@ -103,6 +105,12 @@ export const RUNTIMES = runtimes({
 });
 
 export type Runtime = keyof typeof RUNTIMES & RuntimeOf<Language>;
+
+export type DecommissionedRuntime = {
+  [R in keyof typeof RUNTIMES]: (typeof RUNTIMES)[R] extends { status: "decommissioned" }
+    ? R
+    : never;
+}[keyof typeof RUNTIMES];
 
 /** Type deduction helper for a runtime string. */
 export function isRuntime(maybe: string): maybe is Runtime {
