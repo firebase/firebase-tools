@@ -38,7 +38,7 @@ type DeepReadOnly<T> =
       ? ReadonlyArray<DeepReadOnly<T[number]>>
       : T;
 
-/** The `dataconnect.yaml` content */
+/** The `firemat.yaml` content */
 export type DataConnectConfig = DeepReadOnly<{
   specVersion: string;
   schema: {
