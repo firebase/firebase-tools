@@ -59,7 +59,7 @@ export function registerConfig(broker: ExtensionBrokerImpl): Disposable {
   const rcWatcher = _createWatcher(".firebaserc");
   rcWatcher?.onDidChange(() => (firebaseRC.value = _readRC()));
   rcWatcher?.onDidCreate(() => (firebaseRC.value = _readRC()));
-  // TODO handle deletion of .firebaserc/.firebase.json/dataconnect.yaml
+  // TODO handle deletion of .firebaserc/.firebase.json/firemat.yaml
 
   const configWatcher = _createWatcher("firebase.json");
   configWatcher?.onDidChange(
@@ -69,7 +69,7 @@ export function registerConfig(broker: ExtensionBrokerImpl): Disposable {
     () => (firebaseConfig.value = _readFirebaseConfig()),
   );
 
-  const dataConnectWatcher = _createWatcher("dataconnect.yaml");
+  const dataConnectWatcher = _createWatcher("firemat.yaml");
   dataConnectWatcher?.onDidChange(
     () => (dataConnectConfig.value = _readDataConnectConfig()),
   );
@@ -166,7 +166,7 @@ function asAbsolutePath(relativePath: string, from: string): string {
 
 /** @internal */
 export function _readDataConnectConfig(): DataConnectConfig | undefined {
-  // TODO refactor parsing as soon as dataconnect.yaml syntax is changed
+  // TODO refactor parsing as soon as firemat.yaml syntax is changed
   const configPath = _getConfigPath();
   if (!configPath) {
     return undefined;
@@ -174,7 +174,7 @@ export function _readDataConnectConfig(): DataConnectConfig | undefined {
 
   try {
     const dataConnectYaml = fs.readFileSync(
-      path.join(configPath, "dataconnect.yaml"),
+      path.join(configPath, "firemat.yaml"),
       "utf-8",
     );
     const yaml = jsYaml.load(dataConnectYaml);
@@ -188,7 +188,7 @@ export function _readDataConnectConfig(): DataConnectConfig | undefined {
         source: asAbsolutePath(
           assignIfType(
             "string",
-            `dataconnect.yaml#operationSet.${key}.source`,
+            `firemat.yaml#operationSet.${key}.source`,
             operationSet[key]?.source,
             defaultDataConnectConfig.operationSet[key]?.source,
           ),
@@ -200,7 +200,7 @@ export function _readDataConnectConfig(): DataConnectConfig | undefined {
     return {
       specVersion: assignIfType(
         "string",
-        "dataconnect.yaml#specVersion",
+        "firemat.yaml#specVersion",
         yaml?.specVersion,
         defaultDataConnectConfig.specVersion,
       ),
@@ -209,7 +209,7 @@ export function _readDataConnectConfig(): DataConnectConfig | undefined {
           source: asAbsolutePath(
             assignIfType(
               "string",
-              "dataconnect.yaml#schema.main.source",
+              "firemat.yaml#schema.main.source",
               yaml?.schema?.main?.source,
               defaultDataConnectConfig.schema.main.source,
             ),
@@ -218,7 +218,7 @@ export function _readDataConnectConfig(): DataConnectConfig | undefined {
           connection: {
             connectionString: assignIfType(
               "string",
-              "dataconnect.yaml#schema.main.connection.connectionString",
+              "firemat.yaml#schema.main.connection.connectionString",
               yaml?.schema?.main?.connection?.connectionString,
             ),
           },

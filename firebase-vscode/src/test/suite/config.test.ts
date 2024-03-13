@@ -185,9 +185,9 @@ operationSet:
     source: ./api/operations
 `;
 
-  dataConnectTest("parses dataconnect.yaml", () => {
+  dataConnectTest("parses firemat.yaml", () => {
     const dir = createTemporaryDirectory();
-    createFile(dir, "dataconnect.yaml", defaultConfigYaml);
+    createFile(dir, "firemat.yaml", defaultConfigYaml);
 
     mock(workspace, {
       workspaceFolders: [
@@ -217,7 +217,7 @@ operationSet:
     });
   });
 
-  dataConnectTest("returns undefined if dataconnect.yaml is not found", () => {
+  dataConnectTest("returns undefined if firemat.yaml is not found", () => {
     const dir = createTemporaryDirectory();
 
     mock(workspace, {
@@ -232,10 +232,10 @@ operationSet:
     assert.deepEqual(config, undefined);
   });
 
-  dataConnectTest("throws if dataconnect.yaml is invalid", () => {
+  dataConnectTest("throws if firemat.yaml is invalid", () => {
     const logs = spyLogs();
     const dir = createTemporaryDirectory();
-    createFile(dir, "dataconnect.yaml", "||");
+    createFile(dir, "firemat.yaml", "||");
 
     mock(workspace, {
       workspaceFolders: [
@@ -263,7 +263,7 @@ operationSet:
 
   dataConnectTest("specifies default value when fields are missing", () => {
     const dir = createTemporaryDirectory();
-    createFile(dir, "dataconnect.yaml", `unknown: 42`);
+    createFile(dir, "firemat.yaml", `unknown: 42`);
 
     mock(workspace, {
       workspaceFolders: [
@@ -298,7 +298,7 @@ operationSet:
     const dir = createTemporaryDirectory();
     createFile(
       dir,
-      "dataconnect.yaml",
+      "firemat.yaml",
       `
 specVersion: v2
 schema:
@@ -350,7 +350,7 @@ operationSet:
     const dir = createTemporaryDirectory();
     createFile(
       dir,
-      "dataconnect.yaml",
+      "firemat.yaml",
       `
 specVersion: null
 schema:
@@ -403,20 +403,20 @@ operationSet:
       ],
     });
 
-    createFile(dir, "dataconnect.yaml", `specVersion: 42`);
+    createFile(dir, "firemat.yaml", `specVersion: 42`);
     assert.throws(
       () => _readDataConnectConfig(),
       (thrown) =>
         thrown
           .toString()
           .startsWith(
-            `Error: Expected field at dataconnect.yaml#specVersion to be of type string but got number`,
+            `Error: Expected field at firemat.yaml#specVersion to be of type string but got number`,
           ),
     );
 
     createFile(
       dir,
-      "dataconnect.yaml",
+      "firemat.yaml",
       `
 schema:
   main:
@@ -425,12 +425,12 @@ schema:
     );
     assert.throws(
       () => _readDataConnectConfig(),
-      (thrown) => thrown.toString().includes(`dataconnect.yaml#schema.main.source`),
+      (thrown) => thrown.toString().includes(`firemat.yaml#schema.main.source`),
     );
 
     createFile(
       dir,
-      "dataconnect.yaml",
+      "firemat.yaml",
       `
 schema:
   main:
@@ -443,12 +443,12 @@ schema:
       (thrown) =>
         thrown
           .toString()
-          .includes(`dataconnect.yaml#schema.main.connection.connectionString`),
+          .includes(`firemat.yaml#schema.main.connection.connectionString`),
     );
 
     createFile(
       dir,
-      "dataconnect.yaml",
+      "firemat.yaml",
       `
 operationSet:
   crud:
@@ -458,7 +458,7 @@ operationSet:
     assert.throws(
       () => _readDataConnectConfig(),
       (thrown) =>
-        thrown.toString().includes(`dataconnect.yaml#operationSet.crud.source`),
+        thrown.toString().includes(`firemat.yaml#operationSet.crud.source`),
     );
   });
 });
@@ -797,7 +797,7 @@ dataConnectSuite("registerConfig", () => {
   });
 
   dataConnectTest(
-    "listens to create/update/delete events on firebase.json/.firebaserc/dataconnect.yaml",
+    "listens to create/update/delete events on firebase.json/.firebaserc/firemat.yaml",
     () => {
       const watcherListeners: Record<
         string,
@@ -848,8 +848,8 @@ dataConnectSuite("registerConfig", () => {
       const rcFile = path.join(dir, ".firebaserc");
       const configListeners = watcherListeners["firebase.json"]!;
       const configFile = path.join(dir, "firebase.json");
-      const dataConnectListeners = watcherListeners["dataconnect.yaml"]!;
-      const dataConnectFile = path.join(dir, "dataconnect.yaml");
+      const dataConnectListeners = watcherListeners["firemat.yaml"]!;
+      const dataConnectFile = path.join(dir, "firemat.yaml");
 
       function testEvent(
         index: number,
