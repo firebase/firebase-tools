@@ -434,7 +434,9 @@ export class Fabricator {
         .run(() => run.setInvokerCreate(endpoint.project, serviceName, ["public"]))
         .catch(rethrowAs(endpoint, "set invoker"));
     } else if (backend.isScheduleTriggered(endpoint)) {
-      const invoker = [getDefaultComputeServiceAgent(this.projectNumber)];
+      const invoker = endpoint.serviceAccount
+        ? [endpoint.serviceAccount]
+        : [getDefaultComputeServiceAgent(this.projectNumber)];
       await this.executor
         .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
         .catch(rethrowAs(endpoint, "set invoker"));
@@ -539,7 +541,9 @@ export class Fabricator {
     ) {
       invoker = ["public"];
     } else if (backend.isScheduleTriggered(endpoint)) {
-      invoker = [getDefaultComputeServiceAgent(this.projectNumber)];
+      invoker = endpoint.serviceAccount
+        ? [endpoint.serviceAccount]
+        : [getDefaultComputeServiceAgent(this.projectNumber)];
     }
 
     if (invoker) {

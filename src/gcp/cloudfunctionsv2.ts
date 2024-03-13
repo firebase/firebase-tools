@@ -550,6 +550,9 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
       eventType: endpoint.eventTrigger.eventType,
       retryPolicy: "RETRY_POLICY_UNSPECIFIED",
     };
+    if (endpoint.serviceAccount) {
+      gcfFunction.eventTrigger.serviceAccountEmail = endpoint.serviceAccount;
+    }
     if (gcfFunction.eventTrigger.eventType === PUBSUB_PUBLISH_EVENT) {
       if (!endpoint.eventTrigger.eventFilters?.topic) {
         throw new FirebaseError(
