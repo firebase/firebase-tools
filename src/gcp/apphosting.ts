@@ -6,7 +6,6 @@ import { ensure } from "../ensureApiEnabled";
 import * as deploymentTool from "../deploymentTool";
 import { FirebaseError } from "../error";
 import { DeepOmit, RecursiveKeyOf, assertImplements } from "../metaprogramming";
-import { back } from "nock";
 
 export const API_VERSION = "v1alpha";
 
