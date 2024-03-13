@@ -1,5 +1,0 @@
-- Enable dynamic debugger port for functions + support for inspecting multiple codebases (#6854)
-- Inject an environment variable in the node functions emulator to tell the google-gax SDK not to look for the metadata service. (#6860)
-- Release Firestore Emulator 1.19.3 which fixes ancestor and namespace scope queries for Datastore Mode. This release also fixes internal errors seen across REST API and firebase-js-sdk.
-- v2 scheduled functions with explicit service accounts trigger eventarc to use that service account (#6858)
-- v2 event functions with explicit service accounts trigger eventarc to use that service account (#6859)
