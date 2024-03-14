@@ -1,5 +1,8 @@
 import { Client } from "../apiv2";
-import { developerConnectOrigin } from "../api";
+import { developerConnectOrigin, developerConnectP4SAOrigin } from "../api";
+
+// TODO(mathusan): using us-west1 as devconnect staging only supports this region
+const STAGING_DEV_CONNECT_LOCATION = "us-west1";
 
 const PAGE_SIZE_MAX = 100;
 
@@ -40,11 +43,6 @@ export interface GitHubConfig {
   installationUri?: string;
 }
 
-// Configuration for the connection depending on the type of provider.
-export interface ConnectionConfig {
-  githubConfig: GitHubConfig;
-}
-
 type InstallationStage =
   | "STAGE_UNSPECIFIED"
   | "PENDING_CREATE_APP"
@@ -66,7 +64,7 @@ export interface Connection {
   labels?: {
     [key: string]: string;
   };
-  connectionConfig: ConnectionConfig;
+  githubConfig?: GitHubConfig;
   installationState: InstallationState;
   disabled?: boolean;
   reconciling?: boolean;
@@ -131,15 +129,14 @@ export async function createConnection(
     ...githubConfig,
     githubApp: "FIREBASE",
   };
+  location = STAGING_DEV_CONNECT_LOCATION;
   const res = await client.post<
     Omit<Omit<Connection, "name">, ConnectionOutputOnlyFields>,
     Operation
   >(
     `projects/${projectId}/locations/${location}/connections`,
     {
-      connectionConfig: {
-        githubConfig: config,
-      },
+      githubConfig: config,
     },
     { queryParams: { connectionId } },
   );
@@ -154,6 +151,8 @@ export async function getConnection(
   location: string,
   connectionId: string,
 ): Promise<Connection> {
+  location = STAGING_DEV_CONNECT_LOCATION;
+
   const name = `projects/${projectId}/locations/${location}/connections/${connectionId}`;
   const res = await client.get<Connection>(name);
   return res.body;
@@ -165,6 +164,8 @@ export async function getConnection(
 export async function listConnections(projectId: string, location: string): Promise<Connection[]> {
   const conns: Connection[] = [];
   const getNextPage = async (pageToken = ""): Promise<void> => {
+    location = STAGING_DEV_CONNECT_LOCATION;
+
     const res = await client.get<{
       connections: Connection[];
       nextPageToken?: string;
@@ -195,6 +196,8 @@ export async function fetchLinkableGitRepositories(
   pageToken = "",
   pageSize = 1000,
 ): Promise<LinkableGitRepositories> {
+  location = STAGING_DEV_CONNECT_LOCATION;
+
   const name = `projects/${projectId}/locations/${location}/connections/${connectionId}:fetchLinkableRepositories`;
   const res = await client.get<LinkableGitRepositories>(name, {
     queryParams: {
@@ -218,6 +221,8 @@ export async function createGitRepositoryLink(
   gitRepositoryLinkId: string,
   cloneUri: string,
 ): Promise<Operation> {
+  location = STAGING_DEV_CONNECT_LOCATION;
+
   const res = await client.post<
     Omit<GitRepositoryLink, GitRepositoryLinkOutputOnlyFields | "name">,
     Operation
@@ -238,6 +243,8 @@ export async function getGitRepositoryLink(
   connectionId: string,
   gitRepositoryLinkId: string,
 ): Promise<GitRepositoryLink> {
+  location = STAGING_DEV_CONNECT_LOCATION;
+
   const name = `projects/${projectId}/locations/${location}/connections/${connectionId}/gitRepositoryLinks/${gitRepositoryLinkId}`;
   const res = await client.get<GitRepositoryLink>(name);
   return res.body;
@@ -247,5 +254,5 @@ export async function getGitRepositoryLink(
  * Returns email associated with the Developer Connect Service Agent
  */
 export function serviceAgentEmail(projectNumber: string): string {
-  return `service-${projectNumber}@gcp-sa-developerconnect.iam.gserviceaccount.com`;
+  return `service-${projectNumber}@${developerConnectP4SAOrigin}`;
 }

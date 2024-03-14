@@ -105,6 +105,11 @@ export const developerConnectOrigin = utils.envOverride(
   "https://developerconnect.googleapis.com",
 );
 
+export const developerConnectP4SAOrigin = utils.envOverride(
+  "FIREBASE_DEVELOPERCONNECT_P4SA_URL",
+  "gcp-sa-developerconnect.iam.gserviceaccount.com",
+);
+
 export const firebaseGithubAppInstallationURL = utils.envOverride(
   "FIREBASE_GITHUB_INSTALLATION_URL",
   "https://github.com/apps/firebase-staging/installations/new",

@@ -89,26 +89,19 @@ export async function linkGitHubRepository(
   utils.logBullet(clc.bold(`${clc.yellow("===")} Set up a GitHub connection`));
   // Create or get connection resource that contains reference to the GitHub oauth token.
   // Oauth token associated with this connection should be used to create other connection resources.
+  const grantSuccess = await promptSecretManagerAdminGrant(projectId);
+  if (!grantSuccess) {
+    throw new FirebaseError("Insufficient IAM permissions to create a new connection to GitHub");
+  }
+
   let oauthConn = await getOrCreateConnection(projectId, location, APPHOSTING_OAUTH_CONN_NAME);
+  utils.logBullet(`connection created: ${JSON.stringify(oauthConn)}`);
   while (oauthConn.installationState.stage === "PENDING_USER_OAUTH") {
     oauthConn = await promptConnectionAuth(oauthConn);
   }
+
   const existingConns = await listAppHostingConnections(projectId);
-  if (existingConns.length < 1) {
-    const grantSuccess = await promptSecretManagerAdminGrant(projectId);
-    if (!grantSuccess) {
-      throw new FirebaseError("Insufficient IAM permissions to create a new connection to GitHub");
-    }
-    const connectionId = generateConnectionId();
-    const conn = await createConnection(projectId, location, connectionId, {
-      authorizerCredential: oauthConn.connectionConfig.githubConfig?.authorizerCredential,
-    });
-    let refreshedConn = conn;
-    while (refreshedConn.installationState.stage !== "COMPLETE") {
-      refreshedConn = await promptAppInstall(conn);
-    }
-    existingConns.push(refreshedConn);
-  }
+  // TODO(mathusan): handle case where there are no connections
 
   let { remoteUri, connection } = await promptRepositoryUri(projectId, existingConns);
   while (CONFIGURE_REMOTE_URI_CHOICES.includes(remoteUri)) {
@@ -122,7 +115,7 @@ export async function linkGitHubRepository(
     } else if (remoteUri === ADD_CONN_CHOICE) {
       const connectionId = generateConnectionId();
       const conn = await createConnection(projectId, location, connectionId, {
-        authorizerCredential: oauthConn.connectionConfig.githubConfig?.authorizerCredential,
+        authorizerCredential: oauthConn.githubConfig?.authorizerCredential,
       });
       let refreshedConn = conn;
       while (refreshedConn.installationState.stage !== "COMPLETE") {
@@ -139,8 +132,8 @@ export async function linkGitHubRepository(
   // Ensure that the selected connection exists in the same region as the backend
   const { id: connectionId } = parseConnectionName(connection.name)!;
   await getOrCreateConnection(projectId, location, connectionId, {
-    authorizerCredential: connection.connectionConfig.githubConfig?.authorizerCredential,
-    appInstallationId: connection.connectionConfig.githubConfig?.appInstallationId,
+    authorizerCredential: connection.githubConfig?.authorizerCredential,
+    appInstallationId: connection.githubConfig?.appInstallationId,
   });
   const repo = await getOrCreateGitRepositoryLink(projectId, location, connectionId, remoteUri);
   utils.logSuccess(`Successfully linked GitHub repository at remote URI`);
@@ -196,7 +189,6 @@ async function promptRepositoryUri(
 async function promptSecretManagerAdminGrant(projectId: string): Promise<boolean> {
   const projectNumber = await getProjectNumber({ projectId });
   const dcsaEmail = devConnect.serviceAgentEmail(projectNumber);
-
   const alreadyGranted = await rm.serviceAccountHasRoles(
     projectId,
     dcsaEmail,
@@ -232,7 +224,7 @@ async function promptSecretManagerAdminGrant(projectId: string): Promise<boolean
 }
 
 async function promptConnectionAuth(conn: devConnect.Connection): Promise<devConnect.Connection> {
-  utils.logBullet("You must authorize thee Firebase GitHub app.");
+  utils.logBullet("You must authorize the Firebase GitHub app.");
   utils.logBullet("Sign in to GitHub and authorize the Firebase GitHub app:");
   const { url, cleanup } = await utils.openInBrowserPopup(
     conn.installationState.actionUri,
@@ -290,12 +282,10 @@ export async function getOrCreateConnection(
   githubConfig: devConnect.GitHubConfig = { githubApp: "FIREBASE" },
 ): Promise<devConnect.Connection> {
   let conn: devConnect.Connection;
-  utils.logBullet("getting or creating a connection");
   try {
     conn = await devConnect.getConnection(projectId, location, connectionId);
   } catch (err: unknown) {
     if ((err as any).status === 404) {
-      utils.logBullet("creating connection");
       conn = await createConnection(projectId, location, connectionId, githubConfig);
     } else {
       throw err;
