@@ -33,7 +33,7 @@ describe("unzipEmulators", () => {
     expect(uiFiles).to.include("server");
 
     const serverFiles = await fs.promises.readdir(path.join(ZIP_TEMPORARY_PATH, "ui", "server"));
-    expect(serverFiles).to.include("server.js");
+    expect(serverFiles).to.include("server.mjs");
   }).timeout(10000);
 
   it("should unzip a pubsub emulator zip file", async () => {
