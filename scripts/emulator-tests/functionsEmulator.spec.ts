@@ -119,6 +119,7 @@ describe("FunctionsEmulator", function () {
       projectDir: MODULE_ROOT,
       emulatableBackends: [TEST_BACKEND],
       verbosity: "QUIET",
+      debugPort: false,
       adminSdkConfig: {
         projectId: TEST_PROJECT_ID,
         databaseURL: `https://${TEST_PROJECT_ID}-default-rtdb.firebaseio.com`,

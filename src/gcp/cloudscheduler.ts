@@ -245,9 +245,8 @@ export function jobFromEndpoint(
       uri: endpoint.uri!,
       httpMethod: "POST",
       oidcToken: {
-        // TODO(colerogers): revisit adding 'invoker' to the container contract
-        // for schedule functions and use as the odic token service account.
-        serviceAccountEmail: getDefaultComputeServiceAgent(projectNumber),
+        serviceAccountEmail:
+          endpoint.serviceAccount ?? getDefaultComputeServiceAgent(projectNumber),
       },
     };
   } else {

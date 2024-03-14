@@ -20,6 +20,8 @@ import * as v1events from "../../../../functions/events/v1";
 import * as servicesNS from "../../../../deploy/functions/services";
 import * as identityPlatformNS from "../../../../gcp/identityPlatform";
 import { AuthBlockingService } from "../../../../deploy/functions/services/auth";
+import { deepCopy } from "@angular-devkit/core";
+import { getDefaultComputeServiceAgent } from "../../../../deploy/functions/checkIam";
 
 describe("Fabricator", () => {
   // Stub all GCP APIs to make sure this test is hermetic
@@ -761,6 +763,36 @@ describe("Fabricator", () => {
       });
     });
 
+    describe("scheduledTrigger", () => {
+      it("sets the default compute service account by default", async () => {
+        gcfv2.createFunction.resolves({ name: "op", done: false });
+        poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+        run.setInvokerCreate.resolves();
+        const ep = endpoint(
+          { scheduleTrigger: { schedule: "every 5 minutes" } },
+          { platform: "gcfv2" },
+        );
+
+        await fab.createV2Function(ep, new scraper.SourceTokenScraper());
+        expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, "service", [
+          getDefaultComputeServiceAgent(fab.projectNumber),
+        ]);
+      });
+
+      it("sets the an explicit service account", async () => {
+        gcfv2.createFunction.resolves({ name: "op", done: false });
+        poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+        run.setInvokerCreate.resolves();
+        const ep = endpoint(
+          { scheduleTrigger: { schedule: "every 5 minutes" } },
+          { platform: "gcfv2", serviceAccount: "sa" },
+        );
+
+        await fab.createV2Function(ep, new scraper.SourceTokenScraper());
+        expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, "service", ["sa"]);
+      });
+    });
+
     it("doesn't set invoker on non-http functions", async () => {
       gcfv2.createFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
@@ -954,6 +986,16 @@ describe("Fabricator", () => {
       scheduler.createOrReplaceJob.resolves();
       await fab.upsertScheduleV2(ep);
       expect(scheduler.createOrReplaceJob).to.have.been.called;
+    });
+
+    it("upserts schedules with explicit service account", async () => {
+      const withSA = deepCopy(ep);
+      withSA.serviceAccount = "sa@iam.googleservices.com";
+      scheduler.createOrReplaceJob.resolves();
+      await fab.upsertScheduleV2(withSA);
+      expect(scheduler.createOrReplaceJob).to.have.been.called;
+      const schedule = scheduler.createOrReplaceJob.firstCall.args[0];
+      expect(schedule.httpTarget?.oidcToken?.serviceAccountEmail).to.equal(withSA.serviceAccount);
     });
 
     it("wraps errors", async () => {
