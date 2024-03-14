@@ -107,7 +107,7 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
       CACHE_DIR,
       `ui-v${EMULATOR_UPDATE_DETAILS.ui.version}`,
       "server",
-      "server.js",
+      "server.mjs",
     ),
     opts: {
       cacheDir: CACHE_DIR,
