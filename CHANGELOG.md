@@ -1,1 +1,0 @@
-- Release Emulator Suite UI v1.11.8 which adds support for Multiple DBs in the Emulator UI Firestore page via editing the URL. (#6874)
