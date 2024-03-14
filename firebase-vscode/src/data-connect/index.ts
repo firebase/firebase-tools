@@ -10,7 +10,6 @@ import {
   OperationCodeLensProvider,
   SchemaCodeLensProvider,
 } from "./code-lens-provider";
-import { globalSignal } from "../utils/globals";
 import { registerConnectors } from "./connectors";
 import { AuthService } from "../auth/service";
 import { registerFirebaseDataConnectView } from "./connect-instance";
@@ -18,6 +17,7 @@ import { currentProjectId } from "../core/project";
 import { isTest } from "../utils/env";
 import { setupLanguageClient } from "./language-client";
 import { EmulatorsController } from "../core/emulators";
+import { registerFdcDeploy } from "./deploy";
 
 export function registerFdc(
   context: ExtensionContext,
@@ -41,7 +41,9 @@ export function registerFdc(
         // TODO move to client.start or setupLanguageClient
         vscode.commands.executeCommand("fdc-graphql.restart");
 
-        vscode.commands.executeCommand("firebase.dataConnect.executeIntrospection");
+        vscode.commands.executeCommand(
+          "firebase.dataConnect.executeIntrospection",
+        );
       }
     }),
   });
@@ -66,6 +68,7 @@ export function registerFdc(
     registerFirebaseDataConnectView(context, broker, emulatorController),
     registerAdHoc(context, broker),
     registerConnectors(context, broker, fdcService),
+    registerFdcDeploy(),
     operationCodeLensProvider,
     vscode.languages.registerCodeLensProvider(
       // **Hack**: For testing purposes, enable code lenses on all graphql files

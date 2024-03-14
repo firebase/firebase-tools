@@ -1,9 +1,10 @@
 import { browser } from "@wdio/globals";
-import { StatusBar, findQuickPicks } from "../../utils/page_objects/status_bar";
+import { StatusBar } from "../../utils/page_objects/status_bar";
 import { addTearDown, dataConnectTest } from "../../utils/test_hooks";
 import { EditorView } from "../../utils/page_objects/editor";
 import { queriesPath } from "../../utils/projects";
 import { FirebaseCommands } from "../../utils/page_objects/commands";
+import { QuickPick } from "../../utils/page_objects/quick_picks";
 
 dataConnectTest(
   "If the emulator is not started, picking the emulator auto-starts it",
@@ -12,6 +13,7 @@ dataConnectTest(
     const commands = new FirebaseCommands();
     const statusBar = new StatusBar(workbench);
     const editor = new EditorView(workbench);
+    const quickPicks = new QuickPick(workbench);
 
     // Ensure following tests are in a clean state
     addTearDown(async () => {
@@ -24,13 +26,10 @@ dataConnectTest(
 
     await statusBar.currentInstanceElement.click();
 
-    const picks = await findQuickPicks();
+    const picks = await quickPicks.findQuickPicks();
     const pickTexts = await picks.mapSeries((p) => p.getText());
 
-    expect(pickTexts).toEqual([
-      " Local",
-      "Production",
-    ]);
+    expect(pickTexts).toEqual([" Local", "Production"]);
 
     await picks[0].click();
 
@@ -55,6 +54,7 @@ dataConnectTest("Can pick an instance", async function () {
   const commands = new FirebaseCommands();
   const statusBar = new StatusBar(workbench);
   const editor = new EditorView(workbench);
+  const quickPicks = new QuickPick(workbench);
 
   await commands.startEmulators();
 
@@ -65,17 +65,16 @@ dataConnectTest("Can pick an instance", async function () {
 
   // Verify that the code-lenses reflect the selected instance
   await editor.firstCodeLense.waitForDisplayed();
-  expect(await editor.firstCodeLense.getText()).toBe("Run (local) |  Move to connector");
+  expect(await editor.firstCodeLense.getText()).toBe(
+    "Run (local) |  Move to connector",
+  );
 
   await statusBar.currentInstanceElement.click();
 
-  const picks = await findQuickPicks();
+  const picks = await quickPicks.findQuickPicks();
   const pickTexts = await picks.mapSeries((p) => p.getText());
 
-  expect(pickTexts).toEqual([
-    "Local",
-    "Production",
-  ]);
+  expect(pickTexts).toEqual(["Local", "Production"]);
 
   await picks[1].click();
 
@@ -85,6 +84,8 @@ dataConnectTest("Can pick an instance", async function () {
       (await statusBar.currentInstanceElement.getText()) === "Production",
   );
   statusBar.currentInstanceElement.waitUntil(
-    async () => (await editor.firstCodeLense.getText()) === "Run (production) |  Move to connector",
+    async () =>
+      (await editor.firstCodeLense.getText()) ===
+      "Run (production) |  Move to connector",
   );
 });

@@ -23,6 +23,7 @@ export function createFake<T>(overrides: Partial<T> = {}): T {
   return proxy as T;
 }
 
+/** A function designed to mock objects inside unit tests */
 export function mock<T>(ref: Ref<T>, value: Partial<T> | undefined) {
   const current = ref.value;
   addTearDown(() => {
