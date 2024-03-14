@@ -1,5 +1,5 @@
 ---
-name: "\U0001F4A1 Feature request"
+name: Feature request
 about: Suggest an idea for this project
 title: ''
 labels: ''
@@ -7,36 +7,14 @@ assignees: ''
 
 ---
 
-<!-- DO NOT DELETE
-validate_template=false
-template_path=.github/ISSUE_TEMPLATE/feature_request.md
--->
+**Is your feature request related to a problem? Please describe.**
+A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
 
-<!--
-Thank you for contributing to the Firebase community!
+**Describe the solution you'd like**
+A clear and concise description of what you want to happen.
 
-Have a feature request?
-========================
-Great, we love hearing how we can improve our products! However, GitHub is not the place to submit them. Please submit your feature requests to:
-https://firebase.google.com/support/contact/bugs-features/
+**Describe alternatives you've considered**
+A clear and concise description of any alternative solutions or features you've considered.
 
-**Think you found a bug?** Please do not use this template - use the `🐛 Bug report` template.
-
-Have a usage question?
-=======================
-We get lots of those and we love helping you, but GitHub is not the best place for them and they
-will be closed. Here are some resources to get help:
-
-- Start with the quickstart: https://firebase.google.com/docs/functions/write-firebase-functions
-- Go through the guide: https://firebase.google.com/docs/functions/
-- Read the full API reference: https://firebase.google.com/docs/reference/functions/
-- Browse some examples: https://github.com/firebase/functions-samples
-
-If the official documentation doesn't help, try asking through our official support channels:
-
-https://firebase.google.com/support/
-
-*Please avoid double posting across multiple channels!*
--->
-
-Please submit feature requests through our [support page](https://firebase.google.com/support/troubleshooter/report/features/).
+**Additional context**
+Add any other context or screenshots about the feature request here.
