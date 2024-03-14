@@ -57,7 +57,6 @@ function validateConnectorYaml(unvalidated: any): ConnectorYaml {
 
 export async function readGQLFiles(sourceDir: string): Promise<File[]> {
   const files = await fs.readdir(sourceDir);
-  console.log(files);
   return files.filter((f) => f.endsWith(".gql")).map((f) => toFile(path.join(sourceDir, f)));
 }
 

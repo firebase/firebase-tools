@@ -199,7 +199,9 @@ export function load(client: any): any {
   client.setup.emulators.storage = loadCommand("setup-emulators-storage");
   client.setup.emulators.ui = loadCommand("setup-emulators-ui");
   if (experiments.isEnabled("dataconnect")) {
+    client.dataconnect = {};
     client.setup.emulators.dataconnect = loadCommand("setup-emulators-dataconnect");
+    client.dataconnect.list = loadCommand("dataconnect-list");
   }
   client.target = loadCommand("target");
   client.target.apply = loadCommand("target-apply");

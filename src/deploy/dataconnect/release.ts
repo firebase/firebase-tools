@@ -17,10 +17,9 @@ export default async function (context: any, options: Options): Promise<void> {
   wantConnectors = wantConnectors.concat(
     ...serviceInfos.map((s) => s.connectorInfo.map((c) => c.connector)),
   );
-  console.log(wantConnectors);
   const haveConnectors = await have(serviceInfos);
-  const connectorsToDelete = haveConnectors.filter((h) =>
-    wantConnectors.some((w) => w.name === h.name),
+  const connectorsToDelete = haveConnectors.filter(
+    (h) => !wantConnectors.some((w) => w.name === h.name),
   );
 
   utils.logLabeledBullet("dataconnect", "Releasing schemas...");

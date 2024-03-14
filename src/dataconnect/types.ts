@@ -1,16 +1,26 @@
+// Schema is a singleton, so we always call it 'main'
+export const SCHEMA_ID = "main";
+
 // API Types
-export interface Service {
+interface BaseResource {
+  createTime?: string;
+  updateTime?: string;
+  uid?: string;
+  reconciling?: boolean;
+}
+
+export interface Service extends BaseResource {
   name: string;
 }
 
-export interface Schema {
+export interface Schema extends BaseResource {
   name: string;
 
   primaryDatasource: Datasource;
   source: Source;
 }
 
-export interface Connector {
+export interface Connector extends BaseResource {
   name: string;
   source: Source;
 }

@@ -1,6 +1,6 @@
 import * as path from "path";
 import * as fileUtils from "./fileUtils";
-import { ServiceInfo, toDatasource } from "./types";
+import { ServiceInfo, toDatasource, SCHEMA_ID } from "./types";
 
 /**
  * loads schemas and connectors from  {sourceDirectory}/dataconnect.yaml
@@ -34,7 +34,7 @@ export async function load(
   return {
     serviceName,
     schema: {
-      name: `${serviceName}/schemas/main`,
+      name: `${serviceName}/schemas/${SCHEMA_ID}`,
       primaryDatasource: toDatasource(projectId, locationId, dataConnectYaml.schema.datasource),
       source: {
         files: schemaGQLs,
