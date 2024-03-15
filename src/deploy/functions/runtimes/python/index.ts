@@ -13,7 +13,7 @@ import { DEFAULT_VENV_DIR, runWithVirtualEnv, virtualEnvCmd } from "../../../../
 import { FirebaseError } from "../../../../error";
 import { Build } from "../../build";
 
-export const LATEST_VERSION: runtimes.Runtime = "python311";
+export const LATEST_VERSION: runtimes.Runtime = "python312";
 
 /**
  * Create a runtime delegate for the Python runtime, if applicable.
@@ -22,7 +22,7 @@ export const LATEST_VERSION: runtimes.Runtime = "python311";
  * @return Delegate Python runtime delegate
  */
 export async function tryCreateDelegate(
-  context: runtimes.DelegateContext
+  context: runtimes.DelegateContext,
 ): Promise<Delegate | undefined> {
   const requirementsTextPath = path.join(context.sourceDir, "requirements.txt");
 
@@ -51,6 +51,8 @@ export function getPythonBinary(runtime: runtimes.Runtime): string {
     return "python3.10";
   } else if (runtime === "python311") {
     return "python3.11";
+  } else if (runtime === "python312") {
+    return "python3.12";
   }
   return "python";
 }
@@ -60,7 +62,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
   constructor(
     private readonly projectId: string,
     private readonly sourceDir: string,
-    public readonly runtime: runtimes.Runtime
+    public readonly runtime: runtimes.Runtime,
   ) {}
 
   private _bin = "";
@@ -84,7 +86,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
           '"import firebase_functions; import os; print(os.path.dirname(firebase_functions.__file__))"',
         ],
         this.sourceDir,
-        {}
+        {},
       );
       child.stderr?.on("data", (chunk: Buffer) => {
         const chunkString = chunk.toString();
@@ -105,7 +107,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
         if (stderr.includes("venv") && stderr.includes("activate")) {
           throw new FirebaseError(
             "Failed to find location of Firebase Functions SDK: Missing virtual environment at venv directory. " +
-              `Did you forget to run '${this.bin} -m venv venv'?`
+              `Did you forget to run '${this.bin} -m venv venv'?`,
           );
         }
         const { command, args } = virtualEnvCmd(this.sourceDir, DEFAULT_VENV_DIR);
@@ -113,7 +115,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
           "Failed to find location of Firebase Functions SDK. " +
             `Did you forget to run '${command} ${args.join(" ")} && ${
               this.bin
-            } -m pip install -r requirements.txt'?`
+            } -m pip install -r requirements.txt'?`,
         );
       }
     }
@@ -146,8 +148,8 @@ export class Delegate implements runtimes.RuntimeDelegate {
     const args = [this.bin, `"${path.join(modulesDir, "private", "serving.py")}"`];
     logger.debug(
       `Running admin server with args: ${JSON.stringify(args)} and env: ${JSON.stringify(
-        envWithAdminPort
-      )} in ${this.sourceDir}`
+        envWithAdminPort,
+      )} in ${this.sourceDir}`,
     );
     const childProcess = runWithVirtualEnv(args, this.sourceDir, envWithAdminPort);
     childProcess.stdout?.on("data", (chunk: Buffer) => {
@@ -177,7 +179,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
 
   async discoverBuild(
     _configValues: backend.RuntimeConfigValues,
-    envs: backend.EnvironmentVariables
+    envs: backend.EnvironmentVariables,
   ): Promise<Build> {
     let discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
     if (!discovered) {

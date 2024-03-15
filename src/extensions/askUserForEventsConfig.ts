@@ -13,7 +13,7 @@ export interface InstanceEventsConfig {
 
 export function checkAllowedEventTypesResponse(
   response: string[],
-  validEvents: EventDescriptor[]
+  validEvents: EventDescriptor[],
 ): boolean {
   const validEventTypes = validEvents.map((e) => e.type);
   if (response.length === 0) {
@@ -22,7 +22,7 @@ export function checkAllowedEventTypesResponse(
   for (const e of response) {
     if (!validEventTypes.includes(e)) {
       utils.logWarning(
-        `Unexpected event type '${e}' was configured to be emitted. This event type is not part of the extension spec.`
+        `Unexpected event type '${e}' was configured to be emitted. This event type is not part of the extension spec.`,
       );
       return false;
     }
@@ -33,12 +33,12 @@ export function checkAllowedEventTypesResponse(
 export async function askForEventsConfig(
   events: EventDescriptor[],
   projectId: string,
-  instanceId: string
+  instanceId: string,
 ): Promise<InstanceEventsConfig | undefined> {
   logger.info(
     `\n${clc.bold("Enable Events")}: ${marked(
-      "If you enable events, you can write custom event handlers ([https://firebase.google.com/docs/extensions/install-extensions#eventarc](https://firebase.google.com/docs/extensions/install-extensions#eventarc)) that respond to these events.\n\nYou can always enable or disable events later. Events will be emitted via Eventarc. Fees apply ([https://cloud.google.com/eventarc/pricing](https://cloud.google.com/eventarc/pricing))."
-    )}`
+      "If you enable events, you can write custom event handlers ([https://firebase.google.com/docs/extensions/install-extensions#eventarc](https://firebase.google.com/docs/extensions/install-extensions#eventarc)) that respond to these events.\n\nYou can always enable or disable events later. Events will be emitted via Eventarc. Fees apply ([https://cloud.google.com/eventarc/pricing](https://cloud.google.com/eventarc/pricing)).",
+    )}`,
   );
   if (!(await askShouldCollectEventsConfig())) {
     return undefined;
@@ -61,7 +61,7 @@ export async function askForEventsConfig(
 
 export async function askForAllowedEventTypes(
   eventDescriptors: EventDescriptor[],
-  preselectedTypes?: string[]
+  preselectedTypes?: string[],
 ): Promise<string[]> {
   let valid = false;
   let response: string[] = [];
@@ -112,8 +112,8 @@ export async function askForEventArcLocation(preselectedLocation?: string): Prom
     if (!valid) {
       utils.logWarning(
         `Unexpected EventArc region '${location}' was specified. Allowed regions: ${allowedRegions.join(
-          ", "
-        )}`
+          ", ",
+        )}`,
       );
     }
   }

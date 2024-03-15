@@ -31,11 +31,10 @@ describe("Flutter", () => {
         .resolves(
           Buffer.from(`dependencies:
   flutter:
-    sdk: flutter`)
+    sdk: flutter`),
         );
       expect(await discover(cwd)).to.deep.equal({
         mayWantBackend: false,
-        publicDirectory: "web",
       });
     });
 
@@ -52,7 +51,7 @@ describe("Flutter", () => {
         .resolves(
           Buffer.from(`dependencies:
   foo:
-    bar: 1`)
+    bar: 1`),
         );
       expect(await discover(cwd)).to.be.undefined;
     });
@@ -154,7 +153,7 @@ describe("Flutter", () => {
           "--platforms=web",
           source,
         ],
-        { cwd: projectDir, stdio: "inherit" }
+        { cwd: projectDir, stdio: "inherit" },
       );
     });
   });

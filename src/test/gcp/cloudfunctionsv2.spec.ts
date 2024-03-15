@@ -96,7 +96,7 @@ describe("cloudfunctionsv2", () => {
           ...ENDPOINT,
           platform: "gcfv2",
           httpsTrigger: {},
-        })
+        }),
       ).to.deep.equal(CLOUD_FUNCTION_V2);
 
       const eventEndpoint: backend.Endpoint = {
@@ -150,7 +150,7 @@ describe("cloudfunctionsv2", () => {
             },
             retry: false,
           },
-        })
+        }),
       ).to.deep.equal({
         ...CLOUD_FUNCTION_V2,
         eventTrigger: {
@@ -179,7 +179,7 @@ describe("cloudfunctionsv2", () => {
           ...ENDPOINT,
           platform: "gcfv2",
           taskQueueTrigger: {},
-        })
+        }),
       ).to.deep.equal({
         ...CLOUD_FUNCTION_V2,
         labels: {
@@ -195,7 +195,7 @@ describe("cloudfunctionsv2", () => {
           blockingTrigger: {
             eventType: events.v1.BEFORE_CREATE_EVENT,
           },
-        })
+        }),
       ).to.deep.equal({
         ...CLOUD_FUNCTION_V2,
         labels: {
@@ -211,7 +211,7 @@ describe("cloudfunctionsv2", () => {
           blockingTrigger: {
             eventType: events.v1.BEFORE_SIGN_IN_EVENT,
           },
-        })
+        }),
       ).to.deep.equal({
         ...CLOUD_FUNCTION_V2,
         labels: {
@@ -317,8 +317,47 @@ describe("cloudfunctionsv2", () => {
       };
 
       expect(cloudfunctionsv2.functionFromEndpoint(complexEndpoint)).to.deep.equal(
-        complexGcfFunction
+        complexGcfFunction,
       );
+    });
+
+    it("should propagate serviceAccount to eventarc", () => {
+      const saEndpoint: backend.Endpoint = {
+        ...ENDPOINT,
+        platform: "gcfv2",
+        eventTrigger: {
+          eventType: events.v2.DATABASE_EVENTS[0],
+          eventFilters: {
+            ref: "ref",
+          },
+          retry: false,
+        },
+        serviceAccount: "sa",
+      };
+
+      const saGcfFunction: cloudfunctionsv2.InputCloudFunction = {
+        ...CLOUD_FUNCTION_V2,
+        eventTrigger: {
+          eventType: events.v2.DATABASE_EVENTS[0],
+          eventFilters: [
+            {
+              attribute: "ref",
+              value: "ref",
+            },
+          ],
+          retryPolicy: "RETRY_POLICY_DO_NOT_RETRY",
+          serviceAccountEmail: "sa",
+        },
+        serviceConfig: {
+          ...CLOUD_FUNCTION_V2.serviceConfig,
+          environmentVariables: {
+            FUNCTION_SIGNATURE_TYPE: "cloudevent",
+          },
+          serviceAccountEmail: "sa",
+        },
+      };
+
+      expect(cloudfunctionsv2.functionFromEndpoint(saEndpoint)).to.deep.equal(saGcfFunction);
     });
 
     it("should correctly convert CPU and concurrency values", () => {
@@ -346,7 +385,7 @@ describe("cloudfunctionsv2", () => {
           ...ENDPOINT,
           codebase: "my-codebase",
           httpsTrigger: {},
-        })
+        }),
       ).to.deep.equal({
         ...CLOUD_FUNCTION_V2,
         labels: { ...CLOUD_FUNCTION_V2.labels, [CODEBASE_LABEL]: "my-codebase" },
@@ -355,7 +394,7 @@ describe("cloudfunctionsv2", () => {
 
     it("should export hash as label", () => {
       expect(
-        cloudfunctionsv2.functionFromEndpoint({ ...ENDPOINT, hash: "my-hash", httpsTrigger: {} })
+        cloudfunctionsv2.functionFromEndpoint({ ...ENDPOINT, hash: "my-hash", httpsTrigger: {} }),
       ).to.deep.equal({
         ...CLOUD_FUNCTION_V2,
         labels: { ...CLOUD_FUNCTION_V2.labels, [HASH_LABEL]: "my-hash" },
@@ -379,6 +418,7 @@ describe("cloudfunctionsv2", () => {
         serviceConfig: {
           ...HAVE_CLOUD_FUNCTION_V2.serviceConfig,
           service: "projects/p/locations/l/services/service-id",
+          uri: RUN_URI,
         },
       };
       expect(cloudfunctionsv2.endpointFromFunction(fn)).to.deep.equal({
@@ -408,7 +448,7 @@ describe("cloudfunctionsv2", () => {
             eventType: events.v2.PUBSUB_PUBLISH_EVENT,
             pubsubTopic: "projects/p/topics/t",
           },
-        })
+        }),
       ).to.deep.equal(want);
 
       // And again w/ a normal event trigger
@@ -439,7 +479,7 @@ describe("cloudfunctionsv2", () => {
               },
             ],
           },
-        })
+        }),
       ).to.deep.equal(want);
 
       // And again with a pattern match event trigger
@@ -473,7 +513,7 @@ describe("cloudfunctionsv2", () => {
               },
             ],
           },
-        })
+        }),
       ).to.deep.equal(want);
 
       // And again with a pattern match event trigger
@@ -513,7 +553,7 @@ describe("cloudfunctionsv2", () => {
             ],
             pubsubTopic: "eventarc-us-central1-abc", // firestore triggers use pubsub as transport
           },
-        })
+        }),
       ).to.deep.equal(want);
     });
 
@@ -542,7 +582,7 @@ describe("cloudfunctionsv2", () => {
             ],
             channel: "projects/myproject/locations/us-wildwest11/channels/mychannel",
           },
-        })
+        }),
       ).to.deep.equal(want);
     });
 
@@ -551,7 +591,7 @@ describe("cloudfunctionsv2", () => {
         cloudfunctionsv2.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION_V2,
           labels: { "deployment-taskqueue": "true" },
-        })
+        }),
       ).to.deep.equal({
         ...ENDPOINT,
         taskQueueTrigger: {},
@@ -566,7 +606,7 @@ describe("cloudfunctionsv2", () => {
         cloudfunctionsv2.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION_V2,
           labels: { "deployment-blocking": "before-create" },
-        })
+        }),
       ).to.deep.equal({
         ...ENDPOINT,
         blockingTrigger: {
@@ -583,7 +623,7 @@ describe("cloudfunctionsv2", () => {
         cloudfunctionsv2.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION_V2,
           labels: { "deployment-blocking": "before-sign-in" },
-        })
+        }),
       ).to.deep.equal({
         ...ENDPOINT,
         blockingTrigger: {
@@ -617,11 +657,13 @@ describe("cloudfunctionsv2", () => {
             vpcConnector: vpc.connector,
             vpcConnectorEgressSettings: vpc.egressSettings,
             availableMemory: "128Mi",
+            uri: RUN_URI,
+            service: "service",
           },
           labels: {
             foo: "bar",
           },
-        })
+        }),
       ).to.deep.equal({
         ...ENDPOINT,
         platform: "gcfv2",
@@ -654,8 +696,10 @@ describe("cloudfunctionsv2", () => {
           serviceConfig: {
             ...HAVE_CLOUD_FUNCTION_V2.serviceConfig,
             ...extraGcfFields,
+            uri: RUN_URI,
+            service: "service",
           },
-        })
+        }),
       ).to.deep.equal({
         ...ENDPOINT,
         platform: "gcfv2",
@@ -673,7 +717,7 @@ describe("cloudfunctionsv2", () => {
             ...CLOUD_FUNCTION_V2.labels,
             [CODEBASE_LABEL]: "my-codebase",
           },
-        })
+        }),
       ).to.deep.equal({
         ...ENDPOINT,
         platform: "gcfv2",
@@ -696,7 +740,7 @@ describe("cloudfunctionsv2", () => {
             [CODEBASE_LABEL]: "my-codebase",
             [HASH_LABEL]: "my-hash",
           },
-        })
+        }),
       ).to.deep.equal({
         ...ENDPOINT,
         platform: "gcfv2",
@@ -723,7 +767,7 @@ describe("cloudfunctionsv2", () => {
         cloudfunctionsv2.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION_V2,
           serviceConfig: undefined,
-        })
+        }),
       ).to.deep.equal(expectedEndpoint);
     });
   });

@@ -95,8 +95,8 @@ describe("Extensions Deployment Planner", () => {
                 extensionId: "test",
                 version: c.in,
               },
-              extension("0.2.0", "0.1.1")
-            )
+              extension("0.2.0", "0.1.1"),
+            ),
           ).to.eventually.equal(c.out);
         } else {
           expect(
@@ -106,8 +106,8 @@ describe("Extensions Deployment Planner", () => {
                 extensionId: "test",
                 version: c.in,
               },
-              extension("0.2.0", "0.1.1")
-            )
+              extension("0.2.0", "0.1.1"),
+            ),
           ).to.eventually.be.rejected;
         }
       });
@@ -175,7 +175,7 @@ describe("Extensions Deployment Planner", () => {
     INSTANCE_WITH_UNDEFINED_EVENTS_CONFIG.config.allowedEventTypes = undefined;
 
     const INSTANCE_SPEC_WITH_UNDEFINED_EVENTS_CONFIG = JSON.parse(
-      JSON.stringify(INSTANCE_SPEC_WITH_EVENTS)
+      JSON.stringify(INSTANCE_SPEC_WITH_EVENTS),
     );
     INSTANCE_SPEC_WITH_UNDEFINED_EVENTS_CONFIG.eventarcChannel = undefined;
     INSTANCE_SPEC_WITH_UNDEFINED_EVENTS_CONFIG.allowedEventTypes = undefined;
@@ -185,7 +185,7 @@ describe("Extensions Deployment Planner", () => {
     INSTANCE_WITH_EMPTY_EVENTS_CONFIG.config.allowedEventTypes = [];
 
     const INSTANCE_SPEC_WITH_EMPTY_EVENTS_CONFIG = JSON.parse(
-      JSON.stringify(INSTANCE_SPEC_WITH_EVENTS)
+      JSON.stringify(INSTANCE_SPEC_WITH_EVENTS),
     );
     INSTANCE_SPEC_WITH_EMPTY_EVENTS_CONFIG.eventarcChannel = "";
     INSTANCE_SPEC_WITH_EMPTY_EVENTS_CONFIG.allowedEventTypes = [];

@@ -90,7 +90,7 @@ describe("diagnose", () => {
         version: 3,
         bindings: [GOOD_BINDING],
       },
-      "bindings"
+      "bindings",
     );
   });
 });

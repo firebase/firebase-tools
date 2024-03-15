@@ -20,6 +20,8 @@ import * as v1events from "../../../../functions/events/v1";
 import * as servicesNS from "../../../../deploy/functions/services";
 import * as identityPlatformNS from "../../../../gcp/identityPlatform";
 import { AuthBlockingService } from "../../../../deploy/functions/services/auth";
+import { deepCopy } from "@angular-devkit/core";
+import { getDefaultComputeServiceAgent } from "../../../../deploy/functions/checkIam";
 
 describe("Fabricator", () => {
   // Stub all GCP APIs to make sure this test is hermetic
@@ -86,10 +88,10 @@ describe("Fabricator", () => {
     tasks.getIamPolicy.rejects(new Error("unexpected tasks.getIamPolicy"));
     services.serviceForEndpoint.throws("unexpected services.serviceForEndpoint");
     identityPlatform.getBlockingFunctionsConfig.rejects(
-      new Error("unexpected identityPlatform.getBlockingFunctionsConfig")
+      new Error("unexpected identityPlatform.getBlockingFunctionsConfig"),
     );
     identityPlatform.setBlockingFunctionsConfig.rejects(
-      new Error("unexpected identityPlatform.setBlockingFunctionsConfig")
+      new Error("unexpected identityPlatform.setBlockingFunctionsConfig"),
     );
   });
 
@@ -125,7 +127,7 @@ describe("Fabricator", () => {
 
   function endpoint(
     trigger: backend.Triggered = { httpsTrigger: {} },
-    base: Partial<backend.Endpoint> = {}
+    base: Partial<backend.Endpoint> = {},
   ): backend.Endpoint {
     return {
       platform: "gcfv1",
@@ -146,13 +148,13 @@ describe("Fabricator", () => {
       gcf.createFunction.rejects(new Error("Server failure"));
 
       await expect(
-        fab.createV1Function(endpoint(), new scraper.SourceTokenScraper())
+        fab.createV1Function(endpoint(), new scraper.SourceTokenScraper()),
       ).to.be.rejectedWith(reporter.DeploymentError, "create");
 
       gcf.createFunction.resolves({ name: "op", type: "create", done: false });
       poller.pollOperation.rejects(new Error("Fail whale"));
       await expect(
-        fab.createV1Function(endpoint(), new scraper.SourceTokenScraper())
+        fab.createV1Function(endpoint(), new scraper.SourceTokenScraper()),
       ).to.be.rejectedWith(reporter.DeploymentError, "create");
     });
 
@@ -162,7 +164,7 @@ describe("Fabricator", () => {
       gcf.setInvokerCreate.rejects(new Error("Boom"));
 
       await expect(
-        fab.createV1Function(endpoint(), new scraper.SourceTokenScraper())
+        fab.createV1Function(endpoint(), new scraper.SourceTokenScraper()),
       ).to.be.rejectedWith(reporter.DeploymentError, "set invoker");
     });
 
@@ -335,13 +337,13 @@ describe("Fabricator", () => {
       gcf.updateFunction.rejects(new Error("Server failure"));
 
       await expect(
-        fab.updateV1Function(endpoint(), new scraper.SourceTokenScraper())
+        fab.updateV1Function(endpoint(), new scraper.SourceTokenScraper()),
       ).to.be.rejectedWith(reporter.DeploymentError, "update");
 
       gcf.updateFunction.resolves({ name: "op", type: "update", done: false });
       poller.pollOperation.rejects(new Error("Fail whale"));
       await expect(
-        fab.updateV1Function(endpoint(), new scraper.SourceTokenScraper())
+        fab.updateV1Function(endpoint(), new scraper.SourceTokenScraper()),
       ).to.be.rejectedWith(reporter.DeploymentError, "update");
     });
 
@@ -357,7 +359,7 @@ describe("Fabricator", () => {
       });
       await expect(fab.updateV1Function(ep, new scraper.SourceTokenScraper())).to.be.rejectedWith(
         reporter.DeploymentError,
-        "set invoker"
+        "set invoker",
       );
     });
 
@@ -452,7 +454,7 @@ describe("Fabricator", () => {
         },
         {
           platform: "gcfv2",
-        }
+        },
       );
 
       await fab.createV2Function(ep, new scraper.SourceTokenScraper());
@@ -473,12 +475,12 @@ describe("Fabricator", () => {
         },
         {
           platform: "gcfv2",
-        }
+        },
       );
 
       await expect(fab.createV2Function(ep, new scraper.SourceTokenScraper())).to.be.rejectedWith(
         reporter.DeploymentError,
-        "create topic"
+        "create topic",
       );
     });
 
@@ -497,7 +499,7 @@ describe("Fabricator", () => {
         },
         {
           platform: "gcfv2",
-        }
+        },
       );
 
       await fab.createV2Function(ep, new scraper.SourceTokenScraper());
@@ -527,7 +529,7 @@ describe("Fabricator", () => {
         },
         {
           platform: "gcfv2",
-        }
+        },
       );
 
       await fab.createV2Function(ep, new scraper.SourceTokenScraper());
@@ -565,7 +567,7 @@ describe("Fabricator", () => {
         },
         {
           platform: "gcfv2",
-        }
+        },
       );
 
       await fab.createV2Function(ep, new scraper.SourceTokenScraper());
@@ -591,11 +593,11 @@ describe("Fabricator", () => {
         },
         {
           platform: "gcfv2",
-        }
+        },
       );
 
       await expect(
-        fab.createV2Function(ep, new scraper.SourceTokenScraper())
+        fab.createV2Function(ep, new scraper.SourceTokenScraper()),
       ).to.eventually.be.rejectedWith(reporter.DeploymentError, "upsert eventarc channel");
     });
 
@@ -605,7 +607,7 @@ describe("Fabricator", () => {
       const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
       await expect(fab.createV2Function(ep, new scraper.SourceTokenScraper())).to.be.rejectedWith(
         reporter.DeploymentError,
-        "create"
+        "create",
       );
 
       gcfv2.createFunction.resolves({ name: "op", done: false });
@@ -613,7 +615,7 @@ describe("Fabricator", () => {
 
       await expect(fab.createV2Function(ep, new scraper.SourceTokenScraper())).to.be.rejectedWith(
         reporter.DeploymentError,
-        "create"
+        "create",
       );
     });
 
@@ -663,7 +665,7 @@ describe("Fabricator", () => {
       const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
       await expect(fab.createV2Function(ep, new scraper.SourceTokenScraper())).to.be.rejectedWith(
         reporter.DeploymentError,
-        "set invoker"
+        "set invoker",
       );
     });
 
@@ -688,7 +690,7 @@ describe("Fabricator", () => {
               invoker: ["custom@"],
             },
           },
-          { platform: "gcfv2" }
+          { platform: "gcfv2" },
         );
 
         await fab.createV2Function(ep, new scraper.SourceTokenScraper());
@@ -739,7 +741,7 @@ describe("Fabricator", () => {
               invoker: ["custom@"],
             },
           },
-          { platform: "gcfv2" }
+          { platform: "gcfv2" },
         );
         await fab.createV2Function(ep, new scraper.SourceTokenScraper());
         expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, "service", ["custom@"]);
@@ -753,11 +755,41 @@ describe("Fabricator", () => {
         run.setInvokerCreate.resolves();
         const ep = endpoint(
           { blockingTrigger: { eventType: v1events.BEFORE_CREATE_EVENT } },
-          { platform: "gcfv2" }
+          { platform: "gcfv2" },
         );
 
         await fab.createV2Function(ep, new scraper.SourceTokenScraper());
         expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, "service", ["public"]);
+      });
+    });
+
+    describe("scheduledTrigger", () => {
+      it("sets the default compute service account by default", async () => {
+        gcfv2.createFunction.resolves({ name: "op", done: false });
+        poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+        run.setInvokerCreate.resolves();
+        const ep = endpoint(
+          { scheduleTrigger: { schedule: "every 5 minutes" } },
+          { platform: "gcfv2" },
+        );
+
+        await fab.createV2Function(ep, new scraper.SourceTokenScraper());
+        expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, "service", [
+          getDefaultComputeServiceAgent(fab.projectNumber),
+        ]);
+      });
+
+      it("sets the an explicit service account", async () => {
+        gcfv2.createFunction.resolves({ name: "op", done: false });
+        poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+        run.setInvokerCreate.resolves();
+        const ep = endpoint(
+          { scheduleTrigger: { schedule: "every 5 minutes" } },
+          { platform: "gcfv2", serviceAccount: "sa" },
+        );
+
+        await fab.createV2Function(ep, new scraper.SourceTokenScraper());
+        expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, "service", ["sa"]);
       });
     });
 
@@ -767,7 +799,7 @@ describe("Fabricator", () => {
       run.setInvokerCreate.resolves();
       const ep = endpoint(
         { eventTrigger: { eventType: "event", eventFilters: {}, retry: false } },
-        { platform: "gcfv2" }
+        { platform: "gcfv2" },
       );
 
       await fab.createV2Function(ep, new scraper.SourceTokenScraper());
@@ -782,14 +814,14 @@ describe("Fabricator", () => {
       const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
       await expect(fab.updateV2Function(ep, new scraper.SourceTokenScraper())).to.be.rejectedWith(
         reporter.DeploymentError,
-        "update"
+        "update",
       );
 
       gcfv2.updateFunction.resolves({ name: "op", done: false });
       poller.pollOperation.rejects(new Error("Fail whale"));
       await expect(fab.updateV2Function(ep, new scraper.SourceTokenScraper())).to.be.rejectedWith(
         reporter.DeploymentError,
-        "update"
+        "update",
       );
     });
 
@@ -801,7 +833,7 @@ describe("Fabricator", () => {
       const ep = endpoint({ httpsTrigger: { invoker: ["private"] } }, { platform: "gcfv2" });
       await expect(fab.updateV2Function(ep, new scraper.SourceTokenScraper())).to.be.rejectedWith(
         reporter.DeploymentError,
-        "set invoker"
+        "set invoker",
       );
     });
 
@@ -815,7 +847,7 @@ describe("Fabricator", () => {
             invoker: ["custom@"],
           },
         },
-        { platform: "gcfv2" }
+        { platform: "gcfv2" },
       );
 
       await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
@@ -832,7 +864,7 @@ describe("Fabricator", () => {
             invoker: ["custom@"],
           },
         },
-        { platform: "gcfv2" }
+        { platform: "gcfv2" },
       );
 
       await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
@@ -849,7 +881,7 @@ describe("Fabricator", () => {
             eventType: v1events.BEFORE_CREATE_EVENT,
           },
         },
-        { platform: "gcfv2" }
+        { platform: "gcfv2" },
       );
 
       await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
@@ -872,7 +904,7 @@ describe("Fabricator", () => {
       run.setInvokerUpdate.resolves();
       const ep = endpoint(
         { eventTrigger: { eventType: "event", eventFilters: {}, retry: false } },
-        { platform: "gcfv2" }
+        { platform: "gcfv2" },
       );
 
       await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
@@ -935,7 +967,7 @@ describe("Fabricator", () => {
       scheduler.createOrReplaceJob.rejects(new Error("Fail"));
       await expect(fab.upsertScheduleV1(ep)).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
-        "upsert schedule"
+        "upsert schedule",
       );
     });
   });
@@ -956,11 +988,21 @@ describe("Fabricator", () => {
       expect(scheduler.createOrReplaceJob).to.have.been.called;
     });
 
+    it("upserts schedules with explicit service account", async () => {
+      const withSA = deepCopy(ep);
+      withSA.serviceAccount = "sa@iam.googleservices.com";
+      scheduler.createOrReplaceJob.resolves();
+      await fab.upsertScheduleV2(withSA);
+      expect(scheduler.createOrReplaceJob).to.have.been.called;
+      const schedule = scheduler.createOrReplaceJob.firstCall.args[0];
+      expect(schedule.httpTarget?.oidcToken?.serviceAccountEmail).to.equal(withSA.serviceAccount);
+    });
+
     it("wraps errors", async () => {
       scheduler.createOrReplaceJob.rejects(new Error("Fail"));
       await expect(fab.upsertScheduleV2(ep)).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
-        "upsert schedule"
+        "upsert schedule",
       );
     });
   });
@@ -984,14 +1026,14 @@ describe("Fabricator", () => {
       scheduler.deleteJob.rejects(new Error("Fail"));
       await expect(fab.deleteScheduleV1(ep)).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
-        "delete schedule"
+        "delete schedule",
       );
 
       scheduler.deleteJob.resolves();
       pubsub.deleteTopic.rejects(new Error("Fail"));
       await expect(fab.deleteScheduleV1(ep)).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
-        "delete topic"
+        "delete topic",
       );
     });
   });
@@ -1016,7 +1058,7 @@ describe("Fabricator", () => {
       scheduler.deleteJob.rejects(new Error("Fail"));
       await expect(fab.deleteScheduleV2(ep)).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
-        "delete schedule"
+        "delete schedule",
       );
     });
   });
@@ -1056,14 +1098,14 @@ describe("Fabricator", () => {
       tasks.upsertQueue.rejects(new Error("oh no"));
       await expect(fab.upsertTaskQueue(ep)).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
-        "upsert task queue"
+        "upsert task queue",
       );
 
       tasks.upsertQueue.resolves();
       tasks.setEnqueuer.rejects(new Error("nope"));
       await expect(fab.upsertTaskQueue(ep)).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
-        "set invoker"
+        "set invoker",
       );
     });
   });
@@ -1088,7 +1130,7 @@ describe("Fabricator", () => {
       tasks.updateQueue.rejects(new Error("Not today"));
       await expect(fab.disableTaskQueue(ep)).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
-        "disable task queue"
+        "disable task queue",
       );
     });
   });
@@ -1100,7 +1142,7 @@ describe("Fabricator", () => {
           eventType: v1events.BEFORE_CREATE_EVENT,
         },
       },
-      { uri: "myuri.net" }
+      { uri: "myuri.net" },
     ) as backend.Endpoint & backend.BlockingTriggered;
     const authBlockingService = new AuthBlockingService();
 
@@ -1118,7 +1160,7 @@ describe("Fabricator", () => {
       identityPlatform.getBlockingFunctionsConfig.rejects(new Error("Fail"));
       await expect(fab.registerBlockingTrigger(ep)).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
-        "register blocking trigger"
+        "register blocking trigger",
       );
     });
   });
@@ -1130,7 +1172,7 @@ describe("Fabricator", () => {
           eventType: v1events.BEFORE_CREATE_EVENT,
         },
       },
-      { uri: "myuri.net" }
+      { uri: "myuri.net" },
     ) as backend.Endpoint & backend.BlockingTriggered;
     const authBlockingService = new AuthBlockingService();
 
@@ -1150,7 +1192,7 @@ describe("Fabricator", () => {
       identityPlatform.getBlockingFunctionsConfig.rejects(new Error("Fail"));
       await expect(fab.unregisterBlockingTrigger(ep)).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
-        "unregister blocking trigger"
+        "unregister blocking trigger",
       );
     });
   });
@@ -1267,7 +1309,7 @@ describe("Fabricator", () => {
       await fab.createEndpoint(
         ep,
         new scraper.SourceTokenScraper(),
-        new scraper.SourceTokenScraper()
+        new scraper.SourceTokenScraper(),
       );
       expect(createV1Function).is.calledOnce;
       expect(setTrigger).is.calledOnce;
@@ -1284,7 +1326,7 @@ describe("Fabricator", () => {
       await fab.createEndpoint(
         ep,
         new scraper.SourceTokenScraper(),
-        new scraper.SourceTokenScraper()
+        new scraper.SourceTokenScraper(),
       );
       expect(createV2Function).is.calledOnce;
       expect(setTrigger).is.calledOnce;
@@ -1298,7 +1340,7 @@ describe("Fabricator", () => {
       createV1Function.rejects(new reporter.DeploymentError(ep, "set invoker", undefined));
 
       await expect(
-        fab.createEndpoint(ep, new scraper.SourceTokenScraper(), new scraper.SourceTokenScraper())
+        fab.createEndpoint(ep, new scraper.SourceTokenScraper(), new scraper.SourceTokenScraper()),
       ).to.be.rejectedWith(reporter.DeploymentError, "set invoker");
       expect(createV1Function).is.calledOnce;
       expect(setTrigger).is.not.called;
@@ -1316,7 +1358,7 @@ describe("Fabricator", () => {
       await fab.updateEndpoint(
         { endpoint: ep },
         new scraper.SourceTokenScraper(),
-        new scraper.SourceTokenScraper()
+        new scraper.SourceTokenScraper(),
       );
       expect(updateV1Function).is.calledOnce;
       expect(setTrigger).is.calledOnce;
@@ -1333,7 +1375,7 @@ describe("Fabricator", () => {
       await fab.updateEndpoint(
         { endpoint: ep },
         new scraper.SourceTokenScraper(),
-        new scraper.SourceTokenScraper()
+        new scraper.SourceTokenScraper(),
       );
       expect(updateV2Function).is.calledOnce;
       expect(setTrigger).is.calledOnce;
@@ -1350,8 +1392,8 @@ describe("Fabricator", () => {
         fab.updateEndpoint(
           { endpoint: ep },
           new scraper.SourceTokenScraper(),
-          new scraper.SourceTokenScraper()
-        )
+          new scraper.SourceTokenScraper(),
+        ),
       ).to.be.rejectedWith(reporter.DeploymentError, "set invoker");
       expect(updateV1Function).is.calledOnce;
       expect(setTrigger).is.not.called;
@@ -1360,11 +1402,11 @@ describe("Fabricator", () => {
     it("can delete and create", async () => {
       const target = endpoint(
         { scheduleTrigger: { schedule: "every 5 minutes" } },
-        { platform: "gcfv2" }
+        { platform: "gcfv2" },
       );
       const before = endpoint(
         { scheduleTrigger: { schedule: "every 5 minutes" } },
-        { platform: "gcfv1" }
+        { platform: "gcfv1" },
       );
       const update = {
         endpoint: target,
@@ -1383,7 +1425,7 @@ describe("Fabricator", () => {
       await fab.updateEndpoint(
         update,
         new scraper.SourceTokenScraper(),
-        new scraper.SourceTokenScraper()
+        new scraper.SourceTokenScraper(),
       );
 
       expect(deleteTrigger).to.have.been.called;
@@ -1446,7 +1488,7 @@ describe("Fabricator", () => {
       let callCount = 0;
       const fakeUpsert = (
         unused: backend.Endpoint | planner.EndpointUpdate,
-        s: scraper.SourceTokenScraper
+        s: scraper.SourceTokenScraper,
       ): Promise<void> => {
         callCount++;
         if (!sourceTokenScraper) {

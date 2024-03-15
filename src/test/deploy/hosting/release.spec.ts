@@ -58,7 +58,7 @@ describe("release", () => {
       expect(updateVersionStub).to.have.been.calledOnceWithExactly(
         SITE,
         last(VERSION.split("/")),
-        UPDATE
+        UPDATE,
       );
       expect(createReleaseStub).to.have.been.calledOnceWithExactly(SITE, "live", VERSION, {});
     });
@@ -72,7 +72,7 @@ describe("release", () => {
       expect(updateVersionStub).to.have.been.calledOnceWithExactly(
         SITE,
         last(VERSION.split("/")),
-        UPDATE
+        UPDATE,
       );
       expect(createReleaseStub).to.have.been.calledOnceWithExactly(SITE, "live", VERSION, {
         message: "hello world",
@@ -106,12 +106,12 @@ describe("release", () => {
       expect(updateVersionStub).to.have.been.calledWithExactly(
         SITE,
         last(VERSION.split("/")),
-        UPDATE
+        UPDATE,
       );
       expect(updateVersionStub).to.have.been.calledWithExactly(
         `${SITE}-2`,
         `${last(VERSION.split("/"))}-2`,
-        UPDATE
+        UPDATE,
       );
       expect(createReleaseStub).to.have.been.calledTwice;
       expect(createReleaseStub).to.have.been.calledWithExactly(SITE, "live", VERSION, {});
@@ -119,7 +119,7 @@ describe("release", () => {
         `${SITE}-2`,
         "live",
         `${VERSION}-2`,
-        {}
+        {},
       );
     });
   });
@@ -148,7 +148,7 @@ describe("release", () => {
       expect(updateVersionStub).to.have.been.calledOnceWithExactly(
         SITE,
         last(VERSION.split("/")),
-        UPDATE
+        UPDATE,
       );
       expect(createReleaseStub).to.have.been.calledOnceWithExactly(SITE, CHANNEL, VERSION, {});
     });

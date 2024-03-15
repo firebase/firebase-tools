@@ -29,7 +29,7 @@ export function runWithVirtualEnv(
   cwd: string,
   envs: Record<string, string>,
   spawnOpts: cp.SpawnOptions = {},
-  venvDir = DEFAULT_VENV_DIR
+  venvDir = DEFAULT_VENV_DIR,
 ): cp.ChildProcess {
   const { command, args } = virtualEnvCmd(cwd, venvDir);
   args.push("&&", ...commandAndArgs);

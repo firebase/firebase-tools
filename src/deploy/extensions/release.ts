@@ -58,7 +58,7 @@ export async function release(context: Context, options: Options, payload: Paylo
       errors: errorHandler.errors.length ?? 0,
       interactive: options.nonInteractive ? "false" : "true",
     },
-    duration
+    duration,
   );
 
   // After deployment, write the latest etags to RC so we can detect out of band changes in the next deploy.

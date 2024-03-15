@@ -66,7 +66,7 @@ export async function createServiceAccount(
   projectId: string,
   accountId: string,
   description: string,
-  displayName: string
+  displayName: string,
 ): Promise<ServiceAccount> {
   const response = await apiClient.post<
     { accountId: string; serviceAccount: { displayName: string; description: string } },
@@ -80,7 +80,7 @@ export async function createServiceAccount(
         description,
       },
     },
-    { skipLog: { resBody: true } }
+    { skipLog: { resBody: true } },
   );
   return response.body;
 }
@@ -93,10 +93,10 @@ export async function createServiceAccount(
  */
 export async function getServiceAccount(
   projectId: string,
-  serviceAccountName: string
+  serviceAccountName: string,
 ): Promise<ServiceAccount> {
   const response = await apiClient.get<ServiceAccount>(
-    `/projects/${projectId}/serviceAccounts/${serviceAccountName}@${projectId}.iam.gserviceaccount.com`
+    `/projects/${projectId}/serviceAccounts/${serviceAccountName}@${projectId}.iam.gserviceaccount.com`,
   );
   return response.body;
 }
@@ -106,7 +106,7 @@ export async function getServiceAccount(
  */
 export async function createServiceAccountKey(
   projectId: string,
-  serviceAccountName: string
+  serviceAccountName: string,
 ): Promise<ServiceAccountKey> {
   const response = await apiClient.post<
     { keyAlgorithm: string; privateKeyType: string },
@@ -116,7 +116,7 @@ export async function createServiceAccountKey(
     {
       keyAlgorithm: "KEY_ALG_UNSPECIFIED",
       privateKeyType: "TYPE_GOOGLE_CREDENTIALS_FILE",
-    }
+    },
   );
   return response.body;
 }
@@ -136,10 +136,10 @@ export async function deleteServiceAccount(projectId: string, accountEmail: stri
  */
 export async function listServiceAccountKeys(
   projectId: string,
-  serviceAccountName: string
+  serviceAccountName: string,
 ): Promise<ServiceAccountKey[]> {
   const response = await apiClient.get<{ keys: ServiceAccountKey[] }>(
-    `/projects/${projectId}/serviceAccounts/${serviceAccountName}@${projectId}.iam.gserviceaccount.com/keys`
+    `/projects/${projectId}/serviceAccounts/${serviceAccountName}@${projectId}.iam.gserviceaccount.com/keys`,
   );
   return response.body.keys;
 }
@@ -171,14 +171,14 @@ export async function testResourceIamPermissions(
   apiVersion: string,
   resourceName: string,
   permissions: string[],
-  quotaUser = ""
+  quotaUser = "",
 ): Promise<TestIamResult> {
   const localClient = new Client({ urlPrefix: origin, apiVersion });
   if (process.env.FIREBASE_SKIP_INFORMATIONAL_IAM) {
     logger.debug(
       `[iam] skipping informational check of permissions ${JSON.stringify(
-        permissions
-      )} on resource ${resourceName}`
+        permissions,
+      )} on resource ${resourceName}`,
     );
     return { allowed: Array.from(permissions).sort(), missing: [], passed: true };
   }
@@ -189,7 +189,7 @@ export async function testResourceIamPermissions(
   const response = await localClient.post<{ permissions: string[] }, { permissions: string[] }>(
     `/${resourceName}:testIamPermissions`,
     { permissions },
-    { headers }
+    { headers },
   );
 
   const allowed = new Set(response.body.permissions || []);
@@ -212,13 +212,13 @@ export async function testResourceIamPermissions(
  */
 export async function testIamPermissions(
   projectId: string,
-  permissions: string[]
+  permissions: string[],
 ): Promise<TestIamResult> {
   return testResourceIamPermissions(
     resourceManagerOrigin,
     "v1",
     `projects/${projectId}`,
     permissions,
-    `projects/${projectId}`
+    `projects/${projectId}`,
   );
 }

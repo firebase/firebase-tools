@@ -122,7 +122,7 @@ export class EmulatorHub extends ExpressBasedEmulator {
     app.put(EmulatorHub.PATH_DISABLE_FUNCTIONS, async (req, res) => {
       utils.logLabeledBullet(
         "emulators",
-        `Disabling Cloud Functions triggers, non-HTTP functions will not execute.`
+        `Disabling Cloud Functions triggers, non-HTTP functions will not execute.`,
       );
 
       const instance = EmulatorRegistry.get(Emulators.FUNCTIONS);
@@ -139,7 +139,7 @@ export class EmulatorHub extends ExpressBasedEmulator {
     app.put(EmulatorHub.PATH_ENABLE_FUNCTIONS, async (req, res) => {
       utils.logLabeledBullet(
         "emulators",
-        `Enabling Cloud Functions triggers, non-HTTP functions will execute.`
+        `Enabling Cloud Functions triggers, non-HTTP functions will execute.`,
       );
 
       const instance = EmulatorRegistry.get(Emulators.FUNCTIONS);
@@ -189,7 +189,7 @@ export class EmulatorHub extends ExpressBasedEmulator {
     if (fs.existsSync(locatorPath)) {
       utils.logLabeledWarning(
         "emulators",
-        `It seems that you are running multiple instances of the emulator suite for project ${projectId}. This may result in unexpected behavior.`
+        `It seems that you are running multiple instances of the emulator suite for project ${projectId}. This may result in unexpected behavior.`,
       );
     }
 

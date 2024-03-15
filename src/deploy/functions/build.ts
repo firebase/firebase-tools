@@ -193,7 +193,7 @@ export function isBlockingTriggered(triggered: Triggered): triggered is Blocking
 
 export interface VpcSettings {
   connector: string | Expression<string>;
-  egressSettings?: "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC" | null;
+  egressSettings?: "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC" | Expression<string> | null;
 }
 
 export interface SecretEnvVar {
@@ -204,12 +204,6 @@ export interface SecretEnvVar {
 
 export type MemoryOption = 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192 | 16384 | 32768;
 const allMemoryOptions: MemoryOption[] = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768];
-/**
- * Is a given number a valid MemoryOption?
- */
-export function isValidMemoryOption(mem: unknown): mem is MemoryOption {
-  return allMemoryOptions.includes(mem as MemoryOption);
-}
 
 export type FunctionsPlatform = backend.FunctionsPlatform;
 export const AllFunctionsPlatforms: FunctionsPlatform[] = ["gcfv1", "gcfv2"];
@@ -284,14 +278,14 @@ export async function resolveBackend(
   firebaseConfig: FirebaseConfig,
   userEnvOpt: UserEnvsOpts,
   userEnvs: Record<string, string>,
-  nonInteractive?: boolean
+  nonInteractive?: boolean,
 ): Promise<{ backend: backend.Backend; envs: Record<string, params.ParamValue> }> {
   let paramValues: Record<string, params.ParamValue> = {};
   paramValues = await params.resolveParams(
     build.params,
     firebaseConfig,
     envWithTypes(build.params, userEnvs),
-    nonInteractive
+    nonInteractive,
   );
 
   const toWrite: Record<string, string> = {};
@@ -309,7 +303,7 @@ export async function resolveBackend(
 
 function envWithTypes(
   definedParams: params.Param[],
-  rawEnvs: Record<string, string>
+  rawEnvs: Record<string, string>,
 ): Record<string, params.ParamValue> {
   const out: Record<string, params.ParamValue> = {};
   for (const envName of Object.keys(rawEnvs)) {
@@ -422,7 +416,7 @@ class Resolver {
 /** Converts a build specification into a Backend representation, with all Params resolved and interpolated */
 export function toBackend(
   build: Build,
-  paramValues: Record<string, params.ParamValue>
+  paramValues: Record<string, params.ParamValue>,
 ): backend.Backend {
   const r = new Resolver(paramValues);
   const bkEndpoints: Array<backend.Endpoint> = [];
@@ -471,7 +465,7 @@ export function toBackend(
         bdEndpoint,
         "environmentVariables",
         "labels",
-        "secretEnvironmentVariables"
+        "secretEnvironmentVariables",
       );
 
       proto.convertIfPresent(bkEndpoint, bdEndpoint, "ingressSettings", (from) => {
@@ -485,8 +479,8 @@ export function toBackend(
         if (mem !== null && !backend.isValidMemoryOption(mem)) {
           throw new FirebaseError(
             `Function memory (${mem}) must resolve to a supported value, if present: ${JSON.stringify(
-              allMemoryOptions
-            )}`
+              allMemoryOptions,
+            )}`,
           );
         }
         return (mem as backend.MemoryOptions) || null;
@@ -499,13 +493,13 @@ export function toBackend(
         "timeoutSeconds",
         "maxInstances",
         "minInstances",
-        "concurrency"
+        "concurrency",
       );
       proto.convertIfPresent(
         bkEndpoint,
         bdEndpoint,
         "cpu",
-        nullsafeVisitor((cpu) => (cpu === "gcf_gen1" ? cpu : r.resolveInt(cpu)))
+        nullsafeVisitor((cpu) => (cpu === "gcf_gen1" ? cpu : r.resolveInt(cpu))),
       );
       if (bdEndpoint.vpc) {
         bdEndpoint.vpc.connector = params.resolveString(bdEndpoint.vpc.connector, paramValues);
@@ -514,7 +508,16 @@ export function toBackend(
         }
 
         bkEndpoint.vpc = { connector: bdEndpoint.vpc.connector };
-        proto.copyIfPresent(bkEndpoint.vpc, bdEndpoint.vpc, "egressSettings");
+        if (bdEndpoint.vpc.egressSettings) {
+          const egressSettings = r.resolveString(bdEndpoint.vpc.egressSettings);
+          if (!backend.isValidEgressSetting(egressSettings)) {
+            throw new FirebaseError(
+              `Value "${egressSettings}" is an invalid ` +
+                "egress setting. Valid values are PRIVATE_RANGES_ONLY and ALL_TRAFFIC",
+            );
+          }
+          bkEndpoint.vpc.egressSettings = egressSettings;
+        }
       } else if (bdEndpoint.vpc === null) {
         bkEndpoint.vpc = null;
       }
@@ -551,7 +554,7 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
     if (endpoint.eventTrigger.eventFilterPathPatterns) {
       eventTrigger.eventFilterPathPatterns = mapObject(
         endpoint.eventTrigger.eventFilterPathPatterns,
-        r.resolveString
+        r.resolveString,
       );
     }
     r.resolveStrings(eventTrigger, endpoint.eventTrigger, "serviceAccount", "region", "channel");
@@ -572,7 +575,7 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
         "minBackoffSeconds",
         "maxRetrySeconds",
         "retryCount",
-        "maxDoublings"
+        "maxDoublings",
       );
       bkSchedule.retryConfig = bkRetry;
     } else if (endpoint.scheduleTrigger.retryConfig === null) {
@@ -587,7 +590,7 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
         taskQueueTrigger.rateLimits,
         endpoint.taskQueueTrigger.rateLimits,
         "maxConcurrentDispatches",
-        "maxDispatchesPerSecond"
+        "maxDispatchesPerSecond",
       );
     } else if (endpoint.taskQueueTrigger.rateLimits === null) {
       taskQueueTrigger.rateLimits = null;
@@ -601,7 +604,7 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
         "maxBackoffSeconds",
         "minBackoffSeconds",
         "maxRetrySeconds",
-        "maxDoublings"
+        "maxDoublings",
       );
     } else if (endpoint.taskQueueTrigger.retryConfig === null) {
       taskQueueTrigger.retryConfig = null;

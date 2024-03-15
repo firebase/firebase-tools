@@ -67,7 +67,7 @@ export class FirestoreDelete {
       shallow?: boolean;
       allCollections?: boolean;
       databaseId: string;
-    }
+    },
   ) {
     this.project = project;
     this.path = path || "";
@@ -166,7 +166,7 @@ export class FirestoreDelete {
   private collectionDescendantsQuery(
     allDescendants: boolean,
     batchSize: number,
-    startAfter?: string
+    startAfter?: string,
   ) {
     const nullChar = String.fromCharCode(0);
 
@@ -285,7 +285,7 @@ export class FirestoreDelete {
   private getDescendantBatch(
     allDescendants: boolean,
     batchSize: number,
-    startAfter?: string
+    startAfter?: string,
   ): Promise<Document[]> {
     const url = this.parent + ":runQuery";
     const body = this.isDocumentPath
@@ -394,7 +394,7 @@ export class FirestoreDelete {
 
       numPendingDeletes++;
       firestore
-        .deleteDocuments(this.project, toDelete)
+        .deleteDocuments(this.project, toDelete, true)
         .then((numDeleted) => {
           FirestoreDelete.progressBar.tick(numDeleted);
           numDocsDeleted += numDeleted;
@@ -419,7 +419,7 @@ export class FirestoreDelete {
             if (newBatchSize < this.deleteBatchSize) {
               utils.logLabeledWarning(
                 "firestore",
-                `delete transaction too large, reducing batch size from ${this.deleteBatchSize} to ${newBatchSize}`
+                `delete transaction too large, reducing batch size from ${this.deleteBatchSize} to ${newBatchSize}`,
               );
               this.setDeleteBatchSize(newBatchSize);
             }
@@ -481,7 +481,7 @@ export class FirestoreDelete {
     let initialDelete;
     if (this.isDocumentPath) {
       const doc = { name: this.root + "/" + this.path };
-      initialDelete = firestore.deleteDocument(doc).catch((err) => {
+      initialDelete = firestore.deleteDocument(doc, true).catch((err) => {
         logger.debug("deletePath:initialDelete:error", err);
         if (this.allDescendants) {
           // On a recursive delete, we are insensitive to
@@ -508,7 +508,7 @@ export class FirestoreDelete {
    */
   public deleteDatabase(): Promise<any[]> {
     return firestore
-      .listCollectionIds(this.project)
+      .listCollectionIds(this.project, true)
       .catch((err) => {
         logger.debug("deleteDatabase:listCollectionIds:error", err);
         return utils.reject("Unable to list collection IDs");
@@ -536,7 +536,7 @@ export class FirestoreDelete {
    * Check if a path has any children. Useful for determining
    * if deleting a path will affect more than one document.
    *
-   * @return a promise that retruns true if the path has children and false otherwise.
+   * @return a promise that returns true if the path has children and false otherwise.
    */
   public checkHasChildren(): Promise<boolean> {
     return this.getDescendantBatch(true, 1).then((docs) => {

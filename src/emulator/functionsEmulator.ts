@@ -112,12 +112,12 @@ export interface FunctionsEmulatorArgs {
   projectId: string;
   projectDir: string;
   emulatableBackends: EmulatableBackend[];
+  debugPort: number | boolean;
   account?: Account;
   port?: number;
   host?: string;
   verbosity?: "SILENT" | "QUIET" | "INFO" | "DEBUG";
   disabledRuntimeFeatures?: FunctionsRuntimeFeatures;
-  debugPort?: number;
   remoteEmulators?: Record<string, EmulatorInfo>;
   adminSdkConfig?: AdminSdkConfig;
   projectAlias?: string;
@@ -140,7 +140,10 @@ export class IPCConn {
  * TCP/IP connection info of a Function Runtime.
  */
 export class TCPConn {
-  constructor(readonly host: string, readonly port: number) {}
+  constructor(
+    readonly host: string,
+    readonly port: number,
+  ) {}
 
   httpReqOpts(): http.RequestOptions {
     return {
@@ -184,7 +187,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     projectId: string,
     name: string,
     region: string,
-    info?: { host: string; port: number }
+    info?: { host: string; port: number },
   ): string {
     let url: URL;
     if (info) {
@@ -216,11 +219,25 @@ export class FunctionsEmulator implements EmulatorInstance {
   constructor(private args: FunctionsEmulatorArgs) {
     // TODO: Would prefer not to have static state but here we are!
     EmulatorLogger.setVerbosity(
-      this.args.verbosity ? Verbosity[this.args.verbosity] : Verbosity["DEBUG"]
+      this.args.verbosity ? Verbosity[this.args.verbosity] : Verbosity["DEBUG"],
     );
     // When debugging is enabled, the "timeout" feature needs to be disabled so that
     // functions don't timeout while a breakpoint is active.
     if (this.args.debugPort) {
+      // N.B. Technically this will create false positives where there is a Node
+      // and a Python codebase, but there is no good place to check the runtime
+      // because that may not be present until discovery (e.g. node codebases
+      // return their runtime based on package.json if not specified in
+      // firebase.json)
+      const maybeNodeCodebases = this.args.emulatableBackends.filter(
+        (b) => !b.runtime || b.runtime.startsWith("node"),
+      );
+      if (maybeNodeCodebases.length > 1 && typeof this.args.debugPort === "number") {
+        throw new FirebaseError(
+          "Cannot debug on a single port with multiple codebases. " +
+            "Use --inspect-functions=true to assign dynamic ports to each codebase",
+        );
+      }
       this.args.disabledRuntimeFeatures = this.args.disabledRuntimeFeatures || {};
       this.args.disabledRuntimeFeatures.timeout = true;
       this.debugMode = true;
@@ -244,7 +261,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       this.logger.logLabeled(
         "WARN",
         "functions",
-        `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${process.env.GOOGLE_APPLICATION_CREDENTIALS}. Non-emulated services will access production using these credentials. Be careful!`
+        `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${process.env.GOOGLE_APPLICATION_CREDENTIALS}. Non-emulated services will access production using these credentials. Be careful!`,
       );
     } else if (this.args.account) {
       const defaultCredPath = await getCredentialPathAsync(this.args.account);
@@ -258,7 +275,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       this.logger.logLabeled(
         "WARN",
         "functions",
-        "You are not signed in to the Firebase CLI. If you have authorized this machine using gcloud application-default credentials those may be discovered and used to access production services."
+        "You are not signed in to the Firebase CLI. If you have authorized this machine using gcloud application-default credentials those may be discovered and used to access production services.",
       );
     }
 
@@ -393,7 +410,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           path: `/`,
           headers: headers,
         },
-        resolve
+        resolve,
       );
       req.on("error", reject);
       req.write(reqBody);
@@ -415,7 +432,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         this.logger.logLabeled(
           "WARN",
           "functions",
-          "Unable to fetch project Admin SDK configuration, Admin SDK behavior in Cloud Functions emulator may be incorrect."
+          "Unable to fetch project Admin SDK configuration, Admin SDK behavior in Cloud Functions emulator may be incorrect.",
         );
         this.adminSdkConfig = constructDefaultAdminSdkConfig(this.args.projectId);
       }
@@ -433,7 +450,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       this.logger.logLabeled(
         "BULLET",
         "functions",
-        `Watching "${backend.functionsDir}" for Cloud Functions...`
+        `Watching "${backend.functionsDir}" for Cloud Functions...`,
       );
 
       const watcher = chokidar.watch(backend.functionsDir, {
@@ -465,7 +482,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       this.logger.logLabeled(
         "WARN",
         "functions",
-        "Functions emulator work queue did not empty before stopping"
+        "Functions emulator work queue did not empty before stopping",
       );
     }
 
@@ -479,12 +496,12 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   async discoverTriggers(
-    emulatableBackend: EmulatableBackend
+    emulatableBackend: EmulatableBackend,
   ): Promise<EmulatedTriggerDefinition[]> {
     if (emulatableBackend.predefinedTriggers) {
       return emulatedFunctionsByRegion(
         emulatableBackend.predefinedTriggers,
-        emulatableBackend.secretEnv
+        emulatableBackend.secretEnv,
       );
     } else {
       const runtimeConfig = this.getRuntimeConfig(emulatableBackend);
@@ -524,7 +541,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         discoveredBuild,
         JSON.parse(firebaseConfig),
         userEnvOpt,
-        userEnvs
+        userEnvs,
       );
       const discoveredBackend = resolution.backend;
       const endpoints = backend.allEndpoints(discoveredBackend);
@@ -550,13 +567,13 @@ export class FunctionsEmulator implements EmulatorInstance {
         "functions",
         `Loaded functions definitions from source: ${triggerDefinitions
           .map((t) => t.entryPoint)
-          .join(", ")}.`
+          .join(", ")}.`,
       );
     } catch (e) {
       this.logger.logLabeled(
         "ERROR",
         "functions",
-        `Failed to load function definition from source: ${e}`
+        `Failed to load function definition from source: ${e}`,
       );
       return;
     }
@@ -588,8 +605,8 @@ export class FunctionsEmulator implements EmulatorInstance {
           this.logger.log(
             "DEBUG",
             `Definition for trigger ${definition.entryPoint} changed from ${JSON.stringify(
-              record.def.eventTrigger
-            )} to ${JSON.stringify(definition.eventTrigger)}`
+              record.def.eventTrigger,
+            )} to ${JSON.stringify(definition.eventTrigger)}`,
           );
         }
 
@@ -616,7 +633,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         url = FunctionsEmulator.getHttpFunctionUrl(
           this.args.projectId,
           definition.name,
-          definition.region
+          definition.region,
         );
       } else if (definition.eventTrigger) {
         const service: string = getFunctionService(definition);
@@ -629,7 +646,7 @@ export class FunctionsEmulator implements EmulatorInstance {
               this.args.projectId,
               key,
               definition.eventTrigger,
-              signature
+              signature,
             );
             break;
           case Constants.SERVICE_REALTIME_DATABASE:
@@ -639,7 +656,7 @@ export class FunctionsEmulator implements EmulatorInstance {
               key,
               definition.eventTrigger,
               signature,
-              definition.region
+              definition.region,
             );
             break;
           case Constants.SERVICE_PUBSUB:
@@ -648,14 +665,14 @@ export class FunctionsEmulator implements EmulatorInstance {
               key,
               definition.eventTrigger,
               signature,
-              definition.schedule
+              definition.schedule,
             );
             break;
           case Constants.SERVICE_EVENTARC:
             added = await this.addEventarcTrigger(
               this.args.projectId,
               key,
-              definition.eventTrigger
+              definition.eventTrigger,
             );
             break;
           case Constants.SERVICE_AUTH:
@@ -672,13 +689,13 @@ export class FunctionsEmulator implements EmulatorInstance {
         url = FunctionsEmulator.getHttpFunctionUrl(
           this.args.projectId,
           definition.name,
-          definition.region
+          definition.region,
         );
         added = this.addBlockingTrigger(url, definition.blockingTrigger);
       } else {
         this.logger.log(
           "WARN",
-          `Unsupported function type on ${definition.name}. Expected either an httpsTrigger, eventTrigger, or blockingTrigger.`
+          `Unsupported function type on ${definition.name}. Expected either an httpsTrigger, eventTrigger, or blockingTrigger.`,
         );
       }
 
@@ -715,15 +732,15 @@ export class FunctionsEmulator implements EmulatorInstance {
               }
               return acc;
             },
-            {}
-          )
+            {},
+          ),
         );
         try {
           await this.startRuntime(emulatableBackend);
         } catch (e: any) {
           this.logger.logLabeled(
             "ERROR",
-            `Failed to start functions in ${emulatableBackend.functionsDir}: ${e}`
+            `Failed to start functions in ${emulatableBackend.functionsDir}: ${e}`,
           );
         }
       }
@@ -771,12 +788,12 @@ export class FunctionsEmulator implements EmulatorInstance {
         { blockingFunctions: this.blockingFunctionsConfig },
         {
           headers: { Authorization: "Bearer owner" },
-        }
+        },
       );
     } catch (err) {
       this.logger.log(
         "WARN",
-        "Error updating blocking functions config to the auth emulator: " + err
+        "Error updating blocking functions config to the auth emulator: " + err,
       );
       throw err;
     }
@@ -787,7 +804,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (result === null || result.length !== 3) {
       this.logger.log(
         "WARN",
-        `Event function "${key}" has malformed "resource" member. ` + `${eventTrigger.resource!}`
+        `Event function "${key}" has malformed "resource" member. ` + `${eventTrigger.resource!}`,
       );
       throw new FirebaseError(`Event function ${key} has malformed resource member`);
     }
@@ -806,7 +823,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     } else {
       this.logger.log(
         "WARN",
-        `No project in use. Registering function for sentinel namespace '${Constants.DEFAULT_DATABASE_EMULATOR_NAMESPACE}'`
+        `No project in use. Registering function for sentinel namespace '${Constants.DEFAULT_DATABASE_EMULATOR_NAMESPACE}'`,
       );
     }
 
@@ -818,7 +835,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     id: string,
     key: string,
     eventTrigger: EventTrigger,
-    region: string
+    region: string,
   ) {
     const instance =
       eventTrigger.eventFilters?.instance || eventTrigger.eventFilterPathPatterns?.instance;
@@ -836,7 +853,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       this.logger.logLabeled(
         "WARN",
         `functions[${id}]`,
-        `function region is defined outside the database region, will not trigger.`
+        `function region is defined outside the database region, will not trigger.`,
       );
     }
 
@@ -861,7 +878,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     key: string,
     eventTrigger: EventTrigger,
     signature: SignatureType,
-    region: string
+    region: string,
   ): Promise<boolean> {
     if (!EmulatorRegistry.isRunning(Emulators.DATABASE)) {
       return false;
@@ -936,7 +953,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     projectId: string,
     key: string,
     eventTrigger: EventTrigger,
-    signature: SignatureType
+    signature: SignatureType,
   ): Promise<boolean> {
     if (!EmulatorRegistry.isRunning(Emulators.FIRESTORE)) {
       return Promise.resolve(false);
@@ -964,7 +981,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     key: string,
     eventTrigger: EventTrigger,
     signatureType: SignatureType,
-    schedule: EventSchedule | undefined
+    schedule: EventSchedule | undefined,
   ): Promise<boolean> {
     const pubsubEmulator = EmulatorRegistry.get(Emulators.PUBSUB) as PubsubEmulator | undefined;
     if (!pubsubEmulator) {
@@ -1112,7 +1129,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       ignored: boolean;
       backend: EmulatableBackend;
       url?: string;
-    }
+    },
   ): void {
     const key = this.getTriggerKey(def);
     this.triggers[key] = {
@@ -1228,7 +1245,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   getRuntimeEnvs(
     backend: EmulatableBackend,
-    trigger?: EmulatedTriggerDefinition
+    trigger?: EmulatedTriggerDefinition,
   ): Record<string, string> {
     return {
       ...this.getUserEnvs(backend),
@@ -1241,7 +1258,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   async resolveSecretEnvs(
     backend: EmulatableBackend,
-    trigger?: EmulatedTriggerDefinition
+    trigger?: EmulatedTriggerDefinition,
   ): Promise<Record<string, string>> {
     let secretEnvs: Record<string, string> = {};
 
@@ -1254,7 +1271,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         this.logger.logLabeled(
           "ERROR",
           "functions",
-          `Failed to read local secrets file ${secretPath}: ${e.message}`
+          `Failed to read local secrets file ${secretPath}: ${e.message}`,
         );
       }
     }
@@ -1269,7 +1286,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         const value = await accessSecretVersion(
           this.getProjectId(),
           s.secret,
-          s.version ?? "latest"
+          s.version ?? "latest",
         );
         return [s.key, value];
       });
@@ -1292,7 +1309,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         "Unable to access secret environment variables from Google Cloud Secret Manager. " +
           "Make sure the credential used for the Functions Emulator have access " +
           `or provide override values in ${secretPath}:\n\t` +
-          errs.join("\n\t")
+          errs.join("\n\t"),
       );
     }
 
@@ -1301,7 +1318,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   async startNode(
     backend: EmulatableBackend,
-    envs: Record<string, string>
+    envs: Record<string, string>,
   ): Promise<FunctionsRuntimeInstance> {
     const args = [path.join(__dirname, "functionsEmulatorRuntime")];
     if (this.debugMode) {
@@ -1309,12 +1326,38 @@ export class FunctionsEmulator implements EmulatorInstance {
         this.logger.log(
           "WARN",
           `To enable function inspection, please run "npm i node@${semver.coerce(
-            backend.runtime || "18.0.0"
-          )} --save-dev" in your functions directory`
+            backend.runtime || "18.0.0",
+          )} --save-dev" in your functions directory`,
         );
       } else {
+        let port: number;
+        if (typeof this.args.debugPort === "number") {
+          port = this.args.debugPort;
+        } else {
+          // Start the search at port 9229 because that is the default node
+          // inspector port and Chrome et. al. will discover the process without
+          // additional configuration. Other dynamic ports will need to be added
+          // manually to the inspector.
+          port = await portfinder.getPortPromise({ port: 9229 });
+          if (port === 9229) {
+            this.logger.logLabeled(
+              "SUCCESS",
+              "functions",
+              `Using debug port 9229 for functions codebase ${backend.codebase}`,
+            );
+          } else {
+            // Give a longer message to warn about non-default ports.
+            this.logger.logLabeled(
+              "SUCCESS",
+              "functions",
+              `Using debug port ${port} for functions codebase ${backend.codebase}. ` +
+                "You may need to add manually add this port to your inspector.",
+            );
+          }
+        }
+
         const { host } = this.getInfo();
-        args.unshift(`--inspect=${connectableHostname(host)}:${this.args.debugPort}`);
+        args.unshift(`--inspect=${connectableHostname(host)}:${port}`);
       }
     }
 
@@ -1329,7 +1372,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         "functions",
         "Detected yarn@2 with PnP. " +
           "Cloud Functions for Firebase requires a node_modules folder to work correctly and is therefore incompatible with PnP. " +
-          "See https://yarnpkg.com/getting-started/migration#step-by-step for more information."
+          "See https://yarnpkg.com/getting-started/migration#step-by-step for more information.",
       );
     }
 
@@ -1337,7 +1380,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (!bin) {
       throw new Error(
         `No binary associated with ${backend.functionsDir}. ` +
-          "Make sure function runtime is configured correctly in firebase.json."
+          "Make sure function runtime is configured correctly in firebase.json.",
       );
     }
 
@@ -1346,6 +1389,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       cwd: backend.functionsDir,
       env: {
         node: backend.bin,
+        METADATA_SERVER_DETECTION: "none",
         ...process.env,
         ...envs,
         PORT: socketPath,
@@ -1363,7 +1407,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   async startPython(
     backend: EmulatableBackend,
-    envs: Record<string, string>
+    envs: Record<string, string>,
   ): Promise<FunctionsRuntimeInstance> {
     const args = ["functions-framework"];
 
@@ -1397,7 +1441,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   async startRuntime(
     backend: EmulatableBackend,
-    trigger?: EmulatedTriggerDefinition
+    trigger?: EmulatedTriggerDefinition,
   ): Promise<RuntimeWorker> {
     const runtimeEnv = this.getRuntimeEnvs(backend, trigger);
     const secretEnvs = await this.resolveSecretEnvs(backend, trigger);
@@ -1425,7 +1469,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         this.logger.logLabeled(
           "BULLET",
           `functions[${record.def.entryPoint}]`,
-          "function temporarily disabled."
+          "function temporarily disabled.",
         );
         record.enabled = false;
       }
@@ -1448,7 +1492,6 @@ export class FunctionsEmulator implements EmulatorInstance {
   /**
    * Gets the address of a running emulator, either from explicit args or by
    * consulting the emulator registry.
-   *
    * @param emulator
    */
   private getEmulatorInfo(emulator: Emulators): EmulatorInfo | undefined {
@@ -1479,7 +1522,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     try {
-      const decoded = jwt.decode(idToken, { complete: true });
+      const decoded = jwt.decode(idToken, { complete: true }) as any;
       if (!decoded || typeof decoded !== "object") {
         logger.debug(`Failed to decode ID Token: ${decoded}`);
         return;
@@ -1487,7 +1530,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
       // In firebase-functions we manually copy 'sub' to 'uid'
       // https://github.com/firebase/firebase-admin-node/blob/0b2082f1576f651e75069e38ce87e639c25289af/src/auth/token-verifier.ts#L249
-      const claims = decoded.payload;
+      const claims = decoded.payload as jwt.JwtPayload;
       claims.uid = claims.sub;
 
       return claims;
@@ -1508,8 +1551,8 @@ export class FunctionsEmulator implements EmulatorInstance {
         .status(404)
         .send(
           `Function ${triggerId} does not exist, valid functions are: ${Object.keys(
-            this.triggers
-          ).join(", ")}`
+            this.triggers,
+          ).join(", ")}`,
         );
       return;
     }
@@ -1550,7 +1593,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         delete req.headers["authorization"];
 
         req.headers[HttpConstants.CALLABLE_AUTH_HEADER] = encodeURIComponent(
-          JSON.stringify(contextAuth)
+          JSON.stringify(contextAuth),
         );
       }
     }
@@ -1566,7 +1609,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     const url = new URL(`${req.protocol}://${req.hostname}${req.url}`);
     const path = `${url.pathname}${url.search}`.replace(
       new RegExp(`\/${this.args.projectId}\/[^\/]*\/${req.params.trigger_name}\/?`),
-      "/"
+      "/",
     );
 
     // We do this instead of just 302'ing because many HTTP clients don't respect 302s so it may
@@ -1582,7 +1625,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         this.logger.logLabeled("ERROR", `Failed to handle request for function ${trigger.id}`);
         this.logger.logLabeled(
           "ERROR",
-          `Failed to start functions in ${record.backend.functionsDir}: ${e}`
+          `Failed to start functions in ${record.backend.functionsDir}: ${e}`,
         );
         return;
       }
@@ -1603,7 +1646,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       },
       res as http.ServerResponse,
       reqBody,
-      debugBundle
+      debugBundle,
     );
   }
 }

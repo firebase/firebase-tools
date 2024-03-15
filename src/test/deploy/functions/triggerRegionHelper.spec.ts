@@ -37,7 +37,7 @@ describe("TriggerRegionHelper", () => {
       };
 
       await expect(triggerRegionHelper.ensureTriggerRegions(backend.of(ep))).to.be.rejectedWith(
-        "Can't find the storage bucket region"
+        "Can't find the storage bucket region",
       );
     });
 
@@ -114,7 +114,7 @@ describe("TriggerRegionHelper", () => {
       };
 
       await expect(triggerRegionHelper.ensureTriggerRegions(backend.of(wantFn))).to.be.rejectedWith(
-        "A function in region europe-west4 cannot listen to a bucket in region us"
+        "A function in region europe-west4 cannot listen to a bucket in region us",
       );
     });
   });

@@ -282,7 +282,7 @@ describe("triggerHelper", () => {
 
       const result = triggerHelper.functionResourceToEmulatedTriggerDefintion(
         testResource,
-        systemParams
+        systemParams,
       );
 
       expect(result).to.eql(expected);

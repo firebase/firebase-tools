@@ -8,7 +8,7 @@ import { getEndpointHash, getEnvironmentVariablesHash, getSecretsHash } from "./
  */
 export function applyBackendHashToBackends(
   wantBackends: Record<string, Backend>,
-  context: args.Context
+  context: args.Context,
 ): void {
   for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
     const source = context?.sources?.[codebase]; // populated earlier in prepare flow
@@ -17,7 +17,7 @@ export function applyBackendHashToBackends(
       wantBackend,
       envHash,
       source?.functionsSourceV1Hash,
-      source?.functionsSourceV2Hash
+      source?.functionsSourceV2Hash,
     );
   }
 }
@@ -29,7 +29,7 @@ function applyBackendHashToEndpoints(
   wantBackend: Backend,
   envHash: string,
   sourceV1Hash?: string,
-  sourceV2Hash?: string
+  sourceV2Hash?: string,
 ): void {
   for (const endpoint of allEndpoints(wantBackend)) {
     const secretsHash = getSecretsHash(endpoint);

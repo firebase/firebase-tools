@@ -156,7 +156,7 @@ describe("Project management", () => {
         }
 
         expect(err.message).to.equal(
-          "There are no Firebase projects associated with this account."
+          "There are no Firebase projects associated with this account.",
         );
         expect(promptOnceStub).to.be.not.called;
         expect(nock.isDone()).to.be.true;
@@ -190,7 +190,7 @@ describe("Project management", () => {
 
         expect(err.message).to.equal(
           "Failed to get Firebase project my-project-123" +
-            ". Please make sure the project exists and your account has permission to access it."
+            ". Please make sure the project exists and your account has permission to access it.",
         );
         expect(err.original.toString()).to.contain("Failed to get project");
         expect(promptOnceStub).to.be.not.called;
@@ -250,7 +250,7 @@ describe("Project management", () => {
         }
 
         expect(err.message).to.equal(
-          "There are no available Google Cloud projects to add Firebase services."
+          "There are no available Google Cloud projects to add Firebase services.",
         );
         expect(promptOnceStub).to.be.not.called;
         expect(nock.isDone()).to.be.true;
@@ -300,7 +300,7 @@ describe("Project management", () => {
         }
 
         expect(err.message).to.equal(
-          "Failed to create project. See firebase-debug.log for more info."
+          "Failed to create project. See firebase-debug.log for more info.",
         );
         expect(err.original).to.be.an.instanceOf(FirebaseError, "Not Found");
         expect(nock.isDone()).to.be.true;
@@ -325,7 +325,7 @@ describe("Project management", () => {
         }
 
         expect(err.message).to.equal(
-          "Failed to create project. See firebase-debug.log for more info."
+          "Failed to create project. See firebase-debug.log for more info.",
         );
         expect(err.original).to.equal(expectedError);
         expect(nock.isDone()).to.be.true;
@@ -371,7 +371,7 @@ describe("Project management", () => {
         }
 
         expect(err.message).to.equal(
-          "Failed to add Firebase to Google Cloud Platform project. See firebase-debug.log for more info."
+          "Failed to add Firebase to Google Cloud Platform project. See firebase-debug.log for more info.",
         );
         expect(err.original).to.be.an.instanceOf(FirebaseError, "Not Found");
         expect(nock.isDone()).to.be.true;
@@ -393,7 +393,7 @@ describe("Project management", () => {
         }
 
         expect(err.message).to.equal(
-          "Failed to add Firebase to Google Cloud Platform project. See firebase-debug.log for more info."
+          "Failed to add Firebase to Google Cloud Platform project. See firebase-debug.log for more info.",
         );
         expect(err.original).to.equal(expectedError);
         expect(nock.isDone()).to.be.true;
@@ -468,7 +468,7 @@ describe("Project management", () => {
         }
 
         expect(err.message).to.equal(
-          "Failed to list available Google Cloud Platform projects. See firebase-debug.log for more info."
+          "Failed to list available Google Cloud Platform projects. See firebase-debug.log for more info.",
         );
         expect(err.original.toString()).to.contain("Not Found");
         expect(nock.isDone()).to.be.true;
@@ -537,7 +537,7 @@ describe("Project management", () => {
         }
 
         expect(err.message).to.equal(
-          "Failed to list Firebase projects. See firebase-debug.log for more info."
+          "Failed to list Firebase projects. See firebase-debug.log for more info.",
         );
         expect(err.original.toString()).to.contain("Not Found");
         expect(nock.isDone()).to.be.true;
@@ -595,7 +595,7 @@ describe("Project management", () => {
         }
 
         expect(err.message).to.equal(
-          "Failed to list Firebase projects. See firebase-debug.log for more info."
+          "Failed to list Firebase projects. See firebase-debug.log for more info.",
         );
         expect(err.original.toString()).to.contain("Not Found");
         expect(nock.isDone()).to.be.true;
@@ -623,7 +623,7 @@ describe("Project management", () => {
         }
 
         expect(err.message).to.equal(
-          "Failed to list Firebase projects. See firebase-debug.log for more info."
+          "Failed to list Firebase projects. See firebase-debug.log for more info.",
         );
         expect(err.original.toString()).to.contain("Not Found");
         expect(nock.isDone()).to.be.true;
@@ -668,7 +668,7 @@ describe("Project management", () => {
 
         expect(err.message).to.equal(
           `Failed to get Firebase project ${PROJECT_ID}. ` +
-            "Please make sure the project exists and your account has permission to access it."
+            "Please make sure the project exists and your account has permission to access it.",
         );
         expect(err.original.toString()).to.contain("Not Found");
         expect(nock.isDone()).to.be.true;

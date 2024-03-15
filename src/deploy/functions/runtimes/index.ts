@@ -15,6 +15,7 @@ const RUNTIMES: string[] = [
   "nodejs20",
   "python310",
   "python311",
+  "python312",
 ];
 // Experimental runtimes are part of the Runtime type, but are in a
 // different list to help guard against some day accidentally iterating over
@@ -47,6 +48,7 @@ const MESSAGE_FRIENDLY_RUNTIMES: Record<Runtime | DeprecatedRuntime, string> = {
   nodejs20: "Node.js 20",
   python310: "Python 3.10",
   python311: "Python 3.11",
+  python312: "Python 3.12",
 };
 
 /**
@@ -112,7 +114,7 @@ export interface RuntimeDelegate {
   // to figure out as we go.
   discoverBuild(
     configValues: backend.RuntimeConfigValues,
-    envs: backend.EnvironmentVariables
+    envs: backend.EnvironmentVariables,
   ): Promise<build.Build>;
 }
 

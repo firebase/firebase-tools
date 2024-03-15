@@ -30,7 +30,7 @@ function setVariable(
   projectId: string,
   configId: string,
   varPath: string,
-  val: string | object
+  val: string | object,
 ): Promise<any> {
   if (configId === "" || varPath === "") {
     const msg = "Invalid argument, each config value must have a 2-part key (e.g. foo.bar).";
@@ -74,7 +74,7 @@ export function getAppEngineLocation(config: any): string {
 export async function getFirebaseConfig(options: any): Promise<args.FirebaseConfig> {
   const projectId = needProjectId(options);
   const response = await apiClient.get<args.FirebaseConfig>(
-    `/v1beta1/projects/${projectId}/adminSdkConfig`
+    `/v1beta1/projects/${projectId}/adminSdkConfig`,
   );
   return response.body;
 }
@@ -85,7 +85,7 @@ export async function setVariablesRecursive(
   projectId: string,
   configId: string,
   varPath: string,
-  val: string | { [key: string]: any }
+  val: string | { [key: string]: any },
 ): Promise<any> {
   let parsed = val;
   if (typeof val === "string") {
@@ -102,7 +102,7 @@ export async function setVariablesRecursive(
       Object.entries(parsed).map(([key, item]) => {
         const newVarPath = varPath ? [varPath, key].join("/") : key;
         return setVariablesRecursive(projectId, configId, newVarPath, item);
-      })
+      }),
     );
   }
 
@@ -122,7 +122,7 @@ export async function materializeConfig(configName: string, output: any): Promis
     return Promise.all(
       variables.map((variable) => {
         return materializeVariable(variable.name);
-      })
+      }),
     );
   };
 
@@ -144,7 +144,7 @@ export async function materializeAll(projectId: string): Promise<Record<string, 
         return;
       }
       return materializeConfig(config.name, output);
-    })
+    }),
   );
   return output;
 }

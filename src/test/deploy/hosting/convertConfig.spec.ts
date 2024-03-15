@@ -162,7 +162,7 @@ describe("convertConfig", () => {
                 region: "us-central1",
                 platform: "gcfv2",
                 httpsTrigger: {},
-              }
+              },
             ),
             haveBackend: backend.empty(),
           },
@@ -194,7 +194,7 @@ describe("convertConfig", () => {
                 region: "us-central1",
                 platform: "gcfv1",
                 httpsTrigger: {},
-              }
+              },
             ),
             haveBackend: backend.empty(),
           },
@@ -230,7 +230,7 @@ describe("convertConfig", () => {
                 platform: "gcfv2",
                 httpsTrigger: {},
                 runServiceId: SERVICE_ID,
-              }
+              },
             ),
             haveBackend: backend.empty(),
           },
@@ -494,7 +494,7 @@ describe("convertConfig", () => {
       existingBackendStub = sinon
         .stub(backend, "existingBackend")
         .rejects(
-          new FirebaseError("Some permissions 403 error (that should be caught)", { status: 403 })
+          new FirebaseError("Some permissions 403 error (that should be caught)", { status: 403 }),
         );
     });
 
@@ -530,8 +530,8 @@ describe("convertConfig", () => {
               ],
             },
             version: "14",
-          }
-        )
+          },
+        ),
       ).to.eventually.be.rejectedWith(FirebaseError);
     });
     it("should throw when rewrite points to function being deleted", async () => {
@@ -570,8 +570,8 @@ describe("convertConfig", () => {
               ],
             },
             version: "14",
-          }
-        )
+          },
+        ),
       ).to.eventually.be.rejectedWith(FirebaseError);
     });
   });
@@ -591,7 +591,7 @@ describe("convertConfig", () => {
 
     it("should not throw when resolving backends", async () => {
       existingBackendStub.rejects(
-        new FirebaseError("Some permissions 403 error (that should be caught)", { status: 403 })
+        new FirebaseError("Some permissions 403 error (that should be caught)", { status: 403 }),
       );
 
       await expect(
@@ -604,8 +604,8 @@ describe("convertConfig", () => {
               rewrites: [{ glob: "/foo", function: { functionId: FUNCTION_ID } }],
             },
             version: "14",
-          }
-        )
+          },
+        ),
       ).to.not.be.rejected;
     });
   });

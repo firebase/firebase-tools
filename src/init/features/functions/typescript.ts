@@ -8,17 +8,17 @@ import { configForCodebase } from "../../../functions/projectConfig";
 const TEMPLATE_ROOT = path.resolve(__dirname, "../../../../templates/init/functions/typescript/");
 const PACKAGE_LINTING_TEMPLATE = fs.readFileSync(
   path.join(TEMPLATE_ROOT, "package.lint.json"),
-  "utf8"
+  "utf8",
 );
 const PACKAGE_NO_LINTING_TEMPLATE = fs.readFileSync(
   path.join(TEMPLATE_ROOT, "package.nolint.json"),
-  "utf8"
+  "utf8",
 );
 const ESLINT_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_eslintrc"), "utf8");
 const TSCONFIG_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "tsconfig.json"), "utf8");
 const TSCONFIG_DEV_TEMPLATE = fs.readFileSync(
   path.join(TEMPLATE_ROOT, "tsconfig.dev.json"),
-  "utf8"
+  "utf8",
 );
 const INDEX_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "index.ts"), "utf8");
 const GITIGNORE_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_gitignore"), "utf8");
@@ -43,7 +43,7 @@ export function setup(setup: any, config: any): Promise<any> {
           .then(() => {
             return config.askWriteProjectFile(
               `${setup.functions.source}/.eslintrc.js`,
-              ESLINT_TEMPLATE
+              ESLINT_TEMPLATE,
             );
           });
       } else {
@@ -51,20 +51,20 @@ export function setup(setup: any, config: any): Promise<any> {
       }
       return config.askWriteProjectFile(
         `${setup.functions.source}/package.json`,
-        PACKAGE_NO_LINTING_TEMPLATE
+        PACKAGE_NO_LINTING_TEMPLATE,
       );
     })
     .then(() => {
       return config.askWriteProjectFile(
         `${setup.functions.source}/tsconfig.json`,
-        TSCONFIG_TEMPLATE
+        TSCONFIG_TEMPLATE,
       );
     })
     .then(() => {
       if (setup.functions.lint) {
         return config.askWriteProjectFile(
           `${setup.functions.source}/tsconfig.dev.json`,
-          TSCONFIG_DEV_TEMPLATE
+          TSCONFIG_DEV_TEMPLATE,
         );
       }
     })

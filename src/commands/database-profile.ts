@@ -14,18 +14,18 @@ export const command = new Command("database:profile")
   .option("-o, --output <filename>", "save the output to the specified file")
   .option(
     "-d, --duration <seconds>",
-    "collect database usage information for the specified number of seconds"
+    "collect database usage information for the specified number of seconds",
   )
   .option("--raw", "output the raw stats collected as newline delimited json")
   .option("--no-collapse", "prevent collapsing similar paths into $wildcard locations")
   .option(
     "-i, --input <filename>",
     "generate the report based on the specified file instead " +
-      "of streaming logs from the database"
+      "of streaming logs from the database",
   )
   .option(
     "--instance <instance>",
-    "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
+    "use the database <instance>.firebaseio.com (if omitted, use default database instance)",
   )
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireDatabaseInstance)

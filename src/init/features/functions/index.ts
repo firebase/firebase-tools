@@ -13,6 +13,7 @@ import {
   assertUnique,
 } from "../../../functions/projectConfig";
 import { FirebaseError } from "../../../error";
+import { functionsOrigin, runtimeconfigOrigin } from "../../../api";
 
 const MAX_ATTEMPTS = 5;
 
@@ -24,8 +25,8 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
   if (projectId) {
     await requirePermissions({ ...options, project: projectId });
     await Promise.all([
-      ensure(projectId, "cloudfunctions.googleapis.com", "unused", true),
-      ensure(projectId, "runtimeconfig.googleapis.com", "unused", true),
+      ensure(projectId, functionsOrigin, "unused", true),
+      ensure(projectId, runtimeconfigOrigin, "unused", true),
     ]);
   }
   setup.functions = {};
@@ -80,7 +81,7 @@ async function initNewCodebase(setup: any, config: Config): Promise<any> {
     while (true) {
       if (attempts++ >= MAX_ATTEMPTS) {
         throw new FirebaseError(
-          "Exceeded max number of attempts to input valid codebase name. Please restart."
+          "Exceeded max number of attempts to input valid codebase name. Please restart.",
         );
       }
       codebase = await promptOnce({
@@ -100,14 +101,14 @@ async function initNewCodebase(setup: any, config: Config): Promise<any> {
     while (true) {
       if (attempts >= MAX_ATTEMPTS) {
         throw new FirebaseError(
-          "Exceeded max number of attempts to input valid source. Please restart."
+          "Exceeded max number of attempts to input valid source. Please restart.",
         );
       }
       attempts++;
       source = await promptOnce({
         type: "input",
         message: `In what sub-directory would you like to initialize your functions for codebase ${clc.bold(
-          codebase
+          codebase,
         )}?`,
         default: codebase,
       });

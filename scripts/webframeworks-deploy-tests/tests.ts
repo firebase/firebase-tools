@@ -1,9 +1,11 @@
-import { expect } from "chai";
+import { expect, use } from "chai";
 import * as glob from "glob";
 import { join, normalize, relative } from "path";
 import { readFileSync } from "fs";
 import fetch from "node-fetch";
 import type { NextConfig } from "next";
+import * as deepEqualUnordered from "deep-equal-in-any-order";
+use(deepEqualUnordered);
 
 import { getBuildId } from "../../src/frameworks/next/utils";
 import { fileExistsSync } from "../../src/fsutils";
@@ -57,7 +59,10 @@ describe("webframeworks", function (this) {
         .at(-1)
         ?.split(new RegExp(`(\\[\\S+\\] )?\\[${new Date().getFullYear()}`))[0]
         ?.trim();
-      expect(effectiveFirebaseJSON && JSON.parse(effectiveFirebaseJSON), "firebase.json").to.eql({
+      expect(
+        effectiveFirebaseJSON && JSON.parse(effectiveFirebaseJSON),
+        "firebase.json",
+      ).to.deep.equalInAnyOrder({
         hosting: [
           {
             target: "nextjs",
@@ -227,7 +232,7 @@ describe("webframeworks", function (this) {
     describe("app directory", () => {
       it("should have working static routes", async () => {
         const apiStaticJSON = JSON.parse(
-          readFileSync(`${NEXT_OUTPUT_PATH}/hosting/${NEXT_BASE_PATH}/app/api/static`).toString()
+          readFileSync(`${NEXT_OUTPUT_PATH}/hosting/${NEXT_BASE_PATH}/app/api/static`).toString(),
         );
         const apiStaticResponse = await fetch(`${NEXTJS_HOST}/app/api/static`);
         expect(apiStaticResponse.ok).to.be.true;
@@ -242,7 +247,7 @@ describe("webframeworks", function (this) {
         const fooResponseText = await fooResponse.text();
 
         const fooHtml = readFileSync(
-          `${NEXT_OUTPUT_PATH}/hosting/${NEXT_BASE_PATH}/app/ssg.html`
+          `${NEXT_OUTPUT_PATH}/hosting/${NEXT_BASE_PATH}/app/ssg.html`,
         ).toString();
         expect(fooHtml).to.eql(fooResponseText);
       });
@@ -251,7 +256,7 @@ describe("webframeworks", function (this) {
         const response = await fetch(`${NEXTJS_HOST}/app/isr`);
         expect(response.ok).to.be.true;
         expect(response.headers.get("cache-control")).to.eql(
-          "private, no-cache, no-store, max-age=0, must-revalidate"
+          "private, no-cache, no-store, max-age=0, must-revalidate",
         );
         expect(await response.text()).to.include("<body>ISR");
       });
@@ -313,7 +318,7 @@ describe("webframeworks", function (this) {
       const result = readFileSync(LOG_FILE).toString();
 
       expect(result, "build result").to.include(
-        "Building a Cloud Function to run this application. This is needed due to:"
+        "Building a Cloud Function to run this application. This is needed due to:",
       );
       expect(result, "build result").to.include(" • middleware");
       expect(result, "build result").to.include(" • Image Optimization");
@@ -371,7 +376,9 @@ describe("webframeworks", function (this) {
       const files = await getFilesListFromDir(`${NEXT_OUTPUT_PATH}/hosting`);
       const unmatchedFiles = files.filter(
         (it) =>
-          !(EXPECTED_FILES.includes(it) || EXPECTED_PATTERNS.some((pattern) => !!it.match(pattern)))
+          !(
+            EXPECTED_FILES.includes(it) || EXPECTED_PATTERNS.some((pattern) => !!it.match(pattern))
+          ),
       );
       const unmatchedExpectations = [
         ...EXPECTED_FILES.filter((it) => !files.includes(it)),
@@ -439,7 +446,9 @@ describe("webframeworks", function (this) {
       const files = await getFilesListFromDir(`${ANGULAR_OUTPUT_PATH}/hosting`);
       const unmatchedFiles = files.filter(
         (it) =>
-          !(EXPECTED_FILES.includes(it) || EXPECTED_PATTERNS.some((pattern) => !!it.match(pattern)))
+          !(
+            EXPECTED_FILES.includes(it) || EXPECTED_PATTERNS.some((pattern) => !!it.match(pattern))
+          ),
       );
       const unmatchedExpectations = [
         ...EXPECTED_FILES.filter((it) => !files.includes(it)),

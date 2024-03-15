@@ -16,7 +16,7 @@ export interface EndpointFilter {
  */
 export function endpointMatchesAnyFilter(
   endpoint: backend.Endpoint,
-  filters?: EndpointFilter[]
+  filters?: EndpointFilter[],
 ): boolean {
   if (!filters) {
     return true;
@@ -183,7 +183,7 @@ export function targetCodebases(config: ValidatedConfig, filters?: EndpointFilte
  */
 export function groupEndpointsByCodebase(
   wantBackends: Record<string, backend.Backend>,
-  haveEndpoints: backend.Endpoint[]
+  haveEndpoints: backend.Endpoint[],
 ): Record<string, backend.Backend> {
   const grouped: Record<string, backend.Backend> = {};
   // endpointsToAssign will hold endpoints not assigned to any codebase.
@@ -194,7 +194,7 @@ export function groupEndpointsByCodebase(
   for (const codebase of Object.keys(wantBackends)) {
     const names = backend.allEndpoints(wantBackends[codebase]).map((e) => backend.functionName(e));
     grouped[codebase] = backend.of(
-      ...endpointsToAssign.filter((e) => names.includes(backend.functionName(e)))
+      ...endpointsToAssign.filter((e) => names.includes(backend.functionName(e))),
     );
     // Remove all endpoints we've assigned in this iteration.
     endpointsToAssign = endpointsToAssign.filter((e) => !names.includes(backend.functionName(e)));

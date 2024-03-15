@@ -11,7 +11,7 @@ import { logger } from "../logger";
  * @param projectId the Firebase project ID.
  */
 export async function checkDatabaseType(
-  projectId: string
+  projectId: string,
 ): Promise<"DATASTORE_MODE" | "FIRESTORE_NATIVE" | "DATABASE_TYPE_UNSPECIFIED" | undefined> {
   try {
     const client = new Client({ urlPrefix: firestoreOrigin, apiVersion: "v1" });

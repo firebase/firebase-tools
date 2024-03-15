@@ -96,7 +96,7 @@ const apiClient = new Client({ urlPrefix: firebaseApiOrigin, apiVersion: "v1beta
  */
 export async function createIosApp(
   projectId: string,
-  options: { displayName?: string; appStoreId?: string; bundleId: string }
+  options: { displayName?: string; appStoreId?: string; bundleId: string },
 ): Promise<IosAppMetadata> {
   try {
     const response = await apiClient.request<
@@ -120,7 +120,7 @@ export async function createIosApp(
     logger.debug(err.message);
     throw new FirebaseError(
       `Failed to create iOS app for project ${projectId}. See firebase-debug.log for more info.`,
-      { exit: 2, original: err }
+      { exit: 2, original: err },
     );
   }
 }
@@ -134,7 +134,7 @@ export async function createIosApp(
  */
 export async function createAndroidApp(
   projectId: string,
-  options: { displayName?: string; packageName: string }
+  options: { displayName?: string; packageName: string },
 ): Promise<AndroidAppMetadata> {
   try {
     const response = await apiClient.request<
@@ -161,7 +161,7 @@ export async function createAndroidApp(
       {
         exit: 2,
         original: err,
-      }
+      },
     );
   }
 }
@@ -175,7 +175,7 @@ export async function createAndroidApp(
  */
 export async function createWebApp(
   projectId: string,
-  options: { displayName?: string }
+  options: { displayName?: string },
 ): Promise<WebAppMetadata> {
   try {
     const response = await apiClient.request<{ displayName?: string }, { name: string }>({
@@ -196,7 +196,7 @@ export async function createWebApp(
     logger.debug(err.message);
     throw new FirebaseError(
       `Failed to create Web app for project ${projectId}. See firebase-debug.log for more info.`,
-      { exit: 2, original: err }
+      { exit: 2, original: err },
     );
   }
 }
@@ -234,7 +234,7 @@ function getListAppsResourceString(projectId: string, platform: AppPlatform): st
 export async function listFirebaseApps(
   projectId: string,
   platform: AppPlatform,
-  pageSize: number = APP_LIST_PAGE_SIZE
+  pageSize: number = APP_LIST_PAGE_SIZE,
 ): Promise<AppMetadata[]> {
   const apps: AppMetadata[] = [];
   try {
@@ -254,7 +254,7 @@ export async function listFirebaseApps(
         const appsOnPage = response.body.apps.map(
           // app.platform does not exist if we use the endpoint for a specific platform
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (app: any) => (app.platform ? app : { ...app, platform })
+          (app: any) => (app.platform ? app : { ...app, platform }),
         );
         apps.push(...appsOnPage);
       }
@@ -270,7 +270,7 @@ export async function listFirebaseApps(
       {
         exit: 2,
         original: err,
-      }
+      },
     );
   }
 }
@@ -345,7 +345,7 @@ export async function getAppConfig(appId: string, platform: AppPlatform): Promis
       {
         exit: 2,
         original: err,
-      }
+      },
     );
   }
 }
@@ -358,7 +358,7 @@ export async function getAppConfig(appId: string, platform: AppPlatform): Promis
  */
 export async function listAppAndroidSha(
   projectId: string,
-  appId: string
+  appId: string,
 ): Promise<AppAndroidShaData[]> {
   const shaCertificates: AppAndroidShaData[] = [];
   try {
@@ -380,7 +380,7 @@ export async function listAppAndroidSha(
       {
         exit: 2,
         original: err,
-      }
+      },
     );
   }
 }
@@ -395,7 +395,7 @@ export async function listAppAndroidSha(
 export async function createAppAndroidSha(
   projectId: string,
   appId: string,
-  options: { shaHash: string; certType: string }
+  options: { shaHash: string; certType: string },
 ): Promise<AppAndroidShaData> {
   try {
     const response = await apiClient.request<{ shaHash: string; certType: string }, any>({
@@ -413,7 +413,7 @@ export async function createAppAndroidSha(
       {
         exit: 2,
         original: err,
-      }
+      },
     );
   }
 }
@@ -427,7 +427,7 @@ export async function createAppAndroidSha(
 export async function deleteAppAndroidSha(
   projectId: string,
   appId: string,
-  shaId: string
+  shaId: string,
 ): Promise<void> {
   try {
     await apiClient.request<void, void>({
@@ -442,7 +442,7 @@ export async function deleteAppAndroidSha(
       {
         exit: 2,
         original: err,
-      }
+      },
     );
   }
 }

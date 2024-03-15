@@ -23,7 +23,7 @@ function runCommand(command: string, childOptions: childProcess.SpawnOptions) {
       utils.logWarning(
         clc.yellow(clc.bold("Warning: ")) +
           "Your command contains '=', it may result in the command not running." +
-          " Please consider removing it."
+          " Please consider removing it.",
       );
     }
     if (translatedCommand === "") {
@@ -75,7 +75,7 @@ function runTargetCommands(
   target: string,
   hook: string,
   overallOptions: any,
-  config: any
+  config: any,
 ): Promise<void> {
   let commands = config[hook];
   if (!commands) {
@@ -110,7 +110,7 @@ function runTargetCommands(
         clc.green(clc.bold(logIdentifier + ":")) +
           " Finished running " +
           clc.bold(hook) +
-          " script."
+          " script.",
       );
     })
     .catch((err: any) => {
@@ -148,14 +148,14 @@ function getReleventConfigs(target: string, options: Options) {
     let onlyConfigs = [];
     const matched = onlyTargets.reduce(
       (matched: object, target: string) => ({ ...matched, [target]: false }),
-      {}
+      {},
     );
     for (const config of targetConfigs) {
       if (!config.codebase) {
         onlyConfigs.push(config);
       } else {
         const found = onlyTargets.find(
-          (individualOnly) => config.codebase === individualOnly.split(":")[0]
+          (individualOnly) => config.codebase === individualOnly.split(":")[0],
         );
         if (found) {
           onlyConfigs.push(config);
@@ -182,7 +182,7 @@ function getReleventConfigs(target: string, options: Options) {
 
 export function lifecycleHooks(
   target: string,
-  hook: string
+  hook: string,
 ): (context: any, options: Options) => Promise<void> {
   return function (context: any, options: Options) {
     return getReleventConfigs(target, options).reduce(
@@ -191,7 +191,7 @@ export function lifecycleHooks(
           return runTargetCommands(target, hook, options, individualConfig);
         });
       },
-      Promise.resolve()
+      Promise.resolve(),
     );
   };
 }

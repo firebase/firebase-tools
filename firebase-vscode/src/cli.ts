@@ -44,7 +44,7 @@ async function getServiceAccount() {
     // to requireAuth which would prevent autoAuth() from being reached.
     // We do need to send isVSCE to prevent project selection popup
     const optionsMinusUser = await getCommandOptions(undefined, {
-      ...currentOptions,
+      ...currentOptions.value,
     });
     delete optionsMinusUser.user;
     delete optionsMinusUser.tokens;
@@ -109,7 +109,7 @@ async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
     }
   }
   const commandOptions = await getCommandOptions(undefined, {
-    ...currentOptions,
+    ...currentOptions.value,
   });
   // `requireAuth()` is not just a check, but will also register SERVICE
   // ACCOUNT tokens in memory as a variable in apiv2.ts, which is needed
@@ -191,7 +191,7 @@ export async function getChannels(
   if (!loggedIn) {
     return [];
   }
-  const options = { ...currentOptions };
+  const options = { ...currentOptions.value };
   if (!options.project) {
     return [];
   }
@@ -258,7 +258,7 @@ export async function initHosting(options: {
       useWebFrameworks: false,
     };
   }
-  const commandOptions = await getCommandOptions(undefined, currentOptions);
+  const commandOptions = await getCommandOptions(undefined, currentOptions.value);
   const inquirerOptions = {
     ...commandOptions,
     ...options,
@@ -291,7 +291,7 @@ export async function deployToHosting(
 
   // TODO(hsubox76): throw if it doesn't find firebaseJSON
   try {
-    const options = { ...currentOptions };
+    const options = { ...currentOptions.value };
     // TODO(hsubox76): handle multiple hosting configs
     pluginLogger.debug(
       "Calling getDefaultHostingSite() with options",
@@ -334,7 +334,7 @@ export async function emulatorsStart(
   emulatorUiSelections: EmulatorUiSelections
 ) {
   const commandOptions = await getCommandOptions(undefined, {
-    ...currentOptions,
+    ...currentOptions.value,
     project: emulatorUiSelections.projectId,
     exportOnExit: emulatorUiSelections.exportStateOnExit,
     import: emulatorUiSelections.importStateFolderPath,

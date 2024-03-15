@@ -32,6 +32,7 @@ import {
 } from "./api";
 import {
   Account,
+  AuthError,
   User,
   Tokens,
   TokensWithExpiration,
@@ -153,7 +154,7 @@ export function selectAccount(account?: string, projectRoot?: string): Account |
   }
 
   throw new FirebaseError(
-    `Account ${account} not found, run "firebase login:list" to see existing accounts or "firebase login:add" to add a new one`
+    `Account ${account} not found, run "firebase login:list" to see existing accounts or "firebase login:add" to add a new one`,
   );
 }
 
@@ -236,7 +237,7 @@ function invalidCredentialError(): FirebaseError {
       "\n\n" +
       "For CI servers and headless environments, generate a new token with " +
       clc.bold("firebase login:ci"),
-    { exit: 1 }
+    { exit: 1 },
   );
 }
 
@@ -290,7 +291,7 @@ function getLoginUrl(callbackUrl: string, userHint?: string) {
 async function getTokensFromAuthorizationCode(
   code: string,
   callbackUrl: string,
-  verifier?: string
+  verifier?: string,
 ) {
   const params: Record<string, string> = {
     code: code,
@@ -334,7 +335,7 @@ async function getTokensFromAuthorizationCode(
     {
       expires_at: Date.now() + res.body.expires_in! * 1000,
     },
-    res.body
+    res.body,
   );
   return lastAccessToken;
 }
@@ -382,7 +383,7 @@ async function respondWithFile(
   req: http.IncomingMessage,
   res: http.ServerResponse,
   statusCode: number,
-  filename: string
+  filename: string,
 ) {
   const response = await util.promisify(fs.readFile)(path.join(__dirname, filename));
   res.writeHead(statusCode, {
@@ -439,13 +440,13 @@ async function loginRemotely(): Promise<UserCredentials> {
     const tokens = await getTokensFromAuthorizationCode(
       code,
       `${authProxyOrigin}/complete`,
-      codeVerifier
+      codeVerifier,
     );
 
     void trackGA4("login", { method: "google_remote" });
 
     return {
-      user: jwt.decode(tokens.id_token!) as User,
+      user: jwt.decode(tokens.id_token!, { json: true }) as any as User,
       tokens: tokens,
       scopes: SCOPES,
     };
@@ -463,14 +464,14 @@ async function loginWithLocalhostGoogle(port: number, userHint?: string): Promis
     callbackUrl,
     authUrl,
     successTemplate,
-    getTokensFromAuthorizationCode
+    getTokensFromAuthorizationCode,
   );
 
   void trackGA4("login", { method: "google_localhost" });
   // getTokensFromAuthoirzationCode doesn't handle the --token case, so we know we'll
   // always have an id_token.
   return {
-    user: jwt.decode(tokens.id_token!) as User,
+    user: jwt.decode(tokens.id_token!, { json: true }) as any as User,
     tokens: tokens,
     scopes: tokens.scopes!,
   };
@@ -485,7 +486,7 @@ async function loginWithLocalhostGitHub(port: number): Promise<string> {
     callbackUrl,
     authUrl,
     successTemplate,
-    getGithubTokensFromAuthorizationCode
+    getGithubTokensFromAuthorizationCode,
   );
   void trackGA4("login", { method: "github_localhost" });
   return tokens;
@@ -496,7 +497,7 @@ async function loginWithLocalhost<ResultType>(
   callbackUrl: string,
   authUrl: string,
   successTemplate: string,
-  getTokens: (queryCode: string, callbackUrl: string) => Promise<ResultType>
+  getTokens: (queryCode: string, callbackUrl: string) => Promise<ResultType>,
 ): Promise<ResultType> {
   return new Promise<ResultType>((resolve, reject) => {
     const server = http.createServer(async (req, res) => {
@@ -635,7 +636,7 @@ function logoutCurrentSession(refreshToken: string) {
 
 async function refreshTokens(
   refreshToken: string,
-  authScopes: string[]
+  authScopes: string[],
 ): Promise<TokensWithExpiration> {
   logger.debug("> refreshing access token with scopes:", JSON.stringify(authScopes));
   try {
@@ -651,7 +652,7 @@ async function refreshTokens(
     for (const [k, v] of Object.entries(data)) {
       form.append(k, v);
     }
-    const res = await client.request<FormData, TokensWithTTL>({
+    const res = await client.request<FormData, TokensWithTTL & AuthError>({
       method: "POST",
       path: "/oauth2/v3/token",
       body: form,
@@ -659,6 +660,15 @@ async function refreshTokens(
       skipLog: { body: true, queryParams: true, resBody: true },
       resolveOnHTTPError: true,
     });
+    const forceReauthErrs: AuthError[] = [
+      { error: "invalid_grant", error_subtype: "invalid_rapt" }, // Cloud Session Control expiry
+    ];
+    const matches = (a: AuthError, b: AuthError) => {
+      return a.error === b.error && a.error_subtype === b.error_subtype;
+    };
+    if (forceReauthErrs.some((a) => matches(a, res.body))) {
+      throw invalidCredentialError();
+    }
     if (res.status === 401 || res.status === 400) {
       // Support --token <token> commands. In this case we won't have an expiration
       // time, scopes, etc.
@@ -674,7 +684,7 @@ async function refreshTokens(
         refresh_token: refreshToken,
         scopes: authScopes,
       },
-      res.body
+      res.body,
     );
 
     const account = findAccountByRefreshToken(refreshToken);
@@ -692,7 +702,7 @@ async function refreshTokens(
           "\n\n" +
           "For CI servers and headless environments, generate a new token with " +
           clc.bold("firebase login:ci"),
-        { exit: 1 }
+        { exit: 1 },
       );
     }
 

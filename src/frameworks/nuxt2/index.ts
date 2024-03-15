@@ -30,8 +30,7 @@ export async function discover(rootDir: string) {
   if (!(await pathExists(join(rootDir, "package.json")))) return;
   const version = getNuxtVersion(rootDir);
   if (!version || (version && gte(version, "3.0.0-0"))) return;
-  const { app } = await getAndLoadNuxt({ rootDir, for: "build" });
-  return { mayWantBackend: true, publicDirectory: app.options.dir.static, version };
+  return { mayWantBackend: true, version };
 }
 
 /**

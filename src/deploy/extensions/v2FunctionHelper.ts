@@ -5,6 +5,7 @@ import { FirebaseError } from "../../error";
 import { ensure } from "../../ensureApiEnabled";
 import * as planner from "./planner";
 import { needProjectId } from "../../projectUtils";
+import { computeOrigin } from "../../api";
 
 const SERVICE_AGENT_ROLE = "roles/eventarc.eventReceiver";
 
@@ -21,7 +22,7 @@ export async function checkSpecForV2Functions(i: planner.InstanceSpec): Promise<
  */
 export async function ensureNecessaryV2ApisAndRoles(options: any) {
   const projectId = needProjectId(options);
-  await ensure(projectId, "compute.googleapis.com", "extensions", options.markdown);
+  await ensure(projectId, computeOrigin, "extensions", options.markdown);
   await ensureComputeP4SARole(projectId);
 }
 
@@ -37,7 +38,7 @@ async function ensureComputeP4SARole(projectId: string): Promise<boolean> {
       throw new FirebaseError(
         "Unable to get project IAM policy, permission denied (403). Please " +
           "make sure you have sufficient project privileges or if this is a brand new project " +
-          "try again in a few minutes."
+          "try again in a few minutes.",
       );
     }
     throw e;
@@ -45,7 +46,7 @@ async function ensureComputeP4SARole(projectId: string): Promise<boolean> {
 
   if (
     policy.bindings.find(
-      (b) => b.role === SERVICE_AGENT_ROLE && b.members.includes("serviceAccount:" + saEmail)
+      (b) => b.role === SERVICE_AGENT_ROLE && b.members.includes("serviceAccount:" + saEmail),
     )
   ) {
     logger.debug("Compute Service API Agent IAM policy OK");
@@ -53,7 +54,7 @@ async function ensureComputeP4SARole(projectId: string): Promise<boolean> {
   } else {
     logger.debug(
       "Firebase Extensions Service Agent is missing a required IAM role " +
-        "`Firebase Extensions API Service Agent`."
+        "`Firebase Extensions API Service Agent`.",
     );
     policy.bindings.push({
       role: SERVICE_AGENT_ROLE,
