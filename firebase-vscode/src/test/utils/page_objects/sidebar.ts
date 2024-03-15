@@ -7,7 +7,9 @@ export class FirebaseSidebar {
 
   async open() {
     await browser.executeWorkbench((vs: typeof vscode) => {
-      return vs.commands.executeCommand("firebase.dataConnect.explorerView.focus");
+      return vs.commands.executeCommand(
+        "firebase.dataConnect.explorerView.focus",
+      );
     });
   }
 
@@ -21,6 +23,10 @@ export class FirebaseSidebar {
 
   get stopEmulatorBtn() {
     return $("vscode-button=Click to stop the emulators");
+  }
+
+  get fdcDeployElement() {
+    return $(".codicon-cloud-upload");
   }
 
   /** Starts the emulators and waits for the emulators to be started.

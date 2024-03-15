@@ -21,6 +21,15 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "menus": {
+      "view/title": [
+        {
+          "command": "fdc-graphql.deploy",
+          "when": "view == data-connect",
+          "group": "navigation"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "fdc-graphql.showOutputChannel",
@@ -29,6 +38,11 @@
       {
         "command": "fdc-graphql.restart",
         "title": "Firebase GraphQL Language Server: Restart"
+      },
+      {
+        "command": "fdc-graphql.deploy",
+        "title": "Deploy",
+        "icon": "$(cloud-upload)"
       },
       {
         "command": "firebase.selectProject",
@@ -178,7 +192,7 @@
     "pretest:unit": "npm run test-compile && npm run lint && tsc -p src/test/tsconfig.test.json",
     "test:unit": "node ./dist/test/firebase-vscode/src/test/runTest.js",
     "test:e2e": "npm run test:e2e:empty && npm run test:e2e:fishfood",
-    "test:e2e:empty": "TS_NODE_PROJECT=\"./src/test/tsconfig.test.json\" TEST=true wdio run ./src/test/default_wdio.conf.ts",
+    "test:e2e:empty": "TS_NODE_PROJECT=\"./src/test/tsconfig.test.json\" TEST=true wdio run ./src/test/empty_wdio.conf.ts",
     "test:e2e:fishfood": "TS_NODE_PROJECT=\"./src/test/tsconfig.test.json\" TEST=true wdio run ./src/test/fishfood_wdio.conf.ts",
     "format": "npx prettier . -w"
   },

@@ -26,8 +26,6 @@ export const config: Options.Testrunner = {
     },
   },
 
-  specs: ["./integration/empty/**/*.ts"],
-
   capabilities: [
     {
       browserName: "vscode",
