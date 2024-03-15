@@ -324,11 +324,22 @@ function writeChannelActionYMLFile(
     },
   };
 
+  const buildAndPreviewParams: Record<string, any> = {
+    uses: HOSTING_GITHUB_ACTION_NAME,
+    with: {
+      repoToken: "${{ secrets.GITHUB_TOKEN }}",
+      firebaseServiceAccount: `\${{ secrets.${secretName} }}`,
+      projectId: projectId,
+    },
+  };
+
   if (useWebFrameworks) {
     // install is required for web frameworks
-    workflowConfig.jobs.build_and_preview.steps.push({
-      run: "npm ci",
-    });
+    workflowConfig.jobs.build_and_preview.steps.push({ run: "npm ci" });
+
+    buildAndPreviewParams.env = {
+      FIREBASE_CLI_EXPERIMENTS: "webframeworks",
+    };
 
     // if source is not root, set the working directory in the GitHub Action so that
     // the npm script does not fail
@@ -343,21 +354,6 @@ function writeChannelActionYMLFile(
     workflowConfig.jobs.build_and_preview.steps.push({
       run: script,
     });
-  }
-
-  const buildAndPreviewParams: Record<string, any> = {
-    uses: HOSTING_GITHUB_ACTION_NAME,
-    with: {
-      repoToken: "${{ secrets.GITHUB_TOKEN }}",
-      firebaseServiceAccount: `\${{ secrets.${secretName} }}`,
-      projectId: projectId,
-    },
-  };
-
-  if (useWebFrameworks) {
-    buildAndPreviewParams.env = {
-      FIREBASE_CLI_EXPERIMENTS: "webframeworks",
-    };
   }
 
   workflowConfig.jobs.build_and_preview.steps.push(buildAndPreviewParams);
@@ -410,6 +406,8 @@ function writeDeployToProdActionYMLFile(
       FIREBASE_CLI_EXPERIMENTS: "webframeworks",
     };
 
+    // if source is not root, set the working directory in the GitHub Action so that
+    // the npm script does not fail
     if (hostingSource && hostingSource !== ".") {
       workflowConfig.jobs.build_and_deploy.defaults = {
         run: { "working-directory": hostingSource },
