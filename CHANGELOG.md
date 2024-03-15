@@ -1,0 +1,1 @@
+- Fix hosting rewrite deployment bug for skipped functions (#6658).
