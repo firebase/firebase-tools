@@ -1,5 +1,6 @@
 import * as webApps from "../../apphosting/app";
 import * as apps from "../../../src/management/apps";
+import * as prompts from "../../prompt";
 import * as sinon from "sinon";
 import { expect } from "chai";
 import { FirebaseError } from "../../error";
@@ -58,6 +59,29 @@ describe("app", () => {
         userSelection,
       );
       expect(promptFirebaseWebApp).to.be.called;
+    });
+  });
+
+  describe("promptFirebaseWebApp", () => {
+    let promptOnce: sinon.SinonStub;
+    let createWebApp: sinon.SinonStub;
+
+    beforeEach(() => {
+      promptOnce = sinon.stub(prompts, "promptOnce");
+      createWebApp = sinon.stub(apps, "createWebApp");
+    });
+
+    afterEach(() => {
+      promptOnce.restore();
+      createWebApp.restore();
+    });
+
+    it("create a new web app if user selects that option", async () => {
+      promptOnce.returns(webApps.CREATE_NEW_FIREBASE_WEB_APP);
+      createWebApp.returns({ displayName: backendId, appId: "appId" });
+
+      await webApps.promptFirebaseWebApp(projectId, backendId, new Map([["app", "appId"]]));
+      expect(createWebApp).to.be.calledWith(projectId, { displayName: backendId });
     });
   });
 });

@@ -4,13 +4,14 @@ import { AppPlatform, createWebApp, listFirebaseApps } from "../management/apps"
 import { promptOnce } from "../prompt";
 import { FirebaseError } from "../error";
 
+const CREATE_NEW_FIREBASE_WEB_APP = "CREATE_NEW_WEB_APP";
+
 // Note: exported like this for testing (to stub a function in the same file).
 const webApps = {
+  CREATE_NEW_FIREBASE_WEB_APP,
   getOrCreateWebApp,
   promptFirebaseWebApp,
 };
-
-const CREATE_NEW_FIREBASE_WEB_APP = "CREATE_NEW_WEB_APP";
 
 type FirebaseWebApp = { name: string; id: string };
 
@@ -29,8 +30,8 @@ async function getOrCreateWebApp(
 
   const existingUserProjectWebApps = new Map(
     (await listFirebaseApps(projectId, AppPlatform.WEB)).map((obj) => [
-      // displayName can be null, use name instead if so. Example - displayName: "mathusan-web-app", name: "projects/mathusan-fwp/webApps/1:461896338144:web:426291191cccce65fede85"
-      obj.displayName ?? obj.name,
+      // displayName can be null, use app id instead if so. Example - displayName: "mathusan-web-app", appId: "1:461896338144:web:426291191cccce65fede85"
+      obj.displayName ?? obj.appId,
       obj.appId,
     ]),
   );
@@ -51,7 +52,7 @@ async function getOrCreateWebApp(
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     firebaseWebAppId = existingUserProjectWebApps.get(firebaseWebAppName)!;
   } else {
-    return await webApps.promptFirebaseWebApp(projectId, existingUserProjectWebApps);
+    return await webApps.promptFirebaseWebApp(projectId, backendId, existingUserProjectWebApps);
   }
 
   return { name: firebaseWebAppName, id: firebaseWebAppId };
@@ -60,11 +61,13 @@ async function getOrCreateWebApp(
 /**
  * Prompts the user for the web app that they would like to associate their backend with
  * @param projectId user's projectId
+ * @param backendId user's backendId
  * @param existingUserProjectWebApps a map of a user's firebase web apps to their ids
  * @return the name and ID of a web app
  */
 async function promptFirebaseWebApp(
   projectId: string,
+  backendId: string,
   existingUserProjectWebApps: Map<string, string>,
 ): Promise<FirebaseWebApp> {
   const searchWebApps =
@@ -93,13 +96,7 @@ async function promptFirebaseWebApp(
   });
 
   if (firebaseWebAppName === CREATE_NEW_FIREBASE_WEB_APP) {
-    const newAppDisplayName = await promptOnce({
-      type: "input",
-      name: "webAppName",
-      message: "Enter a unique name for your web app",
-    });
-
-    const newFirebaseWebApp = await createWebApp(projectId, { displayName: newAppDisplayName });
+    const newFirebaseWebApp = await createWebApp(projectId, { displayName: backendId });
     return { name: newFirebaseWebApp.displayName, id: newFirebaseWebApp.appId };
   }
 
