@@ -321,6 +321,45 @@ describe("cloudfunctionsv2", () => {
       );
     });
 
+    it("should propagate serviceAccount to eventarc", () => {
+      const saEndpoint: backend.Endpoint = {
+        ...ENDPOINT,
+        platform: "gcfv2",
+        eventTrigger: {
+          eventType: events.v2.DATABASE_EVENTS[0],
+          eventFilters: {
+            ref: "ref",
+          },
+          retry: false,
+        },
+        serviceAccount: "sa",
+      };
+
+      const saGcfFunction: cloudfunctionsv2.InputCloudFunction = {
+        ...CLOUD_FUNCTION_V2,
+        eventTrigger: {
+          eventType: events.v2.DATABASE_EVENTS[0],
+          eventFilters: [
+            {
+              attribute: "ref",
+              value: "ref",
+            },
+          ],
+          retryPolicy: "RETRY_POLICY_DO_NOT_RETRY",
+          serviceAccountEmail: "sa",
+        },
+        serviceConfig: {
+          ...CLOUD_FUNCTION_V2.serviceConfig,
+          environmentVariables: {
+            FUNCTION_SIGNATURE_TYPE: "cloudevent",
+          },
+          serviceAccountEmail: "sa",
+        },
+      };
+
+      expect(cloudfunctionsv2.functionFromEndpoint(saEndpoint)).to.deep.equal(saGcfFunction);
+    });
+
     it("should correctly convert CPU and concurrency values", () => {
       const endpoint: backend.Endpoint = {
         ...ENDPOINT,

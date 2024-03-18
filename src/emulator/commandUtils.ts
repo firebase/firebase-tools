@@ -75,6 +75,11 @@ export const DEFAULT_CONFIG = new Config(
   {},
 );
 
+/**
+ * Utility to be put in the "before" handler for a RTDB or Firestore command
+ * that supports the emulator. Prints a warning when environment variables
+ * specify an emulator address.
+ */
 export function printNoticeIfEmulated(
   options: any,
   emulator: Emulators.DATABASE | Emulators.FIRESTORE,
@@ -98,6 +103,11 @@ export function printNoticeIfEmulated(
   }
 }
 
+/**
+ * Utility to be put in the "before" handler for a RTDB or Firestore command
+ * that always talks to production. This warns customers if they've specified
+ * an emulator port that the command actually talks to production.
+ */
 export function warnEmulatorNotSupported(
   options: any,
   emulator: Emulators.DATABASE | Emulators.FIRESTORE,
@@ -135,6 +145,10 @@ export function warnEmulatorNotSupported(
   }
 }
 
+/**
+ * Utility method to be inserted in the "before" function for a command that
+ * uses the emulator suite.
+ */
 export async function beforeEmulatorCommand(options: any): Promise<any> {
   const optionsWithDefaultConfig = {
     ...options,
@@ -170,16 +184,22 @@ export async function beforeEmulatorCommand(options: any): Promise<any> {
   }
 }
 
-export function parseInspectionPort(options: any): number {
-  let port = options.inspectFunctions;
-  if (port === true) {
-    port = "9229";
+/**
+ * Returns a literal port number if specified or true | false if enabled.
+ * A true value will later be turned into a dynamic port.
+ */
+export function parseInspectionPort(options: any): number | boolean {
+  const port = options.inspectFunctions;
+  if (typeof port === "undefined") {
+    return false;
+  } else if (typeof port === "boolean") {
+    return port;
   }
 
   const parsed = Number(port);
   if (isNaN(parsed) || parsed < 1024 || parsed > 65535) {
     throw new FirebaseError(
-      `"${port}" is not a valid port for debugging, please pass an integer between 1024 and 65535.`,
+      `"${port}" is not a valid port for debugging, please pass an integer between 1024 and 65535 or true for a dynamic port.`,
     );
   }
 
@@ -468,7 +488,6 @@ const JAVA_HINT = "Please make sure Java is installed and on your system PATH.";
 
 /**
  * Return whether Java major verion is supported. Throws if Java not available.
- *
  * @return Java major version (for Java >= 9) or -1 otherwise
  */
 export async function checkJavaMajorVersion(): Promise<number> {

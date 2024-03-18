@@ -62,7 +62,7 @@ describe("import/export end to end", () => {
     await emulatorsCLI.start(
       "emulators:start",
       FIREBASE_PROJECT,
-      ["--only", "firestore"],
+      ["--only", "firestore", "--debug"],
       (data: unknown) => {
         if (typeof data !== "string" && !Buffer.isBuffer(data)) {
           throw new Error(`data is not a string or buffer (${typeof data})`);
