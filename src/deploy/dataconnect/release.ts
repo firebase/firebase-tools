@@ -3,6 +3,9 @@ import { Connector, ServiceInfo } from "../../dataconnect/types";
 import { listConnectors, upsertSchema, upsertConnector } from "../../dataconnect/client";
 import { promptDeleteConnector } from "../../dataconnect/prompts";
 import { Options } from "../../options";
+import { needProjectId } from "../../projectUtils";
+import { provisionCloudSql } from "../../dataconnect/provisionCloudSql";
+import { parseServiceName } from "../../dataconnect/names";
 
 /**
  * Release deploys schemas and connectors.
@@ -11,6 +14,7 @@ import { Options } from "../../options";
  * @param options The CLI options object.
  */
 export default async function (context: any, options: Options): Promise<void> {
+  const projectId = needProjectId(options);
   const serviceInfos = context.dataconnect as ServiceInfo[];
   const wantSchemas = serviceInfos.map((s) => s.schema);
   let wantConnectors: Connector[] = [];
@@ -20,6 +24,24 @@ export default async function (context: any, options: Options): Promise<void> {
   const haveConnectors = await have(serviceInfos);
   const connectorsToDelete = haveConnectors.filter(
     (h) => !wantConnectors.some((w) => w.name === h.name),
+  );
+
+  // Provision CloudSQL things
+  utils.logLabeledBullet("dataconnect", "Checking for CloudSQL resources...");
+  await Promise.all(
+    serviceInfos.map((s) => {
+      const instanceId = s.schema.primaryDatasource.postgresql?.cloudSql.instance.split("/").pop();
+      const databaseId = s.schema.primaryDatasource.postgresql?.database;
+      if (!instanceId || !databaseId) {
+        return Promise.resolve();
+      }
+      return provisionCloudSql(
+        projectId,
+        parseServiceName(s.serviceName).location,
+        instanceId,
+        databaseId,
+      );
+    }),
   );
 
   utils.logLabeledBullet("dataconnect", "Releasing schemas...");

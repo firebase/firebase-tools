@@ -1,8 +1,9 @@
 import { join, resolve } from "path";
-import { promptOnce } from "../../../prompt";
+import { confirm, promptOnce } from "../../../prompt";
 import { readFileSync } from "fs";
 import { Config } from "../../../config";
 import { Setup } from "../..";
+import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql";
 
 const TEMPLATE_ROOT = resolve(__dirname, "../../../../templates/init/dataconnect/");
 
@@ -44,7 +45,7 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     config.set("dataconnect.source", dir);
     config.set("dataconnect.location", locationId);
   }
-  // TODO: Handle CloudSQL instance creation
+  // TODO: Listinstances from CloudSQL, and filter to only the free trial appropriate ones.
   const cloudSqlInstanceId = await promptOnce({
     message: `What CloudSQL instance would you like to use? Please enter the ID of an existing instance in ${locationId}`,
     type: "input",
@@ -74,6 +75,17 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   await config.askWriteProjectFile(join(dir, "schema", "schema.gql"), SCHEMA_TEMPLATE);
   await config.askWriteProjectFile(join(dir, "connector", "queries.gql"), QUERIES_TEMPLATE);
   await config.askWriteProjectFile(join(dir, "connector", "mutations.gql"), MUTATIONS_TEMPLATE);
+  // TODO: Skip this for existing instances
+  if (
+    setup.projectId &&
+    (await confirm({
+      message:
+        "Would you like to provision your CloudSQL instance and database now? This will take a few minutes.",
+      default: true,
+    }))
+  ) {
+    await provisionCloudSql(setup.projectId, locationId, cloudSqlInstanceId, cloudSqlDatabase);
+  }
 }
 
 function subValues(
