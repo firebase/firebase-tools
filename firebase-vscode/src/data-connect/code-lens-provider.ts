@@ -112,7 +112,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
           );
         }
 
-        if (isInDataConnect && !isInDataConnect) {
+        if (isInDataConnect && !isInConnector) {
           codeLenses.push(
             new vscode.CodeLens(range, {
               title: `$(plug) Move to connector`,
