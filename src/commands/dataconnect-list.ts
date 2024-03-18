@@ -23,7 +23,6 @@ export const command = new Command("dataconnect:list")
         "Location",
         "Data Source",
         "Schema Last Updated",
-
         "Connector ID",
         "Connector Last Updated",
       ],

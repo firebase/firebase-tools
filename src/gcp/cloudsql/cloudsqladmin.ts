@@ -115,7 +115,8 @@ interface User {
     serverRoles: string[];
   };
 }
-type UserType = "BUILT_IN" | "CLOUD_IAM_USER" | "CLOUD_IAM_SERVICE_ACCOUNT";
+
+export type UserType = "BUILT_IN" | "CLOUD_IAM_USER" | "CLOUD_IAM_SERVICE_ACCOUNT";
 
 interface Operation {
   status: "RUNNING" | "DONE";
@@ -145,9 +146,6 @@ export async function createInstance(
     settings: {
       tier: "db-f1-micro",
       edition: "ENTERPRISE", // TODO: Figure out what values shouild be exposed, what should be hard coded
-      dataCacheConfig: {
-        dataCacheEnabled: true,
-      },
       ipConfiguration: {
         authorizedNetworks: [], // TODO:  Don't expose this DB to everyone in the world {value: "0.0.0.0/0", name: 'public'}
       },
@@ -224,7 +222,7 @@ export async function createUser(
       password: password,
       sqlserverUserDetails: {
         disabled: false,
-        serverRoles: [], // TODO: What roles does our IAM user need?
+        serverRoles: ["cloudsqlsuperuser"], // TODO: What roles does our IAM user need?
       },
       type,
     },

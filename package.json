@@ -94,6 +94,7 @@
     ]
   },
   "dependencies": {
+    "@google-cloud/cloud-sql-connector": "^1.2.3",
     "@google-cloud/pubsub": "^3.0.1",
     "abort-controller": "^3.0.0",
     "ajv": "^6.12.6",
@@ -136,6 +137,7 @@
     "open": "^6.3.0",
     "ora": "^5.4.1",
     "p-limit": "^3.0.1",
+    "pg": "^8.11.3",
     "portfinder": "^1.0.32",
     "progress": "^2.0.3",
     "proxy-agent": "^6.3.0",
@@ -189,6 +191,8 @@
     "@types/multer": "^1.4.3",
     "@types/node": "^18.19.1",
     "@types/node-fetch": "^2.5.12",
+    "@types/pg": "^8.11.2",
+    "@types/prettier": "^3.0.0",
     "@types/progress": "^2.0.3",
     "@types/puppeteer": "^5.4.2",
     "@types/react": "^18.2.58",

@@ -714,7 +714,6 @@ export async function getAccessToken(refreshToken: string, authScopes: string[])
   if (haveValidTokens(refreshToken, authScopes) && lastAccessToken) {
     return lastAccessToken;
   }
-
   return refreshTokens(refreshToken, authScopes);
 }
 
