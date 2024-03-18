@@ -42,6 +42,7 @@ export interface BlockingFunctionsConfig {
     beforeCreate?: BlockingFunctionsEventDetails;
     beforeSignIn?: BlockingFunctionsEventDetails;
     beforeSendEmail?: BlockingFunctionsEventDetails;
+    beforeSendSms?: BlockingFunctionsEventDetails;
   };
   forwardInboundCredentials?: BlockingFunctionsOptions;
 }
