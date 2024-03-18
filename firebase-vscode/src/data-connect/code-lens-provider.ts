@@ -92,16 +92,16 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
         };
         const opKind = x.operation as string; // query or mutation
 
-        const connectorPaths = Object.keys(configs.operationSet).map(
-          (key) => configs.operationSet[key]!.source,
+        const isInConnector = configs
+          .flatMap((e) => Object.keys(e.resolvedConnectors))
+          .some((path) => isPathInside(document.fileName, path));
+
+        const isInDataConnect = configs.some((config) =>
+          isPathInside(document.fileName, config.path),
         );
-        const isInOperationFolder = connectorPaths.some((path) =>
-          isPathInside(document.fileName, path),
-        );
-        const isInAdhocFolder = isPathInside(document.fileName, configs.adhoc);
         const instance = this.watch(selectedInstance);
 
-        if (instance && (isInOperationFolder || isInAdhocFolder)) {
+        if (instance && (isInConnector || isInDataConnect)) {
           codeLenses.push(
             new vscode.CodeLens(range, {
               title: `$(play) Run (${instance})`,
@@ -112,7 +112,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
           );
         }
 
-        if (isInAdhocFolder && !isInOperationFolder) {
+        if (isInDataConnect && !isInDataConnect) {
           codeLenses.push(
             new vscode.CodeLens(range, {
               title: `$(plug) Move to connector`,

@@ -10,12 +10,14 @@ import { RCData } from "../../../src/rc";
 import { EmulatorUiSelections, RunningEmulatorInfo } from "./types";
 import { ExecutionResult } from "graphql";
 import { SerializedError } from "../error";
+import { ConnectorYaml, DataConnectYaml } from "../dataconnect/types";
+import { Config } from "../config";
 
 export const DEFAULT_EMULATOR_UI_SELECTIONS: EmulatorUiSelections = {
   projectId: "demo-something",
   importStateFolderPath: "",
   exportStateOnExit: false,
-  mode: 'dataconnect',
+  mode: "dataconnect",
   debugLogging: false,
 };
 
@@ -38,24 +40,22 @@ type DeepReadOnly<T> =
       ? ReadonlyArray<DeepReadOnly<T[number]>>
       : T;
 
-/** The `firemat.yaml` content */
-export type DataConnectConfig = DeepReadOnly<{
-  specVersion: string;
-  schema: {
-    main: {
-      source: string;
-      connection: {
-        connectionString?: string;
+/** Firebase configs, and its optional product-specific configs, in a single type */
+export type ExpandedFirebaseConfig = {
+  config: Config;
+  dataConnect?: { source: string; location: string }[];
+};
+
+/** The fully resolved `dataconnect.yaml` and its connectors */
+export type ResolvedDataConnectConfig = DeepReadOnly<
+  DataConnectYaml &
+    {
+      path: string;
+      resolvedConnectors: {
+        [path: string]: ConnectorYaml;
       };
-    };
-  };
-  operationSet: {
-    [key: string]: {
-      source: string;
-    };
-  };
-  adhoc: string; // TODO: Temporary until official data connect yaml
-}>;
+    }[]
+>;
 
 export interface WebviewToExtensionParamsMap {
   /**

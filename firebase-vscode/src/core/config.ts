@@ -7,23 +7,35 @@ import { pluginLogger } from "../logger-wrapper";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { RC } from "../../../src/rc";
 import { Config } from "../../../src/config";
+import {
+  readConnectorYaml,
+  readDataConnectYaml,
+  readFirebaseJson,
+} from "../../../src/dataconnect/fileUtils";
 import { globalSignal } from "../utils/globals";
 import { workspace } from "../utils/test_hooks";
-import { DataConnectConfig } from "../../common/messaging/protocol";
+import {
+  ExpandedFirebaseConfig,
+  ResolvedDataConnectConfig,
+} from "../../common/messaging/protocol";
 import * as jsYaml from "js-yaml";
 
 export const firebaseRC = globalSignal<RC | undefined>(undefined);
-export const firebaseConfig = globalSignal<Config | undefined>(undefined);
-export const dataConnectConfig = globalSignal<DataConnectConfig | undefined>(undefined);
+export const firebaseConfig = globalSignal<ExpandedFirebaseConfig | undefined>(
+  undefined,
+);
+export const dataConnectConfig = globalSignal<
+  ResolvedDataConnectConfig | undefined
+>(undefined);
 
-export function registerConfig(broker: ExtensionBrokerImpl): Disposable {
+export async function registerConfig(broker: ExtensionBrokerImpl): Promise<Disposable> {
   firebaseRC.value = _readRC();
-  firebaseConfig.value = _readFirebaseConfig();
-  dataConnectConfig.value = _readDataConnectConfig();
+  const initialConfig = (firebaseConfig.value = _readFirebaseConfig());
+  dataConnectConfig.value = await _readDataConnectConfigs(initialConfig);
 
   function notifyFirebaseConfig() {
     broker.send("notifyFirebaseConfig", {
-      firebaseJson: firebaseConfig.value?.data,
+      firebaseJson: firebaseConfig.value?.config.data,
       firebaseRC: firebaseRC.value?.data,
     });
   }
@@ -71,10 +83,16 @@ export function registerConfig(broker: ExtensionBrokerImpl): Disposable {
 
   const dataConnectWatcher = _createWatcher("firemat.yaml");
   dataConnectWatcher?.onDidChange(
-    () => (dataConnectConfig.value = _readDataConnectConfig()),
+    async () =>
+      (dataConnectConfig.value = await _readDataConnectConfigs(
+        firebaseConfig.value!,
+      )),
   );
   dataConnectWatcher?.onDidCreate(
-    () => (dataConnectConfig.value = _readDataConnectConfig()),
+    async () =>
+      (dataConnectConfig.value = await _readDataConnectConfigs(
+        firebaseConfig.value!,
+      )),
   );
 
   return {
@@ -89,151 +107,29 @@ export function registerConfig(broker: ExtensionBrokerImpl): Disposable {
   };
 }
 
-const defaultDataConnectConfig: DataConnectConfig = {
-  specVersion: "v1alpha",
-  schema: {
-    main: {
-      source: "./dataconnect/schema",
-      connection: {
-        connectionString: undefined,
-      },
-    },
-  },
-  operationSet: {
-    crud: {
-      source: "./dataconnect/connector",
-    },
-  },
-  adhoc: "./dataconnect", // TODO: Temporary until official data connect yaml
-};
-
-const value = 42;
-const typeOfValue = typeof value;
-/** All the possible values for "typeof", as a TS union. */
-type TypeOf = typeof typeOfValue;
-
-/** The TS type for a given "typeof" value */
-type ValueOf<T extends TypeOf> = T extends "string"
-  ? string
-  : T extends "number"
-    ? number
-    : T extends "bigint"
-      ? bigint
-      : T extends "boolean"
-        ? boolean
-        : T extends "symbol"
-          ? symbol
-          : T extends "undefined"
-            ? undefined
-            : T extends "object"
-              ? object
-              : T extends "function"
-                ? Function
-                : never;
-
-function assignIfType<T extends TypeOf>(
-  type: T,
-  path: string,
-  value: unknown,
-): T | undefined;
-function assignIfType<T extends TypeOf>(
-  type: T,
-  path: string,
-  value: unknown,
-  fallback: ValueOf<T>,
-): T;
-function assignIfType<T extends TypeOf>(
-  type: T,
-  path: string,
-  value: unknown,
-  fallback?: T,
-): T | undefined {
-  if (value === undefined || value === null) {
-    return fallback;
-  }
-  if (typeof value === type) {
-    return value as T;
-  }
-
-  throw new Error(
-    `Expected field at ${path} to be of type ${type} but got ${typeof value}`,
-  );
-}
-
-function asAbsolutePath(relativePath: string, from: string): string {
-  return path.normalize(path.join(from, relativePath));
-}
-
 /** @internal */
-export function _readDataConnectConfig(): DataConnectConfig | undefined {
-  // TODO refactor parsing as soon as firemat.yaml syntax is changed
-  const configPath = _getConfigPath();
-  if (!configPath) {
-    return undefined;
-  }
-
+export async function _readDataConnectConfigs(
+  config: ExpandedFirebaseConfig,
+): Promise<ResolvedDataConnectConfig | undefined> {
   try {
-    const dataConnectYaml = fs.readFileSync(
-      path.join(configPath, "firemat.yaml"),
-      "utf-8",
-    );
-    const yaml = jsYaml.load(dataConnectYaml);
+    return await Promise.all(
+      config.dataConnect.map<Promise<ResolvedDataConnectConfig[0]>>(
+        async (dataConnect) => {
+          const dataConnectYaml = await readDataConnectYaml(
+            dataConnect.location,
+          );
 
-    let operations: Record<string, DataConnectConfig["operationSet"][string]> = {};
-
-    const operationSet =
-      yaml?.operationSet ?? defaultDataConnectConfig.operationSet;
-    for (const key of Object.keys(operationSet)) {
-      operations[key] = {
-        source: asAbsolutePath(
-          assignIfType(
-            "string",
-            `firemat.yaml#operationSet.${key}.source`,
-            operationSet[key]?.source,
-            defaultDataConnectConfig.operationSet[key]?.source,
-          ),
-          configPath,
-        ),
-      };
-    }
-
-    return {
-      specVersion: assignIfType(
-        "string",
-        "firemat.yaml#specVersion",
-        yaml?.specVersion,
-        defaultDataConnectConfig.specVersion,
-      ),
-      schema: {
-        main: {
-          source: asAbsolutePath(
-            assignIfType(
-              "string",
-              "firemat.yaml#schema.main.source",
-              yaml?.schema?.main?.source,
-              defaultDataConnectConfig.schema.main.source,
-            ),
-            configPath,
-          ),
-          connection: {
-            connectionString: assignIfType(
-              "string",
-              "firemat.yaml#schema.main.connection.connectionString",
-              yaml?.schema?.main?.connection?.connectionString,
-            ),
-          },
+          return {
+            ...dataConnectYaml,
+            path: dataConnect.location,
+            resolvedConnectors: {},
+          };
         },
-      },
-      operationSet: operations,
-      adhoc: configPath + "/dataconnect", // TODO: Temporary until official data connect yaml
-    };
+      ),
+    );
   } catch (e: any) {
-    if (e.code === "ENOENT") {
-      return undefined;
-    }
-
     pluginLogger.error(e);
-    throw e;
+    return undefined;
   }
 }
 
@@ -264,18 +160,21 @@ export function _readRC(): RC | undefined {
 }
 
 /** @internal */
-export function _readFirebaseConfig(): Config | undefined {
+export function _readFirebaseConfig(): ExpandedFirebaseConfig | undefined {
   const configPath = _getConfigPath();
   if (!configPath) {
     return undefined;
   }
   try {
-    const json = Config.load({
+    const config = Config.load({
       configPath: path.join(configPath, "firebase.json"),
     });
-    // "null" is non-reachable when specifying a configPath.
-    // If the file is missing, load() will throw (even if "allowMissing" is true).
-    return json!;
+    if (!config) {
+      return undefined;
+    }
+
+    const dataConnect = readFirebaseJson(config);
+    return { config, dataConnect };
   } catch (e: any) {
     if (e.status === 404) {
       return undefined;
