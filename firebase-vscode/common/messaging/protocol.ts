@@ -3,7 +3,7 @@
  * between two environments (VScode and Webview)
  */
 
-import { FirebaseConfig } from "../../../src/firebaseConfig";
+import { DataConnectConfig, FirebaseConfig } from "../../../src/firebaseConfig";
 import { User } from "../../../src/types/auth";
 import { ServiceAccountUser } from "../types";
 import { RCData } from "../../../src/rc";
@@ -42,7 +42,7 @@ type DeepReadOnly<T> =
 
 export type ExpandedFirebaseConfig = {
   config: Config;
-  dataConnect?: { source: string; location: string }[];
+  dataConnect?: DataConnectConfig[];
 };
 
 /** The fully resolved `dataconnect.yaml` and its connectors */

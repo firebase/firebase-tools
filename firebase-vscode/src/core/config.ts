@@ -18,7 +18,6 @@ import {
   ExpandedFirebaseConfig,
   ResolvedDataConnectConfig,
 } from "../../common/messaging/protocol";
-import * as jsYaml from "js-yaml";
 
 export const firebaseRC = globalSignal<RC | undefined>(undefined);
 export const firebaseConfig = globalSignal<ExpandedFirebaseConfig | undefined>(

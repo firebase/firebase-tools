@@ -5,8 +5,9 @@ import { FirebaseError } from "../error";
 import { ConnectorYaml, DataConnectYaml, File } from "./types";
 import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
 import { Config } from "../config";
+import { DataConnectConfig } from "../firebaseConfig";
 
-export function readFirebaseJson(config: Config): { source: string; location: string }[] {
+export function readFirebaseJson(config: Config): DataConnectConfig[] {
   if (!config.has("dataconnect")) {
     return [];
   }
