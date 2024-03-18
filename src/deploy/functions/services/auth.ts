@@ -101,7 +101,7 @@ export class AuthBlockingService implements Service {
           functionUri: endpoint.uri!,
         },
       };
-    } else if (endpoint.blockingTrigger.eventType === events.v1.BEFORE_SEND_EMAIL_EVENT) {
+    } else if (endpoint.blockingTrigger.eventType === events.v1.BEFORE_SEND_SMS_EVENT) {
       newBlockingConfig.triggers = {
         ...newBlockingConfig.triggers,
         beforeSendSms: {
