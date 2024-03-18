@@ -102,8 +102,8 @@ export async function linkGitHubRepository(
     );
   }
 
-  var repoRemoteUri: string | undefined;
-  var connection: gcb.Connection;
+  let repoRemoteUri: string | undefined;
+  let connection: gcb.Connection;
   do {
     if (repoRemoteUri === ADD_CONN_CHOICE) {
       existingConns.push(
@@ -134,7 +134,7 @@ export async function linkGitHubRepository(
 }
 
 /**
- * Creates a new GCB GitHub connection and ensures that it is full configured on the GitHub
+ * Creates a new GCB GitHub connection resource and ensures that it is fully configured on the GitHub
  * side (ie associated with an account/org and some subset of repos within that scope).
  * Copies over Oauth creds from the sentinel Oauth connection to save the user from having to
  * reauthenticate with GitHub.
@@ -191,11 +191,8 @@ async function promptRepositoryUri(
     type: "autocomplete",
     name: "remoteUri",
     message: "Which of the following repositories would you like to deploy?",
-    source: async (
-      _: any,
-      input = "",
-    ): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
-      return [
+    source: (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
+      return new Promise(() => [
         new inquirer.Separator(),
         {
           name: "Missing a repo? Select this option to configure your GitHub access",
@@ -212,7 +209,7 @@ async function promptRepositoryUri(
               value: result.original.remoteUri,
             };
           }),
-      ];
+      ]);
     },
   });
   return { remoteUri, connection: remoteUriToConnection[remoteUri] };
