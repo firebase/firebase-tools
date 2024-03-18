@@ -187,6 +187,10 @@ export const dataconnectOrigin = utils.envOverride(
   "FIREBASE_DATACONNECT_URL",
   "https://firebasedataconnect.googleapis.com",
 );
+export const cloudSQLAdminOrigin = utils.envOverride(
+  "CLOUD_SQL_URL",
+  "https://sqladmin.googleapis.com",
+);
 export const githubOrigin = utils.envOverride("GITHUB_URL", "https://github.com");
 export const githubApiOrigin = utils.envOverride("GITHUB_API_URL", "https://api.github.com");
 export const secretManagerOrigin = utils.envOverride(

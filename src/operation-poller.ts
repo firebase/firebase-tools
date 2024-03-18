@@ -11,6 +11,7 @@ export interface OperationPollerOptions {
   maxBackoff?: number;
   masterTimeout?: number;
   onPoll?: (operation: OperationResult<any>) => any;
+  doneFn?: (op: any) => boolean;
 }
 
 const DEFAULT_INITIAL_BACKOFF_DELAY_MILLIS = 250;
@@ -77,7 +78,12 @@ export class OperationPoller<T> {
       if (options.onPoll) {
         options.onPoll(res.body);
       }
-      if (!res.body.done) {
+      if (options.doneFn) {
+        const done = options.doneFn(res.body);
+        if (!done) {
+          throw new Error("Polling incomplete, should trigger retry with backoff");
+        }
+      } else if (!res.body.done) {
         throw new Error("Polling incomplete, should trigger retry with backoff");
       }
       return res.body;
