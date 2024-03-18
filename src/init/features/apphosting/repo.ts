@@ -93,19 +93,33 @@ export async function linkGitHubRepository(
   utils.logBullet(clc.bold(`${clc.yellow("===")} Set up a GitHub connection`));
   // Fetch the sentinel Oauth connection first which is needed to create further GitHub connections.
   const oauthConn = await getOrCreateOauthConnection(projectId, location);
+
+  utils.logBullet(clc.bold(`${clc.yellow("===")} Set up a GitHub connection 2`));
   const existingConns = await listAppHostingConnections(projectId);
 
+  utils.logBullet(clc.bold(`${clc.yellow("===")} Set up a GitHub connection 3`));
+
   if (existingConns.length === 0) {
+
+  utils.logBullet(clc.bold(`${clc.yellow("===")} Set up a GitHub connection 4`));
     await ensureSecretManagerAdminGrant(projectId);
+    utils.logBullet(clc.bold(`${clc.yellow("===")} Set up a GitHub connection 5`));
     existingConns.push(
       await ensureFullyInstalledConnection(projectId, location, generateConnectionId(), oauthConn),
     );
+
+  utils.logBullet(clc.bold(`${clc.yellow("===")} Set up a GitHub connection 6`));
   }
 
+  utils.logBullet(clc.bold(`${clc.yellow("===")} Set up a GitHub connection 7`));
   let repoRemoteUri: string | undefined;
   let connection: gcb.Connection;
   do {
+
+  utils.logBullet(clc.bold(`${clc.yellow("===")} Set up a GitHub connection 8`));
     if (repoRemoteUri === ADD_CONN_CHOICE) {
+
+  utils.logBullet(clc.bold(`${clc.yellow("===")} Set up a GitHub connection 9`));
       existingConns.push(
         await ensureFullyInstalledConnection(
           projectId,
@@ -115,10 +129,14 @@ export async function linkGitHubRepository(
         ),
       );
     }
+
+  utils.logBullet(clc.bold(`${clc.yellow("===")} Set up a GitHub connection 10`));
     const selection = await promptRepositoryUri(projectId, existingConns);
     repoRemoteUri = selection.remoteUri;
     connection = selection.connection;
   } while (repoRemoteUri === ADD_CONN_CHOICE);
+
+  utils.logBullet(clc.bold(`${clc.yellow("===")} Set up a GitHub connection 11`));
 
   // Ensure that the selected connection exists in the same region as the backend
   const { id: connectionId } = parseConnectionName(connection.name)!;
@@ -192,10 +210,10 @@ async function promptRepositoryUri(
     name: "remoteUri",
     message: "Which of the following repositories would you like to deploy?",
     source: (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
-      return new Promise(() => [
+      return new Promise((resolve) => resolve([
         new inquirer.Separator(),
         {
-          name: "Missing a repo? Select this option to configure your GitHub access",
+          name: "Missing a repo? Select this option to configure your GitHub connection settings",
           value: ADD_CONN_CHOICE,
         },
         new inquirer.Separator(),
@@ -209,7 +227,7 @@ async function promptRepositoryUri(
               value: result.original.remoteUri,
             };
           }),
-      ]);
+      ]));
     },
   });
   return { remoteUri, connection: remoteUriToConnection[remoteUri] };
