@@ -40,7 +40,6 @@ type DeepReadOnly<T> =
       ? ReadonlyArray<DeepReadOnly<T[number]>>
       : T;
 
-/** Firebase configs, and its optional product-specific configs, in a single type */
 export type ExpandedFirebaseConfig = {
   config: Config;
   dataConnect?: { source: string; location: string }[];
@@ -50,10 +49,7 @@ export type ExpandedFirebaseConfig = {
 export type ResolvedDataConnectConfig = DeepReadOnly<
   DataConnectYaml &
     {
-      path: string;
-      resolvedConnectors: {
-        [path: string]: ConnectorYaml;
-      };
+      resolvedConnectors: (ConnectorYaml & { path: string })[];
     }[]
 >;
 

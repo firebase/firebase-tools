@@ -28,7 +28,9 @@ export const dataConnectConfig = globalSignal<
   ResolvedDataConnectConfig | undefined
 >(undefined);
 
-export async function registerConfig(broker: ExtensionBrokerImpl): Promise<Disposable> {
+export async function registerConfig(
+  broker: ExtensionBrokerImpl,
+): Promise<Disposable> {
   firebaseRC.value = _readRC();
   const initialConfig = (firebaseConfig.value = _readFirebaseConfig());
   dataConnectConfig.value = await _readDataConnectConfigs(initialConfig);
@@ -107,6 +109,10 @@ export async function registerConfig(broker: ExtensionBrokerImpl): Promise<Dispo
   };
 }
 
+function asAbsolutePath(relativePath: string, from: string): string {
+  return path.normalize(path.join(from, relativePath));
+}
+
 /** @internal */
 export async function _readDataConnectConfigs(
   config: ExpandedFirebaseConfig,
@@ -115,14 +121,31 @@ export async function _readDataConnectConfigs(
     return await Promise.all(
       config.dataConnect.map<Promise<ResolvedDataConnectConfig[0]>>(
         async (dataConnect) => {
-          const dataConnectYaml = await readDataConnectYaml(
+          // Paths may be relative to the firebase.json file.
+          const absoluteLocation = asAbsolutePath(
             dataConnect.location,
+            _getConfigPath(),
+          );
+          const dataConnectYaml = await readDataConnectYaml(absoluteLocation);
+
+          const resolvedConnectors = await Promise.all(
+            dataConnectYaml.connectorDirs.map(async (connectorDir) => {
+              const connectorYaml = await readConnectorYaml(
+                // Paths may be relative to the dataconnect.yaml
+                asAbsolutePath(connectorDir, absoluteLocation),
+              );
+
+              return {
+                ...connectorYaml,
+                path: asAbsolutePath(connectorDir, absoluteLocation),
+              };
+            }),
           );
 
           return {
             ...dataConnectYaml,
-            path: dataConnect.location,
-            resolvedConnectors: {},
+            location: absoluteLocation,
+            resolvedConnectors,
           };
         },
       ),
