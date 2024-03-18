@@ -98,7 +98,7 @@ export async function linkGitHubRepository(
   if (existingConns.length === 0) {
     await ensureSecretManagerAdminGrant(projectId);
     existingConns.push(
-      await ensureFullyInstalledConnection(projectId, location, generateConnectionId(), oauthConn),
+      await createFullyInstalledConnection(projectId, location, generateConnectionId(), oauthConn),
     );
   }
 
@@ -107,7 +107,7 @@ export async function linkGitHubRepository(
   do {
     if (repoRemoteUri === ADD_CONN_CHOICE) {
       existingConns.push(
-        await ensureFullyInstalledConnection(
+        await createFullyInstalledConnection(
           projectId,
           location,
           generateConnectionId(),
@@ -140,7 +140,7 @@ export async function linkGitHubRepository(
  * Copies over Oauth creds from the sentinel Oauth connection to save the user from having to
  * reauthenticate with GitHub.
  */
-async function ensureFullyInstalledConnection(
+async function createFullyInstalledConnection(
   projectId: string,
   location: string,
   connectionId: string,
@@ -149,9 +149,20 @@ async function ensureFullyInstalledConnection(
   let conn = await createConnection(projectId, location, connectionId, {
     authorizerCredential: oauthConn.githubConfig?.authorizerCredential,
   });
+
   while (conn.installationState.stage !== "COMPLETE") {
-    conn = await promptAppInstall(conn);
+    utils.logBullet("Install the Cloud Build GitHub app to enable access to GitHub repositories");
+    const targetUri = conn.installationState.actionUri.replace("install_v2", "direct_install_v2");
+    utils.logBullet(targetUri);
+    await utils.openInBrowser(targetUri);
+    await promptOnce({
+      type: "input",
+      message:
+        "Press Enter once you have installed or configured the Cloud Build GitHub app to access your GitHub repo.",
+    });
+    conn = await gcb.getConnection(projectId, location, connectionId);
   }
+
   return conn;
 }
 
@@ -193,24 +204,26 @@ async function promptRepositoryUri(
     name: "remoteUri",
     message: "Which of the following repositories would you like to deploy?",
     source: (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
-      return new Promise((resolve) => resolve([
-        new inquirer.Separator(),
-        {
-          name: "Missing a repo? Select this option to configure your GitHub connection settings",
-          value: ADD_CONN_CHOICE,
-        },
-        new inquirer.Separator(),
-        ...fuzzy
-          .filter(input, repos, {
-            extract: (repo) => extractRepoSlugFromUri(repo.remoteUri) || "",
-          })
-          .map((result) => {
-            return {
-              name: extractRepoSlugFromUri(result.original.remoteUri) || "",
-              value: result.original.remoteUri,
-            };
-          }),
-      ]));
+      return new Promise((resolve) =>
+        resolve([
+          new inquirer.Separator(),
+          {
+            name: "Missing a repo? Select this option to configure your GitHub connection settings",
+            value: ADD_CONN_CHOICE,
+          },
+          new inquirer.Separator(),
+          ...fuzzy
+            .filter(input, repos, {
+              extract: (repo) => extractRepoSlugFromUri(repo.remoteUri) || "",
+            })
+            .map((result) => {
+              return {
+                name: extractRepoSlugFromUri(result.original.remoteUri) || "",
+                value: result.original.remoteUri,
+              };
+            }),
+        ]),
+      );
     },
   });
   return { remoteUri, connection: remoteUriToConnection[remoteUri] };
@@ -249,20 +262,6 @@ async function ensureSecretManagerAdminGrant(projectId: string): Promise<void> {
   }
   await rm.addServiceAccountToRoles(projectId, cbsaEmail, ["roles/secretmanager.admin"], true);
   utils.logSuccess("Successfully granted the required role to the Cloud Build Service Agent!");
-}
-
-async function promptAppInstall(conn: gcb.Connection): Promise<gcb.Connection> {
-  utils.logBullet("Install the Cloud Build GitHub app to enable access to GitHub repositories");
-  const targetUri = conn.installationState.actionUri.replace("install_v2", "direct_install_v2");
-  utils.logBullet(targetUri);
-  await utils.openInBrowser(targetUri);
-  await promptOnce({
-    type: "input",
-    message:
-      "Press Enter once you have installed or configured the Cloud Build GitHub app to access your GitHub repo.",
-  });
-  const { projectId, location, id } = parseConnectionName(conn.name)!;
-  return await gcb.getConnection(projectId, location, id);
 }
 
 /**
