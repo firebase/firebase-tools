@@ -100,6 +100,16 @@ export const cloudbuildOrigin = utils.envOverride(
   "https://cloudbuild.googleapis.com",
 );
 
+export const developerConnectOrigin = utils.envOverride(
+  "FIREBASE_DEVELOPERCONNECT_URL",
+  "https://developerconnect.googleapis.com",
+);
+
+export const developerConnectP4SAOrigin = utils.envOverride(
+  "FIREBASE_DEVELOPERCONNECT_P4SA_URL",
+  "gcp-sa-developerconnect.iam.gserviceaccount.com",
+);
+
 export const cloudschedulerOrigin = utils.envOverride(
   "FIREBASE_CLOUDSCHEDULER_URL",
   "https://cloudscheduler.googleapis.com",
