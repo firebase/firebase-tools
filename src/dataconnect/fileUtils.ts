@@ -2,12 +2,12 @@ import * as fs from "fs-extra";
 import * as path from "path";
 
 import { FirebaseError } from "../error";
-import { Options } from "../options";
 import { ConnectorYaml, DataConnectYaml, File } from "./types";
 import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
+import { Config } from "../config";
 
-export function readFirebaseJson(options: Options): { source: string; location: string }[] {
-  if (!options.config.has("dataconnect")) {
+export function readFirebaseJson(config: Config): { source: string; location: string }[] {
+  if (!config.has("dataconnect")) {
     return [];
   }
   const validator = (cfg: any) => {
@@ -21,7 +21,7 @@ export function readFirebaseJson(options: Options): { source: string; location: 
       location: cfg["location"],
     };
   };
-  const configs = options.config.get("dataconnect");
+  const configs = config.get("dataconnect");
   if (typeof configs === "object" && !Array.isArray(configs)) {
     return [validator(configs)];
   } else if (Array.isArray(configs)) {

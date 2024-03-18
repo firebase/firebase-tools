@@ -15,7 +15,7 @@ import { dataconnectOrigin } from "../../api";
 export default async function (context: any, options: Options): Promise<void> {
   const projectId = needProjectId(options);
   await ensure(projectId, new URL(dataconnectOrigin).hostname, "dataconnect");
-  const serviceCfgs = readFirebaseJson(options);
+  const serviceCfgs = readFirebaseJson(options.config);
   utils.logLabeledBullet("dataconnect", `Preparing to deploy`);
   context.dataconnect = await Promise.all(
     serviceCfgs.map((c) => load(projectId, c.location, c.source)),
