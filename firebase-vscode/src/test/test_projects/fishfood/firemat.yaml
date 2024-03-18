@@ -1,5 +1,9 @@
 specVersion: v1alpha
 schema:
   main:
+    source: ./dataconnect/schema
     connection:
       connectionString: postgresql://postgres:mypassword@localhost:5432/emulator?sslmode=disable
+operationSet:
+  crud:
+    source: ./dataconnect/operation
