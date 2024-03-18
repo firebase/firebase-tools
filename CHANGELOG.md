@@ -1,1 +1,2 @@
 - Fix hosting rewrite deployment bug for skipped functions (#6658).
+- Remove development-only files from Next.js deployments (#6731).

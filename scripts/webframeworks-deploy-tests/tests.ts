@@ -388,6 +388,23 @@ describe("webframeworks", function (this) {
       expect(unmatchedFiles, "matchedFiles").to.eql([]);
       expect(unmatchedExpectations, "unmatchedExpectations").to.eql([]);
     });
+
+    it("should not have development files to be deployed", async () => {
+      const distDir = ".next";
+
+      const UNEXPECTED_PATTERNS = [
+        `${distDir}\/cache\/.*-development`,
+        `${distDir}\/cache\/eslint`,
+      ].map((it) => new RegExp(it));
+
+      const files = await getFilesListFromDir(`${NEXT_OUTPUT_PATH}/functions/${distDir}`);
+
+      const filesContainingUnexpectedPatterns = UNEXPECTED_PATTERNS.filter((unexpectedPattern) =>
+        files.some((file) => file.match(unexpectedPattern)),
+      );
+
+      expect(filesContainingUnexpectedPatterns.length).to.eql(0);
+    });
   });
 
   describe("angular", () => {
