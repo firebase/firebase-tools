@@ -47,10 +47,10 @@ export type ExpandedFirebaseConfig = {
 
 /** The fully resolved `dataconnect.yaml` and its connectors */
 export type ResolvedDataConnectConfig = DeepReadOnly<
-  DataConnectYaml &
-    {
-      resolvedConnectors: (ConnectorYaml & { path: string })[];
-    }[]
+  (DataConnectYaml & {
+    path: string;
+    resolvedConnectors: (ConnectorYaml & { path: string })[];
+  })[]
 >;
 
 export interface WebviewToExtensionParamsMap {

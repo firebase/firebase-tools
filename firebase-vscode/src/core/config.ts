@@ -144,7 +144,7 @@ export async function _readDataConnectConfigs(
 
           return {
             ...dataConnectYaml,
-            location: absoluteLocation,
+            path: absoluteLocation,
             resolvedConnectors,
           };
         },
