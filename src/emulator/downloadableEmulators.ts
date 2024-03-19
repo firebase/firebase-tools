@@ -57,14 +57,14 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   dataconnect:
     process.platform === "darwin"
       ? {
-          version: "0.1.5",
+          version: "1.1.0",
           expectedSize: 17798656,
-          expectedChecksum: "a94cbba815f5960dab2a9ecdf98997fb",
+          expectedChecksum: "fabb246644ca66f4ba64e2ad8b806459",
         }
       : {
-          version: "0.1.5",
+          version: "1.1.0",
           expectedSize: 17727488,
-          expectedChecksum: "41b169aa4765fe2d5a5d85ddd8125956",
+          expectedChecksum: "9bc925f1c831b58c3d0eefbaa6a5ed05",
         },
 };
 
@@ -166,8 +166,8 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
       cacheDir: CACHE_DIR,
       remoteUrl:
         process.platform === "darwin"
-          ? `https://storage.googleapis.com/firemat-preview-drop/emulator/firemat-emulator-macos-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
-          : `https://storage.googleapis.com/firemat-preview-drop/emulator/firemat-emulator-linux-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
+          ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-macos-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
+          : `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
       expectedSize: EMULATOR_UPDATE_DETAILS.dataconnect.expectedSize,
       expectedChecksum: EMULATOR_UPDATE_DETAILS.dataconnect.expectedChecksum,
       skipChecksumAndSize: true, // TODO: reenable checksumAndSize before release.
