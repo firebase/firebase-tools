@@ -815,7 +815,8 @@ export async function startAll(
     const dataConnectAddr = legacyGetFirstAddr(Emulators.DATACONNECT);
     let configDir = options.config.get("dataconnect")?.source || "dataconnect";
     if (!path.isAbsolute(configDir)) {
-      configDir = path.resolve(path.join(options.cwd), configDir);
+      const cwd = options.cwd || process.cwd();
+      configDir = path.resolve(path.join(cwd), configDir);
     }
     const dataConnectEmulator = new DataConnectEmulator({
       host: dataConnectAddr.host,
