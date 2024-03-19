@@ -247,9 +247,9 @@ export type ExtensionsConfig = Record<string, string>;
 
 export type DataConnectConfig = {
   // The directory containing dataconnect.yaml for this service
-  source?: string;
+  source: string;
   // The location to deploy this service to (ie 'us-central1')
-  location?: string;
+  location: string;
 };
 
 export type FirebaseConfig = {
