@@ -18,7 +18,7 @@ export function registerHosting(broker: ExtensionBrokerImpl): Disposable {
   effect(async () => {
     if (currentProject.value) {
       pluginLogger.info("(Hosting) New project detected, fetching channels");
-      channels.value = await getChannels(firebaseConfig.peek());
+      channels.value = await getChannels(firebaseConfig.peek()?.config);
     }
   });
 
@@ -79,7 +79,7 @@ export function registerHosting(broker: ExtensionBrokerImpl): Disposable {
     });
 
     if (success) {
-      channels.value = await getChannels(firebaseConfig.value);
+      channels.value = await getChannels(firebaseConfig.value?.config);
     }
   });
 
@@ -92,13 +92,13 @@ export function registerHosting(broker: ExtensionBrokerImpl): Disposable {
     );
 
     const deployResponse = await deployToHosting(
-      firebaseConfig.value,
+      firebaseConfig.value?.config,
       deployTarget,
     );
 
     if (deployResponse.success) {
       pluginLogger.info("(Hosting) Refreshing channels");
-      channels.value = await getChannels(firebaseConfig.value);
+      channels.value = await getChannels(firebaseConfig.value?.config);
     }
 
     broker.send("notifyHostingDeploy", deployResponse);

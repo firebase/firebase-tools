@@ -1,9 +1,9 @@
 specVersion: v1alpha
+serviceId: us-east
+connectorDirs:
+  - ./connectors/a
 schema:
   main:
-    source: ./dataconnect/schema
+    source: ./schema
     connection:
       connectionString: postgresql://postgres:mypassword@localhost:5432/emulator?sslmode=disable
-operationSet:
-  crud:
-    source: ./dataconnect/operation

@@ -10,13 +10,13 @@ import { registerUser } from "./user";
 import { registerProject } from "./project";
 import { registerQuickstart } from "./quickstart";
 
-export function registerCore({
+export async function registerCore({
   broker,
   context,
 }: {
   broker: ExtensionBrokerImpl;
   context: ExtensionContext;
-}): [EmulatorsController, Disposable] {
+}): Promise<[EmulatorsController, vscode.Disposable]> {
   const settings = getSettings();
 
   if (settings.npmPath) {
@@ -44,7 +44,7 @@ export function registerCore({
   return [
     emulatorsController,
     Disposable.from(
-      registerConfig(broker),
+      await registerConfig(broker),
       emulatorsController,
       registerEnv(broker),
       registerUser(broker),

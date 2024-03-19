@@ -1,6 +1,7 @@
 {
   "dataconnect": {
-    "source": "api"
+    "source": "./dataconnect",
+    "location": "api"
   },
   "emulators": {
     "auth": {
