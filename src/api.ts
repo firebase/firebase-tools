@@ -187,6 +187,10 @@ export const dataconnectOrigin = utils.envOverride(
   "FIREBASE_DATACONNECT_URL",
   "https://firebasedataconnect.googleapis.com",
 );
+export const dataConnectLocalConnString = utils.envOverride(
+  "FIREBASE_DATACONNECT_POSTGRESQL_STRING",
+  "postgresql://user@localhost/database?sslmode=disable",
+);
 export const cloudSQLAdminOrigin = utils.envOverride(
   "CLOUD_SQL_URL",
   "https://sqladmin.googleapis.com",

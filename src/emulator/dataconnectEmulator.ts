@@ -1,3 +1,4 @@
+import { dataConnectLocalConnString } from "../api";
 import { Constants } from "./constants";
 import { getPID, start, stop } from "./downloadableEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
@@ -8,6 +9,7 @@ export interface DataConnectEmulatorArgs {
   host?: string;
   configDir?: string;
   auto_download?: boolean;
+  localConnectionString?: string;
 }
 
 export class DataConnectEmulator implements EmulatorInstance {
@@ -21,6 +23,7 @@ export class DataConnectEmulator implements EmulatorInstance {
       http_port: port,
       grpc_port: port + 1,
       config_dir: this.args.configDir,
+      local_connection_string: dataConnectLocalConnString,
     });
   }
 
