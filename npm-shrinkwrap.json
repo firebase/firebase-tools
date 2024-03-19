@@ -150,7 +150,7 @@
         "openapi-merge": "^1.0.23",
         "openapi-typescript": "^4.5.0",
         "prettier": "^3.2.4",
-        "proxy": "^1.0.2",
+        "proxy": "^2.1.1",
         "puppeteer": "^19.0.0",
         "sinon": "^9.2.3",
         "sinon-chai": "^3.6.0",
@@ -4761,9 +4761,9 @@
       }
     },
     "node_modules/args": {
-      "version": "5.0.1",
-      "resolved": "https://registry.npmjs.org/args/-/args-5.0.1.tgz",
-      "integrity": "sha512-1kqmFCFsPffavQFGt8OxJdIcETti99kySRUPMpOhaGjL6mRJn8HFU1OxKY5bMqfZKUwTQc1mZkAjmGYaVOHFtQ==",
+      "version": "5.0.3",
+      "resolved": "https://registry.npmjs.org/args/-/args-5.0.3.tgz",
+      "integrity": "sha512-h6k/zfFgusnv3i5TU08KQkVKuCPBtL/PWQbWkHUxvJrZ2nAyeaUupneemcrgn1xmqxPQsPIzwkUhOpoqPDRZuA==",
       "dev": true,
       "dependencies": {
         "camelcase": "5.0.0",
@@ -4787,7 +4787,7 @@
     "node_modules/args/node_modules/leven": {
       "version": "2.1.0",
       "resolved": "https://registry.npmjs.org/leven/-/leven-2.1.0.tgz",
-      "integrity": "sha1-wuep93IJTe6dNCAq6KzORoeHVYA=",
+      "integrity": "sha512-nvVPLpIHUxCUoRLrFqTgSxXJ614d8AgQoWl7zPe/2VadE8+1dpU3LBhowRuBAcuwruWtOdD8oYC9jDNJjXDPyA==",
       "dev": true,
       "engines": {
         "node": ">=0.10.0"
@@ -5455,9 +5455,9 @@
       "integrity": "sha1-/bC0OWLKe0BFanwrtI/hc9otISI="
     },
     "node_modules/basic-auth-parser": {
-      "version": "0.0.2",
-      "resolved": "https://registry.npmjs.org/basic-auth-parser/-/basic-auth-parser-0.0.2.tgz",
-      "integrity": "sha1-zp5xp38jwSee7NJlmypGJEwVbkE=",
+      "version": "0.0.2-1",
+      "resolved": "https://registry.npmjs.org/basic-auth-parser/-/basic-auth-parser-0.0.2-1.tgz",
+      "integrity": "sha512-GFj8iVxo9onSU6BnnQvVwqvxh60UcSHJEDnIk3z4B6iOjsKSmqe+ibW0Rsz7YO7IE1HG3D3tqCNIidP46SZVdQ==",
       "dev": true
     },
     "node_modules/basic-ftp": {
@@ -15055,17 +15055,17 @@
       }
     },
     "node_modules/proxy": {
-      "version": "1.0.2",
-      "resolved": "https://registry.npmjs.org/proxy/-/proxy-1.0.2.tgz",
-      "integrity": "sha512-KNac2ueWRpjbUh77OAFPZuNdfEqNynm9DD4xHT14CccGpW8wKZwEkN0yjlb7X9G9Z9F55N0Q+1z+WfgAhwYdzQ==",
+      "version": "2.1.1",
+      "resolved": "https://registry.npmjs.org/proxy/-/proxy-2.1.1.tgz",
+      "integrity": "sha512-nLgd7zdUAOpB3ZO/xCkU8gy74UER7P0aihU8DkUsDS5ZoFwVCX7u8dy+cv5tVK8UaB/yminU1GiLWE26TKPYpg==",
       "dev": true,
       "dependencies": {
-        "args": "5.0.1",
-        "basic-auth-parser": "0.0.2",
-        "debug": "^4.1.1"
+        "args": "^5.0.3",
+        "basic-auth-parser": "0.0.2-1",
+        "debug": "^4.3.4"
       },
-      "bin": {
-        "proxy": "bin/proxy.js"
+      "engines": {
+        "node": ">= 14"
       }
     },
     "node_modules/proxy-addr": {
@@ -15156,9 +15156,9 @@
       "integrity": "sha512-D+zkORCbA9f1tdWRK0RaCR3GPv50cMxcrz4X8k5LTSUD1Dkw47mKJEZQNunItRTkWwgtaUSo1RVFRIG9ZXiFYg=="
     },
     "node_modules/proxy/node_modules/debug": {
-      "version": "4.3.1",
-      "resolved": "https://registry.npmjs.org/debug/-/debug-4.3.1.tgz",
-      "integrity": "sha512-doEwdvm4PCeK4K3RQN2ZC2BYUBaxwLARCqZmMjtF8a51J2Rb0xpVloFRnCODwqjpwnAoao4pelN8l3RJdv3gRQ==",
+      "version": "4.3.4",
+      "resolved": "https://registry.npmjs.org/debug/-/debug-4.3.4.tgz",
+      "integrity": "sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ==",
       "dev": true,
       "dependencies": {
         "ms": "2.1.2"
@@ -22562,9 +22562,9 @@
       }
     },
     "args": {
-      "version": "5.0.1",
-      "resolved": "https://registry.npmjs.org/args/-/args-5.0.1.tgz",
-      "integrity": "sha512-1kqmFCFsPffavQFGt8OxJdIcETti99kySRUPMpOhaGjL6mRJn8HFU1OxKY5bMqfZKUwTQc1mZkAjmGYaVOHFtQ==",
+      "version": "5.0.3",
+      "resolved": "https://registry.npmjs.org/args/-/args-5.0.3.tgz",
+      "integrity": "sha512-h6k/zfFgusnv3i5TU08KQkVKuCPBtL/PWQbWkHUxvJrZ2nAyeaUupneemcrgn1xmqxPQsPIzwkUhOpoqPDRZuA==",
       "dev": true,
       "requires": {
         "camelcase": "5.0.0",
@@ -22582,7 +22582,7 @@
         "leven": {
           "version": "2.1.0",
           "resolved": "https://registry.npmjs.org/leven/-/leven-2.1.0.tgz",
-          "integrity": "sha1-wuep93IJTe6dNCAq6KzORoeHVYA=",
+          "integrity": "sha512-nvVPLpIHUxCUoRLrFqTgSxXJ614d8AgQoWl7zPe/2VadE8+1dpU3LBhowRuBAcuwruWtOdD8oYC9jDNJjXDPyA==",
           "dev": true
         }
       }
@@ -23048,9 +23048,9 @@
       "integrity": "sha1-/bC0OWLKe0BFanwrtI/hc9otISI="
     },
     "basic-auth-parser": {
-      "version": "0.0.2",
-      "resolved": "https://registry.npmjs.org/basic-auth-parser/-/basic-auth-parser-0.0.2.tgz",
-      "integrity": "sha1-zp5xp38jwSee7NJlmypGJEwVbkE=",
+      "version": "0.0.2-1",
+      "resolved": "https://registry.npmjs.org/basic-auth-parser/-/basic-auth-parser-0.0.2-1.tgz",
+      "integrity": "sha512-GFj8iVxo9onSU6BnnQvVwqvxh60UcSHJEDnIk3z4B6iOjsKSmqe+ibW0Rsz7YO7IE1HG3D3tqCNIidP46SZVdQ==",
       "dev": true
     },
     "basic-ftp": {
@@ -30226,20 +30226,20 @@
       }
     },
     "proxy": {
-      "version": "1.0.2",
-      "resolved": "https://registry.npmjs.org/proxy/-/proxy-1.0.2.tgz",
-      "integrity": "sha512-KNac2ueWRpjbUh77OAFPZuNdfEqNynm9DD4xHT14CccGpW8wKZwEkN0yjlb7X9G9Z9F55N0Q+1z+WfgAhwYdzQ==",
+      "version": "2.1.1",
+      "resolved": "https://registry.npmjs.org/proxy/-/proxy-2.1.1.tgz",
+      "integrity": "sha512-nLgd7zdUAOpB3ZO/xCkU8gy74UER7P0aihU8DkUsDS5ZoFwVCX7u8dy+cv5tVK8UaB/yminU1GiLWE26TKPYpg==",
       "dev": true,
       "requires": {
-        "args": "5.0.1",
-        "basic-auth-parser": "0.0.2",
-        "debug": "^4.1.1"
+        "args": "^5.0.3",
+        "basic-auth-parser": "0.0.2-1",
+        "debug": "^4.3.4"
       },
       "dependencies": {
         "debug": {
-          "version": "4.3.1",
-          "resolved": "https://registry.npmjs.org/debug/-/debug-4.3.1.tgz",
-          "integrity": "sha512-doEwdvm4PCeK4K3RQN2ZC2BYUBaxwLARCqZmMjtF8a51J2Rb0xpVloFRnCODwqjpwnAoao4pelN8l3RJdv3gRQ==",
+          "version": "4.3.4",
+          "resolved": "https://registry.npmjs.org/debug/-/debug-4.3.4.tgz",
+          "integrity": "sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ==",
           "dev": true,
           "requires": {
             "ms": "2.1.2"
