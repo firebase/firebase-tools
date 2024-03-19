@@ -55,6 +55,7 @@ import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
 import { HostingEmulator } from "./hostingEmulator";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { StorageEmulator } from "./storage";
+import { log } from "console";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
@@ -815,7 +816,8 @@ export async function startAll(
     const dataConnectAddr = legacyGetFirstAddr(Emulators.DATACONNECT);
     let configDir = options.config.get("dataconnect")?.source || "dataconnect";
     if (!path.isAbsolute(configDir)) {
-      configDir = path.resolve(path.join(options.cwd), configDir);
+      let cwd = options.cwd || process.cwd();
+      configDir = path.resolve(path.join(cwd), configDir);
     }
     const dataConnectEmulator = new DataConnectEmulator({
       host: dataConnectAddr.host,
