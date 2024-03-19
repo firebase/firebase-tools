@@ -6,7 +6,7 @@ import { Disposable } from "vscode";
 import { Signal } from "@preact/signals-core";
 import { dataConnectConfig } from "../core/config";
 import path from "path";
-import { selectedInstance } from "./connect-instance";
+import { localInstance, selectedInstance } from "./connect-instance";
 import { EmulatorsController } from "../core/emulators";
 
 abstract class ComputedCodeLensProvider implements vscode.CodeLensProvider {
@@ -92,19 +92,23 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
         };
         const opKind = x.operation as string; // query or mutation
 
-        const isInConnector = configs
-          .flatMap((e) => Object.keys(e.resolvedConnectors))
-          .some((path) => isPathInside(document.fileName, path));
+        const enclosingConnector = configs
+          .flatMap((e) => e.resolvedConnectors)
+          .find((connector) => isPathInside(document.fileName, connector.path));
 
         const isInDataConnect = configs.some((config) =>
           isPathInside(document.fileName, config.path),
         );
         const instance = this.watch(selectedInstance);
 
-        if (instance && (isInConnector || isInDataConnect)) {
+        if (instance && (enclosingConnector || isInDataConnect)) {
+          const label =
+            enclosingConnector && instance !== localInstance
+              ? `${instance} | ${enclosingConnector.connectorId}`
+              : instance;
           codeLenses.push(
             new vscode.CodeLens(range, {
-              title: `$(play) Run (${instance})`,
+              title: `$(play) Run (${label})`,
               command: "firebase.dataConnect.executeOperation",
               tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
               arguments: [x, operationLocation],
@@ -112,7 +116,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
           );
         }
 
-        if (isInDataConnect && !isInConnector) {
+        if (isInDataConnect && !enclosingConnector) {
           codeLenses.push(
             new vscode.CodeLens(range, {
               title: `$(plug) Move to connector`,
