@@ -12,7 +12,7 @@ export async function provisionCloudSql(
   try {
     const existingInstance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
     silent || utils.logLabeledBullet("dataconnect", `Found existing instance ${instanceId}.`);
-    connectionName = existingInstance.connectionName!;
+    connectionName = existingInstance?.connectionName || "";
   } catch (err) {
     silent ||
       utils.logLabeledBullet(
@@ -21,7 +21,8 @@ export async function provisionCloudSql(
       );
     const newInstance = await cloudSqlAdminClient.createInstance(projectId, locationId, instanceId);
     silent || utils.logLabeledBullet("dataconnect", "Instance created");
-    connectionName = newInstance.connectionName!;
+    // TODO: Why is connectionName not populated
+    connectionName = newInstance?.connectionName || "";
   }
   try {
     await cloudSqlAdminClient.getDatabase(projectId, instanceId, databaseId);

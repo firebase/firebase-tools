@@ -163,7 +163,6 @@ export async function createInstance(
     doneFn: (op: Operation) => op.status === "DONE",
     masterTimeout: 1_200_000, // This operation frequently takes 5+ minutes
   });
-
   return pollRes;
 }
 
