@@ -86,6 +86,6 @@ dataConnectTest("Can pick an instance", async function () {
   statusBar.currentInstanceElement.waitUntil(
     async () =>
       (await editor.firstCodeLense.getText()) ===
-      "Run (production) |  Move to connector",
+      "Run (production | a) |  Move to connector",
   );
 });

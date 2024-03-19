@@ -66,10 +66,6 @@ export function registerConnectors(
       return;
     }
     const opKind = def.operation as string; // query or mutation
-    let connectorPath =
-      dataConnectConfig.value.operationSet[
-        Object.keys(dataConnectConfig.value.operationSet)[0]
-      ]!.source;
 
     let opName = def.name?.value;
     if (!opName || (await validateOpName(opName)) !== null) {
@@ -167,7 +163,13 @@ export function registerConnectors(
     }
 
     function getFilePath(opName: string) {
-      return vscode.Uri.file(path.join(connectorPath, `${opName}.gql`));
+      // TODO show one "move to connector" per connector instead
+      // of moving only to the first connector
+      const connectorPaths = dataConnectConfig.value.flatMap((config) =>
+        Object.keys(config.resolvedConnectors),
+      );
+
+      return vscode.Uri.file(path.join(connectorPaths[0]!, `${opName}.gql`));
     }
   }
 
