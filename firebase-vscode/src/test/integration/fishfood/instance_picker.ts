@@ -65,9 +65,7 @@ dataConnectTest("Can pick an instance", async function () {
 
   // Verify that the code-lenses reflect the selected instance
   await editor.firstCodeLense.waitForDisplayed();
-  expect(await editor.firstCodeLense.getText()).toBe(
-    "Run (local) |  Move to connector",
-  );
+  expect(await editor.firstCodeLense.getText()).toBe("Run (local)");
 
   await statusBar.currentInstanceElement.click();
 
@@ -85,7 +83,6 @@ dataConnectTest("Can pick an instance", async function () {
   );
   statusBar.currentInstanceElement.waitUntil(
     async () =>
-      (await editor.firstCodeLense.getText()) ===
-      "Run (production | a) |  Move to connector",
+      (await editor.firstCodeLense.getText()) === "Run (production | a)",
   );
 });

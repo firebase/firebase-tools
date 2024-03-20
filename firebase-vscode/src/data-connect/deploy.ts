@@ -1,9 +1,8 @@
 import * as vscode from "vscode";
 import { firstWhere } from "../utils/signal";
-import { VsCodeOptions, currentOptions } from "../options";
+import { currentOptions } from "../options";
 import { deploy as cliDeploy } from "../../../src/deploy";
-import { getConnectorIds, serviceIds } from "./utils";
-import { firebaseConfig } from "../core/config";
+import { getConnectorIds, serviceIds } from "./config";
 export function registerFdcDeploy(): vscode.Disposable {
   // A command used by e2e tests to replace the `deploy` function with a mock.
   // It is not part of the public API.
@@ -36,7 +35,7 @@ export function registerFdcDeploy(): vscode.Disposable {
         serviceConnectorMap[service] = await pickConnectors(service);
       }
 
-      // TODO: create options with --only
+      // TODO: create --only strings like service:connector:connector when CLI flag is available
       for (const service of pickedServices) {
         deploy.value(["dataconnect"], currentOptions.valueOf(), service);
       }
