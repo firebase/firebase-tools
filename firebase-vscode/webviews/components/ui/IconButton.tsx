@@ -7,6 +7,7 @@ type TextProps<T> = PropsWithChildren<
     HTMLAttributes<HTMLElement> & {
       icon: IconName;
       tooltip: string;
+      disabled: boolean;
     }
 >;
 
