@@ -13,9 +13,10 @@ import { getSettings } from "./utils/settings";
 import { registerHosting } from "./hosting";
 import { registerFdc } from "./data-connect";
 import { AuthService } from "./auth/service";
+import { setupFirebaseJsonAndRcFileSystemWatcher } from "./config-files";
 
 // This method is called when your extension is activated
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
   const settings = getSettings();
   logSetup(settings);
   pluginLogger.debug("Activating Firebase extension.");
@@ -28,10 +29,12 @@ export function activate(context: vscode.ExtensionContext) {
 
   const authService = new AuthService(broker);
 
-  const [emulatorsController, coreDisposable] = registerCore({
+  const [emulatorsController, coreDisposable] = await registerCore({
     broker,
     context,
   });
+
+  setupFirebaseJsonAndRcFileSystemWatcher(broker, context);
 
   context.subscriptions.push(
     coreDisposable,

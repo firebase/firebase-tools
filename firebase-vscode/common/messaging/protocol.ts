@@ -3,19 +3,21 @@
  * between two environments (VScode and Webview)
  */
 
-import { FirebaseConfig } from "../../../src/firebaseConfig";
+import { DataConnectConfig, FirebaseConfig } from "../../../src/firebaseConfig";
 import { User } from "../../../src/types/auth";
 import { ServiceAccountUser } from "../types";
 import { RCData } from "../../../src/rc";
 import { EmulatorUiSelections, RunningEmulatorInfo } from "./types";
 import { ExecutionResult } from "graphql";
 import { SerializedError } from "../error";
+import { ConnectorYaml, DataConnectYaml } from "../dataconnect/types";
+import { Config } from "../config";
 
 export const DEFAULT_EMULATOR_UI_SELECTIONS: EmulatorUiSelections = {
   projectId: "demo-something",
   importStateFolderPath: "",
   exportStateOnExit: false,
-  mode: 'dataconnect',
+  mode: "dataconnect",
   debugLogging: false,
 };
 
@@ -38,24 +40,18 @@ type DeepReadOnly<T> =
       ? ReadonlyArray<DeepReadOnly<T[number]>>
       : T;
 
-/** The `firemat.yaml` content */
-export type DataConnectConfig = DeepReadOnly<{
-  specVersion: string;
-  schema: {
-    main: {
-      source: string;
-      connection: {
-        connectionString?: string;
-      };
-    };
-  };
-  operationSet: {
-    [key: string]: {
-      source: string;
-    };
-  };
-  adhoc: string; // TODO: Temporary until official data connect yaml
-}>;
+export type ExpandedFirebaseConfig = {
+  config: Config;
+  dataConnect?: DataConnectConfig[];
+};
+
+/** The fully resolved `dataconnect.yaml` and its connectors */
+export type ResolvedDataConnectConfigs = DeepReadOnly<
+  (DataConnectYaml & {
+    path: string;
+    resolvedConnectors: (ConnectorYaml & { path: string })[];
+  })[]
+>;
 
 export interface WebviewToExtensionParamsMap {
   /**

@@ -4,9 +4,9 @@ import { OperationLocation } from "./types";
 import { Disposable } from "vscode";
 
 import { Signal } from "@preact/signals-core";
-import { dataConnectConfig } from "../core/config";
-import path from "path";
-import { selectedInstance } from "./connect-instance";
+import { isPathInside } from "./file-utils";
+import { dataConnectConfigs, getEnclosingService } from "./config";
+import { LOCAL_INSTANCE, selectedInstance } from "./connect-instance";
 import { EmulatorsController } from "../core/emulators";
 
 abstract class ComputedCodeLensProvider implements vscode.CodeLensProvider {
@@ -50,11 +50,6 @@ abstract class ComputedCodeLensProvider implements vscode.CodeLensProvider {
   ): vscode.CodeLens[];
 }
 
-function isPathInside(childPath: string, parentPath: string): boolean {
-  const relative = path.relative(parentPath, childPath);
-  return !relative.startsWith("..") && !path.isAbsolute(relative);
-}
-
 /**
  * CodeLensProvider provides codelens for actions in graphql files.
  */
@@ -68,7 +63,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
     token: vscode.CancellationToken,
   ): vscode.CodeLens[] {
     // Wait for configs to be loaded and emulator to be running
-    const configs = this.watch(dataConnectConfig);
+    const configs = this.watch(dataConnectConfigs);
     if (!configs) {
       return [];
     }
@@ -92,19 +87,24 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
         };
         const opKind = x.operation as string; // query or mutation
 
-        const connectorPaths = Object.keys(configs.operationSet).map(
-          (key) => configs.operationSet[key]!.source,
+        const enclosingService = getEnclosingService(
+          document.fileName,
+          configs,
         );
-        const isInOperationFolder = connectorPaths.some((path) =>
-          isPathInside(document.fileName, path),
+
+        const isInDataConnect = configs.some((config) =>
+          isPathInside(document.fileName, config.path),
         );
-        const isInAdhocFolder = isPathInside(document.fileName, configs.adhoc);
         const instance = this.watch(selectedInstance);
 
-        if (instance && (isInOperationFolder || isInAdhocFolder)) {
+        if (instance && (enclosingService || isInDataConnect)) {
+          const label =
+            enclosingService && instance !== LOCAL_INSTANCE
+              ? `${instance} | ${enclosingService.serviceId}`
+              : instance;
           codeLenses.push(
             new vscode.CodeLens(range, {
-              title: `$(play) Run (${instance})`,
+              title: `$(play) Run (${label})`,
               command: "firebase.dataConnect.executeOperation",
               tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
               arguments: [x, operationLocation],
@@ -112,7 +112,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
           );
         }
 
-        if (isInAdhocFolder && !isInOperationFolder) {
+        if (isInDataConnect && !enclosingService) {
           codeLenses.push(
             new vscode.CodeLens(range, {
               title: `$(plug) Move to connector`,

@@ -49,7 +49,7 @@ export class FirebaseSidebar {
   async runInFirebaseViewContext<R>(
     cb: (firebase: FirebaseView) => Promise<R>,
   ): Promise<R> {
-    const [a, b] = await findWebviewWithTitle("Firebase");
+    const [a, b] = await findWebviewWithTitle("Config");
 
     return runInFrame(a, () =>
       runInFrame(b, () => cb(new FirebaseView(this.workbench))),

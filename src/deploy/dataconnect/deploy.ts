@@ -2,6 +2,7 @@ import { Options } from "../../options";
 import * as client from "../../dataconnect/client";
 import * as utils from "../../utils";
 import { Service, ServiceInfo } from "../../dataconnect/types";
+import { FirebaseError } from "../../error";
 
 /**
  * Checks for and creates a Firebase DataConnect service, if needed.
@@ -14,8 +15,7 @@ export default async function (
   options: Options,
 ): Promise<void> {
   if (!options.projectId) {
-    utils.logLabeledError("dataconnect", "No project specifed.");
-    return;
+    throw new FirebaseError("No project specified.");
   }
   const services = await client.listAllServices(options.projectId);
   const servicesToCreate = context.dataconnect.filter(
