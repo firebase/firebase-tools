@@ -281,6 +281,10 @@
                     "type": "string"
                 }
             },
+            "required": [
+                "location",
+                "source"
+            ],
             "type": "object"
         },
         "emulators": {
