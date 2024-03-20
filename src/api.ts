@@ -189,7 +189,7 @@ export const dataconnectOrigin = utils.envOverride(
 );
 export const dataConnectLocalConnString = utils.envOverride(
   "FIREBASE_DATACONNECT_POSTGRESQL_STRING",
-  "postgresql://user@localhost/database?sslmode=disable",
+  "",
 );
 export const cloudSQLAdminOrigin = utils.envOverride(
   "CLOUD_SQL_URL",
