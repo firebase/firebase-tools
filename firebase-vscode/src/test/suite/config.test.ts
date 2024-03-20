@@ -10,7 +10,7 @@ import {
   _readRC,
   firebaseConfig,
   firebaseRC,
-  dataConnectConfig,
+  dataConnectConfigs,
   getRootFolders,
   registerConfig,
 } from "../../core/config";
@@ -113,7 +113,7 @@ dataConnectSuite("_getConfigPath", () => {
 
   dataConnectTest(
     'Iterates over getRootFolders, and if a ".firebaserc" ' +
-      'or "firebase.json" is found, returns its path',
+    'or "firebase.json" is found, returns its path',
     () => {
       const a = createTemporaryDirectory({ debugLabel: "a" });
       const b = createTemporaryDirectory({ debugLabel: "b" });
@@ -476,8 +476,8 @@ dataConnectSuite("registerConfig", () => {
         // Override "createFileSystemWatcher" to spy on the watchers.
         createFileSystemWatcher: () => {
           const watcher = createFake<vscode.FileSystemWatcher>({
-            onDidCreate: () => ({ dispose: () => {} }),
-            onDidChange: () => ({ dispose: () => {} }),
+            onDidCreate: () => ({ dispose: () => { } }),
+            onDidChange: () => ({ dispose: () => { } }),
             dispose: () => {
               const index = pendingWatchers.indexOf(watcher);
               pendingWatchers.splice(index, 1);
@@ -528,7 +528,7 @@ dataConnectSuite("registerConfig", () => {
         const listeners = (watcherListeners[pattern] ??= {});
         assert.equal(watcherListeners[pattern]?.create, undefined);
         listeners[type] = cb;
-        return { dispose: () => {} };
+        return { dispose: () => { } };
       }
 
       const dir = createTemporaryDirectory();
@@ -545,7 +545,7 @@ dataConnectSuite("registerConfig", () => {
               onDidCreate: (cb) => addFSListener(file, "create", cb),
               onDidChange: (cb) => addFSListener(file, "update", cb),
               onDidDelete: (cb) => addFSListener(file, "delete", cb),
-              dispose: () => {},
+              dispose: () => { },
             });
           },
         }),
@@ -613,7 +613,7 @@ dataConnectSuite("registerConfig", () => {
         fs.writeFileSync(dataConnectFile, `specVersion: ${event}`);
         dataConnectListeners[event]!(vscode.Uri.file(dataConnectFile));
 
-        assert.deepEqual(dataConnectConfig.value, [{}]);
+        assert.deepEqual(dataConnectConfigs.value, [{}]);
       }
 
       testRcEvent("create", 0);

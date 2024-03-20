@@ -21,7 +21,7 @@ import { OperationDefinitionNode, OperationTypeNode, print } from "graphql";
 import { DataConnectService } from "./service";
 import { DataConnectError, toSerializedError } from "../../common/error";
 import { OperationLocation } from "./types";
-import { localInstance, selectedInstance } from "./connect-instance";
+import { LOCAL_INSTANCE, selectedInstance } from "./connect-instance";
 import { EmulatorsController } from "../core/emulators";
 
 export function registerExecution(
@@ -78,7 +78,7 @@ export function registerExecution(
     const targetedInstance = selectedInstance.value;
 
     if (
-      targetedInstance === localInstance &&
+      targetedInstance === LOCAL_INSTANCE &&
       !emulatorsController.areEmulatorsRunning.value
     ) {
       const always = "Yes (always)";
@@ -103,7 +103,7 @@ export function registerExecution(
 
     // Warn against using mutations in production.
     if (
-      targetedInstance !== localInstance &&
+      targetedInstance !== LOCAL_INSTANCE &&
       !configs.get(alwaysExecuteMutationsInProduction) &&
       ast.operation === OperationTypeNode.MUTATION
     ) {
@@ -158,6 +158,7 @@ export function registerExecution(
         // and the document that is sent to the emulator.
         query: document,
         variables: executionArgsJSON.value,
+        path: documentPath,
       });
 
       updateAndSelect({
@@ -181,7 +182,10 @@ export function registerExecution(
     }
   }
 
-  broker.on("definedDataConnectArgs", (value) => (executionArgsJSON.value = value));
+  broker.on(
+    "definedDataConnectArgs",
+    (value) => (executionArgsJSON.value = value),
+  );
 
   return Disposable.from(
     registerWebview({

@@ -12,7 +12,12 @@ import { UserMockKind } from "../../common/messaging/protocol";
 import { firstWhereDefined } from "../utils/signal";
 import { EmulatorsController } from "../core/emulators";
 import { Emulators } from "../cli";
+import { getEnclosingService, serviceIds } from "./config";
+import { dataConnectConfigs } from "../core/config";
+import { PRODUCTION_INSTANCE, selectedInstance } from "./connect-instance";
 
+// TODO: THIS SHOULDN'T BE HERE
+const STAGING_API = "staging-firebasedataconnect.sandbox.googleapis.com";
 /**
  * DataConnect Emulator service
  */
@@ -23,6 +28,9 @@ export class DataConnectService {
   ) {}
 
   readonly endpoint = computed<string | undefined>(() => {
+    if (selectedInstance.valueOf() === PRODUCTION_INSTANCE) {
+      return STAGING_API;
+    }
     const emulatorInfos =
       this.emulatorsController.emulators.value.infos?.displayInfo;
     const dataConnectEmulator = emulatorInfos?.find(
@@ -33,7 +41,9 @@ export class DataConnectService {
       return undefined;
     }
 
-    return "http://" + dataConnectEmulator.host + ":" + dataConnectEmulator.port;
+    return (
+      "http://" + dataConnectEmulator.host + ":" + dataConnectEmulator.port
+    );
   });
 
   private async decodeResponse(
@@ -147,16 +157,18 @@ export class DataConnectService {
     operationName: string;
     variables: string;
   }) {
+    // TODO: get introspections for all services
+    const serviceId = serviceIds.valueOf()[0];
     try {
       // TODO: get name programmatically
       const body = this._serializeBody({
         ...params,
-        name: "projects/p/locations/l/services/local",
+        name: `projects/p/locations/l/services/${serviceId}`,
         extensions: this._auth(),
       });
       const resp = await fetch(
         (await firstWhereDefined(this.endpoint)) +
-          "/v1/projects/p/locations/l/services/local:executeGraphqlRead",
+          `/v1/projects/p/locations/l/services/${serviceId}:executeGraphqlRead`,
         {
           method: "POST",
           headers: {
@@ -180,16 +192,25 @@ export class DataConnectService {
     query: string;
     operationName?: string;
     variables: string;
+    path: string;
   }) {
+    const configs = await firstWhereDefined(dataConnectConfigs);
+    if (!configs) {
+      // TODO: better error handling, should probably be in config.ts
+      throw new Error("Could not find config");
+    }
+
+    const service = getEnclosingService(params.path, configs);
+
     // TODO: get name programmatically
     const body = this._serializeBody({
       ...params,
-      name: "projects/p/locations/l/services/local",
+      name: `projects/p/locations/l/services/${service.serviceId}`,
       extensions: this._auth(),
     });
     const resp = await fetch(
       (await firstWhereDefined(this.endpoint)) +
-        "/v1/projects/p/locations/l/services/local:executeGraphql",
+        `/v1/projects/p/locations/l/services/${service.serviceId}:executeGraphql`,
       {
         method: "POST",
         headers: {
