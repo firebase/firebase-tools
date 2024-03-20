@@ -120,7 +120,7 @@ export async function createConnection(
   projectId: string,
   location: string,
   connectionId: string,
-  githubConfig: GitHubConfig,
+  githubConfig: GitHubConfig = {},
 ): Promise<Operation> {
   const config: GitHubConfig = {
     ...githubConfig,
