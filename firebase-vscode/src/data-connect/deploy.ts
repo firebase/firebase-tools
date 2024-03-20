@@ -37,7 +37,9 @@ export function registerFdcDeploy(): vscode.Disposable {
 
       // TODO: create --only strings like service:connector:connector when CLI flag is available
       for (const service of pickedServices) {
-        deploy.value(["dataconnect"], currentOptions.valueOf(), service);
+        deploy.value(["dataconnect"], currentOptions.valueOf(), {
+          context: service,
+        });
       }
     },
   );
