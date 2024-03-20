@@ -1,7 +1,7 @@
 import vscode, { Disposable, ExtensionContext } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { ObjectTypeDefinitionNode } from "graphql";
-import { checkIfFileExists } from "./utils";
+import { checkIfFileExists } from "./file-utils";
 
 export function registerAdHoc(
   context: ExtensionContext,
@@ -65,7 +65,8 @@ export function registerAdHoc(
   }
 
   function generateMutation(ast: ObjectTypeDefinitionNode): string {
-    const name = ast.name.value.charAt(0).toLowerCase() + ast.name.value.slice(1);
+    const name =
+      ast.name.value.charAt(0).toLowerCase() + ast.name.value.slice(1);
     const functionSpacing = "\t";
     const fieldSpacing = "\t\t";
     const mutation = [];

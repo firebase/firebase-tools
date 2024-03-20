@@ -85,15 +85,15 @@ export async function registerConfig(
   const dataConnectWatcher = _createWatcher("firemat.yaml");
   dataConnectWatcher?.onDidChange(
     async () =>
-    (dataConnectConfigs.value = await _readDataConnectConfigs(
-      firebaseConfig.value!,
-    )),
+      (dataConnectConfigs.value = await _readDataConnectConfigs(
+        firebaseConfig.value!,
+      )),
   );
   dataConnectWatcher?.onDidCreate(
     async () =>
-    (dataConnectConfigs.value = await _readDataConnectConfigs(
-      firebaseConfig.value!,
-    )),
+      (dataConnectConfigs.value = await _readDataConnectConfigs(
+        firebaseConfig.value!,
+      )),
   );
 
   return {

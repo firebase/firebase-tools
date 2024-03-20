@@ -97,7 +97,9 @@ export function registerFirebaseDataConnectView(
     { dispose: initializeSelectedInstance() },
     {
       dispose: broker.on("connectToInstance", async () => {
-        vscode.commands.executeCommand("firebase.dataConnect.connectToInstance");
+        vscode.commands.executeCommand(
+          "firebase.dataConnect.connectToInstance",
+        );
       }),
     },
 

@@ -4,8 +4,8 @@ import { OperationLocation } from "./types";
 import { Disposable } from "vscode";
 
 import { Signal } from "@preact/signals-core";
-import { dataConnectConfigs } from "../core/config";
-import { isPathInside, getEnclosingService } from "./utils";
+import { isPathInside } from "./file-utils";
+import { dataConnectConfigs, getEnclosingService } from "./config";
 import { LOCAL_INSTANCE, selectedInstance } from "./connect-instance";
 import { EmulatorsController } from "../core/emulators";
 
@@ -87,7 +87,10 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
         };
         const opKind = x.operation as string; // query or mutation
 
-        const enclosingService = getEnclosingService(document.fileName, configs);
+        const enclosingService = getEnclosingService(
+          document.fileName,
+          configs,
+        );
 
         const isInDataConnect = configs.some((config) =>
           isPathInside(document.fileName, config.path),

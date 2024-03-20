@@ -12,11 +12,9 @@ import { UserMockKind } from "../../common/messaging/protocol";
 import { firstWhereDefined } from "../utils/signal";
 import { EmulatorsController } from "../core/emulators";
 import { Emulators } from "../cli";
-import { getEnclosingService, serviceIds } from "./utils";
+import { getEnclosingService, serviceIds } from "./config";
 import { dataConnectConfigs } from "../core/config";
 import { PRODUCTION_INSTANCE, selectedInstance } from "./connect-instance";
-import { configs } from "triple-beam";
-
 
 // TODO: THIS SHOULDN'T BE HERE
 const STAGING_API = "staging-firebasedataconnect.sandbox.googleapis.com";
@@ -27,11 +25,11 @@ export class DataConnectService {
   constructor(
     private authService: AuthService,
     private emulatorsController: EmulatorsController,
-  ) { }
+  ) {}
 
   readonly endpoint = computed<string | undefined>(() => {
     if (selectedInstance.valueOf() === PRODUCTION_INSTANCE) {
-      return STAGING_API
+      return STAGING_API;
     }
     const emulatorInfos =
       this.emulatorsController.emulators.value.infos?.displayInfo;
@@ -43,7 +41,9 @@ export class DataConnectService {
       return undefined;
     }
 
-    return "http://" + dataConnectEmulator.host + ":" + dataConnectEmulator.port;
+    return (
+      "http://" + dataConnectEmulator.host + ":" + dataConnectEmulator.port
+    );
   });
 
   private async decodeResponse(
@@ -98,7 +98,7 @@ export class DataConnectService {
    *
    * If the JSON is invalid, will throw.
    */
-  private _serializeBody(body: { variables?: string;[key: string]: unknown }) {
+  private _serializeBody(body: { variables?: string; [key: string]: unknown }) {
     if (!body.variables) {
       return JSON.stringify(body);
     }
@@ -168,7 +168,7 @@ export class DataConnectService {
       });
       const resp = await fetch(
         (await firstWhereDefined(this.endpoint)) +
-        `/v1/projects/p/locations/l/services/${serviceId}:executeGraphqlRead`,
+          `/v1/projects/p/locations/l/services/${serviceId}:executeGraphqlRead`,
         {
           method: "POST",
           headers: {
@@ -194,7 +194,7 @@ export class DataConnectService {
     variables: string;
     path: string;
   }) {
-    const configs = dataConnectConfigs.valueOf();
+    const configs = await firstWhereDefined(dataConnectConfigs);
     if (!configs) {
       // TODO: better error handling, should probably be in config.ts
       throw new Error("Could not find config");
@@ -210,7 +210,7 @@ export class DataConnectService {
     });
     const resp = await fetch(
       (await firstWhereDefined(this.endpoint)) +
-      `/v1/projects/p/locations/l/services/${service.serviceId}:executeGraphql`,
+        `/v1/projects/p/locations/l/services/${service.serviceId}:executeGraphql`,
       {
         method: "POST",
         headers: {

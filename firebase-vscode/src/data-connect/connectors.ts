@@ -36,8 +36,8 @@ import {
 import { camelCase } from "lodash";
 import { DataConnectService } from "./service";
 import { OperationLocation } from "./types";
-import { checkIfFileExists } from "./utils";
-import { dataConnectConfigs } from "../core/config";
+import { checkIfFileExists } from "./file-utils";
+import { dataConnectConfigs } from "./config";
 import * as path from "path";
 
 export function registerConnectors(

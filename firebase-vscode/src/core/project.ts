@@ -155,7 +155,7 @@ export function registerProject({
  */
 export async function _promptUserForProject(
   projects: Thenable<FirebaseProjectMetadata[]>,
-  token?: vscode.CancellationToken
+  token?: vscode.CancellationToken,
 ): Promise<string | undefined> {
   const items = projects.then((projects) => {
     return projects.map((p) => ({

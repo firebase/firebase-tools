@@ -85,7 +85,7 @@ export function registerExecution(
       const yes = "Yes";
       const result = await vscode.window.showWarningMessage(
         "Trying to execute an operation on the emulator, but it isn't started yet. " +
-        "Do you wish to start it?",
+          "Do you wish to start it?",
         { modal: true },
         yes,
         always,
@@ -182,7 +182,10 @@ export function registerExecution(
     }
   }
 
-  broker.on("definedDataConnectArgs", (value) => (executionArgsJSON.value = value));
+  broker.on(
+    "definedDataConnectArgs",
+    (value) => (executionArgsJSON.value = value),
+  );
 
   return Disposable.from(
     registerWebview({
