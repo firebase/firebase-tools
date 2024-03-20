@@ -16,15 +16,15 @@ import { globalSignal } from "../utils/globals";
 import { workspace } from "../utils/test_hooks";
 import {
   ExpandedFirebaseConfig,
-  ResolvedDataConnectConfig,
+  ResolvedDataConnectConfigs,
 } from "../../common/messaging/protocol";
 
 export const firebaseRC = globalSignal<RC | undefined>(undefined);
 export const firebaseConfig = globalSignal<ExpandedFirebaseConfig | undefined>(
   undefined,
 );
-export const dataConnectConfig = globalSignal<
-  ResolvedDataConnectConfig | undefined
+export const dataConnectConfigs = globalSignal<
+  ResolvedDataConnectConfigs | undefined
 >(undefined);
 
 export async function registerConfig(
@@ -32,7 +32,7 @@ export async function registerConfig(
 ): Promise<Disposable> {
   firebaseRC.value = _readRC();
   const initialConfig = (firebaseConfig.value = _readFirebaseConfig());
-  dataConnectConfig.value = await _readDataConnectConfigs(initialConfig);
+  dataConnectConfigs.value = await _readDataConnectConfigs(initialConfig);
 
   function notifyFirebaseConfig() {
     broker.send("notifyFirebaseConfig", {
@@ -85,15 +85,15 @@ export async function registerConfig(
   const dataConnectWatcher = _createWatcher("firemat.yaml");
   dataConnectWatcher?.onDidChange(
     async () =>
-      (dataConnectConfig.value = await _readDataConnectConfigs(
-        firebaseConfig.value!,
-      )),
+    (dataConnectConfigs.value = await _readDataConnectConfigs(
+      firebaseConfig.value!,
+    )),
   );
   dataConnectWatcher?.onDidCreate(
     async () =>
-      (dataConnectConfig.value = await _readDataConnectConfigs(
-        firebaseConfig.value!,
-      )),
+    (dataConnectConfigs.value = await _readDataConnectConfigs(
+      firebaseConfig.value!,
+    )),
   );
 
   return {
@@ -115,10 +115,10 @@ function asAbsolutePath(relativePath: string, from: string): string {
 /** @internal */
 export async function _readDataConnectConfigs(
   config: ExpandedFirebaseConfig,
-): Promise<ResolvedDataConnectConfig | undefined> {
+): Promise<ResolvedDataConnectConfigs | undefined> {
   try {
     return await Promise.all(
-      config.dataConnect.map<Promise<ResolvedDataConnectConfig[0]>>(
+      config.dataConnect.map<Promise<ResolvedDataConnectConfigs[0]>>(
         async (dataConnect) => {
           // Paths may be relative to the firebase.json file.
           const absoluteLocation = asAbsolutePath(

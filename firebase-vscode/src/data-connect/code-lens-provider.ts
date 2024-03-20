@@ -4,9 +4,9 @@ import { OperationLocation } from "./types";
 import { Disposable } from "vscode";
 
 import { Signal } from "@preact/signals-core";
-import { dataConnectConfig } from "../core/config";
-import path from "path";
-import { localInstance, selectedInstance } from "./connect-instance";
+import { dataConnectConfigs } from "../core/config";
+import { isPathInside, getEnclosingService } from "./utils";
+import { LOCAL_INSTANCE, selectedInstance } from "./connect-instance";
 import { EmulatorsController } from "../core/emulators";
 
 abstract class ComputedCodeLensProvider implements vscode.CodeLensProvider {
@@ -50,11 +50,6 @@ abstract class ComputedCodeLensProvider implements vscode.CodeLensProvider {
   ): vscode.CodeLens[];
 }
 
-function isPathInside(childPath: string, parentPath: string): boolean {
-  const relative = path.relative(parentPath, childPath);
-  return !relative.startsWith("..") && !path.isAbsolute(relative);
-}
-
 /**
  * CodeLensProvider provides codelens for actions in graphql files.
  */
@@ -68,7 +63,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
     token: vscode.CancellationToken,
   ): vscode.CodeLens[] {
     // Wait for configs to be loaded and emulator to be running
-    const configs = this.watch(dataConnectConfig);
+    const configs = this.watch(dataConnectConfigs);
     if (!configs) {
       return [];
     }
@@ -92,19 +87,17 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
         };
         const opKind = x.operation as string; // query or mutation
 
-        const enclosingConnector = configs
-          .flatMap((e) => e.resolvedConnectors)
-          .find((connector) => isPathInside(document.fileName, connector.path));
+        const enclosingService = getEnclosingService(document.fileName, configs);
 
         const isInDataConnect = configs.some((config) =>
           isPathInside(document.fileName, config.path),
         );
         const instance = this.watch(selectedInstance);
 
-        if (instance && (enclosingConnector || isInDataConnect)) {
+        if (instance && (enclosingService || isInDataConnect)) {
           const label =
-            enclosingConnector && instance !== localInstance
-              ? `${instance} | ${enclosingConnector.connectorId}`
+            enclosingService && instance !== LOCAL_INSTANCE
+              ? `${instance} | ${enclosingService.serviceId}`
               : instance;
           codeLenses.push(
             new vscode.CodeLens(range, {
@@ -116,7 +109,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
           );
         }
 
-        if (isInDataConnect && !enclosingConnector) {
+        if (isInDataConnect && !enclosingService) {
           codeLenses.push(
             new vscode.CodeLens(range, {
               title: `$(plug) Move to connector`,

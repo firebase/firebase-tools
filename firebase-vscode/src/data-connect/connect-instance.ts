@@ -5,9 +5,9 @@ import { computed, effect, signal } from "@preact/signals-core";
 import { EmulatorsController } from "../core/emulators";
 import { QuickPickItem } from "vscode";
 
-export const localInstance = "local";
-export const productionInstance = "production";
-export const selectedInstance = signal<string>(localInstance);
+export const LOCAL_INSTANCE = "local";
+export const PRODUCTION_INSTANCE = "production";
+export const selectedInstance = signal<string>(LOCAL_INSTANCE);
 
 export function registerFirebaseDataConnectView(
   context: vscode.ExtensionContext,
@@ -21,9 +21,9 @@ export function registerFirebaseDataConnectView(
         label: emulatorsController.areEmulatorsRunning.value
           ? "Local"
           : "$(play) Local",
-        id: localInstance,
+        id: LOCAL_INSTANCE,
       },
-      { label: "Production", id: productionInstance },
+      { label: "Production", id: PRODUCTION_INSTANCE },
     ];
 
     for (const option of options) {
@@ -42,10 +42,10 @@ export function registerFirebaseDataConnectView(
 
   function syncStatusBarWithSelectedInstance() {
     return effect(() => {
-      selectedInstanceStatus.text = `$(data-connect) ${selectedInstance.value ?? localInstance}`;
+      selectedInstanceStatus.text = `$(data-connect) ${selectedInstance.value ?? LOCAL_INSTANCE}`;
       if (
         !selectedInstance.value ||
-        selectedInstance.value === localInstance
+        selectedInstance.value === LOCAL_INSTANCE
       ) {
         selectedInstanceStatus.backgroundColor = undefined;
       } else {
@@ -65,7 +65,7 @@ export function registerFirebaseDataConnectView(
       );
 
       if (!isSelectedInstanceInOptions) {
-        selectedInstance.value = localInstance;
+        selectedInstance.value = LOCAL_INSTANCE;
       }
     });
   }
@@ -84,7 +84,7 @@ export function registerFirebaseDataConnectView(
         selectedInstance.value = selected.id;
 
         if (
-          selected.id === localInstance &&
+          selected.id === LOCAL_INSTANCE &&
           !emulatorsController.areEmulatorsRunning.value
         ) {
           emulatorsController.startEmulators();

@@ -29,16 +29,16 @@ export enum UserMockKind {
 export type UserMock =
   | { kind: UserMockKind.ADMIN | UserMockKind.UNAUTHENTICATED }
   | {
-      kind: UserMockKind.AUTHENTICATED;
-      claims: string;
-    };
+    kind: UserMockKind.AUTHENTICATED;
+    claims: string;
+  };
 
 type DeepReadOnly<T> =
   T extends Record<any, unknown>
-    ? { readonly [K in keyof T]: DeepReadOnly<T[K]> }
-    : T extends Array<any>
-      ? ReadonlyArray<DeepReadOnly<T[number]>>
-      : T;
+  ? { readonly [K in keyof T]: DeepReadOnly<T[K]> }
+  : T extends Array<any>
+  ? ReadonlyArray<DeepReadOnly<T[number]>>
+  : T;
 
 export type ExpandedFirebaseConfig = {
   config: Config;
@@ -46,7 +46,7 @@ export type ExpandedFirebaseConfig = {
 };
 
 /** The fully resolved `dataconnect.yaml` and its connectors */
-export type ResolvedDataConnectConfig = DeepReadOnly<
+export type ResolvedDataConnectConfigs = DeepReadOnly<
   (DataConnectYaml & {
     path: string;
     resolvedConnectors: (ConnectorYaml & { path: string })[];

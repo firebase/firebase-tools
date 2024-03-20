@@ -37,7 +37,7 @@ import { camelCase } from "lodash";
 import { DataConnectService } from "./service";
 import { OperationLocation } from "./types";
 import { checkIfFileExists } from "./utils";
-import { dataConnectConfig } from "../core/config";
+import { dataConnectConfigs } from "../core/config";
 import * as path from "path";
 
 export function registerConnectors(
@@ -165,7 +165,7 @@ export function registerConnectors(
     function getFilePath(opName: string) {
       // TODO show one "move to connector" per connector instead
       // of moving only to the first connector
-      const connectorPaths = dataConnectConfig.value.flatMap((config) =>
+      const connectorPaths = dataConnectConfigs.value.flatMap((config) =>
         Object.keys(config.resolvedConnectors),
       );
 
