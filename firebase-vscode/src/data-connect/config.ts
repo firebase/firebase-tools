@@ -15,12 +15,11 @@ export function getEnclosingService(
   );
 }
 
-export function serviceIds() {
-  return computed(() => {
-    const configs = dataConnectConfigs.valueOf();
-    return configs.map((config) => config.serviceId);
-  });
-}
+export const serviceIds = computed(() => {
+  const configs = dataConnectConfigs.valueOf();
+  return configs.map((config) => config.serviceId);
+});
+
 export function getConnectorYamls(serviceId: string) {
   return computed(() => {
     const configs = dataConnectConfigs.valueOf();

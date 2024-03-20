@@ -12,11 +12,11 @@ dataConnectTest("Can deploy services", async function () {
   await sidebar.open();
   await sidebar.fdcDeployElement.click();
 
-  const picks = await quickPicks
+  const servicePicks = await quickPicks
     .findQuickPicks()
     .then((picks) => picks.map((p) => p.getText()));
 
-  expect(picks).toEqual(["dart-firebase-admin", "Fake service B"]);
+  expect(servicePicks).toEqual(["us-east"]);
 
   // TODO extract as reusable mocking utility
   await browser.executeWorkbench((vs: typeof vscode) => {
@@ -32,14 +32,22 @@ dataConnectTest("Can deploy services", async function () {
 
   await quickPicks.okElement.click();
 
+  const connectorPicks = await quickPicks
+    .findQuickPicks()
+    .then((picks) => picks.map((p) => p.getText()));
+
+  expect(connectorPicks).toEqual(["a"]);
+
+  await quickPicks.okElement.click();
+
   await new Promise((resolve) => setTimeout(resolve, 1000));
 
   const args = (await browser.executeWorkbench((vs: typeof vscode) => {
     return vs.commands.executeCommand("fdc-graphql.spy-deploy");
   })) as Array<Array<any>>;
-
   expect(args.length).toBe(1);
-  expect(args[0].length).toBe(2);
+  expect(args[0].length).toBe(3);
   expect(args[0][0]).toEqual(["dataconnect"]);
   expect(args[0][1].project).toEqual("dart-firebase-admin");
+  expect(args[0][2]).toEqual("us-east");
 });

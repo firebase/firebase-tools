@@ -60,6 +60,7 @@ export function updateOptions(
   if (firebaseRC) {
     currentOptions.value.rc = firebaseRC;
     currentOptions.value.project = firebaseRC.projects?.default;
+    currentOptions.value.projectId = firebaseRC.projects?.default;
   } else {
     currentOptions.value.rc = null;
     currentOptions.value.project = "";
