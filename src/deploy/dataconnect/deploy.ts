@@ -15,7 +15,7 @@ export default async function (
   options: Options,
 ): Promise<void> {
   if (!options.projectId) {
-    throw new FirebaseError("Dataconnect: No project specifed.");
+    throw new FirebaseError("No project specified.");
   }
   const services = await client.listAllServices(options.projectId);
   const servicesToCreate = context.dataconnect.filter(

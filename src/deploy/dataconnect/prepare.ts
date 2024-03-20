@@ -1,3 +1,5 @@
+import path from "path";
+
 import { Options } from "../../options";
 import { load } from "../../dataconnect/source";
 import { readFirebaseJson } from "../../dataconnect/fileUtils";
@@ -6,7 +8,6 @@ import * as utils from "../../utils";
 import { ensure } from "../../ensureApiEnabled";
 import { needProjectId } from "../../projectUtils";
 import { dataconnectOrigin } from "../../api";
-import path from "path";
 
 /**
  * Prepares for a Firebase DataConnect deployment by loading schemas and connectors from file.

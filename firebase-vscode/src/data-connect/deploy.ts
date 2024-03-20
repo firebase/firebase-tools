@@ -57,9 +57,8 @@ async function pickServices(): Promise<Array<string> | undefined> {
         label: serviceId,
         options,
         picked: true,
-      }
-    }
-    );
+      };
+    });
   });
 
   const picked = await vscode.window.showQuickPick(options, {
@@ -70,19 +69,22 @@ async function pickServices(): Promise<Array<string> | undefined> {
   return picked.filter((e) => e.picked).map((service) => service.label);
 }
 
-async function pickConnectors(serviceId: string): Promise<Array<string> | undefined> {
+async function pickConnectors(
+  serviceId: string,
+): Promise<Array<string> | undefined> {
   const options = firstWhere(
     currentOptions,
     (options) => options.project?.length !== 0,
   ).then((options) => {
-    return getConnectorIds(serviceId).valueOf().map((connectorId) => {
-      return {
-        label: connectorId,
-        options,
-        picked: true,
-      }
-    }
-    );
+    return getConnectorIds(serviceId)
+      .valueOf()
+      .map((connectorId) => {
+        return {
+          label: connectorId,
+          options,
+          picked: true,
+        };
+      });
   });
 
   const picked = await vscode.window.showQuickPick(options, {
