@@ -276,7 +276,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
   dataconnect: {
     binary: getExecPath(Emulators.DATACONNECT),
     args: ["dev"],
-    optionalArgs: ["http_port", "grpc_port", "config_dir"],
+    optionalArgs: ["http_port", "grpc_port", "config_dir", "local_connection_string"],
     joinArgs: true,
   },
 };
