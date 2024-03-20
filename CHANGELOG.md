@@ -1,0 +1,1 @@
+- Fixes issue where GitHub actions service account cannot add preview URLs to Auth authorized domains (#6895)
