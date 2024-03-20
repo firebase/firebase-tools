@@ -2,10 +2,11 @@ import * as fs from "fs-extra";
 import * as path from "path";
 
 import { FirebaseError } from "../error";
-import { ConnectorYaml, DataConnectYaml, File } from "./types";
+import { ConnectorYaml, DataConnectYaml, File, ServiceInfo } from "./types";
 import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
 import { Config } from "../config";
 import { DataConnectConfig } from "../firebaseConfig";
+import { load } from "./source";
 
 export function readFirebaseJson(config: Config): DataConnectConfig[] {
   if (!config.has("dataconnect")) {
@@ -70,4 +71,34 @@ function toFile(path: string): File {
     path: path,
     content: file,
   };
+}
+
+// pickService reads firebase.json and returns all services with a given serviceId.
+// If serviceID is not provided and there is a single service, return that.
+export async function pickService(
+  projectId: string,
+  config: Config,
+  serviceId?: string,
+): Promise<ServiceInfo> {
+  const serviceCfgs = readFirebaseJson(config);
+  let serviceInfo: ServiceInfo;
+  if (serviceCfgs.length === 0) {
+    throw new FirebaseError("No Data Connect services found in firebase.json.");
+  } else if (serviceCfgs.length === 1) {
+    serviceInfo = await load(projectId, serviceCfgs[0].location, serviceCfgs[0].source);
+  } else {
+    if (!serviceId) {
+      throw new FirebaseError(
+        "Multiple Data Connect services found in firebase.json. Please specify a service ID to use.",
+      );
+    }
+    const infos = await Promise.all(serviceCfgs.map((c) => load(projectId, c.location, c.source)));
+    // TODO: handle cases where there are services with the same ID in 2 locations.
+    const maybe = infos.find((i) => i.dataConnectYaml.serviceId === serviceId);
+    if (!maybe) {
+      throw new FirebaseError(`No service named ${serviceId} declared in firebase.json.`);
+    }
+    serviceInfo = maybe;
+  }
+  return serviceInfo;
 }

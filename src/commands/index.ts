@@ -1,5 +1,4 @@
 import * as experiments from "../experiments";
-
 /**
  * Loads all commands for our parser.
  */
@@ -202,6 +201,9 @@ export function load(client: any): any {
     client.dataconnect = {};
     client.setup.emulators.dataconnect = loadCommand("setup-emulators-dataconnect");
     client.dataconnect.list = loadCommand("dataconnect-list");
+    client.dataconnect.sql = {};
+    client.dataconnect.sql.diff = loadCommand("dataconnect-sql-diff");
+    client.dataconnect.sql.migrate = loadCommand("dataconnect-sql-migrate");
   }
   client.target = loadCommand("target");
   client.target.apply = loadCommand("target-apply");

@@ -47,6 +47,24 @@ export interface File {
   content: string;
 }
 
+// An error indicating that the SQL database schema is incomptible with a data connect schema.
+export interface IncompatibleSqlSchemaError {
+  // A list of differences between the two schema with instrucitons how to resolve them.
+  diffs: Diff[];
+  // Whether any of the changes included are destructive.
+  destructive: boolean;
+}
+
+export interface Diff {
+  // A SQL migration command (i.e. `CREATE TABLE …`, etc.) that should be run in order to bring
+  // the underlying SQL schema in line with the GQL application schema.
+  sql: string;
+  // A description of the changes to be applied with sql_migration_command.
+  description: string;
+  // Whether the SQL migration command is destructive.
+  destructive: boolean;
+}
+
 // YAML types
 export interface DataConnectYaml {
   specVersion?: string;

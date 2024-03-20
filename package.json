@@ -144,6 +144,7 @@
     "retry": "^0.13.1",
     "rimraf": "^3.0.0",
     "semver": "^7.5.2",
+    "sql-formatter": "^15.3.0",
     "stream-chain": "^2.2.4",
     "stream-json": "^1.7.3",
     "strip-ansi": "^6.0.1",
