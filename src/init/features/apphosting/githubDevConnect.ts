@@ -12,7 +12,7 @@ import { developerConnectOrigin } from "../../../api";
 import * as fuzzy from "fuzzy";
 import * as inquirer from "inquirer";
 
-export interface ConnectionNameParts {
+interface ConnectionNameParts {
   projectId: string;
   location: string;
   id: string;
@@ -54,11 +54,13 @@ const devConnectPollerOptions: Omit<poller.OperationPollerOptions, "operationRes
 };
 
 /**
+ * Exported for unit testing.
+ *
  * Example usage:
  * extractRepoSlugFromURI("https://github.com/user/repo.git") => "user/repo"
  */
-function extractRepoSlugFromUri(remoteUri: string): string | undefined {
-  const match = /github.com\/(.+).git/.exec(remoteUri);
+export function extractRepoSlugFromUri(cloneUri: string): string | undefined {
+  const match = /github.com\/(.+).git/.exec(cloneUri);
   if (!match) {
     return undefined;
   }
@@ -66,10 +68,12 @@ function extractRepoSlugFromUri(remoteUri: string): string | undefined {
 }
 
 /**
+ * Exported for unit testing.
+ *
  * Generates a repository ID.
  * The relation is 1:* between Developer Connect Connection and GitHub Repositories.
  */
-function generateRepositoryId(remoteUri: string): string | undefined {
+export function generateRepositoryId(remoteUri: string): string | undefined {
   return extractRepoSlugFromUri(remoteUri)?.replaceAll("/", "-");
 }
 
@@ -364,10 +368,10 @@ export async function fetchAllRepositories(
   projectId: string,
   connections: devConnect.Connection[],
 ): Promise<{
-  repos: devConnect.GitRepositoryLink[];
+  repos: devConnect.LinkableGitRepository[];
   remoteUriToConnection: Record<string, devConnect.Connection>;
 }> {
-  const repos: devConnect.GitRepositoryLink[] = [];
+  const repos: devConnect.LinkableGitRepository[] = [];
   const remoteUriToConnection: Record<string, devConnect.Connection> = {};
 
   const getNextPage = async (conn: devConnect.Connection, pageToken = ""): Promise<void> => {
