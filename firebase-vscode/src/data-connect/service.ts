@@ -16,7 +16,8 @@ import { dataConnectConfigs } from "../core/config";
 import { PRODUCTION_INSTANCE, selectedInstance } from "./connect-instance";
 
 // TODO: THIS SHOULDN'T BE HERE
-export const STAGING_API = "staging-firebasedataconnect.sandbox.googleapis.com";
+export const STAGING_API =
+  "https://staging-firebasedataconnect.sandbox.googleapis.com";
 /**
  * DataConnect Emulator service
  */
