@@ -26,7 +26,7 @@ describe("app", () => {
       promptFirebaseWebApp.restore();
     });
 
-    it("should create an app with backendId if no apps exist yet", async () => {
+    it("should create an app with backendId if no web apps exist yet", async () => {
       listFirebaseApps.returns(Promise.resolve([]));
       createWebApp.returns({ displayName: backendId, appId: "appId" });
 
@@ -36,7 +36,9 @@ describe("app", () => {
 
     it("throws error if given webApp doesn't exist in project", async () => {
       listFirebaseApps.returns(
-        Promise.resolve([{ displayName: "testWebApp", appId: "testWebAppId" }]),
+        Promise.resolve([
+          { displayName: "testWebApp", appId: "testWebAppId", platform: apps.AppPlatform.WEB },
+        ]),
       );
 
       await expect(
@@ -49,7 +51,9 @@ describe("app", () => {
 
     it("prompts user for a web app if none is provided", async () => {
       listFirebaseApps.returns(
-        Promise.resolve([{ displayName: "testWebApp1", appId: "testWebAppId1" }]),
+        Promise.resolve([
+          { displayName: "testWebApp1", appId: "testWebAppId1", platform: apps.AppPlatform.WEB },
+        ]),
       );
 
       const userSelection = { name: "testWebApp2", id: "testWebAppId2" };
@@ -76,12 +80,22 @@ describe("app", () => {
       createWebApp.restore();
     });
 
-    it("create a new web app if user selects that option", async () => {
+    it("creates a new web app if user selects that option", async () => {
       promptOnce.returns(webApps.CREATE_NEW_FIREBASE_WEB_APP);
       createWebApp.returns({ displayName: backendId, appId: "appId" });
 
       await webApps.promptFirebaseWebApp(projectId, backendId, new Map([["app", "appId"]]));
       expect(createWebApp).to.be.calledWith(projectId, { displayName: backendId });
+    });
+
+    it("skips a web selection if user selects that option", async () => {
+      promptOnce.returns(webApps.CONTINUE_WITHOUT_SELECTING_FIREBASE_WEB_APP);
+
+      await expect(
+        webApps.promptFirebaseWebApp(projectId, backendId, new Map([["app", "appId"]])),
+      ).to.eventually.equal(undefined);
+
+      expect(createWebApp).to.not.be.called;
     });
   });
 });

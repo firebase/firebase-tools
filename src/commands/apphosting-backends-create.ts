@@ -7,7 +7,10 @@ import { ensureApiEnabled } from "../gcp/apphosting";
 
 export const command = new Command("apphosting:backends:create")
   .description("create a backend in a Firebase project")
-  .option("-a, --app <webApp>", "specify the Firebase web app your backend will be associated with")
+  .option(
+    "-a, --app <webApp>",
+    "specify an existing Firebase web app to associate your App Hosting backend with",
+  )
   .option("-l, --location <location>", "specify the region of the backend", "")
   .option(
     "-s, --service-account <serviceAccount>",

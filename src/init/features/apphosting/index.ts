@@ -85,12 +85,17 @@ export async function doSetup(
     message: "Create a name for your backend [1-30 characters]",
   });
 
-  const { name: appName, id: appId } = await apps.getOrCreateWebApp(
-    projectId,
-    webAppName,
-    backendId,
-  );
-  logSuccess(`Firebase web app set to ${appName}.\n`);
+  let webAppId: string | undefined;
+
+  try {
+    const webApp = await apps.getOrCreateWebApp(projectId, webAppName, backendId);
+    if (webApp) {
+      webAppId = webApp.id;
+      logSuccess(`Firebase web app set to ${webApp.name}.\n`);
+    }
+  } catch (e) {
+    logWarning("Unable to associate your App Hosting backend to a Firebase web app.");
+  }
 
   const cloudBuildConnRepo = await repo.linkGitHubRepository(projectId, location);
 
@@ -100,7 +105,7 @@ export async function doSetup(
     backendId,
     cloudBuildConnRepo,
     serviceAccount,
-    appId,
+    webAppId,
   );
 
   // TODO: Once tag patterns are implemented, prompt which method the user
@@ -179,7 +184,7 @@ export async function createBackend(
   backendId: string,
   repository: Repository,
   serviceAccount: string | null,
-  webAppId: string,
+  webAppId: string | undefined,
 ): Promise<Backend> {
   const defaultServiceAccount = defaultComputeServiceAccountEmail(projectId);
   const backendReqBody: Omit<Backend, BackendOutputOnlyFields> = {
