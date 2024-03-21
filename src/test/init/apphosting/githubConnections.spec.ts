@@ -3,7 +3,7 @@ import { expect } from "chai";
 import * as prompt from "../../../prompt";
 import * as poller from "../../../operation-poller";
 import * as devconnect from "../../../gcp/devConnect";
-import * as repo from "../../../init/features/apphosting/githubDevConnect";
+import * as repo from "../../../init/features/apphosting/githubConnections";
 import * as utils from "../../../utils";
 import { FirebaseError } from "../../../error";
 

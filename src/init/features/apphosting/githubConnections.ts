@@ -48,7 +48,7 @@ export function parseConnectionName(name: string): ConnectionNameParts | undefin
 
 const devConnectPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: developerConnectOrigin,
-  apiVersion: "v2",
+  apiVersion: "v1",
   masterTimeout: 25 * 60 * 1_000,
   maxBackoff: 10_000,
 };
@@ -97,12 +97,14 @@ export async function linkGitHubRepository(
   utils.logBullet(clc.bold(`${clc.yellow("===")} Set up a GitHub connection`));
   // Fetch the sentinel Oauth connection first which is needed to create further GitHub connections.
   const oauthConn = await getOrCreateOauthConnection(projectId, location);
+  utils.logBullet(`debug: oauthConnection: ${JSON.stringify(oauthConn)}`);
   const existingConns = await listAppHostingConnections(projectId);
 
   if (existingConns.length === 0) {
+    utils.logBullet("no connections exist");
     await ensureSecretManagerAdminGrant(projectId);
     existingConns.push(
-      await createFullyInstalledConnection(projectId, location, generateConnectionId(), oauthConn),
+      await ensureFullyInstalledConnection(projectId, location, generateConnectionId(), oauthConn),
     );
   }
 
@@ -139,7 +141,7 @@ export async function linkGitHubRepository(
 }
 
 /**
- * Creates a new GCB GitHub connection resource and ensures that it is fully configured on the GitHub
+ * Creates a new DevConnect GitHub connection resource and ensures that it is fully configured on the GitHub
  * side (ie associated with an account/org and some subset of repos within that scope).
  * Copies over Oauth creds from the sentinel Oauth connection to save the user from having to
  * reauthenticate with GitHub.
@@ -150,13 +152,29 @@ async function createFullyInstalledConnection(
   connectionId: string,
   oauthConn: devConnect.Connection,
 ): Promise<devConnect.Connection> {
+  utils.logBullet("debug: creating fully installed connection");
   let conn = await createConnection(projectId, location, connectionId, {
     authorizerCredential: oauthConn.githubConfig?.authorizerCredential,
   });
 
-  while (conn.installationState.stage !== "COMPLETE") {
+  conn = await ensureFullyInstalledConnection(projectId, location, connectionId, conn);
+  utils.logBullet(`created connection: ${JSON.stringify(conn)}`);
+
+  return conn;
+}
+
+async function ensureFullyInstalledConnection(
+  projectId: string,
+  location: string,
+  connectionId: string,
+  oauthConn: devConnect.Connection,
+): Promise<devConnect.Connection> {
+  while (oauthConn.installationState.stage !== "COMPLETE") {
     utils.logBullet("Install the Firebase GitHub app to enable access to GitHub repositories");
-    const targetUri = conn.installationState.actionUri.replace("install_v2", "direct_install_v2");
+    const targetUri = oauthConn.installationState.actionUri.replace(
+      "install_v2",
+      "direct_install_v2",
+    );
     utils.logBullet(targetUri);
     await utils.openInBrowser(targetUri);
     await promptOnce({
@@ -164,10 +182,10 @@ async function createFullyInstalledConnection(
       message:
         "Press Enter once you have installed or configured the Firebase GitHub app to access your GitHub repo.",
     });
-    conn = await devConnect.getConnection(projectId, location, connectionId);
+    return await devConnect.getConnection(projectId, location, connectionId);
   }
 
-  return conn;
+  return oauthConn;
 }
 
 /**
@@ -179,6 +197,7 @@ async function getOrCreateOauthConnection(
   location: string,
 ): Promise<devConnect.Connection> {
   let conn = await getOrCreateConnection(projectId, location, APPHOSTING_OAUTH_CONN_NAME);
+  utils.logBullet(`debug: connection from getOrCreateConnection: ${JSON.stringify(conn)}`);
   while (conn.installationState.stage === "PENDING_USER_OAUTH") {
     utils.logBullet("You must authorize the Firebase GitHub app.");
     utils.logBullet("Sign in to GitHub and authorize Firebase GitHub app:");
@@ -244,6 +263,7 @@ async function ensureSecretManagerAdminGrant(projectId: string): Promise<void> {
     true,
   );
   if (alreadyGranted) {
+    utils.logBullet("secret manager admin role already granted");
     return;
   }
 
@@ -303,6 +323,7 @@ export async function getOrCreateConnection(
     conn = await devConnect.getConnection(projectId, location, connectionId);
   } catch (err: unknown) {
     if ((err as any).status === 404) {
+      utils.logBullet("creating connection");
       conn = await createConnection(projectId, location, connectionId, githubConfig);
     } else {
       throw err;
