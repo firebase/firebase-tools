@@ -36,6 +36,13 @@ export enum StateTtl {
   NEEDS_REPAIR = "NEEDS_REPAIR",
 }
 
+export interface FlatIndex {}
+
+export interface VectorConfig {
+  dimension: number;
+  flat?: FlatIndex;
+}
+
 /**
  * An Index as it is represented in the Firestore v1beta2 indexes API.
  */
@@ -53,6 +60,7 @@ export interface IndexField {
   fieldPath: string;
   order?: Order;
   arrayConfig?: ArrayConfig;
+  vectorConfig?: VectorConfig;
 }
 
 /**
