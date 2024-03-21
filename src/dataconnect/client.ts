@@ -4,14 +4,15 @@ import * as operationPoller from "../operation-poller";
 import * as types from "./types";
 
 const DATACONNECT_API_VERSION = "v1alpha";
-const dataconnectClient = new Client({
-  urlPrefix: dataconnectOrigin(),
-  apiVersion: DATACONNECT_API_VERSION,
-  auth: true,
-});
+const dataconnectClient = () =>
+  new Client({
+    urlPrefix: dataconnectOrigin(),
+    apiVersion: DATACONNECT_API_VERSION,
+    auth: true,
+  });
 
 export async function listLocations(projectId: string): Promise<string[]> {
-  const res = await dataconnectClient.get<{
+  const res = await dataconnectClient().get<{
     locations: {
       name: string;
       locationId: string;
@@ -36,7 +37,7 @@ export async function listServices(
   projectId: string,
   locationId: string,
 ): Promise<types.Service[]> {
-  const res = await dataconnectClient.get<{ services: types.Service[] }>(
+  const res = await dataconnectClient().get<{ services: types.Service[] }>(
     `/projects/${projectId}/locations/${locationId}/services`,
   );
   return res.body.services ?? [];
@@ -47,7 +48,7 @@ export async function createService(
   locationId: string,
   serviceId: string,
 ): Promise<types.Service> {
-  const op = await dataconnectClient.post<types.Service, types.Service>(
+  const op = await dataconnectClient().post<types.Service, types.Service>(
     `/projects/${projectId}/locations/${locationId}/services`,
     {
       name: `projects/${projectId}/locations/${locationId}/services/${serviceId}`,
@@ -71,7 +72,7 @@ export async function deleteService(
   locationId: string,
   serviceId: string,
 ): Promise<types.Service> {
-  const op = await dataconnectClient.delete<types.Service>(
+  const op = await dataconnectClient().delete<types.Service>(
     `projects/${projectId}/locations/${locationId}/services/${serviceId}?force=true`,
   );
   const pollRes = await operationPoller.pollOperation<types.Service>({
@@ -85,7 +86,7 @@ export async function deleteService(
 /** Schema methods */
 
 export async function getSchema(serviceName: string): Promise<types.Schema | undefined> {
-  const res = await dataconnectClient.get<types.Schema>(
+  const res = await dataconnectClient().get<types.Schema>(
     `${serviceName}/schemas/${types.SCHEMA_ID}`,
   );
   return res.body;
@@ -95,7 +96,7 @@ export async function upsertSchema(
   schema: types.Schema,
   validateOnly: boolean = false,
 ): Promise<types.Schema | undefined> {
-  const op = await dataconnectClient.patch<types.Schema, types.Schema>(`${schema.name}`, schema, {
+  const op = await dataconnectClient().patch<types.Schema, types.Schema>(`${schema.name}`, schema, {
     queryParams: {
       allowMissing: "true",
       validateOnly: validateOnly ? "true" : "false",
@@ -114,24 +115,24 @@ export async function upsertSchema(
 /** Connector methods */
 
 export async function getConnector(name: string): Promise<types.Connector> {
-  const res = await dataconnectClient.get<types.Connector>(name);
+  const res = await dataconnectClient().get<types.Connector>(name);
   return res.body;
 }
 
 export async function deleteConnector(name: string): Promise<void> {
-  const res = await dataconnectClient.delete<void>(name);
+  const res = await dataconnectClient().delete<void>(name);
   return res.body;
 }
 
 export async function listConnectors(serviceName: string) {
-  const res = await dataconnectClient.get<{ connectors: types.Connector[] }>(
+  const res = await dataconnectClient().get<{ connectors: types.Connector[] }>(
     `${serviceName}/connectors`,
   );
   return res.body?.connectors || [];
 }
 
 export async function upsertConnector(connector: types.Connector) {
-  const op = await dataconnectClient.patch<types.Connector, types.Connector>(
+  const op = await dataconnectClient().patch<types.Connector, types.Connector>(
     `${connector.name}?allow_missing=true`,
     connector,
   );
