@@ -6,6 +6,8 @@ import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
 import { provisionCloudSql } from "../../dataconnect/provisionCloudSql";
 import { parseServiceName } from "../../dataconnect/names";
+import { FirebaseError } from "../../error";
+import { logger } from "../../logger";
 
 /**
  * Release deploys schemas and connectors.
@@ -29,13 +31,13 @@ export default async function (context: any, options: Options): Promise<void> {
   // Provision CloudSQL things
   utils.logLabeledBullet("dataconnect", "Checking for CloudSQL resources...");
   await Promise.all(
-    serviceInfos.map((s) => {
+    serviceInfos.map(async (s) => {
       const instanceId = s.schema.primaryDatasource.postgresql?.cloudSql.instance.split("/").pop();
       const databaseId = s.schema.primaryDatasource.postgresql?.database;
       if (!instanceId || !databaseId) {
         return Promise.resolve();
       }
-      return provisionCloudSql(
+      await provisionCloudSql(
         projectId,
         parseServiceName(s.serviceName).location,
         instanceId,
@@ -45,7 +47,15 @@ export default async function (context: any, options: Options): Promise<void> {
   );
 
   utils.logLabeledBullet("dataconnect", "Releasing schemas...");
-  await Promise.all(wantSchemas.map((s) => upsertSchema(s)));
+  const schemaPromises = await Promise.allSettled(wantSchemas.map((s) => upsertSchema(s)));
+  const failedSchemas = schemaPromises.filter((p) => p.status === "rejected");
+  if (failedSchemas.length) {
+    // TODO: Do schema migration here instead of kicking to different command
+    logger.debug(JSON.stringify(failedSchemas));
+    throw new FirebaseError(
+      "Got errors while updating your schema. Please migrate them using `firebase dataconnect:sql:migrate`",
+    );
+  }
   utils.logLabeledBullet("dataconnect", "Schemas released.");
 
   utils.logLabeledBullet("dataconnect", "Releasing connectors...");

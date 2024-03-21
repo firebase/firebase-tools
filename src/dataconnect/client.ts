@@ -91,17 +91,24 @@ export async function getSchema(serviceName: string): Promise<types.Schema | und
   return res.body;
 }
 
-export async function upsertSchema(schema: types.Schema): Promise<types.Service> {
-  const op = await dataconnectClient.patch<types.Schema, types.Schema>(
-    `${schema.name}?allow_missing=true`,
-    schema,
-  );
-  const pollRes = await operationPoller.pollOperation<types.Service>({
+export async function upsertSchema(
+  schema: types.Schema,
+  validateOnly: boolean = false,
+): Promise<types.Schema | undefined> {
+  const op = await dataconnectClient.patch<types.Schema, types.Schema>(`${schema.name}`, schema, {
+    queryParams: {
+      allowMissing: "true",
+      validateOnly: validateOnly ? "true" : "false",
+    },
+  });
+  if (validateOnly) {
+    return;
+  }
+  return operationPoller.pollOperation<types.Schema>({
     apiOrigin: dataconnectOrigin,
     apiVersion: DATACONNECT_API_VERSION,
     operationResourceName: op.body.name,
   });
-  return pollRes;
 }
 
 /** Connector methods */

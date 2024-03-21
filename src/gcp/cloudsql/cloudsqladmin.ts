@@ -54,6 +54,7 @@ interface InstanceSettings {
     dataCacheEnabled: boolean;
   };
 }
+// TODO: Consider splitting off return only fields and input fields into different types.
 interface Instance {
   state?: "RUNNABLE" | "SUSPENDED" | "PENDING_DELETE" | "PENDING_CREATE" | "MAINTENANCE" | "FAILED";
   databaseVersion:
@@ -104,7 +105,7 @@ interface SslCert {
 }
 
 interface User {
-  password: string;
+  password?: string;
   name: string;
   host?: string;
   instance: string;
@@ -145,7 +146,7 @@ export async function createInstance(
     databaseVersion: "POSTGRES_15",
     settings: {
       tier: "db-f1-micro",
-      edition: "ENTERPRISE", // TODO: Figure out what values shouild be exposed, what should be hard coded
+      edition: "ENTERPRISE", // TODO: Figure out what values should be exposed, what should be hard coded
       ipConfiguration: {
         authorizedNetworks: [], // TODO:  Don't expose this DB to everyone in the world {value: "0.0.0.0/0", name: 'public'}
       },
@@ -208,9 +209,9 @@ export async function createDatabase(projectId: string, instanceId: string, data
 export async function createUser(
   projectId: string,
   instanceId: string,
-  username: string,
-  password: string,
   type: UserType,
+  username: string,
+  password?: string,
 ) {
   const op = await client.post<User, Operation>(
     `projects/${projectId}/instances/${instanceId}/users`,
