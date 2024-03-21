@@ -107,6 +107,7 @@ class CodeActionsProvider implements vscode.CodeActionProvider {
             document: documentText,
             documentPath: document.fileName,
           },
+          connector.path,
         ],
       });
     }
