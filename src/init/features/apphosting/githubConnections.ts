@@ -47,7 +47,7 @@ export function parseConnectionName(name: string): ConnectionNameParts | undefin
 }
 
 const devConnectPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
-  apiOrigin: developerConnectOrigin,
+  apiOrigin: developerConnectOrigin(),
   apiVersion: "v1",
   masterTimeout: 25 * 60 * 1_000,
   maxBackoff: 10_000,
@@ -108,10 +108,10 @@ export async function linkGitHubRepository(
     );
   }
 
-  let repoRemoteUri: string | undefined;
+  let repoCloneUri: string | undefined;
   let connection: devConnect.Connection;
   do {
-    if (repoRemoteUri === ADD_CONN_CHOICE) {
+    if (repoCloneUri === ADD_CONN_CHOICE) {
       existingConns.push(
         await createFullyInstalledConnection(
           projectId,
@@ -123,9 +123,9 @@ export async function linkGitHubRepository(
     }
 
     const selection = await promptRepositoryUri(projectId, existingConns);
-    repoRemoteUri = selection.remoteUri;
+    repoCloneUri = selection.cloneUri;
     connection = selection.connection;
-  } while (repoRemoteUri === ADD_CONN_CHOICE);
+  } while (repoCloneUri === ADD_CONN_CHOICE);
 
   // Ensure that the selected connection exists in the same region as the backend
   const { id: connectionId } = parseConnectionName(connection.name)!;
@@ -134,9 +134,9 @@ export async function linkGitHubRepository(
     appInstallationId: connection.githubConfig?.appInstallationId,
   });
 
-  const repo = await getOrCreateRepository(projectId, location, connectionId, repoRemoteUri);
+  const repo = await getOrCreateRepository(projectId, location, connectionId, repoCloneUri);
   utils.logSuccess(`Successfully linked GitHub repository at remote URI`);
-  utils.logSuccess(`\t${repoRemoteUri}`);
+  utils.logSuccess(`\t${repoCloneUri}`);
   return repo;
 }
 
@@ -220,11 +220,11 @@ async function getOrCreateOauthConnection(
 async function promptRepositoryUri(
   projectId: string,
   connections: devConnect.Connection[],
-): Promise<{ remoteUri: string; connection: devConnect.Connection }> {
-  const { repos, remoteUriToConnection } = await fetchAllRepositories(projectId, connections);
-  const remoteUri = await promptOnce({
+): Promise<{ cloneUri: string; connection: devConnect.Connection }> {
+  const { cloneUris, cloneUriToConnection } = await fetchAllRepositories(projectId, connections);
+  const cloneUri = await promptOnce({
     type: "autocomplete",
-    name: "remoteUri",
+    name: "cloneUri",
     message: "Which of the following repositories would you like to deploy?",
     source: (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
       return new Promise((resolve) =>
@@ -236,20 +236,20 @@ async function promptRepositoryUri(
           },
           new inquirer.Separator(),
           ...fuzzy
-            .filter(input, repos, {
-              extract: (repo) => extractRepoSlugFromUri(repo.cloneUri) || "",
+            .filter(input, cloneUris, {
+              extract: (uri) => extractRepoSlugFromUri(uri) || "",
             })
             .map((result) => {
               return {
-                name: extractRepoSlugFromUri(result.original.cloneUri) || "",
-                value: result.original.cloneUri,
+                name: extractRepoSlugFromUri(result.original) || "",
+                value: result.original,
               };
             }),
         ]),
       );
     },
   });
-  return { remoteUri, connection: remoteUriToConnection[remoteUri] };
+  return { cloneUri, connection: cloneUriToConnection[cloneUri] };
 }
 
 async function ensureSecretManagerAdminGrant(projectId: string): Promise<void> {
@@ -339,11 +339,11 @@ export async function getOrCreateRepository(
   projectId: string,
   location: string,
   connectionId: string,
-  remoteUri: string,
+  cloneUri: string,
 ): Promise<devConnect.GitRepositoryLink> {
-  const repositoryId = generateRepositoryId(remoteUri);
+  const repositoryId = generateRepositoryId(cloneUri);
   if (!repositoryId) {
-    throw new FirebaseError(`Failed to generate repositoryId for URI "${remoteUri}".`);
+    throw new FirebaseError(`Failed to generate repositoryId for URI "${cloneUri}".`);
   }
   let repo: devConnect.GitRepositoryLink;
   try {
@@ -355,7 +355,7 @@ export async function getOrCreateRepository(
         location,
         connectionId,
         repositoryId,
-        remoteUri,
+        cloneUri,
       );
       repo = await poller.pollOperation<devConnect.GitRepositoryLink>({
         ...devConnectPollerOptions,
@@ -372,8 +372,10 @@ export async function getOrCreateRepository(
 /**
  * Exported for unit testing.
  */
-export async function listAppHostingConnections(projectId: string) {
-  const conns = await devConnect.listConnections(projectId, "-");
+export async function listAppHostingConnections(
+  projectId: string,
+): Promise<devConnect.Connection[]> {
+  const conns = await devConnect.listAllConnections(projectId, "-");
   return conns.filter(
     (conn) =>
       APPHOSTING_CONN_PATTERN.test(conn.name) &&
@@ -389,27 +391,21 @@ export async function fetchAllRepositories(
   projectId: string,
   connections: devConnect.Connection[],
 ): Promise<{
-  repos: devConnect.LinkableGitRepository[];
-  remoteUriToConnection: Record<string, devConnect.Connection>;
+  cloneUris: string[];
+  cloneUriToConnection: Record<string, devConnect.Connection>;
 }> {
-  const repos: devConnect.LinkableGitRepository[] = [];
-  const remoteUriToConnection: Record<string, devConnect.Connection> = {};
+  const cloneUriToConnection: Record<string, devConnect.Connection> = {};
 
-  const getNextPage = async (conn: devConnect.Connection, pageToken = ""): Promise<void> => {
-    const { location, id } = parseConnectionName(conn.name)!;
-    const resp = await devConnect.fetchLinkableGitRepositories(projectId, location, id, pageToken);
-    if (resp.repositories && resp.repositories.length > 0) {
-      for (const repo of resp.repositories) {
-        repos.push(repo);
-        remoteUriToConnection[repo.cloneUri] = conn;
-      }
-    }
-    if (resp.nextPageToken) {
-      await getNextPage(conn, resp.nextPageToken);
-    }
-  };
   for (const conn of connections) {
-    await getNextPage(conn);
+    const { location, id } = parseConnectionName(conn.name)!;
+    const connectionRepos = await devConnect.listAllLinkableGitRepositories(
+      projectId,
+      location,
+      id,
+    );
+    connectionRepos.forEach((repo) => {
+      cloneUriToConnection[repo.cloneUri] = conn;
+    });
   }
-  return { repos, remoteUriToConnection };
+  return { cloneUris: Object.keys(cloneUriToConnection), cloneUriToConnection };
 }
