@@ -37,9 +37,13 @@ export const TEXT = {
 
   DEPLOY_FDC_DISABLED: "Not connected to production",
 
-  DEPLOY_FDC_DESCRIPTION: "Deploy schema and operations to your production instance.",
+  DEPLOY_FDC_DESCRIPTION:
+    "Deploy schema and operations to your production instance.",
 
   CONNECT_TO_INSTANCE: "Connect to instance",
 
-  CONNECT_TO_INSTANCE_DESCRIPTION: "Connect to the emulator or a production instance.",
+  CONNECT_TO_INSTANCE_DESCRIPTION:
+    "Connect to the emulator or a production instance.",
+
+  LOCAL_CONN_STRING_LABEL: "Set PostgreSQL local connection string",
 };

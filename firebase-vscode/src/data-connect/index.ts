@@ -21,6 +21,7 @@ import * as graphql from "graphql";
 import { ResolvedDataConnectConfigs, dataConnectConfigs } from "./config";
 import { locationToRange } from "../utils/graphql";
 import { runDataConnectCompiler } from "./core-compiler";
+import { updateDataConnectLocalConnString } from "../../../src/api";
 
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
@@ -155,7 +156,11 @@ export function registerFdc(
       }
     }),
   });
-
+  // TODO: Temporary hack to update postgres string
+  broker.on("updateDataConnectPostgresString", (connectionString: string) => {
+    console.log("updating:", connectionString);
+    updateDataConnectLocalConnString(connectionString);
+  });
   const selectedProjectStatus = vscode.window.createStatusBarItem(
     "projectPicker",
     vscode.StatusBarAlignment.Left,

@@ -98,7 +98,8 @@ export class DataConnectService {
    * If the JSON is invalid, will throw.
    */
   private _serializeBody(body: { variables?: string; [key: string]: unknown }) {
-    if (!body.variables) {
+    if (!body.variables || body.variables.trim().length === 0) {
+      body.variables = undefined;
       return JSON.stringify(body);
     }
 

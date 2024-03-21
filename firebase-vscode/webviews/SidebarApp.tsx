@@ -142,25 +142,31 @@ export function SidebarApp() {
       {!!user && (
         <ProjectSection userEmail={user.email} projectId={projectId} />
       )}
-      {hostingInitState === "success" && !!user && !!projectId && (
-        <DeployPanel
-          deployState={deployState}
-          setDeployState={setDeployState}
-          projectId={projectId}
-          channels={channels}
-          framework={framework}
-        />
-      )}
+      {hostingInitState === "success" &&
+        !!user &&
+        !!projectId &&
+        env?.isMonospace && (
+          <DeployPanel
+            deployState={deployState}
+            setDeployState={setDeployState}
+            projectId={projectId}
+            channels={channels}
+            framework={framework}
+          />
+        )}
       <Spacer size="large" />
-      {hostingInitState !== "success" && !!user && !!projectId && (
-        <InitFirebasePanel
-          onHostingInit={() => {
-            setupHosting();
-          }}
-          hostingInitState={hostingInitState}
-          setHostingInitState={setHostingInitState}
-        />
-      )}
+      {hostingInitState !== "success" &&
+        !!user &&
+        !!projectId &&
+        env?.isMonospace && (
+          <InitFirebasePanel
+            onHostingInit={() => {
+              setupHosting();
+            }}
+            hostingInitState={hostingInitState}
+            setHostingInitState={setHostingInitState}
+          />
+        )}
       {
         // Only load the emulator panel if we have a user, firebase.json and this isn't Monospace
         // The user login requirement can be removed in the future but the panel will have to

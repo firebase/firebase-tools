@@ -111,6 +111,8 @@ export interface WebviewToExtensionParamsMap {
 
   /** Opens the "connect to instance" picker */
   connectToInstance: void;
+
+  updateDataConnectPostgresString: string;
 }
 
 export interface DataConnectResults {
