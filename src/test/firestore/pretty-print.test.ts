@@ -1,8 +1,6 @@
 import { expect } from "chai";
 import { PrettyPrint } from "../../firestore/pretty-print";
 import * as API from "../../firestore/api-types";
-import * as Spec from "../../firestore/api-spec";
-import * as sort from "../../firestore/api-sort";
 
 const printer = new PrettyPrint();
 
