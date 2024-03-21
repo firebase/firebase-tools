@@ -20,6 +20,7 @@ import { registerFdcDeploy } from "./deploy";
 import * as graphql from "graphql";
 import { ResolvedDataConnectConfigs, dataConnectConfigs } from "./config";
 import { locationToRange } from "../utils/graphql";
+import { runDataConnectCompiler } from "./core-compiler";
 
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
@@ -148,6 +149,8 @@ export function registerFdc(
         vscode.commands.executeCommand(
           "firebase.dataConnect.executeIntrospection",
         );
+
+        runDataConnectCompiler(fdcService.endpoint.value);
       }
     }),
   });

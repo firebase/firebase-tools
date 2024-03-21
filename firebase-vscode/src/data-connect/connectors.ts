@@ -395,7 +395,7 @@ export function registerConnectors(
                 kind: Kind.ARGUMENT,
                 name: {
                   kind: Kind.NAME,
-                  value: "is",
+                  value: "level",
                 },
                 value: {
                   kind: Kind.ENUM,
