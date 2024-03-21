@@ -19,7 +19,7 @@ interface IpConfiguration {
   ipv4Enabled?: boolean;
   privateNetwork?: string;
   requireSsl?: boolean;
-  authorizedNetworks: {
+  authorizedNetworks?: {
     value: string;
     expirationTime?: string;
     name?: string;
@@ -36,7 +36,7 @@ interface IpConfiguration {
 }
 interface InstanceSettings {
   authorizedGaeApplications?: string[];
-  tier: string;
+  tier?: string;
   edition?: "ENTERPRISE_PLUS" | "ENTERPRISE";
   availabilityType?: "ZONAL" | "REGIONAL";
   pricingPlan?: "PER_USE" | "PACKAGE";
@@ -166,6 +166,48 @@ export async function createInstance(
   });
   return pollRes;
 }
+
+export async function updateInstanceForDataConnect(projectId: string, instanceId: string): Promise<Instance> {
+    const op = await client.patch<Partial<Instance>, Operation>(`projects/${projectId}/instances/${instanceId}`, {
+      settings: {
+        ipConfiguration: {
+          ipv4Enabled: true,
+        },
+        databaseFlags: [
+          { name: "cloudsql.iam_authentication", value: "on" },
+        ],
+      },
+    },
+    );
+    const opName = `projects/${projectId}/operations/${op.body.name}`;
+    const pollRes = await operationPoller.pollOperation<Instance>({
+      apiOrigin: cloudSQLAdminOrigin,
+      apiVersion: API_VERSION,
+      operationResourceName: opName,
+      doneFn: (op: Operation) => op.status === "DONE",
+      masterTimeout: 1_200_000, // This operation frequently takes 5+ minutes
+    });
+    return pollRes;
+  }
+
+  export function validateInstanceForDataConnect(instance: Instance): boolean {
+    const settings = instance.settings;
+    if (!settings.ipConfiguration?.ipv4Enabled) {
+      return false;
+    }
+
+    let hasIamFlag = false;
+    const dbFlags = settings?.databaseFlags!
+    for (var flag of dbFlags) {
+      if (flag?.name == "cloudsql.iam_authentication") {
+        hasIamFlag = true;
+        if (flag?.value != "on") {
+          return false;
+        }
+      }
+    }
+    return hasIamFlag;
+  }
 
 export async function listDatabases(projectId: string, instanceId: string): Promise<Database[]> {
   const res = await client.get<{ items: Database[] }>(

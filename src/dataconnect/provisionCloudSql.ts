@@ -14,6 +14,14 @@ export async function provisionCloudSql(
     const existingInstance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
     silent || utils.logLabeledBullet("dataconnect", `Found existing instance ${instanceId}.`);
     connectionName = existingInstance?.connectionName || "";
+    if (!cloudSqlAdminClient.validateInstanceForDataConnect(existingInstance)) {
+      silent || utils.logLabeledBullet(
+        "dataconnect",
+        `Instance ${instanceId} not compatible with Firebase Data Connect. Updating instance. This may take a few minutes...`,
+      );
+      await cloudSqlAdminClient.updateInstanceForDataConnect(projectId, instanceId);
+      silent || utils.logLabeledBullet("dataconnect", "Instance updated");
+    }
   } catch (err) {
     silent ||
       utils.logLabeledBullet(
