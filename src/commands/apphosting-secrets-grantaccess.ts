@@ -8,7 +8,7 @@ import { requirePermissions } from "../requirePermissions";
 import { logger } from "../logger";
 import * as apphosting from "../gcp/apphosting";
 import * as secretManager from "../gcp/secretManager";
-import { getIamPolicy, setIamPolicy } from "../gcp/secretManager";
+import { setIamPolicy } from "../gcp/secretManager";
 import * as iam from "../gcp/iam";
 
 export const command = new Command("apphosting:secrets:grantaccess <secretName>")
@@ -50,11 +50,12 @@ export const command = new Command("apphosting:secrets:grantaccess <secretName>"
       throw new FirebaseError(`Secret ${secretName} does not exist in project ${projectId}`);
     }
 
+    let serviceAccounts = { buildServiceAccount: "", runServiceAccount: "" };
     try {
-      var serviceAccounts = await fetchServiceAccounts(projectId, projectNumber, location, backend);
+      serviceAccounts = fetchServiceAccounts(projectNumber);
     } catch (err: any) {
       throw new FirebaseError(
-        `Failed to get backend: ${backend}. Please check the parameters you have provided.`,
+        `Failed to get backend ${backend} at location ${location}. Please check the parameters you have provided.`,
         { original: err },
       );
     }
@@ -67,40 +68,46 @@ export const command = new Command("apphosting:secrets:grantaccess <secretName>"
     const bindings: iam.Binding[] = [
       {
         role: "roles/secretmanager.secretAccessor",
-        members: [`serviceAccount:${serviceAccounts.buildServiceAccount}`, `serviceAccount:${serviceAccounts.runServiceAccount}`]
+        members: [
+          `serviceAccount:${serviceAccounts.buildServiceAccount}`,
+          `serviceAccount:${serviceAccounts.runServiceAccount}`,
+        ],
       },
       {
         role: "roles/secretmanager.viewer",
-        members: [`serviceAccount:${serviceAccounts.buildServiceAccount}`]
-      }
+        members: [`serviceAccount:${serviceAccounts.buildServiceAccount}`],
+      },
     ];
 
     try {
       await setIamPolicy(secret, bindings);
     } catch (err: any) {
       throw new FirebaseError(
-        `Failed to set IAM bindings ${bindings} on secret: ${secret}. Ensure you have the permissions to do so and try again.`,
+        `Failed to set IAM bindings ${bindings.toString()} on secret: ${secret.name}. Ensure you have the permissions to do so and try again.`,
         { original: err },
       );
     }
 
-    logger.info(`Successfully set IAM bindings ${bindings} on secret: ${secret}.`);
+    logger.info(`Successfully set IAM bindings ${bindings.toString()} on secret: ${secret.name}.`);
   });
 
-  function defaultCloudBuildServiceAccount(projectNumber: string): string {
-    return `${projectNumber}@cloudbuild.gserviceaccount.com`;
-  }
-  
-  function defaultComputeEngineServiceAccount(projectNumber: string): string {
-    return `${projectNumber}-compute@developer.gserviceaccount.com`;
-  }
+function defaultCloudBuildServiceAccount(projectNumber: string): string {
+  return `${projectNumber}@cloudbuild.gserviceaccount.com`;
+}
 
-  async function fetchServiceAccounts(projectId: string, projectNumber: string, location: string, backendId: string):  Promise<{ buildServiceAccount: string; runServiceAccount: string }> {    
-    // TODO: For now we will always return the default CBSA and CESA. When the getBackend call supports returning
-    // the attached service account in a given backend/location then return that value instead.
-    // Sample Call: await apphosting.getBackend(projectId, location, backendId);
-    return {
-      buildServiceAccount: defaultCloudBuildServiceAccount(projectNumber),
-      runServiceAccount: defaultComputeEngineServiceAccount(projectNumber)
-    };
-  }
+function defaultComputeEngineServiceAccount(projectNumber: string): string {
+  return `${projectNumber}-compute@developer.gserviceaccount.com`;
+}
+
+function fetchServiceAccounts(projectNumber: string): {
+  buildServiceAccount: string;
+  runServiceAccount: string;
+} {
+  // TODO: For now we will always return the default CBSA and CESA. When the getBackend call supports returning
+  // the attached service account in a given backend/location then return that value instead.
+  // Sample Call: await apphosting.getBackend(projectId, location, backendId); & make this function async
+  return {
+    buildServiceAccount: defaultCloudBuildServiceAccount(projectNumber),
+    runServiceAccount: defaultComputeEngineServiceAccount(projectNumber),
+  };
+}
