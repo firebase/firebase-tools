@@ -129,8 +129,7 @@ export async function setupIAMUser(
       $$
       ;`,
     `GRANT ALL PRIVILEGES ON DATABASE "${databaseId}" TO "${firebaseowner(databaseId)}"`,
-    `GRANT cloudsqlsuperuser TO "${firebaseowner(databaseId)}"`,
-    `GRANT "${firebaseowner(databaseId)}" TO "cli-test"`,
+    `GRANT cloudsqlsuperuser TO "${firebaseowner(databaseId)}"`
     `GRANT "${firebaseowner(databaseId)}" TO "${setupUser}"`,
     `GRANT "${firebaseowner(databaseId)}" TO "${user}"`,
     `ALTER SCHEMA public OWNER TO "${firebaseowner(databaseId)}"`,
