@@ -24,6 +24,11 @@ export enum ArrayConfig {
   CONTAINS = "CONTAINS",
 }
 
+export interface VectorConfig {
+  dimension: number;
+  flat?: {};
+}
+
 export enum State {
   CREATING = "CREATING",
   READY = "READY",
@@ -34,13 +39,6 @@ export enum StateTtl {
   CREATING = "CREATING",
   ACTIVE = "ACTIVE",
   NEEDS_REPAIR = "NEEDS_REPAIR",
-}
-
-export interface FlatIndex {}
-
-export interface VectorConfig {
-  dimension: number;
-  flat?: FlatIndex;
 }
 
 /**

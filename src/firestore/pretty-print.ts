@@ -239,7 +239,7 @@ export class PrettyPrint {
       // Normal field indexes have an "order", array indexes have an
       // "arrayConfig", and vector indexes have a "vectorConfig" we want to
       // display whichever one is present.
-      var configString ;
+      let configString;
       if (field.order) {
         configString = field.order;
       } else if (field.arrayConfig) {

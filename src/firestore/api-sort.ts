@@ -235,7 +235,7 @@ function compareVectorConfig(a?: API.VectorConfig, b?: API.VectorConfig): number
     if (b === undefined) {
       return 0;
     } else {
-      return 1
+      return 1;
     }
   } else if (b === undefined) {
     return -1;

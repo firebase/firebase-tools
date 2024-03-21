@@ -308,8 +308,8 @@ export class FirestoreApi {
       }
 
       if (field.vectorConfig) {
-        validator.assertType("vectorConfig.dimension", field.vectorConfig.dimension, "number")
-        validator.assertHas(field.vectorConfig, "flat")
+        validator.assertType("vectorConfig.dimension", field.vectorConfig.dimension, "number");
+        validator.assertHas(field.vectorConfig, "flat");
       }
     });
   }

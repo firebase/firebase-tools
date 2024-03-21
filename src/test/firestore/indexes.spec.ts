@@ -75,16 +75,16 @@ describe("IndexValidation", () => {
             queryScope: "COLLECTION",
             fields: [
               {
-                "fieldPath": "embedding",
-                "vectorConfig": {
-                  "dimension": 100,
-                  "flat": {}
-                }
-              }
-            ]
+                fieldPath: "embedding",
+                vectorConfig: {
+                  dimension: 100,
+                  flat: {},
+                },
+              },
+            ],
           },
         ],
-      })
+      }),
     );
   });
 
@@ -96,13 +96,13 @@ describe("IndexValidation", () => {
           queryScope: "COLLECTION",
           fields: [
             {
-              "fieldPath": "embedding",
-              "vectorConfig": {
-                "dimension": 100,
-                "flat": {}
-              }
-            }
-          ]
+              fieldPath: "embedding",
+              vectorConfig: {
+                dimension: 100,
+                flat: {},
+              },
+            },
+          ],
         },
       ],
     });
@@ -117,13 +117,13 @@ describe("IndexValidation", () => {
           fields: [
             { fieldPath: "foo", order: "ASCENDING" },
             {
-              "fieldPath": "embedding",
-              "vectorConfig": {
-                "dimension": 100,
-                "flat": {}
-              }
-            }
-          ]
+              fieldPath: "embedding",
+              vectorConfig: {
+                dimension: 100,
+                flat: {},
+              },
+            },
+          ],
         },
       ],
     });
@@ -138,13 +138,13 @@ describe("IndexValidation", () => {
             queryScope: "COLLECTION",
             fields: [
               {
-                "fieldPath": "embedding",
-                "vectorConfig": {
-                  "dimension": "wrongType",
-                  "flat": {}
-                }
-              }
-            ]
+                fieldPath: "embedding",
+                vectorConfig: {
+                  dimension: "wrongType",
+                  flat: {},
+                },
+              },
+            ],
           },
         ],
       });
@@ -160,12 +160,12 @@ describe("IndexValidation", () => {
             queryScope: "COLLECTION",
             fields: [
               {
-                "fieldPath": "embedding",
-                "vectorConfig": {
-                  "dimension": 100,
-                }
-              }
-            ]
+                fieldPath: "embedding",
+                vectorConfig: {
+                  dimension: 100,
+                },
+              },
+            ],
           },
         ],
       });
@@ -647,7 +647,7 @@ describe("IndexSorting", () => {
           vectorConfig: {
             dimension: 100,
             flat: {},
-          }
+          },
         },
       ],
     };
@@ -661,7 +661,7 @@ describe("IndexSorting", () => {
           vectorConfig: {
             dimension: 200,
             flat: {},
-          }
+          },
         },
       ],
     };
