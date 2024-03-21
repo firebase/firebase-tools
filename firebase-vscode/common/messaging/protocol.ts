@@ -33,25 +33,10 @@ export type UserMock =
       claims: string;
     };
 
-type DeepReadOnly<T> =
-  T extends Record<any, unknown>
-    ? { readonly [K in keyof T]: DeepReadOnly<T[K]> }
-    : T extends Array<any>
-      ? ReadonlyArray<DeepReadOnly<T[number]>>
-      : T;
-
 export type ExpandedFirebaseConfig = {
   config: Config;
   dataConnect?: DataConnectConfig[];
 };
-
-/** The fully resolved `dataconnect.yaml` and its connectors */
-export type ResolvedDataConnectConfigs = DeepReadOnly<
-  (DataConnectYaml & {
-    path: string;
-    resolvedConnectors: (ConnectorYaml & { path: string })[];
-  })[]
->;
 
 export interface WebviewToExtensionParamsMap {
   /**

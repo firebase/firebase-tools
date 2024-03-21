@@ -5,7 +5,7 @@ import { Disposable } from "vscode";
 
 import { Signal } from "@preact/signals-core";
 import { isPathInside } from "./file-utils";
-import { dataConnectConfigs, getEnclosingService } from "./config";
+import { dataConnectConfigs } from "./config";
 import { LOCAL_INSTANCE, selectedInstance } from "./connect-instance";
 import { EmulatorsController } from "../core/emulators";
 
@@ -85,22 +85,13 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
           documentPath: document.fileName,
           position: position,
         };
-        const opKind = x.operation as string; // query or mutation
-
-        const enclosingService = getEnclosingService(
-          document.fileName,
-          configs,
-        );
-
-        const isInDataConnect = configs.some((config) =>
-          isPathInside(document.fileName, config.path),
-        );
+        const service = configs.findEnclosingServiceForPath(document.fileName);
         const instance = this.watch(selectedInstance);
 
-        if (instance && (enclosingService || isInDataConnect)) {
+        if (instance && service) {
           const label =
-            enclosingService && instance !== LOCAL_INSTANCE
-              ? `${instance} | ${enclosingService.serviceId}`
+            service && instance !== LOCAL_INSTANCE
+              ? `${instance} | ${service.value.serviceId}`
               : instance;
           codeLenses.push(
             new vscode.CodeLens(range, {
@@ -108,17 +99,6 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
               command: "firebase.dataConnect.executeOperation",
               tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
               arguments: [x, operationLocation],
-            }),
-          );
-        }
-
-        if (isInDataConnect && !enclosingService) {
-          codeLenses.push(
-            new vscode.CodeLens(range, {
-              title: `$(plug) Move to connector`,
-              command: "firebase.dataConnect.moveOperationToConnector",
-              tooltip: `Expose this ${opKind} to client apps through the SDK.`,
-              arguments: [i, operationLocation],
             }),
           );
         }

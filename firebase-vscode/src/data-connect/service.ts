@@ -12,7 +12,6 @@ import { UserMockKind } from "../../common/messaging/protocol";
 import { firstWhereDefined } from "../utils/signal";
 import { EmulatorsController } from "../core/emulators";
 import { Emulators } from "../cli";
-import { getEnclosingService, serviceIds } from "./config";
 import { dataConnectConfigs } from "../core/config";
 import { PRODUCTION_INSTANCE, selectedInstance } from "./connect-instance";
 
@@ -158,7 +157,8 @@ export class DataConnectService {
     variables: string;
   }) {
     // TODO: get introspections for all services
-    const serviceId = serviceIds.valueOf()[0];
+    const configs = await firstWhereDefined(dataConnectConfigs);
+    const serviceId = configs.serviceIds[0];
     try {
       // TODO: get name programmatically
       const body = this._serializeBody({
@@ -195,22 +195,20 @@ export class DataConnectService {
     path: string;
   }) {
     const configs = await firstWhereDefined(dataConnectConfigs);
-    if (!configs) {
-      // TODO: better error handling, should probably be in config.ts
-      throw new Error("Could not find config");
+    const service = configs.findEnclosingServiceForPath(params.path);
+    if (!service) {
+      throw new Error("No service found for path: " + params.path);
     }
-
-    const service = getEnclosingService(params.path, configs);
 
     // TODO: get name programmatically
     const body = this._serializeBody({
       ...params,
-      name: `projects/p/locations/l/services/${service.serviceId}`,
+      name: `projects/p/locations/l/services/${service.value.serviceId}`,
       extensions: this._auth(),
     });
     const resp = await fetch(
       (await firstWhereDefined(this.endpoint)) +
-        `/v1/projects/p/locations/l/services/${service.serviceId}:executeGraphql`,
+        `/v1/projects/p/locations/l/services/${service.value.serviceId}:executeGraphql`,
       {
         method: "POST",
         headers: {

@@ -165,11 +165,12 @@ export function registerConnectors(
     function getFilePath(opName: string) {
       // TODO show one "move to connector" per connector instead
       // of moving only to the first connector
-      const connectorPaths = dataConnectConfigs.value.flatMap((config) =>
-        Object.keys(config.resolvedConnectors),
+      return vscode.Uri.file(
+        path.join(
+          dataConnectConfigs.value.allConnectors[0]!.path,
+          `${opName}.gql`,
+        ),
       );
-
-      return vscode.Uri.file(path.join(connectorPaths[0]!, `${opName}.gql`));
     }
   }
 
