@@ -4,7 +4,7 @@ import { ExtensionBrokerImpl } from "../extension-broker";
 import { registerExecution } from "./execution";
 import { registerExplorer } from "./explorer";
 import { registerAdHoc } from "./ad-hoc-mutations";
-import { DataConnectService as FdcService } from "./service";
+import { DataConnectService as FdcService, STAGING_API } from "./service";
 import {
   OperationCodeLensProvider,
   SchemaCodeLensProvider,
@@ -21,7 +21,10 @@ import * as graphql from "graphql";
 import { ResolvedDataConnectConfigs, dataConnectConfigs } from "./config";
 import { locationToRange } from "../utils/graphql";
 import { runDataConnectCompiler } from "./core-compiler";
-import { updateDataConnectLocalConnString } from "../../../src/api";
+import {
+  updateDataConnectLocalConnString,
+  updateDataconnectOrigin,
+} from "../../../src/api";
 
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
@@ -156,7 +159,8 @@ export function registerFdc(
       }
     }),
   });
-  // TODO: Temporary hack to update postgres string
+  // TODO: Temporary hack to update postgres string & staging api
+  updateDataconnectOrigin(STAGING_API);
   broker.on("updateDataConnectPostgresString", (connectionString: string) => {
     console.log("updating:", connectionString);
     updateDataConnectLocalConnString(connectionString);
