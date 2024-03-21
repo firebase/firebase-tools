@@ -1,7 +1,9 @@
 import { Client } from "../apiv2";
 import { developerConnectOrigin, developerConnectP4SAOrigin } from "../api";
+import { logBullet } from "../utils";
 
 const PAGE_SIZE_MAX = 1000;
+const LOCATION_OVERRIDE = "us-central1"; // TODO(mathusan): for debugging only
 
 export const client = new Client({
   urlPrefix: developerConnectOrigin(),
@@ -126,6 +128,7 @@ export async function createConnection(
     ...githubConfig,
     githubApp: "FIREBASE",
   };
+  location = LOCATION_OVERRIDE;
   const res = await client.post<
     Omit<Omit<Connection, "name">, ConnectionOutputOnlyFields>,
     Operation
@@ -147,6 +150,7 @@ export async function getConnection(
   location: string,
   connectionId: string,
 ): Promise<Connection> {
+  location = LOCATION_OVERRIDE;
   const name = `projects/${projectId}/locations/${location}/connections/${connectionId}`;
   const res = await client.get<Connection>(name);
   return res.body;
@@ -160,6 +164,7 @@ export async function listAllConnections(
   location: string,
 ): Promise<Connection[]> {
   const conns: Connection[] = [];
+  location = LOCATION_OVERRIDE;
   const getNextPage = async (pageToken = ""): Promise<void> => {
     const res = await client.get<{
       connections: Connection[];
@@ -189,13 +194,15 @@ export async function listAllLinkableGitRepositories(
   location: string,
   connectionId: string,
 ): Promise<LinkableGitRepository[]> {
-  const name = `projects/${projectId}/locations/${location}/connections/${connectionId}:fetchLinkableRepositories`;
+  location = LOCATION_OVERRIDE;
+  const name = `projects/${projectId}/locations/${location}/connections/${connectionId}:fetchLinkableGitRepositories`;
   const repos: LinkableGitRepository[] = [];
 
   const getNextPage = async (pageToken = ""): Promise<void> => {
+    logBullet(`page token from here: ${pageToken}`);
     const res = await client.get<LinkableGitRepositories>(name, {
       queryParams: {
-        PAGE_SIZE_MAX,
+        pageSize: PAGE_SIZE_MAX,
         pageToken,
       },
     });
@@ -225,6 +232,7 @@ export async function createGitRepositoryLink(
   gitRepositoryLinkId: string,
   cloneUri: string,
 ): Promise<Operation> {
+  location = LOCATION_OVERRIDE;
   const res = await client.post<
     Omit<GitRepositoryLink, GitRepositoryLinkOutputOnlyFields | "name">,
     Operation
@@ -245,6 +253,7 @@ export async function getGitRepositoryLink(
   connectionId: string,
   gitRepositoryLinkId: string,
 ): Promise<GitRepositoryLink> {
+  location = LOCATION_OVERRIDE;
   const name = `projects/${projectId}/locations/${location}/connections/${connectionId}/gitRepositoryLinks/${gitRepositoryLinkId}`;
   const res = await client.get<GitRepositoryLink>(name);
   return res.body;

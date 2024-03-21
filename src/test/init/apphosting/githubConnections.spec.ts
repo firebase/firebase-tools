@@ -115,8 +115,8 @@ describe("devConnectRepo", () => {
         .stub(devconnect, "createGitRepositoryLink")
         .throws("Unexpected createGitRepositoryLink call");
       fetchLinkableRepositoriesStub = sandbox
-        .stub(devconnect, "fetchLinkableGitRepositories")
-        .throws("Unexpected fetchLinkableGitRepositories call");
+        .stub(devconnect, "listAllLinkableGitRepositories")
+        .throws("Unexpected listAllLinkableGitRepositories call");
       sandbox.stub(utils, "openInBrowser").resolves();
     });
 
@@ -225,8 +225,8 @@ describe("devConnectRepo", () => {
 
     beforeEach(() => {
       fetchLinkableRepositoriesStub = sandbox
-        .stub(devconnect, "fetchLinkableGitRepositories")
-        .throws("Unexpected fetchLinkableGitRepositories call");
+        .stub(devconnect, "listAllLinkableGitRepositories")
+        .throws("Unexpected listAllLinkableGitRepositories call");
     });
 
     afterEach(() => {
@@ -242,12 +242,12 @@ describe("devConnectRepo", () => {
         repositories: mockReposWithRandomUris(10),
       });
 
-      const { repos, remoteUriToConnection } = await repo.fetchAllRepositories(projectId, [
+      const { cloneUris, cloneUriToConnection } = await repo.fetchAllRepositories(projectId, [
         mockConn("conn0"),
       ]);
 
-      expect(repos.length).to.equal(20);
-      expect(Object.keys(remoteUriToConnection).length).to.equal(20);
+      expect(cloneUris.length).to.equal(20);
+      expect(Object.keys(cloneUriToConnection).length).to.equal(20);
     });
 
     it("should fetch all linkable repositories from multiple connections", async () => {
@@ -262,13 +262,13 @@ describe("devConnectRepo", () => {
         repositories: [repo1],
       });
 
-      const { repos, remoteUriToConnection } = await repo.fetchAllRepositories(projectId, [
+      const { cloneUris, cloneUriToConnection } = await repo.fetchAllRepositories(projectId, [
         conn0,
         conn1,
       ]);
 
-      expect(repos.length).to.equal(2);
-      expect(remoteUriToConnection).to.deep.equal({
+      expect(cloneUris.length).to.equal(2);
+      expect(cloneUriToConnection).to.deep.equal({
         [repo0.cloneUri]: conn0,
         [repo1.cloneUri]: conn1,
       });
@@ -286,8 +286,8 @@ describe("devConnectRepo", () => {
 
     beforeEach(() => {
       listConnectionsStub = sandbox
-        .stub(devconnect, "listConnections")
-        .throws("Unexpected getConnection call");
+        .stub(devconnect, "listAllConnections")
+        .throws("Unexpected listAllConnections call");
     });
 
     afterEach(() => {

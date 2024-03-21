@@ -50,11 +50,11 @@ export async function doSetupWithDeveloperConnect(
   logBullet("Setting up using Developer Connect flow");
 
   await Promise.all([
-    ensure(projectId, developerConnectOrigin, "apphosting", true),
-    ensure(projectId, cloudbuildOrigin, "apphosting", true),
-    ensure(projectId, secretManagerOrigin, "apphosting", true),
-    ensure(projectId, cloudRunApiOrigin, "apphosting", true),
-    ensure(projectId, artifactRegistryDomain, "apphosting", true),
+    ensure(projectId, developerConnectOrigin(), "apphosting", true),
+    ensure(projectId, cloudbuildOrigin(), "apphosting", true),
+    ensure(projectId, secretManagerOrigin(), "apphosting", true),
+    ensure(projectId, cloudRunApiOrigin(), "apphosting", true),
+    ensure(projectId, artifactRegistryDomain(), "apphosting", true),
   ]);
 
   logBullet("All required APIs are enabled");
