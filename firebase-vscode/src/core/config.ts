@@ -14,10 +14,12 @@ import {
 } from "../../../src/dataconnect/fileUtils";
 import { globalSignal } from "../utils/globals";
 import { workspace } from "../utils/test_hooks";
+import { ExpandedFirebaseConfig } from "../../common/messaging/protocol";
 import {
-  ExpandedFirebaseConfig,
+  ResolvedConnectorYaml,
+  ResolvedDataConnectConfig,
   ResolvedDataConnectConfigs,
-} from "../../common/messaging/protocol";
+} from "../data-connect/config";
 
 export const firebaseRC = globalSignal<RC | undefined>(undefined);
 export const firebaseConfig = globalSignal<ExpandedFirebaseConfig | undefined>(
@@ -117,8 +119,8 @@ export async function _readDataConnectConfigs(
   config: ExpandedFirebaseConfig,
 ): Promise<ResolvedDataConnectConfigs | undefined> {
   try {
-    return await Promise.all(
-      config.dataConnect.map<Promise<ResolvedDataConnectConfigs[0]>>(
+    const dataConnects = await Promise.all(
+      config.dataConnect.map<Promise<ResolvedDataConnectConfig>>(
         async (dataConnect) => {
           // Paths may be relative to the firebase.json file.
           const absoluteLocation = asAbsolutePath(
@@ -134,21 +136,23 @@ export async function _readDataConnectConfigs(
                 asAbsolutePath(connectorDir, absoluteLocation),
               );
 
-              return {
-                ...connectorYaml,
-                path: asAbsolutePath(connectorDir, absoluteLocation),
-              };
+              return new ResolvedConnectorYaml(
+                asAbsolutePath(connectorDir, absoluteLocation),
+                connectorYaml,
+              );
             }),
           );
 
-          return {
-            ...dataConnectYaml,
-            path: absoluteLocation,
+          return new ResolvedDataConnectConfig(
+            absoluteLocation,
+            dataConnectYaml,
             resolvedConnectors,
-          };
+          );
         },
       ),
     );
+
+    return new ResolvedDataConnectConfigs(dataConnects);
   } catch (e: any) {
     pluginLogger.error(e);
     return undefined;

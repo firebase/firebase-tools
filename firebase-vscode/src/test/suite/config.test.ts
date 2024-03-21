@@ -10,9 +10,9 @@ import {
   _readRC,
   firebaseConfig,
   firebaseRC,
-  dataConnectConfigs,
   getRootFolders,
   registerConfig,
+  dataConnectConfigs,
 } from "../../core/config";
 import {
   addDisposable,

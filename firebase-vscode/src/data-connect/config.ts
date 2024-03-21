@@ -1,35 +1,60 @@
-import { ResolvedDataConnectConfigs } from "../messaging/protocol";
-import { computed } from "@preact/signals-core";
-import { dataConnectConfigs } from "../core/config";
 import { isPathInside } from "./file-utils";
+import { DeepReadOnly } from "../metaprogramming";
+import { ConnectorYaml, DataConnectYaml } from "../dataconnect/types";
 export * from "../core/config";
 
-export function getEnclosingService(
-  filePath: string,
-  configs: ResolvedDataConnectConfigs,
-) {
-  return configs.find((dc) =>
-    dc.resolvedConnectors.find((connector) =>
-      isPathInside(filePath, connector.path),
-    ),
-  );
+export class ResolvedConnectorYaml {
+  constructor(
+    readonly path: string,
+    readonly value: DeepReadOnly<ConnectorYaml>,
+  ) {}
+
+  containsPath(path: string) {
+    return isPathInside(path, this.path);
+  }
 }
 
-export const serviceIds = computed(() => {
-  const configs = dataConnectConfigs.valueOf();
-  return configs.map((config) => config.serviceId);
-});
+export class ResolvedDataConnectConfig {
+  constructor(
+    readonly path: string,
+    readonly value: DeepReadOnly<DataConnectYaml>,
+    readonly resolvedConnectors: ResolvedConnectorYaml[],
+  ) {}
 
-export function getConnectorYamls(serviceId: string) {
-  return computed(() => {
-    const configs = dataConnectConfigs.valueOf();
-    return configs.find((config) => config.serviceId === serviceId)
-      .resolvedConnectors;
-  });
+  get connectorIds() {
+    return this.resolvedConnectors.map(
+      (connector) => connector.value.connectorId,
+    );
+  }
+
+  containsPath(path: string) {
+    return isPathInside(path, this.path);
+  }
+
+  findEnclosingConnectorForPath(filePath: string) {
+    return this.resolvedConnectors.find((connector) =>
+      connector.containsPath(filePath),
+    );
+  }
 }
-export function getConnectorIds(serviceId: string) {
-  return computed(() => {
-    const yamls = getConnectorYamls(serviceId).valueOf();
-    return yamls.map((yaml) => yaml.connectorId);
-  });
+
+/** The fully resolved `dataconnect.yaml` and its connectors */
+export class ResolvedDataConnectConfigs {
+  constructor(readonly values: DeepReadOnly<ResolvedDataConnectConfig[]>) {}
+
+  get serviceIds() {
+    return this.values.map((config) => config.value.serviceId);
+  }
+
+  get allConnectors() {
+    return this.values.flatMap((dc) => dc.resolvedConnectors);
+  }
+
+  findById(serviceId: string) {
+    return this.values.find((dc) => dc.value.serviceId === serviceId);
+  }
+
+  findEnclosingServiceForPath(filePath: string) {
+    return this.values.find((dc) => dc.containsPath(filePath));
+  }
 }
