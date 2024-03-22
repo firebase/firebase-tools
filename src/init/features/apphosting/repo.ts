@@ -92,11 +92,11 @@ export async function linkGitHubRepository(
 ): Promise<gcb.Repository> {
   utils.logBullet(clc.bold(`${clc.yellow("===")} Set up a GitHub connection`));
   // Fetch the sentinel Oauth connection first which is needed to create further GitHub connections.
+  await ensureSecretManagerAdminGrant(projectId);
   const oauthConn = await getOrCreateOauthConnection(projectId, location);
   const existingConns = await listAppHostingConnections(projectId);
 
   if (existingConns.length === 0) {
-    await ensureSecretManagerAdminGrant(projectId);
     existingConns.push(
       await createFullyInstalledConnection(projectId, location, generateConnectionId(), oauthConn),
     );
