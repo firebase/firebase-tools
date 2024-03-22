@@ -107,7 +107,7 @@ type GitRepositoryLinkOutputOnlyFields =
   | "uid";
 
 export interface LinkableGitRepositories {
-  repositories: LinkableGitRepository[];
+  linkableGitRepositories: LinkableGitRepository[];
   nextPageToken: string;
 }
 
@@ -139,6 +139,26 @@ export async function createConnection(
     },
     { queryParams: { connectionId } },
   );
+  return res.body;
+}
+
+/**
+ * Deletes a connection that matches the given parameters
+ */
+export async function deleteConnection(
+  projectId: string,
+  location: string,
+  connectionId: string,
+): Promise<Operation> {
+  /**
+   * TODO: specify a unique request ID so that if you must retry your request,
+   * the server will know to ignore the request if it has already been
+   * completed. The server will guarantee that for at least 60 minutes after
+   * the first request.
+   */
+  location = LOCATION_OVERRIDE;
+  const name = `projects/${projectId}/locations/${location}/connections/${connectionId}`;
+  const res = await client.delete<Operation>(name, { queryParams: { force: "true" } });
   return res.body;
 }
 
@@ -207,8 +227,8 @@ export async function listAllLinkableGitRepositories(
       },
     });
 
-    if (Array.isArray(res.body.repositories)) {
-      repos.push(...res.body.repositories);
+    if (Array.isArray(res.body.linkableGitRepositories)) {
+      repos.push(...res.body.linkableGitRepositories);
     }
 
     if (res.body.nextPageToken) {
