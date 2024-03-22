@@ -29,7 +29,7 @@ import { DEFAULT_REGION } from "./constants";
 import { ensure } from "../../../ensureApiEnabled";
 import * as deploymentTool from "../../../deploymentTool";
 import { DeepOmit } from "../../../metaprogramming";
-import { GitRepositoryLink } from "../../../gcp/devConnect";
+import { GitRepositoryLink, listConnections, deleteConnection } from "../../../gcp/devConnect";
 
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
@@ -452,4 +452,34 @@ export async function orchestrateRollout(
     );
   }
   return { rollout, build };
+}
+
+/**
+ * lists dev connect connections
+ */
+export async function listDeveloperConnectConnections(
+  projectId: string,
+  location: string,
+): Promise<void> {
+  const connections = await listConnections(projectId, location);
+  for (let i = 0; i < connections.length; i++) {
+    const connection = connections[i];
+    logBullet(connection.name);
+  }
+}
+
+/**
+ * deletes all dev connect connections
+ */
+export async function resetDeveloperConnectConnections(
+  projectId: string,
+  location: string,
+): Promise<void> {
+  const connections = await listConnections(projectId, location);
+  for (let i = 0; i < connections.length; i++) {
+    const connection = connections[i];
+    logBullet(`Deleting connection: ${connection.name}`);
+    const { id } = githubConnections.parseConnectionName(connection.name)!;
+    await deleteConnection(projectId, location, id);
+  }
 }
