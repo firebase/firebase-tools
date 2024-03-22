@@ -666,7 +666,19 @@ describe("IndexSorting", () => {
       ],
     };
 
-    expect([b, a, d, c, f, e].sort(sort.compareApiIndex)).to.eql([a, b, c, d, e, f]);
+    // This Index is invalid, but is used to verify sort ordering on undefined
+    // fields.
+    const g: API.Index = {
+      name: "/projects/project/databases/(default)/collectionGroups/collectionB/indexes/g",
+      queryScope: API.QueryScope.COLLECTION,
+      fields: [
+        {
+          fieldPath: "fieldA",
+        },
+      ],
+    };
+
+    expect([b, a, d, g, f, e, c].sort(sort.compareApiIndex)).to.eql([a, b, c, d, e, f, g]);
   });
 
   it("should correctly sort an array of API field overrides", () => {

@@ -231,13 +231,13 @@ function compareArrayConfig(a?: API.ArrayConfig, b?: API.ArrayConfig): number {
 }
 
 function compareVectorConfig(a?: API.VectorConfig, b?: API.VectorConfig): number {
-  if (a === undefined) {
-    if (b === undefined) {
+  if (!a) {
+    if (!b) {
       return 0;
     } else {
       return 1;
     }
-  } else if (b === undefined) {
+  } else if (!b) {
     return -1;
   }
   return a.dimension - b.dimension;
