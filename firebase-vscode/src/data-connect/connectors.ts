@@ -37,7 +37,6 @@ import { camelCase } from "lodash";
 import { DataConnectService } from "./service";
 import { OperationLocation } from "./types";
 import { checkIfFileExists } from "./file-utils";
-import { dataConnectConfigs } from "./config";
 import * as path from "path";
 
 export function registerConnectors(
@@ -48,6 +47,7 @@ export function registerConnectors(
   async function moveOperationToConnector(
     defIndex: number, // The index of the definition to move.
     { documentPath, document }: OperationLocation,
+    connectorPath: string,
   ) {
     const ast = parse(new Source(document, documentPath));
 
@@ -163,13 +163,7 @@ export function registerConnectors(
     }
 
     function getFilePath(opName: string) {
-      // TODO show one "move to connector" per connector instead
-      // of moving only to the first connector
-      const connectorPaths = dataConnectConfigs.value.flatMap((config) =>
-        Object.keys(config.resolvedConnectors),
-      );
-
-      return vscode.Uri.file(path.join(connectorPaths[0]!, `${opName}.gql`));
+      return vscode.Uri.file(path.join(connectorPath, `${opName}.gql`));
     }
   }
 
@@ -394,7 +388,7 @@ export function registerConnectors(
                 kind: Kind.ARGUMENT,
                 name: {
                   kind: Kind.NAME,
-                  value: "is",
+                  value: "level",
                 },
                 value: {
                   kind: Kind.ENUM,

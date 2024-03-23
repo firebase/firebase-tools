@@ -1,6 +1,5 @@
 import vscode, { Disposable, ExtensionContext } from "vscode";
-import { effect } from "@preact/signals-core";
-
+import { Signal, effect } from "@preact/signals-core";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { registerExecution } from "./execution";
 import { registerExplorer } from "./explorer";
@@ -18,6 +17,102 @@ import { isTest } from "../utils/env";
 import { setupLanguageClient } from "./language-client";
 import { EmulatorsController } from "../core/emulators";
 import { registerFdcDeploy } from "./deploy";
+import * as graphql from "graphql";
+import { ResolvedDataConnectConfigs, dataConnectConfigs } from "./config";
+import { locationToRange } from "../utils/graphql";
+import { runDataConnectCompiler } from "./core-compiler";
+
+class CodeActionsProvider implements vscode.CodeActionProvider {
+  constructor(
+    private configs: Signal<ResolvedDataConnectConfigs | undefined>,
+  ) {}
+
+  provideCodeActions(
+    document: vscode.TextDocument,
+    range: vscode.Range | vscode.Selection,
+    context: vscode.CodeActionContext,
+    cancellationToken: vscode.CancellationToken,
+  ): vscode.ProviderResult<(vscode.CodeAction | vscode.Command)[]> {
+    const documentText = document.getText();
+    const results: (vscode.CodeAction | vscode.Command)[] = [];
+
+    // TODO: replace w/ online-parser to work with malformed documents
+    const documentNode = graphql.parse(documentText);
+    let definitionAtRange: graphql.DefinitionNode | undefined;
+    let definitionIndex: number | undefined;
+
+    for (let i = 0; i < documentNode.definitions.length; i++) {
+      const definition = documentNode.definitions[i];
+
+      if (
+        definition.kind === graphql.Kind.OPERATION_DEFINITION &&
+        definition.loc
+      ) {
+        const definitionRange = locationToRange(definition.loc);
+        const line = definition.loc.startToken.line - 1;
+
+        if (!definitionRange.intersection(range)) {
+          continue;
+        }
+
+        definitionAtRange = definition;
+        definitionIndex = i;
+      }
+    }
+
+    if (!definitionAtRange) {
+      return null;
+    }
+
+    this.moveToConnector(
+      document,
+      documentText,
+      { index: definitionIndex! },
+      results,
+    );
+
+    return results;
+  }
+
+  private moveToConnector(
+    document: vscode.TextDocument,
+    documentText: string,
+    { index }: { index: number },
+    results: (vscode.CodeAction | vscode.Command)[],
+  ) {
+    const enclosingService = this.configs.value?.findEnclosingServiceForPath(
+      document.uri.fsPath,
+    );
+    if (!enclosingService) {
+      return;
+    }
+
+    const enclosingConnector = enclosingService.findEnclosingConnectorForPath(
+      document.uri.fsPath,
+    );
+    if (enclosingConnector) {
+      // Already in a connector, don't suggest moving to another one
+      return;
+    }
+
+    for (const connector of enclosingService.resolvedConnectors) {
+      results.push({
+        title: `Move to "${connector.value.connectorId}"`,
+        kind: vscode.CodeActionKind.Refactor,
+        tooltip: `Move to the connector to "${connector.path}"`,
+        command: "firebase.dataConnect.moveOperationToConnector",
+        arguments: [
+          index,
+          {
+            document: documentText,
+            documentPath: document.fileName,
+          },
+          connector.path,
+        ],
+      });
+    }
+  }
+}
 
 export function registerFdc(
   context: ExtensionContext,
@@ -25,6 +120,17 @@ export function registerFdc(
   authService: AuthService,
   emulatorController: EmulatorsController,
 ): Disposable {
+  const codeActions = vscode.languages.registerCodeActionsProvider(
+    [
+      { scheme: "file", language: "graphql" },
+      { scheme: "untitled", language: "graphql" },
+    ],
+    new CodeActionsProvider(dataConnectConfigs),
+    {
+      providedCodeActionKinds: [vscode.CodeActionKind.Refactor],
+    },
+  );
+
   const fdcService = new FdcService(authService, emulatorController);
   const operationCodeLensProvider = new OperationCodeLensProvider(
     emulatorController,
@@ -44,6 +150,8 @@ export function registerFdc(
         vscode.commands.executeCommand(
           "firebase.dataConnect.executeIntrospection",
         );
+
+        runDataConnectCompiler(fdcService.endpoint.value);
       }
     }),
   });
@@ -56,6 +164,7 @@ export function registerFdc(
   selectedProjectStatus.command = "firebase.selectProject";
 
   return Disposable.from(
+    codeActions,
     selectedProjectStatus,
     {
       dispose: effect(() => {

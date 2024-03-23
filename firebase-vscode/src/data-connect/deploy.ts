@@ -2,7 +2,8 @@ import * as vscode from "vscode";
 import { firstWhere } from "../utils/signal";
 import { currentOptions } from "../options";
 import { deploy as cliDeploy } from "../../../src/deploy";
-import { getConnectorIds, serviceIds } from "./config";
+import { dataConnectConfigs } from "./config";
+
 export function registerFdcDeploy(): vscode.Disposable {
   // A command used by e2e tests to replace the `deploy` function with a mock.
   // It is not part of the public API.
@@ -52,7 +53,7 @@ async function pickServices(): Promise<Array<string> | undefined> {
     currentOptions,
     (options) => options.project?.length !== 0,
   ).then((options) => {
-    return serviceIds.valueOf().map((serviceId) => {
+    return dataConnectConfigs.value.serviceIds.map((serviceId) => {
       return {
         label: serviceId,
         options,
@@ -76,9 +77,9 @@ async function pickConnectors(
     currentOptions,
     (options) => options.project?.length !== 0,
   ).then((options) => {
-    return getConnectorIds(serviceId)
-      .valueOf()
-      .map((connectorId) => {
+    return dataConnectConfigs.value
+      .findById(serviceId)
+      ?.connectorIds.map((connectorId) => {
         return {
           label: connectorId,
           options,
