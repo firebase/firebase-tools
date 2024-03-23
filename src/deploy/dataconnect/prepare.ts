@@ -20,7 +20,9 @@ export default async function (context: any, options: Options): Promise<void> {
   const serviceCfgs = readFirebaseJson(options.config);
   utils.logLabeledBullet("dataconnect", `Preparing to deploy`);
   context.dataconnect = await Promise.all(
-    serviceCfgs.map((c) => load(projectId, c.location, path.join(options.cwd || process.cwd(), c.source))),
+    serviceCfgs.map((c) =>
+      load(projectId, c.location, path.join(options.cwd || process.cwd(), c.source)),
+    ),
   );
 
   utils.logLabeledBullet("dataconnect", `Successfully prepared schema and connectors`);
