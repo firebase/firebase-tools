@@ -1,0 +1,1 @@
+- Add schedule trigger region validation (#6624).
