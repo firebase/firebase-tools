@@ -4,13 +4,13 @@ import {
   FunctionsEmulator,
   FunctionsEmulatorArgs,
 } from "../emulator/functionsEmulator";
-import { parseRuntimeVersion } from "../emulator/functionsEmulatorUtils";
 import { needProjectId } from "../projectUtils";
 import { getProjectDefaultAccount } from "../auth";
 import { Options } from "../options";
 import * as projectConfig from "../functions/projectConfig";
 import * as utils from "../utils";
 import { EmulatorRegistry } from "../emulator/registry";
+import { parseInspectionPort } from "../emulator/commandUtils";
 
 export class FunctionsServer {
   emulator?: FunctionsEmulator;
@@ -30,11 +30,10 @@ export class FunctionsServer {
     const backends: EmulatableBackend[] = [];
     for (const cfg of config) {
       const functionsDir = path.join(options.config.projectDir, cfg.source);
-      const nodeMajorVersion = parseRuntimeVersion(cfg.runtime);
       backends.push({
         functionsDir,
         codebase: cfg.codebase,
-        nodeMajorVersion,
+        runtime: cfg.runtime,
         env: {},
         secretEnv: [],
       });
@@ -49,6 +48,8 @@ export class FunctionsServer {
       projectAlias: options.projectAlias,
       account,
       ...partialArgs,
+      // Non-optional; parseInspectionPort will set to false if missing.
+      debugPort: parseInspectionPort(options),
     };
 
     // Normally, these two fields are included in args (and typed as such).

@@ -23,9 +23,12 @@ const AUTH_BLOCKING_CREATE_V2_LOG =
 const AUTH_BLOCKING_SIGN_IN_V2_LOG =
   "========== AUTH BLOCKING SIGN IN V2 FUNCTION METADATA ==========";
 const RTDB_LOG = "========== RTDB V2 FUNCTION ==========";
+const FIRESTORE_LOG = "========== FIRESTORE V2 FUNCTION ==========";
 
 const PUBSUB_TOPIC = "test-topic";
+
 const START_DOCUMENT_NAME = "test/start";
+const END_DOCUMENT_NAME = "test/done";
 
 admin.initializeApp();
 
@@ -70,7 +73,7 @@ exports.storagebucketv2archivedreaction = functionsV2.storage.onObjectArchived(
     console.log(STORAGE_BUCKET_FUNCTION_ARCHIVED_LOG);
     console.log("Object", JSON.stringify(cloudevent.data));
     return true;
-  }
+  },
 );
 
 exports.storagebucketv2deletedreaction = functionsV2.storage.onObjectDeleted(
@@ -79,7 +82,7 @@ exports.storagebucketv2deletedreaction = functionsV2.storage.onObjectDeleted(
     console.log(STORAGE_BUCKET_FUNCTION_DELETED_LOG);
     console.log("Object", JSON.stringify(cloudevent.data));
     return true;
-  }
+  },
 );
 
 exports.storagebucketv2finalizedreaction = functionsV2.storage.onObjectFinalized(
@@ -88,7 +91,7 @@ exports.storagebucketv2finalizedreaction = functionsV2.storage.onObjectFinalized
     console.log(STORAGE_BUCKET_FUNCTION_FINALIZED_LOG);
     console.log("Object", JSON.stringify(cloudevent.data));
     return true;
-  }
+  },
 );
 
 exports.storagebucketv2metadatareaction = functionsV2.storage.onObjectMetadataUpdated(
@@ -97,7 +100,7 @@ exports.storagebucketv2metadatareaction = functionsV2.storage.onObjectMetadataUp
     console.log(STORAGE_BUCKET_FUNCTION_METADATA_LOG);
     console.log("Object", JSON.stringify(cloudevent.data));
     return true;
-  }
+  },
 );
 
 exports.oncallv2 = functionsV2.https.onCall((req) => {
@@ -136,3 +139,26 @@ exports.rtdbv2reaction = functionsV2.database.onValueWritten(START_DOCUMENT_NAME
   console.log(RTDB_LOG);
   return;
 });
+
+exports.firestorev2reaction = functionsV2.firestore.onDocumentWritten(
+  START_DOCUMENT_NAME,
+  async (event) => {
+    console.log(FIRESTORE_LOG);
+    /*
+     * Write back a completion timestamp to the firestore emulator. The test
+     * driver program checks for this by querying the firestore emulator
+     * directly.
+     */
+    const ref = admin.firestore().doc(END_DOCUMENT_NAME + "_from_firestore");
+    await ref.set({ done: new Date().toISOString() });
+
+    /*
+     * Write a completion marker to the firestore emulator. This exercise
+     * cross-emulator communication.
+     */
+    const dbref = admin.database().ref(END_DOCUMENT_NAME + "_from_firestore");
+    await dbref.set({ done: new Date().toISOString() });
+
+    return true;
+  },
+);

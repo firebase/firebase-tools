@@ -164,7 +164,7 @@ export function logError(err: Error): void {
   }
   EmulatorLogger.forEmulator(Emulators.AUTH).log(
     "WARN",
-    err.stack || err.message || err.constructor.name
+    err.stack || err.message || err.constructor.name,
   );
 }
 
@@ -193,7 +193,7 @@ export function authEmulatorUrl(req: express.Request): URL {
 export function mirrorFieldTo<D, K extends keyof D>(
   dest: D,
   field: K,
-  source: { [KK in K]?: D[KK] }
+  source: { [KK in K]?: D[KK] },
 ): void {
   const value = source[field] as D[K] | undefined;
   if (value === undefined) {

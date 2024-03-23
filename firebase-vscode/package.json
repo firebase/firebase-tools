@@ -1,0 +1,152 @@
+{
+  "name": "firebase-vscode",
+  "displayName": "firebase-vscode",
+  "publisher": "firebase",
+  "description": "VSCode Extension for Firebase",
+  "version": "0.0.24",
+  "engines": {
+    "vscode": "^1.69.0"
+  },
+  "repository": "https://github.com/firebase/firebase-tools",
+  "sideEffects": false,
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "firebase.selectProject",
+        "title": "Switch project"
+      }
+    ],
+    "configuration": {
+      "title": "Firebase VS Code Extension",
+      "properties": {
+        "firebase.debug": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable writing debug-level messages to the file provided in firebase.debugLogPath (requires restart)"
+        },
+        "firebase.debugLogPath": {
+          "type": "string",
+          "default": "",
+          "description": "If firebase.debug is true, appends debug-level messages to the provided file (requires restart)"
+        },
+        "firebase.npmPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to NPM executable in local environment"
+        },
+        "firebase.useFrameworks": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable web frameworks"
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "firebase",
+          "title": "Firebase",
+          "icon": "$(mono-firebase)"
+        }
+      ]
+    },
+    "icons": {
+      "mono-firebase": {
+        "description": "Firebase icon",
+        "default": {
+          "fontPath": "./resources/Monicons.woff",
+          "fontCharacter": "\\F101"
+        }
+      }
+    },
+    "views": {
+      "firebase": [
+        {
+          "type": "webview",
+          "id": "sidebar",
+          "name": "Firebase"
+        }
+      ]
+    },
+    "jsonValidation": [
+      {
+        "fileMatch": "firebase.json",
+        "url": "https://raw.githubusercontent.com/firebase/firebase-tools/master/schema/firebase-config.json"
+      }
+    ],
+    "yamlValidation": [
+      {
+        "fileMatch": "extension.yaml",
+        "url": "https://raw.githubusercontent.com/firebase/firebase-tools/master/schema/extension-yaml.json"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "copyfiles": "cp -r node_modules/@vscode/codicons/dist resources/dist",
+    "pkg:vsce": "node scripts/swap-pkg.js vsce && vsce package",
+    "pkg:monospace": "node scripts/swap-pkg.js monospace && vsce package",
+    "dev": "npm run copyfiles && webpack --config webpack.dev.js",
+    "dev:extension": "npm run copyfiles && webpack --config webpack.dev.js --config-name extension",
+    "dev:sidebar": "npm run copyfiles && webpack --config webpack.dev.js --config-name sidebar",
+    "watch": "node scripts/swap-pkg.js vsce && npm run copyfiles && webpack --config webpack.dev.js --watch",
+    "build": "npm run copyfiles && webpack --config webpack.prod.js --devtool hidden-source-map",
+    "build:extension": "webpack --config webpack.prod.js --config-name extension",
+    "build:sidebar": "npm run copyfiles && webpack --config webpack.prod.js --config-name sidebar",
+    "test-compile": "npm run copyfiles && webpack --config src/test/webpack.test.js",
+    "lint": "eslint src --ext ts",
+    "test": "npm run test:unit && npm run test:e2e",
+    "pretest:unit": "npm run test-compile && npm run lint && tsc -p src/test/tsconfig.test.json",
+    "test:unit": "node ./dist/test/firebase-vscode/src/test/runTest.js",
+    "test:e2e": "TS_NODE_PROJECT=\"./src/test/tsconfig.test.json\" wdio run ./src/test/wdio.conf.ts"
+  },
+  "dependencies": {
+    "@preact/signals-react": "^1.3.6",
+    "@vscode/codicons": "0.0.30",
+    "@vscode/webview-ui-toolkit": "^1.2.1",
+    "classnames": "^2.3.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@teamsupercell/typings-for-css-modules-loader": "^2.5.1",
+    "@types/glob": "^8.0.0",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "16.x",
+    "@types/react": "^18.0.9",
+    "@types/react-dom": "^18.0.4",
+    "@types/vscode": "^1.69.0",
+    "@typescript-eslint/eslint-plugin": "^5.45.0",
+    "@typescript-eslint/parser": "^5.45.0",
+    "@vscode/test-electron": "^2.2.0",
+    "@wdio/cli": "^8.27.1",
+    "@wdio/local-runner": "^8.27.0",
+    "@wdio/mocha-framework": "^8.27.0",
+    "@wdio/spec-reporter": "^8.27.0",
+    "copy-webpack-plugin": "^11.0.0",
+    "css-loader": "^6.7.1",
+    "eslint": "^8.28.0",
+    "eslint-plugin-react": "^7.32.2",
+    "fork-ts-checker-webpack-plugin": "^7.3.0",
+    "glob": "^8.0.3",
+    "mini-css-extract-plugin": "^2.6.0",
+    "mocha": "^10.1.0",
+    "postcss-loader": "^7.0.0",
+    "sass": "^1.52.0",
+    "sass-loader": "^13.0.0",
+    "string-replace-loader": "^3.1.0",
+    "ts-loader": "^9.4.2",
+    "typescript": "^4.9.3",
+    "wdio-vscode-service": "^5.2.2",
+    "webpack": "^5.75.0",
+    "webpack-cli": "^5.0.1",
+    "webpack-merge": "^5.8.0"
+  }
+}

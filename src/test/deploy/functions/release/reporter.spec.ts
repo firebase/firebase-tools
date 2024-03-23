@@ -6,6 +6,7 @@ import * as backend from "../../../../deploy/functions/backend";
 import * as reporter from "../../../../deploy/functions/release/reporter";
 import * as track from "../../../../track";
 import * as events from "../../../../functions/events";
+import * as args from "../../../../deploy/functions/args";
 
 const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
   platform: "gcfv1",
@@ -24,7 +25,7 @@ describe("reporter", () => {
         reporter.triggerTag({
           ...ENDPOINT_BASE,
           httpsTrigger: {},
-        })
+        }),
       ).to.equal("v1.https");
     });
 
@@ -34,7 +35,7 @@ describe("reporter", () => {
           ...ENDPOINT_BASE,
           platform: "gcfv2",
           httpsTrigger: {},
-        })
+        }),
       ).to.equal("v2.https");
     });
 
@@ -46,7 +47,7 @@ describe("reporter", () => {
           labels: {
             "deployment-callable": "true",
           },
-        })
+        }),
       ).to.equal("v1.callable");
     });
 
@@ -59,7 +60,7 @@ describe("reporter", () => {
           labels: {
             "deployment-callable": "true",
           },
-        })
+        }),
       ).to.equal("v2.callable");
     });
 
@@ -68,7 +69,7 @@ describe("reporter", () => {
         reporter.triggerTag({
           ...ENDPOINT_BASE,
           scheduleTrigger: {},
-        })
+        }),
       ).to.equal("v1.scheduled");
     });
 
@@ -78,7 +79,7 @@ describe("reporter", () => {
           ...ENDPOINT_BASE,
           platform: "gcfv2",
           scheduleTrigger: {},
-        })
+        }),
       ).to.equal("v2.scheduled");
     });
 
@@ -87,7 +88,7 @@ describe("reporter", () => {
         reporter.triggerTag({
           ...ENDPOINT_BASE,
           blockingTrigger: { eventType: events.v1.BEFORE_CREATE_EVENT },
-        })
+        }),
       ).to.equal("v1.blocking");
     });
 
@@ -97,7 +98,7 @@ describe("reporter", () => {
           ...ENDPOINT_BASE,
           platform: "gcfv2",
           blockingTrigger: { eventType: events.v1.BEFORE_CREATE_EVENT },
-        })
+        }),
       ).to.equal("v2.blocking");
     });
 
@@ -111,17 +112,17 @@ describe("reporter", () => {
             eventFilters: {},
             retry: false,
           },
-        })
+        }),
       ).to.equal("google.pubsub.topic.publish");
     });
   });
 
   describe("logAndTrackDeployStats", () => {
-    let trackStub: sinon.SinonStub;
+    let trackGA4Stub: sinon.SinonStub;
     let debugStub: sinon.SinonStub;
 
     beforeEach(() => {
-      trackStub = sinon.stub(track, "track");
+      trackGA4Stub = sinon.stub(track, "trackGA4");
       debugStub = sinon.stub(logger, "debug");
     });
 
@@ -134,105 +135,97 @@ describe("reporter", () => {
         totalTime: 2_000,
         results: [
           {
-            endpoint: ENDPOINT,
+            endpoint: { ...ENDPOINT, codebase: "codebase0" },
             durationMs: 2_000,
           },
           {
-            endpoint: ENDPOINT,
+            endpoint: { ...ENDPOINT, codebase: "codebase1" },
             durationMs: 1_000,
-            error: new reporter.DeploymentError(ENDPOINT, "update", undefined),
+            error: new reporter.DeploymentError(
+              { ...ENDPOINT, codebase: "codebase1" },
+              "update",
+              undefined,
+            ),
           },
           {
-            endpoint: ENDPOINT,
+            endpoint: { ...ENDPOINT, codebase: "codebase1" },
             durationMs: 0,
-            error: new reporter.AbortedDeploymentError(ENDPOINT),
+            error: new reporter.AbortedDeploymentError({ ...ENDPOINT, codebase: "codebase1" }),
           },
         ],
       };
 
-      await reporter.logAndTrackDeployStats(summary);
+      const context: args.Context = {
+        projectId: "id",
+        codebaseDeployEvents: {
+          codebase0: {
+            params: "none",
+            fn_deploy_num_successes: 0,
+            fn_deploy_num_canceled: 0,
+            fn_deploy_num_failures: 0,
+            fn_deploy_num_skipped: 0,
+          },
+          codebase1: {
+            params: "none",
+            fn_deploy_num_successes: 0,
+            fn_deploy_num_canceled: 0,
+            fn_deploy_num_failures: 0,
+            fn_deploy_num_skipped: 0,
+          },
+        },
+      };
 
-      expect(trackStub).to.have.been.calledWith("functions_region_count", "1", 1);
-      expect(trackStub).to.have.been.calledWith("function_deploy_success", "v1.https", 2_000);
-      expect(trackStub).to.have.been.calledWith("function_deploy_failure", "v1.https", 1_000);
-      // Aborts aren't tracked because they would throw off timing metrics
-      expect(trackStub).to.not.have.been.calledWith("function_deploy_failure", "v1.https", 0);
+      await reporter.logAndTrackDeployStats(summary, context);
 
-      expect(debugStub).to.have.been.calledWith("Total Function Deployment time: 2000");
-      expect(debugStub).to.have.been.calledWith("3 Functions Deployed");
-      expect(debugStub).to.have.been.calledWith("1 Functions Errored");
-      expect(debugStub).to.have.been.calledWith("1 Function Deployments Aborted");
+      expect(trackGA4Stub).to.have.been.calledWith("function_deploy", {
+        platform: "gcfv1",
+        trigger_type: "https",
+        region: "region",
+        runtime: "nodejs16",
+        status: "success",
+        duration: 2_000,
+      });
+      expect(trackGA4Stub).to.have.been.calledWith("function_deploy", {
+        platform: "gcfv1",
+        trigger_type: "https",
+        region: "region",
+        runtime: "nodejs16",
+        status: "failure",
+        duration: 1_000,
+      });
+      expect(trackGA4Stub).to.have.been.calledWith("function_deploy", {
+        platform: "gcfv1",
+        trigger_type: "https",
+        region: "region",
+        runtime: "nodejs16",
+        status: "aborted",
+        duration: 0,
+      });
+
+      expect(trackGA4Stub).to.have.been.calledWith("codebase_deploy", {
+        params: "none",
+        fn_deploy_num_successes: 1,
+        fn_deploy_num_canceled: 0,
+        fn_deploy_num_failures: 0,
+        fn_deploy_num_skipped: 0,
+      });
+      expect(trackGA4Stub).to.have.been.calledWith("codebase_deploy", {
+        params: "none",
+        fn_deploy_num_successes: 0,
+        fn_deploy_num_canceled: 1,
+        fn_deploy_num_failures: 1,
+        fn_deploy_num_skipped: 0,
+      });
+
+      expect(trackGA4Stub).to.have.been.calledWith("function_deploy_group", {
+        codebase_deploy_count: "2",
+        fn_deploy_num_successes: 1,
+        fn_deploy_num_canceled: 1,
+        fn_deploy_num_failures: 1,
+      });
 
       // The 0ms for an aborted function isn't counted.
       expect(debugStub).to.have.been.calledWith("Average Function Deployment time: 1500");
-    });
-
-    it("tracks v1 vs v2 codebases", async () => {
-      const v1 = { ...ENDPOINT };
-      const v2: backend.Endpoint = { ...ENDPOINT, platform: "gcfv2" };
-
-      const summary: reporter.Summary = {
-        totalTime: 1_000,
-        results: [
-          {
-            endpoint: v1,
-            durationMs: 1_000,
-          },
-          {
-            endpoint: v2,
-            durationMs: 1_000,
-          },
-        ],
-      };
-
-      await reporter.logAndTrackDeployStats(summary);
-      expect(trackStub).to.have.been.calledWith("functions_codebase_deploy", "v1+v2", 2);
-      trackStub.resetHistory();
-
-      summary.results = [{ endpoint: v1, durationMs: 1_000 }];
-      await reporter.logAndTrackDeployStats(summary);
-      expect(trackStub).to.have.been.calledWith("functions_codebase_deploy", "v1", 1);
-      trackStub.resetHistory();
-
-      summary.results = [{ endpoint: v2, durationMs: 1_000 }];
-      await reporter.logAndTrackDeployStats(summary);
-      expect(trackStub).to.have.been.calledWith("functions_codebase_deploy", "v2", 1);
-    });
-
-    it("tracks overall success/failure", async () => {
-      const success: reporter.DeployResult = {
-        endpoint: ENDPOINT,
-        durationMs: 1_000,
-      };
-      const failure: reporter.DeployResult = {
-        endpoint: ENDPOINT,
-        durationMs: 1_000,
-        error: new reporter.DeploymentError(ENDPOINT, "create", undefined),
-      };
-
-      const summary: reporter.Summary = {
-        totalTime: 1_000,
-        results: [success, failure],
-      };
-
-      await reporter.logAndTrackDeployStats(summary);
-      expect(trackStub).to.have.been.calledWith("functions_deploy_result", "partial_success", 1);
-      expect(trackStub).to.have.been.calledWith("functions_deploy_result", "partial_failure", 1);
-      expect(trackStub).to.have.been.calledWith(
-        "functions_deploy_result",
-        "partial_error_ratio",
-        0.5
-      );
-      trackStub.resetHistory();
-
-      summary.results = [success];
-      await reporter.logAndTrackDeployStats(summary);
-      expect(trackStub).to.have.been.calledWith("functions_deploy_result", "success", 1);
-      trackStub.resetHistory();
-
-      summary.results = [failure];
-      await reporter.logAndTrackDeployStats(summary);
-      expect(trackStub).to.have.been.calledWith("functions_deploy_result", "failure", 1);
     });
   });
 
@@ -289,7 +282,7 @@ describe("reporter", () => {
       // pass the "s" modifier to regexes to make . capture newlines.
       expect(infoStub).to.have.been.calledWithMatch(/Functions deploy had errors.*failedCreate/s);
       expect(infoStub).to.not.have.been.calledWithMatch(
-        /Functions deploy had errors.*abortedDelete/s
+        /Functions deploy had errors.*abortedDelete/s,
       );
     });
 
@@ -316,7 +309,7 @@ describe("reporter", () => {
 
       expect(infoStub).to.have.been.calledWithMatch("Unable to set the invoker for the IAM policy");
       expect(infoStub).to.not.have.been.calledWithMatch(
-        "One or more functions were being implicitly made publicly available"
+        "One or more functions were being implicitly made publicly available",
       );
 
       infoStub.resetHistory();
@@ -326,7 +319,7 @@ describe("reporter", () => {
 
       expect(infoStub).to.have.been.calledWithMatch("Unable to set the invoker for the IAM policy");
       expect(infoStub).to.have.been.calledWithMatch(
-        "One or more functions were being implicitly made publicly available"
+        "One or more functions were being implicitly made publicly available",
       );
     });
 
@@ -346,7 +339,7 @@ describe("reporter", () => {
 
       reporter.printErrors(summary);
       expect(infoStub).to.have.been.calledWithMatch(
-        "Exceeded maximum retries while deploying functions."
+        "Exceeded maximum retries while deploying functions.",
       );
     });
 
@@ -369,10 +362,10 @@ describe("reporter", () => {
 
       reporter.printErrors(summary);
       expect(infoStub).to.have.been.calledWithMatch(
-        /the following functions were not deleted.*abortedDelete/s
+        /the following functions were not deleted.*abortedDelete/s,
       );
       expect(infoStub).to.not.have.been.calledWith(
-        /the following functions were not deleted.*failedCreate/s
+        /the following functions were not deleted.*failedCreate/s,
       );
     });
   });

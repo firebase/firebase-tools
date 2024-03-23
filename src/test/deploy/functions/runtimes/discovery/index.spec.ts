@@ -38,7 +38,7 @@ describe("yamlToBuild", () => {
       YAML_OBJ,
       "project",
       api.functionsDefaultRegion,
-      "nodejs16"
+      "nodejs16",
     );
     expect(parsed).to.deep.equal(BUILD);
   });
@@ -47,7 +47,7 @@ describe("yamlToBuild", () => {
     const flawed: Record<string, unknown> = { ...YAML_OBJ };
     delete flawed.specVersion;
     expect(() =>
-      discovery.yamlToBuild(flawed, "project", api.functionsDefaultRegion, "nodejs16")
+      discovery.yamlToBuild(flawed, "project", api.functionsDefaultRegion, "nodejs16"),
     ).to.throw(FirebaseError);
   });
 
@@ -57,7 +57,7 @@ describe("yamlToBuild", () => {
       specVersion: "32767beta2",
     };
     expect(() =>
-      discovery.yamlToBuild(flawed, "project", api.functionsDefaultRegion, "nodejs16")
+      discovery.yamlToBuild(flawed, "project", api.functionsDefaultRegion, "nodejs16"),
     ).to.throw(FirebaseError);
   });
 });
@@ -77,7 +77,7 @@ describe("detectFromYaml", () => {
     readFileAsync.resolves(YAML_TEXT);
 
     await expect(
-      discovery.detectFromYaml("directory", "project", "nodejs16")
+      discovery.detectFromYaml("directory", "project", "nodejs16"),
     ).to.eventually.deep.equal(BUILD);
   });
 
@@ -85,7 +85,7 @@ describe("detectFromYaml", () => {
     readFileAsync.rejects({ code: "ENOENT" });
 
     await expect(discovery.detectFromYaml("directory", "project", "nodejs16")).to.eventually.equal(
-      undefined
+      undefined,
     );
   });
 });
@@ -96,12 +96,12 @@ describe("detectFromPort", () => {
   });
 
   it("passes as smoke test", async () => {
-    nock("http://localhost:8080").get("/__/functions.yaml").times(5).replyWithError({
+    nock("http://127.0.0.1:8080").get("/__/functions.yaml").times(5).replyWithError({
       message: "Still booting",
       code: "ECONNREFUSED",
     });
 
-    nock("http://localhost:8080").get("/__/functions.yaml").reply(200, YAML_TEXT);
+    nock("http://127.0.0.1:8080").get("/__/functions.yaml").reply(200, YAML_TEXT);
 
     const parsed = await discovery.detectFromPort(8080, "project", "nodejs16");
     expect(parsed).to.deep.equal(BUILD);

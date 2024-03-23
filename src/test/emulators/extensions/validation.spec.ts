@@ -30,6 +30,7 @@ function fakeInstanceSpecWithAPI(instanceId: string, apiName: string): Deploymen
   return {
     instanceId,
     params: {},
+    systemParams: {},
     ref: {
       publisherId: "test",
       extensionId: "test",
@@ -47,6 +48,7 @@ function fakeInstanceSpecWithAPI(instanceId: string, apiName: string): Deploymen
         sourceUrl: "test.com",
         resources: [],
         params: [],
+        systemParams: [],
         apis: [{ apiName, reason: "because" }],
       },
     },
@@ -54,7 +56,7 @@ function fakeInstanceSpecWithAPI(instanceId: string, apiName: string): Deploymen
 }
 
 function getTestEmulatableBackend(
-  predefinedTriggers: ParsedTriggerDefinition[]
+  predefinedTriggers: ParsedTriggerDefinition[],
 ): EmulatableBackend {
   return {
     functionsDir: ".",
@@ -144,6 +146,7 @@ describe("ExtensionsEmulator validation", () => {
       const shouldStartStub = sandbox.stub(controller, "shouldStart");
       shouldStartStub.withArgs(sinon.match.any, Emulators.STORAGE).returns(true);
       shouldStartStub.withArgs(sinon.match.any, Emulators.DATABASE).returns(true);
+      shouldStartStub.withArgs(sinon.match.any, Emulators.EVENTARC).returns(true);
       shouldStartStub.withArgs(sinon.match.any, Emulators.FIRESTORE).returns(false);
       shouldStartStub.withArgs(sinon.match.any, Emulators.AUTH).returns(false);
     });
@@ -220,6 +223,12 @@ describe("ExtensionsEmulator validation", () => {
               eventType: "providers/google.firebase.database/eventTypes/ref.write",
             },
           }),
+          getTestParsedTriggerDefinition({
+            eventTrigger: {
+              eventType: "test.custom.event",
+              channel: "projects/foo/locations/us-central1/channels/firebase",
+            },
+          }),
         ],
         want: [],
       },
@@ -238,7 +247,7 @@ describe("ExtensionsEmulator validation", () => {
       it(test.desc, () => {
         const result = validation.checkForUnemulatedTriggerTypes(
           getTestEmulatableBackend(test.input),
-          TEST_OPTIONS
+          TEST_OPTIONS,
         );
 
         expect(result).to.have.members(test.want);

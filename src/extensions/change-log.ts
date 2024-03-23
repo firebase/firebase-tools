@@ -1,10 +1,9 @@
 import * as clc from "colorette";
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
+import { marked } from "marked";
 import * as path from "path";
 import * as semver from "semver";
-import TerminalRenderer = require("marked-terminal");
-import Table = require("cli-table");
+import * as TerminalRenderer from "marked-terminal";
+const Table = require("cli-table");
 
 import { listExtensionVersions } from "./extensionsApi";
 import { readFile } from "./localHelper";
@@ -19,7 +18,7 @@ marked.setOptions({
 const EXTENSIONS_CHANGELOG = "CHANGELOG.md";
 // Simplifed version of https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
 const VERSION_LINE_REGEX =
-  /##.*(\d+\.\d+\.\d+(?:-((\d+|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(\d+|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?).*/;
+  /##.+?(\d+\.\d+\.\d+(?:-((\d+|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(\d+|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?).*/;
 
 /*
  * getReleaseNotesForUpdate fetches all version between toVersion and fromVersion and returns the relase notes
@@ -70,7 +69,7 @@ export function displayReleaseNotes(releaseNotes: Record<string, string>, fromVe
     logLabeledWarning(
       "warning",
       "This is a major version update, which means it may contain breaking changes." +
-        " Read the release notes carefully before continuing with this update."
+        " Read the release notes carefully before continuing with this update.",
     );
   }
   logger.info(table.toString());

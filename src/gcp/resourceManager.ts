@@ -11,6 +11,7 @@ const apiClient = new Client({ urlPrefix: resourceManagerOrigin, apiVersion: API
 export const firebaseRoles = {
   apiKeysViewer: "roles/serviceusage.apiKeysViewer",
   authAdmin: "roles/firebaseauth.admin",
+  functionsDeveloper: "roles/cloudfunctions.developer",
   hostingAdmin: "roles/firebasehosting.admin",
   runViewer: "roles/run.viewer",
 };
@@ -23,7 +24,7 @@ export const firebaseRoles = {
  */
 export async function getIamPolicy(projectIdOrNumber: string): Promise<Policy> {
   const response = await apiClient.post<void, Policy>(
-    `/projects/${projectIdOrNumber}:getIamPolicy`
+    `/projects/${projectIdOrNumber}:getIamPolicy`,
   );
   return response.body;
 }
@@ -39,14 +40,14 @@ export async function getIamPolicy(projectIdOrNumber: string): Promise<Policy> {
 export async function setIamPolicy(
   projectIdOrNumber: string,
   newPolicy: Policy,
-  updateMask = ""
+  updateMask = "",
 ): Promise<Policy> {
   const response = await apiClient.post<{ policy: Policy; updateMask: string }, Policy>(
     `/projects/${projectIdOrNumber}:setIamPolicy`,
     {
       policy: newPolicy,
       updateMask: updateMask,
-    }
+    },
   );
   return response.body;
 }
@@ -62,7 +63,7 @@ export async function addServiceAccountToRoles(
   projectId: string,
   serviceAccountName: string,
   roles: string[],
-  skipAccountLookup = false
+  skipAccountLookup = false,
 ): Promise<Policy> {
   const [{ name: fullServiceAccountName }, projectPolicy] = await Promise.all([
     skipAccountLookup
@@ -79,7 +80,7 @@ export async function addServiceAccountToRoles(
   roles.forEach((roleName) => {
     let bindingIndex = findIndex(
       projectPolicy.bindings,
-      (binding: Binding) => binding.role === roleName
+      (binding: Binding) => binding.role === roleName,
     );
 
     // create a new binding if the role doesn't exist in the policy yet
@@ -106,7 +107,7 @@ export async function serviceAccountHasRoles(
   projectId: string,
   serviceAccountName: string,
   roles: string[],
-  skipAccountLookup = false
+  skipAccountLookup = false,
 ): Promise<boolean> {
   const [{ name: fullServiceAccountName }, projectPolicy] = await Promise.all([
     skipAccountLookup

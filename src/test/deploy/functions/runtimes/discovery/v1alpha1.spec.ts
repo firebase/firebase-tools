@@ -27,7 +27,7 @@ describe("buildFromV1Alpha", () => {
   describe("parser errors", () => {
     function assertParserError(obj: unknown): void {
       expect(() => v1alpha1.buildFromV1Alpha1(obj, PROJECT, REGION, RUNTIME)).to.throw(
-        FirebaseError
+        FirebaseError,
       );
     }
 
@@ -438,7 +438,7 @@ describe("buildFromV1Alpha", () => {
       };
 
       expect(v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME)).to.deep.equal(
-        build.of({ id: expected })
+        build.of({ id: expected }),
       );
 
       yaml.endpoints.id.taskQueueTrigger = {
@@ -469,7 +469,7 @@ describe("buildFromV1Alpha", () => {
       };
 
       expect(v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME)).to.deep.equal(
-        build.of({ id: expected })
+        build.of({ id: expected }),
       );
     });
 
@@ -498,7 +498,7 @@ describe("buildFromV1Alpha", () => {
       };
 
       expect(v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME)).to.deep.equal(
-        build.of({ id: expected })
+        build.of({ id: expected }),
       );
 
       yaml.endpoints.id.scheduleTrigger = {
@@ -524,7 +524,7 @@ describe("buildFromV1Alpha", () => {
       };
 
       expect(v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME)).to.deep.equal(
-        build.of({ id: expected })
+        build.of({ id: expected }),
       );
     });
   });
@@ -607,6 +607,48 @@ describe("buildFromV1Alpha", () => {
         },
       });
       expect(parsed).to.deep.equal(expected);
+    });
+
+    it("allows both CEL and lists containing CEL in FieldList typed keys", () => {
+      const yamlCEL: v1alpha1.WireManifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_WIRE_ENDPOINT,
+            httpsTrigger: {},
+            region: "{{ params.REGION }}",
+          },
+        },
+      };
+      const parsedCEL = v1alpha1.buildFromV1Alpha1(yamlCEL, PROJECT, REGION, RUNTIME);
+      const expectedCEL: build.Build = build.of({
+        id: {
+          ...DEFAULTED_ENDPOINT,
+          region: "{{ params.REGION }}",
+          httpsTrigger: {},
+        },
+      });
+      expect(parsedCEL).to.deep.equal(expectedCEL);
+
+      const yamlList: v1alpha1.WireManifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_WIRE_ENDPOINT,
+            httpsTrigger: {},
+            region: ["{{ params.FOO }}", "BAR", "params.BAZ"],
+          },
+        },
+      };
+      const parsedList = v1alpha1.buildFromV1Alpha1(yamlList, PROJECT, REGION, RUNTIME);
+      const expectedList: build.Build = build.of({
+        id: {
+          ...DEFAULTED_ENDPOINT,
+          region: ["{{ params.FOO }}", "BAR", "params.BAZ"],
+          httpsTrigger: {},
+        },
+      });
+      expect(parsedList).to.deep.equal(expectedList);
     });
 
     it("copies schedules", () => {

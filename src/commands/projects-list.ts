@@ -1,9 +1,10 @@
 import * as clc from "colorette";
 import * as ora from "ora";
-import Table = require("cli-table");
+const Table = require("cli-table");
 
 import { Command } from "../command";
-import { FirebaseProjectMetadata, listFirebaseProjects } from "../management/projects";
+import { listFirebaseProjects } from "../management/projects";
+import { FirebaseProjectMetadata } from "../types/project";
 import { requireAuth } from "../requireAuth";
 import { logger } from "../logger";
 
@@ -65,5 +66,5 @@ export const command = new Command("projects:list")
       logProjectsList(projects, options.project);
       logProjectCount(projects);
       return projects;
-    }
+    },
   );

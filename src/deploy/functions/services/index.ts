@@ -7,6 +7,7 @@ import { ensureFirebaseAlertsTriggerRegion } from "./firebaseAlerts";
 import { ensureDatabaseTriggerRegion } from "./database";
 import { ensureRemoteConfigTriggerRegion } from "./remoteConfig";
 import { ensureTestLabTriggerRegion } from "./testLab";
+import { ensureFirestoreTriggerRegion } from "./firestore";
 
 /** A standard void No Op */
 export const noop = (): Promise<void> => Promise.resolve();
@@ -23,7 +24,8 @@ export type Name =
   | "authblocking"
   | "database"
   | "remoteconfig"
-  | "testlab";
+  | "testlab"
+  | "firestore";
 
 /** A service interface for the underlying GCP event services */
 export interface Service {
@@ -117,6 +119,17 @@ const testLabService: Service = {
   unregisterTrigger: noop,
 };
 
+/** A firestore service object */
+const firestoreService: Service = {
+  name: "firestore",
+  api: "firestore.googleapis.com",
+  requiredProjectBindings: noopProjectBindings,
+  ensureTriggerRegion: ensureFirestoreTriggerRegion,
+  validateTrigger: noop,
+  registerTrigger: noop,
+  unregisterTrigger: noop,
+};
+
 /** Mapping from event type string to service object */
 const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
   "google.cloud.pubsub.topic.v1.messagePublished": pubSubService,
@@ -133,6 +146,10 @@ const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
   "google.firebase.database.ref.v1.deleted": databaseService,
   "google.firebase.remoteconfig.remoteConfig.v1.updated": remoteConfigService,
   "google.firebase.testlab.testMatrix.v1.completed": testLabService,
+  "google.cloud.firestore.document.v1.written": firestoreService,
+  "google.cloud.firestore.document.v1.created": firestoreService,
+  "google.cloud.firestore.document.v1.updated": firestoreService,
+  "google.cloud.firestore.document.v1.deleted": firestoreService,
 };
 
 /**

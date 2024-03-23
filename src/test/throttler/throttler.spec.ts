@@ -110,7 +110,7 @@ const throttlerTest = (ThrottlerConstructor: ThrottlerConstructorType): void => 
         expect(err).to.be.an.instanceof(RetriesExhaustedError);
         expect(err.original).to.equal(TEST_ERROR);
         expect(err.message).to.equal(
-          "Task index 0 failed: retries exhausted after 1 attempts, with error: foobar"
+          "Task index 0 failed: retries exhausted after 1 attempts, with error: foobar",
         );
       })
       .then(() => {
@@ -143,7 +143,7 @@ const throttlerTest = (ThrottlerConstructor: ThrottlerConstructorType): void => 
         expect(err).to.be.an.instanceof(RetriesExhaustedError);
         expect(err.original).to.equal(TEST_ERROR);
         expect(err.message).to.equal(
-          "Task index 0 failed: retries exhausted after 4 attempts, with error: foobar"
+          "Task index 0 failed: retries exhausted after 4 attempts, with error: foobar",
         );
       })
       .then(() => {
@@ -305,7 +305,7 @@ const throttlerTest = (ThrottlerConstructor: ThrottlerConstructorType): void => 
     expect(err).to.be.instanceOf(RetriesExhaustedError);
     expect(err.original).to.equal(TEST_ERROR);
     expect(err.message).to.equal(
-      "Task index 0 failed: retries exhausted after 3 attempts, with error: foobar"
+      "Task index 0 failed: retries exhausted after 3 attempts, with error: foobar",
     );
     expect(handler.callCount).to.equal(3);
     expect(q.complete).to.equal(1);
@@ -390,7 +390,7 @@ const throttlerTest = (ThrottlerConstructor: ThrottlerConstructorType): void => 
     }
     expect(err).to.be.instanceOf(RetriesExhaustedError);
     expect(err.message).to.equal(
-      "Task index 1 failed: retries exhausted after 2 attempts, with error: foobar"
+      "Task index 1 failed: retries exhausted after 2 attempts, with error: foobar",
     );
     expect(handler.callCount).to.equal(3);
     expect(q.complete).to.equal(2);

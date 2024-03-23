@@ -25,6 +25,7 @@ const featureFns = new Map<string, (setup: any, config: any, options?: any) => P
   ["hosting", features.hosting],
   ["storage", features.storage],
   ["emulators", features.emulators],
+  ["extensions", features.extensions],
   ["project", features.project], // always runs, sets up .firebaserc
   ["remoteconfig", features.remoteconfig],
   ["hosting:github", features.hostingGithub],
@@ -38,7 +39,7 @@ export async function init(setup: Setup, config: any, options: any): Promise<any
         .filter((f) => f !== "project")
         .join(", ");
       throw new FirebaseError(
-        `${clc.bold(nextFeature)} is not a valid feature. Must be one of ${availableFeatures}`
+        `${clc.bold(nextFeature)} is not a valid feature. Must be one of ${availableFeatures}`,
       );
     }
 

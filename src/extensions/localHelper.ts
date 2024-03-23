@@ -7,7 +7,7 @@ import { FirebaseError } from "../error";
 import { ExtensionSpec } from "./types";
 import { logger } from "../logger";
 
-const EXTENSIONS_SPEC_FILE = "extension.yaml";
+export const EXTENSIONS_SPEC_FILE = "extension.yaml";
 const EXTENSIONS_PREINSTALL_FILE = "PREINSTALL.md";
 
 /**
@@ -35,7 +35,7 @@ export function findExtensionYaml(directory: string): string {
     const parentDir = path.dirname(directory);
     if (parentDir === directory) {
       throw new FirebaseError(
-        "Couldn't find an extension.yaml file. Check that you are in the root directory of your extension."
+        "Couldn't find an extension.yaml file. Check that you are in the root directory of your extension.",
       );
     }
     directory = parentDir;

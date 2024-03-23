@@ -144,7 +144,7 @@ describe("initMiddleware", () => {
 
     beforeEach(async () => {
       port = await portfinder.getPortPromise();
-      await new Promise((resolve) => (server = app.listen(port, resolve)));
+      await new Promise<void>((resolve) => (server = app.listen(port, resolve)));
     });
 
     afterEach(async () => {
@@ -163,7 +163,7 @@ describe("initMiddleware", () => {
             port,
             path: `/__/firebase/v2.2.2/sample-sdk.js`,
           },
-          resolve
+          resolve,
         );
         req.on("error", reject);
         req.end();

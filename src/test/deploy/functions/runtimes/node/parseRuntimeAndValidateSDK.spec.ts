@@ -52,7 +52,7 @@ describe("getRuntimeChoice", () => {
     it("should throw error if unsupported node version set", () => {
       expect(() => runtime.getRuntimeChoice("path/to/source", "nodejs11")).to.throw(
         FirebaseError,
-        runtime.UNSUPPORTED_NODE_VERSION_FIREBASE_JSON_MSG
+        runtime.UNSUPPORTED_NODE_VERSION_FIREBASE_JSON_MSG,
       );
     });
   });
@@ -116,7 +116,7 @@ describe("getRuntimeChoice", () => {
       });
       expect(() => runtime.getRuntimeChoice("path/to/source", "")).to.throw(
         FirebaseError,
-        runtime.UNSUPPORTED_NODE_VERSION_PACKAGE_JSON_MSG
+        runtime.UNSUPPORTED_NODE_VERSION_PACKAGE_JSON_MSG,
       );
     });
   });

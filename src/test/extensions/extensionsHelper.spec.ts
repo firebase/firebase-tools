@@ -1,8 +1,10 @@
+import * as clc from "colorette";
 import { expect } from "chai";
 import * as sinon from "sinon";
 
 import { FirebaseError } from "../../error";
 import * as extensionsApi from "../../extensions/extensionsApi";
+import * as publisherApi from "../../extensions/publisherApi";
 import * as extensionsHelper from "../../extensions/extensionsHelper";
 import * as getProjectNumber from "../../getProjectNumber";
 import * as functionsConfig from "../../functionsConfig";
@@ -12,57 +14,14 @@ import * as prompt from "../../prompt";
 import {
   ExtensionSource,
   ExtensionSpec,
-  ExtensionVersion,
   Param,
   ParamType,
+  Extension,
+  Visibility,
+  RegistryLaunchStage,
 } from "../../extensions/types";
 import { Readable } from "stream";
 import { ArchiveResult } from "../../archiveDirectory";
-import { canonicalizeRefInput } from "../../extensions/extensionsHelper";
-import * as planner from "../../deploy/extensions/planner";
-
-const EXT_SPEC_1: ExtensionSpec = {
-  name: "cool-things",
-  version: "0.0.1-rc.0",
-  resources: [
-    {
-      name: "cool-resource",
-      type: "firebaseextensions.v1beta.function",
-    },
-  ],
-  sourceUrl: "www.google.com/cool-things-here",
-  params: [],
-};
-const EXT_SPEC_2: ExtensionSpec = {
-  name: "cool-things",
-  version: "0.0.1-rc.1",
-  resources: [
-    {
-      name: "cool-resource",
-      type: "firebaseextensions.v1beta.function",
-    },
-  ],
-  sourceUrl: "www.google.com/cool-things-here",
-  params: [],
-};
-const TEST_EXT_VERSION_1: ExtensionVersion = {
-  name: "publishers/test-pub/extensions/ext-one/versions/0.0.1-rc.0",
-  ref: "test-pub/ext-one@0.0.1-rc.0",
-  spec: EXT_SPEC_1,
-  state: "PUBLISHED",
-  hash: "12345",
-  createTime: "2020-06-30T00:21:06.722782Z",
-  sourceDownloadUri: "",
-};
-const TEST_EXT_VERSION_2: ExtensionVersion = {
-  name: "publishers/test-pub/extensions/ext-one/versions/0.0.1-rc.1",
-  ref: "test-pub/ext-one@0.0.1-rc.1",
-  spec: EXT_SPEC_2,
-  state: "PUBLISHED",
-  hash: "23456",
-  createTime: "2020-06-30T00:21:06.722782Z",
-  sourceDownloadUri: "",
-};
 
 describe("extensionsHelper", () => {
   describe("substituteParams", () => {
@@ -146,7 +105,7 @@ describe("extensionsHelper", () => {
   describe("getDBInstanceFromURL", () => {
     it("returns the correct instance name", () => {
       expect(extensionsHelper.getDBInstanceFromURL("https://my-db.firebaseio.com")).to.equal(
-        "my-db"
+        "my-db",
       );
     });
   });
@@ -198,7 +157,7 @@ describe("extensionsHelper", () => {
       };
 
       expect(extensionsHelper.populateDefaultParams(envFile, exampleParamSpec)).to.deep.equal(
-        expected
+        expected,
       );
     });
 
@@ -464,46 +423,6 @@ describe("extensionsHelper", () => {
     });
   });
 
-  describe("incrementPrereleaseVersion", () => {
-    let listExtensionVersionsStub: sinon.SinonStub;
-
-    beforeEach(() => {
-      listExtensionVersionsStub = sinon.stub(extensionsApi, "listExtensionVersions");
-      listExtensionVersionsStub.returns(Promise.resolve([TEST_EXT_VERSION_1, TEST_EXT_VERSION_2]));
-    });
-
-    afterEach(() => {
-      listExtensionVersionsStub.restore();
-    });
-
-    it("should increment rc version", async () => {
-      const newVersion = await extensionsHelper.incrementPrereleaseVersion(
-        "test-pub/ext-one",
-        "0.0.1",
-        "rc"
-      );
-      expect(newVersion).to.eql("0.0.1-rc.2");
-    });
-
-    it("should be first beta version", async () => {
-      const newVersion = await extensionsHelper.incrementPrereleaseVersion(
-        "test-pub/ext-one",
-        "0.0.1",
-        "beta"
-      );
-      expect(newVersion).to.eql("0.0.1-beta.0");
-    });
-
-    it("should not increment version", async () => {
-      const newVersion = await extensionsHelper.incrementPrereleaseVersion(
-        "test-pub/ext-one",
-        "0.0.1",
-        "stable"
-      );
-      expect(newVersion).to.eql("0.0.1");
-    });
-  });
-
   describe("validateSpec", () => {
     it("should not error on a valid spec", () => {
       const testSpec: ExtensionSpec = {
@@ -512,6 +431,7 @@ describe("extensionsHelper", () => {
         specVersion: "v1beta",
         resources: [],
         params: [],
+        systemParams: [],
         sourceUrl: "https://test-source.fake",
         license: "apache-2.0",
       };
@@ -527,6 +447,7 @@ describe("extensionsHelper", () => {
         specVersion: "v1beta",
         resources: [],
         params: [],
+        systemParams: [],
         sourceUrl: "https://test-source.fake",
       };
 
@@ -541,6 +462,7 @@ describe("extensionsHelper", () => {
         specVersion: "v1beta",
         resources: [],
         params: [],
+        systemParams: [],
         sourceUrl: "https://test-source.fake",
         license: "invalid-license",
       };
@@ -807,6 +729,7 @@ describe("extensionsHelper", () => {
         sourceUrl: testUrl,
         resources: [],
         params: [],
+        systemParams: [],
       },
     };
     const testArchivedFiles: ArchiveResult = {
@@ -840,11 +763,11 @@ describe("extensionsHelper", () => {
       expect(archiveStub).to.have.been.calledWith(".");
       expect(uploadStub).to.have.been.calledWith(
         testArchivedFiles,
-        extensionsHelper.EXTENSIONS_BUCKET_NAME
+        extensionsHelper.EXTENSIONS_BUCKET_NAME,
       );
       expect(createSourceStub).to.have.been.calledWith("test-proj", testUrl + "?alt=media", "/");
       expect(deleteStub).to.have.been.calledWith(
-        `/${extensionsHelper.EXTENSIONS_BUCKET_NAME}/object.zip`
+        `/${extensionsHelper.EXTENSIONS_BUCKET_NAME}/object.zip`,
       );
     });
 
@@ -857,11 +780,11 @@ describe("extensionsHelper", () => {
       expect(archiveStub).to.have.been.calledWith(".");
       expect(uploadStub).to.have.been.calledWith(
         testArchivedFiles,
-        extensionsHelper.EXTENSIONS_BUCKET_NAME
+        extensionsHelper.EXTENSIONS_BUCKET_NAME,
       );
       expect(createSourceStub).to.have.been.calledWith("test-proj", testUrl + "?alt=media", "/");
       expect(deleteStub).to.have.been.calledWith(
-        `/${extensionsHelper.EXTENSIONS_BUCKET_NAME}/object.zip`
+        `/${extensionsHelper.EXTENSIONS_BUCKET_NAME}/object.zip`,
       );
     });
 
@@ -869,13 +792,13 @@ describe("extensionsHelper", () => {
       uploadStub.throws(new FirebaseError("something bad happened"));
 
       await expect(extensionsHelper.createSourceFromLocation("test-proj", ".")).to.be.rejectedWith(
-        FirebaseError
+        FirebaseError,
       );
 
       expect(archiveStub).to.have.been.calledWith(".");
       expect(uploadStub).to.have.been.calledWith(
         testArchivedFiles,
-        extensionsHelper.EXTENSIONS_BUCKET_NAME
+        extensionsHelper.EXTENSIONS_BUCKET_NAME,
       );
       expect(createSourceStub).not.to.have.been.called;
       expect(deleteStub).not.to.have.been.called;
@@ -913,7 +836,7 @@ describe("extensionsHelper", () => {
 
       await expect(extensionsHelper.instanceIdExists("proj", TEST_NAME)).to.be.rejectedWith(
         FirebaseError,
-        "Unexpected error when checking if instance ID exists: FirebaseError: Internal Error"
+        "Unexpected error when checking if instance ID exists: FirebaseError: Internal Error",
       );
     });
   });
@@ -970,36 +893,113 @@ describe("extensionsHelper", () => {
     });
   });
 
-  describe(`${canonicalizeRefInput.name}`, () => {
-    let resolveVersionStub: sinon.SinonStub;
+  describe("getNextVersionByStage", () => {
+    let listExtensionVersionsStub: sinon.SinonStub;
+
     beforeEach(() => {
-      resolveVersionStub = sinon.stub(planner, "resolveVersion").resolves("10.1.1");
+      listExtensionVersionsStub = sinon.stub(publisherApi, "listExtensionVersions");
     });
+
     afterEach(() => {
-      resolveVersionStub.restore();
-    });
-    it("should do nothing to a valid ref", async () => {
-      expect(await canonicalizeRefInput("firebase/bigquery-export@10.1.1")).to.equal(
-        "firebase/bigquery-export@10.1.1"
-      );
+      listExtensionVersionsStub.restore();
     });
 
-    it("should infer latest version", async () => {
-      expect(await canonicalizeRefInput("firebase/bigquery-export")).to.equal(
-        "firebase/bigquery-export@10.1.1"
+    it("should return expected stages and versions", async () => {
+      listExtensionVersionsStub.returns(
+        Promise.resolve([
+          { spec: { version: "1.0.0-rc.0" } },
+          { spec: { version: "1.0.0-rc.1" } },
+          { spec: { version: "1.0.0-beta.0" } },
+        ]),
       );
+      const expected = new Map<string, string>([
+        ["rc", "1.0.0-rc.2"],
+        ["alpha", "1.0.0-alpha.0"],
+        ["beta", "1.0.0-beta.1"],
+        ["stable", "1.0.0"],
+      ]);
+      const { versionByStage, hasVersions } = await extensionsHelper.getNextVersionByStage(
+        "test",
+        "1.0.0",
+      );
+      expect(Array.from(versionByStage.entries())).to.eql(Array.from(expected.entries()));
+      expect(hasVersions).to.eql(true);
     });
 
-    it("should infer publisher name as firebase", async () => {
-      expect(await canonicalizeRefInput("firebase/bigquery-export")).to.equal(
-        "firebase/bigquery-export@10.1.1"
+    it("should ignore unknown stages and different prerelease format", async () => {
+      listExtensionVersionsStub.returns(
+        Promise.resolve([
+          { spec: { version: "1.0.0-beta" } },
+          { spec: { version: "1.0.0-prealpha.0" } },
+        ]),
       );
+      const expected = new Map<string, string>([
+        ["rc", "1.0.0-rc.0"],
+        ["alpha", "1.0.0-alpha.0"],
+        ["beta", "1.0.0-beta.0"],
+        ["stable", "1.0.0"],
+      ]);
+      const { versionByStage, hasVersions } = await extensionsHelper.getNextVersionByStage(
+        "test",
+        "1.0.0",
+      );
+      expect(Array.from(versionByStage.entries())).to.eql(Array.from(expected.entries()));
+      expect(hasVersions).to.eql(true);
     });
+  });
 
-    it("should infer publisher name as firebase and also infer latest as version", async () => {
-      expect(await canonicalizeRefInput("bigquery-export")).to.equal(
-        "firebase/bigquery-export@10.1.1"
-      );
+  describe("unpackExtensionState", () => {
+    const testExtension: Extension = {
+      name: "publishers/publisher-id/extensions/extension-id",
+      ref: "publisher-id/extension-id",
+      visibility: Visibility.PUBLIC,
+      registryLaunchStage: RegistryLaunchStage.BETA,
+      createTime: "",
+      state: "PUBLISHED",
+    };
+    it("should return correct published state", () => {
+      expect(
+        extensionsHelper.unpackExtensionState({
+          ...testExtension,
+          state: "PUBLISHED",
+          latestVersion: "1.0.0",
+          latestApprovedVersion: "1.0.0",
+        }),
+      ).to.eql(clc.bold(clc.green("Published")));
+    });
+    it("should return correct uploaded state", () => {
+      expect(
+        extensionsHelper.unpackExtensionState({
+          ...testExtension,
+          state: "PUBLISHED",
+          latestVersion: "1.0.0",
+        }),
+      ).to.eql(clc.green("Uploaded"));
+    });
+    it("should return correct deprecated state", () => {
+      expect(
+        extensionsHelper.unpackExtensionState({
+          ...testExtension,
+          state: "DEPRECATED",
+        }),
+      ).to.eql(clc.red("Deprecated"));
+    });
+    it("should return correct suspended state", () => {
+      expect(
+        extensionsHelper.unpackExtensionState({
+          ...testExtension,
+          state: "SUSPENDED",
+          latestVersion: "1.0.0",
+        }),
+      ).to.eql(clc.bold(clc.red("Suspended")));
+    });
+    it("should return correct prerelease state", () => {
+      expect(
+        extensionsHelper.unpackExtensionState({
+          ...testExtension,
+          state: "PUBLISHED",
+        }),
+      ).to.eql("Prerelease");
     });
   });
 });

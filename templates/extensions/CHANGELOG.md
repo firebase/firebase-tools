@@ -1,1 +1,0 @@
-- Added support for publishing pre-release Extension versions. (#4804)

@@ -12,7 +12,7 @@ Credentials must be stored in "twitter.json" in this directory.
 
 Arguments:
   - version: Version of module that was released. e.g. "1.2.3"
-`
+`,
   );
   process.exit(1);
 }
@@ -45,8 +45,7 @@ client.post(
   { status: `v${version} of @Firebase CLI is available. Release notes: ${getUrl(version)}` },
   (err) => {
     if (err) {
-      console.error(err);
-      process.exit(1);
+      console.error(`Failed to make a tweet for firebase-tools@${version}: ${err}`);
     }
-  }
+  },
 );

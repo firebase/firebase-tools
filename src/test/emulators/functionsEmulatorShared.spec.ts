@@ -92,7 +92,7 @@ describe("FunctionsEmulatorShared", () => {
         },
       };
       expect(functionsEmulatorShared.getFunctionService(def)).to.be.eql(
-        "firebaseauth.googleapis.com"
+        "firebaseauth.googleapis.com",
       );
     });
   });
@@ -130,7 +130,7 @@ describe("FunctionsEmulatorShared", () => {
     for (const t of tests) {
       it(t.desc, () => {
         expect(functionsEmulatorShared.getSecretLocalPath(t.in, testProjectDir)).to.equal(
-          t.expected
+          t.expected,
         );
       });
     }
@@ -158,6 +158,7 @@ describe("FunctionsEmulatorShared", () => {
       resources: [],
       sourceUrl: "test.com",
       params: [],
+      systemParams: [],
       postinstallContent: "Should subsitute ${param:KEY}",
     };
     const testSubbedSpec: ExtensionSpec = {
@@ -166,11 +167,13 @@ describe("FunctionsEmulatorShared", () => {
       resources: [],
       sourceUrl: "test.com",
       params: [],
+      systemParams: [],
       postinstallContent: "Should subsitute value",
     };
     const testExtension: Extension = {
       name: "my-extension",
       ref: "pubby/my-extensions",
+      state: "PUBLISHED",
       createTime: "",
       visibility: Visibility.PUBLIC,
       registryLaunchStage: RegistryLaunchStage.BETA,
@@ -287,7 +290,7 @@ describe("FunctionsEmulatorShared", () => {
     for (const tc of tests) {
       it(tc.desc, () => {
         expect(functionsEmulatorShared.toBackendInfo(tc.in, testCF3Triggers)).to.deep.equal(
-          tc.expected
+          tc.expected,
         );
       });
     }

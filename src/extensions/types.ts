@@ -1,7 +1,7 @@
+import { MemoryOptions } from "../deploy/functions/backend";
+import { Runtime } from "../deploy/functions/runtimes";
 import * as proto from "../gcp/proto";
 import { SpecParamType } from "./extensionsHelper";
-import { Runtime } from "../deploy/functions/runtimes";
-import { MemoryOptions } from "../deploy/functions/backend";
 
 export enum RegistryLaunchStage {
   EXPERIMENTAL = "EXPERIMENTAL",
@@ -19,12 +19,23 @@ export enum Visibility {
 export interface Extension {
   name: string;
   ref: string;
-  visibility: Visibility;
-  registryLaunchStage: RegistryLaunchStage;
+  state: ExtensionState;
+  visibility?: Visibility;
+  registryLaunchStage?: RegistryLaunchStage;
   createTime: string;
+  latestApprovedVersion?: string;
   latestVersion?: string;
   latestVersionCreateTime?: string;
+  repoUri?: string;
 }
+
+export interface Listing {
+  state: ListingState;
+}
+
+export type ExtensionState = "STATE_UNSPECIFIED" | "PUBLISHED" | "DEPRECATED" | "SUSPENDED";
+
+export type ListingState = "STATE_UPSPECIFIED" | "UNLISTED" | "PENDING" | "APPROVED" | "REJECTED";
 
 export interface ExtensionVersion {
   name: string;
@@ -33,15 +44,21 @@ export interface ExtensionVersion {
   spec: ExtensionSpec;
   hash: string;
   sourceDownloadUri: string;
+  buildSourceUri?: string;
   releaseNotes?: string;
   createTime?: string;
   deprecationMessage?: string;
+  extensionRoot?: string;
+  listing?: Listing;
 }
 
 export interface PublisherProfile {
   name: string;
   publisherId: string;
   registerTime: string;
+  displayName: string;
+  websiteUri?: string;
+  iconUri?: string;
 }
 
 export interface ExtensionInstance {
@@ -63,9 +80,8 @@ export interface ExtensionConfig {
   name: string;
   createTime: string;
   source: ExtensionSource;
-  params: {
-    [key: string]: any;
-  };
+  params: Record<string, string>;
+  systemParams: Record<string, string>;
   populatedPostinstallContent?: string;
   extensionRef?: string;
   extensionVersion?: string;
@@ -100,11 +116,18 @@ export interface ExtensionSpec {
   releaseNotesUrl?: string;
   sourceUrl?: string;
   params: Param[];
+  systemParams: Param[];
   preinstallContent?: string;
   postinstallContent?: string;
   readmeContent?: string;
   externalServices?: ExternalService[];
   events?: EventDescriptor[];
+  lifecycleEvents?: LifecycleEvent[];
+}
+
+export interface LifecycleEvent {
+  stage: "STAGE_UNSPECIFIED" | "ON_INSTALL" | "ON_UPDATE" | "ON_CONFIGURE";
+  taskQueueTriggerFunction: string;
 }
 
 export interface EventDescriptor {
@@ -127,7 +150,7 @@ export interface Role {
   reason: string;
 }
 
-// Docs at https://firebase.google.com/docs/extensions/alpha/ref-extension-yaml
+// Docs at https://firebase.google.com/docs/extensions/reference/extension-yaml
 export const FUNCTIONS_RESOURCE_TYPE = "firebaseextensions.v1beta.function";
 export interface FunctionResourceProperties {
   type: typeof FUNCTIONS_RESOURCE_TYPE;
@@ -139,6 +162,7 @@ export interface FunctionResourceProperties {
     availableMemoryMb?: MemoryOptions;
     runtime?: Runtime;
     httpsTrigger?: Record<string, never>;
+    scheduleTrigger?: Record<string, string>;
     taskQueueTrigger?: {
       rateLimits?: {
         maxConcurrentDispatchs?: number;
@@ -160,9 +184,41 @@ export interface FunctionResourceProperties {
   };
 }
 
+export const FUNCTIONS_V2_RESOURCE_TYPE = "firebaseextensions.v1beta.v2function";
+export interface FunctionV2ResourceProperties {
+  type: typeof FUNCTIONS_V2_RESOURCE_TYPE;
+  properties?: {
+    location?: string;
+    sourceDirectory?: string;
+    buildConfig?: {
+      runtime?: Runtime;
+    };
+    serviceConfig?: {
+      availableMemory?: string;
+      timeoutSeconds?: number;
+      minInstanceCount?: number;
+      maxInstanceCount?: number;
+    };
+    eventTrigger?: {
+      eventType: string;
+      triggerRegion?: string;
+      channel?: string;
+      pubsubTopic?: string;
+      retryPolicy?: string;
+      eventFilters?: FunctionV2EventFilter[];
+    };
+  };
+}
+
+export interface FunctionV2EventFilter {
+  attribute: string;
+  value: string;
+  operator?: string;
+}
+
 // Union of all valid property types so we can have a strongly typed "property"
 // field depending on the actual value of "type"
-type ResourceProperties = FunctionResourceProperties;
+type ResourceProperties = FunctionResourceProperties | FunctionV2ResourceProperties;
 
 export type Resource = ResourceProperties & {
   name: string;
@@ -188,6 +244,7 @@ export interface Param {
   validationErrorMessage?: string;
   immutable?: boolean;
   example?: string;
+  advanced?: boolean;
 }
 
 export enum ParamType {

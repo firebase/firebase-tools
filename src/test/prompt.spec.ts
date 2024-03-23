@@ -9,6 +9,7 @@ describe("prompt", () => {
   let inquirerStub: sinon.SinonStub;
   const PROMPT_RESPONSES = {
     lint: true,
+    "lint/dint/mint": true,
     project: "the-best-project-ever",
   };
 
@@ -28,7 +29,7 @@ describe("prompt", () => {
 
       await expect(prompt.prompt(o, qs)).to.be.rejectedWith(
         FirebaseError,
-        /required.+non-interactive/
+        /required.+non-interactive/,
       );
     });
 
@@ -69,6 +70,13 @@ describe("prompt", () => {
 
     it("should return the value for the given name", async () => {
       const r = await prompt.promptOnce({ name: "lint" });
+
+      expect(r).to.equal(true);
+      expect(inquirerStub).calledOnce;
+    });
+
+    it("should handle names with .'s", async () => {
+      const r = await prompt.promptOnce({ name: "lint.dint.mint" });
 
       expect(r).to.equal(true);
       expect(inquirerStub).calledOnce;

@@ -19,7 +19,7 @@ export const command = new Command("database:push <path> [infile]")
   .option("-d, --data <data>", "specify escaped JSON directly")
   .option(
     "--instance <instance>",
-    "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
+    "use the database <instance>.firebaseio.com (if omitted, use default database instance)",
   )
   .option("--disable-triggers", "suppress any Cloud functions triggered by this operation")
   .before(requirePermissions, ["firebasedatabase.instances.update"])
@@ -65,7 +65,7 @@ export const command = new Command("database:push <path> [infile]")
       origin,
       options.project,
       options.instance,
-      path + res.body.name
+      path + res.body.name,
     );
 
     utils.logSuccess("Data pushed successfully");

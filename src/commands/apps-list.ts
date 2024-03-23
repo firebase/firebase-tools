@@ -1,6 +1,6 @@
 import * as clc from "colorette";
 import * as ora from "ora";
-import Table = require("cli-table");
+const Table = require("cli-table");
 
 import { Command } from "../command";
 import { needProjectId } from "../projectUtils";
@@ -35,7 +35,7 @@ function logAppCount(count: number = 0): void {
 export const command = new Command("apps:list [platform]")
   .description(
     "list the registered apps of a Firebase project. " +
-      "Optionally filter apps by [platform]: IOS, ANDROID or WEB (case insensitive)"
+      "Optionally filter apps by [platform]: IOS, ANDROID or WEB (case insensitive)",
   )
   .before(requireAuth)
   .action(async (platform: string | undefined, options: any): Promise<AppMetadata[]> => {
@@ -45,7 +45,7 @@ export const command = new Command("apps:list [platform]")
     let apps;
     const spinner = ora(
       "Preparing the list of your Firebase " +
-        `${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}apps`
+        `${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}apps`,
     ).start();
     try {
       apps = await listFirebaseApps(projectId, appPlatform);

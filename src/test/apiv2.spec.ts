@@ -2,7 +2,7 @@ import { createServer, Server } from "http";
 import { expect } from "chai";
 import * as nock from "nock";
 import AbortController from "abort-controller";
-import proxySetup = require("proxy");
+const proxySetup = require("proxy");
 
 import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
@@ -158,7 +158,7 @@ describe("apiv2", () => {
         method: "GET",
         path: "/path/to/foo",
       });
-      await expect(r).to.eventually.be.rejectedWith(FirebaseError, /Unexpected token.+JSON/);
+      await expect(r).to.eventually.be.rejectedWith(FirebaseError);
       expect(nock.isDone()).to.be.true;
     });
 
@@ -186,7 +186,7 @@ describe("apiv2", () => {
       });
       await expect(r).to.eventually.be.rejectedWith(
         FirebaseError,
-        /Unable to interpret response.+/
+        /Unable to interpret response.+/,
       );
       expect(nock.isDone()).to.be.true;
     });
@@ -304,6 +304,26 @@ describe("apiv2", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("should make a basic GET request and set x-goog-user-project if  GOOGLE_CLOUD_QUOTA_PROJECT is set", async () => {
+      nock("https://example.com")
+        .get("/path/to/foo")
+        .matchHeader("x-goog-user-project", "unit tests, silly")
+        .reply(200, { success: true });
+      const prev = process.env["GOOGLE_CLOUD_QUOTA_PROJECT"];
+      process.env["GOOGLE_CLOUD_QUOTA_PROJECT"] = "unit tests, silly";
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = await c.request({
+        method: "GET",
+        path: "/path/to/foo",
+        headers: { "x-goog-user-project": "unit tests, silly" },
+      });
+      process.env["GOOGLE_CLOUD_QUOTA_PROJECT"] = prev;
+
+      expect(r.body).to.deep.equal({ success: true });
+      expect(nock.isDone()).to.be.true;
+    });
+
     it("should handle a 204 response with no data", async () => {
       nock("https://example.com").get("/path/to/foo").reply(204);
 
@@ -325,7 +345,7 @@ describe("apiv2", () => {
           method: "GET",
           path: "/path/to/foo",
           timeout: 10,
-        })
+        }),
       ).to.eventually.be.rejectedWith(FirebaseError, "Timeout reached making request");
       expect(nock.isDone()).to.be.true;
     });
@@ -341,7 +361,7 @@ describe("apiv2", () => {
           method: "GET",
           path: "/path/to/foo",
           signal: controller.signal,
-        })
+        }),
       ).to.eventually.be.rejectedWith(FirebaseError, "Timeout reached making request");
       expect(nock.isDone()).to.be.true;
     });
@@ -419,7 +439,7 @@ describe("apiv2", () => {
           method: "GET",
           path: "/path/to/foo",
           responseType: "xml",
-        })
+        }),
       ).to.eventually.be.rejectedWith(FirebaseError, /EntityTooLarge/);
       expect(nock.isDone()).to.be.true;
     });
@@ -427,6 +447,7 @@ describe("apiv2", () => {
     describe("with a proxy", () => {
       let proxyServer: Server;
       let targetServer: Server;
+      let oldProxy: string | undefined;
       before(async () => {
         proxyServer = proxySetup(createServer());
         targetServer = createServer((req, res) => {
@@ -441,6 +462,8 @@ describe("apiv2", () => {
             targetServer.listen(52673, () => resolve());
           }),
         ]);
+        oldProxy = process.env.HTTP_PROXY;
+        process.env.HTTP_PROXY = "http://127.0.0.1:52672";
       });
 
       after(async () => {
@@ -448,12 +471,12 @@ describe("apiv2", () => {
           new Promise((resolve) => proxyServer.close(resolve)),
           new Promise((resolve) => targetServer.close(resolve)),
         ]);
+        process.env.HTTP_PROXY = oldProxy;
       });
 
       it("should be able to make a basic GET request", async () => {
         const c = new Client({
           urlPrefix: "http://127.0.0.1:52673",
-          proxy: "http://127.0.0.1:52672",
         });
         const r = await c.request({
           method: "GET",

@@ -1,10 +1,12 @@
 import { Readable } from "stream";
 import * as path from "path";
+import * as clc from "colorette";
 
-import { appengineOrigin, storageOrigin } from "../api";
+import { firebaseStorageOrigin, storageOrigin } from "../api";
 import { Client } from "../apiv2";
-import { logger } from "../logger";
 import { FirebaseError } from "../error";
+import { logger } from "../logger";
+import { ensure } from "../ensureApiEnabled";
 
 /** Bucket Interface */
 interface BucketResponse {
@@ -38,7 +40,7 @@ interface BucketResponse {
         team: string;
       };
       etag: string;
-    }
+    },
   ];
   defaultObjectAcl: [
     {
@@ -53,7 +55,7 @@ interface BucketResponse {
         team: string;
       };
       etag: string;
-    }
+    },
   ];
   iamConfiguration: {
     publicAccessPrevention: string;
@@ -89,7 +91,7 @@ interface BucketResponse {
       method: [string];
       responseHeader: [string];
       maxAgeSeconds: number;
-    }
+    },
   ];
   lifecycle: {
     rule: [
@@ -109,7 +111,7 @@ interface BucketResponse {
           noncurrentTimeBefore: string;
           numNewerVersions: number;
         };
-      }
+      },
     ];
   };
   labels: {
@@ -128,8 +130,16 @@ interface ListBucketsResponse {
   items: [
     {
       name: string;
-    }
+    },
   ];
+}
+
+interface GetDefaultBucketResponse {
+  name: string;
+  location: string;
+  bucket: {
+    name: string;
+  };
 }
 
 /** Response type for obtaining the storage service agent */
@@ -138,21 +148,29 @@ interface StorageServiceAccountResponse {
   kind: string;
 }
 
-export async function getDefaultBucket(projectId?: string): Promise<string> {
+export async function getDefaultBucket(projectId: string): Promise<string> {
+  await ensure(projectId, firebaseStorageOrigin, "storage", false);
   try {
-    const appengineClient = new Client({ urlPrefix: appengineOrigin, apiVersion: "v1" });
-    const resp = await appengineClient.get<{ defaultBucket: string }>(`/apps/${projectId}`);
-    if (resp.body.defaultBucket === "undefined") {
+    const localAPIClient = new Client({ urlPrefix: firebaseStorageOrigin, apiVersion: "v1alpha" });
+    const response = await localAPIClient.get<GetDefaultBucketResponse>(
+      `/projects/${projectId}/defaultBucket`,
+    );
+    if (!response.body?.bucket.name) {
       logger.debug("Default storage bucket is undefined.");
       throw new FirebaseError(
-        "Your project is being set up. Please wait a minute before deploying again."
+        "Your project is being set up. Please wait a minute before deploying again.",
       );
     }
-    return resp.body.defaultBucket;
+    return response.body.bucket.name.split("/").pop()!;
   } catch (err: any) {
-    logger.info(
-      "\n\nThere was an issue deploying your functions. Verify that your project has a Google App Engine instance setup at https://console.cloud.google.com/appengine and try again. If this issue persists, please contact support."
-    );
+    if (err?.status === 404) {
+      throw new FirebaseError(
+        `Firebase Storage has not been set up on project '${clc.bold(
+          projectId,
+        )}'. Go to https://console.firebase.google.com/project/${projectId}/storage and click 'Get Started' to set up Firebase Storage.`,
+      );
+    }
+    logger.info("\n\nUnexpected error when fetching default storage bucket.");
     throw err;
   }
 }
@@ -160,7 +178,7 @@ export async function getDefaultBucket(projectId?: string): Promise<string> {
 export async function upload(
   source: any,
   uploadUrl: string,
-  extraHeaders?: Record<string, string>
+  extraHeaders?: Record<string, string>,
 ): Promise<any> {
   const url = new URL(uploadUrl);
   const localAPIClient = new Client({ urlPrefix: url.origin, auth: false });
@@ -188,7 +206,7 @@ export async function uploadObject(
   /** Source with file (name) to upload, and stream of file. */
   source: { file: string; stream: Readable },
   /** Bucket to upload to. */
-  bucketName: string
+  bucketName: string,
 ): Promise<{ bucket: string; object: string; generation: string | null }> {
   if (path.extname(source.file) !== ".zip") {
     throw new FirebaseError(`Expected a file name ending in .zip, got ${source.file}`);
@@ -249,7 +267,7 @@ export async function listBuckets(projectId: string): Promise<Array<string>> {
   try {
     const localAPIClient = new Client({ urlPrefix: storageOrigin });
     const result = await localAPIClient.get<ListBucketsResponse>(
-      `/storage/v1/b?project=${projectId}`
+      `/storage/v1/b?project=${projectId}`,
     );
     return result.body.items.map((bucket: { name: string }) => bucket.name);
   } catch (err: any) {
@@ -273,7 +291,7 @@ export async function getServiceAccount(projectId: string): Promise<StorageServi
   try {
     const localAPIClient = new Client({ urlPrefix: storageOrigin });
     const response = await localAPIClient.get<StorageServiceAccountResponse>(
-      `/storage/v1/projects/${projectId}/serviceAccount`
+      `/storage/v1/projects/${projectId}/serviceAccount`,
     );
     return response.body;
   } catch (err: any) {

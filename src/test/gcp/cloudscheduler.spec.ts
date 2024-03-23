@@ -133,7 +133,7 @@ describe("cloudscheduler", () => {
 
       await expect(cloudscheduler.createOrReplaceJob(TEST_JOB)).to.be.rejectedWith(
         FirebaseError,
-        "Cloud resource location is not set"
+        "Cloud resource location is not set",
       );
 
       expect(nock.isDone()).to.be.true;
@@ -149,7 +149,7 @@ describe("cloudscheduler", () => {
 
       await expect(cloudscheduler.createOrReplaceJob(TEST_JOB)).to.be.rejectedWith(
         FirebaseError,
-        "Failed to create scheduler job projects/test-project/locations/us-east1/jobs/test: HTTP Error: 400, Unknown Error"
+        "Failed to create scheduler job projects/test-project/locations/us-east1/jobs/test: HTTP Error: 400, Unknown Error",
       );
 
       expect(nock.isDone()).to.be.true;
@@ -176,7 +176,7 @@ describe("cloudscheduler", () => {
 
     it("should copy minimal fields for v1 endpoints", () => {
       expect(
-        cloudscheduler.jobFromEndpoint(V1_ENDPOINT, "appEngineLocation", "1234567")
+        cloudscheduler.jobFromEndpoint(V1_ENDPOINT, "appEngineLocation", "1234567"),
       ).to.deep.equal({
         name: "projects/project/locations/appEngineLocation/jobs/firebase-schedule-id-region",
         schedule: "every 1 minutes",
@@ -192,7 +192,7 @@ describe("cloudscheduler", () => {
 
     it("should copy minimal fields for v2 endpoints", () => {
       expect(
-        cloudscheduler.jobFromEndpoint(V2_ENDPOINT, V2_ENDPOINT.region, "1234567")
+        cloudscheduler.jobFromEndpoint(V2_ENDPOINT, V2_ENDPOINT.region, "1234567"),
       ).to.deep.equal({
         name: "projects/project/locations/region/jobs/firebase-schedule-id-region",
         schedule: "every 1 minutes",
@@ -224,8 +224,8 @@ describe("cloudscheduler", () => {
             },
           },
           "appEngineLocation",
-          "1234567"
-        )
+          "1234567",
+        ),
       ).to.deep.equal({
         name: "projects/project/locations/appEngineLocation/jobs/firebase-schedule-id-region",
         schedule: "every 1 minutes",
@@ -262,8 +262,8 @@ describe("cloudscheduler", () => {
             },
           },
           V2_ENDPOINT.region,
-          "1234567"
-        )
+          "1234567",
+        ),
       ).to.deep.equal({
         name: "projects/project/locations/region/jobs/firebase-schedule-id-region",
         schedule: "every 1 minutes",

@@ -8,6 +8,7 @@ import { EventTrigger } from "./functionsEmulatorShared";
 import { CloudEvent } from "./events/types";
 import { EmulatorRegistry } from "./registry";
 import { FirebaseError } from "../error";
+import { cloudEventFromProtoToJson } from "./eventarcEmulatorUtils";
 
 interface CustomEventTrigger {
   projectId: string;
@@ -57,7 +58,7 @@ export class EventarcEmulator implements EmulatorInstance {
       this.logger.logLabeled(
         "BULLET",
         "eventarc",
-        `Registering custom event trigger for ${key} with trigger name ${triggerName}.`
+        `Registering custom event trigger for ${key} with trigger name ${triggerName}.`,
       );
       const customEventTriggers = this.customEvents[key] || [];
       customEventTriggers.push({ projectId, triggerName, eventTrigger });
@@ -76,7 +77,7 @@ export class EventarcEmulator implements EmulatorInstance {
         }
         this.logger.log(
           "INFO",
-          `Received custom event at channel ${channel}: ${JSON.stringify(event, null, 2)}`
+          `Received custom event at channel ${channel}: ${JSON.stringify(event, null, 2)}`,
         );
         this.triggerCustomEventFunction(channel, event);
       }
@@ -116,14 +117,14 @@ export class EventarcEmulator implements EmulatorInstance {
         .filter(
           (trigger) =>
             !trigger.eventTrigger.eventFilters ||
-            this.matchesAll(event, trigger.eventTrigger.eventFilters)
+            this.matchesAll(event, trigger.eventTrigger.eventFilters),
         )
         .map((trigger) =>
           EmulatorRegistry.client(Emulators.FUNCTIONS)
             .request<CloudEvent<any>, NodeJS.ReadableStream>({
               method: "POST",
               path: `/functions/projects/${trigger.projectId}/triggers/${trigger.triggerName}`,
-              body: JSON.stringify(event),
+              body: JSON.stringify(cloudEventFromProtoToJson(event)),
               responseType: "stream",
               resolveOnHTTPError: true,
             })
@@ -136,10 +137,10 @@ export class EventarcEmulator implements EmulatorInstance {
             .catch((err) => {
               this.logger.log(
                 "ERROR",
-                `Failed to trigger Functions emulator for ${trigger.triggerName}: ${err}`
+                `Failed to trigger Functions emulator for ${trigger.triggerName}: ${err}`,
               );
-            })
-        )
+            }),
+        ),
     );
   }
 

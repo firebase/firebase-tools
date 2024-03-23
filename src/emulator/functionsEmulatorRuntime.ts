@@ -11,7 +11,6 @@ import * as _ from "lodash";
 import { EmulatorLog } from "./types";
 import { Constants } from "./constants";
 import {
-  EmulatedTriggerMap,
   findModuleRoot,
   FunctionsRuntimeBundle,
   HttpConstants,
@@ -243,7 +242,7 @@ async function assertResolveDeveloperNodeModule(name: string): Promise<Successfu
     !(resolution.installed && resolution.declared && resolution.resolution && resolution.version)
   ) {
     throw new Error(
-      `Assertion failure: could not fully resolve ${name}: ${JSON.stringify(resolution)}`
+      `Assertion failure: could not fully resolve ${name}: ${JSON.stringify(resolution)}`,
     );
   }
 
@@ -403,7 +402,7 @@ async function initializeFirebaseFunctionsStubs(): Promise<void> {
   const firebaseFunctionsResolution = await assertResolveDeveloperNodeModule("firebase-functions");
   const firebaseFunctionsRoot = findModuleRoot(
     "firebase-functions",
-    firebaseFunctionsResolution.resolution
+    firebaseFunctionsResolution.resolution,
   );
   const httpsProviderResolution = path.join(firebaseFunctionsRoot, "lib/providers/https");
   const httpsProviderV1Resolution = path.join(firebaseFunctionsRoot, "lib/v1/providers/https");
@@ -442,7 +441,7 @@ async function initializeFirebaseFunctionsStubs(): Promise<void> {
     httpsProvider[onCallInnerMethodName] = (
       opts: any,
       handler: any,
-      deployOpts: DeploymentOptions
+      deployOpts: DeploymentOptions,
     ) => {
       const wrapped = wrapCallableHandler(handler);
       const cf = onCallMethodOriginal(opts, wrapped, deployOpts);
@@ -577,7 +576,7 @@ async function initializeFirebaseAdminStubs(): Promise<void> {
       }).log();
 
       const defaultApp: admin.app.App = makeProxiedFirebaseApp(
-        adminModuleTarget.initializeApp(defaultAppOptions)
+        adminModuleTarget.initializeApp(defaultAppOptions),
       );
       logDebug("initializeApp(DEFAULT)", defaultAppOptions);
 
@@ -591,7 +590,7 @@ async function initializeFirebaseAdminStubs(): Promise<void> {
           new EmulatorLog(
             "WARN_ONCE",
             "runtime-status",
-            "The Firebase Authentication emulator is running, but your 'firebase-admin' dependency is below version 9.3.0, so calls to Firebase Authentication will affect production."
+            "The Firebase Authentication emulator is running, but your 'firebase-admin' dependency is below version 9.3.0, so calls to Firebase Authentication will affect production.",
           ).log();
         } else if (compareVersionStrings(adminResolution.version, "9.4.2") <= 0) {
           // Between firebase-admin versions 9.3.0 and 9.4.2 (inclusive) we used the
@@ -628,13 +627,12 @@ async function initializeFirebaseAdminStubs(): Promise<void> {
     .finalize();
 
   // Stub the admin module in the require cache
-  require.cache[adminResolution.resolution] = Object.assign(
-    require.cache[adminResolution.resolution],
-    {
-      exports: proxiedAdminModule,
-      path: path.dirname(adminResolution.resolution),
-    }
-  );
+  const v = require.cache[adminResolution.resolution];
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- this is not precedent.
+  require.cache[adminResolution.resolution] = Object.assign(v!, {
+    exports: proxiedAdminModule,
+    path: path.dirname(adminResolution.resolution),
+  });
 
   logDebug("firebase-admin has been stubbed.", {
     adminResolution,
@@ -671,7 +669,7 @@ function warnAboutFirestoreProd(): void {
   new EmulatorLog(
     "WARN_ONCE",
     "runtime-status",
-    "The Cloud Firestore emulator is not running, so calls to Firestore will affect production."
+    "The Cloud Firestore emulator is not running, so calls to Firestore will affect production.",
   ).log();
 }
 
@@ -683,7 +681,7 @@ function warnAboutDatabaseProd(): void {
   new EmulatorLog(
     "WARN_ONCE",
     "runtime-status",
-    "The Realtime Database emulator is not running, so calls to Realtime Database will affect production."
+    "The Realtime Database emulator is not running, so calls to Realtime Database will affect production.",
   ).log();
 }
 
@@ -695,7 +693,7 @@ function warnAboutAuthProd(): void {
   new EmulatorLog(
     "WARN_ONCE",
     "runtime-status",
-    "The Firebase Authentication emulator is not running, so calls to Firebase Authentication will affect production."
+    "The Firebase Authentication emulator is not running, so calls to Firebase Authentication will affect production.",
   ).log();
 }
 
@@ -707,7 +705,7 @@ function warnAboutStorageProd(): void {
   new EmulatorLog(
     "WARN_ONCE",
     "runtime-status",
-    "The Firebase Storage emulator is not running, so calls to Firebase Storage will affect production."
+    "The Firebase Storage emulator is not running, so calls to Firebase Storage will affect production.",
   ).log();
 }
 
@@ -741,13 +739,12 @@ async function initializeFunctionsConfigHelper(): Promise<void> {
     .finalize();
 
   // Stub the functions module in the require cache
-  require.cache[functionsResolution.resolution] = Object.assign(
-    require.cache[functionsResolution.resolution],
-    {
-      exports: proxiedFunctionsModule,
-      path: path.dirname(functionsResolution.resolution),
-    }
-  );
+  const v = require.cache[functionsResolution.resolution];
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- this is not precedent.
+  require.cache[functionsResolution.resolution] = Object.assign(v!, {
+    exports: proxiedFunctionsModule,
+    path: path.dirname(functionsResolution.resolution),
+  });
 
   logDebug("firebase-functions has been stubbed.", {
     functionsResolution,
@@ -765,7 +762,7 @@ function rawBodySaver(req: express.Request, res: express.Response, buf: Buffer):
 async function processBackground(
   trigger: CloudFunction<any>,
   reqBody: any,
-  signature: SignatureType
+  signature: SignatureType,
 ): Promise<void> {
   if (signature === "cloudevent") {
     return runCloudEvent(trigger, reqBody);
@@ -864,7 +861,7 @@ function logDebug(msg: string, data?: any): void {
   new EmulatorLog("DEBUG", "runtime-status", `[${process.pid}] ${msg}`, data).log();
 }
 
-async function initializeRuntime(): Promise<EmulatedTriggerMap | undefined> {
+async function initializeRuntime(): Promise<void> {
   FUNCTION_DEBUG_MODE = process.env.FUNCTION_DEBUG_MODE || "";
 
   if (!FUNCTION_DEBUG_MODE) {
@@ -873,7 +870,7 @@ async function initializeRuntime(): Promise<EmulatedTriggerMap | undefined> {
       new EmulatorLog(
         "FATAL",
         "runtime-status",
-        `Environment variable FUNCTION_TARGET cannot be empty. This shouldn't happen.`
+        `Environment variable FUNCTION_TARGET cannot be empty. This shouldn't happen.`,
       ).log();
       await flushAndExit(1);
     }
@@ -883,7 +880,7 @@ async function initializeRuntime(): Promise<EmulatedTriggerMap | undefined> {
       new EmulatorLog(
         "FATAL",
         "runtime-status",
-        `Environment variable FUNCTION_SIGNATURE_TYPE cannot be empty. This shouldn't happen.`
+        `Environment variable FUNCTION_SIGNATURE_TYPE cannot be empty. This shouldn't happen.`,
       ).log();
       await flushAndExit(1);
     }
@@ -895,7 +892,7 @@ async function initializeRuntime(): Promise<EmulatedTriggerMap | undefined> {
     new EmulatorLog(
       "INFO",
       "runtime-status",
-      `Your functions could not be parsed due to an issue with your node_modules (see above)`
+      `Your functions could not be parsed due to an issue with your node_modules (see above)`,
     ).log();
     return;
   }
@@ -977,38 +974,39 @@ async function main(): Promise<void> {
     new EmulatorLog(
       "FATAL",
       "runtime-status",
-      `Failed to initialize and load triggers. This shouldn't happen: ${e.message}`
+      `Failed to initialize and load triggers. This shouldn't happen: ${e.message}`,
     ).log();
     await flushAndExit(1);
   }
-
   const app = express();
   app.enable("trust proxy");
+  // TODO: This should be 10mb for v1 functions, 32mb for v2, but there is not an easy way to check platform from here.
+  const bodyParserLimit = "32mb";
   app.use(
     bodyParser.json({
-      limit: "10mb",
+      limit: bodyParserLimit,
       verify: rawBodySaver,
-    })
+    }),
   );
   app.use(
     bodyParser.text({
-      limit: "10mb",
+      limit: bodyParserLimit,
       verify: rawBodySaver,
-    })
+    }),
   );
   app.use(
     bodyParser.urlencoded({
       extended: true,
-      limit: "10mb",
+      limit: bodyParserLimit,
       verify: rawBodySaver,
-    })
+    }),
   );
   app.use(
     bodyParser.raw({
       type: "*/*",
-      limit: "10mb",
+      limit: bodyParserLimit,
       verify: rawBodySaver,
-    })
+    }),
   );
   app.get("/__/health", (req, res) => {
     res.status(200).send();
@@ -1018,12 +1016,6 @@ async function main(): Promise<void> {
   });
   app.all(`/*`, async (req: express.Request, res: express.Response) => {
     try {
-      new EmulatorLog(
-        "INFO",
-        "runtime-status",
-        `Beginning execution of "${FUNCTION_TARGET_NAME}"`
-      ).log();
-
       const trigger = FUNCTION_TARGET_NAME.split(".").reduce((mod, functionTargetPart) => {
         return mod?.[functionTargetPart];
       }, functionModule) as CloudFunction<unknown>;
@@ -1031,26 +1023,16 @@ async function main(): Promise<void> {
         throw new Error(`Failed to find function ${FUNCTION_TARGET_NAME} in the loaded module`);
       }
 
-      const startHrTime = process.hrtime();
-      res.on("finish", () => {
-        const elapsedHrTime = process.hrtime(startHrTime);
-        new EmulatorLog(
-          "INFO",
-          "runtime-status",
-          `Finished "${FUNCTION_TARGET_NAME}" in ${
-            elapsedHrTime[0] * 1000 + elapsedHrTime[1] / 1000000
-          }ms`
-        ).log();
-      });
-
       switch (FUNCTION_SIGNATURE) {
         case "event":
         case "cloudevent":
+          let reqBody;
           const rawBody = (req as RequestWithRawBody).rawBody;
-          let reqBody = JSON.parse(rawBody.toString());
           if (EventUtils.isBinaryCloudEvent(req)) {
             reqBody = EventUtils.extractBinaryCloudEventContext(req);
             reqBody.data = req.body;
+          } else {
+            reqBody = JSON.parse(rawBody.toString());
           }
           await processBackground(trigger, reqBody, FUNCTION_SIGNATURE);
           res.send({ status: "acknowledged" });
@@ -1063,25 +1045,9 @@ async function main(): Promise<void> {
       res.status(500).send(err.message);
     }
   });
-  const server = app.listen(process.env.PORT, () => {
+  app.listen(process.env.PORT, () => {
     logDebug(`Listening to port: ${process.env.PORT}`);
   });
-  if (!FUNCTION_DEBUG_MODE) {
-    let timeout = process.env.FUNCTIONS_EMULATOR_TIMEOUT_SECONDS || "60";
-    if (timeout.endsWith("s")) {
-      timeout = timeout.slice(0, -1);
-    }
-    const timeoutMs = parseInt(timeout, 10) * 1000;
-    server.setTimeout(timeoutMs, () => {
-      new EmulatorLog(
-        "FATAL",
-        "runtime-error",
-        `Your function timed out after ~${timeout}s. To configure this timeout, see
-      https://firebase.google.com/docs/functions/manage-functions#set_timeout_and_memory_allocation.`
-      ).log();
-      return flushAndExit(1);
-    });
-  }
 
   // Event emitters do not work well with async functions, so we
   // construct our own promise chain to make sure each message is

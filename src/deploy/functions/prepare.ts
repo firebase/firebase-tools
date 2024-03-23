@@ -9,6 +9,15 @@ import * as functionsEnv from "../../functions/env";
 import * as runtimes from "./runtimes";
 import * as validate from "./validate";
 import * as ensure from "./ensure";
+import {
+  functionsOrigin,
+  artifactRegistryDomain,
+  runtimeconfigOrigin,
+  cloudRunApiOrigin,
+  eventarcOrigin,
+  pubsubOrigin,
+  storageOrigin,
+} from "../../api";
 import { Options } from "../../options";
 import {
   EndpointFilter,
@@ -21,12 +30,15 @@ import { logLabeledBullet } from "../../utils";
 import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
 import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import { needProjectId, needProjectNumber } from "../../projectUtils";
-import { track } from "../../track";
 import { logger } from "../../logger";
 import { ensureTriggerRegions } from "./triggerRegionHelper";
 import { ensureServiceAgentRoles } from "./checkIam";
 import { FirebaseError } from "../../error";
-import { configForCodebase, normalizeAndValidate } from "../../functions/projectConfig";
+import {
+  configForCodebase,
+  normalizeAndValidate,
+  ValidatedConfig,
+} from "../../functions/projectConfig";
 import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
 import { applyBackendHashToBackends } from "./cache/applyHash";
@@ -34,11 +46,6 @@ import { allEndpoints, Backend } from "./backend";
 import { assertExhaustive } from "../../functional";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
-function hasUserConfig(config: Record<string, unknown>): boolean {
-  // "firebase" key is always going to exist in runtime config.
-  // If any other key exists, we can assume that user is using runtime config.
-  return Object.keys(config).length > 1;
-}
 
 /**
  * Prepare functions codebases for deploy.
@@ -46,7 +53,7 @@ function hasUserConfig(config: Record<string, unknown>): boolean {
 export async function prepare(
   context: args.Context,
   options: Options,
-  payload: args.Payload
+  payload: args.Payload,
 ): Promise<void> {
   const projectId = needProjectId(options);
   const projectNumber = await needProjectNumber(options);
@@ -58,18 +65,16 @@ export async function prepare(
   if (codebases.length === 0) {
     throw new FirebaseError("No function matches given --only filters. Aborting deployment.");
   }
+  for (const codebase of codebases) {
+    logLabeledBullet("functions", `preparing codebase ${clc.bold(codebase)} for deployment`);
+  }
 
   // ===Phase 0. Check that minimum APIs required for function deploys are enabled.
   const checkAPIsEnabled = await Promise.all([
-    ensureApiEnabled.ensure(projectId, "cloudfunctions.googleapis.com", "functions"),
-    ensureApiEnabled.check(
-      projectId,
-      "runtimeconfig.googleapis.com",
-      "runtimeconfig",
-      /* silent=*/ true
-    ),
+    ensureApiEnabled.ensure(projectId, functionsOrigin, "functions"),
+    ensureApiEnabled.check(projectId, runtimeconfigOrigin, "runtimeconfig", /* silent=*/ true),
     ensure.cloudBuildEnabled(projectId),
-    ensureApiEnabled.ensure(projectId, "artifactregistry.googleapis.com", "artifactregistry"),
+    ensureApiEnabled.ensure(projectId, artifactRegistryDomain, "artifactregistry"),
   ]);
 
   // Get the Firebase Config, and set it on each function in the deployment.
@@ -81,58 +86,48 @@ export async function prepare(
     runtimeConfig = { ...runtimeConfig, ...(await getFunctionsConfig(projectId)) };
   }
 
-  // ===Phase 1. Load codebase from source.
-  context.sources = {};
+  context.codebaseDeployEvents = {};
+
+  // ===Phase 1. Load codebases from source.
+  const wantBuilds = await loadCodebases(
+    context.config,
+    options,
+    firebaseConfig,
+    runtimeConfig,
+    context.filters,
+  );
+
+  // == Phase 2. Resolve build to backend.
   const codebaseUsesEnvs: string[] = [];
   const wantBackends: Record<string, backend.Backend> = {};
-  for (const codebase of codebases) {
-    logLabeledBullet("functions", `preparing codebase ${clc.bold(codebase)} for deployment`);
-
+  for (const [codebase, wantBuild] of Object.entries(wantBuilds)) {
     const config = configForCodebase(context.config, codebase);
-    const sourceDirName = config.source;
-    if (!sourceDirName) {
-      throw new FirebaseError(
-        `No functions code detected at default location (./functions), and no functions source defined in firebase.json`
-      );
-    }
-    const sourceDir = options.config.path(sourceDirName);
-    const delegateContext: runtimes.DelegateContext = {
-      projectId,
-      sourceDir,
-      projectDir: options.config.projectDir,
-      runtime: config.runtime || "",
-    };
-    const runtimeDelegate = await runtimes.getRuntimeDelegate(delegateContext);
-    logger.debug(`Validating ${runtimeDelegate.name} source`);
-    await runtimeDelegate.validate();
-    logger.debug(`Building ${runtimeDelegate.name} source`);
-    await runtimeDelegate.build();
-
     const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
     const userEnvOpt: functionsEnv.UserEnvsOpts = {
-      functionsSource: sourceDir,
+      functionsSource: options.config.path(config.source),
       projectId: projectId,
       projectAlias: options.projectAlias,
     };
     const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
     const envs = { ...userEnvs, ...firebaseEnvs };
-    const wantBuild: build.Build = await runtimeDelegate.discoverBuild(runtimeConfig, firebaseEnvs);
+
     const { backend: wantBackend, envs: resolvedEnvs } = await build.resolveBackend(
       wantBuild,
       firebaseConfig,
       userEnvOpt,
       userEnvs,
-      options.nonInteractive
+      options.nonInteractive,
     );
 
     let hasEnvsFromParams = false;
     wantBackend.environmentVariables = envs;
     for (const envName of Object.keys(resolvedEnvs)) {
-      const envValue = resolvedEnvs[envName]?.toString();
+      const isList = resolvedEnvs[envName]?.legalList;
+      const envValue = resolvedEnvs[envName]?.toSDK();
       if (
         envValue &&
         !resolvedEnvs[envName].internal &&
-        !Object.prototype.hasOwnProperty.call(wantBackend.environmentVariables, envName)
+        (!Object.prototype.hasOwnProperty.call(wantBackend.environmentVariables, envName) || isList)
       ) {
         wantBackend.environmentVariables[envName] = envValue;
         hasEnvsFromParams = true;
@@ -140,14 +135,14 @@ export async function prepare(
     }
 
     for (const endpoint of backend.allEndpoints(wantBackend)) {
-      endpoint.environmentVariables = wantBackend.environmentVariables || {};
+      endpoint.environmentVariables = { ...wantBackend.environmentVariables } || {};
       let resource: string;
       if (endpoint.platform === "gcfv1") {
         resource = `projects/${endpoint.project}/locations/${endpoint.region}/functions/${endpoint.id}`;
       } else if (endpoint.platform === "gcfv2") {
         // N.B. If GCF starts allowing v1's allowable characters in IDs they're
         // going to need to have a transform to create a service ID (which has a
-        // more restrictive cahracter set). We'll need to reimplement that here.
+        // more restrictive character set). We'll need to reimplement that here.
         resource = `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.id}`;
       } else {
         assertExhaustive(endpoint.platform);
@@ -160,21 +155,30 @@ export async function prepare(
       codebaseUsesEnvs.push(codebase);
     }
 
+    context.codebaseDeployEvents[codebase] = {
+      fn_deploy_num_successes: 0,
+      fn_deploy_num_failures: 0,
+      fn_deploy_num_canceled: 0,
+      fn_deploy_num_skipped: 0,
+    };
+
     if (wantBuild.params.length > 0) {
       if (wantBuild.params.every((p) => p.type !== "secret")) {
-        void track("functions_params_in_build", "env_only");
+        context.codebaseDeployEvents[codebase].params = "env_only";
       } else {
-        void track("functions_params_in_build", "with_secrets");
+        context.codebaseDeployEvents[codebase].params = "with_secrets";
       }
     } else {
-      void track("functions_params_in_build", "none");
+      context.codebaseDeployEvents[codebase].params = "none";
     }
+    context.codebaseDeployEvents[codebase].runtime = wantBuild.runtime;
   }
 
-  // ===Phase 1.5. Before proceeding further, let's make sure that we don't have conflicting function names.
+  // ===Phase 2.5. Before proceeding further, let's make sure that we don't have conflicting function names.
   validate.endpointsAreUnique(wantBackends);
 
-  // ===Phase 2. Prepare source for upload.
+  // ===Phase 3. Prepare source for upload.
+  context.sources = {};
   for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
     const config = configForCodebase(context.config, codebase);
     const sourceDirName = config.source;
@@ -183,7 +187,7 @@ export async function prepare(
     if (backend.someEndpoint(wantBackend, () => true)) {
       logLabeledBullet(
         "functions",
-        `preparing ${clc.bold(sourceDirName)} directory for uploading...`
+        `preparing ${clc.bold(sourceDirName)} directory for uploading...`,
       );
     }
     if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
@@ -199,12 +203,12 @@ export async function prepare(
     context.sources[codebase] = source;
   }
 
-  // ===Phase 3. Fill in details and validate endpoints. We run the check for ALL endpoints - we think it's useful for
+  // ===Phase 4. Fill in details and validate endpoints. We run the check for ALL endpoints - we think it's useful for
   // validations to fail even for endpoints that aren't being deployed so any errors are caught early.
   payload.functions = {};
   const haveBackends = groupEndpointsByCodebase(
     wantBackends,
-    backend.allEndpoints(await backend.existingBackend(context))
+    backend.allEndpoints(await backend.existingBackend(context)),
   );
   for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
     const haveBackend = haveBackends[codebase] || backend.empty();
@@ -218,19 +222,7 @@ export async function prepare(
     inferBlockingDetails(wantBackend);
   }
 
-  const tag = hasUserConfig(runtimeConfig)
-    ? codebaseUsesEnvs.length > 0
-      ? "mixed"
-      : "runtime_config"
-    : codebaseUsesEnvs.length > 0
-    ? "dotenv"
-    : "none";
-  void track("functions_codebase_deploy_env_method", tag);
-
-  const codebaseCnt = Object.keys(payload.functions).length;
-  void track("functions_codebase_deploy_count", codebaseCnt >= 5 ? "5+" : codebaseCnt.toString());
-
-  // ===Phase 4. Enable APIs required by the deploying backends.
+  // ===Phase 5. Enable APIs required by the deploying backends.
   const wantBackend = backend.merge(...Object.values(wantBackends));
   const haveBackend = backend.merge(...Object.values(haveBackends));
 
@@ -240,18 +232,13 @@ export async function prepare(
   await Promise.all(
     Object.values(wantBackend.requiredAPIs).map(({ api }) => {
       return ensureApiEnabled.ensure(projectId, api, "functions", /* silent=*/ false);
-    })
+    }),
   );
   if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
     // Note: Some of these are premium APIs that require billing to be enabled.
     // We'd eventually have to add special error handling for billing APIs, but
     // enableCloudBuild is called above and has this special casing already.
-    const V2_APIS = [
-      "run.googleapis.com",
-      "eventarc.googleapis.com",
-      "pubsub.googleapis.com",
-      "storage.googleapis.com",
-    ];
+    const V2_APIS = [cloudRunApiOrigin, eventarcOrigin, pubsubOrigin, storageOrigin];
     const enablements = V2_APIS.map((api) => {
       return ensureApiEnabled.ensure(context.projectId, api, "functions");
     });
@@ -265,7 +252,7 @@ export async function prepare(
     await Promise.all(generateServiceAccounts);
   }
 
-  // ===Phase 5. Ask for user prompts for things might warrant user attentions.
+  // ===Phase 6. Ask for user prompts for things might warrant user attentions.
   // We limit the scope endpoints being deployed.
   const matchingBackend = backend.matchingBackend(wantBackend, (endpoint) => {
     return endpointMatchesAnyFilter(endpoint, context.filters);
@@ -273,7 +260,7 @@ export async function prepare(
   await promptForFailurePolicies(options, matchingBackend, haveBackend);
   await promptForMinInstances(options, matchingBackend, haveBackend);
 
-  // ===Phase 6. Finalize preparation by "fixing" all extraneous environment issues like IAM policies.
+  // ===Phase 7. Finalize preparation by "fixing" all extraneous environment issues like IAM policies.
   // We limit the scope endpoints being deployed.
   await backend.checkAvailability(context, matchingBackend);
   await ensureServiceAgentRoles(projectId, projectNumber, matchingBackend, haveBackend);
@@ -281,7 +268,7 @@ export async function prepare(
   await ensure.secretAccess(projectId, matchingBackend, haveBackend);
 
   /**
-   * ===Phase 7 Generates the hashes for each of the functions now that secret versions have been resolved.
+   * ===Phase 8 Generates the hashes for each of the functions now that secret versions have been resolved.
    * This must be called after `await validate.secretsAreValid`.
    */
   updateEndpointTargetedStatus(wantBackends, context.filters || []);
@@ -296,13 +283,16 @@ export async function prepare(
 export function inferDetailsFromExisting(
   want: backend.Backend,
   have: backend.Backend,
-  usedDotenv: boolean
+  usedDotenv: boolean,
 ): void {
   for (const wantE of backend.allEndpoints(want)) {
     const haveE = have.endpoints[wantE.region]?.[wantE.id];
     if (!haveE) {
       continue;
     }
+
+    // Copy the service id over to the new endpoint.
+    wantE.runServiceId = haveE.runServiceId;
 
     // By default, preserve existing environment variables.
     // Only overwrite environment variables when there are user specified environment variables.
@@ -328,7 +318,7 @@ export function inferDetailsFromExisting(
     // N.B. concurrency has different defaults based on CPU. If the customer
     // only specifies CPU and they change that specification to < 1, we should
     // turn off concurrency.
-    // We'll hanndle this in setCpuAndConcurrency
+    // We'll handle this in setCpuAndConcurrency
 
     wantE.securityLevel = haveE.securityLevel ? haveE.securityLevel : "SECURE_ALWAYS";
 
@@ -360,7 +350,7 @@ function maybeCopyTriggerRegion(wantE: backend.Endpoint, haveE: backend.Endpoint
  */
 export function updateEndpointTargetedStatus(
   wantBackends: Record<string, Backend>,
-  endpointFilters: EndpointFilter[]
+  endpointFilters: EndpointFilter[],
 ): void {
   for (const wantBackend of Object.values(wantBackends)) {
     for (const endpoint of allEndpoints(wantBackend)) {
@@ -376,7 +366,7 @@ export function inferBlockingDetails(want: backend.Backend): void {
     .filter(
       (ep) =>
         backend.isBlockingTriggered(ep) &&
-        AUTH_BLOCKING_EVENTS.includes(ep.blockingTrigger.eventType as any)
+        AUTH_BLOCKING_EVENTS.includes(ep.blockingTrigger.eventType as any),
     ) as (backend.Endpoint & backend.BlockingTriggered)[];
 
   if (authBlockingEndpoints.length === 0) {
@@ -421,4 +411,58 @@ export function resolveCpuAndConcurrency(want: backend.Backend): void {
       e.concurrency = e.cpu >= 1 ? backend.DEFAULT_CONCURRENCY : 1;
     }
   }
+}
+
+/**
+ * Exported for use by an internal command (internaltesting:functions:discover) only.
+ *
+ * @internal
+ */
+export async function loadCodebases(
+  config: ValidatedConfig,
+  options: Options,
+  firebaseConfig: args.FirebaseConfig,
+  runtimeConfig: Record<string, unknown>,
+  filters?: EndpointFilter[],
+): Promise<Record<string, build.Build>> {
+  const codebases = targetCodebases(config, filters);
+  const projectId = needProjectId(options);
+
+  const wantBuilds: Record<string, build.Build> = {};
+  for (const codebase of codebases) {
+    const codebaseConfig = configForCodebase(config, codebase);
+    const sourceDirName = codebaseConfig.source;
+    if (!sourceDirName) {
+      throw new FirebaseError(
+        `No functions code detected at default location (./functions), and no functions source defined in firebase.json`,
+      );
+    }
+    const sourceDir = options.config.path(sourceDirName);
+    const delegateContext: runtimes.DelegateContext = {
+      projectId,
+      sourceDir,
+      projectDir: options.config.projectDir,
+      runtime: codebaseConfig.runtime || "",
+    };
+    const runtimeDelegate = await runtimes.getRuntimeDelegate(delegateContext);
+    logger.debug(`Validating ${runtimeDelegate.name} source`);
+    await runtimeDelegate.validate();
+    logger.debug(`Building ${runtimeDelegate.name} source`);
+    await runtimeDelegate.build();
+
+    const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
+    logLabeledBullet(
+      "functions",
+      `Loading and analyzing source code for codebase ${codebase} to determine what to deploy`,
+    );
+    wantBuilds[codebase] = await runtimeDelegate.discoverBuild(runtimeConfig, {
+      ...firebaseEnvs,
+      // Quota project is required when using GCP's Client-based APIs
+      // Some GCP client SDKs, like Vertex AI, requires appropriate quota project setup
+      // in order for .init() calls to succeed.
+      GOOGLE_CLOUD_QUOTA_PROJECT: projectId,
+    });
+    wantBuilds[codebase].runtime = codebaseConfig.runtime;
+  }
+  return wantBuilds;
 }

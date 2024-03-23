@@ -25,7 +25,7 @@ describe("planner", () => {
   function func(
     id: string,
     region: string,
-    triggered: backend.Triggered = { httpsTrigger: {} }
+    triggered: backend.Triggered = { httpsTrigger: {} },
   ): backend.Endpoint {
     return {
       id,
@@ -293,7 +293,7 @@ describe("planner", () => {
         region1mem1Created,
         region1mem1Updated,
         region2mem1Created,
-        region2mem2Updated
+        region2mem2Updated,
       );
 
       expect(planner.createDeploymentPlan({ wantBackend, haveBackend, codebase })).to.deep.equal({
@@ -347,7 +347,7 @@ describe("planner", () => {
           haveBackend,
           codebase,
           filters: [{ codebase, idChunks: ["g1"] }],
-        })
+        }),
       ).to.deep.equal({
         "default-region-default": {
           endpointsToCreate: [group1Created],
@@ -375,7 +375,7 @@ describe("planner", () => {
       planner.createDeploymentPlan({ wantBackend, haveBackend, codebase });
       expect(logLabeledBullet).to.have.been.calledOnceWith(
         "functions",
-        sinon.match(/change this with the 'concurrency' option/)
+        sinon.match(/change this with the 'concurrency' option/),
       );
     });
 

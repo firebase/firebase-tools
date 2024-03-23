@@ -33,7 +33,7 @@ describe("requireConfig", () => {
     delete (o as any).config;
     await expect(requireConfig(o as Options)).to.eventually.be.rejectedWith(
       FirebaseError,
-      /Not in a Firebase project directory/
+      /Not in a Firebase project directory/,
     );
   });
 

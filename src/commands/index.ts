@@ -25,6 +25,9 @@ export function load(client: any): any {
   client.appdistribution.testers = {};
   client.appdistribution.testers.add = loadCommand("appdistribution-testers-add");
   client.appdistribution.testers.delete = loadCommand("appdistribution-testers-remove");
+  client.appdistribution.group = {};
+  client.appdistribution.group.create = loadCommand("appdistribution-group-create");
+  client.appdistribution.group.delete = loadCommand("appdistribution-group-delete");
   client.apps = {};
   client.apps.create = loadCommand("apps-create");
   client.apps.list = loadCommand("apps-list");
@@ -45,6 +48,7 @@ export function load(client: any): any {
   client.crashlytics.mappingfile.upload = loadCommand("crashlytics-mappingfile-upload");
   client.database = {};
   client.database.get = loadCommand("database-get");
+  client.database.import = loadCommand("database-import");
   client.database.instances = {};
   client.database.instances.create = loadCommand("database-instances-create");
   client.database.instances.list = loadCommand("database-instances-list");
@@ -85,28 +89,34 @@ export function load(client: any): any {
   client.ext.list = loadCommand("ext-list");
   client.ext.uninstall = loadCommand("ext-uninstall");
   client.ext.update = loadCommand("ext-update");
-  if (experiments.isEnabled("ext")) {
-    client.ext.sources = {};
-    client.ext.sources.create = loadCommand("ext-sources-create");
-  }
-  if (experiments.isEnabled("extdev")) {
-    client.ext.dev = {};
-    client.ext.dev.init = loadCommand("ext-dev-init");
-    client.ext.dev.list = loadCommand("ext-dev-list");
-    client.ext.dev.register = loadCommand("ext-dev-register");
-    client.ext.dev.emulators = {};
-    client.ext.dev.emulators.start = loadCommand("ext-dev-emulators-start");
-    client.ext.dev.emulators.exec = loadCommand("ext-dev-emulators-exec");
-    client.ext.dev.deprecate = loadCommand("ext-dev-deprecate");
-    client.ext.dev.undeprecate = loadCommand("ext-dev-undeprecate");
-    client.ext.dev.unpublish = loadCommand("ext-dev-unpublish");
-    client.ext.dev.publish = loadCommand("ext-dev-publish");
-    client.ext.dev.delete = loadCommand("ext-dev-extension-delete");
-    client.ext.dev.usage = loadCommand("ext-dev-usage");
-  }
+  client.ext.dev = {};
+  client.ext.dev.init = loadCommand("ext-dev-init");
+  client.ext.dev.list = loadCommand("ext-dev-list");
+  client.ext.dev.register = loadCommand("ext-dev-register");
+  client.ext.dev.deprecate = loadCommand("ext-dev-deprecate");
+  client.ext.dev.undeprecate = loadCommand("ext-dev-undeprecate");
+  client.ext.dev.upload = loadCommand("ext-dev-upload");
+  client.ext.dev.usage = loadCommand("ext-dev-usage");
   client.firestore = {};
   client.firestore.delete = loadCommand("firestore-delete");
   client.firestore.indexes = loadCommand("firestore-indexes-list");
+  client.firestore.locations = loadCommand("firestore-locations");
+  client.firestore.databases = {};
+  client.firestore.databases.list = loadCommand("firestore-databases-list");
+  client.firestore.databases.get = loadCommand("firestore-databases-get");
+  client.firestore.databases.create = loadCommand("firestore-databases-create");
+  client.firestore.databases.update = loadCommand("firestore-databases-update");
+  client.firestore.databases.delete = loadCommand("firestore-databases-delete");
+  client.firestore.databases.restore = loadCommand("firestore-databases-restore");
+  client.firestore.backups = {};
+  client.firestore.backups.schedules = {};
+  client.firestore.backups.list = loadCommand("firestore-backups-list");
+  client.firestore.backups.get = loadCommand("firestore-backups-get");
+  client.firestore.backups.delete = loadCommand("firestore-backups-delete");
+  client.firestore.backups.schedules.list = loadCommand("firestore-backups-schedules-list");
+  client.firestore.backups.schedules.create = loadCommand("firestore-backups-schedules-create");
+  client.firestore.backups.schedules.update = loadCommand("firestore-backups-schedules-update");
+  client.firestore.backups.schedules.delete = loadCommand("firestore-backups-schedules-delete");
   client.functions = {};
   client.functions.config = {};
   client.functions.config.clone = loadCommand("functions-config-clone");
@@ -143,6 +153,27 @@ export function load(client: any): any {
   client.hosting.sites.get = loadCommand("hosting-sites-get");
   client.hosting.sites.list = loadCommand("hosting-sites-list");
   client.init = loadCommand("init");
+  if (experiments.isEnabled("internaltesting")) {
+    client.internaltesting = {};
+    client.internaltesting.frameworks = {};
+    client.internaltesting.frameworks.compose = loadCommand("internaltesting-frameworks-compose");
+    client.internaltesting.functions = {};
+    client.internaltesting.functions.discover = loadCommand("internaltesting-functions-discover");
+  }
+  if (experiments.isEnabled("apphosting")) {
+    client.apphosting = {};
+    client.apphosting.backends = {};
+    client.apphosting.backends.list = loadCommand("apphosting-backends-list");
+    client.apphosting.backends.create = loadCommand("apphosting-backends-create");
+    client.apphosting.backends.get = loadCommand("apphosting-backends-get");
+    client.apphosting.backends.delete = loadCommand("apphosting-backends-delete");
+    client.apphosting.builds = {};
+    client.apphosting.builds.get = loadCommand("apphosting-builds-get");
+    client.apphosting.builds.create = loadCommand("apphosting-builds-create");
+    client.apphosting.rollouts = {};
+    client.apphosting.rollouts.create = loadCommand("apphosting-rollouts-create");
+    client.apphosting.rollouts.list = loadCommand("apphosting-rollouts-list");
+  }
   client.login = loadCommand("login");
   client.login.add = loadCommand("login-add");
   client.login.ci = loadCommand("login-ci");

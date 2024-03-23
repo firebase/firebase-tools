@@ -57,7 +57,7 @@ export class Config {
         clc.bold('"firebase"') +
           " key in firebase.json is deprecated. Run " +
           clc.bold("firebase use --add") +
-          " instead"
+          " instead",
       );
     }
 
@@ -76,15 +76,17 @@ export class Config {
       }
     });
 
-    // Inject default functions config and source if missing.
-    if (this.projectDir && fsutils.dirExistsSync(this.path(Config.DEFAULT_FUNCTIONS_SOURCE))) {
-      if (Array.isArray(this.get("functions"))) {
-        if (!this.get("functions.[0].source")) {
-          this.set("functions.[0].source", Config.DEFAULT_FUNCTIONS_SOURCE);
-        }
-      } else {
-        if (!this.get("functions.source")) {
-          this.set("functions.source", Config.DEFAULT_FUNCTIONS_SOURCE);
+    // Inject default functions source if missing.
+    if (this.get("functions")) {
+      if (this.projectDir && fsutils.dirExistsSync(this.path(Config.DEFAULT_FUNCTIONS_SOURCE))) {
+        if (Array.isArray(this.get("functions"))) {
+          if (!this.get("functions.[0].source")) {
+            this.set("functions.[0].source", Config.DEFAULT_FUNCTIONS_SOURCE);
+          }
+        } else {
+          if (!this.get("functions.source")) {
+            this.set("functions.source", Config.DEFAULT_FUNCTIONS_SOURCE);
+          }
         }
       }
     }
@@ -144,7 +146,7 @@ export class Config {
       default:
         throw new FirebaseError(
           "Parse Error: " + filePath + " is not of a supported config file type",
-          { exit: 1 }
+          { exit: 1 },
         );
     }
   }
@@ -238,7 +240,7 @@ export class Config {
     });
   }
 
-  public static load(options: any, allowMissing?: boolean) {
+  public static load(options: any, allowMissing?: boolean): Config | null {
     const pd = detectProjectRoot(options);
     const filename = options.configPath || Config.FILENAME;
     if (pd) {
@@ -273,6 +275,7 @@ export class Config {
 
     throw new FirebaseError("Not in a Firebase app directory (could not locate firebase.json)", {
       exit: 1,
+      status: 404,
     });
   }
 }

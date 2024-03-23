@@ -6,7 +6,7 @@ import { Options } from "../options";
 import { requirePermissions } from "../requirePermissions";
 import * as backend from "../deploy/functions/backend";
 import { logger } from "../logger";
-import Table = require("cli-table");
+const Table = require("cli-table");
 
 export const command = new Command("functions:list")
   .description("list all deployed functions in your Firebase project")

@@ -155,16 +155,17 @@ function functionsOpLogReject(funcName: string, type: string, err: any): void {
   if (err?.context?.response?.statusCode === 429) {
     utils.logWarning(
       `${clc.bold(
-        clc.yellow("functions:")
-      )} got "Quota Exceeded" error while trying to ${type} ${funcName}. Waiting to retry...`
+        clc.yellow("functions:"),
+      )} got "Quota Exceeded" error while trying to ${type} ${funcName}. Waiting to retry...`,
     );
   } else {
     utils.logWarning(
-      clc.bold(clc.yellow("functions:")) + " failed to " + type + " function " + funcName
+      clc.bold(clc.yellow("functions:")) + " failed to " + type + " function " + funcName,
     );
   }
   throw new FirebaseError(`Failed to ${type} function ${funcName}`, {
     original: err,
+    status: err?.context?.response?.statusCode,
     context: { function: funcName },
   });
 }
@@ -183,12 +184,12 @@ export async function generateUploadUrl(projectId: string, location: string): Pr
     const res = await client.post<unknown, { uploadUrl: string }>(
       endpoint,
       {},
-      { retryCodes: [503] }
+      { retryCodes: [503] },
     );
     return res.body.uploadUrl;
   } catch (err: any) {
     logger.info(
-      "\n\nThere was an issue deploying your functions. Verify that your project has a Google App Engine instance setup at https://console.cloud.google.com/appengine and try again. If this issue persists, please contact support."
+      "\n\nThere was an issue deploying your functions. Verify that your project has a Google App Engine instance setup at https://console.cloud.google.com/appengine and try again. If this issue persists, please contact support.",
     );
     throw err;
   }
@@ -199,16 +200,22 @@ export async function generateUploadUrl(projectId: string, location: string): Pr
  * @param cloudFunction The function to delete
  */
 export async function createFunction(
-  cloudFunction: Omit<CloudFunction, OutputOnlyFields>
+  cloudFunction: Omit<CloudFunction, OutputOnlyFields>,
 ): Promise<Operation> {
   // the API is a POST to the collection that owns the function name.
   const apiPath = cloudFunction.name.substring(0, cloudFunction.name.lastIndexOf("/"));
   const endpoint = `/${apiPath}`;
+  cloudFunction.buildEnvironmentVariables = {
+    ...cloudFunction.buildEnvironmentVariables,
+    // Disable GCF from automatically running npm run build script
+    // https://cloud.google.com/functions/docs/release-notes
+    GOOGLE_NODE_RUN_SCRIPTS: "",
+  };
 
   try {
     const res = await client.post<Omit<CloudFunction, OutputOnlyFields>, CloudFunction>(
       endpoint,
-      cloudFunction
+      cloudFunction,
     );
     return {
       name: res.body.name,
@@ -244,6 +251,7 @@ export async function setIamPolicy(options: IamOptions): Promise<void> {
   } catch (err: any) {
     throw new FirebaseError(`Failed to set the IAM Policy on the function ${options.name}`, {
       original: err,
+      status: err?.context?.response?.statusCode,
     });
   }
 }
@@ -282,7 +290,7 @@ export async function getIamPolicy(fnName: string): Promise<GetIamPolicy> {
 export async function setInvokerCreate(
   projectId: string,
   fnName: string,
-  invoker: string[]
+  invoker: string[],
 ): Promise<void> {
   if (invoker.length === 0) {
     throw new FirebaseError("Invoker cannot be an empty array");
@@ -310,7 +318,7 @@ export async function setInvokerCreate(
 export async function setInvokerUpdate(
   projectId: string,
   fnName: string,
-  invoker: string[]
+  invoker: string[],
 ): Promise<void> {
   if (invoker.length === 0) {
     throw new FirebaseError("Invoker cannot be an empty array");
@@ -319,7 +327,7 @@ export async function setInvokerUpdate(
   const invokerRole = "roles/cloudfunctions.invoker";
   const currentPolicy = await getIamPolicy(fnName);
   const currentInvokerBinding = currentPolicy.bindings?.find(
-    (binding) => binding.role === invokerRole
+    (binding) => binding.role === invokerRole,
   );
   if (
     currentInvokerBinding &&
@@ -347,17 +355,25 @@ export async function setInvokerUpdate(
  * @param cloudFunction The Cloud Function to update.
  */
 export async function updateFunction(
-  cloudFunction: Omit<CloudFunction, OutputOnlyFields>
+  cloudFunction: Omit<CloudFunction, OutputOnlyFields>,
 ): Promise<Operation> {
   const endpoint = `/${cloudFunction.name}`;
-  // Keys in labels and environmentVariables and secretEnvironmentVariables are user defined, so we don't recurse
-  // for field masks.
+  // Keys in labels and environmentVariables and secretEnvironmentVariables are user defined,
+  // so we don't recurse for field masks.
   const fieldMasks = proto.fieldMasks(
     cloudFunction,
     /* doNotRecurseIn...=*/ "labels",
     "environmentVariables",
-    "secretEnvironmentVariables"
+    "secretEnvironmentVariables",
   );
+
+  cloudFunction.buildEnvironmentVariables = {
+    ...cloudFunction.buildEnvironmentVariables,
+    // Disable GCF from automatically running npm run build script
+    // https://cloud.google.com/functions/docs/release-notes
+    GOOGLE_NODE_RUN_SCRIPTS: "",
+  };
+  fieldMasks.push("buildEnvironmentVariables");
 
   // Failure policy is always an explicit policy and is only signified by the presence or absence of
   // a protobuf.Empty value, so we have to manually add it in the missing case.
@@ -369,7 +385,7 @@ export async function updateFunction(
         queryParams: {
           updateMask: fieldMasks.join(","),
         },
-      }
+      },
     );
     return {
       done: false,
@@ -410,7 +426,7 @@ async function list(projectId: string, region: string): Promise<ListFunctionsRes
     const res = await client.get<ListFunctionsResponse>(endpoint);
     if (res.body.unreachable && res.body.unreachable.length > 0) {
       logger.debug(
-        `[functions] unable to reach the following regions: ${res.body.unreachable.join(", ")}`
+        `[functions] unable to reach the following regions: ${res.body.unreachable.join(", ")}`,
       );
     }
 
@@ -531,17 +547,17 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     "labels",
     "environmentVariables",
     "secretEnvironmentVariables",
-    "sourceUploadUrl"
+    "sourceUploadUrl",
   );
   proto.renameIfPresent(endpoint, gcfFunction, "serviceAccount", "serviceAccountEmail");
   proto.convertIfPresent(
     endpoint,
     gcfFunction,
     "availableMemoryMb",
-    (raw) => raw as backend.MemoryOptions
+    (raw) => raw as backend.MemoryOptions,
   );
   proto.convertIfPresent(endpoint, gcfFunction, "timeoutSeconds", "timeout", (dur) =>
-    dur === null ? null : proto.secondsFromDuration(dur)
+    dur === null ? null : proto.secondsFromDuration(dur),
   );
   if (gcfFunction.vpcConnector) {
     endpoint.vpc = { connector: gcfFunction.vpcConnector };
@@ -550,7 +566,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
       gcfFunction,
       "egressSettings",
       "vpcConnectorEgressSettings",
-      (raw) => raw as backend.VpcEgressSettings
+      (raw) => raw as backend.VpcEgressSettings,
     );
   }
   endpoint.codebase = gcfFunction.labels?.[CODEBASE_LABEL] || projectConfig.DEFAULT_CODEBASE;
@@ -565,18 +581,18 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
  */
 export function functionFromEndpoint(
   endpoint: backend.Endpoint,
-  sourceUploadUrl: string
+  sourceUploadUrl: string,
 ): Omit<CloudFunction, OutputOnlyFields> {
   if (endpoint.platform !== "gcfv1") {
     throw new FirebaseError(
-      "Trying to create a v1 CloudFunction with v2 API. This should never happen"
+      "Trying to create a v1 CloudFunction with v2 API. This should never happen",
     );
   }
 
   if (!runtimes.isValidRuntime(endpoint.runtime)) {
     throw new FirebaseError(
       "Failed internal assertion. Trying to deploy a new function with a deprecated runtime." +
-        " This should never happen"
+        " This should never happen",
     );
   }
   const gcfFunction: Omit<CloudFunction, OutputOnlyFields> = {
@@ -624,7 +640,7 @@ export function functionFromEndpoint(
       ...gcfFunction.labels,
       [BLOCKING_LABEL]:
         BLOCKING_EVENT_TO_LABEL_KEY[
-          endpoint.blockingTrigger.eventType as typeof AUTH_BLOCKING_EVENTS[number]
+          endpoint.blockingTrigger.eventType as (typeof AUTH_BLOCKING_EVENTS)[number]
         ],
     };
   } else {
@@ -644,17 +660,17 @@ export function functionFromEndpoint(
     "maxInstances",
     "ingressSettings",
     "environmentVariables",
-    "secretEnvironmentVariables"
+    "secretEnvironmentVariables",
   );
   proto.renameIfPresent(gcfFunction, endpoint, "serviceAccountEmail", "serviceAccount");
   proto.convertIfPresent(
     gcfFunction,
     endpoint,
     "availableMemoryMb",
-    (mem) => mem as backend.MemoryOptions
+    (mem) => mem as backend.MemoryOptions,
   );
   proto.convertIfPresent(gcfFunction, endpoint, "timeout", "timeoutSeconds", (sec) =>
-    sec ? proto.durationFromSeconds(sec) : null
+    sec ? proto.durationFromSeconds(sec) : null,
   );
   if (endpoint.vpc) {
     proto.renameIfPresent(gcfFunction, endpoint.vpc, "vpcConnector", "connector");
@@ -662,7 +678,7 @@ export function functionFromEndpoint(
       gcfFunction,
       endpoint.vpc,
       "vpcConnectorEgressSettings",
-      "egressSettings"
+      "egressSettings",
     );
   } else if (endpoint.vpc === null) {
     gcfFunction.vpcConnector = null;

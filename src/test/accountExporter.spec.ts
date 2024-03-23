@@ -62,42 +62,7 @@ describe("accountExporter", () => {
     });
 
     it("should call api.request multiple times for JSON export", async () => {
-      nock("https://www.googleapis.com")
-        .post("/identitytoolkit/v3/relyingparty/downloadAccount", {
-          maxResults: 3,
-          targetProjectId: "test-project-id",
-        })
-        .reply(200, {
-          users: userList.slice(0, 3),
-          nextPageToken: "3",
-        })
-        .post("/identitytoolkit/v3/relyingparty/downloadAccount", {
-          maxResults: 3,
-          nextPageToken: "3",
-          targetProjectId: "test-project-id",
-        })
-        .reply(200, {
-          users: userList.slice(3, 6),
-          nextPageToken: "6",
-        })
-        .post("/identitytoolkit/v3/relyingparty/downloadAccount", {
-          maxResults: 3,
-          nextPageToken: "6",
-          targetProjectId: "test-project-id",
-        })
-        .reply(200, {
-          users: userList.slice(6, 7),
-          nextPageToken: "7",
-        })
-        .post("/identitytoolkit/v3/relyingparty/downloadAccount", {
-          maxResults: 3,
-          nextPageToken: "7",
-          targetProjectId: "test-project-id",
-        })
-        .reply(200, {
-          users: [],
-          nextPageToken: "7",
-        });
+      mockAllUsersRequests();
 
       await serialExportUsers("test-project-id", {
         format: "JSON",
@@ -108,7 +73,7 @@ describe("accountExporter", () => {
       expect(spyWrite.getCall(0).args[0]).to.eq(JSON.stringify(userList[0], null, 2));
       for (let j = 1; j < 7; j++) {
         expect(spyWrite.getCall(j).args[0]).to.eq(
-          "," + os.EOL + JSON.stringify(userList[j], null, 2)
+          "," + os.EOL + JSON.stringify(userList[j], null, 2),
         );
       }
       expect(nock.isDone()).to.be.true;
@@ -198,7 +163,7 @@ describe("accountExporter", () => {
       });
       expect(firstWriteSpy.args[0][0]).to.be.eq(
         correctString,
-        "The first call did not emit the correct string"
+        "The first call did not emit the correct string",
       );
 
       mockAllUsersRequests();
@@ -211,12 +176,12 @@ describe("accountExporter", () => {
       });
       expect(secondWriteSpy.args[0][0]).to.be.eq(
         correctString,
-        "The second call did not emit the correct string"
+        "The second call did not emit the correct string",
       );
       expect(nock.isDone()).to.be.true;
     });
 
-    it("should export a user's custom attributes", async () => {
+    it("should export a user's custom attributes for JSON formats", async () => {
       userList[0].customAttributes =
         '{ "customBoolean": true, "customString": "test", "customInt": 99 }';
       userList[1].customAttributes =
@@ -236,10 +201,37 @@ describe("accountExporter", () => {
       });
       expect(spyWrite.getCall(0).args[0]).to.eq(JSON.stringify(userList[0], null, 2));
       expect(spyWrite.getCall(1).args[0]).to.eq(
-        "," + os.EOL + JSON.stringify(userList[1], null, 2)
+        "," + os.EOL + JSON.stringify(userList[1], null, 2),
       );
       expect(spyWrite.getCall(2).args[0]).to.eq(
-        "," + os.EOL + JSON.stringify(userList[2], null, 2)
+        "," + os.EOL + JSON.stringify(userList[2], null, 2),
+      );
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should export a user's custom attributes for CSV formats", async () => {
+      userList[0].customAttributes =
+        '{ "customBoolean": true, "customString": "test", "customInt": 99 }';
+      userList[1].customAttributes = '{ "customBoolean": true }';
+      nock("https://www.googleapis.com")
+        .post("/identitytoolkit/v3/relyingparty/downloadAccount", {
+          maxResults: 3,
+          targetProjectId: "test-project-id",
+        })
+        .reply(200, {
+          users: userList.slice(0, 3),
+        });
+      await serialExportUsers("test-project-id", {
+        format: "JSON",
+        batchSize: 3,
+        writeStream: writeStream,
+      });
+      expect(spyWrite.getCall(0).args[0]).to.eq(JSON.stringify(userList[0], null, 2));
+      expect(spyWrite.getCall(1).args[0]).to.eq(
+        "," + os.EOL + JSON.stringify(userList[1], null, 2),
+      );
+      expect(spyWrite.getCall(2).args[0]).to.eq(
+        "," + os.EOL + JSON.stringify(userList[2], null, 2),
       );
       expect(nock.isDone()).to.be.true;
     });

@@ -1,4 +1,4 @@
-import serveHosting = require("../serve/hosting");
+import * as serveHosting from "../serve/hosting";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import { Constants } from "./constants";
 

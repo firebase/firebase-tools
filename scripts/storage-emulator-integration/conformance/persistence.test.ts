@@ -2,7 +2,7 @@ import * as puppeteer from "puppeteer";
 import { expect } from "chai";
 import * as admin from "firebase-admin";
 import { Bucket } from "@google-cloud/storage";
-import * as firebase from "firebase";
+import firebasePkg from "firebase/compat/app";
 import { EmulatorEndToEndTest } from "../../integration-helpers/framework";
 import * as fs from "fs";
 import { TEST_ENV } from "./env";
@@ -16,6 +16,11 @@ import {
 } from "../utils";
 
 const TEST_FILE_NAME = "public/testFile";
+
+// This is a 'workaround' to prevent typescript from renaming the import. That
+// causes issues when page.evaluate is run with the rename, since the renamed
+// values don't exist in the created page.
+const firebase = firebasePkg;
 
 // Tests files uploaded from one SDK are available in others.
 describe("Storage persistence conformance tests", () => {
@@ -81,7 +86,7 @@ describe("Storage persistence conformance tests", () => {
       TEST_ENV.appConfig,
       TEST_ENV.useProductionServers,
       TEST_ENV.authEmulatorHost,
-      TEST_ENV.storageEmulatorHost.replace(/^(https?:|)\/\//, "")
+      TEST_ENV.storageEmulatorHost.replace(/^(https?:|)\/\//, ""),
     );
   });
 
@@ -129,7 +134,7 @@ describe("Storage persistence conformance tests", () => {
         await firebase.storage().ref(testFileName).putString(fileContent);
       },
       TEST_FILE_NAME,
-      fileContent
+      fileContent,
     );
 
     const [downloadedFileContent] = await testBucket.file(TEST_FILE_NAME).download();

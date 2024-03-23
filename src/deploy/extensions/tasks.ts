@@ -17,7 +17,7 @@ export interface ExtensionDeploymentTask {
   type: DeploymentType;
 }
 export function extensionsDeploymentHandler(
-  errorHandler: ErrorHandler
+  errorHandler: ErrorHandler,
 ): (task: ExtensionDeploymentTask) => Promise<any | undefined> {
   return async (task: ExtensionDeploymentTask) => {
     let result;
@@ -31,7 +31,7 @@ export function extensionsDeploymentHandler(
       errorHandler.record(
         task.spec.instanceId,
         task.type,
-        err.context?.body?.error?.message ?? err
+        err.context?.body?.error?.message ?? err,
       );
     }
     return result;
@@ -41,7 +41,7 @@ export function extensionsDeploymentHandler(
 export function createExtensionInstanceTask(
   projectId: string,
   instanceSpec: DeploymentInstanceSpec,
-  validateOnly: boolean = false
+  validateOnly: boolean = false,
 ): ExtensionDeploymentTask {
   const run = async () => {
     if (instanceSpec.ref) {
@@ -49,6 +49,7 @@ export function createExtensionInstanceTask(
         projectId,
         instanceId: instanceSpec.instanceId,
         params: instanceSpec.params,
+        systemParams: instanceSpec.systemParams,
         extensionVersionRef: refs.toExtensionVersionRef(instanceSpec.ref),
         allowedEventTypes: instanceSpec.allowedEventTypes,
         eventarcChannel: instanceSpec.eventarcChannel,
@@ -60,6 +61,7 @@ export function createExtensionInstanceTask(
         projectId,
         instanceId: instanceSpec.instanceId,
         params: instanceSpec.params,
+        systemParams: instanceSpec.systemParams,
         extensionSource,
         allowedEventTypes: instanceSpec.allowedEventTypes,
         eventarcChannel: instanceSpec.eventarcChannel,
@@ -67,7 +69,7 @@ export function createExtensionInstanceTask(
       });
     } else {
       throw new FirebaseError(
-        `Tried to create extension instance ${instanceSpec.instanceId} without a ref or a local path. This should never happen.`
+        `Tried to create extension instance ${instanceSpec.instanceId} without a ref or a local path. This should never happen.`,
       );
     }
     printSuccess(instanceSpec.instanceId, "create", validateOnly);
@@ -83,7 +85,7 @@ export function createExtensionInstanceTask(
 export function updateExtensionInstanceTask(
   projectId: string,
   instanceSpec: DeploymentInstanceSpec,
-  validateOnly: boolean = false
+  validateOnly: boolean = false,
 ): ExtensionDeploymentTask {
   const run = async () => {
     if (instanceSpec.ref) {
@@ -92,6 +94,7 @@ export function updateExtensionInstanceTask(
         instanceId: instanceSpec.instanceId,
         extRef: refs.toExtensionVersionRef(instanceSpec.ref!),
         params: instanceSpec.params,
+        systemParams: instanceSpec.systemParams,
         canEmitEvents: !!instanceSpec.allowedEventTypes,
         allowedEventTypes: instanceSpec.allowedEventTypes,
         eventarcChannel: instanceSpec.eventarcChannel,
@@ -104,13 +107,15 @@ export function updateExtensionInstanceTask(
         instanceId: instanceSpec.instanceId,
         extensionSource,
         validateOnly,
+        params: instanceSpec.params,
+        systemParams: instanceSpec.systemParams,
         canEmitEvents: !!instanceSpec.allowedEventTypes,
         allowedEventTypes: instanceSpec.allowedEventTypes,
         eventarcChannel: instanceSpec.eventarcChannel,
       });
     } else {
       throw new FirebaseError(
-        `Tried to update extension instance ${instanceSpec.instanceId} without a ref or a local path. This should never happen.`
+        `Tried to update extension instance ${instanceSpec.instanceId} without a ref or a local path. This should never happen.`,
       );
     }
     printSuccess(instanceSpec.instanceId, "update", validateOnly);
@@ -126,7 +131,7 @@ export function updateExtensionInstanceTask(
 export function configureExtensionInstanceTask(
   projectId: string,
   instanceSpec: DeploymentInstanceSpec,
-  validateOnly: boolean = false
+  validateOnly: boolean = false,
 ): ExtensionDeploymentTask {
   const run = async () => {
     if (instanceSpec.ref) {
@@ -134,6 +139,7 @@ export function configureExtensionInstanceTask(
         projectId,
         instanceId: instanceSpec.instanceId,
         params: instanceSpec.params,
+        systemParams: instanceSpec.systemParams,
         canEmitEvents: !!instanceSpec.allowedEventTypes,
         allowedEventTypes: instanceSpec.allowedEventTypes,
         eventarcChannel: instanceSpec.eventarcChannel,
@@ -142,11 +148,11 @@ export function configureExtensionInstanceTask(
     } else if (instanceSpec.localPath) {
       // We should _always_ be updating when using local extensions, since we don't know if there was a code change at the local path since last deploy.
       throw new FirebaseError(
-        `Tried to configure extension instance ${instanceSpec.instanceId} from a local path. This should never happen.`
+        `Tried to configure extension instance ${instanceSpec.instanceId} from a local path. This should never happen.`,
       );
     } else {
       throw new FirebaseError(
-        `Tried to configure extension instance ${instanceSpec.instanceId} without a ref or a local path. This should never happen.`
+        `Tried to configure extension instance ${instanceSpec.instanceId} without a ref or a local path. This should never happen.`,
       );
     }
     printSuccess(instanceSpec.instanceId, "configure", validateOnly);
@@ -161,7 +167,7 @@ export function configureExtensionInstanceTask(
 
 export function deleteExtensionInstanceTask(
   projectId: string,
-  instanceSpec: InstanceSpec
+  instanceSpec: InstanceSpec,
 ): ExtensionDeploymentTask {
   const run = async () => {
     await extensionsApi.deleteInstance(projectId, instanceSpec.instanceId);

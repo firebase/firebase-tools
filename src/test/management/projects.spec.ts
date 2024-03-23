@@ -7,6 +7,7 @@ import * as projectManager from "../../management/projects";
 import * as pollUtils from "../../operation-poller";
 import * as prompt from "../../prompt";
 import { FirebaseError } from "../../error";
+import { CloudProjectInfo, FirebaseProjectMetadata } from "../../types/project";
 
 const PROJECT_ID = "the-best-firebase-project";
 const PROJECT_NUMBER = "1234567890";
@@ -24,7 +25,7 @@ const LOCATION_ID = "location-id";
 const PAGE_TOKEN = "page-token";
 const NEXT_PAGE_TOKEN = "next-page-token";
 
-const TEST_FIREBASE_PROJECT: projectManager.FirebaseProjectMetadata = {
+const TEST_FIREBASE_PROJECT: FirebaseProjectMetadata = {
   projectId: "my-project-123",
   projectNumber: "123456789",
   displayName: "my-project",
@@ -37,7 +38,7 @@ const TEST_FIREBASE_PROJECT: projectManager.FirebaseProjectMetadata = {
   },
 };
 
-const ANOTHER_FIREBASE_PROJECT: projectManager.FirebaseProjectMetadata = {
+const ANOTHER_FIREBASE_PROJECT: FirebaseProjectMetadata = {
   projectId: "another-project",
   projectNumber: "987654321",
   displayName: "another-project",
@@ -45,19 +46,19 @@ const ANOTHER_FIREBASE_PROJECT: projectManager.FirebaseProjectMetadata = {
   resources: {},
 };
 
-const TEST_CLOUD_PROJECT: projectManager.CloudProjectInfo = {
+const TEST_CLOUD_PROJECT: CloudProjectInfo = {
   project: "projects/my-project-123",
   displayName: "my-project",
   locationId: "us-central",
 };
 
-const ANOTHER_CLOUD_PROJECT: projectManager.CloudProjectInfo = {
+const ANOTHER_CLOUD_PROJECT: CloudProjectInfo = {
   project: "projects/another-project",
   displayName: "another-project",
   locationId: "us-central",
 };
 
-function generateFirebaseProjectList(counts: number): projectManager.FirebaseProjectMetadata[] {
+function generateFirebaseProjectList(counts: number): FirebaseProjectMetadata[] {
   return Array.from(Array(counts), (_, i: number) => ({
     name: `projects/project-id-${i}`,
     projectId: `project-id-${i}`,
@@ -72,7 +73,7 @@ function generateFirebaseProjectList(counts: number): projectManager.FirebasePro
   }));
 }
 
-function generateCloudProjectList(counts: number): projectManager.CloudProjectInfo[] {
+function generateCloudProjectList(counts: number): CloudProjectInfo[] {
   return Array.from(Array(counts), (_, i: number) => ({
     project: `projects/project-id-${i}`,
     displayName: `Project ${i}`,
@@ -155,7 +156,7 @@ describe("Project management", () => {
         }
 
         expect(err.message).to.equal(
-          "There are no Firebase projects associated with this account."
+          "There are no Firebase projects associated with this account.",
         );
         expect(promptOnceStub).to.be.not.called;
         expect(nock.isDone()).to.be.true;
@@ -189,7 +190,7 @@ describe("Project management", () => {
 
         expect(err.message).to.equal(
           "Failed to get Firebase project my-project-123" +
-            ". Please make sure the project exists and your account has permission to access it."
+            ". Please make sure the project exists and your account has permission to access it.",
         );
         expect(err.original.toString()).to.contain("Failed to get project");
         expect(promptOnceStub).to.be.not.called;
@@ -249,7 +250,7 @@ describe("Project management", () => {
         }
 
         expect(err.message).to.equal(
-          "There are no available Google Cloud projects to add Firebase services."
+          "There are no available Google Cloud projects to add Firebase services.",
         );
         expect(promptOnceStub).to.be.not.called;
         expect(nock.isDone()).to.be.true;
@@ -299,7 +300,7 @@ describe("Project management", () => {
         }
 
         expect(err.message).to.equal(
-          "Failed to create project. See firebase-debug.log for more info."
+          "Failed to create project. See firebase-debug.log for more info.",
         );
         expect(err.original).to.be.an.instanceOf(FirebaseError, "Not Found");
         expect(nock.isDone()).to.be.true;
@@ -324,7 +325,7 @@ describe("Project management", () => {
         }
 
         expect(err.message).to.equal(
-          "Failed to create project. See firebase-debug.log for more info."
+          "Failed to create project. See firebase-debug.log for more info.",
         );
         expect(err.original).to.equal(expectedError);
         expect(nock.isDone()).to.be.true;
@@ -370,7 +371,7 @@ describe("Project management", () => {
         }
 
         expect(err.message).to.equal(
-          "Failed to add Firebase to Google Cloud Platform project. See firebase-debug.log for more info."
+          "Failed to add Firebase to Google Cloud Platform project. See firebase-debug.log for more info.",
         );
         expect(err.original).to.be.an.instanceOf(FirebaseError, "Not Found");
         expect(nock.isDone()).to.be.true;
@@ -392,7 +393,7 @@ describe("Project management", () => {
         }
 
         expect(err.message).to.equal(
-          "Failed to add Firebase to Google Cloud Platform project. See firebase-debug.log for more info."
+          "Failed to add Firebase to Google Cloud Platform project. See firebase-debug.log for more info.",
         );
         expect(err.original).to.equal(expectedError);
         expect(nock.isDone()).to.be.true;
@@ -467,7 +468,7 @@ describe("Project management", () => {
         }
 
         expect(err.message).to.equal(
-          "Failed to list available Google Cloud Platform projects. See firebase-debug.log for more info."
+          "Failed to list available Google Cloud Platform projects. See firebase-debug.log for more info.",
         );
         expect(err.original.toString()).to.contain("Not Found");
         expect(nock.isDone()).to.be.true;
@@ -536,7 +537,7 @@ describe("Project management", () => {
         }
 
         expect(err.message).to.equal(
-          "Failed to list Firebase projects. See firebase-debug.log for more info."
+          "Failed to list Firebase projects. See firebase-debug.log for more info.",
         );
         expect(err.original.toString()).to.contain("Not Found");
         expect(nock.isDone()).to.be.true;
@@ -594,7 +595,7 @@ describe("Project management", () => {
         }
 
         expect(err.message).to.equal(
-          "Failed to list Firebase projects. See firebase-debug.log for more info."
+          "Failed to list Firebase projects. See firebase-debug.log for more info.",
         );
         expect(err.original.toString()).to.contain("Not Found");
         expect(nock.isDone()).to.be.true;
@@ -622,7 +623,7 @@ describe("Project management", () => {
         }
 
         expect(err.message).to.equal(
-          "Failed to list Firebase projects. See firebase-debug.log for more info."
+          "Failed to list Firebase projects. See firebase-debug.log for more info.",
         );
         expect(err.original.toString()).to.contain("Not Found");
         expect(nock.isDone()).to.be.true;
@@ -631,7 +632,7 @@ describe("Project management", () => {
 
     describe("getFirebaseProject", () => {
       it("should resolve with project information if it succeeds", async () => {
-        const expectedProjectInfo: projectManager.FirebaseProjectMetadata = {
+        const expectedProjectInfo: FirebaseProjectMetadata = {
           name: `projects/${PROJECT_ID}`,
           projectId: PROJECT_ID,
           displayName: PROJECT_NAME,
@@ -667,7 +668,7 @@ describe("Project management", () => {
 
         expect(err.message).to.equal(
           `Failed to get Firebase project ${PROJECT_ID}. ` +
-            "Please make sure the project exists and your account has permission to access it."
+            "Please make sure the project exists and your account has permission to access it.",
         );
         expect(err.original.toString()).to.contain("Not Found");
         expect(nock.isDone()).to.be.true;

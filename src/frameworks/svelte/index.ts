@@ -1,4 +1,4 @@
-import { FrameworkType } from "..";
+import { FrameworkType } from "../interfaces";
 import { initViteTemplate, vitePluginDiscover } from "../vite";
 
 export * from "../vite";

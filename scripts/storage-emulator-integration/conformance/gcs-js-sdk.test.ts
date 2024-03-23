@@ -147,7 +147,7 @@ describe("GCS Javascript SDK conformance tests", () => {
 
         const [storedMetadata] = await file.getMetadata();
         expect(storedMetadata.metadata.firebaseStorageDownloadTokens).to.deep.equal(
-          incomingMetadata.metadata.firebaseStorageDownloadTokens
+          incomingMetadata.metadata.firebaseStorageDownloadTokens,
         );
       });
 
@@ -184,8 +184,8 @@ describe("GCS Javascript SDK conformance tests", () => {
               await testBucket.upload(smallFilePath, {
                 destination: f,
               });
-            }
-          )
+            },
+          ),
         );
       });
 
@@ -330,10 +330,11 @@ describe("GCS Javascript SDK conformance tests", () => {
       });
 
       it("should list files in sub-directory (using directory)", async () => {
-        const [files, , { prefixes }] = await testBucket.getFiles({
+        const res = await testBucket.getFiles({
           autoPaginate: false,
-          directory: "testing/",
+          prefix: "testing/",
         });
+        const [files, , { prefixes }] = res;
 
         expect(prefixes).to.be.undefined;
         expect(files.map((file) => file.name)).to.deep.equal([TESTING_FILE]);
@@ -488,7 +489,7 @@ describe("GCS Javascript SDK conformance tests", () => {
 
       it("should throw 404 error for file not found", async () => {
         const err = (await expect(testBucket.file("blah").download()).to.be.eventually.rejectedWith(
-          `No such object: ${storageBucket}/blah`
+          `No such object: ${storageBucket}/blah`,
         )) as Error;
 
         expect(err).to.have.property("code", 404);
@@ -718,7 +719,7 @@ describe("GCS Javascript SDK conformance tests", () => {
 
         const file = testBucket.file(COPY_DESTINATION_FILENAME);
         await expect(
-          testBucket.file(smallFilePath.split("/").slice(-1)[0]).copy(file, { token: "foo-bar" })
+          testBucket.file(smallFilePath.split("/").slice(-1)[0]).copy(file, { token: "foo-bar" }),
         ).to.eventually.be.rejected.and.have.property("code", 501);
       });
     });
@@ -735,12 +736,12 @@ describe("GCS Javascript SDK conformance tests", () => {
         expect(aclMetadata.kind).to.be.eql("storage#objectAccessControl");
         expect(aclMetadata.object).to.be.eql(destination);
         expect(aclMetadata.id).to.be.eql(
-          `${testBucket.name}/${destination}/${generation}/allUsers`
+          `${testBucket.name}/${destination}/${generation}/allUsers`,
         );
         expect(aclMetadata.selfLink).to.be.eql(
           `${googleapisHost}/storage/v1/b/${testBucket.name}/o/${encodeURIComponent(
-            destination
-          )}/acl/allUsers`
+            destination,
+          )}/acl/allUsers`,
         );
         expect(aclMetadata.bucket).to.be.eql(testBucket.name);
         expect(aclMetadata.entity).to.be.eql("allUsers");
@@ -811,10 +812,10 @@ describe("GCS Javascript SDK conformance tests", () => {
         expect(metadata.kind).to.be.eql("storage#object");
         expect(metadata.id).to.be.include(`${storageBucket}/${fileName}`);
         expect(metadata.selfLink).to.include(
-          `${googleapisHost}/storage/v1/b/${storageBucket}/o/${fileName}`
+          `${googleapisHost}/storage/v1/b/${storageBucket}/o/${fileName}`,
         );
         expect(metadata.mediaLink).to.include(
-          `${storageHost}/download/storage/v1/b/${storageBucket}/o/${fileName}`
+          `${storageHost}/download/storage/v1/b/${storageBucket}/o/${fileName}`,
         );
         expect(metadata.mediaLink).to.include(`alt=media`);
         expect(metadata.name).to.be.eql(fileName);

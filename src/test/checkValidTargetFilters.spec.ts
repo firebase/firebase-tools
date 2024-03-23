@@ -43,7 +43,7 @@ describe("checkValidTargetFilters", () => {
       except: "hosting",
     });
     await expect(checkValidTargetFilters(options)).to.be.rejectedWith(
-      "Cannot specify both --only and --except"
+      "Cannot specify both --only and --except",
     );
   });
 
@@ -54,7 +54,7 @@ describe("checkValidTargetFilters", () => {
         except: null,
       });
       await expect(checkValidTargetFilters(options)).to.be.rejectedWith(
-        /Filters specified with colons \(e.g. --only functions:func1,functions:func2\) are only supported for .*/
+        /Filters specified with colons \(e.g. --only functions:func1,functions:func2\) are only supported for .*/,
       );
     });
   });
@@ -64,7 +64,7 @@ describe("checkValidTargetFilters", () => {
       only: "functions,functions:filter",
     });
     await expect(checkValidTargetFilters(options)).to.be.rejectedWith(
-      'Cannot specify "--only functions" and "--only functions:<filter>" at the same time'
+      'Cannot specify "--only functions" and "--only functions:<filter>" at the same time',
     );
   });
 });

@@ -3,14 +3,14 @@ import { FirebaseError } from "../../../../error";
 export type BaseType<T> = T extends string
   ? "string"
   : T extends number
-  ? "number"
-  : T extends boolean
-  ? "boolean"
-  : T extends unknown[]
-  ? "array"
-  : T extends object
-  ? "object"
-  : never;
+    ? "number"
+    : T extends boolean
+      ? "boolean"
+      : T extends unknown[]
+        ? "array"
+        : T extends object
+          ? "object"
+          : never;
 
 // BUG BUG BUG
 // This is what the definition of NullSuffix _should_ be:
@@ -34,6 +34,7 @@ export type FieldType<T> =
   | `Field<string>${NullSuffix<T>}`
   | `Field<number>${NullSuffix<T>}`
   | `Field<boolean>${NullSuffix<T>}`
+  | `List${NullSuffix<T>}`
   | ((t: T) => boolean);
 
 export type Schema<T extends object> = {
@@ -49,7 +50,7 @@ export function requireKeys<T extends object>(prefix: string, yaml: T, ...keys: 
   }
   for (const key of keys) {
     if (!yaml[key]) {
-      throw new FirebaseError(`Expected key ${prefix + key}`);
+      throw new FirebaseError(`Expected key ${prefix + key.toString()}`);
     }
   }
 }
@@ -63,7 +64,7 @@ export function requireKeys<T extends object>(prefix: string, yaml: T, ...keys: 
 export function assertKeyTypes<T extends object>(
   prefix: string,
   yaml: T | undefined,
-  schema: Schema<T>
+  schema: Schema<T>,
 ): void {
   if (!yaml) {
     return;
@@ -75,7 +76,7 @@ export function assertKeyTypes<T extends object>(
 
     if (!schema[key] || schema[key] === "omit") {
       throw new FirebaseError(
-        `Unexpected key ${fullKey}. You may need to install a newer version of the Firebase CLI.`
+        `Unexpected key ${fullKey}. You may need to install a newer version of the Firebase CLI.`,
       );
     }
     let schemaType = schema[key] as string | ((value: T[keyof T]) => boolean);
@@ -101,7 +102,15 @@ export function assertKeyTypes<T extends object>(
       const match = /^Field<(\w+)>$/.exec(schemaType);
       if (match && typeof value !== "string" && typeof value !== match[1]) {
         throw new FirebaseError(
-          `Expected ${fullKey} to be Field<${match[1]}>; was ${typeof value}`
+          `Expected ${fullKey} to be Field<${match[1]}>; was ${typeof value}`,
+        );
+      }
+      continue;
+    }
+    if (schemaType === "List") {
+      if (typeof value !== "string" && !Array.isArray(value)) {
+        throw new FirebaseError(
+          `Expected ${fullKey} to be a field list (array or list expression); was ${typeof value}`,
         );
       }
       continue;

@@ -20,6 +20,7 @@ function testExtensionVersion(version: string, releaseNotes?: string): Extension
       version,
       resources: [],
       params: [],
+      systemParams: [],
       sourceUrl: "https://google.com",
     },
   };
@@ -145,6 +146,14 @@ describe("changelog", () => {
         want: {
           "0.1.0-rc.1": "Notes",
           "0.1.1-release-candidate.1.2": "New notes",
+        },
+      },
+      {
+        description: "should handle higher version number",
+        in: "Some random words\n## Version 10.1.0-rc.1\nNotes\n## Version 10.1.1-release-candidate.1.2\nNew notes",
+        want: {
+          "10.1.0-rc.1": "Notes",
+          "10.1.1-release-candidate.1.2": "New notes",
         },
       },
     ];

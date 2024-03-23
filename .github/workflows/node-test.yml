@@ -3,6 +3,7 @@ name: CI Tests
 on:
   - pull_request
   - push
+  - merge_group
 
 env:
   CI: true
@@ -19,13 +20,13 @@ concurrency:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: contains(fromJSON('["pull_request", "merge_group"]'), github.event_name)
     strategy:
       matrix:
         node-version:
-          - "16"
+          - "20"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: actions/setup-node@v3
@@ -34,7 +35,7 @@ jobs:
           cache: npm
           cache-dependency-path: npm-shrinkwrap.json
 
-      - run: npm i -g npm@8.7
+      - run: npm i -g npm@9.5
       - run: npm ci
       - run: npm run lint:changed-files
 
@@ -43,27 +44,26 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - "14"
-          - "16"
           - "18"
+          - "20"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
           cache-dependency-path: npm-shrinkwrap.json
 
-      - run: npm i -g npm@8.7
+      - run: npm i -g npm@9.5
       - run: npm ci
       - run: npm test -- -- --forbid-only
 
       - uses: codecov/codecov-action@v3
-        if: matrix.node-version == '14'
+        if: matrix.node-version == '20'
 
   integration:
     needs: unit
-    if: github.event_name == 'push'
+    if: contains(fromJSON('["push", "merge_group"]'), github.event_name)
     runs-on: ubuntu-latest
 
     env:
@@ -79,12 +79,13 @@ jobs:
       fail-fast: false
       matrix:
         node-version:
-          - "16"
+          - "20"
         script:
           - npm run test:client-integration
           - npm run test:emulator
           - npm run test:extensions-emulator
           - npm run test:frameworks
+          - npm run test:functions-discover
           - npm run test:hosting
           # - npm run test:hosting-rewrites # Long-running test that might conflict across test runs. Run this manually.
           - npm run test:import-export
@@ -93,7 +94,7 @@ jobs:
           - npm run test:triggers-end-to-end
           - npm run test:triggers-end-to-end:inspect
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
@@ -107,7 +108,7 @@ jobs:
           key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('emulator-cache/**') }}
         continue-on-error: true
 
-      - run: npm i -g npm@8.7
+      - run: npm i -g npm@9.5
       - run: npm ci
       - run: echo ${{ secrets.service_account_json_base64 }} | base64 -d > ./scripts/service-account.json
       - run: ${{ matrix.script }}
@@ -118,7 +119,7 @@ jobs:
 
   integration-windows:
     needs: unit
-    if: github.event_name == 'push'
+    if: contains(fromJSON('["push", "merge_group"]'), github.event_name)
     runs-on: windows-latest
 
     env:
@@ -134,15 +135,16 @@ jobs:
       fail-fast: false
       matrix:
         node-version:
-          - "16"
+          - "20"
         script:
           - npm run test:hosting
           # - npm run test:hosting-rewrites # Long-running test that might conflict across test runs. Run this manually.
           - npm run test:client-integration
           - npm run test:emulator
-          # - npm run test:import-export # Fails becuase port 4000 is taken after first run - hub not shhutting down?
+          # - npm run test:import-export # Fails becuase port 4000 is taken after first run - hub not shutting down?
           # - npm run test:extensions-emulator # Fails due to cannot find module sharp (not waiting for npm install?)
-          - npm run test:triggers-end-to-end
+          - npm run test:functions-discover
+          # - npm run test:triggers-end-to-end
           - npm run test:triggers-end-to-end:inspect
           - npm run test:storage-deploy
           # - npm run test:storage-emulator-integration
@@ -153,7 +155,7 @@ jobs:
           java-version: 17
           distribution: temurin
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
@@ -169,7 +171,7 @@ jobs:
 
       - run: echo ${{ secrets.service_account_json_base64 }} > tmp.txt
       - run: certutil -decode tmp.txt scripts/service-account.json
-      - run: npm i -g npm@8.7
+      - run: npm i -g npm@9.5
       - run: npm ci
       - run: ${{ matrix.script }}
       - name: Print debug logs
@@ -182,20 +184,37 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - "16"
+          - "20"
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-          cache: npm
-          cache-dependency-path: npm-shrinkwrap.json
-      - run: npm i -g npm@8.7
+      - run: npm i -g npm@9.5
       # --ignore-scripts prevents the `prepare` script from being run.
       - run: npm install --package-lock-only --ignore-scripts
       - run: "git diff --exit-code -- npm-shrinkwrap.json || (echo 'Error: npm-shrinkwrap.json is changed during npm install! Please make sure to use npm >= 8 and commit npm-shrinkwrap.json.' && false)"
+
+  check-package-lock-vsce:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version:
+          - "20"
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+      - run: npm i -g npm@9.5
+      # --ignore-scripts prevents the `prepare` script from being run.
+      - run: "(cd firebase-vscode && npm install --package-lock-only --ignore-scripts)"
+      - run: "git diff --exit-code -- firebase-vscode/package-lock.json || (echo 'Error: firebase-vscode/package-lock.json is changed during npm install! Please make sure to use npm >= 8 and commit firebase-vscode/package-lock.json.' && false)"
 
   check-json-schema:
     runs-on: ubuntu-latest
@@ -203,10 +222,10 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - "16"
+          - "20"
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:

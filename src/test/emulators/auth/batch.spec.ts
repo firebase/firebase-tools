@@ -121,7 +121,7 @@ describeAuthEmulator("accounts:batchGet", ({ authApi }) => {
         expectStatusCode(200, res);
         expect(res.body.users).to.have.length(1);
         expect(res.body.users[0].localId).to.equal(
-          user1.localId > user2.localId ? user1.localId : user2.localId
+          user1.localId > user2.localId ? user1.localId : user2.localId,
         );
 
         // No more accounts after this, so no page token returned.
@@ -168,7 +168,7 @@ describeAuthEmulator("accounts:batchGet", ({ authApi }) => {
 
     await authApi()
       .get(
-        `/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/tenants/${tenant.tenantId}/accounts:batchGet`
+        `/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/tenants/${tenant.tenantId}/accounts:batchGet`,
       )
       .set("Authorization", "Bearer owner")
       .then((res) => {
@@ -201,7 +201,9 @@ describeAuthEmulator("accounts:batchCreate", ({ authApi }) => {
     const user2SignIn = await signInWithPhoneNumber(authApi(), user2.phoneNumber);
     expect(user2SignIn.localId).to.equal(user2.localId);
 
-    expect(decodeJwt(user2SignIn.idToken)).to.have.property("hello").equal("world");
+    expect(decodeJwt(user2SignIn.idToken, { json: true }) as any)
+      .to.have.property("hello")
+      .equal("world");
   });
 
   it("should create specified accounts via legacy endpoint", async () => {

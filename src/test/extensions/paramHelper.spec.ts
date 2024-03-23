@@ -3,11 +3,9 @@ import * as sinon from "sinon";
 import * as fs from "fs-extra";
 
 import { FirebaseError } from "../../error";
-import { logger } from "../../logger";
-import { ExtensionInstance, Param, ParamType } from "../../extensions/types";
+import { ExtensionSpec, Param, ParamType } from "../../extensions/types";
 import * as extensionsHelper from "../../extensions/extensionsHelper";
 import * as paramHelper from "../../extensions/paramHelper";
-import * as env from "../../functions/env";
 import * as prompt from "../../prompt";
 import { cloneDeep } from "../../utils";
 
@@ -65,13 +63,14 @@ const TEST_PARAMS_3: Param[] = [
   },
 ];
 
-const SPEC = {
+const SPEC: ExtensionSpec = {
   name: "test",
   version: "0.1.0",
   roles: [],
   resources: [],
   sourceUrl: "test.com",
   params: TEST_PARAMS,
+  systemParams: [],
 };
 
 describe("paramHelper", () => {
@@ -113,153 +112,19 @@ describe("paramHelper", () => {
   });
 
   describe("getParams", () => {
-    let envStub: sinon.SinonStub;
     let promptStub: sinon.SinonStub;
-    let loggerSpy: sinon.SinonSpy;
 
     beforeEach(() => {
       sinon.stub(fs, "readFileSync").returns("");
-      envStub = sinon.stub(env, "parse");
       sinon.stub(extensionsHelper, "getFirebaseProjectParams").resolves({ PROJECT_ID });
       promptStub = sinon.stub(prompt, "promptOnce").resolves("user input");
-      loggerSpy = sinon.spy(logger, "warn");
     });
 
     afterEach(() => {
       sinon.restore();
     });
 
-    it("should read params from envFilePath if it is provided and is valid", async () => {
-      envStub.returns({
-        envs: {
-          A_PARAMETER: "aValue",
-          ANOTHER_PARAMETER: "value",
-        },
-        errors: [],
-      });
-
-      const params = await paramHelper.getParams({
-        projectId: PROJECT_ID,
-        paramSpecs: TEST_PARAMS,
-        nonInteractive: false,
-        paramsEnvPath: "./a/path/to/a/file.env",
-        instanceId: INSTANCE_ID,
-      });
-
-      expect(params).to.eql({
-        A_PARAMETER: { baseValue: "aValue" },
-        ANOTHER_PARAMETER: { baseValue: "value" },
-      });
-    });
-
-    it("should return the defaults for params that are not in envFilePath", async () => {
-      envStub.returns({
-        envs: {
-          A_PARAMETER: "aValue",
-        },
-        errors: [],
-      });
-
-      const params = await paramHelper.getParams({
-        projectId: PROJECT_ID,
-        paramSpecs: TEST_PARAMS,
-        nonInteractive: false,
-        paramsEnvPath: "./a/path/to/a/file.env",
-        instanceId: INSTANCE_ID,
-      });
-
-      expect(params).to.eql({
-        A_PARAMETER: { baseValue: "aValue" },
-        ANOTHER_PARAMETER: { baseValue: "default" },
-      });
-    });
-
-    it("should omit optional params that are not in envFilePath", async () => {
-      envStub.returns({
-        envs: {
-          A_PARAMETER: "aValue",
-        },
-        errors: [],
-      });
-
-      const params = await paramHelper.getParams({
-        projectId: PROJECT_ID,
-        paramSpecs: TEST_PARAMS_3,
-        nonInteractive: false,
-        paramsEnvPath: "./a/path/to/a/file.env",
-        instanceId: INSTANCE_ID,
-      });
-
-      expect(params).to.eql({
-        A_PARAMETER: { baseValue: "aValue" },
-      });
-    });
-
-    it("should throw if a required param without a default is not in envFilePath", async () => {
-      envStub.returns({
-        envs: {
-          ANOTHER_PARAMETER: "aValue",
-        },
-        errors: [],
-      });
-
-      await expect(
-        paramHelper.getParams({
-          projectId: PROJECT_ID,
-          paramSpecs: TEST_PARAMS,
-          nonInteractive: false,
-          paramsEnvPath: "./a/path/to/a/file.env",
-          instanceId: INSTANCE_ID,
-        })
-      ).to.be.rejectedWith(
-        FirebaseError,
-        "A_PARAMETER has not been set in the given params file and there is no default available. " +
-          "Please set this variable before installing again."
-      );
-    });
-
-    it("should warn about extra params provided in the env file", async () => {
-      envStub.returns({
-        envs: {
-          A_PARAMETER: "aValue",
-          ANOTHER_PARAMETER: "default",
-          A_THIRD_PARAMETER: "aValue",
-          A_FOURTH_PARAMETER: "default",
-        },
-        errors: [],
-      });
-      await paramHelper.getParams({
-        projectId: PROJECT_ID,
-        paramSpecs: TEST_PARAMS,
-        nonInteractive: false,
-        paramsEnvPath: "./a/path/to/a/file.env",
-        instanceId: INSTANCE_ID,
-      });
-
-      expect(loggerSpy).to.have.been.calledWith(
-        "Warning: The following params were specified in your env file but" +
-          " do not exist in the extension spec: A_THIRD_PARAMETER, A_FOURTH_PARAMETER."
-      );
-    });
-
-    it("should throw FirebaseError if an invalid envFilePath is provided", async () => {
-      envStub.returns({
-        envs: {},
-        errors: ["An error"],
-      });
-
-      await expect(
-        paramHelper.getParams({
-          projectId: PROJECT_ID,
-          paramSpecs: TEST_PARAMS,
-          nonInteractive: false,
-          paramsEnvPath: "./a/path/to/a/file.env",
-          instanceId: INSTANCE_ID,
-        })
-      ).to.be.rejectedWith(FirebaseError, "Error reading env file");
-    });
-
-    it("should prompt the user for params if no env file is provided", async () => {
+    it("should prompt the user for params", async () => {
       const params = await paramHelper.getParams({
         projectId: PROJECT_ID,
         paramSpecs: TEST_PARAMS,
@@ -284,94 +149,6 @@ describe("paramHelper", () => {
         name: "ANOTHER_PARAMETER",
         type: "input",
       });
-    });
-  });
-
-  describe("getParamsWithCurrentValuesAsDefaults", () => {
-    let params: { [key: string]: string };
-    let testInstance: ExtensionInstance;
-    beforeEach(() => {
-      params = { A_PARAMETER: "new default" };
-      testInstance = {
-        config: {
-          source: {
-            state: "ACTIVE",
-            name: "",
-            packageUri: "",
-            hash: "",
-            spec: {
-              name: "",
-              version: "0.1.0",
-              roles: [],
-              resources: [],
-              params: [...TEST_PARAMS],
-              sourceUrl: "",
-            },
-          },
-          name: "test",
-          createTime: "now",
-          params,
-        },
-        name: "test",
-        createTime: "now",
-        updateTime: "now",
-        state: "ACTIVE",
-        serviceAccountEmail: "test@test.com",
-      };
-
-      it("should add defaults to params without them using the current state and leave other values unchanged", () => {
-        const newParams = paramHelper.getParamsWithCurrentValuesAsDefaults(testInstance);
-
-        expect(newParams).to.eql([
-          {
-            param: "A_PARAMETER",
-            label: "Param",
-            default: "new default",
-            type: ParamType.STRING,
-            required: true,
-          },
-          {
-            param: "ANOTHER_PARAMETER",
-            label: "Another",
-            default: "default",
-            type: ParamType.STRING,
-          },
-        ]);
-      });
-    });
-
-    it("should change existing defaults to the current state and leave other values unchanged", () => {
-      (testInstance.config?.source?.spec?.params || []).push({
-        param: "THIRD",
-        label: "3rd",
-        default: "default",
-        type: ParamType.STRING,
-      });
-      testInstance.config.params.THIRD = "New Default";
-      const newParams = paramHelper.getParamsWithCurrentValuesAsDefaults(testInstance);
-
-      expect(newParams).to.eql([
-        {
-          param: "A_PARAMETER",
-          label: "Param",
-          default: "new default",
-          type: ParamType.STRING,
-          required: true,
-        },
-        {
-          param: "ANOTHER_PARAMETER",
-          label: "Another Param",
-          default: "default",
-          required: true,
-          type: ParamType.STRING,
-        },
-        {
-          param: "THIRD",
-          label: "3rd",
-          default: "New Default",
-          type: ParamType.STRING,
-        },
-      ]);
     });
   });
 
@@ -450,6 +227,41 @@ describe("paramHelper", () => {
         THIRD_PARAMETER: { baseValue: "user input" },
       };
       expect(newParams).to.eql(expected);
+    });
+
+    it("should map LOCATION to system param location and not prompt for it", async () => {
+      promptStub.resolves("user input");
+      const oldSpec = cloneDeep(SPEC);
+      const newSpec = cloneDeep(SPEC);
+      oldSpec.params = [
+        {
+          param: "LOCATION",
+          label: "",
+        },
+      ];
+      newSpec.params = [];
+      newSpec.systemParams = [
+        {
+          param: "firebaseextensions.v1beta.function/location",
+          label: "",
+        },
+      ];
+
+      const newParams = await paramHelper.promptForNewParams({
+        spec: oldSpec,
+        newSpec,
+        currentParams: {
+          LOCATION: "us-east1",
+        },
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+      });
+
+      const expected = {
+        "firebaseextensions.v1beta.function/location": { baseValue: "us-east1" },
+      };
+      expect(newParams).to.eql(expected);
+      expect(promptStub).not.to.have.been.called;
     });
 
     it("should not prompt the user for params that did not change type or param", async () => {
@@ -556,7 +368,7 @@ describe("paramHelper", () => {
           },
           projectId: PROJECT_ID,
           instanceId: INSTANCE_ID,
-        })
+        }),
       ).to.be.rejectedWith(FirebaseError, "this is an error");
       // Ensure that we don't continue prompting if one fails
       expect(promptStub).to.have.been.calledOnce;

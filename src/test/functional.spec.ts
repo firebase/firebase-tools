@@ -143,4 +143,21 @@ describe("functional", () => {
       expect(f.partition<string>([], (s: string) => s.startsWith("T"))).to.deep.equal([[], []]);
     });
   });
+
+  describe("partitionRecord", () => {
+    it("should split a record into true and false", () => {
+      const rec = { T1: 1, F1: 2, T2: 3, F2: 4 };
+      expect(f.partitionRecord<number>(rec, (s: string) => s.startsWith("T"))).to.deep.equal([
+        { T1: 1, T2: 3 },
+        { F1: 2, F2: 4 },
+      ]);
+    });
+
+    it("can handle an empty record", () => {
+      expect(f.partitionRecord<string>({}, (s: string) => s.startsWith("T"))).to.deep.equal([
+        {},
+        {},
+      ]);
+    });
+  });
 });

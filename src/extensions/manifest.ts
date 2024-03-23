@@ -1,14 +1,16 @@
 import * as clc from "colorette";
 import * as path from "path";
+import * as fs from "fs-extra";
+
 import * as refs from "./refs";
 import { Config } from "../config";
 import { getExtensionSpec, ManifestInstanceSpec } from "../deploy/extensions/planner";
 import { logger } from "../logger";
-import { promptOnce } from "../prompt";
+import { confirm, promptOnce } from "../prompt";
 import { readEnvFile } from "./paramHelper";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
-import { isLocalPath, logPrefix } from "./extensionsHelper";
+import { isLocalPath } from "./extensionsHelper";
 import { ParamType } from "./types";
 
 export const ENV_DIRECTORY = "extensions";
@@ -29,7 +31,7 @@ export async function writeToManifest(
   specs: ManifestInstanceSpec[],
   config: Config,
   options: { nonInteractive: boolean; force: boolean },
-  allowOverwrite: boolean = false
+  allowOverwrite: boolean = false,
 ): Promise<void> {
   if (
     config.has("extensions") &&
@@ -60,6 +62,31 @@ export async function writeToManifest(
   await writeLocalSecrets(specs, config, options.force);
 }
 
+export async function writeEmptyManifest(
+  config: Config,
+  options: { nonInteractive: boolean; force: boolean },
+): Promise<void> {
+  if (!fs.existsSync(config.path("extensions"))) {
+    fs.mkdirSync(config.path("extensions"));
+  }
+  if (config.has("extensions") && Object.keys(config.get("extensions")).length) {
+    const currentExtensions = Object.entries(config.get("extensions"))
+      .map((i) => `${i[0]}: ${i[1]}`)
+      .join("\n\t");
+    if (
+      !(await confirm({
+        message: `firebase.json already contains extensions:\n${currentExtensions}\nWould you like to overwrite them?`,
+        nonInteractive: options.nonInteractive,
+        force: options.force,
+        default: false,
+      }))
+    ) {
+      return;
+    }
+  }
+  config.set("extensions", {});
+}
+
 /**
  * Write the secrets in a list of ManifestInstanceSpec into extensions/{instance-id}.secret.local.
  *
@@ -68,7 +95,7 @@ export async function writeToManifest(
 export async function writeLocalSecrets(
   specs: ManifestInstanceSpec[],
   config: Config,
-  force?: boolean
+  force?: boolean,
 ): Promise<void> {
   for (const spec of specs) {
     const extensionSpec = await getExtensionSpec(spec);
@@ -78,7 +105,7 @@ export async function writeLocalSecrets(
 
     const writeBuffer: Record<string, string> = {};
     const locallyOverridenSecretParams = extensionSpec.params.filter(
-      (p) => p.type === ParamType.SECRET && spec.params[p.param]?.local
+      (p) => p.type === ParamType.SECRET && spec.params[p.param]?.local,
     );
     for (const paramSpec of locallyOverridenSecretParams) {
       const key = paramSpec.param;
@@ -96,7 +123,7 @@ export async function writeLocalSecrets(
       await config.askWriteProjectFile(
         `extensions/${spec.instanceId}.secret.local`,
         content,
-        force
+        force,
       );
     }
   }
@@ -121,13 +148,13 @@ export function removeFromManifest(instanceId: string, config: Config) {
   if (config.projectFileExists(`extensions/${instanceId}.env.local`)) {
     config.deleteProjectFile(`extensions/${instanceId}.env.local`);
     logger.info(
-      `Removed extension instance local environment config extensions/${instanceId}.env.local`
+      `Removed extension instance local environment config extensions/${instanceId}.env.local`,
     );
   }
   if (config.projectFileExists(`extensions/${instanceId}.secret.local`)) {
     config.deleteProjectFile(`extensions/${instanceId}.secret.local`);
     logger.info(
-      `Removed extension instance local secret config extensions/${instanceId}.secret.local`
+      `Removed extension instance local secret config extensions/${instanceId}.secret.local`,
     );
   }
   // TODO(lihes): Remove all project specific env files.
@@ -137,7 +164,7 @@ export function loadConfig(options: any): Config {
   const existingConfig = Config.load(options, true);
   if (!existingConfig) {
     throw new FirebaseError(
-      "Not currently in a Firebase directory. Run `firebase init` to create a Firebase directory."
+      "Not currently in a Firebase directory. Run `firebase init` to create a Firebase directory.",
     );
   }
   return existingConfig;
@@ -167,13 +194,13 @@ export function getInstanceRef(instanceId: string, config: Config): refs.Ref {
   const source = getInstanceTarget(instanceId, config);
   if (isLocalPath(source)) {
     throw new FirebaseError(
-      `Extension instance ${instanceId} doesn't have a ref because it is from a local source`
+      `Extension instance ${instanceId} doesn't have a ref because it is from a local source`,
     );
   }
   return refs.parse(source);
 }
 
-function writeExtensionsToFirebaseJson(specs: ManifestInstanceSpec[], config: Config): void {
+export function writeExtensionsToFirebaseJson(specs: ManifestInstanceSpec[], config: Config): void {
   const extensions = config.get("extensions", {});
   for (const s of specs) {
     let target;
@@ -183,7 +210,7 @@ function writeExtensionsToFirebaseJson(specs: ManifestInstanceSpec[], config: Co
       target = s.localPath;
     } else {
       throw new FirebaseError(
-        `Unable to resolve ManifestInstanceSpec, make sure you provide either extension ref or a local path to extension source code`
+        `Unable to resolve ManifestInstanceSpec, make sure you provide either extension ref or a local path to extension source code`,
       );
     }
 
@@ -197,11 +224,11 @@ function writeExtensionsToFirebaseJson(specs: ManifestInstanceSpec[], config: Co
 async function writeEnvFiles(
   specs: ManifestInstanceSpec[],
   config: Config,
-  force?: boolean
+  force?: boolean,
 ): Promise<void> {
   for (const spec of specs) {
     const content = Object.entries(spec.params)
-      .filter((r) => r[1].baseValue !== "") // Don't write empty values
+      .filter((r) => r[1].baseValue !== "" && r[1].baseValue !== undefined) // Don't write empty values
       .sort((a, b) => {
         return a[0].localeCompare(b[0]);
       })
@@ -262,19 +289,4 @@ function readParamsFile(projectDir: string, fileName: string): Record<string, st
   const paramPath = path.join(projectDir, ENV_DIRECTORY, fileName);
   const params = readEnvFile(paramPath);
   return params;
-}
-
-/**
- * Show post deprecation notice about --local flag taking over current default bahaviors.
- */
-export function showPostDeprecationNotice() {
-  utils.logLabeledBullet(
-    logPrefix,
-    "The behavior of ext:install, ext:update, ext:configure, and ext:uninstall has changed in firebase-tools@11.0.0. " +
-      "Instead of deploying extensions directly, " +
-      "changes to extension instances will be written to firebase.json and ./extensions/*.env. " +
-      `Then ${clc.bold(
-        "firebase deploy (--only extensions)"
-      )} will deploy the changes to your Firebase project. See https://firebase.google.com/docs/extensions/manifest for more details.`
-  );
 }

@@ -56,7 +56,7 @@ describe("RemoveRemote", () => {
     const remoteWithDisableTriggers = new RTDBRemoveRemote(
       instance,
       host,
-      /* disableTriggers= */ true
+      /* disableTriggers= */ true,
     );
     nock(serverUrl)
       .patch("/a/b.json")

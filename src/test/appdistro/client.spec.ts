@@ -6,7 +6,8 @@ import * as rimraf from "rimraf";
 import * as sinon from "sinon";
 import * as tmp from "tmp";
 
-import { AppDistributionClient, BatchRemoveTestersResponse } from "../../appdistribution/client";
+import { AppDistributionClient } from "../../appdistribution/client";
+import { BatchRemoveTestersResponse, Group, TestDevice } from "../../appdistribution/types";
 import { appDistributionOrigin } from "../../api";
 import { Distribution } from "../../appdistribution/distribution";
 import { FirebaseError } from "../../error";
@@ -17,6 +18,7 @@ describe("distribution", () => {
   const tempdir = tmp.dirSync();
   const projectName = "projects/123456789";
   const appName = `${projectName}/apps/1:123456789:ios:abc123def456`;
+  const groupName = `${projectName}/groups/my-group`;
   const binaryFile = join(tempdir.name, "app.ipa");
   fs.ensureFileSync(binaryFile);
   const mockDistribution = new Distribution(binaryFile);
@@ -46,7 +48,7 @@ describe("distribution", () => {
         .reply(400, { error: { status: "FAILED_PRECONDITION" } });
       await expect(appDistributionClient.addTesters(projectName, emails)).to.be.rejectedWith(
         FirebaseError,
-        "Failed to add testers"
+        "Failed to add testers",
       );
       expect(nock.isDone()).to.be.true;
     });
@@ -61,6 +63,7 @@ describe("distribution", () => {
 
   describe("deleteTesters", () => {
     const emails = ["a@foo.com", "b@foo.com"];
+    const mockResponse: BatchRemoveTestersResponse = { emails: emails };
 
     it("should throw error if delete fails", async () => {
       nock(appDistributionOrigin)
@@ -68,18 +71,17 @@ describe("distribution", () => {
         .reply(400, { error: { status: "FAILED_PRECONDITION" } });
       await expect(appDistributionClient.removeTesters(projectName, emails)).to.be.rejectedWith(
         FirebaseError,
-        "Failed to remove testers"
+        "Failed to remove testers",
       );
       expect(nock.isDone()).to.be.true;
     });
 
-    const mockResponse: BatchRemoveTestersResponse = { emails: emails };
     it("should resolve when request succeeds", async () => {
       nock(appDistributionOrigin)
         .post(`/v1/${projectName}/testers:batchRemove`)
         .reply(200, mockResponse);
       await expect(appDistributionClient.removeTesters(projectName, emails)).to.eventually.deep.eq(
-        mockResponse
+        mockResponse,
       );
       expect(nock.isDone()).to.be.true;
     });
@@ -98,7 +100,7 @@ describe("distribution", () => {
         .post(`/upload/v1/${appName}/releases:upload`)
         .reply(200, { name: fakeOperation });
       await expect(
-        appDistributionClient.uploadRelease(appName, mockDistribution)
+        appDistributionClient.uploadRelease(appName, mockDistribution),
       ).to.be.eventually.eq(fakeOperation);
       expect(nock.isDone()).to.be.true;
     });
@@ -117,7 +119,7 @@ describe("distribution", () => {
         .patch(`/v1/${releaseName}?updateMask=release_notes.text`)
         .reply(400, {});
       await expect(
-        appDistributionClient.updateReleaseNotes(releaseName, "release notes")
+        appDistributionClient.updateReleaseNotes(releaseName, "release notes"),
       ).to.be.rejectedWith(FirebaseError, "failed to update release notes");
       expect(nock.isDone()).to.be.true;
     });
@@ -162,10 +164,10 @@ describe("distribution", () => {
           })
           .reply(412, { error: { status: "FAILED_PRECONDITION" } });
         await expect(
-          appDistributionClient.distribute(releaseName, testers, groups)
+          appDistributionClient.distribute(releaseName, testers, groups),
         ).to.be.rejectedWith(
           FirebaseError,
-          "failed to distribute to testers/groups: invalid testers"
+          "failed to distribute to testers/groups: invalid testers",
         );
         expect(nock.isDone()).to.be.true;
       });
@@ -178,10 +180,10 @@ describe("distribution", () => {
           })
           .reply(412, { error: { status: "INVALID_ARGUMENT" } });
         await expect(
-          appDistributionClient.distribute(releaseName, testers, groups)
+          appDistributionClient.distribute(releaseName, testers, groups),
         ).to.be.rejectedWith(
           FirebaseError,
-          "failed to distribute to testers/groups: invalid groups"
+          "failed to distribute to testers/groups: invalid groups",
         );
         expect(nock.isDone()).to.be.true;
       });
@@ -194,10 +196,185 @@ describe("distribution", () => {
           })
           .reply(400, {});
         await expect(
-          appDistributionClient.distribute(releaseName, ["tester1"], ["group1"])
+          appDistributionClient.distribute(releaseName, ["tester1"], ["group1"]),
         ).to.be.rejectedWith(FirebaseError, "failed to distribute to testers/groups");
         expect(nock.isDone()).to.be.true;
       });
+    });
+  });
+
+  describe("createGroup", () => {
+    const mockResponse: Group = { name: groupName, displayName: "My Group" };
+
+    it("should throw error if request fails", async () => {
+      nock(appDistributionOrigin)
+        .post(`/v1/${projectName}/groups`)
+        .reply(400, { error: { status: "FAILED_PRECONDITION" } });
+      await expect(appDistributionClient.createGroup(projectName, "My Group")).to.be.rejectedWith(
+        FirebaseError,
+        "Failed to create group",
+      );
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should resolve when request succeeds", async () => {
+      nock(appDistributionOrigin).post(`/v1/${projectName}/groups`).reply(200, mockResponse);
+      await expect(
+        appDistributionClient.createGroup(projectName, "My Group"),
+      ).to.eventually.deep.eq(mockResponse);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should resolve when request with alias succeeds", async () => {
+      nock(appDistributionOrigin)
+        .post(`/v1/${projectName}/groups?groupId=my-group`)
+        .reply(200, mockResponse);
+      await expect(
+        appDistributionClient.createGroup(projectName, "My Group", "my-group"),
+      ).to.eventually.deep.eq(mockResponse);
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("deleteGroup", () => {
+    it("should throw error if delete fails", async () => {
+      nock(appDistributionOrigin)
+        .delete(`/v1/${groupName}`)
+        .reply(400, { error: { status: "FAILED_PRECONDITION" } });
+      await expect(appDistributionClient.deleteGroup(groupName)).to.be.rejectedWith(
+        FirebaseError,
+        "Failed to delete group",
+      );
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should resolve when request succeeds", async () => {
+      nock(appDistributionOrigin).delete(`/v1/${groupName}`).reply(200, {});
+      await expect(appDistributionClient.deleteGroup(groupName)).to.be.eventually.fulfilled;
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("addTestersToGroup", () => {
+    const emails = ["a@foo.com", "b@foo.com"];
+
+    it("should throw error if request fails", async () => {
+      nock(appDistributionOrigin)
+        .post(`/v1/${groupName}:batchJoin`)
+        .reply(400, { error: { status: "FAILED_PRECONDITION" } });
+      await expect(appDistributionClient.addTestersToGroup(groupName, emails)).to.be.rejectedWith(
+        FirebaseError,
+        "Failed to add testers to group",
+      );
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should resolve when request succeeds", async () => {
+      nock(appDistributionOrigin).post(`/v1/${groupName}:batchJoin`).reply(200, {});
+      await expect(appDistributionClient.addTestersToGroup(groupName, emails)).to.be.eventually
+        .fulfilled;
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("removeTestersFromGroup", () => {
+    const emails = ["a@foo.com", "b@foo.com"];
+
+    it("should throw error if request fails", async () => {
+      nock(appDistributionOrigin)
+        .post(`/v1/${groupName}:batchLeave`)
+        .reply(400, { error: { status: "FAILED_PRECONDITION" } });
+      await expect(
+        appDistributionClient.removeTestersFromGroup(groupName, emails),
+      ).to.be.rejectedWith(FirebaseError, "Failed to remove testers from group");
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should resolve when request succeeds", async () => {
+      nock(appDistributionOrigin).post(`/v1/${groupName}:batchLeave`).reply(200, {});
+      await expect(appDistributionClient.removeTestersFromGroup(groupName, emails)).to.be.eventually
+        .fulfilled;
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("createReleaseTest", () => {
+    const releaseName = `${appName}/releases/fake-release-id`;
+    const mockDevices: TestDevice[] = [
+      {
+        model: "husky",
+        version: "34",
+        orientation: "portrait",
+        locale: "en-US",
+      },
+      {
+        model: "bluejay",
+        version: "32",
+        orientation: "landscape",
+        locale: "es",
+      },
+    ];
+    const mockReleaseTest = {
+      name: `${releaseName}/tests/fake-test-id`,
+      devices: mockDevices,
+      state: "IN_PROGRESS",
+    };
+
+    it("should throw error if request fails", async () => {
+      nock(appDistributionOrigin)
+        .post(`/v1alpha/${releaseName}/tests`)
+        .reply(400, { error: { status: "FAILED_PRECONDITION" } });
+      await expect(
+        appDistributionClient.createReleaseTest(releaseName, mockDevices),
+      ).to.be.rejectedWith(FirebaseError, "Failed to create release test");
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should resolve with ReleaseTest when request succeeds", async () => {
+      nock(appDistributionOrigin).post(`/v1alpha/${releaseName}/tests`).reply(200, mockReleaseTest);
+      await expect(
+        appDistributionClient.createReleaseTest(releaseName, mockDevices),
+      ).to.be.eventually.deep.eq(mockReleaseTest);
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("getReleaseTest", () => {
+    const releaseTestName = `${appName}/releases/fake-release-id/tests/fake-test-id`;
+    const mockDevices: TestDevice[] = [
+      {
+        model: "husky",
+        version: "34",
+        orientation: "portrait",
+        locale: "en-US",
+      },
+      {
+        model: "bluejay",
+        version: "32",
+        orientation: "landscape",
+        locale: "es",
+      },
+    ];
+    const mockReleaseTest = {
+      name: releaseTestName,
+      devices: mockDevices,
+      state: "IN_PROGRESS",
+    };
+
+    it("should throw error if request fails", async () => {
+      nock(appDistributionOrigin)
+        .get(`/v1alpha/${releaseTestName}`)
+        .reply(400, { error: { status: "FAILED_PRECONDITION" } });
+      await expect(appDistributionClient.getReleaseTest(releaseTestName)).to.be.rejected;
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should resolve with ReleaseTest when request succeeds", async () => {
+      nock(appDistributionOrigin).get(`/v1alpha/${releaseTestName}`).reply(200, mockReleaseTest);
+      await expect(appDistributionClient.getReleaseTest(releaseTestName)).to.be.eventually.deep.eq(
+        mockReleaseTest,
+      );
+      expect(nock.isDone()).to.be.true;
     });
   });
 });

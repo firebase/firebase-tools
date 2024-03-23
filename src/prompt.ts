@@ -1,6 +1,16 @@
 import * as inquirer from "inquirer";
+import AutocompletePrompt from "inquirer-autocomplete-prompt";
 
 import { FirebaseError } from "./error";
+
+declare module "inquirer" {
+  interface QuestionMap<T> {
+    autocomplete: AutocompletePrompt.AutocompleteQuestionOptions<T>;
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-argument
+inquirer.registerPrompt("autocomplete", require("inquirer-autocomplete-prompt"));
 
 /**
  * Question type for inquirer. See
@@ -8,12 +18,13 @@ import { FirebaseError } from "./error";
  */
 export type Question = inquirer.DistinctQuestion;
 
-type QuestionsThatReturnAString<T> =
+type QuestionsThatReturnAString<T extends inquirer.Answers> =
   | inquirer.RawListQuestion<T>
   | inquirer.ExpandQuestion<T>
   | inquirer.InputQuestion<T>
   | inquirer.PasswordQuestion<T>
-  | inquirer.EditorQuestion<T>;
+  | inquirer.EditorQuestion<T>
+  | AutocompletePrompt.AutocompleteQuestionOptions<T>;
 
 type Options = Record<string, any> & { nonInteractive?: boolean };
 
@@ -33,7 +44,7 @@ export async function prompt(
   options: Options,
   // NB: If Observables are to be added here, the for loop below will need to
   // be adjusted as well.
-  questions: ReadonlyArray<inquirer.DistinctQuestion>
+  questions: ReadonlyArray<inquirer.DistinctQuestion>,
 ): Promise<any> {
   const prompts = [];
   // For each of our questions, if Options already has an answer,
@@ -50,7 +61,7 @@ export async function prompt(
       `Missing required options (${missingOptions}) while running in non-interactive mode`,
       {
         children: prompts,
-      }
+      },
     );
   }
 
@@ -63,26 +74,26 @@ export async function prompt(
 
 export async function promptOnce<A extends inquirer.Answers>(
   question: QuestionsThatReturnAString<A>,
-  options?: Options
+  options?: Options,
 ): Promise<string>;
 export async function promptOnce<A extends inquirer.Answers>(
   question: inquirer.CheckboxQuestion<A>,
-  options?: Options
+  options?: Options,
 ): Promise<string[]>;
 export async function promptOnce<A extends inquirer.Answers>(
   question: inquirer.ConfirmQuestion<A>,
-  options?: Options
+  options?: Options,
 ): Promise<boolean>;
 export async function promptOnce<A extends inquirer.Answers>(
   question: inquirer.NumberQuestion<A>,
-  options?: Options
+  options?: Options,
 ): Promise<number>;
 
 // This one is a bit hard to type out. Choices can be many things, including a generator function. Even if we decided to limit
 // the ListQuestion to have a choices of ReadonlyArray<ChoiceOption<A>>, a ChoiceOption<A> still has a `.value` of `any`
 export async function promptOnce<A extends inquirer.Answers>(
   question: inquirer.ListQuestion<A>,
-  options?: Options
+  options?: Options,
 ): Promise<any>;
 
 /**
@@ -91,7 +102,32 @@ export async function promptOnce<A extends inquirer.Answers>(
  * @return The value as returned by `inquirer` for that quesiton.
  */
 export async function promptOnce<A>(question: Question, options: Options = {}): Promise<A> {
-  question.name = question.name || "question";
+  // Need to replace any .'s in the question name - otherwise, Inquirer puts the answer
+  // in a nested object like so: `"a.b.c" => {a: {b: {c: "my-answer"}}}`
+  question.name = question.name?.replace(/\./g, "/") || "question";
   await prompt(options, [question]);
   return options[question.name];
+}
+
+/**
+ * Confirm if the user wants to continue
+ */
+export async function confirm(args: {
+  nonInteractive?: boolean;
+  force?: boolean;
+  default?: boolean;
+  message?: string;
+}): Promise<boolean> {
+  if (!args.nonInteractive && !args.force) {
+    const message = args.message ?? `Do you wish to continue?`;
+    return await promptOnce({
+      type: "confirm",
+      message,
+      default: args.default,
+    });
+  } else if (args.nonInteractive && !args.force) {
+    throw new FirebaseError("Pass the --force flag to use this command in non-interactive mode");
+  } else {
+    return true;
+  }
 }

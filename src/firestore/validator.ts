@@ -39,3 +39,13 @@ export function assertEnum(obj: any, prop: string, valid: any[]): void {
     throw new FirebaseError(`Field "${prop}" must be one of  ${valid.join(", ")}: ${objString}`);
   }
 }
+
+/**
+ * Throw an error if the value of the property 'prop' differs against type
+ * guard.
+ */
+export function assertType(prop: string, propValue: any, type: string): void {
+  if (typeof propValue !== type) {
+    throw new FirebaseError(`Property "${prop}" must be of type ${type}`);
+  }
+}

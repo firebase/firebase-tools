@@ -40,6 +40,17 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
       });
   });
 
+  it("should throw error if empty email and password is provided", async () => {
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
+      .send({ email: "", password: "" })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("INVALID_EMAIL");
+      });
+  });
+
   it("should issue idToken and refreshToken on anon signUp", async () => {
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
@@ -50,7 +61,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
         expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const idToken = res.body.idToken;
-        const decoded = decodeJwt(idToken, { complete: true }) as {
+        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
           header: JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
@@ -73,7 +84,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
         expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const idToken = res.body.idToken;
-        const decoded = decodeJwt(idToken, { complete: true }) as {
+        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
           header: JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
@@ -233,7 +244,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
         expectStatusCode(200, res);
         expect(res.body.localId).to.equal(localId);
         const idToken = res.body.idToken;
-        const decoded = decodeJwt(idToken, { complete: true }) as {
+        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
           header: JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
@@ -255,7 +266,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
         expectStatusCode(200, res);
         expect(res.body.localId).to.equal(localId);
         const idToken = res.body.idToken;
-        const decoded = decodeJwt(idToken, { complete: true }) as {
+        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
           header: JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
@@ -304,7 +315,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
         expect(res.body.localId).to.equal(localId);
         expect(res.body.email).to.equal(newEmail);
         const idToken = res.body.idToken;
-        const decoded = decodeJwt(idToken, { complete: true }) as {
+        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
           header: JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
@@ -601,7 +612,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_CREATE_PATH)
@@ -625,7 +636,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
           expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
           const idToken = res.body.idToken;
-          const decoded = decodeJwt(idToken, { complete: true }) as {
+          const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
             header: JwtHeader;
             payload: FirebaseJwtPayload;
           } | null;
@@ -656,7 +667,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_SIGN_IN_PATH)
@@ -681,7 +692,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
           expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
           const idToken = res.body.idToken;
-          const decoded = decodeJwt(idToken, { complete: true }) as {
+          const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
             header: JwtHeader;
             payload: FirebaseJwtPayload;
           } | null;
@@ -716,7 +727,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_CREATE_PATH)
@@ -751,7 +762,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
           expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
           const idToken = res.body.idToken;
-          const decoded = decodeJwt(idToken, { complete: true }) as {
+          const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
             header: JwtHeader;
             payload: FirebaseJwtPayload;
           } | null;
@@ -783,7 +794,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_CREATE_PATH)
@@ -822,7 +833,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_CREATE_PATH)

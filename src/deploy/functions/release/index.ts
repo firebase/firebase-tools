@@ -20,7 +20,7 @@ import { getProjectNumber } from "../../../getProjectNumber";
 export async function release(
   context: args.Context,
   options: Options,
-  payload: args.Payload
+  payload: args.Payload,
 ): Promise<void> {
   if (!context.config) {
     return;
@@ -51,7 +51,7 @@ export async function release(
   const shouldDelete = await prompts.promptForFunctionDeletion(
     fnsToDelete,
     options.force,
-    options.nonInteractive
+    options.nonInteractive,
   );
   if (!shouldDelete) {
     for (const change of Object.values(plan)) {
@@ -59,16 +59,16 @@ export async function release(
     }
   }
 
-  const functionExecutor: executor.QueueExecutor = new executor.QueueExecutor({
+  const throttlerOptions = {
     retries: 30,
     backoff: 20000,
     concurrency: 40,
-    maxBackoff: 40000,
-  });
+    maxBackoff: 100000,
+  };
 
   const fab = new fabricator.Fabricator({
-    functionExecutor,
-    executor: new executor.QueueExecutor({}),
+    functionExecutor: new executor.QueueExecutor(throttlerOptions),
+    executor: new executor.QueueExecutor(throttlerOptions),
     sources: context.sources,
     appEngineLocation: getAppEngineLocation(context.firebaseConfig),
     projectNumber: options.projectNumber || (await getProjectNumber(context.projectId)),
@@ -76,7 +76,7 @@ export async function release(
 
   const summary = await fab.applyPlan(plan);
 
-  await reporter.logAndTrackDeployStats(summary);
+  await reporter.logAndTrackDeployStats(summary, context);
   reporter.printErrors(summary);
 
   // N.B. Fabricator::applyPlan updates the endpoints it deploys to include the
@@ -105,7 +105,7 @@ export async function release(
 
 /**
  * Prints the URLs of HTTPS functions.
- * Caller must eitehr force refresh the backend or assume the fabricator
+ * Caller must either force refresh the backend or assume the fabricator
  * has updated the URI of endpoints after deploy.
  */
 export function printTriggerUrls(results: backend.Backend): void {
@@ -117,7 +117,7 @@ export function printTriggerUrls(results: backend.Backend): void {
   for (const httpsFunc of httpsFunctions) {
     if (!httpsFunc.uri) {
       logger.debug(
-        "Not printing URL for HTTPS function. Typically this means it didn't match a filter or we failed deployment"
+        "Not printing URL for HTTPS function. Typically this means it didn't match a filter or we failed deployment",
       );
       continue;
     }

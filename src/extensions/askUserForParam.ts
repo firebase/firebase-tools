@@ -1,7 +1,6 @@
 import * as _ from "lodash";
 import * as clc from "colorette";
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
+import { marked } from "marked";
 
 import { Param, ParamOption, ParamType } from "./types";
 import * as secretManagerApi from "../gcp/secretManager";
@@ -13,6 +12,7 @@ import { promptOnce } from "../prompt";
 import * as utils from "../utils";
 import { ParamBindingOptions } from "./paramHelper";
 import { needProjectId } from "../projectUtils";
+import { partition } from "../functional";
 
 /**
  * Location where the secret value is stored.
@@ -91,8 +91,9 @@ export async function ask(args: {
 
   utils.logLabeledBullet(logPrefix, "answer the questions below to configure your extension:");
   const substituted = substituteParams<Param[]>(args.paramSpecs, args.firebaseProjectParams);
+  const [advancedParams, standardParams] = partition(substituted, (p) => p.advanced ?? false);
   const result: { [key: string]: ParamBindingOptions } = {};
-  const promises = substituted.map((paramSpec) => {
+  const promises = standardParams.map((paramSpec) => {
     return async () => {
       result[paramSpec.param] = await askForParam({
         projectId: args.projectId,
@@ -102,8 +103,37 @@ export async function ask(args: {
       });
     };
   });
+  if (advancedParams.length) {
+    promises.push(async () => {
+      const shouldPrompt = await promptOnce({
+        type: "confirm",
+        message: "Do you want to configure any advanced parameters for this instance?",
+        default: false,
+      });
+      if (shouldPrompt) {
+        const advancedPromises = advancedParams.map((paramSpec) => {
+          return async () => {
+            result[paramSpec.param] = await askForParam({
+              projectId: args.projectId,
+              instanceId: args.instanceId,
+              paramSpec: paramSpec,
+              reconfiguring: args.reconfiguring,
+            });
+          };
+        });
+        await advancedPromises.reduce((prev, cur) => prev.then(cur as any), Promise.resolve());
+      } else {
+        for (const paramSpec of advancedParams) {
+          if (paramSpec.required && paramSpec.default) {
+            result[paramSpec.param] = { baseValue: paramSpec.default };
+          }
+        }
+      }
+    });
+  }
   // chaining together the promises so they get executed one after another
   await promises.reduce((prev, cur) => prev.then(cur as any), Promise.resolve());
+
   logger.info();
   return result;
 }
@@ -124,8 +154,8 @@ export async function askForParam(args: {
   const label = paramSpec.label.trim();
   logger.info(
     `\n${clc.bold(label)}${clc.bold(paramSpec.required ? "" : " (Optional)")}: ${marked(
-      description
-    ).trim()}`
+      description,
+    ).trim()}`,
   );
 
   while (!valid) {
@@ -265,7 +295,7 @@ async function promptLocalSecret(instanceId: string, paramSpec: Param): Promise<
 async function promptReconfigureSecret(
   projectId: string,
   instanceId: string,
-  paramSpec: Param
+  paramSpec: Param,
 ): Promise<string> {
   const action = await promptOnce({
     type: "list",
@@ -299,7 +329,7 @@ async function promptReconfigureSecret(
             secret = await secretManagerApi.createSecret(
               projectId,
               secretName,
-              secretsUtils.getSecretLabels(instanceId)
+              secretsUtils.getSecretLabels(instanceId),
             );
           }
           return addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
@@ -319,7 +349,7 @@ export async function promptCreateSecret(
   projectId: string,
   instanceId: string,
   paramSpec: Param,
-  secretName?: string
+  secretName?: string,
 ): Promise<string> {
   const name = secretName ?? (await generateSecretName(projectId, instanceId, paramSpec.param));
   const secretValue = await promptOnce({
@@ -336,7 +366,7 @@ export async function promptCreateSecret(
       const secret = await secretManagerApi.createSecret(
         projectId,
         name,
-        secretsUtils.getSecretLabels(instanceId)
+        secretsUtils.getSecretLabels(instanceId),
       );
       return addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
     } else {
@@ -350,7 +380,7 @@ export async function promptCreateSecret(
 async function generateSecretName(
   projectId: string,
   instanceId: string,
-  paramName: string
+  paramName: string,
 ): Promise<string> {
   let secretName = `ext-${instanceId}-${paramName}`;
   while (await secretManagerApi.secretExists(projectId, secretName)) {
@@ -364,7 +394,7 @@ async function addNewSecretVersion(
   instanceId: string,
   secret: secretManagerApi.Secret,
   paramSpec: Param,
-  secretValue: string
+  secretValue: string,
 ) {
   const version = await secretManagerApi.addVersion(projectId, secret.name, secretValue);
   await secretsUtils.grantFirexServiceAgentSecretAdminRole(secret);

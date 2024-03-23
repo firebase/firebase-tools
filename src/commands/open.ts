@@ -22,7 +22,7 @@ const LINKS: Link[] = [
   { name: "Analytics", arg: "analytics", consolePath: "/analytics" },
   { name: "Authentication: Providers", arg: "auth", consolePath: "/authentication/providers" },
   { name: "Authentication: Users", arg: "auth:users", consolePath: "/authentication/users" },
-  { name: "Crash Reporting", arg: "crash", consolePath: "/monitoring" },
+  { name: "Crash Reporting", arg: "crash", consolePath: "/crashlytics" },
   { name: "Database: Data", arg: "database", consolePath: "/database/data" },
   { name: "Database: Rules", arg: "database:rules", consolePath: "/database/rules" },
   { name: "Docs", arg: "docs", url: "https://firebase.google.com/docs" },
@@ -30,11 +30,21 @@ const LINKS: Link[] = [
   { name: "Firestore: Data", arg: "firestore", consolePath: "/firestore/data" },
   { name: "Firestore: Rules", arg: "firestore:rules", consolePath: "/firestore/rules" },
   { name: "Firestore: Indexes", arg: "firestore:indexes", consolePath: "/firestore/indexes" },
+  {
+    name: "Firestore: Databases List",
+    arg: "firestore:databases:list",
+    consolePath: "/firestore/databases/list",
+  },
+  {
+    name: "Firestore: Locations",
+    arg: "firestore:locations",
+    consolePath: "/firestore/locations",
+  },
   { name: "Firestore: Usage", arg: "firestore:usage", consolePath: "/firestore/usage" },
   { name: "Functions", arg: "functions", consolePath: "/functions/list" },
   { name: "Functions Log", arg: "functions:log" } /* Special Case */,
   { name: "Hosting: Deployed Site", arg: "hosting:site" } /* Special Case */,
-  { name: "Hosting", arg: "hosting", consolePath: "/hosting/main" },
+  { name: "Hosting", arg: "hosting", consolePath: "/hosting/sites" },
   { name: "Notifications", arg: "notifications", consolePath: "/notification" },
   { name: "Project Dashboard", arg: "dashboard", consolePath: "/overview" },
   { name: "Project Settings", arg: "settings", consolePath: "/settings/general" },
@@ -60,7 +70,7 @@ export const command = new Command("open [link]")
     let link = LINKS.find((l) => l.arg === linkName);
     if (linkName && !link) {
       throw new FirebaseError(
-        "Unrecognized link name. Valid links are:\n\n" + LINKS.map((l) => l.arg).join("\n")
+        "Unrecognized link name. Valid links are:\n\n" + LINKS.map((l) => l.arg).join("\n"),
       );
     }
 
@@ -74,7 +84,7 @@ export const command = new Command("open [link]")
     }
     if (!link) {
       throw new FirebaseError(
-        "Unrecognized link name. Valid links are:\n\n" + LINKS.map((l) => l.arg).join("\n")
+        "Unrecognized link name. Valid links are:\n\n" + LINKS.map((l) => l.arg).join("\n"),
       );
     }
 
@@ -94,8 +104,8 @@ export const command = new Command("open [link]")
     if (link.arg !== linkName) {
       logger.info(
         `${clc.bold(clc.cyan("Tip:"))} You can also run ${clc.bold(
-          clc.underline(`firebase open ${link.arg}`)
-        )}`
+          clc.underline(`firebase open ${link.arg}`),
+        )}`,
       );
       logger.info();
     }

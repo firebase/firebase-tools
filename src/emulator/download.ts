@@ -2,11 +2,11 @@ import * as crypto from "crypto";
 import * as fs from "fs-extra";
 import * as path from "path";
 import * as tmp from "tmp";
-import * as unzipper from "unzipper";
 
 import { EmulatorLogger } from "./emulatorLogger";
 import { EmulatorDownloadDetails, DownloadableEmulators } from "./types";
 import { FirebaseError } from "../error";
+import { unzip } from "../unzip";
 import * as downloadableEmulators from "./downloadableEmulators";
 import * as downloadUtils from "../downloadUtils";
 
@@ -17,7 +17,7 @@ export async function downloadEmulator(name: DownloadableEmulators): Promise<voi
   EmulatorLogger.forEmulator(name).logLabeled(
     "BULLET",
     name,
-    `downloading ${path.basename(emulator.downloadPath)}...`
+    `downloading ${path.basename(emulator.downloadPath)}...`,
   );
   fs.ensureDirSync(emulator.opts.cacheDir);
 
@@ -37,10 +37,6 @@ export async function downloadEmulator(name: DownloadableEmulators): Promise<voi
     await unzip(emulator.downloadPath, emulator.unzipDir);
   }
 
-  // Set a delay while the unzip stream completes before running chmod
-  // See https://github.com/ZJONSSON/node-unzipper/issues/165
-  await new Promise((f) => setTimeout(f, 2000));
-
   const executablePath = emulator.binaryPath || emulator.downloadPath;
   fs.chmodSync(executablePath, 0o755);
 
@@ -50,13 +46,13 @@ export async function downloadEmulator(name: DownloadableEmulators): Promise<voi
 export async function downloadExtensionVersion(
   extensionVersionRef: string,
   sourceDownloadUri: string,
-  targetDir: string
+  targetDir: string,
 ): Promise<void> {
   const emulatorLogger = EmulatorLogger.forExtension({ ref: extensionVersionRef });
   emulatorLogger.logLabeled(
     "BULLET",
     "extensions",
-    `Starting download for ${extensionVersionRef} source code to ${targetDir}..`
+    `Starting download for ${extensionVersionRef} source code to ${targetDir}..`,
   );
   try {
     fs.mkdirSync(targetDir);
@@ -64,7 +60,7 @@ export async function downloadExtensionVersion(
     emulatorLogger.logLabeled(
       "BULLET",
       "extensions",
-      `cache directory for ${extensionVersionRef} already exists...`
+      `cache directory for ${extensionVersionRef} already exists...`,
     );
   }
   emulatorLogger.logLabeled("BULLET", "extensions", `downloading ${sourceDownloadUri}...`);
@@ -78,19 +74,10 @@ export async function downloadExtensionVersion(
   await new Promise((resolve) => setTimeout(resolve, 1000));
 }
 
-function unzip(zipPath: string, unzipDir: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    fs.createReadStream(zipPath)
-      .pipe(unzipper.Extract({ path: unzipDir })) // eslint-disable-line new-cap
-      .on("error", reject)
-      .on("close", resolve);
-  });
-}
-
 function removeOldFiles(
   name: DownloadableEmulators,
   emulator: EmulatorDownloadDetails,
-  removeAllVersions = false
+  removeAllVersions = false,
 ): void {
   const currentLocalPath = emulator.downloadPath;
   const currentUnzipPath = emulator.unzipDir;
@@ -112,7 +99,7 @@ function removeOldFiles(
       EmulatorLogger.forEmulator(name).logLabeled(
         "BULLET",
         name,
-        `Removing outdated emulator files: ${file}`
+        `Removing outdated emulator files: ${file}`,
       );
       fs.removeSync(fullFilePath);
     }
@@ -130,8 +117,8 @@ function validateSize(filepath: string, expectedSize: number): Promise<void> {
       : reject(
           new FirebaseError(
             `download failed, expected ${expectedSize} bytes but got ${stat.size}`,
-            { exit: 1 }
-          )
+            { exit: 1 },
+          ),
         );
   });
 }
@@ -151,8 +138,8 @@ function validateChecksum(filepath: string, expectedChecksum: string): Promise<v
         : reject(
             new FirebaseError(
               `download failed, expected checksum ${expectedChecksum} but got ${checksum}`,
-              { exit: 1 }
-            )
+              { exit: 1 },
+            ),
           );
     });
   });
