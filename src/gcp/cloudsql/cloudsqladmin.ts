@@ -211,7 +211,7 @@ export function isValidInstanceForDataConnect(instance: Instance): boolean {
   for (const flag of dbFlags) {
     if (flag.name === "cloudsql.iam_authentication") {
       hasIamFlag = true;
-      if (flag.value != "on") {
+      if (flag.value !== "on") {
         return false;
       }
     }
