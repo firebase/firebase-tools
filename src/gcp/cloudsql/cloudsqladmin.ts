@@ -168,17 +168,20 @@ export async function createInstance(
 }
 
 // Update an existing CloudSQL instance to have any required settings for Firebase Data Connect.
-export async function updateInstanceForDataConnect(projectId: string, instanceId: string): Promise<Instance> {
-  const op = await client.patch<Partial<Instance>, Operation>(`projects/${projectId}/instances/${instanceId}`, {
-    settings: {
-      ipConfiguration: {
-        ipv4Enabled: true,
+export async function updateInstanceForDataConnect(
+  projectId: string,
+  instanceId: string,
+): Promise<Instance> {
+  const op = await client.patch<Partial<Instance>, Operation>(
+    `projects/${projectId}/instances/${instanceId}`,
+    {
+      settings: {
+        ipConfiguration: {
+          ipv4Enabled: true,
+        },
+        databaseFlags: [{ name: "cloudsql.iam_authentication", value: "on" }],
       },
-      databaseFlags: [
-        { name: "cloudsql.iam_authentication", value: "on" },
-      ],
     },
-  },
   );
   const opName = `projects/${projectId}/operations/${op.body.name}`;
   const pollRes = await operationPoller.pollOperation<Instance>({
@@ -200,12 +203,12 @@ export function isValidInstanceForDataConnect(instance: Instance): boolean {
   }
 
   // CloudSQL instances must have IAM authentication enabled to be used with Firebase Data Connect.
-  const dbFlags = settings?.databaseFlags
+  const dbFlags = settings?.databaseFlags;
   if (!dbFlags) {
-    return false
+    return false;
   }
   let hasIamFlag = false;
-  for (var flag of dbFlags) {
+  for (const flag of dbFlags) {
     if (flag.name === "cloudsql.iam_authentication") {
       hasIamFlag = true;
       if (flag.value != "on") {
