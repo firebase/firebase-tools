@@ -166,6 +166,7 @@ export class Delegate {
       HOME: process.env.HOME,
       PATH: process.env.PATH,
       NODE_ENV: process.env.NODE_ENV,
+      NODE_OPTIONS: process.env.NODE_OPTIONS,
       // Web Frameworks fails without this environment variable
       __FIREBASE_FRAMEWORKS_ENTRY__: process.env.__FIREBASE_FRAMEWORKS_ENTRY__,
     };
