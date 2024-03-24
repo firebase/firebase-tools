@@ -3,7 +3,6 @@ import * as inquirer from "inquirer";
 import { AppPlatform, WebAppMetadata, createWebApp, listFirebaseApps } from "../management/apps";
 import { promptOnce } from "../prompt";
 import { FirebaseError } from "../error";
-import { logWarning } from "../utils";
 
 const CREATE_NEW_FIREBASE_WEB_APP = "CREATE_NEW_WEB_APP";
 const CONTINUE_WITHOUT_SELECTING_FIREBASE_WEB_APP = "CONTINUE_WITHOUT_SELECTING_FIREBASE_WEB_APP";
@@ -46,9 +45,6 @@ async function getOrCreateWebApp(
   if (noWebAppsExistInProject) {
     // create a web app using backend id
     const newWebApp = await createFirebaseWebApp(projectId, { displayName: backendId });
-    if (!newWebApp) {
-      throw new FirebaseError("Unable to create a new Firebase web app");
-    }
     return { name: newWebApp.displayName, id: newWebApp.appId };
   }
 
@@ -110,9 +106,6 @@ async function promptFirebaseWebApp(
 
   if (firebaseWebAppName === CREATE_NEW_FIREBASE_WEB_APP) {
     const newFirebaseWebApp = await createFirebaseWebApp(projectId, { displayName: backendId });
-    if (newFirebaseWebApp === undefined) {
-      throw new FirebaseError("Unable to create a new Firebase web app");
-    }
     return { name: newFirebaseWebApp.displayName, id: newFirebaseWebApp.appId };
   } else if (firebaseWebAppName === CONTINUE_WITHOUT_SELECTING_FIREBASE_WEB_APP) {
     return;
@@ -128,17 +121,23 @@ async function promptFirebaseWebApp(
 async function createFirebaseWebApp(
   projectId: string,
   options: { displayName?: string },
-): Promise<WebAppMetadata | undefined> {
+): Promise<WebAppMetadata> {
   try {
     return await createWebApp(projectId, options);
   } catch (e) {
     if (isQuotaError(e)) {
-      logWarning("Your project has reached the quota for Firebase apps");
-      return;
+      throw new FirebaseError(
+        "Unable to create a new web app, the project has reached the quota for Firebase apps. Navigate to your Firebase console to manage or delete a Firebase app to continue. ",
+      );
     }
+
+    throw new FirebaseError("Unable to create a Firebase web app");
   }
 }
 
+/**
+ * TODO: Make this generic to be re-used in other parts of the CLI
+ */
 function isQuotaError(error: any): boolean {
   const original = error.original as any;
   const code: number | undefined =
