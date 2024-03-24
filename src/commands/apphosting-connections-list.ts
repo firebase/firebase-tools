@@ -2,7 +2,7 @@ import { Command } from "../command";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import requireInteractive from "../requireInteractive";
-import { listDeveloperConnectConnections } from "../init/features/apphosting";
+import { listDeveloperConnectAppHostingConnections } from "../init/features/apphosting";
 
 export const command = new Command("apphosting:connections:list")
   .description("lists all dev connect connections for the current project")
@@ -11,5 +11,5 @@ export const command = new Command("apphosting:connections:list")
   .action(async (options: Options) => {
     const projectId = needProjectId(options);
 
-    await listDeveloperConnectConnections(projectId, "us-central1");
+    await listDeveloperConnectAppHostingConnections(projectId, "us-central1");
   });

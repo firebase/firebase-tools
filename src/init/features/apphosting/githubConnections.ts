@@ -18,6 +18,7 @@ interface ConnectionNameParts {
   id: string;
 }
 
+// Note: This does not match the sentinel oauth connection
 const APPHOSTING_CONN_PATTERN = /.+\/apphosting-github-conn-.+$/;
 const APPHOSTING_OAUTH_CONN_NAME = "apphosting-github-oauth";
 const CONNECTION_NAME_REGEX =
@@ -44,6 +45,18 @@ export function parseConnectionName(name: string): ConnectionNameParts | undefin
     location,
     id,
   };
+}
+
+export function isApphostingConnection(name: string): boolean {
+  const pattern = /^apphosting-github.*/;
+  const match = CONNECTION_NAME_REGEX.exec(name);
+
+  if (!match || typeof match.groups === undefined) {
+    return false;
+  }
+
+  const { id } = match.groups as unknown as ConnectionNameParts;
+  return pattern.test(id);
 }
 
 const devConnectPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
@@ -95,6 +108,7 @@ export async function linkGitHubRepository(
   location: string,
 ): Promise<devConnect.GitRepositoryLink> {
   utils.logBullet(clc.bold(`${clc.yellow("===")} Set up a GitHub connection`));
+  await ensureSecretManagerAdminGrant(projectId);
   // Fetch the sentinel Oauth connection first which is needed to create further GitHub connections.
   const oauthConn = await getOrCreateOauthConnection(projectId, location);
   utils.logBullet(`debug: oauthConnection: ${JSON.stringify(oauthConn)}`);
@@ -102,9 +116,8 @@ export async function linkGitHubRepository(
 
   if (existingConns.length === 0) {
     utils.logBullet("no connections exist");
-    await ensureSecretManagerAdminGrant(projectId);
     existingConns.push(
-      await ensureFullyInstalledConnection(projectId, location, generateConnectionId(), oauthConn),
+      await createFullyInstalledConnection(projectId, location, generateConnectionId(), oauthConn),
     );
   }
 
