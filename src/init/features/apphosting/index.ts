@@ -288,7 +288,7 @@ export async function createBackend(
   // TODO: remove computeServiceAccount when the backend supports the field.
   delete backendReqBody.computeServiceAccount;
 
-  async function createBackendAndPoll() {
+  async function createBackendAndPoll(): Promise<apphosting.Backend> {
     const op = await apphosting.createBackend(projectId, location, backendReqBody, backendId);
     return await poller.pollOperation<Backend>({
       ...apphostingPollerOptions,
@@ -457,13 +457,16 @@ export async function orchestrateRollout(
 /**
  * lists dev connect connections
  */
-export async function listDeveloperConnectConnections(
+export async function listDeveloperConnectAppHostingConnections(
   projectId: string,
   location: string,
 ): Promise<void> {
   const connections = await listConnections(projectId, location);
-  for (let i = 0; i < connections.length; i++) {
-    const connection = connections[i];
+  const appHostingConnections = connections.filter((connection) =>
+    githubConnections.isApphostingConnection(connection.name),
+  );
+  for (let i = 0; i < appHostingConnections.length; i++) {
+    const connection = appHostingConnections[i];
     logBullet(connection.name);
   }
 }
@@ -471,13 +474,16 @@ export async function listDeveloperConnectConnections(
 /**
  * deletes all dev connect connections
  */
-export async function resetDeveloperConnectConnections(
+export async function resetDeveloperConnectAppHostingConnections(
   projectId: string,
   location: string,
 ): Promise<void> {
   const connections = await listConnections(projectId, location);
-  for (let i = 0; i < connections.length; i++) {
-    const connection = connections[i];
+  const appHostingConnections = connections.filter((connection) =>
+    githubConnections.isApphostingConnection(connection.name),
+  );
+  for (let i = 0; i < appHostingConnections.length; i++) {
+    const connection = appHostingConnections[i];
     logBullet(`Deleting connection: ${connection.name}`);
     const { id } = githubConnections.parseConnectionName(connection.name)!;
     await deleteConnection(projectId, location, id);
