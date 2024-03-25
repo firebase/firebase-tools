@@ -26,11 +26,15 @@ async function resolveBackend(bd: build.Build): Promise<backend.Backend> {
 describe("addResourcesToBuild", () => {
   const oldDefaultRegion = api.functionsDefaultRegion();
   before(() => {
-    (api as any).functionsDefaultRegion = "us-central1";
+    (api as any).functionsDefaultRegion = () => {
+      return "us-central1";
+    };
   });
 
   after(() => {
-    (api as any).functionsDefaultRegion = oldDefaultRegion;
+    (api as any).functionsDefaultRegion = () => {
+      return oldDefaultRegion;
+    };
   });
 
   const BASIC_TRIGGER: parseTriggers.TriggerAnnotation = Object.freeze({
@@ -487,11 +491,15 @@ describe("addResourcesToBuild", () => {
 describe("addResourcesToBackend", () => {
   const oldDefaultRegion = api.functionsDefaultRegion();
   before(() => {
-    (api as any).functionsDefaultRegion = "us-central1";
+    (api as any).functionsDefaultRegion = () => {
+      return "us-central1";
+    };
   });
 
   after(() => {
-    (api as any).functionsDefaultRegion = oldDefaultRegion;
+    (api as any).functionsDefaultRegion = () => {
+      return oldDefaultRegion;
+    };
   });
 
   const BASIC_TRIGGER: parseTriggers.TriggerAnnotation = Object.freeze({
