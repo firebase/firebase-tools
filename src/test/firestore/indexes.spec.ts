@@ -66,6 +66,112 @@ describe("IndexValidation", () => {
     );
   });
 
+  it("should accept a valid vectorConfig index", () => {
+    idx.validateSpec(
+      idx.upgradeOldSpec({
+        indexes: [
+          {
+            collectionGroup: "collection",
+            queryScope: "COLLECTION",
+            fields: [
+              {
+                fieldPath: "embedding",
+                vectorConfig: {
+                  dimension: 100,
+                  flat: {},
+                },
+              },
+            ],
+          },
+        ],
+      }),
+    );
+  });
+
+  it("should accept a valid vectorConfig index after upgrade", () => {
+    idx.validateSpec({
+      indexes: [
+        {
+          collectionGroup: "collection",
+          queryScope: "COLLECTION",
+          fields: [
+            {
+              fieldPath: "embedding",
+              vectorConfig: {
+                dimension: 100,
+                flat: {},
+              },
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it("should accept a valid vectorConfig index with another field", () => {
+    idx.validateSpec({
+      indexes: [
+        {
+          collectionGroup: "collection",
+          queryScope: "COLLECTION",
+          fields: [
+            { fieldPath: "foo", order: "ASCENDING" },
+            {
+              fieldPath: "embedding",
+              vectorConfig: {
+                dimension: 100,
+                flat: {},
+              },
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it("should reject invalid vectorConfig dimension", () => {
+    expect(() => {
+      idx.validateSpec({
+        indexes: [
+          {
+            collectionGroup: "collection",
+            queryScope: "COLLECTION",
+            fields: [
+              {
+                fieldPath: "embedding",
+                vectorConfig: {
+                  dimension: "wrongType",
+                  flat: {},
+                },
+              },
+            ],
+          },
+        ],
+      });
+    }).to.throw(FirebaseError, /Property "vectorConfig.dimension" must be of type number/);
+  });
+
+  it("should reject invalid vectorConfig missing flat type", () => {
+    expect(() => {
+      idx.validateSpec({
+        indexes: [
+          {
+            collectionGroup: "collection",
+            queryScope: "COLLECTION",
+            fields: [
+              {
+                fieldPath: "embedding",
+                vectorConfig: {
+                  dimension: 100,
+                },
+              },
+            ],
+          },
+        ],
+      });
+    }).to.throw(FirebaseError, /Must contain "flat"/);
+  });
+
   it("should reject an incomplete index spec", () => {
     expect(() => {
       idx.validateSpec({
@@ -96,7 +202,7 @@ describe("IndexValidation", () => {
           },
         ],
       });
-    }).to.throw(FirebaseError, /Must contain exactly one of "order,arrayConfig"/);
+    }).to.throw(FirebaseError, /Must contain exactly one of "order,arrayConfig,vectorConfig"/);
   });
 });
 describe("IndexSpecMatching", () => {
@@ -532,7 +638,47 @@ describe("IndexSorting", () => {
       ],
     };
 
-    expect([b, a, d, c].sort(sort.compareApiIndex)).to.eql([a, b, c, d]);
+    const e: API.Index = {
+      name: "/projects/project/databases/(default)/collectionGroups/collectionB/indexes/e",
+      queryScope: API.QueryScope.COLLECTION,
+      fields: [
+        {
+          fieldPath: "fieldA",
+          vectorConfig: {
+            dimension: 100,
+            flat: {},
+          },
+        },
+      ],
+    };
+
+    const f: API.Index = {
+      name: "/projects/project/databases/(default)/collectionGroups/collectionB/indexes/f",
+      queryScope: API.QueryScope.COLLECTION,
+      fields: [
+        {
+          fieldPath: "fieldA",
+          vectorConfig: {
+            dimension: 200,
+            flat: {},
+          },
+        },
+      ],
+    };
+
+    // This Index is invalid, but is used to verify sort ordering on undefined
+    // fields.
+    const g: API.Index = {
+      name: "/projects/project/databases/(default)/collectionGroups/collectionB/indexes/g",
+      queryScope: API.QueryScope.COLLECTION,
+      fields: [
+        {
+          fieldPath: "fieldA",
+        },
+      ],
+    };
+
+    expect([b, a, d, g, f, e, c].sort(sort.compareApiIndex)).to.eql([a, b, c, d, e, f, g]);
   });
 
   it("should correctly sort an array of API field overrides", () => {
