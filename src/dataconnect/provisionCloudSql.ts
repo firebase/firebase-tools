@@ -18,9 +18,9 @@ export async function provisionCloudSql(
       silent ||
         utils.logLabeledBullet(
           "dataconnect",
-          `Instance ${instanceId} not compatible with Firebase Data Connect; updating instance. This may take a few minutes...`,
+          `Instance ${instanceId} not compatible with Firebase Data Connect. Updating instance to enable Cloud IAM authentication and public IP. This may take a few minutes...`,
         );
-      await cloudSqlAdminClient.updateInstanceForDataConnect(projectId, instanceId);
+      await cloudSqlAdminClient.updateInstanceForDataConnect(existingInstance);
       silent || utils.logLabeledBullet("dataconnect", "Instance updated");
     }
   } catch (err) {
