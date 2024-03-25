@@ -1,7 +1,7 @@
 import { Client } from "../apiv2";
 import { developerConnectOrigin, developerConnectP4SAOrigin } from "../api";
 
-const PAGE_SIZE_MAX = 100;
+const PAGE_SIZE_MAX = 1000;
 
 export const client = new Client({
   urlPrefix: developerConnectOrigin,
@@ -155,7 +155,10 @@ export async function getConnection(
 /**
  * List Developer Connect Connections
  */
-export async function listConnections(projectId: string, location: string): Promise<Connection[]> {
+export async function listAllConnections(
+  projectId: string,
+  location: string,
+): Promise<Connection[]> {
   const conns: Connection[] = [];
   const getNextPage = async (pageToken = ""): Promise<void> => {
     const res = await client.get<{
@@ -181,22 +184,33 @@ export async function listConnections(projectId: string, location: string): Prom
 /**
  * Gets a list of repositories that can be added to the provided Connection.
  */
-export async function fetchLinkableGitRepositories(
+export async function listAllLinkableGitRepositories(
   projectId: string,
   location: string,
   connectionId: string,
-  pageToken = "",
-  pageSize = 1000,
-): Promise<LinkableGitRepositories> {
+): Promise<LinkableGitRepository[]> {
   const name = `projects/${projectId}/locations/${location}/connections/${connectionId}:fetchLinkableRepositories`;
-  const res = await client.get<LinkableGitRepositories>(name, {
-    queryParams: {
-      pageSize,
-      pageToken,
-    },
-  });
+  const repos: LinkableGitRepository[] = [];
 
-  return res.body;
+  const getNextPage = async (pageToken = ""): Promise<void> => {
+    const res = await client.get<LinkableGitRepositories>(name, {
+      queryParams: {
+        PAGE_SIZE_MAX,
+        pageToken,
+      },
+    });
+
+    if (Array.isArray(res.body.repositories)) {
+      repos.push(...res.body.repositories);
+    }
+
+    if (res.body.nextPageToken) {
+      await getNextPage(res.body.nextPageToken);
+    }
+  };
+
+  await getNextPage();
+  return repos;
 }
 
 /**
