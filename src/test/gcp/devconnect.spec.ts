@@ -62,9 +62,46 @@ describe("developer connect", () => {
           },
         });
 
-      const conns = await devconnect.listConnections(projectId, location);
+      const conns = await devconnect.listAllConnections(projectId, location);
       expect(get).callCount(3);
       expect(conns).to.deep.equal([firstConnection, secondConnection, thirdConnection]);
+    });
+  });
+  describe("listAllLinkableGitRepositories", () => {
+    it("interates through all pages and returns a single list", async () => {
+      const firstRepo = { cloneUri: "repo1" };
+      const secondRepo = { cloneUri: "repo2" };
+      const thirdRepo = { cloneUri: "repo3" };
+
+      get
+        .onFirstCall()
+        .returns({
+          body: {
+            repositories: [firstRepo],
+            nextPageToken: "someToken",
+          },
+        })
+        .onSecondCall()
+        .returns({
+          body: {
+            repositories: [secondRepo],
+            nextPageToken: "someToken2",
+          },
+        })
+        .onThirdCall()
+        .returns({
+          body: {
+            repositories: [thirdRepo],
+          },
+        });
+
+      const conns = await devconnect.listAllLinkableGitRepositories(
+        projectId,
+        location,
+        connectionId,
+      );
+      expect(get).callCount(3);
+      expect(conns).to.deep.equal([firstRepo, secondRepo, thirdRepo]);
     });
   });
 });
