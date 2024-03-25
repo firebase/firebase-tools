@@ -7,13 +7,22 @@ export async function provisionCloudSql(
   locationId: string,
   instanceId: string,
   databaseId: string,
-  silent: boolean = false,
+  silent = false,
 ): Promise<string> {
   let connectionName: string; // Not used yet, will be used for schema migration
   try {
     const existingInstance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
     silent || utils.logLabeledBullet("dataconnect", `Found existing instance ${instanceId}.`);
     connectionName = existingInstance?.connectionName || "";
+    if (!cloudSqlAdminClient.isValidInstanceForDataConnect(existingInstance)) {
+      silent ||
+        utils.logLabeledBullet(
+          "dataconnect",
+          `Instance ${instanceId} not compatible with Firebase Data Connect. Updating instance to enable Cloud IAM authentication and public IP. This may take a few minutes...`,
+        );
+      await cloudSqlAdminClient.updateInstanceForDataConnect(existingInstance);
+      silent || utils.logLabeledBullet("dataconnect", "Instance updated");
+    }
   } catch (err) {
     silent ||
       utils.logLabeledBullet(

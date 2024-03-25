@@ -19,7 +19,7 @@ interface IpConfiguration {
   ipv4Enabled?: boolean;
   privateNetwork?: string;
   requireSsl?: boolean;
-  authorizedNetworks: {
+  authorizedNetworks?: {
     value: string;
     expirationTime?: string;
     name?: string;
@@ -36,7 +36,7 @@ interface IpConfiguration {
 }
 interface InstanceSettings {
   authorizedGaeApplications?: string[];
-  tier: string;
+  tier?: string;
   edition?: "ENTERPRISE_PLUS" | "ENTERPRISE";
   availabilityType?: "ZONAL" | "REGIONAL";
   pricingPlan?: "PER_USE" | "PACKAGE";
@@ -165,6 +165,55 @@ export async function createInstance(
     masterTimeout: 1_200_000, // This operation frequently takes 5+ minutes
   });
   return pollRes;
+}
+
+/**
+ * Update an existing CloudSQL instance to have any required settings for Firebase Data Connect.
+ */
+export async function updateInstanceForDataConnect(instance: Instance): Promise<Instance> {
+  const dbFlags =
+    instance.settings.databaseFlags?.filter((f) => f.name !== "cloudsql.iam_authentication") ?? [];
+  dbFlags.push({ name: "cloudsql.iam_authentication", value: "on" });
+
+  const op = await client.patch<Partial<Instance>, Operation>(
+    `projects/${instance.project}/instances/${instance.name}`,
+    {
+      settings: {
+        ipConfiguration: {
+          ipv4Enabled: true,
+        },
+        databaseFlags: dbFlags,
+      },
+    },
+  );
+  const opName = `projects/${instance.project}/operations/${op.body.name}`;
+  const pollRes = await operationPoller.pollOperation<Instance>({
+    apiOrigin: cloudSQLAdminOrigin,
+    apiVersion: API_VERSION,
+    operationResourceName: opName,
+    doneFn: (op: Operation) => op.status === "DONE",
+    masterTimeout: 1_200_000, // This operation frequently takes 5+ minutes
+  });
+  return pollRes;
+}
+
+/**
+ * Validate that existing CloudSQL instances have the necessary settings.
+ */
+export function isValidInstanceForDataConnect(instance: Instance): boolean {
+  const settings = instance.settings;
+  // CloudSQL instances must have public IP enabled to be used with Firebase Data Connect.
+  if (!settings.ipConfiguration?.ipv4Enabled) {
+    return false;
+  }
+
+  // CloudSQL instances must have IAM authentication enabled to be used with Firebase Data Connect.
+  const isIamEnabled =
+    settings.databaseFlags?.some(
+      (f) => f.name === "cloudsql.iam_authentication" && f.value === "on",
+    ) ?? false;
+
+  return isIamEnabled;
 }
 
 export async function listDatabases(projectId: string, instanceId: string): Promise<Database[]> {
