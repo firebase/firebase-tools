@@ -5,7 +5,7 @@ import { FirebaseError } from "../error";
 import * as utils from "../utils";
 
 const apiClient = new Client({
-  urlPrefix: serviceUsageOrigin,
+  urlPrefix: serviceUsageOrigin(),
   apiVersion: "v1beta1",
 });
 

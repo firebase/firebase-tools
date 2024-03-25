@@ -35,7 +35,7 @@ describe("iam", () => {
 
     for (const t of tests) {
       it(t.desc, async () => {
-        nock(resourceManagerOrigin)
+        nock(resourceManagerOrigin())
           .post(`/v1/${TEST_RESOURCE}:testIamPermissions`)
           .matchHeader("x-goog-quota-user", TEST_RESOURCE)
           .reply(200, { permissions: t.permissionsToReturn });

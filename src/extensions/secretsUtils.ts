@@ -12,7 +12,7 @@ export const SECRET_ROLE = "secretmanager.secretAccessor";
 
 export async function ensureSecretManagerApiEnabled(options: any): Promise<void> {
   const projectId = needProjectId(options);
-  return await ensure(projectId, secretManagerOrigin, "extensions", options.markdown);
+  return await ensure(projectId, secretManagerOrigin(), "extensions", options.markdown);
 }
 
 export function usesSecrets(spec: ExtensionSpec): boolean {

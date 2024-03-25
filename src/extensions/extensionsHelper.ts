@@ -488,7 +488,7 @@ export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
   if (!projectId) {
     return;
   }
-  return await ensure(projectId, extensionsOrigin, "extensions", options.markdown);
+  return await ensure(projectId, extensionsOrigin(), "extensions", options.markdown);
 }
 
 export async function ensureExtensionsPublisherApiEnabled(options: any): Promise<void> {
@@ -496,7 +496,7 @@ export async function ensureExtensionsPublisherApiEnabled(options: any): Promise
   if (!projectId) {
     return;
   }
-  return await ensure(projectId, extensionsPublisherOrigin, "extensions", options.markdown);
+  return await ensure(projectId, extensionsPublisherOrigin(), "extensions", options.markdown);
 }
 
 /**
@@ -978,7 +978,7 @@ export async function uploadExtensionVersionFromLocalSource(args: {
     uploadSpinner.start();
     objectPath = await archiveAndUploadSource(args.rootDirectory, EXTENSIONS_BUCKET_NAME);
     uploadSpinner.succeed("Uploaded extension source code");
-    packageUri = storageOrigin + objectPath + "?alt=media";
+    packageUri = storageOrigin() + objectPath + "?alt=media";
   } catch (err: any) {
     uploadSpinner.fail();
     throw new FirebaseError(`Failed to archive and upload extension source code, ${err}`, {
@@ -1032,7 +1032,7 @@ export async function createSourceFromLocation(
     objectPath = await archiveAndUploadSource(sourceUri, EXTENSIONS_BUCKET_NAME);
     spinner.succeed(" Uploaded extension source code");
 
-    packageUri = storageOrigin + objectPath + "?alt=media";
+    packageUri = storageOrigin() + objectPath + "?alt=media";
     const res = await createSource(projectId, packageUri, extensionRoot);
     logger.debug("Created new Extension Source %s", res.name);
 

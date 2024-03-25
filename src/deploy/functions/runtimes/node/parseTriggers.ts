@@ -213,7 +213,7 @@ export function addResourcesToBuild(
 ): void {
   Object.freeze(annotation);
   const toSeconds = nullsafeVisitor(proto.secondsFromDuration);
-  const regions = annotation.regions || [api.functionsDefaultRegion];
+  const regions = annotation.regions || [api.functionsDefaultRegion()];
   let triggered: build.Triggered;
 
   const triggerCount =
@@ -412,7 +412,7 @@ export function addResourcesToBackend(
 ): void {
   Object.freeze(annotation);
   // Every trigger annotation is at least a function
-  for (const region of annotation.regions || [api.functionsDefaultRegion]) {
+  for (const region of annotation.regions || [api.functionsDefaultRegion()]) {
     let triggered: backend.Triggered;
 
     // +!! is 1 for truthy values and 0 for falsy values

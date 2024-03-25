@@ -7,7 +7,7 @@ import { FirebaseError } from "./error";
 import * as utils from "./utils";
 
 const apiClient = new Client({
-  urlPrefix: googleOrigin,
+  urlPrefix: googleOrigin(),
 });
 
 // TODO: support for MFA at runtime was added in PR #3173, but this importer currently ignores `mfaInfo` and loses the data on import.

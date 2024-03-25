@@ -4,7 +4,7 @@ import { developerConnectOrigin, developerConnectP4SAOrigin } from "../api";
 const PAGE_SIZE_MAX = 1000;
 
 export const client = new Client({
-  urlPrefix: developerConnectOrigin,
+  urlPrefix: developerConnectOrigin(),
   auth: true,
   apiVersion: "v1",
 });
