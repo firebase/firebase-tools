@@ -1,5 +1,5 @@
 import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
-import { executeAsIAMUser } from "../gcp/cloudsql/connect";
+import { execute } from "../gcp/cloudsql/connect";
 import * as utils from "../utils";
 
 export async function provisionCloudSql(
@@ -43,17 +43,18 @@ export const REQUIRED_EXTENSIONS_COMMANDS = [
   `CREATE EXTENSION IF NOT EXISTS "vector" with SCHEMA public`,
   `CREATE EXTENSION IF NOT EXISTS "google_ml_integration" with SCHEMA public CASCADE`,
 ];
-// TODO: This should maybe not be hardcoded, instead should be returned during schema migration
+// TODO: This should not be hardcoded, instead should be returned during schema migration
 export async function installRequiredExtensions(
-  connectionName: string,
+  projectId: string,
+  instanceId: string,
   databaseId: string,
   username: string,
 ) {
-  await executeAsIAMUser(
-    connectionName,
+  await execute(REQUIRED_EXTENSIONS_COMMANDS, {
+    projectId,
+    instanceId,
     databaseId,
     username,
-    REQUIRED_EXTENSIONS_COMMANDS,
-    /** silent=*/ true,
-  );
+    silent: true,
+  });
 }

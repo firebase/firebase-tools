@@ -3,13 +3,14 @@ import { format } from "sql-formatter";
 
 import { IncompatibleSqlSchemaError, Diff } from "./types";
 import { upsertSchema } from "./client";
-import { executeAsIAMUser, setupIAMUser } from "../gcp/cloudsql/connect";
+import { execute, setupIAMUser } from "../gcp/cloudsql/connect";
 import { promptOnce } from "../prompt";
 import { logger } from "../logger";
 import { Schema } from "./types";
 import { Options } from "../options";
 import { FirebaseError } from "../error";
 import { REQUIRED_EXTENSIONS_COMMANDS } from "./provisionCloudSql";
+import { needProjectId } from "../projectUtils";
 
 const IMCOMPATIBLE_SCHEMA_ERROR_TYPESTRING =
   "type.googleapis.com/google.firebase.dataconnect.v1main.IncompatibleSqlSchemaError";
@@ -35,13 +36,10 @@ export async function diffSchema(schema: Schema): Promise<Diff[]> {
   return [];
 }
 
-export async function migrateSchema(
-  options: Options,
-  connectionString: string,
-  schema: Schema,
-): Promise<Diff[]> {
-  const dbName = schema.primaryDatasource.postgresql?.database;
-  if (!dbName) {
+export async function migrateSchema(options: Options, schema: Schema): Promise<Diff[]> {
+  const projectId = needProjectId(options);
+  const databaseId = schema.primaryDatasource.postgresql?.database;
+  if (!databaseId) {
     throw new FirebaseError(
       "Schema is missing primaryDatasource.postgresql?.database, cannot migrate",
     );
@@ -50,14 +48,14 @@ export async function migrateSchema(
   if (!instanceId) {
     throw new FirebaseError(`tried to migrate schema but ${instanceId} was undefined`);
   }
-  const iamUser = await setupIAMUser(instanceId, dbName, connectionString, options);
+  const iamUser = await setupIAMUser(instanceId, databaseId, options);
   try {
     // TODO(b/330596914): Handle cases where error only comes back after validateOnly=false
     await upsertSchema(schema, /** validateOnly=*/ true);
   } catch (err: any) {
     const incompatible = getIncompatibleSchemaError(err);
     if (incompatible) {
-      const choice = await promptForSchemaMigration(options, dbName, incompatible);
+      const choice = await promptForSchemaMigration(options, databaseId, incompatible);
       const commandsToExecute = incompatible.diffs
         .filter((d) => {
           switch (choice) {
@@ -71,17 +69,25 @@ export async function migrateSchema(
         })
         .map((d) => d.sql);
       if (commandsToExecute.length) {
-        await executeAsIAMUser(connectionString, dbName, iamUser, [
-          ...REQUIRED_EXTENSIONS_COMMANDS,
-          ...commandsToExecute,
-          `GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA "public" TO PUBLIC`,
-        ]);
+        await execute(
+          [
+            ...REQUIRED_EXTENSIONS_COMMANDS,
+            ...commandsToExecute,
+            `GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA "public" TO PUBLIC`,
+          ],
+          {
+            projectId,
+            instanceId,
+            databaseId,
+            username: iamUser,
+          },
+        );
         return incompatible.diffs;
       }
     }
     throw err;
   }
-  logger.debug(`Schema was up to date for ${instanceId}:${dbName}`);
+  logger.debug(`Schema was up to date for ${instanceId}:${databaseId}`);
   return [];
 }
 

@@ -8,67 +8,91 @@ import * as utils from "../../utils";
 import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { Options } from "../../options";
+import { FBToolsAuthClient } from "./fbToolsAuthClient";
 
-export async function executeAsBuiltInUser(
-  connectionName: string,
-  databaseId: string,
-  username: string,
-  password: string,
+export async function execute(
   sqlStatements: string[],
-  silent?: boolean,
+  opts: {
+    projectId: string;
+    instanceId: string;
+    databaseId: string;
+    username: string;
+    password?: string;
+    silent?: boolean;
+  },
 ) {
-  const logFn = silent ? logger.debug : logger.info;
-  const connector = new Connector();
-  const clientOpts = await connector.getOptions({
-    instanceConnectionName: connectionName,
-    ipType: IpAddressTypes.PUBLIC,
-  });
-  const pool = new pg.Pool({
-    ...clientOpts,
-    user: username,
-    password,
-    database: databaseId,
-    max: 1,
-  });
-  for (const s of sqlStatements) {
-    logFn(`Executing: '${s}' as ${username}`);
-    try {
-      await pool.query(s);
-    } catch (err) {
-      throw new FirebaseError(`Error executing ${err}`);
+  const logFn = opts.silent ? logger.debug : logger.info;
+  const instance = await cloudSqlAdminClient.getInstance(opts.projectId, opts.instanceId);
+  const user = await cloudSqlAdminClient.getUser(opts.projectId, opts.instanceId, opts.username);
+  const connectionName = instance.connectionName;
+  if (!connectionName) {
+    throw new FirebaseError(
+      `Could not get instance conection string for ${opts.instanceId}:${opts.databaseId}`,
+    );
+  }
+  let connector: Connector;
+  let pool: pg.Pool;
+  switch (user.type) {
+    case "CLOUD_IAM_USER": {
+      connector = new Connector({
+        auth: new FBToolsAuthClient(),
+      });
+      const clientOpts = await connector.getOptions({
+        instanceConnectionName: connectionName,
+        ipType: IpAddressTypes.PUBLIC,
+        authType: AuthTypes.IAM,
+      });
+      pool = new pg.Pool({
+        ...clientOpts,
+        user: opts.username,
+        database: opts.databaseId,
+        max: 1,
+      });
+      break;
+    }
+    case "CLOUD_IAM_SERVICE_ACCOUNT": {
+      connector = new Connector();
+      // Currently, this only works with Application Default credentials
+      // https://github.com/GoogleCloudPlatform/cloud-sql-nodejs-connector/issues/61 is an open
+      // FR to add support for OAuth2 tokens.
+      const clientOpts = await connector.getOptions({
+        instanceConnectionName: connectionName,
+        ipType: IpAddressTypes.PUBLIC,
+        authType: AuthTypes.IAM,
+      });
+      pool = new pg.Pool({
+        ...clientOpts,
+        user: opts.username,
+        database: opts.databaseId,
+        max: 1,
+      });
+      break;
+    }
+    default: {
+      // cSQL doesn't return user.type for BUILT_IN users...
+      if (!opts.password) {
+        throw new FirebaseError(`Cannot connect as BUILT_IN user without a password.`);
+      }
+      connector = new Connector({
+        auth: new FBToolsAuthClient(),
+      });
+      const clientOpts = await connector.getOptions({
+        instanceConnectionName: connectionName,
+        ipType: IpAddressTypes.PUBLIC,
+      });
+      pool = new pg.Pool({
+        ...clientOpts,
+        user: opts.username,
+        password: opts.password,
+        database: opts.databaseId,
+        max: 1,
+      });
+      break;
     }
   }
 
-  await pool.end();
-  connector.close();
-}
-
-export async function executeAsIAMUser(
-  connectionName: string,
-  databaseId: string,
-  username: string,
-  sqlStatements: string[],
-  silent?: boolean,
-) {
-  const logFn = silent ? logger.debug : logger.info;
-  const connector = new Connector();
-  // Currently, this only works with Application Default credentials
-  // https://github.com/GoogleCloudPlatform/cloud-sql-nodejs-connector/issues/61 is an open
-  // FR to add support for OAuth2 tokens.
-  const clientOpts = await connector.getOptions({
-    instanceConnectionName: connectionName,
-    ipType: IpAddressTypes.PUBLIC,
-    authType: AuthTypes.IAM,
-  });
-  const pool = new pg.Pool({
-    ...clientOpts,
-    user: username,
-    database: databaseId,
-    max: 1,
-  });
-  // Always run as firebaseowner so that tables have the right owner.
-  for (const s of [`SET ROLE '${firebaseowner(databaseId)}'`, ...sqlStatements]) {
-    logFn(`Executing: '${s}' as ${username}`);
+  for (const s of sqlStatements) {
+    logFn(`Executing: '${s}' as ${opts.username}`);
     try {
       await pool.query(s);
     } catch (err) {
@@ -88,7 +112,6 @@ export async function executeAsIAMUser(
 export async function setupIAMUser(
   instanceId: string,
   databaseId: string,
-  connectionName: string,
   options: Options,
 ): Promise<string> {
   // TODO: Is there a good way to short circuit this by checking if the IAM user exists and has the appropriate role first?
@@ -135,15 +158,16 @@ export async function setupIAMUser(
     `ALTER SCHEMA public OWNER TO "${firebaseowner(databaseId)}"`,
     `GRANT USAGE ON SCHEMA "public" TO PUBLIC`,
     `GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA "public" TO PUBLIC`,
+    `GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA "public" TO PUBLIC`,
   ];
-  await executeAsBuiltInUser(
-    connectionName,
+  await execute(grants, {
+    projectId,
+    instanceId,
     databaseId,
-    setupUser,
-    temporaryPassword,
-    grants,
-    /** silent=*/ true,
-  );
+    username: setupUser,
+    password: temporaryPassword,
+    silent: true,
+  });
   return user;
 }
 

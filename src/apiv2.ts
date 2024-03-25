@@ -23,13 +23,30 @@ const GOOG_QUOTA_USER_HEADER = "x-goog-quota-user";
 const GOOG_USER_PROJECT_HEADER = "x-goog-user-project";
 const GOOGLE_CLOUD_QUOTA_PROJECT = process.env.GOOGLE_CLOUD_QUOTA_PROJECT;
 
-export type HttpMethod = "GET" | "PUT" | "POST" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD";
+export type HttpMethod =
+  | "GET"
+  | "PUT"
+  | "POST"
+  | "DELETE"
+  | "PATCH"
+  | "OPTIONS"
+  | "HEAD"
+  | "CONNECT"
+  | "TRACE";
 
 interface BaseRequestOptions<T> extends VerbOptions {
   method: HttpMethod;
-  path: string;
+  path?: string;
   body?: T | string | NodeJS.ReadableStream;
-  responseType?: "json" | "stream" | "xml";
+  responseType?:
+    | "json"
+    | "xml"
+    | "stream"
+    | "arraybuffer"
+    | "blob"
+    | "text"
+    | "unknown"
+    | undefined;
   redirect?: "error" | "follow" | "manual";
   compress?: boolean;
 }
@@ -117,7 +134,7 @@ function proxyURIFromEnv(): string | undefined {
 }
 
 export type ClientOptions = {
-  urlPrefix: string;
+  urlPrefix?: string;
   apiVersion?: string;
   auth?: boolean;
 };
@@ -127,7 +144,7 @@ export class Client {
     if (this.opts.auth === undefined) {
       this.opts.auth = true;
     }
-    if (this.opts.urlPrefix.endsWith("/")) {
+    if (this.opts.urlPrefix?.endsWith("/")) {
       this.opts.urlPrefix = this.opts.urlPrefix.substring(0, this.opts.urlPrefix.length - 1);
     }
   }
@@ -290,7 +307,18 @@ export class Client {
     return reqOptions;
   }
 
-  private async getAccessToken(): Promise<string> {
+  public async getHeaders(): Promise<Record<string, string>> {
+    const opts: InternalClientRequestOptions<unknown> = { method: "GET" };
+    this.addRequestHeaders(opts);
+    await this.addAuthHeader(opts);
+    const map: Record<string, string> = {};
+    for (const h of opts.headers!) {
+      map[h[0]] = h[1];
+    }
+    return map;
+  }
+
+  public async getAccessToken(): Promise<string> {
     // Runtime fetch of Auth singleton to prevent circular module dependencies
     if (accessToken) {
       return accessToken;
@@ -300,6 +328,9 @@ export class Client {
   }
 
   private requestURL(options: InternalClientRequestOptions<unknown>): string {
+    if (!this.opts.urlPrefix) {
+      throw new FirebaseError("unable to requestURL: urlPrefix is undefined");
+    }
     const versionPath = this.opts.apiVersion ? `/${this.opts.apiVersion}` : "";
     return `${this.opts.urlPrefix}${versionPath}${options.path}`;
   }
@@ -307,7 +338,7 @@ export class Client {
   private async doRequest<ReqT, ResT>(
     options: InternalClientRequestOptions<ReqT>,
   ): Promise<ClientResponse<ResT>> {
-    if (!options.path.startsWith("/")) {
+    if (!options.path?.startsWith("/")) {
       options.path = "/" + options.path;
     }
 
@@ -504,7 +535,10 @@ export class Client {
   }
 }
 
-function isLocalInsecureRequest(urlPrefix: string): boolean {
+function isLocalInsecureRequest(urlPrefix?: string): boolean {
+  if (!urlPrefix) {
+    return false;
+  }
   const u = new URL(urlPrefix);
   return u.protocol === "http:";
 }

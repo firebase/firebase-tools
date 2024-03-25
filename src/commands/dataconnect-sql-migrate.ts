@@ -7,7 +7,6 @@ import { pickService } from "../dataconnect/fileUtils";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { migrateSchema } from "../dataconnect/schemaMigration";
-import * as cloudSQLAdminClient from "../gcp/cloudsql/cloudsqladmin";
 import { requireAuth } from "../requireAuth";
 
 export const command = new Command("dataconnect:sql:migrate <serviceId>")
@@ -25,12 +24,7 @@ export const command = new Command("dataconnect:sql:migrate <serviceId>")
         "dataconnect.yaml is missing field schema.datasource.postgresql.cloudsql.instanceId",
       );
     }
-    const existingInstance = await cloudSQLAdminClient.getInstance(projectId, instanceId);
-    const diffs = await migrateSchema(
-      options,
-      existingInstance.connectionName!,
-      serviceInfo.schema,
-    );
+    const diffs = await migrateSchema(options, serviceInfo.schema);
     if (diffs.length) {
       logger.info(
         `Schema sucessfully migrated! Run 'firebase deploy' to deploy your new schema to your Data Connect service.`,
