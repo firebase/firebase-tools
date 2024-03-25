@@ -167,11 +167,12 @@ export async function createInstance(
   return pollRes;
 }
 
-// Update an existing CloudSQL instance to have any required settings for Firebase Data Connect.
-export async function updateInstanceForDataConnect(
-  instance: Instance,
-): Promise<Instance> {
-  let dbFlags = instance.settings.databaseFlags?.filter(f => f.name !== "cloudsql.iam_authentication") ?? [];
+/**
+ * Update an existing CloudSQL instance to have any required settings for Firebase Data Connect.
+ */
+export async function updateInstanceForDataConnect(instance: Instance): Promise<Instance> {
+  const dbFlags =
+    instance.settings.databaseFlags?.filter((f) => f.name !== "cloudsql.iam_authentication") ?? [];
   dbFlags.push({ name: "cloudsql.iam_authentication", value: "on" });
 
   const op = await client.patch<Partial<Instance>, Operation>(
@@ -196,7 +197,9 @@ export async function updateInstanceForDataConnect(
   return pollRes;
 }
 
-// Validate that existing CloudSQL instances have the necessary settings.
+/**
+ * Validate that existing CloudSQL instances have the necessary settings.
+ */
 export function isValidInstanceForDataConnect(instance: Instance): boolean {
   const settings = instance.settings;
   // CloudSQL instances must have public IP enabled to be used with Firebase Data Connect.
@@ -205,7 +208,10 @@ export function isValidInstanceForDataConnect(instance: Instance): boolean {
   }
 
   // CloudSQL instances must have IAM authentication enabled to be used with Firebase Data Connect.
-  const isIamEnabled = settings.databaseFlags?.some(f => f.name === "cloudsql.iam_authentication" && f.value === "on") ?? false;
+  const isIamEnabled =
+    settings.databaseFlags?.some(
+      (f) => f.name === "cloudsql.iam_authentication" && f.value === "on",
+    ) ?? false;
 
   return isIamEnabled;
 }

@@ -7,7 +7,7 @@ export async function provisionCloudSql(
   locationId: string,
   instanceId: string,
   databaseId: string,
-  silent: boolean = false,
+  silent = false,
 ): Promise<string> {
   let connectionName: string; // Not used yet, will be used for schema migration
   try {
