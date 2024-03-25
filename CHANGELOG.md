@@ -1,0 +1,1 @@
+- Release Firestore Emulator 1.19.4. This version fixes a minor bug with reserve ids and adds a `reset` endpoint for Datastore Mode.
