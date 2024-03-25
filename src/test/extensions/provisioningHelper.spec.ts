@@ -224,7 +224,9 @@ describe("provisioningHelper", () => {
       nock(api.firedataOrigin())
         .get(`/v1/projects/${PROJECT_ID}/products`)
         .reply(200, FIREDATA_AUTH_ACTIVATED_RESPONSE);
-      nock(api.firebaseStorageOrigin()).get(`/v1beta/projects/${PROJECT_ID}/buckets`).reply(200, {});
+      nock(api.firebaseStorageOrigin())
+        .get(`/v1beta/projects/${PROJECT_ID}/buckets`)
+        .reply(200, {});
 
       await expect(
         provisioningHelper.checkProductsProvisioned(PROJECT_ID, SPEC_WITH_STORAGE_AND_AUTH),

@@ -701,7 +701,9 @@ describe("hosting", () => {
     afterEach(nock.cleanAll);
 
     it("should make the API request to delete a site", async () => {
-      nock(hostingApiOrigin()).delete(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`).reply(201, {});
+      nock(hostingApiOrigin())
+        .delete(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`)
+        .reply(201, {});
 
       const res = await hostingApi.deleteSite(PROJECT_ID, SITE);
 

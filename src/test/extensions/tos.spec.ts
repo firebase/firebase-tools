@@ -25,7 +25,9 @@ describe("tos", () => {
   describe("getPublisherTOS", () => {
     it("should get publisher TOS", async () => {
       const t = testTOS("publishertos", "1.0.0");
-      nock(api.extensionsTOSOrigin()).get(`/v1/projects/${testProjectId}/publishertos`).reply(200, t);
+      nock(api.extensionsTOSOrigin())
+        .get(`/v1/projects/${testProjectId}/publishertos`)
+        .reply(200, t);
 
       const pubTos = await tos.getPublisherTOSStatus(testProjectId);
 
@@ -142,7 +144,9 @@ describe("tos", () => {
   describe("acceptLatestPublisherTOS", () => {
     it("should prompt to accept the latest publisher TOS if it has not been accepted", async () => {
       const t = testTOS("publishertos", "1.0.0");
-      nock(api.extensionsTOSOrigin()).get(`/v1/projects/${testProjectId}/publishertos`).reply(200, t);
+      nock(api.extensionsTOSOrigin())
+        .get(`/v1/projects/${testProjectId}/publishertos`)
+        .reply(200, t);
       nock(api.extensionsTOSOrigin())
         .post(`/v1/projects/${testProjectId}/publishertos:accept`)
         .reply(200, t);

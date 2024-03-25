@@ -331,7 +331,9 @@ describe("distribution", () => {
     });
 
     it("should resolve with ReleaseTest when request succeeds", async () => {
-      nock(appDistributionOrigin()).post(`/v1alpha/${releaseName}/tests`).reply(200, mockReleaseTest);
+      nock(appDistributionOrigin())
+        .post(`/v1alpha/${releaseName}/tests`)
+        .reply(200, mockReleaseTest);
       await expect(
         appDistributionClient.createReleaseTest(releaseName, mockDevices),
       ).to.be.eventually.deep.eq(mockReleaseTest);

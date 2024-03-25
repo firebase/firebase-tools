@@ -219,6 +219,6 @@ export async function testIamPermissions(
     "v1",
     `projects/${projectId}`,
     permissions,
-    `projects/${projectId}`
+    `projects/${projectId}`,
   );
 }

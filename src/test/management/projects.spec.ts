@@ -361,7 +361,9 @@ describe("Project management", () => {
       });
 
       it("should reject if add Firebase api call fails", async () => {
-        nock(api.firebaseApiOrigin()).post(`/v1beta1/projects/${PROJECT_ID}:addFirebase`).reply(404);
+        nock(api.firebaseApiOrigin())
+          .post(`/v1beta1/projects/${PROJECT_ID}:addFirebase`)
+          .reply(404);
 
         let err;
         try {
