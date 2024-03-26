@@ -1,5 +1,6 @@
 import { Client } from "../apiv2";
 import { developerConnectOrigin, developerConnectP4SAOrigin } from "../api";
+import { generateServiceIdentity } from "./serviceusage";
 import { logBullet } from "../utils";
 
 const PAGE_SIZE_MAX = 1000;
@@ -284,4 +285,17 @@ export async function getGitRepositoryLink(
  */
 export function serviceAgentEmail(projectNumber: string): string {
   return `service-${projectNumber}@${developerConnectP4SAOrigin()}`;
+}
+
+/**
+ * Generates the Developer Connect P4SA which is required to use the Developer
+ * Connect APIs.
+ * @param projectNumber the project number for which this P4SA is being
+ * generated for.
+ */
+export async function generateP4SA(projectNumber: string): Promise<void> {
+  const serviceName = developerConnectOrigin.startsWith("http")
+    ? new URL(developerConnectOrigin).hostname
+    : developerConnectOrigin;
+  await generateServiceIdentity(projectNumber, serviceName, "apphosting");
 }
