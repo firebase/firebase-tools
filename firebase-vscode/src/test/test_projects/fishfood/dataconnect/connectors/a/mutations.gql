@@ -11,7 +11,3 @@ mutation createComment(
 ) @auth(level: PUBLIC) {
   comment_insert(data: $data)
 }
-
-mutation foo {
-  post_delete(id: "42")
-}

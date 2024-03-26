@@ -8,22 +8,10 @@ query getPost($id: String!) @auth(level: PUBLIC) {
   }
 }
 
-# {
-#   "userId": "42",
-#   "variable": {"data": {"userId": "42"}},
-#   "data": {"userId": "42"}
-# }
-
 query listPostsForUser($userId: String!) @auth(level: PUBLIC) {
   posts(where: { id: { eq: $userId } }) {
     id
     content
-  }
-}
-
-query test2 @auth(level: PUBLIC) {
-  posts {
-    id
   }
 }
 
