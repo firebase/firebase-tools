@@ -53,7 +53,7 @@ describe("hosting", () => {
     it("should make the API request for a channel", async () => {
       const CHANNEL_ID = "my-channel";
       const CHANNEL = { name: "my-channel" };
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels/${CHANNEL_ID}`)
         .reply(200, CHANNEL);
 
@@ -65,7 +65,7 @@ describe("hosting", () => {
 
     it("should return null if there's no channel", async () => {
       const CHANNEL_ID = "my-channel";
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels/${CHANNEL_ID}`)
         .reply(404, {});
 
@@ -77,7 +77,7 @@ describe("hosting", () => {
 
     it("should throw an error if the server returns an error", async () => {
       const CHANNEL_ID = "my-channel";
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels/${CHANNEL_ID}`)
         .reply(500, { error: "server boo-boo" });
 
@@ -93,7 +93,7 @@ describe("hosting", () => {
     afterEach(nock.cleanAll);
 
     it("should make a single API requests to list a small number of channels", async () => {
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels`)
         .query({ pageToken: "", pageSize: 10 })
         .reply(200, { channels: [{ name: "channel01" }] });
@@ -105,7 +105,7 @@ describe("hosting", () => {
     });
 
     it("should return 0 channels if none are returned", async () => {
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels`)
         .query({ pageToken: "", pageSize: 10 })
         .reply(200, {});
@@ -117,11 +117,11 @@ describe("hosting", () => {
     });
 
     it("should make multiple API requests to list channels", async () => {
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels`)
         .query({ pageToken: "", pageSize: 10 })
         .reply(200, { channels: [{ name: "channel01" }], nextPageToken: "02" });
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels`)
         .query({ pageToken: "02", pageSize: 10 })
         .reply(200, { channels: [{ name: "channel02" }] });
@@ -133,7 +133,7 @@ describe("hosting", () => {
     });
 
     it("should return an error if there's no channel", async () => {
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels`)
         .query({ pageToken: "", pageSize: 10 })
         .reply(404, {});
@@ -147,7 +147,7 @@ describe("hosting", () => {
     });
 
     it("should throw an error if the server returns an error", async () => {
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels`)
         .query({ pageToken: "", pageSize: 10 })
         .reply(500, { error: "server boo-boo" });
@@ -167,7 +167,7 @@ describe("hosting", () => {
     it("should make the API request to create a channel", async () => {
       const CHANNEL_ID = "my-channel";
       const CHANNEL = { name: "my-channel" };
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .post(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels`, { ttl: "604800s" })
         .query({ channelId: CHANNEL_ID })
         .reply(201, CHANNEL);
@@ -182,7 +182,7 @@ describe("hosting", () => {
       const CHANNEL_ID = "my-channel";
       const CHANNEL = { name: "my-channel" };
       const TTL = "60s";
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .post(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels`, { ttl: TTL })
         .query({ channelId: CHANNEL_ID })
         .reply(201, CHANNEL);
@@ -195,7 +195,7 @@ describe("hosting", () => {
 
     it("should throw an error if the server returns an error", async () => {
       const CHANNEL_ID = "my-channel";
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .post(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels`, { ttl: "604800s" })
         .query({ channelId: CHANNEL_ID })
         .reply(500, { error: "server boo-boo" });
@@ -214,7 +214,7 @@ describe("hosting", () => {
     it("should make the API request to update a channel", async () => {
       const CHANNEL_ID = "my-channel";
       const CHANNEL = { name: "my-channel" };
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .patch(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels/${CHANNEL_ID}`, {
           ttl: "604800s",
         })
@@ -231,7 +231,7 @@ describe("hosting", () => {
       const CHANNEL_ID = "my-channel";
       const CHANNEL = { name: "my-channel" };
       const TTL = "60s";
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .patch(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels/${CHANNEL_ID}`, { ttl: TTL })
         .query({ updateMask: "ttl" })
         .reply(201, CHANNEL);
@@ -244,7 +244,7 @@ describe("hosting", () => {
 
     it("should throw an error if the server returns an error", async () => {
       const CHANNEL_ID = "my-channel";
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .patch(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels/${CHANNEL_ID}`, {
           ttl: "604800s",
         })
@@ -265,7 +265,7 @@ describe("hosting", () => {
     it("should make the API request to delete a channel", async () => {
       const CHANNEL_ID = "my-channel";
       const CHANNEL = { name: "my-channel" };
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .delete(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels/${CHANNEL_ID}`)
         .reply(204, CHANNEL);
 
@@ -277,7 +277,7 @@ describe("hosting", () => {
 
     it("should throw an error if the server returns an error", async () => {
       const CHANNEL_ID = "my-channel";
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .delete(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels/${CHANNEL_ID}`)
         .reply(500, { error: "server boo-boo" });
 
@@ -295,7 +295,7 @@ describe("hosting", () => {
     it("should make the API requests to create a version", async () => {
       const VERSION = { status: "CREATED" } as const;
       const FULL_NAME = `projects/-/sites/${SITE}/versions/my-new-version`;
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .post(`/v1beta1/projects/-/sites/${SITE}/versions`, VERSION)
         .reply(200, { name: FULL_NAME });
 
@@ -307,7 +307,7 @@ describe("hosting", () => {
 
     it("should throw an error if the server returns an error", async () => {
       const VERSION = { status: "CREATED" } as const;
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .post(`/v1beta1/projects/-/sites/${SITE}/versions`, VERSION)
         .reply(500, { error: "server boo-boo" });
 
@@ -325,7 +325,7 @@ describe("hosting", () => {
 
     it("should make the API requests to update a version", async () => {
       const VERSION = { status: "FINALIZED" } as const;
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .patch(`/v1beta1/projects/-/sites/${SITE}/versions/my-version`, VERSION)
         .query({ updateMask: "status" })
         .reply(200, VERSION);
@@ -338,7 +338,7 @@ describe("hosting", () => {
 
     it("should throw an error if the server returns an error", async () => {
       const VERSION = { status: "FINALIZED" } as const;
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .patch(`/v1beta1/projects/-/sites/${SITE}/versions/my-version`, VERSION)
         .query({ updateMask: "status" })
         .reply(500, { error: "server boo-boo" });
@@ -371,8 +371,8 @@ describe("hosting", () => {
     };
 
     it("returns no versions if no versions are returned", async () => {
-      nock(hostingApiOrigin).get(`/v1beta1/projects/-/sites/${SITE}/versions`).reply(200, {});
-      nock(hostingApiOrigin);
+      nock(hostingApiOrigin()).get(`/v1beta1/projects/-/sites/${SITE}/versions`).reply(200, {});
+      nock(hostingApiOrigin());
 
       const versions = await hostingApi.listVersions(SITE);
       expect(versions).deep.equals([]);
@@ -380,10 +380,10 @@ describe("hosting", () => {
     });
 
     it("returns a single page of versions", async () => {
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .get(`/v1beta1/projects/-/sites/${SITE}/versions`)
         .reply(200, { versions: [VERSION_1] });
-      nock(hostingApiOrigin);
+      nock(hostingApiOrigin());
 
       const versions = await hostingApi.listVersions(SITE);
       expect(versions).deep.equals([VERSION_1]);
@@ -391,10 +391,10 @@ describe("hosting", () => {
     });
 
     it("paginates through many versions", async () => {
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .get(`/v1beta1/projects/-/sites/${SITE}/versions`)
         .reply(200, { versions: [VERSION_1], nextPageToken: "page2" });
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .get(`/v1beta1/projects/-/sites/${SITE}/versions?pageToken=page2`)
         .reply(200, { versions: [VERSION_2] });
 
@@ -404,7 +404,7 @@ describe("hosting", () => {
     });
 
     it("handles errors", async () => {
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .get(`/v1beta1/projects/-/sites/${SITE}/versions`)
         .reply(500, { error: "server boo-boo" });
 
@@ -423,13 +423,13 @@ describe("hosting", () => {
     it("should make the API requests to clone a version", async () => {
       const SOURCE_VERSION = "my-version";
       const VERSION = { name: "my-new-version" };
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .post(`/v1beta1/projects/-/sites/${SITE}/versions:clone`, {
           sourceVersion: SOURCE_VERSION,
           finalize: false,
         })
         .reply(200, { name: `projects/${PROJECT_ID}/operations/op` });
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/operations/op`)
         .reply(200, {
           name: `projects/${PROJECT_ID}/operations/op`,
@@ -445,7 +445,7 @@ describe("hosting", () => {
 
     it("should throw an error if the server returns an error", async () => {
       const SOURCE_VERSION = "my-version";
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .post(`/v1beta1/projects/-/sites/${SITE}/versions:clone`, {
           sourceVersion: SOURCE_VERSION,
           finalize: false,
@@ -469,7 +469,7 @@ describe("hosting", () => {
       const RELEASE = { name: "my-new-release" };
       const VERSION = "version";
       const VERSION_NAME = `sites/${SITE}/versions/${VERSION}`;
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .post(`/v1beta1/projects/-/sites/${SITE}/channels/${CHANNEL_ID}/releases`)
         .query({ versionName: VERSION_NAME })
         .reply(201, RELEASE);
@@ -486,7 +486,7 @@ describe("hosting", () => {
       const VERSION = "version";
       const VERSION_NAME = `sites/${SITE}/versions/${VERSION}`;
       const MESSAGE = "yo dawg";
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .post(`/v1beta1/projects/-/sites/${SITE}/channels/${CHANNEL_ID}/releases`, {
           message: MESSAGE,
         })
@@ -505,7 +505,7 @@ describe("hosting", () => {
       const CHANNEL_ID = "my-channel";
       const VERSION = "VERSION";
       const VERSION_NAME = `sites/${SITE}/versions/${VERSION}`;
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .post(`/v1beta1/projects/-/sites/${SITE}/channels/${CHANNEL_ID}/releases`)
         .query({ versionName: VERSION_NAME })
         .reply(500, { error: "server boo-boo" });
@@ -523,7 +523,7 @@ describe("hosting", () => {
 
     it("should make the API request for a channel", async () => {
       const SITE_BODY = { name: "my-site" };
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`)
         .reply(200, SITE_BODY);
 
@@ -534,7 +534,7 @@ describe("hosting", () => {
     });
 
     it("should throw an error if the site doesn't exist", async () => {
-      nock(hostingApiOrigin).get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`).reply(404, {});
+      nock(hostingApiOrigin()).get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`).reply(404, {});
 
       await expect(hostingApi.getSite(PROJECT_ID, SITE)).to.eventually.be.rejectedWith(
         FirebaseError,
@@ -545,7 +545,7 @@ describe("hosting", () => {
     });
 
     it("should throw an error if the server returns an error", async () => {
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`)
         .reply(500, { error: "server boo-boo" });
 
@@ -562,7 +562,7 @@ describe("hosting", () => {
     afterEach(nock.cleanAll);
 
     it("should make a single API requests to list a small number of sites", async () => {
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/sites`)
         .query({ pageToken: "", pageSize: 10 })
         .reply(200, { sites: [{ name: "site01" }] });
@@ -574,7 +574,7 @@ describe("hosting", () => {
     });
 
     it("should return no sites if none are returned", async () => {
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/sites`)
         .query({ pageToken: "", pageSize: 10 })
         .reply(200, {});
@@ -586,11 +586,11 @@ describe("hosting", () => {
     });
 
     it("should make multiple API requests to list sites", async () => {
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/sites`)
         .query({ pageToken: "", pageSize: 10 })
         .reply(200, { sites: [{ name: "site01" }], nextPageToken: "02" });
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/sites`)
         .query({ pageToken: "02", pageSize: 10 })
         .reply(200, { sites: [{ name: "site02" }] });
@@ -602,7 +602,7 @@ describe("hosting", () => {
     });
 
     it("should return an error if there's no site", async () => {
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/sites`)
         .query({ pageToken: "", pageSize: 10 })
         .reply(404, {});
@@ -616,7 +616,7 @@ describe("hosting", () => {
     });
 
     it("should throw an error if the server returns an error", async () => {
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/sites`)
         .query({ pageToken: "", pageSize: 10 })
         .reply(500, { error: "server boo-boo" });
@@ -635,7 +635,7 @@ describe("hosting", () => {
 
     it("should make the API request to create a channel", async () => {
       const SITE_BODY = { name: "my-new-site" };
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .post(`/v1beta1/projects/${PROJECT_ID}/sites`, { appId: "" })
         .query({ siteId: SITE })
         .reply(201, SITE_BODY);
@@ -647,7 +647,7 @@ describe("hosting", () => {
     });
 
     it("should throw an error if the server returns an error", async () => {
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .post(`/v1beta1/projects/${PROJECT_ID}/sites`, { appId: "" })
         .query({ siteId: SITE })
         .reply(500, { error: "server boo-boo" });
@@ -672,7 +672,7 @@ describe("hosting", () => {
     afterEach(nock.cleanAll);
 
     it("should make the API request to update a site", async () => {
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .patch(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`)
         .query({ updateMask: "appId" })
         .reply(201, SITE_OBJ);
@@ -684,7 +684,7 @@ describe("hosting", () => {
     });
 
     it("should throw an error if the server returns an error", async () => {
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .patch(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`)
         .query({ updateMask: "appId" })
         .reply(500, { error: "server boo-boo" });
@@ -701,7 +701,9 @@ describe("hosting", () => {
     afterEach(nock.cleanAll);
 
     it("should make the API request to delete a site", async () => {
-      nock(hostingApiOrigin).delete(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`).reply(201, {});
+      nock(hostingApiOrigin())
+        .delete(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`)
+        .reply(201, {});
 
       const res = await hostingApi.deleteSite(PROJECT_ID, SITE);
 
@@ -710,7 +712,7 @@ describe("hosting", () => {
     });
 
     it("should throw an error if the server returns an error", async () => {
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .delete(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`)
         .reply(500, { error: "server boo-boo" });
 
@@ -730,12 +732,12 @@ describe("hosting", () => {
 
     it("should return the list of expected auth domains after syncing", async () => {
       // mock listChannels response
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels`)
         .query(() => true)
         .reply(200, TEST_CHANNELS_RESPONSE);
       // mock getAuthDomains response
-      nock(identityOrigin)
+      nock(identityOrigin())
         .get(`/admin/v2/projects/${PROJECT_ID}/config`)
         .reply(200, TEST_GET_DOMAINS_RESPONSE);
 
@@ -747,7 +749,7 @@ describe("hosting", () => {
 
     it("should not remove sites that are similarly named", async () => {
       // mock listChannels response
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels`)
         .query(() => true)
         .reply(200, {
@@ -757,7 +759,7 @@ describe("hosting", () => {
           ],
         });
       // mock getAuthDomains response
-      nock(identityOrigin)
+      nock(identityOrigin())
         .get(`/admin/v2/projects/${PROJECT_ID}/config`)
         .reply(200, {
           authorizedDomains: [
@@ -785,7 +787,7 @@ describe("hosting", () => {
     afterEach(nock.cleanAll);
 
     it("should get the site domains", async () => {
-      nock(hostingApiOrigin).get(SITE_DOMAINS_API).reply(200, { domains: GET_SITE_DOMAINS_BODY });
+      nock(hostingApiOrigin()).get(SITE_DOMAINS_API).reply(200, { domains: GET_SITE_DOMAINS_BODY });
 
       const res = await hostingApi.getSiteDomains(PROJECT_ID, SITE);
 
@@ -794,7 +796,7 @@ describe("hosting", () => {
     });
 
     it("should throw an error if the site doesn't exist", async () => {
-      nock(hostingApiOrigin).get(SITE_DOMAINS_API).reply(404, {});
+      nock(hostingApiOrigin()).get(SITE_DOMAINS_API).reply(404, {});
 
       await expect(hostingApi.getSiteDomains(PROJECT_ID, SITE)).to.eventually.be.rejectedWith(
         FirebaseError,
@@ -805,7 +807,7 @@ describe("hosting", () => {
     });
 
     it("should throw an error if the server returns an error", async () => {
-      nock(hostingApiOrigin).get(SITE_DOMAINS_API).reply(500, { error: "server boo-boo" });
+      nock(hostingApiOrigin()).get(SITE_DOMAINS_API).reply(500, { error: "server boo-boo" });
 
       await expect(hostingApi.getSiteDomains(PROJECT_ID, SITE)).to.eventually.be.rejectedWith(
         FirebaseError,
@@ -820,14 +822,14 @@ describe("hosting", () => {
     afterEach(nock.cleanAll);
 
     it("should get the site domains", async () => {
-      nock(hostingApiOrigin).get(SITE_DOMAINS_API).reply(200, { domains: GET_SITE_DOMAINS_BODY });
+      nock(hostingApiOrigin()).get(SITE_DOMAINS_API).reply(200, { domains: GET_SITE_DOMAINS_BODY });
 
       const GET_SITE_BODY = {
         name: `projects/${PROJECT_ID}/sites/${SITE}`,
         defaultUrl: EXPECTED_DOMAINS_RESPONSE[0],
         type: "DEFAULT_SITE",
       };
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`)
         .reply(200, GET_SITE_BODY);
 
@@ -843,8 +845,8 @@ describe("hosting", () => {
     });
 
     it("should throw an error if the site doesn't exist", async () => {
-      nock(hostingApiOrigin).get(SITE_DOMAINS_API).reply(404, {});
-      nock(hostingApiOrigin).get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`).reply(404, {});
+      nock(hostingApiOrigin()).get(SITE_DOMAINS_API).reply(404, {});
+      nock(hostingApiOrigin()).get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`).reply(404, {});
 
       await expect(hostingApi.getAllSiteDomains(PROJECT_ID, SITE)).to.eventually.be.rejectedWith(
         FirebaseError,
@@ -862,7 +864,7 @@ describe("hosting", () => {
       const defaultDomain = EXPECTED_DOMAINS_RESPONSE[EXPECTED_DOMAINS_RESPONSE.length - 1];
       const defaultUrl = `https://${defaultDomain}`;
 
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`)
         .reply(200, { defaultUrl });
 
@@ -873,7 +875,7 @@ describe("hosting", () => {
       const defaultDomain = EXPECTED_DOMAINS_RESPONSE[EXPECTED_DOMAINS_RESPONSE.length - 1];
       const defaultUrl = `https://${defaultDomain}`;
 
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`)
         .reply(200, { defaultUrl });
 
@@ -887,7 +889,7 @@ describe("hosting", () => {
       const channelDomain = `${PROJECT_ID}--${channelId}-123123.web.app`;
       const channel = { url: `https://${channelDomain}` };
 
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels/${channelId}`)
         .reply(200, channel);
 
@@ -899,7 +901,7 @@ describe("hosting", () => {
     it("should return null if channel not found", async () => {
       const channelId = "my-channel";
 
-      nock(hostingApiOrigin)
+      nock(hostingApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels/${channelId}`)
         .reply(404, {});
 
@@ -907,7 +909,7 @@ describe("hosting", () => {
     });
 
     it("should return null if site not found", async () => {
-      nock(hostingApiOrigin).get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`).reply(404, {});
+      nock(hostingApiOrigin()).get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`).reply(404, {});
 
       expect(await hostingApi.getDeploymentDomain(PROJECT_ID, SITE)).to.be.null;
     });

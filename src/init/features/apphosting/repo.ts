@@ -47,7 +47,7 @@ export function parseConnectionName(name: string): ConnectionNameParts | undefin
 }
 
 const gcbPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
-  apiOrigin: cloudbuildOrigin,
+  apiOrigin: cloudbuildOrigin(),
   apiVersion: "v2",
   masterTimeout: 25 * 60 * 1_000,
   maxBackoff: 10_000,

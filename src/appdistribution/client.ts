@@ -22,11 +22,11 @@ import {
  */
 export class AppDistributionClient {
   appDistroV1Client = new Client({
-    urlPrefix: appDistributionOrigin,
+    urlPrefix: appDistributionOrigin(),
     apiVersion: "v1",
   });
   appDistroV1AlphaClient = new Client({
-    urlPrefix: appDistributionOrigin,
+    urlPrefix: appDistributionOrigin(),
     apiVersion: "v1alpha",
   });
 
@@ -36,7 +36,7 @@ export class AppDistributionClient {
   }
 
   async uploadRelease(appName: string, distribution: Distribution): Promise<string> {
-    const client = new Client({ urlPrefix: appDistributionOrigin });
+    const client = new Client({ urlPrefix: appDistributionOrigin() });
     const apiResponse = await client.request<ReadStream, { name: string }>({
       method: "POST",
       path: `/upload/v1/${appName}/releases:upload`,
@@ -54,7 +54,7 @@ export class AppDistributionClient {
   async pollUploadStatus(operationName: string): Promise<UploadReleaseResponse> {
     return operationPoller.pollOperation<UploadReleaseResponse>({
       pollerName: "App Distribution Upload Poller",
-      apiOrigin: appDistributionOrigin,
+      apiOrigin: appDistributionOrigin(),
       apiVersion: "v1",
       operationResourceName: operationName,
       masterTimeout: 5 * 60 * 1000,

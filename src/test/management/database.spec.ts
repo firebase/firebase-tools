@@ -108,7 +108,7 @@ describe("Database management", () => {
   describe("getDatabaseInstanceDetails", () => {
     it("should resolve with DatabaseInstance if API call succeeds", async () => {
       const expectedDatabaseInstance = SOME_DATABASE_INSTANCE;
-      nock(api.rtdbManagementOrigin)
+      nock(api.rtdbManagementOrigin())
         .get(
           `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/-/instances/${DATABASE_INSTANCE_NAME}`,
         )
@@ -125,7 +125,7 @@ describe("Database management", () => {
 
     it("should reject if API call fails", async () => {
       const badInstanceName = "non-existent-instance";
-      nock(api.rtdbManagementOrigin)
+      nock(api.rtdbManagementOrigin())
         .get(`/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/-/instances/${badInstanceName}`)
         .reply(404);
       let err;
@@ -145,7 +145,7 @@ describe("Database management", () => {
   describe("createInstance", () => {
     it("should resolve with new DatabaseInstance if API call succeeds", async () => {
       const expectedDatabaseInstance = SOME_DATABASE_INSTANCE_EUROPE_WEST1;
-      nock(api.rtdbManagementOrigin)
+      nock(api.rtdbManagementOrigin())
         .post(
           `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.EUROPE_WEST1}/instances`,
         )
@@ -163,7 +163,7 @@ describe("Database management", () => {
 
     it("should reject if API call fails", async () => {
       const badInstanceName = "non-existent-instance";
-      nock(api.rtdbManagementOrigin)
+      nock(api.rtdbManagementOrigin())
         .post(
           `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.US_CENTRAL1}/instances`,
         )
@@ -192,7 +192,7 @@ describe("Database management", () => {
 
   describe("checkInstanceNameAvailable", () => {
     it("should resolve with new DatabaseInstance if specified instance name is available and API call succeeds", async () => {
-      nock(api.rtdbManagementOrigin)
+      nock(api.rtdbManagementOrigin())
         .post(
           `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.EUROPE_WEST1}/instances`,
         )
@@ -223,7 +223,7 @@ describe("Database management", () => {
           ],
         },
       };
-      nock(api.rtdbManagementOrigin)
+      nock(api.rtdbManagementOrigin())
         .post(
           `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.EUROPE_WEST1}/instances`,
         )
@@ -255,7 +255,7 @@ describe("Database management", () => {
           ],
         },
       };
-      nock(api.rtdbManagementOrigin)
+      nock(api.rtdbManagementOrigin())
         .post(
           `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.US_CENTRAL1}/instances`,
         )
@@ -290,7 +290,7 @@ describe("Database management", () => {
         ...generateInstanceList(instancesPerLocation, DatabaseLocation.US_CENTRAL1),
         ...generateInstanceList(instancesPerLocation, DatabaseLocation.EUROPE_WEST1),
       ];
-      nock(api.rtdbManagementOrigin)
+      nock(api.rtdbManagementOrigin())
         .get(
           `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.ANY}/instances`,
         )
@@ -314,7 +314,7 @@ describe("Database management", () => {
         instancesPerLocation,
         DatabaseLocation.US_CENTRAL1,
       );
-      nock(api.rtdbManagementOrigin)
+      nock(api.rtdbManagementOrigin())
         .get(
           `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.US_CENTRAL1}/instances`,
         )
@@ -345,7 +345,7 @@ describe("Database management", () => {
         ...generateInstanceListApiResponse(countPerLocation, DatabaseLocation.EUROPE_WEST1),
         ...generateInstanceListApiResponse(countPerLocation, DatabaseLocation.EUROPE_WEST1),
       ];
-      nock(api.rtdbManagementOrigin)
+      nock(api.rtdbManagementOrigin())
         .get(
           `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.ANY}/instances`,
         )
@@ -354,7 +354,7 @@ describe("Database management", () => {
           instances: expectedResponsesList.slice(0, pageSize),
           nextPageToken,
         });
-      nock(api.rtdbManagementOrigin)
+      nock(api.rtdbManagementOrigin())
         .get(
           `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.ANY}/instances`,
         )
@@ -370,7 +370,7 @@ describe("Database management", () => {
     });
 
     it("should reject if the first api call fails", async () => {
-      nock(api.rtdbManagementOrigin)
+      nock(api.rtdbManagementOrigin())
         .get(
           `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.ANY}/instances`,
         )
@@ -395,7 +395,7 @@ describe("Database management", () => {
       const countPerLocation = 5;
       const pageSize = 5;
       const nextPageToken = "next-page-token";
-      nock(api.rtdbManagementOrigin)
+      nock(api.rtdbManagementOrigin())
         .get(
           `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.US_CENTRAL1}/instances`,
         )
@@ -406,7 +406,7 @@ describe("Database management", () => {
           ].slice(0, pageSize),
           nextPageToken,
         });
-      nock(api.rtdbManagementOrigin)
+      nock(api.rtdbManagementOrigin())
         .get(
           `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.US_CENTRAL1}/instances`,
         )

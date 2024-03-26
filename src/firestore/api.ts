@@ -15,7 +15,7 @@ import { Client } from "../apiv2";
 import { PrettyPrint } from "./pretty-print";
 
 export class FirestoreApi {
-  apiClient = new Client({ urlPrefix: firestoreOrigin, apiVersion: "v1" });
+  apiClient = new Client({ urlPrefix: firestoreOrigin(), apiVersion: "v1" });
   printer = new PrettyPrint();
 
   /**

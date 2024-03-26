@@ -428,7 +428,7 @@ export function toBackend(
 
     let regions: string[] = [];
     if (!bdEndpoint.region) {
-      regions = [api.functionsDefaultRegion];
+      regions = [api.functionsDefaultRegion()];
     } else if (Array.isArray(bdEndpoint.region)) {
       regions = params.resolveList(bdEndpoint.region, paramValues);
     } else {
