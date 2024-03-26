@@ -304,7 +304,6 @@ async function ensureSecretManagerAdminGrant(projectId: string): Promise<void> {
   } catch (e: any) {
     // if the dev connect P4SA doesn't exist in the project, generate one
     if (e?.code === 400) {
-      utils.logBullet("genearting P4SA");
       await devConnect.generateP4SA(projectNumber);
       await rm.addServiceAccountToRoles(projectId, dcsaEmail, ["roles/secretmanager.admin"], true);
     } else {
