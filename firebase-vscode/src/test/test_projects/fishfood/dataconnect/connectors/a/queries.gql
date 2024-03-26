@@ -1,7 +1,7 @@
 query getPost($id: String!) @auth(level: PUBLIC) {
   post(id: $id) {
     content
-    comments: comments_as_post {
+    comments: comments_on_post {
       id
       content
     }
