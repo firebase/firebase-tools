@@ -611,6 +611,10 @@ async function createServiceAccountAndKey(
     // https://github.com/firebase/firebase-tools/issues/2732
     firebaseRoles.authAdmin,
 
+    // Required to add preview URLs to Auth authorized domains
+    // https://github.com/firebase/firebase-tools/issues/6828
+    firebaseRoles.serviceUsageConsumer,
+
     // Required for CLI deploys
     firebaseRoles.apiKeysViewer,
 

@@ -14,6 +14,7 @@ export const firebaseRoles = {
   functionsDeveloper: "roles/cloudfunctions.developer",
   hostingAdmin: "roles/firebasehosting.admin",
   runViewer: "roles/run.viewer",
+  serviceUsageConsumer: "roles/serviceusage.serviceUsageConsumer",
 };
 
 /**
