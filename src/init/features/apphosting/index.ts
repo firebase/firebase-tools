@@ -29,7 +29,7 @@ import { DEFAULT_REGION } from "./constants";
 import { ensure } from "../../../ensureApiEnabled";
 import * as deploymentTool from "../../../deploymentTool";
 import { DeepOmit } from "../../../metaprogramming";
-import { GitRepositoryLink, listConnections, deleteConnection } from "../../../gcp/devConnect";
+import { GitRepositoryLink, listAllConnections, deleteConnection } from "../../../gcp/devConnect";
 
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
@@ -461,7 +461,7 @@ export async function listDeveloperConnectAppHostingConnections(
   projectId: string,
   location: string,
 ): Promise<void> {
-  const connections = await listConnections(projectId, location);
+  const connections = await listAllConnections(projectId, location);
   const appHostingConnections = connections.filter((connection) =>
     githubConnections.isApphostingConnection(connection.name),
   );
@@ -478,7 +478,7 @@ export async function resetDeveloperConnectAppHostingConnections(
   projectId: string,
   location: string,
 ): Promise<void> {
-  const connections = await listConnections(projectId, location);
+  const connections = await listAllConnections(projectId, location);
   const appHostingConnections = connections.filter((connection) =>
     githubConnections.isApphostingConnection(connection.name),
   );
