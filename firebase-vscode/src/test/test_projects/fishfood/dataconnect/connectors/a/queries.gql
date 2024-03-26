@@ -1,29 +1,17 @@
 query getPost($id: String!) @auth(level: PUBLIC) {
   post(id: $id) {
     content
-    comments: comments_as_post {
+    comments: comments_on_post {
       id
       content
     }
   }
 }
 
-# {
-#   "userId": "42",
-#   "variable": {"data": {"userId": "42"}},
-#   "data": {"userId": "42"}
-# }
-
 query listPostsForUser($userId: String!) @auth(level: PUBLIC) {
   posts(where: { id: { eq: $userId } }) {
     id
     content
-  }
-}
-
-query test2 @auth(level: PUBLIC) {
-  posts {
-    id
   }
 }
 
