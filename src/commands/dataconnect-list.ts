@@ -34,8 +34,9 @@ export const command = new Command("dataconnect:list")
       const connectors = await client.listConnectors(service.name);
       const serviceName = names.parseServiceName(service.name);
       const instanceName = schema?.primaryDatasource.postgresql?.cloudSql.instance ?? "";
+      const instanceId = instanceName.split("/").pop();
       const dbId = schema?.primaryDatasource.postgresql?.database ?? "";
-      const dbName = `${instanceName}/databases/${dbId}`;
+      const dbName = `CloudSQL Instance: ${instanceId} Database:${dbId}`;
       table.push([serviceName.serviceId, serviceName.location, dbName, schema?.updateTime, "", ""]);
       const serviceJson = {
         serviceId: serviceName.serviceId,
