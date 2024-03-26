@@ -1,4 +1,0 @@
-- Released Firestore Emulator 1.19.4. This version fixes a minor bug with reserve ids and adds a `reset` endpoint for Datastore Mode.
-- Released PubSub Emulator 0.8.2. This version includes support for `no_wrapper` options.
-- Fixes issue where GitHub actions service account cannot add preview URLs to Auth authorized domains. (#6895)
-- Fixes issue where GOOGLE_CLOUD_QUOTA_PROJECT breaks functions source uploads (#6917)
