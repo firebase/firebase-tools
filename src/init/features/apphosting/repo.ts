@@ -96,7 +96,6 @@ export async function linkGitHubRepository(
   const existingConns = await listAppHostingConnections(projectId);
 
   if (existingConns.length === 0) {
-    await ensureSecretManagerAdminGrant(projectId);
     existingConns.push(
       await createFullyInstalledConnection(projectId, location, generateConnectionId(), oauthConn),
     );
@@ -170,11 +169,24 @@ async function createFullyInstalledConnection(
  * Gets or creates the sentinel GitHub connection resource that contains our Firebase-wide GitHub Oauth token.
  * This Oauth token can be used to create other connections without reprompting the user to grant access.
  */
-async function getOrCreateOauthConnection(
+export async function getOrCreateOauthConnection(
   projectId: string,
   location: string,
 ): Promise<gcb.Connection> {
-  let conn = await getOrCreateConnection(projectId, location, APPHOSTING_OAUTH_CONN_NAME);
+  let conn: gcb.Connection;
+  try {
+    conn = await gcb.getConnection(projectId, location, APPHOSTING_OAUTH_CONN_NAME);
+  } catch (err: unknown) {
+    if ((err as any).status === 404) {
+      // Cloud build P4SA requires the secret manager admin role.
+      // This is required when creating an initial connection which is the Oauth connection in our case.
+      await ensureSecretManagerAdminGrant(projectId);
+      conn = await createConnection(projectId, location, APPHOSTING_OAUTH_CONN_NAME);
+    } else {
+      throw err;
+    }
+  }
+
   while (conn.installationState.stage === "PENDING_USER_OAUTH") {
     utils.logBullet("You must authorize the Cloud Build GitHub app.");
     utils.logBullet("Sign in to GitHub and authorize Cloud Build GitHub app:");
