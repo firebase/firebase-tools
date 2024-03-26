@@ -1,6 +1,7 @@
 import { isPathInside } from "./file-utils";
 import { DeepReadOnly } from "../metaprogramming";
 import { ConnectorYaml, DataConnectYaml } from "../dataconnect/types";
+import { STAGING_API } from "./service";
 export * from "../core/config";
 
 export class ResolvedConnectorYaml {
@@ -57,4 +58,10 @@ export class ResolvedDataConnectConfigs {
   findEnclosingServiceForPath(filePath: string) {
     return this.values.find((dc) => dc.containsPath(filePath));
   }
+}
+
+// TODO: Expand this into a VSCode env config object/class
+export enum VSCODE_ENV_VARS {
+  DATA_CONNECT_ORIGIN = "FIREBASE_DATACONNECT_URL",
+  POSTGRES_CONNECTION_STRING = "FIREBASE_DATACONNECT_POSTGRESQL_STRING",
 }
