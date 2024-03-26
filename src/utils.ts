@@ -29,7 +29,7 @@ const ERROR_CHAR = IS_WINDOWS ? "!!" : "⬢";
 const THIRTY_DAYS_IN_MILLISECONDS = 30 * 24 * 60 * 60 * 1000;
 
 export const envOverrides: string[] = [];
-
+export const vscodeEnvVars: { [key: string]: string } = {};
 /**
  * Create a Firebase Console URL for the specified path and project.
  */
@@ -53,6 +53,15 @@ export function getInheritedOption(options: any, key: string): any {
 }
 
 /**
+ * Sets the VSCode environment variables to be used by the CLI when called by VSCode
+ * @param envVar name of the environment variable
+ * @param value value of the environment variable
+ */
+export function setVSCodeEnvVars(envVar: string, value: string) {
+  vscodeEnvVars[envVar] = value;
+}
+
+/**
  * Override a value with supplied environment variable if present. A function
  * that returns the environment variable in an acceptable format can be
  * proivded. If it throws an error, the default value will be used.
@@ -62,7 +71,8 @@ export function envOverride(
   value: string,
   coerce?: (value: string, defaultValue: string) => any,
 ): string {
-  const currentEnvValue = process.env[envname];
+  const currentEnvValue =
+    isVSCodeExtension() && vscodeEnvVars[envname] ? vscodeEnvVars[envname] : process.env[envname];
   if (currentEnvValue && currentEnvValue.length) {
     envOverrides.push(envname);
     if (coerce) {
