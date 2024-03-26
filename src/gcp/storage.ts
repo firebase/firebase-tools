@@ -182,6 +182,7 @@ export async function upload(
   source: any,
   uploadUrl: string,
   extraHeaders?: Record<string, string>,
+  ignoreQuotaProject?: boolean,
 ): Promise<any> {
   const url = new URL(uploadUrl);
   const localAPIClient = new Client({ urlPrefix: url.origin, auth: false });
@@ -196,6 +197,7 @@ export async function upload(
     },
     body: source.stream,
     skipLog: { resBody: true },
+    ignoreQuotaProject,
   });
   return {
     generation: res.response.headers.get("x-goog-generation"),
