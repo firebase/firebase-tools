@@ -206,7 +206,7 @@ export async function initGitHub(setup: Setup): Promise<void> {
     `Visit this URL to revoke authorization for the Firebase CLI GitHub OAuth App:`,
   );
   logger.info(
-    bold(underline(`https://github.com/settings/connections/applications/${githubClientId}`)),
+    bold(underline(`https://github.com/settings/connections/applications/${githubClientId()}`)),
   );
   logLabeledBullet("Action required", `Push any new workflow file(s) to your repo`);
 }
@@ -442,7 +442,9 @@ async function promptForRepo(
             );
             logger.info(
               bold(
-                underline(`https://github.com/settings/connections/applications/${githubClientId}`),
+                underline(
+                  `https://github.com/settings/connections/applications/${githubClientId()}`,
+                ),
               ),
             );
             logger.info();
