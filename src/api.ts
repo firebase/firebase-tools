@@ -35,11 +35,6 @@ export const authOrigin = () =>
   utils.envOverride("FIREBASE_AUTH_URL", "https://accounts.google.com");
 export const consoleOrigin = () =>
   utils.envOverride("FIREBASE_CONSOLE_URL", "https://console.firebase.google.com");
-export const deployOrigin = () =>
-  utils.envOverride(
-    "FIREBASE_DEPLOY_URL",
-    utils.envOverride("FIREBASE_UPLOAD_URL", "https://deploy.firebase.com"),
-  );
 export const dynamicLinksOrigin = () =>
   utils.envOverride("FIREBASE_DYNAMIC_LINKS_URL", "https://firebasedynamiclinks.googleapis.com");
 export const dynamicLinksKey = () =>
