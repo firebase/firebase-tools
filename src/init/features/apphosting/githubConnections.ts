@@ -269,6 +269,7 @@ async function ensureSecretManagerAdminGrant(projectId: string): Promise<void> {
   const projectNumber = await getProjectNumber({ projectId });
   const dcsaEmail = devConnect.serviceAgentEmail(projectNumber);
 
+  // will return false even if the service account does not exist in the project
   const alreadyGranted = await rm.serviceAccountHasRoles(
     projectId,
     dcsaEmail,
@@ -297,9 +298,22 @@ async function ensureSecretManagerAdminGrant(projectId: string): Promise<void> {
     );
     throw new FirebaseError("Insufficient IAM permissions to create a new connection to GitHub");
   }
-  await rm.addServiceAccountToRoles(projectId, dcsaEmail, ["roles/secretmanager.admin"], true);
+
+  try {
+    await rm.addServiceAccountToRoles(projectId, dcsaEmail, ["roles/secretmanager.admin"], true);
+  } catch (e: any) {
+    // if the dev connect P4SA doesn't exist in the project, generate one
+    if (e?.code === 400) {
+      utils.logBullet("genearting P4SA");
+      await devConnect.generateP4SA(projectNumber);
+      await rm.addServiceAccountToRoles(projectId, dcsaEmail, ["roles/secretmanager.admin"], true);
+    } else {
+      throw e;
+    }
+  }
+
   utils.logSuccess(
-    "Successfully granted the required role to the Develooper Connect Service Agent!",
+    "Successfully granted the required role to the Developer Connect Service Agent!",
   );
 }
 
