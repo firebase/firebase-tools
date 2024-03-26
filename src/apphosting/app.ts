@@ -18,7 +18,12 @@ const webApps = {
 type FirebaseWebApp = { name: string; id: string };
 
 /**
- *
+ * If firebaseWebAppName is provided and a matching web app exists, it is
+ * returned. If firebaseWebAppName is not provided then the user is prompted to
+ * choose from one of their existing web apps or to create a new one or to skip
+ * without selecting a web app. If user chooses to create a new web app,
+ * a new web app with the given backendId is created. If user chooses to skip
+ * without selecting a web app nothing is returned.
  * @param projectId user's projectId
  * @param firebaseWebAppName (optional) name of an existing Firebase web app
  * @param backendId name of the app hosting backend
@@ -29,10 +34,13 @@ async function getOrCreateWebApp(
   firebaseWebAppName: string | null,
   backendId: string,
 ): Promise<FirebaseWebApp | undefined> {
-  let firebaseWebAppId: string;
-
   const webAppsInProject = await listFirebaseApps(projectId, AppPlatform.WEB);
-  const noWebAppsExistInProject = webAppsInProject.length === 0;
+
+  if (webAppsInProject.length === 0) {
+    // create a web app using backend id
+    const { name, appId } = await createFirebaseWebApp(projectId, { displayName: backendId });
+    return { name, id: appId };
+  }
 
   const existingUserProjectWebApps = new Map(
     webAppsInProject.map((obj) => [
@@ -42,12 +50,6 @@ async function getOrCreateWebApp(
     ]),
   );
 
-  if (noWebAppsExistInProject) {
-    // create a web app using backend id
-    const newWebApp = await createFirebaseWebApp(projectId, { displayName: backendId });
-    return { name: newWebApp.displayName, id: newWebApp.appId };
-  }
-
   if (firebaseWebAppName) {
     if (existingUserProjectWebApps.get(firebaseWebAppName) === undefined) {
       throw new FirebaseError(
@@ -56,12 +58,10 @@ async function getOrCreateWebApp(
     }
 
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    firebaseWebAppId = existingUserProjectWebApps.get(firebaseWebAppName)!;
-  } else {
-    return await webApps.promptFirebaseWebApp(projectId, backendId, existingUserProjectWebApps);
+    return { name: firebaseWebAppName, id: existingUserProjectWebApps.get(firebaseWebAppName)! };
   }
 
-  return { name: firebaseWebAppName, id: firebaseWebAppId };
+  return await webApps.promptFirebaseWebApp(projectId, backendId, existingUserProjectWebApps);
 }
 
 /**
@@ -128,10 +128,13 @@ async function createFirebaseWebApp(
     if (isQuotaError(e)) {
       throw new FirebaseError(
         "Unable to create a new web app, the project has reached the quota for Firebase apps. Navigate to your Firebase console to manage or delete a Firebase app to continue. ",
+        { original: e instanceof Error ? e : undefined },
       );
     }
 
-    throw new FirebaseError("Unable to create a Firebase web app");
+    throw new FirebaseError("Unable to create a Firebase web app", {
+      original: e instanceof Error ? e : undefined,
+    });
   }
 }
 

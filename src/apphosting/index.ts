@@ -84,16 +84,11 @@ export async function doSetup(
     message: "Create a name for your backend [1-30 characters]",
   });
 
-  let webAppId: string | undefined;
-
-  try {
-    const webApp = await apps.getOrCreateWebApp(projectId, webAppName, backendId);
-    if (webApp) {
-      webAppId = webApp.id;
-      logSuccess(`Firebase web app set to ${webApp.name}.\n`);
-    }
-  } catch (e) {
-    logWarning("Unable to associate your App Hosting backend to a Firebase web app.");
+  const webApp = await apps.getOrCreateWebApp(projectId, webAppName, backendId);
+  if (webApp) {
+    logSuccess(`Firebase web app set to ${webApp.name}.\n`);
+  } else {
+    logWarning(`Firebase web app not set`);
   }
 
   const gitRepositoryConnection: Repository | GitRepositoryLink = withDevConnect
@@ -106,7 +101,7 @@ export async function doSetup(
     backendId,
     gitRepositoryConnection,
     serviceAccount,
-    webAppId,
+    webApp?.id,
   );
 
   // TODO: Once tag patterns are implemented, prompt which method the user
