@@ -5,7 +5,7 @@ import { Binding, getServiceAccount, Policy } from "./iam";
 
 const API_VERSION = "v1";
 
-const apiClient = new Client({ urlPrefix: resourceManagerOrigin, apiVersion: API_VERSION });
+const apiClient = new Client({ urlPrefix: resourceManagerOrigin(), apiVersion: API_VERSION });
 
 // Roles listed at https://firebase.google.com/docs/projects/iam/roles-predefined-product
 export const firebaseRoles = {

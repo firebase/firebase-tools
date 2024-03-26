@@ -63,8 +63,8 @@ export function clearCredentials(account: Account): void {
 function getCredential(tokens: Tokens): RefreshTokenCredential | undefined {
   if (tokens.refresh_token) {
     return {
-      client_id: clientId,
-      client_secret: clientSecret,
+      client_id: clientId(),
+      client_secret: clientSecret(),
       refresh_token: tokens.refresh_token,
       type: "authorized_user",
     };

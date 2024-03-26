@@ -2,7 +2,7 @@ import { resourceManagerOrigin, iamOrigin } from "../api";
 import { logger } from "../logger";
 import { Client } from "../apiv2";
 
-const apiClient = new Client({ urlPrefix: iamOrigin, apiVersion: "v1" });
+const apiClient = new Client({ urlPrefix: iamOrigin(), apiVersion: "v1" });
 
 // IAM Policy
 // https://cloud.google.com/resource-manager/reference/rest/Shared.Types/Policy
@@ -215,7 +215,7 @@ export async function testIamPermissions(
   permissions: string[],
 ): Promise<TestIamResult> {
   return testResourceIamPermissions(
-    resourceManagerOrigin,
+    resourceManagerOrigin(),
     "v1",
     `projects/${projectId}`,
     permissions,

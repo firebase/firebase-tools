@@ -3,7 +3,7 @@ import { Client } from "../apiv2";
 import * as utils from "../utils";
 
 const API_VERSION = "v1";
-const client = new Client({ urlPrefix: cloudbillingOrigin, apiVersion: API_VERSION });
+const client = new Client({ urlPrefix: cloudbillingOrigin(), apiVersion: API_VERSION });
 
 export interface BillingAccount {
   name: string;

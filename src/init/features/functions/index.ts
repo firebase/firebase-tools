@@ -25,8 +25,8 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
   if (projectId) {
     await requirePermissions({ ...options, project: projectId });
     await Promise.all([
-      ensure(projectId, functionsOrigin, "unused", true),
-      ensure(projectId, runtimeconfigOrigin, "unused", true),
+      ensure(projectId, functionsOrigin(), "unused", true),
+      ensure(projectId, runtimeconfigOrigin(), "unused", true),
     ]);
   }
   setup.functions = {};

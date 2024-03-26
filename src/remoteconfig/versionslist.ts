@@ -5,7 +5,7 @@ import { ListVersionsResult } from "./interfaces";
 import { logger } from "../logger";
 
 const apiClient = new Client({
-  urlPrefix: remoteConfigApiOrigin,
+  urlPrefix: remoteConfigApiOrigin(),
   apiVersion: "v1",
 });
 

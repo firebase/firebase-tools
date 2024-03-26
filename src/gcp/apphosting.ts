@@ -10,7 +10,7 @@ import { DeepOmit, RecursiveKeyOf, assertImplements } from "../metaprogramming";
 export const API_VERSION = "v1alpha";
 
 export const client = new Client({
-  urlPrefix: apphostingOrigin,
+  urlPrefix: apphostingOrigin(),
   auth: true,
   apiVersion: API_VERSION,
 });
@@ -502,7 +502,7 @@ export async function listLocations(projectId: string): Promise<Location[]> {
  */
 export async function ensureApiEnabled(options: any): Promise<void> {
   const projectId = needProjectId(options);
-  return await ensure(projectId, apphostingOrigin, "app hosting", true);
+  return await ensure(projectId, apphostingOrigin(), "app hosting", true);
 }
 
 /**

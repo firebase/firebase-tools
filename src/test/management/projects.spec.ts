@@ -106,7 +106,7 @@ describe("Project management", () => {
 
     describe("getOrPromptProject", () => {
       it("should get project from list if it is able to list all projects", async () => {
-        nock(api.firebaseApiOrigin)
+        nock(api.firebaseApiOrigin())
           .get("/v1beta1/projects")
           .query({ pageSize: 100 })
           .reply(200, {
@@ -123,14 +123,14 @@ describe("Project management", () => {
       });
 
       it("should prompt project id if it is not able to list all projects", async () => {
-        nock(api.firebaseApiOrigin)
+        nock(api.firebaseApiOrigin())
           .get("/v1beta1/projects")
           .query({ pageSize: 100 })
           .reply(200, {
             results: [TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT],
             nextPageToken: "token",
           });
-        nock(api.firebaseApiOrigin)
+        nock(api.firebaseApiOrigin())
           .get("/v1beta1/projects/my-project-123")
           .reply(200, TEST_FIREBASE_PROJECT);
         promptOnceStub.resolves("my-project-123");
@@ -144,7 +144,7 @@ describe("Project management", () => {
       });
 
       it("should throw if there's no project", async () => {
-        nock(api.firebaseApiOrigin).get("/v1beta1/projects").query({ pageSize: 100 }).reply(200, {
+        nock(api.firebaseApiOrigin()).get("/v1beta1/projects").query({ pageSize: 100 }).reply(200, {
           results: [],
         });
 
@@ -164,7 +164,7 @@ describe("Project management", () => {
 
       it("should get the correct project info when --project is supplied", async () => {
         const options = { project: "my-project-123" };
-        nock(api.firebaseApiOrigin)
+        nock(api.firebaseApiOrigin())
           .get("/v1beta1/projects/my-project-123")
           .reply(200, TEST_FIREBASE_PROJECT);
 
@@ -177,7 +177,7 @@ describe("Project management", () => {
 
       it("should throw error when getFirebaseProject throw an error", async () => {
         const options = { project: "my-project-123" };
-        nock(api.firebaseApiOrigin)
+        nock(api.firebaseApiOrigin())
           .get("/v1beta1/projects/my-project-123")
           .reply(500, { error: "Failed to get project" });
 
@@ -200,7 +200,7 @@ describe("Project management", () => {
 
     describe("promptAvailableProjectId", () => {
       it("should select project from list if it is able to list all projects", async () => {
-        nock(api.firebaseApiOrigin)
+        nock(api.firebaseApiOrigin())
           .get("/v1beta1/availableProjects")
           .query({ pageSize: 100 })
           .reply(200, {
@@ -217,7 +217,7 @@ describe("Project management", () => {
       });
 
       it("should prompt project id if it is not able to list all projects", async () => {
-        nock(api.firebaseApiOrigin)
+        nock(api.firebaseApiOrigin())
           .get("/v1beta1/availableProjects")
           .query({ pageSize: 100 })
           .reply(200, {
@@ -235,7 +235,7 @@ describe("Project management", () => {
       });
 
       it("should throw if there's no project", async () => {
-        nock(api.firebaseApiOrigin)
+        nock(api.firebaseApiOrigin())
           .get("/v1beta1/availableProjects")
           .query({ pageSize: 100 })
           .reply(200, {
@@ -266,7 +266,7 @@ describe("Project management", () => {
           projectId: PROJECT_ID,
           name: PROJECT_NAME,
         };
-        nock(api.resourceManagerOrigin)
+        nock(api.resourceManagerOrigin())
           .post("/v1/projects")
           .reply(200, { name: OPERATION_RESOURCE_NAME_1 });
         pollOperationStub.onFirstCall().resolves(expectedProjectInfo);
@@ -280,14 +280,14 @@ describe("Project management", () => {
         expect(nock.isDone()).to.be.true;
         expect(pollOperationStub).to.be.calledOnceWith({
           pollerName: "Project Creation Poller",
-          apiOrigin: api.resourceManagerOrigin,
+          apiOrigin: api.resourceManagerOrigin(),
           apiVersion: "v1",
           operationResourceName: OPERATION_RESOURCE_NAME_1,
         });
       });
 
       it("should reject if Cloud project creation fails", async () => {
-        nock(api.resourceManagerOrigin).post("/v1/projects").reply(404);
+        nock(api.resourceManagerOrigin()).post("/v1/projects").reply(404);
 
         let err;
         try {
@@ -309,7 +309,7 @@ describe("Project management", () => {
 
       it("should reject if Cloud project creation polling throws error", async () => {
         const expectedError = new Error("Entity already exists");
-        nock(api.resourceManagerOrigin)
+        nock(api.resourceManagerOrigin())
           .post("/v1/projects")
           .reply(200, { name: OPERATION_RESOURCE_NAME_1 });
         pollOperationStub.onFirstCall().rejects(expectedError);
@@ -331,7 +331,7 @@ describe("Project management", () => {
         expect(nock.isDone()).to.be.true;
         expect(pollOperationStub).to.be.calledOnceWith({
           pollerName: "Project Creation Poller",
-          apiOrigin: api.resourceManagerOrigin,
+          apiOrigin: api.resourceManagerOrigin(),
           apiVersion: "v1",
           operationResourceName: OPERATION_RESOURCE_NAME_1,
         });
@@ -341,7 +341,7 @@ describe("Project management", () => {
     describe("addFirebaseToCloudProject", () => {
       it("should resolve with Firebase project data if it succeeds", async () => {
         const expectFirebaseProjectInfo = { projectId: PROJECT_ID, displayName: PROJECT_NAME };
-        nock(api.firebaseApiOrigin)
+        nock(api.firebaseApiOrigin())
           .post(`/v1beta1/projects/${PROJECT_ID}:addFirebase`)
           .reply(200, { name: OPERATION_RESOURCE_NAME_2 });
         pollOperationStub
@@ -354,14 +354,16 @@ describe("Project management", () => {
         expect(nock.isDone()).to.be.true;
         expect(pollOperationStub).to.be.calledOnceWith({
           pollerName: "Add Firebase Poller",
-          apiOrigin: api.firebaseApiOrigin,
+          apiOrigin: api.firebaseApiOrigin(),
           apiVersion: "v1beta1",
           operationResourceName: OPERATION_RESOURCE_NAME_2,
         });
       });
 
       it("should reject if add Firebase api call fails", async () => {
-        nock(api.firebaseApiOrigin).post(`/v1beta1/projects/${PROJECT_ID}:addFirebase`).reply(404);
+        nock(api.firebaseApiOrigin())
+          .post(`/v1beta1/projects/${PROJECT_ID}:addFirebase`)
+          .reply(404);
 
         let err;
         try {
@@ -380,7 +382,7 @@ describe("Project management", () => {
 
       it("should reject if polling add Firebase operation throws error", async () => {
         const expectedError = new Error("Permission denied");
-        nock(api.firebaseApiOrigin)
+        nock(api.firebaseApiOrigin())
           .post(`/v1beta1/projects/${PROJECT_ID}:addFirebase`)
           .reply(200, { name: OPERATION_RESOURCE_NAME_2 });
         pollOperationStub.onFirstCall().rejects(expectedError);
@@ -399,7 +401,7 @@ describe("Project management", () => {
         expect(nock.isDone()).to.be.true;
         expect(pollOperationStub).to.be.calledOnceWith({
           pollerName: "Add Firebase Poller",
-          apiOrigin: api.firebaseApiOrigin,
+          apiOrigin: api.firebaseApiOrigin(),
           apiVersion: "v1beta1",
           operationResourceName: OPERATION_RESOURCE_NAME_2,
         });
@@ -410,7 +412,7 @@ describe("Project management", () => {
       it("should resolve with a project page if it succeeds (no input token)", async () => {
         const pageSize = 10;
         const expectedProjectList = generateCloudProjectList(pageSize);
-        nock(api.firebaseApiOrigin)
+        nock(api.firebaseApiOrigin())
           .get("/v1beta1/availableProjects")
           .query({ pageSize })
           .reply(200, { projectInfo: expectedProjectList, nextPageToken: NEXT_PAGE_TOKEN });
@@ -425,7 +427,7 @@ describe("Project management", () => {
       it("should resolve with a project page if it succeeds (with input token)", async () => {
         const pageSize = 10;
         const expectedProjectList = generateCloudProjectList(pageSize);
-        nock(api.firebaseApiOrigin)
+        nock(api.firebaseApiOrigin())
           .get("/v1beta1/availableProjects")
           .query({ pageSize, pageToken: PAGE_TOKEN })
           .reply(200, { projectInfo: expectedProjectList, nextPageToken: NEXT_PAGE_TOKEN });
@@ -441,7 +443,7 @@ describe("Project management", () => {
         const pageSize = 10;
         const projectCounts = 5;
         const expectedProjectList = generateCloudProjectList(projectCounts);
-        nock(api.firebaseApiOrigin)
+        nock(api.firebaseApiOrigin())
           .get("/v1beta1/availableProjects")
           .query({ pageSize })
           .reply(200, { projectInfo: expectedProjectList });
@@ -455,7 +457,7 @@ describe("Project management", () => {
 
       it("should reject if the api call fails", async () => {
         const pageSize = 100;
-        nock(api.firebaseApiOrigin)
+        nock(api.firebaseApiOrigin())
           .get("/v1beta1/availableProjects")
           .query({ pageSize, pageToken: PAGE_TOKEN })
           .reply(404, { error: "Not Found" });
@@ -479,7 +481,7 @@ describe("Project management", () => {
       it("should resolve with a project page if it succeeds (no input token)", async () => {
         const pageSize = 10;
         const expectedProjectList = generateFirebaseProjectList(pageSize);
-        nock(api.firebaseApiOrigin)
+        nock(api.firebaseApiOrigin())
           .get("/v1beta1/projects")
           .query({ pageSize })
           .reply(200, { results: expectedProjectList, nextPageToken: NEXT_PAGE_TOKEN });
@@ -494,7 +496,7 @@ describe("Project management", () => {
       it("should resolve with a project page if it succeeds (with input token)", async () => {
         const pageSize = 10;
         const expectedProjectList = generateFirebaseProjectList(pageSize);
-        nock(api.firebaseApiOrigin)
+        nock(api.firebaseApiOrigin())
           .get("/v1beta1/projects")
           .query({ pageSize, pageToken: PAGE_TOKEN })
           .reply(200, { results: expectedProjectList, nextPageToken: NEXT_PAGE_TOKEN });
@@ -510,7 +512,7 @@ describe("Project management", () => {
         const pageSize = 10;
         const projectCounts = 5;
         const expectedProjectList = generateFirebaseProjectList(projectCounts);
-        nock(api.firebaseApiOrigin)
+        nock(api.firebaseApiOrigin())
           .get("/v1beta1/projects")
           .query({ pageSize })
           .reply(200, { results: expectedProjectList });
@@ -524,7 +526,7 @@ describe("Project management", () => {
 
       it("should reject if the api call fails", async () => {
         const pageSize = 100;
-        nock(api.firebaseApiOrigin)
+        nock(api.firebaseApiOrigin())
           .get("/v1beta1/projects")
           .query({ pageSize, pageToken: PAGE_TOKEN })
           .reply(404, { error: "Not Found" });
@@ -548,7 +550,7 @@ describe("Project management", () => {
       it("should resolve with project list if it succeeds with only 1 api call", async () => {
         const projectCounts = 10;
         const expectedProjectList = generateFirebaseProjectList(projectCounts);
-        nock(api.firebaseApiOrigin)
+        nock(api.firebaseApiOrigin())
           .get("/v1beta1/projects")
           .query({ pageSize: 1000 })
           .reply(200, { results: expectedProjectList });
@@ -564,11 +566,11 @@ describe("Project management", () => {
         const pageSize = 5;
         const nextPageToken = "next-page-token";
         const expectedProjectList = generateFirebaseProjectList(projectCounts);
-        nock(api.firebaseApiOrigin)
+        nock(api.firebaseApiOrigin())
           .get("/v1beta1/projects")
           .query({ pageSize: 5 })
           .reply(200, { results: expectedProjectList.slice(0, pageSize), nextPageToken });
-        nock(api.firebaseApiOrigin)
+        nock(api.firebaseApiOrigin())
           .get("/v1beta1/projects")
           .query({ pageSize: 5, pageToken: nextPageToken })
           .reply(200, {
@@ -582,7 +584,7 @@ describe("Project management", () => {
       });
 
       it("should reject if the first api call fails", async () => {
-        nock(api.firebaseApiOrigin)
+        nock(api.firebaseApiOrigin())
           .get("/v1beta1/projects")
           .query({ pageSize: 1000 })
           .reply(404, { error: "Not Found" });
@@ -606,11 +608,11 @@ describe("Project management", () => {
         const pageSize = 5;
         const nextPageToken = "next-page-token";
         const expectedProjectList = generateFirebaseProjectList(projectCounts);
-        nock(api.firebaseApiOrigin)
+        nock(api.firebaseApiOrigin())
           .get("/v1beta1/projects")
           .query({ pageSize: 5 })
           .reply(200, { results: expectedProjectList.slice(0, pageSize), nextPageToken });
-        nock(api.firebaseApiOrigin)
+        nock(api.firebaseApiOrigin())
           .get("/v1beta1/projects")
           .query({ pageSize: 5, pageToken: nextPageToken })
           .reply(404, { error: "Not Found" });
@@ -644,7 +646,7 @@ describe("Project management", () => {
             locationId: LOCATION_ID,
           },
         };
-        nock(api.firebaseApiOrigin)
+        nock(api.firebaseApiOrigin())
           .get(`/v1beta1/projects/${PROJECT_ID}`)
           .reply(200, expectedProjectInfo);
 
@@ -655,7 +657,7 @@ describe("Project management", () => {
       });
 
       it("should reject if the api call fails", async () => {
-        nock(api.firebaseApiOrigin)
+        nock(api.firebaseApiOrigin())
           .get(`/v1beta1/projects/${PROJECT_ID}`)
           .reply(404, { error: "Not Found" });
 

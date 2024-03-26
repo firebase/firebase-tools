@@ -22,7 +22,7 @@ export async function checkSpecForV2Functions(i: planner.InstanceSpec): Promise<
  */
 export async function ensureNecessaryV2ApisAndRoles(options: any) {
   const projectId = needProjectId(options);
-  await ensure(projectId, computeOrigin, "extensions", options.markdown);
+  await ensure(projectId, computeOrigin(), "extensions", options.markdown);
   await ensureComputeP4SARole(projectId);
 }
 

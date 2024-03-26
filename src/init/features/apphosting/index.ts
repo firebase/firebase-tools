@@ -31,7 +31,7 @@ import { DeepOmit } from "../../../metaprogramming";
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
 const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
-  apiOrigin: apphostingOrigin,
+  apiOrigin: apphostingOrigin(),
   apiVersion: API_VERSION,
   masterTimeout: 25 * 60 * 1_000,
   maxBackoff: 10_000,
@@ -46,10 +46,10 @@ export async function doSetup(
   serviceAccount: string | null,
 ): Promise<void> {
   await Promise.all([
-    ensure(projectId, cloudbuildOrigin, "apphosting", true),
-    ensure(projectId, secretManagerOrigin, "apphosting", true),
-    ensure(projectId, cloudRunApiOrigin, "apphosting", true),
-    ensure(projectId, artifactRegistryDomain, "apphosting", true),
+    ensure(projectId, cloudbuildOrigin(), "apphosting", true),
+    ensure(projectId, secretManagerOrigin(), "apphosting", true),
+    ensure(projectId, cloudRunApiOrigin(), "apphosting", true),
+    ensure(projectId, artifactRegistryDomain(), "apphosting", true),
   ]);
 
   const allowedLocations = (await apphosting.listLocations(projectId)).map((loc) => loc.locationId);

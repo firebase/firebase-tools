@@ -2,10 +2,12 @@ import * as sinon from "sinon";
 import { expect } from "chai";
 
 import * as gcb from "../../../gcp/cloudbuild";
+import * as rm from "../../../gcp/resourceManager";
 import * as prompt from "../../../prompt";
 import * as poller from "../../../operation-poller";
 import * as repo from "../../../init/features/apphosting/repo";
 import * as utils from "../../../utils";
+import * as srcUtils from "../../../../src/getProjectNumber";
 import { FirebaseError } from "../../../error";
 
 const projectId = "projectId";
@@ -53,8 +55,11 @@ describe("composer", () => {
     let getConnectionStub: sinon.SinonStub;
     let getRepositoryStub: sinon.SinonStub;
     let createConnectionStub: sinon.SinonStub;
+    let serviceAccountHasRolesStub: sinon.SinonStub;
     let createRepositoryStub: sinon.SinonStub;
     let fetchLinkableRepositoriesStub: sinon.SinonStub;
+    let getProjectNumberStub: sinon.SinonStub;
+    let openInBrowserPopupStub: sinon.SinonStub;
 
     beforeEach(() => {
       promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
@@ -70,6 +75,7 @@ describe("composer", () => {
       createConnectionStub = sandbox
         .stub(gcb, "createConnection")
         .throws("Unexpected createConnection call");
+      serviceAccountHasRolesStub = sandbox.stub(rm, "serviceAccountHasRoles").resolves(true);
       createRepositoryStub = sandbox
         .stub(gcb, "createRepository")
         .throws("Unexpected createRepository call");
@@ -77,6 +83,12 @@ describe("composer", () => {
         .stub(gcb, "fetchLinkableRepositories")
         .throws("Unexpected fetchLinkableRepositories call");
       sandbox.stub(utils, "openInBrowser").resolves();
+      openInBrowserPopupStub = sandbox
+        .stub(utils, "openInBrowserPopup")
+        .throws("Unexpected openInBrowserPopup call");
+      getProjectNumberStub = sandbox
+        .stub(srcUtils, "getProjectNumber")
+        .throws("Unexpected getProjectNumber call");
     });
 
     afterEach(() => {
@@ -137,6 +149,24 @@ describe("composer", () => {
 
       await repo.getOrCreateConnection(projectId, location, connectionId);
       expect(createConnectionStub).to.be.calledWith(projectId, location, connectionId);
+    });
+
+    it("checks if secret manager admin role is granted for cloud build P4SA when creating an oauth connection", async () => {
+      getConnectionStub.onFirstCall().rejects(new FirebaseError("error", { status: 404 }));
+      getConnectionStub.onSecondCall().resolves(completeConn);
+      createConnectionStub.resolves(op);
+      pollOperationStub.resolves(pendingConn);
+      promptOnceStub.resolves("any key");
+      getProjectNumberStub.onFirstCall().resolves(projectId);
+      openInBrowserPopupStub.resolves({ url: "", cleanup: sandbox.stub() });
+
+      await repo.getOrCreateOauthConnection(projectId, location);
+      expect(serviceAccountHasRolesStub).to.be.calledWith(
+        projectId,
+        `service-${projectId}@gcp-sa-cloudbuild.iam.gserviceaccount.com`,
+        ["roles/secretmanager.admin"],
+        true,
+      );
     });
 
     it("creates repository if it doesn't exist", async () => {

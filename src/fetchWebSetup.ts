@@ -33,9 +33,9 @@ interface ListSitesResponse {
   nextPageToken: string;
 }
 
-const apiClient = new Client({ urlPrefix: firebaseApiOrigin, auth: true, apiVersion: "v1beta1" });
+const apiClient = new Client({ urlPrefix: firebaseApiOrigin(), auth: true, apiVersion: "v1beta1" });
 const hostingApiClient = new Client({
-  urlPrefix: hostingApiOrigin,
+  urlPrefix: hostingApiOrigin(),
   auth: true,
   apiVersion: "v1beta1",
 });
