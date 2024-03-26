@@ -8,13 +8,13 @@ describe("shortenUrl", () => {
   const MOCKED_LINK = "https://firebase.tools/l/TEST";
 
   function mockDynamicLinks(url: string, suffix = "UNGUESSABLE", code = 200): void {
-    nock(dynamicLinksOrigin)
+    nock(dynamicLinksOrigin())
       .post(
         `/v1/shortLinks`,
         (body: { dynamicLinkInfo?: { link: string }; suffix?: { option: string } }) =>
           body.dynamicLinkInfo?.link === url && body.suffix?.option === suffix,
       )
-      .query({ key: dynamicLinksKey })
+      .query({ key: dynamicLinksKey() })
       .reply(code, {
         shortLink: MOCKED_LINK,
         previewLink: `${MOCKED_LINK}?d=1`,
