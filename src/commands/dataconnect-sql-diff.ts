@@ -15,7 +15,7 @@ export const command = new Command("dataconnect:sql:diff [serviceId]")
   .before(requireAuth)
   .action(async (serviceId: string, options: Options) => {
     const projectId = needProjectId(options);
-    await ensure(projectId, new URL(dataconnectOrigin).hostname, "dataconnect");
+    await ensure(projectId, new URL(dataconnectOrigin()).hostname, "dataconnect");
     const serviceInfo = await pickService(projectId, options.config, serviceId);
 
     const diffs = await diffSchema(serviceInfo.schema);

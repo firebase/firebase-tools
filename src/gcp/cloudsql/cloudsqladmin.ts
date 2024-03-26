@@ -4,7 +4,7 @@ import * as operationPoller from "../../operation-poller";
 const API_VERSION = "v1";
 
 const client = new Client({
-  urlPrefix: cloudSQLAdminOrigin,
+  urlPrefix: cloudSQLAdminOrigin(),
   auth: true,
   apiVersion: API_VERSION,
 });
@@ -158,7 +158,7 @@ export async function createInstance(
   });
   const opName = `projects/${projectId}/operations/${op.body.name}`;
   const pollRes = await operationPoller.pollOperation<Instance>({
-    apiOrigin: cloudSQLAdminOrigin,
+    apiOrigin: cloudSQLAdminOrigin(),
     apiVersion: API_VERSION,
     operationResourceName: opName,
     doneFn: (op: Operation) => op.status === "DONE",
@@ -188,7 +188,7 @@ export async function updateInstanceForDataConnect(instance: Instance): Promise<
   );
   const opName = `projects/${instance.project}/operations/${op.body.name}`;
   const pollRes = await operationPoller.pollOperation<Instance>({
-    apiOrigin: cloudSQLAdminOrigin,
+    apiOrigin: cloudSQLAdminOrigin(),
     apiVersion: API_VERSION,
     operationResourceName: opName,
     doneFn: (op: Operation) => op.status === "DONE",
@@ -246,7 +246,7 @@ export async function createDatabase(projectId: string, instanceId: string, data
 
   const opName = `projects/${projectId}/operations/${op.body.name}`;
   const pollRes = await operationPoller.pollOperation<Instance>({
-    apiOrigin: cloudSQLAdminOrigin,
+    apiOrigin: cloudSQLAdminOrigin(),
     apiVersion: API_VERSION,
     operationResourceName: opName,
     doneFn: (op: Operation) => op.status === "DONE",
@@ -278,7 +278,7 @@ export async function createUser(
   );
   const opName = `projects/${projectId}/operations/${op.body.name}`;
   const pollRes = await operationPoller.pollOperation<User>({
-    apiOrigin: cloudSQLAdminOrigin,
+    apiOrigin: cloudSQLAdminOrigin(),
     apiVersion: API_VERSION,
     operationResourceName: opName,
     doneFn: (op: Operation) => op.status === "DONE",
