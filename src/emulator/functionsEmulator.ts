@@ -112,12 +112,12 @@ export interface FunctionsEmulatorArgs {
   projectId: string;
   projectDir: string;
   emulatableBackends: EmulatableBackend[];
+  debugPort: number | boolean;
   account?: Account;
   port?: number;
   host?: string;
   verbosity?: "SILENT" | "QUIET" | "INFO" | "DEBUG";
   disabledRuntimeFeatures?: FunctionsRuntimeFeatures;
-  debugPort?: number;
   remoteEmulators?: Record<string, EmulatorInfo>;
   adminSdkConfig?: AdminSdkConfig;
   projectAlias?: string;
@@ -224,6 +224,20 @@ export class FunctionsEmulator implements EmulatorInstance {
     // When debugging is enabled, the "timeout" feature needs to be disabled so that
     // functions don't timeout while a breakpoint is active.
     if (this.args.debugPort) {
+      // N.B. Technically this will create false positives where there is a Node
+      // and a Python codebase, but there is no good place to check the runtime
+      // because that may not be present until discovery (e.g. node codebases
+      // return their runtime based on package.json if not specified in
+      // firebase.json)
+      const maybeNodeCodebases = this.args.emulatableBackends.filter(
+        (b) => !b.runtime || b.runtime.startsWith("node"),
+      );
+      if (maybeNodeCodebases.length > 1 && typeof this.args.debugPort === "number") {
+        throw new FirebaseError(
+          "Cannot debug on a single port with multiple codebases. " +
+            "Use --inspect-functions=true to assign dynamic ports to each codebase",
+        );
+      }
       this.args.disabledRuntimeFeatures = this.args.disabledRuntimeFeatures || {};
       this.args.disabledRuntimeFeatures.timeout = true;
       this.debugMode = true;
@@ -1316,8 +1330,34 @@ export class FunctionsEmulator implements EmulatorInstance {
           )} --save-dev" in your functions directory`,
         );
       } else {
+        let port: number;
+        if (typeof this.args.debugPort === "number") {
+          port = this.args.debugPort;
+        } else {
+          // Start the search at port 9229 because that is the default node
+          // inspector port and Chrome et. al. will discover the process without
+          // additional configuration. Other dynamic ports will need to be added
+          // manually to the inspector.
+          port = await portfinder.getPortPromise({ port: 9229 });
+          if (port === 9229) {
+            this.logger.logLabeled(
+              "SUCCESS",
+              "functions",
+              `Using debug port 9229 for functions codebase ${backend.codebase}`,
+            );
+          } else {
+            // Give a longer message to warn about non-default ports.
+            this.logger.logLabeled(
+              "SUCCESS",
+              "functions",
+              `Using debug port ${port} for functions codebase ${backend.codebase}. ` +
+                "You may need to add manually add this port to your inspector.",
+            );
+          }
+        }
+
         const { host } = this.getInfo();
-        args.unshift(`--inspect=${connectableHostname(host)}:${this.args.debugPort}`);
+        args.unshift(`--inspect=${connectableHostname(host)}:${port}`);
       }
     }
 
@@ -1349,6 +1389,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       cwd: backend.functionsDir,
       env: {
         node: backend.bin,
+        METADATA_SERVER_DETECTION: "none",
         ...process.env,
         ...envs,
         PORT: socketPath,
@@ -1451,7 +1492,6 @@ export class FunctionsEmulator implements EmulatorInstance {
   /**
    * Gets the address of a running emulator, either from explicit args or by
    * consulting the emulator registry.
-   *
    * @param emulator
    */
   private getEmulatorInfo(emulator: Emulators): EmulatorInfo | undefined {

@@ -24,7 +24,7 @@ export const API_VERSION = "v2";
 const DEFAULT_MAX_INSTANCE_COUNT = 100;
 
 const client = new Client({
-  urlPrefix: functionsV2Origin,
+  urlPrefix: functionsV2Origin(),
   auth: true,
   apiVersion: API_VERSION,
 });
@@ -550,6 +550,9 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
       eventType: endpoint.eventTrigger.eventType,
       retryPolicy: "RETRY_POLICY_UNSPECIFIED",
     };
+    if (endpoint.serviceAccount) {
+      gcfFunction.eventTrigger.serviceAccountEmail = endpoint.serviceAccount;
+    }
     if (gcfFunction.eventTrigger.eventType === PUBSUB_PUBLISH_EVENT) {
       if (!endpoint.eventTrigger.eventFilters?.topic) {
         throw new FirebaseError(
@@ -588,7 +591,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
 
     endpoint.eventTrigger.retry
       ? (gcfFunction.eventTrigger.retryPolicy = "RETRY_POLICY_RETRY")
-      : (gcfFunction.eventTrigger!.retryPolicy = "RETRY_POLICY_DO_NOT_RETRY");
+      : (gcfFunction.eventTrigger.retryPolicy = "RETRY_POLICY_DO_NOT_RETRY");
 
     // By default, Functions Framework in GCFv2 opts to downcast incoming cloudevent messages to legacy formats.
     // Since Firebase Functions SDK expects messages in cloudevent format, we set FUNCTION_SIGNATURE_TYPE to tell

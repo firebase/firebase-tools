@@ -25,6 +25,12 @@ const CONNECTION_NAME_REGEX =
 
 /**
  * Exported for unit testing.
+ *
+ * Example: /projects/my-project/locations/us-central1/connections/my-connection-id => {
+ *   projectId: "my-project",
+ *   location: "us-central1",
+ *   id: "my-connection-id",
+ * }
  */
 export function parseConnectionName(name: string): ConnectionNameParts | undefined {
   const match = CONNECTION_NAME_REGEX.exec(name);
@@ -41,7 +47,7 @@ export function parseConnectionName(name: string): ConnectionNameParts | undefin
 }
 
 const gcbPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
-  apiOrigin: cloudbuildOrigin,
+  apiOrigin: cloudbuildOrigin(),
   apiVersion: "v2",
   masterTimeout: 25 * 60 * 1_000,
   maxBackoff: 10_000,
@@ -75,9 +81,7 @@ function generateConnectionId(): string {
   return `apphosting-github-conn-${randomHash}`;
 }
 
-const ADD_REPO_CHOICE = "@ADD_REPO";
 const ADD_CONN_CHOICE = "@ADD_CONN";
-const CONFIGURE_REMOTE_URI_CHOICES = [ADD_REPO_CHOICE, ADD_CONN_CHOICE];
 
 /**
  * Prompts the user to link their backend to a GitHub repository.
@@ -87,54 +91,34 @@ export async function linkGitHubRepository(
   location: string,
 ): Promise<gcb.Repository> {
   utils.logBullet(clc.bold(`${clc.yellow("===")} Set up a GitHub connection`));
-  // Create or get connection resource that contains reference to the GitHub oauth token.
-  // Oauth token associated with this connection should be used to create other connection resources.
-  let oauthConn = await getOrCreateConnection(projectId, location, APPHOSTING_OAUTH_CONN_NAME);
-  while (oauthConn.installationState.stage === "PENDING_USER_OAUTH") {
-    oauthConn = await promptConnectionAuth(oauthConn);
-  }
+  // Fetch the sentinel Oauth connection first which is needed to create further GitHub connections.
+  const oauthConn = await getOrCreateOauthConnection(projectId, location);
   const existingConns = await listAppHostingConnections(projectId);
-  if (existingConns.length < 1) {
-    const grantSuccess = await promptSecretManagerAdminGrant(projectId);
-    if (!grantSuccess) {
-      throw new FirebaseError("Insufficient IAM permissions to create a new connection to GitHub");
-    }
-    const connectionId = generateConnectionId();
-    const conn = await createConnection(projectId, location, connectionId, {
-      authorizerCredential: oauthConn.githubConfig?.authorizerCredential,
-    });
-    let refreshedConn = conn;
-    while (refreshedConn.installationState.stage !== "COMPLETE") {
-      refreshedConn = await promptAppInstall(conn);
-    }
-    existingConns.push(refreshedConn);
+
+  if (existingConns.length === 0) {
+    existingConns.push(
+      await createFullyInstalledConnection(projectId, location, generateConnectionId(), oauthConn),
+    );
   }
 
-  let { remoteUri, connection } = await promptRepositoryUri(projectId, existingConns);
-  while (CONFIGURE_REMOTE_URI_CHOICES.includes(remoteUri)) {
-    if (remoteUri === ADD_REPO_CHOICE) {
-      await utils.openInBrowser("https://github.com/apps/google-cloud-build/installations/new");
-      await promptOnce({
-        type: "input",
-        message:
-          "Press ENTER once you have provided the GitHub app installation with access to your desired repository.",
-      });
-    } else if (remoteUri === ADD_CONN_CHOICE) {
-      const connectionId = generateConnectionId();
-      const conn = await createConnection(projectId, location, connectionId, {
-        authorizerCredential: oauthConn.githubConfig?.authorizerCredential,
-      });
-      let refreshedConn = conn;
-      while (refreshedConn.installationState.stage !== "COMPLETE") {
-        refreshedConn = await promptAppInstall(conn);
-      }
-      existingConns.push(refreshedConn);
+  let repoRemoteUri: string | undefined;
+  let connection: gcb.Connection;
+  do {
+    if (repoRemoteUri === ADD_CONN_CHOICE) {
+      existingConns.push(
+        await createFullyInstalledConnection(
+          projectId,
+          location,
+          generateConnectionId(),
+          oauthConn,
+        ),
+      );
     }
 
     const selection = await promptRepositoryUri(projectId, existingConns);
-    remoteUri = selection.remoteUri;
+    repoRemoteUri = selection.remoteUri;
     connection = selection.connection;
-  }
+  } while (repoRemoteUri === ADD_CONN_CHOICE);
 
   // Ensure that the selected connection exists in the same region as the backend
   const { id: connectionId } = parseConnectionName(connection.name)!;
@@ -142,10 +126,84 @@ export async function linkGitHubRepository(
     authorizerCredential: connection.githubConfig?.authorizerCredential,
     appInstallationId: connection.githubConfig?.appInstallationId,
   });
-  const repo = await getOrCreateRepository(projectId, location, connectionId, remoteUri);
+
+  const repo = await getOrCreateRepository(projectId, location, connectionId, repoRemoteUri);
   utils.logSuccess(`Successfully linked GitHub repository at remote URI`);
-  utils.logSuccess(`\t${remoteUri}`);
+  utils.logSuccess(`\t${repoRemoteUri}`);
   return repo;
+}
+
+/**
+ * Creates a new GCB GitHub connection resource and ensures that it is fully configured on the GitHub
+ * side (ie associated with an account/org and some subset of repos within that scope).
+ * Copies over Oauth creds from the sentinel Oauth connection to save the user from having to
+ * reauthenticate with GitHub.
+ */
+async function createFullyInstalledConnection(
+  projectId: string,
+  location: string,
+  connectionId: string,
+  oauthConn: gcb.Connection,
+): Promise<gcb.Connection> {
+  let conn = await createConnection(projectId, location, connectionId, {
+    authorizerCredential: oauthConn.githubConfig?.authorizerCredential,
+  });
+
+  while (conn.installationState.stage !== "COMPLETE") {
+    utils.logBullet("Install the Cloud Build GitHub app to enable access to GitHub repositories");
+    const targetUri = conn.installationState.actionUri.replace("install_v2", "direct_install_v2");
+    utils.logBullet(targetUri);
+    await utils.openInBrowser(targetUri);
+    await promptOnce({
+      type: "input",
+      message:
+        "Press Enter once you have installed or configured the Cloud Build GitHub app to access your GitHub repo.",
+    });
+    conn = await gcb.getConnection(projectId, location, connectionId);
+  }
+
+  return conn;
+}
+
+/**
+ * Gets or creates the sentinel GitHub connection resource that contains our Firebase-wide GitHub Oauth token.
+ * This Oauth token can be used to create other connections without reprompting the user to grant access.
+ */
+export async function getOrCreateOauthConnection(
+  projectId: string,
+  location: string,
+): Promise<gcb.Connection> {
+  let conn: gcb.Connection;
+  try {
+    conn = await gcb.getConnection(projectId, location, APPHOSTING_OAUTH_CONN_NAME);
+  } catch (err: unknown) {
+    if ((err as any).status === 404) {
+      // Cloud build P4SA requires the secret manager admin role.
+      // This is required when creating an initial connection which is the Oauth connection in our case.
+      await ensureSecretManagerAdminGrant(projectId);
+      conn = await createConnection(projectId, location, APPHOSTING_OAUTH_CONN_NAME);
+    } else {
+      throw err;
+    }
+  }
+
+  while (conn.installationState.stage === "PENDING_USER_OAUTH") {
+    utils.logBullet("You must authorize the Cloud Build GitHub app.");
+    utils.logBullet("Sign in to GitHub and authorize Cloud Build GitHub app:");
+    const { url, cleanup } = await utils.openInBrowserPopup(
+      conn.installationState.actionUri,
+      "Authorize the GitHub app",
+    );
+    utils.logBullet(`\t${url}`);
+    await promptOnce({
+      type: "input",
+      message: "Press Enter once you have authorized the app",
+    });
+    cleanup();
+    const { projectId, location, id } = parseConnectionName(conn.name)!;
+    conn = await gcb.getConnection(projectId, location, id);
+  }
+  return conn;
 }
 
 async function promptRepositoryUri(
@@ -153,44 +211,37 @@ async function promptRepositoryUri(
   connections: gcb.Connection[],
 ): Promise<{ remoteUri: string; connection: gcb.Connection }> {
   const { repos, remoteUriToConnection } = await fetchAllRepositories(projectId, connections);
-  const searchRepos =
-    (repos: gcb.Repository[]) =>
-    // eslint-disable-next-line @typescript-eslint/require-await, @typescript-eslint/no-explicit-any
-    async (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
-      return [
-        new inquirer.Separator(),
-        {
-          name: "Missing a repo? Select this option to configure your installation's access settings",
-          value: ADD_REPO_CHOICE,
-        },
-        {
-          name: "Missing an account or org? Select this option to create a new connection",
-          value: ADD_CONN_CHOICE,
-        },
-        new inquirer.Separator(),
-        ...fuzzy
-          .filter(input, repos, {
-            extract: (repo) => extractRepoSlugFromUri(repo.remoteUri) || "",
-          })
-          .map((result) => {
-            return {
-              name: extractRepoSlugFromUri(result.original.remoteUri) || "",
-              value: result.original.remoteUri,
-            };
-          }),
-      ];
-    };
-
   const remoteUri = await promptOnce({
     type: "autocomplete",
     name: "remoteUri",
     message: "Which of the following repositories would you like to deploy?",
-    source: searchRepos(repos),
+    source: (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
+      return new Promise((resolve) =>
+        resolve([
+          new inquirer.Separator(),
+          {
+            name: "Missing a repo? Select this option to configure your GitHub connection settings",
+            value: ADD_CONN_CHOICE,
+          },
+          new inquirer.Separator(),
+          ...fuzzy
+            .filter(input, repos, {
+              extract: (repo) => extractRepoSlugFromUri(repo.remoteUri) || "",
+            })
+            .map((result) => {
+              return {
+                name: extractRepoSlugFromUri(result.original.remoteUri) || "",
+                value: result.original.remoteUri,
+              };
+            }),
+        ]),
+      );
+    },
   });
   return { remoteUri, connection: remoteUriToConnection[remoteUri] };
 }
 
-async function promptSecretManagerAdminGrant(projectId: string): Promise<boolean> {
+async function ensureSecretManagerAdminGrant(projectId: string): Promise<void> {
   const projectNumber = await getProjectNumber({ projectId });
   const cbsaEmail = gcb.serviceAgentEmail(projectNumber);
 
@@ -201,7 +252,7 @@ async function promptSecretManagerAdminGrant(projectId: string): Promise<boolean
     true,
   );
   if (alreadyGranted) {
-    return true;
+    return;
   }
 
   utils.logBullet(
@@ -219,46 +270,15 @@ async function promptSecretManagerAdminGrant(projectId: string): Promise<boolean
         `\t  --member="serviceAccount:${cbsaEmail} \\\n` +
         `\t  --role="roles/secretmanager.admin\n`,
     );
-    return false;
+    throw new FirebaseError("Insufficient IAM permissions to create a new connection to GitHub");
   }
   await rm.addServiceAccountToRoles(projectId, cbsaEmail, ["roles/secretmanager.admin"], true);
   utils.logSuccess("Successfully granted the required role to the Cloud Build Service Agent!");
-  return true;
-}
-
-async function promptConnectionAuth(conn: gcb.Connection): Promise<gcb.Connection> {
-  utils.logBullet("You must authorize the Cloud Build GitHub app.");
-  utils.logBullet("Sign in to GitHub and authorize Cloud Build GitHub app:");
-  const { url, cleanup } = await utils.openInBrowserPopup(
-    conn.installationState.actionUri,
-    "Authorize the GitHub app",
-  );
-  utils.logBullet(`\t${url}`);
-  await promptOnce({
-    type: "input",
-    message: "Press Enter once you have authorized the app",
-  });
-  cleanup();
-  const { projectId, location, id } = parseConnectionName(conn.name)!;
-  return await gcb.getConnection(projectId, location, id);
-}
-
-async function promptAppInstall(conn: gcb.Connection): Promise<gcb.Connection> {
-  utils.logBullet("Install the Cloud Build GitHub app to enable access to GitHub repositories");
-  const targetUri = conn.installationState.actionUri.replace("install_v2", "direct_install_v2");
-  utils.logBullet(targetUri);
-  await utils.openInBrowser(targetUri);
-  await promptOnce({
-    type: "input",
-    message:
-      "Press Enter once you have installed or configured the Cloud Build GitHub app to access your GitHub repo.",
-  });
-  const { projectId, location, id } = parseConnectionName(conn.name)!;
-  return await gcb.getConnection(projectId, location, id);
 }
 
 /**
- * Creates a new Cloud Build Connection resource.
+ * Creates a new Cloud Build Connection resource. Will typically need some initialization
+ * or configuration after being created.
  */
 export async function createConnection(
   projectId: string,

@@ -13,7 +13,7 @@ const PUBLISHER_API_VERSION = "v1beta";
 const PAGE_SIZE_MAX = 100;
 
 const extensionsPublisherApiClient = new Client({
-  urlPrefix: extensionsPublisherOrigin,
+  urlPrefix: extensionsPublisherOrigin(),
   apiVersion: PUBLISHER_API_VERSION,
 });
 
@@ -165,7 +165,7 @@ export async function createExtensionVersionFromLocalSource(args: {
     },
   });
   const pollRes = await operationPoller.pollOperation<ExtensionVersion>({
-    apiOrigin: extensionsPublisherOrigin,
+    apiOrigin: extensionsPublisherOrigin(),
     apiVersion: PUBLISHER_API_VERSION,
     operationResourceName: uploadRes.body.name,
     masterTimeout: 600000,
@@ -212,7 +212,7 @@ export async function createExtensionVersionFromGitHubSource(args: {
     },
   });
   const pollRes = await operationPoller.pollOperation<ExtensionVersion>({
-    apiOrigin: extensionsPublisherOrigin,
+    apiOrigin: extensionsPublisherOrigin(),
     apiVersion: PUBLISHER_API_VERSION,
     operationResourceName: uploadRes.body.name,
     masterTimeout: 600000,

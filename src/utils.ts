@@ -35,7 +35,7 @@ export const envOverrides: string[] = [];
  */
 export function consoleUrl(project: string, path: string): string {
   const api = require("./api");
-  return `${api.consoleOrigin}/project/${project}${path}`;
+  return `${api.consoleOrigin()}/project/${project}${path}`;
 }
 
 /**

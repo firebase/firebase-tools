@@ -37,7 +37,7 @@ const HOSTING_GITHUB_ACTION_NAME = "FirebaseExtended/action-hosting-deploy@v0";
 
 const SERVICE_ACCOUNT_MAX_KEY_NUMBER = 10;
 
-const githubApiClient = new Client({ urlPrefix: githubApiOrigin, auth: false });
+const githubApiClient = new Client({ urlPrefix: githubApiOrigin(), auth: false });
 
 /**
  * Assists in setting up a GitHub workflow by doing the following:
@@ -206,7 +206,7 @@ export async function initGitHub(setup: Setup): Promise<void> {
     `Visit this URL to revoke authorization for the Firebase CLI GitHub OAuth App:`,
   );
   logger.info(
-    bold(underline(`https://github.com/settings/connections/applications/${githubClientId}`)),
+    bold(underline(`https://github.com/settings/connections/applications/${githubClientId()}`)),
   );
   logLabeledBullet("Action required", `Push any new workflow file(s) to your repo`);
 }
@@ -442,7 +442,9 @@ async function promptForRepo(
             );
             logger.info(
               bold(
-                underline(`https://github.com/settings/connections/applications/${githubClientId}`),
+                underline(
+                  `https://github.com/settings/connections/applications/${githubClientId()}`,
+                ),
               ),
             );
             logger.info();

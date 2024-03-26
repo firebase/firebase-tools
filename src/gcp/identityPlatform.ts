@@ -5,7 +5,7 @@ import { Client } from "../apiv2";
 const API_VERSION = "v2";
 
 const adminApiClient = new Client({
-  urlPrefix: identityOrigin + "/admin",
+  urlPrefix: identityOrigin() + "/admin",
   apiVersion: API_VERSION,
 });
 

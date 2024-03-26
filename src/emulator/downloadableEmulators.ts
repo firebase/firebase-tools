@@ -33,9 +33,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
     expectedChecksum: "2fd771101c0e1f7898c04c9204f2ce63",
   },
   firestore: {
-    version: "1.19.2",
-    expectedSize: 67203281,
-    expectedChecksum: "167205aea99351c08ef293f35009a63c",
+    version: "1.19.4",
+    expectedSize: 65913000,
+    expectedChecksum: "a861bfa9d12ef69645b41e2f3bd8db8d",
   },
   storage: {
     version: "1.1.3",
@@ -45,9 +45,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   ui: experiments.isEnabled("emulatoruisnapshot")
     ? { version: "SNAPSHOT", expectedSize: -1, expectedChecksum: "" }
     : {
-        version: "1.11.7",
-        expectedSize: 3064105,
-        expectedChecksum: "bd2bcc331cbf613a5b3b55a1ce08998b",
+        version: "1.11.8",
+        expectedSize: 3523907,
+        expectedChecksum: "49f6dc1911dda9d10df62a6c09aaf9a0",
       },
   pubsub: {
     version: "0.7.1",
@@ -119,7 +119,7 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
       CACHE_DIR,
       `ui-v${EMULATOR_UPDATE_DETAILS.ui.version}`,
       "server",
-      "server.js",
+      "server.mjs",
     ),
     opts: {
       cacheDir: CACHE_DIR,

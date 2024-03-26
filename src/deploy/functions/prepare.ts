@@ -71,10 +71,10 @@ export async function prepare(
 
   // ===Phase 0. Check that minimum APIs required for function deploys are enabled.
   const checkAPIsEnabled = await Promise.all([
-    ensureApiEnabled.ensure(projectId, functionsOrigin, "functions"),
-    ensureApiEnabled.check(projectId, runtimeconfigOrigin, "runtimeconfig", /* silent=*/ true),
+    ensureApiEnabled.ensure(projectId, functionsOrigin(), "functions"),
+    ensureApiEnabled.check(projectId, runtimeconfigOrigin(), "runtimeconfig", /* silent=*/ true),
     ensure.cloudBuildEnabled(projectId),
-    ensureApiEnabled.ensure(projectId, artifactRegistryDomain, "artifactregistry"),
+    ensureApiEnabled.ensure(projectId, artifactRegistryDomain(), "artifactregistry"),
   ]);
 
   // Get the Firebase Config, and set it on each function in the deployment.
@@ -238,7 +238,7 @@ export async function prepare(
     // Note: Some of these are premium APIs that require billing to be enabled.
     // We'd eventually have to add special error handling for billing APIs, but
     // enableCloudBuild is called above and has this special casing already.
-    const V2_APIS = [cloudRunApiOrigin, eventarcOrigin, pubsubOrigin, storageOrigin];
+    const V2_APIS = [cloudRunApiOrigin(), eventarcOrigin(), pubsubOrigin(), storageOrigin()];
     const enablements = V2_APIS.map((api) => {
       return ensureApiEnabled.ensure(context.projectId, api, "functions");
     });
@@ -290,6 +290,9 @@ export function inferDetailsFromExisting(
     if (!haveE) {
       continue;
     }
+
+    // Copy the service id over to the new endpoint.
+    wantE.runServiceId = haveE.runServiceId;
 
     // By default, preserve existing environment variables.
     // Only overwrite environment variables when there are user specified environment variables.
