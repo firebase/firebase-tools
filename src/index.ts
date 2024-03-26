@@ -101,4 +101,4 @@ program.action((_, args) => {
 });
 
 // NB: Keep this export line to keep firebase-tools-as-a-module working.
-export = client;
+export default client;

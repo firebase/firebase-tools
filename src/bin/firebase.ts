@@ -30,7 +30,7 @@ import { configstore } from "../configstore";
 import { errorOut } from "../errorOut";
 import { handlePreviewToggles } from "../handlePreviewToggles";
 import { logger } from "../logger";
-import * as client from "..";
+import client from "..";
 import * as fsutils from "../fsutils";
 import * as utils from "../utils";
 import * as winston from "winston";
