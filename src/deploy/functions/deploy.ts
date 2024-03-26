@@ -31,12 +31,18 @@ async function uploadSourceV1(
     stream: fs.createReadStream(source.functionsSourceV1!),
   };
   if (process.env.GOOGLE_CLOUD_QUOTA_PROJECT) {
-    logLabeledWarning("functions", "GOOGLE_CLOUD_QUTOA_PROJECT is not usable when uploading source for Cloud Functions.");
+    logLabeledWarning(
+      "functions",
+      "GOOGLE_CLOUD_QUTOA_PROJECT is not usable when uploading source for Cloud Functions.",
+    );
   }
-  await gcs.upload(uploadOpts, uploadUrl, {
-    "x-goog-content-length-range": "0,104857600",
-  },
-  true // ignoreQuotaProject
+  await gcs.upload(
+    uploadOpts,
+    uploadUrl,
+    {
+      "x-goog-content-length-range": "0,104857600",
+    },
+    true, // ignoreQuotaProject
   );
   return uploadUrl;
 }
@@ -57,7 +63,10 @@ async function uploadSourceV2(
     stream: fs.createReadStream(source.functionsSourceV2!),
   };
   if (process.env.GOOGLE_CLOUD_QUOTA_PROJECT) {
-    logLabeledWarning("functions", "GOOGLE_CLOUD_QUTOA_PROJECT is not usable when uploading source for Cloud Functions.");
+    logLabeledWarning(
+      "functions",
+      "GOOGLE_CLOUD_QUTOA_PROJECT is not usable when uploading source for Cloud Functions.",
+    );
   }
   await gcs.upload(uploadOpts, res.uploadUrl, undefined, true /* ignoreQuotaProject */);
   return res.storageSource;

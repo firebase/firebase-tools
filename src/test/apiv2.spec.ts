@@ -327,7 +327,7 @@ describe("apiv2", () => {
     it("should allow explicitly ignoring GOOGLE_CLOUD_QUOTA_PROJECT", async () => {
       nock("https://example.com")
         .get("/path/to/foo")
-        .reply(function (this: nock.ReplyFnContext, _url: string, _body: nock.Body): nock.ReplyFnResult {
+        .reply(function (this: nock.ReplyFnContext): nock.ReplyFnResult {
           expect(this.req.headers["x-goog-user-project"]).is.undefined;
           return [200, { success: true }];
         });
