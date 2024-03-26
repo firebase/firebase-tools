@@ -14,7 +14,7 @@ export async function checkDatabaseType(
   projectId: string,
 ): Promise<"DATASTORE_MODE" | "FIRESTORE_NATIVE" | "DATABASE_TYPE_UNSPECIFIED" | undefined> {
   try {
-    const client = new Client({ urlPrefix: firestoreOrigin, apiVersion: "v1" });
+    const client = new Client({ urlPrefix: firestoreOrigin(), apiVersion: "v1" });
     const resp = await client.get<{
       type?: "DATASTORE_MODE" | "FIRESTORE_NATIVE" | "DATABASE_TYPE_UNSPECIFIED";
     }>(`/projects/${projectId}/databases/(default)`);

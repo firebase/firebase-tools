@@ -59,7 +59,7 @@ export async function detectFromYaml(
 
   logger.debug("Found functions.yaml. Got spec:", text);
   const parsed = yaml.load(text);
-  return yamlToBuild(parsed, project, api.functionsDefaultRegion, runtime);
+  return yamlToBuild(parsed, project, api.functionsDefaultRegion(), runtime);
 }
 
 /**
@@ -110,5 +110,5 @@ export async function detectFromPort(
     throw new FirebaseError(`Failed to load function definition from source: ${text}`);
   }
 
-  return yamlToBuild(parsed, project, api.functionsDefaultRegion, runtime);
+  return yamlToBuild(parsed, project, api.functionsDefaultRegion(), runtime);
 }

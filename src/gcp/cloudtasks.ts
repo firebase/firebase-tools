@@ -9,7 +9,7 @@ import { nullsafeVisitor } from "../functional";
 const API_VERSION = "v2";
 
 const client = new Client({
-  urlPrefix: cloudTasksOrigin,
+  urlPrefix: cloudTasksOrigin(),
   auth: true,
   apiVersion: API_VERSION,
 });

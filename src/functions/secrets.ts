@@ -33,14 +33,14 @@ const FIREBASE_MANAGED = "firebase-managed";
 // but don't have time to find out. Taking a shortcut and copying the values directly in
 // violation of DRY. Sorry!
 const gcfV1PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
-  apiOrigin: functionsOrigin,
+  apiOrigin: functionsOrigin(),
   apiVersion: "v1",
   masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
   maxBackoff: 10_000,
 };
 
 const gcfV2PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
-  apiOrigin: functionsV2Origin,
+  apiOrigin: functionsV2Origin(),
   apiVersion: "v2",
   masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
   maxBackoff: 10_000,
@@ -78,7 +78,7 @@ function toUpperSnakeCase(key: string): string {
  */
 export function ensureApi(options: any): Promise<void> {
   const projectId = needProjectId(options);
-  return ensureApiEnabled.ensure(projectId, secretManagerOrigin, "secretmanager", true);
+  return ensureApiEnabled.ensure(projectId, secretManagerOrigin(), "secretmanager", true);
 }
 
 /**

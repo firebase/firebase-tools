@@ -17,7 +17,7 @@ export interface RegistryEntry {
 export async function getExtensionRegistry(
   onlyFeatured = false,
 ): Promise<Record<string, RegistryEntry>> {
-  const client = new Client({ urlPrefix: firebaseExtensionsRegistryOrigin });
+  const client = new Client({ urlPrefix: firebaseExtensionsRegistryOrigin() });
   const res = await client.get<{
     mods?: Record<string, RegistryEntry>;
     featured?: { discover?: string[] };

@@ -54,7 +54,7 @@ describe("RemoteConfig ListVersions", () => {
     });
 
     it("should return the list of versions up to the limit", async () => {
-      nock(remoteConfigApiOrigin)
+      nock(remoteConfigApiOrigin())
         .get(`/v1/projects/${PROJECT_ID}/remoteConfig:listVersions?pageSize=${2}`)
         .reply(200, expectedProjectInfoLimit);
 
@@ -64,7 +64,7 @@ describe("RemoteConfig ListVersions", () => {
     });
 
     it("should return all the versions when the limit is 0", async () => {
-      nock(remoteConfigApiOrigin)
+      nock(remoteConfigApiOrigin())
         .get(`/v1/projects/${PROJECT_ID}/remoteConfig:listVersions?pageSize=${300}`)
         .reply(200, expectedProjectInfoNoLimit);
 
@@ -74,7 +74,7 @@ describe("RemoteConfig ListVersions", () => {
     });
 
     it("should return with default 10 versions when no limit is set", async () => {
-      nock(remoteConfigApiOrigin)
+      nock(remoteConfigApiOrigin())
         .get(`/v1/projects/${PROJECT_ID}/remoteConfig:listVersions?pageSize=${10}`)
         .reply(200, expectedProjectInfoDefault);
 
@@ -85,7 +85,7 @@ describe("RemoteConfig ListVersions", () => {
     });
 
     it("should reject if the api call fails", async () => {
-      nock(remoteConfigApiOrigin)
+      nock(remoteConfigApiOrigin())
         .get(`/v1/projects/${PROJECT_ID}/remoteConfig:listVersions?pageSize=${10}`)
         .reply(404, "Not Found");
 

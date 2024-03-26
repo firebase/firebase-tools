@@ -85,7 +85,7 @@ export function getAppPlatform(platform: string): AppPlatform {
   }
 }
 
-const apiClient = new Client({ urlPrefix: firebaseApiOrigin, apiVersion: "v1beta1" });
+const apiClient = new Client({ urlPrefix: firebaseApiOrigin(), apiVersion: "v1beta1" });
 
 /**
  * Send an API request to create a new Firebase iOS app and poll the LRO to get the new app
@@ -111,7 +111,7 @@ export async function createIosApp(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const appData = await pollOperation<any>({
       pollerName: "Create iOS app Poller",
-      apiOrigin: firebaseApiOrigin,
+      apiOrigin: firebaseApiOrigin(),
       apiVersion: "v1beta1",
       operationResourceName: response.body.name /* LRO resource name */,
     });
@@ -149,7 +149,7 @@ export async function createAndroidApp(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const appData = await pollOperation<any>({
       pollerName: "Create Android app Poller",
-      apiOrigin: firebaseApiOrigin,
+      apiOrigin: firebaseApiOrigin(),
       apiVersion: "v1beta1",
       operationResourceName: response.body.name /* LRO resource name */,
     });
@@ -187,7 +187,7 @@ export async function createWebApp(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const appData = await pollOperation<any>({
       pollerName: "Create Web app Poller",
-      apiOrigin: firebaseApiOrigin,
+      apiOrigin: firebaseApiOrigin(),
       apiVersion: "v1beta1",
       operationResourceName: response.body.name /* LRO resource name */,
     });

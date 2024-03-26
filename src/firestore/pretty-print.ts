@@ -236,10 +236,18 @@ export class PrettyPrint {
         return;
       }
 
-      // Normal field indexes have an "order" while array indexes have an "arrayConfig",
-      // we want to display whichever one is present.
-      const orderOrArrayConfig = field.order ? field.order : field.arrayConfig;
-      result += `(${field.fieldPath},${orderOrArrayConfig}) `;
+      // Normal field indexes have an "order", array indexes have an
+      // "arrayConfig", and vector indexes have a "vectorConfig" we want to
+      // display whichever one is present.
+      let configString;
+      if (field.order) {
+        configString = field.order;
+      } else if (field.arrayConfig) {
+        configString = field.arrayConfig;
+      } else if (field.vectorConfig) {
+        configString = `VECTOR<${field.vectorConfig.dimension}>`;
+      }
+      result += `(${field.fieldPath},${configString}) `;
     });
 
     return result;

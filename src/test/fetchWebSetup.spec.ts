@@ -34,7 +34,7 @@ describe("fetchWebSetup module", () => {
 
     it("should fetch the web app config", async () => {
       const projectId = "foo";
-      nock(firebaseApiOrigin)
+      nock(firebaseApiOrigin())
         .get(`/v1beta1/projects/${projectId}/webApps/-/config`)
         .reply(200, { some: "config" });
 
@@ -45,7 +45,7 @@ describe("fetchWebSetup module", () => {
 
     it("should store the fetched config", async () => {
       const projectId = "projectId";
-      nock(firebaseApiOrigin)
+      nock(firebaseApiOrigin())
         .get(`/v1beta1/projects/${projectId}/webApps/-/config`)
         .reply(200, { projectId, some: "config" });
 
@@ -62,7 +62,7 @@ describe("fetchWebSetup module", () => {
 
     it("should throw an error if the request fails", async () => {
       const projectId = "foo";
-      nock(firebaseApiOrigin)
+      nock(firebaseApiOrigin())
         .get(`/v1beta1/projects/${projectId}/webApps/-/config`)
         .reply(404, { error: "Not Found" });
 

@@ -4,7 +4,7 @@ import { cloudbuildOrigin } from "../api";
 const PAGE_SIZE_MAX = 100;
 
 const client = new Client({
-  urlPrefix: cloudbuildOrigin,
+  urlPrefix: cloudbuildOrigin(),
   auth: true,
   apiVersion: "v2",
 });

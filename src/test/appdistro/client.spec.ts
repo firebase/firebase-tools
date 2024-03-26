@@ -43,7 +43,7 @@ describe("distribution", () => {
     const emails = ["a@foo.com", "b@foo.com"];
 
     it("should throw error if request fails", async () => {
-      nock(appDistributionOrigin)
+      nock(appDistributionOrigin())
         .post(`/v1/${projectName}/testers:batchAdd`)
         .reply(400, { error: { status: "FAILED_PRECONDITION" } });
       await expect(appDistributionClient.addTesters(projectName, emails)).to.be.rejectedWith(
@@ -54,7 +54,7 @@ describe("distribution", () => {
     });
 
     it("should resolve when request succeeds", async () => {
-      nock(appDistributionOrigin).post(`/v1/${projectName}/testers:batchAdd`).reply(200, {});
+      nock(appDistributionOrigin()).post(`/v1/${projectName}/testers:batchAdd`).reply(200, {});
       await expect(appDistributionClient.addTesters(projectName, emails)).to.be.eventually
         .fulfilled;
       expect(nock.isDone()).to.be.true;
@@ -66,7 +66,7 @@ describe("distribution", () => {
     const mockResponse: BatchRemoveTestersResponse = { emails: emails };
 
     it("should throw error if delete fails", async () => {
-      nock(appDistributionOrigin)
+      nock(appDistributionOrigin())
         .post(`/v1/${projectName}/testers:batchRemove`)
         .reply(400, { error: { status: "FAILED_PRECONDITION" } });
       await expect(appDistributionClient.removeTesters(projectName, emails)).to.be.rejectedWith(
@@ -77,7 +77,7 @@ describe("distribution", () => {
     });
 
     it("should resolve when request succeeds", async () => {
-      nock(appDistributionOrigin)
+      nock(appDistributionOrigin())
         .post(`/v1/${projectName}/testers:batchRemove`)
         .reply(200, mockResponse);
       await expect(appDistributionClient.removeTesters(projectName, emails)).to.eventually.deep.eq(
@@ -89,14 +89,14 @@ describe("distribution", () => {
 
   describe("uploadRelease", () => {
     it("should throw error if upload fails", async () => {
-      nock(appDistributionOrigin).post(`/upload/v1/${appName}/releases:upload`).reply(400, {});
+      nock(appDistributionOrigin()).post(`/upload/v1/${appName}/releases:upload`).reply(400, {});
       await expect(appDistributionClient.uploadRelease(appName, mockDistribution)).to.be.rejected;
       expect(nock.isDone()).to.be.true;
     });
 
     it("should return token if upload succeeds", async () => {
       const fakeOperation = "fake-operation-name";
-      nock(appDistributionOrigin)
+      nock(appDistributionOrigin())
         .post(`/upload/v1/${appName}/releases:upload`)
         .reply(200, { name: fakeOperation });
       await expect(
@@ -115,7 +115,7 @@ describe("distribution", () => {
     });
 
     it("should throw error when request fails", async () => {
-      nock(appDistributionOrigin)
+      nock(appDistributionOrigin())
         .patch(`/v1/${releaseName}?updateMask=release_notes.text`)
         .reply(400, {});
       await expect(
@@ -125,7 +125,7 @@ describe("distribution", () => {
     });
 
     it("should resolve when request succeeds", async () => {
-      nock(appDistributionOrigin)
+      nock(appDistributionOrigin())
         .patch(`/v1/${releaseName}?updateMask=release_notes.text`)
         .reply(200, {});
       await expect(appDistributionClient.updateReleaseNotes(releaseName, "release notes")).to
@@ -142,7 +142,7 @@ describe("distribution", () => {
     });
 
     it("should resolve when request succeeds", async () => {
-      nock(appDistributionOrigin).post(`/v1/${releaseName}:distribute`).reply(200, {});
+      nock(appDistributionOrigin()).post(`/v1/${releaseName}:distribute`).reply(200, {});
       await expect(appDistributionClient.distribute(releaseName, ["tester1"], ["group1"])).to.be
         .fulfilled;
       expect(nock.isDone()).to.be.true;
@@ -157,7 +157,7 @@ describe("distribution", () => {
       });
 
       it("should throw invalid testers error when status code is FAILED_PRECONDITION ", async () => {
-        nock(appDistributionOrigin)
+        nock(appDistributionOrigin())
           .post(`/v1/${releaseName}:distribute`, {
             testerEmails: testers,
             groupAliases: groups,
@@ -173,7 +173,7 @@ describe("distribution", () => {
       });
 
       it("should throw invalid groups error when status code is INVALID_ARGUMENT", async () => {
-        nock(appDistributionOrigin)
+        nock(appDistributionOrigin())
           .post(`/v1/${releaseName}:distribute`, {
             testerEmails: testers,
             groupAliases: groups,
@@ -189,7 +189,7 @@ describe("distribution", () => {
       });
 
       it("should throw default error", async () => {
-        nock(appDistributionOrigin)
+        nock(appDistributionOrigin())
           .post(`/v1/${releaseName}:distribute`, {
             testerEmails: testers,
             groupAliases: groups,
@@ -207,7 +207,7 @@ describe("distribution", () => {
     const mockResponse: Group = { name: groupName, displayName: "My Group" };
 
     it("should throw error if request fails", async () => {
-      nock(appDistributionOrigin)
+      nock(appDistributionOrigin())
         .post(`/v1/${projectName}/groups`)
         .reply(400, { error: { status: "FAILED_PRECONDITION" } });
       await expect(appDistributionClient.createGroup(projectName, "My Group")).to.be.rejectedWith(
@@ -218,7 +218,7 @@ describe("distribution", () => {
     });
 
     it("should resolve when request succeeds", async () => {
-      nock(appDistributionOrigin).post(`/v1/${projectName}/groups`).reply(200, mockResponse);
+      nock(appDistributionOrigin()).post(`/v1/${projectName}/groups`).reply(200, mockResponse);
       await expect(
         appDistributionClient.createGroup(projectName, "My Group"),
       ).to.eventually.deep.eq(mockResponse);
@@ -226,7 +226,7 @@ describe("distribution", () => {
     });
 
     it("should resolve when request with alias succeeds", async () => {
-      nock(appDistributionOrigin)
+      nock(appDistributionOrigin())
         .post(`/v1/${projectName}/groups?groupId=my-group`)
         .reply(200, mockResponse);
       await expect(
@@ -238,7 +238,7 @@ describe("distribution", () => {
 
   describe("deleteGroup", () => {
     it("should throw error if delete fails", async () => {
-      nock(appDistributionOrigin)
+      nock(appDistributionOrigin())
         .delete(`/v1/${groupName}`)
         .reply(400, { error: { status: "FAILED_PRECONDITION" } });
       await expect(appDistributionClient.deleteGroup(groupName)).to.be.rejectedWith(
@@ -249,7 +249,7 @@ describe("distribution", () => {
     });
 
     it("should resolve when request succeeds", async () => {
-      nock(appDistributionOrigin).delete(`/v1/${groupName}`).reply(200, {});
+      nock(appDistributionOrigin()).delete(`/v1/${groupName}`).reply(200, {});
       await expect(appDistributionClient.deleteGroup(groupName)).to.be.eventually.fulfilled;
       expect(nock.isDone()).to.be.true;
     });
@@ -259,7 +259,7 @@ describe("distribution", () => {
     const emails = ["a@foo.com", "b@foo.com"];
 
     it("should throw error if request fails", async () => {
-      nock(appDistributionOrigin)
+      nock(appDistributionOrigin())
         .post(`/v1/${groupName}:batchJoin`)
         .reply(400, { error: { status: "FAILED_PRECONDITION" } });
       await expect(appDistributionClient.addTestersToGroup(groupName, emails)).to.be.rejectedWith(
@@ -270,7 +270,7 @@ describe("distribution", () => {
     });
 
     it("should resolve when request succeeds", async () => {
-      nock(appDistributionOrigin).post(`/v1/${groupName}:batchJoin`).reply(200, {});
+      nock(appDistributionOrigin()).post(`/v1/${groupName}:batchJoin`).reply(200, {});
       await expect(appDistributionClient.addTestersToGroup(groupName, emails)).to.be.eventually
         .fulfilled;
       expect(nock.isDone()).to.be.true;
@@ -281,7 +281,7 @@ describe("distribution", () => {
     const emails = ["a@foo.com", "b@foo.com"];
 
     it("should throw error if request fails", async () => {
-      nock(appDistributionOrigin)
+      nock(appDistributionOrigin())
         .post(`/v1/${groupName}:batchLeave`)
         .reply(400, { error: { status: "FAILED_PRECONDITION" } });
       await expect(
@@ -291,7 +291,7 @@ describe("distribution", () => {
     });
 
     it("should resolve when request succeeds", async () => {
-      nock(appDistributionOrigin).post(`/v1/${groupName}:batchLeave`).reply(200, {});
+      nock(appDistributionOrigin()).post(`/v1/${groupName}:batchLeave`).reply(200, {});
       await expect(appDistributionClient.removeTestersFromGroup(groupName, emails)).to.be.eventually
         .fulfilled;
       expect(nock.isDone()).to.be.true;
@@ -321,7 +321,7 @@ describe("distribution", () => {
     };
 
     it("should throw error if request fails", async () => {
-      nock(appDistributionOrigin)
+      nock(appDistributionOrigin())
         .post(`/v1alpha/${releaseName}/tests`)
         .reply(400, { error: { status: "FAILED_PRECONDITION" } });
       await expect(
@@ -331,7 +331,9 @@ describe("distribution", () => {
     });
 
     it("should resolve with ReleaseTest when request succeeds", async () => {
-      nock(appDistributionOrigin).post(`/v1alpha/${releaseName}/tests`).reply(200, mockReleaseTest);
+      nock(appDistributionOrigin())
+        .post(`/v1alpha/${releaseName}/tests`)
+        .reply(200, mockReleaseTest);
       await expect(
         appDistributionClient.createReleaseTest(releaseName, mockDevices),
       ).to.be.eventually.deep.eq(mockReleaseTest);
@@ -362,7 +364,7 @@ describe("distribution", () => {
     };
 
     it("should throw error if request fails", async () => {
-      nock(appDistributionOrigin)
+      nock(appDistributionOrigin())
         .get(`/v1alpha/${releaseTestName}`)
         .reply(400, { error: { status: "FAILED_PRECONDITION" } });
       await expect(appDistributionClient.getReleaseTest(releaseTestName)).to.be.rejected;
@@ -370,7 +372,7 @@ describe("distribution", () => {
     });
 
     it("should resolve with ReleaseTest when request succeeds", async () => {
-      nock(appDistributionOrigin).get(`/v1alpha/${releaseTestName}`).reply(200, mockReleaseTest);
+      nock(appDistributionOrigin()).get(`/v1alpha/${releaseTestName}`).reply(200, mockReleaseTest);
       await expect(appDistributionClient.getReleaseTest(releaseTestName)).to.be.eventually.deep.eq(
         mockReleaseTest,
       );

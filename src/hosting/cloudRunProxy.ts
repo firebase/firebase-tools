@@ -20,7 +20,7 @@ export interface CloudRunProxyRewrite {
 
 const cloudRunCache: { [s: string]: string } = {};
 
-const apiClient = new Client({ urlPrefix: cloudRunApiOrigin, apiVersion: "v1" });
+const apiClient = new Client({ urlPrefix: cloudRunApiOrigin(), apiVersion: "v1" });
 
 async function getCloudRunUrl(rewrite: CloudRunProxyRewrite, projectId: string): Promise<string> {
   const alreadyFetched = cloudRunCache[`${rewrite.run.region}/${rewrite.run.serviceId}`];

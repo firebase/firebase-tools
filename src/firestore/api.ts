@@ -15,7 +15,7 @@ import { Client } from "../apiv2";
 import { PrettyPrint } from "./pretty-print";
 
 export class FirestoreApi {
-  apiClient = new Client({ urlPrefix: firestoreOrigin, apiVersion: "v1" });
+  apiClient = new Client({ urlPrefix: firestoreOrigin(), apiVersion: "v1" });
   printer = new PrettyPrint();
 
   /**
@@ -297,7 +297,7 @@ export class FirestoreApi {
 
     index.fields.forEach((field: any) => {
       validator.assertHas(field, "fieldPath");
-      validator.assertHasOneOf(field, ["order", "arrayConfig"]);
+      validator.assertHasOneOf(field, ["order", "arrayConfig", "vectorConfig"]);
 
       if (field.order) {
         validator.assertEnum(field, "order", Object.keys(types.Order));
@@ -305,6 +305,11 @@ export class FirestoreApi {
 
       if (field.arrayConfig) {
         validator.assertEnum(field, "arrayConfig", Object.keys(types.ArrayConfig));
+      }
+
+      if (field.vectorConfig) {
+        validator.assertType("vectorConfig.dimension", field.vectorConfig.dimension, "number");
+        validator.assertHas(field.vectorConfig, "flat");
       }
     });
   }
@@ -548,6 +553,8 @@ export class FirestoreApi {
             f.order = field.order;
           } else if (field.arrayConfig) {
             f.arrayConfig = field.arrayConfig;
+          } else if (field.vectorConfig) {
+            f.vectorConfig = field.vectorConfig;
           } else if (field.mode === types.Mode.ARRAY_CONTAINS) {
             f.arrayConfig = types.ArrayConfig.CONTAINS;
           } else {

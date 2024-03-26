@@ -185,10 +185,10 @@ describe("provisioningHelper", () => {
     });
 
     it("passes provisioning check when all is provisioned", async () => {
-      nock(api.firedataOrigin)
+      nock(api.firedataOrigin())
         .get(`/v1/projects/${PROJECT_ID}/products`)
         .reply(200, FIREDATA_AUTH_ACTIVATED_RESPONSE);
-      nock(api.firebaseStorageOrigin)
+      nock(api.firebaseStorageOrigin())
         .get(`/v1beta/projects/${PROJECT_ID}/buckets`)
         .reply(200, FIREBASE_STORAGE_DEFAULT_BUCKET_LINKED_RESPONSE);
 
@@ -200,10 +200,10 @@ describe("provisioningHelper", () => {
     });
 
     it("fails provisioning check storage when default bucket is not linked", async () => {
-      nock(api.firedataOrigin)
+      nock(api.firedataOrigin())
         .get(`/v1/projects/${PROJECT_ID}/products`)
         .reply(200, FIREDATA_AUTH_ACTIVATED_RESPONSE);
-      nock(api.firebaseStorageOrigin)
+      nock(api.firebaseStorageOrigin())
         .get(`/v1beta/projects/${PROJECT_ID}/buckets`)
         .reply(200, {
           buckets: [
@@ -221,10 +221,12 @@ describe("provisioningHelper", () => {
     });
 
     it("fails provisioning check storage when no firebase storage buckets", async () => {
-      nock(api.firedataOrigin)
+      nock(api.firedataOrigin())
         .get(`/v1/projects/${PROJECT_ID}/products`)
         .reply(200, FIREDATA_AUTH_ACTIVATED_RESPONSE);
-      nock(api.firebaseStorageOrigin).get(`/v1beta/projects/${PROJECT_ID}/buckets`).reply(200, {});
+      nock(api.firebaseStorageOrigin())
+        .get(`/v1beta/projects/${PROJECT_ID}/buckets`)
+        .reply(200, {});
 
       await expect(
         provisioningHelper.checkProductsProvisioned(PROJECT_ID, SPEC_WITH_STORAGE_AND_AUTH),
@@ -234,8 +236,8 @@ describe("provisioningHelper", () => {
     });
 
     it("fails provisioning check storage when no auth is not provisioned", async () => {
-      nock(api.firedataOrigin).get(`/v1/projects/${PROJECT_ID}/products`).reply(200, {});
-      nock(api.firebaseStorageOrigin)
+      nock(api.firedataOrigin()).get(`/v1/projects/${PROJECT_ID}/products`).reply(200, {});
+      nock(api.firebaseStorageOrigin())
         .get(`/v1beta/projects/${PROJECT_ID}/buckets`)
         .reply(200, FIREBASE_STORAGE_DEFAULT_BUCKET_LINKED_RESPONSE);
 
@@ -252,7 +254,7 @@ describe("provisioningHelper", () => {
 
   describe("bulkCheckProductsProvisioned", () => {
     it("passes provisioning check status when nothing is used", async () => {
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .get(`/v1beta/publishers/test/extensions/test/versions/0.1.0`)
         .reply(200, extensionVersionResponse("0.1.0", SPEC_WITH_NOTHING));
 
@@ -262,13 +264,13 @@ describe("provisioningHelper", () => {
     });
 
     it("passes provisioning check when all is provisioned", async () => {
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .get(`/v1beta/publishers/test/extensions/test/versions/0.1.0`)
         .reply(200, extensionVersionResponse("0.1.0", SPEC_WITH_STORAGE_AND_AUTH));
-      nock(api.firedataOrigin)
+      nock(api.firedataOrigin())
         .get(`/v1/projects/${PROJECT_ID}/products`)
         .reply(200, FIREDATA_AUTH_ACTIVATED_RESPONSE);
-      nock(api.firebaseStorageOrigin)
+      nock(api.firebaseStorageOrigin())
         .get(`/v1beta/projects/${PROJECT_ID}/buckets`)
         .reply(200, FIREBASE_STORAGE_DEFAULT_BUCKET_LINKED_RESPONSE);
 
@@ -280,16 +282,16 @@ describe("provisioningHelper", () => {
     });
 
     it("checks all products for multiple versions", async () => {
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .get(`/v1beta/publishers/test/extensions/test/versions/0.1.0`)
         .reply(200, extensionVersionResponse("0.1.0", SPEC_WITH_STORAGE));
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .get(`/v1beta/publishers/test/extensions/test/versions/0.1.1`)
         .reply(200, extensionVersionResponse("0.1.1", SPEC_WITH_AUTH));
-      nock(api.firedataOrigin)
+      nock(api.firedataOrigin())
         .get(`/v1/projects/${PROJECT_ID}/products`)
         .reply(200, FIREDATA_AUTH_ACTIVATED_RESPONSE);
-      nock(api.firebaseStorageOrigin)
+      nock(api.firebaseStorageOrigin())
         .get(`/v1beta/projects/${PROJECT_ID}/buckets`)
         .reply(200, FIREBASE_STORAGE_DEFAULT_BUCKET_LINKED_RESPONSE);
 
@@ -304,10 +306,10 @@ describe("provisioningHelper", () => {
     });
 
     it("fails provisioning check storage when default bucket is not linked", async () => {
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .get(`/v1beta/publishers/test/extensions/test/versions/0.1.0`)
         .reply(200, extensionVersionResponse("0.1.0", SPEC_WITH_STORAGE));
-      nock(api.firebaseStorageOrigin)
+      nock(api.firebaseStorageOrigin())
         .get(`/v1beta/projects/${PROJECT_ID}/buckets`)
         .reply(200, {
           buckets: [
@@ -325,10 +327,10 @@ describe("provisioningHelper", () => {
     });
 
     it("fails provisioning check storage when no auth is not provisioned", async () => {
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .get(`/v1beta/publishers/test/extensions/test/versions/0.1.0`)
         .reply(200, extensionVersionResponse("0.1.0", SPEC_WITH_AUTH));
-      nock(api.firedataOrigin).get(`/v1/projects/${PROJECT_ID}/products`).reply(200, {});
+      nock(api.firedataOrigin()).get(`/v1/projects/${PROJECT_ID}/products`).reply(200, {});
 
       await expect(
         provisioningHelper.bulkCheckProductsProvisioned(PROJECT_ID, [instanceSpec("0.1.0")]),

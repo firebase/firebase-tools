@@ -106,7 +106,7 @@ describe("updateHelper", () => {
         description: "a role",
       });
       // The logic will fetch the extensions registry, but it doesn't need to receive anything.
-      nock(firebaseExtensionsRegistryOrigin).get("/extensions.json").reply(200, {});
+      nock(firebaseExtensionsRegistryOrigin()).get("/extensions.json").reply(200, {});
     });
 
     afterEach(() => {
@@ -149,7 +149,7 @@ describe("updateHelper", () => {
         description: "a role",
       });
       // The logic will fetch the extensions registry, but it doesn't need to receive anything.
-      nock(firebaseExtensionsRegistryOrigin).get("/extensions.json").reply(200, {});
+      nock(firebaseExtensionsRegistryOrigin()).get("/extensions.json").reply(200, {});
     });
 
     afterEach(() => {

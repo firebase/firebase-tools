@@ -269,7 +269,7 @@ export function normalizeName(s: string): string {
 }
 
 const apiClient = new Client({
-  urlPrefix: hostingApiOrigin,
+  urlPrefix: hostingApiOrigin(),
   apiVersion: "v1beta1",
   auth: true,
 });
@@ -472,7 +472,7 @@ export async function cloneVersion(
   );
   const { name: operationName } = res.body;
   const pollRes = await operationPoller.pollOperation<Version>({
-    apiOrigin: hostingApiOrigin,
+    apiOrigin: hostingApiOrigin(),
     apiVersion: "v1beta1",
     operationResourceName: operationName,
     masterTimeout: 600000,

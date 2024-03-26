@@ -74,7 +74,7 @@ function isPermissionError(e: { context?: { body?: { error?: { status?: string }
  */
 export async function cloudBuildEnabled(projectId: string): Promise<void> {
   try {
-    await ensure(projectId, cloudbuildOrigin, "functions");
+    await ensure(projectId, cloudbuildOrigin(), "functions");
   } catch (e: any) {
     if (isBillingError(e)) {
       throw nodeBillingError(projectId);

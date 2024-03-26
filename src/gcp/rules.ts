@@ -5,7 +5,7 @@ import * as utils from "../utils";
 
 const API_VERSION = "v1";
 
-const apiClient = new Client({ urlPrefix: rulesOrigin, apiVersion: API_VERSION });
+const apiClient = new Client({ urlPrefix: rulesOrigin(), apiVersion: API_VERSION });
 
 function _handleErrorResponse(response: any): any {
   if (response.body && response.body.error) {

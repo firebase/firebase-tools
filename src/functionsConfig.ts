@@ -11,7 +11,7 @@ import * as args from "./deploy/functions/args";
 
 export const RESERVED_NAMESPACES = ["firebase"];
 
-const apiClient = new Client({ urlPrefix: firebaseApiOrigin });
+const apiClient = new Client({ urlPrefix: firebaseApiOrigin() });
 
 interface Id {
   config: string;

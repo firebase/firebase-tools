@@ -36,19 +36,19 @@ describe("ensureCloudBuildEnabled()", () => {
   });
 
   function mockServiceCheck(isEnabled = false): void {
-    nock(api.serviceUsageOrigin)
+    nock(api.serviceUsageOrigin())
       .get("/v1/projects/test-project/services/cloudbuild.googleapis.com")
       .reply(200, { state: isEnabled ? "ENABLED" : "DISABLED" });
   }
 
   function mockServiceEnableSuccess(): void {
-    nock(api.serviceUsageOrigin)
+    nock(api.serviceUsageOrigin())
       .post("/v1/projects/test-project/services/cloudbuild.googleapis.com:enable")
       .reply(200, {});
   }
 
   function mockServiceEnableBillingError(): void {
-    nock(api.serviceUsageOrigin)
+    nock(api.serviceUsageOrigin())
       .post("/v1/projects/test-project/services/cloudbuild.googleapis.com:enable")
       .reply(403, {
         error: {
@@ -58,7 +58,7 @@ describe("ensureCloudBuildEnabled()", () => {
   }
 
   function mockServiceEnablePermissionError(): void {
-    nock(api.serviceUsageOrigin)
+    nock(api.serviceUsageOrigin())
       .post("/v1/projects/test-project/services/cloudbuild.googleapis.com:enable")
       .reply(403, {
         error: {

@@ -9,7 +9,7 @@ const HOST = "https://firebaseio.com";
 describe("ListRemote", () => {
   const instance = "fake-db";
   const remote = new RTDBListRemote(instance, HOST);
-  const serverUrl = utils.addSubdomain(realtimeOrigin, instance);
+  const serverUrl = utils.addSubdomain(realtimeOrigin(), instance);
 
   afterEach(() => {
     nock.cleanAll();

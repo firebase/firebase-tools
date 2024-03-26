@@ -43,7 +43,7 @@ export const PROJECTS_CREATE_QUESTIONS: Question[] = [
 ];
 
 const firebaseAPIClient = new Client({
-  urlPrefix: api.firebaseApiOrigin,
+  urlPrefix: api.firebaseApiOrigin(),
   auth: true,
   apiVersion: "v1beta1",
 });
@@ -230,7 +230,7 @@ export async function createCloudProject(
   options: { displayName?: string; parentResource?: ProjectParentResource },
 ): Promise<any> {
   try {
-    const client = new Client({ urlPrefix: api.resourceManagerOrigin, apiVersion: "v1" });
+    const client = new Client({ urlPrefix: api.resourceManagerOrigin(), apiVersion: "v1" });
     const data = {
       projectId,
       name: options.displayName || projectId,
@@ -244,7 +244,7 @@ export async function createCloudProject(
     });
     const projectInfo = await pollOperation<any>({
       pollerName: "Project Creation Poller",
-      apiOrigin: api.resourceManagerOrigin,
+      apiOrigin: api.resourceManagerOrigin(),
       apiVersion: "v1",
       operationResourceName: response.body.name /* LRO resource name */,
     });
@@ -285,7 +285,7 @@ export async function addFirebaseToCloudProject(
     });
     const projectInfo = await pollOperation<any>({
       pollerName: "Add Firebase Poller",
-      apiOrigin: api.firebaseApiOrigin,
+      apiOrigin: api.firebaseApiOrigin(),
       apiVersion: "v1beta1",
       operationResourceName: response.body.name /* LRO resource name */,
     });

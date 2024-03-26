@@ -5,7 +5,7 @@ import { Client } from "../apiv2";
 import { logger } from "../logger";
 
 const API_VERSION = "v1beta1";
-const apiClient = new Client({ urlPrefix: runtimeconfigOrigin, apiVersion: API_VERSION });
+const apiClient = new Client({ urlPrefix: runtimeconfigOrigin(), apiVersion: API_VERSION });
 
 function listConfigs(projectId: string): Promise<unknown[] | undefined> {
   return apiClient

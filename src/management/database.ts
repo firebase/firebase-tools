@@ -44,7 +44,7 @@ export interface DatabaseInstance {
   state: DatabaseInstanceState;
 }
 
-const apiClient = new Client({ urlPrefix: rtdbManagementOrigin, apiVersion: MGMT_API_VERSION });
+const apiClient = new Client({ urlPrefix: rtdbManagementOrigin(), apiVersion: MGMT_API_VERSION });
 
 /**
  * Populate instanceDetails in commandOptions.

@@ -123,7 +123,7 @@ function getTriggerType(propertiesYaml: string | undefined) {
 }
 
 async function isStorageProvisioned(projectId: string): Promise<boolean> {
-  const client = new Client({ urlPrefix: firebaseStorageOrigin, apiVersion: "v1beta" });
+  const client = new Client({ urlPrefix: firebaseStorageOrigin(), apiVersion: "v1beta" });
   const resp = await client.get<{ buckets: { name: string }[] }>(`/projects/${projectId}/buckets`);
   return !!resp.body?.buckets?.find((bucket: any) => {
     const bucketResourceName = bucket.name;
@@ -136,7 +136,7 @@ async function isStorageProvisioned(projectId: string): Promise<boolean> {
 }
 
 async function isAuthProvisioned(projectId: string): Promise<boolean> {
-  const client = new Client({ urlPrefix: firedataOrigin, apiVersion: "v1" });
+  const client = new Client({ urlPrefix: firedataOrigin(), apiVersion: "v1" });
   const resp = await client.get<{ activation: { service: string }[] }>(
     `/projects/${projectId}/products`,
   );

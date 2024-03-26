@@ -80,7 +80,7 @@ describe("Remote Config Deploy", () => {
       const ETAG = header.etag;
       templateStub.withArgs(PROJECT_NUMBER).returns(currentTemplate);
       etagStub.withArgs(PROJECT_NUMBER, "6").returns(ETAG);
-      nock(remoteConfigApiOrigin)
+      nock(remoteConfigApiOrigin())
         .put(`/v1/projects/${PROJECT_NUMBER}/remoteConfig`)
         .matchHeader("If-Match", ETAG)
         .reply(200, expectedTemplateInfo);
@@ -93,7 +93,7 @@ describe("Remote Config Deploy", () => {
 
     it("should publish the latest template with * etag", async () => {
       templateStub.withArgs(PROJECT_NUMBER).returns(currentTemplate);
-      nock(remoteConfigApiOrigin)
+      nock(remoteConfigApiOrigin())
         .put(`/v1/projects/${PROJECT_NUMBER}/remoteConfig`)
         .matchHeader("If-Match", "*")
         .reply(200, expectedTemplateInfo);
@@ -114,7 +114,7 @@ describe("Remote Config Deploy", () => {
     it("should reject if the api call fails", async () => {
       const ETAG = header.etag;
       etagStub.withArgs(PROJECT_NUMBER, "6").returns(ETAG);
-      nock(remoteConfigApiOrigin)
+      nock(remoteConfigApiOrigin())
         .put(`/v1/projects/${PROJECT_NUMBER}/remoteConfig`)
         .matchHeader("If-Match", ETAG)
         .reply(400);

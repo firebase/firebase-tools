@@ -774,7 +774,7 @@ describe("cloudfunctionsv2", () => {
 
   describe("listFunctions", () => {
     it("should pass back an error with the correct status", async () => {
-      nock(functionsV2Origin)
+      nock(functionsV2Origin())
         .get("/v2/projects/foo/locations/-/functions")
         .query({ filter: `environment="GEN_2"` })
         .reply(403, { error: "You don't have permissions." });

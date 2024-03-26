@@ -37,7 +37,7 @@ const HOSTING_GITHUB_ACTION_NAME = "FirebaseExtended/action-hosting-deploy@v0";
 
 const SERVICE_ACCOUNT_MAX_KEY_NUMBER = 10;
 
-const githubApiClient = new Client({ urlPrefix: githubApiOrigin, auth: false });
+const githubApiClient = new Client({ urlPrefix: githubApiOrigin(), auth: false });
 
 /**
  * Assists in setting up a GitHub workflow by doing the following:

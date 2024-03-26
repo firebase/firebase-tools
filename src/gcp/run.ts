@@ -9,7 +9,7 @@ import { logger } from "../logger";
 const API_VERSION = "v1";
 
 const client = new Client({
-  urlPrefix: runOrigin,
+  urlPrefix: runOrigin(),
   auth: true,
   apiVersion: API_VERSION,
 });

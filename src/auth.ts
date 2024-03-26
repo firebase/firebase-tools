@@ -275,10 +275,10 @@ function queryParamString(args: { [key: string]: string | undefined }) {
 
 function getLoginUrl(callbackUrl: string, userHint?: string) {
   return (
-    authOrigin +
+    authOrigin() +
     "/o/oauth2/auth?" +
     queryParamString({
-      client_id: clientId,
+      client_id: clientId(),
       scope: SCOPES.join(" "),
       response_type: "code",
       state: _nonce,
@@ -295,8 +295,8 @@ async function getTokensFromAuthorizationCode(
 ) {
   const params: Record<string, string> = {
     code: code,
-    client_id: clientId,
-    client_secret: clientSecret,
+    client_id: clientId(),
+    client_secret: clientSecret(),
     redirect_uri: callbackUrl,
     grant_type: "authorization_code",
   };
@@ -307,7 +307,7 @@ async function getTokensFromAuthorizationCode(
 
   let res: apiv2.ClientResponse<TokensWithTTL>;
   try {
-    const client = new apiv2.Client({ urlPrefix: authOrigin, auth: false });
+    const client = new apiv2.Client({ urlPrefix: authOrigin(), auth: false });
     const form = new FormData();
     for (const [k, v] of Object.entries(params)) {
       form.append(k, v);
@@ -344,10 +344,10 @@ const GITHUB_SCOPES = ["read:user", "repo", "public_repo"];
 
 function getGithubLoginUrl(callbackUrl: string) {
   return (
-    githubOrigin +
+    githubOrigin() +
     "/login/oauth/authorize?" +
     queryParamString({
-      client_id: githubClientId,
+      client_id: githubClientId(),
       state: _nonce,
       redirect_uri: callbackUrl,
       scope: GITHUB_SCOPES.join(" "),
@@ -356,10 +356,10 @@ function getGithubLoginUrl(callbackUrl: string) {
 }
 
 async function getGithubTokensFromAuthorizationCode(code: string, callbackUrl: string) {
-  const client = new apiv2.Client({ urlPrefix: githubOrigin, auth: false });
+  const client = new apiv2.Client({ urlPrefix: githubOrigin(), auth: false });
   const data = {
-    client_id: githubClientId,
-    client_secret: githubClientSecret,
+    client_id: githubClientId(),
+    client_secret: githubClientSecret(),
     code,
     redirect_uri: callbackUrl,
     state: _nonce,
@@ -400,7 +400,7 @@ function urlsafeBase64(base64string: string) {
 
 async function loginRemotely(): Promise<UserCredentials> {
   const authProxyClient = new apiv2.Client({
-    urlPrefix: authProxyOrigin,
+    urlPrefix: authProxyOrigin(),
     auth: false,
   });
 
@@ -415,7 +415,7 @@ async function loginRemotely(): Promise<UserCredentials> {
     })
   ).body?.token;
 
-  const loginUrl = `${authProxyOrigin}/login?code_challenge=${codeChallenge}&session=${sessionId}&attest=${attestToken}`;
+  const loginUrl = `${authProxyOrigin()}/login?code_challenge=${codeChallenge}&session=${sessionId}&attest=${attestToken}`;
 
   logger.info();
   logger.info("To sign in to the Firebase CLI:");
@@ -439,7 +439,7 @@ async function loginRemotely(): Promise<UserCredentials> {
   try {
     const tokens = await getTokensFromAuthorizationCode(
       code,
-      `${authProxyOrigin}/complete`,
+      `${authProxyOrigin()}/complete`,
       codeVerifier,
     );
 
@@ -640,11 +640,11 @@ async function refreshTokens(
 ): Promise<TokensWithExpiration> {
   logger.debug("> refreshing access token with scopes:", JSON.stringify(authScopes));
   try {
-    const client = new apiv2.Client({ urlPrefix: googleOrigin, auth: false });
+    const client = new apiv2.Client({ urlPrefix: googleOrigin(), auth: false });
     const data = {
       refresh_token: refreshToken,
-      client_id: clientId,
-      client_secret: clientSecret,
+      client_id: clientId(),
+      client_secret: clientSecret(),
       grant_type: "refresh_token",
       scope: (authScopes || []).join(" "),
     };
@@ -724,7 +724,7 @@ export async function logout(refreshToken: string) {
   }
   logoutCurrentSession(refreshToken);
   try {
-    const client = new apiv2.Client({ urlPrefix: authOrigin, auth: false });
+    const client = new apiv2.Client({ urlPrefix: authOrigin(), auth: false });
     await client.get("/o/oauth2/revoke", { queryParams: { token: refreshToken } });
   } catch (thrown: any) {
     const err: Error = thrown instanceof Error ? thrown : new Error(thrown);

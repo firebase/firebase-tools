@@ -36,7 +36,7 @@ describe("RemoteConfig Rollback", () => {
 
   describe("rollbackCurrentVersion", () => {
     it("should return a rollback to the version number specified", async () => {
-      nock(remoteConfigApiOrigin)
+      nock(remoteConfigApiOrigin())
         .post(`/v1/projects/${PROJECT_ID}/remoteConfig:rollback?versionNumber=${115}`)
         .reply(200, latestTemplate);
 
@@ -47,7 +47,7 @@ describe("RemoteConfig Rollback", () => {
 
     // TODO: there is no logic that this is testing. Is that intentional?
     it.skip("should reject invalid rollback version number", async () => {
-      nock(remoteConfigApiOrigin)
+      nock(remoteConfigApiOrigin())
         .post(`/v1/projects/${PROJECT_ID}/remoteConfig:rollback?versionNumber=${1000}`)
         .reply(200, latestTemplate);
 
@@ -63,7 +63,7 @@ describe("RemoteConfig Rollback", () => {
 
     // TODO: this also is not testing anything in the file. Is this intentional?
     it.skip("should return a rollback to the previous version", async () => {
-      nock(remoteConfigApiOrigin)
+      nock(remoteConfigApiOrigin())
         .post(`/v1/projects/${PROJECT_ID}/remoteConfig:rollback?versionNumber=${undefined}`)
         .reply(200, rollbackTemplate);
 
@@ -73,7 +73,7 @@ describe("RemoteConfig Rollback", () => {
     });
 
     it("should reject if the api call fails", async () => {
-      nock(remoteConfigApiOrigin)
+      nock(remoteConfigApiOrigin())
         .post(`/v1/projects/${PROJECT_ID}/remoteConfig:rollback?versionNumber=${4}`)
         .reply(404, {});
       await expect(remoteconfig.rollbackTemplate(PROJECT_ID, 4)).to.eventually.be.rejectedWith(

@@ -18,7 +18,7 @@ export interface TOS {
 export type PublisherTOS = TOS;
 export type AppDevTOS = TOS;
 
-const apiClient = new Client({ urlPrefix: extensionsTOSOrigin, apiVersion: VERSION });
+const apiClient = new Client({ urlPrefix: extensionsTOSOrigin(), apiVersion: VERSION });
 
 export async function getAppDeveloperTOSStatus(projectId: string): Promise<AppDevTOS> {
   const res = await apiClient.get<AppDevTOS>(`/projects/${projectId}/appdevtos`);

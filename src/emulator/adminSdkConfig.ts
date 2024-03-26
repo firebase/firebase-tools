@@ -56,7 +56,7 @@ async function getProjectAdminSdkConfig(projectId: string): Promise<AdminSdkConf
   const apiClient = new apiv2.Client({
     auth: true,
     apiVersion: "v1beta1",
-    urlPrefix: firebaseApiOrigin,
+    urlPrefix: firebaseApiOrigin(),
   });
   if (projectId.startsWith("demo-")) {
     logger.debug(

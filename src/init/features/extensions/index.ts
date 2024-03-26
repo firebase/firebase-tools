@@ -12,7 +12,7 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
   const projectId = setup?.rcfile?.projects?.default;
   if (projectId) {
     await requirePermissions({ ...options, project: projectId });
-    await Promise.all([ensure(projectId, extensionsOrigin, "unused", true)]);
+    await Promise.all([ensure(projectId, extensionsOrigin(), "unused", true)]);
   }
   return manifest.writeEmptyManifest(config, options);
 }

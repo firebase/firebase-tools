@@ -12,7 +12,7 @@ export const POLL_SETTINGS = {
 };
 
 const apiClient = new Client({
-  urlPrefix: serviceUsageOrigin,
+  urlPrefix: serviceUsageOrigin(),
   apiVersion: "v1",
 });
 

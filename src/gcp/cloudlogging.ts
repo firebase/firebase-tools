@@ -33,7 +33,7 @@ export async function listEntries(
   pageSize: number,
   order: string,
 ): Promise<LogEntry[]> {
-  const client = new Client({ urlPrefix: cloudloggingOrigin, apiVersion: API_VERSION });
+  const client = new Client({ urlPrefix: cloudloggingOrigin(), apiVersion: API_VERSION });
   try {
     const result = await client.post<
       { resourceNames: string[]; filter: string; orderBy: string; pageSize: number },

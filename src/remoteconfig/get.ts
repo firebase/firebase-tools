@@ -10,7 +10,7 @@ const TIMEOUT = 30000;
 const MAX_DISPLAY_ITEMS = 50;
 
 const apiClient = new Client({
-  urlPrefix: remoteConfigApiOrigin,
+  urlPrefix: remoteConfigApiOrigin(),
   apiVersion: "v1",
 });
 

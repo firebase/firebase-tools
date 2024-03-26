@@ -132,7 +132,7 @@ describe("accountImporter", () => {
 
     it("should call api.request multiple times", async () => {
       for (let i = 0; i < batches.length; i++) {
-        nock(googleOrigin)
+        nock(googleOrigin())
           .post("/identitytoolkit/v3/relyingparty/uploadAccount", {
             hashAlgorithm: "HMAC_SHA1",
             signerKey: "a2V5MTIz",
@@ -159,7 +159,7 @@ describe("accountImporter", () => {
         },
       };
       for (let i = 0; i < batches.length; i++) {
-        nock(googleOrigin)
+        nock(googleOrigin())
           .post("/identitytoolkit/v3/relyingparty/uploadAccount", {
             hashAlgorithm: "HMAC_SHA1",
             signerKey: "a2V5MTIz",

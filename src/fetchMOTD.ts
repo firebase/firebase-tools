@@ -42,7 +42,7 @@ export function fetchMOTD(): void {
       }
     }
   } else {
-    const origin = utils.addSubdomain(realtimeOrigin, "firebase-public");
+    const origin = utils.addSubdomain(realtimeOrigin(), "firebase-public");
     const c = new Client({ urlPrefix: origin, auth: false });
     c.get("/cli.json")
       .then((res) => {

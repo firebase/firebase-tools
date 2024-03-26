@@ -32,7 +32,7 @@ export const command = new Command("hosting:disable")
       return;
     }
 
-    const c = new Client({ urlPrefix: hostingApiOrigin, apiVersion: "v1beta1", auth: true });
+    const c = new Client({ urlPrefix: hostingApiOrigin(), apiVersion: "v1beta1", auth: true });
     await c.post(`/sites/${siteToDisable}/releases`, { type: "SITE_DISABLE" });
 
     utils.logSuccess(

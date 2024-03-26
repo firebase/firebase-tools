@@ -120,7 +120,7 @@ describe("App management", () => {
         bundleId: IOS_APP_BUNDLE_ID,
         appStoreId: IOS_APP_STORE_ID,
       };
-      nock(firebaseApiOrigin)
+      nock(firebaseApiOrigin())
         .post(`/v1beta1/projects/${PROJECT_ID}/iosApps`)
         .reply(200, { name: OPERATION_RESOURCE_NAME_1 });
       pollOperationStub.onFirstCall().resolves(expectedAppMetadata);
@@ -135,14 +135,14 @@ describe("App management", () => {
       expect(nock.isDone()).to.be.true;
       expect(pollOperationStub).to.be.calledOnceWith({
         pollerName: "Create iOS app Poller",
-        apiOrigin: api.firebaseApiOrigin,
+        apiOrigin: api.firebaseApiOrigin(),
         apiVersion: "v1beta1",
         operationResourceName: OPERATION_RESOURCE_NAME_1,
       });
     });
 
     it("should reject if app creation api call fails", async () => {
-      nock(firebaseApiOrigin).post(`/v1beta1/projects/${PROJECT_ID}/iosApps`).reply(404);
+      nock(firebaseApiOrigin()).post(`/v1beta1/projects/${PROJECT_ID}/iosApps`).reply(404);
 
       let err;
       try {
@@ -165,7 +165,7 @@ describe("App management", () => {
 
     it("should reject if polling throws error", async () => {
       const expectedError = new Error("Permission denied");
-      nock(firebaseApiOrigin)
+      nock(firebaseApiOrigin())
         .post(`/v1beta1/projects/${PROJECT_ID}/iosApps`)
         .reply(200, { name: OPERATION_RESOURCE_NAME_1 });
       pollOperationStub.onFirstCall().rejects(expectedError);
@@ -188,7 +188,7 @@ describe("App management", () => {
       expect(nock.isDone()).to.be.true;
       expect(pollOperationStub).to.be.calledOnceWith({
         pollerName: "Create iOS app Poller",
-        apiOrigin: api.firebaseApiOrigin,
+        apiOrigin: api.firebaseApiOrigin(),
         apiVersion: "v1beta1",
         operationResourceName: OPERATION_RESOURCE_NAME_1,
       });
@@ -202,7 +202,7 @@ describe("App management", () => {
         displayName: ANDROID_APP_DISPLAY_NAME,
         packageName: ANDROID_APP_PACKAGE_NAME,
       };
-      nock(firebaseApiOrigin)
+      nock(firebaseApiOrigin())
         .post(`/v1beta1/projects/${PROJECT_ID}/androidApps`)
         .reply(200, { name: OPERATION_RESOURCE_NAME_1 });
       pollOperationStub.onFirstCall().resolves(expectedAppMetadata);
@@ -216,14 +216,14 @@ describe("App management", () => {
       expect(nock.isDone()).to.be.true;
       expect(pollOperationStub).to.be.calledOnceWith({
         pollerName: "Create Android app Poller",
-        apiOrigin: api.firebaseApiOrigin,
+        apiOrigin: api.firebaseApiOrigin(),
         apiVersion: "v1beta1",
         operationResourceName: OPERATION_RESOURCE_NAME_1,
       });
     });
 
     it("should reject if app creation api call fails", async () => {
-      nock(firebaseApiOrigin).post(`/v1beta1/projects/${PROJECT_ID}/androidApps`).reply(404);
+      nock(firebaseApiOrigin()).post(`/v1beta1/projects/${PROJECT_ID}/androidApps`).reply(404);
 
       let err;
       try {
@@ -245,7 +245,7 @@ describe("App management", () => {
 
     it("should reject if polling throws error", async () => {
       const expectedError = new Error("Permission denied");
-      nock(firebaseApiOrigin)
+      nock(firebaseApiOrigin())
         .post(`/v1beta1/projects/${PROJECT_ID}/androidApps`)
         .reply(200, { name: OPERATION_RESOURCE_NAME_1 });
       pollOperationStub.onFirstCall().rejects(expectedError);
@@ -267,7 +267,7 @@ describe("App management", () => {
       expect(nock.isDone()).to.be.true;
       expect(pollOperationStub).to.be.calledOnceWith({
         pollerName: "Create Android app Poller",
-        apiOrigin: api.firebaseApiOrigin,
+        apiOrigin: api.firebaseApiOrigin(),
         apiVersion: "v1beta1",
         operationResourceName: OPERATION_RESOURCE_NAME_1,
       });
@@ -280,7 +280,7 @@ describe("App management", () => {
         appId: APP_ID,
         displayName: WEB_APP_DISPLAY_NAME,
       };
-      nock(firebaseApiOrigin)
+      nock(firebaseApiOrigin())
         .post(`/v1beta1/projects/${PROJECT_ID}/webApps`)
         .reply(200, { name: OPERATION_RESOURCE_NAME_1 });
       pollOperationStub.onFirstCall().resolves(expectedAppMetadata);
@@ -291,14 +291,14 @@ describe("App management", () => {
       expect(nock.isDone()).to.be.true;
       expect(pollOperationStub).to.be.calledOnceWith({
         pollerName: "Create Web app Poller",
-        apiOrigin: api.firebaseApiOrigin,
+        apiOrigin: api.firebaseApiOrigin(),
         apiVersion: "v1beta1",
         operationResourceName: OPERATION_RESOURCE_NAME_1,
       });
     });
 
     it("should reject if app creation api call fails", async () => {
-      nock(firebaseApiOrigin).post(`/v1beta1/projects/${PROJECT_ID}/webApps`).reply(404);
+      nock(firebaseApiOrigin()).post(`/v1beta1/projects/${PROJECT_ID}/webApps`).reply(404);
 
       let err;
       try {
@@ -317,7 +317,7 @@ describe("App management", () => {
 
     it("should reject if polling throws error", async () => {
       const expectedError = new Error("Permission denied");
-      nock(firebaseApiOrigin)
+      nock(firebaseApiOrigin())
         .post(`/v1beta1/projects/${PROJECT_ID}/webApps`)
         .reply(200, { name: OPERATION_RESOURCE_NAME_1 });
       pollOperationStub.onFirstCall().rejects(expectedError);
@@ -336,7 +336,7 @@ describe("App management", () => {
       expect(nock.isDone()).to.be.true;
       expect(pollOperationStub).to.be.calledOnceWith({
         pollerName: "Create Web app Poller",
-        apiOrigin: api.firebaseApiOrigin,
+        apiOrigin: api.firebaseApiOrigin(),
         apiVersion: "v1beta1",
         operationResourceName: OPERATION_RESOURCE_NAME_1,
       });
@@ -351,7 +351,7 @@ describe("App management", () => {
         ...generateAndroidAppList(appCountsPerPlatform),
         ...generateWebAppList(appCountsPerPlatform),
       ];
-      nock(firebaseApiOrigin)
+      nock(firebaseApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}:searchApps`)
         .query({ pageSize: APP_LIST_PAGE_SIZE })
         .reply(200, { apps: expectedAppList });
@@ -371,7 +371,7 @@ describe("App management", () => {
         delete iosApp.platform;
         return iosApp;
       });
-      nock(firebaseApiOrigin)
+      nock(firebaseApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/iosApps`)
         .query({ pageSize: APP_LIST_PAGE_SIZE })
         .reply(200, { apps: apiResponseAppList });
@@ -391,7 +391,7 @@ describe("App management", () => {
         delete androidApps.platform;
         return androidApps;
       });
-      nock(firebaseApiOrigin)
+      nock(firebaseApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/androidApps`)
         .query({ pageSize: APP_LIST_PAGE_SIZE })
         .reply(200, { apps: apiResponseAppList });
@@ -411,7 +411,7 @@ describe("App management", () => {
         delete webApp.platform;
         return webApp;
       });
-      nock(firebaseApiOrigin)
+      nock(firebaseApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/webApps`)
         .query({ pageSize: APP_LIST_PAGE_SIZE })
         .reply(200, { apps: apiResponseAppList });
@@ -431,11 +431,11 @@ describe("App management", () => {
         ...generateAndroidAppList(appCountsPerPlatform),
         ...generateWebAppList(appCountsPerPlatform),
       ];
-      nock(firebaseApiOrigin)
+      nock(firebaseApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}:searchApps`)
         .query({ pageSize })
         .reply(200, { apps: expectedAppList.slice(0, pageSize), nextPageToken });
-      nock(firebaseApiOrigin)
+      nock(firebaseApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}:searchApps`)
         .query({ pageSize, pageToken: nextPageToken })
         .reply(200, { apps: expectedAppList.slice(pageSize, appCountsPerPlatform * 3) });
@@ -447,7 +447,7 @@ describe("App management", () => {
     });
 
     it("should reject if the first api call fails", async () => {
-      nock(firebaseApiOrigin)
+      nock(firebaseApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}:searchApps`)
         .query({ pageSize: APP_LIST_PAGE_SIZE })
         .reply(404);
@@ -471,11 +471,11 @@ describe("App management", () => {
       const pageSize = 5;
       const nextPageToken = "next-page-token";
       const expectedAppList = generateAndroidAppList(appCounts);
-      nock(firebaseApiOrigin)
+      nock(firebaseApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}:searchApps`)
         .query({ pageSize })
         .reply(200, { apps: expectedAppList.slice(0, pageSize), nextPageToken });
-      nock(firebaseApiOrigin)
+      nock(firebaseApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}:searchApps`)
         .query({ pageSize, pageToken: nextPageToken })
         .reply(404);
@@ -495,7 +495,7 @@ describe("App management", () => {
     });
 
     it("should reject if the list iOS apps fails", async () => {
-      nock(firebaseApiOrigin)
+      nock(firebaseApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/iosApps`)
         .query({ pageSize: APP_LIST_PAGE_SIZE })
         .reply(404);
@@ -515,7 +515,7 @@ describe("App management", () => {
     });
 
     it("should reject if the list Android apps fails", async () => {
-      nock(firebaseApiOrigin)
+      nock(firebaseApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/androidApps`)
         .query({ pageSize: APP_LIST_PAGE_SIZE })
         .reply(404);
@@ -535,7 +535,7 @@ describe("App management", () => {
     });
 
     it("should reject if the list Web apps fails", async () => {
-      nock(firebaseApiOrigin)
+      nock(firebaseApiOrigin())
         .get(`/v1beta1/projects/${PROJECT_ID}/webApps`)
         .query({ pageSize: APP_LIST_PAGE_SIZE })
         .reply(404);
@@ -559,7 +559,7 @@ describe("App management", () => {
     it("should resolve with iOS app configuration if it succeeds", async () => {
       const expectedConfigFileContent = "test iOS configuration";
       const mockBase64Content = Buffer.from(expectedConfigFileContent).toString("base64");
-      nock(firebaseApiOrigin).get(`/v1beta1/projects/-/iosApps/${APP_ID}/config`).reply(200, {
+      nock(firebaseApiOrigin()).get(`/v1beta1/projects/-/iosApps/${APP_ID}/config`).reply(200, {
         configFilename: "GoogleService-Info.plist",
         configFileContents: mockBase64Content,
       });
@@ -580,7 +580,7 @@ describe("App management", () => {
         appId: APP_ID,
         apiKey: "api-key",
       };
-      nock(firebaseApiOrigin)
+      nock(firebaseApiOrigin())
         .get(`/v1beta1/projects/-/webApps/${APP_ID}/config`)
         .reply(200, mockWebConfig);
       readFileSyncStub.onFirstCall().returns("{/*--CONFIG--*/}");
@@ -600,7 +600,7 @@ describe("App management", () => {
   describe("getAppConfig", () => {
     it("should resolve with iOS app configuration if it succeeds", async () => {
       const mockBase64Content = Buffer.from("test iOS configuration").toString("base64");
-      nock(firebaseApiOrigin).get(`/v1beta1/projects/-/iosApps/${APP_ID}/config`).reply(200, {
+      nock(firebaseApiOrigin()).get(`/v1beta1/projects/-/iosApps/${APP_ID}/config`).reply(200, {
         configFilename: "GoogleService-Info.plist",
         configFileContents: mockBase64Content,
       });
@@ -616,7 +616,7 @@ describe("App management", () => {
 
     it("should resolve with Android app configuration if it succeeds", async () => {
       const mockBase64Content = Buffer.from("test Android configuration").toString("base64");
-      nock(firebaseApiOrigin).get(`/v1beta1/projects/-/androidApps/${APP_ID}/config`).reply(200, {
+      nock(firebaseApiOrigin()).get(`/v1beta1/projects/-/androidApps/${APP_ID}/config`).reply(200, {
         configFilename: "google-services.json",
         configFileContents: mockBase64Content,
       });
@@ -636,7 +636,7 @@ describe("App management", () => {
         appId: APP_ID,
         apiKey: "api-key",
       };
-      nock(firebaseApiOrigin)
+      nock(firebaseApiOrigin())
         .get(`/v1beta1/projects/-/webApps/${APP_ID}/config`)
         .reply(200, mockWebConfig);
 
@@ -647,7 +647,7 @@ describe("App management", () => {
     });
 
     it("should reject if api request fails", async () => {
-      nock(firebaseApiOrigin).get(`/v1beta1/projects/-/androidApps/${APP_ID}/config`).reply(404);
+      nock(firebaseApiOrigin()).get(`/v1beta1/projects/-/androidApps/${APP_ID}/config`).reply(404);
 
       let err;
       try {

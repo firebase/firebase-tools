@@ -116,7 +116,7 @@ export class ArtifactRegistryCleaner {
   }
 
   static POLLER_OPTIONS = {
-    apiOrigin: artifactRegistryDomain,
+    apiOrigin: artifactRegistryDomain(),
     apiVersion: artifactregistry.API_VERSION,
     masterTimeout: 5 * 60 * 1_000,
   };
@@ -186,7 +186,7 @@ export class ContainerRegistryCleaner {
   private helper(location: string): DockerHelper {
     const subdomain = docker.GCR_SUBDOMAIN_MAPPING[location] || "us";
     if (!this.helpers[subdomain]) {
-      const origin = `https://${subdomain}.${containerRegistryDomain}`;
+      const origin = `https://${subdomain}.${containerRegistryDomain()}`;
       this.helpers[subdomain] = new DockerHelper(origin);
     }
     return this.helpers[subdomain];
@@ -239,7 +239,7 @@ export class ContainerRegistryCleaner {
 
 function getHelper(cache: Record<string, DockerHelper>, subdomain: string): DockerHelper {
   if (!cache[subdomain]) {
-    cache[subdomain] = new DockerHelper(`https://${subdomain}.${containerRegistryDomain}`);
+    cache[subdomain] = new DockerHelper(`https://${subdomain}.${containerRegistryDomain()}`);
   }
   return cache[subdomain];
 }
@@ -302,7 +302,7 @@ export async function listGcfPaths(
   }
 
   return gcfDirs.map((loc) => {
-    return `${docker.GCR_SUBDOMAIN_MAPPING[loc]}.${containerRegistryDomain}/${projectId}/gcf/${loc}`;
+    return `${docker.GCR_SUBDOMAIN_MAPPING[loc]}.${containerRegistryDomain()}/${projectId}/gcf/${loc}`;
   });
 }
 

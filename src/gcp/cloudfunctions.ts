@@ -20,7 +20,7 @@ import {
 } from "../functions/constants";
 
 export const API_VERSION = "v1";
-const client = new Client({ urlPrefix: functionsOrigin, apiVersion: API_VERSION });
+const client = new Client({ urlPrefix: functionsOrigin(), apiVersion: API_VERSION });
 
 interface Operation {
   name: string;

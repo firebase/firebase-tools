@@ -130,7 +130,7 @@ export async function doSetup(setup: DatabaseSetup, config: Config): Promise<voi
 
   let instanceDetails;
   if (setup.projectId) {
-    await ensure(setup.projectId, rtdbManagementOrigin, "database", false);
+    await ensure(setup.projectId, rtdbManagementOrigin(), "database", false);
     logger.info();
     setup.instance =
       setup.instance || (await getDefaultDatabaseInstance({ project: setup.projectId }));
