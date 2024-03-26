@@ -254,5 +254,5 @@ export async function getGitRepositoryLink(
  * Returns email associated with the Developer Connect Service Agent
  */
 export function serviceAgentEmail(projectNumber: string): string {
-  return `service-${projectNumber}@${developerConnectP4SAOrigin}`;
+  return `service-${projectNumber}@${developerConnectP4SAOrigin()}`;
 }
