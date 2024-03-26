@@ -1,8 +1,8 @@
 schema:
   - ./dataconnect/schema/**/*.gql
-  - ./.dataconnect/**/*.gql
+  - ./dataconnect/.dataconnect/**/*.gql
 documents:
-  - ./dataconnect/operations/**/*.gql
+  - ./dataconnect/connectors/**/*.gql
 extensions:
   endpoints:
     default:
