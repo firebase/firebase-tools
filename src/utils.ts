@@ -72,7 +72,7 @@ export function envOverride(
   coerce?: (value: string, defaultValue: string) => any,
 ): string {
   const currentEnvValue =
-    (isVSCodeExtension() && vscodeEnvVars[envname]) ? vscodeEnvVars[envname] : process.env[envname];
+    isVSCodeExtension() && vscodeEnvVars[envname] ? vscodeEnvVars[envname] : process.env[envname];
   if (currentEnvValue && currentEnvValue.length) {
     envOverrides.push(envname);
     if (coerce) {
