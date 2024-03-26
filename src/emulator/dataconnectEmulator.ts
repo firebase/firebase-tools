@@ -23,7 +23,7 @@ export class DataConnectEmulator implements EmulatorInstance {
       http_port: port,
       grpc_port: port + 1,
       config_dir: this.args.configDir,
-      local_connection_string: dataConnectLocalConnString,
+      local_connection_string: dataConnectLocalConnString(),
     });
   }
 

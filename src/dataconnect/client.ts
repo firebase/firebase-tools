@@ -5,7 +5,7 @@ import * as types from "./types";
 
 const DATACONNECT_API_VERSION = "v1alpha";
 const dataconnectClient = new Client({
-  urlPrefix: dataconnectOrigin,
+  urlPrefix: dataconnectOrigin(),
   apiVersion: DATACONNECT_API_VERSION,
   auth: true,
 });
@@ -59,7 +59,7 @@ export async function createService(
     },
   );
   const pollRes = await operationPoller.pollOperation<types.Service>({
-    apiOrigin: dataconnectOrigin,
+    apiOrigin: dataconnectOrigin(),
     apiVersion: DATACONNECT_API_VERSION,
     operationResourceName: op.body.name,
   });
@@ -75,7 +75,7 @@ export async function deleteService(
     `projects/${projectId}/locations/${locationId}/services/${serviceId}?force=true`,
   );
   const pollRes = await operationPoller.pollOperation<types.Service>({
-    apiOrigin: dataconnectOrigin,
+    apiOrigin: dataconnectOrigin(),
     apiVersion: DATACONNECT_API_VERSION,
     operationResourceName: op.body.name,
   });
@@ -105,7 +105,7 @@ export async function upsertSchema(
     return;
   }
   return operationPoller.pollOperation<types.Schema>({
-    apiOrigin: dataconnectOrigin,
+    apiOrigin: dataconnectOrigin(),
     apiVersion: DATACONNECT_API_VERSION,
     operationResourceName: op.body.name,
   });
@@ -136,7 +136,7 @@ export async function upsertConnector(connector: types.Connector) {
     connector,
   );
   const pollRes = await operationPoller.pollOperation<types.Service>({
-    apiOrigin: dataconnectOrigin,
+    apiOrigin: dataconnectOrigin(),
     apiVersion: DATACONNECT_API_VERSION,
     operationResourceName: op.body.name,
   });
