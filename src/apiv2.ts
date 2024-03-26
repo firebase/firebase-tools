@@ -227,7 +227,7 @@ export class Client {
       );
     }
 
-    let internalReqOptions: InternalClientRequestOptions<ReqT> & ClientRequestOptions<ReqT> = Object.assign(reqOptions, {
+    let internalReqOptions: InternalClientRequestOptions<ReqT> = Object.assign(reqOptions, {
       headers: new Headers(reqOptions.headers),
     });
 
