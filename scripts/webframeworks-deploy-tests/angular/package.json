@@ -24,7 +24,7 @@
     "@angular/platform-server": "^17.0.5",
     "@angular/router": "^17.0.5",
     "@angular/ssr": "^17.0.5",
-    "express": "^4.15.2",
+    "express": "^4.19.2",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.14.2"
