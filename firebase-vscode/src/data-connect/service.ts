@@ -16,7 +16,8 @@ import { dataConnectConfigs } from "../core/config";
 import { PRODUCTION_INSTANCE, selectedInstance } from "./connect-instance";
 
 // TODO: THIS SHOULDN'T BE HERE
-const STAGING_API = "staging-firebasedataconnect.sandbox.googleapis.com";
+export const STAGING_API =
+  "https://staging-firebasedataconnect.sandbox.googleapis.com";
 /**
  * DataConnect Emulator service
  */
@@ -98,7 +99,8 @@ export class DataConnectService {
    * If the JSON is invalid, will throw.
    */
   private _serializeBody(body: { variables?: string; [key: string]: unknown }) {
-    if (!body.variables) {
+    if (!body.variables || body.variables.trim().length === 0) {
+      body.variables = undefined;
       return JSON.stringify(body);
     }
 

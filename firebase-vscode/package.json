@@ -3,7 +3,7 @@
   "displayName": "firebase-vscode",
   "publisher": "firebase",
   "description": "VSCode Extension for Firebase",
-  "version": "0.0.27",
+  "version": "0.1.0",
   "engines": {
     "vscode": "^1.69.0"
   },
@@ -161,6 +161,12 @@
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "firebase.dataConnect.explorerView",
+        "contents": "Start the emulator in a Data Connect project to view your schema."
+      }
+    ],
     "jsonValidation": [
       {
         "fileMatch": "firebase.json",
@@ -202,7 +208,9 @@
     "@vscode/codicons": "0.0.30",
     "@vscode/webview-ui-toolkit": "^1.2.1",
     "classnames": "^2.3.2",
-    "graphql-language-service-server": "graphql-language-service-server-2.12.0.tgz",
+    "exponential-backoff": "3.1.1",
+    "graphql-language-service": "file:graphql-language-service-5.2.0.tgz",
+    "graphql-language-service-server": "file:graphql-language-service-server-2.12.0.tgz",
     "js-yaml": "^4.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

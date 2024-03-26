@@ -4,7 +4,7 @@ import { ExtensionBrokerImpl } from "../extension-broker";
 import { registerExecution } from "./execution";
 import { registerExplorer } from "./explorer";
 import { registerAdHoc } from "./ad-hoc-mutations";
-import { DataConnectService as FdcService } from "./service";
+import { DataConnectService as FdcService, STAGING_API } from "./service";
 import {
   OperationCodeLensProvider,
   SchemaCodeLensProvider,
@@ -18,9 +18,14 @@ import { setupLanguageClient } from "./language-client";
 import { EmulatorsController } from "../core/emulators";
 import { registerFdcDeploy } from "./deploy";
 import * as graphql from "graphql";
-import { ResolvedDataConnectConfigs, dataConnectConfigs } from "./config";
+import {
+  ResolvedDataConnectConfigs,
+  VSCODE_ENV_VARS,
+  dataConnectConfigs,
+} from "./config";
 import { locationToRange } from "../utils/graphql";
 import { runDataConnectCompiler } from "./core-compiler";
+import { setVSCodeEnvVars } from "../../../src/utils";
 
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
@@ -155,7 +160,15 @@ export function registerFdc(
       }
     }),
   });
+  // TODO: Temporary hack to update postgres string & staging api
+  setVSCodeEnvVars(VSCODE_ENV_VARS.DATA_CONNECT_ORIGIN, STAGING_API);
 
+  broker.on("updateDataConnectPostgresString", (connectionString: string) => {
+    setVSCodeEnvVars(
+      VSCODE_ENV_VARS.POSTGRES_CONNECTION_STRING,
+      connectionString,
+    );
+  });
   const selectedProjectStatus = vscode.window.createStatusBarItem(
     "projectPicker",
     vscode.StatusBarAlignment.Left,

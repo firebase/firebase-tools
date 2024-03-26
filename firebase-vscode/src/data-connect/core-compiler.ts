@@ -9,15 +9,14 @@ import { dataConnectConfigs } from "./config";
 type DiagnosticTuple = [Uri, Diagnostic[]];
 type CompilerResponse = { result?: { errors?: GraphQLError[] } };
 
+const fdcDiagnosticCollection =
+  vscode.languages.createDiagnosticCollection("Dataconnect");
 /**
  *
  * @param fdcEndpoint FDC Emulator endpoint
  */
 export async function runDataConnectCompiler(fdcEndpoint: string) {
-  const fdcDiagnosticCollection =
-    vscode.languages.createDiagnosticCollection("Dataconnect");
   const obsErrors = await getCompilerStream(fdcEndpoint);
-
   const obsConverter = {
     next(nextCompilerResponse: CompilerResponse) {
       if (nextCompilerResponse.result && nextCompilerResponse.result.errors) {
