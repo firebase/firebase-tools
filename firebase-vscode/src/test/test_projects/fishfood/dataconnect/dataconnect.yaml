@@ -3,7 +3,9 @@ serviceId: us-east
 connectorDirs:
   - ./connectors/a
 schema:
-  main:
-    source: ./schema
-    connection:
-      connectionString: postgresql://postgres:mypassword@localhost:5432/emulator?sslmode=disable
+  source: ./schema
+  datasource:
+  postgresql:
+    database: "my-database"
+    cloudSql:
+      instanceId: "dataconnect-test"
