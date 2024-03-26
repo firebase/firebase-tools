@@ -168,7 +168,7 @@ export class DataConnectService {
       });
       const resp = await fetch(
         (await firstWhereDefined(this.endpoint)) +
-          `/v1/projects/p/locations/l/services/${serviceId}:executeGraphqlRead`,
+          `/v1alpha/projects/p/locations/l/services/${serviceId}:executeGraphqlRead`,
         {
           method: "POST",
           headers: {
@@ -208,7 +208,7 @@ export class DataConnectService {
     });
     const resp = await fetch(
       (await firstWhereDefined(this.endpoint)) +
-        `/v1/projects/p/locations/l/services/${service.value.serviceId}:executeGraphql`,
+        `/v1alpha/projects/p/locations/l/services/${service.value.serviceId}:executeGraphql`,
       {
         method: "POST",
         headers: {
