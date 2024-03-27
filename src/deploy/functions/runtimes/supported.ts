@@ -131,7 +131,7 @@ export function runtimeIsLanguage<L extends Language>(
 export function latest<T extends Language>(
   language: T,
   runtimes: Runtime[] = Object.keys(RUNTIMES) as Runtime[],
-): `${T}${number}` & Runtime {
+): RuntimeOf<T> & Runtime {
   const sorted = runtimes
     .filter((s) => runtimeIsLanguage(s, language))
     // node8 is less than node20

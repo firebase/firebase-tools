@@ -441,16 +441,14 @@ export async function loadCodebases(
       projectDir: options.config.projectDir,
     };
     const firebaseJsonRuntime = codebaseConfig.runtime;
-    if (firebaseJsonRuntime) {
-      if (!supported.isRuntime(firebaseJsonRuntime as string)) {
-        throw new FirebaseError(
-          `Functions codebase ${codebase} has invalid runtime ` +
-            `${firebaseJsonRuntime} specified in firebase.json. Valid values are: ` +
-            Object.keys(supported.RUNTIMES)
-              .map((s) => `- ${s}`)
-              .join("\n"),
-        );
-      }
+    if (firebaseJsonRuntime && !supported.isRuntime(firebaseJsonRuntime as string)) {
+      throw new FirebaseError(
+        `Functions codebase ${codebase} has invalid runtime ` +
+          `${firebaseJsonRuntime} specified in firebase.json. Valid values are: ` +
+          Object.keys(supported.RUNTIMES)
+            .map((s) => `- ${s}`)
+            .join("\n"),
+      );
     }
     const runtimeDelegate = await runtimes.getRuntimeDelegate(delegateContext);
     logger.debug(`Validating ${runtimeDelegate.language} source`);

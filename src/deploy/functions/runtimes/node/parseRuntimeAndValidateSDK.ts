@@ -8,7 +8,7 @@ import * as supported from "../supported";
 const cjson = require("cjson");
 
 const supportedNodeVersions: string[] = Object.keys(supported.RUNTIMES)
-  .filter((s) => s.startsWith("nodejs"))
+  .filter((s) => supported.runtimeIsLanguage(s as supported.Runtime, "nodejs"))
   .filter((s) => !supported.isDecommissioned(s as supported.Runtime))
   .map((s) => s.substring("nodejs".length));
 

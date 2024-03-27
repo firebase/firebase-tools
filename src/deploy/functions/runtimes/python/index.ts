@@ -29,7 +29,7 @@ export async function tryCreateDelegate(
     logger.debug("Customer code is not Python code.");
     return;
   }
-  const runtime = context.runtime ? context.runtime : supported.latest("python");
+  const runtime = context.runtime ?? supported.latest("python");
   if (!supported.isRuntime(runtime)) {
     throw new FirebaseError(`Runtime ${runtime as string} is not a valid Python runtime`);
   }
