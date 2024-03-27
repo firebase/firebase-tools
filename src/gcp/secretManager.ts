@@ -62,7 +62,7 @@ interface AccessSecretVersionResponse {
 
 const API_VERSION = "v1";
 
-const client = new Client({ urlPrefix: secretManagerOrigin, apiVersion: API_VERSION });
+const client = new Client({ urlPrefix: secretManagerOrigin(), apiVersion: API_VERSION });
 
 /**
  * Returns secret resource of given name in the project.

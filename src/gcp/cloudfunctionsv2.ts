@@ -24,7 +24,7 @@ export const API_VERSION = "v2";
 const DEFAULT_MAX_INSTANCE_COUNT = 100;
 
 const client = new Client({
-  urlPrefix: functionsV2Origin,
+  urlPrefix: functionsV2Origin(),
   auth: true,
   apiVersion: API_VERSION,
 });

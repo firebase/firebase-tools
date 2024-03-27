@@ -149,9 +149,12 @@ interface StorageServiceAccountResponse {
 }
 
 export async function getDefaultBucket(projectId: string): Promise<string> {
-  await ensure(projectId, firebaseStorageOrigin, "storage", false);
+  await ensure(projectId, firebaseStorageOrigin(), "storage", false);
   try {
-    const localAPIClient = new Client({ urlPrefix: firebaseStorageOrigin, apiVersion: "v1alpha" });
+    const localAPIClient = new Client({
+      urlPrefix: firebaseStorageOrigin(),
+      apiVersion: "v1alpha",
+    });
     const response = await localAPIClient.get<GetDefaultBucketResponse>(
       `/projects/${projectId}/defaultBucket`,
     );
@@ -179,6 +182,7 @@ export async function upload(
   source: any,
   uploadUrl: string,
   extraHeaders?: Record<string, string>,
+  ignoreQuotaProject?: boolean,
 ): Promise<any> {
   const url = new URL(uploadUrl);
   const localAPIClient = new Client({ urlPrefix: url.origin, auth: false });
@@ -193,6 +197,7 @@ export async function upload(
     },
     body: source.stream,
     skipLog: { resBody: true },
+    ignoreQuotaProject,
   });
   return {
     generation: res.response.headers.get("x-goog-generation"),
@@ -211,7 +216,7 @@ export async function uploadObject(
   if (path.extname(source.file) !== ".zip") {
     throw new FirebaseError(`Expected a file name ending in .zip, got ${source.file}`);
   }
-  const localAPIClient = new Client({ urlPrefix: storageOrigin });
+  const localAPIClient = new Client({ urlPrefix: storageOrigin() });
   const location = `/${bucketName}/${path.basename(source.file)}`;
   const res = await localAPIClient.request({
     method: "PUT",
@@ -234,7 +239,7 @@ export async function uploadObject(
  * @param {string} location A Firebase Storage location, of the form "/v0/b/<bucket>/o/<object>"
  */
 export function deleteObject(location: string): Promise<any> {
-  const localAPIClient = new Client({ urlPrefix: storageOrigin });
+  const localAPIClient = new Client({ urlPrefix: storageOrigin() });
   return localAPIClient.delete(location);
 }
 
@@ -246,7 +251,7 @@ export function deleteObject(location: string): Promise<any> {
  */
 export async function getBucket(bucketName: string): Promise<BucketResponse> {
   try {
-    const localAPIClient = new Client({ urlPrefix: storageOrigin });
+    const localAPIClient = new Client({ urlPrefix: storageOrigin() });
     const result = await localAPIClient.get<BucketResponse>(`/storage/v1/b/${bucketName}`);
     return result.body;
   } catch (err: any) {
@@ -265,7 +270,7 @@ export async function getBucket(bucketName: string): Promise<BucketResponse> {
  */
 export async function listBuckets(projectId: string): Promise<Array<string>> {
   try {
-    const localAPIClient = new Client({ urlPrefix: storageOrigin });
+    const localAPIClient = new Client({ urlPrefix: storageOrigin() });
     const result = await localAPIClient.get<ListBucketsResponse>(
       `/storage/v1/b?project=${projectId}`,
     );
@@ -289,7 +294,7 @@ export async function listBuckets(projectId: string): Promise<Array<string>> {
  */
 export async function getServiceAccount(projectId: string): Promise<StorageServiceAccountResponse> {
   try {
-    const localAPIClient = new Client({ urlPrefix: storageOrigin });
+    const localAPIClient = new Client({ urlPrefix: storageOrigin() });
     const response = await localAPIClient.get<StorageServiceAccountResponse>(
       `/storage/v1/projects/${projectId}/serviceAccount`,
     );

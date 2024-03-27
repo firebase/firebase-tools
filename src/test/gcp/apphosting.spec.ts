@@ -5,13 +5,16 @@ import * as apphosting from "../../gcp/apphosting";
 describe("apphosting", () => {
   describe("getNextBuildId", () => {
     let listRollouts: sinon.SinonStub;
+    let listBuilds: sinon.SinonStub;
 
     beforeEach(() => {
       listRollouts = sinon.stub(apphosting, "listRollouts");
+      listBuilds = sinon.stub(apphosting, "listBuilds");
     });
 
     afterEach(() => {
       listRollouts.restore();
+      listBuilds.restore();
     });
 
     function idPrefix(date: Date): string {
@@ -27,9 +30,29 @@ describe("apphosting", () => {
       expect(listRollouts).to.not.have.been.called;
     });
 
-    it("should handle missing regions", async () => {
-      listRollouts.returns({
+    it("should handle missing regions (rollouts)", async () => {
+      listRollouts.resolves({
         rollouts: [],
+        unreachable: ["us-central1"],
+      });
+      listBuilds.resolves({
+        builds: [],
+        unreachable: [],
+      });
+
+      await expect(
+        apphosting.getNextRolloutId("project", "us-central1", "backend"),
+      ).to.be.rejectedWith(/unreachable .*us-central1/);
+      expect(listRollouts).to.have.been.calledWith("project", "us-central1", "backend");
+    });
+
+    it("should handle missing regions (builds)", async () => {
+      listRollouts.resolves({
+        rollouts: [],
+        unreachable: [],
+      });
+      listBuilds.resolves({
+        builds: [],
         unreachable: ["us-central1"],
       });
 
@@ -40,8 +63,12 @@ describe("apphosting", () => {
     });
 
     it("should handle the first build of a day", async () => {
-      listRollouts.returns({
+      listRollouts.resolves({
         rollouts: [],
+        unreachable: [],
+      });
+      listBuilds.resolves({
+        builds: [],
         unreachable: [],
       });
 
@@ -55,13 +82,24 @@ describe("apphosting", () => {
       const yesterday = new Date();
       yesterday.setDate(today.getDate() - 1);
 
-      listRollouts.returns({
+      listRollouts.resolves({
         rollouts: [
           {
             name: `projects/project/locations/location/backends/backend/rollouts/${idPrefix(yesterday)}-005`,
           },
           {
             name: `projects/project/locations/location/backends/backend/rollouts/${idPrefix(today)}-001`,
+          },
+        ],
+        unreachable: [],
+      });
+      listBuilds.resolves({
+        builds: [
+          {
+            name: `projects/project/locations/location/backends/backend/builds/${idPrefix(yesterday)}-005`,
+          },
+          {
+            name: `projects/project/locations/location/backends/backend/builds/${idPrefix(today)}-001`,
           },
         ],
         unreachable: [],
@@ -76,7 +114,7 @@ describe("apphosting", () => {
       const yesterday = new Date();
       yesterday.setDate(today.getDate() - 1);
 
-      listRollouts.returns({
+      listRollouts.resolves({
         rollouts: [
           {
             name: `projects/project/locations/location/backends/backend/rollouts/${idPrefix(yesterday)}-005`,
@@ -84,9 +122,59 @@ describe("apphosting", () => {
         ],
         unreachable: [],
       });
+      listBuilds.resolves({
+        builds: [
+          {
+            name: `projects/project/locations/location/backends/backend/builds/${idPrefix(yesterday)}-005`,
+          },
+        ],
+        unreachable: [],
+      });
 
       const id = await apphosting.getNextRolloutId("project", "location", "backend");
       expect(id).to.equal(`${idPrefix(today)}-001`);
+    });
+
+    it("should handle build & rollout names out of sync (build is latest)", async () => {
+      const today = new Date();
+      listRollouts.resolves({
+        rollouts: [
+          {
+            name: `projects/project/locations/location/backends/backend/rollouts/${idPrefix(today)}-001`,
+          },
+        ],
+      });
+      listBuilds.resolves({
+        builds: [
+          {
+            name: `projects/project/locations/location/backends/backend/builds/${idPrefix(today)}-002`,
+          },
+        ],
+      });
+
+      const id = await apphosting.getNextRolloutId("project", "location", "backend");
+      expect(id).to.equal(`${idPrefix(today)}-003`);
+    });
+
+    it("should handle build & rollout names out of sync (rollout is latest)", async () => {
+      const today = new Date();
+      listRollouts.resolves({
+        rollouts: [
+          {
+            name: `projects/project/locations/location/backends/backend/rollouts/${idPrefix(today)}-002`,
+          },
+        ],
+      });
+      listBuilds.resolves({
+        builds: [
+          {
+            name: `projects/project/locations/location/backends/backend/builds/${idPrefix(today)}-001`,
+          },
+        ],
+      });
+
+      const id = await apphosting.getNextRolloutId("project", "location", "backend");
+      expect(id).to.equal(`${idPrefix(today)}-003`);
     });
   });
 

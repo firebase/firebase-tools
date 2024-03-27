@@ -70,7 +70,7 @@ export interface Job {
   };
 }
 
-const apiClient = new Client({ urlPrefix: cloudschedulerOrigin, apiVersion: VERSION });
+const apiClient = new Client({ urlPrefix: cloudschedulerOrigin(), apiVersion: VERSION });
 
 /**
  * Creates a cloudScheduler job.

@@ -135,7 +135,7 @@ export async function queryTimeSeries(
   projectNumber: number,
 ): Promise<TimeSeriesResponse> {
   const client = new Client({
-    urlPrefix: cloudMonitoringOrigin,
+    urlPrefix: cloudMonitoringOrigin(),
     apiVersion: CLOUD_MONITORING_VERSION,
   });
   try {

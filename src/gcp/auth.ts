@@ -1,7 +1,7 @@
 import { Client } from "../apiv2";
 import { identityOrigin } from "../api";
 
-const apiClient = new Client({ urlPrefix: identityOrigin, auth: true });
+const apiClient = new Client({ urlPrefix: identityOrigin(), auth: true });
 
 /**
  * Returns the list of authorized domains.

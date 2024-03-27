@@ -44,7 +44,7 @@ export class Uploader {
   private uploadUrl: string | undefined;
   private uploadClient: Client | undefined;
   private hashClient = new Client({
-    urlPrefix: hostingApiOrigin,
+    urlPrefix: hostingApiOrigin(),
     auth: true,
     apiVersion: "v1beta1",
   });

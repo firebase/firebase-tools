@@ -19,7 +19,7 @@ const EXTENSIONS_API_VERSION = "v1beta";
 const PAGE_SIZE_MAX = 100;
 
 const extensionsApiClient = new Client({
-  urlPrefix: extensionsOrigin,
+  urlPrefix: extensionsOrigin(),
   apiVersion: EXTENSIONS_API_VERSION,
 });
 
@@ -55,7 +55,7 @@ async function createInstanceHelper(
     return createRes.body;
   }
   const pollRes = await operationPoller.pollOperation<ExtensionInstance>({
-    apiOrigin: extensionsOrigin,
+    apiOrigin: extensionsOrigin(),
     apiVersion: EXTENSIONS_API_VERSION,
     operationResourceName: createRes.body.name,
     masterTimeout: 3600000,
@@ -123,7 +123,7 @@ export async function deleteInstance(projectId: string, instanceId: string): Pro
     `/projects/${projectId}/instances/${instanceId}`,
   );
   const pollRes = await operationPoller.pollOperation({
-    apiOrigin: extensionsOrigin,
+    apiOrigin: extensionsOrigin(),
     apiVersion: EXTENSIONS_API_VERSION,
     operationResourceName: deleteRes.body.name,
     masterTimeout: 600000,
@@ -362,7 +362,7 @@ async function patchInstance(args: {
     return updateRes;
   }
   const pollRes = await operationPoller.pollOperation({
-    apiOrigin: extensionsOrigin,
+    apiOrigin: extensionsOrigin(),
     apiVersion: EXTENSIONS_API_VERSION,
     operationResourceName: updateRes.body.name,
     masterTimeout: 600000,
@@ -407,7 +407,7 @@ export async function createSource(
     extensionRoot,
   });
   const pollRes = await operationPoller.pollOperation<ExtensionSource>({
-    apiOrigin: extensionsOrigin,
+    apiOrigin: extensionsOrigin(),
     apiVersion: EXTENSIONS_API_VERSION,
     operationResourceName: createRes.body.name,
     masterTimeout: 600000,
