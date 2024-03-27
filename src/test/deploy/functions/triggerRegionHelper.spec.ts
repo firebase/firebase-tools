@@ -8,7 +8,7 @@ import * as triggerRegionHelper from "../../../deploy/functions/triggerRegionHel
 const SPEC = {
   region: "us-west1",
   project: "my-project",
-  runtime: "nodejs14",
+  runtime: "nodejs14" as const,
 };
 
 describe("TriggerRegionHelper", () => {

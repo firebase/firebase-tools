@@ -5,7 +5,7 @@ import { FirebaseError } from "../../../error";
 import { SourceTokenScraper } from "./sourceTokenScraper";
 import { Timer } from "./timer";
 import { assertExhaustive } from "../../../functional";
-import { getHumanFriendlyRuntimeName } from "../runtimes";
+import { RUNTIMES } from "../runtimes/supported";
 import { eventarcOrigin, functionsOrigin, functionsV2Origin } from "../../../api";
 import { logger } from "../../../logger";
 import * as args from "../args";
@@ -731,7 +731,7 @@ export class Fabricator {
   }
 
   logOpStart(op: string, endpoint: backend.Endpoint): void {
-    const runtime = getHumanFriendlyRuntimeName(endpoint.runtime);
+    const runtime = RUNTIMES[endpoint.runtime].friendly;
     const platform = getHumanFriendlyPlatformName(endpoint.platform);
     const label = helper.getFunctionLabel(endpoint);
     utils.logLabeledBullet(
