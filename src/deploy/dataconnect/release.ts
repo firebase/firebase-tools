@@ -3,11 +3,7 @@ import { Connector, ServiceInfo } from "../../dataconnect/types";
 import { listConnectors, upsertSchema, upsertConnector } from "../../dataconnect/client";
 import { promptDeleteConnector } from "../../dataconnect/prompts";
 import { Options } from "../../options";
-import { needProjectId } from "../../projectUtils";
-import { provisionCloudSql } from "../../dataconnect/provisionCloudSql";
-import { parseServiceName } from "../../dataconnect/names";
 import { FirebaseError } from "../../error";
-import { logger } from "../../logger";
 
 /**
  * Release deploys schemas and connectors.
@@ -16,7 +12,6 @@ import { logger } from "../../logger";
  * @param options The CLI options object.
  */
 export default async function (context: any, options: Options): Promise<void> {
-  const projectId = needProjectId(options);
   const serviceInfos = context.dataconnect as ServiceInfo[];
   const wantSchemas = serviceInfos.map((s) => s.schema);
   let wantConnectors: Connector[] = [];
@@ -28,32 +23,14 @@ export default async function (context: any, options: Options): Promise<void> {
     (h) => !wantConnectors.some((w) => w.name === h.name),
   );
 
-  // Provision CloudSQL things
-  utils.logLabeledBullet("dataconnect", "Checking for CloudSQL resources...");
-  await Promise.all(
-    serviceInfos.map(async (s) => {
-      const instanceId = s.schema.primaryDatasource.postgresql?.cloudSql.instance.split("/").pop();
-      const databaseId = s.schema.primaryDatasource.postgresql?.database;
-      if (!instanceId || !databaseId) {
-        return Promise.resolve();
-      }
-      await provisionCloudSql(
-        projectId,
-        parseServiceName(s.serviceName).location,
-        instanceId,
-        databaseId,
-      );
-    }),
-  );
-
   utils.logLabeledBullet("dataconnect", "Releasing schemas...");
   const schemaPromises = await Promise.allSettled(wantSchemas.map((s) => upsertSchema(s)));
-  const failedSchemas = schemaPromises.filter((p) => p.status === "rejected");
+  const failedSchemas = schemaPromises.filter(
+    (p): p is PromiseRejectedResult => p.status === "rejected",
+  );
   if (failedSchemas.length) {
-    // TODO: Do schema migration here instead of kicking to different command
-    logger.debug(JSON.stringify(failedSchemas));
     throw new FirebaseError(
-      "Got errors while updating your schema. Please migrate them using `firebase dataconnect:sql:migrate`",
+      `Errors while updating your schemas:\n ${failedSchemas.map((f) => f.reason).join("\n")}`,
     );
   }
   utils.logLabeledBullet("dataconnect", "Schemas released.");

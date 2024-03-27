@@ -13,6 +13,7 @@ export const command = new Command("dataconnect:sql:migrate <serviceId>")
   .description("migrates your CloudSQL database's schema to match your local DataConnect schema")
   // .before(requirePermissions, ["dataconnect.services.list", "dataconnect.schemas.list", "dataconnect.connectors.list"])
   .before(requireAuth)
+  .withForce("Execute any required database changes without prompting")
   .action(async (serviceId: string, options: Options) => {
     const projectId = needProjectId(options);
     await ensure(projectId, new URL(dataconnectOrigin()).hostname, "dataconnect");

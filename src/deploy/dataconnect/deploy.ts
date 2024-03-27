@@ -2,7 +2,10 @@ import { Options } from "../../options";
 import * as client from "../../dataconnect/client";
 import * as utils from "../../utils";
 import { Service, ServiceInfo } from "../../dataconnect/types";
-import { FirebaseError } from "../../error";
+import { needProjectId } from "../../projectUtils";
+import { provisionCloudSql } from "../../dataconnect/provisionCloudSql";
+import { parseServiceName } from "../../dataconnect/names";
+import { migrateSchema } from "../../dataconnect/schemaMigration";
 
 /**
  * Checks for and creates a Firebase DataConnect service, if needed.
@@ -14,10 +17,8 @@ export default async function (
   context: { dataconnect: ServiceInfo[] },
   options: Options,
 ): Promise<void> {
-  if (!options.projectId) {
-    throw new FirebaseError("No project specified.");
-  }
-  const services = await client.listAllServices(options.projectId);
+  const projectId = needProjectId(options);
+  const services = await client.listAllServices(projectId);
   const servicesToCreate = context.dataconnect.filter(
     (si) => !services.some((s) => matches(si, s)),
   );
@@ -42,6 +43,35 @@ export default async function (
     }),
   );
   await Promise.all(promises);
+
+  // Provision CloudSQL resources
+  utils.logLabeledBullet("dataconnect", "Checking for CloudSQL resources...");
+
+  const serviceInfos = context.dataconnect as ServiceInfo[];
+  await Promise.all(
+    serviceInfos.map(async (s) => {
+      const instanceId = s.schema.primaryDatasource.postgresql?.cloudSql.instance.split("/").pop();
+      const databaseId = s.schema.primaryDatasource.postgresql?.database;
+      if (!instanceId || !databaseId) {
+        return Promise.resolve();
+      }
+      await provisionCloudSql(
+        projectId,
+        parseServiceName(s.serviceName).location,
+        instanceId,
+        databaseId,
+      );
+    }),
+  );
+
+  // If needed, migrate schemas
+  utils.logLabeledBullet(
+    "dataconnect",
+    "Checking if database schemas match Data Connect schemas...",
+  );
+  for (const si of serviceInfos) {
+    await migrateSchema(options, si.schema);
+  }
   return;
 }
 

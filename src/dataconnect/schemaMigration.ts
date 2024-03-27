@@ -11,6 +11,7 @@ import { Options } from "../options";
 import { FirebaseError } from "../error";
 import { REQUIRED_EXTENSIONS_COMMANDS } from "./provisionCloudSql";
 import { needProjectId } from "../projectUtils";
+import { logLabeledWarning } from "../utils";
 
 const IMCOMPATIBLE_SCHEMA_ERROR_TYPESTRING =
   "type.googleapis.com/google.firebase.dataconnect.v1main.IncompatibleSqlSchemaError";
@@ -97,31 +98,40 @@ async function promptForSchemaMigration(
   err: IncompatibleSqlSchemaError,
 ): Promise<"none" | "safe" | "all"> {
   displaySchemaChanges(err);
-  if (options.nonInteractive && !options.force && err.destructive) {
+  if (options.force) {
+    return "all";
+  } else if (options.nonInteractive && !options.force && err.destructive) {
     logger.warn(
-      "This schema migration includes potentially desturctive changes. If you'd like to execute it anyone, rerun this command with --force",
+      "This schema migration includes potentially destructive changes. If you'd like to execute it anyway, rerun this command with --force",
     );
     return "none";
-  } else if (options.nonInteractive && (options.force || !err.destructive)) {
-    return "all";
+  } else if (options.nonInteractive && !err.destructive) {
+    return "safe";
+  } else {
+    const choices = err.destructive
+      ? [
+          { name: "Execute all changes (including destructive changes)", value: "all" },
+          { name: "Execute only safe changes", value: "safe" },
+          { name: "Abort changes", value: "none" },
+        ]
+      : [
+          { name: "Execute changes", value: "safe" },
+          { name: "Abort changes", value: "none" },
+        ];
+    return await promptOnce({
+      message: `Would you like to execute these changes against ${databaseName}?`,
+      type: "list",
+      choices,
+    });
   }
-  return await promptOnce({
-    message: `Would you like to execute these changes against ${databaseName}?`,
-    type: "list",
-    choices: [
-      { name: "Execute all changes (including destructive changes)", value: "all" },
-      { name: "Execute only safe changes", value: "safe" },
-      { name: "Abort changes", value: "none" },
-    ],
-  });
 }
 
 function displaySchemaChanges(error: IncompatibleSqlSchemaError) {
   const message =
-    "Your new schema is incompatible with the schema of your CloudSQL database." +
-    "The following SQL statements will migrate your database schema to match your new Dataconnect schema.\n" +
+    "Your new schema is incompatible with the schema of your CloudSQL database. " +
+    "The following SQL statements will migrate your database schema to match your new Data Connect schema.\n" +
     error.diffs.map(toString).join("\n");
-  logger.warn(message);
+  logLabeledWarning("dataconnect", message);
 }
 
 function toString(diff: Diff) {
