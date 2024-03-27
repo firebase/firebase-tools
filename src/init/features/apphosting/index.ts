@@ -27,7 +27,7 @@ import { DEFAULT_REGION } from "./constants";
 import { ensure } from "../../../ensureApiEnabled";
 import * as deploymentTool from "../../../deploymentTool";
 import { DeepOmit } from "../../../metaprogramming";
-
+import * as apps from "./app";
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
 const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
@@ -42,6 +42,7 @@ const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationRes
  */
 export async function doSetup(
   projectId: string,
+  webAppName: string | null,
   location: string | null,
   serviceAccount: string | null,
 ): Promise<void> {
@@ -53,7 +54,6 @@ export async function doSetup(
   ]);
 
   const allowedLocations = (await apphosting.listLocations(projectId)).map((loc) => loc.locationId);
-
   if (location) {
     if (!allowedLocations.includes(location)) {
       throw new FirebaseError(
@@ -62,7 +62,7 @@ export async function doSetup(
     }
   }
 
-  logBullet("First we need a few details to create your backend.");
+  logBullet("First we need a few details to create your backend.\n");
 
   location =
     location ||
@@ -85,6 +85,13 @@ export async function doSetup(
     message: "Create a name for your backend [1-30 characters]",
   });
 
+  const webApp = await apps.getOrCreateWebApp(projectId, webAppName, backendId);
+  if (webApp) {
+    logSuccess(`Firebase web app set to ${webApp.name}.\n`);
+  } else {
+    logWarning(`Firebase web app not set`);
+  }
+
   const cloudBuildConnRepo = await repo.linkGitHubRepository(projectId, location);
 
   const backend = await createBackend(
@@ -93,6 +100,7 @@ export async function doSetup(
     backendId,
     cloudBuildConnRepo,
     serviceAccount,
+    webApp?.id,
   );
 
   // TODO: Once tag patterns are implemented, prompt which method the user
@@ -171,6 +179,7 @@ export async function createBackend(
   backendId: string,
   repository: Repository,
   serviceAccount: string | null,
+  webAppId: string | undefined,
 ): Promise<Backend> {
   const defaultServiceAccount = defaultComputeServiceAccountEmail(projectId);
   const backendReqBody: Omit<Backend, BackendOutputOnlyFields> = {
@@ -181,6 +190,7 @@ export async function createBackend(
     },
     labels: deploymentTool.labels(),
     computeServiceAccount: serviceAccount || defaultServiceAccount,
+    appId: webAppId,
   };
 
   // TODO: remove computeServiceAccount when the backend supports the field.
