@@ -165,9 +165,6 @@ export function load(client: any): any {
     client.apphosting.backends = {};
     client.apphosting.backends.list = loadCommand("apphosting-backends-list");
     client.apphosting.backends.create = loadCommand("apphosting-backends-create");
-    client.apphosting.connections = {};
-    client.apphosting.connections.reset = loadCommand("apphosting-connections-reset");
-    client.apphosting.connections.list = loadCommand("apphosting-connections-list");
     client.apphosting.backends.get = loadCommand("apphosting-backends-get");
     client.apphosting.backends.delete = loadCommand("apphosting-backends-delete");
     client.apphosting.builds = {};

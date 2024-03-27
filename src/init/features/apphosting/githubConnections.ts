@@ -47,18 +47,6 @@ export function parseConnectionName(name: string): ConnectionNameParts | undefin
   };
 }
 
-export function isApphostingConnection(name: string): boolean {
-  const pattern = /^apphosting-github.*/;
-  const match = CONNECTION_NAME_REGEX.exec(name);
-
-  if (!match || typeof match.groups === undefined) {
-    return false;
-  }
-
-  const { id } = match.groups as unknown as ConnectionNameParts;
-  return pattern.test(id);
-}
-
 const devConnectPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: developerConnectOrigin(),
   apiVersion: "v1",

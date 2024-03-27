@@ -29,7 +29,7 @@ import { DEFAULT_REGION } from "./constants";
 import { ensure } from "../../../ensureApiEnabled";
 import * as deploymentTool from "../../../deploymentTool";
 import { DeepOmit } from "../../../metaprogramming";
-import { GitRepositoryLink, listAllConnections, deleteConnection } from "../../../gcp/devConnect";
+import { GitRepositoryLink } from "../../../gcp/devConnect";
 
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
@@ -39,105 +39,6 @@ const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationRes
   masterTimeout: 25 * 60 * 1_000,
   maxBackoff: 10_000,
 };
-/**
- * Set up a new App Hosting backend.
- */
-export async function doSetupWithDeveloperConnect(
-  projectId: string,
-  location: string | null,
-  serviceAccount: string | null,
-): Promise<void> {
-  logBullet("Setting up using Developer Connect flow");
-
-  await Promise.all([
-    ensure(projectId, developerConnectOrigin(), "apphosting", true),
-    ensure(projectId, cloudbuildOrigin(), "apphosting", true),
-    ensure(projectId, secretManagerOrigin(), "apphosting", true),
-    ensure(projectId, cloudRunApiOrigin(), "apphosting", true),
-    ensure(projectId, artifactRegistryDomain(), "apphosting", true),
-  ]);
-
-  logBullet("All required APIs are enabled");
-
-  const allowedLocations = (await apphosting.listLocations(projectId)).map((loc) => loc.locationId);
-
-  if (location) {
-    if (!allowedLocations.includes(location)) {
-      throw new FirebaseError(
-        `Invalid location ${location}. Valid choices are ${allowedLocations.join(", ")}`,
-      );
-    }
-  }
-
-  logBullet("First we need a few details to create your backend.");
-
-  location =
-    location ||
-    ((await promptOnce({
-      name: "region",
-      type: "list",
-      default: DEFAULT_REGION,
-      message:
-        "Please select a region " +
-        `(${clc.yellow("info")}: Your region determines where your backend is located):\n`,
-      choices: allowedLocations.map((loc) => ({ value: loc })),
-    })) as string);
-
-  logSuccess(`Region set to ${location}.\n`);
-
-  const backendId = await promptNewBackendId(projectId, location, {
-    name: "backendId",
-    type: "input",
-    default: "my-web-app",
-    message: "Create a name for your backend [1-30 characters]",
-  });
-
-  const devConnectConRepo = await githubConnections.linkGitHubRepository(projectId, location);
-
-  const backend = await createBackend(
-    projectId,
-    location,
-    backendId,
-    devConnectConRepo,
-    serviceAccount,
-  );
-
-  // TODO: Once tag patterns are implemented, prompt which method the user
-  // prefers. We could reduce the number of questions asked by letting people
-  // enter tag:<pattern>?
-  const branch = await promptOnce({
-    name: "branch",
-    type: "input",
-    default: "main",
-    message: "Pick a branch for continuous deployment",
-  });
-
-  await setDefaultTrafficPolicy(projectId, location, backendId, branch);
-
-  const confirmRollout = await promptOnce({
-    type: "confirm",
-    name: "rollout",
-    default: true,
-    message: "Do you want to deploy now?",
-  });
-
-  if (!confirmRollout) {
-    logSuccess(`Successfully created backend:\n\t${backend.name}`);
-    logSuccess(`Your site will be deployed at:\n\thttps://${backend.uri}`);
-    return;
-  }
-
-  await orchestrateRollout(projectId, location, backendId, {
-    source: {
-      codebase: {
-        branch,
-      },
-    },
-  });
-
-  logSuccess(`Successfully created backend:\n\t${backend.name}`);
-  logSuccess(`Your site is now deployed at:\n\thttps://${backend.uri}`);
-}
 
 /**
  * Set up a new App Hosting backend.
@@ -146,8 +47,10 @@ export async function doSetup(
   projectId: string,
   location: string | null,
   serviceAccount: string | null,
+  withDevConnect: boolean,
 ): Promise<void> {
   await Promise.all([
+    ...(withDevConnect ? [ensure(projectId, developerConnectOrigin(), "apphosting", true)] : []),
     ensure(projectId, cloudbuildOrigin(), "apphosting", true),
     ensure(projectId, secretManagerOrigin(), "apphosting", true),
     ensure(projectId, cloudRunApiOrigin(), "apphosting", true),
@@ -187,13 +90,15 @@ export async function doSetup(
     message: "Create a name for your backend [1-30 characters]",
   });
 
-  const cloudBuildConnRepo = await repo.linkGitHubRepository(projectId, location);
+  const gitRepositoryConnection: Repository | GitRepositoryLink = withDevConnect
+    ? await githubConnections.linkGitHubRepository(projectId, location)
+    : await repo.linkGitHubRepository(projectId, location);
 
   const backend = await createBackend(
     projectId,
     location,
     backendId,
-    cloudBuildConnRepo,
+    gitRepositoryConnection,
     serviceAccount,
   );
 
@@ -452,40 +357,4 @@ export async function orchestrateRollout(
     );
   }
   return { rollout, build };
-}
-
-/**
- * lists dev connect connections
- */
-export async function listDeveloperConnectAppHostingConnections(
-  projectId: string,
-  location: string,
-): Promise<void> {
-  const connections = await listAllConnections(projectId, location);
-  const appHostingConnections = connections.filter((connection) =>
-    githubConnections.isApphostingConnection(connection.name),
-  );
-  for (let i = 0; i < appHostingConnections.length; i++) {
-    const connection = appHostingConnections[i];
-    logBullet(connection.name);
-  }
-}
-
-/**
- * deletes all dev connect connections
- */
-export async function resetDeveloperConnectAppHostingConnections(
-  projectId: string,
-  location: string,
-): Promise<void> {
-  const connections = await listAllConnections(projectId, location);
-  const appHostingConnections = connections.filter((connection) =>
-    githubConnections.isApphostingConnection(connection.name),
-  );
-  for (let i = 0; i < appHostingConnections.length; i++) {
-    const connection = appHostingConnections[i];
-    logBullet(`Deleting connection: ${connection.name}`);
-    const { id } = githubConnections.parseConnectionName(connection.name)!;
-    await deleteConnection(projectId, location, id);
-  }
 }

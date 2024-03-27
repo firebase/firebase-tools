@@ -2,7 +2,7 @@ import { Command } from "../command";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import requireInteractive from "../requireInteractive";
-import { doSetup, doSetupWithDeveloperConnect } from "../init/features/apphosting";
+import { doSetup } from "../init/features/apphosting";
 import { ensureApiEnabled } from "../gcp/apphosting";
 
 export const command = new Command("apphosting:backends:create")
@@ -26,14 +26,10 @@ export const command = new Command("apphosting:backends:create")
     const serviceAccount = options.serviceAccount;
     const withDevConnect = options.withDevConnect as boolean;
 
-    if (withDevConnect) {
-      await doSetupWithDeveloperConnect(
-        projectId,
-        location as string | null,
-        serviceAccount as string | null,
-      );
-      return;
-    }
-
-    await doSetup(projectId, location as string | null, serviceAccount as string | null);
+    await doSetup(
+      projectId,
+      location as string | null,
+      serviceAccount as string | null,
+      withDevConnect,
+    );
   });
