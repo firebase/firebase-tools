@@ -188,7 +188,9 @@ export function guardVersionSupport(runtime: Runtime, now: Date = new Date()): v
       "functions",
       `Runtime ${RUNTIMES[runtime].friendly} was deprecated on ${deprecationDate} and will be ` +
         `decommissioned on ${decommissionDate}, after which you will not be able ` +
-        "to deploy without upgrading. Consider upgrading now to avoid disruption.",
+        "to deploy without upgrading. Consider upgrading now to avoid disruption.  See  " +
+        "https://cloud.google.com/functions/docs/runtime-support for full " +
+        "details on the lifecycle policy",
     );
     return;
   }
@@ -200,7 +202,9 @@ export function guardVersionSupport(runtime: Runtime, now: Date = new Date()): v
       "functions",
       `Runtime ${RUNTIMES[runtime].friendly} will be deprecated on ${deprecationDate} and will be ` +
         `decommissioned on ${decommissionDate}, after which you will not be able ` +
-        "to deploy without upgrading. Consider upgrading now to avoid disruption.",
+        "to deploy without upgrading. Consider upgrading now to avoid disruption.  See  " +
+        "https://cloud.google.com/functions/docs/runtime-support for full " +
+        "details on the lifecycle policy",
     );
   }
 }
