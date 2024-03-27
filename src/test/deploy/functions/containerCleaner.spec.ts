@@ -35,7 +35,7 @@ describe("CleanupBuildImages", () => {
   });
 
   it("reports failed domains from AR", async () => {
-    ar.cleanupFunctionCache.rejects(new Error("uh oh"));
+    ar.cleanupFunction.rejects(new Error("uh oh"));
     await containerCleaner.cleanupBuildImages([], [TARGET], { gcr, ar } as any);
     expect(logLabeledWarning).to.have.been.calledWithMatch(
       "functions",
