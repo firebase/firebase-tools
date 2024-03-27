@@ -47,7 +47,9 @@ describe("supported runtimes", () => {
         "functions",
         "Runtime Node.js 20 was deprecated on 2026-04-30 and will be " +
           "decommissioned on 2026-10-31, after which you will not be able to " +
-          "deploy without upgrading. Consider upgrading now to avoid disruption.",
+          "deploy without upgrading. Consider upgrading now to avoid disruption. See " +
+          "https://cloud.google.com/functions/docs/runtime-support for full " +
+          "details on the lifecycle policy",
       );
     });
 
@@ -57,7 +59,9 @@ describe("supported runtimes", () => {
         "functions",
         "Runtime Node.js 20 will be deprecated on 2026-04-30 and will be " +
           "decommissioned on 2026-10-31, after which you will not be able to " +
-          "deploy without upgrading. Consider upgrading now to avoid disruption.",
+          "deploy without upgrading. Consider upgrading now to avoid disruption. See " +
+          "https://cloud.google.com/functions/docs/runtime-support for full " +
+          "details on the lifecycle policy",
       );
     });
   });
