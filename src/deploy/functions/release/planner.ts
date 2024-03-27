@@ -74,12 +74,7 @@ export function calculateChangesets(
 
   const toSkip = utils.groupBy(Object.values(toSkipEndpointsMap), keyFn);
   if (Object.keys(toSkip).length) {
-    utils.logLabeledBullet(
-      "functions",
-      `Skipping the deploy of unchanged functions with ${clc.bold(
-        "experimental",
-      )} support for skipdeployingnoopfunctions`,
-    );
+    utils.logLabeledBullet("functions", "Skipping the deploy of unchanged functions.");
   }
 
   const toUpdate = utils.groupBy(
