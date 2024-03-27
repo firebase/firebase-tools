@@ -1,7 +1,6 @@
 import { Client } from "../apiv2";
 import { developerConnectOrigin, developerConnectP4SAOrigin } from "../api";
 import { generateServiceIdentity } from "./serviceusage";
-import { logBullet } from "../utils";
 
 const PAGE_SIZE_MAX = 1000;
 const LOCATION_OVERRIDE = "us-central1"; // TODO(mathusan): for debugging only
@@ -220,7 +219,6 @@ export async function listAllLinkableGitRepositories(
   const repos: LinkableGitRepository[] = [];
 
   const getNextPage = async (pageToken = ""): Promise<void> => {
-    logBullet(`page token from here: ${pageToken}`);
     const res = await client.get<LinkableGitRepositories>(name, {
       queryParams: {
         pageSize: PAGE_SIZE_MAX,

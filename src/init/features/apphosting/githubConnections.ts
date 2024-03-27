@@ -108,10 +108,8 @@ export async function linkGitHubRepository(
   location: string,
 ): Promise<devConnect.GitRepositoryLink> {
   utils.logBullet(clc.bold(`${clc.yellow("===")} Set up a GitHub connection`));
-  await ensureSecretManagerAdminGrant(projectId);
   // Fetch the sentinel Oauth connection first which is needed to create further GitHub connections.
   const oauthConn = await getOrCreateOauthConnection(projectId, location);
-  utils.logBullet(`debug: oauthConnection: ${JSON.stringify(oauthConn)}`);
   const existingConns = await listAppHostingConnections(projectId);
 
   if (existingConns.length === 0) {
@@ -165,29 +163,13 @@ async function createFullyInstalledConnection(
   connectionId: string,
   oauthConn: devConnect.Connection,
 ): Promise<devConnect.Connection> {
-  utils.logBullet("debug: creating fully installed connection");
   let conn = await createConnection(projectId, location, connectionId, {
     authorizerCredential: oauthConn.githubConfig?.authorizerCredential,
   });
 
-  conn = await ensureFullyInstalledConnection(projectId, location, connectionId, conn);
-  utils.logBullet(`created connection: ${JSON.stringify(conn)}`);
-
-  return conn;
-}
-
-async function ensureFullyInstalledConnection(
-  projectId: string,
-  location: string,
-  connectionId: string,
-  oauthConn: devConnect.Connection,
-): Promise<devConnect.Connection> {
-  while (oauthConn.installationState.stage !== "COMPLETE") {
+  while (conn.installationState.stage !== "COMPLETE") {
     utils.logBullet("Install the Firebase GitHub app to enable access to GitHub repositories");
-    const targetUri = oauthConn.installationState.actionUri.replace(
-      "install_v2",
-      "direct_install_v2",
-    );
+    const targetUri = conn.installationState.actionUri.replace("install_v2", "direct_install_v2");
     utils.logBullet(targetUri);
     await utils.openInBrowser(targetUri);
     await promptOnce({
@@ -195,22 +177,34 @@ async function ensureFullyInstalledConnection(
       message:
         "Press Enter once you have installed or configured the Firebase GitHub app to access your GitHub repo.",
     });
-    return await devConnect.getConnection(projectId, location, connectionId);
+    conn = await devConnect.getConnection(projectId, location, connectionId);
   }
 
-  return oauthConn;
+  return conn;
 }
 
 /**
  * Gets or creates the sentinel GitHub connection resource that contains our Firebase-wide GitHub Oauth token.
  * This Oauth token can be used to create other connections without reprompting the user to grant access.
  */
-async function getOrCreateOauthConnection(
+export async function getOrCreateOauthConnection(
   projectId: string,
   location: string,
 ): Promise<devConnect.Connection> {
-  let conn = await getOrCreateConnection(projectId, location, APPHOSTING_OAUTH_CONN_NAME);
-  utils.logBullet(`debug: connection from getOrCreateConnection: ${JSON.stringify(conn)}`);
+  let conn: devConnect.Connection;
+  try {
+    conn = await devConnect.getConnection(projectId, location, APPHOSTING_OAUTH_CONN_NAME);
+  } catch (err: unknown) {
+    if ((err as any).status === 404) {
+      // Cloud build P4SA requires the secret manager admin role.
+      // This is required when creating an initial connection which is the Oauth connection in our case.
+      await ensureSecretManagerAdminGrant(projectId);
+      conn = await createConnection(projectId, location, APPHOSTING_OAUTH_CONN_NAME);
+    } else {
+      throw err;
+    }
+  }
+
   while (conn.installationState.stage === "PENDING_USER_OAUTH") {
     utils.logBullet("You must authorize the Firebase GitHub app.");
     utils.logBullet("Sign in to GitHub and authorize Firebase GitHub app:");
