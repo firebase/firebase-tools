@@ -177,6 +177,14 @@
       {
         "fileMatch": "extension.yaml",
         "url": "https://raw.githubusercontent.com/firebase/firebase-tools/master/schema/extension-yaml.json"
+      },
+      {
+        "fileMatch": "dataconnect.yaml",
+        "url": "./schema/dataconnect-yaml.json"
+      },
+      {
+        "fileMatch": "connector.yaml",
+        "url": "./schema/connector-yaml.json"
       }
     ]
   },

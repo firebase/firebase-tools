@@ -5,7 +5,7 @@ connectorDirs:
 schema:
   source: ./schema
   datasource:
-  postgresql:
-    database: "my-database"
-    cloudSql:
-      instanceId: "dataconnect-test"
+    postgresql:
+      database: "my-database"
+      cloudSql:
+        instanceId: "dataconnect-test"
