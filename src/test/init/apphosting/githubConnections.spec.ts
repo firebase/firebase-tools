@@ -5,6 +5,8 @@ import * as poller from "../../../operation-poller";
 import * as devconnect from "../../../gcp/devConnect";
 import * as repo from "../../../init/features/apphosting/githubConnections";
 import * as utils from "../../../utils";
+import * as srcUtils from "../../../../src/getProjectNumber";
+import * as rm from "../../../gcp/resourceManager";
 import { FirebaseError } from "../../../error";
 
 const projectId = "projectId";
@@ -37,16 +39,7 @@ function mockRepo(name: string): devconnect.GitRepositoryLink {
   };
 }
 
-function mockReposWithRandomUris(n: number): devconnect.GitRepositoryLink[] {
-  const repos = [];
-  for (let i = 0; i < n; i++) {
-    const hash = Math.random().toString(36).slice(6);
-    repos.push(mockRepo(hash));
-  }
-  return repos;
-}
-
-describe("devConnectRepo", () => {
+describe("githubConnections", () => {
   describe("parseConnectionName", () => {
     it("should parse valid connection name", () => {
       const connectionName = "projects/my-project/locations/us-central1/connections/my-conn";
@@ -94,8 +87,11 @@ describe("devConnectRepo", () => {
     let getConnectionStub: sinon.SinonStub;
     let getRepositoryStub: sinon.SinonStub;
     let createConnectionStub: sinon.SinonStub;
+    let serviceAccountHasRolesStub: sinon.SinonStub;
     let createRepositoryStub: sinon.SinonStub;
     let fetchLinkableRepositoriesStub: sinon.SinonStub;
+    let getProjectNumberStub: sinon.SinonStub;
+    let openInBrowserPopupStub: sinon.SinonStub;
 
     beforeEach(() => {
       promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
@@ -111,6 +107,7 @@ describe("devConnectRepo", () => {
       createConnectionStub = sandbox
         .stub(devconnect, "createConnection")
         .throws("Unexpected createConnection call");
+      serviceAccountHasRolesStub = sandbox.stub(rm, "serviceAccountHasRoles").resolves(true);
       createRepositoryStub = sandbox
         .stub(devconnect, "createGitRepositoryLink")
         .throws("Unexpected createGitRepositoryLink call");
@@ -118,6 +115,12 @@ describe("devConnectRepo", () => {
         .stub(devconnect, "listAllLinkableGitRepositories")
         .throws("Unexpected listAllLinkableGitRepositories call");
       sandbox.stub(utils, "openInBrowser").resolves();
+      openInBrowserPopupStub = sandbox
+        .stub(utils, "openInBrowserPopup")
+        .throws("Unexpected openInBrowserPopup call");
+      getProjectNumberStub = sandbox
+        .stub(srcUtils, "getProjectNumber")
+        .throws("Unexpected getProjectNumber call");
     });
 
     afterEach(() => {
@@ -180,6 +183,24 @@ describe("devConnectRepo", () => {
       expect(createConnectionStub).to.be.calledWith(projectId, location, connectionId);
     });
 
+    it("checks if secret manager admin role is granted for developer connect P4SA when creating an oauth connection", async () => {
+      getConnectionStub.onFirstCall().rejects(new FirebaseError("error", { status: 404 }));
+      getConnectionStub.onSecondCall().resolves(completeConn);
+      createConnectionStub.resolves(op);
+      pollOperationStub.resolves(pendingConn);
+      promptOnceStub.resolves("any key");
+      getProjectNumberStub.onFirstCall().resolves(projectId);
+      openInBrowserPopupStub.resolves({ url: "", cleanup: sandbox.stub() });
+
+      await repo.getOrCreateOauthConnection(projectId, location);
+      expect(serviceAccountHasRolesStub).to.be.calledWith(
+        projectId,
+        `service-${projectId}@gcp-sa-developerconnect.iam.gserviceaccount.com`,
+        ["roles/secretmanager.admin"],
+        true,
+      );
+    });
+
     it("creates repository if it doesn't exist", async () => {
       getConnectionStub.resolves(completeConn);
       fetchLinkableRepositoriesStub.resolves(repos);
@@ -221,10 +242,10 @@ describe("devConnectRepo", () => {
 
   describe("fetchAllRepositories", () => {
     const sandbox: sinon.SinonSandbox = sinon.createSandbox();
-    let fetchLinkableRepositoriesStub: sinon.SinonStub;
+    let listAllLinkableGitRepositoriesStub: sinon.SinonStub;
 
     beforeEach(() => {
-      fetchLinkableRepositoriesStub = sandbox
+      listAllLinkableGitRepositoriesStub = sandbox
         .stub(devconnect, "listAllLinkableGitRepositories")
         .throws("Unexpected listAllLinkableGitRepositories call");
     });
@@ -233,34 +254,13 @@ describe("devConnectRepo", () => {
       sandbox.verifyAndRestore();
     });
 
-    it("should fetch all repositories from multiple pages", async () => {
-      fetchLinkableRepositoriesStub.onFirstCall().resolves({
-        repositories: mockReposWithRandomUris(10),
-        nextPageToken: "1234",
-      });
-      fetchLinkableRepositoriesStub.onSecondCall().resolves({
-        repositories: mockReposWithRandomUris(10),
-      });
-
-      const { cloneUris, cloneUriToConnection } = await repo.fetchAllRepositories(projectId, [
-        mockConn("conn0"),
-      ]);
-
-      expect(cloneUris.length).to.equal(20);
-      expect(Object.keys(cloneUriToConnection).length).to.equal(20);
-    });
-
     it("should fetch all linkable repositories from multiple connections", async () => {
       const conn0 = mockConn("conn0");
       const conn1 = mockConn("conn1");
       const repo0 = mockRepo("repo-0");
       const repo1 = mockRepo("repo-1");
-      fetchLinkableRepositoriesStub.onFirstCall().resolves({
-        repositories: [repo0],
-      });
-      fetchLinkableRepositoriesStub.onSecondCall().resolves({
-        repositories: [repo1],
-      });
+      listAllLinkableGitRepositoriesStub.onFirstCall().resolves([repo0]);
+      listAllLinkableGitRepositoriesStub.onSecondCall().resolves([repo1]);
 
       const { cloneUris, cloneUriToConnection } = await repo.fetchAllRepositories(projectId, [
         conn0,
@@ -270,6 +270,26 @@ describe("devConnectRepo", () => {
       expect(cloneUris.length).to.equal(2);
       expect(cloneUriToConnection).to.deep.equal({
         [repo0.cloneUri]: conn0,
+        [repo1.cloneUri]: conn1,
+      });
+    });
+
+    it("should fetch all linkable repositories without duplicates when there are duplicate connections", async () => {
+      const conn0 = mockConn("conn0");
+      const conn1 = mockConn("conn1");
+      const repo0 = mockRepo("repo-0");
+      const repo1 = mockRepo("repo-1");
+      listAllLinkableGitRepositoriesStub.onFirstCall().resolves([repo0, repo1]);
+      listAllLinkableGitRepositoriesStub.onSecondCall().resolves([repo0, repo1]);
+
+      const { cloneUris, cloneUriToConnection } = await repo.fetchAllRepositories(projectId, [
+        conn0,
+        conn1,
+      ]);
+
+      expect(cloneUris.length).to.equal(2);
+      expect(cloneUriToConnection).to.deep.equal({
+        [repo0.cloneUri]: conn1,
         [repo1.cloneUri]: conn1,
       });
     });
