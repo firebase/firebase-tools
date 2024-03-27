@@ -162,6 +162,9 @@ export function load(client: any): any {
   }
   if (experiments.isEnabled("apphosting")) {
     client.apphosting = {};
+    client.apphosting.connections = {};
+    client.apphosting.connections.reset = loadCommand("apphosting-connections-reset");
+    client.apphosting.connections.list = loadCommand("apphosting-connections-list");
     client.apphosting.backends = {};
     client.apphosting.backends.list = loadCommand("apphosting-backends-list");
     client.apphosting.backends.create = loadCommand("apphosting-backends-create");

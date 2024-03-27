@@ -417,3 +417,15 @@ export async function fetchAllRepositories(
   }
   return { cloneUris: Object.keys(cloneUriToConnection), cloneUriToConnection };
 }
+
+export function isApphostingConnection(name: string): boolean {
+  const pattern = /^apphosting-github.*/;
+  const match = CONNECTION_NAME_REGEX.exec(name);
+
+  if (!match || typeof match.groups === undefined) {
+    return false;
+  }
+
+  const { id } = match.groups as unknown as ConnectionNameParts;
+  return pattern.test(id);
+}

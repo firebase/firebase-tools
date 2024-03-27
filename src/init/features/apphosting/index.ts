@@ -29,7 +29,7 @@ import { DEFAULT_REGION } from "./constants";
 import { ensure } from "../../../ensureApiEnabled";
 import * as deploymentTool from "../../../deploymentTool";
 import { DeepOmit } from "../../../metaprogramming";
-import { GitRepositoryLink } from "../../../gcp/devConnect";
+import { GitRepositoryLink, deleteConnection, listAllConnections } from "../../../gcp/devConnect";
 
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
@@ -357,4 +357,37 @@ export async function orchestrateRollout(
     );
   }
   return { rollout, build };
+}
+
+export async function listDeveloperConnectAppHostingConnections(
+  projectId: string,
+  location: string,
+): Promise<void> {
+  const connections = await listAllConnections(projectId, location);
+  const appHostingConnections = connections.filter((connection) =>
+    githubConnections.isApphostingConnection(connection.name),
+  );
+  for (let i = 0; i < appHostingConnections.length; i++) {
+    const connection = appHostingConnections[i];
+    logBullet(connection.name);
+  }
+}
+
+/**
+ * deletes all dev connect connections
+ */
+export async function resetDeveloperConnectAppHostingConnections(
+  projectId: string,
+  location: string,
+): Promise<void> {
+  const connections = await listAllConnections(projectId, location);
+  const appHostingConnections = connections.filter((connection) =>
+    githubConnections.isApphostingConnection(connection.name),
+  );
+  for (let i = 0; i < appHostingConnections.length; i++) {
+    const connection = appHostingConnections[i];
+    logBullet(`Deleting connection: ${connection.name}`);
+    const { id } = githubConnections.parseConnectionName(connection.name)!;
+    await deleteConnection(projectId, location, id);
+  }
 }
