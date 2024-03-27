@@ -1,5 +1,5 @@
 import { MemoryOptions } from "../deploy/functions/backend";
-import { Runtime } from "../deploy/functions/runtimes";
+import { Runtime } from "../deploy/functions/runtimes/supported";
 import * as proto from "../gcp/proto";
 import { SpecParamType } from "./extensionsHelper";
 

@@ -6,6 +6,7 @@ import * as node from "../../../../../deploy/functions/runtimes/node";
 import * as versioning from "../../../../../deploy/functions/runtimes/node/versioning";
 import * as utils from "../../../../../utils";
 import { FirebaseError } from "../../../../../error";
+import { Runtime } from "../../../../../deploy/functions/runtimes/supported";
 
 const PROJECT_ID = "test-project";
 const PROJECT_DIR = "/some/path";
@@ -66,7 +67,12 @@ describe("NodeDelegate", () => {
 
     it("throws errors if requested runtime version is invalid", () => {
       const invalidRuntime = "foobar";
-      const delegate = new node.Delegate(PROJECT_ID, PROJECT_DIR, SOURCE_DIR, invalidRuntime);
+      const delegate = new node.Delegate(
+        PROJECT_ID,
+        PROJECT_DIR,
+        SOURCE_DIR,
+        invalidRuntime as Runtime,
+      );
 
       expect(() => delegate.getNodeBinary()).to.throw(FirebaseError);
     });

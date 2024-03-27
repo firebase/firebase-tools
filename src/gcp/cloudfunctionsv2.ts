@@ -5,7 +5,7 @@ import { logger } from "../logger";
 import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1";
 import { PUBSUB_PUBLISH_EVENT } from "../functions/events/v2";
 import * as backend from "../deploy/functions/backend";
-import * as runtimes from "../deploy/functions/runtimes";
+import * as supported from "../deploy/functions/runtimes/supported";
 import * as proto from "./proto";
 import * as utils from "../utils";
 import * as projectConfig from "../functions/projectConfig";
@@ -44,7 +44,7 @@ export type RetryPolicy =
 
 /** Settings for building a container out of the customer source. */
 export interface BuildConfig {
-  runtime: runtimes.Runtime;
+  runtime: supported.Runtime;
   entryPoint: string;
   source: Source;
   sourceToken?: string;
@@ -478,7 +478,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
     );
   }
 
-  if (!runtimes.isValidRuntime(endpoint.runtime)) {
+  if (!supported.isRuntime(endpoint.runtime)) {
     throw new FirebaseError(
       "Failed internal assertion. Trying to deploy a new function with a deprecated runtime." +
         " This should never happen",
@@ -699,7 +699,7 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
     trigger = { httpsTrigger: {} };
   }
 
-  if (!runtimes.isValidRuntime(gcfFunction.buildConfig.runtime)) {
+  if (!supported.isRuntime(gcfFunction.buildConfig.runtime)) {
     logger.debug("GCFv2 function has a deprecated runtime:", JSON.stringify(gcfFunction, null, 2));
   }
 

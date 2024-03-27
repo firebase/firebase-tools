@@ -5,7 +5,7 @@ import { logger } from "../logger";
 import * as backend from "../deploy/functions/backend";
 import * as utils from "../utils";
 import * as proto from "./proto";
-import * as runtimes from "../deploy/functions/runtimes";
+import * as supported from "../deploy/functions/runtimes/supported";
 import * as iam from "./iam";
 import * as projectConfig from "../functions/projectConfig";
 import { Client } from "../apiv2";
@@ -103,7 +103,7 @@ export interface CloudFunction {
   // end oneof trigger;
 
   entryPoint: string;
-  runtime: runtimes.Runtime;
+  runtime: supported.Runtime;
   // Default = 60s
   timeout?: proto.Duration | null;
 
@@ -519,8 +519,11 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     securityLevel = gcfFunction.httpsTrigger.securityLevel;
   }
 
-  if (!runtimes.isValidRuntime(gcfFunction.runtime)) {
-    logger.debug("GCFv1 function has a deprecated runtime:", JSON.stringify(gcfFunction, null, 2));
+  if (!supported.isRuntime(gcfFunction.runtime)) {
+    logger.debug(
+      "GCF 1st gen function has unsupported runtime:",
+      JSON.stringify(gcfFunction, null, 2),
+    );
   }
 
   const endpoint: backend.Endpoint = {
@@ -589,10 +592,11 @@ export function functionFromEndpoint(
     );
   }
 
-  if (!runtimes.isValidRuntime(endpoint.runtime)) {
+  if (!supported.isRuntime(endpoint.runtime)) {
     throw new FirebaseError(
       "Failed internal assertion. Trying to deploy a new function with a deprecated runtime." +
         " This should never happen",
+      { exit: 1 },
     );
   }
   const gcfFunction: Omit<CloudFunction, OutputOnlyFields> = {
