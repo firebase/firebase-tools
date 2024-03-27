@@ -1,4 +1,3 @@
-import * as clc from "colorette";
 
 import {
   EndpointFilter,
