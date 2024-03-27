@@ -69,12 +69,12 @@ export async function detectFromPort(
   port: number,
   project: string,
   runtime: runtimes.Runtime,
-  timeout = 10_000 /* 10s to boot up */,
+  timeout = 30_000 /* 30s to boot up. 30s may be too long, but many timeouts were reported when it was set to 10s. Please refer to https://github.com/firebase/firebase-tools/issues/5888#issuecomment-2004446757 for more details. */,
 ): Promise<build.Build> {
   let res: Response;
   const timedOut = new Promise<never>((resolve, reject) => {
     setTimeout(() => {
-      reject(new FirebaseError("User code failed to load. Cannot determine backend specification"));
+      reject(new FirebaseError("User code failed to load. Cannot determine backend specification. If there is no issue with the code, it may have timed out due to taking too long to load."));
     }, timeout);
   });
 
