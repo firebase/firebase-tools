@@ -1,7 +1,16 @@
 import { Client } from "../apiv2";
 import { developerConnectOrigin, developerConnectP4SAOrigin } from "../api";
+import { generateServiceIdentity } from "./serviceusage";
 
 const PAGE_SIZE_MAX = 1000;
+
+/**
+ * LOCATION_OVERRIDE is used to test Developer Connect in different environments.
+ *
+ * Autopush -> 'us-central1'
+ * Staging -> 'us-west1'
+ */
+const LOCATION_OVERRIDE = process.env.FIREBASE_DEVELOPERCONNECT_LOCATION_OVERRIDE;
 
 export const client = new Client({
   urlPrefix: developerConnectOrigin(),
@@ -105,7 +114,7 @@ type GitRepositoryLinkOutputOnlyFields =
   | "uid";
 
 export interface LinkableGitRepositories {
-  repositories: LinkableGitRepository[];
+  linkableGitRepositories: LinkableGitRepository[];
   nextPageToken: string;
 }
 
@@ -120,7 +129,7 @@ export async function createConnection(
   projectId: string,
   location: string,
   connectionId: string,
-  githubConfig: GitHubConfig,
+  githubConfig: GitHubConfig = {},
 ): Promise<Operation> {
   const config: GitHubConfig = {
     ...githubConfig,
@@ -130,12 +139,31 @@ export async function createConnection(
     Omit<Omit<Connection, "name">, ConnectionOutputOnlyFields>,
     Operation
   >(
-    `projects/${projectId}/locations/${location}/connections`,
+    `projects/${projectId}/locations/${LOCATION_OVERRIDE ?? location}/connections`,
     {
       githubConfig: config,
     },
     { queryParams: { connectionId } },
   );
+  return res.body;
+}
+
+/**
+ * Deletes a connection that matches the given parameters
+ */
+export async function deleteConnection(
+  projectId: string,
+  location: string,
+  connectionId: string,
+): Promise<Operation> {
+  /**
+   * TODO: specify a unique request ID so that if you must retry your request,
+   * the server will know to ignore the request if it has already been
+   * completed. The server will guarantee that for at least 60 minutes after
+   * the first request.
+   */
+  const name = `projects/${projectId}/locations/${LOCATION_OVERRIDE ?? location}/connections/${connectionId}`;
+  const res = await client.delete<Operation>(name, { queryParams: { force: "true" } });
   return res.body;
 }
 
@@ -147,7 +175,7 @@ export async function getConnection(
   location: string,
   connectionId: string,
 ): Promise<Connection> {
-  const name = `projects/${projectId}/locations/${location}/connections/${connectionId}`;
+  const name = `projects/${projectId}/locations/${LOCATION_OVERRIDE ?? location}/connections/${connectionId}`;
   const res = await client.get<Connection>(name);
   return res.body;
 }
@@ -164,7 +192,7 @@ export async function listAllConnections(
     const res = await client.get<{
       connections: Connection[];
       nextPageToken?: string;
-    }>(`/projects/${projectId}/locations/${location}/connections`, {
+    }>(`/projects/${projectId}/locations/${LOCATION_OVERRIDE ?? location}/connections`, {
       queryParams: {
         pageSize: PAGE_SIZE_MAX,
         pageToken,
@@ -189,19 +217,19 @@ export async function listAllLinkableGitRepositories(
   location: string,
   connectionId: string,
 ): Promise<LinkableGitRepository[]> {
-  const name = `projects/${projectId}/locations/${location}/connections/${connectionId}:fetchLinkableRepositories`;
+  const name = `projects/${projectId}/locations/${LOCATION_OVERRIDE ?? location}/connections/${connectionId}:fetchLinkableGitRepositories`;
   const repos: LinkableGitRepository[] = [];
 
   const getNextPage = async (pageToken = ""): Promise<void> => {
     const res = await client.get<LinkableGitRepositories>(name, {
       queryParams: {
-        PAGE_SIZE_MAX,
+        pageSize: PAGE_SIZE_MAX,
         pageToken,
       },
     });
 
-    if (Array.isArray(res.body.repositories)) {
-      repos.push(...res.body.repositories);
+    if (Array.isArray(res.body.linkableGitRepositories)) {
+      repos.push(...res.body.linkableGitRepositories);
     }
 
     if (res.body.nextPageToken) {
@@ -229,7 +257,7 @@ export async function createGitRepositoryLink(
     Omit<GitRepositoryLink, GitRepositoryLinkOutputOnlyFields | "name">,
     Operation
   >(
-    `projects/${projectId}/locations/${location}/connections/${connectionId}/gitRepositoryLinks`,
+    `projects/${projectId}/locations/${LOCATION_OVERRIDE ?? location}/connections/${connectionId}/gitRepositoryLinks`,
     { cloneUri },
     { queryParams: { gitRepositoryLinkId } },
   );
@@ -245,7 +273,7 @@ export async function getGitRepositoryLink(
   connectionId: string,
   gitRepositoryLinkId: string,
 ): Promise<GitRepositoryLink> {
-  const name = `projects/${projectId}/locations/${location}/connections/${connectionId}/gitRepositoryLinks/${gitRepositoryLinkId}`;
+  const name = `projects/${projectId}/locations/${LOCATION_OVERRIDE ?? location}/connections/${connectionId}/gitRepositoryLinks/${gitRepositoryLinkId}`;
   const res = await client.get<GitRepositoryLink>(name);
   return res.body;
 }
@@ -255,4 +283,16 @@ export async function getGitRepositoryLink(
  */
 export function serviceAgentEmail(projectNumber: string): string {
   return `service-${projectNumber}@${developerConnectP4SAOrigin()}`;
+}
+
+/**
+ * Generates the Developer Connect P4SA which is required to use the Developer
+ * Connect APIs.
+ * @param projectNumber the project number for which this P4SA is being
+ * generated for.
+ */
+export async function generateP4SA(projectNumber: string): Promise<void> {
+  const devConnectOrigin = developerConnectOrigin();
+
+  await generateServiceIdentity(projectNumber, new URL(devConnectOrigin).hostname, "apphosting");
 }
