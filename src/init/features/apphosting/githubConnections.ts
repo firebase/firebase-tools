@@ -211,7 +211,6 @@ export async function getOrCreateOauthConnection(
     conn = await devConnect.getConnection(projectId, location, id);
   }
 
-  utils.logBullet(`oauth connection created: ${JSON.stringify(conn)}`);
   return conn;
 }
 
