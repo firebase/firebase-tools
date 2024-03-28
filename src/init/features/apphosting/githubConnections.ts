@@ -121,7 +121,7 @@ export async function linkGitHubRepository(
       );
     }
 
-    const selection = await promptRepositoryUri(projectId, existingConns);
+    const selection = await promptCloneUri(projectId, existingConns);
     repoCloneUri = selection.cloneUri;
     connection = selection.connection;
   } while (repoCloneUri === ADD_CONN_CHOICE);
@@ -214,7 +214,7 @@ export async function getOrCreateOauthConnection(
   return conn;
 }
 
-async function promptRepositoryUri(
+async function promptCloneUri(
   projectId: string,
   connections: devConnect.Connection[],
 ): Promise<{ cloneUri: string; connection: devConnect.Connection }> {
@@ -287,7 +287,7 @@ async function ensureSecretManagerAdminGrant(projectId: string): Promise<void> {
     await rm.addServiceAccountToRoles(projectId, dcsaEmail, ["roles/secretmanager.admin"], true);
   } catch (e: any) {
     // if the dev connect P4SA doesn't exist in the project, generate one
-    if (e?.code === 400) {
+    if (e?.code === 400 || e?.status === 400) {
       await devConnect.generateP4SA(projectNumber);
       await rm.addServiceAccountToRoles(projectId, dcsaEmail, ["roles/secretmanager.admin"], true);
     } else {
@@ -381,6 +381,9 @@ export async function getOrCreateRepository(
 
 /**
  * Exported for unit testing.
+ *
+ * Lists all App Hosting Developer Connect Connections
+ * not including the OAuth Connection
  */
 export async function listAppHostingConnections(
   projectId: string,
