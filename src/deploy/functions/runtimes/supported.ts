@@ -196,7 +196,7 @@ export function guardVersionSupport(runtime: Runtime, now: Date = new Date()): v
   }
 
   // Subtract 90d (90 * milliseconds per day) to get warning period
-  const warning = new Date(deprecation.getTime() - 90 * 24 * 60 * 60 * 1000); 
+  const warning = new Date(deprecation.getTime() - 90 * 24 * 60 * 60 * 1000);
   if (now >= warning) {
     utils.logLabeledWarning(
       "functions",
