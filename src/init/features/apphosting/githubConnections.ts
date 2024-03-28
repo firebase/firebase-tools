@@ -249,7 +249,10 @@ async function promptCloneUri(
   return { cloneUri, connection: cloneUriToConnection[cloneUri] };
 }
 
-async function ensureSecretManagerAdminGrant(projectId: string): Promise<void> {
+/**
+ * Exported for unit testing
+ */
+export async function ensureSecretManagerAdminGrant(projectId: string): Promise<void> {
   const projectNumber = await getProjectNumber({ projectId });
   const dcsaEmail = devConnect.serviceAgentEmail(projectNumber);
 

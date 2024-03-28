@@ -127,8 +127,6 @@ describe("githubConnections", () => {
       sandbox.verifyAndRestore();
     });
 
-    const projectId = "projectId";
-    const location = "us-central1";
     const connectionId = `apphosting-${location}`;
 
     const op = {
@@ -328,6 +326,73 @@ describe("githubConnections", () => {
         "apphosting-github-conn-baddcafe",
         "apphosting-github-conn-deadbeef",
       ]);
+    });
+  });
+
+  describe("ensureSecretManagerAdminGrant", () => {
+    const sandbox: sinon.SinonSandbox = sinon.createSandbox();
+
+    let promptOnceStub: sinon.SinonStub;
+    let serviceAccountHasRolesStub: sinon.SinonStub;
+    let addServiceAccountToRolesStub: sinon.SinonStub;
+    let generateP4SAStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
+      serviceAccountHasRolesStub = sandbox.stub(rm, "serviceAccountHasRoles");
+      sandbox.stub(srcUtils, "getProjectNumber").resolves(projectId);
+      addServiceAccountToRolesStub = sandbox.stub(rm, "addServiceAccountToRoles");
+      generateP4SAStub = sandbox.stub(devconnect, "generateP4SA");
+    });
+
+    afterEach(() => {
+      sandbox.verifyAndRestore();
+    });
+
+    it("does not prompt user if the developer connect P4SA already has secretmanager.admin permissions", async () => {
+      serviceAccountHasRolesStub.resolves(true);
+      await repo.ensureSecretManagerAdminGrant(projectId);
+
+      expect(serviceAccountHasRolesStub).calledWith(
+        projectId,
+        `service-${projectId}@gcp-sa-developerconnect.iam.gserviceaccount.com`,
+        ["roles/secretmanager.admin"],
+      );
+      expect(promptOnceStub).to.not.be.called;
+    });
+
+    it("prompts user if the developer connect P4SA does not have secretmanager.admin permissions", async () => {
+      serviceAccountHasRolesStub.resolves(false);
+      promptOnceStub.resolves(true);
+      addServiceAccountToRolesStub.resolves();
+
+      await repo.ensureSecretManagerAdminGrant(projectId);
+
+      expect(serviceAccountHasRolesStub).calledWith(
+        projectId,
+        `service-${projectId}@gcp-sa-developerconnect.iam.gserviceaccount.com`,
+        ["roles/secretmanager.admin"],
+      );
+
+      expect(promptOnceStub).to.be.called;
+    });
+
+    it("tries to generate developer connect P4SA if adding role throws an error", async () => {
+      serviceAccountHasRolesStub.resolves(false);
+      promptOnceStub.resolves(true);
+      generateP4SAStub.resolves();
+      addServiceAccountToRolesStub.onFirstCall().throws({ code: 400, status: 400 });
+      addServiceAccountToRolesStub.onSecondCall().resolves();
+
+      await repo.ensureSecretManagerAdminGrant(projectId);
+
+      expect(serviceAccountHasRolesStub).calledWith(
+        projectId,
+        `service-${projectId}@gcp-sa-developerconnect.iam.gserviceaccount.com`,
+        ["roles/secretmanager.admin"],
+      ).calledOnce;
+      expect(generateP4SAStub).calledOnce;
+      expect(promptOnceStub).to.be.called;
     });
   });
 });
