@@ -152,6 +152,7 @@ async function createFullyInstalledConnection(
   oauthConn: devConnect.Connection,
 ): Promise<devConnect.Connection> {
   let conn = await createConnection(projectId, location, connectionId, {
+    appInstallationId: oauthConn.githubConfig?.appInstallationId,
     authorizerCredential: oauthConn.githubConfig?.authorizerCredential,
   });
 
@@ -209,6 +210,8 @@ export async function getOrCreateOauthConnection(
     const { projectId, location, id } = parseConnectionName(conn.name)!;
     conn = await devConnect.getConnection(projectId, location, id);
   }
+
+  utils.logBullet(`oauth connection created: ${JSON.stringify(conn)}`);
   return conn;
 }
 
