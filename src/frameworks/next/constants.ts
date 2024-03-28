@@ -23,6 +23,8 @@ export const APP_PATHS_MANIFEST: typeof APP_PATHS_MANIFEST_TYPE = "app-paths-man
 export const SERVER_REFERENCE_MANIFEST: `${typeof SERVER_REFERENCE_MANIFEST_TYPE}.json` =
   "server-reference-manifest.json";
 
+export const CONFIG_FILES = ["next.config.js", "next.config.mjs"] as const;
+
 export const ESBUILD_VERSION = "0.19.2";
 
 // This is copied from Next.js source code to keep WEBPACK_LAYERS in sync with the Next.js definition.

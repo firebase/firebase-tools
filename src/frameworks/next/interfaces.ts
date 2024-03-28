@@ -2,6 +2,7 @@ import type { RouteHas } from "next/dist/lib/load-custom-routes";
 import type { ImageConfigComplete } from "next/dist/shared/lib/image-config";
 import type { MiddlewareManifest as MiddlewareManifestV2FromNext } from "next/dist/build/webpack/plugins/middleware-plugin";
 import type { HostingHeaders } from "../../firebaseConfig";
+import type { CONFIG_FILES } from "./constants";
 
 export interface RoutesManifestRewriteObject {
   beforeFiles?: RoutesManifestRewrite[];
@@ -156,3 +157,5 @@ type Actions = {
     };
   };
 };
+
+export type NextConfigFileName = (typeof CONFIG_FILES)[number];

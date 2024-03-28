@@ -22,6 +22,7 @@ import type {
   HostingHeadersWithSource,
   AppPathRoutesManifest,
   ActionManifest,
+  NextConfigFileName,
 } from "./interfaces";
 import {
   APP_PATH_ROUTES_MANIFEST,
@@ -29,6 +30,7 @@ import {
   IMAGES_MANIFEST,
   MIDDLEWARE_MANIFEST,
   WEBPACK_LAYERS,
+  CONFIG_FILES,
 } from "./constants";
 import { dirExistsSync, fileExistsSync } from "../../fsutils";
 
@@ -450,4 +452,16 @@ export function getRoutesWithServerAction(
   }
 
   return Array.from(routesWithServerAction);
+}
+
+/**
+ * Get the Next.js config file name in the project directory, either
+ * `next.config.js` or `next.config.mjs`.  If none of them exist, return null.
+ */
+export async function whichNextConfigFile(dir: string): Promise<NextConfigFileName | null> {
+  for (const file of CONFIG_FILES) {
+    if (await pathExists(join(dir, file))) return file;
+  }
+
+  return null;
 }
