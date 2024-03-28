@@ -287,12 +287,22 @@ export async function ensureSecretManagerAdminGrant(projectId: string): Promise<
   }
 
   try {
-    await rm.addServiceAccountToRoles(projectId, dcsaEmail, ["roles/secretmanager.admin"], true);
+    await rm.addServiceAccountToRoles(
+      projectId,
+      dcsaEmail,
+      ["roles/secretmanager.admin"],
+      /* skipAccountLookup= */ true,
+    );
   } catch (e: any) {
     // if the dev connect P4SA doesn't exist in the project, generate one
     if (e?.code === 400 || e?.status === 400) {
       await devConnect.generateP4SA(projectNumber);
-      await rm.addServiceAccountToRoles(projectId, dcsaEmail, ["roles/secretmanager.admin"], true);
+      await rm.addServiceAccountToRoles(
+        projectId,
+        dcsaEmail,
+        ["roles/secretmanager.admin"],
+        /* skipAccountLookup= */ true,
+      );
     } else {
       throw e;
     }
