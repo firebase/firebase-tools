@@ -3,7 +3,14 @@ import { developerConnectOrigin, developerConnectP4SAOrigin } from "../api";
 import { generateServiceIdentity } from "./serviceusage";
 
 const PAGE_SIZE_MAX = 1000;
-const LOCATION_OVERRIDE = "us-central1"; // TODO(mathusan): for debugging only
+
+/**
+ * LOCATION_OVERRIDE is used to test Developer Connect in different environments.
+ *
+ * Autopush -> 'us-central1'
+ * Staging -> 'us-west1'
+ */
+const LOCATION_OVERRIDE = process.env.FIREBASE_DEVELOPERCONNECT_LOCATION_OVERRIDE;
 
 export const client = new Client({
   urlPrefix: developerConnectOrigin(),
@@ -128,12 +135,11 @@ export async function createConnection(
     ...githubConfig,
     githubApp: "FIREBASE",
   };
-  location = LOCATION_OVERRIDE;
   const res = await client.post<
     Omit<Omit<Connection, "name">, ConnectionOutputOnlyFields>,
     Operation
   >(
-    `projects/${projectId}/locations/${location}/connections`,
+    `projects/${projectId}/locations/${LOCATION_OVERRIDE ?? location}/connections`,
     {
       githubConfig: config,
     },
@@ -156,8 +162,7 @@ export async function deleteConnection(
    * completed. The server will guarantee that for at least 60 minutes after
    * the first request.
    */
-  location = LOCATION_OVERRIDE;
-  const name = `projects/${projectId}/locations/${location}/connections/${connectionId}`;
+  const name = `projects/${projectId}/locations/${LOCATION_OVERRIDE ?? location}/connections/${connectionId}`;
   const res = await client.delete<Operation>(name, { queryParams: { force: "true" } });
   return res.body;
 }
@@ -170,8 +175,7 @@ export async function getConnection(
   location: string,
   connectionId: string,
 ): Promise<Connection> {
-  location = LOCATION_OVERRIDE;
-  const name = `projects/${projectId}/locations/${location}/connections/${connectionId}`;
+  const name = `projects/${projectId}/locations/${LOCATION_OVERRIDE ?? location}/connections/${connectionId}`;
   const res = await client.get<Connection>(name);
   return res.body;
 }
@@ -184,12 +188,11 @@ export async function listAllConnections(
   location: string,
 ): Promise<Connection[]> {
   const conns: Connection[] = [];
-  location = LOCATION_OVERRIDE;
   const getNextPage = async (pageToken = ""): Promise<void> => {
     const res = await client.get<{
       connections: Connection[];
       nextPageToken?: string;
-    }>(`/projects/${projectId}/locations/${location}/connections`, {
+    }>(`/projects/${projectId}/locations/${LOCATION_OVERRIDE ?? location}/connections`, {
       queryParams: {
         pageSize: PAGE_SIZE_MAX,
         pageToken,
@@ -214,8 +217,7 @@ export async function listAllLinkableGitRepositories(
   location: string,
   connectionId: string,
 ): Promise<LinkableGitRepository[]> {
-  location = LOCATION_OVERRIDE;
-  const name = `projects/${projectId}/locations/${location}/connections/${connectionId}:fetchLinkableGitRepositories`;
+  const name = `projects/${projectId}/locations/${LOCATION_OVERRIDE ?? location}/connections/${connectionId}:fetchLinkableGitRepositories`;
   const repos: LinkableGitRepository[] = [];
 
   const getNextPage = async (pageToken = ""): Promise<void> => {
@@ -251,12 +253,11 @@ export async function createGitRepositoryLink(
   gitRepositoryLinkId: string,
   cloneUri: string,
 ): Promise<Operation> {
-  location = LOCATION_OVERRIDE;
   const res = await client.post<
     Omit<GitRepositoryLink, GitRepositoryLinkOutputOnlyFields | "name">,
     Operation
   >(
-    `projects/${projectId}/locations/${location}/connections/${connectionId}/gitRepositoryLinks`,
+    `projects/${projectId}/locations/${LOCATION_OVERRIDE ?? location}/connections/${connectionId}/gitRepositoryLinks`,
     { cloneUri },
     { queryParams: { gitRepositoryLinkId } },
   );
@@ -272,8 +273,7 @@ export async function getGitRepositoryLink(
   connectionId: string,
   gitRepositoryLinkId: string,
 ): Promise<GitRepositoryLink> {
-  location = LOCATION_OVERRIDE;
-  const name = `projects/${projectId}/locations/${location}/connections/${connectionId}/gitRepositoryLinks/${gitRepositoryLinkId}`;
+  const name = `projects/${projectId}/locations/${LOCATION_OVERRIDE ?? location}/connections/${connectionId}/gitRepositoryLinks/${gitRepositoryLinkId}`;
   const res = await client.get<GitRepositoryLink>(name);
   return res.body;
 }
