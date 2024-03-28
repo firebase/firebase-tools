@@ -9,7 +9,7 @@ import { FirebaseError } from "../error";
 import { migrateSchema } from "../dataconnect/schemaMigration";
 import { requireAuth } from "../requireAuth";
 
-export const command = new Command("dataconnect:sql:migrate <serviceId>")
+export const command = new Command("dataconnect:sql:migrate [serviceId]")
   .description("migrates your CloudSQL database's schema to match your local DataConnect schema")
   // .before(requirePermissions, ["dataconnect.services.list", "dataconnect.schemas.list", "dataconnect.connectors.list"])
   .before(requireAuth)

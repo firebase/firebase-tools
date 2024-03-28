@@ -6,6 +6,7 @@ import { needProjectId } from "../../projectUtils";
 import { provisionCloudSql } from "../../dataconnect/provisionCloudSql";
 import { parseServiceName } from "../../dataconnect/names";
 import { migrateSchema } from "../../dataconnect/schemaMigration";
+import { confirm } from "../../prompt";
 
 /**
  * Checks for and creates a Firebase DataConnect service, if needed.
@@ -26,23 +27,33 @@ export default async function (
     (s) => !context.dataconnect.some((si) => matches(si, s)),
   );
 
-  let promises: Promise<any>[] = [];
-  promises = promises.concat(
+  await Promise.all(
     servicesToCreate.map(async (s) => {
       const { projectId, locationId, serviceId } = splitName(s.serviceName);
       await client.createService(projectId, locationId, serviceId);
       utils.logLabeledSuccess("dataconnect", `Created service ${s.serviceName}`);
     }),
   );
-  promises = promises.concat(
-    servicesToDelete.map(async (s) => {
-      // TODO: Prompt before deletion, displaying info about child resources on the service
-      const { projectId, locationId, serviceId } = splitName(s.name);
-      await client.deleteService(projectId, locationId, serviceId);
-      utils.logLabeledSuccess("dataconnect", `Deleted service ${s.name}`);
-    }),
-  );
-  await Promise.all(promises);
+
+  if (servicesToDelete.length) {
+    if (
+      await confirm({
+        force: options.force,
+        nonInteractive: options.nonInteractive,
+        message: `The following services exist on ${projectId} but are not listed in your 'firebase.json'\n${servicesToDelete
+          .map((s) => s.name)
+          .join("\n")}\nWould you like to delete these services?`,
+      })
+    ) {
+      await Promise.all(
+        servicesToDelete.map(async (s) => {
+          const { projectId, locationId, serviceId } = splitName(s.name);
+          await client.deleteService(projectId, locationId, serviceId);
+          utils.logLabeledSuccess("dataconnect", `Deleted service ${s.name}`);
+        }),
+      );
+    }
+  }
 
   // Provision CloudSQL resources
   utils.logLabeledBullet("dataconnect", "Checking for CloudSQL resources...");
