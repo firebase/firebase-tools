@@ -294,8 +294,5 @@ export function serviceAgentEmail(projectNumber: string): string {
 export async function generateP4SA(projectNumber: string): Promise<void> {
   const devConnectOrigin = developerConnectOrigin();
 
-  const serviceName = devConnectOrigin.startsWith("http")
-    ? new URL(devConnectOrigin).hostname
-    : devConnectOrigin;
-  await generateServiceIdentity(projectNumber, serviceName, "apphosting");
+  await generateServiceIdentity(projectNumber, new URL(devConnectOrigin).hostname, "apphosting");
 }
