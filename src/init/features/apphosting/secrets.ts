@@ -61,9 +61,18 @@ export async function grantSecretAccess(
     },
   ];
 
+  let existingBindings;
   try {
-    const existingBindings = (await secretManager.getIamPolicy(secret)).bindings;
-    const updatedBindings = updateBindings(existingBindings, newBindings);
+    existingBindings = (await secretManager.getIamPolicy(secret)).bindings;
+  } catch (err: any) {
+    throw new FirebaseError(
+      `Failed to get IAM bindings on secret: ${secret.name}. Ensure you have the permissions to do so and try again.`,
+      { original: err },
+    );
+  }
+
+  try {
+    const updatedBindings = iam.generateUpdatedIamBindings(existingBindings, newBindings);
     await secretManager.setIamPolicy(secret, updatedBindings);
   } catch (err: any) {
     throw new FirebaseError(
@@ -73,26 +82,4 @@ export async function grantSecretAccess(
   }
 
   logSuccess(`Successfully set IAM bindings on secret ${secret.name}.\n`);
-}
-
-function updateBindings(existing: iam.Binding[], newBindings: iam.Binding[]): iam.Binding[] {
-  const updatedBindings: iam.Binding[] = existing ? [...existing] : [];
-
-  for (const newBinding of newBindings) {
-    const existingRoleIndex = updatedBindings.findIndex((b) => b.role === newBinding.role);
-
-    if (existingRoleIndex >= 0) {
-      // Role exists, update members selectively
-      newBinding.members.forEach((newMember) => {
-        if (!updatedBindings[existingRoleIndex].members.includes(newMember)) {
-          updatedBindings[existingRoleIndex].members.push(newMember);
-        }
-      });
-    } else {
-      // Role doesn't exist, add the new binding
-      updatedBindings.push(newBinding);
-    }
-  }
-
-  return updatedBindings;
 }
