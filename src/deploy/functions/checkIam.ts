@@ -7,6 +7,7 @@ import { Options } from "../../options";
 import { flattenArray } from "../../functional";
 import * as iam from "../../gcp/iam";
 import * as args from "./args";
+import * as gcb from "../../gcp/cloudbuild";
 import * as backend from "./backend";
 import { trackGA4 } from "../../track";
 import * as utils from "../../utils";
@@ -123,11 +124,6 @@ function getPubsubServiceAgent(projectNumber: string): string {
   return `service-${projectNumber}@gcp-sa-pubsub.iam.gserviceaccount.com`;
 }
 
-/** obtain the default compute service agent */
-export function getDefaultComputeServiceAgent(projectNumber: string): string {
-  return `${projectNumber}-compute@developer.gserviceaccount.com`;
-}
-
 /** Callback reducer function */
 function reduceEventsToServices(services: Array<Service>, endpoint: backend.Endpoint) {
   const service = serviceForEndpoint(endpoint);
@@ -158,7 +154,7 @@ export function obtainPubSubServiceAgentBindings(projectNumber: string): iam.Bin
  * @param existingPolicy the project level IAM policy
  */
 export function obtainDefaultComputeServiceAgentBindings(projectNumber: string): iam.Binding[] {
-  const defaultComputeServiceAgent = `serviceAccount:${getDefaultComputeServiceAgent(
+  const defaultComputeServiceAgent = `serviceAccount:${gcb.getDefaultComputeEngineServiceAgent(
     projectNumber,
   )}`;
   const runInvokerBinding: iam.Binding = {
