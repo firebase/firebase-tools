@@ -189,6 +189,36 @@ describe("apphosting", () => {
       get.restore();
     });
 
+    it("paginates listBackends", async () => {
+      get.onFirstCall().resolves({
+        body: {
+          backends: [
+            {
+              name: "abc",
+            },
+          ],
+          nextPageToken: "2",
+        },
+      });
+      get.onSecondCall().resolves({
+        body: {
+          unreachable: ["us-central1"],
+        },
+      });
+      await expect(apphosting.listBackends("p", "l")).to.eventually.deep.equal({
+        backends: [
+          {
+            name: "abc",
+          },
+        ],
+        unreachable: ["us-central1"],
+      });
+      expect(get).to.have.been.calledTwice;
+      expect(get).to.have.been.calledWithMatch("projects/p/locations/l/backends", {
+        queryParams: { pageToken: "2" },
+      });
+    });
+
     it("paginates listBuilds", async () => {
       get.onFirstCall().resolves({
         body: {
