@@ -219,33 +219,3 @@ export async function testIamPermissions(
     `projects/${projectId}`,
   );
 }
-
-/**
- * Generate the updated list of IAM bindings given the existing and new IAM bindings
- * @param existingBindings The existing IAM bindings
- * @param newBindings The new IAM bindings to update the existing one with
- */
-export function generateUpdatedIamBindings(
-  existingBindings: Binding[],
-  newBindings: Binding[],
-): Binding[] {
-  const updatedBindings: Binding[] = existingBindings ? [...existingBindings] : [];
-
-  for (const newBinding of newBindings) {
-    const existingRoleIndex = updatedBindings.findIndex((b) => b.role === newBinding.role);
-
-    if (existingRoleIndex >= 0) {
-      // Role exists, update members selectively
-      newBinding.members.forEach((newMember) => {
-        if (!updatedBindings[existingRoleIndex].members.includes(newMember)) {
-          updatedBindings[existingRoleIndex].members.push(newMember);
-        }
-      });
-    } else {
-      // Role doesn't exist, add the new binding
-      updatedBindings.push(newBinding);
-    }
-  }
-
-  return updatedBindings;
-}

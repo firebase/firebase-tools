@@ -72,7 +72,7 @@ export async function grantSecretAccess(
   }
 
   try {
-    const updatedBindings = iam.generateUpdatedIamBindings(existingBindings, newBindings);
+    const updatedBindings = existingBindings.concat(newBindings);
     await secretManager.setIamPolicy(secret, updatedBindings);
   } catch (err: any) {
     throw new FirebaseError(
