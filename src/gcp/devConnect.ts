@@ -1,15 +1,8 @@
 import { Client } from "../apiv2";
 import { developerConnectOrigin, developerConnectP4SAOrigin } from "../api";
-import { generateServiceIdentity } from "./serviceusage";
+import { generateServiceIdentityAndPoll } from "./serviceusage";
 
 const PAGE_SIZE_MAX = 1000;
-
-/**
- * LOCATION_OVERRIDE is used to test Developer Connect in different environments.
- *
- * Autopush -> 'us-central1'
- * Staging -> 'us-west1'
- */
 const LOCATION_OVERRIDE = process.env.FIREBASE_DEVELOPERCONNECT_LOCATION_OVERRIDE;
 
 export const client = new Client({
@@ -294,5 +287,9 @@ export function serviceAgentEmail(projectNumber: string): string {
 export async function generateP4SA(projectNumber: string): Promise<void> {
   const devConnectOrigin = developerConnectOrigin();
 
-  await generateServiceIdentity(projectNumber, new URL(devConnectOrigin).hostname, "apphosting");
+  await generateServiceIdentityAndPoll(
+    projectNumber,
+    new URL(devConnectOrigin).hostname,
+    "apphosting",
+  );
 }
