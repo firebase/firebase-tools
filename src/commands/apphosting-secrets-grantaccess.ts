@@ -6,7 +6,7 @@ import { requireAuth } from "../requireAuth";
 import * as secrets from "../functions/secrets";
 import { requirePermissions } from "../requirePermissions";
 import * as apphosting from "../gcp/apphosting";
-import { grantSecretAccess } from "../init/features/apphosting";
+import { grantSecretAccess } from "../init/features/apphosting/secrets";
 
 export const command = new Command("apphosting:secrets:grantaccess <secretName>")
   .description("grant service accounts permissions to the provided secret")

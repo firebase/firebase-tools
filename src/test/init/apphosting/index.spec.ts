@@ -4,13 +4,8 @@ import { expect } from "chai";
 import * as apphosting from "../../../gcp/apphosting";
 import * as iam from "../../../gcp/iam";
 import * as resourceManager from "../../../gcp/resourceManager";
-import * as secretManager from "../../../gcp/secretManager";
 import * as poller from "../../../operation-poller";
-import {
-  createBackend,
-  grantSecretAccess,
-  setDefaultTrafficPolicy,
-} from "../../../init/features/apphosting/index";
+import { createBackend, setDefaultTrafficPolicy } from "../../../init/features/apphosting/index";
 import * as deploymentTool from "../../../deploymentTool";
 import { FirebaseError } from "../../../error";
 
@@ -179,78 +174,6 @@ describe("operationsConverter", () => {
           ],
         },
       });
-    });
-  });
-});
-
-describe("manageSecrets", () => {
-  const sandbox: sinon.SinonSandbox = sinon.createSandbox();
-
-  let secretExistsStub: sinon.SinonStub;
-  let setIamPolicyStub: sinon.SinonStub;
-
-  beforeEach(() => {
-    secretExistsStub = sandbox
-      .stub(secretManager, "secretExists")
-      .throws("Unexpected secretExists call");
-    setIamPolicyStub = sandbox
-      .stub(secretManager, "setIamPolicy")
-      .throws("Unexpected setIamPolicy call");
-  });
-
-  afterEach(() => {
-    sandbox.verifyAndRestore();
-  });
-
-  describe("grantSecretAccess", () => {
-    const projectId = "projectId";
-    const projectNumber = "123456789";
-    const location = "us-central1";
-    const backendId = "backendId";
-    const secretName = "secretName";
-
-    it("should grant access to the appropriate service accounts", async () => {
-      secretExistsStub.resolves(true);
-      setIamPolicyStub.resolves();
-
-      await grantSecretAccess(secretName, location, backendId, projectId, projectNumber);
-
-      const secret: secretManager.Secret = {
-        projectId: projectId,
-        name: secretName,
-      };
-
-      const bindings: iam.Binding[] = [
-        {
-          role: "roles/secretmanager.secretAccessor",
-          members: [
-            `serviceAccount:${projectNumber}@cloudbuild.gserviceaccount.com`,
-            `serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`,
-          ],
-        },
-        {
-          role: "roles/secretmanager.viewer",
-          members: [`serviceAccount:${projectNumber}@cloudbuild.gserviceaccount.com`],
-        },
-      ];
-
-      expect(secretExistsStub).to.be.calledWith(projectId, secretName);
-      expect(setIamPolicyStub).to.be.calledWith(secret, bindings);
-    });
-
-    it("does not grant access to a secret that doesn't exist", () => {
-      secretExistsStub.resolves(false);
-
-      expect(
-        grantSecretAccess(secretName, location, backendId, projectId, projectNumber),
-      ).to.be.rejectedWith(
-        FirebaseError,
-        `Secret ${secretName} does not exist in project ${projectId}`,
-      );
-
-      expect(secretExistsStub).to.be.calledWith(projectId, secretName);
-      expect(secretExistsStub).to.be.calledOnce;
-      expect(setIamPolicyStub).to.not.have.been.called;
     });
   });
 });
