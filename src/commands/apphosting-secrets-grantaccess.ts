@@ -20,6 +20,7 @@ export const command = new Command("apphosting:secrets:grantaccess <secretName>"
     "secretmanager.secrets.get",
     "secretmanager.secrets.update",
     "secretmanager.versions.add",
+    "secretmanager.secrets.getIamPolicy",
     "secretmanager.secrets.setIamPolicy",
   ])
   .action(async (secretName: string, options: Options) => {
