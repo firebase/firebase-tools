@@ -7,7 +7,6 @@ import { Options } from "../../options";
 import { flattenArray } from "../../functional";
 import * as iam from "../../gcp/iam";
 import * as args from "./args";
-import * as gcb from "../../gcp/cloudbuild";
 import * as backend from "./backend";
 import { trackGA4 } from "../../track";
 import * as utils from "../../utils";
@@ -154,7 +153,7 @@ export function obtainPubSubServiceAgentBindings(projectNumber: string): iam.Bin
  * @param existingPolicy the project level IAM policy
  */
 export function obtainDefaultComputeServiceAgentBindings(projectNumber: string): iam.Binding[] {
-  const defaultComputeServiceAgent = `serviceAccount:${gcb.getDefaultComputeEngineServiceAgent(
+  const defaultComputeServiceAgent = `serviceAccount:${iam.getDefaultComputeEngineServiceAgent(
     projectNumber,
   )}`;
   const runInvokerBinding: iam.Binding = {
