@@ -4,6 +4,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { promptOnce } from "../prompt";
 import { execSync } from "child_process";
+import * as clc from "colorette";
 
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
@@ -37,31 +38,24 @@ function getPreamble(): string {
 }
 
 async function run(prompt: string): Promise<string> {
-  // For text-only input, use the gemini-pro model
-
   var result;
   try {
     const newPrompt = getPreamble() + prompt;
-    console.log('New prompt: ' + newPrompt);
+    logger.debug("Running prompt: " + newPrompt);
     result = await model.generateContent(newPrompt);
-    console.log('Promise resolved with value: ' + result);
   } catch (error) {
     console.error('Promise rejected with error: ' + error);
   }
-  logger.info("waiting on result");
   const response = await result.response;
-
-  logger.info("run done");
   return response.text();
 }
 
 export const ask = async function (prompt: string) {
-
-  logger.info("starting ask");
-
   const responseText = await run(prompt);
-  logger.info("Gemini Responded:");
-  if (responseText.length > 0 && responseText[0] === "`" && responseText[responseText.length - 1] === "`") {
+  logger.info(clc.bold("Gemini Responded:"));
+  if (responseText.length > 0 
+    && responseText[0] === "`" 
+    && responseText[responseText.length - 1] === "`") {
     // Assume this is a single command with backticks on each side.
     const trimmedResponse = responseText.slice(1, responseText.length - 1);
     logger.info(trimmedResponse);
@@ -76,13 +70,13 @@ export const ask = async function (prompt: string) {
 
     // Try to add the role to the service account
     if (runNow) {
-      console.log("running: " + trimmedResponse);
-      const asdf = execSync(trimmedResponse).toString(); // Doesn't output to console correctly
+      logger.info("Running: " + trimmedResponse);
+      const newCommandOutput = execSync(trimmedResponse).toString(); // Doesn't output to console correctly
       // TODO(christhompson): This doesn't transition well, only good for one-off commands that
-      // don't spawn long running subprocesses (like emulators:start).
-      console.log(asdf);
+      // don't spawn long running subprocesses (not like emulators:start).
+      logger.info(newCommandOutput);
     }
   } else {
-    console.log(responseText);
+    logger.info(responseText);
   }
 }
