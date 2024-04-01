@@ -3,12 +3,14 @@ import * as clc from "colorette";
 import * as repo from "./repo";
 import * as poller from "../../../operation-poller";
 import * as apphosting from "../../../gcp/apphosting";
+import * as githubConnections from "./githubConnections";
 import { logBullet, logSuccess, logWarning } from "../../../utils";
 import {
   apphostingOrigin,
   artifactRegistryDomain,
   cloudRunApiOrigin,
   cloudbuildOrigin,
+  developerConnectOrigin,
   secretManagerOrigin,
 } from "../../../api";
 import {
@@ -27,6 +29,7 @@ import { DEFAULT_REGION } from "./constants";
 import { ensure } from "../../../ensureApiEnabled";
 import * as deploymentTool from "../../../deploymentTool";
 import { DeepOmit } from "../../../metaprogramming";
+import { GitRepositoryLink } from "../../../gcp/devConnect";
 
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
@@ -44,8 +47,10 @@ export async function doSetup(
   projectId: string,
   location: string | null,
   serviceAccount: string | null,
+  withDevConnect: boolean,
 ): Promise<void> {
   await Promise.all([
+    ...(withDevConnect ? [ensure(projectId, developerConnectOrigin(), "apphosting", true)] : []),
     ensure(projectId, cloudbuildOrigin(), "apphosting", true),
     ensure(projectId, secretManagerOrigin(), "apphosting", true),
     ensure(projectId, cloudRunApiOrigin(), "apphosting", true),
@@ -85,13 +90,15 @@ export async function doSetup(
     message: "Create a name for your backend [1-30 characters]",
   });
 
-  const cloudBuildConnRepo = await repo.linkGitHubRepository(projectId, location);
+  const gitRepositoryConnection: Repository | GitRepositoryLink = withDevConnect
+    ? await githubConnections.linkGitHubRepository(projectId, location)
+    : await repo.linkGitHubRepository(projectId, location);
 
   const backend = await createBackend(
     projectId,
     location,
     backendId,
-    cloudBuildConnRepo,
+    gitRepositoryConnection,
     serviceAccount,
   );
 
@@ -169,7 +176,7 @@ export async function createBackend(
   projectId: string,
   location: string,
   backendId: string,
-  repository: Repository,
+  repository: Repository | GitRepositoryLink,
   serviceAccount: string | null,
 ): Promise<Backend> {
   const defaultServiceAccount = defaultComputeServiceAccountEmail(projectId);
@@ -186,7 +193,7 @@ export async function createBackend(
   // TODO: remove computeServiceAccount when the backend supports the field.
   delete backendReqBody.serviceAccount;
 
-  async function createBackendAndPoll() {
+  async function createBackendAndPoll(): Promise<apphosting.Backend> {
     const op = await apphosting.createBackend(projectId, location, backendReqBody, backendId);
     return await poller.pollOperation<Backend>({
       ...apphostingPollerOptions,
