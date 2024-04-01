@@ -29,10 +29,10 @@ describe("cloudscheduler", () => {
     });
 
     it("should create a job if none exists", async () => {
-      nock(api.cloudschedulerOrigin)
+      nock(api.cloudschedulerOrigin())
         .get(`/${VERSION}/${TEST_JOB.name}`)
         .reply(404, { context: { response: { statusCode: 404 } } });
-      nock(api.cloudschedulerOrigin)
+      nock(api.cloudschedulerOrigin())
         .post(`/${VERSION}/projects/test-project/locations/us-east1/jobs`)
         .reply(200, TEST_JOB);
 
@@ -45,7 +45,7 @@ describe("cloudscheduler", () => {
     it("should do nothing if a functionally identical job exists", async () => {
       const otherJob = cloneDeep(TEST_JOB);
       otherJob.name = "something-different";
-      nock(api.cloudschedulerOrigin).get(`/${VERSION}/${TEST_JOB.name}`).reply(200, otherJob);
+      nock(api.cloudschedulerOrigin()).get(`/${VERSION}/${TEST_JOB.name}`).reply(200, otherJob);
 
       const response = await cloudscheduler.createOrReplaceJob(TEST_JOB);
 
@@ -58,7 +58,7 @@ describe("cloudscheduler", () => {
       existingJob.retryConfig = { maxDoublings: 10, retryCount: 2 };
       const newJob = cloneDeep(existingJob);
       newJob.retryConfig = { maxDoublings: 10 };
-      nock(api.cloudschedulerOrigin)
+      nock(api.cloudschedulerOrigin())
         .get(`/${VERSION}/${TEST_JOB.name}`)
         .query(true)
         .reply(200, existingJob);
@@ -72,11 +72,11 @@ describe("cloudscheduler", () => {
     it("should update if a job exists with the same name and a different schedule", async () => {
       const otherJob = cloneDeep(TEST_JOB);
       otherJob.schedule = "every 6 minutes";
-      nock(api.cloudschedulerOrigin)
+      nock(api.cloudschedulerOrigin())
         .get(`/${VERSION}/${TEST_JOB.name}`)
         .query(true)
         .reply(200, otherJob);
-      nock(api.cloudschedulerOrigin)
+      nock(api.cloudschedulerOrigin())
         .patch(`/${VERSION}/${TEST_JOB.name}`)
         .query(true)
         .reply(200, otherJob);
@@ -90,11 +90,11 @@ describe("cloudscheduler", () => {
     it("should update if a job exists with the same name but a different timeZone", async () => {
       const otherJob = cloneDeep(TEST_JOB);
       otherJob.timeZone = "America/New_York";
-      nock(api.cloudschedulerOrigin)
+      nock(api.cloudschedulerOrigin())
         .get(`/${VERSION}/${TEST_JOB.name}`)
         .query(true)
         .reply(200, otherJob);
-      nock(api.cloudschedulerOrigin)
+      nock(api.cloudschedulerOrigin())
         .patch(`/${VERSION}/${TEST_JOB.name}`)
         .query(true)
         .reply(200, otherJob);
@@ -108,11 +108,11 @@ describe("cloudscheduler", () => {
     it("should update if a job exists with the same name but a different retry config", async () => {
       const otherJob = cloneDeep(TEST_JOB);
       otherJob.retryConfig = { maxDoublings: 10 };
-      nock(api.cloudschedulerOrigin)
+      nock(api.cloudschedulerOrigin())
         .get(`/${VERSION}/${TEST_JOB.name}`)
         .query(true)
         .reply(200, TEST_JOB);
-      nock(api.cloudschedulerOrigin)
+      nock(api.cloudschedulerOrigin())
         .patch(`/${VERSION}/${TEST_JOB.name}`)
         .query(true)
         .reply(200, otherJob);
@@ -124,32 +124,32 @@ describe("cloudscheduler", () => {
     });
 
     it("should error and exit if cloud resource location is not set", async () => {
-      nock(api.cloudschedulerOrigin)
+      nock(api.cloudschedulerOrigin())
         .get(`/${VERSION}/${TEST_JOB.name}`)
         .reply(404, { context: { response: { statusCode: 404 } } });
-      nock(api.cloudschedulerOrigin)
+      nock(api.cloudschedulerOrigin())
         .post(`/${VERSION}/projects/test-project/locations/us-east1/jobs`)
         .reply(404, { context: { response: { statusCode: 404 } } });
 
       await expect(cloudscheduler.createOrReplaceJob(TEST_JOB)).to.be.rejectedWith(
         FirebaseError,
-        "Cloud resource location is not set"
+        "Cloud resource location is not set",
       );
 
       expect(nock.isDone()).to.be.true;
     });
 
     it("should error and exit if cloud scheduler create request fail", async () => {
-      nock(api.cloudschedulerOrigin)
+      nock(api.cloudschedulerOrigin())
         .get(`/${VERSION}/${TEST_JOB.name}`)
         .reply(404, { context: { response: { statusCode: 404 } } });
-      nock(api.cloudschedulerOrigin)
+      nock(api.cloudschedulerOrigin())
         .post(`/${VERSION}/projects/test-project/locations/us-east1/jobs`)
         .reply(400, { context: { response: { statusCode: 400 } } });
 
       await expect(cloudscheduler.createOrReplaceJob(TEST_JOB)).to.be.rejectedWith(
         FirebaseError,
-        "Failed to create scheduler job projects/test-project/locations/us-east1/jobs/test: HTTP Error: 400, Unknown Error"
+        "Failed to create scheduler job projects/test-project/locations/us-east1/jobs/test: HTTP Error: 400, Unknown Error",
       );
 
       expect(nock.isDone()).to.be.true;
@@ -176,7 +176,7 @@ describe("cloudscheduler", () => {
 
     it("should copy minimal fields for v1 endpoints", () => {
       expect(
-        cloudscheduler.jobFromEndpoint(V1_ENDPOINT, "appEngineLocation", "1234567")
+        cloudscheduler.jobFromEndpoint(V1_ENDPOINT, "appEngineLocation", "1234567"),
       ).to.deep.equal({
         name: "projects/project/locations/appEngineLocation/jobs/firebase-schedule-id-region",
         schedule: "every 1 minutes",
@@ -192,7 +192,7 @@ describe("cloudscheduler", () => {
 
     it("should copy minimal fields for v2 endpoints", () => {
       expect(
-        cloudscheduler.jobFromEndpoint(V2_ENDPOINT, V2_ENDPOINT.region, "1234567")
+        cloudscheduler.jobFromEndpoint(V2_ENDPOINT, V2_ENDPOINT.region, "1234567"),
       ).to.deep.equal({
         name: "projects/project/locations/region/jobs/firebase-schedule-id-region",
         schedule: "every 1 minutes",
@@ -224,8 +224,8 @@ describe("cloudscheduler", () => {
             },
           },
           "appEngineLocation",
-          "1234567"
-        )
+          "1234567",
+        ),
       ).to.deep.equal({
         name: "projects/project/locations/appEngineLocation/jobs/firebase-schedule-id-region",
         schedule: "every 1 minutes",
@@ -262,8 +262,8 @@ describe("cloudscheduler", () => {
             },
           },
           V2_ENDPOINT.region,
-          "1234567"
-        )
+          "1234567",
+        ),
       ).to.deep.equal({
         name: "projects/project/locations/region/jobs/firebase-schedule-id-region",
         schedule: "every 1 minutes",

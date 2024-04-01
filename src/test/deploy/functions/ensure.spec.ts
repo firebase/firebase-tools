@@ -36,19 +36,19 @@ describe("ensureCloudBuildEnabled()", () => {
   });
 
   function mockServiceCheck(isEnabled = false): void {
-    nock(api.serviceUsageOrigin)
+    nock(api.serviceUsageOrigin())
       .get("/v1/projects/test-project/services/cloudbuild.googleapis.com")
       .reply(200, { state: isEnabled ? "ENABLED" : "DISABLED" });
   }
 
   function mockServiceEnableSuccess(): void {
-    nock(api.serviceUsageOrigin)
+    nock(api.serviceUsageOrigin())
       .post("/v1/projects/test-project/services/cloudbuild.googleapis.com:enable")
       .reply(200, {});
   }
 
   function mockServiceEnableBillingError(): void {
-    nock(api.serviceUsageOrigin)
+    nock(api.serviceUsageOrigin())
       .post("/v1/projects/test-project/services/cloudbuild.googleapis.com:enable")
       .reply(403, {
         error: {
@@ -58,7 +58,7 @@ describe("ensureCloudBuildEnabled()", () => {
   }
 
   function mockServiceEnablePermissionError(): void {
-    nock(api.serviceUsageOrigin)
+    nock(api.serviceUsageOrigin())
       .post("/v1/projects/test-project/services/cloudbuild.googleapis.com:enable")
       .reply(403, {
         error: {
@@ -113,7 +113,7 @@ describe("ensureCloudBuildEnabled()", () => {
 
       await expect(ensure.cloudBuildEnabled("test-project")).to.eventually.be.rejectedWith(
         FirebaseError,
-        /must be on the Blaze \(pay-as-you-go\) plan to complete this command/
+        /must be on the Blaze \(pay-as-you-go\) plan to complete this command/,
       );
     });
   });
@@ -129,7 +129,7 @@ describe("ensureCloudBuildEnabled()", () => {
 
       await expect(ensure.cloudBuildEnabled("test-project")).to.eventually.be.rejectedWith(
         FirebaseError,
-        /Please ask a project owner to visit the following URL to enable Cloud Build/
+        /Please ask a project owner to visit the following URL to enable Cloud Build/,
       );
     });
   });
@@ -195,7 +195,7 @@ describe("ensureSecretAccess", () => {
       .withExactArgs(
         { name: secret0.secret, projectId: projectId },
         [DEFAULT_SA],
-        "roles/secretmanager.secretAccessor"
+        "roles/secretmanager.secretAccessor",
       );
     await ensure.secretAccess(projectId, b, backend.empty());
   });
@@ -220,7 +220,7 @@ describe("ensureSecretAccess", () => {
         id: "another-id",
         serviceAccount: "foo@bar.com",
         secretEnvironmentVariables: [secret0],
-      }
+      },
     );
     secretManagerMock
       .expects("ensureServiceAgentRole")
@@ -228,7 +228,7 @@ describe("ensureSecretAccess", () => {
       .withExactArgs(
         { name: secret0.secret, projectId: projectId },
         [DEFAULT_SA, "foo@bar.com"],
-        "roles/secretmanager.secretAccessor"
+        "roles/secretmanager.secretAccessor",
       );
     await ensure.secretAccess(projectId, b, backend.empty());
   });
@@ -260,7 +260,7 @@ describe("ensureSecretAccess", () => {
       .withExactArgs(
         { name: secret0.secret, projectId: projectId },
         ["foo@bar.com"],
-        "roles/secretmanager.secretAccessor"
+        "roles/secretmanager.secretAccessor",
       );
     await ensure.secretAccess(projectId, wantBackend, haveBackend);
   });

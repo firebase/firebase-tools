@@ -7,7 +7,6 @@ export const middlewareV2ManifestWhenUsed: MiddlewareManifestV2 = {
   sortedMiddleware: ["/"],
   middleware: {
     "/": {
-      env: [],
       files: ["server/edge-runtime-webpack.js", "server/middleware.js"],
       name: "middleware",
       page: "/",
@@ -15,6 +14,7 @@ export const middlewareV2ManifestWhenUsed: MiddlewareManifestV2 = {
         {
           regexp:
             "^(?:\\/(_next\\/data\\/[^/]{1,}))?(?:\\/([^/.]{1,}))\\/about(?:\\/((?:[^\\/#\\?]+?)(?:\\/(?:[^\\/#\\?]+?))*))?(.json)?[\\/#\\?]?$",
+          originalSource: "",
         },
       ],
       wasm: [],

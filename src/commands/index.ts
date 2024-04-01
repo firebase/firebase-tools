@@ -107,6 +107,16 @@ export function load(client: any): any {
   client.firestore.databases.create = loadCommand("firestore-databases-create");
   client.firestore.databases.update = loadCommand("firestore-databases-update");
   client.firestore.databases.delete = loadCommand("firestore-databases-delete");
+  client.firestore.databases.restore = loadCommand("firestore-databases-restore");
+  client.firestore.backups = {};
+  client.firestore.backups.schedules = {};
+  client.firestore.backups.list = loadCommand("firestore-backups-list");
+  client.firestore.backups.get = loadCommand("firestore-backups-get");
+  client.firestore.backups.delete = loadCommand("firestore-backups-delete");
+  client.firestore.backups.schedules.list = loadCommand("firestore-backups-schedules-list");
+  client.firestore.backups.schedules.create = loadCommand("firestore-backups-schedules-create");
+  client.firestore.backups.schedules.update = loadCommand("firestore-backups-schedules-update");
+  client.firestore.backups.schedules.delete = loadCommand("firestore-backups-schedules-delete");
   client.functions = {};
   client.functions.config = {};
   client.functions.config.clone = loadCommand("functions-config-clone");
@@ -150,7 +160,7 @@ export function load(client: any): any {
     client.internaltesting.functions = {};
     client.internaltesting.functions.discover = loadCommand("internaltesting-functions-discover");
   }
-  if (experiments.isEnabled("internalframeworks")) {
+  if (experiments.isEnabled("apphosting")) {
     client.apphosting = {};
     client.apphosting.backends = {};
     client.apphosting.backends.list = loadCommand("apphosting-backends-list");
@@ -160,6 +170,8 @@ export function load(client: any): any {
     client.apphosting.builds = {};
     client.apphosting.builds.get = loadCommand("apphosting-builds-get");
     client.apphosting.builds.create = loadCommand("apphosting-builds-create");
+    client.apphosting.secrets = {};
+    client.apphosting.secrets.grantaccess = loadCommand("apphosting-secrets-grantaccess");
     client.apphosting.rollouts = {};
     client.apphosting.rollouts.create = loadCommand("apphosting-rollouts-create");
     client.apphosting.rollouts.list = loadCommand("apphosting-rollouts-list");

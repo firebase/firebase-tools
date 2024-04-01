@@ -14,7 +14,7 @@ export const command = new Command("hosting:sites:list")
   .before(requirePermissions, ["firebasehosting.sites.get"])
   .action(
     async (
-      options: any // eslint-disable-line @typescript-eslint/no-explicit-any
+      options: any, // eslint-disable-line @typescript-eslint/no-explicit-any
     ): Promise<{ sites: Site[] }> => {
       const projectId = needProjectId(options);
       const sites = await listSites(projectId);
@@ -30,5 +30,5 @@ export const command = new Command("hosting:sites:list")
       logger.info(table.toString());
 
       return { sites };
-    }
+    },
   );

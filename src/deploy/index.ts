@@ -49,7 +49,7 @@ const chain = async function (fns: Chain, context: any, options: any, payload: a
 export const deploy = async function (
   targetNames: (keyof typeof TARGETS)[],
   options: any,
-  customContext = {}
+  customContext = {},
 ) {
   const projectId = needProjectId(options);
   const payload = {};
@@ -83,7 +83,7 @@ export const deploy = async function (
               "using a GitHub action version that did not include Cloud Functions " +
               "permissions. Please reinstall the GitHub action with" +
               clc.bold("firebase init hosting:github"),
-            { original: e as Error }
+            { original: e as Error },
           );
         } else {
           throw e;
@@ -141,7 +141,7 @@ export const deploy = async function (
   logger.info(bold("Project Console:"), consoleUrl(options.project, "/overview"));
   if (deployedHosting) {
     each(context.hosting.deploys as HostingDeploy[], (deploy) => {
-      logger.info(bold("Hosting URL:"), addSubdomain(hostingOrigin, deploy.config.site));
+      logger.info(bold("Hosting URL:"), addSubdomain(hostingOrigin(), deploy.config.site));
     });
     const versionNames = context.hosting.deploys.map((deploy: any) => deploy.version);
     return { hosting: versionNames.length === 1 ? versionNames[0] : versionNames };

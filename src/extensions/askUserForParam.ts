@@ -154,8 +154,8 @@ export async function askForParam(args: {
   const label = paramSpec.label.trim();
   logger.info(
     `\n${clc.bold(label)}${clc.bold(paramSpec.required ? "" : " (Optional)")}: ${marked(
-      description
-    ).trim()}`
+      description,
+    ).trim()}`,
   );
 
   while (!valid) {
@@ -295,7 +295,7 @@ async function promptLocalSecret(instanceId: string, paramSpec: Param): Promise<
 async function promptReconfigureSecret(
   projectId: string,
   instanceId: string,
-  paramSpec: Param
+  paramSpec: Param,
 ): Promise<string> {
   const action = await promptOnce({
     type: "list",
@@ -329,7 +329,7 @@ async function promptReconfigureSecret(
             secret = await secretManagerApi.createSecret(
               projectId,
               secretName,
-              secretsUtils.getSecretLabels(instanceId)
+              secretsUtils.getSecretLabels(instanceId),
             );
           }
           return addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
@@ -349,7 +349,7 @@ export async function promptCreateSecret(
   projectId: string,
   instanceId: string,
   paramSpec: Param,
-  secretName?: string
+  secretName?: string,
 ): Promise<string> {
   const name = secretName ?? (await generateSecretName(projectId, instanceId, paramSpec.param));
   const secretValue = await promptOnce({
@@ -366,7 +366,7 @@ export async function promptCreateSecret(
       const secret = await secretManagerApi.createSecret(
         projectId,
         name,
-        secretsUtils.getSecretLabels(instanceId)
+        secretsUtils.getSecretLabels(instanceId),
       );
       return addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
     } else {
@@ -380,7 +380,7 @@ export async function promptCreateSecret(
 async function generateSecretName(
   projectId: string,
   instanceId: string,
-  paramName: string
+  paramName: string,
 ): Promise<string> {
   let secretName = `ext-${instanceId}-${paramName}`;
   while (await secretManagerApi.secretExists(projectId, secretName)) {
@@ -394,7 +394,7 @@ async function addNewSecretVersion(
   instanceId: string,
   secret: secretManagerApi.Secret,
   paramSpec: Param,
-  secretValue: string
+  secretValue: string,
 ) {
   const version = await secretManagerApi.addVersion(projectId, secret.name, secretValue);
   await secretsUtils.grantFirexServiceAgentSecretAdminRole(secret);

@@ -39,7 +39,7 @@ export async function init(setup: Setup, config: any, options: any): Promise<any
         .filter((f) => f !== "project")
         .join(", ");
       throw new FirebaseError(
-        `${clc.bold(nextFeature)} is not a valid feature. Must be one of ${availableFeatures}`
+        `${clc.bold(nextFeature)} is not a valid feature. Must be one of ${availableFeatures}`,
       );
     }
 

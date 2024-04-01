@@ -41,10 +41,10 @@ describe("askUserForParam", () => {
           label: "fill in the blank!",
           type: ParamType.STRING,
           required: true,
-        })
+        }),
       ).to.equal(false);
       expect(
-        logWarningSpy.calledWith(`Param param is required, but no value was provided.`)
+        logWarningSpy.calledWith(`Param param is required, but no value was provided.`),
       ).to.equal(true);
     });
 
@@ -56,7 +56,7 @@ describe("askUserForParam", () => {
           type: ParamType.STRING,
           validationRegex: "foo",
           required: true,
-        })
+        }),
       ).to.equal(false);
       const expectedWarning = `123 is not a valid value for param since it does not meet the requirements of the regex validation: "foo"`;
       expect(logWarningSpy.calledWith(expectedWarning)).to.equal(true);
@@ -70,7 +70,7 @@ describe("askUserForParam", () => {
           type: ParamType.STRING,
           validationRegex: "foo",
           required: false,
-        })
+        }),
       ).to.equal(false);
       const expectedWarning = `123 is not a valid value for param since it does not meet the requirements of the regex validation: "foo"`;
       expect(logWarningSpy.calledWith(expectedWarning)).to.equal(true);
@@ -84,7 +84,7 @@ describe("askUserForParam", () => {
           type: ParamType.STRING,
           validationRegex: "foo",
           required: false,
-        })
+        }),
       ).to.equal(true);
     });
 
@@ -96,7 +96,7 @@ describe("askUserForParam", () => {
           type: ParamType.SELECT,
           required: false,
           options: [{ value: "aaa" }, { value: "bbb" }, { value: "ccc" }],
-        })
+        }),
       ).to.equal(true);
     });
 
@@ -108,7 +108,7 @@ describe("askUserForParam", () => {
           type: ParamType.MULTISELECT,
           required: false,
           options: [{ value: "aaa" }, { value: "bbb" }, { value: "ccc" }],
-        })
+        }),
       ).to.equal(true);
     });
 
@@ -122,7 +122,7 @@ describe("askUserForParam", () => {
           validationRegex: "foo",
           validationErrorMessage: message,
           required: true,
-        })
+        }),
       ).to.equal(false);
       expect(logWarningSpy.calledWith(message)).to.equal(true);
     });
@@ -133,7 +133,7 @@ describe("askUserForParam", () => {
           param: "param",
           label: "fill in the blank!",
           type: ParamType.STRING,
-        })
+        }),
       ).to.equal(true);
       expect(logWarningSpy.called).to.equal(false);
     });
@@ -145,7 +145,7 @@ describe("askUserForParam", () => {
           label: "pick one!",
           type: ParamType.SELECT,
           options: [{ value: "aaa" }, { value: "bbb" }, { value: "ccc" }],
-        })
+        }),
       ).to.equal(false);
     });
 
@@ -156,7 +156,7 @@ describe("askUserForParam", () => {
           label: "pick one!",
           type: ParamType.SELECT,
           options: [{ value: "aaa" }, { value: "bbb" }, { value: "ccc" }],
-        })
+        }),
       ).to.equal(true);
     });
 
@@ -167,7 +167,7 @@ describe("askUserForParam", () => {
           label: "pick multiple!",
           type: ParamType.MULTISELECT,
           options: [{ value: "aaa" }, { value: "bbb" }, { value: "ccc" }],
-        })
+        }),
       ).to.equal(false);
     });
 
@@ -178,7 +178,7 @@ describe("askUserForParam", () => {
           label: "pick multiple!",
           type: ParamType.MULTISELECT,
           options: [{ value: "aaa" }, { value: "bbb" }, { value: "ccc" }],
-        })
+        }),
       ).to.equal(true);
     });
 
@@ -189,7 +189,7 @@ describe("askUserForParam", () => {
           label: "pick multiple!",
           type: ParamType.MULTISELECT,
           options: [{ value: "aaa" }, { value: "bbb" }, { value: "ccc" }],
-        })
+        }),
       ).to.equal(true);
     });
   });

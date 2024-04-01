@@ -21,7 +21,7 @@ export enum DeferredProduct {
  */
 export async function checkProductsProvisioned(
   projectId: string,
-  spec: ExtensionSpec
+  spec: ExtensionSpec,
 ): Promise<void> {
   const usedProducts = getUsedProducts(spec);
   await checkProducts(projectId, usedProducts);
@@ -34,13 +34,13 @@ export async function checkProductsProvisioned(
  */
 export async function bulkCheckProductsProvisioned(
   projectId: string,
-  instanceSpecs: InstanceSpec[]
+  instanceSpecs: InstanceSpec[],
 ): Promise<void> {
   const usedProducts = await Promise.all(
     instanceSpecs.map(async (i) => {
       const extensionSpec = await getExtensionSpec(i);
       return getUsedProducts(extensionSpec);
-    })
+    }),
   );
   await checkProducts(projectId, [...flattenArray(usedProducts)]);
 }
@@ -123,7 +123,7 @@ function getTriggerType(propertiesYaml: string | undefined) {
 }
 
 async function isStorageProvisioned(projectId: string): Promise<boolean> {
-  const client = new Client({ urlPrefix: firebaseStorageOrigin, apiVersion: "v1beta" });
+  const client = new Client({ urlPrefix: firebaseStorageOrigin(), apiVersion: "v1beta" });
   const resp = await client.get<{ buckets: { name: string }[] }>(`/projects/${projectId}/buckets`);
   return !!resp.body?.buckets?.find((bucket: any) => {
     const bucketResourceName = bucket.name;
@@ -136,9 +136,9 @@ async function isStorageProvisioned(projectId: string): Promise<boolean> {
 }
 
 async function isAuthProvisioned(projectId: string): Promise<boolean> {
-  const client = new Client({ urlPrefix: firedataOrigin, apiVersion: "v1" });
+  const client = new Client({ urlPrefix: firedataOrigin(), apiVersion: "v1" });
   const resp = await client.get<{ activation: { service: string }[] }>(
-    `/projects/${projectId}/products`
+    `/projects/${projectId}/products`,
   );
   return !!resp.body?.activation?.map((a: any) => a.service).includes("FIREBASE_AUTH");
 }

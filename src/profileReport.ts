@@ -93,7 +93,7 @@ export class ProfileReport {
   constructor(
     tmpFile: string,
     outStream: NodeJS.WritableStream,
-    options: ProfileReportOptions = {}
+    options: ProfileReportOptions = {},
   ) {
     this.tempFile = tmpFile;
     this.output = outStream;
@@ -432,7 +432,7 @@ export class ProfileReport {
         speedData.times,
         formatNumber(speedData.millis / speedData.times) + " ms",
         formatNumber(
-          speedData.pendingCount === 0 ? 0 : speedData.pendingTime / speedData.pendingCount
+          speedData.pendingCount === 0 ? 0 : speedData.pendingTime / speedData.pendingCount,
         ) + " ms",
       ];
       if (hasSecurity) {
@@ -603,8 +603,8 @@ export class ProfileReport {
     };
     writeTitle(
       `Report operations collected from ${new Date(
-        this.state.startTime
-      ).toISOString()} over ${totalTime} ms.`
+        this.state.startTime,
+      ).toISOString()} over ${totalTime} ms.`,
     );
     writeTitle("Speed Report\n");
     write(SPEED_NOTE + "\n\n");

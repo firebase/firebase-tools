@@ -21,13 +21,13 @@ function getConfirmationMessage(paths: string[]): string {
 
 export const command = new Command("functions:deletegcfartifacts")
   .description(
-    "Deletes all artifacts created by Google Cloud Functions on Google Container Registry."
+    "Deletes all artifacts created by Google Cloud Functions on Google Container Registry.",
   )
   .option(
     "--regions <regions>",
     "Specify regions of artifacts to be deleted. " +
       "If omitted, artifacts from all regions will be deleted. " +
-      "<regions> is a Google defined region list, e.g. us-central1,us-east1,europe-west2."
+      "<regions> is a Google defined region list, e.g. us-central1,us-east1,europe-west2.",
   )
   .before(requirePermissions, ["storage.objects.delete"])
   .action(async (options: { project?: string; projectId?: string; rc: RC; regions?: string }) => {
@@ -43,7 +43,7 @@ export const command = new Command("functions:deletegcfartifacts")
           default: false,
           message: getConfirmationMessage(gcfPaths),
         },
-        options
+        options,
       );
       if (!confirmDeletion) {
         throw new FirebaseError("Command aborted.", { exit: 1 });

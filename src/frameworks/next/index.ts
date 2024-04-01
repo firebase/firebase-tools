@@ -54,6 +54,7 @@ import {
   cleanI18n,
   getNextVersion,
   hasStaticAppNotFoundComponent,
+  getRoutesWithServerAction,
 } from "./utils";
 import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES, SHARP_VERSION, I18N_ROOT } from "../constants";
 import type {
@@ -63,6 +64,7 @@ import type {
   RoutesManifest,
   NpmLsDepdendency,
   MiddlewareManifest,
+  ActionManifest,
 } from "./interfaces";
 import {
   MIDDLEWARE_MANIFEST,
@@ -72,6 +74,7 @@ import {
   APP_PATH_ROUTES_MANIFEST,
   APP_PATHS_MANIFEST,
   ESBUILD_VERSION,
+  SERVER_REFERENCE_MANIFEST,
 } from "./constants";
 import { getAllSiteDomains, getDeploymentDomain } from "../../hosting/api";
 import { logger } from "../../logger";
@@ -110,7 +113,7 @@ export async function discover(dir: string) {
 export async function build(
   dir: string,
   target: string,
-  context?: FrameworkContext
+  context?: FrameworkContext,
 ): Promise<BuildResult> {
   await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
 
@@ -126,7 +129,7 @@ export async function build(
     const deploymentDomain = await getDeploymentDomain(
       context.projectId,
       context.site,
-      context.hostingChannel
+      context.hostingChannel,
     );
 
     if (deploymentDomain) {
@@ -164,11 +167,11 @@ export async function build(
   }
 
   const prerenderManifest = await readJSON<PrerenderManifest>(
-    join(dir, distDir, PRERENDER_MANIFEST)
+    join(dir, distDir, PRERENDER_MANIFEST),
   );
 
   const dynamicRoutesWithFallback = Object.entries(prerenderManifest.dynamicRoutes || {}).filter(
-    ([, it]) => it.fallback !== false
+    ([, it]) => it.fallback !== false,
   );
   if (dynamicRoutesWithFallback.length > 0) {
     for (const [key] of dynamicRoutesWithFallback) {
@@ -177,7 +180,7 @@ export async function build(
   }
 
   const routesWithRevalidate = Object.entries(prerenderManifest.routes).filter(
-    ([, it]) => it.initialRevalidateSeconds
+    ([, it]) => it.initialRevalidateSeconds,
   );
   if (routesWithRevalidate.length > 0) {
     for (const [, { srcRoute }] of routesWithRevalidate) {
@@ -186,7 +189,7 @@ export async function build(
   }
 
   const pagesManifestJSON = await readJSON<PagesManifest>(
-    join(dir, distDir, "server", PAGES_MANIFEST)
+    join(dir, distDir, "server", PAGES_MANIFEST),
   );
   const prerenderedRoutes = Object.keys(prerenderManifest.routes);
   const dynamicRoutes = Object.keys(prerenderManifest.dynamicRoutes);
@@ -220,12 +223,15 @@ export async function build(
       headers,
     }));
 
-  const [appPathsManifest, appPathRoutesManifest] = await Promise.all([
+  const [appPathsManifest, appPathRoutesManifest, serverReferenceManifest] = await Promise.all([
     readJSON<AppPathsManifest>(join(dir, distDir, "server", APP_PATHS_MANIFEST)).catch(
-      () => undefined
+      () => undefined,
     ),
     readJSON<AppPathRoutesManifest>(join(dir, distDir, APP_PATH_ROUTES_MANIFEST)).catch(
-      () => undefined
+      () => undefined,
+    ),
+    readJSON<ActionManifest>(join(dir, distDir, "server", SERVER_REFERENCE_MANIFEST)).catch(
+      () => undefined,
     ),
   ]);
 
@@ -234,7 +240,7 @@ export async function build(
       dir,
       distDir,
       baseUrl,
-      appPathRoutesManifest
+      appPathRoutesManifest,
     );
     headers.push(...headersFromMetaFiles);
 
@@ -243,7 +249,7 @@ export async function build(
         appPathsManifest,
         appPathRoutesManifest,
         prerenderedRoutes,
-        dynamicRoutes
+        dynamicRoutes,
       );
 
       if (
@@ -255,6 +261,17 @@ export async function build(
 
       for (const key of unrenderedServerComponents) {
         reasonsForBackend.add(`non-static component ${key}`);
+      }
+    }
+
+    if (serverReferenceManifest) {
+      const routesWithServerAction = getRoutesWithServerAction(
+        serverReferenceManifest,
+        appPathRoutesManifest,
+      );
+
+      for (const key of routesWithServerAction) {
+        reasonsForBackend.add(`route with server action ${key}`);
       }
     }
   }
@@ -306,7 +323,7 @@ export async function build(
     logger.info("Building a Cloud Function to run this application. This is needed due to:");
     for (const reason of Array.from(reasonsForBackend).slice(
       0,
-      DEFAULT_NUMBER_OF_REASONS_TO_LIST
+      DEFAULT_NUMBER_OF_REASONS_TO_LIST,
     )) {
       logger.info(` • ${reason}`);
     }
@@ -317,7 +334,7 @@ export async function build(
       logger.info(
         ` • and ${
           reasonsForBackend.size - DEFAULT_NUMBER_OF_REASONS_TO_LIST
-        } other reasons, use --debug to see more`
+        } other reasons, use --debug to see more`,
       );
     }
     logger.info("");
@@ -350,7 +367,7 @@ export async function init(setup: any, config: any) {
     `npx --yes create-next-app@"${supportedRange}" -e hello-world ${
       setup.hosting.source
     } --use-npm ${language === "TypeScript" ? "--ts" : "--js"}`,
-    { stdio: "inherit", cwd: config.projectDir }
+    { stdio: "inherit", cwd: config.projectDir },
   );
 }
 
@@ -361,7 +378,7 @@ export async function ɵcodegenPublicDirectory(
   sourceDir: string,
   destDir: string,
   _: string,
-  context: { site: string; project: string }
+  context: { site: string; project: string },
 ) {
   const { distDir, i18n, basePath } = await getConfig(sourceDir);
 
@@ -385,13 +402,17 @@ export async function ɵcodegenPublicDirectory(
     routesManifest,
     pagesManifest,
     appPathRoutesManifest,
+    serverReferenceManifest,
   ] = await Promise.all([
     readJSON<MiddlewareManifest>(join(sourceDir, distDir, "server", MIDDLEWARE_MANIFEST)),
     readJSON<PrerenderManifest>(join(sourceDir, distDir, PRERENDER_MANIFEST)),
     readJSON<RoutesManifest>(join(sourceDir, distDir, ROUTES_MANIFEST)),
     readJSON<PagesManifest>(join(sourceDir, distDir, "server", PAGES_MANIFEST)),
     readJSON<AppPathRoutesManifest>(join(sourceDir, distDir, APP_PATH_ROUTES_MANIFEST)).catch(
-      () => ({})
+      () => ({}),
+    ),
+    readJSON<ActionManifest>(join(sourceDir, distDir, "server", SERVER_REFERENCE_MANIFEST)).catch(
+      () => ({ node: {}, edge: {}, encryptionKey: "" }),
     ),
   ]);
 
@@ -423,12 +444,26 @@ export async function ɵcodegenPublicDirectory(
     ...headersRegexesNotSupportedByHosting,
   ];
 
+  const staticRoutesUsingServerActions = getRoutesWithServerAction(
+    serverReferenceManifest,
+    appPathRoutesManifest,
+  );
+
   const pagesManifestLikePrerender: PrerenderManifest["routes"] = Object.fromEntries(
     Object.entries(pagesManifest)
       .filter(([, srcRoute]) => srcRoute.endsWith(".html"))
       .map(([path]) => {
-        return [path, { srcRoute: null, initialRevalidateSeconds: false, dataRoute: "" }];
-      })
+        return [
+          path,
+          {
+            srcRoute: null,
+            initialRevalidateSeconds: false,
+            dataRoute: "",
+            experimentalPPR: false,
+            prefetchDataRoute: "",
+          },
+        ];
+      }),
   );
 
   const routesToCopy: PrerenderManifest["routes"] = {
@@ -444,10 +479,16 @@ export async function ɵcodegenPublicDirectory(
       }
       if (pathsUsingsFeaturesNotSupportedByHosting.some((it) => path.match(it))) {
         logger.debug(
-          `skipping ${path} due to it matching an unsupported rewrite/redirect/header or middlware`
+          `skipping ${path} due to it matching an unsupported rewrite/redirect/header or middlware`,
         );
         return;
       }
+
+      if (staticRoutesUsingServerActions.some((it) => path === it)) {
+        logger.debug(`skipping ${path} due to server action`);
+        return;
+      }
+
       const appPathRoute =
         route.srcRoute && appPathRoutesEntries.find(([, it]) => it === route.srcRoute)?.[0];
       const contentDist = join(sourceDir, distDir, "server", appPathRoute ? "app" : "pages");
@@ -508,7 +549,7 @@ export async function ɵcodegenPublicDirectory(
         await mkdir(dirname(dataDestPath), { recursive: true });
         await copyFile(join(contentDist, dataSourcePath), dataDestPath);
       }
-    })
+    }),
   );
 }
 
@@ -519,7 +560,7 @@ export async function ɵcodegenFunctionsDirectory(
   sourceDir: string,
   destDir: string,
   target: string,
-  context?: FrameworkContext
+  context?: FrameworkContext,
 ): ReturnType<NonNullable<Framework["ɵcodegenFunctionsDirectory"]>> {
   const { distDir } = await getConfig(sourceDir);
   const packageJson = await readJSON(join(sourceDir, "package.json"));
@@ -559,7 +600,7 @@ export async function ɵcodegenFunctionsDirectory(
           "--platform=node",
           `--target=node${NODE_VERSION}`,
           `--outdir=${destDir}`,
-          "--log-level=error"
+          "--log-level=error",
         );
       const bundle = spawnSync(
         "npx",
@@ -567,14 +608,14 @@ export async function ɵcodegenFunctionsDirectory(
         {
           cwd: sourceDir,
           timeout: BUNDLE_NEXT_CONFIG_TIMEOUT,
-        }
+        },
       );
       if (bundle.status !== 0) {
         throw new FirebaseError(bundle.stderr.toString());
       }
     } catch (e: any) {
       console.warn(
-        "Unable to bundle next.config.js for use in Cloud Functions, proceeding with deploy but problems may be enountered."
+        "Unable to bundle next.config.js for use in Cloud Functions, proceeding with deploy but problems may be enountered.",
       );
       console.error(e.message || e);
       copy(join(sourceDir, "next.config.js"), join(destDir, "next.config.js"));
@@ -595,7 +636,7 @@ export async function ɵcodegenFunctionsDirectory(
     const deploymentDomain = await getDeploymentDomain(
       context.projectId,
       context.site,
-      context.hostingChannel
+      context.hostingChannel,
     );
 
     if (deploymentDomain) {
@@ -620,13 +661,13 @@ export async function getDevModeHandle(dir: string, _: string, hostingEmulatorIn
     if (await isUsingMiddleware(dir, true)) {
       throw new FirebaseError(
         `${clc.bold("firebase serve")} does not support Next.js Middleware. Please use ${clc.bold(
-          "firebase emulators:start"
-        )} instead.`
+          "firebase emulators:start",
+        )} instead.`,
       );
     }
   }
 
-  let next = relativeRequire(dir, "next");
+  let next = await relativeRequire(dir, "next");
   if ("default" in next) next = next.default;
   const nextApp = next({
     dev: true,
@@ -644,15 +685,17 @@ export async function getDevModeHandle(dir: string, _: string, hostingEmulatorIn
 }
 
 async function getConfig(
-  dir: string
+  dir: string,
 ): Promise<Partial<NextConfig> & { distDir: string; trailingSlash: boolean; basePath: string }> {
   let config: NextConfig = {};
   if (existsSync(join(dir, "next.config.js"))) {
     const version = getNextVersion(dir);
     if (!version) throw new Error("Unable to find the next dep, try NPM installing?");
     if (gte(version, "12.0.0")) {
-      const { default: loadConfig } = relativeRequire(dir, "next/dist/server/config");
-      const { PHASE_PRODUCTION_BUILD } = relativeRequire(dir, "next/constants");
+      const [{ default: loadConfig }, { PHASE_PRODUCTION_BUILD }] = await Promise.all([
+        relativeRequire(dir, "next/dist/server/config"),
+        relativeRequire(dir, "next/constants"),
+      ]);
       config = await loadConfig(PHASE_PRODUCTION_BUILD, dir);
     } else {
       try {

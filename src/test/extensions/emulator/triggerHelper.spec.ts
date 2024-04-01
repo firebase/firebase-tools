@@ -200,7 +200,7 @@ describe("triggerHelper", () => {
         type: "firebaseextensions.v1beta.v2function",
         properties: {
           buildConfig: {
-            runtime: "node16",
+            runtime: "nodejs16",
           },
           location: "us-cental1",
           serviceConfig: {
@@ -282,7 +282,7 @@ describe("triggerHelper", () => {
 
       const result = triggerHelper.functionResourceToEmulatedTriggerDefintion(
         testResource,
-        systemParams
+        systemParams,
       );
 
       expect(result).to.eql(expected);

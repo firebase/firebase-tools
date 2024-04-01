@@ -2,7 +2,7 @@ import { resourceManagerOrigin, iamOrigin } from "../api";
 import { logger } from "../logger";
 import { Client } from "../apiv2";
 
-const apiClient = new Client({ urlPrefix: iamOrigin, apiVersion: "v1" });
+const apiClient = new Client({ urlPrefix: iamOrigin(), apiVersion: "v1" });
 
 // IAM Policy
 // https://cloud.google.com/resource-manager/reference/rest/Shared.Types/Policy
@@ -56,7 +56,6 @@ export interface TestIamResult {
 
 /**
  * Creates a new the service account with the given parameters.
- *
  * @param projectId the id of the project where the service account will be created
  * @param accountId the id to use for the account
  * @param description a brief description of the account
@@ -66,7 +65,7 @@ export async function createServiceAccount(
   projectId: string,
   accountId: string,
   description: string,
-  displayName: string
+  displayName: string,
 ): Promise<ServiceAccount> {
   const response = await apiClient.post<
     { accountId: string; serviceAccount: { displayName: string; description: string } },
@@ -80,23 +79,22 @@ export async function createServiceAccount(
         description,
       },
     },
-    { skipLog: { resBody: true } }
+    { skipLog: { resBody: true } },
   );
   return response.body;
 }
 
 /**
  * Retrieves a service account with the given parameters.
- *
  * @param projectId the id of the project where the service account will be created
  * @param serviceAccountName the name of the service account
  */
 export async function getServiceAccount(
   projectId: string,
-  serviceAccountName: string
+  serviceAccountName: string,
 ): Promise<ServiceAccount> {
   const response = await apiClient.get<ServiceAccount>(
-    `/projects/${projectId}/serviceAccounts/${serviceAccountName}@${projectId}.iam.gserviceaccount.com`
+    `/projects/${projectId}/serviceAccounts/${serviceAccountName}@${projectId}.iam.gserviceaccount.com`,
   );
   return response.body;
 }
@@ -106,7 +104,7 @@ export async function getServiceAccount(
  */
 export async function createServiceAccountKey(
   projectId: string,
-  serviceAccountName: string
+  serviceAccountName: string,
 ): Promise<ServiceAccountKey> {
   const response = await apiClient.post<
     { keyAlgorithm: string; privateKeyType: string },
@@ -116,7 +114,7 @@ export async function createServiceAccountKey(
     {
       keyAlgorithm: "KEY_ALG_UNSPECIFIED",
       privateKeyType: "TYPE_GOOGLE_CREDENTIALS_FILE",
-    }
+    },
   );
   return response.body;
 }
@@ -136,10 +134,10 @@ export async function deleteServiceAccount(projectId: string, accountEmail: stri
  */
 export async function listServiceAccountKeys(
   projectId: string,
-  serviceAccountName: string
+  serviceAccountName: string,
 ): Promise<ServiceAccountKey[]> {
   const response = await apiClient.get<{ keys: ServiceAccountKey[] }>(
-    `/projects/${projectId}/serviceAccounts/${serviceAccountName}@${projectId}.iam.gserviceaccount.com/keys`
+    `/projects/${projectId}/serviceAccounts/${serviceAccountName}@${projectId}.iam.gserviceaccount.com/keys`,
   );
   return response.body.keys;
 }
@@ -160,7 +158,6 @@ export async function getRole(role: string): Promise<Role> {
 
 /**
  * List permissions not held by an arbitrary resource implementing the IAM APIs.
- *
  * @param origin Resource origin e.g. `https:// iam.googleapis.com`.
  * @param apiVersion API version e.g. `v1`.
  * @param resourceName Resource name e.g. `projects/my-projct/widgets/abc`
@@ -171,14 +168,14 @@ export async function testResourceIamPermissions(
   apiVersion: string,
   resourceName: string,
   permissions: string[],
-  quotaUser = ""
+  quotaUser = "",
 ): Promise<TestIamResult> {
   const localClient = new Client({ urlPrefix: origin, apiVersion });
   if (process.env.FIREBASE_SKIP_INFORMATIONAL_IAM) {
     logger.debug(
       `[iam] skipping informational check of permissions ${JSON.stringify(
-        permissions
-      )} on resource ${resourceName}`
+        permissions,
+      )} on resource ${resourceName}`,
     );
     return { allowed: Array.from(permissions).sort(), missing: [], passed: true };
   }
@@ -189,7 +186,7 @@ export async function testResourceIamPermissions(
   const response = await localClient.post<{ permissions: string[] }, { permissions: string[] }>(
     `/${resourceName}:testIamPermissions`,
     { permissions },
-    { headers }
+    { headers },
   );
 
   const allowed = new Set(response.body.permissions || []);
@@ -212,13 +209,13 @@ export async function testResourceIamPermissions(
  */
 export async function testIamPermissions(
   projectId: string,
-  permissions: string[]
+  permissions: string[],
 ): Promise<TestIamResult> {
   return testResourceIamPermissions(
-    resourceManagerOrigin,
+    resourceManagerOrigin(),
     "v1",
     `projects/${projectId}`,
     permissions,
-    `projects/${projectId}`
+    `projects/${projectId}`,
   );
 }

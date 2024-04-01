@@ -1,5 +1,6 @@
-import { Command } from "../command";
 import * as clc from "colorette";
+
+import { Command } from "../command";
 import * as fsi from "../firestore/api";
 import * as types from "../firestore/api-types";
 import { logger } from "../logger";
@@ -7,28 +8,30 @@ import { requirePermissions } from "../requirePermissions";
 import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 import { FirestoreOptions } from "../firestore/options";
+import { PrettyPrint } from "../firestore/pretty-print";
 
 export const command = new Command("firestore:databases:create <database>")
   .description("Create a database in your Firebase project.")
   .option(
     "--location <locationId>",
-    "Region to create database, for example 'nam5'. Run 'firebase firestore:locations' to get a list of eligible locations. (required)"
+    "Region to create database, for example 'nam5'. Run 'firebase firestore:locations' to get a list of eligible locations. (required)",
   )
   .option(
     "--delete-protection <deleteProtectionState>",
-    "Whether or not to prevent deletion of database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'"
+    "Whether or not to prevent deletion of database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'",
   )
   .option(
     "--point-in-time-recovery <enablement>",
-    "Whether to enable the PITR feature on this database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'"
+    "Whether to enable the PITR feature on this database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'",
   )
   .before(requirePermissions, ["datastore.databases.create"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
   .action(async (database: string, options: FirestoreOptions) => {
     const api = new fsi.FirestoreApi();
+    const printer = new PrettyPrint();
     if (!options.location) {
       logger.error(
-        "Missing required flag --location. See firebase firestore:databases:create --help for more info."
+        "Missing required flag --location. See firebase firestore:databases:create --help for more info.",
       );
       return;
     }
@@ -40,7 +43,7 @@ export const command = new Command("firestore:databases:create <database>")
       options.deleteProtection !== types.DatabaseDeleteProtectionStateOption.DISABLED
     ) {
       logger.error(
-        "Invalid value for flag --delete-protection. See firebase firestore:databases:create --help for more info."
+        "Invalid value for flag --delete-protection. See firebase firestore:databases:create --help for more info.",
       );
       return;
     }
@@ -55,7 +58,7 @@ export const command = new Command("firestore:databases:create <database>")
       options.pointInTimeRecovery !== types.PointInTimeRecoveryEnablementOption.DISABLED
     ) {
       logger.error(
-        "Invalid value for flag --point-in-time-recovery. See firebase firestore:databases:create --help for more info."
+        "Invalid value for flag --point-in-time-recovery. See firebase firestore:databases:create --help for more info.",
       );
       return;
     }
@@ -70,17 +73,17 @@ export const command = new Command("firestore:databases:create <database>")
       options.location,
       type,
       deleteProtectionState,
-      pointInTimeRecoveryEnablement
+      pointInTimeRecoveryEnablement,
     );
 
     if (options.json) {
       logger.info(JSON.stringify(databaseResp, undefined, 2));
     } else {
-      logger.info(clc.bold(`Successfully created ${api.prettyDatabaseString(databaseResp)}`));
+      logger.info(clc.bold(`Successfully created ${printer.prettyDatabaseString(databaseResp)}`));
       logger.info(
         "Please be sure to configure Firebase rules in your Firebase config file for\n" +
           "the new database. By default, created databases will have closed rules that\n" +
-          "block any incoming third-party traffic."
+          "block any incoming third-party traffic.",
       );
     }
 

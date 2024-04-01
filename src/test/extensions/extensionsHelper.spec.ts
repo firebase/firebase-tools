@@ -105,7 +105,7 @@ describe("extensionsHelper", () => {
   describe("getDBInstanceFromURL", () => {
     it("returns the correct instance name", () => {
       expect(extensionsHelper.getDBInstanceFromURL("https://my-db.firebaseio.com")).to.equal(
-        "my-db"
+        "my-db",
       );
     });
   });
@@ -157,7 +157,7 @@ describe("extensionsHelper", () => {
       };
 
       expect(extensionsHelper.populateDefaultParams(envFile, exampleParamSpec)).to.deep.equal(
-        expected
+        expected,
       );
     });
 
@@ -763,11 +763,11 @@ describe("extensionsHelper", () => {
       expect(archiveStub).to.have.been.calledWith(".");
       expect(uploadStub).to.have.been.calledWith(
         testArchivedFiles,
-        extensionsHelper.EXTENSIONS_BUCKET_NAME
+        extensionsHelper.EXTENSIONS_BUCKET_NAME,
       );
       expect(createSourceStub).to.have.been.calledWith("test-proj", testUrl + "?alt=media", "/");
       expect(deleteStub).to.have.been.calledWith(
-        `/${extensionsHelper.EXTENSIONS_BUCKET_NAME}/object.zip`
+        `/${extensionsHelper.EXTENSIONS_BUCKET_NAME}/object.zip`,
       );
     });
 
@@ -780,11 +780,11 @@ describe("extensionsHelper", () => {
       expect(archiveStub).to.have.been.calledWith(".");
       expect(uploadStub).to.have.been.calledWith(
         testArchivedFiles,
-        extensionsHelper.EXTENSIONS_BUCKET_NAME
+        extensionsHelper.EXTENSIONS_BUCKET_NAME,
       );
       expect(createSourceStub).to.have.been.calledWith("test-proj", testUrl + "?alt=media", "/");
       expect(deleteStub).to.have.been.calledWith(
-        `/${extensionsHelper.EXTENSIONS_BUCKET_NAME}/object.zip`
+        `/${extensionsHelper.EXTENSIONS_BUCKET_NAME}/object.zip`,
       );
     });
 
@@ -792,13 +792,13 @@ describe("extensionsHelper", () => {
       uploadStub.throws(new FirebaseError("something bad happened"));
 
       await expect(extensionsHelper.createSourceFromLocation("test-proj", ".")).to.be.rejectedWith(
-        FirebaseError
+        FirebaseError,
       );
 
       expect(archiveStub).to.have.been.calledWith(".");
       expect(uploadStub).to.have.been.calledWith(
         testArchivedFiles,
-        extensionsHelper.EXTENSIONS_BUCKET_NAME
+        extensionsHelper.EXTENSIONS_BUCKET_NAME,
       );
       expect(createSourceStub).not.to.have.been.called;
       expect(deleteStub).not.to.have.been.called;
@@ -836,7 +836,7 @@ describe("extensionsHelper", () => {
 
       await expect(extensionsHelper.instanceIdExists("proj", TEST_NAME)).to.be.rejectedWith(
         FirebaseError,
-        "Unexpected error when checking if instance ID exists: FirebaseError: Internal Error"
+        "Unexpected error when checking if instance ID exists: FirebaseError: Internal Error",
       );
     });
   });
@@ -910,7 +910,7 @@ describe("extensionsHelper", () => {
           { spec: { version: "1.0.0-rc.0" } },
           { spec: { version: "1.0.0-rc.1" } },
           { spec: { version: "1.0.0-beta.0" } },
-        ])
+        ]),
       );
       const expected = new Map<string, string>([
         ["rc", "1.0.0-rc.2"],
@@ -920,7 +920,7 @@ describe("extensionsHelper", () => {
       ]);
       const { versionByStage, hasVersions } = await extensionsHelper.getNextVersionByStage(
         "test",
-        "1.0.0"
+        "1.0.0",
       );
       expect(Array.from(versionByStage.entries())).to.eql(Array.from(expected.entries()));
       expect(hasVersions).to.eql(true);
@@ -931,7 +931,7 @@ describe("extensionsHelper", () => {
         Promise.resolve([
           { spec: { version: "1.0.0-beta" } },
           { spec: { version: "1.0.0-prealpha.0" } },
-        ])
+        ]),
       );
       const expected = new Map<string, string>([
         ["rc", "1.0.0-rc.0"],
@@ -941,7 +941,7 @@ describe("extensionsHelper", () => {
       ]);
       const { versionByStage, hasVersions } = await extensionsHelper.getNextVersionByStage(
         "test",
-        "1.0.0"
+        "1.0.0",
       );
       expect(Array.from(versionByStage.entries())).to.eql(Array.from(expected.entries()));
       expect(hasVersions).to.eql(true);
@@ -964,7 +964,7 @@ describe("extensionsHelper", () => {
           state: "PUBLISHED",
           latestVersion: "1.0.0",
           latestApprovedVersion: "1.0.0",
-        })
+        }),
       ).to.eql(clc.bold(clc.green("Published")));
     });
     it("should return correct uploaded state", () => {
@@ -973,7 +973,7 @@ describe("extensionsHelper", () => {
           ...testExtension,
           state: "PUBLISHED",
           latestVersion: "1.0.0",
-        })
+        }),
       ).to.eql(clc.green("Uploaded"));
     });
     it("should return correct deprecated state", () => {
@@ -981,7 +981,7 @@ describe("extensionsHelper", () => {
         extensionsHelper.unpackExtensionState({
           ...testExtension,
           state: "DEPRECATED",
-        })
+        }),
       ).to.eql(clc.red("Deprecated"));
     });
     it("should return correct suspended state", () => {
@@ -990,7 +990,7 @@ describe("extensionsHelper", () => {
           ...testExtension,
           state: "SUSPENDED",
           latestVersion: "1.0.0",
-        })
+        }),
       ).to.eql(clc.bold(clc.red("Suspended")));
     });
     it("should return correct prerelease state", () => {
@@ -998,7 +998,7 @@ describe("extensionsHelper", () => {
         extensionsHelper.unpackExtensionState({
           ...testExtension,
           state: "PUBLISHED",
-        })
+        }),
       ).to.eql("Prerelease");
     });
   });

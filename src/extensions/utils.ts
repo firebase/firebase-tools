@@ -6,8 +6,11 @@ import {
   FUNCTIONS_V2_RESOURCE_TYPE,
 } from "./types";
 import { RegistryEntry } from "./resolveSource";
+import { Runtime } from "../deploy/functions/runtimes/supported";
 
-// Modified version of the once function from prompt, to return as a joined string.
+/**
+ * Modified version of the once function from prompt, to return as a joined string.
+ */
 export async function onceWithJoin(question: any): Promise<string> {
   const response = await promptOnce(question);
   if (Array.isArray(response)) {
@@ -22,7 +25,9 @@ interface ListItem {
   checked: boolean; // Whether the option should be checked by default
 }
 
-// Convert extension option to Inquirer-friendly list for the prompt, with all items unchecked.
+/**
+ * Convert extension option to Inquirer-friendly list for the prompt, with all items unchecked.
+ */
 export function convertExtensionOptionToLabeledList(options: ParamOption[]): ListItem[] {
   return options.map((option: ParamOption): ListItem => {
     return {
@@ -33,7 +38,9 @@ export function convertExtensionOptionToLabeledList(options: ParamOption[]): Lis
   });
 }
 
-// Convert map of RegistryEntry into Inquirer-friendly list for prompt, with all items unchecked.
+/**
+ * Convert map of RegistryEntry into Inquirer-friendly list for prompt, with all items unchecked.
+ */
 export function convertOfficialExtensionsToList(officialExts: {
   [key: string]: RegistryEntry;
 }): ListItem[] {
@@ -78,7 +85,7 @@ export function formatTimestamp(timestamp: string): string {
  * etc, and this utility will do its best to identify the runtime specified for
  * this resource.
  */
-export function getResourceRuntime(resource: Resource): string | undefined {
+export function getResourceRuntime(resource: Resource): Runtime | undefined {
   switch (resource.type) {
     case FUNCTIONS_RESOURCE_TYPE:
       return resource.properties?.runtime;

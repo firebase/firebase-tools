@@ -114,7 +114,7 @@ export async function checkListenable(addr: dns.LookupAddress, port: number): Pr
 export async function checkListenable(listen: ListenSpec): Promise<boolean>;
 export async function checkListenable(
   arg1: dns.LookupAddress | ListenSpec,
-  port?: number
+  port?: number,
 ): Promise<boolean> {
   const addr =
     port === undefined ? (arg1 as ListenSpec) : listenSpec(arg1 as dns.LookupAddress, port);
@@ -218,7 +218,7 @@ const MAX_PORT = 65535; // max TCP port
  * @return a map from emulator to its resolved addresses with port.
  */
 export async function resolveHostAndAssignPorts(
-  listenConfig: Partial<Record<PortName, EmulatorListenConfig | ListenSpec[]>>
+  listenConfig: Partial<Record<PortName, EmulatorListenConfig | ListenSpec[]>>,
 ): Promise<Record<PortName, ListenSpec[]>> {
   const lookupForHost = new Map<string, Promise<dns.LookupAddress[]>>();
   const takenPorts = new Map<number, PortName>();
@@ -244,7 +244,7 @@ export async function resolveHostAndAssignPorts(
     }
     const findAddrs = lookup.then(async (addrs) => {
       const emuLogger = EmulatorLogger.forEmulator(
-        name === "firestore.websocket" ? Emulators.FIRESTORE : name
+        name === "firestore.websocket" ? Emulators.FIRESTORE : name,
       );
       if (addrs.some((addr) => addr.address === IPV6_UNSPECIFIED.address)) {
         if (!addrs.some((addr) => addr.address === IPV4_UNSPECIFIED.address)) {
@@ -254,7 +254,7 @@ export async function resolveHostAndAssignPorts(
           emuLogger.logLabeled(
             "DEBUG",
             name,
-            `testing listening on IPv4 wildcard in addition to IPv6. To listen on IPv6 only, use "::0" instead.`
+            `testing listening on IPv4 wildcard in addition to IPv6. To listen on IPv6 only, use "::0" instead.`,
           );
           addrs.push(IPV4_UNSPECIFIED);
         }
@@ -285,7 +285,7 @@ export async function resolveHostAndAssignPorts(
             emuLogger.logLabeled(
               "WARN",
               name,
-              `Error when trying to check port ${p} on ${addr.address}: ${err}`
+              `Error when trying to check port ${p} on ${addr.address}: ${err}`,
             );
             // Even if portFixed is false, don't try other ports since the
             // address may be entirely unavailable on all ports (e.g. no IPv6).
@@ -302,7 +302,7 @@ export async function resolveHostAndAssignPorts(
                 emuLogger.logLabeled(
                   "DEBUG",
                   name,
-                  `Port ${p} taken on secondary address ${addr.address}, will keep searching to find a better port.`
+                  `Port ${p} taken on secondary address ${addr.address}, will keep searching to find a better port.`,
                 );
               }
               break;
@@ -334,13 +334,13 @@ export async function resolveHostAndAssignPorts(
             emuLogger.logLabeled(
               "WARN",
               name,
-              `Port ${port} is restricted by some web browsers, including Chrome. You may want to choose a different port such as ${suggested}.`
+              `Port ${port} is restricted by some web browsers, including Chrome. You may want to choose a different port such as ${suggested}.`,
             );
           }
           if (p !== port && name !== "firestore.websocket") {
             emuLogger.logLabeled(
               "WARN",
-              `${portDescription(name)} unable to start on port ${port}, starting on ${p} instead.`
+              `${portDescription(name)} unable to start on port ${port}, starting on ${p} instead.`,
             );
           }
           if (available.length > 1 && EMULATOR_CAN_LISTEN_ON_PRIMARY_ONLY[name]) {
@@ -352,7 +352,7 @@ export async function resolveHostAndAssignPorts(
               }). Not listening on ${addrs
                 .slice(1)
                 .map((s) => s.address)
-                .join(",")}`
+                .join(",")}`,
             );
             result[name] = [available[0]];
           } else {
@@ -364,7 +364,7 @@ export async function resolveHostAndAssignPorts(
       // This should be extremely rare.
       return utils.reject(
         `Could not find any open port in ${port}-${MAX_PORT} for ${portDescription(name)}`,
-        {}
+        {},
       );
     });
     tasks.push(findAddrs);
@@ -384,19 +384,19 @@ function warnPartiallyAvailablePort(
   emuLogger: EmulatorLogger,
   port: number,
   available: ListenSpec[],
-  unavailable: string[]
+  unavailable: string[],
 ): void {
   emuLogger.logLabeled(
     "WARN",
     `Port ${port} is available on ` +
       available.map((s) => s.address).join(",") +
-      ` but not ${unavailable.join(",")}. This may cause issues with some clients.`
+      ` but not ${unavailable.join(",")}. This may cause issues with some clients.`,
   );
   emuLogger.logLabeled(
     "WARN",
     `If you encounter connectivity issues, consider switching to a different port or explicitly specifying ${clc.yellow(
-      '"host": "<ip address>"'
-    )} instead of hostname in firebase.json`
+      '"host": "<ip address>"',
+    )} instead of hostname in firebase.json`,
   );
 }
 
@@ -405,7 +405,7 @@ function fixedPortNotAvailable(
   host: string,
   port: number,
   emuLogger: EmulatorLogger,
-  unavailableAddrs: string[]
+  unavailableAddrs: string[],
 ): Promise<never> {
   if (unavailableAddrs.length !== 1 || unavailableAddrs[0] !== host) {
     // Show detailed resolved addresses
@@ -414,7 +414,7 @@ function fixedPortNotAvailable(
   const description = portDescription(name);
   emuLogger.logLabeled(
     "WARN",
-    `Port ${port} is not open on ${host}, could not start ${description}.`
+    `Port ${port} is not open on ${host}, could not start ${description}.`,
   );
   if (name === "firestore.websocket") {
     emuLogger.logLabeled(
@@ -429,7 +429,7 @@ function fixedPortNotAvailable(
             "websocketPort": "${clc.yellow("WEBSOCKET_PORT")}"
           }
         }
-      }`
+      }`,
     );
   } else {
     emuLogger.logLabeled(
@@ -443,7 +443,7 @@ function fixedPortNotAvailable(
             "port": "${clc.yellow("PORT")}"
           }
         }
-      }`
+      }`,
     );
   }
   return utils.reject(`Could not start ${description}, port taken.`, {});

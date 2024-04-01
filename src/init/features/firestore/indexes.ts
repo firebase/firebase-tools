@@ -11,7 +11,7 @@ const indexes = new api.FirestoreApi();
 
 const INDEXES_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../../templates/init/firestore/firestore.indexes.json",
-  "utf8"
+  "utf8",
 );
 
 export function initIndexes(setup: any, config: any): Promise<any> {

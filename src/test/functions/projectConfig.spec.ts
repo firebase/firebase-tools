@@ -31,34 +31,34 @@ describe("projectConfig", () => {
     it("fails validation given config w/o source", () => {
       expect(() => projectConfig.validate([{ runtime: "nodejs10" }])).to.throw(
         FirebaseError,
-        /codebase source must be specified/
+        /codebase source must be specified/,
       );
     });
 
     it("fails validation given config w/ empty source", () => {
       expect(() => projectConfig.validate([{ source: "" }])).to.throw(
         FirebaseError,
-        /codebase source must be specified/
+        /codebase source must be specified/,
       );
     });
 
     it("fails validation given config w/ duplicate source", () => {
       expect(() =>
-        projectConfig.validate([TEST_CONFIG_0, { ...TEST_CONFIG_0, codebase: "unique-codebase" }])
+        projectConfig.validate([TEST_CONFIG_0, { ...TEST_CONFIG_0, codebase: "unique-codebase" }]),
       ).to.throw(FirebaseError, /source must be unique/);
     });
 
     it("fails validation given codebase name with capital letters", () => {
       expect(() => projectConfig.validate([{ ...TEST_CONFIG_0, codebase: "ABCDE" }])).to.throw(
         FirebaseError,
-        /Invalid codebase name/
+        /Invalid codebase name/,
       );
     });
 
     it("fails validation given codebase name with invalid characters", () => {
       expect(() => projectConfig.validate([{ ...TEST_CONFIG_0, codebase: "abc.efg" }])).to.throw(
         FirebaseError,
-        /Invalid codebase name/
+        /Invalid codebase name/,
       );
     });
 
@@ -69,7 +69,7 @@ describe("projectConfig", () => {
             ...TEST_CONFIG_0,
             codebase: "thisismorethan63characterslongxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
           },
-        ])
+        ]),
       ).to.throw(FirebaseError, /Invalid codebase name/);
     });
   });
@@ -86,28 +86,28 @@ describe("projectConfig", () => {
     it("fails validation given singleton config w/o source", () => {
       expect(() => projectConfig.normalizeAndValidate({ runtime: "nodejs10" })).to.throw(
         FirebaseError,
-        /codebase source must be specified/
+        /codebase source must be specified/,
       );
     });
 
     it("fails validation given singleton config w empty source", () => {
       expect(() => projectConfig.normalizeAndValidate({ source: "" })).to.throw(
         FirebaseError,
-        /codebase source must be specified/
+        /codebase source must be specified/,
       );
     });
 
     it("fails validation given multi-resource config w/o source", () => {
       expect(() => projectConfig.normalizeAndValidate([{ runtime: "nodejs10" }])).to.throw(
         FirebaseError,
-        /codebase source must be specified/
+        /codebase source must be specified/,
       );
     });
 
     it("fails validation given config w/ duplicate source", () => {
       expect(() => projectConfig.normalizeAndValidate([TEST_CONFIG_0, TEST_CONFIG_0])).to.throw(
         FirebaseError,
-        /functions.source must be unique/
+        /functions.source must be unique/,
       );
     });
 
@@ -116,7 +116,7 @@ describe("projectConfig", () => {
         projectConfig.normalizeAndValidate([
           { ...TEST_CONFIG_0, codebase: "foo" },
           { ...TEST_CONFIG_0, codebase: "foo", source: "bar" },
-        ])
+        ]),
       ).to.throw(FirebaseError, /functions.codebase must be unique/);
     });
   });

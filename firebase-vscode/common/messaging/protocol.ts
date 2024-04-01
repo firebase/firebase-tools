@@ -119,7 +119,10 @@ export interface ExtensionToWebviewParamsMap {
    * Notify webview of initial discovery or change in firebase.json or
    * .firebaserc
    */
-  notifyFirebaseConfig: { firebaseJson: FirebaseConfig; firebaseRC: RCData };
+  notifyFirebaseConfig: {
+    firebaseJson: FirebaseConfig | undefined;
+    firebaseRC: RCData | undefined;
+  };
 
   /**
    * Return user-selected preview channel name

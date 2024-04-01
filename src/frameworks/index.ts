@@ -9,7 +9,7 @@ import * as glob from "glob";
 
 import { needProjectId } from "../projectUtils";
 import { hostingConfig } from "../hosting/config";
-import { listSites } from "../hosting/api";
+import { listDemoSites, listSites } from "../hosting/api";
 import { getAppConfig, AppPlatform } from "../management/apps";
 import { promptOnce } from "../prompt";
 import { EmulatorInfo, Emulators, EMULATORS_SUPPORTED_BY_USE_EMULATOR } from "../emulator/types";
@@ -54,6 +54,7 @@ import { isDeepStrictEqual } from "util";
 import { resolveProjectPath } from "../projectPath";
 import { logger } from "../logger";
 import { WebFrameworks } from "./frameworks";
+import { constructDefaultWebSetup } from "../fetchWebSetup";
 
 export { WebFrameworks };
 
@@ -92,7 +93,7 @@ function memoizeBuild(
   build: Framework["build"],
   deps: any[],
   target: string,
-  context: FrameworkContext
+  context: FrameworkContext,
 ): ReturnType<Framework["build"]> {
   const key = [dir, ...deps];
   for (const existingKey of BUILD_MEMO.keys()) {
@@ -121,7 +122,7 @@ export async function prepareFrameworks(
   targetNames: string[],
   context: FrameworkContext | undefined,
   options: FrameworksOptions,
-  emulators: EmulatorInfo[] = []
+  emulators: EmulatorInfo[] = [],
 ): Promise<void> {
   const project = needProjectId(context || options);
   const projectRoot = resolveProjectPath(options, ".");
@@ -172,7 +173,7 @@ export async function prepareFrameworks(
     if (!allowedRegionsValues.includes(ssrRegion)) {
       const validRegions = conjoinOptions(allowedRegionsValues);
       throw new FirebaseError(
-        `Hosting config for site ${site} places server-side content in region ${ssrRegion} which is not known. Valid regions are ${validRegions}`
+        `Hosting config for site ${site} places server-side content in region ${ssrRegion} which is not known. Valid regions are ${validRegions}`,
       );
     }
     const getProjectPath = (...args: string[]) => join(projectRoot, source, ...args);
@@ -206,12 +207,16 @@ export async function prepareFrameworks(
     });
     let firebaseConfig = null;
     if (usesFirebaseJsSdk) {
-      const sites = await listSites(project);
+      const isDemoProject = Constants.isDemoProject(project);
+
+      const sites = isDemoProject ? listDemoSites(project) : await listSites(project);
       const selectedSite = sites.find((it) => it.name && it.name.split("/").pop() === site);
       if (selectedSite) {
         const { appId } = selectedSite;
         if (appId) {
-          firebaseConfig = await getAppConfig(appId, AppPlatform.WEB);
+          firebaseConfig = isDemoProject
+            ? constructDefaultWebSetup(project)
+            : await getAppConfig(appId, AppPlatform.WEB);
           firebaseDefaults ||= {};
           firebaseDefaults.config = firebaseConfig;
         } else {
@@ -219,7 +224,7 @@ export async function prepareFrameworks(
           if (defaultConfig.json) {
             console.warn(
               `No Firebase app associated with site ${site}, injecting project default config.
-  You can link a Web app to a Hosting site here https://console.firebase.google.com/project/${project}/settings/general/web`
+  You can link a Web app to a Hosting site here https://console.firebase.google.com/project/${project}/settings/general/web`,
             );
             firebaseDefaults ||= {};
             firebaseDefaults.config = JSON.parse(defaultConfig.json);
@@ -229,7 +234,7 @@ export async function prepareFrameworks(
             // on a project that never initialized hosting?
             console.warn(
               `No Firebase app associated with site ${site}, unable to provide authenticated server context.
-  You can link a Web app to a Hosting site here https://console.firebase.google.com/project/${project}/settings/general/web`
+  You can link a Web app to a Hosting site here https://console.firebase.google.com/project/${project}/settings/general/web`,
             );
             if (!options.nonInteractive) {
               const continueDeploy = await promptOnce({
@@ -250,11 +255,11 @@ export async function prepareFrameworks(
     if (!results) {
       throw new FirebaseError(
         frameworksCallToAction(
-          "Unable to detect the web framework in use, check firebase-debug.log for more info."
-        )
+          "Unable to detect the web framework in use, check firebase-debug.log for more info.",
+        ),
       );
     }
-    const { framework, mayWantBackend, publicDirectory } = results;
+    const { framework, mayWantBackend } = results;
     const {
       build,
       ɵcodegenPublicDirectory,
@@ -276,8 +281,8 @@ export async function prepareFrameworks(
         name,
         results.version,
         supportedRange,
-        results.vite
-      )}\n`
+        results.vite,
+      )}\n`,
     );
 
     const hostingEmulatorInfo = emulators.find((e) => e.name === Emulators.HOSTING);
@@ -304,7 +309,6 @@ export async function prepareFrameworks(
       getDevModeHandle &&
       (await getDevModeHandle(getProjectPath(), frameworksBuildTarget, hostingEmulatorInfo));
     if (devModeHandle) {
-      config.public = relative(projectRoot, publicDirectory);
       // Attach the handle to options, it will be used when spinning up superstatic
       options.frameworksDevModeHandle = devModeHandle;
       // null is the dev-mode entry for firebase-framework-tools
@@ -317,7 +321,7 @@ export async function prepareFrameworks(
         build,
         [firebaseDefaults, frameworksBuildTarget],
         frameworksBuildTarget,
-        frameworkContext
+        frameworkContext,
       );
       const { wantsBackend = false, trailingSlash, i18n = false }: BuildResult = buildResult || {};
 
@@ -339,10 +343,10 @@ export async function prepareFrameworks(
         site,
       });
 
-      config.public = relative(projectRoot, hostingDist);
       if (wantsBackend && !omitCloudFunction)
         codegenFunctionsDirectory = codegenProdModeFunctionsDirectory;
     }
+    config.public = relative(projectRoot, hostingDist);
     config.webFramework = `${framework}${codegenFunctionsDirectory ? "_ssr" : ""}`;
     if (codegenFunctionsDirectory) {
       if (firebaseDefaults) {
@@ -353,7 +357,7 @@ export async function prepareFrameworks(
       if (context?.hostingChannel) {
         experiments.assertEnabled(
           "pintags",
-          "deploy an app that requires a backend to a preview channel"
+          "deploy an app that requires a backend to a preview channel",
         );
       }
 
@@ -409,7 +413,7 @@ export async function prepareFrameworks(
         getProjectPath(),
         functionsDist,
         frameworksBuildTarget,
-        frameworkContext
+        frameworkContext,
       );
 
       const rewrite = {
@@ -445,8 +449,8 @@ export async function prepareFrameworks(
         logWarning(
           `This integration expects Node version ${conjoinOptions(
             VALID_ENGINES.node,
-            "or"
-          )}. You're running version ${NODE_VERSION}, problems may be encountered.`
+            "or",
+          )}. You're running version ${NODE_VERSION}, problems may be encountered.`,
         );
       }
       packageJson.engines.node ||= engine.toString();
@@ -456,7 +460,7 @@ export async function prepareFrameworks(
       const bundledDependencies: Record<string, string> = packageJson.bundledDependencies || {};
       if (Object.keys(bundledDependencies).length) {
         logWarning(
-          "Bundled dependencies aren't supported in Cloud Functions, converting to dependencies."
+          "Bundled dependencies aren't supported in Cloud Functions, converting to dependencies.",
         );
         for (const [dep, version] of Object.entries(bundledDependencies)) {
           packageJson.dependencies[dep] ||= version;
@@ -465,7 +469,7 @@ export async function prepareFrameworks(
       }
 
       for (const [name, version] of Object.entries(
-        packageJson.dependencies as Record<string, string>
+        packageJson.dependencies as Record<string, string>,
       )) {
         if (version.startsWith("file:")) {
           const path = version.replace(/^file:/, "");
@@ -477,7 +481,7 @@ export async function prepareFrameworks(
               ["pack", relative(functionsDist, path), "--json=true"],
               {
                 cwd: functionsDist,
-              }
+              },
             );
             if (result.status !== 0)
               throw new FirebaseError(`Error running \`npm pack\` at ${path}`);
@@ -494,7 +498,7 @@ export async function prepareFrameworks(
 
       await copyFile(
         getProjectPath("package-lock.json"),
-        join(functionsDist, "package-lock.json")
+        join(functionsDist, "package-lock.json"),
       ).catch(() => {
         // continue
       });
@@ -518,14 +522,14 @@ export async function prepareFrameworks(
 __FIREBASE_FRAMEWORKS_ENTRY__=${frameworksEntry}
 ${
   firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\n` : ""
-}`.trimStart()
+}`.trimStart(),
       );
 
       const envs = await new Promise<string[]>((resolve, reject) =>
         glob(getProjectPath(".env.*"), (err, matches) => {
           if (err) reject(err);
           resolve(matches);
-        })
+        }),
       );
 
       await Promise.all(envs.map((path) => copyFile(path, join(functionsDist, basename(path)))));
@@ -545,9 +549,9 @@ ${
           `import { onRequest } from 'firebase-functions/v2/https';
   const server = import('firebase-frameworks');
   export const ${functionId} = onRequest(${JSON.stringify(
-            frameworksBackend || {}
-          )}, (req, res) => server.then(it => it.handle(req, res)));
-  `
+    frameworksBackend || {},
+  )}, (req, res) => server.then(it => it.handle(req, res)));
+  `,
         );
       } else {
         await writeFile(
@@ -555,9 +559,9 @@ ${
           `const { onRequest } = require('firebase-functions/v2/https');
   const server = import('firebase-frameworks');
   exports.${functionId} = onRequest(${JSON.stringify(
-            frameworksBackend || {}
-          )}, (req, res) => server.then(it => it.handle(req, res)));
-  `
+    frameworksBackend || {},
+  )}, (req, res) => server.then(it => it.handle(req, res)));
+  `,
         );
       }
     } else {
@@ -592,7 +596,7 @@ ${
 
   logger.debug(
     "[web frameworks] effective firebase.json: ",
-    JSON.stringify({ hosting: configs, functions: options.config.get("functions") }, undefined, 2)
+    JSON.stringify({ hosting: configs, functions: options.config.get("functions") }, undefined, 2),
   );
 
   // Clean up memos/caches

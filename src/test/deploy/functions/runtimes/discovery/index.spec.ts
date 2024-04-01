@@ -19,7 +19,7 @@ const ENDPOINT: build.Endpoint = {
   platform: "gcfv2",
   project: "project",
   runtime: "nodejs16",
-  region: [api.functionsDefaultRegion],
+  region: [api.functionsDefaultRegion()],
   serviceAccount: null,
 };
 
@@ -37,8 +37,8 @@ describe("yamlToBuild", () => {
     const parsed = discovery.yamlToBuild(
       YAML_OBJ,
       "project",
-      api.functionsDefaultRegion,
-      "nodejs16"
+      api.functionsDefaultRegion(),
+      "nodejs16",
     );
     expect(parsed).to.deep.equal(BUILD);
   });
@@ -47,7 +47,7 @@ describe("yamlToBuild", () => {
     const flawed: Record<string, unknown> = { ...YAML_OBJ };
     delete flawed.specVersion;
     expect(() =>
-      discovery.yamlToBuild(flawed, "project", api.functionsDefaultRegion, "nodejs16")
+      discovery.yamlToBuild(flawed, "project", api.functionsDefaultRegion(), "nodejs16"),
     ).to.throw(FirebaseError);
   });
 
@@ -57,7 +57,7 @@ describe("yamlToBuild", () => {
       specVersion: "32767beta2",
     };
     expect(() =>
-      discovery.yamlToBuild(flawed, "project", api.functionsDefaultRegion, "nodejs16")
+      discovery.yamlToBuild(flawed, "project", api.functionsDefaultRegion(), "nodejs16"),
     ).to.throw(FirebaseError);
   });
 });
@@ -77,7 +77,7 @@ describe("detectFromYaml", () => {
     readFileAsync.resolves(YAML_TEXT);
 
     await expect(
-      discovery.detectFromYaml("directory", "project", "nodejs16")
+      discovery.detectFromYaml("directory", "project", "nodejs16"),
     ).to.eventually.deep.equal(BUILD);
   });
 
@@ -85,7 +85,7 @@ describe("detectFromYaml", () => {
     readFileAsync.rejects({ code: "ENOENT" });
 
     await expect(discovery.detectFromYaml("directory", "project", "nodejs16")).to.eventually.equal(
-      undefined
+      undefined,
     );
   });
 });

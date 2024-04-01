@@ -21,7 +21,7 @@ describe("hashcache", () => {
 
     expect(existsSync(join(dir.name, ".firebase", `hosting.${name}.cache`))).to.be.true;
     expect(readFileSync(join(dir.name, ".firebase", `hosting.${name}.cache`), "utf8")).to.equal(
-      "foo,0,deadbeef\n"
+      "foo,0,deadbeef\n",
     );
   });
 
@@ -32,7 +32,7 @@ describe("hashcache", () => {
     writeFileSync(join(dir.name, ".firebase", `hosting.${name}.cache`), "bar,4,alivebeef\n");
 
     expect(load(dir.name, name)).to.deep.equal(
-      new Map<string, HashRecord>([["bar", { mtime: 4, hash: "alivebeef" }]])
+      new Map<string, HashRecord>([["bar", { mtime: 4, hash: "alivebeef" }]]),
     );
   });
 });

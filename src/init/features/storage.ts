@@ -7,7 +7,7 @@ import { ensureLocationSet } from "../../ensureCloudResourceLocation";
 
 const RULES_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../templates/init/storage/storage.rules",
-  "utf8"
+  "utf8",
 );
 
 export async function doSetup(setup: any, config: any): Promise<void> {

@@ -148,7 +148,7 @@ describe("extensions", () => {
     });
 
     it("should return a list of installed extensions instances", async () => {
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .get(`/${VERSION}/projects/${PROJECT_ID}/instances`)
         .query((queryParams: any) => {
           return queryParams.pageSize === "100";
@@ -162,13 +162,13 @@ describe("extensions", () => {
     });
 
     it("should query for more installed extensions if the response has a next_page_token", async () => {
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .get(`/${VERSION}/projects/${PROJECT_ID}/instances`)
         .query((queryParams: any) => {
           return queryParams.pageSize === "100";
         })
         .reply(200, TEST_INSTANCES_RESPONSE_NEXT_PAGE_TOKEN);
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .get(`/${VERSION}/projects/${PROJECT_ID}/instances`)
         .query((queryParams: any) => {
           return queryParams.pageToken === "abc123";
@@ -178,20 +178,20 @@ describe("extensions", () => {
       const instances = await extensionsApi.listInstances(PROJECT_ID);
 
       const expected = TEST_INSTANCES_RESPONSE.instances.concat(
-        TEST_INSTANCES_RESPONSE_NEXT_PAGE_TOKEN.instances
+        TEST_INSTANCES_RESPONSE_NEXT_PAGE_TOKEN.instances,
       );
       expect(instances).to.deep.equal(expected);
       expect(nock.isDone()).to.be.true;
     });
 
     it("should throw FirebaseError if any call returns an error", async () => {
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .get(`/${VERSION}/projects/${PROJECT_ID}/instances`)
         .query((queryParams: any) => {
           return queryParams.pageSize === "100";
         })
         .reply(200, TEST_INSTANCES_RESPONSE_NEXT_PAGE_TOKEN);
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .get(`/${VERSION}/projects/${PROJECT_ID}/instances`)
         .query((queryParams: any) => {
           return queryParams.pageToken === "abc123";
@@ -209,11 +209,11 @@ describe("extensions", () => {
     });
 
     it("should make a POST call to the correct endpoint, and then poll on the returned operation when given a source", async () => {
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .post(`/${VERSION}/projects/${PROJECT_ID}/instances/`)
         .query({ validateOnly: "false" })
         .reply(200, { name: "operations/abc123" });
-      nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
+      nock(api.extensionsOrigin()).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
 
       await extensionsApi.createInstance({
         projectId: PROJECT_ID,
@@ -240,11 +240,11 @@ describe("extensions", () => {
     });
 
     it("should make a POST call to the correct endpoint, and then poll on the returned operation when given an Extension ref", async () => {
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .post(`/${VERSION}/projects/${PROJECT_ID}/instances/`)
         .query({ validateOnly: "false" })
         .reply(200, { name: "operations/abc123" });
-      nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
+      nock(api.extensionsOrigin()).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
 
       await extensionsApi.createInstance({
         projectId: PROJECT_ID,
@@ -256,7 +256,7 @@ describe("extensions", () => {
     });
 
     it("should make a POST and not poll if validateOnly=true", async () => {
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .post(`/${VERSION}/projects/${PROJECT_ID}/instances/`)
         .query({ validateOnly: "true" })
         .reply(200, { name: "operations/abc123", done: true });
@@ -272,7 +272,7 @@ describe("extensions", () => {
     });
 
     it("should throw a FirebaseError if create returns an error response", async () => {
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .post(`/${VERSION}/projects/${PROJECT_ID}/instances/`)
         .query({ validateOnly: "false" })
         .reply(500);
@@ -297,7 +297,7 @@ describe("extensions", () => {
             },
           },
           params: {},
-        })
+        }),
       ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500, Unknown Error");
       expect(nock.isDone()).to.be.true;
     });
@@ -309,14 +309,14 @@ describe("extensions", () => {
     });
 
     it("should make a PATCH call to the correct endpoint, and then poll on the returned operation", async () => {
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
         .query({
           updateMask: "config.params,config.allowed_event_types,config.eventarc_channel",
           validateOnly: "false",
         })
         .reply(200, { name: "operations/abc123" });
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .get(`/${VERSION}/operations/abc123`)
         .reply(200, { done: false })
         .get(`/${VERSION}/operations/abc123`)
@@ -332,7 +332,7 @@ describe("extensions", () => {
     });
 
     it("should make a PATCH and not poll if validateOnly=true", async () => {
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
         .query({
           updateMask: "config.params,config.allowed_event_types,config.eventarc_channel",
@@ -351,7 +351,7 @@ describe("extensions", () => {
     });
 
     it("should throw a FirebaseError if update returns an error response", async () => {
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
         .query({
           updateMask: "config.params,config.allowed_event_types,config.eventarc_channel",
@@ -365,7 +365,7 @@ describe("extensions", () => {
           instanceId: INSTANCE_ID,
           params: { MY_PARAM: "value" },
           canEmitEvents: false,
-        })
+        }),
       ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500");
       expect(nock.isDone()).to.be.true;
     });
@@ -377,22 +377,22 @@ describe("extensions", () => {
     });
 
     it("should make a DELETE call to the correct endpoint, and then poll on the returned operation", async () => {
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .delete(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
         .reply(200, { name: "operations/abc123" });
-      nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
+      nock(api.extensionsOrigin()).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
 
       await extensionsApi.deleteInstance(PROJECT_ID, INSTANCE_ID);
       expect(nock.isDone()).to.be.true;
     });
 
     it("should throw a FirebaseError if delete returns an error response", async () => {
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .delete(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
         .reply(404);
 
       await expect(extensionsApi.deleteInstance(PROJECT_ID, INSTANCE_ID)).to.be.rejectedWith(
-        FirebaseError
+        FirebaseError,
       );
       expect(nock.isDone()).to.be.true;
     });
@@ -418,7 +418,7 @@ describe("extensions", () => {
     });
 
     it("should include config.params in updateMask is params are changed", async () => {
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
         .query({
           updateMask:
@@ -426,7 +426,7 @@ describe("extensions", () => {
           validateOnly: "false",
         })
         .reply(200, { name: "operations/abc123" });
-      nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
+      nock(api.extensionsOrigin()).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
 
       await extensionsApi.updateInstance({
         projectId: PROJECT_ID,
@@ -442,14 +442,14 @@ describe("extensions", () => {
     });
 
     it("should not include config.params or config.system_params in updateMask is params aren't changed", async () => {
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
         .query({
           updateMask: "config.source.name,config.allowed_event_types,config.eventarc_channel",
           validateOnly: "false",
         })
         .reply(200, { name: "operations/abc123" });
-      nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
+      nock(api.extensionsOrigin()).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
 
       await extensionsApi.updateInstance({
         projectId: PROJECT_ID,
@@ -461,7 +461,7 @@ describe("extensions", () => {
     });
 
     it("should include config.system_params in updateMask if system_params are changed", async () => {
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
         .query({
           updateMask:
@@ -469,7 +469,7 @@ describe("extensions", () => {
           validateOnly: "false",
         })
         .reply(200, { name: "operations/abc123" });
-      nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
+      nock(api.extensionsOrigin()).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
 
       await extensionsApi.updateInstance({
         projectId: PROJECT_ID,
@@ -485,7 +485,7 @@ describe("extensions", () => {
     });
 
     it("should include config.allowed_event_types and config.eventarc_Channel in updateMask if events config is provided", async () => {
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
         .query({
           updateMask:
@@ -493,7 +493,7 @@ describe("extensions", () => {
           validateOnly: "false",
         })
         .reply(200, { name: "operations/abc123" });
-      nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
+      nock(api.extensionsOrigin()).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
 
       await extensionsApi.updateInstance({
         projectId: PROJECT_ID,
@@ -510,7 +510,7 @@ describe("extensions", () => {
     });
 
     it("should make a PATCH and not poll if validateOnly=true", async () => {
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
         .query({
           updateMask: "config.source.name,config.allowed_event_types,config.eventarc_channel",
@@ -529,7 +529,7 @@ describe("extensions", () => {
     });
 
     it("should make a PATCH and not poll if validateOnly=true", async () => {
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
         .query({
           updateMask: "config.source.name,config.allowed_event_types,config.eventarc_channel",
@@ -548,7 +548,7 @@ describe("extensions", () => {
     });
 
     it("should throw a FirebaseError if update returns an error response", async () => {
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
         .query({
           updateMask:
@@ -566,7 +566,7 @@ describe("extensions", () => {
             MY_PARAM: "value",
           },
           canEmitEvents: false,
-        })
+        }),
       ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500");
 
       expect(nock.isDone()).to.be.true;
@@ -579,7 +579,7 @@ describe("extensions", () => {
     });
 
     it("should make a GET call to the correct endpoint", async () => {
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .get(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
         .reply(200);
 
@@ -588,12 +588,12 @@ describe("extensions", () => {
     });
 
     it("should throw a FirebaseError if the endpoint returns an error response", async () => {
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .get(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
         .reply(404);
 
       await expect(extensionsApi.getInstance(PROJECT_ID, INSTANCE_ID)).to.be.rejectedWith(
-        FirebaseError
+        FirebaseError,
       );
       expect(nock.isDone()).to.be.true;
     });
@@ -605,7 +605,7 @@ describe("extensions", () => {
     });
 
     it("should make a GET call to the correct endpoint", async () => {
-      nock(api.extensionsOrigin).get(`/${VERSION}/${SOURCE_NAME}`).reply(200, TEST_SOURCE);
+      nock(api.extensionsOrigin()).get(`/${VERSION}/${SOURCE_NAME}`).reply(200, TEST_SOURCE);
 
       const source = await extensionsApi.getSource(SOURCE_NAME);
       expect(nock.isDone()).to.be.true;
@@ -614,7 +614,7 @@ describe("extensions", () => {
     });
 
     it("should throw a FirebaseError if the endpoint returns an error response", async () => {
-      nock(api.extensionsOrigin).get(`/${VERSION}/${SOURCE_NAME}`).reply(404);
+      nock(api.extensionsOrigin()).get(`/${VERSION}/${SOURCE_NAME}`).reply(404);
 
       await expect(extensionsApi.getSource(SOURCE_NAME)).to.be.rejectedWith(FirebaseError);
       expect(nock.isDone()).to.be.true;
@@ -627,10 +627,10 @@ describe("extensions", () => {
     });
 
     it("should make a POST call to the correct endpoint, and then poll on the returned operation", async () => {
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .post(`/${VERSION}/projects/${PROJECT_ID}/sources/`)
         .reply(200, { name: "operations/abc123" });
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .get(`/${VERSION}/operations/abc123`)
         .reply(200, { done: true, response: TEST_SOURCE });
 
@@ -641,24 +641,24 @@ describe("extensions", () => {
     });
 
     it("should throw a FirebaseError if create returns an error response", async () => {
-      nock(api.extensionsOrigin).post(`/${VERSION}/projects/${PROJECT_ID}/sources/`).reply(500);
+      nock(api.extensionsOrigin()).post(`/${VERSION}/projects/${PROJECT_ID}/sources/`).reply(500);
 
       await expect(extensionsApi.createSource(PROJECT_ID, PACKAGE_URI, "./")).to.be.rejectedWith(
         FirebaseError,
-        "HTTP Error: 500, Unknown Error"
+        "HTTP Error: 500, Unknown Error",
       );
       expect(nock.isDone()).to.be.true;
     });
 
     it("stop polling and throw if the operation call throws an unexpected error", async () => {
-      nock(api.extensionsOrigin)
+      nock(api.extensionsOrigin())
         .post(`/${VERSION}/projects/${PROJECT_ID}/sources/`)
         .reply(200, { name: "operations/abc123" });
-      nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(502, {});
+      nock(api.extensionsOrigin()).get(`/${VERSION}/operations/abc123`).reply(502, {});
 
       await expect(extensionsApi.createSource(PROJECT_ID, PACKAGE_URI, "./")).to.be.rejectedWith(
         FirebaseError,
-        "HTTP Error: 502, Unknown Error"
+        "HTTP Error: 502, Unknown Error",
       );
       expect(nock.isDone()).to.be.true;
     });
@@ -671,7 +671,7 @@ describe("getExtension", () => {
   });
 
   it("should make a GET call to the correct endpoint", async () => {
-    nock(api.extensionsOrigin)
+    nock(api.extensionsOrigin())
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}`)
       .reply(200);
 
@@ -680,12 +680,12 @@ describe("getExtension", () => {
   });
 
   it("should throw a FirebaseError if the endpoint returns an error response", async () => {
-    nock(api.extensionsOrigin)
+    nock(api.extensionsOrigin())
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}`)
       .reply(404);
 
     await expect(extensionsApi.getExtension(`${PUBLISHER_ID}/${EXTENSION_ID}`)).to.be.rejectedWith(
-      FirebaseError
+      FirebaseError,
     );
     expect(nock.isDone()).to.be.true;
   });
@@ -693,7 +693,7 @@ describe("getExtension", () => {
   it("should throw an error for an invalid ref", async () => {
     await expect(extensionsApi.getExtension(`${PUBLISHER_ID}`)).to.be.rejectedWith(
       FirebaseError,
-      "Unable to parse"
+      "Unable to parse",
     );
   });
 });
@@ -704,35 +704,35 @@ describe("getExtensionVersion", () => {
   });
 
   it("should make a GET call to the correct endpoint", async () => {
-    nock(api.extensionsOrigin)
+    nock(api.extensionsOrigin())
       .get(
-        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions/${EXTENSION_VERSION}`
+        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions/${EXTENSION_VERSION}`,
       )
       .reply(200, TEST_EXTENSION_1);
 
     const got = await extensionsApi.getExtensionVersion(
-      `${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`
+      `${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`,
     );
     expect(got).to.deep.equal(TEST_EXTENSION_1);
     expect(nock.isDone()).to.be.true;
   });
 
   it("should throw a FirebaseError if the endpoint returns an error response", async () => {
-    nock(api.extensionsOrigin)
+    nock(api.extensionsOrigin())
       .get(
-        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions/${EXTENSION_VERSION}`
+        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions/${EXTENSION_VERSION}`,
       )
       .reply(404);
 
     await expect(
-      extensionsApi.getExtensionVersion(`${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`)
+      extensionsApi.getExtensionVersion(`${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`),
     ).to.be.rejectedWith(FirebaseError);
     expect(nock.isDone()).to.be.true;
   });
 
   it("should throw an error for an invalid ref", async () => {
     await expect(
-      extensionsApi.getExtensionVersion(`${PUBLISHER_ID}//${EXTENSION_ID}`)
+      extensionsApi.getExtensionVersion(`${PUBLISHER_ID}//${EXTENSION_ID}`),
     ).to.be.rejectedWith(FirebaseError, "Unable to parse");
   });
 });
@@ -743,7 +743,7 @@ describe("listExtensions", () => {
   });
 
   it("should return a list of published extensions", async () => {
-    nock(api.extensionsOrigin)
+    nock(api.extensionsOrigin())
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions`)
       .query((queryParams: any) => {
         queryParams.pageSize === "100";
@@ -757,7 +757,7 @@ describe("listExtensions", () => {
   });
 
   it("should return a list of all extensions", async () => {
-    nock(api.extensionsOrigin)
+    nock(api.extensionsOrigin())
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions`)
       .query((queryParams: any) => {
         queryParams.pageSize === "100";
@@ -772,14 +772,14 @@ describe("listExtensions", () => {
   });
 
   it("should query for more extensions if the response has a next_page_token", async () => {
-    nock(api.extensionsOrigin)
+    nock(api.extensionsOrigin())
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions`)
       .query((queryParams: any) => {
         queryParams.pageSize === "100";
         return queryParams;
       })
       .reply(200, PUBLISHED_WITH_TOKEN);
-    nock(api.extensionsOrigin)
+    nock(api.extensionsOrigin())
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions`)
       .query((queryParams: any) => {
         queryParams.pageSize === "100";
@@ -796,7 +796,7 @@ describe("listExtensions", () => {
   });
 
   it("should throw FirebaseError if any call returns an error", async () => {
-    nock(api.extensionsOrigin)
+    nock(api.extensionsOrigin())
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions`)
       .query((queryParams: any) => {
         queryParams.pageSize === "100";
@@ -815,7 +815,7 @@ describe("listExtensionVersions", () => {
   });
 
   it("should return a list of published extension versions", async () => {
-    nock(api.extensionsOrigin)
+    nock(api.extensionsOrigin())
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
       .query((queryParams: any) => {
         return queryParams.pageSize === "100";
@@ -828,7 +828,7 @@ describe("listExtensionVersions", () => {
   });
 
   it("should send filter query param", async () => {
-    nock(api.extensionsOrigin)
+    nock(api.extensionsOrigin())
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
       .query((queryParams: any) => {
         return queryParams.pageSize === "100" && queryParams.filter === "id<1.0.0";
@@ -837,14 +837,14 @@ describe("listExtensionVersions", () => {
 
     const extensions = await extensionsApi.listExtensionVersions(
       `${PUBLISHER_ID}/${EXTENSION_ID}`,
-      "id<1.0.0"
+      "id<1.0.0",
     );
     expect(extensions).to.deep.equal(PUBLISHED_EXT_VERSIONS.extensionVersions);
     expect(nock.isDone()).to.be.true;
   });
 
   it("should return a list of all extension versions", async () => {
-    nock(api.extensionsOrigin)
+    nock(api.extensionsOrigin())
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
       .query((queryParams: any) => {
         return queryParams.pageSize === "100";
@@ -858,13 +858,13 @@ describe("listExtensionVersions", () => {
   });
 
   it("should query for more extension versions if the response has a next_page_token", async () => {
-    nock(api.extensionsOrigin)
+    nock(api.extensionsOrigin())
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
       .query((queryParams: any) => {
         return queryParams.pageSize === "100";
       })
       .reply(200, PUBLISHED_VERSIONS_WITH_TOKEN);
-    nock(api.extensionsOrigin)
+    nock(api.extensionsOrigin())
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
       .query((queryParams: any) => {
         return queryParams.pageSize === "100" && queryParams.pageToken === NEXT_PAGE_TOKEN;
@@ -874,20 +874,20 @@ describe("listExtensionVersions", () => {
     const extensions = await extensionsApi.listExtensionVersions(`${PUBLISHER_ID}/${EXTENSION_ID}`);
 
     const expected = PUBLISHED_VERSIONS_WITH_TOKEN.extensionVersions.concat(
-      NEXT_PAGE_VERSIONS.extensionVersions
+      NEXT_PAGE_VERSIONS.extensionVersions,
     );
     expect(extensions).to.deep.equal(expected);
     expect(nock.isDone()).to.be.true;
   });
 
   it("should throw FirebaseError if any call returns an error", async () => {
-    nock(api.extensionsOrigin)
+    nock(api.extensionsOrigin())
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
       .query((queryParams: any) => {
         return queryParams.pageSize === "100";
       })
       .reply(200, PUBLISHED_VERSIONS_WITH_TOKEN);
-    nock(api.extensionsOrigin)
+    nock(api.extensionsOrigin())
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
       .query((queryParams: any) => {
         return queryParams.pageSize === "100" && queryParams.pageToken === NEXT_PAGE_TOKEN;
@@ -895,7 +895,7 @@ describe("listExtensionVersions", () => {
       .reply(500);
 
     await expect(
-      extensionsApi.listExtensionVersions(`${PUBLISHER_ID}/${EXTENSION_ID}`)
+      extensionsApi.listExtensionVersions(`${PUBLISHER_ID}/${EXTENSION_ID}`),
     ).to.be.rejectedWith(FirebaseError);
     expect(nock.isDone()).to.be.true;
   });
@@ -903,7 +903,7 @@ describe("listExtensionVersions", () => {
   it("should throw an error for an invalid ref", async () => {
     await expect(extensionsApi.listExtensionVersions("")).to.be.rejectedWith(
       FirebaseError,
-      "Unable to parse"
+      "Unable to parse",
     );
   });
 });

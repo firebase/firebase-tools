@@ -1,1 +1,3 @@
+- Stop trying to delete cache images after functions deletion that GCF already cleans up (#6927)
+- Add support timelines for functions runtimes (#6866)
 - Display meaningful error message when cannot determine target. (#6594)

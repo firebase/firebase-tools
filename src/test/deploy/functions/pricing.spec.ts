@@ -23,7 +23,7 @@ describe("Functions Pricing", () => {
           ...ENDPOINT_FRAGMENT,
           platform: "gcfv1",
           region: "us-central1",
-        })
+        }),
       ).to.be.true;
 
       expect(
@@ -31,7 +31,7 @@ describe("Functions Pricing", () => {
           ...ENDPOINT_FRAGMENT,
           platform: "gcfv2",
           ...INVALID_REGION,
-        })
+        }),
       ).to.be.true;
     });
 
@@ -42,7 +42,7 @@ describe("Functions Pricing", () => {
           platform: "gcfv1",
           region: "us-central1",
           minInstances: 10,
-        })
+        }),
       ).to.be.true;
     });
 
@@ -53,7 +53,7 @@ describe("Functions Pricing", () => {
           platform: "gcfv2",
           region: "us-central1",
           minInstances: 10,
-        })
+        }),
       ).to.be.true;
     });
 
@@ -65,7 +65,7 @@ describe("Functions Pricing", () => {
           region: "us-central1",
           minInstances: 10,
           availableMemoryMb: 0xdeadbeef as backend.MemoryOptions,
-        })
+        }),
       ).to.be.false;
     });
 
@@ -76,7 +76,7 @@ describe("Functions Pricing", () => {
           ...INVALID_REGION,
           platform: "gcfv1",
           minInstances: 10,
-        })
+        }),
       ).to.be.false;
     });
   });

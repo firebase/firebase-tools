@@ -33,7 +33,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
         expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const idToken = res.body.idToken as string;
-        const decoded = decodeJwt(idToken, { complete: true }) as {
+        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
           header: JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
@@ -72,7 +72,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
         expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const idToken = res.body.idToken as string;
-        const decoded = decodeJwt(idToken, { complete: true }) as {
+        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
           header: JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
@@ -103,7 +103,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
         expectStatusCode(200, res);
         const idToken = res.body.id_token;
         expect(idToken).to.be.a("string");
-        const decoded = decodeJwt(idToken, { complete: true }) as {
+        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
           header: JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
@@ -181,7 +181,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
         subject: "fake-service-account@example.com",
         issuer: "fake-service-account@example.com",
         audience: CUSTOM_TOKEN_AUDIENCE,
-      }
+      },
     );
 
     await authApi()

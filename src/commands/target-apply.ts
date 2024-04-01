@@ -12,18 +12,18 @@ export const command = new Command("target:apply <type> <name> <resources...>")
   .action((type, name, resources, options) => {
     if (!options.project) {
       throw new FirebaseError(
-        `Must have an active project to set deploy targets. Try ${clc.bold("firebase use --add")}`
+        `Must have an active project to set deploy targets. Try ${clc.bold("firebase use --add")}`,
       );
     }
 
     const changes = options.rc.applyTarget(options.project, type, name, resources);
 
     utils.logSuccess(
-      `Applied ${type} target ${clc.bold(name)} to ${clc.bold(resources.join(", "))}`
+      `Applied ${type} target ${clc.bold(name)} to ${clc.bold(resources.join(", "))}`,
     );
     for (const change of changes) {
       utils.logWarning(
-        `Previous target ${clc.bold(change.target)} removed from ${clc.bold(change.resource)}`
+        `Previous target ${clc.bold(change.target)} removed from ${clc.bold(change.resource)}`,
       );
     }
     logger.info();

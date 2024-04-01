@@ -17,7 +17,7 @@ export async function listExtensions(projectId: string): Promise<Record<string, 
   if (instances.length < 1) {
     logLabeledBullet(
       logPrefix,
-      `there are no extensions installed on project ${clc.bold(projectId)}.`
+      `there are no extensions installed on project ${clc.bold(projectId)}.`,
     );
     return [];
   }
@@ -28,7 +28,7 @@ export async function listExtensions(projectId: string): Promise<Record<string, 
   });
   // Order instances newest to oldest.
   const sorted = instances.sort(
-    (a, b) => new Date(b.createTime).valueOf() - new Date(a.createTime).valueOf()
+    (a, b) => new Date(b.createTime).valueOf() - new Date(a.createTime).valueOf(),
   );
   const formatted: Record<string, string>[] = [];
   sorted.forEach((instance) => {

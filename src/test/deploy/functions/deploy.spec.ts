@@ -130,7 +130,7 @@ describe("deploy", () => {
       const result = deploy.shouldUploadBeSkipped(
         { ...CONTEXT, filters: [{ idChunks: ["foobar"] }] },
         wantBackend,
-        haveBackend
+        haveBackend,
       );
 
       // Expect

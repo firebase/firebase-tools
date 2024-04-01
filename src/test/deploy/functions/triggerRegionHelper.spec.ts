@@ -8,7 +8,7 @@ import * as triggerRegionHelper from "../../../deploy/functions/triggerRegionHel
 const SPEC = {
   region: "us-west1",
   project: "my-project",
-  runtime: "nodejs14",
+  runtime: "nodejs14" as const,
 };
 
 describe("TriggerRegionHelper", () => {
@@ -37,7 +37,7 @@ describe("TriggerRegionHelper", () => {
       };
 
       await expect(triggerRegionHelper.ensureTriggerRegions(backend.of(ep))).to.be.rejectedWith(
-        "Can't find the storage bucket region"
+        "Can't find the storage bucket region",
       );
     });
 
@@ -114,7 +114,7 @@ describe("TriggerRegionHelper", () => {
       };
 
       await expect(triggerRegionHelper.ensureTriggerRegions(backend.of(wantFn))).to.be.rejectedWith(
-        "A function in region europe-west4 cannot listen to a bucket in region us"
+        "A function in region europe-west4 cannot listen to a bucket in region us",
       );
     });
   });

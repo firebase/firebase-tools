@@ -77,7 +77,7 @@ describe("ensureNecessaryV2ApisAndRoles", () => {
         version: 3,
         bindings: [GOOD_BINDING],
       },
-      "bindings"
+      "bindings",
     );
   });
 });
