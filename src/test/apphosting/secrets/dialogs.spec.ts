@@ -2,10 +2,9 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import * as clc from "colorette";
 
+import * as secrets from "../../../apphosting/secrets";
 import * as dialogs from "../../../apphosting/secrets/dialogs";
 import * as apphosting from "../../../gcp/apphosting";
-import * as gcb from "../../../gcp/cloudbuild";
-import * as gce from "../../../gcp/computeEngine";
 import * as utilsImport from "../../../utils";
 import * as promptImport from "../../../prompt";
 
@@ -29,22 +28,10 @@ describe("dialogs", () => {
     name: "projects/p/locations/l/backends/legacy2",
   } as any as apphosting.Backend;
 
-  describe("serviceAccountsForbackend", () => {
-    it("uses explicit account", () => {
-      const backend = {
-        serviceAccount: "sa",
-      } as any as apphosting.Backend;
-      expect(dialogs.serviceAccountsForBackend("number", backend)).to.deep.equal(["sa"]);
-    });
-
-    it("has a fallback for legacy SAs", () => {
-      const backend = {} as any as apphosting.Backend;
-      expect(dialogs.serviceAccountsForBackend("number", backend)).to.deep.equal([
-        gcb.getDefaultServiceAccount("number"),
-        gce.getDefaultServiceAccount("number"),
-      ]);
-    });
-  });
+  const emptyMulti: secrets.MultiServiceAccounts = {
+    build: [],
+    run: [],
+  };
 
   describe("toMetadata", () => {
     it("handles explicit account", () => {
@@ -52,8 +39,8 @@ describe("dialogs", () => {
       const metadata = dialogs.toMetadata("number", [modernA2, modernA]);
 
       expect(metadata).to.deep.equal([
-        { location: "l", id: "modernA", accounts: ["a"] },
-        { location: "l2", id: "modernA2", accounts: ["a"] },
+        { location: "l", id: "modernA", build: "a", run: "a" },
+        { location: "l2", id: "modernA2", build: "a", run: "a" },
       ]);
     });
 
@@ -64,9 +51,9 @@ describe("dialogs", () => {
         {
           location: "l",
           id: "legacy",
-          accounts: dialogs.serviceAccountsForBackend("number", legacy),
+          ...secrets.serviceAccountsForBackend("number", legacy),
         },
-        { location: "l", id: "modernA", accounts: ["a"] },
+        { location: "l", id: "modernA", build: "a", run: "a" },
       ]);
     });
 
@@ -76,12 +63,17 @@ describe("dialogs", () => {
         {
           location: "l",
           id: "legacy",
-          accounts: dialogs.serviceAccountsForBackend("number", legacy),
+          ...secrets.serviceAccountsForBackend("number", legacy),
         },
-        { location: "l", id: "modernA", accounts: ["a"] },
-        { location: "l2", id: "modernA2", accounts: ["a"] },
+        { location: "l", id: "modernA", build: "a", run: "a" },
+        { location: "l2", id: "modernA2", build: "a", run: "a" },
       ]);
     });
+  });
+
+  it("serviceAccountDisplay", () => {
+    expect(dialogs.serviceAccountDisplay({ build: "build", run: "run" })).to.equal("build, run");
+    expect(dialogs.serviceAccountDisplay({ build: "common", run: "common" })).to.equal("common");
   });
 
   describe("tableForBackends", () => {
@@ -96,11 +88,33 @@ describe("dialogs", () => {
 
     it("uses 'service accounts' header if any backend uses more than one service accont", () => {
       const table = dialogs.tableForBackends(dialogs.toMetadata("number", [legacy, modernA]));
+      const legacyAccounts = secrets.serviceAccountsForBackend("number", legacy);
       expect(table[0]).to.deep.equal(["location", "backend", "service accounts"]);
       expect(table[1]).to.deep.equal([
-        ["l", "legacy", dialogs.serviceAccountsForBackend("number", legacy).join(", ")],
+        ["l", "legacy", `${legacyAccounts.build}, ${legacyAccounts.run}`],
         ["l", "modernA", "a"],
       ]);
+    });
+  });
+
+  it("selectFromMetadata", () => {
+    const metadata: secrets.ServiceAccounts[] = [
+      {
+        build: "build",
+        run: "run",
+      },
+      {
+        build: "common",
+        run: "common",
+      },
+      {
+        build: "omittedBuild",
+        run: "omittedRun",
+      },
+    ];
+    expect(dialogs.selectFromMetadata(metadata, ["build", "run", "common"])).to.deep.equal({
+      build: ["build", "common"],
+      run: ["run"],
     });
   });
 
@@ -127,7 +141,7 @@ describe("dialogs", () => {
 
       await expect(
         dialogs.selectBackendServiceAccounts("number", "id", {}),
-      ).to.eventually.deep.equal([]);
+      ).to.eventually.deep.equal(emptyMulti);
       expect(utils.logLabeledWarning).to.have.been.calledWith(
         "apphosting",
         dialogs.WARN_NO_BACKENDS,
@@ -142,7 +156,7 @@ describe("dialogs", () => {
 
       await expect(
         dialogs.selectBackendServiceAccounts("number", "id", {}),
-      ).to.eventually.deep.equal([]);
+      ).to.eventually.deep.equal(emptyMulti);
 
       expect(utils.logLabeledWarning).to.have.been.calledWith(
         "apphosting",
@@ -164,7 +178,7 @@ describe("dialogs", () => {
 
       await expect(
         dialogs.selectBackendServiceAccounts("number", "id", {}),
-      ).to.eventually.deep.equal(["a"]);
+      ).to.eventually.deep.equal({ build: [modernA.serviceAccount], run: [] });
 
       expect(prompt.confirm).to.have.been.calledWith({
         nonInteractive: undefined,
@@ -184,7 +198,7 @@ describe("dialogs", () => {
 
       await expect(
         dialogs.selectBackendServiceAccounts("number", "id", {}),
-      ).to.eventually.deep.equal([]);
+      ).to.eventually.deep.equal(emptyMulti);
 
       expect(prompt.confirm).to.have.been.calledWith({
         nonInteractive: undefined,
@@ -204,17 +218,18 @@ describe("dialogs", () => {
         unreachable: [],
       });
       prompt.confirm.resolves(true);
+      const accounts = secrets.serviceAccountsForBackend("number", legacy);
 
       await expect(
         dialogs.selectBackendServiceAccounts("number", "id", {}),
-      ).to.eventually.deep.equal(dialogs.serviceAccountsForBackend("number", legacy));
+      ).to.eventually.deep.equal(secrets.toMulti(accounts));
 
       expect(prompt.confirm).to.have.been.calledWith({
         nonInteractive: undefined,
         default: true,
         message:
           "To use this secret, your backend's service account must have secret accessor permission. " +
-          `All of your backends use service accounts ${dialogs.serviceAccountsForBackend("number", legacy).join(", ")}. ` +
+          `All of your backends use service accounts ${dialogs.serviceAccountDisplay(accounts)}. ` +
           "Granting access to one backend will grant access to all backends. Would you like to grant it now?",
       });
       expect(utils.logLabeledBullet).to.not.have.been.called;
@@ -226,17 +241,18 @@ describe("dialogs", () => {
         unreachable: [],
       });
       prompt.confirm.resolves(false);
+      const legacyAccounts = secrets.serviceAccountsForBackend("number", legacy);
 
       await expect(
         dialogs.selectBackendServiceAccounts("number", "id", {}),
-      ).to.eventually.deep.equal([]);
+      ).to.eventually.deep.equal(emptyMulti);
 
       expect(prompt.confirm).to.have.been.calledWith({
         nonInteractive: undefined,
         default: true,
         message:
           "To use this secret, your backend's service account must have secret accessor permission. " +
-          `All of your backends use service accounts ${dialogs.serviceAccountsForBackend("number", legacy).join(", ")}. ` +
+          `All of your backends use service accounts ${dialogs.serviceAccountDisplay(legacyAccounts)}. ` +
           "Granting access to one backend will grant access to all backends. Would you like to grant it now?",
       });
       expect(utils.logLabeledBullet).to.have.been.calledWith(
@@ -254,7 +270,7 @@ describe("dialogs", () => {
 
       await expect(
         dialogs.selectBackendServiceAccounts("number", "id", {}),
-      ).to.eventually.deep.equal(["a"]);
+      ).to.eventually.deep.equal({ build: [modernA.serviceAccount], run: [] });
 
       expect(prompt.confirm).to.have.been.calledWith({
         nonInteractive: undefined,
@@ -276,7 +292,7 @@ describe("dialogs", () => {
 
       await expect(
         dialogs.selectBackendServiceAccounts("number", "id", {}),
-      ).to.eventually.deep.equal([]);
+      ).to.eventually.deep.equal(emptyMulti);
 
       expect(prompt.confirm).to.have.been.calledWith({
         nonInteractive: undefined,
@@ -298,16 +314,17 @@ describe("dialogs", () => {
         unreachable: [],
       });
       prompt.promptOnce.resolves(["a", "b"]);
+      const legacyAccounts = secrets.serviceAccountsForBackend("number", legacy);
 
       await expect(
         dialogs.selectBackendServiceAccounts("number", "id", {}),
-      ).to.eventually.deep.equal(["a", "b"]);
+      ).to.eventually.deep.equal({ build: ["a", "b"], run: [] });
 
       expect(prompt.promptOnce).to.have.been.calledWith({
         type: "checkbox",
         message:
           "Which service accounts would you like to grant access? Press Space to select accounts, then Enter to confirm your choices.",
-        choices: ["a", "b", ...dialogs.serviceAccountsForBackend("number", legacy)].sort(),
+        choices: ["a", "b", legacyAccounts.build, legacyAccounts.run].sort(),
       });
       expect(utils.logLabeledBullet).to.have.been.calledWith(
         "apphosting",
@@ -325,16 +342,17 @@ describe("dialogs", () => {
         unreachable: [],
       });
       prompt.promptOnce.resolves([]);
+      const legacyAccounts = secrets.serviceAccountsForBackend("number", legacy);
 
       await expect(
         dialogs.selectBackendServiceAccounts("number", "id", {}),
-      ).to.eventually.deep.equal([]);
+      ).to.eventually.deep.equal(emptyMulti);
 
       expect(prompt.promptOnce).to.have.been.calledWith({
         type: "checkbox",
         message:
           "Which service accounts would you like to grant access? Press Space to select accounts, then Enter to confirm your choices.",
-        choices: ["a", "b", ...dialogs.serviceAccountsForBackend("number", legacy)].sort(),
+        choices: ["a", "b", legacyAccounts.build, legacyAccounts.run].sort(),
       });
       expect(utils.logLabeledBullet).to.have.been.calledWith(
         "apphosting",
