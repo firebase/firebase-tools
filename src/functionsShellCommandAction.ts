@@ -40,10 +40,10 @@ export const actionFunction = async (options: Options) => {
   }
 
   const runningEmulators = EMULATORS_SUPPORTED_BY_FUNCTIONS.filter(
-    (e) => remoteEmulators[e] !== undefined
+    (e) => remoteEmulators[e] !== undefined,
   );
   const otherEmulators = EMULATORS_SUPPORTED_BY_FUNCTIONS.filter(
-    (e) => remoteEmulators[e] === undefined
+    (e) => remoteEmulators[e] === undefined,
   );
 
   let host = Constants.getDefaultHost();
@@ -58,7 +58,7 @@ export const actionFunction = async (options: Options) => {
   if (functionsInfo) {
     utils.logLabeledWarning(
       "functions",
-      `You are already running the Cloud Functions emulator on port ${functionsInfo.port}. Running the emulator and the Functions shell simultaenously can result in unexpected behavior.`
+      `You are already running the Cloud Functions emulator on port ${functionsInfo.port}. Running the emulator and the Functions shell simultaenously can result in unexpected behavior.`,
     );
   } else if (!options.port) {
     // If the user did not pass in any port and the functions emulator is not already running, we can
@@ -114,14 +114,14 @@ export const actionFunction = async (options: Options) => {
           "functions",
           `Connected to running ${clc.bold(e)} emulator at ${info.host}:${
             info.port
-          }, calls to this service will affect the emulator`
+          }, calls to this service will affect the emulator`,
         );
       }
       utils.logLabeledWarning(
         "functions",
         `The following emulators are not running, calls to these services will affect production: ${clc.bold(
-          otherEmulators.join(", ")
-        )}`
+          otherEmulators.join(", "),
+        )}`,
       );
 
       const writer = (output: any) => {

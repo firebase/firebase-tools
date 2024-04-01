@@ -35,13 +35,13 @@ describe("CleanupBuildImages", () => {
   });
 
   it("reports failed domains from AR", async () => {
-    ar.cleanupFunctionCache.rejects(new Error("uh oh"));
+    ar.cleanupFunction.rejects(new Error("uh oh"));
     await containerCleaner.cleanupBuildImages([], [TARGET], { gcr, ar } as any);
     expect(logLabeledWarning).to.have.been.calledWithMatch(
       "functions",
       new RegExp(
-        "https://console.cloud.google.com/artifacts/docker/project/us-central1/gcf-artifacts"
-      )
+        "https://console.cloud.google.com/artifacts/docker/project/us-central1/gcf-artifacts",
+      ),
     );
   });
 
@@ -50,7 +50,7 @@ describe("CleanupBuildImages", () => {
     await containerCleaner.cleanupBuildImages([], [TARGET], { gcr, ar } as any);
     expect(logLabeledWarning).to.have.been.calledWithMatch(
       "functions",
-      new RegExp("https://console.cloud.google.com/gcr/images/project/us/gcf")
+      new RegExp("https://console.cloud.google.com/gcr/images/project/us/gcf"),
     );
   });
 });
@@ -202,24 +202,7 @@ describe("ArtifactRegistryCleaner", () => {
 
     await cleaner.cleanupFunction(func);
     expect(ar.deletePackage).to.have.been.calledWith(
-      "projects/project/locations/region/repositories/gcf-artifacts/packages/function"
-    );
-    expect(poll.pollOperation).to.have.been.called;
-  });
-
-  it("deletes cache dirs", async () => {
-    const cleaner = new containerCleaner.ArtifactRegistryCleaner();
-    const func = {
-      id: "function",
-      region: "region",
-      project: "project",
-    };
-
-    ar.deletePackage.returns(Promise.resolve({ name: "op", done: false }));
-
-    await cleaner.cleanupFunctionCache(func);
-    expect(ar.deletePackage).to.have.been.calledWith(
-      "projects/project/locations/region/repositories/gcf-artifacts/packages/function%2Fcache"
+      "projects/project/locations/region/repositories/gcf-artifacts/packages/function",
     );
     expect(poll.pollOperation).to.have.been.called;
   });
@@ -236,7 +219,7 @@ describe("ArtifactRegistryCleaner", () => {
 
     await cleaner.cleanupFunction(func);
     expect(ar.deletePackage).to.have.been.calledWith(
-      "projects/project/locations/region/repositories/gcf-artifacts/packages/function"
+      "projects/project/locations/region/repositories/gcf-artifacts/packages/function",
     );
     expect(poll.pollOperation).to.not.have.been.called;
   });
@@ -253,7 +236,7 @@ describe("ArtifactRegistryCleaner", () => {
 
     await cleaner.cleanupFunction(func);
     expect(ar.deletePackage).to.have.been.calledWith(
-      "projects/project/locations/region/repositories/gcf-artifacts/packages/s-strange--_casing__cases"
+      "projects/project/locations/region/repositories/gcf-artifacts/packages/s-strange--_casing__cases",
     );
     expect(poll.pollOperation).to.not.have.been.called;
   });
@@ -284,14 +267,14 @@ describe("ContainerRegistryCleaner", () => {
         children: ["uuid"],
         digests: [],
         tags: [],
-      })
+      }),
     );
     stub.ls.withArgs("project/gcf/us-central1/uuid").returns(
       Promise.resolve({
         children: ["cache", "worker"],
         digests: ["sha256:func-hash"],
         tags: ["id_version-1"],
-      })
+      }),
     );
 
     await cleaner.cleanupFunction(ENDPOINT);
@@ -313,14 +296,14 @@ describe("ContainerRegistryCleaner", () => {
         children: ["uuid"],
         digests: [],
         tags: [],
-      })
+      }),
     );
     stub.ls.withArgs("project/gcf/us-central1/uuid").returns(
       Promise.resolve({
         children: [],
         digests: ["sha256:func-hash"],
         tags: ["id_version-1"],
-      })
+      }),
     );
 
     await cleaner.cleanupFunction(ENDPOINT);
@@ -341,14 +324,14 @@ describe("ContainerRegistryCleaner", () => {
         children: ["uuid"],
         digests: [],
         tags: [],
-      })
+      }),
     );
     stub.ls.withArgs("project/gcf/us-central1/uuid").returns(
       Promise.resolve({
         children: [],
         digests: ["sha256:func-hash"],
         tags: ["other-function_version-1"],
-      })
+      }),
     );
 
     await cleaner.cleanupFunction(ENDPOINT);
@@ -422,7 +405,7 @@ describe("listGcfPaths", () => {
     const paths = await containerCleaner.listGcfPaths(
       "project",
       ["us-central1", "europe-west1"],
-      helpers
+      helpers,
     );
     paths.sort();
 
@@ -442,7 +425,7 @@ describe("listGcfPaths", () => {
     const paths = await containerCleaner.listGcfPaths(
       "project",
       ["us-central1", "us-west4"],
-      helpers
+      helpers,
     );
 
     expect(paths).to.deep.equal(["us.gcr.io/project/gcf/us-central1"]);
@@ -515,7 +498,7 @@ describe("deleteGcfArtifacts", () => {
     await containerCleaner.deleteGcfArtifacts(
       "project",
       ["us-central1", "us-west2", "europe-west1"],
-      helpers
+      helpers,
     );
 
     expect(stubUS.rm).to.have.been.calledTwice;

@@ -112,7 +112,7 @@ describe("Storage emulator internal endpoints", () => {
         .then((res) => res.body.message);
 
       expect(errorMessage).to.equal(
-        "Each member of 'rules.files' array must contain 'name' and 'content'"
+        "Each member of 'rules.files' array must contain 'name' and 'content'",
       );
     });
 
@@ -128,7 +128,7 @@ describe("Storage emulator internal endpoints", () => {
         .then((res) => res.body.message);
 
       expect(errorMessage).to.equal(
-        "Each member of 'rules.files' array must contain 'name' and 'content'"
+        "Each member of 'rules.files' array must contain 'name' and 'content'",
       );
     });
 
@@ -147,7 +147,7 @@ describe("Storage emulator internal endpoints", () => {
         .then((res) => res.body.message);
 
       expect(errorMessage).to.equal(
-        "Each member of 'rules.files' array must contain 'name', 'content', and 'resource'"
+        "Each member of 'rules.files' array must contain 'name', 'content', and 'resource'",
       );
     });
 

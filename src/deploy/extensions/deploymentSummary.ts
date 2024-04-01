@@ -36,7 +36,7 @@ export function createsSummary(toCreate: planner.InstanceSpec[]): string {
 
 export function updatesSummary(
   toUpdate: planner.InstanceSpec[],
-  have: planner.InstanceSpec[]
+  have: planner.InstanceSpec[],
 ): string {
   const instancesToUpdate = toUpdate
     .map((to) => {

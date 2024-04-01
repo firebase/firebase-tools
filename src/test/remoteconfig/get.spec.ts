@@ -99,7 +99,7 @@ describe("Remote Config GET", () => {
     });
 
     it("should return the latest template", async () => {
-      nock(remoteConfigApiOrigin)
+      nock(remoteConfigApiOrigin())
         .get(`/v1/projects/${PROJECT_ID}/remoteConfig`)
         .reply(200, expectedProjectInfo);
 
@@ -109,7 +109,7 @@ describe("Remote Config GET", () => {
     });
 
     it("should return the correct version of the template if version is specified", async () => {
-      nock(remoteConfigApiOrigin)
+      nock(remoteConfigApiOrigin())
         .get(`/v1/projects/${PROJECT_ID}/remoteConfig?versionNumber=${6}`)
         .reply(200, expectedProjectInfo);
 
@@ -128,18 +128,18 @@ describe("Remote Config GET", () => {
     it("should return a correctly parsed entry value with two parameters", () => {
       const expectRCParameters = "RCTestkey\nenterNumber\n";
       const RCParameters = remoteconfig.parseTemplateForTable(
-        projectInfoWithTwoParameters.parameters
+        projectInfoWithTwoParameters.parameters,
       );
 
       expect(RCParameters).to.deep.equal(expectRCParameters);
     });
 
     it("should reject if the api call fails", async () => {
-      nock(remoteConfigApiOrigin).get(`/v1/projects/${PROJECT_ID}/remoteConfig`).reply(404, {});
+      nock(remoteConfigApiOrigin()).get(`/v1/projects/${PROJECT_ID}/remoteConfig`).reply(404, {});
 
       await expect(remoteconfig.getTemplate(PROJECT_ID)).to.eventually.be.rejectedWith(
         FirebaseError,
-        /Failed to get Firebase Remote Config template/
+        /Failed to get Firebase Remote Config template/,
       );
     });
   });

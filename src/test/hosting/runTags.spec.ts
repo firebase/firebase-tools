@@ -129,7 +129,7 @@ describe("runTags", () => {
     run.gcpIds.restore();
 
     runTags.ensureLatestRevisionTagged.throws(
-      new Error("Unexpected runTags.ensureLatestRevisionTagged")
+      new Error("Unexpected runTags.ensureLatestRevisionTagged"),
     );
     runTags.gcTagsForServices.rejects(new Error("Unepxected runTags.gcTagsForServices"));
     runTags.setRewriteTags.rejects(new Error("Unexpected runTags.setRewriteTags call"));
@@ -162,7 +162,7 @@ describe("runTags", () => {
         "fh-in-use2",
         "fh-deleted-version",
         "fh-no-longer-referenced",
-        "not-by-us"
+        "not-by-us",
       );
       const s2 = service("s2", "fh-no-reference");
       s2.spec.traffic.push({
@@ -229,7 +229,7 @@ describe("runTags", () => {
           expect(tag).to.equal("fh-version");
           svc[0].spec.traffic.push({ revisionName: "latest", tag });
           return Promise.resolve({ [REGION]: { [SERVICE]: tag } });
-        }
+        },
       );
 
       await runTags.setRewriteTags(rewrites, PROJECT, "version");

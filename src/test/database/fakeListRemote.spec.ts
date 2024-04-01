@@ -26,7 +26,7 @@ export class FakeListRemote implements ListRemote {
     path: string,
     numChildren: number,
     startAfter?: string,
-    timeout?: number
+    timeout?: number,
   ): Promise<string[]> {
     if (timeout === 0) {
       return Promise.reject(new Error("timeout"));

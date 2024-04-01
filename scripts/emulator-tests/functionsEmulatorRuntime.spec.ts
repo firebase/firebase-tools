@@ -44,7 +44,7 @@ async function isSocketReady(socketPath: string): Promise<void> {
           path: "/__/health",
           socketPath,
         },
-        () => resolve()
+        () => resolve(),
       )
       .end();
     req.on("error", (error) => {
@@ -78,7 +78,7 @@ async function startRuntime(
   triggerName: string,
   signatureType: SignatureType,
   triggerSource: () => {},
-  runtimeEnvs?: Record<string, string>
+  runtimeEnvs?: Record<string, string>,
 ): Promise<Runtime> {
   const env: Record<string, string> = { ...runtimeEnvs };
   env.GCLOUD_PROJECT = ADMIN_SDK_CONFIG.projectId;
@@ -166,7 +166,7 @@ async function sendReq(runtime: Runtime, opts: ReqOpts = {}): Promise<string> {
         socketPath: runtime.port,
         path,
       },
-      resolve
+      resolve,
     );
     req.on("error", reject);
     if (opts.data) {
@@ -305,7 +305,7 @@ describe("FunctionsEmulator-Runtime", function () {
               .firestore.document("test/test")
               .onCreate(() => {
                 console.log(
-                  JSON.stringify(require("firebase-admin/firestore").FieldValue.increment(4))
+                  JSON.stringify(require("firebase-admin/firestore").FieldValue.increment(4)),
                 );
                 return Promise.resolve();
               }),
@@ -347,7 +347,7 @@ describe("FunctionsEmulator-Runtime", function () {
               }),
             };
           },
-          { FIRESTORE_EMULATOR_HOST: "localhost:9090" }
+          { FIRESTORE_EMULATOR_HOST: "localhost:9090" },
         );
         const data = await sendReq(runtime);
         const info = JSON.parse(data);
@@ -390,7 +390,7 @@ describe("FunctionsEmulator-Runtime", function () {
           },
           {
             FIREBASE_DATABASE_EMULATOR_HOST: "localhost:9090",
-          }
+          },
         );
         const data = await sendReq(runtime);
         const info = JSON.parse(data);
@@ -600,7 +600,7 @@ describe("FunctionsEmulator-Runtime", function () {
                   JSON.stringify({
                     before_exists: change.before.exists,
                     after_exists: change.after.exists,
-                  })
+                  }),
                 );
                 return Promise.resolve();
               }),
@@ -622,7 +622,7 @@ describe("FunctionsEmulator-Runtime", function () {
                   JSON.stringify({
                     before_exists: change.before.exists,
                     after_exists: change.after.exists,
-                  })
+                  }),
                 );
                 return Promise.resolve();
               }),
@@ -643,7 +643,7 @@ describe("FunctionsEmulator-Runtime", function () {
                 console.log(
                   JSON.stringify({
                     snap_exists: snap.exists,
-                  })
+                  }),
                 );
                 return Promise.resolve();
               }),
@@ -664,7 +664,7 @@ describe("FunctionsEmulator-Runtime", function () {
                 console.log(
                   JSON.stringify({
                     snap_exists: snap.exists,
-                  })
+                  }),
                 );
                 return Promise.resolve();
               }),
@@ -749,7 +749,7 @@ describe("FunctionsEmulator-Runtime", function () {
         },
         {
           FUNCTION_DEBUG_MODE: "true",
-        }
+        },
       );
       await sendDebugBundle(runtime, { functionSignature: "http", functionTarget: "function0" });
       const fn0Res = await sendReq(runtime);
@@ -777,11 +777,11 @@ describe("FunctionsEmulator-Runtime", function () {
                     resolve();
                   }, 3_000);
                 });
-              }
+              },
             ),
           };
         },
-        timeoutEnvs
+        timeoutEnvs,
       );
       try {
         await sendDebugBundle(runtime, {

@@ -39,7 +39,7 @@ describe("CEL resolution", () => {
     expect(
       params.resolveString("{{ params.foo }} baz", {
         foo: new params.ParamValue("bar", false, { string: true }),
-      })
+      }),
     ).to.equal("bar baz");
   });
 
@@ -48,7 +48,7 @@ describe("CEL resolution", () => {
       params.resolveString("{{ params.foo }} {{ params.bar }}", {
         foo: new params.ParamValue("asdf", false, { string: true }),
         bar: new params.ParamValue("jkl;", false, { string: true }),
-      })
+      }),
     ).to.equal("asdf jkl;");
   });
 
@@ -56,12 +56,12 @@ describe("CEL resolution", () => {
     expect(() =>
       params.resolveString("{{ params.foo }}", {
         foo: new params.ParamValue("0", false, { number: true }),
-      })
+      }),
     ).to.throw();
     expect(() =>
       params.resolveInt("{{ params.foo }}", {
         foo: new params.ParamValue("asdf", false, { string: true }),
-      })
+      }),
     ).to.throw();
   });
 
@@ -69,7 +69,7 @@ describe("CEL resolution", () => {
     expect(() =>
       params.resolveString("{{ params.foo == 0 ? 'asdf' : 'jkl;' }}", {
         foo: new params.ParamValue("0", false, { number: true }),
-      })
+      }),
     ).to.throw();
   });
 });
@@ -89,7 +89,7 @@ describe("resolveParams", () => {
     const paramsToResolve: params.Param[] = [];
     const userEnv: Record<string, params.ParamValue> = {};
     await expect(
-      params.resolveParams(paramsToResolve, fakeConfig, userEnv)
+      params.resolveParams(paramsToResolve, fakeConfig, userEnv),
     ).to.eventually.deep.equal(expectedInternalParams);
   });
 
@@ -110,15 +110,15 @@ describe("resolveParams", () => {
       baz: new params.ParamValue("true", false, { string: false, number: false, boolean: true }),
     };
     await expect(
-      params.resolveParams(paramsToResolve, fakeConfig, userEnv)
+      params.resolveParams(paramsToResolve, fakeConfig, userEnv),
     ).to.eventually.deep.equal(
       Object.assign(
         {
           foo: new params.ParamValue("bar", false, { string: true, number: false, boolean: false }),
           bar: new params.ParamValue("24", false, { string: false, number: true, boolean: false }),
         },
-        expectedInternalParams
-      )
+        expectedInternalParams,
+      ),
     );
   });
 
@@ -137,7 +137,7 @@ describe("resolveParams", () => {
       }),
     };
     await expect(
-      params.resolveParams(paramsToResolve, fakeConfig, userEnv)
+      params.resolveParams(paramsToResolve, fakeConfig, userEnv),
     ).to.eventually.deep.equal({
       DATABASE_URL: new params.ParamValue(fakeConfig.databaseURL, true, {
         string: true,
@@ -169,8 +169,8 @@ describe("resolveParams", () => {
       params.resolveParams(
         paramsToResolve,
         { locationId: "", projectId: "foo", storageBucket: "", databaseURL: "" },
-        userEnv
-      )
+        userEnv,
+      ),
     ).to.eventually.deep.equal({
       GCLOUD_PROJECT: expectedInternalParams.GCLOUD_PROJECT,
       PROJECT_ID: expectedInternalParams.PROJECT_ID,
@@ -192,8 +192,8 @@ describe("resolveParams", () => {
         {
           foo: new params.ParamValue("bar", false, { string: true }),
         },
-        expectedInternalParams
-      )
+        expectedInternalParams,
+      ),
     );
   });
 
@@ -263,7 +263,7 @@ describe("resolveParams", () => {
     expect(promptOnce.getCall(0).args[0].default).to.eq("https://foo.firebaseio.com/quox");
     expect(promptOnce.getCall(1).args[0].default).to.eq("projectID: foo");
     expect(promptOnce.getCall(2).args[0].default).to.eq(
-      "http://foo.appspot.com.storage.googleapis.com/"
+      "http://foo.appspot.com.storage.googleapis.com/",
     );
   });
 

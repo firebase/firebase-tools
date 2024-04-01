@@ -85,7 +85,7 @@ export class EmulatorEndToEndTest {
   constructor(
     public project: string,
     protected readonly workdir: string,
-    config: FrameworkOptions
+    config: FrameworkOptions,
   ) {
     if (!config.emulators) {
       return;
@@ -299,7 +299,7 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
           throw new Error(`data is not a string or buffer (${typeof data})`);
         }
         return data.includes(ALL_EMULATORS_STARTED_LOG);
-      }
+      },
     );
 
     this.cliProcess = cli;
@@ -317,7 +317,7 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
           throw new Error(`data is not a string or buffer (${typeof data})`);
         }
         return data.includes(`Applied ${emulatorType} target`);
-      }
+      },
     );
     this.cliProcess = cli;
     return started;
@@ -325,7 +325,7 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
 
   invokeHttpFunction(name: string, zone = FIREBASE_PROJECT_ZONE): Promise<Response> {
     const url = `http://127.0.0.1:${[this.functionsEmulatorPort, this.project, zone, name].join(
-      "/"
+      "/",
     )}`;
     return fetch(url);
   }
@@ -333,10 +333,10 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
   invokeCallableFunction(
     name: string,
     body: Record<string, unknown>,
-    zone = FIREBASE_PROJECT_ZONE
+    zone = FIREBASE_PROJECT_ZONE,
   ): Promise<Response> {
     const url = `http://127.0.0.1:${this.functionsEmulatorPort}/${[this.project, zone, name].join(
-      "/"
+      "/",
     )}`;
     return fetch(url, {
       method: "POST",
@@ -400,7 +400,7 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
   waitForCondition(
     conditionFn: () => boolean,
     timeout: number,
-    callback: (err?: Error) => void
+    callback: (err?: Error) => void,
   ): void {
     let elapsed = 0;
     const interval = 10;

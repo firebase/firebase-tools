@@ -29,7 +29,7 @@ export const command = new Command("ext:uninstall <extensionInstanceId>")
     if (options.local) {
       logLabeledWarning(
         logPrefix,
-        "As of firebase-tools@11.0.0, the `--local` flag is no longer required, as it is the default behavior."
+        "As of firebase-tools@11.0.0, the `--local` flag is no longer required, as it is the default behavior.",
       );
     }
     const config = manifest.loadConfig(options);

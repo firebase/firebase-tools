@@ -234,7 +234,7 @@ describe("NodejsRuntime", () => {
       // Failed with multiple framework matches
       await expect(nodeJSRuntime.analyseCodebase(fileSystem, allFrameworks)).to.be.rejectedWith(
         FirebaseError,
-        "Failed to parse engine"
+        "Failed to parse engine",
       );
     });
   });

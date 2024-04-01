@@ -17,11 +17,11 @@ import { interactiveCreateHostingSite } from "../../../hosting/interactive";
 
 const INDEX_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../../templates/init/hosting/index.html",
-  "utf8"
+  "utf8",
 );
 const MISSING_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../../templates/init/hosting/404.html",
-  "utf8"
+  "utf8",
 );
 const DEFAULT_IGNORES = ["firebase.json", "**/.*", "**/node_modules/**"];
 
@@ -78,7 +78,7 @@ export async function doSetup(setup: any, config: any, options: Options): Promis
           default: true,
           message: `Detected an existing ${name} codebase in the current directory, should we use this?`,
         },
-        setup.hosting
+        setup.hosting,
       );
     }
     if (setup.hosting.useDiscoveredFramework) {
@@ -92,7 +92,7 @@ export async function doSetup(setup: any, config: any, options: Options): Promis
           default: false,
           message: `Do you want to use a web framework? (${clc.bold("experimental")})`,
         },
-        setup.hosting
+        setup.hosting,
       );
     }
   }
@@ -105,7 +105,7 @@ export async function doSetup(setup: any, config: any, options: Options): Promis
         default: "hosting",
         message: "What folder would you like to use for your web application's root directory?",
       },
-      setup.hosting
+      setup.hosting,
     );
 
     if (setup.hosting.source !== ".") delete setup.hosting.useDiscoveredFramework;
@@ -120,7 +120,7 @@ export async function doSetup(setup: any, config: any, options: Options): Promis
           default: true,
           message: `Detected an existing ${name} codebase in ${setup.hosting.source}, should we use this?`,
         },
-        setup.hosting
+        setup.hosting,
       );
     }
 
@@ -136,7 +136,7 @@ export async function doSetup(setup: any, config: any, options: Options): Promis
       }
 
       const defaultChoice = choices.find(
-        ({ value }) => value === discoveredFramework?.framework
+        ({ value }) => value === discoveredFramework?.framework,
       )?.value;
 
       await promptOnce(
@@ -147,7 +147,7 @@ export async function doSetup(setup: any, config: any, options: Options): Promis
           default: defaultChoice,
           choices,
         },
-        setup.hosting
+        setup.hosting,
       );
 
       if (discoveredFramework) rimraf(setup.hosting.source);
@@ -162,7 +162,7 @@ export async function doSetup(setup: any, config: any, options: Options): Promis
         default: DEFAULT_REGION,
         choices: ALLOWED_SSR_REGIONS.filter((region) => region.recommended),
       },
-      setup.hosting
+      setup.hosting,
     );
 
     setup.config.hosting = {
@@ -176,10 +176,10 @@ export async function doSetup(setup: any, config: any, options: Options): Promis
   } else {
     logger.info();
     logger.info(
-      `Your ${clc.bold("public")} directory is the folder (relative to your project directory) that`
+      `Your ${clc.bold("public")} directory is the folder (relative to your project directory) that`,
     );
     logger.info(
-      `will contain Hosting assets to be uploaded with ${clc.bold("firebase deploy")}. If you`
+      `will contain Hosting assets to be uploaded with ${clc.bold("firebase deploy")}. If you`,
     );
     logger.info("have a build process for your assets, use your build's output directory.");
     logger.info();
@@ -212,7 +212,7 @@ export async function doSetup(setup: any, config: any, options: Options): Promis
       default: false,
       message: "Set up automatic builds and deploys with GitHub?",
     },
-    setup.hosting
+    setup.hosting,
   );
 
   if (!setup.hosting.useWebFrameworks) {
@@ -227,7 +227,7 @@ export async function doSetup(setup: any, config: any, options: Options): Promis
     const response = await c.get<{ current: { version: string } }>("/firebasejs/releases.json");
     await config.askWriteProjectFile(
       `${setup.hosting.public}/index.html`,
-      INDEX_TEMPLATE.replace(/{{VERSION}}/g, response.body.current.version)
+      INDEX_TEMPLATE.replace(/{{VERSION}}/g, response.body.current.version),
     );
   }
 

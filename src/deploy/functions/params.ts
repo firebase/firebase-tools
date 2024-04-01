@@ -36,7 +36,7 @@ function dependenciesCEL(expr: CEL): string[] {
  */
 export function resolveInt(
   from: number | build.Expression<number>,
-  paramValues: Record<string, ParamValue>
+  paramValues: Record<string, ParamValue>,
 ): number {
   if (typeof from === "number") {
     return from;
@@ -52,7 +52,7 @@ export function resolveInt(
  */
 export function resolveString(
   from: string | build.Expression<string>,
-  paramValues: Record<string, ParamValue>
+  paramValues: Record<string, ParamValue>,
 ): string {
   let output = from;
   const celCapture = /{{ .+? }}/g;
@@ -74,7 +74,7 @@ export function resolveString(
  */
 export function resolveList(
   from: build.ListField,
-  paramValues: Record<string, ParamValue>
+  paramValues: Record<string, ParamValue>,
 ): string[] {
   if (!from) {
     return [];
@@ -94,7 +94,7 @@ export function resolveList(
  */
 export function resolveBoolean(
   from: boolean | build.Expression<boolean>,
-  paramValues: Record<string, ParamValue>
+  paramValues: Record<string, ParamValue>,
 ): boolean {
   if (typeof from === "boolean") {
     return from;
@@ -253,7 +253,7 @@ export class ParamValue {
   constructor(
     private readonly rawValue: string,
     readonly internal: boolean,
-    types: { string?: boolean; boolean?: boolean; number?: boolean; list?: boolean }
+    types: { string?: boolean; boolean?: boolean; number?: boolean; list?: boolean },
   ) {
     this.legalString = types.string || false;
     this.legalBoolean = types.boolean || false;
@@ -307,7 +307,7 @@ export class ParamValue {
 function resolveDefaultCEL(
   type: string,
   expr: CEL,
-  currentEnv: Record<string, ParamValue>
+  currentEnv: Record<string, ParamValue>,
 ): RawParamValue {
   const deps = dependenciesCEL(expr);
   const allDepsFound = deps.every((dep) => !!currentEnv[dep]);
@@ -315,7 +315,7 @@ function resolveDefaultCEL(
     throw new FirebaseError(
       "Build specified parameter with un-resolvable default value " +
         expr +
-        "; dependencies missing."
+        "; dependencies missing.",
     );
   }
 
@@ -330,7 +330,7 @@ function resolveDefaultCEL(
       return resolveList(expr, currentEnv);
     default:
       throw new FirebaseError(
-        "Build specified parameter with default " + expr + " of unsupported type"
+        "Build specified parameter with default " + expr + " of unsupported type",
       );
   }
 }
@@ -368,7 +368,7 @@ export async function resolveParams(
   params: Param[],
   firebaseConfig: FirebaseConfig,
   userEnvs: Record<string, ParamValue>,
-  nonInteractive?: boolean
+  nonInteractive?: boolean,
 ): Promise<Record<string, ParamValue>> {
   const paramValues: Record<string, ParamValue> = populateDefaultParams(firebaseConfig);
 
@@ -390,7 +390,7 @@ export async function resolveParams(
     throw new FirebaseError(
       `In non-interactive mode but have no value for the following environment variables: ${envNames}\n` +
         "To continue, either run `firebase deploy` with an interactive terminal, or add values to a dotenv file. " +
-        "For information regarding how to use dotenv files, see https://firebase.google.com/docs/functions/config-env"
+        "For information regarding how to use dotenv files, see https://firebase.google.com/docs/functions/config-env",
     );
   }
   for (const param of needPrompt) {
@@ -401,7 +401,7 @@ export async function resolveParams(
     }
     if (paramDefault && !canSatisfyParam(param, paramDefault)) {
       throw new FirebaseError(
-        "Parameter " + param.name + " has default value " + paramDefault + " of wrong type"
+        "Parameter " + param.name + " has default value " + paramDefault + " of wrong type",
       );
     }
     paramValues[param.name] = await promptParam(param, firebaseConfig.projectId, paramDefault);
@@ -465,7 +465,7 @@ async function handleSecret(secretParam: SecretParam, projectId: string) {
     throw new FirebaseError(
       `Cloud Secret Manager has no latest version of the secret defined by param ${
         secretParam.label || secretParam.name
-      }`
+      }`,
     );
   } else if (
     metadata.secretVersion.state === "DESTROYED" ||
@@ -474,7 +474,7 @@ async function handleSecret(secretParam: SecretParam, projectId: string) {
     throw new FirebaseError(
       `Cloud Secret Manager's latest version of secret '${
         secretParam.label || secretParam.name
-      } is in illegal state ${metadata.secretVersion.state}`
+      } is in illegal state ${metadata.secretVersion.state}`,
     );
   }
 }
@@ -489,13 +489,13 @@ async function handleSecret(secretParam: SecretParam, projectId: string) {
 async function promptParam(
   param: Param,
   projectId: string,
-  resolvedDefault?: RawParamValue
+  resolvedDefault?: RawParamValue,
 ): Promise<ParamValue> {
   if (param.type === "string") {
     const provided = await promptStringParam(
       param,
       projectId,
-      resolvedDefault as string | undefined
+      resolvedDefault as string | undefined,
     );
     return new ParamValue(provided.toString(), false, { string: true });
   } else if (param.type === "int") {
@@ -509,7 +509,7 @@ async function promptParam(
     return ParamValue.fromList(provided, param.delimiter);
   } else if (param.type === "secret") {
     throw new FirebaseError(
-      `Somehow ended up trying to interactively prompt for secret parameter ${param.name}, which should never happen.`
+      `Somehow ended up trying to interactively prompt for secret parameter ${param.name}, which should never happen.`,
     );
   }
   assertExhaustive(param);
@@ -518,7 +518,7 @@ async function promptParam(
 async function promptList(
   param: ListParam,
   projectId: string,
-  resolvedDefault?: string[]
+  resolvedDefault?: string[],
 ): Promise<string[]> {
   if (!param.input) {
     const defaultToText: TextInput<string> = { text: {} };
@@ -538,7 +538,7 @@ async function promptList(
       prompt,
       param.input,
       resolvedDefault,
-      (res: string[]) => res
+      (res: string[]) => res,
     );
   } else if (isTextInput(param.input)) {
     prompt = `Enter a list of strings (delimiter: ${param.delimiter ? param.delimiter : ","}) for ${
@@ -563,7 +563,7 @@ async function promptList(
 
 async function promptBooleanParam(
   param: BooleanParam,
-  resolvedDefault?: boolean
+  resolvedDefault?: boolean,
 ): Promise<boolean> {
   if (!param.input) {
     const defaultToText: TextInput<string> = { text: {} };
@@ -597,7 +597,7 @@ async function promptBooleanParam(
 async function promptStringParam(
   param: StringParam,
   projectId: string,
-  resolvedDefault?: string
+  resolvedDefault?: string,
 ): Promise<string> {
   if (!param.input) {
     const defaultToText: TextInput<string> = { text: {} };
@@ -680,7 +680,7 @@ async function promptResourceString(
   prompt: string,
   input: ResourceInput,
   projectId: string,
-  resolvedDefault?: string
+  resolvedDefault?: string,
 ): Promise<string> {
   const notFound = new FirebaseError(`No instances of ${input.resource.type} found.`);
   switch (input.resource.type) {
@@ -699,7 +699,7 @@ async function promptResourceString(
       return promptSelect<string>(prompt, forgedInput, resolvedDefault, (res: string) => res);
     default:
       logger.warn(
-        `Warning: unknown resource type ${input.resource.type}; defaulting to raw text input...`
+        `Warning: unknown resource type ${input.resource.type}; defaulting to raw text input...`,
       );
       return promptText<string>(prompt, { text: {} }, resolvedDefault, (res: string) => res);
   }
@@ -708,7 +708,7 @@ async function promptResourceString(
 async function promptResourceStrings(
   prompt: string,
   input: ResourceInput,
-  projectId: string
+  projectId: string,
 ): Promise<string[]> {
   const notFound = new FirebaseError(`No instances of ${input.resource.type} found.`);
   switch (input.resource.type) {
@@ -727,7 +727,7 @@ async function promptResourceStrings(
       return promptSelectMultiple<string>(prompt, forgedInput, undefined, (res: string[]) => res);
     default:
       logger.warn(
-        `Warning: unknown resource type ${input.resource.type}; defaulting to raw text input...`
+        `Warning: unknown resource type ${input.resource.type}; defaulting to raw text input...`,
       );
       return promptText<string[]>(prompt, { text: {} }, undefined, (res: string) => res.split(","));
   }
@@ -742,7 +742,7 @@ async function promptText<T extends RawParamValue>(
   prompt: string,
   input: TextInput<T>,
   resolvedDefault: T | undefined,
-  converter: (res: string) => T | retryInput
+  converter: (res: string) => T | retryInput,
 ): Promise<T> {
   const res = await promptOnce({
     type: "input",
@@ -754,7 +754,7 @@ async function promptText<T extends RawParamValue>(
     if (!userRe.test(res)) {
       logger.error(
         input.text.validationErrorMessage ||
-          `Input did not match provided validator ${userRe.toString()}, retrying...`
+          `Input did not match provided validator ${userRe.toString()}, retrying...`,
       );
       return promptText<T>(prompt, input, resolvedDefault, converter);
     }
@@ -774,7 +774,7 @@ async function promptSelect<T extends RawParamValue>(
   prompt: string,
   input: SelectInput<T>,
   resolvedDefault: T | undefined,
-  converter: (res: string) => T | retryInput
+  converter: (res: string) => T | retryInput,
 ): Promise<T> {
   const response = await promptOnce({
     name: "input",
@@ -801,7 +801,7 @@ async function promptSelectMultiple<T extends string>(
   prompt: string,
   input: MultiSelectInput,
   resolvedDefault: T[] | undefined,
-  converter: (res: string[]) => T[] | retryInput
+  converter: (res: string[]) => T[] | retryInput,
 ): Promise<T[]> {
   const response = await promptOnce({
     name: "input",

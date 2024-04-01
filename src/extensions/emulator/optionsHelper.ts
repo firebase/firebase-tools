@@ -7,15 +7,16 @@ import * as extensionsHelper from "../extensionsHelper";
 import * as planner from "../../deploy/extensions/planner";
 import { needProjectId } from "../../projectUtils";
 import { SecretEnvVar } from "../../deploy/functions/backend";
+import { Runtime } from "../../deploy/functions/runtimes/supported";
 
 /**
  * TODO: Better name? Also, should this be in extensionsEmulator instead?
  */
 export async function getExtensionFunctionInfo(
   instance: planner.DeploymentInstanceSpec,
-  paramValues: Record<string, string>
+  paramValues: Record<string, string>,
 ): Promise<{
-  runtime: string;
+  runtime: Runtime;
   extensionTriggers: ParsedTriggerDefinition[];
   nonSecretEnv: Record<string, string>;
   secretEnvVariables: SecretEnvVar[];
@@ -50,7 +51,7 @@ const isSecretParam = (p: Param) =>
  */
 export function getNonSecretEnv(
   params: Param[],
-  paramValues: Record<string, string>
+  paramValues: Record<string, string>,
 ): Record<string, string> {
   const getNonSecretEnv: Record<string, string> = Object.assign({}, paramValues);
   const secretParams = params.filter(isSecretParam);
@@ -67,7 +68,7 @@ export function getNonSecretEnv(
  */
 export function getSecretEnvVars(
   params: Param[],
-  paramValues: Record<string, string>
+  paramValues: Record<string, string>,
 ): SecretEnvVar[] {
   const secretEnvVar: SecretEnvVar[] = [];
   const secretParams = params.filter(isSecretParam);
@@ -103,7 +104,7 @@ export function getParams(options: any, extensionSpec: ExtensionSpec) {
 
   const unsubbedParams = extensionsHelper.populateDefaultParams(
     unsubbedParamsWithoutDefaults,
-    extensionSpec.params
+    extensionSpec.params,
   );
   // Run a substitution to support params that reference other params.
   return extensionsHelper.substituteParams<Record<string, string>>(unsubbedParams, unsubbedParams);

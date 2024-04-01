@@ -44,7 +44,7 @@ describe("localHelper", () => {
       it("should return a rejected promise with a useful error if extension.yaml is invalid", async () => {
         await expect(localHelper.getLocalExtensionSpec(EXT_FIXTURE_DIRECTORY)).to.be.rejectedWith(
           FirebaseError,
-          /YAML Error.+multiline key.+line.+/
+          /YAML Error.+multiline key.+line.+/,
         );
       });
     });
@@ -61,7 +61,7 @@ describe("localHelper", () => {
       it("should rethrow normal errors", async () => {
         await expect(localHelper.getLocalExtensionSpec(EXT_FIXTURE_DIRECTORY)).to.be.rejectedWith(
           FirebaseError,
-          "not the files you are looking for"
+          "not the files you are looking for",
         );
       });
     });

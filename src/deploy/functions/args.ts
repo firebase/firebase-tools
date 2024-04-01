@@ -2,7 +2,7 @@ import * as backend from "./backend";
 import * as gcfV2 from "../../gcp/cloudfunctionsv2";
 import * as projectConfig from "../../functions/projectConfig";
 import * as deployHelper from "./functionsDeployHelper";
-import { Runtime } from "./runtimes";
+import { Runtime } from "./runtimes/supported";
 
 // These types should probably be in a root deploy.ts, but we can only boil the ocean one bit at a time.
 interface CodebasePayload {

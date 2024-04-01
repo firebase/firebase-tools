@@ -33,6 +33,7 @@ import {
   getHeadersFromMetaFiles,
   isUsingNextImageInAppDirectory,
   getNextVersion,
+  getRoutesWithServerAction,
 } from "../../../frameworks/next/utils";
 
 import * as frameworksUtils from "../../../frameworks/utils";
@@ -65,6 +66,7 @@ import {
   clientReferenceManifestWithImage,
   clientReferenceManifestWithoutImage,
   routesManifest,
+  serverReferenceManifest,
 } from "./helpers";
 import { pathsWithCustomRoutesInternalPrefix } from "./helpers/i18n";
 
@@ -103,8 +105,8 @@ describe("Next.js utils", () => {
   it("should allow supported rewrites", () => {
     expect(
       [...supportedRewritesArray, ...unsupportedRewritesArray].filter((it) =>
-        isRewriteSupportedByHosting(it)
-      )
+        isRewriteSupportedByHosting(it),
+      ),
     ).to.have.members(supportedRewritesArray);
   });
 
@@ -112,8 +114,8 @@ describe("Next.js utils", () => {
     it("should allow supported redirects", () => {
       expect(
         [...supportedRedirects, ...unsupportedRedirects].filter((it) =>
-          isRedirectSupportedByHosting(it)
-        )
+          isRedirectSupportedByHosting(it),
+        ),
       ).to.have.members(supportedRedirects);
     });
   });
@@ -121,7 +123,7 @@ describe("Next.js utils", () => {
   describe("isHeaderSupportedByFirebase", () => {
     it("should allow supported headers", () => {
       expect(
-        [...supportedHeaders, ...unsupportedHeaders].filter((it) => isHeaderSupportedByHosting(it))
+        [...supportedHeaders, ...unsupportedHeaders].filter((it) => isHeaderSupportedByHosting(it)),
       ).to.have.members(supportedHeaders);
     });
   });
@@ -448,8 +450,8 @@ describe("Next.js utils", () => {
         getNonStaticRoutes(
           pagesManifest,
           Object.keys(prerenderManifest.routes),
-          Object.keys(prerenderManifest.dynamicRoutes)
-        )
+          Object.keys(prerenderManifest.dynamicRoutes),
+        ),
       ).to.deep.equal(["/dynamic/[dynamic-slug]"]);
     });
   });
@@ -461,8 +463,8 @@ describe("Next.js utils", () => {
           appPathsManifest,
           appPathRoutesManifest,
           Object.keys(prerenderManifest.routes),
-          Object.keys(prerenderManifest.dynamicRoutes)
-        )
+          Object.keys(prerenderManifest.dynamicRoutes),
+        ),
       ).to.deep.equal(new Set(["/api/test/route"]));
     });
   });
@@ -488,8 +490,8 @@ describe("Next.js utils", () => {
           distDir,
           "/asdf",
           appPathRoutesManifest,
-          routesManifest.rsc
-        )
+          routesManifest.rsc,
+        ),
       ).to.deep.equal([
         {
           source: "/asdf/api/static",
@@ -533,6 +535,14 @@ describe("Next.js utils", () => {
       sandbox.stub(frameworksUtils, "findDependency").returns(undefined);
 
       expect(getNextVersion("")).to.be.undefined;
+    });
+  });
+
+  describe("getRoutesWithServerAction", () => {
+    it("should get routes with server action", () => {
+      expect(
+        getRoutesWithServerAction(serverReferenceManifest, appPathRoutesManifest),
+      ).to.deep.equal(["/another-s-a", "/server-action", "/server-action/edge"]);
     });
   });
 });

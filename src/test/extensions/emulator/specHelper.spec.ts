@@ -4,6 +4,7 @@ import * as path from "path";
 import * as specHelper from "../../../extensions/emulator/specHelper";
 import { Resource } from "../../../extensions/types";
 import { FirebaseError } from "../../../error";
+import { Runtime } from "../../../deploy/functions/runtimes/supported";
 
 const testResource: Resource = {
   name: "test-resource",
@@ -102,13 +103,13 @@ describe("getRuntime", () => {
     const r1 = {
       ...testResource,
       properties: {
-        runtime: "nodejs14",
+        runtime: "nodejs14" as const,
       },
     };
     const r2 = {
       ...testResource,
       properties: {
-        runtime: "nodejs14",
+        runtime: "nodejs14" as const,
       },
     };
     expect(specHelper.getRuntime([r1, r2])).to.equal("nodejs14");
@@ -118,13 +119,13 @@ describe("getRuntime", () => {
     const r1 = {
       ...testResource,
       properties: {
-        runtime: "nodejs12",
+        runtime: "nodejs12" as const,
       },
     };
     const r2 = {
       ...testResource,
       properties: {
-        runtime: "nodejs14",
+        runtime: "nodejs14" as const,
       },
     };
     expect(specHelper.getRuntime([r1, r2])).to.equal("nodejs14");
@@ -150,13 +151,14 @@ describe("getRuntime", () => {
     const r1 = {
       ...testResource,
       properties: {
-        runtime: "dotnet6",
+        // Note: as const won't work since this is actually an invalid runtime.
+        runtime: "dotnet6" as Runtime,
       },
     };
     const r2 = {
       ...testResource,
       properties: {
-        runtime: "nodejs14",
+        runtime: "nodejs14" as const,
       },
     };
     expect(() => specHelper.getRuntime([r1, r2])).to.throw(FirebaseError);

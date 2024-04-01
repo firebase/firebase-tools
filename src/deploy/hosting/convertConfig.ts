@@ -37,7 +37,7 @@ function extractPattern(type: string, source: HostingSource): api.HasPattern {
     return { regex };
   }
   throw new FirebaseError(
-    `Cannot specify a ${type} with no pattern (either a glob or regex required).`
+    `Cannot specify a ${type} with no pattern (either a glob or regex required).`,
   );
 }
 
@@ -55,7 +55,7 @@ export function findEndpointForRewrite(
   site: string,
   targetBackend: backend.Backend,
   id: string,
-  region: string | undefined
+  region: string | undefined,
 ): EndpointSearchResult {
   const endpoints = backend.allEndpoints(targetBackend).filter((e) => e.id === id);
   if (endpoints.length === 0) {
@@ -71,13 +71,13 @@ export function findEndpointForRewrite(
     const us = endpoints.find((e) => e.region === "us-central1");
     if (!us) {
       throw new FirebaseError(
-        `More than one backend found for function name: ${id}. If the function is deployed in multiple regions, you must specify a region.`
+        `More than one backend found for function name: ${id}. If the function is deployed in multiple regions, you must specify a region.`,
       );
     }
     logLabeledBullet(
       `hosting[${site}]`,
       `Function \`${id}\` found in multiple regions, defaulting to \`us-central1\`. ` +
-        `To rewrite to a different region, specify a \`region\` for the rewrite in \`firebase.json\`.`
+        `To rewrite to a different region, specify a \`region\` for the rewrite in \`firebase.json\`.`,
     );
     return { matchingEndpoint: us, foundMatchingId: true };
   }
@@ -98,7 +98,7 @@ export function findEndpointForRewrite(
 export async function convertConfig(
   context: Context,
   functionsPayload: FunctionsPayload,
-  deploy: HostingDeploy
+  deploy: HostingDeploy,
 ): Promise<api.ServingConfig> {
   const config: api.ServingConfig = {};
 
@@ -109,7 +109,7 @@ export async function convertConfig(
   // We need to be able to do a rewrite to an existing function that may not be
   // under Firebase's control or a function that we're currently deploying.
   const wantBackend = backend.merge(
-    ...Object.values(functionsPayload.functions || {}).map((c) => c.wantBackend)
+    ...Object.values(functionsPayload.functions || {}).map((c) => c.wantBackend),
   );
 
   let haveBackend = backend.empty();
@@ -123,7 +123,7 @@ export async function convertConfig(
           // be able to validate them. This is fine.
           logger.debug(
             `Deploying hosting site ${deploy.config.site}, did not have permissions to check for backends: `,
-            err
+            err,
           );
         }
       } else {
@@ -144,7 +144,7 @@ export async function convertConfig(
     if ("function" in rewrite) {
       if (typeof rewrite.function === "string") {
         throw new FirebaseError(
-          "Expected firebase config to be normalized, but got legacy functions format"
+          "Expected firebase config to be normalized, but got legacy functions format",
         );
       }
       const id = rewrite.function.functionId;
@@ -154,7 +154,7 @@ export async function convertConfig(
         deploy.config.site,
         wantBackend,
         id,
-        region
+        region,
       );
       const existingEndpointSearch =
         !deployingEndpointSearch.foundMatchingId && !deployingEndpointSearch.matchingEndpoint
@@ -171,7 +171,7 @@ export async function convertConfig(
         if (deployingEndpointSearch.foundMatchingId || existingEndpointSearch?.foundMatchingId) {
           throw new FirebaseError(
             `Unable to find a valid endpoint for function. Functions matching the rewrite
-  are present but in the wrong region.`
+  are present but in the wrong region.`,
           );
         }
         // This could possibly succeed if there has been a function written
@@ -179,7 +179,7 @@ export async function convertConfig(
         // revisit this.
         logLabeledWarning(
           `hosting[${deploy.config.site}]`,
-          `Unable to find a valid endpoint for function \`${id}\`, but still including it in the config`
+          `Unable to find a valid endpoint for function \`${id}\`, but still including it in the config`,
         );
         const apiRewrite: api.Rewrite = { ...target, function: id };
         if (region) {
@@ -190,14 +190,14 @@ export async function convertConfig(
       if (endpoint.platform === "gcfv1") {
         if (!backend.isHttpsTriggered(endpoint) && !backend.isCallableTriggered(endpoint)) {
           throw new FirebaseError(
-            `Function ${endpoint.id} is a 1st gen function and therefore must be an https function type`
+            `Function ${endpoint.id} is a 1st gen function and therefore must be an https function type`,
           );
         }
         if (rewrite.function.pinTag) {
           throw new FirebaseError(
             `Function ${
               endpoint.id
-            } is a 1st gen function and therefore does not support the ${bold("pinTag")} option`
+            } is a 1st gen function and therefore does not support the ${bold("pinTag")} option`,
           );
         }
         return {
@@ -228,7 +228,7 @@ export async function convertConfig(
           throw new FirebaseError(
             `Function ${endpoint.id} has minInstances set and is in a rewrite ` +
               "pinTags=true. These features are not currently compatible with each " +
-              "other."
+              "other.",
           );
         }
         experiments.assertEnabled("pintags", "pin a function version");
@@ -266,7 +266,7 @@ export async function convertConfig(
     } catch (e: any) {
       throw new FirebaseError(
         "Invalid hosting rewrite config in firebase.json. " +
-          "A rewrite config must specify 'destination', 'function', 'dynamicLinks', or 'run'"
+          "A rewrite config must specify 'destination', 'function', 'dynamicLinks', or 'run'",
       );
     }
   });
@@ -300,7 +300,7 @@ export async function convertConfig(
 
   proto.copyIfPresent(config, deploy.config, "cleanUrls", "appAssociation", "i18n");
   proto.convertIfPresent(config, deploy.config, "trailingSlashBehavior", "trailingSlash", (b) =>
-    b ? "ADD" : "REMOVE"
+    b ? "ADD" : "REMOVE",
   );
 
   proto.pruneUndefiends(config);

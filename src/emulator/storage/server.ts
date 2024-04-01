@@ -15,14 +15,14 @@ import { SourceFile } from "./rules/types";
  */
 export function createApp(
   defaultProjectId: string,
-  emulator: StorageEmulator
+  emulator: StorageEmulator,
 ): Promise<express.Express> {
   const { storageLayer } = emulator;
   const app = express();
 
   EmulatorLogger.forEmulator(Emulators.STORAGE).log(
     "DEBUG",
-    `Temp file directory for storage emulator: ${storageLayer.dirPath}`
+    `Temp file directory for storage emulator: ${storageLayer.dirPath}`,
   );
 
   // Return access-control-allow-private-network header if requested
@@ -55,7 +55,7 @@ export function createApp(
         "x-goog-upload-chunk-granularity",
         "x-goog-upload-control-url",
       ],
-    })
+    }),
   );
 
   app.use(bodyParser.raw({ limit: "130mb", type: "application/x-www-form-urlencoded" }));
@@ -64,7 +64,7 @@ export function createApp(
   app.use(
     express.json({
       type: ["application/json"],
-    })
+    }),
   );
 
   app.post("/internal/export", async (req, res) => {
@@ -122,7 +122,7 @@ export function createApp(
         const file = files[0];
         if (!isRulesFile(file)) {
           throw new InvalidArgumentError(
-            "Each member of 'rules.files' array must contain 'name' and 'content'"
+            "Each member of 'rules.files' array must contain 'name' and 'content'",
           );
         }
         return { name: file.name, content: file.content };
@@ -132,7 +132,7 @@ export function createApp(
       for (const file of files) {
         if (!isRulesFile(file) || !file.resource) {
           throw new InvalidArgumentError(
-            "Each member of 'rules.files' array must contain 'name', 'content', and 'resource'"
+            "Each member of 'rules.files' array must contain 'name', 'content', and 'resource'",
           );
         }
         rules.push({ resource: file.resource, rules: { name: file.name, content: file.content } });

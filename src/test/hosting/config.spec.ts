@@ -4,14 +4,13 @@ import { HostingConfig, HostingMultiple, HostingSingle } from "../../firebaseCon
 
 import * as config from "../../hosting/config";
 import { HostingOptions } from "../../hosting/options";
-import { RequireAtLeastOne } from "../../metaprogramming";
 import { cloneDeep } from "../../utils";
 import { setEnabled } from "../../experiments";
 
 function options(
   hostingConfig: HostingConfig,
   base?: Omit<HostingOptions, "config" | "rc">,
-  targetsToSites?: Record<string, string[]>
+  targetsToSites?: Record<string, string[]>,
 ): HostingOptions {
   return {
     project: "project",
@@ -43,13 +42,13 @@ describe("config", () => {
       const singleSiteOpts = options({ site: "site", target: "target" });
       expect(() => config.extract(singleSiteOpts)).throws(
         FirebaseError,
-        /configs should only include either/
+        /configs should only include either/,
       );
 
       const manySiteOpts = options([{ site: "site", target: "target" }]);
       expect(() => config.extract(manySiteOpts)).throws(
         FirebaseError,
-        /configs should only include either/
+        /configs should only include either/,
       );
     });
 
@@ -92,7 +91,7 @@ describe("config", () => {
       const opts = options(cfg, {}, { target: ["site", "other-site"] });
       expect(() => config.resolveTargets(cfg, opts)).to.throw(
         FirebaseError,
-        /is linked to multiple sites, but only one is permitted/
+        /is linked to multiple sites, but only one is permitted/,
       );
     });
   });
@@ -103,10 +102,7 @@ describe("config", () => {
         desc: string;
         cfg: HostingMultiple;
         only?: string;
-      } & RequireAtLeastOne<{
-        want?: HostingMultiple;
-        wantErr?: RegExp;
-      }>
+      } & ({ want: HostingMultiple } | { wantErr: RegExp })
     > = [
       {
         desc: "a normal hosting config, specifying the default site",
@@ -165,7 +161,7 @@ describe("config", () => {
 
     for (const t of tests) {
       it(`should be able to parse ${t.desc}`, () => {
-        if (t.wantErr) {
+        if ("wantErr" in t) {
           expect(() => config.filterOnly(t.cfg, t.only)).to.throw(FirebaseError, t.wantErr);
         } else {
           const got = config.filterOnly(t.cfg, t.only);
@@ -181,10 +177,7 @@ describe("config", () => {
         desc: string;
         cfg: HostingMultiple;
         except?: string;
-      } & RequireAtLeastOne<{
-        want: HostingMultiple;
-        wantErr: RegExp;
-      }>
+      } & ({ want: HostingMultiple } | { wantErr: RegExp })
     > = [
       {
         desc: "a hosting config with multiple sites, no targets, omitting the second site",
@@ -231,7 +224,7 @@ describe("config", () => {
 
     for (const t of tests) {
       it(`should be able to parse ${t.desc}`, () => {
-        if (t.wantErr) {
+        if ("wantErr" in t) {
           expect(() => config.filterExcept(t.cfg, t.except)).to.throw(FirebaseError, t.wantErr);
         } else {
           const got = config.filterExcept(t.cfg, t.except);
@@ -410,7 +403,7 @@ describe("config", () => {
         if (t.wantErr) {
           expect(() => config.validate(configs, options(t.site))).to.throw(
             FirebaseError,
-            t.wantErr
+            t.wantErr,
           );
         } else {
           expect(() => config.validate(configs, options(t.site))).to.not.throw();

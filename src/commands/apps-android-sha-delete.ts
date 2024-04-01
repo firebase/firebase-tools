@@ -15,7 +15,7 @@ export const command = new Command("apps:android:sha:delete <appId> <shaId>")
     await promiseWithSpinner<void>(
       async () => await deleteAppAndroidSha(projectId, appId, shaId),
       `Deleting Android SHA certificate hash with SHA id ${clc.bold(
-        shaId
-      )} and Android app Id ${clc.bold(appId)}`
+        shaId,
+      )} and Android app Id ${clc.bold(appId)}`,
     );
   });

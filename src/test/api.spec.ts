@@ -25,7 +25,7 @@ describe("api", () => {
     process.env.FIRESTORE_URL = "http://foobar.com";
 
     const api = require("../api");
-    expect(api.firestoreOrigin).to.eq("http://foobar.com");
+    expect(api.firestoreOrigin()).to.eq("http://foobar.com");
   });
 
   it("should prefer FIRESTORE_EMULATOR_HOST to FIRESTORE_URL", () => {
@@ -33,6 +33,6 @@ describe("api", () => {
     process.env.FIRESTORE_URL = "http://foobar.com";
 
     const api = require("../api");
-    expect(api.firestoreOriginOrEmulator).to.eq("http://localhost:8080");
+    expect(api.firestoreOriginOrEmulator()).to.eq("http://localhost:8080");
   });
 });

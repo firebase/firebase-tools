@@ -20,7 +20,7 @@ export default class LocalFunction {
   constructor(
     private trigger: EmulatedTriggerDefinition,
     urls: Record<string, string>,
-    private controller: FunctionsEmulatorShell
+    private controller: FunctionsEmulatorShell,
   ) {
     this.url = urls[trigger.id];
   }
@@ -70,8 +70,8 @@ export default class LocalFunction {
       method: (
         path: string,
         bodyOrOpts?: any,
-        opts?: ClientVerbOptions
-      ) => Promise<ClientResponse<any>>
+        opts?: ClientVerbOptions,
+      ) => Promise<ClientResponse<any>>,
     ): verbFn => {
       return async (pathOrOptions?: string | HttpsOptions, options?: HttpsOptions) => {
         const { path, opts } = this.extractArgs(pathOrOptions, options);
@@ -97,25 +97,25 @@ export default class LocalFunction {
     });
     const verbs: verbMethods = {
       post: verbFactory(true, (path: string, json?: any, opts?: ClientVerbOptions) =>
-        callClient.post(path, json, opts)
+        callClient.post(path, json, opts),
       ),
       put: verbFactory(true, (path: string, json?: any, opts?: ClientVerbOptions) =>
-        callClient.put(path, json, opts)
+        callClient.put(path, json, opts),
       ),
       patch: verbFactory(true, (path: string, json?: any, opts?: ClientVerbOptions) =>
-        callClient.patch(path, json, opts)
+        callClient.patch(path, json, opts),
       ),
       get: verbFactory(false, (path: string, opts?: ClientVerbOptions) =>
-        callClient.get(path, opts)
+        callClient.get(path, opts),
       ),
       del: verbFactory(false, (path: string, opts?: ClientVerbOptions) =>
-        callClient.delete(path, opts)
+        callClient.delete(path, opts),
       ),
       delete: verbFactory(false, (path: string, opts?: ClientVerbOptions) =>
-        callClient.delete(path, opts)
+        callClient.delete(path, opts),
       ),
       options: verbFactory(false, (path: string, opts?: ClientVerbOptions) =>
-        callClient.options(path, opts)
+        callClient.options(path, opts),
       ),
     };
     return Object.assign(shim, verbs);
@@ -123,7 +123,7 @@ export default class LocalFunction {
 
   private extractArgs(
     pathOrOptions?: string | HttpsOptions,
-    options?: HttpsOptions
+    options?: HttpsOptions,
   ): { path: string; opts: HttpsOptions } {
     // Case: No arguments provided
     if (!pathOrOptions && !options) {
@@ -143,7 +143,7 @@ export default class LocalFunction {
     // Error case: Invalid combination of arguments
     if (typeof pathOrOptions !== "string" || !options) {
       throw new Error(
-        `Invalid argument combination: Expected a string and/or HttpsOptions, got ${typeof pathOrOptions} and ${typeof options}`
+        `Invalid argument combination: Expected a string and/or HttpsOptions, got ${typeof pathOrOptions} and ${typeof options}`,
       );
     }
 
@@ -180,7 +180,7 @@ export default class LocalFunction {
           return { admin: false };
         default:
           throw new Error(
-            "Unrecognized authType, valid values are: " + "ADMIN, USER, and UNAUTHENTICATED"
+            "Unrecognized authType, valid values are: " + "ADMIN, USER, and UNAUTHENTICATED",
           );
       }
     }

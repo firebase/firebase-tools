@@ -33,9 +33,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
     expectedChecksum: "2fd771101c0e1f7898c04c9204f2ce63",
   },
   firestore: {
-    version: "1.18.2",
-    expectedSize: 63929486,
-    expectedChecksum: "7b066cd684baf9bcd4a56a258be344a5",
+    version: "1.19.4",
+    expectedSize: 65913000,
+    expectedChecksum: "a861bfa9d12ef69645b41e2f3bd8db8d",
   },
   storage: {
     version: "1.1.3",
@@ -45,14 +45,14 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   ui: experiments.isEnabled("emulatoruisnapshot")
     ? { version: "SNAPSHOT", expectedSize: -1, expectedChecksum: "" }
     : {
-        version: "1.11.7",
-        expectedSize: 3064105,
-        expectedChecksum: "bd2bcc331cbf613a5b3b55a1ce08998b",
+        version: "1.11.8",
+        expectedSize: 3523907,
+        expectedChecksum: "49f6dc1911dda9d10df62a6c09aaf9a0",
       },
   pubsub: {
-    version: "0.7.1",
-    expectedSize: 65137179,
-    expectedChecksum: "b59a6e705031a54a69e5e1dced7ca9bf",
+    version: "0.8.2",
+    expectedSize: 65611398,
+    expectedChecksum: "70bb840321423e6ae621a3ae2f314903",
   },
 };
 
@@ -60,7 +60,7 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
   database: {
     downloadPath: path.join(
       CACHE_DIR,
-      `firebase-database-emulator-v${EMULATOR_UPDATE_DETAILS.database.version}.jar`
+      `firebase-database-emulator-v${EMULATOR_UPDATE_DETAILS.database.version}.jar`,
     ),
     version: EMULATOR_UPDATE_DETAILS.database.version,
     opts: {
@@ -74,7 +74,7 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
   firestore: {
     downloadPath: path.join(
       CACHE_DIR,
-      `cloud-firestore-emulator-v${EMULATOR_UPDATE_DETAILS.firestore.version}.jar`
+      `cloud-firestore-emulator-v${EMULATOR_UPDATE_DETAILS.firestore.version}.jar`,
     ),
     version: EMULATOR_UPDATE_DETAILS.firestore.version,
     opts: {
@@ -88,7 +88,7 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
   storage: {
     downloadPath: path.join(
       CACHE_DIR,
-      `cloud-storage-rules-runtime-v${EMULATOR_UPDATE_DETAILS.storage.version}.jar`
+      `cloud-storage-rules-runtime-v${EMULATOR_UPDATE_DETAILS.storage.version}.jar`,
     ),
     version: EMULATOR_UPDATE_DETAILS.storage.version,
     opts: {
@@ -107,7 +107,7 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
       CACHE_DIR,
       `ui-v${EMULATOR_UPDATE_DETAILS.ui.version}`,
       "server",
-      "server.js"
+      "server.mjs",
     ),
     opts: {
       cacheDir: CACHE_DIR,
@@ -122,14 +122,14 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
   pubsub: {
     downloadPath: path.join(
       CACHE_DIR,
-      `pubsub-emulator-${EMULATOR_UPDATE_DETAILS.pubsub.version}.zip`
+      `pubsub-emulator-${EMULATOR_UPDATE_DETAILS.pubsub.version}.zip`,
     ),
     version: EMULATOR_UPDATE_DETAILS.pubsub.version,
     unzipDir: path.join(CACHE_DIR, `pubsub-emulator-${EMULATOR_UPDATE_DETAILS.pubsub.version}`),
     binaryPath: path.join(
       CACHE_DIR,
       `pubsub-emulator-${EMULATOR_UPDATE_DETAILS.pubsub.version}`,
-      `pubsub-emulator/bin/cloud-pubsub-emulator${process.platform === "win32" ? ".bat" : ""}`
+      `pubsub-emulator/bin/cloud-pubsub-emulator${process.platform === "win32" ? ".bat" : ""}`,
     ),
     opts: {
       cacheDir: CACHE_DIR,
@@ -253,7 +253,7 @@ export function getLogFileName(name: string): string {
  */
 export function _getCommand(
   emulator: DownloadableEmulators,
-  args: { [s: string]: any }
+  args: { [s: string]: any },
 ): DownloadableEmulatorCommand {
   const baseCmd = Commands[emulator];
 
@@ -318,7 +318,7 @@ async function _fatal(emulator: Emulators, errorMsg: string): Promise<void> {
     logger.logLabeled(
       "WARN",
       emulator,
-      `Fatal error occurred: \n   ${errorMsg}, \n   stopping all running emulators`
+      `Fatal error occurred: \n   ${errorMsg}, \n   stopping all running emulators`,
     );
     await EmulatorRegistry.stopAll();
   } finally {
@@ -334,7 +334,7 @@ export async function handleEmulatorProcessError(emulator: Emulators, err: any):
   if (err.path === "java" && err.code === "ENOENT") {
     await _fatal(
       emulator,
-      `${description} has exited because java is not installed, you can install it from https://openjdk.java.net/install/`
+      `${description} has exited because java is not installed, you can install it from https://openjdk.java.net/install/`,
     );
   } else {
     await _fatal(emulator, `${description} has exited: ${err}`);
@@ -354,7 +354,7 @@ export function requiresJava(emulator: Emulators): boolean {
 async function _runBinary(
   emulator: DownloadableEmulatorDetails,
   command: DownloadableEmulatorCommand,
-  extraEnv: Partial<NodeJS.ProcessEnv>
+  extraEnv: Partial<NodeJS.ProcessEnv>,
 ): Promise<void> {
   return new Promise((resolve) => {
     const logger = EmulatorLogger.forEmulator(emulator.name);
@@ -376,7 +376,7 @@ async function _runBinary(
         logger.logLabeled(
           "WARN",
           emulator.name,
-          `Could not spawn child process for emulator, check that java is installed and on your $PATH.`
+          `Could not spawn child process for emulator, check that java is installed and on your $PATH.`,
         );
       }
       _fatal(emulator.name, e);
@@ -392,7 +392,7 @@ async function _runBinary(
     logger.logLabeled(
       "BULLET",
       emulator.name,
-      `${description} logging to ${clc.bold(getLogFileName(emulator.name))}`
+      `${description} logging to ${clc.bold(getLogFileName(emulator.name))}`,
     );
 
     emulator.instance.stdout?.on("data", (data) => {
@@ -407,7 +407,7 @@ async function _runBinary(
         logger.logLabeled(
           "WARN",
           emulator.name,
-          "Unsupported java version, make sure java --version reports 1.8 or higher."
+          "Unsupported java version, make sure java --version reports 1.8 or higher.",
         );
       }
     });
@@ -499,7 +499,7 @@ export async function downloadIfNecessary(targetName: DownloadableEmulators): Pr
 export async function start(
   targetName: DownloadableEmulators,
   args: any,
-  extraEnv: Partial<NodeJS.ProcessEnv> = {}
+  extraEnv: Partial<NodeJS.ProcessEnv> = {},
 ): Promise<void> {
   const downloadDetails = DownloadDetails[targetName];
   const emulator = get(targetName);
@@ -510,8 +510,8 @@ export async function start(
       if (process.env.CI) {
         utils.logWarning(
           `It appears you are running in a CI environment. You can avoid downloading the ${Constants.description(
-            targetName
-          )} repeatedly by caching the ${downloadDetails.opts.cacheDir} directory.`
+            targetName,
+          )} repeatedly by caching the ${downloadDetails.opts.cacheDir} directory.`,
         );
       }
 
@@ -526,7 +526,7 @@ export async function start(
 
   logger.log(
     "DEBUG",
-    `Starting ${Constants.description(targetName)} with command ${JSON.stringify(command)}`
+    `Starting ${Constants.description(targetName)} with command ${JSON.stringify(command)}`,
   );
   return _runBinary(emulator, command, extraEnv);
 }

@@ -125,7 +125,7 @@ describeAuthEmulator("tenant management", ({ authApi }) => {
 
       await authApi()
         .delete(
-          `/identitytoolkit.googleapis.com/v2/projects/${projectId}/tenants/${tenant.tenantId}`
+          `/identitytoolkit.googleapis.com/v2/projects/${projectId}/tenants/${tenant.tenantId}`,
         )
         .set("Authorization", "Bearer owner")
         .then((res) => {
@@ -139,7 +139,7 @@ describeAuthEmulator("tenant management", ({ authApi }) => {
 
       await authApi()
         .delete(
-          `/identitytoolkit.googleapis.com/v2/projects/${projectId}/tenants/${tenant.tenantId}`
+          `/identitytoolkit.googleapis.com/v2/projects/${projectId}/tenants/${tenant.tenantId}`,
         )
         .set("Authorization", "Bearer owner")
         // Sets content-type and sends "{}" in request payload. This is very
@@ -242,7 +242,7 @@ describeAuthEmulator("tenant management", ({ authApi }) => {
 
       await authApi()
         .patch(
-          `/identitytoolkit.googleapis.com/v2/projects/${projectId}/tenants/${tenant.tenantId}`
+          `/identitytoolkit.googleapis.com/v2/projects/${projectId}/tenants/${tenant.tenantId}`,
         )
         .set("Authorization", "Bearer owner")
         .query({ updateMask })
@@ -278,7 +278,7 @@ describeAuthEmulator("tenant management", ({ authApi }) => {
 
       await authApi()
         .patch(
-          `/identitytoolkit.googleapis.com/v2/projects/${projectId}/tenants/${tenant.tenantId}`
+          `/identitytoolkit.googleapis.com/v2/projects/${projectId}/tenants/${tenant.tenantId}`,
         )
         .set("Authorization", "Bearer owner")
         .query({ updateMask })
@@ -301,7 +301,7 @@ describeAuthEmulator("tenant management", ({ authApi }) => {
 
       await authApi()
         .patch(
-          `/identitytoolkit.googleapis.com/v2/projects/${projectId}/tenants/${tenant.tenantId}`
+          `/identitytoolkit.googleapis.com/v2/projects/${projectId}/tenants/${tenant.tenantId}`,
         )
         .set("Authorization", "Bearer owner")
         .query({ updateMask })
@@ -324,7 +324,7 @@ describeAuthEmulator("tenant management", ({ authApi }) => {
 
       await authApi()
         .patch(
-          `/identitytoolkit.googleapis.com/v2/projects/${projectId}/tenants/${tenant.tenantId}`
+          `/identitytoolkit.googleapis.com/v2/projects/${projectId}/tenants/${tenant.tenantId}`,
         )
         .set("Authorization", "Bearer owner")
         .send({
@@ -358,7 +358,7 @@ describeAuthEmulator("tenant management", ({ authApi }) => {
 
       await authApi()
         .patch(
-          `/identitytoolkit.googleapis.com/v2/projects/${projectId}/tenants/${tenant.tenantId}`
+          `/identitytoolkit.googleapis.com/v2/projects/${projectId}/tenants/${tenant.tenantId}`,
         )
         .set("Authorization", "Bearer owner")
         .send({})

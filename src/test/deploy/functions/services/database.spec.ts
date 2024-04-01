@@ -42,7 +42,7 @@ describe("ensureDatabaseTriggerRegion", () => {
     ep.eventTrigger.region = "us-west1";
 
     expect(() => database.ensureDatabaseTriggerRegion(ep)).to.throw(
-      "A database trigger location must match the function region."
+      "A database trigger location must match the function region.",
     );
   });
 });

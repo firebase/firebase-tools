@@ -1,3 +1,2 @@
-- Fixed issue where Auth emulator sign in with Google only shows default tenant. (#6683)
-- Prevent the use of pinTags + minInstances on the same function, as the features are not mutually compatible (#6684)
-- Add force flag to delete backend (#6635).
+- Stop trying to delete cache images after functions deletion that GCF already cleans up (#6927)
+- Add support timelines for functions runtimes (#6866)

@@ -15,7 +15,7 @@ var extractTriggers = function (mod, triggers, prefix) {
     if (typeof child === "function" && child.__trigger && typeof child.__trigger === "object") {
       if (funcName.indexOf("-") >= 0) {
         throw new Error(
-          'Function name "' + funcName + '" is invalid. Function names cannot contain dashes.'
+          'Function name "' + funcName + '" is invalid. Function names cannot contain dashes.',
         );
       }
 

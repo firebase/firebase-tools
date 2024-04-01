@@ -15,10 +15,9 @@ export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!existsSync(join(dir, "package.json"))) return;
   const version = getAstroVersion(dir);
   if (!version) return;
-  const { output, publicDir: publicDirectory } = await getConfig(dir);
+  const { output } = await getConfig(dir);
   return {
     mayWantBackend: output !== "static",
-    publicDirectory,
     version,
   };
 }
@@ -32,7 +31,7 @@ export async function build(cwd: string): Promise<BuildResult> {
   const wantsBackend = output !== "static";
   if (wantsBackend && adapter?.name !== "@astrojs/node") {
     throw new FirebaseError(
-      "Deploying an Astro application with SSR on Firebase Hosting requires the @astrojs/node adapter in middleware mode. https://docs.astro.build/en/guides/integrations-guide/node/"
+      "Deploying an Astro application with SSR on Firebase Hosting requires the @astrojs/node adapter in middleware mode. https://docs.astro.build/en/guides/integrations-guide/node/",
     );
   }
   const build = spawnSync(cli, ["build"], { cwd, stdio: "inherit" });

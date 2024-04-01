@@ -79,7 +79,7 @@ export function getFirestoreConfig(projectId: string, options: Options): ParsedF
     throw new FirebaseError(
       `Could not find configurations in firebase.json for the following database targets: ${[
         ...onlyDatabases,
-      ].join(", ")}`
+      ].join(", ")}`,
     );
   }
 

@@ -13,7 +13,7 @@ describe("FunctionsEmulatorUtils", () => {
     it("should match a path which fits a wildcard template", () => {
       const params = extractParamsFromPath(
         "companies/{company}/users/{user}",
-        "/companies/firebase/users/abe"
+        "/companies/firebase/users/abe",
       );
       expect(params).to.deep.equal({ company: "firebase", user: "abe" });
     });
@@ -21,7 +21,7 @@ describe("FunctionsEmulatorUtils", () => {
     it("should not match unfilled wildcards", () => {
       const params = extractParamsFromPath(
         "companies/{company}/users/{user}",
-        "companies/{still_wild}/users/abe"
+        "companies/{still_wild}/users/abe",
       );
       expect(params).to.deep.equal({ user: "abe" });
     });
@@ -29,7 +29,7 @@ describe("FunctionsEmulatorUtils", () => {
     it("should not match a path which is too long", () => {
       const params = extractParamsFromPath(
         "companies/{company}/users/{user}",
-        "companies/firebase/users/abe/boots"
+        "companies/firebase/users/abe/boots",
       );
       expect(params).to.deep.equal({});
     });
@@ -37,7 +37,7 @@ describe("FunctionsEmulatorUtils", () => {
     it("should not match a path which is too short", () => {
       const params = extractParamsFromPath(
         "companies/{company}/users/{user}",
-        "companies/firebase/users/"
+        "companies/firebase/users/",
       );
       expect(params).to.deep.equal({});
     });
@@ -45,7 +45,7 @@ describe("FunctionsEmulatorUtils", () => {
     it("should not match a path which has different chunks", () => {
       const params = extractParamsFromPath(
         "locations/{company}/users/{user}",
-        "companies/firebase/users/{user}"
+        "companies/firebase/users/{user}",
       );
       expect(params).to.deep.equal({});
     });
@@ -55,7 +55,7 @@ describe("FunctionsEmulatorUtils", () => {
     it("should match a path which fits a wildcard template", () => {
       const valid = isValidWildcardMatch(
         "companies/{company}/users/{user}",
-        "/companies/firebase/users/abe"
+        "/companies/firebase/users/abe",
       );
       expect(valid).to.equal(true);
     });
@@ -63,7 +63,7 @@ describe("FunctionsEmulatorUtils", () => {
     it("should not match a path which is too long", () => {
       const tooLong = isValidWildcardMatch(
         "companies/{company}/users/{user}",
-        "companies/firebase/users/abe/boots"
+        "companies/firebase/users/abe/boots",
       );
       expect(tooLong).to.equal(false);
     });
@@ -71,7 +71,7 @@ describe("FunctionsEmulatorUtils", () => {
     it("should not match a path which is too short", () => {
       const tooShort = isValidWildcardMatch(
         "companies/{company}/users/{user}",
-        "companies/firebase/users/"
+        "companies/firebase/users/",
       );
       expect(tooShort).to.equal(false);
     });
@@ -79,7 +79,7 @@ describe("FunctionsEmulatorUtils", () => {
     it("should not match a path which has different chunks", () => {
       const differentChunk = isValidWildcardMatch(
         "locations/{company}/users/{user}",
-        "companies/firebase/users/{user}"
+        "companies/firebase/users/{user}",
       );
       expect(differentChunk).to.equal(false);
     });

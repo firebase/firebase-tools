@@ -4,7 +4,7 @@ import { artifactRegistryDomain } from "../api";
 export const API_VERSION = "v1beta2";
 
 const client = new Client({
-  urlPrefix: artifactRegistryDomain,
+  urlPrefix: artifactRegistryDomain(),
   auth: true,
   apiVersion: API_VERSION,
 });

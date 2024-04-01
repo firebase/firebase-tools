@@ -40,7 +40,7 @@ describeAuthEmulator("mfa enrollment", ({ authApi, getClock }) => {
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error.message).to.equal(
-          "UNVERIFIED_EMAIL : Need to verify email first before enrolling second factors."
+          "UNVERIFIED_EMAIL : Need to verify email first before enrolling second factors.",
         );
       });
   });
@@ -79,7 +79,7 @@ describeAuthEmulator("mfa enrollment", ({ authApi, getClock }) => {
     expect(userInfo.mfaInfo![0].phoneInfo).to.equal(phoneNumber);
     const mfaEnrollmentId = userInfo.mfaInfo![0].mfaEnrollmentId;
 
-    const decoded = decodeJwt(res.body.idToken, { complete: true }) as {
+    const decoded = decodeJwt(res.body.idToken, { complete: true }) as unknown as {
       header: JwtHeader;
       payload: FirebaseJwtPayload;
     } | null;
@@ -122,7 +122,7 @@ describeAuthEmulator("mfa enrollment", ({ authApi, getClock }) => {
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error.message).to.equal(
-          "SECOND_FACTOR_EXISTS : Phone number already enrolled as second factor for this account."
+          "SECOND_FACTOR_EXISTS : Phone number already enrolled as second factor for this account.",
         );
       });
   });
@@ -140,7 +140,7 @@ describeAuthEmulator("mfa enrollment", ({ authApi, getClock }) => {
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error.message).to.equal(
-          "UNSUPPORTED_FIRST_FACTOR : MFA is not available for the given first factor."
+          "UNSUPPORTED_FIRST_FACTOR : MFA is not available for the given first factor.",
         );
       });
   });
@@ -313,7 +313,7 @@ describeAuthEmulator("mfa enrollment", ({ authApi, getClock }) => {
         expect(res.body.idToken).to.be.a("string");
         expect(res.body.refreshToken).to.be.a("string");
 
-        const decoded = decodeJwt(res.body.idToken, { complete: true }) as {
+        const decoded = decodeJwt(res.body.idToken, { complete: true }) as unknown as {
           header: JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
@@ -445,7 +445,7 @@ describeAuthEmulator("mfa enrollment", ({ authApi, getClock }) => {
         expect(res.body.idToken).to.be.a("string");
         expect(res.body.refreshToken).to.be.a("string");
 
-        const decoded = decodeJwt(res.body.idToken, { complete: true }) as {
+        const decoded = decodeJwt(res.body.idToken, { complete: true }) as unknown as {
           header: JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
@@ -479,7 +479,7 @@ describeAuthEmulator("mfa enrollment", ({ authApi, getClock }) => {
         {
           blockingFunctions: {},
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       expect(nock.isDone()).to.be.true;
       nock.cleanAll();
@@ -498,7 +498,7 @@ describeAuthEmulator("mfa enrollment", ({ authApi, getClock }) => {
         authApi(),
         email,
         password,
-        true
+        true,
       );
 
       getClock().tick(4444);
@@ -530,7 +530,7 @@ describeAuthEmulator("mfa enrollment", ({ authApi, getClock }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_SIGN_IN_PATH)
@@ -562,7 +562,7 @@ describeAuthEmulator("mfa enrollment", ({ authApi, getClock }) => {
           expect(res.body.idToken).to.be.a("string");
           expect(res.body.refreshToken).to.be.a("string");
 
-          const decoded = decodeJwt(res.body.idToken, { complete: true }) as {
+          const decoded = decodeJwt(res.body.idToken, { complete: true }) as unknown as {
             header: JwtHeader;
             payload: FirebaseJwtPayload;
           } | null;
@@ -591,7 +591,7 @@ describeAuthEmulator("mfa enrollment", ({ authApi, getClock }) => {
         authApi(),
         email,
         password,
-        true
+        true,
       );
 
       getClock().tick(4444);
@@ -623,7 +623,7 @@ describeAuthEmulator("mfa enrollment", ({ authApi, getClock }) => {
             },
           },
         },
-        "blockingFunctions"
+        "blockingFunctions",
       );
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_SIGN_IN_PATH)

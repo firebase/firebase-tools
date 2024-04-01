@@ -102,7 +102,7 @@ export interface AnalyticsParams {
 export async function trackGA4(
   eventName: cliEventNames,
   params: AnalyticsParams,
-  duration: number = 1 // Default to 1ms duration so that events show up in realtime view.
+  duration: number = 1, // Default to 1ms duration so that events show up in realtime view.
 ): Promise<void> {
   const session = cliSession();
   if (!session) {
@@ -205,7 +205,7 @@ async function _ga4Track(args: {
     logger.info(
       `Sending Analytics for event ${eventName} to property ${session.measurementId}`,
       params,
-      body
+      body,
     );
   }
   try {
@@ -311,7 +311,7 @@ function isDebugMode(): boolean {
     try {
       require("../tsconfig.json");
       logger.info(
-        `Using Google Analytics in DEBUG mode. Emulators (+ UI) events will be shown in GA Debug View only.`
+        `Using Google Analytics in DEBUG mode. Emulators (+ UI) events will be shown in GA Debug View only.`,
       );
       return true;
     } catch {

@@ -33,6 +33,14 @@ export interface TokensWithExpiration extends Tokens {
 export interface TokensWithTTL extends Tokens {
   expires_in?: number;
 }
+
+export interface AuthError {
+  error?: string;
+  error_description?: string;
+  error_uri?: string;
+  error_subtype?: string;
+}
+
 export interface UserCredentials {
   user: string | User;
   tokens: TokensWithExpiration;

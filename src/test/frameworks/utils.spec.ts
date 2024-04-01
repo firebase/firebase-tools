@@ -14,7 +14,7 @@ describe("Frameworks utils", () => {
   describe("getNodeModuleBin", () => {
     it("should return expected tsc path", () => {
       expect(getNodeModuleBin("tsc", __dirname)).to.equal(
-        resolve(join(__dirname, "..", "..", "..", "node_modules", ".bin", "tsc"))
+        resolve(join(__dirname, "..", "..", "..", "node_modules", ".bin", "tsc")),
       );
     }).timeout(5000);
     it("should throw when npm root not found", () => {
@@ -92,7 +92,7 @@ describe("Frameworks utils", () => {
       await warnIfCustomBuildScript("fakedir/", framework, defaultBuildScripts);
 
       expect(consoleLogSpy).to.be.calledOnceWith(
-        `\nWARNING: Your package.json contains a custom build that is being ignored. Only the ${framework} default build script (e.g, "${defaultBuildScripts[0]}") is respected. If you have a more advanced build process you should build a custom integration https://firebase.google.com/docs/hosting/express\n`
+        `\nWARNING: Your package.json contains a custom build that is being ignored. Only the ${framework} default build script (e.g, "${defaultBuildScripts[0]}") is respected. If you have a more advanced build process you should build a custom integration https://firebase.google.com/docs/hosting/express\n`,
       );
     });
   });
@@ -114,13 +114,13 @@ describe("Frameworks utils", () => {
       const twoOptions = options.slice(0, 2);
 
       expect(conjoinOptions(twoOptions)).to.equal(
-        `${twoOptions[0]} ${defaultConjunction} ${twoOptions[1]}`
+        `${twoOptions[0]} ${defaultConjunction} ${twoOptions[1]}`,
       );
     });
 
     it("should return options with default conjunction and default separator", () => {
       expect(conjoinOptions(options)).to.equal(
-        `${options[0]}${defaultSeparator} ${options[1]}${defaultSeparator} ${defaultConjunction} ${options[2]}`
+        `${options[0]}${defaultSeparator} ${options[1]}${defaultSeparator} ${defaultConjunction} ${options[2]}`,
       );
     });
 
@@ -128,7 +128,7 @@ describe("Frameworks utils", () => {
       const customSeparator = "/";
 
       expect(conjoinOptions(options, defaultConjunction, customSeparator)).to.equal(
-        `${options[0]}${customSeparator} ${options[1]}${customSeparator} ${defaultConjunction} ${options[2]}`
+        `${options[0]}${customSeparator} ${options[1]}${customSeparator} ${defaultConjunction} ${options[2]}`,
       );
     });
 
@@ -136,7 +136,7 @@ describe("Frameworks utils", () => {
       const customConjuntion = "or";
 
       expect(conjoinOptions(options, customConjuntion, defaultSeparator)).to.equal(
-        `${options[0]}${defaultSeparator} ${options[1]}${defaultSeparator} ${customConjuntion} ${options[2]}`
+        `${options[0]}${defaultSeparator} ${options[1]}${defaultSeparator} ${customConjuntion} ${options[2]}`,
       );
     });
   });

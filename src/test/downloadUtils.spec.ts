@@ -26,7 +26,7 @@ describe("downloadToTmp", () => {
 
     await expect(downloadToTmp("https://example.com/foo.gzip")).to.eventually.be.rejectedWith(
       FirebaseError,
-      /Not Found/
+      /Not Found/,
     );
 
     expect(nock.isDone()).to.be.true;
