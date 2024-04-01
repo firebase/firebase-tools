@@ -1,24 +1,23 @@
 import * as clc from "colorette";
 
-import * as devConnect from "../../../gcp/devConnect";
-import * as rm from "../../../gcp/resourceManager";
-import * as poller from "../../../operation-poller";
-import * as utils from "../../../utils";
-import { FirebaseError } from "../../../error";
-import { promptOnce } from "../../../prompt";
-import { getProjectNumber } from "../../../getProjectNumber";
-import { developerConnectOrigin } from "../../../api";
+import * as gcb from "../gcp/cloudbuild";
+import * as rm from "../gcp/resourceManager";
+import * as poller from "../operation-poller";
+import * as utils from "../utils";
+import { cloudbuildOrigin } from "../api";
+import { FirebaseError } from "../error";
+import { promptOnce } from "../prompt";
+import { getProjectNumber } from "../getProjectNumber";
 
 import * as fuzzy from "fuzzy";
 import * as inquirer from "inquirer";
 
-interface ConnectionNameParts {
+export interface ConnectionNameParts {
   projectId: string;
   location: string;
   id: string;
 }
 
-// Note: This does not match the sentinel oauth connection
 const APPHOSTING_CONN_PATTERN = /.+\/apphosting-github-conn-.+$/;
 const APPHOSTING_OAUTH_CONN_NAME = "apphosting-github-oauth";
 const CONNECTION_NAME_REGEX =
@@ -47,21 +46,19 @@ export function parseConnectionName(name: string): ConnectionNameParts | undefin
   };
 }
 
-const devConnectPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
-  apiOrigin: developerConnectOrigin(),
-  apiVersion: "v1",
+const gcbPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
+  apiOrigin: cloudbuildOrigin(),
+  apiVersion: "v2",
   masterTimeout: 25 * 60 * 1_000,
   maxBackoff: 10_000,
 };
 
 /**
- * Exported for unit testing.
- *
  * Example usage:
  * extractRepoSlugFromURI("https://github.com/user/repo.git") => "user/repo"
  */
-export function extractRepoSlugFromUri(cloneUri: string): string | undefined {
-  const match = /github.com\/(.+).git/.exec(cloneUri);
+function extractRepoSlugFromUri(remoteUri: string): string | undefined {
+  const match = /github.com\/(.+).git/.exec(remoteUri);
   if (!match) {
     return undefined;
   }
@@ -69,12 +66,10 @@ export function extractRepoSlugFromUri(cloneUri: string): string | undefined {
 }
 
 /**
- * Exported for unit testing.
- *
  * Generates a repository ID.
- * The relation is 1:* between Developer Connect Connection and GitHub Repositories.
+ * The relation is 1:* between Cloud Build Connection and GitHub Repositories.
  */
-export function generateRepositoryId(remoteUri: string): string | undefined {
+function generateRepositoryId(remoteUri: string): string | undefined {
   return extractRepoSlugFromUri(remoteUri)?.replaceAll("/", "-");
 }
 
@@ -94,23 +89,22 @@ const ADD_CONN_CHOICE = "@ADD_CONN";
 export async function linkGitHubRepository(
   projectId: string,
   location: string,
-): Promise<devConnect.GitRepositoryLink> {
+): Promise<gcb.Repository> {
   utils.logBullet(clc.bold(`${clc.yellow("===")} Set up a GitHub connection`));
   // Fetch the sentinel Oauth connection first which is needed to create further GitHub connections.
   const oauthConn = await getOrCreateOauthConnection(projectId, location);
   const existingConns = await listAppHostingConnections(projectId);
 
   if (existingConns.length === 0) {
-    utils.logBullet("no connections exist");
     existingConns.push(
       await createFullyInstalledConnection(projectId, location, generateConnectionId(), oauthConn),
     );
   }
 
-  let repoCloneUri: string | undefined;
-  let connection: devConnect.Connection;
+  let repoRemoteUri: string | undefined;
+  let connection: gcb.Connection;
   do {
-    if (repoCloneUri === ADD_CONN_CHOICE) {
+    if (repoRemoteUri === ADD_CONN_CHOICE) {
       existingConns.push(
         await createFullyInstalledConnection(
           projectId,
@@ -121,10 +115,10 @@ export async function linkGitHubRepository(
       );
     }
 
-    const selection = await promptCloneUri(projectId, existingConns);
-    repoCloneUri = selection.cloneUri;
+    const selection = await promptRepositoryUri(projectId, existingConns);
+    repoRemoteUri = selection.remoteUri;
     connection = selection.connection;
-  } while (repoCloneUri === ADD_CONN_CHOICE);
+  } while (repoRemoteUri === ADD_CONN_CHOICE);
 
   // Ensure that the selected connection exists in the same region as the backend
   const { id: connectionId } = parseConnectionName(connection.name)!;
@@ -133,14 +127,14 @@ export async function linkGitHubRepository(
     appInstallationId: connection.githubConfig?.appInstallationId,
   });
 
-  const repo = await getOrCreateRepository(projectId, location, connectionId, repoCloneUri);
+  const repo = await getOrCreateRepository(projectId, location, connectionId, repoRemoteUri);
   utils.logSuccess(`Successfully linked GitHub repository at remote URI`);
-  utils.logSuccess(`\t${repo.cloneUri}`);
+  utils.logSuccess(`\t${repoRemoteUri}`);
   return repo;
 }
 
 /**
- * Creates a new DevConnect GitHub connection resource and ensures that it is fully configured on the GitHub
+ * Creates a new GCB GitHub connection resource and ensures that it is fully configured on the GitHub
  * side (ie associated with an account/org and some subset of repos within that scope).
  * Copies over Oauth creds from the sentinel Oauth connection to save the user from having to
  * reauthenticate with GitHub.
@@ -149,24 +143,23 @@ async function createFullyInstalledConnection(
   projectId: string,
   location: string,
   connectionId: string,
-  oauthConn: devConnect.Connection,
-): Promise<devConnect.Connection> {
+  oauthConn: gcb.Connection,
+): Promise<gcb.Connection> {
   let conn = await createConnection(projectId, location, connectionId, {
-    appInstallationId: oauthConn.githubConfig?.appInstallationId,
     authorizerCredential: oauthConn.githubConfig?.authorizerCredential,
   });
 
   while (conn.installationState.stage !== "COMPLETE") {
-    utils.logBullet("Install the Firebase GitHub app to enable access to GitHub repositories");
+    utils.logBullet("Install the Cloud Build GitHub app to enable access to GitHub repositories");
     const targetUri = conn.installationState.actionUri.replace("install_v2", "direct_install_v2");
     utils.logBullet(targetUri);
     await utils.openInBrowser(targetUri);
     await promptOnce({
       type: "input",
       message:
-        "Press Enter once you have installed or configured the Firebase GitHub app to access your GitHub repo.",
+        "Press Enter once you have installed or configured the Cloud Build GitHub app to access your GitHub repo.",
     });
-    conn = await devConnect.getConnection(projectId, location, connectionId);
+    conn = await gcb.getConnection(projectId, location, connectionId);
   }
 
   return conn;
@@ -179,10 +172,10 @@ async function createFullyInstalledConnection(
 export async function getOrCreateOauthConnection(
   projectId: string,
   location: string,
-): Promise<devConnect.Connection> {
-  let conn: devConnect.Connection;
+): Promise<gcb.Connection> {
+  let conn: gcb.Connection;
   try {
-    conn = await devConnect.getConnection(projectId, location, APPHOSTING_OAUTH_CONN_NAME);
+    conn = await gcb.getConnection(projectId, location, APPHOSTING_OAUTH_CONN_NAME);
   } catch (err: unknown) {
     if ((err as any).status === 404) {
       // Cloud build P4SA requires the secret manager admin role.
@@ -195,8 +188,8 @@ export async function getOrCreateOauthConnection(
   }
 
   while (conn.installationState.stage === "PENDING_USER_OAUTH") {
-    utils.logBullet("You must authorize the Firebase GitHub app.");
-    utils.logBullet("Sign in to GitHub and authorize Firebase GitHub app:");
+    utils.logBullet("You must authorize the Cloud Build GitHub app.");
+    utils.logBullet("Sign in to GitHub and authorize Cloud Build GitHub app:");
     const { url, cleanup } = await utils.openInBrowserPopup(
       conn.installationState.actionUri,
       "Authorize the GitHub app",
@@ -208,20 +201,19 @@ export async function getOrCreateOauthConnection(
     });
     cleanup();
     const { projectId, location, id } = parseConnectionName(conn.name)!;
-    conn = await devConnect.getConnection(projectId, location, id);
+    conn = await gcb.getConnection(projectId, location, id);
   }
-
   return conn;
 }
 
-async function promptCloneUri(
+async function promptRepositoryUri(
   projectId: string,
-  connections: devConnect.Connection[],
-): Promise<{ cloneUri: string; connection: devConnect.Connection }> {
-  const { cloneUris, cloneUriToConnection } = await fetchAllRepositories(projectId, connections);
-  const cloneUri = await promptOnce({
+  connections: gcb.Connection[],
+): Promise<{ remoteUri: string; connection: gcb.Connection }> {
+  const { repos, remoteUriToConnection } = await fetchAllRepositories(projectId, connections);
+  const remoteUri = await promptOnce({
     type: "autocomplete",
-    name: "cloneUri",
+    name: "remoteUri",
     message: "Which of the following repositories would you like to deploy?",
     source: (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
       return new Promise((resolve) =>
@@ -233,99 +225,70 @@ async function promptCloneUri(
           },
           new inquirer.Separator(),
           ...fuzzy
-            .filter(input, cloneUris, {
-              extract: (uri) => extractRepoSlugFromUri(uri) || "",
+            .filter(input, repos, {
+              extract: (repo) => extractRepoSlugFromUri(repo.remoteUri) || "",
             })
             .map((result) => {
               return {
-                name: extractRepoSlugFromUri(result.original) || "",
-                value: result.original,
+                name: extractRepoSlugFromUri(result.original.remoteUri) || "",
+                value: result.original.remoteUri,
               };
             }),
         ]),
       );
     },
   });
-  return { cloneUri, connection: cloneUriToConnection[cloneUri] };
+  return { remoteUri, connection: remoteUriToConnection[remoteUri] };
 }
 
-/**
- * Exported for unit testing
- */
-export async function ensureSecretManagerAdminGrant(projectId: string): Promise<void> {
+async function ensureSecretManagerAdminGrant(projectId: string): Promise<void> {
   const projectNumber = await getProjectNumber({ projectId });
-  const dcsaEmail = devConnect.serviceAgentEmail(projectNumber);
+  const cbsaEmail = gcb.getDefaultServiceAccount(projectNumber);
 
-  // will return false even if the service account does not exist in the project
   const alreadyGranted = await rm.serviceAccountHasRoles(
     projectId,
-    dcsaEmail,
+    cbsaEmail,
     ["roles/secretmanager.admin"],
     true,
   );
   if (alreadyGranted) {
-    utils.logBullet("secret manager admin role already granted");
     return;
   }
 
   utils.logBullet(
-    "To create a new GitHub connection, Secret Manager Admin role (roles/secretmanager.admin) is required on the Developer Connect Service Agent.",
+    "To create a new GitHub connection, Secret Manager Admin role (roles/secretmanager.admin) is required on the Cloud Build Service Agent.",
   );
   const grant = await promptOnce({
     type: "confirm",
-    message: "Grant the required role to the Developer Connect Service Agent?",
+    message: "Grant the required role to the Cloud Build Service Agent?",
   });
   if (!grant) {
     utils.logBullet(
       "You, or your project administrator, should run the following command to grant the required role:\n\n" +
         "You, or your project adminstrator, can run the following command to grant the required role manually:\n\n" +
         `\tgcloud projects add-iam-policy-binding ${projectId} \\\n` +
-        `\t  --member="serviceAccount:${dcsaEmail} \\\n` +
+        `\t  --member="serviceAccount:${cbsaEmail} \\\n` +
         `\t  --role="roles/secretmanager.admin\n`,
     );
     throw new FirebaseError("Insufficient IAM permissions to create a new connection to GitHub");
   }
-
-  try {
-    await rm.addServiceAccountToRoles(
-      projectId,
-      dcsaEmail,
-      ["roles/secretmanager.admin"],
-      /* skipAccountLookup= */ true,
-    );
-  } catch (e: any) {
-    // if the dev connect P4SA doesn't exist in the project, generate one
-    if (e?.code === 400 || e?.status === 400) {
-      await devConnect.generateP4SA(projectNumber);
-      await rm.addServiceAccountToRoles(
-        projectId,
-        dcsaEmail,
-        ["roles/secretmanager.admin"],
-        /* skipAccountLookup= */ true,
-      );
-    } else {
-      throw e;
-    }
-  }
-
-  utils.logSuccess(
-    "Successfully granted the required role to the Developer Connect Service Agent!",
-  );
+  await rm.addServiceAccountToRoles(projectId, cbsaEmail, ["roles/secretmanager.admin"], true);
+  utils.logSuccess("Successfully granted the required role to the Cloud Build Service Agent!");
 }
 
 /**
- * Creates a new Developer Connect Connection resource. Will typically need some initialization
+ * Creates a new Cloud Build Connection resource. Will typically need some initialization
  * or configuration after being created.
  */
 export async function createConnection(
   projectId: string,
   location: string,
   connectionId: string,
-  githubConfig?: devConnect.GitHubConfig,
-): Promise<devConnect.Connection> {
-  const op = await devConnect.createConnection(projectId, location, connectionId, githubConfig);
-  const conn = await poller.pollOperation<devConnect.Connection>({
-    ...devConnectPollerOptions,
+  githubConfig?: gcb.GitHubConfig,
+): Promise<gcb.Connection> {
+  const op = await gcb.createConnection(projectId, location, connectionId, githubConfig);
+  const conn = await poller.pollOperation<gcb.Connection>({
+    ...gcbPollerOptions,
     pollerName: `create-${location}-${connectionId}`,
     operationResourceName: op.name,
   });
@@ -339,14 +302,13 @@ export async function getOrCreateConnection(
   projectId: string,
   location: string,
   connectionId: string,
-  githubConfig?: devConnect.GitHubConfig,
-): Promise<devConnect.Connection> {
-  let conn: devConnect.Connection;
+  githubConfig?: gcb.GitHubConfig,
+): Promise<gcb.Connection> {
+  let conn: gcb.Connection;
   try {
-    conn = await devConnect.getConnection(projectId, location, connectionId);
+    conn = await gcb.getConnection(projectId, location, connectionId);
   } catch (err: unknown) {
     if ((err as any).status === 404) {
-      utils.logBullet("creating connection");
       conn = await createConnection(projectId, location, connectionId, githubConfig);
     } else {
       throw err;
@@ -362,26 +324,26 @@ export async function getOrCreateRepository(
   projectId: string,
   location: string,
   connectionId: string,
-  cloneUri: string,
-): Promise<devConnect.GitRepositoryLink> {
-  const repositoryId = generateRepositoryId(cloneUri);
+  remoteUri: string,
+): Promise<gcb.Repository> {
+  const repositoryId = generateRepositoryId(remoteUri);
   if (!repositoryId) {
-    throw new FirebaseError(`Failed to generate repositoryId for URI "${cloneUri}".`);
+    throw new FirebaseError(`Failed to generate repositoryId for URI "${remoteUri}".`);
   }
-  let repo: devConnect.GitRepositoryLink;
+  let repo: gcb.Repository;
   try {
-    repo = await devConnect.getGitRepositoryLink(projectId, location, connectionId, repositoryId);
+    repo = await gcb.getRepository(projectId, location, connectionId, repositoryId);
   } catch (err: unknown) {
     if ((err as FirebaseError).status === 404) {
-      const op = await devConnect.createGitRepositoryLink(
+      const op = await gcb.createRepository(
         projectId,
         location,
         connectionId,
         repositoryId,
-        cloneUri,
+        remoteUri,
       );
-      repo = await poller.pollOperation<devConnect.GitRepositoryLink>({
-        ...devConnectPollerOptions,
+      repo = await poller.pollOperation<gcb.Repository>({
+        ...gcbPollerOptions,
         pollerName: `create-${location}-${connectionId}-${repositoryId}`,
         operationResourceName: op.name,
       });
@@ -394,14 +356,9 @@ export async function getOrCreateRepository(
 
 /**
  * Exported for unit testing.
- *
- * Lists all App Hosting Developer Connect Connections
- * not including the OAuth Connection
  */
-export async function listAppHostingConnections(
-  projectId: string,
-): Promise<devConnect.Connection[]> {
-  const conns = await devConnect.listAllConnections(projectId, "-");
+export async function listAppHostingConnections(projectId: string) {
+  const conns = await gcb.listConnections(projectId, "-");
   return conns.filter(
     (conn) =>
       APPHOSTING_CONN_PATTERN.test(conn.name) &&
@@ -415,23 +372,26 @@ export async function listAppHostingConnections(
  */
 export async function fetchAllRepositories(
   projectId: string,
-  connections: devConnect.Connection[],
-): Promise<{
-  cloneUris: string[];
-  cloneUriToConnection: Record<string, devConnect.Connection>;
-}> {
-  const cloneUriToConnection: Record<string, devConnect.Connection> = {};
+  connections: gcb.Connection[],
+): Promise<{ repos: gcb.Repository[]; remoteUriToConnection: Record<string, gcb.Connection> }> {
+  const repos: gcb.Repository[] = [];
+  const remoteUriToConnection: Record<string, gcb.Connection> = {};
 
-  for (const conn of connections) {
+  const getNextPage = async (conn: gcb.Connection, pageToken = ""): Promise<void> => {
     const { location, id } = parseConnectionName(conn.name)!;
-    const connectionRepos = await devConnect.listAllLinkableGitRepositories(
-      projectId,
-      location,
-      id,
-    );
-    connectionRepos.forEach((repo) => {
-      cloneUriToConnection[repo.cloneUri] = conn;
-    });
+    const resp = await gcb.fetchLinkableRepositories(projectId, location, id, pageToken);
+    if (resp.repositories && resp.repositories.length > 0) {
+      for (const repo of resp.repositories) {
+        repos.push(repo);
+        remoteUriToConnection[repo.remoteUri] = conn;
+      }
+    }
+    if (resp.nextPageToken) {
+      await getNextPage(conn, resp.nextPageToken);
+    }
+  };
+  for (const conn of connections) {
+    await getNextPage(conn);
   }
-  return { cloneUris: Object.keys(cloneUriToConnection), cloneUriToConnection };
+  return { repos, remoteUriToConnection };
 }
