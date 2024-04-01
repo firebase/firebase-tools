@@ -565,7 +565,7 @@ export function getAngularVersion(cwd: string): string | undefined {
  */
 export async function tryToGetOptionsForTarget(
   architectHost: WorkspaceNodeModulesArchitectHost,
-  target: Target
+  target: Target,
 ): Promise<JsonObject | null> {
   return await architectHost.getOptionsForTarget(target).catch(throwCannotDetermineTarget);
 }
@@ -573,6 +573,6 @@ export async function tryToGetOptionsForTarget(
 function throwCannotDetermineTarget(error?: Error): never {
   throw new FirebaseError(
     `Unable to determine the application to deploy, specify a target via the FIREBASE_FRAMEWORKS_BUILD_TARGET environment variable.`,
-    { original: error }
+    { original: error },
   );
 }
