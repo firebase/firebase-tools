@@ -19,7 +19,7 @@ import {
   Rollout,
 } from "../../../gcp/apphosting";
 import { addServiceAccountToRoles } from "../../../gcp/resourceManager";
-import { createServiceAccount } from "../../../gcp/iam";
+import * as iam from "../../../gcp/iam";
 import { Repository } from "../../../gcp/cloudbuild";
 import { FirebaseError } from "../../../error";
 import { promptOnce } from "../../../prompt";
@@ -216,7 +216,7 @@ export async function createBackend(
 
 async function provisionDefaultComputeServiceAccount(projectId: string): Promise<void> {
   try {
-    await createServiceAccount(
+    await iam.createServiceAccount(
       projectId,
       DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME,
       "Firebase App Hosting compute service account",
