@@ -10,6 +10,7 @@ import { execSync } from "child_process";
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 // TODO(christhompson): Do we have an endpoint that's open and doesn't require a project w/ billing?
+// Estimated QPS is around 1.
 // TODO(christhompson): Add project ID for this.
 // TODO(christhompson): Add preamble information about command flags.
 // TODO(christhompson): Figure out how to test this.
