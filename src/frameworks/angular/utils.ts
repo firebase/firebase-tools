@@ -1,3 +1,4 @@
+import type { JsonObject } from "@angular-devkit/core";
 import type { Target } from "@angular-devkit/architect";
 import type { ProjectDefinition } from "@angular-devkit/core/src/workspace";
 import type { WorkspaceNodeModulesArchitectHost } from "@angular-devkit/architect/node";
@@ -10,7 +11,6 @@ import { BUILD_TARGET_PURPOSE } from "../interfaces";
 import { AssertionError } from "assert";
 import { assertIsString } from "../../utils";
 import { coerce } from "semver";
-import { JsonObject } from "@angular-devkit/core";
 
 async function localesForTarget(
   dir: string,
