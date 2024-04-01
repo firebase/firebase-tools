@@ -147,11 +147,16 @@ describe("secrets", () => {
     });
 
     it("Creates a secret if none exists", async () => {
-       gcsm.getSecret.withArgs("project", "secret").rejects({ status: 404 }) ;
+      gcsm.getSecret.withArgs("project", "secret").rejects({ status: 404 });
 
-       await expect(secrets.upsertSecret("project", "secret")).to.eventually.equal(true);
+      await expect(secrets.upsertSecret("project", "secret")).to.eventually.equal(true);
 
-       expect(gcsm.createSecret).to.have.been.calledWithMatch("project", "secret", gcsm.labels("apphosting"), undefined);
-    })
+      expect(gcsm.createSecret).to.have.been.calledWithMatch(
+        "project",
+        "secret",
+        gcsm.labels("apphosting"),
+        undefined,
+      );
+    });
   });
 });
