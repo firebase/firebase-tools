@@ -180,11 +180,11 @@ export async function createBackend(
       rootDirectory: "/",
     },
     labels: deploymentTool.labels(),
-    computeServiceAccount: serviceAccount || defaultServiceAccount,
+    serviceAccount: serviceAccount || defaultServiceAccount,
   };
 
   // TODO: remove computeServiceAccount when the backend supports the field.
-  delete backendReqBody.computeServiceAccount;
+  delete backendReqBody.serviceAccount;
 
   async function createBackendAndPoll() {
     const op = await apphosting.createBackend(projectId, location, backendReqBody, backendId);

@@ -53,7 +53,7 @@ describe("manageSecrets", () => {
 
       await grantSecretAccess(secretName, location, backendId, projectId, projectNumber);
 
-      const secret: secretManager.Secret = {
+      const secret = {
         projectId: projectId,
         name: secretName,
       };

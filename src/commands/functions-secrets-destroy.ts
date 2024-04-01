@@ -7,6 +7,8 @@ import {
   getSecret,
   getSecretVersion,
   listSecretVersions,
+  ensureApi,
+  isFunctionsManaged,
 } from "../gcp/secretManager";
 import { promptOnce } from "../prompt";
 import { logBullet, logWarning } from "../utils";
@@ -19,7 +21,7 @@ export const command = new Command("functions:secrets:destroy <KEY>[@version]")
   .description("Destroy a secret. Defaults to destroying the latest version.")
   .withForce("Destroys a secret without confirmation.")
   .before(requireAuth)
-  .before(secrets.ensureApi)
+  .before(ensureApi)
   .action(async (key: string, options: Options) => {
     const projectId = needProjectId(options);
     const projectNumber = await needProjectNumber(options);
@@ -70,7 +72,7 @@ export const command = new Command("functions:secrets:destroy <KEY>[@version]")
     logBullet(`Destroyed secret version ${name}@${sv.versionId}`);
 
     const secret = await getSecret(projectId, name);
-    if (secrets.isFirebaseManaged(secret)) {
+    if (isFunctionsManaged(secret)) {
       const versions = await listSecretVersions(projectId, name);
       if (versions.filter((v) => v.state === "ENABLED").length === 0) {
         logBullet(`No active secret versions left. Destroying secret ${name}`);

@@ -1,6 +1,5 @@
 import { logSuccess } from "../../../utils";
 import * as iam from "../../../gcp/iam";
-import * as gcb from "../../../gcp/cloudbuild";
 import * as secretManager from "../../../gcp/secretManager";
 import { FirebaseError } from "../../../error";
 
@@ -12,8 +11,8 @@ function fetchServiceAccounts(projectNumber: string): {
   // the attached service account in a given backend/location then return that value instead.
   // Sample Call: await apphosting.getBackend(projectId, location, backendId); & make this function async
   return {
-    buildServiceAccount: gcb.getDefaultCloudBuildServiceAgent(projectNumber),
-    runServiceAccount: gcb.getDefaultComputeEngineServiceAgent(projectNumber),
+    buildServiceAccount: iam.getDefaultCloudBuildServiceAgent(projectNumber),
+    runServiceAccount: iam.getDefaultComputeEngineServiceAgent(projectNumber),
   };
 }
 
@@ -42,11 +41,14 @@ export async function grantSecretAccess(
     );
   }
 
-  const secret: secretManager.Secret = {
+  const secret = {
     projectId: projectId,
     name: secretName,
   };
 
+  // TODO: Document why Cloud Build SA needs viewer permission but Run doesn't.
+  // TODO: future proof for when therte is a single service account (currently will set the same
+  // secretAccessor permission twice)
   const newBindings: iam.Binding[] = [
     {
       role: "roles/secretmanager.secretAccessor",
@@ -72,6 +74,7 @@ export async function grantSecretAccess(
   }
 
   try {
+    // TODO: Merge with existing bindings with the same role
     const updatedBindings = existingBindings.concat(newBindings);
     await secretManager.setIamPolicy(secret, updatedBindings);
   } catch (err: any) {

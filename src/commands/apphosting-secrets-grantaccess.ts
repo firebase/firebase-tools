@@ -3,7 +3,7 @@ import { Options } from "../options";
 import { needProjectId, needProjectNumber } from "../projectUtils";
 import { FirebaseError } from "../error";
 import { requireAuth } from "../requireAuth";
-import * as secrets from "../functions/secrets";
+import * as secretManager from "../gcp/secretManager";
 import { requirePermissions } from "../requirePermissions";
 import * as apphosting from "../gcp/apphosting";
 import { grantSecretAccess } from "../init/features/apphosting/secrets";
@@ -13,7 +13,7 @@ export const command = new Command("apphosting:secrets:grantaccess <secretName>"
   .option("-l, --location <location>", "app backend location")
   .option("-b, --backend <backend>", "app backend name")
   .before(requireAuth)
-  .before(secrets.ensureApi)
+  .before(secretManager.ensureApi)
   .before(apphosting.ensureApiEnabled)
   .before(requirePermissions, [
     "secretmanager.secrets.create",
@@ -27,6 +27,7 @@ export const command = new Command("apphosting:secrets:grantaccess <secretName>"
     const projectId = needProjectId(options);
     const projectNumber = await needProjectNumber(options);
 
+    // TODO: Consider reusing dialog in apphosting/secrets/dialogs.ts if backend (and location) is not set.
     if (!options.location) {
       throw new FirebaseError(
         "Missing required flag --location. See firebase apphosting:secrets:grantaccess --help for more info",
