@@ -27,24 +27,22 @@ function getPreamble(): string {
   try {
     const TEMPLATE_ROOT = path.resolve(__dirname, "../../templates/");
 
-    var data = fs.readFileSync(path.join(TEMPLATE_ROOT, "gemini", "preamble.txt"), "utf8");
+    let data = fs.readFileSync(path.join(TEMPLATE_ROOT, "gemini", "preamble.txt"), "utf8");
     data = data + fs.readFileSync(path.join(TEMPLATE_ROOT, "gemini", "commandReadme.txt"), "utf8");
     return data;
   } catch (err) {
-    throw new FirebaseError(
-      "Error reading preamble file" + err
-    );
+    throw new FirebaseError("Error reading preamble file" + err);
   }
 }
 
 async function run(prompt: string): Promise<string> {
-  var result;
+  let result;
   try {
     const newPrompt = getPreamble() + prompt;
     logger.debug("Running prompt: " + newPrompt);
     result = await model.generateContent(newPrompt);
   } catch (error) {
-    console.error('Promise rejected with error: ' + error);
+    console.error("Promise rejected with error: " + error);
   }
   const response = await result.response;
   return response.text();
@@ -53,20 +51,20 @@ async function run(prompt: string): Promise<string> {
 export const ask = async function (prompt: string) {
   const responseText = await run(prompt);
   logger.info(clc.bold("Gemini Responded:"));
-  if (responseText.length > 0 
-    && responseText[0] === "`" 
-    && responseText[responseText.length - 1] === "`") {
+  if (
+    responseText.length > 0 &&
+    responseText[0] === "`" &&
+    responseText[responseText.length - 1] === "`"
+  ) {
     // Assume this is a single command with backticks on each side.
     const trimmedResponse = responseText.slice(1, responseText.length - 1);
     logger.info(trimmedResponse);
-    const runNow = await promptOnce(
-      {
-        type: "confirm",
-        name: "runNow",
-        message: `Would you like to run this command?`,
-        default: true,
-      }
-    );
+    const runNow = await promptOnce({
+      type: "confirm",
+      name: "runNow",
+      message: `Would you like to run this command?`,
+      default: true,
+    });
 
     // Try to add the role to the service account
     if (runNow) {
@@ -79,4 +77,4 @@ export const ask = async function (prompt: string) {
   } else {
     logger.info(responseText);
   }
-}
+};
