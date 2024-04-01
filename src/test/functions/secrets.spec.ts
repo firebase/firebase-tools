@@ -81,7 +81,8 @@ describe("functions/secret", () => {
     const secret: secretManager.Secret = {
       projectId: "project-id",
       name: "MY_SECRET",
-      labels: secrets.labels(),
+      labels: secretManager.labels("functions"),
+      replication: {},
     };
 
     let sandbox: sinon.SinonSandbox;
@@ -127,7 +128,7 @@ describe("functions/secret", () => {
     });
 
     it("does not prompt user to have Firebase manage the secret if already managed by Firebase", async () => {
-      getStub.resolves({ ...secret, labels: secrets.labels() });
+      getStub.resolves({ ...secret, labels: secretManager.labels() });
       patchStub.resolves(secret);
 
       await expect(
@@ -228,6 +229,8 @@ describe("functions/secret", () => {
     const secret1: secretManager.Secret = {
       projectId: "project",
       name: "MY_SECRET1",
+      labels: {},
+      replication: {},
     };
     const secretVersion11: secretManager.SecretVersion = {
       secret: secret1,
@@ -241,6 +244,8 @@ describe("functions/secret", () => {
     const secret2: secretManager.Secret = {
       projectId: "project",
       name: "MY_SECRET2",
+      labels: {},
+      replication: {},
     };
     const secretVersion21: secretManager.SecretVersion = {
       secret: secret2,
@@ -333,6 +338,8 @@ describe("functions/secret", () => {
     const secret: secretManager.Secret = {
       projectId,
       name: "MY_SECRET",
+      labels: {},
+      replication: {},
     };
 
     it("returns true if secret is in use", () => {
@@ -381,6 +388,8 @@ describe("functions/secret", () => {
       secret: {
         projectId,
         name: "MY_SECRET",
+        labels: {},
+        replication: {},
       },
     };
 
@@ -498,6 +507,8 @@ describe("functions/secret", () => {
       secret: {
         projectId,
         name: "MY_SECRET",
+        labels: {},
+        replication: {},
       },
       versionId: "2",
     };

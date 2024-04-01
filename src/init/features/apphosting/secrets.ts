@@ -43,7 +43,7 @@ export async function grantSecretAccess(
     );
   }
 
-  const secret: secretManager.Secret = {
+  const secret = {
     projectId: projectId,
     name: secretName,
   };
@@ -56,6 +56,8 @@ export async function grantSecretAccess(
         `serviceAccount:${serviceAccounts.runServiceAccount}`,
       ],
     },
+    // Cloud Build needs the viewer role so that it can list secret versions and pin the Build to the
+    // latest version.
     {
       role: "roles/secretmanager.viewer",
       members: [`serviceAccount:${serviceAccounts.buildServiceAccount}`],
@@ -73,6 +75,7 @@ export async function grantSecretAccess(
   }
 
   try {
+    // TODO: Merge with existing bindings with the same role
     const updatedBindings = existingBindings.concat(newBindings);
     await secretManager.setIamPolicy(secret, updatedBindings);
   } catch (err: any) {

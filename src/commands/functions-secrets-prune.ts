@@ -1,6 +1,7 @@
 import * as args from "../deploy/functions/args";
 import * as backend from "../deploy/functions/backend";
 import * as secrets from "../functions/secrets";
+import * as secretManager from "../gcp/secretManager";
 
 import { Command } from "../command";
 import { Options } from "../options";
@@ -16,7 +17,7 @@ export const command = new Command("functions:secrets:prune")
   .withForce("Destroys unused secrets without prompt")
   .description("Destroys unused secrets")
   .before(requireAuth)
-  .before(secrets.ensureApi)
+  .before(secretManager.ensureApi)
   .before(requirePermissions, [
     "cloudfunctions.functions.list",
     "secretmanager.secrets.list",
