@@ -10,7 +10,7 @@ import { DeepOmit, RecursiveKeyOf, assertImplements } from "../metaprogramming";
 export const API_VERSION = "v1alpha";
 
 export const client = new Client({
-  urlPrefix: apphostingOrigin,
+  urlPrefix: apphostingOrigin(),
   auth: true,
   apiVersion: API_VERSION,
 });
@@ -259,6 +259,8 @@ export interface Operation {
 
 export interface ListBackendsResponse {
   backends: Backend[];
+  nextPageToken?: string;
+  unreachable: string[];
 }
 
 /**
@@ -306,9 +308,22 @@ export async function listBackends(
   location: string,
 ): Promise<ListBackendsResponse> {
   const name = `projects/${projectId}/locations/${location}/backends`;
-  const res = await client.get<ListBackendsResponse>(name);
+  let pageToken: string | undefined;
+  const res: ListBackendsResponse = {
+    backends: [],
+    unreachable: [],
+  };
 
-  return res.body;
+  do {
+    const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
+    const int = await client.get<ListBackendsResponse>(name, { queryParams });
+    res.backends.push(...(int.body.backends || []));
+    res.unreachable?.push(...(int.body.unreachable || []));
+    pageToken = int.body.nextPageToken;
+  } while (pageToken);
+
+  res.unreachable = [...new Set(res.unreachable)];
+  return res;
 }
 
 /**
@@ -502,7 +517,7 @@ export async function listLocations(projectId: string): Promise<Location[]> {
  */
 export async function ensureApiEnabled(options: any): Promise<void> {
   const projectId = needProjectId(options);
-  return await ensure(projectId, apphostingOrigin, "app hosting", true);
+  return await ensure(projectId, apphostingOrigin(), "app hosting", true);
 }
 
 /**

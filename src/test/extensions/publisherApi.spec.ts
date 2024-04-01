@@ -99,10 +99,10 @@ describe("createExtensionVersionFromGitHubSource", () => {
   });
 
   it("should make a POST call to the correct endpoint, and then poll on the returned operation", async () => {
-    nock(api.extensionsPublisherOrigin)
+    nock(api.extensionsPublisherOrigin())
       .post(`/${VERSION}/publishers/test-pub/extensions/ext-one/versions:createFromSource`)
       .reply(200, { name: "operations/abc123" });
-    nock(api.extensionsPublisherOrigin).get(`/${VERSION}/operations/abc123`).reply(200, {
+    nock(api.extensionsPublisherOrigin()).get(`/${VERSION}/operations/abc123`).reply(200, {
       done: true,
       response: TEST_EXT_VERSION_3,
     });
@@ -118,7 +118,7 @@ describe("createExtensionVersionFromGitHubSource", () => {
   });
 
   it("should throw a FirebaseError if createExtensionVersionFromLocalSource returns an error response", async () => {
-    nock(api.extensionsPublisherOrigin)
+    nock(api.extensionsPublisherOrigin())
       .post(
         `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions:createFromSource`,
       )
@@ -136,12 +136,12 @@ describe("createExtensionVersionFromGitHubSource", () => {
   });
 
   it("stop polling and throw if the operation call throws an unexpected error", async () => {
-    nock(api.extensionsPublisherOrigin)
+    nock(api.extensionsPublisherOrigin())
       .post(
         `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions:createFromSource`,
       )
       .reply(200, { name: "operations/abc123" });
-    nock(api.extensionsPublisherOrigin).get(`/${VERSION}/operations/abc123`).reply(502, {});
+    nock(api.extensionsPublisherOrigin()).get(`/${VERSION}/operations/abc123`).reply(502, {});
 
     await expect(
       publisherApi.createExtensionVersionFromGitHubSource({
@@ -172,10 +172,10 @@ describe("createExtensionVersionFromLocalSource", () => {
   });
 
   it("should make a POST call to the correct endpoint, and then poll on the returned operation", async () => {
-    nock(api.extensionsPublisherOrigin)
+    nock(api.extensionsPublisherOrigin())
       .post(`/${VERSION}/publishers/test-pub/extensions/ext-one/versions:createFromSource`)
       .reply(200, { name: "operations/abc123" });
-    nock(api.extensionsPublisherOrigin).get(`/${VERSION}/operations/abc123`).reply(200, {
+    nock(api.extensionsPublisherOrigin()).get(`/${VERSION}/operations/abc123`).reply(200, {
       done: true,
       response: TEST_EXT_VERSION_3,
     });
@@ -189,7 +189,7 @@ describe("createExtensionVersionFromLocalSource", () => {
   });
 
   it("should throw a FirebaseError if createExtensionVersionFromLocalSource returns an error response", async () => {
-    nock(api.extensionsPublisherOrigin)
+    nock(api.extensionsPublisherOrigin())
       .post(
         `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions:createFromSource`,
       )
@@ -206,12 +206,12 @@ describe("createExtensionVersionFromLocalSource", () => {
   });
 
   it("stop polling and throw if the operation call throws an unexpected error", async () => {
-    nock(api.extensionsPublisherOrigin)
+    nock(api.extensionsPublisherOrigin())
       .post(
         `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions:createFromSource`,
       )
       .reply(200, { name: "operations/abc123" });
-    nock(api.extensionsPublisherOrigin).get(`/${VERSION}/operations/abc123`).reply(502, {});
+    nock(api.extensionsPublisherOrigin()).get(`/${VERSION}/operations/abc123`).reply(502, {});
 
     await expect(
       publisherApi.createExtensionVersionFromLocalSource({
@@ -240,7 +240,7 @@ describe("getExtension", () => {
   });
 
   it("should make a GET call to the correct endpoint", async () => {
-    nock(api.extensionsPublisherOrigin)
+    nock(api.extensionsPublisherOrigin())
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}`)
       .reply(200);
 
@@ -249,7 +249,7 @@ describe("getExtension", () => {
   });
 
   it("should throw a FirebaseError if the endpoint returns an error response", async () => {
-    nock(api.extensionsPublisherOrigin)
+    nock(api.extensionsPublisherOrigin())
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}`)
       .reply(404);
 
@@ -273,7 +273,7 @@ describe("getExtensionVersion", () => {
   });
 
   it("should make a GET call to the correct endpoint", async () => {
-    nock(api.extensionsPublisherOrigin)
+    nock(api.extensionsPublisherOrigin())
       .get(
         `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions/${EXTENSION_VERSION}`,
       )
@@ -287,7 +287,7 @@ describe("getExtensionVersion", () => {
   });
 
   it("should throw a FirebaseError if the endpoint returns an error response", async () => {
-    nock(api.extensionsPublisherOrigin)
+    nock(api.extensionsPublisherOrigin())
       .get(
         `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions/${EXTENSION_VERSION}`,
       )
@@ -312,7 +312,7 @@ describe("listExtensions", () => {
   });
 
   it("should return a list of published extensions", async () => {
-    nock(api.extensionsPublisherOrigin)
+    nock(api.extensionsPublisherOrigin())
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions`)
       .query((queryParams: any) => {
         queryParams.pageSize === "100";
@@ -326,7 +326,7 @@ describe("listExtensions", () => {
   });
 
   it("should return a list of all extensions", async () => {
-    nock(api.extensionsPublisherOrigin)
+    nock(api.extensionsPublisherOrigin())
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions`)
       .query((queryParams: any) => {
         queryParams.pageSize === "100";
@@ -341,14 +341,14 @@ describe("listExtensions", () => {
   });
 
   it("should query for more extensions if the response has a next_page_token", async () => {
-    nock(api.extensionsPublisherOrigin)
+    nock(api.extensionsPublisherOrigin())
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions`)
       .query((queryParams: any) => {
         queryParams.pageSize === "100";
         return queryParams;
       })
       .reply(200, PUBLISHED_WITH_TOKEN);
-    nock(api.extensionsPublisherOrigin)
+    nock(api.extensionsPublisherOrigin())
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions`)
       .query((queryParams: any) => {
         queryParams.pageSize === "100";
@@ -365,7 +365,7 @@ describe("listExtensions", () => {
   });
 
   it("should throw FirebaseError if any call returns an error", async () => {
-    nock(api.extensionsPublisherOrigin)
+    nock(api.extensionsPublisherOrigin())
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions`)
       .query((queryParams: any) => {
         queryParams.pageSize === "100";
@@ -384,7 +384,7 @@ describe("listExtensionVersions", () => {
   });
 
   it("should return a list of published extension versions", async () => {
-    nock(api.extensionsPublisherOrigin)
+    nock(api.extensionsPublisherOrigin())
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
       .query((queryParams: any) => {
         return queryParams.pageSize === "100";
@@ -397,7 +397,7 @@ describe("listExtensionVersions", () => {
   });
 
   it("should send filter query param", async () => {
-    nock(api.extensionsPublisherOrigin)
+    nock(api.extensionsPublisherOrigin())
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
       .query((queryParams: any) => {
         return queryParams.pageSize === "100" && queryParams.filter === "id<1.0.0";
@@ -413,7 +413,7 @@ describe("listExtensionVersions", () => {
   });
 
   it("should return a list of all extension versions", async () => {
-    nock(api.extensionsPublisherOrigin)
+    nock(api.extensionsPublisherOrigin())
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
       .query((queryParams: any) => {
         return queryParams.pageSize === "100";
@@ -427,13 +427,13 @@ describe("listExtensionVersions", () => {
   });
 
   it("should query for more extension versions if the response has a next_page_token", async () => {
-    nock(api.extensionsPublisherOrigin)
+    nock(api.extensionsPublisherOrigin())
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
       .query((queryParams: any) => {
         return queryParams.pageSize === "100";
       })
       .reply(200, PUBLISHED_VERSIONS_WITH_TOKEN);
-    nock(api.extensionsPublisherOrigin)
+    nock(api.extensionsPublisherOrigin())
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
       .query((queryParams: any) => {
         return queryParams.pageSize === "100" && queryParams.pageToken === NEXT_PAGE_TOKEN;
@@ -450,13 +450,13 @@ describe("listExtensionVersions", () => {
   });
 
   it("should throw FirebaseError if any call returns an error", async () => {
-    nock(api.extensionsPublisherOrigin)
+    nock(api.extensionsPublisherOrigin())
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
       .query((queryParams: any) => {
         return queryParams.pageSize === "100";
       })
       .reply(200, PUBLISHED_VERSIONS_WITH_TOKEN);
-    nock(api.extensionsPublisherOrigin)
+    nock(api.extensionsPublisherOrigin())
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
       .query((queryParams: any) => {
         return queryParams.pageSize === "100" && queryParams.pageToken === NEXT_PAGE_TOKEN;
@@ -488,7 +488,7 @@ describe("getPublisherProfile", () => {
     registerTime: "2020-06-30T00:21:06.722782Z",
   };
   it("should make a GET call to the correct endpoint", async () => {
-    nock(api.extensionsPublisherOrigin)
+    nock(api.extensionsPublisherOrigin())
       .get(`/${VERSION}/projects/${PROJECT_ID}/publisherProfile`)
       .query(true)
       .reply(200, PUBLISHER_PROFILE);
@@ -499,7 +499,7 @@ describe("getPublisherProfile", () => {
   });
 
   it("should throw a FirebaseError if the endpoint returns an error response", async () => {
-    nock(api.extensionsPublisherOrigin)
+    nock(api.extensionsPublisherOrigin())
       .get(`/${VERSION}/projects/${PROJECT_ID}/publisherProfile`)
       .query(true)
       .reply(404);
@@ -520,7 +520,7 @@ describe("registerPublisherProfile", () => {
     registerTime: "2020-06-30T00:21:06.722782Z",
   };
   it("should make a POST call to the correct endpoint", async () => {
-    nock(api.extensionsPublisherOrigin)
+    nock(api.extensionsPublisherOrigin())
       .patch(
         `/${VERSION}/projects/${PROJECT_ID}/publisherProfile?updateMask=publisher_id%2Cdisplay_name`,
       )
@@ -532,7 +532,7 @@ describe("registerPublisherProfile", () => {
   });
 
   it("should throw a FirebaseError if the endpoint returns an error response", async () => {
-    nock(api.extensionsPublisherOrigin)
+    nock(api.extensionsPublisherOrigin())
       .patch(
         `/${VERSION}/projects/${PROJECT_ID}/publisherProfile?updateMask=publisher_id%2Cdisplay_name`,
       )
@@ -551,7 +551,7 @@ describe("deprecateExtensionVersion", () => {
 
   it("should make a POST call to the correct endpoint", async () => {
     const { publisherId, extensionId, version } = refs.parse(TEST_EXT_VERSION_4.ref);
-    nock(api.extensionsPublisherOrigin)
+    nock(api.extensionsPublisherOrigin())
       .persist()
       .post(
         `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions/${version}:deprecate`,
@@ -568,7 +568,7 @@ describe("deprecateExtensionVersion", () => {
 
   it("should throw a FirebaseError if the endpoint returns an error response", async () => {
     const { publisherId, extensionId, version } = refs.parse(TEST_EXT_VERSION_4.ref);
-    nock(api.extensionsPublisherOrigin)
+    nock(api.extensionsPublisherOrigin())
       .persist()
       .post(
         `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions/${version}:deprecate`,
@@ -588,7 +588,7 @@ describe("undeprecateExtensionVersion", () => {
 
   it("should make a POST call to the correct endpoint", async () => {
     const { publisherId, extensionId, version } = refs.parse(TEST_EXT_VERSION_3.ref);
-    nock(api.extensionsPublisherOrigin)
+    nock(api.extensionsPublisherOrigin())
       .persist()
       .post(
         `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions/${version}:undeprecate`,
@@ -602,7 +602,7 @@ describe("undeprecateExtensionVersion", () => {
 
   it("should throw a FirebaseError if the endpoint returns an error response", async () => {
     const { publisherId, extensionId, version } = refs.parse(TEST_EXT_VERSION_3.ref);
-    nock(api.extensionsPublisherOrigin)
+    nock(api.extensionsPublisherOrigin())
       .persist()
       .post(
         `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions/${version}:undeprecate`,

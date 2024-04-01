@@ -2,6 +2,7 @@ import * as yaml from "js-yaml";
 import * as path from "path";
 import * as fs from "fs-extra";
 
+import * as supported from "../../deploy/functions/runtimes/supported";
 import { ExtensionSpec, Resource } from "../types";
 import { FirebaseError } from "../../error";
 import { substituteParams } from "../extensionsHelper";
@@ -111,24 +112,27 @@ export function getFunctionProperties(resources: Resource[]) {
   return resources.map((r) => r.properties);
 }
 
-export const DEFAULT_RUNTIME = "nodejs14";
+export const DEFAULT_RUNTIME: supported.Runtime = supported.latest("nodejs");
 
 /**
  * Get runtime associated with the resources. If multiple runtimes exists, choose the latest runtime.
  * e.g. prefer nodejs14 over nodejs12.
+ * N.B. (inlined): I'm not sure why this code always assumes nodejs. It seems to
+ *   work though and nobody is complaining that they can't run the Python
+ *   emulator so I'm not investigating why it works.
  */
-export function getRuntime(resources: Resource[]): string {
+export function getRuntime(resources: Resource[]): supported.Runtime {
   if (resources.length === 0) {
     return DEFAULT_RUNTIME;
   }
 
   const invalidRuntimes: string[] = [];
-  const runtimes = resources.map((r: Resource) => {
+  const runtimes: supported.Runtime[] = resources.map((r: Resource) => {
     const runtime = getResourceRuntime(r);
     if (!runtime) {
       return DEFAULT_RUNTIME;
     }
-    if (!/^(nodejs)?([0-9]+)/.test(runtime)) {
+    if (!supported.runtimeIsLanguage(runtime, "nodejs")) {
       invalidRuntimes.push(runtime);
       return DEFAULT_RUNTIME;
     }
@@ -142,7 +146,5 @@ export function getRuntime(resources: Resource[]): string {
     );
   }
   // Assumes that all runtimes target the nodejs.
-  // Rely on lexicographically order of nodejs runtime to pick the latest version.
-  // e.g. nodejs12 < nodejs14 < nodejs18 < nodejs20 ...
-  return runtimes.sort()[runtimes.length - 1];
+  return supported.latest("nodejs", runtimes);
 }

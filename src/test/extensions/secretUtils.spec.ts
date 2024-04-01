@@ -61,13 +61,13 @@ describe("secretsUtils", () => {
 
   describe("getManagedSecrets", () => {
     it("only returns secrets that have labels set", async () => {
-      nock(api.secretManagerOrigin)
+      nock(api.secretManagerOrigin())
         .get(`/v1/projects/${PROJECT_ID}/secrets/secret1`)
         .reply(200, {
           name: `projects/${PROJECT_ID}/secrets/secret1`,
           labels: { "firebase-extensions-managed": "true" },
         });
-      nock(api.secretManagerOrigin)
+      nock(api.secretManagerOrigin())
         .get(`/v1/projects/${PROJECT_ID}/secrets/secret2`)
         .reply(200, {
           name: `projects/${PROJECT_ID}/secrets/secret2`,

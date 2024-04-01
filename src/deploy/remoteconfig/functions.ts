@@ -5,7 +5,7 @@ import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
 
 const TIMEOUT = 30000;
 
-const client = new Client({ urlPrefix: remoteConfigApiOrigin, apiVersion: "v1" });
+const client = new Client({ urlPrefix: remoteConfigApiOrigin(), apiVersion: "v1" });
 
 /**
  * Gets Etag for Remote Config Project Template

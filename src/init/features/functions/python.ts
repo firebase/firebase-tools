@@ -3,9 +3,10 @@ import * as spawn from "cross-spawn";
 import * as path from "path";
 
 import { Config } from "../../../config";
-import { getPythonBinary, LATEST_VERSION } from "../../../deploy/functions/runtimes/python";
+import { getPythonBinary } from "../../../deploy/functions/runtimes/python";
 import { runWithVirtualEnv } from "../../../functions/python";
 import { promptOnce } from "../../../prompt";
+import { latest } from "../../../deploy/functions/runtimes/supported";
 
 const TEMPLATE_ROOT = path.resolve(__dirname, "../../../../templates/init/functions/python");
 const MAIN_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "main.py"), "utf8");
@@ -24,12 +25,12 @@ export async function setup(setup: any, config: Config): Promise<void> {
   await config.askWriteProjectFile(`${setup.functions.source}/main.py`, MAIN_TEMPLATE);
 
   // Write the latest supported runtime version to the config.
-  config.set("functions.runtime", LATEST_VERSION);
+  config.set("functions.runtime", latest("python"));
   // Add python specific ignores to config.
   config.set("functions.ignore", ["venv", "__pycache__"]);
 
   // Setup VENV.
-  const venvProcess = spawn(getPythonBinary(LATEST_VERSION), ["-m", "venv", "venv"], {
+  const venvProcess = spawn(getPythonBinary(latest("python")), ["-m", "venv", "venv"], {
     shell: true,
     cwd: config.path(setup.functions.source),
     stdio: [/* stdin= */ "pipe", /* stdout= */ "pipe", /* stderr= */ "pipe", "pipe"],
@@ -58,7 +59,7 @@ export async function setup(setup: any, config: Config): Promise<void> {
       upgradeProcess.on("error", reject);
     });
     const installProcess = runWithVirtualEnv(
-      [getPythonBinary(LATEST_VERSION), "-m", "pip", "install", "-r", "requirements.txt"],
+      [getPythonBinary(latest("python")), "-m", "pip", "install", "-r", "requirements.txt"],
       config.path(setup.functions.source),
       {},
       { stdio: ["inherit", "inherit", "inherit"] },

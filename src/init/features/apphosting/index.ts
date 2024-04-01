@@ -19,7 +19,7 @@ import {
   Rollout,
 } from "../../../gcp/apphosting";
 import { addServiceAccountToRoles } from "../../../gcp/resourceManager";
-import { createServiceAccount } from "../../../gcp/iam";
+import * as iam from "../../../gcp/iam";
 import { Repository } from "../../../gcp/cloudbuild";
 import { FirebaseError } from "../../../error";
 import { promptOnce } from "../../../prompt";
@@ -31,7 +31,7 @@ import { DeepOmit } from "../../../metaprogramming";
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
 const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
-  apiOrigin: apphostingOrigin,
+  apiOrigin: apphostingOrigin(),
   apiVersion: API_VERSION,
   masterTimeout: 25 * 60 * 1_000,
   maxBackoff: 10_000,
@@ -46,10 +46,10 @@ export async function doSetup(
   serviceAccount: string | null,
 ): Promise<void> {
   await Promise.all([
-    ensure(projectId, cloudbuildOrigin, "apphosting", true),
-    ensure(projectId, secretManagerOrigin, "apphosting", true),
-    ensure(projectId, cloudRunApiOrigin, "apphosting", true),
-    ensure(projectId, artifactRegistryDomain, "apphosting", true),
+    ensure(projectId, cloudbuildOrigin(), "apphosting", true),
+    ensure(projectId, secretManagerOrigin(), "apphosting", true),
+    ensure(projectId, cloudRunApiOrigin(), "apphosting", true),
+    ensure(projectId, artifactRegistryDomain(), "apphosting", true),
   ]);
 
   const allowedLocations = (await apphosting.listLocations(projectId)).map((loc) => loc.locationId);
@@ -216,7 +216,7 @@ export async function createBackend(
 
 async function provisionDefaultComputeServiceAccount(projectId: string): Promise<void> {
   try {
-    await createServiceAccount(
+    await iam.createServiceAccount(
       projectId,
       DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME,
       "Firebase App Hosting compute service account",
@@ -284,9 +284,44 @@ export async function orchestrateRollout(
   const buildId = await apphosting.getNextRolloutId(projectId, location, backendId, 1);
   const buildOp = await apphosting.createBuild(projectId, location, backendId, buildId, buildInput);
 
-  const rolloutOp = await apphosting.createRollout(projectId, location, backendId, buildId, {
+  const rolloutBody = {
     build: `projects/${projectId}/locations/${location}/backends/${backendId}/builds/${buildId}`,
-  });
+  };
+
+  let tries = 0;
+  let done = false;
+  while (!done) {
+    tries++;
+    try {
+      const validateOnly = true;
+      await apphosting.createRollout(
+        projectId,
+        location,
+        backendId,
+        buildId,
+        rolloutBody,
+        validateOnly,
+      );
+      done = true;
+    } catch (err: unknown) {
+      if (err instanceof FirebaseError && err.status === 400) {
+        if (tries >= 5) {
+          throw err;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  const rolloutOp = await apphosting.createRollout(
+    projectId,
+    location,
+    backendId,
+    buildId,
+    rolloutBody,
+  );
 
   const rolloutPoll = poller.pollOperation<Rollout>({
     ...apphostingPollerOptions,

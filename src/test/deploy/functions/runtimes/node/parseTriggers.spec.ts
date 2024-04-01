@@ -24,13 +24,17 @@ async function resolveBackend(bd: build.Build): Promise<backend.Backend> {
 }
 
 describe("addResourcesToBuild", () => {
-  const oldDefaultRegion = api.functionsDefaultRegion;
+  const oldDefaultRegion = api.functionsDefaultRegion();
   before(() => {
-    (api as any).functionsDefaultRegion = "us-central1";
+    (api as any).functionsDefaultRegion = () => {
+      return "us-central1";
+    };
   });
 
   after(() => {
-    (api as any).functionsDefaultRegion = oldDefaultRegion;
+    (api as any).functionsDefaultRegion = () => {
+      return oldDefaultRegion;
+    };
   });
 
   const BASIC_TRIGGER: parseTriggers.TriggerAnnotation = Object.freeze({
@@ -40,7 +44,7 @@ describe("addResourcesToBuild", () => {
 
   const BASIC_ENDPOINT: Omit<build.Endpoint, "httpsTrigger"> = Object.freeze({
     platform: "gcfv1",
-    region: [api.functionsDefaultRegion],
+    region: [api.functionsDefaultRegion()],
     project: "project",
     runtime: "nodejs16",
     entryPoint: "func",
@@ -48,7 +52,7 @@ describe("addResourcesToBuild", () => {
 
   const BASIC_FUNCTION_NAME: backend.TargetIds = Object.freeze({
     id: "func",
-    region: api.functionsDefaultRegion,
+    region: api.functionsDefaultRegion(),
     project: "project",
   });
 
@@ -405,7 +409,7 @@ describe("addResourcesToBuild", () => {
       ...BASIC_BACKEND_ENDPOINT,
       httpsTrigger: {},
       vpc: {
-        connector: `projects/project/locations/${api.functionsDefaultRegion}/connectors/hello-vpc`,
+        connector: `projects/project/locations/${api.functionsDefaultRegion()}/connectors/hello-vpc`,
       },
     });
     const convertedBackend = resolveBackend(expected);
@@ -485,13 +489,17 @@ describe("addResourcesToBuild", () => {
 });
 
 describe("addResourcesToBackend", () => {
-  const oldDefaultRegion = api.functionsDefaultRegion;
+  const oldDefaultRegion = api.functionsDefaultRegion();
   before(() => {
-    (api as any).functionsDefaultRegion = "us-central1";
+    (api as any).functionsDefaultRegion = () => {
+      return "us-central1";
+    };
   });
 
   after(() => {
-    (api as any).functionsDefaultRegion = oldDefaultRegion;
+    (api as any).functionsDefaultRegion = () => {
+      return oldDefaultRegion;
+    };
   });
 
   const BASIC_TRIGGER: parseTriggers.TriggerAnnotation = Object.freeze({
@@ -501,7 +509,7 @@ describe("addResourcesToBackend", () => {
 
   const BASIC_FUNCTION_NAME: backend.TargetIds = Object.freeze({
     id: "func",
-    region: api.functionsDefaultRegion,
+    region: api.functionsDefaultRegion(),
     project: "project",
   });
 

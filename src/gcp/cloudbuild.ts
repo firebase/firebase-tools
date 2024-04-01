@@ -4,7 +4,7 @@ import { cloudbuildOrigin } from "../api";
 const PAGE_SIZE_MAX = 100;
 
 const client = new Client({
-  urlPrefix: cloudbuildOrigin,
+  urlPrefix: cloudbuildOrigin(),
   auth: true,
   apiVersion: "v2",
 });
@@ -222,4 +222,14 @@ export async function deleteRepository(
  */
 export function serviceAgentEmail(projectNumber: string): string {
   return `service-${projectNumber}@gcp-sa-cloudbuild.iam.gserviceaccount.com`;
+}
+
+/** Returns the default cloud build service agent */
+export function getDefaultCloudBuildServiceAgent(projectNumber: string): string {
+  return `${projectNumber}@cloudbuild.gserviceaccount.com`;
+}
+
+/** Returns the default compute engine service agent */
+export function getDefaultComputeEngineServiceAgent(projectNumber: string): string {
+  return `${projectNumber}-compute@developer.gserviceaccount.com`;
 }

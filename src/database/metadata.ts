@@ -31,7 +31,7 @@ export interface Ruleset {
   source: RulesetSource;
 }
 
-const apiClient = new Client({ urlPrefix: rtdbMetadataOrigin });
+const apiClient = new Client({ urlPrefix: rtdbMetadataOrigin() });
 
 export async function listAllRulesets(databaseName: string): Promise<Ruleset[]> {
   const response = await apiClient.get<{ rulesets: Ruleset[] }>(
@@ -70,7 +70,7 @@ export async function createRuleset(
   source: RulesetSource,
 ): Promise<RulesetId> {
   const localApiClient = new Client({
-    urlPrefix: utils.addSubdomain(realtimeOrigin, databaseName),
+    urlPrefix: utils.addSubdomain(realtimeOrigin(), databaseName),
   });
   const response = await localApiClient.post<RulesetSource, { id: RulesetId }>(
     `/.settings/rulesets.json`,
@@ -85,7 +85,7 @@ export async function createRuleset(
 
 export async function setRulesetLabels(databaseName: string, labels: LabelIds): Promise<void> {
   const localApiClient = new Client({
-    urlPrefix: utils.addSubdomain(realtimeOrigin, databaseName),
+    urlPrefix: utils.addSubdomain(realtimeOrigin(), databaseName),
   });
   const response = await localApiClient.put<LabelIds, void>(
     `/.settings/ruleset_labels.json`,
