@@ -40,7 +40,7 @@ export interface Config {
  * Finds the path of apphosting.yaml.
  * Starts with cwd and walks up the tree until apphosting.yaml is found or
  * we find the project root (where firebase.json is) or the filesystem root;
- * in these cases, returns null. 
+ * in these cases, returns null.
  */
 export function yamlPath(cwd: string): string | null {
   let dir = cwd;

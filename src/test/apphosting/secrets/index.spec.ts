@@ -34,7 +34,7 @@ describe("secrets", () => {
         },
       });
       await expect(secrets.upsertSecret("project", "secret", "us-central1")).to.eventually.equal(
-        false,
+        null,
       );
       expect(utils.logLabeledError).to.have.been.calledWith(
         "apphosting",
@@ -58,7 +58,7 @@ describe("secrets", () => {
         },
       });
       await expect(secrets.upsertSecret("project", "secret", "us-central1")).to.eventually.equal(
-        false,
+        null,
       );
       expect(utils.logLabeledError).to.have.been.calledWith(
         "apphosting",
@@ -82,7 +82,7 @@ describe("secrets", () => {
         },
       });
       await expect(secrets.upsertSecret("project", "secret", "us-central1")).to.eventually.equal(
-        true,
+        false,
       );
       expect(utils.logLabeledError).to.not.have.been.called;
     });
@@ -96,7 +96,7 @@ describe("secrets", () => {
           automatic: {},
         },
       });
-      await expect(secrets.upsertSecret("project", "secret")).to.eventually.equal(true);
+      await expect(secrets.upsertSecret("project", "secret")).to.eventually.equal(false);
       expect(utils.logLabeledError).to.not.have.been.called;
     });
 
@@ -110,7 +110,7 @@ describe("secrets", () => {
         },
       });
       prompt.confirm.resolves(true);
-      await expect(secrets.upsertSecret("project", "secret")).to.eventually.equal(true);
+      await expect(secrets.upsertSecret("project", "secret")).to.eventually.equal(false);
       expect(utils.logLabeledWarning).to.have.been.calledWith(
         "apphosting",
         "Cloud Functions for Firebase currently manages versions of secret. " +
@@ -133,7 +133,7 @@ describe("secrets", () => {
         },
       });
       prompt.confirm.resolves(false);
-      await expect(secrets.upsertSecret("project", "secret")).to.eventually.equal(false);
+      await expect(secrets.upsertSecret("project", "secret")).to.eventually.equal(null);
       expect(utils.logLabeledWarning).to.have.been.calledWith(
         "apphosting",
         "Cloud Functions for Firebase currently manages versions of secret. " +

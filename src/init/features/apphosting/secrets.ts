@@ -1,5 +1,7 @@
 import { logSuccess } from "../../../utils";
 import * as iam from "../../../gcp/iam";
+import * as gcb from "../../../gcp/cloudbuild";
+import * as gce from "../../../gcp/computeEngine";
 import * as secretManager from "../../../gcp/secretManager";
 import { FirebaseError } from "../../../error";
 
@@ -11,8 +13,8 @@ function fetchServiceAccounts(projectNumber: string): {
   // the attached service account in a given backend/location then return that value instead.
   // Sample Call: await apphosting.getBackend(projectId, location, backendId); & make this function async
   return {
-    buildServiceAccount: iam.getDefaultCloudBuildServiceAgent(projectNumber),
-    runServiceAccount: iam.getDefaultComputeEngineServiceAgent(projectNumber),
+    buildServiceAccount: gcb.getDefaultServiceAccount(projectNumber),
+    runServiceAccount: gce.getDefaultServiceAccount(projectNumber),
   };
 }
 
@@ -57,6 +59,8 @@ export async function grantSecretAccess(
         `serviceAccount:${serviceAccounts.runServiceAccount}`,
       ],
     },
+    // Cloud Build needs the viewer role so that it can list secret versions and pin the Build to the
+    // latest version.
     {
       role: "roles/secretmanager.viewer",
       members: [`serviceAccount:${serviceAccounts.buildServiceAccount}`],
