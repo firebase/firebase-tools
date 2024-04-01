@@ -10,6 +10,7 @@
       "license": "MIT",
       "dependencies": {
         "@google-cloud/pubsub": "^3.0.1",
+        "@google/generative-ai": "^0.3.1",
         "abort-controller": "^3.0.0",
         "ajv": "^6.12.6",
         "archiver": "^5.0.0",
@@ -2555,6 +2556,14 @@
       "dev": true,
       "engines": {
         "node": ">=10"
+      }
+    },
+    "node_modules/@google/generative-ai": {
+      "version": "0.3.1",
+      "resolved": "https://registry.npmjs.org/@google/generative-ai/-/generative-ai-0.3.1.tgz",
+      "integrity": "sha512-Zh1EK5nCWqIhxPm3K1KOM2mOwwgBvp6lkze74yTj6+Zqibtf55Db1q87cbbzWZeET3ZbNgHMYjVf2JyMM6pI7A==",
+      "engines": {
+        "node": ">=18.0.0"
       }
     },
     "node_modules/@grpc/grpc-js": {
@@ -20755,6 +20764,11 @@
       "resolved": "https://registry.npmjs.org/@google/events/-/events-5.1.1.tgz",
       "integrity": "sha512-97u6AUfEXo6TxoBAdbziuhSL56+l69WzFahR6eTQE/bSjGPqT1+W4vS7eKaR7r60pGFrZZfqdFZ99uMbns3qgA==",
       "dev": true
+    },
+    "@google/generative-ai": {
+      "version": "0.3.1",
+      "resolved": "https://registry.npmjs.org/@google/generative-ai/-/generative-ai-0.3.1.tgz",
+      "integrity": "sha512-Zh1EK5nCWqIhxPm3K1KOM2mOwwgBvp6lkze74yTj6+Zqibtf55Db1q87cbbzWZeET3ZbNgHMYjVf2JyMM6pI7A=="
     },
     "@grpc/grpc-js": {
       "version": "1.7.3",

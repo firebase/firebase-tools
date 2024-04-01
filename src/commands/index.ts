@@ -138,6 +138,7 @@ export function load(client: any): any {
   client.functions.secrets.prune = loadCommand("functions-secrets-prune");
   client.functions.secrets.set = loadCommand("functions-secrets-set");
   client.help = loadCommand("help");
+  client.help = loadCommand("gemini-help");
   client.hosting = {};
   client.hosting.channel = {};
   client.hosting.channel.create = loadCommand("hosting-channel-create");
