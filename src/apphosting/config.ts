@@ -20,18 +20,28 @@ interface HasValue {
   secret: never;
   value: string;
 }
+
+/** Where an environment variable can be provided. */
 export type Availability = "BUILD" | "RUNTIME";
 
+/** Config for an environment variable. */
 export type Env = (HasSecret | HasValue) & {
   variable: string;
   availability?: Availability[];
 };
 
+/** Schema for apphosting.yaml. */
 export interface Config {
   runConfig?: RunConfig;
   env?: Env[];
 }
 
+/**
+ * Finds the path of apphosting.yaml.
+ * Starts with cwd and walks up the tree until apphosting.yaml is found or
+ * we find the project root (where firebase.json is) or the filesystem root;
+ * in these cases, returns null. 
+ */
 export function yamlPath(cwd: string): string | null {
   let dir = cwd;
 
@@ -51,11 +61,13 @@ export function yamlPath(cwd: string): string | null {
   return path.resolve(dir, "apphosting.yaml");
 }
 
+/** Load apphosting.yaml */
 export function load(yamlPath: string): Config {
   const raw = fs.readFile(yamlPath);
   return yaml.load(raw, yaml.DEFAULT_FULL_SCHEMA) as Config;
 }
 
+/** Save apphosting.yaml */
 export function store(yamlPath: string, config: Config): void {
   writeFileSync(yamlPath, yaml.dump(config));
 }
