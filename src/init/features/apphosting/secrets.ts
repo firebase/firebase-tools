@@ -48,6 +48,9 @@ export async function grantSecretAccess(
     name: secretName,
   };
 
+  // TODO: Document why Cloud Build SA needs viewer permission but Run doesn't.
+  // TODO: future proof for when therte is a single service account (currently will set the same
+  // secretAccessor permission twice)
   const newBindings: iam.Binding[] = [
     {
       role: "roles/secretmanager.secretAccessor",
