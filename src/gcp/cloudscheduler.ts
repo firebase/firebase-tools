@@ -6,7 +6,7 @@ import { cloudschedulerOrigin } from "../api";
 import { Client } from "../apiv2";
 import * as backend from "../deploy/functions/backend";
 import * as proto from "./proto";
-import * as gcb from "../gcp/cloudbuild";
+import * as iam from "../gcp/iam";
 import { assertExhaustive, nullsafeVisitor } from "../functional";
 
 const VERSION = "v1";
@@ -246,7 +246,7 @@ export function jobFromEndpoint(
       httpMethod: "POST",
       oidcToken: {
         serviceAccountEmail:
-          endpoint.serviceAccount ?? gcb.getDefaultComputeEngineServiceAgent(projectNumber),
+          endpoint.serviceAccount ?? iam.getDefaultComputeEngineServiceAgent(projectNumber),
       },
     };
   } else {
