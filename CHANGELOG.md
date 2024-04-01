@@ -1,2 +1,3 @@
-- Fix hosting rewrite deployment bug for skipped functions (#6658).
 - Remove development-only files from Next.js deployments (#6731).
+- Stop trying to delete cache images after functions deletion that GCF already cleans up (#6927)
+- Add support timelines for functions runtimes (#6866)

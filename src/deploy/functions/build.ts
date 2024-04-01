@@ -6,7 +6,7 @@ import { FirebaseError } from "../../error";
 import { assertExhaustive, mapObject, nullsafeVisitor } from "../../functional";
 import { UserEnvsOpts, writeUserEnvs } from "../../functions/env";
 import { FirebaseConfig } from "./args";
-import { Runtime } from "./runtimes";
+import { Runtime } from "./runtimes/supported";
 import { ExprParseError } from "./cel";
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
@@ -240,7 +240,7 @@ export type Endpoint = Triggered & {
   project: string;
 
   // The runtime being deployed to this endpoint. Currently targeting "nodejs16."
-  runtime: string;
+  runtime: Runtime;
 
   // Firebase default of 80. Cloud default of 1
   concurrency?: Field<number>;
@@ -428,7 +428,7 @@ export function toBackend(
 
     let regions: string[] = [];
     if (!bdEndpoint.region) {
-      regions = [api.functionsDefaultRegion];
+      regions = [api.functionsDefaultRegion()];
     } else if (Array.isArray(bdEndpoint.region)) {
       regions = params.resolveList(bdEndpoint.region, paramValues);
     } else {

@@ -2,7 +2,7 @@ import { expect } from "chai";
 
 import * as backend from "../../../../../deploy/functions/backend";
 import * as build from "../../../../../deploy/functions/build";
-import { Runtime } from "../../../../../deploy/functions/runtimes";
+import { Runtime } from "../../../../../deploy/functions/runtimes/supported";
 import * as v1alpha1 from "../../../../../deploy/functions/runtimes/discovery/v1alpha1";
 import { BEFORE_CREATE_EVENT } from "../../../../../functions/events/v1";
 import { Param } from "../../../../../deploy/functions/params";
@@ -10,7 +10,7 @@ import { FirebaseError } from "../../../../../error";
 
 const PROJECT = "project";
 const REGION = "region";
-const RUNTIME: Runtime = "node14";
+const RUNTIME: Runtime = "nodejs14";
 const MIN_WIRE_ENDPOINT: Omit<v1alpha1.WireEndpoint, "httpsTrigger"> = {
   entryPoint: "entryPoint",
 };

@@ -8,16 +8,15 @@ import * as portfinder from "portfinder";
 import * as runtimes from "..";
 import * as backend from "../../backend";
 import * as discovery from "../discovery";
+import * as supported from "../supported";
 import { logger } from "../../../../logger";
 import { DEFAULT_VENV_DIR, runWithVirtualEnv, virtualEnvCmd } from "../../../../functions/python";
 import { FirebaseError } from "../../../../error";
 import { Build } from "../../build";
-
-export const LATEST_VERSION: runtimes.Runtime = "python312";
+import { assertExhaustive } from "../../../../functional";
 
 /**
  * Create a runtime delegate for the Python runtime, if applicable.
- *
  * @param context runtimes.DelegateContext
  * @return Delegate Python runtime delegate
  */
@@ -30,9 +29,15 @@ export async function tryCreateDelegate(
     logger.debug("Customer code is not Python code.");
     return;
   }
-  const runtime = context.runtime ? context.runtime : LATEST_VERSION;
-  if (!runtimes.isValidRuntime(runtime)) {
-    throw new FirebaseError(`Runtime ${runtime} is not a valid Python runtime`);
+  const runtime = context.runtime ?? supported.latest("python");
+  if (!supported.isRuntime(runtime)) {
+    throw new FirebaseError(`Runtime ${runtime as string} is not a valid Python runtime`);
+  }
+  if (!supported.runtimeIsLanguage(runtime, "python")) {
+    throw new FirebaseError(
+      `Internal error. Trying to construct a python runtime delegate for runtime ${runtime}`,
+      { exit: 1 },
+    );
   }
   return Promise.resolve(new Delegate(context.projectId, context.sourceDir, runtime));
 }
@@ -42,7 +47,9 @@ export async function tryCreateDelegate(
  *
  * By default, returns "python"
  */
-export function getPythonBinary(runtime: runtimes.Runtime): string {
+export function getPythonBinary(
+  runtime: supported.Runtime & supported.RuntimeOf<"python">,
+): string {
   if (process.platform === "win32") {
     // There is no easy way to get specific version of python executable in Windows.
     return "python.exe";
@@ -54,15 +61,15 @@ export function getPythonBinary(runtime: runtimes.Runtime): string {
   } else if (runtime === "python312") {
     return "python3.12";
   }
-  return "python";
+  assertExhaustive(runtime, `Unhandled python runtime ${runtime as string}`);
 }
 
 export class Delegate implements runtimes.RuntimeDelegate {
-  public readonly name = "python";
+  public readonly language = "python";
   constructor(
     private readonly projectId: string,
     private readonly sourceDir: string,
-    public readonly runtime: runtimes.Runtime,
+    public readonly runtime: supported.Runtime & supported.RuntimeOf<"python">,
   ) {}
 
   private _bin = "";

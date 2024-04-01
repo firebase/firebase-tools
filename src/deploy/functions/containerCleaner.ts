@@ -63,7 +63,7 @@ export async function cleanupBuildImages(
   cleanup.push(
     ...deletedFunctions.map(async (func) => {
       try {
-        await Promise.all([arCleaner.cleanupFunction(func), arCleaner.cleanupFunctionCache(func)]);
+        await arCleaner.cleanupFunction(func);
       } catch (err: any) {
         const path = `${func.project}/${func.region}/gcf-artifacts`;
         failedDomains.add(`https://console.cloud.google.com/artifacts/docker/${path}`);
@@ -116,7 +116,7 @@ export class ArtifactRegistryCleaner {
   }
 
   static POLLER_OPTIONS = {
-    apiOrigin: artifactRegistryDomain,
+    apiOrigin: artifactRegistryDomain(),
     apiVersion: artifactregistry.API_VERSION,
     masterTimeout: 5 * 60 * 1_000,
   };
@@ -151,31 +151,11 @@ export class ArtifactRegistryCleaner {
       operationResourceName: op.name,
     });
   }
-
-  async cleanupFunctionCache(func: backend.TargetIds): Promise<void> {
-    // GCF uses "<id>/cache" as their pacakge name, but AR percent-encodes this to
-    // avoid parsing issues with OP.
-    const op = await artifactregistry.deletePackage(
-      `${ArtifactRegistryCleaner.packagePath(func)}%2Fcache`,
-    );
-    if (op.done) {
-      return;
-    }
-    await poller.pollOperation<void>({
-      ...ArtifactRegistryCleaner.POLLER_OPTIONS,
-      pollerName: `cleanup-cache-${func.region}-${func.id}`,
-      operationResourceName: op.name,
-    });
-  }
 }
 
 // Temporary class to turn off AR cleaning if AR isn't enabled yet
 export class NoopArtifactRegistryCleaner extends ArtifactRegistryCleaner {
   cleanupFunction(): Promise<void> {
-    return Promise.resolve();
-  }
-
-  cleanupFunctionCache(): Promise<void> {
     return Promise.resolve();
   }
 }
@@ -186,7 +166,7 @@ export class ContainerRegistryCleaner {
   private helper(location: string): DockerHelper {
     const subdomain = docker.GCR_SUBDOMAIN_MAPPING[location] || "us";
     if (!this.helpers[subdomain]) {
-      const origin = `https://${subdomain}.${containerRegistryDomain}`;
+      const origin = `https://${subdomain}.${containerRegistryDomain()}`;
       this.helpers[subdomain] = new DockerHelper(origin);
     }
     return this.helpers[subdomain];
@@ -239,7 +219,7 @@ export class ContainerRegistryCleaner {
 
 function getHelper(cache: Record<string, DockerHelper>, subdomain: string): DockerHelper {
   if (!cache[subdomain]) {
-    cache[subdomain] = new DockerHelper(`https://${subdomain}.${containerRegistryDomain}`);
+    cache[subdomain] = new DockerHelper(`https://${subdomain}.${containerRegistryDomain()}`);
   }
   return cache[subdomain];
 }
@@ -302,7 +282,7 @@ export async function listGcfPaths(
   }
 
   return gcfDirs.map((loc) => {
-    return `${docker.GCR_SUBDOMAIN_MAPPING[loc]}.${containerRegistryDomain}/${projectId}/gcf/${loc}`;
+    return `${docker.GCR_SUBDOMAIN_MAPPING[loc]}.${containerRegistryDomain()}/${projectId}/gcf/${loc}`;
   });
 }
 
