@@ -2,6 +2,8 @@ import * as sinon from "sinon";
 import { expect } from "chai";
 
 import * as iam from "../../../gcp/iam";
+import * as gcb from "../../../gcp/cloudbuild";
+import * as gce from "../../../gcp/computeEngine";
 import * as secretManager from "../../../gcp/secretManager";
 import { grantSecretAccess } from "../../../init/features/apphosting/secrets";
 import { FirebaseError } from "../../../error";
@@ -41,7 +43,7 @@ describe("manageSecrets", () => {
       bindings: [
         {
           role: "roles/viewer",
-          members: [`serviceAccount:${iam.getDefaultComputeEngineServiceAgent(projectNumber)}`],
+          members: [`serviceAccount:${gce.getDefaultServiceAccount(projectNumber)}`],
         },
       ],
     };
@@ -61,18 +63,18 @@ describe("manageSecrets", () => {
       const newBindings: iam.Binding[] = [
         {
           role: "roles/viewer",
-          members: [`serviceAccount:${iam.getDefaultComputeEngineServiceAgent(projectNumber)}`],
+          members: [`serviceAccount:${gce.getDefaultServiceAccount(projectNumber)}`],
         },
         {
           role: "roles/secretmanager.secretAccessor",
           members: [
-            `serviceAccount:${iam.getDefaultCloudBuildServiceAgent(projectNumber)}`,
-            `serviceAccount:${iam.getDefaultComputeEngineServiceAgent(projectNumber)}`,
+            `serviceAccount:${gcb.getDefaultServiceAccount(projectNumber)}`,
+            `serviceAccount:${gce.getDefaultServiceAccount(projectNumber)}`,
           ],
         },
         {
           role: "roles/secretmanager.viewer",
-          members: [`serviceAccount:${iam.getDefaultCloudBuildServiceAgent(projectNumber)}`],
+          members: [`serviceAccount:${gcb.getDefaultServiceAccount(projectNumber)}`],
         },
       ];
 

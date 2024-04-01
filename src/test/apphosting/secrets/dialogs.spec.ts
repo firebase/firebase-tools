@@ -4,7 +4,8 @@ import * as clc from "colorette";
 
 import * as dialogs from "../../../apphosting/secrets/dialogs";
 import * as apphosting from "../../../gcp/apphosting";
-import * as iam from "../../../gcp/iam";
+import * as gcb from "../../../gcp/cloudbuild";
+import * as gce from "../../../gcp/computeEngine";
 import * as utilsImport from "../../../utils";
 import * as promptImport from "../../../prompt";
 
@@ -39,8 +40,8 @@ describe("dialogs", () => {
     it("has a fallback for legacy SAs", () => {
       const backend = {} as any as apphosting.Backend;
       expect(dialogs.serviceAccountsForBackend("number", backend)).to.deep.equal([
-        iam.getDefaultCloudBuildServiceAgent("number"),
-        iam.getDefaultComputeEngineServiceAgent("number"),
+        gcb.getDefaultServiceAccount("number"),
+        gce.getDefaultServiceAccount("number"),
       ]);
     });
   });

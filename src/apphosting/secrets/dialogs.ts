@@ -3,16 +3,21 @@ const Table = require("cli-table");
 
 import * as apphosting from "../../gcp/apphosting";
 import * as prompt from "../../prompt";
-import * as iam from "../../gcp/iam";
+import * as gce from "../../gcp/computeEngine";
+import * as cloudbuild from "../../gcp/cloudbuild";
 import * as utils from "../../utils";
 import { logger } from "../../logger";
 
-interface Metadata {
+interface BackendMetadata {
   location: string;
   id: string;
   accounts: string[];
 }
 
+/**
+ * Finds the explicit service account used for a backend or, for legacy cases,
+ * the defaults for GCB and compute.
+ */
 export function serviceAccountsForBackend(
   projectNumber: string,
   backend: apphosting.Backend,
@@ -21,14 +26,21 @@ export function serviceAccountsForBackend(
     return [backend.serviceAccount];
   }
   return [
-    iam.getDefaultCloudBuildServiceAgent(projectNumber),
-    iam.getDefaultComputeEngineServiceAgent(projectNumber),
+    cloudbuild.getDefaultServiceAccount(projectNumber),
+    gce.getDefaultServiceAccount(projectNumber),
   ];
 }
 
-export function toMetadata(projectNumber: string, backends: apphosting.Backend[]): Metadata[] {
-  const metadata: Metadata[] = [];
+/**
+ * Creates sorted BackendMetadata for a list of Backends.
+ */
+export function toMetadata(
+  projectNumber: string,
+  backends: apphosting.Backend[],
+): BackendMetadata[] {
+  const metadata: BackendMetadata[] = [];
   for (const backend of backends) {
+    // Splits format projects/<unused>/locations/<location>/backends/<id>
     const [, , , location, , id] = backend.name.split("/");
     metadata.push({ location, id, accounts: serviceAccountsForBackend(projectNumber, backend) });
   }
@@ -41,7 +53,13 @@ export function toMetadata(projectNumber: string, backends: apphosting.Backend[]
   });
 }
 
-export function tableForBackends(metadata: Metadata[]): [headers: string[], rows: string[][]] {
+/**
+ * Given a list of BackendMetadata, creates the JSON necessary to power a cli table.
+ * @returns a tuple where the first element is column names and the second element is rows.
+ */
+export function tableForBackends(
+  metadata: BackendMetadata[],
+): [headers: string[], rows: string[][]] {
   const headers = [
     "location",
     "backend",
@@ -53,13 +71,19 @@ export function tableForBackends(metadata: Metadata[]): [headers: string[], rows
   return [headers, rows];
 }
 
+/** Common warning log that there are no backends. Exported to make tests easier. */
 export const WARN_NO_BACKENDS =
   "To use this secret, your backend's service account must have secret accessor permission. " +
   "It does not look like you have a backend yet. After creating a backend, grant access with " +
   clc.bold("firebase apphosting:secrets:grantAccess");
 
+/** Common warning log that the user will need to grant access manually. Exported to make tests easier. */
 export const GRANT_ACCESS_IN_FUTURE = `To grant access in the future, run ${clc.bold("firebase apphosting:secrets:grantaccess")}`;
 
+/**
+ * Create a dialog where customers can choose a series of service accounts to grant access.
+ * Can return an empty array of the user opts out of granting access.
+ */
 export async function selectBackendServiceAccounts(
   projectNumber: string,
   projectId: string,
@@ -94,12 +118,14 @@ export async function selectBackendServiceAccounts(
     return [];
   }
 
-  const metadata: Metadata[] = toMetadata(projectNumber, listBackends.backends);
+  const metadata: BackendMetadata[] = toMetadata(projectNumber, listBackends.backends);
 
-  // Use JSON.stringify because deep copmarison is annoying in JS. Because the order of the service account list should be deterinistic,
+  // Use JSON.stringify because deep comparison is annoying in JS. Because the order of the service account list should be deterinistic,
   // this shouldn't need a sort command.
-  const test = JSON.stringify(metadata[0].accounts);
-  const allSharedAccounts = metadata.every((val) => JSON.stringify(val.accounts) === test);
+  const firstServiceAccounts = JSON.stringify(metadata[0].accounts);
+  const allSharedAccounts = metadata.every(
+    (val) => JSON.stringify(val.accounts) === firstServiceAccounts,
+  );
   if (allSharedAccounts) {
     const grant = await prompt.confirm({
       nonInteractive: options.nonInteractive,
