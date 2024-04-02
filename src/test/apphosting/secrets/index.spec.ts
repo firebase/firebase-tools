@@ -207,11 +207,9 @@ describe("secrets", () => {
   });
 
   describe("grantSecretAccess", () => {
-    const secret: gcsmImport.Secret = {
+    const secret = {
       name: "secret",
       projectId: "projectId",
-      replication: {},
-      labels: {},
     };
     const existingPolicy: iam.Policy = {
       version: 1,
@@ -228,7 +226,7 @@ describe("secrets", () => {
       gcsm.getIamPolicy.resolves(existingPolicy);
       gcsm.setIamPolicy.resolves();
 
-      await secrets.grantSecretAccess(secret, {
+      await secrets.grantSecretAccess(secret.projectId, secret.name, {
         buildServiceAccounts: ["buildSA"],
         runServiceAccounts: ["computeSA"],
       });
@@ -248,8 +246,8 @@ describe("secrets", () => {
         },
       ];
 
-      expect(gcsm.getIamPolicy).to.be.calledWith(secret);
-      expect(gcsm.setIamPolicy).to.be.calledWith(secret, newBindings);
+      expect(gcsm.getIamPolicy).to.be.calledWithMatch(secret);
+      expect(gcsm.setIamPolicy).to.be.calledWithMatch(secret, newBindings);
     });
   });
 });

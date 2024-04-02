@@ -61,7 +61,8 @@ export function serviceAccountsForBackend(
  * Grants the corresponding service accounts the necessary access permissions to the provided secret.
  */
 export async function grantSecretAccess(
-  secret: gcsm.Secret,
+  projectId: string,
+  secretName: string,
   accounts: MultiServiceAccounts,
 ): Promise<void> {
   const newBindings: iam.Binding[] = [
@@ -81,10 +82,10 @@ export async function grantSecretAccess(
 
   let existingBindings;
   try {
-    existingBindings = (await gcsm.getIamPolicy(secret)).bindings;
+    existingBindings = (await gcsm.getIamPolicy({ projectId, name: secretName })).bindings || [];
   } catch (err: any) {
     throw new FirebaseError(
-      `Failed to get IAM bindings on secret: ${secret.name}. Ensure you have the permissions to do so and try again.`,
+      `Failed to get IAM bindings on secret: ${secretName}. Ensure you have the permissions to do so and try again.`,
       { original: err },
     );
   }
@@ -92,15 +93,15 @@ export async function grantSecretAccess(
   try {
     // TODO: Merge with existing bindings with the same role
     const updatedBindings = existingBindings.concat(newBindings);
-    await gcsm.setIamPolicy(secret, updatedBindings);
+    await gcsm.setIamPolicy({ projectId, name: secretName }, updatedBindings);
   } catch (err: any) {
     throw new FirebaseError(
-      `Failed to set IAM bindings ${JSON.stringify(newBindings)} on secret: ${secret.name}. Ensure you have the permissions to do so and try again.`,
+      `Failed to set IAM bindings ${JSON.stringify(newBindings)} on secret: ${secretName}. Ensure you have the permissions to do so and try again.`,
       { original: err },
     );
   }
 
-  utils.logSuccess(`Successfully set IAM bindings on secret ${secret.name}.\n`);
+  utils.logSuccess(`Successfully set IAM bindings on secret ${secretName}.\n`);
 }
 
 /**
