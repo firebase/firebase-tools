@@ -54,10 +54,10 @@ export interface Replication {
 export interface SecretVersion {
   secret: Secret;
   versionId: string;
-  createTime: string;
 
   // Output-only fields
   readonly state?: SecretVersionState;
+  readonly createTime?: string;
 }
 
 interface CreateSecretRequest {
@@ -206,6 +206,7 @@ export async function getSecretVersion(
   return {
     ...parseSecretVersionResourceName(getRes.body.name),
     state: getRes.body.state,
+    createTime: getRes.body.createTime,
   };
 }
 
@@ -384,6 +385,7 @@ export async function addVersion(
   return {
     ...parseSecretVersionResourceName(res.body.name),
     state: res.body.state,
+    createTime: "",
   };
 }
 
