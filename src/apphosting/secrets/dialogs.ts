@@ -147,14 +147,17 @@ export async function selectBackendServiceAccounts(
   const metadata: BackendMetadata[] = toMetadata(projectNumber, listBackends.backends);
 
   if (metadata.every(matchesServiceAccounts(metadata[0]))) {
+    utils.logLabeledBullet(
+      "apphosting",
+      "To use this secret, your backend's service account must have secret accessor permission. All of your backends use " +
+        (sameServiceAccount(metadata[0]) ? "service account " : "service accounts ") +
+        serviceAccountDisplay(metadata[0]) +
+        ". Granting access to one backend will grant access to all backends.",
+    );
     const grant = await prompt.confirm({
       nonInteractive: options.nonInteractive,
       default: true,
-      message:
-        "To use this secret, your backend's service account must have secret accessor permission. All of your backends use " +
-        (sameServiceAccount(metadata[0]) ? "service account " : "service accounts ") +
-        serviceAccountDisplay(metadata[0]) +
-        ". Granting access to one backend will grant access to all backends. Would you like to grant it now?",
+      message: "Would you like to grant it now?",
     });
     if (grant) {
       return selectFromMetadata(metadata, [
