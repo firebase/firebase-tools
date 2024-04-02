@@ -78,8 +78,9 @@ export const command = new Command("apphosting:secrets:set <secretName>")
       logWarning(
         `To use this secret your backend, you must grant access. You can do so in the future with ${clc.bold("firebase apphosting:secrets:grantAccess")}`,
       );
+    } else {
+      await secrets.grantSecretAccess(projectId, secretName, accounts);
     }
-    await secrets.grantSecretAccess(projectId, secretName, accounts);
 
     // Note: The API proposal suggested that we would check if the env exists. This is stupidly hard because the YAML may not exist yet.
     let path = config.yamlPath(process.cwd());
