@@ -222,7 +222,7 @@ export async function deleteRepository(
  * This service account is deprecated and future users should bring their own account.
  */
 export function getDefaultServiceAccount(projectNumber: string): string {
-  return `service-${projectNumber}@gcp-sa-cloudbuild.iam.gserviceaccount.com`;
+  return `${projectNumber}@cloudbuild.gserviceaccount.com`;
 }
 
 /**
@@ -230,5 +230,5 @@ export function getDefaultServiceAccount(projectNumber: string): string {
  * This is the account that Cloud Build itself uses when performing operations on the user's behalf.
  */
 export function getDefaultServiceAgent(projectNumber: string): string {
-  return `${projectNumber}@cloudbuild.gserviceaccount.com`;
+  return `service-${projectNumber}@gcp-sa-cloudbuild.iam.gserviceaccount.com`;
 }

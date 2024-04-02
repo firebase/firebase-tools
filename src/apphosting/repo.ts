@@ -243,7 +243,7 @@ async function promptRepositoryUri(
 
 async function ensureSecretManagerAdminGrant(projectId: string): Promise<void> {
   const projectNumber = await getProjectNumber({ projectId });
-  const cbsaEmail = gcb.getDefaultServiceAccount(projectNumber);
+  const cbsaEmail = gcb.getDefaultServiceAgent(projectNumber);
 
   const alreadyGranted = await rm.serviceAccountHasRoles(
     projectId,
