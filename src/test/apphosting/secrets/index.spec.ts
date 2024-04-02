@@ -35,16 +35,16 @@ describe("secrets", () => {
         serviceAccount: "sa",
       } as any as apphosting.Backend;
       expect(secrets.serviceAccountsForBackend("number", backend)).to.deep.equal({
-        build: "sa",
-        run: "sa",
+        buildServiceAccount: "sa",
+        runServiceAccount: "sa",
       });
     });
 
     it("has a fallback for legacy SAs", () => {
       const backend = {} as any as apphosting.Backend;
       expect(secrets.serviceAccountsForBackend("number", backend)).to.deep.equal({
-        build: gcb.getDefaultServiceAccount("number"),
-        run: gce.getDefaultServiceAccount("number"),
+        buildServiceAccount: gcb.getDefaultServiceAccount("number"),
+        runServiceAccount: gce.getDefaultServiceAccount("number"),
       });
     });
   });
@@ -188,16 +188,20 @@ describe("secrets", () => {
 
   describe("toMulti", () => {
     it("handles different service accounts", () => {
-      expect(secrets.toMulti({ build: "buildSA", run: "computeSA" })).to.deep.equal({
-        build: ["buildSA"],
-        run: ["computeSA"],
+      expect(
+        secrets.toMulti({ buildServiceAccount: "buildSA", runServiceAccount: "computeSA" }),
+      ).to.deep.equal({
+        buildServiceAccounts: ["buildSA"],
+        runServiceAccounts: ["computeSA"],
       });
     });
 
     it("handles the same service account", () => {
-      expect(secrets.toMulti({ build: "explicitSA", run: "explicitSA" })).to.deep.equal({
-        build: ["explicitSA"],
-        run: [],
+      expect(
+        secrets.toMulti({ buildServiceAccount: "explicitSA", runServiceAccount: "explicitSA" }),
+      ).to.deep.equal({
+        buildServiceAccounts: ["explicitSA"],
+        runServiceAccounts: [],
       });
     });
   });
@@ -224,7 +228,10 @@ describe("secrets", () => {
       gcsm.getIamPolicy.resolves(existingPolicy);
       gcsm.setIamPolicy.resolves();
 
-      await secrets.grantSecretAccess(secret, { build: ["buildSA"], run: ["computeSA"] });
+      await secrets.grantSecretAccess(secret, {
+        buildServiceAccounts: ["buildSA"],
+        runServiceAccounts: ["computeSA"],
+      });
 
       const newBindings: iam.Binding[] = [
         {

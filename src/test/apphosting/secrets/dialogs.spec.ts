@@ -29,8 +29,8 @@ describe("dialogs", () => {
   } as any as apphosting.Backend;
 
   const emptyMulti: secrets.MultiServiceAccounts = {
-    build: [],
-    run: [],
+    buildServiceAccounts: [],
+    runServiceAccounts: [],
   };
 
   describe("toMetadata", () => {
@@ -39,8 +39,8 @@ describe("dialogs", () => {
       const metadata = dialogs.toMetadata("number", [modernA2, modernA]);
 
       expect(metadata).to.deep.equal([
-        { location: "l", id: "modernA", build: "a", run: "a" },
-        { location: "l2", id: "modernA2", build: "a", run: "a" },
+        { location: "l", id: "modernA", buildServiceAccount: "a", runServiceAccount: "a" },
+        { location: "l2", id: "modernA2", buildServiceAccount: "a", runServiceAccount: "a" },
       ]);
     });
 
@@ -53,7 +53,7 @@ describe("dialogs", () => {
           id: "legacy",
           ...secrets.serviceAccountsForBackend("number", legacy),
         },
-        { location: "l", id: "modernA", build: "a", run: "a" },
+        { location: "l", id: "modernA", buildServiceAccount: "a", runServiceAccount: "a" },
       ]);
     });
 
@@ -65,15 +65,19 @@ describe("dialogs", () => {
           id: "legacy",
           ...secrets.serviceAccountsForBackend("number", legacy),
         },
-        { location: "l", id: "modernA", build: "a", run: "a" },
-        { location: "l2", id: "modernA2", build: "a", run: "a" },
+        { location: "l", id: "modernA", buildServiceAccount: "a", runServiceAccount: "a" },
+        { location: "l2", id: "modernA2", buildServiceAccount: "a", runServiceAccount: "a" },
       ]);
     });
   });
 
   it("serviceAccountDisplay", () => {
-    expect(dialogs.serviceAccountDisplay({ build: "build", run: "run" })).to.equal("build, run");
-    expect(dialogs.serviceAccountDisplay({ build: "common", run: "common" })).to.equal("common");
+    expect(
+      dialogs.serviceAccountDisplay({ buildServiceAccount: "build", runServiceAccount: "run" }),
+    ).to.equal("build, run");
+    expect(
+      dialogs.serviceAccountDisplay({ buildServiceAccount: "common", runServiceAccount: "common" }),
+    ).to.equal("common");
   });
 
   describe("tableForBackends", () => {
@@ -91,7 +95,11 @@ describe("dialogs", () => {
       const legacyAccounts = secrets.serviceAccountsForBackend("number", legacy);
       expect(table[0]).to.deep.equal(["location", "backend", "service accounts"]);
       expect(table[1]).to.deep.equal([
-        ["l", "legacy", `${legacyAccounts.build}, ${legacyAccounts.run}`],
+        [
+          "l",
+          "legacy",
+          `${legacyAccounts.buildServiceAccount}, ${legacyAccounts.runServiceAccount}`,
+        ],
         ["l", "modernA", "a"],
       ]);
     });
@@ -100,21 +108,21 @@ describe("dialogs", () => {
   it("selectFromMetadata", () => {
     const metadata: secrets.ServiceAccounts[] = [
       {
-        build: "build",
-        run: "run",
+        buildServiceAccount: "build",
+        runServiceAccount: "run",
       },
       {
-        build: "common",
-        run: "common",
+        buildServiceAccount: "common",
+        runServiceAccount: "common",
       },
       {
-        build: "omittedBuild",
-        run: "omittedRun",
+        buildServiceAccount: "omittedBuild",
+        runServiceAccount: "omittedRun",
       },
     ];
     expect(dialogs.selectFromMetadata(metadata, ["build", "run", "common"])).to.deep.equal({
-      build: ["build", "common"],
-      run: ["run"],
+      buildServiceAccounts: ["build", "common"],
+      runServiceAccounts: ["run"],
     });
   });
 
@@ -178,7 +186,10 @@ describe("dialogs", () => {
 
       await expect(
         dialogs.selectBackendServiceAccounts("number", "id", {}),
-      ).to.eventually.deep.equal({ build: [modernA.serviceAccount], run: [] });
+      ).to.eventually.deep.equal({
+        buildServiceAccounts: [modernA.serviceAccount],
+        runServiceAccounts: [],
+      });
 
       expect(prompt.confirm).to.have.been.calledWith({
         nonInteractive: undefined,
@@ -270,7 +281,10 @@ describe("dialogs", () => {
 
       await expect(
         dialogs.selectBackendServiceAccounts("number", "id", {}),
-      ).to.eventually.deep.equal({ build: [modernA.serviceAccount], run: [] });
+      ).to.eventually.deep.equal({
+        buildServiceAccounts: [modernA.serviceAccount],
+        runServiceAccounts: [],
+      });
 
       expect(prompt.confirm).to.have.been.calledWith({
         nonInteractive: undefined,
@@ -318,13 +332,18 @@ describe("dialogs", () => {
 
       await expect(
         dialogs.selectBackendServiceAccounts("number", "id", {}),
-      ).to.eventually.deep.equal({ build: ["a", "b"], run: [] });
+      ).to.eventually.deep.equal({ buildServiceAccounts: ["a", "b"], runServiceAccounts: [] });
 
       expect(prompt.promptOnce).to.have.been.calledWith({
         type: "checkbox",
         message:
           "Which service accounts would you like to grant access? Press Space to select accounts, then Enter to confirm your choices.",
-        choices: ["a", "b", legacyAccounts.build, legacyAccounts.run].sort(),
+        choices: [
+          "a",
+          "b",
+          legacyAccounts.buildServiceAccount,
+          legacyAccounts.runServiceAccount,
+        ].sort(),
       });
       expect(utils.logLabeledBullet).to.have.been.calledWith(
         "apphosting",
@@ -352,7 +371,12 @@ describe("dialogs", () => {
         type: "checkbox",
         message:
           "Which service accounts would you like to grant access? Press Space to select accounts, then Enter to confirm your choices.",
-        choices: ["a", "b", legacyAccounts.build, legacyAccounts.run].sort(),
+        choices: [
+          "a",
+          "b",
+          legacyAccounts.buildServiceAccount,
+          legacyAccounts.runServiceAccount,
+        ].sort(),
       });
       expect(utils.logLabeledBullet).to.have.been.calledWith(
         "apphosting",

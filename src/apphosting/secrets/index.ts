@@ -11,8 +11,8 @@ import * as prompt from "../../prompt";
 
 /** Interface for holding the service account pair for a given Backend. */
 export interface ServiceAccounts {
-  build: string;
-  run: string;
+  buildServiceAccount: string;
+  runServiceAccount: string;
 }
 
 /**
@@ -21,15 +21,18 @@ export interface ServiceAccounts {
  * and pin to the latest. Run accounts only need version accessor.
  */
 export interface MultiServiceAccounts {
-  build: string[];
-  run: string[];
+  buildServiceAccounts: string[];
+  runServiceAccounts: string[];
 }
 
 /** Utility function to turn a single ServiceAccounts into a MultiServiceAccounts.  */
 export function toMulti(accounts: ServiceAccounts): MultiServiceAccounts {
-  const m: MultiServiceAccounts = { build: [accounts.build], run: [] };
-  if (accounts.build !== accounts.run) {
-    m.run.push(accounts.run);
+  const m: MultiServiceAccounts = {
+    buildServiceAccounts: [accounts.buildServiceAccount],
+    runServiceAccounts: [],
+  };
+  if (accounts.buildServiceAccount !== accounts.runServiceAccount) {
+    m.runServiceAccounts.push(accounts.runServiceAccount);
   }
   return m;
 }
@@ -44,13 +47,13 @@ export function serviceAccountsForBackend(
 ): ServiceAccounts {
   if (backend.serviceAccount) {
     return {
-      build: backend.serviceAccount,
-      run: backend.serviceAccount,
+      buildServiceAccount: backend.serviceAccount,
+      runServiceAccount: backend.serviceAccount,
     };
   }
   return {
-    build: gcb.getDefaultServiceAccount(projectNumber),
-    run: gce.getDefaultServiceAccount(projectNumber),
+    buildServiceAccount: gcb.getDefaultServiceAccount(projectNumber),
+    runServiceAccount: gce.getDefaultServiceAccount(projectNumber),
   };
 }
 
@@ -64,13 +67,15 @@ export async function grantSecretAccess(
   const newBindings: iam.Binding[] = [
     {
       role: "roles/secretmanager.secretAccessor",
-      members: [...accounts.build, ...accounts.run].map((sa) => `serviceAccount:${sa}`),
+      members: [...accounts.buildServiceAccounts, ...accounts.runServiceAccounts].map(
+        (sa) => `serviceAccount:${sa}`,
+      ),
     },
     // Cloud Build needs the viewer role so that it can list secret versions and pin the Build to the
     // latest version.
     {
       role: "roles/secretmanager.viewer",
-      members: accounts.build.map((sa) => `serviceAccount:${sa}`),
+      members: accounts.buildServiceAccounts.map((sa) => `serviceAccount:${sa}`),
     },
   ];
 
