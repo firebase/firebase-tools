@@ -235,15 +235,18 @@ describe("dialogs", () => {
         dialogs.selectBackendServiceAccounts("number", "id", {}),
       ).to.eventually.deep.equal(secrets.toMulti(accounts));
 
+      expect(utils.logLabeledBullet).to.have.been.calledWith(
+        "apphosting",
+        "To use this secret, your backend's service account must have secret accessor permission. " +
+          `All of your backends use service accounts ${dialogs.serviceAccountDisplay(accounts)}. ` +
+          "Granting access to one backend will grant access to all backends.",
+      );
       expect(prompt.confirm).to.have.been.calledWith({
         nonInteractive: undefined,
         default: true,
-        message:
-          "To use this secret, your backend's service account must have secret accessor permission. " +
-          `All of your backends use service accounts ${dialogs.serviceAccountDisplay(accounts)}. ` +
-          "Granting access to one backend will grant access to all backends. Would you like to grant it now?",
+        message: "Would you like to grant it now?",
       });
-      expect(utils.logLabeledBullet).to.not.have.been.called;
+      expect(utils.logLabeledBullet).to.have.been.calledOnce;
     });
 
     it("handles multiple backends with the same (multiple) SAs (opt no)", async () => {
@@ -258,13 +261,16 @@ describe("dialogs", () => {
         dialogs.selectBackendServiceAccounts("number", "id", {}),
       ).to.eventually.deep.equal(emptyMulti);
 
+      expect(utils.logLabeledBullet).to.have.been.calledWith(
+        "apphosting",
+        "To use this secret, your backend's service account must have secret accessor permission. " +
+          `All of your backends use service accounts ${dialogs.serviceAccountDisplay(legacyAccounts)}. ` +
+          "Granting access to one backend will grant access to all backends.",
+      );
       expect(prompt.confirm).to.have.been.calledWith({
         nonInteractive: undefined,
         default: true,
-        message:
-          "To use this secret, your backend's service account must have secret accessor permission. " +
-          `All of your backends use service accounts ${dialogs.serviceAccountDisplay(legacyAccounts)}. ` +
-          "Granting access to one backend will grant access to all backends. Would you like to grant it now?",
+        message: "Would you like to grant it now?",
       });
       expect(utils.logLabeledBullet).to.have.been.calledWith(
         "apphosting",
@@ -286,15 +292,18 @@ describe("dialogs", () => {
         runServiceAccounts: [],
       });
 
+      expect(utils.logLabeledBullet).to.have.been.calledWith(
+        "apphosting",
+        "To use this secret, your backend's service account must have secret accessor permission. " +
+          "All of your backends use service account a. Granting access to one backend will grant access " +
+          "to all backends.",
+      );
       expect(prompt.confirm).to.have.been.calledWith({
         nonInteractive: undefined,
         default: true,
-        message:
-          "To use this secret, your backend's service account must have secret accessor permission. " +
-          "All of your backends use service account a. Granting access to one backend will grant access " +
-          "to all backends. Would you like to grant it now?",
+        message: "Would you like to grant it now?",
       });
-      expect(utils.logLabeledBullet).to.not.have.been.called;
+      expect(utils.logLabeledBullet).to.have.been.calledOnce;
     });
 
     it("handles multiple backends with the same (single) SA (opt no)", async () => {
@@ -308,13 +317,16 @@ describe("dialogs", () => {
         dialogs.selectBackendServiceAccounts("number", "id", {}),
       ).to.eventually.deep.equal(emptyMulti);
 
+      expect(utils.logLabeledBullet).to.have.been.calledWith(
+        "apphosting",
+        "To use this secret, your backend's service account must have secret accessor permission. " +
+          "All of your backends use service account a. Granting access to one backend will grant access " +
+          "to all backends.",
+      );
       expect(prompt.confirm).to.have.been.calledWith({
         nonInteractive: undefined,
         default: true,
-        message:
-          "To use this secret, your backend's service account must have secret accessor permission. " +
-          "All of your backends use service account a. Granting access to one backend will grant access " +
-          "to all backends. Would you like to grant it now?",
+        message: "Would you like to grant it now?",
       });
       expect(utils.logLabeledBullet).to.have.been.calledWith(
         "apphosting",
