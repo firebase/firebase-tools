@@ -98,6 +98,11 @@ export class EmulatorHub extends ExpressBasedEmulator {
     });
 
     app.post(EmulatorHub.PATH_EXPORT, async (req, res) => {
+      if (req.headers.origin) {
+        res.status(403).json({
+          message: `Export cannot be triggered by external callers.`,
+        });
+      }
       const path: string = req.body.path;
       const initiatedBy: string = req.body.initiatedBy || "unknown";
       utils.logLabeledBullet("emulators", `Received export request. Exporting data to ${path}.`);
