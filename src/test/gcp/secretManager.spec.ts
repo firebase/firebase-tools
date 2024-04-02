@@ -40,6 +40,7 @@ describe("secretManager", () => {
       ).to.deep.equal({
         secret: { projectId: "my-project", name: "my-secret", labels: {}, replication: {} },
         versionId: "7",
+        createTime: "",
       });
     });
 

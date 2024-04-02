@@ -1,13 +1,13 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
 
-import * as apphosting from "../../../gcp/apphosting";
-import * as iam from "../../../gcp/iam";
-import * as resourceManager from "../../../gcp/resourceManager";
-import * as poller from "../../../operation-poller";
-import { createBackend, setDefaultTrafficPolicy } from "../../../init/features/apphosting/index";
-import * as deploymentTool from "../../../deploymentTool";
-import { FirebaseError } from "../../../error";
+import * as apphosting from "../../gcp/apphosting";
+import * as iam from "../../gcp/iam";
+import * as resourceManager from "../../gcp/resourceManager";
+import * as poller from "../../operation-poller";
+import { createBackend, setDefaultTrafficPolicy } from "../../apphosting/index";
+import * as deploymentTool from "../../deploymentTool";
+import { FirebaseError } from "../../error";
 
 describe("operationsConverter", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();

@@ -1,9 +1,107 @@
 import { FirebaseError } from "../../error";
+import * as iam from "../../gcp/iam";
 import * as gcsm from "../../gcp/secretManager";
+import * as gcb from "../../gcp/cloudbuild";
+import * as gce from "../../gcp/computeEngine";
+import * as apphosting from "../../gcp/apphosting";
 import { FIREBASE_MANAGED } from "../../gcp/secretManager";
 import { isFunctionsManaged } from "../../gcp/secretManager";
 import * as utils from "../../utils";
 import * as prompt from "../../prompt";
+
+/** Interface for holding the service account pair for a given Backend. */
+export interface ServiceAccounts {
+  buildServiceAccount: string;
+  runServiceAccount: string;
+}
+
+/**
+ * Interface for holding a collection of service accounts we need to grant access to.
+ * Build accounts are special because they also need secret viewer permissions to view versions
+ * and pin to the latest. Run accounts only need version accessor.
+ */
+export interface MultiServiceAccounts {
+  buildServiceAccounts: string[];
+  runServiceAccounts: string[];
+}
+
+/** Utility function to turn a single ServiceAccounts into a MultiServiceAccounts.  */
+export function toMulti(accounts: ServiceAccounts): MultiServiceAccounts {
+  const m: MultiServiceAccounts = {
+    buildServiceAccounts: [accounts.buildServiceAccount],
+    runServiceAccounts: [],
+  };
+  if (accounts.buildServiceAccount !== accounts.runServiceAccount) {
+    m.runServiceAccounts.push(accounts.runServiceAccount);
+  }
+  return m;
+}
+
+/**
+ * Finds the explicit service account used for a backend or, for legacy cases,
+ * the defaults for GCB and compute.
+ */
+export function serviceAccountsForBackend(
+  projectNumber: string,
+  backend: apphosting.Backend,
+): ServiceAccounts {
+  if (backend.serviceAccount) {
+    return {
+      buildServiceAccount: backend.serviceAccount,
+      runServiceAccount: backend.serviceAccount,
+    };
+  }
+  return {
+    buildServiceAccount: gcb.getDefaultServiceAccount(projectNumber),
+    runServiceAccount: gce.getDefaultServiceAccount(projectNumber),
+  };
+}
+
+/**
+ * Grants the corresponding service accounts the necessary access permissions to the provided secret.
+ */
+export async function grantSecretAccess(
+  secret: gcsm.Secret,
+  accounts: MultiServiceAccounts,
+): Promise<void> {
+  const newBindings: iam.Binding[] = [
+    {
+      role: "roles/secretmanager.secretAccessor",
+      members: [...accounts.buildServiceAccounts, ...accounts.runServiceAccounts].map(
+        (sa) => `serviceAccount:${sa}`,
+      ),
+    },
+    // Cloud Build needs the viewer role so that it can list secret versions and pin the Build to the
+    // latest version.
+    {
+      role: "roles/secretmanager.viewer",
+      members: accounts.buildServiceAccounts.map((sa) => `serviceAccount:${sa}`),
+    },
+  ];
+
+  let existingBindings;
+  try {
+    existingBindings = (await gcsm.getIamPolicy(secret)).bindings;
+  } catch (err: any) {
+    throw new FirebaseError(
+      `Failed to get IAM bindings on secret: ${secret.name}. Ensure you have the permissions to do so and try again.`,
+      { original: err },
+    );
+  }
+
+  try {
+    // TODO: Merge with existing bindings with the same role
+    const updatedBindings = existingBindings.concat(newBindings);
+    await gcsm.setIamPolicy(secret, updatedBindings);
+  } catch (err: any) {
+    throw new FirebaseError(
+      `Failed to set IAM bindings ${JSON.stringify(newBindings)} on secret: ${secret.name}. Ensure you have the permissions to do so and try again.`,
+      { original: err },
+    );
+  }
+
+  utils.logSuccess(`Successfully set IAM bindings on secret ${secret.name}.\n`);
+}
 
 /**
  * Ensures a secret exists for use with app hosting, optionally locked to a region.

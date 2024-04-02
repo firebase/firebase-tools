@@ -2,7 +2,7 @@ import { Command } from "../command";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import requireInteractive from "../requireInteractive";
-import { doSetup } from "../init/features/apphosting";
+import { doSetup } from "../apphosting";
 import { ensureApiEnabled } from "../gcp/apphosting";
 
 export const command = new Command("apphosting:backends:create")

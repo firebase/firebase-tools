@@ -1,10 +1,10 @@
 import * as clc from "colorette";
 
 import * as repo from "./repo";
-import * as poller from "../../../operation-poller";
-import * as apphosting from "../../../gcp/apphosting";
+import * as poller from "../operation-poller";
+import * as apphosting from "../gcp/apphosting";
 import * as githubConnections from "./githubConnections";
-import { logBullet, logSuccess, logWarning } from "../../../utils";
+import { logBullet, logSuccess, logWarning } from "../utils";
 import {
   apphostingOrigin,
   artifactRegistryDomain,
@@ -12,24 +12,18 @@ import {
   cloudbuildOrigin,
   developerConnectOrigin,
   secretManagerOrigin,
-} from "../../../api";
-import {
-  Backend,
-  BackendOutputOnlyFields,
-  API_VERSION,
-  Build,
-  Rollout,
-} from "../../../gcp/apphosting";
-import { addServiceAccountToRoles } from "../../../gcp/resourceManager";
-import * as iam from "../../../gcp/iam";
-import { Repository } from "../../../gcp/cloudbuild";
-import { FirebaseError } from "../../../error";
-import { promptOnce } from "../../../prompt";
+} from "../api";
+import { Backend, BackendOutputOnlyFields, API_VERSION, Build, Rollout } from "../gcp/apphosting";
+import { addServiceAccountToRoles } from "../gcp/resourceManager";
+import * as iam from "../gcp/iam";
+import { Repository } from "../gcp/cloudbuild";
+import { FirebaseError } from "../error";
+import { promptOnce } from "../prompt";
 import { DEFAULT_REGION } from "./constants";
-import { ensure } from "../../../ensureApiEnabled";
-import * as deploymentTool from "../../../deploymentTool";
-import { DeepOmit } from "../../../metaprogramming";
-import { GitRepositoryLink } from "../../../gcp/devConnect";
+import { ensure } from "../ensureApiEnabled";
+import * as deploymentTool from "../deploymentTool";
+import { DeepOmit } from "../metaprogramming";
+import { GitRepositoryLink } from "../gcp/devConnect";
 
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
