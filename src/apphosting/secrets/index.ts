@@ -3,18 +3,54 @@ import * as iam from "../../gcp/iam";
 import * as gcsm from "../../gcp/secretManager";
 import * as gcb from "../../gcp/cloudbuild";
 import * as gce from "../../gcp/computeEngine";
+import * as apphosting from "../../gcp/apphosting";
 import { FIREBASE_MANAGED } from "../../gcp/secretManager";
 import { isFunctionsManaged } from "../../gcp/secretManager";
 import * as utils from "../../utils";
 import * as prompt from "../../prompt";
 
-function fetchServiceAccounts(projectNumber: string): {
+/** Interface for holding the service account pair for a given Backend. */
+export interface ServiceAccounts {
   buildServiceAccount: string;
   runServiceAccount: string;
-} {
-  // TODO: For now we will always return the default CBSA and CESA. When the getBackend call supports returning
-  // the attached service account in a given backend/location then return that value instead.
-  // Sample Call: await apphosting.getBackend(projectId, location, backendId); & make this function async
+}
+
+/**
+ * Interface for holding a collection of service accounts we need to grant access to.
+ * Build accounts are special because they also need secret viewer permissions to view versions
+ * and pin to the latest. Run accounts only need version accessor.
+ */
+export interface MultiServiceAccounts {
+  buildServiceAccounts: string[];
+  runServiceAccounts: string[];
+}
+
+/** Utility function to turn a single ServiceAccounts into a MultiServiceAccounts.  */
+export function toMulti(accounts: ServiceAccounts): MultiServiceAccounts {
+  const m: MultiServiceAccounts = {
+    buildServiceAccounts: [accounts.buildServiceAccount],
+    runServiceAccounts: [],
+  };
+  if (accounts.buildServiceAccount !== accounts.runServiceAccount) {
+    m.runServiceAccounts.push(accounts.runServiceAccount);
+  }
+  return m;
+}
+
+/**
+ * Finds the explicit service account used for a backend or, for legacy cases,
+ * the defaults for GCB and compute.
+ */
+export function serviceAccountsForBackend(
+  projectNumber: string,
+  backend: apphosting.Backend,
+): ServiceAccounts {
+  if (backend.serviceAccount) {
+    return {
+      buildServiceAccount: backend.serviceAccount,
+      runServiceAccount: backend.serviceAccount,
+    };
+  }
   return {
     buildServiceAccount: gcb.getDefaultServiceAccount(projectNumber),
     runServiceAccount: gce.getDefaultServiceAccount(projectNumber),
@@ -25,48 +61,21 @@ function fetchServiceAccounts(projectNumber: string): {
  * Grants the corresponding service accounts the necessary access permissions to the provided secret.
  */
 export async function grantSecretAccess(
-  secretName: string,
-  location: string,
-  backendId: string,
-  projectId: string,
-  projectNumber: string,
+  secret: gcsm.Secret,
+  accounts: MultiServiceAccounts,
 ): Promise<void> {
-  const isExist = await gcsm.secretExists(projectId, secretName);
-  if (!isExist) {
-    throw new FirebaseError(`Secret ${secretName} does not exist in project ${projectId}`);
-  }
-
-  let serviceAccounts = { buildServiceAccount: "", runServiceAccount: "" };
-  try {
-    serviceAccounts = fetchServiceAccounts(projectNumber);
-  } catch (err: any) {
-    throw new FirebaseError(
-      `Failed to get backend ${backendId} at location ${location}. Please check the parameters you have provided.`,
-      { original: err },
-    );
-  }
-
-  const secret = {
-    projectId: projectId,
-    name: secretName,
-  };
-
-  // TODO: Document why Cloud Build SA needs viewer permission but Run doesn't.
-  // TODO: future proof for when therte is a single service account (currently will set the same
-  // secretAccessor permission twice)
   const newBindings: iam.Binding[] = [
     {
       role: "roles/secretmanager.secretAccessor",
-      members: [
-        `serviceAccount:${serviceAccounts.buildServiceAccount}`,
-        `serviceAccount:${serviceAccounts.runServiceAccount}`,
-      ],
+      members: [...accounts.buildServiceAccounts, ...accounts.runServiceAccounts].map(
+        (sa) => `serviceAccount:${sa}`,
+      ),
     },
     // Cloud Build needs the viewer role so that it can list secret versions and pin the Build to the
     // latest version.
     {
       role: "roles/secretmanager.viewer",
-      members: [`serviceAccount:${serviceAccounts.buildServiceAccount}`],
+      members: accounts.buildServiceAccounts.map((sa) => `serviceAccount:${sa}`),
     },
   ];
 
