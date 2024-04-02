@@ -400,4 +400,81 @@ describe("dialogs", () => {
       );
     });
   });
+
+  describe("envVarForSecret", () => {
+    let prompt: sinon.SinonStubbedInstance<typeof promptImport>;
+    let utils: sinon.SinonStubbedInstance<typeof utilsImport>;
+
+    beforeEach(() => {
+      prompt = sinon.stub(promptImport);
+      utils = sinon.stub(utilsImport);
+    });
+
+    afterEach(() => {
+      sinon.verifyAndRestore();
+    });
+
+    it("accepts a valid env var", async () => {
+      await expect(dialogs.envVarForSecret("VALID_KEY")).to.eventually.equal("VALID_KEY");
+      expect(prompt.promptOnce).to.not.have.been.called;
+    });
+
+    it("suggests a valid upper case name", async () => {
+      prompt.promptOnce.resolves("SECRET_VALUE");
+
+      await expect(dialogs.envVarForSecret("secret-value")).to.eventually.equal("SECRET_VALUE");
+      expect(prompt.promptOnce).to.have.been.calledWithMatch({
+        message: "What environment variable name would you like to use?",
+        default: "SECRET_VALUE",
+      });
+    });
+
+    it("prevents invalid keys", async () => {
+      prompt.promptOnce.onFirstCall().resolves("secret-value");
+      prompt.promptOnce.onSecondCall().resolves("SECRET_VALUE");
+
+      await expect(dialogs.envVarForSecret("secret-value")).to.eventually.equal("SECRET_VALUE");
+      expect(prompt.promptOnce).to.have.been.calledWithMatch({
+        message: "What environment variable name would you like to use?",
+        default: "SECRET_VALUE",
+      });
+      expect(prompt.promptOnce).to.have.been.calledTwice;
+      expect(utils.logLabeledError).to.have.been.calledWith(
+        "apphosting",
+        "Key secret-value must start with an uppercase ASCII letter or underscore, and then consist of uppercase ASCII letters, digits, and underscores.",
+      );
+    });
+
+    it("prevents reserved keys", async () => {
+      prompt.promptOnce.onFirstCall().resolves("PORT");
+      prompt.promptOnce.onSecondCall().resolves("SECRET_VALUE");
+
+      await expect(dialogs.envVarForSecret("secret-value")).to.eventually.equal("SECRET_VALUE");
+      expect(prompt.promptOnce).to.have.been.calledWithMatch({
+        message: "What environment variable name would you like to use?",
+        default: "SECRET_VALUE",
+      });
+      expect(prompt.promptOnce).to.have.been.calledTwice;
+      expect(utils.logLabeledError).to.have.been.calledWith(
+        "apphosting",
+        "Key PORT is reserved for internal use.",
+      );
+    });
+
+    it("prevents reserved prefixes", async () => {
+      prompt.promptOnce.onFirstCall().resolves("X_GOOGLE_SECRET");
+      prompt.promptOnce.onSecondCall().resolves("SECRET_VALUE");
+
+      await expect(dialogs.envVarForSecret("secret-value")).to.eventually.equal("SECRET_VALUE");
+      expect(prompt.promptOnce).to.have.been.calledWithMatch({
+        message: "What environment variable name would you like to use?",
+        default: "SECRET_VALUE",
+      });
+      expect(prompt.promptOnce).to.have.been.calledTwice;
+      expect(utils.logLabeledError).to.have.been.calledWithMatch(
+        "apphosting",
+        /Key X_GOOGLE_SECRET starts with a reserved prefix/,
+      );
+    });
+  });
 });

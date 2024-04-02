@@ -12,21 +12,14 @@ export interface RunConfig {
   maxInstances?: number;
 }
 
-interface HasSecret {
-  secret: string;
-  value: never;
-}
-interface HasValue {
-  secret: never;
-  value: string;
-}
-
 /** Where an environment variable can be provided. */
 export type Availability = "BUILD" | "RUNTIME";
 
 /** Config for an environment variable. */
-export type Env = (HasSecret | HasValue) & {
+export type Env = {
   variable: string;
+  secret?: string;
+  value?: string;
   availability?: Availability[];
 };
 
