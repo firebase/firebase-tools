@@ -9,34 +9,6 @@ import { isFunctionsManaged } from "../../gcp/secretManager";
 import * as utils from "../../utils";
 import * as prompt from "../../prompt";
 
-/** Interface for holding the service account pair for a given Backend. */
-export interface ServiceAccounts {
-  buildServiceAccount: string;
-  runServiceAccount: string;
-}
-
-/**
- * Interface for holding a collection of service accounts we need to grant access to.
- * Build accounts are special because they also need secret viewer permissions to view versions
- * and pin to the latest. Run accounts only need version accessor.
- */
-export interface MultiServiceAccounts {
-  buildServiceAccounts: string[];
-  runServiceAccounts: string[];
-}
-
-/** Utility function to turn a single ServiceAccounts into a MultiServiceAccounts.  */
-export function toMulti(accounts: ServiceAccounts): MultiServiceAccounts {
-  const m: MultiServiceAccounts = {
-    buildServiceAccounts: [accounts.buildServiceAccount],
-    runServiceAccounts: [],
-  };
-  if (accounts.buildServiceAccount !== accounts.runServiceAccount) {
-    m.runServiceAccounts.push(accounts.runServiceAccount);
-  }
-  return m;
-}
-
 /**
  * Finds the explicit service account used for a backend or, for legacy cases,
  * the defaults for GCB and compute.
@@ -44,17 +16,11 @@ export function toMulti(accounts: ServiceAccounts): MultiServiceAccounts {
 export function serviceAccountsForBackend(
   projectNumber: string,
   backend: apphosting.Backend,
-): ServiceAccounts {
+): string[] {
   if (backend.serviceAccount) {
-    return {
-      buildServiceAccount: backend.serviceAccount,
-      runServiceAccount: backend.serviceAccount,
-    };
+    return [backend.serviceAccount];
   }
-  return {
-    buildServiceAccount: gcb.getDefaultServiceAccount(projectNumber),
-    runServiceAccount: gce.getDefaultServiceAccount(projectNumber),
-  };
+  return [gcb.getDefaultServiceAccount(projectNumber), gce.getDefaultServiceAccount(projectNumber)]
 }
 
 /**
@@ -63,20 +29,19 @@ export function serviceAccountsForBackend(
 export async function grantSecretAccess(
   projectId: string,
   secretName: string,
-  accounts: MultiServiceAccounts,
+  accounts: string[],
 ): Promise<void> {
+  const members = accounts.map(a => `serviceAccount:${a}`);
   const newBindings: iam.Binding[] = [
     {
       role: "roles/secretmanager.secretAccessor",
-      members: [...accounts.buildServiceAccounts, ...accounts.runServiceAccounts].map(
-        (sa) => `serviceAccount:${sa}`,
-      ),
+      members,
     },
     // Cloud Build needs the viewer role so that it can list secret versions and pin the Build to the
     // latest version.
     {
       role: "roles/secretmanager.viewer",
-      members: accounts.buildServiceAccounts.map((sa) => `serviceAccount:${sa}`),
+      members,
     },
   ];
 
