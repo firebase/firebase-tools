@@ -1,8 +1,8 @@
 import { browser } from "@wdio/globals";
 import { FirebaseSidebar } from "../../utils/page_objects/sidebar";
-import { addTearDown, dataConnectTest } from "../../utils/test_hooks";
+import { dataConnectTest } from "../../utils/test_hooks";
 import { QuickPick } from "../../utils/page_objects/quick_picks";
-import * as vscode from "vscode";
+import { e2eSpy, getE2eSpyCalls } from "../mock";
 
 dataConnectTest("Can deploy services", async function () {
   const workbench = await browser.getWorkbench();
@@ -18,17 +18,7 @@ dataConnectTest("Can deploy services", async function () {
 
   expect(servicePicks).toEqual(["us-east"]);
 
-  // TODO extract as reusable mocking utility
-  await browser.executeWorkbench((vs: typeof vscode) => {
-    return vs.commands.executeCommand("fdc-graphql.spy-deploy");
-  });
-  addTearDown(async () => {
-    await browser.executeWorkbench((vs: typeof vscode) => {
-      return vs.commands.executeCommand("fdc-graphql.spy-deploy", {
-        reset: true,
-      });
-    });
-  });
+  e2eSpy("deploy");
 
   await quickPicks.okElement.click();
 
@@ -40,14 +30,12 @@ dataConnectTest("Can deploy services", async function () {
 
   await quickPicks.okElement.click();
 
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+  const args = await getE2eSpyCalls("deploy");
 
-  const args = (await browser.executeWorkbench((vs: typeof vscode) => {
-    return vs.commands.executeCommand("fdc-graphql.spy-deploy");
-  })) as Array<Array<any>>;
   expect(args.length).toBe(1);
+
   expect(args[0].length).toBe(3);
   expect(args[0][0]).toEqual(["dataconnect"]);
   expect(args[0][1].project).toEqual("dart-firebase-admin");
-  expect(args[0][2]).toEqual("us-east");
+  expect(args[0][2]).toEqual({ context: "us-east" });
 });
