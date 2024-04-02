@@ -57,6 +57,7 @@ export interface SecretVersion {
 
   // Output-only fields
   readonly state?: SecretVersionState;
+  readonly createTime?: string;
 }
 
 interface CreateSecretRequest {
@@ -72,6 +73,7 @@ interface AddVersionRequest {
 interface SecretVersionResponse {
   name: string;
   state: SecretVersionState;
+  createTime: string;
 }
 
 interface AccessSecretVersionResponse {
@@ -178,6 +180,7 @@ export async function listSecretVersions(
       secrets.push({
         ...parseSecretVersionResourceName(s.name),
         state: s.state,
+        createTime: s.createTime,
       });
     }
 
@@ -203,6 +206,7 @@ export async function getSecretVersion(
   return {
     ...parseSecretVersionResourceName(getRes.body.name),
     state: getRes.body.state,
+    createTime: getRes.body.createTime,
   };
 }
 
@@ -282,6 +286,7 @@ export function parseSecretVersionResourceName(resourceName: string): SecretVers
       replication: {},
     },
     versionId: match.groups.version,
+    createTime: "",
   };
 }
 
@@ -380,6 +385,7 @@ export async function addVersion(
   return {
     ...parseSecretVersionResourceName(res.body.name),
     state: res.body.state,
+    createTime: "",
   };
 }
 
