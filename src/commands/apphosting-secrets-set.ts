@@ -74,7 +74,7 @@ export const command = new Command("apphosting:secrets:set <secretName>")
 
     const accounts = await dialogs.selectBackendServiceAccounts(projectNumber, projectId, options);
     // If we're not granting permissions, there's no point in adding to YAML either.
-    if (!accounts.build.length && !accounts.run.length) {
+    if (!accounts.buildServiceAccounts.length && !accounts.runServiceAccounts.length) {
       logWarning(
         `To use this secret your backend, you must grant access. You can do so in the future with ${clc.bold("firebase apphosting:secrets:grantAccess")}`,
       );
