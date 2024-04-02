@@ -43,21 +43,14 @@ export const command = new Command("apphosting:secrets:grantaccess <secretName>"
 
     // TODO: consider showing dialog if both --location and --backend are missing
 
-    let secret: secretManager.Secret;
-    try {
-      secret = await secretManager.getSecret(projectId, secretName);
-    } catch (err: any) {
-      if (err.status === 404) {
-        throw new FirebaseError(`Cannot find secret ${secretName}`);
-      }
-      throw new FirebaseError(`Unexpected error loading secret ${secretName}`, {
-        original: err as Error,
-      });
+    const exists = await secretManager.secretExists(projectId, secretName);
+    if (!exists) {
+      throw new FirebaseError(`Cannot find secret ${secretName}`);
     }
 
     const backendId = options.backend as string;
     const backend = await apphosting.getBackend(projectId, location, backendId);
     const accounts = secrets.toMulti(secrets.serviceAccountsForBackend(projectNumber, backend));
 
-    await secrets.grantSecretAccess(secret, accounts);
+    await secrets.grantSecretAccess(projectId, secretName, accounts);
   });

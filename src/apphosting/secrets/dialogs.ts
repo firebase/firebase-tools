@@ -7,6 +7,9 @@ import * as prompt from "../../prompt";
 import * as utils from "../../utils";
 import { logger } from "../../logger";
 
+// TODO: Consider moving some of this into a common utility
+import * as env from "../../functions/env";
+
 interface BackendMetadata {
   location: string;
   id: string;
@@ -194,4 +197,37 @@ export async function selectBackendServiceAccounts(
     utils.logLabeledBullet("apphosting", GRANT_ACCESS_IN_FUTURE);
   }
   return selectFromMetadata(metadata, chosen);
+}
+
+function toUpperSnakeCase(key: string): string {
+  return key
+    .replace(/[.-]/g, "_")
+    .replace(/([a-z])([A-Z])/g, "$1_$2")
+    .toUpperCase();
+}
+
+export async function envVarForSecret(secret: string): Promise<string> {
+  const upper = toUpperSnakeCase(secret);
+  if (upper === secret) {
+    try {
+      env.validateKey(secret);
+      return secret;
+    } catch {
+      // fallthrough
+    }
+  }
+
+  do {
+    const test = await prompt.promptOnce({
+      message: "What environment variable name would you like to use?",
+      default: upper,
+    });
+
+    try {
+      env.validateKey(test);
+      return test;
+    } catch (err) {
+      utils.logLabeledError("apphosting", (err as env.KeyValidationError).message);
+    }
+  } while (true);
 }
