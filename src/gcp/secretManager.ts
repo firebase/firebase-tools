@@ -54,6 +54,7 @@ export interface Replication {
 export interface SecretVersion {
   secret: Secret;
   versionId: string;
+  createTime: string;
 
   // Output-only fields
   readonly state?: SecretVersionState;
@@ -72,6 +73,7 @@ interface AddVersionRequest {
 interface SecretVersionResponse {
   name: string;
   state: SecretVersionState;
+  createTime: string;
 }
 
 interface AccessSecretVersionResponse {
@@ -178,6 +180,7 @@ export async function listSecretVersions(
       secrets.push({
         ...parseSecretVersionResourceName(s.name),
         state: s.state,
+        createTime: s.createTime,
       });
     }
 
@@ -282,6 +285,7 @@ export function parseSecretVersionResourceName(resourceName: string): SecretVers
       replication: {},
     },
     versionId: match.groups.version,
+    createTime: "",
   };
 }
 
