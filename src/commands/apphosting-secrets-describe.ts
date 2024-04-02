@@ -17,7 +17,6 @@ export const command = new Command("apphosting:secrets:describe <secretName>")
   .action(async (secretName: string, options: Options) => {
     const projectId = needProjectId(options);
     const versions = await listSecretVersions(projectId, secretName);
-    console.log(versions[0]);
 
     const table = new Table({
       head: ["Name", "Version", "Status", "Create Time"],
