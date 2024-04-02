@@ -26,6 +26,9 @@ import { logger } from "../logger";
 import { assertExhaustive } from "../functional";
 import { isFunctionsManaged, FIREBASE_MANAGED } from "../gcp/secretManager";
 import { labels } from "../gcp/secretManager";
+import { needProjectId } from "../projectUtils";
+
+const Table = require("cli-table");
 
 // For mysterious reasons, importing the poller option in fabricator.ts leads to some
 // value of the poller option to be undefined at runtime. I can't figure out what's going on,
@@ -370,4 +373,22 @@ export async function updateEndpointSecret(
   } else {
     assertExhaustive(endpoint.platform);
   }
+}
+
+/**
+ * Describe the given secret.
+ */
+export async function describeSecret(key: string, options: Options): Promise<any> {
+  const projectId = needProjectId(options);
+  const versions = await listSecretVersions(projectId, key);
+
+  const table = new Table({
+    head: ["Version", "State"],
+    style: { head: ["yellow"] },
+  });
+  for (const version of versions) {
+    table.push([version.versionId, version.state]);
+  }
+  logger.info(table.toString());
+  return { secrets: versions };
 }

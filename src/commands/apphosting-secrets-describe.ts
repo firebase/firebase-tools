@@ -26,4 +26,5 @@ export const command = new Command("apphosting:secrets:describe <secretName>")
       table.push([secretName, version.versionId, version.state, version.createTime]);
     }
     logger.info(table.toString());
+    return { secrets: versions };
   });
