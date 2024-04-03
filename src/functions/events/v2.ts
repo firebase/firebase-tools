@@ -30,6 +30,9 @@ export const FIRESTORE_EVENTS = [
   "google.cloud.firestore.document.v1.updated.withAuthContext",
   "google.cloud.firestore.document.v1.deleted.withAuthContext",
 ] as const;
+export const FIRESTORE_EVENT_REGEX = /^google\.cloud\.firestore\.document\.v1\.[^\.]*$/;
+export const FIRESTORE_EVENT_WITH_AUTH_CONTEXT_REGEX =
+  /^google\.cloud\.firestore\.document\.v1\..*\.withAuthContext$/;
 
 export type Event =
   | typeof PUBSUB_PUBLISH_EVENT

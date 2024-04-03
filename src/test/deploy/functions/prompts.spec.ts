@@ -416,3 +416,116 @@ describe("promptForMinInstances", () => {
     expect(logStub.firstCall.args[1]).to.match(/Cannot calculate the minimum monthly bill/);
   });
 });
+
+describe("promptForUnsafeMigration", () => {
+  let promptStub: sinon.SinonStub;
+
+  beforeEach(() => {
+    promptStub = sinon.stub(prompt, "promptOnce");
+  });
+
+  afterEach(() => {
+    promptStub.restore();
+  });
+
+  const firestoreEventTrigger: backend.EventTrigger = {
+    eventType: "google.cloud.firestore.document.v1.written",
+    eventFilters: { namespace: "(default)", document: "messages/{id}" },
+    retry: false,
+  };
+  const v2Endpoint0: backend.Endpoint = {
+    platform: "gcfv2",
+    id: "0",
+    region: "us-central1",
+    project: "a",
+    entryPoint: "function",
+    labels: {},
+    environmentVariables: {},
+    runtime: "nodejs18",
+    eventTrigger: firestoreEventTrigger,
+  };
+  const v2Endpoint1: backend.Endpoint = {
+    platform: "gcfv2",
+    id: "1",
+    region: "us-central1",
+    project: "a",
+    entryPoint: "function",
+    labels: {},
+    environmentVariables: {},
+    runtime: "nodejs18",
+    eventTrigger: firestoreEventTrigger,
+  };
+
+  it.only("should prompt if there are potentially unsafe function updates", async () => {
+    promptStub.resolves(false);
+    const epUpdates = [
+      {
+        endpoint: v2Endpoint0,
+      },
+      {
+        endpoint: v2Endpoint1,
+        unsafe: true,
+      },
+    ];
+
+    await functionPrompts.promptForUnsafeMigration(epUpdates, SAMPLE_OPTIONS);
+    expect(promptStub).to.have.been.calledOnce;
+  });
+
+  it.only("should only keep function updates that have been confirmed by user", async () => {
+    promptStub.onFirstCall().resolves(true);
+    promptStub.onSecondCall().resolves(false);
+
+    const epUpdates = [
+      {
+        endpoint: v2Endpoint0,
+        unsafe: true,
+      },
+      {
+        endpoint: v2Endpoint1,
+        unsafe: true,
+      },
+    ];
+
+    await expect(
+      functionPrompts.promptForUnsafeMigration(epUpdates, SAMPLE_OPTIONS)
+    ).to.eventually.deep.equal([{ endpoint: v2Endpoint0, unsafe: true }]);
+  });
+
+  it.only("should force unsafe function updates when flag is set", async () => {
+    const epUpdates = [
+      {
+        endpoint: v2Endpoint0,
+        unsafe: true,
+      },
+      {
+        endpoint: v2Endpoint1,
+        unsafe: true,
+      },
+    ];
+    const options = { ...SAMPLE_OPTIONS, force: true };
+
+    await expect(functionPrompts.promptForUnsafeMigration(epUpdates, options)).to.eventually.equal(
+      epUpdates
+    );
+    expect(promptStub).to.have.not.been.called;
+  });
+
+  it.only("should not proceed with unsafe function updates in non-interactive mode", async () => {
+    const epUpdates = [
+      {
+        endpoint: v2Endpoint0,
+        unsafe: true,
+      },
+      {
+        endpoint: v2Endpoint1,
+        unsafe: false,
+      },
+    ];
+    const options = { ...SAMPLE_OPTIONS, nonInteractive: true };
+    await expect(
+      functionPrompts.promptForUnsafeMigration(epUpdates, options)
+    ).to.eventually.deep.equal([{ endpoint: v2Endpoint1, unsafe: false }]);
+    expect(promptStub).to.have.not.been.called;
+  });
+});

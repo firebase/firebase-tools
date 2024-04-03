@@ -20,8 +20,6 @@ import * as versioning from "./versioning";
 import * as parseTriggers from "./parseTriggers";
 import { fileExistsSync } from "../../../../fsutils";
 
-import * as util from "util";
-
 const MIN_FUNCTIONS_SDK_VERSION = "3.20.0";
 
 /**
@@ -273,9 +271,6 @@ export class Delegate {
       } finally {
         await kill();
       }
-    }
-    for (const ep of Object.values(discovered.endpoints)) {
-      console.log("DISCOVERED:", util.inspect((ep as build.EventTriggered).eventTrigger));
     }
     return discovered;
   }

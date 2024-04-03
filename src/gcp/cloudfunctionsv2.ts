@@ -18,8 +18,6 @@ import {
 } from "../functions/constants";
 import { RequireKeys } from "../metaprogramming";
 
-import * as util from "util";
-
 export const API_VERSION = "v2";
 
 // Defined by Cloud Run: https://cloud.google.com/run/docs/configuring/max-instances#setting
@@ -320,8 +318,6 @@ export async function generateUploadUrl(
  * Creates a new Cloud Function.
  */
 export async function createFunction(cloudFunction: InputCloudFunction): Promise<Operation> {
-  console.log(util.inspect(cloudFunction.eventTrigger));
-
   // the API is a POST to the collection that owns the function name.
   const components = cloudFunction.name.split("/");
   const functionId = components.splice(-1, 1)[0];

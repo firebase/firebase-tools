@@ -415,6 +415,28 @@ describe("planner", () => {
     });
   });
 
+  describe("checkForUnsafeUpdate", () => {
+    it.only("returns true when upgrading from 2nd gen firestore to firestore auth context triggers", () => {
+      const have: backend.Endpoint = {
+        ...func("id", "region"),
+        platform: "gcfv2",
+        eventTrigger: {
+          eventType: "google.cloud.firestore.document.v1.written",
+          retry: false,
+        },
+      };
+      const want: backend.Endpoint = {
+        ...func("id", "region"),
+        platform: "gcfv2",
+        eventTrigger: {
+          eventType: "google.cloud.firestore.document.v1.written.withAuthContext",
+          retry: false,
+        },
+      };
+      expect(planner.checkForUnsafeUpdate(want, have)).to.be.true;
+    });
+  });
+
   describe("checkForIllegalUpdate", () => {
     // TODO: delete this test once GCF supports upgrading from v1 to v2
     it("prohibits upgrades from v1 to v2", () => {

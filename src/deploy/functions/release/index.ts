@@ -20,7 +20,7 @@ import { getProjectNumber } from "../../../getProjectNumber";
 export async function release(
   context: args.Context,
   options: Options,
-  payload: args.Payload,
+  payload: args.Payload
 ): Promise<void> {
   if (!context.config) {
     return;
@@ -48,15 +48,26 @@ export async function release(
   const fnsToDelete = Object.values(plan)
     .map((regionalChanges) => regionalChanges.endpointsToDelete)
     .reduce(reduceFlat, []);
-  const shouldDelete = await prompts.promptForFunctionDeletion(
-    fnsToDelete,
-    options.force,
-    options.nonInteractive,
-  );
+  const shouldDelete = await prompts.promptForFunctionDeletion(fnsToDelete, options);
   if (!shouldDelete) {
     for (const change of Object.values(plan)) {
       change.endpointsToDelete = [];
     }
+  }
+
+  const fnsToUpdate = Object.values(plan)
+    .map((regionalChanges) => regionalChanges.endpointsToUpdate)
+    .reduce(reduceFlat, []);
+  const fnsToUpdateSafe = await prompts.promptForUnsafeMigration(fnsToUpdate, options);
+  // Replace endpointsToUpdate in deployment plan with endpoints that are either safe
+  // to update or customers have confirmed they want to update unsafely
+  for (const key of Object.keys(plan)) {
+    plan[key].endpointsToUpdate = [];
+  }
+  for (const eu of fnsToUpdateSafe) {
+    const e = eu.endpoint;
+    const key = `${e.codebase}-${e.region}-${e.availableMemoryMb || "default"}`;
+    plan[key].endpointsToUpdate.push(eu);
   }
 
   const throttlerOptions = {
@@ -117,7 +128,7 @@ export function printTriggerUrls(results: backend.Backend): void {
   for (const httpsFunc of httpsFunctions) {
     if (!httpsFunc.uri) {
       logger.debug(
-        "Not printing URL for HTTPS function. Typically this means it didn't match a filter or we failed deployment",
+        "Not printing URL for HTTPS function. Typically this means it didn't match a filter or we failed deployment"
       );
       continue;
     }
