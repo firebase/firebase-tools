@@ -91,7 +91,7 @@ export async function release(
   const deletedEndpoints = Object.values(plan)
     .map((r) => r.endpointsToDelete)
     .reduce(reduceFlat, []);
-  if (experiments.isEnabled("deletegcfartifactsondeploy")) {
+  if (experiments.isEnabled("automaticallydeletegcfartifacts")) {
     await containerCleaner.cleanupBuildImages(haveEndpoints, deletedEndpoints);
   }
 

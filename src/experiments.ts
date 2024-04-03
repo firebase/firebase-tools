@@ -58,7 +58,7 @@ export const ALL_EXPERIMENTS = experiments({
   },
 
   // permanent experiment
-  deletegcfartifactsondeploy: {
+  automaticallydeletegcfartifacts: {
     shortDescription: "Control whether functions cleans up images after deploys",
     fullDescription:
       "To control costs, Firebase defaults to automatically deleting containers " +
