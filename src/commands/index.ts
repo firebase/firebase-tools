@@ -175,6 +175,7 @@ export function load(client: any): any {
     client.apphosting.secrets.set = loadCommand("apphosting-secrets-set");
     client.apphosting.secrets.grantaccess = loadCommand("apphosting-secrets-grantaccess");
     client.apphosting.secrets.describe = loadCommand("apphosting-secrets-describe");
+    client.apphosting.secrets.access = loadCommand("apphosting-secrets-access");
     client.apphosting.rollouts = {};
     client.apphosting.rollouts.create = loadCommand("apphosting-rollouts-create");
     client.apphosting.rollouts.list = loadCommand("apphosting-rollouts-list");
