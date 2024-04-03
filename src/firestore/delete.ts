@@ -113,7 +113,7 @@ export class FirestoreDelete {
     this.apiClient = new apiv2.Client({
       auth: true,
       apiVersion: "v1",
-      urlPrefix: firestoreOriginOrEmulator,
+      urlPrefix: firestoreOriginOrEmulator(),
     });
   }
 

@@ -7,6 +7,7 @@ import * as extensionsHelper from "../extensionsHelper";
 import * as planner from "../../deploy/extensions/planner";
 import { needProjectId } from "../../projectUtils";
 import { SecretEnvVar } from "../../deploy/functions/backend";
+import { Runtime } from "../../deploy/functions/runtimes/supported";
 
 /**
  * TODO: Better name? Also, should this be in extensionsEmulator instead?
@@ -15,7 +16,7 @@ export async function getExtensionFunctionInfo(
   instance: planner.DeploymentInstanceSpec,
   paramValues: Record<string, string>,
 ): Promise<{
-  runtime: string;
+  runtime: Runtime;
   extensionTriggers: ParsedTriggerDefinition[];
   nonSecretEnv: Record<string, string>;
   secretEnvVariables: SecretEnvVar[];

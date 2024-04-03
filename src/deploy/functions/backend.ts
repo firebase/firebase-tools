@@ -1,7 +1,7 @@
 import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfV2 from "../../gcp/cloudfunctionsv2";
 import * as utils from "../../utils";
-import * as runtimes from "./runtimes";
+import { Runtime } from "./runtimes/supported";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
 import { flattenArray } from "../../functional";
@@ -350,7 +350,7 @@ export type Endpoint = TargetIds &
   Triggered & {
     entryPoint: string;
     platform: FunctionsPlatform;
-    runtime: runtimes.Runtime | runtimes.DeprecatedRuntime;
+    runtime: Runtime;
 
     // Output only
     // "Codebase" is not part of the container contract. Instead, it's value is provided by firebase.json or derived

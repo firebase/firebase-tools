@@ -6,6 +6,7 @@ import { FirebaseError } from "../../error";
 import { Options } from "../../options";
 import { flattenArray } from "../../functional";
 import * as iam from "../../gcp/iam";
+import * as gce from "../../gcp/computeEngine";
 import * as args from "./args";
 import * as backend from "./backend";
 import { trackGA4 } from "../../track";
@@ -123,11 +124,6 @@ function getPubsubServiceAgent(projectNumber: string): string {
   return `service-${projectNumber}@gcp-sa-pubsub.iam.gserviceaccount.com`;
 }
 
-/** obtain the default compute service agent */
-export function getDefaultComputeServiceAgent(projectNumber: string): string {
-  return `${projectNumber}-compute@developer.gserviceaccount.com`;
-}
-
 /** Callback reducer function */
 function reduceEventsToServices(services: Array<Service>, endpoint: backend.Endpoint) {
   const service = serviceForEndpoint(endpoint);
@@ -158,9 +154,7 @@ export function obtainPubSubServiceAgentBindings(projectNumber: string): iam.Bin
  * @param existingPolicy the project level IAM policy
  */
 export function obtainDefaultComputeServiceAgentBindings(projectNumber: string): iam.Binding[] {
-  const defaultComputeServiceAgent = `serviceAccount:${getDefaultComputeServiceAgent(
-    projectNumber,
-  )}`;
+  const defaultComputeServiceAgent = `serviceAccount:${gce.getDefaultServiceAccount(projectNumber)}`;
   const runInvokerBinding: iam.Binding = {
     role: RUN_INVOKER_ROLE,
     members: [defaultComputeServiceAgent],

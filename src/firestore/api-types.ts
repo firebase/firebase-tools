@@ -24,6 +24,11 @@ export enum ArrayConfig {
   CONTAINS = "CONTAINS",
 }
 
+export interface VectorConfig {
+  dimension: number;
+  flat?: {};
+}
+
 export enum State {
   CREATING = "CREATING",
   READY = "READY",
@@ -53,6 +58,7 @@ export interface IndexField {
   fieldPath: string;
   order?: Order;
   arrayConfig?: ArrayConfig;
+  vectorConfig?: VectorConfig;
 }
 
 /**

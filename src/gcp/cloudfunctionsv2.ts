@@ -5,7 +5,7 @@ import { logger } from "../logger";
 import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1";
 import { PUBSUB_PUBLISH_EVENT } from "../functions/events/v2";
 import * as backend from "../deploy/functions/backend";
-import * as runtimes from "../deploy/functions/runtimes";
+import * as supported from "../deploy/functions/runtimes/supported";
 import * as proto from "./proto";
 import * as utils from "../utils";
 import * as projectConfig from "../functions/projectConfig";
@@ -24,7 +24,7 @@ export const API_VERSION = "v2";
 const DEFAULT_MAX_INSTANCE_COUNT = 100;
 
 const client = new Client({
-  urlPrefix: functionsV2Origin,
+  urlPrefix: functionsV2Origin(),
   auth: true,
   apiVersion: API_VERSION,
 });
@@ -44,7 +44,7 @@ export type RetryPolicy =
 
 /** Settings for building a container out of the customer source. */
 export interface BuildConfig {
-  runtime: runtimes.Runtime;
+  runtime: supported.Runtime;
   entryPoint: string;
   source: Source;
   sourceToken?: string;
@@ -478,7 +478,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
     );
   }
 
-  if (!runtimes.isValidRuntime(endpoint.runtime)) {
+  if (!supported.isRuntime(endpoint.runtime)) {
     throw new FirebaseError(
       "Failed internal assertion. Trying to deploy a new function with a deprecated runtime." +
         " This should never happen",
@@ -550,6 +550,9 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
       eventType: endpoint.eventTrigger.eventType,
       retryPolicy: "RETRY_POLICY_UNSPECIFIED",
     };
+    if (endpoint.serviceAccount) {
+      gcfFunction.eventTrigger.serviceAccountEmail = endpoint.serviceAccount;
+    }
     if (gcfFunction.eventTrigger.eventType === PUBSUB_PUBLISH_EVENT) {
       if (!endpoint.eventTrigger.eventFilters?.topic) {
         throw new FirebaseError(
@@ -588,7 +591,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
 
     endpoint.eventTrigger.retry
       ? (gcfFunction.eventTrigger.retryPolicy = "RETRY_POLICY_RETRY")
-      : (gcfFunction.eventTrigger!.retryPolicy = "RETRY_POLICY_DO_NOT_RETRY");
+      : (gcfFunction.eventTrigger.retryPolicy = "RETRY_POLICY_DO_NOT_RETRY");
 
     // By default, Functions Framework in GCFv2 opts to downcast incoming cloudevent messages to legacy formats.
     // Since Firebase Functions SDK expects messages in cloudevent format, we set FUNCTION_SIGNATURE_TYPE to tell
@@ -696,7 +699,7 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
     trigger = { httpsTrigger: {} };
   }
 
-  if (!runtimes.isValidRuntime(gcfFunction.buildConfig.runtime)) {
+  if (!supported.isRuntime(gcfFunction.buildConfig.runtime)) {
     logger.debug("GCFv2 function has a deprecated runtime:", JSON.stringify(gcfFunction, null, 2));
   }
 

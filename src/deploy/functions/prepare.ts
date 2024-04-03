@@ -7,6 +7,7 @@ import * as ensureApiEnabled from "../../ensureApiEnabled";
 import * as functionsConfig from "../../functionsConfig";
 import * as functionsEnv from "../../functions/env";
 import * as runtimes from "./runtimes";
+import * as supported from "./runtimes/supported";
 import * as validate from "./validate";
 import * as ensure from "./ensure";
 import {
@@ -71,10 +72,10 @@ export async function prepare(
 
   // ===Phase 0. Check that minimum APIs required for function deploys are enabled.
   const checkAPIsEnabled = await Promise.all([
-    ensureApiEnabled.ensure(projectId, functionsOrigin, "functions"),
-    ensureApiEnabled.check(projectId, runtimeconfigOrigin, "runtimeconfig", /* silent=*/ true),
+    ensureApiEnabled.ensure(projectId, functionsOrigin(), "functions"),
+    ensureApiEnabled.check(projectId, runtimeconfigOrigin(), "runtimeconfig", /* silent=*/ true),
     ensure.cloudBuildEnabled(projectId),
-    ensureApiEnabled.ensure(projectId, artifactRegistryDomain, "artifactregistry"),
+    ensureApiEnabled.ensure(projectId, artifactRegistryDomain(), "artifactregistry"),
   ]);
 
   // Get the Firebase Config, and set it on each function in the deployment.
@@ -238,7 +239,7 @@ export async function prepare(
     // Note: Some of these are premium APIs that require billing to be enabled.
     // We'd eventually have to add special error handling for billing APIs, but
     // enableCloudBuild is called above and has this special casing already.
-    const V2_APIS = [cloudRunApiOrigin, eventarcOrigin, pubsubOrigin, storageOrigin];
+    const V2_APIS = [cloudRunApiOrigin(), eventarcOrigin(), pubsubOrigin(), storageOrigin()];
     const enablements = V2_APIS.map((api) => {
       return ensureApiEnabled.ensure(context.projectId, api, "functions");
     });
@@ -290,6 +291,9 @@ export function inferDetailsFromExisting(
     if (!haveE) {
       continue;
     }
+
+    // Copy the service id over to the new endpoint.
+    wantE.runServiceId = haveE.runServiceId;
 
     // By default, preserve existing environment variables.
     // Only overwrite environment variables when there are user specified environment variables.
@@ -412,7 +416,6 @@ export function resolveCpuAndConcurrency(want: backend.Backend): void {
 
 /**
  * Exported for use by an internal command (internaltesting:functions:discover) only.
- *
  * @internal
  */
 export async function loadCodebases(
@@ -439,12 +442,22 @@ export async function loadCodebases(
       projectId,
       sourceDir,
       projectDir: options.config.projectDir,
-      runtime: codebaseConfig.runtime || "",
     };
+    const firebaseJsonRuntime = codebaseConfig.runtime;
+    if (firebaseJsonRuntime && !supported.isRuntime(firebaseJsonRuntime as string)) {
+      throw new FirebaseError(
+        `Functions codebase ${codebase} has invalid runtime ` +
+          `${firebaseJsonRuntime} specified in firebase.json. Valid values are: ` +
+          Object.keys(supported.RUNTIMES)
+            .map((s) => `- ${s}`)
+            .join("\n"),
+      );
+    }
     const runtimeDelegate = await runtimes.getRuntimeDelegate(delegateContext);
-    logger.debug(`Validating ${runtimeDelegate.name} source`);
+    logger.debug(`Validating ${runtimeDelegate.language} source`);
+    supported.guardVersionSupport(runtimeDelegate.runtime);
     await runtimeDelegate.validate();
-    logger.debug(`Building ${runtimeDelegate.name} source`);
+    logger.debug(`Building ${runtimeDelegate.language} source`);
     await runtimeDelegate.build();
 
     const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);

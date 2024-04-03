@@ -10,7 +10,7 @@ import { DeepOmit, RecursiveKeyOf, assertImplements } from "../metaprogramming";
 export const API_VERSION = "v1alpha";
 
 export const client = new Client({
-  urlPrefix: apphostingOrigin,
+  urlPrefix: apphostingOrigin(),
   auth: true,
   apiVersion: API_VERSION,
 });
@@ -40,7 +40,7 @@ export interface Backend {
   createTime: string;
   updateTime: string;
   uri: string;
-  computeServiceAccount?: string;
+  serviceAccount?: string;
 }
 
 export type BackendOutputOnlyFields = "name" | "createTime" | "updateTime" | "uri";
@@ -259,6 +259,8 @@ export interface Operation {
 
 export interface ListBackendsResponse {
   backends: Backend[];
+  nextPageToken?: string;
+  unreachable: string[];
 }
 
 /**
@@ -306,9 +308,22 @@ export async function listBackends(
   location: string,
 ): Promise<ListBackendsResponse> {
   const name = `projects/${projectId}/locations/${location}/backends`;
-  const res = await client.get<ListBackendsResponse>(name);
+  let pageToken: string | undefined;
+  const res: ListBackendsResponse = {
+    backends: [],
+    unreachable: [],
+  };
 
-  return res.body;
+  do {
+    const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
+    const int = await client.get<ListBackendsResponse>(name, { queryParams });
+    res.backends.push(...(int.body.backends || []));
+    res.unreachable?.push(...(int.body.unreachable || []));
+    pageToken = int.body.nextPageToken;
+  } while (pageToken);
+
+  res.unreachable = [...new Set(res.unreachable)];
+  return res;
 }
 
 /**
@@ -502,7 +517,7 @@ export async function listLocations(projectId: string): Promise<Location[]> {
  */
 export async function ensureApiEnabled(options: any): Promise<void> {
   const projectId = needProjectId(options);
-  return await ensure(projectId, apphostingOrigin, "app hosting", true);
+  return await ensure(projectId, apphostingOrigin(), "app hosting", true);
 }
 
 /**
@@ -526,30 +541,41 @@ export async function getNextRolloutId(
   }
 
   // Note: must use exports here so that listRollouts can be stubbed in tests.
-  const builds = await (exports as { listRollouts: typeof listRollouts }).listRollouts(
+  const rolloutsPromise = (exports as { listRollouts: typeof listRollouts }).listRollouts(
     projectId,
     location,
     backendId,
   );
-  if (builds.unreachable?.includes(location)) {
+  const buildsPromise = (exports as { listBuilds: typeof listBuilds }).listBuilds(
+    projectId,
+    location,
+    backendId,
+  );
+  const [rollouts, builds] = await Promise.all([rolloutsPromise, buildsPromise]);
+
+  if (builds.unreachable?.includes(location) || rollouts.unreachable?.includes(location)) {
     throw new FirebaseError(
       `Firebase App Hosting is currently unreachable in location ${location}`,
     );
   }
 
-  let highest = 0;
   const test = new RegExp(
-    `projects/${projectId}/locations/${location}/backends/${backendId}/rollouts/build-${year}-${month}-${day}-(\\d+)`,
+    `projects/${projectId}/locations/${location}/backends/${backendId}/(rollouts|builds)/build-${year}-${month}-${day}-(\\d+)`,
   );
-  for (const rollout of builds.rollouts) {
-    const match = rollout.name.match(test);
-    if (!match) {
-      continue;
+  const highestId = (input: Array<{ name: string }>): number => {
+    let highest = 0;
+    for (const i of input) {
+      const match = i.name.match(test);
+      if (!match) {
+        continue;
+      }
+      const n = Number(match[2]);
+      if (n > highest) {
+        highest = n;
+      }
     }
-    const n = Number(match[1]);
-    if (n > highest) {
-      highest = n;
-    }
-  }
+    return highest;
+  };
+  const highest = Math.max(highestId(builds.builds), highestId(rollouts.rollouts));
   return `build-${year}-${month}-${day}-${String(highest + 1).padStart(3, "0")}`;
 }

@@ -8,7 +8,7 @@ import * as backend from "../../backend";
 import * as build from "../../build";
 import * as api from "../../../../api";
 import * as proto from "../../../../gcp/proto";
-import * as runtimes from "../../runtimes";
+import { Runtime } from "../../runtimes/supported";
 import * as events from "../../../../functions/events";
 import { nullsafeVisitor } from "../../../../functional";
 
@@ -146,7 +146,7 @@ export function useStrategy(): Promise<boolean> {
 export async function discoverBuild(
   projectId: string,
   sourceDir: string,
-  runtime: runtimes.Runtime,
+  runtime: Runtime,
   configValues: backend.RuntimeConfigValues,
   envs: backend.EnvironmentVariables,
 ): Promise<build.Build> {
@@ -168,7 +168,7 @@ export async function discoverBuild(
 export async function discoverBackend(
   projectId: string,
   sourceDir: string,
-  runtime: runtimes.Runtime,
+  runtime: Runtime,
   configValues: backend.RuntimeConfigValues,
   envs: backend.EnvironmentVariables,
 ): Promise<backend.Backend> {
@@ -207,13 +207,13 @@ export function mergeRequiredAPIs(backend: backend.Backend) {
  */
 export function addResourcesToBuild(
   projectId: string,
-  runtime: runtimes.Runtime,
+  runtime: Runtime,
   annotation: TriggerAnnotation,
   want: build.Build,
 ): void {
   Object.freeze(annotation);
   const toSeconds = nullsafeVisitor(proto.secondsFromDuration);
-  const regions = annotation.regions || [api.functionsDefaultRegion];
+  const regions = annotation.regions || [api.functionsDefaultRegion()];
   let triggered: build.Triggered;
 
   const triggerCount =
@@ -406,13 +406,13 @@ export function addResourcesToBuild(
  */
 export function addResourcesToBackend(
   projectId: string,
-  runtime: runtimes.Runtime,
+  runtime: Runtime,
   annotation: TriggerAnnotation,
   want: backend.Backend,
 ): void {
   Object.freeze(annotation);
   // Every trigger annotation is at least a function
-  for (const region of annotation.regions || [api.functionsDefaultRegion]) {
+  for (const region of annotation.regions || [api.functionsDefaultRegion()]) {
     let triggered: backend.Triggered;
 
     // +!! is 1 for truthy values and 0 for falsy values

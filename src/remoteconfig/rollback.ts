@@ -3,7 +3,7 @@ import { Client } from "../apiv2";
 import { RemoteConfigTemplate } from "./interfaces";
 
 const apiClient = new Client({
-  urlPrefix: remoteConfigApiOrigin,
+  urlPrefix: remoteConfigApiOrigin(),
   apiVersion: "v1",
 });
 

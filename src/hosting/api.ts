@@ -219,17 +219,6 @@ interface CloneVersionRequest {
   finalize?: boolean;
 }
 
-interface LongRunningOperation<T> {
-  // The identifier of the Operation.
-  readonly name: string;
-
-  // Set to `true` if the Operation is done.
-  readonly done: boolean;
-
-  // Additional metadata about the Operation.
-  readonly metadata: T | undefined;
-}
-
 // The possible types of a site.
 export enum SiteType {
   // Unknown state, likely the result of an error on the backend.
@@ -269,7 +258,7 @@ export function normalizeName(s: string): string {
 }
 
 const apiClient = new Client({
-  urlPrefix: hostingApiOrigin,
+  urlPrefix: hostingApiOrigin(),
   apiVersion: "v1beta1",
   auth: true,
 });
@@ -463,16 +452,16 @@ export async function cloneVersion(
   versionName: string,
   finalize = false,
 ): Promise<Version> {
-  const res = await apiClient.post<CloneVersionRequest, LongRunningOperation<Version>>(
-    `/projects/-/sites/${site}/versions:clone`,
-    {
-      sourceVersion: versionName,
-      finalize,
-    },
-  );
+  const res = await apiClient.post<
+    CloneVersionRequest,
+    operationPoller.LongRunningOperation<Version>
+  >(`/projects/-/sites/${site}/versions:clone`, {
+    sourceVersion: versionName,
+    finalize,
+  });
   const { name: operationName } = res.body;
   const pollRes = await operationPoller.pollOperation<Version>({
-    apiOrigin: hostingApiOrigin,
+    apiOrigin: hostingApiOrigin(),
     apiVersion: "v1beta1",
     operationResourceName: operationName,
     masterTimeout: 600000,

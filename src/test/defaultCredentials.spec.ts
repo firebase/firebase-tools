@@ -60,8 +60,8 @@ describe("defaultCredentials", () => {
 
     const fileContents = JSON.parse(fs.readFileSync(credPath!).toString());
     expect(fileContents).to.eql({
-      client_id: api.clientId,
-      client_secret: api.clientSecret,
+      client_id: api.clientId(),
+      client_secret: api.clientSecret(),
       refresh_token: FAKE_TOKEN.refresh_token,
       type: "authorized_user",
     });

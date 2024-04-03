@@ -622,7 +622,12 @@
                                 "nodejs14",
                                 "nodejs16",
                                 "nodejs18",
-                                "nodejs20"
+                                "nodejs20",
+                                "nodejs6",
+                                "nodejs8",
+                                "python310",
+                                "python311",
+                                "python312"
                             ],
                             "type": "string"
                         },
@@ -678,7 +683,12 @@
                                     "nodejs14",
                                     "nodejs16",
                                     "nodejs18",
-                                    "nodejs20"
+                                    "nodejs20",
+                                    "nodejs6",
+                                    "nodejs8",
+                                    "python310",
+                                    "python311",
+                                    "python312"
                                 ],
                                 "type": "string"
                             },

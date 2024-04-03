@@ -7,7 +7,7 @@ import * as secretManager from "../../gcp/secretManager";
 import { listBuckets } from "../../gcp/storage";
 import { isCelExpression, resolveExpression } from "./cel";
 import { FirebaseConfig } from "./args";
-import { labels as secretLabels } from "../../functions/secrets";
+import { labels as secretLabels } from "../../gcp/secretManager";
 
 // A convenience type containing options for Prompt's select
 interface ListItem {

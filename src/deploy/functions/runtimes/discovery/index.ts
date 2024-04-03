@@ -7,7 +7,7 @@ import { promisify } from "util";
 import { logger } from "../../../../logger";
 import * as api from "../../.../../../../api";
 import * as build from "../../build";
-import * as runtimes from "..";
+import { Runtime } from "../supported";
 import * as v1alpha1 from "./v1alpha1";
 import { FirebaseError } from "../../../../error";
 
@@ -20,7 +20,7 @@ export function yamlToBuild(
   yaml: any,
   project: string,
   region: string,
-  runtime: runtimes.Runtime,
+  runtime: Runtime,
 ): build.Build {
   try {
     if (!yaml.specVersion) {
@@ -43,7 +43,7 @@ export function yamlToBuild(
 export async function detectFromYaml(
   directory: string,
   project: string,
-  runtime: runtimes.Runtime,
+  runtime: Runtime,
 ): Promise<build.Build | undefined> {
   let text: string;
   try {
@@ -59,7 +59,7 @@ export async function detectFromYaml(
 
   logger.debug("Found functions.yaml. Got spec:", text);
   const parsed = yaml.load(text);
-  return yamlToBuild(parsed, project, api.functionsDefaultRegion, runtime);
+  return yamlToBuild(parsed, project, api.functionsDefaultRegion(), runtime);
 }
 
 /**
@@ -68,7 +68,7 @@ export async function detectFromYaml(
 export async function detectFromPort(
   port: number,
   project: string,
-  runtime: runtimes.Runtime,
+  runtime: Runtime,
   timeout = 10_000 /* 10s to boot up */,
 ): Promise<build.Build> {
   let res: Response;
@@ -110,5 +110,5 @@ export async function detectFromPort(
     throw new FirebaseError(`Failed to load function definition from source: ${text}`);
   }
 
-  return yamlToBuild(parsed, project, api.functionsDefaultRegion, runtime);
+  return yamlToBuild(parsed, project, api.functionsDefaultRegion(), runtime);
 }

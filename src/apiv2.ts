@@ -32,6 +32,7 @@ interface BaseRequestOptions<T> extends VerbOptions {
   responseType?: "json" | "stream" | "xml";
   redirect?: "error" | "follow" | "manual";
   compress?: boolean;
+  ignoreQuotaProject?: boolean;
 }
 
 interface RequestOptionsWithSignal<T> extends BaseRequestOptions<T> {
@@ -268,7 +269,11 @@ export class Client {
         reqOptions.headers.set("Content-Type", "application/json");
       }
     }
-    if (GOOGLE_CLOUD_QUOTA_PROJECT && GOOGLE_CLOUD_QUOTA_PROJECT !== "") {
+    if (
+      !reqOptions.ignoreQuotaProject &&
+      GOOGLE_CLOUD_QUOTA_PROJECT &&
+      GOOGLE_CLOUD_QUOTA_PROJECT !== ""
+    ) {
       reqOptions.headers.set(GOOG_USER_PROJECT_HEADER, GOOGLE_CLOUD_QUOTA_PROJECT);
     }
     return reqOptions;

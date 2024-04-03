@@ -7,13 +7,13 @@ import { FirebaseError } from "../error";
 const prodOnlyClient = new Client({
   auth: true,
   apiVersion: "v1",
-  urlPrefix: firestoreOrigin,
+  urlPrefix: firestoreOrigin(),
 });
 
 const emuOrProdClient = new Client({
   auth: true,
   apiVersion: "v1",
-  urlPrefix: firestoreOriginOrEmulator,
+  urlPrefix: firestoreOriginOrEmulator(),
 });
 
 export interface Database {

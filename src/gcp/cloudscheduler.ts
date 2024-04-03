@@ -6,7 +6,7 @@ import { cloudschedulerOrigin } from "../api";
 import { Client } from "../apiv2";
 import * as backend from "../deploy/functions/backend";
 import * as proto from "./proto";
-import { getDefaultComputeServiceAgent } from "../deploy/functions/checkIam";
+import * as gce from "../gcp/computeEngine";
 import { assertExhaustive, nullsafeVisitor } from "../functional";
 
 const VERSION = "v1";
@@ -70,7 +70,7 @@ export interface Job {
   };
 }
 
-const apiClient = new Client({ urlPrefix: cloudschedulerOrigin, apiVersion: VERSION });
+const apiClient = new Client({ urlPrefix: cloudschedulerOrigin(), apiVersion: VERSION });
 
 /**
  * Creates a cloudScheduler job.
@@ -245,9 +245,7 @@ export function jobFromEndpoint(
       uri: endpoint.uri!,
       httpMethod: "POST",
       oidcToken: {
-        // TODO(colerogers): revisit adding 'invoker' to the container contract
-        // for schedule functions and use as the odic token service account.
-        serviceAccountEmail: getDefaultComputeServiceAgent(projectNumber),
+        serviceAccountEmail: endpoint.serviceAccount ?? gce.getDefaultServiceAccount(projectNumber),
       },
     };
   } else {
