@@ -43,7 +43,7 @@ export const command = new Command("apphosting:secrets:set <secretName>")
     const projectId = needProjectId(options);
     const projectNumber = await needProjectNumber(options);
 
-    const created = secrets.upsertSecret(projectId, secretName, options.location as string);
+    const created = await secrets.upsertSecret(projectId, secretName, options.location as string);
     if (created === null) {
       return;
     }
@@ -62,22 +62,23 @@ export const command = new Command("apphosting:secrets:set <secretName>")
       secretValue = fs.readFileSync(dataFile, "utf-8");
     }
 
-    if (!created) {
-      const version = await gcsm.addVersion(projectId, secretName, secretValue);
-      logSuccess(`Created new secret version ${gcsm.toSecretVersionResourceName(version)}`);
-      logSuccess(howToAccess);
-      return;
+    if (created) {
+      logSuccess(`Created new secret projects/${projectId}/secrets/${secretName}`);
     }
 
-    logSuccess(`Created new secret projects/${projectId}/secrets/${secretName}`);
+    const version = await gcsm.addVersion(projectId, secretName, secretValue);
+    logSuccess(`Created new secret version ${gcsm.toSecretVersionResourceName(version)}`);
     logSuccess(howToAccess);
 
     const accounts = await dialogs.selectBackendServiceAccounts(projectNumber, projectId, options);
+
     // If we're not granting permissions, there's no point in adding to YAML either.
     if (!accounts.buildServiceAccounts.length && !accounts.runServiceAccounts.length) {
       logWarning(
-        `To use this secret your backend, you must grant access. You can do so in the future with ${clc.bold("firebase apphosting:secrets:grantAccess")}`,
+        `To use this secret in your backend, you must grant access. You can do so in the future with ${clc.bold("firebase apphosting:secrets:grantAccess")}`,
       );
+
+      // TODO: For existing secrets, enter the grantSecretAccess dialog only when the necessary permissions don't exist.
     } else {
       await secrets.grantSecretAccess(projectId, secretName, accounts);
     }
