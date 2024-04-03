@@ -56,9 +56,4 @@ export const config: Options.Testrunner = {
   services: ["vscode"],
   framework: "mocha",
   reporters: ["spec"],
-
-  mochaOpts: {
-    ui: "bdd",
-    timeout: 60000,
-  },
 };

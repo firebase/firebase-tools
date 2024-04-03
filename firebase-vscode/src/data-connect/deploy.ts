@@ -3,24 +3,16 @@ import { firstWhere } from "../utils/signal";
 import { currentOptions } from "../options";
 import { deploy as cliDeploy } from "../../../src/deploy";
 import { dataConnectConfigs } from "./config";
+import { createE2eMockable } from "../utils/test_hooks";
 
 export function registerFdcDeploy(): vscode.Disposable {
-  // A command used by e2e tests to replace the `deploy` function with a mock.
-  // It is not part of the public API.
-  const mockDeployCmd = vscode.commands.registerCommand(
-    "fdc-graphql.spy-deploy",
-    (options: { reset?: boolean }) => {
-      const reset = options?.reset ?? false;
-      if (reset) {
-        deploySpy = undefined;
-        deploy.value = cliDeploy;
-      } else if (!deploySpy) {
-        deploySpy = [];
-        deploy.value = async (...args) => deploySpy.push(args) as any;
-      }
-
-      return deploySpy;
+  const deploySpy = createE2eMockable(
+    async (...args: Parameters<typeof cliDeploy>) => {
+      // Have the "deploy" return "void" for easier mocking (no return value when spied).
+      cliDeploy(...args);
     },
+    "deploy",
+    async () => {},
   );
 
   const deployCmd = vscode.commands.registerCommand(
@@ -38,14 +30,14 @@ export function registerFdcDeploy(): vscode.Disposable {
 
       // TODO: create --only strings like service:connector:connector when CLI flag is available
       for (const service of pickedServices) {
-        deploy.value(["dataconnect"], currentOptions.valueOf(), {
+        deploySpy.call(["dataconnect"], currentOptions.valueOf(), {
           context: service,
         });
       }
     },
   );
 
-  return vscode.Disposable.from(mockDeployCmd, deployCmd);
+  return vscode.Disposable.from(deploySpy, deployCmd);
 }
 
 async function pickServices(): Promise<Array<string> | undefined> {
@@ -95,8 +87,3 @@ async function pickConnectors(
 
   return picked.filter((e) => e.picked).map((connector) => connector.label);
 }
-
-let deploySpy: Array<any> | undefined;
-
-/// An overridable wrapper of `deploy` for testing purposes.
-const deploy = { value: cliDeploy };

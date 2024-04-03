@@ -37,6 +37,11 @@ dataConnectTest("Can execute queries", async function () {
   // While the emulator correctly starts without, some leftover state
   // still needs the sidebar.
   expect(await item.getLabel()).toBe("getPost");
-  expect(await item.getStatus()).toBe("success");
+
+  // Waiting for the execution to finish
+  browser.waitUntil(async () => {
+    (await item.getStatus()) === "success";
+  });
+
   expect(await item.getDescription()).toContain('Arguments: { "id": "42" }');
 });
