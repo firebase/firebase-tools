@@ -81,11 +81,7 @@ describe("dialogs", () => {
       const legacyAccounts = secrets.serviceAccountsForBackend("number", legacy);
       expect(table[0]).to.deep.equal(["location", "backend", "service accounts"]);
       expect(table[1]).to.deep.equal([
-        [
-          "l",
-          "legacy",
-          legacyAccounts.join(", "),
-        ],
+        ["l", "legacy", legacyAccounts.join(", ")],
         ["l", "modernA", "a"],
       ]);
     });
@@ -309,11 +305,7 @@ describe("dialogs", () => {
         type: "checkbox",
         message:
           "Which service accounts would you like to grant access? Press Space to select accounts, then Enter to confirm your choices.",
-        choices: [
-          "a",
-          "b",
-          ...legacyAccounts,
-        ].sort(),
+        choices: ["a", "b", ...legacyAccounts].sort(),
       });
       expect(utils.logLabeledBullet).to.have.been.calledWith(
         "apphosting",
@@ -341,11 +333,7 @@ describe("dialogs", () => {
         type: "checkbox",
         message:
           "Which service accounts would you like to grant access? Press Space to select accounts, then Enter to confirm your choices.",
-        choices: [
-          "a",
-          "b",
-          ...legacyAccounts,
-        ].sort(),
+        choices: ["a", "b", ...legacyAccounts].sort(),
       });
       expect(utils.logLabeledBullet).to.have.been.calledWith(
         "apphosting",

@@ -20,7 +20,7 @@ export function serviceAccountsForBackend(
   if (backend.serviceAccount) {
     return [backend.serviceAccount];
   }
-  return [gcb.getDefaultServiceAccount(projectNumber), gce.getDefaultServiceAccount(projectNumber)]
+  return [gcb.getDefaultServiceAccount(projectNumber), gce.getDefaultServiceAccount(projectNumber)];
 }
 
 /**
@@ -31,7 +31,7 @@ export async function grantSecretAccess(
   secretName: string,
   accounts: string[],
 ): Promise<void> {
-  const members = accounts.map(a => `serviceAccount:${a}`);
+  const members = accounts.map((a) => `serviceAccount:${a}`);
   const newBindings: iam.Binding[] = [
     {
       role: "roles/secretmanager.secretAccessor",

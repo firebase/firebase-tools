@@ -27,7 +27,11 @@ export function toMetadata(
   for (const backend of backends) {
     // Splits format projects/<unused>/locations/<location>/backends/<id>
     const [, , , location, , id] = backend.name.split("/");
-    metadata.push({ location, id, serviceAccounts: serviceAccountsForBackend(projectNumber, backend) });
+    metadata.push({
+      location,
+      id,
+      serviceAccounts: serviceAccountsForBackend(projectNumber, backend),
+    });
   }
   return metadata.sort((left, right) => {
     const cmplocation = left.location.localeCompare(right.location);
@@ -39,7 +43,10 @@ export function toMetadata(
 }
 
 const matchesServiceAccounts = (target: BackendMetadata) => (test: BackendMetadata) => {
-  return target.serviceAccounts.length === test.serviceAccounts.length && target.serviceAccounts.every(sa => test.serviceAccounts.indexOf(sa) != -1);
+  return (
+    target.serviceAccounts.length === test.serviceAccounts.length &&
+    target.serviceAccounts.every((sa) => test.serviceAccounts.indexOf(sa) !== -1)
+  );
 };
 
 /**
@@ -52,7 +59,7 @@ export function tableForBackends(
   const headers = [
     "location",
     "backend",
-    metadata.every(m => m.serviceAccounts.length === 1) ? "service account" : "service accounts",
+    metadata.every((m) => m.serviceAccounts.length === 1) ? "service account" : "service accounts",
   ];
   const rows = metadata.map((m) => [m.location, m.id, m.serviceAccounts.join(", ")]);
   return [headers, rows];
@@ -112,7 +119,8 @@ export async function selectBackendServiceAccounts(
       "apphosting",
       "To use this secret, your backend's service account must have secret accessor permission. All of your backends use " +
         (metadata[0].serviceAccounts.length === 1 ? "service account " : "service accounts ") +
-        metadata[0].serviceAccounts.join(", ") + ". Granting access to one backend will grant access to all backends.",
+        metadata[0].serviceAccounts.join(", ") +
+        ". Granting access to one backend will grant access to all backends.",
     );
     const grant = await prompt.confirm({
       nonInteractive: options.nonInteractive,
