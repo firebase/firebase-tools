@@ -241,6 +241,7 @@ export async function build(
       distDir,
       baseUrl,
       appPathRoutesManifest,
+      manifest.rsc,
     );
     headers.push(...headersFromMetaFiles);
 
@@ -491,6 +492,12 @@ export async function ɵcodegenPublicDirectory(
 
       const appPathRoute =
         route.srcRoute && appPathRoutesEntries.find(([, it]) => it === route.srcRoute)?.[0];
+
+      // Skip app path routes so prefetching goes through CF instead of CDN
+      if (appPathRoute) {
+        return;
+      }
+
       const contentDist = join(sourceDir, distDir, "server", appPathRoute ? "app" : "pages");
 
       const sourceParts = path.split("/").filter((it) => !!it);

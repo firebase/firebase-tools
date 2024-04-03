@@ -25,6 +25,18 @@ export const SERVER_REFERENCE_MANIFEST: `${typeof SERVER_REFERENCE_MANIFEST_TYPE
 
 export const ESBUILD_VERSION = "0.19.2";
 
+// TODO: Get these constants from Next.js after bumping dependency
+export const RSC_HEADER = "RSC" as const;
+export const NEXT_ROUTER_STATE_TREE = "Next-Router-State-Tree" as const;
+export const NEXT_ROUTER_PREFETCH_HEADER = "Next-Router-Prefetch" as const;
+export const NEXT_URL = "Next-Url" as const;
+export const RSC_VARY_HEADER =
+  `${RSC_HEADER}, ${NEXT_ROUTER_STATE_TREE}, ${NEXT_ROUTER_PREFETCH_HEADER}, ${NEXT_URL}` as const;
+export const NEXT_DID_POSTPONE_HEADER = "x-nextjs-postponed" as const;
+export const RSC_SUFFIX = ".rsc";
+export const RSC_PREFETCH_SUFFIX = ".prefetch.rsc";
+export const RSC_CONTENT_TYPE_HEADER = "text/x-component" as const;
+
 // This is copied from Next.js source code to keep WEBPACK_LAYERS in sync with the Next.js definition.
 const WEBPACK_LAYERS_NAMES = {
   /**
