@@ -218,8 +218,17 @@ export async function deleteRepository(
 }
 
 /**
- * Returns email associated with the Cloud Build Service Agent.
+ * Returns the service account created by Cloud Build to use as a default in Cloud Build jobs.
+ * This service account is deprecated and future users should bring their own account.
  */
-export function serviceAgentEmail(projectNumber: string): string {
+export function getDefaultServiceAccount(projectNumber: string): string {
+  return `${projectNumber}@cloudbuild.gserviceaccount.com`;
+}
+
+/**
+ * Returns the default cloud build service agent.
+ * This is the account that Cloud Build itself uses when performing operations on the user's behalf.
+ */
+export function getDefaultServiceAgent(projectNumber: string): string {
   return `service-${projectNumber}@gcp-sa-cloudbuild.iam.gserviceaccount.com`;
 }

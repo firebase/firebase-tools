@@ -4,6 +4,16 @@ import { Client } from "../apiv2";
 
 const apiClient = new Client({ urlPrefix: iamOrigin(), apiVersion: "v1" });
 
+/** Returns the default cloud build service agent */
+export function getDefaultCloudBuildServiceAgent(projectNumber: string): string {
+  return `${projectNumber}@cloudbuild.gserviceaccount.com`;
+}
+
+/** Returns the default compute engine service agent */
+export function getDefaultComputeEngineServiceAgent(projectNumber: string): string {
+  return `${projectNumber}-compute@developer.gserviceaccount.com`;
+}
+
 // IAM Policy
 // https://cloud.google.com/resource-manager/reference/rest/Shared.Types/Policy
 export interface Binding {
@@ -56,7 +66,6 @@ export interface TestIamResult {
 
 /**
  * Creates a new the service account with the given parameters.
- *
  * @param projectId the id of the project where the service account will be created
  * @param accountId the id to use for the account
  * @param description a brief description of the account
@@ -87,7 +96,6 @@ export async function createServiceAccount(
 
 /**
  * Retrieves a service account with the given parameters.
- *
  * @param projectId the id of the project where the service account will be created
  * @param serviceAccountName the name of the service account
  */
@@ -160,7 +168,6 @@ export async function getRole(role: string): Promise<Role> {
 
 /**
  * List permissions not held by an arbitrary resource implementing the IAM APIs.
- *
  * @param origin Resource origin e.g. `https:// iam.googleapis.com`.
  * @param apiVersion API version e.g. `v1`.
  * @param resourceName Resource name e.g. `projects/my-projct/widgets/abc`

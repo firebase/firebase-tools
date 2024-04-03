@@ -63,7 +63,7 @@ export async function cleanupBuildImages(
   cleanup.push(
     ...deletedFunctions.map(async (func) => {
       try {
-        await Promise.all([arCleaner.cleanupFunction(func), arCleaner.cleanupFunctionCache(func)]);
+        await arCleaner.cleanupFunction(func);
       } catch (err: any) {
         const path = `${func.project}/${func.region}/gcf-artifacts`;
         failedDomains.add(`https://console.cloud.google.com/artifacts/docker/${path}`);
@@ -151,31 +151,11 @@ export class ArtifactRegistryCleaner {
       operationResourceName: op.name,
     });
   }
-
-  async cleanupFunctionCache(func: backend.TargetIds): Promise<void> {
-    // GCF uses "<id>/cache" as their pacakge name, but AR percent-encodes this to
-    // avoid parsing issues with OP.
-    const op = await artifactregistry.deletePackage(
-      `${ArtifactRegistryCleaner.packagePath(func)}%2Fcache`,
-    );
-    if (op.done) {
-      return;
-    }
-    await poller.pollOperation<void>({
-      ...ArtifactRegistryCleaner.POLLER_OPTIONS,
-      pollerName: `cleanup-cache-${func.region}-${func.id}`,
-      operationResourceName: op.name,
-    });
-  }
 }
 
 // Temporary class to turn off AR cleaning if AR isn't enabled yet
 export class NoopArtifactRegistryCleaner extends ArtifactRegistryCleaner {
   cleanupFunction(): Promise<void> {
-    return Promise.resolve();
-  }
-
-  cleanupFunctionCache(): Promise<void> {
     return Promise.resolve();
   }
 }

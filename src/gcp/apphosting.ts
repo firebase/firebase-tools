@@ -40,7 +40,7 @@ export interface Backend {
   createTime: string;
   updateTime: string;
   uri: string;
-  computeServiceAccount?: string;
+  serviceAccount?: string;
 }
 
 export type BackendOutputOnlyFields = "name" | "createTime" | "updateTime" | "uri";
@@ -259,6 +259,8 @@ export interface Operation {
 
 export interface ListBackendsResponse {
   backends: Backend[];
+  nextPageToken?: string;
+  unreachable: string[];
 }
 
 /**
@@ -306,9 +308,22 @@ export async function listBackends(
   location: string,
 ): Promise<ListBackendsResponse> {
   const name = `projects/${projectId}/locations/${location}/backends`;
-  const res = await client.get<ListBackendsResponse>(name);
+  let pageToken: string | undefined;
+  const res: ListBackendsResponse = {
+    backends: [],
+    unreachable: [],
+  };
 
-  return res.body;
+  do {
+    const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
+    const int = await client.get<ListBackendsResponse>(name, { queryParams });
+    res.backends.push(...(int.body.backends || []));
+    res.unreachable?.push(...(int.body.unreachable || []));
+    pageToken = int.body.nextPageToken;
+  } while (pageToken);
+
+  res.unreachable = [...new Set(res.unreachable)];
+  return res;
 }
 
 /**
