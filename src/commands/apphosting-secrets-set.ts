@@ -40,10 +40,11 @@ export const command = new Command("apphosting:secrets:set <secretName>")
   )
   .action(async (secretName: string, options: Options) => {
     const howToAccess = `You can access the contents of the secret's latest value with ${clc.bold(`firebase apphosting:secrets:access ${secretName}`)}`;
+    const grantAccess = `To use this secret in your backend, you must grant access. You can do so in the future with ${clc.bold("firebase apphosting:secrets:grantAccess")}`;
     const projectId = needProjectId(options);
     const projectNumber = await needProjectNumber(options);
 
-    const created = secrets.upsertSecret(projectId, secretName, options.location as string);
+    const created = await secrets.upsertSecret(projectId, secretName, options.location as string);
     if (created === null) {
       return;
     }
@@ -62,22 +63,27 @@ export const command = new Command("apphosting:secrets:set <secretName>")
       secretValue = fs.readFileSync(dataFile, "utf-8");
     }
 
+    if (created) {
+      logSuccess(`Created new secret projects/${projectId}/secrets/${secretName}`);
+    }
+
+    const version = await gcsm.addVersion(projectId, secretName, secretValue);
+    logSuccess(`Created new secret version ${gcsm.toSecretVersionResourceName(version)}`);
+    logSuccess(howToAccess);
+
+    // If the secret already exists, we want to exit once the new version is added
     if (!created) {
-      const version = await gcsm.addVersion(projectId, secretName, secretValue);
-      logSuccess(`Created new secret version ${gcsm.toSecretVersionResourceName(version)}`);
-      logSuccess(howToAccess);
+      logWarning(grantAccess);
       return;
     }
 
-    logSuccess(`Created new secret projects/${projectId}/secrets/${secretName}`);
-    logSuccess(howToAccess);
-
     const accounts = await dialogs.selectBackendServiceAccounts(projectNumber, projectId, options);
+
     // If we're not granting permissions, there's no point in adding to YAML either.
     if (!accounts.buildServiceAccounts.length && !accounts.runServiceAccounts.length) {
-      logWarning(
-        `To use this secret your backend, you must grant access. You can do so in the future with ${clc.bold("firebase apphosting:secrets:grantAccess")}`,
-      );
+      logWarning(grantAccess);
+
+      // TODO: For existing secrets, enter the grantSecretAccess dialog only when the necessary permissions don't exist.
     } else {
       await secrets.grantSecretAccess(projectId, secretName, accounts);
     }
