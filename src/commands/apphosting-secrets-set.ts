@@ -43,7 +43,7 @@ export const command = new Command("apphosting:secrets:set <secretName>")
     const projectId = needProjectId(options);
     const projectNumber = await needProjectNumber(options);
 
-    const created = secrets.upsertSecret(projectId, secretName, options.location as string);
+    const created = await secrets.upsertSecret(projectId, secretName, options.location as string);
     if (created === null) {
       return;
     }
