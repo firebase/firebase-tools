@@ -8,7 +8,6 @@ import type { DomainLocale } from "next/dist/server/config";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
 import { copy, mkdirp, pathExists, pathExistsSync } from "fs-extra";
 import { pathToFileURL, parse } from "url";
-import { existsSync } from "fs";
 import { gte } from "semver";
 import { IncomingMessage, ServerResponse } from "http";
 import * as clc from "colorette";
@@ -55,6 +54,8 @@ import {
   getNextVersion,
   hasStaticAppNotFoundComponent,
   getRoutesWithServerAction,
+  getProductionDistDirFiles,
+  whichNextConfigFile,
 } from "./utils";
 import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES, SHARP_VERSION, I18N_ROOT } from "../constants";
 import type {
@@ -102,7 +103,7 @@ function getReactVersion(cwd: string): string | undefined {
 export async function discover(dir: string) {
   if (!(await pathExists(join(dir, "package.json")))) return;
   const version = getNextVersion(dir);
-  if (!(await pathExists("next.config.js")) && !version) return;
+  if (!(await whichNextConfigFile(dir)) && !version) return;
 
   return { mayWantBackend: true, publicDirectory: join(dir, PUBLIC_DIR), version };
 }
@@ -568,7 +569,8 @@ export async function ɵcodegenFunctionsDirectory(
   // macs and older Node versions; either way, we should avoid taking on any deps in firebase-tools
   // Alternatively I tried using @swc/spack and the webpack bundled into Next.js but was
   // encountering difficulties with both of those
-  if (existsSync(join(sourceDir, "next.config.js"))) {
+  const configFile = await whichNextConfigFile(sourceDir);
+  if (configFile) {
     try {
       const productionDeps = await new Promise<string[]>((resolve) => {
         const dependencies: string[] = [];
@@ -595,16 +597,18 @@ export async function ɵcodegenFunctionsDirectory(
       // DevDeps won't be included in the Cloud Function, so they should be bundled
       const esbuildArgs = productionDeps
         .map((it) => `--external:${it}`)
-        .concat(
-          "--bundle",
-          "--platform=node",
-          `--target=node${NODE_VERSION}`,
-          `--outdir=${destDir}`,
-          "--log-level=error",
-        );
+        .concat("--bundle", "--platform=node", `--target=node${NODE_VERSION}`, "--log-level=error");
+
+      if (configFile === "next.config.mjs") {
+        // ensure generated file is .mjs if the config is .mjs
+        esbuildArgs.push(...[`--outfile=${join(destDir, configFile)}`, "--format=esm"]);
+      } else {
+        esbuildArgs.push(`--outfile=${join(destDir, configFile)}`);
+      }
+
       const bundle = spawnSync(
         "npx",
-        ["--yes", `esbuild@${ESBUILD_VERSION}`, "next.config.js", ...esbuildArgs],
+        ["--yes", `esbuild@${ESBUILD_VERSION}`, configFile, ...esbuildArgs],
         {
           cwd: sourceDir,
           timeout: BUNDLE_NEXT_CONFIG_TIMEOUT,
@@ -615,10 +619,10 @@ export async function ɵcodegenFunctionsDirectory(
       }
     } catch (e: any) {
       console.warn(
-        "Unable to bundle next.config.js for use in Cloud Functions, proceeding with deploy but problems may be enountered.",
+        `Unable to bundle ${configFile} for use in Cloud Functions, proceeding with deploy but problems may be encountered.`,
       );
       console.error(e.message || e);
-      copy(join(sourceDir, "next.config.js"), join(destDir, "next.config.js"));
+      await copy(join(sourceDir, configFile), join(destDir, configFile));
     }
   }
   if (await pathExists(join(sourceDir, "public"))) {
@@ -647,8 +651,17 @@ export async function ɵcodegenFunctionsDirectory(
     }
   }
 
-  await mkdirp(join(destDir, distDir));
-  await copy(join(sourceDir, distDir), join(destDir, distDir));
+  const [productionDistDirfiles] = await Promise.all([
+    getProductionDistDirFiles(sourceDir, distDir),
+    mkdirp(join(destDir, distDir)),
+  ]);
+
+  await Promise.all(
+    productionDistDirfiles.map((file) =>
+      copy(file, file.replace(sourceDir, destDir), { recursive: true }),
+    ),
+  );
+
   return { packageJson, frameworksEntry: "next.js", dotEnv };
 }
 
@@ -688,7 +701,8 @@ async function getConfig(
   dir: string,
 ): Promise<Partial<NextConfig> & { distDir: string; trailingSlash: boolean; basePath: string }> {
   let config: NextConfig = {};
-  if (existsSync(join(dir, "next.config.js"))) {
+  const configFile = await whichNextConfigFile(dir);
+  if (configFile) {
     const version = getNextVersion(dir);
     if (!version) throw new Error("Unable to find the next dep, try NPM installing?");
     if (gte(version, "12.0.0")) {
@@ -699,9 +713,9 @@ async function getConfig(
       config = await loadConfig(PHASE_PRODUCTION_BUILD, dir);
     } else {
       try {
-        config = await import(pathToFileURL(join(dir, "next.config.js")).toString());
+        config = await import(pathToFileURL(join(dir, configFile)).toString());
       } catch (e) {
-        throw new Error("Unable to load next.config.js.");
+        throw new Error(`Unable to load ${configFile}.`);
       }
     }
   }

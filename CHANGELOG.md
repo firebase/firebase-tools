@@ -1,1 +1,5 @@
 - Add new 2nd gen Firestore triggered functions with auth context. (#1519)
+- Adds (opt-out) experiment to disable cleaning up containers after a functions deploy (#6861)
+- Fix Next.js image optimization check in app directory for Windows (#6930)
+- Add support to next.config.mjs (#6933)
+- Remove development-only files from Next.js deployments (#6731)

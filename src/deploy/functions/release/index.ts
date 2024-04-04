@@ -11,6 +11,7 @@ import * as fabricator from "./fabricator";
 import * as reporter from "./reporter";
 import * as executor from "./executor";
 import * as prompts from "../prompts";
+import * as experiments from "../../../experiments";
 import { getAppEngineLocation } from "../../../functionsConfig";
 import { getFunctionLabel } from "../functionsDeployHelper";
 import { FirebaseError } from "../../../error";
@@ -101,7 +102,9 @@ export async function release(
   const deletedEndpoints = Object.values(plan)
     .map((r) => r.endpointsToDelete)
     .reduce(reduceFlat, []);
-  await containerCleaner.cleanupBuildImages(haveEndpoints, deletedEndpoints);
+  if (experiments.isEnabled("automaticallydeletegcfartifacts")) {
+    await containerCleaner.cleanupBuildImages(haveEndpoints, deletedEndpoints);
+  }
 
   const allErrors = summary.results.filter((r) => r.error).map((r) => r.error) as Error[];
   if (allErrors.length) {
