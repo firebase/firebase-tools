@@ -49,15 +49,26 @@ export async function release(
   const fnsToDelete = Object.values(plan)
     .map((regionalChanges) => regionalChanges.endpointsToDelete)
     .reduce(reduceFlat, []);
-  const shouldDelete = await prompts.promptForFunctionDeletion(
-    fnsToDelete,
-    options.force,
-    options.nonInteractive,
-  );
+  const shouldDelete = await prompts.promptForFunctionDeletion(fnsToDelete, options);
   if (!shouldDelete) {
     for (const change of Object.values(plan)) {
       change.endpointsToDelete = [];
     }
+  }
+
+  const fnsToUpdate = Object.values(plan)
+    .map((regionalChanges) => regionalChanges.endpointsToUpdate)
+    .reduce(reduceFlat, []);
+  const fnsToUpdateSafe = await prompts.promptForUnsafeMigration(fnsToUpdate, options);
+  // Replace endpointsToUpdate in deployment plan with endpoints that are either safe
+  // to update or customers have confirmed they want to update unsafely
+  for (const key of Object.keys(plan)) {
+    plan[key].endpointsToUpdate = [];
+  }
+  for (const eu of fnsToUpdateSafe) {
+    const e = eu.endpoint;
+    const key = `${e.codebase || ""}-${e.region}-${e.availableMemoryMb || "default"}`;
+    plan[key].endpointsToUpdate.push(eu);
   }
 
   const throttlerOptions = {
