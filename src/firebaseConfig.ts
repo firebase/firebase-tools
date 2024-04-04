@@ -245,12 +245,16 @@ export type EmulatorsConfig = {
 
 export type ExtensionsConfig = Record<string, string>;
 
-export type DataConnectConfig = {
+export type DataConnectSingle = {
   // The directory containing dataconnect.yaml for this service
   source: string;
   // The location to deploy this service to (ie 'us-central1')
   location: string;
-};
+} & Deployable;
+
+export type DataConnectMultiple = DataConnectSingle[];
+
+export type DataConnectConfig = DataConnectSingle | DataConnectMultiple;
 
 export type FirebaseConfig = {
   /**

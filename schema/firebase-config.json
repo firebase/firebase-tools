@@ -272,20 +272,95 @@
             ]
         },
         "dataconnect": {
-            "additionalProperties": false,
-            "properties": {
-                "location": {
-                    "type": "string"
+            "anyOf": [
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "location": {
+                            "type": "string"
+                        },
+                        "postdeploy": {
+                            "anyOf": [
+                                {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
+                                },
+                                {
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "predeploy": {
+                            "anyOf": [
+                                {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
+                                },
+                                {
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "source": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "location",
+                        "source"
+                    ],
+                    "type": "object"
                 },
-                "source": {
-                    "type": "string"
+                {
+                    "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                            "location": {
+                                "type": "string"
+                            },
+                            "postdeploy": {
+                                "anyOf": [
+                                    {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    {
+                                        "type": "string"
+                                    }
+                                ]
+                            },
+                            "predeploy": {
+                                "anyOf": [
+                                    {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    {
+                                        "type": "string"
+                                    }
+                                ]
+                            },
+                            "source": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "location",
+                            "source"
+                        ],
+                        "type": "object"
+                    },
+                    "type": "array"
                 }
-            },
-            "required": [
-                "location",
-                "source"
-            ],
-            "type": "object"
+            ]
         },
         "emulators": {
             "additionalProperties": false,
