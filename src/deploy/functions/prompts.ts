@@ -76,7 +76,7 @@ export async function promptForFailurePolicies(
  */
 export async function promptForFunctionDeletion(
   functionsToDelete: (backend.TargetIds & { platform: backend.FunctionsPlatform })[],
-  options: Options,
+  options: Options
 ): Promise<boolean> {
   let shouldDeleteFns = true;
   if (functionsToDelete.length === 0 || options.force) {
@@ -127,7 +127,7 @@ export async function promptForFunctionDeletion(
  */
 export async function promptForUnsafeMigration(
   fnsToUpdate: EndpointUpdate[],
-  options: Options,
+  options: Options
 ): Promise<EndpointUpdate[]> {
   const unsafeUpdates = fnsToUpdate.filter((eu) => eu.unsafe);
 
@@ -142,11 +142,11 @@ export async function promptForUnsafeMigration(
         .map((eu) => eu.endpoint)
         .sort(backend.compareFunctions)
         .map(getFunctionLabel)
-        .join(", "),
+        .join(", ")
     ) +
     ". " +
     "While automatic migration is allowed for these functions, updating the underlying event type may result in data loss. " +
-    "To avoid this, consider the best practices outlined in the migration guide: [TODO: link]";
+    "To avoid this, consider the best practices outlined in the migration guide: https://firebase.google.com/docs/functions/manage-functions?gen=2nd#modify-trigger";
 
   utils.logLabeledWarning("functions", warnMessage);
 
@@ -155,7 +155,7 @@ export async function promptForUnsafeMigration(
   if (options.nonInteractive) {
     utils.logLabeledWarning(
       "functions",
-      "Aborting updates for functions that may be unsafe to update. To update these functions anyway, deploy again in interactive mode or use the --force option.",
+      "Skipping updates for functions that may be unsafe to update. To update these functions anyway, deploy again in interactive mode or use the --force option."
     );
     return safeUpdates;
   }
@@ -166,7 +166,7 @@ export async function promptForUnsafeMigration(
       name: "confirm",
       default: false,
       message: `[${getFunctionLabel(
-        eu.endpoint,
+        eu.endpoint
       )}] Would you like to proceed with the unsafe migration?`,
     });
     if (shouldUpdate) {

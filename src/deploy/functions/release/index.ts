@@ -66,7 +66,7 @@ export async function release(
   }
   for (const eu of fnsToUpdateSafe) {
     const e = eu.endpoint;
-    const key = `${e.codebase}-${e.region}-${e.availableMemoryMb || "default"}`;
+    const key = `${e.codebase || ""}-${e.region}-${e.availableMemoryMb || "default"}`;
     plan[key].endpointsToUpdate.push(eu);
   }
 
