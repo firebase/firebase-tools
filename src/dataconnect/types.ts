@@ -139,8 +139,30 @@ export function toDatasource(
   return {};
 }
 
-
-export interface Impersonation {
-  auth_claims?: any;
-  unauthenitcated?: boolean;
+/** Start Dataplane Client Types */
+export interface ExecuteGraphqlRequest {
+  name: string;
+  query: string;
+  operationName?: string;
+  variables?: { [key: string]: string };
+  extensions?: { impersonate?: Impersonation };
 }
+
+export interface ExecuteGraphqlResponse {
+  data: any;
+  errors: any[];
+}
+
+export interface ExecuteGraphqlResponseError {
+  error: {code: number, message: string, status: string, details: any}
+}
+
+interface ImpersonationAuthenticated {
+  authClaims: any;
+}
+interface ImpersonationUnauthenticated {
+  unauthenticated: boolean;
+}
+export type Impersonation = ImpersonationAuthenticated | ImpersonationUnauthenticated;
+
+/** End Dataplane Client Types */

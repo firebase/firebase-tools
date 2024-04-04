@@ -86,7 +86,6 @@ export class DataConnectService {
     }
 
     if (contentType.includes("application/json")) {
-      console.log("json?");
       return response.json();
     }
 
@@ -102,8 +101,8 @@ export class DataConnectService {
         errorResponse.body.error.message,
       );
     }
-    const successResponse = clientResponse as ClientResponse<ExecuteGraphqlResponse>;
-
+    const successResponse =
+      clientResponse as ClientResponse<ExecuteGraphqlResponse>;
     return successResponse.body;
   }
 
@@ -251,7 +250,6 @@ export class DataConnectService {
     const body = this._serializeBody({ ...params });
     if (this.isProduction.value) {
       const resp = await executeGraphQL(servicePath, prodBody);
-      console.log(resp);
       return this.handleProdResponse(resp);
     } else {
       const resp = await fetch(
