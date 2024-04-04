@@ -822,6 +822,7 @@ export async function startAll(
       projectId,
       auto_download: true,
       configDir,
+      rc: options.rc,
     });
     await startEmulator(dataConnectEmulator);
   }

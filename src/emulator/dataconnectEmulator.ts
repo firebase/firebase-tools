@@ -2,6 +2,8 @@ import { dataConnectLocalConnString } from "../api";
 import { Constants } from "./constants";
 import { getPID, start, stop } from "./downloadableEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
+import { EmulatorLogger } from "./emulatorLogger";
+import { RC } from "../rc";
 
 export interface DataConnectEmulatorArgs {
   projectId?: string;
@@ -9,21 +11,22 @@ export interface DataConnectEmulatorArgs {
   host?: string;
   configDir?: string;
   auto_download?: boolean;
-  localConnectionString?: string;
+  rc: RC;
 }
 
 export class DataConnectEmulator implements EmulatorInstance {
   constructor(private args: DataConnectEmulatorArgs) {}
+  private logger = EmulatorLogger.forEmulator(Emulators.DATACONNECT);
 
   start(): Promise<void> {
-    // Find dataconnect dir
     const port = this.args.port || Constants.getDefaultPort(Emulators.DATACONNECT);
+    this.logger.log("DEBUG", `Using Postgres connection string: ${this.getLocalConectionString()}`);
     return start(Emulators.DATACONNECT, {
       ...this.args,
       http_port: port,
       grpc_port: port + 1,
       config_dir: this.args.configDir,
-      local_connection_string: dataConnectLocalConnString(),
+      local_connection_string: this.getLocalConectionString(),
     });
   }
 
@@ -49,5 +52,12 @@ export class DataConnectEmulator implements EmulatorInstance {
   }
   getName(): Emulators {
     return Emulators.DATACONNECT;
+  }
+
+  private getLocalConectionString() {
+    if (dataConnectLocalConnString()) {
+      return dataConnectLocalConnString();
+    }
+    return this.args.rc.getDataconnect()?.postgres?.localConnectionString;
   }
 }

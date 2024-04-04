@@ -57,6 +57,19 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     type: "input",
     default: `dataconnect-test`,
   });
+
+  // postgresql://localhost:5432 is a default out of the box value for most installations of Postgres
+  const defaultConnectionString =
+    setup.rcfile.dataconnectEmulatorConfig?.postgres?.localConnectionString ??
+    "postgresql://localhost:5432";
+  // TODO: Download Postgres
+  const localConnectionString = await promptOnce({
+    type: "input",
+    name: "localConnectionString",
+    message: `What is the connection string of the local Postgres instance you would like to use with the Data Connect emulator?`,
+    default: defaultConnectionString,
+  });
+  setup.rcfile.dataconnectEmulatorConfig = { postgres: { localConnectionString } };
   const subbedDataconnectYaml = subValues(DATACONNECT_YAML_TEMPLATE, {
     serviceId,
     cloudSqlInstanceId,

@@ -4,12 +4,11 @@ import * as clc from "colorette";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import * as features from "./features";
+import { RCData } from "../rc";
 
 export interface Setup {
   config: Record<string, any>;
-  rcfile: {
-    projects: Record<string, any>;
-  };
+  rcfile: RCData;
   features?: string[];
   featureArg?: boolean;
   project?: Record<string, any>;
