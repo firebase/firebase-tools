@@ -1,1 +1,2 @@
-Adds (opt-out) experiment to disable cleaning up containers after a functions deploy (#6861)
+- Adds (opt-out) experiment to disable cleaning up containers after a functions deploy (#6861)
+- Fix Next.js image optimization check in app directory for Windows (#6930)
