@@ -2,6 +2,17 @@ import { Client } from "./apiv2";
 import { FirebaseError } from "./error";
 import { Queue } from "./throttler/queue";
 
+export interface LongRunningOperation<T> {
+  // The identifier of the Operation.
+  readonly name: string;
+
+  // Set to `true` if the Operation is done.
+  readonly done: boolean;
+
+  // Additional metadata about the Operation.
+  readonly metadata: T | undefined;
+}
+
 export interface OperationPollerOptions {
   pollerName?: string;
   apiOrigin: string;

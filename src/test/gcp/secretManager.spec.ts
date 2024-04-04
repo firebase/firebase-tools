@@ -11,7 +11,7 @@ describe("secretManager", () => {
     it("parses valid secret resource name", () => {
       expect(
         secretManager.parseSecretResourceName("projects/my-project/secrets/my-secret"),
-      ).to.deep.equal({ projectId: "my-project", name: "my-secret" });
+      ).to.deep.equal({ projectId: "my-project", name: "my-secret", labels: {}, replication: {} });
     });
 
     it("throws given invalid resource name", () => {
@@ -27,7 +27,7 @@ describe("secretManager", () => {
     it("parse secret version resource name", () => {
       expect(
         secretManager.parseSecretResourceName("projects/my-project/secrets/my-secret/versions/8"),
-      ).to.deep.equal({ projectId: "my-project", name: "my-secret" });
+      ).to.deep.equal({ projectId: "my-project", name: "my-secret", labels: {}, replication: {} });
     });
   });
 
@@ -37,7 +37,11 @@ describe("secretManager", () => {
         secretManager.parseSecretVersionResourceName(
           "projects/my-project/secrets/my-secret/versions/7",
         ),
-      ).to.deep.equal({ secret: { projectId: "my-project", name: "my-secret" }, versionId: "7" });
+      ).to.deep.equal({
+        secret: { projectId: "my-project", name: "my-secret", labels: {}, replication: {} },
+        versionId: "7",
+        createTime: "",
+      });
     });
 
     it("throws given invalid resource name", () => {
@@ -59,7 +63,7 @@ describe("secretManager", () => {
 
   describe("ensureServiceAgentRole", () => {
     const projectId = "my-project";
-    const secret: secretManager.Secret = { projectId, name: "my-secret" };
+    const secret = { projectId, name: "my-secret" };
     const role = "test-role";
 
     let getIamPolicyStub: sinon.SinonStub;

@@ -40,7 +40,7 @@ export interface Backend {
   createTime: string;
   updateTime: string;
   uri: string;
-  computeServiceAccount?: string;
+  serviceAccount?: string;
 }
 
 export type BackendOutputOnlyFields = "name" | "createTime" | "updateTime" | "uri";
