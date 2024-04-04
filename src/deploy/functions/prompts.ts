@@ -20,7 +20,7 @@ import { EndpointUpdate } from "./release/planner";
 export async function promptForFailurePolicies(
   options: Options,
   want: backend.Backend,
-  have: backend.Backend
+  have: backend.Backend,
 ): Promise<void> {
   // Collect all the functions that have a retry policy
   const retryEndpoints = backend.allEndpoints(want).filter((e) => {
@@ -76,7 +76,7 @@ export async function promptForFailurePolicies(
  */
 export async function promptForFunctionDeletion(
   functionsToDelete: (backend.TargetIds & { platform: backend.FunctionsPlatform })[],
-  options: Options
+  options: Options,
 ): Promise<boolean> {
   let shouldDeleteFns = true;
   if (functionsToDelete.length === 0 || options.force) {
@@ -98,7 +98,7 @@ export async function promptForFunctionDeletion(
       "The following functions are found in your project but do not exist in your local source code:\n" +
         deleteList +
         "\n\nAborting because deletion cannot proceed in non-interactive mode. To fix, manually delete the functions by running:\n" +
-        clc.bold(deleteCommands)
+        clc.bold(deleteCommands),
     );
   } else {
     logger.info(
@@ -106,7 +106,7 @@ export async function promptForFunctionDeletion(
         deleteList +
         "\n\nIf you are renaming a function or changing its region, it is recommended that you create the new " +
         "function first before deleting the old one to prevent event loss. For more info, visit " +
-        clc.underline("https://firebase.google.com/docs/functions/manage-functions#modify" + "\n")
+        clc.underline("https://firebase.google.com/docs/functions/manage-functions#modify" + "\n"),
     );
     shouldDeleteFns = await confirm({
       default: false,
@@ -127,7 +127,7 @@ export async function promptForFunctionDeletion(
  */
 export async function promptForUnsafeMigration(
   fnsToUpdate: EndpointUpdate[],
-  options: Options
+  options: Options,
 ): Promise<EndpointUpdate[]> {
   const unsafeUpdates = fnsToUpdate.filter((eu) => eu.unsafe);
 
@@ -142,7 +142,7 @@ export async function promptForUnsafeMigration(
         .map((eu) => eu.endpoint)
         .sort(backend.compareFunctions)
         .map(getFunctionLabel)
-        .join(", ")
+        .join(", "),
     ) +
     ". " +
     "While automatic migration is allowed for these functions, updating the underlying event type may result in data loss. " +
@@ -155,7 +155,7 @@ export async function promptForUnsafeMigration(
   if (options.nonInteractive) {
     utils.logLabeledWarning(
       "functions",
-      "Skipping updates for functions that may be unsafe to update. To update these functions anyway, deploy again in interactive mode or use the --force option."
+      "Skipping updates for functions that may be unsafe to update. To update these functions anyway, deploy again in interactive mode or use the --force option.",
     );
     return safeUpdates;
   }
@@ -166,7 +166,7 @@ export async function promptForUnsafeMigration(
       name: "confirm",
       default: false,
       message: `[${getFunctionLabel(
-        eu.endpoint
+        eu.endpoint,
       )}] Would you like to proceed with the unsafe migration?`,
     });
     if (shouldUpdate) {
@@ -187,7 +187,7 @@ export async function promptForUnsafeMigration(
 export async function promptForMinInstances(
   options: Options,
   want: backend.Backend,
-  have: backend.Backend
+  have: backend.Backend,
 ): Promise<void> {
   if (options.force) {
     return;
@@ -220,7 +220,7 @@ export async function promptForMinInstances(
       "Pass the --force option to deploy functions that increase the minimum bill",
       {
         exit: 1,
-      }
+      },
     );
   }
 

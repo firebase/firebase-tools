@@ -20,7 +20,7 @@ import { getProjectNumber } from "../../../getProjectNumber";
 export async function release(
   context: args.Context,
   options: Options,
-  payload: args.Payload
+  payload: args.Payload,
 ): Promise<void> {
   if (!context.config) {
     return;
@@ -128,7 +128,7 @@ export function printTriggerUrls(results: backend.Backend): void {
   for (const httpsFunc of httpsFunctions) {
     if (!httpsFunc.uri) {
       logger.debug(
-        "Not printing URL for HTTPS function. Typically this means it didn't match a filter or we failed deployment"
+        "Not printing URL for HTTPS function. Typically this means it didn't match a filter or we failed deployment",
       );
       continue;
     }
