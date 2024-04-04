@@ -1,1 +1,2 @@
+- Adds (opt-out) experiment to disable cleaning up containers after a functions deploy (#6861)
 - Add support to next.config.mjs (#6933)
