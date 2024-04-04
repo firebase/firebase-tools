@@ -3,6 +3,7 @@ import { pathExists } from "fs-extra";
 import { basename, extname, join, posix, sep } from "path";
 import { readFile } from "fs/promises";
 import { sync as globSync } from "glob";
+import * as glob from "glob";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
 import { coerce } from "semver";
 
@@ -459,6 +460,32 @@ export function getRoutesWithServerAction(
   }
 
   return Array.from(routesWithServerAction);
+}
+
+/**
+ * Get files in the dist directory to be deployed to Firebase, ignoring development files.
+ */
+export async function getProductionDistDirFiles(
+  sourceDir: string,
+  distDir: string,
+): Promise<string[]> {
+  const productionDistDirFiles = await new Promise<string[]>((resolve, reject) =>
+    glob(
+      "**",
+      {
+        ignore: [join("cache", "webpack", "*-development", "**"), join("cache", "eslint", "**")],
+        cwd: join(sourceDir, distDir),
+        nodir: true,
+        absolute: true,
+      },
+      (err, matches) => {
+        if (err) reject(err);
+        resolve(matches);
+      },
+    ),
+  );
+
+  return productionDistDirFiles;
 }
 
 /**

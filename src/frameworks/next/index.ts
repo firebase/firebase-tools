@@ -54,6 +54,7 @@ import {
   getNextVersion,
   hasStaticAppNotFoundComponent,
   getRoutesWithServerAction,
+  getProductionDistDirFiles,
   whichNextConfigFile,
 } from "./utils";
 import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES, SHARP_VERSION, I18N_ROOT } from "../constants";
@@ -650,8 +651,17 @@ export async function ɵcodegenFunctionsDirectory(
     }
   }
 
-  await mkdirp(join(destDir, distDir));
-  await copy(join(sourceDir, distDir), join(destDir, distDir));
+  const [productionDistDirfiles] = await Promise.all([
+    getProductionDistDirFiles(sourceDir, distDir),
+    mkdirp(join(destDir, distDir)),
+  ]);
+
+  await Promise.all(
+    productionDistDirfiles.map((file) =>
+      copy(file, file.replace(sourceDir, destDir), { recursive: true }),
+    ),
+  );
+
   return { packageJson, frameworksEntry: "next.js", dotEnv };
 }
 
