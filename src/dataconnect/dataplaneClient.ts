@@ -15,6 +15,6 @@ export async function executeGraphQL(servicePath: string, body: types.ExecuteGra
   const res = await dataconnectDataplaneClient().post<
     types.ExecuteGraphqlRequest,
     types.ExecuteGraphqlResponse | types.ExecuteGraphqlResponseError
-  >(servicePath + ":executeGraphql", body, { resolveOnHTTPError: true });
+  >(`${servicePath}:executeGraphql`, body, { resolveOnHTTPError: true });
   return res;
 }
