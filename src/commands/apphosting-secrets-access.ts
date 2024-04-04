@@ -5,13 +5,15 @@ import { needProjectId } from "../projectUtils";
 import { accessSecretVersion } from "../gcp/secretManager";
 import { requireAuth } from "../requireAuth";
 import * as secretManager from "../gcp/secretManager";
+import { requirePermissions } from "../requirePermissions";
 
-export const command = new Command("functions:secrets:access <KEY>[@version]")
+export const command = new Command("apphosting:secrets:access <secretName>[@version]")
   .description(
     "Access secret value given secret and its version. Defaults to accessing the latest version.",
   )
   .before(requireAuth)
   .before(secretManager.ensureApi)
+  .before(requirePermissions, ["secretmanager.versions.access"])
   .action(async (key: string, options: Options) => {
     const projectId = needProjectId(options);
     let [name, version] = key.split("@");
