@@ -1,6 +1,5 @@
 import * as clc from "colorette";
 
-import * as repo from "./repo";
 import * as poller from "../operation-poller";
 import * as apphosting from "../gcp/apphosting";
 import * as githubConnections from "./githubConnections";
@@ -42,10 +41,9 @@ export async function doSetup(
   webAppName: string | null,
   location: string | null,
   serviceAccount: string | null,
-  withDevConnect: boolean,
 ): Promise<void> {
   await Promise.all([
-    ...(withDevConnect ? [ensure(projectId, developerConnectOrigin(), "apphosting", true)] : []),
+    ensure(projectId, developerConnectOrigin(), "apphosting", true),
     ensure(projectId, cloudbuildOrigin(), "apphosting", true),
     ensure(projectId, secretManagerOrigin(), "apphosting", true),
     ensure(projectId, cloudRunApiOrigin(), "apphosting", true),
@@ -91,9 +89,8 @@ export async function doSetup(
     logWarning(`Firebase web app not set`);
   }
 
-  const gitRepositoryConnection: Repository | GitRepositoryLink = withDevConnect
-    ? await githubConnections.linkGitHubRepository(projectId, location)
-    : await repo.linkGitHubRepository(projectId, location);
+  const gitRepositoryConnection: Repository | GitRepositoryLink =
+    await githubConnections.linkGitHubRepository(projectId, location);
 
   const backend = await createBackend(
     projectId,

@@ -3,7 +3,6 @@ import { developerConnectOrigin, developerConnectP4SAOrigin } from "../api";
 import { generateServiceIdentityAndPoll } from "./serviceusage";
 
 const PAGE_SIZE_MAX = 1000;
-const LOCATION_OVERRIDE = process.env.FIREBASE_DEVELOPERCONNECT_LOCATION_OVERRIDE;
 
 export const client = new Client({
   urlPrefix: developerConnectOrigin(),
@@ -132,7 +131,7 @@ export async function createConnection(
     Omit<Omit<Connection, "name">, ConnectionOutputOnlyFields>,
     Operation
   >(
-    `projects/${projectId}/locations/${LOCATION_OVERRIDE ?? location}/connections`,
+    `projects/${projectId}/locations/${location}/connections`,
     {
       githubConfig: config,
     },
@@ -155,7 +154,7 @@ export async function deleteConnection(
    * completed. The server will guarantee that for at least 60 minutes after
    * the first request.
    */
-  const name = `projects/${projectId}/locations/${LOCATION_OVERRIDE ?? location}/connections/${connectionId}`;
+  const name = `projects/${projectId}/locations/${location}/connections/${connectionId}`;
   const res = await client.delete<Operation>(name, { queryParams: { force: "true" } });
   return res.body;
 }
@@ -168,7 +167,7 @@ export async function getConnection(
   location: string,
   connectionId: string,
 ): Promise<Connection> {
-  const name = `projects/${projectId}/locations/${LOCATION_OVERRIDE ?? location}/connections/${connectionId}`;
+  const name = `projects/${projectId}/locations/${location}/connections/${connectionId}`;
   const res = await client.get<Connection>(name);
   return res.body;
 }
@@ -185,7 +184,7 @@ export async function listAllConnections(
     const res = await client.get<{
       connections: Connection[];
       nextPageToken?: string;
-    }>(`/projects/${projectId}/locations/${LOCATION_OVERRIDE ?? location}/connections`, {
+    }>(`/projects/${projectId}/locations/${location}/connections`, {
       queryParams: {
         pageSize: PAGE_SIZE_MAX,
         pageToken,
@@ -210,7 +209,7 @@ export async function listAllLinkableGitRepositories(
   location: string,
   connectionId: string,
 ): Promise<LinkableGitRepository[]> {
-  const name = `projects/${projectId}/locations/${LOCATION_OVERRIDE ?? location}/connections/${connectionId}:fetchLinkableGitRepositories`;
+  const name = `projects/${projectId}/locations/${location}/connections/${connectionId}:fetchLinkableGitRepositories`;
   const repos: LinkableGitRepository[] = [];
 
   const getNextPage = async (pageToken = ""): Promise<void> => {
@@ -250,7 +249,7 @@ export async function createGitRepositoryLink(
     Omit<GitRepositoryLink, GitRepositoryLinkOutputOnlyFields | "name">,
     Operation
   >(
-    `projects/${projectId}/locations/${LOCATION_OVERRIDE ?? location}/connections/${connectionId}/gitRepositoryLinks`,
+    `projects/${projectId}/locations/${location}/connections/${connectionId}/gitRepositoryLinks`,
     { cloneUri },
     { queryParams: { gitRepositoryLinkId } },
   );
@@ -266,7 +265,7 @@ export async function getGitRepositoryLink(
   connectionId: string,
   gitRepositoryLinkId: string,
 ): Promise<GitRepositoryLink> {
-  const name = `projects/${projectId}/locations/${LOCATION_OVERRIDE ?? location}/connections/${connectionId}/gitRepositoryLinks/${gitRepositoryLinkId}`;
+  const name = `projects/${projectId}/locations/${location}/connections/${connectionId}/gitRepositoryLinks/${gitRepositoryLinkId}`;
   const res = await client.get<GitRepositoryLink>(name);
   return res.body;
 }
