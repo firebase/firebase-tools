@@ -101,7 +101,6 @@ export async function linkGitHubRepository(
   const existingConns = await listAppHostingConnections(projectId);
 
   if (existingConns.length === 0) {
-    utils.logBullet("no connections exist");
     existingConns.push(
       await createFullyInstalledConnection(projectId, location, generateConnectionId(), oauthConn),
     );
