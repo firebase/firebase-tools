@@ -1,1 +1,1 @@
-- Remove development-only files from Next.js deployments (#6731).
+- Remove development-only files from Next.js deployments (#6731)
