@@ -193,7 +193,7 @@ describe("githubConnections", () => {
       await repo.getOrCreateOauthConnection(projectId, location);
       expect(serviceAccountHasRolesStub).to.be.calledWith(
         projectId,
-        `service-${projectId}@gcp-sa-developerconnect.iam.gserviceaccount.com`,
+        `service-${projectId}@gcp-sa-devconnect.iam.gserviceaccount.com`,
         ["roles/secretmanager.admin"],
         true,
       );
@@ -355,7 +355,7 @@ describe("githubConnections", () => {
 
       expect(serviceAccountHasRolesStub).calledWith(
         projectId,
-        `service-${projectId}@gcp-sa-developerconnect.iam.gserviceaccount.com`,
+        `service-${projectId}@gcp-sa-devconnect.iam.gserviceaccount.com`,
         ["roles/secretmanager.admin"],
       );
       expect(promptOnceStub).to.not.be.called;
@@ -370,7 +370,7 @@ describe("githubConnections", () => {
 
       expect(serviceAccountHasRolesStub).calledWith(
         projectId,
-        `service-${projectId}@gcp-sa-developerconnect.iam.gserviceaccount.com`,
+        `service-${projectId}@gcp-sa-devconnect.iam.gserviceaccount.com`,
         ["roles/secretmanager.admin"],
       );
 
@@ -388,7 +388,7 @@ describe("githubConnections", () => {
 
       expect(serviceAccountHasRolesStub).calledWith(
         projectId,
-        `service-${projectId}@gcp-sa-developerconnect.iam.gserviceaccount.com`,
+        `service-${projectId}@gcp-sa-devconnect.iam.gserviceaccount.com`,
         ["roles/secretmanager.admin"],
       ).calledOnce;
       expect(generateP4SAStub).calledOnce;
