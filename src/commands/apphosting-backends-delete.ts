@@ -3,7 +3,7 @@ import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { FirebaseError } from "../error";
 import { promptOnce } from "../prompt";
-import { DEFAULT_REGION } from "../init/features/apphosting/constants";
+import { DEFAULT_REGION } from "../apphosting/constants";
 import * as utils from "../utils";
 import * as apphosting from "../gcp/apphosting";
 import { printBackendsTable } from "./apphosting-backends-list";
