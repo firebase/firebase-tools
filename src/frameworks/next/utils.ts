@@ -1,6 +1,6 @@
 import { existsSync } from "fs";
 import { pathExists } from "fs-extra";
-import { basename, extname, join, posix } from "path";
+import { basename, extname, join, posix, sep } from "path";
 import { readFile } from "fs/promises";
 import { sync as globSync } from "glob";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
@@ -33,6 +33,7 @@ import {
   CONFIG_FILES,
 } from "./constants";
 import { dirExistsSync, fileExistsSync } from "../../fsutils";
+import { IS_WINDOWS } from "../../utils";
 
 export const I18N_SOURCE = /\/:nextInternalLocale(\([^\)]+\))?/;
 
@@ -249,15 +250,21 @@ export async function isUsingNextImageInAppDirectory(
   projectDir: string,
   nextDir: string,
 ): Promise<boolean> {
+  const nextImagePath = ["node_modules", "next", "dist", "client", "image"];
+  const nextImageString = IS_WINDOWS
+    ? // Note: Windows requires double backslashes to match Next.js generated file
+      nextImagePath.join(sep + sep)
+    : join(...nextImagePath);
+
   const files = globSync(
     join(projectDir, nextDir, "server", "**", "*client-reference-manifest.js"),
   );
 
   for (const filepath of files) {
-    const fileContents = await readFile(filepath);
+    const fileContents = await readFile(filepath, "utf-8");
 
     // Return true when the first file containing the next/image component is found
-    if (fileContents.includes("node_modules/next/dist/client/image")) {
+    if (fileContents.includes(nextImageString)) {
       return true;
     }
   }
