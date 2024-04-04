@@ -1,0 +1,1 @@
+- Add support to next.config.mjs (#6933)
