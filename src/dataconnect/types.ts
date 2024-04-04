@@ -138,3 +138,9 @@ export function toDatasource(
   }
   return {};
 }
+
+
+export interface Impersonation {
+  auth_claims?: any;
+  unauthenitcated?: boolean;
+}
