@@ -1,0 +1,1 @@
+- Fix Next.js image optimization check in app directory for Windows (#6930)
