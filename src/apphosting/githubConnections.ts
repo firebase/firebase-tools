@@ -144,6 +144,13 @@ export async function linkGitHubRepository(
  * side (ie associated with an account/org and some subset of repos within that scope).
  * Copies over Oauth creds from the sentinel Oauth connection to save the user from having to
  * reauthenticate with GitHub.
+ * @param projectId user's Firebase projectID
+ * @param location region where backend is being created
+ * @param connectionId id of connection to be created
+ * @param oauthConn user's oauth connection
+ * @param withNewInstallation Defaults to false if not set, and the Oauth connection's
+ *                            Installation Id is re-used when creating a new connection.
+ *                            If true the Oauth connection's installation Id is not re-used.
  */
 async function createFullyInstalledConnection(
   projectId: string,
