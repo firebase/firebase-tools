@@ -63,5 +63,4 @@ export class ResolvedDataConnectConfigs {
 // TODO: Expand this into a VSCode env config object/class
 export enum VSCODE_ENV_VARS {
   DATA_CONNECT_ORIGIN = "FIREBASE_DATACONNECT_URL",
-  POSTGRES_CONNECTION_STRING = "FIREBASE_DATACONNECT_POSTGRESQL_STRING",
 }

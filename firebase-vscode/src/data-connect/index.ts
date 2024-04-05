@@ -160,15 +160,9 @@ export function registerFdc(
       }
     }),
   });
-  // TODO: Temporary hack to update postgres string & staging api
+  // TODO: Temporary hack to update staging api
   setVSCodeEnvVars(VSCODE_ENV_VARS.DATA_CONNECT_ORIGIN, STAGING_API);
 
-  broker.on("updateDataConnectPostgresString", (connectionString: string) => {
-    setVSCodeEnvVars(
-      VSCODE_ENV_VARS.POSTGRES_CONNECTION_STRING,
-      connectionString,
-    );
-  });
   const selectedProjectStatus = vscode.window.createStatusBarItem(
     "projectPicker",
     vscode.StatusBarAlignment.Left,
