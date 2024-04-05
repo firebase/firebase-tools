@@ -44,6 +44,4 @@ export const TEXT = {
 
   CONNECT_TO_INSTANCE_DESCRIPTION:
     "Connect to the emulator or a production instance.",
-
-  LOCAL_CONN_STRING_LABEL: "Set PostgreSQL local connection string",
 };
