@@ -1,0 +1,1 @@
+- Fixed an issue where the Functions emulator would choose the wrong runtime if none was listed in `firebase.json`. (#6965)

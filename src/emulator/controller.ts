@@ -53,7 +53,7 @@ import { requiresJava } from "./downloadableEmulators";
 import { prepareFrameworks } from "../frameworks";
 import * as experiments from "../experiments";
 import { EmulatorListenConfig, PortName, resolveHostAndAssignPorts } from "./portUtils";
-import { Runtime, isRuntime, latest } from "../deploy/functions/runtimes/supported";
+import { Runtime, isRuntime } from "../deploy/functions/runtimes/supported";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
@@ -493,7 +493,7 @@ export async function startAll(
 
     for (const cfg of functionsCfg) {
       const functionsDir = path.join(projectDir, cfg.source);
-      let runtime = (options.extDevRuntime ?? cfg.runtime) as Runtime | undefined;
+      const runtime = (options.extDevRuntime ?? cfg.runtime) as Runtime | undefined;
       // N.B. (Issue #6965) it's OK for runtime to be undefined because the functions discovery process
       // will dynamically detect it later.
       // TODO: does runtime even need to be a part of EmultableBackend now that we have dynamic runtime
