@@ -94,7 +94,7 @@
     ]
   },
   "dependencies": {
-    "@google-cloud/pubsub": "^3.0.1",
+    "@google-cloud/pubsub": "^4.3.3",
     "abort-controller": "^3.0.0",
     "ajv": "^6.12.6",
     "archiver": "^5.0.0",
