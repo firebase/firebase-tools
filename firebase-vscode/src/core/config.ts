@@ -20,6 +20,7 @@ import {
   ResolvedDataConnectConfig,
   ResolvedDataConnectConfigs,
 } from "../data-connect/config";
+import { DataConnectSingle } from "../firebaseConfig";
 
 export const firebaseRC = globalSignal<RC | undefined>(undefined);
 export const firebaseConfig = globalSignal<ExpandedFirebaseConfig | undefined>(
@@ -123,8 +124,9 @@ export async function _readDataConnectConfigs(
       config.dataConnect.map<Promise<ResolvedDataConnectConfig>>(
         async (dataConnect) => {
           // Paths may be relative to the firebase.json file.
+          const dcSingle = dataConnect as DataConnectSingle;
           const absoluteLocation = asAbsolutePath(
-            dataConnect.source,
+            dcSingle.source,
             _getConfigPath(),
           );
           const dataConnectYaml = await readDataConnectYaml(absoluteLocation);
