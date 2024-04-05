@@ -38,8 +38,10 @@ async function getOrCreateWebApp(
 
   if (webAppsInProject.length === 0) {
     // create a web app using backend id
-    const { name, appId } = await createFirebaseWebApp(projectId, { displayName: backendId });
-    return { name, id: appId };
+    const { displayName, appId } = await createFirebaseWebApp(projectId, {
+      displayName: backendId,
+    });
+    return { name: displayName, id: appId };
   }
 
   const existingUserProjectWebApps = new Map(
