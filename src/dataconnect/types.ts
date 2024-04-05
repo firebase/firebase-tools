@@ -154,7 +154,7 @@ export interface ExecuteGraphqlResponse {
 }
 
 export interface ExecuteGraphqlResponseError {
-  error: {code: number, message: string, status: string, details: any}
+  error: { code: number; message: string; status: string; details: any };
 }
 
 interface ImpersonationAuthenticated {
