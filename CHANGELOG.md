@@ -1,0 +1,1 @@
+- Fixes bug where `firebase deploy --only firestore:rules,firestore:indexes` does not update rules and indexes. (#6966)
