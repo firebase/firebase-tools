@@ -116,6 +116,7 @@ export async function linkGitHubRepository(
           location,
           generateConnectionId(),
           oauthConn,
+          /** withNewInstallation= */ true,
         ),
       );
     }
@@ -149,9 +150,10 @@ async function createFullyInstalledConnection(
   location: string,
   connectionId: string,
   oauthConn: devConnect.Connection,
+  withNewInstallation = false,
 ): Promise<devConnect.Connection> {
   let conn = await createConnection(projectId, location, connectionId, {
-    appInstallationId: oauthConn.githubConfig?.appInstallationId,
+    appInstallationId: withNewInstallation ? undefined : oauthConn.githubConfig?.appInstallationId,
     authorizerCredential: oauthConn.githubConfig?.authorizerCredential,
   });
 
