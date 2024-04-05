@@ -3,7 +3,10 @@
  * between two environments (VScode and Webview)
  */
 
-import { DataConnectConfig, FirebaseConfig } from "../../../src/firebaseConfig";
+import {
+  DataConnectMultiple,
+  FirebaseConfig,
+} from "../../../src/firebaseConfig";
 import { User } from "../../../src/types/auth";
 import { ServiceAccountUser } from "../types";
 import { RCData } from "../../../src/rc";
@@ -35,7 +38,7 @@ export type UserMock =
 
 export type ExpandedFirebaseConfig = {
   config: Config;
-  dataConnect?: DataConnectConfig[];
+  dataConnect?: DataConnectMultiple;
 };
 
 export interface WebviewToExtensionParamsMap {
@@ -111,8 +114,6 @@ export interface WebviewToExtensionParamsMap {
 
   /** Opens the "connect to instance" picker */
   connectToInstance: void;
-
-  updateDataConnectPostgresString: string;
 }
 
 export interface DataConnectResults {

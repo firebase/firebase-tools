@@ -124,9 +124,8 @@ export async function _readDataConnectConfigs(
       config.dataConnect.map<Promise<ResolvedDataConnectConfig>>(
         async (dataConnect) => {
           // Paths may be relative to the firebase.json file.
-          const dcSingle = dataConnect as DataConnectSingle;
           const absoluteLocation = asAbsolutePath(
-            dcSingle.source,
+            dataConnect.source,
             _getConfigPath(),
           );
           const dataConnectYaml = await readDataConnectYaml(absoluteLocation);
