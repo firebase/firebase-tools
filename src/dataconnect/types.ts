@@ -149,12 +149,12 @@ export interface ExecuteGraphqlRequest {
 }
 
 export interface ExecuteGraphqlResponse {
-  data: any;
+  data: Record<string, any>;
   errors: any[];
 }
 
 export interface ExecuteGraphqlResponseError {
-  error: { code: number; message: string; status: string; details: any };
+  error: { code: number; message: string; status: string; details: any[] };
 }
 
 interface ImpersonationAuthenticated {
