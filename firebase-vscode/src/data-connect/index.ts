@@ -142,13 +142,13 @@ export function registerFdc(
   );
   const schemaCodeLensProvider = new SchemaCodeLensProvider(emulatorController);
 
-  const client = setupLanguageClient(context, fdcService.endpoint);
+  const client = setupLanguageClient(context);
   client.start();
 
   // Perform some side-effects when the endpoint changes
   context.subscriptions.push({
     dispose: effect(() => {
-      if (fdcService.endpoint.value) {
+      if (fdcService.localEndpoint.value) {
         // TODO move to client.start or setupLanguageClient
         vscode.commands.executeCommand("fdc-graphql.restart");
 
@@ -156,7 +156,7 @@ export function registerFdc(
           "firebase.dataConnect.executeIntrospection",
         );
 
-        runDataConnectCompiler(fdcService.endpoint.value);
+        runDataConnectCompiler(fdcService.localEndpoint.value);
       }
     }),
   });

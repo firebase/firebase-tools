@@ -4,7 +4,7 @@ import {
   IntrospectionQuery,
   getIntrospectionQuery,
 } from "graphql";
-import { Signal, computed, signal } from "@preact/signals-core";
+import { computed } from "@preact/signals-core";
 import { assertExecutionResult } from "../../common/graphql";
 import { DataConnectError } from "../../common/error";
 import { AuthService } from "../auth/service";
@@ -14,10 +14,19 @@ import { EmulatorsController } from "../core/emulators";
 import { Emulators } from "../cli";
 import { dataConnectConfigs } from "../core/config";
 import { PRODUCTION_INSTANCE, selectedInstance } from "./connect-instance";
-
+import { firebaseRC } from "../core/config";
+import { executeGraphQL } from "../../../src/dataconnect/dataplaneClient";
+import {
+  ExecuteGraphqlRequest,
+  ExecuteGraphqlResponse,
+  ExecuteGraphqlResponseError,
+  Impersonation,
+} from "../dataconnect/types";
+import { ClientResponse } from "../apiv2";
 // TODO: THIS SHOULDN'T BE HERE
 export const STAGING_API =
   "https://staging-firebasedataconnect.sandbox.googleapis.com";
+
 /**
  * DataConnect Emulator service
  */
@@ -27,10 +36,10 @@ export class DataConnectService {
     private emulatorsController: EmulatorsController,
   ) {}
 
-  readonly endpoint = computed<string | undefined>(() => {
-    if (selectedInstance.valueOf() === PRODUCTION_INSTANCE) {
-      return STAGING_API;
-    }
+  readonly isProduction = computed<boolean>(() => {
+    return selectedInstance.value === PRODUCTION_INSTANCE;
+  });
+  readonly localEndpoint = computed<string | undefined>(() => {
     const emulatorInfos =
       this.emulatorsController.emulators.value.infos?.displayInfo;
     const dataConnectEmulator = emulatorInfos?.find(
@@ -45,6 +54,21 @@ export class DataConnectService {
       "http://" + dataConnectEmulator.host + ":" + dataConnectEmulator.port
     );
   });
+
+  async servicePath(path: string): Promise<string> {
+    const dataConnectConfigsValue = await firstWhereDefined(dataConnectConfigs);
+    // TODO: avoid calling this here and in getApiServicePathByPath
+    const serviceId =
+      dataConnectConfigsValue.findEnclosingServiceForPath(path).value.serviceId;
+    const projectId = firebaseRC.value?.projects?.default;
+    return this.isProduction.value
+      ? dataConnectConfigsValue.getApiServicePathByPath(
+          projectId,
+          path,
+          dataConnectConfigsValue,
+        )
+      : `projects/p/locations/l/services/${serviceId}`;
+  }
 
   private async decodeResponse(
     response: Response,
@@ -66,6 +90,20 @@ export class DataConnectService {
     }
 
     return response.text();
+  }
+  private async handleProdResponse(
+    clientResponse: ClientResponse<ExecuteGraphqlResponse|ExecuteGraphqlResponseError>,
+  ): Promise<ExecutionResult> {
+    if (!(clientResponse.status >= 200 && clientResponse.status < 300)) {
+      const errorResponse = clientResponse as ClientResponse<ExecuteGraphqlResponseError>;
+      throw new DataConnectError(
+        `Request failed with status ${clientResponse.status}`,
+        errorResponse.body.error.message,
+      );
+    }
+    const successResponse =
+      clientResponse as ClientResponse<ExecuteGraphqlResponse>;
+    return successResponse.body;
   }
 
   private async handleValidResponse(
@@ -113,7 +151,7 @@ export class DataConnectService {
     });
   }
 
-  private _auth() {
+  private _auth(): { impersonate?: Impersonation } {
     const userMock = this.authService.userMock;
     if (userMock.kind === UserMockKind.ADMIN) {
       return {};
@@ -169,7 +207,7 @@ export class DataConnectService {
         extensions: this._auth(),
       });
       const resp = await fetch(
-        (await firstWhereDefined(this.endpoint)) +
+        (await firstWhereDefined(this.localEndpoint)) +
           `/v1alpha/projects/p/locations/l/services/${serviceId}:executeGraphqlRead`,
         {
           method: "POST",
@@ -196,32 +234,38 @@ export class DataConnectService {
     variables: string;
     path: string;
   }) {
-    const configs = await firstWhereDefined(dataConnectConfigs);
-    const service = configs.findEnclosingServiceForPath(params.path);
-    if (!service) {
+    const servicePath = await this.servicePath(params.path);
+    if (!servicePath) {
       throw new Error("No service found for path: " + params.path);
     }
 
-    // TODO: get name programmatically
-    const body = this._serializeBody({
-      ...params,
-      name: `projects/p/locations/l/services/${service.value.serviceId}`,
+    const prodBody: ExecuteGraphqlRequest = {
+      operationName: params.operationName,
+      variables: JSON.parse(params.variables),
+      query: params.query,
+      name: `${servicePath}`,
       extensions: this._auth(),
-    });
-    const resp = await fetch(
-      (await firstWhereDefined(this.endpoint)) +
-        `/v1alpha/projects/p/locations/l/services/${service.value.serviceId}:executeGraphql`,
-      {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          "x-mantle-admin": "all",
-        },
-        body,
-      },
-    );
+    };
 
-    return this.handleResponse(resp);
+    const body = this._serializeBody({ ...params });
+    if (this.isProduction.value) {
+      const resp = await executeGraphQL(servicePath, prodBody);
+      return this.handleProdResponse(resp);
+    } else {
+      const resp = await fetch(
+        (await firstWhereDefined(this.localEndpoint)) +
+          `/v1alpha/${servicePath}:executeGraphql`,
+        {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            "x-mantle-admin": "all",
+          },
+          body,
+        },
+      );
+      return this.handleResponse(resp);
+    }
   }
 }

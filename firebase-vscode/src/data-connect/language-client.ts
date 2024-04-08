@@ -9,7 +9,7 @@ import {
 import * as path from "node:path";
 import { Signal } from "@preact/signals-core";
 
-export function setupLanguageClient(context, fdcEndpoint: Signal<string>) {
+export function setupLanguageClient(context) {
   // activate language client/serer
   const outputChannel: vscode.OutputChannel = vscode.window.createOutputChannel(
     "Firebase GraphQL Language Server",
@@ -78,12 +78,6 @@ export function setupLanguageClient(context, fdcEndpoint: Signal<string>) {
     clientOptions,
   );
 
-  // send endpoint to language server
-  const sendFDCEndpointToLSP = (endpoint: string) => {
-    client.sendNotification("fdc-endpoint", endpoint);
-  };
-  vscode.commands.registerCommand("sendFDCEndpointToLSP", sendFDCEndpointToLSP);
-
   // register commands
   const commandShowOutputChannel = vscode.commands.registerCommand(
     "fdc-graphql.showOutputChannel",
@@ -99,10 +93,6 @@ export function setupLanguageClient(context, fdcEndpoint: Signal<string>) {
     outputChannel.appendLine("Restarting Firebase GraphQL Language Server");
     await client.start();
     outputChannel.appendLine("Firebase GraphQL Language Server restarted");
-
-    // re-send data connect endpoint
-    sendFDCEndpointToLSP(fdcEndpoint.value);
-    outputChannel.appendLine("Sending Firebase Data Connect endpoint to LSP");
   });
 
   const restartGraphqlLSP = () => {

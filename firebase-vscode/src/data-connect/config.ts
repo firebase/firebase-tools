@@ -1,7 +1,6 @@
 import { isPathInside } from "./file-utils";
 import { DeepReadOnly } from "../metaprogramming";
 import { ConnectorYaml, DataConnectYaml } from "../dataconnect/types";
-import { STAGING_API } from "./service";
 export * from "../core/config";
 
 export class ResolvedConnectorYaml {
@@ -20,6 +19,7 @@ export class ResolvedDataConnectConfig {
     readonly path: string,
     readonly value: DeepReadOnly<DataConnectYaml>,
     readonly resolvedConnectors: ResolvedConnectorYaml[],
+    readonly dataConnectLocation: string,
   ) {}
 
   get connectorIds() {
@@ -57,6 +57,19 @@ export class ResolvedDataConnectConfigs {
 
   findEnclosingServiceForPath(filePath: string) {
     return this.values.find((dc) => dc.containsPath(filePath));
+  }
+
+  getApiServicePathByPath(
+    projectId: string,
+    path: string,
+    resolvedDataConnectConfigs: ResolvedDataConnectConfigs,
+  ) {
+    const dataConnectConfig =
+      resolvedDataConnectConfigs.findEnclosingServiceForPath(path);
+    const serviceId = dataConnectConfig.value.serviceId;
+    const locationId = dataConnectConfig.dataConnectLocation;
+
+    return `projects/${projectId}/locations/${locationId}/services/${serviceId}`;
   }
 }
 

@@ -147,11 +147,11 @@ export function registerExecution(
       });
     }
 
-    let results;
     try {
       // Execute queries/mutations from their source code.
       // That ensures that we can execute queries in unsaved files.
-      results = await dataConnectService.executeGraphQL({
+
+      const results = await dataConnectService.executeGraphQL({
         operationName: ast.name?.value,
         // We send the whole unparsed document to guarantee
         // that there are no formatting differences between the real document
