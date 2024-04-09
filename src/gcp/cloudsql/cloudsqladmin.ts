@@ -53,6 +53,8 @@ interface InstanceSettings {
   dataCacheConfig?: {
     dataCacheEnabled: boolean;
   };
+  userLabels?: {[key: string]: string};
+  backupConfiguration?: {enabled: boolean};
 }
 // TODO: Consider splitting off return only fields and input fields into different types.
 interface Instance {
@@ -86,12 +88,6 @@ interface Instance {
   maintenanceVersion?: string;
   createTime?: string;
   sqlNetworkArchitecture?: string;
-  databaseFlags?: DatabaseFlag[];
-}
-
-interface DatabaseFlag {
-  name: string;
-  value: string;
 }
 
 interface SslCert {
@@ -154,6 +150,9 @@ export async function createInstance(
         { name: "cloudsql.iam_authentication", value: "on" },
         // TODO: Any other flags we want? https://cloud.google.com/sql/docs/postgres/flags
       ],
+      storageAutoResize: false,
+      userLabels: {"firebase-data-connect": "true"},
+      backupConfiguration: {enabled: false},
     },
   });
   const opName = `projects/${projectId}/operations/${op.body.name}`;
