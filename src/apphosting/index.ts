@@ -88,12 +88,21 @@ export async function doSetup(
     ? await githubConnections.linkGitHubRepository(projectId, location)
     : await repo.linkGitHubRepository(projectId, location);
 
+  const rootDir = await promptOnce({
+    name: "rootDir",
+    type: "input",
+    default: "/",
+    message:
+      "Specify the path to the root of the app you would like to deploy (relative to the repo root)",
+  });
+
   const backend = await createBackend(
     projectId,
     location,
     backendId,
     gitRepositoryConnection,
     serviceAccount,
+    rootDir,
   );
 
   // TODO: Once tag patterns are implemented, prompt which method the user
@@ -172,13 +181,14 @@ export async function createBackend(
   backendId: string,
   repository: Repository | GitRepositoryLink,
   serviceAccount: string | null,
+  rootDir = "/",
 ): Promise<Backend> {
   const defaultServiceAccount = defaultComputeServiceAccountEmail(projectId);
   const backendReqBody: Omit<Backend, BackendOutputOnlyFields> = {
     servingLocality: "GLOBAL_ACCESS",
     codebase: {
       repository: `${repository.name}`,
-      rootDirectory: "/",
+      rootDirectory: rootDir,
     },
     labels: deploymentTool.labels(),
     serviceAccount: serviceAccount || defaultServiceAccount,
