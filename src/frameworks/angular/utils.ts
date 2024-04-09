@@ -11,6 +11,45 @@ import { AssertionError } from "assert";
 import { assertIsString } from "../../utils";
 import { coerce } from "semver";
 
+/**
+ * @param serverFilePath path to server.ts
+ * @return true when `run` function is called in server.ts, it breaks SSR (Angular 17+) on Firebase.
+ */
+const isRunImplementedAndCalledInServer = async (serverFilePath: string): Promise<boolean> => {
+  // Dynamically import the TypeScript compiler module
+  const ts = await import("typescript");
+  const sourceCode = ts.sys.readFile(serverFilePath);
+  const functionName = "run";
+
+  if (!sourceCode) {
+    return false;
+  }
+
+  const sourceFile = ts.createSourceFile("server.ts", sourceCode, ts.ScriptTarget.Latest, true);
+
+  let isRunDefined = false;
+  let isRunCalled = false;
+
+  // Recursive function to traverse the AST
+  const traverse = (node: any): void => {
+    if (ts.isFunctionDeclaration(node) && node.name && node.name.getText() === functionName) {
+      isRunDefined = true;
+    }
+    if (
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.getText() === functionName
+    ) {
+      isRunCalled = true;
+    }
+    ts.forEachChild(node, traverse);
+  };
+
+  traverse(sourceFile);
+
+  return isRunDefined && isRunCalled;
+};
+
 async function localesForTarget(
   dir: string,
   architectHost: WorkspaceNodeModulesArchitectHost,
@@ -482,6 +521,16 @@ export async function getServerConfig(sourceDir: string, configuration: string) 
     );
   }
   const serverEntry = buildTarget ? "server.mjs" : serverTarget && "main.js";
+
+  if (
+    serverEntry === "server.mjs" &&
+    (await isRunImplementedAndCalledInServer(join(sourceDir, "server.ts")))
+  ) {
+    throw new FirebaseError(
+      "For SSR to work properly, please remove the `run` function call from the `server.ts` file.",
+    );
+  }
+
   const externalDependencies: string[] = (serverTargetOptions.externalDependencies as any) || [];
   const bundleDependencies = serverTargetOptions.bundleDependencies ?? true;
   const { locales: browserLocales } = await localesForTarget(
