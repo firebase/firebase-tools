@@ -187,7 +187,7 @@ export async function createBackend(
   backendId: string,
   repository: Repository | GitRepositoryLink,
   serviceAccount: string | null,
-  rootDir: string,
+  rootDir = "/",
 ): Promise<Backend> {
   const defaultServiceAccount = defaultComputeServiceAccountEmail(projectId);
   const backendReqBody: Omit<Backend, BackendOutputOnlyFields> = {
