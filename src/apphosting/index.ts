@@ -77,7 +77,7 @@ export async function doSetup(
 
   if (!location) {
     throw new FirebaseError(
-      `Invalid location ${location}. Valid choices are ${allowedLocations.join(", ")}`,
+      `Location must be provided. Valid choices are ${allowedLocations.join(", ")}`,
     );
   }
 
