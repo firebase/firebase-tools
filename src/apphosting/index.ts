@@ -65,7 +65,7 @@ export async function doSetup(
 
   location =
     location ||
-    (await promptOnce({
+    ((await promptOnce({
       name: "region",
       type: "list",
       default: DEFAULT_REGION,
@@ -73,13 +73,7 @@ export async function doSetup(
         "Please select a region " +
         `(${clc.yellow("info")}: Your region determines where your backend is located):\n`,
       choices: allowedLocations.map((loc) => ({ value: loc })),
-    }));
-
-  if (!location) {
-    throw new FirebaseError(
-      `Location must be provided. Valid choices are ${allowedLocations.join(", ")}`,
-    );
-  }
+    })) as string);
 
   logSuccess(`Region set to ${location}.\n`);
 
