@@ -75,13 +75,14 @@ describe("operationsConverter", () => {
         backendId,
         cloudBuildConnRepo,
         "custom-service-account",
+        "foo/bar",
       );
 
       const backendInput: Omit<apphosting.Backend, apphosting.BackendOutputOnlyFields> = {
         servingLocality: "GLOBAL_ACCESS",
         codebase: {
           repository: cloudBuildConnRepo.name,
-          rootDirectory: "/",
+          rootDirectory: "foo/bar",
         },
         labels: deploymentTool.labels(),
       };
