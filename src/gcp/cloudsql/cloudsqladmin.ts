@@ -53,8 +53,7 @@ interface InstanceSettings {
   dataCacheConfig?: {
     dataCacheEnabled: boolean;
   };
-  userLabels?: {[key: string]: string};
-  backupConfiguration?: {enabled: boolean};
+  userLabels?: { [key: string]: string };
 }
 // TODO: Consider splitting off return only fields and input fields into different types.
 interface Instance {
@@ -151,8 +150,7 @@ export async function createInstance(
         // TODO: Any other flags we want? https://cloud.google.com/sql/docs/postgres/flags
       ],
       storageAutoResize: false,
-      userLabels: {"firebase-data-connect": "true"},
-      backupConfiguration: {enabled: false},
+      userLabels: { "firebase-data-connect": "true" },
     },
   });
   const opName = `projects/${projectId}/operations/${op.body.name}`;
