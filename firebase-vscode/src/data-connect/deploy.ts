@@ -4,6 +4,20 @@ import { currentOptions } from "../options";
 import { deploy as cliDeploy } from "../../../src/deploy";
 import { dataConnectConfigs } from "./config";
 import { createE2eMockable } from "../utils/test_hooks";
+import { runCommand } from "./terminal";
+
+function createDeployOnlyCommand(serviceConnectorMap: {
+  [key: string]: string[];
+}): string {
+  return (
+    "firebase deploy --only " +
+    Object.entries(serviceConnectorMap)
+      .map(([serviceId, connectorIds]) => {
+        return `dataconnect:${serviceId}:${connectorIds.join(":")}`;
+      })
+      .join(",")
+  );
+}
 
 export function registerFdcDeploy(): vscode.Disposable {
   const deploySpy = createE2eMockable(
@@ -23,22 +37,19 @@ export function registerFdcDeploy(): vscode.Disposable {
         return;
       }
 
-      const serviceConnectorMap = {};
+      const serviceConnectorMap: { [key: string]: string[] } = {};
       for (const service of pickedServices) {
         serviceConnectorMap[service] = await pickConnectors(service);
       }
 
-      // TODO: create --only strings like service:connector:connector when CLI flag is available
-      for (const service of pickedServices) {
-        deploySpy.call(["dataconnect"], currentOptions.valueOf(), {
-          context: service,
-        });
-      }
+      runCommand(createDeployOnlyCommand(serviceConnectorMap)); // run from terminal
     },
   );
 
   return vscode.Disposable.from(deploySpy, deployCmd);
 }
+
+
 
 async function pickServices(): Promise<Array<string> | undefined> {
   const options = firstWhere(
