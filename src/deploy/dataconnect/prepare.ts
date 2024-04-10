@@ -8,6 +8,7 @@ import * as utils from "../../utils";
 import { ensure } from "../../ensureApiEnabled";
 import { needProjectId } from "../../projectUtils";
 import { dataconnectOrigin } from "../../api";
+import { getResourceFilters } from "../../dataconnect/filters";
 
 /**
  * Prepares for a Firebase DataConnect deployment by loading schemas and connectors from file.
@@ -19,11 +20,15 @@ export default async function (context: any, options: Options): Promise<void> {
   await ensure(projectId, new URL(dataconnectOrigin()).hostname, "dataconnect");
   const serviceCfgs = readFirebaseJson(options.config);
   utils.logLabeledBullet("dataconnect", `Preparing to deploy`);
-  context.dataconnect = await Promise.all(
-    serviceCfgs.map((c) =>
-      load(projectId, c.location, path.join(options.cwd || process.cwd(), c.source)),
+  const filters = getResourceFilters(options);
+  context.dataconnect = {
+    serviceInfos: await Promise.all(
+      serviceCfgs.map((c) =>
+        load(projectId, c.location, path.join(options.cwd || process.cwd(), c.source)),
+      ),
     ),
-  );
+    filters,
+  };
 
   utils.logLabeledBullet("dataconnect", `Successfully prepared schema and connectors`);
   logger.debug(JSON.stringify(context.dataconnect, null, 2));

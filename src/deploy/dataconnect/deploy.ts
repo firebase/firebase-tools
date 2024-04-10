@@ -5,8 +5,8 @@ import { Service, ServiceInfo } from "../../dataconnect/types";
 import { needProjectId } from "../../projectUtils";
 import { provisionCloudSql } from "../../dataconnect/provisionCloudSql";
 import { parseServiceName } from "../../dataconnect/names";
-import { migrateSchema } from "../../dataconnect/schemaMigration";
 import { confirm } from "../../prompt";
+import { ResourceFilter } from "../../dataconnect/filters";
 
 /**
  * Checks for and creates a Firebase DataConnect service, if needed.
@@ -15,18 +15,33 @@ import { confirm } from "../../prompt";
  * @param options The CLI options object.
  */
 export default async function (
-  context: { dataconnect: ServiceInfo[] },
+  context: {
+    dataconnect: {
+      serviceInfos: ServiceInfo[];
+      filters?: ResourceFilter[];
+    };
+  },
   options: Options,
 ): Promise<void> {
   const projectId = needProjectId(options);
+  const serviceInfos = context.dataconnect.serviceInfos as ServiceInfo[];
   const services = await client.listAllServices(projectId);
-  const servicesToCreate = context.dataconnect.filter(
-    (si) => !services.some((s) => matches(si, s)),
-  );
-  const servicesToDelete = services.filter(
-    (s) => !context.dataconnect.some((si) => matches(si, s)),
-  );
+  const filters = context.dataconnect.filters;
 
+  const servicesToCreate = serviceInfos
+    .filter((si) => !services.some((s) => matches(si, s)))
+    .filter((si) => {
+      return (
+        !filters ||
+        filters?.some((f) => {
+          si.dataConnectYaml.serviceId === f.serviceId;
+        })
+      );
+    });
+  // When --only filters are passed, don't delete anything.
+  const servicesToDelete = filters
+    ? []
+    : services.filter((s) => !serviceInfos.some((si) => matches(si, s)));
   await Promise.all(
     servicesToCreate.map(async (s) => {
       const { projectId, locationId, serviceId } = splitName(s.serviceName);
@@ -58,31 +73,32 @@ export default async function (
   // Provision CloudSQL resources
   utils.logLabeledBullet("dataconnect", "Checking for CloudSQL resources...");
 
-  const serviceInfos = context.dataconnect as ServiceInfo[];
   await Promise.all(
-    serviceInfos.map(async (s) => {
-      const instanceId = s.schema.primaryDatasource.postgresql?.cloudSql.instance.split("/").pop();
-      const databaseId = s.schema.primaryDatasource.postgresql?.database;
-      if (!instanceId || !databaseId) {
-        return Promise.resolve();
-      }
-      await provisionCloudSql(
-        projectId,
-        parseServiceName(s.serviceName).location,
-        instanceId,
-        databaseId,
-      );
-    }),
+    serviceInfos
+      .filter((si) => {
+        return (
+          !filters ||
+          filters?.some((f) => {
+            si.dataConnectYaml.serviceId === f.serviceId;
+          })
+        );
+      })
+      .map(async (s) => {
+        const instanceId = s.schema.primaryDatasource.postgresql?.cloudSql.instance
+          .split("/")
+          .pop();
+        const databaseId = s.schema.primaryDatasource.postgresql?.database;
+        if (!instanceId || !databaseId) {
+          return Promise.resolve();
+        }
+        await provisionCloudSql(
+          projectId,
+          parseServiceName(s.serviceName).location,
+          instanceId,
+          databaseId,
+        );
+      }),
   );
-
-  // If needed, migrate schemas
-  utils.logLabeledBullet(
-    "dataconnect",
-    "Checking if database schemas match Data Connect schemas...",
-  );
-  for (const si of serviceInfos) {
-    await migrateSchema(options, si.schema);
-  }
   return;
 }
 

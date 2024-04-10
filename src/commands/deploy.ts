@@ -62,7 +62,9 @@ export const command = new Command("deploy")
     'only deploy to specified, comma-separated targets (e.g. "hosting,storage"). For functions, ' +
       'can specify filters with colons to scope function deploys to only those functions (e.g. "--only functions:func1,functions:func2"). ' +
       "When filtering based on export groups (the exported module object keys), use dots to specify group names " +
-      '(e.g. "--only functions:group1.subgroup1,functions:group2)"',
+      '(e.g. "--only functions:group1.subgroup1,functions:group2)"' +
+      "For data connect, can specify filters with colons to deploy only a service, connector, or schema" +
+      '(e.g. "--only dataconnect:serviceId,dataconnect:serviceId:connectorId,dataconnect:serviceId:schema"). ',
   )
   .option("--except <targets>", 'deploy to all targets except specified (e.g. "database")')
   .before(requireConfig)
