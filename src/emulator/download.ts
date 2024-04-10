@@ -14,6 +14,14 @@ tmp.setGracefulCleanup();
 
 export async function downloadEmulator(name: DownloadableEmulators): Promise<void> {
   const emulator = downloadableEmulators.getDownloadDetails(name);
+  if (emulator.localOnly) {
+    EmulatorLogger.forEmulator(name).logLabeled(
+      "WARN",
+      name,
+      `Env variable override detected, skipping download. Using ${emulator} emulator at ${emulator.binaryPath}`,
+    );
+    return;
+  }
   EmulatorLogger.forEmulator(name).logLabeled(
     "BULLET",
     name,
