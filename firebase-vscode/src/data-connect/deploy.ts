@@ -9,11 +9,12 @@ import { runCommand } from "./terminal";
 function createDeployOnlyCommand(serviceConnectorMap: {
   [key: string]: string[];
 }): string {
+  // TODO: if all services/connectors are selected, just run "firebase deploy --only dataconnect"
   return (
     "firebase deploy --only " +
     Object.entries(serviceConnectorMap)
       .map(([serviceId, connectorIds]) => {
-        return `dataconnect:${serviceId}:${connectorIds.join(":")}`;
+        return `dataconnect:${serviceId}:schema:${connectorIds.join(":")}`;
       })
       .join(",")
   );
