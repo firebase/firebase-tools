@@ -33,7 +33,7 @@ async function uploadSourceV1(
   if (process.env.GOOGLE_CLOUD_QUOTA_PROJECT) {
     logLabeledWarning(
       "functions",
-      "GOOGLE_CLOUD_QUTOA_PROJECT is not usable when uploading source for Cloud Functions.",
+      "GOOGLE_CLOUD_QUOTA_PROJECT is not usable when uploading source for Cloud Functions.",
     );
   }
   await gcs.upload(
@@ -65,7 +65,7 @@ async function uploadSourceV2(
   if (process.env.GOOGLE_CLOUD_QUOTA_PROJECT) {
     logLabeledWarning(
       "functions",
-      "GOOGLE_CLOUD_QUTOA_PROJECT is not usable when uploading source for Cloud Functions.",
+      "GOOGLE_CLOUD_QUOTA_PROJECT is not usable when uploading source for Cloud Functions.",
     );
   }
   await gcs.upload(uploadOpts, res.uploadUrl, undefined, true /* ignoreQuotaProject */);
