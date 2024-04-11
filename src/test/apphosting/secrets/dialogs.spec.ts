@@ -150,10 +150,7 @@ describe("dialogs", () => {
       await expect(
         dialogs.selectBackendServiceAccounts("number", "id", {}),
       ).to.eventually.deep.equal(emptyMulti);
-      expect(utils.logLabeledWarning).to.have.been.calledWith(
-        "apphosting",
-        dialogs.WARN_NO_BACKENDS,
-      );
+      expect(utils.logLabeledWarning).to.have.been.calledWith(dialogs.WARN_NO_BACKENDS);
     });
 
     it("handles unreachable regions", async () => {
@@ -167,14 +164,10 @@ describe("dialogs", () => {
       ).to.eventually.deep.equal(emptyMulti);
 
       expect(utils.logLabeledWarning).to.have.been.calledWith(
-        "apphosting",
         `Could not reach location(s) us-central1. You may need to run ${clc.bold("firebase apphosting:secrets:grantAccess")} ` +
           "at a later time if you have backends in these locations",
       );
-      expect(utils.logLabeledWarning).to.have.been.calledWith(
-        "apphosting",
-        dialogs.WARN_NO_BACKENDS,
-      );
+      expect(utils.logLabeledWarning).to.have.been.calledWith(dialogs.WARN_NO_BACKENDS);
     });
 
     it("handles a single backend (opt yes)", async () => {
@@ -217,10 +210,7 @@ describe("dialogs", () => {
         message:
           "To use this secret, your backend's service account must have secret accessor permission. Would you like to grant it now?",
       });
-      expect(utils.logLabeledBullet).to.have.been.calledWith(
-        "apphosting",
-        dialogs.GRANT_ACCESS_IN_FUTURE,
-      );
+      expect(utils.logB).to.have.been.calledWith("apphosting", dialogs.GRANT_ACCESS_IN_FUTURE);
     });
 
     it("handles multiple backends with the same (multiple) SAs (opt yes)", async () => {
@@ -236,7 +226,6 @@ describe("dialogs", () => {
       ).to.eventually.deep.equal(secrets.toMulti(accounts));
 
       expect(utils.logLabeledBullet).to.have.been.calledWith(
-        "apphosting",
         "To use this secret, your backend's service account must have secret accessor permission. " +
           `All of your backends use service accounts ${dialogs.serviceAccountDisplay(accounts)}. ` +
           "Granting access to one backend will grant access to all backends.",
