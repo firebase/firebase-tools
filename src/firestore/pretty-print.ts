@@ -5,6 +5,7 @@ import * as sort from "./api-sort";
 import * as types from "./api-types";
 import { logger } from "../logger";
 import * as util from "./util";
+import { consoleUrl } from "../utils";
 import { Backup, BackupSchedule } from "../gcp/firestore";
 
 export class PrettyPrint {
@@ -272,6 +273,14 @@ export class PrettyPrint {
    */
   prettyDatabaseString(database: string | types.DatabaseResp): string {
     return clc.yellow(typeof database === "string" ? database : database.name);
+  }
+
+  /**
+   * Get a URL to view a given Firestore database in the Firebase console
+   */
+  firebaseConsoleDatabaseUrl(project: string, databaseId: string): string {
+    const urlFriendlyDatabaseId = databaseId === "(default)" ? "-default-" : databaseId;
+    return consoleUrl(project, `/firestore/databases/${urlFriendlyDatabaseId}/data`);
   }
 
   /**
