@@ -1,1 +1,5 @@
-Fixes bug detecting functions runtime from firebase.json (#6964)
+- Fixes bug where `firebase deploy --only firestore:rules,firestore:indexes` does not update rules and indexes. (#6966)
+- Add Firebase console link after creating or restoring a Firestore database (#6949)
+- Increase supported Astro version to 4 (#6960)
+- Fixes a deployment crash when resetting min instances to 0 in v1 functions (#6990)
+- Fixes bug detecting functions runtime from firebase.json (#6964)
