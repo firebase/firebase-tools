@@ -1,0 +1,2 @@
+- Fixes bug where `firebase deploy --only firestore:rules,firestore:indexes` does not update rules and indexes. (#6966)
+- Add Firebase console link after creating or restoring a Firestore database (#6949)

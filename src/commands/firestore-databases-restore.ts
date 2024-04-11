@@ -53,6 +53,9 @@ export const command = new Command("firestore:databases:restore")
           "the new database. By default, created databases will have closed rules that\n" +
           "block any incoming third-party traffic.",
       );
+      logger.info(
+        `Once the restore is complete, your database may be viewed at ${printer.firebaseConsoleDatabaseUrl(options.project, databaseId)}`,
+      );
     }
 
     return databaseResp;
