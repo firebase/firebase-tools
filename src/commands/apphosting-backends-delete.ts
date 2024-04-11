@@ -10,7 +10,7 @@ import { printBackendsTable } from "./apphosting-backends-list";
 
 export const command = new Command("apphosting:backends:delete <backend>")
   .description("delete a backend from a Firebase project")
-  .option("-l, --location <location>", "App Backend location", "")
+  .option("-l, --location <location>", "backend location", "")
   .withForce()
   .before(apphosting.ensureApiEnabled)
   .action(async (backendId: string, options: Options) => {

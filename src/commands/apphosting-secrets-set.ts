@@ -17,7 +17,7 @@ import * as config from "../apphosting/config";
 import { logSuccess, logWarning } from "../utils";
 
 export const command = new Command("apphosting:secrets:set <secretName>")
-  .description("grant service accounts permissions to the provided secret")
+  .description("create or update a secret for use in Firebase App Hosting")
   .option("-l, --location <location>", "optional location to retrict secret replication")
   // TODO: What is the right --force behavior for granting access? Seems correct to grant permissions
   // if there is only one set of accounts, but should maybe fail if there are more than one set of

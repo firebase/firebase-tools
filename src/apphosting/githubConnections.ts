@@ -230,7 +230,7 @@ async function promptCloneUri(
   const cloneUri = await promptOnce({
     type: "autocomplete",
     name: "cloneUri",
-    message: "Which of the following repositories would you like to deploy?",
+    message: `Which of the following repositories would you like to deploy? ${clc.yellow("(Use arrow keys or type to search)")}`,
     source: (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
       return new Promise((resolve) =>
         resolve([

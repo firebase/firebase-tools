@@ -1,5 +1,3 @@
-import * as clc from "colorette";
-
 import * as repo from "./repo";
 import * as poller from "../operation-poller";
 import * as apphosting from "../gcp/apphosting";
@@ -69,9 +67,7 @@ export async function doSetup(
       name: "region",
       type: "list",
       default: DEFAULT_REGION,
-      message:
-        "Please select a region " +
-        `(${clc.yellow("info")}: Your region determines where your backend is located):\n`,
+      message: "Select a region to host your backend",
       choices: allowedLocations.map((loc) => ({ value: loc })),
     })) as string);
 
