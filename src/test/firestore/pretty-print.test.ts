@@ -66,3 +66,17 @@ describe("prettyIndexString", () => {
     ).to.contain("(foo,ASCENDING) (bar,VECTOR<200>) ");
   });
 });
+
+describe("firebaseConsoleDatabaseUrl", () => {
+  it("should provide a console link", () => {
+    expect(printer.firebaseConsoleDatabaseUrl("example-project", "example-db")).to.equal(
+      "https://console.firebase.google.com/project/example-project/firestore/databases/example-db/data",
+    );
+  });
+
+  it("should convert (default) to -default-", () => {
+    expect(printer.firebaseConsoleDatabaseUrl("example-project", "(default)")).to.equal(
+      "https://console.firebase.google.com/project/example-project/firestore/databases/-default-/data",
+    );
+  });
+});
