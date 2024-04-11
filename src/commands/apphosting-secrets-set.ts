@@ -15,6 +15,7 @@ import * as secrets from "../apphosting/secrets";
 import * as dialogs from "../apphosting/secrets/dialogs";
 import * as config from "../apphosting/config";
 import { logSuccess, logWarning } from "../utils";
+import * as yaml from "yaml";
 
 export const command = new Command("apphosting:secrets:set <secretName>")
   .description("grant service accounts permissions to the provided secret")
@@ -90,12 +91,14 @@ export const command = new Command("apphosting:secrets:set <secretName>")
 
     // Note: The API proposal suggested that we would check if the env exists. This is stupidly hard because the YAML may not exist yet.
     let path = config.yamlPath(process.cwd());
-    let yaml: config.Config = {};
+    let projectYaml: yaml.Document;
     if (path) {
-      yaml = config.load(path);
-      if (yaml.env?.find((env) => env.variable === secretName)) {
-        return;
-      }
+      projectYaml = config.load(path);
+    } else {
+      projectYaml = new yaml.Document();
+    }
+    if (config.getEnv(projectYaml, secretName)) {
+      return;
     }
     const addToYaml = await confirm({
       message: "Would you like to add this secret to apphosting.yaml?",
@@ -113,10 +116,9 @@ export const command = new Command("apphosting:secrets:set <secretName>")
       path = join(path, "apphosting.yaml");
     }
     const envName = await dialogs.envVarForSecret(secretName);
-    yaml.env = yaml.env || [];
-    yaml.env.push({
+    config.setEnv(projectYaml, {
       variable: envName,
       secret: secretName,
     });
-    config.store(path, yaml);
+    config.store(path, projectYaml);
   });
