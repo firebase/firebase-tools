@@ -14,7 +14,7 @@ import { confirm, promptOnce } from "../prompt";
 import * as secrets from "../apphosting/secrets";
 import * as dialogs from "../apphosting/secrets/dialogs";
 import * as config from "../apphosting/config";
-import { logSuccess, logWarning } from "../utils";
+import { logSuccess, logWarning, logBullet } from "../utils";
 
 export const command = new Command("apphosting:secrets:set <secretName>")
   .description("create or update a secret for use in Firebase App Hosting")
@@ -39,7 +39,7 @@ export const command = new Command("apphosting:secrets:set <secretName>")
     'File path from which to read secret data. Set to "-" to read the secret data from stdin.',
   )
   .action(async (secretName: string, options: Options) => {
-    const howToAccess = `You can access the contents of the secret's latest value with ${clc.bold(`firebase apphosting:secrets:access ${secretName}`)}`;
+    const howToAccess = `You can access the contents of the secret's latest value with ${clc.bold(`firebase apphosting:secrets:access ${secretName}\n`)}`;
     const grantAccess = `To use this secret in your backend, you must grant access. You can do so in the future with ${clc.bold("firebase apphosting:secrets:grantAccess")}`;
     const projectId = needProjectId(options);
     const projectNumber = await needProjectNumber(options);
@@ -63,17 +63,12 @@ export const command = new Command("apphosting:secrets:set <secretName>")
       secretValue = fs.readFileSync(dataFile, "utf-8");
     }
 
-    if (created) {
-      logSuccess(`Created new secret projects/${projectId}/secrets/${secretName}`);
-    }
-
     const version = await gcsm.addVersion(projectId, secretName, secretValue);
     logSuccess(`Created new secret version ${gcsm.toSecretVersionResourceName(version)}`);
-    logSuccess(howToAccess);
+    logBullet(howToAccess);
 
     // If the secret already exists, we want to exit once the new version is added
     if (!created) {
-      logWarning(grantAccess);
       return;
     }
 

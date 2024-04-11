@@ -67,7 +67,7 @@ export async function doSetup(
       name: "region",
       type: "list",
       default: DEFAULT_REGION,
-      message: "Select a region to host your backend",
+      message: "Select a region to host your backend:\n",
       choices: allowedLocations.map((loc) => ({ value: loc })),
     })) as string);
 
