@@ -11,27 +11,27 @@ import {
   firebaseRC,
   getRootFolders,
   registerConfig,
-} from "../../core/config";
+} from "../../../../core/config";
 import {
   addDisposable,
   addTearDown,
-  firematSuite,
-  firematTest,
-} from "../utils/test_hooks";
-import { createFake, mock } from "../utils/mock";
-import { resetGlobals } from "../../utils/globals";
-import { workspace } from "../../utils/test_hooks";
-import { createFile, createTemporaryDirectory } from "../utils/fs";
-import { currentOptions } from "../../options";
-import { Options } from "../../../../src/options";
-import { spyLogs } from "../utils/logs";
-import { createTestBroker } from "../utils/broker";
-import { setupMockTestWorkspaces } from "../utils/workspace";
-import { RC } from "../../../../src/rc";
-import { Config } from "../../../../src/config";
+  firebaseSuite,
+  firebaseTest,
+} from "../../../utils/test_hooks";
+import { createFake, mock } from "../../../utils/mock";
+import { resetGlobals } from "../../../../utils/globals";
+import { workspace } from "../../../../utils/test_hooks";
+import { createFile, createTemporaryDirectory } from "../../../utils/fs";
+import { currentOptions } from "../../../../options";
+import { Options } from "../../../../../../src/options";
+import { spyLogs } from "../../../utils/logs";
+import { createTestBroker } from "../../../utils/broker";
+import { setupMockTestWorkspaces } from "../../../utils/workspace";
+import { RC } from "../../../../../../src/rc";
+import { Config } from "../../../../../../src/config";
 
-firematSuite("getRootFolders", () => {
-  firematTest("if workspace is empty, returns an empty array", () => {
+firebaseSuite("getRootFolders", () => {
+  firebaseTest("if workspace is empty, returns an empty array", () => {
     mock(workspace, undefined);
 
     const result = getRootFolders();
@@ -39,7 +39,7 @@ firematSuite("getRootFolders", () => {
     assert.deepEqual(result, []);
   });
 
-  firematTest(
+  firebaseTest(
     "if workspace.workspaceFolders is undefined, returns an empty array",
     () => {
       mock(workspace, {
@@ -52,7 +52,7 @@ firematSuite("getRootFolders", () => {
     },
   );
 
-  firematTest("returns an array of paths", () => {
+  firebaseTest("returns an array of paths", () => {
     mock(workspace, {
       workspaceFolders: [
         createFake<vscode.WorkspaceFolder>({
@@ -69,7 +69,7 @@ firematSuite("getRootFolders", () => {
     assert.deepEqual(result, ["/path/to/folder", "/path/to/another/folder"]);
   });
 
-  firematTest("includes workspaceFile's directory if set", () => {
+  firebaseTest("includes workspaceFile's directory if set", () => {
     mock(workspace, {
       workspaceFile: vscode.Uri.file("/path/to/folder/file"),
       workspaceFolders: [
@@ -84,7 +84,7 @@ firematSuite("getRootFolders", () => {
     assert.deepEqual(result, ["/path/to/another/folder", "/path/to/folder"]);
   });
 
-  firematTest("filters path duplicates", () => {
+  firebaseTest("filters path duplicates", () => {
     mock(workspace, {
       workspaceFile: vscode.Uri.file("/a/file"),
       workspaceFolders: [
@@ -106,11 +106,11 @@ firematSuite("getRootFolders", () => {
   });
 });
 
-firematSuite("_getConfigPath", () => {
+firebaseSuite("_getConfigPath", () => {
   // Those tests will impact global variables. We need to reset them after each test.
   teardown(() => resetGlobals());
 
-  firematTest(
+  firebaseTest(
     'Iterates over getRootFolders, and if a ".firebaserc" ' +
       'or "firebase.json" is found, returns its path',
     () => {
@@ -138,7 +138,7 @@ firematSuite("_getConfigPath", () => {
     },
   );
 
-  firematTest("if no firebase config found, returns the first folder", () => {
+  firebaseTest("if no firebase config found, returns the first folder", () => {
     const a = createTemporaryDirectory({ debugLabel: "a" });
     const b = createTemporaryDirectory({ debugLabel: "b" });
     const c = createTemporaryDirectory({ debugLabel: "c" });
@@ -157,7 +157,7 @@ firematSuite("_getConfigPath", () => {
     assert.deepEqual(_getConfigPath(), a);
   });
 
-  firematTest('sets "cwd" global variable to the config path', () => {
+  firebaseTest('sets "cwd" global variable to the config path', () => {
     const a = createTemporaryDirectory();
     const aFolder = createFake<vscode.WorkspaceFolder>({
       uri: vscode.Uri.file(a),
@@ -171,8 +171,8 @@ firematSuite("_getConfigPath", () => {
   });
 });
 
-firematSuite("_readConfig", () => {
-  firematTest("parses firebase.json", () => {
+firebaseSuite("_readConfig", () => {
+  firebaseTest("parses firebase.json", () => {
     const expectedConfig = {
       emulators: {
         firemat: {
@@ -196,7 +196,7 @@ firematSuite("_readConfig", () => {
     assert.deepEqual(config.data, expectedConfig);
   });
 
-  firematTest("returns undefined if firebase.json is not found", () => {
+  firebaseTest("returns undefined if firebase.json is not found", () => {
     const dir = createTemporaryDirectory();
 
     mock(workspace, {
@@ -211,7 +211,7 @@ firematSuite("_readConfig", () => {
     assert.deepEqual(config, undefined);
   });
 
-  firematTest("throws if firebase.json is invalid", () => {
+  firebaseTest("throws if firebase.json is invalid", () => {
     const logs = spyLogs();
     const dir = createTemporaryDirectory();
     createFile(dir, "firebase.json", "invalid json");
@@ -244,8 +244,8 @@ firematSuite("_readConfig", () => {
   });
 });
 
-firematSuite("_readRC", () => {
-  firematTest("parses .firebaserc", () => {
+firebaseSuite("_readRC", () => {
+  firebaseTest("parses .firebaserc", () => {
     const expectedConfig = {
       projects: {
         default: "my-project",
@@ -267,7 +267,7 @@ firematSuite("_readRC", () => {
     assert.deepEqual(config?.data.projects, expectedConfig.projects);
   });
 
-  firematTest("returns undefined if .firebaserc is not found", () => {
+  firebaseTest("returns undefined if .firebaserc is not found", () => {
     const dir = createTemporaryDirectory();
 
     mock(workspace, {
@@ -282,7 +282,7 @@ firematSuite("_readRC", () => {
     assert.deepEqual(config, undefined);
   });
 
-  firematTest("throws if .firebaserc is invalid", () => {
+  firebaseTest("throws if .firebaserc is invalid", () => {
     const logs = spyLogs();
     const dir = createTemporaryDirectory();
     createFile(dir, ".firebaserc", "invalid json");
@@ -312,11 +312,11 @@ firematSuite("_readRC", () => {
   });
 });
 
-firematSuite("_createWatcher", () => {
+firebaseSuite("_createWatcher", () => {
   // Those tests will impact global variables. We need to reset them after each test.
   teardown(() => resetGlobals());
 
-  firematTest("returns undefined if cwd is not set", () => {
+  firebaseTest("returns undefined if cwd is not set", () => {
     mock(currentOptions, createFake<Options>({ cwd: undefined }));
 
     const watcher = _createWatcher("file");
@@ -324,7 +324,7 @@ firematSuite("_createWatcher", () => {
     assert.equal(watcher, undefined);
   });
 
-  firematTest("creates a watcher for the given file", async () => {
+  firebaseTest("creates a watcher for the given file", async () => {
     const dir = createTemporaryDirectory();
     const file = createFile(dir, "file", "content");
 
@@ -343,11 +343,11 @@ firematSuite("_createWatcher", () => {
   });
 });
 
-firematSuite("registerConfig", () => {
+firebaseSuite("registerConfig", () => {
   // Those tests will impact global variables. We need to reset them after each test.
   teardown(() => resetGlobals());
 
-  firematTest(
+  firebaseTest(
     'sets "cwd" and firebaseRC/Config global variables on initial call',
     () => {
       const expectedConfig = { emulators: { firemat: { port: 9399 } } };
@@ -370,7 +370,7 @@ firematSuite("registerConfig", () => {
     },
   );
 
-  firematTest(
+  firebaseTest(
     "when firebaseRC signal changes, calls notifyFirebaseConfig",
     () => {
       const initialRC = { projects: { default: "my-project" } };
@@ -407,7 +407,7 @@ firematSuite("registerConfig", () => {
     },
   );
 
-  firematTest(
+  firebaseTest(
     "when firebaseConfig signal changes, calls notifyFirebaseConfig",
     () => {
       const initialConfig = { emulators: { firemat: { port: 9399 } } };
@@ -448,7 +448,7 @@ firematSuite("registerConfig", () => {
     },
   );
 
-  firematTest("supports undefined working directory", () => {
+  firebaseTest("supports undefined working directory", () => {
     const broker = createTestBroker();
     mock(currentOptions, { ...currentOptions.value, cwd: undefined });
 
@@ -458,7 +458,7 @@ firematSuite("registerConfig", () => {
     // Should not throw.
   });
 
-  firematTest("disposes of the watchers when disposed", () => {
+  firebaseTest("disposes of the watchers when disposed", () => {
     const broker = createTestBroker();
     const dir = createTemporaryDirectory();
 
@@ -504,7 +504,7 @@ firematSuite("registerConfig", () => {
     assert.deepEqual(broker.sentLogs, []);
   });
 
-  firematTest(
+  firebaseTest(
     "listens to create/update/delete events on firebase.json and .firebaserc",
     () => {
       const watcherListeners: Record<
@@ -618,7 +618,7 @@ firematSuite("registerConfig", () => {
     },
   );
 
-  firematTest("handles getInitialData requests", () => {
+  firebaseTest("handles getInitialData requests", () => {
     const broker = createTestBroker();
     const workspaces = setupMockTestWorkspaces({
       firebaseRc: { projects: { default: "my-project" } },
