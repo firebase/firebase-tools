@@ -58,7 +58,6 @@ export function yamlPath(cwd: string): string | null {
 /** Load apphosting.yaml */
 export function load(yamlPath: string): yaml.Document {
   const raw = fs.readFile(yamlPath);
-  yaml.parse(raw);
   return yaml.parseDocument(raw);
 }
 
