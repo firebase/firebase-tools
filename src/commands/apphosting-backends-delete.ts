@@ -9,8 +9,8 @@ import * as apphosting from "../gcp/apphosting";
 import { printBackendsTable } from "./apphosting-backends-list";
 
 export const command = new Command("apphosting:backends:delete <backend>")
-  .description("delete a backend from a Firebase project")
-  .option("-l, --location <location>", "backend location", "")
+  .description("delete a Firebase App Hosting backend")
+  .option("-l, --location <location>", "specify the region of the backend", "")
   .withForce()
   .before(apphosting.ensureApiEnabled)
   .action(async (backendId: string, options: Options) => {
