@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Spacer } from "./components/ui/Spacer";
-import { broker } from "./globals/html-broker";
+import { broker, useBrokerListener } from "./globals/html-broker";
 import { User } from "../../src/types/auth";
 import { AccountSection } from "./components/AccountSection";
 import { ProjectSection } from "./components/ProjectSection";
@@ -38,79 +38,79 @@ export function SidebarApp() {
   useEffect(() => {
     webLogger.debug("loading SidebarApp component");
     broker.send("getInitialData");
+  }, []);
 
-    broker.on("notifyEnv", ({ env }) => {
-      webLogger.debug(`notifyEnv() returned ${JSON.stringify(env)}`);
-      setEnv(env);
-    });
+  useBrokerListener("notifyEnv", ({ env }) => {
+    webLogger.debug(`notifyEnv() returned ${JSON.stringify(env)}`);
+    setEnv(env);
+  });
 
-    broker.on("notifyChannels", ({ channels }) => {
-      webLogger.debug(`notifyChannels() returned ${JSON.stringify(channels)}`);
-      setChannels(channels);
-    });
+  useBrokerListener("notifyChannels", ({ channels }) => {
+    webLogger.debug(`notifyChannels() returned ${JSON.stringify(channels)}`);
+    setChannels(channels);
+  });
 
-    broker.on("notifyFirebaseConfig", ({ firebaseJson, firebaseRC }) => {
-      webLogger.debug(
-        "got firebase hosting",
-        JSON.stringify(firebaseJson?.hosting)
-      );
-      if (firebaseJson) {
-        setFirebaseJson(firebaseJson);
-        webLogger.debug("set firebase JSON");
-      }
-      if (firebaseJson?.hosting) {
-        webLogger.debug("Detected firebase.json");
+  useBrokerListener("notifyFirebaseConfig", ({ firebaseJson, firebaseRC }) => {
+    webLogger.debug(
+      "got firebase hosting",
+      JSON.stringify(firebaseJson?.hosting)
+    );
+    if (firebaseJson) {
+      setFirebaseJson(firebaseJson);
+      webLogger.debug("set firebase JSON");
+    }
+    if (firebaseJson?.hosting) {
+      webLogger.debug("Detected firebase.json");
+      setHostingInitState("success");
+      broker.send("showMessage", {
+        msg: "Auto-detected hosting setup in this folder",
+      });
+    } else {
+      setHostingInitState(null);
+    }
+
+    if (firebaseRC?.projects?.default) {
+      webLogger.debug("Detected project setup from existing firebaserc");
+      setProjectId(firebaseRC.projects.default);
+    } else {
+      setProjectId(null);
+    }
+  });
+
+  useBrokerListener("notifyUsers", ({ users }) => {
+    webLogger.debug(`notifyUsers() returned ${JSON.stringify(users)}`);
+    setAllUsers(users);
+  });
+
+  useBrokerListener("notifyProjectChanged", ({ projectId }) => {
+    webLogger.debug("Project selected", projectId);
+    setProjectId(projectId);
+  });
+
+  useBrokerListener("notifyUserChanged", ({ user }) => {
+    webLogger.debug("notifyUserChanged:", user?.email);
+    setUser(user);
+  });
+
+  useBrokerListener(
+    "notifyHostingInitDone",
+    ({ success, projectId, folderPath, framework }) => {
+      if (success) {
+        webLogger.debug(`notifyHostingInitDone: ${projectId}, ${folderPath}`);
         setHostingInitState("success");
-        broker.send("showMessage", {
-          msg: "Auto-detected hosting setup in this folder",
-        });
+        if (framework) {
+          setFramework(framework);
+        }
       } else {
         setHostingInitState(null);
       }
+    }
+  );
 
-      if (firebaseRC?.projects?.default) {
-        webLogger.debug("Detected project setup from existing firebaserc");
-        setProjectId(firebaseRC.projects.default);
-      } else {
-        setProjectId(null);
-      }
-    });
-
-    broker.on("notifyUsers", ({ users }) => {
-      webLogger.debug(`notifyUsers() returned ${JSON.stringify(users)}`);
-      setAllUsers(users);
-    });
-
-    broker.on("notifyProjectChanged", ({ projectId }) => {
-      webLogger.debug("Project selected", projectId);
-      setProjectId(projectId);
-    });
-
-    broker.on("notifyUserChanged", ({ user }) => {
-      webLogger.debug("notifyUserChanged:", user?.email);
-      setUser(user);
-    });
-
-    broker.on(
-      "notifyHostingInitDone",
-      ({ success, projectId, folderPath, framework }) => {
-        if (success) {
-          webLogger.debug(`notifyHostingInitDone: ${projectId}, ${folderPath}`);
-          setHostingInitState("success");
-          if (framework) {
-            setFramework(framework);
-          }
-        } else {
-          setHostingInitState(null);
-        }
-      }
-    );
-
-    broker.on("notifyHostingDeploy", ({ success }) => {
-      webLogger.debug(`notifyHostingDeploy: ${success}`);
-      setDeployState(success ? "success" : "failure");
-    });
-  }, []);
+  useBrokerListener("notifyHostingDeploy", ({ success }) => {
+    webLogger.debug(`notifyHostingDeploy: ${success}`);
+    setDeployState(success ? "success" : "failure");
+  });
 
   function setupHosting() {
     broker.send("selectAndInitHostingFolder", {

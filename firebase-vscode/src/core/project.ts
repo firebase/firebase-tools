@@ -47,7 +47,7 @@ export function registerProject({
   context: ExtensionContext;
   broker: ExtensionBrokerImpl;
 }): Disposable {
-  effect(async () => {
+  const sub1 = effect(async () => {
     const user = currentUser.value;
     if (user) {
       pluginLogger.info("(Core:Project) New user detected, fetching projects");
@@ -59,21 +59,21 @@ export function registerProject({
     }
   });
 
-  effect(() => {
+  const sub2 = effect(() => {
     broker.send("notifyProjectChanged", {
       projectId: currentProject.value?.projectId ?? "",
     });
   });
 
   // Update .firebaserc with defined project ID
-  effect(() => {
+  const sub3 = effect(() => {
     const projectId = currentProjectId.value;
     if (projectId) {
       updateFirebaseRCProject(context, "default", currentProjectId.value);
     }
   });
 
-  broker.on("getInitialData", () => {
+  const sub4 = broker.on("getInitialData", () => {
     broker.send("notifyProjectChanged", {
       projectId: currentProject.value?.projectId ?? "",
     });
@@ -122,11 +122,18 @@ export function registerProject({
     }
   );
 
-  broker.on("selectProject", () =>
+  const sub5 = broker.on("selectProject", () =>
     vscode.commands.executeCommand("firebase.selectProject")
   );
 
-  return vscode.Disposable.from(command);
+  return vscode.Disposable.from(
+    command,
+    { dispose: sub1 },
+    { dispose: sub2 },
+    { dispose: sub3 },
+    { dispose: sub4 },
+    { dispose: sub5 }
+  );
 }
 
 /**
