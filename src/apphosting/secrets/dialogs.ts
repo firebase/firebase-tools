@@ -104,7 +104,7 @@ export function selectFromMetadata(
 export const WARN_NO_BACKENDS =
   "To use this secret, your backend's service account must have secret accessor permission. " +
   "It does not look like you have a backend yet. After creating a backend, grant access with " +
-  clc.bold("firebase apphosting:secrets:grantAccess");
+  clc.bold("firebase apphosting:secrets:grantaccess");
 
 /** Common warning log that the user will need to grant access manually. Exported to make tests easier. */
 export const GRANT_ACCESS_IN_FUTURE = `To grant access in the future, run ${clc.bold("firebase apphosting:secrets:grantaccess")}`;
@@ -123,7 +123,7 @@ export async function selectBackendServiceAccounts(
   if (listBackends.unreachable.length) {
     utils.logWarning(
       `Could not reach location(s) ${listBackends.unreachable.join(", ")}. You may need to run ` +
-        `${clc.bold("firebase apphosting:secrets:grantAccess")} at a later time if you have backends in these locations`,
+        `${clc.bold("firebase apphosting:secrets:grantaccess")} at a later time if you have backends in these locations`,
     );
   }
 

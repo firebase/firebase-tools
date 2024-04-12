@@ -164,7 +164,7 @@ describe("dialogs", () => {
       ).to.eventually.deep.equal(emptyMulti);
 
       expect(utils.logWarning).to.have.been.calledWith(
-        `Could not reach location(s) us-central1. You may need to run ${clc.bold("firebase apphosting:secrets:grantAccess")} ` +
+        `Could not reach location(s) us-central1. You may need to run ${clc.bold("firebase apphosting:secrets:grantaccess")} ` +
           "at a later time if you have backends in these locations",
       );
       expect(utils.logWarning).to.have.been.calledWith(dialogs.WARN_NO_BACKENDS);
