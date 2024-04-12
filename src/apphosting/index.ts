@@ -93,7 +93,7 @@ export async function doSetup(
     type: "input",
     default: "/",
     message:
-      "Specify the path to the root of the app you would like to deploy (relative to the repo root)",
+      "Specify your app's root directory relative to your repository",
   });
 
   const backend = await createBackend(
