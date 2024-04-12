@@ -39,8 +39,6 @@ export const command = new Command("apphosting:secrets:set <secretName>")
     'File path from which to read secret data. Set to "-" to read the secret data from stdin.',
   )
   .action(async (secretName: string, options: Options) => {
-    const howToAccess = `You can access the contents of the secret's latest value with ${clc.bold(`firebase apphosting:secrets:access ${secretName}\n`)}`;
-    const grantAccess = `To use this secret in your backend, you must grant access. You can do so in the future with ${clc.bold("firebase apphosting:secrets:grantaccess")}`;
     const projectId = needProjectId(options);
     const projectNumber = await needProjectNumber(options);
 
@@ -65,7 +63,9 @@ export const command = new Command("apphosting:secrets:set <secretName>")
 
     const version = await gcsm.addVersion(projectId, secretName, secretValue);
     logSuccess(`Created new secret version ${gcsm.toSecretVersionResourceName(version)}`);
-    logBullet(howToAccess);
+    logBullet(
+      `You can access the contents of the secret's latest value with ${clc.bold(`firebase apphosting:secrets:access ${secretName}\n`)}`,
+    );
 
     // If the secret already exists, we want to exit once the new version is added
     if (!created) {
@@ -76,7 +76,9 @@ export const command = new Command("apphosting:secrets:set <secretName>")
 
     // If we're not granting permissions, there's no point in adding to YAML either.
     if (!accounts.buildServiceAccounts.length && !accounts.runServiceAccounts.length) {
-      logWarning(grantAccess);
+      logWarning(
+        `To use this secret in your backend, you must grant access. You can do so in the future with ${clc.bold("firebase apphosting:secrets:grantaccess")}`,
+      );
 
       // TODO: For existing secrets, enter the grantSecretAccess dialog only when the necessary permissions don't exist.
     } else {
