@@ -373,7 +373,7 @@ export async function deleteBackend(
   const op = await apphosting.deleteBackend(projectId, location, backendId);
   await poller.pollOperation<void>({
     ...apphostingPollerOptions,
-    pollerName: `create-${projectId}-${location}-${backendId}`,
+    pollerName: `delete-${projectId}-${location}-${backendId}`,
     operationResourceName: op.name,
   });
 }
