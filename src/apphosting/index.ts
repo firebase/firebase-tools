@@ -92,8 +92,7 @@ export async function doSetup(
     name: "rootDir",
     type: "input",
     default: "/",
-    message:
-      "Specify your app's root directory relative to your repository",
+    message: "Specify your app's root directory relative to your repository",
   });
 
   const backend = await createBackend(
