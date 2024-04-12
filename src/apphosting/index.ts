@@ -59,7 +59,7 @@ export async function doSetup(
     }
   }
 
-  logBullet("First we need a few details to create your backend.");
+  logBullet("First we need a few details to create your backend.\n");
 
   location =
     location ||
