@@ -1,7 +1,10 @@
+import * as childProcess from "child_process";
+
 import { dataConnectLocalConnString } from "../api";
 import { Constants } from "./constants";
-import { getPID, start, stop } from "./downloadableEmulators";
+import { getPID, start, stop, downloadIfNecessary } from "./downloadableEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
+import { FirebaseError } from "../error";
 import { EmulatorLogger } from "./emulatorLogger";
 import { RC } from "../rc";
 
@@ -52,6 +55,20 @@ export class DataConnectEmulator implements EmulatorInstance {
   }
   getName(): Emulators {
     return Emulators.DATACONNECT;
+  }
+
+  async generate(connectorId: string): Promise<string> {
+    const commandInfo = await downloadIfNecessary(Emulators.DATACONNECT);
+    const cmd = [
+      "generate",
+      `--config_dir=${this.args.configDir}`,
+      `--connector_id=${connectorId}`,
+    ];
+    const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8" });
+    if (res.error) {
+      throw new FirebaseError(`Error starting up Data Connect emulator: ${res.error}`);
+    }
+    return res.stdout;
   }
 
   private getLocalConectionString() {

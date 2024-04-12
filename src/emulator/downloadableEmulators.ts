@@ -528,14 +528,15 @@ export async function stop(targetName: DownloadableEmulators): Promise<void> {
 /**
  * @param targetName
  */
-export async function downloadIfNecessary(targetName: DownloadableEmulators): Promise<void> {
+export async function downloadIfNecessary(
+  targetName: DownloadableEmulators,
+): Promise<DownloadableEmulatorCommand> {
   const hasEmulator = fs.existsSync(getExecPath(targetName));
 
-  if (hasEmulator) {
-    return;
+  if (!hasEmulator) {
+    await downloadEmulator(targetName);
   }
-
-  await downloadEmulator(targetName);
+  return Commands[targetName];
 }
 
 /**
@@ -545,7 +546,12 @@ export async function downloadIfNecessary(targetName: DownloadableEmulators): Pr
  */
 export async function start(
   targetName: DownloadableEmulators,
-  args: any,
+  args: {
+    auto_download?: boolean;
+    port?: number;
+    host?: string;
+    [k: string]: any;
+  },
   extraEnv: Partial<NodeJS.ProcessEnv> = {},
 ): Promise<void> {
   const downloadDetails = DownloadDetails[targetName];

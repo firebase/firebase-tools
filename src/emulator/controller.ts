@@ -55,6 +55,7 @@ import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
 import { HostingEmulator } from "./hostingEmulator";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { StorageEmulator } from "./storage";
+import { readFirebaseJson } from "../dataconnect/fileUtils";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
@@ -811,7 +812,15 @@ export async function startAll(
 
   if (listenForEmulator.dataconnect) {
     const dataConnectAddr = legacyGetFirstAddr(Emulators.DATACONNECT);
-    let configDir = options.config.get("dataconnect")?.source || "dataconnect";
+    const config = readFirebaseJson(options.config);
+    if (!config.length) {
+      throw new FirebaseError("No Data Connect service found in firebase.json");
+    } else if (config.length > 1) {
+      logger.warn(
+        `TODO: Add support for multiple services in the Data Connect emulator. Currently emulating first service ${config[0].source}`,
+      );
+    }
+    let configDir = config[0].source;
     if (!path.isAbsolute(configDir)) {
       const cwd = options.cwd || process.cwd();
       configDir = path.resolve(path.join(cwd), configDir);

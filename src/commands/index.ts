@@ -204,6 +204,8 @@ export function load(client: any): any {
     client.dataconnect.sql = {};
     client.dataconnect.sql.diff = loadCommand("dataconnect-sql-diff");
     client.dataconnect.sql.migrate = loadCommand("dataconnect-sql-migrate");
+    client.dataconnect.sdk = {};
+    client.dataconnect.sdk.generate = loadCommand("dataconnect-sdk-generate");
   }
   client.target = loadCommand("target");
   client.target.apply = loadCommand("target-apply");
