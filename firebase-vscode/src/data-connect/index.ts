@@ -26,7 +26,7 @@ import {
 import { locationToRange } from "../utils/graphql";
 import { runDataConnectCompiler } from "./core-compiler";
 import { setVSCodeEnvVars } from "../../../src/utils";
-
+import { setTerminalEnvVars } from "./terminal";
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
     private configs: Signal<ResolvedDataConnectConfigs | undefined>,
@@ -160,9 +160,11 @@ export function registerFdc(
       }
     }),
   });
+
+  setTerminalEnvVars(VSCODE_ENV_VARS.DATA_CONNECT_ORIGIN, STAGING_API);
+
   // TODO: Temporary hack to update staging api
   setVSCodeEnvVars(VSCODE_ENV_VARS.DATA_CONNECT_ORIGIN, STAGING_API);
-
   const selectedProjectStatus = vscode.window.createStatusBarItem(
     "projectPicker",
     vscode.StatusBarAlignment.Left,
