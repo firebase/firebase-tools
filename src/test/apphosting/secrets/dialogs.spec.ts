@@ -150,7 +150,7 @@ describe("dialogs", () => {
       await expect(
         dialogs.selectBackendServiceAccounts("number", "id", {}),
       ).to.eventually.deep.equal(emptyMulti);
-      expect(utils.logLabeledWarning).to.have.been.calledWith(dialogs.WARN_NO_BACKENDS);
+      expect(utils.logWarning).to.have.been.calledWith(dialogs.WARN_NO_BACKENDS);
     });
 
     it("handles unreachable regions", async () => {
@@ -163,11 +163,11 @@ describe("dialogs", () => {
         dialogs.selectBackendServiceAccounts("number", "id", {}),
       ).to.eventually.deep.equal(emptyMulti);
 
-      expect(utils.logLabeledWarning).to.have.been.calledWith(
+      expect(utils.logWarning).to.have.been.calledWith(
         `Could not reach location(s) us-central1. You may need to run ${clc.bold("firebase apphosting:secrets:grantAccess")} ` +
           "at a later time if you have backends in these locations",
       );
-      expect(utils.logLabeledWarning).to.have.been.calledWith(dialogs.WARN_NO_BACKENDS);
+      expect(utils.logWarning).to.have.been.calledWith(dialogs.WARN_NO_BACKENDS);
     });
 
     it("handles a single backend (opt yes)", async () => {
@@ -190,7 +190,7 @@ describe("dialogs", () => {
         message:
           "To use this secret, your backend's service account must have secret accessor permission. Would you like to grant it now?",
       });
-      expect(utils.logLabeledBullet).to.not.have.been.called;
+      expect(utils.logBullet).to.not.have.been.called;
     });
 
     it("handles a single backend (opt no)", async () => {
@@ -210,7 +210,7 @@ describe("dialogs", () => {
         message:
           "To use this secret, your backend's service account must have secret accessor permission. Would you like to grant it now?",
       });
-      expect(utils.logB).to.have.been.calledWith("apphosting", dialogs.GRANT_ACCESS_IN_FUTURE);
+      expect(utils.logBullet).to.have.been.calledWith(dialogs.GRANT_ACCESS_IN_FUTURE);
     });
 
     it("handles multiple backends with the same (multiple) SAs (opt yes)", async () => {
@@ -225,17 +225,21 @@ describe("dialogs", () => {
         dialogs.selectBackendServiceAccounts("number", "id", {}),
       ).to.eventually.deep.equal(secrets.toMulti(accounts));
 
-      expect(utils.logLabeledBullet).to.have.been.calledWith(
-        "To use this secret, your backend's service account must have secret accessor permission. " +
-          `All of your backends use service accounts ${dialogs.serviceAccountDisplay(accounts)}. ` +
-          "Granting access to one backend will grant access to all backends.",
+      expect(utils.logBullet.getCall(0).args[0]).to.eq(
+        "To use this secret, your backend's service account must have secret accessor permission.",
       );
+
+      expect(utils.logBullet.getCall(1).args[0]).to.eq(
+        `All of your backends share the following service accounts: ${dialogs.serviceAccountDisplay(accounts)}.` +
+          "\nGranting access to one backend will grant access to all backends.",
+      );
+
       expect(prompt.confirm).to.have.been.calledWith({
         nonInteractive: undefined,
         default: true,
-        message: "Would you like to grant it now?",
+        message: "Would you like to grant access now?",
       });
-      expect(utils.logLabeledBullet).to.have.been.calledOnce;
+      expect(utils.logBullet).to.have.been.calledTwice;
     });
 
     it("handles multiple backends with the same (multiple) SAs (opt no)", async () => {
@@ -250,21 +254,21 @@ describe("dialogs", () => {
         dialogs.selectBackendServiceAccounts("number", "id", {}),
       ).to.eventually.deep.equal(emptyMulti);
 
-      expect(utils.logLabeledBullet).to.have.been.calledWith(
-        "apphosting",
-        "To use this secret, your backend's service account must have secret accessor permission. " +
-          `All of your backends use service accounts ${dialogs.serviceAccountDisplay(legacyAccounts)}. ` +
-          "Granting access to one backend will grant access to all backends.",
+      expect(utils.logBullet.getCall(0).args[0]).to.eq(
+        "To use this secret, your backend's service account must have secret accessor permission.",
       );
+
+      expect(utils.logBullet.getCall(1).args[0]).to.eq(
+        `All of your backends share the following service accounts: ${dialogs.serviceAccountDisplay(legacyAccounts)}.` +
+          "\nGranting access to one backend will grant access to all backends.",
+      );
+
       expect(prompt.confirm).to.have.been.calledWith({
         nonInteractive: undefined,
         default: true,
-        message: "Would you like to grant it now?",
+        message: "Would you like to grant access now?",
       });
-      expect(utils.logLabeledBullet).to.have.been.calledWith(
-        "apphosting",
-        dialogs.GRANT_ACCESS_IN_FUTURE,
-      );
+      expect(utils.logBullet).to.have.been.calledWith(dialogs.GRANT_ACCESS_IN_FUTURE);
     });
 
     it("handles multiple backends with the same (single) SA (opt yes)", async () => {
@@ -281,18 +285,22 @@ describe("dialogs", () => {
         runServiceAccounts: [],
       });
 
-      expect(utils.logLabeledBullet).to.have.been.calledWith(
-        "apphosting",
-        "To use this secret, your backend's service account must have secret accessor permission. " +
-          "All of your backends use service account a. Granting access to one backend will grant access " +
-          "to all backends.",
+      expect(utils.logBullet.getCall(0).args[0]).to.eq(
+        "To use this secret, your backend's service account must have secret accessor permission.",
       );
+
+      expect(utils.logBullet.getCall(1).args[0]).to.eq(
+        `All of your backends share the following service account: a.` +
+          "\nGranting access to one backend will grant access to all backends.",
+      );
+
       expect(prompt.confirm).to.have.been.calledWith({
         nonInteractive: undefined,
         default: true,
-        message: "Would you like to grant it now?",
+        message: "Would you like to grant access now?",
       });
-      expect(utils.logLabeledBullet).to.have.been.calledOnce;
+
+      expect(utils.logBullet).to.have.been.calledTwice;
     });
 
     it("handles multiple backends with the same (single) SA (opt no)", async () => {
@@ -306,21 +314,21 @@ describe("dialogs", () => {
         dialogs.selectBackendServiceAccounts("number", "id", {}),
       ).to.eventually.deep.equal(emptyMulti);
 
-      expect(utils.logLabeledBullet).to.have.been.calledWith(
-        "apphosting",
-        "To use this secret, your backend's service account must have secret accessor permission. " +
-          "All of your backends use service account a. Granting access to one backend will grant access " +
-          "to all backends.",
+      expect(utils.logBullet.getCall(0).args[0]).to.eq(
+        "To use this secret, your backend's service account must have secret accessor permission.",
       );
+
+      expect(utils.logBullet.getCall(1).args[0]).to.eq(
+        `All of your backends share the following service account: a.` +
+          "\nGranting access to one backend will grant access to all backends.",
+      );
+
       expect(prompt.confirm).to.have.been.calledWith({
         nonInteractive: undefined,
         default: true,
-        message: "Would you like to grant it now?",
+        message: "Would you like to grant access now?",
       });
-      expect(utils.logLabeledBullet).to.have.been.calledWith(
-        "apphosting",
-        dialogs.GRANT_ACCESS_IN_FUTURE,
-      );
+      expect(utils.logBullet).to.have.been.calledWith(dialogs.GRANT_ACCESS_IN_FUTURE);
     });
 
     it("handles multiple backends with different SAs (select some)", async () => {
@@ -346,14 +354,10 @@ describe("dialogs", () => {
           legacyAccounts.runServiceAccount,
         ].sort(),
       });
-      expect(utils.logLabeledBullet).to.have.been.calledWith(
-        "apphosting",
+      expect(utils.logBullet).to.have.been.calledWith(
         "To use this secret, your backend's service account must have secret accessor permission. Your backends use the following service accounts:",
       );
-      expect(utils.logLabeledBullet).to.not.have.been.calledWith(
-        "apphosting",
-        dialogs.GRANT_ACCESS_IN_FUTURE,
-      );
+      expect(utils.logBullet).to.not.have.been.calledWith(dialogs.GRANT_ACCESS_IN_FUTURE);
     });
 
     it("handles multiple backends with different SAs (select none)", async () => {
@@ -379,14 +383,10 @@ describe("dialogs", () => {
           legacyAccounts.runServiceAccount,
         ].sort(),
       });
-      expect(utils.logLabeledBullet).to.have.been.calledWith(
-        "apphosting",
+      expect(utils.logBullet).to.have.been.calledWith(
         "To use this secret, your backend's service account must have secret accessor permission. Your backends use the following service accounts:",
       );
-      expect(utils.logLabeledBullet).to.have.been.calledWith(
-        "apphosting",
-        dialogs.GRANT_ACCESS_IN_FUTURE,
-      );
+      expect(utils.logBullet).to.have.been.calledWith(dialogs.GRANT_ACCESS_IN_FUTURE);
     });
   });
 

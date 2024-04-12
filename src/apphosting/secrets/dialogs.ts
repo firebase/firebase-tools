@@ -154,7 +154,7 @@ export async function selectBackendServiceAccounts(
     );
     utils.logBullet(
       "All of your backends share the following " +
-        (sameServiceAccount(metadata[0]) ? "service account " : "service accounts ") +
+        (sameServiceAccount(metadata[0]) ? "service account: " : "service accounts: ") +
         serviceAccountDisplay(metadata[0]) +
         ".\nGranting access to one backend will grant access to all backends.",
     );
