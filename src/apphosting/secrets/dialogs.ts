@@ -1,7 +1,7 @@
 import * as clc from "colorette";
 const Table = require("cli-table");
 
-import { MultiServiceAccounts, ServiceAccounts, serviceAccountsForBackend, toMulti } from ".";
+import { serviceAccountsForBackend } from ".";
 import * as apphosting from "../../gcp/apphosting";
 import * as prompt from "../../prompt";
 import * as utils from "../../utils";
@@ -13,8 +13,7 @@ import * as env from "../../functions/env";
 interface BackendMetadata {
   location: string;
   id: string;
-  buildServiceAccount: string;
-  runServiceAccount: string;
+  serviceAccounts: string[];
 }
 
 /**
@@ -28,7 +27,11 @@ export function toMetadata(
   for (const backend of backends) {
     // Splits format projects/<unused>/locations/<location>/backends/<id>
     const [, , , location, , id] = backend.name.split("/");
-    metadata.push({ location, id, ...serviceAccountsForBackend(projectNumber, backend) });
+    metadata.push({
+      location,
+      id,
+      serviceAccounts: serviceAccountsForBackend(projectNumber, backend),
+    });
   }
   return metadata.sort((left, right) => {
     const cmplocation = left.location.localeCompare(right.location);
@@ -39,22 +42,10 @@ export function toMetadata(
   });
 }
 
-/** Displays a single service account or a comma separated list of service accounts. */
-export function serviceAccountDisplay(metadata: ServiceAccounts): string {
-  if (sameServiceAccount(metadata)) {
-    return metadata.runServiceAccount;
-  }
-  return `${metadata.buildServiceAccount}, ${metadata.runServiceAccount}`;
-}
-
-function sameServiceAccount(metadata: ServiceAccounts): boolean {
-  return metadata.buildServiceAccount === metadata.runServiceAccount;
-}
-
-const matchesServiceAccounts = (target: ServiceAccounts) => (test: ServiceAccounts) => {
+const matchesServiceAccounts = (target: BackendMetadata) => (test: BackendMetadata) => {
   return (
-    target.buildServiceAccount === test.buildServiceAccount &&
-    target.runServiceAccount === test.runServiceAccount
+    target.serviceAccounts.length === test.serviceAccounts.length &&
+    target.serviceAccounts.every((sa) => test.serviceAccounts.indexOf(sa) !== -1)
   );
 };
 
@@ -68,36 +59,10 @@ export function tableForBackends(
   const headers = [
     "location",
     "backend",
-    metadata.every(sameServiceAccount) ? "service account" : "service accounts",
+    metadata.every((m) => m.serviceAccounts.length === 1) ? "service account" : "service accounts",
   ];
-  const rows = metadata.map((m) => [m.location, m.id, serviceAccountDisplay(m)]);
+  const rows = metadata.map((m) => [m.location, m.id, m.serviceAccounts.join(", ")]);
   return [headers, rows];
-}
-
-/**
- * Returns a MultiServiceAccounts for all selected service accounts in a ServiceAccount[].
- * If a service account is ever a "build" account in input, it will be a "build" account in the
- * output. Otherwise, it will be a "run" account.
- */
-export function selectFromMetadata(
-  input: ServiceAccounts[],
-  selected: string[],
-): MultiServiceAccounts {
-  const buildAccounts = new Set<string>();
-  const runAccounts = new Set<string>();
-
-  for (const sa of selected) {
-    if (input.find((m) => m.buildServiceAccount === sa)) {
-      buildAccounts.add(sa);
-    } else {
-      runAccounts.add(sa);
-    }
-  }
-
-  return {
-    buildServiceAccounts: [...buildAccounts],
-    runServiceAccounts: [...runAccounts],
-  };
 }
 
 /** Common warning log that there are no backends. Exported to make tests easier. */
@@ -117,7 +82,7 @@ export async function selectBackendServiceAccounts(
   projectNumber: string,
   projectId: string,
   options: any,
-): Promise<MultiServiceAccounts> {
+): Promise<string[]> {
   const listBackends = await apphosting.listBackends(projectId, "-");
 
   if (listBackends.unreachable.length) {
@@ -130,7 +95,7 @@ export async function selectBackendServiceAccounts(
 
   if (!listBackends.backends.length) {
     utils.logLabeledWarning("apphosting", WARN_NO_BACKENDS);
-    return { buildServiceAccounts: [], runServiceAccounts: [] };
+    return [];
   }
 
   if (listBackends.backends.length === 1) {
@@ -141,10 +106,10 @@ export async function selectBackendServiceAccounts(
         "To use this secret, your backend's service account must have secret accessor permission. Would you like to grant it now?",
     });
     if (grant) {
-      return toMulti(serviceAccountsForBackend(projectNumber, listBackends.backends[0]));
+      return serviceAccountsForBackend(projectNumber, listBackends.backends[0]);
     }
     utils.logLabeledBullet("apphosting", GRANT_ACCESS_IN_FUTURE);
-    return { buildServiceAccounts: [], runServiceAccounts: [] };
+    return [];
   }
 
   const metadata: BackendMetadata[] = toMetadata(projectNumber, listBackends.backends);
@@ -153,8 +118,8 @@ export async function selectBackendServiceAccounts(
     utils.logLabeledBullet(
       "apphosting",
       "To use this secret, your backend's service account must have secret accessor permission. All of your backends use " +
-        (sameServiceAccount(metadata[0]) ? "service account " : "service accounts ") +
-        serviceAccountDisplay(metadata[0]) +
+        (metadata[0].serviceAccounts.length === 1 ? "service account " : "service accounts ") +
+        metadata[0].serviceAccounts.join(", ") +
         ". Granting access to one backend will grant access to all backends.",
     );
     const grant = await prompt.confirm({
@@ -163,13 +128,10 @@ export async function selectBackendServiceAccounts(
       message: "Would you like to grant it now?",
     });
     if (grant) {
-      return selectFromMetadata(metadata, [
-        metadata[0].buildServiceAccount,
-        metadata[0].runServiceAccount,
-      ]);
+      return metadata[0].serviceAccounts;
     }
     utils.logLabeledBullet("apphosting", GRANT_ACCESS_IN_FUTURE);
-    return { buildServiceAccounts: [], runServiceAccounts: [] };
+    return [];
   }
 
   utils.logLabeledBullet(
@@ -185,8 +147,9 @@ export async function selectBackendServiceAccounts(
   logger.info(table.toString());
 
   const allAccounts = metadata.reduce((accum: Set<string>, row) => {
-    accum.add(row.buildServiceAccount);
-    accum.add(row.runServiceAccount);
+    for (const sa of row.serviceAccounts) {
+      accum.add(sa);
+    }
     return accum;
   }, new Set<string>());
   const chosen = await prompt.promptOnce({
@@ -199,7 +162,7 @@ export async function selectBackendServiceAccounts(
   if (!chosen.length) {
     utils.logLabeledBullet("apphosting", GRANT_ACCESS_IN_FUTURE);
   }
-  return selectFromMetadata(metadata, chosen);
+  return chosen;
 }
 
 function toUpperSnakeCase(key: string): string {

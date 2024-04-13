@@ -34,18 +34,15 @@ describe("secrets", () => {
       const backend = {
         serviceAccount: "sa",
       } as any as apphosting.Backend;
-      expect(secrets.serviceAccountsForBackend("number", backend)).to.deep.equal({
-        buildServiceAccount: "sa",
-        runServiceAccount: "sa",
-      });
+      expect(secrets.serviceAccountsForBackend("number", backend)).to.deep.equal(["sa"]);
     });
 
     it("has a fallback for legacy SAs", () => {
       const backend = {} as any as apphosting.Backend;
-      expect(secrets.serviceAccountsForBackend("number", backend)).to.deep.equal({
-        buildServiceAccount: gcb.getDefaultServiceAccount("number"),
-        runServiceAccount: gce.getDefaultServiceAccount("number"),
-      });
+      expect(secrets.serviceAccountsForBackend("number", backend)).to.deep.equal([
+        gcb.getDefaultServiceAccount("number"),
+        gce.getDefaultServiceAccount("number"),
+      ]);
     });
   });
 
@@ -186,26 +183,6 @@ describe("secrets", () => {
     });
   });
 
-  describe("toMulti", () => {
-    it("handles different service accounts", () => {
-      expect(
-        secrets.toMulti({ buildServiceAccount: "buildSA", runServiceAccount: "computeSA" }),
-      ).to.deep.equal({
-        buildServiceAccounts: ["buildSA"],
-        runServiceAccounts: ["computeSA"],
-      });
-    });
-
-    it("handles the same service account", () => {
-      expect(
-        secrets.toMulti({ buildServiceAccount: "explicitSA", runServiceAccount: "explicitSA" }),
-      ).to.deep.equal({
-        buildServiceAccounts: ["explicitSA"],
-        runServiceAccounts: [],
-      });
-    });
-  });
-
   describe("grantSecretAccess", () => {
     const secret = {
       name: "secret",
@@ -226,10 +203,7 @@ describe("secrets", () => {
       gcsm.getIamPolicy.resolves(existingPolicy);
       gcsm.setIamPolicy.resolves();
 
-      await secrets.grantSecretAccess(secret.projectId, secret.name, {
-        buildServiceAccounts: ["buildSA"],
-        runServiceAccounts: ["computeSA"],
-      });
+      await secrets.grantSecretAccess(secret.projectId, secret.name, ["buildSA", "computeSA"]);
 
       const newBindings: iam.Binding[] = [
         {
@@ -242,7 +216,7 @@ describe("secrets", () => {
         },
         {
           role: "roles/secretmanager.viewer",
-          members: ["serviceAccount:buildSA"],
+          members: ["serviceAccount:buildSA", "serviceAccount:computeSA"],
         },
       ];
 
