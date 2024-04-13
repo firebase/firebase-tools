@@ -7,6 +7,7 @@ import React from "react";
 import styles from "./AccountSection.scss";
 import { ExternalLink } from "./ui/ExternalLink";
 import { TEXT } from "../globals/ux-text";
+import { useEmulator } from "./EmulatorPanel";
 
 export function ProjectSection({
   userEmail,
@@ -15,6 +16,10 @@ export function ProjectSection({
   userEmail: string | null;
   projectId: string | null | undefined;
 }) {
+  const emulatorController = useEmulator();
+
+  const canSwitchProject = emulatorController.status === "stopped";
+
   return (
     <div className={styles.accountRow}>
       <Label className={styles.accountRowLabel}>
@@ -33,8 +38,13 @@ export function ProjectSection({
       </Label>
       {!!projectId && (
         <IconButton
-          tooltip="Switch projects"
+          tooltip={
+            canSwitchProject
+              ? "Switch projects"
+              : "Switch projects (disabled while emulators are running)"
+          }
           icon="arrow-swap"
+          disabled={!canSwitchProject}
           onClick={() => initProjectSelection(userEmail)}
         />
       )}
