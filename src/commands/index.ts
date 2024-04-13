@@ -135,6 +135,7 @@ export function load(client: any): any {
   client.functions.secrets.access = loadCommand("functions-secrets-access");
   client.functions.secrets.destroy = loadCommand("functions-secrets-destroy");
   client.functions.secrets.get = loadCommand("functions-secrets-get");
+  client.functions.secrets.describe = loadCommand("functions-secrets-describe");
   client.functions.secrets.prune = loadCommand("functions-secrets-prune");
   client.functions.secrets.set = loadCommand("functions-secrets-set");
   client.help = loadCommand("help");
@@ -167,14 +168,11 @@ export function load(client: any): any {
     client.apphosting.backends.create = loadCommand("apphosting-backends-create");
     client.apphosting.backends.get = loadCommand("apphosting-backends-get");
     client.apphosting.backends.delete = loadCommand("apphosting-backends-delete");
-    client.apphosting.builds = {};
-    client.apphosting.builds.get = loadCommand("apphosting-builds-get");
-    client.apphosting.builds.create = loadCommand("apphosting-builds-create");
     client.apphosting.secrets = {};
+    client.apphosting.secrets.set = loadCommand("apphosting-secrets-set");
     client.apphosting.secrets.grantaccess = loadCommand("apphosting-secrets-grantaccess");
-    client.apphosting.rollouts = {};
-    client.apphosting.rollouts.create = loadCommand("apphosting-rollouts-create");
-    client.apphosting.rollouts.list = loadCommand("apphosting-rollouts-list");
+    client.apphosting.secrets.describe = loadCommand("apphosting-secrets-describe");
+    client.apphosting.secrets.access = loadCommand("apphosting-secrets-access");
   }
   client.login = loadCommand("login");
   client.login.add = loadCommand("login-add");

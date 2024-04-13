@@ -1,32 +1,29 @@
 import * as clc from "colorette";
 
 import * as repo from "./repo";
-import * as poller from "../../../operation-poller";
-import * as apphosting from "../../../gcp/apphosting";
-import { logBullet, logSuccess, logWarning } from "../../../utils";
+import * as poller from "../operation-poller";
+import * as apphosting from "../gcp/apphosting";
+import * as githubConnections from "./githubConnections";
+import { logBullet, logSuccess, logWarning } from "../utils";
 import {
   apphostingOrigin,
   artifactRegistryDomain,
   cloudRunApiOrigin,
   cloudbuildOrigin,
+  developerConnectOrigin,
   secretManagerOrigin,
-} from "../../../api";
-import {
-  Backend,
-  BackendOutputOnlyFields,
-  API_VERSION,
-  Build,
-  Rollout,
-} from "../../../gcp/apphosting";
-import { addServiceAccountToRoles } from "../../../gcp/resourceManager";
-import * as iam from "../../../gcp/iam";
-import { Repository } from "../../../gcp/cloudbuild";
-import { FirebaseError } from "../../../error";
-import { promptOnce } from "../../../prompt";
+} from "../api";
+import { Backend, BackendOutputOnlyFields, API_VERSION, Build, Rollout } from "../gcp/apphosting";
+import { addServiceAccountToRoles } from "../gcp/resourceManager";
+import * as iam from "../gcp/iam";
+import { Repository } from "../gcp/cloudbuild";
+import { FirebaseError } from "../error";
+import { promptOnce } from "../prompt";
 import { DEFAULT_REGION } from "./constants";
-import { ensure } from "../../../ensureApiEnabled";
-import * as deploymentTool from "../../../deploymentTool";
-import { DeepOmit } from "../../../metaprogramming";
+import { ensure } from "../ensureApiEnabled";
+import * as deploymentTool from "../deploymentTool";
+import { DeepOmit } from "../metaprogramming";
+import { GitRepositoryLink } from "../gcp/devConnect";
 
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
@@ -44,8 +41,10 @@ export async function doSetup(
   projectId: string,
   location: string | null,
   serviceAccount: string | null,
+  withDevConnect: boolean,
 ): Promise<void> {
   await Promise.all([
+    ...(withDevConnect ? [ensure(projectId, developerConnectOrigin(), "apphosting", true)] : []),
     ensure(projectId, cloudbuildOrigin(), "apphosting", true),
     ensure(projectId, secretManagerOrigin(), "apphosting", true),
     ensure(projectId, cloudRunApiOrigin(), "apphosting", true),
@@ -85,14 +84,24 @@ export async function doSetup(
     message: "Create a name for your backend [1-30 characters]",
   });
 
-  const cloudBuildConnRepo = await repo.linkGitHubRepository(projectId, location);
+  const gitRepositoryConnection: Repository | GitRepositoryLink = withDevConnect
+    ? await githubConnections.linkGitHubRepository(projectId, location)
+    : await repo.linkGitHubRepository(projectId, location);
+
+  const rootDir = await promptOnce({
+    name: "rootDir",
+    type: "input",
+    default: "/",
+    message: "Specify your app's root directory relative to your repository",
+  });
 
   const backend = await createBackend(
     projectId,
     location,
     backendId,
-    cloudBuildConnRepo,
+    gitRepositoryConnection,
     serviceAccount,
+    rootDir,
   );
 
   // TODO: Once tag patterns are implemented, prompt which method the user
@@ -169,24 +178,25 @@ export async function createBackend(
   projectId: string,
   location: string,
   backendId: string,
-  repository: Repository,
+  repository: Repository | GitRepositoryLink,
   serviceAccount: string | null,
+  rootDir = "/",
 ): Promise<Backend> {
   const defaultServiceAccount = defaultComputeServiceAccountEmail(projectId);
   const backendReqBody: Omit<Backend, BackendOutputOnlyFields> = {
     servingLocality: "GLOBAL_ACCESS",
     codebase: {
       repository: `${repository.name}`,
-      rootDirectory: "/",
+      rootDirectory: rootDir,
     },
     labels: deploymentTool.labels(),
-    computeServiceAccount: serviceAccount || defaultServiceAccount,
+    serviceAccount: serviceAccount || defaultServiceAccount,
   };
 
   // TODO: remove computeServiceAccount when the backend supports the field.
-  delete backendReqBody.computeServiceAccount;
+  delete backendReqBody.serviceAccount;
 
-  async function createBackendAndPoll() {
+  async function createBackendAndPoll(): Promise<apphosting.Backend> {
     const op = await apphosting.createBackend(projectId, location, backendReqBody, backendId);
     return await poller.pollOperation<Backend>({
       ...apphostingPollerOptions,

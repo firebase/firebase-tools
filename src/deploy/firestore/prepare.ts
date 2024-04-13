@@ -72,12 +72,21 @@ function prepareIndexes(
 export default async function (context: any, options: any): Promise<void> {
   if (options.only) {
     const targets = options.only.split(",");
+
+    // Used for edge case when deploying to a named database
+    // https://github.com/firebase/firebase-tools/pull/6129
     const excludeRules = targets.indexOf("firestore:indexes") >= 0;
     const excludeIndexes = targets.indexOf("firestore:rules") >= 0;
+
+    // Used for edge case when deploying --only firestore:rules,firestore:indexes
+    // https://github.com/firebase/firebase-tools/issues/6857
+    const includeRules = targets.indexOf("firestore:rules") >= 0;
+    const includeIndexes = targets.indexOf("firestore:indexes") >= 0;
+
     const onlyFirestore = targets.indexOf("firestore") >= 0;
 
-    context.firestoreIndexes = !excludeIndexes || onlyFirestore;
-    context.firestoreRules = !excludeRules || onlyFirestore;
+    context.firestoreIndexes = !excludeIndexes || includeIndexes || onlyFirestore;
+    context.firestoreRules = !excludeRules || includeRules || onlyFirestore;
   } else {
     context.firestoreIndexes = true;
     context.firestoreRules = true;

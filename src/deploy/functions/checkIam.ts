@@ -6,8 +6,8 @@ import { FirebaseError } from "../../error";
 import { Options } from "../../options";
 import { flattenArray } from "../../functional";
 import * as iam from "../../gcp/iam";
+import * as gce from "../../gcp/computeEngine";
 import * as args from "./args";
-import * as gcb from "../../gcp/cloudbuild";
 import * as backend from "./backend";
 import { trackGA4 } from "../../track";
 import * as utils from "../../utils";
@@ -154,9 +154,7 @@ export function obtainPubSubServiceAgentBindings(projectNumber: string): iam.Bin
  * @param existingPolicy the project level IAM policy
  */
 export function obtainDefaultComputeServiceAgentBindings(projectNumber: string): iam.Binding[] {
-  const defaultComputeServiceAgent = `serviceAccount:${gcb.getDefaultComputeEngineServiceAgent(
-    projectNumber,
-  )}`;
+  const defaultComputeServiceAgent = `serviceAccount:${gce.getDefaultServiceAccount(projectNumber)}`;
   const runInvokerBinding: iam.Binding = {
     role: RUN_INVOKER_ROLE,
     members: [defaultComputeServiceAgent],

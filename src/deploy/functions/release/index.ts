@@ -11,6 +11,7 @@ import * as fabricator from "./fabricator";
 import * as reporter from "./reporter";
 import * as executor from "./executor";
 import * as prompts from "../prompts";
+import * as experiments from "../../../experiments";
 import { getAppEngineLocation } from "../../../functionsConfig";
 import { getFunctionLabel } from "../functionsDeployHelper";
 import { FirebaseError } from "../../../error";
@@ -48,15 +49,26 @@ export async function release(
   const fnsToDelete = Object.values(plan)
     .map((regionalChanges) => regionalChanges.endpointsToDelete)
     .reduce(reduceFlat, []);
-  const shouldDelete = await prompts.promptForFunctionDeletion(
-    fnsToDelete,
-    options.force,
-    options.nonInteractive,
-  );
+  const shouldDelete = await prompts.promptForFunctionDeletion(fnsToDelete, options);
   if (!shouldDelete) {
     for (const change of Object.values(plan)) {
       change.endpointsToDelete = [];
     }
+  }
+
+  const fnsToUpdate = Object.values(plan)
+    .map((regionalChanges) => regionalChanges.endpointsToUpdate)
+    .reduce(reduceFlat, []);
+  const fnsToUpdateSafe = await prompts.promptForUnsafeMigration(fnsToUpdate, options);
+  // Replace endpointsToUpdate in deployment plan with endpoints that are either safe
+  // to update or customers have confirmed they want to update unsafely
+  for (const key of Object.keys(plan)) {
+    plan[key].endpointsToUpdate = [];
+  }
+  for (const eu of fnsToUpdateSafe) {
+    const e = eu.endpoint;
+    const key = `${e.codebase || ""}-${e.region}-${e.availableMemoryMb || "default"}`;
+    plan[key].endpointsToUpdate.push(eu);
   }
 
   const throttlerOptions = {
@@ -90,7 +102,9 @@ export async function release(
   const deletedEndpoints = Object.values(plan)
     .map((r) => r.endpointsToDelete)
     .reduce(reduceFlat, []);
-  await containerCleaner.cleanupBuildImages(haveEndpoints, deletedEndpoints);
+  if (experiments.isEnabled("automaticallydeletegcfartifacts")) {
+    await containerCleaner.cleanupBuildImages(haveEndpoints, deletedEndpoints);
+  }
 
   const allErrors = summary.results.filter((r) => r.error).map((r) => r.error) as Error[];
   if (allErrors.length) {
