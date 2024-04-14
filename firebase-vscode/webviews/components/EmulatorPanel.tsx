@@ -8,7 +8,7 @@ import {
 } from "@vscode/webview-ui-toolkit/react";
 import React, { useState } from "react";
 import { Spacer } from "./ui/Spacer";
-import { broker } from "../globals/html-broker";
+import { broker, useBrokerListener } from "../globals/html-broker";
 import { PanelSection } from "./ui/PanelSection";
 import { FirebaseConfig } from "../../../src/firebaseConfig";
 import {
@@ -67,24 +67,24 @@ export function EmulatorPanel({
   const [runningEmulatorInfo, setRunningEmulatorInfo] =
     useState<RunningEmulatorInfo>();
 
-  broker.on("notifyEmulatorsStopped", () => {
+  useBrokerListener("notifyEmulatorsStopped", () => {
     setShowEmulatorProgressIndicator(false);
     webLogger.debug(`notifyEmulatorsStopped received in sidebar`);
     setRunningEmulatorInfo(null);
   });
 
-  broker.on("notifyEmulatorStartFailed", () => {
+  useBrokerListener("notifyEmulatorStartFailed", () => {
     setShowEmulatorProgressIndicator(false);
     webLogger.debug(`notifyEmulatorStartFailed received in sidebar`);
   });
 
-  broker.on("notifyRunningEmulatorInfo", (info: RunningEmulatorInfo) => {
+  useBrokerListener("notifyRunningEmulatorInfo", (info: RunningEmulatorInfo) => {
     setShowEmulatorProgressIndicator(false);
     webLogger.debug(`notifyRunningEmulatorInfo received in sidebar`);
     setRunningEmulatorInfo(info);
   });
 
-  broker.on("notifyEmulatorImportFolder", ({ folder }) => {
+  useBrokerListener("notifyEmulatorImportFolder", ({ folder }) => {
     webLogger.debug(
       `notifyEmulatorImportFolder received in sidebar: ${folder}`
     );
