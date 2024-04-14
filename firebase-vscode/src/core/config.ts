@@ -3,82 +3,85 @@ import * as vscode from "vscode";
 import path from "path";
 import fs from "fs";
 import { currentOptions } from "../options";
-import { pluginLogger } from "../logger-wrapper";
 import { ExtensionBrokerImpl } from "../extension-broker";
-import { RC } from "../../../src/rc";
+import { RC, RCData } from "../../../src/rc";
 import { Config } from "../../../src/config";
 import { globalSignal } from "../utils/globals";
 import { workspace } from "../utils/test_hooks";
+import { onChange } from "../utils/signal";
+import { pluginLogger } from "../logger-wrapper";
 
 export const firebaseRC = globalSignal<RC | undefined>(undefined);
 export const firebaseConfig = globalSignal<Config | undefined>(undefined);
 
-export function registerConfig(broker: ExtensionBrokerImpl): Disposable {
+function notifyFirebaseConfig(broker: ExtensionBrokerImpl) {
+  broker.send("notifyFirebaseConfig", {
+    firebaseJson: firebaseConfig.value?.data,
+    firebaseRC: firebaseRC.value?.data,
+  });
+}
+
+function registerRc(broker: ExtensionBrokerImpl): Disposable {
   firebaseRC.value = _readRC();
-  firebaseConfig.value = _readConfig();
-
-  function notifyFirebaseConfig() {
-    broker.send("notifyFirebaseConfig", {
-      firebaseJson: firebaseConfig.value?.data,
-      firebaseRC: firebaseRC.value?.data,
-    });
-  }
-
-  // "subscribe" immediately calls the callback with the current value.
-  // We want to skip this.
-  var shouldNotify = false;
-
-  // When configs change, notify the extension.
-  // We do so after the config is initially updated, to not notify
-  // the extension on startup.
-  const rcRemoveListener = firebaseRC.subscribe(() => {
-    if (!shouldNotify) {
-      return;
-    }
-    return notifyFirebaseConfig();
-  });
-  const configRemoveListener = firebaseConfig.subscribe(() => {
-    if (!shouldNotify) {
-      return;
-    }
-    return notifyFirebaseConfig();
-  });
-
-  shouldNotify = true;
-
-  // On getInitialData, forcibly notifies the extension.
-  const getInitialDataRemoveListener = broker.on(
-    "getInitialData",
-    notifyFirebaseConfig,
+  const rcRemoveListener = onChange(firebaseRC, () =>
+    notifyFirebaseConfig(broker)
   );
 
   const rcWatcher = _createWatcher(".firebaserc");
   rcWatcher?.onDidChange(() => (firebaseRC.value = _readRC()));
   rcWatcher?.onDidCreate(() => (firebaseRC.value = _readRC()));
-  // TODO handle deletion of .firebaserc/.firebase.json
+  rcWatcher?.onDidDelete(() => (firebaseRC.value = undefined));
 
-  const jsonWatcher = _createWatcher("firebase.json");
-  jsonWatcher?.onDidChange(() => (firebaseConfig.value = _readConfig()));
-  jsonWatcher?.onDidCreate(() => (firebaseConfig.value = _readConfig()));
+  return Disposable.from(
+    { dispose: rcRemoveListener },
+    { dispose: () => rcWatcher?.dispose() }
+  );
+}
 
-  return {
-    dispose: () => {
-      getInitialDataRemoveListener();
-      rcRemoveListener();
-      configRemoveListener();
-      rcWatcher?.dispose();
-      jsonWatcher?.dispose();
-    },
-  };
+function registerFirebaseConfig(broker: ExtensionBrokerImpl): Disposable {
+  firebaseConfig.value = _readFirebaseConfig();
+
+  const firebaseConfigRemoveListener = onChange(firebaseConfig, () =>
+    notifyFirebaseConfig(broker)
+  );
+
+  const configWatcher = _createWatcher("firebase.json");
+  configWatcher?.onDidChange(
+    () => (firebaseConfig.value = _readFirebaseConfig())
+  );
+  configWatcher?.onDidCreate(
+    () => (firebaseConfig.value = _readFirebaseConfig())
+  );
+  configWatcher?.onDidDelete(() => (firebaseConfig.value = undefined));
+
+  return Disposable.from(
+    { dispose: firebaseConfigRemoveListener },
+    { dispose: () => configWatcher?.dispose() }
+  );
+}
+
+export function registerConfig(broker: ExtensionBrokerImpl): Disposable {
+  // On getInitialData, forcibly notifies the extension.
+  const getInitialDataRemoveListener = broker.on("getInitialData", () => {
+    notifyFirebaseConfig(broker);
+  });
+
+  // TODO handle deletion of .firebaserc/.firebase.json/firemat.yaml
+
+  return Disposable.from(
+    { dispose: getInitialDataRemoveListener },
+    registerFirebaseConfig(broker),
+    registerRc(broker)
+  );
 }
 
 /** @internal */
 export function _readRC(): RC | undefined {
-  const configPath = _getConfigPath();
-  if (!configPath) {
-    return undefined;
-  }
-  try {
+    const configPath = getConfigPath();
+    if (!configPath) {
+      return undefined;
+    }
+try {
     // RC.loadFile silences errors and returns a non-empty object if the rc file is
     // missing. Let's load it ourselves.
 
@@ -92,19 +95,19 @@ export function _readRC(): RC | undefined {
     const data = JSON.parse(json.toString());
 
     return new RC(rcPath, data);
-  } catch (e: any) {
+} catch (e: any) {
     pluginLogger.error(e.message);
     throw e;
   }
 }
 
 /** @internal */
-export function _readConfig(): Config | undefined {
-  const configPath = _getConfigPath();
-  if (!configPath) {
-    return undefined;
-  }
-  try {
+export function _readFirebaseConfig(): Config | undefined {
+    const configPath = getConfigPath();
+    if (!configPath) {
+      return undefined;
+    }
+    try {
     const json = Config.load({
       configPath: path.join(configPath, "firebase.json"),
     });
@@ -118,7 +121,7 @@ export function _readConfig(): Config | undefined {
       pluginLogger.error(e.message);
       throw e;
     }
-  }
+}
 }
 
 /** @internal */
@@ -129,7 +132,7 @@ export function _createWatcher(file: string): FileSystemWatcher | undefined {
 
   return workspace.value?.createFileSystemWatcher(
     // Using RelativePattern enables tests to use watchers too.
-    new vscode.RelativePattern(vscode.Uri.file(currentOptions.value.cwd), file),
+    new vscode.RelativePattern(vscode.Uri.file(currentOptions.value.cwd), file)
   );
 }
 
@@ -147,8 +150,7 @@ export function getRootFolders() {
   return Array.from(new Set(folders));
 }
 
-/** @internal */
-export function _getConfigPath(): string | undefined {
+export function getConfigPath(): string | undefined {
   // Usually there's only one root folder unless someone is using a
   // multi-root VS Code workspace.
   // https://code.visualstudio.com/docs/editor/multi-root-workspaces
@@ -166,7 +168,5 @@ export function _getConfigPath(): string | undefined {
   });
 
   folder ??= rootFolders[0];
-
-  currentOptions.value.cwd = folder;
   return folder;
 }

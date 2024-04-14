@@ -4,8 +4,8 @@ import * as path from "path";
 import * as fs from "fs";
 import {
   _createWatcher,
-  _getConfigPath,
-  _readConfig,
+  getConfigPath,
+  _readFirebaseConfig,
   _readRC,
   firebaseConfig,
   firebaseRC,
@@ -106,7 +106,7 @@ firebaseSuite("getRootFolders", () => {
   });
 });
 
-firebaseSuite("_getConfigPath", () => {
+firebaseSuite("getConfigPath", () => {
   // Those tests will impact global variables. We need to reset them after each test.
   teardown(() => resetGlobals());
 
@@ -131,10 +131,10 @@ firebaseSuite("_getConfigPath", () => {
       });
 
       mock(workspace, { workspaceFolders: [aFolder, bFolder, cFolder] });
-      assert.deepEqual(_getConfigPath(), b, ".firebaserc is found first");
+      assert.deepEqual(getConfigPath(), b, ".firebaserc is found first");
 
       mock(workspace, { workspaceFolders: [aFolder, cFolder, bFolder] });
-      assert.deepEqual(_getConfigPath(), c, "firebase.json is found first");
+      assert.deepEqual(getConfigPath(), c, "firebase.json is found first");
     },
   );
 
@@ -154,7 +154,7 @@ firebaseSuite("_getConfigPath", () => {
     });
 
     mock(workspace, { workspaceFolders: [aFolder, bFolder, cFolder] });
-    assert.deepEqual(_getConfigPath(), a);
+    assert.deepEqual(getConfigPath(), a);
   });
 
   firebaseTest('sets "cwd" global variable to the config path', () => {
@@ -165,13 +165,13 @@ firebaseSuite("_getConfigPath", () => {
 
     mock(workspace, { workspaceFolders: [aFolder] });
 
-    _getConfigPath();
+    getConfigPath();
 
     assert.deepEqual(currentOptions.value.cwd, a);
   });
 });
 
-firebaseSuite("_readConfig", () => {
+firebaseSuite("_readFirebaseConfig", () => {
   firebaseTest("parses firebase.json", () => {
     const expectedConfig = {
       emulators: {
@@ -192,7 +192,7 @@ firebaseSuite("_readConfig", () => {
       ],
     });
 
-    const config = _readConfig();
+    const config = _readFirebaseConfig();
     assert.deepEqual(config.data, expectedConfig);
   });
 
@@ -207,7 +207,7 @@ firebaseSuite("_readConfig", () => {
       ],
     });
 
-    const config = _readConfig();
+    const config = _readFirebaseConfig();
     assert.deepEqual(config, undefined);
   });
 
@@ -227,7 +227,7 @@ firebaseSuite("_readConfig", () => {
     assert.equal(logs.error.length, 0);
 
     assert.throws(
-      () => _readConfig(),
+      () => _readFirebaseConfig(),
       (thrown) =>
         thrown
           .toString()
@@ -426,7 +426,7 @@ firebaseSuite("registerConfig", () => {
         workspaces.byIndex(0).firebaseConfigPath,
         JSON.stringify(newConfig),
       );
-      firebaseConfig.value = _readConfig()!;
+      firebaseConfig.value = _readFirebaseConfig()!;
 
       assert.deepEqual(broker.sentLogs, [
         {
