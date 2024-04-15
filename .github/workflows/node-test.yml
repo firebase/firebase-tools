@@ -57,6 +57,8 @@ jobs:
       - run: npm i -g npm@9.5
       - run: npm ci
       - run: npm test -- -- --forbid-only
+      - run: npm run test:unit
+        working-directory: firebase-vscode
 
       - uses: codecov/codecov-action@v3
         if: matrix.node-version == '20'
@@ -93,6 +95,7 @@ jobs:
           - npm run test:storage-emulator-integration
           - npm run test:triggers-end-to-end
           - npm run test:triggers-end-to-end:inspect
+          - cd firebase-vscode && npm run test:e2e
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
