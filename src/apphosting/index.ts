@@ -135,7 +135,6 @@ export async function doSetup(
 
   logSuccess(`Successfully created backend:\n\t${backend.name}`);
   logSuccess(`Your backend is now deployed at:\n\thttps://${backend.uri}`);
-  logBullet("A certificate is being provisioned for your backend, this may take up to ten minutes");
 }
 
 /**
