@@ -27,15 +27,15 @@ export function registerCore({
     setEnabled("webframeworks", true);
   }
 
-  broker.on("writeLog", async ({ level, args }) => {
+  const sub1 = broker.on("writeLog", async ({ level, args }) => {
     pluginLogger[level]("(Webview)", ...args);
   });
 
-  broker.on("showMessage", async ({ msg, options }) => {
+  const sub2 = broker.on("showMessage", async ({ msg, options }) => {
     vscode.window.showInformationMessage(msg, options);
   });
 
-  broker.on("openLink", async ({ href }) => {
+  const sub3 = broker.on("openLink", async ({ href }) => {
     vscode.env.openExternal(vscode.Uri.parse(href));
   });
 
@@ -45,6 +45,9 @@ export function registerCore({
     registerEnv(broker),
     registerUser(broker),
     registerProject({ context, broker }),
-    registerQuickstart(broker)
+    registerQuickstart(broker),
+    { dispose: sub1 },
+    { dispose: sub2 },
+    { dispose: sub3 }
   );
 }
