@@ -188,7 +188,7 @@ describe("dialogs", () => {
         nonInteractive: undefined,
         default: true,
         message:
-          "To use this secret, your backend's service account must have secret accessor permission. Would you like to grant it now?",
+          "To use this secret, your backend's service account must be granted access. Would you like to grant access now?",
       });
       expect(utils.logBullet).to.not.have.been.called;
     });
@@ -208,7 +208,7 @@ describe("dialogs", () => {
         nonInteractive: undefined,
         default: true,
         message:
-          "To use this secret, your backend's service account must have secret accessor permission. Would you like to grant it now?",
+          "To use this secret, your backend's service account must be granted access. Would you like to grant access now?",
       });
       expect(utils.logBullet).to.have.been.calledWith(dialogs.GRANT_ACCESS_IN_FUTURE);
     });
@@ -226,7 +226,7 @@ describe("dialogs", () => {
       ).to.eventually.deep.equal(secrets.toMulti(accounts));
 
       expect(utils.logBullet.getCall(0).args[0]).to.eq(
-        "To use this secret, your backend's service account must have secret accessor permission.",
+        "To use this secret, your backend's service account must be granted access.",
       );
 
       expect(utils.logBullet.getCall(1).args[0]).to.eq(
@@ -237,7 +237,7 @@ describe("dialogs", () => {
       expect(prompt.confirm).to.have.been.calledWith({
         nonInteractive: undefined,
         default: true,
-        message: "Would you like to grant access now?",
+        message: "Would you like to grant access to all backends now?",
       });
       expect(utils.logBullet).to.have.been.calledTwice;
     });
@@ -255,7 +255,7 @@ describe("dialogs", () => {
       ).to.eventually.deep.equal(emptyMulti);
 
       expect(utils.logBullet.getCall(0).args[0]).to.eq(
-        "To use this secret, your backend's service account must have secret accessor permission.",
+        "To use this secret, your backend's service account must be granted access.",
       );
 
       expect(utils.logBullet.getCall(1).args[0]).to.eq(
@@ -266,7 +266,7 @@ describe("dialogs", () => {
       expect(prompt.confirm).to.have.been.calledWith({
         nonInteractive: undefined,
         default: true,
-        message: "Would you like to grant access now?",
+        message: "Would you like to grant access to all backends now?",
       });
       expect(utils.logBullet).to.have.been.calledWith(dialogs.GRANT_ACCESS_IN_FUTURE);
     });
@@ -286,7 +286,7 @@ describe("dialogs", () => {
       });
 
       expect(utils.logBullet.getCall(0).args[0]).to.eq(
-        "To use this secret, your backend's service account must have secret accessor permission.",
+        "To use this secret, your backend's service account must be granted access.",
       );
 
       expect(utils.logBullet.getCall(1).args[0]).to.eq(
@@ -297,7 +297,7 @@ describe("dialogs", () => {
       expect(prompt.confirm).to.have.been.calledWith({
         nonInteractive: undefined,
         default: true,
-        message: "Would you like to grant access now?",
+        message: "Would you like to grant access to all backends now?",
       });
 
       expect(utils.logBullet).to.have.been.calledTwice;
@@ -315,7 +315,7 @@ describe("dialogs", () => {
       ).to.eventually.deep.equal(emptyMulti);
 
       expect(utils.logBullet.getCall(0).args[0]).to.eq(
-        "To use this secret, your backend's service account must have secret accessor permission.",
+        "To use this secret, your backend's service account must be granted access.",
       );
 
       expect(utils.logBullet.getCall(1).args[0]).to.eq(
@@ -326,7 +326,7 @@ describe("dialogs", () => {
       expect(prompt.confirm).to.have.been.calledWith({
         nonInteractive: undefined,
         default: true,
-        message: "Would you like to grant access now?",
+        message: "Would you like to grant access to all backends now?",
       });
       expect(utils.logBullet).to.have.been.calledWith(dialogs.GRANT_ACCESS_IN_FUTURE);
     });
@@ -355,7 +355,7 @@ describe("dialogs", () => {
         ].sort(),
       });
       expect(utils.logBullet).to.have.been.calledWith(
-        "To use this secret, your backend's service account must have secret accessor permission. Your backends use the following service accounts:",
+        "To use this secret, your backend's service account must be granted access. Your backends use the following service accounts:",
       );
       expect(utils.logBullet).to.not.have.been.calledWith(dialogs.GRANT_ACCESS_IN_FUTURE);
     });
@@ -384,7 +384,7 @@ describe("dialogs", () => {
         ].sort(),
       });
       expect(utils.logBullet).to.have.been.calledWith(
-        "To use this secret, your backend's service account must have secret accessor permission. Your backends use the following service accounts:",
+        "To use this secret, your backend's service account must be granted access. Your backends use the following service accounts:",
       );
       expect(utils.logBullet).to.have.been.calledWith(dialogs.GRANT_ACCESS_IN_FUTURE);
     });

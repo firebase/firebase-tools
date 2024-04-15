@@ -102,7 +102,7 @@ export function selectFromMetadata(
 
 /** Common warning log that there are no backends. Exported to make tests easier. */
 export const WARN_NO_BACKENDS =
-  "To use this secret, your backend's service account must have secret accessor permission. " +
+  "To use this secret, your backend's service account must be granted access." +
   "It does not look like you have a backend yet. After creating a backend, grant access with " +
   clc.bold("firebase apphosting:secrets:grantaccess");
 
@@ -137,7 +137,7 @@ export async function selectBackendServiceAccounts(
       nonInteractive: options.nonInteractive,
       default: true,
       message:
-        "To use this secret, your backend's service account must have secret accessor permission. Would you like to grant it now?",
+        "To use this secret, your backend's service account must be granted access. Would you like to grant access now?",
     });
     if (grant) {
       return toMulti(serviceAccountsForBackend(projectNumber, listBackends.backends[0]));
@@ -149,9 +149,7 @@ export async function selectBackendServiceAccounts(
   const metadata: BackendMetadata[] = toMetadata(projectNumber, listBackends.backends);
 
   if (metadata.every(matchesServiceAccounts(metadata[0]))) {
-    utils.logBullet(
-      "To use this secret, your backend's service account must have secret accessor permission.",
-    );
+    utils.logBullet("To use this secret, your backend's service account must be granted access.");
     utils.logBullet(
       "All of your backends share the following " +
         (sameServiceAccount(metadata[0]) ? "service account: " : "service accounts: ") +
@@ -161,7 +159,7 @@ export async function selectBackendServiceAccounts(
     const grant = await prompt.confirm({
       nonInteractive: options.nonInteractive,
       default: true,
-      message: "Would you like to grant access now?",
+      message: "Would you like to grant access to all backends now?",
     });
     if (grant) {
       return selectFromMetadata(metadata, [
@@ -174,7 +172,7 @@ export async function selectBackendServiceAccounts(
   }
 
   utils.logBullet(
-    "To use this secret, your backend's service account must have secret accessor permission. Your backends use the following service accounts:",
+    "To use this secret, your backend's service account must be granted access. Your backends use the following service accounts:",
   );
   const tableData = tableForBackends(metadata);
   const table = new Table({

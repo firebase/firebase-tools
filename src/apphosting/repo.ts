@@ -214,7 +214,7 @@ async function promptRepositoryUri(
   const remoteUri = await promptOnce({
     type: "autocomplete",
     name: "remoteUri",
-    message: `Which of the following repositories would you like to deploy?`,
+    message: "Which repository would you like to deploy?",
     source: (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
       return new Promise((resolve) =>
         resolve([
