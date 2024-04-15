@@ -35,7 +35,12 @@ export const currentProject = computed<FirebaseProjectMetadata | undefined>(
     }
 
     const wantProjectId =
-      currentProjectId.value || firebaseRC.value?.projects["default"];
+      currentProjectId.value ||
+      firebaseRC.value?.tryReadValue?.projects["default"];
+    if (!wantProjectId) {
+      return undefined;
+    }
+
     return userScopedProjects.value?.find((p) => p.projectId === wantProjectId);
   },
 );
@@ -67,7 +72,14 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
     }
   });
 
-  const sub4 = broker.on("getInitialData", () => {
+  // Initialize currentProjectId to default project ID
+  const sub4 = effect(() => {
+    if (!currentProjectId.value) {
+      currentProjectId.value = firebaseRC.value?.tryReadValue?.projects.default;
+    }
+  });
+
+  const sub5 = broker.on("getInitialData", () => {
     broker.send("notifyProjectChanged", {
       projectId: currentProject.value?.projectId ?? "",
     });
@@ -116,7 +128,7 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
     },
   );
 
-  const sub5 = broker.on("selectProject", () =>
+  const sub6 = broker.on("selectProject", () =>
     vscode.commands.executeCommand("firebase.selectProject"),
   );
 
@@ -127,6 +139,7 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
     { dispose: sub3 },
     { dispose: sub4 },
     { dispose: sub5 },
+    { dispose: sub6 },
   );
 }
 

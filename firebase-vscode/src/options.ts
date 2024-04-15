@@ -61,7 +61,7 @@ export function registerOptions(context: ExtensionContext): vscode.Disposable {
   const firebaseConfigSync = effect(() => {
     const previous = currentOptions.peek();
 
-    const config = firebaseConfig.value;
+    const config = firebaseConfig.value?.tryReadValue;
     if (config) {
       currentOptions.value = {
         ...previous,
@@ -80,7 +80,7 @@ export function registerOptions(context: ExtensionContext): vscode.Disposable {
   const rcSync = effect(() => {
     const previous = currentOptions.peek();
 
-    const rc = firebaseRC.value;
+    const rc = firebaseRC.value?.tryReadValue;
     if (rc) {
       currentOptions.value = {
         ...previous,

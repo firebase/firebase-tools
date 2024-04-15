@@ -22,13 +22,13 @@ import { createFake, mock } from "../../../utils/mock";
 import { resetGlobals } from "../../../../utils/globals";
 import { workspace } from "../../../../utils/test_hooks";
 import { createFile, createTemporaryDirectory } from "../../../utils/fs";
-import { currentOptions } from "../../../../options";
-import { Options } from "../../../../../../src/options";
+import { VsCodeOptions, currentOptions } from "../../../../options";
 import { spyLogs } from "../../../utils/logs";
 import { createTestBroker } from "../../../utils/broker";
 import { setupMockTestWorkspaces } from "../../../utils/workspace";
-import { RC } from "../../../../../../src/rc";
-import { Config } from "../../../../../../src/config";
+import { RC } from "../../../../rc";
+import { Config } from "../../../../config";
+import { ResultValue } from "../../../../result";
 
 firebaseSuite("getRootFolders", () => {
   firebaseTest("if workspace is empty, returns an empty array", () => {
@@ -138,24 +138,27 @@ firebaseSuite("getConfigPath", () => {
     },
   );
 
-  firebaseTest("if no firebase config found, returns the first folder", () => {
-    const a = createTemporaryDirectory({ debugLabel: "a" });
-    const b = createTemporaryDirectory({ debugLabel: "b" });
-    const c = createTemporaryDirectory({ debugLabel: "c" });
+  firebaseTest(
+    "if no firebase config found, returns the first folder",
+    () => {
+      const a = createTemporaryDirectory({ debugLabel: "a" });
+      const b = createTemporaryDirectory({ debugLabel: "b" });
+      const c = createTemporaryDirectory({ debugLabel: "c" });
 
-    const aFolder = createFake<vscode.WorkspaceFolder>({
-      uri: vscode.Uri.file(a),
-    });
-    const bFolder = createFake<vscode.WorkspaceFolder>({
-      uri: vscode.Uri.file(b),
-    });
-    const cFolder = createFake<vscode.WorkspaceFolder>({
-      uri: vscode.Uri.file(c),
-    });
+      const aFolder = createFake<vscode.WorkspaceFolder>({
+        uri: vscode.Uri.file(a),
+      });
+      const bFolder = createFake<vscode.WorkspaceFolder>({
+        uri: vscode.Uri.file(b),
+      });
+      const cFolder = createFake<vscode.WorkspaceFolder>({
+        uri: vscode.Uri.file(c),
+      });
 
-    mock(workspace, { workspaceFolders: [aFolder, bFolder, cFolder] });
-    assert.deepEqual(getConfigPath(), a);
-  });
+      mock(workspace, { workspaceFolders: [aFolder, bFolder, cFolder] });
+      assert.deepEqual(getConfigPath(), a);
+    },
+  );
 
   firebaseTest('sets "cwd" global variable to the config path', () => {
     const a = createTemporaryDirectory();
@@ -171,11 +174,11 @@ firebaseSuite("getConfigPath", () => {
   });
 });
 
-firebaseSuite("_readFirebaseConfig", () => {
+firebaseSuite("_readConfig", () => {
   firebaseTest("parses firebase.json", () => {
     const expectedConfig = {
       emulators: {
-        firemat: {
+        dataconnect: {
           port: 9399,
         },
       },
@@ -193,7 +196,7 @@ firebaseSuite("_readFirebaseConfig", () => {
     });
 
     const config = _readFirebaseConfig();
-    assert.deepEqual(config.data, expectedConfig);
+    assert.deepEqual(config.requireValue.data, expectedConfig);
   });
 
   firebaseTest("returns undefined if firebase.json is not found", () => {
@@ -264,7 +267,10 @@ firebaseSuite("_readRC", () => {
     });
 
     const config = _readRC();
-    assert.deepEqual(config?.data.projects, expectedConfig.projects);
+    assert.deepEqual(
+      config?.requireValue.data.projects,
+      expectedConfig.projects,
+    );
   });
 
   firebaseTest("returns undefined if .firebaserc is not found", () => {
@@ -317,7 +323,7 @@ firebaseSuite("_createWatcher", () => {
   teardown(() => resetGlobals());
 
   firebaseTest("returns undefined if cwd is not set", () => {
-    mock(currentOptions, createFake<Options>({ cwd: undefined }));
+    mock(currentOptions, createFake<VsCodeOptions>({ cwd: undefined }));
 
     const watcher = _createWatcher("file");
 
@@ -328,7 +334,7 @@ firebaseSuite("_createWatcher", () => {
     const dir = createTemporaryDirectory();
     const file = createFile(dir, "file", "content");
 
-    mock(currentOptions, createFake<Options>({ cwd: dir }));
+    mock(currentOptions, createFake<VsCodeOptions>({ cwd: dir }));
 
     const watcher = _createWatcher("file")!;
     addTearDown(() => watcher.dispose());
@@ -349,8 +355,8 @@ firebaseSuite("registerConfig", () => {
 
   firebaseTest(
     'sets "cwd" and firebaseRC/Config global variables on initial call',
-    () => {
-      const expectedConfig = { emulators: { firemat: { port: 9399 } } };
+    async () => {
+      const expectedConfig = { emulators: { dataconnect: { port: 9399 } } };
       const expectedRc = { projects: { default: "my-project" } };
       const broker = createTestBroker();
       const workspaces = setupMockTestWorkspaces({
@@ -358,21 +364,27 @@ firebaseSuite("registerConfig", () => {
         firebaseConfig: expectedConfig,
       });
 
-      const disposable = registerConfig(broker);
+      const disposable = await registerConfig(broker);
       addDisposable(disposable);
 
       // Initial register should not notify anything.
       assert.deepEqual(broker.sentLogs, []);
 
       assert.deepEqual(currentOptions.value.cwd, workspaces.byIndex(0).path);
-      assert.deepEqual(firebaseConfig.value.data, expectedConfig);
-      assert.deepEqual(firebaseRC.value.data.projects, expectedRc.projects);
+      assert.deepEqual(
+        firebaseConfig.value.requireValue.data,
+        expectedConfig,
+      );
+      assert.deepEqual(
+        firebaseRC.value.requireValue.data.projects,
+        expectedRc.projects,
+      );
     },
   );
 
   firebaseTest(
     "when firebaseRC signal changes, calls notifyFirebaseConfig",
-    () => {
+    async () => {
       const initialRC = { projects: { default: "my-project" } };
       const newRC = { projects: { default: "my-new-project" } };
       const broker = createTestBroker();
@@ -380,12 +392,14 @@ firebaseSuite("registerConfig", () => {
         firebaseRc: initialRC,
       });
 
-      const disposable = registerConfig(broker);
+      const disposable = await registerConfig(broker);
       addDisposable(disposable);
 
       assert.deepEqual(broker.sentLogs, []);
 
-      firebaseRC.value = new RC(firebaseRC.value.path, newRC);
+      firebaseRC.value = new ResultValue(
+        new RC(firebaseRC.value.requireValue.path, newRC),
+      );
 
       assert.deepEqual(broker.sentLogs, [
         {
@@ -409,15 +423,15 @@ firebaseSuite("registerConfig", () => {
 
   firebaseTest(
     "when firebaseConfig signal changes, calls notifyFirebaseConfig",
-    () => {
-      const initialConfig = { emulators: { firemat: { port: 9399 } } };
-      const newConfig = { emulators: { firemat: { port: 9499 } } };
+    async () => {
+      const initialConfig = { emulators: { dataconnect: { port: 9399 } } };
+      const newConfig = { emulators: { dataconnect: { port: 9499 } } };
       const broker = createTestBroker();
       const workspaces = setupMockTestWorkspaces({
         firebaseConfig: initialConfig,
       });
 
-      const disposable = registerConfig(broker);
+      const disposable = await registerConfig(broker);
       addDisposable(disposable);
 
       assert.deepEqual(broker.sentLogs, []);
@@ -435,7 +449,7 @@ firebaseSuite("registerConfig", () => {
             {
               firebaseJson: {
                 emulators: {
-                  firemat: {
+                  dataconnect: {
                     port: 9499,
                   },
                 },
@@ -448,17 +462,17 @@ firebaseSuite("registerConfig", () => {
     },
   );
 
-  firebaseTest("supports undefined working directory", () => {
+  firebaseTest("supports undefined working directory", async () => {
     const broker = createTestBroker();
     mock(currentOptions, { ...currentOptions.value, cwd: undefined });
 
-    const disposable = registerConfig(broker);
+    const disposable = await registerConfig(broker);
     addDisposable(disposable);
 
     // Should not throw.
   });
 
-  firebaseTest("disposes of the watchers when disposed", () => {
+  firebaseTest("disposes of the watchers when disposed", async () => {
     const broker = createTestBroker();
     const dir = createTemporaryDirectory();
 
@@ -486,10 +500,10 @@ firebaseSuite("registerConfig", () => {
       }),
     );
 
-    const disposable = registerConfig(broker);
+    const disposable = await registerConfig(broker);
     addDisposable(disposable);
 
-    assert.equal(pendingWatchers.length, 2);
+    assert.equal(pendingWatchers.length, 3);
     assert.deepEqual(Object.keys(broker.onListeners), ["getInitialData"]);
 
     disposable.dispose();
@@ -497,16 +511,16 @@ firebaseSuite("registerConfig", () => {
     assert.equal(pendingWatchers.length, 0);
     assert.deepEqual(Object.keys(broker.onListeners), []);
 
-    firebaseConfig.value = new Config("");
-    firebaseRC.value = new RC();
+    firebaseConfig.value = new ResultValue(new Config(""));
+    firebaseRC.value = new ResultValue(new RC());
 
     // Notifying firebaseConfig and firebaseRC should not call notifyFirebaseConfig
     assert.deepEqual(broker.sentLogs, []);
   });
 
   firebaseTest(
-    "listens to create/update/delete events on firebase.json and .firebaserc",
-    () => {
+    "listens to create/update/delete events on firebase.json/.firebaserc/firemat.yaml",
+    async () => {
       const watcherListeners: Record<
         string,
         {
@@ -549,7 +563,7 @@ firebaseSuite("registerConfig", () => {
 
       const broker = createTestBroker();
 
-      const disposable = registerConfig(broker);
+      const disposable = await registerConfig(broker);
       addDisposable(disposable);
 
       const rcListeners = watcherListeners[".firebaserc"]!;
@@ -557,27 +571,29 @@ firebaseSuite("registerConfig", () => {
       const configListeners = watcherListeners["firebase.json"]!;
       const configFile = path.join(dir, "firebase.json");
 
+      function testEvent(
+        index: number,
+        file: string,
+        content: string,
+        fireWatcher: () => void,
+      ) {
+        assert.equal(broker.sentLogs.length, index);
+
+        fs.writeFileSync(file, content);
+        fireWatcher();
+
+        assert.equal(broker.sentLogs.length, index + 1);
+      }
+
       function testRcEvent(
         event: "create" | "update" | "delete",
         index: number,
       ) {
-        assert.equal(
-          broker.sentLogs.length,
+        testEvent(
           index,
-          `history for RC ${event} starts at ${index}`,
-        );
-
-        fs.writeFileSync(
           rcFile,
           JSON.stringify({ projects: { default: event } }),
-        );
-
-        rcListeners[event]!(vscode.Uri.file(rcFile));
-
-        assert.equal(
-          broker.sentLogs.length,
-          index + 1,
-          `history for RC ${event} ends at ${index}`,
+          () => rcListeners[event]!(vscode.Uri.file(rcFile)),
         );
 
         assert.deepEqual(broker.sentLogs[index].args[0].firebaseRC.projects, {
@@ -589,43 +605,34 @@ firebaseSuite("registerConfig", () => {
         event: "create" | "update" | "delete",
         index: number,
       ) {
-        assert.equal(broker.sentLogs.length, index);
-
-        fs.writeFileSync(
+        testEvent(
+          index,
           configFile,
-          JSON.stringify({ emulators: { firemat: { port: index } } }),
+          JSON.stringify({ emulators: { dataconnect: { port: index } } }),
+          () => configListeners[event]!(vscode.Uri.file(configFile)),
         );
 
-        configListeners[event]!(vscode.Uri.file(configFile));
-
-        assert.equal(broker.sentLogs.length, index + 1);
         assert.deepEqual(broker.sentLogs[index].args[0].firebaseJson, {
-          emulators: {
-            firemat: {
-              port: index,
-            },
-          },
+          emulators: { dataconnect: { port: index } },
         });
       }
 
       testRcEvent("create", 0);
       testRcEvent("update", 1);
-      // testRcEvent("delete", 2);
 
       testConfigEvent("create", 2);
       testConfigEvent("update", 3);
-      // testConfigEvent("delete", 5);
     },
   );
 
-  firebaseTest("handles getInitialData requests", () => {
+  firebaseTest("handles getInitialData requests", async () => {
     const broker = createTestBroker();
-    const workspaces = setupMockTestWorkspaces({
+    setupMockTestWorkspaces({
       firebaseRc: { projects: { default: "my-project" } },
-      firebaseConfig: { emulators: { firemat: { port: 9399 } } },
+      firebaseConfig: { emulators: { dataconnect: { port: 9399 } } },
     });
 
-    const disposable = registerConfig(broker);
+    const disposable = await registerConfig(broker);
     addDisposable(disposable);
 
     broker.simulateOn("getInitialData");
@@ -637,7 +644,7 @@ firebaseSuite("registerConfig", () => {
           {
             firebaseJson: {
               emulators: {
-                firemat: {
+                dataconnect: {
                   port: 9399,
                 },
               },

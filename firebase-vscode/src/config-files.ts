@@ -12,7 +12,7 @@ export async function updateFirebaseRCProject(
   projectId: string,
 ) {
   const rc =
-    firebaseRC.value ??
+    firebaseRC.value?.tryReadValue ??
     // We don't update firebaseRC if we create a temporary RC,
     // as the file watcher will update the value for us.
     // This is only for the sake of calling `save()`.
