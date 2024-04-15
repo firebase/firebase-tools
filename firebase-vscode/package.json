@@ -103,7 +103,7 @@
     "test-compile": "npm run copyfiles && webpack --config src/test/webpack.test.js",
     "lint": "eslint src --ext ts",
     "test": "npm run test:unit && npm run test:e2e",
-    "pretest:unit": "npm run test-compile && npm run lint && tsc -p src/test/tsconfig.test.json",
+    "pretest:unit": "npm run test-compile && npm run build && tsc -p src/test/tsconfig.test.json",
     "test:unit": "node ./dist/test/firebase-vscode/src/test/runTest.js",
     "test:e2e": "TS_NODE_PROJECT=\"./src/test/tsconfig.test.json\" wdio run ./src/test/wdio.conf.ts"
   },
