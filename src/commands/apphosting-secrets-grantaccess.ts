@@ -10,8 +10,8 @@ import * as secrets from "../apphosting/secrets";
 
 export const command = new Command("apphosting:secrets:grantaccess <secretName>")
   .description("grant service accounts permissions to the provided secret")
-  .option("-l, --location <location>", "app backend location")
-  .option("-b, --backend <backend>", "app backend name")
+  .option("-l, --location <location>", "backend location")
+  .option("-b, --backend <backend>", "backend name")
   .before(requireAuth)
   .before(secretManager.ensureApi)
   .before(apphosting.ensureApiEnabled)
