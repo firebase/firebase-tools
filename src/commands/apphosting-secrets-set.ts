@@ -1,21 +1,16 @@
-import * as tty from "tty";
 import * as clc from "colorette";
-import { join } from "path";
 
 import { Command } from "../command";
 import { Options } from "../options";
 import { needProjectId, needProjectNumber } from "../projectUtils";
 import { requireAuth } from "../requireAuth";
-import * as fs from "fs";
 import * as gcsm from "../gcp/secretManager";
 import * as apphosting from "../gcp/apphosting";
 import { requirePermissions } from "../requirePermissions";
-import { confirm, promptOnce } from "../prompt";
 import * as secrets from "../apphosting/secrets";
 import * as dialogs from "../apphosting/secrets/dialogs";
 import * as config from "../apphosting/config";
-import { logSuccess, logWarning } from "../utils";
-import * as yaml from "yaml";
+import * as utils from "../utils";
 
 export const command = new Command("apphosting:secrets:set <secretName>")
   .description("grant service accounts permissions to the provided secret")
@@ -48,33 +43,20 @@ export const command = new Command("apphosting:secrets:set <secretName>")
     const created = await secrets.upsertSecret(projectId, secretName, options.location as string);
     if (created === null) {
       return;
+    } else if (created) {
+      utils.logSuccess(`Created new secret projects/${projectId}/secrets/${secretName}`);
     }
 
-    let secretValue;
-    if ((!options.dataFile || options.dataFile === "-") && tty.isatty(0)) {
-      secretValue = await promptOnce({
-        type: "password",
-        message: `Enter a value for ${secretName}`,
-      });
-    } else {
-      let dataFile: string | number = 0;
-      if (options.dataFile && options.dataFile !== "-") {
-        dataFile = options.dataFile as string;
-      }
-      secretValue = fs.readFileSync(dataFile, "utf-8");
-    }
+    const secretValue = await utils.readSecretValue(`Enter a value for ${secretName}`, options.dataFile as string | undefined);
 
-    if (created) {
-      logSuccess(`Created new secret projects/${projectId}/secrets/${secretName}`);
-    }
 
     const version = await gcsm.addVersion(projectId, secretName, secretValue);
-    logSuccess(`Created new secret version ${gcsm.toSecretVersionResourceName(version)}`);
-    logSuccess(howToAccess);
+    utils.logSuccess(`Created new secret version ${gcsm.toSecretVersionResourceName(version)}`);
+    utils.logSuccess(howToAccess);
 
     // If the secret already exists, we want to exit once the new version is added
     if (!created) {
-      logWarning(grantAccess);
+      utils.logWarning(grantAccess);
       return;
     }
 
@@ -82,43 +64,12 @@ export const command = new Command("apphosting:secrets:set <secretName>")
 
     // If we're not granting permissions, there's no point in adding to YAML either.
     if (!accounts.buildServiceAccounts.length && !accounts.runServiceAccounts.length) {
-      logWarning(grantAccess);
+      utils.logWarning(grantAccess);
 
       // TODO: For existing secrets, enter the grantSecretAccess dialog only when the necessary permissions don't exist.
     } else {
       await secrets.grantSecretAccess(projectId, secretName, accounts);
     }
 
-    // Note: The API proposal suggested that we would check if the env exists. This is stupidly hard because the YAML may not exist yet.
-    let path = config.yamlPath(process.cwd());
-    let projectYaml: yaml.Document;
-    if (path) {
-      projectYaml = config.load(path);
-    } else {
-      projectYaml = new yaml.Document();
-    }
-    if (config.getEnv(projectYaml, secretName)) {
-      return;
-    }
-    const addToYaml = await confirm({
-      message: "Would you like to add this secret to apphosting.yaml?",
-      default: true,
-    });
-    if (!addToYaml) {
-      return;
-    }
-    if (!path) {
-      path = await promptOnce({
-        message:
-          "It looks like you don't have an apphosting.yaml yet. Where would you like to store it?",
-        default: process.cwd(),
-      });
-      path = join(path, "apphosting.yaml");
-    }
-    const envName = await dialogs.envVarForSecret(secretName);
-    config.setEnv(projectYaml, {
-      variable: envName,
-      secret: secretName,
-    });
-    config.store(path, projectYaml);
+    await config.maybeAddSecretToYaml(secretName);
   });

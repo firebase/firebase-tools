@@ -1,8 +1,11 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as yaml from "yaml";
+import * as path from "path";
 
 import * as fsImport from "../../fsutils";
+import * as promptImport from "../../prompt";
+import * as dialogs from "../../apphosting/secrets/dialogs";
 import * as config from "../../apphosting/config";
 import { NodeType } from "yaml/dist/nodes/Node";
 
@@ -60,9 +63,9 @@ describe("config", () => {
         value: "value",
       };
 
-      config.setEnv(doc, env);
+      config.upsertEnv(doc, env);
 
-      const envAgain = config.getEnv(doc, env.variable);
+      const envAgain = config.findEnv(doc, env.variable);
       expect(envAgain).deep.equals(env);
 
       // Also check raw YAML:
@@ -82,10 +85,10 @@ describe("config", () => {
         secret: "my-secret",
       };
 
-      config.setEnv(doc, env);
-      config.setEnv(doc, newEnv);
+      config.upsertEnv(doc, env);
+      config.upsertEnv(doc, newEnv);
 
-      expect(config.getEnv(doc, env.variable)).to.deep.equal(newEnv);
+      expect(config.findEnv(doc, env.variable)).to.deep.equal(newEnv);
     });
 
     it("Preserves comments", () => {
@@ -107,12 +110,91 @@ env:
 `;
 
       const doc = yaml.parseDocument(rawDoc) as yaml.Document<NodeType<config.Config>>;
-      config.setEnv(doc, {
+      config.upsertEnv(doc, {
         variable: "GOOGLE_API_KEY",
         secret: "api-key",
       });
 
       expect(doc.toString()).to.equal(rawDoc + expectedAmendments);
+    });
+  });
+
+  describe("maybeAddSecretToYaml", () => {
+    let prompt: sinon.SinonStubbedInstance<typeof promptImport>;
+    let yamlPath: sinon.SinonStub;
+    let load: sinon.SinonStub;
+    let findEnv: sinon.SinonStub;
+    let upsertEnv: sinon.SinonStub;
+    let store: sinon.SinonStub;
+    let envVarForSecret: sinon.SinonStub;
+
+    beforeEach(() => {
+      prompt = sinon.stub(promptImport);
+      yamlPath = sinon.stub(config, "yamlPath");
+      load = sinon.stub(config, "load");
+      findEnv = sinon.stub(config, "findEnv");
+      upsertEnv = sinon.stub(config, "upsertEnv");
+      store = sinon.stub(config, "store");
+      envVarForSecret = sinon.stub(dialogs, "envVarForSecret");
+    });
+
+    afterEach(() => {
+      sinon.verifyAndRestore();
+    });
+
+    it("noops if the env already exists", async () => {
+      const doc = yaml.parseDocument("{}");
+      yamlPath.returns("CWD/apphosting.yaml");
+      load.returns(doc);
+      findEnv.withArgs(doc, "SECRET").returns({ variable: "SECRET", secret: "SECRET" });
+
+      await config.maybeAddSecretToYaml("SECRET");
+
+      expect(yamlPath).to.have.been.called;
+      expect(load).to.have.been.calledWith("CWD/apphosting.yaml");
+      expect(prompt.confirm).to.not.have.been.called;
+      expect(prompt.promptOnce).to.not.have.been.called;
+    });
+
+    it("inserts into an existing doc", async () => {
+      const doc = yaml.parseDocument("{}");
+      yamlPath.returns("CWD/apphosting.yaml");
+      load.withArgs(path.join("CWD", "apphosting.yaml")).returns(doc);
+      findEnv.withArgs(doc, "SECRET").returns(undefined);
+      prompt.confirm.resolves(true);
+      envVarForSecret.resolves("SECRET_VARIABLE");
+
+      await config.maybeAddSecretToYaml("SECRET");
+
+      expect(yamlPath).to.have.been.called;
+      expect(load).to.have.been.calledWith("CWD/apphosting.yaml");
+      expect(prompt.confirm).to.have.been.calledWithMatch({ message: "Would you like to add this secret to apphosting.yaml?", default: true});
+      expect(envVarForSecret).to.have.been.calledWith("SECRET");
+      expect(upsertEnv).to.have.been.calledWithMatch(doc, { variable: "SECRET_VARIABLE", secret: "SECRET" });
+      expect(store).to.have.been.calledWithMatch(path.join("CWD", "apphosting.yaml"), doc);
+      expect(prompt.promptOnce).to.not.have.been.called;
+    });
+
+    it("inserts into an new doc", async () => {
+      const doc = new yaml.Document;
+      yamlPath.returns(undefined);
+      findEnv.withArgs(doc, "SECRET").returns(undefined);
+      prompt.confirm.resolves(true);
+      prompt.promptOnce.resolves("CWD");
+      envVarForSecret.resolves("SECRET_VARIABLE");
+
+      await config.maybeAddSecretToYaml("SECRET");
+
+      expect(yamlPath).to.have.been.called;
+      expect(load).to.not.have.been.called;
+      expect(prompt.confirm).to.have.been.calledWithMatch({ message: "Would you like to add this secret to apphosting.yaml?", default: true});
+      expect(prompt.promptOnce).to.have.been.calledWithMatch({
+        message: "It looks like you don't have an apphosting.yaml yet. Where would you like to store it?",
+        default: process.cwd(),
+      });
+      expect(envVarForSecret).to.have.been.calledWith("SECRET");
+      expect(upsertEnv).to.have.been.calledWithMatch(doc, { variable: "SECRET_VARIABLE", secret: "SECRET" });
+      expect(store).to.have.been.calledWithMatch(path.join("CWD", "apphosting.yaml"), doc);
     });
   });
 });

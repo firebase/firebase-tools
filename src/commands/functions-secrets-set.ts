@@ -9,7 +9,7 @@ import { Command } from "../command";
 import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
 import { promptOnce } from "../prompt";
-import { logBullet, logSuccess, logWarning } from "../utils";
+import { logBullet, logSuccess, logWarning, readSecretValue } from "../utils";
 import { needProjectId, needProjectNumber } from "../projectUtils";
 import {
   addVersion,
@@ -44,22 +44,7 @@ export const command = new Command("functions:secrets:set <KEY>")
     const projectNumber = await needProjectNumber(options);
     const key = await ensureValidKey(unvalidatedKey, options);
     const secret = await ensureSecret(projectId, key, options);
-    let secretValue;
-
-    if ((!options.dataFile || options.dataFile === "-") && tty.isatty(0)) {
-      secretValue = await promptOnce({
-        name: key,
-        type: "password",
-        message: `Enter a value for ${key}`,
-      });
-    } else {
-      let dataFile: string | number = 0;
-      if (options.dataFile && options.dataFile !== "-") {
-        dataFile = options.dataFile as string;
-      }
-      secretValue = fs.readFileSync(dataFile, "utf-8");
-    }
-
+    const secretValue = await readSecretValue(`Enter a value for ${key}`, options.dataFile as string | undefined)
     const secretVersion = await addVersion(projectId, key, secretValue);
     logSuccess(`Created a new secret version ${toSecretVersionResourceName(secretVersion)}`);
 
