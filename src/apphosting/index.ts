@@ -235,7 +235,6 @@ async function provisionDefaultComputeServiceAccount(projectId: string): Promise
     projectId,
     defaultComputeServiceAccountEmail(projectId),
     [
-      // TODO: Update to roles/firebaseapphosting.computeRunner when it is available.
       "roles/firebaseapphosting.googleapis.com/computeRunner",
       "roles/firebase.sdkAdminServiceAgent",
     ],
