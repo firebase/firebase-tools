@@ -1,5 +1,3 @@
-import * as clc from "colorette";
-
 import * as repo from "./repo";
 import * as poller from "../operation-poller";
 import * as apphosting from "../gcp/apphosting";
@@ -61,7 +59,7 @@ export async function doSetup(
     }
   }
 
-  logBullet("First we need a few details to create your backend.");
+  logBullet("First we need a few details to create your backend.\n");
 
   location =
     location ||
@@ -69,9 +67,7 @@ export async function doSetup(
       name: "region",
       type: "list",
       default: DEFAULT_REGION,
-      message:
-        "Please select a region " +
-        `(${clc.yellow("info")}: Your region determines where your backend is located):\n`,
+      message: "Select a region to host your backend:\n",
       choices: allowedLocations.map((loc) => ({ value: loc })),
     })) as string);
 
@@ -125,7 +121,7 @@ export async function doSetup(
 
   if (!confirmRollout) {
     logSuccess(`Successfully created backend:\n\t${backend.name}`);
-    logSuccess(`Your site will be deployed at:\n\thttps://${backend.uri}`);
+    logSuccess(`Your backend will be deployed at:\n\thttps://${backend.uri}`);
     return;
   }
 
@@ -138,7 +134,7 @@ export async function doSetup(
   });
 
   logSuccess(`Successfully created backend:\n\t${backend.name}`);
-  logSuccess(`Your site is now deployed at:\n\thttps://${backend.uri}`);
+  logSuccess(`Your backend is now deployed at:\n\thttps://${backend.uri}`);
 }
 
 /**

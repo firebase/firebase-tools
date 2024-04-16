@@ -9,6 +9,7 @@ import { setEnabled } from "../../../src/experiments";
 import { registerUser } from "./user";
 import { registerProject } from "./project";
 import { registerQuickstart } from "./quickstart";
+import { registerOptions } from "../options";
 
 export function registerCore({
   broker,
@@ -27,24 +28,28 @@ export function registerCore({
     setEnabled("webframeworks", true);
   }
 
-  broker.on("writeLog", async ({ level, args }) => {
+  const sub1 = broker.on("writeLog", async ({ level, args }) => {
     pluginLogger[level]("(Webview)", ...args);
   });
 
-  broker.on("showMessage", async ({ msg, options }) => {
+  const sub2 = broker.on("showMessage", async ({ msg, options }) => {
     vscode.window.showInformationMessage(msg, options);
   });
 
-  broker.on("openLink", async ({ href }) => {
+  const sub3 = broker.on("openLink", async ({ href }) => {
     vscode.env.openExternal(vscode.Uri.parse(href));
   });
 
   return Disposable.from(
+    registerOptions(context),
     registerConfig(broker),
     registerEmulators(broker),
     registerEnv(broker),
     registerUser(broker),
-    registerProject({ context, broker }),
-    registerQuickstart(broker)
+    registerProject(broker),
+    registerQuickstart(broker),
+    { dispose: sub1 },
+    { dispose: sub2 },
+    { dispose: sub3 }
   );
 }

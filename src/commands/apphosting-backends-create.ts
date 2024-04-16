@@ -6,7 +6,7 @@ import { doSetup } from "../apphosting";
 import { ensureApiEnabled } from "../gcp/apphosting";
 
 export const command = new Command("apphosting:backends:create")
-  .description("create a backend in a Firebase project")
+  .description("create a Firebase App Hosting backend")
   .option("-l, --location <location>", "specify the region of the backend", "")
   .option(
     "-s, --service-account <serviceAccount>",
