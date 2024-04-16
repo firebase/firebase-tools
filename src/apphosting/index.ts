@@ -367,3 +367,19 @@ export async function orchestrateRollout(
   }
   return { rollout, build };
 }
+
+/**
+ * Deletes the given backend. Polls till completion.
+ */
+export async function deleteBackendAndPoll(
+  projectId: string,
+  location: string,
+  backendId: string,
+): Promise<void> {
+  const op = await apphosting.deleteBackend(projectId, location, backendId);
+  await poller.pollOperation<void>({
+    ...apphostingPollerOptions,
+    pollerName: `delete-${projectId}-${location}-${backendId}`,
+    operationResourceName: op.name,
+  });
+}
