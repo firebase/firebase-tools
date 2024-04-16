@@ -180,6 +180,9 @@ export function load(client: any): any {
       client.apphosting.rollouts = {};
       client.apphosting.rollouts.create = loadCommand("apphosting-rollouts-create");
       client.apphosting.rollouts.list = loadCommand("apphosting-rollouts-list");
+      client.apphosting.connections = {};
+      client.apphosting.connections.delete = loadCommand("apphosting-connections-delete");
+      client.apphosting.connections.list = loadCommand("apphosting-connections-list");
     }
   }
   client.login = loadCommand("login");

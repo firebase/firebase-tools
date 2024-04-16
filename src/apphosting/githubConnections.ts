@@ -443,3 +443,17 @@ export async function fetchAllRepositories(
   }
   return { cloneUris: Object.keys(cloneUriToConnection), cloneUriToConnection };
 }
+
+/**
+ * checks if the given connection name is an apphosting connection
+ */
+export function isApphostingConnection(name: string): boolean {
+  const match = CONNECTION_NAME_REGEX.exec(name);
+
+  if (!match || typeof match.groups === undefined) {
+    return false;
+  }
+
+  const { id } = match.groups as unknown as ConnectionNameParts;
+  return APPHOSTING_CONN_PATTERN.test(id) || id === APPHOSTING_OAUTH_CONN_NAME;
+}
