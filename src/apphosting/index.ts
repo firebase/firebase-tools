@@ -21,7 +21,13 @@ import { DEFAULT_REGION } from "./constants";
 import { ensure } from "../ensureApiEnabled";
 import * as deploymentTool from "../deploymentTool";
 import { DeepOmit } from "../metaprogramming";
-import { GitRepositoryLink } from "../gcp/devConnect";
+import {
+  Connection,
+  GitRepositoryLink,
+  deleteConnection,
+  getConnection,
+  listAllConnections,
+} from "../gcp/devConnect";
 
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
@@ -356,4 +362,55 @@ export async function orchestrateRollout(
     );
   }
   return { rollout, build };
+}
+
+/**
+ * lists dev connect connections
+ */
+export async function listDeveloperConnectAppHostingConnections(
+  projectId: string,
+  location: string,
+): Promise<Connection[]> {
+  const connections = await listAllConnections(projectId, location);
+  const appHostingConnections = connections.filter((connection) =>
+    githubConnections.isApphostingConnection(connection.name),
+  );
+
+  return appHostingConnections;
+}
+
+/**
+ * delete a dev connect apphosting connections
+ */
+export async function deleteDeveloperConnectAppHostingConnection(
+  projectId: string,
+  location: string,
+  connectionId: string,
+): Promise<void> {
+  const connection = await getConnection(projectId, location, connectionId);
+
+  if (!githubConnections.isApphostingConnection(connection.name)) {
+    throw new Error(
+      `Unable to delete connection "${connection.name}" as it is not an apphosting conneciton`,
+    );
+  }
+
+  await deleteConnection(projectId, location, connectionId);
+}
+
+/**
+ * deletes all dev connect apphosting connections
+ */
+export async function deleteAllDeveloperConnectAppHostingConnection(
+  projectId: string,
+  location: string,
+): Promise<void> {
+  const connections = await listDeveloperConnectAppHostingConnections(projectId, location);
+  for (let i = 0; i < connections.length; i++) {
+    const connection = connections[i];
+    const { id } = githubConnections.parseConnectionName(connection.name)!;
+
+    logBullet(`Deleting connection ${id}`);
+    await deleteConnection(projectId, location, id);
+  }
 }
