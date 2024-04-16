@@ -47,8 +47,10 @@ export const command = new Command("apphosting:secrets:set <secretName>")
       utils.logSuccess(`Created new secret projects/${projectId}/secrets/${secretName}`);
     }
 
-    const secretValue = await utils.readSecretValue(`Enter a value for ${secretName}`, options.dataFile as string | undefined);
-
+    const secretValue = await utils.readSecretValue(
+      `Enter a value for ${secretName}`,
+      options.dataFile as string | undefined,
+    );
 
     const version = await gcsm.addVersion(projectId, secretName, secretValue);
     utils.logSuccess(`Created new secret version ${gcsm.toSecretVersionResourceName(version)}`);

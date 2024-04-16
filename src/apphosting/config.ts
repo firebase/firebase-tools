@@ -106,11 +106,11 @@ export function upsertEnv(document: yaml.Document, env: Env): void {
 export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
   // We must go through the exports object for stubbing to work in tests.
   const dynamicDispatch = exports as {
-    yamlPath: typeof yamlPath,
-    load: typeof load,
-    findEnv: typeof findEnv,
-    upsertEnv: typeof upsertEnv,
-    store: typeof store,
+    yamlPath: typeof yamlPath;
+    load: typeof load;
+    findEnv: typeof findEnv;
+    upsertEnv: typeof upsertEnv;
+    store: typeof store;
   };
   // Note: The API proposal suggested that we would check if the env exists. This is stupidly hard because the YAML may not exist yet.
   let path = dynamicDispatch.yamlPath(process.cwd());

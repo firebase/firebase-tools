@@ -1,6 +1,3 @@
-import * as tty from "tty";
-import * as fs from "fs";
-
 import * as clc from "colorette";
 
 import { logger } from "../logger";
@@ -44,7 +41,10 @@ export const command = new Command("functions:secrets:set <KEY>")
     const projectNumber = await needProjectNumber(options);
     const key = await ensureValidKey(unvalidatedKey, options);
     const secret = await ensureSecret(projectId, key, options);
-    const secretValue = await readSecretValue(`Enter a value for ${key}`, options.dataFile as string | undefined)
+    const secretValue = await readSecretValue(
+      `Enter a value for ${key}`,
+      options.dataFile as string | undefined,
+    );
     const secretVersion = await addVersion(projectId, key, secretValue);
     logSuccess(`Created a new secret version ${toSecretVersionResourceName(secretVersion)}`);
 

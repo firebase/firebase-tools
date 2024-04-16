@@ -168,15 +168,21 @@ env:
 
       expect(yamlPath).to.have.been.called;
       expect(load).to.have.been.calledWith("CWD/apphosting.yaml");
-      expect(prompt.confirm).to.have.been.calledWithMatch({ message: "Would you like to add this secret to apphosting.yaml?", default: true});
+      expect(prompt.confirm).to.have.been.calledWithMatch({
+        message: "Would you like to add this secret to apphosting.yaml?",
+        default: true,
+      });
       expect(envVarForSecret).to.have.been.calledWith("SECRET");
-      expect(upsertEnv).to.have.been.calledWithMatch(doc, { variable: "SECRET_VARIABLE", secret: "SECRET" });
+      expect(upsertEnv).to.have.been.calledWithMatch(doc, {
+        variable: "SECRET_VARIABLE",
+        secret: "SECRET",
+      });
       expect(store).to.have.been.calledWithMatch(path.join("CWD", "apphosting.yaml"), doc);
       expect(prompt.promptOnce).to.not.have.been.called;
     });
 
     it("inserts into an new doc", async () => {
-      const doc = new yaml.Document;
+      const doc = new yaml.Document();
       yamlPath.returns(undefined);
       findEnv.withArgs(doc, "SECRET").returns(undefined);
       prompt.confirm.resolves(true);
@@ -187,13 +193,20 @@ env:
 
       expect(yamlPath).to.have.been.called;
       expect(load).to.not.have.been.called;
-      expect(prompt.confirm).to.have.been.calledWithMatch({ message: "Would you like to add this secret to apphosting.yaml?", default: true});
+      expect(prompt.confirm).to.have.been.calledWithMatch({
+        message: "Would you like to add this secret to apphosting.yaml?",
+        default: true,
+      });
       expect(prompt.promptOnce).to.have.been.calledWithMatch({
-        message: "It looks like you don't have an apphosting.yaml yet. Where would you like to store it?",
+        message:
+          "It looks like you don't have an apphosting.yaml yet. Where would you like to store it?",
         default: process.cwd(),
       });
       expect(envVarForSecret).to.have.been.calledWith("SECRET");
-      expect(upsertEnv).to.have.been.calledWithMatch(doc, { variable: "SECRET_VARIABLE", secret: "SECRET" });
+      expect(upsertEnv).to.have.been.calledWithMatch(doc, {
+        variable: "SECRET_VARIABLE",
+        secret: "SECRET",
+      });
       expect(store).to.have.been.calledWithMatch(path.join("CWD", "apphosting.yaml"), doc);
     });
   });
