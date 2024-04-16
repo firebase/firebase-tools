@@ -3,78 +3,106 @@ import * as vscode from "vscode";
 import path from "path";
 import fs from "fs";
 import { currentOptions } from "../options";
-import { pluginLogger } from "../logger-wrapper";
 import { ExtensionBrokerImpl } from "../extension-broker";
-import { RC } from "../../../src/rc";
+import { RC, RCData } from "../../../src/rc";
 import { Config } from "../../../src/config";
 import { globalSignal } from "../utils/globals";
 import { workspace } from "../utils/test_hooks";
+import { onChange } from "../utils/signal";
+import { pluginLogger } from "../logger-wrapper";
 
 export const firebaseRC = globalSignal<RC | undefined>(undefined);
 export const firebaseConfig = globalSignal<Config | undefined>(undefined);
 
-export function registerConfig(broker: ExtensionBrokerImpl): Disposable {
-  firebaseRC.value = _readRC();
-  firebaseConfig.value = _readConfig();
+/**
+ * Write new default project to .firebaserc
+ */
+export async function updateFirebaseRCProject(
+  alias: string,
+  projectId: string,
+) {
+  const rc =
+    firebaseRC.value ??
+    // We don't update firebaseRC if we create a temporary RC,
+    // as the file watcher will update the value for us.
+    // This is only for the sake of calling `save()`.
+    new RC(path.join(currentOptions.value.cwd, ".firebaserc"), {});
 
-  function notifyFirebaseConfig() {
-    broker.send("notifyFirebaseConfig", {
-      firebaseJson: firebaseConfig.value?.data,
-      firebaseRC: firebaseRC.value?.data,
-    });
+  if (rc.resolveAlias(alias) === projectId) {
+    // Nothing to update, avoid an unnecessary write.
+    // That's especially important as a write will trigger file watchers,
+    // which may then re-trigger this function.
+    return;
   }
 
-  // "subscribe" immediately calls the callback with the current value.
-  // We want to skip this.
-  var shouldNotify = false;
+  rc.addProjectAlias(alias, projectId);
+  rc.save();
+}
 
-  // When configs change, notify the extension.
-  // We do so after the config is initially updated, to not notify
-  // the extension on startup.
-  const rcRemoveListener = firebaseRC.subscribe(() => {
-    if (!shouldNotify) {
-      return;
-    }
-    return notifyFirebaseConfig();
+function notifyFirebaseConfig(broker: ExtensionBrokerImpl) {
+  broker.send("notifyFirebaseConfig", {
+    firebaseJson: firebaseConfig.value?.data,
+    firebaseRC: firebaseRC.value?.data,
   });
-  const configRemoveListener = firebaseConfig.subscribe(() => {
-    if (!shouldNotify) {
-      return;
-    }
-    return notifyFirebaseConfig();
-  });
+}
 
-  shouldNotify = true;
-
-  // On getInitialData, forcibly notifies the extension.
-  const getInitialDataRemoveListener = broker.on(
-    "getInitialData",
-    notifyFirebaseConfig,
+function registerRc(broker: ExtensionBrokerImpl): Disposable {
+  firebaseRC.value = _readRC();
+  const rcRemoveListener = onChange(firebaseRC, () =>
+    notifyFirebaseConfig(broker),
   );
 
   const rcWatcher = _createWatcher(".firebaserc");
   rcWatcher?.onDidChange(() => (firebaseRC.value = _readRC()));
   rcWatcher?.onDidCreate(() => (firebaseRC.value = _readRC()));
-  // TODO handle deletion of .firebaserc/.firebase.json
+  rcWatcher?.onDidDelete(() => (firebaseRC.value = undefined));
 
-  const jsonWatcher = _createWatcher("firebase.json");
-  jsonWatcher?.onDidChange(() => (firebaseConfig.value = _readConfig()));
-  jsonWatcher?.onDidCreate(() => (firebaseConfig.value = _readConfig()));
+  return Disposable.from(
+    { dispose: rcRemoveListener },
+    { dispose: () => rcWatcher?.dispose() },
+  );
+}
 
-  return {
-    dispose: () => {
-      getInitialDataRemoveListener();
-      rcRemoveListener();
-      configRemoveListener();
-      rcWatcher?.dispose();
-      jsonWatcher?.dispose();
-    },
-  };
+function registerFirebaseConfig(broker: ExtensionBrokerImpl): Disposable {
+  firebaseConfig.value = _readFirebaseConfig();
+
+  const firebaseConfigRemoveListener = onChange(firebaseConfig, () =>
+    notifyFirebaseConfig(broker),
+  );
+
+  const configWatcher = _createWatcher("firebase.json");
+  configWatcher?.onDidChange(
+    () => (firebaseConfig.value = _readFirebaseConfig()),
+  );
+  configWatcher?.onDidCreate(
+    () => (firebaseConfig.value = _readFirebaseConfig()),
+  );
+  configWatcher?.onDidDelete(() => (firebaseConfig.value = undefined));
+
+  return Disposable.from(
+    { dispose: firebaseConfigRemoveListener },
+    { dispose: () => configWatcher?.dispose() },
+  );
+}
+
+export function registerConfig(broker: ExtensionBrokerImpl): Disposable {
+  // On getInitialData, forcibly notifies the extension.
+  const getInitialDataRemoveListener = broker.on("getInitialData", () => {
+    notifyFirebaseConfig(broker);
+  });
+
+  // TODO handle deletion of .firebaserc/.firebase.json/firemat.yaml
+
+  return Disposable.from(
+    { dispose: getInitialDataRemoveListener },
+    registerFirebaseConfig(broker),
+    registerRc(broker),
+  );
 }
 
 /** @internal */
 export function _readRC(): RC | undefined {
-  const configPath = _getConfigPath();
+  const configPath = getConfigPath();
   if (!configPath) {
     return undefined;
   }
@@ -99,8 +127,8 @@ export function _readRC(): RC | undefined {
 }
 
 /** @internal */
-export function _readConfig(): Config | undefined {
-  const configPath = _getConfigPath();
+export function _readFirebaseConfig(): Config | undefined {
+  const configPath = getConfigPath();
   if (!configPath) {
     return undefined;
   }
@@ -147,8 +175,7 @@ export function getRootFolders() {
   return Array.from(new Set(folders));
 }
 
-/** @internal */
-export function _getConfigPath(): string | undefined {
+export function getConfigPath(): string | undefined {
   // Usually there's only one root folder unless someone is using a
   // multi-root VS Code workspace.
   // https://code.visualstudio.com/docs/editor/multi-root-workspaces
@@ -166,7 +193,5 @@ export function _getConfigPath(): string | undefined {
   });
 
   folder ??= rootFolders[0];
-
-  currentOptions.value.cwd = folder;
   return folder;
 }
