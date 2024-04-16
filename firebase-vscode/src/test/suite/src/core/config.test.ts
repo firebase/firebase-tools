@@ -175,7 +175,7 @@ firebaseSuite("_readFirebaseConfig", () => {
   firebaseTest("parses firebase.json", () => {
     const expectedConfig = {
       emulators: {
-        dataconnect: {
+        auth: {
           port: 9399,
         },
       },
@@ -353,7 +353,7 @@ firebaseSuite("registerConfig", () => {
   firebaseTest(
     'sets "cwd" and firebaseRC/Config global variables on initial call',
     async () => {
-      const expectedConfig = { emulators: { dataconnect: { port: 9399 } } };
+      const expectedConfig = { emulators: { auth: { port: 9399 } } };
       const expectedRc = { projects: { default: "my-project" } };
       const broker = createTestBroker();
       const workspaces = setupMockTestWorkspaces({
@@ -418,8 +418,8 @@ firebaseSuite("registerConfig", () => {
   firebaseTest(
     "when firebaseConfig signal changes, calls notifyFirebaseConfig",
     async () => {
-      const initialConfig = { emulators: { dataconnect: { port: 9399 } } };
-      const newConfig = { emulators: { dataconnect: { port: 9499 } } };
+      const initialConfig = { emulators: { auth: { port: 9399 } } };
+      const newConfig = { emulators: { auth: { port: 9499 } } };
       const broker = createTestBroker();
       const workspaces = setupMockTestWorkspaces({
         firebaseConfig: initialConfig,
@@ -443,7 +443,7 @@ firebaseSuite("registerConfig", () => {
             {
               firebaseJson: {
                 emulators: {
-                  dataconnect: {
+                  auth: {
                     port: 9499,
                   },
                 },
@@ -602,12 +602,12 @@ firebaseSuite("registerConfig", () => {
         testEvent(
           index,
           configFile,
-          JSON.stringify({ emulators: { dataconnect: { port: index } } }),
+          JSON.stringify({ emulators: { auth: { port: index } } }),
           () => configListeners[event]!(vscode.Uri.file(configFile)),
         );
 
         assert.deepEqual(broker.sentLogs[index].args[0].firebaseJson, {
-          emulators: { dataconnect: { port: index } },
+          emulators: { auth: { port: index } },
         });
       }
 
@@ -623,7 +623,7 @@ firebaseSuite("registerConfig", () => {
     const broker = createTestBroker();
     setupMockTestWorkspaces({
       firebaseRc: { projects: { default: "my-project" } },
-      firebaseConfig: { emulators: { dataconnect: { port: 9399 } } },
+      firebaseConfig: { emulators: { auth: { port: 9399 } } },
     });
 
     const disposable = await registerConfig(broker);
@@ -638,7 +638,7 @@ firebaseSuite("registerConfig", () => {
           {
             firebaseJson: {
               emulators: {
-                dataconnect: {
+                auth: {
                   port: 9399,
                 },
               },
