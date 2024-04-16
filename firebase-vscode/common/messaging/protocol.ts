@@ -77,6 +77,10 @@ export interface WebviewToExtensionParamsMap {
   chooseQuickstartDir: {};
 }
 
+export type ValueOrError<T> =
+  | { value: T; error: undefined }
+  | { error: string; value: undefined };
+
 export interface ExtensionToWebviewParamsMap {
   /** Triggered when new environment variables values are found. */
   notifyEnv: { env: { isMonospace: boolean } };
@@ -120,8 +124,8 @@ export interface ExtensionToWebviewParamsMap {
    * .firebaserc
    */
   notifyFirebaseConfig: {
-    firebaseJson: FirebaseConfig | undefined;
-    firebaseRC: RCData | undefined;
+    firebaseJson: ValueOrError<FirebaseConfig> | undefined;
+    firebaseRC: ValueOrError<RCData> | undefined;
   };
 
   /**
