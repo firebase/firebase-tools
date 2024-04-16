@@ -94,7 +94,7 @@ async function promptFirebaseWebApp(
             value: CREATE_NEW_FIREBASE_WEB_APP,
           },
           {
-            name: "Continue without associating App Hosting backend to a web app.",
+            name: "Continue without a Firebase web app.",
             value: CONTINUE_WITHOUT_SELECTING_FIREBASE_WEB_APP,
           },
           new inquirer.Separator(),
