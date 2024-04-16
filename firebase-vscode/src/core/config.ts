@@ -9,9 +9,8 @@ import { Config } from "../../../src/config";
 import { globalSignal } from "../utils/globals";
 import { workspace } from "../utils/test_hooks";
 import { ValueOrError } from "../../common/messaging/protocol";
-
-import { Result, ResultError } from "../result";
 import { onChange } from "../utils/signal";
+import { Result, ResultError } from "../result";
 import { FirebaseConfig } from "../firebaseConfig";
 import { effect } from "@preact/signals-react";
 
@@ -21,6 +20,32 @@ export const firebaseRC = globalSignal<Result<RC | undefined> | undefined>(
 export const firebaseConfig = globalSignal<
   Result<Config | undefined> | undefined
 >(undefined);
+
+/**
+ * Write new default project to .firebaserc
+ */
+export async function updateFirebaseRCProject(
+  alias: string,
+  projectId: string,
+) {
+  const rc =
+    firebaseRC.value.tryReadValue ??
+    // We don't update firebaseRC if we create a temporary RC,
+    // as the file watcher will update the value for us.
+    // This is only for the sake of calling `save()`.
+    new RC(path.join(currentOptions.value.cwd, ".firebaserc"), {});
+
+  if (rc.resolveAlias(alias) === projectId) {
+    // Nothing to update, avoid an unnecessary write.
+    // That's especially important as a write will trigger file watchers,
+    // which may then re-trigger this function.
+    return;
+  }
+
+  rc.addProjectAlias(alias, projectId);
+  rc.save();
+}
+
 
 function notifyFirebaseConfig(broker: ExtensionBrokerImpl) {
   broker.send("notifyFirebaseConfig", {

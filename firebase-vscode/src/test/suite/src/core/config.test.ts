@@ -138,27 +138,24 @@ firebaseSuite("getConfigPath", () => {
     },
   );
 
-  firebaseTest(
-    "if no firebase config found, returns the first folder",
-    () => {
-      const a = createTemporaryDirectory({ debugLabel: "a" });
-      const b = createTemporaryDirectory({ debugLabel: "b" });
-      const c = createTemporaryDirectory({ debugLabel: "c" });
+  firebaseTest("if no firebase config found, returns the first folder", () => {
+    const a = createTemporaryDirectory({ debugLabel: "a" });
+    const b = createTemporaryDirectory({ debugLabel: "b" });
+    const c = createTemporaryDirectory({ debugLabel: "c" });
 
-      const aFolder = createFake<vscode.WorkspaceFolder>({
-        uri: vscode.Uri.file(a),
-      });
-      const bFolder = createFake<vscode.WorkspaceFolder>({
-        uri: vscode.Uri.file(b),
-      });
-      const cFolder = createFake<vscode.WorkspaceFolder>({
-        uri: vscode.Uri.file(c),
-      });
+    const aFolder = createFake<vscode.WorkspaceFolder>({
+      uri: vscode.Uri.file(a),
+    });
+    const bFolder = createFake<vscode.WorkspaceFolder>({
+      uri: vscode.Uri.file(b),
+    });
+    const cFolder = createFake<vscode.WorkspaceFolder>({
+      uri: vscode.Uri.file(c),
+    });
 
-      mock(workspace, { workspaceFolders: [aFolder, bFolder, cFolder] });
-      assert.deepEqual(getConfigPath(), a);
-    },
-  );
+    mock(workspace, { workspaceFolders: [aFolder, bFolder, cFolder] });
+    assert.deepEqual(getConfigPath(), a);
+  });
 
   firebaseTest('sets "cwd" global variable to the config path', () => {
     const a = createTemporaryDirectory();
@@ -174,7 +171,7 @@ firebaseSuite("getConfigPath", () => {
   });
 });
 
-firebaseSuite("_readConfig", () => {
+firebaseSuite("_readFirebaseConfig", () => {
   firebaseTest("parses firebase.json", () => {
     const expectedConfig = {
       emulators: {
@@ -371,10 +368,7 @@ firebaseSuite("registerConfig", () => {
       assert.deepEqual(broker.sentLogs, []);
 
       assert.deepEqual(currentOptions.value.cwd, workspaces.byIndex(0).path);
-      assert.deepEqual(
-        firebaseConfig.value.requireValue.data,
-        expectedConfig,
-      );
+      assert.deepEqual(firebaseConfig.value.requireValue.data, expectedConfig);
       assert.deepEqual(
         firebaseRC.value.requireValue.data.projects,
         expectedRc.projects,
