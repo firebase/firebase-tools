@@ -11,7 +11,7 @@ import {
 } from "./code-lens-provider";
 import { registerConnectors } from "./connectors";
 import { AuthService } from "../auth/service";
-import { registerFirebaseDataConnectView } from "./connect-instance";
+import { registerFirebaseDataConnectView } from "./emulators-status";
 import { currentProjectId } from "../core/project";
 import { isTest } from "../utils/env";
 import { setupLanguageClient } from "./language-client";

@@ -115,6 +115,16 @@ export class EmulatorsController implements Disposable {
   // Requires context object.
   readonly uiSelections = signal(DEFAULT_EMULATOR_UI_SELECTIONS);
 
+  readonly emulatorStates = computed(() => {
+    if (!this.areEmulatorsRunning.value) {
+      return undefined;
+    }
+
+    // TODO(rrousselGit) handle cases where one emulator is running,
+    // and a new one is started.
+    return listRunningEmulators();
+  });
+
   readonly emulators = signal<
     ExtensionToWebviewParamsMap["notifyEmulatorStateChanged"]
   >({

@@ -12,16 +12,6 @@ styles;
 
 const root = createRoot(document.getElementById("root")!);
 root.render(<DataConnect />);
-// TODO: deploy button should be enabled on valid production connection
-const isConnectedProduction = false;
 function DataConnect() {
-  return (
-    <>
-      <Spacer size="small" />
-      <Label level={2}>{TEXT.CONNECT_TO_INSTANCE_DESCRIPTION}</Label>
-      <VSCodeButton onClick={() => broker.send("connectToInstance")}>
-        {TEXT.CONNECT_TO_INSTANCE}
-      </VSCodeButton>
-    </>
-  );
+  return <></>;
 }

@@ -13,7 +13,6 @@ import { firstWhereDefined } from "../utils/signal";
 import { EmulatorsController } from "../core/emulators";
 import { Emulators } from "../cli";
 import { dataConnectConfigs } from "../core/config";
-import { PRODUCTION_INSTANCE, selectedInstance } from "./connect-instance";
 import { firebaseRC } from "../core/config";
 import { executeGraphQL } from "../../../src/dataconnect/dataplaneClient";
 import {
@@ -23,6 +22,7 @@ import {
   Impersonation,
 } from "../dataconnect/types";
 import { ClientResponse } from "../apiv2";
+import { InstanceType } from "./emulators-status";
 // TODO: THIS SHOULDN'T BE HERE
 export const STAGING_API =
   "https://staging-firebasedataconnect.sandbox.googleapis.com";
@@ -36,9 +36,6 @@ export class DataConnectService {
     private emulatorsController: EmulatorsController,
   ) {}
 
-  readonly isProduction = computed<boolean>(() => {
-    return selectedInstance.value === PRODUCTION_INSTANCE;
-  });
   readonly localEndpoint = computed<string | undefined>(() => {
     const emulatorInfos =
       this.emulatorsController.emulators.value.infos?.displayInfo;
@@ -55,13 +52,13 @@ export class DataConnectService {
     );
   });
 
-  async servicePath(path: string): Promise<string> {
+  async servicePath(path: string, instance: InstanceType): Promise<string> {
     const dataConnectConfigsValue = await firstWhereDefined(dataConnectConfigs);
     // TODO: avoid calling this here and in getApiServicePathByPath
     const serviceId =
       dataConnectConfigsValue.findEnclosingServiceForPath(path).value.serviceId;
     const projectId = firebaseRC.value?.projects?.default;
-    return this.isProduction.value
+    return instance === InstanceType.PRODUCTION
       ? dataConnectConfigsValue.getApiServicePathByPath(
           projectId,
           path,
@@ -92,10 +89,13 @@ export class DataConnectService {
     return response.text();
   }
   private async handleProdResponse(
-    clientResponse: ClientResponse<ExecuteGraphqlResponse|ExecuteGraphqlResponseError>,
+    clientResponse: ClientResponse<
+      ExecuteGraphqlResponse | ExecuteGraphqlResponseError
+    >,
   ): Promise<ExecutionResult> {
     if (!(clientResponse.status >= 200 && clientResponse.status < 300)) {
-      const errorResponse = clientResponse as ClientResponse<ExecuteGraphqlResponseError>;
+      const errorResponse =
+        clientResponse as ClientResponse<ExecuteGraphqlResponseError>;
       throw new DataConnectError(
         `Request failed with status ${clientResponse.status}`,
         errorResponse.body.error.message,
@@ -233,8 +233,9 @@ export class DataConnectService {
     operationName?: string;
     variables: string;
     path: string;
+    instance: InstanceType;
   }) {
-    const servicePath = await this.servicePath(params.path);
+    const servicePath = await this.servicePath(params.path, params.instance);
     if (!servicePath) {
       throw new Error("No service found for path: " + params.path);
     }
@@ -248,7 +249,7 @@ export class DataConnectService {
     };
 
     const body = this._serializeBody({ ...params });
-    if (this.isProduction.value) {
+    if (params.instance === InstanceType.PRODUCTION) {
       const resp = await executeGraphQL(servicePath, prodBody);
       return this.handleProdResponse(resp);
     } else {

@@ -3,5 +3,6 @@
     "default": "dart-firebase-admin"
   },
   "targets": {},
-  "etags": {}
+  "etags": {},
+  "dataconnectEmulatorConfig": {}
 }

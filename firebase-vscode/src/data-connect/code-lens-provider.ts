@@ -4,9 +4,8 @@ import { OperationLocation } from "./types";
 import { Disposable } from "vscode";
 
 import { Signal } from "@preact/signals-core";
-import { isPathInside } from "./file-utils";
-import { dataConnectConfigs } from "./config";
-import { LOCAL_INSTANCE, selectedInstance } from "./connect-instance";
+import { dataConnectConfigs, firebaseRC } from "./config";
+import { InstanceType } from "./emulators-status";
 import { EmulatorsController } from "../core/emulators";
 
 abstract class ComputedCodeLensProvider implements vscode.CodeLensProvider {
@@ -63,8 +62,9 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
     token: vscode.CancellationToken,
   ): vscode.CodeLens[] {
     // Wait for configs to be loaded and emulator to be running
-    const configs = this.watch(dataConnectConfigs);
-    if (!configs) {
+    const fdcConfigs = this.watch(dataConnectConfigs);
+    const rc = this.watch(firebaseRC);
+    if (!fdcConfigs || !rc) {
       return [];
     }
 
@@ -85,20 +85,26 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
           documentPath: document.fileName,
           position: position,
         };
-        const service = configs.findEnclosingServiceForPath(document.fileName);
-        const instance = this.watch(selectedInstance);
+        const service = fdcConfigs.findEnclosingServiceForPath(
+          document.fileName,
+        );
 
-        if (instance && service) {
-          const label =
-            service && instance !== LOCAL_INSTANCE
-              ? `${instance} | ${service.value.serviceId}`
-              : instance;
+        if (service) {
           codeLenses.push(
             new vscode.CodeLens(range, {
-              title: `$(play) Run (${label})`,
+              title: `$(play) Run (local)`,
               command: "firebase.dataConnect.executeOperation",
               tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
-              arguments: [x, operationLocation],
+              arguments: [x, operationLocation, InstanceType.LOCAL],
+            }),
+          );
+
+          codeLenses.push(
+            new vscode.CodeLens(range, {
+              title: `$(play) Run (Production – Project: ${rc.projects.default})`,
+              command: "firebase.dataConnect.executeOperation",
+              tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
+              arguments: [x, operationLocation, InstanceType.PRODUCTION],
             }),
           );
         }

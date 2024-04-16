@@ -21,8 +21,8 @@ import { OperationDefinitionNode, OperationTypeNode, print } from "graphql";
 import { DataConnectService } from "./service";
 import { DataConnectError, toSerializedError } from "../../common/error";
 import { OperationLocation } from "./types";
-import { LOCAL_INSTANCE, selectedInstance } from "./connect-instance";
 import { EmulatorsController } from "../core/emulators";
+import { InstanceType } from "./emulators-status";
 
 export function registerExecution(
   context: ExtensionContext,
@@ -66,19 +66,15 @@ export function registerExecution(
   async function executeOperation(
     ast: OperationDefinitionNode,
     { document, documentPath, position }: OperationLocation,
+    instance: InstanceType,
   ) {
     const configs = vscode.workspace.getConfiguration("firebase.dataConnect");
     const alwaysExecuteMutationsInProduction =
       "alwaysAllowMutationsInProduction";
     const alwaysStartEmulator = "alwaysStartEmulator";
 
-    // De-structure the selected instance, to avoid cases where we execute the
-    // operation in a different instance than the one selected, in the case
-    // where a user changes instance during an "await".
-    const targetedInstance = selectedInstance.value;
-
     if (
-      targetedInstance === LOCAL_INSTANCE &&
+      instance === InstanceType.LOCAL &&
       !emulatorsController.areEmulatorsRunning.value
     ) {
       const always = "Yes (always)";
@@ -103,7 +99,7 @@ export function registerExecution(
 
     // Warn against using mutations in production.
     if (
-      targetedInstance !== LOCAL_INSTANCE &&
+      instance !== InstanceType.LOCAL &&
       !configs.get(alwaysExecuteMutationsInProduction) &&
       ast.operation === OperationTypeNode.MUTATION
     ) {
@@ -159,6 +155,7 @@ export function registerExecution(
         query: document,
         variables: executionArgsJSON.value,
         path: documentPath,
+        instance,
       });
 
       updateAndSelect({
