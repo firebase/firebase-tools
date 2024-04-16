@@ -1,5 +1,3 @@
-import * as clc from "colorette";
-
 import * as repo from "./repo";
 import * as poller from "../operation-poller";
 import * as apphosting from "../gcp/apphosting";
@@ -69,9 +67,7 @@ export async function doSetup(
       name: "region",
       type: "list",
       default: DEFAULT_REGION,
-      message:
-        "Please select a region " +
-        `(${clc.yellow("info")}: Your region determines where your backend is located):\n`,
+      message: "Select a region to host your backend:\n",
       choices: allowedLocations.map((loc) => ({ value: loc })),
     })) as string);
 
@@ -95,6 +91,13 @@ export async function doSetup(
     ? await githubConnections.linkGitHubRepository(projectId, location)
     : await repo.linkGitHubRepository(projectId, location);
 
+  const rootDir = await promptOnce({
+    name: "rootDir",
+    type: "input",
+    default: "/",
+    message: "Specify your app's root directory relative to your repository",
+  });
+
   const backend = await createBackend(
     projectId,
     location,
@@ -102,6 +105,7 @@ export async function doSetup(
     gitRepositoryConnection,
     serviceAccount,
     webApp?.id,
+    rootDir,
   );
 
   // TODO: Once tag patterns are implemented, prompt which method the user
@@ -125,7 +129,7 @@ export async function doSetup(
 
   if (!confirmRollout) {
     logSuccess(`Successfully created backend:\n\t${backend.name}`);
-    logSuccess(`Your site will be deployed at:\n\thttps://${backend.uri}`);
+    logSuccess(`Your backend will be deployed at:\n\thttps://${backend.uri}`);
     return;
   }
 
@@ -138,7 +142,7 @@ export async function doSetup(
   });
 
   logSuccess(`Successfully created backend:\n\t${backend.name}`);
-  logSuccess(`Your site is now deployed at:\n\thttps://${backend.uri}`);
+  logSuccess(`Your backend is now deployed at:\n\thttps://${backend.uri}`);
 }
 
 /**
@@ -181,13 +185,14 @@ export async function createBackend(
   repository: Repository | GitRepositoryLink,
   serviceAccount: string | null,
   webAppId: string | undefined,
+  rootDir = "/",
 ): Promise<Backend> {
   const defaultServiceAccount = defaultComputeServiceAccountEmail(projectId);
   const backendReqBody: Omit<Backend, BackendOutputOnlyFields> = {
     servingLocality: "GLOBAL_ACCESS",
     codebase: {
       repository: `${repository.name}`,
-      rootDirectory: "/",
+      rootDirectory: rootDir,
     },
     labels: deploymentTool.labels(),
     serviceAccount: serviceAccount || defaultServiceAccount,

@@ -18,6 +18,7 @@ export async function downloadToTmp(remoteUrl: string): Promise<string> {
   const writeStream = fs.createWriteStream(tmpfile.name);
 
   const res = await c.request<void, NodeJS.ReadableStream>({
+    ignoreQuotaProject: true,
     method: "GET",
     path: u.pathname,
     queryParams: u.searchParams,
