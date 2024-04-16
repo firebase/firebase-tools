@@ -14,6 +14,31 @@ import { pluginLogger } from "../logger-wrapper";
 export const firebaseRC = globalSignal<RC | undefined>(undefined);
 export const firebaseConfig = globalSignal<Config | undefined>(undefined);
 
+/**
+ * Write new default project to .firebaserc
+ */
+export async function updateFirebaseRCProject(
+  alias: string,
+  projectId: string,
+) {
+  const rc =
+    firebaseRC.value ??
+    // We don't update firebaseRC if we create a temporary RC,
+    // as the file watcher will update the value for us.
+    // This is only for the sake of calling `save()`.
+    new RC(path.join(currentOptions.value.cwd, ".firebaserc"), {});
+
+  if (rc.resolveAlias(alias) === projectId) {
+    // Nothing to update, avoid an unnecessary write.
+    // That's especially important as a write will trigger file watchers,
+    // which may then re-trigger this function.
+    return;
+  }
+
+  rc.addProjectAlias(alias, projectId);
+  rc.save();
+}
+
 function notifyFirebaseConfig(broker: ExtensionBrokerImpl) {
   broker.send("notifyFirebaseConfig", {
     firebaseJson: firebaseConfig.value?.data,
@@ -24,7 +49,7 @@ function notifyFirebaseConfig(broker: ExtensionBrokerImpl) {
 function registerRc(broker: ExtensionBrokerImpl): Disposable {
   firebaseRC.value = _readRC();
   const rcRemoveListener = onChange(firebaseRC, () =>
-    notifyFirebaseConfig(broker)
+    notifyFirebaseConfig(broker),
   );
 
   const rcWatcher = _createWatcher(".firebaserc");
@@ -34,7 +59,7 @@ function registerRc(broker: ExtensionBrokerImpl): Disposable {
 
   return Disposable.from(
     { dispose: rcRemoveListener },
-    { dispose: () => rcWatcher?.dispose() }
+    { dispose: () => rcWatcher?.dispose() },
   );
 }
 
@@ -42,21 +67,21 @@ function registerFirebaseConfig(broker: ExtensionBrokerImpl): Disposable {
   firebaseConfig.value = _readFirebaseConfig();
 
   const firebaseConfigRemoveListener = onChange(firebaseConfig, () =>
-    notifyFirebaseConfig(broker)
+    notifyFirebaseConfig(broker),
   );
 
   const configWatcher = _createWatcher("firebase.json");
   configWatcher?.onDidChange(
-    () => (firebaseConfig.value = _readFirebaseConfig())
+    () => (firebaseConfig.value = _readFirebaseConfig()),
   );
   configWatcher?.onDidCreate(
-    () => (firebaseConfig.value = _readFirebaseConfig())
+    () => (firebaseConfig.value = _readFirebaseConfig()),
   );
   configWatcher?.onDidDelete(() => (firebaseConfig.value = undefined));
 
   return Disposable.from(
     { dispose: firebaseConfigRemoveListener },
-    { dispose: () => configWatcher?.dispose() }
+    { dispose: () => configWatcher?.dispose() },
   );
 }
 
@@ -71,17 +96,17 @@ export function registerConfig(broker: ExtensionBrokerImpl): Disposable {
   return Disposable.from(
     { dispose: getInitialDataRemoveListener },
     registerFirebaseConfig(broker),
-    registerRc(broker)
+    registerRc(broker),
   );
 }
 
 /** @internal */
 export function _readRC(): RC | undefined {
-    const configPath = getConfigPath();
-    if (!configPath) {
-      return undefined;
-    }
-try {
+  const configPath = getConfigPath();
+  if (!configPath) {
+    return undefined;
+  }
+  try {
     // RC.loadFile silences errors and returns a non-empty object if the rc file is
     // missing. Let's load it ourselves.
 
@@ -95,7 +120,7 @@ try {
     const data = JSON.parse(json.toString());
 
     return new RC(rcPath, data);
-} catch (e: any) {
+  } catch (e: any) {
     pluginLogger.error(e.message);
     throw e;
   }
@@ -103,11 +128,11 @@ try {
 
 /** @internal */
 export function _readFirebaseConfig(): Config | undefined {
-    const configPath = getConfigPath();
-    if (!configPath) {
-      return undefined;
-    }
-    try {
+  const configPath = getConfigPath();
+  if (!configPath) {
+    return undefined;
+  }
+  try {
     const json = Config.load({
       configPath: path.join(configPath, "firebase.json"),
     });
@@ -121,7 +146,7 @@ export function _readFirebaseConfig(): Config | undefined {
       pluginLogger.error(e.message);
       throw e;
     }
-}
+  }
 }
 
 /** @internal */
@@ -132,7 +157,7 @@ export function _createWatcher(file: string): FileSystemWatcher | undefined {
 
   return workspace.value?.createFileSystemWatcher(
     // Using RelativePattern enables tests to use watchers too.
-    new vscode.RelativePattern(vscode.Uri.file(currentOptions.value.cwd), file)
+    new vscode.RelativePattern(vscode.Uri.file(currentOptions.value.cwd), file),
   );
 }
 

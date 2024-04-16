@@ -1,14 +1,13 @@
 import vscode, { Disposable, ExtensionContext, QuickPickItem } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { computed, effect } from "@preact/signals-react";
-import { firebaseRC } from "./config";
+import { firebaseRC, updateFirebaseRCProject } from "./config";
 import { FirebaseProjectMetadata } from "../types/project";
 import { currentUser, isServiceAccount } from "./user";
 import { listProjects } from "../cli";
 import { pluginLogger } from "../logger-wrapper";
 import { selectProjectInMonospace } from "../../../src/monospace";
 import { currentOptions } from "../options";
-import { updateFirebaseRCProject } from "../config-files";
 import { globalSignal } from "../utils/globals";
 import { firstWhereDefined } from "../utils/signal";
 
