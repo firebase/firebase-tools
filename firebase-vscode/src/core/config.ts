@@ -9,14 +9,35 @@ import { Config } from "../../../src/config";
 import { globalSignal } from "../utils/globals";
 import { workspace } from "../utils/test_hooks";
 import { ValueOrError } from "../../common/messaging/protocol";
-import { onChange } from "../utils/signal";
+import { firstWhereDefined, onChange } from "../utils/signal";
 import { Result, ResultError } from "../result";
 import { FirebaseConfig } from "../firebaseConfig";
 import { effect } from "@preact/signals-react";
 
+/**
+ * The .firebaserc configs.
+ *
+ * `undefined` means that the extension has yet to load the file.
+ * {@link ResultValue} with an `undefined` value means that the file was not found.
+ * {@link ResultError} means that the file was found but the parsing failed.
+ *
+ * This enables the UI to differentiate between "no config" and "error reading config",
+ * and also await for configs to be loaded (thanks to the {@link firstWhereDefined} util)
+ */
 export const firebaseRC = globalSignal<Result<RC | undefined> | undefined>(
   undefined,
 );
+
+/**
+ * The firebase.json configs.
+ *
+ * `undefined` means that the extension has yet to load the file.
+ * {@link ResultValue} with an `undefined` value means that the file was not found.
+ * {@link ResultError} means that the file was found but the parsing failed.
+ *
+ * This enables the UI to differentiate between "no config" and "error reading config",
+ * and also await for configs to be loaded (thanks to the {@link firstWhereDefined} util)
+ */
 export const firebaseConfig = globalSignal<
   Result<Config | undefined> | undefined
 >(undefined);
@@ -45,7 +66,6 @@ export async function updateFirebaseRCProject(
   rc.addProjectAlias(alias, projectId);
   rc.save();
 }
-
 
 function notifyFirebaseConfig(broker: ExtensionBrokerImpl) {
   broker.send("notifyFirebaseConfig", {
@@ -76,9 +96,7 @@ function registerRc(broker: ExtensionBrokerImpl): Disposable {
   const showToastOnError = effect(() => {
     const rc = firebaseRC.value;
     if (rc instanceof ResultError) {
-      vscode.window.showErrorMessage(
-        `Error reading .firebaserc:\n${rc.error}`,
-      );
+      vscode.window.showErrorMessage(`Error reading .firebaserc:\n${rc.error}`);
     }
   });
 
