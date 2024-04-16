@@ -41,6 +41,7 @@ export interface Backend {
   updateTime: string;
   uri: string;
   serviceAccount?: string;
+  appId?: string;
 }
 
 export type BackendOutputOnlyFields = "name" | "createTime" | "updateTime" | "uri";
