@@ -365,7 +365,7 @@ export async function orchestrateRollout(
 /**
  * Deletes the given backend. Polls till completion.
  */
-export async function deleteBackend(
+export async function deleteBackendAndPoll(
   projectId: string,
   location: string,
   backendId: string,
