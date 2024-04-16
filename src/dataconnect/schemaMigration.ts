@@ -37,7 +37,11 @@ export async function diffSchema(schema: Schema): Promise<Diff[]> {
   return [];
 }
 
-export async function migrateSchema(options: Options, schema: Schema): Promise<Diff[]> {
+export async function migrateSchema(
+  options: Options,
+  schema: Schema,
+  allowNonInteractiveMigration: boolean,
+): Promise<Diff[]> {
   const projectId = needProjectId(options);
   const databaseId = schema.primaryDatasource.postgresql?.database;
   if (!databaseId) {
@@ -56,7 +60,12 @@ export async function migrateSchema(options: Options, schema: Schema): Promise<D
   } catch (err: any) {
     const incompatible = getIncompatibleSchemaError(err);
     if (incompatible) {
-      const choice = await promptForSchemaMigration(options, databaseId, incompatible);
+      const choice = await promptForSchemaMigration(
+        options,
+        databaseId,
+        incompatible,
+        allowNonInteractiveMigration,
+      );
       const commandsToExecute = incompatible.diffs
         .filter((d) => {
           switch (choice) {
@@ -96,18 +105,11 @@ async function promptForSchemaMigration(
   options: Options,
   databaseName: string,
   err: IncompatibleSqlSchemaError,
+  allowNonInteractiveMigration: boolean,
 ): Promise<"none" | "safe" | "all"> {
   displaySchemaChanges(err);
-  if (options.force) {
-    return "all";
-  } else if (options.nonInteractive && !options.force && err.destructive) {
-    logger.warn(
-      "This schema migration includes potentially destructive changes. If you'd like to execute it anyway, rerun this command with --force",
-    );
-    return "none";
-  } else if (options.nonInteractive && !err.destructive) {
-    return "safe";
-  } else {
+  if (!options.nonInteractive) {
+    // Always prompt in interactive mode. Desturctive migrations are too potentially dangerous to not prompt for with --force
     const choices = err.destructive
       ? [
           { name: "Execute all changes (including destructive changes)", value: "all" },
@@ -123,6 +125,24 @@ async function promptForSchemaMigration(
       type: "list",
       choices,
     });
+  } else if (!allowNonInteractiveMigration) {
+    // `deploy --nonInteractive` performs no migrations
+    logger.error(
+      "Your database schema is incompatible with your Data Connect schema. Run `firebase dataconnect:sql:migrate` to migrate your database schema",
+    );
+    return "none";
+  } else if (options.force) {
+    // `dataconnect:sql:migrate --nonInteractive --force` performs all migrations
+    return "all";
+  } else if (!err.destructive) {
+    // `dataconnect:sql:migrate --nonInteractive` performs only safe migrations
+    return "safe";
+  } else {
+    // `dataconnect:sql:migrate --nonInteractive` errors out if there are destructive migrations
+    logger.error(
+      "This schema migration includes potentially destructive changes. If you'd like to execute it anyway, rerun this command with --force",
+    );
+    return "none";
   }
 }
 

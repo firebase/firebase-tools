@@ -44,7 +44,7 @@ export default async function (
       "Checking if database schemas match Data Connect schemas...",
     );
     for (const s of wantSchemas) {
-      await migrateSchema(options, s);
+      await migrateSchema(options, s, /** allowNonInteractiveMigration=*/ false);
     }
     // Then, deploy schemas
     utils.logLabeledBullet("dataconnect", "Releasing schemas...");
