@@ -84,6 +84,7 @@ describe("operationsConverter", () => {
           rootDirectory: "/",
         },
         labels: deploymentTool.labels(),
+        serviceAccount: "custom-service-account",
       };
       expect(createBackendStub).to.be.calledWith(projectId, location, backendInput);
     });
