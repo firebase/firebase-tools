@@ -7,6 +7,7 @@ import { DEFAULT_REGION } from "../apphosting/constants";
 import * as utils from "../utils";
 import * as apphosting from "../gcp/apphosting";
 import { printBackendsTable } from "./apphosting-backends-list";
+import { deleteBackendAndPoll } from "../apphosting";
 
 export const command = new Command("apphosting:backends:delete <backend>")
   .description("delete a Firebase App Hosting backend")
@@ -60,7 +61,7 @@ export const command = new Command("apphosting:backends:delete <backend>")
     }
 
     try {
-      await apphosting.deleteBackend(projectId, location, backendId);
+      await deleteBackendAndPoll(projectId, location, backendId);
       utils.logSuccess(`Successfully deleted the backend: ${backendId}`);
     } catch (err: any) {
       throw new FirebaseError(
