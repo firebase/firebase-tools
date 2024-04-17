@@ -1,7 +1,7 @@
 import fetch, { Response } from "node-fetch";
 import * as fs from "fs";
 import * as path from "path";
-import * as yaml from "js-yaml";
+import * as yaml from "yaml";
 import { promisify } from "util";
 
 import { logger } from "../../../../logger";
@@ -58,7 +58,7 @@ export async function detectFromYaml(
   }
 
   logger.debug("Found functions.yaml. Got spec:", text);
-  const parsed = yaml.load(text);
+  const parsed = yaml.parse(text);
   return yamlToBuild(parsed, project, api.functionsDefaultRegion(), runtime);
 }
 
@@ -104,7 +104,7 @@ export async function detectFromPort(
 
   let parsed: any;
   try {
-    parsed = yaml.load(text);
+    parsed = yaml.parse(text);
   } catch (err: any) {
     logger.debug("Failed to parse functions.yaml", err);
     throw new FirebaseError(`Failed to load function definition from source: ${text}`);

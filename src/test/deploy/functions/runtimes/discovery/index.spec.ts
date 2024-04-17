@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as yaml from "js-yaml";
+import * as yaml from "yaml";
 import * as sinon from "sinon";
 import * as nock from "nock";
 
@@ -28,7 +28,7 @@ const YAML_OBJ = {
   endpoints: { id: MIN_ENDPOINT },
 };
 
-const YAML_TEXT = yaml.dump(YAML_OBJ);
+const YAML_TEXT = yaml.stringify(YAML_OBJ);
 
 const BUILD: build.Build = build.of({ id: ENDPOINT });
 
