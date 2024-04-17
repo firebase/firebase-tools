@@ -33,7 +33,7 @@ export function setup(cb: () => void | Promise<void>) {
 }
 
 /** A custom "test" to work around "afterEach" not working with the current configs */
-export function dataConnectTest(
+export function firebaseTest(
   description: string,
   cb: (this: Mocha.Context) => void | Promise<void>,
 ) {
@@ -59,7 +59,7 @@ export function dataConnectTest(
   });
 }
 
-export function dataConnectSuite(description: string, cb: () => void) {
+export function firebaseSuite(description: string, cb: () => void) {
   suite(description, () => {
     // Scope setups to the suite.
     const previousSetups = setups;

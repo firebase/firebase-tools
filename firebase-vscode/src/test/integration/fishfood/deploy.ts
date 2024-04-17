@@ -1,10 +1,10 @@
 import { browser } from "@wdio/globals";
 import { FirebaseSidebar } from "../../utils/page_objects/sidebar";
-import { dataConnectTest } from "../../utils/test_hooks";
+import { firebaseTest } from "../../utils/test_hooks";
 import { QuickPick } from "../../utils/page_objects/quick_picks";
 import { e2eSpy, getE2eSpyCalls } from "../mock";
 
-dataConnectTest("Can deploy services", async function () {
+firebaseTest("Can deploy services", async function () {
   const workbench = await browser.getWorkbench();
   const sidebar = new FirebaseSidebar(workbench);
   const quickPicks = new QuickPick(workbench);

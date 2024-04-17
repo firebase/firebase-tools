@@ -77,21 +77,21 @@ describe("developer connect", () => {
         .onFirstCall()
         .returns({
           body: {
-            repositories: [firstRepo],
+            linkableGitRepositories: [firstRepo],
             nextPageToken: "someToken",
           },
         })
         .onSecondCall()
         .returns({
           body: {
-            repositories: [secondRepo],
+            linkableGitRepositories: [secondRepo],
             nextPageToken: "someToken2",
           },
         })
         .onThirdCall()
         .returns({
           body: {
-            repositories: [thirdRepo],
+            linkableGitRepositories: [thirdRepo],
           },
         });
 

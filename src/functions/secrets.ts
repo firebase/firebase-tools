@@ -3,13 +3,13 @@ import * as poller from "../operation-poller";
 import * as gcfV1 from "../gcp/cloudfunctions";
 import * as gcfV2 from "../gcp/cloudfunctionsv2";
 import * as backend from "../deploy/functions/backend";
-import * as ensureApiEnabled from "../ensureApiEnabled";
-import { functionsOrigin, functionsV2Origin, secretManagerOrigin } from "../api";
+import { functionsOrigin, functionsV2Origin } from "../api";
 import {
   createSecret,
   destroySecretVersion,
   getSecret,
   getSecretVersion,
+  isAppHostingManaged,
   listSecrets,
   listSecretVersions,
   parseSecretResourceName,
@@ -24,9 +24,11 @@ import { promptOnce } from "../prompt";
 import { validateKey } from "./env";
 import { logger } from "../logger";
 import { assertExhaustive } from "../functional";
+import { isFunctionsManaged, FIREBASE_MANAGED } from "../gcp/secretManager";
+import { labels } from "../gcp/secretManager";
 import { needProjectId } from "../projectUtils";
 
-const FIREBASE_MANAGED = "firebase-managed";
+const Table = require("cli-table");
 
 // For mysterious reasons, importing the poller option in fabricator.ts leads to some
 // value of the poller option to be undefined at runtime. I can't figure out what's going on,
@@ -51,34 +53,11 @@ type ProjectInfo = {
   projectNumber: string;
 };
 
-/**
- * Returns true if secret is managed by Firebase.
- */
-export function isFirebaseManaged(secret: Secret): boolean {
-  return Object.keys(secret.labels || []).includes(FIREBASE_MANAGED);
-}
-
-/**
- * Return labels to mark secret as managed by Firebase.
- * @internal
- */
-export function labels(): Record<string, string> {
-  return { [FIREBASE_MANAGED]: "true" };
-}
-
 function toUpperSnakeCase(key: string): string {
   return key
     .replace(/[.-]/g, "_")
     .replace(/([a-z])([A-Z])/g, "$1_$2")
     .toUpperCase();
-}
-
-/**
- * Utility used in the "before" command annotation to enable the API.
- */
-export function ensureApi(options: any): Promise<void> {
-  const projectId = needProjectId(options);
-  return ensureApiEnabled.ensure(projectId, secretManagerOrigin(), "secretmanager", true);
 }
 
 /**
@@ -122,10 +101,31 @@ export async function ensureSecret(
 ): Promise<Secret> {
   try {
     const secret = await getSecret(projectId, name);
-    if (!isFirebaseManaged(secret)) {
+    if (isAppHostingManaged(secret)) {
+      logWarning(
+        "Your secret is managed by Firebase App Hosting. Continuing will disable automatic deletion of old versions.",
+      );
+      const stopTracking = await promptOnce(
+        {
+          name: "doNotTrack",
+          type: "confirm",
+          default: false,
+          message: "Do you wish to continue?",
+        },
+        options,
+      );
+      if (stopTracking) {
+        delete secret.labels[FIREBASE_MANAGED];
+        await patchSecret(secret.projectId, secret.name, secret.labels);
+      } else {
+        throw new Error(
+          "A secret cannot be managed by both Firebase App Hosting and Cloud Functions for Firebase",
+        );
+      }
+    } else if (!isFunctionsManaged(secret)) {
       if (!options.force) {
         logWarning(
-          "Your secret is not managed by Firebase. " +
+          "Your secret is not managed by Cloud Functions for Firebase. " +
             "Firebase managed secrets are automatically pruned to reduce your monthly cost for using Secret Manager. ",
         );
         const confirm = await promptOnce(
@@ -133,7 +133,7 @@ export async function ensureSecret(
             name: "updateLabels",
             type: "confirm",
             default: true,
-            message: `Would you like to have your secret ${secret.name} managed by Firebase?`,
+            message: `Would you like to have your secret ${secret.name} managed by Cloud Functions for Firebase?`,
           },
           options,
         );
@@ -373,4 +373,22 @@ export async function updateEndpointSecret(
   } else {
     assertExhaustive(endpoint.platform);
   }
+}
+
+/**
+ * Describe the given secret.
+ */
+export async function describeSecret(key: string, options: Options): Promise<any> {
+  const projectId = needProjectId(options);
+  const versions = await listSecretVersions(projectId, key);
+
+  const table = new Table({
+    head: ["Version", "State"],
+    style: { head: ["yellow"] },
+  });
+  for (const version of versions) {
+    table.push([version.versionId, version.state]);
+  }
+  logger.info(table.toString());
+  return { secrets: versions };
 }

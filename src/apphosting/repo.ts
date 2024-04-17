@@ -1,13 +1,13 @@
 import * as clc from "colorette";
 
-import * as gcb from "../../../gcp/cloudbuild";
-import * as rm from "../../../gcp/resourceManager";
-import * as poller from "../../../operation-poller";
-import * as utils from "../../../utils";
-import { cloudbuildOrigin } from "../../../api";
-import { FirebaseError } from "../../../error";
-import { promptOnce } from "../../../prompt";
-import { getProjectNumber } from "../../../getProjectNumber";
+import * as gcb from "../gcp/cloudbuild";
+import * as rm from "../gcp/resourceManager";
+import * as poller from "../operation-poller";
+import * as utils from "../utils";
+import { cloudbuildOrigin } from "../api";
+import { FirebaseError } from "../error";
+import { promptOnce } from "../prompt";
+import { getProjectNumber } from "../getProjectNumber";
 
 import * as fuzzy from "fuzzy";
 import * as inquirer from "inquirer";
@@ -214,7 +214,7 @@ async function promptRepositoryUri(
   const remoteUri = await promptOnce({
     type: "autocomplete",
     name: "remoteUri",
-    message: "Which of the following repositories would you like to deploy?",
+    message: "Which repository would you like to deploy?",
     source: (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
       return new Promise((resolve) =>
         resolve([
@@ -243,7 +243,7 @@ async function promptRepositoryUri(
 
 async function ensureSecretManagerAdminGrant(projectId: string): Promise<void> {
   const projectNumber = await getProjectNumber({ projectId });
-  const cbsaEmail = gcb.serviceAgentEmail(projectNumber);
+  const cbsaEmail = gcb.getDefaultServiceAgent(projectNumber);
 
   const alreadyGranted = await rm.serviceAccountHasRoles(
     projectId,

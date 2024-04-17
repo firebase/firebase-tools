@@ -21,7 +21,7 @@ import * as servicesNS from "../../../../deploy/functions/services";
 import * as identityPlatformNS from "../../../../gcp/identityPlatform";
 import { AuthBlockingService } from "../../../../deploy/functions/services/auth";
 import { deepCopy } from "@angular-devkit/core";
-import { getDefaultComputeServiceAgent } from "../../../../deploy/functions/checkIam";
+import * as gce from "../../../../gcp/computeEngine";
 
 describe("Fabricator", () => {
   // Stub all GCP APIs to make sure this test is hermetic
@@ -775,7 +775,7 @@ describe("Fabricator", () => {
 
         await fab.createV2Function(ep, new scraper.SourceTokenScraper());
         expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, "service", [
-          getDefaultComputeServiceAgent(fab.projectNumber),
+          gce.getDefaultServiceAccount(fab.projectNumber),
         ]);
       });
 

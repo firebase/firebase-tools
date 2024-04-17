@@ -1,33 +1,28 @@
-import * as clc from "colorette";
-
 import * as repo from "./repo";
-import * as poller from "../../../operation-poller";
-import * as apphosting from "../../../gcp/apphosting";
-import { logBullet, logSuccess, logWarning } from "../../../utils";
+import * as poller from "../operation-poller";
+import * as apphosting from "../gcp/apphosting";
+import * as githubConnections from "./githubConnections";
+import { logBullet, logSuccess, logWarning } from "../utils";
 import {
   apphostingOrigin,
   artifactRegistryDomain,
   cloudRunApiOrigin,
   cloudbuildOrigin,
+  developerConnectOrigin,
   secretManagerOrigin,
-} from "../../../api";
-import {
-  Backend,
-  BackendOutputOnlyFields,
-  API_VERSION,
-  Build,
-  Rollout,
-} from "../../../gcp/apphosting";
-import { addServiceAccountToRoles } from "../../../gcp/resourceManager";
-import { createServiceAccount } from "../../../gcp/iam";
-import { Repository } from "../../../gcp/cloudbuild";
-import { FirebaseError } from "../../../error";
-import { promptOnce } from "../../../prompt";
+} from "../api";
+import { Backend, BackendOutputOnlyFields, API_VERSION, Build, Rollout } from "../gcp/apphosting";
+import { addServiceAccountToRoles } from "../gcp/resourceManager";
+import * as iam from "../gcp/iam";
+import { Repository } from "../gcp/cloudbuild";
+import { FirebaseError } from "../error";
+import { promptOnce } from "../prompt";
 import { DEFAULT_REGION } from "./constants";
-import { ensure } from "../../../ensureApiEnabled";
-import * as deploymentTool from "../../../deploymentTool";
-import { DeepOmit } from "../../../metaprogramming";
-
+import { ensure } from "../ensureApiEnabled";
+import * as deploymentTool from "../deploymentTool";
+import { DeepOmit } from "../metaprogramming";
+import * as apps from "./app";
+import { GitRepositoryLink } from "../gcp/devConnect";
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
 const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
@@ -42,10 +37,13 @@ const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationRes
  */
 export async function doSetup(
   projectId: string,
+  webAppName: string | null,
   location: string | null,
   serviceAccount: string | null,
+  withDevConnect: boolean,
 ): Promise<void> {
   await Promise.all([
+    ...(withDevConnect ? [ensure(projectId, developerConnectOrigin(), "apphosting", true)] : []),
     ensure(projectId, cloudbuildOrigin(), "apphosting", true),
     ensure(projectId, secretManagerOrigin(), "apphosting", true),
     ensure(projectId, cloudRunApiOrigin(), "apphosting", true),
@@ -53,7 +51,6 @@ export async function doSetup(
   ]);
 
   const allowedLocations = (await apphosting.listLocations(projectId)).map((loc) => loc.locationId);
-
   if (location) {
     if (!allowedLocations.includes(location)) {
       throw new FirebaseError(
@@ -62,7 +59,7 @@ export async function doSetup(
     }
   }
 
-  logBullet("First we need a few details to create your backend.");
+  logBullet("First we need a few details to create your backend.\n");
 
   location =
     location ||
@@ -70,9 +67,7 @@ export async function doSetup(
       name: "region",
       type: "list",
       default: DEFAULT_REGION,
-      message:
-        "Please select a region " +
-        `(${clc.yellow("info")}: Your region determines where your backend is located):\n`,
+      message: "Select a region to host your backend:\n",
       choices: allowedLocations.map((loc) => ({ value: loc })),
     })) as string);
 
@@ -85,14 +80,32 @@ export async function doSetup(
     message: "Create a name for your backend [1-30 characters]",
   });
 
-  const cloudBuildConnRepo = await repo.linkGitHubRepository(projectId, location);
+  const webApp = await apps.getOrCreateWebApp(projectId, webAppName, backendId);
+  if (webApp) {
+    logSuccess(`Firebase web app set to ${webApp.name}.\n`);
+  } else {
+    logWarning(`Firebase web app not set`);
+  }
+
+  const gitRepositoryConnection: Repository | GitRepositoryLink = withDevConnect
+    ? await githubConnections.linkGitHubRepository(projectId, location)
+    : await repo.linkGitHubRepository(projectId, location);
+
+  const rootDir = await promptOnce({
+    name: "rootDir",
+    type: "input",
+    default: "/",
+    message: "Specify your app's root directory relative to your repository",
+  });
 
   const backend = await createBackend(
     projectId,
     location,
     backendId,
-    cloudBuildConnRepo,
+    gitRepositoryConnection,
     serviceAccount,
+    webApp?.id,
+    rootDir,
   );
 
   // TODO: Once tag patterns are implemented, prompt which method the user
@@ -116,7 +129,7 @@ export async function doSetup(
 
   if (!confirmRollout) {
     logSuccess(`Successfully created backend:\n\t${backend.name}`);
-    logSuccess(`Your site will be deployed at:\n\thttps://${backend.uri}`);
+    logSuccess(`Your backend will be deployed at:\n\thttps://${backend.uri}`);
     return;
   }
 
@@ -129,7 +142,7 @@ export async function doSetup(
   });
 
   logSuccess(`Successfully created backend:\n\t${backend.name}`);
-  logSuccess(`Your site is now deployed at:\n\thttps://${backend.uri}`);
+  logSuccess(`Your backend is now deployed at:\n\thttps://${backend.uri}`);
 }
 
 /**
@@ -169,24 +182,27 @@ export async function createBackend(
   projectId: string,
   location: string,
   backendId: string,
-  repository: Repository,
+  repository: Repository | GitRepositoryLink,
   serviceAccount: string | null,
+  webAppId: string | undefined,
+  rootDir = "/",
 ): Promise<Backend> {
   const defaultServiceAccount = defaultComputeServiceAccountEmail(projectId);
   const backendReqBody: Omit<Backend, BackendOutputOnlyFields> = {
     servingLocality: "GLOBAL_ACCESS",
     codebase: {
       repository: `${repository.name}`,
-      rootDirectory: "/",
+      rootDirectory: rootDir,
     },
     labels: deploymentTool.labels(),
-    computeServiceAccount: serviceAccount || defaultServiceAccount,
+    serviceAccount: serviceAccount || defaultServiceAccount,
+    appId: webAppId,
   };
 
   // TODO: remove computeServiceAccount when the backend supports the field.
-  delete backendReqBody.computeServiceAccount;
+  delete backendReqBody.serviceAccount;
 
-  async function createBackendAndPoll() {
+  async function createBackendAndPoll(): Promise<apphosting.Backend> {
     const op = await apphosting.createBackend(projectId, location, backendReqBody, backendId);
     return await poller.pollOperation<Backend>({
       ...apphostingPollerOptions,
@@ -216,7 +232,7 @@ export async function createBackend(
 
 async function provisionDefaultComputeServiceAccount(projectId: string): Promise<void> {
   try {
-    await createServiceAccount(
+    await iam.createServiceAccount(
       projectId,
       DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME,
       "Firebase App Hosting compute service account",
@@ -350,4 +366,20 @@ export async function orchestrateRollout(
     );
   }
   return { rollout, build };
+}
+
+/**
+ * Deletes the given backend. Polls till completion.
+ */
+export async function deleteBackendAndPoll(
+  projectId: string,
+  location: string,
+  backendId: string,
+): Promise<void> {
+  const op = await apphosting.deleteBackend(projectId, location, backendId);
+  await poller.pollOperation<void>({
+    ...apphostingPollerOptions,
+    pollerName: `delete-${projectId}-${location}-${backendId}`,
+    operationResourceName: op.name,
+  });
 }

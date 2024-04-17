@@ -35,7 +35,7 @@ describe("CleanupBuildImages", () => {
   });
 
   it("reports failed domains from AR", async () => {
-    ar.cleanupFunctionCache.rejects(new Error("uh oh"));
+    ar.cleanupFunction.rejects(new Error("uh oh"));
     await containerCleaner.cleanupBuildImages([], [TARGET], { gcr, ar } as any);
     expect(logLabeledWarning).to.have.been.calledWithMatch(
       "functions",
@@ -203,23 +203,6 @@ describe("ArtifactRegistryCleaner", () => {
     await cleaner.cleanupFunction(func);
     expect(ar.deletePackage).to.have.been.calledWith(
       "projects/project/locations/region/repositories/gcf-artifacts/packages/function",
-    );
-    expect(poll.pollOperation).to.have.been.called;
-  });
-
-  it("deletes cache dirs", async () => {
-    const cleaner = new containerCleaner.ArtifactRegistryCleaner();
-    const func = {
-      id: "function",
-      region: "region",
-      project: "project",
-    };
-
-    ar.deletePackage.returns(Promise.resolve({ name: "op", done: false }));
-
-    await cleaner.cleanupFunctionCache(func);
-    expect(ar.deletePackage).to.have.been.calledWith(
-      "projects/project/locations/region/repositories/gcf-artifacts/packages/function%2Fcache",
     );
     expect(poll.pollOperation).to.have.been.called;
   });

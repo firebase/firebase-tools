@@ -22,7 +22,7 @@ import { FirebaseError } from "./error";
 import { logger, LogLevel } from "./logger";
 import { LogDataOrUndefined } from "./emulator/loggingEmulator";
 
-const IS_WINDOWS = process.platform === "win32";
+export const IS_WINDOWS = process.platform === "win32";
 const SUCCESS_CHAR = IS_WINDOWS ? "+" : "✔";
 const WARNING_CHAR = IS_WINDOWS ? "!" : "⚠";
 const ERROR_CHAR = IS_WINDOWS ? "!!" : "⬢";

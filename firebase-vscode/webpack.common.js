@@ -78,7 +78,9 @@ const extensionConfig = {
       // provides alternate implementation for node module and source files
       "marked-terminal": path.resolve(__dirname, "src/stubs/empty-class.js"),
       // "ora": path.resolve(__dirname, 'src/stubs/empty-function.js'),
-      commander: path.resolve(__dirname, "src/stubs/empty-class.js"),
+      "commander": path.resolve(__dirname, 'src/stubs/empty-class.js'),
+      "inquirer": path.resolve(__dirname, 'src/stubs/inquirer-stub.js'),
+      "inquirer-autocomplete-prompt": path.resolve(__dirname, 'src/stubs/inquirer-stub.js'),
       // This is used for Github deploy to hosting - will need to restore
       // or find another solution if we add that feature.
       "libsodium-wrappers": path.resolve(__dirname, "src/stubs/empty-class.js"),

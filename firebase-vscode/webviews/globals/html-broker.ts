@@ -47,6 +47,45 @@ export function useBroker<MessageT extends keyof ExtensionToWebviewParamsMap>(
   return value;
 }
 
+export function useBrokerListener<
+  MessageT extends keyof ExtensionToWebviewParamsMap,
+>(
+  message: Extract<MessageT, string>,
+  callback: (value: ExtensionToWebviewParamsMap[MessageT]) => void,
+) {
+  useEffect(() => {
+    return broker.on(message, callback);
+  }, [message]);
+}
+
+/** Listen to messages, returning the latest sent event */
+export function useBroker<MessageT extends keyof ExtensionToWebviewParamsMap>(
+  message: Extract<MessageT, string>,
+  options?: {
+    initialRequest: keyof WebviewToExtensionParamsMap;
+  },
+): ExtensionToWebviewParamsMap[MessageT] | undefined {
+  const [value, setValue] = useState<
+    ExtensionToWebviewParamsMap[MessageT] | undefined
+  >();
+
+  useEffect(() => {
+    const unSub = broker.on(message, (value) => {
+      setValue(value);
+    });
+
+    return unSub;
+  }, [message]);
+
+  useEffect(() => {
+    if (options?.initialRequest) {
+      broker.send(options.initialRequest);
+    }
+  }, [options?.initialRequest]);
+
+  return value;
+}
+
 export class HtmlBroker extends Broker<
   WebviewToExtensionParamsMap,
   ExtensionToWebviewParamsMap,

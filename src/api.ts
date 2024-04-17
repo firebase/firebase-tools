@@ -77,7 +77,7 @@ export const developerConnectOrigin = () =>
 export const developerConnectP4SAOrigin = () =>
   utils.envOverride(
     "FIREBASE_DEVELOPERCONNECT_P4SA_URL",
-    "gcp-sa-developerconnect.iam.gserviceaccount.com",
+    "gcp-sa-devconnect.iam.gserviceaccount.com",
   );
 
 export const cloudschedulerOrigin = () =>

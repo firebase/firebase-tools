@@ -57,6 +57,21 @@ export const ALL_EXPERIMENTS = experiments({
     public: true,
   },
 
+  // permanent experiment
+  automaticallydeletegcfartifacts: {
+    shortDescription: "Control whether functions cleans up images after deploys",
+    fullDescription:
+      "To control costs, Firebase defaults to automatically deleting containers " +
+      "created during the build process. This has the side-effect of preventing " +
+      "users from rolling back to previous revisions using the Run API. To change " +
+      `this behavior, call ${bold("experiments:disable deletegcfartifactsondeploy")} ` +
+      `consider also calling ${bold("experiments:enable deletegcfartifacts")} ` +
+      `to enable the new command ${bold("functions:deletegcfartifacts")} which` +
+      "lets you clean up images manually",
+    public: true,
+    default: true,
+  },
+
   // Emulator experiments
   emulatoruisnapshot: {
     shortDescription: "Load pre-release versions of the emulator UI",

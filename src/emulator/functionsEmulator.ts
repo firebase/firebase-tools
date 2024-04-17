@@ -62,6 +62,7 @@ import { BlockingFunctionsConfig } from "../gcp/identityPlatform";
 import { resolveBackend } from "../deploy/functions/build";
 import { setEnvVarsForEmulators } from "./env";
 import { runWithVirtualEnv } from "../functions/python";
+import { Runtime } from "../deploy/functions/runtimes/supported";
 
 const EVENT_INVOKE_GA4 = "functions_invoke"; // event name GA4 (alphanumertic)
 
@@ -87,7 +88,7 @@ export interface EmulatableBackend {
   secretEnv: backend.SecretEnvVar[];
   codebase: string;
   predefinedTriggers?: ParsedTriggerDefinition[];
-  runtime?: string;
+  runtime?: Runtime;
   bin?: string;
   extensionInstanceId?: string;
   extension?: Extension; // Only present for published extensions
@@ -512,9 +513,9 @@ export class FunctionsEmulator implements EmulatorInstance {
         runtime: emulatableBackend.runtime,
       };
       const runtimeDelegate = await runtimes.getRuntimeDelegate(runtimeDelegateContext);
-      logger.debug(`Validating ${runtimeDelegate.name} source`);
+      logger.debug(`Validating ${runtimeDelegate.language} source`);
       await runtimeDelegate.validate();
-      logger.debug(`Building ${runtimeDelegate.name} source`);
+      logger.debug(`Building ${runtimeDelegate.language} source`);
       await runtimeDelegate.build();
 
       // Retrieve information from the runtime delegate.

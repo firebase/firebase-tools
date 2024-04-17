@@ -7,6 +7,8 @@
 
 import type { HttpsOptions } from "firebase-functions/v2/https";
 import { IngressSetting, MemoryOption, VpcEgressSetting } from "firebase-functions/v2/options";
+import { Runtime, DecommissionedRuntime } from "./deploy/functions/runtimes/supported";
+
 /**
  * Creates a type that requires at least one key to be present in an interface
  * type. For example, RequireAtLeastOne<{ foo: string; bar: string }> can hold
@@ -16,15 +18,6 @@ import { IngressSetting, MemoryOption, VpcEgressSetting } from "firebase-functio
 export type RequireAtLeastOne<T> = {
   [K in keyof T]-?: Required<Pick<T, K>> & Partial<Pick<T, Exclude<keyof T, K>>>;
 }[keyof T];
-
-// should be sourced from - https://github.com/firebase/firebase-tools/blob/master/src/deploy/functions/runtimes/index.ts#L15
-type CloudFunctionRuntimes =
-  | "nodejs10"
-  | "nodejs12"
-  | "nodejs14"
-  | "nodejs16"
-  | "nodejs18"
-  | "nodejs20";
 
 export type Deployable = {
   predeploy?: string | string[];
@@ -174,7 +167,7 @@ export type FirestoreConfig = FirestoreSingle | FirestoreMultiple;
 export type FunctionConfig = {
   source?: string;
   ignore?: string[];
-  runtime?: CloudFunctionRuntimes;
+  runtime?: Exclude<Runtime, DecommissionedRuntime>;
   codebase?: string;
 } & Deployable;
 

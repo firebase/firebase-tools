@@ -13,7 +13,8 @@ import { logLabeledSuccess, logLabeledWarning, randomInt } from "../../../../uti
 import * as backend from "../../backend";
 import * as build from "../../build";
 import * as discovery from "../discovery";
-import * as runtimes from "..";
+import { DelegateContext } from "..";
+import * as supported from "../supported";
 import * as validate from "./validate";
 import * as versioning from "./versioning";
 import * as parseTriggers from "./parseTriggers";
@@ -24,9 +25,7 @@ const MIN_FUNCTIONS_SDK_VERSION = "3.20.0";
 /**
  *
  */
-export async function tryCreateDelegate(
-  context: runtimes.DelegateContext,
-): Promise<Delegate | undefined> {
+export async function tryCreateDelegate(context: DelegateContext): Promise<Delegate | undefined> {
   const packageJsonPath = path.join(context.sourceDir, "package.json");
 
   if (!(await promisify(fs.exists)(packageJsonPath))) {
@@ -39,7 +38,7 @@ export async function tryCreateDelegate(
   // We should find a way to refactor this code so we're not repeatedly invoking node.
   const runtime = getRuntimeChoice(context.sourceDir, context.runtime);
 
-  if (!runtime.startsWith("nodejs")) {
+  if (!supported.runtimeIsLanguage(runtime, "nodejs")) {
     logger.debug(
       "Customer has a package.json but did not get a nodejs runtime. This should not happen",
     );
@@ -54,13 +53,13 @@ export async function tryCreateDelegate(
 // and both files load package.json. Maybe the delegate should be constructed with a package.json and
 // that can be passed to both methods.
 export class Delegate {
-  public readonly name = "nodejs";
+  public readonly language = "nodejs";
 
   constructor(
     private readonly projectId: string,
     private readonly projectDir: string,
     private readonly sourceDir: string,
-    public readonly runtime: runtimes.Runtime,
+    public readonly runtime: supported.Runtime,
   ) {}
 
   // Using a caching interface because we (may/will) eventually depend on the SDK version

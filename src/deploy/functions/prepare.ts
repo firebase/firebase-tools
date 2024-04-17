@@ -7,6 +7,7 @@ import * as ensureApiEnabled from "../../ensureApiEnabled";
 import * as functionsConfig from "../../functionsConfig";
 import * as functionsEnv from "../../functions/env";
 import * as runtimes from "./runtimes";
+import * as supported from "./runtimes/supported";
 import * as validate from "./validate";
 import * as ensure from "./ensure";
 import {
@@ -415,7 +416,6 @@ export function resolveCpuAndConcurrency(want: backend.Backend): void {
 
 /**
  * Exported for use by an internal command (internaltesting:functions:discover) only.
- *
  * @internal
  */
 export async function loadCodebases(
@@ -442,12 +442,23 @@ export async function loadCodebases(
       projectId,
       sourceDir,
       projectDir: options.config.projectDir,
-      runtime: codebaseConfig.runtime || "",
+      runtime: codebaseConfig.runtime,
     };
+    const firebaseJsonRuntime = codebaseConfig.runtime;
+    if (firebaseJsonRuntime && !supported.isRuntime(firebaseJsonRuntime as string)) {
+      throw new FirebaseError(
+        `Functions codebase ${codebase} has invalid runtime ` +
+          `${firebaseJsonRuntime} specified in firebase.json. Valid values are: ` +
+          Object.keys(supported.RUNTIMES)
+            .map((s) => `- ${s}`)
+            .join("\n"),
+      );
+    }
     const runtimeDelegate = await runtimes.getRuntimeDelegate(delegateContext);
-    logger.debug(`Validating ${runtimeDelegate.name} source`);
+    logger.debug(`Validating ${runtimeDelegate.language} source`);
+    supported.guardVersionSupport(runtimeDelegate.runtime);
     await runtimeDelegate.validate();
-    logger.debug(`Building ${runtimeDelegate.name} source`);
+    logger.debug(`Building ${runtimeDelegate.language} source`);
     await runtimeDelegate.build();
 
     const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);

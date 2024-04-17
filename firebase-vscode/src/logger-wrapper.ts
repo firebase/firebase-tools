@@ -7,7 +7,7 @@ import { SPLAT } from "triple-beam";
 import { logger as cliLogger } from "../../src/logger";
 import { setupLoggers, tryStringify } from "../../src/utils";
 import { setInquirerLogger } from "./stubs/inquirer-stub";
-import { getRootFolders } from "./config-files";
+import { getRootFolders } from "./core/config";
 
 export type LogLevel = "debug" | "info" | "log" | "warn" | "error";
 

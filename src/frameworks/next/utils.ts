@@ -1,8 +1,9 @@
 import { existsSync } from "fs";
 import { pathExists } from "fs-extra";
-import { basename, extname, join, posix } from "path";
+import { basename, extname, join, posix, sep } from "path";
 import { readFile } from "fs/promises";
 import { sync as globSync } from "glob";
+import * as glob from "glob";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
 import { coerce } from "semver";
 
@@ -22,6 +23,7 @@ import type {
   HostingHeadersWithSource,
   AppPathRoutesManifest,
   ActionManifest,
+  NextConfigFileName,
 } from "./interfaces";
 import {
   APP_PATH_ROUTES_MANIFEST,
@@ -29,8 +31,10 @@ import {
   IMAGES_MANIFEST,
   MIDDLEWARE_MANIFEST,
   WEBPACK_LAYERS,
+  CONFIG_FILES,
 } from "./constants";
 import { dirExistsSync, fileExistsSync } from "../../fsutils";
+import { IS_WINDOWS } from "../../utils";
 
 export const I18N_SOURCE = /\/:nextInternalLocale(\([^\)]+\))?/;
 
@@ -247,15 +251,21 @@ export async function isUsingNextImageInAppDirectory(
   projectDir: string,
   nextDir: string,
 ): Promise<boolean> {
+  const nextImagePath = ["node_modules", "next", "dist", "client", "image"];
+  const nextImageString = IS_WINDOWS
+    ? // Note: Windows requires double backslashes to match Next.js generated file
+      nextImagePath.join(sep + sep)
+    : join(...nextImagePath);
+
   const files = globSync(
     join(projectDir, nextDir, "server", "**", "*client-reference-manifest.js"),
   );
 
   for (const filepath of files) {
-    const fileContents = await readFile(filepath);
+    const fileContents = await readFile(filepath, "utf-8");
 
     // Return true when the first file containing the next/image component is found
-    if (fileContents.includes("node_modules/next/dist/client/image")) {
+    if (fileContents.includes(nextImageString)) {
       return true;
     }
   }
@@ -450,4 +460,42 @@ export function getRoutesWithServerAction(
   }
 
   return Array.from(routesWithServerAction);
+}
+
+/**
+ * Get files in the dist directory to be deployed to Firebase, ignoring development files.
+ */
+export async function getProductionDistDirFiles(
+  sourceDir: string,
+  distDir: string,
+): Promise<string[]> {
+  const productionDistDirFiles = await new Promise<string[]>((resolve, reject) =>
+    glob(
+      "**",
+      {
+        ignore: [join("cache", "webpack", "*-development", "**"), join("cache", "eslint", "**")],
+        cwd: join(sourceDir, distDir),
+        nodir: true,
+        absolute: true,
+      },
+      (err, matches) => {
+        if (err) reject(err);
+        resolve(matches);
+      },
+    ),
+  );
+
+  return productionDistDirFiles;
+}
+
+/**
+ * Get the Next.js config file name in the project directory, either
+ * `next.config.js` or `next.config.mjs`.  If none of them exist, return null.
+ */
+export async function whichNextConfigFile(dir: string): Promise<NextConfigFileName | null> {
+  for (const file of CONFIG_FILES) {
+    if (await pathExists(join(dir, file))) return file;
+  }
+
+  return null;
 }

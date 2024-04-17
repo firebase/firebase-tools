@@ -63,6 +63,7 @@ describe("planner", () => {
       }
       expect(planner.calculateUpdate(changed, original)).to.deep.equal({
         endpoint: changed,
+        unsafe: false,
         deleteAndRecreate: original,
       });
     });
@@ -77,6 +78,7 @@ describe("planner", () => {
       allowV2Upgrades();
       expect(planner.calculateUpdate(changed, original)).to.deep.equal({
         endpoint: changed,
+        unsafe: false,
         deleteAndRecreate: original,
       });
     });
@@ -103,6 +105,7 @@ describe("planner", () => {
       allowV2Upgrades();
       expect(planner.calculateUpdate(changed, original)).to.deep.equal({
         endpoint: changed,
+        unsafe: false,
         deleteAndRecreate: original,
       });
     });
@@ -119,6 +122,7 @@ describe("planner", () => {
       };
       expect(planner.calculateUpdate(v2Function, v1Function)).to.deep.equal({
         endpoint: v2Function,
+        unsafe: false,
       });
     });
   });
@@ -145,6 +149,7 @@ describe("planner", () => {
           endpointsToUpdate: [
             {
               endpoint: updated,
+              unsafe: false,
             },
           ],
           endpointsToDelete: [deleted],
@@ -189,6 +194,7 @@ describe("planner", () => {
           endpointsToUpdate: [
             {
               endpoint: updatedWant,
+              unsafe: false,
             },
           ],
           endpointsToDelete: [],
@@ -214,6 +220,7 @@ describe("planner", () => {
           endpointsToUpdate: [
             {
               endpoint: updatedWant,
+              unsafe: false,
             },
           ],
           endpointsToDelete: [],
@@ -240,6 +247,7 @@ describe("planner", () => {
           endpointsToUpdate: [
             {
               endpoint: updatedWant,
+              unsafe: false,
             },
           ],
           endpointsToDelete: [],
@@ -265,6 +273,7 @@ describe("planner", () => {
           endpointsToUpdate: [
             {
               endpoint: updated,
+              unsafe: false,
             },
           ],
           endpointsToDelete: [deleted, pantheon],
@@ -302,6 +311,7 @@ describe("planner", () => {
           endpointsToUpdate: [
             {
               endpoint: region1mem1Updated,
+              unsafe: false,
             },
           ],
           endpointsToDelete: [],
@@ -318,6 +328,7 @@ describe("planner", () => {
           endpointsToUpdate: [
             {
               endpoint: region2mem2Updated,
+              unsafe: false,
             },
           ],
           endpointsToDelete: [region2mem2Deleted],
@@ -354,6 +365,7 @@ describe("planner", () => {
           endpointsToUpdate: [
             {
               endpoint: group1Updated,
+              unsafe: false,
             },
           ],
           endpointsToDelete: [group1Deleted],
@@ -412,6 +424,28 @@ describe("planner", () => {
         codebase,
       });
       expect(logLabeledBullet).to.not.have.been.called;
+    });
+  });
+
+  describe("checkForUnsafeUpdate", () => {
+    it("returns true when upgrading from 2nd gen firestore to firestore auth context triggers", () => {
+      const have: backend.Endpoint = {
+        ...func("id", "region"),
+        platform: "gcfv2",
+        eventTrigger: {
+          eventType: "google.cloud.firestore.document.v1.written",
+          retry: false,
+        },
+      };
+      const want: backend.Endpoint = {
+        ...func("id", "region"),
+        platform: "gcfv2",
+        eventTrigger: {
+          eventType: "google.cloud.firestore.document.v1.written.withAuthContext",
+          retry: false,
+        },
+      };
+      expect(planner.checkForUnsafeUpdate(want, have)).to.be.true;
     });
   });
 

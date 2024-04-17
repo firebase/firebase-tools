@@ -1,14 +1,13 @@
 import vscode, { Disposable, ExtensionContext, QuickPickItem } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { computed, effect } from "@preact/signals-react";
-import { firebaseRC } from "./config";
+import { firebaseRC, updateFirebaseRCProject } from "./config";
 import { FirebaseProjectMetadata } from "../types/project";
 import { currentUser, isServiceAccount } from "./user";
 import { listProjects } from "../cli";
 import { pluginLogger } from "../logger-wrapper";
 import { selectProjectInMonospace } from "../../../src/monospace";
 import { currentOptions } from "../options";
-import { updateFirebaseRCProject } from "../config-files";
 import { globalSignal } from "../utils/globals";
 import { firstWhereDefined } from "../utils/signal";
 
@@ -35,7 +34,8 @@ export const currentProject = computed<FirebaseProjectMetadata | undefined>(
     }
 
     const wantProjectId =
-      currentProjectId.value || firebaseRC.value?.projects["default"];
+      currentProjectId.value ||
+      firebaseRC.value?.tryReadValue?.projects["default"];
     if (!wantProjectId) {
       return undefined;
     }
@@ -44,14 +44,8 @@ export const currentProject = computed<FirebaseProjectMetadata | undefined>(
   },
 );
 
-export function registerProject({
-  context,
-  broker,
-}: {
-  context: ExtensionContext;
-  broker: ExtensionBrokerImpl;
-}): Disposable {
-  const effect1 = effect(async () => {
+export function registerProject(broker: ExtensionBrokerImpl): Disposable {
+  const sub1 = effect(async () => {
     const user = currentUser.value;
     if (user) {
       pluginLogger.info("(Core:Project) New user detected, fetching projects");
@@ -63,34 +57,34 @@ export function registerProject({
     }
   });
 
-  const effect2 = effect(() => {
+  const sub2 = effect(() => {
     broker.send("notifyProjectChanged", {
       projectId: currentProject.value?.projectId ?? "",
     });
   });
 
   // Update .firebaserc with defined project ID
-  const effect3 = effect(() => {
+  const sub3 = effect(() => {
     const projectId = currentProjectId.value;
     if (projectId) {
-      updateFirebaseRCProject(context, "default", currentProjectId.value);
+      updateFirebaseRCProject("default", currentProjectId.value);
     }
   });
 
   // Initialize currentProjectId to default project ID
-  const effect4 = effect(() => {
+  const sub4 = effect(() => {
     if (!currentProjectId.value) {
-      currentProjectId.value = firebaseRC.value?.projects.default;
+      currentProjectId.value = firebaseRC.value?.tryReadValue?.projects.default;
     }
   });
 
-  const onGetInitialData = broker.on("getInitialData", () => {
+  const sub5 = broker.on("getInitialData", () => {
     broker.send("notifyProjectChanged", {
       projectId: currentProject.value?.projectId ?? "",
     });
   });
 
-  const selectProjectCommand = vscode.commands.registerCommand(
+  const command = vscode.commands.registerCommand(
     "firebase.selectProject",
     async () => {
       if (process.env.MONOSPACE_ENV) {
@@ -133,18 +127,18 @@ export function registerProject({
     },
   );
 
-  const onSelectProject = broker.on("selectProject", () =>
+  const sub6 = broker.on("selectProject", () =>
     vscode.commands.executeCommand("firebase.selectProject"),
   );
 
   return vscode.Disposable.from(
-    selectProjectCommand,
-    { dispose: onGetInitialData },
-    { dispose: onSelectProject },
-    { dispose: effect1 },
-    { dispose: effect2 },
-    { dispose: effect3 },
-    { dispose: effect4 },
+    command,
+    { dispose: sub1 },
+    { dispose: sub2 },
+    { dispose: sub3 },
+    { dispose: sub4 },
+    { dispose: sub5 },
+    { dispose: sub6 },
   );
 }
 

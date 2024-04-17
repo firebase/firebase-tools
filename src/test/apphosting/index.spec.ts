@@ -1,19 +1,27 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
 
-import * as apphosting from "../../../gcp/apphosting";
-import * as iam from "../../../gcp/iam";
-import * as resourceManager from "../../../gcp/resourceManager";
-import * as poller from "../../../operation-poller";
-import { createBackend, setDefaultTrafficPolicy } from "../../../init/features/apphosting/index";
-import * as deploymentTool from "../../../deploymentTool";
-import { FirebaseError } from "../../../error";
+import * as apphosting from "../../gcp/apphosting";
+import * as iam from "../../gcp/iam";
+import * as resourceManager from "../../gcp/resourceManager";
+import * as poller from "../../operation-poller";
+import {
+  createBackend,
+  deleteBackendAndPoll,
+  setDefaultTrafficPolicy,
+} from "../../apphosting/index";
+import * as deploymentTool from "../../deploymentTool";
+import { FirebaseError } from "../../error";
 
 describe("operationsConverter", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
+  const projectId = "projectId";
+  const location = "us-central1";
+  const backendId = "backendId";
 
   let pollOperationStub: sinon.SinonStub;
   let createBackendStub: sinon.SinonStub;
+  let deleteBackendStub: sinon.SinonStub;
   let updateTrafficStub: sinon.SinonStub;
   let createServiceAccountStub: sinon.SinonStub;
   let addServiceAccountToRolesStub: sinon.SinonStub;
@@ -25,6 +33,9 @@ describe("operationsConverter", () => {
     createBackendStub = sandbox
       .stub(apphosting, "createBackend")
       .throws("Unexpected createBackend call");
+    deleteBackendStub = sandbox
+      .stub(apphosting, "deleteBackend")
+      .throws("Unexpected deleteBackend call");
     updateTrafficStub = sandbox
       .stub(apphosting, "updateTraffic")
       .throws("Unexpected updateTraffic call");
@@ -41,9 +52,7 @@ describe("operationsConverter", () => {
   });
 
   describe("onboardBackend", () => {
-    const projectId = "projectId";
-    const location = "us-central1";
-    const backendId = "backendId";
+    const webAppId = "webAppId";
 
     const op = {
       name: `projects/${projectId}/locations/${location}/backends/${backendId}`,
@@ -75,6 +84,7 @@ describe("operationsConverter", () => {
         backendId,
         cloudBuildConnRepo,
         "custom-service-account",
+        webAppId,
       );
 
       const backendInput: Omit<apphosting.Backend, apphosting.BackendOutputOnlyFields> = {
@@ -84,6 +94,7 @@ describe("operationsConverter", () => {
           rootDirectory: "/",
         },
         labels: deploymentTool.labels(),
+        appId: webAppId,
       };
       expect(createBackendStub).to.be.calledWith(projectId, location, backendInput);
     });
@@ -110,6 +121,7 @@ describe("operationsConverter", () => {
         backendId,
         cloudBuildConnRepo,
         /* serviceAccount= */ null,
+        webAppId,
       );
 
       // CreateBackend should be called twice; once initially and once after the service account was created
@@ -137,6 +149,7 @@ describe("operationsConverter", () => {
           backendId,
           cloudBuildConnRepo,
           /* serviceAccount= */ "my-service-account",
+          webAppId,
         ),
       ).to.be.rejectedWith(
         FirebaseError,
@@ -174,6 +187,21 @@ describe("operationsConverter", () => {
           ],
         },
       });
+    });
+  });
+
+  describe("delete backend", () => {
+    it("should delete a backend", async () => {
+      const op = {
+        name: `projects/${projectId}/locations/${location}/backends/${backendId}`,
+        done: true,
+      };
+
+      deleteBackendStub.resolves(op);
+      pollOperationStub.resolves();
+
+      await deleteBackendAndPoll(projectId, location, backendId);
+      expect(deleteBackendStub).to.be.calledWith(projectId, location, backendId);
     });
   });
 });

@@ -3,9 +3,8 @@ import * as vscode from "vscode";
 import path from "path";
 import fs from "fs";
 import { currentOptions } from "../options";
-import { pluginLogger } from "../logger-wrapper";
 import { ExtensionBrokerImpl } from "../extension-broker";
-import { RC } from "../../../src/rc";
+import { RC, RCData } from "../../../src/rc";
 import { Config } from "../../../src/config";
 import {
   readConnectorYaml,
@@ -14,68 +13,160 @@ import {
 } from "../../../src/dataconnect/fileUtils";
 import { globalSignal } from "../utils/globals";
 import { workspace } from "../utils/test_hooks";
-import { ExpandedFirebaseConfig } from "../../common/messaging/protocol";
 import {
   ResolvedConnectorYaml,
   ResolvedDataConnectConfig,
   ResolvedDataConnectConfigs,
 } from "../data-connect/config";
-import { DataConnectSingle } from "../firebaseConfig";
+import { ValueOrError } from "../../common/messaging/protocol";
+import { firstWhereDefined, onChange } from "../utils/signal";
+import { Result, ResultError, ResultValue } from "../result";
+import { DataConnectMultiple, FirebaseConfig } from "../firebaseConfig";
+import { effect } from "@preact/signals-react";
+import { pluginLogger } from "../logger-wrapper";
 
-export const firebaseRC = globalSignal<RC | undefined>(undefined);
-export const firebaseConfig = globalSignal<ExpandedFirebaseConfig | undefined>(
+/**
+ * The .firebaserc configs.
+ *
+ * `undefined` means that the extension has yet to load the file.
+ * {@link ResultValue} with an `undefined` value means that the file was not found.
+ * {@link ResultError} means that the file was found but the parsing failed.
+ *
+ * This enables the UI to differentiate between "no config" and "error reading config",
+ * and also await for configs to be loaded (thanks to the {@link firstWhereDefined} util)
+ */
+export const firebaseRC = globalSignal<Result<RC | undefined> | undefined>(
   undefined,
 );
+
 export const dataConnectConfigs = globalSignal<
   ResolvedDataConnectConfigs | undefined
 >(undefined);
 
-export async function registerConfig(
-  broker: ExtensionBrokerImpl,
-): Promise<Disposable> {
-  firebaseRC.value = _readRC();
-  const initialConfig = (firebaseConfig.value = _readFirebaseConfig());
-  dataConnectConfigs.value = await _readDataConnectConfigs(initialConfig);
+/**
+ * The firebase.json configs.
+ *
+ * `undefined` means that the extension has yet to load the file.
+ * {@link ResultValue} with an `undefined` value means that the file was not found.
+ * {@link ResultError} means that the file was found but the parsing failed.
+ *
+ * This enables the UI to differentiate between "no config" and "error reading config",
+ * and also await for configs to be loaded (thanks to the {@link firstWhereDefined} util)
+ */
+export const firebaseConfig = globalSignal<
+  Result<Config | undefined> | undefined
+>(undefined);
 
-  function notifyFirebaseConfig() {
-    broker.send("notifyFirebaseConfig", {
-      firebaseJson: firebaseConfig.value?.config.data,
-      firebaseRC: firebaseRC.value?.data,
-    });
+/**
+ * Write new default project to .firebaserc
+ */
+export async function updateFirebaseRCProject(
+  alias: string,
+  projectId: string,
+) {
+  const rc =
+    firebaseRC.value.tryReadValue ??
+    // We don't update firebaseRC if we create a temporary RC,
+    // as the file watcher will update the value for us.
+    // This is only for the sake of calling `save()`.
+    new RC(path.join(currentOptions.value.cwd, ".firebaserc"), {});
+
+  if (rc.resolveAlias(alias) === projectId) {
+    // Nothing to update, avoid an unnecessary write.
+    // That's especially important as a write will trigger file watchers,
+    // which may then re-trigger this function.
+    return;
   }
 
-  // "subscribe" immediately calls the callback with the current value.
-  // We want to skip this.
-  var shouldNotify = false;
+  rc.addProjectAlias(alias, projectId);
+  rc.save();
+}
 
-  // When configs change, notify the extension.
-  // We do so after the config is initially updated, to not notify
-  // the extension on startup.
-  const rcRemoveListener = firebaseRC.subscribe(() => {
-    if (!shouldNotify) {
-      return;
-    }
-    return notifyFirebaseConfig();
+function notifyFirebaseConfig(broker: ExtensionBrokerImpl) {
+  broker.send("notifyFirebaseConfig", {
+    firebaseJson: firebaseConfig.value?.switchCase<
+      ValueOrError<FirebaseConfig | undefined> | undefined
+    >(
+      (value) => ({ value: value?.data, error: undefined }),
+      (error) => ({ value: undefined, error: `${error}` }),
+    ),
+    firebaseRC: firebaseRC.value?.switchCase<
+      ValueOrError<RCData | undefined> | undefined
+    >(
+      (value) => ({
+        value: value?.data,
+        error: undefined,
+      }),
+      (error) => ({ value: undefined, error: `${error}` }),
+    ),
   });
-  const firebaseConfigRemoveListener = firebaseConfig.subscribe(() => {
-    if (!shouldNotify) {
-      return;
-    }
-    return notifyFirebaseConfig();
-  });
+}
 
-  shouldNotify = true;
-
-  // On getInitialData, forcibly notifies the extension.
-  const getInitialDataRemoveListener = broker.on(
-    "getInitialData",
-    notifyFirebaseConfig,
+function registerRc(broker: ExtensionBrokerImpl): Disposable {
+  firebaseRC.value = _readRC();
+  const rcRemoveListener = onChange(firebaseRC, () =>
+    notifyFirebaseConfig(broker),
   );
+
+  const showToastOnError = effect(() => {
+    const rc = firebaseRC.value;
+    if (rc instanceof ResultError) {
+      vscode.window.showErrorMessage(`Error reading .firebaserc:\n${rc.error}`);
+    }
+  });
 
   const rcWatcher = _createWatcher(".firebaserc");
   rcWatcher?.onDidChange(() => (firebaseRC.value = _readRC()));
   rcWatcher?.onDidCreate(() => (firebaseRC.value = _readRC()));
   // TODO handle deletion of .firebaserc/.firebase.json/firemat.yaml
+  rcWatcher?.onDidDelete(() => (firebaseRC.value = undefined));
+
+  return Disposable.from(
+    { dispose: rcRemoveListener },
+    { dispose: showToastOnError },
+    { dispose: () => rcWatcher?.dispose() },
+  );
+}
+
+async function registerDataConnectConfig(): Promise<Disposable> {
+  dataConnectConfigs.value = await _readDataConnectConfigs(
+    await firstWhereDefined(firebaseConfig).then((config) =>
+      readFirebaseJson(config.requireValue),
+    ),
+  );
+
+  const dataConnectWatcher = _createWatcher("firemat.yaml");
+  dataConnectWatcher?.onDidChange(
+    async () =>
+      (dataConnectConfigs.value = await _readDataConnectConfigs(
+        readFirebaseJson(firebaseConfig.value.requireValue),
+      )),
+  );
+  dataConnectWatcher?.onDidCreate(
+    async () =>
+      (dataConnectConfigs.value = await _readDataConnectConfigs(
+        readFirebaseJson(firebaseConfig.value.requireValue),
+      )),
+  );
+
+  return Disposable.from({ dispose: () => dataConnectWatcher?.dispose() });
+}
+
+function registerFirebaseConfig(broker: ExtensionBrokerImpl): Disposable {
+  firebaseConfig.value = _readFirebaseConfig();
+
+  const firebaseConfigRemoveListener = onChange(firebaseConfig, () =>
+    notifyFirebaseConfig(broker),
+  );
+
+  const showToastOnError = effect(() => {
+    const config = firebaseConfig.value;
+    if (config instanceof ResultError) {
+      vscode.window.showErrorMessage(
+        `Error reading firebase.json:\n${config.error}`,
+      );
+    }
+  });
 
   const configWatcher = _createWatcher("firebase.json");
   configWatcher?.onDidChange(
@@ -84,31 +175,29 @@ export async function registerConfig(
   configWatcher?.onDidCreate(
     () => (firebaseConfig.value = _readFirebaseConfig()),
   );
+  configWatcher?.onDidDelete(() => (firebaseConfig.value = undefined));
 
-  const dataConnectWatcher = _createWatcher("firemat.yaml");
-  dataConnectWatcher?.onDidChange(
-    async () =>
-      (dataConnectConfigs.value = await _readDataConnectConfigs(
-        firebaseConfig.value!,
-      )),
+  return Disposable.from(
+    { dispose: firebaseConfigRemoveListener },
+    { dispose: showToastOnError },
+    { dispose: () => configWatcher?.dispose() },
   );
-  dataConnectWatcher?.onDidCreate(
-    async () =>
-      (dataConnectConfigs.value = await _readDataConnectConfigs(
-        firebaseConfig.value!,
-      )),
-  );
+}
 
-  return {
-    dispose: () => {
-      getInitialDataRemoveListener();
-      rcRemoveListener();
-      firebaseConfigRemoveListener();
-      dataConnectWatcher?.dispose();
-      rcWatcher?.dispose();
-      configWatcher?.dispose();
-    },
-  };
+export async function registerConfig(broker: ExtensionBrokerImpl): Promise<Disposable> {
+  // On getInitialData, forcibly notifies the extension.
+  const getInitialDataRemoveListener = broker.on("getInitialData", () => {
+    notifyFirebaseConfig(broker);
+  });
+
+  // TODO handle deletion of .firebaserc/.firebase.json/firemat.yaml
+
+  return Disposable.from(
+    { dispose: getInitialDataRemoveListener },
+    registerFirebaseConfig(broker),
+    registerRc(broker),
+    await registerDataConnectConfig(),
+  );
 }
 
 function asAbsolutePath(relativePath: string, from: string): string {
@@ -117,41 +206,39 @@ function asAbsolutePath(relativePath: string, from: string): string {
 
 /** @internal */
 export async function _readDataConnectConfigs(
-  config: ExpandedFirebaseConfig,
+  fdc: DataConnectMultiple,
 ): Promise<ResolvedDataConnectConfigs | undefined> {
   try {
     const dataConnects = await Promise.all(
-      config.dataConnect.map<Promise<ResolvedDataConnectConfig>>(
-        async (dataConnect) => {
-          // Paths may be relative to the firebase.json file.
-          const absoluteLocation = asAbsolutePath(
-            dataConnect.source,
-            _getConfigPath(),
-          );
-          const dataConnectYaml = await readDataConnectYaml(absoluteLocation);
+      fdc.map<Promise<ResolvedDataConnectConfig>>(async (dataConnect) => {
+        // Paths may be relative to the firebase.json file.
+        const absoluteLocation = asAbsolutePath(
+          dataConnect.source,
+          getConfigPath(),
+        );
+        const dataConnectYaml = await readDataConnectYaml(absoluteLocation);
 
-          const resolvedConnectors = await Promise.all(
-            dataConnectYaml.connectorDirs.map(async (connectorDir) => {
-              const connectorYaml = await readConnectorYaml(
-                // Paths may be relative to the dataconnect.yaml
-                asAbsolutePath(connectorDir, absoluteLocation),
-              );
+        const resolvedConnectors = await Promise.all(
+          dataConnectYaml.connectorDirs.map(async (connectorDir) => {
+            const connectorYaml = await readConnectorYaml(
+              // Paths may be relative to the dataconnect.yaml
+              asAbsolutePath(connectorDir, absoluteLocation),
+            );
 
-              return new ResolvedConnectorYaml(
-                asAbsolutePath(connectorDir, absoluteLocation),
-                connectorYaml,
-              );
-            }),
-          );
+            return new ResolvedConnectorYaml(
+              asAbsolutePath(connectorDir, absoluteLocation),
+              connectorYaml,
+            );
+          }),
+        );
 
-          return new ResolvedDataConnectConfig(
-            absoluteLocation,
-            dataConnectYaml,
-            resolvedConnectors,
-            dataConnect.location,
-          );
-        },
-      ),
+        return new ResolvedDataConnectConfig(
+          absoluteLocation,
+          dataConnectYaml,
+          resolvedConnectors,
+          dataConnect.location,
+        );
+      }),
     );
 
     return new ResolvedDataConnectConfigs(dataConnects);
@@ -162,12 +249,12 @@ export async function _readDataConnectConfigs(
 }
 
 /** @internal */
-export function _readRC(): RC | undefined {
-  const configPath = _getConfigPath();
-  if (!configPath) {
-    return undefined;
-  }
-  try {
+export function _readRC(): Result<RC | undefined> {
+  return Result.guard(() => {
+    const configPath = getConfigPath();
+    if (!configPath) {
+      return undefined;
+    }
     // RC.loadFile silences errors and returns a non-empty object if the rc file is
     // missing. Let's load it ourselves.
 
@@ -181,36 +268,32 @@ export function _readRC(): RC | undefined {
     const data = JSON.parse(json.toString());
 
     return new RC(rcPath, data);
-  } catch (e: any) {
-    pluginLogger.error(e.message);
-    throw e;
-  }
+  });
 }
 
 /** @internal */
-export function _readFirebaseConfig(): ExpandedFirebaseConfig | undefined {
-  const configPath = _getConfigPath();
-  if (!configPath) {
-    return undefined;
-  }
-  try {
+export function _readFirebaseConfig(): Result<Config | undefined> {
+  const result = Result.guard(() => {
+    const configPath = getConfigPath();
+    if (!configPath) {
+      return undefined;
+    }
     const config = Config.load({
       configPath: path.join(configPath, "firebase.json"),
     });
     if (!config) {
+      // Config.load may return null. We transform it to undefined.
       return undefined;
     }
 
-    const dataConnect = readFirebaseJson(config);
-    return { config, dataConnect };
-  } catch (e: any) {
-    if (e.status === 404) {
-      return undefined;
-    } else {
-      pluginLogger.error(e.message);
-      throw e;
-    }
+    return config;
+  });
+
+  if (result instanceof ResultError && (result.error as any).status === 404) {
+    return undefined;
   }
+
+  return result;
 }
 
 /** @internal */
@@ -239,8 +322,7 @@ export function getRootFolders() {
   return Array.from(new Set(folders));
 }
 
-/** @internal */
-export function _getConfigPath(): string | undefined {
+export function getConfigPath(): string | undefined {
   // Usually there's only one root folder unless someone is using a
   // multi-root VS Code workspace.
   // https://code.visualstudio.com/docs/editor/multi-root-workspaces
@@ -258,7 +340,5 @@ export function _getConfigPath(): string | undefined {
   });
 
   folder ??= rootFolders[0];
-
-  currentOptions.value.cwd = folder;
   return folder;
 }

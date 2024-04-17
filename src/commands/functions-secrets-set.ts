@@ -15,6 +15,8 @@ import {
   addVersion,
   destroySecretVersion,
   toSecretVersionResourceName,
+  isFunctionsManaged,
+  ensureApi,
 } from "../gcp/secretManager";
 import { check } from "../ensureApiEnabled";
 import { requireAuth } from "../requireAuth";
@@ -26,7 +28,7 @@ export const command = new Command("functions:secrets:set <KEY>")
   .description("Create or update a secret for use in Cloud Functions for Firebase.")
   .withForce("Automatically updates functions to use the new secret.")
   .before(requireAuth)
-  .before(secrets.ensureApi)
+  .before(ensureApi)
   .before(requirePermissions, [
     "secretmanager.secrets.create",
     "secretmanager.secrets.get",
@@ -61,7 +63,7 @@ export const command = new Command("functions:secrets:set <KEY>")
     const secretVersion = await addVersion(projectId, key, secretValue);
     logSuccess(`Created a new secret version ${toSecretVersionResourceName(secretVersion)}`);
 
-    if (!secrets.isFirebaseManaged(secret)) {
+    if (!isFunctionsManaged(secret)) {
       logBullet(
         "Please deploy your functions for the change to take effect by running:\n\t" +
           clc.bold("firebase deploy --only functions"),

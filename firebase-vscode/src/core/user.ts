@@ -24,15 +24,15 @@ export const isServiceAccount = computed(() => {
 });
 
 export function registerUser(broker: ExtensionBrokerImpl): Disposable {
-  effect(() => {
+  const sub1 = effect(() => {
     broker.send("notifyUsers", { users: Object.values(users.value) });
   });
 
-  effect(() => {
+  const sub2 = effect(() => {
     broker.send("notifyUserChanged", { user: currentUser.value });
   });
 
-  broker.on("getInitialData", async () => {
+  const sub3 = broker.on("getInitialData", async () => {
     const accounts = await getAccounts();
     users.value = accounts.reduce(
       (cumm, curr) => ({ ...cumm, [curr.user.email]: curr.user }),
@@ -40,7 +40,7 @@ export function registerUser(broker: ExtensionBrokerImpl): Disposable {
     );
   });
 
-  broker.on("addUser", async () => {
+  const sub4 = broker.on("addUser", async () => {
     const { user } = await login();
     users.value = {
       ...users.value,
@@ -49,11 +49,11 @@ export function registerUser(broker: ExtensionBrokerImpl): Disposable {
     currentUserId.value = user.email;
   });
 
-  broker.on("requestChangeUser", ({ user }) => {
+  const sub5 = broker.on("requestChangeUser", ({ user }) => {
     currentUserId.value = user.email;
   });
 
-  broker.on("logout", async ({ email }) => {
+  const sub6 = broker.on("logout", async ({ email }) => {
     try {
       await logoutUser(email);
       const accounts = await getAccounts();
@@ -67,7 +67,12 @@ export function registerUser(broker: ExtensionBrokerImpl): Disposable {
     }
   });
 
-  return {
-    dispose() {},
-  };
+  return Disposable.from(
+    { dispose: sub1 },
+    { dispose: sub2 },
+    { dispose: sub3 },
+    { dispose: sub4 },
+    { dispose: sub5 },
+    { dispose: sub6 }
+  );
 }

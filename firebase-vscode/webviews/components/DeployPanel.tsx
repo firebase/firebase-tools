@@ -7,7 +7,7 @@ import React, { useEffect, useState } from "react";
 import { Icon } from "./ui/Icon";
 import { Spacer } from "./ui/Spacer";
 import { Label } from "./ui/Text";
-import { broker } from "../globals/html-broker";
+import { broker, useBrokerListener } from "../globals/html-broker";
 import styles from "../sidebar.entry.scss";
 import { PanelSection } from "./ui/PanelSection";
 import { DeployState as DeployState } from "../webview-types";
@@ -51,15 +51,16 @@ export function DeployPanel({
     }
   }, [deployState]);
 
-  useEffect(() => {
-    broker.on("notifyPreviewChannelResponse", ({ id }: { id: string }) => {
+  useBrokerListener(
+    "notifyPreviewChannelResponse",
+    ({ id }: { id: string }) => {
       if (!id) {
         return;
       }
       setNewPreviewChannel(id);
       setDeployTarget(id);
-    });
-  }, [broker]);
+    }
+  );
 
   function getNewPreviewChannelName() {
     broker.send("promptUserForInput", {

@@ -1,9 +1,9 @@
 import { browser } from "@wdio/globals";
 import { StatusBar } from "../../utils/page_objects/status_bar";
-import { dataConnectTest } from "../../utils/test_hooks";
+import { firebaseTest } from "../../utils/test_hooks";
 import { FirebaseCommands } from "../../utils/page_objects/commands";
 
-dataConnectTest(
+firebaseTest(
   "If the emulator is not started, the status bar says so",
   async function () {
     const workbench = await browser.getWorkbench();
@@ -15,7 +15,7 @@ dataConnectTest(
   },
 );
 
-dataConnectTest("When emulators are running, lists them", async function () {
+firebaseTest("When emulators are running, lists them", async function () {
   const workbench = await browser.getWorkbench();
   const commands = new FirebaseCommands();
   const statusBar = new StatusBar(workbench);

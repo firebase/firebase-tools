@@ -5,7 +5,7 @@ import { FirebaseError } from "../../../error";
 import { SourceTokenScraper } from "./sourceTokenScraper";
 import { Timer } from "./timer";
 import { assertExhaustive } from "../../../functional";
-import { getHumanFriendlyRuntimeName } from "../runtimes";
+import { RUNTIMES } from "../runtimes/supported";
 import { eventarcOrigin, functionsOrigin, functionsV2Origin } from "../../../api";
 import { logger } from "../../../logger";
 import * as args from "../args";
@@ -25,7 +25,7 @@ import * as scheduler from "../../../gcp/cloudscheduler";
 import * as utils from "../../../utils";
 import * as services from "../services";
 import { AUTH_BLOCKING_EVENTS } from "../../../functions/events/v1";
-import { getDefaultComputeServiceAgent } from "../checkIam";
+import * as gce from "../../../gcp/computeEngine";
 import { getHumanFriendlyPlatformName } from "../functionsDeployHelper";
 
 // TODO: Tune this for better performance.
@@ -436,7 +436,7 @@ export class Fabricator {
     } else if (backend.isScheduleTriggered(endpoint)) {
       const invoker = endpoint.serviceAccount
         ? [endpoint.serviceAccount]
-        : [getDefaultComputeServiceAgent(this.projectNumber)];
+        : [gce.getDefaultServiceAccount(this.projectNumber)];
       await this.executor
         .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
         .catch(rethrowAs(endpoint, "set invoker"));
@@ -543,7 +543,7 @@ export class Fabricator {
     } else if (backend.isScheduleTriggered(endpoint)) {
       invoker = endpoint.serviceAccount
         ? [endpoint.serviceAccount]
-        : [getDefaultComputeServiceAgent(this.projectNumber)];
+        : [gce.getDefaultServiceAccount(this.projectNumber)];
     }
 
     if (invoker) {
@@ -731,7 +731,7 @@ export class Fabricator {
   }
 
   logOpStart(op: string, endpoint: backend.Endpoint): void {
-    const runtime = getHumanFriendlyRuntimeName(endpoint.runtime);
+    const runtime = RUNTIMES[endpoint.runtime].friendly;
     const platform = getHumanFriendlyPlatformName(endpoint.platform);
     const label = helper.getFunctionLabel(endpoint);
     utils.logLabeledBullet(
