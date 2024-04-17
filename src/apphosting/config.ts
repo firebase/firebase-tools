@@ -103,7 +103,7 @@ export function upsertEnv(document: yaml.Document, env: Env): void {
   envs.add(envYaml);
 }
 
-/** 
+/**
  * Given a secret name, guides the user whether they want to add that secret to apphosting.yaml.
  * If an apphosting.yaml exists and includes the secret already is used as a variable name, exist early.
  * If apphosting.yaml does not exist, offers to create it.
