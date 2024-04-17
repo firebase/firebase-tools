@@ -13,47 +13,6 @@ export function useBrokerListener<
   callback: (value: ExtensionToWebviewParamsMap[MessageT]) => void,
 ) {
   useEffect(() => {
-    broker.on(message, callback);
-    // TODO return a cleanup function to remove the listener
-  }, [message]);
-}
-
-/** Listen to messages, returning the latest sent event */
-export function useBroker<MessageT extends keyof ExtensionToWebviewParamsMap>(
-  message: Extract<MessageT, string>,
-  options?: {
-    initialRequest: keyof WebviewToExtensionParamsMap;
-  },
-): ExtensionToWebviewParamsMap[MessageT] | undefined {
-  const [value, setValue] = useState<
-    ExtensionToWebviewParamsMap[MessageT] | undefined
-  >();
-
-  useEffect(() => {
-    const unSub = broker.on(message, (value) => {
-      setValue(value);
-    });
-
-    // TODO return a cleanup function to remove the listener
-    return unSub;
-  }, [message]);
-
-  useEffect(() => {
-    if (options?.initialRequest) {
-      broker.send(options.initialRequest);
-    }
-  }, [options?.initialRequest]);
-
-  return value;
-}
-
-export function useBrokerListener<
-  MessageT extends keyof ExtensionToWebviewParamsMap,
->(
-  message: Extract<MessageT, string>,
-  callback: (value: ExtensionToWebviewParamsMap[MessageT]) => void,
-) {
-  useEffect(() => {
     return broker.on(message, callback);
   }, [message]);
 }
