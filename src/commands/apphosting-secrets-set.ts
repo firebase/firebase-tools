@@ -13,7 +13,7 @@ import * as config from "../apphosting/config";
 import * as utils from "../utils";
 
 export const command = new Command("apphosting:secrets:set <secretName>")
-  .description("grant service accounts permissions to the provided secret")
+  .description("create or update a secret for use in Firebase App Hosting")
   .option("-l, --location <location>", "optional location to retrict secret replication")
   // TODO: What is the right --force behavior for granting access? Seems correct to grant permissions
   // if there is only one set of accounts, but should maybe fail if there are more than one set of
@@ -35,8 +35,6 @@ export const command = new Command("apphosting:secrets:set <secretName>")
     'File path from which to read secret data. Set to "-" to read the secret data from stdin.',
   )
   .action(async (secretName: string, options: Options) => {
-    const howToAccess = `You can access the contents of the secret's latest value with ${clc.bold(`firebase apphosting:secrets:access ${secretName}`)}`;
-    const grantAccess = `To use this secret in your backend, you must grant access. You can do so in the future with ${clc.bold("firebase apphosting:secrets:grantAccess")}`;
     const projectId = needProjectId(options);
     const projectNumber = await needProjectNumber(options);
 
@@ -54,11 +52,12 @@ export const command = new Command("apphosting:secrets:set <secretName>")
 
     const version = await gcsm.addVersion(projectId, secretName, secretValue);
     utils.logSuccess(`Created new secret version ${gcsm.toSecretVersionResourceName(version)}`);
-    utils.logSuccess(howToAccess);
+    utils.logBullet(
+      `You can access the contents of the secret's latest value with ${clc.bold(`firebase apphosting:secrets:access ${secretName}\n`)}`,
+    );
 
     // If the secret already exists, we want to exit once the new version is added
     if (!created) {
-      utils.logWarning(grantAccess);
       return;
     }
 
@@ -66,7 +65,9 @@ export const command = new Command("apphosting:secrets:set <secretName>")
 
     // If we're not granting permissions, there's no point in adding to YAML either.
     if (!accounts.buildServiceAccounts.length && !accounts.runServiceAccounts.length) {
-      utils.logWarning(grantAccess);
+      utils.logWarning(
+        `To use this secret in your backend, you must grant access. You can do so in the future with ${clc.bold("firebase apphosting:secrets:grantaccess")}`,
+      );
 
       // TODO: For existing secrets, enter the grantSecretAccess dialog only when the necessary permissions don't exist.
     } else {

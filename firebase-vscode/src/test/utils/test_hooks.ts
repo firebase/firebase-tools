@@ -33,7 +33,7 @@ export function setup(cb: () => void) {
 }
 
 /** A custom "test" to work around "afterEach" not working with the current configs */
-export function firematTest(
+export function firebaseTest(
   description: string,
   cb: () => void | Promise<void>,
 ) {
@@ -59,7 +59,7 @@ export function firematTest(
   });
 }
 
-export function firematSuite(description: string, cb: () => void) {
+export function firebaseSuite(description: string, cb: () => void) {
   suite(description, () => {
     // Scope setups to the suite.
     const previousSetups = setups;

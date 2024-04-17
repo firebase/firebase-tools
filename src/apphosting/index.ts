@@ -1,5 +1,3 @@
-import * as clc from "colorette";
-
 import * as repo from "./repo";
 import * as poller from "../operation-poller";
 import * as apphosting from "../gcp/apphosting";
@@ -23,8 +21,8 @@ import { DEFAULT_REGION } from "./constants";
 import { ensure } from "../ensureApiEnabled";
 import * as deploymentTool from "../deploymentTool";
 import { DeepOmit } from "../metaprogramming";
+import * as apps from "./app";
 import { GitRepositoryLink } from "../gcp/devConnect";
-
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
 const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
@@ -39,6 +37,7 @@ const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationRes
  */
 export async function doSetup(
   projectId: string,
+  webAppName: string | null,
   location: string | null,
   serviceAccount: string | null,
   withDevConnect: boolean,
@@ -52,7 +51,6 @@ export async function doSetup(
   ]);
 
   const allowedLocations = (await apphosting.listLocations(projectId)).map((loc) => loc.locationId);
-
   if (location) {
     if (!allowedLocations.includes(location)) {
       throw new FirebaseError(
@@ -61,7 +59,7 @@ export async function doSetup(
     }
   }
 
-  logBullet("First we need a few details to create your backend.");
+  logBullet("First we need a few details to create your backend.\n");
 
   location =
     location ||
@@ -69,9 +67,7 @@ export async function doSetup(
       name: "region",
       type: "list",
       default: DEFAULT_REGION,
-      message:
-        "Please select a region " +
-        `(${clc.yellow("info")}: Your region determines where your backend is located):\n`,
+      message: "Select a region to host your backend:\n",
       choices: allowedLocations.map((loc) => ({ value: loc })),
     })) as string);
 
@@ -84,6 +80,13 @@ export async function doSetup(
     message: "Create a name for your backend [1-30 characters]",
   });
 
+  const webApp = await apps.getOrCreateWebApp(projectId, webAppName, backendId);
+  if (webApp) {
+    logSuccess(`Firebase web app set to ${webApp.name}.\n`);
+  } else {
+    logWarning(`Firebase web app not set`);
+  }
+
   const gitRepositoryConnection: Repository | GitRepositoryLink = withDevConnect
     ? await githubConnections.linkGitHubRepository(projectId, location)
     : await repo.linkGitHubRepository(projectId, location);
@@ -92,8 +95,7 @@ export async function doSetup(
     name: "rootDir",
     type: "input",
     default: "/",
-    message:
-      "Specify the path to the root of the app you would like to deploy (relative to the repo root)",
+    message: "Specify your app's root directory relative to your repository",
   });
 
   const backend = await createBackend(
@@ -102,6 +104,7 @@ export async function doSetup(
     backendId,
     gitRepositoryConnection,
     serviceAccount,
+    webApp?.id,
     rootDir,
   );
 
@@ -126,7 +129,7 @@ export async function doSetup(
 
   if (!confirmRollout) {
     logSuccess(`Successfully created backend:\n\t${backend.name}`);
-    logSuccess(`Your site will be deployed at:\n\thttps://${backend.uri}`);
+    logSuccess(`Your backend will be deployed at:\n\thttps://${backend.uri}`);
     return;
   }
 
@@ -139,7 +142,7 @@ export async function doSetup(
   });
 
   logSuccess(`Successfully created backend:\n\t${backend.name}`);
-  logSuccess(`Your site is now deployed at:\n\thttps://${backend.uri}`);
+  logSuccess(`Your backend is now deployed at:\n\thttps://${backend.uri}`);
 }
 
 /**
@@ -181,6 +184,7 @@ export async function createBackend(
   backendId: string,
   repository: Repository | GitRepositoryLink,
   serviceAccount: string | null,
+  webAppId: string | undefined,
   rootDir = "/",
 ): Promise<Backend> {
   const defaultServiceAccount = defaultComputeServiceAccountEmail(projectId);
@@ -192,6 +196,7 @@ export async function createBackend(
     },
     labels: deploymentTool.labels(),
     serviceAccount: serviceAccount || defaultServiceAccount,
+    appId: webAppId,
   };
 
   // TODO: remove computeServiceAccount when the backend supports the field.
@@ -361,4 +366,20 @@ export async function orchestrateRollout(
     );
   }
   return { rollout, build };
+}
+
+/**
+ * Deletes the given backend. Polls till completion.
+ */
+export async function deleteBackendAndPoll(
+  projectId: string,
+  location: string,
+  backendId: string,
+): Promise<void> {
+  const op = await apphosting.deleteBackend(projectId, location, backendId);
+  await poller.pollOperation<void>({
+    ...apphostingPollerOptions,
+    pollerName: `delete-${projectId}-${location}-${backendId}`,
+    operationResourceName: op.name,
+  });
 }

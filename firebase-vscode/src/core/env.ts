@@ -12,7 +12,7 @@ export const env = globalSignal<Environment>({
 });
 
 export function registerEnv(broker: ExtensionBrokerImpl): Disposable {
-  broker.on("getInitialData", async () => {
+  const sub = broker.on("getInitialData", async () => {
     pluginLogger.debug(
       `Value of process.env.MONOSPACE_ENV: ` + `${process.env.MONOSPACE_ENV}`
     );
@@ -22,7 +22,5 @@ export function registerEnv(broker: ExtensionBrokerImpl): Disposable {
     });
   });
 
-  return {
-    dispose() {},
-  };
+  return { dispose: sub };
 }

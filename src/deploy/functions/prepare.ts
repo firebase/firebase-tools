@@ -442,6 +442,7 @@ export async function loadCodebases(
       projectId,
       sourceDir,
       projectDir: options.config.projectDir,
+      runtime: codebaseConfig.runtime,
     };
     const firebaseJsonRuntime = codebaseConfig.runtime;
     if (firebaseJsonRuntime && !supported.isRuntime(firebaseJsonRuntime as string)) {

@@ -29,3 +29,5 @@ inquirer.prompt = async (prompts) => {
   }
   return answers;
 };
+
+inquirer.registerPrompt = () => {};
