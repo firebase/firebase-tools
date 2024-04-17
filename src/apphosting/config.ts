@@ -103,6 +103,13 @@ export function upsertEnv(document: yaml.Document, env: Env): void {
   envs.add(envYaml);
 }
 
+/** 
+ * Given a secret name, guides the user whether they want to add that secret to apphosting.yaml.
+ * If an apphosting.yaml exists and includes the secret already is used as a variable name, exist early.
+ * If apphosting.yaml does not exist, offers to create it.
+ * If env does not exist, offers to add it.
+ * If secretName is not a valid env var name, prompts for an env var name.
+ */
 export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
   // We must go through the exports object for stubbing to work in tests.
   const dynamicDispatch = exports as {
@@ -120,6 +127,7 @@ export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
   } else {
     projectYaml = new yaml.Document();
   }
+  // TODO: Should we search for any env where it has secret: secretName rather than variable: secretName?
   if (dynamicDispatch.findEnv(projectYaml, secretName)) {
     return;
   }
