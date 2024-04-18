@@ -1,1 +1,2 @@
 - fix non static check for not-found route in Next.js 14.2 (#7012)
+- Adds `*.local` to .gitignore and functions ignore for javascript,typescript, and python templates. (#7018)
