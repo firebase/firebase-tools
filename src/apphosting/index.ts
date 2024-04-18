@@ -244,10 +244,7 @@ async function provisionDefaultComputeServiceAccount(projectId: string): Promise
   await addServiceAccountToRoles(
     projectId,
     defaultComputeServiceAccountEmail(projectId),
-    [
-      "roles/firebaseapphosting.googleapis.com/computeRunner",
-      "roles/firebase.sdkAdminServiceAgent",
-    ],
+    ["roles/firebaseapphosting.computeRunner", "roles/firebase.sdkAdminServiceAgent"],
     /* skipAccountLookup= */ true,
   );
 }
