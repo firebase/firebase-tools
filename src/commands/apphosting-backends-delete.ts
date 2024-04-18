@@ -3,36 +3,26 @@ import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { FirebaseError } from "../error";
 import { promptOnce } from "../prompt";
-import { DEFAULT_REGION } from "../apphosting/constants";
 import * as utils from "../utils";
 import * as apphosting from "../gcp/apphosting";
 import { printBackendsTable } from "./apphosting-backends-list";
-import { deleteBackendAndPoll } from "../apphosting";
+import { deleteBackendAndPoll, promptLocation } from "../apphosting";
 
 export const command = new Command("apphosting:backends:delete <backend>")
   .description("delete a Firebase App Hosting backend")
-  .option("-l, --location <location>", "specify the region of the backend", "")
+  .option("-l, --location <location>", "specify the location of the backend", "")
   .withForce()
   .before(apphosting.ensureApiEnabled)
   .action(async (backendId: string, options: Options) => {
     const projectId = needProjectId(options);
     let location = options.location as string;
-    if (!backendId) {
-      throw new FirebaseError("Backend id can't be empty.");
-    }
 
-    if (!location) {
-      const allowedLocations = (await apphosting.listLocations(projectId)).map(
-        (loc) => loc.locationId,
-      );
-      location = await promptOnce({
-        name: "region",
-        type: "list",
-        default: DEFAULT_REGION,
-        message: "Please select the region of the backend you'd like to delete:",
-        choices: allowedLocations,
-      });
-    }
+    location =
+      location ||
+      (await promptLocation(
+        projectId,
+        /* prompt= */ "Please select the location of the backend you'd like to delete:",
+      ));
 
     let backend: apphosting.Backend;
     try {
