@@ -1,7 +1,7 @@
 import { sync as spawnSync } from "cross-spawn";
 import { copy, pathExists } from "fs-extra";
 import { join } from "path";
-import { load as loadYaml } from "js-yaml";
+import * as yaml from "yaml";
 import { readFile } from "fs/promises";
 
 import { BuildResult, Discovery, FrameworkType, SupportLevel } from "../interfaces";
@@ -17,7 +17,7 @@ export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!(await pathExists(join(dir, "pubspec.yaml")))) return;
   if (!(await pathExists(join(dir, "web")))) return;
   const pubSpecBuffer = await readFile(join(dir, "pubspec.yaml"));
-  const pubSpec = loadYaml(pubSpecBuffer.toString());
+  const pubSpec = yaml.parse(pubSpecBuffer.toString());
   const usingFlutter = pubSpec.dependencies?.flutter;
   if (!usingFlutter) return;
   return { mayWantBackend: false };

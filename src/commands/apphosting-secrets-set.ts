@@ -1,20 +1,16 @@
-import * as tty from "tty";
 import * as clc from "colorette";
-import { join } from "path";
 
 import { Command } from "../command";
 import { Options } from "../options";
 import { needProjectId, needProjectNumber } from "../projectUtils";
 import { requireAuth } from "../requireAuth";
-import * as fs from "fs";
 import * as gcsm from "../gcp/secretManager";
 import * as apphosting from "../gcp/apphosting";
 import { requirePermissions } from "../requirePermissions";
-import { confirm, promptOnce } from "../prompt";
 import * as secrets from "../apphosting/secrets";
 import * as dialogs from "../apphosting/secrets/dialogs";
 import * as config from "../apphosting/config";
-import { logSuccess, logWarning, logBullet } from "../utils";
+import * as utils from "../utils";
 
 export const command = new Command("apphosting:secrets:set <secretName>")
   .description("create or update a secret for use in Firebase App Hosting")
@@ -45,25 +41,18 @@ export const command = new Command("apphosting:secrets:set <secretName>")
     const created = await secrets.upsertSecret(projectId, secretName, options.location as string);
     if (created === null) {
       return;
+    } else if (created) {
+      utils.logSuccess(`Created new secret projects/${projectId}/secrets/${secretName}`);
     }
 
-    let secretValue;
-    if ((!options.dataFile || options.dataFile === "-") && tty.isatty(0)) {
-      secretValue = await promptOnce({
-        type: "password",
-        message: `Enter a value for ${secretName}`,
-      });
-    } else {
-      let dataFile: string | number = 0;
-      if (options.dataFile && options.dataFile !== "-") {
-        dataFile = options.dataFile as string;
-      }
-      secretValue = fs.readFileSync(dataFile, "utf-8");
-    }
+    const secretValue = await utils.readSecretValue(
+      `Enter a value for ${secretName}`,
+      options.dataFile as string | undefined,
+    );
 
     const version = await gcsm.addVersion(projectId, secretName, secretValue);
-    logSuccess(`Created new secret version ${gcsm.toSecretVersionResourceName(version)}`);
-    logBullet(
+    utils.logSuccess(`Created new secret version ${gcsm.toSecretVersionResourceName(version)}`);
+    utils.logBullet(
       `You can access the contents of the secret's latest value with ${clc.bold(`firebase apphosting:secrets:access ${secretName}\n`)}`,
     );
 
@@ -76,7 +65,7 @@ export const command = new Command("apphosting:secrets:set <secretName>")
 
     // If we're not granting permissions, there's no point in adding to YAML either.
     if (!accounts.buildServiceAccounts.length && !accounts.runServiceAccounts.length) {
-      logWarning(
+      utils.logWarning(
         `To use this secret in your backend, you must grant access. You can do so in the future with ${clc.bold("firebase apphosting:secrets:grantaccess")}`,
       );
 
@@ -85,35 +74,5 @@ export const command = new Command("apphosting:secrets:set <secretName>")
       await secrets.grantSecretAccess(projectId, secretName, accounts);
     }
 
-    // Note: The API proposal suggested that we would check if the env exists. This is stupidly hard because the YAML may not exist yet.
-    let path = config.yamlPath(process.cwd());
-    let yaml: config.Config = {};
-    if (path) {
-      yaml = config.load(path);
-      if (yaml.env?.find((env) => env.variable === secretName)) {
-        return;
-      }
-    }
-    const addToYaml = await confirm({
-      message: "Would you like to add this secret to apphosting.yaml?",
-      default: true,
-    });
-    if (!addToYaml) {
-      return;
-    }
-    if (!path) {
-      path = await promptOnce({
-        message:
-          "It looks like you don't have an apphosting.yaml yet. Where would you like to store it?",
-        default: process.cwd(),
-      });
-      path = join(path, "apphosting.yaml");
-    }
-    const envName = await dialogs.envVarForSecret(secretName);
-    yaml.env = yaml.env || [];
-    yaml.env.push({
-      variable: envName,
-      secret: secretName,
-    });
-    config.store(path, yaml);
+    await config.maybeAddSecretToYaml(secretName);
   });
