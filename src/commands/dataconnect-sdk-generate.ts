@@ -4,7 +4,7 @@ import { Command } from "../command";
 import { Options } from "../options";
 import { DataConnectEmulator, DataConnectEmulatorArgs } from "../emulator/dataconnectEmulator";
 import { needProjectId } from "../projectUtils";
-import { load } from "../dataconnect/source";
+import { load } from "../dataconnect/load";
 import { readFirebaseJson } from "../dataconnect/fileUtils";
 import { logger } from "../logger";
 

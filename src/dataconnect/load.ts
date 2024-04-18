@@ -33,6 +33,7 @@ export async function load(
 
   return {
     serviceName,
+    sourceDirectory,
     schema: {
       name: `${serviceName}/schemas/${SCHEMA_ID}`,
       primaryDatasource: toDatasource(projectId, locationId, dataConnectYaml.schema.datasource),

@@ -65,6 +65,30 @@ export interface Diff {
   destructive: boolean;
 }
 
+export interface GraphqlError {
+  message: string;
+  locations: {
+    line: number;
+    column: number;
+  }[];
+  extensions: {
+    file?: string;
+    [key: string]: any;
+  };
+}
+export interface BuildResult {
+  errors?: GraphqlError[];
+  deploymentMetadata?: DeploymentMetadata;
+}
+
+export interface DeploymentMetadata {
+  primaryDataSource?: {
+    postgres?: {
+      requiredExtensions?: string[];
+    };
+  };
+}
+
 // YAML types
 export interface DataConnectYaml {
   specVersion?: string;
@@ -113,12 +137,14 @@ export interface KotlinSDK {
 // Helper types && converters
 export interface ServiceInfo {
   serviceName: string;
+  sourceDirectory: string;
   schema: Schema;
   connectorInfo: {
     connector: Connector;
     connectorYaml: ConnectorYaml;
   }[];
   dataConnectYaml: DataConnectYaml;
+  deploymentMetadata?: DeploymentMetadata;
 }
 
 export function toDatasource(

@@ -7,6 +7,7 @@ import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
 import { FirebaseError } from "../error";
 import { EmulatorLogger } from "./emulatorLogger";
 import { RC } from "../rc";
+import { BuildResult } from "../dataconnect/types";
 
 export interface DataConnectEmulatorArgs {
   projectId?: string;
@@ -69,6 +70,22 @@ export class DataConnectEmulator implements EmulatorInstance {
       throw new FirebaseError(`Error starting up Data Connect emulator: ${res.error}`);
     }
     return res.stdout;
+  }
+
+  async build(): Promise<BuildResult> {
+    const commandInfo = await downloadIfNecessary(Emulators.DATACONNECT);
+    const cmd = ["build", `--config_dir=${this.args.configDir}`];
+
+    const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8" });
+    if (res.error) {
+      throw new FirebaseError(`Error starting up Data Connect emulator: ${res.error}`);
+    }
+    try {
+      return JSON.parse(res.stdout) as BuildResult;
+    } catch (err) {
+      // JSON parse errors are unreadable.
+      throw new FirebaseError("Unable to parse `fdc build` output");
+    }
   }
 
   private getLocalConectionString() {

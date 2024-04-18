@@ -6,7 +6,7 @@ import { ConnectorYaml, DataConnectYaml, File, ServiceInfo } from "./types";
 import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
 import { Config } from "../config";
 import { DataConnectMultiple } from "../firebaseConfig";
-import { load } from "./source";
+import { load } from "./load";
 
 export function readFirebaseJson(config: Config): DataConnectMultiple {
   if (!config.has("dataconnect")) {
