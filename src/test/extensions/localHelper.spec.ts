@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import * as fs from "fs-extra";
-import * as yaml from "js-yaml";
+import * as yaml from "yaml";
 import { resolve } from "path";
 import * as sinon from "sinon";
 
@@ -44,14 +44,14 @@ describe("localHelper", () => {
       it("should return a rejected promise with a useful error if extension.yaml is invalid", async () => {
         await expect(localHelper.getLocalExtensionSpec(EXT_FIXTURE_DIRECTORY)).to.be.rejectedWith(
           FirebaseError,
-          /YAML Error.+multiline key.+line.+/,
+          /YAML Error.+Implicit keys need to be on a single line.+line 2.+/,
         );
       });
     });
 
     describe("other YAML errors", () => {
       beforeEach(() => {
-        sandbox.stub(yaml, "safeLoad").throws(new Error("not the files you are looking for"));
+        sandbox.stub(yaml, "parse").throws(new Error("not the files you are looking for"));
       });
 
       afterEach(() => {
