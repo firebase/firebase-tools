@@ -1,6 +1,6 @@
 import * as fs from "fs-extra";
 import * as path from "path";
-import * as yaml from "js-yaml";
+import * as yaml from "yaml";
 
 import { fileExistsSync } from "../fsutils";
 import { FirebaseError } from "../error";
@@ -73,15 +73,15 @@ export function isLocalExtension(extensionName: string): boolean {
 }
 
 /**
- * Wraps `yaml.safeLoad` with an error handler to present better YAML parsing
+ * Wraps `yaml.parse` with an error handler to present better YAML parsing
  * errors.
  * @param source an unparsed YAML string
  */
 function parseYAML(source: string): any {
   try {
-    return yaml.safeLoad(source);
+    return yaml.parse(source);
   } catch (err: any) {
-    if (err instanceof yaml.YAMLException) {
+    if (err instanceof yaml.YAMLParseError) {
       throw new FirebaseError(`YAML Error: ${err.message}`, { original: err });
     }
     throw new FirebaseError(err.message);

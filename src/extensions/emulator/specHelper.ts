@@ -1,4 +1,4 @@
-import * as yaml from "js-yaml";
+import * as yaml from "yaml";
 import * as path from "path";
 import * as fs from "fs-extra";
 
@@ -22,9 +22,9 @@ const validFunctionTypes = [
  */
 function wrappedSafeLoad(source: string): any {
   try {
-    return yaml.safeLoad(source);
+    return yaml.parse(source);
   } catch (err: any) {
-    if (err instanceof yaml.YAMLException) {
+    if (err instanceof yaml.YAMLParseError) {
       throw new FirebaseError(`YAML Error: ${err.message}`, { original: err });
     }
     throw err;

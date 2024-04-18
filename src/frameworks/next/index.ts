@@ -253,11 +253,11 @@ export async function build(
         dynamicRoutes,
       );
 
-      if (
-        unrenderedServerComponents.has("/_not-found") &&
-        (await hasStaticAppNotFoundComponent(dir, distDir))
-      ) {
-        unrenderedServerComponents.delete("/_not-found");
+      const notFoundPageKey = ["/_not-found", "/_not-found/page"].find((key) =>
+        unrenderedServerComponents.has(key),
+      );
+      if (notFoundPageKey && (await hasStaticAppNotFoundComponent(dir, distDir))) {
+        unrenderedServerComponents.delete(notFoundPageKey);
       }
 
       for (const key of unrenderedServerComponents) {
