@@ -181,13 +181,25 @@ async function languageSetup(setup: any, config: Config): Promise<any> {
   const cbconfig = configForCodebase(setup.config.functions, setup.functions.codebase);
   switch (language) {
     case "javascript":
-      cbconfig.ignore = ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"];
+      cbconfig.ignore = [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local",
+      ];
       break;
     case "typescript":
-      cbconfig.ignore = ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"];
+      cbconfig.ignore = [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local",
+      ];
       break;
     case "python":
-      cbconfig.ignore = ["venv", ".git", "firebase-debug.log", "firebase-debug.*.log"];
+      cbconfig.ignore = ["venv", ".git", "firebase-debug.log", "firebase-debug.*.log", "*.local"];
       break;
   }
   return require("./" + language).setup(setup, config);
