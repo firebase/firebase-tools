@@ -514,7 +514,7 @@ firebaseSuite("registerConfig", () => {
   });
 
   firebaseTest(
-    "listens to create/update/delete events on firebase.json/.firebaserc/firemat.yaml",
+    "listens to create/update/delete events on firebase.json/.firebaserc/dataconnect.yaml",
     async () => {
       const watcherListeners: Record<
         string,
@@ -565,8 +565,8 @@ firebaseSuite("registerConfig", () => {
       const rcFile = path.join(dir, ".firebaserc");
       const configListeners = watcherListeners["firebase.json"]!;
       const configFile = path.join(dir, "firebase.json");
-      const dataConnectListeners = watcherListeners["firemat.yaml"]!;
-      const dataConnectFile = path.join(dir, "firemat.yaml");
+      const dataConnectListeners = watcherListeners["**/{dataconnect,connector}.yaml"]!;
+      const dataConnectFile = path.join(dir, "**/{dataconnect,connector}.yaml");
 
       function testEvent(
         index: number,

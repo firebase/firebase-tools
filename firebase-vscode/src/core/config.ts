@@ -135,7 +135,7 @@ async function registerDataConnectConfig(): Promise<Disposable> {
     ),
   );
 
-  const dataConnectWatcher = _createWatcher("firemat.yaml");
+  const dataConnectWatcher = _createWatcher("**/{dataconnect,connector}.yaml");
   dataConnectWatcher?.onDidChange(
     async () =>
       (dataConnectConfigs.value = await _readDataConnectConfigs(
