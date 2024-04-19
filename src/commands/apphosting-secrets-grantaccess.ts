@@ -37,8 +37,7 @@ export const command = new Command("apphosting:secrets:grantaccess <secretName>"
     let location = options.location as string;
 
     location =
-      location ||
-      (await promptLocation(projectId, /* prompt= */ "Please select the location of your backend"));
+      location || (await promptLocation(projectId, "Please select the location of your backend"));
 
     // TODO: consider showing dialog if --backend is missing
 

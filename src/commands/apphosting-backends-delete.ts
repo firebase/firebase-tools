@@ -21,7 +21,7 @@ export const command = new Command("apphosting:backends:delete <backend>")
       location ||
       (await promptLocation(
         projectId,
-        /* prompt= */ "Please select the location of the backend you'd like to delete:",
+        "Please select the location of the backend you'd like to delete:",
       ));
 
     let backend: apphosting.Backend;
