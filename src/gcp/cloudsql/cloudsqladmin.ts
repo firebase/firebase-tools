@@ -150,7 +150,7 @@ export async function createInstance(
         // TODO: Any other flags we want? https://cloud.google.com/sql/docs/postgres/flags
       ],
       storageAutoResize: false,
-      userLabels: { "firebase-data-connect": "true" },
+      userLabels: { "firebase-data-connect": "ft" },
     },
   });
   const opName = `projects/${projectId}/operations/${op.body.name}`;
