@@ -9,6 +9,7 @@ import { setEnabled } from "../../../src/experiments";
 import { registerUser } from "./user";
 import { registerProject } from "./project";
 import { registerQuickstart } from "./quickstart";
+import { registerOptions } from "../options";
 
 export function registerCore({
   broker,
@@ -40,11 +41,12 @@ export function registerCore({
   });
 
   return Disposable.from(
+    registerOptions(context),
     registerConfig(broker),
     registerEmulators(broker),
     registerEnv(broker),
     registerUser(broker),
-    registerProject({ context, broker }),
+    registerProject(broker),
     registerQuickstart(broker),
     { dispose: sub1 },
     { dispose: sub2 },

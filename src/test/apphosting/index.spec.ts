@@ -1,33 +1,52 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
 
+import * as prompt from "../../prompt";
 import * as apphosting from "../../gcp/apphosting";
 import * as iam from "../../gcp/iam";
 import * as resourceManager from "../../gcp/resourceManager";
 import * as poller from "../../operation-poller";
-import { createBackend, setDefaultTrafficPolicy } from "../../apphosting/index";
+import {
+  createBackend,
+  deleteBackendAndPoll,
+  promptLocation,
+  setDefaultTrafficPolicy,
+} from "../../apphosting/index";
 import * as deploymentTool from "../../deploymentTool";
 import { FirebaseError } from "../../error";
 
 describe("operationsConverter", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
+  const projectId = "projectId";
+  const location = "us-central1";
+  const backendId = "backendId";
 
+  let promptOnceStub: sinon.SinonStub;
   let pollOperationStub: sinon.SinonStub;
   let createBackendStub: sinon.SinonStub;
+  let deleteBackendStub: sinon.SinonStub;
   let updateTrafficStub: sinon.SinonStub;
+  let listLocationsStub: sinon.SinonStub;
   let createServiceAccountStub: sinon.SinonStub;
   let addServiceAccountToRolesStub: sinon.SinonStub;
 
   beforeEach(() => {
+    promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
     pollOperationStub = sandbox
       .stub(poller, "pollOperation")
       .throws("Unexpected pollOperation call");
     createBackendStub = sandbox
       .stub(apphosting, "createBackend")
       .throws("Unexpected createBackend call");
+    deleteBackendStub = sandbox
+      .stub(apphosting, "deleteBackend")
+      .throws("Unexpected deleteBackend call");
     updateTrafficStub = sandbox
       .stub(apphosting, "updateTraffic")
       .throws("Unexpected updateTraffic call");
+    listLocationsStub = sandbox
+      .stub(apphosting, "listLocations")
+      .throws("Unexpected listLocations call");
     createServiceAccountStub = sandbox
       .stub(iam, "createServiceAccount")
       .throws("Unexpected createServiceAccount call");
@@ -41,9 +60,7 @@ describe("operationsConverter", () => {
   });
 
   describe("onboardBackend", () => {
-    const projectId = "projectId";
-    const location = "us-central1";
-    const backendId = "backendId";
+    const webAppId = "webAppId";
 
     const op = {
       name: `projects/${projectId}/locations/${location}/backends/${backendId}`,
@@ -75,6 +92,7 @@ describe("operationsConverter", () => {
         backendId,
         cloudBuildConnRepo,
         "custom-service-account",
+        webAppId,
       );
 
       const backendInput: Omit<apphosting.Backend, apphosting.BackendOutputOnlyFields> = {
@@ -84,6 +102,7 @@ describe("operationsConverter", () => {
           rootDirectory: "/",
         },
         labels: deploymentTool.labels(),
+        appId: webAppId,
       };
       expect(createBackendStub).to.be.calledWith(projectId, location, backendInput);
     });
@@ -110,6 +129,7 @@ describe("operationsConverter", () => {
         backendId,
         cloudBuildConnRepo,
         /* serviceAccount= */ null,
+        webAppId,
       );
 
       // CreateBackend should be called twice; once initially and once after the service account was created
@@ -137,6 +157,7 @@ describe("operationsConverter", () => {
           backendId,
           cloudBuildConnRepo,
           /* serviceAccount= */ "my-service-account",
+          webAppId,
         ),
       ).to.be.rejectedWith(
         FirebaseError,
@@ -173,6 +194,59 @@ describe("operationsConverter", () => {
             },
           ],
         },
+      });
+    });
+  });
+
+  describe("delete backend", () => {
+    it("should delete a backend", async () => {
+      const op = {
+        name: `projects/${projectId}/locations/${location}/backends/${backendId}`,
+        done: true,
+      };
+
+      deleteBackendStub.resolves(op);
+      pollOperationStub.resolves();
+
+      await deleteBackendAndPoll(projectId, location, backendId);
+      expect(deleteBackendStub).to.be.calledWith(projectId, location, backendId);
+    });
+  });
+
+  describe("prompt location", () => {
+    const supportedLocations = [{ name: "us-central1", locationId: "us-central1" }];
+
+    beforeEach(() => {
+      listLocationsStub.returns(supportedLocations);
+      promptOnceStub.returns(supportedLocations[0].locationId);
+    });
+
+    it("returns a location selection", async () => {
+      const location = await promptLocation(projectId);
+      expect(location).to.be.eq("us-central1");
+    });
+
+    it("uses a default location prompt if none is provided", async () => {
+      await promptLocation(projectId);
+
+      expect(promptOnceStub).to.be.calledWith({
+        name: "location",
+        type: "list",
+        default: "us-central1",
+        message: "Please select a location:",
+        choices: ["us-central1"],
+      });
+    });
+
+    it("uses a custom location prompt if provided", async () => {
+      await promptLocation(projectId, "Custom location prompt:");
+
+      expect(promptOnceStub).to.be.calledWith({
+        name: "location",
+        type: "list",
+        default: "us-central1",
+        message: "Custom location prompt:",
+        choices: ["us-central1"],
       });
     });
   });

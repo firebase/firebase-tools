@@ -17,12 +17,12 @@ import * as iam from "../gcp/iam";
 import { Repository } from "../gcp/cloudbuild";
 import { FirebaseError } from "../error";
 import { promptOnce } from "../prompt";
-import { DEFAULT_REGION } from "./constants";
+import { DEFAULT_LOCATION } from "./constants";
 import { ensure } from "../ensureApiEnabled";
 import * as deploymentTool from "../deploymentTool";
 import { DeepOmit } from "../metaprogramming";
+import * as apps from "./app";
 import { GitRepositoryLink } from "../gcp/devConnect";
-
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
 const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
@@ -37,6 +37,7 @@ const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationRes
  */
 export async function doSetup(
   projectId: string,
+  webAppName: string | null,
   location: string | null,
   serviceAccount: string | null,
   withDevConnect: boolean,
@@ -50,7 +51,6 @@ export async function doSetup(
   ]);
 
   const allowedLocations = (await apphosting.listLocations(projectId)).map((loc) => loc.locationId);
-
   if (location) {
     if (!allowedLocations.includes(location)) {
       throw new FirebaseError(
@@ -62,16 +62,8 @@ export async function doSetup(
   logBullet("First we need a few details to create your backend.\n");
 
   location =
-    location ||
-    ((await promptOnce({
-      name: "region",
-      type: "list",
-      default: DEFAULT_REGION,
-      message: "Select a region to host your backend:\n",
-      choices: allowedLocations.map((loc) => ({ value: loc })),
-    })) as string);
-
-  logSuccess(`Region set to ${location}.\n`);
+    location || (await promptLocation(projectId, "Select a location to host your backend:\n"));
+  logSuccess(`Location set to ${location}.\n`);
 
   const backendId = await promptNewBackendId(projectId, location, {
     name: "backendId",
@@ -79,6 +71,13 @@ export async function doSetup(
     default: "my-web-app",
     message: "Create a name for your backend [1-30 characters]",
   });
+
+  const webApp = await apps.getOrCreateWebApp(projectId, webAppName, backendId);
+  if (webApp) {
+    logSuccess(`Firebase web app set to ${webApp.name}.\n`);
+  } else {
+    logWarning(`Firebase web app not set`);
+  }
 
   const gitRepositoryConnection: Repository | GitRepositoryLink = withDevConnect
     ? await githubConnections.linkGitHubRepository(projectId, location)
@@ -97,6 +96,7 @@ export async function doSetup(
     backendId,
     gitRepositoryConnection,
     serviceAccount,
+    webApp?.id,
     rootDir,
   );
 
@@ -176,6 +176,7 @@ export async function createBackend(
   backendId: string,
   repository: Repository | GitRepositoryLink,
   serviceAccount: string | null,
+  webAppId: string | undefined,
   rootDir = "/",
 ): Promise<Backend> {
   const defaultServiceAccount = defaultComputeServiceAccountEmail(projectId);
@@ -187,6 +188,7 @@ export async function createBackend(
     },
     labels: deploymentTool.labels(),
     serviceAccount: serviceAccount || defaultServiceAccount,
+    appId: webAppId,
   };
 
   // TODO: remove computeServiceAccount when the backend supports the field.
@@ -356,4 +358,38 @@ export async function orchestrateRollout(
     );
   }
   return { rollout, build };
+}
+
+/**
+ * Deletes the given backend. Polls till completion.
+ */
+export async function deleteBackendAndPoll(
+  projectId: string,
+  location: string,
+  backendId: string,
+): Promise<void> {
+  const op = await apphosting.deleteBackend(projectId, location, backendId);
+  await poller.pollOperation<void>({
+    ...apphostingPollerOptions,
+    pollerName: `delete-${projectId}-${location}-${backendId}`,
+    operationResourceName: op.name,
+  });
+}
+
+/**
+ * Prompts the user for a location.
+ */
+export async function promptLocation(
+  projectId: string,
+  prompt = "Please select a location:",
+): Promise<string> {
+  const allowedLocations = (await apphosting.listLocations(projectId)).map((loc) => loc.locationId);
+
+  return (await promptOnce({
+    name: "location",
+    type: "list",
+    default: DEFAULT_LOCATION,
+    message: prompt,
+    choices: allowedLocations,
+  })) as string;
 }

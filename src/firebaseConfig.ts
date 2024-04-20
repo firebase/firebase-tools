@@ -7,7 +7,7 @@
 
 import type { HttpsOptions } from "firebase-functions/v2/https";
 import { IngressSetting, MemoryOption, VpcEgressSetting } from "firebase-functions/v2/options";
-import { Runtime, DecommissionedRuntime } from "./deploy/functions/runtimes/supported";
+import { Runtime, DecommissionedRuntime } from "./deploy/functions/runtimes/supported/types";
 
 /**
  * Creates a type that requires at least one key to be present in an interface

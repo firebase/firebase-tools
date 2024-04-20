@@ -25,7 +25,7 @@ interface Codebase {
 /**
  * Specifies how Backend's data is replicated and served.
  *   GLOBAL_ACCESS: Stores and serves content from multiple points-of-presence (POP)
- *   REGIONAL_STRICT: Restricts data and serving infrastructure in Backend's region
+ *   REGIONAL_STRICT: Restricts data and serving infrastructure in Backend's location
  *
  */
 export type ServingLocality = "GLOBAL_ACCESS" | "REGIONAL_STRICT";
@@ -41,6 +41,7 @@ export interface Backend {
   updateTime: string;
   uri: string;
   serviceAccount?: string;
+  appId?: string;
 }
 
 export type BackendOutputOnlyFields = "name" | "createTime" | "updateTime" | "uri";
@@ -301,7 +302,7 @@ export async function getBackend(
 }
 
 /**
- * List all backends present in a project and region.
+ * List all backends present in a project and location.
  */
 export async function listBackends(
   projectId: string,

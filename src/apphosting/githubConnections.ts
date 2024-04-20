@@ -166,7 +166,7 @@ async function createFullyInstalledConnection(
 
   while (conn.installationState.stage !== "COMPLETE") {
     utils.logBullet("Install the Firebase GitHub app to enable access to GitHub repositories");
-    const targetUri = conn.installationState.actionUri.replace("install_v2", "direct_install_v2");
+    const targetUri = conn.installationState.actionUri;
     utils.logBullet(targetUri);
     await utils.openInBrowser(targetUri);
     await promptOnce({
