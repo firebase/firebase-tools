@@ -223,7 +223,7 @@ export function assertEnabled(name: ExperimentName, task: string): void {
           "FIREBASE_CLI_EXPERIMENTS",
         )} environment variable to ${filename}, like so: ${italic(`
 
-- uses: FirebaseExtended/action-hosting-deploy@v0
+- uses: FirebaseExtended/action-hosting-deploy@ac8041b3b04337509168113bf98b95879df22322
   with:
     ...
   env:
