@@ -371,16 +371,16 @@ describe("webframeworks", function (this) {
         .map((it) => (it.startsWith("/") ? it.substring(1) : it));
 
       const EXPECTED_PATTERNS = [
-        `${NEXT_BASE_PATH}\/_next\/static\/chunks\/[^-]+-[^\.]+\.js`,
-        `${NEXT_BASE_PATH}\/_next\/static\/chunks\/app\/layout-[^\.]+\.js`,
-        `${NEXT_BASE_PATH}\/_next\/static\/chunks\/main-[^\.]+\.js`,
-        `${NEXT_BASE_PATH}\/_next\/static\/chunks\/main-app-[^\.]+\.js`,
-        `${NEXT_BASE_PATH}\/_next\/static\/chunks\/pages\/_app-[^\.]+\.js`,
-        `${NEXT_BASE_PATH}\/_next\/static\/chunks\/pages\/_error-[^\.]+\.js`,
-        `${NEXT_BASE_PATH}\/_next\/static\/chunks\/pages\/index-[^\.]+\.js`,
-        `${NEXT_BASE_PATH}\/_next\/static\/chunks\/polyfills-[^\.]+\.js`,
-        `${NEXT_BASE_PATH}\/_next\/static\/chunks\/webpack-[^\.]+\.js`,
-        `${NEXT_BASE_PATH}\/_next\/static\/css\/[^\.]+\.css`,
+        join(NEXT_BASE_PATH, "_next", "static", "chunks", "[^-]+-[^.]+.js"),
+        join(NEXT_BASE_PATH, "_next", "static", "chunks", "app", "layout-[^.]+.js"),
+        join(NEXT_BASE_PATH, "_next", "static", "chunks", "main-[^.]+.js"),
+        join(NEXT_BASE_PATH, "_next", "static", "chunks", "main-app-[^.]+.js"),
+        join(NEXT_BASE_PATH, "_next", "static", "chunks", "pages", "_app-[^.]+.js"),
+        join(NEXT_BASE_PATH, "_next", "static", "chunks", "pages", "_error-[^.]+.js"),
+        join(NEXT_BASE_PATH, "_next", "static", "chunks", "pages", "index-[^.]+.js"),
+        join(NEXT_BASE_PATH, "_next", "static", "chunks", "polyfills-[^.]+.js"),
+        join(NEXT_BASE_PATH, "_next", "static", "chunks", "webpack-[^.]+.js"),
+        join(NEXT_BASE_PATH, "_next", "static", "css", "[^.]+.css"),
       ].map((it) => new RegExp(it));
 
       const files = await getFilesListFromDir(`${NEXT_OUTPUT_PATH}/hosting`);
