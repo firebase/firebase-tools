@@ -1,6 +1,7 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
 
+import * as prompt from "../../prompt";
 import * as apphosting from "../../gcp/apphosting";
 import * as iam from "../../gcp/iam";
 import * as resourceManager from "../../gcp/resourceManager";
@@ -8,6 +9,7 @@ import * as poller from "../../operation-poller";
 import {
   createBackend,
   deleteBackendAndPoll,
+  promptLocation,
   setDefaultTrafficPolicy,
 } from "../../apphosting/index";
 import * as deploymentTool from "../../deploymentTool";
@@ -19,14 +21,17 @@ describe("operationsConverter", () => {
   const location = "us-central1";
   const backendId = "backendId";
 
+  let promptOnceStub: sinon.SinonStub;
   let pollOperationStub: sinon.SinonStub;
   let createBackendStub: sinon.SinonStub;
   let deleteBackendStub: sinon.SinonStub;
   let updateTrafficStub: sinon.SinonStub;
+  let listLocationsStub: sinon.SinonStub;
   let createServiceAccountStub: sinon.SinonStub;
   let addServiceAccountToRolesStub: sinon.SinonStub;
 
   beforeEach(() => {
+    promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
     pollOperationStub = sandbox
       .stub(poller, "pollOperation")
       .throws("Unexpected pollOperation call");
@@ -39,6 +44,9 @@ describe("operationsConverter", () => {
     updateTrafficStub = sandbox
       .stub(apphosting, "updateTraffic")
       .throws("Unexpected updateTraffic call");
+    listLocationsStub = sandbox
+      .stub(apphosting, "listLocations")
+      .throws("Unexpected listLocations call");
     createServiceAccountStub = sandbox
       .stub(iam, "createServiceAccount")
       .throws("Unexpected createServiceAccount call");
@@ -203,6 +211,44 @@ describe("operationsConverter", () => {
 
       await deleteBackendAndPoll(projectId, location, backendId);
       expect(deleteBackendStub).to.be.calledWith(projectId, location, backendId);
+    });
+  });
+
+  describe("prompt location", () => {
+    const supportedLocations = [{ name: "us-central1", locationId: "us-central1" }];
+
+    beforeEach(() => {
+      listLocationsStub.returns(supportedLocations);
+      promptOnceStub.returns(supportedLocations[0].locationId);
+    });
+
+    it("returns a location selection", async () => {
+      const location = await promptLocation(projectId);
+      expect(location).to.be.eq("us-central1");
+    });
+
+    it("uses a default location prompt if none is provided", async () => {
+      await promptLocation(projectId);
+
+      expect(promptOnceStub).to.be.calledWith({
+        name: "location",
+        type: "list",
+        default: "us-central1",
+        message: "Please select a location:",
+        choices: ["us-central1"],
+      });
+    });
+
+    it("uses a custom location prompt if provided", async () => {
+      await promptLocation(projectId, "Custom location prompt:");
+
+      expect(promptOnceStub).to.be.calledWith({
+        name: "location",
+        type: "list",
+        default: "us-central1",
+        message: "Custom location prompt:",
+        choices: ["us-central1"],
+      });
     });
   });
 });

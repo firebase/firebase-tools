@@ -17,7 +17,7 @@ import * as iam from "../gcp/iam";
 import { Repository } from "../gcp/cloudbuild";
 import { FirebaseError } from "../error";
 import { promptOnce } from "../prompt";
-import { DEFAULT_REGION } from "./constants";
+import { DEFAULT_LOCATION } from "./constants";
 import { ensure } from "../ensureApiEnabled";
 import * as deploymentTool from "../deploymentTool";
 import { DeepOmit } from "../metaprogramming";
@@ -62,16 +62,8 @@ export async function doSetup(
   logBullet("First we need a few details to create your backend.\n");
 
   location =
-    location ||
-    ((await promptOnce({
-      name: "region",
-      type: "list",
-      default: DEFAULT_REGION,
-      message: "Select a region to host your backend:\n",
-      choices: allowedLocations.map((loc) => ({ value: loc })),
-    })) as string);
-
-  logSuccess(`Region set to ${location}.\n`);
+    location || (await promptLocation(projectId, "Select a location to host your backend:\n"));
+  logSuccess(`Location set to ${location}.\n`);
 
   const backendId = await promptNewBackendId(projectId, location, {
     name: "backendId",
@@ -372,4 +364,22 @@ export async function deleteBackendAndPoll(
     pollerName: `delete-${projectId}-${location}-${backendId}`,
     operationResourceName: op.name,
   });
+}
+
+/**
+ * Prompts the user for a location.
+ */
+export async function promptLocation(
+  projectId: string,
+  prompt = "Please select a location:",
+): Promise<string> {
+  const allowedLocations = (await apphosting.listLocations(projectId)).map((loc) => loc.locationId);
+
+  return (await promptOnce({
+    name: "location",
+    type: "list",
+    default: DEFAULT_LOCATION,
+    message: prompt,
+    choices: allowedLocations,
+  })) as string;
 }

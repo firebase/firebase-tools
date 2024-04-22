@@ -7,7 +7,7 @@ import { Options } from "../options";
 import * as apphosting from "../gcp/apphosting";
 
 const Table = require("cli-table");
-const TABLE_HEAD = ["Backend ID", "Repository", "Location", "URL", "Created Date", "Updated Date"];
+const TABLE_HEAD = ["Backend", "Repository", "URL", "Location", "Updated Date"];
 
 export const command = new Command("apphosting:backends:list")
   .description("list Firebase App Hosting backends")
@@ -48,9 +48,8 @@ export function printBackendsTable(backends: apphosting.Backend[]): void {
       backendId,
       // sample repository value: "projects/<project-name>/locations/us-central1/connections/<connection-id>/repositories/<repository-name>"
       backend.codebase?.repository?.split("/").pop() ?? "",
-      backendLocation,
       backend.uri.startsWith("https:") ? backend.uri : "https://" + backend.uri,
-      datetimeString(new Date(backend.createTime)),
+      backendLocation,
       datetimeString(new Date(backend.updateTime)),
     ]);
   }
