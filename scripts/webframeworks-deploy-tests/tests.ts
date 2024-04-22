@@ -172,7 +172,7 @@ describe("webframeworks", function (this) {
             i18n: {
               root: "/",
             },
-            public: ".firebase/demo-nextjs/hosting",
+            public: join(".firebase", "demo-nextjs", "hosting"),
             webFramework: "next_ssr",
           },
           {
@@ -205,7 +205,7 @@ describe("webframeworks", function (this) {
             i18n: {
               root: "/",
             },
-            public: ".firebase/demo-angular/hosting",
+            public: join(".firebase", "demo-angular", "hosting"),
             webFramework: "angular_ssr",
           },
         ],
@@ -217,11 +217,11 @@ describe("webframeworks", function (this) {
           },
           {
             codebase: "firebase-frameworks-demo-nextjs",
-            source: ".firebase/demo-nextjs/functions",
+            source: join(".firebase", "demo-nextjs", "functions"),
           },
           {
             codebase: "firebase-frameworks-demo-angular",
-            source: ".firebase/demo-angular/functions",
+            source: join(".firebase", "demo-angular", "functions"),
           },
         ],
       });
@@ -232,7 +232,9 @@ describe("webframeworks", function (this) {
     describe("app directory", () => {
       it("should have working static routes", async () => {
         const apiStaticJSON = JSON.parse(
-          readFileSync(`${NEXT_OUTPUT_PATH}/hosting/${NEXT_BASE_PATH}/app/api/static`).toString(),
+          readFileSync(
+            join(NEXT_OUTPUT_PATH, "hosting", NEXT_BASE_PATH, "app", "api", "static"),
+          ).toString(),
         );
         const apiStaticResponse = await fetch(`${NEXTJS_HOST}/app/api/static`);
         expect(apiStaticResponse.ok).to.be.true;
@@ -247,7 +249,7 @@ describe("webframeworks", function (this) {
         const fooResponseText = await fooResponse.text();
 
         const fooHtml = readFileSync(
-          `${NEXT_OUTPUT_PATH}/hosting/${NEXT_BASE_PATH}/app/ssg.html`,
+          join(NEXT_OUTPUT_PATH, "hosting", NEXT_BASE_PATH, "app", "ssg.html"),
         ).toString();
         expect(fooHtml).to.eql(fooResponseText);
       });
@@ -336,26 +338,34 @@ describe("webframeworks", function (this) {
       const EXPECTED_FILES = ["", "en", "fr"]
         .flatMap((locale) => [
           ...(locale
-            ? [
-                `/${NEXT_BASE_PATH}/_next/data/${buildId}/${locale}/pages/fallback/1.json`,
-                `/${NEXT_BASE_PATH}/_next/data/${buildId}/${locale}/pages/fallback/2.json`,
-              ]
+            ? [1, 2].map((num) =>
+                join(
+                  NEXT_BASE_PATH,
+                  "_next",
+                  "data",
+                  buildId,
+                  locale,
+                  "pages",
+                  "fallback",
+                  `${num}.json`,
+                ),
+              )
             : [
-                `/${NEXT_BASE_PATH}/_next/data/${buildId}/pages/ssg.json`,
-                `/${NEXT_BASE_PATH}/_next/static/${buildId}/_buildManifest.js`,
-                `/${NEXT_BASE_PATH}/_next/static/${buildId}/_ssgManifest.js`,
-                `/${NEXT_BASE_PATH}/app/api/static`,
-                `/${NEXT_BASE_PATH}/app/image.html`,
-                `/${NEXT_BASE_PATH}/app/ssg.html`,
-                `/${NEXT_BASE_PATH}/404.html`,
+                join(NEXT_BASE_PATH, "_next", "data", buildId, "pages", "ssg.json"),
+                join(NEXT_BASE_PATH, "_next", "static", buildId, "_buildManifest.js"),
+                join(NEXT_BASE_PATH, "_next", "static", buildId, "_ssgManifest.js"),
+                join(NEXT_BASE_PATH, "app", "api", "static"),
+                join(NEXT_BASE_PATH, "app", "image.html"),
+                join(NEXT_BASE_PATH, "app", "ssg.html"),
+                join(NEXT_BASE_PATH, "404.html"),
               ]),
-          `/${I18N_BASE}/${locale}/${NEXT_BASE_PATH}/pages/fallback/1.html`,
-          `/${I18N_BASE}/${locale}/${NEXT_BASE_PATH}/pages/fallback/2.html`,
-          `/${I18N_BASE}/${locale}/${NEXT_BASE_PATH}/pages/ssg.html`,
+          join(I18N_BASE, locale, NEXT_BASE_PATH, "pages", "fallback", "1.html"),
+          join(I18N_BASE, locale, NEXT_BASE_PATH, "pages", "fallback", "2.html"),
+          join(I18N_BASE, locale, NEXT_BASE_PATH, "pages", "ssg.html"),
           // TODO(jamesdaniels) figure out why 404 isn't being translated
           // `/${I18N_BASE}/${locale}/${NEXT_BASE_PATH}/404.html`,
-          `/${I18N_BASE}/${locale}/${NEXT_BASE_PATH}/500.html`,
-          `/${I18N_BASE}/${locale}/${NEXT_BASE_PATH}/index.html`,
+          join(I18N_BASE, locale, NEXT_BASE_PATH, "500.html"),
+          join(I18N_BASE, locale, NEXT_BASE_PATH, "index.html"),
         ])
         .map(normalize)
         .map((it) => (it.startsWith("/") ? it.substring(1) : it));
