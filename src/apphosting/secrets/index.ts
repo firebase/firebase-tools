@@ -62,6 +62,7 @@ export function serviceAccountsForBackend(
  */
 export async function grantSecretAccess(
   projectId: string,
+  projectNumber: string,
   secretName: string,
   accounts: MultiServiceAccounts,
 ): Promise<void> {
@@ -77,6 +78,11 @@ export async function grantSecretAccess(
     {
       role: "roles/secretmanager.viewer",
       members: accounts.buildServiceAccounts.map((sa) => `serviceAccount:${sa}`),
+    },
+    // The App Hosting service agent needs the version manager role for automated garbage collection.
+    {
+      role: "roles/secretmanager.secretVersionManager",
+      members: [`serviceAccount:${apphosting.getServiceAgent(projectNumber)}`],
     },
   ];
 

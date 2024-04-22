@@ -50,5 +50,5 @@ export const command = new Command("apphosting:secrets:grantaccess <secretName>"
     const backend = await apphosting.getBackend(projectId, location, backendId);
     const accounts = secrets.toMulti(secrets.serviceAccountsForBackend(projectNumber, backend));
 
-    await secrets.grantSecretAccess(projectId, secretName, accounts);
+    await secrets.grantSecretAccess(projectId, projectNumber, secretName, accounts);
   });

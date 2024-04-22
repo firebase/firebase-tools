@@ -226,7 +226,7 @@ describe("secrets", () => {
       gcsm.getIamPolicy.resolves(existingPolicy);
       gcsm.setIamPolicy.resolves();
 
-      await secrets.grantSecretAccess(secret.projectId, secret.name, {
+      await secrets.grantSecretAccess(secret.projectId, "12345", secret.name, {
         buildServiceAccounts: ["buildSA"],
         runServiceAccounts: ["computeSA"],
       });
@@ -239,6 +239,10 @@ describe("secrets", () => {
         {
           role: "roles/secretmanager.secretAccessor",
           members: ["serviceAccount:buildSA", "serviceAccount:computeSA"],
+        },
+        {
+          role: "roles/secretmanager.secretVersionManager",
+          members: ["serviceAccount:service-12345@gcp-sa-apphosting.iam.gserviceaccount.com"],
         },
         {
           role: "roles/secretmanager.viewer",

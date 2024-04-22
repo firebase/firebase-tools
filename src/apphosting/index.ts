@@ -59,7 +59,7 @@ export async function doSetup(
     }
   }
 
-  logBullet("First we need a few details to create your backend.\n");
+  logBullet("First!! we need a few details to create your backend.\n");
 
   location =
     location || (await promptLocation(projectId, "Select a location to host your backend:\n"));
@@ -87,7 +87,7 @@ export async function doSetup(
     name: "rootDir",
     type: "input",
     default: "/",
-    message: "Specify your app's root directory relative to your repository",
+    message: "Specify your app's root directory relative to your repository2",
   });
 
   const backend = await createBackend(
