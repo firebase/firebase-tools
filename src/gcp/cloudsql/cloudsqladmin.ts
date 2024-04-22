@@ -121,7 +121,7 @@ interface Operation {
 
 export async function listInstances(projectId: string): Promise<Instance[]> {
   const res = await client.get<{ items: Instance[] }>(`projects/${projectId}/instances`);
-  return res.body.items;
+  return res.body.items ?? [];
 }
 
 export async function getInstance(projectId: string, instanceId: string): Promise<Instance> {

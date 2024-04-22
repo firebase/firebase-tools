@@ -31,12 +31,7 @@ export default async function (
   const servicesToCreate = serviceInfos
     .filter((si) => !services.some((s) => matches(si, s)))
     .filter((si) => {
-      return (
-        !filters ||
-        filters?.some((f) => {
-          si.dataConnectYaml.serviceId === f.serviceId;
-        })
-      );
+      return !filters || filters?.some((f) => si.dataConnectYaml.serviceId === f.serviceId);
     });
   // When --only filters are passed, don't delete anything.
   const servicesToDelete = filters
@@ -76,12 +71,7 @@ export default async function (
   await Promise.all(
     serviceInfos
       .filter((si) => {
-        return (
-          !filters ||
-          filters?.some((f) => {
-            si.dataConnectYaml.serviceId === f.serviceId;
-          })
-        );
+        return !filters || filters?.some((f) => si.dataConnectYaml.serviceId === f.serviceId);
       })
       .map(async (s) => {
         const instanceId = s.schema.primaryDatasource.postgresql?.cloudSql.instance
@@ -91,7 +81,7 @@ export default async function (
         if (!instanceId || !databaseId) {
           return Promise.resolve();
         }
-        await provisionCloudSql(
+        return provisionCloudSql(
           projectId,
           parseServiceName(s.serviceName).location,
           instanceId,

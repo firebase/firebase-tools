@@ -2,6 +2,7 @@ import { dataconnectOrigin } from "../api";
 import { Client } from "../apiv2";
 import * as operationPoller from "../operation-poller";
 import * as types from "./types";
+import { logger } from "../logger";
 
 const DATACONNECT_API_VERSION = "v1alpha";
 const dataconnectClient = () =>
@@ -27,8 +28,12 @@ export async function listAllServices(projectId: string): Promise<types.Service[
   const locations = await listLocations(projectId);
   let services: types.Service[] = [];
   for (const l of locations) {
-    const locationServices = await listServices(projectId, l);
-    services = services.concat(locationServices);
+    try {
+      const locationServices = await listServices(projectId, l);
+      services = services.concat(locationServices);
+    } catch (err) {
+      logger.debug(`Unable to listServices in ${l}: ${err}`);
+    }
   }
   return services;
 }
