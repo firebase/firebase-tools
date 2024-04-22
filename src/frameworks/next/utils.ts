@@ -477,6 +477,7 @@ export async function getProductionDistDirFiles(
         cwd: join(sourceDir, distDir),
         nodir: true,
         absolute: true,
+        realpath: IS_WINDOWS,
       },
       (err, matches) => {
         if (err) reject(err);
