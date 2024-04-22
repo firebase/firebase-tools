@@ -378,7 +378,7 @@ async function _runBinary(
       if (command.shell && utils.IS_WINDOWS) {
         opts.shell = true;
       }
-      emulator.instance = childProcess.spawn(command.binary, command.args);
+      emulator.instance = childProcess.spawn(command.binary, command.args, opts);
     } catch (e: any) {
       if (e.code === "EACCES") {
         // Known issue when WSL users don't have java
