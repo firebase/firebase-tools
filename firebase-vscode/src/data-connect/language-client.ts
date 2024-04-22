@@ -12,7 +12,7 @@ import { Signal } from "@preact/signals-core";
 export function setupLanguageClient(context) {
   // activate language client/serer
   const outputChannel: vscode.OutputChannel = vscode.window.createOutputChannel(
-    "Firebase GraphQL Language Server",
+    "Firebase GraphQL Language Server"
   );
 
   const serverPath = path.join("dist", "server.js");
@@ -47,12 +47,12 @@ export function setupLanguageClient(context) {
           // also, it makes sense that it should only re-load on file save, but we need to document that.
           // TODO: perhaps we can intercept change events, and remind the user
           // to save for the changes to take effect
-          true,
+          true
         ),
         // TODO: load ignore file
         // These ignore node_modules and .git by default
         vscode.workspace.createFileSystemWatcher(
-          "**/{*.graphql,*.graphqls,*.gql,*.js,*.mjs,*.cjs,*.esm,*.es,*.es6,*.jsx,*.ts,*.tsx,*.vue,*.svelte,*.cts,*.mts}",
+          "**/{*.graphql,*.graphqls,*.gql,*.js,*.mjs,*.cjs,*.esm,*.es,*.es6,*.jsx,*.ts,*.tsx,*.vue,*.svelte,*.cts,*.mts}"
         ),
       ],
     },
@@ -75,13 +75,13 @@ export function setupLanguageClient(context) {
     "graphQLlanguageServer",
     "GraphQL Language Server",
     serverOptions,
-    clientOptions,
+    clientOptions
   );
 
   // register commands
   const commandShowOutputChannel = vscode.commands.registerCommand(
     "fdc-graphql.showOutputChannel",
-    () => outputChannel.show(),
+    () => outputChannel.show()
   );
 
   context.subscriptions.push(commandShowOutputChannel);
@@ -104,7 +104,7 @@ export function setupLanguageClient(context) {
     "**/.graphqlrc.*", // TODO: extend to schema files, and other config types
     false,
     false,
-    false,
+    false
   );
   watcher.onDidChange(() => restartGraphqlLSP());
 

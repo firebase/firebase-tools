@@ -16,7 +16,7 @@ describe("Select project command", () => {
     // Wait until at least one option is offered in the picker
     // This would timeout if the picker didn't wait for projects to be loaded.
     await picker.progress$.waitUntil(
-      async () => (await picker.getQuickPicks()).length !== 0,
+      async () => (await picker.getQuickPicks()).length !== 0
     );
   });
 });

@@ -67,10 +67,10 @@ export function DataConnectExecutionArgumentsApp() {
 
 function AuthUserMockForm() {
   const [selectedKind, setSelectedMockKind] = useState<UserMockKind>(
-    UserMockKind.ADMIN,
+    UserMockKind.ADMIN
   );
   const [claims, setClaims] = useState<string>(
-    `{\n  "email_verified": true,\n  "sub": "exampleUserId"\n}`,
+    `{\n  "email_verified": true,\n  "sub": "exampleUserId"\n}`
   );
 
   useEffect(() => {

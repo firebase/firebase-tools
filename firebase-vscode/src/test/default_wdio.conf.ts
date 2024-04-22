@@ -49,7 +49,7 @@ export const config: Options.Testrunner = {
     // Reset the test_projects directory to its original state after each test.
     // This ensures tests do not modify the test_projects directory.
     child_process.execSync(
-      `git restore --source=HEAD -- ./src/test/test_projects`,
+      `git restore --source=HEAD -- ./src/test/test_projects`
     );
   },
 

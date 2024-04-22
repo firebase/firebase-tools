@@ -29,7 +29,7 @@ export function InitFirebasePanel({
           <VSCodeProgressRing
             className={cn(
               styles.integrationStatusIcon,
-              styles.integrationStatusLoading,
+              styles.integrationStatusLoading
             )}
           />
           <Label level={3}>{TEXT.INIT_HOSTING_PROGRESS}</Label>

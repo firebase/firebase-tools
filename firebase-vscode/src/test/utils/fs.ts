@@ -14,7 +14,7 @@ export type CreateTemporaryDirectoryOptions = {
 let _increment = 0;
 
 export function createTemporaryDirectory(
-  options: CreateTemporaryDirectoryOptions = {},
+  options: CreateTemporaryDirectoryOptions = {}
 ) {
   const debugLabel = `${
     options.debugLabel || "data-connect-test"

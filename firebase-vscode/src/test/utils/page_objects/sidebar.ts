@@ -8,7 +8,7 @@ export class FirebaseSidebar {
   async open() {
     await browser.executeWorkbench((vs: typeof vscode) => {
       return vs.commands.executeCommand(
-        "firebase.dataConnect.explorerView.focus",
+        "firebase.dataConnect.explorerView.focus"
       );
     });
   }
@@ -47,12 +47,12 @@ export class FirebaseSidebar {
 
   /** Runs the callback in the context of the Firebase view, within the sidebar */
   async runInFirebaseViewContext<R>(
-    cb: (firebase: FirebaseView) => Promise<R>,
+    cb: (firebase: FirebaseView) => Promise<R>
   ): Promise<R> {
     const [a, b] = await findWebviewWithTitle("Config");
 
     return runInFrame(a, () =>
-      runInFrame(b, () => cb(new FirebaseView(this.workbench))),
+      runInFrame(b, () => cb(new FirebaseView(this.workbench)))
     );
   }
 }

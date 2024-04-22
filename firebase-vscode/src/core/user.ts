@@ -36,7 +36,7 @@ export function registerUser(broker: ExtensionBrokerImpl): Disposable {
     const accounts = await getAccounts();
     users.value = accounts.reduce(
       (cumm, curr) => ({ ...cumm, [curr.user.email]: curr.user }),
-      {},
+      {}
     );
   });
 
@@ -59,7 +59,7 @@ export function registerUser(broker: ExtensionBrokerImpl): Disposable {
       const accounts = await getAccounts();
       users.value = accounts.reduce(
         (cumm, curr) => ({ ...cumm, [curr.user.email]: curr.user }),
-        {},
+        {}
       );
       currentUserId.value = "";
     } catch (e) {

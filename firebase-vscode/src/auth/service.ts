@@ -7,7 +7,7 @@ export class AuthService implements Disposable {
     this.disposable.push({
       dispose: broker.on(
         "notifyAuthUserMockChange",
-        (userMock) => (this.userMock = userMock),
+        (userMock) => (this.userMock = userMock)
       ),
     });
   }

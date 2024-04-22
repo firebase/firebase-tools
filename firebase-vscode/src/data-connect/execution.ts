@@ -28,21 +28,21 @@ export function registerExecution(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl,
   dataConnectService: DataConnectService,
-  emulatorsController: EmulatorsController,
+  emulatorsController: EmulatorsController
 ): Disposable {
   const treeDataProvider = new ExecutionHistoryTreeDataProvider();
   const executionHistoryTreeView = vscode.window.createTreeView(
     "data-connect-execution-history",
     {
       treeDataProvider,
-    },
+    }
   );
 
   // Select the corresponding tree-item when the selected-execution-id updates
   effect(() => {
     const id = selectedExecutionId.value;
     const selectedItem = treeDataProvider.executionItems.find(
-      ({ item }) => item.executionId === id,
+      ({ item }) => item.executionId === id
     );
     executionHistoryTreeView.reveal(selectedItem, { select: true });
   });
@@ -66,7 +66,7 @@ export function registerExecution(
   async function executeOperation(
     ast: OperationDefinitionNode,
     { document, documentPath, position }: OperationLocation,
-    instance: InstanceType,
+    instance: InstanceType
   ) {
     const configs = vscode.workspace.getConfiguration("firebase.dataConnect");
     const alwaysExecuteMutationsInProduction =
@@ -84,7 +84,7 @@ export function registerExecution(
           "Do you wish to start it?",
         { modal: true },
         yes,
-        always,
+        always
       );
 
       // If the user selects "always", we update User settings.
@@ -109,7 +109,7 @@ export function registerExecution(
         "You are about to perform a mutation in production environment. Are you sure?",
         { modal: true },
         yes,
-        always,
+        always
       );
 
       if (result !== always && result !== yes) {
@@ -121,7 +121,7 @@ export function registerExecution(
         configs.update(
           alwaysExecuteMutationsInProduction,
           true,
-          ConfigurationTarget.Global,
+          ConfigurationTarget.Global
         );
       }
     }
@@ -181,7 +181,7 @@ export function registerExecution(
 
   broker.on(
     "definedDataConnectArgs",
-    (value) => (executionArgsJSON.value = value),
+    (value) => (executionArgsJSON.value = value)
   );
 
   return Disposable.from(
@@ -198,13 +198,13 @@ export function registerExecution(
     executionHistoryTreeView,
     vscode.commands.registerCommand(
       "firebase.dataConnect.executeOperation",
-      executeOperation,
+      executeOperation
     ),
     vscode.commands.registerCommand(
       "firebase.dataConnect.selectExecutionResultToShow",
       (executionId) => {
         selectExecutionId(executionId);
-      },
-    ),
+      }
+    )
   );
 }

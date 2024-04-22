@@ -22,7 +22,7 @@ function createExtensionState() {
   const projectId = signal("");
 
   const selectedUser = computed(() =>
-    users.value.find((user) => user.email === selectedUserEmail.value),
+    users.value.find((user) => user.email === selectedUserEmail.value)
   );
 
   return { environment, users, projectId, selectedUserEmail, selectedUser };

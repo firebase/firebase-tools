@@ -76,7 +76,7 @@ export class ExplorerTreeDataProvider
     ) {
       return new vscode.TreeItem(
         element.name,
-        vscode.TreeItemCollapsibleState.Collapsed,
+        vscode.TreeItemCollapsibleState.Collapsed
       );
     }
 
@@ -91,7 +91,7 @@ export class ExplorerTreeDataProvider
       label,
       hasChildren
         ? vscode.TreeItemCollapsibleState.Collapsed
-        : vscode.TreeItemCollapsibleState.None,
+        : vscode.TreeItemCollapsibleState.None
     );
 
     treeItem.description = this._formatType(field.type);
@@ -154,7 +154,7 @@ export class ExplorerTreeDataProvider
   resolveTreeItem(
     item: vscode.TreeItem,
     element: Element,
-    token: CancellationToken,
+    token: CancellationToken
   ): vscode.ProviderResult<vscode.TreeItem> {
     const field = this._field(element);
     item.tooltip =
@@ -196,19 +196,19 @@ export class ExplorerTreeDataProvider
     const type = this.typeSystem.typeForName.get(ref.name);
     if (!type) {
       throw new Error(
-        `Introspection invariant violation: Ref type ${ref.name} does not exist`,
+        `Introspection invariant violation: Ref type ${ref.name} does not exist`
       );
     }
     if (ref.kind && type.kind !== ref.kind) {
       throw new Error(
-        `Introspection invariant violation: Ref kind ${ref.kind} does not match Type kind ${type.kind}`,
+        `Introspection invariant violation: Ref kind ${ref.kind} does not match Type kind ${type.kind}`
       );
     }
     return type as T;
   }
 
   _baseType(
-    field: IntrospectionField,
+    field: IntrospectionField
   ): IntrospectionNamedTypeRef<IntrospectionOutputType> {
     let unwrapped = field.type;
     while (

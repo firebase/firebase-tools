@@ -1,6 +1,7 @@
 import * as fs from "fs-extra";
+import * as tty from "tty";
 import * as path from "node:path";
-import * as yaml from "js-yaml";
+import * as yaml from "yaml";
 import { Socket } from "node:net";
 
 import * as _ from "lodash";
@@ -21,6 +22,7 @@ import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
 import { logger, LogLevel } from "./logger";
 import { LogDataOrUndefined } from "./emulator/loggingEmulator";
+import { promptOnce } from "./prompt";
 
 export const IS_WINDOWS = process.platform === "win32";
 const SUCCESS_CHAR = IS_WINDOWS ? "+" : "✔";
@@ -869,12 +871,9 @@ export function readFileFromDirectory(
  */
 export function wrappedSafeLoad(source: string): any {
   try {
-    return yaml.safeLoad(source);
+    return yaml.parse(source);
   } catch (err: any) {
-    if (err instanceof yaml.YAMLException) {
-      throw new FirebaseError(`YAML Error: ${err.message}`, { original: err });
-    }
-    throw err;
+    throw new FirebaseError(`YAML Error: ${err.message}`, { original: err });
   }
 }
 
@@ -893,4 +892,23 @@ export function generateId(n = 6): string {
     id += allChars[idx];
   }
   return id;
+}
+
+/**
+ * Reads a secret value from either a file or a prompt.
+ * If dataFile is falsy and this is a tty, uses prompty. Otherwise reads from dataFile.
+ * If dataFile is - or falsy, this means reading from file descriptor 0 (e.g. pipe in)
+ */
+export function readSecretValue(prompt: string, dataFile?: string): Promise<string> {
+  if ((!dataFile || dataFile === "-") && tty.isatty(0)) {
+    return promptOnce({
+      type: "password",
+      message: prompt,
+    });
+  }
+  let input: string | number = 0;
+  if (dataFile && dataFile !== "-") {
+    input = dataFile;
+  }
+  return Promise.resolve(fs.readFileSync(input, "utf-8"));
 }

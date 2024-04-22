@@ -22,7 +22,7 @@ export async function runDataConnectCompiler(fdcEndpoint: string) {
       if (nextCompilerResponse.result && nextCompilerResponse.result.errors) {
         fdcDiagnosticCollection.clear();
         const diagnostics = convertGQLErrorToDiagnostic(
-          nextCompilerResponse.result.errors,
+          nextCompilerResponse.result.errors
         );
         fdcDiagnosticCollection.set(diagnostics);
       }
@@ -38,7 +38,7 @@ export async function runDataConnectCompiler(fdcEndpoint: string) {
 }
 
 function convertGQLErrorToDiagnostic(
-  gqlErrors: GraphQLError[],
+  gqlErrors: GraphQLError[]
 ): DiagnosticTuple[] {
   const perFileDiagnostics = {};
   const dcPath = dataConnectConfigs.valueOf().values[0].path;
@@ -74,7 +74,7 @@ function locationToRange(location: { line: number; column: number }): Range {
  *  */
 
 export async function getCompilerStream(
-  dataConnectEndpoint: string,
+  dataConnectEndpoint: string
 ): Promise<Observable<CompilerResponse>> {
   try {
     // TODO: eventually support multiple services
@@ -88,14 +88,14 @@ export async function getCompilerStream(
             "Content-Type": "application/json",
             "x-mantle-admin": "all",
           },
-        },
-      ),
+        }
+      )
     );
 
     function fromStream(
       stream: NodeJS.ReadableStream,
       finishEventName = "end",
-      dataEventName = "data",
+      dataEventName = "data"
     ): Observable<CompilerResponse> {
       stream.pause();
 

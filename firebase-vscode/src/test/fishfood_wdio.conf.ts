@@ -5,7 +5,7 @@ import * as path from "path";
 
 const fishfoodPath = path.resolve(
   process.cwd(),
-  "src/test/test_projects/fishfood",
+  "src/test/test_projects/fishfood"
 );
 
 export const config: Options.Testrunner = {

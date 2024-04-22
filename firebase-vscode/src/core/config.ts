@@ -36,7 +36,7 @@ import { pluginLogger } from "../logger-wrapper";
  * and also await for configs to be loaded (thanks to the {@link firstWhereDefined} util)
  */
 export const firebaseRC = globalSignal<Result<RC | undefined> | undefined>(
-  undefined,
+  undefined
 );
 
 export const dataConnectConfigs = globalSignal<
@@ -62,7 +62,7 @@ export const firebaseConfig = globalSignal<
  */
 export async function updateFirebaseRCProject(
   alias: string,
-  projectId: string,
+  projectId: string
 ) {
   const rc =
     firebaseRC.value.tryReadValue ??
@@ -88,7 +88,7 @@ function notifyFirebaseConfig(broker: ExtensionBrokerImpl) {
       ValueOrError<FirebaseConfig | undefined> | undefined
     >(
       (value) => ({ value: value?.data, error: undefined }),
-      (error) => ({ value: undefined, error: `${error}` }),
+      (error) => ({ value: undefined, error: `${error}` })
     ),
     firebaseRC: firebaseRC.value?.switchCase<
       ValueOrError<RCData | undefined> | undefined
@@ -97,7 +97,7 @@ function notifyFirebaseConfig(broker: ExtensionBrokerImpl) {
         value: value?.data,
         error: undefined,
       }),
-      (error) => ({ value: undefined, error: `${error}` }),
+      (error) => ({ value: undefined, error: `${error}` })
     ),
   });
 }
@@ -105,7 +105,7 @@ function notifyFirebaseConfig(broker: ExtensionBrokerImpl) {
 function registerRc(broker: ExtensionBrokerImpl): Disposable {
   firebaseRC.value = _readRC();
   const rcRemoveListener = onChange(firebaseRC, () =>
-    notifyFirebaseConfig(broker),
+    notifyFirebaseConfig(broker)
   );
 
   const showToastOnError = effect(() => {
@@ -124,29 +124,29 @@ function registerRc(broker: ExtensionBrokerImpl): Disposable {
   return Disposable.from(
     { dispose: rcRemoveListener },
     { dispose: showToastOnError },
-    { dispose: () => rcWatcher?.dispose() },
+    { dispose: () => rcWatcher?.dispose() }
   );
 }
 
 async function registerDataConnectConfig(): Promise<Disposable> {
   dataConnectConfigs.value = await _readDataConnectConfigs(
     await firstWhereDefined(firebaseConfig).then((config) =>
-      readFirebaseJson(config.requireValue),
-    ),
+      readFirebaseJson(config.requireValue)
+    )
   );
 
   const dataConnectWatcher = _createWatcher("**/{dataconnect,connector}.yaml");
   dataConnectWatcher?.onDidChange(
     async () =>
       (dataConnectConfigs.value = await _readDataConnectConfigs(
-        readFirebaseJson(firebaseConfig.value.requireValue),
-      )),
+        readFirebaseJson(firebaseConfig.value.requireValue)
+      ))
   );
   dataConnectWatcher?.onDidCreate(
     async () =>
       (dataConnectConfigs.value = await _readDataConnectConfigs(
-        readFirebaseJson(firebaseConfig.value.requireValue),
-      )),
+        readFirebaseJson(firebaseConfig.value.requireValue)
+      ))
   );
 
   return Disposable.from({ dispose: () => dataConnectWatcher?.dispose() });
@@ -156,35 +156,37 @@ function registerFirebaseConfig(broker: ExtensionBrokerImpl): Disposable {
   firebaseConfig.value = _readFirebaseConfig();
 
   const firebaseConfigRemoveListener = onChange(firebaseConfig, () =>
-    notifyFirebaseConfig(broker),
+    notifyFirebaseConfig(broker)
   );
 
   const showToastOnError = effect(() => {
     const config = firebaseConfig.value;
     if (config instanceof ResultError) {
       vscode.window.showErrorMessage(
-        `Error reading firebase.json:\n${config.error}`,
+        `Error reading firebase.json:\n${config.error}`
       );
     }
   });
 
   const configWatcher = _createWatcher("firebase.json");
   configWatcher?.onDidChange(
-    () => (firebaseConfig.value = _readFirebaseConfig()),
+    () => (firebaseConfig.value = _readFirebaseConfig())
   );
   configWatcher?.onDidCreate(
-    () => (firebaseConfig.value = _readFirebaseConfig()),
+    () => (firebaseConfig.value = _readFirebaseConfig())
   );
   configWatcher?.onDidDelete(() => (firebaseConfig.value = undefined));
 
   return Disposable.from(
     { dispose: firebaseConfigRemoveListener },
     { dispose: showToastOnError },
-    { dispose: () => configWatcher?.dispose() },
+    { dispose: () => configWatcher?.dispose() }
   );
 }
 
-export async function registerConfig(broker: ExtensionBrokerImpl): Promise<Disposable> {
+export async function registerConfig(
+  broker: ExtensionBrokerImpl
+): Promise<Disposable> {
   // On getInitialData, forcibly notifies the extension.
   const getInitialDataRemoveListener = broker.on("getInitialData", () => {
     notifyFirebaseConfig(broker);
@@ -196,7 +198,7 @@ export async function registerConfig(broker: ExtensionBrokerImpl): Promise<Dispo
     { dispose: getInitialDataRemoveListener },
     registerFirebaseConfig(broker),
     registerRc(broker),
-    await registerDataConnectConfig(),
+    await registerDataConnectConfig()
   );
 }
 
@@ -206,7 +208,7 @@ function asAbsolutePath(relativePath: string, from: string): string {
 
 /** @internal */
 export async function _readDataConnectConfigs(
-  fdc: DataConnectMultiple,
+  fdc: DataConnectMultiple
 ): Promise<ResolvedDataConnectConfigs | undefined> {
   try {
     const dataConnects = await Promise.all(
@@ -214,7 +216,7 @@ export async function _readDataConnectConfigs(
         // Paths may be relative to the firebase.json file.
         const absoluteLocation = asAbsolutePath(
           dataConnect.source,
-          getConfigPath(),
+          getConfigPath()
         );
         const dataConnectYaml = await readDataConnectYaml(absoluteLocation);
 
@@ -222,23 +224,23 @@ export async function _readDataConnectConfigs(
           dataConnectYaml.connectorDirs.map(async (connectorDir) => {
             const connectorYaml = await readConnectorYaml(
               // Paths may be relative to the dataconnect.yaml
-              asAbsolutePath(connectorDir, absoluteLocation),
+              asAbsolutePath(connectorDir, absoluteLocation)
             );
 
             return new ResolvedConnectorYaml(
               asAbsolutePath(connectorDir, absoluteLocation),
-              connectorYaml,
+              connectorYaml
             );
-          }),
+          })
         );
 
         return new ResolvedDataConnectConfig(
           absoluteLocation,
           dataConnectYaml,
           resolvedConnectors,
-          dataConnect.location,
+          dataConnect.location
         );
-      }),
+      })
     );
 
     return new ResolvedDataConnectConfigs(dataConnects);
@@ -304,7 +306,7 @@ export function _createWatcher(file: string): FileSystemWatcher | undefined {
 
   return workspace.value?.createFileSystemWatcher(
     // Using RelativePattern enables tests to use watchers too.
-    new vscode.RelativePattern(vscode.Uri.file(currentOptions.value.cwd), file),
+    new vscode.RelativePattern(vscode.Uri.file(currentOptions.value.cwd), file)
   );
 }
 

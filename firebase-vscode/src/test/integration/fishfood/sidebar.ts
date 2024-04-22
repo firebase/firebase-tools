@@ -16,5 +16,5 @@ firebaseTest(
     await sidebar.runInFirebaseViewContext(async (firebase) => {
       await sidebar.stopEmulatorBtn.waitForDisplayed();
     });
-  },
+  }
 );

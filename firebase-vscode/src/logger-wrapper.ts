@@ -61,11 +61,11 @@ export function logSetup({
         filename: filePath,
         format: format.printf((info) => {
           const segments = [info.message, ...(info[SPLAT] || [])].map(
-            tryStringify,
+            tryStringify
           );
           return `[${info.level}] ${stripAnsi(segments.join(" "))}`;
         }),
-      }),
+      })
     );
     cliLogger.add(new VSCodeOutputTransport({ level: "info" }));
   }

@@ -45,7 +45,7 @@ abstract class ComputedCodeLensProvider implements vscode.CodeLensProvider {
 
   abstract provideCodeLenses(
     document: vscode.TextDocument,
-    token: vscode.CancellationToken,
+    token: vscode.CancellationToken
   ): vscode.CodeLens[];
 }
 
@@ -59,7 +59,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
 
   provideCodeLenses(
     document: vscode.TextDocument,
-    token: vscode.CancellationToken,
+    token: vscode.CancellationToken
   ): vscode.CodeLens[] {
     // Wait for configs to be loaded and emulator to be running
     const fdcConfigs = this.watch(dataConnectConfigs);
@@ -86,7 +86,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
           position: position,
         };
         const service = fdcConfigs.findEnclosingServiceForPath(
-          document.fileName,
+          document.fileName
         );
 
         if (service) {
@@ -96,7 +96,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
               command: "firebase.dataConnect.executeOperation",
               tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
               arguments: [x, operationLocation, InstanceType.LOCAL],
-            }),
+            })
           );
 
           codeLenses.push(
@@ -105,7 +105,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
               command: "firebase.dataConnect.executeOperation",
               tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
               arguments: [x, operationLocation, InstanceType.PRODUCTION],
-            }),
+            })
           );
         }
       }
@@ -125,7 +125,7 @@ export class SchemaCodeLensProvider extends ComputedCodeLensProvider {
 
   provideCodeLenses(
     document: vscode.TextDocument,
-    token: vscode.CancellationToken,
+    token: vscode.CancellationToken
   ): vscode.CodeLens[] {
     if (!this.watch(this.emulatorsController.areEmulatorsRunning)) {
       return [];
@@ -152,7 +152,7 @@ export class SchemaCodeLensProvider extends ComputedCodeLensProvider {
             command: "firebase.dataConnect.schemaAddData",
             tooltip: "Generate a mutation to add data of this type",
             arguments: [x, schemaLocation],
-          }),
+          })
         );
       }
     }

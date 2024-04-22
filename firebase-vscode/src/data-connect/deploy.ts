@@ -27,7 +27,7 @@ export function registerFdcDeploy(): vscode.Disposable {
       cliDeploy(...args);
     },
     "deploy",
-    async () => {},
+    async () => {}
   );
 
   const deployCmd = vscode.commands.registerCommand(
@@ -44,18 +44,16 @@ export function registerFdcDeploy(): vscode.Disposable {
       }
 
       runCommand(createDeployOnlyCommand(serviceConnectorMap)); // run from terminal
-    },
+    }
   );
 
   return vscode.Disposable.from(deploySpy, deployCmd);
 }
 
-
-
 async function pickServices(): Promise<Array<string> | undefined> {
   const options = firstWhere(
     currentOptions,
-    (options) => options.project?.length !== 0,
+    (options) => options.project?.length !== 0
   ).then((options) => {
     return dataConnectConfigs.value.serviceIds.map((serviceId) => {
       return {
@@ -75,11 +73,11 @@ async function pickServices(): Promise<Array<string> | undefined> {
 }
 
 async function pickConnectors(
-  serviceId: string,
+  serviceId: string
 ): Promise<Array<string> | undefined> {
   const options = firstWhere(
     currentOptions,
-    (options) => options.project?.length !== 0,
+    (options) => options.project?.length !== 0
   ).then((options) => {
     return dataConnectConfigs.value
       .findById(serviceId)

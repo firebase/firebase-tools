@@ -20,7 +20,7 @@ export class ExecutionTreeItem extends vscode.TreeItem {
     // Renders arguments in a single line
     const prettyArgs = this.item.args?.replaceAll(/[\n \t]+/g, " ");
     this.description = `${timeFormatter.format(
-      item.timestamp,
+      item.timestamp
     )} | Arguments: ${prettyArgs}`;
     this.command = {
       title: "Show result",
@@ -35,23 +35,23 @@ export class ExecutionTreeItem extends vscode.TreeItem {
     if (this.item.state === ExecutionState.FINISHED) {
       this.iconPath = new vscode.ThemeIcon(
         "pass",
-        new vscode.ThemeColor("testing.iconPassed"),
+        new vscode.ThemeColor("testing.iconPassed")
       );
     } else if (this.item.state === ExecutionState.CANCELLED) {
       this.iconPath = new vscode.ThemeIcon(
         "warning",
-        new vscode.ThemeColor("testing.iconErrored"),
+        new vscode.ThemeColor("testing.iconErrored")
       );
     } else if (this.item.state === ExecutionState.ERRORED) {
       this.iconPath = new vscode.ThemeIcon(
         "close",
-        new vscode.ThemeColor("testing.iconFailed"),
+        new vscode.ThemeColor("testing.iconFailed")
       );
     } else if (this.item.state === ExecutionState.RUNNING) {
       this.contextValue = "executionTreeItem-running";
       this.iconPath = new vscode.ThemeIcon(
         "sync~spin",
-        new vscode.ThemeColor("testing.runAction"),
+        new vscode.ThemeColor("testing.runAction")
       );
     }
   }

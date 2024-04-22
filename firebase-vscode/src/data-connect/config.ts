@@ -6,7 +6,7 @@ export * from "../core/config";
 export class ResolvedConnectorYaml {
   constructor(
     readonly path: string,
-    readonly value: DeepReadOnly<ConnectorYaml>,
+    readonly value: DeepReadOnly<ConnectorYaml>
   ) {}
 
   containsPath(path: string) {
@@ -19,12 +19,12 @@ export class ResolvedDataConnectConfig {
     readonly path: string,
     readonly value: DeepReadOnly<DataConnectYaml>,
     readonly resolvedConnectors: ResolvedConnectorYaml[],
-    readonly dataConnectLocation: string,
+    readonly dataConnectLocation: string
   ) {}
 
   get connectorIds() {
     return this.resolvedConnectors.map(
-      (connector) => connector.value.connectorId,
+      (connector) => connector.value.connectorId
     );
   }
 
@@ -34,7 +34,7 @@ export class ResolvedDataConnectConfig {
 
   findEnclosingConnectorForPath(filePath: string) {
     return this.resolvedConnectors.find((connector) =>
-      connector.containsPath(filePath),
+      connector.containsPath(filePath)
     );
   }
 }
@@ -62,7 +62,7 @@ export class ResolvedDataConnectConfigs {
   getApiServicePathByPath(
     projectId: string,
     path: string,
-    resolvedDataConnectConfigs: ResolvedDataConnectConfigs,
+    resolvedDataConnectConfigs: ResolvedDataConnectConfigs
   ) {
     const dataConnectConfig =
       resolvedDataConnectConfigs.findEnclosingServiceForPath(path);

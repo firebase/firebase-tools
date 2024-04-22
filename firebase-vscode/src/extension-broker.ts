@@ -22,7 +22,7 @@ export class ExtensionBroker extends Broker<
 
   sendMessage(
     command: string,
-    data: ExtensionToWebviewParamsMap[keyof ExtensionToWebviewParamsMap],
+    data: ExtensionToWebviewParamsMap[keyof ExtensionToWebviewParamsMap]
   ): void {
     for (const webview of this.webviews) {
       webview.postMessage({ command, data });
@@ -36,7 +36,7 @@ export class ExtensionBroker extends Broker<
       (message: Message<WebviewToExtensionParamsMap>) => {
         this.executeListeners(message);
       },
-      null,
+      null
     );
   }
 

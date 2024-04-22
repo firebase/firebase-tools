@@ -32,7 +32,7 @@ export async function findWebviewWithTitle(title: string) {
 
 export async function runInFrame<R>(
   element: object,
-  cb: () => Promise<R>,
+  cb: () => Promise<R>
 ): Promise<R> {
   await browser.switchToFrame(element);
 

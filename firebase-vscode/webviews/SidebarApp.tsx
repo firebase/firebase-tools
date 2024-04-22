@@ -41,7 +41,7 @@ export function SidebarApp() {
       webLogger.debug(
         "notifyFirebaseConfig",
         JSON.stringify(firebaseJson),
-        JSON.stringify(firebaseRC),
+        JSON.stringify(firebaseRC)
       );
       if (firebaseJson?.value?.hosting) {
         webLogger.debug("Detected firebase.json");
@@ -68,7 +68,7 @@ export function SidebarApp() {
         } else {
           setHostingInitState(null);
         }
-      },
+      }
     );
 
     broker.on("notifyHostingDeploy", ({ success }) => {

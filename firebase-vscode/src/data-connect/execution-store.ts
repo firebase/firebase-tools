@@ -43,7 +43,7 @@ export const selectedExecutionId = globalSignal("");
 export const executionArgsJSON = globalSignal("{}");
 
 export function createExecution(
-  executionItem: Omit<ExecutionItem, "executionId">,
+  executionItem: Omit<ExecutionItem, "executionId">
 ) {
   const item: ExecutionItem = {
     executionId: nextExecutionId(),
@@ -60,7 +60,7 @@ export function createExecution(
 
 export function updateExecution(
   executionId: string,
-  executionItem: ExecutionItem,
+  executionItem: ExecutionItem
 ) {
   executions.value = {
     ...executions.value,
@@ -79,5 +79,5 @@ export async function selectExecutionId(executionId: string) {
 }
 
 export const selectedExecution = computed(
-  () => executions.value[selectedExecutionId.value],
+  () => executions.value[selectedExecutionId.value]
 );

@@ -13,11 +13,11 @@ export enum InstanceType {
 export function registerFirebaseDataConnectView(
   context: vscode.ExtensionContext,
   broker: ExtensionBrokerImpl,
-  emulatorsController: EmulatorsController,
+  emulatorsController: EmulatorsController
 ): vscode.Disposable {
   const emulatorsStatus = vscode.window.createStatusBarItem(
     "emulators",
-    vscode.StatusBarAlignment.Left,
+    vscode.StatusBarAlignment.Left
   );
   emulatorsStatus.tooltip = "The emulators status";
 
@@ -38,7 +38,7 @@ export function registerFirebaseDataConnectView(
       if (icons.length === 0) {
         emulatorsStatus.text = `No emulator running`;
         emulatorsStatus.backgroundColor = new vscode.ThemeColor(
-          "statusBarItem.warningBackground",
+          "statusBarItem.warningBackground"
         );
       } else {
         const label = icons.length === 1 ? "Emulator" : "Emulators";
@@ -56,6 +56,6 @@ export function registerFirebaseDataConnectView(
     {
       dispose: syncStatusBarWithSelectedInstance(),
     },
-    registerWebview({ name: "data-connect", context, broker }),
+    registerWebview({ name: "data-connect", context, broker })
   );
 }

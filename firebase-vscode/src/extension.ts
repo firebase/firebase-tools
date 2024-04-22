@@ -45,6 +45,6 @@ export async function activate(context: vscode.ExtensionContext) {
     }),
     registerHosting(broker),
     authService,
-    registerFdc(context, broker, authService, emulatorsController),
+    registerFdc(context, broker, authService, emulatorsController)
   );
 }

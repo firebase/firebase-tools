@@ -28,7 +28,7 @@ export function EmulatorPanel({
   useEffect(() => {
     if (emulatorUiSelections) {
       webLogger.debug(
-        `Emulator UI selections: ${JSON.stringify(emulatorUiSelections)}`,
+        `Emulator UI selections: ${JSON.stringify(emulatorUiSelections)}`
       );
     }
   }, [emulatorUiSelections]);
@@ -43,7 +43,7 @@ export function EmulatorPanel({
 
   useBrokerListener("notifyEmulatorImportFolder", ({ folder }) => {
     webLogger.debug(
-      `notifyEmulatorImportFolder received in sidebar: ${folder}`,
+      `notifyEmulatorImportFolder received in sidebar: ${folder}`
     );
     const newSelections = {
       ...emulatorUiSelections,

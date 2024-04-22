@@ -7,6 +7,6 @@ export function locationToRange(location: graphql.Location): vscode.Range {
     location.startToken.line - 1,
     location.startToken.column - 1,
     location.endToken.line - 1,
-    location.endToken.column - 1,
+    location.endToken.column - 1
   );
 }

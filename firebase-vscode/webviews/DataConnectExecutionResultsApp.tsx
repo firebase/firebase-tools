@@ -11,9 +11,9 @@ import { isExecutionResult } from "../common/graphql";
 style;
 
 export function DataConnectExecutionResultsApp() {
-  const [dataConnectResults, setResults] = useState<DataConnectResults | undefined>(
-    undefined,
-  );
+  const [dataConnectResults, setResults] = useState<
+    DataConnectResults | undefined
+  >(undefined);
   const results: ExecutionResult | SerializedError | undefined =
     dataConnectResults?.results;
 

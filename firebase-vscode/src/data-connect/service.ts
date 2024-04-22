@@ -33,14 +33,14 @@ export const STAGING_API =
 export class DataConnectService {
   constructor(
     private authService: AuthService,
-    private emulatorsController: EmulatorsController,
+    private emulatorsController: EmulatorsController
   ) {}
 
   readonly localEndpoint = computed<string | undefined>(() => {
     const emulatorInfos =
       this.emulatorsController.emulators.value.infos?.displayInfo;
     const dataConnectEmulator = emulatorInfos?.find(
-      (emulatorInfo) => emulatorInfo.name === Emulators.DATACONNECT,
+      (emulatorInfo) => emulatorInfo.name === Emulators.DATACONNECT
     );
 
     if (!dataConnectEmulator) {
@@ -62,14 +62,14 @@ export class DataConnectService {
       ? dataConnectConfigsValue.getApiServicePathByPath(
           projectId,
           path,
-          dataConnectConfigsValue,
+          dataConnectConfigsValue
         )
       : `projects/p/locations/l/services/${serviceId}`;
   }
 
   private async decodeResponse(
     response: Response,
-    format?: "application/json",
+    format?: "application/json"
   ): Promise<unknown> {
     const contentType = response.headers.get("Content-Type");
     if (!contentType) {
@@ -78,7 +78,7 @@ export class DataConnectService {
 
     if (format && !contentType.includes(format)) {
       throw new Error(
-        `Invalid content type. Expected ${format} but got ${contentType}`,
+        `Invalid content type. Expected ${format} but got ${contentType}`
       );
     }
 
@@ -91,14 +91,14 @@ export class DataConnectService {
   private async handleProdResponse(
     clientResponse: ClientResponse<
       ExecuteGraphqlResponse | ExecuteGraphqlResponseError
-    >,
+    >
   ): Promise<ExecutionResult> {
     if (!(clientResponse.status >= 200 && clientResponse.status < 300)) {
       const errorResponse =
         clientResponse as ClientResponse<ExecuteGraphqlResponseError>;
       throw new DataConnectError(
         `Request failed with status ${clientResponse.status}`,
-        errorResponse.body.error.message,
+        errorResponse.body.error.message
       );
     }
     const successResponse =
@@ -107,7 +107,7 @@ export class DataConnectService {
   }
 
   private async handleValidResponse(
-    response: Response,
+    response: Response
   ): Promise<ExecutionResult> {
     const json = await this.decodeResponse(response, "application/json");
     assertExecutionResult(json);
@@ -120,7 +120,7 @@ export class DataConnectService {
 
     throw new DataConnectError(
       `Request failed with status ${response.status}`,
-      cause,
+      cause
     );
   }
 
@@ -217,7 +217,7 @@ export class DataConnectService {
             "x-mantle-admin": "all",
           },
           body,
-        },
+        }
       );
       const result = await resp.json().catch(() => resp.text());
       return result;
@@ -264,7 +264,7 @@ export class DataConnectService {
             "x-mantle-admin": "all",
           },
           body,
-        },
+        }
       );
       return this.handleResponse(resp);
     }

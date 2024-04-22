@@ -10,9 +10,9 @@ firebaseTest(
     const statusBar = new StatusBar(workbench);
 
     expect(await statusBar.emulatorsStatus.getText()).toBe(
-      "No emulator running",
+      "No emulator running"
     );
-  },
+  }
 );
 
 firebaseTest("When emulators are running, lists them", async function () {
@@ -22,5 +22,7 @@ firebaseTest("When emulators are running, lists them", async function () {
 
   await commands.startEmulators();
 
-  expect(await statusBar.emulatorsStatus.getText()).toContain("Emulators running");
+  expect(await statusBar.emulatorsStatus.getText()).toContain(
+    "Emulators running"
+  );
 });
