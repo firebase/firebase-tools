@@ -268,7 +268,7 @@ export interface ListBackendsResponse {
  * Returns the App Hosting service agent.
  */
 export function getServiceAgent(projectNumber: string): string {
-  return `service-${projectNumber}@${apphostingP4SAOrigin}`;
+  return `service-${projectNumber}@${apphostingP4SAOrigin()}`;
 }
 
 /**
