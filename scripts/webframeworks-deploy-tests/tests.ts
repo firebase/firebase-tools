@@ -9,6 +9,7 @@ use(deepEqualUnordered);
 
 import { getBuildId } from "../../src/frameworks/next/utils";
 import { fileExistsSync } from "../../src/fsutils";
+import { IS_WINDOWS } from "../../src/utils";
 import { readFile } from "fs/promises";
 
 const NEXT_OUTPUT_PATH = `${__dirname}/.firebase/demo-nextjs`;
@@ -370,17 +371,18 @@ describe("webframeworks", function (this) {
         .map(normalize)
         .map((it) => (it.startsWith("/") ? it.substring(1) : it));
 
+      const sep = IS_WINDOWS ? `\\\\` : `\/`;
       const EXPECTED_PATTERNS = [
-        join(NEXT_BASE_PATH, "_next", "static", "chunks", "[^-]+-[^.]+.js"),
-        join(NEXT_BASE_PATH, "_next", "static", "chunks", "app", "layout-[^.]+.js"),
-        join(NEXT_BASE_PATH, "_next", "static", "chunks", "main-[^.]+.js"),
-        join(NEXT_BASE_PATH, "_next", "static", "chunks", "main-app-[^.]+.js"),
-        join(NEXT_BASE_PATH, "_next", "static", "chunks", "pages", "_app-[^.]+.js"),
-        join(NEXT_BASE_PATH, "_next", "static", "chunks", "pages", "_error-[^.]+.js"),
-        join(NEXT_BASE_PATH, "_next", "static", "chunks", "pages", "index-[^.]+.js"),
-        join(NEXT_BASE_PATH, "_next", "static", "chunks", "polyfills-[^.]+.js"),
-        join(NEXT_BASE_PATH, "_next", "static", "chunks", "webpack-[^.]+.js"),
-        join(NEXT_BASE_PATH, "_next", "static", "css", "[^.]+.css"),
+        String.raw`${NEXT_BASE_PATH}${sep}_next${sep}static${sep}chunks${sep}[^-]+-[^.]+.js`,
+        String.raw`${NEXT_BASE_PATH}${sep}_next${sep}static${sep}chunks${sep}app${sep}layout-[^.]+.js`,
+        String.raw`${NEXT_BASE_PATH}${sep}_next${sep}static${sep}chunks${sep}main-[^.]+.js`,
+        String.raw`${NEXT_BASE_PATH}${sep}_next${sep}static${sep}chunks${sep}main-app-[^.]+.js`,
+        String.raw`${NEXT_BASE_PATH}${sep}_next${sep}static${sep}chunks${sep}pages${sep}_app-[^.]+.js`,
+        String.raw`${NEXT_BASE_PATH}${sep}_next${sep}static${sep}chunks${sep}pages${sep}_error-[^.]+.js`,
+        String.raw`${NEXT_BASE_PATH}${sep}_next${sep}static${sep}chunks${sep}pages${sep}index-[^.]+.js`,
+        String.raw`${NEXT_BASE_PATH}${sep}_next${sep}static${sep}chunks${sep}polyfills-[^.]+.js`,
+        String.raw`${NEXT_BASE_PATH}${sep}_next${sep}static${sep}chunks${sep}webpack-[^.]+.js`,
+        String.raw`${NEXT_BASE_PATH}${sep}_next${sep}static${sep}css${sep}[^.]+.css`,
       ].map((it) => new RegExp(it));
 
       const files = await getFilesListFromDir(`${NEXT_OUTPUT_PATH}/hosting`);
