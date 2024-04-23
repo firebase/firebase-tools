@@ -77,14 +77,16 @@ export class DataConnectEmulator implements EmulatorInstance {
     const cmd = ["build", `--config_dir=${this.args.configDir}`];
 
     const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8" });
-    if (res.error) {
-      throw new FirebaseError(`Error starting up Data Connect emulator: ${res.error}`);
+    if (res.stderr) {
+      throw new FirebaseError(
+        `Unable to build your Data Connect schema and connectors: ${res.stderr}`,
+      );
     }
     try {
       return JSON.parse(res.stdout) as BuildResult;
     } catch (err) {
       // JSON parse errors are unreadable.
-      throw new FirebaseError("Unable to parse `fdc build` output");
+      throw new FirebaseError(`Unable to parse 'fdc build' output: ${res.stdout ?? res.stderr}`);
     }
   }
 

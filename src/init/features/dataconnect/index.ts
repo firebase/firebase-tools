@@ -97,7 +97,13 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
       default: true,
     }))
   ) {
-    await provisionCloudSql(setup.projectId, locationId, cloudSqlInstanceId, cloudSqlDatabase);
+    await provisionCloudSql({
+      projectId: setup.projectId,
+      locationId,
+      instanceId: cloudSqlInstanceId,
+      databaseId: cloudSqlDatabase,
+      enableGoogleMlIntegration: false,
+    });
   }
 }
 

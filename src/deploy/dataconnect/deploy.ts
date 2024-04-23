@@ -1,12 +1,14 @@
 import { Options } from "../../options";
 import * as client from "../../dataconnect/client";
 import * as utils from "../../utils";
-import { Service, ServiceInfo } from "../../dataconnect/types";
+import { Service, ServiceInfo, requiresVector } from "../../dataconnect/types";
 import { needProjectId } from "../../projectUtils";
 import { provisionCloudSql } from "../../dataconnect/provisionCloudSql";
 import { parseServiceName } from "../../dataconnect/names";
 import { confirm } from "../../prompt";
 import { ResourceFilter } from "../../dataconnect/filters";
+import { vertexAIOrigin } from "../../api";
+import * as ensureApiEnabled from "../../ensureApiEnabled";
 
 /**
  * Checks for and creates a Firebase DataConnect service, if needed.
@@ -27,6 +29,14 @@ export default async function (
   const serviceInfos = context.dataconnect.serviceInfos as ServiceInfo[];
   const services = await client.listAllServices(projectId);
   const filters = context.dataconnect.filters;
+
+  if (
+    serviceInfos.some((si) => {
+      return requiresVector(si.deploymentMetadata);
+    })
+  ) {
+    await ensureApiEnabled.ensure(projectId, vertexAIOrigin(), "dataconnect");
+  }
 
   const servicesToCreate = serviceInfos
     .filter((si) => !services.some((s) => matches(si, s)))
@@ -81,12 +91,14 @@ export default async function (
         if (!instanceId || !databaseId) {
           return Promise.resolve();
         }
-        return provisionCloudSql(
+        const enableGoogleMlIntegration = requiresVector(s.deploymentMetadata);
+        return provisionCloudSql({
           projectId,
-          parseServiceName(s.serviceName).location,
+          locationId: parseServiceName(s.serviceName).location,
           instanceId,
           databaseId,
-        );
+          enableGoogleMlIntegration,
+        });
       }),
   );
   return;

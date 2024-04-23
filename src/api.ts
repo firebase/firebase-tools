@@ -146,6 +146,8 @@ export const dataConnectLocalConnString = () =>
   utils.envOverride("FIREBASE_DATACONNECT_POSTGRESQL_STRING", "");
 export const cloudSQLAdminOrigin = () =>
   utils.envOverride("CLOUD_SQL_URL", "https://sqladmin.googleapis.com");
+export const vertexAIOrigin = () =>
+  utils.envOverride("VERTEX_AI_URL", "https://aiplatform.googleapis.com");
 
 /** Gets scopes that have been set. */
 export function getScopes(): string[] {

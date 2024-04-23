@@ -20,5 +20,5 @@ export async function build(options: Options, configDir: string): Promise<Deploy
       `There are errors in your schema and connector files:\n${buildResult.errors.map(prettify).join("\n")}`,
     );
   }
-  return buildResult?.deploymentMetadata ?? {};
+  return buildResult?.metadata ?? {};
 }

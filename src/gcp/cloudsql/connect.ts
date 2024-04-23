@@ -4,6 +4,7 @@ import { Connector, IpAddressTypes, AuthTypes } from "@google-cloud/cloud-sql-co
 import { requireAuth } from "../../requireAuth";
 import { needProjectId } from "../../projectUtils";
 import * as cloudSqlAdminClient from "./cloudsqladmin";
+import { UserType } from "./types";
 import * as utils from "../../utils";
 import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
@@ -179,8 +180,8 @@ function firebaseowner(databaseId: string) {
 // - Postgres: https://cloud.google.com/sql/docs/postgres/iam-logins#log-in-with-automatic
 //   - For user: it's full email address.
 //   - For service account: it's email address without the .gserviceaccount.com domain suffix.
-function toDatabaseUser(account: string): { user: string; mode: cloudSqlAdminClient.UserType } {
-  let mode: cloudSqlAdminClient.UserType = "CLOUD_IAM_USER";
+function toDatabaseUser(account: string): { user: string; mode: UserType } {
+  let mode: UserType = "CLOUD_IAM_USER";
   let user = account;
   if (account.endsWith(".gserviceaccount.com")) {
     user = account.replace(".gserviceaccount.com", "");

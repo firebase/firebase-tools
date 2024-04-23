@@ -78,7 +78,7 @@ export interface GraphqlError {
 }
 export interface BuildResult {
   errors?: GraphqlError[];
-  deploymentMetadata?: DeploymentMetadata;
+  metadata?: DeploymentMetadata;
 }
 
 export interface DeploymentMetadata {
@@ -87,6 +87,10 @@ export interface DeploymentMetadata {
       requiredExtensions?: string[];
     };
   };
+}
+
+export function requiresVector(dm?: DeploymentMetadata): boolean {
+  return dm?.primaryDataSource?.postgres?.requiredExtensions?.includes("vector") ?? false;
 }
 
 // YAML types
