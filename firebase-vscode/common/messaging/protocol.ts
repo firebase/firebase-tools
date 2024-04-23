@@ -44,6 +44,9 @@ export interface WebviewToExtensionParamsMap {
    */
   promptUserForInput: { title: string; prompt: string };
 
+  /** Calls the `firebase init` CLI */
+  runFirebaseInit: void;
+
   /**
    * Show a UI message using the vscode interface
    */

@@ -191,9 +191,6 @@ export async function createBackend(
     appId: webAppId,
   };
 
-  // TODO: remove computeServiceAccount when the backend supports the field.
-  delete backendReqBody.serviceAccount;
-
   async function createBackendAndPoll(): Promise<apphosting.Backend> {
     const op = await apphosting.createBackend(projectId, location, backendReqBody, backendId);
     return await poller.pollOperation<Backend>({
@@ -239,14 +236,7 @@ async function provisionDefaultComputeServiceAccount(projectId: string): Promise
   await addServiceAccountToRoles(
     projectId,
     defaultComputeServiceAccountEmail(projectId),
-    [
-      // TODO: Update to roles/firebaseapphosting.computeRunner when it is available.
-      "roles/firebaseapphosting.viewer",
-      "roles/artifactregistry.createOnPushWriter",
-      "roles/logging.logWriter",
-      "roles/storage.objectAdmin",
-      "roles/firebase.sdkAdminServiceAgent",
-    ],
+    ["roles/firebaseapphosting.computeRunner", "roles/firebase.sdkAdminServiceAgent"],
     /* skipAccountLookup= */ true,
   );
 }
