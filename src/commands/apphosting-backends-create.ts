@@ -20,7 +20,7 @@ export const command = new Command("apphosting:backends:create")
   .option(
     "-w, --with-dev-connect",
     "use the Developer Connect flow insetad of Cloud Build Repositories (testing)",
-    false,
+    true,
   )
   .before(ensureApiEnabled)
   .before(requireInteractive)
