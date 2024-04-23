@@ -132,7 +132,7 @@ export const serviceUsageOrigin = () =>
 export const apphostingOrigin = () =>
   utils.envOverride("APPHOSTING_URL", "https://firebaseapphosting.googleapis.com");
 export const apphostingP4SADomain = () =>
-  utils.envOverride("APPHOSTING_P4SA_DOMAIN", "gcp-sa-apphosting.iam.gserviceaccount.com");
+  utils.envOverride("APPHOSTING_P4SA_DOMAIN", "gcp-sa-firebaseapphosting.iam.gserviceaccount.com");
 
 export const githubOrigin = () => utils.envOverride("GITHUB_URL", "https://github.com");
 export const githubApiOrigin = () => utils.envOverride("GITHUB_API_URL", "https://api.github.com");
