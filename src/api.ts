@@ -24,6 +24,12 @@ export const cloudMonitoringOrigin = () =>
   utils.envOverride("CLOUD_MONITORING_URL", "https://monitoring.googleapis.com");
 export const containerRegistryDomain = () =>
   utils.envOverride("CONTAINER_REGISTRY_DOMAIN", "gcr.io");
+
+export const developerConnectOrigin = () =>
+  utils.envOverride("DEVELOPERCONNECT_URL", "https://developerconnect.googleapis.com");
+export const developerConnectP4SADomain = () =>
+  utils.envOverride("DEVELOPERCONNECT_P4SA_DOMAIN", "gcp-sa-devconnect.iam.gserviceaccount.com");
+
 export const artifactRegistryDomain = () =>
   utils.envOverride("ARTIFACT_REGISTRY_DOMAIN", "https://artifactregistry.googleapis.com");
 export const appDistributionOrigin = () =>
@@ -31,6 +37,14 @@ export const appDistributionOrigin = () =>
     "FIREBASE_APP_DISTRIBUTION_URL",
     "https://firebaseappdistribution.googleapis.com",
   );
+export const apphostingOrigin = () =>
+  utils.envOverride("FIREBASE_APPHOSTING_URL", "https://firebaseapphosting.googleapis.com");
+export const apphostingP4SADomain = () =>
+  utils.envOverride(
+    "FIREBASE_APPHOSTING_P4SA_DOMAIN",
+    "gcp-sa-firebaseapphosting.iam.gserviceaccount.com",
+  );
+
 export const authOrigin = () =>
   utils.envOverride("FIREBASE_AUTH_URL", "https://accounts.google.com");
 export const consoleOrigin = () =>
@@ -70,15 +84,6 @@ export const functionsDefaultRegion = () =>
 
 export const cloudbuildOrigin = () =>
   utils.envOverride("FIREBASE_CLOUDBUILD_URL", "https://cloudbuild.googleapis.com");
-
-export const developerConnectOrigin = () =>
-  utils.envOverride("FIREBASE_DEVELOPERCONNECT_URL", "https://developerconnect.googleapis.com");
-
-export const developerConnectP4SAOrigin = () =>
-  utils.envOverride(
-    "FIREBASE_DEVELOPERCONNECT_P4SA_URL",
-    "gcp-sa-devconnect.iam.gserviceaccount.com",
-  );
 
 export const cloudschedulerOrigin = () =>
   utils.envOverride("FIREBASE_CLOUDSCHEDULER_URL", "https://cloudscheduler.googleapis.com");
@@ -128,8 +133,7 @@ export const cloudRunApiOrigin = () =>
   utils.envOverride("CLOUD_RUN_API_URL", "https://run.googleapis.com");
 export const serviceUsageOrigin = () =>
   utils.envOverride("FIREBASE_SERVICE_USAGE_URL", "https://serviceusage.googleapis.com");
-export const apphostingOrigin = () =>
-  utils.envOverride("APPHOSTING_URL", "https://firebaseapphosting.googleapis.com");
+
 export const githubOrigin = () => utils.envOverride("GITHUB_URL", "https://github.com");
 export const githubApiOrigin = () => utils.envOverride("GITHUB_API_URL", "https://api.github.com");
 export const secretManagerOrigin = () =>
