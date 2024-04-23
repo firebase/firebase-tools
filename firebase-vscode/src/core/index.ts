@@ -40,6 +40,18 @@ export async function registerCore({
     vscode.env.openExternal(vscode.Uri.parse(href));
   });
 
+  const sub4 = broker.on("runFirebaseInit", async () => {
+    vscode.tasks.executeTask(
+      new vscode.Task(
+        { type: "shell" }, // this is the same type as in tasks.json
+        vscode.workspace.workspaceFolders[0], // The workspace folder
+        "Firebase init", // how you name the task
+        "Firebase init", // Shows up as MyTask: name
+        new vscode.ShellExecution("firebase init"),
+      ),
+    );
+  });
+
   const emulatorsController = new EmulatorsController(broker);
   return [
     emulatorsController,
@@ -54,6 +66,7 @@ export async function registerCore({
       { dispose: sub1 },
       { dispose: sub2 },
       { dispose: sub3 },
+    { dispose: sub4 },,
     ),
   ];
 }
