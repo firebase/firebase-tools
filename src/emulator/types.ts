@@ -147,6 +147,7 @@ export interface DownloadableEmulatorCommand {
   args: string[];
   optionalArgs: string[];
   joinArgs: boolean;
+  shell: boolean;
 }
 
 export interface EmulatorDownloadOptions {
