@@ -246,7 +246,9 @@ describe("secrets", () => {
         },
         {
           role: "roles/secretmanager.secretVersionManager",
-          members: ["serviceAccount:service-12345@gcp-sa-firebaseapphosting.iam.gserviceaccount.com"],
+          members: [
+            "serviceAccount:service-12345@gcp-sa-firebaseapphosting.iam.gserviceaccount.com",
+          ],
         },
       ];
 
