@@ -49,6 +49,7 @@ export async function doSetup(
     ensure(projectId, secretManagerOrigin(), "apphosting", true),
     ensure(projectId, cloudRunApiOrigin(), "apphosting", true),
     ensure(projectId, artifactRegistryDomain(), "apphosting", true),
+    ensure(projectId, iamOrigin(), "apphosting", true),
   ]);
 
   const allowedLocations = (await apphosting.listLocations(projectId)).map((loc) => loc.locationId);
