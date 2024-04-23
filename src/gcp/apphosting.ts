@@ -1,7 +1,7 @@
 import * as proto from "../gcp/proto";
 import { Client } from "../apiv2";
 import { needProjectId } from "../projectUtils";
-import { apphostingOrigin, apphostingP4SAOrigin } from "../api";
+import { apphostingOrigin, apphostingP4SADomain } from "../api";
 import { ensure } from "../ensureApiEnabled";
 import * as deploymentTool from "../deploymentTool";
 import { FirebaseError } from "../error";
@@ -267,8 +267,9 @@ export interface ListBackendsResponse {
 /**
  * Returns the App Hosting service agent.
  */
-export function getServiceAgent(projectNumber: string): string {
-  return `service-${projectNumber}@${apphostingP4SAOrigin()}`;
+export function serviceAgentEmail(projectNumber: string): string {
+  const domain = apphostingP4SADomain();
+  return `service-${projectNumber}@${domain}`;
 }
 
 /**

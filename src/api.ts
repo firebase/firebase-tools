@@ -74,9 +74,9 @@ export const cloudbuildOrigin = () =>
 export const developerConnectOrigin = () =>
   utils.envOverride("FIREBASE_DEVELOPERCONNECT_URL", "https://developerconnect.googleapis.com");
 
-export const developerConnectP4SAOrigin = () =>
+export const developerConnectP4SADomain = () =>
   utils.envOverride(
-    "FIREBASE_DEVELOPERCONNECT_P4SA_URL",
+    "FIREBASE_DEVELOPERCONNECT_DOMAIN_URL",
     "gcp-sa-devconnect.iam.gserviceaccount.com",
   );
 
@@ -131,8 +131,8 @@ export const serviceUsageOrigin = () =>
 
 export const apphostingOrigin = () =>
   utils.envOverride("APPHOSTING_URL", "https://firebaseapphosting.googleapis.com");
-export const apphostingP4SAOrigin = () =>
-  utils.envOverride("APPHOSTING_P4SA_URL", "gcp-sa-apphosting.iam.gserviceaccount.com");
+export const apphostingP4SADomain = () =>
+  utils.envOverride("APPHOSTING_P4SA_DOMAIN", "gcp-sa-apphosting.iam.gserviceaccount.com");
 
 export const githubOrigin = () => utils.envOverride("GITHUB_URL", "https://github.com");
 export const githubApiOrigin = () => utils.envOverride("GITHUB_API_URL", "https://api.github.com");

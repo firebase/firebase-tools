@@ -82,7 +82,7 @@ export async function grantSecretAccess(
     // The App Hosting service agent needs the version manager role for automated garbage collection.
     {
       role: "roles/secretmanager.secretVersionManager",
-      members: [`serviceAccount:${apphosting.getServiceAgent(projectNumber)}`],
+      members: [`serviceAccount:${apphosting.serviceAgentEmail(projectNumber)}`],
     },
   ];
 
