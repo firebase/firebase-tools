@@ -71,7 +71,7 @@ export const command = new Command("apphosting:secrets:set <secretName>")
 
       // TODO: For existing secrets, enter the grantSecretAccess dialog only when the necessary permissions don't exist.
     } else {
-      await secrets.grantSecretAccess(projectId, secretName, accounts);
+      await secrets.grantSecretAccess(projectId, projectNumber, secretName, accounts);
     }
 
     await config.maybeAddSecretToYaml(secretName);
