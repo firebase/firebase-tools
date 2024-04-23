@@ -222,7 +222,7 @@ describe("secrets", () => {
       ],
     };
 
-    it.only("should grant access to the appropriate service accounts", async () => {
+    it("should grant access to the appropriate service accounts", async () => {
       gcsm.getIamPolicy.resolves(existingPolicy);
       gcsm.setIamPolicy.resolves();
 
@@ -244,10 +244,10 @@ describe("secrets", () => {
           role: "roles/secretmanager.viewer",
           members: ["serviceAccount:buildSA"],
         },
-        // {
-        //   role: "roles/secretmanager.secretVersionManager",
-        //   members: ["serviceAccount:service-12345@gcp-sa-apphosting.iam.gserviceaccount.com"],
-        // },
+        {
+          role: "roles/secretmanager.secretVersionManager",
+          members: ["serviceAccount:service-12345@gcp-sa-apphosting.iam.gserviceaccount.com"], //service-12345@gcp-sa-apphosting.iam.gserviceaccount.com"],
+        },
       ];
 
       expect(gcsm.getIamPolicy).to.be.calledWithMatch(secret);

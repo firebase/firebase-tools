@@ -264,12 +264,13 @@ export interface ListBackendsResponse {
   unreachable: string[];
 }
 
+const P4SA_DOMAIN = apphostingP4SADomain();
+
 /**
  * Returns the App Hosting service agent.
  */
 export function serviceAgentEmail(projectNumber: string): string {
-  const domain = apphostingP4SADomain();
-  return `service-${projectNumber}@${domain}`;
+  return `service-${projectNumber}@${P4SA_DOMAIN}`;
 }
 
 /**
