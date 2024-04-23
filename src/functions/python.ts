@@ -2,6 +2,7 @@ import * as path from "path";
 import * as spawn from "cross-spawn";
 import * as cp from "child_process";
 import { logger } from "../logger";
+import { IS_WINDOWS } from "../utils";
 
 /**
  * Default directory for python virtual environment.
@@ -12,12 +13,11 @@ export const DEFAULT_VENV_DIR = "venv";
  *  Get command for running Python virtual environment for given platform.
  */
 export function virtualEnvCmd(cwd: string, venvDir: string): { command: string; args: string[] } {
-  const activateScriptPath =
-    process.platform === "win32" ? ["Scripts", "activate.bat"] : ["bin", "activate"];
+  const activateScriptPath = IS_WINDOWS ? ["Scripts", "activate.bat"] : ["bin", "activate"];
   const venvActivate = `"${path.join(cwd, venvDir, ...activateScriptPath)}"`;
   return {
-    command: process.platform === "win32" ? venvActivate : ".",
-    args: [process.platform === "win32" ? "" : venvActivate],
+    command: IS_WINDOWS ? venvActivate : ".",
+    args: [IS_WINDOWS ? "" : venvActivate],
   };
 }
 
