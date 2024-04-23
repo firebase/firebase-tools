@@ -42,7 +42,7 @@ export function firebaseTest(
   const testSetups = [...setups];
   const testTearDowns = [...tearDowns];
 
-  it(description, async function () {
+  test(description, async function () {
     // Tests may call addTearDown to register a callback to run after the test ends.
     // We make sure those callbacks are applied only to this test.
     const previousTearDowns = tearDowns;

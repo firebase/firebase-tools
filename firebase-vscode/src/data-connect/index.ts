@@ -22,14 +22,19 @@ import {
   ResolvedDataConnectConfigs,
   VSCODE_ENV_VARS,
   dataConnectConfigs,
+  registerDataConnectConfigs,
 } from "./config";
 import { locationToRange } from "../utils/graphql";
 import { runDataConnectCompiler } from "./core-compiler";
 import { setVSCodeEnvVars } from "../../../src/utils";
+import { Result } from "../result";
 import { setTerminalEnvVars } from "./terminal";
+
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
-    private configs: Signal<ResolvedDataConnectConfigs | undefined>
+    private configs: Signal<
+      Result<ResolvedDataConnectConfigs | undefined> | undefined
+    >,
   ) {}
 
   provideCodeActions(
@@ -85,9 +90,10 @@ class CodeActionsProvider implements vscode.CodeActionProvider {
     { index }: { index: number },
     results: (vscode.CodeAction | vscode.Command)[]
   ) {
-    const enclosingService = this.configs.value?.findEnclosingServiceForPath(
-      document.uri.fsPath
-    );
+    const enclosingService =
+      this.configs.value?.tryReadValue?.findEnclosingServiceForPath(
+        document.uri.fsPath,
+      );
     if (!enclosingService) {
       return;
     }
@@ -100,7 +106,13 @@ class CodeActionsProvider implements vscode.CodeActionProvider {
       return;
     }
 
-    for (const connector of enclosingService.resolvedConnectors) {
+    for (const connectorResult of enclosingService.resolvedConnectors) {
+      const connector = connectorResult.tryReadValue;
+      if (!connector) {
+        // Parsing error in the connector, skip
+        continue;
+      }
+
       results.push({
         title: `Move to "${connector.value.connectorId}"`,
         kind: vscode.CodeActionKind.Refactor,
@@ -148,7 +160,9 @@ export function registerFdc(
   // Perform some side-effects when the endpoint changes
   context.subscriptions.push({
     dispose: effect(() => {
-      if (fdcService.localEndpoint.value) {
+      const configs = dataConnectConfigs.value?.tryReadValue;
+
+      if (configs && fdcService.localEndpoint.value) {
         // TODO move to client.start or setupLanguageClient
         vscode.commands.executeCommand("fdc-graphql.restart");
 
@@ -156,7 +170,7 @@ export function registerFdc(
           "firebase.dataConnect.executeIntrospection"
         );
 
-        runDataConnectCompiler(fdcService.localEndpoint.value);
+        runDataConnectCompiler(configs, fdcService.localEndpoint.value);
       }
     }),
   });
@@ -183,6 +197,7 @@ export function registerFdc(
         selectedProjectStatus.show();
       }),
     },
+    registerDataConnectConfigs(),
     registerExecution(context, broker, fdcService, emulatorController),
     registerExplorer(context, broker, fdcService),
     registerFirebaseDataConnectView(context, broker, emulatorController),

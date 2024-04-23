@@ -4,7 +4,8 @@ import fetch from "node-fetch";
 import { GraphQLError } from "graphql";
 import { Observable, of } from "rxjs";
 import { backOff } from "exponential-backoff";
-import { dataConnectConfigs } from "./config";
+import { ResolvedDataConnectConfigs, dataConnectConfigs } from "./config";
+import { DataConnectConfig } from "../firebaseConfig";
 
 type DiagnosticTuple = [Uri, Diagnostic[]];
 type CompilerResponse = { result?: { errors?: GraphQLError[] } };
@@ -15,14 +16,18 @@ const fdcDiagnosticCollection =
  *
  * @param fdcEndpoint FDC Emulator endpoint
  */
-export async function runDataConnectCompiler(fdcEndpoint: string) {
-  const obsErrors = await getCompilerStream(fdcEndpoint);
+export async function runDataConnectCompiler(
+  configs: ResolvedDataConnectConfigs,
+  fdcEndpoint: string,
+) {
+  const obsErrors = await getCompilerStream(configs, fdcEndpoint);
   const obsConverter = {
     next(nextCompilerResponse: CompilerResponse) {
       if (nextCompilerResponse.result && nextCompilerResponse.result.errors) {
         fdcDiagnosticCollection.clear();
         const diagnostics = convertGQLErrorToDiagnostic(
-          nextCompilerResponse.result.errors
+          configs,
+          nextCompilerResponse.result.errors,
         );
         fdcDiagnosticCollection.set(diagnostics);
       }
@@ -38,10 +43,11 @@ export async function runDataConnectCompiler(fdcEndpoint: string) {
 }
 
 function convertGQLErrorToDiagnostic(
-  gqlErrors: GraphQLError[]
+  configs: ResolvedDataConnectConfigs,
+  gqlErrors: GraphQLError[],
 ): DiagnosticTuple[] {
   const perFileDiagnostics = {};
-  const dcPath = dataConnectConfigs.valueOf().values[0].path;
+  const dcPath = configs.values[0].path;
   for (const error of gqlErrors) {
     const absFilePath = `${dcPath}/${error.extensions["file"]}`;
     const perFileDiagnostic = perFileDiagnostics[absFilePath] || [];
@@ -74,11 +80,12 @@ function locationToRange(location: { line: number; column: number }): Range {
  *  */
 
 export async function getCompilerStream(
-  dataConnectEndpoint: string
+  configs: ResolvedDataConnectConfigs,
+  dataConnectEndpoint: string,
 ): Promise<Observable<CompilerResponse>> {
   try {
     // TODO: eventually support multiple services
-    const serviceId = dataConnectConfigs.valueOf().serviceIds[0];
+    const serviceId = configs.serviceIds[0];
     const resp = await backOff(() =>
       fetch(
         dataConnectEndpoint + `/emulator/stream_errors?serviceId=${serviceId}`,

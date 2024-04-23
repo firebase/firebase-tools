@@ -11,7 +11,6 @@ import {
   firebaseRC,
   getRootFolders,
   registerConfig,
-  dataConnectConfigs,
 } from "../../../../core/config";
 import {
   addDisposable,
@@ -565,9 +564,6 @@ firebaseSuite("registerConfig", () => {
       const rcFile = path.join(dir, ".firebaserc");
       const configListeners = watcherListeners["firebase.json"]!;
       const configFile = path.join(dir, "firebase.json");
-      const dataConnectListeners =
-        watcherListeners["**/{dataconnect,connector}.yaml"]!;
-      const dataConnectFile = path.join(dir, "**/{dataconnect,connector}.yaml");
 
       function testEvent(
         index: number,
@@ -615,22 +611,12 @@ firebaseSuite("registerConfig", () => {
         });
       }
 
-      function testDataConnectEvent(event: "create" | "update" | "delete") {
-        fs.writeFileSync(dataConnectFile, `specVersion: ${event}`);
-        dataConnectListeners[event]!(vscode.Uri.file(dataConnectFile));
-
-        assert.deepEqual(dataConnectConfigs.value, [{}]);
-      }
-
       testRcEvent("create", 0);
       testRcEvent("update", 1);
 
       testConfigEvent("create", 2);
       testConfigEvent("update", 3);
-
-      testDataConnectEvent("create");
-      testDataConnectEvent("update");
-    }
+    },
   );
 
   firebaseTest("handles getInitialData requests", async () => {

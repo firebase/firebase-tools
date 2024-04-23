@@ -62,8 +62,8 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
     token: vscode.CancellationToken
   ): vscode.CodeLens[] {
     // Wait for configs to be loaded and emulator to be running
-    const fdcConfigs = this.watch(dataConnectConfigs);
-    const rc = this.watch(firebaseRC);
+    const fdcConfigs = this.watch(dataConnectConfigs)?.tryReadValue;
+    const rc = this.watch(firebaseRC)?.tryReadValue;
     if (!fdcConfigs || !rc) {
       return [];
     }

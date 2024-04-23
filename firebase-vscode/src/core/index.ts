@@ -41,16 +41,19 @@ export async function registerCore({
   });
 
   const emulatorsController = new EmulatorsController(broker);
-  return Disposable.from(
+  return [
     emulatorsController,
-    registerOptions(context),
-    await registerConfig(broker),
-    registerEnv(broker),
-    registerUser(broker),
-    registerProject(broker),
-    registerQuickstart(broker),
-    { dispose: sub1 },
-    { dispose: sub2 },
-    { dispose: sub3 }
-  );
+    Disposable.from(
+      emulatorsController,
+      registerOptions(context),
+      registerConfig(broker),
+      registerEnv(broker),
+      registerUser(broker),
+      registerProject(broker),
+      registerQuickstart(broker),
+      { dispose: sub1 },
+      { dispose: sub2 },
+      { dispose: sub3 },
+    ),
+  ];
 }

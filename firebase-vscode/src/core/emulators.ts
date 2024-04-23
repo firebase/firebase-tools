@@ -86,7 +86,7 @@ export class EmulatorsController implements Disposable {
 
     this.subscriptions.push(
       effect(() => {
-        const projectId = firebaseRC.value?.projects?.default;
+        const projectId = firebaseRC.value?.tryReadValue?.projects?.default;
         this.uiSelections.value = {
           ...this.uiSelections.peek(),
           projectId: this.getProjectIdForMode(

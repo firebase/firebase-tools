@@ -41,12 +41,12 @@
       },
       {
         "command": "fdc-graphql.deploy",
-        "title": "Deploy",
+        "title": "Firebase Data Connect: Deploy",
         "icon": "$(cloud-upload)"
       },
       {
         "command": "firebase.selectProject",
-        "title": "Switch project"
+        "title": "Firebase: Switch project"
       },
       {
         "command": "firebase.emulators.start",

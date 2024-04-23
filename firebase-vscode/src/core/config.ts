@@ -6,24 +6,14 @@ import { currentOptions } from "../options";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { RC, RCData } from "../../../src/rc";
 import { Config } from "../../../src/config";
-import {
-  readConnectorYaml,
-  readDataConnectYaml,
-  readFirebaseJson,
-} from "../../../src/dataconnect/fileUtils";
 import { globalSignal } from "../utils/globals";
 import { workspace } from "../utils/test_hooks";
-import {
-  ResolvedConnectorYaml,
-  ResolvedDataConnectConfig,
-  ResolvedDataConnectConfigs,
-} from "../data-connect/config";
+import { ResolvedDataConnectConfigs } from "../data-connect/config";
 import { ValueOrError } from "../../common/messaging/protocol";
 import { firstWhereDefined, onChange } from "../utils/signal";
 import { Result, ResultError, ResultValue } from "../result";
-import { DataConnectMultiple, FirebaseConfig } from "../firebaseConfig";
+import { FirebaseConfig } from "../firebaseConfig";
 import { effect } from "@preact/signals-react";
-import { pluginLogger } from "../logger-wrapper";
 
 /**
  * The .firebaserc configs.
@@ -128,30 +118,6 @@ function registerRc(broker: ExtensionBrokerImpl): Disposable {
   );
 }
 
-async function registerDataConnectConfig(): Promise<Disposable> {
-  dataConnectConfigs.value = await _readDataConnectConfigs(
-    await firstWhereDefined(firebaseConfig).then((config) =>
-      readFirebaseJson(config.requireValue)
-    )
-  );
-
-  const dataConnectWatcher = _createWatcher("**/{dataconnect,connector}.yaml");
-  dataConnectWatcher?.onDidChange(
-    async () =>
-      (dataConnectConfigs.value = await _readDataConnectConfigs(
-        readFirebaseJson(firebaseConfig.value.requireValue)
-      ))
-  );
-  dataConnectWatcher?.onDidCreate(
-    async () =>
-      (dataConnectConfigs.value = await _readDataConnectConfigs(
-        readFirebaseJson(firebaseConfig.value.requireValue)
-      ))
-  );
-
-  return Disposable.from({ dispose: () => dataConnectWatcher?.dispose() });
-}
-
 function registerFirebaseConfig(broker: ExtensionBrokerImpl): Disposable {
   firebaseConfig.value = _readFirebaseConfig();
 
@@ -184,9 +150,7 @@ function registerFirebaseConfig(broker: ExtensionBrokerImpl): Disposable {
   );
 }
 
-export async function registerConfig(
-  broker: ExtensionBrokerImpl
-): Promise<Disposable> {
+export function registerConfig(broker: ExtensionBrokerImpl): Disposable {
   // On getInitialData, forcibly notifies the extension.
   const getInitialDataRemoveListener = broker.on("getInitialData", () => {
     notifyFirebaseConfig(broker);
@@ -198,56 +162,7 @@ export async function registerConfig(
     { dispose: getInitialDataRemoveListener },
     registerFirebaseConfig(broker),
     registerRc(broker),
-    await registerDataConnectConfig()
   );
-}
-
-function asAbsolutePath(relativePath: string, from: string): string {
-  return path.normalize(path.join(from, relativePath));
-}
-
-/** @internal */
-export async function _readDataConnectConfigs(
-  fdc: DataConnectMultiple
-): Promise<ResolvedDataConnectConfigs | undefined> {
-  try {
-    const dataConnects = await Promise.all(
-      fdc.map<Promise<ResolvedDataConnectConfig>>(async (dataConnect) => {
-        // Paths may be relative to the firebase.json file.
-        const absoluteLocation = asAbsolutePath(
-          dataConnect.source,
-          getConfigPath()
-        );
-        const dataConnectYaml = await readDataConnectYaml(absoluteLocation);
-
-        const resolvedConnectors = await Promise.all(
-          dataConnectYaml.connectorDirs.map(async (connectorDir) => {
-            const connectorYaml = await readConnectorYaml(
-              // Paths may be relative to the dataconnect.yaml
-              asAbsolutePath(connectorDir, absoluteLocation)
-            );
-
-            return new ResolvedConnectorYaml(
-              asAbsolutePath(connectorDir, absoluteLocation),
-              connectorYaml
-            );
-          })
-        );
-
-        return new ResolvedDataConnectConfig(
-          absoluteLocation,
-          dataConnectYaml,
-          resolvedConnectors,
-          dataConnect.location
-        );
-      })
-    );
-
-    return new ResolvedDataConnectConfigs(dataConnects);
-  } catch (e: any) {
-    pluginLogger.error(e);
-    return undefined;
-  }
 }
 
 /** @internal */

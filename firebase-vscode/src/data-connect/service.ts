@@ -12,7 +12,8 @@ import { UserMockKind } from "../../common/messaging/protocol";
 import { firstWhereDefined } from "../utils/signal";
 import { EmulatorsController } from "../core/emulators";
 import { Emulators } from "../cli";
-import { dataConnectConfigs } from "../core/config";
+import { dataConnectConfigs } from "../data-connect/config";
+
 import { firebaseRC } from "../core/config";
 import { executeGraphQL } from "../../../src/dataconnect/dataplaneClient";
 import {
@@ -52,17 +53,21 @@ export class DataConnectService {
     );
   });
 
-  async servicePath(path: string, instance: InstanceType): Promise<string> {
+  async servicePath(path: string, instance: InstanceType): Promise<string | undefined> {
     const dataConnectConfigsValue = await firstWhereDefined(dataConnectConfigs);
     // TODO: avoid calling this here and in getApiServicePathByPath
     const serviceId =
-      dataConnectConfigsValue.findEnclosingServiceForPath(path).value.serviceId;
-    const projectId = firebaseRC.value?.projects?.default;
+      dataConnectConfigsValue?.tryReadValue.findEnclosingServiceForPath(path).value.serviceId;
+    const projectId = firebaseRC.value?.tryReadValue?.projects?.default;
+
+    if (serviceId === undefined || projectId === undefined) {
+      return undefined;
+    }
+
     return instance === InstanceType.PRODUCTION
-      ? dataConnectConfigsValue.getApiServicePathByPath(
+      ? dataConnectConfigsValue?.tryReadValue?.getApiServicePathByPath(
           projectId,
           path,
-          dataConnectConfigsValue
         )
       : `projects/p/locations/l/services/${serviceId}`;
   }
@@ -198,7 +203,8 @@ export class DataConnectService {
   }) {
     // TODO: get introspections for all services
     const configs = await firstWhereDefined(dataConnectConfigs);
-    const serviceId = configs.serviceIds[0];
+    // Using "requireValue", so that if configs are not available, the execution should throw.
+    const serviceId = configs.requireValue.serviceIds[0];
     try {
       // TODO: get name programmatically
       const body = this._serializeBody({

@@ -13,7 +13,6 @@ import { getSettings } from "./utils/settings";
 import { registerHosting } from "./hosting";
 import { registerFdc } from "./data-connect";
 import { AuthService } from "./auth/service";
-import { setupFirebaseJsonAndRcFileSystemWatcher } from "./config-files";
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -33,8 +32,6 @@ export async function activate(context: vscode.ExtensionContext) {
     broker,
     context,
   });
-
-  setupFirebaseJsonAndRcFileSystemWatcher(broker, context);
 
   context.subscriptions.push(
     coreDisposable,

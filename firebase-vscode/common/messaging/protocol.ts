@@ -3,18 +3,13 @@
  * between two environments (VScode and Webview)
  */
 
-import {
-  DataConnectMultiple,
-  FirebaseConfig,
-} from "../../../src/firebaseConfig";
+import { FirebaseConfig } from "../../../src/firebaseConfig";
 import { User } from "../../../src/types/auth";
 import { ServiceAccountUser } from "../types";
 import { RCData } from "../../../src/rc";
 import { EmulatorUiSelections, RunningEmulatorInfo } from "./types";
 import { ExecutionResult } from "graphql";
 import { SerializedError } from "../error";
-import { ConnectorYaml, DataConnectYaml } from "../dataconnect/types";
-import { Config } from "../config";
 
 export const DEFAULT_EMULATOR_UI_SELECTIONS: EmulatorUiSelections = {
   projectId: "demo-something",

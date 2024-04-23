@@ -1,8 +1,8 @@
 import * as vscode from "vscode";
-import { firstWhere } from "../utils/signal";
+import { firstWhere, firstWhereDefined } from "../utils/signal";
 import { currentOptions } from "../options";
 import { deploy as cliDeploy } from "../../../src/deploy";
-import { dataConnectConfigs } from "./config";
+import { ResolvedDataConnectConfigs, dataConnectConfigs } from "./config";
 import { createE2eMockable } from "../utils/test_hooks";
 import { runCommand } from "./terminal";
 
@@ -27,35 +27,45 @@ export function registerFdcDeploy(): vscode.Disposable {
       cliDeploy(...args);
     },
     "deploy",
-    async () => {}
+    async () => {},
   );
 
   const deployCmd = vscode.commands.registerCommand(
     "fdc-graphql.deploy",
     async () => {
-      const pickedServices = await pickServices();
+      const configs = await firstWhereDefined(dataConnectConfigs).then(
+        (c) => c.requireValue,
+      );
+
+      const pickedServices = await pickServices(configs.serviceIds);
       if (!pickedServices) {
         return;
       }
 
       const serviceConnectorMap: { [key: string]: string[] } = {};
-      for (const service of pickedServices) {
-        serviceConnectorMap[service] = await pickConnectors(service);
+      for (const serviceId of pickedServices) {
+        const connectorIds = configs.findById(serviceId)?.connectorIds;
+        serviceConnectorMap[serviceId] = await pickConnectors(
+          connectorIds,
+          serviceId,
+        );
       }
 
       runCommand(createDeployOnlyCommand(serviceConnectorMap)); // run from terminal
-    }
+    },
   );
 
   return vscode.Disposable.from(deploySpy, deployCmd);
 }
 
-async function pickServices(): Promise<Array<string> | undefined> {
+async function pickServices(
+  serviceIds: string[],
+): Promise<Array<string> | undefined> {
   const options = firstWhere(
     currentOptions,
-    (options) => options.project?.length !== 0
+    (options) => options.project?.length !== 0,
   ).then((options) => {
-    return dataConnectConfigs.value.serviceIds.map((serviceId) => {
+    return serviceIds.map((serviceId) => {
       return {
         label: serviceId,
         options,
@@ -73,21 +83,20 @@ async function pickServices(): Promise<Array<string> | undefined> {
 }
 
 async function pickConnectors(
-  serviceId: string
+  connectorIds: string[] | undefined,
+  serviceId: string,
 ): Promise<Array<string> | undefined> {
   const options = firstWhere(
     currentOptions,
-    (options) => options.project?.length !== 0
+    (options) => options.project?.length !== 0,
   ).then((options) => {
-    return dataConnectConfigs.value
-      .findById(serviceId)
-      ?.connectorIds.map((connectorId) => {
-        return {
-          label: connectorId,
-          options,
-          picked: true,
-        };
-      });
+    return connectorIds?.map((connectorId) => {
+      return {
+        label: connectorId,
+        options,
+        picked: true,
+      };
+    });
   });
 
   const picked = await vscode.window.showQuickPick(options, {
