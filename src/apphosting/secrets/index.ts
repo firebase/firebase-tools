@@ -80,10 +80,10 @@ export async function grantSecretAccess(
       members: accounts.buildServiceAccounts.map((sa) => `serviceAccount:${sa}`),
     },
     // The App Hosting service agent needs the version manager role for automated garbage collection.
-    {
-      role: "roles/secretmanager.secretVersionManager",
-      members: [`serviceAccount:${apphosting.serviceAgentEmail(projectNumber)}`],
-    },
+    // {
+    //   role: "roles/secretmanager.secretVersionManager",
+    //   members: [`serviceAccount:${apphosting.serviceAgentEmail(projectNumber)}`],
+    // },
   ];
 
   let existingBindings;

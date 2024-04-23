@@ -76,7 +76,7 @@ export const developerConnectOrigin = () =>
 
 export const developerConnectP4SADomain = () =>
   utils.envOverride(
-    "FIREBASE_DEVELOPERCONNECT_DOMAIN_URL",
+    "FIREBASE_DEVELOPERCONNECT_DOMAIN",
     "gcp-sa-devconnect.iam.gserviceaccount.com",
   );
 
