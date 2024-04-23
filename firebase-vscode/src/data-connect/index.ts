@@ -41,7 +41,7 @@ class CodeActionsProvider implements vscode.CodeActionProvider {
     document: vscode.TextDocument,
     range: vscode.Range | vscode.Selection,
     context: vscode.CodeActionContext,
-    cancellationToken: vscode.CancellationToken
+    cancellationToken: vscode.CancellationToken,
   ): vscode.ProviderResult<(vscode.CodeAction | vscode.Command)[]> {
     const documentText = document.getText();
     const results: (vscode.CodeAction | vscode.Command)[] = [];
@@ -78,7 +78,7 @@ class CodeActionsProvider implements vscode.CodeActionProvider {
       document,
       documentText,
       { index: definitionIndex! },
-      results
+      results,
     );
 
     return results;
@@ -88,7 +88,7 @@ class CodeActionsProvider implements vscode.CodeActionProvider {
     document: vscode.TextDocument,
     documentText: string,
     { index }: { index: number },
-    results: (vscode.CodeAction | vscode.Command)[]
+    results: (vscode.CodeAction | vscode.Command)[],
   ) {
     const enclosingService =
       this.configs.value?.tryReadValue?.findEnclosingServiceForPath(
@@ -99,7 +99,7 @@ class CodeActionsProvider implements vscode.CodeActionProvider {
     }
 
     const enclosingConnector = enclosingService.findEnclosingConnectorForPath(
-      document.uri.fsPath
+      document.uri.fsPath,
     );
     if (enclosingConnector) {
       // Already in a connector, don't suggest moving to another one
@@ -135,7 +135,7 @@ export function registerFdc(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl,
   authService: AuthService,
-  emulatorController: EmulatorsController
+  emulatorController: EmulatorsController,
 ): Disposable {
   const codeActions = vscode.languages.registerCodeActionsProvider(
     [
@@ -145,12 +145,12 @@ export function registerFdc(
     new CodeActionsProvider(dataConnectConfigs),
     {
       providedCodeActionKinds: [vscode.CodeActionKind.Refactor],
-    }
+    },
   );
 
   const fdcService = new FdcService(authService, emulatorController);
   const operationCodeLensProvider = new OperationCodeLensProvider(
-    emulatorController
+    emulatorController,
   );
   const schemaCodeLensProvider = new SchemaCodeLensProvider(emulatorController);
 
@@ -167,7 +167,7 @@ export function registerFdc(
         vscode.commands.executeCommand("fdc-graphql.restart");
 
         vscode.commands.executeCommand(
-          "firebase.dataConnect.executeIntrospection"
+          "firebase.dataConnect.executeIntrospection",
         );
 
         runDataConnectCompiler(configs, fdcService.localEndpoint.value);
@@ -181,14 +181,25 @@ export function registerFdc(
   setVSCodeEnvVars(VSCODE_ENV_VARS.DATA_CONNECT_ORIGIN, STAGING_API);
   const selectedProjectStatus = vscode.window.createStatusBarItem(
     "projectPicker",
-    vscode.StatusBarAlignment.Left
+    vscode.StatusBarAlignment.Left,
   );
   selectedProjectStatus.tooltip = "Select a Firebase project";
   selectedProjectStatus.command = "firebase.selectProject";
 
+  const sub1 = effect(() => {
+    // Enable FDC views only if at least one dataconnect.yaml is present.
+    // TODO don't start the related logic unless a dataconnect.yaml is present
+    vscode.commands.executeCommand(
+      "setContext",
+      "firebase-vscode.fdc.enabled",
+      (dataConnectConfigs.value?.tryReadValue?.values.length ?? 0) !== 0,
+    );
+  });
+
   return Disposable.from(
     codeActions,
     selectedProjectStatus,
+    {dispose: sub1},
     {
       dispose: effect(() => {
         selectedProjectStatus.text = `$(mono-firebase) ${
@@ -216,7 +227,7 @@ export function registerFdc(
             { scheme: "file", language: "graphql" },
             { scheme: "untitled", language: "graphql" },
           ],
-      operationCodeLensProvider
+      operationCodeLensProvider,
     ),
     schemaCodeLensProvider,
     vscode.languages.registerCodeLensProvider(
@@ -224,12 +235,12 @@ export function registerFdc(
         { scheme: "file", language: "graphql" },
         // Don't show in untitled files since the provider needs the file name.
       ],
-      schemaCodeLensProvider
+      schemaCodeLensProvider,
     ),
     {
       dispose: () => {
         client.stop();
       },
-    }
+    },
   );
 }
