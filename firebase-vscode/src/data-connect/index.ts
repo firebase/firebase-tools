@@ -214,7 +214,7 @@ export function registerFdc(
     registerFirebaseDataConnectView(context, broker, emulatorController),
     registerAdHoc(context, broker),
     registerConnectors(context, broker, fdcService),
-    registerFdcDeploy(),
+    registerFdcDeploy(broker),
     operationCodeLensProvider,
     vscode.languages.registerCodeLensProvider(
       // **Hack**: For testing purposes, enable code lenses on all graphql files

@@ -2,9 +2,10 @@ import * as vscode from "vscode";
 import { firstWhere, firstWhereDefined } from "../utils/signal";
 import { currentOptions } from "../options";
 import { deploy as cliDeploy } from "../../../src/deploy";
-import { ResolvedDataConnectConfigs, dataConnectConfigs } from "./config";
+import { dataConnectConfigs } from "./config";
 import { createE2eMockable } from "../utils/test_hooks";
 import { runCommand } from "./terminal";
+import { ExtensionBrokerImpl } from "../extension-broker";
 
 function createDeployOnlyCommand(serviceConnectorMap: {
   [key: string]: string[];
@@ -20,7 +21,9 @@ function createDeployOnlyCommand(serviceConnectorMap: {
   );
 }
 
-export function registerFdcDeploy(): vscode.Disposable {
+export function registerFdcDeploy(
+  broker: ExtensionBrokerImpl,
+): vscode.Disposable {
   const deploySpy = createE2eMockable(
     async (...args: Parameters<typeof cliDeploy>) => {
       // Have the "deploy" return "void" for easier mocking (no return value when spied).
@@ -31,7 +34,7 @@ export function registerFdcDeploy(): vscode.Disposable {
   );
 
   const deployCmd = vscode.commands.registerCommand(
-    "fdc-graphql.deploy",
+    "fdc.deploy",
     async () => {
       const configs = await firstWhereDefined(dataConnectConfigs).then(
         (c) => c.requireValue,
@@ -55,7 +58,11 @@ export function registerFdcDeploy(): vscode.Disposable {
     },
   );
 
-  return vscode.Disposable.from(deploySpy, deployCmd);
+  const sub1 = broker.on("fdc.deploy", async () =>
+    vscode.commands.executeCommand("fdc.deploy"),
+  );
+
+  return vscode.Disposable.from(deploySpy, deployCmd, { dispose: sub1 });
 }
 
 async function pickServices(

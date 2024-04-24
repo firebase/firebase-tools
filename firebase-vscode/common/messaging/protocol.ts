@@ -104,6 +104,9 @@ export interface WebviewToExtensionParamsMap {
   chooseQuickstartDir: {};
 
   notifyAuthUserMockChange: UserMock;
+
+  /** Deploy connectors/services to production */
+  "fdc.deploy": void;
 }
 
 export interface DataConnectResults {
