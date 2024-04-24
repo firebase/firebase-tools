@@ -147,6 +147,10 @@ describe("apphosting setup functions", () => {
 
       await expect(ensureAppHostingComputeServiceAccount(projectId, serviceAccount)).to.be
         .fulfilled;
+
+      expect(testResourceIamPermissionsStub).to.be.calledOnce;
+      expect(createServiceAccountStub).to.not.be.called;
+      expect(addServiceAccountToRolesStub).to.not.be.called;
     });
 
     it("should succeed if the user can create the service account when it does not exist", async () => {
@@ -158,6 +162,10 @@ describe("apphosting setup functions", () => {
 
       await expect(ensureAppHostingComputeServiceAccount(projectId, serviceAccount)).to.be
         .fulfilled;
+
+      expect(testResourceIamPermissionsStub).to.be.calledOnce;
+      expect(createServiceAccountStub).to.be.calledOnce;
+      expect(addServiceAccountToRolesStub).to.be.calledOnce;
     });
 
     it("should throw an error if the user does not have permissions", async () => {
@@ -168,6 +176,10 @@ describe("apphosting setup functions", () => {
       await expect(
         ensureAppHostingComputeServiceAccount(projectId, serviceAccount),
       ).to.be.rejectedWith(/Failed to create backend due to missing delegation permissions/);
+
+      expect(testResourceIamPermissionsStub).to.be.calledOnce;
+      expect(createServiceAccountStub).to.not.be.called;
+      expect(addServiceAccountToRolesStub).to.not.be.called;
     });
 
     it("should throw the error if the user cannot create the service account", async () => {
@@ -179,6 +191,10 @@ describe("apphosting setup functions", () => {
       await expect(
         ensureAppHostingComputeServiceAccount(projectId, serviceAccount),
       ).to.be.rejectedWith("failed to create SA");
+
+      expect(testResourceIamPermissionsStub).to.be.calledOnce;
+      expect(createServiceAccountStub).to.be.calledOnce;
+      expect(addServiceAccountToRolesStub).to.not.be.called;
     });
   });
 
