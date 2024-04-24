@@ -57,14 +57,14 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   dataconnect:
     process.platform === "darwin"
       ? {
-          version: "1.1.10",
-          expectedSize: -1,
-          expectedChecksum: "",
+          version: "1.1.11",
+          expectedSize: 25513536,
+          expectedChecksum: "2d949516b54859b0ece53e8be244eddd",
         }
       : {
-          version: "1.1.10",
-          expectedSize: -1,
-          expectedChecksum: "",
+          version: "1.1.11",
+          expectedSize: 22980112,
+          expectedChecksum: "0628e160946e661ca2d03e78d57ee1f4",
         },
 };
 
@@ -170,7 +170,7 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
           : `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
       expectedSize: EMULATOR_UPDATE_DETAILS.dataconnect.expectedSize,
       expectedChecksum: EMULATOR_UPDATE_DETAILS.dataconnect.expectedChecksum,
-      skipChecksumAndSize: true, // TODO: reenable checksumAndSize before release.
+      skipChecksumAndSize: false,
       namePrefix: "dataconnect-emulator",
       auth: true,
     },
