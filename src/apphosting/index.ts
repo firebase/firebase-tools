@@ -247,8 +247,8 @@ async function provisionDefaultComputeServiceAccount(projectId: string): Promise
     await iam.createServiceAccount(
       projectId,
       DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME,
-      "Firebase App Hosting compute service account",
       "Default service account used to run builds and deploys for Firebase App Hosting",
+      "Firebase App Hosting compute service account",
     );
   } catch (err: any) {
     // 409 Already Exists errors can safely be ignored.
