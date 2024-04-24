@@ -61,7 +61,7 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   // postgresql://localhost:5432 is a default out of the box value for most installations of Postgres
   const defaultConnectionString =
     setup.rcfile.dataconnectEmulatorConfig?.postgres?.localConnectionString ??
-    "postgresql://localhost:5432";
+    "postgresql://localhost:5432?sslmode=disable";
   // TODO: Download Postgres
   const localConnectionString = await promptOnce({
     type: "input",
