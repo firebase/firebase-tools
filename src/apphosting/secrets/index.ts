@@ -62,9 +62,11 @@ export function serviceAccountsForBackend(
  */
 export async function grantSecretAccess(
   projectId: string,
+  projectNumber: string,
   secretName: string,
   accounts: MultiServiceAccounts,
 ): Promise<void> {
+  const p4saEmail = apphosting.serviceAgentEmail(projectNumber);
   const newBindings: iam.Binding[] = [
     {
       role: "roles/secretmanager.secretAccessor",
@@ -77,6 +79,11 @@ export async function grantSecretAccess(
     {
       role: "roles/secretmanager.viewer",
       members: accounts.buildServiceAccounts.map((sa) => `serviceAccount:${sa}`),
+    },
+    // The App Hosting service agent needs the version manager role for automated garbage collection.
+    {
+      role: "roles/secretmanager.secretVersionManager",
+      members: [`serviceAccount:${p4saEmail}`],
     },
   ];
 
