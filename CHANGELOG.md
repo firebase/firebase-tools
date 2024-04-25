@@ -1,0 +1,1 @@
+- Fixes issue where `firebase functions:config:export` fails when an env value is `undefined`. (#7047)
