@@ -1,3 +1,0 @@
-- Release Firestore Emulator version 1.19.5 which adds support for import and export in Datastore Mode (#7020).
-- Fix non static check for not-found route in Next.js 14.2 (#7012)
-- Fix Next.js path issue on Windows (#7031)

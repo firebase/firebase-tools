@@ -1,5 +1,5 @@
 import { Client } from "../apiv2";
-import { developerConnectOrigin, developerConnectP4SAOrigin } from "../api";
+import { developerConnectOrigin, developerConnectP4SADomain } from "../api";
 import { generateServiceIdentityAndPoll } from "./serviceusage";
 
 const PAGE_SIZE_MAX = 1000;
@@ -275,7 +275,7 @@ export async function getGitRepositoryLink(
  * Returns email associated with the Developer Connect Service Agent
  */
 export function serviceAgentEmail(projectNumber: string): string {
-  return `service-${projectNumber}@${developerConnectP4SAOrigin()}`;
+  return `service-${projectNumber}@${developerConnectP4SADomain()}`;
 }
 
 /**
