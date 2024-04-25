@@ -19,7 +19,7 @@ export interface ProjectConfigInfo {
 export interface EnvMap {
   origKey: string;
   newKey: string;
-  value: string;
+  value?: string;
   err?: string;
 }
 
@@ -185,7 +185,9 @@ function escape(s: string): string {
  * Convert env var mapping to  dotenv compatible string.
  */
 export function toDotenvFormat(envs: EnvMap[], header = ""): string {
-  const lines = envs.map(({ newKey, value }) => `${newKey}="${escape(value)}"`);
+  const lines = envs
+    .filter((env) => env.value !== undefined)
+    .map(({ newKey, value }) => `${newKey}="${escape(value!)}"`);
   const maxLineLen = Math.max(...lines.map((l) => l.length));
   return (
     `${header}\n` +
