@@ -4,6 +4,7 @@ import { needProjectId } from "../projectUtils";
 import requireInteractive from "../requireInteractive";
 import { doSetup } from "../apphosting";
 import { ensureApiEnabled } from "../gcp/apphosting";
+import { listBuilds } from "../gcp/cloudbuild";
 
 export const command = new Command("apphosting:backends:create")
   .description("create a Firebase App Hosting backend")
@@ -31,11 +32,13 @@ export const command = new Command("apphosting:backends:create")
     const serviceAccount = options.serviceAccount;
     const withDevConnect = options.withDevConnect as boolean;
 
-    await doSetup(
-      projectId,
-      webApp as string | null,
-      location as string | null,
-      serviceAccount as string | null,
-      withDevConnect,
-    );
+    await listBuilds(projectId, location as string, ["fah"]);
+
+    // await doSetup(
+    //   projectId,
+    //   webApp as string | null,
+    //   location as string | null,
+    //   serviceAccount as string | null,
+    //   withDevConnect,
+    // );
   });

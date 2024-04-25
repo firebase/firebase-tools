@@ -15,7 +15,7 @@ import {
 import { Backend, BackendOutputOnlyFields, API_VERSION, Build, Rollout } from "../gcp/apphosting";
 import { addServiceAccountToRoles } from "../gcp/resourceManager";
 import * as iam from "../gcp/iam";
-import { Repository } from "../gcp/cloudbuild";
+import { Build as CloudBuild, Repository, listBuilds } from "../gcp/cloudbuild";
 import { FirebaseError } from "../error";
 import { promptOnce } from "../prompt";
 import { DEFAULT_LOCATION } from "./constants";
@@ -340,6 +340,11 @@ export async function orchestrateRollout(
     }
   }
 
+  const logUrl = await getLatestCloudBuildLogUrl(projectId, location, backendId, buildId);
+  if (logUrl) {
+    logBullet(`Logs are available at [ ${logUrl} ].`);
+  }
+
   const rolloutOp = await apphosting.createRollout(
     projectId,
     location,
@@ -375,6 +380,19 @@ export async function orchestrateRollout(
     );
   }
   return { rollout, build };
+}
+
+async function getLatestCloudBuildLogUrl(
+  projectId: string,
+  location: string,
+  backendId: string,
+  buildId: string,
+): Promise<string | undefined> {
+  const latestBuilds = await listBuilds(projectId, location as string, ["fah", buildId]);
+  if (latestBuilds.length === 0) {
+    return;
+  }
+  return latestBuilds[0].logUrl;
 }
 
 /**

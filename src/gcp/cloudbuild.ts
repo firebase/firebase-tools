@@ -9,6 +9,12 @@ const client = new Client({
   apiVersion: "v2",
 });
 
+const clientV1 = new Client({
+  urlPrefix: cloudbuildOrigin(),
+  auth: true,
+  apiVersion: "v1",
+});
+
 export interface OperationMetadata {
   createTime: string;
   endTime: string;
@@ -77,6 +83,11 @@ export interface Repository {
 interface LinkableRepositories {
   repositories: Repository[];
   nextPageToken: string;
+}
+
+export interface Build {
+  id: string;
+  logUrl: string;
 }
 
 /**
@@ -215,6 +226,28 @@ export async function deleteRepository(
   const name = `projects/${projectId}/locations/${location}/connections/${connectionId}/repositories/${repositoryId}`;
   const res = await client.delete<Operation>(name);
   return res.body;
+}
+
+/**
+ * List Cloud Build V1 builds.
+ */
+export async function listBuilds(
+  projectId: string,
+  location: string,
+  tags: string[] = [],
+): Promise<Build[]> {
+  // ["apple", "orange"] => "tags="apple" AND tags="orange""
+  let tagsFilter = tags.map((tag) => `tags="${tag}"`).join(" AND ");
+
+  const res = await clientV1.get<{
+    builds: Build[];
+  }>(`/projects/${projectId}/locations/${location}/builds`, {
+    queryParams: {
+      pageSize: PAGE_SIZE_MAX,
+      filter: tagsFilter,
+    },
+  });
+  return res.body.builds;
 }
 
 /**
