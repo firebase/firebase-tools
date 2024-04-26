@@ -14,10 +14,10 @@ export type CreateTemporaryDirectoryOptions = {
 let _increment = 0;
 
 export function createTemporaryDirectory(
-  options: CreateTemporaryDirectoryOptions = {},
+  options: CreateTemporaryDirectoryOptions = {}
 ) {
   const debugLabel = `${
-    options.debugLabel || "firemat-test"
+    options.debugLabel || "data-connect-test"
   }-${Date.now()}-${_increment++}`;
 
   const relativeDir = options.parent
@@ -49,7 +49,8 @@ export function createFile(
   }
 
   fs.writeFileSync(filePath, content);
-  addTearDown(() => fs.rmSync(filePath));
+  // Using "force" in case the file is deleted before tearDown is ran
+  addTearDown(() => fs.rmSync(filePath, { force: true }));
 
   return filePath;
 }

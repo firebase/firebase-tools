@@ -54,6 +54,18 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
     expectedSize: 65611398,
     expectedChecksum: "70bb840321423e6ae621a3ae2f314903",
   },
+  dataconnect:
+    process.platform === "darwin"
+      ? {
+          version: "1.1.11",
+          expectedSize: 25513536,
+          expectedChecksum: "2d949516b54859b0ece53e8be244eddd",
+        }
+      : {
+          version: "1.1.11",
+          expectedSize: 22980112,
+          expectedChecksum: "0628e160946e661ca2d03e78d57ee1f4",
+        },
 };
 
 export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
@@ -139,6 +151,30 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
       namePrefix: "pubsub-emulator",
     },
   },
+  // TODO: Add Windows binary here as well
+  dataconnect: {
+    downloadPath: path.join(
+      CACHE_DIR,
+      `dataconnect-emulator-${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
+    ),
+    version: EMULATOR_UPDATE_DETAILS.dataconnect.version,
+    binaryPath: path.join(
+      CACHE_DIR,
+      `dataconnect-emulator-${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
+    ),
+    opts: {
+      cacheDir: CACHE_DIR,
+      remoteUrl:
+        process.platform === "darwin"
+          ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-macos-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
+          : `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
+      expectedSize: EMULATOR_UPDATE_DETAILS.dataconnect.expectedSize,
+      expectedChecksum: EMULATOR_UPDATE_DETAILS.dataconnect.expectedChecksum,
+      skipChecksumAndSize: false,
+      namePrefix: "dataconnect-emulator",
+      auth: true,
+    },
+  },
 };
 
 const EmulatorDetails: { [s in DownloadableEmulators]: DownloadableEmulatorDetails } = {
@@ -164,6 +200,11 @@ const EmulatorDetails: { [s in DownloadableEmulators]: DownloadableEmulatorDetai
   },
   ui: {
     name: Emulators.UI,
+    instance: null,
+    stdout: null,
+  },
+  dataconnect: {
+    name: Emulators.DATACONNECT,
     instance: null,
     stdout: null,
   },
@@ -236,6 +277,13 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     optionalArgs: [],
     joinArgs: false,
     shell: false,
+  },
+  dataconnect: {
+    binary: getExecPath(Emulators.DATACONNECT),
+    args: ["dev"],
+    optionalArgs: ["http_port", "grpc_port", "config_dir", "local_connection_string", "project_id"],
+    joinArgs: true,
+    shell: true,
   },
 };
 
@@ -491,14 +539,15 @@ export async function stop(targetName: DownloadableEmulators): Promise<void> {
 /**
  * @param targetName
  */
-export async function downloadIfNecessary(targetName: DownloadableEmulators): Promise<void> {
+export async function downloadIfNecessary(
+  targetName: DownloadableEmulators,
+): Promise<DownloadableEmulatorCommand> {
   const hasEmulator = fs.existsSync(getExecPath(targetName));
 
-  if (hasEmulator) {
-    return;
+  if (!hasEmulator) {
+    await downloadEmulator(targetName);
   }
-
-  await downloadEmulator(targetName);
+  return Commands[targetName];
 }
 
 /**
@@ -508,7 +557,12 @@ export async function downloadIfNecessary(targetName: DownloadableEmulators): Pr
  */
 export async function start(
   targetName: DownloadableEmulators,
-  args: any,
+  args: {
+    auto_download?: boolean;
+    port?: number;
+    host?: string;
+    [k: string]: any;
+  },
   extraEnv: Partial<NodeJS.ProcessEnv> = {},
 ): Promise<void> {
   const downloadDetails = DownloadDetails[targetName];

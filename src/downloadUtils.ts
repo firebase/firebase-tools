@@ -10,10 +10,11 @@ import { FirebaseError } from "./error";
  * Downloads the resource at `remoteUrl` to a temporary file.
  * Resolves to the temporary file's name, rejects if there's any error.
  * @param remoteUrl URL to download.
+ * @param auth Whether to include an access token in the download request. Defaults to false.
  */
-export async function downloadToTmp(remoteUrl: string): Promise<string> {
+export async function downloadToTmp(remoteUrl: string, auth: boolean = false): Promise<string> {
   const u = new URL(remoteUrl);
-  const c = new Client({ urlPrefix: u.origin, auth: false });
+  const c = new Client({ urlPrefix: u.origin, auth });
   const tmpfile = tmp.fileSync();
   const writeStream = fs.createWriteStream(tmpfile.name);
 

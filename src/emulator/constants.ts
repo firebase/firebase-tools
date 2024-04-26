@@ -13,6 +13,7 @@ export const DEFAULT_PORTS: { [s in Emulators]: number } = {
   auth: 9099,
   storage: 9199,
   eventarc: 9299,
+  dataconnect: 9399,
 };
 
 export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
@@ -28,6 +29,7 @@ export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
   storage: false,
   extensions: false,
   eventarc: true,
+  dataconnect: true,
 };
 
 export const EMULATOR_DESCRIPTION: Record<Emulators, string> = {
@@ -43,6 +45,7 @@ export const EMULATOR_DESCRIPTION: Record<Emulators, string> = {
   storage: "Storage Emulator",
   extensions: "Extensions Emulator",
   eventarc: "Eventarc Emulator",
+  dataconnect: "Data Connect Emulator",
 };
 
 export const DEFAULT_HOST = "localhost";
