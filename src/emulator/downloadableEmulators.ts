@@ -283,6 +283,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     args: ["dev"],
     optionalArgs: ["http_port", "grpc_port", "config_dir", "local_connection_string", "project_id"],
     joinArgs: true,
+    shell: true,
   },
 };
 
