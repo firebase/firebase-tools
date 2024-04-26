@@ -33,36 +33,47 @@ export function registerFdcDeploy(
     async () => {},
   );
 
-  const deployCmd = vscode.commands.registerCommand(
-    "fdc.deploy",
-    async () => {
-      const configs = await firstWhereDefined(dataConnectConfigs).then(
-        (c) => c.requireValue,
+  const deployAllCmd = vscode.commands.registerCommand("fdc.deploy-all", () => {
+    runCommand("firebase deploy --only dataconnect");
+  });
+
+  const deployCmd = vscode.commands.registerCommand("fdc.deploy", async () => {
+    const configs = await firstWhereDefined(dataConnectConfigs).then(
+      (c) => c.requireValue,
+    );
+
+    const pickedServices = await pickServices(configs.serviceIds);
+    if (!pickedServices.length) {
+      return;
+    }
+
+    const serviceConnectorMap: { [key: string]: string[] } = {};
+    for (const serviceId of pickedServices) {
+      const connectorIds = configs.findById(serviceId)?.connectorIds;
+      serviceConnectorMap[serviceId] = await pickConnectors(
+        connectorIds,
+        serviceId,
       );
+    }
 
-      const pickedServices = await pickServices(configs.serviceIds);
-      if (!pickedServices) {
-        return;
-      }
+    runCommand(createDeployOnlyCommand(serviceConnectorMap)); // run from terminal
+  });
 
-      const serviceConnectorMap: { [key: string]: string[] } = {};
-      for (const serviceId of pickedServices) {
-        const connectorIds = configs.findById(serviceId)?.connectorIds;
-        serviceConnectorMap[serviceId] = await pickConnectors(
-          connectorIds,
-          serviceId,
-        );
-      }
-
-      runCommand(createDeployOnlyCommand(serviceConnectorMap)); // run from terminal
-    },
+  const deployAllSub = broker.on("fdc.deploy-all", async () =>
+    vscode.commands.executeCommand("fdc.deploy-all"),
   );
 
-  const sub1 = broker.on("fdc.deploy", async () =>
+  const deploySub = broker.on("fdc.deploy", async () =>
     vscode.commands.executeCommand("fdc.deploy"),
   );
 
-  return vscode.Disposable.from(deploySpy, deployCmd, { dispose: sub1 });
+  return vscode.Disposable.from(
+    deploySpy,
+    deployAllCmd,
+    deployCmd,
+    { dispose: deployAllSub },
+    { dispose: deploySub },
+  );
 }
 
 async function pickServices(
