@@ -51,6 +51,11 @@ export async function doSetup(
     ensure(projectId, artifactRegistryDomain(), "apphosting", true),
     ensure(projectId, iamOrigin(), "apphosting", true),
   ]);
+  logBullet("First we need a few details to create your backend.\n");
+
+  // Hack: Because IAM can take ~45 seconds to propagate, we provision the service account as soon as
+  // possible to reduce the likelihood that the subsequent Cloud Build fails. See b/336862200.
+  await ensureAppHostingComputeServiceAccount(projectId, serviceAccount);
 
   const allowedLocations = (await apphosting.listLocations(projectId)).map((loc) => loc.locationId);
   if (location) {
@@ -60,8 +65,6 @@ export async function doSetup(
       );
     }
   }
-
-  logBullet("First we need a few details to create your backend.\n");
 
   location =
     location || (await promptLocation(projectId, "Select a location to host your backend:\n"));
@@ -91,8 +94,6 @@ export async function doSetup(
     default: "/",
     message: "Specify your app's root directory relative to your repository",
   });
-
-  await ensureAppHostingComputeServiceAccount(projectId, serviceAccount);
 
   const backend = await createBackend(
     projectId,
@@ -247,8 +248,8 @@ async function provisionDefaultComputeServiceAccount(projectId: string): Promise
     await iam.createServiceAccount(
       projectId,
       DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME,
-      "Firebase App Hosting compute service account",
       "Default service account used to run builds and deploys for Firebase App Hosting",
+      "Firebase App Hosting compute service account",
     );
   } catch (err: any) {
     // 409 Already Exists errors can safely be ignored.
@@ -296,6 +297,10 @@ export async function setDefaultTrafficPolicy(
   });
 }
 
+function delay(ms: number): Promise<number> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * Creates a new build and rollout and polls both to completion.
  */
@@ -306,6 +311,7 @@ export async function orchestrateRollout(
   buildInput: DeepOmit<Build, apphosting.BuildOutputOnlyFields | "name">,
 ): Promise<{ rollout: Rollout; build: Build }> {
   logBullet("Starting a new rollout... this may take a few minutes.");
+  await delay(45 * 1000);
   const buildId = await apphosting.getNextRolloutId(projectId, location, backendId, 1);
   const buildOp = await apphosting.createBuild(projectId, location, backendId, buildId, buildInput);
 
