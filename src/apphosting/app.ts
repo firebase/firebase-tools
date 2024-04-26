@@ -14,7 +14,7 @@ export const webApps = {
   promptFirebaseWebApp,
 };
 
-type FirebaseWebApp = { name: string; id: string };
+type FirebaseWebApp = { name: string; id: string; new: boolean };
 
 /**
  * If firebaseWebAppName is provided and a matching web app exists, it is
@@ -40,7 +40,7 @@ async function getOrCreateWebApp(
     const { displayName, appId } = await createFirebaseWebApp(projectId, {
       displayName: backendId,
     });
-    return { name: displayName, id: appId };
+    return { name: displayName, id: appId, new: true };
   }
 
   const existingUserProjectWebApps = new Map(
@@ -58,8 +58,12 @@ async function getOrCreateWebApp(
       );
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    return { name: firebaseWebAppName, id: existingUserProjectWebApps.get(firebaseWebAppName)! };
+    return {
+      name: firebaseWebAppName,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      id: existingUserProjectWebApps.get(firebaseWebAppName)!,
+      new: false,
+    };
   }
 
   return await webApps.promptFirebaseWebApp(projectId, backendId, existingUserProjectWebApps);
@@ -107,13 +111,17 @@ async function promptFirebaseWebApp(
 
   if (firebaseWebAppName === CREATE_NEW_FIREBASE_WEB_APP) {
     const newFirebaseWebApp = await createFirebaseWebApp(projectId, { displayName: backendId });
-    return { name: newFirebaseWebApp.displayName, id: newFirebaseWebApp.appId };
+    return { name: newFirebaseWebApp.displayName, id: newFirebaseWebApp.appId, new: true };
   } else if (firebaseWebAppName === CONTINUE_WITHOUT_SELECTING_FIREBASE_WEB_APP) {
     return;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  return { name: firebaseWebAppName, id: existingUserProjectWebApps.get(firebaseWebAppName)! };
+  return {
+    name: firebaseWebAppName,
+    id: existingUserProjectWebApps.get(firebaseWebAppName)!,
+    new: false,
+  };
 }
 
 /**
