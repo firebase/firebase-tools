@@ -137,7 +137,9 @@ export async function doSetup(
   logBullet(
     `You may also track this rollout at:\n\t${consoleOrigin()}/project/${projectId}/apphosting`,
   );
-  const createRolloutSpinner = ora("Starting a new rollout... This make take a few minutes. It's safe to exit now.").start();
+  const createRolloutSpinner = ora(
+    "Starting a new rollout... This make take a few minutes. It's safe to exit now.",
+  ).start();
   await orchestrateRollout(projectId, location, backendId, {
     source: {
       codebase: {
