@@ -222,6 +222,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
       "single_project_mode",
     ],
     joinArgs: false,
+    shell: false,
   },
   firestore: {
     binary: "java",
@@ -245,6 +246,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
       // "single_project_mode_error",
     ],
     joinArgs: false,
+    shell: false,
   },
   storage: {
     // This is for the Storage Emulator rules runtime, which is started
@@ -260,18 +262,21 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     ],
     optionalArgs: [],
     joinArgs: false,
+    shell: false,
   },
   pubsub: {
     binary: getExecPath(Emulators.PUBSUB)!,
     args: [],
     optionalArgs: ["port", "host"],
     joinArgs: true,
+    shell: true,
   },
   ui: {
     binary: "node",
     args: [getExecPath(Emulators.UI)],
     optionalArgs: [],
     joinArgs: false,
+    shell: false,
   },
   dataconnect: {
     binary: getExecPath(Emulators.DATACONNECT),
@@ -353,6 +358,7 @@ export function _getCommand(
     args: cmdLineArgs,
     optionalArgs: baseCmd.optionalArgs,
     joinArgs: baseCmd.joinArgs,
+    shell: baseCmd.shell,
   };
 }
 
@@ -407,7 +413,7 @@ async function _runBinary(
     const logger = EmulatorLogger.forEmulator(emulator.name);
     emulator.stdout = fs.createWriteStream(getLogFileName(emulator.name));
     try {
-      emulator.instance = childProcess.spawn(command.binary, command.args, {
+      const opts: childProcess.SpawnOptions = {
         env: { ...process.env, ...extraEnv },
         // `detached` must be true as else a SIGINT (Ctrl-c) will stop the child process before we can handle a
         // graceful shutdown and call `downloadableEmulators.stop(...)` ourselves.
@@ -415,7 +421,11 @@ async function _runBinary(
         // related to this issue: https://github.com/grpc/grpc-java/pull/6512
         detached: true,
         stdio: ["inherit", "pipe", "pipe"],
-      });
+      };
+      if (command.shell && utils.IS_WINDOWS) {
+        opts.shell = true;
+      }
+      emulator.instance = childProcess.spawn(command.binary, command.args, opts);
     } catch (e: any) {
       if (e.code === "EACCES") {
         // Known issue when WSL users don't have java
