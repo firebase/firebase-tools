@@ -66,7 +66,7 @@ export async function registerCore({
       { dispose: sub1 },
       { dispose: sub2 },
       { dispose: sub3 },
-    { dispose: sub4 },,
+      { dispose: sub4 },
     ),
   ];
 }

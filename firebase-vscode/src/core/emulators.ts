@@ -149,7 +149,7 @@ export class EmulatorsController implements Disposable {
     if (!projectId) {
       return "demo-something";
     }
-    if (mode === "hosting") {
+    if (mode === "hosting" || mode === "dataconnect") {
       return projectId;
     }
     return "demo-" + projectId;
