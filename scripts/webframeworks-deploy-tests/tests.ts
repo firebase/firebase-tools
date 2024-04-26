@@ -484,6 +484,13 @@ describe("webframeworks", function (this) {
       ];
 
       expect(unmatchedFiles, "matchedFiles").to.eql([]);
+      console.log({
+        files,
+        EXPECTED_FILES: EXPECTED_FILES.filter((it) => !files.includes(it)),
+        EXPECTED_PATTERNS: EXPECTED_PATTERNS.filter(
+          (it) => !files.some((file) => !!file.match(it)),
+        ),
+      });
       expect(unmatchedExpectations, "unmatchedExpectations").to.eql([]);
     });
   });
