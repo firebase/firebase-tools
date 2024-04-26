@@ -107,6 +107,9 @@ export interface WebviewToExtensionParamsMap {
 
   /** Deploy connectors/services to production */
   "fdc.deploy": void;
+
+  /** Deploy all connectors/services to production */
+  "fdc.deploy-all": void;
 }
 
 export interface DataConnectResults {

@@ -59,7 +59,7 @@ function DataConnect() {
         <Spacer size="small" />
         <VSCodeButton
           appearance="secondary"
-          onClick={() => broker.send("fdc.deploy")}
+          onClick={() => broker.send("fdc.deploy-all")}
         >
           Deploy all
         </VSCodeButton>
