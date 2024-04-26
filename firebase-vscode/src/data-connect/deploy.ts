@@ -43,7 +43,7 @@ export function registerFdcDeploy(
     );
 
     const pickedServices = await pickServices(configs.serviceIds);
-    if (!pickedServices) {
+    if (!pickedServices.length) {
       return;
     }
 
@@ -59,11 +59,11 @@ export function registerFdcDeploy(
     runCommand(createDeployOnlyCommand(serviceConnectorMap)); // run from terminal
   });
 
-  const sub1 = broker.on("fdc.deploy-all", async () =>
+  const deployAllSub = broker.on("fdc.deploy-all", async () =>
     vscode.commands.executeCommand("fdc.deploy-all"),
   );
 
-  const sub2 = broker.on("fdc.deploy", async () =>
+  const deploySub = broker.on("fdc.deploy", async () =>
     vscode.commands.executeCommand("fdc.deploy"),
   );
 
@@ -71,8 +71,8 @@ export function registerFdcDeploy(
     deploySpy,
     deployAllCmd,
     deployCmd,
-    { dispose: sub1 },
-    { dispose: sub2 },
+    { dispose: deployAllSub },
+    { dispose: deploySub },
   );
 }
 
