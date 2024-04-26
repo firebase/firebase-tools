@@ -22,6 +22,7 @@ const I18N_BASE = "";
 const DEFAULT_LANG = "en";
 const LOG_FILE = "firebase-debug.log";
 const NEXT_SOURCE = `${__dirname}/nextjs`;
+const sep = IS_WINDOWS ? `\\\\` : `\/`;
 
 async function getFilesListFromDir(dir: string): Promise<string[]> {
   const files = await new Promise<string[]>((resolve, reject) => {
@@ -371,7 +372,6 @@ describe("webframeworks", function (this) {
         .map(normalize)
         .map((it) => (it.startsWith("/") ? it.substring(1) : it));
 
-      const sep = IS_WINDOWS ? `\\\\` : `\/`;
       const EXPECTED_PATTERNS = [
         String.raw`${NEXT_BASE_PATH}${sep}_next${sep}static${sep}chunks${sep}[^-]+-[^.]+.js`,
         String.raw`${NEXT_BASE_PATH}${sep}_next${sep}static${sep}chunks${sep}app${sep}layout-[^.]+.js`,
@@ -452,25 +452,24 @@ describe("webframeworks", function (this) {
     it("should have the expected static files to be deployed", async () => {
       const EXPECTED_FILES = ["", "en", "fr", "es"]
         .flatMap((locale) => [
-          `/${I18N_BASE}/${locale}/${ANGULAR_BASE_PATH}/index.html`,
-          `/${I18N_BASE}/${locale}/${ANGULAR_BASE_PATH}/3rdpartylicenses.txt`,
-          `/${I18N_BASE}/${locale}/${ANGULAR_BASE_PATH}/favicon.ico`,
-          `/${I18N_BASE}/${locale}/${ANGULAR_BASE_PATH}/index.original.html`,
-          `/${I18N_BASE}/${locale}/${ANGULAR_BASE_PATH}/3rdpartylicenses.txt`,
+          join(I18N_BASE, locale, ANGULAR_BASE_PATH, "index.html"),
+          join(I18N_BASE, locale, ANGULAR_BASE_PATH, "3rdpartylicenses.txt"),
+          join(I18N_BASE, locale, ANGULAR_BASE_PATH, "favicon.ico"),
+          join(I18N_BASE, locale, ANGULAR_BASE_PATH, "index.original.html"),
+          join(I18N_BASE, locale, ANGULAR_BASE_PATH, "3rdpartylicenses.txt"),
         ])
         .map(normalize)
         .map((it) => (it.startsWith("/") ? it.substring(1) : it));
 
       const EXPECTED_PATTERNS = ["", "en", "fr", "es"]
         .flatMap((locale) => [
-          `/${I18N_BASE}/${locale}/${ANGULAR_BASE_PATH}/main\.[^\.]+\.js`,
-          `/${I18N_BASE}/${locale}/${ANGULAR_BASE_PATH}/polyfills\.[^\.]+\.js`,
-          `/${I18N_BASE}/${locale}/${ANGULAR_BASE_PATH}/runtime\.[^\.]+\.js`,
-          `/${I18N_BASE}/${locale}/${ANGULAR_BASE_PATH}/styles\.[^\.]+\.css`,
+          join(I18N_BASE, locale, ANGULAR_BASE_PATH, `main\.[^\.]+\.js`),
+          join(I18N_BASE, locale, ANGULAR_BASE_PATH, `polyfills\.[^\.]+\.js`),
+          join(I18N_BASE, locale, ANGULAR_BASE_PATH, `runtime\.[^\.]+\.js`),
+          join(I18N_BASE, locale, ANGULAR_BASE_PATH, `styles\.[^\.]+\.css`),
         ])
-        .map(normalize)
         .map((it) => (it.startsWith("/") ? it.substring(1) : it))
-        .map((it) => new RegExp(it.replace("/", "\\/")));
+        .map((it) => new RegExp(it));
 
       const files = await getFilesListFromDir(`${ANGULAR_OUTPUT_PATH}/hosting`);
       const unmatchedFiles = files.filter(
