@@ -63,6 +63,7 @@ import { resolveBackend } from "../deploy/functions/build";
 import { setEnvVarsForEmulators } from "./env";
 import { runWithVirtualEnv } from "../functions/python";
 import { Runtime } from "../deploy/functions/runtimes/supported";
+import { CronJob } from "cron";
 
 const EVENT_INVOKE_GA4 = "functions_invoke"; // event name GA4 (alphanumertic)
 
@@ -236,7 +237,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       if (maybeNodeCodebases.length > 1 && typeof this.args.debugPort === "number") {
         throw new FirebaseError(
           "Cannot debug on a single port with multiple codebases. " +
-            "Use --inspect-functions=true to assign dynamic ports to each codebase",
+          "Use --inspect-functions=true to assign dynamic ports to each codebase",
         );
       }
       this.args.disabledRuntimeFeatures = this.args.disabledRuntimeFeatures || {};
@@ -546,6 +547,12 @@ export class FunctionsEmulator implements EmulatorInstance {
       );
       const discoveredBackend = resolution.backend;
       const endpoints = backend.allEndpoints(discoveredBackend);
+
+      this.logger.log(
+        "WARN",
+        `Found all endpoints: ${endpoints.map((e) => JSON.stringify(e)).join(", ")}`,
+      );
+
       prepareEndpoints(endpoints);
       for (const e of endpoints) {
         e.codebase = emulatableBackend.codebase;
@@ -666,7 +673,7 @@ export class FunctionsEmulator implements EmulatorInstance {
               key,
               definition.eventTrigger,
               signature,
-              definition.schedule,
+              definition.scheduleTrigger,
             );
             break;
           case Constants.SERVICE_EVENTARC:
@@ -693,6 +700,27 @@ export class FunctionsEmulator implements EmulatorInstance {
           definition.region,
         );
         added = this.addBlockingTrigger(url, definition.blockingTrigger);
+      } else if (definition.scheduleTrigger) {
+        added = true;
+
+        // TODO: might fully avoid this if we can get the cron job to work
+        url = FunctionsEmulator.getHttpFunctionUrl(
+          this.args.projectId,
+          definition.name,
+          definition.region,
+        );
+
+        // TODO: Schedule next run here
+        CronJob.from({
+          cronTime: definition.scheduleTrigger.schedule,
+          onTick: function () {
+            console.log("Tick");
+            // Implement this
+            // pool.submitRequest();
+          },
+          start: true,
+          timeZone: definition.scheduleTrigger.timeZone,
+        });
       } else {
         this.logger.log(
           "WARN",
@@ -1308,9 +1336,9 @@ export class FunctionsEmulator implements EmulatorInstance {
         "ERROR",
         "functions",
         "Unable to access secret environment variables from Google Cloud Secret Manager. " +
-          "Make sure the credential used for the Functions Emulator have access " +
-          `or provide override values in ${secretPath}:\n\t` +
-          errs.join("\n\t"),
+        "Make sure the credential used for the Functions Emulator have access " +
+        `or provide override values in ${secretPath}:\n\t` +
+        errs.join("\n\t"),
       );
     }
 
@@ -1352,7 +1380,7 @@ export class FunctionsEmulator implements EmulatorInstance {
               "SUCCESS",
               "functions",
               `Using debug port ${port} for functions codebase ${backend.codebase}. ` +
-                "You may need to add manually add this port to your inspector.",
+              "You may need to add manually add this port to your inspector.",
             );
           }
         }
@@ -1372,8 +1400,8 @@ export class FunctionsEmulator implements EmulatorInstance {
         "WARN_ONCE",
         "functions",
         "Detected yarn@2 with PnP. " +
-          "Cloud Functions for Firebase requires a node_modules folder to work correctly and is therefore incompatible with PnP. " +
-          "See https://yarnpkg.com/getting-started/migration#step-by-step for more information.",
+        "Cloud Functions for Firebase requires a node_modules folder to work correctly and is therefore incompatible with PnP. " +
+        "See https://yarnpkg.com/getting-started/migration#step-by-step for more information.",
       );
     }
 
@@ -1381,7 +1409,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (!bin) {
       throw new Error(
         `No binary associated with ${backend.functionsDir}. ` +
-          "Make sure function runtime is configured correctly in firebase.json.",
+        "Make sure function runtime is configured correctly in firebase.json.",
       );
     }
 
@@ -1631,7 +1659,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         return;
       }
     }
-    let debugBundle;
+    let debugBundle: any;
     if (this.debugMode) {
       debugBundle = {
         functionTarget: trigger.entryPoint,

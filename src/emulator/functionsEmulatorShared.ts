@@ -44,7 +44,7 @@ export interface ParsedTriggerDefinition {
   availableMemoryMb?: backend.MemoryOptions;
   httpsTrigger?: any;
   eventTrigger?: EventTrigger;
-  schedule?: EventSchedule;
+  scheduleTrigger?: EventSchedule;
   blockingTrigger?: BlockingTrigger;
   labels?: { [key: string]: any };
   codebase?: string;
@@ -118,7 +118,7 @@ export class EmulatedTrigger {
   constructor(
     public definition: EmulatedTriggerDefinition,
     private module: any,
-  ) {}
+  ) { }
 
   get memoryLimitBytes(): number {
     return (this.definition.availableMemoryMb || 128) * 1024 * 1024;
@@ -185,14 +185,12 @@ export function emulatedFunctionsFromEndpoints(
     if (endpoint.platform === "gcfv1") {
       def.labels[EVENTARC_SOURCE_ENV] =
         "cloudfunctions-emulated.googleapis.com" +
-        `/projects/${endpoint.project || "project"}/locations/${endpoint.region}/functions/${
-          endpoint.id
+        `/projects/${endpoint.project || "project"}/locations/${endpoint.region}/functions/${endpoint.id
         }`;
     } else if (endpoint.platform === "gcfv2") {
       def.labels[EVENTARC_SOURCE_ENV] =
         "run-emulated.googleapis.com" +
-        `/projects/${endpoint.project || "project"}/locations/${endpoint.region}/services/${
-          endpoint.id
+        `/projects/${endpoint.project || "project"}/locations/${endpoint.region}/services/${endpoint.id
         }`;
     }
     def.timeoutSeconds = endpoint.timeoutSeconds || 60;
@@ -231,9 +229,7 @@ export function emulatedFunctionsFromEndpoints(
         };
       }
     } else if (backend.isScheduleTriggered(endpoint)) {
-      // TODO: This is an awkward transformation. Emulator does not understand scheduled triggers - maybe it should?
-      def.eventTrigger = { eventType: "pubsub", resource: "" };
-      def.schedule = endpoint.scheduleTrigger as EventSchedule;
+      def.scheduleTrigger = endpoint.scheduleTrigger as EventSchedule;
     } else if (backend.isBlockingTriggered(endpoint)) {
       def.blockingTrigger = {
         eventType: endpoint.blockingTrigger.eventType,
@@ -346,6 +342,9 @@ export function getFunctionService(def: ParsedTriggerDefinition): string {
   if (def.httpsTrigger) {
     return "https";
   }
+  if (def.scheduleTrigger) {
+    return "scheduled";
+  }
 
   return "unknown";
 }
@@ -457,7 +456,7 @@ export function getSignatureType(def: EmulatedTriggerDefinition): SignatureType 
   if (def.httpsTrigger || def.blockingTrigger) {
     return "http";
   }
-  if (def.platform === "gcfv2" && def.schedule) {
+  if (def.platform === "gcfv2" && def.scheduleTrigger) {
     return "http";
   }
   // TODO: As implemented, emulated CF3v1 functions cannot receive events in CloudEvent format, and emulated CF3v2
