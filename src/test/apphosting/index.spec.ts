@@ -302,7 +302,11 @@ describe("apphosting setup functions", () => {
       promptOnceStub.resolves(location);
 
       await expect(
-        getBackendForAmbiguousLocation(projectId, "foo", /* prompt= */ ""),
+        getBackendForAmbiguousLocation(
+          projectId,
+          "foo",
+          /* prompt= */ "Please select the location of the backend you'd like to delete:",
+        ),
       ).to.eventually.equal(backendFoo);
 
       expect(promptOnceStub).to.be.calledWith({

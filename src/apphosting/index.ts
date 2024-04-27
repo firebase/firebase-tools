@@ -408,7 +408,10 @@ export async function deleteBackendAndPoll(
 /**
  * Prompts the user for a location.
  */
-export async function promptLocation(projectId: string, prompt: string): Promise<string> {
+export async function promptLocation(
+  projectId: string,
+  prompt: string = "Please select a location:",
+): Promise<string> {
   const allowedLocations = (await apphosting.listLocations(projectId)).map((loc) => loc.locationId);
 
   return (await promptOnce({
