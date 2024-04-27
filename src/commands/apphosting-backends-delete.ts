@@ -19,7 +19,11 @@ export const command = new Command("apphosting:backends:delete <backend>")
     let location = options.location as string;
     let backend: apphosting.Backend;
     if (location === "-" || location === "") {
-      backend = await getBackendForAmbiguousLocation(projectId, backendId);
+      backend = await getBackendForAmbiguousLocation(
+        projectId,
+        backendId,
+        "Please select the location of the backend you'd like to delete:",
+      );
       location = apphosting.parseBackendName(backend.name).location;
     } else {
       backend = await getBackendForLocation(projectId, location, backendId);

@@ -408,10 +408,7 @@ export async function deleteBackendAndPoll(
 /**
  * Prompts the user for a location.
  */
-export async function promptLocation(
-  projectId: string,
-  prompt = "Please select a location:",
-): Promise<string> {
+export async function promptLocation(projectId: string, prompt: string): Promise<string> {
   const allowedLocations = (await apphosting.listLocations(projectId)).map((loc) => loc.locationId);
 
   return (await promptOnce({
@@ -430,6 +427,7 @@ export async function promptLocation(
 export async function getBackendForAmbiguousLocation(
   projectId: string,
   backendId: string,
+  locationDisambugationPrompt: string,
 ): Promise<apphosting.Backend> {
   let { unreachable, backends } = await apphosting.listBackends(projectId, "-");
   if (unreachable && unreachable.length !== 0) {
@@ -455,7 +453,7 @@ export async function getBackendForAmbiguousLocation(
   const location = await promptOnce({
     name: "location",
     type: "list",
-    message: "Please select the location of the backend you'd like to delete:",
+    message: locationDisambugationPrompt,
     choices: [...backendsByLocation.keys()],
   });
   return backendsByLocation.get(location)!;

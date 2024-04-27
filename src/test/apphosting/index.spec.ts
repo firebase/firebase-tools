@@ -256,7 +256,7 @@ describe("apphosting setup functions", () => {
     });
   });
 
-  describe.only("getBackendForAmbiguousLocation", () => {
+  describe("getBackendForAmbiguousLocation", () => {
     const backendFoo = {
       name: `projects/${projectId}/locations/${location}/backends/foo`,
       labels: {},
@@ -284,26 +284,26 @@ describe("apphosting setup functions", () => {
     it("throws if there are no matching backends", async () => {
       listBackendsStub.resolves({ backends: [] });
 
-      await expect(getBackendForAmbiguousLocation(projectId, "baz")).to.be.rejectedWith(
-        /No backend named "baz" found./,
-      );
+      await expect(
+        getBackendForAmbiguousLocation(projectId, "baz", /* prompt= */ ""),
+      ).to.be.rejectedWith(/No backend named "baz" found./);
     });
 
     it("returns unambiguous backend", async () => {
       listBackendsStub.resolves({ backends: [backendFoo, backendBar] });
 
-      await expect(getBackendForAmbiguousLocation(projectId, "foo")).to.eventually.equal(
-        backendFoo,
-      );
+      await expect(
+        getBackendForAmbiguousLocation(projectId, "foo", /* prompt= */ ""),
+      ).to.eventually.equal(backendFoo);
     });
 
     it("prompts for location if backend is ambiguous", async () => {
       listBackendsStub.resolves({ backends: [backendFoo, backendFooOtherRegion, backendBar] });
       promptOnceStub.resolves(location);
 
-      await expect(getBackendForAmbiguousLocation(projectId, "foo")).to.eventually.equal(
-        backendFoo,
-      );
+      await expect(
+        getBackendForAmbiguousLocation(projectId, "foo", /* prompt= */ ""),
+      ).to.eventually.equal(backendFoo);
 
       expect(promptOnceStub).to.be.calledWith({
         name: "location",
