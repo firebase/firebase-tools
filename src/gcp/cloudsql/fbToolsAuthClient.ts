@@ -46,7 +46,6 @@ export class FBToolsAuthClient extends AuthClient {
   }
 
   public async getRequestHeaders(): Promise<Record<string, string>> {
-    // url is unused but required to implement google-auth-library.AuthClient
     const token = await this.getAccessToken();
     return {
       Connection: "keep-alive",
