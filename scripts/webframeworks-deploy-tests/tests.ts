@@ -458,15 +458,14 @@ describe("webframeworks", function (this) {
           join(I18N_BASE, locale, ANGULAR_BASE_PATH, "index.original.html"),
           join(I18N_BASE, locale, ANGULAR_BASE_PATH, "3rdpartylicenses.txt"),
         ])
-        .map(normalize)
-        .map((it) => (it.startsWith("/") ? it.substring(1) : it));
+        .map(normalize);
 
       const EXPECTED_PATTERNS = ["", "en", "fr", "es"]
         .flatMap((locale) => [
-          join(I18N_BASE, locale, ANGULAR_BASE_PATH, `main\.[^\.]+\.js`),
-          join(I18N_BASE, locale, ANGULAR_BASE_PATH, `polyfills\.[^\.]+\.js`),
-          join(I18N_BASE, locale, ANGULAR_BASE_PATH, `runtime\.[^\.]+\.js`),
-          join(I18N_BASE, locale, ANGULAR_BASE_PATH, `styles\.[^\.]+\.css`),
+          [I18N_BASE, locale, ANGULAR_BASE_PATH, `main\.[^\.]+\.js`].filter(Boolean).join(sep),
+          [I18N_BASE, locale, ANGULAR_BASE_PATH, `polyfills\.[^\.]+\.js`].filter(Boolean).join(sep),
+          [I18N_BASE, locale, ANGULAR_BASE_PATH, `runtime\.[^\.]+\.js`].filter(Boolean).join(sep),
+          [I18N_BASE, locale, ANGULAR_BASE_PATH, `styles\.[^\.]+\.css`].filter(Boolean).join(sep),
         ])
         .map((it) => (it.startsWith("/") ? it.substring(1) : it))
         .map((it) => new RegExp(it));
@@ -484,13 +483,6 @@ describe("webframeworks", function (this) {
       ];
 
       expect(unmatchedFiles, "matchedFiles").to.eql([]);
-      console.log({
-        files,
-        EXPECTED_FILES: EXPECTED_FILES.filter((it) => !files.includes(it)),
-        EXPECTED_PATTERNS: EXPECTED_PATTERNS.filter(
-          (it) => !files.some((file) => !!file.match(it)),
-        ),
-      });
       expect(unmatchedExpectations, "unmatchedExpectations").to.eql([]);
     });
   });
