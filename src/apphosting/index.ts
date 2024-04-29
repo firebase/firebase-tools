@@ -318,7 +318,7 @@ export async function orchestrateRollout(
   backendId: string,
   buildInput: DeepOmit<Build, apphosting.BuildOutputOnlyFields | "name">,
 ): Promise<{ rollout: Rollout; build: Build }> {
-  await delay(45 * 1000);
+  // await delay(45 * 1000);
   const buildId = await apphosting.getNextRolloutId(projectId, location, backendId, 1);
   const buildOp = await apphosting.createBuild(projectId, location, backendId, buildId, buildInput);
 
