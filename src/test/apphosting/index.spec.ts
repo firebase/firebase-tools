@@ -230,7 +230,7 @@ describe("apphosting setup functions", () => {
     });
 
     it("returns a location selection", async () => {
-      const location = await promptLocation(projectId);
+      const location = await promptLocation(projectId, /* prompt= */ "");
       expect(location).to.be.eq("us-central1");
     });
 
@@ -318,7 +318,7 @@ describe("apphosting setup functions", () => {
         getBackendForAmbiguousLocation(
           projectId,
           "foo",
-          /* prompt= */ "Please select the location of the backend you'd like to delete:",
+          "Please select the location of the backend you'd like to delete:",
         ),
       ).to.eventually.equal(backendFoo);
 
