@@ -71,6 +71,11 @@ const choices = [
     name: "Extensions: Set up an empty Extensions manifest",
     checked: false,
   },
+  {
+    value: "genkit",
+    name: "Genkit: Setup a new Genkit project with Firebase",
+    checked: false,
+  },
 ];
 
 if (isEnabled("apphosting")) {

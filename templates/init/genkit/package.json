@@ -1,0 +1,11 @@
+{
+  "name": "genkit-project",
+  "description": "Project with Google Genkit",
+  "scripts": {
+    "start": "genkit start"
+  },
+  "devDependencies": {
+    "genkit": "^0.5.0-rc.5"
+  },
+  "private": true
+}
