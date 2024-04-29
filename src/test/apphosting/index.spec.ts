@@ -219,7 +219,10 @@ describe("apphosting setup functions", () => {
   });
 
   describe("promptLocation", () => {
-    const supportedLocations = [{ name: "us-central1", locationId: "us-central1" }];
+    const supportedLocations = [
+      { name: "us-central1", locationId: "us-central1" },
+      { name: "us-west1", locationId: "us-west1" },
+    ];
 
     beforeEach(() => {
       listLocationsStub.returns(supportedLocations);
@@ -239,7 +242,7 @@ describe("apphosting setup functions", () => {
         type: "list",
         default: "us-central1",
         message: "Please select a location:",
-        choices: ["us-central1"],
+        choices: ["us-central1", "us-west1"],
       });
     });
 
@@ -251,8 +254,18 @@ describe("apphosting setup functions", () => {
         type: "list",
         default: "us-central1",
         message: "Custom location prompt:",
-        choices: ["us-central1"],
+        choices: ["us-central1", "us-west1"],
       });
+    });
+
+    it("skips the prompt if there's only 1 valid location choice", async () => {
+      listLocationsStub.returns(supportedLocations.slice(0, 1));
+
+      await expect(promptLocation(projectId, "Custom location prompt:")).to.eventually.equal(
+        supportedLocations[0].locationId,
+      );
+
+      expect(promptOnceStub).to.not.be.called;
     });
   });
 
