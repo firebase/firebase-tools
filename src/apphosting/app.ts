@@ -1,6 +1,12 @@
 import * as fuzzy from "fuzzy";
 import * as inquirer from "inquirer";
-import { AppPlatform, WebAppMetadata, createWebApp, listFirebaseApps } from "../management/apps";
+import {
+  AppMetadata,
+  AppPlatform,
+  WebAppMetadata,
+  createWebApp,
+  listFirebaseApps,
+} from "../management/apps";
 import { promptOnce } from "../prompt";
 import { FirebaseError } from "../error";
 
@@ -33,23 +39,15 @@ async function getOrCreateWebApp(
   firebaseWebAppName: string | null,
   backendId: string,
 ): Promise<FirebaseWebApp | undefined> {
-  const webAppsInProject = await listFirebaseApps(projectId, AppPlatform.WEB);
+  const existingUserProjectWebApps = await getMapOfFirebaseWebApps(projectId);
 
-  if (webAppsInProject.length === 0) {
+  if (existingUserProjectWebApps.size === 0) {
     // create a web app using backend id
     const { displayName, appId } = await createFirebaseWebApp(projectId, {
       displayName: backendId,
     });
     return { name: displayName, id: appId, new: true };
   }
-
-  const existingUserProjectWebApps = new Map(
-    webAppsInProject.map((obj) => [
-      // displayName can be null, use app id instead if so. Example - displayName: "mathusan-web-app", appId: "1:461896338144:web:426291191cccce65fede85"
-      obj.displayName ?? obj.appId,
-      obj.appId,
-    ]),
-  );
 
   if (firebaseWebAppName) {
     if (existingUserProjectWebApps.get(firebaseWebAppName) === undefined) {
@@ -127,10 +125,7 @@ async function promptFirebaseWebApp(
 /**
  * A wrapper for createWebApp to catch and log quota errors
  */
-async function createFirebaseWebApp(
-  projectId: string,
-  options: { displayName?: string },
-): Promise<WebAppMetadata> {
+async function createFirebaseWebApp(projectId: string, backendId: string): Promise<WebAppMetadata> {
   try {
     return await createWebApp(projectId, options);
   } catch (e) {
@@ -145,6 +140,29 @@ async function createFirebaseWebApp(
       original: e instanceof Error ? e : undefined,
     });
   }
+}
+
+async function generateWebAppName(projectId: string, backendId: string) {
+  const webAppsInProject = await listFirebaseApps(projectId, AppPlatform.WEB);
+  const appsMap = firebaseAppsListToMap(webAppsInProject);
+  if (!appsMap.get(backendId)) {
+    return backendId;
+  }
+
+  let backendName = backendId;
+  while (appsMap.get(backendName)) {
+    backendName = backend;
+  }
+}
+
+function firebaseAppsListToMap(apps: AppMetadata[]): Map<string, string> {
+  return new Map(
+    apps.map((obj) => [
+      // displayName can be null, use app id instead if so. Example - displayName: "mathusan-web-app", appId: "1:461896338144:web:426291191cccce65fede85"
+      obj.displayName ?? obj.appId,
+      obj.appId,
+    ]),
+  );
 }
 
 /**
