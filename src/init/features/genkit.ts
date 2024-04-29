@@ -1,26 +1,34 @@
-import * as fs from 'fs';
 import * as spawn from "cross-spawn";
 import { logger } from "../../logger";
-import { detectProjectRoot } from "../../detectProjectRoot";
-
-const PACKAGE_TEMPLATE = fs.readFileSync(
-  __dirname + "/../../../templates/init/genkit/package.json",
-  "utf8",
-);
+import {doSetup as functionsSetup} from './functions';
+import { Options } from "../../options";
+import { Config } from "../../config";
+import { prompt } from "../../prompt";
+import { configForCodebase } from "../../functions/projectConfig";
 
 /**
  * doSetup is the entry point for setting up the genkit suite.
- * 
- * @param config configuration object for this init
  */
-export async function doSetup(_: any, config: any): Promise<void> {
-  const projectDir: string = config.projectDir;
+export async function doSetup(setup: any, config: Config, options: Options): Promise<void> {
+  if (setup.functions?.languageChoice !== 'typescript') {
+    await prompt(setup, [
+      {
+        name: "continueFunctions",
+        type: "confirm",
+        message: "Genkit with Firebase uses Cloud Functions for Firebase with TypeScript. Initialize Functions to continue?",
+        default: true,
+      }]);
+    if (!setup.continueFunctions) {
+      logger.info('Stopped Genkit initialization');
+      return;
+    }
 
-  try {
-    detectProjectRoot({cwd: projectDir, configPath: 'package.json'});
-  } catch (e) {
-    await config.askWriteProjectFile('package.json', PACKAGE_TEMPLATE);
+    // Functions with genkit should always be typescript
+    setup.languageOverride = 'typescript';
+    await functionsSetup(setup, config, options);
   }
+
+  const projectDir: string = `${config.projectDir}/${setup.functions.source}`;
 
   try {
     await wrapSpawn("npm", ["install", "genkit", "--save-dev"], projectDir);
