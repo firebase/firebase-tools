@@ -406,13 +406,16 @@ export async function deleteBackendAndPoll(
 }
 
 /**
- * Prompts the user for a location.
+ * Prompts the user for a location. If there's only a single valid location, skips the prompt and returns that location.
  */
 export async function promptLocation(
   projectId: string,
   prompt = "Please select a location:",
 ): Promise<string> {
   const allowedLocations = (await apphosting.listLocations(projectId)).map((loc) => loc.locationId);
+  if (allowedLocations.length === 1) {
+    return allowedLocations[0];
+  }
 
   return (await promptOnce({
     name: "location",
