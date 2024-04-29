@@ -44,10 +44,10 @@ export async function doSetup(
   webAppName: string | null,
   location: string | null,
   serviceAccount: string | null,
-  withDevConnect: boolean,
+  withCloudBuildRepos: boolean,
 ): Promise<void> {
   await Promise.all([
-    ...(withDevConnect ? [ensure(projectId, developerConnectOrigin(), "apphosting", true)] : []),
+    ensure(projectId, developerConnectOrigin(), "apphosting", true),
     ensure(projectId, cloudbuildOrigin(), "apphosting", true),
     ensure(projectId, secretManagerOrigin(), "apphosting", true),
     ensure(projectId, cloudRunApiOrigin(), "apphosting", true),
@@ -87,9 +87,9 @@ export async function doSetup(
     logWarning(`Firebase web app not set`);
   }
 
-  const gitRepositoryConnection: Repository | GitRepositoryLink = withDevConnect
-    ? await githubConnections.linkGitHubRepository(projectId, location)
-    : await repo.linkGitHubRepository(projectId, location);
+  const gitRepositoryConnection: Repository | GitRepositoryLink = withCloudBuildRepos
+    ? await repo.linkGitHubRepository(projectId, location)
+    : await githubConnections.linkGitHubRepository(projectId, location);
 
   const rootDir = await promptOnce({
     name: "rootDir",
