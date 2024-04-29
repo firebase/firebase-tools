@@ -2,7 +2,6 @@ import { expect, use } from "chai";
 import * as glob from "glob";
 import { join, normalize, relative } from "path";
 import { readFileSync } from "fs";
-import fetch from "node-fetch";
 import type { NextConfig } from "next";
 import * as deepEqualUnordered from "deep-equal-in-any-order";
 use(deepEqualUnordered);
@@ -239,10 +238,18 @@ describe("webframeworks", function (this) {
           ).toString(),
         );
         const apiStaticResponse = await fetch(`${NEXTJS_HOST}/app/api/static`);
+
+        const jsonResponse = await apiStaticResponse.json();
+        console.log({
+          apiStaticJSON,
+          jsonResponse,
+          headers: apiStaticResponse.headers.entries(),
+        });
+
         expect(apiStaticResponse.ok).to.be.true;
         expect(apiStaticResponse.headers.get("content-type")).to.eql("application/json");
         expect(apiStaticResponse.headers.get("custom-header")).to.eql("custom-value");
-        expect(await apiStaticResponse.json()).to.eql(apiStaticJSON);
+        expect(jsonResponse).to.eql(apiStaticJSON);
       });
 
       it("should have working SSG", async () => {
