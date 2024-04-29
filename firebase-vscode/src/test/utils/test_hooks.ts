@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 
-let tearDowns: Array<() => void> = [];
+let tearDowns: Array<() => void | Promise<void>> = [];
 
 /** Registers a logic to run after the current test ends.
  *
@@ -8,7 +8,7 @@ let tearDowns: Array<() => void> = [];
  *
  * The callback is bound to the suite, and when that suite/test ends, the callback is unregistered.
  */
-export function addTearDown(cb: () => void) {
+export function addTearDown(cb: () => void | Promise<void>) {
   tearDowns.push(cb);
 }
 
@@ -22,39 +22,39 @@ export function addDisposable(disposable: vscode.Disposable | undefined) {
   }
 }
 
-let setups: Array<() => void> = [];
+let setups: Array<() => void | Promise<void>> = [];
 
 /** Registers initialization logic to run before every tests in that suite.
  *
  * The callback is bound to the suite, and when that suite ends, the callback is unregistered.
  */
-export function setup(cb: () => void) {
+export function setup(cb: () => void | Promise<void>) {
   setups.push(cb);
 }
 
 /** A custom "test" to work around "afterEach" not working with the current configs */
 export function firebaseTest(
   description: string,
-  cb: () => void | Promise<void>,
+  cb: (this: Mocha.Context) => void | Promise<void>
 ) {
   // Since tests may execute in any order, we dereference the list of setup callbacks
   // to unsure that other suites' setups don't affect this test.
   const testSetups = [...setups];
   const testTearDowns = [...tearDowns];
 
-  test(description, async () => {
+  test(description, async function () {
     // Tests may call addTearDown to register a callback to run after the test ends.
     // We make sure those callbacks are applied only to this test.
     const previousTearDowns = tearDowns;
     tearDowns = testTearDowns;
 
-    runGuarded(testSetups);
+    await runGuarded(testSetups);
 
     try {
-      await cb();
+      await cb.call(this);
     } finally {
+      await runGuarded(testTearDowns.reverse());
       tearDowns = previousTearDowns;
-      runGuarded(testTearDowns.reverse());
     }
   });
 }
@@ -82,16 +82,16 @@ export function firebaseSuite(description: string, cb: () => void) {
  *
  * If at least one error is thrown, the first one is rethrown.
  */
-function runGuarded(callbacks: Array<() => void>) {
+async function runGuarded(callbacks: Array<() => void | Promise<void>>) {
   let firstError: Error | undefined;
 
-  callbacks.forEach((cb) => {
+  for (const cb of callbacks) {
     try {
-      cb();
+      await cb();
     } catch (e) {
       firstError ??= e;
     }
-  });
+  }
 
   if (firstError) {
     throw firstError;

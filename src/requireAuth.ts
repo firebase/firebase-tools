@@ -39,7 +39,6 @@ function getAuthClient(config: GoogleAuthOptions): GoogleAuth {
  */
 async function autoAuth(options: Options, authScopes: string[]): Promise<void | string> {
   const client = getAuthClient({ scopes: authScopes, projectId: options.project });
-
   const token = await client.getAccessToken();
   token !== null ? apiv2.setAccessToken(token) : false;
 
@@ -112,4 +111,5 @@ export async function requireAuth(options: any): Promise<string | void> {
   }
 
   setActiveAccount(options, { user, tokens });
+  return user.email;
 }
