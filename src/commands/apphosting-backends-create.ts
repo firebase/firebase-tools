@@ -18,9 +18,8 @@ export const command = new Command("apphosting:backends:create")
     "",
   )
   .option(
-    "-w, --with-dev-connect",
-    "use the Developer Connect flow instead of Cloud Build Repositories (testing)",
-    true,
+    "-w, --with-cloud-build-repos",
+    "use Cloud Build Repositories flow instead of the Developer Connect flow",
   )
   .before(ensureApiEnabled)
   .before(requireInteractive)
@@ -29,13 +28,13 @@ export const command = new Command("apphosting:backends:create")
     const webApp = options.app;
     const location = options.location;
     const serviceAccount = options.serviceAccount;
-    const withDevConnect = options.withDevConnect as boolean;
+    const withCloudBuildRepos = options.withCloudBuildRepos as boolean;
 
     await doSetup(
       projectId,
       webApp as string | null,
       location as string | null,
       serviceAccount as string | null,
-      withDevConnect,
+      withCloudBuildRepos,
     );
   });
