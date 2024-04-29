@@ -64,6 +64,7 @@ import { setEnvVarsForEmulators } from "./env";
 import { runWithVirtualEnv } from "../functions/python";
 import { Runtime } from "../deploy/functions/runtimes/supported";
 import { CronJob } from "cron";
+import { ScheduledEmulator } from "./scheduledEmulator";
 
 const EVENT_INVOKE_GA4 = "functions_invoke"; // event name GA4 (alphanumertic)
 
@@ -129,7 +130,7 @@ export interface FunctionsEmulatorArgs {
  * IPC connection info of a Function Runtime.
  */
 export class IPCConn {
-  constructor(readonly socketPath: string) {}
+  constructor(readonly socketPath: string) { }
 
   httpReqOpts(): http.RequestOptions {
     return {
@@ -145,7 +146,7 @@ export class TCPConn {
   constructor(
     readonly host: string,
     readonly port: number,
-  ) {}
+  ) { }
 
   httpReqOpts(): http.RequestOptions {
     return {
@@ -318,6 +319,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     // The URL for the listBackends endpoint, which is used by the Emulator UI.
     const listBackendsRoute = `/backends`;
 
+    // The URL for the listScheduled endpoint, which is used by the Emulator UI.
+    const listScheduledRoute = `/scheduled`;
+    const scheduledForceRun = `/force_run/:trigger_id`;
+
     const httpsHandler: express.RequestHandler = (req, res) => {
       const work: Work = () => {
         return this.handleHttpsTrigger(req, res);
@@ -368,13 +373,28 @@ export class FunctionsEmulator implements EmulatorInstance {
       res.json({ backends: this.getBackendInfo() });
     };
 
+    const listScheduledHandler: express.RequestHandler = (req, res) => {
+      res.json({ scheduled: this.getScheduledInfo() });
+    };
+
+    const scheduledForceRunHandler: express.RequestHandler = (req: express.Request, res) => {
+      this.runSheduled(req.params.trigger_id);
+      res.json({ status: "acknowledged" });
+    };
+
     // The ordering here is important. The longer routes (background)
     // need to be registered first otherwise the HTTP functions consume
     // all events.
-    hub.get(listBackendsRoute, cors({ origin: true }), listBackendsHandler); // This route needs CORS so the Emulator UI can call it.
+
+    // These routse need CORS so the Emulator UI can call it.
+    hub.get(listBackendsRoute, cors({ origin: true }), listBackendsHandler);
+    hub.get(listScheduledRoute, cors({ origin: true }), listScheduledHandler);
+    hub.post(scheduledForceRun, cors({ origin: true }), scheduledForceRunHandler);
+
     hub.post(backgroundFunctionRoute, dataMiddleware, httpsHandler);
     hub.post(multicastFunctionRoute, dataMiddleware, multicastHandler);
     hub.all(httpsFunctionRoutes, dataMiddleware, httpsHandler);
+
     hub.all("*", dataMiddleware, (req, res) => {
       logger.debug(`Functions emulator received unknown request at path ${req.path}`);
       res.sendStatus(404);
@@ -597,6 +617,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     // When force is true we set up all triggers, otherwise we only set up
     // triggers which have a unique function name
     const toSetup = triggerDefinitions.filter((definition) => {
+      // TODO: See if this is needed
+      if (definition.scheduleTrigger) {
+        return true;
+      }
       if (force) {
         return true;
       }
@@ -701,26 +725,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
         added = this.addBlockingTrigger(url, definition.blockingTrigger);
       } else if (definition.scheduleTrigger) {
-        added = true;
-
-        // TODO: might fully avoid this if we can get the cron job to work
-        url = FunctionsEmulator.getHttpFunctionUrl(
-          this.args.projectId,
-          definition.name,
-          definition.region,
-        );
-
-        // TODO: Schedule next run here
-        CronJob.from({
-          cronTime: definition.scheduleTrigger.schedule,
-          onTick: function () {
-            console.log("Tick");
-            // Implement this
-            // pool.submitRequest();
-          },
-          start: true,
-          timeZone: definition.scheduleTrigger.timeZone,
-        });
+        added = this.addScheduledTrigger(definition.name, definition.region, definition.scheduleTrigger);
       } else {
         this.logger.log(
           "WARN",
@@ -1040,6 +1045,69 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
   }
 
+  addScheduledTrigger(
+    triggerName: string,
+    triggerRegion: string,
+    scheduleTrigger: backend.ScheduleTrigger,
+  ): boolean {
+    const scheduledEmulator = EmulatorRegistry.get(Emulators.SCHEDULED) as ScheduledEmulator | undefined;
+    if (!scheduledEmulator) {
+      return false;
+    }
+
+    logger.debug(`addScheduledTrigger`, JSON.stringify({ scheduleTrigger }));
+
+    const scheduledTriggerId = `${triggerRegion}-${triggerName}`;
+
+    try {
+      CronJob.from({
+        cronTime: scheduleTrigger.schedule!,
+        onTick: async () => {
+          console.log("Tick");
+          this.runSheduled(scheduledTriggerId);
+        },
+        start: true,
+        timeZone: scheduleTrigger.timeZone,
+      });
+      return true;
+    } catch (e: any) {
+      return false;
+    }
+  }
+
+  async runSheduled(triggerId: string) {
+    const record = this.getTriggerRecordByKey(triggerId);
+    const trigger = record.def;
+
+    const pool = this.workerPools[record.backend.codebase];
+    if (!pool.readyForWork(trigger.id)) {
+      try {
+        await this.startRuntime(record.backend, trigger);
+      } catch (e: any) {
+        this.logger.logLabeled("ERROR", `Failed to start runtime for ${trigger.id}: ${e}`);
+        return;
+      }
+    }
+    const worker = pool.getIdleWorker(trigger.id)!;
+
+    const headers = {
+      "Content-Type": "application/json",
+    };
+
+    return new Promise((resolve, reject) => {
+      const req = http.request(
+        {
+          ...worker.runtime.conn.httpReqOpts(),
+          path: `/`,
+          headers: headers,
+        },
+        resolve,
+      );
+      req.on("error", reject);
+      req.end();
+    });
+  }
+
   addAuthTrigger(projectId: string, key: string, eventTrigger: EventTrigger): boolean {
     logger.debug(`addAuthTrigger`, JSON.stringify({ eventTrigger }));
 
@@ -1150,6 +1218,17 @@ export class FunctionsEmulator implements EmulatorInstance {
     return Object.values(this.triggers)
       .filter((t) => !t.backend.extensionInstanceId)
       .map((t) => t.def);
+  }
+
+  getScheduledFunctions(): ParsedTriggerDefinition[] {
+    return Object.values(this.triggers)
+      .filter((t) => t.def.scheduleTrigger)
+      .map((t) => t.def);
+  }
+
+  getScheduledInfo(): string {
+    const scheduledFunctions = this.getScheduledFunctions();
+    return JSON.parse(JSON.stringify(scheduledFunctions));
   }
 
   addTriggerRecord(

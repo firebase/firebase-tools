@@ -59,6 +59,7 @@ export interface FrameworkOptions {
     firestore: ConnectionInfo;
     functions: ConnectionInfo;
     pubsub: ConnectionInfo;
+    scheduled: ConnectionInfo
     auth: ConnectionInfo;
     storage: ConnectionInfo;
   };
@@ -74,6 +75,7 @@ export class EmulatorEndToEndTest {
   functionsEmulatorPort = 0;
   pubsubEmulatorHost = "127.0.0.1";
   pubsubEmulatorPort = 0;
+  scheduledEmulatorPort = 0;
   authEmulatorHost = "127.0.0.1";
   authEmulatorPort = 0;
   storageEmulatorHost = "127.0.0.1";
@@ -95,6 +97,7 @@ export class EmulatorEndToEndTest {
     this.firestoreEmulatorPort = config.emulators.firestore?.port;
     this.functionsEmulatorPort = config.emulators.functions?.port;
     this.pubsubEmulatorPort = config.emulators.pubsub?.port;
+    this.scheduledEmulatorPort = config.emulators.scheduled?.port;
     this.authEmulatorPort = config.emulators.auth?.port;
     this.storageEmulatorPort = config.emulators.storage?.port;
   }

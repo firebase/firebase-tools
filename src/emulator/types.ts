@@ -9,6 +9,7 @@ export enum Emulators {
   DATABASE = "database",
   HOSTING = "hosting",
   PUBSUB = "pubsub",
+  SCHEDULED = "scheduled",
   UI = "ui",
   LOGGING = "logging",
   STORAGE = "storage",
@@ -45,6 +46,7 @@ export const ALL_SERVICE_EMULATORS = [
   Emulators.DATABASE,
   Emulators.HOSTING,
   Emulators.PUBSUB,
+  Emulators.SCHEDULED,
   Emulators.STORAGE,
   Emulators.EVENTARC,
 ].filter((v) => v);
@@ -53,6 +55,7 @@ export const EMULATORS_SUPPORTED_BY_FUNCTIONS = [
   Emulators.FIRESTORE,
   Emulators.DATABASE,
   Emulators.PUBSUB,
+  Emulators.SCHEDULED,
   Emulators.STORAGE,
   Emulators.EVENTARC,
 ];
@@ -62,6 +65,7 @@ export const EMULATORS_SUPPORTED_BY_UI = [
   Emulators.DATABASE,
   Emulators.FIRESTORE,
   Emulators.FUNCTIONS,
+  Emulators.SCHEDULED,
   Emulators.STORAGE,
   Emulators.EXTENSIONS,
 ];

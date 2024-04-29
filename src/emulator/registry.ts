@@ -26,7 +26,7 @@ export class EmulatorRegistry {
     // Start the emulator and wait for it to grab its assigned port.
     await instance.start();
     // No need to wait for the Extensions emulator to close its port, since it runs on the Functions emulator.
-    if (instance.getName() !== Emulators.EXTENSIONS) {
+    if (instance.getName() !== Emulators.EXTENSIONS && instance.getName() !== Emulators.SCHEDULED) {
       const info = instance.getInfo();
       await portUtils.waitForPortUsed(info.port, connectableHostname(info.host));
     }
@@ -77,6 +77,7 @@ export class EmulatorRegistry {
       database: 3.0,
       firestore: 3.1,
       pubsub: 3.2,
+      scheduled: 3.4,
       auth: 3.3,
       storage: 3.5,
       eventarc: 3.6,

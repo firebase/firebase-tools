@@ -181,6 +181,7 @@ const EMULATOR_CAN_LISTEN_ON_PRIMARY_ONLY: Record<PortName, boolean> = {
   firestore: true,
   "firestore.websocket": true,
   pubsub: true,
+  scheduled: true,
 
   // Listening on multiple addresses to maximize the chance of discovery.
   hub: false,
@@ -202,6 +203,7 @@ const EMULATOR_CAN_LISTEN_ON_PRIMARY_ONLY: Record<PortName, boolean> = {
   // Only one hostname possible in .server mode, can switch to middleware later.
   hosting: true,
 };
+
 
 export interface EmulatorListenConfig {
   host: string;
