@@ -1,30 +1,31 @@
 import * as spawn from "cross-spawn";
 import { logger } from "../../logger";
-import {doSetup as functionsSetup} from './functions';
+import { doSetup as functionsSetup } from "./functions";
 import { Options } from "../../options";
 import { Config } from "../../config";
 import { prompt } from "../../prompt";
-import { configForCodebase } from "../../functions/projectConfig";
 
 /**
  * doSetup is the entry point for setting up the genkit suite.
  */
 export async function doSetup(setup: any, config: Config, options: Options): Promise<void> {
-  if (setup.functions?.languageChoice !== 'typescript') {
+  if (setup.functions?.languageChoice !== "typescript") {
     await prompt(setup, [
       {
         name: "continueFunctions",
         type: "confirm",
-        message: "Genkit with Firebase uses Cloud Functions for Firebase with TypeScript. Initialize Functions to continue?",
+        message:
+          "Genkit with Firebase uses Cloud Functions for Firebase with TypeScript. Initialize Functions to continue?",
         default: true,
-      }]);
+      },
+    ]);
     if (!setup.continueFunctions) {
-      logger.info('Stopped Genkit initialization');
+      logger.info("Stopped Genkit initialization");
       return;
     }
 
     // Functions with genkit should always be typescript
-    setup.languageOverride = 'typescript';
+    setup.languageOverride = "typescript";
     await functionsSetup(setup, config, options);
   }
 
@@ -37,16 +38,12 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
     logger.error("Genkit initialization failed...");
     return;
   }
-  
+
   logger.info("To use the Genkit CLI, run:");
   logger.info("    npm install genkit -g");
 }
 
-function wrapSpawn(
-    cmd: string,
-    args:
-    string[], projectDir:
-    string): Promise<void> {
+function wrapSpawn(cmd: string, args: string[], projectDir: string): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const installer = spawn(cmd, args, {
       cwd: projectDir,
