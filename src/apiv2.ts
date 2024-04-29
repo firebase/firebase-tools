@@ -127,7 +127,6 @@ export function setAccessToken(token = ""): void {
  * @returns An access token
  */
 export async function getAccessToken(): Promise<string> {
-  // Runtime fetch of Auth singleton to prevent circular module dependencies
   if (accessToken) {
     return accessToken;
   }
