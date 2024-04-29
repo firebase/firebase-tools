@@ -8,6 +8,7 @@ import {
   artifactRegistryDomain,
   cloudRunApiOrigin,
   cloudbuildOrigin,
+  consoleOrigin,
   developerConnectOrigin,
   iamOrigin,
   secretManagerOrigin,
@@ -24,6 +25,8 @@ import * as deploymentTool from "../deploymentTool";
 import { DeepOmit } from "../metaprogramming";
 import * as apps from "./app";
 import { GitRepositoryLink } from "../gcp/devConnect";
+import * as ora from "ora";
+
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
 const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
@@ -95,6 +98,7 @@ export async function doSetup(
     message: "Specify your app's root directory relative to your repository",
   });
 
+  const createBackendSpinner = ora("Creating your new backend...").start();
   const backend = await createBackend(
     projectId,
     location,
@@ -104,6 +108,7 @@ export async function doSetup(
     webApp?.id,
     rootDir,
   );
+  createBackendSpinner.succeed(`Successfully created backend:\n\t${backend.name}\n`);
 
   // TODO: Once tag patterns are implemented, prompt which method the user
   // prefers. We could reduce the number of questions asked by letting people
@@ -125,11 +130,16 @@ export async function doSetup(
   });
 
   if (!confirmRollout) {
-    logSuccess(`Successfully created backend:\n\t${backend.name}`);
     logSuccess(`Your backend will be deployed at:\n\thttps://${backend.uri}`);
     return;
   }
 
+  logBullet(
+    `You may also track this rollout at:\n\t${consoleOrigin()}/project/${projectId}/apphosting`,
+  );
+  const createRolloutSpinner = ora(
+    "Starting a new rollout... This make take a few minutes. It's safe to exit now.",
+  ).start();
   await orchestrateRollout(projectId, location, backendId, {
     source: {
       codebase: {
@@ -137,9 +147,7 @@ export async function doSetup(
       },
     },
   });
-
-  logSuccess(`Successfully created backend:\n\t${backend.name}`);
-  logSuccess(`Your backend is now deployed at:\n\thttps://${backend.uri}`);
+  createRolloutSpinner.succeed(`Your backend is now deployed at:\n\thttps://${backend.uri}`);
 }
 
 /**
@@ -263,7 +271,7 @@ async function provisionDefaultComputeServiceAccount(projectId: string): Promise
     [
       "roles/firebaseapphosting.computeRunner",
       "roles/firebase.sdkAdminServiceAgent",
-      "roles/developerconnect.tokenAccessor",
+      "roles/developerconnect.readTokenAccessor",
     ],
     /* skipAccountLookup= */ true,
   );
@@ -310,7 +318,6 @@ export async function orchestrateRollout(
   backendId: string,
   buildInput: DeepOmit<Build, apphosting.BuildOutputOnlyFields | "name">,
 ): Promise<{ rollout: Rollout; build: Build }> {
-  logBullet("Starting a new rollout... this may take a few minutes.");
   await delay(45 * 1000);
   const buildId = await apphosting.getNextRolloutId(projectId, location, backendId, 1);
   const buildOp = await apphosting.createBuild(projectId, location, backendId, buildId, buildInput);
@@ -366,7 +373,6 @@ export async function orchestrateRollout(
   });
 
   const [rollout, build] = await Promise.all([rolloutPoll, buildPoll]);
-  logSuccess("Rollout completed.");
 
   if (build.state !== "READY") {
     if (!build.buildLogsUri) {

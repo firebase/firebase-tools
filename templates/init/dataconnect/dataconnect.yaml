@@ -1,0 +1,10 @@
+specVersion: "v1alpha"
+serviceId: "__serviceId__"
+schema:
+  source: "./schema"
+  datasource:
+    postgresql:
+      database: "__cloudSqlDatabase__"
+      cloudSql:
+        instanceId: "__cloudSqlInstanceId__"
+connectorDirs: ["./connector"]

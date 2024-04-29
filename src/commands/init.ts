@@ -81,6 +81,14 @@ if (isEnabled("apphosting")) {
   });
 }
 
+if (isEnabled("dataconnect")) {
+  choices.push({
+    value: "dataconnect",
+    name: "Data Connect: Set up a Firebase Data Connect service.",
+    checked: false,
+  });
+}
+
 const featureNames = choices.map((choice) => choice.value);
 
 const DESCRIPTION = `Interactively configure the current directory as a Firebase project or initialize new features in an already configured Firebase project directory.

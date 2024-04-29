@@ -1,0 +1,7 @@
+# # Example query
+# # TODO: Replace with a really good illustrative example from devrel!
+# query listOrders {
+#   orders {
+#     name
+#   }
+# }

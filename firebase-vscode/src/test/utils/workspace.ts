@@ -59,7 +59,7 @@ export function setupMockTestWorkspaces(
     workspaceFolders: workspaceFolders.map((workspace) =>
       createFake<vscode.WorkspaceFolder>({
         uri: vscode.Uri.file(workspace.path),
-      }),
+      })
     ),
     createFileSystemWatcher: (...args) => {
       // We don't mock watchers, so we defer to the real implementation.
