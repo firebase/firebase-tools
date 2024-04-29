@@ -16,6 +16,7 @@ import * as FunctionsTarget from "./functions";
 import * as StorageTarget from "./storage";
 import * as RemoteConfigTarget from "./remoteconfig";
 import * as ExtensionsTarget from "./extensions";
+import * as DataConnectTarget from "./dataconnect";
 import { prepareFrameworks } from "../frameworks";
 import { HostingDeploy } from "./hosting/context";
 import { addPinnedFunctionsToOnlyString, hasPinnedFunctions } from "./hosting/prepare";
@@ -31,6 +32,7 @@ const TARGETS = {
   storage: StorageTarget,
   remoteconfig: RemoteConfigTarget,
   extensions: ExtensionsTarget,
+  dataconnect: DataConnectTarget,
 };
 
 type Chain = ((context: any, options: any, payload: any) => Promise<unknown>)[];

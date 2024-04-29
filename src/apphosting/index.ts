@@ -271,7 +271,7 @@ async function provisionDefaultComputeServiceAccount(projectId: string): Promise
     [
       "roles/firebaseapphosting.computeRunner",
       "roles/firebase.sdkAdminServiceAgent",
-      "roles/developerconnect.tokenAccessor",
+      "roles/developerconnect.readTokenAccessor",
     ],
     /* skipAccountLookup= */ true,
   );

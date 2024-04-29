@@ -1,5 +1,3 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
 
 import { ExtensionBroker } from "./extension-broker";
@@ -13,9 +11,11 @@ import { registerWebview } from "./webview";
 import { registerCore } from "./core";
 import { getSettings } from "./utils/settings";
 import { registerHosting } from "./hosting";
+import { registerFdc } from "./data-connect";
+import { AuthService } from "./auth/service";
 
 // This method is called when your extension is activated
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
   const settings = getSettings();
   logSetup(settings);
   pluginLogger.debug("Activating Firebase extension.");
@@ -26,13 +26,22 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.Webview
   >(new ExtensionBroker());
 
+  const authService = new AuthService(broker);
+
+  const [emulatorsController, coreDisposable] = await registerCore({
+    broker,
+    context,
+  });
+
   context.subscriptions.push(
-    registerCore({ broker, context }),
+    coreDisposable,
     registerWebview({
       name: "sidebar",
       broker,
       context,
     }),
-    registerHosting(broker)
+    registerHosting(broker),
+    authService,
+    registerFdc(context, broker, authService, emulatorsController)
   );
 }

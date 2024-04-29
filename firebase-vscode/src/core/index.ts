@@ -1,7 +1,7 @@
 import vscode, { Disposable, ExtensionContext } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { registerConfig } from "./config";
-import { registerEmulators } from "./emulators";
+import { EmulatorsController } from "./emulators";
 import { registerEnv } from "./env";
 import { pluginLogger } from "../logger-wrapper";
 import { getSettings } from "../utils/settings";
@@ -11,13 +11,13 @@ import { registerProject } from "./project";
 import { registerQuickstart } from "./quickstart";
 import { registerOptions } from "../options";
 
-export function registerCore({
+export async function registerCore({
   broker,
   context,
 }: {
   broker: ExtensionBrokerImpl;
   context: ExtensionContext;
-}): Disposable {
+}): Promise<[EmulatorsController, vscode.Disposable]> {
   const settings = getSettings();
 
   if (settings.npmPath) {
@@ -52,17 +52,21 @@ export function registerCore({
     );
   });
 
-  return Disposable.from(
-    registerOptions(context),
-    registerConfig(broker),
-    registerEmulators(broker),
-    registerEnv(broker),
-    registerUser(broker),
-    registerProject(broker),
-    registerQuickstart(broker),
-    { dispose: sub1 },
-    { dispose: sub2 },
-    { dispose: sub3 },
-    { dispose: sub4 },
-  );
+  const emulatorsController = new EmulatorsController(broker);
+  return [
+    emulatorsController,
+    Disposable.from(
+      emulatorsController,
+      registerOptions(context),
+      registerConfig(broker),
+      registerEnv(broker),
+      registerUser(broker),
+      registerProject(broker),
+      registerQuickstart(broker),
+      { dispose: sub1 },
+      { dispose: sub2 },
+      { dispose: sub3 },
+      { dispose: sub4 },
+    ),
+  ];
 }
