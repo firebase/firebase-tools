@@ -42,14 +42,13 @@ export function printBackendsTable(backends: apphosting.Backend[]): void {
   });
 
   for (const backend of backends) {
-    // sample backend.name value: "projects/<project-name>/locations/us-central1/backends/<backend-id>"
-    const [backendLocation, , backendId] = backend.name.split("/").slice(3, 6);
+    const { location, id } = apphosting.parseBackendName(backend.name);
     table.push([
-      backendId,
+      id,
       // sample repository value: "projects/<project-name>/locations/us-central1/connections/<connection-id>/repositories/<repository-name>"
       backend.codebase?.repository?.split("/").pop() ?? "",
       backend.uri.startsWith("https:") ? backend.uri : "https://" + backend.uri,
-      backendLocation,
+      location,
       datetimeString(new Date(backend.updateTime)),
     ]);
   }
