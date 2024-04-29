@@ -44,10 +44,10 @@ export async function doSetup(
   webAppName: string | null,
   location: string | null,
   serviceAccount: string | null,
-  withDevConnect: boolean,
+  withCloudBuildRepos: boolean,
 ): Promise<void> {
   await Promise.all([
-    ...(withDevConnect ? [ensure(projectId, developerConnectOrigin(), "apphosting", true)] : []),
+    ensure(projectId, developerConnectOrigin(), "apphosting", true),
     ensure(projectId, cloudbuildOrigin(), "apphosting", true),
     ensure(projectId, secretManagerOrigin(), "apphosting", true),
     ensure(projectId, cloudRunApiOrigin(), "apphosting", true),
@@ -87,9 +87,9 @@ export async function doSetup(
     logWarning(`Firebase web app not set`);
   }
 
-  const gitRepositoryConnection: Repository | GitRepositoryLink = withDevConnect
-    ? await githubConnections.linkGitHubRepository(projectId, location)
-    : await repo.linkGitHubRepository(projectId, location);
+  const gitRepositoryConnection: Repository | GitRepositoryLink = withCloudBuildRepos
+    ? await repo.linkGitHubRepository(projectId, location)
+    : await githubConnections.linkGitHubRepository(projectId, location);
 
   const rootDir = await promptOnce({
     name: "rootDir",
@@ -410,7 +410,7 @@ export async function deleteBackendAndPoll(
  */
 export async function promptLocation(
   projectId: string,
-  prompt = "Please select a location:",
+  prompt: string = "Please select a location:",
 ): Promise<string> {
   const allowedLocations = (await apphosting.listLocations(projectId)).map((loc) => loc.locationId);
 
@@ -421,4 +421,43 @@ export async function promptLocation(
     message: prompt,
     choices: allowedLocations,
   })) as string;
+}
+
+/**
+ * Fetches a backend from the server. If there are multiple backends with that name (ie multi-regional backends),
+ * prompts the user to disambiguate.
+ */
+export async function getBackendForAmbiguousLocation(
+  projectId: string,
+  backendId: string,
+  locationDisambugationPrompt: string,
+): Promise<apphosting.Backend> {
+  let { unreachable, backends } = await apphosting.listBackends(projectId, "-");
+  if (unreachable && unreachable.length !== 0) {
+    logWarning(
+      `The following locations are currently unreachable: ${unreachable}.\n` +
+        "If your backend is in one of these regions, please try again later.",
+    );
+  }
+  backends = backends.filter(
+    (backend) => apphosting.parseBackendName(backend.name).id === backendId,
+  );
+  if (backends.length === 0) {
+    throw new FirebaseError(`No backend named "${backendId}" found.`);
+  }
+  if (backends.length === 1) {
+    return backends[0];
+  }
+
+  const backendsByLocation = new Map<string, apphosting.Backend>();
+  backends.forEach((backend) =>
+    backendsByLocation.set(apphosting.parseBackendName(backend.name).location, backend),
+  );
+  const location = await promptOnce({
+    name: "location",
+    type: "list",
+    message: locationDisambugationPrompt,
+    choices: [...backendsByLocation.keys()],
+  });
+  return backendsByLocation.get(location)!;
 }
