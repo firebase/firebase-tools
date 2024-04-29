@@ -1,6 +1,7 @@
-import * as fs from "node:fs";
+import * as fs from "fs-extra";
 import * as tty from "tty";
 import * as path from "node:path";
+import * as yaml from "yaml";
 import { Socket } from "node:net";
 
 import * as _ from "lodash";
@@ -30,7 +31,7 @@ const ERROR_CHAR = IS_WINDOWS ? "!!" : "⬢";
 const THIRTY_DAYS_IN_MILLISECONDS = 30 * 24 * 60 * 60 * 1000;
 
 export const envOverrides: string[] = [];
-
+export const vscodeEnvVars: { [key: string]: string } = {};
 /**
  * Create a Firebase Console URL for the specified path and project.
  */
@@ -54,6 +55,15 @@ export function getInheritedOption(options: any, key: string): any {
 }
 
 /**
+ * Sets the VSCode environment variables to be used by the CLI when called by VSCode
+ * @param envVar name of the environment variable
+ * @param value value of the environment variable
+ */
+export function setVSCodeEnvVars(envVar: string, value: string) {
+  vscodeEnvVars[envVar] = value;
+}
+
+/**
  * Override a value with supplied environment variable if present. A function
  * that returns the environment variable in an acceptable format can be
  * proivded. If it throws an error, the default value will be used.
@@ -63,7 +73,8 @@ export function envOverride(
   value: string,
   coerce?: (value: string, defaultValue: string) => any,
 ): string {
-  const currentEnvValue = process.env[envname];
+  const currentEnvValue =
+    isVSCodeExtension() && vscodeEnvVars[envname] ? vscodeEnvVars[envname] : process.env[envname];
   if (currentEnvValue && currentEnvValue.length) {
     envOverrides.push(envname);
     if (coerce) {
@@ -822,6 +833,65 @@ export function getHostnameFromUrl(url: string): string | null {
   } catch (e: unknown) {
     return null;
   }
+}
+
+/**
+ * Retrieves a file from the directory.
+ */
+export function readFileFromDirectory(
+  directory: string,
+  file: string,
+): Promise<{ source: string; sourceDirectory: string }> {
+  return new Promise<string>((resolve, reject) => {
+    fs.readFile(path.resolve(directory, file), "utf8", (err, data) => {
+      if (err) {
+        if (err.code === "ENOENT") {
+          return reject(
+            new FirebaseError(`Could not find "${file}" in "${directory}"`, { original: err }),
+          );
+        }
+        reject(
+          new FirebaseError(`Failed to read file "${file}" in "${directory}"`, { original: err }),
+        );
+      } else {
+        resolve(data);
+      }
+    });
+  }).then((source) => {
+    return {
+      source,
+      sourceDirectory: directory,
+    };
+  });
+}
+
+/**
+ * Wrapps `yaml.safeLoad` with an error handler to present better YAML parsing
+ * errors.
+ */
+export function wrappedSafeLoad(source: string): any {
+  try {
+    return yaml.parse(source);
+  } catch (err: any) {
+    throw new FirebaseError(`YAML Error: ${err.message}`, { original: err });
+  }
+}
+
+/**
+ * Generate id meeting the following criterias:
+ *  - Lowercase, digits, and hyphens only
+ *  - Must begin with letter
+ *  - Cannot end with hyphen
+ */
+export function generateId(n = 6): string {
+  const letters = "abcdefghijklmnopqrstuvwxyz";
+  const allChars = "01234567890-abcdefghijklmnopqrstuvwxyz";
+  let id = letters[Math.floor(Math.random() * letters.length)];
+  for (let i = 1; i < n; i++) {
+    const idx = Math.floor(Math.random() * allChars.length);
+    id += allChars[idx];
+  }
+  return id;
 }
 
 /**

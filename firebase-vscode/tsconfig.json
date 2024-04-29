@@ -15,5 +15,8 @@
     "rootDirs": ["src", "../src", "common"],
     "strict": false /* enable all strict type-checking options */
   },
+  "ts-node": {
+    "esm": true
+  },
   "include": ["src/**/*", "common/**/*"]
 }

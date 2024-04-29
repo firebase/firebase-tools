@@ -8,9 +8,10 @@ import { RC, RCData } from "../../../src/rc";
 import { Config } from "../../../src/config";
 import { globalSignal } from "../utils/globals";
 import { workspace } from "../utils/test_hooks";
+import { ResolvedDataConnectConfigs } from "../data-connect/config";
 import { ValueOrError } from "../../common/messaging/protocol";
 import { firstWhereDefined, onChange } from "../utils/signal";
-import { Result, ResultError } from "../result";
+import { Result, ResultError, ResultValue } from "../result";
 import { FirebaseConfig } from "../firebaseConfig";
 import { effect } from "@preact/signals-react";
 
@@ -25,8 +26,12 @@ import { effect } from "@preact/signals-react";
  * and also await for configs to be loaded (thanks to the {@link firstWhereDefined} util)
  */
 export const firebaseRC = globalSignal<Result<RC | undefined> | undefined>(
-  undefined,
+  undefined
 );
+
+export const dataConnectConfigs = globalSignal<
+  ResolvedDataConnectConfigs | undefined
+>(undefined);
 
 /**
  * The firebase.json configs.
@@ -47,7 +52,7 @@ export const firebaseConfig = globalSignal<
  */
 export async function updateFirebaseRCProject(
   alias: string,
-  projectId: string,
+  projectId: string
 ) {
   const rc =
     firebaseRC.value.tryReadValue ??
@@ -73,7 +78,7 @@ function notifyFirebaseConfig(broker: ExtensionBrokerImpl) {
       ValueOrError<FirebaseConfig | undefined> | undefined
     >(
       (value) => ({ value: value?.data, error: undefined }),
-      (error) => ({ value: undefined, error: `${error}` }),
+      (error) => ({ value: undefined, error: `${error}` })
     ),
     firebaseRC: firebaseRC.value?.switchCase<
       ValueOrError<RCData | undefined> | undefined
@@ -82,7 +87,7 @@ function notifyFirebaseConfig(broker: ExtensionBrokerImpl) {
         value: value?.data,
         error: undefined,
       }),
-      (error) => ({ value: undefined, error: `${error}` }),
+      (error) => ({ value: undefined, error: `${error}` })
     ),
   });
 }
@@ -90,7 +95,7 @@ function notifyFirebaseConfig(broker: ExtensionBrokerImpl) {
 function registerRc(broker: ExtensionBrokerImpl): Disposable {
   firebaseRC.value = _readRC();
   const rcRemoveListener = onChange(firebaseRC, () =>
-    notifyFirebaseConfig(broker),
+    notifyFirebaseConfig(broker)
   );
 
   const showToastOnError = effect(() => {
@@ -103,12 +108,13 @@ function registerRc(broker: ExtensionBrokerImpl): Disposable {
   const rcWatcher = _createWatcher(".firebaserc");
   rcWatcher?.onDidChange(() => (firebaseRC.value = _readRC()));
   rcWatcher?.onDidCreate(() => (firebaseRC.value = _readRC()));
+  // TODO handle deletion of .firebaserc/.firebase.json/firemat.yaml
   rcWatcher?.onDidDelete(() => (firebaseRC.value = undefined));
 
   return Disposable.from(
     { dispose: rcRemoveListener },
     { dispose: showToastOnError },
-    { dispose: () => rcWatcher?.dispose() },
+    { dispose: () => rcWatcher?.dispose() }
   );
 }
 
@@ -116,31 +122,31 @@ function registerFirebaseConfig(broker: ExtensionBrokerImpl): Disposable {
   firebaseConfig.value = _readFirebaseConfig();
 
   const firebaseConfigRemoveListener = onChange(firebaseConfig, () =>
-    notifyFirebaseConfig(broker),
+    notifyFirebaseConfig(broker)
   );
 
   const showToastOnError = effect(() => {
     const config = firebaseConfig.value;
     if (config instanceof ResultError) {
       vscode.window.showErrorMessage(
-        `Error reading firebase.json:\n${config.error}`,
+        `Error reading firebase.json:\n${config.error}`
       );
     }
   });
 
   const configWatcher = _createWatcher("firebase.json");
   configWatcher?.onDidChange(
-    () => (firebaseConfig.value = _readFirebaseConfig()),
+    () => (firebaseConfig.value = _readFirebaseConfig())
   );
   configWatcher?.onDidCreate(
-    () => (firebaseConfig.value = _readFirebaseConfig()),
+    () => (firebaseConfig.value = _readFirebaseConfig())
   );
   configWatcher?.onDidDelete(() => (firebaseConfig.value = undefined));
 
   return Disposable.from(
     { dispose: firebaseConfigRemoveListener },
     { dispose: showToastOnError },
-    { dispose: () => configWatcher?.dispose() },
+    { dispose: () => configWatcher?.dispose() }
   );
 }
 
@@ -215,7 +221,7 @@ export function _createWatcher(file: string): FileSystemWatcher | undefined {
 
   return workspace.value?.createFileSystemWatcher(
     // Using RelativePattern enables tests to use watchers too.
-    new vscode.RelativePattern(vscode.Uri.file(currentOptions.value.cwd), file),
+    new vscode.RelativePattern(vscode.Uri.file(currentOptions.value.cwd), file)
   );
 }
 
