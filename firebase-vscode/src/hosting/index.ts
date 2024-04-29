@@ -36,7 +36,7 @@ export function registerHosting(broker: ExtensionBrokerImpl): Disposable {
     "selectAndInitHostingFolder",
     async ({ singleAppSupport }) => {
       const configs = await firstWhereDefined(firebaseConfig).then(
-        (c) => c.requireValue,
+        (c) => c.requireValue
       );
 
       showOutputChannel();
@@ -48,14 +48,14 @@ export function registerHosting(broker: ExtensionBrokerImpl): Disposable {
       if (useFrameworks) {
         currentFramework = await discover(currentOptions.value.cwd, false);
         pluginLogger.debug(
-          "(Hosting) Searching for a web framework in this project.",
+          "(Hosting) Searching for a web framework in this project."
         );
       }
 
       let success = false;
       if (currentFramework) {
         pluginLogger.debug(
-          "(Hosting) Detected web framework, launching frameworks init.",
+          "(Hosting) Detected web framework, launching frameworks init."
         );
         success = await initHosting({
           spa: singleAppSupport,
@@ -72,7 +72,7 @@ export function registerHosting(broker: ExtensionBrokerImpl): Disposable {
         if (fileUri && fileUri[0] && fileUri[0].fsPath) {
           const publicFolderFull = fileUri[0].fsPath;
           const publicFolder = publicFolderFull.substring(
-            currentOptions.value.cwd.length + 1,
+            currentOptions.value.cwd.length + 1
           );
           success = await initHosting({
             spa: singleAppSupport,
@@ -92,18 +92,18 @@ export function registerHosting(broker: ExtensionBrokerImpl): Disposable {
       if (success) {
         channels.value = await getChannels(configs);
       }
-    },
+    }
   );
 
   const sub4 = broker.on("hostingDeploy", async ({ target: deployTarget }) => {
     const configs = await firstWhereDefined(firebaseConfig).then(
-      (c) => c.requireValue,
+      (c) => c.requireValue
     );
     showOutputChannel();
 
     pluginLogger.info(
       `(Hosting) Starting deployment of project ` +
-        `${currentProject.value?.projectId} to channel: ${deployTarget}`,
+        `${currentProject.value?.projectId} to channel: ${deployTarget}`
     );
 
     const deployResponse = await deployToHosting(configs, deployTarget);
@@ -130,6 +130,6 @@ export function registerHosting(broker: ExtensionBrokerImpl): Disposable {
     { dispose: sub2 },
     { dispose: sub3 },
     { dispose: sub4 },
-    { dispose: sub5 },
+    { dispose: sub5 }
   );
 }

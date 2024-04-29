@@ -144,6 +144,15 @@ export const githubClientId = () => utils.envOverride("GITHUB_CLIENT_ID", "89cf5
 export const githubClientSecret = () =>
   utils.envOverride("GITHUB_CLIENT_SECRET", "3330d14abc895d9a74d5f17cd7a00711fa2c5bf0");
 
+export const dataconnectOrigin = () =>
+  utils.envOverride("FIREBASE_DATACONNECT_URL", "https://firebasedataconnect.googleapis.com");
+export const dataConnectLocalConnString = () =>
+  utils.envOverride("FIREBASE_DATACONNECT_POSTGRESQL_STRING", "");
+export const cloudSQLAdminOrigin = () =>
+  utils.envOverride("CLOUD_SQL_URL", "https://sqladmin.googleapis.com");
+export const vertexAIOrigin = () =>
+  utils.envOverride("VERTEX_AI_URL", "https://aiplatform.googleapis.com");
+
 /** Gets scopes that have been set. */
 export function getScopes(): string[] {
   return Array.from(commandScopes);

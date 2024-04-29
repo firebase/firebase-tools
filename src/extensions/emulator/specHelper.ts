@@ -1,12 +1,9 @@
-import * as yaml from "yaml";
-import * as path from "path";
-import * as fs from "fs-extra";
-
 import * as supported from "../../deploy/functions/runtimes/supported";
 import { ExtensionSpec, Resource } from "../types";
 import { FirebaseError } from "../../error";
 import { substituteParams } from "../extensionsHelper";
 import { getResourceRuntime } from "../utils";
+import { readFileFromDirectory, wrappedSafeLoad } from "../../utils";
 
 const SPEC_FILE = "extension.yaml";
 const POSTINSTALL_FILE = "POSTINSTALL.md";
@@ -15,21 +12,6 @@ const validFunctionTypes = [
   "firebaseextensions.v1beta.v2function",
   "firebaseextensions.v1beta.scheduledFunction",
 ];
-
-/**
- * Wrapps `yaml.safeLoad` with an error handler to present better YAML parsing
- * errors.
- */
-function wrappedSafeLoad(source: string): any {
-  try {
-    return yaml.parse(source);
-  } catch (err: any) {
-    if (err instanceof yaml.YAMLParseError) {
-      throw new FirebaseError(`YAML Error: ${err.message}`, { original: err });
-    }
-    throw err;
-  }
-}
 
 /**
  * Reads an extension.yaml and parses its contents into an ExtensionSpec.
@@ -60,36 +42,6 @@ export async function readExtensionYaml(directory: string): Promise<ExtensionSpe
 export async function readPostinstall(directory: string): Promise<string> {
   const content = await readFileFromDirectory(directory, POSTINSTALL_FILE);
   return content.source;
-}
-
-/**
- * Retrieves a file from the directory.
- */
-export function readFileFromDirectory(
-  directory: string,
-  file: string,
-): Promise<{ source: string; sourceDirectory: string }> {
-  return new Promise<string>((resolve, reject) => {
-    fs.readFile(path.resolve(directory, file), "utf8", (err, data) => {
-      if (err) {
-        if (err.code === "ENOENT") {
-          return reject(
-            new FirebaseError(`Could not find "${file}" in "${directory}"`, { original: err }),
-          );
-        }
-        reject(
-          new FirebaseError(`Failed to read file "${file}" in "${directory}"`, { original: err }),
-        );
-      } else {
-        resolve(data);
-      }
-    });
-  }).then((source) => {
-    return {
-      source,
-      sourceDirectory: directory,
-    };
-  });
 }
 
 /**

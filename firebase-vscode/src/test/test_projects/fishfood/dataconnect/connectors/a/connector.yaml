@@ -1,0 +1,4 @@
+connectorId: "a"
+authMode: "PUBLIC"
+generate?:
+  outputDir: ../../a_connector_js_sdk

@@ -28,7 +28,7 @@ export abstract class Result<T> {
   get tryReadValue(): T | undefined {
     return this.switchCase(
       (value) => value,
-      () => undefined,
+      () => undefined
     );
   }
 
@@ -39,13 +39,13 @@ export abstract class Result<T> {
         throw new Error("Result in error state", {
           cause: error,
         });
-      },
+      }
     );
   }
 
   switchCase<NewT>(
     value: (value: T) => NewT,
-    error: (error: unknown) => NewT,
+    error: (error: unknown) => NewT
   ): NewT {
     const that: unknown = this;
     if (that instanceof ResultValue) {
@@ -58,16 +58,16 @@ export abstract class Result<T> {
   follow<NewT>(cb: (prev: T) => Result<NewT>): Result<NewT> {
     return this.switchCase(
       (value) => cb(value),
-      (error) => new ResultError(error),
+      (error) => new ResultError(error)
     );
   }
 
   followAsync<NewT>(
-    cb: (prev: T) => Promise<Result<NewT>>,
+    cb: (prev: T) => Promise<Result<NewT>>
   ): Promise<Result<NewT>> {
     return this.switchCase<Promise<Result<NewT>>>(
       (value) => cb(value),
-      async (error) => new ResultError(error),
+      async (error) => new ResultError(error)
     );
   }
 }

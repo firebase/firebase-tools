@@ -75,7 +75,7 @@ function SidebarContent(props: {
       webLogger.debug(
         "notifyFirebaseConfig",
         JSON.stringify(firebaseJson),
-        JSON.stringify(firebaseRC),
+        JSON.stringify(firebaseRC)
       );
       if (firebaseJson?.value?.hosting) {
         webLogger.debug("Detected firebase.json");
@@ -102,7 +102,7 @@ function SidebarContent(props: {
         } else {
           setHostingInitState(null);
         }
-      },
+      }
     );
 
     broker.on("notifyHostingDeploy", ({ success }) => {
@@ -168,13 +168,16 @@ function SidebarContent(props: {
           />
         )}
       {
+        // disable emulator panel for now, as we have an individual emulator panel in the FDC section
+      }
+      {/* { 
         // Only load the emulator panel if we have a user, firebase.json and this isn't Monospace
         // The user login requirement can be removed in the future but the panel will have to
         // be restricted to full-offline emulation only.
         !!user && firebaseJson && firebaseJson.value && (
           <EmulatorPanel firebaseJson={firebaseJson.value} />
         )
-      }
+      } */}
     </>
   );
 }
