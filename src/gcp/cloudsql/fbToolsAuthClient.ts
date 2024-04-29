@@ -5,7 +5,7 @@ import * as apiv2 from "../../apiv2";
 import * as auth from "../../auth";
 import { FirebaseError } from "../../error";
 
-const pkg = require("../package.json");
+const pkg = require("../../../package.json");
 const CLI_VERSION: string = pkg.version;
 
 // FBToolsAuthClient implements google-auth-library.AuthClient

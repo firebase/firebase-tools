@@ -38,7 +38,14 @@ interface BaseRequestOptions<T> extends VerbOptions {
   method: HttpMethod;
   path: string;
   body?: T | string | NodeJS.ReadableStream;
-  responseType?: "json" | "xml" | "stream" | "arraybuffer" | "blob" | "text" | "unknown";
+  responseType?:
+    | "json"
+    | "xml"
+    | "stream"
+    | "arraybuffer"
+    | "blob"
+    | "text"
+    | "unknown";
   redirect?: "error" | "follow" | "manual";
   compress?: boolean;
   ignoreQuotaProject?: boolean;
