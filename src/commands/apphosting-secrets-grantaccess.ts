@@ -7,11 +7,11 @@ import * as secretManager from "../gcp/secretManager";
 import { requirePermissions } from "../requirePermissions";
 import * as apphosting from "../gcp/apphosting";
 import * as secrets from "../apphosting/secrets";
-import { promptLocation } from "../apphosting";
+import { getBackendForAmbiguousLocation } from "../apphosting";
 
 export const command = new Command("apphosting:secrets:grantaccess <secretName>")
   .description("grant service accounts permissions to the provided secret")
-  .option("-l, --location <location>", "backend location")
+  .option("-l, --location <location>", "backend location", "-")
   .option("-b, --backend <backend>", "backend name")
   .before(requireAuth)
   .before(secretManager.ensureApi)
@@ -34,20 +34,24 @@ export const command = new Command("apphosting:secrets:grantaccess <secretName>"
       );
     }
 
-    let location = options.location as string;
-
-    location =
-      location || (await promptLocation(projectId, "Please select the location of your backend"));
-
-    // TODO: consider showing dialog if --backend is missing
-
     const exists = await secretManager.secretExists(projectId, secretName);
     if (!exists) {
       throw new FirebaseError(`Cannot find secret ${secretName}`);
     }
 
     const backendId = options.backend as string;
-    const backend = await apphosting.getBackend(projectId, location, backendId);
+    const location = options.location as string;
+    let backend: apphosting.Backend;
+    if (location === "" || location === "-") {
+      backend = await getBackendForAmbiguousLocation(
+        projectId,
+        backendId,
+        "Please select the location of your backend:",
+      );
+    } else {
+      backend = await apphosting.getBackend(projectId, location, backendId);
+    }
+
     const accounts = secrets.toMulti(secrets.serviceAccountsForBackend(projectNumber, backend));
 
     await secrets.grantSecretAccess(projectId, projectNumber, secretName, accounts);
