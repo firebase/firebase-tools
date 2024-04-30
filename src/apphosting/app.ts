@@ -153,4 +153,4 @@ function isQuotaError(error: any): boolean {
   return code === 429;
 }
 
-export = webApps;
+export default webApps;

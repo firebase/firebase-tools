@@ -1,4 +1,4 @@
-import * as webApps from "../../apphosting/app";
+import webApps from "../../apphosting/app";
 import * as apps from "../../../src/management/apps";
 import * as prompts from "../../prompt";
 import * as sinon from "sinon";

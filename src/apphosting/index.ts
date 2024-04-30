@@ -23,7 +23,7 @@ import { DEFAULT_LOCATION } from "./constants";
 import { ensure } from "../ensureApiEnabled";
 import * as deploymentTool from "../deploymentTool";
 import { DeepOmit } from "../metaprogramming";
-import * as apps from "./app";
+import apps from "./app";
 import { GitRepositoryLink } from "../gcp/devConnect";
 import * as ora from "ora";
 
