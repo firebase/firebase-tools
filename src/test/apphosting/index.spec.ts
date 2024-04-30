@@ -12,6 +12,7 @@ import {
   promptLocation,
   setDefaultTrafficPolicy,
   ensureAppHostingComputeServiceAccount,
+  getBackendForAmbiguousLocation,
 } from "../../apphosting/index";
 import * as deploymentTool from "../../deploymentTool";
 import { FirebaseError } from "../../error";
@@ -24,6 +25,7 @@ describe("apphosting setup functions", () => {
   let promptOnceStub: sinon.SinonStub;
   let pollOperationStub: sinon.SinonStub;
   let createBackendStub: sinon.SinonStub;
+  let listBackendsStub: sinon.SinonStub;
   let deleteBackendStub: sinon.SinonStub;
   let updateTrafficStub: sinon.SinonStub;
   let listLocationsStub: sinon.SinonStub;
@@ -37,6 +39,9 @@ describe("apphosting setup functions", () => {
     createBackendStub = sinon
       .stub(apphosting, "createBackend")
       .throws("Unexpected createBackend call");
+    listBackendsStub = sinon
+      .stub(apphosting, "listBackends")
+      .throws("Unexpected listBackends call");
     deleteBackendStub = sinon
       .stub(apphosting, "deleteBackend")
       .throws("Unexpected deleteBackend call");
@@ -214,7 +219,10 @@ describe("apphosting setup functions", () => {
   });
 
   describe("promptLocation", () => {
-    const supportedLocations = [{ name: "us-central1", locationId: "us-central1" }];
+    const supportedLocations = [
+      { name: "us-central1", locationId: "us-central1" },
+      { name: "us-west1", locationId: "us-west1" },
+    ];
 
     beforeEach(() => {
       listLocationsStub.returns(supportedLocations);
@@ -222,7 +230,7 @@ describe("apphosting setup functions", () => {
     });
 
     it("returns a location selection", async () => {
-      const location = await promptLocation(projectId);
+      const location = await promptLocation(projectId, /* prompt= */ "");
       expect(location).to.be.eq("us-central1");
     });
 
@@ -234,7 +242,7 @@ describe("apphosting setup functions", () => {
         type: "list",
         default: "us-central1",
         message: "Please select a location:",
-        choices: ["us-central1"],
+        choices: ["us-central1", "us-west1"],
       });
     });
 
@@ -246,7 +254,79 @@ describe("apphosting setup functions", () => {
         type: "list",
         default: "us-central1",
         message: "Custom location prompt:",
-        choices: ["us-central1"],
+        choices: ["us-central1", "us-west1"],
+      });
+    });
+
+    it("skips the prompt if there's only 1 valid location choice", async () => {
+      listLocationsStub.returns(supportedLocations.slice(0, 1));
+
+      await expect(promptLocation(projectId, "Custom location prompt:")).to.eventually.equal(
+        supportedLocations[0].locationId,
+      );
+
+      expect(promptOnceStub).to.not.be.called;
+    });
+  });
+
+  describe("getBackendForAmbiguousLocation", () => {
+    const backendFoo = {
+      name: `projects/${projectId}/locations/${location}/backends/foo`,
+      labels: {},
+      createTime: "0",
+      updateTime: "1",
+      uri: "https://placeholder.com",
+    };
+
+    const backendFooOtherRegion = {
+      name: `projects/${projectId}/locations/otherRegion/backends/foo`,
+      labels: {},
+      createTime: "0",
+      updateTime: "1",
+      uri: "https://placeholder.com",
+    };
+
+    const backendBar = {
+      name: `projects/${projectId}/locations/${location}/backends/bar`,
+      labels: {},
+      createTime: "0",
+      updateTime: "1",
+      uri: "https://placeholder.com",
+    };
+
+    it("throws if there are no matching backends", async () => {
+      listBackendsStub.resolves({ backends: [] });
+
+      await expect(
+        getBackendForAmbiguousLocation(projectId, "baz", /* prompt= */ ""),
+      ).to.be.rejectedWith(/No backend named "baz" found./);
+    });
+
+    it("returns unambiguous backend", async () => {
+      listBackendsStub.resolves({ backends: [backendFoo, backendBar] });
+
+      await expect(
+        getBackendForAmbiguousLocation(projectId, "foo", /* prompt= */ ""),
+      ).to.eventually.equal(backendFoo);
+    });
+
+    it("prompts for location if backend is ambiguous", async () => {
+      listBackendsStub.resolves({ backends: [backendFoo, backendFooOtherRegion, backendBar] });
+      promptOnceStub.resolves(location);
+
+      await expect(
+        getBackendForAmbiguousLocation(
+          projectId,
+          "foo",
+          "Please select the location of the backend you'd like to delete:",
+        ),
+      ).to.eventually.equal(backendFoo);
+
+      expect(promptOnceStub).to.be.calledWith({
+        name: "location",
+        type: "list",
+        message: "Please select the location of the backend you'd like to delete:",
+        choices: [location, "otherRegion"],
       });
     });
   });

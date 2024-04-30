@@ -1,0 +1,1 @@
+- Adds `*.local` to .gitignore and functions ignore for `init functions`. (#7018)
