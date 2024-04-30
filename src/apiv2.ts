@@ -133,6 +133,7 @@ export async function getAccessToken(): Promise<string> {
   const data = await auth.getAccessToken(refreshToken, []);
   return data.access_token;
 }
+
 function proxyURIFromEnv(): string | undefined {
   return (
     process.env.HTTPS_PROXY ||
