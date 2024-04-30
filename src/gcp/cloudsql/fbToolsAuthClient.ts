@@ -33,13 +33,14 @@ export class FBToolsAuthClient extends AuthClient {
     };
   }
   public async getAccessToken(): Promise<{ token?: string; res?: GaxiosResponse<any> }> {
-    const client = new apiv2.Client({});
-    return { token: await client.getAccessToken() };
+    return { token: await apiv2.getAccessToken() };
   }
-  public async getRequestHeaders(url?: string | undefined): Promise<Record<string, string>> {
-    const client = new apiv2.Client({
-      urlPrefix: url,
-    });
-    return client.getHeaders();
+
+  public async getRequestHeaders(): Promise<Record<string, string>> {
+    const token = await this.getAccessToken();
+    return {
+      ...apiv2.STANDARD_HEADERS,
+      Authorization: `Bearer ${token.token}`,
+    };
   }
 }
