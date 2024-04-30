@@ -5,6 +5,7 @@ import { Config } from "../../../config";
 import { Setup } from "../..";
 import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql";
 import { ensureApis } from "../../../dataconnect/ensureApis";
+import { listLocations } from "../../../dataconnect/client";
 
 const TEMPLATE_ROOT = resolve(__dirname, "../../../../templates/init/dataconnect/");
 
@@ -23,14 +24,27 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     type: "input",
     default: "dataconnect",
   });
-  // TODO: use listLocations API instead of hardcoding this
+  // Hardcoded locations for when there is no project set up.
+  let locationOptions = [
+    { name: "us-central1", value: "us-central1" },
+    { name: "europe-north1", value: "europe-north1" },
+    { name: "europe-central2", value: "europe-central2" },
+    { name: "europe-west1", value: "europe-west1" },
+    { name: "southamerica-west1", value: "southamerica-west1" },
+    { name: "us-east4", value: "us-east4" },
+    { name: "us-west1", value: "us-west1" },
+    { name: "asia-southeast1", value: "asia-southeast1" },
+  ];
+  if (setup.projectId) {
+    const locations = await listLocations(setup.projectId);
+    locationOptions = locations.map((l) => {
+      return { name: l, value: l };
+    });
+  }
   const locationId = await promptOnce({
     message: "What location would you like to deploy this service into?",
     type: "list",
-    choices: [
-      { name: "us-central1", value: "us-central1" },
-      { name: "asia-southeast1", value: "asia-southeast1" },
-    ],
+    choices: locationOptions,
   });
   // TODO: Guided prompts to set up connector auth mode and generate
   const connectorId = await promptOnce({
