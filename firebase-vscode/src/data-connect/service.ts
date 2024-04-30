@@ -24,9 +24,6 @@ import {
 } from "../dataconnect/types";
 import { ClientResponse } from "../apiv2";
 import { InstanceType } from "./emulators-status";
-// TODO: THIS SHOULDN'T BE HERE
-export const STAGING_API =
-  "https://staging-firebasedataconnect.sandbox.googleapis.com";
 
 /**
  * DataConnect Emulator service
