@@ -305,10 +305,6 @@ export async function setDefaultTrafficPolicy(
   });
 }
 
-function delay(ms: number): Promise<number> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 /**
  * Creates a new build and rollout and polls both to completion.
  */
@@ -318,7 +314,6 @@ export async function orchestrateRollout(
   backendId: string,
   buildInput: DeepOmit<Build, apphosting.BuildOutputOnlyFields | "name">,
 ): Promise<{ rollout: Rollout; build: Build }> {
-  await delay(45 * 1000);
   const buildId = await apphosting.getNextRolloutId(projectId, location, backendId, 1);
   const buildOp = await apphosting.createBuild(projectId, location, backendId, buildId, buildInput);
 
@@ -406,13 +401,16 @@ export async function deleteBackendAndPoll(
 }
 
 /**
- * Prompts the user for a location.
+ * Prompts the user for a location. If there's only a single valid location, skips the prompt and returns that location.
  */
 export async function promptLocation(
   projectId: string,
   prompt: string = "Please select a location:",
 ): Promise<string> {
   const allowedLocations = (await apphosting.listLocations(projectId)).map((loc) => loc.locationId);
+  if (allowedLocations.length === 1) {
+    return allowedLocations[0];
+  }
 
   return (await promptOnce({
     name: "location",
