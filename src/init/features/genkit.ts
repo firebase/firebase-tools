@@ -1,9 +1,9 @@
-import * as spawn from "cross-spawn";
 import { logger } from "../../logger";
 import { doSetup as functionsSetup } from "./functions";
 import { Options } from "../../options";
 import { Config } from "../../config";
 import { prompt } from "../../prompt";
+import { wrapSpawn } from "../spawn";
 
 /**
  * doSetup is the entry point for setting up the genkit suite.
@@ -27,11 +27,14 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
     // Functions with genkit should always be typescript
     setup.languageOverride = "typescript";
     await functionsSetup(setup, config, options);
+    delete setup.languageOverride;
+    logger.info();
   }
 
   const projectDir: string = `${config.projectDir}/${setup.functions.source}`;
 
   try {
+    logger.info("Installing Genkit CLI");
     await wrapSpawn("npm", ["install", "genkit", "--save-dev"], projectDir);
     await wrapSpawn("npx", ["genkit", "init", "-p", "firebase"], projectDir);
   } catch (e) {
@@ -39,28 +42,6 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
     return;
   }
 
-  logger.info("To use the Genkit CLI, run:");
+  logger.info("To use the Genkit CLI globally, run:");
   logger.info("    npm install genkit -g");
-}
-
-function wrapSpawn(cmd: string, args: string[], projectDir: string): Promise<void> {
-  return new Promise<void>((resolve, reject) => {
-    const installer = spawn(cmd, args, {
-      cwd: projectDir,
-      stdio: "inherit",
-    });
-
-    installer.on("error", (err: any) => {
-      logger.debug(err.stack);
-    });
-
-    installer.on("close", (code) => {
-      if (code === 0) {
-        return resolve();
-      }
-      logger.info();
-      logger.error("NPM install failed, halting with Firebase initialization...");
-      return reject();
-    });
-  });
 }
