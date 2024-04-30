@@ -33,8 +33,9 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   ];
   if (setup.projectId) {
     const locations = await listLocations(setup.projectId);
-    locationOptions = locations.map(l => {return { name: l, value: l}});
-
+    locationOptions = locations.map((l) => {
+      return { name: l, value: l };
+    });
   }
   const locationId = await promptOnce({
     message: "What location would you like to deploy this service into?",
