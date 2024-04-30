@@ -1,7 +1,7 @@
 import vscode, { Disposable, ExtensionContext } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { registerConfig } from "./config";
-import { registerEmulators } from "./emulators";
+import { EmulatorsController } from "./emulators";
 import { registerEnv } from "./env";
 import { pluginLogger } from "../logger-wrapper";
 import { getSettings } from "../utils/settings";
@@ -11,13 +11,13 @@ import { registerProject } from "./project";
 import { registerQuickstart } from "./quickstart";
 import { registerOptions } from "../options";
 
-export function registerCore({
+export async function registerCore({
   broker,
   context,
 }: {
   broker: ExtensionBrokerImpl;
   context: ExtensionContext;
-}): Disposable {
+}): Promise<[EmulatorsController, vscode.Disposable]> {
   const settings = getSettings();
 
   if (settings.npmPath) {
@@ -40,16 +40,33 @@ export function registerCore({
     vscode.env.openExternal(vscode.Uri.parse(href));
   });
 
-  return Disposable.from(
-    registerOptions(context),
-    registerConfig(broker),
-    registerEmulators(broker),
-    registerEnv(broker),
-    registerUser(broker),
-    registerProject(broker),
-    registerQuickstart(broker),
-    { dispose: sub1 },
-    { dispose: sub2 },
-    { dispose: sub3 }
-  );
+  const sub4 = broker.on("runFirebaseInit", async () => {
+    vscode.tasks.executeTask(
+      new vscode.Task(
+        { type: "shell" }, // this is the same type as in tasks.json
+        vscode.workspace.workspaceFolders[0], // The workspace folder
+        "Firebase init", // how you name the task
+        "Firebase init", // Shows up as MyTask: name
+        new vscode.ShellExecution("firebase init"),
+      ),
+    );
+  });
+
+  const emulatorsController = new EmulatorsController(broker);
+  return [
+    emulatorsController,
+    Disposable.from(
+      emulatorsController,
+      registerOptions(context),
+      registerConfig(broker),
+      registerEnv(broker),
+      registerUser(broker),
+      registerProject(broker),
+      registerQuickstart(broker),
+      { dispose: sub1 },
+      { dispose: sub2 },
+      { dispose: sub3 },
+      { dispose: sub4 },
+    ),
+  ];
 }

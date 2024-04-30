@@ -7,11 +7,7 @@ import { Config } from "../../src/config";
 import { globalSignal } from "./utils/globals";
 import * as vscode from "vscode";
 import { effect } from "@preact/signals-core";
-import {
-  firebaseConfig,
-  firebaseRC,
-  getConfigPath,
-} from "./core/config";
+import { firebaseConfig, firebaseRC, getConfigPath } from "./core/config";
 
 export type VsCodeOptions = Options & { isVSCE: boolean; rc: RC | null };
 
@@ -109,7 +105,7 @@ export function registerOptions(context: ExtensionContext): vscode.Disposable {
     cwdSync,
     { dispose: firebaseConfigSync },
     { dispose: rcSync },
-    { dispose: notifySync },
+    { dispose: notifySync }
   );
 }
 
@@ -119,7 +115,7 @@ export function registerOptions(context: ExtensionContext): vscode.Disposable {
  */
 export async function getCommandOptions(
   firebaseJSON: Config,
-  options: Options = currentOptions.value,
+  options: Options = currentOptions.value
 ): Promise<Options> {
   // Use any string, it doesn't affect `prepare()`.
   const command = new Command("deploy");

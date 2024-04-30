@@ -9,16 +9,50 @@ import { EmulatorPanel } from "./components/EmulatorPanel";
 
 import { webLogger } from "./globals/web-logger";
 import { InitFirebasePanel } from "./components/InitPanel";
+import { ValueOrError } from "./messaging/protocol";
+import { FirebaseConfig } from "../../src/firebaseConfig";
+import { RCData } from "../../src/rc";
+import { VSCodeButton } from "@vscode/webview-ui-toolkit/react";
 
 export function SidebarApp() {
+  const configs = useBroker("notifyFirebaseConfig", {
+    initialRequest: "getInitialData",
+  });
+
+  if (!configs?.firebaseJson) {
+    return (
+      <>
+        <p>
+          No <code>firebase.json</code> detected in this project
+        </p>
+        <br />
+        <VSCodeButton
+          onClick={() => {
+            broker.send("runFirebaseInit");
+          }}
+        >
+          Run firebase init
+        </VSCodeButton>
+      </>
+    );
+  }
+
+  return <SidebarContent configs={configs} />;
+}
+
+function SidebarContent(props: {
+  configs: {
+    firebaseJson: ValueOrError<FirebaseConfig>;
+    firebaseRC: ValueOrError<RCData>;
+  };
+}) {
   const [deployState, setDeployState] = useState<DeployState>(null);
   const [hostingInitState, setHostingInitState] =
     useState<HostingInitState>(null);
   const [framework, setFramework] = useState<string | null>(null);
 
-  const configs = useBroker("notifyFirebaseConfig");
-  const firebaseJson = configs?.firebaseJson;
-  const firebaseRC = configs?.firebaseRC;
+  const firebaseJson = props.configs?.firebaseJson;
+  const firebaseRC = props.configs?.firebaseRC;
 
   const projectId = firebaseRC?.value?.projects?.default;
 
@@ -41,7 +75,7 @@ export function SidebarApp() {
       webLogger.debug(
         "notifyFirebaseConfig",
         JSON.stringify(firebaseJson),
-        JSON.stringify(firebaseRC),
+        JSON.stringify(firebaseRC)
       );
       if (firebaseJson?.value?.hosting) {
         webLogger.debug("Detected firebase.json");
@@ -68,7 +102,7 @@ export function SidebarApp() {
         } else {
           setHostingInitState(null);
         }
-      },
+      }
     );
 
     broker.on("notifyHostingDeploy", ({ success }) => {
@@ -133,15 +167,17 @@ export function SidebarApp() {
             setHostingInitState={setHostingInitState}
           />
         )}
-
       {
+        // disable emulator panel for now, as we have an individual emulator panel in the FDC section
+      }
+      {/* { 
         // Only load the emulator panel if we have a user, firebase.json and this isn't Monospace
         // The user login requirement can be removed in the future but the panel will have to
         // be restricted to full-offline emulation only.
         !!user && firebaseJson && firebaseJson.value && (
           <EmulatorPanel firebaseJson={firebaseJson.value} />
         )
-      }
+      } */}
     </>
   );
 }

@@ -1,7 +1,7 @@
 import * as proto from "../gcp/proto";
 import { Client } from "../apiv2";
 import { needProjectId } from "../projectUtils";
-import { apphostingOrigin } from "../api";
+import { apphostingOrigin, apphostingP4SADomain } from "../api";
 import { ensure } from "../ensureApiEnabled";
 import * as deploymentTool from "../deploymentTool";
 import { FirebaseError } from "../error";
@@ -25,7 +25,7 @@ interface Codebase {
 /**
  * Specifies how Backend's data is replicated and served.
  *   GLOBAL_ACCESS: Stores and serves content from multiple points-of-presence (POP)
- *   REGIONAL_STRICT: Restricts data and serving infrastructure in Backend's region
+ *   REGIONAL_STRICT: Restricts data and serving infrastructure in Backend's location
  *
  */
 export type ServingLocality = "GLOBAL_ACCESS" | "REGIONAL_STRICT";
@@ -264,6 +264,26 @@ export interface ListBackendsResponse {
   unreachable: string[];
 }
 
+const P4SA_DOMAIN = apphostingP4SADomain();
+
+/**
+ * Returns the App Hosting service agent.
+ */
+export function serviceAgentEmail(projectNumber: string): string {
+  return `service-${projectNumber}@${P4SA_DOMAIN}`;
+}
+
+/** Splits a backend resource name into its parts. */
+export function parseBackendName(backendName: string): {
+  projectName: string;
+  location: string;
+  id: string;
+} {
+  // sample value: "projects/<project-name>/locations/us-central1/backends/<backend-id>"
+  const [, projectName, , location, , id] = backendName.split("/");
+  return { projectName, location, id };
+}
+
 /**
  * Creates a new Backend in a given project and location.
  */
@@ -302,7 +322,7 @@ export async function getBackend(
 }
 
 /**
- * List all backends present in a project and region.
+ * List all backends present in a project and location.
  */
 export async function listBackends(
   projectId: string,

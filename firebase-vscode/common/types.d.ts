@@ -1,8 +1,8 @@
 export interface ServiceAccount {
-  user: ServiceAccountUser
+  user: ServiceAccountUser;
 }
 
 export interface ServiceAccountUser {
   email: string;
-  type: 'service_account'
+  type: "service_account";
 }
