@@ -118,7 +118,7 @@ jobs:
         run: find . -type f -name "*debug.log" | xargs cat
 
   integration-windows:
-    # needs: unit
+    needs: unit
     if: contains(fromJSON('["push", "merge_group"]'), github.event_name)
     runs-on: windows-latest
 
@@ -137,17 +137,17 @@ jobs:
         node-version:
           - "20"
         script:
-          # - npm run test:hosting
-          # # - npm run test:hosting-rewrites # Long-running test that might conflict across test runs. Run this manually.
-          # - npm run test:client-integration
-          # - npm run test:emulator
-          # # - npm run test:import-export # Fails becuase port 4000 is taken after first run - hub not shutting down?
-          # # - npm run test:extensions-emulator # Fails due to cannot find module sharp (not waiting for npm install?)
-          # - npm run test:functions-discover
-          # # - npm run test:triggers-end-to-end
-          # - npm run test:triggers-end-to-end:inspect
-          # - npm run test:storage-deploy
-          # # - npm run test:storage-emulator-integration
+          - npm run test:hosting
+          # - npm run test:hosting-rewrites # Long-running test that might conflict across test runs. Run this manually.
+          - npm run test:client-integration
+          - npm run test:emulator
+          # - npm run test:import-export # Fails becuase port 4000 is taken after first run - hub not shutting down?
+          # - npm run test:extensions-emulator # Fails due to cannot find module sharp (not waiting for npm install?)
+          - npm run test:functions-discover
+          # - npm run test:triggers-end-to-end
+          - npm run test:triggers-end-to-end:inspect
+          - npm run test:storage-deploy
+          # - npm run test:storage-emulator-integration
           - npm run test:frameworks
     steps:
       - name: Setup Java JDK
