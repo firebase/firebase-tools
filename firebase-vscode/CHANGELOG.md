@@ -1,5 +1,9 @@
 # Change Log
 
+## 0.1.5
+
+- Fix authentication issues for Introspection and local executions
+
 ## 0.1.4
 
 - Dataconnect Sidebar UI refresh
