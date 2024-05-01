@@ -469,13 +469,12 @@ describe("webframeworks", function (this) {
 
       const EXPECTED_PATTERNS = ["", "en", "fr", "es"]
         .flatMap((locale) => [
-          [I18N_BASE, locale, ANGULAR_BASE_PATH, `main\.[^\.]+\.js`].filter(Boolean).join(sep),
-          [I18N_BASE, locale, ANGULAR_BASE_PATH, `polyfills\.[^\.]+\.js`].filter(Boolean).join(sep),
-          [I18N_BASE, locale, ANGULAR_BASE_PATH, `runtime\.[^\.]+\.js`].filter(Boolean).join(sep),
-          [I18N_BASE, locale, ANGULAR_BASE_PATH, `styles\.[^\.]+\.css`].filter(Boolean).join(sep),
+          [I18N_BASE, locale, ANGULAR_BASE_PATH, `main\.[^\.]+\.js`],
+          [I18N_BASE, locale, ANGULAR_BASE_PATH, `polyfills\.[^\.]+\.js`],
+          [I18N_BASE, locale, ANGULAR_BASE_PATH, `runtime\.[^\.]+\.js`],
+          [I18N_BASE, locale, ANGULAR_BASE_PATH, `styles\.[^\.]+\.css`],
         ])
-        .map((it) => (it.startsWith("/") ? it.substring(1) : it))
-        .map((it) => new RegExp(it));
+        .map((it) => new RegExp(it.filter(Boolean).join(sep)));
 
       const files = await getFilesListFromDir(`${ANGULAR_OUTPUT_PATH}/hosting`);
       const unmatchedFiles = files.filter(
