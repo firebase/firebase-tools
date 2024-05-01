@@ -11,7 +11,7 @@ export class FBToolsAuthClient extends AuthClient {
     if (!opts.url) {
       throw new FirebaseError("opts.url was undefined");
     }
-    const url = new URL(opts.url);
+    const url = new URL(opts.url as string);
     const client = new apiv2.Client({
       urlPrefix: url.origin,
       auth: true,
