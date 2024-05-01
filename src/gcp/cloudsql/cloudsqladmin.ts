@@ -1,7 +1,7 @@
 import { Client } from "../../apiv2";
 import { cloudSQLAdminOrigin } from "../../api";
 import * as operationPoller from "../../operation-poller";
-import { Instance, Database, User, UserType } from "./types";
+import { Instance, Database, User, UserType, DatabaseFlag } from "./types";
 const API_VERSION = "v1";
 
 const client = new Client({
@@ -72,11 +72,15 @@ export async function updateInstanceForDataConnect(
   instance: Instance,
   enableGoogleMlIntegration: boolean,
 ): Promise<Instance> {
-  const dbFlags =
-    instance.settings.databaseFlags?.filter((f) => f.name !== "cloudsql.iam_authentication") ?? [];
-  dbFlags.push({ name: "cloudsql.iam_authentication", value: "on" });
+  let dbFlags = setDatabaseFlag(
+    { name: "cloudsql.iam_authentication", value: "on" },
+    instance.settings.databaseFlags,
+  );
   if (enableGoogleMlIntegration) {
-    dbFlags.push({ name: "cloudsql.enable_google_ml_integration", value: "on" });
+    dbFlags = setDatabaseFlag(
+      { name: "cloudsql.enable_google_ml_integration", value: "on" },
+      instance.settings.databaseFlags,
+    );
   }
 
   const op = await client.patch<Partial<Instance>, Operation>(
@@ -100,6 +104,12 @@ export async function updateInstanceForDataConnect(
     masterTimeout: 1_200_000, // This operation frequently takes 5+ minutes
   });
   return pollRes;
+}
+
+function setDatabaseFlag(flag: DatabaseFlag, flags: DatabaseFlag[] = []): DatabaseFlag[] {
+  const temp = flags.filter((f) => f.name !== flag.name);
+  temp.push(flag);
+  return temp;
 }
 
 export async function listDatabases(projectId: string, instanceId: string): Promise<Database[]> {
