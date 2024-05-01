@@ -240,11 +240,6 @@ describe("webframeworks", function (this) {
         const apiStaticResponse = await fetch(`${NEXTJS_HOST}/app/api/static`);
 
         const jsonResponse = await apiStaticResponse.json();
-        console.log({
-          apiStaticJSON,
-          jsonResponse,
-          headers: apiStaticResponse.headers.entries(),
-        });
 
         expect(apiStaticResponse.ok).to.be.true;
 
