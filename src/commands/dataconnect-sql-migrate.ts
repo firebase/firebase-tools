@@ -31,11 +31,12 @@ export const command = new Command("dataconnect:sql:migrate [serviceId]")
         "dataconnect.yaml is missing field schema.datasource.postgresql.cloudsql.instanceId",
       );
     }
-    const diffs = await migrateSchema(
-      options,
-      serviceInfo.schema,
-      /** allowNonInteractiveMigration=*/ true,
-    );
+    const diffs = await migrateSchema({
+      options, 
+      schema: serviceInfo.schema, 
+      allowNonInteractiveMigration: true,
+      validateOnly: true,
+    });
     if (diffs.length) {
       logger.info(
         `Schema sucessfully migrated! Run 'firebase deploy' to deploy your new schema to your Data Connect service.`,

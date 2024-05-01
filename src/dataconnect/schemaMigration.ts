@@ -3,13 +3,12 @@ import { format } from "sql-formatter";
 
 import { IncompatibleSqlSchemaError, Diff } from "./types";
 import { upsertSchema } from "./client";
-import { execute, setupIAMUser } from "../gcp/cloudsql/connect";
+import { execute, firebaseowner, setupIAMUser } from "../gcp/cloudsql/connect";
 import { promptOnce } from "../prompt";
 import { logger } from "../logger";
 import { Schema } from "./types";
 import { Options } from "../options";
 import { FirebaseError } from "../error";
-import { REQUIRED_EXTENSIONS_COMMANDS } from "./provisionCloudSql";
 import { needProjectId } from "../projectUtils";
 import { logLabeledWarning } from "../utils";
 
@@ -37,12 +36,16 @@ export async function diffSchema(schema: Schema): Promise<Diff[]> {
   return [];
 }
 
-export async function migrateSchema(
-  options: Options,
-  schema: Schema,
-  allowNonInteractiveMigration: boolean,
+export async function migrateSchema(args: 
+  {
+    options: Options,
+    schema: Schema,
+    allowNonInteractiveMigration: boolean,
+    validateOnly: boolean,
+  }
 ): Promise<Diff[]> {
-  const projectId = needProjectId(options);
+  const { schema, validateOnly } = args;
+  
   const databaseId = schema.primaryDatasource.postgresql?.database;
   if (!databaseId) {
     throw new FirebaseError(
@@ -53,51 +56,74 @@ export async function migrateSchema(
   if (!instanceId) {
     throw new FirebaseError(`tried to migrate schema but ${instanceId} was undefined`);
   }
-  const iamUser = await setupIAMUser(instanceId, databaseId, options);
   try {
-    // TODO(b/330596914): Handle cases where error only comes back after validateOnly=false
-    await upsertSchema(schema, /** validateOnly=*/ true);
+    await upsertSchema(schema, validateOnly);
+    logger.debug(`Database schema was up to date for ${instanceId}:${databaseId}`);
+    return [];
   } catch (err: any) {
     const incompatible = getIncompatibleSchemaError(err);
-    if (incompatible) {
-      const choice = await promptForSchemaMigration(
-        options,
-        databaseId,
-        incompatible,
-        allowNonInteractiveMigration,
-      );
-      const commandsToExecute = incompatible.diffs
-        .filter((d) => {
-          switch (choice) {
-            case "all":
-              return true;
-            case "safe":
-              return !d.destructive;
-            case "none":
-              return false;
-          }
-        })
-        .map((d) => d.sql);
-      if (commandsToExecute.length) {
-        await execute(
-          [
-            ...REQUIRED_EXTENSIONS_COMMANDS,
-            ...commandsToExecute,
-            `GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA "public" TO PUBLIC`,
-          ],
-          {
-            projectId,
-            instanceId,
-            databaseId,
-            username: iamUser,
-          },
-        );
-        return incompatible.diffs;
-      }
+    if (!incompatible) {
+      console.log("couldn't get incompatible err")
+      // If we got a different type of error, throw it 
+      throw err;
     }
-    throw err;
+    // Try to migrate schema
+    const diffs = await handleIncompatibleSchemaError({
+      ...args,
+      incompatibleSchemaError: incompatible,
+      instanceId,
+      databaseId,
+    })
+    // Then, try to upsert schema again. If there still is an error, just throw it now
+    await upsertSchema(schema, validateOnly);
+    return diffs;
   }
-  logger.debug(`Schema was up to date for ${instanceId}:${databaseId}`);
+}
+
+async function handleIncompatibleSchemaError (args: {
+  incompatibleSchemaError: IncompatibleSqlSchemaError,
+  options: Options,
+  instanceId: string,
+  databaseId: string,
+  allowNonInteractiveMigration: boolean,
+}): Promise<Diff[]> {
+  const { incompatibleSchemaError, options, instanceId, databaseId, allowNonInteractiveMigration } = args;
+  const projectId = needProjectId(options);
+  const iamUser = await setupIAMUser(instanceId, databaseId, options);
+  const choice = await promptForSchemaMigration(
+    options,
+    databaseId,
+    incompatibleSchemaError,
+    allowNonInteractiveMigration,
+  );
+  const commandsToExecute = incompatibleSchemaError.diffs
+    .filter((d) => {
+      switch (choice) {
+        case "all":
+          return true;
+        case "safe":
+          return !d.destructive;
+        case "none":
+          return false;
+      }
+    })
+    .map((d) => d.sql);
+  if (commandsToExecute.length) {
+    await execute(
+      [
+        `SET ROLE "${firebaseowner(databaseId)}"`,
+        ...commandsToExecute,
+        `GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA "public" TO PUBLIC`,
+      ],
+      {
+        projectId,
+        instanceId,
+        databaseId,
+        username: iamUser,
+      },
+    );
+    return incompatibleSchemaError.diffs;
+  }
   return [];
 }
 
@@ -161,6 +187,7 @@ function toString(diff: Diff) {
 function getIncompatibleSchemaError(err: any): IncompatibleSqlSchemaError | undefined {
   const original = err.context?.body.error;
   const details: any[] = original.details;
+  console.log(`details is ${JSON.stringify(details)}`)
   const incompatibles = details.filter((d) => d["@type"] === IMCOMPATIBLE_SCHEMA_ERROR_TYPESTRING);
   // Should never get multiple incompatible schema errors
   return incompatibles[0];
