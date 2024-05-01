@@ -63,7 +63,6 @@ import { resolveBackend } from "../deploy/functions/build";
 import { setEnvVarsForEmulators } from "./env";
 import { runWithVirtualEnv } from "../functions/python";
 import { Runtime } from "../deploy/functions/runtimes/supported";
-import { CronJob } from "cron";
 import { ScheduledEmulator } from "./scheduledEmulator";
 
 const EVENT_INVOKE_GA4 = "functions_invoke"; // event name GA4 (alphanumertic)
@@ -130,7 +129,7 @@ export interface FunctionsEmulatorArgs {
  * IPC connection info of a Function Runtime.
  */
 export class IPCConn {
-  constructor(readonly socketPath: string) { }
+  constructor(readonly socketPath: string) {}
 
   httpReqOpts(): http.RequestOptions {
     return {
@@ -146,7 +145,7 @@ export class TCPConn {
   constructor(
     readonly host: string,
     readonly port: number,
-  ) { }
+  ) {}
 
   httpReqOpts(): http.RequestOptions {
     return {
@@ -238,7 +237,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       if (maybeNodeCodebases.length > 1 && typeof this.args.debugPort === "number") {
         throw new FirebaseError(
           "Cannot debug on a single port with multiple codebases. " +
-          "Use --inspect-functions=true to assign dynamic ports to each codebase",
+            "Use --inspect-functions=true to assign dynamic ports to each codebase",
         );
       }
       this.args.disabledRuntimeFeatures = this.args.disabledRuntimeFeatures || {};
@@ -377,10 +376,16 @@ export class FunctionsEmulator implements EmulatorInstance {
       res.json({ scheduled: this.getScheduledInfo() });
     };
 
-    const scheduledForceRunHandler: express.RequestHandler = (req: express.Request, res) => {
-      this.runSheduled(req.params.trigger_id);
-      res.json({ status: "acknowledged" });
-    };
+    const scheduledEmulator = EmulatorRegistry.get(Emulators.SCHEDULED) as
+      | ScheduledEmulator
+      | undefined;
+    if (scheduledEmulator) {
+      const scheduledForceRunHandler: express.RequestHandler = (req: express.Request, res) => {
+        void this.runScheduled(req.params.trigger_id);
+        res.json({ status: "acknowledged" });
+      };
+      hub.post(scheduledForceRun, cors({ origin: true }), scheduledForceRunHandler);
+    }
 
     // The ordering here is important. The longer routes (background)
     // need to be registered first otherwise the HTTP functions consume
@@ -389,7 +394,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     // These routse need CORS so the Emulator UI can call it.
     hub.get(listBackendsRoute, cors({ origin: true }), listBackendsHandler);
     hub.get(listScheduledRoute, cors({ origin: true }), listScheduledHandler);
-    hub.post(scheduledForceRun, cors({ origin: true }), scheduledForceRunHandler);
 
     hub.post(backgroundFunctionRoute, dataMiddleware, httpsHandler);
     hub.post(multicastFunctionRoute, dataMiddleware, multicastHandler);
@@ -605,6 +609,15 @@ export class FunctionsEmulator implements EmulatorInstance {
       );
       return;
     }
+
+    const scheduledEmulator = EmulatorRegistry.get(Emulators.SCHEDULED) as
+      | ScheduledEmulator
+      | undefined;
+    if (scheduledEmulator) {
+      logger.log("debug", "Clearing scheduled emulator timers");
+      scheduledEmulator.clearTimers();
+    }
+
     // Before loading any triggers we need to make sure there are no 'stale' workers
     // in the pool that would cause us to run old code.
     if (this.debugMode) {
@@ -725,7 +738,11 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
         added = this.addBlockingTrigger(url, definition.blockingTrigger);
       } else if (definition.scheduleTrigger) {
-        added = this.addScheduledTrigger(definition.name, definition.region, definition.scheduleTrigger);
+        added = this.addScheduledTrigger(
+          definition.name,
+          definition.region,
+          definition.scheduleTrigger,
+        );
       } else {
         this.logger.log(
           "WARN",
@@ -1050,7 +1067,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     triggerRegion: string,
     scheduleTrigger: backend.ScheduleTrigger,
   ): boolean {
-    const scheduledEmulator = EmulatorRegistry.get(Emulators.SCHEDULED) as ScheduledEmulator | undefined;
+    const scheduledEmulator = EmulatorRegistry.get(Emulators.SCHEDULED) as
+      | ScheduledEmulator
+      | undefined;
+
     if (!scheduledEmulator) {
       return false;
     }
@@ -1059,23 +1079,18 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     const scheduledTriggerId = `${triggerRegion}-${triggerName}`;
 
-    try {
-      CronJob.from({
-        cronTime: scheduleTrigger.schedule!,
-        onTick: async () => {
-          console.log("Tick");
-          this.runSheduled(scheduledTriggerId);
-        },
-        start: true,
-        timeZone: scheduleTrigger.timeZone,
-      });
-      return true;
-    } catch (e: any) {
-      return false;
+    if (!scheduleTrigger.schedule) {
+      throw new FirebaseError("Scheduled functions must have a schedule");
     }
+
+    scheduledEmulator.createTimer(scheduledTriggerId, scheduleTrigger.schedule, () => {
+      void this.runScheduled(scheduledTriggerId);
+    });
+
+    return true;
   }
 
-  async runSheduled(triggerId: string) {
+  async runScheduled(triggerId: string): Promise<void> {
     const record = this.getTriggerRecordByKey(triggerId);
     const trigger = record.def;
 
@@ -1101,7 +1116,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           path: `/`,
           headers: headers,
         },
-        resolve,
+        () => resolve(),
       );
       req.on("error", reject);
       req.end();
@@ -1415,9 +1430,9 @@ export class FunctionsEmulator implements EmulatorInstance {
         "ERROR",
         "functions",
         "Unable to access secret environment variables from Google Cloud Secret Manager. " +
-        "Make sure the credential used for the Functions Emulator have access " +
-        `or provide override values in ${secretPath}:\n\t` +
-        errs.join("\n\t"),
+          "Make sure the credential used for the Functions Emulator have access " +
+          `or provide override values in ${secretPath}:\n\t` +
+          errs.join("\n\t"),
       );
     }
 
@@ -1459,7 +1474,7 @@ export class FunctionsEmulator implements EmulatorInstance {
               "SUCCESS",
               "functions",
               `Using debug port ${port} for functions codebase ${backend.codebase}. ` +
-              "You may need to add manually add this port to your inspector.",
+                "You may need to add manually add this port to your inspector.",
             );
           }
         }
@@ -1479,8 +1494,8 @@ export class FunctionsEmulator implements EmulatorInstance {
         "WARN_ONCE",
         "functions",
         "Detected yarn@2 with PnP. " +
-        "Cloud Functions for Firebase requires a node_modules folder to work correctly and is therefore incompatible with PnP. " +
-        "See https://yarnpkg.com/getting-started/migration#step-by-step for more information.",
+          "Cloud Functions for Firebase requires a node_modules folder to work correctly and is therefore incompatible with PnP. " +
+          "See https://yarnpkg.com/getting-started/migration#step-by-step for more information.",
       );
     }
 
@@ -1488,7 +1503,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (!bin) {
       throw new Error(
         `No binary associated with ${backend.functionsDir}. ` +
-        "Make sure function runtime is configured correctly in firebase.json.",
+          "Make sure function runtime is configured correctly in firebase.json.",
       );
     }
 

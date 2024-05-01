@@ -24,9 +24,14 @@ import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
 import { HostingEmulator } from "./hostingEmulator";
 import { EventarcEmulator } from "./eventarcEmulator";
 import { FirebaseError } from "../error";
-import { getProjectId, needProjectId, getAliases, needProjectNumber } from "../projectUtils";
+import { getAliases, getProjectId, needProjectId, needProjectNumber } from "../projectUtils";
 import { PubsubEmulator } from "./pubsubEmulator";
 import * as commandUtils from "./commandUtils";
+import {
+  FLAG_EXPORT_ON_EXIT_NAME,
+  JAVA_DEPRECATION_WARNING,
+  MIN_SUPPORTED_JAVA_MAJOR_VERSION,
+} from "./commandUtils";
 import { EmulatorHub } from "./hub";
 import { ExportMetadata, HubExport } from "./hubExport";
 import { EmulatorUI } from "./ui";
@@ -35,11 +40,6 @@ import * as dbRulesConfig from "../database/rulesConfig";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 import { EmulatorHubClient } from "./hubClient";
 import { confirm } from "../prompt";
-import {
-  FLAG_EXPORT_ON_EXIT_NAME,
-  JAVA_DEPRECATION_WARNING,
-  MIN_SUPPORTED_JAVA_MAJOR_VERSION,
-} from "./commandUtils";
 import { fileExistsSync } from "../fsutils";
 import { StorageEmulator } from "./storage";
 import { getStorageRulesConfig } from "./storage/rules/config";
@@ -53,7 +53,7 @@ import { requiresJava } from "./downloadableEmulators";
 import { prepareFrameworks } from "../frameworks";
 import * as experiments from "../experiments";
 import { EmulatorListenConfig, PortName, resolveHostAndAssignPorts } from "./portUtils";
-import { Runtime, isRuntime } from "../deploy/functions/runtimes/supported";
+import { isRuntime, Runtime } from "../deploy/functions/runtimes/supported";
 import { ScheduledEmulator } from "./scheduledEmulator";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
@@ -72,7 +72,7 @@ export async function exportOnExit(options: any) {
     try {
       utils.logBullet(
         `Automatically exporting data using ${FLAG_EXPORT_ON_EXIT_NAME} "${exportOnExitDir}" ` +
-        "please wait for the export to finish...",
+          "please wait for the export to finish...",
       );
       await exportEmulatorData(exportOnExitDir, options, /* initiatedBy= */ "exit");
     } catch (e: any) {
@@ -156,7 +156,7 @@ export function shouldStart(options: Options, name: Emulators): boolean {
   }
 
   // Don't start the functions emulator if we can't find the source directory
-  if (name === Emulators.FUNCTIONS && emulatorInTargets) {
+  if ((name === Emulators.FUNCTIONS || name === Emulators.SCHEDULED) && emulatorInTargets) {
     try {
       normalizeAndValidate(options.config.src.functions);
       return true;
@@ -881,8 +881,8 @@ export async function startAll(
       "WARN",
       "emulators",
       "The Emulator UI is not starting, either because none of the running " +
-      "emulators have a UI component or the Emulator UI cannot " +
-      "determine the Project ID. Pass the --project flag to specify a project.",
+        "emulators have a UI component or the Emulator UI cannot " +
+        "determine the Project ID. Pass the --project flag to specify a project.",
     );
   }
 
