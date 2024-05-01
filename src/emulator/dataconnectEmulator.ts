@@ -28,9 +28,17 @@ export class DataConnectEmulator implements EmulatorInstance {
     const info = await this.build();
     if (requiresVector(info.metadata)) {
       if (Constants.isDemoProject(this.args.projectId)) {
-        this.logger.logLabeled("WARN", "Data Connect", "Detected a 'demo-' project, but vector embeddings require a real project. Operations that use vector_embed will fail.");
+        this.logger.logLabeled(
+          "WARN",
+          "Data Connect",
+          "Detected a 'demo-' project, but vector embeddings require a real project. Operations that use vector_embed will fail.",
+        );
       } else {
-        this.logger.logLabeled("WARN", "Data Connect", "Operations that use vector_embed will make calls to production Vertex AI");
+        this.logger.logLabeled(
+          "WARN",
+          "Data Connect",
+          "Operations that use vector_embed will make calls to production Vertex AI",
+        );
       }
     }
     return start(Emulators.DATACONNECT, {
