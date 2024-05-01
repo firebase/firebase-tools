@@ -4,6 +4,7 @@ import { readFileSync } from "fs";
 import { Config } from "../../../config";
 import { Setup } from "../..";
 import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql";
+import { ensureApis } from "../../../dataconnect/ensureApis";
 import { listLocations } from "../../../dataconnect/client";
 
 const TEMPLATE_ROOT = resolve(__dirname, "../../../../templates/init/dataconnect/");
@@ -15,6 +16,9 @@ const QUERIES_TEMPLATE = readFileSync(join(TEMPLATE_ROOT, "queries.gql"), "utf8"
 const MUTATIONS_TEMPLATE = readFileSync(join(TEMPLATE_ROOT, "mutations.gql"), "utf8");
 
 export async function doSetup(setup: Setup, config: Config): Promise<void> {
+  if (setup.projectId) {
+    await ensureApis(setup.projectId);
+  }
   const serviceId = await promptOnce({
     message: "What ID would you like to use for this service?",
     type: "input",
