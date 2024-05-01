@@ -5,6 +5,7 @@ import * as names from "../dataconnect/names";
 import * as client from "../dataconnect/client";
 import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
+import { ensureApis } from "../dataconnect/ensureApis";
 const Table = require("cli-table");
 
 export const command = new Command("dataconnect:list")
@@ -16,6 +17,7 @@ export const command = new Command("dataconnect:list")
   ])
   .action(async (options: Options) => {
     const projectId = needProjectId(options);
+    await ensureApis(projectId);
     const services = await client.listAllServices(projectId);
     const table: Record<string, any>[] = new Table({
       head: [
