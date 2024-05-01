@@ -6,7 +6,7 @@ const client = new Client({ urlPrefix: firedataOrigin(), auth: true, apiVersion:
 
 export const APPHOSTING_TOS_ID = "APP_HOSTING_TOS";
 export const APP_CHECK_TOS_ID = "APP_CHECK";
-export const DATA_CONNECT_TOS_ID = "FIREBASE_DATA_CONNECT"
+export const DATA_CONNECT_TOS_ID = "FIREBASE_DATA_CONNECT";
 
 export type TosId = typeof APPHOSTING_TOS_ID | typeof APP_CHECK_TOS_ID | typeof DATA_CONNECT_TOS_ID;
 
