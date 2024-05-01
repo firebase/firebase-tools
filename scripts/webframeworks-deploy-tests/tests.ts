@@ -21,7 +21,7 @@ const I18N_BASE = "";
 const DEFAULT_LANG = "en";
 const LOG_FILE = "firebase-debug.log";
 const NEXT_SOURCE = `${__dirname}/nextjs`;
-const sep = IS_WINDOWS ? `\\\\` : `\/`;
+const PATH_SEPARATOR = IS_WINDOWS ? `\\\\` : `\/`;
 
 async function getFilesListFromDir(dir: string): Promise<string[]> {
   const files = await new Promise<string[]>((resolve, reject) => {
@@ -390,7 +390,7 @@ describe("webframeworks", function (this) {
         [NEXT_BASE_PATH, "_next", "static", "chunks", `polyfills-[^.]+.js`],
         [NEXT_BASE_PATH, "_next", "static", "chunks", `webpack-[^.]+.js`],
         [NEXT_BASE_PATH, "_next", "static", "css", `[^.]+.css`],
-      ].map((it) => new RegExp(it.filter(Boolean).join(sep)));
+      ].map((it) => new RegExp(it.filter(Boolean).join(PATH_SEPARATOR)));
 
       const files = await getFilesListFromDir(`${NEXT_OUTPUT_PATH}/hosting`);
       const unmatchedFiles = files.filter(
@@ -474,7 +474,7 @@ describe("webframeworks", function (this) {
           [I18N_BASE, locale, ANGULAR_BASE_PATH, `runtime\.[^\.]+\.js`],
           [I18N_BASE, locale, ANGULAR_BASE_PATH, `styles\.[^\.]+\.css`],
         ])
-        .map((it) => new RegExp(it.filter(Boolean).join(sep)));
+        .map((it) => new RegExp(it.filter(Boolean).join(PATH_SEPARATOR)));
 
       const files = await getFilesListFromDir(`${ANGULAR_OUTPUT_PATH}/hosting`);
       const unmatchedFiles = files.filter(
