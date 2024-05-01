@@ -1,9 +1,8 @@
 import * as utils from "../../utils";
 import { Connector, ServiceInfo } from "../../dataconnect/types";
-import { listConnectors, upsertSchema, upsertConnector } from "../../dataconnect/client";
+import { listConnectors, upsertConnector } from "../../dataconnect/client";
 import { promptDeleteConnector } from "../../dataconnect/prompts";
 import { Options } from "../../options";
-import { FirebaseError } from "../../error";
 import { ResourceFilter } from "../../dataconnect/filters";
 import { migrateSchema } from "../../dataconnect/schemaMigration";
 
@@ -38,16 +37,13 @@ export default async function (
     .map((s) => s.schema);
 
   if (wantSchemas.length) {
-    utils.logLabeledBullet(
-      "dataconnect",
-      "Releasing Data Connect schemas...",
-    );
+    utils.logLabeledBullet("dataconnect", "Releasing Data Connect schemas...");
 
     // Then, migrate if needed and deploy schemas
     for (const s of wantSchemas) {
       await migrateSchema({
-        options, 
-        schema: s, 
+        options,
+        schema: s,
         allowNonInteractiveMigration: false,
         validateOnly: false,
       });

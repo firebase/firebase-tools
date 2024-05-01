@@ -36,16 +36,14 @@ export async function diffSchema(schema: Schema): Promise<Diff[]> {
   return [];
 }
 
-export async function migrateSchema(args: 
-  {
-    options: Options,
-    schema: Schema,
-    allowNonInteractiveMigration: boolean,
-    validateOnly: boolean,
-  }
-): Promise<Diff[]> {
+export async function migrateSchema(args: {
+  options: Options;
+  schema: Schema;
+  allowNonInteractiveMigration: boolean;
+  validateOnly: boolean;
+}): Promise<Diff[]> {
   const { schema, validateOnly } = args;
-  
+
   const databaseId = schema.primaryDatasource.postgresql?.database;
   if (!databaseId) {
     throw new FirebaseError(
@@ -63,8 +61,7 @@ export async function migrateSchema(args:
   } catch (err: any) {
     const incompatible = getIncompatibleSchemaError(err);
     if (!incompatible) {
-      console.log("couldn't get incompatible err")
-      // If we got a different type of error, throw it 
+      // If we got a different type of error, throw it
       throw err;
     }
     // Try to migrate schema
@@ -73,21 +70,22 @@ export async function migrateSchema(args:
       incompatibleSchemaError: incompatible,
       instanceId,
       databaseId,
-    })
+    });
     // Then, try to upsert schema again. If there still is an error, just throw it now
     await upsertSchema(schema, validateOnly);
     return diffs;
   }
 }
 
-async function handleIncompatibleSchemaError (args: {
-  incompatibleSchemaError: IncompatibleSqlSchemaError,
-  options: Options,
-  instanceId: string,
-  databaseId: string,
-  allowNonInteractiveMigration: boolean,
+async function handleIncompatibleSchemaError(args: {
+  incompatibleSchemaError: IncompatibleSqlSchemaError;
+  options: Options;
+  instanceId: string;
+  databaseId: string;
+  allowNonInteractiveMigration: boolean;
 }): Promise<Diff[]> {
-  const { incompatibleSchemaError, options, instanceId, databaseId, allowNonInteractiveMigration } = args;
+  const { incompatibleSchemaError, options, instanceId, databaseId, allowNonInteractiveMigration } =
+    args;
   const projectId = needProjectId(options);
   const iamUser = await setupIAMUser(instanceId, databaseId, options);
   const choice = await promptForSchemaMigration(
@@ -187,7 +185,6 @@ function toString(diff: Diff) {
 function getIncompatibleSchemaError(err: any): IncompatibleSqlSchemaError | undefined {
   const original = err.context?.body.error;
   const details: any[] = original.details;
-  console.log(`details is ${JSON.stringify(details)}`)
   const incompatibles = details.filter((d) => d["@type"] === IMCOMPATIBLE_SCHEMA_ERROR_TYPESTRING);
   // Should never get multiple incompatible schema errors
   return incompatibles[0];

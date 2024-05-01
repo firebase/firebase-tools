@@ -32,8 +32,8 @@ export const command = new Command("dataconnect:sql:migrate [serviceId]")
       );
     }
     const diffs = await migrateSchema({
-      options, 
-      schema: serviceInfo.schema, 
+      options,
+      schema: serviceInfo.schema,
       allowNonInteractiveMigration: true,
       validateOnly: true,
     });
