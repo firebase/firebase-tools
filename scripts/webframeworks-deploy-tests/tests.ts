@@ -380,17 +380,17 @@ describe("webframeworks", function (this) {
         .map((it) => (it.startsWith("/") ? it.substring(1) : it));
 
       const EXPECTED_PATTERNS = [
-        String.raw`${NEXT_BASE_PATH}${sep}_next${sep}static${sep}chunks${sep}[^-]+-[^.]+.js`,
-        String.raw`${NEXT_BASE_PATH}${sep}_next${sep}static${sep}chunks${sep}app${sep}layout-[^.]+.js`,
-        String.raw`${NEXT_BASE_PATH}${sep}_next${sep}static${sep}chunks${sep}main-[^.]+.js`,
-        String.raw`${NEXT_BASE_PATH}${sep}_next${sep}static${sep}chunks${sep}main-app-[^.]+.js`,
-        String.raw`${NEXT_BASE_PATH}${sep}_next${sep}static${sep}chunks${sep}pages${sep}_app-[^.]+.js`,
-        String.raw`${NEXT_BASE_PATH}${sep}_next${sep}static${sep}chunks${sep}pages${sep}_error-[^.]+.js`,
-        String.raw`${NEXT_BASE_PATH}${sep}_next${sep}static${sep}chunks${sep}pages${sep}index-[^.]+.js`,
-        String.raw`${NEXT_BASE_PATH}${sep}_next${sep}static${sep}chunks${sep}polyfills-[^.]+.js`,
-        String.raw`${NEXT_BASE_PATH}${sep}_next${sep}static${sep}chunks${sep}webpack-[^.]+.js`,
-        String.raw`${NEXT_BASE_PATH}${sep}_next${sep}static${sep}css${sep}[^.]+.css`,
-      ].map((it) => new RegExp(it));
+        [NEXT_BASE_PATH, "_next", "static", "chunks", `[^-]+-[^.]+.js`],
+        [NEXT_BASE_PATH, "_next", "static", "chunks", "app", `layout-[^.]+.js`],
+        [NEXT_BASE_PATH, "_next", "static", "chunks", `main-[^.]+.js`],
+        [NEXT_BASE_PATH, "_next", "static", "chunks", `main-app-[^.]+.js`],
+        [NEXT_BASE_PATH, "_next", "static", "chunks", "pages", `_app-[^.]+.js`],
+        [NEXT_BASE_PATH, "_next", "static", "chunks", "pages", `_error-[^.]+.js`],
+        [NEXT_BASE_PATH, "_next", "static", "chunks", "pages", `index-[^.]+.js`],
+        [NEXT_BASE_PATH, "_next", "static", "chunks", `polyfills-[^.]+.js`],
+        [NEXT_BASE_PATH, "_next", "static", "chunks", `webpack-[^.]+.js`],
+        [NEXT_BASE_PATH, "_next", "static", "css", `[^.]+.css`],
+      ].map((it) => new RegExp(it.filter(Boolean).join(sep)));
 
       const files = await getFilesListFromDir(`${NEXT_OUTPUT_PATH}/hosting`);
       const unmatchedFiles = files.filter(
