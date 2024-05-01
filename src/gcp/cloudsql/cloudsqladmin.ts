@@ -79,7 +79,7 @@ export async function updateInstanceForDataConnect(
   if (enableGoogleMlIntegration) {
     dbFlags = setDatabaseFlag(
       { name: "cloudsql.enable_google_ml_integration", value: "on" },
-      instance.settings.databaseFlags,
+      dbFlags,
     );
   }
 
