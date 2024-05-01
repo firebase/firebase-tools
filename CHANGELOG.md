@@ -1,2 +1,0 @@
-- Update dependencies in functions initialization template. (#7084)
-- Adds `*.local` to .gitignore and functions ignore for `init functions`. (#7018)
