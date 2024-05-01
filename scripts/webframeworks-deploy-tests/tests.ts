@@ -243,7 +243,7 @@ describe("webframeworks", function (this) {
 
         expect(apiStaticResponse.ok).to.be.true;
 
-        // TODO(leoortizz|jamesdaniels): Figure out why custmo headeres aren't wokring with emulators in Windows
+        // TODO(leoortizz|jamesdaniels): Figure out why custom headers aren't working with emulators on Windows
         if (!IS_WINDOWS) {
           expect(apiStaticResponse.headers.get("content-type")).to.eql("application/json");
           expect(apiStaticResponse.headers.get("custom-header")).to.eql("custom-value");
