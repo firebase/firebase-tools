@@ -28,12 +28,8 @@ async function requireTos(tosId: TosId): Promise<void> {
   if (isProductTosAccepted(res, tosId)) {
     return;
   }
-  if (consoleLandingPage.has(tosId)) {
-    throw new FirebaseError(
-      `Exiting due to missing terms of service agreement on your account. Visit ${consoleLandingPage.get(tosId)} to get started.`,
-    );
-  }
+  const console = consoleLandingPage.get(tosId) || consoleOrigin();
   throw new FirebaseError(
-    `Exiting due to missing terms of service agreement for ${tosId}. Visit ${consoleOrigin()} to get started.`,
+    `Your account is missing the required terms of service for this action. Please accept the Terms of Service and try again. ${console}`,
   );
 }
