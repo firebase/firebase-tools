@@ -158,6 +158,130 @@ describe("GCS endpoint conformance tests", () => {
       expect(metadata.updated).to.be.a("string");
       expect(metadata.timeStorageClassUpdated).to.be.a("string");
     });
+
+    it("should update metadata", async () => {
+      await supertest(storageHost)
+        .post(`/upload/storage/v1/b/${storageBucket}/o?name=${TEST_FILE_NAME}`)
+        .set(authHeader)
+        .send(Buffer.from("hello world"))
+        .expect(200);
+
+      const requestBody = {
+        // acl: Not supported by emulator
+        cacheControl: "max-age=604800",
+        contentDisposition: 'attachment; filename="hello-world.txt"',
+        contentEncoding: "gzip",
+        contentLanguage: "en-US",
+        contentType: "text/plain",
+        // customTime: Not supported by emulator
+        // eventBasedHold: Not supported by emulator
+        metadata: {
+          key1: "value1",
+          key2: "value2",
+        },
+        // retention: Not supported by emulator
+        // temporaryHold: Not supported by emulator
+      };
+
+      const metadata = await supertest(storageHost)
+        .patch(`/storage/v1/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}`)
+        .set(authHeader)
+        .send(requestBody)
+        .expect(200)
+        .then((res) => res.body);
+
+      expect(metadata.cacheControl).to.be.eql(requestBody.cacheControl);
+      expect(metadata.contentDisposition).to.be.eql(requestBody.contentDisposition);
+      expect(metadata.contentLanguage).to.be.eql(requestBody.contentLanguage);
+      expect(metadata.contentType).to.be.eql(requestBody.contentType);
+      expect(metadata.metadata.key1).to.be.eql(requestBody.metadata.key1);
+      expect(metadata.metadata.key2).to.be.eql(requestBody.metadata.key2);
+    });
+
+    it("should delete metadata", async () => {
+      await supertest(storageHost)
+        .post(`/upload/storage/v1/b/${storageBucket}/o?name=${TEST_FILE_NAME}`)
+        .set(authHeader)
+        .send(Buffer.from("hello world"))
+        .expect(200);
+
+      // setup metadata
+      await supertest(storageHost)
+        .patch(`/storage/v1/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}`)
+        .set(authHeader)
+        .send({
+          cacheControl: "max-age=604800",
+          contentDisposition: 'attachment; filename="hello-world.txt"',
+          contentEncoding: "identity",
+          contentLanguage: "en-US",
+          contentType: "text/plain",
+          metadata: {
+            key1: "value1",
+          },
+        })
+        .expect(200);
+
+      // delete metadata
+      const metadata = await supertest(storageHost)
+        .patch(`/storage/v1/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}`)
+        .set(authHeader)
+        .send({
+          cacheControl: null,
+          contentDisposition: null,
+          contentEncoding: null,
+          contentLanguage: null,
+          contentType: null,
+          metadata: null,
+        })
+        .expect(200)
+        .then((res) => res.body);
+
+      expect(metadata.cacheControl).to.be.undefined;
+      expect(metadata.contentDisposition).to.be.undefined;
+      expect(metadata.contentLanguage).to.be.undefined;
+      expect(metadata.contentType).to.be.undefined;
+      expect(metadata.metadata).to.be.undefined;
+    });
+
+    it("should modify custom metadata", async () => {
+      await supertest(storageHost)
+        .post(`/upload/storage/v1/b/${storageBucket}/o?name=${TEST_FILE_NAME}`)
+        .set(authHeader)
+        .send(Buffer.from("hello world"))
+        .expect(200);
+
+      // setup metadata
+      await supertest(storageHost)
+        .patch(`/storage/v1/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}`)
+        .set(authHeader)
+        .send({
+          metadata: {
+            key1: "value1",
+            key2: "value2",
+            key3: "value3",
+          },
+        })
+        .expect(200);
+
+      // modify metadata
+      const metadata = await supertest(storageHost)
+        .patch(`/storage/v1/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}`)
+        .set(authHeader)
+        .send({
+          metadata: {
+            key1: "updated-value1",
+            key2: null,
+            key4: "value4",
+          },
+        })
+        .expect(200)
+        .then((res) => res.body);
+
+      expect(metadata.metadata.key1).to.be.eql("updated-value1");
+      expect(metadata.metadata.key2).to.be.undefined;
+      expect(metadata.metadata.key3).to.be.eql("value3");
+      expect(metadata.metadata.key4).to.be.eql("value4");
+    });
   });
 
   describe("Upload protocols", () => {
