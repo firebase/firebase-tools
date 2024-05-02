@@ -1,5 +1,20 @@
 # Change Log
 
+## 0.1.5
+
+- Fix authentication issues for Introspection and local executions
+
+## 0.1.4
+
+- Dataconnect Sidebar UI refresh
+  - Emulator and Production sections
+  - Separate Deploy All and Deploy individual buttons
+  - Links to external documentation
+
+## 0.1.0
+
+- Data Connect Support
+
 ## 0.0.25 (unreleased)
 
 - Replace predeploy hack with something more robust.

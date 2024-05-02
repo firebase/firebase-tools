@@ -47,7 +47,29 @@ export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], s
     "firebaserules.releases.update",
   ],
   remoteconfig: ["cloudconfig.configs.get", "cloudconfig.configs.update"],
-  dataconnect: [], // TODO: add required permissions
+  dataconnect: [
+    "cloudsql.databases.create",
+    "cloudsql.databases.update",
+    "cloudsql.instances.connect",
+    "cloudsql.instances.create", // TODO: Support users who don't have cSQL writer permissions and want to use existing instances
+    "cloudsql.instances.get",
+    "cloudsql.instances.list",
+    "cloudsql.instances.update",
+    "cloudsql.users.create",
+    "firebasedataconnect.connectors.create",
+    "firebasedataconnect.connectors.delete",
+    "firebasedataconnect.connectors.list",
+    "firebasedataconnect.connectors.update",
+    "firebasedataconnect.operations.get",
+    "firebasedataconnect.services.create",
+    "firebasedataconnect.services.delete",
+    "firebasedataconnect.services.update",
+    "firebasedataconnect.services.list",
+    "firebasedataconnect.schemas.create",
+    "firebasedataconnect.schemas.delete",
+    "firebasedataconnect.schemas.list",
+    "firebasedataconnect.schemas.update",
+  ],
 };
 
 export const command = new Command("deploy")

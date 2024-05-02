@@ -57,14 +57,14 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   dataconnect:
     process.platform === "darwin"
       ? {
-          version: "1.1.11",
-          expectedSize: 25513536,
-          expectedChecksum: "2d949516b54859b0ece53e8be244eddd",
+          version: "1.1.12",
+          expectedSize: 25542352,
+          expectedChecksum: "b523fe9d5506cc07480d1a571c72de9a",
         }
       : {
-          version: "1.1.11",
-          expectedSize: 22980112,
-          expectedChecksum: "0628e160946e661ca2d03e78d57ee1f4",
+          version: "1.1.12",
+          expectedSize: 23004624,
+          expectedChecksum: "e69f79755263b7cd77ec7cd15ef0d825",
         },
 };
 

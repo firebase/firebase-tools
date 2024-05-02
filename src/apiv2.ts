@@ -18,6 +18,12 @@ import * as FormData from "form-data";
 const pkg = require("../package.json");
 const CLI_VERSION: string = pkg.version;
 
+export const STANDARD_HEADERS: Record<string, string> = {
+  Connection: "keep-alive",
+  "User-Agent": `FirebaseCLI/${CLI_VERSION}`,
+  "X-Client-Version": `FirebaseCLI/${CLI_VERSION}`,
+};
+
 const GOOG_QUOTA_USER_HEADER = "x-goog-quota-user";
 
 const GOOG_USER_PROJECT_HEADER = "x-goog-user-project";
@@ -36,17 +42,9 @@ export type HttpMethod =
 
 interface BaseRequestOptions<T> extends VerbOptions {
   method: HttpMethod;
-  path?: string;
+  path: string;
   body?: T | string | NodeJS.ReadableStream;
-  responseType?:
-    | "json"
-    | "xml"
-    | "stream"
-    | "arraybuffer"
-    | "blob"
-    | "text"
-    | "unknown"
-    | undefined;
+  responseType?: "json" | "xml" | "stream" | "arraybuffer" | "blob" | "text" | "unknown";
   redirect?: "error" | "follow" | "manual";
   compress?: boolean;
   ignoreQuotaProject?: boolean;
@@ -124,6 +122,18 @@ export function setAccessToken(token = ""): void {
   accessToken = token;
 }
 
+/**
+ * Gets a singleton access token
+ * @returns An access token
+ */
+export async function getAccessToken(): Promise<string> {
+  if (accessToken) {
+    return accessToken;
+  }
+  const data = await auth.getAccessToken(refreshToken, []);
+  return data.access_token;
+}
+
 function proxyURIFromEnv(): string | undefined {
   return (
     process.env.HTTPS_PROXY ||
@@ -135,7 +145,7 @@ function proxyURIFromEnv(): string | undefined {
 }
 
 export type ClientOptions = {
-  urlPrefix?: string;
+  urlPrefix: string;
   apiVersion?: string;
   auth?: boolean;
 };
@@ -145,7 +155,7 @@ export class Client {
     if (this.opts.auth === undefined) {
       this.opts.auth = true;
     }
-    if (this.opts.urlPrefix?.endsWith("/")) {
+    if (this.opts.urlPrefix.endsWith("/")) {
       this.opts.urlPrefix = this.opts.urlPrefix.substring(0, this.opts.urlPrefix.length - 1);
     }
   }
@@ -276,11 +286,11 @@ export class Client {
     if (!reqOptions.headers) {
       reqOptions.headers = new Headers();
     }
-    reqOptions.headers.set("Connection", "keep-alive");
-    if (!reqOptions.headers.has("User-Agent")) {
-      reqOptions.headers.set("User-Agent", `FirebaseCLI/${CLI_VERSION}`);
+    for (const [h, v] of Object.entries(STANDARD_HEADERS)) {
+      if (!reqOptions.headers.has(h)) {
+        reqOptions.headers.set(h, v);
+      }
     }
-    reqOptions.headers.set("X-Client-Version", `FirebaseCLI/${CLI_VERSION}`);
     if (!reqOptions.headers.has("Content-Type")) {
       if (reqOptions.responseType === "json") {
         reqOptions.headers.set("Content-Type", "application/json");
@@ -306,36 +316,13 @@ export class Client {
     if (isLocalInsecureRequest(this.opts.urlPrefix)) {
       token = "owner";
     } else {
-      token = await this.getAccessToken();
+      token = await getAccessToken();
     }
     reqOptions.headers.set("Authorization", `Bearer ${token}`);
     return reqOptions;
   }
 
-  public async getHeaders(): Promise<Record<string, string>> {
-    const opts: InternalClientRequestOptions<unknown> = { method: "GET" };
-    this.addRequestHeaders(opts);
-    await this.addAuthHeader(opts);
-    const map: Record<string, string> = {};
-    for (const h of opts.headers!) {
-      map[h[0]] = h[1];
-    }
-    return map;
-  }
-
-  public async getAccessToken(): Promise<string> {
-    // Runtime fetch of Auth singleton to prevent circular module dependencies
-    if (accessToken) {
-      return accessToken;
-    }
-    const data = await auth.getAccessToken(refreshToken, []);
-    return data.access_token;
-  }
-
   private requestURL(options: InternalClientRequestOptions<unknown>): string {
-    if (!this.opts.urlPrefix) {
-      throw new FirebaseError("unable to requestURL: urlPrefix is undefined");
-    }
     const versionPath = this.opts.apiVersion ? `/${this.opts.apiVersion}` : "";
     return `${this.opts.urlPrefix}${versionPath}${options.path}`;
   }
@@ -343,7 +330,7 @@ export class Client {
   private async doRequest<ReqT, ResT>(
     options: InternalClientRequestOptions<ReqT>,
   ): Promise<ClientResponse<ResT>> {
-    if (!options.path?.startsWith("/")) {
+    if (!options.path.startsWith("/")) {
       options.path = "/" + options.path;
     }
 
@@ -540,10 +527,7 @@ export class Client {
   }
 }
 
-function isLocalInsecureRequest(urlPrefix?: string): boolean {
-  if (!urlPrefix) {
-    return false;
-  }
+function isLocalInsecureRequest(urlPrefix: string): boolean {
   const u = new URL(urlPrefix);
   return u.protocol === "http:";
 }

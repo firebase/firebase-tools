@@ -3,7 +3,7 @@
   "displayName": "firebase-vscode",
   "publisher": "firebase",
   "description": "VSCode Extension for Firebase",
-  "version": "0.1.0",
+  "version": "0.1.5",
   "engines": {
     "vscode": "^1.69.0"
   },
