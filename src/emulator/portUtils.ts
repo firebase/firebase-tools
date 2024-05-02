@@ -160,11 +160,14 @@ export async function checkListenable(
 }
 
 /**
- * Wait for a port to be available on the given host. Checks every 250ms for up to 5s.
+ * Wait for a port to be available on the given host. Checks every 250ms for up to timeout (default 60s).
  */
-export async function waitForPortUsed(port: number, host: string): Promise<void> {
+export async function waitForPortUsed(
+  port: number,
+  host: string,
+  timeout: number = 60_000,
+): Promise<void> {
   const interval = 200;
-  const timeout = 5_000;
   try {
     await tcpport.waitUntilUsedOnHost(port, host, interval, timeout);
   } catch (e: any) {

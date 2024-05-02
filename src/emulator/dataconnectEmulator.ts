@@ -69,6 +69,7 @@ export class DataConnectEmulator implements EmulatorInstance {
       host,
       port,
       pid: getPID(Emulators.DATACONNECT),
+      timeout: 10_000,
     };
   }
   getName(): Emulators {
