@@ -138,12 +138,15 @@ export interface EmulatorInfo {
   pid?: number;
   reservedPorts?: number[];
 
-  /** All addresses that an emulator listens on. */
+  // All addresses that an emulator listens on.
   listen?: ListenSpec[];
 
-  /** The primary IP address that the emulator listens on. */
+  // The primary IP address that the emulator listens on.
   host: string;
   port: number;
+
+  // How long to wait for the emulator to start before erroring out.
+  timeout?: number;
 }
 
 export interface DownloadableEmulatorCommand {
