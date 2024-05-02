@@ -1,10 +1,6 @@
 import * as nock from "nock";
 import { APPHOSTING_TOS_ID, APP_CHECK_TOS_ID } from "../gcp/firedata";
-<<<<<<< HEAD
 import { requireTosAcceptance } from "../requireTosAcceptance";
-=======
-import requireTosAcceptance from "../requireTosAcceptance";
->>>>>>> 9bbd64a47 (add tests)
 import { Options } from "../options";
 import { RC } from "../rc";
 import { expect } from "chai";
