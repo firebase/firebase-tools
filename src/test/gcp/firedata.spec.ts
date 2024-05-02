@@ -34,7 +34,7 @@ const SAMPLE_RESPONSE = {
   ],
 };
 
-describe.only("firedata", () => {
+describe("firedata", () => {
   before(() => {
     nock.disableNetConnect();
   });

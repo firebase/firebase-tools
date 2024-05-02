@@ -19,7 +19,7 @@ const consoleLandingPage = new Map<TosId, string>([
  * Note: When supporting new products, be sure to update `consoleLandingPage` above to avoid surfacing
  * generic ToS error messages.
  **/
-export default function requireTosAcceptance(tosId: TosId): (options: Options) => Promise<void> {
+export function requireTosAcceptance(tosId: TosId): (options: Options) => Promise<void> {
   return () => requireTos(tosId);
 }
 
