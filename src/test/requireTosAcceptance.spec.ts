@@ -1,6 +1,10 @@
 import * as nock from "nock";
 import { APPHOSTING_TOS_ID, APP_CHECK_TOS_ID } from "../gcp/firedata";
+<<<<<<< HEAD
 import { requireTosAcceptance } from "../requireTosAcceptance";
+=======
+import requireTosAcceptance from "../requireTosAcceptance";
+>>>>>>> 9bbd64a47 (add tests)
 import { Options } from "../options";
 import { RC } from "../rc";
 import { expect } from "chai";
@@ -74,5 +78,15 @@ describe("requireTosAcceptance", () => {
     );
 
     expect(nock.isDone()).to.be.true;
+  });
+
+  it("should throw error if not accepted", async () => {
+    nock("https://mobilesdk-pa.googleapis.com")
+      .get("/v1/accessmanagement/tos:getStatus")
+      .reply(200, SAMPLE_RESPONSE);
+
+    await expect(requireTosAcceptance(APPHOSTING_TOS_ID)(SAMPLE_OPTIONS)).to.be.rejectedWith(
+      "Your account is missing the required terms of service for this action. Please accept the Terms of Service and try again. https://console.firebase.google.com/project/_/apphosting",
+    );
   });
 });
