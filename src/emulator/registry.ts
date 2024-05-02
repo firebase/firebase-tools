@@ -35,7 +35,7 @@ export class EmulatorRegistry {
     // No need to wait for the Extensions emulator to close its port, since it runs on the Functions emulator.
     if (instance.getName() !== Emulators.EXTENSIONS) {
       const info = instance.getInfo();
-      await portUtils.waitForPortUsed(info.port, connectableHostname(info.host));
+      await portUtils.waitForPortUsed(info.port, connectableHostname(info.host), info.timeout);
     }
   }
 

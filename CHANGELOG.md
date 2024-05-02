@@ -1,0 +1,1 @@
+- Increased the timeout for waitng for emulators to start to 60s.
