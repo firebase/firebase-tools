@@ -35,7 +35,7 @@ export interface InstanceSettings {
   activationPolicy?: "ALWAYS" | "NEVER";
   ipConfiguration?: IpConfiguration;
   locationPreference?: [Object];
-  databaseFlags?: { name: string; value: string }[];
+  databaseFlags?: DatabaseFlag[];
   dataDiskType?: "PD_SSD" | "PD_HDD";
   storageAutoResizeLimit?: string;
   storageAutoResize?: boolean;
@@ -47,6 +47,11 @@ export interface InstanceSettings {
   enableGoogleMlIntegration?: boolean;
   insightsConfig?: InsightsConfig;
   userLabels?: { [key: string]: string };
+}
+
+export interface DatabaseFlag {
+  name: string;
+  value: string;
 }
 
 interface InsightsConfig {

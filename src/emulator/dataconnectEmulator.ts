@@ -7,7 +7,7 @@ import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
 import { FirebaseError } from "../error";
 import { EmulatorLogger } from "./emulatorLogger";
 import { RC } from "../rc";
-import { BuildResult } from "../dataconnect/types";
+import { BuildResult, requiresVector } from "../dataconnect/types";
 
 export interface DataConnectEmulatorArgs {
   projectId?: string;
@@ -22,9 +22,25 @@ export class DataConnectEmulator implements EmulatorInstance {
   constructor(private args: DataConnectEmulatorArgs) {}
   private logger = EmulatorLogger.forEmulator(Emulators.DATACONNECT);
 
-  start(): Promise<void> {
+  async start(): Promise<void> {
     const port = this.args.port || Constants.getDefaultPort(Emulators.DATACONNECT);
     this.logger.log("DEBUG", `Using Postgres connection string: ${this.getLocalConectionString()}`);
+    const info = await this.build();
+    if (requiresVector(info.metadata)) {
+      if (Constants.isDemoProject(this.args.projectId)) {
+        this.logger.logLabeled(
+          "WARN",
+          "Data Connect",
+          "Detected a 'demo-' project, but vector embeddings require a real project. Operations that use vector_embed will fail.",
+        );
+      } else {
+        this.logger.logLabeled(
+          "WARN",
+          "Data Connect",
+          "Operations that use vector_embed will make calls to production Vertex AI",
+        );
+      }
+    }
     return start(Emulators.DATACONNECT, {
       ...this.args,
       http_port: port,
@@ -53,6 +69,7 @@ export class DataConnectEmulator implements EmulatorInstance {
       host,
       port,
       pid: getPID(Emulators.DATACONNECT),
+      timeout: 10_000,
     };
   }
   getName(): Emulators {
