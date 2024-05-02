@@ -90,7 +90,7 @@ export async function deleteService(
 
 /** Schema methods */
 
-export async function getSchema(serviceName: string): Promise<types.Schema | undefined> {
+export async function getSchema(serviceName: string): Promise<types.Schema> {
   const res = await dataconnectClient().get<types.Schema>(
     `${serviceName}/schemas/${types.SCHEMA_ID}`,
   );

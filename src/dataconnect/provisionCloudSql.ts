@@ -1,5 +1,4 @@
 import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
-import { execute } from "../gcp/cloudsql/connect";
 import * as utils from "../utils";
 import { grantRolesToCloudSqlServiceAccount } from "./checkIam";
 import { Instance } from "../gcp/cloudsql/types";
@@ -79,28 +78,6 @@ export async function provisionCloudSql(args: {
     await grantRolesToCloudSqlServiceAccount(projectId, instanceId, [GOOGLE_ML_INTEGRATION_ROLE]);
   }
   return connectionName;
-}
-
-export const REQUIRED_EXTENSIONS_COMMANDS = [
-  `CREATE SCHEMA IF NOT EXISTS "public"`,
-  `CREATE EXTENSION IF NOT EXISTS "uuid-ossp" with SCHEMA public`,
-  `CREATE EXTENSION IF NOT EXISTS "vector" with SCHEMA public`,
-  `CREATE EXTENSION IF NOT EXISTS "google_ml_integration" with SCHEMA public CASCADE`,
-];
-// TODO: This should not be hardcoded, instead should be returned during schema migration
-export async function installRequiredExtensions(
-  projectId: string,
-  instanceId: string,
-  databaseId: string,
-  username: string,
-) {
-  await execute(REQUIRED_EXTENSIONS_COMMANDS, {
-    projectId,
-    instanceId,
-    databaseId,
-    username,
-    silent: true,
-  });
 }
 
 /**
