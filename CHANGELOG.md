@@ -1,0 +1,1 @@
+- Fixes infinite loop when trying to create a Hosting site.
