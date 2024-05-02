@@ -1,1 +1,1 @@
-- Increased the timeout for waitng for emulators to start to 60s.
+- Increased the timeout for waiting for emulators to start to 60s. (#7091)
