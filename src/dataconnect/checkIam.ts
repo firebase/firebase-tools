@@ -14,7 +14,7 @@ export async function grantRolesToCloudSqlServiceAccount(
   const requiredBindings = roles.map((r) => {
     const binding: iam.Binding = {
       role: r,
-      members: [saEmail],
+      members: [`serviceAccount:${saEmail}`],
     };
     return binding;
   });

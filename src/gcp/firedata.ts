@@ -10,7 +10,7 @@ export const DATA_CONNECT_TOS_ID = "FIREBASE_DATA_CONNECT";
 
 export type TosId = typeof APPHOSTING_TOS_ID | typeof APP_CHECK_TOS_ID | typeof DATA_CONNECT_TOS_ID;
 
-export type AcceptanceStatus = null | "ACCEPTED";
+export type AcceptanceStatus = null | "ACCEPTED" | "TERMS_UPDATED";
 
 export interface TosAcceptanceStatus {
   status: AcceptanceStatus;
@@ -25,11 +25,15 @@ export interface GetTosStatusResponse {
   perServiceStatus: ServiceTosStatus[];
 }
 
+/**
+ * Fetches the Terms of Service status for the logged in user.
+ */
 export async function getTosStatus(): Promise<GetTosStatusResponse> {
   const res = await client.get<GetTosStatusResponse>("accessmanagement/tos:getStatus");
   return res.body;
 }
 
+/** Returns the AcceptanceStatus for a given product. */
 export function getAcceptanceStatus(
   response: GetTosStatusResponse,
   tosId: TosId,
@@ -41,6 +45,7 @@ export function getAcceptanceStatus(
   return perServiceStatus.serviceStatus.status;
 }
 
+/** Returns true if a product's ToS has been accepted. */
 export function isProductTosAccepted(response: GetTosStatusResponse, tosId: TosId): boolean {
   return getAcceptanceStatus(response, tosId) === "ACCEPTED";
 }

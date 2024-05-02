@@ -4,7 +4,7 @@ import { ExtensionBrokerImpl } from "../extension-broker";
 import { registerExecution } from "./execution";
 import { registerExplorer } from "./explorer";
 import { registerAdHoc } from "./ad-hoc-mutations";
-import { DataConnectService as FdcService, STAGING_API } from "./service";
+import { DataConnectService as FdcService } from "./service";
 import {
   OperationCodeLensProvider,
   SchemaCodeLensProvider,
@@ -175,10 +175,6 @@ export function registerFdc(
     }),
   });
 
-  setTerminalEnvVars(VSCODE_ENV_VARS.DATA_CONNECT_ORIGIN, STAGING_API);
-
-  // TODO: Temporary hack to update staging api
-  setVSCodeEnvVars(VSCODE_ENV_VARS.DATA_CONNECT_ORIGIN, STAGING_API);
   const selectedProjectStatus = vscode.window.createStatusBarItem(
     "projectPicker",
     vscode.StatusBarAlignment.Left,

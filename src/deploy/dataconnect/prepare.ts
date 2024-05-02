@@ -5,13 +5,12 @@ import { load } from "../../dataconnect/load";
 import { readFirebaseJson } from "../../dataconnect/fileUtils";
 import { logger } from "../../logger";
 import * as utils from "../../utils";
-import { ensure } from "../../ensureApiEnabled";
 import { needProjectId } from "../../projectUtils";
-import { dataconnectOrigin } from "../../api";
 import { getResourceFilters } from "../../dataconnect/filters";
 import { build } from "../../dataconnect/build";
 import { requireTosAcceptance } from "../../requireTosAcceptance";
 import { DATA_CONNECT_TOS_ID } from "../../gcp/firedata";
+import { ensureApis } from "../../dataconnect/ensureApis";
 
 /**
  * Prepares for a Firebase DataConnect deployment by loading schemas and connectors from file.
@@ -20,7 +19,7 @@ import { DATA_CONNECT_TOS_ID } from "../../gcp/firedata";
  */
 export default async function (context: any, options: Options): Promise<void> {
   const projectId = needProjectId(options);
-  await ensure(projectId, new URL(dataconnectOrigin()).hostname, "dataconnect");
+  await ensureApis(projectId);
   await requireTosAcceptance(DATA_CONNECT_TOS_ID)(options);
   const serviceCfgs = readFirebaseJson(options.config);
   utils.logLabeledBullet("dataconnect", `Preparing to deploy`);

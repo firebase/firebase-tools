@@ -23,7 +23,7 @@ import { DEFAULT_LOCATION } from "./constants";
 import { ensure } from "../ensureApiEnabled";
 import * as deploymentTool from "../deploymentTool";
 import { DeepOmit } from "../metaprogramming";
-import * as apps from "./app";
+import { webApps } from "./app";
 import { GitRepositoryLink } from "../gcp/devConnect";
 import * as ora from "ora";
 
@@ -80,7 +80,7 @@ export async function doSetup(
     message: "Create a name for your backend [1-30 characters]",
   });
 
-  const webApp = await apps.getOrCreateWebApp(projectId, webAppName, backendId);
+  const webApp = await webApps.getOrCreateWebApp(projectId, webAppName, backendId);
   if (webApp) {
     logSuccess(`Firebase web app set to ${webApp.name}.\n`);
   } else {
