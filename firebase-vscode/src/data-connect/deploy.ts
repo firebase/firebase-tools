@@ -10,12 +10,11 @@ import { ExtensionBrokerImpl } from "../extension-broker";
 function createDeployOnlyCommand(serviceConnectorMap: {
   [key: string]: string[];
 }): string {
-  // TODO: if all services/connectors are selected, just run "firebase deploy --only dataconnect"
   return (
     "firebase deploy --only " +
     Object.entries(serviceConnectorMap)
       .map(([serviceId, connectorIds]) => {
-        return `dataconnect:${serviceId}:schema:${connectorIds.join(":")}`;
+        return `dataconnect:${serviceId}:schema,` + connectorIds.map((connectorId) => `dataconnect:${serviceId}:${connectorId}`).join(",");
       })
       .join(",")
   );
