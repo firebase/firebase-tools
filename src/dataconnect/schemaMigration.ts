@@ -1,8 +1,8 @@
 import * as clc from "colorette";
 import { format } from "sql-formatter";
 
-import { IncompatibleSqlSchemaError, Diff } from "./types";
-import { upsertSchema } from "./client";
+import { IncompatibleSqlSchemaError, Diff, SCHEMA_ID } from "./types";
+import { getSchema, upsertSchema } from "./client";
 import { execute, firebaseowner, setupIAMUser } from "../gcp/cloudsql/connect";
 import { promptOnce } from "../prompt";
 import { logger } from "../logger";
@@ -22,7 +22,8 @@ export async function diffSchema(schema: Schema): Promise<Diff[]> {
     throw new FirebaseError(`tried to diff schema but ${instanceName} was undefined`);
   }
   try {
-    // TODO: Handle cases where error only comes back after validateOnly=false
+    const serviceName = schema.name.replace(`/schemas/${SCHEMA_ID}`, "");
+    await ensureServiceIsConnectedToCloudSql(serviceName);
     await upsertSchema(schema, /** validateOnly=*/ true);
   } catch (err: any) {
     const incompatible = getIncompatibleSchemaError(err);
@@ -55,6 +56,8 @@ export async function migrateSchema(args: {
     throw new FirebaseError(`tried to migrate schema but ${instanceId} was undefined`);
   }
   try {
+    const serviceName = schema.name.replace(`/schemas/${SCHEMA_ID}`, "");
+    await ensureServiceIsConnectedToCloudSql(serviceName);
     await upsertSchema(schema, validateOnly);
     logger.debug(`Database schema was up to date for ${instanceId}:${databaseId}`);
     return [];
@@ -168,6 +171,24 @@ async function promptForSchemaMigration(
     );
     return "none";
   }
+}
+
+// If a service has never had a schema with schemaValidation=strict
+// (ie when users create a service in console),
+// the backend will not have the necesary permissions to check cSQL for differences.
+// We fix this by upserting the currently deployed schema with schemaValidation=strict,
+async function ensureServiceIsConnectedToCloudSql(serviceName: string) {
+  const currentSchema = await getSchema(serviceName);
+  if (
+    !currentSchema.primaryDatasource.postgresql ||
+    currentSchema.primaryDatasource.postgresql.schemaValidation === "STRICT"
+  ) {
+    // Only want to do this coming from console half deployed state. If the current schema is "STRICT" mode,
+    // or if there is not postgres attached, don't try this.
+    return;
+  }
+  currentSchema.primaryDatasource.postgresql.schemaValidation = "STRICT";
+  await upsertSchema(currentSchema, /** validateOnly=*/ false);
 }
 
 function displaySchemaChanges(error: IncompatibleSqlSchemaError) {
