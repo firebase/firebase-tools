@@ -178,7 +178,15 @@ async function promptForSchemaMigration(
 // the backend will not have the necesary permissions to check cSQL for differences.
 // We fix this by upserting the currently deployed schema with schemaValidation=strict,
 async function ensureServiceIsConnectedToCloudSql(serviceName: string) {
-  const currentSchema = await getSchema(serviceName);
+  let currentSchema
+  try {
+    currentSchema = await getSchema(serviceName);
+  } catch (err: any) {
+    if (err.status === 404) {
+      return;
+    }
+    throw err;
+  }
   if (
     !currentSchema.primaryDatasource.postgresql ||
     currentSchema.primaryDatasource.postgresql.schemaValidation === "STRICT"
