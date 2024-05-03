@@ -1,9 +1,8 @@
 import * as utils from "../../utils";
 import { Connector, ServiceInfo } from "../../dataconnect/types";
-import { listConnectors, upsertSchema, upsertConnector } from "../../dataconnect/client";
+import { listConnectors, upsertConnector } from "../../dataconnect/client";
 import { promptDeleteConnector } from "../../dataconnect/prompts";
 import { Options } from "../../options";
-import { FirebaseError } from "../../error";
 import { ResourceFilter } from "../../dataconnect/filters";
 import { migrateSchema } from "../../dataconnect/schemaMigration";
 
@@ -38,24 +37,16 @@ export default async function (
     .map((s) => s.schema);
 
   if (wantSchemas.length) {
-    // If needed, migrate schemas
-    utils.logLabeledBullet(
-      "dataconnect",
-      "Checking if database schemas match Data Connect schemas...",
-    );
+    utils.logLabeledBullet("dataconnect", "Releasing Data Connect schemas...");
+
+    // Then, migrate if needed and deploy schemas
     for (const s of wantSchemas) {
-      await migrateSchema(options, s, /** allowNonInteractiveMigration=*/ false);
-    }
-    // Then, deploy schemas
-    utils.logLabeledBullet("dataconnect", "Releasing schemas...");
-    const schemaPromises = await Promise.allSettled(wantSchemas.map((s) => upsertSchema(s)));
-    const failedSchemas = schemaPromises.filter(
-      (p): p is PromiseRejectedResult => p.status === "rejected",
-    );
-    if (failedSchemas.length) {
-      throw new FirebaseError(
-        `Errors while updating your schemas:\n ${failedSchemas.map((f) => f.reason).join("\n")}`,
-      );
+      await migrateSchema({
+        options,
+        schema: s,
+        allowNonInteractiveMigration: false,
+        validateOnly: false,
+      });
     }
     utils.logLabeledBullet("dataconnect", "Schemas released.");
   }

@@ -30,7 +30,7 @@ export const command = new Command("dataconnect:sdk:generate")
       const dataconnectEmulator = new DataConnectEmulator(args);
       for (const conn of serviceInfo.connectorInfo) {
         const output = await dataconnectEmulator.generate(conn.connectorYaml.connectorId);
-        console.log(output);
+        logger.info(output);
         logger.info(`Generated SDKs for ${conn.connectorYaml.connectorId}`);
       }
     }
