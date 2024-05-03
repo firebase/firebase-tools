@@ -179,7 +179,9 @@ export async function doSetup(
   });
   createRolloutSpinner.succeed("Rollout complete");
   if (!(await tlsReady(url))) {
-    const tlsSpinner = ora("Finalizing your backend's TLS certificate; this may take a few minutes.").start();
+    const tlsSpinner = ora(
+      "Finalizing your backend's TLS certificate; this may take a few minutes.",
+    ).start();
     await awaitTlsReady(url);
     tlsSpinner.succeed("TLS certificate ready");
   }
