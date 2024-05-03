@@ -14,7 +14,7 @@ export interface DataConnectEmulatorArgs {
   port?: number;
   host?: string;
   configDir?: string;
-  locationId?:string;
+  locationId?: string;
   auto_download?: boolean;
   rc: RC;
 }
