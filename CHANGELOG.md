@@ -1,1 +1,2 @@
 - Increased the timeout for waiting for emulators to start to 60s. (#7091)
+- Add support for `Objects: patch` v1 API to the storage emulator. (#7097)
