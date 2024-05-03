@@ -15,13 +15,41 @@ import { RCData } from "../../src/rc";
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react";
 
 export function SidebarApp() {
+
+  const env = useBroker("notifyEnv")?.env;
+  /**
+   * null - has not finished checking yet
+   * empty array - finished checking, no users logged in
+   * non-empty array - contains logged in users
+   */
+  const allUsers = useBroker("notifyUsers")?.users;
+  const user = useBroker("notifyUserChanged")?.user;
+
   const configs = useBroker("notifyFirebaseConfig", {
     initialRequest: "getInitialData",
   });
-
+  const accountSection = (
+    <AccountSection
+      user={user}
+      allUsers={allUsers}
+      isMonospace={env?.isMonospace}
+    />
+  );
+  // Just render the account section loading view if it doesn't know user state
+  if (!allUsers || allUsers.length === 0) {
+    return (
+      <>
+        <Spacer size="medium" />
+        Login to use the Firebase plugin
+        <Spacer size="small" />
+        {accountSection}
+      </>
+    );
+  }
   if (!configs?.firebaseJson) {
     return (
       <>
+        {accountSection}
         <p>
           No <code>firebase.json</code> detected in this project
         </p>
@@ -125,15 +153,6 @@ function SidebarContent(props: {
       isMonospace={env?.isMonospace}
     />
   );
-  // Just render the account section loading view if it doesn't know user state
-  if (allUsers === null) {
-    return (
-      <>
-        <Spacer size="medium" />
-        {accountSection}
-      </>
-    );
-  }
 
   return (
     <>
