@@ -148,7 +148,6 @@ export async function doSetup(
   });
 
   await setDefaultTrafficPolicy(projectId, location, backendId, branch);
-  logSuccess(`Successfully created backend:\n\t${backend.name}`);
 
   const confirmRollout = await promptOnce({
     type: "confirm",
@@ -169,7 +168,7 @@ export async function doSetup(
   // TODO: Previous versions of this command printed the URL before the rollout started so that
   // if a user does exit they will know where to go later. Should this be re-added?
   const createRolloutSpinner = ora(
-    "Starting a new rollout; this make take a few minutes. It's safe to exit now.",
+    "Starting a new rollout; this may take a few minutes. It's safe to exit now.",
   ).start();
   await orchestrateRollout(projectId, location, backendId, {
     source: {
@@ -180,7 +179,7 @@ export async function doSetup(
   });
   createRolloutSpinner.succeed("Rollout complete");
   if (!(await tlsReady(url))) {
-    const tlsSpinner = ora("Waiting for TLS certificate");
+    const tlsSpinner = ora("Finalizing your backend's TLS certificate; this may take a few minutes.").start();
     await awaitTlsReady(url);
     tlsSpinner.succeed("TLS certificate ready");
   }
