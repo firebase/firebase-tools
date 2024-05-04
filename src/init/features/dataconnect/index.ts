@@ -65,13 +65,13 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   }
   // TODO: Listinstances from CloudSQL, and filter to only the free trial appropriate ones.
   const cloudSqlInstanceId = await promptOnce({
-    message: `What CloudSQL instance would you like to use? Please enter the ID of an existing instance in ${locationId}`,
+    message: `What CloudSQL instance ID in ${locationId} would you like to use (it will be created if it does not exist)?`,
     type: "input",
     default: `dataconnect-test`,
   });
   // TODO: ListDatabases from CloudSQL.
   const cloudSqlDatabase = await promptOnce({
-    message: `Which database would you like to use from ${cloudSqlInstanceId}?`,
+    message: `Which database would you like to use from ${cloudSqlInstanceId} (it will be created if it does not exist)?`,
     type: "input",
     default: `dataconnect-test`,
   });

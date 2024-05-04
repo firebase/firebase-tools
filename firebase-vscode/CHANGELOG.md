@@ -1,5 +1,9 @@
 # Change Log
 
+## 0.1.6
+
+- Fix deploy command
+
 ## 0.1.5
 
 - Fix authentication issues for Introspection and local executions
