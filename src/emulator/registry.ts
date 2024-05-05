@@ -61,10 +61,11 @@ export class EmulatorRegistry {
       // once shutdown starts
       ui: 0,
 
-      // The Extensions emulator runs on the same process as the Functions emulator
-      // so this is a no-op. We put this before functions for future proofing, since
-      // the Extensions emulator depends on the Functions emulator.
+      // The Extensions and Scheduled emulators run on the same process as the Functions emulator
+      // so these are no-ops. We put this before functions for future proofing, since
+      // these emulators depend on the Functions emulator.
       extensions: 1,
+      scheduled: 1,
       // Functions is next since it has side effects and
       // dependencies across all the others
       functions: 1.1,
@@ -77,7 +78,6 @@ export class EmulatorRegistry {
       database: 3.0,
       firestore: 3.1,
       pubsub: 3.2,
-      scheduled: 3.4,
       auth: 3.3,
       storage: 3.5,
       eventarc: 3.6,

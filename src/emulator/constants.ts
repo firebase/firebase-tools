@@ -7,9 +7,9 @@ export const DEFAULT_PORTS: { [s in Emulators]: number } = {
   hosting: 5000,
   functions: 5001,
   extensions: 5001, // The Extensions Emulator runs on the same port as the Functions Emulator
+  scheduled: 5001, // The Scheduled Emulator runs on the same port as the Functions Emulator
   firestore: 8080,
   pubsub: 8085,
-  scheduled: 8086,
   database: 9000,
   auth: 9099,
   storage: 9199,
