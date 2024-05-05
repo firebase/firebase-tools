@@ -26,6 +26,7 @@ export const command = new Command("dataconnect:sdk:generate")
         configDir,
         auto_download: true,
         rc: options.rc,
+        locationId: service.location,
       };
       const dataconnectEmulator = new DataConnectEmulator(args);
       for (const conn of serviceInfo.connectorInfo) {
