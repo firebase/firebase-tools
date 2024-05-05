@@ -381,7 +381,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       | undefined;
     if (scheduledEmulator) {
       const scheduledForceRunHandler: express.RequestHandler = (req: express.Request, res) => {
-        void this.runScheduled(req.params.trigger_id);
+        void this.runScheduled(req.params.trigger_id, null);
         res.json({ status: "acknowledged" });
       };
       hub.post(scheduledForceRun, cors({ origin: true }), scheduledForceRunHandler);
@@ -1084,13 +1084,17 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     scheduledEmulator.createTimer(scheduledTriggerId, scheduleTrigger.schedule, () => {
-      void this.runScheduled(scheduledTriggerId);
+      void this.runScheduled(scheduledTriggerId, scheduleTrigger.retryConfig);
     });
 
     return true;
   }
 
-  async runScheduled(triggerId: string): Promise<void> {
+  async runScheduled(
+    triggerId: string,
+    retryConfig: backend.ScheduleRetryConfig | null | undefined,
+    retryCount = 0,
+  ): Promise<void> {
     const record = this.getTriggerRecordByKey(triggerId);
     const trigger = record.def;
 
@@ -1116,7 +1120,41 @@ export class FunctionsEmulator implements EmulatorInstance {
           path: `/`,
           headers: headers,
         },
-        () => resolve(),
+        (message) => {
+          const { statusCode } = message;
+          if (!statusCode || !retryConfig) return resolve();
+
+          const {
+            retryCount: maxRetryCount,
+            maxRetrySeconds,
+            maxBackoffSeconds,
+            minBackoffSeconds,
+            maxDoublings,
+          } = retryConfig;
+          if (statusCode >= 200 && statusCode < 300) return resolve();
+          if (maxRetryCount != null && retryCount >= maxRetryCount) return resolve();
+
+          const timeToWait = Math.min(
+            maxBackoffSeconds ?? 600,
+            Math.max(
+              Math.pow(2, maxDoublings != null ? Math.min(retryCount, maxDoublings) : retryCount),
+              minBackoffSeconds ?? 1,
+            ),
+          );
+
+          if (maxRetrySeconds != null && timeToWait > maxRetrySeconds) return resolve();
+
+          this.logger.log(
+            "WARN",
+            `Scheduled function ${triggerId} failed with status ${statusCode}. Retrying in ${timeToWait}s`,
+          );
+
+          setTimeout(() => {
+            void this.runScheduled(triggerId, retryConfig, retryCount + 1);
+          }, timeToWait * 1000);
+
+          resolve();
+        },
       );
       req.on("error", reject);
       req.end();

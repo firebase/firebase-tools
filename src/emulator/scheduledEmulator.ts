@@ -19,7 +19,7 @@ export class ScheduledEmulator implements EmulatorInstance {
 
   private logger = EmulatorLogger.forEmulator(Emulators.SCHEDULED);
 
-  private timers: Map<string, later.Timer> = new Map<string, later.Timer>();
+  private timers = new Map<string, later.Timer>();
 
   constructor(private args: ScheduledEmulatorArgs) {}
 
@@ -29,8 +29,11 @@ export class ScheduledEmulator implements EmulatorInstance {
   }
 
   public stop(): Promise<void> {
-    this.logger.logLabeled("DEBUG", "Scheduled", "Stopping Scheduled emulator, this is a noop.");
-    return Promise.resolve();
+    this.logger.logLabeled("DEBUG", "Scheduled", "Stopping Scheduled emulator, clearing jobs.");
+    return new Promise((resolve) => {
+      this.clearTimers();
+      resolve();
+    });
   }
 
   public connect(): Promise<void> {
@@ -62,8 +65,8 @@ export class ScheduledEmulator implements EmulatorInstance {
     let scheduleData: later.ScheduleData;
 
     const regexForCronPattern = /(((\d+,)+\d+|(\d+(\/|-)\d+)|\d+|\*) ?){5,6}/;
-    console.log("isCron", regexForCronPattern.test(schedule.trim()));
-    if (regexForCronPattern.test(schedule)) {
+    const isCron = regexForCronPattern.test(schedule);
+    if (isCron) {
       // We assume that the schedule is a cron expression
       const hasSeconds = schedule.split(" ").length === 6;
       scheduleData = later.parse.cron(schedule, hasSeconds);
@@ -72,7 +75,14 @@ export class ScheduledEmulator implements EmulatorInstance {
       scheduleData = later.parse.text(schedule);
     }
 
-    console.log({ schedule });
+    if (scheduleData.schedules.length === 0) {
+      this.logger.log(
+        "ERROR",
+        `Failed to parse ${isCron ? "cron" : "text"} schedule for timer ${id}: ${schedule}`,
+      );
+      return;
+    }
+
     const timer = later.setInterval(callback, scheduleData);
     this.timers.set(id, timer);
   }
