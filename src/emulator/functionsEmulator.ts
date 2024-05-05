@@ -572,11 +572,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       const discoveredBackend = resolution.backend;
       const endpoints = backend.allEndpoints(discoveredBackend);
 
-      this.logger.log(
-        "WARN",
-        `Found all endpoints: ${endpoints.map((e) => JSON.stringify(e)).join(", ")}`,
-      );
-
       prepareEndpoints(endpoints);
       for (const e of endpoints) {
         e.codebase = emulatableBackend.codebase;
