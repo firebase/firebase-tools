@@ -1117,7 +1117,9 @@ export class FunctionsEmulator implements EmulatorInstance {
         },
         (message) => {
           const { statusCode } = message;
-          if (!statusCode || !retryConfig) return resolve();
+          if (!statusCode || !retryConfig || Object.keys(retryConfig).length === 0) {
+            return resolve();
+          }
 
           const {
             retryCount: maxRetryCount,
