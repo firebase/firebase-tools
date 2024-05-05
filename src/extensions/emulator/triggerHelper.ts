@@ -92,10 +92,6 @@ export function functionResourceToEmulatedTriggerDefintion(
         schedule: properties.scheduleTrigger.schedule,
       };
       etd.scheduleTrigger = schedule;
-      // etd.eventTrigger = {
-      //   eventType: "google.pubsub.topic.publish",
-      //   resource: "",
-      // };
     } else {
       EmulatorLogger.forEmulator(Emulators.FUNCTIONS).log(
         "WARN",
