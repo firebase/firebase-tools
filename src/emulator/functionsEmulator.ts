@@ -1135,7 +1135,7 @@ export class FunctionsEmulator implements EmulatorInstance {
             maxBackoffSeconds ?? 600,
             Math.max(
               Math.pow(2, maxDoublings != null ? Math.min(retryCount, maxDoublings) : retryCount),
-              minBackoffSeconds ?? 1,
+              minBackoffSeconds ?? 10,
             ),
           );
 
