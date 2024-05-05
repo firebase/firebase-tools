@@ -18,14 +18,8 @@ import {
 } from "./types";
 import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "./constants";
 import { EmulatableBackend, FunctionsEmulator } from "./functionsEmulator";
-import { AuthEmulator, SingleProjectMode } from "./auth";
-import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
-import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
-import { HostingEmulator } from "./hostingEmulator";
-import { EventarcEmulator } from "./eventarcEmulator";
 import { FirebaseError } from "../error";
 import { getAliases, getProjectId, needProjectId, needProjectNumber } from "../projectUtils";
-import { PubsubEmulator } from "./pubsubEmulator";
 import * as commandUtils from "./commandUtils";
 import {
   FLAG_EXPORT_ON_EXIT_NAME,
@@ -41,7 +35,6 @@ import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 import { EmulatorHubClient } from "./hubClient";
 import { confirm } from "../prompt";
 import { fileExistsSync } from "../fsutils";
-import { StorageEmulator } from "./storage";
 import { getStorageRulesConfig } from "./storage/rules/config";
 import { getDefaultDatabaseInstance } from "../getDefaultDatabaseInstance";
 import { getProjectDefaultAccount } from "../auth";
@@ -55,6 +48,16 @@ import * as experiments from "../experiments";
 import { EmulatorListenConfig, PortName, resolveHostAndAssignPorts } from "./portUtils";
 import { isRuntime, Runtime } from "../deploy/functions/runtimes/supported";
 import { ScheduledEmulator } from "./scheduledEmulator";
+
+import { AuthEmulator, SingleProjectMode } from "./auth";
+import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
+import { EventarcEmulator } from "./eventarcEmulator";
+import { DataConnectEmulator } from "./dataconnectEmulator";
+import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
+import { HostingEmulator } from "./hostingEmulator";
+import { PubsubEmulator } from "./pubsubEmulator";
+import { StorageEmulator } from "./storage";
+import { readFirebaseJson } from "../dataconnect/fileUtils";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
@@ -816,6 +819,32 @@ export async function startAll(
       auto_download: true,
     });
     await startEmulator(pubsubEmulator);
+  }
+
+  if (listenForEmulator.dataconnect) {
+    const dataConnectAddr = legacyGetFirstAddr(Emulators.DATACONNECT);
+    const config = readFirebaseJson(options.config);
+    if (!config.length) {
+      throw new FirebaseError("No Data Connect service found in firebase.json");
+    } else if (config.length > 1) {
+      logger.warn(
+        `TODO: Add support for multiple services in the Data Connect emulator. Currently emulating first service ${config[0].source}`,
+      );
+    }
+    let configDir = config[0].source;
+    if (!path.isAbsolute(configDir)) {
+      const cwd = options.cwd || process.cwd();
+      configDir = path.resolve(path.join(cwd), configDir);
+    }
+    const dataConnectEmulator = new DataConnectEmulator({
+      host: dataConnectAddr.host,
+      port: dataConnectAddr.port,
+      projectId,
+      auto_download: true,
+      configDir,
+      rc: options.rc,
+    });
+    await startEmulator(dataConnectEmulator);
   }
 
   if (listenForEmulator.scheduled) {

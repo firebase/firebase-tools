@@ -273,6 +273,17 @@ export function serviceAgentEmail(projectNumber: string): string {
   return `service-${projectNumber}@${P4SA_DOMAIN}`;
 }
 
+/** Splits a backend resource name into its parts. */
+export function parseBackendName(backendName: string): {
+  projectName: string;
+  location: string;
+  id: string;
+} {
+  // sample value: "projects/<project-name>/locations/us-central1/backends/<backend-id>"
+  const [, projectName, , location, , id] = backendName.split("/");
+  return { projectName, location, id };
+}
+
 /**
  * Creates a new Backend in a given project and location.
  */

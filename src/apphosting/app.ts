@@ -7,8 +7,7 @@ import { FirebaseError } from "../error";
 const CREATE_NEW_FIREBASE_WEB_APP = "CREATE_NEW_WEB_APP";
 const CONTINUE_WITHOUT_SELECTING_FIREBASE_WEB_APP = "CONTINUE_WITHOUT_SELECTING_FIREBASE_WEB_APP";
 
-// Note: exported like this for testing (to stub a function in the same file).
-const webApps = {
+export const webApps = {
   CREATE_NEW_FIREBASE_WEB_APP,
   CONTINUE_WITHOUT_SELECTING_FIREBASE_WEB_APP,
   getOrCreateWebApp,
@@ -152,5 +151,3 @@ function isQuotaError(error: any): boolean {
 
   return code === 429;
 }
-
-export = webApps;

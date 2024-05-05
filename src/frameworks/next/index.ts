@@ -658,7 +658,9 @@ export async function ɵcodegenFunctionsDirectory(
 
   await Promise.all(
     productionDistDirfiles.map((file) =>
-      copy(file, file.replace(sourceDir, destDir), { recursive: true }),
+      copy(join(sourceDir, distDir, file), join(destDir, distDir, file), {
+        recursive: true,
+      }),
     ),
   );
 

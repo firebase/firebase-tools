@@ -4,6 +4,7 @@ import {
   ExtensionToWebviewParamsMap,
   WebviewToExtensionParamsMap,
 } from "../../common/messaging/protocol";
+import { webLogger } from "./web-logger";
 
 export function useBrokerListener<
   MessageT extends keyof ExtensionToWebviewParamsMap
@@ -54,6 +55,23 @@ export class HtmlBroker extends Broker<
     window.addEventListener("message", (event) =>
       this.executeListeners(event.data)
     );
+
+    // Log uncaught errors and unhandled rejections
+    window.addEventListener("error", (event) => {
+      webLogger.error(
+        event.error.message,
+        event.error.stack && "\n",
+        event.error.stack
+      );
+    });
+    window.addEventListener("unhandledrejection", (event) => {
+      webLogger.error(
+        "Unhandled rejected promise:",
+        event.reason,
+        event.reason.stack && "\n",
+        event.reason.stack
+      );
+    });
   }
 
   sendMessage(

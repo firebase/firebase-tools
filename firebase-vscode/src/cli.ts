@@ -29,10 +29,15 @@ import {
   cleanShutdown as stopAllEmulators,
 } from "../../src/emulator/controller";
 import { EmulatorRegistry } from "../../src/emulator/registry";
-import { EmulatorInfo, Emulators } from "../../src/emulator/types";
+import {
+  DownloadableEmulatorDetails,
+  EmulatorInfo,
+  DownloadableEmulators,
+  Emulators,
+} from "../../src/emulator/types";
 import * as commandUtils from "../../src/emulator/commandUtils";
 import { currentUser } from "./core/user";
-
+export { Emulators };
 /**
  * Try to get a service account by calling requireAuth() without
  * providing any account info.
@@ -258,7 +263,10 @@ export async function initHosting(options: {
       useWebFrameworks: false,
     };
   }
-  const commandOptions = await getCommandOptions(undefined, currentOptions.value);
+  const commandOptions = await getCommandOptions(
+    undefined,
+    currentOptions.value
+  );
   const inquirerOptions = {
     ...commandOptions,
     ...options,
@@ -333,12 +341,18 @@ export async function deployToHosting(
 export async function emulatorsStart(
   emulatorUiSelections: EmulatorUiSelections
 ) {
+  const only =
+    emulatorUiSelections.mode === "hosting"
+      ? "hosting"
+      : emulatorUiSelections.mode === "dataconnect"
+      ? `${Emulators.DATACONNECT},${Emulators.AUTH}`
+      : "";
   const commandOptions = await getCommandOptions(undefined, {
     ...currentOptions.value,
     project: emulatorUiSelections.projectId,
     exportOnExit: emulatorUiSelections.exportStateOnExit,
     import: emulatorUiSelections.importStateFolderPath,
-    only: emulatorUiSelections.mode === "hosting" ? "hosting" : "",
+    only,
   });
   // Adjusts some options, export on exit can be a boolean or a path.
   commandUtils.setExportOnExitOptions(
@@ -358,4 +372,10 @@ export function listRunningEmulators(): EmulatorInfo[] {
 export function getEmulatorUiUrl(): string | undefined {
   const url: URL = EmulatorRegistry.url(Emulators.UI);
   return url.hostname === "unknown" ? undefined : url.toString();
+}
+
+export function getEmulatorDetails(
+  emulator: DownloadableEmulators
+): DownloadableEmulatorDetails {
+  return EmulatorRegistry.getDetails(emulator);
 }

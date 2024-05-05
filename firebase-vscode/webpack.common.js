@@ -14,7 +14,13 @@ const extensionConfig = {
   name: "extension",
   target: "node", // vscode extensions run in webworker context for VS Code web 📖 -> https://webpack.js.org/configuration/target/#target
 
-  entry: "./src/extension.ts", // the entry point of this extension, 📖 -> https://webpack.js.org/configuration/entry-context/
+  entry: {
+    extension: "./src/extension.ts",
+    server: {
+      import: "./src/data-connect/language-server.ts",
+      filename: "[name].js",
+    },
+  }, // the entry point of this extension, 📖 -> https://webpack.js.org/configuration/entry-context/
   output: {
     // the bundle is stored in the 'dist' folder (check package.json), 📖 -> https://webpack.js.org/configuration/output/
     path: path.resolve(__dirname, "dist"),
@@ -23,8 +29,45 @@ const extensionConfig = {
     devtoolModuleFilenameTemplate: "../[resource-path]",
   },
   devtool: "source-map",
+  externalsType: "commonjs",
   externals: {
-    vscode: 'commonjs vscode' // the vscode-module is created on-the-fly and must be excluded. Add other modules that cannot be webpack'ed, 📖 -> https://webpack.js.org/configuration/externals/
+    vscode: "vscode", // the vscode-module is created on-the-fly and must be excluded. Add other modules that cannot be webpack'ed, 📖 -> https://webpack.js.org/configuration/externals/
+    // avoid dynamic depencies from @vue/compiler-sfc
+    squirrelly: "squirrelly",
+    teacup: "teacup",
+    "teacup/lib/express": "teacup/lib/express",
+    "coffee-script": "coffee-script",
+    marko: "marko",
+    slm: "slm",
+    vash: "vash",
+    plates: "plates",
+    "babel-core": "babel-core",
+    htmling: "htmling",
+    ractive: "ractive",
+    mote: "mote",
+    eco: "eco",
+    jqtpl: "jqtpl",
+    hamljs: "hamljs",
+    jazz: "jazz",
+    hamlet: "hamlet",
+    whiskers: "whiskers",
+    "haml-coffee": "haml-coffee",
+    "hogan.js": "hogan.js",
+    templayed: "templayed",
+    walrus: "walrus",
+    mustache: "mustache",
+    just: "just",
+    ect: "ect",
+    toffee: "toffee",
+    twing: "twing",
+    dot: "dot",
+    "bracket-template": "bracket-template",
+    velocityjs: "velocityjs",
+    "dustjs-linkedin": "dustjs-linkedin",
+    atpl: "atpl",
+    liquor: "liquor",
+    twig: "twig",
+    handlebars: "handlebars",
   },
   resolve: {
     // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
@@ -33,15 +76,18 @@ const extensionConfig = {
     extensions: [".ts", ".js"],
     alias: {
       // provides alternate implementation for node module and source files
-      "marked-terminal": path.resolve(__dirname, 'src/stubs/empty-class.js'),
+      "marked-terminal": path.resolve(__dirname, "src/stubs/empty-class.js"),
       // "ora": path.resolve(__dirname, 'src/stubs/empty-function.js'),
-      "commander": path.resolve(__dirname, 'src/stubs/empty-class.js'),
-      "inquirer": path.resolve(__dirname, 'src/stubs/inquirer-stub.js'),
-      "inquirer-autocomplete-prompt": path.resolve(__dirname, 'src/stubs/inquirer-stub.js'),
+      commander: path.resolve(__dirname, "src/stubs/empty-class.js"),
+      inquirer: path.resolve(__dirname, "src/stubs/inquirer-stub.js"),
+      "inquirer-autocomplete-prompt": path.resolve(
+        __dirname,
+        "src/stubs/inquirer-stub.js"
+      ),
       // This is used for Github deploy to hosting - will need to restore
       // or find another solution if we add that feature.
-      "libsodium-wrappers": path.resolve(__dirname, 'src/stubs/empty-class.js'),
-      "marked": path.resolve(__dirname, 'src/stubs/marked.js')
+      "libsodium-wrappers": path.resolve(__dirname, "src/stubs/empty-class.js"),
+      marked: path.resolve(__dirname, "src/stubs/marked.js"),
     },
     fallback: {
       // Webpack 5 no longer polyfills Node.js core modules automatically.
@@ -93,13 +139,13 @@ const extensionConfig = {
             // a temporary fix.
             {
               search: /module\.exports\.([a-zA-Z0-9]+)\(/g,
-              replace: (match) => match.replace('module.exports.', '')
+              replace: (match) => match.replace("module.exports.", ""),
             },
             // cloudtasks.ts type casts so there's an " as [type]" before the
             // starting paren to call the function
             {
               search: /module\.exports\.([a-zA-Z0-9]+) as/g,
-              replace: (match) => match.replace('module.exports.', '')
+              replace: (match) => match.replace("module.exports.", ""),
             },
             // Disallow starting . to ensure it doesn't conflict with
             // module.exports
@@ -107,8 +153,8 @@ const extensionConfig = {
             // such as "exports.something = value"
             {
               search: /[^\.]exports\.([a-zA-Z0-9]+)\(/g,
-              replace: (match) => match.replace('exports.', '')
-            }
+              replace: (match) => match.replace("exports.", ""),
+            },
           ],
         },
       },
@@ -122,18 +168,23 @@ const extensionConfig = {
             // TODO: copy the dependency into dist instead of removing them via search/replace.
             {
               search: 'RE2 = require("re2");',
-              replace: 'RE2 = null;'
+              replace: "RE2 = null;",
             },
             // firebase-tools/node_modules/superstatic/lib/middleware/index.js
             // Stub out these runtime requirements
             // TODO: copy the dependencies into dist instead of removing them via search/replace.
             {
-              search: 'const mware = require("./" + _.kebabCase(name))(spec, config);',
-              replace: 'return "";'
-            }
+              search:
+                'const mware = require("./" + _.kebabCase(name))(spec, config);',
+              replace: 'return "";',
+            },
           ],
-        }
-      }
+        },
+      },
+      {
+        test: /.node$/,
+        loader: "node-loader",
+      },
     ],
   },
   plugins: [
@@ -151,24 +202,24 @@ const extensionConfig = {
         // firebase-tools/src/parseTriggers.ts
         {
           from: "*.js",
-          to: './',
+          to: "./",
           context: "../src/deploy/functions/runtimes/node",
         },
         // Copy cross-env-shell.js used to run predeploy scripts
         // to ensure they work in Windows
         {
           from: "../node_modules/cross-env/dist",
-          to: './cross-env/dist',
+          to: "./cross-env/dist",
         },
       ],
-    })
+    }),
   ],
   infrastructureLogging: {
     level: "log", // enables logging required for problem matchers
   },
 };
 
-function makeWebConfig(entryName)  {
+function makeWebConfig(entryName) {
   return {
     name: entryName,
     mode: "none", // this leaves the source code as close as possible to the original (when packaging we set this to 'production')
@@ -231,7 +282,7 @@ function makeWebConfig(entryName)  {
     ],
     devtool: "nosources-source-map",
   };
-};
+}
 
 // Using the workaround for the typings-for-css-modules-loader race condition
 // issue. It doesn't seem like you have to put any actual code into the hook,

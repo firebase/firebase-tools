@@ -1,8 +1,9 @@
 export const TEXT = {
   INIT_HOSTING_BUTTON: "Host your Web App",
 
-  INIT_HOSTING_DESCRIPTION: "Deploy your app with Firebase Hosting"
-    + ", a high-performance static web host backed by a global CDN",
+  INIT_HOSTING_DESCRIPTION:
+    "Deploy your app with Firebase Hosting" +
+    ", a high-performance static web host backed by a global CDN",
 
   INIT_HOSTING_PROGRESS: "Initializing...",
 
@@ -30,5 +31,17 @@ export const TEXT = {
 
   DEPLOYING_IN_PROGRESS: "Deploying...",
 
-  DEPLOYING_PROGRESS_FRAMEWORK: "Deploying... this may take a few minutes."
+  DEPLOYING_PROGRESS_FRAMEWORK: "Deploying... this may take a few minutes.",
+
+  DEPLOY_FDC_ENABLED: "Deploy to production",
+
+  DEPLOY_FDC_DISABLED: "Not connected to production",
+
+  DEPLOY_FDC_DESCRIPTION:
+    "Deploy schema and operations to your production instance.",
+
+  CONNECT_TO_INSTANCE: "Connect to instance",
+
+  CONNECT_TO_INSTANCE_DESCRIPTION:
+    "Connect to the emulator or a production instance.",
 };

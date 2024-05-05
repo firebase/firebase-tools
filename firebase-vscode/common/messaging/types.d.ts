@@ -30,6 +30,6 @@ export interface EmulatorUiSelections {
   firebaseJsonPath?: string;
   importStateFolderPath?: string;
   exportStateOnExit: boolean;
-  mode: "hosting" | "all";
+  mode: "hosting" | "all" | "dataconnect";
   debugLogging: boolean;
 }

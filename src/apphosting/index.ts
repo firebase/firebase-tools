@@ -8,6 +8,7 @@ import {
   artifactRegistryDomain,
   cloudRunApiOrigin,
   cloudbuildOrigin,
+  consoleOrigin,
   developerConnectOrigin,
   iamOrigin,
   secretManagerOrigin,
@@ -22,8 +23,10 @@ import { DEFAULT_LOCATION } from "./constants";
 import { ensure } from "../ensureApiEnabled";
 import * as deploymentTool from "../deploymentTool";
 import { DeepOmit } from "../metaprogramming";
-import * as apps from "./app";
+import { webApps } from "./app";
 import { GitRepositoryLink } from "../gcp/devConnect";
+import * as ora from "ora";
+
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
 const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
@@ -41,10 +44,10 @@ export async function doSetup(
   webAppName: string | null,
   location: string | null,
   serviceAccount: string | null,
-  withDevConnect: boolean,
+  withCloudBuildRepos: boolean,
 ): Promise<void> {
   await Promise.all([
-    ...(withDevConnect ? [ensure(projectId, developerConnectOrigin(), "apphosting", true)] : []),
+    ensure(projectId, developerConnectOrigin(), "apphosting", true),
     ensure(projectId, cloudbuildOrigin(), "apphosting", true),
     ensure(projectId, secretManagerOrigin(), "apphosting", true),
     ensure(projectId, cloudRunApiOrigin(), "apphosting", true),
@@ -77,16 +80,16 @@ export async function doSetup(
     message: "Create a name for your backend [1-30 characters]",
   });
 
-  const webApp = await apps.getOrCreateWebApp(projectId, webAppName, backendId);
+  const webApp = await webApps.getOrCreateWebApp(projectId, webAppName, backendId);
   if (webApp) {
     logSuccess(`Firebase web app set to ${webApp.name}.\n`);
   } else {
     logWarning(`Firebase web app not set`);
   }
 
-  const gitRepositoryConnection: Repository | GitRepositoryLink = withDevConnect
-    ? await githubConnections.linkGitHubRepository(projectId, location)
-    : await repo.linkGitHubRepository(projectId, location);
+  const gitRepositoryConnection: Repository | GitRepositoryLink = withCloudBuildRepos
+    ? await repo.linkGitHubRepository(projectId, location)
+    : await githubConnections.linkGitHubRepository(projectId, location);
 
   const rootDir = await promptOnce({
     name: "rootDir",
@@ -95,6 +98,7 @@ export async function doSetup(
     message: "Specify your app's root directory relative to your repository",
   });
 
+  const createBackendSpinner = ora("Creating your new backend...").start();
   const backend = await createBackend(
     projectId,
     location,
@@ -104,6 +108,7 @@ export async function doSetup(
     webApp?.id,
     rootDir,
   );
+  createBackendSpinner.succeed(`Successfully created backend:\n\t${backend.name}\n`);
 
   // TODO: Once tag patterns are implemented, prompt which method the user
   // prefers. We could reduce the number of questions asked by letting people
@@ -125,11 +130,16 @@ export async function doSetup(
   });
 
   if (!confirmRollout) {
-    logSuccess(`Successfully created backend:\n\t${backend.name}`);
     logSuccess(`Your backend will be deployed at:\n\thttps://${backend.uri}`);
     return;
   }
 
+  logBullet(
+    `You may also track this rollout at:\n\t${consoleOrigin()}/project/${projectId}/apphosting`,
+  );
+  const createRolloutSpinner = ora(
+    "Starting a new rollout... This make take a few minutes. It's safe to exit now.",
+  ).start();
   await orchestrateRollout(projectId, location, backendId, {
     source: {
       codebase: {
@@ -137,9 +147,7 @@ export async function doSetup(
       },
     },
   });
-
-  logSuccess(`Successfully created backend:\n\t${backend.name}`);
-  logSuccess(`Your backend is now deployed at:\n\thttps://${backend.uri}`);
+  createRolloutSpinner.succeed(`Your backend is now deployed at:\n\thttps://${backend.uri}`);
 }
 
 /**
@@ -263,7 +271,7 @@ async function provisionDefaultComputeServiceAccount(projectId: string): Promise
     [
       "roles/firebaseapphosting.computeRunner",
       "roles/firebase.sdkAdminServiceAgent",
-      "roles/developerconnect.tokenAccessor",
+      "roles/developerconnect.readTokenAccessor",
     ],
     /* skipAccountLookup= */ true,
   );
@@ -297,10 +305,6 @@ export async function setDefaultTrafficPolicy(
   });
 }
 
-function delay(ms: number): Promise<number> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 /**
  * Creates a new build and rollout and polls both to completion.
  */
@@ -310,8 +314,6 @@ export async function orchestrateRollout(
   backendId: string,
   buildInput: DeepOmit<Build, apphosting.BuildOutputOnlyFields | "name">,
 ): Promise<{ rollout: Rollout; build: Build }> {
-  logBullet("Starting a new rollout... this may take a few minutes.");
-  await delay(45 * 1000);
   const buildId = await apphosting.getNextRolloutId(projectId, location, backendId, 1);
   const buildOp = await apphosting.createBuild(projectId, location, backendId, buildId, buildInput);
 
@@ -366,7 +368,6 @@ export async function orchestrateRollout(
   });
 
   const [rollout, build] = await Promise.all([rolloutPoll, buildPoll]);
-  logSuccess("Rollout completed.");
 
   if (build.state !== "READY") {
     if (!build.buildLogsUri) {
@@ -400,13 +401,16 @@ export async function deleteBackendAndPoll(
 }
 
 /**
- * Prompts the user for a location.
+ * Prompts the user for a location. If there's only a single valid location, skips the prompt and returns that location.
  */
 export async function promptLocation(
   projectId: string,
-  prompt = "Please select a location:",
+  prompt: string = "Please select a location:",
 ): Promise<string> {
   const allowedLocations = (await apphosting.listLocations(projectId)).map((loc) => loc.locationId);
+  if (allowedLocations.length === 1) {
+    return allowedLocations[0];
+  }
 
   return (await promptOnce({
     name: "location",
@@ -415,4 +419,43 @@ export async function promptLocation(
     message: prompt,
     choices: allowedLocations,
   })) as string;
+}
+
+/**
+ * Fetches a backend from the server. If there are multiple backends with that name (ie multi-regional backends),
+ * prompts the user to disambiguate.
+ */
+export async function getBackendForAmbiguousLocation(
+  projectId: string,
+  backendId: string,
+  locationDisambugationPrompt: string,
+): Promise<apphosting.Backend> {
+  let { unreachable, backends } = await apphosting.listBackends(projectId, "-");
+  if (unreachable && unreachable.length !== 0) {
+    logWarning(
+      `The following locations are currently unreachable: ${unreachable}.\n` +
+        "If your backend is in one of these regions, please try again later.",
+    );
+  }
+  backends = backends.filter(
+    (backend) => apphosting.parseBackendName(backend.name).id === backendId,
+  );
+  if (backends.length === 0) {
+    throw new FirebaseError(`No backend named "${backendId}" found.`);
+  }
+  if (backends.length === 1) {
+    return backends[0];
+  }
+
+  const backendsByLocation = new Map<string, apphosting.Backend>();
+  backends.forEach((backend) =>
+    backendsByLocation.set(apphosting.parseBackendName(backend.name).location, backend),
+  );
+  const location = await promptOnce({
+    name: "location",
+    type: "list",
+    message: locationDisambugationPrompt,
+    choices: [...backendsByLocation.keys()],
+  });
+  return backendsByLocation.get(location)!;
 }

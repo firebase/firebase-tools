@@ -37,6 +37,11 @@ export interface RCData {
   etags: {
     [projectId: string]: Record<EtagResourceType, Record<string, string>>;
   };
+  dataconnectEmulatorConfig: {
+    postgres?: {
+      localConnectionString: string;
+    };
+  };
 }
 
 export class RC {
@@ -58,7 +63,7 @@ export class RC {
 
   constructor(rcpath?: string, data?: Partial<RCData>) {
     this.path = rcpath;
-    this.data = { projects: {}, targets: {}, etags: {}, ...data };
+    this.data = { projects: {}, targets: {}, etags: {}, dataconnectEmulatorConfig: {}, ...data };
   }
 
   private set(key: string | string[], value: any): void {
@@ -228,6 +233,16 @@ export class RC {
     }
     this.data.etags[projectId][resourceType] = etagData;
     this.save();
+  }
+
+  getDataconnect() {
+    return this.data.dataconnectEmulatorConfig ?? {};
+  }
+
+  setDataconnect(localConnectionString: string) {
+    if (!this.data.dataconnectEmulatorConfig) {
+      this.data.dataconnectEmulatorConfig = { postgres: { localConnectionString } };
+    }
   }
 
   /**

@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "definitions": {
+    "postgresql": {
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "database": {
+          "type": "string",
+          "description": "The name of the PostgreSQL database."
+        },
+        "cloudSql": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "instanceId": {
+              "type": "string",
+              "description": "The ID of the CloudSQL instance for this database"
+            }
+          }
+        }
+      }
+    },
+    "dataSource": {
+      "oneOf": [
+        {  
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "postgresql": {
+              "$ref": "#/definitions/postgresql"
+            }
+          }
+        }
+      ]
+    },
+    "schema": {
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Relative path to directory containing GQL files defining the schema. If omitted, defaults to ./schema."
+        },
+        "datasource": {
+          "$ref": "#/definitions/dataSource"
+        }
+      }
+    }
+  },
+  "properties": {
+    "specVersion": {
+      "type": "string",
+      "description": "The Firebase Data Connect API version to target. If omitted, defaults to the latest version"
+    },
+    "serviceId": {
+      "type": "string",
+      "description": "The ID of the Firebase Data Connect service."
+    },
+    "connectorDirs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "A list of directories containing conector.yaml files describing a connector to deploy."
+    },
+    "schema": {
+      "$ref": "#/definitions/schema"
+    }
+  }
+}

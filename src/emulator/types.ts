@@ -15,6 +15,7 @@ export enum Emulators {
   STORAGE = "storage",
   EXTENSIONS = "extensions",
   EVENTARC = "eventarc",
+  DATACONNECT = "dataconnect",
 }
 
 export type DownloadableEmulators =
@@ -22,13 +23,15 @@ export type DownloadableEmulators =
   | Emulators.DATABASE
   | Emulators.PUBSUB
   | Emulators.UI
-  | Emulators.STORAGE;
+  | Emulators.STORAGE
+  | Emulators.DATACONNECT;
 export const DOWNLOADABLE_EMULATORS = [
   Emulators.FIRESTORE,
   Emulators.DATABASE,
   Emulators.PUBSUB,
   Emulators.UI,
   Emulators.STORAGE,
+  Emulators.DATACONNECT,
 ];
 
 export type ImportExportEmulators = Emulators.FIRESTORE | Emulators.DATABASE | Emulators.AUTH;
@@ -49,6 +52,7 @@ export const ALL_SERVICE_EMULATORS = [
   Emulators.SCHEDULED,
   Emulators.STORAGE,
   Emulators.EVENTARC,
+  Emulators.DATACONNECT,
 ].filter((v) => v);
 
 export const EMULATORS_SUPPORTED_BY_FUNCTIONS = [
@@ -138,12 +142,15 @@ export interface EmulatorInfo {
   pid?: number;
   reservedPorts?: number[];
 
-  /** All addresses that an emulator listens on. */
+  // All addresses that an emulator listens on.
   listen?: ListenSpec[];
 
-  /** The primary IP address that the emulator listens on. */
+  // The primary IP address that the emulator listens on.
   host: string;
   port: number;
+
+  // How long to wait for the emulator to start before erroring out.
+  timeout?: number;
 }
 
 export interface DownloadableEmulatorCommand {
@@ -162,6 +169,7 @@ export interface EmulatorDownloadOptions {
   namePrefix: string;
   skipChecksumAndSize?: boolean;
   skipCache?: boolean;
+  auth?: boolean;
 }
 
 export interface EmulatorUpdateDetails {
