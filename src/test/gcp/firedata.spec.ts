@@ -39,6 +39,7 @@ describe("firedata", () => {
     nock.disableNetConnect();
   });
   after(() => {
+    nock.cleanAll();
     nock.enableNetConnect();
   });
 
@@ -48,7 +49,7 @@ describe("firedata", () => {
         .get("/v1/accessmanagement/tos:getStatus")
         .reply(200, SAMPLE_RESPONSE);
 
-      expect(getTosStatus()).to.eventually.equal(SAMPLE_RESPONSE as GetTosStatusResponse);
+      expect(getTosStatus()).to.eventually.deep.equal(SAMPLE_RESPONSE as GetTosStatusResponse);
     });
   });
 
