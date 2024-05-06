@@ -18,14 +18,8 @@ import {
 } from "./types";
 import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "./constants";
 import { EmulatableBackend, FunctionsEmulator } from "./functionsEmulator";
-import { AuthEmulator, SingleProjectMode } from "./auth";
-import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
-import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
-import { HostingEmulator } from "./hostingEmulator";
-import { EventarcEmulator } from "./eventarcEmulator";
 import { FirebaseError } from "../error";
 import { getProjectId, needProjectId, getAliases, needProjectNumber } from "../projectUtils";
-import { PubsubEmulator } from "./pubsubEmulator";
 import * as commandUtils from "./commandUtils";
 import { EmulatorHub } from "./hub";
 import { ExportMetadata, HubExport } from "./hubExport";
@@ -41,7 +35,6 @@ import {
   MIN_SUPPORTED_JAVA_MAJOR_VERSION,
 } from "./commandUtils";
 import { fileExistsSync } from "../fsutils";
-import { StorageEmulator } from "./storage";
 import { getStorageRulesConfig } from "./storage/rules/config";
 import { getDefaultDatabaseInstance } from "../getDefaultDatabaseInstance";
 import { getProjectDefaultAccount } from "../auth";
@@ -53,6 +46,17 @@ import { requiresJava } from "./downloadableEmulators";
 import { prepareFrameworks } from "../frameworks";
 import * as experiments from "../experiments";
 import { EmulatorListenConfig, PortName, resolveHostAndAssignPorts } from "./portUtils";
+import { Runtime, isRuntime } from "../deploy/functions/runtimes/supported";
+
+import { AuthEmulator, SingleProjectMode } from "./auth";
+import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
+import { EventarcEmulator } from "./eventarcEmulator";
+import { DataConnectEmulator } from "./dataconnectEmulator";
+import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
+import { HostingEmulator } from "./hostingEmulator";
+import { PubsubEmulator } from "./pubsubEmulator";
+import { StorageEmulator } from "./storage";
+import { readFirebaseJson } from "../dataconnect/fileUtils";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
@@ -492,7 +496,16 @@ export async function startAll(
 
     for (const cfg of functionsCfg) {
       const functionsDir = path.join(projectDir, cfg.source);
-      const runtime = (options.extDevRuntime as string | undefined) ?? cfg.runtime;
+      const runtime = (options.extDevRuntime ?? cfg.runtime) as Runtime | undefined;
+      // N.B. (Issue #6965) it's OK for runtime to be undefined because the functions discovery process
+      // will dynamically detect it later.
+      // TODO: does runtime even need to be a part of EmultableBackend now that we have dynamic runtime
+      // detection? Might be an extensions thing.
+      if (runtime && !isRuntime(runtime)) {
+        throw new FirebaseError(
+          `Cannot load functions from ${functionsDir} because it has invalid runtime ${runtime as string}`,
+        );
+      }
       emulatableBackends.push({
         functionsDir,
         runtime,
@@ -805,6 +818,33 @@ export async function startAll(
       auto_download: true,
     });
     await startEmulator(pubsubEmulator);
+  }
+
+  if (listenForEmulator.dataconnect) {
+    const dataConnectAddr = legacyGetFirstAddr(Emulators.DATACONNECT);
+    const config = readFirebaseJson(options.config);
+    if (!config.length) {
+      throw new FirebaseError("No Data Connect service found in firebase.json");
+    } else if (config.length > 1) {
+      logger.warn(
+        `TODO: Add support for multiple services in the Data Connect emulator. Currently emulating first service ${config[0].source}`,
+      );
+    }
+    let configDir = config[0].source;
+    if (!path.isAbsolute(configDir)) {
+      const cwd = options.cwd || process.cwd();
+      configDir = path.resolve(path.join(cwd), configDir);
+    }
+    const dataConnectEmulator = new DataConnectEmulator({
+      host: dataConnectAddr.host,
+      port: dataConnectAddr.port,
+      projectId,
+      auto_download: true,
+      configDir,
+      locationId: config[0].location,
+      rc: options.rc,
+    });
+    await startEmulator(dataConnectEmulator);
   }
 
   if (listenForEmulator.storage) {

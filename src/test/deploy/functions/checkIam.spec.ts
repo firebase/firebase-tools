@@ -21,7 +21,7 @@ const BINDING = {
 const SPEC = {
   region: "us-west1",
   project: projectNumber,
-  runtime: "nodejs14",
+  runtime: "nodejs14" as const,
 };
 
 describe("checkIam", () => {
@@ -72,52 +72,6 @@ describe("checkIam", () => {
           members: [`serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`],
         },
       ]);
-    });
-  });
-
-  describe("mergeBindings", () => {
-    it("should not update the policy when the bindings are present", () => {
-      const policy = {
-        etag: "etag",
-        version: 3,
-        bindings: [BINDING],
-      };
-
-      const updated = checkIam.mergeBindings(policy, [BINDING]);
-
-      expect(updated).to.be.false;
-      expect(policy.bindings).to.deep.equal([BINDING]);
-    });
-
-    it("should update the members of a binding in the policy", () => {
-      const policy = {
-        etag: "etag",
-        version: 3,
-        bindings: [BINDING],
-      };
-
-      const updated = checkIam.mergeBindings(policy, [{ role: "some/role", members: ["newuser"] }]);
-
-      expect(updated).to.be.true;
-      expect(policy.bindings).to.deep.equal([
-        {
-          role: "some/role",
-          members: ["someuser", "newuser"],
-        },
-      ]);
-    });
-
-    it("should add a new binding to the policy", () => {
-      const policy = {
-        etag: "etag",
-        version: 3,
-        bindings: [],
-      };
-
-      const updated = checkIam.mergeBindings(policy, [BINDING]);
-
-      expect(updated).to.be.true;
-      expect(policy.bindings).to.deep.equal([BINDING]);
     });
   });
 

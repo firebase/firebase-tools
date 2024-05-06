@@ -10,7 +10,7 @@ const BASE_EP = {
   region: "us-east1",
   project: "project",
   entryPoint: "func",
-  runtime: "nodejs16",
+  runtime: "nodejs16" as const,
 };
 
 const authBlockingService = new auth.AuthBlockingService();

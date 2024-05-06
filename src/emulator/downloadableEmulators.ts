@@ -33,9 +33,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
     expectedChecksum: "2fd771101c0e1f7898c04c9204f2ce63",
   },
   firestore: {
-    version: "1.19.3",
-    expectedSize: 67296394,
-    expectedChecksum: "08a9b882a5c38570b6333f3931b1e52b",
+    version: "1.19.5",
+    expectedSize: 66204670,
+    expectedChecksum: "6d9fb826605701668af722f25048ad95",
   },
   storage: {
     version: "1.1.3",
@@ -50,10 +50,22 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
         expectedChecksum: "49f6dc1911dda9d10df62a6c09aaf9a0",
       },
   pubsub: {
-    version: "0.7.1",
-    expectedSize: 65137179,
-    expectedChecksum: "b59a6e705031a54a69e5e1dced7ca9bf",
+    version: "0.8.2",
+    expectedSize: 65611398,
+    expectedChecksum: "70bb840321423e6ae621a3ae2f314903",
   },
+  dataconnect:
+    process.platform === "darwin"
+      ? {
+          version: "1.1.13",
+          expectedSize: 25523360,
+          expectedChecksum: "1ce1c85707bb9e9f02751d19278d54f3",
+        }
+      : {
+          version: "1.1.13",
+          expectedSize: 22962864,
+          expectedChecksum: "673db586f0d451a79ec4db9f03b071ec",
+        },
 };
 
 export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
@@ -139,6 +151,30 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
       namePrefix: "pubsub-emulator",
     },
   },
+  // TODO: Add Windows binary here as well
+  dataconnect: {
+    downloadPath: path.join(
+      CACHE_DIR,
+      `dataconnect-emulator-${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
+    ),
+    version: EMULATOR_UPDATE_DETAILS.dataconnect.version,
+    binaryPath: path.join(
+      CACHE_DIR,
+      `dataconnect-emulator-${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
+    ),
+    opts: {
+      cacheDir: CACHE_DIR,
+      remoteUrl:
+        process.platform === "darwin"
+          ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-macos-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
+          : `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
+      expectedSize: EMULATOR_UPDATE_DETAILS.dataconnect.expectedSize,
+      expectedChecksum: EMULATOR_UPDATE_DETAILS.dataconnect.expectedChecksum,
+      skipChecksumAndSize: false,
+      namePrefix: "dataconnect-emulator",
+      auth: true,
+    },
+  },
 };
 
 const EmulatorDetails: { [s in DownloadableEmulators]: DownloadableEmulatorDetails } = {
@@ -167,6 +203,11 @@ const EmulatorDetails: { [s in DownloadableEmulators]: DownloadableEmulatorDetai
     instance: null,
     stdout: null,
   },
+  dataconnect: {
+    name: Emulators.DATACONNECT,
+    instance: null,
+    stdout: null,
+  },
 };
 
 const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = {
@@ -181,6 +222,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
       "single_project_mode",
     ],
     joinArgs: false,
+    shell: false,
   },
   firestore: {
     binary: "java",
@@ -204,6 +246,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
       // "single_project_mode_error",
     ],
     joinArgs: false,
+    shell: false,
   },
   storage: {
     // This is for the Storage Emulator rules runtime, which is started
@@ -219,18 +262,28 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     ],
     optionalArgs: [],
     joinArgs: false,
+    shell: false,
   },
   pubsub: {
     binary: getExecPath(Emulators.PUBSUB)!,
     args: [],
     optionalArgs: ["port", "host"],
     joinArgs: true,
+    shell: true,
   },
   ui: {
     binary: "node",
     args: [getExecPath(Emulators.UI)],
     optionalArgs: [],
     joinArgs: false,
+    shell: false,
+  },
+  dataconnect: {
+    binary: getExecPath(Emulators.DATACONNECT),
+    args: ["dev"],
+    optionalArgs: ["http_port", "grpc_port", "config_dir", "local_connection_string", "project_id"],
+    joinArgs: true,
+    shell: true,
   },
 };
 
@@ -306,6 +359,7 @@ export function _getCommand(
     args: cmdLineArgs,
     optionalArgs: baseCmd.optionalArgs,
     joinArgs: baseCmd.joinArgs,
+    shell: baseCmd.shell,
   };
 }
 
@@ -360,7 +414,7 @@ async function _runBinary(
     const logger = EmulatorLogger.forEmulator(emulator.name);
     emulator.stdout = fs.createWriteStream(getLogFileName(emulator.name));
     try {
-      emulator.instance = childProcess.spawn(command.binary, command.args, {
+      const opts: childProcess.SpawnOptions = {
         env: { ...process.env, ...extraEnv },
         // `detached` must be true as else a SIGINT (Ctrl-c) will stop the child process before we can handle a
         // graceful shutdown and call `downloadableEmulators.stop(...)` ourselves.
@@ -368,7 +422,11 @@ async function _runBinary(
         // related to this issue: https://github.com/grpc/grpc-java/pull/6512
         detached: true,
         stdio: ["inherit", "pipe", "pipe"],
-      });
+      };
+      if (command.shell && utils.IS_WINDOWS) {
+        opts.shell = true;
+      }
+      emulator.instance = childProcess.spawn(command.binary, command.args, opts);
     } catch (e: any) {
       if (e.code === "EACCES") {
         // Known issue when WSL users don't have java
@@ -481,14 +539,15 @@ export async function stop(targetName: DownloadableEmulators): Promise<void> {
 /**
  * @param targetName
  */
-export async function downloadIfNecessary(targetName: DownloadableEmulators): Promise<void> {
+export async function downloadIfNecessary(
+  targetName: DownloadableEmulators,
+): Promise<DownloadableEmulatorCommand> {
   const hasEmulator = fs.existsSync(getExecPath(targetName));
 
-  if (hasEmulator) {
-    return;
+  if (!hasEmulator) {
+    await downloadEmulator(targetName);
   }
-
-  await downloadEmulator(targetName);
+  return Commands[targetName];
 }
 
 /**
@@ -498,7 +557,12 @@ export async function downloadIfNecessary(targetName: DownloadableEmulators): Pr
  */
 export async function start(
   targetName: DownloadableEmulators,
-  args: any,
+  args: {
+    auto_download?: boolean;
+    port?: number;
+    host?: string;
+    [k: string]: any;
+  },
   extraEnv: Partial<NodeJS.ProcessEnv> = {},
 ): Promise<void> {
   const downloadDetails = DownloadDetails[targetName];

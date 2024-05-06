@@ -86,9 +86,9 @@ export const zipIn =
   };
 
 /** Used with type guards to guarantee that all cases have been covered. */
-export function assertExhaustive(val: never): never {
+export function assertExhaustive(val: never, message?: string): never {
   // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-  throw new Error(`Never has a value (${val}).`);
+  throw new Error(message || `Never has a value (${val}).`);
 }
 
 /**

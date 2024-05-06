@@ -1,7 +1,7 @@
 import * as proto from "../gcp/proto";
 import { Client } from "../apiv2";
 import { needProjectId } from "../projectUtils";
-import { apphostingOrigin } from "../api";
+import { apphostingOrigin, apphostingP4SADomain } from "../api";
 import { ensure } from "../ensureApiEnabled";
 import * as deploymentTool from "../deploymentTool";
 import { FirebaseError } from "../error";
@@ -10,7 +10,7 @@ import { DeepOmit, RecursiveKeyOf, assertImplements } from "../metaprogramming";
 export const API_VERSION = "v1alpha";
 
 export const client = new Client({
-  urlPrefix: apphostingOrigin,
+  urlPrefix: apphostingOrigin(),
   auth: true,
   apiVersion: API_VERSION,
 });
@@ -25,7 +25,7 @@ interface Codebase {
 /**
  * Specifies how Backend's data is replicated and served.
  *   GLOBAL_ACCESS: Stores and serves content from multiple points-of-presence (POP)
- *   REGIONAL_STRICT: Restricts data and serving infrastructure in Backend's region
+ *   REGIONAL_STRICT: Restricts data and serving infrastructure in Backend's location
  *
  */
 export type ServingLocality = "GLOBAL_ACCESS" | "REGIONAL_STRICT";
@@ -40,7 +40,8 @@ export interface Backend {
   createTime: string;
   updateTime: string;
   uri: string;
-  computeServiceAccount?: string;
+  serviceAccount?: string;
+  appId?: string;
 }
 
 export type BackendOutputOnlyFields = "name" | "createTime" | "updateTime" | "uri";
@@ -259,6 +260,28 @@ export interface Operation {
 
 export interface ListBackendsResponse {
   backends: Backend[];
+  nextPageToken?: string;
+  unreachable: string[];
+}
+
+const P4SA_DOMAIN = apphostingP4SADomain();
+
+/**
+ * Returns the App Hosting service agent.
+ */
+export function serviceAgentEmail(projectNumber: string): string {
+  return `service-${projectNumber}@${P4SA_DOMAIN}`;
+}
+
+/** Splits a backend resource name into its parts. */
+export function parseBackendName(backendName: string): {
+  projectName: string;
+  location: string;
+  id: string;
+} {
+  // sample value: "projects/<project-name>/locations/us-central1/backends/<backend-id>"
+  const [, projectName, , location, , id] = backendName.split("/");
+  return { projectName, location, id };
 }
 
 /**
@@ -299,16 +322,29 @@ export async function getBackend(
 }
 
 /**
- * List all backends present in a project and region.
+ * List all backends present in a project and location.
  */
 export async function listBackends(
   projectId: string,
   location: string,
 ): Promise<ListBackendsResponse> {
   const name = `projects/${projectId}/locations/${location}/backends`;
-  const res = await client.get<ListBackendsResponse>(name);
+  let pageToken: string | undefined;
+  const res: ListBackendsResponse = {
+    backends: [],
+    unreachable: [],
+  };
 
-  return res.body;
+  do {
+    const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
+    const int = await client.get<ListBackendsResponse>(name, { queryParams });
+    res.backends.push(...(int.body.backends || []));
+    res.unreachable?.push(...(int.body.unreachable || []));
+    pageToken = int.body.nextPageToken;
+  } while (pageToken);
+
+  res.unreachable = [...new Set(res.unreachable)];
+  return res;
 }
 
 /**
@@ -502,7 +538,7 @@ export async function listLocations(projectId: string): Promise<Location[]> {
  */
 export async function ensureApiEnabled(options: any): Promise<void> {
   const projectId = needProjectId(options);
-  return await ensure(projectId, apphostingOrigin, "app hosting", true);
+  return await ensure(projectId, apphostingOrigin(), "app hosting", true);
 }
 
 /**

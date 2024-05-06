@@ -9,7 +9,7 @@ import { getAstroVersion, getBootstrapScript, getConfig } from "./utils";
 export const name = "Astro";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.MetaFramework;
-export const supportedRange = "2 - 3";
+export const supportedRange = "2 - 4";
 
 export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!existsSync(join(dir, "package.json"))) return;

@@ -1,13 +1,13 @@
 import fetch, { Response } from "node-fetch";
 import * as fs from "fs";
 import * as path from "path";
-import * as yaml from "js-yaml";
+import * as yaml from "yaml";
 import { promisify } from "util";
 
 import { logger } from "../../../../logger";
 import * as api from "../../.../../../../api";
 import * as build from "../../build";
-import * as runtimes from "..";
+import { Runtime } from "../supported";
 import * as v1alpha1 from "./v1alpha1";
 import { FirebaseError } from "../../../../error";
 
@@ -20,7 +20,7 @@ export function yamlToBuild(
   yaml: any,
   project: string,
   region: string,
-  runtime: runtimes.Runtime,
+  runtime: Runtime,
 ): build.Build {
   try {
     if (!yaml.specVersion) {
@@ -43,7 +43,7 @@ export function yamlToBuild(
 export async function detectFromYaml(
   directory: string,
   project: string,
-  runtime: runtimes.Runtime,
+  runtime: Runtime,
 ): Promise<build.Build | undefined> {
   let text: string;
   try {
@@ -58,8 +58,8 @@ export async function detectFromYaml(
   }
 
   logger.debug("Found functions.yaml. Got spec:", text);
-  const parsed = yaml.load(text);
-  return yamlToBuild(parsed, project, api.functionsDefaultRegion, runtime);
+  const parsed = yaml.parse(text);
+  return yamlToBuild(parsed, project, api.functionsDefaultRegion(), runtime);
 }
 
 /**
@@ -68,7 +68,7 @@ export async function detectFromYaml(
 export async function detectFromPort(
   port: number,
   project: string,
-  runtime: runtimes.Runtime,
+  runtime: Runtime,
   timeout = 30_000 /* 30s to boot up. 30s may be too long, but many timeouts were reported when it was set to 10s. Please refer to https://github.com/firebase/firebase-tools/issues/5888#issuecomment-2004446757 for more details. */,
 ): Promise<build.Build> {
   let res: Response;
@@ -104,11 +104,11 @@ export async function detectFromPort(
 
   let parsed: any;
   try {
-    parsed = yaml.load(text);
+    parsed = yaml.parse(text);
   } catch (err: any) {
     logger.debug("Failed to parse functions.yaml", err);
     throw new FirebaseError(`Failed to load function definition from source: ${text}`);
   }
 
-  return yamlToBuild(parsed, project, api.functionsDefaultRegion, runtime);
+  return yamlToBuild(parsed, project, api.functionsDefaultRegion(), runtime);
 }

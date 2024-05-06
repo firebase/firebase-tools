@@ -44,7 +44,7 @@ interface Operation {
 }
 
 const client = new Client({
-  urlPrefix: eventarcOrigin,
+  urlPrefix: eventarcOrigin(),
   auth: true,
   apiVersion: API_VERSION,
 });

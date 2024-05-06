@@ -1,6 +1,3 @@
-import * as tty from "tty";
-import * as fs from "fs";
-
 import * as clc from "colorette";
 
 import { logger } from "../logger";
@@ -9,12 +6,14 @@ import { Command } from "../command";
 import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
 import { promptOnce } from "../prompt";
-import { logBullet, logSuccess, logWarning } from "../utils";
+import { logBullet, logSuccess, logWarning, readSecretValue } from "../utils";
 import { needProjectId, needProjectNumber } from "../projectUtils";
 import {
   addVersion,
   destroySecretVersion,
   toSecretVersionResourceName,
+  isFunctionsManaged,
+  ensureApi,
 } from "../gcp/secretManager";
 import { check } from "../ensureApiEnabled";
 import { requireAuth } from "../requireAuth";
@@ -26,7 +25,7 @@ export const command = new Command("functions:secrets:set <KEY>")
   .description("Create or update a secret for use in Cloud Functions for Firebase.")
   .withForce("Automatically updates functions to use the new secret.")
   .before(requireAuth)
-  .before(secrets.ensureApi)
+  .before(ensureApi)
   .before(requirePermissions, [
     "secretmanager.secrets.create",
     "secretmanager.secrets.get",
@@ -42,26 +41,14 @@ export const command = new Command("functions:secrets:set <KEY>")
     const projectNumber = await needProjectNumber(options);
     const key = await ensureValidKey(unvalidatedKey, options);
     const secret = await ensureSecret(projectId, key, options);
-    let secretValue;
-
-    if ((!options.dataFile || options.dataFile === "-") && tty.isatty(0)) {
-      secretValue = await promptOnce({
-        name: key,
-        type: "password",
-        message: `Enter a value for ${key}`,
-      });
-    } else {
-      let dataFile: string | number = 0;
-      if (options.dataFile && options.dataFile !== "-") {
-        dataFile = options.dataFile as string;
-      }
-      secretValue = fs.readFileSync(dataFile, "utf-8");
-    }
-
+    const secretValue = await readSecretValue(
+      `Enter a value for ${key}`,
+      options.dataFile as string | undefined,
+    );
     const secretVersion = await addVersion(projectId, key, secretValue);
     logSuccess(`Created a new secret version ${toSecretVersionResourceName(secretVersion)}`);
 
-    if (!secrets.isFirebaseManaged(secret)) {
+    if (!isFunctionsManaged(secret)) {
       logBullet(
         "Please deploy your functions for the change to take effect by running:\n\t" +
           clc.bold("firebase deploy --only functions"),

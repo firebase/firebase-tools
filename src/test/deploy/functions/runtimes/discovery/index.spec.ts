@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as yaml from "js-yaml";
+import * as yaml from "yaml";
 import * as sinon from "sinon";
 import * as nock from "nock";
 
@@ -19,7 +19,7 @@ const ENDPOINT: build.Endpoint = {
   platform: "gcfv2",
   project: "project",
   runtime: "nodejs16",
-  region: [api.functionsDefaultRegion],
+  region: [api.functionsDefaultRegion()],
   serviceAccount: null,
 };
 
@@ -28,7 +28,7 @@ const YAML_OBJ = {
   endpoints: { id: MIN_ENDPOINT },
 };
 
-const YAML_TEXT = yaml.dump(YAML_OBJ);
+const YAML_TEXT = yaml.stringify(YAML_OBJ);
 
 const BUILD: build.Build = build.of({ id: ENDPOINT });
 
@@ -37,7 +37,7 @@ describe("yamlToBuild", () => {
     const parsed = discovery.yamlToBuild(
       YAML_OBJ,
       "project",
-      api.functionsDefaultRegion,
+      api.functionsDefaultRegion(),
       "nodejs16",
     );
     expect(parsed).to.deep.equal(BUILD);
@@ -47,7 +47,7 @@ describe("yamlToBuild", () => {
     const flawed: Record<string, unknown> = { ...YAML_OBJ };
     delete flawed.specVersion;
     expect(() =>
-      discovery.yamlToBuild(flawed, "project", api.functionsDefaultRegion, "nodejs16"),
+      discovery.yamlToBuild(flawed, "project", api.functionsDefaultRegion(), "nodejs16"),
     ).to.throw(FirebaseError);
   });
 
@@ -57,7 +57,7 @@ describe("yamlToBuild", () => {
       specVersion: "32767beta2",
     };
     expect(() =>
-      discovery.yamlToBuild(flawed, "project", api.functionsDefaultRegion, "nodejs16"),
+      discovery.yamlToBuild(flawed, "project", api.functionsDefaultRegion(), "nodejs16"),
     ).to.throw(FirebaseError);
   });
 });
