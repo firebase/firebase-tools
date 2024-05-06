@@ -37,6 +37,7 @@ import {
   prepareEndpoints,
   BlockingTrigger,
   getTemporarySocketPath,
+  FunctionsRuntimeBundle,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
@@ -1788,7 +1789,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         return;
       }
     }
-    let debugBundle: any;
+    let debugBundle: FunctionsRuntimeBundle["debug"] | undefined;
     if (this.debugMode) {
       debugBundle = {
         functionTarget: trigger.entryPoint,
