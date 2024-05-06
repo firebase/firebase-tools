@@ -3,6 +3,7 @@ import { Client } from "../apiv2";
 import { EmulatorLogger } from "./emulatorLogger";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
 import { Constants } from "./constants";
+import { FirebaseError } from "../error";
 
 export interface ScheduledEmulatorArgs {
   projectId: string;
@@ -73,11 +74,9 @@ export class ScheduledEmulator implements EmulatorInstance {
     }
 
     if (scheduleData.schedules.length === 0) {
-      this.logger.log(
-        "ERROR",
+      throw new FirebaseError(
         `Failed to parse ${isCron ? "cron" : "text"} schedule for timer ${id}: ${schedule}`,
       );
-      return;
     }
 
     const timer = later.setInterval(callback, scheduleData);
