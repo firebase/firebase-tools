@@ -1,4 +1,3 @@
-import * as repo from "./repo";
 import * as poller from "../operation-poller";
 import * as apphosting from "../gcp/apphosting";
 import * as githubConnections from "./githubConnections";
@@ -71,7 +70,6 @@ export async function doSetup(
   webAppName: string | null,
   location: string | null,
   serviceAccount: string | null,
-  withCloudBuildRepos: boolean,
 ): Promise<void> {
   await Promise.all([
     ensure(projectId, developerConnectOrigin(), "apphosting", true),
@@ -114,9 +112,8 @@ export async function doSetup(
     logWarning(`Firebase web app not set`);
   }
 
-  const gitRepositoryConnection: Repository | GitRepositoryLink = withCloudBuildRepos
-    ? await repo.linkGitHubRepository(projectId, location)
-    : await githubConnections.linkGitHubRepository(projectId, location);
+  const gitRepositoryConnection: Repository | GitRepositoryLink =
+    await githubConnections.linkGitHubRepository(projectId, location);
 
   const rootDir = await promptOnce({
     name: "rootDir",
