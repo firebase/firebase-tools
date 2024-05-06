@@ -1122,7 +1122,6 @@ export class FunctionsEmulator implements EmulatorInstance {
             return resolve();
           }
 
-
           const timeToWait = this.calculateTimeToWait(retryConfig, retryCount);
           if (timeToWait === null || timeToWait < 0) {
             return resolve();
