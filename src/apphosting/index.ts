@@ -15,7 +15,6 @@ import {
 import { Backend, BackendOutputOnlyFields, API_VERSION, Build, Rollout } from "../gcp/apphosting";
 import { addServiceAccountToRoles } from "../gcp/resourceManager";
 import * as iam from "../gcp/iam";
-import { Repository } from "../gcp/cloudbuild";
 import { FirebaseError } from "../error";
 import { promptOnce } from "../prompt";
 import { DEFAULT_LOCATION } from "./constants";
@@ -112,8 +111,10 @@ export async function doSetup(
     logWarning(`Firebase web app not set`);
   }
 
-  const gitRepositoryConnection: Repository | GitRepositoryLink =
-    await githubConnections.linkGitHubRepository(projectId, location);
+  const gitRepositoryConnection: GitRepositoryLink = await githubConnections.linkGitHubRepository(
+    projectId,
+    location,
+  );
 
   const rootDir = await promptOnce({
     name: "rootDir",
@@ -257,7 +258,7 @@ export async function createBackend(
   projectId: string,
   location: string,
   backendId: string,
-  repository: Repository | GitRepositoryLink,
+  repository: GitRepositoryLink,
   serviceAccount: string | null,
   webAppId: string | undefined,
   rootDir = "/",
