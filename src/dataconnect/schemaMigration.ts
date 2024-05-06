@@ -212,7 +212,11 @@ function toString(diff: Diff) {
 }
 
 function getIncompatibleSchemaError(err: any): IncompatibleSqlSchemaError | undefined {
-  const original = err.context?.body.error;
+  const original = err.context?.body.error || err.orignal;
+  if (!original) {
+    // If we can't get the original, rethrow so we don't cover up the original error.
+    throw err;
+  }
   const details: any[] = original.details;
   const incompatibles = details.filter((d) => d["@type"] === IMCOMPATIBLE_SCHEMA_ERROR_TYPESTRING);
   // Should never get multiple incompatible schema errors
