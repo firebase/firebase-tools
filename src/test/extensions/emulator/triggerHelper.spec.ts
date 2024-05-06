@@ -151,11 +151,7 @@ describe("triggerHelper", () => {
         platform: "gcfv1",
         entryPoint: "test-resource",
         name: "test-resource",
-        eventTrigger: {
-          eventType: "google.pubsub.topic.publish",
-          resource: "",
-        },
-        schedule: {
+        scheduleTrigger: {
           schedule: "every 5 minutes",
         },
       };

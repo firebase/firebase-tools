@@ -3,9 +3,6 @@ import { Client } from "../apiv2";
 import { EmulatorLogger } from "./emulatorLogger";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
 import { Constants } from "./constants";
-import { EmulatorRegistry } from "./registry";
-import { Timer } from "../deploy/functions/release/timer";
-import http from "http";
 
 export interface ScheduledEmulatorArgs {
   projectId: string;

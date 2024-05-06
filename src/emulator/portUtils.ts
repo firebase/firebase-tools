@@ -208,7 +208,6 @@ const EMULATOR_CAN_LISTEN_ON_PRIMARY_ONLY: Record<PortName, boolean> = {
   hosting: true,
 };
 
-
 export interface EmulatorListenConfig {
   host: string;
   port: number;

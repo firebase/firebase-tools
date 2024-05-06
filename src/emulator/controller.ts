@@ -379,6 +379,7 @@ export async function startAll(
       emulator === Emulators.EVENTARC ||
       // Same port as Functions, no need for separate assignment
       emulator === Emulators.EXTENSIONS ||
+      emulator === Emulators.SCHEDULED ||
       (emulator === Emulators.UI && !showUI)
     ) {
       continue;
@@ -842,6 +843,7 @@ export async function startAll(
       projectId,
       auto_download: true,
       configDir,
+      locationId: config[0].location,
       rc: options.rc,
     });
     await startEmulator(dataConnectEmulator);
@@ -947,7 +949,7 @@ export async function startAll(
 
 function getListenConfig(
   options: EmulatorOptions,
-  emulator: Exclude<Emulators, Emulators.EXTENSIONS>,
+  emulator: Exclude<Emulators, Emulators.EXTENSIONS | Emulators.SCHEDULED>,
 ): EmulatorListenConfig {
   let host = options.config.src.emulators?.[emulator]?.host || Constants.getDefaultHost();
   if (host === "localhost" && utils.isRunningInWSL()) {

@@ -9,8 +9,8 @@
       "version": "13.8.0",
       "license": "MIT",
       "dependencies": {
-        "@google-cloud/cloud-sql-connector": "^1.2.3",
         "@breejs/later": "^4.2.0",
+        "@google-cloud/cloud-sql-connector": "^1.2.3",
         "@google-cloud/pubsub": "^3.0.1",
         "abort-controller": "^3.0.0",
         "ajv": "^6.12.6",
