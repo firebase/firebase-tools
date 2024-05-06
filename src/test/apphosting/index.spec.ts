@@ -84,9 +84,12 @@ describe("apphosting setup functions", () => {
 
     const cloudBuildConnRepo = {
       name: `projects/${projectId}/locations/${location}/connections/framework-${location}/repositories/repoId`,
-      remoteUri: "remoteUri",
+      cloneUri: "cloneUri",
       createTime: "0",
       updateTime: "1",
+      deleteTime: "2",
+      reconciling: true,
+      uid: "1",
     };
 
     it("should create a new backend", async () => {
