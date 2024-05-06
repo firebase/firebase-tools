@@ -207,10 +207,6 @@ export type EmulatorsConfig = {
     host?: string;
     port?: number;
   };
-  scheduled?: {
-    host?: string;
-    port?: number | string;
-  };
   storage?: {
     host?: string;
     port?: number;
