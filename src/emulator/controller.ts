@@ -569,6 +569,9 @@ export async function startAll(
 
     const account = getProjectDefaultAccount(options.projectRoot);
 
+    const scheduledEmulator = new ScheduledEmulator();
+    await startEmulator(scheduledEmulator);
+
     // TODO(b/213241033): Figure out how to watch for changes to extensions .env files & reload triggers when they change.
     const functionsEmulator = new FunctionsEmulator({
       projectId,
@@ -847,22 +850,6 @@ export async function startAll(
       rc: options.rc,
     });
     await startEmulator(dataConnectEmulator);
-  }
-
-  if (listenForEmulator.scheduled) {
-    if (!projectId) {
-      throw new FirebaseError(
-        "Cannot start the Scheduled emulator without a project: run 'firebase init' or provide the --project flag",
-      );
-    }
-
-    const scheduledAddr = legacyGetFirstAddr(Emulators.SCHEDULED);
-    const scheduledEmulator = new ScheduledEmulator({
-      host: scheduledAddr.host,
-      port: scheduledAddr.port,
-      projectId,
-    });
-    await startEmulator(scheduledEmulator);
   }
 
   if (listenForEmulator.storage) {
