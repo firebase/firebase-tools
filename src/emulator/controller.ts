@@ -75,7 +75,7 @@ export async function exportOnExit(options: any) {
     try {
       utils.logBullet(
         `Automatically exporting data using ${FLAG_EXPORT_ON_EXIT_NAME} "${exportOnExitDir}" ` +
-        "please wait for the export to finish...",
+          "please wait for the export to finish...",
       );
       await exportEmulatorData(exportOnExitDir, options, /* initiatedBy= */ "exit");
     } catch (e: any) {
@@ -912,8 +912,8 @@ export async function startAll(
       "WARN",
       "emulators",
       "The Emulator UI is not starting, either because none of the running " +
-      "emulators have a UI component or the Emulator UI cannot " +
-      "determine the Project ID. Pass the --project flag to specify a project.",
+        "emulators have a UI component or the Emulator UI cannot " +
+        "determine the Project ID. Pass the --project flag to specify a project.",
     );
   }
 
