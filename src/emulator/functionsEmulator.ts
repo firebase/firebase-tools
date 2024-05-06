@@ -1122,25 +1122,11 @@ export class FunctionsEmulator implements EmulatorInstance {
             return resolve();
           }
 
-          const {
-            retryCount: maxRetryCount,
-            maxRetrySeconds,
-            maxBackoffSeconds,
-            minBackoffSeconds,
-            maxDoublings,
-          } = retryConfig;
-          if (statusCode >= 200 && statusCode < 300) return resolve();
-          if (maxRetryCount != null && retryCount >= maxRetryCount) return resolve();
 
-          const timeToWait = Math.min(
-            maxBackoffSeconds ?? 600,
-            Math.max(
-              Math.pow(2, maxDoublings != null ? Math.min(retryCount, maxDoublings) : retryCount),
-              minBackoffSeconds ?? 10,
-            ),
-          );
-
-          if (maxRetrySeconds != null && timeToWait > maxRetrySeconds) return resolve();
+          const timeToWait = this.calculateTimeToWait(retryConfig, retryCount);
+          if (timeToWait === null || timeToWait < 0) {
+            return resolve();
+          }
 
           this.logger.log(
             "WARN",
@@ -1807,5 +1793,30 @@ export class FunctionsEmulator implements EmulatorInstance {
       reqBody,
       debugBundle,
     );
+  }
+
+  private calculateTimeToWait(
+    retryConfig: backend.ScheduleRetryConfig,
+    retryCount: number,
+  ): number | null {
+    const {
+      retryCount: maxRetryCount,
+      maxRetrySeconds = 0,
+      maxBackoffSeconds,
+      minBackoffSeconds,
+      maxDoublings,
+    } = retryConfig;
+    if (maxRetryCount != null && retryCount >= maxRetryCount) return null;
+
+    const timeToWait = Math.min(
+      maxBackoffSeconds ?? 600,
+      (minBackoffSeconds ?? 5) * Math.pow(2, Math.min(retryCount - 1, maxDoublings ?? 5)),
+    );
+
+    if (maxRetrySeconds !== null && maxRetrySeconds !== 0 && timeToWait > maxRetrySeconds) {
+      return maxRetrySeconds;
+    }
+
+    return timeToWait;
   }
 }
