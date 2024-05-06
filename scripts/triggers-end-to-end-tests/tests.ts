@@ -187,16 +187,17 @@ describe("function triggers", () => {
       expect(test.pubsubV2TriggerCount).to.equal(1);
     });
 
-    it("should write to the scheduled pubsub emulator", async function (this) {
-      this.timeout(EMULATOR_TEST_TIMEOUT);
+    // Note: This test is not relevant since scheduled functions are handled by the Scheduled Emulator now
+    // it("should write to the scheduled pubsub emulator", async function (this) {
+    //   this.timeout(EMULATOR_TEST_TIMEOUT);
 
-      const response = await test.writeToScheduledPubsub();
-      expect(response.status).to.equal(200);
-      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
-    });
+    //   const response = await test.writeToScheduledPubsub();
+    //   expect(response.status).to.equal(200);
+    //   await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+    // });
 
     it("should have have triggered cloud functions", () => {
-      expect(test.pubsubTriggerCount).to.equal(2);
+      expect(test.pubsubTriggerCount).to.equal(1);
     });
   });
 
