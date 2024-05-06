@@ -32,8 +32,10 @@ export interface OperationResult<T> {
   done?: boolean;
   response?: T;
   error?: {
+    name: string;
     message: string;
     code: number;
+    details?: any[];
   };
   metadata?: {
     [key: string]: any;
@@ -63,7 +65,7 @@ export class OperationPoller<T> {
     if (error) {
       throw error instanceof FirebaseError
         ? error
-        : new FirebaseError(error.message, { status: error.code });
+        : new FirebaseError(error.message, { status: error.code, original: error });
     }
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     return response!;
