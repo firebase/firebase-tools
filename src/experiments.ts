@@ -118,6 +118,12 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: false,
   },
+
+  dataconnect: {
+    shortDescription: "Enable Data Connect related features.",
+    fullDescription: "Enable Data Connect related features.",
+    public: false,
+  },
 });
 
 export type ExperimentName = keyof typeof ALL_EXPERIMENTS;

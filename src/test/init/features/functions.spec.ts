@@ -15,7 +15,7 @@ function createExistingTestSetupAndConfig(): { setup: Setup; config: Config } {
   const cbconfig = {
     source: TEST_SOURCE_DEFAULT,
     codebase: TEST_CODEBASE_DEFAULT,
-    ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"],
+    ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log", "*.local"],
     predeploy: ['npm --prefix "$RESOURCE_DIR" run lint'],
   };
 
@@ -24,7 +24,7 @@ function createExistingTestSetupAndConfig(): { setup: Setup; config: Config } {
       config: {
         functions: [cbconfig],
       },
-      rcfile: { projects: {} },
+      rcfile: { projects: {}, targets: {}, etags: {}, dataconnectEmulatorConfig: {} },
       featureArg: true,
     },
     config: new Config({ functions: [cbconfig] }, { projectDir: "test", cwd: "test" }),
@@ -85,7 +85,7 @@ describe("functions", () => {
         expect(setup.config.functions[0]).to.deep.equal({
           source: TEST_SOURCE_DEFAULT,
           codebase: TEST_CODEBASE_DEFAULT,
-          ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"],
+          ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log", "*.local"],
           predeploy: ['npm --prefix "$RESOURCE_DIR" run lint'],
         });
         expect(askWriteProjectFileStub.getCalls().map((call) => call.args[0])).to.deep.equal([
@@ -112,7 +112,7 @@ describe("functions", () => {
         expect(setup.config.functions[0]).to.deep.equal({
           source: TEST_SOURCE_DEFAULT,
           codebase: TEST_CODEBASE_DEFAULT,
-          ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"],
+          ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log", "*.local"],
           predeploy: [
             'npm --prefix "$RESOURCE_DIR" run lint',
             'npm --prefix "$RESOURCE_DIR" run build',
@@ -149,13 +149,25 @@ describe("functions", () => {
           {
             source: TEST_SOURCE_DEFAULT,
             codebase: TEST_CODEBASE_DEFAULT,
-            ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"],
+            ignore: [
+              "node_modules",
+              ".git",
+              "firebase-debug.log",
+              "firebase-debug.*.log",
+              "*.local",
+            ],
             predeploy: ['npm --prefix "$RESOURCE_DIR" run lint'],
           },
           {
             source: "testsource2",
             codebase: "testcodebase2",
-            ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"],
+            ignore: [
+              "node_modules",
+              ".git",
+              "firebase-debug.log",
+              "firebase-debug.*.log",
+              "*.local",
+            ],
             predeploy: ['npm --prefix "$RESOURCE_DIR" run lint'],
           },
         ]);
@@ -185,7 +197,13 @@ describe("functions", () => {
           {
             source: TEST_SOURCE_DEFAULT,
             codebase: TEST_CODEBASE_DEFAULT,
-            ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"],
+            ignore: [
+              "node_modules",
+              ".git",
+              "firebase-debug.log",
+              "firebase-debug.*.log",
+              "*.local",
+            ],
             predeploy: ['npm --prefix "$RESOURCE_DIR" run lint'],
           },
         ]);

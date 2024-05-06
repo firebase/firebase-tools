@@ -1,0 +1,10 @@
+specVersion: "v1alpha"
+serviceId: "integration-test"
+schema:
+  source: "./schema"
+  datasource:
+    postgresql:
+      database: "dataconnect-test"
+      cloudSql:
+        instanceId: "dataconnect-test"
+connectorDirs: ["./connector"]

@@ -2,7 +2,7 @@ import { BrokerImpl, Receiver } from "../../messaging/broker";
 import {
   MessageParamsMap,
   WebviewToExtensionParamsMap,
-} from "../../messaging/protocol";
+} from "../../../common/messaging/protocol";
 import { createFake } from "./mock";
 
 export type SentLog = { message: string; args: any[] };

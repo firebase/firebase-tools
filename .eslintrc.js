@@ -130,5 +130,7 @@ module.exports = {
     "src/emulator/auth/schema.ts",
     // TODO(hsubox76): Set up a job to run eslint separately on vscode dir
     "firebase-vscode/",
+    // If this is leftover from "clean-install.sh", don't lint it
+    "clean/**",
   ],
 };

@@ -9,7 +9,7 @@ firebaseSuite("getChannels", () => {
     async () => {
       const result = await getChannels(null);
       assert.deepStrictEqual(result, []);
-    },
+    }
   );
 
   firebaseTest("returns an empty array if no project provided", async () => {
