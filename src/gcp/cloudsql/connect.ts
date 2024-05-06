@@ -172,7 +172,7 @@ export async function setupIAMUser(
   return user;
 }
 
-function firebaseowner(databaseId: string) {
+export function firebaseowner(databaseId: string) {
   return `firebaseowner_${databaseId}_public`;
 }
 
