@@ -118,7 +118,7 @@ export class EmulatedTrigger {
   constructor(
     public definition: EmulatedTriggerDefinition,
     private module: any,
-  ) { }
+  ) {}
 
   get memoryLimitBytes(): number {
     return (this.definition.availableMemoryMb || 128) * 1024 * 1024;
@@ -185,12 +185,14 @@ export function emulatedFunctionsFromEndpoints(
     if (endpoint.platform === "gcfv1") {
       def.labels[EVENTARC_SOURCE_ENV] =
         "cloudfunctions-emulated.googleapis.com" +
-        `/projects/${endpoint.project || "project"}/locations/${endpoint.region}/functions/${endpoint.id
+        `/projects/${endpoint.project || "project"}/locations/${endpoint.region}/functions/${
+          endpoint.id
         }`;
     } else if (endpoint.platform === "gcfv2") {
       def.labels[EVENTARC_SOURCE_ENV] =
         "run-emulated.googleapis.com" +
-        `/projects/${endpoint.project || "project"}/locations/${endpoint.region}/services/${endpoint.id
+        `/projects/${endpoint.project || "project"}/locations/${endpoint.region}/services/${
+          endpoint.id
         }`;
     }
     def.timeoutSeconds = endpoint.timeoutSeconds || 60;
