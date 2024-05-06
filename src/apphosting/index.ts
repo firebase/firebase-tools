@@ -98,7 +98,6 @@ export async function doSetup(
 
   location =
     location || (await promptLocation(projectId, "Select a location to host your backend:\n"));
-  logSuccess(`Location set to ${location}.\n`);
 
   const backendId = await promptNewBackendId(projectId, location, {
     name: "backendId",
@@ -450,13 +449,17 @@ export async function promptLocation(
     return allowedLocations[0];
   }
 
-  return (await promptOnce({
+  const location = (await promptOnce({
     name: "location",
     type: "list",
     default: DEFAULT_LOCATION,
     message: prompt,
     choices: allowedLocations,
   })) as string;
+
+  logSuccess(`Location set to ${location}.\n`);
+
+  return location;
 }
 
 /**
