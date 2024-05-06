@@ -26,11 +26,12 @@ export const command = new Command("dataconnect:sdk:generate")
         configDir,
         auto_download: true,
         rc: options.rc,
+        locationId: service.location,
       };
       const dataconnectEmulator = new DataConnectEmulator(args);
       for (const conn of serviceInfo.connectorInfo) {
         const output = await dataconnectEmulator.generate(conn.connectorYaml.connectorId);
-        console.log(output);
+        logger.info(output);
         logger.info(`Generated SDKs for ${conn.connectorYaml.connectorId}`);
       }
     }

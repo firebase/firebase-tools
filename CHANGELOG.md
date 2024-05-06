@@ -1,2 +1,4 @@
 - Increased the timeout for waiting for emulators to start to 60s. (#7091)
+- Fixes infinite loop when trying to create a Hosting site.
+- Fix copied functions dist dir files for Next.js when source config ends with slash (#7099)
 - Add support for `Objects: patch` v1 API to the storage emulator. (#7097)
