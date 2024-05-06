@@ -15,7 +15,6 @@ import { RCData } from "../../src/rc";
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react";
 
 export function SidebarApp() {
-
   const env = useBroker("notifyEnv")?.env;
   /**
    * null - has not finished checking yet
