@@ -1,5 +1,10 @@
 # Change Log
 
+
+## 0.1.7
+
+- Emulator ver 1.1.14
+
 ## 0.1.6
 
 - Fix deploy command
