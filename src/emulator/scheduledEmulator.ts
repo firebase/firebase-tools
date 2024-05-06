@@ -61,8 +61,9 @@ export class ScheduledEmulator implements EmulatorInstance {
 
   public createTimer(id: string, schedule: string, callback: () => void): void {
     let scheduleData: later.ScheduleData;
+    schedule = schedule.trim();
 
-    const regexForCronPattern = /(((\d+,)+\d+|(\d+(\/|-)\d+)|\d+|\*) ?){5,6}/;
+    const regexForCronPattern = /^(((\d+,)+\d+|(\d+(\/|-)\d+)|\d+|\*) ?){5,6}$/;
     const isCron = regexForCronPattern.test(schedule);
     if (isCron) {
       // We assume that the schedule is a cron expression

@@ -10,6 +10,7 @@ describe("functions-config-export", () => {
     let loadRCStub: sinon.SinonStub;
 
     beforeEach(() => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       loadRCStub = sinon.stub(rc, "loadRC").returns({} as any); // eslint-disable-line @typescript-eslint/no-explicit-any
     });
 
