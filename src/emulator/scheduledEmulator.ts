@@ -1,25 +1,13 @@
 import * as later from "@breejs/later";
-import { Client } from "../apiv2";
 import { EmulatorLogger } from "./emulatorLogger";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
-import { Constants } from "./constants";
 import { FirebaseError } from "../error";
-
-export interface ScheduledEmulatorArgs {
-  projectId: string;
-  port?: number;
-  host?: string;
-}
+import { EmulatorRegistry } from "./registry";
 
 export class ScheduledEmulator implements EmulatorInstance {
-  // Client for communicating with the Functions Emulator
-  private client?: Client;
-
   private logger = EmulatorLogger.forEmulator(Emulators.SCHEDULED);
 
   private timers = new Map<string, later.Timer>();
-
-  constructor(private args: ScheduledEmulatorArgs) {}
 
   public start(): Promise<void> {
     this.logger.logLabeled("DEBUG", "Scheduled", "Started Scheduled emulator, this is a noop.");
@@ -40,14 +28,13 @@ export class ScheduledEmulator implements EmulatorInstance {
   }
 
   getInfo(): EmulatorInfo {
-    const host = this.args.host || Constants.getDefaultHost();
-    const port = this.args.port || Constants.getDefaultPort(Emulators.SCHEDULED);
-
-    return {
-      name: this.getName(),
-      host,
-      port,
-    };
+    const functionsEmulator = EmulatorRegistry.get(Emulators.FUNCTIONS);
+    if (!functionsEmulator) {
+      throw new FirebaseError(
+        "Scheduled Emulator is running but Functions emulator is not. This should never happen.",
+      );
+    }
+    return { ...functionsEmulator.getInfo(), name: this.getName() };
   }
 
   getName(): Emulators {

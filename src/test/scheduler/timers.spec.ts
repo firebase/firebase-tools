@@ -5,7 +5,7 @@ describe("scheduler-timers", () => {
   let emulator: ScheduledEmulator;
 
   beforeEach(() => {
-    emulator = new ScheduledEmulator({ projectId: "test" });
+    emulator = new ScheduledEmulator();
   });
 
   it("should create a new timer for a valid text expression", () => {
