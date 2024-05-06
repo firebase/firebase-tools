@@ -14,6 +14,7 @@ export interface DataConnectEmulatorArgs {
   port?: number;
   host?: string;
   configDir?: string;
+  locationId?: string;
   auto_download?: boolean;
   rc: RC;
 }
@@ -48,6 +49,7 @@ export class DataConnectEmulator implements EmulatorInstance {
       config_dir: this.args.configDir,
       local_connection_string: this.getLocalConectionString(),
       project_id: this.args.projectId,
+      service_location: this.args.locationId,
     });
   }
 
@@ -80,6 +82,7 @@ export class DataConnectEmulator implements EmulatorInstance {
     const commandInfo = await downloadIfNecessary(Emulators.DATACONNECT);
     const cmd = [
       "generate",
+      `--service_location=${this.args.locationId}`,
       `--config_dir=${this.args.configDir}`,
       `--connector_id=${connectorId}`,
     ];
