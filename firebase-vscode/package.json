@@ -1,6 +1,6 @@
 {
   "name": "firebase-vscode",
-  "displayName": "Firebase Plugin",
+  "displayName": "Firebase",
   "publisher": "firebase",
   "icon": "./resources/firebase_logo.png",
   "description": "VSCode Extension for Firebase",
