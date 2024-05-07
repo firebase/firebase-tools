@@ -95,14 +95,14 @@ export async function getCompilerStream(
             "Content-Type": "application/json",
             "x-mantle-admin": "all",
           },
-        }
-      )
+        },
+      ),
     );
 
     function fromStream(
       stream: NodeJS.ReadableStream,
       finishEventName = "end",
-      dataEventName = "data"
+      dataEventName = "data",
     ): Observable<CompilerResponse> {
       stream.pause();
 
@@ -133,7 +133,8 @@ export async function getCompilerStream(
       });
     }
     return fromStream(resp.body!);
-  } catch {
+  } catch (err) {
+    console.log("Stream failed to connect with error: ", err);
     return of({});
   }
 }

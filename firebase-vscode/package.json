@@ -1,7 +1,8 @@
 {
   "name": "firebase-vscode",
-  "displayName": "firebase-vscode",
+  "displayName": "Firebase",
   "publisher": "firebase",
+  "icon": "./resources/firebase_logo.png",
   "description": "VSCode Extension for Firebase",
   "version": "0.1.6",
   "engines": {
