@@ -29,6 +29,7 @@ import { runDataConnectCompiler } from "./core-compiler";
 import { setVSCodeEnvVars } from "../../../src/utils";
 import { Result } from "../result";
 import { setTerminalEnvVars } from "./terminal";
+import { runEmulatorIssuesStream } from "./emulator-stream";
 
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
@@ -169,7 +170,7 @@ export function registerFdc(
         vscode.commands.executeCommand(
           "firebase.dataConnect.executeIntrospection",
         );
-
+        runEmulatorIssuesStream(configs,fdcService.localEndpoint.value);
         runDataConnectCompiler(configs, fdcService.localEndpoint.value);
       }
     }),
