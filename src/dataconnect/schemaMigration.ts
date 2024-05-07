@@ -2,18 +2,16 @@ import * as clc from "colorette";
 import { format } from "sql-formatter";
 
 import { IncompatibleSqlSchemaError, Diff, SCHEMA_ID } from "./types";
-import { getSchema, upsertSchema } from "./client";
+import { getSchema, upsertSchema, deleteConnector } from "./client";
 import { execute, firebaseowner, setupIAMUser } from "../gcp/cloudsql/connect";
-import { promptOnce } from "../prompt";
+import { promptOnce, confirm } from "../prompt";
 import { logger } from "../logger";
 import { Schema } from "./types";
 import { Options } from "../options";
 import { FirebaseError } from "../error";
 import { needProjectId } from "../projectUtils";
-import { logLabeledWarning } from "../utils";
-
-const IMCOMPATIBLE_SCHEMA_ERROR_TYPESTRING =
-  "type.googleapis.com/google.firebase.dataconnect.v1main.IncompatibleSqlSchemaError";
+import { logLabeledWarning, logLabeledSuccess } from "../utils";
+import * as errors from "./errors";
 
 export async function diffSchema(schema: Schema): Promise<Diff[]> {
   const dbName = schema.primaryDatasource.postgresql?.database;
@@ -26,14 +24,17 @@ export async function diffSchema(schema: Schema): Promise<Diff[]> {
     await ensureServiceIsConnectedToCloudSql(serviceName);
     await upsertSchema(schema, /** validateOnly=*/ true);
   } catch (err: any) {
-    const incompatible = getIncompatibleSchemaError(err);
+    const invalid = errors.isInvalidConnectorError(err);
+    if (invalid) {
+      displayInvalidConnectors(errors.getInvalidConnectorIds(err.message));
+    }
+    const incompatible = errors.getIncompatibleSchemaError(err);
     if (incompatible) {
       displaySchemaChanges(incompatible);
       return incompatible.diffs;
     }
-    throw err;
   }
-  logger.debug(`Schema was up to date for ${instanceName}:${dbName}`);
+  logLabeledSuccess("dataconnect", `Database schema is up to date.`);
   return [];
 }
 
@@ -43,7 +44,7 @@ export async function migrateSchema(args: {
   allowNonInteractiveMigration: boolean;
   validateOnly: boolean;
 }): Promise<Diff[]> {
-  const { schema, validateOnly } = args;
+  const { options, schema, validateOnly } = args;
 
   const databaseId = schema.primaryDatasource.postgresql?.database;
   if (!databaseId) {
@@ -55,29 +56,35 @@ export async function migrateSchema(args: {
   if (!instanceId) {
     throw new FirebaseError(`tried to migrate schema but ${instanceId} was undefined`);
   }
+  const serviceName = schema.name.replace(`/schemas/${SCHEMA_ID}`, "");
   try {
-    const serviceName = schema.name.replace(`/schemas/${SCHEMA_ID}`, "");
     await ensureServiceIsConnectedToCloudSql(serviceName);
     await upsertSchema(schema, validateOnly);
     logger.debug(`Database schema was up to date for ${instanceId}:${databaseId}`);
-    return [];
   } catch (err: any) {
-    const incompatible = getIncompatibleSchemaError(err);
-    if (!incompatible) {
+    const incompatible = errors.getIncompatibleSchemaError(err);
+    const invalid = errors.isInvalidConnectorError(err);
+    if (!incompatible && !invalid) {
       // If we got a different type of error, throw it
       throw err;
     }
-    // Try to migrate schema
-    const diffs = await handleIncompatibleSchemaError({
-      ...args,
-      incompatibleSchemaError: incompatible,
-      instanceId,
-      databaseId,
-    });
-    // Then, try to upsert schema again. If there still is an error, just throw it now
-    await upsertSchema(schema, validateOnly);
-    return diffs;
+    if (invalid) {
+      await handleInvalidConnectorError(options, err, serviceName, validateOnly);
+    }
+    if (incompatible) {
+      // Try to migrate schema
+      const diffs = await handleIncompatibleSchemaError({
+        ...args,
+        incompatibleSchemaError: incompatible,
+        instanceId,
+        databaseId,
+      });
+      // Then, try to upsert schema again. If there still is an error, just throw it now
+      await upsertSchema(schema, validateOnly);
+      return diffs;
+    }
   }
+  return [];
 }
 
 async function handleIncompatibleSchemaError(args: {
@@ -173,6 +180,52 @@ async function promptForSchemaMigration(
   }
 }
 
+async function handleInvalidConnectorError(
+  options: Options,
+  err: any,
+  serviceName: string,
+  validateOnly: boolean,
+): Promise<void> {
+  if (!errors.isInvalidConnectorError) {
+    throw err;
+  }
+  const invalidConnectors = errors.getInvalidConnectorIds(err.message);
+  displayInvalidConnectors(invalidConnectors);
+  if (validateOnly) {
+    return;
+  } else if (
+    options.force ||
+    (!options.nonInteractive &&
+      (await confirm({
+        ...options,
+        message: "Would you like to delete and recreate these connectors?",
+      })))
+  ) {
+    await Promise.all(
+      invalidConnectors.map((c) => {
+        const connectorName = `${serviceName}/connectors/${c}`;
+        return deleteConnector(connectorName);
+      }),
+    );
+    return;
+  }
+  throw new FirebaseError(
+    "Command aborted. Rerun with --force to delete and recreate invalid connectors",
+    { original: err },
+  );
+}
+
+function displayInvalidConnectors(invalidConnectors: string[]) {
+  logLabeledWarning(
+    "dataconnect",
+    `The schema you are deploying is incompatible with the following existing connectors: ${invalidConnectors.join(", ")}.`,
+  );
+  logLabeledWarning(
+    "dataconnect",
+    `This is a ${clc.red("breaking")} change and will cause a brief downtime.`,
+  );
+}
+
 // If a service has never had a schema with schemaValidation=strict
 // (ie when users create a service in console),
 // the backend will not have the necesary permissions to check cSQL for differences.
@@ -209,16 +262,4 @@ function displaySchemaChanges(error: IncompatibleSqlSchemaError) {
 
 function toString(diff: Diff) {
   return `\/** ${diff.destructive ? clc.red("Destructive: ") : ""}${diff.description}*\/\n${format(diff.sql, { language: "postgresql" })}`;
-}
-
-function getIncompatibleSchemaError(err: any): IncompatibleSqlSchemaError | undefined {
-  const original = err.context?.body.error || err.orignal;
-  if (!original) {
-    // If we can't get the original, rethrow so we don't cover up the original error.
-    throw err;
-  }
-  const details: any[] = original.details;
-  const incompatibles = details.filter((d) => d["@type"] === IMCOMPATIBLE_SCHEMA_ERROR_TYPESTRING);
-  // Should never get multiple incompatible schema errors
-  return incompatibles[0];
 }
