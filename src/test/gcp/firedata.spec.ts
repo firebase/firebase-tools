@@ -44,12 +44,14 @@ describe("firedata", () => {
   });
 
   describe("getTosStatus", () => {
-    it("should return parsed GetTosStatusResponse", () => {
+    it("should return parsed GetTosStatusResponse", async () => {
       nock("https://mobilesdk-pa.googleapis.com")
         .get("/v1/accessmanagement/tos:getStatus")
         .reply(200, SAMPLE_RESPONSE);
 
-      expect(getTosStatus()).to.eventually.deep.equal(SAMPLE_RESPONSE as GetTosStatusResponse);
+      await expect(getTosStatus()).to.eventually.deep.equal(
+        SAMPLE_RESPONSE as GetTosStatusResponse,
+      );
     });
   });
 
