@@ -127,7 +127,8 @@ export async function getEmulatorIssuesStream(
       });
     }
     return fromStream(resp.body!);
-  } catch {
+  } catch (err) {
+    console.log("Stream failed to connect with error: ", err);
     return of({});
   }
 }
