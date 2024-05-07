@@ -22,7 +22,7 @@ interface EmulatorIssue {
   message: string;
 }
 
-type CompilerResponse = { result?: { issues?: EmulatorIssue[] } };
+type EmulatorIssueResponse = { result?: { issues?: EmulatorIssue[] } };
 
 export const emulatorOutputChannel =
   vscode.window.createOutputChannel("Firebase Emulators");
@@ -61,7 +61,7 @@ export function displayIssue(issue: EmulatorIssue) {
   const issueMessage = `Data Connect Emulator: ${issue.kind.toString()} - ${issue.message}`;
   if (issue.severity === Severity.ALERT) {
     vscode.window.showErrorMessage(issueMessage);
-  } else if (issue.severity === Severity.DEBUG) {
+  } else if (issue.severity === Severity.NOTICE) {
     vscode.window.showWarningMessage(issueMessage);
   }
   emulatorOutputChannel.appendLine(issueMessage);
@@ -75,7 +75,7 @@ export function displayIssue(issue: EmulatorIssue) {
 export async function getEmulatorIssuesStream(
   configs: ResolvedDataConnectConfigs,
   dataConnectEndpoint: string,
-): Promise<Observable<CompilerResponse>> {
+): Promise<Observable<EmulatorIssueResponse>> {
   try {
     // TODO: eventually support multiple services
     const serviceId = configs.serviceIds[0];
@@ -97,7 +97,7 @@ export async function getEmulatorIssuesStream(
       stream: NodeJS.ReadableStream,
       finishEventName = "end",
       dataEventName = "data",
-    ): Observable<CompilerResponse> {
+    ): Observable<EmulatorIssueResponse> {
       stream.pause();
 
       return new Observable((observer) => {
