@@ -138,7 +138,6 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   await config.askWriteProjectFile(join(dir, "schema", "schema.gql"), SCHEMA_TEMPLATE);
   await config.askWriteProjectFile(join(dir, "connector", "queries.gql"), QUERIES_TEMPLATE);
   await config.askWriteProjectFile(join(dir, "connector", "mutations.gql"), MUTATIONS_TEMPLATE);
-  // TODO: Skip this for existing instances
   if (
     setup.projectId &&
     (newInstance || newDB) &&
