@@ -96,11 +96,6 @@ export async function deleteService(
 export async function getSchema(serviceName: string): Promise<types.Schema> {
   const res = await dataconnectClient().get<types.Schema>(
     `${serviceName}/schemas/${types.SCHEMA_ID}`,
-    {
-      headers: {
-        // "X-Google-DapperTraceInfo": "CYECWZ3MzbU7EbaFJI-s769xHQMAAAAhAAAAAAAAAAA",
-      },
-    },
   );
   return res.body;
 }
