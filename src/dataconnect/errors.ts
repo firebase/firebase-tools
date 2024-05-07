@@ -1,10 +1,8 @@
 import { GraphqlError, IncompatibleSqlSchemaError } from "./types";
 
-const INCOMPATIBLE_SCHEMA_ERROR_TYPESTRING =
-  "type.googleapis.com/google.firebase.dataconnect.v1main.IncompatibleSqlSchemaError";
+const INCOMPATIBLE_SCHEMA_ERROR_TYPESTRING = "IncompatibleSqlSchemaError";
 
-const GRAPHQL_ERROR_TYPESTRING =
-  "type.googleapis.com/google.firebase.dataconnect.v1main.GraphqlError";
+const GRAPHQL_ERROR_TYPESTRING = "GraphqlError";
 
 export function getIncompatibleSchemaError(err: any): IncompatibleSqlSchemaError | undefined {
   const original = err.context?.body?.error || err.orignal;
@@ -13,7 +11,7 @@ export function getIncompatibleSchemaError(err: any): IncompatibleSqlSchemaError
     throw err;
   }
   const details: any[] = original.details;
-  const incompatibles = details.filter((d) => d["@type"] === INCOMPATIBLE_SCHEMA_ERROR_TYPESTRING);
+  const incompatibles = details.filter((d) => d["@type"]?.includes(INCOMPATIBLE_SCHEMA_ERROR_TYPESTRING));
   // Should never get multiple incompatible schema errors
   return incompatibles[0];
 }
@@ -37,6 +35,6 @@ export function getGQLErrors(err: any): GraphqlError[] | undefined {
     throw err;
   }
   const details: any[] = original.details;
-  const gqlErrors = details.filter((d) => d["@type"] === GRAPHQL_ERROR_TYPESTRING);
+  const gqlErrors = details.filter((d) => d["@type"]?.includes(GRAPHQL_ERROR_TYPESTRING));
   return gqlErrors;
 }
