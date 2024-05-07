@@ -71,12 +71,15 @@ const choices = [
     name: "Extensions: Set up an empty Extensions manifest",
     checked: false,
   },
-  {
+];
+
+if (new Date() > new Date(1715702400000 /* 2024-05-14, 9AM PDT */)) {
+  choices.push({
     value: "genkit",
     name: "Genkit: Setup a new Genkit project with Firebase",
     checked: false,
-  },
-];
+  });
+}
 
 if (isEnabled("apphosting")) {
   choices.push({
