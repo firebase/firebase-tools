@@ -1,5 +1,15 @@
 # Change Log
 
+## 0.1.8
+
+- Update Extensions page Logo
+- Update README for Extensions page
+- Emulator Bump 1.1.15
+
+## 0.1.7
+
+- Emulator Bump 1.1.14
+
 ## 0.1.6
 
 - Fix deploy command
