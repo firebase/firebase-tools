@@ -2,7 +2,7 @@ import * as repo from "./repo";
 import * as poller from "../operation-poller";
 import * as apphosting from "../gcp/apphosting";
 import * as githubConnections from "./githubConnections";
-import { logBullet, logSuccess, logWarning } from "../utils";
+import { logBullet, logSuccess, logWarning, sleep } from "../utils";
 import {
   apphostingOrigin,
   artifactRegistryDomain,
@@ -26,6 +26,7 @@ import { DeepOmit } from "../metaprogramming";
 import { webApps } from "./app";
 import { GitRepositoryLink } from "../gcp/devConnect";
 import * as ora from "ora";
+import fetch from "node-fetch";
 
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
@@ -35,6 +36,33 @@ const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationRes
   masterTimeout: 25 * 60 * 1_000,
   maxBackoff: 10_000,
 };
+
+async function tlsReady(url: string): Promise<boolean> {
+  // Note, we do not use the helper libraries because they impose additional logic on content type and parsing.
+  try {
+    await fetch(url);
+    return true;
+  } catch (err) {
+    // At the time of this writing, the error code is ERR_SSL_SSLV3_ALERT_HANDSHAKE_FAILURE.
+    // I've chosen to use a regexp in an attempt to be forwards compatible with new versions of
+    // SSL.
+    const maybeNodeError = err as { cause: { code: string } };
+    if (/HANDSHAKE_FAILURE/.test(maybeNodeError?.cause?.code)) {
+      return false;
+    }
+    return true;
+  }
+}
+
+async function awaitTlsReady(url: string): Promise<void> {
+  let ready;
+  do {
+    ready = await tlsReady(url);
+    if (!ready) {
+      await sleep(1000 /* ms */);
+    }
+  } while (!ready);
+}
 
 /**
  * Set up a new App Hosting backend.
@@ -134,11 +162,14 @@ export async function doSetup(
     return;
   }
 
+  const url = `https://${backend.uri}`;
   logBullet(
     `You may also track this rollout at:\n\t${consoleOrigin()}/project/${projectId}/apphosting`,
   );
+  // TODO: Previous versions of this command printed the URL before the rollout started so that
+  // if a user does exit they will know where to go later. Should this be re-added?
   const createRolloutSpinner = ora(
-    "Starting a new rollout... This make take a few minutes. It's safe to exit now.",
+    "Starting a new rollout; this may take a few minutes. It's safe to exit now.",
   ).start();
   await orchestrateRollout(projectId, location, backendId, {
     source: {
@@ -147,7 +178,15 @@ export async function doSetup(
       },
     },
   });
-  createRolloutSpinner.succeed(`Your backend is now deployed at:\n\thttps://${backend.uri}`);
+  createRolloutSpinner.succeed("Rollout complete");
+  if (!(await tlsReady(url))) {
+    const tlsSpinner = ora(
+      "Finalizing your backend's TLS certificate; this may take a few minutes.",
+    ).start();
+    await awaitTlsReady(url);
+    tlsSpinner.succeed("TLS certificate ready");
+  }
+  logSuccess(`Your backend is now deployed at:\n\thttps://${backend.uri}`);
 }
 
 /**
@@ -341,7 +380,7 @@ export async function orchestrateRollout(
         if (tries >= 5) {
           throw err;
         }
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await sleep(1000);
       } else {
         throw err;
       }
