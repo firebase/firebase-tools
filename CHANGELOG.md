@@ -1,5 +1,1 @@
 - Release Firestore Emulator version 1.19.6 which fixes a few Datastore Mode bugs regarding transactions (#7132).
-- Temporarily disable performance improvements for second gen functions deploy to avoid a backend issue.
-- Increased the timeout for waiting for emulators to start to 60s. (#7091)
-- Fixes infinite loop when trying to create a Hosting site.
-- Fix copied functions dist dir files for Next.js when source config ends with slash (#7099)
