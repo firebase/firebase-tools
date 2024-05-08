@@ -127,6 +127,7 @@ export async function doSetup(
     default: "my-web-app",
     message: "Provide a name for your backend [1-30 characters]",
   });
+  logSuccess(`Name set to ${backendId}\n`);
 
   const webApp = await webApps.getOrCreateWebApp(projectId, webAppName, backendId);
   if (!webApp) {
@@ -235,7 +236,6 @@ async function promptNewBackendId(
       await apphosting.getBackend(projectId, location, backendId);
     } catch (err: any) {
       if (err.status === 404) {
-        logSuccess(`Name set to ${backendId}\n`);
         return backendId;
       }
       throw new FirebaseError(

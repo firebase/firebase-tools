@@ -134,8 +134,6 @@ export async function linkGitHubRepository(
   });
 
   const repo = await getOrCreateRepository(projectId, location, connectionId, repoCloneUri);
-  utils.logSuccess(`Successfully linked GitHub repository at remote URI`);
-  utils.logSuccess(`\t${repo.cloneUri}\n`);
   return repo;
 }
 
