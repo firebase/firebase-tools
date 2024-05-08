@@ -37,7 +37,7 @@ export async function runEmulatorIssuesStream(
 ) {
   const obsErrors = await getEmulatorIssuesStream(configs, fdcEndpoint);
   const obsConverter = {
-    next(nextCompilerResponse: CompilerResponse) {
+    next(nextCompilerResponse: EmulatorIssueResponse) {
       if (nextCompilerResponse.result?.issues?.length) {
         for (const issue of nextCompilerResponse.result.issues) {
           displayIssue(issue);
