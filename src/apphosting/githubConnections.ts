@@ -217,7 +217,7 @@ export async function getOrCreateOauthConnection(
   }
   
   utils.logSuccess(
-    "Connected with Github successfully\n",
+    "Connected with GitHub successfully\n",
   );
   return conn;
 }
