@@ -1,6 +1,5 @@
 import { webApps } from "../../apphosting/app";
 import * as apps from "../../../src/management/apps";
-import * as prompts from "../../prompt";
 import * as sinon from "sinon";
 import { expect } from "chai";
 import { FirebaseError } from "../../error";
@@ -9,21 +8,19 @@ describe("app", () => {
   const projectId = "projectId";
   const backendId = "backendId";
 
+  let listFirebaseApps: sinon.SinonStub;
+
   describe("getOrCreateWebApp", () => {
     let createWebApp: sinon.SinonStub;
-    let listFirebaseApps: sinon.SinonStub;
-    let promptFirebaseWebApp: sinon.SinonStub;
 
     beforeEach(() => {
       createWebApp = sinon.stub(apps, "createWebApp");
       listFirebaseApps = sinon.stub(apps, "listFirebaseApps");
-      promptFirebaseWebApp = sinon.stub(webApps, "promptFirebaseWebApp");
     });
 
     afterEach(() => {
       createWebApp.restore();
       listFirebaseApps.restore();
-      promptFirebaseWebApp.restore();
     });
 
     it("should create an app with backendId if no web apps exist yet", async () => {
@@ -49,53 +46,49 @@ describe("app", () => {
       );
     });
 
-    it("prompts user for a web app if none is provided", async () => {
-      listFirebaseApps.returns(
-        Promise.resolve([
-          { displayName: "testWebApp1", appId: "testWebAppId1", platform: apps.AppPlatform.WEB },
-        ]),
-      );
+    it("returns undefined if user has reached the app limit for their project", async () => {
+      listFirebaseApps.returns(Promise.resolve([]));
+      createWebApp.throws({ original: { status: 429 } });
 
-      const userSelection = { name: "testWebApp2", id: "testWebAppId2" };
-      promptFirebaseWebApp.returns(Promise.resolve(userSelection));
-
-      await expect(webApps.getOrCreateWebApp(projectId, null, backendId)).to.eventually.deep.equal(
-        userSelection,
-      );
-      expect(promptFirebaseWebApp).to.be.called;
+      const app = await webApps.getOrCreateWebApp(projectId, null, backendId);
+      expect(app).equal(undefined);
     });
   });
 
-  describe("promptFirebaseWebApp", () => {
-    let promptOnce: sinon.SinonStub;
-    let createWebApp: sinon.SinonStub;
-
+  describe("generateWebAppName", () => {
     beforeEach(() => {
-      promptOnce = sinon.stub(prompts, "promptOnce");
-      createWebApp = sinon.stub(apps, "createWebApp");
+      listFirebaseApps = sinon.stub(apps, "listFirebaseApps");
     });
 
     afterEach(() => {
-      promptOnce.restore();
-      createWebApp.restore();
+      listFirebaseApps.restore();
     });
 
-    it("creates a new web app if user selects that option", async () => {
-      promptOnce.returns(webApps.CREATE_NEW_FIREBASE_WEB_APP);
-      createWebApp.returns({ displayName: backendId, appId: "appId" });
+    it("returns backendId if no such web app already exists", async () => {
+      listFirebaseApps.returns(Promise.resolve([]));
 
-      await webApps.promptFirebaseWebApp(projectId, backendId, new Map([["app", "appId"]]));
-      expect(createWebApp).to.be.calledWith(projectId, { displayName: backendId });
+      const appName = await webApps.generateWebAppName(projectId, backendId);
+      expect(appName).equal(backendId);
     });
 
-    it("skips a web selection if user selects that option", async () => {
-      promptOnce.returns(webApps.CONTINUE_WITHOUT_SELECTING_FIREBASE_WEB_APP);
+    it("returns backendId as appName with a unique id if app with backendId already exists", async () => {
+      listFirebaseApps.returns(Promise.resolve([{ displayName: backendId, appId: "1234" }]));
 
-      await expect(
-        webApps.promptFirebaseWebApp(projectId, backendId, new Map([["app", "appId"]])),
-      ).to.eventually.equal(undefined);
+      const appName = await webApps.generateWebAppName(projectId, backendId);
+      expect(appName).equal(`${backendId}_1`);
+    });
 
-      expect(createWebApp).to.not.be.called;
+    it("returns appropriate unique id if app with backendId already exists", async () => {
+      listFirebaseApps.returns(
+        Promise.resolve([
+          { displayName: backendId, appId: "1234" },
+          { displayName: `${backendId}_1`, appId: "1234" },
+          { displayName: `${backendId}_2`, appId: "1234" },
+        ]),
+      );
+
+      const appName = await webApps.generateWebAppName(projectId, backendId);
+      expect(appName).equal(`${backendId}_3`);
     });
   });
 });

@@ -1,8 +1,6 @@
-import * as fuzzy from "fuzzy";
-import * as inquirer from "inquirer";
-import { AppPlatform, WebAppMetadata, createWebApp, listFirebaseApps } from "../management/apps";
-import { promptOnce } from "../prompt";
+import { AppMetadata, AppPlatform, createWebApp, listFirebaseApps } from "../management/apps";
 import { FirebaseError } from "../error";
+import { logWarning } from "../utils";
 
 const CREATE_NEW_FIREBASE_WEB_APP = "CREATE_NEW_WEB_APP";
 const CONTINUE_WITHOUT_SELECTING_FIREBASE_WEB_APP = "CONTINUE_WITHOUT_SELECTING_FIREBASE_WEB_APP";
@@ -11,7 +9,7 @@ export const webApps = {
   CREATE_NEW_FIREBASE_WEB_APP,
   CONTINUE_WITHOUT_SELECTING_FIREBASE_WEB_APP,
   getOrCreateWebApp,
-  promptFirebaseWebApp,
+  generateWebAppName,
 };
 
 type FirebaseWebApp = { name: string; id: string };
@@ -34,22 +32,7 @@ async function getOrCreateWebApp(
   backendId: string,
 ): Promise<FirebaseWebApp | undefined> {
   const webAppsInProject = await listFirebaseApps(projectId, AppPlatform.WEB);
-
-  if (webAppsInProject.length === 0) {
-    // create a web app using backend id
-    const { displayName, appId } = await createFirebaseWebApp(projectId, {
-      displayName: backendId,
-    });
-    return { name: displayName, id: appId };
-  }
-
-  const existingUserProjectWebApps = new Map(
-    webAppsInProject.map((obj) => [
-      // displayName can be null, use app id instead if so. Example - displayName: "mathusan-web-app", appId: "1:461896338144:web:426291191cccce65fede85"
-      obj.displayName ?? obj.appId,
-      obj.appId,
-    ]),
-  );
+  const existingUserProjectWebApps = firebaseAppsToMap(webAppsInProject);
 
   if (firebaseWebAppName) {
     if (existingUserProjectWebApps.get(firebaseWebAppName) === undefined) {
@@ -58,85 +41,58 @@ async function getOrCreateWebApp(
       );
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    return { name: firebaseWebAppName, id: existingUserProjectWebApps.get(firebaseWebAppName)! };
+    return {
+      name: firebaseWebAppName,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      id: existingUserProjectWebApps.get(firebaseWebAppName)!,
+    };
   }
 
-  return await webApps.promptFirebaseWebApp(projectId, backendId, existingUserProjectWebApps);
-}
+  const webAppName = await generateWebAppName(projectId, backendId);
 
-/**
- * Prompts the user for the web app that they would like to associate their backend with
- * @param projectId user's projectId
- * @param backendId user's backendId
- * @param existingUserProjectWebApps a map of a user's firebase web apps to their ids
- * @return the name and ID of a web app
- */
-async function promptFirebaseWebApp(
-  projectId: string,
-  backendId: string,
-  existingUserProjectWebApps: Map<string, string>,
-): Promise<FirebaseWebApp | undefined> {
-  const existingWebAppKeys = Array.from(existingUserProjectWebApps.keys());
-
-  const firebaseWebAppName = await promptOnce({
-    type: "autocomplete",
-    name: "app",
-    message:
-      "Which of the following Firebase web apps would you like to associate your backend with?",
-    source: (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
-      return new Promise((resolve) =>
-        resolve([
-          new inquirer.Separator(),
-          {
-            name: "Create a new Firebase web app.",
-            value: CREATE_NEW_FIREBASE_WEB_APP,
-          },
-          {
-            name: "Continue without a Firebase web app.",
-            value: CONTINUE_WITHOUT_SELECTING_FIREBASE_WEB_APP,
-          },
-          new inquirer.Separator(),
-          ...fuzzy.filter(input, existingWebAppKeys).map((result) => {
-            return result.original;
-          }),
-        ]),
-      );
-    },
-  });
-
-  if (firebaseWebAppName === CREATE_NEW_FIREBASE_WEB_APP) {
-    const newFirebaseWebApp = await createFirebaseWebApp(projectId, { displayName: backendId });
-    return { name: newFirebaseWebApp.displayName, id: newFirebaseWebApp.appId };
-  } else if (firebaseWebAppName === CONTINUE_WITHOUT_SELECTING_FIREBASE_WEB_APP) {
-    return;
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  return { name: firebaseWebAppName, id: existingUserProjectWebApps.get(firebaseWebAppName)! };
-}
-
-/**
- * A wrapper for createWebApp to catch and log quota errors
- */
-async function createFirebaseWebApp(
-  projectId: string,
-  options: { displayName?: string },
-): Promise<WebAppMetadata> {
   try {
-    return await createWebApp(projectId, options);
+    const app = await createWebApp(projectId, { displayName: webAppName });
+    return { name: app.displayName, id: app.appId };
   } catch (e) {
     if (isQuotaError(e)) {
-      throw new FirebaseError(
+      logWarning(
         "Unable to create a new web app, the project has reached the quota for Firebase apps. Navigate to your Firebase console to manage or delete a Firebase app to continue. ",
-        { original: e instanceof Error ? e : undefined },
       );
+      return;
     }
 
     throw new FirebaseError("Unable to create a Firebase web app", {
       original: e instanceof Error ? e : undefined,
     });
   }
+}
+
+async function generateWebAppName(projectId: string, backendId: string): Promise<string> {
+  const webAppsInProject = await listFirebaseApps(projectId, AppPlatform.WEB);
+  const appsMap = firebaseAppsToMap(webAppsInProject);
+  if (!appsMap.get(backendId)) {
+    return backendId;
+  }
+
+  let uniqueId = 1;
+  let webAppName = `${backendId}_${uniqueId}`;
+
+  while (appsMap.get(webAppName)) {
+    uniqueId += 1;
+    webAppName = `${backendId}_${uniqueId}`;
+  }
+
+  return webAppName;
+}
+
+function firebaseAppsToMap(apps: AppMetadata[]): Map<string, string> {
+  return new Map(
+    apps.map((obj) => [
+      // displayName can be null, use app id instead if so. Example - displayName: "mathusan-web-app", appId: "1:461896338144:web:426291191cccce65fede85"
+      obj.displayName ?? obj.appId,
+      obj.appId,
+    ]),
+  );
 }
 
 /**
