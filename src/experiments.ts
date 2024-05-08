@@ -126,6 +126,12 @@ export const ALL_EXPERIMENTS = experiments({
     fullDescription: "Enable Data Connect related features.",
     public: false,
   },
+
+  genkit: {
+    shortDescription: "Enable Genkit related features.",
+    fullDescription: "Enable Genkit related features.",
+    public: false,
+  },
 });
 
 export type ExperimentName = keyof typeof ALL_EXPERIMENTS;
