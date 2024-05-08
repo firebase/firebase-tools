@@ -60,7 +60,9 @@ function validateConnectorYaml(unvalidated: any): ConnectorYaml {
 export async function readGQLFiles(sourceDir: string): Promise<File[]> {
   const files = await fs.readdir(sourceDir);
   // TODO: Handle files in subdirectories such as `foo/a.gql` and `bar/baz/b.gql`.
-  return files.filter((f) => f.endsWith(".gql") || f.endsWith(".graphql")).map((f) => toFile(sourceDir, f));
+  return files
+    .filter((f) => f.endsWith(".gql") || f.endsWith(".graphql"))
+    .map((f) => toFile(sourceDir, f));
 }
 
 function toFile(sourceDir: string, relPath: string): File {
