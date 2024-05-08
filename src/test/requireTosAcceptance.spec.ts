@@ -68,7 +68,7 @@ describe("requireTosAcceptance", () => {
       .reply(200, SAMPLE_RESPONSE);
 
     await expect(requireTosAcceptance(APPHOSTING_TOS_ID)(SAMPLE_OPTIONS)).to.be.rejectedWith(
-      "terms of service",
+      "Terms of Service",
     );
   });
 });
