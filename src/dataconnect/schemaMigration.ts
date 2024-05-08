@@ -24,9 +24,9 @@ export async function diffSchema(schema: Schema): Promise<Diff[]> {
     await ensureServiceIsConnectedToCloudSql(serviceName);
     await upsertSchema(schema, /** validateOnly=*/ true);
   } catch (err: any) {
-    const invalid = errors.isInvalidConnectorError(err);
-    if (invalid) {
-      displayInvalidConnectors(errors.getInvalidConnectorIds(err.message));
+    const invalidConnectors = errors.getInvalidConnectors(err);
+    if (invalidConnectors.length) {
+      displayInvalidConnectors(invalidConnectors);
     }
     const incompatible = errors.getIncompatibleSchemaError(err);
     if (incompatible) {
@@ -44,7 +44,7 @@ export async function migrateSchema(args: {
   allowNonInteractiveMigration: boolean;
   validateOnly: boolean;
 }): Promise<Diff[]> {
-  const { options, schema, validateOnly } = args;
+  const { options, schema, allowNonInteractiveMigration, validateOnly } = args;
 
   const databaseId = schema.primaryDatasource.postgresql?.database;
   if (!databaseId) {
@@ -63,28 +63,61 @@ export async function migrateSchema(args: {
     logger.debug(`Database schema was up to date for ${instanceId}:${databaseId}`);
   } catch (err: any) {
     const incompatible = errors.getIncompatibleSchemaError(err);
-    const invalid = errors.isInvalidConnectorError(err);
-    if (!incompatible && !invalid) {
+    const invalidConnectors = errors.getInvalidConnectors(err);
+    if (!incompatible && !invalidConnectors.length) {
       // If we got a different type of error, throw it
       throw err;
     }
-    if (invalid) {
-      await handleInvalidConnectorError(options, err, serviceName, validateOnly);
+    const shouldDeleteInvalidConnectors = await promptForInvalidConnectorError(
+      options,
+      invalidConnectors,
+      validateOnly,
+    );
+    if (!shouldDeleteInvalidConnectors && invalidConnectors.length) {
+      const cmd = suggestedCommand(serviceName, invalidConnectors);
+      throw new FirebaseError(
+        `Command aborted. Try deploying compatible connectors first with ${clc.bold(cmd)}`,
+      );
     }
+    const migrationMode = incompatible
+      ? await promptForSchemaMigration(
+          options,
+          databaseId,
+          incompatible,
+          allowNonInteractiveMigration,
+        )
+      : "none";
+    // First, error out if we aren't making all changes
+    if (migrationMode === "none" && incompatible) {
+      throw new FirebaseError("Command aborted.");
+    }
+
+    let diffs: Diff[] = [];
     if (incompatible) {
-      // Try to migrate schema
-      const diffs = await handleIncompatibleSchemaError({
-        ...args,
-        incompatibleSchemaError: incompatible,
-        instanceId,
+      diffs = await handleIncompatibleSchemaError({
+        options,
         databaseId,
+        instanceId,
+        incompatibleSchemaError: incompatible,
+        choice: migrationMode,
       });
-      // Then, try to upsert schema again. If there still is an error, just throw it now
-      await upsertSchema(schema, validateOnly);
-      return diffs;
     }
+
+    if (invalidConnectors.length) {
+      await deleteInvalidConnectors(invalidConnectors);
+    }
+    // Then, try to upsert schema again. If there still is an error, just throw it now
+    await upsertSchema(schema, validateOnly);
+    return diffs;
   }
   return [];
+}
+
+function suggestedCommand(serviceName: string, invalidConnectorNames: string[]): string {
+  const serviceId = serviceName.split("/")[5];
+  const connectorIds = invalidConnectorNames.map((i) => i.split("/")[7]);
+  const onlys = connectorIds.map((c) => `dataconnect:${serviceId}:${c}`).join(",");
+  return `firebase deploy --only ${onlys}`;
 }
 
 async function handleIncompatibleSchemaError(args: {
@@ -92,18 +125,12 @@ async function handleIncompatibleSchemaError(args: {
   options: Options;
   instanceId: string;
   databaseId: string;
-  allowNonInteractiveMigration: boolean;
+  choice: "all" | "safe" | "none";
 }): Promise<Diff[]> {
-  const { incompatibleSchemaError, options, instanceId, databaseId, allowNonInteractiveMigration } =
-    args;
+  const { incompatibleSchemaError, options, instanceId, databaseId, choice } = args;
   const projectId = needProjectId(options);
   const iamUser = await setupIAMUser(instanceId, databaseId, options);
-  const choice = await promptForSchemaMigration(
-    options,
-    databaseId,
-    incompatibleSchemaError,
-    allowNonInteractiveMigration,
-  );
+
   const commandsToExecute = incompatibleSchemaError.diffs
     .filter((d) => {
       switch (choice) {
@@ -180,19 +207,17 @@ async function promptForSchemaMigration(
   }
 }
 
-async function handleInvalidConnectorError(
+async function promptForInvalidConnectorError(
   options: Options,
-  err: any,
-  serviceName: string,
+  invalidConnectors: string[],
   validateOnly: boolean,
-): Promise<void> {
-  if (!errors.isInvalidConnectorError) {
-    throw err;
+): Promise<boolean> {
+  if (!invalidConnectors.length) {
+    return false;
   }
-  const invalidConnectors = errors.getInvalidConnectorIds(err.message);
   displayInvalidConnectors(invalidConnectors);
   if (validateOnly) {
-    return;
+    return false;
   } else if (
     options.force ||
     (!options.nonInteractive &&
@@ -201,24 +226,20 @@ async function handleInvalidConnectorError(
         message: "Would you like to delete and recreate these connectors?",
       })))
   ) {
-    await Promise.all(
-      invalidConnectors.map((c) => {
-        const connectorName = `${serviceName}/connectors/${c}`;
-        return deleteConnector(connectorName);
-      }),
-    );
-    return;
+    return true;
   }
-  throw new FirebaseError(
-    "Command aborted. Rerun with --force to delete and recreate invalid connectors",
-    { original: err },
-  );
+  return false;
+}
+
+async function deleteInvalidConnectors(invalidConnectors: string[]): Promise<void[]> {
+  return Promise.all(invalidConnectors.map(deleteConnector));
 }
 
 function displayInvalidConnectors(invalidConnectors: string[]) {
+  const connectorIds = invalidConnectors.map((i) => i.split("/").pop()).join(", ");
   logLabeledWarning(
     "dataconnect",
-    `The schema you are deploying is incompatible with the following existing connectors: ${invalidConnectors.join(", ")}.`,
+    `The schema you are deploying is incompatible with the following existing connectors: ${connectorIds}.`,
   );
   logLabeledWarning(
     "dataconnect",
@@ -236,6 +257,7 @@ async function ensureServiceIsConnectedToCloudSql(serviceName: string) {
     currentSchema = await getSchema(serviceName);
   } catch (err: any) {
     if (err.status === 404) {
+      // TODO: Deploy empty source with STRICT = true
       return;
     }
     throw err;
