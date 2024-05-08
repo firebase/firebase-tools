@@ -17,10 +17,6 @@ export const command = new Command("apphosting:backends:create")
     "specify the service account used to run the server",
     "",
   )
-  .option(
-    "-w, --with-cloud-build-repos",
-    "use Cloud Build Repositories flow instead of the Developer Connect flow",
-  )
   .before(ensureApiEnabled)
   .before(requireInteractive)
   .action(async (options: Options) => {
@@ -28,13 +24,11 @@ export const command = new Command("apphosting:backends:create")
     const webApp = options.app;
     const location = options.location;
     const serviceAccount = options.serviceAccount;
-    const withCloudBuildRepos = options.withCloudBuildRepos as boolean;
 
     await doSetup(
       projectId,
       webApp as string | null,
       location as string | null,
       serviceAccount as string | null,
-      withCloudBuildRepos,
     );
   });
