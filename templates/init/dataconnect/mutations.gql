@@ -1,5 +1,4 @@
 # # Example mutations
-# # TODO: Replace with a really good illustrative example from devrel!
 # mutation createOrder($name: String!) {
 #   order_insert(data : {name: $name})
 # }

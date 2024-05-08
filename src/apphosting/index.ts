@@ -1,4 +1,3 @@
-import * as repo from "./repo";
 import * as poller from "../operation-poller";
 import * as apphosting from "../gcp/apphosting";
 import * as githubConnections from "./githubConnections";
@@ -16,7 +15,6 @@ import {
 import { Backend, BackendOutputOnlyFields, API_VERSION, Build, Rollout } from "../gcp/apphosting";
 import { addServiceAccountToRoles } from "../gcp/resourceManager";
 import * as iam from "../gcp/iam";
-import { Repository } from "../gcp/cloudbuild";
 import { FirebaseError } from "../error";
 import { promptOnce } from "../prompt";
 import { DEFAULT_LOCATION } from "./constants";
@@ -26,6 +24,7 @@ import { DeepOmit } from "../metaprogramming";
 import { webApps } from "./app";
 import { GitRepositoryLink } from "../gcp/devConnect";
 import * as ora from "ora";
+import fetch from "node-fetch";
 
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
@@ -71,7 +70,6 @@ export async function doSetup(
   webAppName: string | null,
   location: string | null,
   serviceAccount: string | null,
-  withCloudBuildRepos: boolean,
 ): Promise<void> {
   await Promise.all([
     ensure(projectId, developerConnectOrigin(), "apphosting", true),
@@ -108,14 +106,15 @@ export async function doSetup(
 
   const webApp = await webApps.getOrCreateWebApp(projectId, webAppName, backendId);
   if (webApp) {
-    logSuccess(`Firebase web app set to ${webApp.name}.\n`);
+    logSuccess(`Created a new Firebase web app named "${webApp.name}"`);
   } else {
     logWarning(`Firebase web app not set`);
   }
 
-  const gitRepositoryConnection: Repository | GitRepositoryLink = withCloudBuildRepos
-    ? await repo.linkGitHubRepository(projectId, location)
-    : await githubConnections.linkGitHubRepository(projectId, location);
+  const gitRepositoryConnection: GitRepositoryLink = await githubConnections.linkGitHubRepository(
+    projectId,
+    location,
+  );
 
   const rootDir = await promptOnce({
     name: "rootDir",
@@ -259,7 +258,7 @@ export async function createBackend(
   projectId: string,
   location: string,
   backendId: string,
-  repository: Repository | GitRepositoryLink,
+  repository: GitRepositoryLink,
   serviceAccount: string | null,
   webAppId: string | undefined,
   rootDir = "/",

@@ -15,6 +15,7 @@ import {
 } from "../../common/messaging/protocol";
 import { firebaseRC } from "./config";
 import { EmulatorUiSelections } from "../messaging/types";
+import { emulatorOutputChannel } from "../data-connect/emulator-stream";
 
 export class EmulatorsController implements Disposable {
   constructor(private broker: ExtensionBrokerImpl) {
@@ -107,9 +108,6 @@ export class EmulatorsController implements Disposable {
     "firebase.emulators.stop",
     this.stopEmulators.bind(this)
   );
-
-  readonly outputChannel =
-    vscode.window.createOutputChannel("Firebase Emulators");
 
   // TODO(christhompson): Load UI selections from the current workspace.
   // Requires context object.
@@ -206,7 +204,7 @@ export class EmulatorsController implements Disposable {
             );
 
             dataConnectEmulatorDetails.instance.stdout?.on("data", (data) => {
-              this.outputChannel.appendLine("DEBUG: " + data.toString());
+              emulatorOutputChannel.appendLine("DEBUG: " + data.toString());
             });
             dataConnectEmulatorDetails.instance.stderr?.on("data", (data) => {
               if (data.toString().includes("Finished reloading")) {
@@ -215,7 +213,7 @@ export class EmulatorsController implements Disposable {
                   "firebase.dataConnect.executeIntrospection"
                 );
               } else {
-                this.outputChannel.appendLine("ERROR: " + data.toString());
+                emulatorOutputChannel.appendLine("ERROR: " + data.toString());
               }
             });
           }
