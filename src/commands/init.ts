@@ -73,6 +73,14 @@ const choices = [
   },
 ];
 
+if (isEnabled("genkit")) {
+  choices.push({
+    value: "genkit",
+    name: "Genkit: Setup a new Genkit project with Firebase",
+    checked: false,
+  });
+}
+
 if (isEnabled("apphosting")) {
   choices.push({
     value: "apphosting",
