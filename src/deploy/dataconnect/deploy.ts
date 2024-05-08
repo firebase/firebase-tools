@@ -57,7 +57,7 @@ export default async function (
   if (servicesToDelete.length) {
     const warning = `The following services exist on ${projectId} but are not listed in your 'firebase.json'\n${servicesToDelete
       .map((s) => s.name)
-      .join("\n")}. Consider deleting these via the Firebase console if they are no longer needed.`;
+      .join("\n")}\nConsider deleting these via the Firebase console if they are no longer needed.`;
     utils.logLabeledWarning("dataconnect", warning);
     // TODO: Switch this back to prompting for deletion.
     // if (

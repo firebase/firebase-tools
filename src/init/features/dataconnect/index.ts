@@ -4,6 +4,7 @@ import { readFileSync } from "fs";
 import { Config } from "../../../config";
 import { Setup } from "../..";
 import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql";
+import { checkForFreeTrialInstance } from "../../../dataconnect/freeTrial";
 import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
 import { ensureApis } from "../../../dataconnect/ensureApis";
 import { listLocations } from "../../../dataconnect/client";
@@ -57,7 +58,11 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     const choices = instances.map((i) => {
       return { name: i.name, value: i.name, location: i.region };
     });
-    choices.push({ name: "Create a new instance", value: "", location: "" });
+
+    const freeTrialInstanceId = await checkForFreeTrialInstance(setup.projectId);
+    if (!freeTrialInstanceId) {
+      choices.push({ name: "Create a new instance", value: "", location: "" });
+    }
     if (instances.length) {
       cloudSqlInstanceId = await promptOnce({
         message: `Which CloudSSQL instance would you like to use?`,

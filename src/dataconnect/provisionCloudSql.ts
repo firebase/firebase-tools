@@ -2,6 +2,7 @@ import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
 import * as utils from "../utils";
 import { grantRolesToCloudSqlServiceAccount } from "./checkIam";
 import { Instance } from "../gcp/cloudsql/types";
+import { promiseWithSpinner } from "../utils";
 
 const GOOGLE_ML_INTEGRATION_ROLE = "roles/aiplatform.user";
 
@@ -31,13 +32,13 @@ export async function provisionCloudSql(args: {
       silent ||
         utils.logLabeledBullet(
           "dataconnect",
-          `Instance ${instanceId} settings not compatible with Firebase Data Connect.` +
+          `Instance ${instanceId} settings not compatible with Firebase Data Connect. ` +
             `Updating instance to enable Cloud IAM authentication and public IP. This may take a few minutes...`,
         );
-      await cloudSqlAdminClient.updateInstanceForDataConnect(
+      await promiseWithSpinner(() => cloudSqlAdminClient.updateInstanceForDataConnect(
         existingInstance,
         enableGoogleMlIntegration,
-      );
+      ), "Updating your instance...");
       silent || utils.logLabeledBullet("dataconnect", "Instance updated");
     }
   } catch (err: any) {
@@ -56,12 +57,12 @@ export async function provisionCloudSql(args: {
         `CloudSQL instance '${instanceId}' not found, creating it. This instance is provided under the terms of the Data Connect free trial ${freeTrialTermsLink()}`,
       );
     silent || utils.logLabeledBullet("dataconnect", `This may take while...`);
-    const newInstance = await cloudSqlAdminClient.createInstance(
+    const newInstance = await promiseWithSpinner(() => cloudSqlAdminClient.createInstance(
       projectId,
       locationId,
       instanceId,
       enableGoogleMlIntegration,
-    );
+    ), "Creating your instance...");
     silent || utils.logLabeledBullet("dataconnect", "Instance created");
     connectionName = newInstance?.connectionName || "";
   }
