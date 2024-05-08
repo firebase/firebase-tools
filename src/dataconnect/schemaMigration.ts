@@ -276,7 +276,7 @@ async function ensureServiceIsConnectedToCloudSql(
     if (err.status === 404) {
       // If no schema has been deployed yet, deploy an empty one to get connectivity.
       currentSchema = {
-        name: `${serviceName}/schema/${SCHEMA_ID}`,
+        name: `${serviceName}/schemas/${SCHEMA_ID}`,
         source: {
           files: [],
         },
