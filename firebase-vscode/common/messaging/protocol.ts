@@ -110,6 +110,9 @@ export interface WebviewToExtensionParamsMap {
 
   /** Deploy all connectors/services to production */
   "fdc.deploy-all": void;
+
+  // Initialize "result" tab.
+  getDataConnectResults: void;
 }
 
 export interface DataConnectResults {
