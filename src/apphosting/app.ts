@@ -1,6 +1,6 @@
 import { AppMetadata, AppPlatform, createWebApp, listFirebaseApps } from "../management/apps";
 import { FirebaseError } from "../error";
-import { logWarning } from "../utils";
+import { logSuccess, logWarning } from "../utils";
 
 const CREATE_NEW_FIREBASE_WEB_APP = "CREATE_NEW_WEB_APP";
 const CONTINUE_WITHOUT_SELECTING_FIREBASE_WEB_APP = "CONTINUE_WITHOUT_SELECTING_FIREBASE_WEB_APP";
@@ -15,36 +15,32 @@ export const webApps = {
 type FirebaseWebApp = { name: string; id: string };
 
 /**
- * If firebaseWebAppName is provided and a matching web app exists, it is
- * returned. If firebaseWebAppName is not provided then the user is prompted to
- * choose from one of their existing web apps or to create a new one or to skip
- * without selecting a web app. If user chooses to create a new web app,
- * a new web app with the given backendId is created. If user chooses to skip
- * without selecting a web app nothing is returned.
+ * If firebaseWebAppId is provided and a matching web app exists, it is
+ * returned. If firebaseWebAppId is not provided, a new web app with the given
+ * backendId is created.
  * @param projectId user's projectId
- * @param firebaseWebAppName (optional) name of an existing Firebase web app
+ * @param firebaseWebAppId (optional) id of an existing Firebase web app
  * @param backendId name of the app hosting backend
  * @return app name and app id
  */
 async function getOrCreateWebApp(
   projectId: string,
-  firebaseWebAppName: string | null,
+  firebaseWebAppId: string | null,
   backendId: string,
 ): Promise<FirebaseWebApp | undefined> {
   const webAppsInProject = await listFirebaseApps(projectId, AppPlatform.WEB);
-  const existingUserProjectWebApps = firebaseAppsToMap(webAppsInProject);
 
-  if (firebaseWebAppName) {
-    if (existingUserProjectWebApps.get(firebaseWebAppName) === undefined) {
+  if (firebaseWebAppId) {
+    const webApp = webAppsInProject.find((app) => app.appId === firebaseWebAppId);
+    if (webApp === undefined) {
       throw new FirebaseError(
-        `The web app '${firebaseWebAppName}' does not exist in project ${projectId}`,
+        `The web app '${firebaseWebAppId}' does not exist in project ${projectId}`,
       );
     }
 
     return {
-      name: firebaseWebAppName,
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      id: existingUserProjectWebApps.get(firebaseWebAppName)!,
+      name: webApp.displayName ?? webApp.appId,
+      id: webApp.appId,
     };
   }
 
@@ -52,6 +48,7 @@ async function getOrCreateWebApp(
 
   try {
     const app = await createWebApp(projectId, { displayName: webAppName });
+    logSuccess(`Created a new Firebase web app named "${webAppName}"`);
     return { name: app.displayName, id: app.appId };
   } catch (e) {
     if (isQuotaError(e)) {
