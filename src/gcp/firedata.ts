@@ -6,8 +6,9 @@ const client = new Client({ urlPrefix: firedataOrigin(), auth: true, apiVersion:
 
 export const APPHOSTING_TOS_ID = "APP_HOSTING_TOS";
 export const APP_CHECK_TOS_ID = "APP_CHECK";
+export const DATA_CONNECT_TOS_ID = "FIREBASE_DATA_CONNECT";
 
-export type TosId = typeof APPHOSTING_TOS_ID | typeof APP_CHECK_TOS_ID;
+export type TosId = typeof APPHOSTING_TOS_ID | typeof APP_CHECK_TOS_ID | typeof DATA_CONNECT_TOS_ID;
 
 export type AcceptanceStatus = null | "ACCEPTED" | "TERMS_UPDATED";
 
@@ -39,7 +40,7 @@ export function getAcceptanceStatus(
 ): AcceptanceStatus {
   const perServiceStatus = response.perServiceStatus.find((tosStatus) => tosStatus.tosId === tosId);
   if (perServiceStatus === undefined) {
-    throw new FirebaseError(`Missing terms of service status for  product: ${tosId}`);
+    throw new FirebaseError(`Missing terms of service status for product: ${tosId}`);
   }
   return perServiceStatus.serviceStatus.status;
 }
