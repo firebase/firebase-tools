@@ -1,5 +1,4 @@
 import * as clc from "colorette";
-import * as repo from "./repo";
 import * as poller from "../operation-poller";
 import * as apphosting from "../gcp/apphosting";
 import * as githubConnections from "./githubConnections";
@@ -98,9 +97,10 @@ export async function doSetup(
   location =
     location || (await promptLocation(projectId, "Select a location to host your backend:\n"));
 
-  const gitRepositoryConnection: Repository | GitRepositoryLink = withCloudBuildRepos
-    ? await repo.linkGitHubRepository(projectId, location)
-    : await githubConnections.linkGitHubRepository(projectId, location);
+  const gitRepositoryConnection: GitRepositoryLink = await githubConnections.linkGitHubRepository(
+    projectId,
+    location,
+  );
 
   const rootDir = await promptOnce({
     name: "rootDir",
