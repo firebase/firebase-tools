@@ -1,11 +1,18 @@
 import type { Options } from "./options";
 
 import { FirebaseError } from "./error";
-import { APPHOSTING_TOS_ID, TosId, getTosStatus, isProductTosAccepted } from "./gcp/firedata";
+import {
+  APPHOSTING_TOS_ID,
+  DATA_CONNECT_TOS_ID,
+  TosId,
+  getTosStatus,
+  isProductTosAccepted,
+} from "./gcp/firedata";
 import { consoleOrigin } from "./api";
 
 const consoleLandingPage = new Map<TosId, string>([
   [APPHOSTING_TOS_ID, `${consoleOrigin()}/project/_/apphosting`],
+  [DATA_CONNECT_TOS_ID, `${consoleOrigin()}/project/_/dataconnect`],
 ]);
 
 /**
@@ -18,7 +25,7 @@ const consoleLandingPage = new Map<TosId, string>([
  *
  * Note: When supporting new products, be sure to update `consoleLandingPage` above to avoid surfacing
  * generic ToS error messages.
- **/
+ */
 export function requireTosAcceptance(tosId: TosId): (options: Options) => Promise<void> {
   return () => requireTos(tosId);
 }
