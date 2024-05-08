@@ -73,7 +73,7 @@ const choices = [
   },
 ];
 
-if (new Date() > new Date(1715702400000 /* 2024-05-14, 9AM PDT */)) {
+if (isEnabled("genkit")) {
   choices.push({
     value: "genkit",
     name: "Genkit: Setup a new Genkit project with Firebase",
