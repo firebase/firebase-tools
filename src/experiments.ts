@@ -38,7 +38,7 @@ export const ALL_EXPERIMENTS = experiments({
     fullDescription:
       "Reuse build images across funtions to increase performance and reliaibility " +
       "of deploys. This has been made an experiment due to backend bugs that are " +
-      "temporarily causing failures in some reginos with this optimization enabled",
+      "temporarily causing failures in some regions with this optimization enabled",
     public: true,
     default: false,
   },
