@@ -1,3 +1,5 @@
+import * as clc from "colorette";
+import * as repo from "./repo";
 import * as poller from "../operation-poller";
 import * as apphosting from "../gcp/apphosting";
 import * as githubConnections from "./githubConnections";
@@ -79,7 +81,6 @@ export async function doSetup(
     ensure(projectId, artifactRegistryDomain(), "apphosting", true),
     ensure(projectId, iamOrigin(), "apphosting", true),
   ]);
-  logBullet("First we need a few details to create your backend.\n");
 
   // Hack: Because IAM can take ~45 seconds to propagate, we provision the service account as soon as
   // possible to reduce the likelihood that the subsequent Cloud Build fails. See b/336862200.
@@ -97,22 +98,9 @@ export async function doSetup(
   location =
     location || (await promptLocation(projectId, "Select a location to host your backend:\n"));
 
-  const backendId = await promptNewBackendId(projectId, location, {
-    name: "backendId",
-    type: "input",
-    default: "my-web-app",
-    message: "Create a name for your backend [1-30 characters]",
-  });
-
-  const webApp = await webApps.getOrCreateWebApp(projectId, webAppName, backendId);
-  if (!webApp) {
-    logWarning(`Firebase web app not set`);
-  }
-
-  const gitRepositoryConnection: GitRepositoryLink = await githubConnections.linkGitHubRepository(
-    projectId,
-    location,
-  );
+  const gitRepositoryConnection: Repository | GitRepositoryLink = withCloudBuildRepos
+    ? await repo.linkGitHubRepository(projectId, location)
+    : await githubConnections.linkGitHubRepository(projectId, location);
 
   const rootDir = await promptOnce({
     name: "rootDir",
@@ -120,6 +108,30 @@ export async function doSetup(
     default: "/",
     message: "Specify your app's root directory relative to your repository",
   });
+
+  // TODO: Once tag patterns are implemented, prompt which method the user
+  // prefers. We could reduce the number of questions asked by letting people
+  // enter tag:<pattern>?
+  const branch = await promptOnce({
+    name: "branch",
+    type: "input",
+    default: "main",
+    message: "Pick a branch for continuous deployment",
+  });
+  logSuccess(`Repo linked successfully!\n`);
+
+  logBullet(`${clc.yellow("==")} Setup your beckend`);
+  const backendId = await promptNewBackendId(projectId, location, {
+    name: "backendId",
+    type: "input",
+    default: "my-web-app",
+    message: "Provide a name for your backend [1-30 characters]",
+  });
+
+  const webApp = await webApps.getOrCreateWebApp(projectId, webAppName, backendId);
+  if (!webApp) {
+    logWarning(`Firebase web app not set`);
+  }
 
   const createBackendSpinner = ora("Creating your new backend...").start();
   const backend = await createBackend(
@@ -131,17 +143,7 @@ export async function doSetup(
     webApp?.id,
     rootDir,
   );
-  createBackendSpinner.succeed(`Successfully created backend:\n\t${backend.name}\n`);
-
-  // TODO: Once tag patterns are implemented, prompt which method the user
-  // prefers. We could reduce the number of questions asked by letting people
-  // enter tag:<pattern>?
-  const branch = await promptOnce({
-    name: "branch",
-    type: "input",
-    default: "main",
-    message: "Pick a branch for continuous deployment",
-  });
+  createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
 
   await setDefaultTrafficPolicy(projectId, location, backendId, branch);
 
@@ -233,6 +235,7 @@ async function promptNewBackendId(
       await apphosting.getBackend(projectId, location, backendId);
     } catch (err: any) {
       if (err.status === 404) {
+        logSuccess(`Name set to ${backendId}\n`);
         return backendId;
       }
       throw new FirebaseError(

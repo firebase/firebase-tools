@@ -95,7 +95,7 @@ export async function linkGitHubRepository(
   projectId: string,
   location: string,
 ): Promise<devConnect.GitRepositoryLink> {
-  utils.logBullet(clc.bold(`${clc.yellow("===")} Set up a GitHub connection`));
+  utils.logBullet(clc.bold(`${clc.yellow("==")} Import a Github repository`));
   // Fetch the sentinel Oauth connection first which is needed to create further GitHub connections.
   const oauthConn = await getOrCreateOauthConnection(projectId, location);
   const existingConns = await listAppHostingConnections(projectId);
@@ -230,7 +230,7 @@ async function promptCloneUri(
   const cloneUri = await promptOnce({
     type: "autocomplete",
     name: "cloneUri",
-    message: "Which repository would you like to deploy?",
+    message: "Which Github repo do you want to deploy?",
     source: (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
       return new Promise((resolve) =>
         resolve([
