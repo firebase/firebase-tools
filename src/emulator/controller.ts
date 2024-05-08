@@ -826,7 +826,6 @@ export async function startAll(
   }
 
   if (listenForEmulator.dataconnect) {
-    const dataConnectAddr = legacyGetFirstAddr(Emulators.DATACONNECT);
     const config = readFirebaseJson(options.config);
     if (!config.length) {
       throw new FirebaseError("No Data Connect service found in firebase.json");
@@ -841,8 +840,7 @@ export async function startAll(
       configDir = path.resolve(path.join(cwd), configDir);
     }
     const dataConnectEmulator = new DataConnectEmulator({
-      host: dataConnectAddr.host,
-      port: dataConnectAddr.port,
+      listen: listenForEmulator.dataconnect,
       projectId,
       auto_download: true,
       configDir,
@@ -850,6 +848,9 @@ export async function startAll(
       rc: options.rc,
     });
     await startEmulator(dataConnectEmulator);
+    if (!utils.isVSCodeExtension()) {
+      await dataConnectEmulator.connectToPostgres();
+    }
   }
 
   if (listenForEmulator.storage) {

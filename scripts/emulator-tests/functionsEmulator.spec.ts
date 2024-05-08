@@ -12,7 +12,7 @@ import * as logform from "logform";
 import { EmulatedTriggerDefinition } from "../../src/emulator/functionsEmulatorShared";
 import { EmulatableBackend, FunctionsEmulator } from "../../src/emulator/functionsEmulator";
 import { EmulatorInfo, Emulators } from "../../src/emulator/types";
-import { FakeEmulator } from "../../src/test/emulators/fakeEmulator";
+import { FakeEmulator } from "../../src/emulator/testing/fakeEmulator";
 import { TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
 import { logger } from "../../src/logger";
 import * as registry from "../../src/emulator/registry";

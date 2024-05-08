@@ -1,4 +1,4 @@
-import * as repo from "./repo";
+import * as clc from "colorette";
 import * as poller from "../operation-poller";
 import * as apphosting from "../gcp/apphosting";
 import * as githubConnections from "./githubConnections";
@@ -16,7 +16,6 @@ import {
 import { Backend, BackendOutputOnlyFields, API_VERSION, Build, Rollout } from "../gcp/apphosting";
 import { addServiceAccountToRoles } from "../gcp/resourceManager";
 import * as iam from "../gcp/iam";
-import { Repository } from "../gcp/cloudbuild";
 import { FirebaseError } from "../error";
 import { promptOnce } from "../prompt";
 import { DEFAULT_LOCATION } from "./constants";
@@ -72,7 +71,6 @@ export async function doSetup(
   webAppName: string | null,
   location: string | null,
   serviceAccount: string | null,
-  withCloudBuildRepos: boolean,
 ): Promise<void> {
   await Promise.all([
     ensure(projectId, developerConnectOrigin(), "apphosting", true),
@@ -82,7 +80,6 @@ export async function doSetup(
     ensure(projectId, artifactRegistryDomain(), "apphosting", true),
     ensure(projectId, iamOrigin(), "apphosting", true),
   ]);
-  logBullet("First we need a few details to create your backend.\n");
 
   // Hack: Because IAM can take ~45 seconds to propagate, we provision the service account as soon as
   // possible to reduce the likelihood that the subsequent Cloud Build fails. See b/336862200.
@@ -99,25 +96,11 @@ export async function doSetup(
 
   location =
     location || (await promptLocation(projectId, "Select a location to host your backend:\n"));
-  logSuccess(`Location set to ${location}.\n`);
 
-  const backendId = await promptNewBackendId(projectId, location, {
-    name: "backendId",
-    type: "input",
-    default: "my-web-app",
-    message: "Create a name for your backend [1-30 characters]",
-  });
-
-  const webApp = await webApps.getOrCreateWebApp(projectId, webAppName, backendId);
-  if (webApp) {
-    logSuccess(`Firebase web app set to ${webApp.name}.\n`);
-  } else {
-    logWarning(`Firebase web app not set`);
-  }
-
-  const gitRepositoryConnection: Repository | GitRepositoryLink = withCloudBuildRepos
-    ? await repo.linkGitHubRepository(projectId, location)
-    : await githubConnections.linkGitHubRepository(projectId, location);
+  const gitRepositoryConnection: GitRepositoryLink = await githubConnections.linkGitHubRepository(
+    projectId,
+    location,
+  );
 
   const rootDir = await promptOnce({
     name: "rootDir",
@@ -125,6 +108,31 @@ export async function doSetup(
     default: "/",
     message: "Specify your app's root directory relative to your repository",
   });
+
+  // TODO: Once tag patterns are implemented, prompt which method the user
+  // prefers. We could reduce the number of questions asked by letting people
+  // enter tag:<pattern>?
+  const branch = await promptOnce({
+    name: "branch",
+    type: "input",
+    default: "main",
+    message: "Pick a branch for continuous deployment",
+  });
+  logSuccess(`Repo linked successfully!\n`);
+
+  logBullet(`${clc.yellow("===")} Set up your backend`);
+  const backendId = await promptNewBackendId(projectId, location, {
+    name: "backendId",
+    type: "input",
+    default: "my-web-app",
+    message: "Provide a name for your backend [1-30 characters]",
+  });
+  logSuccess(`Name set to ${backendId}\n`);
+
+  const webApp = await webApps.getOrCreateWebApp(projectId, webAppName, backendId);
+  if (!webApp) {
+    logWarning(`Firebase web app not set`);
+  }
 
   const createBackendSpinner = ora("Creating your new backend...").start();
   const backend = await createBackend(
@@ -136,17 +144,7 @@ export async function doSetup(
     webApp?.id,
     rootDir,
   );
-  createBackendSpinner.succeed(`Successfully created backend:\n\t${backend.name}\n`);
-
-  // TODO: Once tag patterns are implemented, prompt which method the user
-  // prefers. We could reduce the number of questions asked by letting people
-  // enter tag:<pattern>?
-  const branch = await promptOnce({
-    name: "branch",
-    type: "input",
-    default: "main",
-    message: "Pick a branch for continuous deployment",
-  });
+  createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
 
   await setDefaultTrafficPolicy(projectId, location, backendId, branch);
 
@@ -261,7 +259,7 @@ export async function createBackend(
   projectId: string,
   location: string,
   backendId: string,
-  repository: Repository | GitRepositoryLink,
+  repository: GitRepositoryLink,
   serviceAccount: string | null,
   webAppId: string | undefined,
   rootDir = "/",
@@ -451,13 +449,17 @@ export async function promptLocation(
     return allowedLocations[0];
   }
 
-  return (await promptOnce({
+  const location = (await promptOnce({
     name: "location",
     type: "list",
     default: DEFAULT_LOCATION,
     message: prompt,
     choices: allowedLocations,
   })) as string;
+
+  logSuccess(`Location set to ${location}.\n`);
+
+  return location;
 }
 
 /**

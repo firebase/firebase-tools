@@ -1,3 +1,2 @@
-- Increased the timeout for waiting for emulators to start to 60s. (#7091)
-- Fixes infinite loop when trying to create a Hosting site.
-- Fix copied functions dist dir files for Next.js when source config ends with slash (#7099)
+- Fixes issue where storage emulator throws an error due to non-standard whitespaces in filenames (#6834).
+- Fixes issue where some emulators would fail to start when their path contained a whitespace (#7313)

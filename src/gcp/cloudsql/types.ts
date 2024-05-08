@@ -56,6 +56,8 @@ export interface DatabaseFlag {
 
 interface InsightsConfig {
   queryInsightsEnabled: boolean;
+  queryPlansPerMinute: number;
+  queryStringLength: number;
 }
 
 // TODO: Consider splitting off return only fields and input fields into different types.

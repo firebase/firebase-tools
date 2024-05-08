@@ -18,7 +18,7 @@ firebaseSuite("registerDataConnectConfigs", async () => {
       firebaseConfig: { emulators: { dataconnect: { port: 9399 } } },
     });
 
-    const disposable = registerDataConnectConfigs();
+    const disposable = registerDataConnectConfigs(broker);
     addDisposable(disposable);
 
     broker.simulateOn("getInitialData");
@@ -91,7 +91,8 @@ firebaseSuite("registerDataConnectConfigs", async () => {
         }),
       );
 
-      const disposable = await registerDataConnectConfigs();
+      const broker = createTestBroker();
+      const disposable = await registerDataConnectConfigs(broker);
       addDisposable(disposable);
 
       const dataConnectListeners = watcherListeners["**/{dataconnect,connector}.yaml"]!;

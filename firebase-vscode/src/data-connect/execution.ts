@@ -2,6 +2,7 @@ import vscode, {
   ConfigurationTarget,
   Disposable,
   ExtensionContext,
+  TelemetryLogger,
 } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { registerWebview } from "../webview";
@@ -22,51 +23,64 @@ import { DataConnectService } from "./service";
 import { DataConnectError, toSerializedError } from "../../common/error";
 import { OperationLocation } from "./types";
 import { EmulatorsController } from "../core/emulators";
-import { InstanceType } from "./emulators-status";
+import { InstanceType } from "./code-lens-provider";
+import { DATA_CONNECT_EVENT_NAME } from "../analytics";
 
 export function registerExecution(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl,
   dataConnectService: DataConnectService,
-  emulatorsController: EmulatorsController
+  emulatorsController: EmulatorsController,
+  telemetryLogger: TelemetryLogger,
 ): Disposable {
   const treeDataProvider = new ExecutionHistoryTreeDataProvider();
   const executionHistoryTreeView = vscode.window.createTreeView(
     "data-connect-execution-history",
     {
       treeDataProvider,
-    }
+    },
   );
 
   // Select the corresponding tree-item when the selected-execution-id updates
-  effect(() => {
+  const sub1 = effect(() => {
     const id = selectedExecutionId.value;
     const selectedItem = treeDataProvider.executionItems.find(
-      ({ item }) => item.executionId === id
+      ({ item }) => item.executionId === id,
     );
     executionHistoryTreeView.reveal(selectedItem, { select: true });
   });
 
+  function notifyDataConnectResults(item: ExecutionItem) {
+    broker.send("notifyDataConnectResults", {
+      args: item.args ?? "{}",
+      query: print(item.operation),
+      results:
+        item.results instanceof Error
+          ? toSerializedError(item.results)
+          : item.results,
+      displayName: item.operation.operation,
+    });
+  }
+
   // Listen for changes to the selected-execution item
-  effect(() => {
+  const sub2 = effect(() => {
     const item = selectedExecution.value;
     if (item) {
-      broker.send("notifyDataConnectResults", {
-        args: item.args ?? "{}",
-        query: print(item.operation),
-        results:
-          item.results instanceof Error
-            ? toSerializedError(item.results)
-            : item.results,
-        displayName: item.operation.operation,
-      });
+      notifyDataConnectResults(item);
+    }
+  });
+
+  const sub3 = broker.on("getDataConnectResults", () => {
+    const item = selectedExecution.value;
+    if (item) {
+      notifyDataConnectResults(item);
     }
   });
 
   async function executeOperation(
     ast: OperationDefinitionNode,
     { document, documentPath, position }: OperationLocation,
-    instance: InstanceType
+    instance: InstanceType,
   ) {
     const configs = vscode.workspace.getConfiguration("firebase.dataConnect");
     const alwaysExecuteMutationsInProduction =
@@ -84,7 +98,7 @@ export function registerExecution(
           "Do you wish to start it?",
         { modal: true },
         yes,
-        always
+        always,
       );
 
       // If the user selects "always", we update User settings.
@@ -93,7 +107,14 @@ export function registerExecution(
       }
 
       if (result === yes || result === always) {
+        telemetryLogger.logUsage(
+          DATA_CONNECT_EVENT_NAME.START_EMULATOR_FROM_EXECUTION,
+        );
         await vscode.commands.executeCommand("firebase.emulators.start");
+      } else {
+        telemetryLogger.logUsage(
+          DATA_CONNECT_EVENT_NAME.REFUSE_START_EMULATOR_FROM_EXECUTION,
+        );
       }
     }
 
@@ -109,7 +130,7 @@ export function registerExecution(
         "You are about to perform a mutation in production environment. Are you sure?",
         { modal: true },
         yes,
-        always
+        always,
       );
 
       if (result !== always && result !== yes) {
@@ -121,7 +142,7 @@ export function registerExecution(
         configs.update(
           alwaysExecuteMutationsInProduction,
           true,
-          ConfigurationTarget.Global
+          ConfigurationTarget.Global,
         );
       }
     }
@@ -179,12 +200,16 @@ export function registerExecution(
     }
   }
 
-  broker.on(
+  const sub4 = broker.on(
     "definedDataConnectArgs",
-    (value) => (executionArgsJSON.value = value)
+    (value) => (executionArgsJSON.value = value),
   );
 
   return Disposable.from(
+    { dispose: sub1 },
+    { dispose: sub2 },
+    { dispose: sub3 },
+    { dispose: sub4 },
     registerWebview({
       name: "data-connect-execution-configuration",
       context,
@@ -198,13 +223,20 @@ export function registerExecution(
     executionHistoryTreeView,
     vscode.commands.registerCommand(
       "firebase.dataConnect.executeOperation",
-      executeOperation
+      (ast, location, instanceType: InstanceType) => {
+        telemetryLogger.logUsage(
+          instanceType === InstanceType.LOCAL
+            ? DATA_CONNECT_EVENT_NAME.RUN_LOCAL
+            : DATA_CONNECT_EVENT_NAME.RUN_PROD,
+        );
+        executeOperation(ast, location, instanceType);
+      },
     ),
     vscode.commands.registerCommand(
       "firebase.dataConnect.selectExecutionResultToShow",
       (executionId) => {
         selectExecutionId(executionId);
-      }
-    )
+      },
+    ),
   );
 }

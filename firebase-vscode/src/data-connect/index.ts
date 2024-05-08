@@ -1,4 +1,4 @@
-import vscode, { Disposable, ExtensionContext } from "vscode";
+import vscode, { Disposable, ExtensionContext, TelemetryLogger } from "vscode";
 import { Signal, effect } from "@preact/signals-core";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { registerExecution } from "./execution";
@@ -11,7 +11,6 @@ import {
 } from "./code-lens-provider";
 import { registerConnectors } from "./connectors";
 import { AuthService } from "../auth/service";
-import { registerFirebaseDataConnectView } from "./emulators-status";
 import { currentProjectId } from "../core/project";
 import { isTest } from "../utils/env";
 import { setupLanguageClient } from "./language-client";
@@ -20,15 +19,18 @@ import { registerFdcDeploy } from "./deploy";
 import * as graphql from "graphql";
 import {
   ResolvedDataConnectConfigs,
-  VSCODE_ENV_VARS,
   dataConnectConfigs,
   registerDataConnectConfigs,
 } from "./config";
 import { locationToRange } from "../utils/graphql";
 import { runDataConnectCompiler } from "./core-compiler";
-import { setVSCodeEnvVars } from "../../../src/utils";
 import { Result } from "../result";
-import { setTerminalEnvVars } from "./terminal";
+import { runEmulatorIssuesStream } from "./emulator-stream";
+import { LanguageClient } from "vscode-languageclient/node";
+import { registerTerminalTasks } from "./terminal";
+import { registerWebview } from "../webview";
+
+import { DataConnectEmulatorController } from "./emulator";
 
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
@@ -136,7 +138,13 @@ export function registerFdc(
   broker: ExtensionBrokerImpl,
   authService: AuthService,
   emulatorController: EmulatorsController,
+  telemetryLogger: TelemetryLogger,
 ): Disposable {
+  const fdcEmulatorsController = new DataConnectEmulatorController(
+    emulatorController,
+    broker,
+  );
+
   const codeActions = vscode.languages.registerCodeActionsProvider(
     [
       { scheme: "file", language: "graphql" },
@@ -150,27 +158,45 @@ export function registerFdc(
 
   const fdcService = new FdcService(authService, emulatorController);
   const operationCodeLensProvider = new OperationCodeLensProvider(
-    emulatorController,
+    fdcEmulatorsController,
   );
   const schemaCodeLensProvider = new SchemaCodeLensProvider(emulatorController);
 
-  const client = setupLanguageClient(context);
-  client.start();
+  // activate language client/serer
+  let client: LanguageClient;
+  const lsOutputChannel: vscode.OutputChannel =
+    vscode.window.createOutputChannel("Firebase GraphQL Language Server");
+
+  // setup new language client on config change
+  context.subscriptions.push({
+    dispose: effect(() => {
+      const configs = dataConnectConfigs.value?.tryReadValue;
+      if (client) {
+        client.stop();
+      }
+      if (configs && configs.values.length > 0) {
+        client = setupLanguageClient(context, configs, lsOutputChannel);
+        vscode.commands.executeCommand("fdc-graphql.start");
+      }
+    }),
+  });
 
   // Perform some side-effects when the endpoint changes
   context.subscriptions.push({
     dispose: effect(() => {
       const configs = dataConnectConfigs.value?.tryReadValue;
-
-      if (configs && fdcService.localEndpoint.value) {
+      if (configs && emulatorController.getLocalEndpoint().value) {
         // TODO move to client.start or setupLanguageClient
         vscode.commands.executeCommand("fdc-graphql.restart");
-
         vscode.commands.executeCommand(
           "firebase.dataConnect.executeIntrospection",
         );
-
-        runDataConnectCompiler(configs, fdcService.localEndpoint.value);
+        runEmulatorIssuesStream(
+          configs,
+          emulatorController.getLocalEndpoint().value,
+          fdcEmulatorsController.isPostgresEnabled,
+        );
+        runDataConnectCompiler(configs, emulatorController.getLocalEndpoint().value);
       }
     }),
   });
@@ -193,9 +219,10 @@ export function registerFdc(
   });
 
   return Disposable.from(
+    fdcEmulatorsController,
     codeActions,
     selectedProjectStatus,
-    {dispose: sub1},
+    { dispose: sub1 },
     {
       dispose: effect(() => {
         selectedProjectStatus.text = `$(mono-firebase) ${
@@ -204,13 +231,20 @@ export function registerFdc(
         selectedProjectStatus.show();
       }),
     },
-    registerDataConnectConfigs(),
-    registerExecution(context, broker, fdcService, emulatorController),
+    registerDataConnectConfigs(broker),
+    registerExecution(
+      context,
+      broker,
+      fdcService,
+      emulatorController,
+      telemetryLogger,
+    ),
     registerExplorer(context, broker, fdcService),
-    registerFirebaseDataConnectView(context, broker, emulatorController),
-    registerAdHoc(context, broker),
-    registerConnectors(context, broker, fdcService),
-    registerFdcDeploy(broker),
+    registerWebview({ name: "data-connect", context, broker }),
+    registerAdHoc(fdcService, telemetryLogger),
+    registerConnectors(context, broker, fdcService, telemetryLogger),
+    registerFdcDeploy(broker, telemetryLogger),
+    registerTerminalTasks(broker, telemetryLogger),
     operationCodeLensProvider,
     vscode.languages.registerCodeLensProvider(
       // **Hack**: For testing purposes, enable code lenses on all graphql files

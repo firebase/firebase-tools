@@ -6,6 +6,7 @@ import { dataConnectConfigs } from "./config";
 import { createE2eMockable } from "../utils/test_hooks";
 import { runCommand } from "./terminal";
 import { ExtensionBrokerImpl } from "../extension-broker";
+import { DATA_CONNECT_EVENT_NAME } from "../analytics";
 
 function createDeployOnlyCommand(serviceConnectorMap: {
   [key: string]: string[];
@@ -14,7 +15,12 @@ function createDeployOnlyCommand(serviceConnectorMap: {
     "firebase deploy --only " +
     Object.entries(serviceConnectorMap)
       .map(([serviceId, connectorIds]) => {
-        return `dataconnect:${serviceId}:schema,` + connectorIds.map((connectorId) => `dataconnect:${serviceId}:${connectorId}`).join(",");
+        return (
+          `dataconnect:${serviceId}:schema,` +
+          connectorIds
+            .map((connectorId) => `dataconnect:${serviceId}:${connectorId}`)
+            .join(",")
+        );
       })
       .join(",")
   );
@@ -22,6 +28,7 @@ function createDeployOnlyCommand(serviceConnectorMap: {
 
 export function registerFdcDeploy(
   broker: ExtensionBrokerImpl,
+  telemetryLogger: vscode.TelemetryLogger,
 ): vscode.Disposable {
   const deploySpy = createE2eMockable(
     async (...args: Parameters<typeof cliDeploy>) => {
@@ -33,10 +40,12 @@ export function registerFdcDeploy(
   );
 
   const deployAllCmd = vscode.commands.registerCommand("fdc.deploy-all", () => {
+    telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.DEPLOY_ALL);
     runCommand("firebase deploy --only dataconnect");
   });
 
   const deployCmd = vscode.commands.registerCommand("fdc.deploy", async () => {
+    telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.DEPLOY_INDIVIDUAL);
     const configs = await firstWhereDefined(dataConnectConfigs).then(
       (c) => c.requireValue,
     );

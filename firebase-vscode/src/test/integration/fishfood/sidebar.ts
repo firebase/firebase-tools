@@ -10,7 +10,7 @@ firebaseTest(
     const commands = new FirebaseCommands();
     const sidebar = new FirebaseSidebar(workbench);
 
-    await commands.startEmulators();
+    await commands.waitEmulators();
 
     await sidebar.open();
     await sidebar.runInFirebaseViewContext(async (firebase) => {

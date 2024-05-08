@@ -98,7 +98,7 @@ steps:
   # Publish the package.
   - name: "gcr.io/$PROJECT_ID/package-builder"
     dir: "${_REPOSITORY_NAME}"
-    args: ["bash", "./scripts/publish.sh", "${_VERSION}"]
+    args: ["bash", "./scripts/publish.sh", "${_VERSION}", "${_VSCODE_VERSION}"]
     env:
       - "REPOSITORY_ORG=${_REPOSITORY_ORG}"
       - "REPOSITORY_NAME=${_REPOSITORY_NAME}"
@@ -126,6 +126,7 @@ options:
 
 substitutions:
   _VERSION: ""
+  _VSCODE_VERSION: ""
   _KEY_RING: "cloud-build-ring"
   _KEY_NAME: "publish"
   _REPOSITORY_ORG: "firebase"
