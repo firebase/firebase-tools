@@ -203,8 +203,7 @@ export async function getOrCreateOauthConnection(
   }
 
   while (conn.installationState.stage === "PENDING_USER_OAUTH") {
-    utils.logBullet("You must authorize the Firebase GitHub app.");
-    utils.logBullet("Sign in to GitHub and authorize Firebase GitHub app:");
+    utils.logBullet("Please authorize the Firebase GitHub app by visiting this url:");
     const { url, cleanup } = await utils.openInBrowserPopup(
       conn.installationState.actionUri,
       "Authorize the GitHub app",
@@ -212,13 +211,16 @@ export async function getOrCreateOauthConnection(
     utils.logBullet(`\t${url}`);
     await promptOnce({
       type: "input",
-      message: "Press Enter once you have authorized the app",
+      message: "Press enter once you have authorized the GitHub App.",
     });
     cleanup();
     const { projectId, location, id } = parseConnectionName(conn.name)!;
     conn = await devConnect.getConnection(projectId, location, id);
   }
-
+  
+  utils.logSuccess(
+    "Connected with Github successfully\n",
+  );
   return conn;
 }
 
@@ -317,7 +319,7 @@ export async function ensureSecretManagerAdminGrant(projectId: string): Promise<
   }
 
   utils.logSuccess(
-    "Successfully granted the required role to the Developer Connect Service Agent!",
+    "Successfully granted the required role to the Developer Connect Service Agent!\n",
   );
 }
 
