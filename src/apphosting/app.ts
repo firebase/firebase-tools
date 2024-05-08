@@ -16,8 +16,8 @@ type FirebaseWebApp = { name: string; id: string };
 
 /**
  * If firebaseWebAppId is provided and a matching web app exists, it is
- * returned. If firebaseWebAppId is a new web app with the given backendId is
- * created.
+ * returned. If firebaseWebAppId is not provided, a new web app with the given
+ * backendId is created.
  * @param projectId user's projectId
  * @param firebaseWebAppId (optional) id of an existing Firebase web app
  * @param backendId name of the app hosting backend
