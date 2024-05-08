@@ -106,9 +106,7 @@ export async function doSetup(
   });
 
   const webApp = await webApps.getOrCreateWebApp(projectId, webAppName, backendId);
-  if (webApp) {
-    logSuccess(`Created a new Firebase web app named "${webApp.name}"`);
-  } else {
+  if (!webApp) {
     logWarning(`Firebase web app not set`);
   }
 
