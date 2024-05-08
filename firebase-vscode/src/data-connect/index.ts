@@ -218,7 +218,7 @@ export function registerFdc(
     registerExecution(context, broker, fdcService, emulatorController),
     registerExplorer(context, broker, fdcService),
     registerFirebaseDataConnectView(context, broker, emulatorController),
-    registerAdHoc(context, broker),
+    registerAdHoc(),
     registerConnectors(context, broker, fdcService),
     registerFdcDeploy(broker),
     operationCodeLensProvider,
