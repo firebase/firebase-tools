@@ -42,7 +42,7 @@ describe("app", () => {
         webApps.getOrCreateWebApp(projectId, "nonExistentWebApp", backendId),
       ).to.be.rejectedWith(
         FirebaseError,
-        "The web app 'nonExistentWebApp' does not exist in project projectId",
+        "The web app with Id 'nonExistentWebApp' does not exist in project projectId",
       );
     });
 
