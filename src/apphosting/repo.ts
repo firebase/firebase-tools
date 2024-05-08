@@ -90,7 +90,7 @@ export async function linkGitHubRepository(
   projectId: string,
   location: string,
 ): Promise<gcb.Repository> {
-  utils.logBullet(clc.bold(`${clc.yellow("==")} Import a Github repository`));
+  utils.logBullet(clc.bold(`${clc.yellow("===")} Import a GitHub repository`));
   // Fetch the sentinel Oauth connection first which is needed to create further GitHub connections.
   const oauthConn = await getOrCreateOauthConnection(projectId, location);
   const existingConns = await listAppHostingConnections(projectId);
