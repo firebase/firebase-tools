@@ -1,5 +1,4 @@
 # # Example schema
-# # TODO: Replace with a really good illustrative example from devrel!
 # type Product @table {
 #   name: String!
 #   price: Int!
