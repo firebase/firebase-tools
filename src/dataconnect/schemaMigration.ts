@@ -17,11 +17,13 @@ export async function diffSchema(schema: Schema): Promise<Diff[]> {
   const dbName = schema.primaryDatasource.postgresql?.database;
   const instanceName = schema.primaryDatasource.postgresql?.cloudSql.instance;
   if (!instanceName || !dbName) {
-    throw new FirebaseError(`tried to diff schema but ${instanceName} was undefined`);
+    throw new FirebaseError(
+      `Tried to diff schema but instance or database was undefined in dataconnect.yaml`,
+    );
   }
   try {
     const serviceName = schema.name.replace(`/schemas/${SCHEMA_ID}`, "");
-    await ensureServiceIsConnectedToCloudSql(serviceName);
+    await ensureServiceIsConnectedToCloudSql(serviceName, instanceName, dbName);
     await upsertSchema(schema, /** validateOnly=*/ true);
   } catch (err: any) {
     const invalidConnectors = errors.getInvalidConnectors(err);
@@ -52,13 +54,17 @@ export async function migrateSchema(args: {
       "Schema is missing primaryDatasource.postgresql?.database, cannot migrate",
     );
   }
-  const instanceId = schema.primaryDatasource.postgresql?.cloudSql.instance.split("/").pop();
-  if (!instanceId) {
-    throw new FirebaseError(`tried to migrate schema but ${instanceId} was undefined`);
+  const instanceName = schema.primaryDatasource.postgresql?.cloudSql.instance;
+  if (!instanceName) {
+    throw new FirebaseError(
+      "tried to migrate schema but instance name was not provided in dataconnect.yaml",
+    );
   }
+  const instanceId = instanceName?.split("/").pop();
+
   const serviceName = schema.name.replace(`/schemas/${SCHEMA_ID}`, "");
   try {
-    await ensureServiceIsConnectedToCloudSql(serviceName);
+    await ensureServiceIsConnectedToCloudSql(serviceName, instanceName, databaseId);
     await upsertSchema(schema, validateOnly);
     logger.debug(`Database schema was up to date for ${instanceId}:${databaseId}`);
   } catch (err: any) {
@@ -251,23 +257,40 @@ function displayInvalidConnectors(invalidConnectors: string[]) {
 // (ie when users create a service in console),
 // the backend will not have the necesary permissions to check cSQL for differences.
 // We fix this by upserting the currently deployed schema with schemaValidation=strict,
-async function ensureServiceIsConnectedToCloudSql(serviceName: string) {
-  let currentSchema;
+async function ensureServiceIsConnectedToCloudSql(
+  serviceName: string,
+  instanceId: string,
+  databaseId: string,
+) {
+  let currentSchema: Schema;
   try {
     currentSchema = await getSchema(serviceName);
   } catch (err: any) {
     if (err.status === 404) {
-      // TODO: Deploy empty source with STRICT = true
-      return;
+      // If no schema has been deployed yet, deploy an empty one to get connectivity.
+      currentSchema = {
+        name: `${serviceName}/schema/${SCHEMA_ID}`,
+        source: {
+          files: [],
+        },
+        primaryDatasource: {
+          postgresql: {
+            database: databaseId,
+            cloudSql: {
+              instance: instanceId,
+            },
+          },
+        },
+      };
+    } else {
+      throw err;
     }
-    throw err;
   }
   if (
     !currentSchema.primaryDatasource.postgresql ||
     currentSchema.primaryDatasource.postgresql.schemaValidation === "STRICT"
   ) {
-    // Only want to do this coming from console half deployed state. If the current schema is "STRICT" mode,
-    // or if there is not postgres attached, don't try this.
+    // If the current schema is "STRICT" mode, don't do thins.
     return;
   }
   currentSchema.primaryDatasource.postgresql.schemaValidation = "STRICT";
