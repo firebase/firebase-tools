@@ -8,8 +8,6 @@ import * as utils from "../../utils";
 import { needProjectId } from "../../projectUtils";
 import { getResourceFilters } from "../../dataconnect/filters";
 import { build } from "../../dataconnect/build";
-import { requireTosAcceptance } from "../../requireTosAcceptance";
-import { DATA_CONNECT_TOS_ID } from "../../gcp/firedata";
 import { ensureApis } from "../../dataconnect/ensureApis";
 import { requireTosAcceptance } from "../../requireTosAcceptance";
 import { DATA_CONNECT_TOS_ID } from "../../gcp/firedata";

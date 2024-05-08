@@ -1,7 +1,13 @@
 import type { Options } from "./options";
 
 import { FirebaseError } from "./error";
-import { APPHOSTING_TOS_ID, DATA_CONNECT_TOS_ID, TosId, getTosStatus, isProductTosAccepted } from "./gcp/firedata";
+import {
+  APPHOSTING_TOS_ID,
+  DATA_CONNECT_TOS_ID,
+  TosId,
+  getTosStatus,
+  isProductTosAccepted,
+} from "./gcp/firedata";
 import { consoleOrigin } from "./api";
 
 const consoleLandingPage = new Map<TosId, string>([
