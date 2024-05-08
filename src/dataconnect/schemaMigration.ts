@@ -14,16 +14,9 @@ import { logLabeledWarning, logLabeledSuccess } from "../utils";
 import * as errors from "./errors";
 
 export async function diffSchema(schema: Schema): Promise<Diff[]> {
-  const dbName = schema.primaryDatasource.postgresql?.database;
-  const instanceName = schema.primaryDatasource.postgresql?.cloudSql.instance;
-  if (!instanceName || !dbName) {
-    throw new FirebaseError(
-      `Tried to diff schema but instance or database was undefined in dataconnect.yaml`,
-    );
-  }
+  const { serviceName, instanceName, databaseId } = getIdentifiers(schema);
+  await ensureServiceIsConnectedToCloudSql(serviceName, instanceName, databaseId);
   try {
-    const serviceName = schema.name.replace(`/schemas/${SCHEMA_ID}`, "");
-    await ensureServiceIsConnectedToCloudSql(serviceName, instanceName, dbName);
     await upsertSchema(schema, /** validateOnly=*/ true);
   } catch (err: any) {
     const invalidConnectors = errors.getInvalidConnectors(err);
@@ -48,23 +41,9 @@ export async function migrateSchema(args: {
 }): Promise<Diff[]> {
   const { options, schema, allowNonInteractiveMigration, validateOnly } = args;
 
-  const databaseId = schema.primaryDatasource.postgresql?.database;
-  if (!databaseId) {
-    throw new FirebaseError(
-      "Schema is missing primaryDatasource.postgresql?.database, cannot migrate",
-    );
-  }
-  const instanceName = schema.primaryDatasource.postgresql?.cloudSql.instance;
-  if (!instanceName) {
-    throw new FirebaseError(
-      "tried to migrate schema but instance name was not provided in dataconnect.yaml",
-    );
-  }
-  const instanceId = instanceName?.split("/").pop();
-
-  const serviceName = schema.name.replace(`/schemas/${SCHEMA_ID}`, "");
+  const { serviceName, instanceId, instanceName, databaseId } = getIdentifiers(schema);
+  await ensureServiceIsConnectedToCloudSql(serviceName, instanceName, databaseId);
   try {
-    await ensureServiceIsConnectedToCloudSql(serviceName, instanceName, databaseId);
     await upsertSchema(schema, validateOnly);
     logger.debug(`Database schema was up to date for ${instanceId}:${databaseId}`);
   } catch (err: any) {
@@ -117,6 +96,34 @@ export async function migrateSchema(args: {
     return diffs;
   }
   return [];
+}
+
+function getIdentifiers(schema: Schema): {
+  instanceName: string;
+  instanceId: string;
+  databaseId: string;
+  serviceName: string;
+} {
+  const databaseId = schema.primaryDatasource.postgresql?.database;
+  if (!databaseId) {
+    throw new FirebaseError(
+      "Schema is missing primaryDatasource.postgresql?.database, cannot migrate",
+    );
+  }
+  const instanceName = schema.primaryDatasource.postgresql?.cloudSql.instance;
+  if (!instanceName) {
+    throw new FirebaseError(
+      "tried to migrate schema but instance name was not provided in dataconnect.yaml",
+    );
+  }
+  const instanceId = instanceName.split("/").pop()!;
+  const serviceName = schema.name.replace(`/schemas/${SCHEMA_ID}`, "");
+  return {
+    databaseId,
+    instanceId,
+    instanceName,
+    serviceName,
+  };
 }
 
 function suggestedCommand(serviceName: string, invalidConnectorNames: string[]): string {
@@ -290,7 +297,7 @@ async function ensureServiceIsConnectedToCloudSql(
     !currentSchema.primaryDatasource.postgresql ||
     currentSchema.primaryDatasource.postgresql.schemaValidation === "STRICT"
   ) {
-    // If the current schema is "STRICT" mode, don't do thins.
+    // If the current schema is "STRICT" mode, don't do this.
     return;
   }
   currentSchema.primaryDatasource.postgresql.schemaValidation = "STRICT";
