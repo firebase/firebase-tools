@@ -542,6 +542,11 @@ export async function promiseWithSpinner<T>(action: () => Promise<T>, message: s
   return data;
 }
 
+/** Creates a promise that resolves after a given timeout. await to "sleep". */
+export function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * Return a "destroy" function for a Node.js HTTP server. MUST be called on
  * server creation (e.g. right after `.listen`), BEFORE any connections.
