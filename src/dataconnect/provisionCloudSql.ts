@@ -35,10 +35,14 @@ export async function provisionCloudSql(args: {
           `Instance ${instanceId} settings not compatible with Firebase Data Connect. ` +
             `Updating instance to enable Cloud IAM authentication and public IP. This may take a few minutes...`,
         );
-      await promiseWithSpinner(() => cloudSqlAdminClient.updateInstanceForDataConnect(
-        existingInstance,
-        enableGoogleMlIntegration,
-      ), "Updating your instance...");
+      await promiseWithSpinner(
+        () =>
+          cloudSqlAdminClient.updateInstanceForDataConnect(
+            existingInstance,
+            enableGoogleMlIntegration,
+          ),
+        "Updating your instance...",
+      );
       silent || utils.logLabeledBullet("dataconnect", "Instance updated");
     }
   } catch (err: any) {
@@ -57,12 +61,16 @@ export async function provisionCloudSql(args: {
         `CloudSQL instance '${instanceId}' not found, creating it. This instance is provided under the terms of the Data Connect free trial ${freeTrialTermsLink()}`,
       );
     silent || utils.logLabeledBullet("dataconnect", `This may take while...`);
-    const newInstance = await promiseWithSpinner(() => cloudSqlAdminClient.createInstance(
-      projectId,
-      locationId,
-      instanceId,
-      enableGoogleMlIntegration,
-    ), "Creating your instance...");
+    const newInstance = await promiseWithSpinner(
+      () =>
+        cloudSqlAdminClient.createInstance(
+          projectId,
+          locationId,
+          instanceId,
+          enableGoogleMlIntegration,
+        ),
+      "Creating your instance...",
+    );
     silent || utils.logLabeledBullet("dataconnect", "Instance created");
     connectionName = newInstance?.connectionName || "";
   }
