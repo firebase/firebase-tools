@@ -11,7 +11,7 @@ export const command = new Command("apphosting:backends:create")
   .description("create a Firebase App Hosting backend")
   .option(
     "-a, --app <webAppId>",
-    "specify an existing Firebase web app to associate your App Hosting backend with",
+    "specify an existing Firebase web app's ID to associate your App Hosting backend with",
   )
   .option("-l, --location <location>", "specify the location of the backend", "")
   .option(

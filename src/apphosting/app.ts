@@ -34,7 +34,7 @@ async function getOrCreateWebApp(
     const webApp = webAppsInProject.find((app) => app.appId === firebaseWebAppId);
     if (webApp === undefined) {
       throw new FirebaseError(
-        `The web app with Id '${firebaseWebAppId}' does not exist in project ${projectId}`,
+        `The web app '${firebaseWebAppId}' does not exist in project ${projectId}`,
       );
     }
 
