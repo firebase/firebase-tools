@@ -154,6 +154,15 @@ export class SchemaCodeLensProvider extends ComputedCodeLensProvider {
             arguments: [x, schemaLocation],
           })
         );
+
+        codeLenses.push(
+          new vscode.CodeLens(range, {
+            title: `$(database) Read data`,
+            command: "firebase.dataConnect.schemaReadData",
+            tooltip: "Generate a query to read data of this type",
+            arguments: [documentNode, x],
+          })
+        );
       }
     }
 
