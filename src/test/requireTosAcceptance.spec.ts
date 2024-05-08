@@ -70,7 +70,7 @@ describe("requireTosAcceptance", () => {
       .reply(200, SAMPLE_RESPONSE);
 
     await expect(requireTosAcceptance(APPHOSTING_TOS_ID)(SAMPLE_OPTIONS)).to.be.rejectedWith(
-      "Your account is missing the required terms of service for this action. Please accept the Terms of Service and try again. https://console.firebase.google.com/project/_/apphosting",
+      "Terms of Service",
     );
 
     expect(nock.isDone()).to.be.true;

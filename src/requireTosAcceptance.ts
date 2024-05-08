@@ -37,6 +37,6 @@ async function requireTos(tosId: TosId): Promise<void> {
   }
   const console = consoleLandingPage.get(tosId) || consoleOrigin();
   throw new FirebaseError(
-    `Your account is missing the required terms of service for this action. Please accept the Terms of Service and try again. ${console}`,
+    `Your account has not accepted the required Terms of Service for this action. Please accept the Terms of Service and try again. ${console}`,
   );
 }
