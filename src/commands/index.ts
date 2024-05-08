@@ -208,7 +208,8 @@ export function load(client: any): any {
   if (experiments.isEnabled("dataconnect")) {
     client.dataconnect = {};
     client.setup.emulators.dataconnect = loadCommand("setup-emulators-dataconnect");
-    client.dataconnect.list = loadCommand("dataconnect-list");
+    client.dataconnect.services = {};
+    client.dataconnect.services.list = loadCommand("dataconnect-services-list");
     client.dataconnect.sql = {};
     client.dataconnect.sql.diff = loadCommand("dataconnect-sql-diff");
     client.dataconnect.sql.migrate = loadCommand("dataconnect-sql-migrate");

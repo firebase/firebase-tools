@@ -57,7 +57,7 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     const choices = instances.map((i) => {
       return { name: i.name, value: i.name, location: i.region };
     });
-    choices.push({ name: "Create a new instance", value: "", location: ""});
+    choices.push({ name: "Create a new instance", value: "", location: "" });
     if (instances.length) {
       cloudSqlInstanceId = await promptOnce({
         message: `Which CloudSSQL instance would you like to use?`,
@@ -65,7 +65,7 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
         choices,
       });
     }
-    locationId = choices.find(c => c.value === cloudSqlInstanceId)!.location;
+    locationId = choices.find((c) => c.value === cloudSqlInstanceId)!.location;
   }
   if (cloudSqlInstanceId === "") {
     newInstance = true;
