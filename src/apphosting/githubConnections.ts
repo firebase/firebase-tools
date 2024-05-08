@@ -211,7 +211,7 @@ export async function getOrCreateOauthConnection(
     utils.logBullet(`\t${url}`);
     await promptOnce({
       type: "input",
-      message: "Press enter once you have authorized the GitHub App.",
+      message: "Press Enter once you have authorized the GitHub App.",
     });
     cleanup();
     const { projectId, location, id } = parseConnectionName(conn.name)!;
