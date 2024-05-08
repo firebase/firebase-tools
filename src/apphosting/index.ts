@@ -120,7 +120,7 @@ export async function doSetup(
   });
   logSuccess(`Repo linked successfully!\n`);
 
-  logBullet(`${clc.yellow("==")} Setup your beckend`);
+  logBullet(`${clc.yellow("===")} Setup your beckend`);
   const backendId = await promptNewBackendId(projectId, location, {
     name: "backendId",
     type: "input",
