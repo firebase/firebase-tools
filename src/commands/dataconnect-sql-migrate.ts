@@ -2,12 +2,12 @@ import { Command } from "../command";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { pickService } from "../dataconnect/fileUtils";
-import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { migrateSchema } from "../dataconnect/schemaMigration";
 import { requireAuth } from "../requireAuth";
 import { requirePermissions } from "../requirePermissions";
 import { ensureApis } from "../dataconnect/ensureApis";
+import { logLabeledSuccess } from "../utils";
 
 export const command = new Command("dataconnect:sql:migrate [serviceId]")
   .description("migrates your CloudSQL database's schema to match your local DataConnect schema")
@@ -38,11 +38,12 @@ export const command = new Command("dataconnect:sql:migrate [serviceId]")
       validateOnly: true,
     });
     if (diffs.length) {
-      logger.info(
-        `Schema sucessfully migrated! Run 'firebase deploy' to deploy your new schema to your Data Connect service.`,
+      logLabeledSuccess(
+        "dataconnect",
+        `Database schema sucessfully migrated! Run 'firebase deploy' to deploy your new schema to your Data Connect service.`,
       );
     } else {
-      logger.info("Schema was already up to date!");
+      logLabeledSuccess("dataconnect", "Database schema is already up to date!");
     }
     return { projectId, serviceId, diffs };
   });
