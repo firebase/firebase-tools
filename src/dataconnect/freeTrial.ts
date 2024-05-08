@@ -2,8 +2,7 @@ import { listInstances } from "../gcp/cloudsql/cloudsqladmin";
 import * as utils from "../utils";
 
 export function freeTrialTermsLink(): string {
-  // TODO: Link to the free trial terms here.
-  return "";
+  return "https://firebase.google.com/pricing";
 }
 
 // Checks whether there is already a free trial instance on a project.

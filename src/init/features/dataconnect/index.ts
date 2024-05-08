@@ -25,6 +25,12 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     type: "input",
     default: "dataconnect",
   });
+  // TODO: Guided prompts to set up connector auth mode and generate
+  const connectorId = await promptOnce({
+    message: "What ID would you like to use for your connector?",
+    type: "input",
+    default: "my-connector",
+  });
   // Hardcoded locations for when there is no project set up.
   let locationOptions = [
     { name: "us-central1", value: "us-central1" },
@@ -42,38 +48,24 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
       return { name: l, value: l };
     });
   }
-  const locationId = await promptOnce({
-    message: "What location would you like to deploy this service into?",
-    type: "list",
-    choices: locationOptions,
-  });
-  // TODO: Guided prompts to set up connector auth mode and generate
-  const connectorId = await promptOnce({
-    message: "What ID would you like to use for your connector?",
-    type: "input",
-    default: "my-connector",
-  });
-  const dir: string = config.get("dataconnect.source") || "dataconnect";
-  if (!config.has("dataconnect")) {
-    config.set("dataconnect.source", dir);
-    config.set("dataconnect.location", locationId);
-  }
+
   let cloudSqlInstanceId = "";
   let newInstance = false;
+  let locationId = "";
   if (setup.projectId) {
     const instances = await cloudsql.listInstances(setup.projectId);
-    const instancesInLocation = instances.filter((i) => i.region === locationId);
-    const choices = instancesInLocation.map((i) => {
-      return { name: i.name, value: i.name };
+    const choices = instances.map((i) => {
+      return { name: i.name, value: i.name, location: i.region };
     });
-    choices.push({ name: "Create a new instance", value: "" });
-    if (instancesInLocation.length) {
+    choices.push({ name: "Create a new instance", value: "", location: ""});
+    if (instances.length) {
       cloudSqlInstanceId = await promptOnce({
-        message: `Which CloudSSQL in ${locationId} would you like to use?`,
+        message: `Which CloudSSQL instance would you like to use?`,
         type: "list",
         choices,
       });
     }
+    locationId = choices.find(c => c.value === cloudSqlInstanceId)!.location;
   }
   if (cloudSqlInstanceId === "") {
     newInstance = true;
@@ -82,6 +74,16 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
       type: "input",
       default: `dataconnect-test`,
     });
+    locationId = await promptOnce({
+      message: "What location would you use for this instance?",
+      type: "list",
+      choices: locationOptions,
+    });
+  }
+  const dir: string = config.get("dataconnect.source") || "dataconnect";
+  if (!config.has("dataconnect")) {
+    config.set("dataconnect.source", dir);
+    config.set("dataconnect.location", locationId);
   }
   let cloudSqlDatabase = "";
   let newDB = false;
