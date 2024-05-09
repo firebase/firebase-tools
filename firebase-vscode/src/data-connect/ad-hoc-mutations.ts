@@ -160,11 +160,15 @@ query {
     mutation.push(`${functionSpacing}${name}_insert(data: {`); // insert function
     for (const field of ast.fields) {
       // necessary to avoid type error
-      const fieldType: any = field.type;
-      let fieldTypeName: string = fieldType.type.name.value;
+      let fieldType: any = field.type;
+      // We unwrap NonNullType to obtain the actual type
+      if (fieldType.kind === Kind.NON_NULL_TYPE) {
+        fieldType = fieldType.type;
+      }
+      let fieldTypeName: string = fieldType.name.value;
       let fieldName: string = field.name.value;
       let defaultValue = defaultScalarValues[fieldTypeName] as string;
-
+      console.log("what's breaking");
       if (!isDataConnectScalarType(fieldTypeName)) {
         fieldTypeName += "Id";
         fieldName += "Id";
