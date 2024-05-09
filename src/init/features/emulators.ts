@@ -99,13 +99,12 @@ export async function doSetup(setup: Setup, config: any) {
         setup.rcfile.dataconnectEmulatorConfig?.postgres?.localConnectionString ??
         DEFAULT_POSTGRES_CONNECTION;
       // TODO: Download Postgres
-      const localConnectionString = await promptOnce(
-        {
-          type: "input",
-          name: "localConnectionString",
-          message: `What is the connection string of the local Postgres instance you would like to use with the Data Connect emulator?`,
-          default: defaultConnectionString,
-        });
+      const localConnectionString = await promptOnce({
+        type: "input",
+        name: "localConnectionString",
+        message: `What is the connection string of the local Postgres instance you would like to use with the Data Connect emulator?`,
+        default: defaultConnectionString,
+      });
       setup.rcfile.dataconnectEmulatorConfig = { postgres: { localConnectionString } };
     }
 
