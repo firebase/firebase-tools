@@ -215,10 +215,8 @@ export async function getOrCreateOauthConnection(
     const { projectId, location, id } = parseConnectionName(conn.name)!;
     conn = await devConnect.getConnection(projectId, location, id);
   }
-  
-  utils.logSuccess(
-    "Connected with GitHub successfully\n",
-  );
+  utils.logSuccess("Connected with GitHub successfully\n");
+
   return conn;
 }
 
