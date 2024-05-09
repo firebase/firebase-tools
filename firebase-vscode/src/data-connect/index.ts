@@ -20,16 +20,14 @@ import { registerFdcDeploy } from "./deploy";
 import * as graphql from "graphql";
 import {
   ResolvedDataConnectConfigs,
-  VSCODE_ENV_VARS,
   dataConnectConfigs,
   registerDataConnectConfigs,
 } from "./config";
 import { locationToRange } from "../utils/graphql";
 import { runDataConnectCompiler } from "./core-compiler";
-import { setVSCodeEnvVars } from "../../../src/utils";
 import { Result } from "../result";
-import { setTerminalEnvVars } from "./terminal";
 import { runEmulatorIssuesStream } from "./emulator-stream";
+import { LanguageClient } from "vscode-languageclient/node";
 
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
@@ -155,18 +153,29 @@ export function registerFdc(
   );
   const schemaCodeLensProvider = new SchemaCodeLensProvider(emulatorController);
 
-  const client = setupLanguageClient(context);
-  client.start();
+  let client: LanguageClient;
+  // setup new language client on config change
+  context.subscriptions.push({
+    dispose: effect(() => {
+      const configs = dataConnectConfigs.value?.tryReadValue;
+      if (client) client.stop();
+      if (configs && configs.values.length > 0) {
+        client = setupLanguageClient(
+          context,
+          configs,
+        );
+        vscode.commands.executeCommand("fdc-graphql.start");
+      }
+    }),
+  });
 
   // Perform some side-effects when the endpoint changes
   context.subscriptions.push({
     dispose: effect(() => {
       const configs = dataConnectConfigs.value?.tryReadValue;
-
       if (configs && fdcService.localEndpoint.value) {
         // TODO move to client.start or setupLanguageClient
         vscode.commands.executeCommand("fdc-graphql.restart");
-
         vscode.commands.executeCommand(
           "firebase.dataConnect.executeIntrospection",
         );
