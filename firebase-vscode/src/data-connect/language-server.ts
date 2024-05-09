@@ -4,7 +4,10 @@ import { startServer } from "graphql-language-service-server";
 
 async function start() {
   try {
-    await startServer({ method: "node", loadConfigOptions: {filepath: "./.firebase/dataconnect-graphqlrc.yaml"}});
+    await startServer({
+      method: "node",
+      loadConfigOptions: { rootDir: ".firebase" },
+    });
     // eslint-disable-next-line no-console
     console.log("Firebase GraphQL Language Server started!");
   } catch (err) {

@@ -91,7 +91,7 @@ export function setupLanguageClient(
 
   const generateYamlFile = async () => {
     const basePath = vscode.workspace.rootPath;
-    const filePath = ".firebase/.dataconnect-graphqlrc.yaml"
+    const filePath = ".firebase/.graphqlrc";
     const fileUri = vscode.Uri.file(`${basePath}/${filePath}`);
     const folderPath = ".firebase";
     const folderUri = vscode.Uri.file(`${basePath}/${folderPath}`);
@@ -100,11 +100,11 @@ export function setupLanguageClient(
     const config = configs.values[0];
     const generatedPath = ".dataconnect";
     const schemaPaths = [
-      `./${config.relativeSchemaPath}/**/*.gql`,
-      `./${config.relativePath}/${generatedPath}/**/*.gql`,
+      `../${config.relativeSchemaPath}/**/*.gql`,
+      `../${config.relativePath}/${generatedPath}/**/*.gql`,
     ];
     const documentPaths = config.relativeConnectorPaths.map(
-      (connectorPath) => `./${connectorPath}/**/*.gql`,
+      (connectorPath) => `../${connectorPath}/**/*.gql`,
     );
 
     const yamlJson = JSON.stringify({
