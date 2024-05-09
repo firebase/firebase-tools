@@ -4,8 +4,11 @@ import { readFileSync } from "fs";
 import { Config } from "../../../config";
 import { Setup } from "../..";
 import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql";
+import { checkForFreeTrialInstance } from "../../../dataconnect/freeTrial";
+import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
 import { ensureApis } from "../../../dataconnect/ensureApis";
 import { listLocations } from "../../../dataconnect/client";
+import { DEFAULT_POSTGRES_CONNECTION } from "../emulators";
 
 const TEMPLATE_ROOT = resolve(__dirname, "../../../../templates/init/dataconnect/");
 
@@ -24,62 +27,99 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     type: "input",
     default: "dataconnect",
   });
-  // Hardcoded locations for when there is no project set up.
-  let locationOptions = [
-    { name: "us-central1", value: "us-central1" },
-    { name: "europe-north1", value: "europe-north1" },
-    { name: "europe-central2", value: "europe-central2" },
-    { name: "europe-west1", value: "europe-west1" },
-    { name: "southamerica-west1", value: "southamerica-west1" },
-    { name: "us-east4", value: "us-east4" },
-    { name: "us-west1", value: "us-west1" },
-    { name: "asia-southeast1", value: "asia-southeast1" },
-  ];
-  if (setup.projectId) {
-    const locations = await listLocations(setup.projectId);
-    locationOptions = locations.map((l) => {
-      return { name: l, value: l };
-    });
-  }
-  const locationId = await promptOnce({
-    message: "What location would you like to deploy this service into?",
-    type: "list",
-    choices: locationOptions,
-  });
   // TODO: Guided prompts to set up connector auth mode and generate
   const connectorId = await promptOnce({
     message: "What ID would you like to use for your connector?",
     type: "input",
     default: "my-connector",
   });
-  const dir: string =
-    config.get("dataconnect.source") ||
-    (await promptOnce({
-      message: "What directory should be used for DataConnect config and schema?",
+
+  let cloudSqlInstanceId = "";
+  let newInstance = false;
+  let locationId = "";
+  if (setup.projectId) {
+    const instances = await cloudsql.listInstances(setup.projectId);
+    const choices = instances.map((i) => {
+      return { name: i.name, value: i.name, location: i.region };
+    });
+
+    const freeTrialInstanceId = await checkForFreeTrialInstance(setup.projectId);
+    if (!freeTrialInstanceId) {
+      choices.push({ name: "Create a new instance", value: "", location: "" });
+    }
+    if (instances.length) {
+      cloudSqlInstanceId = await promptOnce({
+        message: `Which CloudSSQL instance would you like to use?`,
+        type: "list",
+        choices,
+      });
+    }
+    locationId = choices.find((c) => c.value === cloudSqlInstanceId)!.location;
+  }
+  if (cloudSqlInstanceId === "") {
+    // Hardcoded locations for when there is no project set up.
+    let locationOptions = [
+      { name: "us-central1", value: "us-central1" },
+      { name: "europe-north1", value: "europe-north1" },
+      { name: "europe-central2", value: "europe-central2" },
+      { name: "europe-west1", value: "europe-west1" },
+      { name: "southamerica-west1", value: "southamerica-west1" },
+      { name: "us-east4", value: "us-east4" },
+      { name: "us-west1", value: "us-west1" },
+      { name: "asia-southeast1", value: "asia-southeast1" },
+    ];
+    if (setup.projectId) {
+      const locations = await listLocations(setup.projectId);
+      locationOptions = locations.map((l) => {
+        return { name: l, value: l };
+      });
+    }
+
+    newInstance = true;
+    cloudSqlInstanceId = await promptOnce({
+      message: `What ID would you like to use for your new CloudSQL instance?`,
       type: "input",
-      default: "dataconnect",
-    }));
+      default: `dataconnect-test`,
+    });
+    locationId = await promptOnce({
+      message: "What location would you use for this instance?",
+      type: "list",
+      choices: locationOptions,
+    });
+  }
+  const dir: string = config.get("dataconnect.source") || "dataconnect";
   if (!config.has("dataconnect")) {
     config.set("dataconnect.source", dir);
     config.set("dataconnect.location", locationId);
   }
-  // TODO: Listinstances from CloudSQL, and filter to only the free trial appropriate ones.
-  const cloudSqlInstanceId = await promptOnce({
-    message: `What CloudSQL instance ID in ${locationId} would you like to use (it will be created if it does not exist)?`,
-    type: "input",
-    default: `dataconnect-test`,
-  });
-  // TODO: ListDatabases from CloudSQL.
-  const cloudSqlDatabase = await promptOnce({
-    message: `Which database would you like to use from ${cloudSqlInstanceId} (it will be created if it does not exist)?`,
-    type: "input",
-    default: `dataconnect-test`,
-  });
+  let cloudSqlDatabase = "";
+  let newDB = false;
+  if (!newInstance && setup.projectId) {
+    const dbs = await cloudsql.listDatabases(setup.projectId, cloudSqlInstanceId);
+    const choices = dbs.map((d) => {
+      return { name: d.name, value: d.name };
+    });
+    choices.push({ name: "Create a new database", value: "" });
+    if (dbs.length) {
+      cloudSqlDatabase = await promptOnce({
+        message: `Which database in ${cloudSqlInstanceId} would you like to use?`,
+        type: "list",
+        choices,
+      });
+    }
+  }
+  if (cloudSqlDatabase === "") {
+    newDB = true;
+    cloudSqlDatabase = await promptOnce({
+      message: `What ID would you like to use for your new database in ${cloudSqlInstanceId}?`,
+      type: "input",
+      default: `dataconnect`,
+    });
+  }
 
-  // postgresql://localhost:5432 is a default out of the box value for most installations of Postgres
   const defaultConnectionString =
     setup.rcfile.dataconnectEmulatorConfig?.postgres?.localConnectionString ??
-    "postgresql://localhost:5432?sslmode=disable";
+    DEFAULT_POSTGRES_CONNECTION;
   // TODO: Download Postgres
   const localConnectionString = await promptOnce({
     type: "input",
@@ -106,9 +146,9 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   await config.askWriteProjectFile(join(dir, "schema", "schema.gql"), SCHEMA_TEMPLATE);
   await config.askWriteProjectFile(join(dir, "connector", "queries.gql"), QUERIES_TEMPLATE);
   await config.askWriteProjectFile(join(dir, "connector", "mutations.gql"), MUTATIONS_TEMPLATE);
-  // TODO: Skip this for existing instances
   if (
     setup.projectId &&
+    (newInstance || newDB) &&
     (await confirm({
       message:
         "Would you like to provision your CloudSQL instance and database now? This will take a few minutes.",

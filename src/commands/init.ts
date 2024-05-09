@@ -73,10 +73,10 @@ const choices = [
   },
 ];
 
-if (isEnabled("apphosting")) {
+if (isEnabled("genkit")) {
   choices.push({
-    value: "apphosting",
-    name: "App Hosting: Get started with App Hosting projects.",
+    value: "genkit",
+    name: "Genkit: Setup a new Genkit project with Firebase",
     checked: false,
   });
 }

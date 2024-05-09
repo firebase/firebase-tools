@@ -33,9 +33,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
     expectedChecksum: "2fd771101c0e1f7898c04c9204f2ce63",
   },
   firestore: {
-    version: "1.19.5",
-    expectedSize: 66204670,
-    expectedChecksum: "6d9fb826605701668af722f25048ad95",
+    version: "1.19.6",
+    expectedSize: 66349770,
+    expectedChecksum: "2eaabbe3cdb4867df585b7ec5505bad7",
   },
   storage: {
     version: "1.1.3",
@@ -57,14 +57,14 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   dataconnect:
     process.platform === "darwin"
       ? {
-          version: "1.1.14",
-          expectedSize: 25587552,
-          expectedChecksum: "46466d4f59542ac871ace081527863f3",
+          version: "1.1.16",
+          expectedSize: 25628592,
+          expectedChecksum: "e6ec9eecfe3e3721a5e19949447da530",
         }
       : {
-          version: "1.1.14",
-          expectedSize: 23024336,
-          expectedChecksum: "f4c5cc416065a32031f093804976c118",
+          version: "1.1.16",
+          expectedSize: 23061488,
+          expectedChecksum: "a255eaad9f943925002d738c7ab1252a",
         },
 };
 

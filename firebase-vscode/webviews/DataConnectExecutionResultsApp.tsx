@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from "react";
-import { broker } from "./globals/html-broker";
+import React from "react";
+import { useBroker } from "./globals/html-broker";
 import { Label } from "./components/ui/Text";
 import style from "./data-connect-execution-results.entry.scss";
-import { DataConnectResults } from "../common/messaging/protocol";
 import { SerializedError } from "../common/error";
 import { ExecutionResult, GraphQLError } from "graphql";
 import { isExecutionResult } from "../common/graphql";
@@ -11,15 +10,14 @@ import { isExecutionResult } from "../common/graphql";
 style;
 
 export function DataConnectExecutionResultsApp() {
-  const [dataConnectResults, setResults] = useState<
-    DataConnectResults | undefined
-  >(undefined);
+  const dataConnectResults = useBroker("notifyDataConnectResults", {
+    // Forcibly read the current execution results when the component mounts.
+    // This handles cases where the user navigates to the results view after
+    // an execution result has already been set.
+    initialRequest: "getDataConnectResults",
+  });
   const results: ExecutionResult | SerializedError | undefined =
     dataConnectResults?.results;
-
-  useEffect(() => {
-    broker.on("notifyDataConnectResults", setResults);
-  }, []);
 
   if (!dataConnectResults || !results) {
     return null;
@@ -87,21 +85,23 @@ export function DataConnectExecutionResultsApp() {
  */
 function InternalErrorView({ error }: { error: SerializedError }) {
   return (
-    <p>
+    <>
       <Label>Error</Label>
-      {
-        // Stacktraces usually already include the message, so we only
-        // display the message if there is no stacktrace.
-        error.stack ? <StackView stack={error.stack} /> : error.message
-      }
-      {error.cause && (
-        <>
-          <br />
-          <h4>Cause:</h4>
-          <InternalErrorView error={error.cause} />
-        </>
-      )}
-    </p>
+      <p>
+        {
+          // Stacktraces usually already include the message, so we only
+          // display the message if there is no stacktrace.
+          error.stack ? <StackView stack={error.stack} /> : error.message
+        }
+        {error.cause && (
+          <>
+            <br />
+            <h4>Cause:</h4>
+            <InternalErrorView error={error.cause} />
+          </>
+        )}
+      </p>
+    </>
   );
 }
 

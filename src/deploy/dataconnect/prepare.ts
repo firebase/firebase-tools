@@ -9,6 +9,8 @@ import { needProjectId } from "../../projectUtils";
 import { getResourceFilters } from "../../dataconnect/filters";
 import { build } from "../../dataconnect/build";
 import { ensureApis } from "../../dataconnect/ensureApis";
+import { requireTosAcceptance } from "../../requireTosAcceptance";
+import { DATA_CONNECT_TOS_ID } from "../../gcp/firedata";
 
 /**
  * Prepares for a Firebase DataConnect deployment by loading schemas and connectors from file.
@@ -18,6 +20,7 @@ import { ensureApis } from "../../dataconnect/ensureApis";
 export default async function (context: any, options: Options): Promise<void> {
   const projectId = needProjectId(options);
   await ensureApis(projectId);
+  await requireTosAcceptance(DATA_CONNECT_TOS_ID)(options);
   const serviceCfgs = readFirebaseJson(options.config);
   utils.logLabeledBullet("dataconnect", `Preparing to deploy`);
   const filters = getResourceFilters(options);

@@ -17,7 +17,7 @@ const expected = {
 
 async function list() {
   return await cli.exec(
-    "dataconnect:list",
+    "dataconnect:services:list",
     FIREBASE_PROJECT,
     ["--json"],
     __dirname,
