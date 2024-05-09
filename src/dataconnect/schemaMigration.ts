@@ -42,8 +42,8 @@ export async function migrateSchema(args: {
   const { options, schema, allowNonInteractiveMigration, validateOnly } = args;
 
   const { serviceName, instanceId, instanceName, databaseId } = getIdentifiers(schema);
+  await ensureServiceIsConnectedToCloudSql(serviceName, instanceName, databaseId);
   try {
-    await ensureServiceIsConnectedToCloudSql(serviceName, instanceName, databaseId);
     await upsertSchema(schema, validateOnly);
     logger.debug(`Database schema was up to date for ${instanceId}:${databaseId}`);
   } catch (err: any) {
@@ -304,7 +304,14 @@ async function ensureServiceIsConnectedToCloudSql(
     return;
   }
   currentSchema.primaryDatasource.postgresql.schemaValidation = "STRICT";
-  await upsertSchema(currentSchema, /** validateOnly=*/ false);
+  try {
+    await upsertSchema(currentSchema, /** validateOnly=*/ false);
+  } catch (err: any) {
+    if (err.status >= 500) {
+      throw err;
+    }
+    logger.debug(err);
+  }
 }
 
 function displaySchemaChanges(error: IncompatibleSqlSchemaError) {
