@@ -13,6 +13,7 @@
   "categories": [
     "Other"
   ],
+  "extensionDependencies": ["graphql.vscode-graphql-syntax"],
   "activationEvents": [
     "onStartupFinished",
     "onLanguage:graphql",
