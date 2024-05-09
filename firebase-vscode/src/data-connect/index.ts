@@ -164,10 +164,11 @@ export function registerFdc(
           context,
           configs,
         );
-        client.start();
+        vscode.commands.executeCommand("fdc-graphql.start");
       }
     }),
   });
+
   // Perform some side-effects when the endpoint changes
   context.subscriptions.push({
     dispose: effect(() => {

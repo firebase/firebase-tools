@@ -8,7 +8,6 @@ import {
 } from "vscode-languageclient/node";
 import * as path from "node:path";
 import { ResolvedDataConnectConfigs } from "./config";
-import { GraphQLConfig } from "graphql-config";
 
 export function setupLanguageClient(
   context,
@@ -22,31 +21,14 @@ export function setupLanguageClient(
   const serverPath = path.join("dist", "server.js");
   const serverModule = context.asAbsolutePath(serverPath);
 
-  // Pass schema, document paths to generate a graphql-config in the language-server
-  // TODO: Expand to multiple services
-  const config = configs.values[0];
-  const generatedPath = ".dataconnect";
-  const schemaPaths = [`./${config.relativeSchemaPath}/**/*.gql`, `./${config.relativePath}/${generatedPath}/**/*.gql`];
-  const documentPaths = config.relativeConnectorPaths.map(
-    (connectorPath) => `./${connectorPath}/**/*.gql`,
-  );
-
-  const fdcEnv = { schemaPaths: JSON.stringify(schemaPaths), documentPaths: JSON.stringify(documentPaths) };
-  // const fdcEnv = { graphql_config: JSON.stringify(graphqlConfig) };
   const debugOptions = {
     execArgv: ["--nolazy", "--inspect=localhost:6009"],
-    env: fdcEnv,
-  };
-
-  const runOptions = {
-    env: fdcEnv,
   };
 
   const serverOptions: ServerOptions = {
     run: {
       module: serverModule,
       transport: TransportKind.ipc,
-      options: runOptions,
     },
     debug: {
       module: serverModule,
@@ -107,27 +89,59 @@ export function setupLanguageClient(
 
   context.subscriptions.push(commandShowOutputChannel);
 
+  const generateYamlFile = async () => {
+    const basePath = vscode.workspace.rootPath;
+    const filePath = ".firebase/.dataconnect-graphqlrc.yaml"
+    const fileUri = vscode.Uri.file(`${basePath}/${filePath}`);
+    const folderPath = ".firebase";
+    const folderUri = vscode.Uri.file(`${basePath}/${folderPath}`);
+
+    // TODO: Expand to multiple services
+    const config = configs.values[0];
+    const generatedPath = ".dataconnect";
+    const schemaPaths = [
+      `./${config.relativeSchemaPath}/**/*.gql`,
+      `./${config.relativePath}/${generatedPath}/**/*.gql`,
+    ];
+    const documentPaths = config.relativeConnectorPaths.map(
+      (connectorPath) => `./${connectorPath}/**/*.gql`,
+    );
+
+    const yamlJson = JSON.stringify({
+      schema: schemaPaths,
+      document: documentPaths,
+    });
+    // create folder if needed
+    if (!vscode.workspace.getWorkspaceFolder(folderUri)) {
+      vscode.workspace.fs.createDirectory(folderUri);
+    }
+    vscode.workspace.fs.writeFile(fileUri, Buffer.from(yamlJson));
+  };
+
   vscode.commands.registerCommand("fdc-graphql.restart", async () => {
     outputChannel.appendLine("Stopping Firebase GraphQL Language Server");
     await client.stop();
-
+    await generateYamlFile();
     outputChannel.appendLine("Restarting Firebase GraphQL Language Server");
     await client.start();
     outputChannel.appendLine("Firebase GraphQL Language Server restarted");
   });
 
-  const restartGraphqlLSP = () => {
-    vscode.commands.executeCommand("fdc-graphql.restart");
-  };
+  vscode.commands.registerCommand("fdc-graphql.start", async () => {
+    await generateYamlFile();
+    await client.start();
+    outputChannel.appendLine("Firebase GraphQL Language Server restarted");
+  });
 
+  // ** DISABLED FOR NOW WHILE WE TEST GENERATED YAML **
   // restart server whenever config file changes
-  const watcher = vscode.workspace.createFileSystemWatcher(
-    "**/.graphqlrc.*", // TODO: extend to schema files, and other config types
-    false,
-    false,
-    false,
-  );
-  watcher.onDidChange(() => restartGraphqlLSP());
+  // const watcher = vscode.workspace.createFileSystemWatcher(
+  //   "**/.graphqlrc.*", // TODO: extend to schema files, and other config types
+  //   false,
+  //   false,
+  //   false,
+  // );
+  // watcher.onDidChange(() => restartGraphqlLSP());
 
   return client;
 }
