@@ -42,8 +42,8 @@ export async function migrateSchema(args: {
   const { options, schema, allowNonInteractiveMigration, validateOnly } = args;
 
   const { serviceName, instanceId, instanceName, databaseId } = getIdentifiers(schema);
-  await ensureServiceIsConnectedToCloudSql(serviceName, instanceName, databaseId);
   try {
+    await ensureServiceIsConnectedToCloudSql(serviceName, instanceName, databaseId);
     await upsertSchema(schema, validateOnly);
     logger.debug(`Database schema was up to date for ${instanceId}:${databaseId}`);
   } catch (err: any) {
@@ -141,6 +141,11 @@ async function handleIncompatibleSchemaError(args: {
   choice: "all" | "safe" | "none";
 }): Promise<Diff[]> {
   const { incompatibleSchemaError, options, instanceId, databaseId, choice } = args;
+  if (incompatibleSchemaError.destructive && choice === "safe") {
+    throw new FirebaseError(
+      "This schema migration includes potentially destructive changes. If you'd like to execute it anyway, rerun this command with --force",
+    );
+  }
   const projectId = needProjectId(options);
   const iamUser = await setupIAMUser(instanceId, databaseId, options);
 
@@ -187,7 +192,6 @@ async function promptForSchemaMigration(
     const choices = err.destructive
       ? [
           { name: "Execute all changes (including destructive changes)", value: "all" },
-          { name: "Execute only safe changes", value: "safe" },
           { name: "Abort changes", value: "none" },
         ]
       : [
@@ -297,7 +301,6 @@ async function ensureServiceIsConnectedToCloudSql(
     !currentSchema.primaryDatasource.postgresql ||
     currentSchema.primaryDatasource.postgresql.schemaValidation === "STRICT"
   ) {
-    // If the current schema is "STRICT" mode, don't do this.
     return;
   }
   currentSchema.primaryDatasource.postgresql.schemaValidation = "STRICT";
