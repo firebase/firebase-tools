@@ -8,7 +8,7 @@ import { requirePermissions } from "../requirePermissions";
 import { ensureApis } from "../dataconnect/ensureApis";
 const Table = require("cli-table");
 
-export const command = new Command("dataconnect:list")
+export const command = new Command("dataconnect:services:list")
   .description("list all deployed services in your Firebase project")
   .before(requirePermissions, [
     "dataconnect.services.list",
