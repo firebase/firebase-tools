@@ -8,6 +8,7 @@ import { checkForFreeTrialInstance } from "../../../dataconnect/freeTrial";
 import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
 import { ensureApis } from "../../../dataconnect/ensureApis";
 import { listLocations } from "../../../dataconnect/client";
+import { DEFAULT_POSTGRES_CONNECTION } from "../emulators";
 
 const TEMPLATE_ROOT = resolve(__dirname, "../../../../templates/init/dataconnect/");
 
@@ -116,10 +117,9 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     });
   }
 
-  // postgresql://localhost:5432 is a default out of the box value for most installations of Postgres
   const defaultConnectionString =
     setup.rcfile.dataconnectEmulatorConfig?.postgres?.localConnectionString ??
-    "postgresql://localhost:5432?sslmode=disable";
+    DEFAULT_POSTGRES_CONNECTION;
   // TODO: Download Postgres
   const localConnectionString = await promptOnce({
     type: "input",
