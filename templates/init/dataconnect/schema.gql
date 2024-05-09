@@ -1,16 +1,28 @@
-# # Example schema
-# # TODO: Replace with a really good illustrative example from devrel!
-# type Product @table {
-#   name: String!
-#   price: Int!
+## Example schema for simple email app
+# type User @table(key: "uid") {
+# 	uid: String!
+# 	name: String!
+# 	address: String!
 # }
 
-# type Order @table {
-#   name: String!
+# type Email @table {
+# 	subject: String!
+# 	sent: Date!
+# 	text: String!
+# 	from: User!
 # }
 
-# type OrderItem @table(key: ["order", "product"]) {
-#   order: Order!
-#   product: Product!
-#   quantity: Int!
+# type Recipient @table(key: ["email", "user"]) {
+# 	email: Email!
+# 	user: User!
+# }
+
+# type EmailMeta @table(key: ["user", "email"]) {
+# 	user: User!
+# 	email: Email!
+# 	labels: [String]
+# 	read: Boolean!
+# 	starred: Boolean!
+# 	muted: Boolean!
+# 	snoozed: Date
 # }

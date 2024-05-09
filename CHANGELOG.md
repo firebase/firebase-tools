@@ -1,2 +1,0 @@
-- Increased the timeout for waiting for emulators to start to 60s. (#7091)
-- Fixes infinite loop when trying to create a Hosting site.
