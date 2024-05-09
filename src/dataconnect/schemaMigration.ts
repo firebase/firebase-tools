@@ -308,7 +308,7 @@ async function ensureServiceIsConnectedToCloudSql(
     await upsertSchema(currentSchema, /** validateOnly=*/ false);
   } catch (err: any) {
     if (err.status >= 500) {
-      throw err
+      throw err;
     }
     logger.debug(err);
   }
