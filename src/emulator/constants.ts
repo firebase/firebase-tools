@@ -13,7 +13,7 @@ export const DEFAULT_PORTS: { [s in Emulators]: number } = {
   auth: 9099,
   storage: 9199,
   eventarc: 9299,
-  dataconnect: 9399,
+  dataconnect: 9509,
 };
 
 export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
