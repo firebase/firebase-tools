@@ -158,7 +158,7 @@ export function registerFdc(
   context.subscriptions.push({
     dispose: effect(() => {
       const configs = dataConnectConfigs.value?.tryReadValue;
-      if (configs) {
+      if (configs && configs.values.length > 0) {
         if (client) client.stop();
         client = setupLanguageClient(
           context,
