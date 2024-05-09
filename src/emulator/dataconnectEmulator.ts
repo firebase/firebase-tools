@@ -19,6 +19,8 @@ export interface DataConnectEmulatorArgs {
   rc: RC;
 }
 
+const grpcDefaultPort = 9510; 
+
 export class DataConnectEmulator implements EmulatorInstance {
   constructor(private args: DataConnectEmulatorArgs) {}
   private logger = EmulatorLogger.forEmulator(Emulators.DATACONNECT);
@@ -45,7 +47,7 @@ export class DataConnectEmulator implements EmulatorInstance {
     return start(Emulators.DATACONNECT, {
       ...this.args,
       http_port: port,
-      grpc_port: port + 1,
+      grpc_port: grpcDefaultPort,
       config_dir: this.args.configDir,
       local_connection_string: this.getLocalConectionString(),
       project_id: this.args.projectId,
