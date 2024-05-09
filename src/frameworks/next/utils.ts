@@ -464,6 +464,8 @@ export function getRoutesWithServerAction(
 
 /**
  * Get files in the dist directory to be deployed to Firebase, ignoring development files.
+ *
+ * Return relative paths to the dist directory.
  */
 export async function getProductionDistDirFiles(
   sourceDir: string,
@@ -476,7 +478,8 @@ export async function getProductionDistDirFiles(
         ignore: [join("cache", "webpack", "*-development", "**"), join("cache", "eslint", "**")],
         cwd: join(sourceDir, distDir),
         nodir: true,
-        absolute: true,
+        absolute: false,
+        realpath: IS_WINDOWS,
       },
       (err, matches) => {
         if (err) reject(err);

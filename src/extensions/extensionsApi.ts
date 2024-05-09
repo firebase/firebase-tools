@@ -1,4 +1,4 @@
-import * as yaml from "js-yaml";
+import * as yaml from "yaml";
 import * as clc from "colorette";
 
 import { Client } from "../apiv2";
@@ -375,7 +375,7 @@ export function populateSpec(spec: ExtensionSpec): void {
     for (const r of spec.resources) {
       try {
         if (r.propertiesYaml) {
-          r.properties = yaml.safeLoad(r.propertiesYaml);
+          r.properties = yaml.parse(r.propertiesYaml);
         }
       } catch (err: any) {
         logger.debug(`[ext] failed to parse resource properties yaml: ${err}`);

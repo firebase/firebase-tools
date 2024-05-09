@@ -54,6 +54,7 @@ export async function interactiveCreateHostingSite(
         throw err;
       }
 
+      id = ""; // Clear so the prompt comes back.
       suggestion = getSuggestionFromError(err);
     }
   }
@@ -84,6 +85,8 @@ function getSuggestionFromError(err: FirebaseError): string | undefined {
     if (match) {
       return match[1];
     }
+  } else {
+    logWarning(err.message);
   }
   return;
 }

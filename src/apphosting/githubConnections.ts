@@ -135,7 +135,7 @@ export async function linkGitHubRepository(
 
   const repo = await getOrCreateRepository(projectId, location, connectionId, repoCloneUri);
   utils.logSuccess(`Successfully linked GitHub repository at remote URI`);
-  utils.logSuccess(`\t${repo.cloneUri}`);
+  utils.logSuccess(`\t${repo.cloneUri}\n`);
   return repo;
 }
 
@@ -166,7 +166,7 @@ async function createFullyInstalledConnection(
 
   while (conn.installationState.stage !== "COMPLETE") {
     utils.logBullet("Install the Firebase GitHub app to enable access to GitHub repositories");
-    const targetUri = conn.installationState.actionUri.replace("install_v2", "direct_install_v2");
+    const targetUri = conn.installationState.actionUri;
     utils.logBullet(targetUri);
     await utils.openInBrowser(targetUri);
     await promptOnce({
@@ -230,7 +230,7 @@ async function promptCloneUri(
   const cloneUri = await promptOnce({
     type: "autocomplete",
     name: "cloneUri",
-    message: "Which of the following repositories would you like to deploy?",
+    message: "Which repository would you like to deploy?",
     source: (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
       return new Promise((resolve) =>
         resolve([

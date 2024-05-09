@@ -166,51 +166,6 @@ export function obtainDefaultComputeServiceAgentBindings(projectNumber: string):
   return [runInvokerBinding, eventarcEventReceiverBinding];
 }
 
-/** Helper to merge all required bindings into the IAM policy, returns boolean if the policy has been updated */
-export function mergeBindings(policy: iam.Policy, requiredBindings: iam.Binding[]): boolean {
-  let updated = false;
-  for (const requiredBinding of requiredBindings) {
-    const match = policy.bindings.find((b) => b.role === requiredBinding.role);
-    if (!match) {
-      updated = true;
-      policy.bindings.push(requiredBinding);
-      continue;
-    }
-    for (const requiredMember of requiredBinding.members) {
-      if (!match.members.find((m) => m === requiredMember)) {
-        updated = true;
-        match.members.push(requiredMember);
-      }
-    }
-  }
-  return updated;
-}
-
-/** Utility to print the required binding commands */
-function printManualIamConfig(requiredBindings: iam.Binding[], projectId: string) {
-  utils.logLabeledBullet(
-    "functions",
-    "Failed to verify the project has the correct IAM bindings for a successful deployment.",
-    "warn",
-  );
-  utils.logLabeledBullet(
-    "functions",
-    "You can either re-run `firebase deploy` as a project owner or manually run the following set of `gcloud` commands:",
-    "warn",
-  );
-  for (const binding of requiredBindings) {
-    for (const member of binding.members) {
-      utils.logLabeledBullet(
-        "functions",
-        `\`gcloud projects add-iam-policy-binding ${projectId} ` +
-          `--member=${member} ` +
-          `--role=${binding.role}\``,
-        "warn",
-      );
-    }
-  }
-}
-
 /**
  * Checks and sets the roles for specific resource service agents
  * @param projectId human readable project id
@@ -254,7 +209,7 @@ export async function ensureServiceAgentRoles(
   try {
     policy = await getIamPolicy(projectNumber);
   } catch (err: any) {
-    printManualIamConfig(requiredBindings, projectId);
+    iam.printManualIamConfig(requiredBindings, projectId, "functions");
     utils.logLabeledBullet(
       "functions",
       "Could not verify the necessary IAM configuration for the following newly-integrated services: " +
@@ -264,7 +219,7 @@ export async function ensureServiceAgentRoles(
     );
     return;
   }
-  const hasUpdatedBindings = mergeBindings(policy, requiredBindings);
+  const hasUpdatedBindings = iam.mergeBindings(policy, requiredBindings);
   if (!hasUpdatedBindings) {
     return;
   }
@@ -273,7 +228,7 @@ export async function ensureServiceAgentRoles(
   try {
     await setIamPolicy(projectNumber, policy, "bindings");
   } catch (err: any) {
-    printManualIamConfig(requiredBindings, projectId);
+    iam.printManualIamConfig(requiredBindings, projectId, "functions");
     throw new FirebaseError(
       "We failed to modify the IAM policy for the project. The functions " +
         "deployment requires specific roles to be granted to service agents," +

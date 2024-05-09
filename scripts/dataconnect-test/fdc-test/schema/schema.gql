@@ -1,0 +1,14 @@
+type Product @table {
+  name: String!
+  price: Int!
+}
+
+type Order @table {
+  name: String!
+}
+
+type OrderItem @table(key: ["order", "product"]) {
+  order: Order!
+  product: Product!
+  quantity: Int!
+}

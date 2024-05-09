@@ -151,7 +151,7 @@ async function createFullyInstalledConnection(
 
   while (conn.installationState.stage !== "COMPLETE") {
     utils.logBullet("Install the Cloud Build GitHub app to enable access to GitHub repositories");
-    const targetUri = conn.installationState.actionUri.replace("install_v2", "direct_install_v2");
+    const targetUri = conn.installationState.actionUri;
     utils.logBullet(targetUri);
     await utils.openInBrowser(targetUri);
     await promptOnce({
@@ -214,7 +214,7 @@ async function promptRepositoryUri(
   const remoteUri = await promptOnce({
     type: "autocomplete",
     name: "remoteUri",
-    message: "Which of the following repositories would you like to deploy?",
+    message: "Which repository would you like to deploy?",
     source: (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
       return new Promise((resolve) =>
         resolve([

@@ -1,1 +1,0 @@
-- Add Firebase console link after creating or restoring a Firestore database (#6949)

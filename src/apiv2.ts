@@ -18,18 +18,33 @@ import * as FormData from "form-data";
 const pkg = require("../package.json");
 const CLI_VERSION: string = pkg.version;
 
+export const STANDARD_HEADERS: Record<string, string> = {
+  Connection: "keep-alive",
+  "User-Agent": `FirebaseCLI/${CLI_VERSION}`,
+  "X-Client-Version": `FirebaseCLI/${CLI_VERSION}`,
+};
+
 const GOOG_QUOTA_USER_HEADER = "x-goog-quota-user";
 
 const GOOG_USER_PROJECT_HEADER = "x-goog-user-project";
 const GOOGLE_CLOUD_QUOTA_PROJECT = process.env.GOOGLE_CLOUD_QUOTA_PROJECT;
 
-export type HttpMethod = "GET" | "PUT" | "POST" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD";
+export type HttpMethod =
+  | "GET"
+  | "PUT"
+  | "POST"
+  | "DELETE"
+  | "PATCH"
+  | "OPTIONS"
+  | "HEAD"
+  | "CONNECT"
+  | "TRACE";
 
 interface BaseRequestOptions<T> extends VerbOptions {
   method: HttpMethod;
   path: string;
   body?: T | string | NodeJS.ReadableStream;
-  responseType?: "json" | "stream" | "xml";
+  responseType?: "json" | "xml" | "stream" | "arraybuffer" | "blob" | "text" | "unknown";
   redirect?: "error" | "follow" | "manual";
   compress?: boolean;
   ignoreQuotaProject?: boolean;
@@ -105,6 +120,18 @@ export function setRefreshToken(token = ""): void {
  */
 export function setAccessToken(token = ""): void {
   accessToken = token;
+}
+
+/**
+ * Gets a singleton access token
+ * @returns An access token
+ */
+export async function getAccessToken(): Promise<string> {
+  if (accessToken) {
+    return accessToken;
+  }
+  const data = await auth.getAccessToken(refreshToken, []);
+  return data.access_token;
 }
 
 function proxyURIFromEnv(): string | undefined {
@@ -259,11 +286,11 @@ export class Client {
     if (!reqOptions.headers) {
       reqOptions.headers = new Headers();
     }
-    reqOptions.headers.set("Connection", "keep-alive");
-    if (!reqOptions.headers.has("User-Agent")) {
-      reqOptions.headers.set("User-Agent", `FirebaseCLI/${CLI_VERSION}`);
+    for (const [h, v] of Object.entries(STANDARD_HEADERS)) {
+      if (!reqOptions.headers.has(h)) {
+        reqOptions.headers.set(h, v);
+      }
     }
-    reqOptions.headers.set("X-Client-Version", `FirebaseCLI/${CLI_VERSION}`);
     if (!reqOptions.headers.has("Content-Type")) {
       if (reqOptions.responseType === "json") {
         reqOptions.headers.set("Content-Type", "application/json");
@@ -289,19 +316,10 @@ export class Client {
     if (isLocalInsecureRequest(this.opts.urlPrefix)) {
       token = "owner";
     } else {
-      token = await this.getAccessToken();
+      token = await getAccessToken();
     }
     reqOptions.headers.set("Authorization", `Bearer ${token}`);
     return reqOptions;
-  }
-
-  private async getAccessToken(): Promise<string> {
-    // Runtime fetch of Auth singleton to prevent circular module dependencies
-    if (accessToken) {
-      return accessToken;
-    }
-    const data = await auth.getAccessToken(refreshToken, []);
-    return data.access_token;
   }
 
   private requestURL(options: InternalClientRequestOptions<unknown>): string {

@@ -1,0 +1,11 @@
+specVersion: v1alpha
+serviceId: us-east
+connectorDirs:
+  - ./connectors/a
+schema:
+  source: ./schema
+  datasource:
+    postgresql:
+      database: "my-database"
+      cloudSql:
+        instanceId: "dataconnect-test"
