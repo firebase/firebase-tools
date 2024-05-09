@@ -81,14 +81,6 @@ if (isEnabled("genkit")) {
   });
 }
 
-if (isEnabled("apphosting")) {
-  choices.push({
-    value: "apphosting",
-    name: "App Hosting: Get started with App Hosting projects.",
-    checked: false,
-  });
-}
-
 if (isEnabled("dataconnect")) {
   choices.push({
     value: "dataconnect",
