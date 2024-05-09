@@ -19,7 +19,7 @@ export interface DataConnectEmulatorArgs {
   rc: RC;
 }
 
-const grpcDefaultPort = 9510; 
+const grpcDefaultPort = 9510;
 
 export class DataConnectEmulator implements EmulatorInstance {
   constructor(private args: DataConnectEmulatorArgs) {}
