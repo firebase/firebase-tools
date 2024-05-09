@@ -12,6 +12,9 @@ interface EmulatorsInitSelections {
   download?: boolean;
 }
 
+// postgresql://localhost:5432 is a default out of the box value for most installations of Postgres
+export const DEFAULT_POSTGRES_CONNECTION = "postgresql://localhost:5432?sslmode=disable";
+
 export async function doSetup(setup: Setup, config: any) {
   const choices = ALL_SERVICE_EMULATORS.map((e) => {
     return {
@@ -92,10 +95,9 @@ export async function doSetup(setup: Setup, config: any) {
     }
 
     if (selections.emulators.includes(Emulators.DATACONNECT)) {
-      // postgresql://localhost:5432 is a default out of the box value for most installations of Postgres
       const defaultConnectionString =
         setup.rcfile.dataconnectEmulatorConfig?.postgres?.localConnectionString ??
-        "postgresql://localhost:5432";
+        DEFAULT_POSTGRES_CONNECTION;
       // TODO: Download Postgres
       const localConnectionString = await promptOnce(
         {
