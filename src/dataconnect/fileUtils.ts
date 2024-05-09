@@ -59,17 +59,21 @@ function validateConnectorYaml(unvalidated: any): ConnectorYaml {
 
 export async function readGQLFiles(sourceDir: string): Promise<File[]> {
   const files = await fs.readdir(sourceDir);
-  return files.filter((f) => f.endsWith(".gql")).map((f) => toFile(path.join(sourceDir, f)));
+  // TODO: Handle files in subdirectories such as `foo/a.gql` and `bar/baz/b.gql`.
+  return files
+    .filter((f) => f.endsWith(".gql") || f.endsWith(".graphql"))
+    .map((f) => toFile(sourceDir, f));
 }
 
-function toFile(path: string): File {
-  if (!fs.existsSync(path)) {
-    throw new FirebaseError(`file ${path} not found`);
+function toFile(sourceDir: string, relPath: string): File {
+  const fullPath = path.join(sourceDir, relPath);
+  if (!fs.existsSync(fullPath)) {
+    throw new FirebaseError(`file ${fullPath} not found`);
   }
-  const file = fs.readFileSync(path).toString();
+  const content = fs.readFileSync(fullPath).toString();
   return {
-    path: path,
-    content: file,
+    path: relPath,
+    content,
   };
 }
 

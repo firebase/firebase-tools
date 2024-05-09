@@ -144,6 +144,26 @@ export class ResolvedDataConnectConfig {
     return result;
   }
 
+  get connectorDirs(): string[] {
+    return this.value.connectorDirs;
+  }
+
+  get schemaDir(): string {
+    return this.value.schema.source;
+  }
+
+  get relativePath(): string {
+    return this.path.split("/").pop();
+  }
+
+  get relativeSchemaPath(): string {
+    return this.schemaDir.replace(".", this.relativePath);
+  }
+
+  get relativeConnectorPaths(): string[] {
+    return this.connectorDirs.map((connectorDir) => connectorDir.replace(".", this.relativePath));
+  }
+
   containsPath(path: string) {
     return isPathInside(path, this.path);
   }

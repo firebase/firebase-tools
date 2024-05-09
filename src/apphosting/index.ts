@@ -1,8 +1,7 @@
-import * as repo from "./repo";
 import * as poller from "../operation-poller";
 import * as apphosting from "../gcp/apphosting";
 import * as githubConnections from "./githubConnections";
-import { logBullet, logSuccess, logWarning } from "../utils";
+import { logBullet, logSuccess, logWarning, sleep } from "../utils";
 import {
   apphostingOrigin,
   artifactRegistryDomain,
@@ -16,7 +15,6 @@ import {
 import { Backend, BackendOutputOnlyFields, API_VERSION, Build, Rollout } from "../gcp/apphosting";
 import { addServiceAccountToRoles } from "../gcp/resourceManager";
 import * as iam from "../gcp/iam";
-import { Repository } from "../gcp/cloudbuild";
 import { FirebaseError } from "../error";
 import { promptOnce } from "../prompt";
 import { DEFAULT_LOCATION } from "./constants";
@@ -26,6 +24,7 @@ import { DeepOmit } from "../metaprogramming";
 import { webApps } from "./app";
 import { GitRepositoryLink } from "../gcp/devConnect";
 import * as ora from "ora";
+import fetch from "node-fetch";
 
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
@@ -36,6 +35,33 @@ const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationRes
   maxBackoff: 10_000,
 };
 
+async function tlsReady(url: string): Promise<boolean> {
+  // Note, we do not use the helper libraries because they impose additional logic on content type and parsing.
+  try {
+    await fetch(url);
+    return true;
+  } catch (err) {
+    // At the time of this writing, the error code is ERR_SSL_SSLV3_ALERT_HANDSHAKE_FAILURE.
+    // I've chosen to use a regexp in an attempt to be forwards compatible with new versions of
+    // SSL.
+    const maybeNodeError = err as { cause: { code: string } };
+    if (/HANDSHAKE_FAILURE/.test(maybeNodeError?.cause?.code)) {
+      return false;
+    }
+    return true;
+  }
+}
+
+async function awaitTlsReady(url: string): Promise<void> {
+  let ready;
+  do {
+    ready = await tlsReady(url);
+    if (!ready) {
+      await sleep(1000 /* ms */);
+    }
+  } while (!ready);
+}
+
 /**
  * Set up a new App Hosting backend.
  */
@@ -44,7 +70,6 @@ export async function doSetup(
   webAppName: string | null,
   location: string | null,
   serviceAccount: string | null,
-  withCloudBuildRepos: boolean,
 ): Promise<void> {
   await Promise.all([
     ensure(projectId, developerConnectOrigin(), "apphosting", true),
@@ -71,7 +96,6 @@ export async function doSetup(
 
   location =
     location || (await promptLocation(projectId, "Select a location to host your backend:\n"));
-  logSuccess(`Location set to ${location}.\n`);
 
   const backendId = await promptNewBackendId(projectId, location, {
     name: "backendId",
@@ -81,15 +105,14 @@ export async function doSetup(
   });
 
   const webApp = await webApps.getOrCreateWebApp(projectId, webAppName, backendId);
-  if (webApp) {
-    logSuccess(`Firebase web app set to ${webApp.name}.\n`);
-  } else {
+  if (!webApp) {
     logWarning(`Firebase web app not set`);
   }
 
-  const gitRepositoryConnection: Repository | GitRepositoryLink = withCloudBuildRepos
-    ? await repo.linkGitHubRepository(projectId, location)
-    : await githubConnections.linkGitHubRepository(projectId, location);
+  const gitRepositoryConnection: GitRepositoryLink = await githubConnections.linkGitHubRepository(
+    projectId,
+    location,
+  );
 
   const rootDir = await promptOnce({
     name: "rootDir",
@@ -134,11 +157,14 @@ export async function doSetup(
     return;
   }
 
+  const url = `https://${backend.uri}`;
   logBullet(
     `You may also track this rollout at:\n\t${consoleOrigin()}/project/${projectId}/apphosting`,
   );
+  // TODO: Previous versions of this command printed the URL before the rollout started so that
+  // if a user does exit they will know where to go later. Should this be re-added?
   const createRolloutSpinner = ora(
-    "Starting a new rollout... This make take a few minutes. It's safe to exit now.",
+    "Starting a new rollout; this may take a few minutes. It's safe to exit now.",
   ).start();
   await orchestrateRollout(projectId, location, backendId, {
     source: {
@@ -147,7 +173,15 @@ export async function doSetup(
       },
     },
   });
-  createRolloutSpinner.succeed(`Your backend is now deployed at:\n\thttps://${backend.uri}`);
+  createRolloutSpinner.succeed("Rollout complete");
+  if (!(await tlsReady(url))) {
+    const tlsSpinner = ora(
+      "Finalizing your backend's TLS certificate; this may take a few minutes.",
+    ).start();
+    await awaitTlsReady(url);
+    tlsSpinner.succeed("TLS certificate ready");
+  }
+  logSuccess(`Your backend is now deployed at:\n\thttps://${backend.uri}`);
 }
 
 /**
@@ -222,7 +256,7 @@ export async function createBackend(
   projectId: string,
   location: string,
   backendId: string,
-  repository: Repository | GitRepositoryLink,
+  repository: GitRepositoryLink,
   serviceAccount: string | null,
   webAppId: string | undefined,
   rootDir = "/",
@@ -341,7 +375,7 @@ export async function orchestrateRollout(
         if (tries >= 5) {
           throw err;
         }
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await sleep(1000);
       } else {
         throw err;
       }
@@ -412,13 +446,17 @@ export async function promptLocation(
     return allowedLocations[0];
   }
 
-  return (await promptOnce({
+  const location = (await promptOnce({
     name: "location",
     type: "list",
     default: DEFAULT_LOCATION,
     message: prompt,
     choices: allowedLocations,
   })) as string;
+
+  logSuccess(`Location set to ${location}.\n`);
+
+  return location;
 }
 
 /**
