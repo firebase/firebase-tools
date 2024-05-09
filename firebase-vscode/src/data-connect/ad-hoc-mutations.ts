@@ -168,7 +168,6 @@ query {
       let fieldTypeName: string = fieldType.name.value;
       let fieldName: string = field.name.value;
       let defaultValue = defaultScalarValues[fieldTypeName] as string;
-      console.log("what's breaking");
       if (!isDataConnectScalarType(fieldTypeName)) {
         fieldTypeName += "Id";
         fieldName += "Id";
