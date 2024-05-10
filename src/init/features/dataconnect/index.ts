@@ -113,7 +113,7 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     cloudSqlDatabase = await promptOnce({
       message: `What ID would you like to use for your new database in ${cloudSqlInstanceId}?`,
       type: "input",
-      default: `dataconnect`,
+      default: `postgres`,
     });
   }
 
