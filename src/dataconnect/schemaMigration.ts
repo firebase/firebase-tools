@@ -297,13 +297,22 @@ async function ensureServiceIsConnectedToCloudSql(
       throw err;
     }
   }
-  if (
-    !currentSchema.primaryDatasource.postgresql ||
-    currentSchema.primaryDatasource.postgresql.schemaValidation === "STRICT"
-  ) {
+  const postgresql = currentSchema.primaryDatasource.postgresql;
+  if (postgresql?.cloudSql.instance !== instanceId) {
+    logLabeledWarning(
+      "dataconnect",
+      `Switching connected Cloud SQL instance\nFrom ${postgresql?.cloudSql.instance}\nTo\n ${instanceId}`,
+    );
+  }
+  if (postgresql?.database !== databaseId) {
+    logLabeledWarning(
+      "dataconnect",
+      `Switching connected Postgres database from ${postgresql?.database} to ${databaseId}`,
+    );
+  }
+  if (!postgresql || postgresql.schemaValidation === "STRICT") {
     return;
   }
-  currentSchema.primaryDatasource.postgresql.schemaValidation = "STRICT";
   try {
     await upsertSchema(currentSchema, /** validateOnly=*/ false);
   } catch (err: any) {
