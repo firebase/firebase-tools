@@ -61,7 +61,7 @@ export async function migrateSchema(args: {
     if (!shouldDeleteInvalidConnectors && invalidConnectors.length) {
       const cmd = suggestedCommand(serviceName, invalidConnectors);
       throw new FirebaseError(
-        `Command aborted. Try deploying incompatible connectors first with ${clc.bold(cmd)}`,
+        `Command aborted. Try deploying those connectors first with ${clc.bold(cmd)}`,
       );
     }
     const migrationMode = incompatible
