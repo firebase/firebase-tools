@@ -109,19 +109,19 @@ export function getUpdateReason(instance: Instance, requireGoogleMlIntegration: 
   const settings = instance.settings;
   // CloudSQL instances must have public IP enabled to be used with Firebase Data Connect.
   if (!settings.ipConfiguration?.ipv4Enabled) {
-    reason += "\n - to enable public IP";
+    reason += "\n - to enable public IP.";
   }
 
   if (requireGoogleMlIntegration) {
     if (!settings.enableGoogleMlIntegration) {
-      reason += "\n - to enable Google ML integration";
+      reason += "\n - to enable Google ML integration.";
     }
     if (
       !settings.databaseFlags?.some(
         (f) => f.name === "cloudsql.enable_google_ml_integration" && f.value === "on",
       )
     ) {
-      reason += "\n - to enable Google ML integration database flag";
+      reason += "\n - to enable Google ML integration database flag.";
     }
   }
 
@@ -131,7 +131,7 @@ export function getUpdateReason(instance: Instance, requireGoogleMlIntegration: 
       (f) => f.name === "cloudsql.iam_authentication" && f.value === "on",
     ) ?? false;
   if (!isIamEnabled) {
-    reason += "\n - to enable IAM authentication database flag";
+    reason += "\n - to enable IAM authentication database flag.";
   }
 
   return reason;
