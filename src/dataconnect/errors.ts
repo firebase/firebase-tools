@@ -6,6 +6,9 @@ const INCOMPATIBLE_CONNECTOR_TYPE = "INCOMPATIBLE_CONNECTOR";
 
 export function getIncompatibleSchemaError(err: any): IncompatibleSqlSchemaError | undefined {
   const incompatibles = errorDetails(err, INCOMPATIBLE_SCHEMA_ERROR_TYPESTRING);
+  if (incompatibles.length === 0) {
+    return undefined;
+  }
   // Should never get multiple incompatible schema errors
   const incompatible = incompatibles[0];
   // Extract the violation type from the precondition error detail.
