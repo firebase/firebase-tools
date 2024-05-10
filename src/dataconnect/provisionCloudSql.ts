@@ -27,13 +27,14 @@ export async function provisionCloudSql(args: {
     const existingInstance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
     silent || utils.logLabeledBullet("dataconnect", `Found existing instance ${instanceId}.`);
     connectionName = existingInstance?.connectionName || "";
-    if (!checkInstanceConfig(existingInstance, enableGoogleMlIntegration)) {
+    const why = checkInstanceConfig(existingInstance, enableGoogleMlIntegration);
+    if (why) {
       // TODO: Return message from checkInstanceConfig to explain exactly what changes are made
       silent ||
         utils.logLabeledBullet(
           "dataconnect",
           `Instance ${instanceId} settings not compatible with Firebase Data Connect. ` +
-            `Updating instance to enable Cloud IAM authentication and public IP. This may take a few minutes...`,
+            `Updating instance to ${why}. This may take a few minutes...`,
         );
       await promiseWithSpinner(
         () =>
@@ -77,11 +78,21 @@ export async function provisionCloudSql(args: {
   try {
     await cloudSqlAdminClient.getDatabase(projectId, instanceId, databaseId);
     silent || utils.logLabeledBullet("dataconnect", `Found existing database ${databaseId}.`);
-  } catch (err) {
-    silent ||
-      utils.logLabeledBullet("dataconnect", `Database ${databaseId} not found, creating it now...`);
-    await cloudSqlAdminClient.createDatabase(projectId, instanceId, databaseId);
-    silent || utils.logLabeledBullet("dataconnect", `Database ${databaseId} created.`);
+  } catch (err: any) {
+    if (err.status === 404) {
+      // Create the database if not found.
+      silent ||
+        utils.logLabeledBullet(
+          "dataconnect",
+          `Database ${databaseId} not found, creating it now...`,
+        );
+      await cloudSqlAdminClient.createDatabase(projectId, instanceId, databaseId);
+      silent || utils.logLabeledBullet("dataconnect", `Database ${databaseId} created.`);
+    } else {
+      // Skip it if the database is not accessible.
+      // Possible that the CSQL instance is in the middle of something.
+      silent || utils.logLabeledWarning("dataconnect", `Database ${databaseId} is not accessible.`);
+    }
   }
   if (enableGoogleMlIntegration) {
     await grantRolesToCloudSqlServiceAccount(projectId, instanceId, [GOOGLE_ML_INTEGRATION_ROLE]);
@@ -95,23 +106,23 @@ export async function provisionCloudSql(args: {
 export function checkInstanceConfig(
   instance: Instance,
   requireGoogleMlIntegration: boolean,
-): boolean {
+): string | false {
   const settings = instance.settings;
   // CloudSQL instances must have public IP enabled to be used with Firebase Data Connect.
   if (!settings.ipConfiguration?.ipv4Enabled) {
-    return false;
+    return "enable public IP";
   }
 
   if (requireGoogleMlIntegration) {
     if (!settings.enableGoogleMlIntegration) {
-      return false;
+      return "enable Google ML integration";
     }
     if (
       !settings.databaseFlags?.some(
         (f) => f.name === "cloudsql.enable_google_ml_integration" && f.value === "on",
       )
     ) {
-      return false;
+      return "enable Google ML integration database flag";
     }
   }
 
@@ -120,6 +131,9 @@ export function checkInstanceConfig(
     settings.databaseFlags?.some(
       (f) => f.name === "cloudsql.iam_authentication" && f.value === "on",
     ) ?? false;
+  if (!isIamEnabled) {
+    return "enable IAM authentication database flag";
+  }
 
-  return isIamEnabled;
+  return false;
 }
