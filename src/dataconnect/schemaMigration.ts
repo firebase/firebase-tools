@@ -39,6 +39,10 @@ export async function diffSchema(schema: Schema): Promise<Diff[]> {
       displaySchemaChanges(incompatible);
       return incompatible.diffs;
     }
+    if (!incompatible && !invalidConnectors.length) {
+      // If we got a different type of error, throw it
+      throw err;
+    }
   }
   return [];
 }
