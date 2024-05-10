@@ -153,17 +153,19 @@ export function registerFdc(
   );
   const schemaCodeLensProvider = new SchemaCodeLensProvider(emulatorController);
 
+  // activate language client/serer
   let client: LanguageClient;
+  const lsOutputChannel: vscode.OutputChannel = vscode.window.createOutputChannel(
+    "Firebase GraphQL Language Server",
+  );
+
   // setup new language client on config change
   context.subscriptions.push({
     dispose: effect(() => {
       const configs = dataConnectConfigs.value?.tryReadValue;
       if (client) client.stop();
       if (configs && configs.values.length > 0) {
-        client = setupLanguageClient(
-          context,
-          configs,
-        );
+        client = setupLanguageClient(context, configs, lsOutputChannel);
         vscode.commands.executeCommand("fdc-graphql.start");
       }
     }),
@@ -179,7 +181,7 @@ export function registerFdc(
         vscode.commands.executeCommand(
           "firebase.dataConnect.executeIntrospection",
         );
-        runEmulatorIssuesStream(configs,fdcService.localEndpoint.value);
+        runEmulatorIssuesStream(configs, fdcService.localEndpoint.value);
         runDataConnectCompiler(configs, fdcService.localEndpoint.value);
       }
     }),
@@ -205,7 +207,7 @@ export function registerFdc(
   return Disposable.from(
     codeActions,
     selectedProjectStatus,
-    {dispose: sub1},
+    { dispose: sub1 },
     {
       dispose: effect(() => {
         selectedProjectStatus.text = `$(mono-firebase) ${
