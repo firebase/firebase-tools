@@ -35,5 +35,5 @@ export function getInvalidConnectors(err: any): string[] {
 function errorDetails(err: any, ofType: string): any[] {
   const original = err.context?.body?.error || err?.original;
   const details: any[] = original?.details;
-  return details?.filter((d) => d["@type"]?.includes(ofType));
+  return details?.filter((d) => d["@type"]?.includes(ofType)) || [];
 }
