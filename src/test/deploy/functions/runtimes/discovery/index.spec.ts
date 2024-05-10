@@ -106,4 +106,14 @@ describe("detectFromPort", () => {
     const parsed = await discovery.detectFromPort(8080, "project", "nodejs16");
     expect(parsed).to.deep.equal(BUILD);
   });
+
+  it("can read huge, slow loading codes", async () => {
+    nock("http://127.0.0.1:8080")
+      .get("/__/functions.yaml")
+      .delay(15 * 1000)
+      .reply(200, YAML_TEXT);
+
+    const parsed = await discovery.detectFromPort(8080, "project", "nodejs16");
+    expect(parsed).to.deep.equal(BUILD);
+  }).timeout(20 * 1000);
 });

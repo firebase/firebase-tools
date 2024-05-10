@@ -10,6 +10,7 @@ import * as build from "../../build";
 import { Runtime } from "../supported";
 import * as v1alpha1 from "./v1alpha1";
 import { FirebaseError } from "../../../../error";
+import { logLabeledWarning } from "../../../../utils";
 
 export const readFileAsync = promisify(fs.readFile);
 
@@ -69,18 +70,15 @@ export async function detectFromPort(
   port: number,
   project: string,
   runtime: Runtime,
-  timeout = 10_000 /* 10s to boot up */,
 ): Promise<build.Build> {
   let res: Response;
-  const timedOut = new Promise<never>((resolve, reject) => {
-    setTimeout(() => {
-      reject(new FirebaseError("User code failed to load. Cannot determine backend specification"));
-    }, timeout);
-  });
+  const timeElapsedWarningTimer = setTimeout(() => {
+    logLabeledWarning("functions", "Loading user code has passed 10 seconds with no response.");
+  }, 10_000);
 
   while (true) {
     try {
-      res = await Promise.race([fetch(`http://127.0.0.1:${port}/__/functions.yaml`), timedOut]);
+      res = await fetch(`http://127.0.0.1:${port}/__/functions.yaml`);
       break;
     } catch (err: any) {
       // Allow us to wait until the server is listening.
@@ -90,6 +88,7 @@ export async function detectFromPort(
       throw err;
     }
   }
+  clearTimeout(timeElapsedWarningTimer);
 
   if (res.status !== 200) {
     const text = await res.text();
