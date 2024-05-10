@@ -27,14 +27,15 @@ export async function provisionCloudSql(args: {
     const existingInstance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
     silent || utils.logLabeledBullet("dataconnect", `Found existing instance ${instanceId}.`);
     connectionName = existingInstance?.connectionName || "";
-    const why = checkInstanceConfig(existingInstance, enableGoogleMlIntegration);
+    const why = getUpdateReason(existingInstance, enableGoogleMlIntegration);
     if (why) {
-      // TODO: Return message from checkInstanceConfig to explain exactly what changes are made
       silent ||
         utils.logLabeledBullet(
           "dataconnect",
           `Instance ${instanceId} settings not compatible with Firebase Data Connect. ` +
-            `Updating instance to ${why}. This may take a few minutes...`,
+            `Updating instance. This may take a few minutes...` +
+            why +
+            "\n",
         );
       await promiseWithSpinner(
         () =>
@@ -103,26 +104,24 @@ export async function provisionCloudSql(args: {
 /**
  * Validate that existing CloudSQL instances have the necessary settings.
  */
-export function checkInstanceConfig(
-  instance: Instance,
-  requireGoogleMlIntegration: boolean,
-): string | false {
+export function getUpdateReason(instance: Instance, requireGoogleMlIntegration: boolean): string {
+  let reason = "";
   const settings = instance.settings;
   // CloudSQL instances must have public IP enabled to be used with Firebase Data Connect.
   if (!settings.ipConfiguration?.ipv4Enabled) {
-    return "enable public IP";
+    reason += "\n - to enable public IP";
   }
 
   if (requireGoogleMlIntegration) {
     if (!settings.enableGoogleMlIntegration) {
-      return "enable Google ML integration";
+      reason += "\n - to enable Google ML integration";
     }
     if (
       !settings.databaseFlags?.some(
         (f) => f.name === "cloudsql.enable_google_ml_integration" && f.value === "on",
       )
     ) {
-      return "enable Google ML integration database flag";
+      reason += "\n - to enable Google ML integration database flag";
     }
   }
 
@@ -132,8 +131,8 @@ export function checkInstanceConfig(
       (f) => f.name === "cloudsql.iam_authentication" && f.value === "on",
     ) ?? false;
   if (!isIamEnabled) {
-    return "enable IAM authentication database flag";
+    reason += "\n - to enable IAM authentication database flag";
   }
 
-  return false;
+  return reason;
 }
