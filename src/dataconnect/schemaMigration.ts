@@ -12,7 +12,6 @@ import { FirebaseError } from "../error";
 import { needProjectId } from "../projectUtils";
 import { logLabeledBullet, logLabeledWarning, logLabeledSuccess } from "../utils";
 import * as errors from "./errors";
-import { Message } from "@google-cloud/pubsub";
 
 export async function diffSchema(schema: Schema): Promise<Diff[]> {
   const { serviceName, instanceName, databaseId } = getIdentifiers(schema);
