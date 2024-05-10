@@ -51,8 +51,8 @@ export async function createInstance(
       userLabels: { "firebase-data-connect": "ft" },
       insightsConfig: {
         queryInsightsEnabled: true,
-        queryPlansPerMinute:  5,    // Match the default settings
-        queryStringLength:    1024, // Match the default settings
+        queryPlansPerMinute: 5, // Match the default settings
+        queryStringLength: 1024, // Match the default settings
       },
     },
   });
