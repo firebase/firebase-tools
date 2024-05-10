@@ -77,21 +77,11 @@ export async function provisionCloudSql(args: {
   try {
     await cloudSqlAdminClient.getDatabase(projectId, instanceId, databaseId);
     silent || utils.logLabeledBullet("dataconnect", `Found existing database ${databaseId}.`);
-  } catch (err: any) {
-    if (err.status === 404) {
-      // Create the database if not found.
-      silent ||
-        utils.logLabeledBullet(
-          "dataconnect",
-          `Database ${databaseId} not found, creating it now...`,
-        );
-      await cloudSqlAdminClient.createDatabase(projectId, instanceId, databaseId);
-      silent || utils.logLabeledBullet("dataconnect", `Database ${databaseId} created.`);
-    } else {
-      // Skip it if the database is not accessible.
-      // Possible that the CSQL instance is in the middle of something.
-      silent || utils.logLabeledWarning("dataconnect", `Database ${databaseId} is not accessible.`);
-    }
+  } catch (err) {
+    silent ||
+      utils.logLabeledBullet("dataconnect", `Database ${databaseId} not found, creating it now...`);
+    await cloudSqlAdminClient.createDatabase(projectId, instanceId, databaseId);
+    silent || utils.logLabeledBullet("dataconnect", `Database ${databaseId} created.`);
   }
   if (enableGoogleMlIntegration) {
     await grantRolesToCloudSqlServiceAccount(projectId, instanceId, [GOOGLE_ML_INTEGRATION_ROLE]);
