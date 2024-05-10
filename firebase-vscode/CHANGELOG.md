@@ -1,5 +1,10 @@
 # Change Log
 
+## 0.1.9
+
+- Fix "Add Data" for nonnull and custom keys
+- Emulator Bump 1.1.17
+
 ## 0.1.8
 
 - Update Extensions page Logo
