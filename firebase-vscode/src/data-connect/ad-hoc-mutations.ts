@@ -1,8 +1,9 @@
 import vscode, { Disposable } from "vscode";
-import { DocumentNode, Kind, ObjectTypeDefinitionNode } from "graphql";
+import { DocumentNode, GraphQLInputObjectType, GraphQLScalarType, Kind, ObjectTypeDefinitionNode, buildClientSchema, buildSchema } from "graphql";
 import { checkIfFileExists, upsertFile } from "./file-utils";
+import { DataConnectService } from "./service";
 
-export function registerAdHoc(): Disposable {
+export function registerAdHoc(dataConnectService: DataConnectService): Disposable {
   const defaultScalarValues = {
     Any: "{}",
     AuthUID: '""',
@@ -122,7 +123,7 @@ query {
     // generate content for the file
     const preamble =
       "# This is a file for you to write an un-named mutation. \n# Only one un-named mutation is allowed per file.";
-    const adhocMutation = generateMutation(ast);
+    const adhocMutation = await generateMutation(ast);
     const content = [preamble, adhocMutation].join("\n");
 
     const basePath = vscode.workspace.rootPath + "/dataconnect/";
@@ -149,33 +150,35 @@ query {
     }
   }
 
-  function generateMutation(ast: ObjectTypeDefinitionNode): string {
-    const name =
+  async function generateMutation(
+    ast: ObjectTypeDefinitionNode,
+  ): Promise<string> {
+    const introspect = (await dataConnectService.introspect())?.data;
+    const schema = buildClientSchema(introspect);
+
+    const name = ast.name.value;
+    const lowerCaseName =
       ast.name.value.charAt(0).toLowerCase() + ast.name.value.slice(1);
+    const dataName = `${name}_Data`;
+    const mutationDataType: GraphQLInputObjectType = schema.getTypeMap()[dataName] as GraphQLInputObjectType;
+
+    // build mutation as string
     const functionSpacing = "\t";
     const fieldSpacing = "\t\t";
     const mutation = [];
-
     mutation.push("mutation {"); // mutation header
-    mutation.push(`${functionSpacing}${name}_insert(data: {`); // insert function
-    for (const field of ast.fields) {
+    mutation.push(`${functionSpacing}${lowerCaseName}_insert(data: {`);
+    for (const [fieldName, field] of Object.entries(mutationDataType.getFields())) {
       // necessary to avoid type error
-      let fieldType: any = field.type;
-      // We unwrap NonNullType to obtain the actual type
-      if (fieldType.kind === Kind.NON_NULL_TYPE) {
-        fieldType = fieldType.type;
+      const fieldtype: any = field.type;
+      // use all argument types that are of scalar, except x_expr
+      if (isDataConnectScalarType(fieldtype.name) && !field.name.includes("_expr")) {
+        const defaultValue = defaultScalarValues[fieldtype.name] || "";
+        mutation.push(
+          `${fieldSpacing}${fieldName}: ${defaultValue} # ${fieldtype.name}`,
+        ); // field name + temp value + comment
       }
-      let fieldTypeName: string = fieldType.name.value;
-      let fieldName: string = field.name.value;
-      let defaultValue = defaultScalarValues[fieldTypeName] as string;
-      if (!isDataConnectScalarType(fieldTypeName)) {
-        fieldTypeName += "Id";
-        fieldName += "Id";
-        defaultValue = '""';
-      }
-      mutation.push(
-        `${fieldSpacing}${fieldName}: ${defaultValue} # ${fieldTypeName}`,
-      ); // field name + temp value + comment
+
     }
     mutation.push(`${functionSpacing}})`, "}"); // closing braces/paren
     return mutation.join("\n");
