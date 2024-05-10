@@ -10,7 +10,7 @@ import { Schema } from "./types";
 import { Options } from "../options";
 import { FirebaseError } from "../error";
 import { needProjectId } from "../projectUtils";
-import { logLabeledWarning, logLabeledSuccess } from "../utils";
+import { logLabeledBullet, logLabeledWarning, logLabeledSuccess } from "../utils";
 import * as errors from "./errors";
 
 export async function diffSchema(schema: Schema): Promise<Diff[]> {
@@ -293,6 +293,7 @@ async function ensureServiceIsConnectedToCloudSql(
           },
         },
       };
+      logLabeledBullet("dataconnect", `Linking the Cloud SQL instance...`);
     } else {
       throw err;
     }
