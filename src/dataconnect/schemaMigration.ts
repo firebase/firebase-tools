@@ -301,7 +301,7 @@ async function ensureServiceIsConnectedToCloudSql(
   if (postgresql?.cloudSql.instance !== instanceId) {
     logLabeledWarning(
       "dataconnect",
-      `Switching connected Cloud SQL instance\nFrom ${postgresql?.cloudSql.instance}\nTo\n ${instanceId}`,
+      `Switching connected Cloud SQL instance\nFrom ${postgresql?.cloudSql.instance}\nTo ${instanceId}`,
     );
   }
   if (postgresql?.database !== databaseId) {
@@ -313,6 +313,7 @@ async function ensureServiceIsConnectedToCloudSql(
   if (!postgresql || postgresql.schemaValidation === "STRICT") {
     return;
   }
+  postgresql.schemaValidation = "STRICT";
   try {
     await upsertSchema(currentSchema, /** validateOnly=*/ false);
   } catch (err: any) {
