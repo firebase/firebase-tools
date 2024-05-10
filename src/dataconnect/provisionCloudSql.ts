@@ -81,7 +81,10 @@ export async function provisionCloudSql(args: {
     if (err.status === 404) {
       // Create the database if not found.
       silent ||
-        utils.logLabeledBullet("dataconnect", `Database ${databaseId} not found, creating it now...`);
+        utils.logLabeledBullet(
+          "dataconnect",
+          `Database ${databaseId} not found, creating it now...`,
+        );
       await cloudSqlAdminClient.createDatabase(projectId, instanceId, databaseId);
       silent || utils.logLabeledBullet("dataconnect", `Database ${databaseId} created.`);
     } else {
