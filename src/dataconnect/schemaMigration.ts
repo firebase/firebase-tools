@@ -315,16 +315,29 @@ async function ensureServiceIsConnectedToCloudSql(
 }
 
 function displaySchemaChanges(error: IncompatibleSqlSchemaError) {
-  let message: String = "unknown violation type: " + error.violationType;
   switch (error.violationType) {
     case "INCOMPATIBLE_SCHEMA":
-      message = "Your new schema is incompatible with the schema of your CloudSQL database. " +
-        "The following SQL statements will migrate your database schema to match your new Data Connect schema.\n";
+      {
+        const message =
+          "Your new schema is incompatible with the schema of your CloudSQL database. " +
+          "The following SQL statements will migrate your database schema to match your new Data Connect schema.\n" +
+          error.diffs.map(toString).join("\n");
+        logLabeledWarning("dataconnect", message);
+      }
+      break;
     case "INACCESSIBLE_SCHEMA":
-      message = "Cannot access your CloudSQL database to validate schema. " +
-        "The following SQL statements can setup a new database schema.\n";
+      {
+        const message =
+          "Cannot access your CloudSQL database to validate schema. " +
+          "The following SQL statements can setup a new database schema.\n" +
+          error.diffs.map(toString).join("\n");
+        logLabeledWarning("dataconnect", message);
+        logLabeledWarning("dataconnect", "Some SQL resources may already exist.");
+      }
+      break;
+    default:
+      throw new FirebaseError("Unknown schema violation type: " + error.violationType);
   }
-  logLabeledWarning("dataconnect", message + error.diffs.map(toString).join("\n"));
 }
 
 function toString(diff: Diff) {
