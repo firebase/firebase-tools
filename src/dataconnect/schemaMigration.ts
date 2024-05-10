@@ -28,19 +28,20 @@ export async function diffSchema(schema: Schema): Promise<Diff[]> {
     if (err.status !== 400) {
       throw err;
     }
-    // Display failed precondition errors nicely.
     const invalidConnectors = errors.getInvalidConnectors(err);
-    if (invalidConnectors.length) {
-      displayInvalidConnectors(invalidConnectors);
-    }
     const incompatible = errors.getIncompatibleSchemaError(err);
-    if (incompatible) {
-      displaySchemaChanges(incompatible);
-      return incompatible.diffs;
-    }
     if (!incompatible && !invalidConnectors.length) {
       // If we got a different type of error, throw it
       throw err;
+    }
+
+    // Display failed precondition errors nicely.
+    if (invalidConnectors.length) {
+      displayInvalidConnectors(invalidConnectors);
+    }
+    if (incompatible) {
+      displaySchemaChanges(incompatible);
+      return incompatible.diffs;
     }
   }
   return [];
@@ -75,6 +76,7 @@ export async function migrateSchema(args: {
       // If we got a different type of error, throw it
       throw err;
     }
+
     const shouldDeleteInvalidConnectors = await promptForInvalidConnectorError(
       options,
       invalidConnectors,
