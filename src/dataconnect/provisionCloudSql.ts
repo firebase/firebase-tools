@@ -34,8 +34,7 @@ export async function provisionCloudSql(args: {
           "dataconnect",
           `Instance ${instanceId} settings not compatible with Firebase Data Connect. ` +
             `Updating instance. This may take a few minutes...` +
-            why +
-            "\n",
+            why,
         );
       await promiseWithSpinner(
         () =>
