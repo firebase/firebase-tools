@@ -103,8 +103,6 @@ async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
   pluginLogger.debug("requireAuthWrapper");
   let account = getGlobalDefaultAccount();
   // often overwritten when restarting the extension.
-  console.log("HAROLD", account);
-
   if (!account) {
     // If nothing in configstore top level, grab the first "additionalAccount"
     const accounts = getAllAccounts();
@@ -138,7 +136,6 @@ async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
       // user
       // Priority 3: Google login account exists and there is no selected user
       // Clear service account access token from memory in apiv2.
-      console.log("HAROLD2", account);
       setAccessToken();
       await requireAuth({ ...commandOptions, ...account });
       return true;
