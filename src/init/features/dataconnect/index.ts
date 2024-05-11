@@ -4,9 +4,11 @@ import { readFileSync } from "fs";
 import { Config } from "../../../config";
 import { Setup } from "../..";
 import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql";
+import { checkForFreeTrialInstance } from "../../../dataconnect/freeTrial";
 import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
 import { ensureApis } from "../../../dataconnect/ensureApis";
 import { listLocations } from "../../../dataconnect/client";
+import { DEFAULT_POSTGRES_CONNECTION } from "../emulators";
 
 const TEMPLATE_ROOT = resolve(__dirname, "../../../../templates/init/dataconnect/");
 
@@ -25,63 +27,70 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     type: "input",
     default: "dataconnect",
   });
-  // Hardcoded locations for when there is no project set up.
-  let locationOptions = [
-    { name: "us-central1", value: "us-central1" },
-    { name: "europe-north1", value: "europe-north1" },
-    { name: "europe-central2", value: "europe-central2" },
-    { name: "europe-west1", value: "europe-west1" },
-    { name: "southamerica-west1", value: "southamerica-west1" },
-    { name: "us-east4", value: "us-east4" },
-    { name: "us-west1", value: "us-west1" },
-    { name: "asia-southeast1", value: "asia-southeast1" },
-  ];
-  if (setup.projectId) {
-    const locations = await listLocations(setup.projectId);
-    locationOptions = locations.map((l) => {
-      return { name: l, value: l };
-    });
-  }
-  const locationId = await promptOnce({
-    message: "What location would you like to deploy this service into?",
-    type: "list",
-    choices: locationOptions,
-  });
   // TODO: Guided prompts to set up connector auth mode and generate
   const connectorId = await promptOnce({
     message: "What ID would you like to use for your connector?",
     type: "input",
     default: "my-connector",
   });
-  const dir: string = config.get("dataconnect.source") || "dataconnect";
-  if (!config.has("dataconnect")) {
-    config.set("dataconnect.source", dir);
-    config.set("dataconnect.location", locationId);
-  }
+
   let cloudSqlInstanceId = "";
   let newInstance = false;
+  let locationId = "";
   if (setup.projectId) {
     const instances = await cloudsql.listInstances(setup.projectId);
-    const instancesInLocation = instances.filter((i) => i.region === locationId);
-    const choices = instancesInLocation.map((i) => {
-      return { name: i.name, value: i.name };
+    const choices = instances.map((i) => {
+      return { name: i.name, value: i.name, location: i.region };
     });
-    choices.push({ name: "Create a new instance", value: "" });
-    if (instancesInLocation.length) {
+
+    const freeTrialInstanceId = await checkForFreeTrialInstance(setup.projectId);
+    if (!freeTrialInstanceId) {
+      choices.push({ name: "Create a new instance", value: "", location: "" });
+    }
+    if (instances.length) {
       cloudSqlInstanceId = await promptOnce({
-        message: `Which CloudSSQL in ${locationId} would you like to use?`,
+        message: `Which CloudSSQL instance would you like to use?`,
         type: "list",
         choices,
       });
     }
+    locationId = choices.find((c) => c.value === cloudSqlInstanceId)!.location;
   }
   if (cloudSqlInstanceId === "") {
+    // Hardcoded locations for when there is no project set up.
+    let locationOptions = [
+      { name: "us-central1", value: "us-central1" },
+      { name: "europe-north1", value: "europe-north1" },
+      { name: "europe-central2", value: "europe-central2" },
+      { name: "europe-west1", value: "europe-west1" },
+      { name: "southamerica-west1", value: "southamerica-west1" },
+      { name: "us-east4", value: "us-east4" },
+      { name: "us-west1", value: "us-west1" },
+      { name: "asia-southeast1", value: "asia-southeast1" },
+    ];
+    if (setup.projectId) {
+      const locations = await listLocations(setup.projectId);
+      locationOptions = locations.map((l) => {
+        return { name: l, value: l };
+      });
+    }
+
     newInstance = true;
     cloudSqlInstanceId = await promptOnce({
       message: `What ID would you like to use for your new CloudSQL instance?`,
       type: "input",
       default: `dataconnect-test`,
     });
+    locationId = await promptOnce({
+      message: "What location would you use for this instance?",
+      type: "list",
+      choices: locationOptions,
+    });
+  }
+  const dir: string = config.get("dataconnect.source") || "dataconnect";
+  if (!config.has("dataconnect")) {
+    config.set("dataconnect.source", dir);
+    config.set("dataconnect.location", locationId);
   }
   let cloudSqlDatabase = "";
   let newDB = false;
@@ -108,10 +117,9 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     });
   }
 
-  // postgresql://localhost:5432 is a default out of the box value for most installations of Postgres
   const defaultConnectionString =
     setup.rcfile.dataconnectEmulatorConfig?.postgres?.localConnectionString ??
-    "postgresql://localhost:5432?sslmode=disable";
+    DEFAULT_POSTGRES_CONNECTION;
   // TODO: Download Postgres
   const localConnectionString = await promptOnce({
     type: "input",

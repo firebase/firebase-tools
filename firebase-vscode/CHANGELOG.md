@@ -4,7 +4,9 @@
 
 - Update Extensions page Logo
 - Update README for Extensions page
-- Emulator Bump 1.1.15
+- Surface emulator issues as notifications
+- Generate .graphqlrc automatically
+- Emulator Bump 1.1.16
 
 ## 0.1.7
 
