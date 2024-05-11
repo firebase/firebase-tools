@@ -28,6 +28,7 @@ import { runDataConnectCompiler } from "./core-compiler";
 import { Result } from "../result";
 import { runEmulatorIssuesStream } from "./emulator-stream";
 import { LanguageClient } from "vscode-languageclient/node";
+import { registerTerminalTasks } from "./terminal";
 
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
@@ -223,6 +224,7 @@ export function registerFdc(
     registerAdHoc(),
     registerConnectors(context, broker, fdcService),
     registerFdcDeploy(broker),
+    registerTerminalTasks(broker),
     operationCodeLensProvider,
     vscode.languages.registerCodeLensProvider(
       // **Hack**: For testing purposes, enable code lenses on all graphql files
