@@ -86,21 +86,7 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
   const command = vscode.commands.registerCommand(
     "firebase.selectProject",
     async () => {
-      if (process.env.MONOSPACE_ENV) {
-        pluginLogger.debug(
-          "selectProject: found MONOSPACE_ENV, " +
-            "prompting user using CLI",
-        );
- try {
-   const projects = firstWhereDefined(userScopedProjects);
-
-   currentProjectId.value =
-     (await _promptUserForProject(projects)) ?? currentProjectId.value;
- } catch (e) {
-   vscode.window.showErrorMessage(e.message);
- }
-       
-      } else if (isServiceAccount.value) {
+      if (isServiceAccount.value) {
         return;
       } else {
         try {

@@ -13,6 +13,7 @@ import { ValueOrError } from "./messaging/protocol";
 import { FirebaseConfig } from "../../src/firebaseConfig";
 import { RCData } from "../../src/rc";
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react";
+import { ServiceAccountUser } from "../common/types";
 
 export function SidebarApp() {
   const env = useBroker("notifyEnv")?.env;
@@ -158,7 +159,7 @@ function SidebarContent(props: {
       <Spacer size="medium" />
       {accountSection}
       {!!user && (
-        <ProjectSection userEmail={user.email} projectId={projectId} />
+        <ProjectSection user={user} projectId={projectId} isMonospace={env?.isMonospace} />
       )}
       { // TODO: disable hosting completely
       /* {hostingInitState === "success" &&
