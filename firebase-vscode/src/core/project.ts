@@ -6,14 +6,13 @@ import { FirebaseProjectMetadata } from "../types/project";
 import { currentUser, isServiceAccount } from "./user";
 import { listProjects } from "../cli";
 import { pluginLogger } from "../logger-wrapper";
-import { selectProjectInMonospace } from "../../../src/monospace";
 import { currentOptions } from "../options";
 import { globalSignal } from "../utils/globals";
 import { firstWhereDefined } from "../utils/signal";
 
 /** Available projects */
 export const projects = globalSignal<Record<string, FirebaseProjectMetadata[]>>(
-  {}
+  {},
 );
 
 /** Currently selected project ID */
@@ -22,7 +21,7 @@ export const currentProjectId = globalSignal("");
 const userScopedProjects = computed<FirebaseProjectMetadata[] | undefined>(
   () => {
     return projects.value[currentUser.value?.email ?? ""];
-  }
+  },
 );
 
 /** Gets the currently selected project, fallback to first default project in RC file */
@@ -41,7 +40,7 @@ export const currentProject = computed<FirebaseProjectMetadata | undefined>(
     }
 
     return userScopedProjects.value?.find((p) => p.projectId === wantProjectId);
-  }
+  },
 );
 
 export function registerProject(broker: ExtensionBrokerImpl): Disposable {
@@ -90,28 +89,17 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
       if (process.env.MONOSPACE_ENV) {
         pluginLogger.debug(
           "selectProject: found MONOSPACE_ENV, " +
-            "prompting user using external flow"
+            "prompting user using CLI",
         );
-        /**
-         * Monospace case: use Monospace flow
-         */
-        const monospaceExtension =
-          vscode.extensions.getExtension("google.monospace");
-        process.env.MONOSPACE_DAEMON_PORT =
-          monospaceExtension.exports.getMonospaceDaemonPort();
-        try {
-          const projectId = await selectProjectInMonospace({
-            projectRoot: currentOptions.value.cwd,
-            project: undefined,
-            isVSCE: true,
-          });
+ try {
+   const projects = firstWhereDefined(userScopedProjects);
 
-          if (projectId) {
-            currentProjectId.value = projectId;
-          }
-        } catch (e) {
-          pluginLogger.error(e);
-        }
+   currentProjectId.value =
+     (await _promptUserForProject(projects)) ?? currentProjectId.value;
+ } catch (e) {
+   vscode.window.showErrorMessage(e.message);
+ }
+       
       } else if (isServiceAccount.value) {
         return;
       } else {
@@ -124,11 +112,11 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
           vscode.window.showErrorMessage(e.message);
         }
       }
-    }
+    },
   );
 
   const sub6 = broker.on("selectProject", () =>
-    vscode.commands.executeCommand("firebase.selectProject")
+    vscode.commands.executeCommand("firebase.selectProject"),
   );
 
   return vscode.Disposable.from(
@@ -138,7 +126,7 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
     { dispose: sub3 },
     { dispose: sub4 },
     { dispose: sub5 },
-    { dispose: sub6 }
+    { dispose: sub6 },
   );
 }
 
@@ -149,7 +137,7 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
  */
 export async function _promptUserForProject(
   projects: Thenable<FirebaseProjectMetadata[]>,
-  token?: vscode.CancellationToken
+  token?: vscode.CancellationToken,
 ): Promise<string | undefined> {
   const items = projects.then((projects) => {
     return projects.map((p) => ({

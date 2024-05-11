@@ -100,9 +100,11 @@ async function getServiceAccount() {
  */
 async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
   // Try to get global default from configstore. For some reason this is
-  // often overwritten when restarting the extension.
   pluginLogger.debug("requireAuthWrapper");
   let account = getGlobalDefaultAccount();
+  // often overwritten when restarting the extension.
+  console.log("HAROLD", account);
+
   if (!account) {
     // If nothing in configstore top level, grab the first "additionalAccount"
     const accounts = getAllAccounts();
@@ -136,6 +138,7 @@ async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
       // user
       // Priority 3: Google login account exists and there is no selected user
       // Clear service account access token from memory in apiv2.
+      console.log("HAROLD2", account);
       setAccessToken();
       await requireAuth({ ...commandOptions, ...account });
       return true;
@@ -153,7 +156,7 @@ async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
       // "error". Usually set on user-triggered actions such as
       // init hosting and deploy.
       pluginLogger.error(
-        `requireAuth error: ${e.original?.message || e.message}`
+        `requireAuth error: ${e.original?.message || e.message}`,
       );
       vscode.window.showErrorMessage("Not logged in", {
         modal: true,
@@ -164,7 +167,7 @@ async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
       // but we should log it for debugging purposes.
       pluginLogger.debug(
         "requireAuth error output: ",
-        e.original?.message || e.message
+        e.original?.message || e.message,
       );
     }
     return false;

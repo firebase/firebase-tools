@@ -160,7 +160,8 @@ function SidebarContent(props: {
       {!!user && (
         <ProjectSection userEmail={user.email} projectId={projectId} />
       )}
-      {hostingInitState === "success" &&
+      { // TODO: disable hosting completely
+      /* {hostingInitState === "success" &&
         !!user &&
         !!projectId &&
         env?.isMonospace && (
@@ -184,7 +185,7 @@ function SidebarContent(props: {
             hostingInitState={hostingInitState}
             setHostingInitState={setHostingInitState}
           />
-        )}
+        )} */}
       {
         // disable emulator panel for now, as we have an individual emulator panel in the FDC section
       }
