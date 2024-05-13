@@ -1,2 +1,1 @@
-- Release Firestore Emulator version 1.19.6 which fixes a few Datastore Mode bugs regarding transactions (#7132).
 - Fix path issue in Windows deployments for Next.js SSR (#7148)

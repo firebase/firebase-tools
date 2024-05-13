@@ -7,14 +7,26 @@ import React from "react";
 import styles from "./AccountSection.scss";
 import { ExternalLink } from "./ui/ExternalLink";
 import { TEXT } from "../globals/ux-text";
+import { User } from "../types/auth";
+import { ServiceAccountUser } from "../types";
 
+interface UserWithType extends User {
+  type?: string;
+}
 export function ProjectSection({
-  userEmail,
+  user,
   projectId,
+  isMonospace,
 }: {
-  userEmail: string | null;
+  user: UserWithType | ServiceAccountUser | null;
   projectId: string | null | undefined;
+  isMonospace: boolean;
 }) {
+  const userEmail = user.email;
+
+  if (isMonospace && user?.type === "service_account") {
+    return;
+  }
   return (
     <div className={styles.accountRow}>
       <Label className={styles.accountRowLabel}>

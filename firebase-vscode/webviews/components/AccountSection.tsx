@@ -34,9 +34,11 @@ export function AccountSection({
   if (usersLoaded && (!allUsers.length || !user)) {
     // Users loaded but no user was found
     if (isMonospace) {
-      // Monospace: this is an error, should have found a workspace
-      // service account
-      currentUserElement = TEXT.MONOSPACE_LOGIN_FAIL;
+      currentUserElement = (
+        <VSCodeLink onClick={() => broker.send("executeLogin")}>
+          {TEXT.GOOGLE_SIGN_IN}
+        </VSCodeLink>
+      );
     } else {
       // VS Code: prompt user to log in with Google account
       currentUserElement = (
@@ -49,7 +51,11 @@ export function AccountSection({
     // Users loaded, at least one user was found
     if (user.type === "service_account") {
       if (isMonospace) {
-        currentUserElement = TEXT.MONOSPACE_LOGGED_IN;
+        currentUserElement = (
+          <VSCodeLink onClick={() => broker.send("executeLogin")}>
+            {TEXT.GOOGLE_SIGN_IN}
+          </VSCodeLink>
+        );
       } else {
         currentUserElement = TEXT.VSCE_SERVICE_ACCOUNT_LOGGED_IN;
       }
@@ -63,13 +69,6 @@ export function AccountSection({
       {currentUserElement}
     </Label>
   );
-  if (user?.type === "service_account" && isMonospace) {
-    userBoxElement = (
-      <Label level={4} secondary className={styles.accountRowLabel}>
-        {currentUserElement}
-      </Label>
-    );
-  }
   return (
     <div className={styles.accountRow}>
       {userBoxElement}

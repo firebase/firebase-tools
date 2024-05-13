@@ -113,6 +113,9 @@ export interface WebviewToExtensionParamsMap {
 
   // Initialize "result" tab.
   getDataConnectResults: void;
+
+  // execute terminal tasks
+  executeLogin: void;
 }
 
 export interface DataConnectResults {

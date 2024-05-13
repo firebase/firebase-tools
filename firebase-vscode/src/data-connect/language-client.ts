@@ -12,12 +12,8 @@ import { ResolvedDataConnectConfigs } from "./config";
 export function setupLanguageClient(
   context,
   configs: ResolvedDataConnectConfigs,
+  outputChannel: vscode.OutputChannel,
 ) {
-  // activate language client/serer
-  const outputChannel: vscode.OutputChannel = vscode.window.createOutputChannel(
-    "Firebase GraphQL Language Server",
-  );
-
   const serverPath = path.join("dist", "server.js");
   const serverModule = context.asAbsolutePath(serverPath);
 
