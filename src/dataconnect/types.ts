@@ -56,8 +56,7 @@ export interface IncompatibleSqlSchemaError {
   destructive: boolean;
 
   // The failed precondition validation type.
-  // Either "INCOMPATIBLE_SCHEMA" or "INACCESSIBLE_SCHEMA".
-  violationType: string;
+  violationType: "INCOMPATIBLE_SCHEMA" | "INACCESSIBLE_SCHEMA" | string;
 }
 
 export interface Diff {

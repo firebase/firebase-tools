@@ -13,7 +13,11 @@ export function getIncompatibleSchemaError(err: any): IncompatibleSqlSchemaError
   const incompatible = incompatibles[0];
   // Extract the violation type from the precondition error detail.
   const preconditionErrs = errorDetails(err, PRECONDITION_ERROR_TYPESTRING);
-  incompatible.violationType = preconditionErrs[0].violations[0].type;
+  const violationTypes = (incompatible.violationType = preconditionErrs
+    .flatMap((preCondErr) => preCondErr.violations)
+    .flatMap((viol) => viol.type)
+    .filter((type) => type === "INACCESSIBLE_SCHEMA" || type === "INCOMPATIBLE_SCHEMA"));
+  incompatible.violationType = violationTypes[0];
   return incompatible;
 }
 

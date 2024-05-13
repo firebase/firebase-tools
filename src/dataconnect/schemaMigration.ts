@@ -377,7 +377,9 @@ function displaySchemaChanges(error: IncompatibleSqlSchemaError) {
       }
       break;
     default:
-      throw new FirebaseError("Unknown schema violation type: " + error.violationType);
+      throw new FirebaseError(
+        `Unknown schema violation type: ${error.violationType}, IncompatibleSqlSchemaError: ${error}`,
+      );
   }
 }
 
