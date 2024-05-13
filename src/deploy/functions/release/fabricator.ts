@@ -15,6 +15,7 @@ import * as deploymentTool from "../../../deploymentTool";
 import * as gcf from "../../../gcp/cloudfunctions";
 import * as gcfV2 from "../../../gcp/cloudfunctionsv2";
 import * as eventarc from "../../../gcp/eventarc";
+import * as experiments from "../../../experiments";
 import * as helper from "../functionsDeployHelper";
 import * as planner from "./planner";
 import * as poller from "../../../operation-poller";
@@ -364,7 +365,9 @@ export class Fabricator {
     while (!resultFunction) {
       resultFunction = await this.functionExecutor
         .run(async () => {
-          apiFunction.buildConfig.sourceToken = await scraper.getToken();
+          if (experiments.isEnabled("functionsv2deployoptimizations")) {
+            apiFunction.buildConfig.sourceToken = await scraper.getToken();
+          }
           const op: { name: string } = await gcfV2.createFunction(apiFunction);
           return await poller.pollOperation<gcfV2.OutputCloudFunction>({
             ...gcfV2PollerOptions,
@@ -502,7 +505,9 @@ export class Fabricator {
     const resultFunction = await this.functionExecutor
       .run(
         async () => {
-          apiFunction.buildConfig.sourceToken = await scraper.getToken();
+          if (experiments.isEnabled("functionsv2deployoptimizations")) {
+            apiFunction.buildConfig.sourceToken = await scraper.getToken();
+          }
           const op: { name: string } = await gcfV2.updateFunction(apiFunction);
           return await poller.pollOperation<gcfV2.OutputCloudFunction>({
             ...gcfV2PollerOptions,

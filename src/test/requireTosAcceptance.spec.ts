@@ -60,6 +60,8 @@ describe("requireTosAcceptance", () => {
       .reply(200, SAMPLE_RESPONSE);
 
     await requireTosAcceptance(APP_CHECK_TOS_ID)(SAMPLE_OPTIONS);
+
+    expect(nock.isDone()).to.be.true;
   });
 
   it("should throw error if not accepted", async () => {
@@ -70,5 +72,7 @@ describe("requireTosAcceptance", () => {
     await expect(requireTosAcceptance(APPHOSTING_TOS_ID)(SAMPLE_OPTIONS)).to.be.rejectedWith(
       "Terms of Service",
     );
+
+    expect(nock.isDone()).to.be.true;
   });
 });

@@ -1,10 +1,17 @@
 # Change Log
 
+## 0.1.9
+
+- Fix "Add Data" for nonnull and custom keys
+- Emulator Bump 1.1.17
+
 ## 0.1.8
 
 - Update Extensions page Logo
 - Update README for Extensions page
-- Emulator Bump 1.1.15
+- Surface emulator issues as notifications
+- Generate .graphqlrc automatically
+- Emulator Bump 1.1.16
 
 ## 0.1.7
 
