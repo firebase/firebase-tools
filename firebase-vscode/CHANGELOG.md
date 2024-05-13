@@ -1,5 +1,9 @@
 # Change Log
 
+## 0.2.0
+
+- Fix Auth on IDX
+
 ## 0.1.9
 
 - Fix "Add Data" for nonnull and custom keys
