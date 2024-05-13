@@ -1,0 +1,1 @@
+- Added `firebase init genkit`.

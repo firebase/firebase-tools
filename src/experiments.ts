@@ -130,6 +130,7 @@ export const ALL_EXPERIMENTS = experiments({
   genkit: {
     shortDescription: "Enable Genkit related features.",
     fullDescription: "Enable Genkit related features.",
+    default: true,
     public: false,
   },
 });
