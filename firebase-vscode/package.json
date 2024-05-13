@@ -4,7 +4,7 @@
   "publisher": "firebase",
   "icon": "./resources/firebase_logo.png",
   "description": "VSCode Extension for Firebase",
-  "version": "0.1.8",
+  "version": "0.2.0",
   "engines": {
     "vscode": "^1.69.0"
   },
@@ -13,7 +13,9 @@
   "categories": [
     "Other"
   ],
-  "extensionDependencies": ["graphql.vscode-graphql-syntax"],
+  "extensionDependencies": [
+    "graphql.vscode-graphql-syntax"
+  ],
   "activationEvents": [
     "onStartupFinished",
     "onLanguage:graphql",
@@ -55,12 +57,12 @@
       "properties": {
         "firebase.debug": {
           "type": "boolean",
-          "default": false,
+          "default": true,
           "description": "Enable writing debug-level messages to the file provided in firebase.debugLogPath (requires restart)"
         },
         "firebase.debugLogPath": {
           "type": "string",
-          "default": "",
+          "default": "/tmp/firebase-plugin.log",
           "description": "If firebase.debug is true, appends debug-level messages to the provided file (requires restart)"
         },
         "firebase.npmPath": {
