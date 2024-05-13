@@ -23,7 +23,16 @@ export const isServiceAccount = computed(() => {
   return (currentUser.value as ServiceAccountUser)?.type === "service_account";
 });
 
+export async function checkLogin() {
+    const accounts = await getAccounts();
+    users.value = accounts.reduce(
+      (cumm, curr) => ({ ...cumm, [curr.user.email]: curr.user }),
+      {}
+    );
+}
+
 export function registerUser(broker: ExtensionBrokerImpl): Disposable {
+  
   const sub1 = effect(() => {
     broker.send("notifyUsers", { users: Object.values(users.value) });
   });
@@ -33,11 +42,7 @@ export function registerUser(broker: ExtensionBrokerImpl): Disposable {
   });
 
   const sub3 = broker.on("getInitialData", async () => {
-    const accounts = await getAccounts();
-    users.value = accounts.reduce(
-      (cumm, curr) => ({ ...cumm, [curr.user.email]: curr.user }),
-      {}
-    );
+    checkLogin();
   });
 
   const sub4 = broker.on("addUser", async () => {
