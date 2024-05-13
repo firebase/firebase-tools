@@ -1,1 +1,0 @@
-- Release Firestore Emulator version 1.19.6 which fixes a few Datastore Mode bugs regarding transactions (#7132).
