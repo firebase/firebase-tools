@@ -2,6 +2,10 @@
 
 ## 0.1.9
 
+- Fix Auth on IDX
+
+## 0.1.9
+
 - Fix "Add Data" for nonnull and custom keys
 - Emulator Bump 1.1.17
 
