@@ -48,6 +48,17 @@ import { assertExhaustive } from "../../functional";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 
+function handleSourceDirectoryFlag(options: Options): void {
+  // Allow the public directory to be overridden by the --public flag
+  if (options.source) {
+    if (Array.isArray(options.config.get("functions"))) {
+      throw new FirebaseError("Cannot specify --source option with multiple codebases.");
+    }
+
+    options.config.set("functions.source", options.source);
+  }
+}
+
 /**
  * Prepare functions codebases for deploy.
  */
@@ -56,6 +67,8 @@ export async function prepare(
   options: Options,
   payload: args.Payload,
 ): Promise<void> {
+  handleSourceDirectoryFlag(options);
+
   const projectId = needProjectId(options);
   const projectNumber = await needProjectNumber(options);
 
