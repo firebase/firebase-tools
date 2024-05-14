@@ -1,1 +1,1 @@
-- Unleash the turtles!
+- Exposes the `apphosting:*` commands!
