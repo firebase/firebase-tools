@@ -110,7 +110,7 @@
       "mono-firebase": {
         "description": "Firebase icon",
         "default": {
-          "fontPath": "./resources/Monicons.woff",
+          "fontPath": "./resources/monicons.woff",
           "fontCharacter": "\\F101"
         }
       },
