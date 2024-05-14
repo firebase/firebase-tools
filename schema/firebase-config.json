@@ -35,7 +35,7 @@
                     "description": "Fractional number of CPUs to allocate to a function."
                 },
                 "enforceAppCheck": {
-                    "description": "Determines whether Firebase AppCheck is enforced. Defaults to false.",
+                    "description": "Determines whether Firebase App Check is enforced. Defaults to false.",
                     "type": "boolean"
                 },
                 "ingressSettings": {
