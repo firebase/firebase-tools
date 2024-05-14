@@ -118,7 +118,7 @@ export const ALL_EXPERIMENTS = experiments({
   apphosting: {
     shortDescription: "Allow CLI option for Frameworks",
     default: false,
-    public: false,
+    public: true,
   },
 
   dataconnect: {
