@@ -4,7 +4,7 @@
   "publisher": "firebase",
   "icon": "./resources/firebase_logo.png",
   "description": "VSCode Extension for Firebase",
-  "version": "0.1.9",
+  "version": "0.2.0",
   "engines": {
     "vscode": "^1.69.0"
   },
