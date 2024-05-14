@@ -1,1 +1,1 @@
-- Added `firebase init genkit`.
+- Added `firebase init genkit`. See more at https://firebase.google.com/docs/genkit
