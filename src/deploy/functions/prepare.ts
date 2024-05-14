@@ -49,7 +49,7 @@ import { assertExhaustive } from "../../functional";
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 
 function handleSourceDirectoryFlag(options: Options): void {
-  // Allow the public directory to be overridden by the --public flag
+  // Allow the source directory to be overridden by the --source flag
   if (options.source) {
     if (Array.isArray(options.config.get("functions"))) {
       throw new FirebaseError("Cannot specify --source option with multiple codebases.");
