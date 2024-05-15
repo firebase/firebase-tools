@@ -15,7 +15,7 @@
   ],
   "extensionDependencies": [
     "graphql.vscode-graphql-syntax",
-    "redhat.vscode-yaml",
+    "redhat.vscode-yaml"
   ],
   "activationEvents": [
     "onStartupFinished",
