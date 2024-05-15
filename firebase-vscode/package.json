@@ -180,11 +180,11 @@
       },
       {
         "fileMatch": "dataconnect.yaml",
-        "url": "./schema/dataconnect-yaml.json"
+        "url": "./dist/schema/dataconnect-yaml.json"
       },
       {
         "fileMatch": "connector.yaml",
-        "url": "./schema/connector-yaml.json"
+        "url": "./dist/schema/connector-yaml.json"
       }
     ]
   },
