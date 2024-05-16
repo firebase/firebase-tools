@@ -18,6 +18,9 @@ async function main() {
       extensionTestsPath,
       // Workaround for https://github.com/webdriverio-community/wdio-vscode-service/issues/101#issuecomment-1928159399
       version: "1.85.0",
+      extensionTestsEnv: {
+        'DISPLAY': '0',
+      },
     });
   } catch (err) {
     console.error("Failed to run tests");
