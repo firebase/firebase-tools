@@ -65,7 +65,7 @@ jobs:
         working-directory: firebase-vscode
       - run: ls node_modules
         working-directory: firebase-vscode
-      - run: npm run test:unit
+      - run: xvfb-run -a npm run test:unit
         working-directory: firebase-vscode
         env:
           ## Workaround to "The futex facility returned an unexpected error code." error
