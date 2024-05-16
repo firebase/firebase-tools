@@ -59,7 +59,7 @@ jobs:
       - run: npm i -g npm@9.5
       - run: npm ci
       - run: npm test -- -- --forbid-only
-      - run: npm install --package-lock-only --ignore-scripts
+      - run: npm install
         working-directory: firebase-vscode
       - run: ls
         working-directory: firebase-vscode
