@@ -67,6 +67,9 @@ jobs:
         working-directory: firebase-vscode
       - run: npm run test:unit
         working-directory: firebase-vscode
+        env:
+          ## Workaround to "The futex facility returned an unexpected error code." error
+          DISPLAY: 0
 
       - uses: codecov/codecov-action@v3
         if: matrix.node-version == '20'
