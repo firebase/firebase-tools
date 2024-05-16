@@ -102,9 +102,9 @@ export function selectFromMetadata(
 
 /** Common warning log that there are no backends. Exported to make tests easier. */
 export const WARN_NO_BACKENDS =
-  "To use this secret, your backend's service account must have secret accessor permission. " +
+  "To use this secret, your backend's service account must be granted access." +
   "It does not look like you have a backend yet. After creating a backend, grant access with " +
-  clc.bold("firebase apphosting:secrets:grantAccess");
+  clc.bold("firebase apphosting:secrets:grantaccess");
 
 /** Common warning log that the user will need to grant access manually. Exported to make tests easier. */
 export const GRANT_ACCESS_IN_FUTURE = `To grant access in the future, run ${clc.bold("firebase apphosting:secrets:grantaccess")}`;
@@ -121,15 +121,14 @@ export async function selectBackendServiceAccounts(
   const listBackends = await apphosting.listBackends(projectId, "-");
 
   if (listBackends.unreachable.length) {
-    utils.logLabeledWarning(
-      "apphosting",
+    utils.logWarning(
       `Could not reach location(s) ${listBackends.unreachable.join(", ")}. You may need to run ` +
-        `${clc.bold("firebase apphosting:secrets:grantAccess")} at a later time if you have backends in these locations`,
+        `${clc.bold("firebase apphosting:secrets:grantaccess")} at a later time if you have backends in these locations`,
     );
   }
 
   if (!listBackends.backends.length) {
-    utils.logLabeledWarning("apphosting", WARN_NO_BACKENDS);
+    utils.logWarning(WARN_NO_BACKENDS);
     return { buildServiceAccounts: [], runServiceAccounts: [] };
   }
 
@@ -138,29 +137,29 @@ export async function selectBackendServiceAccounts(
       nonInteractive: options.nonInteractive,
       default: true,
       message:
-        "To use this secret, your backend's service account must have secret accessor permission. Would you like to grant it now?",
+        "To use this secret, your backend's service account must be granted access. Would you like to grant access now?",
     });
     if (grant) {
       return toMulti(serviceAccountsForBackend(projectNumber, listBackends.backends[0]));
     }
-    utils.logLabeledBullet("apphosting", GRANT_ACCESS_IN_FUTURE);
+    utils.logBullet(GRANT_ACCESS_IN_FUTURE);
     return { buildServiceAccounts: [], runServiceAccounts: [] };
   }
 
   const metadata: BackendMetadata[] = toMetadata(projectNumber, listBackends.backends);
 
   if (metadata.every(matchesServiceAccounts(metadata[0]))) {
-    utils.logLabeledBullet(
-      "apphosting",
-      "To use this secret, your backend's service account must have secret accessor permission. All of your backends use " +
-        (sameServiceAccount(metadata[0]) ? "service account " : "service accounts ") +
+    utils.logBullet("To use this secret, your backend's service account must be granted access.");
+    utils.logBullet(
+      "All of your backends share the following " +
+        (sameServiceAccount(metadata[0]) ? "service account: " : "service accounts: ") +
         serviceAccountDisplay(metadata[0]) +
-        ". Granting access to one backend will grant access to all backends.",
+        ".\nGranting access to one backend will grant access to all backends.",
     );
     const grant = await prompt.confirm({
       nonInteractive: options.nonInteractive,
       default: true,
-      message: "Would you like to grant it now?",
+      message: "Would you like to grant access to all backends now?",
     });
     if (grant) {
       return selectFromMetadata(metadata, [
@@ -168,13 +167,12 @@ export async function selectBackendServiceAccounts(
         metadata[0].runServiceAccount,
       ]);
     }
-    utils.logLabeledBullet("apphosting", GRANT_ACCESS_IN_FUTURE);
+    utils.logBullet(GRANT_ACCESS_IN_FUTURE);
     return { buildServiceAccounts: [], runServiceAccounts: [] };
   }
 
-  utils.logLabeledBullet(
-    "apphosting",
-    "To use this secret, your backend's service account must have secret accessor permission. Your backends use the following service accounts:",
+  utils.logBullet(
+    "To use this secret, your backend's service account must be granted access. Your backends use the following service accounts:",
   );
   const tableData = tableForBackends(metadata);
   const table = new Table({
@@ -197,7 +195,7 @@ export async function selectBackendServiceAccounts(
     choices: [...allAccounts.values()].sort(),
   });
   if (!chosen.length) {
-    utils.logLabeledBullet("apphosting", GRANT_ACCESS_IN_FUTURE);
+    utils.logBullet(GRANT_ACCESS_IN_FUTURE);
   }
   return selectFromMetadata(metadata, chosen);
 }

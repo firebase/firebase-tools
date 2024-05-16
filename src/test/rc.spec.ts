@@ -4,7 +4,7 @@ import { RC, loadRC, RCData } from "../rc";
 
 const fixturesDir = path.resolve(__dirname, "./fixtures");
 
-const EMPTY_DATA: RCData = { projects: {}, targets: {}, etags: {} };
+const EMPTY_DATA: RCData = { projects: {}, targets: {}, etags: {}, dataconnectEmulatorConfig: {} };
 
 describe("RC", () => {
   describe(".load", () => {

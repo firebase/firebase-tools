@@ -158,6 +158,11 @@ async function overwriteCodebase(setup: any, config: Config): Promise<any> {
  * User dialogue to set up configuration for functions codebase language choice.
  */
 async function languageSetup(setup: any, config: Config): Promise<any> {
+  // During genkit setup, always select TypeScript here.
+  if (setup.languageOverride) {
+    return require("./" + setup.languageOverride).setup(setup, config);
+  }
+
   const choices = [
     {
       name: "JavaScript",
@@ -181,14 +186,27 @@ async function languageSetup(setup: any, config: Config): Promise<any> {
   const cbconfig = configForCodebase(setup.config.functions, setup.functions.codebase);
   switch (language) {
     case "javascript":
-      cbconfig.ignore = ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"];
+      cbconfig.ignore = [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local",
+      ];
       break;
     case "typescript":
-      cbconfig.ignore = ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"];
+      cbconfig.ignore = [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local",
+      ];
       break;
     case "python":
-      cbconfig.ignore = ["venv", ".git", "firebase-debug.log", "firebase-debug.*.log"];
+      cbconfig.ignore = ["venv", ".git", "firebase-debug.log", "firebase-debug.*.log", "*.local"];
       break;
   }
+  setup.functions.languageChoice = language;
   return require("./" + language).setup(setup, config);
 }

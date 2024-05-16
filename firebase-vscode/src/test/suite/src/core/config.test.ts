@@ -4,8 +4,8 @@ import * as path from "path";
 import * as fs from "fs";
 import {
   _createWatcher,
-  _getConfigPath,
-  _readConfig,
+  getConfigPath,
+  _readFirebaseConfig,
   _readRC,
   firebaseConfig,
   firebaseRC,
@@ -22,13 +22,13 @@ import { createFake, mock } from "../../../utils/mock";
 import { resetGlobals } from "../../../../utils/globals";
 import { workspace } from "../../../../utils/test_hooks";
 import { createFile, createTemporaryDirectory } from "../../../utils/fs";
-import { currentOptions } from "../../../../options";
-import { Options } from "../../../../../../src/options";
+import { VsCodeOptions, currentOptions } from "../../../../options";
 import { spyLogs } from "../../../utils/logs";
 import { createTestBroker } from "../../../utils/broker";
 import { setupMockTestWorkspaces } from "../../../utils/workspace";
-import { RC } from "../../../../../../src/rc";
-import { Config } from "../../../../../../src/config";
+import { RC } from "../../../../rc";
+import { Config } from "../../../../config";
+import { ResultValue } from "../../../../result";
 
 firebaseSuite("getRootFolders", () => {
   firebaseTest("if workspace is empty, returns an empty array", () => {
@@ -49,7 +49,7 @@ firebaseSuite("getRootFolders", () => {
       const result = getRootFolders();
 
       assert.deepEqual(result, []);
-    },
+    }
   );
 
   firebaseTest("returns an array of paths", () => {
@@ -106,7 +106,7 @@ firebaseSuite("getRootFolders", () => {
   });
 });
 
-firebaseSuite("_getConfigPath", () => {
+firebaseSuite("getConfigPath", () => {
   // Those tests will impact global variables. We need to reset them after each test.
   teardown(() => resetGlobals());
 
@@ -131,11 +131,11 @@ firebaseSuite("_getConfigPath", () => {
       });
 
       mock(workspace, { workspaceFolders: [aFolder, bFolder, cFolder] });
-      assert.deepEqual(_getConfigPath(), b, ".firebaserc is found first");
+      assert.deepEqual(getConfigPath(), b, ".firebaserc is found first");
 
       mock(workspace, { workspaceFolders: [aFolder, cFolder, bFolder] });
-      assert.deepEqual(_getConfigPath(), c, "firebase.json is found first");
-    },
+      assert.deepEqual(getConfigPath(), c, "firebase.json is found first");
+    }
   );
 
   firebaseTest("if no firebase config found, returns the first folder", () => {
@@ -154,7 +154,7 @@ firebaseSuite("_getConfigPath", () => {
     });
 
     mock(workspace, { workspaceFolders: [aFolder, bFolder, cFolder] });
-    assert.deepEqual(_getConfigPath(), a);
+    assert.deepEqual(getConfigPath(), a);
   });
 
   firebaseTest('sets "cwd" global variable to the config path', () => {
@@ -165,17 +165,17 @@ firebaseSuite("_getConfigPath", () => {
 
     mock(workspace, { workspaceFolders: [aFolder] });
 
-    _getConfigPath();
+    getConfigPath();
 
     assert.deepEqual(currentOptions.value.cwd, a);
   });
 });
 
-firebaseSuite("_readConfig", () => {
+firebaseSuite("_readFirebaseConfig", () => {
   firebaseTest("parses firebase.json", () => {
     const expectedConfig = {
       emulators: {
-        firemat: {
+        auth: {
           port: 9399,
         },
       },
@@ -192,8 +192,8 @@ firebaseSuite("_readConfig", () => {
       ],
     });
 
-    const config = _readConfig();
-    assert.deepEqual(config.data, expectedConfig);
+    const config = _readFirebaseConfig();
+    assert.deepEqual(config.requireValue.data, expectedConfig);
   });
 
   firebaseTest("returns undefined if firebase.json is not found", () => {
@@ -207,7 +207,7 @@ firebaseSuite("_readConfig", () => {
       ],
     });
 
-    const config = _readConfig();
+    const config = _readFirebaseConfig();
     assert.deepEqual(config, undefined);
   });
 
@@ -227,16 +227,16 @@ firebaseSuite("_readConfig", () => {
     assert.equal(logs.error.length, 0);
 
     assert.throws(
-      () => _readConfig(),
+      () => _readFirebaseConfig(),
       (thrown) =>
         thrown
           .toString()
           .startsWith(
             `FirebaseError: There was an error loading ${path.join(
               dir,
-              "firebase.json",
-            )}:`,
-          ),
+              "firebase.json"
+            )}:`
+          )
     );
 
     assert.equal(logs.error.length, 1);
@@ -264,7 +264,10 @@ firebaseSuite("_readRC", () => {
     });
 
     const config = _readRC();
-    assert.deepEqual(config?.data.projects, expectedConfig.projects);
+    assert.deepEqual(
+      config?.requireValue.data.projects,
+      expectedConfig.projects
+    );
   });
 
   firebaseTest("returns undefined if .firebaserc is not found", () => {
@@ -301,13 +304,13 @@ firebaseSuite("_readRC", () => {
       () => _readRC(),
       (thrown) =>
         thrown.toString() ===
-        `SyntaxError: Unexpected token 'i', "invalid json" is not valid JSON`,
+        `SyntaxError: Unexpected token 'i', "invalid json" is not valid JSON`
     );
 
     assert.equal(logs.error.length, 1);
     assert.equal(
       logs.error[0],
-      `Unexpected token 'i', "invalid json" is not valid JSON`,
+      `Unexpected token 'i', "invalid json" is not valid JSON`
     );
   });
 });
@@ -317,7 +320,7 @@ firebaseSuite("_createWatcher", () => {
   teardown(() => resetGlobals());
 
   firebaseTest("returns undefined if cwd is not set", () => {
-    mock(currentOptions, createFake<Options>({ cwd: undefined }));
+    mock(currentOptions, createFake<VsCodeOptions>({ cwd: undefined }));
 
     const watcher = _createWatcher("file");
 
@@ -328,7 +331,7 @@ firebaseSuite("_createWatcher", () => {
     const dir = createTemporaryDirectory();
     const file = createFile(dir, "file", "content");
 
-    mock(currentOptions, createFake<Options>({ cwd: dir }));
+    mock(currentOptions, createFake<VsCodeOptions>({ cwd: dir }));
 
     const watcher = _createWatcher("file")!;
     addTearDown(() => watcher.dispose());
@@ -349,8 +352,8 @@ firebaseSuite("registerConfig", () => {
 
   firebaseTest(
     'sets "cwd" and firebaseRC/Config global variables on initial call',
-    () => {
-      const expectedConfig = { emulators: { firemat: { port: 9399 } } };
+    async () => {
+      const expectedConfig = { emulators: { auth: { port: 9399 } } };
       const expectedRc = { projects: { default: "my-project" } };
       const broker = createTestBroker();
       const workspaces = setupMockTestWorkspaces({
@@ -358,21 +361,24 @@ firebaseSuite("registerConfig", () => {
         firebaseConfig: expectedConfig,
       });
 
-      const disposable = registerConfig(broker);
+      const disposable = await registerConfig(broker);
       addDisposable(disposable);
 
       // Initial register should not notify anything.
       assert.deepEqual(broker.sentLogs, []);
 
       assert.deepEqual(currentOptions.value.cwd, workspaces.byIndex(0).path);
-      assert.deepEqual(firebaseConfig.value.data, expectedConfig);
-      assert.deepEqual(firebaseRC.value.data.projects, expectedRc.projects);
-    },
+      assert.deepEqual(firebaseConfig.value.requireValue.data, expectedConfig);
+      assert.deepEqual(
+        firebaseRC.value.requireValue.data.projects,
+        expectedRc.projects
+      );
+    }
   );
 
   firebaseTest(
     "when firebaseRC signal changes, calls notifyFirebaseConfig",
-    () => {
+    async () => {
       const initialRC = { projects: { default: "my-project" } };
       const newRC = { projects: { default: "my-new-project" } };
       const broker = createTestBroker();
@@ -380,12 +386,14 @@ firebaseSuite("registerConfig", () => {
         firebaseRc: initialRC,
       });
 
-      const disposable = registerConfig(broker);
+      const disposable = await registerConfig(broker);
       addDisposable(disposable);
 
       assert.deepEqual(broker.sentLogs, []);
 
-      firebaseRC.value = new RC(firebaseRC.value.path, newRC);
+      firebaseRC.value = new ResultValue(
+        new RC(firebaseRC.value.requireValue.path, newRC)
+      );
 
       assert.deepEqual(broker.sentLogs, [
         {
@@ -404,29 +412,29 @@ firebaseSuite("registerConfig", () => {
           ],
         },
       ]);
-    },
+    }
   );
 
   firebaseTest(
     "when firebaseConfig signal changes, calls notifyFirebaseConfig",
-    () => {
-      const initialConfig = { emulators: { firemat: { port: 9399 } } };
-      const newConfig = { emulators: { firemat: { port: 9499 } } };
+    async () => {
+      const initialConfig = { emulators: { auth: { port: 9399 } } };
+      const newConfig = { emulators: { auth: { port: 9499 } } };
       const broker = createTestBroker();
       const workspaces = setupMockTestWorkspaces({
         firebaseConfig: initialConfig,
       });
 
-      const disposable = registerConfig(broker);
+      const disposable = await registerConfig(broker);
       addDisposable(disposable);
 
       assert.deepEqual(broker.sentLogs, []);
 
       fs.writeFileSync(
         workspaces.byIndex(0).firebaseConfigPath,
-        JSON.stringify(newConfig),
+        JSON.stringify(newConfig)
       );
-      firebaseConfig.value = _readConfig()!;
+      firebaseConfig.value = _readFirebaseConfig()!;
 
       assert.deepEqual(broker.sentLogs, [
         {
@@ -435,7 +443,7 @@ firebaseSuite("registerConfig", () => {
             {
               firebaseJson: {
                 emulators: {
-                  firemat: {
+                  auth: {
                     port: 9499,
                   },
                 },
@@ -445,20 +453,20 @@ firebaseSuite("registerConfig", () => {
           ],
         },
       ]);
-    },
+    }
   );
 
-  firebaseTest("supports undefined working directory", () => {
+  firebaseTest("supports undefined working directory", async () => {
     const broker = createTestBroker();
     mock(currentOptions, { ...currentOptions.value, cwd: undefined });
 
-    const disposable = registerConfig(broker);
+    const disposable = await registerConfig(broker);
     addDisposable(disposable);
 
     // Should not throw.
   });
 
-  firebaseTest("disposes of the watchers when disposed", () => {
+  firebaseTest("disposes of the watchers when disposed", async () => {
     const broker = createTestBroker();
     const dir = createTemporaryDirectory();
 
@@ -483,13 +491,13 @@ firebaseSuite("registerConfig", () => {
           pendingWatchers.push(watcher);
           return watcher;
         },
-      }),
+      })
     );
 
-    const disposable = registerConfig(broker);
+    const disposable = await registerConfig(broker);
     addDisposable(disposable);
 
-    assert.equal(pendingWatchers.length, 2);
+    assert.equal(pendingWatchers.length, 3);
     assert.deepEqual(Object.keys(broker.onListeners), ["getInitialData"]);
 
     disposable.dispose();
@@ -497,16 +505,16 @@ firebaseSuite("registerConfig", () => {
     assert.equal(pendingWatchers.length, 0);
     assert.deepEqual(Object.keys(broker.onListeners), []);
 
-    firebaseConfig.value = new Config("");
-    firebaseRC.value = new RC();
+    firebaseConfig.value = new ResultValue(new Config(""));
+    firebaseRC.value = new ResultValue(new RC());
 
     // Notifying firebaseConfig and firebaseRC should not call notifyFirebaseConfig
     assert.deepEqual(broker.sentLogs, []);
   });
 
   firebaseTest(
-    "listens to create/update/delete events on firebase.json and .firebaserc",
-    () => {
+    "listens to create/update/delete events on firebase.json/.firebaserc/dataconnect.yaml",
+    async () => {
       const watcherListeners: Record<
         string,
         {
@@ -519,7 +527,7 @@ firebaseSuite("registerConfig", () => {
       function addFSListener(
         pattern: string,
         type: "create" | "update" | "delete",
-        cb: (uri: vscode.Uri) => void,
+        cb: (uri: vscode.Uri) => void
       ) {
         const listeners = (watcherListeners[pattern] ??= {});
         assert.equal(watcherListeners[pattern]?.create, undefined);
@@ -544,12 +552,12 @@ firebaseSuite("registerConfig", () => {
               dispose: () => {},
             });
           },
-        }),
+        })
       );
 
       const broker = createTestBroker();
 
-      const disposable = registerConfig(broker);
+      const disposable = await registerConfig(broker);
       addDisposable(disposable);
 
       const rcListeners = watcherListeners[".firebaserc"]!;
@@ -557,27 +565,29 @@ firebaseSuite("registerConfig", () => {
       const configListeners = watcherListeners["firebase.json"]!;
       const configFile = path.join(dir, "firebase.json");
 
+      function testEvent(
+        index: number,
+        file: string,
+        content: string,
+        fireWatcher: () => void
+      ) {
+        assert.equal(broker.sentLogs.length, index);
+
+        fs.writeFileSync(file, content);
+        fireWatcher();
+
+        assert.equal(broker.sentLogs.length, index + 1);
+      }
+
       function testRcEvent(
         event: "create" | "update" | "delete",
-        index: number,
+        index: number
       ) {
-        assert.equal(
-          broker.sentLogs.length,
+        testEvent(
           index,
-          `history for RC ${event} starts at ${index}`,
-        );
-
-        fs.writeFileSync(
           rcFile,
           JSON.stringify({ projects: { default: event } }),
-        );
-
-        rcListeners[event]!(vscode.Uri.file(rcFile));
-
-        assert.equal(
-          broker.sentLogs.length,
-          index + 1,
-          `history for RC ${event} ends at ${index}`,
+          () => rcListeners[event]!(vscode.Uri.file(rcFile))
         );
 
         assert.deepEqual(broker.sentLogs[index].args[0].firebaseRC.projects, {
@@ -587,45 +597,36 @@ firebaseSuite("registerConfig", () => {
 
       function testConfigEvent(
         event: "create" | "update" | "delete",
-        index: number,
+        index: number
       ) {
-        assert.equal(broker.sentLogs.length, index);
-
-        fs.writeFileSync(
+        testEvent(
+          index,
           configFile,
-          JSON.stringify({ emulators: { firemat: { port: index } } }),
+          JSON.stringify({ emulators: { auth: { port: index } } }),
+          () => configListeners[event]!(vscode.Uri.file(configFile))
         );
 
-        configListeners[event]!(vscode.Uri.file(configFile));
-
-        assert.equal(broker.sentLogs.length, index + 1);
         assert.deepEqual(broker.sentLogs[index].args[0].firebaseJson, {
-          emulators: {
-            firemat: {
-              port: index,
-            },
-          },
+          emulators: { auth: { port: index } },
         });
       }
 
       testRcEvent("create", 0);
       testRcEvent("update", 1);
-      // testRcEvent("delete", 2);
 
       testConfigEvent("create", 2);
       testConfigEvent("update", 3);
-      // testConfigEvent("delete", 5);
     },
   );
 
-  firebaseTest("handles getInitialData requests", () => {
+  firebaseTest("handles getInitialData requests", async () => {
     const broker = createTestBroker();
-    const workspaces = setupMockTestWorkspaces({
+    setupMockTestWorkspaces({
       firebaseRc: { projects: { default: "my-project" } },
-      firebaseConfig: { emulators: { firemat: { port: 9399 } } },
+      firebaseConfig: { emulators: { auth: { port: 9399 } } },
     });
 
-    const disposable = registerConfig(broker);
+    const disposable = await registerConfig(broker);
     addDisposable(disposable);
 
     broker.simulateOn("getInitialData");
@@ -637,7 +638,7 @@ firebaseSuite("registerConfig", () => {
           {
             firebaseJson: {
               emulators: {
-                firemat: {
+                auth: {
                   port: 9399,
                 },
               },

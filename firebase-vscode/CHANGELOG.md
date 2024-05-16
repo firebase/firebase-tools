@@ -1,5 +1,45 @@
 # Change Log
 
+## 0.2.0
+
+- Fix Auth on IDX
+
+## 0.1.9
+
+- Fix "Add Data" for nonnull and custom keys
+- Emulator Bump 1.1.17
+
+## 0.1.8
+
+- Update Extensions page Logo
+- Update README for Extensions page
+- Surface emulator issues as notifications
+- Generate .graphqlrc automatically
+- Emulator Bump 1.1.16
+
+## 0.1.7
+
+- Emulator Bump 1.1.14
+
+## 0.1.6
+
+- Fix deploy command
+
+## 0.1.5
+
+- Fix authentication issues for Introspection and local executions
+
+## 0.1.4
+
+- Dataconnect Sidebar UI refresh
+  - Emulator and Production sections
+  - Separate Deploy All and Deploy individual buttons
+  - Links to external documentation
+
+## 0.1.0
+
+- Data Connect Support
+
 ## 0.0.25 (unreleased)
 
 - Replace predeploy hack with something more robust.

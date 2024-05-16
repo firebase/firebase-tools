@@ -92,7 +92,7 @@ export function createBroker<
     on<E extends keyof IncomingMessages>(
       message: Extract<E, string>,
       listener: (params: IncomingMessages[E]) => void
-    ) {
+    ): () => void {
       return broker.addListener(message, listener);
     },
     delete(): void {

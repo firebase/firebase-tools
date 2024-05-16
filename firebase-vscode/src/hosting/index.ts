@@ -6,10 +6,12 @@ import { deployToHosting, getChannels, initHosting } from "../cli";
 import { firebaseConfig } from "../core/config";
 import { pluginLogger, showOutputChannel } from "../logger-wrapper";
 import { currentOptions } from "../options";
-import { currentProject, currentProjectId } from "../core/project";
+import { currentProject } from "../core/project";
 import { getSettings } from "../utils/settings";
 import { discover } from "../../../src/frameworks";
 import { globalSignal } from "../utils/globals";
+import { ResultValue } from "../result";
+import { firstWhereDefined } from "../utils/signal";
 
 const channels = globalSignal<ChannelWithId[]>([]);
 
@@ -18,7 +20,10 @@ export function registerHosting(broker: ExtensionBrokerImpl): Disposable {
   const sub1 = effect(async () => {
     if (currentProject.value) {
       pluginLogger.info("(Hosting) New project detected, fetching channels");
-      channels.value = await getChannels(firebaseConfig.peek());
+      const config = firebaseConfig.peek();
+
+      channels.value =
+        config instanceof ResultValue ? await getChannels(config.value) : [];
     }
   });
 
@@ -30,6 +35,10 @@ export function registerHosting(broker: ExtensionBrokerImpl): Disposable {
   const sub3 = broker.on(
     "selectAndInitHostingFolder",
     async ({ singleAppSupport }) => {
+      const configs = await firstWhereDefined(firebaseConfig).then(
+        (c) => c.requireValue
+      );
+
       showOutputChannel();
 
       let currentFramework: string | undefined = undefined;
@@ -81,12 +90,15 @@ export function registerHosting(broker: ExtensionBrokerImpl): Disposable {
       });
 
       if (success) {
-        channels.value = await getChannels(firebaseConfig.value);
+        channels.value = await getChannels(configs);
       }
     }
   );
 
   const sub4 = broker.on("hostingDeploy", async ({ target: deployTarget }) => {
+    const configs = await firstWhereDefined(firebaseConfig).then(
+      (c) => c.requireValue
+    );
     showOutputChannel();
 
     pluginLogger.info(
@@ -94,14 +106,11 @@ export function registerHosting(broker: ExtensionBrokerImpl): Disposable {
         `${currentProject.value?.projectId} to channel: ${deployTarget}`
     );
 
-    const deployResponse = await deployToHosting(
-      firebaseConfig.value,
-      deployTarget
-    );
+    const deployResponse = await deployToHosting(configs, deployTarget);
 
     if (deployResponse.success) {
       pluginLogger.info("(Hosting) Refreshing channels");
-      channels.value = await getChannels(firebaseConfig.value);
+      channels.value = await getChannels(configs);
     }
 
     broker.send("notifyHostingDeploy", deployResponse);
