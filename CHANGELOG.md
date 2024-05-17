@@ -1,0 +1,1 @@
+- Upgrades the pubsub dependency to address a `npm audit` issue. (#7122)
