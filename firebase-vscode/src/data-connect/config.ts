@@ -1,8 +1,7 @@
 import { isPathInside } from "./file-utils";
 import { DeepReadOnly } from "../metaprogramming";
 import { ConnectorYaml, DataConnectYaml } from "../dataconnect/types";
-import { Result, ResultError, ResultValue } from "../result";
-import { globalSignal } from "../utils/globals";
+import { Result, ResultValue } from "../result";
 import { computed, effect, signal } from "@preact/signals-core";
 import {
   _createWatcher as createWatcher,
@@ -17,8 +16,9 @@ import {
   readFirebaseJson as readFdcFirebaseJson,
 } from "../../../src/dataconnect/fileUtils";
 import { Config } from "../config";
-import { DataConnectConfig, DataConnectMultiple } from "../firebaseConfig";
+import { DataConnectMultiple } from "../firebaseConfig";
 import path from "path";
+import { ExtensionBrokerImpl } from "../extension-broker";
 
 export * from "../core/config";
 
@@ -26,7 +26,9 @@ export const dataConnectConfigs = signal<
   Result<ResolvedDataConnectConfigs | undefined> | undefined
 >(undefined);
 
-export function registerDataConnectConfigs(): vscode.Disposable {
+export function registerDataConnectConfigs(
+  broker: ExtensionBrokerImpl,
+): vscode.Disposable {
   let cancel: () => void | undefined;
 
   function handleResult(
@@ -62,8 +64,19 @@ export function registerDataConnectConfigs(): vscode.Disposable {
   dataConnectWatcher?.onDidDelete(() => handleResult(undefined));
   // TODO watch connectors
 
+  const hasConfigs = computed(() => !!dataConnectConfigs.value?.tryReadValue?.values.length);
+
+  const hasConfigSub = effect(() => {
+    broker.send("notifyHasFdcConfigs", hasConfigs.value);
+  });
+  const getInitialHasFdcConfigsSub = broker.on("getInitialHasFdcConfigs", () => {
+    broker.send("notifyHasFdcConfigs", hasConfigs.value);
+  });
+
   return vscode.Disposable.from(
     { dispose: sub },
+    { dispose: hasConfigSub },
+    { dispose: getInitialHasFdcConfigsSub },
     { dispose: () => cancel?.() },
     dataConnectWatcher,
   );
