@@ -96,7 +96,7 @@
   },
   "dependencies": {
     "@google-cloud/cloud-sql-connector": "^1.2.3",
-    "@google-cloud/pubsub": "^3.0.1",
+    "@google-cloud/pubsub": "^4.4.0",
     "abort-controller": "^3.0.0",
     "ajv": "^6.12.6",
     "archiver": "^5.0.0",
