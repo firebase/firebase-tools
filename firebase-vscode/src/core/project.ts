@@ -1,4 +1,4 @@
-import vscode, { Disposable, ExtensionContext, QuickPickItem } from "vscode";
+import vscode, { Disposable } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { computed, effect } from "@preact/signals-react";
 import { firebaseRC, updateFirebaseRCProject } from "./config";
@@ -6,7 +6,6 @@ import { FirebaseProjectMetadata } from "../types/project";
 import { currentUser, isServiceAccount } from "./user";
 import { listProjects } from "../cli";
 import { pluginLogger } from "../logger-wrapper";
-import { currentOptions } from "../options";
 import { globalSignal } from "../utils/globals";
 import { firstWhereDefined } from "../utils/signal";
 

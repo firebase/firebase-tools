@@ -37,6 +37,9 @@ function getAuthClient(config: GoogleAuthOptions): GoogleAuth {
  * @param authScopes scopes to be obtained.
  */
 async function autoAuth(options: Options, authScopes: string[]): Promise<void | string> {
+  if (process.env.MONOSPACE_ENV) {
+    throw new FirebaseError("autoAuth not yet implemented for IDX. Please run 'firebase login'");
+  }
   const client = getAuthClient({ scopes: authScopes, projectId: options.project });
   const token = await client.getAccessToken();
   token !== null ? apiv2.setAccessToken(token) : false;
