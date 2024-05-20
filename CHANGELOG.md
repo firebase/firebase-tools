@@ -1,2 +1,1 @@
-- Added `firebase init genkit`. See more at https://firebase.google.com/docs/genkit
-- Exposes the `apphosting:*` commands!
+- Fix path issue in Windows deployments for Next.js SSR (#7148)
