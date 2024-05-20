@@ -80,8 +80,9 @@ export async function deleteService(
   locationId: string,
   serviceId: string,
 ): Promise<types.Service> {
+  // NOTE(fredzqm): Don't force delete yet. Backend would leave orphaned resources.
   const op = await dataconnectClient().delete<types.Service>(
-    `projects/${projectId}/locations/${locationId}/services/${serviceId}?force=true`,
+    `projects/${projectId}/locations/${locationId}/services/${serviceId}`,
   );
   const pollRes = await operationPoller.pollOperation<types.Service>({
     apiOrigin: dataconnectOrigin(),
