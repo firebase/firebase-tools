@@ -10,26 +10,40 @@ import { Schema } from "./types";
 import { Options } from "../options";
 import { FirebaseError } from "../error";
 import { needProjectId } from "../projectUtils";
-import { logLabeledWarning, logLabeledSuccess } from "../utils";
+import { logLabeledBullet, logLabeledWarning, logLabeledSuccess } from "../utils";
 import * as errors from "./errors";
 
 export async function diffSchema(schema: Schema): Promise<Diff[]> {
   const { serviceName, instanceName, databaseId } = getIdentifiers(schema);
-  await ensureServiceIsConnectedToCloudSql(serviceName, instanceName, databaseId);
+  await ensureServiceIsConnectedToCloudSql(
+    serviceName,
+    instanceName,
+    databaseId,
+    /* linkIfNotConnected=*/ false,
+  );
   try {
     await upsertSchema(schema, /** validateOnly=*/ true);
+    logLabeledSuccess("dataconnect", `Database schema is up to date.`);
   } catch (err: any) {
+    if (err.status !== 400) {
+      throw err;
+    }
     const invalidConnectors = errors.getInvalidConnectors(err);
+    const incompatible = errors.getIncompatibleSchemaError(err);
+    if (!incompatible && !invalidConnectors.length) {
+      // If we got a different type of error, throw it
+      throw err;
+    }
+
+    // Display failed precondition errors nicely.
     if (invalidConnectors.length) {
       displayInvalidConnectors(invalidConnectors);
     }
-    const incompatible = errors.getIncompatibleSchemaError(err);
     if (incompatible) {
       displaySchemaChanges(incompatible);
       return incompatible.diffs;
     }
   }
-  logLabeledSuccess("dataconnect", `Database schema is up to date.`);
   return [];
 }
 
@@ -42,17 +56,27 @@ export async function migrateSchema(args: {
   const { options, schema, allowNonInteractiveMigration, validateOnly } = args;
 
   const { serviceName, instanceId, instanceName, databaseId } = getIdentifiers(schema);
-  await ensureServiceIsConnectedToCloudSql(serviceName, instanceName, databaseId);
+  await ensureServiceIsConnectedToCloudSql(
+    serviceName,
+    instanceName,
+    databaseId,
+    /* linkIfNotConnected=*/ true,
+  );
   try {
     await upsertSchema(schema, validateOnly);
     logger.debug(`Database schema was up to date for ${instanceId}:${databaseId}`);
   } catch (err: any) {
+    if (err.status !== 400) {
+      throw err;
+    }
+    // Parse and handle failed precondition errors, then retry.
     const incompatible = errors.getIncompatibleSchemaError(err);
     const invalidConnectors = errors.getInvalidConnectors(err);
     if (!incompatible && !invalidConnectors.length) {
       // If we got a different type of error, throw it
       throw err;
     }
+
     const shouldDeleteInvalidConnectors = await promptForInvalidConnectorError(
       options,
       invalidConnectors,
@@ -61,7 +85,7 @@ export async function migrateSchema(args: {
     if (!shouldDeleteInvalidConnectors && invalidConnectors.length) {
       const cmd = suggestedCommand(serviceName, invalidConnectors);
       throw new FirebaseError(
-        `Command aborted. Try deploying compatible connectors first with ${clc.bold(cmd)}`,
+        `Command aborted. Try deploying those connectors first with ${clc.bold(cmd)}`,
       );
     }
     const migrationMode = incompatible
@@ -266,44 +290,61 @@ function displayInvalidConnectors(invalidConnectors: string[]) {
 
 // If a service has never had a schema with schemaValidation=strict
 // (ie when users create a service in console),
-// the backend will not have the necesary permissions to check cSQL for differences.
+// the backend will not have the necessary permissions to check cSQL for differences.
 // We fix this by upserting the currently deployed schema with schemaValidation=strict,
 async function ensureServiceIsConnectedToCloudSql(
   serviceName: string,
   instanceId: string,
   databaseId: string,
+  linkIfNotConnected: boolean,
 ) {
   let currentSchema: Schema;
   try {
     currentSchema = await getSchema(serviceName);
   } catch (err: any) {
-    if (err.status === 404) {
-      // If no schema has been deployed yet, deploy an empty one to get connectivity.
-      currentSchema = {
-        name: `${serviceName}/schemas/${SCHEMA_ID}`,
-        source: {
-          files: [],
-        },
-        primaryDatasource: {
-          postgresql: {
-            database: databaseId,
-            cloudSql: {
-              instance: instanceId,
-            },
-          },
-        },
-      };
-    } else {
+    if (err.status !== 404) {
       throw err;
     }
+    if (!linkIfNotConnected) {
+      logLabeledWarning("dataconnect", `Not yet linked to the Cloud SQL instance.`);
+      return;
+    }
+    // TODO: make this prompt
+    // Should we upsert service here as well? so `database:sql:migrate` work for new service as well.
+    logLabeledBullet("dataconnect", `Linking the Cloud SQL instance...`);
+    // If no schema has been deployed yet, deploy an empty one to get connectivity.
+    currentSchema = {
+      name: `${serviceName}/schemas/${SCHEMA_ID}`,
+      source: {
+        files: [],
+      },
+      primaryDatasource: {
+        postgresql: {
+          database: databaseId,
+          cloudSql: {
+            instance: instanceId,
+          },
+        },
+      },
+    };
   }
-  if (
-    !currentSchema.primaryDatasource.postgresql ||
-    currentSchema.primaryDatasource.postgresql.schemaValidation === "STRICT"
-  ) {
+  const postgresql = currentSchema.primaryDatasource.postgresql;
+  if (postgresql?.cloudSql.instance !== instanceId) {
+    logLabeledWarning(
+      "dataconnect",
+      `Switching connected Cloud SQL instance\nFrom ${postgresql?.cloudSql.instance}\nTo ${instanceId}`,
+    );
+  }
+  if (postgresql?.database !== databaseId) {
+    logLabeledWarning(
+      "dataconnect",
+      `Switching connected Postgres database from ${postgresql?.database} to ${databaseId}`,
+    );
+  }
+  if (!postgresql || postgresql.schemaValidation === "STRICT") {
     return;
   }
-  currentSchema.primaryDatasource.postgresql.schemaValidation = "STRICT";
+  postgresql.schemaValidation = "STRICT";
   try {
     await upsertSchema(currentSchema, /** validateOnly=*/ false);
   } catch (err: any) {
@@ -315,11 +356,31 @@ async function ensureServiceIsConnectedToCloudSql(
 }
 
 function displaySchemaChanges(error: IncompatibleSqlSchemaError) {
-  const message =
-    "Your new schema is incompatible with the schema of your CloudSQL database. " +
-    "The following SQL statements will migrate your database schema to match your new Data Connect schema.\n" +
-    error.diffs.map(toString).join("\n");
-  logLabeledWarning("dataconnect", message);
+  switch (error.violationType) {
+    case "INCOMPATIBLE_SCHEMA":
+      {
+        const message =
+          "Your new schema is incompatible with the schema of your CloudSQL database. " +
+          "The following SQL statements will migrate your database schema to match your new Data Connect schema.\n" +
+          error.diffs.map(toString).join("\n");
+        logLabeledWarning("dataconnect", message);
+      }
+      break;
+    case "INACCESSIBLE_SCHEMA":
+      {
+        const message =
+          "Cannot access your CloudSQL database to validate schema. " +
+          "The following SQL statements can setup a new database schema.\n" +
+          error.diffs.map(toString).join("\n");
+        logLabeledWarning("dataconnect", message);
+        logLabeledWarning("dataconnect", "Some SQL resources may already exist.");
+      }
+      break;
+    default:
+      throw new FirebaseError(
+        `Unknown schema violation type: ${error.violationType}, IncompatibleSqlSchemaError: ${error}`,
+      );
+  }
 }
 
 function toString(diff: Diff) {
