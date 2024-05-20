@@ -1,1 +1,2 @@
 - Fix path issue in Windows deployments for Next.js SSR (#7148)
+- Update Emulator Suite UI logo
