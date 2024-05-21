@@ -60,7 +60,6 @@ export async function execute(
         ipType: IpAddressTypes.PUBLIC,
         authType: AuthTypes.IAM,
       });
-      console.log("CLOUD_IAM_SERVICE_ACCOUNT", user, "clientOpts", clientOpts);
       pool = new pg.Pool({
         ...clientOpts,
         user: opts.username,
