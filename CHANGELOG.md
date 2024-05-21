@@ -1,3 +1,7 @@
 - Upgrades the pubsub dependency to address a `npm audit` issue. (#7122)
 - Fix path issue in Windows deployments for Next.js SSR (#7148)
 - Update Emulator Suite UI logo
+- Fixed an issue where `dataconnect:sql:migrate` would sometimes act as the wrong role. (#7198)
+- Fixed an issue where `dataconnect:sql:migrate` would not ignore invalid connectors. (#7199).
+- Improved logging and messaging throughout 'dataconnect' commands.
+- Imporved handling for cases where a dataconnect service could not access CloudSQL. (#7157)
