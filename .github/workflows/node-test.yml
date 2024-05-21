@@ -56,6 +56,9 @@ jobs:
           cache: npm
           cache-dependency-path: npm-shrinkwrap.json
 
+      - run: npm i -g npm@9.5
+      - run: npm ci
+
       - run: npm install
         working-directory: firebase-vscode
       - run: npm run test:unit
@@ -63,6 +66,7 @@ jobs:
 
       - uses: codecov/codecov-action@v3
         if: matrix.node-version == '20'
+
   unit:
     runs-on: ubuntu-latest
     strategy:
