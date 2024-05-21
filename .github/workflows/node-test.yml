@@ -42,6 +42,8 @@ jobs:
         working-directory: firebase-vscode
 
   vscode_unit:
+    # Using windows to bypass an error thrown by VScode
+    # when run in an environment that does not have a screen.
     runs-on: windows-latest
     strategy:
       matrix:
