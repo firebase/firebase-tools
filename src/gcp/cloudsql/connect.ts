@@ -89,19 +89,19 @@ export async function execute(
     }
   }
 
-  const client = await pool.connect();
+  const conn = await pool.connect();
   logFn(`Logged in as ${opts.username}`);
   for (const s of sqlStatements) {
     logFn(`Executing: '${s}'`);
     try {
-      await client.query(s);
+      await conn.query(s);
     } catch (err) {
       throw new FirebaseError(`Error executing ${err}`);
     }
   }
 
-  // This hangs somehow.
-  // await pool.end();
+  conn.release();
+  await pool.end();
   connector.close();
 }
 
