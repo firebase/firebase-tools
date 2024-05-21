@@ -4,6 +4,6 @@
 - Firebase functions' discovery process' timeout can now be configured with the `FUNCTIONS_DISCOVERY_TIMEOUT` env var (#7176)
 - Fixes path issue in Windows deployments for Next.js SSR (#7148)
 - Fixes an issue where `dataconnect:sql:migrate` would sometimes act as the wrong role. (#7198)
-- Fixes an issue where `dataconnect:sql:migrate` would not ignore invalid connectors. (#7199).
+- Fixes an issue where `dataconnect:sql:migrate --force` would not ignore invalid connectors. (#7199).
 - Improves logging and messaging throughout 'dataconnect' commands.
 - Improves handling for cases where a dataconnect service could not access CloudSQL. (#7157)
