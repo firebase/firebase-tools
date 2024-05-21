@@ -41,6 +41,28 @@ jobs:
       - run: npm run lint
         working-directory: firebase-vscode
 
+  vscode_unit:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        node-version:
+          - "18"
+          - "20"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: npm-shrinkwrap.json
+
+      - run: npm install
+        working-directory: firebase-vscode
+      - run: npm run test:unit
+        working-directory: firebase-vscode
+
+      - uses: codecov/codecov-action@v3
+        if: matrix.node-version == '20'
   unit:
     runs-on: ubuntu-latest
     strategy:
@@ -59,17 +81,6 @@ jobs:
       - run: npm i -g npm@9.5
       - run: npm ci
       - run: npm test -- -- --forbid-only
-      - run: npm install
-        working-directory: firebase-vscode
-      - run: ls
-        working-directory: firebase-vscode
-      - run: ls node_modules
-        working-directory: firebase-vscode
-      - run: xvfb-run -a npm run test:unit
-        working-directory: firebase-vscode
-        env:
-          ## Workaround to "The futex facility returned an unexpected error code." error
-          DISPLAY: 0
 
       - uses: codecov/codecov-action@v3
         if: matrix.node-version == '20'
@@ -106,7 +117,6 @@ jobs:
           - npm run test:storage-emulator-integration
           - npm run test:triggers-end-to-end
           - npm run test:triggers-end-to-end:inspect
-          - cd firebase-vscode && npm run test:e2e
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
