@@ -111,8 +111,10 @@ export async function migrateSchema(args: {
     if (shouldDeleteInvalidConnectors) {
       await deleteInvalidConnectors(invalidConnectors);
     }
-    // Then, try to upsert schema again. If there still is an error, just throw it now
-    await upsertSchema(schema, validateOnly);
+    if (!validateOnly) {
+      // Then, try to upsert schema again. If there still is an error, just throw it now
+      await upsertSchema(schema, validateOnly);
+    }
     return diffs;
   }
   return [];
