@@ -20,6 +20,7 @@ export async function load(
       const connectorYaml = await fileUtils.readConnectorYaml(connectorDir);
       const connectorGqls = await fileUtils.readGQLFiles(connectorDir);
       return {
+        directory: connectorDir,
         connectorYaml,
         connector: {
           name: `${serviceName}/connectors/${connectorYaml.connectorId}`,

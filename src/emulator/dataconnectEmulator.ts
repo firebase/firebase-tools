@@ -17,8 +17,8 @@ export interface DataConnectEmulatorArgs {
   listen: ListenSpec[];
   configDir: string;
   locationId?: string;
+  localConnectionString?: string
   auto_download?: boolean;
-  rc: RC;
 }
 
 export interface DataConnectGenerateArgs {
@@ -102,10 +102,8 @@ export class DataConnectEmulator implements EmulatorInstance {
       `--connector_id=${args.connectorId}`,
     ];
     const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8" });
-    if (res.error) {
-      throw new FirebaseError(`Error starting up Data Connect generate: ${res.error.message}`, {
-        original: res.error,
-      });
+    if (res.status !== 0) {
+      throw new FirebaseError(`Failed to generate SDKs: ${res.error}`);
     }
     return res.stdout;
   }
@@ -138,19 +136,12 @@ export class DataConnectEmulator implements EmulatorInstance {
     }
   }
 
-  private getLocalConectionString() {
-    if (dataConnectLocalConnString()) {
-      return dataConnectLocalConnString();
-    }
-    return this.args.rc.getDataconnect()?.postgres?.localConnectionString;
-  }
 
   public async connectToPostgres(
-    localConnectionString?: string,
+    connectionString: string,
     database?: string,
     serviceId?: string,
   ): Promise<boolean> {
-    const connectionString = localConnectionString ?? this.getLocalConectionString();
     if (!connectionString) {
       this.logger.log("DEBUG", "No Postgres connection string found, not connecting to Postgres");
       return false;
@@ -192,4 +183,11 @@ export class DataConnectEmulatorClient {
       throw err;
     }
   }
+}
+
+export function getLocalConectionString(rc: RC) {
+  if (dataConnectLocalConnString()) {
+    return dataConnectLocalConnString();
+  }
+  return rc.getDataconnect()?.postgres?.localConnectionString;
 }

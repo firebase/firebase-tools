@@ -133,6 +133,8 @@ export interface Generate {
 
 export interface JavascriptSDK {
   outputDir: string;
+  package?: string;
+  packageJSONDir?: string;
 }
 export interface SwiftSDK {
   // Optional for Swift becasue XCode makes you import files.
@@ -140,6 +142,7 @@ export interface SwiftSDK {
 }
 export interface KotlinSDK {
   outputDir: string;
+  package?: string;
 }
 
 // Helper types && converters
@@ -147,13 +150,16 @@ export interface ServiceInfo {
   serviceName: string;
   sourceDirectory: string;
   schema: Schema;
-  connectorInfo: {
-    connector: Connector;
-    connectorYaml: ConnectorYaml;
-  }[];
+  connectorInfo: ConnectorInfo[];
   dataConnectYaml: DataConnectYaml;
   deploymentMetadata?: DeploymentMetadata;
 }
+
+export interface ConnectorInfo {
+  directory: string,
+  connector: Connector;
+  connectorYaml: ConnectorYaml;
+};
 
 export function toDatasource(
   projectId: string,

@@ -87,6 +87,11 @@ if (isEnabled("dataconnect")) {
     name: "Data Connect: Set up a Firebase Data Connect service.",
     checked: false,
   });
+  choices.push({
+    value: "dataconnect:sdk",
+    name: "Data Connect: Set up a generated SDK for your Firebase Data Connect service.",
+    checked: false,
+  });
 }
 
 const featureNames = choices.map((choice) => choice.value);
