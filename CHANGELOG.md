@@ -1,0 +1,3 @@
+- Upgrades the pubsub dependency to address a `npm audit` issue. (#7122)
+- Fix path issue in Windows deployments for Next.js SSR (#7148)
+- Update Emulator Suite UI logo

@@ -14,7 +14,8 @@
     "Other"
   ],
   "extensionDependencies": [
-    "graphql.vscode-graphql-syntax"
+    "graphql.vscode-graphql-syntax",
+    "redhat.vscode-yaml"
   ],
   "activationEvents": [
     "onStartupFinished",
@@ -110,7 +111,7 @@
       "mono-firebase": {
         "description": "Firebase icon",
         "default": {
-          "fontPath": "./resources/Monicons.woff",
+          "fontPath": "./resources/monicons.woff",
           "fontCharacter": "\\F101"
         }
       },
@@ -180,11 +181,11 @@
       },
       {
         "fileMatch": "dataconnect.yaml",
-        "url": "./schema/dataconnect-yaml.json"
+        "url": "./dist/schema/dataconnect-yaml.json"
       },
       {
         "fileMatch": "connector.yaml",
-        "url": "./schema/connector-yaml.json"
+        "url": "./dist/schema/connector-yaml.json"
       }
     ]
   },
