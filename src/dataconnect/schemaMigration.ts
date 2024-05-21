@@ -273,7 +273,7 @@ async function promptForInvalidConnectorError(
     !options.nonInteractive &&
     (await confirm({
       ...options,
-      message: "Would you like to delete and recreate these connectors?",
+      message: `Would you like to delete and recreate these connectors? This will cause ${clc.red(`downtime.`)}.`,
     }))
   ) {
     return true;
@@ -296,7 +296,7 @@ function displayInvalidConnectors(invalidConnectors: string[]) {
   );
   logLabeledWarning(
     "dataconnect",
-    `This is a ${clc.red("breaking")} change and will cause a brief downtime.`,
+    `This is a ${clc.red("breaking")} change and may break existing apps.`,
   );
 }
 
