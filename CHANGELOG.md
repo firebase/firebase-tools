@@ -1,1 +1,4 @@
-Firebase functions' discovery process' timeout can now be configured with the FUNCTIONS_DISCOVERY_TIMEOUT env var (#7176)
+- Upgrades the pubsub dependency to address a `npm audit` issue. (#7122)
+- Fixes path issue in Windows deployments for Next.js SSR (#7148)
+- Updates Emulator Suite UI logos
+- Firebase functions' discovery process' timeout can now be configured with the `FUNCTIONS_DISCOVERY_TIMEOUT` env var (#7176)

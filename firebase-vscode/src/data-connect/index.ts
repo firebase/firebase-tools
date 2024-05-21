@@ -217,7 +217,7 @@ export function registerFdc(
         selectedProjectStatus.show();
       }),
     },
-    registerDataConnectConfigs(),
+    registerDataConnectConfigs(broker),
     registerExecution(context, broker, fdcService, emulatorController),
     registerExplorer(context, broker, fdcService),
     registerFirebaseDataConnectView(context, broker, emulatorController),

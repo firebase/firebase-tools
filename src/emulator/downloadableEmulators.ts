@@ -45,9 +45,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   ui: experiments.isEnabled("emulatoruisnapshot")
     ? { version: "SNAPSHOT", expectedSize: -1, expectedChecksum: "" }
     : {
-        version: "1.11.8",
-        expectedSize: 3523907,
-        expectedChecksum: "49f6dc1911dda9d10df62a6c09aaf9a0",
+        version: "1.12.1",
+        expectedSize: 3498269,
+        expectedChecksum: "a7f4398a00e5ca22abdcd78dc3877d00",
       },
   pubsub: {
     version: "0.8.2",
