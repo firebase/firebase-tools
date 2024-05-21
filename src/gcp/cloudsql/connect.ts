@@ -32,7 +32,7 @@ export async function execute(
     );
   }
   let connector: Connector;
-  let client: pg.Client;
+  let pool: pg.Pool;
   switch (user.type) {
     case "CLOUD_IAM_USER": {
       connector = new Connector({
@@ -43,7 +43,7 @@ export async function execute(
         ipType: IpAddressTypes.PUBLIC,
         authType: AuthTypes.IAM,
       });
-      client = new pg.Client({
+      pool = new pg.Pool({
         ...clientOpts,
         user: opts.username,
         database: opts.databaseId,
@@ -60,7 +60,7 @@ export async function execute(
         ipType: IpAddressTypes.PUBLIC,
         authType: AuthTypes.IAM,
       });
-      client = new pg.Client({
+      pool = new pg.Pool({
         ...clientOpts,
         user: opts.username,
         database: opts.databaseId,
@@ -79,7 +79,7 @@ export async function execute(
         instanceConnectionName: connectionName,
         ipType: IpAddressTypes.PUBLIC,
       });
-      client = new pg.Client({
+      pool = new pg.Pool({
         ...clientOpts,
         user: opts.username,
         password: opts.password,
@@ -89,17 +89,19 @@ export async function execute(
     }
   }
 
+  const conn = await pool.connect();
   logFn(`Logged in as ${opts.username}`);
   for (const s of sqlStatements) {
     logFn(`Executing: '${s}'`);
     try {
-      await client.query(s);
+      await conn.query(s);
     } catch (err) {
       throw new FirebaseError(`Error executing ${err}`);
     }
   }
 
-  await client.end();
+  conn.release();
+  await pool.end();
   connector.close();
 }
 
