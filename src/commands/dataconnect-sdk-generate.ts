@@ -2,7 +2,7 @@ import * as path from "path";
 
 import { Command } from "../command";
 import { Options } from "../options";
-import { DataConnectEmulator, DataConnectEmulatorArgs } from "../emulator/dataconnectEmulator";
+import { DataConnectEmulator, DataConnectEmulatorArgs, getLocalConectionString } from "../emulator/dataconnectEmulator";
 import { needProjectId } from "../projectUtils";
 import { load } from "../dataconnect/load";
 import { readFirebaseJson } from "../dataconnect/fileUtils";
@@ -25,8 +25,8 @@ export const command = new Command("dataconnect:sdk:generate")
         projectId,
         configDir,
         auto_download: true,
-        rc: options.rc,
         locationId: service.location,
+        localConnectionString: "postgresql://localhost:5432?sslmode=disable",
       };
       const dataconnectEmulator = new DataConnectEmulator(args);
       for (const conn of serviceInfo.connectorInfo) {

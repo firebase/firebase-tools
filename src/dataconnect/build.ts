@@ -1,4 +1,4 @@
-import { DataConnectEmulator, DataConnectEmulatorArgs } from "../emulator/dataconnectEmulator";
+import { DataConnectEmulator, DataConnectEmulatorArgs, getLocalConectionString } from "../emulator/dataconnectEmulator";
 import { Options } from "../options";
 import { FirebaseError } from "../error";
 import { prettify } from "./graphqlError";
@@ -11,7 +11,6 @@ export async function build(options: Options, configDir: string): Promise<Deploy
     projectId,
     configDir,
     auto_download: true,
-    rc: options.rc,
   };
   const dataconnectEmulator = new DataConnectEmulator(args);
   const buildResult = await dataconnectEmulator.build();

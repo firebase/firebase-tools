@@ -51,7 +51,7 @@ import { Runtime, isRuntime } from "../deploy/functions/runtimes/supported";
 import { AuthEmulator, SingleProjectMode } from "./auth";
 import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
 import { EventarcEmulator } from "./eventarcEmulator";
-import { DataConnectEmulator } from "./dataconnectEmulator";
+import { DataConnectEmulator, getLocalConectionString } from "./dataconnectEmulator";
 import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
 import { HostingEmulator } from "./hostingEmulator";
 import { PubsubEmulator } from "./pubsubEmulator";
@@ -835,6 +835,7 @@ export async function startAll(
       const cwd = options.cwd || process.cwd();
       configDir = path.resolve(path.join(cwd), configDir);
     }
+    const localConnectionString = getLocalConectionString(options.rc);
     const dataConnectEmulator = new DataConnectEmulator({
       host: dataConnectAddr.host,
       port: dataConnectAddr.port,
@@ -842,7 +843,7 @@ export async function startAll(
       auto_download: true,
       configDir,
       locationId: config[0].location,
-      rc: options.rc,
+      localConnectionString,
     });
     await startEmulator(dataConnectEmulator);
   }

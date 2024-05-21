@@ -15,8 +15,8 @@ export interface DataConnectEmulatorArgs {
   host?: string;
   configDir?: string;
   locationId?: string;
+  localConnectionString?: string
   auto_download?: boolean;
-  rc: RC;
 }
 
 const grpcDefaultPort = 9510;
@@ -27,7 +27,7 @@ export class DataConnectEmulator implements EmulatorInstance {
 
   async start(): Promise<void> {
     const port = this.args.port || Constants.getDefaultPort(Emulators.DATACONNECT);
-    this.logger.log("DEBUG", `Using Postgres connection string: ${this.getLocalConectionString()}`);
+    this.logger.log("DEBUG", `Using Postgres connection string: ${this.args.localConnectionString}`);
     const info = await this.build();
     if (requiresVector(info.metadata)) {
       if (Constants.isDemoProject(this.args.projectId)) {
@@ -49,7 +49,7 @@ export class DataConnectEmulator implements EmulatorInstance {
       http_port: port,
       grpc_port: grpcDefaultPort,
       config_dir: this.args.configDir,
-      local_connection_string: this.getLocalConectionString(),
+      local_connection_string: this.args.localConnectionString,
       project_id: this.args.projectId,
       service_location: this.args.locationId,
     });
@@ -89,9 +89,10 @@ export class DataConnectEmulator implements EmulatorInstance {
       `--connector_id=${connectorId}`,
     ];
     const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8" });
-    if (res.error) {
-      throw new FirebaseError(`Error starting up Data Connect emulator: ${res.error}`);
+    if (res.stderr) {
+      throw new FirebaseError(`Failed to generate SDKs: ${res.error}`);
     }
+    console.log(res);
     return res.stdout;
   }
 
@@ -112,11 +113,11 @@ export class DataConnectEmulator implements EmulatorInstance {
       throw new FirebaseError(`Unable to parse 'fdc build' output: ${res.stdout ?? res.stderr}`);
     }
   }
+}
 
-  private getLocalConectionString() {
-    if (dataConnectLocalConnString()) {
-      return dataConnectLocalConnString();
-    }
-    return this.args.rc.getDataconnect()?.postgres?.localConnectionString;
+export function getLocalConectionString(rc: RC) {
+  if (dataConnectLocalConnString()) {
+    return dataConnectLocalConnString();
   }
+  return rc.getDataconnect()?.postgres?.localConnectionString;
 }
