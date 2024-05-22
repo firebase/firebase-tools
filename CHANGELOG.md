@@ -1,0 +1,1 @@
+- Fixes an issue where dataconnect:sql:migrate still prompts for confirmation even with `--force`. (#7208)
