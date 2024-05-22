@@ -1,7 +1,9 @@
 import { sync as spawnSync, spawn } from "cross-spawn";
 import { copy, existsSync } from "fs-extra";
+import { readFile } from "fs/promises";
 import { join } from "path";
-import { BuildResult, Discovery, FrameworkType, SupportLevel } from "../interfaces";
+import { load } from "js-yaml";
+import { BuildResult, Discovery, FrameworkType, SupportLevel, BundleConfig } from "../interfaces";
 import { FirebaseError } from "../../error";
 import { readJSON, simpleProxy, warnIfCustomBuildScript, getNodeModuleBin } from "../utils";
 import { getAstroVersion, getBootstrapScript, getConfig } from "./utils";
@@ -24,32 +26,37 @@ export async function discover(dir: string): Promise<Discovery | undefined> {
 
 const DEFAULT_BUILD_SCRIPT = ["astro build"];
 
-export async function build(cwd: string): Promise<BuildResult> {
-  const cli = getNodeModuleBin("astro", cwd);
-  await warnIfCustomBuildScript(cwd, name, DEFAULT_BUILD_SCRIPT);
-  const { output, adapter } = await getConfig(cwd);
-  const wantsBackend = output !== "static";
-  if (wantsBackend && adapter?.name !== "@astrojs/node") {
-    throw new FirebaseError(
-      "Deploying an Astro application with SSR on Firebase Hosting requires the @astrojs/node adapter in middleware mode. https://docs.astro.build/en/guides/integrations-guide/node/",
-    );
+let bundleConfig: BundleConfig;
+async function getBundleConfigs(cwd: string): Promise<BundleConfig> {
+  if (bundleConfig) {
+    return bundleConfig;
   }
-  const build = spawnSync(cli, ["build"], { cwd, stdio: "inherit" });
+
+  const fileContents = await readFile(join(cwd, ".apphosting", "bundle.yaml"), "utf8");
+  return load(fileContents);
+}
+
+export async function build(cwd: string): Promise<BuildResult> {
+  await warnIfCustomBuildScript(cwd, name, DEFAULT_BUILD_SCRIPT);
+  const build = spawnSync("npx", ["@apphosting/adapter-astro"], { cwd, stdio: "inherit" });
   if (build.status !== 0) throw new FirebaseError("Unable to build your Astro app");
-  return { wantsBackend };
+  const bundleConfigs = await getBundleConfigs(cwd);
+  return { wantsBackend: bundleConfigs.serverDirectory != null };
 }
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
-  const { outDir, output } = await getConfig(root);
-  // output: "server" in astro.config builds "client" and "server" folders, otherwise assets are in top-level outDir
-  const assetPath = join(root, outDir, output !== "static" ? "client" : "");
-  await copy(assetPath, dest);
+  const bundleConfigs = await getBundleConfigs(root);
+  for (const assetPath of bundleConfigs.staticAssets) {
+    await copy(assetPath, dest);
+  }
 }
 
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
-  const { outDir } = await getConfig(sourceDir);
+  const bundleConfigs = await getBundleConfigs(sourceDir);
   const packageJson = await readJSON(join(sourceDir, "package.json"));
-  await copy(join(sourceDir, outDir, "server"), join(destDir));
+  if (bundleConfigs.serverDirectory != null) {
+    await copy(join(sourceDir, bundleConfigs.serverDirectory), join(destDir));
+  }
   return {
     packageJson,
     bootstrapScript: getBootstrapScript(),
