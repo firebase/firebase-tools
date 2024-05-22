@@ -50,10 +50,10 @@ export async function diffSchema(schema: Schema): Promise<Diff[]> {
 export async function migrateSchema(args: {
   options: Options;
   schema: Schema;
-  allowNonInteractiveMigration: boolean;
+  /** true for `dataconnect:sql:migrate`, false for `deploy` */
   validateOnly: boolean;
 }): Promise<Diff[]> {
-  const { options, schema, allowNonInteractiveMigration, validateOnly } = args;
+  const { options, schema, validateOnly } = args;
 
   const { serviceName, instanceId, instanceName, databaseId } = getIdentifiers(schema);
   await ensureServiceIsConnectedToCloudSql(
@@ -77,25 +77,19 @@ export async function migrateSchema(args: {
       throw err;
     }
 
+    const migrationMode = await promptForSchemaMigration(
+      options,
+      databaseId,
+      incompatible,
+      validateOnly,
+    );
+
     const shouldDeleteInvalidConnectors = await promptForInvalidConnectorError(
       options,
       serviceName,
       invalidConnectors,
       validateOnly,
     );
-
-    const migrationMode = incompatible
-      ? await promptForSchemaMigration(
-          options,
-          databaseId,
-          incompatible,
-          allowNonInteractiveMigration,
-        )
-      : "none";
-    // First, error out if we aren't making all changes
-    if (migrationMode === "none" && incompatible) {
-      throw new FirebaseError("Command aborted.");
-    }
 
     let diffs: Diff[] = [];
     if (incompatible) {
@@ -205,19 +199,27 @@ async function handleIncompatibleSchemaError(args: {
 async function promptForSchemaMigration(
   options: Options,
   databaseName: string,
-  err: IncompatibleSqlSchemaError,
-  allowNonInteractiveMigration: boolean,
-): Promise<"none" | "safe" | "all"> {
+  err: IncompatibleSqlSchemaError | undefined,
+  validateOnly: boolean,
+): Promise<"none" | "all"> {
+  if (!err) {
+    return "none";
+  }
   displaySchemaChanges(err);
   if (!options.nonInteractive) {
-    // Always prompt in interactive mode. Destructive migrations are too potentially dangerous to not prompt for with --force
+    if (validateOnly && options.force) {
+      // `firebase dataconnect:sql:migrate --force` performs all migrations
+      return "all";
+    }
+    // `firebase deploy` and `firebase dataconnect:sql:migrate` always prompt for any SQL migration changes.
+    // Destructive migrations are too potentially dangerous to not prompt for with --force
     const choices = err.destructive
       ? [
           { name: "Execute all changes (including destructive changes)", value: "all" },
           { name: "Abort changes", value: "none" },
         ]
       : [
-          { name: "Execute changes", value: "safe" },
+          { name: "Execute changes", value: "all" },
           { name: "Abort changes", value: "none" },
         ];
     return await promptOnce({
@@ -225,24 +227,23 @@ async function promptForSchemaMigration(
       type: "list",
       choices,
     });
-  } else if (!allowNonInteractiveMigration) {
-    // `deploy --nonInteractive` performs no migrations
-    logger.error(
-      "Your database schema is incompatible with your Data Connect schema. Run `firebase dataconnect:sql:migrate` to migrate your database schema",
+  }
+  if (!validateOnly) {
+    // `firebase deploy --nonInteractive` performs no migrations
+    throw new FirebaseError(
+      "Command aborted. Your database schema is incompatible with your Data Connect schema. Run `firebase dataconnect:sql:migrate` to migrate your database schema",
     );
-    return "none";
   } else if (options.force) {
-    // `dataconnect:sql:migrate --nonInteractive --force` performs all migrations
+    // `dataconnect:sql:migrate --nonInteractive --force` performs all migrations.
     return "all";
   } else if (!err.destructive) {
-    // `dataconnect:sql:migrate --nonInteractive` performs only safe migrations
-    return "safe";
+    // `dataconnect:sql:migrate --nonInteractive` performs only non-destructive migrations.
+    return "all";
   } else {
     // `dataconnect:sql:migrate --nonInteractive` errors out if there are destructive migrations
-    logger.error(
-      "This schema migration includes potentially destructive changes. If you'd like to execute it anyway, rerun this command with --force",
+    throw new FirebaseError(
+      "Command aborted. This schema migration includes potentially destructive changes. If you'd like to execute it anyway, rerun this command with --force",
     );
-    return "none";
   }
 }
 
