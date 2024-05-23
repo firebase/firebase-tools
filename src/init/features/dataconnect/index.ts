@@ -49,7 +49,7 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     }
     if (instances.length) {
       cloudSqlInstanceId = await promptOnce({
-        message: `Which CloudSSQL instance would you like to use?`,
+        message: `Which CloudSQL instance would you like to use?`,
         type: "list",
         choices,
       });
