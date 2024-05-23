@@ -1,1 +1,2 @@
 - Fixes an issue where dataconnect:sql:migrate still prompts for confirmation even with `--force`. (#7208)
+- Fixes an issue where the dataconnect emulator listens on all addresses by default instead of just localhost.
