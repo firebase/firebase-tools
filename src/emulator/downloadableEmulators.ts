@@ -62,7 +62,7 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
           expectedChecksum: "28a760826968c86cff7e2137b7a487cf",
         }
       : {
-          version: "1.1.17",
+          version: "1.1.18",
           expectedSize: 23247120,
           expectedChecksum: "ff2d10655fd0ad16c0fd07e1ca6dac3e",
         },
