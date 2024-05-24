@@ -281,7 +281,13 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
   dataconnect: {
     binary: getExecPath(Emulators.DATACONNECT),
     args: ["dev"],
-    optionalArgs: ["listen", "config_dir", "local_connection_string", "project_id"],
+    optionalArgs: [
+      "listen",
+      "config_dir",
+      "local_connection_string",
+      "project_id",
+      "service_location",
+    ],
     joinArgs: true,
     shell: true,
   },
