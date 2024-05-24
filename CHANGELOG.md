@@ -1,4 +1,0 @@
-- Fixes an issue where dataconnect:sql:migrate still prompts for confirmation even with `--force`. (#7208)
-- Update to Firebase Data Connect Emulator version 1.1.18 which contains code generation bug fixes, surfacing schema migration errors when a diff remains after migration, and a fix to allow the local connection string to be empty at startup.
-- Fixes an issue where the dataconnect emulator listens on all addresses by default instead of just localhost (#7211).
-- Fixes Data Connect generated SDK sometimes using the wrong location (GCP region) (#7217).
