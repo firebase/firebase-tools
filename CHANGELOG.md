@@ -1,1 +1,1 @@
-- Fix sometimes Firebase Data Connect deployment fails to pretty-print errors.
+- Fix sometimes Firebase Data Connect deployment fails to pretty-print errors (#7230).
