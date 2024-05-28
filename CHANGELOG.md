@@ -1,0 +1,1 @@
+- Fix sometimes Firebase Data Connect deployment fails to pretty-print errors.
