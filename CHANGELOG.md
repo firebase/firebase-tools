@@ -1,0 +1,1 @@
+- Update to Firebase Data Connect Emulator version 1.1.19 which fixes serving IPv4 connections properly (127.0.0.1:9399 by default).
