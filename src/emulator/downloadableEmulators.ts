@@ -61,11 +61,17 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
           expectedSize: 25836864,
           expectedChecksum: "b31ba00789b82a30f0dee1c03b8f74ce",
         }
-      : {
-          version: "1.1.19",
-          expectedSize: 23247120,
-          expectedChecksum: "56d6cb2ad85474d3a67999e35d2916a1",
-        },
+      : process.platform === "win32"
+        ? {
+            version: "1.1.19",
+            expectedSize: 23629824,
+            expectedChecksum: "bcbd7705b36cee72ff0587749d67bfc3",
+          }
+        : {
+            version: "1.1.19",
+            expectedSize: 23247120,
+            expectedChecksum: "56d6cb2ad85474d3a67999e35d2916a1",
+          },
 };
 
 export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
@@ -155,19 +161,21 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
   dataconnect: {
     downloadPath: path.join(
       CACHE_DIR,
-      `dataconnect-emulator-${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
+      `dataconnect-emulator-${EMULATOR_UPDATE_DETAILS.dataconnect.version}${process.platform === "win32" ? ".exe" : ""}`,
     ),
     version: EMULATOR_UPDATE_DETAILS.dataconnect.version,
     binaryPath: path.join(
       CACHE_DIR,
-      `dataconnect-emulator-${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
+      `dataconnect-emulator-${EMULATOR_UPDATE_DETAILS.dataconnect.version}${process.platform === "win32" ? ".exe" : ""}`,
     ),
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
         process.platform === "darwin"
           ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-macos-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
-          : `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
+          : process.platform === "win32"
+            ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-windows-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
+            : `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
       expectedSize: EMULATOR_UPDATE_DETAILS.dataconnect.expectedSize,
       expectedChecksum: EMULATOR_UPDATE_DETAILS.dataconnect.expectedChecksum,
       skipChecksumAndSize: false,
