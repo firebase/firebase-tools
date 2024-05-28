@@ -50,10 +50,10 @@ export async function diffSchema(schema: Schema): Promise<Diff[]> {
 export async function migrateSchema(args: {
   options: Options;
   schema: Schema;
-  allowNonInteractiveMigration: boolean;
+  /** true for `dataconnect:sql:migrate`, false for `deploy` */
   validateOnly: boolean;
 }): Promise<Diff[]> {
-  const { options, schema, allowNonInteractiveMigration, validateOnly } = args;
+  const { options, schema, validateOnly } = args;
 
   const { serviceName, instanceId, instanceName, databaseId } = getIdentifiers(schema);
   await ensureServiceIsConnectedToCloudSql(
@@ -77,29 +77,19 @@ export async function migrateSchema(args: {
       throw err;
     }
 
+    const migrationMode = await promptForSchemaMigration(
+      options,
+      databaseId,
+      incompatible,
+      validateOnly,
+    );
+
     const shouldDeleteInvalidConnectors = await promptForInvalidConnectorError(
       options,
+      serviceName,
       invalidConnectors,
       validateOnly,
     );
-    if (!shouldDeleteInvalidConnectors && invalidConnectors.length) {
-      const cmd = suggestedCommand(serviceName, invalidConnectors);
-      throw new FirebaseError(
-        `Command aborted. Try deploying those connectors first with ${clc.bold(cmd)}`,
-      );
-    }
-    const migrationMode = incompatible
-      ? await promptForSchemaMigration(
-          options,
-          databaseId,
-          incompatible,
-          allowNonInteractiveMigration,
-        )
-      : "none";
-    // First, error out if we aren't making all changes
-    if (migrationMode === "none" && incompatible) {
-      throw new FirebaseError("Command aborted.");
-    }
 
     let diffs: Diff[] = [];
     if (incompatible) {
@@ -112,11 +102,13 @@ export async function migrateSchema(args: {
       });
     }
 
-    if (invalidConnectors.length) {
+    if (shouldDeleteInvalidConnectors) {
       await deleteInvalidConnectors(invalidConnectors);
     }
-    // Then, try to upsert schema again. If there still is an error, just throw it now
-    await upsertSchema(schema, validateOnly);
+    if (!validateOnly) {
+      // Then, try to upsert schema again. If there still is an error, just throw it now
+      await upsertSchema(schema, validateOnly);
+    }
     return diffs;
   }
   return [];
@@ -207,19 +199,27 @@ async function handleIncompatibleSchemaError(args: {
 async function promptForSchemaMigration(
   options: Options,
   databaseName: string,
-  err: IncompatibleSqlSchemaError,
-  allowNonInteractiveMigration: boolean,
-): Promise<"none" | "safe" | "all"> {
+  err: IncompatibleSqlSchemaError | undefined,
+  validateOnly: boolean,
+): Promise<"none" | "all"> {
+  if (!err) {
+    return "none";
+  }
   displaySchemaChanges(err);
   if (!options.nonInteractive) {
-    // Always prompt in interactive mode. Desturctive migrations are too potentially dangerous to not prompt for with --force
+    if (validateOnly && options.force) {
+      // `firebase dataconnect:sql:migrate --force` performs all migrations
+      return "all";
+    }
+    // `firebase deploy` and `firebase dataconnect:sql:migrate` always prompt for any SQL migration changes.
+    // Destructive migrations are too potentially dangerous to not prompt for with --force
     const choices = err.destructive
       ? [
           { name: "Execute all changes (including destructive changes)", value: "all" },
           { name: "Abort changes", value: "none" },
         ]
       : [
-          { name: "Execute changes", value: "safe" },
+          { name: "Execute changes", value: "all" },
           { name: "Abort changes", value: "none" },
         ];
     return await promptOnce({
@@ -227,29 +227,29 @@ async function promptForSchemaMigration(
       type: "list",
       choices,
     });
-  } else if (!allowNonInteractiveMigration) {
-    // `deploy --nonInteractive` performs no migrations
-    logger.error(
-      "Your database schema is incompatible with your Data Connect schema. Run `firebase dataconnect:sql:migrate` to migrate your database schema",
+  }
+  if (!validateOnly) {
+    // `firebase deploy --nonInteractive` performs no migrations
+    throw new FirebaseError(
+      "Command aborted. Your database schema is incompatible with your Data Connect schema. Run `firebase dataconnect:sql:migrate` to migrate your database schema",
     );
-    return "none";
   } else if (options.force) {
-    // `dataconnect:sql:migrate --nonInteractive --force` performs all migrations
+    // `dataconnect:sql:migrate --nonInteractive --force` performs all migrations.
     return "all";
   } else if (!err.destructive) {
-    // `dataconnect:sql:migrate --nonInteractive` performs only safe migrations
-    return "safe";
+    // `dataconnect:sql:migrate --nonInteractive` performs only non-destructive migrations.
+    return "all";
   } else {
     // `dataconnect:sql:migrate --nonInteractive` errors out if there are destructive migrations
-    logger.error(
-      "This schema migration includes potentially destructive changes. If you'd like to execute it anyway, rerun this command with --force",
+    throw new FirebaseError(
+      "Command aborted. This schema migration includes potentially destructive changes. If you'd like to execute it anyway, rerun this command with --force",
     );
-    return "none";
   }
 }
 
 async function promptForInvalidConnectorError(
   options: Options,
+  serviceName: string,
   invalidConnectors: string[],
   validateOnly: boolean,
 ): Promise<boolean> {
@@ -258,18 +258,33 @@ async function promptForInvalidConnectorError(
   }
   displayInvalidConnectors(invalidConnectors);
   if (validateOnly) {
-    return false;
-  } else if (
-    options.force ||
-    (!options.nonInteractive &&
-      (await confirm({
-        ...options,
-        message: "Would you like to delete and recreate these connectors?",
-      })))
+    if (options.force) {
+      // `firebase dataconnect:sql:migrate --force` ignores invalid connectors.
+      return false;
+    }
+    // `firebase dataconnect:sql:migrate` aborts if there are invalid connectors.
+    throw new FirebaseError(
+      `Command aborted. If you'd like to migrate it anyway, you may override with --force.`,
+    );
+  }
+  if (options.force) {
+    // `firebase deploy --force` will delete invalid connectors without prompting.
+    return true;
+  }
+  // `firebase deploy` prompts in case of invalid connectors.
+  if (
+    !options.nonInteractive &&
+    (await confirm({
+      ...options,
+      message: `Would you like to delete and recreate these connectors? This will cause ${clc.red(`downtime.`)}.`,
+    }))
   ) {
     return true;
   }
-  return false;
+  const cmd = suggestedCommand(serviceName, invalidConnectors);
+  throw new FirebaseError(
+    `Command aborted. Try deploying those connectors first with ${clc.bold(cmd)}`,
+  );
 }
 
 async function deleteInvalidConnectors(invalidConnectors: string[]): Promise<void[]> {
@@ -284,7 +299,7 @@ function displayInvalidConnectors(invalidConnectors: string[]) {
   );
   logLabeledWarning(
     "dataconnect",
-    `This is a ${clc.red("breaking")} change and will cause a brief downtime.`,
+    `This is a ${clc.red("breaking")} change and may break existing apps.`,
   );
 }
 

@@ -45,9 +45,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   ui: experiments.isEnabled("emulatoruisnapshot")
     ? { version: "SNAPSHOT", expectedSize: -1, expectedChecksum: "" }
     : {
-        version: "1.12.0",
-        expectedSize: 3498195,
-        expectedChecksum: "af39891f4d24fb52af73556bc765b8dd",
+        version: "1.12.1",
+        expectedSize: 3498269,
+        expectedChecksum: "a7f4398a00e5ca22abdcd78dc3877d00",
       },
   pubsub: {
     version: "0.8.2",
@@ -57,15 +57,21 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   dataconnect:
     process.platform === "darwin"
       ? {
-          version: "1.1.17",
-          expectedSize: 25602224,
-          expectedChecksum: "1f9e3dd040a0ac4d1cb4d9dde4a3c0b0",
+          version: "1.1.19",
+          expectedSize: 25836864,
+          expectedChecksum: "b31ba00789b82a30f0dee1c03b8f74ce",
         }
-      : {
-          version: "1.1.17",
-          expectedSize: 23036912,
-          expectedChecksum: "a0ec0517108f842ed06fea14fe7c7e56",
-        },
+      : process.platform === "win32"
+        ? {
+            version: "1.1.19",
+            expectedSize: 23629824,
+            expectedChecksum: "bcbd7705b36cee72ff0587749d67bfc3",
+          }
+        : {
+            version: "1.1.19",
+            expectedSize: 23247120,
+            expectedChecksum: "56d6cb2ad85474d3a67999e35d2916a1",
+          },
 };
 
 export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
@@ -155,19 +161,21 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
   dataconnect: {
     downloadPath: path.join(
       CACHE_DIR,
-      `dataconnect-emulator-${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
+      `dataconnect-emulator-${EMULATOR_UPDATE_DETAILS.dataconnect.version}${process.platform === "win32" ? ".exe" : ""}`,
     ),
     version: EMULATOR_UPDATE_DETAILS.dataconnect.version,
     binaryPath: path.join(
       CACHE_DIR,
-      `dataconnect-emulator-${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
+      `dataconnect-emulator-${EMULATOR_UPDATE_DETAILS.dataconnect.version}${process.platform === "win32" ? ".exe" : ""}`,
     ),
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
         process.platform === "darwin"
           ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-macos-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
-          : `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
+          : process.platform === "win32"
+            ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-windows-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
+            : `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
       expectedSize: EMULATOR_UPDATE_DETAILS.dataconnect.expectedSize,
       expectedChecksum: EMULATOR_UPDATE_DETAILS.dataconnect.expectedChecksum,
       skipChecksumAndSize: false,
@@ -281,7 +289,13 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
   dataconnect: {
     binary: getExecPath(Emulators.DATACONNECT),
     args: ["dev"],
-    optionalArgs: ["http_port", "grpc_port", "config_dir", "local_connection_string", "project_id"],
+    optionalArgs: [
+      "listen",
+      "config_dir",
+      "local_connection_string",
+      "project_id",
+      "service_location",
+    ],
     joinArgs: true,
     shell: true,
   },

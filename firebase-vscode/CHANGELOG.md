@@ -1,5 +1,14 @@
 # Change Log
 
+## 0.2.2
+
+- Emulator bump v1.1.18
+
+## 0.2.1
+
+- Update Logo
+- Improve init flow for users with existing firebase.json
+
 ## 0.2.0
 
 - Fix Auth on IDX
