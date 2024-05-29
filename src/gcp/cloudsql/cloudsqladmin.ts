@@ -51,6 +51,8 @@ export async function createInstance(
       userLabels: { "firebase-data-connect": "ft" },
       insightsConfig: {
         queryInsightsEnabled: true,
+        queryPlansPerMinute: 5, // Match the default settings
+        queryStringLength: 1024, // Match the default settings
       },
     },
   });
@@ -162,28 +164,50 @@ export async function createUser(
   username: string,
   password?: string,
 ): Promise<User> {
-  const op = await client.post<User, Operation>(
-    `projects/${projectId}/instances/${instanceId}/users`,
-    {
-      name: username,
-      instance: instanceId,
-      project: projectId,
-      password: password,
-      sqlserverUserDetails: {
-        disabled: false,
-        serverRoles: ["cloudsqlsuperuser"],
-      },
-      type,
-    },
-  );
-  const opName = `projects/${projectId}/operations/${op.body.name}`;
-  const pollRes = await operationPoller.pollOperation<User>({
-    apiOrigin: cloudSQLAdminOrigin(),
-    apiVersion: API_VERSION,
-    operationResourceName: opName,
-    doneFn: (op: Operation) => op.status === "DONE",
-  });
-  return pollRes;
+  const maxRetries = 3;
+  let retries = 0;
+  while (true) {
+    try {
+      const op = await client.post<User, Operation>(
+        `projects/${projectId}/instances/${instanceId}/users`,
+        {
+          name: username,
+          instance: instanceId,
+          project: projectId,
+          password: password,
+          sqlserverUserDetails: {
+            disabled: false,
+            serverRoles: ["cloudsqlsuperuser"],
+          },
+          type,
+        },
+      );
+      const opName = `projects/${projectId}/operations/${op.body.name}`;
+      const pollRes = await operationPoller.pollOperation<User>({
+        apiOrigin: cloudSQLAdminOrigin(),
+        apiVersion: API_VERSION,
+        operationResourceName: opName,
+        doneFn: (op: Operation) => op.status === "DONE",
+      });
+      return pollRes;
+    } catch (err: any) {
+      if (builtinRoleNotReady(err.message) && retries < maxRetries) {
+        retries++;
+        await new Promise((resolve) => {
+          setTimeout(resolve, 1000 * retries);
+        });
+      } else {
+        throw err;
+      }
+    }
+  }
+}
+
+// CloudSQL built in roles get created _after_ the operation is complete.
+// This means that we occasionally bump into cases where we try to create the user
+// before the role required for IAM users exists.
+function builtinRoleNotReady(message: string): boolean {
+  return message.includes("cloudsqliamuser");
 }
 
 export async function getUser(

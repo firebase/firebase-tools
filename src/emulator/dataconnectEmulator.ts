@@ -3,20 +3,30 @@ import * as childProcess from "child_process";
 import { dataConnectLocalConnString } from "../api";
 import { Constants } from "./constants";
 import { getPID, start, stop, downloadIfNecessary } from "./downloadableEmulators";
-import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
+import { EmulatorInfo, EmulatorInstance, Emulators, ListenSpec } from "./types";
 import { FirebaseError } from "../error";
 import { EmulatorLogger } from "./emulatorLogger";
 import { RC } from "../rc";
 import { BuildResult, requiresVector } from "../dataconnect/types";
+import { listenSpecsToString } from "./portUtils";
 
 export interface DataConnectEmulatorArgs {
   projectId?: string;
-  port?: number;
-  host?: string;
-  configDir?: string;
+  listen: ListenSpec[];
+  configDir: string;
   locationId?: string;
   auto_download?: boolean;
   rc: RC;
+}
+
+export interface DataConnectGenerateArgs {
+  configDir: string;
+  locationId: string;
+  connectorId: string;
+}
+
+export interface DataConnectBuildArgs {
+  configDir: string;
 }
 
 export class DataConnectEmulator implements EmulatorInstance {
@@ -24,9 +34,8 @@ export class DataConnectEmulator implements EmulatorInstance {
   private logger = EmulatorLogger.forEmulator(Emulators.DATACONNECT);
 
   async start(): Promise<void> {
-    const port = this.args.port || Constants.getDefaultPort(Emulators.DATACONNECT);
     this.logger.log("DEBUG", `Using Postgres connection string: ${this.getLocalConectionString()}`);
-    const info = await this.build();
+    const info = await DataConnectEmulator.build({ configDir: this.args.configDir });
     if (requiresVector(info.metadata)) {
       if (Constants.isDemoProject(this.args.projectId)) {
         this.logger.logLabeled(
@@ -44,8 +53,7 @@ export class DataConnectEmulator implements EmulatorInstance {
     }
     return start(Emulators.DATACONNECT, {
       ...this.args,
-      http_port: port,
-      grpc_port: port + 1,
+      listen: listenSpecsToString(this.args.listen),
       config_dir: this.args.configDir,
       local_connection_string: this.getLocalConectionString(),
       project_id: this.args.projectId,
@@ -63,13 +71,11 @@ export class DataConnectEmulator implements EmulatorInstance {
   }
 
   getInfo(): EmulatorInfo {
-    const host = this.args.host || Constants.getDefaultHost();
-    const port = this.args.port || Constants.getDefaultPort(Emulators.DATACONNECT);
-
     return {
       name: this.getName(),
-      host,
-      port,
+      listen: this.args.listen,
+      host: this.args.listen[0].address,
+      port: this.args.listen[0].port,
       pid: getPID(Emulators.DATACONNECT),
       timeout: 10_000,
     };
@@ -78,26 +84,33 @@ export class DataConnectEmulator implements EmulatorInstance {
     return Emulators.DATACONNECT;
   }
 
-  async generate(connectorId: string): Promise<string> {
+  static async generate(args: DataConnectGenerateArgs): Promise<string> {
     const commandInfo = await downloadIfNecessary(Emulators.DATACONNECT);
     const cmd = [
       "generate",
-      `--service_location=${this.args.locationId}`,
-      `--config_dir=${this.args.configDir}`,
-      `--connector_id=${connectorId}`,
+      `--service_location=${args.locationId}`,
+      `--config_dir=${args.configDir}`,
+      `--connector_id=${args.connectorId}`,
     ];
     const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8" });
     if (res.error) {
-      throw new FirebaseError(`Error starting up Data Connect emulator: ${res.error}`);
+      throw new FirebaseError(`Error starting up Data Connect generate: ${res.error.message}`, {
+        original: res.error,
+      });
     }
     return res.stdout;
   }
 
-  async build(): Promise<BuildResult> {
+  static async build(args: DataConnectBuildArgs): Promise<BuildResult> {
     const commandInfo = await downloadIfNecessary(Emulators.DATACONNECT);
-    const cmd = ["build", `--config_dir=${this.args.configDir}`];
+    const cmd = ["build", `--config_dir=${args.configDir}`];
 
     const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8" });
+    if (res.error) {
+      throw new FirebaseError(`Error starting up Data Connect build: ${res.error.message}`, {
+        original: res.error,
+      });
+    }
     if (res.stderr) {
       throw new FirebaseError(
         `Unable to build your Data Connect schema and connectors: ${res.stderr}`,

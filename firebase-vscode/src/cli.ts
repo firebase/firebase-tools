@@ -60,19 +60,10 @@ async function getServiceAccount() {
     if (e.original?.message) {
       errorMessage += ` (original: ${e.original.message})`;
     }
-    if (process.env.MONOSPACE_ENV) {
-      // If it can't find a service account in Monospace, that's a blocking
-      // error and we should throw.
-      throw new Error(
-        `Unable to find service account. ` + `requireAuthError: ${errorMessage}`
-      );
-    } else {
-      // In other environments, it is common to not find a service account.
-      pluginLogger.debug(
-        `No service account found (this may be normal), ` +
-          `requireAuth error output: ${errorMessage}`
-      );
-    }
+    pluginLogger.debug(
+      `No service account found (this may be normal), ` +
+        `requireAuth error output: ${errorMessage}`
+    );
     return null;
   }
   if (process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL) {
@@ -100,9 +91,9 @@ async function getServiceAccount() {
  */
 async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
   // Try to get global default from configstore. For some reason this is
-  // often overwritten when restarting the extension.
   pluginLogger.debug("requireAuthWrapper");
   let account = getGlobalDefaultAccount();
+  // often overwritten when restarting the extension.
   if (!account) {
     // If nothing in configstore top level, grab the first "additionalAccount"
     const accounts = getAllAccounts();
@@ -153,7 +144,7 @@ async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
       // "error". Usually set on user-triggered actions such as
       // init hosting and deploy.
       pluginLogger.error(
-        `requireAuth error: ${e.original?.message || e.message}`
+        `requireAuth error: ${e.original?.message || e.message}`,
       );
       vscode.window.showErrorMessage("Not logged in", {
         modal: true,
@@ -164,7 +155,7 @@ async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
       // but we should log it for debugging purposes.
       pluginLogger.debug(
         "requireAuth error output: ",
-        e.original?.message || e.message
+        e.original?.message || e.message,
       );
     }
     return false;

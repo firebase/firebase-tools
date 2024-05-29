@@ -9,7 +9,6 @@ import * as utils from "./utils";
 import * as scopes from "./scopes";
 import { Tokens, User } from "./types/auth";
 import { setRefreshToken, setActiveAccount } from "./auth";
-import { selectProjectInMonospace, isMonospaceEnv } from "./monospace";
 import type { Options } from "./options";
 
 const AUTH_ERROR_MESSAGE = `Command requires authentication, please run ${clc.bold(
@@ -38,6 +37,9 @@ function getAuthClient(config: GoogleAuthOptions): GoogleAuth {
  * @param authScopes scopes to be obtained.
  */
 async function autoAuth(options: Options, authScopes: string[]): Promise<void | string> {
+  if (process.env.MONOSPACE_ENV) {
+    throw new FirebaseError("autoAuth not yet implemented for IDX. Please run 'firebase login'");
+  }
   const client = getAuthClient({ scopes: authScopes, projectId: options.project });
   const token = await client.getAccessToken();
   token !== null ? apiv2.setAccessToken(token) : false;
@@ -49,14 +51,6 @@ async function autoAuth(options: Options, authScopes: string[]): Promise<void | 
   } catch (e) {
     // Make sure any error here doesn't block the CLI, but log it.
     logger.debug(`Error getting account credentials.`);
-  }
-
-  if (!options.isVSCE && isMonospaceEnv()) {
-    await selectProjectInMonospace({
-      projectRoot: options.config.projectDir,
-      project: options.project,
-      isVSCE: options.isVSCE,
-    });
   }
 
   return clientEmail;

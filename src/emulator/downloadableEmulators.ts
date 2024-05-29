@@ -33,9 +33,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
     expectedChecksum: "2fd771101c0e1f7898c04c9204f2ce63",
   },
   firestore: {
-    version: "1.19.5",
-    expectedSize: 66204670,
-    expectedChecksum: "6d9fb826605701668af722f25048ad95",
+    version: "1.19.6",
+    expectedSize: 66349770,
+    expectedChecksum: "2eaabbe3cdb4867df585b7ec5505bad7",
   },
   storage: {
     version: "1.1.3",
@@ -45,9 +45,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   ui: experiments.isEnabled("emulatoruisnapshot")
     ? { version: "SNAPSHOT", expectedSize: -1, expectedChecksum: "" }
     : {
-        version: "1.11.8",
-        expectedSize: 3523907,
-        expectedChecksum: "49f6dc1911dda9d10df62a6c09aaf9a0",
+        version: "1.12.1",
+        expectedSize: 3498269,
+        expectedChecksum: "a7f4398a00e5ca22abdcd78dc3877d00",
       },
   pubsub: {
     version: "0.8.2",
@@ -57,15 +57,21 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   dataconnect:
     process.platform === "darwin"
       ? {
-          version: "1.1.15",
-          expectedSize: 25600896,
-          expectedChecksum: "36dcf9be7273b9ba6052faf0b3c0347f",
+          version: "1.1.19",
+          expectedSize: 25836864,
+          expectedChecksum: "b31ba00789b82a30f0dee1c03b8f74ce",
         }
-      : {
-          version: "1.1.15",
-          expectedSize: 23036688,
-          expectedChecksum: "e42203947bf984993f295976ee3ba2be",
-        },
+      : process.platform === "win32"
+        ? {
+            version: "1.1.19",
+            expectedSize: 23629824,
+            expectedChecksum: "bcbd7705b36cee72ff0587749d67bfc3",
+          }
+        : {
+            version: "1.1.19",
+            expectedSize: 23247120,
+            expectedChecksum: "56d6cb2ad85474d3a67999e35d2916a1",
+          },
 };
 
 export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
@@ -155,19 +161,21 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
   dataconnect: {
     downloadPath: path.join(
       CACHE_DIR,
-      `dataconnect-emulator-${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
+      `dataconnect-emulator-${EMULATOR_UPDATE_DETAILS.dataconnect.version}${process.platform === "win32" ? ".exe" : ""}`,
     ),
     version: EMULATOR_UPDATE_DETAILS.dataconnect.version,
     binaryPath: path.join(
       CACHE_DIR,
-      `dataconnect-emulator-${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
+      `dataconnect-emulator-${EMULATOR_UPDATE_DETAILS.dataconnect.version}${process.platform === "win32" ? ".exe" : ""}`,
     ),
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
         process.platform === "darwin"
           ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-macos-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
-          : `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
+          : process.platform === "win32"
+            ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-windows-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
+            : `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
       expectedSize: EMULATOR_UPDATE_DETAILS.dataconnect.expectedSize,
       expectedChecksum: EMULATOR_UPDATE_DETAILS.dataconnect.expectedChecksum,
       skipChecksumAndSize: false,
@@ -281,7 +289,13 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
   dataconnect: {
     binary: getExecPath(Emulators.DATACONNECT),
     args: ["dev"],
-    optionalArgs: ["http_port", "grpc_port", "config_dir", "local_connection_string", "project_id"],
+    optionalArgs: [
+      "listen",
+      "config_dir",
+      "local_connection_string",
+      "project_id",
+      "service_location",
+    ],
     joinArgs: true,
     shell: true,
   },

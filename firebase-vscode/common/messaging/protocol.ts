@@ -36,6 +36,8 @@ export interface WebviewToExtensionParamsMap {
    * Ask extension for initial data
    */
   getInitialData: {};
+  getInitialHasFdcConfigs: void;
+
   addUser: {};
   logout: { email: string };
 
@@ -113,6 +115,9 @@ export interface WebviewToExtensionParamsMap {
 
   // Initialize "result" tab.
   getDataConnectResults: void;
+
+  // execute terminal tasks
+  executeLogin: void;
 }
 
 export interface DataConnectResults {
@@ -180,6 +185,8 @@ export interface ExtensionToWebviewParamsMap {
     firebaseJson: ValueOrError<FirebaseConfig> | undefined;
     firebaseRC: ValueOrError<RCData> | undefined;
   };
+  /** Whether any dataconnect.yaml is present */
+  notifyHasFdcConfigs: boolean;
 
   /**
    * Return user-selected preview channel name

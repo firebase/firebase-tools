@@ -1,12 +1,34 @@
 # Change Log
 
+## 0.2.3
+
+- Emulator bump v1.1.19
+
+## 0.2.2
+
+- Emulator bump v1.1.18
+
+## 0.2.1
+
+- Update Logo
+- Improve init flow for users with existing firebase.json
+
+## 0.2.0
+
+- Fix Auth on IDX
+
+## 0.1.9
+
+- Fix "Add Data" for nonnull and custom keys
+- Emulator Bump 1.1.17
+
 ## 0.1.8
 
 - Update Extensions page Logo
 - Update README for Extensions page
 - Surface emulator issues as notifications
 - Generate .graphqlrc automatically
-- Emulator Bump 1.1.15
+- Emulator Bump 1.1.16
 
 ## 0.1.7
 
