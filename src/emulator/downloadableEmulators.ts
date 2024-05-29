@@ -297,7 +297,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
       "service_location",
     ],
     joinArgs: true,
-    shell: true,
+    shell: false,
   },
 };
 
