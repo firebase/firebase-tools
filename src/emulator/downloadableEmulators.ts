@@ -327,7 +327,6 @@ export function _getCommand(
   const commandOverride = process.env[`${emulator.toUpperCase()}_EMULATOR_COMMAND`];
   if (commandOverride) {
     baseCmd.binary = commandOverride;
-    baseCmd.args = [];
   }
   const defaultPort = Constants.getDefaultPort(emulator);
   if (!args.port) {
