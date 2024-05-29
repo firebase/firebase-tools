@@ -323,7 +323,12 @@ export function _getCommand(
   args: { [s: string]: any },
 ): DownloadableEmulatorCommand {
   const baseCmd = Commands[emulator];
-
+  // If a commandOverride is passed, we use that instead but pass in the optional args.
+  const commandOverride = process.env[`${emulator.toUpperCase()}_EMULATOR_COMMAND`];
+  if (commandOverride) {
+    baseCmd.binary = commandOverride;
+    baseCmd.args = [];
+  }
   const defaultPort = Constants.getDefaultPort(emulator);
   if (!args.port) {
     args.port = defaultPort;
@@ -505,7 +510,16 @@ async function _runBinary(
 export function getDownloadDetails(emulator: DownloadableEmulators): EmulatorDownloadDetails {
   const details = DownloadDetails[emulator];
   const pathOverride = process.env[`${emulator.toUpperCase()}_EMULATOR_BINARY_PATH`];
-  if (pathOverride) {
+  const commandOverride = process.env[`${emulator.toUpperCase()}_EMULATOR_COMMAND`];
+  if (commandOverride) {
+    const logger = EmulatorLogger.forEmulator(emulator);
+    logger.logLabeled(
+      "WARN",
+      emulator,
+      `Env variable override detected. Using ${emulator} emulator at ${pathOverride}`,
+    );
+    details.localOnly = true;
+  } else if (pathOverride) {
     const logger = EmulatorLogger.forEmulator(emulator);
     logger.logLabeled(
       "WARN",
