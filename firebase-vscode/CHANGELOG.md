@@ -1,5 +1,9 @@
 # Change Log
 
+## 0.2.3
+
+- Emulator bump v1.1.19
+
 ## 0.2.2
 
 - Emulator bump v1.1.18
