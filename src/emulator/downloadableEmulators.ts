@@ -50,9 +50,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
         expectedChecksum: "a7f4398a00e5ca22abdcd78dc3877d00",
       },
   pubsub: {
-    version: "0.8.2",
-    expectedSize: 65611398,
-    expectedChecksum: "70bb840321423e6ae621a3ae2f314903",
+    version: "0.8.14",
+    expectedSize: 66786933,
+    expectedChecksum: "a9025b3e53fdeafd2969ccb3ba1e1d38",
   },
   dataconnect:
     process.platform === "darwin"
