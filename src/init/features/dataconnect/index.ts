@@ -25,13 +25,14 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   const serviceId = await promptOnce({
     message: "What ID would you like to use for this service?",
     type: "input",
-    default: "dataconnect",
+    default: "my-service",
   });
-  // TODO: Guided prompts to set up connector auth mode and generate
+  // TODO: Just create the connector without asking to pick the name.
+  // The connector directory name should match the connector name (e.g. /dataconnect/default-connector/)
   const connectorId = await promptOnce({
     message: "What ID would you like to use for your connector?",
     type: "input",
-    default: "my-connector",
+    default: "default-connector",
   });
 
   let cloudSqlInstanceId = "";
@@ -79,7 +80,7 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     cloudSqlInstanceId = await promptOnce({
       message: `What ID would you like to use for your new CloudSQL instance?`,
       type: "input",
-      default: `dataconnect-test`,
+      default: `fdc-sql`,
     });
     locationId = await promptOnce({
       message: "What location would you use for this instance?",
@@ -113,8 +114,9 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     cloudSqlDatabase = await promptOnce({
       message: `What ID would you like to use for your new database in ${cloudSqlInstanceId}?`,
       type: "input",
-      default: `dataconnect`,
+      default: `fdc-db`,
     });
+    // Local DB name: fdc-sql-fdc-db
   }
 
   const defaultConnectionString =
@@ -142,10 +144,10 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     connectorId,
   });
   await config.askWriteProjectFile(join(dir, "dataconnect.yaml"), subbedDataconnectYaml);
-  await config.askWriteProjectFile(join(dir, "connector", "connector.yaml"), subbedConnectorYaml);
+  await config.askWriteProjectFile(join(dir, connectorId, "connector.yaml"), subbedConnectorYaml);
   await config.askWriteProjectFile(join(dir, "schema", "schema.gql"), SCHEMA_TEMPLATE);
-  await config.askWriteProjectFile(join(dir, "connector", "queries.gql"), QUERIES_TEMPLATE);
-  await config.askWriteProjectFile(join(dir, "connector", "mutations.gql"), MUTATIONS_TEMPLATE);
+  await config.askWriteProjectFile(join(dir, connectorId, "queries.gql"), QUERIES_TEMPLATE);
+  await config.askWriteProjectFile(join(dir, connectorId, "mutations.gql"), MUTATIONS_TEMPLATE);
   if (
     setup.projectId &&
     (newInstance || newDB) &&
