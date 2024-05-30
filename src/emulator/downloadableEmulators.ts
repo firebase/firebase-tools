@@ -297,7 +297,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
       "service_location",
     ],
     joinArgs: true,
-    shell: true,
+    shell: false,
   },
 };
 
@@ -323,7 +323,6 @@ export function _getCommand(
   args: { [s: string]: any },
 ): DownloadableEmulatorCommand {
   const baseCmd = Commands[emulator];
-
   const defaultPort = Constants.getDefaultPort(emulator);
   if (!args.port) {
     args.port = defaultPort;
@@ -503,7 +502,21 @@ async function _runBinary(
  * @param emulator
  */
 export function getDownloadDetails(emulator: DownloadableEmulators): EmulatorDownloadDetails {
-  return DownloadDetails[emulator];
+  const details = DownloadDetails[emulator];
+  const pathOverride = process.env[`${emulator.toUpperCase()}_EMULATOR_BINARY_PATH`];
+  if (pathOverride) {
+    const logger = EmulatorLogger.forEmulator(emulator);
+    logger.logLabeled(
+      "WARN",
+      emulator,
+      `Env variable override detected. Using ${emulator} emulator at ${pathOverride}`,
+    );
+    details.downloadPath = pathOverride;
+    details.binaryPath = pathOverride;
+    details.localOnly = true;
+    fs.chmodSync(pathOverride, 0o755);
+  }
+  return details;
 }
 
 /**
@@ -579,7 +592,7 @@ export async function start(
   },
   extraEnv: Partial<NodeJS.ProcessEnv> = {},
 ): Promise<void> {
-  const downloadDetails = DownloadDetails[targetName];
+  const downloadDetails = getDownloadDetails(targetName);
   const emulator = get(targetName);
   const hasEmulator = fs.existsSync(getExecPath(targetName));
   const logger = EmulatorLogger.forEmulator(targetName);
