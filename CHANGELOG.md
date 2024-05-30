@@ -1,1 +1,2 @@
-- Fixes some cases where Firebase Data Connect deployment fails to pretty-print errors (#7230).
+- Updated Pub/Sub emulator to v0.8.14 (#7197).
+- Fixed some cases where Firebase Data Connect deployment fails to pretty-print errors (#7230).
