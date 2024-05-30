@@ -2,12 +2,13 @@
 set -e
 
 printusage() {
-  echo "publish.sh <version>"
+  echo "publish.sh <version> [vscode-version]"
   echo "REPOSITORY_ORG and REPOSITORY_NAME should be set in the environment."
   echo "e.g. REPOSITORY_ORG=user, REPOSITORY_NAME=repo"
   echo ""
   echo "Arguments:"
   echo "  version: 'patch', 'minor', or 'major'."
+  echo "  vscode-version: Optional. If omitted, defaults to <version>. May be 'patch', 'minor', or 'major'."
 }
 
 VERSION=$1
@@ -15,6 +16,14 @@ if [[ $VERSION == "" ]]; then
   printusage
   exit 1
 elif [[ ! ($VERSION == "patch" || $VERSION == "minor" || $VERSION == "major") ]]; then
+  printusage
+  exit 1
+fi
+
+VSCODE_VERSION=$2
+if [[ $VSCODE_VERSION == "" ]]; then
+  VSCODE_VERSION=$VERSION
+elif [[ ! ($VSCODE_VERSION == "patch" || $VSCODE_VERSION == "minor" || $VSCODE_VERSION == "major") ]]; then
   printusage
   exit 1
 fi
@@ -81,9 +90,9 @@ npm version $VERSION
 NEW_VERSION=$(jq -r ".version" package.json)
 echo "Made a $VERSION version."
 
-echo "Preparing VSCode extension..."
-./scripts/publish-vscode.sh patch
-echo "Prepared VSCode extension."
+echo "Publishing a $VSCODE_VERSION version of the VSCode extension..."
+./scripts/publish-vscode.sh $VSCODE_VERSION $NEW_VERSION
+echo "Published a $VSCODE_VERSION version of the VSCode extension."
 
 echo "Making the release notes..."
 RELEASE_NOTES_FILE=$(mktemp)
