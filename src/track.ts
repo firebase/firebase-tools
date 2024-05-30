@@ -1,4 +1,5 @@
-import fetch from "node-fetch";
+import fetch, { RequestInit } from "node-fetch";
+import { ProxyAgent } from "proxy-agent";
 import * as ua from "universal-analytics";
 import { v4 as uuidV4 } from "uuid";
 import { getGlobalDefaultAccount } from "./auth";
@@ -151,6 +152,16 @@ export async function trackEmulator(eventName: string, params?: AnalyticsParams)
   });
 }
 
+function proxyURIFromEnv(): string | undefined {
+  return (
+    process.env.HTTPS_PROXY ||
+    process.env.https_proxy ||
+    process.env.HTTP_PROXY ||
+    process.env.http_proxy ||
+    undefined
+  );
+}
+
 async function _ga4Track(args: {
   session: AnalyticsSession;
   apiSecret: string;
@@ -201,6 +212,16 @@ async function _ga4Track(args: {
       },
     ],
   };
+  const fetchOptions: RequestInit = {
+    method: "POST",
+    headers: {
+      "content-type": "application/json;charset=UTF-8",
+    },
+    body: JSON.stringify(body),
+  };
+  if (proxyURIFromEnv()) {
+    fetchOptions.agent = new ProxyAgent();
+  }
   if (session.validateOnly) {
     logger.info(
       `Sending Analytics for event ${eventName} to property ${session.measurementId}`,
@@ -209,13 +230,7 @@ async function _ga4Track(args: {
     );
   }
   try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json;charset=UTF-8",
-      },
-      body: JSON.stringify(body),
-    });
+    const response = await fetch(url, fetchOptions);
     if (session.validateOnly) {
       // If the validation endpoint is used, response may contain errors.
       if (!response.ok) {
