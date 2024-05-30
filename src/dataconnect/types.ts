@@ -71,11 +71,11 @@ export interface Diff {
 
 export interface GraphqlError {
   message: string;
-  locations: {
+  locations?: {
     line: number;
     column: number;
   }[];
-  extensions: {
+  extensions?: {
     file?: string;
     [key: string]: any;
   };
