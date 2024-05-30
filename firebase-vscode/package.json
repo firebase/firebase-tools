@@ -42,14 +42,6 @@
       {
         "command": "firebase.selectProject",
         "title": "Firebase: Switch project"
-      },
-      {
-        "command": "firebase.emulators.start",
-        "title": "Firebase: Start emulators"
-      },
-      {
-        "command": "firebase.emulators.stop",
-        "title": "Firebase: Stop emulators"
       }
     ],
     "configuration": {

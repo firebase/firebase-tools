@@ -1,4 +1,4 @@
-import vscode, { Disposable } from "vscode";
+import vscode, { Disposable, ThemeColor } from "vscode";
 import {
   emulatorsStart,
   getEmulatorUiUrl,
@@ -19,6 +19,8 @@ import { emulatorOutputChannel } from "../data-connect/emulator-stream";
 
 export class EmulatorsController implements Disposable {
   constructor(private broker: ExtensionBrokerImpl) {
+    this.emulatorStatusItem.command = "firebase.openFirebaseRc";
+
     this.subscriptions.push(
       broker.on("getEmulatorUiSelections", () =>
         this.notifyUISelectionChangedListeners(),
@@ -79,13 +81,6 @@ export class EmulatorsController implements Disposable {
     );
 
     this.subscriptions.push(
-      broker.on("launchEmulators", this.startEmulators.bind(this)),
-    );
-    this.subscriptions.push(
-      broker.on("stopEmulators", this.stopEmulators.bind(this)),
-    );
-
-    this.subscriptions.push(
       effect(() => {
         const projectId = firebaseRC.value?.tryReadValue?.projects?.default;
         this.uiSelections.value = {
@@ -99,14 +94,14 @@ export class EmulatorsController implements Disposable {
     );
   }
 
-  private readonly startCommand = vscode.commands.registerCommand(
-    "firebase.emulators.start",
-    this.startEmulators.bind(this),
-  );
+  private readonly emulatorStatusItem =
+    vscode.window.createStatusBarItem("emulators");
 
-  private readonly stopCommand = vscode.commands.registerCommand(
-    "firebase.emulators.stop",
-    this.stopEmulators.bind(this),
+  private pendingEmulatorStart: Promise<void> | undefined;
+
+  private readonly waitCommand = vscode.commands.registerCommand(
+    "firebase.emulators.wait",
+    this.waitEmulators.bind(this),
   );
 
   // TODO(christhompson): Load UI selections from the current workspace.
@@ -164,107 +159,90 @@ export class EmulatorsController implements Disposable {
     this.broker.send("notifyEmulatorStateChanged", this.emulators.value);
   }
 
-  async startEmulators() {
-    const uiSelections = this.uiSelections.value;
-
-    return vscode.window.withProgress(
-      {
-        location: vscode.ProgressLocation.Window,
-        cancellable: false,
-        title: "Starting emulators",
-      },
-      async (progress) => {
-        progress.report({ increment: 0 });
-        try {
-          this.emulators.value = {
-            status: "starting",
-            infos: this.emulators.value.infos,
-          };
-          await emulatorsStart(uiSelections);
-          this.emulators.value = {
-            status: "running",
-            infos: {
-              uiUrl: getEmulatorUiUrl(),
-              displayInfo: listRunningEmulators(),
-            },
-          };
-
-          vscode.window.showInformationMessage(
-            "Firebase Extension: Emulators started successfully",
-          );
-
-          // data connect specifics; including temp logging implementation
-          if (
-            listRunningEmulators().filter((emulatorInfos) => {
-              emulatorInfos.name === Emulators.DATACONNECT;
-            })
-          ) {
-            const dataConnectEmulatorDetails = getEmulatorDetails(
-              Emulators.DATACONNECT,
-            );
-
-            dataConnectEmulatorDetails.instance.stdout?.on("data", (data) => {
-              emulatorOutputChannel.appendLine("DEBUG: " + data.toString());
-            });
-            dataConnectEmulatorDetails.instance.stderr?.on("data", (data) => {
-              if (data.toString().includes("Finished reloading")) {
-                vscode.commands.executeCommand("fdc-graphql.restart");
-                vscode.commands.executeCommand(
-                  "firebase.dataConnect.executeIntrospection",
-                );
-              } else {
-                emulatorOutputChannel.appendLine("ERROR: " + data.toString());
-              }
-            });
-          }
-        } catch (e) {
-          this.emulators.value = {
-            status: "stopped",
-            infos: undefined,
-          };
-
-          vscode.window.showErrorMessage(
-            "Firebase Extension: Emulators start failed - " + e,
-          );
-        }
-        progress.report({ increment: 100 });
-      },
-    );
+  async waitEmulators() {
+    await this.pendingEmulatorStart;
   }
 
-  async stopEmulators() {
-    return vscode.window.withProgress(
-      {
-        location: vscode.ProgressLocation.Window,
-        cancellable: false,
-        title: "Stopping emulators",
-      },
-      async (progress) => {
-        progress.report({ increment: 0 });
+  async startEmulators() {
+    this.emulatorStatusItem.text = "$(loading~spin) Emulators: Starting...";
+    this.emulatorStatusItem.show();
+    this.emulatorStatusItem.backgroundColor = undefined;
+    this.emulators.value = {
+      status: "starting",
+      infos: this.emulators.value.infos,
+    };
 
+    const currentOp = (this.pendingEmulatorStart = new Promise(async () => {
+      try {
+        await emulatorsStart(this.uiSelections.value);
         this.emulators.value = {
-          status: "stopping",
-          infos: this.emulators.value.infos,
+          status: "running",
+          infos: {
+            uiUrl: getEmulatorUiUrl(),
+            displayInfo: listRunningEmulators(),
+          },
         };
-        await stopEmulators();
+        this.emulatorStatusItem.text = "Emulators: running";
+
+        // data connect specifics; including temp logging implementation
+        if (
+          listRunningEmulators().filter((emulatorInfos) => {
+            emulatorInfos.name === Emulators.DATACONNECT;
+          })
+        ) {
+          const dataConnectEmulatorDetails = getEmulatorDetails(
+            Emulators.DATACONNECT,
+          );
+
+          dataConnectEmulatorDetails.instance.stdout?.on("data", (data) => {
+            emulatorOutputChannel.appendLine("DEBUG: " + data.toString());
+          });
+          dataConnectEmulatorDetails.instance.stderr?.on("data", (data) => {
+            if (data.toString().includes("Finished reloading")) {
+              vscode.commands.executeCommand("fdc-graphql.restart");
+              vscode.commands.executeCommand(
+                "firebase.dataConnect.executeIntrospection",
+              );
+            } else {
+              emulatorOutputChannel.appendLine("ERROR: " + data.toString());
+            }
+          });
+        }
+      } catch (e) {
+        this.emulatorStatusItem.text = "Emulators: errored";
+        this.emulatorStatusItem.backgroundColor = new ThemeColor(
+          "statusBarItem.errorBackground",
+        );
         this.emulators.value = {
           status: "stopped",
           infos: undefined,
         };
+      }
 
-        vscode.window.showInformationMessage(
-          "Firebase Extension: Emulators stopped successfully",
-        );
+      if (currentOp === this.pendingEmulatorStart) {
+        this.pendingEmulatorStart = undefined;
+      }
+    }));
 
-        progress.report({ increment: 100 });
-      },
-    );
+    return this.pendingEmulatorStart;
+  }
+
+  async stopEmulators() {
+    this.emulators.value = {
+      status: "stopping",
+      infos: this.emulators.value.infos,
+    };
+    await stopEmulators();
+    this.emulators.value = {
+      status: "stopped",
+      infos: undefined,
+    };
   }
 
   dispose(): void {
     this.stopEmulators();
     this.subscriptions.forEach((subscription) => subscription());
-    this.startCommand.dispose();
-    this.stopCommand.dispose();
+    this.waitCommand.dispose();
+    this.emulatorStatusItem.dispose();
   }
 }

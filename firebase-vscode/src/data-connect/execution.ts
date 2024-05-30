@@ -22,7 +22,7 @@ import { DataConnectService } from "./service";
 import { DataConnectError, toSerializedError } from "../../common/error";
 import { OperationLocation } from "./types";
 import { EmulatorsController } from "../core/emulators";
-import { InstanceType } from "./emulators-status";
+import { InstanceType } from "./code-lens-provider";
 
 export function registerExecution(
   context: ExtensionContext,

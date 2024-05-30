@@ -37,6 +37,7 @@ import {
 } from "../../src/emulator/types";
 import * as commandUtils from "../../src/emulator/commandUtils";
 import { currentUser } from "./core/user";
+import { firstWhere } from "./utils/signal";
 export { Emulators };
 /**
  * Try to get a service account by calling requireAuth() without
@@ -339,7 +340,11 @@ export async function emulatorsStart(
         ? `${Emulators.DATACONNECT},${Emulators.AUTH}`
         : "";
   const commandOptions = await getCommandOptions(undefined, {
-    ...currentOptions.value,
+    ...(await firstWhere(
+      // TODO use firstWhereDefined once currentOptions are undefined if not initialized yet
+      currentOptions,
+      (op) => !!op && op.configPath.length !== 0,
+    )),
     project: emulatorUiSelections.projectId,
     exportOnExit: emulatorUiSelections.exportStateOnExit,
     import: emulatorUiSelections.importStateFolderPath,

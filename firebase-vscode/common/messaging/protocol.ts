@@ -45,8 +45,6 @@ export interface WebviewToExtensionParamsMap {
   getEmulatorUiSelections: void;
   getEmulatorInfos: void;
   updateEmulatorUiSelections: Partial<EmulatorUiSelections>;
-  /* Equivalent to the `firebase emulators:start` command.*/
-  launchEmulators: void;
 
   /** Notify extension that current user has been changed in UI. */
   requestChangeUser: { user: User | ServiceAccountUser };
@@ -94,9 +92,6 @@ export interface WebviewToExtensionParamsMap {
   openLink: {
     href: string;
   };
-
-  /** Stops the emulators gracefully allowing for data export if required. */
-  stopEmulators: void;
 
   selectEmulatorImportFolder: {};
 

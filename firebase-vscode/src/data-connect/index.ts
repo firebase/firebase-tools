@@ -11,7 +11,6 @@ import {
 } from "./code-lens-provider";
 import { registerConnectors } from "./connectors";
 import { AuthService } from "../auth/service";
-import { registerFirebaseDataConnectView } from "./emulators-status";
 import { currentProjectId } from "../core/project";
 import { isTest } from "../utils/env";
 import { setupLanguageClient } from "./language-client";
@@ -29,6 +28,7 @@ import { Result } from "../result";
 import { runEmulatorIssuesStream } from "./emulator-stream";
 import { LanguageClient } from "vscode-languageclient/node";
 import { registerTerminalTasks } from "./terminal";
+import { registerWebview } from "../webview";
 
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
@@ -156,15 +156,16 @@ export function registerFdc(
 
   // activate language client/serer
   let client: LanguageClient;
-  const lsOutputChannel: vscode.OutputChannel = vscode.window.createOutputChannel(
-    "Firebase GraphQL Language Server",
-  );
+  const lsOutputChannel: vscode.OutputChannel =
+    vscode.window.createOutputChannel("Firebase GraphQL Language Server");
 
   // setup new language client on config change
   context.subscriptions.push({
     dispose: effect(() => {
       const configs = dataConnectConfigs.value?.tryReadValue;
-      if (client) client.stop();
+      if (client) {
+        client.stop();
+      }
       if (configs && configs.values.length > 0) {
         client = setupLanguageClient(context, configs, lsOutputChannel);
         vscode.commands.executeCommand("fdc-graphql.start");
@@ -220,7 +221,7 @@ export function registerFdc(
     registerDataConnectConfigs(broker),
     registerExecution(context, broker, fdcService, emulatorController),
     registerExplorer(context, broker, fdcService),
-    registerFirebaseDataConnectView(context, broker, emulatorController),
+    registerWebview({ name: "data-connect", context, broker }),
     registerAdHoc(fdcService),
     registerConnectors(context, broker, fdcService),
     registerFdcDeploy(broker),
