@@ -10,6 +10,8 @@
 # }
 # mutation CreateEmail($content: String, $subject: String, $fromUid: String) @auth(level: PUBLIC) {
 #   email_insert(data: {
+## Note that variable names do not need to match the fields on your schema.
+## This lets you felixibly define your API surface without affecting the underlying schema.
 #     text: $content,
 #     subject: $subject,
 #     fromUid: $fromUid,

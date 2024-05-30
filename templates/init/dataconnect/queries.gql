@@ -18,6 +18,8 @@
 #     }}
 #   }) {
 #     id subject sent 
+## You can alias fields with '<alias>: <fieldname>''.
+## Here, we alias the field 'text' to 'content' in the response.
 #     content: text 
 #     sender: from { name email: address uid }
 

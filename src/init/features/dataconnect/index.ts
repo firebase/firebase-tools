@@ -7,8 +7,9 @@ import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql";
 import { checkForFreeTrialInstance } from "../../../dataconnect/freeTrial";
 import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
 import { ensureApis } from "../../../dataconnect/ensureApis";
-import { listLocations } from "../../../dataconnect/client";
+import { listLocations, listAllServices } from "../../../dataconnect/client";
 import { DEFAULT_POSTGRES_CONNECTION } from "../emulators";
+import { parseServiceName } from "../../../dataconnect/names";
 
 const TEMPLATE_ROOT = resolve(__dirname, "../../../../templates/init/dataconnect/");
 
@@ -19,24 +20,41 @@ const QUERIES_TEMPLATE = readFileSync(join(TEMPLATE_ROOT, "queries.gql"), "utf8"
 const MUTATIONS_TEMPLATE = readFileSync(join(TEMPLATE_ROOT, "mutations.gql"), "utf8");
 
 export async function doSetup(setup: Setup, config: Config): Promise<void> {
-  if (setup.projectId) {
-    await ensureApis(setup.projectId);
-  }
-  const serviceId = await promptOnce({
-    message: "What ID would you like to use for this service?",
-    type: "input",
-    default: "dataconnect",
-  });
-  // TODO: Guided prompts to set up connector auth mode and generate
-  const connectorId = await promptOnce({
-    message: "What ID would you like to use for your connector?",
-    type: "input",
-    default: "my-connector",
-  });
-
+  let serviceId = "";
   let cloudSqlInstanceId = "";
   let newInstance = false;
   let locationId = "";
+
+  if (setup.projectId) {
+    await ensureApis(setup.projectId);
+    const existingServices = await listAllServices(setup.projectId);
+    if (existingServices.length) {
+      const choices: {name: string, value: any}[] = existingServices.map(s => {
+        const serviceName = parseServiceName(s.name);
+        return {
+          name: serviceName.serviceId,
+          value: serviceName,
+        }
+      });
+      choices.push({name: "Create a new service", value: undefined})
+      await promptOnce({
+      message: "Which service would you like to ?",
+      type: "list",
+      default: "dataconnect",
+    });
+    }
+  }
+  if (serviceId === "") {
+    serviceId = await promptOnce({
+      message: "What ID would you like to use for this service?",
+      type: "input",
+      default: "dataconnect",
+    });
+  }
+  // TODO: Guided prompts to set up connector auth mode and generate
+  const connectorId = "my-connector";
+
+
   if (setup.projectId) {
     const instances = await cloudsql.listInstances(setup.projectId);
     const choices = instances.map((i) => {
