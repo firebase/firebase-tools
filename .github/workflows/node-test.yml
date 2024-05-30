@@ -59,6 +59,7 @@ jobs:
           cache-dependency-path: npm-shrinkwrap.json
 
       - run: npm i -g npm@9.5
+      - run: npm ci
 
       - run: npm install
         working-directory: firebase-vscode
