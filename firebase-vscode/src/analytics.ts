@@ -1,17 +1,14 @@
-import {
-  env,
-  TelemetryLogger,
-  TelemetrySender,
-} from "vscode";
+import { env, TelemetryLogger, TelemetrySender } from "vscode";
 import { pluginLogger } from "./logger-wrapper";
 import { AnalyticsParams, trackVSCode } from "./track";
 
-
 export class AnalyticsLogger {
-    readonly logger: TelemetryLogger
-    constructor() {
-        this.logger = env.createTelemetryLogger(new GA4TelemetrySender(pluginLogger));
-    }
+  readonly logger: TelemetryLogger;
+  constructor() {
+    this.logger = env.createTelemetryLogger(
+      new GA4TelemetrySender(pluginLogger),
+    );
+  }
 }
 
 class GA4TelemetrySender implements TelemetrySender {
@@ -22,7 +19,8 @@ class GA4TelemetrySender implements TelemetrySender {
     data?: Record<string, any> | undefined,
   ): void {
     if (!env.isTelemetryEnabled) {
-      pluginLogger.warn("Telemetry is not enabled.")
+      pluginLogger.warn("Telemetry is not enabled.");
+      return;
     }
     if (!data) {
       return;
@@ -32,5 +30,6 @@ class GA4TelemetrySender implements TelemetrySender {
 
   sendErrorData(error: Error, data?: Record<string, any> | undefined): void {
     // n/a
+    // TODO: Sanatize error messages for user data
   }
 }
