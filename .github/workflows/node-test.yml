@@ -56,11 +56,10 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
-          cache-dependency-path: npm-shrinkwrap.json
+          cache-dependency-path: firebase-vscode/package-lock.json
 
       - run: npm i -g npm@9.5
       - run: npm ci
-
       - run: npm install
         working-directory: firebase-vscode
       - run: npm run test:unit
