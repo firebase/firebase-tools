@@ -29,7 +29,7 @@ import { Result } from "../result";
 import { runEmulatorIssuesStream } from "./emulator-stream";
 import { LanguageClient } from "vscode-languageclient/node";
 import { registerTerminalTasks } from "./terminal";
-
+import { AnalyticsLogger } from "../analytics";
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
     private configs: Signal<
@@ -136,6 +136,7 @@ export function registerFdc(
   broker: ExtensionBrokerImpl,
   authService: AuthService,
   emulatorController: EmulatorsController,
+  analyticsLogger: AnalyticsLogger,
 ): Disposable {
   const codeActions = vscode.languages.registerCodeActionsProvider(
     [
@@ -156,9 +157,8 @@ export function registerFdc(
 
   // activate language client/serer
   let client: LanguageClient;
-  const lsOutputChannel: vscode.OutputChannel = vscode.window.createOutputChannel(
-    "Firebase GraphQL Language Server",
-  );
+  const lsOutputChannel: vscode.OutputChannel =
+    vscode.window.createOutputChannel("Firebase GraphQL Language Server");
 
   // setup new language client on config change
   context.subscriptions.push({
