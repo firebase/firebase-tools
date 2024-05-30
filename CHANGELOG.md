@@ -1,1 +1,2 @@
 - Fixes some cases where Firebase Data Connect deployment fails to pretty-print errors (#7230).
+- Updates default resource names and template during `firebase init dataconnect` (#6981).
