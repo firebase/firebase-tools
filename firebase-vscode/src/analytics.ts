@@ -40,7 +40,9 @@ class GA4TelemetrySender implements TelemetrySender {
       this.pluginLogger.warn("Telemetry is not enabled.");
       return;
     }
-    eventName = eventName.replace("firebase.firebase-vscode/", ""); // temeletry logger automatically adds the extension id
+
+    // telemetry logger adds prefixes to eventName and params that are disallowed in GA4
+    eventName = eventName.replace("firebase.firebase-vscode/", "");
     for (const key in data) {
       if (key.includes("common.")) {
         data[key.replace("common.", "")] = data[key];
