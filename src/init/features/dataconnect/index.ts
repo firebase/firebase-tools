@@ -27,13 +27,6 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     type: "input",
     default: "my-service",
   });
-  // TODO: Just create the connector without asking to pick the name.
-  // The connector directory name should match the connector name (e.g. /dataconnect/default-connector/)
-  const connectorId = await promptOnce({
-    message: "What ID would you like to use for your connector?",
-    type: "input",
-    default: "default-connector",
-  });
 
   let cloudSqlInstanceId = "";
   let newInstance = false;
@@ -116,8 +109,9 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
       type: "input",
       default: `fdc-db`,
     });
-    // Local DB name: fdc-sql-fdc-db
   }
+
+  const connectorId = "default-connector";
 
   const defaultConnectionString =
     setup.rcfile.dataconnectEmulatorConfig?.postgres?.localConnectionString ??
@@ -144,8 +138,8 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     connectorId,
   });
   await config.askWriteProjectFile(join(dir, "dataconnect.yaml"), subbedDataconnectYaml);
-  await config.askWriteProjectFile(join(dir, connectorId, "connector.yaml"), subbedConnectorYaml);
   await config.askWriteProjectFile(join(dir, "schema", "schema.gql"), SCHEMA_TEMPLATE);
+  await config.askWriteProjectFile(join(dir, connectorId, "connector.yaml"), subbedConnectorYaml);
   await config.askWriteProjectFile(join(dir, connectorId, "queries.gql"), QUERIES_TEMPLATE);
   await config.askWriteProjectFile(join(dir, connectorId, "mutations.gql"), MUTATIONS_TEMPLATE);
   if (
