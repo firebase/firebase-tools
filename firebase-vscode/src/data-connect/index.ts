@@ -1,4 +1,4 @@
-import vscode, { Disposable, ExtensionContext } from "vscode";
+import vscode, { Disposable, ExtensionContext, TelemetryLogger } from "vscode";
 import { Signal, effect } from "@preact/signals-core";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { registerExecution } from "./execution";
@@ -136,7 +136,7 @@ export function registerFdc(
   broker: ExtensionBrokerImpl,
   authService: AuthService,
   emulatorController: EmulatorsController,
-  analyticsLogger: AnalyticsLogger,
+  telemetryLogger: TelemetryLogger,
 ): Disposable {
   const codeActions = vscode.languages.registerCodeActionsProvider(
     [
@@ -218,13 +218,19 @@ export function registerFdc(
       }),
     },
     registerDataConnectConfigs(broker),
-    registerExecution(context, broker, fdcService, emulatorController),
+    registerExecution(
+      context,
+      broker,
+      fdcService,
+      emulatorController,
+      telemetryLogger,
+    ),
     registerExplorer(context, broker, fdcService),
     registerFirebaseDataConnectView(context, broker, emulatorController),
-    registerAdHoc(fdcService),
-    registerConnectors(context, broker, fdcService),
-    registerFdcDeploy(broker),
-    registerTerminalTasks(broker),
+    registerAdHoc(fdcService, telemetryLogger),
+    registerConnectors(context, broker, fdcService, telemetryLogger),
+    registerFdcDeploy(broker, telemetryLogger),
+    registerTerminalTasks(broker, telemetryLogger),
     operationCodeLensProvider,
     vscode.languages.registerCodeLensProvider(
       // **Hack**: For testing purposes, enable code lenses on all graphql files

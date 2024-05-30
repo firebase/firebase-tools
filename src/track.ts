@@ -169,10 +169,13 @@ export async function trackEmulator(eventName: string, params?: AnalyticsParams)
  * Note: On performance or latency critical paths, the returned Promise may be
  * safely ignored with the statement `void trackVSCode(...)`.
  */
-export async function trackVSCode(eventName: string, params?: AnalyticsParams): Promise<void> {
+export async function trackVSCode(eventName: string, params?: AnalyticsParams, debug = false): Promise<void> {
   const session = vscodeSession();
   if (!session) {
     return;
+  }
+  if (debug) {
+    session.debugMode = true;
   }
 
   const oldTotalEngagementSeconds = session.totalEngagementSeconds;
@@ -315,7 +318,7 @@ export function cliSession(): AnalyticsSession | undefined {
 
 function session(propertyName: GA4Property): AnalyticsSession | undefined {
   const validateOnly = !!process.env.FIREBASE_CLI_MP_VALIDATE;
-  if (!usageEnabled()) {
+  if (!usageEnabled() && propertyName !== "vscode") {
     if (validateOnly) {
       logger.warn("Google Analytics is DISABLED. To enable, (re)login and opt in to collection.");
     }
