@@ -21,8 +21,8 @@ export class EmulatorsController implements Disposable {
   constructor(private broker: ExtensionBrokerImpl) {
     this.subscriptions.push(
       broker.on("getEmulatorUiSelections", () =>
-        this.notifyUISelectionChangedListeners()
-      )
+        this.notifyUISelectionChangedListeners(),
+      ),
     );
     // Notify the UI of the emulator selections changes
     this.subscriptions.push(
@@ -33,11 +33,11 @@ export class EmulatorsController implements Disposable {
         // TODO(christhompson): Save UI selections in the current workspace.
         // Requires context object.
         this.notifyUISelectionChangedListeners();
-      })
+      }),
     );
 
     this.subscriptions.push(
-      broker.on("getEmulatorInfos", () => this.notifyEmulatorStateChanged())
+      broker.on("getEmulatorInfos", () => this.notifyEmulatorStateChanged()),
     );
     this.subscriptions.push(
       effect(() => {
@@ -45,7 +45,7 @@ export class EmulatorsController implements Disposable {
         this.emulators.value;
 
         this.notifyEmulatorStateChanged();
-      })
+      }),
     );
 
     this.subscriptions.push(
@@ -54,7 +54,7 @@ export class EmulatorsController implements Disposable {
           ...this.uiSelections.peek(),
           ...uiSelections,
         };
-      })
+      }),
     );
 
     this.subscriptions.push(
@@ -75,14 +75,14 @@ export class EmulatorsController implements Disposable {
         broker.send("notifyEmulatorImportFolder", {
           folder: fileUri[0].fsPath,
         });
-      })
+      }),
     );
 
     this.subscriptions.push(
-      broker.on("launchEmulators", this.startEmulators.bind(this))
+      broker.on("launchEmulators", this.startEmulators.bind(this)),
     );
     this.subscriptions.push(
-      broker.on("stopEmulators", this.stopEmulators.bind(this))
+      broker.on("stopEmulators", this.stopEmulators.bind(this)),
     );
 
     this.subscriptions.push(
@@ -92,21 +92,21 @@ export class EmulatorsController implements Disposable {
           ...this.uiSelections.peek(),
           projectId: this.getProjectIdForMode(
             projectId,
-            this.uiSelections.peek().mode
+            this.uiSelections.peek().mode,
           ),
         };
-      })
+      }),
     );
   }
 
   private readonly startCommand = vscode.commands.registerCommand(
     "firebase.emulators.start",
-    this.startEmulators.bind(this)
+    this.startEmulators.bind(this),
   );
 
   private readonly stopCommand = vscode.commands.registerCommand(
     "firebase.emulators.stop",
-    this.stopEmulators.bind(this)
+    this.stopEmulators.bind(this),
   );
 
   // TODO(christhompson): Load UI selections from the current workspace.
@@ -142,7 +142,7 @@ export class EmulatorsController implements Disposable {
    */
   private getProjectIdForMode(
     projectId: string | undefined,
-    mode: EmulatorUiSelections["mode"]
+    mode: EmulatorUiSelections["mode"],
   ): string {
     if (!projectId) {
       return "demo-something";
@@ -156,7 +156,7 @@ export class EmulatorsController implements Disposable {
   notifyUISelectionChangedListeners() {
     this.broker.send(
       "notifyEmulatorUiSelectionsChanged",
-      this.uiSelections.value
+      this.uiSelections.value,
     );
   }
 
@@ -190,7 +190,7 @@ export class EmulatorsController implements Disposable {
           };
 
           vscode.window.showInformationMessage(
-            "Firebase Extension: Emulators started successfully"
+            "Firebase Extension: Emulators started successfully",
           );
 
           // data connect specifics; including temp logging implementation
@@ -200,7 +200,7 @@ export class EmulatorsController implements Disposable {
             })
           ) {
             const dataConnectEmulatorDetails = getEmulatorDetails(
-              Emulators.DATACONNECT
+              Emulators.DATACONNECT,
             );
 
             dataConnectEmulatorDetails.instance.stdout?.on("data", (data) => {
@@ -210,7 +210,7 @@ export class EmulatorsController implements Disposable {
               if (data.toString().includes("Finished reloading")) {
                 vscode.commands.executeCommand("fdc-graphql.restart");
                 vscode.commands.executeCommand(
-                  "firebase.dataConnect.executeIntrospection"
+                  "firebase.dataConnect.executeIntrospection",
                 );
               } else {
                 emulatorOutputChannel.appendLine("ERROR: " + data.toString());
@@ -224,11 +224,11 @@ export class EmulatorsController implements Disposable {
           };
 
           vscode.window.showErrorMessage(
-            "Firebase Extension: Emulators start failed - " + e
+            "Firebase Extension: Emulators start failed - " + e,
           );
         }
         progress.report({ increment: 100 });
-      }
+      },
     );
   }
 
@@ -253,11 +253,11 @@ export class EmulatorsController implements Disposable {
         };
 
         vscode.window.showInformationMessage(
-          "Firebase Extension: Emulators stopped successfully"
+          "Firebase Extension: Emulators stopped successfully",
         );
 
         progress.report({ increment: 100 });
-      }
+      },
     );
   }
 
