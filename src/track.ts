@@ -174,9 +174,8 @@ export async function trackVSCode(eventName: string, params?: AnalyticsParams): 
   if (!session) {
     return;
   }
-  if (debug) {
-    session.debugMode = process.env.VSCODE_DEBUG_MODE === "true";
-  }
+  
+  session.debugMode = process.env.VSCODE_DEBUG_MODE === "true";
 
   const oldTotalEngagementSeconds = session.totalEngagementSeconds;
   session.totalEngagementSeconds = process.uptime();
