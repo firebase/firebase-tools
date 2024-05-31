@@ -56,7 +56,6 @@ export class DataConnectEmulator implements EmulatorInstance {
       this.logger.log("DEBUG", `'fdc build' failed with error: ${err.message}`);
     }
     return start(Emulators.DATACONNECT, {
-      ...this.args,
       listen: listenSpecsToString(this.args.listen),
       config_dir: this.args.configDir,
       local_connection_string: this.getLocalConectionString(),
@@ -115,11 +114,16 @@ export class DataConnectEmulator implements EmulatorInstance {
         original: res.error,
       });
     }
-    if (res.stderr) {
+    if (res.status !== 0) {
       throw new FirebaseError(
         `Unable to build your Data Connect schema and connectors: ${res.stderr}`,
       );
     }
+
+    if (res.stderr) {
+      EmulatorLogger.forEmulator(Emulators.DATACONNECT).log("DEBUG", res.stderr);
+    }
+
     try {
       return JSON.parse(res.stdout) as BuildResult;
     } catch (err) {
