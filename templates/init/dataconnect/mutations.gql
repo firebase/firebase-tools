@@ -10,7 +10,7 @@
 # }
 # mutation CreateEmail($content: String, $subject: String, $fromUid: String) @auth(level: PUBLIC) {
 #   email_insert(data: {
-#     text: $content,
+#     text: $content, # The request variable name doesn't have to match the field name.
 #     subject: $subject,
 #     fromUid: $fromUid,
 ## Server values let your service populate data for you

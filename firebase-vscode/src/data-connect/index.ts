@@ -1,4 +1,4 @@
-import vscode, { Disposable, ExtensionContext } from "vscode";
+import vscode, { Disposable, ExtensionContext, TelemetryLogger } from "vscode";
 import { Signal, effect } from "@preact/signals-core";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { registerExecution } from "./execution";
@@ -30,6 +30,7 @@ import { LanguageClient } from "vscode-languageclient/node";
 import { registerTerminalTasks } from "./terminal";
 import { registerWebview } from "../webview";
 
+import { AnalyticsLogger } from "../analytics";
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
     private configs: Signal<
@@ -136,6 +137,7 @@ export function registerFdc(
   broker: ExtensionBrokerImpl,
   authService: AuthService,
   emulatorController: EmulatorsController,
+  telemetryLogger: TelemetryLogger,
 ): Disposable {
   const codeActions = vscode.languages.registerCodeActionsProvider(
     [
@@ -219,13 +221,19 @@ export function registerFdc(
       }),
     },
     registerDataConnectConfigs(broker),
-    registerExecution(context, broker, fdcService, emulatorController),
+    registerExecution(
+      context,
+      broker,
+      fdcService,
+      emulatorController,
+      telemetryLogger,
+    ),
     registerExplorer(context, broker, fdcService),
     registerWebview({ name: "data-connect", context, broker }),
-    registerAdHoc(fdcService),
-    registerConnectors(context, broker, fdcService),
-    registerFdcDeploy(broker),
-    registerTerminalTasks(broker),
+    registerAdHoc(fdcService, telemetryLogger),
+    registerConnectors(context, broker, fdcService, telemetryLogger),
+    registerFdcDeploy(broker, telemetryLogger),
+    registerTerminalTasks(broker, telemetryLogger),
     operationCodeLensProvider,
     vscode.languages.registerCodeLensProvider(
       // **Hack**: For testing purposes, enable code lenses on all graphql files
