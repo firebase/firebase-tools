@@ -169,13 +169,13 @@ export async function trackEmulator(eventName: string, params?: AnalyticsParams)
  * Note: On performance or latency critical paths, the returned Promise may be
  * safely ignored with the statement `void trackVSCode(...)`.
  */
-export async function trackVSCode(eventName: string, params?: AnalyticsParams, debug = false): Promise<void> {
+export async function trackVSCode(eventName: string, params?: AnalyticsParams): Promise<void> {
   const session = vscodeSession();
   if (!session) {
     return;
   }
   if (debug) {
-    session.debugMode = true;
+    session.debugMode = process.env.VSCODE_DEBUG_MODE === "true";
   }
 
   const oldTotalEngagementSeconds = session.totalEngagementSeconds;

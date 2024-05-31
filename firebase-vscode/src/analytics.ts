@@ -50,7 +50,7 @@ class GA4TelemetrySender implements TelemetrySender {
       }
     }
     data = { ...data };
-    trackVSCode(eventName, data as AnalyticsParams, process.env.VSCODE_DEBUG_MODE === "true");
+    trackVSCode(eventName, data as AnalyticsParams);
   }
 
   sendErrorData(error: Error, data?: Record<string, any> | undefined): void {
