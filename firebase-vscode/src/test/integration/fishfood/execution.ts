@@ -1,20 +1,17 @@
 import { browser } from "@wdio/globals";
-import { FirebaseSidebar } from "../../utils/page_objects/sidebar";
 import { ExecutionPanel } from "../../utils/page_objects/execution";
-import { addTearDown, firebaseTest } from "../../utils/test_hooks";
+import { firebaseTest } from "../../utils/test_hooks";
 import { EditorView } from "../../utils/page_objects/editor";
 import { queriesPath } from "../../utils/projects";
 import { FirebaseCommands } from "../../utils/page_objects/commands";
 
 firebaseTest("Can execute queries", async function () {
   const workbench = await browser.getWorkbench();
-  const sidebar = new FirebaseSidebar(workbench);
   const execution = new ExecutionPanel(workbench);
   const editor = new EditorView(workbench);
   const commands = new FirebaseCommands();
 
-  await sidebar.startEmulators();
-  addTearDown(() => commands.stopEmulators());
+  await commands.waitEmulators();
 
   // Update arguments
   await execution.open();
