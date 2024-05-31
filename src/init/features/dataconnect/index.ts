@@ -217,7 +217,7 @@ async function promptForCloudSQLInstance(setup: Setup, info: RequiredInfo): Prom
         return { name: l, value: l };
       });
     }
-    
+
     info.locationId = await promptOnce({
       message: "What location would you use for this instance?",
       type: "list",
