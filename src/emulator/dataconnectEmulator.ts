@@ -56,6 +56,7 @@ export class DataConnectEmulator implements EmulatorInstance {
       this.logger.log("DEBUG", `'fdc build' failed with error: ${err.message}`);
     }
     return start(Emulators.DATACONNECT, {
+      auto_download: this.args.auto_download,
       listen: listenSpecsToString(this.args.listen),
       config_dir: this.args.configDir,
       local_connection_string: this.getLocalConectionString(),
