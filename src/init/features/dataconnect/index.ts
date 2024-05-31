@@ -49,6 +49,7 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     info = await promptForDatabase(setup, config, info);
   }
 
+  // TODO: Remove this in favor of a better way of setting local connection string.
   const defaultConnectionString =
     setup.rcfile.dataconnectEmulatorConfig?.postgres?.localConnectionString ??
     DEFAULT_POSTGRES_CONNECTION;
@@ -120,7 +121,7 @@ function subValues(
 async function promptForService(setup: Setup, info: RequiredInfo): Promise<RequiredInfo> {
   if (setup.projectId) {
     await ensureApis(setup.projectId);
-    // TODO: Support initing with services that have existing sources/files
+    // TODO (b/344021748): Support initing with services that have existing sources/files
     const existingServices = await listAllServices(setup.projectId);
     const existingServicesAndSchemas = await Promise.all(
       existingServices.map(async (s) => {
@@ -172,9 +173,9 @@ async function promptForService(setup: Setup, info: RequiredInfo): Promise<Requi
 }
 
 async function promptForCloudSQLInstance(setup: Setup, info: RequiredInfo): Promise<RequiredInfo> {
-  if (setup.projectId && info.cloudSqlInstanceId) {
+  if (setup.projectId) {
     const instances = await cloudsql.listInstances(setup.projectId);
-    const choices = instances.map((i) => {
+    let choices = instances.map((i) => {
       return { name: i.name, value: i.name, location: i.region };
     });
 
@@ -182,14 +183,16 @@ async function promptForCloudSQLInstance(setup: Setup, info: RequiredInfo): Prom
     if (!freeTrialInstanceId) {
       choices.push({ name: "Create a new instance", value: "", location: "" });
     }
+    // If we've already chosen a region (ie service already exists), only list instances from that region.
+    choices = choices.filter((c) => info.locationId === "" || info.locationId === c.location);
     if (instances.length) {
       info.cloudSqlInstanceId = await promptOnce({
         message: `Which CloudSQL instance would you like to use?`,
         type: "list",
         choices,
       });
+      info.locationId = choices.find((c) => c.value === info.cloudSqlInstanceId)!.location;
     }
-    info.locationId = choices.find((c) => c.value === info.cloudSqlInstanceId)!.location;
   }
   if (info.cloudSqlInstanceId === "") {
     info.isNewInstance = true;
@@ -200,8 +203,25 @@ async function promptForCloudSQLInstance(setup: Setup, info: RequiredInfo): Prom
     });
   }
   if (info.locationId === "") {
+    const choices = await locationChoices(setup);
+    info.locationId = await promptOnce({
+      message: "What location would like to use?",
+      type: "list",
+      choices,
+    });
+  }
+  return info;
+}
+
+async function locationChoices(setup: Setup) {
+  if (setup.projectId) {
+    const locations = await listLocations(setup.projectId);
+    return locations.map((l) => {
+      return { name: l, value: l };
+    });
+  } else {
     // Hardcoded locations for when there is no project set up.
-    let locationOptions = [
+    return [
       { name: "us-central1", value: "us-central1" },
       { name: "europe-north1", value: "europe-north1" },
       { name: "europe-central2", value: "europe-central2" },
@@ -211,20 +231,7 @@ async function promptForCloudSQLInstance(setup: Setup, info: RequiredInfo): Prom
       { name: "us-west1", value: "us-west1" },
       { name: "asia-southeast1", value: "asia-southeast1" },
     ];
-    if (setup.projectId) {
-      const locations = await listLocations(setup.projectId);
-      locationOptions = locations.map((l) => {
-        return { name: l, value: l };
-      });
-    }
-
-    info.locationId = await promptOnce({
-      message: "What location would you use for this instance?",
-      type: "list",
-      choices: locationOptions,
-    });
   }
-  return info;
 }
 
 async function promptForDatabase(
