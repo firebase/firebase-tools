@@ -93,6 +93,10 @@ export interface WebviewToExtensionParamsMap {
     href: string;
   };
 
+  connectToPostgres: void;
+  disconnectPostgres: void;
+  getInitialIsConnectedToPostgres: void;
+
   selectEmulatorImportFolder: {};
 
   definedDataConnectArgs: string;
@@ -134,6 +138,8 @@ export interface ExtensionToWebviewParamsMap {
     infos: RunningEmulatorInfo | undefined;
   };
   notifyEmulatorImportFolder: { folder: string };
+
+  notifyIsConnectedToPostgres: boolean;
 
   /** Triggered when new environment variables values are found. */
   notifyEnv: { env: { isMonospace: boolean } };

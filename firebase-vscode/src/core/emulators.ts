@@ -94,8 +94,7 @@ export class EmulatorsController implements Disposable {
     );
   }
 
-  private readonly emulatorStatusItem =
-    vscode.window.createStatusBarItem("emulators");
+  readonly emulatorStatusItem = vscode.window.createStatusBarItem("emulators");
 
   private pendingEmulatorStart: Promise<void> | undefined;
 
@@ -164,9 +163,6 @@ export class EmulatorsController implements Disposable {
   }
 
   async startEmulators() {
-    this.emulatorStatusItem.text = "$(loading~spin) Emulators: Starting...";
-    this.emulatorStatusItem.show();
-    this.emulatorStatusItem.backgroundColor = undefined;
     this.emulators.value = {
       status: "starting",
       infos: this.emulators.value.infos,
@@ -182,7 +178,7 @@ export class EmulatorsController implements Disposable {
             displayInfo: listRunningEmulators(),
           },
         };
-        this.emulatorStatusItem.text = "Emulators: running";
+        this.emulatorStatusItem.text = "$(data-connect) Emulators: running";
 
         // data connect specifics; including temp logging implementation
         if (
@@ -208,11 +204,17 @@ export class EmulatorsController implements Disposable {
             }
           });
         }
+
+        // Updating the status bar label as "running", but don't "show" it.
+        // We only show the status bar item when explicitly by interacting with the sidebar.
+        this.emulatorStatusItem.text = "$(data-connect) Emulators: running";
+        this.emulatorStatusItem.backgroundColor = undefined;
       } catch (e) {
         this.emulatorStatusItem.text = "Emulators: errored";
         this.emulatorStatusItem.backgroundColor = new ThemeColor(
           "statusBarItem.errorBackground",
         );
+        this.emulatorStatusItem.show();
         this.emulators.value = {
           status: "stopped",
           infos: undefined,
@@ -224,7 +226,7 @@ export class EmulatorsController implements Disposable {
       }
     }));
 
-    return this.pendingEmulatorStart;
+    return currentOp;
   }
 
   async stopEmulators() {

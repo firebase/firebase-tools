@@ -30,7 +30,8 @@ import { LanguageClient } from "vscode-languageclient/node";
 import { registerTerminalTasks } from "./terminal";
 import { registerWebview } from "../webview";
 
-import { AnalyticsLogger } from "../analytics";
+import { DataConnectEmulatorController } from "./emulator";
+
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
     private configs: Signal<
@@ -139,6 +140,11 @@ export function registerFdc(
   emulatorController: EmulatorsController,
   telemetryLogger: TelemetryLogger,
 ): Disposable {
+  const fdcEmulatorsController = new DataConnectEmulatorController(
+    emulatorController,
+    broker,
+  );
+
   const codeActions = vscode.languages.registerCodeActionsProvider(
     [
       { scheme: "file", language: "graphql" },
@@ -152,7 +158,7 @@ export function registerFdc(
 
   const fdcService = new FdcService(authService, emulatorController);
   const operationCodeLensProvider = new OperationCodeLensProvider(
-    emulatorController,
+    fdcEmulatorsController,
   );
   const schemaCodeLensProvider = new SchemaCodeLensProvider(emulatorController);
 
@@ -209,6 +215,7 @@ export function registerFdc(
   });
 
   return Disposable.from(
+    fdcEmulatorsController,
     codeActions,
     selectedProjectStatus,
     { dispose: sub1 },

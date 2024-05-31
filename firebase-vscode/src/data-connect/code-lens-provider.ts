@@ -6,6 +6,7 @@ import { Disposable } from "vscode";
 import { Signal } from "@preact/signals-core";
 import { dataConnectConfigs, firebaseRC } from "./config";
 import { EmulatorsController } from "../core/emulators";
+import { DataConnectEmulatorController } from "./emulator";
 
 export enum InstanceType {
   LOCAL = "local",
@@ -57,7 +58,7 @@ abstract class ComputedCodeLensProvider implements vscode.CodeLensProvider {
  * CodeLensProvider provides codelens for actions in graphql files.
  */
 export class OperationCodeLensProvider extends ComputedCodeLensProvider {
-  constructor(readonly emulatorsController: EmulatorsController) {
+  constructor(readonly emulatorsController: DataConnectEmulatorController) {
     super();
   }
 
@@ -94,14 +95,16 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
         );
 
         if (service) {
-          codeLenses.push(
-            new vscode.CodeLens(range, {
-              title: `$(play) Run (local)`,
-              command: "firebase.dataConnect.executeOperation",
-              tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
-              arguments: [x, operationLocation, InstanceType.LOCAL],
-            }),
-          );
+          if (this.watch(this.emulatorsController.isPostgresEnabled)) {
+            codeLenses.push(
+              new vscode.CodeLens(range, {
+                title: `$(play) Run (local)`,
+                command: "firebase.dataConnect.executeOperation",
+                tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
+                arguments: [x, operationLocation, InstanceType.LOCAL],
+              }),
+            );
+          }
 
           codeLenses.push(
             new vscode.CodeLens(range, {
