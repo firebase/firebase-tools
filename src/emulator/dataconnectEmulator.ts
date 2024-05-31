@@ -116,7 +116,7 @@ export class DataConnectEmulator implements EmulatorInstance {
     }
     if (res.status !== 0) {
       throw new FirebaseError(
-        `Unable to build your Data Connect schema and connectors: ${res.stderr}`,
+        `Unable to build your Data Connect schema and connectors (exit code ${res.status}): ${res.stderr}`,
       );
     }
 
