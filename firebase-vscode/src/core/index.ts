@@ -1,4 +1,4 @@
-import vscode, { Disposable, ExtensionContext } from "vscode";
+import vscode, { Disposable, ExtensionContext, TelemetryLogger } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { registerConfig } from "./config";
 import { EmulatorsController } from "./emulators";
@@ -11,13 +11,11 @@ import { registerProject } from "./project";
 import { registerQuickstart } from "./quickstart";
 import { registerOptions } from "../options";
 
-export async function registerCore({
-  broker,
-  context,
-}: {
-  broker: ExtensionBrokerImpl;
-  context: ExtensionContext;
-}): Promise<[EmulatorsController, vscode.Disposable]> {
+export async function registerCore(
+  broker: ExtensionBrokerImpl,
+  context: ExtensionContext,
+  telemetryLogger: TelemetryLogger,
+): Promise<[EmulatorsController, vscode.Disposable]> {
   const settings = getSettings();
 
   if (settings.npmPath) {
@@ -60,7 +58,7 @@ export async function registerCore({
       registerOptions(context),
       registerConfig(broker),
       registerEnv(broker),
-      registerUser(broker),
+      registerUser(broker, telemetryLogger),
       registerProject(broker),
       registerQuickstart(broker),
       { dispose: sub1 },

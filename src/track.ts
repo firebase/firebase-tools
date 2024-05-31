@@ -175,6 +175,8 @@ export async function trackVSCode(eventName: string, params?: AnalyticsParams): 
     return;
   }
 
+  session.debugMode = process.env.VSCODE_DEBUG_MODE === "true";
+
   const oldTotalEngagementSeconds = session.totalEngagementSeconds;
   session.totalEngagementSeconds = process.uptime();
   const duration = session.totalEngagementSeconds - oldTotalEngagementSeconds;
@@ -315,7 +317,7 @@ export function cliSession(): AnalyticsSession | undefined {
 
 function session(propertyName: GA4Property): AnalyticsSession | undefined {
   const validateOnly = !!process.env.FIREBASE_CLI_MP_VALIDATE;
-  if (!usageEnabled()) {
+  if (!usageEnabled() && propertyName !== "vscode") {
     if (validateOnly) {
       logger.warn("Google Analytics is DISABLED. To enable, (re)login and opt in to collection.");
     }
