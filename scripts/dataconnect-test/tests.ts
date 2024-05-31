@@ -63,7 +63,7 @@ describe("firebase deploy", () => {
     const out = JSON.parse(result.stdout);
     expect(out?.status).to.equal("success");
     expect(out?.result?.services?.length).to.gt(1);
-    const service = out.result.services.find((s: any) => s.serviceId == "integration-test");
+    const service = out.result.services.find((s: any) => s.serviceId === "integration-test");
     // Don't need to check update times.
     expected.schemaUpdateTime = service["schemaUpdateTime"];
     expected.connectors[0].connectorLastUpdated = service["connectors"][0]["connectorLastUpdated"];
