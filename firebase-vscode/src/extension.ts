@@ -14,6 +14,7 @@ import { registerHosting } from "./hosting";
 import { registerFdc } from "./data-connect";
 import { AuthService } from "./auth/service";
 import { AnalyticsLogger } from "./analytics";
+
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
   const settings = getSettings();
@@ -44,6 +45,12 @@ export async function activate(context: vscode.ExtensionContext) {
     }),
     registerHosting(broker),
     authService,
-    registerFdc(context, broker, authService, emulatorsController, analyticsLogger.logger)
+    registerFdc(
+      context,
+      broker,
+      authService,
+      emulatorsController,
+      analyticsLogger.logger,
+    ),
   );
 }
