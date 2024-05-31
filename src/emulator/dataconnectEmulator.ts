@@ -35,21 +35,25 @@ export class DataConnectEmulator implements EmulatorInstance {
 
   async start(): Promise<void> {
     this.logger.log("DEBUG", `Using Postgres connection string: ${this.getLocalConectionString()}`);
-    const info = await DataConnectEmulator.build({ configDir: this.args.configDir });
-    if (requiresVector(info.metadata)) {
-      if (Constants.isDemoProject(this.args.projectId)) {
-        this.logger.logLabeled(
-          "WARN",
-          "Data Connect",
-          "Detected a 'demo-' project, but vector embeddings require a real project. Operations that use vector_embed will fail.",
-        );
-      } else {
-        this.logger.logLabeled(
-          "WARN",
-          "Data Connect",
-          "Operations that use vector_embed will make calls to production Vertex AI",
-        );
+    try {
+      const info = await DataConnectEmulator.build({ configDir: this.args.configDir });
+      if (requiresVector(info.metadata)) {
+        if (Constants.isDemoProject(this.args.projectId)) {
+          this.logger.logLabeled(
+            "WARN",
+            "Data Connect",
+            "Detected a 'demo-' project, but vector embeddings require a real project. Operations that use vector_embed will fail.",
+          );
+        } else {
+          this.logger.logLabeled(
+            "WARN",
+            "Data Connect",
+            "Operations that use vector_embed will make calls to production Vertex AI",
+          );
+        }
       }
+    } catch (err: any) {
+      this.logger.log("DEBUG", `'fdc build' failed with error: ${err.message}`);
     }
     return start(Emulators.DATACONNECT, {
       ...this.args,
