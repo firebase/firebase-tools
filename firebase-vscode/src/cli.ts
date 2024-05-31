@@ -37,6 +37,7 @@ import {
 } from "../../src/emulator/types";
 import * as commandUtils from "../../src/emulator/commandUtils";
 import { currentUser } from "./core/user";
+import { firstWhere } from "./utils/signal";
 export { Emulators };
 /**
  * Try to get a service account by calling requireAuth() without
@@ -62,7 +63,7 @@ async function getServiceAccount() {
     }
     pluginLogger.debug(
       `No service account found (this may be normal), ` +
-        `requireAuth error output: ${errorMessage}`
+        `requireAuth error output: ${errorMessage}`,
     );
     return null;
   }
@@ -74,12 +75,12 @@ async function getServiceAccount() {
     pluginLogger.debug(
       `Using WORKSPACE_SERVICE_ACCOUNT_EMAIL env ` +
         `variable to get service account email: ` +
-        `${process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL}`
+        `${process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL}`,
     );
     return process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL;
   }
   pluginLogger.debug(
-    `Got service account email through credentials:` + ` ${email}`
+    `Got service account email through credentials:` + ` ${email}`,
   );
   return email;
 }
@@ -178,7 +179,7 @@ export async function getAccounts(): Promise<Array<Account | ServiceAccount>> {
 }
 
 export async function getChannels(
-  firebaseJSON: Config
+  firebaseJSON: Config,
 ): Promise<ChannelWithId[]> {
   if (!firebaseJSON) {
     return [];
@@ -196,7 +197,7 @@ export async function getChannels(
     pluginLogger.debug(
       "Calling listChannels with params",
       options.project,
-      site
+      site,
     );
     const channels = await listChannels(options.project, site);
     return channels.map((channel) => ({
@@ -256,7 +257,7 @@ export async function initHosting(options: {
   }
   const commandOptions = await getCommandOptions(
     undefined,
-    currentOptions.value
+    currentOptions.value,
   );
   const inquirerOptions = {
     ...commandOptions,
@@ -267,7 +268,7 @@ export async function initHosting(options: {
   };
   pluginLogger.debug(
     "Calling hosting init with inquirer options",
-    inspect(inquirerOptions)
+    inspect(inquirerOptions),
   );
   setInquirerOptions(inquirerOptions);
   try {
@@ -281,7 +282,7 @@ export async function initHosting(options: {
 
 export async function deployToHosting(
   firebaseJSON: Config,
-  deployTarget: string
+  deployTarget: string,
 ) {
   if (!(await requireAuthWrapper(true))) {
     pluginLogger.error("No user found, canceling deployment");
@@ -294,7 +295,7 @@ export async function deployToHosting(
     // TODO(hsubox76): handle multiple hosting configs
     pluginLogger.debug(
       "Calling getDefaultHostingSite() with options",
-      inspect(options)
+      inspect(options),
     );
     firebaseJSON.set("hosting", {
       ...firebaseJSON.get("hosting"),
@@ -302,12 +303,12 @@ export async function deployToHosting(
     });
     pluginLogger.debug(
       "Calling getCommandOptions() with options",
-      inspect(options)
+      inspect(options),
     );
     const commandOptions = await getCommandOptions(firebaseJSON, options);
     pluginLogger.debug(
       "Calling hosting deploy with command options",
-      inspect(commandOptions)
+      inspect(commandOptions),
     );
     if (deployTarget === "live") {
       await deploy(["hosting"], commandOptions);
@@ -330,16 +331,20 @@ export async function deployToHosting(
 }
 
 export async function emulatorsStart(
-  emulatorUiSelections: EmulatorUiSelections
+  emulatorUiSelections: EmulatorUiSelections,
 ) {
   const only =
     emulatorUiSelections.mode === "hosting"
       ? "hosting"
       : emulatorUiSelections.mode === "dataconnect"
-      ? `${Emulators.DATACONNECT},${Emulators.AUTH}`
-      : "";
+        ? `${Emulators.DATACONNECT},${Emulators.AUTH}`
+        : "";
   const commandOptions = await getCommandOptions(undefined, {
-    ...currentOptions.value,
+    ...(await firstWhere(
+      // TODO use firstWhereDefined once currentOptions are undefined if not initialized yet
+      currentOptions,
+      (op) => !!op && op.configPath.length !== 0,
+    )),
     project: emulatorUiSelections.projectId,
     exportOnExit: emulatorUiSelections.exportStateOnExit,
     import: emulatorUiSelections.importStateFolderPath,
@@ -347,7 +352,7 @@ export async function emulatorsStart(
   });
   // Adjusts some options, export on exit can be a boolean or a path.
   commandUtils.setExportOnExitOptions(
-    commandOptions as commandUtils.ExportOnExitOptions
+    commandOptions as commandUtils.ExportOnExitOptions,
   );
   return startAllEmulators(commandOptions, /*showUi=*/ true);
 }
@@ -366,7 +371,7 @@ export function getEmulatorUiUrl(): string | undefined {
 }
 
 export function getEmulatorDetails(
-  emulator: DownloadableEmulators
+  emulator: DownloadableEmulators,
 ): DownloadableEmulatorDetails {
   return EmulatorRegistry.getDetails(emulator);
 }

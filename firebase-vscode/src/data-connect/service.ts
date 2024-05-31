@@ -23,7 +23,7 @@ import {
   Impersonation,
 } from "../dataconnect/types";
 import { ClientResponse } from "../apiv2";
-import { InstanceType } from "./emulators-status";
+import { InstanceType } from "./code-lens-provider";
 
 /**
  * DataConnect Emulator service
