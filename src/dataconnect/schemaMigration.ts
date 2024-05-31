@@ -313,13 +313,8 @@ async function ensureServiceIsConnectedToCloudSql(
   databaseId: string,
   linkIfNotConnected: boolean,
 ) {
-  let currentSchema: Schema;
-  try {
-    currentSchema = await getSchema(serviceName);
-  } catch (err: any) {
-    if (err.status !== 404) {
-      throw err;
-    }
+  let currentSchema = await getSchema(serviceName);
+  if (!currentSchema) {
     if (!linkIfNotConnected) {
       logLabeledWarning("dataconnect", `Not yet linked to the Cloud SQL instance.`);
       return;
