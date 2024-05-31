@@ -7,4 +7,4 @@ schema:
       database: "__cloudSqlDatabase__"
       cloudSql:
         instanceId: "__cloudSqlInstanceId__"
-connectorDirs: ["./connector"]
+connectorDirs: ["./__connectorId__"]
