@@ -263,7 +263,7 @@ async function promptForDatabase(
     info.cloudSqlDatabase = await promptOnce({
       message: `What ID would you like to use for your new database in ${info.cloudSqlInstanceId}?`,
       type: "input",
-      default: `fdc-db`,
+      default: `fdcdb`,
     });
   }
   return info;
