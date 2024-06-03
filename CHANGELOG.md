@@ -2,4 +2,3 @@
 - Updated Pub/Sub emulator to v0.8.14 (#7197).
 - Updates default resource names and template during `firebase init dataconnect`.
 - Improved handling of 'fresh from Console' services during `init dataconnect`.
-- Update to Firebase Data Connect Emulator v1.1.20 which adds support for Postgres 16

@@ -59,6 +59,7 @@ export class DataConnectEmulator implements EmulatorInstance {
       auto_download: this.args.auto_download,
       listen: listenSpecsToString(this.args.listen),
       config_dir: this.args.configDir,
+      local_connection_string: this.getLocalConectionString(),
       project_id: this.args.projectId,
       service_location: this.args.locationId,
     });
