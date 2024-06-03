@@ -292,7 +292,6 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     optionalArgs: [
       "listen",
       "config_dir",
-      "local_connection_string",
       "project_id",
       "service_location",
       "disable_sdk_generation",
