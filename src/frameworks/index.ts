@@ -4,8 +4,8 @@ import { execSync } from "child_process";
 import { sync as spawnSync } from "cross-spawn";
 import { copyFile, readdir, readFile, rm, writeFile } from "fs/promises";
 import { mkdirp, pathExists, stat } from "fs-extra";
+import { glob } from "glob";
 import * as process from "node:process";
-import * as glob from "glob";
 
 import { needProjectId } from "../projectUtils";
 import { hostingConfig } from "../hosting/config";
@@ -525,12 +525,7 @@ ${
 }`.trimStart(),
       );
 
-      const envs = await new Promise<string[]>((resolve, reject) =>
-        glob(getProjectPath(".env.*"), (err, matches) => {
-          if (err) reject(err);
-          resolve(matches);
-        }),
-      );
+      const envs = await glob(getProjectPath(".env.*"));
 
       await Promise.all(envs.map((path) => copyFile(path, join(functionsDist, basename(path)))));
 
