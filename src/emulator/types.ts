@@ -190,6 +190,9 @@ export interface EmulatorDownloadDetails {
   // If specified, a path where the runnable binary can be found after downloading and
   // unzipping. Otherwise downloadPath will be used.
   binaryPath?: string;
+
+  // If true, never try to download this emualtor. Set when developing with local versions of an emulator.
+  localOnly?: boolean;
 }
 
 export interface DownloadableEmulatorDetails {

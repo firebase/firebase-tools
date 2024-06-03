@@ -3,9 +3,7 @@ import { createRoot } from "react-dom/client";
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react";
 import { Spacer } from "./components/ui/Spacer";
 import styles from "./globals/index.scss";
-import { TEXT } from "./globals/ux-text";
 import { broker, useBroker } from "./globals/html-broker";
-import { Heading, Label } from "./components/ui/Text";
 import { PanelSection } from "./components/ui/PanelSection";
 
 // Prevent webpack from removing the `style` import above
@@ -15,10 +13,10 @@ const root = createRoot(document.getElementById("root")!);
 root.render(<DataConnect />);
 
 function DataConnect() {
-  const emulatorsStatus =
-    useBroker("notifyEmulatorStateChanged", {
-      initialRequest: "getEmulatorInfos",
-    })?.status ?? "stopped";
+  const isConnectedToPostgres =
+    useBroker("notifyIsConnectedToPostgres", {
+      initialRequest: "getInitialIsConnectedToPostgres",
+    }) ?? false;
 
   return (
     <>
@@ -30,27 +28,22 @@ function DataConnect() {
           </a>
         </p>
         <Spacer size="xsmall" />
-        {emulatorsStatus === "running" || emulatorsStatus === "stopping" ? (
-          <VSCodeButton
-            onClick={() => broker.send("stopEmulators")}
-            disabled={emulatorsStatus === "stopping"}
-          >
+        {isConnectedToPostgres ? (
+          <VSCodeButton onClick={() => broker.send("disconnectPostgres")}>
             Stop emulator
           </VSCodeButton>
         ) : (
-          <VSCodeButton
-            onClick={() => broker.send("launchEmulators")}
-            disabled={emulatorsStatus === "starting"}
-          >
+          <VSCodeButton onClick={() => broker.send("connectToPostgres")}>
             Start emulator
           </VSCodeButton>
         )}
       </PanelSection>
-
       <PanelSection title="Production" isLast={true}>
         <p>
           Deploy FDC services and connectors to production. See also:{" "}
-          <a href="https://firebase.google.com/docs/data-connect/quickstart">Deploying</a>
+          <a href="https://firebase.google.com/docs/data-connect/quickstart">
+            Deploying
+          </a>
         </p>
         <Spacer size="xsmall" />
         <VSCodeButton onClick={() => broker.send("fdc.deploy")}>

@@ -6,7 +6,6 @@ import * as client from "../dataconnect/client";
 import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
 import { ensureApis } from "../dataconnect/ensureApis";
-import { Schema } from "../dataconnect/types";
 const Table = require("cli-table");
 
 export const command = new Command("dataconnect:services:list")
@@ -33,16 +32,11 @@ export const command = new Command("dataconnect:services:list")
     });
     const jsonOutput: { services: Record<string, any>[] } = { services: [] };
     for (const service of services) {
-      let schema: Schema = {
+      const schema = (await client.getSchema(service.name)) ?? {
         name: "",
         primaryDatasource: {},
         source: { files: [] },
       };
-      try {
-        schema = await client.getSchema(service.name);
-      } catch (err) {
-        logger.debug(`Error fetching schema: ${err}`);
-      }
       const connectors = await client.listConnectors(service.name);
       const serviceName = names.parseServiceName(service.name);
       const instanceName = schema?.primaryDatasource.postgresql?.cloudSql.instance ?? "";

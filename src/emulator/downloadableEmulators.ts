@@ -50,9 +50,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
         expectedChecksum: "a7f4398a00e5ca22abdcd78dc3877d00",
       },
   pubsub: {
-    version: "0.8.2",
-    expectedSize: 65611398,
-    expectedChecksum: "70bb840321423e6ae621a3ae2f314903",
+    version: "0.8.14",
+    expectedSize: 66786933,
+    expectedChecksum: "a9025b3e53fdeafd2969ccb3ba1e1d38",
   },
   dataconnect:
     process.platform === "darwin"
@@ -295,9 +295,13 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
       "local_connection_string",
       "project_id",
       "service_location",
+      "disable_sdk_generation",
+      "resolvers_emulator",
+      "vertex_location",
+      "rpc_retry_count",
     ],
     joinArgs: true,
-    shell: true,
+    shell: false,
   },
 };
 
@@ -323,7 +327,6 @@ export function _getCommand(
   args: { [s: string]: any },
 ): DownloadableEmulatorCommand {
   const baseCmd = Commands[emulator];
-
   const defaultPort = Constants.getDefaultPort(emulator);
   if (!args.port) {
     args.port = defaultPort;
@@ -503,7 +506,21 @@ async function _runBinary(
  * @param emulator
  */
 export function getDownloadDetails(emulator: DownloadableEmulators): EmulatorDownloadDetails {
-  return DownloadDetails[emulator];
+  const details = DownloadDetails[emulator];
+  const pathOverride = process.env[`${emulator.toUpperCase()}_EMULATOR_BINARY_PATH`];
+  if (pathOverride) {
+    const logger = EmulatorLogger.forEmulator(emulator);
+    logger.logLabeled(
+      "WARN",
+      emulator,
+      `Env variable override detected. Using ${emulator} emulator at ${pathOverride}`,
+    );
+    details.downloadPath = pathOverride;
+    details.binaryPath = pathOverride;
+    details.localOnly = true;
+    fs.chmodSync(pathOverride, 0o755);
+  }
+  return details;
 }
 
 /**
@@ -579,7 +596,7 @@ export async function start(
   },
   extraEnv: Partial<NodeJS.ProcessEnv> = {},
 ): Promise<void> {
-  const downloadDetails = DownloadDetails[targetName];
+  const downloadDetails = getDownloadDetails(targetName);
   const emulator = get(targetName);
   const hasEmulator = fs.existsSync(getExecPath(targetName));
   const logger = EmulatorLogger.forEmulator(targetName);
