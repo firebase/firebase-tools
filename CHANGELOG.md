@@ -4,3 +4,4 @@
 - Updates default resource names and template during `firebase init dataconnect`.
 - Improved handling of 'fresh from Console' services during `init dataconnect`.
 - Add support for node22 in function deployments (#7252).
+- Update to Firebase Data Connect Emulator v1.2.0, which adds support for Postgres 16 and creates the Postgres database specified in dataconnect.yaml or .firebaserc if it does not already exist.
