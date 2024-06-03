@@ -57,20 +57,20 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   dataconnect:
     process.platform === "darwin"
       ? {
-          version: "1.1.19",
-          expectedSize: 25836864,
-          expectedChecksum: "b31ba00789b82a30f0dee1c03b8f74ce",
+          version: "1.2.0",
+          expectedSize: 23954240,
+          expectedChecksum: "0f250761959519bb5a28fed76ceab2cb",
         }
       : process.platform === "win32"
         ? {
-            version: "1.1.19",
-            expectedSize: 23629824,
-            expectedChecksum: "bcbd7705b36cee72ff0587749d67bfc3",
+            version: "1.2.0",
+            expectedSize: 24360960,
+            expectedChecksum: "168ce32c742e1d26037c52bdbb7d871c",
           }
         : {
-            version: "1.1.19",
-            expectedSize: 23247120,
-            expectedChecksum: "56d6cb2ad85474d3a67999e35d2916a1",
+            version: "1.2.0",
+            expectedSize: 23970052,
+            expectedChecksum: "2ca17e4009a9ebae0f7c983bafff2ee6",
           },
 };
 
@@ -292,7 +292,6 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     optionalArgs: [
       "listen",
       "config_dir",
-      "local_connection_string",
       "project_id",
       "service_location",
       "disable_sdk_generation",
