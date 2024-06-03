@@ -34,12 +34,14 @@ export class DataConnectEmulatorController implements vscode.Disposable {
   readonly isPostgresEnabled = signal(false);
   private readonly subs: Array<() => void> = [];
 
-  private async promptConnectionString(): Promise<string | undefined> {
+  private async promptConnectionString(
+    defaultConnectionString: string,
+  ): Promise<string | undefined> {
     const connectionString = await vscode.window.showInputBox({
       title: "Enter a Postgres connection string",
       prompt:
-        "A Postgres database must be configured to use the emulator locally. ",
-      placeHolder: "postgres://user:password@localhost:5432/dbname",
+        "A Postgres database must be configured to use the emulator locally.",
+      value: defaultConnectionString,
     });
 
     return connectionString;
@@ -48,16 +50,17 @@ export class DataConnectEmulatorController implements vscode.Disposable {
   private async connectToPostgres() {
     const rc = firebaseRC.value?.tryReadValue;
 
-    if (!rc?.getDataconnect()?.postgres) {
-      const newConnectionString = await this.promptConnectionString();
-      if (!newConnectionString) {
-        return;
-      }
-
-      updateFirebaseRCProject({
-        fdcPostgresConnectionString: newConnectionString,
-      });
+    const newConnectionString = await this.promptConnectionString(
+      rc?.getDataconnect()?.postgres.localConnectionString ||
+        "postgres://user:password@localhost:5432/dbname",
+    );
+    if (!newConnectionString) {
+      return;
     }
+
+    updateFirebaseRCProject({
+      fdcPostgresConnectionString: newConnectionString,
+    });
 
     this.isPostgresEnabled.value = true;
     this.emulatorsController.emulatorStatusItem.show();

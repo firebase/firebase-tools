@@ -18,23 +18,25 @@ function DataConnect() {
       initialRequest: "getInitialIsConnectedToPostgres",
     }) ?? false;
 
+  const psqlString = "localhost:1234/test";
+
   return (
     <>
-      <PanelSection title="Emulator">
+      <PanelSection title="Local Development">
         <p>
-          Start the FDC emulator. See also:{" "}
+          Connect to Local PostgreSQL. See also:{" "}
           <a href="https://firebase.google.com/docs/data-connect/quickstart">
             Working with the emulator
           </a>
         </p>
         <Spacer size="xsmall" />
         {isConnectedToPostgres ? (
-          <VSCodeButton onClick={() => broker.send("disconnectPostgres")}>
-            Stop emulator
-          </VSCodeButton>
+          <>
+            <p>Connected to {psqlString}</p>
+          </>
         ) : (
           <VSCodeButton onClick={() => broker.send("connectToPostgres")}>
-            Start emulator
+            Connect to Local PostgreSQL
           </VSCodeButton>
         )}
       </PanelSection>

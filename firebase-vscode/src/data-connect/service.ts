@@ -24,6 +24,7 @@ import {
 } from "../dataconnect/types";
 import { ClientResponse } from "../apiv2";
 import { InstanceType } from "./code-lens-provider";
+import { pluginLogger } from "../logger-wrapper";
 
 /**
  * DataConnect Emulator service
@@ -192,7 +193,7 @@ export class DataConnectService {
       return { data: (introspectionResults as any).data };
     } catch (e) {
       // TODO: surface error that emulator is not connected
-      console.error("error: ", e);
+      pluginLogger.error("error: ", e);
       return { data: undefined };
     }
   }
@@ -230,7 +231,7 @@ export class DataConnectService {
       return result;
     } catch (e) {
       // TODO: actual error handling
-      console.log(e);
+      pluginLogger.error(e);
       return null;
     }
   }
@@ -278,6 +279,26 @@ export class DataConnectService {
         },
       );
       return this.handleResponse(resp);
+    }
+  }
+
+  async connectToPostgres(connectionString: string): Promise<boolean> {
+    try {
+      await fetch(
+        this.localEndpoint +
+          `/emulator/configure?connectionString=${connectionString}`,
+        {
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            "x-mantle-admin": "all",
+          },
+        },
+      );
+      return true;
+    } catch (e: any) {
+      pluginLogger.error(e);
+      return false;
     }
   }
 }
