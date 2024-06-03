@@ -23,7 +23,7 @@ const LOG_FILE = "firebase-debug.log";
 const NEXT_SOURCE = `${__dirname}/nextjs`;
 
 async function getFilesListFromDir(dir: string): Promise<string[]> {
-  const files = await glob(`${dir}/**/*`);
+  const files = await glob(`${dir}/**/*`, { nodir: true });
   console.log(files);
   return files.map((path) => relative(dir, path));
 }
