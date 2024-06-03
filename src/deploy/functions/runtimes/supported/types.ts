@@ -83,6 +83,12 @@ export const RUNTIMES = runtimes({
     deprecationDate: "2026-04-30",
     decommissionDate: "2026-10-31",
   },
+  nodejs22: {
+    friendly: "Node.js 22",
+    status: "beta",
+    deprecationDate: "2027-04-30",
+    decommissionDate: "2027-10-31",
+  },
   python310: {
     friendly: "Python 3.10",
     status: "GA",
