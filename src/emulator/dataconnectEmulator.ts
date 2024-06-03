@@ -35,27 +35,30 @@ export class DataConnectEmulator implements EmulatorInstance {
 
   async start(): Promise<void> {
     this.logger.log("DEBUG", `Using Postgres connection string: ${this.getLocalConectionString()}`);
-    const info = await DataConnectEmulator.build({ configDir: this.args.configDir });
-    if (requiresVector(info.metadata)) {
-      if (Constants.isDemoProject(this.args.projectId)) {
-        this.logger.logLabeled(
-          "WARN",
-          "Data Connect",
-          "Detected a 'demo-' project, but vector embeddings require a real project. Operations that use vector_embed will fail.",
-        );
-      } else {
-        this.logger.logLabeled(
-          "WARN",
-          "Data Connect",
-          "Operations that use vector_embed will make calls to production Vertex AI",
-        );
+    try {
+      const info = await DataConnectEmulator.build({ configDir: this.args.configDir });
+      if (requiresVector(info.metadata)) {
+        if (Constants.isDemoProject(this.args.projectId)) {
+          this.logger.logLabeled(
+            "WARN",
+            "Data Connect",
+            "Detected a 'demo-' project, but vector embeddings require a real project. Operations that use vector_embed will fail.",
+          );
+        } else {
+          this.logger.logLabeled(
+            "WARN",
+            "Data Connect",
+            "Operations that use vector_embed will make calls to production Vertex AI",
+          );
+        }
       }
+    } catch (err: any) {
+      this.logger.log("DEBUG", `'fdc build' failed with error: ${err.message}`);
     }
     return start(Emulators.DATACONNECT, {
-      ...this.args,
+      auto_download: this.args.auto_download,
       listen: listenSpecsToString(this.args.listen),
       config_dir: this.args.configDir,
-      local_connection_string: this.getLocalConectionString(),
       project_id: this.args.projectId,
       service_location: this.args.locationId,
     });
@@ -111,11 +114,16 @@ export class DataConnectEmulator implements EmulatorInstance {
         original: res.error,
       });
     }
-    if (res.stderr) {
+    if (res.status !== 0) {
       throw new FirebaseError(
-        `Unable to build your Data Connect schema and connectors: ${res.stderr}`,
+        `Unable to build your Data Connect schema and connectors (exit code ${res.status}): ${res.stderr}`,
       );
     }
+
+    if (res.stderr) {
+      EmulatorLogger.forEmulator(Emulators.DATACONNECT).log("DEBUG", res.stderr);
+    }
+
     try {
       return JSON.parse(res.stdout) as BuildResult;
     } catch (err) {

@@ -40,7 +40,7 @@ export interface CloudSqlInstance {
 }
 
 export interface Source {
-  files: File[];
+  files?: File[];
 }
 
 export interface File {

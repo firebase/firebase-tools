@@ -57,20 +57,20 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   dataconnect:
     process.platform === "darwin"
       ? {
-          version: "1.1.19",
-          expectedSize: 25836864,
-          expectedChecksum: "b31ba00789b82a30f0dee1c03b8f74ce",
+          version: "1.1.20",
+          expectedSize: 23946048,
+          expectedChecksum: "af59c09968a00b0a0666cfc17d6883b2",
         }
       : process.platform === "win32"
         ? {
-            version: "1.1.19",
-            expectedSize: 23629824,
-            expectedChecksum: "bcbd7705b36cee72ff0587749d67bfc3",
+            version: "1.1.20",
+            expectedSize: 24355328,
+            expectedChecksum: "e56ca1467919c3566c04bd55c91e9524",
           }
         : {
-            version: "1.1.19",
-            expectedSize: 23247120,
-            expectedChecksum: "56d6cb2ad85474d3a67999e35d2916a1",
+            version: "1.1.20",
+            expectedSize: 23965956,
+            expectedChecksum: "3d2a1c0e9a883724bae9aa9aa60a4ec1",
           },
 };
 
@@ -292,9 +292,12 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     optionalArgs: [
       "listen",
       "config_dir",
-      "local_connection_string",
       "project_id",
       "service_location",
+      "disable_sdk_generation",
+      "resolvers_emulator",
+      "vertex_location",
+      "rpc_retry_count",
     ],
     joinArgs: true,
     shell: false,

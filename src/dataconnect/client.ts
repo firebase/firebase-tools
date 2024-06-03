@@ -94,11 +94,18 @@ export async function deleteService(
 
 /** Schema methods */
 
-export async function getSchema(serviceName: string): Promise<types.Schema> {
-  const res = await dataconnectClient().get<types.Schema>(
-    `${serviceName}/schemas/${types.SCHEMA_ID}`,
-  );
-  return res.body;
+export async function getSchema(serviceName: string): Promise<types.Schema | undefined> {
+  try {
+    const res = await dataconnectClient().get<types.Schema>(
+      `${serviceName}/schemas/${types.SCHEMA_ID}`,
+    );
+    return res.body;
+  } catch (err: any) {
+    if (err.status !== 404) {
+      throw err;
+    }
+    return undefined;
+  }
 }
 
 export async function upsertSchema(
