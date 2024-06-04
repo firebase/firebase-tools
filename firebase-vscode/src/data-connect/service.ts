@@ -35,22 +35,6 @@ export class DataConnectService {
     private emulatorsController: EmulatorsController,
   ) {}
 
-  readonly localEndpoint = computed<string | undefined>(() => {
-    const emulatorInfos =
-      this.emulatorsController.emulators.value.infos?.displayInfo;
-    const dataConnectEmulator = emulatorInfos?.find(
-      (emulatorInfo) => emulatorInfo.name === Emulators.DATACONNECT,
-    );
-
-    if (!dataConnectEmulator) {
-      return undefined;
-    }
-
-    return (
-      "http://" + dataConnectEmulator.host + ":" + dataConnectEmulator.port
-    );
-  });
-
   async servicePath(
     path: string,
     instance: InstanceType,
@@ -215,7 +199,7 @@ export class DataConnectService {
         extensions: {}, // Introspection is the only caller of executeGraphqlRead
       });
       const resp = await fetch(
-        (await firstWhereDefined(this.localEndpoint)) +
+        (await firstWhereDefined(this.emulatorsController.getLocalEndpoint())) +
           `/v1alpha/projects/p/locations/l/services/${serviceId}:executeGraphqlRead`,
         {
           method: "POST",
@@ -266,7 +250,7 @@ export class DataConnectService {
       return this.handleProdResponse(resp);
     } else {
       const resp = await fetch(
-        (await firstWhereDefined(this.localEndpoint)) +
+        (await firstWhereDefined(this.emulatorsController.getLocalEndpoint())) +
           `/v1alpha/${servicePath}:executeGraphql`,
         {
           method: "POST",
@@ -285,7 +269,7 @@ export class DataConnectService {
   async connectToPostgres(connectionString: string): Promise<boolean> {
     try {
       await fetch(
-        this.localEndpoint +
+        firstWhereDefined(this.emulatorsController.getLocalEndpoint()) +
           `/emulator/configure?connectionString=${connectionString}`,
         {
           headers: {

@@ -185,14 +185,14 @@ export function registerFdc(
   context.subscriptions.push({
     dispose: effect(() => {
       const configs = dataConnectConfigs.value?.tryReadValue;
-      if (configs && fdcService.localEndpoint.value) {
+      if (configs && emulatorController.getLocalEndpoint().value) {
         // TODO move to client.start or setupLanguageClient
         vscode.commands.executeCommand("fdc-graphql.restart");
         vscode.commands.executeCommand(
           "firebase.dataConnect.executeIntrospection",
         );
-        runEmulatorIssuesStream(configs, fdcService.localEndpoint.value);
-        runDataConnectCompiler(configs, fdcService.localEndpoint.value);
+        runEmulatorIssuesStream(configs, emulatorController.getLocalEndpoint().value);
+        runDataConnectCompiler(configs, emulatorController.getLocalEndpoint().value);
       }
     }),
   });

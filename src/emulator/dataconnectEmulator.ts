@@ -2,13 +2,14 @@ import * as childProcess from "child_process";
 
 import { dataConnectLocalConnString } from "../api";
 import { Constants } from "./constants";
-import { getPID, start, stop, downloadIfNecessary } from "./downloadableEmulators";
+import { getPID, start, stop, downloadIfNecessary, DownloadDetails } from "./downloadableEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators, ListenSpec } from "./types";
 import { FirebaseError } from "../error";
 import { EmulatorLogger } from "./emulatorLogger";
 import { RC } from "../rc";
 import { BuildResult, requiresVector } from "../dataconnect/types";
 import { listenSpecsToString } from "./portUtils";
+import { Client } from "../apiv2";
 
 export interface DataConnectEmulatorArgs {
   projectId?: string;
@@ -30,7 +31,13 @@ export interface DataConnectBuildArgs {
 }
 
 export class DataConnectEmulator implements EmulatorInstance {
-  constructor(private args: DataConnectEmulatorArgs) {}
+  private emulatorClient: DataConnectEmulatorClient;
+  private origin: string;
+
+  constructor(private args: DataConnectEmulatorArgs) {
+    this.origin = args.listen[0].address + args.listen[0].port;
+    this.emulatorClient = new DataConnectEmulatorClient(this.origin);
+  }
   private logger = EmulatorLogger.forEmulator(Emulators.DATACONNECT);
 
   async start(): Promise<void> {
@@ -83,6 +90,11 @@ export class DataConnectEmulator implements EmulatorInstance {
       timeout: 10_000,
     };
   }
+
+  getOrigin(): string {
+    return this.origin;
+  }
+
   getName(): Emulators {
     return Emulators.DATACONNECT;
   }
@@ -137,5 +149,42 @@ export class DataConnectEmulator implements EmulatorInstance {
       return dataConnectLocalConnString();
     }
     return this.args.rc.getDataconnect()?.postgres?.localConnectionString;
+  }
+
+  public async connectToPostgres(connectionString: string, database?: string, serviceId?: string) {
+    await this.emulatorClient.configureEmulator({ connectionString, database, serviceId });
+  }
+}
+
+type ConfigureEmulatorRequest = {
+  // Defaults to the local service in dataconnect.yaml if not provided
+  serviceId?: string;
+  // The Postgres connection string to connect the new service to. This is
+  // required in order to configure the emulator service.
+  connectionString: string;
+  // The Postgres database to connect the new service to. If this field is
+  // populated, then any database specified in the connection_string will be
+  // overwritten.
+  database?: string;
+};
+
+export class DataConnectEmulatorClient {
+  private readonly client: Client;
+  constructor(origin: string) {
+    this.client = new Client({
+      urlPrefix: origin,
+      apiVersion: DownloadDetails.dataconnect.version,
+      auth: false,
+    });
+  }
+
+  public async configureEmulator(body: ConfigureEmulatorRequest) {
+    const res = await this.client.post<ConfigureEmulatorRequest, {} | FirebaseError>(
+      `emulator/configure`,
+      body,
+      { resolveOnHTTPError: false },
+    );
+    console.log(res);
+    return res;
   }
 }

@@ -1,15 +1,17 @@
 import { EmulatorsController } from "../core/emulators";
 import * as vscode from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
-import { Signal, effect, signal } from "@preact/signals-core";
+import { ReadonlySignal, effect, signal } from "@preact/signals-core";
 import { RC } from "../rc";
 import { firebaseRC, updateFirebaseRCProject } from "../core/config";
+import { DataConnectEmulatorClient } from "../../../src/emulator/dataconnectEmulator";
+import { firstWhereDefined } from "../utils/signal";
 
 /** FDC-specific emulator logic */
 export class DataConnectEmulatorController implements vscode.Disposable {
   constructor(
     readonly emulatorsController: EmulatorsController,
-    broker: ExtensionBrokerImpl,
+    readonly broker: ExtensionBrokerImpl,
   ) {
     function notifyIsConnectedToPostgres(isConnected: boolean) {
       broker.send("notifyIsConnectedToPostgres", isConnected);
@@ -17,7 +19,6 @@ export class DataConnectEmulatorController implements vscode.Disposable {
 
     this.subs.push(
       broker.on("connectToPostgres", () => this.connectToPostgres()),
-      broker.on("disconnectPostgres", () => this.disconnectPostgres()),
 
       // Notify webviews when the emulator status changes
       effect(() => {
@@ -49,7 +50,6 @@ export class DataConnectEmulatorController implements vscode.Disposable {
 
   private async connectToPostgres() {
     const rc = firebaseRC.value?.tryReadValue;
-
     const newConnectionString = await this.promptConnectionString(
       rc?.getDataconnect()?.postgres.localConnectionString ||
         "postgres://user:password@localhost:5432/dbname",
@@ -57,18 +57,20 @@ export class DataConnectEmulatorController implements vscode.Disposable {
     if (!newConnectionString) {
       return;
     }
+    this.broker.send("notifyPostgresStringChanged", newConnectionString);
 
     updateFirebaseRCProject({
       fdcPostgresConnectionString: newConnectionString,
     });
 
+    // configure the emulator to use the local psql string
+    const emulatorClient = new DataConnectEmulatorClient(
+      await firstWhereDefined(this.emulatorsController.getLocalEndpoint()),
+    );
+    emulatorClient.configureEmulator({ connectionString: newConnectionString });
+
     this.isPostgresEnabled.value = true;
     this.emulatorsController.emulatorStatusItem.show();
-  }
-
-  private disconnectPostgres() {
-    this.isPostgresEnabled.value = false;
-    this.emulatorsController.emulatorStatusItem.hide();
   }
 
   dispose() {

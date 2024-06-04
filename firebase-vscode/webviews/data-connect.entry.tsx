@@ -1,9 +1,9 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import { VSCodeButton } from "@vscode/webview-ui-toolkit/react";
+import { VSCodeButton, VSCodeTextField } from "@vscode/webview-ui-toolkit/react";
 import { Spacer } from "./components/ui/Spacer";
 import styles from "./globals/index.scss";
-import { broker, useBroker } from "./globals/html-broker";
+import { broker, useBroker, useBrokerListener } from "./globals/html-broker";
 import { PanelSection } from "./components/ui/PanelSection";
 
 // Prevent webpack from removing the `style` import above
@@ -18,21 +18,23 @@ function DataConnect() {
       initialRequest: "getInitialIsConnectedToPostgres",
     }) ?? false;
 
-  const psqlString = "localhost:1234/test";
+  const psqlString = useBroker("notifyPostgresStringChanged");
 
   return (
     <>
       <PanelSection title="Local Development">
-        <p>
-          Connect to Local PostgreSQL. See also:{" "}
-          <a href="https://firebase.google.com/docs/data-connect/quickstart">
-            Working with the emulator
-          </a>
-        </p>
+        {!isConnectedToPostgres && (<p>
+            Connect to Local PostgreSQL. See also:{" "}
+            <a href="https://firebase.google.com/docs/data-connect/quickstart">
+              Working with the emulator
+            </a>
+          </p>)
+        }
         <Spacer size="xsmall" />
         {isConnectedToPostgres ? (
           <>
-            <p>Connected to {psqlString}</p>
+          <label>Local emulator connected to:</label>
+            <VSCodeTextField disabled value={psqlString}></VSCodeTextField>
           </>
         ) : (
           <VSCodeButton onClick={() => broker.send("connectToPostgres")}>
