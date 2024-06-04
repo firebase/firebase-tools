@@ -355,6 +355,7 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
       const { builder } = definition;
       if (target === deployTarget && builder === ExpectedBuilder.DEPLOY) continue;
       if (target === buildTarget && builder === ExpectedBuilder.APPLICATION) continue;
+      if (target === buildTarget && builder === ExpectedBuilder.LEGACY_BROWSER) continue;
       if (target === browserTarget && builder === ExpectedBuilder.BROWSER_ESBUILD) continue;
       if (target === browserTarget && builder === ExpectedBuilder.LEGACY_BROWSER) continue;
       if (target === prerenderTarget && builder === ExpectedBuilder.LEGACY_DEVKIT_PRERENDER)
@@ -420,7 +421,13 @@ export async function getBrowserConfig(sourceDir: string, configuration: string)
   );
   const targetOptions = await architectHost.getOptionsForTarget(buildOrBrowserTarget);
   assertIsString(targetOptions?.outputPath);
-  const outputPath = join(targetOptions.outputPath, buildTarget ? "browser" : "");
+
+  const builderName = await architectHost.getBuilderNameForTarget(buildOrBrowserTarget);
+
+  const outputPath =
+    builderName === ExpectedBuilder.APPLICATION
+      ? join(targetOptions.outputPath, buildTarget ? "browser" : "")
+      : targetOptions.outputPath;
   return { locales, baseHref, outputPath, defaultLocale };
 }
 
