@@ -1,6 +1,6 @@
 ## NEXT
 
-- Emulator bump v1.1.20
+- Emulator bump v1.2.0
 - Connect to postgres flow reworked
 - Telemetry enabled
 
