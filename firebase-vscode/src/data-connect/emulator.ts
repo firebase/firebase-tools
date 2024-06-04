@@ -39,7 +39,7 @@ export class DataConnectEmulatorController implements vscode.Disposable {
       title: "Enter a Postgres connection string",
       prompt:
         "A Postgres database must be configured to use the emulator locally. ",
-      placeHolder: "postgres://user:password@localhost:5432/dbname",
+      placeHolder: "postgres://user:password@localhost:5432/postgres",
     });
 
     return connectionString;
