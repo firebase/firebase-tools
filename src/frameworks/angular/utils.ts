@@ -413,21 +413,18 @@ export async function getBrowserConfig(sourceDir: string, configuration: string)
   if (!buildOrBrowserTarget) {
     throw new AssertionError({ message: "expected build or browser target defined" });
   }
-  const { locales, defaultLocale } = await localesForTarget(
-    sourceDir,
-    architectHost,
-    buildOrBrowserTarget,
-    workspaceProject,
-  );
-  const targetOptions = await architectHost.getOptionsForTarget(buildOrBrowserTarget);
+  const [{ locales, defaultLocale }, targetOptions, builderName] = await Promise.all([
+    localesForTarget(sourceDir, architectHost, buildOrBrowserTarget, workspaceProject),
+    architectHost.getOptionsForTarget(buildOrBrowserTarget),
+    architectHost.getBuilderNameForTarget(buildOrBrowserTarget),
+  ]);
+
   assertIsString(targetOptions?.outputPath);
 
-  const builderName = await architectHost.getBuilderNameForTarget(buildOrBrowserTarget);
-
-  const outputPath =
-    builderName === ExpectedBuilder.APPLICATION
-      ? join(targetOptions.outputPath, buildTarget ? "browser" : "")
-      : targetOptions.outputPath;
+  const outputPath = join(
+    targetOptions.outputPath,
+    buildTarget && builderName === ExpectedBuilder.APPLICATION ? "browser" : "",
+  );
   return { locales, baseHref, outputPath, defaultLocale };
 }
 
