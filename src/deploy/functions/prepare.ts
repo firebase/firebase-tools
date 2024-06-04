@@ -448,7 +448,7 @@ export async function loadCodebases(
     if (firebaseJsonRuntime && !supported.isRuntime(firebaseJsonRuntime as string)) {
       throw new FirebaseError(
         `Functions codebase ${codebase} has invalid runtime ` +
-          `${firebaseJsonRuntime} specified in firebase.json. Valid values are: ` +
+          `${firebaseJsonRuntime} specified in firebase.json. Valid values are: \n` +
           Object.keys(supported.RUNTIMES)
             .map((s) => `- ${s}`)
             .join("\n"),
