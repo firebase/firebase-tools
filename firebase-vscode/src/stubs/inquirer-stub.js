@@ -22,7 +22,7 @@ inquirer.prompt = async (prompts) => {
     } else {
       pluginLogger.debug(
         `Didn't find "${prompt.name}" in options (message:` +
-          ` "${prompt.message}"), defaulting to value "${prompt.default}"`
+          ` "${prompt.message}"), defaulting to value "${prompt.default}"`,
       );
       answers[prompt.name] = prompt.default;
     }
