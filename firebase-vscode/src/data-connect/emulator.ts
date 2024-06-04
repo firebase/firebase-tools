@@ -1,11 +1,9 @@
 import { EmulatorsController } from "../core/emulators";
 import * as vscode from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
-import { ReadonlySignal, effect, signal } from "@preact/signals-core";
-import { RC } from "../rc";
+import { effect, signal } from "@preact/signals-core";
 import { firebaseRC, updateFirebaseRCProject } from "../core/config";
 import { DataConnectEmulatorClient } from "../../../src/emulator/dataconnectEmulator";
-import { firstWhereDefined } from "../utils/signal";
 
 /** FDC-specific emulator logic */
 export class DataConnectEmulatorController implements vscode.Disposable {
@@ -57,6 +55,8 @@ export class DataConnectEmulatorController implements vscode.Disposable {
     if (!newConnectionString) {
       return;
     }
+
+    // notify sidebar webview of connection string
     this.broker.send("notifyPostgresStringChanged", newConnectionString);
 
     updateFirebaseRCProject({
@@ -64,9 +64,7 @@ export class DataConnectEmulatorController implements vscode.Disposable {
     });
 
     // configure the emulator to use the local psql string
-    const emulatorClient = new DataConnectEmulatorClient(
-      await firstWhereDefined(this.emulatorsController.getLocalEndpoint()),
-    );
+    const emulatorClient = new DataConnectEmulatorClient();
     emulatorClient.configureEmulator({ connectionString: newConnectionString });
 
     this.isPostgresEnabled.value = true;

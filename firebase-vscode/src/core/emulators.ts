@@ -251,9 +251,10 @@ export class EmulatorsController implements Disposable {
       return undefined;
     }
 
-    return (
-      "http://" + dataConnectEmulator.host + ":" + dataConnectEmulator.port
-    );
+    if (dataConnectEmulator.host.includes(":")) {
+      return `http://[${dataConnectEmulator.host}]:${dataConnectEmulator.port}`;
+    }
+    return `http://${dataConnectEmulator.host}:${dataConnectEmulator.port}`;
   });
 
   dispose(): void {

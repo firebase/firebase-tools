@@ -11,7 +11,8 @@ import { EmulatorLogger } from "./emulatorLogger";
 import { RC } from "../rc";
 import { BuildResult, requiresVector } from "../dataconnect/types";
 import { listenSpecsToString } from "./portUtils";
-import { Client } from "../apiv2";
+import { Client, ClientResponse } from "../apiv2";
+import { EmulatorRegistry } from "./registry";
 
 export interface DataConnectEmulatorArgs {
   projectId?: string;
@@ -34,11 +35,9 @@ export interface DataConnectBuildArgs {
 
 export class DataConnectEmulator implements EmulatorInstance {
   private emulatorClient: DataConnectEmulatorClient;
-  private origin: string;
 
   constructor(private args: DataConnectEmulatorArgs) {
-    this.origin = args.listen[0].address + args.listen[0].port;
-    this.emulatorClient = new DataConnectEmulatorClient(this.origin);
+    this.emulatorClient = new DataConnectEmulatorClient();
   }
   private logger = EmulatorLogger.forEmulator(Emulators.DATACONNECT);
 
@@ -90,10 +89,6 @@ export class DataConnectEmulator implements EmulatorInstance {
       pid: getPID(Emulators.DATACONNECT),
       timeout: 10_000,
     };
-  }
-
-  getOrigin(): string {
-    return this.origin;
   }
 
   getName(): Emulators {
@@ -181,18 +176,15 @@ type ConfigureEmulatorRequest = {
 
 export class DataConnectEmulatorClient {
   private readonly client: Client;
-  constructor(origin: string) {
-    this.client = new Client({
-      urlPrefix: origin,
-      auth: false,
-    });
+  constructor() {
+    this.client = EmulatorRegistry.client(Emulators.DATACONNECT);
   }
 
-  public async configureEmulator(body: ConfigureEmulatorRequest) {
-    const res = await this.client.post<ConfigureEmulatorRequest, {}>(`emulator/configure`, body, {
-      resolveOnHTTPError: false,
-    });
-    console.log(res);
+  public async configureEmulator(body: ConfigureEmulatorRequest): Promise<ClientResponse<void>> {
+    const res = await this.client.post<ConfigureEmulatorRequest, void>(
+      "emulator/configure",
+      body,
+    );
     return res;
   }
 }
