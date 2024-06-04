@@ -41,7 +41,6 @@ export class DataConnectEmulator implements EmulatorInstance {
   private logger = EmulatorLogger.forEmulator(Emulators.DATACONNECT);
 
   async start(): Promise<void> {
-    this.logger.log("DEBUG", `Using Postgres connection string: ${this.getLocalConectionString()}`);
     try {
       const info = await DataConnectEmulator.build({ configDir: this.args.configDir });
       if (requiresVector(info.metadata)) {
@@ -151,7 +150,12 @@ export class DataConnectEmulator implements EmulatorInstance {
     return this.args.rc.getDataconnect()?.postgres?.localConnectionString;
   }
 
-  public async connectToPostgres(connectionString: string, database?: string, serviceId?: string) {
+  public async connectToPostgres(localConnectionString?: string, database?: string, serviceId?: string): Promise<boolean> {
+    const connectionString = localConnectionString ?? this.getLocalConectionString()
+    if (!connectionString) {
+      this.logger.log("DEBUG", "No Postgres connection string found, not connecting to Postgres");
+      return false;
+    }
     await this.emulatorClient.configureEmulator({ connectionString, database, serviceId });
   }
 }
@@ -173,13 +177,12 @@ export class DataConnectEmulatorClient {
   constructor(origin: string) {
     this.client = new Client({
       urlPrefix: origin,
-      apiVersion: DownloadDetails.dataconnect.version,
       auth: false,
     });
   }
 
   public async configureEmulator(body: ConfigureEmulatorRequest) {
-    const res = await this.client.post<ConfigureEmulatorRequest, {} | FirebaseError>(
+    const res = await this.client.post<ConfigureEmulatorRequest, {}>(
       `emulator/configure`,
       body,
       { resolveOnHTTPError: false },
