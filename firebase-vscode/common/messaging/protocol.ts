@@ -141,6 +141,8 @@ export interface ExtensionToWebviewParamsMap {
 
   notifyIsConnectedToPostgres: boolean;
 
+  notifyPostgresStringChanged: string;
+
   /** Triggered when new environment variables values are found. */
   notifyEnv: { env: { isMonospace: boolean } };
 

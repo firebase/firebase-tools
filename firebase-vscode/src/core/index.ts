@@ -59,7 +59,7 @@ export async function registerCore(
     "firebase.openFirebaseRc",
     () => {
       for (const root of getRootFolders()) {
-        upsertFile(vscode.Uri.file(".firebaserc"), () => "");
+        upsertFile(vscode.Uri.file(`${root}/.firebaserc`), () => "");
       }
     },
   );
