@@ -2,9 +2,7 @@ import * as childProcess from "child_process";
 
 import { dataConnectLocalConnString } from "../api";
 import { Constants } from "./constants";
-import { getPID, start, stop, downloadIfNecessary
-
- } from "./downloadableEmulators";
+import { getPID, start, stop, downloadIfNecessary } from "./downloadableEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators, ListenSpec } from "./types";
 import { FirebaseError } from "../error";
 import { EmulatorLogger } from "./emulatorLogger";
@@ -181,10 +179,7 @@ export class DataConnectEmulatorClient {
   }
 
   public async configureEmulator(body: ConfigureEmulatorRequest): Promise<ClientResponse<void>> {
-    const res = await this.client.post<ConfigureEmulatorRequest, void>(
-      "emulator/configure",
-      body,
-    );
+    const res = await this.client.post<ConfigureEmulatorRequest, void>("emulator/configure", body);
     return res;
   }
 }
