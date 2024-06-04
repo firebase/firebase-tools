@@ -14,7 +14,7 @@ printusage() {
 VERSION=$1
 
 CLI_VERSION=$2
-if [[ $VERSION == "" || $CLI_VERSION == ""]]; then
+if [[ ($VERSION == "" || $CLI_VERSION == "") ]]; then
   printusage
   exit 1
 elif [[ ! ($VERSION == "patch" || $VERSION == "minor" || $VERSION == "major") ]]; then
