@@ -50,7 +50,7 @@ export class DataConnectEmulatorController implements vscode.Disposable {
     const rc = firebaseRC.value?.tryReadValue;
     const newConnectionString = await this.promptConnectionString(
       rc?.getDataconnect()?.postgres.localConnectionString ||
-        "postgres://user:password@localhost:5432/dbname",
+        "postgres://user:password@localhost:5432/postgres",
     );
     if (!newConnectionString) {
       return;
