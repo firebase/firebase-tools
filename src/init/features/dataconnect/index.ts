@@ -175,17 +175,16 @@ async function promptForService(setup: Setup, info: RequiredInfo): Promise<Requi
 async function promptForCloudSQLInstance(setup: Setup, info: RequiredInfo): Promise<RequiredInfo> {
   if (setup.projectId) {
     const instances = await cloudsql.listInstances(setup.projectId);
-    if (instances.length) {
-      let choices = instances.map((i) => {
-        return { name: i.name, value: i.name, location: i.region };
-      });
-
+    let choices = instances.map((i) => {
+      return { name: i.name, value: i.name, location: i.region };
+    });
+    // If we've already chosen a region (ie service already exists), only list instances from that region.
+    choices = choices.filter((c) => info.locationId === "" || info.locationId === c.location);
+    if (choices.length) {
       const freeTrialInstanceId = await checkForFreeTrialInstance(setup.projectId);
       if (!freeTrialInstanceId) {
         choices.push({ name: "Create a new instance", value: "", location: "" });
       }
-      // If we've already chosen a region (ie service already exists), only list instances from that region.
-      choices = choices.filter((c) => info.locationId === "" || info.locationId === c.location);
       info.cloudSqlInstanceId = await promptOnce({
         message: `Which CloudSQL instance would you like to use?`,
         type: "list",
