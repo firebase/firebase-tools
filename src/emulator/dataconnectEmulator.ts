@@ -2,7 +2,9 @@ import * as childProcess from "child_process";
 
 import { dataConnectLocalConnString } from "../api";
 import { Constants } from "./constants";
-import { getPID, start, stop, downloadIfNecessary } from "./downloadableEmulators";
+import { getPID, start, stop, downloadIfNecessary
+
+ } from "./downloadableEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators, ListenSpec } from "./types";
 import { FirebaseError } from "../error";
 import { EmulatorLogger } from "./emulatorLogger";
@@ -161,6 +163,7 @@ export class DataConnectEmulator implements EmulatorInstance {
       return false;
     }
     await this.emulatorClient.configureEmulator({ connectionString, database, serviceId });
+    return true;
   }
 }
 
