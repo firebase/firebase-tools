@@ -23,6 +23,6 @@ firebaseTest("When emulators are running, lists them", async function () {
   await commands.waitEmulators();
 
   expect(await statusBar.emulatorsStatus.getText()).toContain(
-    "Emulators: running"
+    "Connected to local Postgres"
   );
 });

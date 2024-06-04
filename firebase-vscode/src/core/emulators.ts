@@ -178,7 +178,7 @@ export class EmulatorsController implements Disposable {
             displayInfo: listRunningEmulators(),
           },
         };
-        this.emulatorStatusItem.text = "$(data-connect) Emulators: running";
+        this.emulatorStatusItem.text = "$(data-connect) Connected to local Postgres";
 
         // data connect specifics; including temp logging implementation
         if (
@@ -207,10 +207,10 @@ export class EmulatorsController implements Disposable {
 
         // Updating the status bar label as "running", but don't "show" it.
         // We only show the status bar item when explicitly by interacting with the sidebar.
-        this.emulatorStatusItem.text = "$(data-connect) Emulators: running";
+        this.emulatorStatusItem.text = "$(data-connect) Connected to local Postgres";
         this.emulatorStatusItem.backgroundColor = undefined;
       } catch (e) {
-        this.emulatorStatusItem.text = "Emulators: errored";
+        this.emulatorStatusItem.text = "$(data-connect) Emulators: errored";
         this.emulatorStatusItem.backgroundColor = new ThemeColor(
           "statusBarItem.errorBackground",
         );
@@ -240,6 +240,24 @@ export class EmulatorsController implements Disposable {
       infos: undefined,
     };
   }
+
+  // TODO: Move all api calls to CLI DataConnectEmulatorClient
+  public getLocalEndpoint = () => computed<string | undefined>(() => {
+    const emulatorInfos = this.emulators.value.infos?.displayInfo;
+    const dataConnectEmulator = emulatorInfos?.find(
+      (emulatorInfo) => emulatorInfo.name === Emulators.DATACONNECT,
+    );
+
+    if (!dataConnectEmulator) {
+      return undefined;
+    }
+
+    // handle ipv6
+    if (dataConnectEmulator.host.includes(":")) {
+      return `http://[${dataConnectEmulator.host}]:${dataConnectEmulator.port}`;
+    }
+    return `http://${dataConnectEmulator.host}:${dataConnectEmulator.port}`;
+  });
 
   dispose(): void {
     this.stopEmulators();
