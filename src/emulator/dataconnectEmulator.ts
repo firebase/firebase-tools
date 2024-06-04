@@ -9,6 +9,8 @@ import { EmulatorLogger } from "./emulatorLogger";
 import { RC } from "../rc";
 import { BuildResult, requiresVector } from "../dataconnect/types";
 import { listenSpecsToString } from "./portUtils";
+import { Client, ClientResponse } from "../apiv2";
+import { EmulatorRegistry } from "./registry";
 
 export interface DataConnectEmulatorArgs {
   projectId?: string;
@@ -30,11 +32,14 @@ export interface DataConnectBuildArgs {
 }
 
 export class DataConnectEmulator implements EmulatorInstance {
-  constructor(private args: DataConnectEmulatorArgs) {}
+  private emulatorClient: DataConnectEmulatorClient;
+
+  constructor(private args: DataConnectEmulatorArgs) {
+    this.emulatorClient = new DataConnectEmulatorClient();
+  }
   private logger = EmulatorLogger.forEmulator(Emulators.DATACONNECT);
 
   async start(): Promise<void> {
-    this.logger.log("DEBUG", `Using Postgres connection string: ${this.getLocalConectionString()}`);
     try {
       const info = await DataConnectEmulator.build({ configDir: this.args.configDir });
       if (requiresVector(info.metadata)) {
@@ -59,7 +64,6 @@ export class DataConnectEmulator implements EmulatorInstance {
       auto_download: this.args.auto_download,
       listen: listenSpecsToString(this.args.listen),
       config_dir: this.args.configDir,
-      local_connection_string: this.getLocalConectionString(),
       project_id: this.args.projectId,
       service_location: this.args.locationId,
     });
@@ -84,6 +88,7 @@ export class DataConnectEmulator implements EmulatorInstance {
       timeout: 10_000,
     };
   }
+
   getName(): Emulators {
     return Emulators.DATACONNECT;
   }
@@ -138,5 +143,43 @@ export class DataConnectEmulator implements EmulatorInstance {
       return dataConnectLocalConnString();
     }
     return this.args.rc.getDataconnect()?.postgres?.localConnectionString;
+  }
+
+  public async connectToPostgres(
+    localConnectionString?: string,
+    database?: string,
+    serviceId?: string,
+  ): Promise<boolean> {
+    const connectionString = localConnectionString ?? this.getLocalConectionString();
+    if (!connectionString) {
+      this.logger.log("DEBUG", "No Postgres connection string found, not connecting to Postgres");
+      return false;
+    }
+    await this.emulatorClient.configureEmulator({ connectionString, database, serviceId });
+    return true;
+  }
+}
+
+type ConfigureEmulatorRequest = {
+  // Defaults to the local service in dataconnect.yaml if not provided
+  serviceId?: string;
+  // The Postgres connection string to connect the new service to. This is
+  // required in order to configure the emulator service.
+  connectionString: string;
+  // The Postgres database to connect the new service to. If this field is
+  // populated, then any database specified in the connection_string will be
+  // overwritten.
+  database?: string;
+};
+
+export class DataConnectEmulatorClient {
+  private readonly client: Client;
+  constructor() {
+    this.client = EmulatorRegistry.client(Emulators.DATACONNECT);
+  }
+
+  public async configureEmulator(body: ConfigureEmulatorRequest): Promise<ClientResponse<void>> {
+    const res = await this.client.post<ConfigureEmulatorRequest, void>("emulator/configure", body);
+    return res;
   }
 }
