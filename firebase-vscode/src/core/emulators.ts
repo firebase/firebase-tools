@@ -241,6 +241,7 @@ export class EmulatorsController implements Disposable {
     };
   }
 
+  // TODO: Move all api calls to CLI DataConnectEmulatorClient
   public getLocalEndpoint = () => computed<string | undefined>(() => {
     const emulatorInfos = this.emulators.value.infos?.displayInfo;
     const dataConnectEmulator = emulatorInfos?.find(
@@ -251,6 +252,7 @@ export class EmulatorsController implements Disposable {
       return undefined;
     }
 
+    // handle ipv6
     if (dataConnectEmulator.host.includes(":")) {
       return `http://[${dataConnectEmulator.host}]:${dataConnectEmulator.port}`;
     }
