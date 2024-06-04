@@ -175,7 +175,7 @@ async function promptForService(setup: Setup, info: RequiredInfo): Promise<Requi
 async function promptForCloudSQLInstance(setup: Setup, info: RequiredInfo): Promise<RequiredInfo> {
   if (setup.projectId) {
     const instances = await cloudsql.listInstances(setup.projectId);
-      if (instances.length) {
+    if (instances.length) {
       let choices = instances.map((i) => {
         return { name: i.name, value: i.name, location: i.region };
       });
