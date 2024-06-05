@@ -8,14 +8,43 @@ import { User } from "../../../src/types/auth";
 import { ServiceAccountUser } from "../types";
 import { RCData } from "../../../src/rc";
 import { EmulatorUiSelections, RunningEmulatorInfo } from "./types";
+import { ExecutionResult } from "graphql";
+import { SerializedError } from "../error";
+
+export const DEFAULT_EMULATOR_UI_SELECTIONS: EmulatorUiSelections = {
+  projectId: "demo-something",
+  importStateFolderPath: "",
+  exportStateOnExit: false,
+  mode: "dataconnect",
+  debugLogging: false,
+};
+
+export enum UserMockKind {
+  ADMIN = "admin",
+  UNAUTHENTICATED = "unauthenticated",
+  AUTHENTICATED = "authenticated",
+}
+export type UserMock =
+  | { kind: UserMockKind.ADMIN | UserMockKind.UNAUTHENTICATED }
+  | {
+      kind: UserMockKind.AUTHENTICATED;
+      claims: string;
+    };
 
 export interface WebviewToExtensionParamsMap {
   /**
    * Ask extension for initial data
    */
   getInitialData: {};
+  getInitialHasFdcConfigs: void;
+
   addUser: {};
   logout: { email: string };
+
+  /* Emulator panel requests */
+  getEmulatorUiSelections: void;
+  getEmulatorInfos: void;
+  updateEmulatorUiSelections: Partial<EmulatorUiSelections>;
 
   /** Notify extension that current user has been changed in UI. */
   requestChangeUser: { user: User | ServiceAccountUser };
@@ -44,6 +73,9 @@ export interface WebviewToExtensionParamsMap {
    */
   promptUserForInput: { title: string; prompt: string };
 
+  /** Calls the `firebase init` CLI */
+  runFirebaseInit: void;
+
   /**
    * Show a UI message using the vscode interface
    */
@@ -61,23 +93,56 @@ export interface WebviewToExtensionParamsMap {
     href: string;
   };
 
-  /**
-   * Equivalent to the `firebase emulators:start` command.
-   */
-  launchEmulators: {
-    emulatorUiSelections: EmulatorUiSelections;
-  };
-
-  /** Stops the emulators gracefully allowing for data export if required. */
-  stopEmulators: {};
+  connectToPostgres: void;
+  disconnectPostgres: void;
+  getInitialIsConnectedToPostgres: void;
 
   selectEmulatorImportFolder: {};
 
+  definedDataConnectArgs: string;
+
   /** Prompts the user to select a directory in which to place the quickstart */
   chooseQuickstartDir: {};
+
+  notifyAuthUserMockChange: UserMock;
+
+  /** Deploy connectors/services to production */
+  "fdc.deploy": void;
+
+  /** Deploy all connectors/services to production */
+  "fdc.deploy-all": void;
+
+  // Initialize "result" tab.
+  getDataConnectResults: void;
+
+  // execute terminal tasks
+  executeLogin: void;
 }
 
+export interface DataConnectResults {
+  query: string;
+  displayName: string;
+  results?: ExecutionResult | SerializedError;
+  args?: string;
+}
+
+export type ValueOrError<T> =
+  | { value: T; error: undefined }
+  | { error: string; value: undefined };
+
 export interface ExtensionToWebviewParamsMap {
+  /** Triggered when the emulator UI/state changes */
+  notifyEmulatorUiSelectionsChanged: EmulatorUiSelections;
+  notifyEmulatorStateChanged: {
+    status: "running" | "stopped" | "starting" | "stopping";
+    infos: RunningEmulatorInfo | undefined;
+  };
+  notifyEmulatorImportFolder: { folder: string };
+
+  notifyIsConnectedToPostgres: boolean;
+
+  notifyPostgresStringChanged: string;
+
   /** Triggered when new environment variables values are found. */
   notifyEnv: { env: { isMonospace: boolean } };
 
@@ -120,19 +185,20 @@ export interface ExtensionToWebviewParamsMap {
    * .firebaserc
    */
   notifyFirebaseConfig: {
-    firebaseJson: FirebaseConfig | undefined;
-    firebaseRC: RCData | undefined;
+    firebaseJson: ValueOrError<FirebaseConfig> | undefined;
+    firebaseRC: ValueOrError<RCData> | undefined;
   };
+  /** Whether any dataconnect.yaml is present */
+  notifyHasFdcConfigs: boolean;
 
   /**
    * Return user-selected preview channel name
    */
   notifyPreviewChannelResponse: { id: string };
 
-  notifyEmulatorsStopped: {};
-  notifyEmulatorStartFailed: {};
-  notifyRunningEmulatorInfo: RunningEmulatorInfo;
-  notifyEmulatorImportFolder: { folder: string };
+  // data connect specific
+  notifyDataConnectResults: DataConnectResults;
+  notifyDataConnectRequiredArgs: { args: string[] };
 }
 
 export type MessageParamsMap =

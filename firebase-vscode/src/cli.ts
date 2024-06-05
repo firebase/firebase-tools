@@ -29,10 +29,16 @@ import {
   cleanShutdown as stopAllEmulators,
 } from "../../src/emulator/controller";
 import { EmulatorRegistry } from "../../src/emulator/registry";
-import { EmulatorInfo, Emulators } from "../../src/emulator/types";
+import {
+  DownloadableEmulatorDetails,
+  EmulatorInfo,
+  DownloadableEmulators,
+  Emulators,
+} from "../../src/emulator/types";
 import * as commandUtils from "../../src/emulator/commandUtils";
 import { currentUser } from "./core/user";
-
+import { firstWhere } from "./utils/signal";
+export { Emulators };
 /**
  * Try to get a service account by calling requireAuth() without
  * providing any account info.
@@ -55,19 +61,10 @@ async function getServiceAccount() {
     if (e.original?.message) {
       errorMessage += ` (original: ${e.original.message})`;
     }
-    if (process.env.MONOSPACE_ENV) {
-      // If it can't find a service account in Monospace, that's a blocking
-      // error and we should throw.
-      throw new Error(
-        `Unable to find service account. ` + `requireAuthError: ${errorMessage}`
-      );
-    } else {
-      // In other environments, it is common to not find a service account.
-      pluginLogger.debug(
-        `No service account found (this may be normal), ` +
-          `requireAuth error output: ${errorMessage}`
-      );
-    }
+    pluginLogger.debug(
+      `No service account found (this may be normal), ` +
+        `requireAuth error output: ${errorMessage}`,
+    );
     return null;
   }
   if (process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL) {
@@ -78,12 +75,12 @@ async function getServiceAccount() {
     pluginLogger.debug(
       `Using WORKSPACE_SERVICE_ACCOUNT_EMAIL env ` +
         `variable to get service account email: ` +
-        `${process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL}`
+        `${process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL}`,
     );
     return process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL;
   }
   pluginLogger.debug(
-    `Got service account email through credentials:` + ` ${email}`
+    `Got service account email through credentials:` + ` ${email}`,
   );
   return email;
 }
@@ -95,9 +92,9 @@ async function getServiceAccount() {
  */
 async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
   // Try to get global default from configstore. For some reason this is
-  // often overwritten when restarting the extension.
   pluginLogger.debug("requireAuthWrapper");
   let account = getGlobalDefaultAccount();
+  // often overwritten when restarting the extension.
   if (!account) {
     // If nothing in configstore top level, grab the first "additionalAccount"
     const accounts = getAllAccounts();
@@ -148,7 +145,7 @@ async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
       // "error". Usually set on user-triggered actions such as
       // init hosting and deploy.
       pluginLogger.error(
-        `requireAuth error: ${e.original?.message || e.message}`
+        `requireAuth error: ${e.original?.message || e.message}`,
       );
       vscode.window.showErrorMessage("Not logged in", {
         modal: true,
@@ -159,7 +156,7 @@ async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
       // but we should log it for debugging purposes.
       pluginLogger.debug(
         "requireAuth error output: ",
-        e.original?.message || e.message
+        e.original?.message || e.message,
       );
     }
     return false;
@@ -182,7 +179,7 @@ export async function getAccounts(): Promise<Array<Account | ServiceAccount>> {
 }
 
 export async function getChannels(
-  firebaseJSON: Config
+  firebaseJSON: Config,
 ): Promise<ChannelWithId[]> {
   if (!firebaseJSON) {
     return [];
@@ -200,7 +197,7 @@ export async function getChannels(
     pluginLogger.debug(
       "Calling listChannels with params",
       options.project,
-      site
+      site,
     );
     const channels = await listChannels(options.project, site);
     return channels.map((channel) => ({
@@ -258,7 +255,10 @@ export async function initHosting(options: {
       useWebFrameworks: false,
     };
   }
-  const commandOptions = await getCommandOptions(undefined, currentOptions.value);
+  const commandOptions = await getCommandOptions(
+    undefined,
+    currentOptions.value,
+  );
   const inquirerOptions = {
     ...commandOptions,
     ...options,
@@ -268,7 +268,7 @@ export async function initHosting(options: {
   };
   pluginLogger.debug(
     "Calling hosting init with inquirer options",
-    inspect(inquirerOptions)
+    inspect(inquirerOptions),
   );
   setInquirerOptions(inquirerOptions);
   try {
@@ -282,7 +282,7 @@ export async function initHosting(options: {
 
 export async function deployToHosting(
   firebaseJSON: Config,
-  deployTarget: string
+  deployTarget: string,
 ) {
   if (!(await requireAuthWrapper(true))) {
     pluginLogger.error("No user found, canceling deployment");
@@ -295,7 +295,7 @@ export async function deployToHosting(
     // TODO(hsubox76): handle multiple hosting configs
     pluginLogger.debug(
       "Calling getDefaultHostingSite() with options",
-      inspect(options)
+      inspect(options),
     );
     firebaseJSON.set("hosting", {
       ...firebaseJSON.get("hosting"),
@@ -303,12 +303,12 @@ export async function deployToHosting(
     });
     pluginLogger.debug(
       "Calling getCommandOptions() with options",
-      inspect(options)
+      inspect(options),
     );
     const commandOptions = await getCommandOptions(firebaseJSON, options);
     pluginLogger.debug(
       "Calling hosting deploy with command options",
-      inspect(commandOptions)
+      inspect(commandOptions),
     );
     if (deployTarget === "live") {
       await deploy(["hosting"], commandOptions);
@@ -331,18 +331,28 @@ export async function deployToHosting(
 }
 
 export async function emulatorsStart(
-  emulatorUiSelections: EmulatorUiSelections
+  emulatorUiSelections: EmulatorUiSelections,
 ) {
+  const only =
+    emulatorUiSelections.mode === "hosting"
+      ? "hosting"
+      : emulatorUiSelections.mode === "dataconnect"
+        ? `${Emulators.DATACONNECT},${Emulators.AUTH}`
+        : "";
   const commandOptions = await getCommandOptions(undefined, {
-    ...currentOptions.value,
+    ...(await firstWhere(
+      // TODO use firstWhereDefined once currentOptions are undefined if not initialized yet
+      currentOptions,
+      (op) => !!op && op.configPath.length !== 0,
+    )),
     project: emulatorUiSelections.projectId,
     exportOnExit: emulatorUiSelections.exportStateOnExit,
     import: emulatorUiSelections.importStateFolderPath,
-    only: emulatorUiSelections.mode === "hosting" ? "hosting" : "",
+    only,
   });
   // Adjusts some options, export on exit can be a boolean or a path.
   commandUtils.setExportOnExitOptions(
-    commandOptions as commandUtils.ExportOnExitOptions
+    commandOptions as commandUtils.ExportOnExitOptions,
   );
   return startAllEmulators(commandOptions, /*showUi=*/ true);
 }
@@ -358,4 +368,10 @@ export function listRunningEmulators(): EmulatorInfo[] {
 export function getEmulatorUiUrl(): string | undefined {
   const url: URL = EmulatorRegistry.url(Emulators.UI);
   return url.hostname === "unknown" ? undefined : url.toString();
+}
+
+export function getEmulatorDetails(
+  emulator: DownloadableEmulators,
+): DownloadableEmulatorDetails {
+  return EmulatorRegistry.getDetails(emulator);
 }

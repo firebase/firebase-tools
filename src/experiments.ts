@@ -33,12 +33,14 @@ export const ALL_EXPERIMENTS = experiments({
     shortDescription: "Use new endpoint to administer realtime database instances",
   },
   // Cloud Functions for Firebase experiments
-  pythonfunctions: {
-    shortDescription: "Python support for Cloud Functions for Firebase",
+  functionsv2deployoptimizations: {
+    shortDescription: "Optimize deployments of v2 firebase functions",
     fullDescription:
-      "Adds the ability to initializea and deploy Cloud " +
-      "Functions for Firebase in Python. While this feature is experimental " +
-      "breaking API changes are allowed in MINOR API revisions",
+      "Reuse build images across funtions to increase performance and reliaibility " +
+      "of deploys. This has been made an experiment due to backend bugs that are " +
+      "temporarily causing failures in some regions with this optimization enabled",
+    public: true,
+    default: false,
   },
   deletegcfartifacts: {
     shortDescription: `Add the ${bold(
@@ -115,7 +117,20 @@ export const ALL_EXPERIMENTS = experiments({
 
   apphosting: {
     shortDescription: "Allow CLI option for Frameworks",
-    default: false,
+    default: true,
+    public: false,
+  },
+
+  dataconnect: {
+    shortDescription: "Enable Data Connect related features.",
+    fullDescription: "Enable Data Connect related features.",
+    public: false,
+  },
+
+  genkit: {
+    shortDescription: "Enable Genkit related features.",
+    fullDescription: "Enable Genkit related features.",
+    default: true,
     public: false,
   },
 });

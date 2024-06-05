@@ -145,7 +145,7 @@ export async function getSecretMetadata(
   const secretInfo: any = {};
   try {
     secretInfo.secret = await getSecret(projectId, secretName);
-    secretInfo.secretVersion = getSecretVersion(projectId, secretName, version);
+    secretInfo.secretVersion = await getSecretVersion(projectId, secretName, version);
   } catch (err: any) {
     // Throw anything other than the expected 404 errors.
     if (err.status !== 404) {
