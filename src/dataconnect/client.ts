@@ -2,7 +2,6 @@ import { dataconnectOrigin } from "../api";
 import { Client } from "../apiv2";
 import * as operationPoller from "../operation-poller";
 import * as types from "./types";
-import { logger } from "../logger";
 
 const DATACONNECT_API_VERSION = "v1alpha";
 const dataconnectClient = () =>
