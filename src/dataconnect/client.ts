@@ -25,28 +25,8 @@ export async function listLocations(projectId: string): Promise<string[]> {
 
 /** Service methods */
 export async function listAllServices(projectId: string): Promise<types.Service[]> {
-  const locations = await listLocations(projectId);
-  let services: types.Service[] = [];
-  await Promise.all(
-    locations.map(async (l) => {
-      try {
-        const locationServices = await listServices(projectId, l);
-        services = services.concat(locationServices);
-      } catch (err) {
-        logger.debug(`Unable to listServices in ${l}: ${err}`);
-      }
-    }),
-  );
-
-  return services;
-}
-
-export async function listServices(
-  projectId: string,
-  locationId: string,
-): Promise<types.Service[]> {
   const res = await dataconnectClient().get<{ services: types.Service[] }>(
-    `/projects/${projectId}/locations/${locationId}/services`,
+    `/projects/${projectId}/locations/-/services`,
   );
   return res.body.services ?? [];
 }
