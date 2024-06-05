@@ -2,8 +2,8 @@
 - Fixes some cases where Firebase Data Connect deployment fails to pretty-print errors (#7230).
 - Updated Pub/Sub emulator to v0.8.14 (#7197).
 - Updates default resource names and template during `firebase init dataconnect`.
-- Improved `firebase init` for 'fresh from Console' services (#7240).
-- Improved `firebase init` when Cloud SQL instances pending creation (#7275).
+- Improved `firebase init dataconnect` for 'fresh from Console' services (#7240).
+- Improved `firebase init dataconnect` when Cloud SQL instances is pending creation (#7275).
 - Add support for node22 in function deployments (#7252).
 - Update to Firebase Data Connect Emulator v1.2.0, which adds support for Postgres 16 and creates the Postgres database specified in dataconnect.yaml or .firebaserc if it does not already exist.
 - Update to the latest version of the Crashlytics buildtools, v3.
