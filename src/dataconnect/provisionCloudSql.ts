@@ -19,10 +19,19 @@ export async function provisionCloudSql(args: {
   instanceId: string;
   databaseId: string;
   enableGoogleMlIntegration: boolean;
+  waitUntilReady: boolean;
   silent?: boolean;
 }): Promise<string> {
   let connectionName: string; // Not used yet, will be used for schema migration
-  const { projectId, locationId, instanceId, databaseId, enableGoogleMlIntegration, silent } = args;
+  const {
+    projectId,
+    locationId,
+    instanceId,
+    databaseId,
+    enableGoogleMlIntegration,
+    waitUntilReady,
+    silent,
+  } = args;
   try {
     const existingInstance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
     silent || utils.logLabeledBullet("dataconnect", `Found existing instance ${instanceId}.`);
@@ -64,7 +73,7 @@ export async function provisionCloudSql(args: {
     silent ||
       utils.logLabeledBullet(
         "dataconnect",
-        `This may take while... Feel free to close the terminal and come back later.`,
+        `This may take while.\nMonitor the progress at https://console.cloud.google.com/sql/instances/${instanceId}/overview?mods=pan_ng2&project=${projectId}`,
       );
     const newInstance = await promiseWithSpinner(
       () =>
@@ -73,6 +82,7 @@ export async function provisionCloudSql(args: {
           locationId,
           instanceId,
           enableGoogleMlIntegration,
+          waitUntilReady,
         ),
       "Creating your instance...",
     );

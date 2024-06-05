@@ -30,7 +30,8 @@ export async function createInstance(
   location: string,
   instanceId: string,
   enableGoogleMlIntegration: boolean,
-): Promise<Instance> {
+  waitUntilReady: boolean,
+): Promise<Instance | undefined> {
   const databaseFlags = [{ name: "cloudsql.iam_authentication", value: "on" }];
   if (enableGoogleMlIntegration) {
     databaseFlags.push({ name: "cloudsql.enable_google_ml_integration", value: "on" });
@@ -56,6 +57,9 @@ export async function createInstance(
       },
     },
   });
+  if (!waitUntilReady) {
+    return;
+  }
   const opName = `projects/${projectId}/operations/${op.body.name}`;
   const pollRes = await operationPoller.pollOperation<Instance>({
     apiOrigin: cloudSQLAdminOrigin(),
