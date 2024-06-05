@@ -19,7 +19,7 @@ export async function provisionCloudSql(args: {
   instanceId: string;
   databaseId: string;
   enableGoogleMlIntegration: boolean;
-  waitUntilReady: boolean;
+  waitForCreation: boolean;
   silent?: boolean;
 }): Promise<string> {
   let connectionName = ""; // Not used yet, will be used for schema migration
@@ -29,7 +29,7 @@ export async function provisionCloudSql(args: {
     instanceId,
     databaseId,
     enableGoogleMlIntegration,
-    waitUntilReady,
+    waitForCreation,
     silent,
   } = args;
   try {
@@ -79,7 +79,7 @@ export async function provisionCloudSql(args: {
           locationId,
           instanceId,
           enableGoogleMlIntegration,
-          waitUntilReady,
+          waitForCreation,
         ),
       "Creating your instance...",
     );

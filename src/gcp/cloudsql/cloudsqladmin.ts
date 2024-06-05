@@ -41,7 +41,7 @@ export async function createInstance(
   location: string,
   instanceId: string,
   enableGoogleMlIntegration: boolean,
-  waitUntilReady: boolean,
+  waitForCreation: boolean,
 ): Promise<Instance | undefined> {
   const databaseFlags = [{ name: "cloudsql.iam_authentication", value: "on" }];
   if (enableGoogleMlIntegration) {
@@ -68,7 +68,7 @@ export async function createInstance(
       },
     },
   });
-  if (!waitUntilReady) {
+  if (!waitForCreation) {
     return;
   }
   const opName = `projects/${projectId}/operations/${op.body.name}`;

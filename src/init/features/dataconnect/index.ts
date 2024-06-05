@@ -93,7 +93,7 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
       instanceId: info.cloudSqlInstanceId,
       databaseId: info.cloudSqlDatabase,
       enableGoogleMlIntegration: false,
-      waitUntilReady: false,
+      waitForCreation: false,
     });
   }
 }

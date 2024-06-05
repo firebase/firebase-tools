@@ -102,7 +102,7 @@ export default async function (
           instanceId,
           databaseId,
           enableGoogleMlIntegration,
-          waitUntilReady: true,
+          waitForCreation: true,
         });
       }),
   );
