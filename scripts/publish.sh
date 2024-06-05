@@ -2,12 +2,13 @@
 set -e
 
 printusage() {
-  echo "publish.sh <version>"
+  echo "publish.sh <version> [vscode-version]"
   echo "REPOSITORY_ORG and REPOSITORY_NAME should be set in the environment."
   echo "e.g. REPOSITORY_ORG=user, REPOSITORY_NAME=repo"
   echo ""
   echo "Arguments:"
   echo "  version: 'patch', 'minor', or 'major'."
+  echo "  vscode-version: Optional. If omitted, defaults to <version>. May be 'patch', 'minor', or 'major'."
 }
 
 VERSION=$1
@@ -15,6 +16,14 @@ if [[ $VERSION == "" ]]; then
   printusage
   exit 1
 elif [[ ! ($VERSION == "patch" || $VERSION == "minor" || $VERSION == "major") ]]; then
+  printusage
+  exit 1
+fi
+
+VSCODE_VERSION=$2
+if [[ $VSCODE_VERSION == "" ]]; then
+  VSCODE_VERSION=$VERSION
+elif [[ ! ($VSCODE_VERSION == "patch" || $VSCODE_VERSION == "minor" || $VSCODE_VERSION == "major") ]]; then
   printusage
   exit 1
 fi
@@ -43,12 +52,6 @@ trap "echo 'Missing jq.'; exit 1" ERR
 which jq &> /dev/null
 trap - ERR
 echo "Checked for commands."
-
-echo "Checking for Twitter credentials..."
-trap "echo 'Missing Twitter credentials.'; exit 1" ERR
-test -f "${WDIR}/scripts/twitter.json"
-trap - ERR
-echo "Checked for Twitter credentials..."
 
 echo "Checking for logged-in npm user..."
 trap "echo 'Please login to npm using \`npm login --registry https://wombat-dressing-room.appspot.com\`'; exit 1" ERR
@@ -87,6 +90,10 @@ npm version $VERSION
 NEW_VERSION=$(jq -r ".version" package.json)
 echo "Made a $VERSION version."
 
+echo "Publishing a $VSCODE_VERSION version of the VSCode extension..."
+bash ./scripts/publish-vsce.sh $VSCODE_VERSION $NEW_VERSION
+echo "Published a $VSCODE_VERSION version of the VSCode extension."
+
 echo "Making the release notes..."
 RELEASE_NOTES_FILE=$(mktemp)
 echo "[DEBUG] ${RELEASE_NOTES_FILE}"
@@ -112,9 +119,3 @@ echo "Pushed to GitHub."
 echo "Publishing release notes..."
 hub release create --file "${RELEASE_NOTES_FILE}" "v${NEW_VERSION}"
 echo "Published release notes."
-
-echo "Making the tweet..."
-npm install --no-save twitter@1.7.1
-cp -v "${WDIR}/scripts/twitter.json" "${TEMPDIR}/${REPOSITORY_NAME}/scripts/"
-node ./scripts/tweet.js ${NEW_VERSION}
-echo "Made the tweet."

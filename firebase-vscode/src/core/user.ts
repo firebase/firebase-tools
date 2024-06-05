@@ -1,10 +1,11 @@
 import { computed, effect } from "@preact/signals-react";
-import { Disposable } from "vscode";
+import { Disposable, TelemetryLogger } from "vscode";
 import { ServiceAccountUser } from "../types";
 import { User as AuthUser } from "../../../src/types/auth";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { getAccounts, login, logoutUser } from "../cli";
 import { globalSignal } from "../utils/globals";
+import { DATA_CONNECT_EVENT_NAME } from "../analytics";
 
 type User = ServiceAccountUser | AuthUser;
 
@@ -23,24 +24,30 @@ export const isServiceAccount = computed(() => {
   return (currentUser.value as ServiceAccountUser)?.type === "service_account";
 });
 
-export function registerUser(broker: ExtensionBrokerImpl): Disposable {
-  effect(() => {
-    broker.send("notifyUsers", { users: Object.values(users.value) });
-  });
-
-  effect(() => {
-    broker.send("notifyUserChanged", { user: currentUser.value });
-  });
-
-  broker.on("getInitialData", async () => {
+export async function checkLogin() {
     const accounts = await getAccounts();
     users.value = accounts.reduce(
       (cumm, curr) => ({ ...cumm, [curr.user.email]: curr.user }),
       {}
     );
+}
+
+export function registerUser(broker: ExtensionBrokerImpl, telemetryLogger: TelemetryLogger): Disposable {
+  
+  const sub1 = effect(() => {
+    broker.send("notifyUsers", { users: Object.values(users.value) });
   });
 
-  broker.on("addUser", async () => {
+  const sub2 = effect(() => {
+    broker.send("notifyUserChanged", { user: currentUser.value });
+  });
+
+  const sub3 = broker.on("getInitialData", async () => {
+    checkLogin();
+  });
+
+  const sub4 = broker.on("addUser", async () => {
+    telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.LOGIN);
     const { user } = await login();
     users.value = {
       ...users.value,
@@ -49,11 +56,11 @@ export function registerUser(broker: ExtensionBrokerImpl): Disposable {
     currentUserId.value = user.email;
   });
 
-  broker.on("requestChangeUser", ({ user }) => {
+  const sub5 = broker.on("requestChangeUser", ({ user }) => {
     currentUserId.value = user.email;
   });
 
-  broker.on("logout", async ({ email }) => {
+  const sub6 = broker.on("logout", async ({ email }) => {
     try {
       await logoutUser(email);
       const accounts = await getAccounts();
@@ -67,7 +74,12 @@ export function registerUser(broker: ExtensionBrokerImpl): Disposable {
     }
   });
 
-  return {
-    dispose() {},
-  };
+  return Disposable.from(
+    { dispose: sub1 },
+    { dispose: sub2 },
+    { dispose: sub3 },
+    { dispose: sub4 },
+    { dispose: sub5 },
+    { dispose: sub6 }
+  );
 }

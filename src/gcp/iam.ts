@@ -1,8 +1,19 @@
 import { resourceManagerOrigin, iamOrigin } from "../api";
 import { logger } from "../logger";
 import { Client } from "../apiv2";
+import * as utils from "../utils";
 
 const apiClient = new Client({ urlPrefix: iamOrigin(), apiVersion: "v1" });
+
+/** Returns the default cloud build service agent */
+export function getDefaultCloudBuildServiceAgent(projectNumber: string): string {
+  return `${projectNumber}@cloudbuild.gserviceaccount.com`;
+}
+
+/** Returns the default compute engine service agent */
+export function getDefaultComputeEngineServiceAgent(projectNumber: string): string {
+  return `${projectNumber}-compute@developer.gserviceaccount.com`;
+}
 
 // IAM Policy
 // https://cloud.google.com/resource-manager/reference/rest/Shared.Types/Policy
@@ -218,4 +229,53 @@ export async function testIamPermissions(
     permissions,
     `projects/${projectId}`,
   );
+}
+
+/** Helper to merge all required bindings into the IAM policy, returns boolean if the policy has been updated */
+export function mergeBindings(policy: Policy, requiredBindings: Binding[]): boolean {
+  let updated = false;
+  for (const requiredBinding of requiredBindings) {
+    const match = policy.bindings.find((b) => b.role === requiredBinding.role);
+    if (!match) {
+      updated = true;
+      policy.bindings.push(requiredBinding);
+      continue;
+    }
+    for (const requiredMember of requiredBinding.members) {
+      if (!match.members.find((m) => m === requiredMember)) {
+        updated = true;
+        match.members.push(requiredMember);
+      }
+    }
+  }
+  return updated;
+}
+
+/** Utility to print the required binding commands */
+export function printManualIamConfig(
+  requiredBindings: Binding[],
+  projectId: string,
+  prefix: string,
+) {
+  utils.logLabeledBullet(
+    prefix,
+    "Failed to verify the project has the correct IAM bindings for a successful deployment.",
+    "warn",
+  );
+  utils.logLabeledBullet(
+    prefix,
+    "You can either re-run this command as a project owner or manually run the following set of `gcloud` commands:",
+    "warn",
+  );
+  for (const binding of requiredBindings) {
+    for (const member of binding.members) {
+      utils.logLabeledBullet(
+        prefix,
+        `\`gcloud projects add-iam-policy-binding ${projectId} ` +
+          `--member=${member} ` +
+          `--role=${binding.role}\``,
+        "warn",
+      );
+    }
+  }
 }

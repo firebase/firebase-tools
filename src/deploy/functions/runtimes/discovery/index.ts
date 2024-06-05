@@ -1,7 +1,7 @@
 import fetch, { Response } from "node-fetch";
 import * as fs from "fs";
 import * as path from "path";
-import * as yaml from "js-yaml";
+import * as yaml from "yaml";
 import { promisify } from "util";
 
 import { logger } from "../../../../logger";
@@ -12,6 +12,8 @@ import * as v1alpha1 from "./v1alpha1";
 import { FirebaseError } from "../../../../error";
 
 export const readFileAsync = promisify(fs.readFile);
+
+const TIMEOUT_OVERRIDE_ENV_VAR = "FUNCTIONS_DISCOVERY_TIMEOUT";
 
 /**
  * Converts the YAML retrieved from discovery into a Build object for param interpolation.
@@ -58,7 +60,7 @@ export async function detectFromYaml(
   }
 
   logger.debug("Found functions.yaml. Got spec:", text);
-  const parsed = yaml.load(text);
+  const parsed = yaml.parse(text);
   return yamlToBuild(parsed, project, api.functionsDefaultRegion(), runtime);
 }
 
@@ -73,9 +75,14 @@ export async function detectFromPort(
 ): Promise<build.Build> {
   let res: Response;
   const timedOut = new Promise<never>((resolve, reject) => {
-    setTimeout(() => {
-      reject(new FirebaseError("User code failed to load. Cannot determine backend specification"));
-    }, timeout);
+    setTimeout(
+      () => {
+        reject(
+          new FirebaseError("User code failed to load. Cannot determine backend specification"),
+        );
+      },
+      +(process.env[TIMEOUT_OVERRIDE_ENV_VAR] || 0) * 1000 /* ms */ || timeout,
+    );
   });
 
   while (true) {
@@ -104,7 +111,7 @@ export async function detectFromPort(
 
   let parsed: any;
   try {
-    parsed = yaml.load(text);
+    parsed = yaml.parse(text);
   } catch (err: any) {
     logger.debug("Failed to parse functions.yaml", err);
     throw new FirebaseError(`Failed to load function definition from source: ${text}`);

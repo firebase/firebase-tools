@@ -4,12 +4,11 @@ import * as clc from "colorette";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import * as features from "./features";
+import { RCData } from "../rc";
 
 export interface Setup {
   config: Record<string, any>;
-  rcfile: {
-    projects: Record<string, any>;
-  };
+  rcfile: RCData;
   features?: string[];
   featureArg?: boolean;
   project?: Record<string, any>;
@@ -21,6 +20,7 @@ const featureFns = new Map<string, (setup: any, config: any, options?: any) => P
   ["account", features.account],
   ["database", features.database],
   ["firestore", features.firestore],
+  ["dataconnect", features.dataconnect],
   ["functions", features.functions],
   ["hosting", features.hosting],
   ["storage", features.storage],
@@ -29,6 +29,7 @@ const featureFns = new Map<string, (setup: any, config: any, options?: any) => P
   ["project", features.project], // always runs, sets up .firebaserc
   ["remoteconfig", features.remoteconfig],
   ["hosting:github", features.hostingGithub],
+  ["genkit", features.genkit],
 ]);
 
 export async function init(setup: Setup, config: any, options: any): Promise<any> {

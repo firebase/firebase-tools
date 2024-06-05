@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "definitions": {
+    "generatable": {
+      "additionalProperties": true,
+      "type": "object",
+      "properties": {
+        "outputDir": {
+          "type": "string",
+          "description": "Path to the directory where generated files should be written to."
+        }
+      }
+    }
+  },
+  "properties": {
+    "connectorId": {
+      "type": "string",
+      "description": "The ID of the Firebase Data Connect connector."
+    },
+    "authMode": {
+      "type": "string",
+      "description": "The authentication strategy to use for this connector"
+
+    },
+    "generate": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "javascriptSdk": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/generatable"
+          },
+          "description": "Configuration for a generated Javascript SDK"
+        },
+        "kotlinSdk": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/generatable"
+          },
+          "description": "Configuration for a generated Kotlin SDK"
+        },
+        "swiftSdk": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/generatable"
+          },
+          "description": "Configuration for a generated Swift SDK"
+        }
+      }
+    }
+  }
+}

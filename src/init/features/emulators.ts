@@ -1,17 +1,21 @@
 import * as clc from "colorette";
 import * as _ from "lodash";
 import * as utils from "../../utils";
-import { prompt } from "../../prompt";
+import { prompt, promptOnce } from "../../prompt";
 import { Emulators, ALL_SERVICE_EMULATORS, isDownloadableEmulator } from "../../emulator/types";
 import { Constants } from "../../emulator/constants";
 import { downloadIfNecessary } from "../../emulator/downloadableEmulators";
+import { Setup } from "../index";
 
 interface EmulatorsInitSelections {
   emulators?: Emulators[];
   download?: boolean;
 }
 
-export async function doSetup(setup: any, config: any) {
+// postgresql://localhost:5432 is a default out of the box value for most installations of Postgres
+export const DEFAULT_POSTGRES_CONNECTION = "postgresql://localhost:5432?sslmode=disable";
+
+export async function doSetup(setup: Setup, config: any) {
   const choices = ALL_SERVICE_EMULATORS.map((e) => {
     return {
       value: e,
@@ -88,6 +92,20 @@ export async function doSetup(setup: any, config: any) {
         const portNum = Number.parseInt(ui.port);
         ui.port = isNaN(portNum) ? undefined : portNum;
       }
+    }
+
+    if (selections.emulators.includes(Emulators.DATACONNECT)) {
+      const defaultConnectionString =
+        setup.rcfile.dataconnectEmulatorConfig?.postgres?.localConnectionString ??
+        DEFAULT_POSTGRES_CONNECTION;
+      // TODO: Download Postgres
+      const localConnectionString = await promptOnce({
+        type: "input",
+        name: "localConnectionString",
+        message: `What is the connection string of the local Postgres instance you would like to use with the Data Connect emulator?`,
+        default: defaultConnectionString,
+      });
+      setup.rcfile.dataconnectEmulatorConfig = { postgres: { localConnectionString } };
     }
 
     await prompt(selections, [

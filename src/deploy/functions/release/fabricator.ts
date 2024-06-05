@@ -15,6 +15,7 @@ import * as deploymentTool from "../../../deploymentTool";
 import * as gcf from "../../../gcp/cloudfunctions";
 import * as gcfV2 from "../../../gcp/cloudfunctionsv2";
 import * as eventarc from "../../../gcp/eventarc";
+import * as experiments from "../../../experiments";
 import * as helper from "../functionsDeployHelper";
 import * as planner from "./planner";
 import * as poller from "../../../operation-poller";
@@ -25,7 +26,7 @@ import * as scheduler from "../../../gcp/cloudscheduler";
 import * as utils from "../../../utils";
 import * as services from "../services";
 import { AUTH_BLOCKING_EVENTS } from "../../../functions/events/v1";
-import * as gcb from "../../../gcp/cloudbuild";
+import * as gce from "../../../gcp/computeEngine";
 import { getHumanFriendlyPlatformName } from "../functionsDeployHelper";
 
 // TODO: Tune this for better performance.
@@ -364,7 +365,9 @@ export class Fabricator {
     while (!resultFunction) {
       resultFunction = await this.functionExecutor
         .run(async () => {
-          apiFunction.buildConfig.sourceToken = await scraper.getToken();
+          if (experiments.isEnabled("functionsv2deployoptimizations")) {
+            apiFunction.buildConfig.sourceToken = await scraper.getToken();
+          }
           const op: { name: string } = await gcfV2.createFunction(apiFunction);
           return await poller.pollOperation<gcfV2.OutputCloudFunction>({
             ...gcfV2PollerOptions,
@@ -436,7 +439,7 @@ export class Fabricator {
     } else if (backend.isScheduleTriggered(endpoint)) {
       const invoker = endpoint.serviceAccount
         ? [endpoint.serviceAccount]
-        : [gcb.getDefaultComputeEngineServiceAgent(this.projectNumber)];
+        : [gce.getDefaultServiceAccount(this.projectNumber)];
       await this.executor
         .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
         .catch(rethrowAs(endpoint, "set invoker"));
@@ -502,7 +505,9 @@ export class Fabricator {
     const resultFunction = await this.functionExecutor
       .run(
         async () => {
-          apiFunction.buildConfig.sourceToken = await scraper.getToken();
+          if (experiments.isEnabled("functionsv2deployoptimizations")) {
+            apiFunction.buildConfig.sourceToken = await scraper.getToken();
+          }
           const op: { name: string } = await gcfV2.updateFunction(apiFunction);
           return await poller.pollOperation<gcfV2.OutputCloudFunction>({
             ...gcfV2PollerOptions,
@@ -543,7 +548,7 @@ export class Fabricator {
     } else if (backend.isScheduleTriggered(endpoint)) {
       invoker = endpoint.serviceAccount
         ? [endpoint.serviceAccount]
-        : [gcb.getDefaultComputeEngineServiceAgent(this.projectNumber)];
+        : [gce.getDefaultServiceAccount(this.projectNumber)];
     }
 
     if (invoker) {

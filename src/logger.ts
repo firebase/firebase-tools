@@ -1,6 +1,21 @@
 import * as winston from "winston";
 import * as Transport from "winston-transport";
 
+import { isVSCodeExtension } from "./utils";
+import { EventEmitter } from "events";
+
+/** vsceLogEmitter passes CLI logs along to VSCode.
+  Events are of the format winston.LogEntry
+  Example usage:
+
+  vsceLogEmitter.on("log", (logEntry) => {  
+    if (logEntry.level == "error") {
+      console.log(logEntry.message)
+    }
+  }) 
+*/
+export const vsceLogEmitter = new EventEmitter();
+
 export type LogLevel =
   | "error"
   | "warn"
@@ -80,6 +95,27 @@ function annotateDebugLines(logger: winston.Logger): winston.Logger {
   return logger;
 }
 
+function maybeUseVSCodeLogger(logger: winston.Logger): winston.Logger {
+  if (!isVSCodeExtension()) {
+    return logger;
+  }
+  const oldLogFunc = logger.log.bind(logger);
+  const vsceLogger: winston.LogMethod = function (
+    levelOrEntry: string | winston.LogEntry,
+    message?: string | Error,
+    ...meta: any[]
+  ): winston.Logger {
+    if (message) {
+      vsceLogEmitter.emit("log", { level: levelOrEntry, message });
+    } else {
+      vsceLogEmitter.emit("log", levelOrEntry);
+    }
+    return oldLogFunc(levelOrEntry as string, message as string, ...meta);
+  };
+  logger.log = vsceLogger;
+  return logger;
+}
+
 const rawLogger = winston.createLogger();
 // Set a default silent logger to suppress logs during tests
 rawLogger.add(new winston.transports.Console({ silent: true }));
@@ -91,4 +127,6 @@ rawLogger.exitOnError = false;
 // allow error parameters.
 // Casting looks super dodgy, but it should be safe because we know the underlying code
 // handles all parameter types we care about.
-export const logger = annotateDebugLines(expandErrors(rawLogger)) as unknown as Logger;
+export const logger = maybeUseVSCodeLogger(
+  annotateDebugLines(expandErrors(rawLogger)),
+) as unknown as Logger;

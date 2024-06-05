@@ -544,7 +544,12 @@ describe("validate", () => {
       httpsTrigger: {},
     };
 
-    const secret: secretManager.Secret = { projectId: project, name: "MY_SECRET" };
+    const secret: secretManager.Secret = {
+      projectId: project,
+      name: "MY_SECRET",
+      labels: {},
+      replication: {},
+    };
 
     let secretVersionStub: sinon.SinonStub;
 

@@ -85,6 +85,9 @@ export const command = new Command("firestore:databases:create <database>")
           "the new database. By default, created databases will have closed rules that\n" +
           "block any incoming third-party traffic.",
       );
+      logger.info(
+        `Your database may be viewed at ${printer.firebaseConsoleDatabaseUrl(options.project, database)}`,
+      );
     }
 
     return databaseResp;

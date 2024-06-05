@@ -160,11 +160,14 @@ export async function checkListenable(
 }
 
 /**
- * Wait for a port to be available on the given host. Checks every 250ms for up to 60s.
+ * Wait for a port to be available on the given host. Checks every 250ms for up to timeout (default 60s).
  */
-export async function waitForPortUsed(port: number, host: string): Promise<void> {
-  const interval = 250;
-  const timeout = 60_000;
+export async function waitForPortUsed(
+  port: number,
+  host: string,
+  timeout: number = 60_000,
+): Promise<void> {
+  const interval = 200;
   try {
     await tcpport.waitUntilUsedOnHost(port, host, interval, timeout);
   } catch (e: any) {
@@ -181,6 +184,9 @@ const EMULATOR_CAN_LISTEN_ON_PRIMARY_ONLY: Record<PortName, boolean> = {
   firestore: true,
   "firestore.websocket": true,
   pubsub: true,
+
+  // External processes that accepts multiple listen specs.
+  dataconnect: false,
 
   // Listening on multiple addresses to maximize the chance of discovery.
   hub: false,
@@ -458,4 +464,16 @@ function listenSpec(lookup: dns.LookupAddress, port: number): ListenSpec {
     family: lookup.family === 4 ? "IPv4" : "IPv6",
     port: port,
   };
+}
+
+/**
+ * Return a comma-separated list of host:port from specs.
+ */
+export function listenSpecsToString(specs: ListenSpec[]): string {
+  return specs
+    .map((spec) => {
+      const host = spec.family === "IPv4" ? spec.address : `[${spec.address}]`;
+      return `${host}:${spec.port}`;
+    })
+    .join(",");
 }

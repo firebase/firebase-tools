@@ -13,7 +13,7 @@ const JAR_CACHE_DIR =
   process.env.FIREBASE_CRASHLYTICS_BUILDTOOLS_PATH ||
   path.join(os.homedir(), ".cache", "firebase", "crashlytics", "buildtools");
 
-const JAR_VERSION = "2.9.2";
+const JAR_VERSION = "3.0.0";
 const JAR_URL = `https://dl.google.com/android/maven2/com/google/firebase/firebase-crashlytics-buildtools/${JAR_VERSION}/firebase-crashlytics-buildtools-${JAR_VERSION}.jar`;
 
 /**
@@ -22,6 +22,7 @@ const JAR_URL = `https://dl.google.com/android/maven2/com/google/firebase/fireba
 export async function fetchBuildtoolsJar(): Promise<string> {
   // If you set CRASHLYTICS_LOCAL_JAR to a path it will override the downloaded buildtools.jar
   if (process.env.CRASHLYTICS_LOCAL_JAR) {
+    logger.debug(`Using local Crashlytics Jar override at ${process.env.CRASHLYTICS_LOCAL_JAR}`);
     return process.env.CRASHLYTICS_LOCAL_JAR;
   }
 
