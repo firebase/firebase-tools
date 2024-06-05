@@ -22,7 +22,7 @@ export async function provisionCloudSql(args: {
   waitUntilReady: boolean;
   silent?: boolean;
 }): Promise<string> {
-  let connectionName: string; // Not used yet, will be used for schema migration
+  let connectionName = ""; // Not used yet, will be used for schema migration
   const {
     projectId,
     locationId,
@@ -68,12 +68,9 @@ export async function provisionCloudSql(args: {
     silent ||
       utils.logLabeledBullet(
         "dataconnect",
-        `CloudSQL instance '${instanceId}' not found, creating it. This instance is provided under the terms of the Data Connect free trial ${freeTrialTermsLink()}`,
-      );
-    silent ||
-      utils.logLabeledBullet(
-        "dataconnect",
-        `This may take while.\nMonitor the progress at https://console.cloud.google.com/sql/instances/${instanceId}/overview?mods=pan_ng2&project=${projectId}`,
+        `CloudSQL instance '${instanceId}' not found, creating it.` +
+          `\nThis instance is provided under the terms of the Data Connect free trial ${freeTrialTermsLink()}` +
+          `\nMonitor the progress at ${cloudSqlAdminClient.instanceConsoleLink(projectId, instanceId)}`,
       );
     const newInstance = await promiseWithSpinner(
       () =>
@@ -86,8 +83,12 @@ export async function provisionCloudSql(args: {
         ),
       "Creating your instance...",
     );
-    silent || utils.logLabeledBullet("dataconnect", "Instance created");
-    connectionName = newInstance?.connectionName || "";
+    if (newInstance) {
+      silent || utils.logLabeledBullet("dataconnect", "Instance created");
+      connectionName = newInstance?.connectionName || "";
+    } else {
+      silent || utils.logLabeledBullet("dataconnect", "Instance creation process started");
+    }
   }
   try {
     await cloudSqlAdminClient.getDatabase(projectId, instanceId, databaseId);
