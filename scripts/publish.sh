@@ -114,7 +114,7 @@ echo "Published to npm."
 echo "Cleaning up release notes..."
 rm CHANGELOG.md
 touch CHANGELOG.md
-git commit -m "[firebase-release] Removed change log and reset repo after ${NEW_VERSION} release" CHANGELOG.md
+git commit -m "[firebase-release] Removed change log and reset repo after ${NEW_VERSION} release" CHANGELOG.md firebase-vscode/CHANGELOG.md
 echo "Cleaned up release notes."
 
 echo "Pushing to GitHub..."
