@@ -32,7 +32,7 @@ npm version $VERSION
 NEW_VSCODE_VERSION=$(jq -r ".version" package.json)
 NEXT_HEADER="## NEXT"
 NEW_HEADER="## NEXT \n\n## $NEW_VSCODE_VERSION\n\n- Updated internal firebase-tools dependency to $CLI_VERSION"
-sed -i '' -e "s/$NEXT_HEADER/$NEW_HEADER/g" CHANGELOG.md
+sed -i -e "s/$NEXT_HEADER/$NEW_HEADER/g" CHANGELOG.md
 echo "Made a $VERSION version of VSCode."
 
 echo "Building firebase-vscode .VSIX file"
