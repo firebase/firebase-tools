@@ -51,6 +51,11 @@ trap - ERR
 trap "echo 'Missing jq.'; exit 1" ERR
 which jq &> /dev/null
 trap - ERR
+
+trap "echo 'Missing gsutil.'; exit 1" ERR
+which gstuil &> /dev/null
+trap - ERR
+echo "Checked for commands."
 echo "Checked for commands."
 
 echo "Checking for logged-in npm user..."
