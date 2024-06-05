@@ -7,3 +7,4 @@
 - Update to Firebase Data Connect Emulator v1.2.0, which adds support for Postgres 16 and creates the Postgres database specified in dataconnect.yaml or .firebaserc if it does not already exist.
 - Update to the latest version of the Crashlytics buildtools, v3.
 - Support deployment of an Angular app using legacy browser builder (#7264)
+- Display meaningful error message when cannot determine target. (#6594)
