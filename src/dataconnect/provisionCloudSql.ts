@@ -61,7 +61,11 @@ export async function provisionCloudSql(args: {
         "dataconnect",
         `CloudSQL instance '${instanceId}' not found, creating it. This instance is provided under the terms of the Data Connect free trial ${freeTrialTermsLink()}`,
       );
-    silent || utils.logLabeledBullet("dataconnect", `This may take while...`);
+    silent ||
+      utils.logLabeledBullet(
+        "dataconnect",
+        `This may take while... Feel free to close the terminal and come back later.`,
+      );
     const newInstance = await promiseWithSpinner(
       () =>
         cloudSqlAdminClient.createInstance(
