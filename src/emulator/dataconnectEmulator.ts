@@ -179,7 +179,17 @@ export class DataConnectEmulatorClient {
     if (!this.client) {
       this.client = EmulatorRegistry.client(Emulators.DATACONNECT);
     }
-    const res = await this.client.post<ConfigureEmulatorRequest, void>("emulator/configure", body);
-    return res;
+    try {
+      const res = await this.client.post<ConfigureEmulatorRequest, void>(
+        "emulator/configure",
+        body,
+      );
+      return res;
+    } catch (err: any) {
+      if (err.status === 500) {
+        throw new FirebaseError(`Data Connect emulator: ${err.context.body.message}`);
+      }
+      throw err;
+    }
   }
 }
