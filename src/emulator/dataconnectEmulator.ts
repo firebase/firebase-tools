@@ -173,13 +173,23 @@ type ConfigureEmulatorRequest = {
 };
 
 export class DataConnectEmulatorClient {
-  private readonly client: Client;
-  constructor() {
-    this.client = EmulatorRegistry.client(Emulators.DATACONNECT);
-  }
+  private client: Client | undefined = undefined;
 
   public async configureEmulator(body: ConfigureEmulatorRequest): Promise<ClientResponse<void>> {
-    const res = await this.client.post<ConfigureEmulatorRequest, void>("emulator/configure", body);
-    return res;
+    if (!this.client) {
+      this.client = EmulatorRegistry.client(Emulators.DATACONNECT);
+    }
+    try {
+      const res = await this.client.post<ConfigureEmulatorRequest, void>(
+        "emulator/configure",
+        body,
+      );
+      return res;
+    } catch (err: any) {
+      if (err.status === 500) {
+        throw new FirebaseError(`Data Connect emulator: ${err.context.body.message}`);
+      }
+      throw err;
+    }
   }
 }
