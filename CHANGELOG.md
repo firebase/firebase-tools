@@ -1,1 +1,2 @@
+- `firebase init dataconnect` no longer waits for Cloud SQL instance provisioning (#7275).
 - Fixes an issue where the Data Connect emulator would not start up correctly.
