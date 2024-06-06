@@ -32,11 +32,8 @@ export interface DataConnectBuildArgs {
 }
 
 export class DataConnectEmulator implements EmulatorInstance {
-  private emulatorClient: DataConnectEmulatorClient;
 
-  constructor(private args: DataConnectEmulatorArgs) {
-    this.emulatorClient = new DataConnectEmulatorClient();
-  }
+  constructor(private args: DataConnectEmulatorArgs) {}
   private logger = EmulatorLogger.forEmulator(Emulators.DATACONNECT);
 
   async start(): Promise<void> {
@@ -155,7 +152,7 @@ export class DataConnectEmulator implements EmulatorInstance {
       this.logger.log("DEBUG", "No Postgres connection string found, not connecting to Postgres");
       return false;
     }
-    await this.emulatorClient.configureEmulator({ connectionString, database, serviceId });
+    await new DataConnectEmulatorClient().configureEmulator({ connectionString, database, serviceId });
     return true;
   }
 }
