@@ -1,4 +1,8 @@
-## NEXT
+## NEXT 
+
+## 0.2.6
+
+- Updated internal firebase-tools dependency to 13.11.1
 
 - Fix behaviour on failed postgres connection
 
