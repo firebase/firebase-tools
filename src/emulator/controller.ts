@@ -844,7 +844,6 @@ export async function startAll(
     });
     await startEmulator(dataConnectEmulator);
     if (!utils.isVSCodeExtension()) {
-      logger.info("Connecting to Postgres");
       await dataConnectEmulator.connectToPostgres();
     }
   }
