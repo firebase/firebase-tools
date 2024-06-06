@@ -174,8 +174,6 @@ type ConfigureEmulatorRequest = {
 
 export class DataConnectEmulatorClient {
   private client: Client | undefined = undefined;
-  constructor() {
-  }
 
   public async configureEmulator(body: ConfigureEmulatorRequest): Promise<ClientResponse<void>> {
     if (!this.client) {
