@@ -1,5 +1,7 @@
 ## NEXT
 
+- Fix behaviour on failed postgres connection
+
 ## 0.2.5
 
 - Icon fix

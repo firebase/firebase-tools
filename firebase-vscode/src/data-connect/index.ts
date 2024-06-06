@@ -191,7 +191,11 @@ export function registerFdc(
         vscode.commands.executeCommand(
           "firebase.dataConnect.executeIntrospection",
         );
-        runEmulatorIssuesStream(configs, emulatorController.getLocalEndpoint().value);
+        runEmulatorIssuesStream(
+          configs,
+          emulatorController.getLocalEndpoint().value,
+          fdcEmulatorsController.isPostgresEnabled,
+        );
         runDataConnectCompiler(configs, emulatorController.getLocalEndpoint().value);
       }
     }),
