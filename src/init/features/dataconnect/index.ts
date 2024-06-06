@@ -11,6 +11,7 @@ import { listLocations, listAllServices, getSchema } from "../../../dataconnect/
 import { Schema, Service } from "../../../dataconnect/types";
 import { DEFAULT_POSTGRES_CONNECTION } from "../emulators";
 import { parseServiceName } from "../../../dataconnect/names";
+import { logger } from "../../../logger";
 
 const TEMPLATE_ROOT = resolve(__dirname, "../../../../templates/init/dataconnect/");
 
@@ -92,6 +93,7 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
       instanceId: info.cloudSqlInstanceId,
       databaseId: info.cloudSqlDatabase,
       enableGoogleMlIntegration: false,
+      waitForCreation: false,
     });
   }
 }
@@ -244,17 +246,23 @@ async function promptForDatabase(
     config.set("dataconnect.location", info.locationId);
   }
   if (!info.isNewInstance && setup.projectId) {
-    const dbs = await cloudsql.listDatabases(setup.projectId, info.cloudSqlInstanceId);
-    const choices = dbs.map((d) => {
-      return { name: d.name, value: d.name };
-    });
-    choices.push({ name: "Create a new database", value: "" });
-    if (dbs.length) {
-      info.cloudSqlDatabase = await promptOnce({
-        message: `Which database in ${info.cloudSqlInstanceId} would you like to use?`,
-        type: "list",
-        choices,
+    try {
+      const dbs = await cloudsql.listDatabases(setup.projectId, info.cloudSqlInstanceId);
+      const choices = dbs.map((d) => {
+        return { name: d.name, value: d.name };
       });
+      choices.push({ name: "Create a new database", value: "" });
+      if (dbs.length) {
+        info.cloudSqlDatabase = await promptOnce({
+          message: `Which database in ${info.cloudSqlInstanceId} would you like to use?`,
+          type: "list",
+          choices,
+        });
+      }
+    } catch (err) {
+      // Show existing databases in a list is optional, ignore any errors from ListDatabases.
+      // This often happen when the Cloud SQL instance is still being created.
+      logger.debug(`[dataconnect] Cannot list databases during init: ${err}`);
     }
   }
   if (info.cloudSqlDatabase === "") {
