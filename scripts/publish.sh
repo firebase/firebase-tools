@@ -53,7 +53,7 @@ which jq &> /dev/null
 trap - ERR
 
 trap "echo 'Missing gsutil.'; exit 1" ERR
-which gstuil &> /dev/null
+which gsutil &> /dev/null
 trap - ERR
 echo "Checked for commands."
 

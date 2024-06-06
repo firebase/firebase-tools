@@ -22,6 +22,8 @@ elif [[ ! ($VERSION == "patch" || $VERSION == "minor" || $VERSION == "major") ]]
   exit 1
 fi
 
+cd firebase-vscode
+
 echo "Making a $VERSION version of VSCode..."
 npm version $VERSION
 NEW_VSCODE_VERSION=$(jq -r ".version" package.json)
@@ -30,7 +32,6 @@ NEW_HEADER="## NEXT \n\n## $NEW_VSCODE_VERSION\n\n- Updated internal firebase-to
 sed -i -e "s/$NEXT_HEADER/$NEW_HEADER/g" CHANGELOG.md
 echo "Made a $VERSION version of VSCode."
 
-cd firebase-vscode
 echo "Running npm install for VSCode..."
 npm install
 echo "Ran npm install for VSCode."
