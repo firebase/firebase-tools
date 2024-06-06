@@ -25,7 +25,7 @@ export async function getInstance(projectId: string, instanceId: string): Promis
   const res = await client.get<Instance>(`projects/${projectId}/instances/${instanceId}`);
   if (res.body.state === "FAILED") {
     throw new FirebaseError(
-      `Cloud SQL instance ${instanceId} is in a failed state.\nConsider delete it in ${instanceConsoleLink(projectId, instanceId)}.`,
+      `Cloud SQL instance ${instanceId} is in a failed state.\nGo to ${instanceConsoleLink(projectId, instanceId)} to repair or delete it.`,
     );
   }
   return res.body;
