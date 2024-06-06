@@ -1,0 +1,1 @@
+- Fixes an issue where the Data Connect emulator would not start up correctly.
