@@ -1,9 +1,0 @@
-- Releases firestore emulator 1.19.7, which adds support for withAuthContext function triggers (#7037).
-- Fixes some cases where Firebase Data Connect deployment fails to pretty-print errors (#7230).
-- Updated Pub/Sub emulator to v0.8.14 (#7197).
-- Updates default resource names and template during `firebase init dataconnect`.
-- Improved handling of 'fresh from Console' services during `init dataconnect`.
-- Add support for node22 in function deployments (#7252).
-- Update to Firebase Data Connect Emulator v1.2.0, which adds support for Postgres 16 and creates the Postgres database specified in dataconnect.yaml or .firebaserc if it does not already exist.
-- Update to the latest version of the Crashlytics buildtools, v3.
-- Support deployment of an Angular app using legacy browser builder (#7264)

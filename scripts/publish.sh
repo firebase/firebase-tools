@@ -91,7 +91,7 @@ NEW_VERSION=$(jq -r ".version" package.json)
 echo "Made a $VERSION version."
 
 echo "Publishing a $VSCODE_VERSION version of the VSCode extension..."
-./scripts/publish-vscode.sh $VSCODE_VERSION $NEW_VERSION
+bash ./scripts/publish-vsce.sh $VSCODE_VERSION $NEW_VERSION
 echo "Published a $VSCODE_VERSION version of the VSCode extension."
 
 echo "Making the release notes..."
