@@ -173,12 +173,14 @@ type ConfigureEmulatorRequest = {
 };
 
 export class DataConnectEmulatorClient {
-  private readonly client: Client;
+  private client: Client | undefined = undefined;
   constructor() {
-    this.client = EmulatorRegistry.client(Emulators.DATACONNECT);
   }
 
   public async configureEmulator(body: ConfigureEmulatorRequest): Promise<ClientResponse<void>> {
+    if (!this.client) {
+      this.client = EmulatorRegistry.client(Emulators.DATACONNECT);
+    }
     const res = await this.client.post<ConfigureEmulatorRequest, void>("emulator/configure", body);
     return res;
   }
