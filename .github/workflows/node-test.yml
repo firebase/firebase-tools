@@ -122,6 +122,7 @@ jobs:
           - npm run test:storage-emulator-integration
           - npm run test:triggers-end-to-end
           - npm run test:triggers-end-to-end:inspect
+          - npm run test:dataconnect-deploy
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
@@ -177,6 +178,7 @@ jobs:
           - npm run test:triggers-end-to-end:inspect
           - npm run test:storage-deploy
           # - npm run test:storage-emulator-integration
+          - npm run test:dataconnect-deploy
     steps:
       - name: Setup Java JDK
         uses: actions/setup-java@v3.3.0
