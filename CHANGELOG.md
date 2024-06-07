@@ -1,0 +1,1 @@
+- Added a warning to `firebase dataconnect:sdk:generate` when no generated SDKs are configured.
