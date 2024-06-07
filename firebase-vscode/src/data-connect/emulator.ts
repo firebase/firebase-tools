@@ -2,8 +2,10 @@ import { EmulatorsController } from "../core/emulators";
 import * as vscode from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { effect, signal } from "@preact/signals-core";
+import { firstWhereDefined } from "../utils/signal";
 import { firebaseRC, updateFirebaseRCProject } from "../core/config";
 import { DataConnectEmulatorClient } from "../../../src/emulator/dataconnectEmulator";
+import { dataConnectConfigs } from "./config";
 
 /** FDC-specific emulator logic */
 export class DataConnectEmulatorController implements vscode.Disposable {
@@ -20,6 +22,11 @@ export class DataConnectEmulatorController implements vscode.Disposable {
 
       // Notify webviews when the emulator status changes
       effect(() => {
+        if (this.isPostgresEnabled) {
+          this.emulatorsController.emulatorStatusItem.show();
+        } else {
+          this.emulatorsController.emulatorStatusItem.hide();
+        }
         notifyIsConnectedToPostgres(this.isPostgresEnabled.value);
       }),
 
@@ -48,9 +55,26 @@ export class DataConnectEmulatorController implements vscode.Disposable {
 
   private async connectToPostgres() {
     const rc = firebaseRC.value?.tryReadValue;
+    let localConnectionString =
+      rc?.getDataconnect()?.postgres?.localConnectionString;
+    if (!localConnectionString) {
+      const dataConnectConfigsValue =
+        await firstWhereDefined(dataConnectConfigs);
+      let dbname = "postgres";
+      const postgresql =
+        dataConnectConfigsValue?.tryReadValue.values[0]?.value?.schema
+          ?.datasource?.postgresql;
+      if (postgresql) {
+        const instanceId = postgresql.cloudSql?.instanceId;
+        const databaseName = postgresql.database;
+        if (instanceId && databaseName) {
+          dbname = `${instanceId}-${databaseName}`;
+        }
+      }
+      localConnectionString = `postgres://user:password@localhost:5432/${dbname}`;
+    }
     const newConnectionString = await this.promptConnectionString(
-      rc?.getDataconnect()?.postgres.localConnectionString ||
-        "postgres://user:password@localhost:5432/postgres",
+      localConnectionString,
     );
     if (!newConnectionString) {
       return;
@@ -65,10 +89,9 @@ export class DataConnectEmulatorController implements vscode.Disposable {
 
     // configure the emulator to use the local psql string
     const emulatorClient = new DataConnectEmulatorClient();
-    emulatorClient.configureEmulator({ connectionString: newConnectionString });
-
     this.isPostgresEnabled.value = true;
-    this.emulatorsController.emulatorStatusItem.show();
+
+    emulatorClient.configureEmulator({ connectionString: newConnectionString });
   }
 
   dispose() {
