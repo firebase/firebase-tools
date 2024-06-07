@@ -201,7 +201,10 @@ async function promptForCloudSQLInstance(setup: Setup, info: RequiredInfo): Prom
         type: "list",
         choices,
       });
-      info.locationId = choices.find((c) => c.value === info.cloudSqlInstanceId)!.location;
+      if (info.cloudSqlInstanceId !== "") {
+        // Infer location if a CloudSQL instance is chosen.
+        info.locationId = choices.find((c) => c.value === info.cloudSqlInstanceId)!.location;
+      }
     }
   }
   if (info.cloudSqlInstanceId === "") {
