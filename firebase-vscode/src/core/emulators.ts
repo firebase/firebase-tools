@@ -178,7 +178,8 @@ export class EmulatorsController implements Disposable {
             displayInfo: listRunningEmulators(),
           },
         };
-        this.emulatorStatusItem.text = "$(data-connect) Connected to local Postgres";
+        // TODO: Add other emulator icons
+        this.emulatorStatusItem.text = "$(data-connect) Emulators: Running";
 
         // data connect specifics; including temp logging implementation
         if (
@@ -207,7 +208,7 @@ export class EmulatorsController implements Disposable {
 
         // Updating the status bar label as "running", but don't "show" it.
         // We only show the status bar item when explicitly by interacting with the sidebar.
-        this.emulatorStatusItem.text = "$(data-connect) Connected to local Postgres";
+        this.emulatorStatusItem.text = "$(data-connect) Emulators: Running";
         this.emulatorStatusItem.backgroundColor = undefined;
       } catch (e) {
         this.emulatorStatusItem.text = "$(data-connect) Emulators: errored";
