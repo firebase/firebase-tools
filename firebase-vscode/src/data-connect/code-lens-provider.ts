@@ -5,8 +5,13 @@ import { Disposable } from "vscode";
 
 import { Signal } from "@preact/signals-core";
 import { dataConnectConfigs, firebaseRC } from "./config";
-import { InstanceType } from "./emulators-status";
 import { EmulatorsController } from "../core/emulators";
+import { DataConnectEmulatorController } from "./emulator";
+
+export enum InstanceType {
+  LOCAL = "local",
+  PRODUCTION = "production",
+}
 
 abstract class ComputedCodeLensProvider implements vscode.CodeLensProvider {
   private readonly _onChangeCodeLensesEmitter = new vscode.EventEmitter<void>();
@@ -45,7 +50,7 @@ abstract class ComputedCodeLensProvider implements vscode.CodeLensProvider {
 
   abstract provideCodeLenses(
     document: vscode.TextDocument,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): vscode.CodeLens[];
 }
 
@@ -53,13 +58,13 @@ abstract class ComputedCodeLensProvider implements vscode.CodeLensProvider {
  * CodeLensProvider provides codelens for actions in graphql files.
  */
 export class OperationCodeLensProvider extends ComputedCodeLensProvider {
-  constructor(readonly emulatorsController: EmulatorsController) {
+  constructor(readonly emulatorsController: DataConnectEmulatorController) {
     super();
   }
 
   provideCodeLenses(
     document: vscode.TextDocument,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): vscode.CodeLens[] {
     // Wait for configs to be loaded and emulator to be running
     const fdcConfigs = this.watch(dataConnectConfigs)?.tryReadValue;
@@ -86,18 +91,20 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
           position: position,
         };
         const service = fdcConfigs.findEnclosingServiceForPath(
-          document.fileName
+          document.fileName,
         );
 
         if (service) {
-          codeLenses.push(
-            new vscode.CodeLens(range, {
-              title: `$(play) Run (local)`,
-              command: "firebase.dataConnect.executeOperation",
-              tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
-              arguments: [x, operationLocation, InstanceType.LOCAL],
-            })
-          );
+          if (this.watch(this.emulatorsController.isPostgresEnabled)) {
+            codeLenses.push(
+              new vscode.CodeLens(range, {
+                title: `$(play) Run (local)`,
+                command: "firebase.dataConnect.executeOperation",
+                tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
+                arguments: [x, operationLocation, InstanceType.LOCAL],
+              }),
+            );
+          }
 
           codeLenses.push(
             new vscode.CodeLens(range, {
@@ -105,7 +112,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
               command: "firebase.dataConnect.executeOperation",
               tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
               arguments: [x, operationLocation, InstanceType.PRODUCTION],
-            })
+            }),
           );
         }
       }
@@ -125,7 +132,7 @@ export class SchemaCodeLensProvider extends ComputedCodeLensProvider {
 
   provideCodeLenses(
     document: vscode.TextDocument,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): vscode.CodeLens[] {
     if (!this.watch(this.emulatorsController.areEmulatorsRunning)) {
       return [];
@@ -152,7 +159,7 @@ export class SchemaCodeLensProvider extends ComputedCodeLensProvider {
             command: "firebase.dataConnect.schemaAddData",
             tooltip: "Generate a mutation to add data of this type",
             arguments: [x, schemaLocation],
-          })
+          }),
         );
 
         codeLenses.push(
@@ -161,7 +168,7 @@ export class SchemaCodeLensProvider extends ComputedCodeLensProvider {
             command: "firebase.dataConnect.schemaReadData",
             tooltip: "Generate a query to read data of this type",
             arguments: [documentNode, x],
-          })
+          }),
         );
       }
     }

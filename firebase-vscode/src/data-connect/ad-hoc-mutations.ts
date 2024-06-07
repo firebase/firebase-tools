@@ -1,9 +1,10 @@
-import vscode, { Disposable } from "vscode";
+import vscode, { Disposable, TelemetryLogger } from "vscode";
 import { DocumentNode, GraphQLInputObjectType, GraphQLScalarType, Kind, ObjectTypeDefinitionNode, buildClientSchema, buildSchema } from "graphql";
 import { checkIfFileExists, upsertFile } from "./file-utils";
 import { DataConnectService } from "./service";
+import { DATA_CONNECT_EVENT_NAME } from "../analytics";
 
-export function registerAdHoc(dataConnectService: DataConnectService): Disposable {
+export function registerAdHoc(dataConnectService: DataConnectService, telemetryLogger: TelemetryLogger): Disposable {
   const defaultScalarValues = {
     Any: "{}",
     AuthUID: '""',
@@ -187,11 +188,17 @@ query {
   return Disposable.from(
     vscode.commands.registerCommand(
       "firebase.dataConnect.schemaAddData",
-      schemaAddData,
+      (ast) => {
+        telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.ADD_DATA);
+        schemaAddData(ast);
+      },
     ),
     vscode.commands.registerCommand(
       "firebase.dataConnect.schemaReadData",
-      schemaReadData,
+      (document, ast) => {
+        telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.READ_DATA);
+        schemaReadData(document, ast);
+      },
     ),
   );
 }

@@ -89,17 +89,30 @@ export async function execute(
     }
   }
 
+<<<<<<< HEAD
+=======
+  const conn = await pool.connect();
+>>>>>>> public/master
   logFn(`Logged in as ${opts.username}`);
   for (const s of sqlStatements) {
     logFn(`Executing: '${s}'`);
     try {
+<<<<<<< HEAD
       await client.query(s);
+=======
+      await conn.query(s);
+>>>>>>> public/master
     } catch (err) {
       throw new FirebaseError(`Error executing ${err}`);
     }
   }
 
+<<<<<<< HEAD
   await client.end();
+=======
+  conn.release();
+  await pool.end();
+>>>>>>> public/master
   connector.close();
 }
 

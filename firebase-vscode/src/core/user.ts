@@ -1,10 +1,11 @@
 import { computed, effect } from "@preact/signals-react";
-import { Disposable } from "vscode";
+import { Disposable, TelemetryLogger } from "vscode";
 import { ServiceAccountUser } from "../types";
 import { User as AuthUser } from "../../../src/types/auth";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { getAccounts, login, logoutUser } from "../cli";
 import { globalSignal } from "../utils/globals";
+import { DATA_CONNECT_EVENT_NAME } from "../analytics";
 
 type User = ServiceAccountUser | AuthUser;
 
@@ -31,7 +32,7 @@ export async function checkLogin() {
     );
 }
 
-export function registerUser(broker: ExtensionBrokerImpl): Disposable {
+export function registerUser(broker: ExtensionBrokerImpl, telemetryLogger: TelemetryLogger): Disposable {
   
   const sub1 = effect(() => {
     broker.send("notifyUsers", { users: Object.values(users.value) });
@@ -46,6 +47,7 @@ export function registerUser(broker: ExtensionBrokerImpl): Disposable {
   });
 
   const sub4 = broker.on("addUser", async () => {
+    telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.LOGIN);
     const { user } = await login();
     users.value = {
       ...users.value,

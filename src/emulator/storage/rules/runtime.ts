@@ -27,7 +27,7 @@ import { downloadEmulator } from "../../download";
 import * as fs from "fs-extra";
 import {
   _getCommand,
-  DownloadDetails,
+  getDownloadDetails,
   handleEmulatorProcessError,
 } from "../../downloadableEmulators";
 import { EmulatorRegistry } from "../../registry";
@@ -124,7 +124,7 @@ export class StorageRulesRuntime {
     if (this.alive) {
       return;
     }
-    const downloadDetails = DownloadDetails[Emulators.STORAGE];
+    const downloadDetails = getDownloadDetails(Emulators.STORAGE);
     const hasEmulator = fs.existsSync(downloadDetails.downloadPath);
 
     if (!hasEmulator) {

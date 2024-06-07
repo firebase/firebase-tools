@@ -36,6 +36,8 @@ export interface WebviewToExtensionParamsMap {
    * Ask extension for initial data
    */
   getInitialData: {};
+  getInitialHasFdcConfigs: void;
+
   addUser: {};
   logout: { email: string };
 
@@ -43,8 +45,6 @@ export interface WebviewToExtensionParamsMap {
   getEmulatorUiSelections: void;
   getEmulatorInfos: void;
   updateEmulatorUiSelections: Partial<EmulatorUiSelections>;
-  /* Equivalent to the `firebase emulators:start` command.*/
-  launchEmulators: void;
 
   /** Notify extension that current user has been changed in UI. */
   requestChangeUser: { user: User | ServiceAccountUser };
@@ -93,8 +93,9 @@ export interface WebviewToExtensionParamsMap {
     href: string;
   };
 
-  /** Stops the emulators gracefully allowing for data export if required. */
-  stopEmulators: void;
+  connectToPostgres: void;
+  disconnectPostgres: void;
+  getInitialIsConnectedToPostgres: void;
 
   selectEmulatorImportFolder: {};
 
@@ -137,6 +138,10 @@ export interface ExtensionToWebviewParamsMap {
     infos: RunningEmulatorInfo | undefined;
   };
   notifyEmulatorImportFolder: { folder: string };
+
+  notifyIsConnectedToPostgres: boolean;
+
+  notifyPostgresStringChanged: string;
 
   /** Triggered when new environment variables values are found. */
   notifyEnv: { env: { isMonospace: boolean } };
@@ -183,6 +188,8 @@ export interface ExtensionToWebviewParamsMap {
     firebaseJson: ValueOrError<FirebaseConfig> | undefined;
     firebaseRC: ValueOrError<RCData> | undefined;
   };
+  /** Whether any dataconnect.yaml is present */
+  notifyHasFdcConfigs: boolean;
 
   /**
    * Return user-selected preview channel name

@@ -2,7 +2,7 @@ import * as path from "path";
 
 import { Command } from "../command";
 import { Options } from "../options";
-import { DataConnectEmulator, DataConnectEmulatorArgs, getLocalConectionString } from "../emulator/dataconnectEmulator";
+import { DataConnectEmulator } from "../emulator/dataconnectEmulator";
 import { needProjectId } from "../projectUtils";
 import { load } from "../dataconnect/load";
 import { readFirebaseJson } from "../dataconnect/fileUtils";
@@ -21,16 +21,12 @@ export const command = new Command("dataconnect:sdk:generate")
         configDir = path.resolve(path.join(cwd), configDir);
       }
       const serviceInfo = await load(projectId, service.location, configDir);
-      const args: DataConnectEmulatorArgs = {
-        projectId,
-        configDir,
-        auto_download: true,
-        locationId: service.location,
-        localConnectionString: "postgresql://localhost:5432?sslmode=disable",
-      };
-      const dataconnectEmulator = new DataConnectEmulator(args);
       for (const conn of serviceInfo.connectorInfo) {
-        const output = await dataconnectEmulator.generate(conn.connectorYaml.connectorId);
+        const output = await DataConnectEmulator.generate({
+          configDir,
+          locationId: service.location,
+          connectorId: conn.connectorYaml.connectorId,
+        });
         logger.info(output);
         logger.info(`Generated SDKs for ${conn.connectorYaml.connectorId}`);
       }
