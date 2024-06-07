@@ -60,3 +60,32 @@ export function parseConnectorName(connectorName: string): connectorName {
     toString,
   };
 }
+
+interface cloudSQLInstanceName {
+  projectId: string;
+  location: string;
+  instanceId: string;
+  toString(): string;
+}
+
+const cloudSQLInstanceNameRegex =
+  /projects\/(?<projectId>[^\/]+)\/locations\/(?<location>[^\/]+)\/instances\/(?<instanceId>[^\/]+)/;
+
+export function parseCloudSQLInstanceName(cloudSQLInstanceName: string): cloudSQLInstanceName {
+  const res = cloudSQLInstanceNameRegex.exec(cloudSQLInstanceName);
+  const projectId = res?.groups?.projectId;
+  const location = res?.groups?.location;
+  const instanceId = res?.groups?.instanceId;
+  if (!projectId || !location || !instanceId) {
+    throw new FirebaseError(`${cloudSQLInstanceName} is not a valid cloudSQL instance name`);
+  }
+  const toString = () => {
+    return `projects/${projectId}/locations/${location}/services/${instanceId}`;
+  };
+  return {
+    projectId,
+    location,
+    instanceId,
+    toString,
+  };
+}
