@@ -190,7 +190,7 @@ async function promptForCloudSQLInstance(setup: Setup, info: RequiredInfo): Prom
       info.cloudSqlInstanceId = await promptOnce({
         message: `Which CloudSQL instance would you like to use?`,
         type: "list",
-        choices: choices,
+        choices,
       });
       if (info.cloudSqlInstanceId !== "") {
         // Infer location if a CloudSQL instance is chosen.
