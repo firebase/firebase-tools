@@ -1,0 +1,1 @@
+- Fixes some cases where `firebase init dataconnect` did not write project files correctly.

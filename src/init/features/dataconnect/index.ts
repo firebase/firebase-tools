@@ -10,7 +10,7 @@ import { ensureApis } from "../../../dataconnect/ensureApis";
 import { listLocations, listAllServices, getSchema } from "../../../dataconnect/client";
 import { Schema, Service } from "../../../dataconnect/types";
 import { DEFAULT_POSTGRES_CONNECTION } from "../emulators";
-import { parseServiceName } from "../../../dataconnect/names";
+import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
 import { logger } from "../../../logger";
 
 const TEMPLATE_ROOT = resolve(__dirname, "../../../../templates/init/dataconnect/");
@@ -67,6 +67,10 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   const subbedDataconnectYaml = subValues(DATACONNECT_YAML_TEMPLATE, info);
   const subbedConnectorYaml = subValues(CONNECTOR_YAML_TEMPLATE, info);
 
+  if (!config.has("dataconnect")) {
+    config.set("dataconnect.source", dir);
+    config.set("dataconnect.location", info.locationId);
+  }
   await config.askWriteProjectFile(join(dir, "dataconnect.yaml"), subbedDataconnectYaml);
   await config.askWriteProjectFile(join(dir, "schema", "schema.gql"), SCHEMA_TEMPLATE);
   await config.askWriteProjectFile(
@@ -78,6 +82,7 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     join(dir, info.connectorId, "mutations.gql"),
     MUTATIONS_TEMPLATE,
   );
+
   if (
     setup.projectId &&
     (info.isNewInstance || info.isNewDatabase) &&
@@ -156,8 +161,12 @@ async function promptForService(setup: Setup, info: RequiredInfo): Promise<Requi
         info.serviceId = serviceName.serviceId;
         info.locationId = serviceName.location;
         if (choice.schema) {
-          info.cloudSqlInstanceId =
-            choice.schema.primaryDatasource.postgresql?.cloudSql.instance ?? "";
+          if (choice.schema.primaryDatasource.postgresql?.cloudSql.instance) {
+            const instanceName = parseCloudSQLInstanceName(
+              choice.schema.primaryDatasource.postgresql?.cloudSql.instance,
+            );
+            info.cloudSqlInstanceId = instanceName.instanceId;
+          }
           info.cloudSqlDatabase = choice.schema.primaryDatasource.postgresql?.database ?? "";
         }
       }
@@ -243,11 +252,6 @@ async function promptForDatabase(
   config: Config,
   info: RequiredInfo,
 ): Promise<RequiredInfo> {
-  const dir: string = config.get("dataconnect.source") || "dataconnect";
-  if (!config.has("dataconnect")) {
-    config.set("dataconnect.source", dir);
-    config.set("dataconnect.location", info.locationId);
-  }
   if (!info.isNewInstance && setup.projectId) {
     try {
       const dbs = await cloudsql.listDatabases(setup.projectId, info.cloudSqlInstanceId);
