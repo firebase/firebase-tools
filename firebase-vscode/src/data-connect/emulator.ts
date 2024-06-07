@@ -22,7 +22,7 @@ export class DataConnectEmulatorController implements vscode.Disposable {
 
       // Notify webviews when the emulator status changes
       effect(() => {
-        if (this.isPostgresEnabled) {
+        if (this.isPostgresEnabled.value) {
           this.emulatorsController.emulatorStatusItem.show();
         } else {
           this.emulatorsController.emulatorStatusItem.hide();
