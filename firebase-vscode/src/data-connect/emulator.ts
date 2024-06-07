@@ -22,6 +22,11 @@ export class DataConnectEmulatorController implements vscode.Disposable {
 
       // Notify webviews when the emulator status changes
       effect(() => {
+        if (this.isPostgresEnabled) {
+          this.emulatorsController.emulatorStatusItem.show();
+        } else {
+          this.emulatorsController.emulatorStatusItem.hide();
+        }
         notifyIsConnectedToPostgres(this.isPostgresEnabled.value);
       }),
 
@@ -84,10 +89,9 @@ export class DataConnectEmulatorController implements vscode.Disposable {
 
     // configure the emulator to use the local psql string
     const emulatorClient = new DataConnectEmulatorClient();
-    emulatorClient.configureEmulator({ connectionString: newConnectionString });
-
     this.isPostgresEnabled.value = true;
-    this.emulatorsController.emulatorStatusItem.show();
+
+    emulatorClient.configureEmulator({ connectionString: newConnectionString });
   }
 
   dispose() {
