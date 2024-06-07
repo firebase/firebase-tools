@@ -1,1 +1,2 @@
+- Adds a warning to `firebase dataconnect:sdk:generate` when no generated SDKs are configured.
 - Fixes some cases where `firebase init dataconnect` did not write project files correctly.
