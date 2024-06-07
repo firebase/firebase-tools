@@ -117,7 +117,7 @@ export const ALL_EXPERIMENTS = experiments({
 
   apphosting: {
     shortDescription: "Allow CLI option for Frameworks",
-    default: false,
+    default: true,
     public: false,
   },
 
@@ -130,6 +130,7 @@ export const ALL_EXPERIMENTS = experiments({
   genkit: {
     shortDescription: "Enable Genkit related features.",
     fullDescription: "Enable Genkit related features.",
+    default: true,
     public: false,
   },
 });

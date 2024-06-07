@@ -2,7 +2,6 @@ import { dataconnectOrigin } from "../api";
 import { Client } from "../apiv2";
 import * as operationPoller from "../operation-poller";
 import * as types from "./types";
-import { logger } from "../logger";
 
 const DATACONNECT_API_VERSION = "v1alpha";
 const dataconnectClient = () =>
@@ -25,28 +24,8 @@ export async function listLocations(projectId: string): Promise<string[]> {
 
 /** Service methods */
 export async function listAllServices(projectId: string): Promise<types.Service[]> {
-  const locations = await listLocations(projectId);
-  let services: types.Service[] = [];
-  await Promise.all(
-    locations.map(async (l) => {
-      try {
-        const locationServices = await listServices(projectId, l);
-        services = services.concat(locationServices);
-      } catch (err) {
-        logger.debug(`Unable to listServices in ${l}: ${err}`);
-      }
-    }),
-  );
-
-  return services;
-}
-
-export async function listServices(
-  projectId: string,
-  locationId: string,
-): Promise<types.Service[]> {
   const res = await dataconnectClient().get<{ services: types.Service[] }>(
-    `/projects/${projectId}/locations/${locationId}/services`,
+    `/projects/${projectId}/locations/-/services`,
   );
   return res.body.services ?? [];
 }
@@ -80,8 +59,9 @@ export async function deleteService(
   locationId: string,
   serviceId: string,
 ): Promise<types.Service> {
+  // NOTE(fredzqm): Don't force delete yet. Backend would leave orphaned resources.
   const op = await dataconnectClient().delete<types.Service>(
-    `projects/${projectId}/locations/${locationId}/services/${serviceId}?force=true`,
+    `projects/${projectId}/locations/${locationId}/services/${serviceId}`,
   );
   const pollRes = await operationPoller.pollOperation<types.Service>({
     apiOrigin: dataconnectOrigin(),
@@ -93,11 +73,18 @@ export async function deleteService(
 
 /** Schema methods */
 
-export async function getSchema(serviceName: string): Promise<types.Schema> {
-  const res = await dataconnectClient().get<types.Schema>(
-    `${serviceName}/schemas/${types.SCHEMA_ID}`,
-  );
-  return res.body;
+export async function getSchema(serviceName: string): Promise<types.Schema | undefined> {
+  try {
+    const res = await dataconnectClient().get<types.Schema>(
+      `${serviceName}/schemas/${types.SCHEMA_ID}`,
+    );
+    return res.body;
+  } catch (err: any) {
+    if (err.status !== 404) {
+      throw err;
+    }
+    return undefined;
+  }
 }
 
 export async function upsertSchema(

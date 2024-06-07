@@ -2,6 +2,7 @@ import { Client } from "../../apiv2";
 import { cloudSQLAdminOrigin } from "../../api";
 import * as operationPoller from "../../operation-poller";
 import { Instance, Database, User, UserType, DatabaseFlag } from "./types";
+import { FirebaseError } from "../../error";
 const API_VERSION = "v1";
 
 const client = new Client({
@@ -22,7 +23,17 @@ export async function listInstances(projectId: string): Promise<Instance[]> {
 
 export async function getInstance(projectId: string, instanceId: string): Promise<Instance> {
   const res = await client.get<Instance>(`projects/${projectId}/instances/${instanceId}`);
+  if (res.body.state === "FAILED") {
+    throw new FirebaseError(
+      `Cloud SQL instance ${instanceId} is in a failed state.\nGo to ${instanceConsoleLink(projectId, instanceId)} to repair or delete it.`,
+    );
+  }
   return res.body;
+}
+
+/** Returns a link to Cloud SQL's page in Cloud Console. */
+export function instanceConsoleLink(projectId: string, instanceId: string) {
+  return `https://console.cloud.google.com/sql/instances/${instanceId}/overview?project=${projectId}`;
 }
 
 export async function createInstance(
@@ -30,7 +41,8 @@ export async function createInstance(
   location: string,
   instanceId: string,
   enableGoogleMlIntegration: boolean,
-): Promise<Instance> {
+  waitForCreation: boolean,
+): Promise<Instance | undefined> {
   const databaseFlags = [{ name: "cloudsql.iam_authentication", value: "on" }];
   if (enableGoogleMlIntegration) {
     databaseFlags.push({ name: "cloudsql.enable_google_ml_integration", value: "on" });
@@ -51,9 +63,14 @@ export async function createInstance(
       userLabels: { "firebase-data-connect": "ft" },
       insightsConfig: {
         queryInsightsEnabled: true,
+        queryPlansPerMinute: 5, // Match the default settings
+        queryStringLength: 1024, // Match the default settings
       },
     },
   });
+  if (!waitForCreation) {
+    return;
+  }
   const opName = `projects/${projectId}/operations/${op.body.name}`;
   const pollRes = await operationPoller.pollOperation<Instance>({
     apiOrigin: cloudSQLAdminOrigin(),

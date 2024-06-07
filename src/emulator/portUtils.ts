@@ -184,7 +184,9 @@ const EMULATOR_CAN_LISTEN_ON_PRIMARY_ONLY: Record<PortName, boolean> = {
   firestore: true,
   "firestore.websocket": true,
   pubsub: true,
-  dataconnect: true,
+
+  // External processes that accepts multiple listen specs.
+  dataconnect: false,
 
   // Listening on multiple addresses to maximize the chance of discovery.
   hub: false,
@@ -462,4 +464,16 @@ function listenSpec(lookup: dns.LookupAddress, port: number): ListenSpec {
     family: lookup.family === 4 ? "IPv4" : "IPv6",
     port: port,
   };
+}
+
+/**
+ * Return a comma-separated list of host:port from specs.
+ */
+export function listenSpecsToString(specs: ListenSpec[]): string {
+  return specs
+    .map((spec) => {
+      const host = spec.family === "IPv4" ? spec.address : `[${spec.address}]`;
+      return `${host}:${spec.port}`;
+    })
+    .join(",");
 }

@@ -3,12 +3,9 @@ import { Spacer } from "./components/ui/Spacer";
 import { broker, useBroker } from "./globals/html-broker";
 import { AccountSection } from "./components/AccountSection";
 import { ProjectSection } from "./components/ProjectSection";
-import { DeployPanel } from "./components/DeployPanel";
 import { HostingInitState, DeployState } from "./webview-types";
-import { EmulatorPanel } from "./components/EmulatorPanel";
 
 import { webLogger } from "./globals/web-logger";
-import { InitFirebasePanel } from "./components/InitPanel";
 import { ValueOrError } from "./messaging/protocol";
 import { FirebaseConfig } from "../../src/firebaseConfig";
 import { RCData } from "../../src/rc";
@@ -27,6 +24,10 @@ export function SidebarApp() {
   const configs = useBroker("notifyFirebaseConfig", {
     initialRequest: "getInitialData",
   });
+  const hasFdcConfigs =
+    useBroker("notifyHasFdcConfigs", {
+      initialRequest: "getInitialHasFdcConfigs",
+    }) ?? false;
   const accountSection = (
     <AccountSection
       user={user}
@@ -45,12 +46,14 @@ export function SidebarApp() {
       </>
     );
   }
-  if (!configs?.firebaseJson) {
+  if (!configs?.firebaseJson?.value || !hasFdcConfigs) {
+    const configLabel = !hasFdcConfigs ? "dataconnect.yaml" : "firebase.json";
+
     return (
       <>
         {accountSection}
         <p>
-          No <code>firebase.json</code> detected in this project
+          No <code>{configLabel}</code> detected in this project
         </p>
         <br />
         <VSCodeButton
@@ -102,7 +105,7 @@ function SidebarContent(props: {
       webLogger.debug(
         "notifyFirebaseConfig",
         JSON.stringify(firebaseJson),
-        JSON.stringify(firebaseRC)
+        JSON.stringify(firebaseRC),
       );
       if (firebaseJson?.value?.hosting) {
         webLogger.debug("Detected firebase.json");
@@ -129,7 +132,7 @@ function SidebarContent(props: {
         } else {
           setHostingInitState(null);
         }
-      }
+      },
     );
 
     broker.on("notifyHostingDeploy", ({ success }) => {
@@ -158,9 +161,15 @@ function SidebarContent(props: {
       <Spacer size="medium" />
       {accountSection}
       {!!user && (
-        <ProjectSection userEmail={user.email} projectId={projectId} />
+        <ProjectSection
+          user={user}
+          projectId={projectId}
+          isMonospace={env?.isMonospace}
+        />
       )}
-      {hostingInitState === "success" &&
+      {
+        // TODO: disable hosting completely
+        /* {hostingInitState === "success" &&
         !!user &&
         !!projectId &&
         env?.isMonospace && (
@@ -184,7 +193,8 @@ function SidebarContent(props: {
             hostingInitState={hostingInitState}
             setHostingInitState={setHostingInitState}
           />
-        )}
+        )} */
+      }
       {
         // disable emulator panel for now, as we have an individual emulator panel in the FDC section
       }

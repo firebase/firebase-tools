@@ -23,7 +23,8 @@ import {
   Impersonation,
 } from "../dataconnect/types";
 import { ClientResponse } from "../apiv2";
-import { InstanceType } from "./emulators-status";
+import { InstanceType } from "./code-lens-provider";
+import { pluginLogger } from "../logger-wrapper";
 
 /**
  * DataConnect Emulator service
@@ -33,22 +34,6 @@ export class DataConnectService {
     private authService: AuthService,
     private emulatorsController: EmulatorsController,
   ) {}
-
-  readonly localEndpoint = computed<string | undefined>(() => {
-    const emulatorInfos =
-      this.emulatorsController.emulators.value.infos?.displayInfo;
-    const dataConnectEmulator = emulatorInfos?.find(
-      (emulatorInfo) => emulatorInfo.name === Emulators.DATACONNECT,
-    );
-
-    if (!dataConnectEmulator) {
-      return undefined;
-    }
-
-    return (
-      "http://" + dataConnectEmulator.host + ":" + dataConnectEmulator.port
-    );
-  });
 
   async servicePath(
     path: string,
@@ -192,7 +177,7 @@ export class DataConnectService {
       return { data: (introspectionResults as any).data };
     } catch (e) {
       // TODO: surface error that emulator is not connected
-      console.error("error: ", e);
+      pluginLogger.error("error: ", e);
       return { data: undefined };
     }
   }
@@ -214,7 +199,7 @@ export class DataConnectService {
         extensions: {}, // Introspection is the only caller of executeGraphqlRead
       });
       const resp = await fetch(
-        (await firstWhereDefined(this.localEndpoint)) +
+        (await firstWhereDefined(this.emulatorsController.getLocalEndpoint())) +
           `/v1alpha/projects/p/locations/l/services/${serviceId}:executeGraphqlRead`,
         {
           method: "POST",
@@ -230,7 +215,7 @@ export class DataConnectService {
       return result;
     } catch (e) {
       // TODO: actual error handling
-      console.log(e);
+      pluginLogger.error(e);
       return null;
     }
   }
@@ -265,7 +250,7 @@ export class DataConnectService {
       return this.handleProdResponse(resp);
     } else {
       const resp = await fetch(
-        (await firstWhereDefined(this.localEndpoint)) +
+        (await firstWhereDefined(this.emulatorsController.getLocalEndpoint())) +
           `/v1alpha/${servicePath}:executeGraphql`,
         {
           method: "POST",
@@ -278,6 +263,26 @@ export class DataConnectService {
         },
       );
       return this.handleResponse(resp);
+    }
+  }
+
+  async connectToPostgres(connectionString: string): Promise<boolean> {
+    try {
+      await fetch(
+        firstWhereDefined(this.emulatorsController.getLocalEndpoint()) +
+          `/emulator/configure?connectionString=${connectionString}`,
+        {
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            "x-mantle-admin": "all",
+          },
+        },
+      );
+      return true;
+    } catch (e: any) {
+      pluginLogger.error(e);
+      return false;
     }
   }
 }
