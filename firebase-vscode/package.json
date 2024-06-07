@@ -4,7 +4,7 @@
   "publisher": "firebase",
   "icon": "./resources/firebase_logo.png",
   "description": "VSCode Extension for Firebase",
-  "version": "0.2.3",
+  "version": "0.2.6",
   "engines": {
     "vscode": "^1.69.0"
   },
@@ -42,14 +42,6 @@
       {
         "command": "firebase.selectProject",
         "title": "Firebase: Switch project"
-      },
-      {
-        "command": "firebase.emulators.start",
-        "title": "Firebase: Start emulators"
-      },
-      {
-        "command": "firebase.emulators.stop",
-        "title": "Firebase: Stop emulators"
       }
     ],
     "configuration": {
@@ -191,19 +183,18 @@
   "scripts": {
     "vscode:prepublish": "npm run build",
     "copyfiles": "cp -r node_modules/@vscode/codicons/dist resources/dist",
-    "pkg:vsce": "node scripts/swap-pkg.js vsce && vsce package",
-    "pkg:monospace": "node scripts/swap-pkg.js monospace && vsce package",
+    "pkg": "vsce package",
     "dev": "npm run copyfiles && webpack --config webpack.dev.js",
     "dev:extension": "npm run copyfiles && webpack --config webpack.dev.js --config-name extension",
     "dev:sidebar": "npm run copyfiles && webpack --config webpack.dev.js --config-name sidebar",
-    "watch": "node scripts/swap-pkg.js vsce && npm run copyfiles && webpack --config webpack.dev.js --watch",
+    "watch": "npm run copyfiles && webpack --config webpack.dev.js --watch",
     "build": "npm run copyfiles && webpack --config webpack.prod.js --devtool hidden-source-map",
     "build:extension": "webpack --config webpack.prod.js --config-name extension",
     "build:sidebar": "npm run copyfiles && webpack --config webpack.prod.js --config-name sidebar",
     "test-compile": "npm run copyfiles && webpack --config src/test/webpack.test.js",
     "lint": "eslint src --ext ts",
     "test": "npm run test:unit && npm run test:e2e",
-    "pretest:unit": "npm run test-compile && npm run lint && tsc -p src/test/tsconfig.test.json",
+    "pretest:unit": "npm run test-compile && npm run build && tsc -p src/test/tsconfig.test.json",
     "test:unit": "node ./dist/test/firebase-vscode/src/test/runTest.js",
     "test:e2e": "npm run test:e2e:empty && npm run test:e2e:fishfood",
     "test:e2e:empty": "TS_NODE_PROJECT=\"./src/test/tsconfig.test.json\" TEST=true wdio run ./src/test/empty_wdio.conf.ts",

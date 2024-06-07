@@ -5,7 +5,7 @@ const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 const expected = {
   serviceId: "integration-test",
   location: "us-central1",
-  datasource: "CloudSQL Instance: dataconnect-test Database:dataconnect-test",
+  datasource: "CloudSQL Instance: dataconnect-test\nDatabase:dataconnect-test",
   schemaUpdateTime: "",
   connectors: [
     {
@@ -62,8 +62,8 @@ describe("firebase deploy", () => {
     const result = await list();
     const out = JSON.parse(result.stdout);
     expect(out?.status).to.equal("success");
-    expect(out?.result?.services?.length).to.equal(1);
-    const service = out.result.services[0];
+    expect(out?.result?.services?.length).to.gt(1);
+    const service = out.result.services.find((s: any) => s.serviceId === "integration-test");
     // Don't need to check update times.
     expected.schemaUpdateTime = service["schemaUpdateTime"];
     expected.connectors[0].connectorLastUpdated = service["connectors"][0]["connectorLastUpdated"];

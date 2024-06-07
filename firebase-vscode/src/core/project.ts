@@ -65,7 +65,9 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
   const sub3 = effect(() => {
     const projectId = currentProjectId.value;
     if (projectId) {
-      updateFirebaseRCProject("default", currentProjectId.value);
+      updateFirebaseRCProject({
+        projectAlias: { alias: "default", projectId },
+      });
     }
   });
 

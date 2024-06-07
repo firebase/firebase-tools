@@ -1,7 +1,8 @@
-import { TerminalOptions } from "vscode";
+import { TelemetryLogger, TerminalOptions } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import vscode, { Disposable } from "vscode";
 import { checkLogin } from "../core/user";
+import { DATA_CONNECT_EVENT_NAME } from "../analytics";
 const environmentVariables = {};
 
 const terminalOptions: TerminalOptions = {
@@ -50,11 +51,17 @@ export function runTerminalTask(
   });
 }
 
-export function registerTerminalTasks(broker: ExtensionBrokerImpl): Disposable {
+export function registerTerminalTasks(
+  broker: ExtensionBrokerImpl,
+  telemetryLogger: TelemetryLogger,
+): Disposable {
   const loginTaskBroker = broker.on("executeLogin", () => {
-    runTerminalTask("firebase login", "firebase login --no-localhost").then(() => {
-      checkLogin();
-    });
+    telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.IDX_LOGIN);
+    runTerminalTask("firebase login", "firebase login --no-localhost").then(
+      () => {
+        checkLogin();
+      },
+    );
   });
 
   return Disposable.from(
@@ -62,6 +69,9 @@ export function registerTerminalTasks(broker: ExtensionBrokerImpl): Disposable {
     vscode.commands.registerCommand(
       "firebase.dataConnect.runTerminalTask",
       (taskName, command) => {
+        telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.COMMAND_EXECUTION, {
+          commandName: command,
+        });
         runTerminalTask(taskName, command);
       },
     ),

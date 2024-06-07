@@ -40,7 +40,7 @@ export interface CloudSqlInstance {
 }
 
 export interface Source {
-  files: File[];
+  files?: File[];
 }
 
 export interface File {
@@ -71,11 +71,11 @@ export interface Diff {
 
 export interface GraphqlError {
   message: string;
-  locations: {
+  locations?: {
     line: number;
     column: number;
   }[];
-  extensions: {
+  extensions?: {
     file?: string;
     [key: string]: any;
   };

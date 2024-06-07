@@ -19,10 +19,19 @@ export async function provisionCloudSql(args: {
   instanceId: string;
   databaseId: string;
   enableGoogleMlIntegration: boolean;
+  waitForCreation: boolean;
   silent?: boolean;
 }): Promise<string> {
-  let connectionName: string; // Not used yet, will be used for schema migration
-  const { projectId, locationId, instanceId, databaseId, enableGoogleMlIntegration, silent } = args;
+  let connectionName = ""; // Not used yet, will be used for schema migration
+  const {
+    projectId,
+    locationId,
+    instanceId,
+    databaseId,
+    enableGoogleMlIntegration,
+    waitForCreation,
+    silent,
+  } = args;
   try {
     const existingInstance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
     silent || utils.logLabeledBullet("dataconnect", `Found existing instance ${instanceId}.`);
@@ -59,9 +68,10 @@ export async function provisionCloudSql(args: {
     silent ||
       utils.logLabeledBullet(
         "dataconnect",
-        `CloudSQL instance '${instanceId}' not found, creating it. This instance is provided under the terms of the Data Connect free trial ${freeTrialTermsLink()}`,
+        `CloudSQL instance '${instanceId}' not found, creating it.` +
+          `\nThis instance is provided under the terms of the Data Connect free trial ${freeTrialTermsLink()}` +
+          `\nMonitor the progress at ${cloudSqlAdminClient.instanceConsoleLink(projectId, instanceId)}`,
       );
-    silent || utils.logLabeledBullet("dataconnect", `This may take while...`);
     const newInstance = await promiseWithSpinner(
       () =>
         cloudSqlAdminClient.createInstance(
@@ -69,11 +79,16 @@ export async function provisionCloudSql(args: {
           locationId,
           instanceId,
           enableGoogleMlIntegration,
+          waitForCreation,
         ),
       "Creating your instance...",
     );
-    silent || utils.logLabeledBullet("dataconnect", "Instance created");
-    connectionName = newInstance?.connectionName || "";
+    if (newInstance) {
+      silent || utils.logLabeledBullet("dataconnect", "Instance created");
+      connectionName = newInstance?.connectionName || "";
+    } else {
+      silent || utils.logLabeledBullet("dataconnect", "Instance creation process started");
+    }
   }
   try {
     await cloudSqlAdminClient.getDatabase(projectId, instanceId, databaseId);

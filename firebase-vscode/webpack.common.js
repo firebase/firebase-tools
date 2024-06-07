@@ -82,7 +82,7 @@ const extensionConfig = {
       inquirer: path.resolve(__dirname, "src/stubs/inquirer-stub.js"),
       "inquirer-autocomplete-prompt": path.resolve(
         __dirname,
-        "src/stubs/inquirer-stub.js"
+        "src/stubs/inquirer-stub.js",
       ),
       // This is used for Github deploy to hosting - will need to restore
       // or find another solution if we add that feature.
