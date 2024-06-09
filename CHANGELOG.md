@@ -1,0 +1,1 @@
+- Fixes issue where same phone numbers can be registered in Auth Emulator if they have different formats. (#5853)

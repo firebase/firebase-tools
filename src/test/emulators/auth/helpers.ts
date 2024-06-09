@@ -9,6 +9,9 @@ import { MfaEnrollment, MfaEnrollments, Schemas } from "../../../emulator/auth/t
 
 export { PROJECT_ID };
 export const TEST_PHONE_NUMBER = "+15555550100";
+export const TEST_PHONE_NUMBER_FORMAT_1 = "+1(555)5550100";
+export const TEST_PHONE_NUMBER_FORMAT_2 = "+1-555-555-0100";
+export const TEST_PHONE_NUMBER_FORMAT_3 = "+1 555 555 0100";
 export const TEST_PHONE_NUMBER_OBFUSCATED = "+*******0100";
 export const TEST_PHONE_NUMBER_2 = "+15555550101";
 export const TEST_PHONE_NUMBER_3 = "+15555550102";
