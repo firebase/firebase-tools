@@ -6,6 +6,8 @@ import { IncomingMessage, request as httpRequest, ServerResponse, Agent } from "
 import { sync as spawnSync } from "cross-spawn";
 import * as clc from "colorette";
 import { satisfies as semverSatisfied } from "semver";
+import { load } from "js-yaml";
+import { BundleConfig } from "./interfaces";
 
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
@@ -462,4 +464,13 @@ export function getFrameworksBuildTarget(purpose: BUILD_TARGET_PURPOSE, validOpt
         )}`,
       );
   }
+}
+let bundleConfig: BundleConfig;
+export async function getBundleConfigs(cwd: string): Promise<BundleConfig> {
+  if (bundleConfig) {
+    return bundleConfig;
+  }
+
+  const fileContents = await readFile(join(cwd, ".apphosting", "bundle.yaml"), "utf8");
+  return load(fileContents);
 }

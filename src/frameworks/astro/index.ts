@@ -1,17 +1,22 @@
 import { sync as spawnSync, spawn } from "cross-spawn";
 import { copy, existsSync } from "fs-extra";
-import { readFile } from "fs/promises";
 import { join } from "path";
-import { load } from "js-yaml";
-import { BuildResult, Discovery, FrameworkType, SupportLevel, BundleConfig } from "../interfaces";
+import { BuildResult, Discovery, FrameworkType, SupportLevel } from "../interfaces";
 import { FirebaseError } from "../../error";
-import { readJSON, simpleProxy, warnIfCustomBuildScript, getNodeModuleBin } from "../utils";
+import {
+  readJSON,
+  simpleProxy,
+  warnIfCustomBuildScript,
+  getNodeModuleBin,
+  getBundleConfigs,
+} from "../utils";
 import { getAstroVersion, getBootstrapScript, getConfig } from "./utils";
 
 export const name = "Astro";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.MetaFramework;
 export const supportedRange = "2 - 4";
+const DEFAULT_BUILD_SCRIPT = ["astro build"];
 
 export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!existsSync(join(dir, "package.json"))) return;
@@ -24,18 +29,6 @@ export async function discover(dir: string): Promise<Discovery | undefined> {
   };
 }
 
-const DEFAULT_BUILD_SCRIPT = ["astro build"];
-
-let bundleConfig: BundleConfig;
-async function getBundleConfigs(cwd: string): Promise<BundleConfig> {
-  if (bundleConfig) {
-    return bundleConfig;
-  }
-
-  const fileContents = await readFile(join(cwd, ".apphosting", "bundle.yaml"), "utf8");
-  return load(fileContents);
-}
-
 export async function build(cwd: string): Promise<BuildResult> {
   await warnIfCustomBuildScript(cwd, name, DEFAULT_BUILD_SCRIPT);
   const build = spawnSync("npx", ["@apphosting/adapter-astro"], { cwd, stdio: "inherit" });
@@ -46,15 +39,13 @@ export async function build(cwd: string): Promise<BuildResult> {
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
   const bundleConfigs = await getBundleConfigs(root);
-  for (const assetPath of bundleConfigs.staticAssets) {
-    await copy(assetPath, dest);
-  }
+  await Promise.all(bundleConfigs.staticAssets.map((assetPath: string) => copy(assetPath, dest)));
 }
 
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
   const bundleConfigs = await getBundleConfigs(sourceDir);
   const packageJson = await readJSON(join(sourceDir, "package.json"));
-  if (bundleConfigs.serverDirectory != null) {
+  if (bundleConfigs.serverDirectory) {
     await copy(join(sourceDir, bundleConfigs.serverDirectory), join(destDir));
   }
   return {
