@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import * as chai from "chai";
 import * as sinon from "sinon";
 import { EventEmitter } from "events";
 import { Writable } from "stream";
@@ -17,6 +18,7 @@ import {
 import { FirebaseError } from "../../../error";
 import { join } from "path";
 
+chai.use(require("chai-as-promised"));
 describe("Astro", () => {
   describe("discovery", () => {
     const cwd = ".";
@@ -101,6 +103,7 @@ describe("Astro", () => {
 
     it("should copy over a static Astro app", async () => {
       const root = Math.random().toString(36).split(".")[1];
+      const staticAssets = Math.random().toString(36).split(".")[1];
       const dist = Math.random().toString(36).split(".")[1];
       const outDir = Math.random().toString(36).split(".")[1];
       sandbox
@@ -114,15 +117,20 @@ describe("Astro", () => {
             adapter: undefined,
           }),
         );
+      sandbox
+        .stub(frameworkUtils, "getBundleConfigs")
+        .withArgs(root)
+        .returns(Promise.resolve({ staticAssets: [staticAssets] }));
 
       const copy = sandbox.stub(fsExtra, "copy");
 
       await ɵcodegenPublicDirectory(root, dist);
-      expect(copy.getCalls().map((it) => it.args)).to.deep.equal([[join(root, outDir), dist]]);
+      expect(copy.getCalls().map((it) => it.args)).to.deep.equal([[staticAssets, dist]]);
     });
 
     it("should copy over an Astro SSR app", async () => {
       const root = Math.random().toString(36).split(".")[1];
+      const staticAssets = Math.random().toString(36).split(".")[1];
       const dist = Math.random().toString(36).split(".")[1];
       const outDir = Math.random().toString(36).split(".")[1];
       sandbox
@@ -139,13 +147,15 @@ describe("Astro", () => {
             },
           }),
         );
+      sandbox
+        .stub(frameworkUtils, "getBundleConfigs")
+        .withArgs(root)
+        .returns(Promise.resolve({ staticAssets: [staticAssets], serverDirectory: "dir" }));
 
       const copy = sandbox.stub(fsExtra, "copy");
 
       await ɵcodegenPublicDirectory(root, dist);
-      expect(copy.getCalls().map((it) => it.args)).to.deep.equal([
-        [join(root, outDir, "client"), dist],
-      ]);
+      expect(copy.getCalls().map((it) => it.args)).to.deep.equal([[staticAssets, dist]]);
     });
   });
 
@@ -164,6 +174,7 @@ describe("Astro", () => {
       const root = Math.random().toString(36).split(".")[1];
       const dist = Math.random().toString(36).split(".")[1];
       const outDir = Math.random().toString(36).split(".")[1];
+      const serverAssets = Math.random().toString(36).split(".")[1];
       const packageJson = { a: Math.random().toString(36).split(".")[1] };
       sandbox
         .stub(astroUtils, "getConfig")
@@ -183,7 +194,10 @@ describe("Astro", () => {
         .stub(frameworkUtils, "readJSON")
         .withArgs(join(root, "package.json"))
         .returns(Promise.resolve(packageJson));
-
+      sandbox
+        .stub(frameworkUtils, "getBundleConfigs")
+        .withArgs(root)
+        .returns(Promise.resolve({ staticAssets: [], serverDirectory: serverAssets }));
       const copy = sandbox.stub(fsExtra, "copy");
       const bootstrapScript = astroUtils.getBootstrapScript();
       expect(await ɵcodegenFunctionsDirectory(root, dist)).to.deep.equal({
@@ -191,7 +205,7 @@ describe("Astro", () => {
         bootstrapScript,
       });
       expect(copy.getCalls().map((it) => it.args)).to.deep.equal([
-        [join(root, outDir, "server"), dist],
+        [join(root, serverAssets), dist],
       ]);
     });
   });
@@ -213,7 +227,7 @@ describe("Astro", () => {
       process.stdout = new EventEmitter();
       process.stderr = new EventEmitter();
       process.status = 0;
-
+      const serverAssets = Math.random().toString(36).split(".")[1];
       const cwd = ".";
       const publicDir = Math.random().toString(36).split(".")[1];
       sandbox
@@ -230,6 +244,10 @@ describe("Astro", () => {
             },
           }),
         );
+      sandbox
+        .stub(frameworkUtils, "getBundleConfigs")
+        .withArgs(cwd)
+        .returns(Promise.resolve({ staticAssets: [], serverDirectory: serverAssets }));
 
       const cli = Math.random().toString(36).split(".")[1];
       sandbox.stub(frameworkUtils, "getNodeModuleBin").withArgs("astro", cwd).returns(cli);
@@ -242,12 +260,16 @@ describe("Astro", () => {
       expect(await result).to.deep.equal({
         wantsBackend: true,
       });
-      sinon.assert.calledWith(stub, cli, ["build"], { cwd, stdio: "inherit" });
+      sinon.assert.calledWith(stub, "npx", ["@apphosting/adapter-astro"], {
+        cwd,
+        stdio: "inherit",
+      });
     });
 
     it("should fail to build an Astro SSR app w/wrong adapter", async () => {
       const cwd = ".";
       const publicDir = Math.random().toString(36).split(".")[1];
+      const serverAssets = Math.random().toString(36).split(".")[1];
       sandbox
         .stub(astroUtils, "getConfig")
         .withArgs(cwd)
@@ -262,14 +284,19 @@ describe("Astro", () => {
             },
           }),
         );
+      sandbox
+        .stub(frameworkUtils, "getBundleConfigs")
+        .withArgs(cwd)
+        .returns(Promise.resolve({ staticAssets: [], serverDirectory: serverAssets }));
 
       const cli = Math.random().toString(36).split(".")[1];
       sandbox.stub(frameworkUtils, "getNodeModuleBin").withArgs("astro", cwd).returns(cli);
-
-      await expect(build(cwd)).to.eventually.rejectedWith(
-        FirebaseError,
-        "Deploying an Astro application with SSR on Firebase Hosting requires the @astrojs/node adapter in middleware mode. https://docs.astro.build/en/guides/integrations-guide/node/",
-      );
+      await expect(build(cwd)).to.be.rejectedWith(FirebaseError, "Unable to build your Astro app");
+      // try {
+      //   expect(await build(cwd)).to.throw(FirebaseError);
+      // } catch (error) {
+      //   expect(error).to(FirebaseError);
+      // }
     });
 
     it("should build an Astro static app", async () => {
@@ -292,7 +319,10 @@ describe("Astro", () => {
             adapter: undefined,
           }),
         );
-
+      sandbox
+        .stub(frameworkUtils, "getBundleConfigs")
+        .withArgs(cwd)
+        .returns(Promise.resolve({ staticAssets: [] }));
       const cli = Math.random().toString(36).split(".")[1];
       sandbox.stub(frameworkUtils, "getNodeModuleBin").withArgs("astro", cwd).returns(cli);
       const stub = sandbox.stub(crossSpawn, "sync").returns(process);
@@ -304,7 +334,10 @@ describe("Astro", () => {
       expect(await result).to.deep.equal({
         wantsBackend: false,
       });
-      sinon.assert.calledWith(stub, cli, ["build"], { cwd, stdio: "inherit" });
+      sinon.assert.calledWith(stub, "npx", ["@apphosting/adapter-astro"], {
+        cwd,
+        stdio: "inherit",
+      });
     });
   });
 

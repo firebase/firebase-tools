@@ -35,6 +35,10 @@ export interface BuildResult {
   i18n?: boolean;
   baseUrl?: string;
 }
+export interface BundleConfig {
+  staticAssets: string[];
+  serverDirectory?: string;
+}
 
 export type RequestHandler = (
   req: IncomingMessage,
