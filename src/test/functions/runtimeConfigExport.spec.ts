@@ -131,6 +131,18 @@ describe("functions-config-export", () => {
       expect(errors).to.be.empty;
     });
 
+    it("should produce valid dotenv file with keys and skip undefined values", () => {
+      const dotenv = configExport.toDotenvFormat([
+        { origKey: "service.api.url", newKey: "SERVICE_API_URL", value: "hello" },
+        { origKey: "service.api.name", newKey: "SERVICE_API_NAME", value: undefined },
+      ]);
+      const { envs, errors } = env.parse(dotenv);
+      expect(envs).to.be.deep.equal({
+        SERVICE_API_URL: "hello",
+      });
+      expect(errors).to.be.empty;
+    });
+
     it("should preserve newline characters", () => {
       const dotenv = configExport.toDotenvFormat([
         { origKey: "service.api.url", newKey: "SERVICE_API_URL", value: "hello\nthere\nworld" },
