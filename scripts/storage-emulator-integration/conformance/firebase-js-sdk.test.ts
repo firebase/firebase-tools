@@ -474,7 +474,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
           TEST_ENV.requestClient.get(downloadUrl, (response) => {
             let data = Buffer.alloc(0);
             expect(response.headers["content-disposition"]).to.be.eql(
-              "attachment; filename=testFile",
+              "attachment; filename*=testFile",
             );
             response
               .on("data", (chunk) => {
