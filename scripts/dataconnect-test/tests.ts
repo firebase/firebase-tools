@@ -1,19 +1,54 @@
-import * as cli from "../functions-deploy-tests/cli";
+import * as fs from "fs";
+import * as path from "path";
 import { expect } from "chai";
 
-const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
-const expected = {
-  serviceId: "integration-test",
-  location: "us-central1",
-  datasource: "CloudSQL Instance: dataconnect-test\nDatabase:dataconnect-test",
-  schemaUpdateTime: "",
-  connectors: [
-    {
-      connectorId: "connectorId",
-      connectorLastUpdated: "",
-    },
-  ],
+import * as cli from "../functions-deploy-tests/cli";
+import { cases, Step } from "./cases";
+import * as client from "../../src/dataconnect/client";
+import { requireAuth } from "../../src/requireAuth";
+import { deleteDatabase } from "../../src/gcp/cloudsql/cloudsqladmin";
+import { projectID } from "firebase-functions/params";
+
+const FIREBASE_PROJECT = process.env.GCLOUD_PROJECT || "";
+function expected(serviceId: string, databaseId: string, schemaUpdateTime: string, connectorLastUpdated: string) {
+  return {
+    serviceId,
+    location: "us-central1",
+    datasource: `CloudSQL Instance: dataconnect-test\nDatabase: ${databaseId}`,
+    schemaUpdateTime,
+    connectors: [
+      {
+        connectorId: "connectorId",
+        connectorLastUpdated,
+      },
+    ],
+  }
 };
+
+async function cleanUpProject(projectId: string) {
+  const services = await client.listAllServices(projectId);
+  for (const s of services) {
+    const connectors = await client.listConnectors(s.name);
+    for (const c of connectors) {
+      await client.deleteConnector(c.name);
+    }
+    await client.deleteSchema(s.name);
+    await client.deleteService(s.name);
+  }
+}
+
+async function cleanUpService(projectId: string, serviceId: string, databaseId: string) {
+  const services = await client.listAllServices(projectId);
+  for (const s of services) {
+    const connectors = await client.listConnectors(s.name);
+    for (const c of connectors) {
+      await client.deleteConnector(c.name);
+    }
+    await client.deleteSchema(s.name);
+    await client.deleteService(s.name);
+    await deleteDatabase(projectId, "dataconect-test", databaseId);
+  }
+}
 
 async function list() {
   return await cli.exec(
@@ -28,45 +63,118 @@ async function list() {
   );
 }
 
-async function migrate() {
+async function migrate(force: boolean) {
   return await cli.exec(
     "dataconnect:sql:migrate",
     FIREBASE_PROJECT,
-    ["--force"],
+    force ? ["--force", "--debug"]: ["--debug"],
     __dirname,
     /** quiet=*/ false,
     { FIREBASE_CLI_EXPERIMENTS: "dataconnect" },
   );
 }
 
-async function deploy() {
+async function deploy(force: boolean) {
+  const args = ["--only", "dataconnect", "--debug"];
+  if (force) {
+    args.push("--force");
+  }
   return await cli.exec(
     "deploy",
     FIREBASE_PROJECT,
-    ["--only", "dataconnect", "--force"],
+    args,
     __dirname,
     /** quiet=*/ false,
     { FIREBASE_CLI_EXPERIMENTS: "dataconnect" },
   );
 }
 
+function toPath(p: string) {
+  return path.join(__dirname, p);
+}
+
+function getRandomString(length: number): string {
+  const SUFFIX_CHAR_SET = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += SUFFIX_CHAR_SET.charAt(Math.floor(Math.random() * SUFFIX_CHAR_SET.length));
+  }
+  return result;
+}
+
+// Each test run should use a random serviceId and databaseId.
+function newTestRun(): {serviceId: string, databaseId: string} {
+  const serviceId = `cli-e2e-service-${getRandomString(6)}`;
+  const databaseId = `cli-e2e-database-${getRandomString(6)}`;
+
+  const dataconnectYamlTemplate = fs.readFileSync(toPath("templates/dataconnect.yaml")).toString();
+  const connectorYamlTemplate = fs.readFileSync(toPath("templates/connector.yaml")).toString();
+  const subbedDataconnectYaml = dataconnectYamlTemplate
+    .replace("__serviceId__", serviceId)
+    .replace("__databaseId__", databaseId);
+  if (!fs.existsSync(toPath("fdc-test"))) {
+    fs.mkdirSync(toPath("fdc-test"));
+  }
+  if (!fs.existsSync(toPath("fdc-test/connector"))) {
+    fs.mkdirSync(toPath("fdc-test/connector"));
+  }
+  if (!fs.existsSync(toPath("fdc-test/schema"))) {
+    fs.mkdirSync(toPath("fdc-test/schema"));
+  }
+  fs.writeFileSync(toPath("fdc-test/dataconnect.yaml"), subbedDataconnectYaml, {mode: 420 /* 0o644 */});
+  fs.writeFileSync(toPath("fdc-test/connector/connector.yaml"), connectorYamlTemplate, {mode: 420 /* 0o644 */});
+  return {serviceId, databaseId};
+}
+
+function prepareStep(step: Step) {
+  fs.writeFileSync(toPath("fdc-test/schema/schema.gql"), step.schemaGQL, {mode: 420 /* 0o644 */});
+  fs.writeFileSync(toPath("fdc-test/connector/connector.gql"), step.connectorGQL, {mode: 420 /* 0o644 */});
+}
+
+
 describe("firebase deploy", () => {
-  before(() => {
+  let serviceId: string;
+  let databaseId: string;
+
+  beforeEach(async () => {
     expect(FIREBASE_PROJECT).not.to.equal("", "No FBTOOLS_TARGET_PROJECT env var set.");
+    const info = newTestRun();
+    serviceId = info.serviceId;
+    databaseId = info.databaseId;
+    await requireAuth({});
   });
 
-  it("should deploy expected connectors and services", async () => {
-    await migrate();
-    await deploy();
-
-    const result = await list();
-    const out = JSON.parse(result.stdout);
-    expect(out?.status).to.equal("success");
-    expect(out?.result?.services?.length).to.gt(1);
-    const service = out.result.services.find((s: any) => s.serviceId === "integration-test");
-    // Don't need to check update times.
-    expected.schemaUpdateTime = service["schemaUpdateTime"];
-    expected.connectors[0].connectorLastUpdated = service["connectors"][0]["connectorLastUpdated"];
-    expect(service).to.deep.equal(expected);
-  }).timeout(2000000); // Insanely long timeout in case of cSQL deploy. Should almost never be hit.
+  afterEach(async function() {
+    this.timeout(100000);
+    //TODO: delete the service and database
+    fs.rmSync(toPath("fdc-test"), { recursive: true, force: true });
+    await cleanUpProject(FIREBASE_PROJECT)
+  })
+  for (const c of cases) {
+    it(c.description, async () => {
+      for (const step of c.sequence) {
+        prepareStep(step);
+        try {
+          await deploy(false);
+          await migrate(true);
+          await deploy(true);
+        } catch (err: any) {
+          expect(err.expectErr, `Unexpected error: ${err.message}`).to.be.true;
+        }
+        expect(step.expectErr).to.be.false;
+        const result = await list();
+        const out = JSON.parse(result.stdout);
+        expect(out?.status).to.equal("success");
+        expect(out?.result?.services?.length).to.gte(1);
+        const service = out.result.services.find((s: any) => s.serviceId === serviceId);
+        // Don't need to check update times.
+        expect(service).to.deep.equal(expected(
+          serviceId,
+          databaseId,
+          service["schemaUpdateTime"],
+          service["connectors"][0]["connectorLastUpdated"],
+        ));
+      }
+    }).timeout(2000000); // Insanely long timeout in case of cSQL deploy. Should almost never be hit.
+  }
 });

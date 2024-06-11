@@ -55,14 +55,10 @@ export async function createService(
 }
 
 export async function deleteService(
-  projectId: string,
-  locationId: string,
-  serviceId: string,
+  serviceName: string,
 ): Promise<types.Service> {
   // NOTE(fredzqm): Don't force delete yet. Backend would leave orphaned resources.
-  const op = await dataconnectClient().delete<types.Service>(
-    `projects/${projectId}/locations/${locationId}/services/${serviceId}`,
-  );
+  const op = await dataconnectClient().delete<types.Service>(serviceName);
   const pollRes = await operationPoller.pollOperation<types.Service>({
     apiOrigin: dataconnectOrigin(),
     apiVersion: DATACONNECT_API_VERSION,
@@ -105,6 +101,13 @@ export async function upsertSchema(
     apiVersion: DATACONNECT_API_VERSION,
     operationResourceName: op.body.name,
   });
+}
+
+export async function deleteSchema(serviceName: string): Promise<types.Schema> {
+  const res = await dataconnectClient().delete<types.Schema>(
+    `${serviceName}/schemas/${types.SCHEMA_ID}`,
+  );
+  return res.body;
 }
 
 /** Connector methods */
