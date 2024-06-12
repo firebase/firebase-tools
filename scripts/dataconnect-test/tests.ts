@@ -42,7 +42,7 @@ async function cleanUpService(projectId: string, serviceId: string, databaseId: 
   await client.deleteServiceAndChildResources(
     `projects/${projectId}/locations/us-central1/services/${serviceId}`
   );
-  await deleteDatabase(projectId, "dataconect-test", databaseId);
+  await deleteDatabase(projectId, "dataconnect-test", databaseId);
 }
 
 async function list() {
