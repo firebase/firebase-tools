@@ -4,7 +4,7 @@ import { Label } from "../components/ui/Text";
 import style from "./data-connect-execution-results.entry.scss";
 import { SerializedError } from "../../common/error";
 import { ExecutionResult, GraphQLError } from "graphql";
-import { isExecutionResult } from "../graphql";
+import { isExecutionResult } from "../../common/graphql";
 
 // Prevent webpack from removing the `style` import above
 style;
