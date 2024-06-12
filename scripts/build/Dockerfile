@@ -1,8 +1,10 @@
 FROM node:20
 
 # Install dependencies
+RUN curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+RUN echo "deb https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
 RUN apt-get update && \
-    apt-get install -y curl git jq
+    apt-get install -y curl git jq google-cloud-cli
 
 # Install hub
 RUN curl -fsSL --output hub.tgz https://github.com/github/hub/releases/download/v2.14.2/hub-linux-amd64-2.14.2.tgz

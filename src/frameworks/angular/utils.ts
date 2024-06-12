@@ -355,6 +355,7 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
       const { builder } = definition;
       if (target === deployTarget && builder === ExpectedBuilder.DEPLOY) continue;
       if (target === buildTarget && builder === ExpectedBuilder.APPLICATION) continue;
+      if (target === buildTarget && builder === ExpectedBuilder.LEGACY_BROWSER) continue;
       if (target === browserTarget && builder === ExpectedBuilder.BROWSER_ESBUILD) continue;
       if (target === browserTarget && builder === ExpectedBuilder.LEGACY_BROWSER) continue;
       if (target === prerenderTarget && builder === ExpectedBuilder.LEGACY_DEVKIT_PRERENDER)
@@ -412,15 +413,18 @@ export async function getBrowserConfig(sourceDir: string, configuration: string)
   if (!buildOrBrowserTarget) {
     throw new AssertionError({ message: "expected build or browser target defined" });
   }
-  const { locales, defaultLocale } = await localesForTarget(
-    sourceDir,
-    architectHost,
-    buildOrBrowserTarget,
-    workspaceProject,
-  );
-  const targetOptions = await architectHost.getOptionsForTarget(buildOrBrowserTarget);
+  const [{ locales, defaultLocale }, targetOptions, builderName] = await Promise.all([
+    localesForTarget(sourceDir, architectHost, buildOrBrowserTarget, workspaceProject),
+    architectHost.getOptionsForTarget(buildOrBrowserTarget),
+    architectHost.getBuilderNameForTarget(buildOrBrowserTarget),
+  ]);
+
   assertIsString(targetOptions?.outputPath);
-  const outputPath = join(targetOptions.outputPath, buildTarget ? "browser" : "");
+
+  const outputPath = join(
+    targetOptions.outputPath,
+    buildTarget && builderName === ExpectedBuilder.APPLICATION ? "browser" : "",
+  );
   return { locales, baseHref, outputPath, defaultLocale };
 }
 
