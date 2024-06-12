@@ -163,14 +163,16 @@ async function createFullyInstalledConnection(
   });
 
   while (conn.installationState.stage !== "COMPLETE") {
-    utils.logBullet("Install the Firebase GitHub app to enable access to GitHub repositories");
+    utils.logBullet(
+      "Install the Firebase App Hosting GitHub app to enable access to GitHub repositories",
+    );
     const targetUri = conn.installationState.actionUri;
     utils.logBullet(targetUri);
     await utils.openInBrowser(targetUri);
     await promptOnce({
       type: "input",
       message:
-        "Press Enter once you have installed or configured the Firebase GitHub app to access your GitHub repo.",
+        "Press Enter once you have installed or configured the Firebase App Hosting GitHub app to access your GitHub repo.",
     });
     conn = await devConnect.getConnection(projectId, location, connectionId);
   }
