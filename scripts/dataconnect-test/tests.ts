@@ -143,7 +143,8 @@ describe("firebase deploy", () => {
   let serviceId: string;
   let databaseId: string;
 
-  beforeEach(async () => {
+  beforeEach(async function(this) {
+    this.timeout(10000);
     expect(FIREBASE_PROJECT).not.to.equal("", "No FBTOOLS_TARGET_PROJECT env var set.");
     const info = newTestRun();
     serviceId = info.serviceId;
@@ -152,7 +153,7 @@ describe("firebase deploy", () => {
   });
 
   afterEach(async function (this) {
-    this.timeout(100000);
+    this.timeout(10000);
     fs.rmSync(toPath("fdc-test"), { recursive: true, force: true });
     await cleanUpService(FIREBASE_PROJECT, serviceId, databaseId);
   });

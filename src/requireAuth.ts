@@ -42,7 +42,6 @@ async function autoAuth(options: Options, authScopes: string[]): Promise<void | 
   }
   const client = getAuthClient({ scopes: authScopes, projectId: options.project });
   const token = await client.getAccessToken();
-  console.log(token);
   token !== null ? apiv2.setAccessToken(token) : false;
 
   let clientEmail;
