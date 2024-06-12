@@ -143,7 +143,7 @@ describe("firebase deploy", () => {
   let serviceId: string;
   let databaseId: string;
 
-  beforeEach(async function(this) {
+  beforeEach(async function (this) {
     this.timeout(10000);
     expect(FIREBASE_PROJECT).not.to.equal("", "No FBTOOLS_TARGET_PROJECT env var set.");
     const info = newTestRun();
