@@ -11,7 +11,12 @@ import { deleteDatabase } from "../../src/gcp/cloudsql/cloudsqladmin";
 const FIREBASE_PROJECT = process.env.GCLOUD_PROJECT || "";
 const FIREBASE_DEBUG = process.env.FIREBASE_DEBUG || "";
 
-function expected(serviceId: string, databaseId: string, schemaUpdateTime: string, connectorLastUpdated: string) {
+function expected(
+  serviceId: string,
+  databaseId: string,
+  schemaUpdateTime: string,
+  connectorLastUpdated: string,
+) {
   return {
     serviceId,
     location: "us-central1",
@@ -23,8 +28,8 @@ function expected(serviceId: string, databaseId: string, schemaUpdateTime: strin
         connectorLastUpdated,
       },
     ],
-  }
-};
+  };
+}
 
 // async function cleanUpProject(projectId: string) {
 //   const services = await client.listAllServices(projectId);
@@ -40,7 +45,7 @@ function expected(serviceId: string, databaseId: string, schemaUpdateTime: strin
 
 async function cleanUpService(projectId: string, serviceId: string, databaseId: string) {
   await client.deleteServiceAndChildResources(
-    `projects/${projectId}/locations/us-central1/services/${serviceId}`
+    `projects/${projectId}/locations/us-central1/services/${serviceId}`,
   );
   await deleteDatabase(projectId, "dataconnect-test", databaseId);
 }
@@ -59,7 +64,7 @@ async function list() {
 }
 
 async function migrate(force: boolean) {
-  const args = force ? ["--force", ]: [];
+  const args = force ? ["--force"] : [];
   if (FIREBASE_DEBUG) {
     args.push("--debug");
   }
@@ -74,21 +79,16 @@ async function migrate(force: boolean) {
 }
 
 async function deploy(force: boolean) {
-  const args = ["--only", "dataconnect", ];
+  const args = ["--only", "dataconnect"];
   if (force) {
     args.push("--force");
   }
   if (FIREBASE_DEBUG) {
     args.push("--debug");
   }
-  return await cli.exec(
-    "deploy",
-    FIREBASE_PROJECT,
-    args,
-    __dirname,
-    /** quiet=*/ false,
-    { FIREBASE_CLI_EXPERIMENTS: "dataconnect" },
-  );
+  return await cli.exec("deploy", FIREBASE_PROJECT, args, __dirname, /** quiet=*/ false, {
+    FIREBASE_CLI_EXPERIMENTS: "dataconnect",
+  });
 }
 
 function toPath(p: string) {
@@ -105,7 +105,7 @@ function getRandomString(length: number): string {
 }
 
 // Each test run should use a random serviceId and databaseId.
-function newTestRun(): {serviceId: string, databaseId: string} {
+function newTestRun(): { serviceId: string; databaseId: string } {
   const serviceId = `cli-e2e-service-${getRandomString(6)}`;
   const databaseId = `cli-e2e-database-${getRandomString(6)}`;
 
@@ -123,16 +123,21 @@ function newTestRun(): {serviceId: string, databaseId: string} {
   if (!fs.existsSync(toPath("fdc-test/schema"))) {
     fs.mkdirSync(toPath("fdc-test/schema"));
   }
-  fs.writeFileSync(toPath("fdc-test/dataconnect.yaml"), subbedDataconnectYaml, {mode: 420 /* 0o644 */});
-  fs.writeFileSync(toPath("fdc-test/connector/connector.yaml"), connectorYamlTemplate, {mode: 420 /* 0o644 */});
-  return {serviceId, databaseId};
+  fs.writeFileSync(toPath("fdc-test/dataconnect.yaml"), subbedDataconnectYaml, {
+    mode: 420 /* 0o644 */,
+  });
+  fs.writeFileSync(toPath("fdc-test/connector/connector.yaml"), connectorYamlTemplate, {
+    mode: 420 /* 0o644 */,
+  });
+  return { serviceId, databaseId };
 }
 
 function prepareStep(step: Step) {
-  fs.writeFileSync(toPath("fdc-test/schema/schema.gql"), step.schemaGQL, {mode: 420 /* 0o644 */});
-  fs.writeFileSync(toPath("fdc-test/connector/connector.gql"), step.connectorGQL, {mode: 420 /* 0o644 */});
+  fs.writeFileSync(toPath("fdc-test/schema/schema.gql"), step.schemaGQL, { mode: 420 /* 0o644 */ });
+  fs.writeFileSync(toPath("fdc-test/connector/connector.gql"), step.connectorGQL, {
+    mode: 420 /* 0o644 */,
+  });
 }
-
 
 describe("firebase deploy", () => {
   let serviceId: string;
@@ -146,11 +151,11 @@ describe("firebase deploy", () => {
     await requireAuth({});
   });
 
-  afterEach(async function() {
+  afterEach(async function (this) {
     this.timeout(100000);
     fs.rmSync(toPath("fdc-test"), { recursive: true, force: true });
     await cleanUpService(FIREBASE_PROJECT, serviceId, databaseId);
-  })
+  });
 
   for (const c of cases) {
     it(c.description, async () => {
@@ -170,12 +175,14 @@ describe("firebase deploy", () => {
         expect(out?.result?.services?.length).to.gte(1);
         const service = out.result.services.find((s: any) => s.serviceId === serviceId);
         // Don't need to check update times.
-        expect(service).to.deep.equal(expected(
-          serviceId,
-          databaseId,
-          service["schemaUpdateTime"],
-          service["connectors"][0]["connectorLastUpdated"],
-        ));
+        expect(service).to.deep.equal(
+          expected(
+            serviceId,
+            databaseId,
+            service["schemaUpdateTime"],
+            service["connectors"][0]["connectorLastUpdated"],
+          ),
+        );
       }
     }).timeout(2000000); // Insanely long timeout in case of cSQL deploy. Should almost never be hit.
   }
