@@ -8,7 +8,7 @@ import * as client from "../../src/dataconnect/client";
 import { requireAuth } from "../../src/requireAuth";
 import { deleteDatabase } from "../../src/gcp/cloudsql/cloudsqladmin";
 
-const FIREBASE_PROJECT = process.env.GCLOUD_PROJECT || "";
+const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 const FIREBASE_DEBUG = process.env.FIREBASE_DEBUG || "";
 
 function expected(
@@ -30,18 +30,6 @@ function expected(
     ],
   };
 }
-
-// async function cleanUpProject(projectId: string) {
-//   const services = await client.listAllServices(projectId);
-//   for (const s of services) {
-//     const connectors = await client.listConnectors(s.name);
-//     for (const c of connectors) {
-//       await client.deleteConnector(c.name);
-//     }
-//     await client.deleteSchema(s.name);
-//     await client.deleteService(s.name);
-//   }
-// }
 
 async function cleanUpService(projectId: string, serviceId: string, databaseId: string) {
   await client.deleteServiceAndChildResources(
@@ -103,19 +91,21 @@ function getRandomString(length: number): string {
   }
   return result;
 }
+const fdcTest = toPath("fdc-test");
 
 // Each test run should use a random serviceId and databaseId.
 function newTestRun(): { serviceId: string; databaseId: string } {
-  const serviceId = `cli-e2e-service-${getRandomString(6)}`;
-  const databaseId = `cli-e2e-database-${getRandomString(6)}`;
+  const id = getRandomString(6);
+  const serviceId = `cli-e2e-service-${id}`;
+  const databaseId = `cli-e2e-database-${id}`;
 
   const dataconnectYamlTemplate = fs.readFileSync(toPath("templates/dataconnect.yaml")).toString();
   const connectorYamlTemplate = fs.readFileSync(toPath("templates/connector.yaml")).toString();
   const subbedDataconnectYaml = dataconnectYamlTemplate
     .replace("__serviceId__", serviceId)
     .replace("__databaseId__", databaseId);
-  if (!fs.existsSync(toPath("fdc-test"))) {
-    fs.mkdirSync(toPath("fdc-test"));
+  if (!fs.existsSync(fdcTest)) {
+    fs.mkdirSync(fdcTest);
   }
   if (!fs.existsSync(toPath("fdc-test/connector"))) {
     fs.mkdirSync(toPath("fdc-test/connector"));
@@ -154,7 +144,7 @@ describe("firebase deploy", () => {
 
   afterEach(async function (this) {
     this.timeout(10000);
-    fs.rmSync(toPath("fdc-test"), { recursive: true, force: true });
+    fs.rmSync(fdcTest, { recursive: true, force: true });
     await cleanUpService(FIREBASE_PROJECT, serviceId, databaseId);
   });
 
