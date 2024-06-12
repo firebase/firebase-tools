@@ -73,11 +73,16 @@ async function deleteService(serviceName: string): Promise<types.Service> {
 }
 
 export async function deleteServiceAndChildResources(serviceName: string) {
-  const service = await getService(serviceName);
-  const connectors = await listConnectors(service.name);
+  const connectors = await listConnectors(serviceName);
   await Promise.all(connectors.map(async (c) => deleteConnector(c.name)));
-  await deleteSchema(service.name);
-  await deleteService(service.name);
+  try {
+    await deleteSchema(serviceName);
+  } catch (err: any) {
+    if (err.status !== 404) {
+      throw err;
+    }
+  }
+  await deleteService(serviceName);
 }
 
 /** Schema methods */
