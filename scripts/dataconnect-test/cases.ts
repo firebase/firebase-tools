@@ -64,7 +64,7 @@ export const cases: TestCase[] = [
       {
         schemaGQL: `type Order @table {
           name: String!
-          v: Vector!
+          v: Vector! @col(size:768)
         }`,
         connectorGQL:`mutation createOrder($name: String!) {
           order_insert(data : {name: $name, v_embed: {model: "textembedding-gecko@001", text: $name}})

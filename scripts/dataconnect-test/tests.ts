@@ -7,9 +7,10 @@ import { cases, Step } from "./cases";
 import * as client from "../../src/dataconnect/client";
 import { requireAuth } from "../../src/requireAuth";
 import { deleteDatabase } from "../../src/gcp/cloudsql/cloudsqladmin";
-import { projectID } from "firebase-functions/params";
 
 const FIREBASE_PROJECT = process.env.GCLOUD_PROJECT || "";
+const FIREBASE_DEBUG = process.env.FIREBASE_DEBUG || "";
+
 function expected(serviceId: string, databaseId: string, schemaUpdateTime: string, connectorLastUpdated: string) {
   return {
     serviceId,
@@ -25,29 +26,23 @@ function expected(serviceId: string, databaseId: string, schemaUpdateTime: strin
   }
 };
 
-async function cleanUpProject(projectId: string) {
-  const services = await client.listAllServices(projectId);
-  for (const s of services) {
-    const connectors = await client.listConnectors(s.name);
-    for (const c of connectors) {
-      await client.deleteConnector(c.name);
-    }
-    await client.deleteSchema(s.name);
-    await client.deleteService(s.name);
-  }
-}
+// async function cleanUpProject(projectId: string) {
+//   const services = await client.listAllServices(projectId);
+//   for (const s of services) {
+//     const connectors = await client.listConnectors(s.name);
+//     for (const c of connectors) {
+//       await client.deleteConnector(c.name);
+//     }
+//     await client.deleteSchema(s.name);
+//     await client.deleteService(s.name);
+//   }
+// }
 
 async function cleanUpService(projectId: string, serviceId: string, databaseId: string) {
-  const services = await client.listAllServices(projectId);
-  for (const s of services) {
-    const connectors = await client.listConnectors(s.name);
-    for (const c of connectors) {
-      await client.deleteConnector(c.name);
-    }
-    await client.deleteSchema(s.name);
-    await client.deleteService(s.name);
-    await deleteDatabase(projectId, "dataconect-test", databaseId);
-  }
+  await client.deleteServiceAndChildResources(
+    `projects/${projectId}/locations/us-central1/services/${serviceId}`
+  );
+  await deleteDatabase(projectId, "dataconect-test", databaseId);
 }
 
 async function list() {
@@ -64,10 +59,14 @@ async function list() {
 }
 
 async function migrate(force: boolean) {
+  const args = force ? ["--force", ]: [];
+  if (FIREBASE_DEBUG) {
+    args.push("--debug");
+  }
   return await cli.exec(
     "dataconnect:sql:migrate",
     FIREBASE_PROJECT,
-    force ? ["--force", "--debug"]: ["--debug"],
+    args,
     __dirname,
     /** quiet=*/ false,
     { FIREBASE_CLI_EXPERIMENTS: "dataconnect" },
@@ -75,9 +74,12 @@ async function migrate(force: boolean) {
 }
 
 async function deploy(force: boolean) {
-  const args = ["--only", "dataconnect", "--debug"];
+  const args = ["--only", "dataconnect", ];
   if (force) {
     args.push("--force");
+  }
+  if (FIREBASE_DEBUG) {
+    args.push("--debug");
   }
   return await cli.exec(
     "deploy",
@@ -146,10 +148,10 @@ describe("firebase deploy", () => {
 
   afterEach(async function() {
     this.timeout(100000);
-    //TODO: delete the service and database
     fs.rmSync(toPath("fdc-test"), { recursive: true, force: true });
-    await cleanUpProject(FIREBASE_PROJECT)
+    await cleanUpService(FIREBASE_PROJECT, serviceId, databaseId);
   })
+
   for (const c of cases) {
     it(c.description, async () => {
       for (const step of c.sequence) {
