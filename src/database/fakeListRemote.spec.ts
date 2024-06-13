@@ -1,6 +1,6 @@
 import * as chai from "chai";
 
-import { ListRemote } from "../../database/listRemote";
+import { ListRemote } from "./listRemote";
 
 const expect = chai.expect;
 
