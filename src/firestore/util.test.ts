@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import * as util from "../../firestore/util";
+import * as util from "./util";
 
 describe("IndexNameParsing", () => {
   it("should parse an index name correctly", () => {

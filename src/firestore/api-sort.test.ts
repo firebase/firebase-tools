@@ -1,8 +1,8 @@
 import { expect } from "chai";
 
-import { Backup, BackupSchedule, DayOfWeek } from "../../gcp/firestore";
-import { durationFromSeconds } from "../../gcp/proto";
-import * as sort from "../../firestore/api-sort";
+import { Backup, BackupSchedule, DayOfWeek } from "../gcp/firestore";
+import { durationFromSeconds } from "../gcp/proto";
+import * as sort from "./api-sort";
 
 describe("compareApiBackup", () => {
   it("should compare backups by location", () => {
