@@ -1,8 +1,8 @@
 import { expect } from "chai";
 import * as nock from "nock";
 
-import * as client from "../../dataconnect/client";
-import { dataconnectOrigin } from "../../api";
+import * as client from "./client";
+import { dataconnectOrigin } from "../api";
 
 describe("DataConnect control plane client", () => {
   afterEach(() => {
