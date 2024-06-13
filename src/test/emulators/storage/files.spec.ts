@@ -8,6 +8,9 @@ import { ForbiddenError, NotFoundError } from "../../../emulator/storage/errors"
 import { Persistence } from "../../../emulator/storage/persistence";
 import { FirebaseRulesValidator } from "../../../emulator/storage/rules/utils";
 import { UploadService } from "../../../emulator/storage/upload";
+import { FakeEmulator } from "../fakeEmulator";
+import { Emulators } from "../../../emulator/types";
+import { EmulatorRegistry } from "../../../emulator/registry";
 
 const ALWAYS_TRUE_RULES_VALIDATOR = {
   validate: () => Promise.resolve(true),
@@ -22,6 +25,15 @@ const ALWAYS_TRUE_ADMIN_CREDENTIAL_VALIDATOR = {
 };
 
 describe("files", () => {
+  // The storage emulator uses EmulatorRegistry to generate links in metadata.
+  before(async () => {
+    const emu = await FakeEmulator.create(Emulators.STORAGE);
+    await EmulatorRegistry.start(emu);
+  });
+  after(async () => {
+    await EmulatorRegistry.stop(Emulators.STORAGE);
+  });
+
   it("can serialize and deserialize metadata", () => {
     const cf = new StorageCloudFunctions("demo-project");
     const metadata = new StoredFileMetadata(
