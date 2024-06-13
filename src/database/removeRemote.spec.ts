@@ -1,8 +1,8 @@
 import { expect } from "chai";
 import * as nock from "nock";
 
-import * as utils from "../../utils";
-import { RTDBRemoveRemote } from "../../database/removeRemote";
+import * as utils from "../utils";
+import { RTDBRemoveRemote } from "./removeRemote";
 
 describe("RemoveRemote", () => {
   const instance = "fake-db";

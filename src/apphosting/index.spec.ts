@@ -1,11 +1,11 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
 
-import * as prompt from "../../prompt";
-import * as apphosting from "../../gcp/apphosting";
-import * as iam from "../../gcp/iam";
-import * as resourceManager from "../../gcp/resourceManager";
-import * as poller from "../../operation-poller";
+import * as prompt from "../prompt";
+import * as apphosting from "../gcp/apphosting";
+import * as iam from "../gcp/iam";
+import * as resourceManager from "../gcp/resourceManager";
+import * as poller from "../operation-poller";
 import {
   createBackend,
   deleteBackendAndPoll,
@@ -13,9 +13,9 @@ import {
   setDefaultTrafficPolicy,
   ensureAppHostingComputeServiceAccount,
   getBackendForAmbiguousLocation,
-} from "../../apphosting/index";
-import * as deploymentTool from "../../deploymentTool";
-import { FirebaseError } from "../../error";
+} from "./index";
+import * as deploymentTool from "../deploymentTool";
+import { FirebaseError } from "../error";
 
 describe("apphosting setup functions", () => {
   const projectId = "projectId";

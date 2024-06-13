@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import DatabaseRemove from "../../database/remove";
+import DatabaseRemove from "./remove";
 import { FakeRemoveRemote } from "./fakeRemoveRemote.spec";
 import { FakeListRemote } from "./fakeListRemote.spec";
 const HOST = "https://firebaseio.com";

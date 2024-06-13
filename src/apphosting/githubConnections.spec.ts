@@ -1,19 +1,18 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
-
-import * as gcb from "../../gcp/cloudbuild";
-import * as rm from "../../gcp/resourceManager";
-import * as prompt from "../../prompt";
-import * as poller from "../../operation-poller";
-import * as repo from "../../apphosting/repo";
-import * as utils from "../../utils";
-import * as srcUtils from "../../getProjectNumber";
-import { FirebaseError } from "../../error";
+import * as prompt from "../prompt";
+import * as poller from "../operation-poller";
+import * as devconnect from "../gcp/devConnect";
+import * as repo from "./githubConnections";
+import * as utils from "../utils";
+import * as srcUtils from "../getProjectNumber";
+import * as rm from "../gcp/resourceManager";
+import { FirebaseError } from "../error";
 
 const projectId = "projectId";
 const location = "us-central1";
 
-function mockConn(id: string): gcb.Connection {
+function mockConn(id: string): devconnect.Connection {
   return {
     name: `projects/${projectId}/locations/${location}/connections/${id}`,
     disabled: false,
@@ -28,25 +27,58 @@ function mockConn(id: string): gcb.Connection {
   };
 }
 
-function mockRepo(name: string): gcb.Repository {
+function mockRepo(name: string): devconnect.GitRepositoryLink {
   return {
     name: `${name}`,
-    remoteUri: `https://github.com/test/${name}.git`,
+    cloneUri: `https://github.com/test/${name}.git`,
     createTime: "",
     updateTime: "",
+    deleteTime: "",
+    reconciling: false,
+    uid: "",
   };
 }
 
-function mockReposWithRandomUris(n: number): gcb.Repository[] {
-  const repos = [];
-  for (let i = 0; i < n; i++) {
-    const hash = Math.random().toString(36).slice(6);
-    repos.push(mockRepo(hash));
-  }
-  return repos;
-}
+describe("githubConnections", () => {
+  describe("parseConnectionName", () => {
+    it("should parse valid connection name", () => {
+      const connectionName = "projects/my-project/locations/us-central1/connections/my-conn";
 
-describe("composer", () => {
+      const expected = {
+        projectId: "my-project",
+        location: "us-central1",
+        id: "my-conn",
+      };
+
+      expect(repo.parseConnectionName(connectionName)).to.deep.equal(expected);
+    });
+
+    it("should return undefined for invalid", () => {
+      expect(
+        repo.parseConnectionName(
+          "projects/my-project/locations/us-central1/connections/my-conn/repositories/repo",
+        ),
+      ).to.be.undefined;
+      expect(repo.parseConnectionName("foobar")).to.be.undefined;
+    });
+  });
+
+  describe("extractRepoSlugFromUri", () => {
+    it("extracts repo from URI", () => {
+      const cloneUri = "https://github.com/user/repo.git";
+      const repoSlug = repo.extractRepoSlugFromUri(cloneUri);
+      expect(repoSlug).to.equal("user/repo");
+    });
+  });
+
+  describe("generateRepositoryId", () => {
+    it("extracts repo from URI", () => {
+      const cloneUri = "https://github.com/user/repo.git";
+      const repoSlug = repo.generateRepositoryId(cloneUri);
+      expect(repoSlug).to.equal("user-repo");
+    });
+  });
+
   describe("connect GitHub repo", () => {
     const sandbox: sinon.SinonSandbox = sinon.createSandbox();
 
@@ -67,21 +99,21 @@ describe("composer", () => {
         .stub(poller, "pollOperation")
         .throws("Unexpected pollOperation call");
       getConnectionStub = sandbox
-        .stub(gcb, "getConnection")
+        .stub(devconnect, "getConnection")
         .throws("Unexpected getConnection call");
       getRepositoryStub = sandbox
-        .stub(gcb, "getRepository")
-        .throws("Unexpected getRepository call");
+        .stub(devconnect, "getGitRepositoryLink")
+        .throws("Unexpected getGitRepositoryLink call");
       createConnectionStub = sandbox
-        .stub(gcb, "createConnection")
+        .stub(devconnect, "createConnection")
         .throws("Unexpected createConnection call");
       serviceAccountHasRolesStub = sandbox.stub(rm, "serviceAccountHasRoles").resolves(true);
       createRepositoryStub = sandbox
-        .stub(gcb, "createRepository")
-        .throws("Unexpected createRepository call");
+        .stub(devconnect, "createGitRepositoryLink")
+        .throws("Unexpected createGitRepositoryLink call");
       fetchLinkableRepositoriesStub = sandbox
-        .stub(gcb, "fetchLinkableRepositories")
-        .throws("Unexpected fetchLinkableRepositories call");
+        .stub(devconnect, "listAllLinkableGitRepositories")
+        .throws("Unexpected listAllLinkableGitRepositories call");
       sandbox.stub(utils, "openInBrowser").resolves();
       openInBrowserPopupStub = sandbox
         .stub(utils, "openInBrowserPopup")
@@ -95,8 +127,6 @@ describe("composer", () => {
       sandbox.verifyAndRestore();
     });
 
-    const projectId = "projectId";
-    const location = "us-central1";
     const connectionId = `apphosting-${location}`;
 
     const op = {
@@ -151,7 +181,7 @@ describe("composer", () => {
       expect(createConnectionStub).to.be.calledWith(projectId, location, connectionId);
     });
 
-    it("checks if secret manager admin role is granted for cloud build P4SA when creating an oauth connection", async () => {
+    it("checks if secret manager admin role is granted for developer connect P4SA when creating an oauth connection", async () => {
       getConnectionStub.onFirstCall().rejects(new FirebaseError("error", { status: 404 }));
       getConnectionStub.onSecondCall().resolves(completeConn);
       createConnectionStub.resolves(op);
@@ -163,7 +193,7 @@ describe("composer", () => {
       await repo.getOrCreateOauthConnection(projectId, location);
       expect(serviceAccountHasRolesStub).to.be.calledWith(
         projectId,
-        `service-${projectId}@gcp-sa-cloudbuild.iam.gserviceaccount.com`,
+        `service-${projectId}@gcp-sa-devconnect.iam.gserviceaccount.com`,
         ["roles/secretmanager.admin"],
         true,
       );
@@ -208,58 +238,18 @@ describe("composer", () => {
     });
   });
 
-  describe("parseConnectionName", () => {
-    it("should parse valid connection name", () => {
-      const str = "projects/my-project/locations/us-central1/connections/my-conn";
-
-      const expected = {
-        projectId: "my-project",
-        location: "us-central1",
-        id: "my-conn",
-      };
-
-      expect(repo.parseConnectionName(str)).to.deep.equal(expected);
-    });
-
-    it("should return undefined for invalid", () => {
-      expect(
-        repo.parseConnectionName(
-          "projects/my-project/locations/us-central1/connections/my-conn/repositories/repo",
-        ),
-      ).to.be.undefined;
-      expect(repo.parseConnectionName("foobar")).to.be.undefined;
-    });
-  });
-
   describe("fetchAllRepositories", () => {
     const sandbox: sinon.SinonSandbox = sinon.createSandbox();
-    let fetchLinkableRepositoriesStub: sinon.SinonStub;
+    let listAllLinkableGitRepositoriesStub: sinon.SinonStub;
 
     beforeEach(() => {
-      fetchLinkableRepositoriesStub = sandbox
-        .stub(gcb, "fetchLinkableRepositories")
-        .throws("Unexpected fetchLinkableRepositories call");
+      listAllLinkableGitRepositoriesStub = sandbox
+        .stub(devconnect, "listAllLinkableGitRepositories")
+        .throws("Unexpected listAllLinkableGitRepositories call");
     });
 
     afterEach(() => {
       sandbox.verifyAndRestore();
-    });
-
-    it("should fetch all repositories from multiple pages", async () => {
-      fetchLinkableRepositoriesStub.onFirstCall().resolves({
-        repositories: mockReposWithRandomUris(10),
-        nextPageToken: "1234",
-      });
-      fetchLinkableRepositoriesStub.onSecondCall().resolves({
-        repositories: mockReposWithRandomUris(10),
-      });
-
-      const { repos, remoteUriToConnection } = await repo.fetchAllRepositories(projectId, [
-        mockConn("conn0"),
-      ]);
-
-      expect(repos.length).to.equal(20);
-      expect(Object.keys(remoteUriToConnection).length).to.equal(20);
     });
 
     it("should fetch all linkable repositories from multiple connections", async () => {
@@ -267,22 +257,38 @@ describe("composer", () => {
       const conn1 = mockConn("conn1");
       const repo0 = mockRepo("repo-0");
       const repo1 = mockRepo("repo-1");
-      fetchLinkableRepositoriesStub.onFirstCall().resolves({
-        repositories: [repo0],
-      });
-      fetchLinkableRepositoriesStub.onSecondCall().resolves({
-        repositories: [repo1],
-      });
+      listAllLinkableGitRepositoriesStub.onFirstCall().resolves([repo0]);
+      listAllLinkableGitRepositoriesStub.onSecondCall().resolves([repo1]);
 
-      const { repos, remoteUriToConnection } = await repo.fetchAllRepositories(projectId, [
+      const { cloneUris, cloneUriToConnection } = await repo.fetchAllRepositories(projectId, [
         conn0,
         conn1,
       ]);
 
-      expect(repos.length).to.equal(2);
-      expect(remoteUriToConnection).to.deep.equal({
-        [repo0.remoteUri]: conn0,
-        [repo1.remoteUri]: conn1,
+      expect(cloneUris.length).to.equal(2);
+      expect(cloneUriToConnection).to.deep.equal({
+        [repo0.cloneUri]: conn0,
+        [repo1.cloneUri]: conn1,
+      });
+    });
+
+    it("should fetch all linkable repositories without duplicates when there are duplicate connections", async () => {
+      const conn0 = mockConn("conn0");
+      const conn1 = mockConn("conn1");
+      const repo0 = mockRepo("repo-0");
+      const repo1 = mockRepo("repo-1");
+      listAllLinkableGitRepositoriesStub.onFirstCall().resolves([repo0, repo1]);
+      listAllLinkableGitRepositoriesStub.onSecondCall().resolves([repo0, repo1]);
+
+      const { cloneUris, cloneUriToConnection } = await repo.fetchAllRepositories(projectId, [
+        conn0,
+        conn1,
+      ]);
+
+      expect(cloneUris.length).to.equal(2);
+      expect(cloneUriToConnection).to.deep.equal({
+        [repo0.cloneUri]: conn1,
+        [repo1.cloneUri]: conn1,
       });
     });
   });
@@ -298,8 +304,8 @@ describe("composer", () => {
 
     beforeEach(() => {
       listConnectionsStub = sandbox
-        .stub(gcb, "listConnections")
-        .throws("Unexpected getConnection call");
+        .stub(devconnect, "listAllConnections")
+        .throws("Unexpected listAllConnections call");
     });
 
     afterEach(() => {
@@ -320,6 +326,73 @@ describe("composer", () => {
         "apphosting-github-conn-baddcafe",
         "apphosting-github-conn-deadbeef",
       ]);
+    });
+  });
+
+  describe("ensureSecretManagerAdminGrant", () => {
+    const sandbox: sinon.SinonSandbox = sinon.createSandbox();
+
+    let promptOnceStub: sinon.SinonStub;
+    let serviceAccountHasRolesStub: sinon.SinonStub;
+    let addServiceAccountToRolesStub: sinon.SinonStub;
+    let generateP4SAStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
+      serviceAccountHasRolesStub = sandbox.stub(rm, "serviceAccountHasRoles");
+      sandbox.stub(srcUtils, "getProjectNumber").resolves(projectId);
+      addServiceAccountToRolesStub = sandbox.stub(rm, "addServiceAccountToRoles");
+      generateP4SAStub = sandbox.stub(devconnect, "generateP4SA");
+    });
+
+    afterEach(() => {
+      sandbox.verifyAndRestore();
+    });
+
+    it("does not prompt user if the developer connect P4SA already has secretmanager.admin permissions", async () => {
+      serviceAccountHasRolesStub.resolves(true);
+      await repo.ensureSecretManagerAdminGrant(projectId);
+
+      expect(serviceAccountHasRolesStub).calledWith(
+        projectId,
+        `service-${projectId}@gcp-sa-devconnect.iam.gserviceaccount.com`,
+        ["roles/secretmanager.admin"],
+      );
+      expect(promptOnceStub).to.not.be.called;
+    });
+
+    it("prompts user if the developer connect P4SA does not have secretmanager.admin permissions", async () => {
+      serviceAccountHasRolesStub.resolves(false);
+      promptOnceStub.resolves(true);
+      addServiceAccountToRolesStub.resolves();
+
+      await repo.ensureSecretManagerAdminGrant(projectId);
+
+      expect(serviceAccountHasRolesStub).calledWith(
+        projectId,
+        `service-${projectId}@gcp-sa-devconnect.iam.gserviceaccount.com`,
+        ["roles/secretmanager.admin"],
+      );
+
+      expect(promptOnceStub).to.be.called;
+    });
+
+    it("tries to generate developer connect P4SA if adding role throws an error", async () => {
+      serviceAccountHasRolesStub.resolves(false);
+      promptOnceStub.resolves(true);
+      generateP4SAStub.resolves();
+      addServiceAccountToRolesStub.onFirstCall().throws({ code: 400, status: 400 });
+      addServiceAccountToRolesStub.onSecondCall().resolves();
+
+      await repo.ensureSecretManagerAdminGrant(projectId);
+
+      expect(serviceAccountHasRolesStub).calledWith(
+        projectId,
+        `service-${projectId}@gcp-sa-devconnect.iam.gserviceaccount.com`,
+        ["roles/secretmanager.admin"],
+      ).calledOnce;
+      expect(generateP4SAStub).calledOnce;
+      expect(promptOnceStub).to.be.called;
     });
   });
 });

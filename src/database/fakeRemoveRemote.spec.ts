@@ -1,7 +1,7 @@
 import * as pathLib from "path";
 import { expect } from "chai";
 
-import { RemoveRemote } from "../../database/removeRemote";
+import { RemoveRemote } from "./removeRemote";
 
 export class FakeRemoveRemote implements RemoveRemote {
   data: any;

@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { getLoginCredential, getTestDevices } from "../../appdistribution/options-parser-util";
-import { FirebaseError } from "../../error";
+import { getLoginCredential, getTestDevices } from "./options-parser-util";
+import { FirebaseError } from "../error";
 import * as fs from "fs-extra";
 import * as rimraf from "rimraf";
 import * as tmp from "tmp";

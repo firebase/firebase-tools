@@ -1,9 +1,9 @@
 import { expect } from "chai";
 import * as nock from "nock";
 
-import * as utils from "../../utils";
-import { realtimeOrigin } from "../../api";
-import { RTDBListRemote } from "../../database/listRemote";
+import * as utils from "../utils";
+import { realtimeOrigin } from "../api";
+import { RTDBListRemote } from "./listRemote";
 const HOST = "https://firebaseio.com";
 
 describe("ListRemote", () => {
