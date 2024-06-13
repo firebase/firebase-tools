@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import * as path from "path";
 import { FirebaseError } from "../error";
 import { HostingConfig, HostingMultiple, HostingSingle } from "../firebaseConfig";
 
@@ -24,8 +25,8 @@ function options(
         return targetsToSites?.[name] || [];
       },
     },
-    cwd: __dirname + "/../fixtures/simplehosting",
-    configPath: __dirname + "/../fixtures/simplehosting/firebase.json",
+    cwd: path.resolve(__dirname, "../test/fixtures/simplehosting"),
+    configPath: path.resolve(__dirname, "../test/fixtures/simplehosting/firebase.json"),
     ...base,
   };
 }
