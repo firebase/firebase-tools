@@ -5,11 +5,7 @@ import * as fsExtra from "fs-extra";
 import * as sinon from "sinon";
 import * as glob from "glob";
 
-import {
-  EXPORT_MARKER,
-  IMAGES_MANIFEST,
-  APP_PATH_ROUTES_MANIFEST,
-} from "../../../frameworks/next/constants";
+import { EXPORT_MARKER, IMAGES_MANIFEST, APP_PATH_ROUTES_MANIFEST } from "./constants";
 
 import {
   cleanEscapedChars,
@@ -33,10 +29,10 @@ import {
   isUsingNextImageInAppDirectory,
   getNextVersion,
   getRoutesWithServerAction,
-} from "../../../frameworks/next/utils";
+} from "./utils";
 
-import * as frameworksUtils from "../../../frameworks/utils";
-import * as fsUtils from "../../../fsutils";
+import * as frameworksUtils from "../utils";
+import * as fsUtils from "../../fsutils";
 
 import {
   exportMarkerWithImage,
@@ -65,8 +61,8 @@ import {
   clientReferenceManifestWithImage,
   clientReferenceManifestWithoutImage,
   serverReferenceManifest,
-} from "./helpers";
-import { pathsWithCustomRoutesInternalPrefix } from "./helpers/i18n";
+} from "./testing";
+import { pathsWithCustomRoutesInternalPrefix } from "./testing/i18n";
 
 describe("Next.js utils", () => {
   describe("cleanEscapedChars", () => {

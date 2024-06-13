@@ -1,4 +1,4 @@
-import type { RoutesManifestRedirect } from "../../../../frameworks/next/interfaces";
+import type { RoutesManifestRedirect } from "../interfaces";
 import { supportedPaths, unsupportedPaths } from "./paths";
 
 export const supportedRedirects: RoutesManifestRedirect[] = supportedPaths.map((path) => ({

@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { genHookScript } from "../../../../frameworks/compose/driver/hooks";
-import { AppBundle } from "../../../../frameworks/compose/interfaces";
+import { genHookScript } from "./hooks";
+import { AppBundle } from "../interfaces";
 
 describe("genHookScript", () => {
   const BUNDLE: AppBundle = {

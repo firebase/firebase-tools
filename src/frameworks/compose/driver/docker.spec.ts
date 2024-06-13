@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { DockerfileBuilder } from "../../../../frameworks/compose/driver/docker";
+import { DockerfileBuilder } from "./docker";
 
 describe("DockerfileBuilder", () => {
   describe("from", () => {

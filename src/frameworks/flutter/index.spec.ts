@@ -7,8 +7,8 @@ import * as fsExtra from "fs-extra";
 import * as fsPromises from "fs/promises";
 import { join } from "path";
 
-import * as flutterUtils from "../../../frameworks/flutter/utils";
-import { discover, build, ɵcodegenPublicDirectory, init } from "../../../frameworks/flutter";
+import * as flutterUtils from "./utils";
+import { discover, build, ɵcodegenPublicDirectory, init } from ".";
 
 describe("Flutter", () => {
   describe("discovery", () => {

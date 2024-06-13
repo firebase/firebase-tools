@@ -5,16 +5,16 @@ import { Writable } from "stream";
 import * as crossSpawn from "cross-spawn";
 import * as fsExtra from "fs-extra";
 
-import * as astroUtils from "../../../frameworks/astro/utils";
-import * as frameworkUtils from "../../../frameworks/utils";
+import * as astroUtils from "./utils";
+import * as frameworkUtils from "../utils";
 import {
   discover,
   getDevModeHandle,
   build,
   ɵcodegenPublicDirectory,
   ɵcodegenFunctionsDirectory,
-} from "../../../frameworks/astro";
-import { FirebaseError } from "../../../error";
+} from ".";
+import { FirebaseError } from "../../error";
 import { join } from "path";
 
 describe("Astro", () => {
@@ -335,10 +335,10 @@ describe("Astro", () => {
       process.stdout.emit(
         "data",
         `  🚀  astro  v2.2.2 started in 64ms
-  
+
   ┃ Local    http://localhost:3000/
   ┃ Network  use --host to expose
-  
+
 `,
       );
 

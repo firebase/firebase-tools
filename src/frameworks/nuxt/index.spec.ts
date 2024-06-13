@@ -6,10 +6,10 @@ import { Readable, Writable } from "stream";
 import * as fsExtra from "fs-extra";
 import * as crossSpawn from "cross-spawn";
 
-import * as frameworksUtils from "../../../frameworks/utils";
-import { discover as discoverNuxt2 } from "../../../frameworks/nuxt2";
-import { discover as discoverNuxt3, getDevModeHandle } from "../../../frameworks/nuxt";
-import type { NuxtOptions } from "../../../frameworks/nuxt/interfaces";
+import * as frameworksUtils from "../utils";
+import { discover as discoverNuxt2 } from "../nuxt2";
+import { discover as discoverNuxt3, getDevModeHandle } from ".";
+import type { NuxtOptions } from "./interfaces";
 
 describe("Nuxt 2 utils", () => {
   describe("nuxtAppDiscovery", () => {

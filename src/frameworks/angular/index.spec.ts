@@ -2,7 +2,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import * as fsExtra from "fs-extra";
 
-import { discover } from "../../../frameworks/angular";
+import { discover } from ".";
 
 describe("Angular", () => {
   describe("discovery", () => {

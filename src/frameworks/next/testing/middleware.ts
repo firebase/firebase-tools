@@ -1,7 +1,4 @@
-import type {
-  MiddlewareManifestV1,
-  MiddlewareManifestV2,
-} from "../../../../frameworks/next/interfaces";
+import type { MiddlewareManifestV1, MiddlewareManifestV2 } from "../interfaces";
 
 export const middlewareV2ManifestWhenUsed: MiddlewareManifestV2 = {
   sortedMiddleware: ["/"],
