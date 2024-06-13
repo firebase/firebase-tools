@@ -2,12 +2,12 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import * as nock from "nock";
 
-import * as api from "../../api";
-import * as projectManager from "../../management/projects";
-import * as pollUtils from "../../operation-poller";
-import * as prompt from "../../prompt";
-import { FirebaseError } from "../../error";
-import { CloudProjectInfo, FirebaseProjectMetadata } from "../../types/project";
+import * as api from "../api";
+import * as projectManager from "./projects";
+import * as pollUtils from "../operation-poller";
+import * as prompt from "../prompt";
+import { FirebaseError } from "../error";
+import { CloudProjectInfo, FirebaseProjectMetadata } from "../types/project";
 
 const PROJECT_ID = "the-best-firebase-project";
 const PROJECT_NUMBER = "1234567890";

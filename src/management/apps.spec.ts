@@ -3,7 +3,7 @@ import * as sinon from "sinon";
 import * as fs from "fs";
 import * as nock from "nock";
 
-import * as api from "../../api";
+import * as api from "../api";
 import {
   AndroidAppMetadata,
   AppPlatform,
@@ -17,10 +17,10 @@ import {
   IosAppMetadata,
   listFirebaseApps,
   WebAppMetadata,
-} from "../../management/apps";
-import * as pollUtils from "../../operation-poller";
-import { FirebaseError } from "../../error";
-import { firebaseApiOrigin } from "../../api";
+} from "./apps";
+import * as pollUtils from "../operation-poller";
+import { FirebaseError } from "../error";
+import { firebaseApiOrigin } from "../api";
 
 const PROJECT_ID = "the-best-firebase-project";
 const OPERATION_RESOURCE_NAME_1 = "operations/cp.11111111111111111";
