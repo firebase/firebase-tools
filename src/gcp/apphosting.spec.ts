@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import * as apphosting from "../../gcp/apphosting";
+import * as apphosting from "./apphosting";
 
 describe("apphosting", () => {
   describe("getNextBuildId", () => {

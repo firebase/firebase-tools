@@ -6,7 +6,7 @@ import {
   getAcceptanceStatus,
   getTosStatus,
   isProductTosAccepted,
-} from "../../gcp/firedata";
+} from "./firedata";
 import { expect } from "chai";
 
 const SAMPLE_RESPONSE = {
