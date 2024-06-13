@@ -3,18 +3,13 @@ import * as sinon from "sinon";
 import * as fs from "fs";
 import { resolve, join } from "path";
 
-import {
-  warnIfCustomBuildScript,
-  isUrl,
-  getNodeModuleBin,
-  conjoinOptions,
-} from "../../frameworks/utils";
+import { warnIfCustomBuildScript, isUrl, getNodeModuleBin, conjoinOptions } from "./utils";
 
 describe("Frameworks utils", () => {
   describe("getNodeModuleBin", () => {
     it("should return expected tsc path", () => {
       expect(getNodeModuleBin("tsc", __dirname)).to.equal(
-        resolve(join(__dirname, "..", "..", "..", "node_modules", ".bin", "tsc")),
+        resolve(join(__dirname, "..", "..", "node_modules", ".bin", "tsc")),
       );
     }).timeout(5000);
     it("should throw when npm root not found", () => {

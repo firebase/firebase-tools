@@ -5,9 +5,9 @@ import {
   removeEmbededFrameworks,
   filterFrameworksWithFiles,
   filterFrameworksWithDependencies,
-} from "../../../../frameworks/compose/discover/frameworkMatcher";
-import { frameworkSpecs } from "../../../../frameworks/compose/discover/frameworkSpec";
-import { FrameworkSpec } from "../../../../frameworks/compose/discover/types";
+} from "./frameworkMatcher";
+import { frameworkSpecs } from "./frameworkSpec";
+import { FrameworkSpec } from "./types";
 
 describe("frameworkMatcher", () => {
   let fileSystem: MockFileSystem;

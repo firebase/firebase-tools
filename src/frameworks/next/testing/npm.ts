@@ -1,4 +1,4 @@
-import { NpmLsReturn } from "../../../../frameworks/next/interfaces";
+import { NpmLsReturn } from "../interfaces";
 
 export const npmLsReturn: NpmLsReturn = {
   version: "0.1.0",

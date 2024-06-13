@@ -1,4 +1,4 @@
-import { FileSystem } from "../../../../frameworks/compose/discover/types";
+import { FileSystem } from "./types";
 
 export class MockFileSystem implements FileSystem {
   private readonly existsCache: Record<string, boolean> = {};

@@ -4,7 +4,7 @@ import { EventEmitter } from "events";
 import { Writable } from "stream";
 import * as crossSpawn from "cross-spawn";
 
-import { assertFlutterCliExists } from "../../../frameworks/flutter/utils";
+import { assertFlutterCliExists } from "./utils";
 
 describe("Flutter utils", () => {
   describe("assertFlutterCliExists", () => {

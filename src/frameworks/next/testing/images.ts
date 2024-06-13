@@ -1,4 +1,4 @@
-import type { ExportMarker, ImagesManifest } from "../../../../frameworks/next/interfaces";
+import type { ExportMarker, ImagesManifest } from "../interfaces";
 
 export const exportMarkerWithoutImage: ExportMarker = {
   version: 1,
