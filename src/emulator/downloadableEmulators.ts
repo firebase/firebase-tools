@@ -273,7 +273,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     shell: false,
   },
   pubsub: {
-    binary: `"${getExecPath(Emulators.PUBSUB)!}"`,
+    binary: `${getExecPath(Emulators.PUBSUB)!}`,
     args: [],
     optionalArgs: ["port", "host"],
     joinArgs: true,
@@ -287,7 +287,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     shell: false,
   },
   dataconnect: {
-    binary: `"${getExecPath(Emulators.DATACONNECT)}"`,
+    binary: `${getExecPath(Emulators.DATACONNECT)}`,
     args: ["dev"],
     optionalArgs: [
       "listen",
@@ -441,6 +441,9 @@ async function _runBinary(
       };
       if (command.shell && utils.IS_WINDOWS) {
         opts.shell = true;
+        if (command.binary.includes(" ")) {
+          command.binary = `"${command.binary}"`;
+        }
       }
       emulator.instance = childProcess.spawn(command.binary, command.args, opts);
     } catch (e: any) {
