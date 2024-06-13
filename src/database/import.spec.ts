@@ -1,10 +1,10 @@
 import * as nock from "nock";
 import * as stream from "stream";
-import * as utils from "../../utils";
+import * as utils from "../utils";
 import { expect } from "chai";
 
-import DatabaseImporter from "../../database/import";
-import { FirebaseError } from "../../error";
+import DatabaseImporter from "./import";
+import { FirebaseError } from "../error";
 import { FetchError } from "node-fetch";
 
 const dbUrl = new URL("https://test-db.firebaseio.com/foo");

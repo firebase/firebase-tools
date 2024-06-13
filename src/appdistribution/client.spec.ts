@@ -6,11 +6,11 @@ import * as rimraf from "rimraf";
 import * as sinon from "sinon";
 import * as tmp from "tmp";
 
-import { AppDistributionClient } from "../../appdistribution/client";
-import { BatchRemoveTestersResponse, Group, TestDevice } from "../../appdistribution/types";
-import { appDistributionOrigin } from "../../api";
-import { Distribution } from "../../appdistribution/distribution";
-import { FirebaseError } from "../../error";
+import { AppDistributionClient } from "./client";
+import { BatchRemoveTestersResponse, Group, TestDevice } from "./types";
+import { appDistributionOrigin } from "../api";
+import { Distribution } from "./distribution";
+import { FirebaseError } from "../error";
 
 tmp.setGracefulCleanup();
 

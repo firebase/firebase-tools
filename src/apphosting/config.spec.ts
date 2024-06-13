@@ -3,10 +3,10 @@ import * as sinon from "sinon";
 import * as yaml from "yaml";
 import * as path from "path";
 
-import * as fsImport from "../../fsutils";
-import * as promptImport from "../../prompt";
-import * as dialogs from "../../apphosting/secrets/dialogs";
-import * as config from "../../apphosting/config";
+import * as fsImport from "../fsutils";
+import * as promptImport from "../prompt";
+import * as dialogs from "./secrets/dialogs";
+import * as config from "./config";
 import { NodeType } from "yaml/dist/nodes/Node";
 
 describe("config", () => {
