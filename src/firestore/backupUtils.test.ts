@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { calculateRetention } from "../../firestore/backupUtils";
+import { calculateRetention } from "./backupUtils";
 
 describe("calculateRetention", () => {
   it("should accept minutes", () => {
