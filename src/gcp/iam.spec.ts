@@ -1,8 +1,8 @@
 import { expect } from "chai";
 import * as nock from "nock";
 
-import { resourceManagerOrigin } from "../../api";
-import * as iam from "../../gcp/iam";
+import { resourceManagerOrigin } from "../api";
+import * as iam from "./iam";
 
 const BINDING = {
   role: "some/role",

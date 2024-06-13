@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import * as devconnect from "../../gcp/devConnect";
+import * as devconnect from "./devConnect";
 
 describe("developer connect", () => {
   let post: sinon.SinonStub;

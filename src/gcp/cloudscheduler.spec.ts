@@ -1,11 +1,11 @@
 import { expect } from "chai";
 import * as nock from "nock";
 
-import { FirebaseError } from "../../error";
-import * as api from "../../api";
-import * as backend from "../../deploy/functions/backend";
-import * as cloudscheduler from "../../gcp/cloudscheduler";
-import { cloneDeep } from "../../utils";
+import { FirebaseError } from "../error";
+import * as api from "../api";
+import * as backend from "../deploy/functions/backend";
+import * as cloudscheduler from "./cloudscheduler";
+import { cloneDeep } from "../utils";
 
 const VERSION = "v1";
 
