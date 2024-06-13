@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import Stack from "../../throttler/stack";
+import Stack from "./stack";
 import { createHandler, createTask, Task } from "./throttler.spec";
 
 describe("Stack", () => {

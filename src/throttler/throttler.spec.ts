@@ -1,12 +1,12 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
 
-import Queue from "../../throttler/queue";
-import Stack from "../../throttler/stack";
-import { Throttler, ThrottlerOptions, timeToWait } from "../../throttler/throttler";
-import TaskError from "../../throttler/errors/task-error";
-import TimeoutError from "../../throttler/errors/timeout-error";
-import RetriesExhaustedError from "../../throttler/errors/retries-exhausted-error";
+import Queue from "./queue";
+import Stack from "./stack";
+import { Throttler, ThrottlerOptions, timeToWait } from "./throttler";
+import TaskError from "./errors/task-error";
+import TimeoutError from "./errors/timeout-error";
+import RetriesExhaustedError from "./errors/retries-exhausted-error";
 
 const TEST_ERROR = new Error("foobar");
 

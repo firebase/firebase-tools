@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import Queue from "../../throttler/queue";
+import Queue from "./queue";
 import { createHandler, createTask, Task } from "./throttler.spec";
 
 describe("Queue", () => {
