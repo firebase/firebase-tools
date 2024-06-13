@@ -1,16 +1,16 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
 
-import * as secretManager from "../../gcp/secretManager";
-import * as gcf from "../../gcp/cloudfunctions";
-import * as secrets from "../../functions/secrets";
-import * as utils from "../../utils";
-import * as prompt from "../../prompt";
-import * as backend from "../../deploy/functions/backend";
-import * as poller from "../../operation-poller";
-import { Options } from "../../options";
-import { FirebaseError } from "../../error";
-import { updateEndpointSecret } from "../../functions/secrets";
+import * as secretManager from "../gcp/secretManager";
+import * as gcf from "../gcp/cloudfunctions";
+import * as secrets from "./secrets";
+import * as utils from "../utils";
+import * as prompt from "../prompt";
+import * as backend from "../deploy/functions/backend";
+import * as poller from "../operation-poller";
+import { Options } from "../options";
+import { FirebaseError } from "../error";
+import { updateEndpointSecret } from "./secrets";
 
 const ENDPOINT = {
   id: "id",
