@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import * as utils from "../../extensions/utils";
+import * as utils from "./utils";
 
 describe("extensions utils", () => {
   describe("formatTimestamp", () => {

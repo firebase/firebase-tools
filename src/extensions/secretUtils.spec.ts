@@ -1,9 +1,9 @@
 import * as nock from "nock";
 import { expect } from "chai";
 
-import * as api from "../../api";
-import { ExtensionInstance, ParamType } from "../../extensions/types";
-import * as secretsUtils from "../../extensions/secretsUtils";
+import * as api from "../api";
+import { ExtensionInstance, ParamType } from "./types";
+import * as secretsUtils from "./secretsUtils";
 
 const PROJECT_ID = "test-project";
 const TEST_INSTANCE: ExtensionInstance = {

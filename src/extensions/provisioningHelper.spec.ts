@@ -1,10 +1,10 @@
 import * as nock from "nock";
 import { expect } from "chai";
 
-import * as api from "../../api";
-import * as provisioningHelper from "../../extensions/provisioningHelper";
-import { Api, ExtensionSpec, Resource, Role } from "../../extensions/types";
-import { FirebaseError } from "../../error";
+import * as api from "../api";
+import * as provisioningHelper from "./provisioningHelper";
+import { Api, ExtensionSpec, Resource, Role } from "./types";
+import { FirebaseError } from "../error";
 
 const PROJECT_ID = "test-project";
 

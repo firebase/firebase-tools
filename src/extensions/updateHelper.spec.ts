@@ -2,13 +2,13 @@ import { expect } from "chai";
 import * as nock from "nock";
 import * as sinon from "sinon";
 
-import { FirebaseError } from "../../error";
-import { firebaseExtensionsRegistryOrigin } from "../../api";
-import * as extensionsApi from "../../extensions/extensionsApi";
-import { ExtensionSpec, Resource } from "../../extensions/types";
-import * as extensionsHelper from "../../extensions/extensionsHelper";
-import * as updateHelper from "../../extensions/updateHelper";
-import * as iam from "../../gcp/iam";
+import { FirebaseError } from "../error";
+import { firebaseExtensionsRegistryOrigin } from "../api";
+import * as extensionsApi from "./extensionsApi";
+import { ExtensionSpec, Resource } from "./types";
+import * as extensionsHelper from "./extensionsHelper";
+import * as updateHelper from "./updateHelper";
+import * as iam from "../gcp/iam";
 
 const SPEC: ExtensionSpec = {
   name: "test",

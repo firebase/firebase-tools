@@ -1,7 +1,7 @@
 import { expect } from "chai";
 
-import * as etags from "../../extensions/etags";
-import * as rc from "../../rc";
+import * as etags from "./etags";
+import * as rc from "../rc";
 
 const TEST_PROJECT = "test-project";
 

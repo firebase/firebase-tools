@@ -1,10 +1,10 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import * as resourceManager from "../../gcp/resourceManager";
-import * as pn from "../../getProjectNumber";
-import * as diagnose from "../../extensions/diagnose";
-import * as extensionsApi from "../../extensions/extensionsApi";
-import * as prompt from "../../prompt";
+import * as resourceManager from "../gcp/resourceManager";
+import * as pn from "../getProjectNumber";
+import * as diagnose from "./diagnose";
+import * as extensionsApi from "./extensionsApi";
+import * as prompt from "../prompt";
 
 const GOOD_BINDING = {
   role: "roles/firebasemods.serviceAgent",

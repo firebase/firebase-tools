@@ -1,10 +1,10 @@
 import { expect } from "chai";
 import * as path from "path";
 
-import * as specHelper from "../../../extensions/emulator/specHelper";
-import { Resource } from "../../../extensions/types";
-import { FirebaseError } from "../../../error";
-import { Runtime } from "../../../deploy/functions/runtimes/supported";
+import * as specHelper from "./specHelper";
+import { Resource } from "../types";
+import { FirebaseError } from "../../error";
+import { Runtime } from "../../deploy/functions/runtimes/supported";
 
 const testResource: Resource = {
   name: "test-resource",
@@ -25,7 +25,7 @@ describe("readExtensionYaml", () => {
   }[] = [
     {
       desc: "should read a minimal extension.yaml",
-      directory: path.resolve(__dirname, "../../fixtures/extension-yamls/minimal"),
+      directory: path.resolve(__dirname, "../../test/fixtures/extension-yamls/minimal"),
       expected: {
         apis: [],
         contributors: [],
@@ -46,7 +46,7 @@ describe("readExtensionYaml", () => {
     },
     {
       desc: "should read a hello-world extension.yaml",
-      directory: path.resolve(__dirname, "../../fixtures/extension-yamls/hello-world"),
+      directory: path.resolve(__dirname, "../../test/fixtures/extension-yamls/hello-world"),
       expected: {
         apis: [],
         billingRequired: true,
