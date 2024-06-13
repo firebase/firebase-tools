@@ -1,12 +1,12 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
 
-import * as prompt from "../../../prompt";
-import { Config } from "../../../config";
-import { Setup } from "../../../init";
-import { doSetup } from "../../../init/features/functions";
-import { Options } from "../../../options";
-import { RC } from "../../../rc";
+import * as prompt from "../../prompt";
+import { Config } from "../../config";
+import { Setup } from "..";
+import { doSetup } from "./functions";
+import { Options } from "../../options";
+import { RC } from "../../rc";
 
 const TEST_SOURCE_DEFAULT = "functions";
 const TEST_CODEBASE_DEFAULT = "default";
