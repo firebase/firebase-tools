@@ -3,5 +3,5 @@
   "compilerOptions": {
     "sourceMap": false
   },
-  "exclude": ["src/**/*.spec.*", "src/test/**/*"]
+  "exclude": ["src/**/*.spec.*", "src/**/testing/**/*", "src/test/**/*"]
 }

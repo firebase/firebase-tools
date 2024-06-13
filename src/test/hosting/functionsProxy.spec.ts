@@ -8,7 +8,7 @@ import * as supertest from "supertest";
 import { functionsProxy, FunctionsProxyOptions } from "../../hosting/functionsProxy";
 import { EmulatorRegistry } from "../../emulator/registry";
 import { Emulators } from "../../emulator/types";
-import { FakeEmulator } from "../emulators/fakeEmulator";
+import { FakeEmulator } from "../../emulator/testing/fakeEmulator";
 import { HostingRewrites } from "../../firebaseConfig";
 
 describe("functionsProxy", () => {
