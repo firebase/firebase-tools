@@ -174,7 +174,6 @@ export class EmulatorsController implements Disposable {
         this.emulators.value = {
           status: "running",
           infos: {
-            uiUrl: getEmulatorUiUrl(),
             displayInfo: listRunningEmulators(),
           },
         };
@@ -211,6 +210,7 @@ export class EmulatorsController implements Disposable {
         this.emulatorStatusItem.text = "$(data-connect) Emulators: Running";
         this.emulatorStatusItem.backgroundColor = undefined;
       } catch (e) {
+        console.log("HAROLD: ", e);
         this.emulatorStatusItem.text = "$(data-connect) Emulators: errored";
         this.emulatorStatusItem.backgroundColor = new ThemeColor(
           "statusBarItem.errorBackground",
