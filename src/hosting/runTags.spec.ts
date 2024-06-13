@@ -1,9 +1,9 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import * as runNS from "../../gcp/run";
-import * as hostingNS from "../../hosting/api";
-import * as runTagsNS from "../../hosting/runTags";
-import { cloneDeep } from "../../utils";
+import * as runNS from "../gcp/run";
+import * as hostingNS from "./api";
+import * as runTagsNS from "./runTags";
+import { cloneDeep } from "../utils";
 
 const REGION = "REGION";
 const SERVICE = "SERVICE";

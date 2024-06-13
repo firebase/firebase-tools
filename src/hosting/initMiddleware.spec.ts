@@ -6,9 +6,9 @@ import * as nock from "nock";
 import * as portfinder from "portfinder";
 import * as supertest from "supertest";
 
-import { initMiddleware } from "../../hosting/initMiddleware";
-import { streamToString, stringToStream } from "../../utils";
-import { TemplateServerResponse } from "../../hosting/implicitInit";
+import { initMiddleware } from "./initMiddleware";
+import { streamToString, stringToStream } from "../utils";
+import { TemplateServerResponse } from "./implicitInit";
 
 const templateServerRes: TemplateServerResponse = {
   js: "here is some js",

@@ -1,11 +1,11 @@
 import { expect } from "chai";
-import { FirebaseError } from "../../error";
-import { HostingConfig, HostingMultiple, HostingSingle } from "../../firebaseConfig";
+import { FirebaseError } from "../error";
+import { HostingConfig, HostingMultiple, HostingSingle } from "../firebaseConfig";
 
-import * as config from "../../hosting/config";
-import { HostingOptions } from "../../hosting/options";
-import { cloneDeep } from "../../utils";
-import { setEnabled } from "../../experiments";
+import * as config from "./config";
+import { HostingOptions } from "./options";
+import { cloneDeep } from "../utils";
+import { setEnabled } from "../experiments";
 
 function options(
   hostingConfig: HostingConfig,

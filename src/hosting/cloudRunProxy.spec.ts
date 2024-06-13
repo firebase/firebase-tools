@@ -4,11 +4,8 @@ import * as nock from "nock";
 import * as sinon from "sinon";
 import * as supertest from "supertest";
 
-import { cloudRunApiOrigin } from "../../api";
-import cloudRunProxy, {
-  CloudRunProxyOptions,
-  CloudRunProxyRewrite,
-} from "../../hosting/cloudRunProxy";
+import { cloudRunApiOrigin } from "../api";
+import cloudRunProxy, { CloudRunProxyOptions, CloudRunProxyRewrite } from "./cloudRunProxy";
 
 describe("cloudRunProxy", () => {
   const fakeOptions: CloudRunProxyOptions = {

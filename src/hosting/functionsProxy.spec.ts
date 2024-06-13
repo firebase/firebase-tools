@@ -5,11 +5,11 @@ import * as nock from "nock";
 import * as sinon from "sinon";
 import * as supertest from "supertest";
 
-import { functionsProxy, FunctionsProxyOptions } from "../../hosting/functionsProxy";
-import { EmulatorRegistry } from "../../emulator/registry";
-import { Emulators } from "../../emulator/types";
-import { FakeEmulator } from "../../emulator/testing/fakeEmulator";
-import { HostingRewrites } from "../../firebaseConfig";
+import { functionsProxy, FunctionsProxyOptions } from "./functionsProxy";
+import { EmulatorRegistry } from "../emulator/registry";
+import { Emulators } from "../emulator/types";
+import { FakeEmulator } from "../emulator/testing/fakeEmulator";
+import { HostingRewrites } from "../firebaseConfig";
 
 describe("functionsProxy", () => {
   const fakeOptions: FunctionsProxyOptions = {
