@@ -1,10 +1,10 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { VSCodeButton, VSCodeTextField } from "@vscode/webview-ui-toolkit/react";
-import { Spacer } from "./components/ui/Spacer";
-import styles from "./globals/index.scss";
-import { broker, useBroker, useBrokerListener } from "./globals/html-broker";
-import { PanelSection } from "./components/ui/PanelSection";
+import { Spacer } from "../components/ui/Spacer";
+import styles from "../globals/index.scss";
+import { broker, useBroker, useBrokerListener } from "../globals/html-broker";
+import { PanelSection } from "../components/ui/PanelSection";
 
 // Prevent webpack from removing the `style` import above
 styles;

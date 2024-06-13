@@ -9,9 +9,9 @@ import {
   VSCodePanelView,
   VSCodeTextArea,
 } from "@vscode/webview-ui-toolkit/react";
-import { broker } from "./globals/html-broker";
-import { Spacer } from "./components/ui/Spacer";
-import { UserMockKind } from "../common/messaging/protocol";
+import { broker } from "../globals/html-broker";
+import { Spacer } from "../components/ui/Spacer";
+import { UserMockKind } from "../../common/messaging/protocol";
 
 const root = createRoot(document.getElementById("root")!);
 root.render(<DataConnectExecutionArgumentsApp />);
