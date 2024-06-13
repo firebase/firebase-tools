@@ -4,11 +4,14 @@ import * as yaml from "yaml";
 import { resolve } from "path";
 import * as sinon from "sinon";
 
-import * as localHelper from "../../extensions/localHelper";
-import { FirebaseError } from "../../error";
+import * as localHelper from "./localHelper";
+import { FirebaseError } from "../error";
 
-const EXT_FIXTURE_DIRECTORY = resolve(__dirname, "../fixtures/sample-ext");
-const EXT_PREINSTALL_FIXTURE_DIRECTORY = resolve(__dirname, "../fixtures/sample-ext-preinstall");
+const EXT_FIXTURE_DIRECTORY = resolve(__dirname, "../test/fixtures/sample-ext");
+const EXT_PREINSTALL_FIXTURE_DIRECTORY = resolve(
+  __dirname,
+  "../test/fixtures/sample-ext-preinstall",
+);
 
 describe("localHelper", () => {
   const sandbox = sinon.createSandbox();

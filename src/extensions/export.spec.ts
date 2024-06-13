@@ -1,8 +1,8 @@
 import { expect } from "chai";
 
-import { parameterizeProject, setSecretParamsToLatest } from "../../extensions/export";
-import { DeploymentInstanceSpec } from "../../deploy/extensions/planner";
-import { ParamType } from "../../extensions/types";
+import { parameterizeProject, setSecretParamsToLatest } from "./export";
+import { DeploymentInstanceSpec } from "../deploy/extensions/planner";
+import { ParamType } from "./types";
 
 describe("ext:export helpers", () => {
   describe("parameterizeProject", () => {

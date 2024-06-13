@@ -2,9 +2,9 @@ import * as chai from "chai";
 chai.use(require("chai-as-promised"));
 import * as sinon from "sinon";
 
-import * as checkProjectBilling from "../../extensions/checkProjectBilling";
-import * as prompt from "../../prompt";
-import * as cloudbilling from "../../gcp/cloudbilling";
+import * as checkProjectBilling from "./checkProjectBilling";
+import * as prompt from "../prompt";
+import * as cloudbilling from "../gcp/cloudbilling";
 
 const expect = chai.expect;
 

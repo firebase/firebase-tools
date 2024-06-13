@@ -1,10 +1,10 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
 
-import * as iam from "../../gcp/iam";
-import * as displayExtensionInfo from "../../extensions/displayExtensionInfo";
-import { ExtensionSpec, ExtensionVersion, Resource } from "../../extensions/types";
-import { ParamType } from "../../extensions/types";
+import * as iam from "../gcp/iam";
+import * as displayExtensionInfo from "./displayExtensionInfo";
+import { ExtensionSpec, ExtensionVersion, Resource } from "./types";
+import { ParamType } from "./types";
 
 const SPEC: ExtensionSpec = {
   name: "test",

@@ -1,16 +1,16 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import * as warnings from "../../extensions/warnings";
+import * as warnings from "./warnings";
 import {
   Extension,
   ExtensionVersion,
   ListingState,
   RegistryLaunchStage,
   Visibility,
-} from "../../extensions/types";
-import { DeploymentInstanceSpec } from "../../deploy/extensions/planner";
-import * as utils from "../../utils";
+} from "./types";
+import { DeploymentInstanceSpec } from "../deploy/extensions/planner";
+import * as utils from "../utils";
 
 const testExtensionVersion = (listingState: ListingState): ExtensionVersion => {
   return {

@@ -1,14 +1,14 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import * as manifest from "../../extensions/manifest";
-import * as paramHelper from "../../extensions/paramHelper";
-import * as refs from "../../extensions/refs";
+import * as manifest from "./manifest";
+import * as paramHelper from "./paramHelper";
+import * as refs from "./refs";
 
-import { Config } from "../../config";
-import * as prompt from "../../prompt";
-import { FirebaseError } from "../../error";
-import { ParamType } from "../../extensions/types";
+import { Config } from "../config";
+import * as prompt from "../prompt";
+import { FirebaseError } from "../error";
+import { ParamType } from "./types";
 
 /**
  * Returns a base Config with some extensions data.
