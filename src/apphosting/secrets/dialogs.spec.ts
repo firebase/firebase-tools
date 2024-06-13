@@ -2,11 +2,11 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import * as clc from "colorette";
 
-import * as secrets from "../../../apphosting/secrets";
-import * as dialogs from "../../../apphosting/secrets/dialogs";
-import * as apphosting from "../../../gcp/apphosting";
-import * as utilsImport from "../../../utils";
-import * as promptImport from "../../../prompt";
+import * as secrets from ".";
+import * as dialogs from "./dialogs";
+import * as apphosting from "../../gcp/apphosting";
+import * as utilsImport from "../../utils";
+import * as promptImport from "../../prompt";
 
 describe("dialogs", () => {
   const modernA = {
