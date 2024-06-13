@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { getResourceFilters, ResourceFilter } from "../../dataconnect/filters";
+import { getResourceFilters, ResourceFilter } from "./filters";
 
 describe("getResourceFilters", () => {
   const cases: {

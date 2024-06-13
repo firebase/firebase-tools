@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as names from "../../dataconnect/names";
+import * as names from "./names";
 
 describe("names.ts", () => {
   describe("parseServiceName", () => {
