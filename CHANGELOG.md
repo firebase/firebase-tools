@@ -1,2 +1,3 @@
 - Fixes issue where storage emulator throws an error due to non-standard whitespaces in filenames (#6834).
 - Fixes issue where some emulators would fail to start when their path contained a whitespace (#7313)
+- Data Connect emulator now reuses existing instances if they are emulating the same service.
