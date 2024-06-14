@@ -6,7 +6,7 @@ import type { NextConfig } from "next";
 import type { PrerenderManifest } from "next/dist/build";
 import type { DomainLocale } from "next/dist/server/config";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
-import { copy, mkdirp, pathExists, pathExistsSync } from "fs-extra";
+import { copy, mkdirp, pathExists, pathExistsSync, readFile } from "fs-extra";
 import { pathToFileURL, parse } from "url";
 import { gte } from "semver";
 import { IncomingMessage, ServerResponse } from "http";
@@ -125,6 +125,22 @@ export async function build(
   }
 
   const env = { ...process.env };
+
+  // Check if the .env.<PROJECT-ID> file exists and make it available for the build process
+  if (context?.projectId) {
+    const envFile = join(dir, `.env.${context.projectId}`);
+
+    if (await pathExists(envFile)) {
+      const envConfig = await readFile(envFile);
+      const envConfigString = envConfig.toString();
+      const envConfigLines = envConfigString.split("\n");
+
+      envConfigLines.forEach((line) => {
+        const [key, value] = line.split("=");
+        env[key] = value;
+      });
+    }
+  }
 
   if (context?.projectId && context?.site) {
     const deploymentDomain = await getDeploymentDomain(
