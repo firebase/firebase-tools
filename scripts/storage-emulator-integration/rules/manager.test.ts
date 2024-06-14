@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { createTmpDir, StorageRulesFiles } from "../../../src/test/emulators/fixtures";
+import { createTmpDir, StorageRulesFiles } from "../../../src/emulator/testing/fixtures";
 import { createStorageRulesManager } from "../../../src/emulator/storage/rules/manager";
 import { StorageRulesRuntime } from "../../../src/emulator/storage/rules/runtime";
 import * as fs from "fs";
