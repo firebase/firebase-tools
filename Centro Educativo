@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Educativo</title>
+    <style>
+        /* Estilos CSS */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: #333;
+            color: #fff;
+            padding: 20px;
+            text-align: center;
+        }
+        nav ul {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+        }
+        nav ul li {
+            display: inline;
+            margin-right: 10px;
+        }
+        nav ul li a {
+            color: #333;
+            text-decoration: none;
+            padding: 5px 10px;
+            border: 1px solid #333;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        nav ul li a:hover {
+            background-color: #333;
+            color: #fff;
+        }
+        main {
+            padding: 20px;
+        }
+        footer {
+            background-color: #333;
+            color: #fff;
+            padding: 10px 0;
+            text-align: center;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Portal Educativo</h1>
+    </header>
+    
+    <nav>
+        <ul>
+            <li><a href="#" onclick="mostrarBot('matematicas')">Matemáticas</a></li>
+            <li><a href="#" onclick="mostrarBot('biologia')">Biología</a></li>
+            <li><a href="#" onclick="mostrarBot('quimica')">Química</a></li>
+            <li><a href="#" onclick="mostrarBot('fisica')">Física</a></li>
+            <li><a href="#" onclick="mostrarBot('sociales')">Ciencias Sociales</a></li>
+        </ul>
+    </nav>
+    
+    <main>
+        <section id="matematicas" style="display:none;">
+            <h2>ChatGPT Herrera de Matemáticas</h2>
+            <p>Introduce tu pregunta sobre matemáticas:</p>
+            <input type="text" id="preguntaMatematicas">
+            <button onclick="preguntar('matematicas')">Enviar</button>
+            <div id="respuestaMatematicas"></div>
+        </section>
+        
+        <!-- Secciones similares para biología, química, física y ciencias sociales -->
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Portal Educativo</p>
+    </footer>
+
+    <script>
+        function mostrarBot(area) {
+            // Oculta todas las secciones
+            var secciones = document.getElementsByTagName('section');
+            for (var i = 0; i < secciones.length; i++) {
+                secciones[i].style.display = 'none';
+            }
+            // Muestra la sección del área seleccionada
+            document.getElementById(area).style.display = 'block';
+        }
+
+        function preguntar(area) {
+            var pregunta = document.getElementById("pregunta" + area).value;
+            if (pregunta.trim() !== "") {
+                var respuesta = obtenerRespuesta(area);
+                document.getElementById("respuesta" + area).innerHTML = respuesta;
+            } else {
+                alert("Por favor, introduce una pregunta.");
+            }
+        }
+
+        function obtenerRespuesta(area) {
+            // Lógica para obtener la respuesta a la pregunta en función del área
+            switch (area) {
+                case 'matematicas':
+                    return "¡Hola! Soy ChatGPT Herrera, ¿en qué puedo ayudarte con matemáticas?";
+                case 'biologia':
+                    return "¡Hola! Soy ChatGPT Herrera, ¿en qué puedo ayudarte con biología?";
+                case 'quimica':
+                    return "¡Hola! Soy ChatGPT Herrera, ¿en qué puedo ayudarte con química?";
+                case 'fisica':
+                    return "¡Hola! Soy ChatGPT Herrera, ¿en qué puedo ayudarte con física?";
+                case 'sociales':
+                    return "¡Hola! Soy ChatGPT Herrera, ¿en qué puedo ayudarte con ciencias sociales?";
+                default:
+                    return "Lo siento, no puedo responder a esa pregunta.";
+            }
+        }
+    </script>
+</body>
+</html>
