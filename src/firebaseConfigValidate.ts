@@ -1,7 +1,10 @@
 // Note: we are using ajv version 6.x because it's compatible with TypeScript
 // 3.x, if we upgrade the TS version in this project we can upgrade ajv as well.
-import * as Ajv from "ajv";
 import { ValidateFunction, ErrorObject } from "ajv";
+import * as fs from "fs";
+import * as path from "path";
+
+const Ajv = require("ajv");
 
 const ajv = new Ajv();
 let _VALIDATOR: ValidateFunction | undefined = undefined;
@@ -13,8 +16,13 @@ let _VALIDATOR: ValidateFunction | undefined = undefined;
  */
 export function getValidator(): ValidateFunction {
   if (!_VALIDATOR) {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    _VALIDATOR = ajv.compile(require("../schema/firebase-config.json") as object);
+    const schemaStr = fs.readFileSync(
+      path.resolve(__dirname, "../schema/firebase-config.json"),
+      "utf-8",
+    );
+    const schema = JSON.parse(schemaStr);
+
+    _VALIDATOR = ajv.compile(schema);
   }
 
   return _VALIDATOR!;
