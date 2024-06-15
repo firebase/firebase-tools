@@ -5,9 +5,9 @@ import * as sinon from "sinon";
 
 import * as localHelper from "./localHelper";
 import { FirebaseError } from "../error";
-import { FIXTURE_DIR as EXT_FIXTURE_DIRECTORY } from "../test/fixtures/extension-yamls/sample-ext/_fixture";
-import { FIXTURE_DIR as EXT_PREINSTALL_FIXTURE_DIRECTORY } from "../test/fixtures/extension-yamls/sample-ext-preinstall/_fixture";
-import { FIXTURE_DIR as INVALID_EXT_DIRECTORY } from "../test/fixtures/extension-yamls/invalid/_fixture";
+import { FIXTURE_DIR as EXT_FIXTURE_DIRECTORY } from "../test/fixtures/extension-yamls/sample-ext";
+import { FIXTURE_DIR as EXT_PREINSTALL_FIXTURE_DIRECTORY } from "../test/fixtures/extension-yamls/sample-ext-preinstall";
+import { FIXTURE_DIR as INVALID_EXT_DIRECTORY } from "../test/fixtures/extension-yamls/invalid";
 
 describe("localHelper", () => {
   const sandbox = sinon.createSandbox();

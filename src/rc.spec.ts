@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import * as path from "path";
 import { RC, loadRC, RCData } from "./rc";
-import { CONFLICT_RC_DIR, FIREBASE_JSON_PATH, INVALID_RC_DIR } from "./test/fixtures/fbrc/_fixture";
+import { CONFLICT_RC_DIR, FIREBASE_JSON_PATH, INVALID_RC_DIR } from "./test/fixtures/fbrc";
 
 const EMPTY_DATA: RCData = { projects: {}, targets: {}, etags: {}, dataconnectEmulatorConfig: {} };
 

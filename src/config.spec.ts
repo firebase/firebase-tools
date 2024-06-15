@@ -2,9 +2,9 @@ import { expect } from "chai";
 import * as path from "path";
 
 import { Config } from "./config";
-import { FIREBASE_JSON_PATH as VALID_CONFIG_PATH } from "./test/fixtures/valid-config/_fixture";
-import { FIXTURE_DIR as SIMPLE_CONFIG_DIR } from "./test/fixtures/config-imports/_fixture";
-import { FIXTURE_DIR as DUP_TOP_LEVEL_CONFIG_DIR } from "./test/fixtures/dup-top-level/_fixture";
+import { FIREBASE_JSON_PATH as VALID_CONFIG_PATH } from "./test/fixtures/valid-config";
+import { FIXTURE_DIR as SIMPLE_CONFIG_DIR } from "./test/fixtures/config-imports";
+import { FIXTURE_DIR as DUP_TOP_LEVEL_CONFIG_DIR } from "./test/fixtures/dup-top-level";
 
 describe("Config", () => {
   describe("#load", () => {

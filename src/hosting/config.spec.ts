@@ -6,7 +6,7 @@ import * as config from "./config";
 import { HostingOptions } from "./options";
 import { cloneDeep } from "../utils";
 import { setEnabled } from "../experiments";
-import { FIREBASE_JSON_PATH, FIXTURE_DIR } from "../test/fixtures/simplehosting/_fixture";
+import { FIREBASE_JSON_PATH, FIXTURE_DIR } from "../test/fixtures/simplehosting";
 
 function options(
   hostingConfig: HostingConfig,

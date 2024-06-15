@@ -11,8 +11,8 @@ import { Config } from "./config";
 import * as gcp from "./gcp";
 
 import { RulesDeploy, RulesetServiceType } from "./rulesDeploy";
-import { FIXTURE_DIR, FIXTURE_FIRESTORE_RULES_PATH } from "./test/fixtures/rulesDeploy/_fixture";
-import { FIXTURE_DIR as CROSS_SERVICE_FIXTURE_DIR } from "./test/fixtures/rulesDeployCrossService/_fixture";
+import { FIXTURE_DIR, FIXTURE_FIRESTORE_RULES_PATH } from "./test/fixtures/rulesDeploy";
+import { FIXTURE_DIR as CROSS_SERVICE_FIXTURE_DIR } from "./test/fixtures/rulesDeployCrossService";
 
 describe("RulesDeploy", () => {
   const BASE_OPTIONS: { cwd: string; project: string; config: any } = {

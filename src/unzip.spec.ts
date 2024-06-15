@@ -3,7 +3,7 @@ import * as fs from "fs";
 import { tmpdir } from "os";
 import * as path from "path";
 import { unzip } from "./unzip";
-import { ZIP_CASES } from "./test/fixtures/zip-files/_fixture";
+import { ZIP_CASES } from "./test/fixtures/zip-files";
 
 describe("unzip", () => {
   let tempDir: string;

@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { FirebaseError } from "./error";
 
 import { archiveDirectory } from "./archiveDirectory";
-import { FIXTURE_DIR } from "./test/fixtures/config-imports/_fixture";
+import { FIXTURE_DIR } from "./test/fixtures/config-imports";
 
 describe("archiveDirectory", () => {
   it("should archive happy little directories", async () => {

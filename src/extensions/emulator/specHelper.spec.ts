@@ -4,8 +4,8 @@ import * as specHelper from "./specHelper";
 import { Resource } from "../types";
 import { FirebaseError } from "../../error";
 import { Runtime } from "../../deploy/functions/runtimes/supported";
-import { FIXTURE_DIR as MINIMAL_EXT_DIR } from "../../test/fixtures/extension-yamls/minimal/_fixture";
-import { FIXTURE_DIR as HELLO_WORLD_EXT_DIR } from "../../test/fixtures/extension-yamls/hello-world/_fixture";
+import { FIXTURE_DIR as MINIMAL_EXT_DIR } from "../../test/fixtures/extension-yamls/minimal";
+import { FIXTURE_DIR as HELLO_WORLD_EXT_DIR } from "../../test/fixtures/extension-yamls/hello-world";
 
 const testResource: Resource = {
   name: "test-resource",
