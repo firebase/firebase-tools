@@ -1,10 +1,11 @@
 import { expect } from "chai";
-import * as path from "path";
 
 import * as specHelper from "./specHelper";
 import { Resource } from "../types";
 import { FirebaseError } from "../../error";
 import { Runtime } from "../../deploy/functions/runtimes/supported";
+import { FIXTURE_DIR as MINIMAL_EXT_DIR } from "../../test/fixtures/extension-yamls/minimal/_fixture";
+import { FIXTURE_DIR as HELLO_WORLD_EXT_DIR } from "../../test/fixtures/extension-yamls/hello-world/_fixture";
 
 const testResource: Resource = {
   name: "test-resource",
@@ -25,7 +26,7 @@ describe("readExtensionYaml", () => {
   }[] = [
     {
       desc: "should read a minimal extension.yaml",
-      directory: path.resolve(__dirname, "../../test/fixtures/extension-yamls/minimal"),
+      directory: MINIMAL_EXT_DIR,
       expected: {
         apis: [],
         contributors: [],
@@ -46,7 +47,7 @@ describe("readExtensionYaml", () => {
     },
     {
       desc: "should read a hello-world extension.yaml",
-      directory: path.resolve(__dirname, "../../test/fixtures/extension-yamls/hello-world"),
+      directory: HELLO_WORLD_EXT_DIR,
       expected: {
         apis: [],
         billingRequired: true,

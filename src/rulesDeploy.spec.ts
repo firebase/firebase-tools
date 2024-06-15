@@ -1,5 +1,4 @@
 import { expect } from "chai";
-import * as path from "path";
 import * as sinon from "sinon";
 
 import { FirebaseError } from "./error";
@@ -12,18 +11,17 @@ import { Config } from "./config";
 import * as gcp from "./gcp";
 
 import { RulesDeploy, RulesetServiceType } from "./rulesDeploy";
+import { FIXTURE_DIR, FIXTURE_FIRESTORE_RULES_PATH } from "./test/fixtures/rulesDeploy/_fixture";
+import { FIXTURE_DIR as CROSS_SERVICE_FIXTURE_DIR } from "./test/fixtures/rulesDeployCrossService/_fixture";
 
 describe("RulesDeploy", () => {
-  const FIXTURE_DIR = path.resolve(__dirname, "test/fixtures/rulesDeploy");
   const BASE_OPTIONS: { cwd: string; project: string; config: any } = {
     cwd: FIXTURE_DIR,
     project: "test-project",
     config: null,
   };
   BASE_OPTIONS.config = Config.load(BASE_OPTIONS, false);
-  const FIRESTORE_RULES_CONTENT = readFileSync(
-    path.resolve(FIXTURE_DIR, "firestore.rules"),
-  ).toString();
+  const FIRESTORE_RULES_CONTENT = readFileSync(FIXTURE_FIRESTORE_RULES_PATH).toString();
 
   describe("addFile", () => {
     it("should successfully add a file that exists", () => {
@@ -340,9 +338,8 @@ describe("RulesDeploy", () => {
     });
 
     describe("with cross-service rules", () => {
-      const FIXTURE_DIR = path.resolve(__dirname, "test/fixtures/rulesDeployCrossService");
       const CROSS_SERVICE_OPTIONS: { cwd: string; project: string; config: any } = {
-        cwd: FIXTURE_DIR,
+        cwd: CROSS_SERVICE_FIXTURE_DIR,
         project: "test-project",
         config: null,
       };

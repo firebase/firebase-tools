@@ -2,17 +2,17 @@ import { expect } from "chai";
 import * as path from "path";
 
 import { Config } from "./config";
-
-function fixtureDir(name: string): string {
-  return path.resolve(__dirname, "./test/fixtures/" + name);
-}
+import { FIREBASE_JSON_PATH as VALID_CONFIG_PATH } from "./test/fixtures/valid-config/_fixture";
+import { FIXTURE_DIR as SIMPLE_CONFIG_DIR } from "./test/fixtures/config-imports/_fixture";
+import { FIXTURE_DIR as DUP_TOP_LEVEL_CONFIG_DIR } from "./test/fixtures/dup-top-level/_fixture";
 
 describe("Config", () => {
   describe("#load", () => {
     it("should load a cjson file when configPath is specified", () => {
+      const cwd = __dirname;
       const config = Config.load({
-        cwd: __dirname,
-        configPath: "./test/fixtures/valid-config/firebase.json",
+        cwd,
+        configPath: path.relative(cwd, VALID_CONFIG_PATH),
       });
       expect(config).to.not.be.null;
       if (config) {
@@ -23,19 +23,19 @@ describe("Config", () => {
 
   describe("#parseFile", () => {
     it("should load a cjson file", () => {
-      const config = new Config({}, { cwd: fixtureDir("config-imports") });
+      const config = new Config({}, { cwd: SIMPLE_CONFIG_DIR });
       expect(config.parseFile("hosting", "hosting.json").public).to.equal(".");
     });
 
     it("should error out for an unknown file", () => {
-      const config = new Config({}, { cwd: fixtureDir("config-imports") });
+      const config = new Config({}, { cwd: SIMPLE_CONFIG_DIR });
       expect(() => {
         config.parseFile("hosting", "i-dont-exist.json");
       }).to.throw("Imported file i-dont-exist.json does not exist");
     });
 
     it("should error out for an unrecognized extension", () => {
-      const config = new Config({}, { cwd: fixtureDir("config-imports") });
+      const config = new Config({}, { cwd: SIMPLE_CONFIG_DIR });
       expect(() => {
         config.parseFile("hosting", "unsupported.txt");
       }).to.throw("unsupported.txt is not of a supported config file type");
@@ -49,7 +49,7 @@ describe("Config", () => {
     });
 
     it("should prevent top-level key duplication", () => {
-      const config = new Config({ rules: "rules.json" }, { cwd: fixtureDir("dup-top-level") });
+      const config = new Config({ rules: "rules.json" }, { cwd: DUP_TOP_LEVEL_CONFIG_DIR });
       expect(config.materialize("rules")).to.deep.equal({ ".read": true });
     });
   });

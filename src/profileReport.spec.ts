@@ -1,19 +1,16 @@
 import { expect } from "chai";
 
-import * as path from "path";
 import * as stream from "stream";
 import { extractReadableIndex, formatNumber, ProfileReport } from "./profileReport";
+import { SAMPLE_INPUT_PATH, SAMPLE_OUTPUT_PATH } from "./test/fixtures/profiler-data/_fixture";
 
 function combinerFunc(obj1: any, obj2: any): any {
   return { count: obj1.count + obj2.count };
 }
 
-const fixturesDir = path.resolve(__dirname, "./test/fixtures");
-
 function newReport() {
-  const input = path.resolve(fixturesDir, "profiler-data/sample.json");
   const throwAwayStream = new stream.PassThrough();
-  return new ProfileReport(input, throwAwayStream, {
+  return new ProfileReport(SAMPLE_INPUT_PATH, throwAwayStream, {
     format: "JSON",
     isFile: false,
     collapse: true,
@@ -24,7 +21,7 @@ function newReport() {
 describe("profilerReport", () => {
   it("should correctly generate a report", () => {
     const report = newReport();
-    const output = require(path.resolve(fixturesDir, "profiler-data/sample-output.json"));
+    const output = require(SAMPLE_OUTPUT_PATH);
     return expect(report.generate()).to.eventually.deep.equal(output);
   });
 

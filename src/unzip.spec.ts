@@ -1,44 +1,28 @@
 import { expect } from "chai";
 import * as fs from "fs";
+import { tmpdir } from "os";
 import * as path from "path";
 import { unzip } from "./unzip";
-const fixturesDir = path.resolve(__dirname, "./test/fixtures");
-
-const ZIP_FIXTURES_PATH = path.join(fixturesDir, "zip-files");
-const ZIP_TEMPORARY_PATH = path.join(ZIP_FIXTURES_PATH, "temp");
-const ZIP_UNZIPPER_PATH = path.join(ZIP_FIXTURES_PATH, "node-unzipper-testData");
+import { ZIP_CASES } from "./test/fixtures/zip-files/_fixture";
 
 describe("unzip", () => {
+  let tempDir: string;
+
   before(async () => {
-    await fs.promises.mkdir(ZIP_TEMPORARY_PATH, { recursive: true });
+    tempDir = await fs.promises.mkdtemp(path.join(tmpdir(), "firebasetest-"));
   });
 
   after(async () => {
-    await fs.promises.rmdir(ZIP_TEMPORARY_PATH, { recursive: true });
+    await fs.promises.rmdir(tempDir, { recursive: true });
   });
 
-  const cases = [
-    { name: "compressed-cp866" },
-    { name: "compressed-directory-entry" },
-    { name: "compressed-flags-set" },
-    { name: "compressed-standard" },
-    { name: "uncompressed" },
-    { name: "zip-slip" },
-    { name: "zip64" },
-  ];
-
-  for (const { name } of cases) {
+  for (const { name, archivePath, inflatedDir } of ZIP_CASES) {
     it(`should unzip a zip file with ${name} case`, async () => {
-      const zipPath = path.join(ZIP_UNZIPPER_PATH, name, "archive.zip");
-      const unzipPath = path.join(ZIP_TEMPORARY_PATH, name);
-      await unzip(zipPath, unzipPath);
+      const unzipPath = path.join(tempDir, name);
+      await unzip(archivePath, unzipPath);
 
-      // contains a folder "inflated"
-      const inflatedPath = path.join(ZIP_UNZIPPER_PATH, name, "inflated");
-      expect(await fs.promises.stat(inflatedPath)).to.be.ok;
-
-      // // inflated folder's size is "size"
-      expect(await calculateFolderSize(inflatedPath)).to.eql(await calculateFolderSize(unzipPath));
+      const expectedSize = await calculateFolderSize(inflatedDir);
+      expect(await calculateFolderSize(unzipPath)).to.eql(expectedSize);
     });
   }
 });

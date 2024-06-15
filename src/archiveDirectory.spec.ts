@@ -3,13 +3,12 @@ import { expect } from "chai";
 import { FirebaseError } from "./error";
 
 import { archiveDirectory } from "./archiveDirectory";
-
-const SOME_FIXTURE_DIRECTORY = resolve(__dirname, "./test/fixtures/config-imports");
+import { FIXTURE_DIR } from "./test/fixtures/config-imports/_fixture";
 
 describe("archiveDirectory", () => {
   it("should archive happy little directories", async () => {
-    const result = await archiveDirectory(SOME_FIXTURE_DIRECTORY, {});
-    expect(result.source).to.equal(SOME_FIXTURE_DIRECTORY);
+    const result = await archiveDirectory(FIXTURE_DIR, {});
+    expect(result.source).to.equal(FIXTURE_DIR);
     expect(result.size).to.be.greaterThan(0);
   });
 

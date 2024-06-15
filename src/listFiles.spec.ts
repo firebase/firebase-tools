@@ -1,12 +1,13 @@
 import { expect } from "chai";
-import { resolve } from "path";
 
 import { listFiles } from "./listFiles";
+import { FIXTURE_DIR } from "./test/fixtures/ignores/_fixture";
 
 describe("listFiles", () => {
   // for details, see the file structure and firebase.json in test/fixtures/ignores
   it("should ignore firebase-debug.log, specified ignores, and nothing else", () => {
-    const fileNames = listFiles(resolve(__dirname, "./test/fixtures/ignores"), [
+    const fileNames = listFiles(FIXTURE_DIR, [
+      "index.ts",
       "**/.*",
       "firebase.json",
       "ignored.txt",
@@ -16,9 +17,10 @@ describe("listFiles", () => {
   });
 
   it("should allow us to not specify additional ignores", () => {
-    const fileNames = listFiles(resolve(__dirname, "./test/fixtures/ignores"));
+    const fileNames = listFiles(FIXTURE_DIR);
     expect(fileNames.sort()).to.have.members([
       ".hiddenfile",
+      "index.ts",
       "firebase.json",
       "ignored.txt",
       "ignored/deeper/index.txt",

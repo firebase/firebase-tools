@@ -1,17 +1,13 @@
 import { expect } from "chai";
 import * as fs from "fs-extra";
 import * as yaml from "yaml";
-import { resolve } from "path";
 import * as sinon from "sinon";
 
 import * as localHelper from "./localHelper";
 import { FirebaseError } from "../error";
-
-const EXT_FIXTURE_DIRECTORY = resolve(__dirname, "../test/fixtures/sample-ext");
-const EXT_PREINSTALL_FIXTURE_DIRECTORY = resolve(
-  __dirname,
-  "../test/fixtures/sample-ext-preinstall",
-);
+import { FIXTURE_DIR as EXT_FIXTURE_DIRECTORY } from "../test/fixtures/extension-yamls/sample-ext/_fixture";
+import { FIXTURE_DIR as EXT_PREINSTALL_FIXTURE_DIRECTORY } from "../test/fixtures/extension-yamls/sample-ext-preinstall/_fixture";
+import { FIXTURE_DIR as INVALID_EXT_DIRECTORY } from "../test/fixtures/extension-yamls/invalid/_fixture";
 
 describe("localHelper", () => {
   const sandbox = sinon.createSandbox();
@@ -36,16 +32,8 @@ describe("localHelper", () => {
     });
 
     describe("with an invalid YAML file", () => {
-      beforeEach(() => {
-        sandbox.stub(fs, "readFileSync").returns(`name: foo\nunknownkey\nother: value`);
-      });
-
-      afterEach(() => {
-        sandbox.restore();
-      });
-
       it("should return a rejected promise with a useful error if extension.yaml is invalid", async () => {
-        await expect(localHelper.getLocalExtensionSpec(EXT_FIXTURE_DIRECTORY)).to.be.rejectedWith(
+        await expect(localHelper.getLocalExtensionSpec(INVALID_EXT_DIRECTORY)).to.be.rejectedWith(
           FirebaseError,
           /YAML Error.+Implicit keys need to be on a single line.+line 2.+/,
         );
