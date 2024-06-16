@@ -288,7 +288,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
   },
   dataconnect: {
     binary: `${getExecPath(Emulators.DATACONNECT)}`,
-    args: ["dev"],
+    args: ["--logtostderr", "-v=2", "dev"],
     optionalArgs: [
       "listen",
       "config_dir",
