@@ -79,7 +79,7 @@ export class DataConnectEmulator implements EmulatorInstance {
       config_dir: this.args.configDir,
       service_location: this.args.locationId,
     });
-    this.usingExistingEmulator = true;
+    this.usingExistingEmulator = false;
 
     if (!isVSCodeExtension()) {
       await this.connectToPostgres();
@@ -88,9 +88,15 @@ export class DataConnectEmulator implements EmulatorInstance {
   }
 
   async connect(): Promise<void> {
+    // TODO: Wait for 'Listening on address (HTTP + gRPC)' message to ensure that emulator binary is fully started.
     const emuInfo = await this.emulatorClient.getInfo();
     if (!emuInfo) {
-      Promise.reject();
+      this.logger.logLabeled(
+        "ERROR",
+        "dataconnect",
+        "Could not connect to Data Connect emulator. Check dataconnect-debug.log for more details.",
+      );
+      return Promise.reject();
     }
     return Promise.resolve();
   }
@@ -220,8 +226,8 @@ export class DataConnectEmulator implements EmulatorInstance {
       this.logger.log("DEBUG", "No Postgres connection string found, not connecting to Postgres");
       return false;
     }
-    // The Data Connect emualtor does not immediately start listening after started
-    // so we retry this call with a brief backoff
+    // The Data Connect emulator does not immediately start listening after started
+    // so we retry this call with a brief backoff.
     const MAX_RETRIES = 3;
     for (let i = 1; i <= MAX_RETRIES; i++) {
       try {
