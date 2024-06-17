@@ -79,6 +79,7 @@ export class DataConnectEmulator implements EmulatorInstance {
       config_dir: this.args.configDir,
       service_location: this.args.locationId,
     });
+    this.usingExistingEmulator = true;
 
     if (!isVSCodeExtension()) {
       await this.connectToPostgres();
@@ -196,9 +197,13 @@ export class DataConnectEmulator implements EmulatorInstance {
       }
       const emuInfo = await this.emulatorClient.getInfo();
       if (!emuInfo) {
+        this.logger.logLabeled(
+          "INFO",
+          "dataconnect",
+          "The already running emulator seems to have shut down. Starting a new instance of the Data Connect emulator...",
+        );
         // If the other emulator was shut down, we spin our own copy up
         await this.start();
-        this.usingExistingEmulator = false;
       }
     }, 5000); // Check uptime every 5 seconds
   }
