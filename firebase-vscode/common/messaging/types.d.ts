@@ -21,7 +21,6 @@ export interface ChannelWithId extends Channel {
  * Info to display in the UI while the emulators are running
  */
 export interface RunningEmulatorInfo {
-  uiUrl: string;
   displayInfo: EmulatorInfo[];
 }
 

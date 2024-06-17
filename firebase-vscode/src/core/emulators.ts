@@ -174,7 +174,6 @@ export class EmulatorsController implements Disposable {
         this.emulators.value = {
           status: "running",
           infos: {
-            uiUrl: getEmulatorUiUrl(),
             displayInfo: listRunningEmulators(),
           },
         };
