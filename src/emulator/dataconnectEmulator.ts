@@ -36,7 +36,6 @@ export interface DataConnectBuildArgs {
 
 export class DataConnectEmulator implements EmulatorInstance {
   private emulatorClient: DataConnectEmulatorClient;
-  // TODO: Smoothly handle cases when the existing emulator is shut down
   private usingExistingEmulator: boolean = false;
 
   constructor(private args: DataConnectEmulatorArgs) {
@@ -89,7 +88,6 @@ export class DataConnectEmulator implements EmulatorInstance {
   }
 
   async connect(): Promise<void> {
-    // TODO: Do some kind of uptime check.
     const emuInfo = await this.emulatorClient.getInfo();
     if (!emuInfo) {
       Promise.reject();
