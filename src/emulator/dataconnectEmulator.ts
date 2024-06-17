@@ -12,6 +12,7 @@ import { listenSpecsToString } from "./portUtils";
 import { Client, ClientResponse } from "../apiv2";
 import { EmulatorRegistry } from "./registry";
 import { load } from "../dataconnect/load";
+import { isVSCodeExtension } from "../utils";
 
 export interface DataConnectEmulatorArgs {
   projectId: string;
@@ -70,18 +71,28 @@ export class DataConnectEmulator implements EmulatorInstance {
         "Detected an instance of the emulator already running with your service, reusing it. This emulator will not be shut down at the end of this command.",
       );
       this.usingExistingEmulator = true;
+      this.watchUnmanagedInstance();
       return;
     }
-    return start(Emulators.DATACONNECT, {
+    await start(Emulators.DATACONNECT, {
       auto_download: this.args.auto_download,
       listen: listenSpecsToString(this.args.listen),
       config_dir: this.args.configDir,
       service_location: this.args.locationId,
     });
+
+    if (!isVSCodeExtension()) {
+      await this.connectToPostgres();
+    }
+    return;
   }
 
-  connect(): Promise<void> {
+  async connect(): Promise<void> {
     // TODO: Do some kind of uptime check.
+    const emuInfo = await this.emulatorClient.getInfo();
+    if (!emuInfo) {
+      Promise.reject();
+    }
     return Promise.resolve();
   }
 
@@ -180,6 +191,20 @@ export class DataConnectEmulator implements EmulatorInstance {
     return true;
   }
 
+  private watchUnmanagedInstance() {
+    return setInterval(async () => {
+      if (!this.usingExistingEmulator) {
+        return;
+      }
+      const emuInfo = await this.emulatorClient.getInfo();
+      if (!emuInfo) {
+        // If the other emulator was shut down, we spin our own copy up
+        await this.start();
+        this.usingExistingEmulator = false;
+      }
+    }, 5000); // Check uptime every 5 seconds
+  }
+
   public async connectToPostgres(
     localConnectionString?: string,
     database?: string,
@@ -190,8 +215,27 @@ export class DataConnectEmulator implements EmulatorInstance {
       this.logger.log("DEBUG", "No Postgres connection string found, not connecting to Postgres");
       return false;
     }
-    await this.emulatorClient.configureEmulator({ connectionString, database, serviceId });
-    return true;
+    // The Data Connect emualtor does not immediately start listening after started
+    // so we retry this call with a brief backoff
+    const MAX_RETRIES = 3;
+    for (let i = 1; i <= MAX_RETRIES; i++) {
+      try {
+        this.logger.logLabeled("DEBUG", "dataconnect", `Connecting to ${connectionString}}`);
+        await this.emulatorClient.configureEmulator({ connectionString, database, serviceId });
+        return true;
+      } catch (err: any) {
+        if (i === MAX_RETRIES) {
+          throw err;
+        }
+        this.logger.logLabeled(
+          "DEBUG",
+          "dataconnect",
+          `Retrying connectToPostgress call (${i} of ${MAX_RETRIES} attempts): ${err}`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 800));
+      }
+    }
+    return false;
   }
 }
 
@@ -234,7 +278,7 @@ export class DataConnectEmulatorClient {
       return res;
     } catch (err: any) {
       if (err.status === 500) {
-        throw new FirebaseError(`Data Connect emulator: ${err.context.body.message}`);
+        throw new FirebaseError(`Data Connect emulator: ${err?.context?.body?.message}`);
       }
       throw err;
     }
