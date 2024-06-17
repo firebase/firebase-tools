@@ -2,7 +2,7 @@
 # type User @table(key: "uid") {
 # 	uid: String!
 # 	name: String!
-# 	emailAddress: String!
+# 	address: String!
 # }
 
 # type Email @table {
