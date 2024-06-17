@@ -124,6 +124,8 @@ export class DataConnectEmulator implements EmulatorInstance {
   static async generate(args: DataConnectGenerateArgs): Promise<string> {
     const commandInfo = await downloadIfNecessary(Emulators.DATACONNECT);
     const cmd = [
+      "--logtostderr",
+      "-v=2",
       "generate",
       `--service_location=${args.locationId}`,
       `--config_dir=${args.configDir}`,
@@ -140,7 +142,7 @@ export class DataConnectEmulator implements EmulatorInstance {
 
   static async build(args: DataConnectBuildArgs): Promise<BuildResult> {
     const commandInfo = await downloadIfNecessary(Emulators.DATACONNECT);
-    const cmd = ["build", `--config_dir=${args.configDir}`];
+    const cmd = ["--logtostderr", "-v=2", "build", `--config_dir=${args.configDir}`];
 
     const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8" });
     if (res.error) {
