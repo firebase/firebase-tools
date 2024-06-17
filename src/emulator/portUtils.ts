@@ -308,8 +308,11 @@ export async function resolveHostAndAssignPorts(
               // If there is already a running Data Connect emulator on this address, we're gonna try to use it.
               // If it's for a different service, we'll error out later from DataconnectEmulator.start().
               if (alreadyRunning) {
-                emuLogger.logLabeled("DEBUG", "dataconnect", `Detected already running emulator on ${
-                  listen.address}:${listen.port}. Will attempt to reuse it.`)
+                emuLogger.logLabeled(
+                  "DEBUG",
+                  "dataconnect",
+                  `Detected already running emulator on ${listen.address}:${listen.port}. Will attempt to reuse it.`,
+                );
               }
               available.push(listen);
               continue;
