@@ -241,6 +241,7 @@ export class RC {
 
   setDataconnect(localConnectionString: string) {
     this.data.dataconnectEmulatorConfig = { postgres: { localConnectionString } };
+    this.save();
   }
 
   /**

@@ -304,7 +304,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
   },
 };
 
-function getExecPath(name: DownloadableEmulators): string {
+export function getExecPath(name: DownloadableEmulators): string {
   const details = getDownloadDetails(name);
   return details.binaryPath || details.downloadPath;
 }
