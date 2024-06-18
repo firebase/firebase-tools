@@ -18,15 +18,19 @@ export const command = new Command(`setup:emulators:${NAME}`)
       );
       return;
     }
-    const dataconnectEmulatorConfig = options.rc.getDataconnect();
-    const defaultConnectionString =
-      dataconnectEmulatorConfig?.postgres?.localConnectionString ?? DEFAULT_POSTGRES_CONNECTION;
-    // TODO: Download Postgres
-    const localConnectionString = await promptOnce({
-      type: "input",
-      name: "localConnectionString",
-      message: `What is the connection string of the local Postgres instance you would like to use with the Data Connect emulator?`,
-      default: defaultConnectionString,
-    });
-    options.rc.setDataconnect(localConnectionString);
+
+    if (!options.nonInteractive) {
+      const dataconnectEmulatorConfig = options.rc.getDataconnect();
+      const defaultConnectionString =
+        dataconnectEmulatorConfig?.postgres?.localConnectionString ?? DEFAULT_POSTGRES_CONNECTION;
+      // TODO: Download Postgres
+      const localConnectionString = await promptOnce({
+        type: "input",
+        name: "localConnectionString",
+        message: `What is the connection string of the local Postgres instance you would like to use with the Data Connect emulator?`,
+        default: defaultConnectionString,
+      });
+      options.rc.setDataconnect(localConnectionString);
+    }
+    logger.info("Setup complete!");
   });
