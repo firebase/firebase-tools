@@ -12,19 +12,18 @@ import { BuildResult, requiresVector } from "../dataconnect/types";
 import { listenSpecsToString } from "./portUtils";
 import { Client, ClientResponse } from "../apiv2";
 import { EmulatorRegistry } from "./registry";
+import { logger } from "../logger";
 
 export interface DataConnectEmulatorArgs {
   projectId?: string;
   listen: ListenSpec[];
   configDir: string;
-  locationId?: string;
   auto_download?: boolean;
   rc: RC;
 }
 
 export interface DataConnectGenerateArgs {
   configDir: string;
-  locationId: string;
   connectorId: string;
 }
 
@@ -66,7 +65,6 @@ export class DataConnectEmulator implements EmulatorInstance {
       listen: listenSpecsToString(this.args.listen),
       config_dir: this.args.configDir,
       project_id: this.args.projectId,
-      service_location: this.args.locationId,
     });
   }
 
@@ -100,15 +98,21 @@ export class DataConnectEmulator implements EmulatorInstance {
       "--logtostderr",
       "-v=2",
       "generate",
-      `--service_location=${args.locationId}`,
       `--config_dir=${args.configDir}`,
       `--connector_id=${args.connectorId}`,
     ];
     const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8" });
+    
+    logger.debug(res.stderr);
     if (res.error) {
       throw new FirebaseError(`Error starting up Data Connect generate: ${res.error.message}`, {
         original: res.error,
       });
+    }
+    if (res.status !== 0) {
+      throw new FirebaseError(
+        `Unable to generate your Data Connect SDKs (exit code ${res.status}): ${res.stderr}`,
+      );
     }
     return res.stdout;
   }

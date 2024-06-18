@@ -69,7 +69,6 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
 
   if (!config.has("dataconnect")) {
     config.set("dataconnect.source", dir);
-    config.set("dataconnect.location", info.locationId);
   }
   await config.askWriteProjectFile(join(dir, "dataconnect.yaml"), subbedDataconnectYaml);
   await config.askWriteProjectFile(join(dir, "schema", "schema.gql"), SCHEMA_TEMPLATE);
@@ -110,6 +109,7 @@ function subValues(
     cloudSqlInstanceId: string;
     cloudSqlDatabase: string;
     connectorId: string;
+    locationId: string,
   },
 ): string {
   const replacements: Record<string, string> = {
@@ -117,6 +117,7 @@ function subValues(
     cloudSqlDatabase: "__cloudSqlDatabase__",
     cloudSqlInstanceId: "__cloudSqlInstanceId__",
     connectorId: "__connectorId__",
+    locationId: "__location__",
   };
   let replaced = template;
   for (const [k, v] of Object.entries(replacementValues)) {

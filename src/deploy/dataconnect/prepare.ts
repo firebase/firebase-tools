@@ -26,7 +26,7 @@ export default async function (context: any, options: Options): Promise<void> {
   const filters = getResourceFilters(options);
   const serviceInfos = await Promise.all(
     serviceCfgs.map((c) =>
-      load(projectId, c.location, path.join(options.cwd || process.cwd(), c.source)),
+      load(projectId, path.join(options.cwd || process.cwd(), c.source)),
     ),
   );
   for (const si of serviceInfos) {

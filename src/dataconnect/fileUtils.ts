@@ -13,14 +13,13 @@ export function readFirebaseJson(config: Config): DataConnectMultiple {
     return [];
   }
   const validator = (cfg: any) => {
-    if (!cfg["source"] && !cfg["location"]) {
+    if (!cfg["source"]) {
       throw new FirebaseError(
-        "Invalid firebase.json: DataConnect requires `source` and `location`",
+        "Invalid firebase.json: DataConnect requires `source`",
       );
     }
     return {
       source: cfg["source"],
-      location: cfg["location"],
     };
   };
   const configs = config.get("dataconnect");
@@ -30,7 +29,7 @@ export function readFirebaseJson(config: Config): DataConnectMultiple {
     return configs.map(validator);
   } else {
     throw new FirebaseError(
-      "Invalid firebase.json: dataconnect should be of the form { source: string, location: string }",
+      "Invalid firebase.json: dataconnect should be of the form { source: string }",
     );
   }
 }
@@ -43,6 +42,9 @@ export async function readDataConnectYaml(sourceDirectory: string): Promise<Data
 
 function validateDataConnectYaml(unvalidated: any): DataConnectYaml {
   // TODO: Add validation
+  if (!unvalidated["location"]) {
+    throw new FirebaseError("Missing required field 'location' in dataconnect.yaml");
+  }
   return unvalidated as DataConnectYaml;
 }
 
@@ -89,14 +91,14 @@ export async function pickService(
   if (serviceCfgs.length === 0) {
     throw new FirebaseError("No Data Connect services found in firebase.json.");
   } else if (serviceCfgs.length === 1) {
-    serviceInfo = await load(projectId, serviceCfgs[0].location, serviceCfgs[0].source);
+    serviceInfo = await load(projectId, serviceCfgs[0].source);
   } else {
     if (!serviceId) {
       throw new FirebaseError(
         "Multiple Data Connect services found in firebase.json. Please specify a service ID to use.",
       );
     }
-    const infos = await Promise.all(serviceCfgs.map((c) => load(projectId, c.location, c.source)));
+    const infos = await Promise.all(serviceCfgs.map((c) => load(projectId, c.source)));
     // TODO: handle cases where there are services with the same ID in 2 locations.
     const maybe = infos.find((i) => i.dataConnectYaml.serviceId === serviceId);
     if (!maybe) {
