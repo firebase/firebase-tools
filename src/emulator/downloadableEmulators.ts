@@ -180,7 +180,7 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
       expectedChecksum: EMULATOR_UPDATE_DETAILS.dataconnect.expectedChecksum,
       skipChecksumAndSize: false,
       namePrefix: "dataconnect-emulator",
-      auth: true,
+      auth: false,
     },
   },
 };
@@ -273,7 +273,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     shell: false,
   },
   pubsub: {
-    binary: getExecPath(Emulators.PUBSUB)!,
+    binary: `${getExecPath(Emulators.PUBSUB)!}`,
     args: [],
     optionalArgs: ["port", "host"],
     joinArgs: true,
@@ -287,8 +287,8 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     shell: false,
   },
   dataconnect: {
-    binary: getExecPath(Emulators.DATACONNECT),
-    args: ["dev"],
+    binary: `${getExecPath(Emulators.DATACONNECT)}`,
+    args: ["--logtostderr", "-v=2", "dev"],
     optionalArgs: [
       "listen",
       "config_dir",
@@ -304,7 +304,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
   },
 };
 
-function getExecPath(name: DownloadableEmulators): string {
+export function getExecPath(name: DownloadableEmulators): string {
   const details = getDownloadDetails(name);
   return details.binaryPath || details.downloadPath;
 }
@@ -441,6 +441,9 @@ async function _runBinary(
       };
       if (command.shell && utils.IS_WINDOWS) {
         opts.shell = true;
+        if (command.binary.includes(" ")) {
+          command.binary = `"${command.binary}"`;
+        }
       }
       emulator.instance = childProcess.spawn(command.binary, command.args, opts);
     } catch (e: any) {

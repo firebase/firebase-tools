@@ -1,4 +1,5 @@
 import * as childProcess from "child_process";
+import * as clc from "colorette";
 
 import { dataConnectLocalConnString } from "../api";
 import { Constants } from "./constants";
@@ -96,6 +97,8 @@ export class DataConnectEmulator implements EmulatorInstance {
   static async generate(args: DataConnectGenerateArgs): Promise<string> {
     const commandInfo = await downloadIfNecessary(Emulators.DATACONNECT);
     const cmd = [
+      "--logtostderr",
+      "-v=2",
       "generate",
       `--service_location=${args.locationId}`,
       `--config_dir=${args.configDir}`,
@@ -112,7 +115,7 @@ export class DataConnectEmulator implements EmulatorInstance {
 
   static async build(args: DataConnectBuildArgs): Promise<BuildResult> {
     const commandInfo = await downloadIfNecessary(Emulators.DATACONNECT);
-    const cmd = ["build", `--config_dir=${args.configDir}`];
+    const cmd = ["--logtostderr", "-v=2", "build", `--config_dir=${args.configDir}`];
 
     const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8" });
     if (res.error) {
@@ -152,8 +155,9 @@ export class DataConnectEmulator implements EmulatorInstance {
   ): Promise<boolean> {
     const connectionString = localConnectionString ?? this.getLocalConectionString();
     if (!connectionString) {
-      this.logger.log("DEBUG", "No Postgres connection string found, not connecting to Postgres");
-      return false;
+      const msg = `No Postgres connection string found in '.firebaserc'. The Data Connect emulator will not be able to execute operations.
+Run ${clc.bold("firebase setup:emulators:dataconnect")} to set up a Postgres connection.`;
+      throw new FirebaseError(msg);
     }
     await this.emulatorClient.configureEmulator({ connectionString, database, serviceId });
     return true;

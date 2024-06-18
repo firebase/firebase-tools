@@ -99,7 +99,7 @@ describe("GCS endpoint conformance tests", () => {
         .then((res) => res);
 
       expect(res.header["content-type"]).to.be.eql("application/octet-stream");
-      expect(res.header["content-disposition"]).to.be.eql("attachment; filename=testFile");
+      expect(res.header["content-disposition"]).to.be.eql("attachment; filename*=testFile");
     });
   });
 
