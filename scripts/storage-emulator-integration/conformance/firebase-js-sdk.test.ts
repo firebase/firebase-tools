@@ -6,7 +6,7 @@ import { getStorage } from "firebase-admin/storage";
 import * as fs from "fs";
 import * as puppeteer from "puppeteer";
 import { TEST_ENV } from "./env";
-import { IMAGE_FILE_BASE64 } from "../../../src/test/emulators/fixtures";
+import { IMAGE_FILE_BASE64 } from "../../../src/emulator/testing/fixtures";
 import { EmulatorEndToEndTest } from "../../integration-helpers/framework";
 import {
   createRandomFile,

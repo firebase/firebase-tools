@@ -180,7 +180,7 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
       expectedChecksum: EMULATOR_UPDATE_DETAILS.dataconnect.expectedChecksum,
       skipChecksumAndSize: false,
       namePrefix: "dataconnect-emulator",
-      auth: true,
+      auth: false,
     },
   },
 };
@@ -288,7 +288,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
   },
   dataconnect: {
     binary: `${getExecPath(Emulators.DATACONNECT)}`,
-    args: ["dev"],
+    args: ["--logtostderr", "-v=2", "dev"],
     optionalArgs: [
       "listen",
       "config_dir",

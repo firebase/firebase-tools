@@ -1,4 +1,4 @@
-## Example schema for simple email app
+# # Example schema for simple email app
 # type User @table(key: "uid") {
 # 	uid: String!
 # 	name: String!
