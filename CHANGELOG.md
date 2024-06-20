@@ -1,4 +1,0 @@
-- Fixes issue where storage emulator throws an error due to non-standard whitespaces in filenames (#6834).
-- Fixes issue where some emulators would fail to start when their path contained a whitespace (#7313)
-- Adds prompt for Postgres connection string to `setup:emulators:dataconnect`.
-- Updates Data Connect emulator to v1.2.2, which includes support for generating Swift SDKs and a number of bug fixes.
