@@ -72,16 +72,15 @@ export class DataConnectEmulator implements EmulatorInstance {
       );
       this.usingExistingEmulator = true;
       this.watchUnmanagedInstance();
-      return;
+    } else {
+      await start(Emulators.DATACONNECT, {
+        auto_download: this.args.auto_download,
+        listen: listenSpecsToString(this.args.listen),
+        config_dir: this.args.configDir,
+        service_location: this.args.locationId,
+      });
+      this.usingExistingEmulator = false;
     }
-    await start(Emulators.DATACONNECT, {
-      auto_download: this.args.auto_download,
-      listen: listenSpecsToString(this.args.listen),
-      config_dir: this.args.configDir,
-      service_location: this.args.locationId,
-    });
-    this.usingExistingEmulator = false;
-
     if (!isVSCodeExtension()) {
       await this.connectToPostgres();
     }
@@ -188,12 +187,20 @@ export class DataConnectEmulator implements EmulatorInstance {
       return false;
     }
     const serviceInfo = await load(this.args.projectId, this.args.locationId, this.args.configDir);
-    const sameService = emuInfo.services.some(
+    const sameService = emuInfo.services.find(
       (s) => serviceInfo.dataConnectYaml.serviceId === s.serviceId,
     );
     if (!sameService) {
       throw new FirebaseError(
         `There is a Data Connect emulator already running on ${this.args.listen[0].address}:${this.args.listen[0].port}, but it is emulating a different service. Please stop that instance of the Data Connect emulator, or specify a different port in 'firebase.json'`,
+      );
+    }
+    if (
+      sameService.connectionString &&
+      sameService.connectionString !== this.getLocalConectionString()
+    ) {
+      throw new FirebaseError(
+        `There is a Data Connect emulator already running, but it is using a different Postgres connection string. Please stop that instance of the Data Connect emulator, or specify a different port in 'firebase.json'`,
       );
     }
     return true;
