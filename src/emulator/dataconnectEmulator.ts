@@ -66,8 +66,9 @@ export class DataConnectEmulator implements EmulatorInstance {
     }
     const alreadyRunning = await this.discoverRunningInstance();
     if (alreadyRunning) {
-      this.logger.log(
+      this.logger.logLabeled(
         "INFO",
+        "Data Connect",
         "Detected an instance of the emulator already running with your service, reusing it. This emulator will not be shut down at the end of this command.",
       );
       this.usingExistingEmulator = true;
@@ -93,7 +94,7 @@ export class DataConnectEmulator implements EmulatorInstance {
     if (!emuInfo) {
       this.logger.logLabeled(
         "ERROR",
-        "dataconnect",
+        "Data Connect",
         "Could not connect to Data Connect emulator. Check dataconnect-debug.log for more details.",
       );
       return Promise.reject();
@@ -103,8 +104,9 @@ export class DataConnectEmulator implements EmulatorInstance {
 
   async stop(): Promise<void> {
     if (this.usingExistingEmulator) {
-      this.logger.log(
+      this.logger.logLabeled(
         "INFO",
+        "Data Connect",
         "Skipping cleanup of Data Connect emulator, as it was not started by this process.",
       );
       return;
@@ -215,10 +217,11 @@ export class DataConnectEmulator implements EmulatorInstance {
       if (!emuInfo) {
         this.logger.logLabeled(
           "INFO",
-          "dataconnect",
+          "Data Connect",
           "The already running emulator seems to have shut down. Starting a new instance of the Data Connect emulator...",
         );
         // If the other emulator was shut down, we spin our own copy up
+        // TODO: Guard against multiple simultaneous calls here.
         await this.start();
       }
     }, 5000); // Check uptime every 5 seconds
@@ -240,7 +243,7 @@ Run ${clc.bold("firebase setup:emulators:dataconnect")} to set up a Postgres con
     const MAX_RETRIES = 3;
     for (let i = 1; i <= MAX_RETRIES; i++) {
       try {
-        this.logger.logLabeled("DEBUG", "dataconnect", `Connecting to ${connectionString}}`);
+        this.logger.logLabeled("DEBUG", "Data Connect", `Connecting to ${connectionString}}`);
         await this.emulatorClient.configureEmulator({ connectionString, database, serviceId });
         return true;
       } catch (err: any) {
@@ -249,7 +252,7 @@ Run ${clc.bold("firebase setup:emulators:dataconnect")} to set up a Postgres con
         }
         this.logger.logLabeled(
           "DEBUG",
-          "dataconnect",
+          "Data Connect",
           `Retrying connectToPostgress call (${i} of ${MAX_RETRIES} attempts): ${err}`,
         );
         await new Promise((resolve) => setTimeout(resolve, 800));
