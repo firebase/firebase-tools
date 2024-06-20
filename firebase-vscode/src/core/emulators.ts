@@ -16,6 +16,7 @@ import {
 import { firebaseRC } from "./config";
 import { EmulatorUiSelections } from "../messaging/types";
 import { emulatorOutputChannel } from "../data-connect/emulator-stream";
+import { pluginLogger } from "../logger-wrapper";
 
 export class EmulatorsController implements Disposable {
   constructor(private broker: ExtensionBrokerImpl) {
@@ -190,19 +191,22 @@ export class EmulatorsController implements Disposable {
             Emulators.DATACONNECT,
           );
 
-          dataConnectEmulatorDetails.instance.stdout?.on("data", (data) => {
-            emulatorOutputChannel.appendLine("DEBUG: " + data.toString());
-          });
-          dataConnectEmulatorDetails.instance.stderr?.on("data", (data) => {
-            if (data.toString().includes("Finished reloading")) {
-              vscode.commands.executeCommand("fdc-graphql.restart");
-              vscode.commands.executeCommand(
-                "firebase.dataConnect.executeIntrospection",
-              );
-            } else {
-              emulatorOutputChannel.appendLine("ERROR: " + data.toString());
-            }
-          });
+          // TODO: Remove usage of stdout once emulator surfaces reload info
+          if (dataConnectEmulatorDetails.instance) {
+            dataConnectEmulatorDetails.instance.stdout?.on("data", (data) => {
+              emulatorOutputChannel.appendLine("DEBUG: " + data.toString());
+            });
+            dataConnectEmulatorDetails.instance.stderr?.on("data", (data) => {
+              if (data.toString().includes("Finished reloading")) {
+                vscode.commands.executeCommand("fdc-graphql.restart");
+                vscode.commands.executeCommand(
+                  "firebase.dataConnect.executeIntrospection",
+                );
+              } else {
+                emulatorOutputChannel.appendLine("ERROR: " + data.toString());
+              }
+            });
+          }
         }
 
         // Updating the status bar label as "running", but don't "show" it.
@@ -210,6 +214,7 @@ export class EmulatorsController implements Disposable {
         this.emulatorStatusItem.text = "$(data-connect) Emulators: Running";
         this.emulatorStatusItem.backgroundColor = undefined;
       } catch (e) {
+        pluginLogger.error("Emulator start failed: ", e);
         this.emulatorStatusItem.text = "$(data-connect) Emulators: errored";
         this.emulatorStatusItem.backgroundColor = new ThemeColor(
           "statusBarItem.errorBackground",
@@ -242,22 +247,23 @@ export class EmulatorsController implements Disposable {
   }
 
   // TODO: Move all api calls to CLI DataConnectEmulatorClient
-  public getLocalEndpoint = () => computed<string | undefined>(() => {
-    const emulatorInfos = this.emulators.value.infos?.displayInfo;
-    const dataConnectEmulator = emulatorInfos?.find(
-      (emulatorInfo) => emulatorInfo.name === Emulators.DATACONNECT,
-    );
+  public getLocalEndpoint = () =>
+    computed<string | undefined>(() => {
+      const emulatorInfos = this.emulators.value.infos?.displayInfo;
+      const dataConnectEmulator = emulatorInfos?.find(
+        (emulatorInfo) => emulatorInfo.name === Emulators.DATACONNECT,
+      );
 
-    if (!dataConnectEmulator) {
-      return undefined;
-    }
+      if (!dataConnectEmulator) {
+        return undefined;
+      }
 
-    // handle ipv6
-    if (dataConnectEmulator.host.includes(":")) {
-      return `http://[${dataConnectEmulator.host}]:${dataConnectEmulator.port}`;
-    }
-    return `http://${dataConnectEmulator.host}:${dataConnectEmulator.port}`;
-  });
+      // handle ipv6
+      if (dataConnectEmulator.host.includes(":")) {
+        return `http://[${dataConnectEmulator.host}]:${dataConnectEmulator.port}`;
+      }
+      return `http://${dataConnectEmulator.host}:${dataConnectEmulator.port}`;
+    });
 
   dispose(): void {
     this.stopEmulators();
