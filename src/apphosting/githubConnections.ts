@@ -257,6 +257,8 @@ async function promptCloneUri(
   return { cloneUri, connection: cloneUriToConnection[cloneUri] };
 }
 
+async function promptGitHubRepo(projectId: string, repoLink: devConnect.GitRepositoryLink) {}
+
 /**
  * Exported for unit testing
  */

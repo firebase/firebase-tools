@@ -235,6 +235,55 @@ export async function listAllLinkableGitRepositories(
 }
 
 /**
+ * List all branches for a repo. This function also provides a map to make lookup
+ * more efficient.
+ */
+
+interface ListAllBranchesResponse {
+  branches: string[];
+  lookupMap: Map<string, boolean>;
+}
+
+export async function listAllBranches(
+  gitRepositoryLink: GitRepositoryLink,
+  connectionId: string,
+  projectId: string,
+  location: string,
+): Promise<ListAllBranchesResponse> {
+  const branches: string[] = [];
+  const lookupMap: Map<string, boolean> = new Map();
+
+  const getNextPage = async (pageToken = ""): Promise<void> => {
+    const res = await client.get<{
+      refNames: string[];
+      nextPageToken?: string;
+    }>(
+      `/projects/${projectId}/locations/${LOCATION_OVERRIDE ?? location}/connections/${connectionId}/gitRepositoryLinks/${gitRepositoryLink.uid}:fetchGitRefs`,
+      {
+        queryParams: {
+          refType: "BRANCH",
+          pageSize: PAGE_SIZE_MAX,
+          pageToken,
+        },
+      },
+    );
+    if (Array.isArray(res.body.refNames)) {
+      res.body.refNames.forEach((branch) => {
+        branches.push(branch);
+        lookupMap.set(branch, true);
+      });
+    }
+    if (res.body.nextPageToken) {
+      await getNextPage(res.body.nextPageToken);
+    }
+  };
+
+  await getNextPage();
+
+  return { branches, lookupMap };
+}
+
+/**
  * Creates a GitRepositoryLink.Upon linking a Git Repository, Developer
  * Connect will configure the Git Repository to send webhook events to
  * Developer Connect.
