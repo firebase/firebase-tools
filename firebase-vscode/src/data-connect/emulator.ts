@@ -4,10 +4,16 @@ import { ExtensionBrokerImpl } from "../extension-broker";
 import { effect, signal } from "@preact/signals-core";
 import { firstWhereDefined } from "../utils/signal";
 import { firebaseRC, updateFirebaseRCProject } from "../core/config";
-import { DataConnectEmulatorClient, dataConnectEmulatorEvents } from "../../../src/emulator/dataconnectEmulator";
+import {
+  DataConnectEmulatorClient,
+  dataConnectEmulatorEvents,
+} from "../../../src/emulator/dataconnectEmulator";
 import { dataConnectConfigs } from "./config";
 import { runEmulatorIssuesStream } from "./emulator-stream";
 import { runDataConnectCompiler } from "./core-compiler";
+import { pluginLogger } from "../logger-wrapper";
+import { Emulators, getEmulatorDetails, listRunningEmulators } from "../cli";
+import { emulatorOutputChannel } from "./emulator-stream";
 
 /** FDC-specific emulator logic */
 export class DataConnectEmulatorController implements vscode.Disposable {
@@ -18,25 +24,12 @@ export class DataConnectEmulatorController implements vscode.Disposable {
     function notifyIsConnectedToPostgres(isConnected: boolean) {
       broker.send("notifyIsConnectedToPostgres", isConnected);
     }
+
+    // on emulator restart, connect
     dataConnectEmulatorEvents.on("restart", () => {
-      // TODO: Double check this, make sure its what we actually wanna do.
-      // TODO: Sanity check the new dependencies this adds, make sure this isn't making things tooo ugly
-      // TODO: Debounce duplicate events?
-      const configs = dataConnectConfigs.value?.tryReadValue;
-      if (configs && emulatorsController.getLocalEndpoint().value) {
-        // TODO move to client.start or setupLanguageClient
-        vscode.commands.executeCommand("fdc-graphql.restart");
-        vscode.commands.executeCommand(
-          "firebase.dataConnect.executeIntrospection",
-        );
-        runEmulatorIssuesStream(
-          configs,
-          emulatorsController.getLocalEndpoint().value,
-          this.isPostgresEnabled,
-        );
-        runDataConnectCompiler(configs, emulatorsController.getLocalEndpoint().value);
-      }
-    })
+      this.isPostgresEnabled.value = false;
+      this.connectToEmulator();
+    });
     this.subs.push(
       broker.on("connectToPostgres", () => this.connectToPostgres()),
 
@@ -112,6 +105,53 @@ export class DataConnectEmulatorController implements vscode.Disposable {
     this.isPostgresEnabled.value = true;
 
     emulatorClient.configureEmulator({ connectionString: newConnectionString });
+  }
+
+  // Commands to run after the emulator is started successfully
+  private async connectToEmulator() {
+    vscode.commands.executeCommand("fdc-graphql.restart");
+    vscode.commands.executeCommand("firebase.dataConnect.executeIntrospection");
+    const configs = dataConnectConfigs.value?.tryReadValue;
+
+    runEmulatorIssuesStream(
+      configs,
+      this.emulatorsController.getLocalEndpoint().value,
+      this.isPostgresEnabled,
+    );
+    runDataConnectCompiler(
+      configs,
+      this.emulatorsController.getLocalEndpoint().value,
+    );
+
+    this.setupOutputChannels();
+  }
+
+  private setupOutputChannels() {
+    // data connect specifics; including temp logging implementation
+    if (
+      listRunningEmulators().filter((emulatorInfos) => {
+        emulatorInfos.name === Emulators.DATACONNECT;
+      })
+    ) {
+      const dataConnectEmulatorDetails = getEmulatorDetails(
+        Emulators.DATACONNECT,
+      );
+      if (dataConnectEmulatorDetails.instance) {
+        dataConnectEmulatorDetails.instance.stdout?.on("data", (data) => {
+          emulatorOutputChannel.appendLine("DEBUG: " + data.toString());
+        });
+        dataConnectEmulatorDetails.instance.stderr?.on("data", (data) => {
+          if (data.toString().includes("Finished reloading")) {
+            vscode.commands.executeCommand("fdc-graphql.restart");
+            vscode.commands.executeCommand(
+              "firebase.dataConnect.executeIntrospection",
+            );
+          } else {
+            emulatorOutputChannel.appendLine("ERROR: " + data.toString());
+          }
+        });
+      }
+    }
   }
 
   dispose() {
