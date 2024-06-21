@@ -13,13 +13,11 @@ import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnec
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
 
-const TEMPLATE_ROOT = "init/dataconnect/";
-
-const DATACONNECT_YAML_TEMPLATE = readTemplateSync(TEMPLATE_ROOT + "dataconnect.yaml");
-const CONNECTOR_YAML_TEMPLATE = readTemplateSync(TEMPLATE_ROOT + "connector.yaml");
-const SCHEMA_TEMPLATE = readTemplateSync(TEMPLATE_ROOT + "schema.gql");
-const QUERIES_TEMPLATE = readTemplateSync(TEMPLATE_ROOT + "queries.gql");
-const MUTATIONS_TEMPLATE = readTemplateSync(TEMPLATE_ROOT + "mutations.gql");
+const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
+const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yaml");
+const SCHEMA_TEMPLATE = readTemplateSync("init/dataconnect/schema.gql");
+const QUERIES_TEMPLATE = readTemplateSync("init/dataconnect/queries.gql");
+const MUTATIONS_TEMPLATE = readTemplateSync("init/dataconnect/mutations.gql");
 
 interface RequiredInfo {
   serviceId: string;
