@@ -1,2 +1,3 @@
 - Data Connect emulator now reuses existing instances if they are emulating the same service.
 - Fixes issue where `deploy --only dataconnect` would error out with `cannot read property undefined`.
+- Fixes compatibility issue when uploading native symbols to Crashlytics on Intel-based Macs.
