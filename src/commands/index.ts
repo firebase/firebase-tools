@@ -205,17 +205,15 @@ export function load(client: any): any {
   client.setup.emulators.pubsub = loadCommand("setup-emulators-pubsub");
   client.setup.emulators.storage = loadCommand("setup-emulators-storage");
   client.setup.emulators.ui = loadCommand("setup-emulators-ui");
-  if (experiments.isEnabled("dataconnect")) {
-    client.dataconnect = {};
-    client.setup.emulators.dataconnect = loadCommand("setup-emulators-dataconnect");
-    client.dataconnect.services = {};
-    client.dataconnect.services.list = loadCommand("dataconnect-services-list");
-    client.dataconnect.sql = {};
-    client.dataconnect.sql.diff = loadCommand("dataconnect-sql-diff");
-    client.dataconnect.sql.migrate = loadCommand("dataconnect-sql-migrate");
-    client.dataconnect.sdk = {};
-    client.dataconnect.sdk.generate = loadCommand("dataconnect-sdk-generate");
-  }
+  client.dataconnect = {};
+  client.setup.emulators.dataconnect = loadCommand("setup-emulators-dataconnect");
+  client.dataconnect.services = {};
+  client.dataconnect.services.list = loadCommand("dataconnect-services-list");
+  client.dataconnect.sql = {};
+  client.dataconnect.sql.diff = loadCommand("dataconnect-sql-diff");
+  client.dataconnect.sql.migrate = loadCommand("dataconnect-sql-migrate");
+  client.dataconnect.sdk = {};
+  client.dataconnect.sdk.generate = loadCommand("dataconnect-sdk-generate");
   client.target = loadCommand("target");
   client.target.apply = loadCommand("target-apply");
   client.target.clear = loadCommand("target-clear");
