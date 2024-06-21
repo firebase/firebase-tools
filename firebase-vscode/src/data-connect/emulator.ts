@@ -4,8 +4,10 @@ import { ExtensionBrokerImpl } from "../extension-broker";
 import { effect, signal } from "@preact/signals-core";
 import { firstWhereDefined } from "../utils/signal";
 import { firebaseRC, updateFirebaseRCProject } from "../core/config";
-import { DataConnectEmulatorClient } from "../../../src/emulator/dataconnectEmulator";
+import { DataConnectEmulatorClient, dataConnectEmulatorEvents } from "../../../src/emulator/dataconnectEmulator";
 import { dataConnectConfigs } from "./config";
+import { runEmulatorIssuesStream } from "./emulator-stream";
+import { runDataConnectCompiler } from "./core-compiler";
 
 /** FDC-specific emulator logic */
 export class DataConnectEmulatorController implements vscode.Disposable {
@@ -16,7 +18,25 @@ export class DataConnectEmulatorController implements vscode.Disposable {
     function notifyIsConnectedToPostgres(isConnected: boolean) {
       broker.send("notifyIsConnectedToPostgres", isConnected);
     }
-
+    dataConnectEmulatorEvents.on("restart", () => {
+      // TODO: Double check this, make sure its what we actually wanna do.
+      // TODO: Sanity check the new dependencies this adds, make sure this isn't making things tooo ugly
+      // TODO: Debounce duplicate events?
+      const configs = dataConnectConfigs.value?.tryReadValue;
+      if (configs && emulatorsController.getLocalEndpoint().value) {
+        // TODO move to client.start or setupLanguageClient
+        vscode.commands.executeCommand("fdc-graphql.restart");
+        vscode.commands.executeCommand(
+          "firebase.dataConnect.executeIntrospection",
+        );
+        runEmulatorIssuesStream(
+          configs,
+          emulatorsController.getLocalEndpoint().value,
+          this.isPostgresEnabled,
+        );
+        runDataConnectCompiler(configs, emulatorsController.getLocalEndpoint().value);
+      }
+    })
     this.subs.push(
       broker.on("connectToPostgres", () => this.connectToPostgres()),
 
