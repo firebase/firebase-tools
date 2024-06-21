@@ -10,16 +10,12 @@ import {
 import { logoutAction } from "../../src/commands/logout";
 import { listFirebaseProjects } from "../../src/management/projects";
 import { requireAuth } from "../../src/requireAuth";
-import { deploy } from "../../src/deploy";
-import { initAction } from "../../src/commands/init";
 import { Account, User } from "../../src/types/auth";
 import { Options } from "../../src/options";
 import { currentOptions, getCommandOptions } from "./options";
-import { setInquirerOptions } from "./stubs/inquirer-stub";
 import { ServiceAccount } from "../common/types";
-import { EmulatorUiSelections, ChannelWithId } from "../common/messaging/types";
+import { EmulatorUiSelections } from "../common/messaging/types";
 import { pluginLogger } from "./logger-wrapper";
-import { Config } from "../../src/config";
 import { setAccessToken } from "../../src/apiv2";
 import {
   startAll as startAllEmulators,
