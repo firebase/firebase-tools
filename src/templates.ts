@@ -10,8 +10,7 @@ const TEMPLATE_ENCODING = "utf8";
  * @param relPath file path relative to the /templates directory under root.
  */
 export function absoluteTemplateFilePath(relPath: string): string {
-  const p = resolve(TEMPLATE_ROOT, relPath);
-  return readFileSync(p, TEMPLATE_ENCODING);
+  return resolve(TEMPLATE_ROOT, relPath);
 }
 
 /**
