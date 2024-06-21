@@ -1,0 +1,1 @@
+- Fixes issue where `deploy --only dataconnect` would error out with `cannot read property undefined`.
