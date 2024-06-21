@@ -682,6 +682,13 @@ export class FunctionsEmulator implements EmulatorInstance {
           case Constants.SERVICE_STORAGE:
             added = this.addStorageTrigger(this.args.projectId, key, definition.eventTrigger);
             break;
+          case Constants.SERVICE_FIREALERTS:
+            added = await this.addEventarcTrigger(
+              this.args.projectId,
+              key,
+              definition.eventTrigger,
+            );
+            break;
           default:
             this.logger.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
             break;
