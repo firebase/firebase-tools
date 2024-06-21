@@ -195,6 +195,10 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: npm
           cache-dependency-path: npm-shrinkwrap.json
+      - uses: google-github-actions/auth@v0
+        with:
+          credentials_json: "${{ secrets.CF3_INTEGRATION_TEST_GOOGLE_CREDENTIALS }}"
+          create_credentials_file: true
 
       - name: Cache firebase emulators
         uses: actions/cache@v3
