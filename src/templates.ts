@@ -1,8 +1,8 @@
 import { readFileSync } from "fs";
 import { readFile } from "fs/promises";
 import { resolve } from "path";
+import { isVSCodeExtension } from "./utils";
 
-const TEMPLATE_ROOT = resolve(__dirname, "../templates/");
 const TEMPLATE_ENCODING = "utf8";
 
 /**
@@ -10,7 +10,14 @@ const TEMPLATE_ENCODING = "utf8";
  * @param relPath file path relative to the /templates directory under root.
  */
 export function absoluteTemplateFilePath(relPath: string): string {
-  return resolve(TEMPLATE_ROOT, relPath);
+  if (isVSCodeExtension()) {
+    // In the VSCE, the /templates directory is copied into dist, which makes it
+    // right next to the compilation result files (from source code like this).
+    // See CopyPlugin in `../firebase-vscode/webpack.common.js`.
+    return resolve(__dirname, "templates", relPath);
+  }
+  // Otherwise, the /templates directory is one level above /src or /lib.
+  return resolve(__dirname, "../templates", relPath);
 }
 
 /**
