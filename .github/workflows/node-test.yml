@@ -140,7 +140,10 @@ jobs:
       - run: npm i -g npm@9.5
       - run: npm ci
       - run: echo ${{ secrets.service_account_json_base64 }} | base64 -d > ./scripts/service-account.json
-      - run: export GOOGLE_APPLCIATION_CREDENTIALS=scripts/service-account.json
+            - uses: google-github-actions/auth@v0
+        with:
+          credentials_json: "${{ secrets.CF3_INTEGRATION_TEST_GOOGLE_CREDENTIALS }}"
+          create_credentials_file: true
       - run: ${{ matrix.script }}
 
       - name: Print debug logs
@@ -202,7 +205,7 @@ jobs:
 
       - run: echo ${{ secrets.service_account_json_base64 }} > tmp.txt
       - run: certutil -decode tmp.txt scripts/service-account.json
-      - run: export GOOGLE_APPLCIATION_CREDENTIALS=scripts/service-account.json
+      - run: echo "GOOGLE_APPLICATION_CREDENTIALS=scripts/service-account.json" >> $GITHUB_ENV
       - run: npm i -g npm@9.5
       - run: npm ci
       - run: ${{ matrix.script }}
