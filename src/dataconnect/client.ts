@@ -72,7 +72,7 @@ async function deleteService(serviceName: string): Promise<types.Service> {
   return pollRes;
 }
 
-export async function deleteServiceAndChildResources(serviceName: string) {
+export async function deleteServiceAndChildResources(serviceName: string): Promise<void> {
   const connectors = await listConnectors(serviceName);
   await Promise.all(connectors.map(async (c) => deleteConnector(c.name)));
   try {
@@ -154,17 +154,15 @@ export async function listConnectors(serviceName: string) {
   const connectors: types.Connector[] = [];
   const getNextPage = async (pageToken = "") => {
     const res = await dataconnectClient().get<{
-      connectors: types.Connector[];
-      nextPageToken: string;
+      connectors?: types.Connector[];
+      nextPageToken?: string;
     }>(`${serviceName}/connectors`, {
       queryParams: {
         pageSize: PAGE_SIZE_MAX,
         pageToken,
       },
     });
-    if (Array.isArray(res.body.connectors)) {
-      connectors.push(...res.body.connectors);
-    }
+    connectors.push(...(res.body.connectors || []));
     if (res.body.nextPageToken) {
       await getNextPage(res.body.nextPageToken);
     }

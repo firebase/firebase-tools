@@ -81,13 +81,11 @@ if (isEnabled("genkit")) {
   });
 }
 
-if (isEnabled("dataconnect")) {
-  choices.push({
-    value: "dataconnect",
-    name: "Data Connect: Set up a Firebase Data Connect service.",
-    checked: false,
-  });
-}
+choices.push({
+  value: "dataconnect",
+  name: "Data Connect: Set up a Firebase Data Connect service.",
+  checked: false,
+});
 
 const featureNames = choices.map((choice) => choice.value);
 
