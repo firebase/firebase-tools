@@ -10,7 +10,7 @@ import { EmulatorRegistry } from "./registry";
 import { FirebaseError } from "../error";
 import { cloudEventFromProtoToJson } from "./eventarcEmulatorUtils";
 
-interface CustomEventTrigger {
+interface EmulatedEventTrigger {
   projectId: string;
   triggerName: string;
   eventTrigger: EventTrigger;
@@ -29,7 +29,8 @@ export class EventarcEmulator implements EmulatorInstance {
   private destroyServer?: () => Promise<void>;
 
   private logger = EmulatorLogger.forEmulator(Emulators.EVENTARC);
-  private customEvents: { [key: string]: CustomEventTrigger[] } = {};
+  private customEvents: { [key: string]: EmulatedEventTrigger[] } = {};
+  private nativeEvents: { [key: string]: EmulatedEventTrigger[] } = {};
 
   constructor(private args: EventarcEmulatorArgs) {}
 
@@ -54,16 +55,32 @@ export class EventarcEmulator implements EmulatorInstance {
         res.status(400).send({ error });
         return;
       }
-      const key = `${eventTrigger.eventType}-${eventTrigger.channel}`;
-      this.logger.logLabeled(
-        "BULLET",
-        "eventarc",
-        `Registering custom event trigger for ${key} with trigger name ${triggerName}.`,
-      );
-      const customEventTriggers = this.customEvents[key] || [];
-      customEventTriggers.push({ projectId, triggerName, eventTrigger });
-      this.customEvents[key] = customEventTriggers;
+      if (eventTrigger.channel) {
+        const key = `${eventTrigger.eventType}-${eventTrigger.channel}`;
+        this.logger.logLabeled(
+          "BULLET",
+          "eventarc",
+          `Registering custom event trigger for ${key} with trigger name ${triggerName}.`,
+        );
+        const customEventTriggers = this.customEvents[key] || [];
+        customEventTriggers.push({ projectId, triggerName, eventTrigger });
+        this.customEvents[key] = customEventTriggers;
+      } else {
+        this.logger.logLabeled(
+          "BULLET",
+          "eventarc",
+          `Registering custom event trigger for ${eventTrigger.eventType} with trigger name ${triggerName}.`,
+        );
+        const nativeEventTriggers = this.nativeEvents[eventTrigger.eventType] || [];
+        nativeEventTriggers.push({ projectId, triggerName, eventTrigger });
+        this.nativeEvents[eventTrigger.eventType] = nativeEventTriggers;
+      }
       res.status(200).send({ res: "OK" });
+    };
+
+    const getTriggersRoute = `/google/getTriggers`;
+    const getTriggersHandler: express.RequestHandler = (req, res) => {
+      res.status(200).send(this.nativeEvents);
     };
 
     const publishEventsRoute = `/projects/:project_id/locations/:location/channels/:channel::publishEvents`;
@@ -95,9 +112,25 @@ export class EventarcEmulator implements EmulatorInstance {
       });
     };
 
+    const publishNativeEventsRoute = `/google/publishEvents`;
+    const publishNativeEventsHandler: express.RequestHandler = (req, res) => {
+      const body = JSON.parse((req as RequestWithRawBody).rawBody.toString());
+      for (const event of body.events as CloudEvent<any>[]) {
+        if (!event.type) {
+          res.sendStatus(400);
+          return;
+        }
+        this.logger.log("INFO", `Received ${event.type} event: ${JSON.stringify(event, null, 2)}`);
+        void this.triggerNativeEventFunction(event);
+      }
+      res.sendStatus(200);
+    };
+
     const hub = express();
     hub.post([registerTriggerRoute], dataMiddleware, registerTriggerHandler);
     hub.post([publishEventsRoute], dataMiddleware, publishEventsHandler);
+    hub.post([publishNativeEventsRoute], dataMiddleware, publishNativeEventsHandler);
+    hub.get([getTriggersRoute], dataMiddleware, getTriggersHandler);
     hub.all("*", (req, res) => {
       this.logger.log("DEBUG", `Eventarc emulator received unknown request at path ${req.path}`);
       res.sendStatus(404);
@@ -105,7 +138,7 @@ export class EventarcEmulator implements EmulatorInstance {
     return hub;
   }
 
-  async triggerCustomEventFunction(channel: string, event: CloudEvent<any>) {
+  async triggerCustomEventFunction(channel: string, event: CloudEvent<any>): Promise<void[]> {
     if (!EmulatorRegistry.isRunning(Emulators.FUNCTIONS)) {
       this.logger.log("INFO", "Functions emulator not found. This should not happen.");
       return Promise.reject();
@@ -119,29 +152,48 @@ export class EventarcEmulator implements EmulatorInstance {
             !trigger.eventTrigger.eventFilters ||
             this.matchesAll(event, trigger.eventTrigger.eventFilters),
         )
-        .map((trigger) =>
-          EmulatorRegistry.client(Emulators.FUNCTIONS)
-            .request<CloudEvent<any>, NodeJS.ReadableStream>({
-              method: "POST",
-              path: `/functions/projects/${trigger.projectId}/triggers/${trigger.triggerName}`,
-              body: JSON.stringify(cloudEventFromProtoToJson(event)),
-              responseType: "stream",
-              resolveOnHTTPError: true,
-            })
-            .then((res) => {
-              // Since the response type is a stream and using `resolveOnHTTPError: true`, we check status manually.
-              if (res.status >= 400) {
-                throw new FirebaseError(`Received non-200 status code: ${res.status}`);
-              }
-            })
-            .catch((err) => {
-              this.logger.log(
-                "ERROR",
-                `Failed to trigger Functions emulator for ${trigger.triggerName}: ${err}`,
-              );
-            }),
-        ),
+        .map((trigger) => this.callFunctionTrigger(trigger, cloudEventFromProtoToJson(event))),
     );
+  }
+
+  async triggerNativeEventFunction(event: CloudEvent<any>) {
+    if (!EmulatorRegistry.isRunning(Emulators.FUNCTIONS)) {
+      this.logger.log("INFO", "Functions emulator not found. This should not happen.");
+      return Promise.reject();
+    }
+    const triggers = this.nativeEvents[event.type] || [];
+    return await Promise.all(
+      triggers
+        .filter(
+          (trigger) =>
+            !trigger.eventTrigger.eventFilters ||
+            this.matchesAll(event, trigger.eventTrigger.eventFilters),
+        )
+        .map((trigger) => this.callFunctionTrigger(trigger, event)),
+    );
+  }
+
+  callFunctionTrigger(trigger: EmulatedEventTrigger, event: CloudEvent<any>): Promise<void> {
+    return EmulatorRegistry.client(Emulators.FUNCTIONS)
+      .request<CloudEvent<any>, NodeJS.ReadableStream>({
+        method: "POST",
+        path: `/functions/projects/${trigger.projectId}/triggers/${trigger.triggerName}`,
+        body: JSON.stringify(event),
+        responseType: "stream",
+        resolveOnHTTPError: true,
+      })
+      .then((res) => {
+        // Since the response type is a stream and using `resolveOnHTTPError: true`, we check status manually.
+        if (res.status >= 400) {
+          throw new FirebaseError(`Received non-200 status code: ${res.status}`);
+        }
+      })
+      .catch((err) => {
+        this.logger.log(
+          "ERROR",
+          `Failed to trigger Functions emulator for ${trigger.triggerName}: ${err}`,
+        );
+      });
   }
 
   private matchesAll(event: CloudEvent<any>, eventFilters: Record<string, string>): boolean {
