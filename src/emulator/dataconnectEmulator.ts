@@ -14,6 +14,7 @@ import { Client, ClientResponse } from "../apiv2";
 import { EmulatorRegistry } from "./registry";
 import { load } from "../dataconnect/load";
 import { isVSCodeExtension } from "../utils";
+import { EventEmitter } from "events";
 
 export interface DataConnectEmulatorArgs {
   projectId: string;
@@ -33,6 +34,7 @@ export interface DataConnectGenerateArgs {
 export interface DataConnectBuildArgs {
   configDir: string;
 }
+export const dataConnectEmulatorEvents = new EventEmitter();
 
 export class DataConnectEmulator implements EmulatorInstance {
   private emulatorClient: DataConnectEmulatorClient;
@@ -220,6 +222,7 @@ export class DataConnectEmulator implements EmulatorInstance {
           "Data Connect",
           "The already running emulator seems to have shut down. Starting a new instance of the Data Connect emulator...",
         );
+        dataConnectEmulatorEvents.emit("restart");
         // If the other emulator was shut down, we spin our own copy up
         // TODO: Guard against multiple simultaneous calls here.
         await this.start();
