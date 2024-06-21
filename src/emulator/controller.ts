@@ -842,9 +842,6 @@ export async function startAll(
       rc: options.rc,
     });
     await startEmulator(dataConnectEmulator);
-    if (!utils.isVSCodeExtension()) {
-      await dataConnectEmulator.connectToPostgres();
-    }
   }
 
   if (listenForEmulator.storage) {
