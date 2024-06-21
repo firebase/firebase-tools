@@ -12,8 +12,8 @@ const TEMPLATE_ENCODING = "utf8";
 export function absoluteTemplateFilePath(relPath: string): string {
   if (isVSCodeExtension()) {
     // In the VSCE, the /templates directory is copied into dist, which makes it
-    // right next to the compilation result files (from source code like this).
-    // See CopyPlugin in `../firebase-vscode/webpack.common.js`.
+    // right next to the compiled files (from various sources including this
+    // TS file). See CopyPlugin in `../firebase-vscode/webpack.common.js`.
     return resolve(__dirname, "templates", relPath);
   }
   // Otherwise, the /templates directory is one level above /src or /lib.
