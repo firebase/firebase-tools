@@ -130,10 +130,6 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: npm
           cache-dependency-path: npm-shrinkwrap.json
-      - uses: google-github-actions/auth@v0
-        with:
-          credentials_json: "${{ secrets.CF3_INTEGRATION_TEST_GOOGLE_CREDENTIALS }}"
-          create_credentials_file: true
       - name: Cache firebase emulators
         uses: actions/cache@v3
         with:
@@ -144,6 +140,7 @@ jobs:
       - run: npm i -g npm@9.5
       - run: npm ci
       - run: echo ${{ secrets.service_account_json_base64 }} | base64 -d > ./scripts/service-account.json
+      - run: export GOOGLE_APPLCIATION_CREDENTIALS=scripts/service-account.json
       - run: ${{ matrix.script }}
 
       - name: Print debug logs
@@ -195,10 +192,6 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: npm
           cache-dependency-path: npm-shrinkwrap.json
-      - uses: google-github-actions/auth@v0
-        with:
-          credentials_json: "${{ secrets.CF3_INTEGRATION_TEST_GOOGLE_CREDENTIALS }}"
-          create_credentials_file: true
 
       - name: Cache firebase emulators
         uses: actions/cache@v3
@@ -209,6 +202,7 @@ jobs:
 
       - run: echo ${{ secrets.service_account_json_base64 }} > tmp.txt
       - run: certutil -decode tmp.txt scripts/service-account.json
+      - run: export GOOGLE_APPLCIATION_CREDENTIALS=scripts/service-account.json
       - run: npm i -g npm@9.5
       - run: npm ci
       - run: ${{ matrix.script }}
