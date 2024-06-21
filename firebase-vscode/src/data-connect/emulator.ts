@@ -25,11 +25,13 @@ export class DataConnectEmulatorController implements vscode.Disposable {
       broker.send("notifyIsConnectedToPostgres", isConnected);
     }
 
-    // on emulator restart, connect
+    // on emulator restart, re-connect
     dataConnectEmulatorEvents.on("restart", () => {
+      pluginLogger.log("Emulator started");
       this.isPostgresEnabled.value = false;
       this.connectToEmulator();
     });
+
     this.subs.push(
       broker.on("connectToPostgres", () => this.connectToPostgres()),
 
@@ -107,10 +109,17 @@ export class DataConnectEmulatorController implements vscode.Disposable {
     emulatorClient.configureEmulator({ connectionString: newConnectionString });
   }
 
+  // on schema reload, restart language server and run introspection again
+  private async schemaReload() {
+    vscode.commands.executeCommand("fdc-graphql.restart");
+    vscode.commands.executeCommand(
+      "firebase.dataConnect.executeIntrospection",
+    );
+  }
+
   // Commands to run after the emulator is started successfully
   private async connectToEmulator() {
-    vscode.commands.executeCommand("fdc-graphql.restart");
-    vscode.commands.executeCommand("firebase.dataConnect.executeIntrospection");
+    this.schemaReload();
     const configs = dataConnectConfigs.value?.tryReadValue;
 
     runEmulatorIssuesStream(
@@ -123,11 +132,10 @@ export class DataConnectEmulatorController implements vscode.Disposable {
       this.emulatorsController.getLocalEndpoint().value,
     );
 
-    this.setupOutputChannels();
+    this.setupOutputChannel();
   }
 
-  private setupOutputChannels() {
-    // data connect specifics; including temp logging implementation
+  private setupOutputChannel() {
     if (
       listRunningEmulators().filter((emulatorInfos) => {
         emulatorInfos.name === Emulators.DATACONNECT;
@@ -136,16 +144,16 @@ export class DataConnectEmulatorController implements vscode.Disposable {
       const dataConnectEmulatorDetails = getEmulatorDetails(
         Emulators.DATACONNECT,
       );
+
+      // Child process is only available when emulator is started through vscode
       if (dataConnectEmulatorDetails.instance) {
         dataConnectEmulatorDetails.instance.stdout?.on("data", (data) => {
           emulatorOutputChannel.appendLine("DEBUG: " + data.toString());
         });
+        // TODO: Utilize streaming api to iniate schema reloads
         dataConnectEmulatorDetails.instance.stderr?.on("data", (data) => {
           if (data.toString().includes("Finished reloading")) {
-            vscode.commands.executeCommand("fdc-graphql.restart");
-            vscode.commands.executeCommand(
-              "firebase.dataConnect.executeIntrospection",
-            );
+            this.schemaReload();
           } else {
             emulatorOutputChannel.appendLine("ERROR: " + data.toString());
           }
