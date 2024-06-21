@@ -111,12 +111,6 @@ const extensionConfig = {
         loader: "string-replace-loader",
         options: {
           multiple: [
-            // CLI code has absolute path to templates/. We copy templates/
-            // into dist, and this is the correct path now.
-            {
-              search: /(\.|\.\.)[\.\/]+templates/g,
-              replace: "./templates",
-            },
             // CLI code has absolute path to schema/. We copy schema/
             // into dist, and this is the correct path now.
             {
