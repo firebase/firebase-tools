@@ -8,18 +8,15 @@ import {
   setGlobalDefaultAccount,
 } from "../../src/auth";
 import { logoutAction } from "../../src/commands/logout";
-import { hostingChannelDeployAction } from "../../src/commands/hosting-channel-deploy";
 import { listFirebaseProjects } from "../../src/management/projects";
 import { requireAuth } from "../../src/requireAuth";
 import { deploy } from "../../src/deploy";
-import { getDefaultHostingSite } from "../../src/getDefaultHostingSite";
 import { initAction } from "../../src/commands/init";
 import { Account, User } from "../../src/types/auth";
 import { Options } from "../../src/options";
 import { currentOptions, getCommandOptions } from "./options";
 import { setInquirerOptions } from "./stubs/inquirer-stub";
 import { ServiceAccount } from "../common/types";
-import { listChannels } from "../../src/hosting/api";
 import { EmulatorUiSelections, ChannelWithId } from "../common/messaging/types";
 import { pluginLogger } from "./logger-wrapper";
 import { Config } from "../../src/config";
@@ -141,9 +138,7 @@ async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
     return false;
   } catch (e) {
     if (showError) {
-      // Show error to user - show a popup and log it with log level
-      // "error". Usually set on user-triggered actions such as
-      // init hosting and deploy.
+      // Show error to user - show a popup and log it with log level "error".
       pluginLogger.error(
         `requireAuth error: ${e.original?.message || e.message}`,
       );
@@ -178,42 +173,6 @@ export async function getAccounts(): Promise<Array<Account | ServiceAccount>> {
   return accounts;
 }
 
-export async function getChannels(
-  firebaseJSON: Config,
-): Promise<ChannelWithId[]> {
-  if (!firebaseJSON) {
-    return [];
-  }
-  const loggedIn = await requireAuthWrapper(false);
-  if (!loggedIn) {
-    return [];
-  }
-  const options = { ...currentOptions.value };
-  if (!options.project) {
-    return [];
-  }
-  try {
-    const site = await getDefaultHostingSite(options);
-    pluginLogger.debug(
-      "Calling listChannels with params",
-      options.project,
-      site,
-    );
-    const channels = await listChannels(options.project, site);
-    return channels.map((channel) => ({
-      ...channel,
-      id: channel.name.split("/").pop(),
-    }));
-  } catch (e) {
-    pluginLogger.error("Error in getChannels()", e);
-    vscode.window.showErrorMessage("Error finding hosting channels", {
-      modal: true,
-      detail: `Error finding hosting channels: ${e}`,
-    });
-    return [];
-  }
-}
-
 export async function logoutUser(email: string): Promise<void> {
   await logoutAction(email, {} as Options);
 }
@@ -235,108 +194,10 @@ export async function listProjects() {
   return listFirebaseProjects();
 }
 
-export async function initHosting(options: {
-  spa: boolean;
-  public?: string;
-  useFrameworks: boolean;
-}): Promise<boolean> {
-  const loggedIn = await requireAuthWrapper(true);
-  if (!loggedIn) {
-    pluginLogger.error("No user found, canceling hosting init");
-    return false;
-  }
-  let webFrameworksOptions = {};
-  if (options.useFrameworks) {
-    pluginLogger.debug("Setting web frameworks options");
-    webFrameworksOptions = {
-      // Should use auto-discovered framework
-      useDiscoveredFramework: true,
-      // Should set up a new framework - do not do this on Monospace
-      useWebFrameworks: false,
-    };
-  }
-  const commandOptions = await getCommandOptions(
-    undefined,
-    currentOptions.value,
-  );
-  const inquirerOptions = {
-    ...commandOptions,
-    ...options,
-    ...webFrameworksOptions,
-    // False for now, we can let the user decide if needed
-    github: false,
-  };
-  pluginLogger.debug(
-    "Calling hosting init with inquirer options",
-    inspect(inquirerOptions),
-  );
-  setInquirerOptions(inquirerOptions);
-  try {
-    await initAction("hosting", commandOptions);
-  } catch (e) {
-    pluginLogger.error(e.message);
-    return false;
-  }
-  return true;
-}
-
-export async function deployToHosting(
-  firebaseJSON: Config,
-  deployTarget: string,
-) {
-  if (!(await requireAuthWrapper(true))) {
-    pluginLogger.error("No user found, canceling deployment");
-    return { success: false, hostingUrl: "", consoleUrl: "" };
-  }
-
-  // TODO(hsubox76): throw if it doesn't find firebaseJSON
-  try {
-    const options = { ...currentOptions.value };
-    // TODO(hsubox76): handle multiple hosting configs
-    pluginLogger.debug(
-      "Calling getDefaultHostingSite() with options",
-      inspect(options),
-    );
-    firebaseJSON.set("hosting", {
-      ...firebaseJSON.get("hosting"),
-      site: await getDefaultHostingSite(options),
-    });
-    pluginLogger.debug(
-      "Calling getCommandOptions() with options",
-      inspect(options),
-    );
-    const commandOptions = await getCommandOptions(firebaseJSON, options);
-    pluginLogger.debug(
-      "Calling hosting deploy with command options",
-      inspect(commandOptions),
-    );
-    if (deployTarget === "live") {
-      await deploy(["hosting"], commandOptions);
-    } else {
-      await hostingChannelDeployAction(deployTarget, commandOptions);
-    }
-    pluginLogger.debug("Hosting deploy complete");
-  } catch (e) {
-    let message = `Error deploying to hosting`;
-    if (e.message) {
-      message += `: ${e.message}`;
-    }
-    if (e.original) {
-      message += ` (original: ${e.original})`;
-    }
-    pluginLogger.error(message);
-    return { success: false, hostingUrl: "", consoleUrl: "" };
-  }
-  return { success: true, hostingUrl: "", consoleUrl: "" };
-}
-
 export async function emulatorsStart(
   emulatorUiSelections: EmulatorUiSelections,
 ) {
-  const only =
-    emulatorUiSelections.mode === "hosting"
-      ? "hosting"
-      : emulatorUiSelections.mode === "dataconnect"
+  const only = emulatorUiSelections.mode === "dataconnect"
         ? `${Emulators.DATACONNECT},${Emulators.AUTH}`
         : "";
   const commandOptions = await getCommandOptions(undefined, {
