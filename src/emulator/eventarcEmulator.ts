@@ -9,6 +9,7 @@ import { CloudEvent } from "./events/types";
 import { EmulatorRegistry } from "./registry";
 import { FirebaseError } from "../error";
 import { cloudEventFromProtoToJson } from "./eventarcEmulatorUtils";
+import * as cors from "cors";
 
 interface EmulatedEventTrigger {
   projectId: string;
@@ -130,7 +131,7 @@ export class EventarcEmulator implements EmulatorInstance {
     hub.post([registerTriggerRoute], dataMiddleware, registerTriggerHandler);
     hub.post([publishEventsRoute], dataMiddleware, publishEventsHandler);
     hub.post([publishNativeEventsRoute], dataMiddleware, publishNativeEventsHandler);
-    hub.get([getTriggersRoute], dataMiddleware, getTriggersHandler);
+    hub.get([getTriggersRoute], cors({ origin: true }), getTriggersHandler);
     hub.all("*", (req, res) => {
       this.logger.log("DEBUG", `Eventarc emulator received unknown request at path ${req.path}`);
       res.sendStatus(404);
