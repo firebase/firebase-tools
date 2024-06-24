@@ -20,7 +20,7 @@ export const command = new Command("dataconnect:sdk:generate")
         const cwd = options.cwd || process.cwd();
         configDir = path.resolve(path.join(cwd), configDir);
       }
-      const serviceInfo = await load(projectId,  configDir);
+      const serviceInfo = await load(projectId, configDir);
       const hasGeneratables = serviceInfo.connectorInfo.some((c) => {
         return (
           c.connectorYaml.generate?.javascriptSdk ||

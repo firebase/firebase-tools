@@ -14,9 +14,7 @@ export function readFirebaseJson(config: Config): DataConnectMultiple {
   }
   const validator = (cfg: any) => {
     if (!cfg["source"]) {
-      throw new FirebaseError(
-        "Invalid firebase.json: DataConnect requires `source`",
-      );
+      throw new FirebaseError("Invalid firebase.json: DataConnect requires `source`");
     }
     return {
       source: cfg["source"],

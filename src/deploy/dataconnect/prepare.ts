@@ -25,9 +25,7 @@ export default async function (context: any, options: Options): Promise<void> {
   utils.logLabeledBullet("dataconnect", `Preparing to deploy`);
   const filters = getResourceFilters(options);
   const serviceInfos = await Promise.all(
-    serviceCfgs.map((c) =>
-      load(projectId, path.join(options.cwd || process.cwd(), c.source)),
-    ),
+    serviceCfgs.map((c) => load(projectId, path.join(options.cwd || process.cwd(), c.source))),
   );
   for (const si of serviceInfos) {
     si.deploymentMetadata = await build(options, si.sourceDirectory);

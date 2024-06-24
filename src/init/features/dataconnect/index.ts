@@ -109,7 +109,7 @@ function subValues(
     cloudSqlInstanceId: string;
     cloudSqlDatabase: string;
     connectorId: string;
-    locationId: string,
+    locationId: string;
   },
 ): string {
   const replacements: Record<string, string> = {
