@@ -196,7 +196,7 @@ export class DataConnectEmulator implements EmulatorInstance {
     if (!emuInfo) {
       return false;
     }
-    const serviceInfo = await load(this.args.projectId, this.args.locationId, this.args.configDir);
+    const serviceInfo = await load(this.args.projectId, this.args.configDir);
     const sameService = emuInfo.services.find(
       (s) => serviceInfo.dataConnectYaml.serviceId === s.serviceId,
     );
