@@ -91,6 +91,17 @@ export class Config {
         }
       }
     }
+
+    if (
+      this._src.dataconnect?.location ||
+      (Array.isArray(this._src.dataconnect) && this._src.dataconnect.some((c: any) => c?.location))
+    ) {
+      utils.logLabeledWarning(
+        "dataconnect",
+        "'location' has been moved from 'firebase.json' to 'dataconnect.yaml'. " +
+          "Please remove 'dataconnect.location' from 'firebase.json' and add it as top level field to 'dataconnect.yaml' instead ",
+      );
+    }
   }
 
   materialize(target: string) {

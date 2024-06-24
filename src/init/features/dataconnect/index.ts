@@ -69,6 +69,9 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
 
   if (!config.has("dataconnect")) {
     config.set("dataconnect.source", dir);
+  } else {
+    // Remove location if it was previously set.
+    config.set("dataconnect", { source: dir });
   }
   await config.askWriteProjectFile(join(dir, "dataconnect.yaml"), subbedDataconnectYaml);
   await config.askWriteProjectFile(join(dir, "schema", "schema.gql"), SCHEMA_TEMPLATE);
