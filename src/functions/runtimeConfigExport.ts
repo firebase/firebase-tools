@@ -178,7 +178,7 @@ const CHARACTERS_TO_ESCAPE_SEQUENCES: Record<string, string> = {
 
 function escape(s: string): string {
   // Escape newlines, tabs, backslashes and quotes
-  return s.replace(/[\n\r\t\v\\"']/g, (ch) => CHARACTERS_TO_ESCAPE_SEQUENCES[ch]);
+  return (s || '').replace(/[\n\r\t\v\\"']/g, (ch) => CHARACTERS_TO_ESCAPE_SEQUENCES[ch]);
 }
 
 /**
