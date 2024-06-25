@@ -85,7 +85,7 @@ jobs:
 
       - run: npm i -g npm@9.5
       - run: npm ci
-      - run: npm test -- -- --forbid-only
+      - run: npm test
 
   unit:
     runs-on: ubuntu-latest
@@ -104,7 +104,7 @@ jobs:
 
       - run: npm i -g npm@9.5
       - run: npm ci
-      - run: npm test -- -- --forbid-only
+      - run: npm test
 
       - uses: codecov/codecov-action@v3
         if: matrix.node-version == '20'
