@@ -76,7 +76,7 @@ const choices = [
 if (isEnabled("genkit")) {
   choices.push({
     value: "genkit",
-    name: "Genkit: Setup a new Genkit project with Firebase",
+    name: "Genkit: Set up a new Genkit project with Firebase",
     checked: false,
   });
 }
