@@ -23,9 +23,7 @@ import {
   registerDataConnectConfigs,
 } from "./config";
 import { locationToRange } from "../utils/graphql";
-import { runDataConnectCompiler } from "./core-compiler";
 import { Result } from "../result";
-import { runEmulatorIssuesStream } from "./emulator-stream";
 import { LanguageClient } from "vscode-languageclient/node";
 import { registerTerminalTasks } from "./terminal";
 import { registerWebview } from "../webview";
@@ -177,26 +175,6 @@ export function registerFdc(
       if (configs && configs.values.length > 0) {
         client = setupLanguageClient(context, configs, lsOutputChannel);
         vscode.commands.executeCommand("fdc-graphql.start");
-      }
-    }),
-  });
-
-  // Perform some side-effects when the endpoint changes
-  context.subscriptions.push({
-    dispose: effect(() => {
-      const configs = dataConnectConfigs.value?.tryReadValue;
-      if (configs && emulatorController.getLocalEndpoint().value) {
-        // TODO move to client.start or setupLanguageClient
-        vscode.commands.executeCommand("fdc-graphql.restart");
-        vscode.commands.executeCommand(
-          "firebase.dataConnect.executeIntrospection",
-        );
-        runEmulatorIssuesStream(
-          configs,
-          emulatorController.getLocalEndpoint().value,
-          fdcEmulatorsController.isPostgresEnabled,
-        );
-        runDataConnectCompiler(configs, emulatorController.getLocalEndpoint().value);
       }
     }),
   });
