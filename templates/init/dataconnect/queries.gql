@@ -1,51 +1,56 @@
 # # Example queries for a simple email app.
 
-## @auth() directives control who can call each operation.
-## Only admins should be able to list all users, so we use NO_ACCESS
-# query ListUsers @auth(level: NO_ACCESS) {
-#   users { uid, name, email: address }
+# # @auth() directives control who can call each operation.
+# # Only admins should be able to list all emails, so we use NO_ACCESS
+# query ListEmails @auth(level: NO_ACCESS) {
+#   emails {
+#     id, subject, text, sent
+#     from {
+#       name
+#     }
+#   }
 # }
 
-## Everyone should be able to see their inbox though, so we use PUBLIC
-# query ListInbox(
-#   $uid: String
-# ) @auth(level: PUBLIC) {
-## where allows you to filter lists
-## Here, we use it to filter to only emails where this user is one of the recipients.
+# # Only admins should be able to list all users, so we use NO_ACCESS
+# query ListUsers @auth(level: NO_ACCESS) {
+#   users { uid, name, address }
+# }
+  
+# # Logged in users should be able to see their inbox though, so we use USER
+# query ListInbox @auth(level: USER) {
+#   # where allows you to filter lists
+#   # Here, we use it to filter to only emails that are sent to the logged in user.
 #   emails(where: {
 #     users_via_Recipient: {
-#       exist: { uid: { eq: $uid }
+#       exist: { uid: { eq_expr: "auth.uid" }
 #     }}
 #   }) {
 #     id subject sent
 #     content: text # Select the `text` field but alias it as `content` in the response.
-#     sender: from { name email: address uid }
-
-## <field>_on_<foreign_key_field> makes it easy to grab info from another table
-## Here, we use it to grab all the recipients of the email.
+#     sender: from { name address uid }
+#     # <field>_on_<foreign_key_field> makes it easy to grab info from another table
+#     # Here, we use it to grab all the recipients of the email.
 #     to: recipients_on_email {
-#       user { name email: address uid }
+#       user { name address uid }
 #     }
 #   }
 # }
 
 # query GetUidByEmail($emails: [String!]) @auth(level: PUBLIC) {
 #   users(where: { address: { in: $emails } }) {
-#     uid email: address
+#     uid address
 #   }
 # }
 
-# query ListSent(
-#   $uid: String
-# ) @auth(level: PUBLIC) {
+# query ListSent($uid: String) @auth(level: PUBLIC) {
 #   emails(where: {
-#     fromUid: { eq: $uid }
+#     from: {uid: {eq: $uid }}
 #   }) {
 #     id subject sent
 #     content: text
-#     sender: from { name email: address uid }
+#     sender: from { name address uid }
 #     to: recipients_on_email {
-#       user { name email: address uid }
+#       user { name address uid }
 #     }
 #   }
 # }

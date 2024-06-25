@@ -6,7 +6,7 @@ import { getStorage } from "firebase-admin/storage";
 import * as fs from "fs";
 import * as puppeteer from "puppeteer";
 import { TEST_ENV } from "./env";
-import { IMAGE_FILE_BASE64 } from "../../../src/test/emulators/fixtures";
+import { IMAGE_FILE_BASE64 } from "../../../src/emulator/testing/fixtures";
 import { EmulatorEndToEndTest } from "../../integration-helpers/framework";
 import {
   createRandomFile,
@@ -474,7 +474,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
           TEST_ENV.requestClient.get(downloadUrl, (response) => {
             let data = Buffer.alloc(0);
             expect(response.headers["content-disposition"]).to.be.eql(
-              "attachment; filename=testFile",
+              "attachment; filename*=testFile",
             );
             response
               .on("data", (chunk) => {

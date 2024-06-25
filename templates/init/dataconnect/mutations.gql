@@ -1,30 +1,35 @@
 # # Example mutations for a simple email app
 
-# mutation CreateUser($uid: String, $name: String, $address: String) @auth(level: NO_ACCESS) {
-## <type>_insert lets you create a new row in your table.
+# # Logged in user can create their own account.
+# mutation CreateUser($name: String!, $address: String!) @auth(level: USER) {
+#   # <type>_insert lets you create a new row in your table.
 #   user_insert(data: {
-#     uid: $uid,
+#     # Server values let your service populate sensitive data.
+#     # Users can only setup their own account.
+#     uid_expr: "auth.uid",
 #     name: $name,
 #     address: $address
 #   })
 # }
-# mutation CreateEmail($content: String, $subject: String, $fromUid: String) @auth(level: PUBLIC) {
+
+# # Logged in user can send emails from their account.
+# mutation CreateEmail($content: String, $subject: String) @auth(level: USER) {
 #   email_insert(data: {
-#     text: $content, # The request variable name doesn't have to match the field name.
+#     # The request variable name doesn't have to match the field name.
+#     text: $content,
 #     subject: $subject,
-#     fromUid: $fromUid,
-## Server values let your service populate data for you
-## Here, we use sent_date: { today: true } to set 'sent' to today's date.
+#     # Server values let your service populate sensitive data.
+#     # Users are only allowed to create emails sent from their account.
+#     fromUid_expr: "auth.uid",
+#     # Server values let your service populate data for you
+#     # Here, we use sent_date: { today: true } to set 'sent' to today's date.
 #     sent_date: { today: true }
 #   })
 # }
-# mutation CreateRecipient($emailId: UUID, $uid: String) @auth(level: PUBLIC) {
+
+# mutation CreateRecipient($emailId: UUID) @auth(level: USER) {
 #   recipient_insert(data: {
 #     emailId: $emailId,
-#     userUid: $uid
+#     userUid_expr: "auth.uid"
 #   })
-# }
-# mutation DeleteEmail($emailId: UUID, $uid: String) @auth(level: PUBLIC) {
-## <type>_ delete lets you delete rows from your table.
-#   recipient_delete(key: {emailId: $emailId, userUid: $uid})
 # }

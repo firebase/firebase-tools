@@ -4,6 +4,8 @@ import * as operationPoller from "../operation-poller";
 import * as types from "./types";
 
 const DATACONNECT_API_VERSION = "v1alpha";
+const PAGE_SIZE_MAX = 100;
+
 const dataconnectClient = () =>
   new Client({
     urlPrefix: dataconnectOrigin(),
@@ -23,6 +25,11 @@ export async function listLocations(projectId: string): Promise<string[]> {
 }
 
 /** Service methods */
+export async function getService(serviceName: string): Promise<types.Service> {
+  const res = await dataconnectClient().get<types.Service>(serviceName);
+  return res.body;
+}
+
 export async function listAllServices(projectId: string): Promise<types.Service[]> {
   const res = await dataconnectClient().get<{ services: types.Service[] }>(
     `/projects/${projectId}/locations/-/services`,
@@ -54,21 +61,28 @@ export async function createService(
   return pollRes;
 }
 
-export async function deleteService(
-  projectId: string,
-  locationId: string,
-  serviceId: string,
-): Promise<types.Service> {
+async function deleteService(serviceName: string): Promise<types.Service> {
   // NOTE(fredzqm): Don't force delete yet. Backend would leave orphaned resources.
-  const op = await dataconnectClient().delete<types.Service>(
-    `projects/${projectId}/locations/${locationId}/services/${serviceId}`,
-  );
+  const op = await dataconnectClient().delete<types.Service>(serviceName);
   const pollRes = await operationPoller.pollOperation<types.Service>({
     apiOrigin: dataconnectOrigin(),
     apiVersion: DATACONNECT_API_VERSION,
     operationResourceName: op.body.name,
   });
   return pollRes;
+}
+
+export async function deleteServiceAndChildResources(serviceName: string): Promise<void> {
+  const connectors = await listConnectors(serviceName);
+  await Promise.all(connectors.map(async (c) => deleteConnector(c.name)));
+  try {
+    await deleteSchema(serviceName);
+  } catch (err: any) {
+    if (err.status !== 404) {
+      throw err;
+    }
+  }
+  await deleteService(serviceName);
 }
 
 /** Schema methods */
@@ -107,6 +121,18 @@ export async function upsertSchema(
   });
 }
 
+export async function deleteSchema(serviceName: string): Promise<void> {
+  const op = await dataconnectClient().delete<types.Schema>(
+    `${serviceName}/schemas/${types.SCHEMA_ID}`,
+  );
+  await operationPoller.pollOperation<void>({
+    apiOrigin: dataconnectOrigin(),
+    apiVersion: DATACONNECT_API_VERSION,
+    operationResourceName: op.body.name,
+  });
+  return;
+}
+
 /** Connector methods */
 
 export async function getConnector(name: string): Promise<types.Connector> {
@@ -115,15 +141,34 @@ export async function getConnector(name: string): Promise<types.Connector> {
 }
 
 export async function deleteConnector(name: string): Promise<void> {
-  const res = await dataconnectClient().delete<void>(name);
-  return res.body;
+  const op = await dataconnectClient().delete<types.Connector>(name);
+  await operationPoller.pollOperation<void>({
+    apiOrigin: dataconnectOrigin(),
+    apiVersion: DATACONNECT_API_VERSION,
+    operationResourceName: op.body.name,
+  });
+  return;
 }
 
 export async function listConnectors(serviceName: string) {
-  const res = await dataconnectClient().get<{ connectors: types.Connector[] }>(
-    `${serviceName}/connectors`,
-  );
-  return res.body?.connectors || [];
+  const connectors: types.Connector[] = [];
+  const getNextPage = async (pageToken = "") => {
+    const res = await dataconnectClient().get<{
+      connectors?: types.Connector[];
+      nextPageToken?: string;
+    }>(`${serviceName}/connectors`, {
+      queryParams: {
+        pageSize: PAGE_SIZE_MAX,
+        pageToken,
+      },
+    });
+    connectors.push(...(res.body.connectors || []));
+    if (res.body.nextPageToken) {
+      await getNextPage(res.body.nextPageToken);
+    }
+  };
+  await getNextPage();
+  return connectors;
 }
 
 export async function upsertConnector(connector: types.Connector) {
