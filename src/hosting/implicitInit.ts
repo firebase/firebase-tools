@@ -1,14 +1,14 @@
 import * as _ from "lodash";
 import * as clc from "colorette";
-import * as fs from "fs";
 
 import { fetchWebSetup, getCachedWebSetup } from "../fetchWebSetup";
 import * as utils from "../utils";
 import { logger } from "../logger";
 import { EmulatorRegistry } from "../emulator/registry";
 import { EMULATORS_SUPPORTED_BY_USE_EMULATOR, Emulators } from "../emulator/types";
+import { readTemplateSync } from "../templates";
 
-const INIT_TEMPLATE = fs.readFileSync(__dirname + "/../../templates/hosting/init.js", "utf8");
+const INIT_TEMPLATE = readTemplateSync("hosting/init.js");
 
 export interface TemplateServerResponse {
   // __init.js content with only initializeApp()
