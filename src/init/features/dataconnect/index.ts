@@ -1,6 +1,5 @@
-import { join, resolve } from "path";
+import { join } from "path";
 import { confirm, promptOnce } from "../../../prompt";
-import { readFileSync } from "fs";
 import { Config } from "../../../config";
 import { Setup } from "../..";
 import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql";
@@ -12,14 +11,13 @@ import { Schema, Service } from "../../../dataconnect/types";
 import { DEFAULT_POSTGRES_CONNECTION } from "../emulators";
 import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
 import { logger } from "../../../logger";
+import { readTemplateSync } from "../../../templates";
 
-const TEMPLATE_ROOT = resolve(__dirname, "../../../../templates/init/dataconnect/");
-
-const DATACONNECT_YAML_TEMPLATE = readFileSync(join(TEMPLATE_ROOT, "dataconnect.yaml"), "utf8");
-const CONNECTOR_YAML_TEMPLATE = readFileSync(join(TEMPLATE_ROOT, "connector.yaml"), "utf8");
-const SCHEMA_TEMPLATE = readFileSync(join(TEMPLATE_ROOT, "schema.gql"), "utf8");
-const QUERIES_TEMPLATE = readFileSync(join(TEMPLATE_ROOT, "queries.gql"), "utf8");
-const MUTATIONS_TEMPLATE = readFileSync(join(TEMPLATE_ROOT, "mutations.gql"), "utf8");
+const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
+const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yaml");
+const SCHEMA_TEMPLATE = readTemplateSync("init/dataconnect/schema.gql");
+const QUERIES_TEMPLATE = readTemplateSync("init/dataconnect/queries.gql");
+const MUTATIONS_TEMPLATE = readTemplateSync("init/dataconnect/mutations.gql");
 
 interface RequiredInfo {
   serviceId: string;
