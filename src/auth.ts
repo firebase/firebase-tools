@@ -1,13 +1,10 @@
 import * as clc from "colorette";
 import * as FormData from "form-data";
-import * as fs from "fs";
 import * as http from "http";
 import * as jwt from "jsonwebtoken";
 import * as opn from "open";
-import * as path from "path";
 import * as portfinder from "portfinder";
 import * as url from "url";
-import * as util from "util";
 
 import * as apiv2 from "./apiv2";
 import { configstore } from "./configstore";
@@ -40,6 +37,7 @@ import {
   GitHubAuthResponse,
   UserCredentials,
 } from "./types/auth";
+import { readTemplate } from "./templates";
 
 portfinder.setBasePort(9005);
 
@@ -379,18 +377,17 @@ async function getGithubTokensFromAuthorizationCode(code: string, callbackUrl: s
   return res.body.access_token;
 }
 
-async function respondWithFile(
+function respondHtml(
   req: http.IncomingMessage,
   res: http.ServerResponse,
   statusCode: number,
-  filename: string,
-) {
-  const response = await util.promisify(fs.readFile)(path.join(__dirname, filename));
+  html: string,
+): void {
   res.writeHead(statusCode, {
-    "Content-Length": response.length,
+    "Content-Length": html.length,
     "Content-Type": "text/html",
   });
-  res.end(response);
+  res.end(html);
   req.socket.destroy();
 }
 
@@ -458,12 +455,12 @@ async function loginRemotely(): Promise<UserCredentials> {
 async function loginWithLocalhostGoogle(port: number, userHint?: string): Promise<UserCredentials> {
   const callbackUrl = getCallbackUrl(port);
   const authUrl = getLoginUrl(callbackUrl, userHint);
-  const successTemplate = "../templates/loginSuccess.html";
+  const successHtml = await readTemplate("loginSuccess.html");
   const tokens = await loginWithLocalhost(
     port,
     callbackUrl,
     authUrl,
-    successTemplate,
+    successHtml,
     getTokensFromAuthorizationCode,
   );
 
@@ -480,12 +477,12 @@ async function loginWithLocalhostGoogle(port: number, userHint?: string): Promis
 async function loginWithLocalhostGitHub(port: number): Promise<string> {
   const callbackUrl = getCallbackUrl(port);
   const authUrl = getGithubLoginUrl(callbackUrl);
-  const successTemplate = "../templates/loginSuccessGithub.html";
+  const successHtml = await readTemplate("loginSuccessGithub.html");
   const tokens = await loginWithLocalhost(
     port,
     callbackUrl,
     authUrl,
-    successTemplate,
+    successHtml,
     getGithubTokensFromAuthorizationCode,
   );
   void trackGA4("login", { method: "github_localhost" });
@@ -496,7 +493,7 @@ async function loginWithLocalhost<ResultType>(
   port: number,
   callbackUrl: string,
   authUrl: string,
-  successTemplate: string,
+  successHtml: string,
   getTokens: (queryCode: string, callbackUrl: string) => Promise<ResultType>,
 ): Promise<ResultType> {
   return new Promise<ResultType>((resolve, reject) => {
@@ -506,7 +503,8 @@ async function loginWithLocalhost<ResultType>(
       const queryCode = query.code;
 
       if (queryState !== _nonce || typeof queryCode !== "string") {
-        await respondWithFile(req, res, 400, "../templates/loginFailure.html");
+        const html = await readTemplate("loginFailure.html");
+        respondHtml(req, res, 400, html);
         reject(new FirebaseError("Unexpected error while logging in"));
         server.close();
         return;
@@ -514,10 +512,11 @@ async function loginWithLocalhost<ResultType>(
 
       try {
         const tokens = await getTokens(queryCode, callbackUrl);
-        await respondWithFile(req, res, 200, successTemplate);
+        respondHtml(req, res, 200, successHtml);
         resolve(tokens);
       } catch (err: any) {
-        await respondWithFile(req, res, 400, "../templates/loginFailure.html");
+        const html = await readTemplate("loginFailure.html");
+        respondHtml(req, res, 400, html);
         reject(err);
       }
       server.close();

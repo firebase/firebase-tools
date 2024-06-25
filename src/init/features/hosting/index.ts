@@ -1,5 +1,4 @@
 import * as clc from "colorette";
-import * as fs from "fs";
 import { sync as rimraf } from "rimraf";
 import { join } from "path";
 
@@ -14,15 +13,10 @@ import { errNoDefaultSite, getDefaultHostingSite } from "../../../getDefaultHost
 import { Options } from "../../../options";
 import { last, logSuccess } from "../../../utils";
 import { interactiveCreateHostingSite } from "../../../hosting/interactive";
+import { readTemplateSync } from "../../../templates";
 
-const INDEX_TEMPLATE = fs.readFileSync(
-  __dirname + "/../../../../templates/init/hosting/index.html",
-  "utf8",
-);
-const MISSING_TEMPLATE = fs.readFileSync(
-  __dirname + "/../../../../templates/init/hosting/404.html",
-  "utf8",
-);
+const INDEX_TEMPLATE = readTemplateSync("init/hosting/index.html");
+const MISSING_TEMPLATE = readTemplateSync("init/hosting/404.html");
 const DEFAULT_IGNORES = ["firebase.json", "**/.*", "**/node_modules/**"];
 
 /**

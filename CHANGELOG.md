@@ -1,0 +1,1 @@
+- Moved `dataconnect.location` key in `firebase.json` to `dataconnect.yaml`.
