@@ -25,13 +25,13 @@ export interface EventarcEmulatorArgs {
   port?: number;
   host?: string;
 }
+const GOOGLE_CHANNEL = "google";
 
 export class EventarcEmulator implements EmulatorInstance {
   private destroyServer?: () => Promise<void>;
 
   private logger = EmulatorLogger.forEmulator(Emulators.EVENTARC);
-  private customEvents: { [key: string]: EmulatedEventTrigger[] } = {};
-  private nativeEvents: { [key: string]: EmulatedEventTrigger[] } = {};
+  private events: { [key: string]: EmulatedEventTrigger[] } = {};
 
   constructor(private args: EventarcEmulatorArgs) {}
 
@@ -56,37 +56,34 @@ export class EventarcEmulator implements EmulatorInstance {
         res.status(400).send({ error });
         return;
       }
-      if (eventTrigger.channel) {
-        const key = `${eventTrigger.eventType}-${eventTrigger.channel}`;
-        this.logger.logLabeled(
-          "BULLET",
-          "eventarc",
-          `Registering custom event trigger for ${key} with trigger name ${triggerName}.`,
-        );
-        const customEventTriggers = this.customEvents[key] || [];
-        customEventTriggers.push({ projectId, triggerName, eventTrigger });
-        this.customEvents[key] = customEventTriggers;
-      } else {
-        this.logger.logLabeled(
-          "BULLET",
-          "eventarc",
-          `Registering custom event trigger for ${eventTrigger.eventType} with trigger name ${triggerName}.`,
-        );
-        const nativeEventTriggers = this.nativeEvents[eventTrigger.eventType] || [];
-        nativeEventTriggers.push({ projectId, triggerName, eventTrigger });
-        this.nativeEvents[eventTrigger.eventType] = nativeEventTriggers;
-      }
+      const channel = eventTrigger.channel || GOOGLE_CHANNEL;
+      const key = `${eventTrigger.eventType}-${channel}`;
+      this.logger.logLabeled(
+        "BULLET",
+        "eventarc",
+        `Registering Eventarc event trigger for ${key} with trigger name ${triggerName}.`,
+      );
+      const eventTriggers = this.events[key] || [];
+      eventTriggers.push({ projectId, triggerName, eventTrigger });
+      this.events[key] = eventTriggers;
       res.status(200).send({ res: "OK" });
     };
 
     const getTriggersRoute = `/google/getTriggers`;
     const getTriggersHandler: express.RequestHandler = (req, res) => {
-      res.status(200).send(this.nativeEvents);
+      res.status(200).send(this.events);
     };
 
     const publishEventsRoute = `/projects/:project_id/locations/:location/channels/:channel::publishEvents`;
+    const publishNativeEventsRoute = `/google/publishEvents`;
+
     const publishEventsHandler: express.RequestHandler = (req, res) => {
-      const channel = `projects/${req.params.project_id}/locations/${req.params.location}/channels/${req.params.channel}`;
+      const isCustom = req.params.project_id && req.params.channel;
+
+      const channel = isCustom
+        ? `projects/${req.params.project_id}/locations/${req.params.location}/channels/${req.params.channel}`
+        : GOOGLE_CHANNEL;
+
       const body = JSON.parse((req as RequestWithRawBody).rawBody.toString());
       for (const event of body.events) {
         if (!event.type) {
@@ -95,9 +92,9 @@ export class EventarcEmulator implements EmulatorInstance {
         }
         this.logger.log(
           "INFO",
-          `Received custom event at channel ${channel}: ${JSON.stringify(event, null, 2)}`,
+          `Received event at channel ${channel}: ${JSON.stringify(event, null, 2)}`,
         );
-        this.triggerCustomEventFunction(channel, event);
+        this.triggerEventFunction(channel, event);
       }
       res.sendStatus(200);
     };
@@ -113,24 +110,10 @@ export class EventarcEmulator implements EmulatorInstance {
       });
     };
 
-    const publishNativeEventsRoute = `/google/publishEvents`;
-    const publishNativeEventsHandler: express.RequestHandler = (req, res) => {
-      const body = JSON.parse((req as RequestWithRawBody).rawBody.toString());
-      for (const event of body.events as CloudEvent<any>[]) {
-        if (!event.type) {
-          res.sendStatus(400);
-          return;
-        }
-        this.logger.log("INFO", `Received ${event.type} event: ${JSON.stringify(event, null, 2)}`);
-        void this.triggerNativeEventFunction(event);
-      }
-      res.sendStatus(200);
-    };
-
     const hub = express();
     hub.post([registerTriggerRoute], dataMiddleware, registerTriggerHandler);
     hub.post([publishEventsRoute], dataMiddleware, publishEventsHandler);
-    hub.post([publishNativeEventsRoute], dataMiddleware, publishNativeEventsHandler);
+    hub.post([publishNativeEventsRoute], dataMiddleware, publishEventsHandler);
     hub.get([getTriggersRoute], cors({ origin: true }), getTriggersHandler);
     hub.all("*", (req, res) => {
       this.logger.log("DEBUG", `Eventarc emulator received unknown request at path ${req.path}`);
@@ -139,13 +122,14 @@ export class EventarcEmulator implements EmulatorInstance {
     return hub;
   }
 
-  async triggerCustomEventFunction(channel: string, event: CloudEvent<any>): Promise<void[]> {
+  async triggerEventFunction(channel: string, event: CloudEvent<any>): Promise<void[]> {
     if (!EmulatorRegistry.isRunning(Emulators.FUNCTIONS)) {
       this.logger.log("INFO", "Functions emulator not found. This should not happen.");
       return Promise.reject();
     }
     const key = `${event.type}-${channel}`;
-    const triggers = this.customEvents[key] || [];
+    const triggers = this.events[key] || [];
+    const eventPayload = channel === GOOGLE_CHANNEL ? event : cloudEventFromProtoToJson(event);
     return await Promise.all(
       triggers
         .filter(
@@ -153,24 +137,7 @@ export class EventarcEmulator implements EmulatorInstance {
             !trigger.eventTrigger.eventFilters ||
             this.matchesAll(event, trigger.eventTrigger.eventFilters),
         )
-        .map((trigger) => this.callFunctionTrigger(trigger, cloudEventFromProtoToJson(event))),
-    );
-  }
-
-  async triggerNativeEventFunction(event: CloudEvent<any>) {
-    if (!EmulatorRegistry.isRunning(Emulators.FUNCTIONS)) {
-      this.logger.log("INFO", "Functions emulator not found. This should not happen.");
-      return Promise.reject();
-    }
-    const triggers = this.nativeEvents[event.type] || [];
-    return await Promise.all(
-      triggers
-        .filter(
-          (trigger) =>
-            !trigger.eventTrigger.eventFilters ||
-            this.matchesAll(event, trigger.eventTrigger.eventFilters),
-        )
-        .map((trigger) => this.callFunctionTrigger(trigger, event)),
+        .map((trigger) => this.callFunctionTrigger(trigger, eventPayload)),
     );
   }
 
