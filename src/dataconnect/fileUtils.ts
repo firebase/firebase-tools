@@ -39,7 +39,7 @@ export async function readDataConnectYaml(sourceDirectory: string): Promise<Data
 }
 
 function validateDataConnectYaml(unvalidated: any): DataConnectYaml {
-  // TODO: Add validation
+  // TODO: Use json schema for validation here!
   if (!unvalidated["location"]) {
     throw new FirebaseError("Missing required field 'location' in dataconnect.yaml");
   }

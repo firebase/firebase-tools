@@ -21,10 +21,3 @@ export async function promptDeleteConnector(
     utils.logLabeledSuccess("dataconnect", `Connector ${connectorName} deleted`);
   }
 }
-
-export function locationInFirebaseJsonWarning() {
-  utils.logLabeledWarning(
-    "dataconnect",
-    `'location' has been moved from 'firebase.json' to 'dataconnect.yaml'. Please remove 'dataconnect.location' from 'firebase.json' and add location: `,
-  );
-}

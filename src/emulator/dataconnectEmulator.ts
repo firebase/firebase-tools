@@ -142,7 +142,7 @@ export class DataConnectEmulator implements EmulatorInstance {
     ];
     const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8" });
 
-    logger.debug(res.stderr);
+    logger.info(res.stderr);
     if (res.error) {
       throw new FirebaseError(`Error starting up Data Connect generate: ${res.error.message}`, {
         original: res.error,
