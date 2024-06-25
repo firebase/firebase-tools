@@ -121,9 +121,10 @@ export const ALL_EXPERIMENTS = experiments({
     public: false,
   },
 
+  // TODO(joehanley): Delete this once weve scrubbed all references to experiment from docs.
   dataconnect: {
-    shortDescription: "Enable Data Connect related features.",
-    fullDescription: "Enable Data Connect related features.",
+    shortDescription: "Deprecated. Previosuly, enabled Data Connect related features.",
+    fullDescription: "Deprecated. Previously, enabled Data Connect related features.",
     public: false,
   },
 

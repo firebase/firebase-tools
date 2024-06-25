@@ -184,8 +184,7 @@ export class EmulatorRegistry {
       }
       url.port = info.port.toString();
     } else {
-      // This can probably only happen during testing, but let's warn anyway.
-      console.warn(`Cannot determine host and port of ${emulator}`);
+      throw new Error(`Cannot determine host and port of ${emulator}`);
     }
 
     return url;

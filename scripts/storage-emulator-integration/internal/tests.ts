@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import * as supertest from "supertest";
-import { StorageRulesFiles } from "../../../src/test/emulators/fixtures";
+import { StorageRulesFiles } from "../../../src/emulator/testing/fixtures";
 import { TriggerEndToEndTest } from "../../integration-helpers/framework";
 import {
   EMULATORS_SHUTDOWN_DELAY_MS,

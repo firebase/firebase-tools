@@ -1,5 +1,4 @@
 import * as clc from "colorette";
-import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 
@@ -14,12 +13,12 @@ import * as fsutils from "../fsutils";
 import * as utils from "../utils";
 import { Options } from "../options";
 import { isEnabled } from "../experiments";
+import { readTemplateSync } from "../templates";
 
 const homeDir = os.homedir();
 
-const TEMPLATE_ROOT = path.resolve(__dirname, "../../templates/");
-const BANNER_TEXT = fs.readFileSync(path.join(TEMPLATE_ROOT, "banner.txt"), "utf8");
-const GITIGNORE_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_gitignore"), "utf8");
+const BANNER_TEXT = readTemplateSync("banner.txt");
+const GITIGNORE_TEMPLATE = readTemplateSync("_gitignore");
 
 function isOutside(from: string, to: string): boolean {
   return !!/^\.\./.exec(path.relative(from, to));
@@ -81,18 +80,16 @@ if (isEnabled("genkit")) {
   });
 }
 
-if (isEnabled("dataconnect")) {
-  choices.push({
-    value: "dataconnect",
-    name: "Data Connect: Set up a Firebase Data Connect service.",
-    checked: false,
-  });
-  choices.push({
-    value: "dataconnect:sdk",
-    name: "Data Connect: Set up a generated SDK for your Firebase Data Connect service.",
-    checked: false,
-  });
-}
+choices.push({
+  value: "dataconnect",
+  name: "Data Connect: Set up a Firebase Data Connect service.",
+  checked: false,
+});
+choices.push({
+  value: "dataconnect:sdk",
+  name: "Data Connect: Set up a generated SDK for your Firebase Data Connect service.",
+  checked: false,
+});
 
 const featureNames = choices.map((choice) => choice.value);
 

@@ -2,8 +2,7 @@ import { existsSync } from "fs";
 import { pathExists } from "fs-extra";
 import { basename, extname, join, posix, sep } from "path";
 import { readFile } from "fs/promises";
-import { sync as globSync } from "glob";
-import * as glob from "glob";
+import { glob, sync as globSync } from "glob";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
 import { coerce } from "semver";
 
@@ -471,23 +470,12 @@ export async function getProductionDistDirFiles(
   sourceDir: string,
   distDir: string,
 ): Promise<string[]> {
-  const productionDistDirFiles = await new Promise<string[]>((resolve, reject) =>
-    glob(
-      "**",
-      {
-        ignore: [join("cache", "webpack", "*-development", "**"), join("cache", "eslint", "**")],
-        cwd: join(sourceDir, distDir),
-        nodir: true,
-        absolute: false,
-      },
-      (err, matches) => {
-        if (err) reject(err);
-        resolve(matches);
-      },
-    ),
-  );
-
-  return productionDistDirFiles;
+  return glob("**", {
+    ignore: [join("cache", "webpack", "*-development", "**"), join("cache", "eslint", "**")],
+    cwd: join(sourceDir, distDir),
+    nodir: true,
+    absolute: false,
+  });
 }
 
 /**

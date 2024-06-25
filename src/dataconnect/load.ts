@@ -5,13 +5,9 @@ import { ServiceInfo, toDatasource, SCHEMA_ID } from "./types";
 /**
  * loads schemas and connectors from  {sourceDirectory}/dataconnect.yaml
  */
-export async function load(
-  projectId: string,
-  locationId: string,
-  sourceDirectory: string,
-): Promise<ServiceInfo> {
+export async function load(projectId: string, sourceDirectory: string): Promise<ServiceInfo> {
   const dataConnectYaml = await fileUtils.readDataConnectYaml(sourceDirectory);
-  const serviceName = `projects/${projectId}/locations/${locationId}/services/${dataConnectYaml.serviceId}`;
+  const serviceName = `projects/${projectId}/locations/${dataConnectYaml.location}/services/${dataConnectYaml.serviceId}`;
   const schemaDir = path.join(sourceDirectory, dataConnectYaml.schema.source);
   const schemaGQLs = await fileUtils.readGQLFiles(schemaDir);
   const connectorInfo = await Promise.all(
@@ -37,7 +33,11 @@ export async function load(
     sourceDirectory,
     schema: {
       name: `${serviceName}/schemas/${SCHEMA_ID}`,
-      primaryDatasource: toDatasource(projectId, locationId, dataConnectYaml.schema.datasource),
+      primaryDatasource: toDatasource(
+        projectId,
+        dataConnectYaml.location,
+        dataConnectYaml.schema.datasource,
+      ),
       source: {
         files: schemaGQLs,
       },

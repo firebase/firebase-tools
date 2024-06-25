@@ -102,6 +102,7 @@ export interface DataConnectYaml {
   specVersion?: string;
   serviceId: string;
   schema: SchemaYaml;
+  location: string;
   connectorDirs: string[];
 }
 
