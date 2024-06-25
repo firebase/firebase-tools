@@ -68,6 +68,25 @@ jobs:
       - uses: codecov/codecov-action@v3
         if: matrix.node-version == '20'
 
+  unit-windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        node-version:
+          - "18"
+          - "20"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: npm-shrinkwrap.json
+
+      - run: npm i -g npm@9.5
+      - run: npm ci
+      - run: npm test -- -- --forbid-only
+
   unit:
     runs-on: ubuntu-latest
     strategy:

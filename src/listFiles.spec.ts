@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { listFiles } from "./listFiles";
 import { FIXTURE_DIR } from "./test/fixtures/ignores";
 
-describe("listFiles", () => {
+describe.only("listFiles", () => {
   // for details, see the file structure and firebase.json in test/fixtures/ignores
   it("should ignore firebase-debug.log, specified ignores, and nothing else", () => {
     const fileNames = listFiles(FIXTURE_DIR, [
