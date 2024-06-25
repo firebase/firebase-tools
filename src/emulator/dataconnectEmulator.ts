@@ -184,7 +184,6 @@ export class DataConnectEmulator implements EmulatorInstance {
     }
   }
 
-
   private getLocalConectionString() {
     if (dataConnectLocalConnString()) {
       return dataConnectLocalConnString();
@@ -238,10 +237,11 @@ export class DataConnectEmulator implements EmulatorInstance {
   }
 
   public async connectToPostgres(
-    connectionString: string,
+    localConnectionString?: string,
     database?: string,
     serviceId?: string,
   ): Promise<boolean> {
+    const connectionString = localConnectionString ?? this.getLocalConectionString();
     if (!connectionString) {
       const msg = `No Postgres connection string found in '.firebaserc'. The Data Connect emulator will not be able to execute operations.
 Run ${clc.bold("firebase setup:emulators:dataconnect")} to set up a Postgres connection.`;

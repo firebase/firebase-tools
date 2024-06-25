@@ -127,9 +127,9 @@ export interface ConnectorYaml {
 }
 
 export interface Generate {
-  javascriptSdk?: JavascriptSDK[];
-  swiftSdk?: SwiftSDK[];
-  kotlinSdk?: KotlinSDK[];
+  javascriptSdk?: JavascriptSDK;
+  swiftSdk?: SwiftSDK;
+  kotlinSdk?: KotlinSDK;
 }
 
 export interface JavascriptSDK {
@@ -157,10 +157,10 @@ export interface ServiceInfo {
 }
 
 export interface ConnectorInfo {
-  directory: string,
+  directory: string;
   connector: Connector;
   connectorYaml: ConnectorYaml;
-};
+}
 
 export function toDatasource(
   projectId: string,
