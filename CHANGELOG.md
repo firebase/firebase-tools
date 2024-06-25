@@ -1,0 +1,1 @@
+- Fixes issue where files were not properly being discovered and deployed to Firebase Hosting (#7363, #7378)
