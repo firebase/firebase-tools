@@ -395,4 +395,39 @@ describe("githubConnections", () => {
       expect(promptOnceStub).to.be.called;
     });
   });
+  describe("promptGitHubBranch", () => {
+    const sandbox: sinon.SinonSandbox = sinon.createSandbox();
+
+    let promptOnceStub: sinon.SinonStub;
+    let listAllBranchesStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
+      listAllBranchesStub = sandbox
+        .stub(devconnect, "listAllBranches")
+        .throws("Unexpected listAllBranches call");
+    });
+
+    it("re-prompts if user enters a branch that dodes not exist in given repo", () => {
+      listAllBranchesStub.returns({
+        lookupMap: new Map([
+          ["main", true],
+          ["test1", true],
+        ]),
+      });
+
+      promptOnceStub.onFirstCall().returns("not-main");
+      promptOnceStub.onSecondCall().returns("test1");
+      const testRepoLink = {
+        name: "test",
+        cloneUri: "/test",
+        createTime: "",
+        updateTime: "",
+        deleteTime: "",
+        reconciling: false,
+        uid: "",
+      };
+      expect(repo.promptGitHubBranch(testRepoLink)).to.eventually.be("test1");
+    });
+  });
 });

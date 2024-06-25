@@ -244,12 +244,7 @@ interface ListAllBranchesResponse {
   lookupMap: Map<string, boolean>;
 }
 
-export async function listAllBranches(
-  gitRepositoryLink: GitRepositoryLink,
-  connectionId: string,
-  projectId: string,
-  location: string,
-): Promise<ListAllBranchesResponse> {
+export async function listAllBranches(repoLinkName: string): Promise<ListAllBranchesResponse> {
   const branches: string[] = [];
   const lookupMap: Map<string, boolean> = new Map();
 
@@ -257,16 +252,13 @@ export async function listAllBranches(
     const res = await client.get<{
       refNames: string[];
       nextPageToken?: string;
-    }>(
-      `/projects/${projectId}/locations/${LOCATION_OVERRIDE ?? location}/connections/${connectionId}/gitRepositoryLinks/${gitRepositoryLink.uid}:fetchGitRefs`,
-      {
-        queryParams: {
-          refType: "BRANCH",
-          pageSize: PAGE_SIZE_MAX,
-          pageToken,
-        },
+    }>(`${repoLinkName}:fetchGitRefs`, {
+      queryParams: {
+        refType: "BRANCH",
+        pageSize: PAGE_SIZE_MAX,
+        pageToken,
       },
-    );
+    });
     if (Array.isArray(res.body.refNames)) {
       res.body.refNames.forEach((branch) => {
         branches.push(branch);
