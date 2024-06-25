@@ -20,7 +20,7 @@ export const command = new Command("dataconnect:sdk:generate")
         const cwd = options.cwd || process.cwd();
         configDir = path.resolve(path.join(cwd), configDir);
       }
-      const serviceInfo = await load(projectId, service.location, configDir);
+      const serviceInfo = await load(projectId, configDir);
       const hasGeneratables = serviceInfo.connectorInfo.some((c) => {
         return (
           c.connectorYaml.generate?.javascriptSdk ||
@@ -38,7 +38,6 @@ export const command = new Command("dataconnect:sdk:generate")
       for (const conn of serviceInfo.connectorInfo) {
         const output = await DataConnectEmulator.generate({
           configDir,
-          locationId: service.location,
           connectorId: conn.connectorYaml.connectorId,
         });
         logger.info(output);
