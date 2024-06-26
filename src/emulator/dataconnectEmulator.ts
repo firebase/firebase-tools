@@ -12,6 +12,7 @@ import { BuildResult, requiresVector } from "../dataconnect/types";
 import { listenSpecsToString } from "./portUtils";
 import { Client, ClientResponse } from "../apiv2";
 import { EmulatorRegistry } from "./registry";
+import { logger } from "../logger";
 import { load } from "../dataconnect/load";
 import { isVSCodeExtension } from "../utils";
 import { EventEmitter } from "events";
@@ -20,14 +21,12 @@ export interface DataConnectEmulatorArgs {
   projectId: string;
   listen: ListenSpec[];
   configDir: string;
-  locationId: string;
   auto_download?: boolean;
   rc: RC;
 }
 
 export interface DataConnectGenerateArgs {
   configDir: string;
-  locationId: string;
   connectorId: string;
 }
 
@@ -82,7 +81,6 @@ export class DataConnectEmulator implements EmulatorInstance {
         auto_download: this.args.auto_download,
         listen: listenSpecsToString(this.args.listen),
         config_dir: this.args.configDir,
-        service_location: this.args.locationId,
       });
       this.usingExistingEmulator = false;
     }
@@ -139,15 +137,21 @@ export class DataConnectEmulator implements EmulatorInstance {
       "--logtostderr",
       "-v=2",
       "generate",
-      `--service_location=${args.locationId}`,
       `--config_dir=${args.configDir}`,
       `--connector_id=${args.connectorId}`,
     ];
     const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8" });
+
+    logger.info(res.stderr);
     if (res.error) {
       throw new FirebaseError(`Error starting up Data Connect generate: ${res.error.message}`, {
         original: res.error,
       });
+    }
+    if (res.status !== 0) {
+      throw new FirebaseError(
+        `Unable to generate your Data Connect SDKs (exit code ${res.status}): ${res.stderr}`,
+      );
     }
     return res.stdout;
   }
@@ -192,7 +196,7 @@ export class DataConnectEmulator implements EmulatorInstance {
     if (!emuInfo) {
       return false;
     }
-    const serviceInfo = await load(this.args.projectId, this.args.locationId, this.args.configDir);
+    const serviceInfo = await load(this.args.projectId, this.args.configDir);
     const sameService = emuInfo.services.find(
       (s) => serviceInfo.dataConnectYaml.serviceId === s.serviceId,
     );

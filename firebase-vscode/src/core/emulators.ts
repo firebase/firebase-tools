@@ -129,7 +129,7 @@ export class EmulatorsController implements Disposable {
 
   /**
    * Formats a project ID with a demo prefix if we're in offline mode, or uses the
-   * regular ID if we're in hosting only mode.
+   * regular ID if we're in dataconnect only mode.
    */
   private getProjectIdForMode(
     projectId: string | undefined,
@@ -138,7 +138,7 @@ export class EmulatorsController implements Disposable {
     if (!projectId) {
       return "demo-something";
     }
-    if (mode === "hosting" || mode === "dataconnect") {
+    if (mode === "dataconnect") {
       return projectId;
     }
     return "demo-" + projectId;
