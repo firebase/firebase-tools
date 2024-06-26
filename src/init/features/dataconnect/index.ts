@@ -1,4 +1,6 @@
 import { join } from "path";
+import * as clc from "colorette";
+
 import { confirm, promptOnce } from "../../../prompt";
 import { Config } from "../../../config";
 import { Setup } from "../..";
@@ -12,6 +14,7 @@ import { DEFAULT_POSTGRES_CONNECTION } from "../emulators";
 import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
+import { logSuccess } from "../../../utils";
 
 const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
 const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yaml");
@@ -96,6 +99,10 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
       waitForCreation: false,
     });
   }
+  logger.info("");
+  logSuccess(
+    `If you'd like to generate an SDK for your new connector, run ${clc.bold("firebase init dataconnect:sdk")}`,
+  );
 }
 
 function subValues(

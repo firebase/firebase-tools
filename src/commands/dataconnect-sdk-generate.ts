@@ -1,4 +1,5 @@
 import * as path from "path";
+import * as clc from "colorette";
 
 import { Command } from "../command";
 import { Options } from "../options";
@@ -31,7 +32,10 @@ export const command = new Command("dataconnect:sdk:generate")
       if (!hasGeneratables) {
         logger.warn("No generated SDKs have been declared in connector.yaml files.");
         logger.warn(
-          "See https://firebase.google.com/docs/data-connect/quickstart#configure-sdk-outputs for examples of how to configure generated SDKs.",
+          `Run ${clc.bold("firebase init dataconnect:sdk")} to configure a generated SDK.`,
+        );
+        logger.warn(
+          `See https://firebase.google.com/docs/data-connect/gp/web-sdk for more details of how to configure generated SDKs.`,
         );
         return;
       }
