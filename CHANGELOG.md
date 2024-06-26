@@ -1,3 +1,0 @@
-- Moved `dataconnect.location` key in `firebase.json` to `dataconnect.yaml`.
-- Fixes issue where files were not properly being discovered and deployed to Firebase Hosting (#7363, #7378)
-- Added new command `init dataconnect:sdk`, which interactively configures a generated SDK for a Data Connect connector.
