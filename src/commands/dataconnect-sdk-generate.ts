@@ -35,7 +35,7 @@ export const command = new Command("dataconnect:sdk:generate")
           `Run ${clc.bold("firebase init dataconnect:sdk")} to configure a generated SDK.`,
         );
         logger.warn(
-          `See https://firebase.google.com/docs/data-connect/quickstart#configure-sdk-outputs for more details of how to configure generated SDKs.`,
+          `See https://firebase.google.com/docs/data-connect/gp/web-sdk for more details of how to configure generated SDKs.`,
         );
         return;
       }
