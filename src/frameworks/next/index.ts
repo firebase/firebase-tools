@@ -1,5 +1,5 @@
 import { execSync } from "child_process";
-import { spawn, sync as spawnSync } from "cross-spawn";
+import { spawn } from "cross-spawn";
 import { mkdir, copyFile } from "fs/promises";
 import { basename, dirname, join } from "path";
 import type { NextConfig } from "next";
@@ -16,6 +16,7 @@ import { parser } from "stream-json";
 import { pick } from "stream-json/filters/Pick";
 import { streamObject } from "stream-json/streamers/StreamObject";
 import { fileExistsSync } from "../../fsutils";
+import * as esbuild from "esbuild";
 
 import { promptOnce } from "../../prompt";
 import { FirebaseError } from "../../error";
@@ -74,7 +75,6 @@ import {
   ROUTES_MANIFEST,
   APP_PATH_ROUTES_MANIFEST,
   APP_PATHS_MANIFEST,
-  ESBUILD_VERSION,
   SERVER_REFERENCE_MANIFEST,
 } from "./constants";
 import { getAllSiteDomains, getDeploymentDomain } from "../../hosting/api";
@@ -90,7 +90,6 @@ export const support = SupportLevel.Preview;
 export const type = FrameworkType.MetaFramework;
 export const docsUrl = "https://firebase.google.com/docs/hosting/frameworks/nextjs";
 
-const BUNDLE_NEXT_CONFIG_TIMEOUT = 60_000;
 const DEFAULT_NUMBER_OF_REASONS_TO_LIST = 5;
 
 function getReactVersion(cwd: string): string | undefined {
@@ -595,27 +594,24 @@ export async function ɵcodegenFunctionsDirectory(
       });
       // Mark all production deps as externals, so they aren't bundled
       // DevDeps won't be included in the Cloud Function, so they should be bundled
-      const esbuildArgs = productionDeps
-        .map((it) => `--external:${it}`)
-        .concat("--bundle", "--platform=node", `--target=node${NODE_VERSION}`, "--log-level=error");
-
+      const esbuildArgs: esbuild.BuildOptions = {
+        entryPoints: [join(sourceDir, configFile)],
+        outfile: join(destDir, configFile),
+        bundle: true,
+        platform: "node",
+        target: `node${NODE_VERSION}`,
+        logLevel: "error",
+        external: productionDeps,
+      };
       if (configFile === "next.config.mjs") {
         // ensure generated file is .mjs if the config is .mjs
-        esbuildArgs.push(...[`--outfile=${join(destDir, configFile)}`, "--format=esm"]);
-      } else {
-        esbuildArgs.push(`--outfile=${join(destDir, configFile)}`);
+        esbuildArgs.format = "esm";
       }
 
-      const bundle = spawnSync(
-        "npx",
-        ["--yes", `esbuild@${ESBUILD_VERSION}`, configFile, ...esbuildArgs],
-        {
-          cwd: sourceDir,
-          timeout: BUNDLE_NEXT_CONFIG_TIMEOUT,
-        },
-      );
-      if (bundle.status !== 0) {
-        throw new FirebaseError(bundle.stderr.toString());
+      const bundle = await esbuild.build(esbuildArgs);
+
+      if (bundle.errors.length > 0) {
+        throw new FirebaseError(bundle.errors.toString());
       }
     } catch (e: any) {
       console.warn(
