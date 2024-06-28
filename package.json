@@ -97,6 +97,7 @@
     ]
   },
   "dependencies": {
+    "@breejs/later": "^4.2.0",
     "@google-cloud/cloud-sql-connector": "^1.2.3",
     "@google-cloud/pubsub": "^4.4.0",
     "abort-controller": "^3.0.0",
@@ -171,6 +172,7 @@
     "@types/archiver": "^6.0.0",
     "@types/async-lock": "^1.1.5",
     "@types/body-parser": "^1.17.0",
+    "@types/breejs__later": "^4.1.5",
     "@types/chai": "^4.3.0",
     "@types/chai-as-promised": "^7.1.4",
     "@types/cjson": "^0.5.0",

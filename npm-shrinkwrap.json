@@ -9,6 +9,7 @@
       "version": "13.12.0",
       "license": "MIT",
       "dependencies": {
+        "@breejs/later": "^4.2.0",
         "@google-cloud/cloud-sql-connector": "^1.2.3",
         "@google-cloud/pubsub": "^4.4.0",
         "abort-controller": "^3.0.0",
@@ -86,6 +87,7 @@
         "@types/archiver": "^6.0.0",
         "@types/async-lock": "^1.1.5",
         "@types/body-parser": "^1.17.0",
+        "@types/breejs__later": "^4.1.5",
         "@types/chai": "^4.3.0",
         "@types/chai-as-promised": "^7.1.4",
         "@types/cjson": "^0.5.0",
@@ -907,6 +909,14 @@
       },
       "engines": {
         "node": ">=6.9.0"
+      }
+    },
+    "node_modules/@breejs/later": {
+      "version": "4.2.0",
+      "resolved": "https://registry.npmjs.org/@breejs/later/-/later-4.2.0.tgz",
+      "integrity": "sha512-EVMD0SgJtOuFeg0lAVbCwa+qeTKILb87jqvLyUtQswGD9+ce2nB52Y5zbTF1Hc0MDFfbydcMcxb47jSdhikVHA==",
+      "engines": {
+        "node": ">= 10"
       }
     },
     "node_modules/@colors/colors": {
@@ -3835,6 +3845,12 @@
         "@types/connect": "*",
         "@types/node": "*"
       }
+    },
+    "node_modules/@types/breejs__later": {
+      "version": "4.1.5",
+      "resolved": "https://registry.npmjs.org/@types/breejs__later/-/breejs__later-4.1.5.tgz",
+      "integrity": "sha512-O7VIO7sktsIwmLUyEeUnLMJ+QD2pv0yBGI2EMbVmwC1GOOTWJAaneL82ZyIwRgpEjJ9ciUHP8LuuuU55uj5ZjA==",
+      "dev": true
     },
     "node_modules/@types/caseless": {
       "version": "0.12.5",
@@ -21312,6 +21328,11 @@
         "to-fast-properties": "^2.0.0"
       }
     },
+    "@breejs/later": {
+      "version": "4.2.0",
+      "resolved": "https://registry.npmjs.org/@breejs/later/-/later-4.2.0.tgz",
+      "integrity": "sha512-EVMD0SgJtOuFeg0lAVbCwa+qeTKILb87jqvLyUtQswGD9+ce2nB52Y5zbTF1Hc0MDFfbydcMcxb47jSdhikVHA=="
+    },
     "@colors/colors": {
       "version": "1.5.0",
       "resolved": "https://registry.npmjs.org/@colors/colors/-/colors-1.5.0.tgz",
@@ -23550,6 +23571,12 @@
         "@types/connect": "*",
         "@types/node": "*"
       }
+    },
+    "@types/breejs__later": {
+      "version": "4.1.5",
+      "resolved": "https://registry.npmjs.org/@types/breejs__later/-/breejs__later-4.1.5.tgz",
+      "integrity": "sha512-O7VIO7sktsIwmLUyEeUnLMJ+QD2pv0yBGI2EMbVmwC1GOOTWJAaneL82ZyIwRgpEjJ9ciUHP8LuuuU55uj5ZjA==",
+      "dev": true
     },
     "@types/caseless": {
       "version": "0.12.5",

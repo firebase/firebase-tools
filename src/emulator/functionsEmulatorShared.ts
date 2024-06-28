@@ -44,7 +44,7 @@ export interface ParsedTriggerDefinition {
   availableMemoryMb?: backend.MemoryOptions;
   httpsTrigger?: any;
   eventTrigger?: EventTrigger;
-  schedule?: EventSchedule;
+  scheduleTrigger?: EventSchedule;
   blockingTrigger?: BlockingTrigger;
   labels?: { [key: string]: any };
   codebase?: string;
@@ -231,9 +231,7 @@ export function emulatedFunctionsFromEndpoints(
         };
       }
     } else if (backend.isScheduleTriggered(endpoint)) {
-      // TODO: This is an awkward transformation. Emulator does not understand scheduled triggers - maybe it should?
-      def.eventTrigger = { eventType: "pubsub", resource: "" };
-      def.schedule = endpoint.scheduleTrigger as EventSchedule;
+      def.scheduleTrigger = endpoint.scheduleTrigger as EventSchedule;
     } else if (backend.isBlockingTriggered(endpoint)) {
       def.blockingTrigger = {
         eventType: endpoint.blockingTrigger.eventType,
@@ -346,6 +344,9 @@ export function getFunctionService(def: ParsedTriggerDefinition): string {
   if (def.httpsTrigger) {
     return "https";
   }
+  if (def.scheduleTrigger) {
+    return "scheduled";
+  }
 
   return "unknown";
 }
@@ -457,7 +458,7 @@ export function getSignatureType(def: EmulatedTriggerDefinition): SignatureType 
   if (def.httpsTrigger || def.blockingTrigger) {
     return "http";
   }
-  if (def.platform === "gcfv2" && def.schedule) {
+  if (def.platform === "gcfv2" && def.scheduleTrigger) {
     return "http";
   }
   // TODO: As implemented, emulated CF3v1 functions cannot receive events in CloudEvent format, and emulated CF3v2
