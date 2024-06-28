@@ -97,7 +97,7 @@ export async function doSetup(
   location =
     location || (await promptLocation(projectId, "Select a location to host your backend:\n"));
 
-  const gitRepositoryConnection: GitRepositoryLink = await githubConnections.linkGitHubRepository(
+  const gitRepositoryLink: GitRepositoryLink = await githubConnections.linkGitHubRepository(
     projectId,
     location,
   );
@@ -112,12 +112,7 @@ export async function doSetup(
   // TODO: Once tag patterns are implemented, prompt which method the user
   // prefers. We could reduce the number of questions asked by letting people
   // enter tag:<pattern>?
-  const branch = await promptOnce({
-    name: "branch",
-    type: "input",
-    default: "main",
-    message: "Pick a branch for continuous deployment",
-  });
+  const branch = await githubConnections.promptGitHubBranch(gitRepositoryLink);
   logSuccess(`Repo linked successfully!\n`);
 
   logBullet(`${clc.yellow("===")} Set up your backend`);
@@ -139,7 +134,7 @@ export async function doSetup(
     projectId,
     location,
     backendId,
-    gitRepositoryConnection,
+    gitRepositoryLink,
     serviceAccount,
     webApp?.id,
     rootDir,

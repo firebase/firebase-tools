@@ -104,4 +104,48 @@ describe("developer connect", () => {
       expect(conns).to.deep.equal([firstRepo, secondRepo, thirdRepo]);
     });
   });
+
+  describe("listAllBranches", () => {
+    it("interates through all pages and returns a single list and map", async () => {
+      const firstBranch = "test";
+      const secondBranch = "test2";
+      const thirdBranch = "test3";
+
+      get
+        .onFirstCall()
+        .returns({
+          body: {
+            refNames: [firstBranch],
+            nextPageToken: "someToken",
+          },
+        })
+        .onSecondCall()
+        .returns({
+          body: {
+            refNames: [secondBranch],
+            nextPageToken: "someToken2",
+          },
+        })
+        .onThirdCall()
+        .returns({
+          body: {
+            refNames: [thirdBranch],
+          },
+        });
+
+      const { branches, lookupMap } = await devconnect.listAllBranches(
+        "/projects/blah/locations/us-central1/connections/blah",
+      );
+      expect(get).callCount(3);
+
+      expect(branches).to.deep.equal([firstBranch, secondBranch, thirdBranch]);
+      expect(lookupMap).to.deep.equal(
+        new Map([
+          [firstBranch, true],
+          [secondBranch, true],
+          [thirdBranch, true],
+        ]),
+      );
+    });
+  });
 });
