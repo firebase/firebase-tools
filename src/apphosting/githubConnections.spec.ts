@@ -412,7 +412,28 @@ describe("githubConnections", () => {
       sandbox.verifyAndRestore();
     });
 
-    it("re-prompts if user enters a branch that dodes not exist in given repo", async () => {
+    it("prompts user for branch", async () => {
+      listAllBranchesStub.returns({
+        lookupMap: new Map([
+          ["main", true],
+          ["test1", true],
+        ]),
+      });
+
+      promptOnceStub.onFirstCall().returns("main");
+      const testRepoLink = {
+        name: "test",
+        cloneUri: "/test",
+        createTime: "",
+        updateTime: "",
+        deleteTime: "",
+        reconciling: false,
+        uid: "",
+      };
+      await expect(repo.promptGitHubBranch(testRepoLink)).to.eventually.equal("main");
+    });
+
+    it("re-prompts if user enters a branch that does not exist in given repo", async () => {
       listAllBranchesStub.returns({
         lookupMap: new Map([
           ["main", true],
