@@ -408,7 +408,11 @@ describe("githubConnections", () => {
         .throws("Unexpected listAllBranches call");
     });
 
-    it("re-prompts if user enters a branch that dodes not exist in given repo", () => {
+    afterEach(() => {
+      sandbox.verifyAndRestore();
+    });
+
+    it("re-prompts if user enters a branch that dodes not exist in given repo", async () => {
       listAllBranchesStub.returns({
         lookupMap: new Map([
           ["main", true],
@@ -427,7 +431,7 @@ describe("githubConnections", () => {
         reconciling: false,
         uid: "",
       };
-      expect(repo.promptGitHubBranch(testRepoLink)).to.eventually.be("test1");
+      await expect(repo.promptGitHubBranch(testRepoLink)).to.eventually.equal("test1");
     });
   });
 });
