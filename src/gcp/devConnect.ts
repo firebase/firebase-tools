@@ -235,7 +235,7 @@ export async function listAllLinkableGitRepositories(
 }
 
 /**
- * Lists all branches for a given repo. Returns a an aray of branches
+ * Lists all branches for a given repo. Returns an aray of branches
  * and a map to make lookups more efficient.
  */
 interface ListAllBranchesResponse {
