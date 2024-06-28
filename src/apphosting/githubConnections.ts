@@ -259,6 +259,10 @@ async function promptCloneUri(
   return { cloneUri, connection: cloneUriToConnection[cloneUri] };
 }
 
+/**
+ * Prompts the user for a GitHub branch and validates that the given branch
+ * actually exists. User is re-prompted until they enter a valid branch.
+ */
 export async function promptGitHubBranch(repoLink: devConnect.GitRepositoryLink) {
   const { lookupMap } = await devConnect.listAllBranches(repoLink.name);
 
