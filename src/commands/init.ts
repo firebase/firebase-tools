@@ -82,7 +82,12 @@ if (isEnabled("genkit")) {
 
 choices.push({
   value: "dataconnect",
-  name: "Data Connect: Set up a Firebase Data Connect service.",
+  name: "Data Connect: Set up a Firebase Data Connect service",
+  checked: false,
+});
+choices.push({
+  value: "dataconnect:sdk",
+  name: "Data Connect: Set up a generated SDK for your Firebase Data Connect service",
   checked: false,
 });
 

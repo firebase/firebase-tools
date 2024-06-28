@@ -1,2 +1,1 @@
-- Moved `dataconnect.location` key in `firebase.json` to `dataconnect.yaml`.
-- Fixes issue where files were not properly being discovered and deployed to Firebase Hosting (#7363, #7378)
+- Fixes framework support for Nuxt ^3.12 by correctly calling loadNuxtConfig() (#7375)
