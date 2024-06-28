@@ -839,13 +839,9 @@ export async function startAll(
       projectId,
       auto_download: true,
       configDir,
-      locationId: config[0].location,
       rc: options.rc,
     });
     await startEmulator(dataConnectEmulator);
-    if (!utils.isVSCodeExtension()) {
-      await dataConnectEmulator.connectToPostgres();
-    }
   }
 
   if (listenForEmulator.storage) {

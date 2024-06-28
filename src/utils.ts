@@ -23,6 +23,7 @@ import { FirebaseError } from "./error";
 import { logger, LogLevel } from "./logger";
 import { LogDataOrUndefined } from "./emulator/loggingEmulator";
 import { promptOnce } from "./prompt";
+import { readTemplateSync } from "./templates";
 
 export const IS_WINDOWS = process.platform === "win32";
 const SUCCESS_CHAR = IS_WINDOWS ? "+" : "✔";
@@ -800,8 +801,7 @@ export async function openInBrowserPopup(
   url: string,
   buttonText: string,
 ): Promise<{ url: string; cleanup: () => void }> {
-  const popupPage = fs
-    .readFileSync(path.join(__dirname, "../templates/popup.html"), { encoding: "utf-8" })
+  const popupPage = readTemplateSync("popup.html")
     .replace("${url}", url)
     .replace("${buttonText}", buttonText);
 

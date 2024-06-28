@@ -1,22 +1,15 @@
-import * as fs from "fs";
-import * as path from "path";
-
 import { askInstallDependencies } from "./npm-dependencies";
 import { prompt } from "../../../prompt";
 import { configForCodebase } from "../../../functions/projectConfig";
+import { readTemplateSync } from "../../../templates";
 
-const TEMPLATE_ROOT = path.resolve(__dirname, "../../../../templates/init/functions/javascript/");
-const INDEX_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "index.js"), "utf8");
-const PACKAGE_LINTING_TEMPLATE = fs.readFileSync(
-  path.join(TEMPLATE_ROOT, "package.lint.json"),
-  "utf8",
+const INDEX_TEMPLATE = readTemplateSync("init/functions/javascript/index.js");
+const PACKAGE_LINTING_TEMPLATE = readTemplateSync("init/functions/javascript/package.lint.json");
+const PACKAGE_NO_LINTING_TEMPLATE = readTemplateSync(
+  "init/functions/javascript/package.nolint.json",
 );
-const PACKAGE_NO_LINTING_TEMPLATE = fs.readFileSync(
-  path.join(TEMPLATE_ROOT, "package.nolint.json"),
-  "utf8",
-);
-const ESLINT_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_eslintrc"), "utf8");
-const GITIGNORE_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_gitignore"), "utf8");
+const ESLINT_TEMPLATE = readTemplateSync("init/functions/javascript/_eslintrc");
+const GITIGNORE_TEMPLATE = readTemplateSync("init/functions/javascript/_gitignore");
 
 export function setup(setup: any, config: any): Promise<any> {
   return prompt(setup.functions, [

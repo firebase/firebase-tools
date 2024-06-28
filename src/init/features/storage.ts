@@ -1,14 +1,11 @@
 import * as clc from "colorette";
-import * as fs from "fs";
 
 import { logger } from "../../logger";
 import { promptOnce } from "../../prompt";
 import { ensureLocationSet } from "../../ensureCloudResourceLocation";
+import { readTemplateSync } from "../../templates";
 
-const RULES_TEMPLATE = fs.readFileSync(
-  __dirname + "/../../../templates/init/storage/storage.rules",
-  "utf8",
-);
+const RULES_TEMPLATE = readTemplateSync("init/storage/storage.rules");
 
 export async function doSetup(setup: any, config: any): Promise<void> {
   setup.config.storage = {};

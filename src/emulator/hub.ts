@@ -214,7 +214,8 @@ export class EmulatorHub extends ExpressBasedEmulator {
     const locatorPath = EmulatorHub.getLocatorFilePath(this.args.projectId);
     return new Promise((resolve, reject) => {
       fs.unlink(locatorPath, (e) => {
-        if (e) {
+        // If the file is already deleted, no need to throw.
+        if (e && e.code !== "ENOENT") {
           reject(e);
         } else {
           resolve();

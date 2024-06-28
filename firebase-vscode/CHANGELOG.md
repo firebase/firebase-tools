@@ -1,5 +1,19 @@
 ## NEXT
 
+## 0.3.0
+
+- Updated internal firebase-tools dependency to 13.12.0
+
+## 0.2.9
+
+- Updated internal firebase-tools dependency to 13.11.4
+
+- Support CLI started emulators
+
+## 0.2.8
+
+- Updated internal firebase-tools dependency to 13.11.3
+
 ## 0.2.7
 
 - Updated internal firebase-tools dependency to 13.11.2
