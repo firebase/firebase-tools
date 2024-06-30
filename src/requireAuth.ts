@@ -37,9 +37,7 @@ function getAuthClient(config: GoogleAuthOptions): GoogleAuth {
  * @param authScopes scopes to be obtained.
  */
 async function autoAuth(options: Options, authScopes: string[]): Promise<void | string> {
-  if (process.env.MONOSPACE_ENV) {
-    throw new FirebaseError("autoAuth not yet implemented for IDX. Please run 'firebase login'");
-  }
+ 
   const client = getAuthClient({ scopes: authScopes, projectId: options.project });
   const token = await client.getAccessToken();
   token !== null ? apiv2.setAccessToken(token) : false;
@@ -52,7 +50,10 @@ async function autoAuth(options: Options, authScopes: string[]): Promise<void | 
     // Make sure any error here doesn't block the CLI, but log it.
     logger.debug(`Error getting account credentials.`);
   }
-
+  if (process.env.MONOSPACE_ENV && token && clientEmail) {
+    // Within monospace, this a OAuth token for the user, so we make it the active user.
+    setActiveAccount(options, { user: {email: clientEmail}, tokens: {access_token: token} });
+  }
   return clientEmail;
 }
 
