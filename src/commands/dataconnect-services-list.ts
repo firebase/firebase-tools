@@ -42,7 +42,7 @@ export const command = new Command("dataconnect:services:list")
       const instanceName = schema?.primaryDatasource.postgresql?.cloudSql.instance ?? "";
       const instanceId = instanceName.split("/").pop();
       const dbId = schema?.primaryDatasource.postgresql?.database ?? "";
-      const dbName = `CloudSQL Instance: ${instanceId}\nDatabase:${dbId}`;
+      const dbName = `CloudSQL Instance: ${instanceId}\nDatabase: ${dbId}`;
       table.push([
         serviceName.serviceId,
         serviceName.location,

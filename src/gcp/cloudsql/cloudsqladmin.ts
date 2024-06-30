@@ -172,6 +172,17 @@ export async function createDatabase(
   return pollRes;
 }
 
+export async function deleteDatabase(
+  projectId: string,
+  instanceId: string,
+  databaseId: string,
+): Promise<Database> {
+  const res = await client.delete<Database>(
+    `projects/${projectId}/instances/${instanceId}/databases/${databaseId}`,
+  );
+  return res.body;
+}
+
 export async function createUser(
   projectId: string,
   instanceId: string,

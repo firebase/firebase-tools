@@ -1,3 +1,0 @@
-mutation createOrder($name: String!) {
-  order_insert(data : {name: $name})
-}
