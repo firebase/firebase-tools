@@ -240,9 +240,8 @@ export class RC {
   }
 
   setDataconnect(localConnectionString: string) {
-    if (!this.data.dataconnectEmulatorConfig) {
-      this.data.dataconnectEmulatorConfig = { postgres: { localConnectionString } };
-    }
+    this.data.dataconnectEmulatorConfig = { postgres: { localConnectionString } };
+    this.save();
   }
 
   /**

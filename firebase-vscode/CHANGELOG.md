@@ -1,4 +1,55 @@
-# Change Log
+## NEXT
+
+## 0.3.0
+
+- Updated internal firebase-tools dependency to 13.12.0
+
+## 0.2.9
+
+- Updated internal firebase-tools dependency to 13.11.4
+
+- Support CLI started emulators
+
+## 0.2.8
+
+- Updated internal firebase-tools dependency to 13.11.3
+
+## 0.2.7
+
+- Updated internal firebase-tools dependency to 13.11.2
+
+## 0.2.6
+
+- Updated internal firebase-tools dependency to 13.11.1
+
+- Fix behaviour on failed postgres connection
+
+## 0.2.5
+
+- Icon fix
+
+## 0.2.4
+
+- Emulator bump v1.2.0
+- Connect to postgres flow reworked
+- Telemetry enabled
+
+## 0.2.3
+
+- Emulator bump v1.1.19
+
+## 0.2.2
+
+- Emulator bump v1.1.18
+
+## 0.2.1
+
+- Update Logo
+- Improve init flow for users with existing firebase.json
+
+## 0.2.0
+
+- Fix Auth on IDX
 
 ## 0.1.9
 

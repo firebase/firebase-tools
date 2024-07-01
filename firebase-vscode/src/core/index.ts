@@ -1,6 +1,6 @@
-import vscode, { Disposable, ExtensionContext } from "vscode";
+import vscode, { Disposable, ExtensionContext, TelemetryLogger } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
-import { registerConfig } from "./config";
+import { getRootFolders, registerConfig } from "./config";
 import { EmulatorsController } from "./emulators";
 import { registerEnv } from "./env";
 import { pluginLogger } from "../logger-wrapper";
@@ -10,14 +10,13 @@ import { registerUser } from "./user";
 import { registerProject } from "./project";
 import { registerQuickstart } from "./quickstart";
 import { registerOptions } from "../options";
+import { upsertFile } from "../data-connect/file-utils";
 
-export async function registerCore({
-  broker,
-  context,
-}: {
-  broker: ExtensionBrokerImpl;
-  context: ExtensionContext;
-}): Promise<[EmulatorsController, vscode.Disposable]> {
+export async function registerCore(
+  broker: ExtensionBrokerImpl,
+  context: ExtensionContext,
+  telemetryLogger: TelemetryLogger,
+): Promise<[EmulatorsController, vscode.Disposable]> {
   const settings = getSettings();
 
   if (settings.npmPath) {
@@ -53,14 +52,27 @@ export async function registerCore({
   });
 
   const emulatorsController = new EmulatorsController(broker);
+  // Start the emulators when the extension starts.
+  emulatorsController.startEmulators();
+
+  const openRcCmd = vscode.commands.registerCommand(
+    "firebase.openFirebaseRc",
+    () => {
+      for (const root of getRootFolders()) {
+        upsertFile(vscode.Uri.file(`${root}/.firebaserc`), () => "");
+      }
+    },
+  );
+
   return [
     emulatorsController,
     Disposable.from(
+      openRcCmd,
       emulatorsController,
       registerOptions(context),
       registerConfig(broker),
       registerEnv(broker),
-      registerUser(broker),
+      registerUser(broker, telemetryLogger),
       registerProject(broker),
       registerQuickstart(broker),
       { dispose: sub1 },

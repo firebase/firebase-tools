@@ -2,6 +2,7 @@ import vscode, {
   ConfigurationTarget,
   Disposable,
   ExtensionContext,
+  TelemetryLogger,
 } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { registerWebview } from "../webview";
@@ -22,13 +23,15 @@ import { DataConnectService } from "./service";
 import { DataConnectError, toSerializedError } from "../../common/error";
 import { OperationLocation } from "./types";
 import { EmulatorsController } from "../core/emulators";
-import { InstanceType } from "./emulators-status";
+import { InstanceType } from "./code-lens-provider";
+import { DATA_CONNECT_EVENT_NAME } from "../analytics";
 
 export function registerExecution(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl,
   dataConnectService: DataConnectService,
   emulatorsController: EmulatorsController,
+  telemetryLogger: TelemetryLogger,
 ): Disposable {
   const treeDataProvider = new ExecutionHistoryTreeDataProvider();
   const executionHistoryTreeView = vscode.window.createTreeView(
@@ -104,7 +107,14 @@ export function registerExecution(
       }
 
       if (result === yes || result === always) {
+        telemetryLogger.logUsage(
+          DATA_CONNECT_EVENT_NAME.START_EMULATOR_FROM_EXECUTION,
+        );
         await vscode.commands.executeCommand("firebase.emulators.start");
+      } else {
+        telemetryLogger.logUsage(
+          DATA_CONNECT_EVENT_NAME.REFUSE_START_EMULATOR_FROM_EXECUTION,
+        );
       }
     }
 
@@ -213,7 +223,14 @@ export function registerExecution(
     executionHistoryTreeView,
     vscode.commands.registerCommand(
       "firebase.dataConnect.executeOperation",
-      executeOperation,
+      (ast, location, instanceType: InstanceType) => {
+        telemetryLogger.logUsage(
+          instanceType === InstanceType.LOCAL
+            ? DATA_CONNECT_EVENT_NAME.RUN_LOCAL
+            : DATA_CONNECT_EVENT_NAME.RUN_PROD,
+        );
+        executeOperation(ast, location, instanceType);
+      },
     ),
     vscode.commands.registerCommand(
       "firebase.dataConnect.selectExecutionResultToShow",

@@ -1,5 +1,5 @@
 import { expect, use } from "chai";
-import * as glob from "glob";
+import { glob } from "glob";
 import { join, normalize, relative } from "path";
 import { readFileSync } from "fs";
 import type { NextConfig } from "next";
@@ -24,12 +24,7 @@ const NEXT_SOURCE = `${__dirname}/nextjs`;
 const PATH_SEPARATOR = IS_WINDOWS ? `\\\\` : `\/`;
 
 async function getFilesListFromDir(dir: string): Promise<string[]> {
-  const files = await new Promise<string[]>((resolve, reject) => {
-    glob(`${dir}/**/*`, (err, matches) => {
-      if (err) reject(err);
-      resolve(matches.filter(fileExistsSync));
-    });
-  });
+  const files = await glob(`${dir}/**/*`, { nodir: true });
   return files.map((path) => relative(dir, path));
 }
 

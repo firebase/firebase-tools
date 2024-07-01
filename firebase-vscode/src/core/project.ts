@@ -1,4 +1,4 @@
-import vscode, { Disposable, ExtensionContext, QuickPickItem } from "vscode";
+import vscode, { Disposable } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { computed, effect } from "@preact/signals-react";
 import { firebaseRC, updateFirebaseRCProject } from "./config";
@@ -6,9 +6,9 @@ import { FirebaseProjectMetadata } from "../types/project";
 import { currentUser, isServiceAccount } from "./user";
 import { listProjects } from "../cli";
 import { pluginLogger } from "../logger-wrapper";
-import { currentOptions } from "../options";
 import { globalSignal } from "../utils/globals";
 import { firstWhereDefined } from "../utils/signal";
+import { User } from "../types/auth";
 
 /** Available projects */
 export const projects = globalSignal<Record<string, FirebaseProjectMetadata[]>>(
@@ -44,15 +44,20 @@ export const currentProject = computed<FirebaseProjectMetadata | undefined>(
 );
 
 export function registerProject(broker: ExtensionBrokerImpl): Disposable {
-  const sub1 = effect(async () => {
-    const user = currentUser.value;
-    if (user) {
-      pluginLogger.info("(Core:Project) New user detected, fetching projects");
+
+  async function fetchNewProjects(user: User) {
       const userProjects = await listProjects();
       projects.value = {
         ...projects.value,
         [user.email]: userProjects,
       };
+  }
+
+  const sub1 = effect(() => {
+    const user = currentUser.value;
+    if (user) {
+      pluginLogger.info("(Core:Project) New user detected, fetching projects");
+      fetchNewProjects(user);
     }
   });
 
@@ -66,7 +71,9 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
   const sub3 = effect(() => {
     const projectId = currentProjectId.value;
     if (projectId) {
-      updateFirebaseRCProject("default", currentProjectId.value);
+      updateFirebaseRCProject({
+        projectAlias: { alias: "default", projectId },
+      });
     }
   });
 

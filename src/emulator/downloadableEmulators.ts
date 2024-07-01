@@ -33,9 +33,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
     expectedChecksum: "2fd771101c0e1f7898c04c9204f2ce63",
   },
   firestore: {
-    version: "1.19.6",
-    expectedSize: 66349770,
-    expectedChecksum: "2eaabbe3cdb4867df585b7ec5505bad7",
+    version: "1.19.7",
+    expectedSize: 66438992,
+    expectedChecksum: "aec233bea95c5cfab03881574ec16d6c",
   },
   storage: {
     version: "1.1.3",
@@ -45,27 +45,33 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   ui: experiments.isEnabled("emulatoruisnapshot")
     ? { version: "SNAPSHOT", expectedSize: -1, expectedChecksum: "" }
     : {
-        version: "1.11.8",
-        expectedSize: 3523907,
-        expectedChecksum: "49f6dc1911dda9d10df62a6c09aaf9a0",
+        version: "1.12.1",
+        expectedSize: 3498269,
+        expectedChecksum: "a7f4398a00e5ca22abdcd78dc3877d00",
       },
   pubsub: {
-    version: "0.8.2",
-    expectedSize: 65611398,
-    expectedChecksum: "70bb840321423e6ae621a3ae2f314903",
+    version: "0.8.14",
+    expectedSize: 66786933,
+    expectedChecksum: "a9025b3e53fdeafd2969ccb3ba1e1d38",
   },
   dataconnect:
     process.platform === "darwin"
       ? {
-          version: "1.1.17",
-          expectedSize: 25602224,
-          expectedChecksum: "1f9e3dd040a0ac4d1cb4d9dde4a3c0b0",
+          version: "1.2.2",
+          expectedSize: 24007488,
+          expectedChecksum: "c1fb77895203681479ee5dd22d57249f",
         }
-      : {
-          version: "1.1.17",
-          expectedSize: 23036912,
-          expectedChecksum: "a0ec0517108f842ed06fea14fe7c7e56",
-        },
+      : process.platform === "win32"
+        ? {
+            version: "1.2.2",
+            expectedSize: 24414208,
+            expectedChecksum: "7e263c2b2bc9055ead2db8102e883534",
+          }
+        : {
+            version: "1.2.2",
+            expectedSize: 24023300,
+            expectedChecksum: "12467418226ac9657fb64b4d719d0e1d",
+          },
 };
 
 export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
@@ -155,24 +161,26 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
   dataconnect: {
     downloadPath: path.join(
       CACHE_DIR,
-      `dataconnect-emulator-${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
+      `dataconnect-emulator-${EMULATOR_UPDATE_DETAILS.dataconnect.version}${process.platform === "win32" ? ".exe" : ""}`,
     ),
     version: EMULATOR_UPDATE_DETAILS.dataconnect.version,
     binaryPath: path.join(
       CACHE_DIR,
-      `dataconnect-emulator-${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
+      `dataconnect-emulator-${EMULATOR_UPDATE_DETAILS.dataconnect.version}${process.platform === "win32" ? ".exe" : ""}`,
     ),
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
         process.platform === "darwin"
           ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-macos-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
-          : `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
+          : process.platform === "win32"
+            ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-windows-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
+            : `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
       expectedSize: EMULATOR_UPDATE_DETAILS.dataconnect.expectedSize,
       expectedChecksum: EMULATOR_UPDATE_DETAILS.dataconnect.expectedChecksum,
       skipChecksumAndSize: false,
       namePrefix: "dataconnect-emulator",
-      auth: true,
+      auth: false,
     },
   },
 };
@@ -265,7 +273,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     shell: false,
   },
   pubsub: {
-    binary: getExecPath(Emulators.PUBSUB)!,
+    binary: `${getExecPath(Emulators.PUBSUB)!}`,
     args: [],
     optionalArgs: ["port", "host"],
     joinArgs: true,
@@ -279,11 +287,17 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     shell: false,
   },
   dataconnect: {
-    binary: getExecPath(Emulators.DATACONNECT),
-    args: ["dev"],
-    optionalArgs: ["http_port", "grpc_port", "config_dir", "local_connection_string", "project_id"],
+    binary: `${getExecPath(Emulators.DATACONNECT)}`,
+    args: ["--logtostderr", "-v=2", "dev"],
+    optionalArgs: [
+      "listen",
+      "config_dir",
+      "disable_sdk_generation",
+      "resolvers_emulator",
+      "rpc_retry_count",
+    ],
     joinArgs: true,
-    shell: true,
+    shell: false,
   },
 };
 
@@ -309,7 +323,6 @@ export function _getCommand(
   args: { [s: string]: any },
 ): DownloadableEmulatorCommand {
   const baseCmd = Commands[emulator];
-
   const defaultPort = Constants.getDefaultPort(emulator);
   if (!args.port) {
     args.port = defaultPort;
@@ -425,6 +438,9 @@ async function _runBinary(
       };
       if (command.shell && utils.IS_WINDOWS) {
         opts.shell = true;
+        if (command.binary.includes(" ")) {
+          command.binary = `"${command.binary}"`;
+        }
       }
       emulator.instance = childProcess.spawn(command.binary, command.args, opts);
     } catch (e: any) {
@@ -489,7 +505,21 @@ async function _runBinary(
  * @param emulator
  */
 export function getDownloadDetails(emulator: DownloadableEmulators): EmulatorDownloadDetails {
-  return DownloadDetails[emulator];
+  const details = DownloadDetails[emulator];
+  const pathOverride = process.env[`${emulator.toUpperCase()}_EMULATOR_BINARY_PATH`];
+  if (pathOverride) {
+    const logger = EmulatorLogger.forEmulator(emulator);
+    logger.logLabeled(
+      "WARN",
+      emulator,
+      `Env variable override detected. Using ${emulator} emulator at ${pathOverride}`,
+    );
+    details.downloadPath = pathOverride;
+    details.binaryPath = pathOverride;
+    details.localOnly = true;
+    fs.chmodSync(pathOverride, 0o755);
+  }
+  return details;
 }
 
 /**
@@ -565,7 +595,7 @@ export async function start(
   },
   extraEnv: Partial<NodeJS.ProcessEnv> = {},
 ): Promise<void> {
-  const downloadDetails = DownloadDetails[targetName];
+  const downloadDetails = getDownloadDetails(targetName);
   const emulator = get(targetName);
   const hasEmulator = fs.existsSync(getExecPath(targetName));
   const logger = EmulatorLogger.forEmulator(targetName);

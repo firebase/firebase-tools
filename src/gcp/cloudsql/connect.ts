@@ -28,7 +28,7 @@ export async function execute(
   const connectionName = instance.connectionName;
   if (!connectionName) {
     throw new FirebaseError(
-      `Could not get instance conection string for ${opts.instanceId}:${opts.databaseId}`,
+      `Could not get instance connection string for ${opts.instanceId}:${opts.databaseId}`,
     );
   }
   let connector: Connector;
@@ -47,7 +47,6 @@ export async function execute(
         ...clientOpts,
         user: opts.username,
         database: opts.databaseId,
-        max: 1,
       });
       break;
     }
@@ -65,12 +64,11 @@ export async function execute(
         ...clientOpts,
         user: opts.username,
         database: opts.databaseId,
-        max: 1,
       });
       break;
     }
     default: {
-      // cSQL doesn't return user.type for BUILT_IN users...
+      // Cloud SQL doesn't return user.type for BUILT_IN users...
       if (!opts.password) {
         throw new FirebaseError(`Cannot connect as BUILT_IN user without a password.`);
       }
@@ -86,21 +84,23 @@ export async function execute(
         user: opts.username,
         password: opts.password,
         database: opts.databaseId,
-        max: 1,
       });
       break;
     }
   }
 
+  const conn = await pool.connect();
+  logFn(`Logged in as ${opts.username}`);
   for (const s of sqlStatements) {
-    logFn(`Executing: '${s}' as ${opts.username}`);
+    logFn(`Executing: '${s}'`);
     try {
-      await pool.query(s);
+      await conn.query(s);
     } catch (err) {
       throw new FirebaseError(`Error executing ${err}`);
     }
   }
 
+  conn.release();
   await pool.end();
   connector.close();
 }

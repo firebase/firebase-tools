@@ -82,7 +82,7 @@ const extensionConfig = {
       inquirer: path.resolve(__dirname, "src/stubs/inquirer-stub.js"),
       "inquirer-autocomplete-prompt": path.resolve(
         __dirname,
-        "src/stubs/inquirer-stub.js"
+        "src/stubs/inquirer-stub.js",
       ),
       // This is used for Github deploy to hosting - will need to restore
       // or find another solution if we add that feature.
@@ -111,12 +111,6 @@ const extensionConfig = {
         loader: "string-replace-loader",
         options: {
           multiple: [
-            // CLI code has absolute path to templates/. We copy templates/
-            // into dist, and this is the correct path now.
-            {
-              search: /(\.|\.\.)[\.\/]+templates/g,
-              replace: "./templates",
-            },
             // CLI code has absolute path to schema/. We copy schema/
             // into dist, and this is the correct path now.
             {
@@ -219,11 +213,11 @@ const extensionConfig = {
   },
 };
 
-function makeWebConfig(entryName) {
+function makeWebConfig(entryName, entryPath = "") {
   return {
     name: entryName,
     mode: "none", // this leaves the source code as close as possible to the original (when packaging we set this to 'production')
-    entry: `./webviews/${entryName}.entry.tsx`,
+    entry: "./" + path.join("webviews", entryPath, `${entryName}.entry.tsx`),
     output: {
       // the bundle is stored in the 'dist' folder (check package.json), 📖 -> https://webpack.js.org/configuration/output/
       path: path.resolve(__dirname, "dist"),
@@ -300,13 +294,23 @@ class WaitForCssTypescriptPlugin {
   }
 }
 
+/** Each folder in webviews needs to generate their webconfigs independently */
+const baseWebviews = fs
+  .readdirSync("webviews")
+  .filter((filename) => filename.match(/\.entry\.tsx/))
+  .map((filename) => filename.replace(/\.entry\.tsx/, ""))
+  .map((name) => makeWebConfig(name));
+
+const dataConnectWebviews = fs
+  .readdirSync("webviews/data-connect")
+  .filter((filename) => filename.match(/\.entry\.tsx/))
+  .map((filename) => filename.replace(/\.entry\.tsx/, ""))
+  .map((name) => makeWebConfig(name, "data-connect" /** entryPath */));
+
 module.exports = [
   // web extensions is disabled for now.
   // webExtensionConfig,
   extensionConfig,
-  ...fs
-    .readdirSync("webviews")
-    .filter((filename) => filename.match(/\.entry\.tsx/))
-    .map((filename) => filename.replace(/\.entry\.tsx/, ""))
-    .map((name) => makeWebConfig(name)),
+  ...baseWebviews,
+  ...dataConnectWebviews,
 ];

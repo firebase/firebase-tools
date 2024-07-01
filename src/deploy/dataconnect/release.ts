@@ -44,7 +44,6 @@ export default async function (
       await migrateSchema({
         options,
         schema: s,
-        allowNonInteractiveMigration: false,
         validateOnly: false,
       });
     }

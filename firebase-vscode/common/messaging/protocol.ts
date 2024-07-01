@@ -36,6 +36,8 @@ export interface WebviewToExtensionParamsMap {
    * Ask extension for initial data
    */
   getInitialData: {};
+  getInitialHasFdcConfigs: void;
+
   addUser: {};
   logout: { email: string };
 
@@ -43,30 +45,12 @@ export interface WebviewToExtensionParamsMap {
   getEmulatorUiSelections: void;
   getEmulatorInfos: void;
   updateEmulatorUiSelections: Partial<EmulatorUiSelections>;
-  /* Equivalent to the `firebase emulators:start` command.*/
-  launchEmulators: void;
 
   /** Notify extension that current user has been changed in UI. */
   requestChangeUser: { user: User | ServiceAccountUser };
 
   /** Trigger project selection */
   selectProject: {};
-  /**
-   * Runs `firebase init hosting` command.
-   * TODO(hsubox76): Generalize to work for all `firebase init` products.
-   */
-  selectAndInitHostingFolder: {
-    projectId: string;
-    singleAppSupport: boolean;
-  };
-
-  /**
-   * Runs `firebase deploy` for hosting.
-   * TODO(hsubox76): Generalize to work for all `firebase deploy` targets.
-   */
-  hostingDeploy: {
-    target: string;
-  };
 
   /**
    * Prompt user for text input
@@ -93,8 +77,9 @@ export interface WebviewToExtensionParamsMap {
     href: string;
   };
 
-  /** Stops the emulators gracefully allowing for data export if required. */
-  stopEmulators: void;
+  connectToPostgres: void;
+  disconnectPostgres: void;
+  getInitialIsConnectedToPostgres: void;
 
   selectEmulatorImportFolder: {};
 
@@ -138,14 +123,15 @@ export interface ExtensionToWebviewParamsMap {
   };
   notifyEmulatorImportFolder: { folder: string };
 
+  notifyIsConnectedToPostgres: boolean;
+
+  notifyPostgresStringChanged: string;
+
   /** Triggered when new environment variables values are found. */
   notifyEnv: { env: { isMonospace: boolean } };
 
   /** Triggered when users have been updated. */
   notifyUsers: { users: User[] };
-
-  /** Triggered when hosting channels have been fetched. */
-  notifyChannels: { channels: any[] };
 
   /** Triggered when a new project is selected */
   notifyProjectChanged: { projectId: string };
@@ -156,26 +142,6 @@ export interface ExtensionToWebviewParamsMap {
   notifyUserChanged: { user: User | ServiceAccountUser };
 
   /**
-   * Notifies webview when user has successfully selected a hosting folder
-   * and it has been written to firebase.json.
-   */
-  notifyHostingInitDone: {
-    success: boolean;
-    projectId: string;
-    folderPath?: string;
-    framework?: string;
-  };
-
-  /**
-   * Notify webview of status of deployment attempt.
-   */
-  notifyHostingDeploy: {
-    success: boolean;
-    consoleUrl?: string;
-    hostingUrl?: string;
-  };
-
-  /**
    * Notify webview of initial discovery or change in firebase.json or
    * .firebaserc
    */
@@ -183,6 +149,8 @@ export interface ExtensionToWebviewParamsMap {
     firebaseJson: ValueOrError<FirebaseConfig> | undefined;
     firebaseRC: ValueOrError<RCData> | undefined;
   };
+  /** Whether any dataconnect.yaml is present */
+  notifyHasFdcConfigs: boolean;
 
   /**
    * Return user-selected preview channel name

@@ -276,9 +276,6 @@
                 {
                     "additionalProperties": false,
                     "properties": {
-                        "location": {
-                            "type": "string"
-                        },
                         "postdeploy": {
                             "anyOf": [
                                 {
@@ -310,7 +307,6 @@
                         }
                     },
                     "required": [
-                        "location",
                         "source"
                     ],
                     "type": "object"
@@ -319,9 +315,6 @@
                     "items": {
                         "additionalProperties": false,
                         "properties": {
-                            "location": {
-                                "type": "string"
-                            },
                             "postdeploy": {
                                 "anyOf": [
                                     {
@@ -353,7 +346,6 @@
                             }
                         },
                         "required": [
-                            "location",
                             "source"
                         ],
                         "type": "object"
@@ -726,6 +718,7 @@
                                 "nodejs16",
                                 "nodejs18",
                                 "nodejs20",
+                                "nodejs22",
                                 "nodejs6",
                                 "nodejs8",
                                 "python310",
@@ -787,6 +780,7 @@
                                     "nodejs16",
                                     "nodejs18",
                                     "nodejs20",
+                                    "nodejs22",
                                     "nodejs6",
                                     "nodejs8",
                                     "python310",

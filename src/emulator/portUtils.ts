@@ -10,6 +10,7 @@ import { Emulators, ListenSpec } from "./types";
 import { Constants } from "./constants";
 import { EmulatorLogger } from "./emulatorLogger";
 import { execSync } from "node:child_process";
+import { checkIfDataConnectEmulatorRunningOnAddress } from "./dataconnectEmulator";
 
 // See:
 // - https://stackoverflow.com/questions/4313403/why-do-browsers-block-some-ports
@@ -184,7 +185,9 @@ const EMULATOR_CAN_LISTEN_ON_PRIMARY_ONLY: Record<PortName, boolean> = {
   firestore: true,
   "firestore.websocket": true,
   pubsub: true,
-  dataconnect: true,
+
+  // External processes that accepts multiple listen specs.
+  dataconnect: false,
 
   // Listening on multiple addresses to maximize the chance of discovery.
   hub: false,
@@ -300,6 +303,20 @@ export async function resolveHostAndAssignPorts(
           if (listenable) {
             available.push(listen);
           } else {
+            if (/^dataconnect/i.exec(name)) {
+              const alreadyRunning = await checkIfDataConnectEmulatorRunningOnAddress(listen);
+              // If there is already a running Data Connect emulator on this address, we're gonna try to use it.
+              // If it's for a different service, we'll error out later from DataconnectEmulator.start().
+              if (alreadyRunning) {
+                emuLogger.logLabeled(
+                  "DEBUG",
+                  "dataconnect",
+                  `Detected already running emulator on ${listen.address}:${listen.port}. Will attempt to reuse it.`,
+                );
+              }
+              available.push(listen);
+              continue;
+            }
             if (!portFixed) {
               // Try to find another port to avoid any potential conflict.
               if (i > 0) {
@@ -462,4 +479,16 @@ function listenSpec(lookup: dns.LookupAddress, port: number): ListenSpec {
     family: lookup.family === 4 ? "IPv4" : "IPv6",
     port: port,
   };
+}
+
+/**
+ * Return a comma-separated list of host:port from specs.
+ */
+export function listenSpecsToString(specs: ListenSpec[]): string {
+  return specs
+    .map((spec) => {
+      const host = spec.family === "IPv4" ? spec.address : `[${spec.address}]`;
+      return `${host}:${spec.port}`;
+    })
+    .join(",");
 }

@@ -40,7 +40,7 @@ export interface CloudSqlInstance {
 }
 
 export interface Source {
-  files: File[];
+  files?: File[];
 }
 
 export interface File {
@@ -48,12 +48,15 @@ export interface File {
   content: string;
 }
 
-// An error indicating that the SQL database schema is incomptible with a data connect schema.
+// An error indicating that the SQL database schema is incompatible with a data connect schema.
 export interface IncompatibleSqlSchemaError {
-  // A list of differences between the two schema with instrucitons how to resolve them.
+  // A list of differences between the two schema with instructions how to resolve them.
   diffs: Diff[];
   // Whether any of the changes included are destructive.
   destructive: boolean;
+
+  // The failed precondition validation type.
+  violationType: "INCOMPATIBLE_SCHEMA" | "INACCESSIBLE_SCHEMA" | string;
 }
 
 export interface Diff {
@@ -68,11 +71,11 @@ export interface Diff {
 
 export interface GraphqlError {
   message: string;
-  locations: {
+  locations?: {
     line: number;
     column: number;
   }[];
-  extensions: {
+  extensions?: {
     file?: string;
     [key: string]: any;
   };
@@ -99,6 +102,7 @@ export interface DataConnectYaml {
   specVersion?: string;
   serviceId: string;
   schema: SchemaYaml;
+  location: string;
   connectorDirs: string[];
 }
 
@@ -123,13 +127,15 @@ export interface ConnectorYaml {
 }
 
 export interface Generate {
-  javascriptSdk?: JavascriptSDK[];
-  swiftSdk?: SwiftSDK[];
-  kotlinSdk?: KotlinSDK[];
+  javascriptSdk?: JavascriptSDK;
+  swiftSdk?: SwiftSDK;
+  kotlinSdk?: KotlinSDK;
 }
 
 export interface JavascriptSDK {
   outputDir: string;
+  package?: string;
+  packageJSONDir?: string;
 }
 export interface SwiftSDK {
   // Optional for Swift becasue XCode makes you import files.
@@ -137,6 +143,7 @@ export interface SwiftSDK {
 }
 export interface KotlinSDK {
   outputDir: string;
+  package?: string;
 }
 
 // Helper types && converters
@@ -144,12 +151,15 @@ export interface ServiceInfo {
   serviceName: string;
   sourceDirectory: string;
   schema: Schema;
-  connectorInfo: {
-    connector: Connector;
-    connectorYaml: ConnectorYaml;
-  }[];
+  connectorInfo: ConnectorInfo[];
   dataConnectYaml: DataConnectYaml;
   deploymentMetadata?: DeploymentMetadata;
+}
+
+export interface ConnectorInfo {
+  directory: string;
+  connector: Connector;
+  connectorYaml: ConnectorYaml;
 }
 
 export function toDatasource(

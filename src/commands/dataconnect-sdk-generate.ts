@@ -1,8 +1,9 @@
 import * as path from "path";
+import * as clc from "colorette";
 
 import { Command } from "../command";
 import { Options } from "../options";
-import { DataConnectEmulator, DataConnectEmulatorArgs } from "../emulator/dataconnectEmulator";
+import { DataConnectEmulator } from "../emulator/dataconnectEmulator";
 import { needProjectId } from "../projectUtils";
 import { load } from "../dataconnect/load";
 import { readFirebaseJson } from "../dataconnect/fileUtils";
@@ -20,17 +21,29 @@ export const command = new Command("dataconnect:sdk:generate")
         const cwd = options.cwd || process.cwd();
         configDir = path.resolve(path.join(cwd), configDir);
       }
-      const serviceInfo = await load(projectId, service.location, configDir);
-      const args: DataConnectEmulatorArgs = {
-        projectId,
-        configDir,
-        auto_download: true,
-        rc: options.rc,
-        locationId: service.location,
-      };
-      const dataconnectEmulator = new DataConnectEmulator(args);
+      const serviceInfo = await load(projectId, configDir);
+      const hasGeneratables = serviceInfo.connectorInfo.some((c) => {
+        return (
+          c.connectorYaml.generate?.javascriptSdk ||
+          c.connectorYaml.generate?.kotlinSdk ||
+          c.connectorYaml.generate?.swiftSdk
+        );
+      });
+      if (!hasGeneratables) {
+        logger.warn("No generated SDKs have been declared in connector.yaml files.");
+        logger.warn(
+          `Run ${clc.bold("firebase init dataconnect:sdk")} to configure a generated SDK.`,
+        );
+        logger.warn(
+          `See https://firebase.google.com/docs/data-connect/gp/web-sdk for more details of how to configure generated SDKs.`,
+        );
+        return;
+      }
       for (const conn of serviceInfo.connectorInfo) {
-        const output = await dataconnectEmulator.generate(conn.connectorYaml.connectorId);
+        const output = await DataConnectEmulator.generate({
+          configDir,
+          connectorId: conn.connectorYaml.connectorId,
+        });
         logger.info(output);
         logger.info(`Generated SDKs for ${conn.connectorYaml.connectorId}`);
       }

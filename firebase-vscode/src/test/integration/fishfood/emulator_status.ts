@@ -9,8 +9,8 @@ firebaseTest(
     const workbench = await browser.getWorkbench();
     const statusBar = new StatusBar(workbench);
 
-    expect(await statusBar.emulatorsStatus.getText()).toBe(
-      "No emulator running"
+    expect(await statusBar.emulatorsStatus.getText()).toContain(
+      "Emulators: starting"
     );
   }
 );
@@ -20,9 +20,9 @@ firebaseTest("When emulators are running, lists them", async function () {
   const commands = new FirebaseCommands();
   const statusBar = new StatusBar(workbench);
 
-  await commands.startEmulators();
+  await commands.waitEmulators();
 
   expect(await statusBar.emulatorsStatus.getText()).toContain(
-    "Emulators running"
+    "Connected to local Postgres"
   );
 });

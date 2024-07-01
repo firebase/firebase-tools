@@ -117,19 +117,21 @@ export const ALL_EXPERIMENTS = experiments({
 
   apphosting: {
     shortDescription: "Allow CLI option for Frameworks",
-    default: false,
+    default: true,
     public: false,
   },
 
+  // TODO(joehanley): Delete this once weve scrubbed all references to experiment from docs.
   dataconnect: {
-    shortDescription: "Enable Data Connect related features.",
-    fullDescription: "Enable Data Connect related features.",
+    shortDescription: "Deprecated. Previosuly, enabled Data Connect related features.",
+    fullDescription: "Deprecated. Previously, enabled Data Connect related features.",
     public: false,
   },
 
   genkit: {
     shortDescription: "Enable Genkit related features.",
     fullDescription: "Enable Genkit related features.",
+    default: true,
     public: false,
   },
 });
