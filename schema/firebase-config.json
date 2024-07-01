@@ -276,9 +276,6 @@
                 {
                     "additionalProperties": false,
                     "properties": {
-                        "location": {
-                            "type": "string"
-                        },
                         "postdeploy": {
                             "anyOf": [
                                 {
@@ -310,7 +307,6 @@
                         }
                     },
                     "required": [
-                        "location",
                         "source"
                     ],
                     "type": "object"
@@ -319,9 +315,6 @@
                     "items": {
                         "additionalProperties": false,
                         "properties": {
-                            "location": {
-                                "type": "string"
-                            },
                             "postdeploy": {
                                 "anyOf": [
                                     {
@@ -353,7 +346,6 @@
                             }
                         },
                         "required": [
-                            "location",
                             "source"
                         ],
                         "type": "object"

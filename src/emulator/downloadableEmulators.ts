@@ -292,7 +292,6 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     optionalArgs: [
       "listen",
       "config_dir",
-      "service_location",
       "disable_sdk_generation",
       "resolvers_emulator",
       "rpc_retry_count",

@@ -120,9 +120,6 @@ export async function getCommandOptions(
   // Use any string, it doesn't affect `prepare()`.
   const command = new Command("deploy");
   let newOptions = Object.assign(options, { config: options.configPath });
-  if (firebaseJSON?.has("hosting")) {
-    newOptions = Object.assign(newOptions, firebaseJSON.get("hosting"));
-  }
   await command.prepare(newOptions);
   return newOptions as Options;
 }

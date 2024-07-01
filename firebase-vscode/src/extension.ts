@@ -10,7 +10,6 @@ import { logSetup, pluginLogger } from "./logger-wrapper";
 import { registerWebview } from "./webview";
 import { registerCore } from "./core";
 import { getSettings } from "./utils/settings";
-import { registerHosting } from "./hosting";
 import { registerFdc } from "./data-connect";
 import { AuthService } from "./auth/service";
 import { AnalyticsLogger } from "./analytics";
@@ -43,7 +42,6 @@ export async function activate(context: vscode.ExtensionContext) {
       broker,
       context,
     }),
-    registerHosting(broker),
     authService,
     registerFdc(
       context,

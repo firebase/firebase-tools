@@ -11,5 +11,6 @@ export { doSetup as project } from "./project";
 export { doSetup as remoteconfig } from "./remoteconfig";
 export { initGitHub as hostingGithub } from "./hosting/github";
 export { doSetup as dataconnect } from "./dataconnect";
+export { doSetup as dataconnectSdk } from "./dataconnect/sdk";
 export { doSetup as apphosting } from "../../apphosting";
 export { doSetup as genkit } from "./genkit";

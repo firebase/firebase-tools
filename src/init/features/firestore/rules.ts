@@ -1,18 +1,15 @@
 import * as clc from "colorette";
-import * as fs from "fs";
 
 import * as gcp from "../../../gcp";
 import * as fsutils from "../../../fsutils";
 import { prompt, promptOnce } from "../../../prompt";
 import { logger } from "../../../logger";
 import * as utils from "../../../utils";
+import { readTemplateSync } from "../../../templates";
 
 const DEFAULT_RULES_FILE = "firestore.rules";
 
-const RULES_TEMPLATE = fs.readFileSync(
-  __dirname + "/../../../../templates/init/firestore/firestore.rules",
-  "utf8",
-);
+const RULES_TEMPLATE = readTemplateSync("init/firestore/firestore.rules");
 
 export function initRules(setup: any, config: any): Promise<any> {
   logger.info();

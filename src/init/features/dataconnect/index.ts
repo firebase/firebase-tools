@@ -1,6 +1,7 @@
-import { join, resolve } from "path";
+import { join } from "path";
+import * as clc from "colorette";
+
 import { confirm, promptOnce } from "../../../prompt";
-import { readFileSync } from "fs";
 import { Config } from "../../../config";
 import { Setup } from "../..";
 import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql";
@@ -12,14 +13,14 @@ import { Schema, Service } from "../../../dataconnect/types";
 import { DEFAULT_POSTGRES_CONNECTION } from "../emulators";
 import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
 import { logger } from "../../../logger";
+import { readTemplateSync } from "../../../templates";
+import { logSuccess } from "../../../utils";
 
-const TEMPLATE_ROOT = resolve(__dirname, "../../../../templates/init/dataconnect/");
-
-const DATACONNECT_YAML_TEMPLATE = readFileSync(join(TEMPLATE_ROOT, "dataconnect.yaml"), "utf8");
-const CONNECTOR_YAML_TEMPLATE = readFileSync(join(TEMPLATE_ROOT, "connector.yaml"), "utf8");
-const SCHEMA_TEMPLATE = readFileSync(join(TEMPLATE_ROOT, "schema.gql"), "utf8");
-const QUERIES_TEMPLATE = readFileSync(join(TEMPLATE_ROOT, "queries.gql"), "utf8");
-const MUTATIONS_TEMPLATE = readFileSync(join(TEMPLATE_ROOT, "mutations.gql"), "utf8");
+const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
+const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yaml");
+const SCHEMA_TEMPLATE = readTemplateSync("init/dataconnect/schema.gql");
+const QUERIES_TEMPLATE = readTemplateSync("init/dataconnect/queries.gql");
+const MUTATIONS_TEMPLATE = readTemplateSync("init/dataconnect/mutations.gql");
 
 interface RequiredInfo {
   serviceId: string;
@@ -67,10 +68,7 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   const subbedDataconnectYaml = subValues(DATACONNECT_YAML_TEMPLATE, info);
   const subbedConnectorYaml = subValues(CONNECTOR_YAML_TEMPLATE, info);
 
-  if (!config.has("dataconnect")) {
-    config.set("dataconnect.source", dir);
-    config.set("dataconnect.location", info.locationId);
-  }
+  config.set("dataconnect", { source: dir });
   await config.askWriteProjectFile(join(dir, "dataconnect.yaml"), subbedDataconnectYaml);
   await config.askWriteProjectFile(join(dir, "schema", "schema.gql"), SCHEMA_TEMPLATE);
   await config.askWriteProjectFile(
@@ -101,6 +99,10 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
       waitForCreation: false,
     });
   }
+  logger.info("");
+  logSuccess(
+    `If you'd like to generate an SDK for your new connector, run ${clc.bold("firebase init dataconnect:sdk")}`,
+  );
 }
 
 function subValues(
@@ -110,6 +112,7 @@ function subValues(
     cloudSqlInstanceId: string;
     cloudSqlDatabase: string;
     connectorId: string;
+    locationId: string;
   },
 ): string {
   const replacements: Record<string, string> = {
@@ -117,6 +120,7 @@ function subValues(
     cloudSqlDatabase: "__cloudSqlDatabase__",
     cloudSqlInstanceId: "__cloudSqlInstanceId__",
     connectorId: "__connectorId__",
+    locationId: "__location__",
   };
   let replaced = template;
   for (const [k, v] of Object.entries(replacementValues)) {

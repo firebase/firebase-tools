@@ -58,6 +58,10 @@
       "type": "string",
       "description": "The ID of the Firebase Data Connect service."
     },
+    "location": {
+      "type": "string",
+      "description": "The region of the Firebase Data Connect service."
+    },
     "connectorDirs": {
       "type": "array",
       "items": {
