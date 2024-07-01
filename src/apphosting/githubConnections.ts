@@ -86,6 +86,7 @@ function generateConnectionId(): string {
   return `apphosting-github-conn-${randomHash}`;
 }
 
+const ADD_ACCOUNT_CHOICE = "@ADD_ACCOUNT";
 const ADD_CONN_CHOICE = "@ADD_CONN";
 
 /**
@@ -98,39 +99,58 @@ export async function linkGitHubRepository(
   utils.logBullet(clc.bold(`${clc.yellow("===")} Import a GitHub repository`));
   // Fetch the sentinel Oauth connection first which is needed to create further GitHub connections.
   const oauthConn = await getOrCreateOauthConnection(projectId, location);
-  const existingConns = await listAppHostingConnections(projectId);
+  const { id: oauthConnId } = parseConnectionName(oauthConn.name)!;
+  let installationId = await promptGitHubInstallation(projectId, location, oauthConnId);
+  /**
+   * TODO: if installation == Add_CONN redirect user to the Firebase App Hosting GitHub app installation page. Direct Link.
+   */
+  while (installationId === ADD_ACCOUNT_CHOICE) {
+    utils.logBullet(
+      "Install the Firebase App Hosting GitHub app on a new account to enable access to those repositories",
+    );
+    const targetUri = "https://github.com/apps/firebase-app-hosting/installations/new";
+    utils.logBullet(targetUri);
+    await utils.openInBrowser(targetUri);
+    await promptOnce({
+      type: "input",
+      message:
+        "Press Enter once you have installed or configured the Firebase App Hosting GitHub app to access your GitHub repo.",
+    });
+    installationId = await promptGitHubInstallation(projectId, location, oauthConnId);
+  }
 
-  if (existingConns.length === 0) {
-    existingConns.push(
-      await createFullyInstalledConnection(projectId, location, generateConnectionId(), oauthConn),
+  console.log(`selected installation: ${JSON.stringify(installationId)}`);
+  let connectionMatchingInstallation = await getConnectionForInstallation(
+    projectId,
+    installationId,
+  );
+  console.log(`connectionMatchingInstallation: ${JSON.stringify(connectionMatchingInstallation)}`);
+
+  if (!connectionMatchingInstallation) {
+    connectionMatchingInstallation = await createFullyInstalledConnection(
+      projectId,
+      location,
+      generateConnectionId(),
+      oauthConn,
+      installationId,
     );
   }
 
   let repoCloneUri: string | undefined;
-  let connection: devConnect.Connection;
+
   do {
     if (repoCloneUri === ADD_CONN_CHOICE) {
-      existingConns.push(
-        await createFullyInstalledConnection(
-          projectId,
-          location,
-          generateConnectionId(),
-          oauthConn,
-          /** withNewInstallation= */ true,
-        ),
-      );
+      await manageInstallation(connectionMatchingInstallation);
     }
 
-    const selection = await promptCloneUri(projectId, existingConns);
-    repoCloneUri = selection.cloneUri;
-    connection = selection.connection;
+    repoCloneUri = await promptCloneUri(projectId, connectionMatchingInstallation);
   } while (repoCloneUri === ADD_CONN_CHOICE);
 
   // Ensure that the selected connection exists in the same region as the backend
-  const { id: connectionId } = parseConnectionName(connection.name)!;
+  const { id: connectionId } = parseConnectionName(connectionMatchingInstallation.name)!;
   await getOrCreateConnection(projectId, location, connectionId, {
-    authorizerCredential: connection.githubConfig?.authorizerCredential,
-    appInstallationId: connection.githubConfig?.appInstallationId,
+    authorizerCredential: connectionMatchingInstallation.githubConfig?.authorizerCredential,
+    appInstallationId: connectionMatchingInstallation.githubConfig?.appInstallationId,
   });
 
   const repo = await getOrCreateRepository(projectId, location, connectionId, repoCloneUri);
@@ -155,10 +175,10 @@ async function createFullyInstalledConnection(
   location: string,
   connectionId: string,
   oauthConn: devConnect.Connection,
-  withNewInstallation = false,
+  withExistingInstallationId: string | undefined = undefined,
 ): Promise<devConnect.Connection> {
   let conn = await createConnection(projectId, location, connectionId, {
-    appInstallationId: withNewInstallation ? undefined : oauthConn.githubConfig?.appInstallationId,
+    appInstallationId: withExistingInstallationId,
     authorizerCredential: oauthConn.githubConfig?.authorizerCredential,
   });
 
@@ -178,6 +198,86 @@ async function createFullyInstalledConnection(
   }
 
   return conn;
+}
+
+async function manageInstallation(connection: devConnect.Connection): Promise<void> {
+  utils.logBullet(
+    "Manage the Firebase App Hosting GitHub app to enable access to GitHub repositories",
+  );
+  const targetUri = connection.githubConfig?.installationUri;
+  if (!targetUri) {
+    throw new Error("No installation given to manage");
+  }
+
+  utils.logBullet(targetUri);
+  await utils.openInBrowser(targetUri);
+  await promptOnce({
+    type: "input",
+    message:
+      "Press Enter once you have installed or configured the Firebase App Hosting GitHub app to access your GitHub repo.",
+  });
+}
+
+export async function getConnectionForInstallation(
+  projectId: string,
+  installationId: string,
+): Promise<devConnect.Connection | null> {
+  const connections = await listAppHostingConnections(projectId);
+  const connectionsMatchingInstallation = connections.filter(
+    (conn) => conn.githubConfig?.appInstallationId === installationId,
+  );
+  if (connectionsMatchingInstallation.length == 0) {
+    return null;
+  }
+
+  if (connectionsMatchingInstallation.length > 1) {
+    // return the oldest connection (TODO: Figure out how to use the orderBy query param)
+    return connectionsMatchingInstallation[0];
+  }
+
+  return connectionsMatchingInstallation[0];
+}
+
+export async function promptGitHubInstallation(
+  projectId: string,
+  location: string,
+  connectionId: string,
+): Promise<string> {
+  const installations = await devConnect.fetchGitHubInstallations(
+    projectId,
+    location,
+    connectionId,
+  );
+
+  const installationName = await promptOnce({
+    type: "autocomplete",
+    name: "installation",
+    message: "Which GitHub account do you want to use?",
+    source: (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
+      return new Promise((resolve) =>
+        resolve([
+          new inquirer.Separator(),
+          {
+            name: "Missing an account? Select this option to add a GitHub account",
+            value: ADD_ACCOUNT_CHOICE,
+          },
+          new inquirer.Separator(),
+          ...fuzzy
+            .filter(input, installations, {
+              extract: (installation) => installation.name || "",
+            })
+            .map((result) => {
+              return {
+                name: result.original.name || "",
+                value: result.original.id,
+              };
+            }),
+        ]),
+      );
+    },
+  });
+
+  return installationName;
 }
 
 /**
@@ -224,9 +324,11 @@ export async function getOrCreateOauthConnection(
 
 async function promptCloneUri(
   projectId: string,
-  connections: devConnect.Connection[],
-): Promise<{ cloneUri: string; connection: devConnect.Connection }> {
-  const { cloneUris, cloneUriToConnection } = await fetchAllRepositories(projectId, connections);
+  connection: devConnect.Connection,
+): Promise<string> {
+  const connectionRepos = await fetchRepositories(projectId, connection);
+  const cloneUris = connectionRepos.map((conn) => conn.cloneUri);
+
   const cloneUri = await promptOnce({
     type: "autocomplete",
     name: "cloneUri",
@@ -254,7 +356,8 @@ async function promptCloneUri(
       );
     },
   });
-  return { cloneUri, connection: cloneUriToConnection[cloneUri] };
+
+  return cloneUri;
 }
 
 /**
@@ -409,6 +512,9 @@ export async function getOrCreateRepository(
 export async function listAppHostingConnections(
   projectId: string,
 ): Promise<devConnect.Connection[]> {
+  /**
+   * TODO: query connections by location
+   */
   const conns = await devConnect.listAllConnections(projectId, "-");
   return conns.filter(
     (conn) =>
@@ -421,25 +527,11 @@ export async function listAppHostingConnections(
 /**
  * Exported for unit testing.
  */
-export async function fetchAllRepositories(
+export async function fetchRepositories(
   projectId: string,
-  connections: devConnect.Connection[],
-): Promise<{
-  cloneUris: string[];
-  cloneUriToConnection: Record<string, devConnect.Connection>;
-}> {
-  const cloneUriToConnection: Record<string, devConnect.Connection> = {};
-
-  for (const conn of connections) {
-    const { location, id } = parseConnectionName(conn.name)!;
-    const connectionRepos = await devConnect.listAllLinkableGitRepositories(
-      projectId,
-      location,
-      id,
-    );
-    connectionRepos.forEach((repo) => {
-      cloneUriToConnection[repo.cloneUri] = conn;
-    });
-  }
-  return { cloneUris: Object.keys(cloneUriToConnection), cloneUriToConnection };
+  connection: devConnect.Connection,
+): Promise<devConnect.LinkableGitRepository[]> {
+  const { location, id } = parseConnectionName(connection.name)!;
+  const connectionRepos = await devConnect.listAllLinkableGitRepositories(projectId, location, id);
+  return connectionRepos;
 }
