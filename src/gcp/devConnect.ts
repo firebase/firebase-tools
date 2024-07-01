@@ -42,6 +42,12 @@ export interface GitHubConfig {
   installationUri?: string;
 }
 
+export interface Installation {
+  id: number;
+  name: string;
+  type: string; // Either "user" or "organization"
+}
+
 type InstallationStage =
   | "STAGE_UNSPECIFIED"
   | "PENDING_CREATE_APP"
@@ -265,6 +271,21 @@ export async function listAllBranches(repoLinkName: string): Promise<Set<string>
   await getNextPage();
 
   return branches;
+}
+
+/*
+ * Fetch all GitHub installations available to the oauth token referenced by
+ * the given connection
+ */
+export async function fetchGitHubInstallations(
+  projectId: string,
+  location: string,
+  connectionId: string,
+): Promise<Installation[]> {
+  const name = `projects/${projectId}/locations/${LOCATION_OVERRIDE ?? location}/connections/${connectionId}:fetchGitHubInstallations`;
+  const res = await client.get<{ installations: Installation[] }>(name);
+
+  return res.body.installations;
 }
 
 /**

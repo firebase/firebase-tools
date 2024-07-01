@@ -98,6 +98,9 @@ export async function linkGitHubRepository(
   utils.logBullet(clc.bold(`${clc.yellow("===")} Import a GitHub repository`));
   // Fetch the sentinel Oauth connection first which is needed to create further GitHub connections.
   const oauthConn = await getOrCreateOauthConnection(projectId, location);
+  const { id: oauthConnId } = parseConnectionName(oauthConn.name)!;
+  const installation = await promptGitHubInstallation(projectId, location, oauthConnId);
+  const connectionMatchingInstallation = await getConnectionForInstallation(projectId, location, installation.)
   const existingConns = await listAppHostingConnections(projectId, location);
 
   if (existingConns.length === 0) {
@@ -178,6 +181,69 @@ async function createFullyInstalledConnection(
   }
 
   return conn;
+}
+
+export async function getConnectionForInstallation(
+  projectId: string,
+  location: string,
+  installationId: string,
+): Promise<devConnect.Connection | null> {
+  const connections = await devConnect.listAllConnections(projectId, location);
+  const connectionsMatchingInstallation = connections.filter(
+    (conn) => conn.githubConfig?.appInstallationId === installationId,
+  );
+  if (connectionsMatchingInstallation.length == 0) {
+    return null;
+  }
+
+  if (connectionsMatchingInstallation.length > 1) {
+    // return the oldest connection (TODO: Figure out how to use the orderBy query param)
+    return connectionsMatchingInstallation[0];
+  }
+
+  return connectionsMatchingInstallation[0];
+}
+
+export async function promptGitHubInstallation(
+  projectId: string,
+  location: string,
+  connectionId: string,
+): Promise<string> {
+  const installations = await devConnect.fetchGitHubInstallations(
+    projectId,
+    location,
+    connectionId,
+  );
+
+  const installationName = await promptOnce({
+    type: "autocomplete",
+    name: "installation",
+    message: "Which GitHub account do you want to use?",
+    source: (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
+      return new Promise((resolve) =>
+        resolve([
+          new inquirer.Separator(),
+          {
+            name: "Missing an account? Select this option to add a GitHub account",
+            value: ADD_CONN_CHOICE,
+          },
+          new inquirer.Separator(),
+          ...fuzzy
+            .filter(input, installations, {
+              extract: (installation) => installation.name || "",
+            })
+            .map((result) => {
+              return {
+                name: result.original.name || "",
+                value: result.original,
+              };
+            }),
+        ]),
+      );
+    },
+  });
+
+  return installationName;
 }
 
 /**
