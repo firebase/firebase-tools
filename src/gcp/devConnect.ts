@@ -43,7 +43,7 @@ export interface GitHubConfig {
 }
 
 export interface Installation {
-  id: number;
+  id: string;
   name: string;
   type: string; // Either "user" or "organization"
 }
