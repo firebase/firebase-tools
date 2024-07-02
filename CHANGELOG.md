@@ -1,1 +1,2 @@
 - Fixes framework support for Nuxt ^3.12 by correctly calling loadNuxtConfig() (#7375)
+- Add a default for `firebase init dataconnect:sdk` (#7406)
