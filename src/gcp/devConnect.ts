@@ -235,17 +235,11 @@ export async function listAllLinkableGitRepositories(
 }
 
 /**
- * Lists all branches for a given repo. Returns an array of branches
- * and a map to make lookups more efficient.
+ * Lists all branches for a given repo. Returns a set of branches.
  */
-interface ListAllBranchesResponse {
-  branches: string[];
-  lookupMap: Map<string, boolean>;
-}
 
-export async function listAllBranches(repoLinkName: string): Promise<ListAllBranchesResponse> {
-  const branches: string[] = [];
-  const lookupMap: Map<string, boolean> = new Map();
+export async function listAllBranches(repoLinkName: string): Promise<Set<string>> {
+  const branches = new Set<string>();
 
   const getNextPage = async (pageToken = ""): Promise<void> => {
     const res = await client.get<{
@@ -260,8 +254,7 @@ export async function listAllBranches(repoLinkName: string): Promise<ListAllBran
     });
     if (Array.isArray(res.body.refNames)) {
       res.body.refNames.forEach((branch) => {
-        branches.push(branch);
-        lookupMap.set(branch, true);
+        branches.add(branch);
       });
     }
     if (res.body.nextPageToken) {
@@ -271,7 +264,7 @@ export async function listAllBranches(repoLinkName: string): Promise<ListAllBran
 
   await getNextPage();
 
-  return { branches, lookupMap };
+  return branches;
 }
 
 /**

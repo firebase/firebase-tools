@@ -24,8 +24,6 @@ const APPHOSTING_OAUTH_CONN_NAME = "apphosting-github-oauth";
 const CONNECTION_NAME_REGEX =
   /^projects\/(?<projectId>[^\/]+)\/locations\/(?<location>[^\/]+)\/connections\/(?<id>[^\/]+)$/;
 
-const DEFAULT_GITHUB_BRANCH = "main";
-
 /**
  * Exported for unit testing.
  *
@@ -264,25 +262,21 @@ async function promptCloneUri(
  * actually exists. User is re-prompted until they enter a valid branch.
  */
 export async function promptGitHubBranch(repoLink: devConnect.GitRepositoryLink) {
-  const { lookupMap } = await devConnect.listAllBranches(repoLink.name);
-
-  let branch = DEFAULT_GITHUB_BRANCH;
-  do {
-    branch = await promptOnce({
+  const branches = await devConnect.listAllBranches(repoLink.name);
+  while (true) {
+    const branch = await promptOnce({
       name: "branch",
       type: "input",
-      default: DEFAULT_GITHUB_BRANCH,
+      default: "main",
       message: "Pick a branch for continuous deployment",
     });
 
-    if (!lookupMap.has(branch)) {
-      utils.logWarning(
-        "the given branch does not exist, please enter a valid branch for your repo",
-      );
+    if (branches.has(branch)) {
+      return branch;
     }
-  } while (!lookupMap.has(branch));
 
-  return branch;
+    utils.logWarning("The given branch does not exist, please enter a valid branch for your repo");
+  }
 }
 
 /**

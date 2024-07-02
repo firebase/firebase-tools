@@ -413,12 +413,7 @@ describe("githubConnections", () => {
     });
 
     it("prompts user for branch", async () => {
-      listAllBranchesStub.returns({
-        lookupMap: new Map([
-          ["main", true],
-          ["test1", true],
-        ]),
-      });
+      listAllBranchesStub.returns(new Set(["main", "test1"]));
 
       promptOnceStub.onFirstCall().returns("main");
       const testRepoLink = {
@@ -434,12 +429,7 @@ describe("githubConnections", () => {
     });
 
     it("re-prompts if user enters a branch that does not exist in given repo", async () => {
-      listAllBranchesStub.returns({
-        lookupMap: new Map([
-          ["main", true],
-          ["test1", true],
-        ]),
-      });
+      listAllBranchesStub.returns(new Set(["main", "test1"]));
 
       promptOnceStub.onFirstCall().returns("not-main");
       promptOnceStub.onSecondCall().returns("test1");

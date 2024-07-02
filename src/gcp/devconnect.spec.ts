@@ -133,19 +133,12 @@ describe("developer connect", () => {
           },
         });
 
-      const { branches, lookupMap } = await devconnect.listAllBranches(
+      const branches = await devconnect.listAllBranches(
         "/projects/blah/locations/us-central1/connections/blah",
       );
       expect(get).callCount(3);
 
-      expect(branches).to.deep.equal([firstBranch, secondBranch, thirdBranch]);
-      expect(lookupMap).to.deep.equal(
-        new Map([
-          [firstBranch, true],
-          [secondBranch, true],
-          [thirdBranch, true],
-        ]),
-      );
+      expect(branches).to.deep.equal(new Set([firstBranch, secondBranch, thirdBranch]));
     });
   });
 });
