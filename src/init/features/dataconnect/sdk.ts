@@ -64,7 +64,7 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
       type: "input",
       default:
         newConnectorYaml.generate.swiftSdk?.outputDir ||
-        `.../.dataconnect/generated/${newConnectorYaml.connectorId}/js-sdk`,
+        `./../.dataconnect/generated/${newConnectorYaml.connectorId}/swift-sdk`,
     });
     const swiftSdk = { outputDir };
     newConnectorYaml.generate.swiftSdk = swiftSdk;
@@ -75,7 +75,7 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
       type: "input",
       default:
         newConnectorYaml.generate.javascriptSdk?.outputDir ||
-        `.../.dataconnect/generated/${newConnectorYaml.connectorId}/ios-sdk`,
+        `./../.dataconnect/generated/${newConnectorYaml.connectorId}/javascript-sdk`,
     });
     const pkg = await promptOnce({
       message: "What package name do you want to use for your JavaScript SDK?",
@@ -106,7 +106,7 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
       type: "input",
       default:
         newConnectorYaml.generate.kotlinSdk?.outputDir ||
-        `.../.dataconnect/generated/${newConnectorYaml.connectorId}/android-sdk`,
+        `./../.dataconnect/generated/${newConnectorYaml.connectorId}/kotlin-sdk`,
     });
     const pkg = await promptOnce({
       message: "What package name do you want to use for your Kotlin SDK?",
