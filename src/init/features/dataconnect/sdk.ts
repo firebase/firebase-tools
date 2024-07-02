@@ -59,11 +59,12 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   }
 
   if (platforms.includes(IOS)) {
-    const defaultOutputDir = newConnectorYaml.generate.swiftSdk?.outputDir;
     const outputDir = await promptOnce({
       message: `What directory do you want to write your Swift SDK code to? (If not absolute, path will be relative to '${connectorInfo.directory}')`,
       type: "input",
-      default: defaultOutputDir,
+      default:
+        newConnectorYaml.generate.swiftSdk?.outputDir ||
+        `./../.dataconnect/generated/${newConnectorYaml.connectorId}/swift-sdk`,
     });
     const swiftSdk = { outputDir };
     newConnectorYaml.generate.swiftSdk = swiftSdk;
@@ -72,7 +73,9 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     const outputDir = await promptOnce({
       message: `What directory do you want to write your JavaScript SDK code to? (If not absolute, path will be relative to '${connectorInfo.directory}')`,
       type: "input",
-      default: newConnectorYaml.generate.javascriptSdk?.outputDir,
+      default:
+        newConnectorYaml.generate.javascriptSdk?.outputDir ||
+        `./../.dataconnect/generated/${newConnectorYaml.connectorId}/javascript-sdk`,
     });
     const pkg = await promptOnce({
       message: "What package name do you want to use for your JavaScript SDK?",
@@ -101,7 +104,9 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     const outputDir = await promptOnce({
       message: `What directory do you want to write your Kotlin SDK code to? (If not absolute, path will be relative to '${connectorInfo.directory}')`,
       type: "input",
-      default: newConnectorYaml.generate.kotlinSdk?.outputDir,
+      default:
+        newConnectorYaml.generate.kotlinSdk?.outputDir ||
+        `./../.dataconnect/generated/${newConnectorYaml.connectorId}/kotlin-sdk/src/main/kotlin/${newConnectorYaml.connectorId}`,
     });
     const pkg = await promptOnce({
       message: "What package name do you want to use for your Kotlin SDK?",
