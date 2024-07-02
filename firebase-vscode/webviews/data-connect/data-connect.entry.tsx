@@ -1,6 +1,9 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import { VSCodeButton, VSCodeTextField } from "@vscode/webview-ui-toolkit/react";
+import {
+  VSCodeButton,
+  VSCodeTextField,
+} from "@vscode/webview-ui-toolkit/react";
 import { Spacer } from "../components/ui/Spacer";
 import styles from "../globals/index.scss";
 import { broker, useBroker, useBrokerListener } from "../globals/html-broker";
@@ -23,17 +26,18 @@ function DataConnect() {
   return (
     <>
       <PanelSection title="Local Development">
-        {!isConnectedToPostgres && (<p>
+        {!isConnectedToPostgres && (
+          <p>
             Connect to Local PostgreSQL. See also:{" "}
-            <a href="https://firebase.google.com/docs/data-connect/quickstart">
-              Working with the emulator
+            <a href="https://firebase.google.com/docs/data-connect/quickstart#optional_install_postgresql_locally">
+              Working with PostgreSQL
             </a>
-          </p>)
-        }
+          </p>
+        )}
         <Spacer size="xsmall" />
         {isConnectedToPostgres ? (
           <>
-          <label>Local emulator connected to:</label>
+            <label>Local emulator connected to:</label>
             <VSCodeTextField disabled value={psqlString}></VSCodeTextField>
           </>
         ) : (
@@ -45,20 +49,20 @@ function DataConnect() {
       <PanelSection title="Production" isLast={true}>
         <p>
           Deploy FDC services and connectors to production. See also:{" "}
-          <a href="https://firebase.google.com/docs/data-connect/quickstart">
+          <a href="https://firebase.google.com/docs/data-connect/quickstart#deploy-schema">
             Deploying
           </a>
         </p>
         <Spacer size="xsmall" />
-        <VSCodeButton onClick={() => broker.send("fdc.deploy")}>
+        <VSCodeButton onClick={() => broker.send("fdc.deploy-all")}>
           Deploy
         </VSCodeButton>
         <Spacer size="small" />
         <VSCodeButton
           appearance="secondary"
-          onClick={() => broker.send("fdc.deploy-all")}
+          onClick={() => broker.send("fdc.deploy")}
         >
-          Deploy all
+          Deploy Individual
         </VSCodeButton>
       </PanelSection>
     </>

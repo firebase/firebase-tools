@@ -1,1 +1,3 @@
 - Fixes framework support for Nuxt ^3.12 by correctly calling loadNuxtConfig() (#7375)
+- Add a default for `firebase init dataconnect:sdk` (#7406)
+- Bump Firebase Data Connect emulator to v1.2.3, which adds support for `@index` on tables, `@auth(level: USER_ANON/USER_EMAIL_VERIFIED)`, and `key: {uid_expr: "auth.uid"}`, and fixes some issues related to SDK generation (#7409)
