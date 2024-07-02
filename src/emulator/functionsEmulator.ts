@@ -682,6 +682,13 @@ export class FunctionsEmulator implements EmulatorInstance {
           case Constants.SERVICE_STORAGE:
             added = this.addStorageTrigger(this.args.projectId, key, definition.eventTrigger);
             break;
+          case Constants.SERVICE_FIREALERTS:
+            added = await this.addFirealertsTrigger(
+              this.args.projectId,
+              key,
+              definition.eventTrigger,
+            );
+            break;
           default:
             this.logger.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
             break;
@@ -764,6 +771,30 @@ export class FunctionsEmulator implements EmulatorInstance {
       .then(() => true)
       .catch((err) => {
         this.logger.log("WARN", "Error adding Eventarc function: " + err);
+        return false;
+      });
+  }
+
+  addFirealertsTrigger(
+    projectId: string,
+    key: string,
+    eventTrigger: EventTrigger,
+  ): Promise<boolean> {
+    if (!EmulatorRegistry.isRunning(Emulators.EVENTARC)) {
+      return Promise.resolve(false);
+    }
+    const bundle = {
+      eventTrigger: {
+        ...eventTrigger,
+        service: "firebasealerts.googleapis.com",
+      },
+    };
+    logger.debug(`addFirealertsTrigger`, JSON.stringify(bundle));
+    return EmulatorRegistry.client(Emulators.EVENTARC)
+      .post(`/emulator/v1/projects/${projectId}/triggers/${key}`, bundle)
+      .then(() => true)
+      .catch((err) => {
+        this.logger.log("WARN", "Error adding FireAlerts function: " + err);
         return false;
       });
   }

@@ -95,6 +95,7 @@ export class Constants {
   static SERVICE_REALTIME_DATABASE = "firebaseio.com";
   static SERVICE_PUBSUB = "pubsub.googleapis.com";
   static SERVICE_EVENTARC = "eventarc.googleapis.com";
+  static SERVICE_FIREALERTS = "firebasealerts.googleapis.com";
   // Note: the service name below are here solely for logging purposes.
   // There is not an emulator available for these.
   static SERVICE_ANALYTICS = "app-measurement.com";
