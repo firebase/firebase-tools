@@ -1,10 +1,9 @@
-import * as fs from "fs";
-
 import { Client } from "../apiv2";
 import { firebaseApiOrigin } from "../api";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { pollOperation } from "../operation-poller";
+import { readTemplateSync } from "../templates";
 
 const TIMEOUT_MILLIS = 30000;
 export const APP_LIST_PAGE_SIZE = 100;
@@ -297,7 +296,7 @@ function getAppConfigResourceString(appId: string, platform: AppPlatform): strin
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function parseConfigFromResponse(responseBody: any, platform: AppPlatform): AppConfigurationData {
   if (platform === AppPlatform.WEB) {
-    const JS_TEMPLATE = fs.readFileSync(__dirname + "/../../templates/setup/web.js", "utf8");
+    const JS_TEMPLATE = readTemplateSync("setup/web.js");
     return {
       fileName: WEB_CONFIG_FILE_NAME,
       fileContents: JS_TEMPLATE.replace("{/*--CONFIG--*/}", JSON.stringify(responseBody, null, 2)),

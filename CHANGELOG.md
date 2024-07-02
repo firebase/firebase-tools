@@ -1,1 +1,1 @@
-- Fixes issue where `deploy --only dataconnect` would error out with `cannot read property undefined`.
+- Fixes framework support for Nuxt ^3.12 by correctly calling loadNuxtConfig() (#7375)
