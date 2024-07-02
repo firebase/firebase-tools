@@ -106,7 +106,7 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
       type: "input",
       default:
         newConnectorYaml.generate.kotlinSdk?.outputDir ||
-        `./../.dataconnect/generated/${newConnectorYaml.connectorId}/kotlin-sdk`,
+        `./../.dataconnect/generated/${newConnectorYaml.connectorId}/kotlin-sdk/src/main/kotlin/${newConnectorYaml.connectorId}`,
     });
     const pkg = await promptOnce({
       message: "What package name do you want to use for your Kotlin SDK?",
