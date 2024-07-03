@@ -12,8 +12,6 @@ import { dataConnectConfigs } from "./config";
 import { runEmulatorIssuesStream } from "./emulator-stream";
 import { runDataConnectCompiler } from "./core-compiler";
 import { pluginLogger } from "../logger-wrapper";
-import { Emulators, getEmulatorDetails, listRunningEmulators } from "../cli";
-import { emulatorOutputChannel } from "./emulator-stream";
 
 /** FDC-specific emulator logic */
 export class DataConnectEmulatorController implements vscode.Disposable {
@@ -27,14 +25,19 @@ export class DataConnectEmulatorController implements vscode.Disposable {
 
     // on emulator restart, re-connect
     dataConnectEmulatorEvents.on("restart", () => {
-      pluginLogger.log("Emulator started");
+      pluginLogger.log("Emulator restarted");
       this.isPostgresEnabled.value = false;
       this.connectToEmulator();
     });
 
     this.subs.push(
       broker.on("connectToPostgres", () => this.connectToPostgres()),
-
+      // TODO: This is assuming only dataconnect emulator will run
+      effect(() => {
+        if (this.emulatorsController.emulators.value.status === "running") {
+          this.connectToEmulator();
+        }
+      }),
       // Notify webviews when the emulator status changes
       effect(() => {
         if (this.isPostgresEnabled.value) {
@@ -119,47 +122,18 @@ export class DataConnectEmulatorController implements vscode.Disposable {
 
   // Commands to run after the emulator is started successfully
   private async connectToEmulator() {
-    this.schemaReload();
     const configs = dataConnectConfigs.value?.tryReadValue;
 
     runEmulatorIssuesStream(
       configs,
       this.emulatorsController.getLocalEndpoint().value,
       this.isPostgresEnabled,
+      this.schemaReload,
     );
     runDataConnectCompiler(
       configs,
       this.emulatorsController.getLocalEndpoint().value,
     );
-
-    this.setupOutputChannel();
-  }
-
-  private setupOutputChannel() {
-    if (
-      listRunningEmulators().filter((emulatorInfos) => {
-        emulatorInfos.name === Emulators.DATACONNECT;
-      })
-    ) {
-      const dataConnectEmulatorDetails = getEmulatorDetails(
-        Emulators.DATACONNECT,
-      );
-
-      // Child process is only available when emulator is started through vscode
-      if (dataConnectEmulatorDetails.instance) {
-        dataConnectEmulatorDetails.instance.stdout?.on("data", (data) => {
-          emulatorOutputChannel.appendLine("DEBUG: " + data.toString());
-        });
-        // TODO: Utilize streaming api to iniate schema reloads
-        dataConnectEmulatorDetails.instance.stderr?.on("data", (data) => {
-          if (data.toString().includes("Finished reloading")) {
-            this.schemaReload();
-          } else {
-            emulatorOutputChannel.appendLine("ERROR: " + data.toString());
-          }
-        });
-      }
-    }
   }
 
   dispose() {
