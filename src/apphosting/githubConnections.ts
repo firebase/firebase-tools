@@ -20,7 +20,7 @@ interface ConnectionNameParts {
 
 // Note: This does not match the sentinel oauth connection
 const APPHOSTING_CONN_PATTERN = /.+\/apphosting-github-conn-.+$/;
-const APPHOSTING_OAUTH_CONN_NAME = "apphosting-github-oauth";
+const APPHOSTING_OAUTH_CONN_NAME = "firebase-app-hosting-github-oauth";
 const CONNECTION_NAME_REGEX =
   /^projects\/(?<projectId>[^\/]+)\/locations\/(?<location>[^\/]+)\/connections\/(?<id>[^\/]+)$/;
 
