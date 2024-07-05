@@ -94,6 +94,7 @@ export interface EmulatableBackend {
   extension?: Extension; // Only present for published extensions
   extensionVersion?: ExtensionVersion; // Only present for published extensions
   extensionSpec?: ExtensionSpec; // Only present for local extensions
+  ignore?: string[];
 }
 
 /**
@@ -460,6 +461,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           /(^|[\/\\])\../, // Ignore files which begin the a period
           /.+\.log/, // Ignore files which have a .log extension
           /.+?[\\\/]venv[\\\/].+?/, // Ignore site-packages in venv
+          ...(backend.ignore?.map((i) => `**/${i}`) ?? []),
         ],
         persistent: true,
       });
