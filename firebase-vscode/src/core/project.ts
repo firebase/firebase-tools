@@ -25,6 +25,7 @@ const userScopedProjects = computed<FirebaseProjectMetadata[] | undefined>(
   },
 );
 
+// TODO(hlshen): clean up concept of currentProject and currentProjectId
 /** Gets the currently selected project, fallback to first default project in RC file */
 export const currentProject = computed<FirebaseProjectMetadata | undefined>(
   () => {
@@ -127,6 +128,7 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
     { dispose: sub4 },
     { dispose: sub5 },
     { dispose: sub6 },
+    { dispose: monospaceLoginSub },
   );
 }
 

@@ -1,5 +1,7 @@
 ## NEXT
 
+- IDX Auth is picked up by VSCode
+
 ## 0.4.0
 
 - Updated internal firebase-tools dependency to 13.13.0
