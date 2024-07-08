@@ -20,7 +20,7 @@ interface ConnectionNameParts {
 
 // Note: This does not match the sentinel oauth connection
 const APPHOSTING_CONN_PATTERN = /.+\/apphosting-github-conn-.+$/;
-const APPHOSTING_OAUTH_CONN_NAME = "apphosting-github-oauth";
+const APPHOSTING_OAUTH_CONN_NAME = "firebase-app-hosting-github-oauth";
 const CONNECTION_NAME_REGEX =
   /^projects\/(?<projectId>[^\/]+)\/locations\/(?<location>[^\/]+)\/connections\/(?<id>[^\/]+)$/;
 
@@ -255,6 +255,30 @@ async function promptCloneUri(
     },
   });
   return { cloneUri, connection: cloneUriToConnection[cloneUri] };
+}
+
+/**
+ * Prompts the user for a GitHub branch and validates that the given branch
+ * actually exists. User is re-prompted until they enter a valid branch.
+ */
+export async function promptGitHubBranch(repoLink: devConnect.GitRepositoryLink) {
+  const branches = await devConnect.listAllBranches(repoLink.name);
+  while (true) {
+    const branch = await promptOnce({
+      name: "branch",
+      type: "input",
+      default: "main",
+      message: "Pick a branch for continuous deployment",
+    });
+
+    if (branches.has(branch)) {
+      return branch;
+    }
+
+    utils.logWarning(
+      `The branch "${branch}" does not exist on "${extractRepoSlugFromUri(repoLink.cloneUri)}". Please enter a valid branch for this repo.`,
+    );
+  }
 }
 
 /**
