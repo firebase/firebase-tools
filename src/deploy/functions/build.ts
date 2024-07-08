@@ -73,7 +73,7 @@ export interface HttpsTrigger {
 // Trigger definitions for RPCs servers using the HTTP protocol defined at
 // https://firebase.google.com/docs/functions/callable-reference
 // eslint-disable-next-line
-interface CallableTrigger { }
+interface CallableTrigger {}
 
 // Trigger definitions for endpoints that should be called as a delegate for other operations.
 // For example, before user login.
@@ -301,7 +301,7 @@ export async function resolveBackend(
   return { backend: toBackend(build, paramValues), envs: paramValues };
 }
 
-
+// Exported for testing
 export function envWithTypes(
   definedParams: params.Param[],
   rawEnvs: Record<string, string>,
