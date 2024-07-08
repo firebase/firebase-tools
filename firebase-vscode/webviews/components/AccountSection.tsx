@@ -1,10 +1,9 @@
 import {
   VSCodeLink,
-  VSCodeDivider,
   VSCodeProgressRing,
 } from "@vscode/webview-ui-toolkit/react";
 import React, { ReactElement, useState } from "react";
-import { broker, useBroker } from "../globals/html-broker";
+import { broker } from "../globals/html-broker";
 import { Icon } from "./ui/Icon";
 import { IconButton } from "./ui/IconButton";
 import { PopupMenu, MenuItem } from "./ui/popup-menu/PopupMenu";
@@ -30,7 +29,7 @@ export function AccountSection({
   const [userDropdownVisible, toggleUserDropdown] = useState(false);
 
   // Default: initial users check hasn't completed
-  let currentUserElement: ReactElement | string = TEXT.LOGIN_PROGRESS;
+  let currentUserElement: ReactElement | string = (<>{TEXT.LOGIN_IN_PROGRESS}{TEXT.ELEMENT_SPACER}<VSCodeProgressRing /></>);
   if (!isLoadingUser) {
     if (!user) {
       // Users loaded but no user was found
