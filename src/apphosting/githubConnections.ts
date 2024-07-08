@@ -98,7 +98,7 @@ export async function linkGitHubRepository(
   utils.logBullet(clc.bold(`${clc.yellow("===")} Import a GitHub repository`));
   // Fetch the sentinel Oauth connection first which is needed to create further GitHub connections.
   const oauthConn = await getOrCreateOauthConnection(projectId, location);
-  const existingConns = await listAppHostingConnections(projectId);
+  const existingConns = await listAppHostingConnections(projectId, location);
 
   if (existingConns.length === 0) {
     existingConns.push(
@@ -408,8 +408,9 @@ export async function getOrCreateRepository(
  */
 export async function listAppHostingConnections(
   projectId: string,
+  location: string,
 ): Promise<devConnect.Connection[]> {
-  const conns = await devConnect.listAllConnections(projectId, "-");
+  const conns = await devConnect.listAllConnections(projectId, location);
   return conns.filter(
     (conn) =>
       APPHOSTING_CONN_PATTERN.test(conn.name) &&

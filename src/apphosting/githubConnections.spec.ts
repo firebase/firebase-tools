@@ -320,7 +320,7 @@ describe("githubConnections", () => {
         mockConn("apphosting-github-oauth"),
       ]);
 
-      const conns = await repo.listAppHostingConnections(projectId);
+      const conns = await repo.listAppHostingConnections(projectId, location);
       expect(conns).to.have.length(2);
       expect(conns.map((c) => extractId(c.name))).to.include.members([
         "apphosting-github-conn-baddcafe",
