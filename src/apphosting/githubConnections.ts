@@ -258,6 +258,30 @@ async function promptCloneUri(
 }
 
 /**
+ * Prompts the user for a GitHub branch and validates that the given branch
+ * actually exists. User is re-prompted until they enter a valid branch.
+ */
+export async function promptGitHubBranch(repoLink: devConnect.GitRepositoryLink) {
+  const branches = await devConnect.listAllBranches(repoLink.name);
+  while (true) {
+    const branch = await promptOnce({
+      name: "branch",
+      type: "input",
+      default: "main",
+      message: "Pick a branch for continuous deployment",
+    });
+
+    if (branches.has(branch)) {
+      return branch;
+    }
+
+    utils.logWarning(
+      `The branch "${branch}" does not exist on "${extractRepoSlugFromUri(repoLink.cloneUri)}". Please enter a valid branch for this repo.`,
+    );
+  }
+}
+
+/**
  * Exported for unit testing
  */
 export async function ensureSecretManagerAdminGrant(projectId: string): Promise<void> {
