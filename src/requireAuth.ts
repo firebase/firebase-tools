@@ -8,7 +8,7 @@ import { logger } from "./logger";
 import * as utils from "./utils";
 import * as scopes from "./scopes";
 import { Tokens, User } from "./types/auth";
-import { setRefreshToken, setActiveAccount } from "./auth";
+import { setRefreshToken, setActiveAccount, setProjectAccount, setGlobalDefaultAccount } from "./auth";
 import type { Options } from "./options";
 
 const AUTH_ERROR_MESSAGE = `Command requires authentication, please run ${clc.bold(
@@ -37,7 +37,7 @@ function getAuthClient(config: GoogleAuthOptions): GoogleAuth {
  * @param authScopes scopes to be obtained.
  */
 async function autoAuth(options: Options, authScopes: string[]): Promise<void | string> {
- 
+  console.log("HAROLD AUTOAUTH: ", options)
   const client = getAuthClient({ scopes: authScopes, projectId: options.project });
   const token = await client.getAccessToken();
   token !== null ? apiv2.setAccessToken(token) : false;
@@ -53,6 +53,10 @@ async function autoAuth(options: Options, authScopes: string[]): Promise<void | 
   if (process.env.MONOSPACE_ENV && token && clientEmail) {
     // Within monospace, this a OAuth token for the user, so we make it the active user.
     setActiveAccount(options, { user: {email: clientEmail}, tokens: {access_token: token} });
+    setGlobalDefaultAccount({ user: { email: clientEmail }, tokens: { access_token: token } });
+
+    // project is also slected in monospace auth flow
+    options.projectId = await client.getProjectId();
   }
   return clientEmail;
 }
@@ -67,7 +71,6 @@ export async function requireAuth(options: any): Promise<string | void> {
 
   const tokens = options.tokens as Tokens | undefined;
   const user = options.user as User | undefined;
-
   let tokenOpt = utils.getInheritedOption(options, "token");
   if (tokenOpt) {
     logger.debug("> authorizing via --token option");

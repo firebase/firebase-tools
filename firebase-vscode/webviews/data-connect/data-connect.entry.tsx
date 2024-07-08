@@ -23,6 +23,10 @@ function DataConnect() {
 
   const psqlString = useBroker("notifyPostgresStringChanged");
 
+  const user = useBroker("notifyUserChanged", {
+    initialRequest: "getInitialData",
+  })?.user;
+
   return (
     <>
       <PanelSection title="Local Development">

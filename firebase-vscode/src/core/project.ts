@@ -9,7 +9,8 @@ import { pluginLogger } from "../logger-wrapper";
 import { globalSignal } from "../utils/globals";
 import { firstWhereDefined } from "../utils/signal";
 import { User } from "../types/auth";
-
+import { env } from "./env";
+import { currentOptions } from "../options";
 /** Available projects */
 export const projects = globalSignal<Record<string, FirebaseProjectMetadata[]>>(
   {},
@@ -89,6 +90,12 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
       projectId: currentProject.value?.projectId ?? "",
     });
   });
+
+  const monospaceLoginSub = effect(() => {
+    if (currentOptions.value.projectId) {
+      currentProjectId.value = currentOptions.value.projectId;
+    }
+  })
 
   const command = vscode.commands.registerCommand(
     "firebase.selectProject",
