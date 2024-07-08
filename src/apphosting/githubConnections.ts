@@ -87,7 +87,7 @@ function generateConnectionId(): string {
 }
 
 const ADD_ACCOUNT_CHOICE = "@ADD_ACCOUNT";
-const ADD_CONN_CHOICE = "@ADD_CONN";
+const MANAGE_INSTALLATION_CHOICE = "@MANAGE_INSTALLATION";
 
 /**
  * Prompts the user to link their backend to a GitHub repository.
@@ -101,9 +101,7 @@ export async function linkGitHubRepository(
   const oauthConn = await getOrCreateOauthConnection(projectId, location);
   const { id: oauthConnId } = parseConnectionName(oauthConn.name)!;
   let installationId = await promptGitHubInstallation(projectId, location, oauthConnId);
-  /**
-   * TODO: if installation == Add_CONN redirect user to the Firebase App Hosting GitHub app installation page. Direct Link.
-   */
+
   while (installationId === ADD_ACCOUNT_CHOICE) {
     utils.logBullet(
       "Install the Firebase App Hosting GitHub app on a new account to enable access to those repositories",
@@ -139,12 +137,12 @@ export async function linkGitHubRepository(
   let repoCloneUri: string | undefined;
 
   do {
-    if (repoCloneUri === ADD_CONN_CHOICE) {
+    if (repoCloneUri === MANAGE_INSTALLATION_CHOICE) {
       await manageInstallation(connectionMatchingInstallation);
     }
 
     repoCloneUri = await promptCloneUri(projectId, connectionMatchingInstallation);
-  } while (repoCloneUri === ADD_CONN_CHOICE);
+  } while (repoCloneUri === MANAGE_INSTALLATION_CHOICE);
 
   // Ensure that the selected connection exists in the same region as the backend
   const { id: connectionId } = parseConnectionName(connectionMatchingInstallation.name)!;
@@ -339,7 +337,7 @@ async function promptCloneUri(
           new inquirer.Separator(),
           {
             name: "Missing a repo? Select this option to configure your GitHub connection settings",
-            value: ADD_CONN_CHOICE,
+            value: MANAGE_INSTALLATION_CHOICE,
           },
           new inquirer.Separator(),
           ...fuzzy
