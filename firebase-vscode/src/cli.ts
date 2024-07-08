@@ -34,12 +34,11 @@ export { Emulators };
  * requiring user to be logged in. The CLI automatically supplies it with
  * account info if found in configstore so we need to fill that part in.
  *
- * Returns a user email if there's a currently logged in user, else null
  */
 export async function requireAuthWrapper(
   showError: boolean = true,
 ): Promise<User | null> {
-  // Try to get global default from configstore. For some reason this is
+  // Try to get global default from configstore
   pluginLogger.debug("requireAuthWrapper");
   let account = getGlobalDefaultAccount();
   // often overwritten when restarting the extension.
