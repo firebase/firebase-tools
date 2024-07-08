@@ -1,0 +1,1 @@
+- Pass down `functions.ignore` values in `firebase.json` to functions emulator so that supposedly ignored directories/files will not trigger reload. (#7414)
