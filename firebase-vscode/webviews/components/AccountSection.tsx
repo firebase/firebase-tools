@@ -29,7 +29,7 @@ export function AccountSection({
   const [userDropdownVisible, toggleUserDropdown] = useState(false);
 
   // Default: initial users check hasn't completed
-  let currentUserElement: ReactElement | string = (<>{TEXT.LOGIN_IN_PROGRESS}{TEXT.ELEMENT_SPACER}<VSCodeProgressRing /></>);
+  let currentUserElement: ReactElement | string = (<>{TEXT.LOGIN_IN_PROGRESS}<VSCodeProgressRing /></>);
   if (!isLoadingUser) {
     if (!user) {
       // Users loaded but no user was found

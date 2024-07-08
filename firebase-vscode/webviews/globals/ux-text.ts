@@ -39,7 +39,4 @@ export const TEXT = {
 
   CONNECT_TO_INSTANCE_DESCRIPTION:
     "Connect to the emulator or a production instance.",
-
-  ELEMENT_SPACER:
-    "  ",
 };
