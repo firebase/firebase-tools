@@ -56,7 +56,7 @@ export async function requireAuthWrapper(
     return (
       account &&
       account.user.email === optionsUser.email &&
-      account.tokens.access_token === optionsTokens.access_token
+      account.tokens.access_token === optionsTokens.access_token // TODO: check if this is necessary
     );
   }
 
@@ -80,7 +80,7 @@ export async function requireAuthWrapper(
   // over Google login tokens and must be removed if a Google
   // account is the current user.
   try {
-    setAccessToken();
+    setAccessToken(); // clears the current access token
     const userEmail = await requireAuth(currentOptions.value); // client email
     if (userEmail) {
       pluginLogger.debug("User found: ", userEmail);

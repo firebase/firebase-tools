@@ -8,7 +8,11 @@ import { logger } from "./logger";
 import * as utils from "./utils";
 import * as scopes from "./scopes";
 import { Tokens, User } from "./types/auth";
-import { setRefreshToken, setActiveAccount, setProjectAccount, setGlobalDefaultAccount } from "./auth";
+import {
+  setRefreshToken,
+  setActiveAccount,
+  setGlobalDefaultAccount,
+} from "./auth";
 import type { Options } from "./options";
 
 const AUTH_ERROR_MESSAGE = `Command requires authentication, please run ${clc.bold(
@@ -51,10 +55,10 @@ async function autoAuth(options: Options, authScopes: string[]): Promise<void | 
   }
   if (process.env.MONOSPACE_ENV && token && clientEmail) {
     // Within monospace, this a OAuth token for the user, so we make it the active user.
-    setActiveAccount(options, { user: {email: clientEmail}, tokens: {access_token: token} });
+    setActiveAccount(options, { user: { email: clientEmail }, tokens: { access_token: token } });
     setGlobalDefaultAccount({ user: { email: clientEmail }, tokens: { access_token: token } });
 
-    // project is also slected in monospace auth flow
+    // project is also selected in monospace auth flow
     options.projectId = await client.getProjectId();
   }
   return clientEmail;
