@@ -9,8 +9,6 @@ import { pluginLogger } from "../logger-wrapper";
 import { globalSignal } from "../utils/globals";
 import { firstWhereDefined } from "../utils/signal";
 import { User } from "../types/auth";
-import { env } from "./env";
-import { currentOptions } from "../options";
 /** Available projects */
 export const projects = globalSignal<Record<string, FirebaseProjectMetadata[]>>(
   {},
@@ -92,11 +90,12 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
     });
   });
 
-  const monospaceLoginSub = effect(() => {
-    if (currentOptions.value.projectId) {
-      currentProjectId.value = currentOptions.value.projectId;
-    }
-  })
+  // TODO: Set projectId from IDX Auth
+  // const monospaceLoginSub = effect(() => {
+  //   if (currentOptions.value.projectId) {
+  //     currentProjectId.value = currentOptions.value.projectId;
+  //   }
+  // })
 
   const command = vscode.commands.registerCommand(
     "firebase.selectProject",
@@ -128,7 +127,6 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
     { dispose: sub4 },
     { dispose: sub5 },
     { dispose: sub6 },
-    { dispose: monospaceLoginSub },
   );
 }
 
