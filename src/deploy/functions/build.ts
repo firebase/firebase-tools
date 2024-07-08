@@ -301,7 +301,8 @@ export async function resolveBackend(
   return { backend: toBackend(build, paramValues), envs: paramValues };
 }
 
-function envWithTypes(
+
+export function envWithTypes(
   definedParams: params.Param[],
   rawEnvs: Record<string, string>,
 ): Record<string, params.ParamValue> {
@@ -343,6 +344,16 @@ function envWithTypes(
             boolean: false,
             number: false,
             list: true,
+          };
+        } else if (param.type === "secret") {
+          // NOTE(danielylee): Secret values are not supposed to be
+          // provided in the env files. However, users may do it anyway.
+          // Secret values will be provided as strings in those cases.
+          providedType = {
+            string: true,
+            boolean: false,
+            number: false,
+            list: false,
           };
         }
       }
