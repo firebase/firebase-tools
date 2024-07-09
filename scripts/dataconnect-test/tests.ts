@@ -144,7 +144,6 @@ describe("firebase deploy", () => {
     const info = newTestRun();
     serviceId = info.serviceId;
     databaseId = info.databaseId;
-    await requireAuth({});
   });
 
   afterEach(async function (this) {
