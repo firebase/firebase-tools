@@ -17,8 +17,8 @@ export function SidebarApp() {
    * empty array - finished checking, no users logged in
    * non-empty array - contains logged in users
    */
-  const allUsers = useBroker("notifyUsers")?.users;
   const user = useBroker("notifyUserChanged")?.user;
+  const isLoadingUser = useBroker("notifyIsLoadingUser");
 
   const configs = useBroker("notifyFirebaseConfig", {
     initialRequest: "getInitialData",
@@ -27,15 +27,16 @@ export function SidebarApp() {
     useBroker("notifyHasFdcConfigs", {
       initialRequest: "getInitialHasFdcConfigs",
     }) ?? false;
+
   const accountSection = (
     <AccountSection
       user={user}
-      allUsers={allUsers}
       isMonospace={env?.isMonospace}
+      isLoadingUser={isLoadingUser}
     />
   );
   // Just render the account section loading view if it doesn't know user state
-  if (!allUsers || allUsers.length === 0) {
+  if (!user) {
     return (
       <>
         <Spacer size="medium" />
@@ -47,7 +48,6 @@ export function SidebarApp() {
   }
   if (!configs?.firebaseJson?.value || !hasFdcConfigs) {
     const configLabel = !hasFdcConfigs ? "dataconnect.yaml" : "firebase.json";
-
     return (
       <>
         {accountSection}
@@ -88,7 +88,6 @@ function SidebarContent(props: {
    * empty array - finished checking, no users logged in
    * non-empty array - contains logged in users
    */
-  const allUsers = useBroker("notifyUsers")?.users;
   const user = useBroker("notifyUserChanged")?.user;
 
   useEffect(() => {
@@ -107,7 +106,6 @@ function SidebarContent(props: {
   const accountSection = (
     <AccountSection
       user={user}
-      allUsers={allUsers}
       isMonospace={env?.isMonospace}
     />
   );

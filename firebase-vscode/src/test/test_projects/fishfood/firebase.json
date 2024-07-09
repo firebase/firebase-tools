@@ -1,12 +1,8 @@
 {
   "dataconnect": {
-    "source": "./dataconnect",
-    "location": "api"
+    "source": "./dataconnect"
   },
   "emulators": {
-    "auth": {
-      "port": 9099
-    },
     "dataconnect": {
       "port": 9399
     },
