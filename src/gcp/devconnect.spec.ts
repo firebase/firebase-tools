@@ -11,6 +11,21 @@ describe("developer connect", () => {
   const connectionId = "apphosting-connection";
   const connectionsRequestPath = `projects/${projectId}/locations/${location}/connections`;
 
+  function mockConnection(id: string, createTime: string): devconnect.Connection {
+    return {
+      name: `projects/${projectId}/locations/${location}/connections/${id}`,
+      disabled: false,
+      createTime: createTime,
+      updateTime: "1",
+      installationState: {
+        stage: "COMPLETE",
+        message: "complete",
+        actionUri: "https://google.com",
+      },
+      reconciling: false,
+    };
+  }
+
   beforeEach(() => {
     post = sinon.stub(devconnect.client, "post");
     get = sinon.stub(devconnect.client, "get");
@@ -139,6 +154,34 @@ describe("developer connect", () => {
       expect(get).callCount(3);
 
       expect(branches).to.deep.equal(new Set([firstBranch, secondBranch, thirdBranch]));
+    });
+    describe("sortConnectionsByCreateTime", () => {
+      it("sorts the list of connections from earliest to latest", () => {
+        const firstConnection = mockConnection("conn1", "2024-07-03T16:55:35.974826076Z");
+        const secondConnection = mockConnection("conn2", "2024-07-02T17:26:16.000154754Z");
+        const thirdConnection = mockConnection("conn3", "2024-07-01T21:32:29.992488750Z");
+        const fourthConnection = mockConnection("conn4", "2024-07-02T17:41:25.366819004Z");
+        const fifthConnection = mockConnection("conn5", "2024-07-02T17:22:07.171899854Z");
+        const sixthConnection = mockConnection("conn6", "2024-07-01T21:31:10.148324612Z");
+
+        const connections = [
+          firstConnection,
+          secondConnection,
+          thirdConnection,
+          fourthConnection,
+          fifthConnection,
+          sixthConnection,
+        ];
+
+        expect(devconnect.sortConnectionsByCreateTime(connections)).to.deep.equal([
+          sixthConnection,
+          thirdConnection,
+          fifthConnection,
+          secondConnection,
+          fourthConnection,
+          firstConnection,
+        ]);
+      });
     });
   });
 });

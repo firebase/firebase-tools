@@ -42,10 +42,12 @@ export interface GitHubConfig {
   installationUri?: string;
 }
 
+type InstallationType = "user" | "organization";
+
 export interface Installation {
   id: string;
   name: string;
-  type: string; // Either "user" or "organization"
+  type: InstallationType;
 }
 
 type InstallationStage =
@@ -323,6 +325,15 @@ export async function getGitRepositoryLink(
   const name = `projects/${projectId}/locations/${LOCATION_OVERRIDE ?? location}/connections/${connectionId}/gitRepositoryLinks/${gitRepositoryLinkId}`;
   const res = await client.get<GitRepositoryLink>(name);
   return res.body;
+}
+
+/**
+ * sorts the given list of connections by create_time from earliest to latest
+ */
+export function sortConnectionsByCreateTime(connections: Connection[]) {
+  return connections.sort((a, b) => {
+    return Date.parse(a.createTime!) - Date.parse(b.createTime!);
+  });
 }
 
 /**
