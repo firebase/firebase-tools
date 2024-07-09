@@ -588,7 +588,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     // Remove any old trigger definitions
-    const keysToRemove = Object.keys(this.triggers).filter((recordKey) => {
+    const toRemove = Object.keys(this.triggers).filter((recordKey) => {
       const record = this.getTriggerRecordByKey(recordKey);
       if (force) {
         return true; // We are going to load all of the triggers anyway, so we can remove everything
@@ -598,10 +598,6 @@ export class FunctionsEmulator implements EmulatorInstance {
           record.def.entryPoint === def.entryPoint &&
           JSON.stringify(record.def.eventTrigger) === JSON.stringify(def.eventTrigger),
       );
-    });
-    const toRemove = keysToRemove.map((key) => this.getTriggerRecordByKey(key).def);
-    keysToRemove.forEach((key) => {
-      delete this.triggers[key];
     });
     await this.removeTriggers(toRemove);
 
@@ -774,8 +770,9 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   // Currently only cleans up eventarc and firealerts triggers
-  async removeTriggers(toRemove: EmulatedTriggerDefinition[]) {
-    for (const definition of toRemove) {
+  async removeTriggers(toRemove: string[]) {
+    for (const triggerKey of toRemove) {
+      const definition = this.triggers[triggerKey].def;
       const service = getFunctionService(definition);
       const key = this.getTriggerKey(definition);
 
@@ -786,6 +783,7 @@ export class FunctionsEmulator implements EmulatorInstance {
             key,
             definition.eventTrigger as EventTrigger,
           );
+          delete this.triggers[key];
           break;
         case Constants.SERVICE_FIREALERTS:
           await this.removeFirealertsTrigger(
@@ -793,6 +791,7 @@ export class FunctionsEmulator implements EmulatorInstance {
             key,
             definition.eventTrigger as EventTrigger,
           );
+          delete this.triggers[key];
           break;
         default:
           break;
