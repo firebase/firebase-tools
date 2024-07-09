@@ -6,6 +6,7 @@ import * as cli from "../functions-deploy-tests/cli";
 import { cases, Step } from "./cases";
 import * as client from "../../src/dataconnect/client";
 import { deleteDatabase } from "../../src/gcp/cloudsql/cloudsqladmin";
+import { requireAuth } from "../../src/requireAuth";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 const FIREBASE_DEBUG = process.env.FIREBASE_DEBUG || "";
@@ -46,7 +47,6 @@ async function list() {
     /** quiet=*/ false,
     {
       FIREBASE_CLI_EXPERIMENTS: "dataconnect",
-      GOOGLE_APPLICATION_CREDENTIALS: "scripts/service-account.json",
     },
   );
 }
@@ -64,7 +64,6 @@ async function migrate(force: boolean) {
     /** quiet=*/ false,
     {
       FIREBASE_CLI_EXPERIMENTS: "dataconnect",
-      GOOGLE_APPLICATION_CREDENTIALS: "scripts/service-account.json",
     },
   );
 }
@@ -79,7 +78,6 @@ async function deploy(force: boolean) {
   }
   return await cli.exec("deploy", FIREBASE_PROJECT, args, __dirname, /** quiet=*/ false, {
     FIREBASE_CLI_EXPERIMENTS: "dataconnect",
-    GOOGLE_APPLICATION_CREDENTIALS: "scripts/service-account.json",
   });
 }
 
@@ -137,18 +135,19 @@ describe("firebase deploy", () => {
   let serviceId: string;
   let databaseId: string;
 
-  beforeEach(function (this) {
+  beforeEach(async function (this) {
     this.timeout(10000);
     expect(FIREBASE_PROJECT).not.to.equal("", "No FBTOOLS_TARGET_PROJECT env var set.");
     const info = newTestRun();
     serviceId = info.serviceId;
     databaseId = info.databaseId;
+    await requireAuth({});
   });
 
   afterEach(async function (this) {
     this.timeout(10000);
     fs.rmSync(fdcTest, { recursive: true, force: true });
-    await cleanUpService(FIREBASE_PROJECT, serviceId, databaseId);
+    // await cleanUpService(FIREBASE_PROJECT, serviceId, databaseId);
   });
 
   for (const c of cases) {
