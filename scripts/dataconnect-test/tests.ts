@@ -5,7 +5,6 @@ import { expect } from "chai";
 import * as cli from "../functions-deploy-tests/cli";
 import { cases, Step } from "./cases";
 import * as client from "../../src/dataconnect/client";
-import { requireAuth } from "../../src/requireAuth";
 import { deleteDatabase } from "../../src/gcp/cloudsql/cloudsqladmin";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
@@ -138,7 +137,7 @@ describe("firebase deploy", () => {
   let serviceId: string;
   let databaseId: string;
 
-  beforeEach(async function (this) {
+  beforeEach(function (this) {
     this.timeout(10000);
     expect(FIREBASE_PROJECT).not.to.equal("", "No FBTOOLS_TARGET_PROJECT env var set.");
     const info = newTestRun();
