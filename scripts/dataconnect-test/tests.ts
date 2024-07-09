@@ -47,7 +47,7 @@ async function list() {
     /** quiet=*/ false,
     {
       FIREBASE_CLI_EXPERIMENTS: "dataconnect",
-      GOOGLE_APPLICATION_CREDENTIALS: "scripts/service-account.json"
+      GOOGLE_APPLICATION_CREDENTIALS: "scripts/service-account.json",
     },
   );
 }
@@ -63,10 +63,10 @@ async function migrate(force: boolean) {
     args,
     __dirname,
     /** quiet=*/ false,
-    { 
+    {
       FIREBASE_CLI_EXPERIMENTS: "dataconnect",
       GOOGLE_APPLICATION_CREDENTIALS: "scripts/service-account.json",
-     },
+    },
   );
 }
 
@@ -80,7 +80,7 @@ async function deploy(force: boolean) {
   }
   return await cli.exec("deploy", FIREBASE_PROJECT, args, __dirname, /** quiet=*/ false, {
     FIREBASE_CLI_EXPERIMENTS: "dataconnect",
-    GOOGLE_APPLICATION_CREDENTIALS: "scripts/service-account.json"
+    GOOGLE_APPLICATION_CREDENTIALS: "scripts/service-account.json",
   });
 }
 
