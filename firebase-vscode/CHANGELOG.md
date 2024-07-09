@@ -1,6 +1,8 @@
 ## NEXT
 
 - IDX Auth is picked up by VSCode
+- [Fixed] Data Connect emulator issues properly streamed on startup
+- [Fixed] Data Connect schema reloads consistently
 
 ## 0.4.0
 
