@@ -587,6 +587,24 @@ export class FunctionsEmulator implements EmulatorInstance {
       this.workerPools[emulatableBackend.codebase].refresh();
     }
 
+    // Remove any old trigger definitions
+    const keysToRemove = Object.keys(this.triggers).filter((recordKey) => {
+      const record = this.getTriggerRecordByKey(recordKey);
+      if (force) {
+        return true; // We are going to load all of the triggers anyway, so we can remove everything
+      }
+      return !triggerDefinitions.some(
+        (def) =>
+          record.def.entryPoint === def.entryPoint &&
+          JSON.stringify(record.def.eventTrigger) === JSON.stringify(def.eventTrigger),
+      );
+    });
+    const toRemove = keysToRemove.map((key) => this.getTriggerRecordByKey(key).def);
+    keysToRemove.forEach((key) => {
+      delete this.triggers[key];
+    });
+    await this.removeTriggers(toRemove);
+
     // When force is true we set up all triggers, otherwise we only set up
     // triggers which have a unique function name
     const toSetup = triggerDefinitions.filter((definition) => {
@@ -755,6 +773,33 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
   }
 
+  // Currently only cleans up eventarc and firealerts triggers
+  async removeTriggers(toRemove: EmulatedTriggerDefinition[]) {
+    for (const definition of toRemove) {
+      const service = getFunctionService(definition);
+      const key = this.getTriggerKey(definition);
+
+      switch (service) {
+        case Constants.SERVICE_EVENTARC:
+          await this.removeEventarcTrigger(
+            this.args.projectId,
+            key,
+            definition.eventTrigger as EventTrigger,
+          );
+          break;
+        case Constants.SERVICE_FIREALERTS:
+          await this.removeFirealertsTrigger(
+            this.args.projectId,
+            key,
+            definition.eventTrigger as EventTrigger,
+          );
+          break;
+        default:
+          break;
+      }
+    }
+  }
+
   addEventarcTrigger(projectId: string, key: string, eventTrigger: EventTrigger): Promise<boolean> {
     if (!EmulatorRegistry.isRunning(Emulators.EVENTARC)) {
       return Promise.resolve(false);
@@ -771,6 +816,30 @@ export class FunctionsEmulator implements EmulatorInstance {
       .then(() => true)
       .catch((err) => {
         this.logger.log("WARN", "Error adding Eventarc function: " + err);
+        return false;
+      });
+  }
+
+  removeEventarcTrigger(
+    projectId: string,
+    key: string,
+    eventTrigger: EventTrigger,
+  ): Promise<boolean> {
+    if (!EmulatorRegistry.isRunning(Emulators.EVENTARC)) {
+      return Promise.resolve(false);
+    }
+    const bundle = {
+      eventTrigger: {
+        ...eventTrigger,
+        service: "eventarc.googleapis.com",
+      },
+    };
+    logger.debug(`removeEventarcTrigger`, JSON.stringify(bundle));
+    return EmulatorRegistry.client(Emulators.EVENTARC)
+      .post(`/emulator/v1/remove/projects/${projectId}/triggers/${key}`, bundle)
+      .then(() => true)
+      .catch((err) => {
+        this.logger.log("WARN", "Error removing Eventarc function: " + err);
         return false;
       });
   }
@@ -795,6 +864,30 @@ export class FunctionsEmulator implements EmulatorInstance {
       .then(() => true)
       .catch((err) => {
         this.logger.log("WARN", "Error adding FireAlerts function: " + err);
+        return false;
+      });
+  }
+
+  removeFirealertsTrigger(
+    projectId: string,
+    key: string,
+    eventTrigger: EventTrigger,
+  ): Promise<boolean> {
+    if (!EmulatorRegistry.isRunning(Emulators.EVENTARC)) {
+      return Promise.resolve(false);
+    }
+    const bundle = {
+      eventTrigger: {
+        ...eventTrigger,
+        service: "firebasealerts.googleapis.com",
+      },
+    };
+    logger.debug(`removeFirealertsTrigger`, JSON.stringify(bundle));
+    return EmulatorRegistry.client(Emulators.EVENTARC)
+      .post(`/emulator/v1/remove/projects/${projectId}/triggers/${key}`, bundle)
+      .then(() => true)
+      .catch((err) => {
+        this.logger.log("WARN", "Error removing FireAlerts function: " + err);
         return false;
       });
   }

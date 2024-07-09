@@ -33,18 +33,34 @@ export class EventarcEmulator implements EmulatorInstance {
   private logger = EmulatorLogger.forEmulator(Emulators.EVENTARC);
   private events: { [key: string]: EmulatedEventTrigger[] } = {};
 
-  constructor(private args: EventarcEmulatorArgs) {}
+  constructor(private args: EventarcEmulatorArgs) { }
 
   createHubServer(): express.Application {
     const registerTriggerRoute = `/emulator/v1/projects/:project_id/triggers/:trigger_name(*)`;
     const registerTriggerHandler: express.RequestHandler = (req, res) => {
+      try {
+        const { projectId, triggerName, eventTrigger, key } = getTriggerIdentifiers(req);
+        this.logger.logLabeled(
+          "BULLET",
+          "eventarc",
+          `Registering Eventarc event trigger for ${key} with trigger name ${triggerName}.`,
+        );
+        const eventTriggers = this.events[key] || [];
+        eventTriggers.push({ projectId, triggerName, eventTrigger });
+        this.events[key] = eventTriggers;
+        res.status(200).send({ res: "OK" });
+      } catch (error) {
+        res.status(400).send({ error });
+      }
+    };
+
+    const getTriggerIdentifiers = (req: express.Request) => {
       const projectId = req.params.project_id;
       const triggerName = req.params.trigger_name;
       if (!projectId || !triggerName) {
         const error = "Missing project ID or trigger name.";
         this.logger.log("ERROR", error);
-        res.status(400).send({ error });
-        return;
+        throw error;
       }
       const bodyString = (req as RequestWithRawBody).rawBody.toString();
       const substituted = bodyString.replaceAll("${PROJECT_ID}", projectId);
@@ -53,20 +69,41 @@ export class EventarcEmulator implements EmulatorInstance {
       if (!eventTrigger) {
         const error = `Missing event trigger for ${triggerName}.`;
         this.logger.log("ERROR", error);
-        res.status(400).send({ error });
-        return;
+        throw error;
       }
       const channel = eventTrigger.channel || GOOGLE_CHANNEL;
       const key = `${eventTrigger.eventType}-${channel}`;
-      this.logger.logLabeled(
-        "BULLET",
-        "eventarc",
-        `Registering Eventarc event trigger for ${key} with trigger name ${triggerName}.`,
-      );
-      const eventTriggers = this.events[key] || [];
-      eventTriggers.push({ projectId, triggerName, eventTrigger });
-      this.events[key] = eventTriggers;
-      res.status(200).send({ res: "OK" });
+      return { projectId, triggerName, eventTrigger, key };
+    };
+
+    const removeTriggerRoute = `/emulator/v1/remove/projects/:project_id/triggers/:trigger_name`;
+    const removeTriggerHandler: express.RequestHandler = (req, res) => {
+      try {
+        const { projectId, triggerName, eventTrigger, key } = getTriggerIdentifiers(req);
+        this.logger.logLabeled(
+          "BULLET",
+          "eventarc",
+          `Removing Eventarc event trigger for ${key} with trigger name ${triggerName}.`,
+        );
+        const eventTriggers = this.events[key] || [];
+        const triggerIdentifier = { projectId, triggerName, eventTrigger };
+        const removeIdx = eventTriggers.findIndex(
+          (e) => JSON.stringify(triggerIdentifier) === JSON.stringify(e),
+        );
+        if (removeIdx === -1) {
+          this.logger.logLabeled("ERROR", "eventarc", "Tried to remove nonexistent trigger");
+          throw new Error(`Unable to delete function trigger ${triggerName}`);
+        }
+        eventTriggers.splice(removeIdx, 1);
+        if (eventTriggers.length === 0) {
+          delete this.events[key];
+        } else {
+          this.events[key] = eventTriggers;
+        }
+        res.status(200).send({ res: "OK" });
+      } catch (error) {
+        res.status(400).send({ error });
+      }
     };
 
     const getTriggersRoute = `/google/getTriggers`;
@@ -119,6 +156,7 @@ export class EventarcEmulator implements EmulatorInstance {
       cors({ origin: true }),
       publishEventsHandler,
     );
+    hub.post([removeTriggerRoute], dataMiddleware, removeTriggerHandler);
     hub.get([getTriggersRoute], cors({ origin: true }), getTriggersHandler);
     hub.all("*", (req, res) => {
       this.logger.log("DEBUG", `Eventarc emulator received unknown request at path ${req.path}`);
