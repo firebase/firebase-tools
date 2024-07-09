@@ -8,11 +8,7 @@ import { logger } from "./logger";
 import * as utils from "./utils";
 import * as scopes from "./scopes";
 import { Tokens, User } from "./types/auth";
-import {
-  setRefreshToken,
-  setActiveAccount,
-  setGlobalDefaultAccount,
-} from "./auth";
+import { setRefreshToken, setActiveAccount, setGlobalDefaultAccount } from "./auth";
 import type { Options } from "./options";
 
 const AUTH_ERROR_MESSAGE = `Command requires authentication, please run ${clc.bold(
