@@ -1,2 +1,3 @@
 - Pass down `functions.ignore` values in `firebase.json` to functions emulator so that supposedly ignored directories/files will not trigger reload. (#7414)
 - Fixes bug where secret values provided in env files were parsed as list (#7422)
+- Update the Firebase Data Connect emulator to v1.2.4, which includes a fix for web SDK generation on Windows and a change for the local Vertex AI client to pick up application default credentials automatically (#7424)
