@@ -106,13 +106,17 @@ export function getAllAccounts(): Account[] {
 
 /**
  * Set the globally active account. Modifies the options object
- * and sets global refresh token state.
+ * and sets global refresh and access token state.
  * @param options options object.
  * @param account account to make active.
  */
 export function setActiveAccount(options: any, account: Account) {
   if (account.tokens.refresh_token) {
     setRefreshToken(account.tokens.refresh_token);
+  }
+
+  if (account.tokens.access_token) {
+    setAccessToken(account.tokens.access_token);
   }
 
   options.user = account.user;
@@ -125,6 +129,14 @@ export function setActiveAccount(options: any, account: Account) {
  */
 export function setRefreshToken(token: string) {
   apiv2.setRefreshToken(token);
+}
+
+/**
+ * Set the global access token in both api and apiv2.
+ * @param token access token string
+ */
+export function setAccessToken(token: string) {
+  apiv2.setAccessToken(token);
 }
 
 /**
