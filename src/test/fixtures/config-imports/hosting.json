@@ -1,6 +1,6 @@
 {
   // this is a comment, deal with it
   "public": ".",
-  "ignore": ["**/.*"],
+  "ignore": ["index.ts", "**/.*"],
   "extra": true
 }

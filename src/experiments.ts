@@ -40,7 +40,7 @@ export const ALL_EXPERIMENTS = experiments({
       "of deploys. This has been made an experiment due to backend bugs that are " +
       "temporarily causing failures in some regions with this optimization enabled",
     public: true,
-    default: false,
+    default: true,
   },
   deletegcfartifacts: {
     shortDescription: `Add the ${bold(
@@ -121,9 +121,10 @@ export const ALL_EXPERIMENTS = experiments({
     public: false,
   },
 
+  // TODO(joehanley): Delete this once weve scrubbed all references to experiment from docs.
   dataconnect: {
-    shortDescription: "Enable Data Connect related features.",
-    fullDescription: "Enable Data Connect related features.",
+    shortDescription: "Deprecated. Previosuly, enabled Data Connect related features.",
+    fullDescription: "Deprecated. Previously, enabled Data Connect related features.",
     public: false,
   },
 

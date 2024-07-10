@@ -1,10 +1,8 @@
 import vscode, { Disposable, ThemeColor } from "vscode";
 import {
   emulatorsStart,
-  getEmulatorUiUrl,
   listRunningEmulators,
   stopEmulators,
-  getEmulatorDetails,
   Emulators,
 } from "../cli";
 import { ExtensionBrokerImpl } from "../extension-broker";
@@ -15,7 +13,6 @@ import {
 } from "../../common/messaging/protocol";
 import { firebaseRC } from "./config";
 import { EmulatorUiSelections } from "../messaging/types";
-import { emulatorOutputChannel } from "../data-connect/emulator-stream";
 
 export class EmulatorsController implements Disposable {
   constructor(private broker: ExtensionBrokerImpl) {
@@ -132,7 +129,7 @@ export class EmulatorsController implements Disposable {
 
   /**
    * Formats a project ID with a demo prefix if we're in offline mode, or uses the
-   * regular ID if we're in hosting only mode.
+   * regular ID if we're in dataconnect only mode.
    */
   private getProjectIdForMode(
     projectId: string | undefined,
@@ -141,7 +138,7 @@ export class EmulatorsController implements Disposable {
     if (!projectId) {
       return "demo-something";
     }
-    if (mode === "hosting" || mode === "dataconnect") {
+    if (mode === "dataconnect") {
       return projectId;
     }
     return "demo-" + projectId;
@@ -174,37 +171,11 @@ export class EmulatorsController implements Disposable {
         this.emulators.value = {
           status: "running",
           infos: {
-            uiUrl: getEmulatorUiUrl(),
             displayInfo: listRunningEmulators(),
           },
         };
         // TODO: Add other emulator icons
         this.emulatorStatusItem.text = "$(data-connect) Emulators: Running";
-
-        // data connect specifics; including temp logging implementation
-        if (
-          listRunningEmulators().filter((emulatorInfos) => {
-            emulatorInfos.name === Emulators.DATACONNECT;
-          })
-        ) {
-          const dataConnectEmulatorDetails = getEmulatorDetails(
-            Emulators.DATACONNECT,
-          );
-
-          dataConnectEmulatorDetails.instance.stdout?.on("data", (data) => {
-            emulatorOutputChannel.appendLine("DEBUG: " + data.toString());
-          });
-          dataConnectEmulatorDetails.instance.stderr?.on("data", (data) => {
-            if (data.toString().includes("Finished reloading")) {
-              vscode.commands.executeCommand("fdc-graphql.restart");
-              vscode.commands.executeCommand(
-                "firebase.dataConnect.executeIntrospection",
-              );
-            } else {
-              emulatorOutputChannel.appendLine("ERROR: " + data.toString());
-            }
-          });
-        }
 
         // Updating the status bar label as "running", but don't "show" it.
         // We only show the status bar item when explicitly by interacting with the sidebar.

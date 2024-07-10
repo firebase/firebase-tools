@@ -1,19 +1,11 @@
 import * as assert from "assert";
-import { getChannels } from "../../../cli";
-import { Config } from "../../../config";
 import { firebaseSuite, firebaseTest } from "../../utils/test_hooks";
 
-firebaseSuite("getChannels", () => {
+firebaseSuite("empty test", () => {
   firebaseTest(
-    "returns an empty array if no firebaseJSON provided",
+    "empty test",
     async () => {
-      const result = await getChannels(null);
-      assert.deepStrictEqual(result, []);
+      assert.deepStrictEqual([], []);
     }
   );
-
-  firebaseTest("returns an empty array if no project provided", async () => {
-    const result = await getChannels({} as Config);
-    assert.deepStrictEqual(result, []);
-  });
 });

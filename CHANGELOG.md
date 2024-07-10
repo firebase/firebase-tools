@@ -1,1 +1,0 @@
-- Fixes issue where storage emulator throws an error due to non-standard whitespaces in filenames (#6834).

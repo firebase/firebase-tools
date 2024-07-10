@@ -150,8 +150,8 @@ are unavailable to Pull Requests coming from forks of the repository.
 | `src`           | Contains shared/support code for the commands             |
 | `src/bin`       | Contains the runnable script. You shouldn't need to touch this content. |
 | `src/commands`  | Contains code for the commands, organized by one-file-per-command with dashes. |
-| `src/templates` | Contains static files needed for various reasons (inittemplates, login success HTML, etc.) |
-| `src/test`      | Contains tests. Mirrors the top-level directory structure (i.e., `src/test/commands` contains command tests and `src/test/gcp` contains `gcp` tests) |
+| `src/test`      | Contains test helpers. Actual tests (`*.spec.ts`) should be colocated with source files. |
+| `templates`     | Contains static files needed for various reasons (init templates, login success HTML, etc.) |
 
 ## Building CLI commands
 
