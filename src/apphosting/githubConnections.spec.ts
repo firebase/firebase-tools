@@ -416,6 +416,7 @@ describe("githubConnections", () => {
 
       const matchingConnection = await repo.getConnectionForInstallation(
         projectId,
+        location,
         installationToMatch,
       );
       expect(matchingConnection).to.deep.equal(mockConn1);
@@ -439,6 +440,7 @@ describe("githubConnections", () => {
 
       const matchingConnection = await repo.getConnectionForInstallation(
         projectId,
+        location,
         installationToMatch,
       );
       expect(matchingConnection).to.be.null;

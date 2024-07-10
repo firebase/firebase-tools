@@ -119,6 +119,7 @@ export async function linkGitHubRepository(
 
   let connectionMatchingInstallation = await getConnectionForInstallation(
     projectId,
+    location,
     installationId,
   );
 
@@ -214,9 +215,10 @@ async function manageInstallation(connection: devConnect.Connection): Promise<vo
 
 export async function getConnectionForInstallation(
   projectId: string,
+  location: string,
   installationId: string,
 ): Promise<devConnect.Connection | null> {
-  const connections = await listAppHostingConnections(projectId);
+  const connections = await listAppHostingConnections(projectId, location);
   const connectionsMatchingInstallation = connections.filter(
     (conn) => conn.githubConfig?.appInstallationId === installationId,
   );
