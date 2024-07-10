@@ -7,7 +7,7 @@ import * as utils from "../utils";
 import { FirebaseError } from "../error";
 import { promptOnce } from "../prompt";
 import { getProjectNumber } from "../getProjectNumber";
-import { developerConnectOrigin } from "../api";
+import { apphostingGitHubAppInstallationURL, developerConnectOrigin } from "../api";
 
 import * as fuzzy from "fuzzy";
 import * as inquirer from "inquirer";
@@ -105,9 +105,10 @@ export async function linkGitHubRepository(
     utils.logBullet(
       "Install the Firebase App Hosting GitHub app on a new account to enable access to those repositories",
     );
-    const targetUri = "https://github.com/apps/firebase-app-hosting/installations/new";
-    utils.logBullet(targetUri);
-    await utils.openInBrowser(targetUri);
+
+    const apphostingGitHubInstallationURL = apphostingGitHubAppInstallationURL();
+    utils.logBullet(apphostingGitHubInstallationURL);
+    await utils.openInBrowser(apphostingGitHubInstallationURL);
     await promptOnce({
       type: "input",
       message:
@@ -161,19 +162,17 @@ export async function linkGitHubRepository(
  * @param location region where backend is being created
  * @param connectionId id of connection to be created
  * @param oauthConn user's oauth connection
- * @param withNewInstallation Defaults to false if not set, and the Oauth connection's
- *                            Installation Id is re-used when creating a new connection.
- *                            If true the Oauth connection's installation Id is not re-used.
+ * @param installationId represents an installation of the Firebase App Hosting GitHub app on a GitHub account / org
  */
 async function createFullyInstalledConnection(
   projectId: string,
   location: string,
   connectionId: string,
   oauthConn: devConnect.Connection,
-  withExistingInstallationId: string | undefined = undefined,
+  installationId: string,
 ): Promise<devConnect.Connection> {
   let conn = await createConnection(projectId, location, connectionId, {
-    appInstallationId: withExistingInstallationId,
+    appInstallationId: installationId,
     authorizerCredential: oauthConn.githubConfig?.authorizerCredential,
   });
 
