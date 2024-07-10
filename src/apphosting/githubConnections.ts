@@ -272,7 +272,8 @@ export async function promptGitHubInstallation(
 }
 
 /**
- * exported for unit tests
+ * A "valid" installation is either the user's account itself or any orgs they
+ * have access to that the GitHub app has been installed on.
  */
 export async function listValidInstallations(
   projectId: string,
