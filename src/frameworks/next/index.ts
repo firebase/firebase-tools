@@ -79,6 +79,7 @@ import {
 } from "./constants";
 import { getAllSiteDomains, getDeploymentDomain } from "../../hosting/api";
 import { logger } from "../../logger";
+import { parseStrict } from "../../functions/env";
 
 const DEFAULT_BUILD_SCRIPT = ["next build"];
 const PUBLIC_DIR = "public";
@@ -128,17 +129,13 @@ export async function build(
 
   // Check if the .env.<PROJECT-ID> file exists and make it available for the build process
   if (context?.projectId) {
-    const envFile = join(dir, `.env.${context.projectId}`);
+    const projectEnvPath = join(dir, `.env.${context.projectId}`);
 
-    if (await pathExists(envFile)) {
-      const envConfig = await readFile(envFile);
-      const envConfigString = envConfig.toString();
-      const envConfigLines = envConfigString.split("\n");
+    if (await pathExists(projectEnvPath)) {
+      const projectEnvVars = parseStrict((await readFile(projectEnvPath)).toString());
 
-      envConfigLines.forEach((line) => {
-        const [key, value] = line.split("=");
-        env[key] = value;
-      });
+      // Merge the parsed variables with the existing environment variables
+      Object.assign(env, projectEnvVars);
     }
   }
 
