@@ -4,8 +4,8 @@ import { expect } from "chai";
 
 import * as cli from "../functions-deploy-tests/cli";
 import { cases, Step } from "./cases";
-import * as client from "../../src/dataconnect/client";
-import { deleteDatabase } from "../../src/gcp/cloudsql/cloudsqladmin";
+// import * as client from "../../src/dataconnect/client";
+// import { deleteDatabase } from "../../src/gcp/cloudsql/cloudsqladmin";
 import { requireAuth } from "../../src/requireAuth";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
@@ -31,12 +31,12 @@ function expected(
   };
 }
 
-async function cleanUpService(projectId: string, serviceId: string, databaseId: string) {
-  await client.deleteServiceAndChildResources(
-    `projects/${projectId}/locations/us-central1/services/${serviceId}`,
-  );
-  await deleteDatabase(projectId, "dataconnect-test", databaseId);
-}
+// async function cleanUpService(projectId: string, serviceId: string, databaseId: string) {
+//   await client.deleteServiceAndChildResources(
+//     `projects/${projectId}/locations/us-central1/services/${serviceId}`,
+//   );
+//   await deleteDatabase(projectId, "dataconnect-test", databaseId);
+// }
 
 async function list() {
   return await cli.exec(
@@ -144,7 +144,7 @@ describe("firebase deploy", () => {
     await requireAuth({});
   });
 
-  afterEach(async function (this) {
+  afterEach(function (this) {
     this.timeout(10000);
     fs.rmSync(fdcTest, { recursive: true, force: true });
     // await cleanUpService(FIREBASE_PROJECT, serviceId, databaseId);
