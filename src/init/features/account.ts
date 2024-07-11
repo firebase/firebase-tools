@@ -73,7 +73,7 @@ export async function doSetup(setup: any, config: any, options: any): Promise<vo
   }
 
   // Set the global auth state
-  setActiveAccount(options, account);
+  await setActiveAccount(options, account);
 
   // Set the project default user
   if (config.projectDir) {
