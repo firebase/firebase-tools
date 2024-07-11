@@ -230,7 +230,6 @@ async function promptForService(setup: Setup, info: RequiredInfo): Promise<Requi
             info.cloudSqlInstanceId = instanceName.instanceId;
           }
           if (choice.schema.source.files) {
-            console.log(choice.schema.source.files.length);
             info.schemaGql = choice.schema.source.files;
           }
           info.cloudSqlDatabase = choice.schema.primaryDatasource.postgresql?.database ?? "";
