@@ -110,13 +110,10 @@ export function getAllAccounts(): Account[] {
  * @param options options object.
  * @param account account to make active.
  */
-export function setActiveAccount(options: any, account: Account) {
+export async function setActiveAccount(options: any, account: Account) {
   if (account.tokens.refresh_token) {
     setRefreshToken(account.tokens.refresh_token);
-  }
-
-  if (account.tokens.access_token) {
-    setAccessToken(account.tokens.access_token);
+    setAccessToken(await apiv2.getAccessToken());
   }
 
   options.user = account.user;
