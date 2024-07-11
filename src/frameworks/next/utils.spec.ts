@@ -535,24 +535,30 @@ describe("Next.js utils", () => {
   });
 
   describe("findEsbuildPath", () => {
-    let sandbox: sinon.SinonSandbox;
-    beforeEach(() => (sandbox = sinon.createSandbox()));
-    afterEach(() => sandbox.restore());
+    let execSyncStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      execSyncStub = sinon.stub(childProcess, "execSync");
+    });
+
+    afterEach(() => {
+      execSyncStub.restore();
+    });
 
     it("should return the correct esbuild path when esbuild is found", () => {
-      const mockPath = "/path/to/esbuild";
-      sandbox
-        .stub(childProcess, "execSync")
+      const mockBinaryPath = "/path/to/.bin/esbuild";
+      const expectedResolvedPath = "/path/to/esbuild";
+      execSyncStub
         .withArgs("npx which esbuild", { encoding: "utf8" })
-        .returns(mockPath + "\n");
+        .returns(mockBinaryPath + "\n");
 
       const esbuildPath = findEsbuildPath();
-      expect(esbuildPath).to.equal(mockPath);
+
+      expect(esbuildPath).to.equal(expectedResolvedPath);
     });
 
     it("should return null if esbuild is not found", () => {
-      sandbox
-        .stub(childProcess, "execSync")
+      execSyncStub
         .withArgs("npx which esbuild", { encoding: "utf8" })
         .throws(new Error("not found"));
 
@@ -562,23 +568,24 @@ describe("Next.js utils", () => {
   });
 
   describe("installEsbuild", () => {
-    let sandbox: sinon.SinonSandbox;
-    beforeEach(() => (sandbox = sinon.createSandbox()));
-    afterEach(() => sandbox.restore());
+    let execSyncStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      execSyncStub = sinon.stub(childProcess, "execSync");
+    });
+    afterEach(() => execSyncStub.restore());
 
     it("should successfully install esbuild", () => {
-      sandbox
-        .stub(childProcess, "execSync")
+      execSyncStub
         .withArgs(`npm install esbuild@VERSION --no-save`, { stdio: "inherit" })
         .returns("");
 
       installEsbuild("VERSION");
-      expect(sandbox.stub(childProcess, "execSync").calledOnce).to.be.true;
+      expect(execSyncStub.calledOnce).to.be.true;
     });
 
     it("should throw a FirebaseError if installation fails", () => {
-      sandbox
-        .stub(childProcess, "execSync")
+      execSyncStub
         .withArgs(`npm install esbuild@VERSION --no-save`, { stdio: "inherit" })
         .throws(new Error("Installation failed"));
 
