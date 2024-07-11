@@ -143,7 +143,6 @@ export async function linkGitHubRepository(
     repoCloneUri = await promptCloneUri(projectId, connectionMatchingInstallation);
   } while (repoCloneUri === MANAGE_INSTALLATION_CHOICE);
 
-  // Ensure that the selected connection exists in the same region as the backend
   const { id: connectionId } = parseConnectionName(connectionMatchingInstallation.name)!;
   await getOrCreateConnection(projectId, location, connectionId, {
     authorizerCredential: connectionMatchingInstallation.githubConfig?.authorizerCredential,
@@ -201,7 +200,7 @@ async function manageInstallation(connection: devConnect.Connection): Promise<vo
   );
   const targetUri = connection.githubConfig?.installationUri;
   if (!targetUri) {
-    throw new Error("No installation given to manage");
+    throw new FirebaseError("Failed to get Installation URI. Please try again.");
   }
 
   utils.logBullet(targetUri);
@@ -227,7 +226,13 @@ export async function getConnectionForInstallation(
   }
 
   if (connectionsMatchingInstallation.length > 1) {
-    // return the oldest connection
+    /**
+     * In the Firebase Console and previous versions of the CLI we create a
+     * connection and then choose an installation, which makes it possible for
+     * there to be more than one connection for the same installation.
+     *
+     * To handle this case gracefully we return the oldest matching connection.
+     */
     const sorted = devConnect.sortConnectionsByCreateTime(connectionsMatchingInstallation);
     return sorted[0];
   }
@@ -281,7 +286,7 @@ export async function listValidInstallations(
   projectId: string,
   location: string,
   connection: devConnect.Connection,
-) {
+): Promise<devConnect.Installation[]> {
   const { id: connId } = parseConnectionName(connection.name)!;
   let installations = await devConnect.fetchGitHubInstallations(projectId, location, connId);
 

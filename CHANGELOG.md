@@ -1,0 +1,1 @@
+- Cleans up App Hosting's GitHub integration UX
