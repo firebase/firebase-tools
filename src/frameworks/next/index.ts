@@ -16,7 +16,6 @@ import { parser } from "stream-json";
 import { pick } from "stream-json/filters/Pick";
 import { streamObject } from "stream-json/streamers/StreamObject";
 import { fileExistsSync } from "../../fsutils";
-import * as esbuild from "esbuild";
 
 import { promptOnce } from "../../prompt";
 import { FirebaseError } from "../../error";
@@ -57,6 +56,8 @@ import {
   getRoutesWithServerAction,
   getProductionDistDirFiles,
   whichNextConfigFile,
+  installEsbuild,
+  findEsbuildPath,
 } from "./utils";
 import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES, SHARP_VERSION, I18N_ROOT } from "../constants";
 import type {
@@ -67,6 +68,7 @@ import type {
   NpmLsDepdendency,
   MiddlewareManifest,
   ActionManifest,
+  CustomBuildOptions,
 } from "./interfaces";
 import {
   MIDDLEWARE_MANIFEST,
@@ -76,6 +78,7 @@ import {
   APP_PATH_ROUTES_MANIFEST,
   APP_PATHS_MANIFEST,
   SERVER_REFERENCE_MANIFEST,
+  ESBUILD_VERSION,
 } from "./constants";
 import { getAllSiteDomains, getDeploymentDomain } from "../../hosting/api";
 import { logger } from "../../logger";
@@ -571,6 +574,23 @@ export async function ɵcodegenFunctionsDirectory(
   const configFile = await whichNextConfigFile(sourceDir);
   if (configFile) {
     try {
+      // Check if esbuild is installed using `npx which`, if not, install it
+      let esbuildPath = findEsbuildPath();
+      if (!esbuildPath || !pathExistsSync(esbuildPath)) {
+        console.warn("esbuild not found, installing...");
+        installEsbuild(ESBUILD_VERSION);
+        esbuildPath = findEsbuildPath();
+        if (!esbuildPath || !pathExistsSync(esbuildPath)) {
+          throw new FirebaseError("Failed to locate esbuild after installation.");
+        }
+      }
+
+      // Dynamically require esbuild from the found path
+      const esbuild = require(esbuildPath);
+      if (!esbuild) {
+        throw new FirebaseError(`Failed to load esbuild from path: ${esbuildPath}`);
+      }
+
       const productionDeps = await new Promise<string[]>((resolve) => {
         const dependencies: string[] = [];
         const npmLs = spawn("npm", ["ls", "--omit=dev", "--all", "--json=true"], {
@@ -592,9 +612,10 @@ export async function ɵcodegenFunctionsDirectory(
           resolve([...new Set(dependencies)]);
         });
       });
+
       // Mark all production deps as externals, so they aren't bundled
       // DevDeps won't be included in the Cloud Function, so they should be bundled
-      const esbuildArgs: esbuild.BuildOptions = {
+      const esbuildArgs: CustomBuildOptions = {
         entryPoints: [join(sourceDir, configFile)],
         outfile: join(destDir, configFile),
         bundle: true,
@@ -610,7 +631,7 @@ export async function ɵcodegenFunctionsDirectory(
 
       const bundle = await esbuild.build(esbuildArgs);
 
-      if (bundle.errors.length > 0) {
+      if (bundle.errors && bundle.errors.length > 0) {
         throw new FirebaseError(bundle.errors.toString());
       }
     } catch (e: any) {

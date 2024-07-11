@@ -1,6 +1,6 @@
 import { existsSync } from "fs";
 import { pathExists } from "fs-extra";
-import { basename, extname, join, posix, sep } from "path";
+import { basename, extname, join, posix, sep, resolve, dirname } from "path";
 import { readFile } from "fs/promises";
 import { glob, sync as globSync } from "glob";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
@@ -34,6 +34,8 @@ import {
 } from "./constants";
 import { dirExistsSync, fileExistsSync } from "../../fsutils";
 import { IS_WINDOWS } from "../../utils";
+import { execSync } from "child_process";
+import { FirebaseError } from "../../error";
 
 export const I18N_SOURCE = /\/:nextInternalLocale(\([^\)]+\))?/;
 
@@ -488,4 +490,35 @@ export async function whichNextConfigFile(dir: string): Promise<NextConfigFileNa
   }
 
   return null;
+}
+
+/**
+ * Helper function to find the path of esbuild using `npm which`
+ */
+export function findEsbuildPath(): string | null {
+  try {
+    const esbuildBinPath = execSync("npx which esbuild", { encoding: "utf8" }).trim();
+    const esbuildPath = resolve(dirname(esbuildBinPath), "../esbuild");
+    console.log(`esbuild path found: ${esbuildPath}`); // Debugging log
+    return esbuildPath;
+  } catch (error) {
+    console.error(`Failed to find esbuild with npx which: ${error}`); // Error log
+    return null;
+  }
+}
+
+/**
+ * Helper function to install esbuild dynamically
+ */
+export function installEsbuild(version: string): void {
+  const installCommand = `npm install esbuild@${version} --no-save`;
+  try {
+    execSync(installCommand, { stdio: "inherit" });
+  } catch (error: any) {
+    if (error instanceof FirebaseError) {
+      throw error;
+    } else {
+      throw new FirebaseError(`Failed to install esbuild: ${error}`, { original: error });
+    }
+  }
 }

@@ -4,6 +4,8 @@ import * as fsPromises from "fs/promises";
 import * as fsExtra from "fs-extra";
 import * as sinon from "sinon";
 import * as glob from "glob";
+import * as childProcess from "child_process";
+import { FirebaseError } from "../../error";
 
 import { EXPORT_MARKER, IMAGES_MANIFEST, APP_PATH_ROUTES_MANIFEST } from "./constants";
 
@@ -29,6 +31,8 @@ import {
   isUsingNextImageInAppDirectory,
   getNextVersion,
   getRoutesWithServerAction,
+  findEsbuildPath,
+  installEsbuild,
 } from "./utils";
 
 import * as frameworksUtils from "../utils";
@@ -527,6 +531,64 @@ describe("Next.js utils", () => {
       expect(
         getRoutesWithServerAction(serverReferenceManifest, appPathRoutesManifest),
       ).to.deep.equal(["/another-s-a", "/server-action", "/server-action/edge"]);
+    });
+  });
+
+  describe("findEsbuildPath", () => {
+    let sandbox: sinon.SinonSandbox;
+    beforeEach(() => (sandbox = sinon.createSandbox()));
+    afterEach(() => sandbox.restore());
+
+    it("should return the correct esbuild path when esbuild is found", () => {
+      const mockPath = "/path/to/esbuild";
+      sandbox
+        .stub(childProcess, "execSync")
+        .withArgs("npx which esbuild", { encoding: "utf8" })
+        .returns(mockPath + "\n");
+
+      const esbuildPath = findEsbuildPath();
+      expect(esbuildPath).to.equal(mockPath);
+    });
+
+    it("should return null if esbuild is not found", () => {
+      sandbox
+        .stub(childProcess, "execSync")
+        .withArgs("npx which esbuild", { encoding: "utf8" })
+        .throws(new Error("not found"));
+
+      const esbuildPath = findEsbuildPath();
+      expect(esbuildPath).to.be.null;
+    });
+  });
+
+  describe("installEsbuild", () => {
+    let sandbox: sinon.SinonSandbox;
+    beforeEach(() => (sandbox = sinon.createSandbox()));
+    afterEach(() => sandbox.restore());
+
+    it("should successfully install esbuild", () => {
+      sandbox
+        .stub(childProcess, "execSync")
+        .withArgs(`npm install esbuild@VERSION --no-save`, { stdio: "inherit" })
+        .returns("");
+
+      installEsbuild("VERSION");
+      expect(sandbox.stub(childProcess, "execSync").calledOnce).to.be.true;
+    });
+
+    it("should throw a FirebaseError if installation fails", () => {
+      sandbox
+        .stub(childProcess, "execSync")
+        .withArgs(`npm install esbuild@VERSION --no-save`, { stdio: "inherit" })
+        .throws(new Error("Installation failed"));
+
+      try {
+        installEsbuild("VERSION");
+      } catch (error) {
+        const typedError = error as FirebaseError;
+        expect(typedError).to.be.instanceOf(FirebaseError);
+        expect(typedError.message).to.include("Failed to install esbuild");
+      }
     });
   });
 });
