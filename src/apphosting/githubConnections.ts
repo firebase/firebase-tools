@@ -98,7 +98,7 @@ export async function linkGitHubRepository(
   utils.logBullet(clc.bold(`${clc.yellow("===")} Import a GitHub repository`));
   // Fetch the sentinel Oauth connection first which is needed to create further GitHub connections.
   const oauthConn = await getOrCreateOauthConnection(projectId, location);
-  const existingConns = await listAppHostingConnections(projectId);
+  const existingConns = await listAppHostingConnections(projectId, location);
 
   if (existingConns.length === 0) {
     existingConns.push(
@@ -258,6 +258,30 @@ async function promptCloneUri(
 }
 
 /**
+ * Prompts the user for a GitHub branch and validates that the given branch
+ * actually exists. User is re-prompted until they enter a valid branch.
+ */
+export async function promptGitHubBranch(repoLink: devConnect.GitRepositoryLink) {
+  const branches = await devConnect.listAllBranches(repoLink.name);
+  while (true) {
+    const branch = await promptOnce({
+      name: "branch",
+      type: "input",
+      default: "main",
+      message: "Pick a branch for continuous deployment",
+    });
+
+    if (branches.has(branch)) {
+      return branch;
+    }
+
+    utils.logWarning(
+      `The branch "${branch}" does not exist on "${extractRepoSlugFromUri(repoLink.cloneUri)}". Please enter a valid branch for this repo.`,
+    );
+  }
+}
+
+/**
  * Exported for unit testing
  */
 export async function ensureSecretManagerAdminGrant(projectId: string): Promise<void> {
@@ -408,8 +432,9 @@ export async function getOrCreateRepository(
  */
 export async function listAppHostingConnections(
   projectId: string,
+  location: string,
 ): Promise<devConnect.Connection[]> {
-  const conns = await devConnect.listAllConnections(projectId, "-");
+  const conns = await devConnect.listAllConnections(projectId, location);
   return conns.filter(
     (conn) =>
       APPHOSTING_CONN_PATTERN.test(conn.name) &&

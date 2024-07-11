@@ -1,6 +1,5 @@
 {
   "dataconnect": {
-    "source": "fdc-test",
-    "location": "us-central1"
+    "source": "fdc-test"
   }
 }
