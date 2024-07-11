@@ -235,6 +235,39 @@ export async function listAllLinkableGitRepositories(
 }
 
 /**
+ * Lists all branches for a given repo. Returns a set of branches.
+ */
+
+export async function listAllBranches(repoLinkName: string): Promise<Set<string>> {
+  const branches = new Set<string>();
+
+  const getNextPage = async (pageToken = ""): Promise<void> => {
+    const res = await client.get<{
+      refNames: string[];
+      nextPageToken?: string;
+    }>(`${repoLinkName}:fetchGitRefs`, {
+      queryParams: {
+        refType: "BRANCH",
+        pageSize: PAGE_SIZE_MAX,
+        pageToken,
+      },
+    });
+    if (Array.isArray(res.body.refNames)) {
+      res.body.refNames.forEach((branch) => {
+        branches.add(branch);
+      });
+    }
+    if (res.body.nextPageToken) {
+      await getNextPage(res.body.nextPageToken);
+    }
+  };
+
+  await getNextPage();
+
+  return branches;
+}
+
+/**
  * Creates a GitRepositoryLink.Upon linking a Git Repository, Developer
  * Connect will configure the Git Repository to send webhook events to
  * Developer Connect.

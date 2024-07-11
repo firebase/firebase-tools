@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import * as build from "./build";
-import { ParamValue } from "./params";
+import { ParamValue, Param } from "./params";
 import { FirebaseError } from "../../error";
 
 describe("toBackend", () => {
@@ -184,5 +184,73 @@ describe("toBackend", () => {
         egressSettings: new ParamValue("INVALID", false, { string: true }),
       });
     }).to.throw(FirebaseError, /Value "INVALID" is an invalid egress setting./);
+  });
+});
+
+describe("envWithType", () => {
+  it("converts raw environment variables to params with correct type", () => {
+    const params: Param[] = [
+      {
+        name: "A_STR",
+        type: "string",
+      },
+      {
+        name: "AN_INT",
+        type: "int",
+      },
+      {
+        name: "A_BOOL",
+        type: "boolean",
+      },
+    ];
+    const rawEnvs: Record<string, string> = {
+      A_STR: "foo",
+      AN_INT: "1",
+      A_BOOL: "true",
+      NOT_PARAM: "not-a-param",
+    };
+    const out = build.envWithTypes(params, rawEnvs);
+
+    expect(out).to.include.keys(["A_STR", "AN_INT", "A_BOOL"]);
+
+    expect(out.A_STR.legalString).to.be.true;
+    expect(out.A_STR.legalBoolean).to.be.false;
+    expect(out.A_STR.legalNumber).to.be.false;
+    expect(out.A_STR.legalList).to.be.false;
+    expect(out.A_STR.asString()).to.equal("foo");
+
+    expect(out.AN_INT.legalString).to.be.false;
+    expect(out.AN_INT.legalBoolean).to.be.false;
+    expect(out.AN_INT.legalNumber).to.be.true;
+    expect(out.AN_INT.legalList).to.be.false;
+    expect(out.AN_INT.asNumber()).to.equal(1);
+
+    expect(out.A_BOOL.legalString).to.be.false;
+    expect(out.A_BOOL.legalBoolean).to.be.true;
+    expect(out.A_BOOL.legalNumber).to.be.false;
+    expect(out.A_BOOL.legalList).to.be.false;
+    expect(out.A_BOOL.asBoolean()).to.be.true;
+  });
+
+  it("converts raw environment variable for secret param with correct type", () => {
+    const params: Param[] = [
+      {
+        name: "WHOOPS_SECRET",
+        type: "secret",
+      },
+    ];
+    const rawEnvs: Record<string, string> = {
+      A_STR: "foo",
+      WHOOPS_SECRET: "super-secret",
+    };
+    const out = build.envWithTypes(params, rawEnvs);
+
+    expect(out).to.include.keys(["WHOOPS_SECRET"]);
+
+    expect(out.WHOOPS_SECRET.legalString).to.be.true;
+    expect(out.WHOOPS_SECRET.legalBoolean).to.be.false;
+    expect(out.WHOOPS_SECRET.legalNumber).to.be.false;
+    expect(out.WHOOPS_SECRET.legalList).to.be.false;
+    expect(out.WHOOPS_SECRET.asString()).to.equal("super-secret");
   });
 });

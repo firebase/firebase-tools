@@ -160,6 +160,8 @@ export interface ExtensionToWebviewParamsMap {
   // data connect specific
   notifyDataConnectResults: DataConnectResults;
   notifyDataConnectRequiredArgs: { args: string[] };
+
+  notifyIsLoadingUser: boolean;
 }
 
 export type MessageParamsMap =
