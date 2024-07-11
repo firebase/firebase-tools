@@ -1,1 +1,0 @@
-- Fixes an issue where old access_token would be used after expiry. (#7429)
