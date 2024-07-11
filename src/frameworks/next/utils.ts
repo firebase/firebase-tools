@@ -499,10 +499,10 @@ export function findEsbuildPath(): string | null {
   try {
     const esbuildBinPath = execSync("npx which esbuild", { encoding: "utf8" }).trim();
     const esbuildPath = resolve(dirname(esbuildBinPath), "../esbuild");
-    console.log(`esbuild path found: ${esbuildPath}`); // Debugging log
+    console.log(`esbuild path found: ${esbuildPath}`);
     return esbuildPath;
   } catch (error) {
-    console.error(`Failed to find esbuild with npx which: ${error}`); // Error log
+    console.error(`Failed to find esbuild with npx which: ${error}`);
     return null;
   }
 }
