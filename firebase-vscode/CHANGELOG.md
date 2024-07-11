@@ -1,5 +1,9 @@
 ## NEXT
 
+## 0.4.2
+
+- Updated internal firebase-tools dependency to 13.13.2
+
 ## 0.4.1
 
 - Updated internal firebase-tools dependency to 13.13.1
