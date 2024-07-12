@@ -1,1 +1,1 @@
-- Cleans up App Hosting's GitHub integration UX
+- Cleans up App Hosting's GitHub integration UX. "Add an account" flow now goes directly to GitHub instead of using Developer Connect.
