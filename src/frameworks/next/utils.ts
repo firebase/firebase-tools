@@ -4,7 +4,7 @@ import { basename, extname, join, posix, sep, resolve, dirname } from "path";
 import { readFile } from "fs/promises";
 import { glob, sync as globSync } from "glob";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
-import { coerce } from "semver";
+import { coerce, satisfies } from "semver";
 
 import { findDependency, isUrl, readJSON } from "../utils";
 import type {
@@ -31,6 +31,7 @@ import {
   MIDDLEWARE_MANIFEST,
   WEBPACK_LAYERS,
   CONFIG_FILES,
+  ESBUILD_VERSION,
 } from "./constants";
 import { dirExistsSync, fileExistsSync } from "../../fsutils";
 import { IS_WINDOWS } from "../../utils";
@@ -498,11 +499,29 @@ export async function whichNextConfigFile(dir: string): Promise<NextConfigFileNa
 export function findEsbuildPath(): string | null {
   try {
     const esbuildBinPath = execSync("npx which esbuild", { encoding: "utf8" }).trim();
-    const esbuildPath = resolve(dirname(esbuildBinPath), "../esbuild");
-    console.log(`esbuild path found: ${esbuildPath}`);
-    return esbuildPath;
+    const globalVersion = getGlobalEsbuildVersion();
+    if (globalVersion && !satisfies(globalVersion, ESBUILD_VERSION)) {
+      console.warn(
+        `Warning: Global esbuild version (${globalVersion}) does not match the required version (${ESBUILD_VERSION}).`,
+      );
+    }
+    return resolve(dirname(esbuildBinPath), "../esbuild");
   } catch (error) {
     console.error(`Failed to find esbuild with npx which: ${error}`);
+    return null;
+  }
+}
+
+/**
+ * Helper function to get the global esbuild version
+ */
+export function getGlobalEsbuildVersion(): string | null {
+  try {
+    const versionOutput = execSync("esbuild --version", { encoding: "utf8" }).trim();
+    const versionMatch = versionOutput.match(/(\d+\.\d+\.\d+)/);
+    return versionMatch ? versionMatch[0] : null;
+  } catch (error) {
+    console.error(`Failed to get global esbuild version: ${error}`);
     return null;
   }
 }

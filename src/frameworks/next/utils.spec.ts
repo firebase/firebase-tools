@@ -7,7 +7,12 @@ import * as glob from "glob";
 import * as childProcess from "child_process";
 import { FirebaseError } from "../../error";
 
-import { EXPORT_MARKER, IMAGES_MANIFEST, APP_PATH_ROUTES_MANIFEST } from "./constants";
+import {
+  EXPORT_MARKER,
+  IMAGES_MANIFEST,
+  APP_PATH_ROUTES_MANIFEST,
+  ESBUILD_VERSION,
+} from "./constants";
 
 import {
   cleanEscapedChars,
@@ -565,6 +570,25 @@ describe("Next.js utils", () => {
       const esbuildPath = findEsbuildPath();
       expect(esbuildPath).to.be.null;
     });
+
+    it("should warn if global esbuild version does not match required version", () => {
+      const mockBinaryPath = "/path/to/.bin/esbuild";
+      execSyncStub
+        .withArgs("npx which esbuild", { encoding: "utf8" })
+        .returns(mockBinaryPath + "\n");
+      execSyncStub.withArgs("esbuild --version", { encoding: "utf8" }).returns("0.18.0\n");
+
+      const consoleWarnStub = sinon.stub(console, "warn");
+
+      findEsbuildPath();
+      expect(
+        consoleWarnStub.calledWith(
+          `Warning: Global esbuild version (0.18.0) does not match the required version (${ESBUILD_VERSION}).`,
+        ),
+      ).to.be.true;
+
+      consoleWarnStub.restore();
+    });
   });
 
   describe("installEsbuild", () => {
@@ -577,20 +601,21 @@ describe("Next.js utils", () => {
 
     it("should successfully install esbuild", () => {
       execSyncStub
-        .withArgs(`npm install esbuild@VERSION --no-save`, { stdio: "inherit" })
+        .withArgs(`npm install esbuild@${ESBUILD_VERSION} --no-save`, { stdio: "inherit" })
         .returns("");
 
-      installEsbuild("VERSION");
+      installEsbuild(ESBUILD_VERSION);
       expect(execSyncStub.calledOnce).to.be.true;
     });
 
     it("should throw a FirebaseError if installation fails", () => {
       execSyncStub
-        .withArgs(`npm install esbuild@VERSION --no-save`, { stdio: "inherit" })
+        .withArgs(`npm install esbuild@${ESBUILD_VERSION} --no-save`, { stdio: "inherit" })
         .throws(new Error("Installation failed"));
 
       try {
-        installEsbuild("VERSION");
+        installEsbuild(ESBUILD_VERSION);
+        expect.fail("Expected installEsbuild to throw");
       } catch (error) {
         const typedError = error as FirebaseError;
         expect(typedError).to.be.instanceOf(FirebaseError);
