@@ -16,7 +16,6 @@ interface EmulatorsInitSelections {
 export const DEFAULT_POSTGRES_CONNECTION =
   "postgresql://postgresusername:postgrespassword@localhost:5432/databasename?sslmode=disable";
 
-
 export async function doSetup(setup: Setup, config: any) {
   const choices = ALL_SERVICE_EMULATORS.map((e) => {
     return {
