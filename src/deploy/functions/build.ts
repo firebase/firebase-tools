@@ -279,6 +279,7 @@ export async function resolveBackend(
   userEnvOpt: UserEnvsOpts,
   userEnvs: Record<string, string>,
   nonInteractive?: boolean,
+  isEmulator = false,
 ): Promise<{ backend: backend.Backend; envs: Record<string, params.ParamValue> }> {
   let paramValues: Record<string, params.ParamValue> = {};
   paramValues = await params.resolveParams(
@@ -286,6 +287,7 @@ export async function resolveBackend(
     firebaseConfig,
     envWithTypes(build.params, userEnvs),
     nonInteractive,
+    isEmulator,
   );
 
   const toWrite: Record<string, string> = {};

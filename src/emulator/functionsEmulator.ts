@@ -545,6 +545,8 @@ export class FunctionsEmulator implements EmulatorInstance {
         JSON.parse(firebaseConfig),
         userEnvOpt,
         userEnvs,
+        false,
+        true,
       );
       const discoveredBackend = resolution.backend;
       const endpoints = backend.allEndpoints(discoveredBackend);
