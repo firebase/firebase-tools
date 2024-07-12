@@ -1,1 +1,2 @@
+- Fix an issue where refresh_tokens would be used before checking whether they were expired. (#7442)
 - Improved the default data connect Postgres connection string format.
