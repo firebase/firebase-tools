@@ -12,7 +12,7 @@ import { Options } from "../../src/options";
 import { currentOptions, getCommandOptions } from "./options";
 import { EmulatorUiSelections } from "../common/messaging/types";
 import { pluginLogger } from "./logger-wrapper";
-import { setAccessToken } from "../../src/apiv2";
+import { getAccessToken, setAccessToken } from "../../src/apiv2";
 import {
   startAll as startAllEmulators,
   cleanShutdown as stopAllEmulators,
@@ -56,7 +56,7 @@ export async function requireAuthWrapper(
     return (
       account &&
       account.user.email === optionsUser.email &&
-      account.tokens.access_token === optionsTokens.access_token // TODO: check if this is necessary
+      account.tokens.refresh_token === optionsTokens.refresh_token // Should check refresh token which is consistent, not access_token which is short lived. 
     );
   }
 
@@ -80,8 +80,12 @@ export async function requireAuthWrapper(
   // over Google login tokens and must be removed if a Google
   // account is the current user.
   try {
-    setAccessToken(); // clears the current access token
     const userEmail = await requireAuth(currentOptions.value); // client email
+    // SetAccessToken is necessary here to ensure that access_tokens are available when:
+    // - we are using tokens from configstore (aka those set by firebase login), AND
+    // - we are calling CLI code that skips Command (where we normally call this)
+
+    setAccessToken(await getAccessToken()); 
     if (userEmail) {
       pluginLogger.debug("User found: ", userEmail);
 
