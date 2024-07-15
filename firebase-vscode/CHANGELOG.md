@@ -1,5 +1,11 @@
 ## NEXT
 
+- [Fixed] Local execution now properly supports Vertex API
+
+## 0.4.3
+
+- Updated internal firebase-tools dependency to 13.13.3
+
 ## 0.4.2
 
 - Updated internal firebase-tools dependency to 13.13.2
