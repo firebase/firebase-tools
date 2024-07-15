@@ -1,0 +1,1 @@
+- Fixes secret params resolution in functions emulator. (#7443)
