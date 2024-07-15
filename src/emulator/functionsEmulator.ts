@@ -695,6 +695,13 @@ export class FunctionsEmulator implements EmulatorInstance {
           definition.region,
         );
         added = this.addBlockingTrigger(url, definition.blockingTrigger);
+      } else if (definition.taskQueueTrigger) {
+        url = FunctionsEmulator.getHttpFunctionUrl(
+          this.args.projectId,
+          definition.name,
+          definition.region,
+        );
+        added = this.addTaskQueueTrigger(definition.taskQueueTrigger);
       } else {
         this.logger.log(
           "WARN",
@@ -1067,6 +1074,11 @@ export class FunctionsEmulator implements EmulatorInstance {
       refreshToken: !!blockingTrigger.options!.refreshToken,
     };
 
+    return true;
+  }
+
+  addTaskQueueTrigger(taskQueueTrigger: backend.TaskQueueTrigger) {
+    logger.debug(`addTaskQueueTrigger`, JSON.stringify(taskQueueTrigger));
     return true;
   }
 
