@@ -11,6 +11,7 @@ import { Options } from "../options";
 import { FirebaseError } from "../error";
 import { needProjectId } from "../projectUtils";
 import { logLabeledBullet, logLabeledWarning, logLabeledSuccess } from "../utils";
+import * as experiments from "../experiments";
 import * as errors from "./errors";
 
 export async function diffSchema(schema: Schema): Promise<Diff[]> {
@@ -53,7 +54,12 @@ export async function migrateSchema(args: {
   /** true for `dataconnect:sql:migrate`, false for `deploy` */
   validateOnly: boolean;
 }): Promise<Diff[]> {
+
   const { options, schema, validateOnly } = args;
+
+  if (experiments.isEnabled("compatiblemode")) {
+    schema.primaryDatasource.postgresql?.schemaValidation == "COMPATIBLE"
+  }
 
   const { serviceName, instanceId, instanceName, databaseId } = getIdentifiers(schema);
   await ensureServiceIsConnectedToCloudSql(
