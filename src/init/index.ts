@@ -14,6 +14,7 @@ export interface Setup {
   project?: Record<string, any>;
   projectId?: string;
   projectLocation?: string;
+  hosting?: Record<string, any>;
 }
 
 const featureFns = new Map<string, (setup: any, config: any, options?: any) => Promise<unknown>>([
