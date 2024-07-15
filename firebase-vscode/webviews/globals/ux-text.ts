@@ -12,6 +12,8 @@ export const TEXT = {
 
   MONOSPACE_LOGIN_FAIL: "Unable to find default credentials",
 
+  LOGIN_IN_PROGRESS: "Login in progress",
+
   GOOGLE_SIGN_IN: "Sign in with Google",
 
   ADDITIONAL_USER_SIGN_IN: "Sign in another user...",

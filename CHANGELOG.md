@@ -1,1 +1,1 @@
-- Fixes framework support for Nuxt ^3.12 by correctly calling loadNuxtConfig() (#7375)
+- `firebase init dataconnect` now can pull down deployed GQL files.
