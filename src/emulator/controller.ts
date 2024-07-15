@@ -57,6 +57,7 @@ import { HostingEmulator } from "./hostingEmulator";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { StorageEmulator } from "./storage";
 import { readFirebaseJson } from "../dataconnect/fileUtils";
+import { TasksEmulator } from "./tasksEmulator";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
@@ -533,6 +534,7 @@ export async function startAll(
         ...listenForEmulator,
         functions: listenForEmulator.functions ?? getListenConfig(options, Emulators.FUNCTIONS),
         eventarc: listenForEmulator.eventarc ?? getListenConfig(options, Emulators.EVENTARC),
+        tasks: listenForEmulator.eventarc ?? getListenConfig(options, Emulators.TASKS),
       });
       hubLogger.log("DEBUG", "late-assigned ports for functions and eventarc emulators", {
         user: listenForEmulator,
@@ -588,6 +590,14 @@ export async function startAll(
       port: eventarcAddr.port,
     });
     await startEmulator(eventarcEmulator);
+
+    const tasksAddr = legacyGetFirstAddr(Emulators.TASKS);
+    const tasksEmulator = new TasksEmulator({
+      host: tasksAddr.host,
+      port: tasksAddr.port,
+    });
+
+    await startEmulator(tasksEmulator);
   }
 
   if (listenForEmulator.firestore) {

@@ -15,6 +15,7 @@ export enum Emulators {
   EXTENSIONS = "extensions",
   EVENTARC = "eventarc",
   DATACONNECT = "dataconnect",
+  TASKS = "tasks",
 }
 
 export type DownloadableEmulators =
