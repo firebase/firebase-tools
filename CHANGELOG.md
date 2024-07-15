@@ -1,1 +1,2 @@
 - `firebase init dataconnect` now can pull down deployed GQL files.
+- GitHub Action fixes for web frameworks (#6883)
