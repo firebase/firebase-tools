@@ -1,0 +1,1 @@
+- `firebase init dataconnect` now can pull down deployed GQL files.
