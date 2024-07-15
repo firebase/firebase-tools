@@ -22,6 +22,7 @@ const featureFns = new Map<string, (setup: any, config: any, options?: any) => P
   ["database", features.database],
   ["firestore", features.firestore],
   ["dataconnect", features.dataconnect],
+  ["dataconnect:sdk", features.dataconnectSdk],
   ["functions", features.functions],
   ["hosting", features.hosting],
   ["storage", features.storage],

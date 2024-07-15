@@ -1,5 +1,41 @@
 ## NEXT
 
+- [Fixed] Local execution now properly supports Vertex API
+
+## 0.4.3
+
+- Updated internal firebase-tools dependency to 13.13.3
+
+## 0.4.2
+
+- Updated internal firebase-tools dependency to 13.13.2
+
+## 0.4.1
+
+- Updated internal firebase-tools dependency to 13.13.1
+
+- IDX Auth is picked up by VSCode
+- [Fixed] Data Connect emulator issues properly streamed on startup
+- [Fixed] Data Connect schema reloads consistently
+
+## 0.4.0
+
+- Updated internal firebase-tools dependency to 13.13.0
+
+## 0.3.0
+
+- Updated internal firebase-tools dependency to 13.12.0
+
+## 0.2.9
+
+- Updated internal firebase-tools dependency to 13.11.4
+
+- Support CLI started emulators
+
+## 0.2.8
+
+- Updated internal firebase-tools dependency to 13.11.3
+
 ## 0.2.7
 
 - Updated internal firebase-tools dependency to 13.11.2

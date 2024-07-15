@@ -517,6 +517,7 @@ export async function startAll(
         // TODO(b/213335255): predefinedTriggers and nodeMajorVersion are here to support ext:dev:emulators:* commands.
         // Ideally, we should handle that case via ExtensionEmulator.
         predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
+        ignore: cfg.ignore,
       });
     }
   }
@@ -839,13 +840,9 @@ export async function startAll(
       projectId,
       auto_download: true,
       configDir,
-      locationId: config[0].location,
       rc: options.rc,
     });
     await startEmulator(dataConnectEmulator);
-    if (!utils.isVSCodeExtension()) {
-      await dataConnectEmulator.connectToPostgres();
-    }
   }
 
   if (listenForEmulator.storage) {

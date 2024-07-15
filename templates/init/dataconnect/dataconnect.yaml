@@ -1,5 +1,6 @@
 specVersion: "v1alpha"
 serviceId: "__serviceId__"
+location: "__location__"
 schema:
   source: "./schema"
   datasource:
@@ -7,4 +8,4 @@ schema:
       database: "__cloudSqlDatabase__"
       cloudSql:
         instanceId: "__cloudSqlInstanceId__"
-connectorDirs: ["./__connectorId__"]
+connectorDirs: [__connectorIds__]

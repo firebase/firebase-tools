@@ -12,19 +12,21 @@ import { BuildResult, requiresVector } from "../dataconnect/types";
 import { listenSpecsToString } from "./portUtils";
 import { Client, ClientResponse } from "../apiv2";
 import { EmulatorRegistry } from "./registry";
+import { logger } from "../logger";
+import { load } from "../dataconnect/load";
+import { isVSCodeExtension } from "../utils";
+import { EventEmitter } from "events";
 
 export interface DataConnectEmulatorArgs {
-  projectId?: string;
+  projectId: string;
   listen: ListenSpec[];
   configDir: string;
-  locationId?: string;
   auto_download?: boolean;
   rc: RC;
 }
 
 export interface DataConnectGenerateArgs {
   configDir: string;
-  locationId: string;
   connectorId: string;
 }
 
@@ -32,8 +34,12 @@ export interface DataConnectBuildArgs {
   configDir: string;
 }
 
+// TODO: More concrete typing for events. Can we use string unions?
+export const dataConnectEmulatorEvents = new EventEmitter();
+
 export class DataConnectEmulator implements EmulatorInstance {
   private emulatorClient: DataConnectEmulatorClient;
+  private usingExistingEmulator: boolean = false;
 
   constructor(private args: DataConnectEmulatorArgs) {
     this.emulatorClient = new DataConnectEmulatorClient();
@@ -61,21 +67,52 @@ export class DataConnectEmulator implements EmulatorInstance {
     } catch (err: any) {
       this.logger.log("DEBUG", `'fdc build' failed with error: ${err.message}`);
     }
-    return start(Emulators.DATACONNECT, {
-      auto_download: this.args.auto_download,
-      listen: listenSpecsToString(this.args.listen),
-      config_dir: this.args.configDir,
-      project_id: this.args.projectId,
-      service_location: this.args.locationId,
-    });
+    const alreadyRunning = await this.discoverRunningInstance();
+    if (alreadyRunning) {
+      this.logger.logLabeled(
+        "INFO",
+        "Data Connect",
+        "Detected an instance of the emulator already running with your service, reusing it. This emulator will not be shut down at the end of this command.",
+      );
+      this.usingExistingEmulator = true;
+      this.watchUnmanagedInstance();
+    } else {
+      await start(Emulators.DATACONNECT, {
+        auto_download: this.args.auto_download,
+        listen: listenSpecsToString(this.args.listen),
+        config_dir: this.args.configDir,
+      });
+      this.usingExistingEmulator = false;
+    }
+    if (!isVSCodeExtension()) {
+      await this.connectToPostgres();
+    }
+    return;
   }
 
-  connect(): Promise<void> {
-    // TODO: Do some kind of uptime check.
+  async connect(): Promise<void> {
+    // TODO: Wait for 'Listening on address (HTTP + gRPC)' message to ensure that emulator binary is fully started.
+    const emuInfo = await this.emulatorClient.getInfo();
+    if (!emuInfo) {
+      this.logger.logLabeled(
+        "ERROR",
+        "Data Connect",
+        "Could not connect to Data Connect emulator. Check dataconnect-debug.log for more details.",
+      );
+      return Promise.reject();
+    }
     return Promise.resolve();
   }
 
-  stop(): Promise<void> {
+  async stop(): Promise<void> {
+    if (this.usingExistingEmulator) {
+      this.logger.logLabeled(
+        "INFO",
+        "Data Connect",
+        "Skipping cleanup of Data Connect emulator, as it was not started by this process.",
+      );
+      return;
+    }
     return stop(Emulators.DATACONNECT);
   }
 
@@ -100,15 +137,21 @@ export class DataConnectEmulator implements EmulatorInstance {
       "--logtostderr",
       "-v=2",
       "generate",
-      `--service_location=${args.locationId}`,
       `--config_dir=${args.configDir}`,
       `--connector_id=${args.connectorId}`,
     ];
     const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8" });
+
+    logger.info(res.stderr);
     if (res.error) {
       throw new FirebaseError(`Error starting up Data Connect generate: ${res.error.message}`, {
         original: res.error,
       });
+    }
+    if (res.status !== 0) {
+      throw new FirebaseError(
+        `Unable to generate your Data Connect SDKs (exit code ${res.status}): ${res.stderr}`,
+      );
     }
     return res.stdout;
   }
@@ -148,6 +191,51 @@ export class DataConnectEmulator implements EmulatorInstance {
     return this.args.rc.getDataconnect()?.postgres?.localConnectionString;
   }
 
+  private async discoverRunningInstance(): Promise<boolean> {
+    const emuInfo = await this.emulatorClient.getInfo();
+    if (!emuInfo) {
+      return false;
+    }
+    const serviceInfo = await load(this.args.projectId, this.args.configDir);
+    const sameService = emuInfo.services.find(
+      (s) => serviceInfo.dataConnectYaml.serviceId === s.serviceId,
+    );
+    if (!sameService) {
+      throw new FirebaseError(
+        `There is a Data Connect emulator already running on ${this.args.listen[0].address}:${this.args.listen[0].port}, but it is emulating a different service. Please stop that instance of the Data Connect emulator, or specify a different port in 'firebase.json'`,
+      );
+    }
+    if (
+      sameService.connectionString &&
+      sameService.connectionString !== this.getLocalConectionString()
+    ) {
+      throw new FirebaseError(
+        `There is a Data Connect emulator already running, but it is using a different Postgres connection string. Please stop that instance of the Data Connect emulator, or specify a different port in 'firebase.json'`,
+      );
+    }
+    return true;
+  }
+
+  private watchUnmanagedInstance() {
+    return setInterval(async () => {
+      if (!this.usingExistingEmulator) {
+        return;
+      }
+      const emuInfo = await this.emulatorClient.getInfo();
+      if (!emuInfo) {
+        this.logger.logLabeled(
+          "INFO",
+          "Data Connect",
+          "The already running emulator seems to have shut down. Starting a new instance of the Data Connect emulator...",
+        );
+        // If the other emulator was shut down, we spin our own copy up
+        // TODO: Guard against multiple simultaneous calls here.
+        await this.start();
+        dataConnectEmulatorEvents.emit("restart");
+      }
+    }, 5000); // Check uptime every 5 seconds
+  }
+
   public async connectToPostgres(
     localConnectionString?: string,
     database?: string,
@@ -159,8 +247,27 @@ export class DataConnectEmulator implements EmulatorInstance {
 Run ${clc.bold("firebase setup:emulators:dataconnect")} to set up a Postgres connection.`;
       throw new FirebaseError(msg);
     }
-    await this.emulatorClient.configureEmulator({ connectionString, database, serviceId });
-    return true;
+    // The Data Connect emulator does not immediately start listening after started
+    // so we retry this call with a brief backoff.
+    const MAX_RETRIES = 3;
+    for (let i = 1; i <= MAX_RETRIES; i++) {
+      try {
+        this.logger.logLabeled("DEBUG", "Data Connect", `Connecting to ${connectionString}}`);
+        await this.emulatorClient.configureEmulator({ connectionString, database, serviceId });
+        return true;
+      } catch (err: any) {
+        if (i === MAX_RETRIES) {
+          throw err;
+        }
+        this.logger.logLabeled(
+          "DEBUG",
+          "Data Connect",
+          `Retrying connectToPostgress call (${i} of ${MAX_RETRIES} attempts): ${err}`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 800));
+      }
+    }
+    return false;
   }
 }
 
@@ -174,6 +281,18 @@ type ConfigureEmulatorRequest = {
   // populated, then any database specified in the connection_string will be
   // overwritten.
   database?: string;
+};
+
+type GetInfoResponse = {
+  // Version number of the emulator.
+  version: string;
+  // List of services currently running on the emulator.
+  services: {
+    // ID of this service.
+    serviceId: string;
+    // The Postgres connection string that this service uses.
+    connectionString: string;
+  }[];
 };
 
 export class DataConnectEmulatorClient {
@@ -191,9 +310,33 @@ export class DataConnectEmulatorClient {
       return res;
     } catch (err: any) {
       if (err.status === 500) {
-        throw new FirebaseError(`Data Connect emulator: ${err.context.body.message}`);
+        throw new FirebaseError(`Data Connect emulator: ${err?.context?.body?.message}`);
       }
       throw err;
     }
+  }
+
+  public async getInfo(): Promise<GetInfoResponse | void> {
+    if (!this.client) {
+      this.client = EmulatorRegistry.client(Emulators.DATACONNECT);
+    }
+    return getInfo(this.client);
+  }
+}
+
+export async function checkIfDataConnectEmulatorRunningOnAddress(l: ListenSpec) {
+  const client = new Client({
+    urlPrefix: `http:/${l.family === "IPv6" ? `[${l.address}]` : l.address}:${l.port}`,
+    auth: false,
+  });
+  return getInfo(client);
+}
+
+async function getInfo(client: Client): Promise<GetInfoResponse | void> {
+  try {
+    const res = await client.get<GetInfoResponse>("emulator/info");
+    return res.body;
+  } catch (err) {
+    return;
   }
 }

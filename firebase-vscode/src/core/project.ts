@@ -8,7 +8,7 @@ import { listProjects } from "../cli";
 import { pluginLogger } from "../logger-wrapper";
 import { globalSignal } from "../utils/globals";
 import { firstWhereDefined } from "../utils/signal";
-
+import { User } from "../types/auth";
 /** Available projects */
 export const projects = globalSignal<Record<string, FirebaseProjectMetadata[]>>(
   {},
@@ -23,6 +23,7 @@ const userScopedProjects = computed<FirebaseProjectMetadata[] | undefined>(
   },
 );
 
+// TODO(hlshen): clean up concept of currentProject and currentProjectId
 /** Gets the currently selected project, fallback to first default project in RC file */
 export const currentProject = computed<FirebaseProjectMetadata | undefined>(
   () => {
@@ -43,15 +44,20 @@ export const currentProject = computed<FirebaseProjectMetadata | undefined>(
 );
 
 export function registerProject(broker: ExtensionBrokerImpl): Disposable {
-  const sub1 = effect(async () => {
-    const user = currentUser.value;
-    if (user) {
-      pluginLogger.info("(Core:Project) New user detected, fetching projects");
+
+  async function fetchNewProjects(user: User) {
       const userProjects = await listProjects();
       projects.value = {
         ...projects.value,
         [user.email]: userProjects,
       };
+  }
+
+  const sub1 = effect(() => {
+    const user = currentUser.value;
+    if (user) {
+      pluginLogger.info("(Core:Project) New user detected, fetching projects");
+      fetchNewProjects(user);
     }
   });
 
@@ -83,6 +89,13 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
       projectId: currentProject.value?.projectId ?? "",
     });
   });
+
+  // TODO: Set projectId from IDX Auth
+  // const monospaceLoginSub = effect(() => {
+  //   if (currentOptions.value.projectId) {
+  //     currentProjectId.value = currentOptions.value.projectId;
+  //   }
+  // })
 
   const command = vscode.commands.registerCommand(
     "firebase.selectProject",

@@ -320,7 +320,7 @@ describe("githubConnections", () => {
         mockConn("apphosting-github-oauth"),
       ]);
 
-      const conns = await repo.listAppHostingConnections(projectId);
+      const conns = await repo.listAppHostingConnections(projectId, location);
       expect(conns).to.have.length(2);
       expect(conns.map((c) => extractId(c.name))).to.include.members([
         "apphosting-github-conn-baddcafe",
@@ -393,6 +393,56 @@ describe("githubConnections", () => {
       ).calledOnce;
       expect(generateP4SAStub).calledOnce;
       expect(promptOnceStub).to.be.called;
+    });
+  });
+  describe("promptGitHubBranch", () => {
+    const sandbox: sinon.SinonSandbox = sinon.createSandbox();
+
+    let promptOnceStub: sinon.SinonStub;
+    let listAllBranchesStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
+      listAllBranchesStub = sandbox
+        .stub(devconnect, "listAllBranches")
+        .throws("Unexpected listAllBranches call");
+    });
+
+    afterEach(() => {
+      sandbox.verifyAndRestore();
+    });
+
+    it("prompts user for branch", async () => {
+      listAllBranchesStub.returns(new Set(["main", "test1"]));
+
+      promptOnceStub.onFirstCall().returns("main");
+      const testRepoLink = {
+        name: "test",
+        cloneUri: "/test",
+        createTime: "",
+        updateTime: "",
+        deleteTime: "",
+        reconciling: false,
+        uid: "",
+      };
+      await expect(repo.promptGitHubBranch(testRepoLink)).to.eventually.equal("main");
+    });
+
+    it("re-prompts if user enters a branch that does not exist in given repo", async () => {
+      listAllBranchesStub.returns(new Set(["main", "test1"]));
+
+      promptOnceStub.onFirstCall().returns("not-main");
+      promptOnceStub.onSecondCall().returns("test1");
+      const testRepoLink = {
+        name: "test",
+        cloneUri: "/test",
+        createTime: "",
+        updateTime: "",
+        deleteTime: "",
+        reconciling: false,
+        uid: "",
+      };
+      await expect(repo.promptGitHubBranch(testRepoLink)).to.eventually.equal("test1");
     });
   });
 });
