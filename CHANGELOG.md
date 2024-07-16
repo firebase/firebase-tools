@@ -1,3 +1,5 @@
+- Cleans up App Hosting's GitHub integration UX. "Add an account" flow now goes directly to GitHub instead of using Developer Connect. (#7405)
+- Fix an issue where refresh_tokens would be used before checking whether they were expired. (#7442)
 - `firebase init dataconnect` now can pull down deployed GQL files.
 - Improved detection of 'dataconnect.yaml' when not in project root.
 - GitHub Action fixes for web frameworks (#6883)
