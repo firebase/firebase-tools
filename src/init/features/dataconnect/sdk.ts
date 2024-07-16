@@ -1,8 +1,8 @@
 import * as yaml from "yaml";
 import * as fs from "fs-extra";
-import { confirm, promptOnce } from "../../../prompt";
 import * as clc from "colorette";
-import * as path from "path";
+
+import { confirm, promptOnce } from "../../../prompt";
 import { readFirebaseJson } from "../../../dataconnect/fileUtils";
 import { Config } from "../../../config";
 import { Setup } from "../..";
@@ -17,7 +17,7 @@ const ANDROID = "android";
 export async function doSetup(setup: Setup, config: Config): Promise<void> {
   const serviceCfgs = readFirebaseJson(config);
   const serviceInfos = await Promise.all(
-    serviceCfgs.map((c) => load(setup.projectId || "", path.join(process.cwd(), c.source))),
+    serviceCfgs.map((c) => load(setup.projectId || "", config, c.source)),
   );
   const connectorChoices: { name: string; value: ConnectorInfo }[] = serviceInfos
     .map((si) => {
