@@ -46,18 +46,18 @@ Below is a brief list of the available commands and their function:
 
 ### Configuration Commands
 
-| Command        | Description                                                                                                                                     |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| **login**      | Authenticate to your Firebase account. Requires access to a web browser.                                                                        |
-| **logout**     | Sign out of the Firebase CLI.                                                                                                                   |
-| **login:ci**   | Generate an authentication token for use in non-interactive environments.                                                                       |
-| **login:add**  | Authorize the CLI for an additional account.                                                                                                    |
-| **login:list** | List authorized CLI accounts.                                                                                                                   |
-| **login:use**  | Set the default account to use for this project                                                                                                 |
-| **use**        | Set active Firebase project, manage project aliases.                                                                                            |
-| **open**       | Quickly open a browser to relevant project resources.                                                                                           |
-| **init**       | Setup a new Firebase project in the current directory. This command will create a `firebase.json` configuration file in your current directory. |
-| **help**       | Display help information about the CLI or specific commands.                                                                                    |
+| Command        | Description                                                                                                                                      |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **login**      | Authenticate to your Firebase account. Requires access to a web browser.                                                                         |
+| **logout**     | Sign out of the Firebase CLI.                                                                                                                    |
+| **login:ci**   | Generate an authentication token for use in non-interactive environments.                                                                        |
+| **login:add**  | Authorize the CLI for an additional account.                                                                                                     |
+| **login:list** | List authorized CLI accounts.                                                                                                                    |
+| **login:use**  | Set the default account to use for this project                                                                                                  |
+| **use**        | Set active Firebase project, manage project aliases.                                                                                             |
+| **open**       | Quickly open a browser to relevant project resources.                                                                                            |
+| **init**       | Set up a new Firebase project in the current directory. This command will create a `firebase.json` configuration file in your current directory. |
+| **help**       | Display help information about the CLI or specific commands.                                                                                     |
 
 Append `--no-localhost` to login (i.e., `firebase login --no-localhost`) to copy and paste code instead of starting a local server for authentication. A use case might be if you SSH into an instance somewhere and you need to authenticate to Firebase on that machine.
 

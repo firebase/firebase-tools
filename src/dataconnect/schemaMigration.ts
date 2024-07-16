@@ -380,7 +380,7 @@ function displaySchemaChanges(error: IncompatibleSqlSchemaError) {
       {
         const message =
           "Cannot access your CloudSQL database to validate schema. " +
-          "The following SQL statements can setup a new database schema.\n" +
+          "The following SQL statements can set up a new database schema.\n" +
           error.diffs.map(toString).join("\n");
         logLabeledWarning("dataconnect", message);
         logLabeledWarning("dataconnect", "Some SQL resources may already exist.");
