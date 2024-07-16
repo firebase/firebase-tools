@@ -20,7 +20,7 @@ interface ConnectionNameParts {
 
 // Note: This does not match the sentinel oauth connection
 const APPHOSTING_CONN_PATTERN = /.+\/apphosting-github-conn-.+$/;
-const APPHOSTING_OAUTH_CONN_NAME = "apphosting-github-oauth";
+const APPHOSTING_OAUTH_CONN_NAME = "firebase-app-hosting-github-oauth";
 const CONNECTION_NAME_REGEX =
   /^projects\/(?<projectId>[^\/]+)\/locations\/(?<location>[^\/]+)\/connections\/(?<id>[^\/]+)$/;
 
@@ -98,7 +98,7 @@ export async function linkGitHubRepository(
   utils.logBullet(clc.bold(`${clc.yellow("===")} Import a GitHub repository`));
   // Fetch the sentinel Oauth connection first which is needed to create further GitHub connections.
   const oauthConn = await getOrCreateOauthConnection(projectId, location);
-  const existingConns = await listAppHostingConnections(projectId);
+  const existingConns = await listAppHostingConnections(projectId, location);
 
   if (existingConns.length === 0) {
     existingConns.push(
@@ -163,14 +163,16 @@ async function createFullyInstalledConnection(
   });
 
   while (conn.installationState.stage !== "COMPLETE") {
-    utils.logBullet("Install the Firebase GitHub app to enable access to GitHub repositories");
+    utils.logBullet(
+      "Install the Firebase App Hosting GitHub app to enable access to GitHub repositories",
+    );
     const targetUri = conn.installationState.actionUri;
     utils.logBullet(targetUri);
     await utils.openInBrowser(targetUri);
     await promptOnce({
       type: "input",
       message:
-        "Press Enter once you have installed or configured the Firebase GitHub app to access your GitHub repo.",
+        "Press Enter once you have installed or configured the Firebase App Hosting GitHub app to access your GitHub repo.",
     });
     conn = await devConnect.getConnection(projectId, location, connectionId);
   }
@@ -253,6 +255,30 @@ async function promptCloneUri(
     },
   });
   return { cloneUri, connection: cloneUriToConnection[cloneUri] };
+}
+
+/**
+ * Prompts the user for a GitHub branch and validates that the given branch
+ * actually exists. User is re-prompted until they enter a valid branch.
+ */
+export async function promptGitHubBranch(repoLink: devConnect.GitRepositoryLink) {
+  const branches = await devConnect.listAllBranches(repoLink.name);
+  while (true) {
+    const branch = await promptOnce({
+      name: "branch",
+      type: "input",
+      default: "main",
+      message: "Pick a branch for continuous deployment",
+    });
+
+    if (branches.has(branch)) {
+      return branch;
+    }
+
+    utils.logWarning(
+      `The branch "${branch}" does not exist on "${extractRepoSlugFromUri(repoLink.cloneUri)}". Please enter a valid branch for this repo.`,
+    );
+  }
 }
 
 /**
@@ -406,8 +432,9 @@ export async function getOrCreateRepository(
  */
 export async function listAppHostingConnections(
   projectId: string,
+  location: string,
 ): Promise<devConnect.Connection[]> {
-  const conns = await devConnect.listAllConnections(projectId, "-");
+  const conns = await devConnect.listAllConnections(projectId, location);
   return conns.filter(
     (conn) =>
       APPHOSTING_CONN_PATTERN.test(conn.name) &&

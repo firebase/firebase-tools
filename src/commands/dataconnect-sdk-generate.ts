@@ -1,4 +1,4 @@
-import * as path from "path";
+import * as clc from "colorette";
 
 import { Command } from "../command";
 import { Options } from "../options";
@@ -15,16 +15,28 @@ export const command = new Command("dataconnect:sdk:generate")
 
     const services = readFirebaseJson(options.config);
     for (const service of services) {
-      let configDir = service.source;
-      if (!path.isAbsolute(configDir)) {
-        const cwd = options.cwd || process.cwd();
-        configDir = path.resolve(path.join(cwd), configDir);
+      const configDir = service.source;
+      const serviceInfo = await load(projectId, options.config, configDir);
+      const hasGeneratables = serviceInfo.connectorInfo.some((c) => {
+        return (
+          c.connectorYaml.generate?.javascriptSdk ||
+          c.connectorYaml.generate?.kotlinSdk ||
+          c.connectorYaml.generate?.swiftSdk
+        );
+      });
+      if (!hasGeneratables) {
+        logger.warn("No generated SDKs have been declared in connector.yaml files.");
+        logger.warn(
+          `Run ${clc.bold("firebase init dataconnect:sdk")} to configure a generated SDK.`,
+        );
+        logger.warn(
+          `See https://firebase.google.com/docs/data-connect/gp/web-sdk for more details of how to configure generated SDKs.`,
+        );
+        return;
       }
-      const serviceInfo = await load(projectId, service.location, configDir);
       for (const conn of serviceInfo.connectorInfo) {
         const output = await DataConnectEmulator.generate({
           configDir,
-          locationId: service.location,
           connectorId: conn.connectorYaml.connectorId,
         });
         logger.info(output);

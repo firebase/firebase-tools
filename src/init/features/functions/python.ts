@@ -1,17 +1,15 @@
-import * as fs from "fs";
 import * as spawn from "cross-spawn";
-import * as path from "path";
 
 import { Config } from "../../../config";
 import { getPythonBinary } from "../../../deploy/functions/runtimes/python";
 import { runWithVirtualEnv } from "../../../functions/python";
 import { promptOnce } from "../../../prompt";
 import { latest } from "../../../deploy/functions/runtimes/supported";
+import { readTemplateSync } from "../../../templates";
 
-const TEMPLATE_ROOT = path.resolve(__dirname, "../../../../templates/init/functions/python");
-const MAIN_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "main.py"), "utf8");
-const REQUIREMENTS_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "requirements.txt"), "utf8");
-const GITIGNORE_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_gitignore"), "utf8");
+const MAIN_TEMPLATE = readTemplateSync("init/functions/python/main.py");
+const REQUIREMENTS_TEMPLATE = readTemplateSync("init/functions/python/requirements.txt");
+const GITIGNORE_TEMPLATE = readTemplateSync("init/functions/python/_gitignore");
 
 /**
  * Create a Python Firebase Functions project.

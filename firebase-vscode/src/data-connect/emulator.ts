@@ -4,8 +4,14 @@ import { ExtensionBrokerImpl } from "../extension-broker";
 import { effect, signal } from "@preact/signals-core";
 import { firstWhereDefined } from "../utils/signal";
 import { firebaseRC, updateFirebaseRCProject } from "../core/config";
-import { DataConnectEmulatorClient } from "../../../src/emulator/dataconnectEmulator";
+import {
+  DataConnectEmulatorClient,
+  dataConnectEmulatorEvents,
+} from "../../../src/emulator/dataconnectEmulator";
 import { dataConnectConfigs } from "./config";
+import { runEmulatorIssuesStream } from "./emulator-stream";
+import { runDataConnectCompiler } from "./core-compiler";
+import { pluginLogger } from "../logger-wrapper";
 
 /** FDC-specific emulator logic */
 export class DataConnectEmulatorController implements vscode.Disposable {
@@ -17,11 +23,28 @@ export class DataConnectEmulatorController implements vscode.Disposable {
       broker.send("notifyIsConnectedToPostgres", isConnected);
     }
 
+    // on emulator restart, re-connect
+    dataConnectEmulatorEvents.on("restart", () => {
+      pluginLogger.log("Emulator restarted");
+      this.isPostgresEnabled.value = false;
+      this.connectToEmulator();
+    });
+
     this.subs.push(
       broker.on("connectToPostgres", () => this.connectToPostgres()),
-
+      // TODO: This is assuming only dataconnect emulator will run
+      effect(() => {
+        if (this.emulatorsController.emulators.value.status === "running") {
+          this.connectToEmulator();
+        }
+      }),
       // Notify webviews when the emulator status changes
       effect(() => {
+        if (this.isPostgresEnabled.value) {
+          this.emulatorsController.emulatorStatusItem.show();
+        } else {
+          this.emulatorsController.emulatorStatusItem.hide();
+        }
         notifyIsConnectedToPostgres(this.isPostgresEnabled.value);
       }),
 
@@ -84,10 +107,33 @@ export class DataConnectEmulatorController implements vscode.Disposable {
 
     // configure the emulator to use the local psql string
     const emulatorClient = new DataConnectEmulatorClient();
-    emulatorClient.configureEmulator({ connectionString: newConnectionString });
-
     this.isPostgresEnabled.value = true;
-    this.emulatorsController.emulatorStatusItem.show();
+
+    emulatorClient.configureEmulator({ connectionString: newConnectionString });
+  }
+
+  // on schema reload, restart language server and run introspection again
+  private async schemaReload() {
+    vscode.commands.executeCommand("fdc-graphql.restart");
+    vscode.commands.executeCommand(
+      "firebase.dataConnect.executeIntrospection",
+    );
+  }
+
+  // Commands to run after the emulator is started successfully
+  private async connectToEmulator() {
+    const configs = dataConnectConfigs.value?.tryReadValue;
+
+    runEmulatorIssuesStream(
+      configs,
+      this.emulatorsController.getLocalEndpoint().value,
+      this.isPostgresEnabled,
+      this.schemaReload,
+    );
+    runDataConnectCompiler(
+      configs,
+      this.emulatorsController.getLocalEndpoint().value,
+    );
   }
 
   dispose() {

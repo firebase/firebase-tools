@@ -51,6 +51,10 @@ trap - ERR
 trap "echo 'Missing jq.'; exit 1" ERR
 which jq &> /dev/null
 trap - ERR
+
+trap "echo 'Missing gsutil.'; exit 1" ERR
+which gsutil &> /dev/null
+trap - ERR
 echo "Checked for commands."
 
 echo "Checking for logged-in npm user..."
@@ -109,7 +113,7 @@ echo "Published to npm."
 echo "Cleaning up release notes..."
 rm CHANGELOG.md
 touch CHANGELOG.md
-git commit -m "[firebase-release] Removed change log and reset repo after ${NEW_VERSION} release" CHANGELOG.md
+git commit -m "[firebase-release] Removed change log and reset repo after ${NEW_VERSION} release" CHANGELOG.md firebase-vscode/CHANGELOG.md firebase-vscode/package.json firebase-vscode/package-lock.json 
 echo "Cleaned up release notes."
 
 echo "Pushing to GitHub..."

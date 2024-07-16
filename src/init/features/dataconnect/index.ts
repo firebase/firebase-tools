@@ -1,34 +1,60 @@
-import { join, resolve } from "path";
+import { join } from "path";
+import * as clc from "colorette";
+
 import { confirm, promptOnce } from "../../../prompt";
-import { readFileSync } from "fs";
 import { Config } from "../../../config";
 import { Setup } from "../..";
 import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql";
 import { checkForFreeTrialInstance } from "../../../dataconnect/freeTrial";
 import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
 import { ensureApis } from "../../../dataconnect/ensureApis";
-import { listLocations, listAllServices, getSchema } from "../../../dataconnect/client";
-import { Schema, Service } from "../../../dataconnect/types";
+import {
+  listLocations,
+  listAllServices,
+  getSchema,
+  listConnectors,
+} from "../../../dataconnect/client";
+import { Schema, Service, File } from "../../../dataconnect/types";
 import { DEFAULT_POSTGRES_CONNECTION } from "../emulators";
-import { parseServiceName } from "../../../dataconnect/names";
+import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
+import { logger } from "../../../logger";
+import { readTemplateSync } from "../../../templates";
+import { logSuccess } from "../../../utils";
 
-const TEMPLATE_ROOT = resolve(__dirname, "../../../../templates/init/dataconnect/");
-
-const DATACONNECT_YAML_TEMPLATE = readFileSync(join(TEMPLATE_ROOT, "dataconnect.yaml"), "utf8");
-const CONNECTOR_YAML_TEMPLATE = readFileSync(join(TEMPLATE_ROOT, "connector.yaml"), "utf8");
-const SCHEMA_TEMPLATE = readFileSync(join(TEMPLATE_ROOT, "schema.gql"), "utf8");
-const QUERIES_TEMPLATE = readFileSync(join(TEMPLATE_ROOT, "queries.gql"), "utf8");
-const MUTATIONS_TEMPLATE = readFileSync(join(TEMPLATE_ROOT, "mutations.gql"), "utf8");
+const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
+const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yaml");
+const SCHEMA_TEMPLATE = readTemplateSync("init/dataconnect/schema.gql");
+const QUERIES_TEMPLATE = readTemplateSync("init/dataconnect/queries.gql");
+const MUTATIONS_TEMPLATE = readTemplateSync("init/dataconnect/mutations.gql");
 
 interface RequiredInfo {
   serviceId: string;
   locationId: string;
   cloudSqlInstanceId: string;
   cloudSqlDatabase: string;
-  connectorId: string;
+  connectors: {
+    id: string;
+    files: File[];
+  }[];
   isNewInstance: boolean;
   isNewDatabase: boolean;
+  schemaGql: File[];
 }
+
+const defaultConnector = {
+  id: "default-connector",
+  files: [
+    {
+      path: "queries.gql",
+      content: QUERIES_TEMPLATE,
+    },
+    {
+      path: "mutations.gql",
+      content: MUTATIONS_TEMPLATE,
+    },
+  ],
+};
+
 export async function doSetup(setup: Setup, config: Config): Promise<void> {
   let info: RequiredInfo = {
     serviceId: "",
@@ -37,7 +63,8 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     isNewInstance: false,
     cloudSqlDatabase: "",
     isNewDatabase: false,
-    connectorId: "default-connector",
+    connectors: [defaultConnector],
+    schemaGql: [],
   };
   info = await promptForService(setup, info);
 
@@ -62,21 +89,8 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   });
   setup.rcfile.dataconnectEmulatorConfig = { postgres: { localConnectionString } };
 
-  const dir: string = config.get("dataconnect.source") || "dataconnect";
-  const subbedDataconnectYaml = subValues(DATACONNECT_YAML_TEMPLATE, info);
-  const subbedConnectorYaml = subValues(CONNECTOR_YAML_TEMPLATE, info);
+  await writeFiles(config, info);
 
-  await config.askWriteProjectFile(join(dir, "dataconnect.yaml"), subbedDataconnectYaml);
-  await config.askWriteProjectFile(join(dir, "schema", "schema.gql"), SCHEMA_TEMPLATE);
-  await config.askWriteProjectFile(
-    join(dir, info.connectorId, "connector.yaml"),
-    subbedConnectorYaml,
-  );
-  await config.askWriteProjectFile(join(dir, info.connectorId, "queries.gql"), QUERIES_TEMPLATE);
-  await config.askWriteProjectFile(
-    join(dir, info.connectorId, "mutations.gql"),
-    MUTATIONS_TEMPLATE,
-  );
   if (
     setup.projectId &&
     (info.isNewInstance || info.isNewDatabase) &&
@@ -92,26 +106,84 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
       instanceId: info.cloudSqlInstanceId,
       databaseId: info.cloudSqlDatabase,
       enableGoogleMlIntegration: false,
+      waitForCreation: false,
     });
+  }
+  logger.info("");
+  logSuccess(
+    `If you'd like to generate an SDK for your new connector, run ${clc.bold("firebase init dataconnect:sdk")}`,
+  );
+}
+
+async function writeFiles(config: Config, info: RequiredInfo) {
+  const dir: string = config.get("dataconnect.source") || "dataconnect";
+  const subbedDataconnectYaml = subDataconnectYamlValues({
+    ...info,
+    connectorIds: info.connectors.map((c) => `"./${c.id}"`).join(", "),
+  });
+
+  config.set("dataconnect", { source: dir });
+  await config.askWriteProjectFile(join(dir, "dataconnect.yaml"), subbedDataconnectYaml);
+
+  if (info.schemaGql.length) {
+    logSuccess(
+      "The service you chose already has GQL files deployed. We'll use those instead of the default templates.",
+    );
+    for (const f of info.schemaGql) {
+      await config.askWriteProjectFile(join(dir, "schema", f.path), f.content);
+    }
+  } else {
+    await config.askWriteProjectFile(join(dir, "schema", "schema.gql"), SCHEMA_TEMPLATE);
+  }
+  for (const c of info.connectors) {
+    await writeConnectorFiles(config, c);
   }
 }
 
-function subValues(
-  template: string,
-  replacementValues: {
-    serviceId: string;
-    cloudSqlInstanceId: string;
-    cloudSqlDatabase: string;
-    connectorId: string;
+async function writeConnectorFiles(
+  config: Config,
+  connectorInfo: {
+    id: string;
+    files: File[];
   },
-): string {
+) {
+  const subbedConnectorYaml = subConnectorYamlValues({ connectorId: connectorInfo.id });
+  const dir: string = config.get("dataconnect.source") || "dataconnect";
+  await config.askWriteProjectFile(
+    join(dir, connectorInfo.id, "connector.yaml"),
+    subbedConnectorYaml,
+  );
+  for (const f of connectorInfo.files) {
+    await config.askWriteProjectFile(join(dir, connectorInfo.id, f.path), f.content);
+  }
+}
+
+function subDataconnectYamlValues(replacementValues: {
+  serviceId: string;
+  cloudSqlInstanceId: string;
+  cloudSqlDatabase: string;
+  connectorIds: string;
+  locationId: string;
+}): string {
   const replacements: Record<string, string> = {
     serviceId: "__serviceId__",
     cloudSqlDatabase: "__cloudSqlDatabase__",
     cloudSqlInstanceId: "__cloudSqlInstanceId__",
+    connectorIds: "__connectorIds__",
+    locationId: "__location__",
+  };
+  let replaced = DATACONNECT_YAML_TEMPLATE;
+  for (const [k, v] of Object.entries(replacementValues)) {
+    replaced = replaced.replace(replacements[k], v);
+  }
+  return replaced;
+}
+
+function subConnectorYamlValues(replacementValues: { connectorId: string }): string {
+  const replacements: Record<string, string> = {
     connectorId: "__connectorId__",
   };
-  let replaced = template;
+  let replaced = CONNECTOR_YAML_TEMPLATE;
   for (const [k, v] of Object.entries(replacementValues)) {
     replaced = replaced.replace(replacements[k], v);
   }
@@ -131,11 +203,8 @@ async function promptForService(setup: Setup, info: RequiredInfo): Promise<Requi
         };
       }),
     );
-    const existingFreshServicesAndSchemas = existingServicesAndSchemas.filter((s) => {
-      return !s.schema?.source.files?.length;
-    });
-    if (existingFreshServicesAndSchemas.length) {
-      const choices: { name: string; value: any }[] = existingFreshServicesAndSchemas.map((s) => {
+    if (existingServicesAndSchemas.length) {
+      const choices: { name: string; value: any }[] = existingServicesAndSchemas.map((s) => {
         const serviceName = parseServiceName(s.service.name);
         return {
           name: `${serviceName.location}/${serviceName.serviceId}`,
@@ -154,9 +223,25 @@ async function promptForService(setup: Setup, info: RequiredInfo): Promise<Requi
         info.serviceId = serviceName.serviceId;
         info.locationId = serviceName.location;
         if (choice.schema) {
-          info.cloudSqlInstanceId =
-            choice.schema.primaryDatasource.postgresql?.cloudSql.instance ?? "";
+          if (choice.schema.primaryDatasource.postgresql?.cloudSql.instance) {
+            const instanceName = parseCloudSQLInstanceName(
+              choice.schema.primaryDatasource.postgresql?.cloudSql.instance,
+            );
+            info.cloudSqlInstanceId = instanceName.instanceId;
+          }
+          if (choice.schema.source.files) {
+            info.schemaGql = choice.schema.source.files;
+          }
           info.cloudSqlDatabase = choice.schema.primaryDatasource.postgresql?.database ?? "";
+          const connectors = await listConnectors(choice.service.name);
+          if (connectors.length) {
+            info.connectors = connectors.map((c) => {
+              return {
+                id: c.name.split("/").pop()!,
+                files: c.source.files || [],
+              };
+            });
+          }
         }
       }
     }
@@ -190,7 +275,10 @@ async function promptForCloudSQLInstance(setup: Setup, info: RequiredInfo): Prom
         type: "list",
         choices,
       });
-      info.locationId = choices.find((c) => c.value === info.cloudSqlInstanceId)!.location;
+      if (info.cloudSqlInstanceId !== "") {
+        // Infer location if a CloudSQL instance is chosen.
+        info.locationId = choices.find((c) => c.value === info.cloudSqlInstanceId)!.location;
+      }
     }
   }
   if (info.cloudSqlInstanceId === "") {
@@ -238,23 +326,24 @@ async function promptForDatabase(
   config: Config,
   info: RequiredInfo,
 ): Promise<RequiredInfo> {
-  const dir: string = config.get("dataconnect.source") || "dataconnect";
-  if (!config.has("dataconnect")) {
-    config.set("dataconnect.source", dir);
-    config.set("dataconnect.location", info.locationId);
-  }
   if (!info.isNewInstance && setup.projectId) {
-    const dbs = await cloudsql.listDatabases(setup.projectId, info.cloudSqlInstanceId);
-    const choices = dbs.map((d) => {
-      return { name: d.name, value: d.name };
-    });
-    choices.push({ name: "Create a new database", value: "" });
-    if (dbs.length) {
-      info.cloudSqlDatabase = await promptOnce({
-        message: `Which database in ${info.cloudSqlInstanceId} would you like to use?`,
-        type: "list",
-        choices,
+    try {
+      const dbs = await cloudsql.listDatabases(setup.projectId, info.cloudSqlInstanceId);
+      const choices = dbs.map((d) => {
+        return { name: d.name, value: d.name };
       });
+      choices.push({ name: "Create a new database", value: "" });
+      if (dbs.length) {
+        info.cloudSqlDatabase = await promptOnce({
+          message: `Which database in ${info.cloudSqlInstanceId} would you like to use?`,
+          type: "list",
+          choices,
+        });
+      }
+    } catch (err) {
+      // Show existing databases in a list is optional, ignore any errors from ListDatabases.
+      // This often happen when the Cloud SQL instance is still being created.
+      logger.debug(`[dataconnect] Cannot list databases during init: ${err}`);
     }
   }
   if (info.cloudSqlDatabase === "") {

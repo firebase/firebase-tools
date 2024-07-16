@@ -1,5 +1,6 @@
 import * as path from "path";
 import * as fileUtils from "./fileUtils";
+import { Config } from "../config";
 import { ServiceInfo, toDatasource, SCHEMA_ID } from "./types";
 
 /**
@@ -7,19 +8,21 @@ import { ServiceInfo, toDatasource, SCHEMA_ID } from "./types";
  */
 export async function load(
   projectId: string,
-  locationId: string,
+  config: Config,
   sourceDirectory: string,
 ): Promise<ServiceInfo> {
-  const dataConnectYaml = await fileUtils.readDataConnectYaml(sourceDirectory);
-  const serviceName = `projects/${projectId}/locations/${locationId}/services/${dataConnectYaml.serviceId}`;
-  const schemaDir = path.join(sourceDirectory, dataConnectYaml.schema.source);
+  const resolvedDir = config.path(sourceDirectory);
+  const dataConnectYaml = await fileUtils.readDataConnectYaml(resolvedDir);
+  const serviceName = `projects/${projectId}/locations/${dataConnectYaml.location}/services/${dataConnectYaml.serviceId}`;
+  const schemaDir = path.join(resolvedDir, dataConnectYaml.schema.source);
   const schemaGQLs = await fileUtils.readGQLFiles(schemaDir);
   const connectorInfo = await Promise.all(
     dataConnectYaml.connectorDirs.map(async (dir) => {
-      const connectorDir = path.join(sourceDirectory, dir);
+      const connectorDir = path.join(resolvedDir, dir);
       const connectorYaml = await fileUtils.readConnectorYaml(connectorDir);
       const connectorGqls = await fileUtils.readGQLFiles(connectorDir);
       return {
+        directory: connectorDir,
         connectorYaml,
         connector: {
           name: `${serviceName}/connectors/${connectorYaml.connectorId}`,
@@ -33,10 +36,14 @@ export async function load(
 
   return {
     serviceName,
-    sourceDirectory,
+    sourceDirectory: resolvedDir,
     schema: {
       name: `${serviceName}/schemas/${SCHEMA_ID}`,
-      primaryDatasource: toDatasource(projectId, locationId, dataConnectYaml.schema.datasource),
+      primaryDatasource: toDatasource(
+        projectId,
+        dataConnectYaml.location,
+        dataConnectYaml.schema.datasource,
+      ),
       source: {
         files: schemaGQLs,
       },

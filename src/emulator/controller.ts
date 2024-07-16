@@ -517,6 +517,7 @@ export async function startAll(
         // TODO(b/213335255): predefinedTriggers and nodeMajorVersion are here to support ext:dev:emulators:* commands.
         // Ideally, we should handle that case via ExtensionEmulator.
         predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
+        ignore: cfg.ignore,
       });
     }
   }
@@ -829,23 +830,16 @@ export async function startAll(
         `TODO: Add support for multiple services in the Data Connect emulator. Currently emulating first service ${config[0].source}`,
       );
     }
-    let configDir = config[0].source;
-    if (!path.isAbsolute(configDir)) {
-      const cwd = options.cwd || process.cwd();
-      configDir = path.resolve(path.join(cwd), configDir);
-    }
+    const configDir = config[0].source;
     const dataConnectEmulator = new DataConnectEmulator({
       listen: listenForEmulator.dataconnect,
       projectId,
       auto_download: true,
       configDir,
-      locationId: config[0].location,
       rc: options.rc,
+      config: options.config,
     });
     await startEmulator(dataConnectEmulator);
-    if (!utils.isVSCodeExtension()) {
-      dataConnectEmulator.connectToPostgres();
-    }
   }
 
   if (listenForEmulator.storage) {
