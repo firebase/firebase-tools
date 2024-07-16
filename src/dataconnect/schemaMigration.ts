@@ -72,7 +72,7 @@ export async function migrateSchema(args: {
         postgresql: {
           database: databaseId,
           cloudSql: {
-            instance: instanceId,
+            instance: instanceName,
           },
           schemaValidation: "COMPATIBLE",
         },
