@@ -91,11 +91,7 @@ export function functionResourceToEmulatedTriggerDefintion(
       const schedule: EventSchedule = {
         schedule: properties.scheduleTrigger.schedule,
       };
-      etd.schedule = schedule;
-      etd.eventTrigger = {
-        eventType: "google.pubsub.topic.publish",
-        resource: "",
-      };
+      etd.scheduleTrigger = schedule;
     } else {
       EmulatorLogger.forEmulator(Emulators.FUNCTIONS).log(
         "WARN",

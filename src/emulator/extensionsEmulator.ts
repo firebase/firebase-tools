@@ -3,6 +3,7 @@ import * as spawn from "cross-spawn";
 import * as fs from "fs-extra";
 import * as os from "os";
 import * as path from "path";
+
 const Table = require("cli-table");
 
 import * as planner from "../deploy/extensions/planner";
