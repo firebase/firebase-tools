@@ -1,1 +1,2 @@
 - `firebase init dataconnect` now can pull down deployed GQL files.
+- Improved detection of 'dataconnect.yaml' when not in project root.
