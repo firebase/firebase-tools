@@ -54,12 +54,7 @@ export async function migrateSchema(args: {
   /** true for `dataconnect:sql:migrate`, false for `deploy` */
   validateOnly: boolean;
 }): Promise<Diff[]> {
-
   const { options, schema, validateOnly } = args;
-
-  if (experiments.isEnabled("compatiblemode")) {
-    schema.primaryDatasource.postgresql?.schemaValidation == "COMPATIBLE"
-  }
 
   const { serviceName, instanceId, instanceName, databaseId } = getIdentifiers(schema);
   await ensureServiceIsConnectedToCloudSql(
@@ -68,6 +63,23 @@ export async function migrateSchema(args: {
     databaseId,
     /* linkIfNotConnected=*/ true,
   );
+
+  if (experiments.isEnabled("compatiblemode")) {
+    if (schema.primaryDatasource.postgresql?.schemaValidation) {
+      schema.primaryDatasource.postgresql.schemaValidation = "COMPATIBLE";
+    } else {
+      schema.primaryDatasource = {
+        postgresql: {
+          database: databaseId,
+          cloudSql: {
+            instance: instanceId,
+          },
+          schemaValidation: "COMPATIBLE",
+        },
+      };
+    }
+  }
+
   try {
     await upsertSchema(schema, validateOnly);
     logger.debug(`Database schema was up to date for ${instanceId}:${databaseId}`);
