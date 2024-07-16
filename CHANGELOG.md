@@ -1,2 +1,3 @@
 - `firebase init dataconnect` now can pull down deployed GQL files.
 - GitHub Action fixes for web frameworks (#6883)
+- Fixes issue where PubSub message `publishTime` is set to 1970-01-01T00:00:00 (#7441)
