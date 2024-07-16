@@ -44,7 +44,6 @@ export async function runEmulatorIssuesStream(
     next(nextResponse: EmulatorIssueResponse) {
       if (nextResponse.result?.issues?.length) {
         for (const issue of nextResponse.result.issues) {
-          console.log("HAROLD: ", issue)
           displayAndHandleIssue(issue, isPostgresEnabled, schemaReloadFunc);
         }
       }
