@@ -50,12 +50,12 @@ export class DataConnectService {
       return undefined;
     }
 
-    return instance === InstanceType.PRODUCTION
-      ? dataConnectConfigsValue?.tryReadValue?.getApiServicePathByPath(
-          projectId,
-          path,
-        )
-      : `projects/p/locations/l/services/${serviceId}`;
+    return (
+      dataConnectConfigsValue?.tryReadValue?.getApiServicePathByPath(
+        projectId,
+        path,
+      ) || `projects/p/locations/l/services/${serviceId}`
+    );
   }
 
   private async decodeResponse(

@@ -319,7 +319,7 @@ export class Command {
     const activeAccount = selectAccount(account, projectRoot);
 
     if (activeAccount) {
-      await setActiveAccount(options, activeAccount);
+      setActiveAccount(options, activeAccount);
     }
 
     this.applyRC(options);
