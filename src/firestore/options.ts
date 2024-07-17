@@ -1,6 +1,6 @@
-import { Options } from "../options";
-import { DayOfWeek } from "../gcp/firestore";
-import * as types from "../firestore/api-types";
+import * as types from '../firestore/api-types';
+import {DayOfWeek} from '../gcp/firestore';
+import {Options} from '../options';
 
 /**
  * The set of fields that the Firestore commands need from Options.
@@ -18,10 +18,11 @@ export interface FirestoreOptions extends Options {
   type?: types.DatabaseType;
   deleteProtection?: types.DatabaseDeleteProtectionStateOption;
   pointInTimeRecoveryEnablement?: types.PointInTimeRecoveryEnablementOption;
+  kmsKeyName?: string;
 
   // backup schedules
   backupSchedule?: string;
-  retention?: `${number}${"h" | "d" | "m" | "w"}`;
+  retention?: `${number}${'h' | 'd' | 'm' | 'w'}`;
   recurrence?: types.RecurrenceType;
   dayOfWeek?: DayOfWeek;
 

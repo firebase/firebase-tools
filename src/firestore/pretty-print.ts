@@ -1,12 +1,12 @@
-import * as clc from "colorette";
-const Table = require("cli-table");
+import * as clc from 'colorette';
+const Table = require('cli-table');
 
-import * as sort from "./api-sort";
-import * as types from "./api-types";
-import { logger } from "../logger";
-import * as util from "./util";
-import { consoleUrl } from "../utils";
-import { Backup, BackupSchedule } from "../gcp/firestore";
+import {Backup, BackupSchedule} from '../gcp/firestore';
+import {logger} from '../logger';
+import {consoleUrl} from '../utils';
+import * as sort from './api-sort';
+import * as types from './api-types';
+import * as util from './util';
 
 export class PrettyPrint {
   /**
@@ -15,7 +15,7 @@ export class PrettyPrint {
    */
   prettyPrintIndexes(indexes: types.Index[]): void {
     if (indexes.length === 0) {
-      logger.info("None");
+      logger.info('None');
       return;
     }
 
@@ -31,16 +31,27 @@ export class PrettyPrint {
    */
   prettyPrintDatabases(databases: types.DatabaseResp[]): void {
     if (databases.length === 0) {
-      logger.info("No databases found.");
+      logger.info('No databases found.');
       return;
     }
-    const sortedDatabases: types.DatabaseResp[] = databases.sort(sort.compareApiDatabase);
+    const sortedDatabases: types.DatabaseResp[] = databases.sort(
+      sort.compareApiDatabase,
+    );
     const table = new Table({
-      head: ["Database Name"],
-      colWidths: [Math.max(...sortedDatabases.map((database) => database.name.length + 5), 20)],
+      head: ['Database Name'],
+      colWidths: [
+        Math.max(
+          ...sortedDatabases.map((database) => database.name.length + 5),
+          20,
+        ),
+      ],
     });
 
-    table.push(...sortedDatabases.map((database) => [this.prettyDatabaseString(database)]));
+    table.push(
+      ...sortedDatabases.map((database) => [
+        this.prettyDatabaseString(database),
+      ]),
+    );
     logger.info(table.toString());
   }
 
@@ -49,23 +60,56 @@ export class PrettyPrint {
    * @param database the Firestore database.
    */
   prettyPrintDatabase(database: types.DatabaseResp): void {
+    let colValueWidth = Math.max(50, 5 + database.name.length);
+    if (database.cmekConfig) {
+      colValueWidth = Math.max(130, 10 + database.cmekConfig.kmsKeyName.length);
+    }
+
     const table = new Table({
-      head: ["Field", "Value"],
-      colWidths: [25, Math.max(50, 5 + database.name.length)],
+      head: ['Field', 'Value'],
+      colWidths: [30, colValueWidth],
     });
 
     table.push(
-      ["Name", clc.yellow(database.name)],
-      ["Create Time", clc.yellow(database.createTime)],
-      ["Last Update Time", clc.yellow(database.updateTime)],
-      ["Type", clc.yellow(database.type)],
-      ["Location", clc.yellow(database.locationId)],
-      ["Delete Protection State", clc.yellow(database.deleteProtectionState)],
-      ["Point In Time Recovery", clc.yellow(database.pointInTimeRecoveryEnablement)],
-      ["Earliest Version Time", clc.yellow(database.earliestVersionTime)],
-      ["Version Retention Period", clc.yellow(database.versionRetentionPeriod)],
+      ['Name', clc.yellow(database.name)],
+      ['Create Time', clc.yellow(database.createTime)],
+      ['Last Update Time', clc.yellow(database.updateTime)],
+      ['Type', clc.yellow(database.type)],
+      ['Location', clc.yellow(database.locationId)],
+      ['Delete Protection State', clc.yellow(database.deleteProtectionState)],
+      [
+        'Point In Time Recovery',
+        clc.yellow(database.pointInTimeRecoveryEnablement),
+      ],
+      ['Earliest Version Time', clc.yellow(database.earliestVersionTime)],
+      ['Version Retention Period', clc.yellow(database.versionRetentionPeriod)],
     );
+
+    if (database.cmekConfig) {
+      table.push(['KMS Key Name', clc.yellow(database.cmekConfig.kmsKeyName)]);
+
+      if (database.cmekConfig.activeKeyVersion) {
+        table.push([
+          'Active Key Version',
+          clc.yellow(
+            this.prettyStringArray(database.cmekConfig.activeKeyVersion),
+          ),
+        ]);
+      }
+    }
     logger.info(table.toString());
+  }
+
+  /**
+   * Returns a pretty representation of a String array.
+   * @param stringArray the string array to be formatted.
+   */
+  prettyStringArray(stringArray: string[]): string {
+    let result = '';
+    stringArray.forEach((str) => {
+      result += `${str}\n`;
+    });
+    return result;
   }
 
   /**
@@ -74,15 +118,18 @@ export class PrettyPrint {
    */
   prettyPrintBackups(backups: Backup[]): void {
     if (backups.length === 0) {
-      logger.info("No backups found.");
+      logger.info('No backups found.');
       return;
     }
     const sortedBackups: Backup[] = backups.sort(sort.compareApiBackup);
     const table = new Table({
-      head: ["Backup Name", "Database Name", "Snapshot Time", "State"],
+      head: ['Backup Name', 'Database Name', 'Snapshot Time', 'State'],
       colWidths: [
         Math.max(...sortedBackups.map((backup) => backup.name!.length + 5), 20),
-        Math.max(...sortedBackups.map((backup) => backup.database!.length + 5), 20),
+        Math.max(
+          ...sortedBackups.map((backup) => backup.database!.length + 5),
+          20,
+        ),
         30,
         10,
       ],
@@ -91,7 +138,7 @@ export class PrettyPrint {
     table.push(
       ...sortedBackups.map((backup) => [
         this.prettyBackupString(backup),
-        this.prettyDatabaseString(backup.database || ""),
+        this.prettyDatabaseString(backup.database || ''),
         backup.snapshotTime,
         backup.state,
       ]),
@@ -104,7 +151,10 @@ export class PrettyPrint {
    * @param backupSchedules the array of Firestore backup schedules.
    * @param databaseId the database these schedules are associated with.
    */
-  prettyPrintBackupSchedules(backupSchedules: BackupSchedule[], databaseId: string): void {
+  prettyPrintBackupSchedules(
+    backupSchedules: BackupSchedule[],
+    databaseId: string,
+  ): void {
     if (backupSchedules.length === 0) {
       logger.info(`No backup schedules for database ${databaseId} found.`);
       return;
@@ -112,7 +162,9 @@ export class PrettyPrint {
     const sortedBackupSchedules: BackupSchedule[] = backupSchedules.sort(
       sort.compareApiBackupSchedule,
     );
-    sortedBackupSchedules.forEach((schedule) => this.prettyPrintBackupSchedule(schedule));
+    sortedBackupSchedules.forEach((schedule) =>
+      this.prettyPrintBackupSchedule(schedule),
+    );
   }
 
   /**
@@ -121,16 +173,16 @@ export class PrettyPrint {
    */
   prettyPrintBackupSchedule(backupSchedule: BackupSchedule): void {
     const table = new Table({
-      head: ["Field", "Value"],
+      head: ['Field', 'Value'],
       colWidths: [25, Math.max(50, 5 + backupSchedule.name!.length)],
     });
 
     table.push(
-      ["Name", clc.yellow(backupSchedule.name!)],
-      ["Create Time", clc.yellow(backupSchedule.createTime!)],
-      ["Last Update Time", clc.yellow(backupSchedule.updateTime!)],
-      ["Retention", clc.yellow(backupSchedule.retention)],
-      ["Recurrence", this.prettyRecurrenceString(backupSchedule)],
+      ['Name', clc.yellow(backupSchedule.name!)],
+      ['Create Time', clc.yellow(backupSchedule.createTime!)],
+      ['Last Update Time', clc.yellow(backupSchedule.updateTime!)],
+      ['Retention', clc.yellow(backupSchedule.retention)],
+      ['Recurrence', this.prettyRecurrenceString(backupSchedule)],
     );
     logger.info(table.toString());
   }
@@ -141,11 +193,11 @@ export class PrettyPrint {
    */
   prettyRecurrenceString(backupSchedule: BackupSchedule): string {
     if (backupSchedule.dailyRecurrence) {
-      return clc.yellow("DAILY");
+      return clc.yellow('DAILY');
     } else if (backupSchedule.weeklyRecurrence) {
       return clc.yellow(`WEEKLY (${backupSchedule.weeklyRecurrence.day})`);
     }
-    return "";
+    return '';
   }
 
   /**
@@ -154,18 +206,21 @@ export class PrettyPrint {
    */
   prettyPrintBackup(backup: Backup) {
     const table = new Table({
-      head: ["Field", "Value"],
-      colWidths: [25, Math.max(50, 5 + backup.name!.length, 5 + backup.database!.length)],
+      head: ['Field', 'Value'],
+      colWidths: [
+        25,
+        Math.max(50, 5 + backup.name!.length, 5 + backup.database!.length),
+      ],
     });
 
     table.push(
-      ["Name", clc.yellow(backup.name!)],
-      ["Database", clc.yellow(backup.database!)],
-      ["Database UID", clc.yellow(backup.databaseUid!)],
-      ["State", clc.yellow(backup.state!)],
-      ["Snapshot Time", clc.yellow(backup.snapshotTime!)],
-      ["Expire Time", clc.yellow(backup.expireTime!)],
-      ["Stats", clc.yellow(backup.stats!)],
+      ['Name', clc.yellow(backup.name!)],
+      ['Database', clc.yellow(backup.database!)],
+      ['Database UID', clc.yellow(backup.databaseUid!)],
+      ['State', clc.yellow(backup.state!)],
+      ['Snapshot Time', clc.yellow(backup.snapshotTime!)],
+      ['Expire Time', clc.yellow(backup.expireTime!)],
+      ['Stats', clc.yellow(backup.stats!)],
     );
     logger.info(table.toString());
   }
@@ -177,11 +232,11 @@ export class PrettyPrint {
    */
   prettyPrintLocations(locations: types.Location[]): void {
     if (locations.length === 0) {
-      logger.info("No Locations Available");
+      logger.info('No Locations Available');
       return;
     }
     const table = new Table({
-      head: ["Display Name", "LocationId"],
+      head: ['Display Name', 'LocationId'],
       colWidths: [20, 30],
     });
 
@@ -199,7 +254,7 @@ export class PrettyPrint {
    */
   printFieldOverrides(fields: types.Field[]): void {
     if (fields.length === 0) {
-      logger.info("None");
+      logger.info('None');
       return;
     }
 
@@ -213,7 +268,7 @@ export class PrettyPrint {
    * Get a colored, pretty-printed representation of an index.
    */
   prettyIndexString(index: types.Index, includeState = true): string {
-    let result = "";
+    let result = '';
 
     if (index.state && includeState) {
       const stateMsg = `[${index.state}] `;
@@ -230,10 +285,10 @@ export class PrettyPrint {
     const nameInfo = util.parseIndexName(index.name);
 
     result += clc.cyan(`(${nameInfo.collectionGroupId})`);
-    result += " -- ";
+    result += ' -- ';
 
     index.fields.forEach((field) => {
-      if (field.fieldPath === "__name__") {
+      if (field.fieldPath === '__name__') {
         return;
       }
 
@@ -258,45 +313,49 @@ export class PrettyPrint {
    * Get a colored, pretty-printed representation of a backup
    */
   prettyBackupString(backup: Backup): string {
-    return clc.yellow(backup.name || "");
+    return clc.yellow(backup.name || '');
   }
 
   /**
    * Get a colored, pretty-printed representation of a backup schedule
    */
   prettyBackupScheduleString(backupSchedule: BackupSchedule): string {
-    return clc.yellow(backupSchedule.name || "");
+    return clc.yellow(backupSchedule.name || '');
   }
 
   /**
    * Get a colored, pretty-printed representation of a database
    */
   prettyDatabaseString(database: string | types.DatabaseResp): string {
-    return clc.yellow(typeof database === "string" ? database : database.name);
+    return clc.yellow(typeof database === 'string' ? database : database.name);
   }
 
   /**
    * Get a URL to view a given Firestore database in the Firebase console
    */
   firebaseConsoleDatabaseUrl(project: string, databaseId: string): string {
-    const urlFriendlyDatabaseId = databaseId === "(default)" ? "-default-" : databaseId;
-    return consoleUrl(project, `/firestore/databases/${urlFriendlyDatabaseId}/data`);
+    const urlFriendlyDatabaseId =
+      databaseId === '(default)' ? '-default-' : databaseId;
+    return consoleUrl(
+      project,
+      `/firestore/databases/${urlFriendlyDatabaseId}/data`,
+    );
   }
 
   /**
    * Get a colored, pretty-printed representation of a field
    */
   prettyFieldString(field: types.Field): string {
-    let result = "";
+    let result = '';
 
     const parsedName = util.parseFieldName(field.name);
 
     result +=
-      "[" +
+      '[' +
       clc.cyan(parsedName.collectionGroupId) +
-      "." +
+      '.' +
       clc.yellow(parsedName.fieldPath) +
-      "] --";
+      '] --';
 
     const fieldIndexes = field.indexConfig.indexes || [];
     if (fieldIndexes.length > 0) {
@@ -306,7 +365,7 @@ export class PrettyPrint {
         result += ` (${mode})`;
       });
     } else {
-      result += " (no indexes)";
+      result += ' (no indexes)';
     }
     const fieldTtl = field.ttlConfig;
     if (fieldTtl) {

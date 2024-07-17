@@ -5,23 +5,23 @@
  * breaking when we can understand the developer's intent.
  */
 export enum Mode {
-  ASCENDING = "ASCENDING",
-  DESCENDING = "DESCENDING",
-  ARRAY_CONTAINS = "ARRAY_CONTAINS",
+  ASCENDING = 'ASCENDING',
+  DESCENDING = 'DESCENDING',
+  ARRAY_CONTAINS = 'ARRAY_CONTAINS',
 }
 
 export enum QueryScope {
-  COLLECTION = "COLLECTION",
-  COLLECTION_GROUP = "COLLECTION_GROUP",
+  COLLECTION = 'COLLECTION',
+  COLLECTION_GROUP = 'COLLECTION_GROUP',
 }
 
 export enum Order {
-  ASCENDING = "ASCENDING",
-  DESCENDING = "DESCENDING",
+  ASCENDING = 'ASCENDING',
+  DESCENDING = 'DESCENDING',
 }
 
 export enum ArrayConfig {
-  CONTAINS = "CONTAINS",
+  CONTAINS = 'CONTAINS',
 }
 
 export interface VectorConfig {
@@ -30,15 +30,15 @@ export interface VectorConfig {
 }
 
 export enum State {
-  CREATING = "CREATING",
-  READY = "READY",
-  NEEDS_REPAIR = "NEEDS_REPAIR",
+  CREATING = 'CREATING',
+  READY = 'READY',
+  NEEDS_REPAIR = 'NEEDS_REPAIR',
 }
 
 export enum StateTtl {
-  CREATING = "CREATING",
-  ACTIVE = "ACTIVE",
-  NEEDS_REPAIR = "NEEDS_REPAIR",
+  CREATING = 'CREATING',
+  ACTIVE = 'ACTIVE',
+  NEEDS_REPAIR = 'NEEDS_REPAIR',
 }
 
 /**
@@ -97,28 +97,28 @@ export interface Location {
 }
 
 export enum DatabaseType {
-  DATASTORE_MODE = "DATASTORE_MODE",
-  FIRESTORE_NATIVE = "FIRESTORE_NATIVE",
+  DATASTORE_MODE = 'DATASTORE_MODE',
+  FIRESTORE_NATIVE = 'FIRESTORE_NATIVE',
 }
 
 export enum DatabaseDeleteProtectionStateOption {
-  ENABLED = "ENABLED",
-  DISABLED = "DISABLED",
+  ENABLED = 'ENABLED',
+  DISABLED = 'DISABLED',
 }
 
 export enum DatabaseDeleteProtectionState {
-  ENABLED = "DELETE_PROTECTION_ENABLED",
-  DISABLED = "DELETE_PROTECTION_DISABLED",
+  ENABLED = 'DELETE_PROTECTION_ENABLED',
+  DISABLED = 'DELETE_PROTECTION_DISABLED',
 }
 
 export enum PointInTimeRecoveryEnablementOption {
-  ENABLED = "ENABLED",
-  DISABLED = "DISABLED",
+  ENABLED = 'ENABLED',
+  DISABLED = 'DISABLED',
 }
 
 export enum PointInTimeRecoveryEnablement {
-  ENABLED = "POINT_IN_TIME_RECOVERY_ENABLED",
-  DISABLED = "POINT_IN_TIME_RECOVERY_DISABLED",
+  ENABLED = 'POINT_IN_TIME_RECOVERY_ENABLED',
+  DISABLED = 'POINT_IN_TIME_RECOVERY_DISABLED',
 }
 
 export interface DatabaseReq {
@@ -126,6 +126,7 @@ export interface DatabaseReq {
   type?: DatabaseType;
   deleteProtectionState?: DatabaseDeleteProtectionState;
   pointInTimeRecoveryEnablement?: PointInTimeRecoveryEnablement;
+  cmekConfig?: CmekConfig;
 }
 
 export interface DatabaseResp {
@@ -143,6 +144,7 @@ export interface DatabaseResp {
   etag: string;
   versionRetentionPeriod: string;
   earliestVersionTime: string;
+  cmekConfig?: CmekConfig;
 }
 
 export interface RestoreDatabaseReq {
@@ -151,6 +153,11 @@ export interface RestoreDatabaseReq {
 }
 
 export enum RecurrenceType {
-  DAILY = "DAILY",
-  WEEKLY = "WEEKLY",
+  DAILY = 'DAILY',
+  WEEKLY = 'WEEKLY',
+}
+
+export interface CmekConfig {
+  kmsKeyName: string;
+  activeKeyVersion?: string[];
 }
