@@ -2,7 +2,7 @@ import * as fs from "fs-extra";
 import * as path from "path";
 
 import { FirebaseError } from "../error";
-import { ConnectorYaml, DataConnectYaml, File, ServiceInfo } from "./types";
+import { ConnectorYaml, DataConnectYaml, File, Platform, ServiceInfo } from "./types";
 import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
 import { Config } from "../config";
 import { DataConnectMultiple } from "../firebaseConfig";
@@ -105,4 +105,24 @@ export async function pickService(
     serviceInfo = maybe;
   }
   return serviceInfo;
+}
+
+// case insensitive indicators for supported app platforms
+const WEB_INDICATORS = ["package.json", "package-lock.json"];
+const IOS_INDICATORS = ["info.plist", "project.pbxproj", "podfile", "package.swift"];
+const ANDROID_INDICATORS = ["androidmanifest.xml", "build.gradle"];
+
+// given a directory, determine the platform type
+export async function getPlatformFromFolder(dirPath: string) {
+  const fileNames = await fs.readdir(dirPath);
+
+  for (const fileName of fileNames) {
+    const cleanedFileName = fileName.toLowerCase();
+    if (WEB_INDICATORS.find((indicator) => indicator === cleanedFileName)) return Platform.WEB;
+    if (ANDROID_INDICATORS.find((indicator) => indicator === cleanedFileName))
+      return Platform.ANDROID;
+    if (IOS_INDICATORS.find((indicator) => indicator === cleanedFileName)) return Platform.IOS;
+  };
+
+  return Platform.UNDETERMINED;
 }

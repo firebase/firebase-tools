@@ -146,6 +146,13 @@ export interface KotlinSDK {
   package?: string;
 }
 
+export enum Platform {
+  ANDROID = "ANDROID",
+  WEB = "WEB",
+  IOS = "IOS",
+  UNDETERMINED = "UNDETERMINED",
+}
+
 // Helper types && converters
 export interface ServiceInfo {
   serviceName: string;
