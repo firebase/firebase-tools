@@ -122,7 +122,7 @@ export async function getPlatformFromFolder(dirPath: string) {
     if (ANDROID_INDICATORS.find((indicator) => indicator === cleanedFileName))
       return Platform.ANDROID;
     if (IOS_INDICATORS.find((indicator) => indicator === cleanedFileName)) return Platform.IOS;
-  };
+  }
 
   return Platform.UNDETERMINED;
 }
