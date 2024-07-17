@@ -121,7 +121,7 @@ export async function migrateSchema(args: {
 }
 
 function setCompatibleMode(schema: Schema, databaseId: string, instanceName: string) {
-  if (experiments.isEnabled("compatiblemode")) {
+  if (experiments.isEnabled("fdccompatiblemode")) {
     if (schema.primaryDatasource.postgresql?.schemaValidation) {
       schema.primaryDatasource.postgresql.schemaValidation = "COMPATIBLE";
     } else {
