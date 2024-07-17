@@ -154,3 +154,8 @@ export enum RecurrenceType {
   DAILY = "DAILY",
   WEEKLY = "WEEKLY",
 }
+
+type UseGoogleDefaultEncryption = {useGoogleDefaultEncryption: Object}
+type UseBackupEncryption = {useBackupEncryption: Object}
+type UseCustomerManagedEncryption = {kmsKeyName: string}
+export type EncryptionConfig = UseCustomerManagedEncryption | UseBackupEncryption | UseGoogleDefaultEncryption
