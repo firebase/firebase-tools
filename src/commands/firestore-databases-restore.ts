@@ -7,7 +7,7 @@ import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
 import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
-import { FirestoreOptions } from "../firestore/options";
+import { EncryptionType, FirestoreOptions } from "../firestore/options";
 import { PrettyPrint } from "../firestore/pretty-print";
 import { FirebaseError } from "../error";
 
@@ -17,7 +17,8 @@ export const command = new Command("firestore:databases:restore")
   .option("-b, --backup <backup>", "Backup from which to restore")
   .option(
     "-e, --encryption-type <encryptionType>",
-    "Encryption method of the restored database; one of CUSTOMER_MANAGED_ENCRYPTION, USE_BACKUP_ENCRYPTION, GOOGLE_DEFAULT_ENCRYPTION",
+    `Encryption method of the restored database; one of ${EncryptionType.CUSTOMER_MANAGED_ENCRYPTION}, ` +
+      `${EncryptionType.USE_BACKUP_ENCRYPTION}, ${EncryptionType.GOOGLE_DEFAULT_ENCRYPTION}`,
   )
   .option(
     "-k, --kms-key-name <kmsKeyName>",
@@ -42,16 +43,16 @@ export const command = new Command("firestore:databases:restore")
 
     let encryptionConfig: types.EncryptionConfig | undefined = undefined;
     if (options.encryptionType !== undefined) {
-      switch (options.encryptionType ?? "") {
-        case "GOOGLE_DEFAULT_ENCRYPTION":
+      switch (options.encryptionType) {
+        case EncryptionType.GOOGLE_DEFAULT_ENCRYPTION:
           throwIfKmsKeyNameIsSet(options.kmsKeyName);
           encryptionConfig = { useGoogleDefaultEncryption: {} };
           break;
-        case "USE_BACKUP_ENCRYPTION":
+        case EncryptionType.USE_BACKUP_ENCRYPTION:
           throwIfKmsKeyNameIsSet(options.kmsKeyName);
           encryptionConfig = { useBackupEncryption: {} };
           break;
-        case "CUSTOMER_MANAGED_ENCRYPTION":
+        case EncryptionType.CUSTOMER_MANAGED_ENCRYPTION:
           encryptionConfig = { kmsKeyName: getKmsKeyOrThrow(options.kmsKeyName) };
           break;
         default:
@@ -88,7 +89,7 @@ export const command = new Command("firestore:databases:restore")
       if (kmsKeyName) {
         throw new FirebaseError(
           "--kms-key-name cannot be set when using an --encryption-type of " +
-            "GOOGLE_DEFAULT_ENCRYPTION or USE_BACKUP_ENCRYPTION.",
+            `${EncryptionType.GOOGLE_DEFAULT_ENCRYPTION} or ${EncryptionType.USE_BACKUP_ENCRYPTION}.`,
         );
       }
     }
@@ -98,7 +99,7 @@ export const command = new Command("firestore:databases:restore")
 
       throw new FirebaseError(
         "--kms-key-name must be provided when using an --encryption-type of " +
-          "CUSTOMER_MANAGED_ENCRYPTION.",
+          `${EncryptionType.CUSTOMER_MANAGED_ENCRYPTION}.`,
       );
     }
   });
