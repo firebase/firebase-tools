@@ -50,6 +50,7 @@ export const command = new Command("firestore:databases:restore")
       options.project,
       databaseId,
       backupName,
+      encryptionConfig
     );
 
     if (options.json) {
@@ -60,8 +61,8 @@ export const command = new Command("firestore:databases:restore")
       );
       logger.info(
         "Please be sure to configure Firebase rules in your Firebase config file for\n" +
-          "the new database. By default, created databases will have closed rules that\n" +
-          "block any incoming third-party traffic.",
+        "the new database. By default, created databases will have closed rules that\n" +
+        "block any incoming third-party traffic.",
       );
       logger.info(
         `Once the restore is complete, your database may be viewed at ${printer.firebaseConsoleDatabaseUrl(options.project, databaseId)}`,

@@ -700,11 +700,13 @@ export class FirestoreApi {
     project: string,
     databaseId: string,
     backupName: string,
+    encryptionConfig?: types.EncryptionConfig
   ): Promise<types.DatabaseResp> {
     const url = `/projects/${project}/databases:restore`;
     const payload: types.RestoreDatabaseReq = {
       databaseId,
       backup: backupName,
+      ...encryptionConfig
     };
     const options = { queryParams: { databaseId: databaseId } };
     const res = await this.apiClient.post<
