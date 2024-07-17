@@ -171,3 +171,8 @@ export interface CmekConfig {
   kmsKeyName: string;
   activeKeyVersion?: string[];
 }
+
+type UseGoogleDefaultEncryption = {useGoogleDefaultEncryption: Object}
+type UseBackupEncryption = {useBackupEncryption: Object}
+type UseCustomerManagedEncryption = {kmsKeyName: string}
+export type EncryptionConfig = UseCustomerManagedEncryption | UseBackupEncryption | UseGoogleDefaultEncryption
