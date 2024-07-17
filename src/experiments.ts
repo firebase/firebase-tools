@@ -135,9 +135,9 @@ export const ALL_EXPERIMENTS = experiments({
     public: false,
   },
 
-  compatiblemode: {
-    shortDescription: "Enable schema migrations in Compatible Mode",
-    fullDescription: "Enable schema migrations in Compatible Mode",
+  fdccompatiblemode: {
+    shortDescription: "Enable Data Connect schema migrations in Compatible Mode",
+    fullDescription: "Enable Data Connect schema migrations in Compatible Mode",
     public: false,
   },
 });
