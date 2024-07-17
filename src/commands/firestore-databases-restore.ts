@@ -20,11 +20,11 @@ export const command = new Command("firestore:databases:restore")
   .action(async (options: FirestoreOptions) => {
     const api = new fsi.FirestoreApi();
     const printer = new PrettyPrint();
-    const HELP_COMMAND = "See firebase firestore:databases:restore --help for more info";
+    const helpCommandText = "See firebase firestore:databases:restore --help for more info";
 
     if (!options.database) {
       logger.error(
-        `Missing required flag --database. ${HELP_COMMAND}`,
+        `Missing required flag --database. ${helpCommandText}`,
       );
       return;
     }
@@ -32,7 +32,7 @@ export const command = new Command("firestore:databases:restore")
 
     if (!options.backup) {
       logger.error(
-        `Missing required flag --backup. ${HELP_COMMAND}`,
+        `Missing required flag --backup. ${helpCommandText}`,
       );
       return;
     }
@@ -50,7 +50,7 @@ export const command = new Command("firestore:databases:restore")
         break;
       default:
         logger.error(
-          `Invalid value for flag --encryption-type. ${HELP_COMMAND}`,
+          `Invalid value for flag --encryption-type. ${helpCommandText}`,
         );
         return;
     }
