@@ -22,6 +22,8 @@ export async function diffSchema(schema: Schema): Promise<Diff[]> {
     databaseId,
     /* linkIfNotConnected=*/ false,
   );
+
+  setCompatibleMode(schema, databaseId, instanceName);
   try {
     await upsertSchema(schema, /** validateOnly=*/ true);
     logLabeledSuccess("dataconnect", `Database schema is up to date.`);
@@ -64,21 +66,7 @@ export async function migrateSchema(args: {
     /* linkIfNotConnected=*/ true,
   );
 
-  if (experiments.isEnabled("compatiblemode")) {
-    if (schema.primaryDatasource.postgresql?.schemaValidation) {
-      schema.primaryDatasource.postgresql.schemaValidation = "COMPATIBLE";
-    } else {
-      schema.primaryDatasource = {
-        postgresql: {
-          database: databaseId,
-          cloudSql: {
-            instance: instanceName,
-          },
-          schemaValidation: "COMPATIBLE",
-        },
-      };
-    }
-  }
+  setCompatibleMode(schema, databaseId, instanceName);
 
   try {
     await upsertSchema(schema, validateOnly);
@@ -130,6 +118,24 @@ export async function migrateSchema(args: {
     return diffs;
   }
   return [];
+}
+
+function setCompatibleMode(schema: Schema, databaseId: string, instanceName: string) {
+  if (experiments.isEnabled("compatiblemode")) {
+    if (schema.primaryDatasource.postgresql?.schemaValidation) {
+      schema.primaryDatasource.postgresql.schemaValidation = "COMPATIBLE";
+    } else {
+      schema.primaryDatasource = {
+        postgresql: {
+          database: databaseId,
+          cloudSql: {
+            instance: instanceName,
+          },
+          schemaValidation: "COMPATIBLE",
+        },
+      };
+    }
+  }
 }
 
 function getIdentifiers(schema: Schema): {

@@ -138,7 +138,6 @@ export const ALL_EXPERIMENTS = experiments({
   compatiblemode: {
     shortDescription: "Enable schema migrations in Compatible Mode",
     fullDescription: "Enable schema migrations in Compatible Mode",
-    default: true,
     public: false,
   },
 });
