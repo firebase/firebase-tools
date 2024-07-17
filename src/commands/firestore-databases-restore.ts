@@ -44,20 +44,16 @@ export const command = new Command("firestore:databases:restore")
     if (options.encryptionType !== undefined) {
       switch (options.encryptionType ?? "") {
         case "GOOGLE_DEFAULT_ENCRYPTION":
+          throwIfKmsKeyNameIsSet(options.kmsKeyName);
           encryptionConfig = { useGoogleDefaultEncryption: {} };
           break;
         case "USE_BACKUP_ENCRYPTION":
+          throwIfKmsKeyNameIsSet(options.kmsKeyName);
           encryptionConfig = { useBackupEncryption: {} };
           break;
         case "CUSTOMER_MANAGED_ENCRYPTION":
-          if (options.kmsKeyName) {
-            encryptionConfig = { kmsKeyName: options.kmsKeyName };
-            break;
-          } else {
-            throw new FirebaseError(
-              `If --encryption-type is CUSTOMER_MANAGED_ENCRYPTION, --kms-key-name must be provided. ${helpCommandText}`,
-            );
-            }
+          encryptionConfig = { kmsKeyName: getKmsKeyOrThrow(options.kmsKeyName) };
+          break;
         default:
           throw new FirebaseError(`Invalid value for flag --encryption-type. ${helpCommandText}`);
         }
@@ -87,4 +83,22 @@ export const command = new Command("firestore:databases:restore")
     }
 
     return databaseResp;
+
+    function throwIfKmsKeyNameIsSet(kmsKeyName: string | undefined): void {
+      if (kmsKeyName) {
+        throw new FirebaseError(
+          "--kms-key-name cannot be set when using an --encryption-type of " +
+            "GOOGLE_DEFAULT_ENCRYPTION or USE_BACKUP_ENCRYPTION.",
+        );
+      }
+    }
+
+    function getKmsKeyOrThrow(kmsKeyName: string | undefined): string {
+      if (kmsKeyName) return kmsKeyName;
+
+      throw new FirebaseError(
+        "--kms-key-name must be provided when using an --encryption-type of " +
+          "CUSTOMER_MANAGED_ENCRYPTION.",
+      );
+    }
   });
