@@ -47,7 +47,7 @@ const choices = [
   },
   {
     value: "hosting:github",
-    name: "Hosting: Set up GitHub Action deploys",
+    name: " └── Hosting: Set up GitHub Action deploys",
     checked: false,
   },
   {
@@ -87,7 +87,7 @@ choices.push({
 });
 choices.push({
   value: "dataconnect:sdk",
-  name: "Data Connect: Set up a generated SDK for your Firebase Data Connect service",
+  name: " └── Data Connect: Set up a generated SDK for your Firebase Data Connect service",
   checked: false,
 });
 
