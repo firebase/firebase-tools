@@ -44,10 +44,7 @@ export const command = new Command("firestore:databases:restore")
         // No encryption config specified
         break;
       default:
-        logger.error(
-          `Invalid value for flag --encryption-type. ${HELP_COMMAND}`,
-        );
-        return;
+        throw new FirebaseError(`Invalid value for flag --encryption-type. ${helpCommandText}`);
     }
     const databaseResp: types.DatabaseResp = await api.restoreDatabase(
       options.project,
