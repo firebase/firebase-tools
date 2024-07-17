@@ -16,7 +16,7 @@ export const command = new Command("firestore:databases:restore")
   .option("-d, --database <databaseID>", "ID of the database to restore into")
   .option("-b, --backup <backup>", "Backup from which to restore")
   .option(
-    "-e, --encryption-type <encryptionType",
+    "-e, --encryption-type <encryptionType>",
     "Encryption method of the restored database; one of CUSTOMER_MANAGED_ENCRYPTION, USE_BACKUP_ENCRYPTION, GOOGLE_DEFAULT_ENCRYPTION",
   )
   .option(
