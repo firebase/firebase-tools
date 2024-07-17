@@ -42,29 +42,28 @@ export const command = new Command("firestore:databases:restore")
     const backupName = options.backup;
 
     let encryptionConfig: types.EncryptionConfig | undefined = undefined;
-    switch (options.encryptionType ?? "") {
-      case "GOOGLE_DEFAULT_ENCRYPTION":
-        encryptionConfig = { useGoogleDefaultEncryption: {} };
-        break;
-      case "USE_BACKUP_ENCRYPTION":
-        encryptionConfig = { useBackupEncryption: {} };
-        break;
-      case "CUSTOMER_MANAGED_ENCRYPTION":
-        if (options.kmsKeyName) {
-          encryptionConfig = { kmsKeyName: options.kmsKeyName };
+    if (options.encryptionType !== undefined) {
+      switch (options.encryptionType ?? "") {
+        case "GOOGLE_DEFAULT_ENCRYPTION":
+          encryptionConfig = { useGoogleDefaultEncryption: {} };
           break;
-        } else {
-          logger.error(
-            `If --encryption-type is CUSTOMER_MANAGED_ENCRYPTION, --kms-key-name must be provided. ${helpCommandText}`,
-          );
+        case "USE_BACKUP_ENCRYPTION":
+          encryptionConfig = { useBackupEncryption: {} };
+          break;
+        case "CUSTOMER_MANAGED_ENCRYPTION":
+          if (options.kmsKeyName) {
+            encryptionConfig = { kmsKeyName: options.kmsKeyName };
+            break;
+          } else {
+            logger.error(
+              `If --encryption-type is CUSTOMER_MANAGED_ENCRYPTION, --kms-key-name must be provided. ${helpCommandText}`,
+            );
+            return;
+          }
+        default:
+          logger.error(`Invalid value for flag --encryption-type. ${helpCommandText}`);
           return;
-        }
-      case "":
-        // No encryption config specified
-        break;
-      default:
-        logger.error(`Invalid value for flag --encryption-type. ${helpCommandText}`);
-        return;
+      }
     }
 
     const databaseResp: types.DatabaseResp = await api.restoreDatabase(
