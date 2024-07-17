@@ -37,6 +37,9 @@ export const command = new Command("firestore:databases:restore")
       case "GOOGLE_DEFAULT_ENCRYPTION":
         encryptionConfig = {useGoogleDefaultEncryption: {}}
         break;
+      case "USE_BACKUP_ENCRYPTION":
+        encryptionConfig = {useBackupEncryption: {}}
+        break;
       case "":
         // No encryption config specified
         break;
