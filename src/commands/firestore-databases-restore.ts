@@ -16,6 +16,7 @@ export const command = new Command("firestore:databases:restore")
   .option("-d, --database <databaseID>", "ID of the database to restore into")
   .option("-b, --backup <backup>", "Backup from which to restore")
   .option("-e, --encryption-type <encryptionType", "Encryption method of the restored database; one of CUSTOMER_MANAGED_ENCRYPTION, USE_BACKUP_ENCRYPTION, GOOGLE_DEFAULT_ENCRYPTION")
+  .option("-k, --kms-key-name <kmsKeyName>", "Resource ID of the Cloud KMS key to encrypt the restored database")
   .before(requirePermissions, ["datastore.backups.restoreDatabase"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
   .action(async (options: FirestoreOptions) => {
@@ -40,6 +41,16 @@ export const command = new Command("firestore:databases:restore")
       case "USE_BACKUP_ENCRYPTION":
         encryptionConfig = {useBackupEncryption: {}}
         break;
+      case "CUSTOMER_MANAGED_ENCRYPTION":
+        if (options.kmsKeyName) {
+          encryptionConfig = {kmsKeyName: options.kmsKeyName}
+          break;
+        } else {
+          logger.error(
+            `If --encryption-type is CUSTOMER_MANAGED_ENCRYPTION, --kms-key-name must be provided. ${helpCommandText}`,
+          );
+          return;
+        }
       case "":
         // No encryption config specified
         break;
