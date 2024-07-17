@@ -15,6 +15,7 @@ export const command = new Command("firestore:databases:restore")
   .description("Restore a Firestore database in your Firebase project.")
   .option("-d, --database <databaseID>", "ID of the database to restore into")
   .option("-b, --backup <backup>", "Backup from which to restore")
+  .option("-e, --encryption-type <encryptionType", "Encryption method of the restored database; one of CUSTOMER_MANAGED_ENCRYPTION, USE_BACKUP_ENCRYPTION, GOOGLE_DEFAULT_ENCRYPTION")
   .before(requirePermissions, ["datastore.backups.restoreDatabase"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
   .action(async (options: FirestoreOptions) => {
@@ -31,7 +32,20 @@ export const command = new Command("firestore:databases:restore")
       throw new FirebaseError(`Missing required flag --backup. ${helpCommandText}`);
     }
     const backupName = options.backup;
-
+    var encryptionConfig: types.EncryptionConfig | undefined = undefined
+    switch (options.encryptionType ?? "") {
+      case "GOOGLE_DEFAULT_ENCRYPTION":
+        encryptionConfig = {useGoogleDefaultEncryption: {}}
+        break;
+      case "":
+        // No encryption config specified
+        break;
+      default:
+        logger.error(
+          `Invalid value for flag --encryption-type. ${HELP_COMMAND}`,
+        );
+        return;
+    }
     const databaseResp: types.DatabaseResp = await api.restoreDatabase(
       options.project,
       databaseId,
