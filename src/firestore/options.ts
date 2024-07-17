@@ -28,4 +28,7 @@ export interface FirestoreOptions extends Options {
 
   // backups
   backup?: string;
+
+  // CMEK
+  encryptionType?: "GOOGLE_DEFAULT_ENCRYPTION";
 }
