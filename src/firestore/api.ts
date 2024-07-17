@@ -695,18 +695,19 @@ export class FirestoreApi {
    * @param project the Firebase project id.
    * @param databaseId the ID of the Firestore Database to be restored into
    * @param backupName Name of the backup from which to restore
+   * @param encryptionConfig the encryption configuration of the restored database
    */
   async restoreDatabase(
     project: string,
     databaseId: string,
     backupName: string,
-    encryptionConfig?: types.EncryptionConfig
+    encryptionConfig?: types.EncryptionConfig,
   ): Promise<types.DatabaseResp> {
     const url = `/projects/${project}/databases:restore`;
     const payload: types.RestoreDatabaseReq = {
       databaseId,
       backup: backupName,
-      ...encryptionConfig
+      ...encryptionConfig,
     };
     const options = { queryParams: { databaseId: databaseId } };
     const res = await this.apiClient.post<

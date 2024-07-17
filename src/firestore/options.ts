@@ -30,6 +30,9 @@ export interface FirestoreOptions extends Options {
   backup?: string;
 
   // CMEK
-  encryptionType?: "CUSTOMER_MANAGED_ENCRYPTION" | "USE_BACKUP_ENCRYPTION" | "GOOGLE_DEFAULT_ENCRYPTION";
+  encryptionType?:
+    | "CUSTOMER_MANAGED_ENCRYPTION"
+    | "USE_BACKUP_ENCRYPTION"
+    | "GOOGLE_DEFAULT_ENCRYPTION";
   kmsKeyName?: string;
 }

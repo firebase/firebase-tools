@@ -172,7 +172,10 @@ export interface CmekConfig {
   activeKeyVersion?: string[];
 }
 
-type UseGoogleDefaultEncryption = {useGoogleDefaultEncryption: Object}
-type UseBackupEncryption = {useBackupEncryption: Object}
-type UseCustomerManagedEncryption = {kmsKeyName: string}
-export type EncryptionConfig = UseCustomerManagedEncryption | UseBackupEncryption | UseGoogleDefaultEncryption
+type UseGoogleDefaultEncryption = { useGoogleDefaultEncryption: Record<string, never> };
+type UseBackupEncryption = { useBackupEncryption: Record<string, never> };
+type UseCustomerManagedEncryption = { kmsKeyName: string };
+export type EncryptionConfig =
+  | UseCustomerManagedEncryption
+  | UseBackupEncryption
+  | UseGoogleDefaultEncryption;

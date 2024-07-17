@@ -15,8 +15,14 @@ export const command = new Command("firestore:databases:restore")
   .description("Restore a Firestore database in your Firebase project.")
   .option("-d, --database <databaseID>", "ID of the database to restore into")
   .option("-b, --backup <backup>", "Backup from which to restore")
-  .option("-e, --encryption-type <encryptionType", "Encryption method of the restored database; one of CUSTOMER_MANAGED_ENCRYPTION, USE_BACKUP_ENCRYPTION, GOOGLE_DEFAULT_ENCRYPTION")
-  .option("-k, --kms-key-name <kmsKeyName>", "Resource ID of the Cloud KMS key to encrypt the restored database")
+  .option(
+    "-e, --encryption-type <encryptionType",
+    "Encryption method of the restored database; one of CUSTOMER_MANAGED_ENCRYPTION, USE_BACKUP_ENCRYPTION, GOOGLE_DEFAULT_ENCRYPTION",
+  )
+  .option(
+    "-k, --kms-key-name <kmsKeyName>",
+    "Resource ID of the Cloud KMS key to encrypt the restored database",
+  )
   .before(requirePermissions, ["datastore.backups.restoreDatabase"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
   .action(async (options: FirestoreOptions) => {
@@ -33,23 +39,23 @@ export const command = new Command("firestore:databases:restore")
       throw new FirebaseError(`Missing required flag --backup. ${helpCommandText}`);
     }
     const backupName = options.backup;
-    var encryptionConfig: types.EncryptionConfig | undefined = undefined
+
+    let encryptionConfig: types.EncryptionConfig | undefined = undefined;
     switch (options.encryptionType ?? "") {
       case "GOOGLE_DEFAULT_ENCRYPTION":
-        encryptionConfig = {useGoogleDefaultEncryption: {}}
+        encryptionConfig = { useGoogleDefaultEncryption: {} };
         break;
       case "USE_BACKUP_ENCRYPTION":
-        encryptionConfig = {useBackupEncryption: {}}
+        encryptionConfig = { useBackupEncryption: {} };
         break;
       case "CUSTOMER_MANAGED_ENCRYPTION":
         if (options.kmsKeyName) {
-          encryptionConfig = {kmsKeyName: options.kmsKeyName}
+          encryptionConfig = { kmsKeyName: options.kmsKeyName };
           break;
         } else {
-          logger.error(
+          throw new FirebaseError(
             `If --encryption-type is CUSTOMER_MANAGED_ENCRYPTION, --kms-key-name must be provided. ${helpCommandText}`,
           );
-          return;
         }
       case "":
         // No encryption config specified
@@ -57,11 +63,12 @@ export const command = new Command("firestore:databases:restore")
       default:
         throw new FirebaseError(`Invalid value for flag --encryption-type. ${helpCommandText}`);
     }
+
     const databaseResp: types.DatabaseResp = await api.restoreDatabase(
       options.project,
       databaseId,
       backupName,
-      encryptionConfig
+      encryptionConfig,
     );
 
     if (options.json) {
@@ -72,8 +79,8 @@ export const command = new Command("firestore:databases:restore")
       );
       logger.info(
         "Please be sure to configure Firebase rules in your Firebase config file for\n" +
-        "the new database. By default, created databases will have closed rules that\n" +
-        "block any incoming third-party traffic.",
+          "the new database. By default, created databases will have closed rules that\n" +
+          "block any incoming third-party traffic.",
       );
       logger.info(
         `Once the restore is complete, your database may be viewed at ${printer.firebaseConsoleDatabaseUrl(options.project, databaseId)}`,
