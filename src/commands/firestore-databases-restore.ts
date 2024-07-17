@@ -9,6 +9,7 @@ import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 import { FirestoreOptions } from "../firestore/options";
 import { PrettyPrint } from "../firestore/pretty-print";
+import { FirebaseError } from "../error";
 
 export const command = new Command("firestore:databases:restore")
   .description("Restore a Firestore database in your Firebase project.")
@@ -45,21 +46,16 @@ export const command = new Command("firestore:databases:restore")
     if (options.encryptionType !== undefined) {
       switch (options.encryptionType ?? "") {
         case "GOOGLE_DEFAULT_ENCRYPTION":
+          throwIfKmsKeyNameIsSet(options.kmsKeyName);
           encryptionConfig = { useGoogleDefaultEncryption: {} };
           break;
         case "USE_BACKUP_ENCRYPTION":
+          throwIfKmsKeyNameIsSet(options.kmsKeyName);
           encryptionConfig = { useBackupEncryption: {} };
           break;
         case "CUSTOMER_MANAGED_ENCRYPTION":
-          if (options.kmsKeyName) {
-            encryptionConfig = { kmsKeyName: options.kmsKeyName };
-            break;
-          } else {
-            logger.error(
-              `If --encryption-type is CUSTOMER_MANAGED_ENCRYPTION, --kms-key-name must be provided. ${helpCommandText}`,
-            );
-            return;
-          }
+          encryptionConfig = { kmsKeyName: getKmsKeyOrThrow(options.kmsKeyName) };
+          break;
         default:
           logger.error(`Invalid value for flag --encryption-type. ${helpCommandText}`);
           return;
@@ -90,4 +86,22 @@ export const command = new Command("firestore:databases:restore")
     }
 
     return databaseResp;
+
+    function throwIfKmsKeyNameIsSet(kmsKeyName: string | undefined): void {
+      if (kmsKeyName) {
+        throw new FirebaseError(
+          "--kms-key-name cannot be set when using an --encryption-type of " +
+            "GOOGLE_DEFAULT_ENCRYPTION or USE_BACKUP_ENCRYPTION.",
+        );
+      }
+    }
+
+    function getKmsKeyOrThrow(kmsKeyName: string | undefined): string {
+      if (kmsKeyName) return kmsKeyName;
+
+      throw new FirebaseError(
+        "--kms-key-name must be provided when using an --encryption-type of " +
+          "CUSTOMER_MANAGED_ENCRYPTION.",
+      );
+    }
   });
