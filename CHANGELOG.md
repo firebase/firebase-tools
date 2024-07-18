@@ -5,3 +5,4 @@
 - GitHub Action fixes for web frameworks (#6883)
 - Fixes issue where PubSub message `publishTime` is set to 1970-01-01T00:00:00 (#7441)
 - Display meaningful error message when cannot determine target. (#6594)
+- Update supported range for Angular framework. (#7418)
