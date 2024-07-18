@@ -116,7 +116,7 @@ const ANDROID_INDICATORS = ["androidmanifest.xml", "build.gradle"];
 // given a directory, determine the platform type
 export async function getPlatformFromFolder(dirPath: string) {
   // check for ios folder indicator
-  if(IOS_FOLDER_INDICATORS.some((indicator) => path.basename(dirPath).endsWith(indicator))) {
+  if (IOS_FOLDER_INDICATORS.some((indicator) => path.basename(dirPath).endsWith(indicator))) {
     return Platform.IOS;
   }
 

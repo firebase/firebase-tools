@@ -4,7 +4,7 @@ import { Platform } from "./types";
 import * as mockfs from "mock-fs";
 import FileSystem from "mock-fs/lib/filesystem";
 
-describe.only("getPlatformFromFolder", () => {
+describe("getPlatformFromFolder", () => {
   const cases: {
     desc: string;
     folderName: string;
@@ -39,25 +39,24 @@ describe.only("getPlatformFromFolder", () => {
       desc: "Android identifier 2",
       folderName: "/test/",
       folderItems: {
-          "build.gradle": "contents",
-          file2: "my android contents",
-        },
+        "build.gradle": "contents",
+        file2: "my android contents",
+      },
       output: Platform.ANDROID,
     },
     {
       desc: "iOS file identifier 1",
       folderName: "test/",
-      folderItems: {file1: "contents", podfile: "cocoa pods yummy" },
+      folderItems: { file1: "contents", podfile: "cocoa pods yummy" },
       output: Platform.IOS,
     },
     {
       desc: "iOS folder identifier 1, priority over android file",
-      folderName:
-        "root/abcd/myapp.xcodeproj",
-        folderItems: {
-          file1: "contents",
-          "androidmanifest.xml": "why is an android file in an xcode workspace?",
-        },
+      folderName: "root/abcd/myapp.xcodeproj",
+      folderItems: {
+        file1: "contents",
+        "androidmanifest.xml": "why is an android file in an xcode workspace?",
+      },
       output: Platform.IOS,
     },
     {
@@ -71,7 +70,7 @@ describe.only("getPlatformFromFolder", () => {
   ];
   for (const c of cases) {
     it(c.desc, async () => {
-      mockfs({[c.folderName]: c.folderItems});
+      mockfs({ [c.folderName]: c.folderItems });
       const platform = await getPlatformFromFolder(c.folderName);
       expect(platform).to.equal(c.output);
     });
