@@ -17,6 +17,7 @@ import {
 } from "../gcp/secretManager";
 import { check } from "../ensureApiEnabled";
 import { requireAuth } from "../requireAuth";
+import { FirebaseError } from "../error";
 import * as secrets from "../functions/secrets";
 import * as backend from "../deploy/functions/backend";
 import * as args from "../deploy/functions/args";
@@ -80,6 +81,12 @@ export const command = new Command("functions:secrets:set <KEY>")
       `${endpointsToUpdate.length} functions are using stale version of secret ${secret.name}:\n\t` +
         endpointsToUpdate.map((e) => `${e.id}(${e.region})`).join("\n\t"),
     );
+
+    if (options.nonInteractive && !options.force) {
+      throw new FirebaseError(
+        `Unable to destroy the stale version of secret ${secret.name} with the --force flag`,
+      );
+    }
 
     if (!options.force) {
       const confirm = await promptOnce(
