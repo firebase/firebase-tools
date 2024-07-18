@@ -1,5 +1,7 @@
 ## NEXT
 
+## 0.4.4
+
 - [Fixed] Local execution now properly supports Vertex API
 
 ## 0.4.3
