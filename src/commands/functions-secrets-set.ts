@@ -36,6 +36,8 @@ export const command = new Command("functions:secrets:set <KEY>")
     "--data-file <dataFile>",
     'File path from which to read secret data. Set to "-" to read the secret data from stdin.',
   )
+  .option("--redeploy", 'Redeploy if there are functions that depend on the secret manager to be set.', null)
+  .option("--no-redeploy", 'If there are functions that depend on the secret manager being set, the redeployment will not be executed.')
   .action(async (unvalidatedKey: string, options: Options) => {
     const projectId = needProjectId(options);
     const projectNumber = await needProjectNumber(options);
