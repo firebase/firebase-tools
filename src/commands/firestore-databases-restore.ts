@@ -42,24 +42,23 @@ export const command = new Command("firestore:databases:restore")
     const backupName = options.backup;
 
     let encryptionConfig: types.EncryptionConfig | undefined = undefined;
-    if (options.encryptionType !== undefined) {
-      switch (options.encryptionType) {
-        case EncryptionType.GOOGLE_DEFAULT_ENCRYPTION:
-          throwIfKmsKeyNameIsSet(options.kmsKeyName);
-          encryptionConfig = { useGoogleDefaultEncryption: {} };
-          break;
-        case EncryptionType.USE_BACKUP_ENCRYPTION:
-          throwIfKmsKeyNameIsSet(options.kmsKeyName);
-          encryptionConfig = { useBackupEncryption: {} };
-          break;
-        case EncryptionType.CUSTOMER_MANAGED_ENCRYPTION:
-          encryptionConfig = { kmsKeyName: getKmsKeyOrThrow(options.kmsKeyName) };
-          break;
-        default:
-          throw new FirebaseError(`Invalid value for flag --encryption-type. ${helpCommandText}`);
-      }
-    } else {
-      throwIfKmsKeyNameIsSet(options.kmsKeyName);
+    switch (options.encryptionType) {
+      case EncryptionType.GOOGLE_DEFAULT_ENCRYPTION:
+        throwIfKmsKeyNameIsSet(options.kmsKeyName);
+        encryptionConfig = { useGoogleDefaultEncryption: {} };
+        break;
+      case EncryptionType.USE_BACKUP_ENCRYPTION:
+        throwIfKmsKeyNameIsSet(options.kmsKeyName);
+        encryptionConfig = { useBackupEncryption: {} };
+        break;
+      case EncryptionType.CUSTOMER_MANAGED_ENCRYPTION:
+        encryptionConfig = { kmsKeyName: getKmsKeyOrThrow(options.kmsKeyName) };
+        break;
+      case undefined:
+        throwIfKmsKeyNameIsSet(options.kmsKeyName);
+        break;
+      default:
+        throw new FirebaseError(`Invalid value for flag --encryption-type. ${helpCommandText}`);
     }
 
     const databaseResp: types.DatabaseResp = await api.restoreDatabase(
