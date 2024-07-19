@@ -58,8 +58,7 @@ export const command = new Command("firestore:databases:restore")
           encryptionConfig = { kmsKeyName: getKmsKeyOrThrow(options.kmsKeyName) };
           break;
         default:
-          logger.error(`Invalid value for flag --encryption-type. ${helpCommandText}`);
-          return;
+          throw new FirebaseError(`Invalid value for flag --encryption-type. ${helpCommandText}`);
       }
 } else {
       throwIfKmsKeyNameIsSet(options.kmsKeyName);
