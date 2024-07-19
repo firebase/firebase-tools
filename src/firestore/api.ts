@@ -625,6 +625,7 @@ export class FirestoreApi {
    * @param type FIRESTORE_NATIVE or DATASTORE_MODE
    * @param deleteProtectionState DELETE_PROTECTION_ENABLED or DELETE_PROTECTION_DISABLED
    * @param pointInTimeRecoveryEnablement POINT_IN_TIME_RECOVERY_ENABLED or POINT_IN_TIME_RECOVERY_DISABLED
+   * @param cmekConfig the CMEK configuration for the database
    */
   async createDatabase(
     project: string,
@@ -633,6 +634,7 @@ export class FirestoreApi {
     type: types.DatabaseType,
     deleteProtectionState: types.DatabaseDeleteProtectionState,
     pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement,
+    cmekConfig?: types.CmekConfig,
   ): Promise<types.DatabaseResp> {
     const url = `/projects/${project}/databases`;
     const payload: types.DatabaseReq = {
@@ -640,6 +642,7 @@ export class FirestoreApi {
       locationId,
       deleteProtectionState,
       pointInTimeRecoveryEnablement,
+      cmekConfig,
     };
     const options = { queryParams: { databaseId: databaseId } };
     const res = await this.apiClient.post<types.DatabaseReq, { response?: types.DatabaseResp }>(
