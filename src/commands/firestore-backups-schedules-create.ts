@@ -22,10 +22,10 @@ export const command = new Command("firestore:backups:schedules:create")
     "-d, --database <databaseId>",
     "Database under which you want to create a schedule. Defaults to the (default) database",
   )
-  .option("-rt, --retention <duration>", "duration string (e.g. 12h or 30d) for backup retention")
-  .option("-rc, --recurrence <recurrence>", "Recurrence settings; either DAILY or WEEKLY")
+  .option("--retention <duration>", "duration string (e.g. 12h or 30d) for backup retention")
+  .option("--recurrence <recurrence>", "Recurrence settings; either DAILY or WEEKLY")
   .option(
-    "-dw, --day-of-week <dayOfWeek>",
+    "--day-of-week <dayOfWeek>",
     "On which day of the week to perform backups; one of MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, or SUNDAY",
   )
   .before(requirePermissions, ["datastore.backupSchedules.create"])
