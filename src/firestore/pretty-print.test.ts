@@ -83,7 +83,7 @@ describe("firebaseConsoleDatabaseUrl", () => {
 
 describe("prettyStringArray", () => {
   it("should correctly print an array of strings", () => {
-    expect(printer.prettyStringArray(["kms-key-1","kms-key-2"])).to.equal(
+    expect(printer.prettyStringArray(["kms-key-1", "kms-key-2"])).to.equal(
       "kms-key-1\nkms-key-2\n",
     );
   });
