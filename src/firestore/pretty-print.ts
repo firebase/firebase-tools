@@ -77,22 +77,20 @@ export class PrettyPrint {
       if (database.cmekConfig.activeKeyVersion) {
         table.push([
           "Active Key Versions",
-          clc.yellow(
-            this.prettyStringArray(database.cmekConfig.activeKeyVersion),
-          ),
+          clc.yellow(this.prettyStringArray(database.cmekConfig.activeKeyVersion)),
         ]);
       }
     }
-    
+
     logger.info(table.toString());
   }
-  
+
   /**
    * Returns a pretty representation of a String array.
    * @param stringArray the string array to be formatted.
    */
   prettyStringArray(stringArray: string[]): string {
-    let result = '';
+    let result = "";
     stringArray.forEach((str) => {
       result += `${str}\n`;
     });
