@@ -18,7 +18,7 @@ export const command = new Command("firestore:databases:restore")
   .option(
     "-e, --encryption-type <encryptionType>",
     `Encryption method of the restored database; one of ${EncryptionType.CUSTOMER_MANAGED_ENCRYPTION}, ` +
-      `${EncryptionType.USE_BACKUP_ENCRYPTION}, ${EncryptionType.GOOGLE_DEFAULT_ENCRYPTION}`,
+      `${EncryptionType.USE_BACKUP_ENCRYPTION} (default), ${EncryptionType.GOOGLE_DEFAULT_ENCRYPTION}`,
   )
   .option(
     "-k, --kms-key-name <kmsKeyName>",
