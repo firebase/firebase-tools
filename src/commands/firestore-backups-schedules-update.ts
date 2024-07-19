@@ -13,7 +13,7 @@ import { FirebaseError } from "../error";
 
 export const command = new Command("firestore:backups:schedules:update <backupSchedule>")
   .description("Update a backup schedule under your Cloud Firestore database.")
-  .option("-rt, --retention <duration>", "duration string (e.g. 12h or 30d) for backup retention")
+  .option("--retention <duration>", "duration string (e.g. 12h or 30d) for backup retention")
   .before(requirePermissions, ["datastore.backupSchedules.update"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
   .action(async (backupScheduleName: string, options: FirestoreOptions) => {
