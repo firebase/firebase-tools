@@ -239,7 +239,7 @@ export function emulatedFunctionsFromEndpoints(
         options: endpoint.blockingTrigger.options || {},
       };
     } else if (backend.isTaskQueueTriggered(endpoint)) {
-      // Just expose TQ trigger as HTTPS. Useful for debugging.
+      def.httpsTrigger = {};
       def.taskQueueTrigger = {
         retryConfig: {
           maxAttempts: endpoint.taskQueueTrigger.retryConfig?.maxAttempts,

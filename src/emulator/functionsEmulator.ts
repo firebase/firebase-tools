@@ -638,6 +638,9 @@ export class FunctionsEmulator implements EmulatorInstance {
           definition.name,
           definition.region,
         );
+        if (definition.taskQueueTrigger) {
+          added = this.addTaskQueueTrigger(definition.taskQueueTrigger);
+        }
       } else if (definition.eventTrigger) {
         const service: string = getFunctionService(definition);
         const key = this.getTriggerKey(definition);
@@ -695,13 +698,6 @@ export class FunctionsEmulator implements EmulatorInstance {
           definition.region,
         );
         added = this.addBlockingTrigger(url, definition.blockingTrigger);
-      } else if (definition.taskQueueTrigger) {
-        url = FunctionsEmulator.getHttpFunctionUrl(
-          this.args.projectId,
-          definition.name,
-          definition.region,
-        );
-        added = this.addTaskQueueTrigger(definition.taskQueueTrigger);
       } else {
         this.logger.log(
           "WARN",
