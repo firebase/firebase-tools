@@ -29,7 +29,7 @@ export const command = new Command("firestore:databases:restore")
   .action(async (options: FirestoreOptions) => {
     const api = new fsi.FirestoreApi();
     const printer = new PrettyPrint();
-    const helpCommandText = "See firebase firestore:databases:restore --help for more info";
+    const helpCommandText = "See firebase firestore:databases:restore --help for more info.";
 
     if (!options.database) {
       logger.error(`Missing required flag --database. ${helpCommandText}`);
@@ -60,7 +60,7 @@ export const command = new Command("firestore:databases:restore")
         default:
           throw new FirebaseError(`Invalid value for flag --encryption-type. ${helpCommandText}`);
       }
-} else {
+    } else {
       throwIfKmsKeyNameIsSet(options.kmsKeyName);
     }
 
@@ -102,8 +102,8 @@ export const command = new Command("firestore:databases:restore")
       if (kmsKeyName) return kmsKeyName;
 
       throw new FirebaseError(
-        "--kms-key-name must be provided when using an --encryption-type of " +
-          `${EncryptionType.CUSTOMER_MANAGED_ENCRYPTION}.`,
+        "--kms-key-name must be provided when specifying an --encryption-type " +
+          `of ${EncryptionType.CUSTOMER_MANAGED_ENCRYPTION}.`,
       );
     }
   });
