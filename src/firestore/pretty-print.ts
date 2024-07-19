@@ -53,7 +53,7 @@ export class PrettyPrint {
     if (database.cmekConfig) {
       colValueWidth = Math.max(140, 20 + database.cmekConfig.kmsKeyName.length);
     }
-    
+
     const table = new Table({
       head: ["Field", "Value"],
       colWidths: [30, colValueWidth],
@@ -70,13 +70,13 @@ export class PrettyPrint {
       ["Earliest Version Time", clc.yellow(database.earliestVersionTime)],
       ["Version Retention Period", clc.yellow(database.versionRetentionPeriod)],
     );
-    
+
     if (database.cmekConfig) {
-      table.push(['KMS Key Name', clc.yellow(database.cmekConfig.kmsKeyName)]);
+      table.push(["KMS Key Name", clc.yellow(database.cmekConfig.kmsKeyName)]);
 
       if (database.cmekConfig.activeKeyVersion) {
         table.push([
-          'Active Key Versions',
+          "Active Key Versions",
           clc.yellow(
             this.prettyStringArray(database.cmekConfig.activeKeyVersion),
           ),
