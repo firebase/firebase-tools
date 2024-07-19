@@ -58,6 +58,8 @@ export const command = new Command("firestore:databases:restore")
         default:
           throw new FirebaseError(`Invalid value for flag --encryption-type. ${helpCommandText}`);
         }
+} else {
+      throwIfKmsKeyNameIsSet(options.kmsKeyName);
     }
 
     const databaseResp: types.DatabaseResp = await api.restoreDatabase(
@@ -88,8 +90,8 @@ export const command = new Command("firestore:databases:restore")
     function throwIfKmsKeyNameIsSet(kmsKeyName: string | undefined): void {
       if (kmsKeyName) {
         throw new FirebaseError(
-          "--kms-key-name cannot be set when using an --encryption-type of " +
-            `${EncryptionType.GOOGLE_DEFAULT_ENCRYPTION} or ${EncryptionType.USE_BACKUP_ENCRYPTION}.`,
+          "--kms-key-name can only be set when specifying an --encryption-type " +
+            `of ${EncryptionType.CUSTOMER_MANAGED_ENCRYPTION}.`,
         );
       }
     }
