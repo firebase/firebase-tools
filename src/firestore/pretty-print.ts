@@ -65,7 +65,33 @@ export class PrettyPrint {
       ["Earliest Version Time", clc.yellow(database.earliestVersionTime)],
       ["Version Retention Period", clc.yellow(database.versionRetentionPeriod)],
     );
+    
+    if (database.cmekConfig) {
+      table.push(['KMS Key Name', clc.yellow(database.cmekConfig.kmsKeyName)]);
+
+      if (database.cmekConfig.activeKeyVersion) {
+        table.push([
+          'Active Key Version',
+          clc.yellow(
+            this.prettyStringArray(database.cmekConfig.activeKeyVersion),
+          ),
+        ]);
+      }
+    }
+    
     logger.info(table.toString());
+  }
+  
+  /**
+   * Returns a pretty representation of a String array.
+   * @param stringArray the string array to be formatted.
+   */
+  prettyStringArray(stringArray: string[]): string {
+    let result = '';
+    stringArray.forEach((str) => {
+      result += `${str}\n`;
+    });
+    return result;
   }
 
   /**
