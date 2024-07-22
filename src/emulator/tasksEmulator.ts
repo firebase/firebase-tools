@@ -209,8 +209,6 @@ export class TasksEmulator implements EmulatorInstance {
   createHubServer(): express.Application {
     const hub = express();
 
-    this.logger.log("INFO", `Running Queue Hub Setup Code`);
-
     const createTaskQueueRoute = `/projects/:project_id/locations/:location_id/queues/:queue_name`;
     const createTaskQueueHandler: express.Handler = (req, res) => {
       const projectId = req.params.project_id;
@@ -286,7 +284,6 @@ export class TasksEmulator implements EmulatorInstance {
   }
 
   async start(): Promise<void> {
-    console.log("Staring Queue Hub");
     const { host, port } = this.getInfo();
     const server = this.createHubServer().listen(port, host);
     this.destroyServer = createDestroyer(server);
