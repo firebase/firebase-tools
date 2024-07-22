@@ -47,3 +47,14 @@ function parseSelector(selector: string): ResourceFilter {
   }
   return filter;
 }
+
+export function toString(rf: ResourceFilter) {
+  const base = `dataconnect:${rf.serviceId}`;
+  if (rf.connectorId) {
+    return `${base}:${rf.connectorId}`;
+  }
+  if (rf.schemaOnly) {
+    return `${base}:schema`;
+  }
+  return base;
+}
