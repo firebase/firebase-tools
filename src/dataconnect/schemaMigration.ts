@@ -11,6 +11,7 @@ import { Options } from "../options";
 import { FirebaseError } from "../error";
 import { needProjectId } from "../projectUtils";
 import { logLabeledBullet, logLabeledWarning, logLabeledSuccess } from "../utils";
+import * as experiments from "../experiments";
 import * as errors from "./errors";
 
 export async function diffSchema(schema: Schema): Promise<Diff[]> {
@@ -21,6 +22,8 @@ export async function diffSchema(schema: Schema): Promise<Diff[]> {
     databaseId,
     /* linkIfNotConnected=*/ false,
   );
+
+  setCompatibleMode(schema, databaseId, instanceName);
   try {
     await upsertSchema(schema, /** validateOnly=*/ true);
     logLabeledSuccess("dataconnect", `Database schema is up to date.`);
@@ -62,6 +65,9 @@ export async function migrateSchema(args: {
     databaseId,
     /* linkIfNotConnected=*/ true,
   );
+
+  setCompatibleMode(schema, databaseId, instanceName);
+
   try {
     await upsertSchema(schema, validateOnly);
     logger.debug(`Database schema was up to date for ${instanceId}:${databaseId}`);
@@ -112,6 +118,24 @@ export async function migrateSchema(args: {
     return diffs;
   }
   return [];
+}
+
+function setCompatibleMode(schema: Schema, databaseId: string, instanceName: string) {
+  if (experiments.isEnabled("fdccompatiblemode")) {
+    if (schema.primaryDatasource.postgresql?.schemaValidation) {
+      schema.primaryDatasource.postgresql.schemaValidation = "COMPATIBLE";
+    } else {
+      schema.primaryDatasource = {
+        postgresql: {
+          database: databaseId,
+          cloudSql: {
+            instance: instanceName,
+          },
+          schemaValidation: "COMPATIBLE",
+        },
+      };
+    }
+  }
 }
 
 function getIdentifiers(schema: Schema): {
