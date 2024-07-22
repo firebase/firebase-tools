@@ -18,6 +18,12 @@ describe("getPlatformFromFolder", () => {
       output: Platform.UNDETERMINED,
     },
     {
+      desc: "Empty folder, long path name",
+      folderName: "root/abcd/test/",
+      folderItems: {},
+      output: Platform.UNDETERMINED,
+    },
+    {
       desc: "folder w/ no identifier",
       folderName: "test/",
       folderItems: { file1: "contents", randomfile2: "my android contents" },
@@ -31,7 +37,7 @@ describe("getPlatformFromFolder", () => {
     },
     {
       desc: "Android identifier 1",
-      folderName: "/root/test/",
+      folderName: "/test",
       folderItems: { file1: "contents", "androidmanifest.xml": "my android contents" },
       output: Platform.ANDROID,
     },
@@ -42,6 +48,12 @@ describe("getPlatformFromFolder", () => {
         "build.gradle": "contents",
         file2: "my android contents",
       },
+      output: Platform.ANDROID,
+    },
+    {
+      desc: "Android identifier, long path name",
+      folderName: "is/this/an/android/test",
+      folderItems: { file1: "contents", "androidmanifest.xml": "my android contents" },
       output: Platform.ANDROID,
     },
     {
@@ -64,6 +76,16 @@ describe("getPlatformFromFolder", () => {
       folderName: "/users/googler/myprojects/myapp.xcworkspace/",
       folderItems: {
         "myapp.xcworkspace": { file1: "contents" },
+      },
+      output: Platform.IOS,
+    },
+    {
+      desc: "iOS identifier found first, priority over android indentifier",
+      folderName: "test/",
+      folderItems: {
+        file1: "contents",
+        podfile: "cocoa pods yummy",
+        "androidmanifest.xml": "file found second :(",
       },
       output: Platform.IOS,
     },
