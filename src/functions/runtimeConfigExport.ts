@@ -178,14 +178,14 @@ const CHARACTERS_TO_ESCAPE_SEQUENCES: Record<string, string> = {
 
 function escape(s: string): string {
   // Escape newlines, tabs, backslashes and quotes
-  return (s || '').replace(/[\n\r\t\v\\"']/g, (ch) => CHARACTERS_TO_ESCAPE_SEQUENCES[ch]);
+  return s.replace(/[\n\r\t\v\\"']/g, (ch) => CHARACTERS_TO_ESCAPE_SEQUENCES[ch]);
 }
 
 /**
  * Convert env var mapping to  dotenv compatible string.
  */
 export function toDotenvFormat(envs: EnvMap[], header = ""): string {
-  const lines = envs.map(({ newKey, value }) => `${newKey}="${escape(value)}"`);
+  const lines = envs.map(({ newKey, value }) => `${newKey}="${typeof value === 'undefined' ? '' : escape(value)}"`);
   const maxLineLen = Math.max(...lines.map((l) => l.length));
   return (
     `${header}\n` +
