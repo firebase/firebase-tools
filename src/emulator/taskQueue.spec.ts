@@ -1,6 +1,5 @@
 import { expect } from "chai";
 import { Queue } from "./taskQueue";
-import { TaskQueue } from "./tasksEmulator";
 
 describe("Queue Test", () => {
   it("should create an empty task queue", () => {
