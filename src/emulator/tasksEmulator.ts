@@ -5,6 +5,7 @@ import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
 import { createDestroyer } from "../utils";
 import { EmulatorLogger } from "./emulatorLogger";
 import { EmulatorRegistry } from "./registry";
+import { Queue } from "./taskQueue";
 
 export interface TasksEmulatorArgs {
   port?: number;
@@ -64,7 +65,7 @@ export interface RateLimits {
 type ResetValue = null;
 
 export class TaskQueue {
-  queue: EmulatedTask[] = [];
+  queue: Queue<EmulatedTask> = new Queue<EmulatedTask>();
   logger = EmulatorLogger.forEmulator(Emulators.TASKS);
   static TASK_QUEUE_INTERVAL = 1000;
   tokens = 0;
@@ -88,7 +89,7 @@ export class TaskQueue {
   // If the queue has no work to do (update it's token count or dispatch tasks) then wait longer before checking again
   listenForTasks(): void {
     this.logger.log(`DEBUG`, `[${this.key}] Listing for tasks...`);
-    if (this.queue.length !== 0 || this.tokens < this.maxTokens) {
+    if (!this.queue.isEmpty() || this.tokens < this.maxTokens) {
       this.handleTasks();
       setTimeout(() => this.listenForTasks(), 0);
     } else {
@@ -105,7 +106,7 @@ export class TaskQueue {
 
     if (
       this.tokens > 0 &&
-      this.queue.length > 0 &&
+      !this.queue.isEmpty() &&
       this.queued < this.config.rateLimits.maxConcurrentDispatches
     ) {
       if (!EmulatorRegistry.isRunning(Emulators.FUNCTIONS)) {
@@ -113,7 +114,7 @@ export class TaskQueue {
         return;
       }
 
-      const task = this.queue.shift()!;
+      const task = this.queue.dequeue()!;
       task.runningInfo = {
         currentAttempt: 0,
         currentBackoff: this.config.retryConfig.minBackoffSeconds,
@@ -139,7 +140,7 @@ export class TaskQueue {
   }
 
   enqueue(task: EmulatedTask): void {
-    this.queue.push(task);
+    this.queue.enqueue(task.options.id!, task);
   }
 
   tryTask(
@@ -259,7 +260,7 @@ export class TasksEmulator implements EmulatorInstance {
         options: {
           dispatchedDeadlineSeconds:
             (req.body?.options?.dispatchedDeadlineSeconds as number) ?? undefined,
-          id: req.body.options?.id ?? null,
+          id: taskId ?? null,
           headers: req.body.options?.headers ?? {},
           uri: req.body.options?.uri ?? null,
           // Can only have one of the following
