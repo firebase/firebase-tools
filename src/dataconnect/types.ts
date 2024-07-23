@@ -32,7 +32,7 @@ export interface Datasource {
 export interface PostgreSql {
   database: string;
   cloudSql: CloudSqlInstance;
-  schemaValidation?: "STRICT" | "NONE" | "SQL_SCHEMA_VALIDATION_UNSPECIFIED";
+  schemaValidation?: "STRICT" | "COMPATIBLE" | "NONE" | "SQL_SCHEMA_VALIDATION_UNSPECIFIED";
 }
 
 export interface CloudSqlInstance {
