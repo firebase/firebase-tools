@@ -10,3 +10,4 @@
 - Improved errors when an incorrect service ID is passed to `firebase deploy --only dataconnect:serviceId`.
 - Fixed display of errors in Firestore commands when using JSON or noninteractive modes. (#7482)
 - Fixed an issue where Firestore backup schedule commands had invalid short option names. (#7481)
+- Bumps the Firebase Data Connect local toolkit to v1.3.0, which adds Swift SDK, @index, @unique, and batch insert support. (#7486)
