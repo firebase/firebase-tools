@@ -8,3 +8,4 @@
 - Adds support for firealerts events in Eventarc emulator. (#7355)
 - Released version firebase-tools-ui@1.13.0, which adds Emulator UI support for firealerts events.
 - Improved errors when an incorrect service ID is passed to `firebase deploy --only dataconnect:serviceId`.
+- Fixed display of errors in Firestore commands when using JSON or noninteractive modes. (#7482)
