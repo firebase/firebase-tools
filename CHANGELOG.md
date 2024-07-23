@@ -6,4 +6,5 @@
 - Fixes issue where PubSub message `publishTime` is set to 1970-01-01T00:00:00 (#7441)
 - Display meaningful error message when cannot determine target. (#6594)
 - Adds support for firealerts events in Eventarc emulator. (#7355)
+- Released version firebase-tools-ui@1.13.0, which adds Emulator UI support for firealerts events.
 - Improved errors when an incorrect service ID is passed to `firebase deploy --only dataconnect:serviceId`.
