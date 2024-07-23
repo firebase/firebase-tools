@@ -15,6 +15,7 @@ import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 import { FirestoreOptions } from "../firestore/options";
 import { PrettyPrint } from "../firestore/pretty-print";
+import { FirebaseError } from "../error";
 
 export const command = new Command("firestore:backups:schedules:create")
   .description("Create a backup schedule under your Cloud Firestore database.")
@@ -32,47 +33,39 @@ export const command = new Command("firestore:backups:schedules:create")
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
   .action(async (options: FirestoreOptions) => {
     const printer = new PrettyPrint();
+    const helpCommandText = "See firebase firestore:backups:schedules:create --help for more info.";
 
     const databaseId = options.database || "(default)";
 
     if (!options.retention) {
-      logger.error(
-        "Missing required flag --retention. See firebase firestore:backups:schedules:create --help for more info",
-      );
-      return;
+      throw new FirebaseError(`Missing required flag --retention. ${helpCommandText}`);
     }
     const retention = calculateRetention(options.retention);
 
     if (!options.recurrence) {
-      logger.error(
-        "Missing required flag --recurrence. See firebase firestore:backups:schedules:create --help for more info",
-      );
-      return;
+      throw new FirebaseError(`Missing required flag --recurrence. ${helpCommandText}`);
     }
     const recurrenceType: types.RecurrenceType = options.recurrence;
     if (
       recurrenceType !== types.RecurrenceType.DAILY &&
       recurrenceType !== types.RecurrenceType.WEEKLY
     ) {
-      logger.error(
-        "Invalid value for flag --recurrence. See firebase firestore:backups:schedules:create --help for more info",
-      );
-      return;
+      throw new FirebaseError(`Invalid value for flag --recurrence. ${helpCommandText}`);
     }
     let dailyRecurrence: Record<string, never> | undefined;
     let weeklyRecurrence: WeeklyRecurrence | undefined;
     if (options.recurrence === types.RecurrenceType.DAILY) {
       dailyRecurrence = {};
       if (options.dayOfWeek) {
-        logger.error("--day-of-week should not be provided if --recurrence is DAILY");
-        return;
+        throw new FirebaseError(
+          `--day-of-week should not be provided if --recurrence is DAILY. ${helpCommandText}`,
+        );
       }
     } else if (options.recurrence === types.RecurrenceType.WEEKLY) {
       if (!options.dayOfWeek) {
-        logger.error(
-          "If --recurrence is WEEKLY, --day-of-week must be provided. See firebase firestore:backups:schedules:create --help for more info",
+        throw new FirebaseError(
+          `If --recurrence is WEEKLY, --day-of-week must be provided. ${helpCommandText}`,
         );
-        return;
       }
       const day: DayOfWeek = options.dayOfWeek;
       weeklyRecurrence = {
