@@ -24,9 +24,9 @@ export interface EmulatedTask {
 
 export interface TaskOptions {
   dispatchedDeadlineSeconds?: number;
-  id?: string;
-  headers?: Record<string, string>;
-  uri?: string;
+  id: string;
+  headers: Record<string, string>;
+  uri: string | null;
   // Can only have one of the following
   scheduleDelaySeconds?: number;
   scheduleTime?: number;
@@ -240,12 +240,11 @@ export class TasksEmulator implements EmulatorInstance {
       res.status(200).send({ taskQueueConfig });
     };
 
-    const enqueueTasksRoute = `/projects/:project_id/locations/:location_id/queues/:queue_name/tasks/:task_id`;
+    const enqueueTasksRoute = `/projects/:project_id/locations/:location_id/queues/:queue_name/tasks`;
     const enqueueTasksHandler: express.Handler = (req, res) => {
       const projectId = req.params.project_id;
       const locationId = req.params.location_id;
       const queueName = req.params.queue_name;
-      const taskId = req.params.task_id;
       const queueKey = `queue:${projectId}-${locationId}-${queueName}`;
       if (!this.queues[queueKey]) {
         this.logger.log("WARN", "Tried to queue a task into a non-existant queue");
@@ -258,7 +257,7 @@ export class TasksEmulator implements EmulatorInstance {
         options: {
           dispatchedDeadlineSeconds:
             (req.body?.options?.dispatchedDeadlineSeconds as number) ?? undefined,
-          id: taskId ?? null,
+          id: req.body?.options?.id ?? Math.floor(Math.random() * Number.MAX_SAFE_INTEGER), // TODO(gburroughs): Is this good enough for local emulation? Or should there be a check to see if the ID has been used already (at least for that session)
           headers: req.body.options?.headers ?? {},
           uri: req.body.options?.uri ?? null,
           // Can only have one of the following
@@ -267,7 +266,7 @@ export class TasksEmulator implements EmulatorInstance {
         },
       };
       targetQueue.enqueue(task);
-      this.logger.log("INFO", `Enqueueing task ${taskId} onto ${queueKey}`);
+      this.logger.log("INFO", `Enqueueing task ${task.options.id} onto ${queueKey}`);
       res.send({ task });
     };
 
