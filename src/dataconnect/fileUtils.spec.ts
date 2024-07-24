@@ -36,6 +36,12 @@ describe("getPlatformFromFolder", () => {
       output: Platform.WEB,
     },
     {
+      desc: "Web identifier 2",
+      folderName: "test/",
+      folderItems: { file1: "contents", node_modules: { dep1: "firebase", dep2: "dataconnect" } },
+      output: Platform.WEB,
+    },
+    {
       desc: "Android identifier 1",
       folderName: "/test",
       folderItems: { file1: "contents", "androidmanifest.xml": "my android contents" },

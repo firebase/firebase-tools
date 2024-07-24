@@ -108,7 +108,7 @@ export async function pickService(
 }
 
 // case insensitive indicators for supported app platforms
-const WEB_INDICATORS = ["package.json", "package-lock.json"];
+const WEB_INDICATORS = ["package.json", "package-lock.json", "node_modules"];
 const IOS_INDICATORS = ["info.plist", "project.pbxproj", "podfile", "package.swift"];
 const IOS_FOLDER_INDICATORS = [".xcworkspace", ".xcodeproj"];
 const ANDROID_INDICATORS = ["androidmanifest.xml", "build.gradle"];
