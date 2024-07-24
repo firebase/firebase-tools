@@ -1,1 +1,0 @@
-- Bump Firebase Data Connect local toolkit to v1.3.1, which contains fixes for Swift SDK code generation (#7491)
