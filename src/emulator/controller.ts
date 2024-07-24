@@ -597,6 +597,7 @@ export async function startAll(
       port: tasksAddr.port,
     });
 
+    console.log("Starting Tasks Emulator");
     await startEmulator(tasksEmulator);
   }
 

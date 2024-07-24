@@ -639,7 +639,6 @@ export class FunctionsEmulator implements EmulatorInstance {
           definition.region,
         );
         if (definition.taskQueueTrigger) {
-          console.log(url);
           added = await this.addTaskQueueTrigger(
             this.args.projectId,
             definition.region,
@@ -1099,8 +1098,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     return EmulatorRegistry.client(Emulators.TASKS)
       .post(`/projects/${projectId}/locations/${location}/queues/${entryPoint}`, bundle)
-      .then((res) => {
-        console.log(res);
+      .then(() => {
         return true;
       })
       .catch((err) => {

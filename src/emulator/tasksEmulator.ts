@@ -114,7 +114,7 @@ export class TaskQueue {
         return;
       }
 
-      const task = this.queue.dequeue()!;
+      const task = this.queue.dequeue();
       task.runningInfo = {
         currentAttempt: 0,
         currentBackoff: this.config.retryConfig.minBackoffSeconds,
@@ -125,12 +125,12 @@ export class TaskQueue {
         this.tryTask(task, this.config.retryConfig, resolve, reject);
         this.queued--;
       })
-        .then((res) => {
+        .then(() => {
           this.queued--;
-          console.log(res);
         })
         .catch((e) => {
           console.error(e);
+          this.logger.log(`WARN`, `Task ${task.options.id} failed to be delivered successfully`); // TODO(gburroughs): give more info here
           this.queued--;
         });
 
@@ -140,7 +140,7 @@ export class TaskQueue {
   }
 
   enqueue(task: EmulatedTask): void {
-    this.queue.enqueue(task.options.id!, task);
+    this.queue.enqueue(task.options.id, task);
   }
 
   tryTask(

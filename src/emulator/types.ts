@@ -52,6 +52,7 @@ export const ALL_SERVICE_EMULATORS = [
   Emulators.STORAGE,
   Emulators.EVENTARC,
   Emulators.DATACONNECT,
+  Emulators.TASKS,
 ].filter((v) => v);
 
 export const EMULATORS_SUPPORTED_BY_FUNCTIONS = [
