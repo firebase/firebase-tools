@@ -1,5 +1,5 @@
 import * as yaml from "yaml";
-import * as fs from "fs-extra";
+import * as fs from "fs";
 import * as clc from "colorette";
 
 import { confirm, promptOnce } from "../../../prompt";
@@ -144,7 +144,7 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
   return { connectorYamlContents, connectorInfo, shouldGenerate };
 }
 
-export async function actuate(sdkInfo: SDKInfo, projectId?: string, ) {
+export async function actuate(sdkInfo: SDKInfo, projectId?: string) {
   const connectorYamlPath = `${sdkInfo.connectorInfo.directory}/connector.yaml`;
   fs.writeFileSync(connectorYamlPath, sdkInfo.connectorYamlContents, "utf8");
   logger.info(`Wrote new config to ${connectorYamlPath}`);
