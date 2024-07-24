@@ -96,5 +96,8 @@ describe("getPlatformFromFolder", () => {
       const platform = await getPlatformFromFolder(c.folderName);
       expect(platform).to.equal(c.output);
     });
+    afterEach(() => {
+      mockfs.restore();
+    });
   }
 });
