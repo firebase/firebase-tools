@@ -597,7 +597,6 @@ export async function startAll(
       port: tasksAddr.port,
     });
 
-    console.log("Starting Tasks Emulator");
     await startEmulator(tasksEmulator);
   }
 
@@ -841,17 +840,14 @@ export async function startAll(
         `TODO: Add support for multiple services in the Data Connect emulator. Currently emulating first service ${config[0].source}`,
       );
     }
-    let configDir = config[0].source;
-    if (!path.isAbsolute(configDir)) {
-      const cwd = options.cwd || process.cwd();
-      configDir = path.resolve(path.join(cwd), configDir);
-    }
+    const configDir = config[0].source;
     const dataConnectEmulator = new DataConnectEmulator({
       listen: listenForEmulator.dataconnect,
       projectId,
       auto_download: true,
       configDir,
       rc: options.rc,
+      config: options.config,
     });
     await startEmulator(dataConnectEmulator);
   }

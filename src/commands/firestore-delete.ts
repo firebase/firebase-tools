@@ -10,7 +10,7 @@ import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import { FirestoreOptions } from "../firestore/options";
 
-function confirmationMessage(deleteOp: FirestoreDelete, options: FirestoreOptions) {
+function confirmationMessage(deleteOp: FirestoreDelete, options: FirestoreOptions): string {
   if (options.allCollections) {
     return (
       "You are about to delete " +
