@@ -9,6 +9,7 @@ import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 import { FirestoreOptions } from "../firestore/options";
 import { PrettyPrint } from "../firestore/pretty-print";
+import { FirebaseError } from "../error";
 
 export const command = new Command("firestore:databases:update <database>")
   .description(
@@ -28,22 +29,17 @@ export const command = new Command("firestore:databases:update <database>")
   .action(async (database: string, options: FirestoreOptions) => {
     const api = new fsi.FirestoreApi();
     const printer = new PrettyPrint();
+    const helpCommandText = "See firebase firestore:databases:update --help for more info.";
 
     if (!options.deleteProtection && !options.pointInTimeRecovery) {
-      logger.error(
-        "Missing properties to update. See firebase firestore:databases:update --help for more info.",
-      );
-      return;
+      throw new FirebaseError(`Missing properties to update. ${helpCommandText}`);
     }
     if (
       options.deleteProtection &&
       options.deleteProtection !== types.DatabaseDeleteProtectionStateOption.ENABLED &&
       options.deleteProtection !== types.DatabaseDeleteProtectionStateOption.DISABLED
     ) {
-      logger.error(
-        "Invalid value for flag --delete-protection. See firebase firestore:databases:update --help for more info.",
-      );
-      return;
+      throw new FirebaseError(`Invalid value for flag --delete-protection. ${helpCommandText}`);
     }
     let deleteProtectionState: types.DatabaseDeleteProtectionState | undefined;
     if (options.deleteProtection === types.DatabaseDeleteProtectionStateOption.ENABLED) {
@@ -57,10 +53,9 @@ export const command = new Command("firestore:databases:update <database>")
       options.pointInTimeRecovery !== types.PointInTimeRecoveryEnablementOption.ENABLED &&
       options.pointInTimeRecovery !== types.PointInTimeRecoveryEnablementOption.DISABLED
     ) {
-      logger.error(
-        "Invalid value for flag --point-in-time-recovery. See firebase firestore:databases:update --help for more info.",
+      throw new FirebaseError(
+        `Invalid value for flag --point-in-time-recovery. ${helpCommandText}`,
       );
-      return;
     }
     let pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement | undefined;
     if (options.pointInTimeRecovery === types.PointInTimeRecoveryEnablementOption.ENABLED) {

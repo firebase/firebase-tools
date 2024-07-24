@@ -9,6 +9,7 @@ import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 import { FirestoreOptions } from "../firestore/options";
 import { PrettyPrint } from "../firestore/pretty-print";
+import { FirebaseError } from "../error";
 
 export const command = new Command("firestore:databases:create <database>")
   .description("Create a database in your Firebase project.")
@@ -29,11 +30,10 @@ export const command = new Command("firestore:databases:create <database>")
   .action(async (database: string, options: FirestoreOptions) => {
     const api = new fsi.FirestoreApi();
     const printer = new PrettyPrint();
+    const helpCommandText = "See firebase firestore:databases:create --help for more info.";
+
     if (!options.location) {
-      logger.error(
-        "Missing required flag --location. See firebase firestore:databases:create --help for more info.",
-      );
-      return;
+      throw new FirebaseError(`Missing required flag --location. ${helpCommandText}`);
     }
     // Type is always Firestore Native since Firebase does not support Datastore Mode
     const type: types.DatabaseType = types.DatabaseType.FIRESTORE_NATIVE;
@@ -42,10 +42,7 @@ export const command = new Command("firestore:databases:create <database>")
       options.deleteProtection !== types.DatabaseDeleteProtectionStateOption.ENABLED &&
       options.deleteProtection !== types.DatabaseDeleteProtectionStateOption.DISABLED
     ) {
-      logger.error(
-        "Invalid value for flag --delete-protection. See firebase firestore:databases:create --help for more info.",
-      );
-      return;
+      throw new FirebaseError(`Invalid value for flag --delete-protection. ${helpCommandText}`);
     }
     const deleteProtectionState: types.DatabaseDeleteProtectionState =
       options.deleteProtection === types.DatabaseDeleteProtectionStateOption.ENABLED
@@ -57,10 +54,9 @@ export const command = new Command("firestore:databases:create <database>")
       options.pointInTimeRecovery !== types.PointInTimeRecoveryEnablementOption.ENABLED &&
       options.pointInTimeRecovery !== types.PointInTimeRecoveryEnablementOption.DISABLED
     ) {
-      logger.error(
-        "Invalid value for flag --point-in-time-recovery. See firebase firestore:databases:create --help for more info.",
+      throw new FirebaseError(
+        `Invalid value for flag --point-in-time-recovery. ${helpCommandText}`,
       );
-      return;
     }
     const pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement =
       options.pointInTimeRecovery === types.PointInTimeRecoveryEnablementOption.ENABLED
