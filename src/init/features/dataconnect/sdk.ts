@@ -15,14 +15,14 @@ import { FirebaseError } from "../../../error";
 const IOS = "ios";
 const WEB = "web";
 const ANDROID = "android";
-type SDKInfo = {
-  connectorYamlContents: string,
-  connectorInfo: ConnectorInfo,
-  shouldGenerate: boolean
+export type SDKInfo = {
+  connectorYamlContents: string;
+  connectorInfo: ConnectorInfo;
+  shouldGenerate: boolean;
 };
 export async function doSetup(setup: Setup, config: Config): Promise<void> {
   const sdkInfo = await askQuestions(setup, config);
-  await actuate(setup, sdkInfo);
+  await actuate(sdkInfo, setup.projectId);
 }
 
 async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
@@ -132,24 +132,23 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
     newConnectorYaml.generate.kotlinSdk = kotlinSdk;
   }
 
-  const shouldGenerate = !!(setup.projectId &&
-  (await confirm({
-    message: "Would you like to generate SDK code now?",
-    default: true,
-  })));
+  const shouldGenerate = !!(
+    setup.projectId &&
+    (await confirm({
+      message: "Would you like to generate SDK code now?",
+      default: true,
+    }))
+  );
   // TODO: Prompt user about adding generated paths to .gitignore
   const connectorYamlContents = yaml.stringify(newConnectorYaml);
-  return {connectorYamlContents, connectorInfo, shouldGenerate}; 
+  return { connectorYamlContents, connectorInfo, shouldGenerate };
 }
 
-export async function actuate(setup: Setup, sdkInfo: SDKInfo) {
+export async function actuate(sdkInfo: SDKInfo, projectId?: string, ) {
   const connectorYamlPath = `${sdkInfo.connectorInfo.directory}/connector.yaml`;
   fs.writeFileSync(connectorYamlPath, sdkInfo.connectorYamlContents, "utf8");
   logger.info(`Wrote new config to ${connectorYamlPath}`);
-  if (
-    setup.projectId &&
-    sdkInfo.shouldGenerate
-  ) {
+  if (projectId && sdkInfo.shouldGenerate) {
     await DataConnectEmulator.generate({
       configDir: sdkInfo.connectorInfo.directory,
       connectorId: sdkInfo.connectorInfo.connectorYaml.connectorId,
