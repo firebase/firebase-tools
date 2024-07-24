@@ -88,7 +88,6 @@ export class TaskQueue {
 
   // If the queue has no work to do (update it's token count or dispatch tasks) then wait longer before checking again
   listenForTasks(): void {
-    this.logger.log(`DEBUG`, `[${this.key}] Listing for tasks...`);
     if (!this.queue.isEmpty() || this.tokens < this.maxTokens) {
       this.handleTasks();
       setTimeout(() => this.listenForTasks(), 0);
@@ -123,7 +122,6 @@ export class TaskQueue {
 
       new Promise<boolean>((resolve, reject) => {
         this.tryTask(task, this.config.retryConfig, resolve, reject);
-        this.queued--;
       })
         .then(() => {
           this.queued--;
@@ -215,7 +213,7 @@ export class TasksEmulator implements EmulatorInstance {
       const locationId = req.params.location_id;
       const queueName = req.params.queue_name;
       const key = `queue:${projectId}-${locationId}-${queueName}`;
-      this.logger.log("INFO", `Created queue with key: ${key}: ${JSON.stringify(req.body)}`);
+      this.logger.logLabeled("SUCCESS", "tasks", `Created queue with key: ${key}`);
       const taskQueueConfig: TaskQueueConfig = {
         retryConfig: {
           maxAttempts: (req.body.retryConfig?.maxAttempts as number) ?? 3,
@@ -235,6 +233,10 @@ export class TasksEmulator implements EmulatorInstance {
 
       const tq = new TaskQueue(key, taskQueueConfig);
       tq.start();
+      this.logger.log(
+        "DEBUG",
+        `Created task queue ${key} with configuration: ${JSON.stringify(taskQueueConfig)}`,
+      );
       this.queues[key] = tq;
 
       res.status(200).send({ taskQueueConfig });
@@ -266,7 +268,7 @@ export class TasksEmulator implements EmulatorInstance {
         },
       };
       targetQueue.enqueue(task);
-      this.logger.log("INFO", `Enqueueing task ${task.options.id} onto ${queueKey}`);
+      this.logger.log("DEBUG", `Enqueueing task ${task.options.id} onto ${queueKey}`);
       res.send({ task });
     };
 
