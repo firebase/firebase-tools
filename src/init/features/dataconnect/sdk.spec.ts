@@ -5,7 +5,7 @@ import { expect } from "chai";
 import * as sdk from "./sdk";
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 
-const CONNECTOR_YAML_CONTENTS =  "connectorId: blah";
+const CONNECTOR_YAML_CONTENTS = "connectorId: blah";
 
 describe("init dataconnect:sdk", () => {
   describe.skip("askQuestions", () => {
@@ -13,7 +13,7 @@ describe("init dataconnect:sdk", () => {
   });
 
   describe("actuation", () => {
-    let sandbox = sinon.createSandbox();
+    const sandbox = sinon.createSandbox();
     let generateStub: sinon.SinonStub;
     let fsStub: sinon.SinonStub;
 
@@ -49,14 +49,13 @@ describe("init dataconnect:sdk", () => {
         fsStub.returns({});
         await sdk.actuate(c.sdkInfo, "TEST_PROJECT");
         expect(generateStub.called).to.equal(c.shouldGenerate);
-        console.log(fsStub.args)
-        expect(
-          JSON.stringify(fsStub.args)
-        ).to.equal(JSON.stringify([[
-          `${process.cwd()}/dataconnect/connector/connector.yaml`,
-          CONNECTOR_YAML_CONTENTS,
-          'utf8',
-        ]]));
+        expect(fsStub.args).to.deep.equal([
+          [
+            `${process.cwd()}/dataconnect/connector/connector.yaml`,
+            CONNECTOR_YAML_CONTENTS,
+            "utf8",
+          ],
+        ]);
       });
     }
   });
