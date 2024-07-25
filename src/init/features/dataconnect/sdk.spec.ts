@@ -1,6 +1,7 @@
 import * as mockFs from "mock-fs";
 import * as sinon from "sinon";
 import { expect } from "chai";
+import { Console } from "console";
 
 import * as sdk from "./sdk";
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
@@ -14,6 +15,9 @@ describe("init dataconnect:sdk", () => {
     let generateStub: sinon.SinonStub;
 
     beforeEach(() => {
+      // Needed because of https://github.com/tschaub/mock-fs/issues/234
+      // eslint-disable-next-line no-global-assign
+      console = new Console(process.stdout, process.stderr);
       mockFs({
         "dataconnect/connector/connector.yaml": "connectorId: blah",
       });
