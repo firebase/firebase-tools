@@ -14,11 +14,9 @@ describe("init dataconnect:sdk", () => {
     let generateStub: sinon.SinonStub;
 
     beforeEach(() => {
-      mockFs(
-        {
-          "dataconnect/connector/connector.yaml": "connectorId: blah",
-        },
-      );
+      mockFs({
+        "dataconnect/connector/connector.yaml": "connectorId: blah",
+      });
       generateStub = sinon.stub(DataConnectEmulator, "generate");
     });
 
