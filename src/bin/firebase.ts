@@ -131,11 +131,14 @@ process.on("exit", (code) => {
 
   // Notify about updates right before process exit.
   try {
+    const installMethod = !process.env.FIREPIT_VERSION ? "npm" : "automatic script";
+    const updateCommand = !process.env.FIREPIT_VERSION
+      ? "npm install -g firebase-tools"
+      : "curl -sL https://firebase.tools | upgrade=true bash";
+
     const updateMessage =
       `Update available ${clc.gray("{currentVersion}")} → ${clc.green("{latestVersion}")}\n` +
-      `To update to the latest version using npm, run\n${clc.cyan(
-        "npm install -g firebase-tools",
-      )}\n` +
+      `To update to the latest version using ${installMethod}, run\n${clc.cyan(updateCommand)}\n` +
       `For other CLI management options, visit the ${marked(
         "[CLI documentation](https://firebase.google.com/docs/cli#update-cli)",
       )}`;
