@@ -10,7 +10,7 @@ describe("init dataconnect:sdk", () => {
     // TODO: Add unit tests for askQuestions
   });
 
-  describe("actuation", () => {
+  describe.only("actuation", () => {
     let generateStub: sinon.SinonStub;
 
     beforeEach(() => {
@@ -48,6 +48,7 @@ describe("init dataconnect:sdk", () => {
     for (const c of cases) {
       it(c.desc, async () => {
         generateStub.resolves();
+        console.log(JSON.stringify(mockFs.getMockRoot(), undefined, 4));
         await sdk.actuate(c.sdkInfo, "TEST_PROJECT");
         expect(generateStub.called).to.equal(c.shouldGenerate);
       });
