@@ -1,10 +1,11 @@
-import * as mockFs from "mock-fs";
+import * as fs from "fs";
 import * as sinon from "sinon";
 import { expect } from "chai";
-import { Console } from "console";
 
 import * as sdk from "./sdk";
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
+
+const CONNECTOR_YAML_CONTENTS =  "connectorId: blah";
 
 describe("init dataconnect:sdk", () => {
   describe.skip("askQuestions", () => {
@@ -12,21 +13,17 @@ describe("init dataconnect:sdk", () => {
   });
 
   describe("actuation", () => {
+    let sandbox = sinon.createSandbox();
     let generateStub: sinon.SinonStub;
+    let fsStub: sinon.SinonStub;
 
     beforeEach(() => {
-      // Needed because of https://github.com/tschaub/mock-fs/issues/234
-      // eslint-disable-next-line no-global-assign
-      console = new Console(process.stdout, process.stderr);
-      mockFs({
-        "dataconnect/connector/connector.yaml": "connectorId: blah",
-      });
-      generateStub = sinon.stub(DataConnectEmulator, "generate");
+      fsStub = sandbox.stub(fs, "writeFileSync");
+      generateStub = sandbox.stub(DataConnectEmulator, "generate");
     });
 
     afterEach(() => {
-      mockFs.restore();
-      generateStub.restore();
+      sandbox.restore();
     });
 
     const cases: {
@@ -49,9 +46,17 @@ describe("init dataconnect:sdk", () => {
     for (const c of cases) {
       it(c.desc, async () => {
         generateStub.resolves();
-        console.log(JSON.stringify(mockFs.getMockRoot(), undefined, 4));
+        fsStub.returns({});
         await sdk.actuate(c.sdkInfo, "TEST_PROJECT");
         expect(generateStub.called).to.equal(c.shouldGenerate);
+        console.log(fsStub.args)
+        expect(
+          JSON.stringify(fsStub.args)
+        ).to.equal(JSON.stringify([[
+          `${process.cwd()}/dataconnect/connector/connector.yaml`,
+          CONNECTOR_YAML_CONTENTS,
+          'utf8',
+        ]]));
       });
     }
   });
@@ -59,7 +64,7 @@ describe("init dataconnect:sdk", () => {
 
 function mockSDKInfo(shouldGenerate: boolean): sdk.SDKInfo {
   return {
-    connectorYamlContents: "",
+    connectorYamlContents: CONNECTOR_YAML_CONTENTS,
     connectorInfo: {
       connector: {
         name: "test",
