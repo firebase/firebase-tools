@@ -10,7 +10,7 @@ describe("init dataconnect:sdk", () => {
     // TODO: Add unit tests for askQuestions
   });
 
-  describe.only("actuation", () => {
+  describe("actuation", () => {
     let generateStub: sinon.SinonStub;
 
     beforeEach(() => {
@@ -18,7 +18,6 @@ describe("init dataconnect:sdk", () => {
         {
           "dataconnect/connector/connector.yaml": "connectorId: blah",
         },
-        { createCwd: false },
       );
       generateStub = sinon.stub(DataConnectEmulator, "generate");
     });
