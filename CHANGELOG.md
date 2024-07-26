@@ -1,0 +1,1 @@
+- Improved notification message when an update is available. (#7293)
