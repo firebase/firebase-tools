@@ -89,14 +89,14 @@ export async function pickService(
   if (serviceCfgs.length === 0) {
     throw new FirebaseError("No Data Connect services found in firebase.json.");
   } else if (serviceCfgs.length === 1) {
-    serviceInfo = await load(projectId, serviceCfgs[0].source);
+    serviceInfo = await load(projectId, config, serviceCfgs[0].source);
   } else {
     if (!serviceId) {
       throw new FirebaseError(
         "Multiple Data Connect services found in firebase.json. Please specify a service ID to use.",
       );
     }
-    const infos = await Promise.all(serviceCfgs.map((c) => load(projectId, c.source)));
+    const infos = await Promise.all(serviceCfgs.map((c) => load(projectId, config, c.source)));
     // TODO: handle cases where there are services with the same ID in 2 locations.
     const maybe = infos.find((i) => i.dataConnectYaml.serviceId === serviceId);
     if (!maybe) {

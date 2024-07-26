@@ -21,6 +21,7 @@ import { connectableHostname } from "../utils";
 /** The current v2 events that are implemented in the emulator */
 const V2_EVENTS = [
   events.v2.PUBSUB_PUBLISH_EVENT,
+  events.v2.FIREALERTS_EVENT,
   ...events.v2.STORAGE_EVENTS,
   ...events.v2.DATABASE_EVENTS,
   ...events.v2.FIRESTORE_EVENTS,
@@ -366,6 +367,9 @@ export function getServiceFromEventType(eventType: string): string {
   }
   if (eventType.includes("storage")) {
     return Constants.SERVICE_STORAGE;
+  }
+  if (eventType.includes("firebasealerts")) {
+    return Constants.SERVICE_FIREALERTS;
   }
   // Below this point are services that do not have a emulator.
   if (eventType.includes("analytics")) {

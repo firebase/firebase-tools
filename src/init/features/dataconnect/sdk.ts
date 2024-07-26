@@ -1,8 +1,8 @@
 import * as yaml from "yaml";
-import * as fs from "fs-extra";
-import { confirm, promptOnce } from "../../../prompt";
+import * as fs from "fs";
 import * as clc from "colorette";
-import * as path from "path";
+
+import { confirm, promptOnce } from "../../../prompt";
 import { readFirebaseJson } from "../../../dataconnect/fileUtils";
 import { Config } from "../../../config";
 import { Setup } from "../..";
@@ -10,14 +10,25 @@ import { load } from "../../../dataconnect/load";
 import { logger } from "../../../logger";
 import { ConnectorInfo, ConnectorYaml, JavascriptSDK, KotlinSDK } from "../../../dataconnect/types";
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
+import { FirebaseError } from "../../../error";
 
 const IOS = "ios";
 const WEB = "web";
 const ANDROID = "android";
+export type SDKInfo = {
+  connectorYamlContents: string;
+  connectorInfo: ConnectorInfo;
+  shouldGenerate: boolean;
+};
 export async function doSetup(setup: Setup, config: Config): Promise<void> {
+  const sdkInfo = await askQuestions(setup, config);
+  await actuate(sdkInfo, setup.projectId);
+}
+
+async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
   const serviceCfgs = readFirebaseJson(config);
   const serviceInfos = await Promise.all(
-    serviceCfgs.map((c) => load(setup.projectId || "", path.join(process.cwd(), c.source))),
+    serviceCfgs.map((c) => load(setup.projectId || "", config, c.source)),
   );
   const connectorChoices: { name: string; value: ConnectorInfo }[] = serviceInfos
     .map((si) => {
@@ -30,12 +41,11 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     })
     .flat();
   if (!connectorChoices.length) {
-    logger.info(
+    throw new FirebaseError(
       `Your config has no connectors to set up SDKs for. Run ${clc.bold(
         "firebase init dataconnect",
       )} to set up a service and conenctors.`,
     );
-    return;
   }
   const connectorInfo: ConnectorInfo = await promptOnce({
     message: "Which connector do you want set up a generated SDK for?",
@@ -121,22 +131,28 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     };
     newConnectorYaml.generate.kotlinSdk = kotlinSdk;
   }
-  // TODO: Prompt user about adding generated paths to .gitignore
-  const connectorYamlContents = yaml.stringify(newConnectorYaml);
-  const connectorYamlPath = `${connectorInfo.directory}/connector.yaml`;
-  fs.writeFileSync(connectorYamlPath, connectorYamlContents, "utf8");
-  logger.info(`Wrote new config to ${connectorYamlPath}`);
-  if (
+
+  const shouldGenerate = !!(
     setup.projectId &&
     (await confirm({
       message: "Would you like to generate SDK code now?",
       default: true,
     }))
-  ) {
+  );
+  // TODO: Prompt user about adding generated paths to .gitignore
+  const connectorYamlContents = yaml.stringify(newConnectorYaml);
+  return { connectorYamlContents, connectorInfo, shouldGenerate };
+}
+
+export async function actuate(sdkInfo: SDKInfo, projectId?: string) {
+  const connectorYamlPath = `${sdkInfo.connectorInfo.directory}/connector.yaml`;
+  fs.writeFileSync(connectorYamlPath, sdkInfo.connectorYamlContents, "utf8");
+  logger.info(`Wrote new config to ${connectorYamlPath}`);
+  if (projectId && sdkInfo.shouldGenerate) {
     await DataConnectEmulator.generate({
-      configDir: connectorInfo.directory,
-      connectorId: connectorInfo.connectorYaml.connectorId,
+      configDir: sdkInfo.connectorInfo.directory,
+      connectorId: sdkInfo.connectorInfo.connectorYaml.connectorId,
     });
-    logger.info(`Generated SDK code for ${connectorInfo.connectorYaml.connectorId}`);
+    logger.info(`Generated SDK code for ${sdkInfo.connectorInfo.connectorYaml.connectorId}`);
   }
 }
