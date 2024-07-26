@@ -17,12 +17,12 @@ export const command = new Command("firestore:databases:restore")
   .option("-b, --backup <backup>", "Backup from which to restore")
   .option(
     "-e, --encryption-type <encryptionType>",
-    `Encryption method of the restored database; one of ${EncryptionType.CUSTOMER_MANAGED_ENCRYPTION}, ` +
-      `${EncryptionType.USE_BACKUP_ENCRYPTION} (default), ${EncryptionType.GOOGLE_DEFAULT_ENCRYPTION}`,
+    `Encryption method of the restored database; one of ${EncryptionType.USE_BACKUP_ENCRYPTION} (default), ` +
+      `${EncryptionType.CUSTOMER_MANAGED_ENCRYPTION}, ${EncryptionType.GOOGLE_DEFAULT_ENCRYPTION}`,
   )
   .option(
     "-k, --kms-key-name <kmsKeyName>",
-    "Resource ID of the Cloud KMS key to encrypt the restored database",
+    "Resource name of the Cloud KMS key to encrypt the restored database",
   )
   .before(requirePermissions, ["datastore.backups.restoreDatabase"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
