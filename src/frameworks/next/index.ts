@@ -125,7 +125,7 @@ export async function build(
     process.env.__NEXT_REACT_ROOT = "true";
   }
 
-  const env = { ...process.env };
+  let env = { ...process.env };
 
   // Check if the .env.<PROJECT-ID> file exists and make it available for the build process
   if (context?.projectId) {
@@ -135,7 +135,7 @@ export async function build(
       const projectEnvVars = parseStrict((await readFile(projectEnvPath)).toString());
 
       // Merge the parsed variables with the existing environment variables
-      Object.assign(env, projectEnvVars);
+      env = { ...projectEnvVars, ...env };
     }
   }
 
