@@ -27,7 +27,7 @@ const SCHEMA_TEMPLATE = readTemplateSync("init/dataconnect/schema.gql");
 const QUERIES_TEMPLATE = readTemplateSync("init/dataconnect/queries.gql");
 const MUTATIONS_TEMPLATE = readTemplateSync("init/dataconnect/mutations.gql");
 
-interface RequiredInfo {
+export interface RequiredInfo {
   serviceId: string;
   locationId: string;
   cloudSqlInstanceId: string;
