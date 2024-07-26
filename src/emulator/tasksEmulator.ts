@@ -131,22 +131,26 @@ export class TaskQueue {
         return;
       }
 
-      const task = this.queue.dequeue();
-      task.runningInfo = {
+      const emulatedTask = this.queue.dequeue();
+      this.logger.log("DEBUG", `dispatching ${emulatedTask.task.name}`);
+      emulatedTask.runningInfo = {
         currentAttempt: 0,
         currentBackoff: this.config.retryConfig.minBackoffSeconds,
         startTime: Date.now(),
       };
 
       new Promise<boolean>((resolve, reject) => {
-        this.tryTask(task, this.config.retryConfig, resolve, reject);
+        this.tryTask(emulatedTask, this.config.retryConfig, resolve, reject);
       })
         .then(() => {
           this.queued--;
         })
         .catch((e) => {
           console.error(e);
-          this.logger.log(`WARN`, `Task ${task.task.name} failed to be delivered successfully`); // TODO(gburroughs): give more info here
+          this.logger.log(
+            `WARN`,
+            `Task ${emulatedTask.task.name} failed to be delivered successfully`,
+          );
           this.queued--;
         });
 
@@ -173,7 +177,7 @@ export class TaskQueue {
         ? this.config.defaultUri
         : emulatedTask.task.httpRequest.url;
     fetch(url, {
-      method: "POST", // TODO(gburroughs): Is this always the case?
+      method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
@@ -210,7 +214,7 @@ export class TaskQueue {
           if (emulatedTask.runningInfo!.currentAttempt < retryOptions.maxDoublings) {
             emulatedTask.runningInfo!.currentBackoff *= 2;
           } else {
-            emulatedTask.runningInfo!.currentBackoff += 1; // TODO(gburroughs): Figure out what this should be
+            emulatedTask.runningInfo!.currentBackoff += 1;
           }
           if (emulatedTask.runningInfo!.currentBackoff > retryOptions.maxBackoffSeconds) {
             emulatedTask.runningInfo!.currentBackoff = retryOptions.maxBackoffSeconds;
@@ -314,10 +318,11 @@ export class TasksEmulator implements EmulatorInstance {
       }
 
       const targetQueue = this.queues[queueKey];
+      console.log(targetQueue.queue.getAll());
       try {
-        targetQueue.remove(
-          `/projects/${projectId}/locations/${locationId}/queues/${queueName}/tasks/${taskId}`,
-        );
+        const taskName = `projects/${projectId}/locations/${locationId}/queues/${queueName}/tasks/${taskId}`;
+        console.log(`removing: ${taskName}`);
+        targetQueue.remove(taskName);
       } catch (e) {
         this.logger.log("WARN", "Tried to remove a task that doesn't exist");
         res.send(404);

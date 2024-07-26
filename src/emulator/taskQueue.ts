@@ -87,6 +87,16 @@ export class Queue<T> {
     delete this.nodeMap[id];
   }
 
+  getAll(): T[] {
+    const all = [];
+    let curr = this.first;
+    while (curr) {
+      all.push(curr.data);
+      curr = curr.next;
+    }
+    return all;
+  }
+
   isEmpty(): boolean {
     return this.first === null;
   }
