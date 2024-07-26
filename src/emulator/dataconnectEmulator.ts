@@ -17,7 +17,6 @@ import { load } from "../dataconnect/load";
 import { isVSCodeExtension } from "../utils";
 import { Config } from "../config";
 import { EventEmitter } from "events";
-import path from "path";
 
 export interface DataConnectEmulatorArgs {
   projectId: string;
@@ -164,7 +163,6 @@ export class DataConnectEmulator implements EmulatorInstance {
 
   static async build(args: DataConnectBuildArgs): Promise<BuildResult> {
     const commandInfo = await downloadIfNecessary(Emulators.DATACONNECT);
-    console.log("HAROLD: build ", args.configDir);
     const cmd = ["--logtostderr", "-v=2", "build", `--config_dir=${args.configDir}`];
 
     const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8" });
