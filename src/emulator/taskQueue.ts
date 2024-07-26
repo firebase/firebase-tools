@@ -15,12 +15,20 @@ export class Queue<T> {
   private first: Node<T> | null;
   private last: Node<T> | null;
   private nodeMap: Record<string, Node<T>> = {};
+  private capacity;
+  private count = 0;
 
-  constructor() {
+  constructor(capacity = 10000) {
     this.first = null;
     this.last = null;
+    this.capacity = capacity;
   }
+
   enqueue(id: string, item: T): void {
+    if (this.count > this.capacity) {
+      throw new Error("Queue has reached capacity");
+    }
+
     const newNode = new Node(item);
     if (this.nodeMap[id] !== undefined) {
       throw new Error("Queue IDs must be unique");
@@ -34,6 +42,8 @@ export class Queue<T> {
     }
     newNode.prev = this.last;
     this.last = newNode;
+
+    this.count++;
   }
 
   peek(): T {
@@ -51,6 +61,7 @@ export class Queue<T> {
       if (this.last === currentFirst) {
         this.last = null;
       }
+      this.count--;
       return currentFirst.data;
     } else {
       throw new Error("Trying to dequeue from an empty queue");
@@ -62,29 +73,24 @@ export class Queue<T> {
       throw new Error("Trying to remove a task that doesn't exist");
     }
     const toRemove = this.nodeMap[id];
-    // Case that the item being removed is the only item in the queue;
+
     if (toRemove.next === null && toRemove.prev === null) {
       this.first = null;
       this.last = null;
-    }
-    // Case that the item is the last in the queue
-    else if (toRemove.next === null) {
+    } else if (toRemove.next === null) {
       this.last = toRemove.prev;
       toRemove.prev!.next = null;
-    }
-    // Case that the item is the first in the queue
-    else if (toRemove.prev === null) {
+    } else if (toRemove.prev === null) {
       this.first = toRemove.next;
       toRemove.next.prev = null;
-    }
-    // Regular case
-    else {
+    } else {
       const prev = toRemove.prev;
       const next = toRemove.next;
       prev.next = next;
       next.prev = prev;
     }
     delete this.nodeMap[id];
+    this.count--;
   }
 
   getAll(): T[] {

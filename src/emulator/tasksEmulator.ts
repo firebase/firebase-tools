@@ -33,22 +33,14 @@ export interface Task {
 export interface EmulatedTask {
   data: Record<string, any>;
   task: Task;
-  runningInfo?: {
-    currentAttempt: number;
-    currentBackoff: number;
-    startTime: number;
-  };
+  metadata?: EmulatedTaskMetadata;
 }
 
-// export interface TaskOptions {
-//   dispatchedDeadlineSeconds?: number;
-//   id: string;
-//   headers: Record<string, string>;
-//   uri: string | null;
-//   // Can only have one of the following
-//   scheduleDelaySeconds?: number;
-//   scheduleTime?: number;
-// }
+export interface EmulatedTaskMetadata {
+  currentAttempt: number;
+  currentBackoff: number;
+  startTime: number;
+}
 
 export interface TaskQueueConfig {
   retryConfig: RetryConfig;
@@ -90,6 +82,9 @@ export class TaskQueue {
   private maxTokens;
   private lastTokenUpdate;
   private queued;
+  private listenId: NodeJS.Timeout | null;
+  private refillId: NodeJS.Timeout | null;
+  private retryIds: (NodeJS.Timeout | null)[];
 
   constructor(
     private key: string,
@@ -98,34 +93,52 @@ export class TaskQueue {
     this.maxTokens = Math.max(this.config.rateLimits.maxDispatchesPerSecond, 1);
     this.lastTokenUpdate = Date.now();
     this.queued = 0;
+    this.listenId = null;
+    this.refillId = null;
+    this.retryIds = new Array<NodeJS.Timeout | null>(
+      this.config.rateLimits.maxConcurrentDispatches,
+    ).fill(null);
   }
 
   start(): void {
     this.listenForTasks();
+    this.refillId = this.refillTokens();
   }
 
   // If the queue has no work to do (update it's token count or dispatch tasks) then wait longer before checking again
   listenForTasks(): void {
     if (!this.queue.isEmpty() || this.tokens < this.maxTokens) {
       this.handleTasks();
-      setTimeout(() => this.listenForTasks(), 0);
+      this.listenId = setTimeout(() => this.listenForTasks(), 0);
     } else {
-      setTimeout(() => this.listenForTasks(), TaskQueue.TASK_QUEUE_INTERVAL);
+      this.listenId = setTimeout(() => this.listenForTasks(), TaskQueue.TASK_QUEUE_INTERVAL);
     }
+  }
+
+  refillTokens(): NodeJS.Timeout {
+    return setInterval(() => {
+      const tokensToAdd =
+        ((Date.now() - this.lastTokenUpdate) / 1000) *
+        this.config.rateLimits.maxDispatchesPerSecond;
+      console.log({ tokensToAdd });
+      console.log(this.tokens);
+      this.tokens += tokensToAdd;
+      this.tokens = Math.min(this.tokens, this.maxTokens);
+      this.lastTokenUpdate = Date.now();
+    }, 1000);
+  }
+
+  shouldDispatchTask(): boolean {
+    return (
+      !this.queue.isEmpty() &&
+      this.queued < this.config.rateLimits.maxConcurrentDispatches &&
+      this.tokens >= 1
+    );
   }
 
   // Repeatedly process tasks in the queue
   handleTasks(): void {
-    if (Date.now() - this.lastTokenUpdate > 1000 / this.config.rateLimits.maxDispatchesPerSecond) {
-      this.tokens++;
-      this.lastTokenUpdate = Date.now();
-    }
-
-    if (
-      this.tokens > 0 &&
-      !this.queue.isEmpty() &&
-      this.queued < this.config.rateLimits.maxConcurrentDispatches
-    ) {
+    if (this.shouldDispatchTask()) {
       if (!EmulatorRegistry.isRunning(Emulators.FUNCTIONS)) {
         this.logger.log(`DEBUG`, `Functions emulator not running!`);
         return;
@@ -133,17 +146,23 @@ export class TaskQueue {
 
       const emulatedTask = this.queue.dequeue();
       this.logger.log("DEBUG", `dispatching ${emulatedTask.task.name}`);
-      emulatedTask.runningInfo = {
+
+      emulatedTask.metadata = {
         currentAttempt: 0,
         currentBackoff: this.config.retryConfig.minBackoffSeconds,
         startTime: Date.now(),
       };
 
       new Promise<boolean>((resolve, reject) => {
-        this.tryTask(emulatedTask, this.config.retryConfig, resolve, reject);
+        this.tryTask(emulatedTask, this.config.retryConfig, this.queued, resolve, reject);
       })
         .then(() => {
           this.queued--;
+          this.logger.logLabeled(
+            `SUCCESS`,
+            `Tasks`,
+            `${emulatedTask.task.name} completed successfully`,
+          );
         })
         .catch((e) => {
           console.error(e);
@@ -162,6 +181,7 @@ export class TaskQueue {
   enqueue(task: EmulatedTask): void {
     this.queue.enqueue(task.task.name!, task);
   }
+
   remove(id: string): void {
     this.queue.remove(id);
   }
@@ -169,6 +189,7 @@ export class TaskQueue {
   tryTask(
     emulatedTask: EmulatedTask,
     retryOptions: RetryConfig,
+    concurrentNumber: number,
     resolve: (value: boolean | PromiseLike<boolean>) => void,
     reject: (reason?: any) => void,
   ): void {
@@ -176,6 +197,7 @@ export class TaskQueue {
       emulatedTask.task.httpRequest.url === ""
         ? this.config.defaultUri
         : emulatedTask.task.httpRequest.url;
+
     fetch(url, {
       method: "POST",
       headers: {
@@ -189,39 +211,61 @@ export class TaskQueue {
         } else {
           this.logger.log(
             "WARN",
-            `task: ${emulatedTask.task.name} failed: ${res.statusText} retrying ${JSON.stringify(emulatedTask.runningInfo)}`,
+            `task: ${emulatedTask.task.name} failed: ${res.statusText} retrying ${JSON.stringify(emulatedTask.metadata)}`,
           );
 
-          if (emulatedTask.runningInfo!.currentAttempt > retryOptions.maxAttempts) {
-            if (retryOptions.maxRetrySeconds === null || retryOptions.maxRetrySeconds === 0) {
-              resolve(false);
-              return;
-            } else if (
-              Date.now() - emulatedTask.runningInfo!.startTime >
-              retryOptions.maxRetrySeconds * 1000
-            ) {
-              resolve(false);
-              return;
-            }
+          if (this.shouldStopRetrying(emulatedTask.metadata!, retryOptions)) {
+            resolve(false);
+            return;
           }
-          setTimeout(
-            () => this.tryTask(emulatedTask, retryOptions, resolve, reject),
-            emulatedTask.runningInfo!.currentBackoff * 1000,
+
+          this.retryIds[concurrentNumber] = setTimeout(
+            () => this.tryTask(emulatedTask, retryOptions, concurrentNumber, resolve, reject),
+            emulatedTask.metadata!.currentBackoff * 1000,
           );
 
-          emulatedTask.runningInfo!.currentAttempt++;
-          // Update Parameters
-          if (emulatedTask.runningInfo!.currentAttempt < retryOptions.maxDoublings) {
-            emulatedTask.runningInfo!.currentBackoff *= 2;
-          } else {
-            emulatedTask.runningInfo!.currentBackoff += 1;
-          }
-          if (emulatedTask.runningInfo!.currentBackoff > retryOptions.maxBackoffSeconds) {
-            emulatedTask.runningInfo!.currentBackoff = retryOptions.maxBackoffSeconds;
-          }
+          this.updateMetadata(emulatedTask.metadata!, retryOptions);
         }
       })
       .catch((e) => reject(e));
+  }
+
+  shouldStopRetrying(metadata: EmulatedTaskMetadata, retryOptions: RetryConfig): boolean {
+    if (metadata.currentAttempt > retryOptions.maxAttempts) {
+      if (retryOptions.maxRetrySeconds === null || retryOptions.maxRetrySeconds === 0) {
+        return true;
+      }
+      if (Date.now() - metadata.startTime > retryOptions.maxRetrySeconds * 1000) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  updateMetadata(metadata: EmulatedTaskMetadata, retryOptions: RetryConfig): void {
+    metadata.currentAttempt++;
+    if (metadata.currentAttempt < retryOptions.maxDoublings) {
+      metadata.currentBackoff *= 2;
+    } else {
+      metadata.currentBackoff += 1;
+    }
+    if (metadata.currentBackoff > retryOptions.maxBackoffSeconds) {
+      metadata.currentBackoff = retryOptions.maxBackoffSeconds;
+    }
+  }
+
+  stop() {
+    if (this.listenId) {
+      clearTimeout(this.listenId);
+    }
+    if (this.refillId) {
+      clearInterval(this.refillId);
+    }
+    for (const retryId of this.retryIds) {
+      if (retryId) {
+        clearTimeout(retryId);
+      }
+    }
   }
 }
 
@@ -351,6 +395,10 @@ export class TasksEmulator implements EmulatorInstance {
   async stop(): Promise<void> {
     if (this.destroyServer) {
       await this.destroyServer();
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    for (const [_key, queue] of Object.entries(this.queues)) {
+      queue.stop();
     }
   }
 
