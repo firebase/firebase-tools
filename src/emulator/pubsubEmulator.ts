@@ -192,7 +192,7 @@ export class PubsubEmulator implements EmulatorInstance {
     // Pubsub events from Pubsub Emulator include a date with nanoseconds.
     // Prod Pubsub doesn't publish timestamp at that level of precision. Timestamp with nanosecond precision also
     // are difficult to parse in languages other than Node.js (e.g. python).
-    const truncatedPublishTime = new Date(message.publishTime.getMilliseconds()).toISOString();
+    const truncatedPublishTime = new Date(message.publishTime.getTime()).toISOString();
     const data: MessagePublishedData = {
       message: {
         messageId: message.id,
