@@ -81,6 +81,7 @@ export class TaskQueue {
   tokens = 0;
   private maxTokens;
   private lastTokenUpdate;
+  private queuedIds: Set<string>;
   private queued;
   private listenId: NodeJS.Timeout | null;
   private refillId: NodeJS.Timeout | null;
@@ -90,7 +91,7 @@ export class TaskQueue {
     private key: string,
     private config: TaskQueueConfig,
   ) {
-    this.maxTokens = Math.max(this.config.rateLimits.maxDispatchesPerSecond, 1);
+    this.maxTokens = Math.max(this.config.rateLimits.maxDispatchesPerSecond, 1.1);
     this.lastTokenUpdate = Date.now();
     this.queued = 0;
     this.listenId = null;
@@ -98,6 +99,7 @@ export class TaskQueue {
     this.retryIds = new Array<NodeJS.Timeout | null>(
       this.config.rateLimits.maxConcurrentDispatches,
     ).fill(null);
+    this.queuedIds = new Set();
   }
 
   start(): void {
@@ -178,8 +180,12 @@ export class TaskQueue {
     }
   }
 
-  enqueue(task: EmulatedTask): void {
-    this.queue.enqueue(task.task.name!, task);
+  enqueue(emulatedTask: EmulatedTask): void {
+    if (this.queuedIds.has(emulatedTask.task.name)) {
+      throw new Error("Duplicate ID attempted ot be queued");
+    }
+    this.queuedIds.add(emulatedTask.task.name);
+    this.queue.enqueue(emulatedTask.task.name, emulatedTask);
   }
 
   remove(id: string): void {
