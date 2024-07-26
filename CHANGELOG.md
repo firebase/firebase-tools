@@ -1,1 +1,2 @@
 - Improved error message thrown when missing permissions to deploy to hosting. (#7190)
+- Improved notification message when an update is available. (#7293)
