@@ -1,26 +1,25 @@
-import * as fs from "fs";
 import * as sinon from "sinon";
 import { expect } from "chai";
 
 import * as init from "./index";
 import { Config } from "../../../config";
 import { RCData } from "../../../rc";
+import * as provison from "../../../dataconnect/provisionCloudSql";
 
-const CONNECTOR_YAML_CONTENTS = "connectorId: blah";
 const MOCK_RC: RCData = { projects: {}, targets: {}, etags: {}, dataconnectEmulatorConfig: {} };
 
-describe("init dataconnect:sdk", () => {
+describe("init dataconnect", () => {
   describe.skip("askQuestions", () => {
     // TODO: Add unit tests for askQuestions
   });
 
-  describe.only("actuation", () => {
+  describe("actuation", () => {
     const sandbox = sinon.createSandbox();
-    let generateStub: sinon.SinonStub;
-    let fsStub: sinon.SinonStub;
+    let provisionCSQLStub: sinon.SinonStub;
+    let askWriteProjectFileStub: sinon.SinonStub;
 
     beforeEach(() => {
-      fsStub = sandbox.stub(fs, "writeFileSync");
+      provisionCSQLStub = sandbox.stub(provison, "provisionCloudSql");
     });
 
     afterEach(() => {
@@ -32,48 +31,86 @@ describe("init dataconnect:sdk", () => {
       requiredInfo: init.RequiredInfo;
       config: Config;
       expectedSource: string;
+      expectedFiles: string[];
+      expectCSQLProvisioning: boolean;
     }[] = [
       {
         desc: "should default to dataconnect directory",
         requiredInfo: mockRequiredInfo(),
         config: mockConfig(),
         expectedSource: "dataconnect",
+        expectedFiles: ["dataconnect/dataconnect.yaml", "dataconnect/schema/schema.gql"],
+        expectCSQLProvisioning: false,
       },
       {
         desc: "should use existing directory if there is one in firebase.json",
         requiredInfo: mockRequiredInfo(),
-        config: mockConfig().set("dataconnect", { source: "not-dataconnect" }),
+        config: mockConfig({ dataconnect: { source: "not-dataconnect" } }),
         expectedSource: "not-dataconnect",
+        expectedFiles: ["not-dataconnect/dataconnect.yaml", "not-dataconnect/schema/schema.gql"],
+        expectCSQLProvisioning: false,
+      },
+      {
+        desc: "should write connector files",
+        requiredInfo: mockRequiredInfo({
+          connectors: [
+            {
+              id: "my-connector",
+              files: [
+                {
+                  path: "queries.gql",
+                  content: "## Fake GQL",
+                },
+              ],
+            },
+          ],
+        }),
+        config: mockConfig({}),
+        expectedSource: "dataconnect",
+        expectedFiles: [
+          "dataconnect/dataconnect.yaml",
+          "dataconnect/schema/schema.gql",
+          "dataconnect/my-connector/connector.yaml",
+          "dataconnect/my-connector/queries.gql",
+        ],
+        expectCSQLProvisioning: false,
+      },
+      {
+        desc: "should provision cloudSQL resources ",
+        requiredInfo: mockRequiredInfo({
+          shouldProvisionCSQL: true,
+        }),
+        config: mockConfig({}),
+        expectedSource: "dataconnect",
+        expectedFiles: ["dataconnect/dataconnect.yaml", "dataconnect/schema/schema.gql"],
+        expectCSQLProvisioning: true,
       },
     ];
 
     for (const c of cases) {
       it(c.desc, async () => {
-        generateStub.resolves();
-        fsStub.returns({});
+        askWriteProjectFileStub = sandbox.stub(c.config, "askWriteProjectFile");
+        askWriteProjectFileStub.resolves();
+        provisionCSQLStub.resolves();
         await init.actuate(
           {
+            projectId: "test-project",
             rcfile: MOCK_RC,
             config: c.config,
           },
           c.config,
           c.requiredInfo,
         );
-        expect(c.config.get("dataconnec.source")).to.equal(c.expectedSource);
-        expect(fsStub.args).to.deep.equal([
-          [
-            `${process.cwd()}/dataconnect/connector/connector.yaml`,
-            CONNECTOR_YAML_CONTENTS,
-            "utf8",
-          ],
-        ]);
+        expect(c.config.get("dataconnect.source")).to.equal(c.expectedSource);
+        expect(askWriteProjectFileStub.args.map((a) => a[0])).to.deep.equal(c.expectedFiles);
+        expect(provisionCSQLStub.called).to.equal(c.expectCSQLProvisioning);
       });
     }
   });
 });
 
-function mockConfig(config: Partial<Config> = {}): Config {
-  return new Config(config, {});
+function mockConfig(data: Record<string, any> = {}): Config {
+  return new Config(data, {});
 }
 function mockRequiredInfo(info: Partial<init.RequiredInfo> = {}): init.RequiredInfo {
   return {
