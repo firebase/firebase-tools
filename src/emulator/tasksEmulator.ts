@@ -12,9 +12,27 @@ export interface TasksEmulatorArgs {
   host?: string;
 }
 
+export interface Task {
+  name: string;
+  // A timestamp in RFC3339 UTC "Zulu" format, with nanosecond resolution and up to nine fractional
+  // digits. Examples: "2014-10-02T15:01:23Z" and "2014-10-02T15:01:23.045123456Z".
+  scheduleTime?: string;
+  // A duration in seconds with up to nine fractional digits, terminated by 's'. Example: "3.5s".
+  dispatchDeadline?: string;
+  httpRequest: {
+    url: string;
+    oidcToken?: {
+      serviceAccountEmail: string;
+    };
+    // A base64-encoded string.
+    body: any;
+    headers: { [key: string]: string };
+  };
+}
+
 export interface EmulatedTask {
   data: Record<string, any>;
-  options: TaskOptions;
+  task: Task;
   runningInfo?: {
     currentAttempt: number;
     currentBackoff: number;
@@ -22,15 +40,15 @@ export interface EmulatedTask {
   };
 }
 
-export interface TaskOptions {
-  dispatchedDeadlineSeconds?: number;
-  id: string;
-  headers: Record<string, string>;
-  uri: string | null;
-  // Can only have one of the following
-  scheduleDelaySeconds?: number;
-  scheduleTime?: number;
-}
+// export interface TaskOptions {
+//   dispatchedDeadlineSeconds?: number;
+//   id: string;
+//   headers: Record<string, string>;
+//   uri: string | null;
+//   // Can only have one of the following
+//   scheduleDelaySeconds?: number;
+//   scheduleTime?: number;
+// }
 
 export interface TaskQueueConfig {
   retryConfig: RetryConfig;
@@ -77,12 +95,12 @@ export class TaskQueue {
     private key: string,
     private config: TaskQueueConfig,
   ) {
-    this.maxTokens = this.config.rateLimits.maxDispatchesPerSecond; // TODO(gburroughs): Look into the burst size
+    this.maxTokens = Math.max(this.config.rateLimits.maxDispatchesPerSecond, 1);
     this.lastTokenUpdate = Date.now();
     this.queued = 0;
   }
 
-  start() {
+  start(): void {
     this.listenForTasks();
   }
 
@@ -128,7 +146,7 @@ export class TaskQueue {
         })
         .catch((e) => {
           console.error(e);
-          this.logger.log(`WARN`, `Task ${task.options.id} failed to be delivered successfully`); // TODO(gburroughs): give more info here
+          this.logger.log(`WARN`, `Task ${task.task.name} failed to be delivered successfully`); // TODO(gburroughs): give more info here
           this.queued--;
         });
 
@@ -138,21 +156,28 @@ export class TaskQueue {
   }
 
   enqueue(task: EmulatedTask): void {
-    this.queue.enqueue(task.options.id, task);
+    this.queue.enqueue(task.task.name!, task);
+  }
+  remove(id: string): void {
+    this.queue.remove(id);
   }
 
   tryTask(
-    task: EmulatedTask,
+    emulatedTask: EmulatedTask,
     retryOptions: RetryConfig,
     resolve: (value: boolean | PromiseLike<boolean>) => void,
     reject: (reason?: any) => void,
   ): void {
-    fetch(task.options.uri || this.config.defaultUri, {
+    const url =
+      emulatedTask.task.httpRequest.url === ""
+        ? this.config.defaultUri
+        : emulatedTask.task.httpRequest.url;
+    fetch(url, {
       method: "POST", // TODO(gburroughs): Is this always the case?
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ data: task.data }),
+      body: JSON.stringify({ data: emulatedTask.data }),
     })
       .then((res) => {
         if (res.status >= 200 && res.status < 300) {
@@ -160,15 +185,15 @@ export class TaskQueue {
         } else {
           this.logger.log(
             "WARN",
-            `task: ${task.options.id} failed: ${res.statusText} retrying ${JSON.stringify(task.runningInfo)}`,
+            `task: ${emulatedTask.task.name} failed: ${res.statusText} retrying ${JSON.stringify(emulatedTask.runningInfo)}`,
           );
 
-          if (task.runningInfo!.currentAttempt > retryOptions.maxAttempts) {
+          if (emulatedTask.runningInfo!.currentAttempt > retryOptions.maxAttempts) {
             if (retryOptions.maxRetrySeconds === null || retryOptions.maxRetrySeconds === 0) {
               resolve(false);
               return;
             } else if (
-              Date.now() - task.runningInfo!.startTime >
+              Date.now() - emulatedTask.runningInfo!.startTime >
               retryOptions.maxRetrySeconds * 1000
             ) {
               resolve(false);
@@ -176,19 +201,19 @@ export class TaskQueue {
             }
           }
           setTimeout(
-            () => this.tryTask(task, retryOptions, resolve, reject),
-            task.runningInfo!.currentBackoff * 1000,
+            () => this.tryTask(emulatedTask, retryOptions, resolve, reject),
+            emulatedTask.runningInfo!.currentBackoff * 1000,
           );
 
-          task.runningInfo!.currentAttempt++;
+          emulatedTask.runningInfo!.currentAttempt++;
           // Update Parameters
-          if (task.runningInfo!.currentAttempt < retryOptions.maxDoublings) {
-            task.runningInfo!.currentBackoff *= 2;
+          if (emulatedTask.runningInfo!.currentAttempt < retryOptions.maxDoublings) {
+            emulatedTask.runningInfo!.currentBackoff *= 2;
           } else {
-            task.runningInfo!.currentBackoff += 1; // TODO(gburroughs): Figure out what this should be
+            emulatedTask.runningInfo!.currentBackoff += 1; // TODO(gburroughs): Figure out what this should be
           }
-          if (task.runningInfo!.currentBackoff > retryOptions.maxBackoffSeconds) {
-            task.runningInfo!.currentBackoff = retryOptions.maxBackoffSeconds;
+          if (emulatedTask.runningInfo!.currentBackoff > retryOptions.maxBackoffSeconds) {
+            emulatedTask.runningInfo!.currentBackoff = retryOptions.maxBackoffSeconds;
           }
         }
       })
@@ -214,21 +239,22 @@ export class TasksEmulator implements EmulatorInstance {
       const queueName = req.params.queue_name;
       const key = `queue:${projectId}-${locationId}-${queueName}`;
       this.logger.logLabeled("SUCCESS", "tasks", `Created queue with key: ${key}`);
+      const body = req.body as TaskQueueConfig;
       const taskQueueConfig: TaskQueueConfig = {
         retryConfig: {
-          maxAttempts: (req.body.retryConfig?.maxAttempts as number) ?? 3,
-          maxRetrySeconds: (req.body.retryConfig?.maxRetrySeconds as number) ?? null, // TODO(gburroughs): is this okay?
-          maxBackoffSeconds: (req.body.retryConfig?.maxBackoffSeconds as number) ?? 60 * 60,
-          maxDoublings: (req.body.retryConfig?.maxDoublings as number) ?? 16,
-          minBackoffSeconds: (req.body.retryConfig?.minBackoffSeconds as number) ?? 0.1,
+          maxAttempts: body.retryConfig?.maxAttempts ?? 3,
+          maxRetrySeconds: body.retryConfig?.maxRetrySeconds ?? null,
+          maxBackoffSeconds: body.retryConfig?.maxBackoffSeconds ?? 60 * 60,
+          maxDoublings: body.retryConfig?.maxDoublings ?? 16,
+          minBackoffSeconds: body.retryConfig?.minBackoffSeconds ?? 0.1,
         },
         rateLimits: {
-          maxConcurrentDispatches: (req.body.rateLimits?.maxConcurrentDispatches as number) ?? 1000,
-          maxDispatchesPerSecond: (req.body.rateLimits?.maxDispatchesPerSecond as number) ?? 500,
+          maxConcurrentDispatches: body.rateLimits?.maxConcurrentDispatches ?? 1000,
+          maxDispatchesPerSecond: body.rateLimits?.maxDispatchesPerSecond ?? 500,
         },
-        timeoutSeconds: (req.body.timeoutSeconds as number) ?? 10,
-        retry: (req.body.retry as boolean) ?? false,
-        defaultUri: req.body.defaultUri! as string,
+        timeoutSeconds: body.timeoutSeconds ?? 10,
+        retry: body.retry ?? false,
+        defaultUri: body.defaultUri,
       };
 
       const tq = new TaskQueue(key, taskQueueConfig);
@@ -253,27 +279,49 @@ export class TasksEmulator implements EmulatorInstance {
         res.send(404);
         return;
       }
+      req.body.task.name =
+        req.body.task.name ??
+        `/projects/${projectId}/locations/${locationId}/queues/${queueName}/tasks/${Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)}`;
+      req.body.task.httpRequest.body = JSON.parse(atob(req.body.task.httpRequest.body));
+
+      const task = req.body.task as Task;
       const targetQueue = this.queues[queueKey];
-      const task: EmulatedTask = {
+      const emulatedTask: EmulatedTask = {
         data: req.body.data ?? {},
-        options: {
-          dispatchedDeadlineSeconds:
-            (req.body?.options?.dispatchedDeadlineSeconds as number) ?? undefined,
-          id: req.body?.options?.id ?? Math.floor(Math.random() * Number.MAX_SAFE_INTEGER), // TODO(gburroughs): Is this good enough for local emulation? Or should there be a check to see if the ID has been used already (at least for that session)
-          headers: req.body.options?.headers ?? {},
-          uri: req.body.options?.uri ?? null,
-          // Can only have one of the following
-          scheduleDelaySeconds: undefined,
-          scheduleTime: undefined,
-        },
+        task: task,
       };
-      targetQueue.enqueue(task);
-      this.logger.log("DEBUG", `Enqueueing task ${task.options.id} onto ${queueKey}`);
-      res.send({ task });
+      try {
+        targetQueue.enqueue(emulatedTask);
+      } catch (e) {
+        res.status(409).send("A task with the same name already exists");
+      }
+      this.logger.log("DEBUG", `Enqueueing task ${emulatedTask.task.name} onto ${queueKey}`);
+      res.send({ task: emulatedTask });
     };
 
     const deleteTasksRoute = `/projects/:project_id/locations/:location_id/queues/:queue_name/tasks/:task_id`;
     const deleteTasksHandler: express.Handler = (req, res) => {
+      const projectId = req.params.project_id;
+      const locationId = req.params.location_id;
+      const queueName = req.params.queue_name;
+      const taskId = req.params.task_id;
+      const queueKey = `queue:${projectId}-${locationId}-${queueName}`;
+
+      if (!this.queues[queueKey]) {
+        this.logger.log("WARN", "Tried to remove a task from a non-existant queue");
+        res.send(404);
+        return;
+      }
+
+      const targetQueue = this.queues[queueKey];
+      try {
+        targetQueue.remove(
+          `/projects/${projectId}/locations/${locationId}/queues/${queueName}/tasks/${taskId}`,
+        );
+      } catch (e) {
+        this.logger.log("WARN", "Tried to remove a task that doesn't exist");
+        res.send(404);
+      }
       res.send(200);
     };
 
