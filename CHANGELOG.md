@@ -1,1 +1,2 @@
 - Improved notification message when an update is available. (#7293)
+- Fix issue where Data Connect Emulator can't read config
