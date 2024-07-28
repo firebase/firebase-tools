@@ -1,0 +1,1 @@
+- Update python function init template to use the latest functions SDK (#7437)
