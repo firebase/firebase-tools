@@ -40,6 +40,33 @@ export const DUAL_REGION_MAPPING: Record<string, string> = {
   "us-east1": "nam4",
 };
 
+/** Google Cloud Scheduler regions (gcloud scheduler locations list) */
+export const CLOUD_SCHEDULER_REGIONS: Array<string> = [
+  "us-central1",
+  "asia-east1",
+  "asia-east2",
+  "asia-northeast1",
+  "asia-northeast2",
+  "asia-northeast3",
+  "asia-south1",
+  "asia-southeast1",
+  "asia-southeast2",
+  "australia-southeast1",
+  "europe-central2",
+  "europe-west1",
+  "europe-west2",
+  "europe-west3",
+  "europe-west6",
+  "northamerica-northeast1",
+  "southamerica-east1",
+  "us-east1",
+  "us-east4",
+  "us-west1",
+  "us-west2",
+  "us-west3",
+  "us-west4",
+];
+
 /**
  * Helper function to determine if the given region is inside the multi-region or dual-region location.
  * This is helpful for determining if a specific region maps to a Google Cloud Storage location.
