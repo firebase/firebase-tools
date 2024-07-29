@@ -17,6 +17,7 @@ import { load } from "../dataconnect/load";
 import { isVSCodeExtension } from "../utils";
 import { Config } from "../config";
 import { EventEmitter } from "events";
+import { tryStartProgres } from "../dataconnect/postgres";
 
 export interface DataConnectEmulatorArgs {
   projectId: string;
@@ -49,6 +50,7 @@ export class DataConnectEmulator implements EmulatorInstance {
   private logger = EmulatorLogger.forEmulator(Emulators.DATACONNECT);
 
   async start(): Promise<void> {
+    await tryStartProgres();
     let resolvedConfigDir;
     try {
       resolvedConfigDir = this.args.config.path(this.args.configDir);
