@@ -2,7 +2,7 @@ import * as clc from "colorette";
 import { marked } from "marked";
 import * as path from "path";
 import * as semver from "semver";
-import * as TerminalRenderer from "marked-terminal";
+import { markedTerminal } from "marked-terminal";
 const Table = require("cli-table");
 
 import { listExtensionVersions } from "./extensionsApi";
@@ -11,9 +11,7 @@ import { logger } from "../logger";
 import * as refs from "./refs";
 import { logLabeledWarning } from "../utils";
 
-marked.setOptions({
-  renderer: new TerminalRenderer(),
-});
+marked.use(markedTerminal() as any);
 
 const EXTENSIONS_CHANGELOG = "CHANGELOG.md";
 // Simplifed version of https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string

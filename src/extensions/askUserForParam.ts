@@ -153,8 +153,8 @@ export async function askForParam(args: {
   const description = paramSpec.description || "";
   const label = paramSpec.label.trim();
   logger.info(
-    `\n${clc.bold(label)}${clc.bold(paramSpec.required ? "" : " (Optional)")}: ${marked(
-      description,
+    `\n${clc.bold(label)}${clc.bold(paramSpec.required ? "" : " (Optional)")}: ${(
+      await marked(description)
     ).trim()}`,
   );
 
