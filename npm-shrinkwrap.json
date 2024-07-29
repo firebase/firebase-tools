@@ -106,6 +106,7 @@
         "@types/lodash": "^4.14.149",
         "@types/marked-terminal": "^6.1.1",
         "@types/mocha": "^9.0.0",
+        "@types/mock-fs": "4.13.4",
         "@types/multer": "^1.4.3",
         "@types/node": "^18.19.1",
         "@types/node-fetch": "^2.5.12",
@@ -144,6 +145,7 @@
         "google-discovery-to-swagger": "^2.1.0",
         "googleapis": "^105.0.0",
         "mocha": "^9.1.3",
+        "mock-fs": "5.2.0",
         "next": "^14.1.0",
         "nock": "^13.0.5",
         "node-mocks-http": "^1.11.0",
@@ -4178,6 +4180,15 @@
       "resolved": "https://registry.npmjs.org/@types/mocha/-/mocha-9.0.0.tgz",
       "integrity": "sha512-scN0hAWyLVAvLR9AyW7HoFF5sJZglyBsbPuHO4fv7JRvfmPBMfp1ozWqOf/e4wwPNxezBZXRfWzMb6iFLgEVRA==",
       "dev": true
+    },
+    "node_modules/@types/mock-fs": {
+      "version": "4.13.4",
+      "resolved": "https://registry.npmjs.org/@types/mock-fs/-/mock-fs-4.13.4.tgz",
+      "integrity": "sha512-mXmM0o6lULPI8z3XNnQCpL0BGxPwx1Ul1wXYEPBGl4efShyxW2Rln0JOPEWGyZaYZMM6OVXM/15zUuFMY52ljg==",
+      "dev": true,
+      "dependencies": {
+        "@types/node": "*"
+      }
     },
     "node_modules/@types/ms": {
       "version": "0.7.31",
@@ -14524,6 +14535,15 @@
         "node": ">= 8"
       }
     },
+    "node_modules/mock-fs": {
+      "version": "5.2.0",
+      "resolved": "https://registry.npmjs.org/mock-fs/-/mock-fs-5.2.0.tgz",
+      "integrity": "sha512-2dF2R6YMSZbpip1V1WHKGLNjr/k48uQClqMVb5H3MOvwc9qhYis3/IWbj02qIg/Y8MDXKFF4c5v0rxx2o6xTZw==",
+      "dev": true,
+      "engines": {
+        "node": ">=12.0.0"
+      }
+    },
     "node_modules/moo": {
       "version": "0.5.2",
       "resolved": "https://registry.npmjs.org/moo/-/moo-0.5.2.tgz",
@@ -24091,6 +24111,15 @@
       "integrity": "sha512-scN0hAWyLVAvLR9AyW7HoFF5sJZglyBsbPuHO4fv7JRvfmPBMfp1ozWqOf/e4wwPNxezBZXRfWzMb6iFLgEVRA==",
       "dev": true
     },
+    "@types/mock-fs": {
+      "version": "4.13.4",
+      "resolved": "https://registry.npmjs.org/@types/mock-fs/-/mock-fs-4.13.4.tgz",
+      "integrity": "sha512-mXmM0o6lULPI8z3XNnQCpL0BGxPwx1Ul1wXYEPBGl4efShyxW2Rln0JOPEWGyZaYZMM6OVXM/15zUuFMY52ljg==",
+      "dev": true,
+      "requires": {
+        "@types/node": "*"
+      }
+    },
     "@types/ms": {
       "version": "0.7.31",
       "resolved": "https://registry.npmjs.org/@types/ms/-/ms-0.7.31.tgz",
@@ -31751,6 +31780,12 @@
           }
         }
       }
+    },
+    "mock-fs": {
+      "version": "5.2.0",
+      "resolved": "https://registry.npmjs.org/mock-fs/-/mock-fs-5.2.0.tgz",
+      "integrity": "sha512-2dF2R6YMSZbpip1V1WHKGLNjr/k48uQClqMVb5H3MOvwc9qhYis3/IWbj02qIg/Y8MDXKFF4c5v0rxx2o6xTZw==",
+      "dev": true
     },
     "moo": {
       "version": "0.5.2",
