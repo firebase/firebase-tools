@@ -1,0 +1,1 @@
+- Fixed an issue where `--force` was not respected during `firebase deploy --only storage` (#7499).
