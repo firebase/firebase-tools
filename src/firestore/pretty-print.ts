@@ -49,9 +49,14 @@ export class PrettyPrint {
    * @param database the Firestore database.
    */
   prettyPrintDatabase(database: types.DatabaseResp): void {
+    let colValueWidth = Math.max(50, 5 + database.name.length);
+    if (database.cmekConfig) {
+      colValueWidth = Math.max(140, 20 + database.cmekConfig.kmsKeyName.length);
+    }
+
     const table = new Table({
       head: ["Field", "Value"],
-      colWidths: [25, Math.max(50, 5 + database.name.length)],
+      colWidths: [30, colValueWidth],
     });
 
     table.push(
@@ -65,7 +70,31 @@ export class PrettyPrint {
       ["Earliest Version Time", clc.yellow(database.earliestVersionTime)],
       ["Version Retention Period", clc.yellow(database.versionRetentionPeriod)],
     );
+
+    if (database.cmekConfig) {
+      table.push(["KMS Key Name", clc.yellow(database.cmekConfig.kmsKeyName)]);
+
+      if (database.cmekConfig.activeKeyVersion) {
+        table.push([
+          "Active Key Versions",
+          clc.yellow(this.prettyStringArray(database.cmekConfig.activeKeyVersion)),
+        ]);
+      }
+    }
+
     logger.info(table.toString());
+  }
+
+  /**
+   * Returns a pretty representation of a String array.
+   * @param stringArray the string array to be formatted.
+   */
+  prettyStringArray(stringArray: string[]): string {
+    let result = "";
+    stringArray.forEach((str) => {
+      result += `${str}\n`;
+    });
+    return result;
   }
 
   /**
