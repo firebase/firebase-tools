@@ -74,7 +74,7 @@ export const command = new Command("firestore:databases:create <database>")
         kmsKeyName: options.kmsKeyName,
       };
     }
-    
+
     const createDatabaseReq: types.CreateDatabaseReq = {
       project: options.project,
       databaseId: database,
@@ -85,9 +85,7 @@ export const command = new Command("firestore:databases:create <database>")
       cmekConfig,
     };
 
-    const databaseResp: types.DatabaseResp = await api.createDatabase(
-      createDatabaseReq
-    );
+    const databaseResp: types.DatabaseResp = await api.createDatabase(createDatabaseReq);
 
     if (options.json) {
       logger.info(JSON.stringify(databaseResp, undefined, 2));
