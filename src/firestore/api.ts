@@ -621,9 +621,7 @@ export class FirestoreApi {
    * Create a named Firestore Database
    * @param req the request to create a database
    */
-  async createDatabase(
-    req: types.CreateDatabaseReq
-  ): Promise<types.DatabaseResp> {
+  async createDatabase(req: types.CreateDatabaseReq): Promise<types.DatabaseResp> {
     const url = `/projects/${req.project}/databases`;
     const payload: types.DatabaseReq = {
       locationId: req.locationId,
