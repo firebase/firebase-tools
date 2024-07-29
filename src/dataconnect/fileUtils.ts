@@ -115,7 +115,6 @@ const ANDROID_INDICATORS = ["androidmanifest.xml", "build.gradle"];
 // endswith match
 const IOS_INDICATORS_2 = [".xcworkspace", ".xcodeproj"];
 
-
 // given a directory, determine the platform type
 export async function getPlatformFromFolder(dirPath: string) {
   // Check for file indicators
