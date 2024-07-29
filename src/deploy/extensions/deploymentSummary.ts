@@ -59,6 +59,6 @@ export function configuresSummary(toConfigure: planner.InstanceSpec[]) {
 export function deletesSummary(toDelete: planner.InstanceSpec[]) {
   const instancesToDelete = toDelete.map((s) => `\t${humanReadable(s)}`).join("\n");
   return toDelete.length
-    ? `The following extension instances are not listed in 'firebase.json':\n${instancesToDelete}\n`
+    ? `The following extension instances are not defined in either 'firebase.json' or a functions codebase:\n${instancesToDelete}\n`
     : "";
 }

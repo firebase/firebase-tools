@@ -8,6 +8,7 @@ import { UserEnvsOpts, writeUserEnvs } from "../../functions/env";
 import { FirebaseConfig } from "./args";
 import { Runtime } from "./runtimes/supported";
 import { ExprParseError } from "./cel";
+import { defineSecret } from "firebase-functions/params";
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
 export interface Build {
@@ -15,6 +16,7 @@ export interface Build {
   endpoints: Record<string, Endpoint>;
   params: params.Param[];
   runtime?: Runtime;
+  extensions?: Record<string, DynamicExtension>
 }
 
 /**
@@ -267,6 +269,14 @@ export type Endpoint = Triggered & {
   secretEnvironmentVariables?: SecretEnvVar[] | null;
   labels?: Record<string, string | Expression<string>> | null;
 };
+
+type SecretParam = ReturnType<typeof defineSecret>;
+export type DynamicExtension = {
+  params: Record<string, string | SecretParam>;
+  ref?: string;
+  localPath?: string;
+  events: string[];
+}
 
 /**
  * Resolves user-defined parameters inside a Build, and generates a Backend.

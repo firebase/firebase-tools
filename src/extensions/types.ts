@@ -125,6 +125,48 @@ export interface ExtensionSpec {
   lifecycleEvents?: LifecycleEvent[];
 }
 
+// Typeguard for ExtensionSpec. (We often get "specs" from parsing yaml).
+// This helps decide if it's actually a spec or just some random yaml.
+export const isExtensionSpec = (spec: any): spec is ExtensionSpec => {
+  let validResources = true;
+  if (spec.resources && Array.isArray(spec.resources)) {
+    for (const res of spec.resources) {
+      validResources = validResources && isResource(res);
+      if (!validResources) {
+        break;
+      }
+    }
+  } else {
+    validResources = false;
+  }
+
+  let validParams = true;
+  if (spec.params && Array.isArray(spec.params)) {
+    for (const param of spec.params) {
+      validParams = validParams && isParam(param);
+      if (!validParams) {
+        break;
+      }
+    }
+  } else {
+    validParams = false;
+  }
+
+  let validSysParams = true;
+  if (spec.systemParams && Array.isArray(spec.systemParams)) {
+    for (const param of spec.systemParams) {
+      validSysParams = validSysParams && isParam(param);
+      if (!validSysParams) {
+        break;
+      }
+    }
+  } else {
+    validSysParams = false;
+  }
+  return typeof spec === 'object' &&
+  Boolean(spec.name && spec.version && validResources && validParams && validSysParams)
+}
+
 export interface LifecycleEvent {
   stage: "STAGE_UNSPECIFIED" | "ON_INSTALL" | "ON_UPDATE" | "ON_CONFIGURE";
   taskQueueTriggerFunction: string;
@@ -227,6 +269,10 @@ export type Resource = ResourceProperties & {
   entryPoint?: string;
 };
 
+export const isResource = (res: any): res is Resource => {
+  return typeof res === 'object' && Boolean(res.name);
+}
+
 export interface Author {
   authorName: string;
   url?: string;
@@ -247,10 +293,16 @@ export interface Param {
   advanced?: boolean;
 }
 
+export const isParam = (param: any): param is Param => {
+  return typeof param === 'object' &&
+  Boolean(param.param && param.label)
+}
+
 export enum ParamType {
   STRING = "STRING",
   SELECT = "SELECT",
   MULTISELECT = "MULTISELECT",
+  SELECT_RESOURCE = "SELECT_RESOURCE",
   SECRET = "SECRET",
 }
 

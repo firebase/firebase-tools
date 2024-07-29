@@ -40,6 +40,9 @@ import { envOverride } from "../utils";
 import { getLocalChangelog } from "./change-log";
 import { getProjectNumber } from "../getProjectNumber";
 import { Constants } from "../emulator/constants";
+import { DynamicExtension } from "./runtimes/common";
+import * as secretManager from "../gcp/secretManager";
+import { defineSecret } from "firebase-functions/params";
 
 /**
  * SpecParamType represents the exact strings that the extensions
@@ -168,6 +171,19 @@ export function substituteParams<T>(original: T, params: Record<string, string>)
     startingString,
   );
   return JSON.parse(s);
+}
+
+type SecretParam = ReturnType<typeof defineSecret>;
+export async function substituteSecretParams(projectNumber: string, instanceId: string, ext: DynamicExtension, params: Record<string, string | SecretParam>): Promise<Record<string, string>> {
+  const newParams: Record<string, string> = {};
+  for await (const [key, value] of Object.entries(params)) {
+    if (typeof value != "string") {
+      newParams[key] = `projects/${projectNumber}/secrets/${(value as SecretParam).name}/versions/latest`;
+    } else {
+      newParams[key] = value as string;
+    }
+  }
+  return newParams;
 }
 
 /**
@@ -692,7 +708,7 @@ function displayExtensionHeader(
   } else {
     logger.info(
       `\n${clc.bold("Extension:")} ${extensionRef}\n` +
-        `${clc.bold("State:")} ${clc.bold(clc.blue("New"))}\n`,
+        `${clc.bold("State:")} ${clc.bold(clc.blueBright("New"))}\n`,
     );
   }
 }

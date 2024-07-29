@@ -54,9 +54,13 @@ export async function askForEventsConfig(
   const preselectedTypes = existingInstance?.config.allowedEventTypes ?? [];
   const oldLocation = existingInstance?.config.eventarcChannel?.split("/")[3];
   const location = await askForEventArcLocation(oldLocation);
-  const channel = `projects/${projectId}/locations/${location}/channels/firebase`;
+  const channel = getEventArcChannel(projectId, location);
   const allowedEventTypes = await askForAllowedEventTypes(events, preselectedTypes);
   return { channel, allowedEventTypes };
+}
+
+export function getEventArcChannel(projectId: string, location: string): string {
+  return `projects/${projectId}/locations/${location}/channels/firebase`;
 }
 
 export async function askForAllowedEventTypes(
@@ -95,23 +99,26 @@ export async function askShouldCollectEventsConfig(): Promise<boolean> {
   });
 }
 
+export const ALLOWED_EVENT_ARC_REGIONS = ["us-central1", "us-west1", "europe-west4", "asia-northeast1"];
+export type ExtensionsEventArcRegions = typeof ALLOWED_EVENT_ARC_REGIONS[number];
+export const EXTENSIONS_DEFAULT_EVENT_ARC_REGION: ExtensionsEventArcRegions = "us-central1";
+
 export async function askForEventArcLocation(preselectedLocation?: string): Promise<string> {
   let valid = false;
-  const allowedRegions = ["us-central1", "us-west1", "europe-west4", "asia-northeast1"];
   let location = "";
   while (!valid) {
     location = await promptOnce({
       name: "input",
       type: "list",
-      default: preselectedLocation ?? "us-central1",
+      default: preselectedLocation ?? EXTENSIONS_DEFAULT_EVENT_ARC_REGION,
       message:
         "Which location would you like the Eventarc channel to live in? We recommend using the default option. A channel location that differs from the extension's Cloud Functions location can incur egress cost.",
-      choices: allowedRegions.map((e) => ({ checked: false, value: e })),
+      choices: ALLOWED_EVENT_ARC_REGIONS.map((e) => ({ checked: false, value: e })),
     });
-    valid = allowedRegions.includes(location);
+    valid = ALLOWED_EVENT_ARC_REGIONS.includes(location);
     if (!valid) {
       utils.logWarning(
-        `Unexpected EventArc region '${location}' was specified. Allowed regions: ${allowedRegions.join(
+        `Unexpected EventArc region '${location}' was specified. Allowed regions: ${ALLOWED_EVENT_ARC_REGIONS.join(
           ", ",
         )}`,
       );

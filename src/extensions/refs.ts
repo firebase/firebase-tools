@@ -22,7 +22,10 @@ export interface Ref {
 export function parse(refOrName: string): Ref {
   const ret = parseRef(refOrName) || parseName(refOrName);
   if (!ret || !ret.publisherId || !ret.extensionId) {
-    throw new FirebaseError(`Unable to parse ${refOrName} as an extension ref`);
+    throw new FirebaseError(`Unable to parse ${refOrName} as an extension ref.\n` +
+    "Expected format is either publisherId/extensionId@version or " +
+    "publishers/publisherId/extensions/extensionId/versions/version. If you " +
+    "are referring to a local extension directory, please ensure the directory exists.");
   }
   if (
     ret.version &&
@@ -41,20 +44,34 @@ function parseRef(ref: string): Ref | undefined {
   const parts = refRegex.exec(ref);
   // Exec additionally returns original string, index, & input values.
   if (parts && (parts.length === 5 || parts.length === 7)) {
-    const publisherId = parts[1];
-    const extensionId = parts[2];
-    const version = parts[4];
-    return { publisherId, extensionId, version };
+    return {
+      publisherId: parts[1],
+      extensionId: parts[2],
+      version: parts[4]
+    }
   }
 }
 
 function parseName(name: string): Ref | undefined {
   const parts = name.split("/");
-  return {
-    publisherId: parts[1],
-    extensionId: parts[3],
-    version: parts[5],
-  };
+  if (parts[0] != "publishers" ||
+      parts[2] != "extensions") {
+    return;
+  }
+  if (parts.length == 4) {
+    return {
+      publisherId: parts[1],
+      extensionId: parts[3]
+    }
+  }
+  if (parts.length == 6 &&
+      parts[4] == "versions") {
+    return {
+      publisherId: parts[1],
+      extensionId: parts[3],
+      version: parts[5],
+    };
+  }
 }
 
 /**

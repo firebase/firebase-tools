@@ -4,7 +4,7 @@ import * as yaml from "yaml";
 
 import { fileExistsSync } from "../fsutils";
 import { FirebaseError } from "../error";
-import { ExtensionSpec } from "./types";
+import { ExtensionSpec, isExtensionSpec } from "./types";
 import { logger } from "../logger";
 
 export const EXTENSIONS_SPEC_FILE = "extension.yaml";
@@ -53,7 +53,7 @@ export function readFile(pathToFile: string): string {
     return fs.readFileSync(pathToFile, "utf8");
   } catch (err: any) {
     if (err.code === "ENOENT") {
-      throw new FirebaseError(`Could not find "${pathToFile}""`, { original: err });
+      throw new FirebaseError(`Could not find "${pathToFile}"`, { original: err });
     }
     throw new FirebaseError(`Failed to read file at "${pathToFile}"`, { original: err });
   }
