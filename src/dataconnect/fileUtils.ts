@@ -109,7 +109,7 @@ export async function pickService(
 
 // case insensitive exact match indicators for supported app platforms
 const WEB_INDICATORS = ["package.json", "package-lock.json", "node_modules"];
-const IOS_INDICATORS = ["info.plist", "project.pbxproj", "podfile", "package.swift"];
+const IOS_INDICATORS = ["info.plist", "podfile", "package.swift"];
 const ANDROID_INDICATORS = ["androidmanifest.xml", "build.gradle"];
 
 // endswith match

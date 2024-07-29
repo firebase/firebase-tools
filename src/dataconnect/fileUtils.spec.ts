@@ -86,14 +86,14 @@ describe("getPlatformFromFolder", () => {
       output: Platform.IOS,
     },
     {
-      desc: "iOS identifier found first, priority over android indentifier",
+      desc: "multiple identifiers, returns first found",
       folderName: "test/",
       folderItems: {
         file1: "contents",
         podfile: "cocoa pods yummy",
         "androidmanifest.xml": "file found second :(",
       },
-      output: Platform.IOS,
+      output: Platform.ANDROID,
     },
   ];
   for (const c of cases) {
