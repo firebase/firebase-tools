@@ -133,7 +133,6 @@ export async function have(projectId: string): Promise<DeploymentInstanceSpec[]>
  * @param args.projectNumber The project number we are deploying to.
  * @param args.extensions The extensions section of firebase.jsonm
  * @param args.emulatorMode Whether the output will be used by the Extensions emulator.
- *                     If true, this will check {instanceId}.env.local for params a
  */
 export async function wantDynamic(args: {
   projectId: string;

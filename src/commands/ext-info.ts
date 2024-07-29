@@ -11,6 +11,7 @@ import * as utils from "../utils";
 
 import { marked } from "marked";
 import { markedTerminal } from "marked-terminal";
+import { ExtensionSpec } from "../extensions/types";
 
 const FUNCTION_TYPE_REGEX = /\..+\.function/;
 
@@ -21,7 +22,7 @@ export const command = new Command("ext:info <extensionName>")
   .option("--markdown", "output info in Markdown suitable for constructing a README file")
   .before(checkMinRequiredVersion, "extMinVersion")
   .action(async (extensionName: string, options: any) => {
-    let spec;
+    let spec: ExtensionSpec;
     if (isLocalExtension(extensionName)) {
       if (!options.markdown) {
         utils.logLabeledBullet(logPrefix, `reading extension from directory: ${extensionName}`);

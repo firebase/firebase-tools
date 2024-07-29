@@ -20,7 +20,7 @@ import * as versioning from "./versioning";
 import * as parseTriggers from "./parseTriggers";
 import { fileExistsSync } from "../../../../fsutils";
 
-const MIN_FUNCTIONS_SDK_VERSION = "3.20.0";
+const MIN_FUNCTIONS_SDK_VERSION = "5.1.0";
 
 /**
  *

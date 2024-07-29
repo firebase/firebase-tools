@@ -28,7 +28,6 @@ export async function release(
   if (context.extensions && payload.extensions) {
     await extRelease(context.extensions, options, payload.extensions);
   }
-
   if (!context.config) {
     return;
   }
