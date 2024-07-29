@@ -80,11 +80,12 @@ export async function requireAuthWrapper(
   // over Google login tokens and must be removed if a Google
   // account is the current user.
   try {
-    const userEmail = await requireAuth(currentOptions.value); // client email
+    const optsCopy = currentOptions.value;
+    const userEmail = await requireAuth(optsCopy); // client email
     // SetAccessToken is necessary here to ensure that access_tokens are available when:
     // - we are using tokens from configstore (aka those set by firebase login), AND
     // - we are calling CLI code that skips Command (where we normally call this)
-
+    currentOptions.value = optsCopy;
     setAccessToken(await getAccessToken()); 
     if (userEmail) {
       pluginLogger.debug("User found: ", userEmail);
@@ -139,7 +140,7 @@ export async function emulatorsStart(
 ) {
   const only =
     emulatorUiSelections.mode === "dataconnect"
-      ? `${Emulators.DATACONNECT},${Emulators.AUTH}`
+      ? `${Emulators.DATACONNECT}`
       : "";
   const commandOptions = await getCommandOptions(undefined, {
     ...(await firstWhere(
