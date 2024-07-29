@@ -109,17 +109,18 @@ export async function pickService(
 
 // case insensitive indicators for supported app platforms
 const WEB_INDICATORS = ["package.json", "package-lock.json", "node_modules"];
-const IOS_INDICATORS = ["info.plist", "project.pbxproj", "podfile", "package.swift"];
-const IOS_FOLDER_INDICATORS = [".xcworkspace", ".xcodeproj"];
+const IOS_INDICATORS = [
+  "info.plist",
+  "project.pbxproj",
+  "podfile",
+  "package.swift",
+  ".xcworkspace",
+  ".xcodeproj",
+];
 const ANDROID_INDICATORS = ["androidmanifest.xml", "build.gradle"];
 
 // given a directory, determine the platform type
 export async function getPlatformFromFolder(dirPath: string) {
-  // check for ios folder indicator
-  if (IOS_FOLDER_INDICATORS.some((indicator) => path.basename(dirPath).endsWith(indicator))) {
-    return Platform.IOS;
-  }
-
   // Check for file indicators
   const fileNames = await fs.readdir(dirPath);
 

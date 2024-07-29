@@ -69,17 +69,17 @@ describe("getPlatformFromFolder", () => {
       output: Platform.IOS,
     },
     {
-      desc: "iOS folder identifier 1, priority over android file",
-      folderName: "root/abcd/myapp.xcodeproj",
+      desc: "iOS file identifier 2",
+      folderName: "root/abcd",
       folderItems: {
-        file1: "contents",
-        "androidmanifest.xml": "why is an android file in an xcode workspace?",
+        file1: "ios",
+        "myapp.xcodeproj": "folder in an xcode folder",
       },
       output: Platform.IOS,
     },
     {
-      desc: "iOS folder identifier 2",
-      folderName: "/users/googler/myprojects/myapp.xcworkspace/",
+      desc: "iOS folder identifier 3",
+      folderName: "/users/googler/myprojects",
       folderItems: {
         "myapp.xcworkspace": { file1: "contents" },
       },
