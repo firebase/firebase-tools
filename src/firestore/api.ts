@@ -619,32 +619,20 @@ export class FirestoreApi {
 
   /**
    * Create a named Firestore Database
-   * @param project the Firebase project id.
-   * @param databaseId the name of the Firestore Database
-   * @param locationId the id of the region the database will be created in
-   * @param type FIRESTORE_NATIVE or DATASTORE_MODE
-   * @param deleteProtectionState DELETE_PROTECTION_ENABLED or DELETE_PROTECTION_DISABLED
-   * @param pointInTimeRecoveryEnablement POINT_IN_TIME_RECOVERY_ENABLED or POINT_IN_TIME_RECOVERY_DISABLED
-   * @param cmekConfig the CMEK configuration for the database
+   * @param req the request to create a database
    */
   async createDatabase(
-    project: string,
-    databaseId: string,
-    locationId: string,
-    type: types.DatabaseType,
-    deleteProtectionState: types.DatabaseDeleteProtectionState,
-    pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement,
-    cmekConfig?: types.CmekConfig,
+    req: types.CreateDatabaseReq
   ): Promise<types.DatabaseResp> {
-    const url = `/projects/${project}/databases`;
+    const url = `/projects/${req.project}/databases`;
     const payload: types.DatabaseReq = {
-      type,
-      locationId,
-      deleteProtectionState,
-      pointInTimeRecoveryEnablement,
-      cmekConfig,
+      locationId: req.locationId,
+      type: req.type,
+      deleteProtectionState: req.deleteProtectionState,
+      pointInTimeRecoveryEnablement: req.pointInTimeRecoveryEnablement,
+      cmekConfig: req.cmekConfig,
     };
-    const options = { queryParams: { databaseId: databaseId } };
+    const options = { queryParams: { databaseId: req.databaseId } };
     const res = await this.apiClient.post<types.DatabaseReq, { response?: types.DatabaseResp }>(
       url,
       payload,

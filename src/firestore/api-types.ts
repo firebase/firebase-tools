@@ -129,6 +129,16 @@ export interface DatabaseReq {
   cmekConfig?: CmekConfig;
 }
 
+export interface CreateDatabaseReq {
+  project: string;
+  databaseId: string;
+  locationId: string;
+  type: DatabaseType;
+  deleteProtectionState: DatabaseDeleteProtectionState;
+  pointInTimeRecoveryEnablement: PointInTimeRecoveryEnablement;
+  cmekConfig?: CmekConfig;
+}
+
 export interface DatabaseResp {
   name: string;
   uid: string;
