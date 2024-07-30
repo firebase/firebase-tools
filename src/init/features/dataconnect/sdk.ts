@@ -11,6 +11,7 @@ import { logger } from "../../../logger";
 import { ConnectorInfo, ConnectorYaml, JavascriptSDK, KotlinSDK } from "../../../dataconnect/types";
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { FirebaseError } from "../../../error";
+import { camelCase, snakeCase } from "lodash";
 
 const IOS = "ios";
 const WEB = "web";
@@ -25,6 +26,16 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   await actuate(sdkInfo, setup.projectId);
 }
 
+// generate:
+// swiftSdk:
+// outputDir: ./../gensdk/default-connector/swift-sdk
+// package: "DefaultConnector"
+// javascriptSdk:
+// outputDir: ./../gensdk/default-connector/javascript-sdk
+// package: "@firebasegen/default-connector"
+// kotlinSdk:
+// outputDir: ./../gensdk/default-connector/kotlin-sdk
+// package: connectors.default_connector
 async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
   const serviceCfgs = readFirebaseJson(config);
   const serviceInfos = await Promise.all(
@@ -53,15 +64,21 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
     choices: connectorChoices,
   });
 
-  const platforms = await promptOnce({
-    message: "Which platforms do you want to set up a generated SDK for?",
-    type: "checkbox",
-    choices: [
-      { name: "iOS (Swift)", value: IOS },
-      { name: "Web (JavaScript)", value: WEB },
-      { name: "Androd (Kotlin)", value: ANDROID },
-    ],
-  });
+  let platforms: string[] = [];
+  while (!platforms.length) {
+    platforms = await promptOnce({
+      message: "Which platforms do you want to set up a generated SDK for?",
+      type: "checkbox",
+      choices: [
+        { name: "iOS (Swift)", value: IOS },
+        { name: "Web (JavaScript)", value: WEB },
+        { name: "Androd (Kotlin)", value: ANDROID },
+      ],
+    });
+    if (!platforms.length) {
+      logger.info("You must pick at least one platform.");
+    }
+  }
 
   const newConnectorYaml = JSON.parse(JSON.stringify(connectorInfo.connectorYaml)) as ConnectorYaml;
   if (!newConnectorYaml.generate) {
@@ -74,9 +91,10 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
       type: "input",
       default:
         newConnectorYaml.generate.swiftSdk?.outputDir ||
-        `./../.dataconnect/generated/${newConnectorYaml.connectorId}/swift-sdk`,
+        `./../gensdk/${newConnectorYaml.connectorId}/swift-sdk`,
     });
-    const swiftSdk = { outputDir };
+    const pkg = camelCase(newConnectorYaml.connectorId);
+    const swiftSdk = { outputDir, package: pkg };
     newConnectorYaml.generate.swiftSdk = swiftSdk;
   }
   if (platforms.includes(WEB)) {
@@ -85,15 +103,11 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
       type: "input",
       default:
         newConnectorYaml.generate.javascriptSdk?.outputDir ||
-        `./../.dataconnect/generated/${newConnectorYaml.connectorId}/javascript-sdk`,
+        `./../gensdk/${newConnectorYaml.connectorId}/javascript-sdk`,
     });
-    const pkg = await promptOnce({
-      message: "What package name do you want to use for your JavaScript SDK?",
-      type: "input",
-      default:
-        newConnectorYaml.generate.javascriptSdk?.package ??
-        `@firebasegen/${connectorInfo.connectorYaml.connectorId}`,
-    });
+    const pkg =
+      newConnectorYaml.generate.javascriptSdk?.package ??
+      `@firebasegen/${connectorInfo.connectorYaml.connectorId}`;
     const packageJSONDir = await promptOnce({
       message:
         "Which directory contains the package.json that you would like to add the JavaScript SDK dependency to? (Leave blank to skip)",
@@ -116,15 +130,11 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
       type: "input",
       default:
         newConnectorYaml.generate.kotlinSdk?.outputDir ||
-        `./../.dataconnect/generated/${newConnectorYaml.connectorId}/kotlin-sdk/src/main/kotlin/${newConnectorYaml.connectorId}`,
+        `./../gensdk/${newConnectorYaml.connectorId}/kotlin-sdk`,
     });
-    const pkg = await promptOnce({
-      message: "What package name do you want to use for your Kotlin SDK?",
-      type: "input",
-      default:
-        newConnectorYaml.generate.kotlinSdk?.package ??
-        `com.google.firebase.dataconnect.connectors.${connectorInfo.connectorYaml.connectorId}`,
-    });
+    const pkg =
+      newConnectorYaml.generate.kotlinSdk?.package ??
+      `connectors.${snakeCase(connectorInfo.connectorYaml.connectorId)}`;
     const kotlinSdk: KotlinSDK = {
       outputDir,
       package: pkg,

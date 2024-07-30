@@ -1,1 +1,2 @@
 - Added support for Customer-managed encryption keys (CMEK) on Firestore databases. (#7479)
+- Improved default values for 'init dataconnect:sdk'.
