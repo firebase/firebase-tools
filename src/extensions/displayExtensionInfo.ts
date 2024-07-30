@@ -1,7 +1,5 @@
 import * as clc from "colorette";
-import { marked } from "marked";
 import * as semver from "semver";
-import * as TerminalRenderer from "marked-terminal";
 import * as path from "path";
 
 import * as refs from "../extensions/refs";
@@ -20,10 +18,6 @@ import {
 } from "./types";
 import * as iam from "../gcp/iam";
 import { SECRET_ROLE, usesSecrets } from "./secretsUtils";
-
-marked.setOptions({
-  renderer: new TerminalRenderer(),
-});
 
 const TASKS_ROLE = "cloudtasks.enqueuer";
 const TASKS_API = "cloudtasks.googleapis.com";

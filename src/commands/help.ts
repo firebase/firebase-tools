@@ -29,4 +29,6 @@ export const command = new Command("help [command]")
       );
       logger.info();
     }
+    logger.info(" Privacy Policy: https://firebase.google.com/support/privacy");
+    logger.info();
   });

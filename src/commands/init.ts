@@ -24,7 +24,12 @@ function isOutside(from: string, to: string): boolean {
   return !!/^\.\./.exec(path.relative(from, to));
 }
 
-const choices = [
+const choices: {
+  value: string;
+  name: string;
+  checked: boolean;
+  hidden?: boolean;
+}[] = [
   {
     value: "database",
     name: "Realtime Database: Configure a security rules file for Realtime Database and (optionally) provision default instance",
@@ -47,8 +52,9 @@ const choices = [
   },
   {
     value: "hosting:github",
-    name: " └── Hosting: Set up GitHub Action deploys",
+    name: "Hosting: Set up GitHub Action deploys",
     checked: false,
+    hidden: true,
   },
   {
     value: "storage",
@@ -70,6 +76,17 @@ const choices = [
     name: "Extensions: Set up an empty Extensions manifest",
     checked: false,
   },
+  {
+    value: "dataconnect",
+    name: "Data Connect: Set up a Firebase Data Connect service",
+    checked: false,
+  },
+  {
+    value: "dataconnect:sdk",
+    name: "Data Connect: Set up a generated SDK for your Firebase Data Connect service",
+    checked: false,
+    hidden: true,
+  },
 ];
 
 if (isEnabled("genkit")) {
@@ -79,17 +96,6 @@ if (isEnabled("genkit")) {
     checked: false,
   });
 }
-
-choices.push({
-  value: "dataconnect",
-  name: "Data Connect: Set up a Firebase Data Connect service",
-  checked: false,
-});
-choices.push({
-  value: "dataconnect:sdk",
-  name: " └── Data Connect: Set up a generated SDK for your Firebase Data Connect service",
-  checked: false,
-});
 
 const featureNames = choices.map((choice) => choice.value);
 
@@ -196,7 +202,7 @@ export function initAction(feature: string, options: Options): Promise<void> {
           message:
             "Which Firebase features do you want to set up for this directory? " +
             "Press Space to select features, then Enter to confirm your choices.",
-          choices: choices,
+          choices: choices.filter((c) => !c.hidden),
         },
       ]);
     })

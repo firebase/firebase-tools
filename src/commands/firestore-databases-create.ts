@@ -25,6 +25,11 @@ export const command = new Command("firestore:databases:create <database>")
     "--point-in-time-recovery <enablement>",
     "Whether to enable the PITR feature on this database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'",
   )
+  // TODO(b/356137854): Remove allowlist only message once feature is public GA.
+  .option(
+    "--kms-key-name <kmsKeyName>",
+    "The resource ID of a Cloud KMS key. If set, the database created will be a Customer-managed Encryption Key (CMEK) database encrypted with this key. This feature is allowlist only in initial launch.",
+  )
   .before(requirePermissions, ["datastore.databases.create"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
   .action(async (database: string, options: FirestoreOptions) => {
@@ -63,14 +68,24 @@ export const command = new Command("firestore:databases:create <database>")
         ? types.PointInTimeRecoveryEnablement.ENABLED
         : types.PointInTimeRecoveryEnablement.DISABLED;
 
-    const databaseResp: types.DatabaseResp = await api.createDatabase(
-      options.project,
-      database,
-      options.location,
+    let cmekConfig: types.CmekConfig | undefined;
+    if (options.kmsKeyName) {
+      cmekConfig = {
+        kmsKeyName: options.kmsKeyName,
+      };
+    }
+
+    const createDatabaseReq: types.CreateDatabaseReq = {
+      project: options.project,
+      databaseId: database,
+      locationId: options.location,
       type,
       deleteProtectionState,
       pointInTimeRecoveryEnablement,
-    );
+      cmekConfig,
+    };
+
+    const databaseResp: types.DatabaseResp = await api.createDatabase(createDatabaseReq);
 
     if (options.json) {
       logger.info(JSON.stringify(databaseResp, undefined, 2));

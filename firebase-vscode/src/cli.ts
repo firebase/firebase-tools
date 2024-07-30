@@ -140,7 +140,7 @@ export async function emulatorsStart(
 ) {
   const only =
     emulatorUiSelections.mode === "dataconnect"
-      ? `${Emulators.DATACONNECT},${Emulators.AUTH}`
+      ? `${Emulators.DATACONNECT}`
       : "";
   const commandOptions = await getCommandOptions(undefined, {
     ...(await firstWhere(

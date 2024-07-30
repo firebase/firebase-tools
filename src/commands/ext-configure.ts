@@ -1,6 +1,3 @@
-import { marked } from "marked";
-import * as TerminalRenderer from "marked-terminal";
-
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
@@ -24,10 +21,6 @@ import { partition } from "../functional";
 import { buildBindingOptionsWithBaseValue } from "../extensions/paramHelper";
 import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
 import { displayDeveloperTOSWarning } from "../extensions/tos";
-
-marked.setOptions({
-  renderer: new TerminalRenderer(),
-});
 
 /**
  * Command for configuring an existing extension instance
@@ -141,7 +134,7 @@ function infoImmutableParams(immutableParams: Param[], paramValues: { [key: stri
   const plural = immutableParams.length > 1;
   utils.logLabeledWarning(
     logPrefix,
-    marked(`The following param${plural ? "s are" : " is"} immutable and won't be changed:`),
+    `The following param${plural ? "s are" : " is"} immutable and won't be changed:`,
   );
 
   for (const { param } of immutableParams) {

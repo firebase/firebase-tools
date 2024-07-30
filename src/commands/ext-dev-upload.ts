@@ -1,6 +1,6 @@
 import * as clc from "colorette";
 import { marked } from "marked";
-import * as TerminalRenderer from "marked-terminal";
+import { markedTerminal } from "marked-terminal";
 
 import { Command } from "../command";
 import {
@@ -24,9 +24,8 @@ import { getPublisherProfile } from "../extensions/publisherApi";
 import { getPublisherProjectFromName } from "../extensions/extensionsHelper";
 import { getFirebaseProject } from "../management/projects";
 
-marked.setOptions({
-  renderer: new TerminalRenderer(),
-});
+// TODO(joehan): Go update @types/marked-terminal
+marked.use(markedTerminal() as any);
 
 /**
  * Command for publishing an extension version.
@@ -115,11 +114,14 @@ export async function uploadExtensionAction(
     });
   }
   if (res) {
-    utils.logLabeledBullet(logPrefix, marked(`[Install Link](${consoleInstallLink(res.ref)})`));
+    utils.logLabeledBullet(
+      logPrefix,
+      await marked(`[Install Link](${consoleInstallLink(res.ref)})`),
+    );
     const version = res.ref.split("@")[1];
     utils.logLabeledBullet(
       logPrefix,
-      marked(
+      await marked(
         `[View in Console](${utils.consoleUrl(
           projectId,
           `/publisher/extensions/${extensionId}/v/${version}`,

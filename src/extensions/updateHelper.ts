@@ -1,6 +1,5 @@
 import * as clc from "colorette";
 import * as semver from "semver";
-import { marked } from "marked";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
@@ -77,7 +76,7 @@ export function warningUpdateToOtherSource(sourceOrigin: SourceOrigin) {
     targetText = "URL";
   }
   const warning = `All the instance's resources and logic will be overwritten to use the source code and files from the ${targetText}.\n`;
-  logger.info(marked(warning));
+  logger.info(warning);
 }
 
 /**

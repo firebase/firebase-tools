@@ -52,7 +52,7 @@ export const command = new Command("hosting:channel:delete <channelId>")
         } catch (e: any) {
           logLabeledWarning(
             "hosting:channel",
-            marked(
+            await marked(
               `Unable to remove channel domain from Firebase Auth. Visit the Firebase Console at ${consoleUrl(
                 projectId,
                 "/authentication/providers",

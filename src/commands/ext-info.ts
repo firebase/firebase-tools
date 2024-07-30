@@ -10,7 +10,7 @@ import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 
 import { marked } from "marked";
-import * as TerminalRenderer from "marked-terminal";
+import { markedTerminal } from "marked-terminal";
 
 const FUNCTION_TYPE_REGEX = /\..+\.function/;
 
@@ -114,10 +114,8 @@ export const command = new Command("ext:info <extensionName>")
       // Github requires 2 newline characters in README.md to render a line break.
       logger.info(lines.join("\n\n"));
     } else {
-      marked.setOptions({
-        renderer: new TerminalRenderer(),
-      });
-      logger.info(marked(lines.join("\n")));
+      marked.use(markedTerminal() as any);
+      logger.info(await marked(lines.join("\n")));
       utils.logLabeledBullet(
         logPrefix,
         `to install this extension, type ` +
