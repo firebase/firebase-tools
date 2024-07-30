@@ -1,6 +1,4 @@
 import * as clc from "colorette";
-import { marked } from "marked";
-import * as TerminalRenderer from "marked-terminal";
 
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
@@ -26,10 +24,6 @@ import * as manifest from "../extensions/manifest";
 import { Options } from "../options";
 import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
 import { displayDeveloperTOSWarning } from "../extensions/tos";
-
-marked.setOptions({
-  renderer: new TerminalRenderer(),
-});
 
 /**
  * Command for updating an existing extension instance

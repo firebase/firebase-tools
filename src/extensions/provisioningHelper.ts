@@ -85,7 +85,7 @@ async function checkProducts(projectId: string, usedProducts: DeferredProduct[])
         "without server-side code.\n";
       errorMessage += `   https://console.firebase.google.com/project/${projectId}/authentication/users`;
     }
-    throw new FirebaseError(marked(errorMessage), { exit: 2 });
+    throw new FirebaseError(await marked(errorMessage), { exit: 2 });
   }
 }
 

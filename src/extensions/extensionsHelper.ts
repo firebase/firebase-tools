@@ -6,12 +6,10 @@ import * as fs from "fs-extra";
 import fetch from "node-fetch";
 import * as path from "path";
 import { marked } from "marked";
+import { markedTerminal } from "marked-terminal";
 
 import { createUnzipTransform } from "./../unzip";
-const TerminalRenderer = require("marked-terminal");
-marked.setOptions({
-  renderer: new TerminalRenderer(),
-});
+marked.use(markedTerminal() as any);
 
 import { extensionsOrigin, extensionsPublisherOrigin, storageOrigin } from "../api";
 import { archiveDirectory } from "../archiveDirectory";
@@ -597,9 +595,7 @@ function validateReleaseNotes(rootDirectory: string, newVersion: string, extensi
     throw new FirebaseError(
       "No CHANGELOG.md file found. " +
         "Please create one and add an entry for this version. " +
-        marked(
-          "See https://firebase.google.com/docs/extensions/publishers/user-documentation#writing-changelog for more details.",
-        ),
+        "See https://firebase.google.com/docs/extensions/publishers/user-documentation#writing-changelog for more details.",
     );
   }
   // Notes are required for all stable versions after the initial release.
@@ -607,9 +603,7 @@ function validateReleaseNotes(rootDirectory: string, newVersion: string, extensi
     throw new FirebaseError(
       `No entry for version ${newVersion} found in CHANGELOG.md. ` +
         "Please add one so users know what has changed in this version. " +
-        marked(
-          "See https://firebase.google.com/docs/extensions/publishers/user-documentation#writing-changelog for more details.",
-        ),
+        "See https://firebase.google.com/docs/extensions/publishers/user-documentation#writing-changelog for more details.",
     );
   }
   return notes;
@@ -1004,11 +998,9 @@ export async function uploadExtensionVersionFromLocalSource(args: {
 
 export function getMissingPublisherError(publisherId: string): FirebaseError {
   return new FirebaseError(
-    marked(
-      `Couldn't find publisher ID '${clc.bold(
-        publisherId,
-      )}'. Please ensure that you have registered this ID. For step-by-step instructions on getting started as a publisher, see https://firebase.google.com/docs/extensions/publishers/get-started.`,
-    ),
+    `Couldn't find publisher ID '${clc.bold(
+      publisherId,
+    )}'. Please ensure that you have registered this ID. For step-by-step instructions on getting started as a publisher, see https://firebase.google.com/docs/extensions/publishers/get-started.`,
   );
 }
 
