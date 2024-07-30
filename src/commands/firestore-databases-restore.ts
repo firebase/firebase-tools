@@ -23,9 +23,8 @@ export const command = new Command("firestore:databases:restore")
   // TODO(b/356137854): Remove allowlist only message once feature is public GA.
   .option(
     "-k, --kms-key-name <kmsKeyName>",
-    "The resource ID of a Cloud KMS key. If set, the database created will be a " +
-      "Customer-managed Encryption Key (CMEK) database encrypted with this key. " +
-      "This feature is allowlist only in initial launch.",
+    "Resource ID of the Cloud KMS key to encrypt the restored database. This " +
+      "feature is allowlist only in initial launch.",
   )
   .before(requirePermissions, ["datastore.backups.restoreDatabase"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
