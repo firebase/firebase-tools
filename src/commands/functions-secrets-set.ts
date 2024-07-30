@@ -84,7 +84,7 @@ export const command = new Command("functions:secrets:set <KEY>")
 
     if (options.nonInteractive && !options.force) {
       throw new FirebaseError(
-        `Unable to destroy the stale version of secret ${secret.name} with the --force flag`,
+        `Unable to destroy the stale version of secret ${secret.name} without --force, please re-deploy using the --force flag.`,
       );
     }
 
