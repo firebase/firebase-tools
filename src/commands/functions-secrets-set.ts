@@ -17,7 +17,6 @@ import {
 } from "../gcp/secretManager";
 import { check } from "../ensureApiEnabled";
 import { requireAuth } from "../requireAuth";
-import { FirebaseError } from "../error";
 import * as secrets from "../functions/secrets";
 import * as backend from "../deploy/functions/backend";
 import * as args from "../deploy/functions/args";
