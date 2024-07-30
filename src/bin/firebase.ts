@@ -13,12 +13,10 @@ if (!semver.satisfies(nodeVersion, pkg.engines.node)) {
 
 import * as updateNotifierPkg from "update-notifier-cjs";
 import * as clc from "colorette";
-import * as TerminalRenderer from "marked-terminal";
+import { markedTerminal } from "marked-terminal";
 const updateNotifier = updateNotifierPkg({ pkg });
 import { marked } from "marked";
-marked.setOptions({
-  renderer: new TerminalRenderer(),
-});
+marked.use(markedTerminal() as any);
 
 import { Command } from "commander";
 import { join } from "node:path";

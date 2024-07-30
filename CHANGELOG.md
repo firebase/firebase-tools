@@ -1,2 +1,3 @@
+- Fixed an issue where `--force` was not respected during `firebase deploy --only storage`. (#7499)
+- Added support for Customer-managed encryption keys (CMEK) on Firestore databases. (#7479)
 - Improved error message thrown when missing permissions to deploy to hosting. (#7190)
-- Improved notification message when an update is available. (#7293)
