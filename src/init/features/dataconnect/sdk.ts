@@ -26,16 +26,6 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   await actuate(sdkInfo, setup.projectId);
 }
 
-// generate:
-// swiftSdk:
-// outputDir: ./../gensdk/default-connector/swift-sdk
-// package: "DefaultConnector"
-// javascriptSdk:
-// outputDir: ./../gensdk/default-connector/javascript-sdk
-// package: "@firebasegen/default-connector"
-// kotlinSdk:
-// outputDir: ./../gensdk/default-connector/kotlin-sdk
-// package: connectors.default_connector
 async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
   const serviceCfgs = readFirebaseJson(config);
   const serviceInfos = await Promise.all(
