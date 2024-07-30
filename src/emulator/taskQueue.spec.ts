@@ -101,4 +101,12 @@ describe("Queue Test", () => {
     taskQueue.dequeue();
     expect(taskQueue.isEmpty()).to.eq(true);
   });
+
+  it("should report the correct size", () => {
+    const taskQueue = new Queue<number>();
+    taskQueue.enqueue("1", 1);
+    taskQueue.remove("1");
+    taskQueue.enqueue("1", 1);
+    expect(taskQueue.size()).to.eq(1);
+  });
 });
