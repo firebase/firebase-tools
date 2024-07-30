@@ -82,22 +82,21 @@ export const command = new Command("functions:secrets:set <KEY>")
         endpointsToUpdate.map((e) => `${e.id}(${e.region})`).join("\n\t"),
     );
 
-    if (options.nonInteractive && !options.force) {
-      throw new FirebaseError(
-        `Unable to destroy the stale version of secret ${secret.name} without --force, please re-deploy using the --force flag.`,
-      );
-    }
-
     if (!options.force) {
-      const confirm = await promptOnce(
-        {
-          name: "redeploy",
-          type: "confirm",
-          default: true,
-          message: `Do you want to re-deploy the functions and destroy the stale version of secret ${secret.name}?`,
-        },
-        options,
-      );
+      let confirm = false;
+      // The promptOnce function will throw an error if non interactive mode is set,
+      // so we can safely skip the prompt and end early below in the !confirm check.
+      if (!options.nonInteractive) {
+        confirm = await promptOnce(
+          {
+            name: "redeploy",
+            type: "confirm",
+            default: true,
+            message: `Do you want to re-deploy the functions and destroy the stale version of secret ${secret.name}?`,
+          },
+          options,
+        );
+      }
       if (!confirm) {
         logBullet(
           "Please deploy your functions for the change to take effect by running:\n\t" +
