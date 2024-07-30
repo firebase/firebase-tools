@@ -32,7 +32,7 @@ export interface Datasource {
 export interface PostgreSql {
   database: string;
   cloudSql: CloudSqlInstance;
-  schemaValidation?: "STRICT" | "NONE" | "SQL_SCHEMA_VALIDATION_UNSPECIFIED";
+  schemaValidation?: "STRICT" | "COMPATIBLE" | "NONE" | "SQL_SCHEMA_VALIDATION_UNSPECIFIED";
 }
 
 export interface CloudSqlInstance {
@@ -134,16 +134,24 @@ export interface Generate {
 
 export interface JavascriptSDK {
   outputDir: string;
-  package?: string;
+  package: string;
   packageJSONDir?: string;
 }
+
 export interface SwiftSDK {
-  // Optional for Swift becasue XCode makes you import files.
-  outputDir?: string;
+  outputDir: string;
+  package: string;
 }
 export interface KotlinSDK {
   outputDir: string;
-  package?: string;
+  package: string;
+}
+
+export enum Platform {
+  ANDROID = "ANDROID",
+  WEB = "WEB",
+  IOS = "IOS",
+  UNDETERMINED = "UNDETERMINED",
 }
 
 // Helper types && converters
