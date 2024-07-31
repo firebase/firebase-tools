@@ -1,4 +1,5 @@
 - Fixed an issue where `--force` was not respected during `firebase deploy --only storage`. (#7499)
 - Added support for Customer-managed encryption keys (CMEK) on Firestore databases. (#7479)
+- Improved error message thrown when missing permissions to deploy to hosting. (#7190)
 - Improved default values for 'init dataconnect:sdk'.
-- Fix functions:secrets:set - stop erroring in non-interactive flows without force option (#7467)
+- Fixed issue where `functions:secrets:set` wrongly errorred in non-interactive flows without force option (#7467)
