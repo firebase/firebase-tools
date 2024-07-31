@@ -30,7 +30,7 @@ export class Queue<T> {
   }
 
   enqueue(id: string, item: T): void {
-    if (this.count > this.capacity) {
+    if (this.count >= this.capacity) {
       throw new Error("Queue has reached capacity");
     }
 
@@ -156,8 +156,6 @@ export class TaskQueue {
   private lastTokenUpdate;
   // The IDs of all the tasks ever queued in this session to allow for deduplication
   private queuedIds: Set<string>;
-  // The number of currently queued tasks
-  private queued;
   // The tasks that have been dispatched that the queue is waiting on
   private dispatches: (EmulatedTask | null)[];
   // The indexes of the open slots in the dispatch array
@@ -169,7 +167,6 @@ export class TaskQueue {
   ) {
     this.maxTokens = Math.max(this.config.rateLimits.maxDispatchesPerSecond, 1.1);
     this.lastTokenUpdate = Date.now();
-    this.queued = 0;
     this.queuedIds = new Set();
     this.dispatches = new Array<EmulatedTask | null>(
       this.config.rateLimits.maxConcurrentDispatches,
@@ -181,14 +178,15 @@ export class TaskQueue {
   //  - There are tasks within the queue
   //  - There is space in the dispatch
   //  - There are tokens available (used for rate limiting)
+
   dispatchTasks(): void {
-    while (!this.queue.isEmpty() && this.openDispatches.length > 0 && this.tokens > 1) {
+    while (!this.queue.isEmpty() && this.openDispatches.length > 0 && this.tokens >= 1) {
       const dispatchLocation = this.openDispatches.pop();
       if (dispatchLocation !== undefined) {
         const dispatch = this.queue.dequeue();
 
         dispatch.metadata.lastRunTime = null;
-        dispatch.metadata.currentAttempt = 0;
+        dispatch.metadata.currentAttempt = 1;
         dispatch.metadata.currentBackoff = this.config.retryConfig.minBackoffSeconds;
         dispatch.metadata.status = TaskStatus.NOT_STARTED;
         dispatch.metadata.startTime = Date.now();
@@ -197,6 +195,22 @@ export class TaskQueue {
         this.tokens--;
       }
     }
+  }
+
+  // Used for testing
+  setDispatch(dispatches: (EmulatedTask | null)[]): void {
+    this.dispatches = dispatches;
+    const open = [];
+    for (let i = 0; i < this.dispatches.length; i++) {
+      if (dispatches[i] === null) {
+        open.push(i);
+      }
+    }
+    this.openDispatches = open;
+  }
+
+  getDispatch(): (EmulatedTask | null)[] {
+    return this.dispatches;
   }
 
   // Updates the status of all tasks that are currently in the task dispatch
@@ -232,7 +246,7 @@ export class TaskQueue {
 
     if (
       emulatedTask.metadata.lastRunTime !== null &&
-      Date.now() - emulatedTask.metadata.lastRunTime < emulatedTask.metadata.currentBackoff
+      Date.now() - emulatedTask.metadata.lastRunTime < emulatedTask.metadata.currentBackoff * 1000
     ) {
       // Task is not yet ready to run
       return;
@@ -276,7 +290,7 @@ export class TaskQueue {
 
     // Computer Retry Parameters
     this.updateMetadata(metadata, retryConfig);
-    metadata.status = TaskStatus.RETRY;
+    metadata.status = TaskStatus.NOT_STARTED;
   }
 
   shouldStopRetrying(metadata: EmulatedTaskMetadata, retryOptions: RetryConfig): boolean {
@@ -347,7 +361,7 @@ export class TaskQueue {
     this.queue.enqueue(emulatedTask.task.name, emulatedTask);
   }
 
-  delete(taskId: string) {
+  delete(taskId: string): void {
     this.queue.remove(taskId);
   }
 
