@@ -5,7 +5,7 @@ import * as extensionsApi from "../extensions/extensionsApi";
 import { ensureExtensionsApiEnabled } from "../extensions/extensionsHelper";
 import { getLocalExtensionSpec, isLocalExtension } from "../extensions/localHelper";
 import { requirePermissions } from "../requirePermissions";
-import { writeSDK, fixHyperlink } from "../extensions/runtimes/common";
+import { writeSDK, fixDarkBlueText } from "../extensions/runtimes/common";
 import { ExtensionSpec, isExtensionSpec } from "../extensions/types";
 import { FirebaseError } from "../error";
 import { displayExtensionVersionInfo } from "../extensions/displayExtensionInfo";

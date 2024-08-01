@@ -31,8 +31,8 @@ export function resumeLogging() {
   (logger as any).silent = savedLoggerSilent;
 }
 
-export function fixHyperlink(txt: string): string {
-  // default hyperlinks are not readable on black.
+export function fixDarkBlueText(txt: string): string {
+  // default hyperlinks etc. are not readable on black.
   const DARK_BLUE = "\u001b[34m";
   const BRIGHT_CYAN = "\u001b[36;1m";
   return txt.replaceAll(DARK_BLUE, BRIGHT_CYAN);

@@ -11,7 +11,6 @@
       "dependencies": {
         "@google-cloud/cloud-sql-connector": "^1.3.3",
         "@google-cloud/pubsub": "^4.5.0",
-        "@types/minimatch": "^5.1.2",
         "abort-controller": "^3.0.0",
         "ajv": "^6.12.6",
         "archiver": "^7.0.0",
@@ -44,17 +43,8 @@
         "leven": "^3.1.0",
         "libsodium-wrappers": "^0.7.10",
         "lodash": "^4.17.21",
-<<<<<<< HEAD
-<<<<<<< HEAD
         "marked": "^13.0.2",
         "marked-terminal": "^7.0.0",
-=======
-        "marked": "^4.2.12",
-=======
-        "marked": "^4.0.14",
->>>>>>> 2b6053307 (go with master package and shrinkwrap)
-        "marked-terminal": "^5.1.1",
->>>>>>> 121b257e5 (still needs debugging)
         "mime": "^2.5.2",
         "minimatch": "^3.0.4",
         "morgan": "^1.10.0",
@@ -4094,10 +4084,6 @@
       "resolved": "https://registry.npmjs.org/@types/long/-/long-4.0.1.tgz",
       "integrity": "sha512-5tXH6Bx/kNGd3MgffdmP4dy2Z+G4eaXw0SE81Tq3BNadtnMR5/ySMzX4SLEzHJzSmPNn4HIdpQsBvXMUykr58w=="
     },
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 2b6053307 (go with master package and shrinkwrap)
     "node_modules/@types/markdown-it": {
       "version": "14.1.1",
       "resolved": "https://registry.npmjs.org/@types/markdown-it/-/markdown-it-14.1.1.tgz",
@@ -4108,17 +4094,6 @@
         "@types/linkify-it": "^5",
         "@types/mdurl": "^2"
       }
-<<<<<<< HEAD
-=======
-=======
-    },
->>>>>>> 2b6053307 (go with master package and shrinkwrap)
-    "node_modules/@types/marked": {
-      "version": "4.0.8",
-      "resolved": "https://registry.npmjs.org/@types/marked/-/marked-4.0.8.tgz",
-      "integrity": "sha512-HVNzMT5QlWCOdeuBsgXP8EZzKUf0+AXzN+sLmjvaB3ZlLqO+e4u0uXrdw9ub69wBKFs+c6/pA4r9sy6cCDvImw==",
-      "dev": true
->>>>>>> 121b257e5 (still needs debugging)
     },
     "node_modules/@types/marked-terminal": {
       "version": "6.1.1",
@@ -4179,9 +4154,11 @@
       "dev": true
     },
     "node_modules/@types/minimatch": {
-      "version": "5.1.2",
-      "resolved": "https://registry.npmjs.org/@types/minimatch/-/minimatch-5.1.2.tgz",
-      "integrity": "sha512-K0VQKziLUWkVKiRVrx4a40iPaxTUefQmjtkQofBkYRcoaaL/8rhwDWww9qWbrgicNOgnpIsMxyNIUM4+n6dUIA=="
+      "version": "3.0.3",
+      "resolved": "https://registry.npmjs.org/@types/minimatch/-/minimatch-3.0.3.tgz",
+      "integrity": "sha512-tHq6qdbT9U1IRSGf14CL0pUlULksvY9OZ+5eEgl1N7t+OA3tGvNpxJCzuKQlsNgCVwbAs670L1vcVQi8j9HjnA==",
+      "dev": true,
+      "optional": true
     },
     "node_modules/@types/minimist": {
       "version": "1.2.0",
@@ -5206,21 +5183,10 @@
         "node": ">=4"
       }
     },
-<<<<<<< HEAD
     "node_modules/any-promise": {
       "version": "1.3.0",
       "resolved": "https://registry.npmjs.org/any-promise/-/any-promise-1.3.0.tgz",
       "integrity": "sha512-7UvmKalWRt1wgjL1RrGxoSJW/0QZFIegpeGvZG9kjp8vrRu55XTHbwnqq2GpXm9uLbcuhxm3IqX9OB4MZR1b2A=="
-=======
-    "node_modules/ansicolors": {
-      "version": "0.3.2",
-      "resolved": "https://registry.npmjs.org/ansicolors/-/ansicolors-0.3.2.tgz",
-<<<<<<< HEAD
-      "integrity": "sha512-QXu7BPrP29VllRxH8GwB7x5iX5qWKAAMLqKQGWTeLWVlNHNOpVMJ91dsxQAIWXpjuW5wqvxu3Jd/nRjrJ+0pqg=="
->>>>>>> 121b257e5 (still needs debugging)
-=======
-      "integrity": "sha1-ZlWX3oap/+Oqm/vmyuXG6kJrSXk="
->>>>>>> 2b6053307 (go with master package and shrinkwrap)
     },
     "node_modules/anymatch": {
       "version": "3.1.2",
@@ -6760,32 +6726,6 @@
         }
       ]
     },
-<<<<<<< HEAD
-    "node_modules/catharsis": {
-      "version": "0.9.0",
-      "resolved": "https://registry.npmjs.org/catharsis/-/catharsis-0.9.0.tgz",
-      "integrity": "sha512-prMTQVpcns/tzFgFVkVp6ak6RykZyWb3gu8ckUpd6YkTlacOd3DXGJjIpD4Q6zJirizvaiAjSSHlOsA+6sNh2A==",
-      "dev": true,
-      "optional": true,
-      "dependencies": {
-        "lodash": "^4.17.15"
-      },
-      "engines": {
-        "node": ">= 10"
-=======
-    "node_modules/cardinal": {
-      "version": "2.1.1",
-      "resolved": "https://registry.npmjs.org/cardinal/-/cardinal-2.1.1.tgz",
-      "integrity": "sha1-fMEFXYItISlU0HsIXeolHMe8VQU=",
-      "dependencies": {
-        "ansicolors": "~0.3.2",
-        "redeyed": "~2.1.0"
-      },
-      "bin": {
-        "cdl": "bin/cdl.js"
->>>>>>> 121b257e5 (still needs debugging)
-      }
-    },
     "node_modules/catharsis": {
       "version": "0.9.0",
       "resolved": "https://registry.npmjs.org/catharsis/-/catharsis-0.9.0.tgz",
@@ -7104,9 +7044,9 @@
       }
     },
     "node_modules/cli-table3": {
-      "version": "0.6.2",
-      "resolved": "https://registry.npmjs.org/cli-table3/-/cli-table3-0.6.2.tgz",
-      "integrity": "sha512-QyavHCaIC80cMivimWu4aWHilIpiDpfm3hGmqAmXVL1UsnbLuBSMd21hTX6VY4ZSDSM73ESLeF8TOYId3rBTbw==",
+      "version": "0.6.5",
+      "resolved": "https://registry.npmjs.org/cli-table3/-/cli-table3-0.6.5.tgz",
+      "integrity": "sha512-+W/5efTR7y5HRD7gACw9yQjqMVvEMLBHmboM/kPWam+H+Hmyrgjh6YncVKK122YZkXrLudzTuAukUw9FnMf7IQ==",
       "dependencies": {
         "string-width": "^4.2.0"
       },
@@ -12407,10 +12347,6 @@
         "node": ">=12.0.0"
       }
     },
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 2b6053307 (go with master package and shrinkwrap)
     "node_modules/jsdoc/node_modules/escape-string-regexp": {
       "version": "2.0.0",
       "resolved": "https://registry.npmjs.org/escape-string-regexp/-/escape-string-regexp-2.0.0.tgz",
@@ -12421,7 +12357,6 @@
         "node": ">=8"
       }
     },
-<<<<<<< HEAD
     "node_modules/jsdoc/node_modules/marked": {
       "version": "4.3.0",
       "resolved": "https://registry.npmjs.org/marked/-/marked-4.3.0.tgz",
@@ -12435,8 +12370,6 @@
         "node": ">= 12"
       }
     },
-=======
->>>>>>> 2b6053307 (go with master package and shrinkwrap)
     "node_modules/jsdoc/node_modules/mkdirp": {
       "version": "1.0.4",
       "resolved": "https://registry.npmjs.org/mkdirp/-/mkdirp-1.0.4.tgz",
@@ -12463,11 +12396,6 @@
         "url": "https://github.com/sponsors/sindresorhus"
       }
     },
-<<<<<<< HEAD
-=======
->>>>>>> 121b257e5 (still needs debugging)
-=======
->>>>>>> 2b6053307 (go with master package and shrinkwrap)
     "node_modules/jsesc": {
       "version": "2.5.2",
       "resolved": "https://registry.npmjs.org/jsesc/-/jsesc-2.5.2.tgz",
@@ -13297,9 +13225,9 @@
       }
     },
     "node_modules/marked-terminal/node_modules/chalk": {
-      "version": "5.0.1",
-      "resolved": "https://registry.npmjs.org/chalk/-/chalk-5.0.1.tgz",
-      "integrity": "sha512-Fo07WOYGqMfCWHOzSXOt2CxDbC6skS/jO9ynEcmpANMoPrD+W1r1K6Vx7iNm+AQmETU1Xr2t+n8nzkV9t6xh3w==",
+      "version": "5.3.0",
+      "resolved": "https://registry.npmjs.org/chalk/-/chalk-5.3.0.tgz",
+      "integrity": "sha512-dLitG79d+GV1Nb/VYcCDFivJeK1hiukt9QjRNVOsUtTy1rR1YJsmpGGTZ3qJos+uw7WmWF4wUwBd9jxjocFC2w==",
       "engines": {
         "node": "^12.17.0 || ^14.13 || >=16.0.0"
       },
@@ -17358,17 +17286,6 @@
         "node": ">=8"
       }
     },
-<<<<<<< HEAD
-=======
-    "node_modules/redeyed": {
-      "version": "2.1.1",
-      "resolved": "https://registry.npmjs.org/redeyed/-/redeyed-2.1.1.tgz",
-      "integrity": "sha1-iYS1gV2ZyyIEacme7v/jiRPmzAs=",
-      "dependencies": {
-        "esprima": "~4.0.0"
-      }
-    },
->>>>>>> 121b257e5 (still needs debugging)
     "node_modules/reftools": {
       "version": "1.1.9",
       "resolved": "https://registry.npmjs.org/reftools/-/reftools-1.1.9.tgz",
@@ -18964,21 +18881,9 @@
       }
     },
     "node_modules/supports-hyperlinks": {
-<<<<<<< HEAD
-<<<<<<< HEAD
       "version": "3.0.0",
       "resolved": "https://registry.npmjs.org/supports-hyperlinks/-/supports-hyperlinks-3.0.0.tgz",
       "integrity": "sha512-QBDPHyPQDRTy9ku4URNGY5Lah8PAaXs6tAAwp55sL5WCsSW7GIfdf6W5ixfziW+t7wh3GVvHyHHyQ1ESsoRvaA==",
-=======
-      "version": "2.3.0",
-      "resolved": "https://registry.npmjs.org/supports-hyperlinks/-/supports-hyperlinks-2.3.0.tgz",
-      "integrity": "sha512-RpsAZlpWcDwOPQA22aCH4J0t7L8JmAvsCxfOSEwm7cQs3LshN36QaTkwd70DnBOXDWGssw2eUoc8CaRWT0XunA==",
->>>>>>> 121b257e5 (still needs debugging)
-=======
-      "version": "2.2.0",
-      "resolved": "https://registry.npmjs.org/supports-hyperlinks/-/supports-hyperlinks-2.2.0.tgz",
-      "integrity": "sha512-6sXEzV5+I5j8Bmq9/vUphGRM/RJNT9SCURJLjwfOg51heRtguGWDzcaBlgAzKhQa0EVNpPEKzQuBwZ8S8WaCeQ==",
->>>>>>> 2b6053307 (go with master package and shrinkwrap)
       "dependencies": {
         "has-flag": "^4.0.0",
         "supports-color": "^7.0.0"
@@ -24119,10 +24024,6 @@
       "resolved": "https://registry.npmjs.org/@types/long/-/long-4.0.1.tgz",
       "integrity": "sha512-5tXH6Bx/kNGd3MgffdmP4dy2Z+G4eaXw0SE81Tq3BNadtnMR5/ySMzX4SLEzHJzSmPNn4HIdpQsBvXMUykr58w=="
     },
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 2b6053307 (go with master package and shrinkwrap)
     "@types/markdown-it": {
       "version": "14.1.1",
       "resolved": "https://registry.npmjs.org/@types/markdown-it/-/markdown-it-14.1.1.tgz",
@@ -24133,17 +24034,6 @@
         "@types/linkify-it": "^5",
         "@types/mdurl": "^2"
       }
-<<<<<<< HEAD
-=======
-=======
-    },
->>>>>>> 2b6053307 (go with master package and shrinkwrap)
-    "@types/marked": {
-      "version": "4.0.8",
-      "resolved": "https://registry.npmjs.org/@types/marked/-/marked-4.0.8.tgz",
-      "integrity": "sha512-HVNzMT5QlWCOdeuBsgXP8EZzKUf0+AXzN+sLmjvaB3ZlLqO+e4u0uXrdw9ub69wBKFs+c6/pA4r9sy6cCDvImw==",
-      "dev": true
->>>>>>> 121b257e5 (still needs debugging)
     },
     "@types/marked-terminal": {
       "version": "6.1.1",
@@ -24194,9 +24084,11 @@
       "dev": true
     },
     "@types/minimatch": {
-      "version": "5.1.2",
-      "resolved": "https://registry.npmjs.org/@types/minimatch/-/minimatch-5.1.2.tgz",
-      "integrity": "sha512-K0VQKziLUWkVKiRVrx4a40iPaxTUefQmjtkQofBkYRcoaaL/8rhwDWww9qWbrgicNOgnpIsMxyNIUM4+n6dUIA=="
+      "version": "3.0.3",
+      "resolved": "https://registry.npmjs.org/@types/minimatch/-/minimatch-3.0.3.tgz",
+      "integrity": "sha512-tHq6qdbT9U1IRSGf14CL0pUlULksvY9OZ+5eEgl1N7t+OA3tGvNpxJCzuKQlsNgCVwbAs670L1vcVQi8j9HjnA==",
+      "dev": true,
+      "optional": true
     },
     "@types/minimist": {
       "version": "1.2.0",
@@ -25027,21 +24919,10 @@
         "color-convert": "^1.9.0"
       }
     },
-<<<<<<< HEAD
     "any-promise": {
       "version": "1.3.0",
       "resolved": "https://registry.npmjs.org/any-promise/-/any-promise-1.3.0.tgz",
       "integrity": "sha512-7UvmKalWRt1wgjL1RrGxoSJW/0QZFIegpeGvZG9kjp8vrRu55XTHbwnqq2GpXm9uLbcuhxm3IqX9OB4MZR1b2A=="
-=======
-    "ansicolors": {
-      "version": "0.3.2",
-      "resolved": "https://registry.npmjs.org/ansicolors/-/ansicolors-0.3.2.tgz",
-<<<<<<< HEAD
-      "integrity": "sha512-QXu7BPrP29VllRxH8GwB7x5iX5qWKAAMLqKQGWTeLWVlNHNOpVMJ91dsxQAIWXpjuW5wqvxu3Jd/nRjrJ+0pqg=="
->>>>>>> 121b257e5 (still needs debugging)
-=======
-      "integrity": "sha1-ZlWX3oap/+Oqm/vmyuXG6kJrSXk="
->>>>>>> 2b6053307 (go with master package and shrinkwrap)
     },
     "anymatch": {
       "version": "3.1.2",
@@ -26123,26 +26004,6 @@
       "integrity": "sha512-vNQWS6kI+q6sBlHbh71IIeC+sRwK2N3EDySc/updIGhIee2x5z00J4c1242/5/d6EpEMdOnk/m+6tuk4/tcsqg==",
       "dev": true
     },
-<<<<<<< HEAD
-    "catharsis": {
-      "version": "0.9.0",
-      "resolved": "https://registry.npmjs.org/catharsis/-/catharsis-0.9.0.tgz",
-      "integrity": "sha512-prMTQVpcns/tzFgFVkVp6ak6RykZyWb3gu8ckUpd6YkTlacOd3DXGJjIpD4Q6zJirizvaiAjSSHlOsA+6sNh2A==",
-      "dev": true,
-      "optional": true,
-      "requires": {
-        "lodash": "^4.17.15"
-=======
-    "cardinal": {
-      "version": "2.1.1",
-      "resolved": "https://registry.npmjs.org/cardinal/-/cardinal-2.1.1.tgz",
-      "integrity": "sha1-fMEFXYItISlU0HsIXeolHMe8VQU=",
-      "requires": {
-        "ansicolors": "~0.3.2",
-        "redeyed": "~2.1.0"
->>>>>>> 121b257e5 (still needs debugging)
-      }
-    },
     "catharsis": {
       "version": "0.9.0",
       "resolved": "https://registry.npmjs.org/catharsis/-/catharsis-0.9.0.tgz",
@@ -26366,9 +26227,9 @@
       }
     },
     "cli-table3": {
-      "version": "0.6.2",
-      "resolved": "https://registry.npmjs.org/cli-table3/-/cli-table3-0.6.2.tgz",
-      "integrity": "sha512-QyavHCaIC80cMivimWu4aWHilIpiDpfm3hGmqAmXVL1UsnbLuBSMd21hTX6VY4ZSDSM73ESLeF8TOYId3rBTbw==",
+      "version": "0.6.5",
+      "resolved": "https://registry.npmjs.org/cli-table3/-/cli-table3-0.6.5.tgz",
+      "integrity": "sha512-+W/5efTR7y5HRD7gACw9yQjqMVvEMLBHmboM/kPWam+H+Hmyrgjh6YncVKK122YZkXrLudzTuAukUw9FnMf7IQ==",
       "requires": {
         "@colors/colors": "1.5.0",
         "string-width": "^4.2.0"
@@ -30289,10 +30150,6 @@
         "esprima": "^4.0.0"
       }
     },
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 2b6053307 (go with master package and shrinkwrap)
     "js2xmlparser": {
       "version": "4.0.2",
       "resolved": "https://registry.npmjs.org/js2xmlparser/-/js2xmlparser-4.0.2.tgz",
@@ -30334,7 +30191,6 @@
           "dev": true,
           "optional": true
         },
-<<<<<<< HEAD
         "marked": {
           "version": "4.3.0",
           "resolved": "https://registry.npmjs.org/marked/-/marked-4.3.0.tgz",
@@ -30342,8 +30198,6 @@
           "dev": true,
           "optional": true
         },
-=======
->>>>>>> 2b6053307 (go with master package and shrinkwrap)
         "mkdirp": {
           "version": "1.0.4",
           "resolved": "https://registry.npmjs.org/mkdirp/-/mkdirp-1.0.4.tgz",
@@ -30360,11 +30214,6 @@
         }
       }
     },
-<<<<<<< HEAD
-=======
->>>>>>> 121b257e5 (still needs debugging)
-=======
->>>>>>> 2b6053307 (go with master package and shrinkwrap)
     "jsdoc-type-pratt-parser": {
       "version": "4.0.0",
       "resolved": "https://registry.npmjs.org/jsdoc-type-pratt-parser/-/jsdoc-type-pratt-parser-4.0.0.tgz",
@@ -31056,9 +30905,9 @@
       },
       "dependencies": {
         "chalk": {
-          "version": "5.0.1",
-          "resolved": "https://registry.npmjs.org/chalk/-/chalk-5.0.1.tgz",
-          "integrity": "sha512-Fo07WOYGqMfCWHOzSXOt2CxDbC6skS/jO9ynEcmpANMoPrD+W1r1K6Vx7iNm+AQmETU1Xr2t+n8nzkV9t6xh3w=="
+          "version": "5.3.0",
+          "resolved": "https://registry.npmjs.org/chalk/-/chalk-5.3.0.tgz",
+          "integrity": "sha512-dLitG79d+GV1Nb/VYcCDFivJeK1hiukt9QjRNVOsUtTy1rR1YJsmpGGTZ3qJos+uw7WmWF4wUwBd9jxjocFC2w=="
         }
       }
     },
@@ -33973,17 +33822,6 @@
         "strip-indent": "^3.0.0"
       }
     },
-<<<<<<< HEAD
-=======
-    "redeyed": {
-      "version": "2.1.1",
-      "resolved": "https://registry.npmjs.org/redeyed/-/redeyed-2.1.1.tgz",
-      "integrity": "sha1-iYS1gV2ZyyIEacme7v/jiRPmzAs=",
-      "requires": {
-        "esprima": "~4.0.0"
-      }
-    },
->>>>>>> 121b257e5 (still needs debugging)
     "reftools": {
       "version": "1.1.9",
       "resolved": "https://registry.npmjs.org/reftools/-/reftools-1.1.9.tgz",
@@ -35216,21 +35054,9 @@
       }
     },
     "supports-hyperlinks": {
-<<<<<<< HEAD
-<<<<<<< HEAD
       "version": "3.0.0",
       "resolved": "https://registry.npmjs.org/supports-hyperlinks/-/supports-hyperlinks-3.0.0.tgz",
       "integrity": "sha512-QBDPHyPQDRTy9ku4URNGY5Lah8PAaXs6tAAwp55sL5WCsSW7GIfdf6W5ixfziW+t7wh3GVvHyHHyQ1ESsoRvaA==",
-=======
-      "version": "2.3.0",
-      "resolved": "https://registry.npmjs.org/supports-hyperlinks/-/supports-hyperlinks-2.3.0.tgz",
-      "integrity": "sha512-RpsAZlpWcDwOPQA22aCH4J0t7L8JmAvsCxfOSEwm7cQs3LshN36QaTkwd70DnBOXDWGssw2eUoc8CaRWT0XunA==",
->>>>>>> 121b257e5 (still needs debugging)
-=======
-      "version": "2.2.0",
-      "resolved": "https://registry.npmjs.org/supports-hyperlinks/-/supports-hyperlinks-2.2.0.tgz",
-      "integrity": "sha512-6sXEzV5+I5j8Bmq9/vUphGRM/RJNT9SCURJLjwfOg51heRtguGWDzcaBlgAzKhQa0EVNpPEKzQuBwZ8S8WaCeQ==",
->>>>>>> 2b6053307 (go with master package and shrinkwrap)
       "requires": {
         "has-flag": "^4.0.0",
         "supports-color": "^7.0.0"

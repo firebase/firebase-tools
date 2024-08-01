@@ -11,7 +11,7 @@ import {
   toTitleCase,
   longestCommonPrefix,
   lowercaseFirstLetter,
-  fixHyperlink,
+  fixDarkBlueText,
   getInstallPathPrefix,
   getCodebaseDir,
   isTypescriptCodebase,
@@ -19,12 +19,10 @@ import {
 import { ALLOWED_EVENT_ARC_REGIONS } from "../askUserForEventsConfig";
 import { SpecParamType } from "../extensionsHelper";
 import { FirebaseError } from "../../error";
+import { markedTerminal } from "marked-terminal";
 import { marked } from "marked";
-import * as TerminalRenderer from "marked-terminal";
 
-marked.setOptions({
-  renderer: new TerminalRenderer(),
-});
+marked.use(markedTerminal() as any);
 
 export const SDK_GENERATION_VERSION = "1.0.0";
 export const FIREBASE_FUNCTIONS_VERSION = "^5.0.1";
@@ -466,24 +464,19 @@ export async function writeSDK(
 
   let sampleImport;
   if (await isTypescriptCodebase(codebaseDir)) {
-    // Temporary workaround until we have typescript support in 'marked'.
-    sampleImport = makeTypescriptImport(lowerClassName, packageName);
+    sampleImport = "```typescript\n" +
+      `import { ${lowerClassName} } from "${packageName};"` +
+      "\n```";
   } else {
     sampleImport = "```js\n" +
       `const ${lowerClassName} = require("${packageName}").${lowerClassName};` +
       "\n```";
   }
-  const instructions =
-    installCmd ? `To install the SDK to your project run:\n    ${installCmd}\n\nThen you ` : "\n You " +
+  const prefix = installCmd ? `\nTo install the SDK to your project run:\n    ${installCmd}\n\nThen you ` : "\nYou ";
+  const instructions = prefix +
       `can add this to your codebase to begin using the SDK:\n\n` +
-      marked(sampleImport) +
-      `See also: ${fixHyperlink(marked("[Extension SDKs documentation](https://firebase.google.com/docs/extensions/generated-sdks)"))}`
+      fixDarkBlueText(await marked(sampleImport)) +
+      `See also: ${fixDarkBlueText(await marked("[Extension SDKs documentation](https://firebase.google.com/docs/extensions/generated-sdks)"))}`
 
   return instructions;
-}
-
-function makeTypescriptImport(name: string, pkg: string): string {
-  return clc.magenta("    import ") + clc.yellowBright("{ ") +
-    clc.cyan(name) + clc.yellowBright(" } ") +
-    clc.magenta("from ") + clc.yellow(`"${pkg}"`) + clc.white(";");
 }
