@@ -25,8 +25,8 @@ import { getEndpointFilters, targetCodebases } from "../functions/functionsDeplo
 // isPrimaryCall is true exactly once per deploy. So if you have just 'firebase deploy'
 // it will be true when called from extensions/prepare but false when called from
 // functions/prepare. If you have 'firebase deploy --only functions' then it will
-// be true when called from functions/prepare (since extensions/prepare would 
-// not be called). It is necessary otherwise you can get the same questions 
+// be true when called from functions/prepare (since extensions/prepare would
+// not be called). It is necessary otherwise you can get the same questions
 // and notifications twice (e.g. delete these extensions?)
 async function prepareHelper(
   context: Context,
@@ -208,7 +208,7 @@ export async function prepareDynamicExtensions(
 function hasNonDeployingCodebases(options: Options) {
   const functionFilters = getEndpointFilters(options);
   if (functionFilters?.length) {
-    // If we are filtering for just one extension or function or codebase, 
+    // If we are filtering for just one extension or function or codebase,
     // Then we have non-deploying code.
     return true;
   }

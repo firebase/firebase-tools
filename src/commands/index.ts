@@ -88,8 +88,6 @@ export function load(client: any): any {
   client.ext.list = loadCommand("ext-list");
   client.ext.uninstall = loadCommand("ext-uninstall");
   client.ext.update = loadCommand("ext-update");
-  client.ext.sdk = {};
-  client.ext.sdk.install = loadCommand("ext-sdk-install");
   client.ext.dev = {};
   client.ext.dev.init = loadCommand("ext-dev-init");
   client.ext.dev.list = loadCommand("ext-dev-list");
