@@ -16,7 +16,7 @@ export interface Build {
   endpoints: Record<string, Endpoint>;
   params: params.Param[];
   runtime?: Runtime;
-  extensions?: Record<string, DynamicExtension>
+  extensions?: Record<string, DynamicExtension>;
 }
 
 /**
@@ -276,7 +276,7 @@ export type DynamicExtension = {
   ref?: string;
   localPath?: string;
   events: string[];
-}
+};
 
 /**
  * Resolves user-defined parameters inside a Build, and generates a Backend.

@@ -116,7 +116,7 @@ export function buildFromV1Alpha1(
     for (const id of Object.keys(manifest.extensions)) {
       const me: WireExtension = manifest.extensions[id];
       assertBuildExtension(me, id);
-      const be: build.DynamicExtension = parseExtensionForBuild(id, me, project, region, runtime);
+      const be: build.DynamicExtension = parseExtensionForBuild(me);
       bd.extensions[id] = be;
     }
   }
@@ -446,7 +446,7 @@ function assertBuildExtension(ex: WireExtension, id: string): void {
     params: "object",
     ref: "string?",
     localPath: "string?",
-    events: "array"
+    events: "array",
   });
 
   let refOrPath = 0;
@@ -456,23 +456,20 @@ function assertBuildExtension(ex: WireExtension, id: string): void {
   if (ex.localPath) {
     refOrPath++;
   }
-  if (refOrPath == 0) {
+  if (refOrPath === 0) {
     throw new FirebaseError("Expected either extension reference or local path in extension " + id);
   }
   if (refOrPath > 1) {
-    throw new FirebaseError("Multiple definitions for extension " + id + ". Do not specify both reference and local path.");
+    throw new FirebaseError(
+      "Multiple definitions for extension " +
+        id +
+        ". Do not specify both reference and local path.",
+    );
   }
 }
 
-function parseExtensionForBuild(
-  id: string,
-  ex: WireExtension,
-  project: string,
-  defaultRegion: string,
-  runtime: Runtime
-): build.DynamicExtension {
-
-  let parsed: build.DynamicExtension = {
+function parseExtensionForBuild(ex: WireExtension): build.DynamicExtension {
+  const parsed: build.DynamicExtension = {
     params: {},
     events: [],
   };

@@ -26,7 +26,6 @@ export const command = new Command("ext")
       "ext:configure",
       "ext:update",
       "ext:uninstall",
-      "ext:sdk:install",
     ];
 
     for (const commandName of commandNames) {

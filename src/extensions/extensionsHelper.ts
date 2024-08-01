@@ -40,8 +40,6 @@ import { envOverride } from "../utils";
 import { getLocalChangelog } from "./change-log";
 import { getProjectNumber } from "../getProjectNumber";
 import { Constants } from "../emulator/constants";
-import { DynamicExtension } from "./runtimes/common";
-import * as secretManager from "../gcp/secretManager";
 import { defineSecret } from "firebase-functions/params";
 
 /**
@@ -116,7 +114,7 @@ export function getDBInstanceFromURL(databaseUrl = ""): string {
  */
 export async function getFirebaseProjectParams(
   projectId: string | undefined,
-  emulatorMode: boolean = false,
+  emulatorMode = false,
 ): Promise<Record<string, string>> {
   if (!projectId) {
     return {};
@@ -174,11 +172,22 @@ export function substituteParams<T>(original: T, params: Record<string, string>)
 }
 
 type SecretParam = ReturnType<typeof defineSecret>;
-export async function substituteSecretParams(projectNumber: string, instanceId: string, ext: DynamicExtension, params: Record<string, string | SecretParam>): Promise<Record<string, string>> {
+
+/**
+ * Substitutes any secret parameters with the correct format
+ * @param projectNumber The project number we are installing into
+ * @param params the full list of params to check for substitution.
+ * @returns The substituted list of params
+ */
+export async function substituteSecretParams(
+  projectNumber: string,
+  params: Record<string, string | SecretParam>,
+): Promise<Record<string, string>> {
   const newParams: Record<string, string> = {};
   for await (const [key, value] of Object.entries(params)) {
-    if (typeof value != "string") {
-      newParams[key] = `projects/${projectNumber}/secrets/${(value as SecretParam).name}/versions/latest`;
+    if (typeof value !== "string") {
+      newParams[key] =
+        `projects/${projectNumber}/secrets/${(value as SecretParam).name}/versions/latest`;
     } else {
       newParams[key] = value as string;
     }
@@ -188,7 +197,6 @@ export async function substituteSecretParams(projectNumber: string, instanceId: 
 
 /**
  * Sets params equal to defaults given in extension.yaml if not already set in .env file.
- *
  * @param paramVars JSON object of params to values parsed from .env file
  * @param paramSpec information on params parsed from extension.yaml
  * @return JSON object of params
@@ -438,10 +446,12 @@ export async function promptForExtensionRoot(defaultRoot: string): Promise<strin
 /**
  * Prompts for the extension version's release stage.
  *
- * @param versionByStage map from stage to the next version to upload
- * @param autoReview whether the stable version will be automatically sent for review on upload
- * @param allowStable whether to allow stable versions
- * @param hasVersions whether there have been any pre-release versions uploaded already
+ * @param args.versionByStage map from stage to the next version to upload
+ * @param args.autoReview whether the stable version will be automatically sent for review on upload
+ * @param args.allowStable whether to allow stable versions
+ * @param args.hasVersions whether there have been any pre-release versions uploaded already
+ * @param args.nonInteractive whether the prompt is interactive or not
+ * @param args.force whether to assume the default instead of asking the user
  */
 async function promptForReleaseStage(args: {
   versionByStage: Map<string, string>;
@@ -541,7 +551,7 @@ export async function getNextVersionByStage(
   let extensionVersions: ExtensionVersion[] = [];
   try {
     extensionVersions = await listExtensionVersions(extensionRef, `id="${newVersion}"`, true);
-  } catch (err: any) {
+  } catch (err) {
     // Silently fail if no extension versions exist.
   }
   // Maps stage to default next version (e.g. "rc" => "1.0.0-rc.0").
@@ -607,7 +617,7 @@ function validateReleaseNotes(rootDirectory: string, newVersion: string, extensi
   try {
     const changes = getLocalChangelog(rootDirectory);
     notes = changes[newVersion];
-  } catch (err: any) {
+  } catch (err) {
     throw new FirebaseError(
       "No CHANGELOG.md file found. " +
         "Please create one and add an entry for this version. " +
@@ -683,7 +693,6 @@ export function unpackExtensionState(extension: Extension) {
 
 /**
  * Displays metadata about the extension being uploaded.
- *
  * @param extensionRef the ref of the extension
  */
 function displayExtensionHeader(
@@ -715,7 +724,6 @@ function displayExtensionHeader(
 
 /**
  * Fetches the extension source from GitHub.
- *
  * @param repoUri the public GitHub repo URI that contains the extension source
  * @param sourceRef the commit hash, branch, or tag to build from the repo
  * @param extensionRoot the root directory that contains this extension
@@ -737,7 +745,7 @@ async function fetchExtensionSource(
     if (response.ok) {
       await response.body.pipe(createUnzipTransform(tempDirectory.name)).promise();
     }
-  } catch (err: any) {
+  } catch (err) {
     throw new FirebaseError(archiveErrorMessage);
   }
   const archiveName = fs.readdirSync(tempDirectory.name)[0];
@@ -748,7 +756,7 @@ async function fetchExtensionSource(
   // Pre-validation to show a more useful error message in the context of a temp directory.
   try {
     readFile(path.resolve(rootDirectory, EXTENSIONS_SPEC_FILE));
-  } catch (err: any) {
+  } catch (err) {
     throw new FirebaseError(
       `Failed to find ${clc.bold(EXTENSIONS_SPEC_FILE)} in directory ${clc.bold(
         extensionRoot,
@@ -760,15 +768,14 @@ async function fetchExtensionSource(
 
 /**
  * Uploads an extension version from a GitHub repo.
- *
- * @param publisherId the ID of the Publisher this Extension will be published under
- * @param extensionId the ID of the Extension to be published
- * @param repoUri the URI of the repo where this Extension's source exists
- * @param sourceRef the commit hash, branch, or tag name in the repo to publish from
- * @param extensionRoot the root directory that contains this Extension's source
- * @param stage the release stage to publish
- * @param nonInteractive whether to display prompts
- * @param force whether to force confirmations
+ * @param args.publisherId the ID of the Publisher this Extension will be published under
+ * @param args.extensionId the ID of the Extension to be published
+ * @param args.repoUri the URI of the repo where this Extension's source exists
+ * @param args.sourceRef the commit hash, branch, or tag name in the repo to publish from
+ * @param args.extensionRoot the root directory that contains this Extension's source
+ * @param args.stage the release stage to publish
+ * @param args.nonInteractive whether to display prompts
+ * @param args.force whether to force confirmations
  */
 export async function uploadExtensionVersionFromGitHubSource(args: {
   publisherId: string;
@@ -786,7 +793,7 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
   try {
     extension = await getExtension(extensionRef);
     latestVersion = await getExtensionVersion(`${extensionRef}@latest`);
-  } catch (err: any) {
+  } catch (err) {
     // Silently fail and continue if extension is new or has no latest version set.
   }
   displayExtensionHeader(extensionRef, extension, latestVersion?.extensionRoot);
@@ -911,13 +918,12 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
 
 /**
  * Uploads an extension version from local source.
- *
- * @param publisherId the ID of the Publisher this Extension will be published under
- * @param extensionId the ID of the Extension to be published
- * @param rootDirectory the root directory that contains this Extension's source
- * @param stage the release stage to publish
- * @param nonInteractive whether to display prompts
- * @param force whether to force confirmations
+ * @param args.publisherId the ID of the Publisher this Extension will be published under
+ * @param args.extensionId the ID of the Extension to be published
+ * @param args.rootDirectory the root directory that contains this Extension's source
+ * @param args.stage the release stage to publish
+ * @param args.nonInteractive whether to display prompts
+ * @param args.force whether to force confirmations
  */
 export async function uploadExtensionVersionFromLocalSource(args: {
   publisherId: string;
@@ -933,7 +939,7 @@ export async function uploadExtensionVersionFromLocalSource(args: {
   try {
     extension = await getExtension(extensionRef);
     latestVersion = await getExtensionVersion(`${extensionRef}@latest`);
-  } catch (err: any) {
+  } catch (err) {
     // Silently fail and continue if extension is new or has no latest version set.
   }
   displayExtensionHeader(extensionRef, extension, latestVersion?.extensionRoot);
@@ -1066,7 +1072,7 @@ async function deleteUploadedSource(objectPath: string) {
     try {
       await deleteObject(objectPath);
       logger.debug("Cleaned up uploaded source archive");
-    } catch (err: any) {
+    } catch (err) {
       logger.debug("Unable to clean up uploaded source archive");
     }
   }
@@ -1088,11 +1094,11 @@ export function getPublisherProjectFromName(publisherName: string): number {
 
 /**
  * Displays the release notes and confirmation message for the extension to be uploaded.
- *
- * @param extensionRef the ref of the extension
- * @param newVersion the new version of the extension
- * @param releaseNotes the release notes for the version being uploaded (if any)
- * @param sourceUri the source URI from which the extension will be uploaded
+ * @param args.extensionRef the ref of the extension
+ * @param args.newVersion the new version of the extension
+ * @param args.autoReview the autoreview
+ * @param args.releaseNotes the release notes for the version being uploaded (if any)
+ * @param args.sourceUri the source URI from which the extension will be uploaded
  */
 export function displayReleaseNotes(args: {
   extensionRef: string;
@@ -1137,8 +1143,8 @@ export async function promptForOfficialExtension(message: string): Promise<strin
 
 /**
  * Confirm if the user wants to install another instance of an extension when they already have one.
- * @param extensionName The name of the extension being installed.
  * @param projectName The name of the project in use.
+ * @param extensionName The name of the extension being installed.
  */
 export async function promptForRepeatInstance(
   projectName: string,
@@ -1172,7 +1178,7 @@ export async function instanceIdExists(projectId: string, instanceId: string): P
       if (err.status === 404) {
         return false;
       }
-      const msg = `Unexpected error when checking if instance ID exists: ${err}`;
+      const msg = `Unexpected error when checking if instance ID exists: ${err.message}`;
       throw new FirebaseError(msg, {
         original: err,
       });
@@ -1219,7 +1225,7 @@ export function getSourceOrigin(sourceOrVersion: string): SourceOrigin {
     let ref;
     try {
       ref = refs.parse(sourceOrVersion);
-    } catch (err: any) {
+    } catch (err) {
       // Silently fail.
     }
     if (ref && ref.publisherId && ref.extensionId && !ref.version) {

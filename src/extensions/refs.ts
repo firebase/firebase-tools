@@ -22,10 +22,12 @@ export interface Ref {
 export function parse(refOrName: string): Ref {
   const ret = parseRef(refOrName) || parseName(refOrName);
   if (!ret || !ret.publisherId || !ret.extensionId) {
-    throw new FirebaseError(`Unable to parse ${refOrName} as an extension ref.\n` +
-      "Expected format is either publisherId/extensionId@version or " +
-      "publishers/publisherId/extensions/extensionId/versions/version. If you " +
-      "are referring to a local extension directory, please ensure the directory exists.");
+    throw new FirebaseError(
+      `Unable to parse ${refOrName} as an extension ref.\n` +
+        "Expected format is either publisherId/extensionId@version or " +
+        "publishers/publisherId/extensions/extensionId/versions/version. If you " +
+        "are referring to a local extension directory, please ensure the directory exists.",
+    );
   }
   if (
     ret.version &&
@@ -34,7 +36,7 @@ export function parse(refOrName: string): Ref {
     !["latest", "latest-approved"].includes(ret.version)
   ) {
     throw new FirebaseError(
-      `Extension reference ${ret} contains an invalid version ${ret.version}.`,
+      `Extension reference ${JSON.stringify(ret, null, 2)} contains an invalid version ${ret.version}.`,
     );
   }
   return ret;
@@ -47,25 +49,23 @@ function parseRef(ref: string): Ref | undefined {
     return {
       publisherId: parts[1],
       extensionId: parts[2],
-      version: parts[4]
-    }
+      version: parts[4],
+    };
   }
 }
 
 function parseName(name: string): Ref | undefined {
   const parts = name.split("/");
-  if (parts[0] != "publishers" ||
-    parts[2] != "extensions") {
+  if (parts[0] !== "publishers" || parts[2] !== "extensions") {
     return;
   }
-  if (parts.length == 4) {
+  if (parts.length === 4) {
     return {
       publisherId: parts[1],
-      extensionId: parts[3]
-    }
+      extensionId: parts[3],
+    };
   }
-  if (parts.length == 6 &&
-    parts[4] == "versions") {
+  if (parts.length === 6 && parts[4] === "versions") {
     return {
       publisherId: parts[1],
       extensionId: parts[3],

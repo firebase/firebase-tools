@@ -15,7 +15,10 @@ import { displayWarningsForDeploy, outOfBandChangesWarning } from "../../extensi
 import { detectEtagChanges } from "../../extensions/etags";
 import { checkSpecForV2Functions, ensureNecessaryV2ApisAndRoles } from "./v2FunctionHelper";
 import { acceptLatestAppDeveloperTOS } from "../../extensions/tos";
-import { extractAllDynamicExtensions, extractExtensionsFromBuilds } from "../../extensions/runtimes/common";
+import {
+  extractAllDynamicExtensions,
+  extractExtensionsFromBuilds,
+} from "../../extensions/runtimes/common";
 import { Build } from "../functions/build";
 import { normalizeAndValidate } from "../../functions/projectConfig";
 import { getEndpointFilters, targetCodebases } from "../functions/functionsDeployHelper";
@@ -25,8 +28,8 @@ import { getEndpointFilters, targetCodebases } from "../functions/functionsDeplo
 // isPrimaryCall is true exactly once per deploy. So if you have just 'firebase deploy'
 // it will be true when called from extensions/prepare but false when called from
 // functions/prepare. If you have 'firebase deploy --only functions' then it will
-// be true when called from functions/prepare (since extensions/prepare would 
-// not be called). It is necessary otherwise you can get the same questions 
+// be true when called from functions/prepare (since extensions/prepare would
+// not be called). It is necessary otherwise you can get the same questions
 // and notifications twice (e.g. delete these extensions?)
 async function prepareHelper(
   context: Context,
@@ -44,7 +47,9 @@ async function prepareHelper(
   const etagsChanged = detectEtagChanges(options.rc, projectId, context.have);
   if (etagsChanged.length) {
     // We only care about changed eTags for things we are going to deploy
-    const wantChangedIds = wantExtensions.map((e) => e.instanceId).filter((id) => etagsChanged.includes(id));
+    const wantChangedIds = wantExtensions
+      .map((e) => e.instanceId)
+      .filter((id) => etagsChanged.includes(id));
     if (wantChangedIds.length) {
       outOfBandChangesWarning(wantChangedIds);
       if (
@@ -77,7 +82,7 @@ async function prepareHelper(
   payload.instancesToUpdate = context.want.filter((i) => context.have?.some(isUpdate(i)));
   payload.instancesToDelete = context.have.filter(
     (i) =>
-      !context.want?.some(matchesInstanceId(i)) && !noDeleteExtensions?.some(matchesInstanceId(i))
+      !context.want?.some(matchesInstanceId(i)) && !noDeleteExtensions?.some(matchesInstanceId(i)),
   );
 
   if (await displayWarningsForDeploy(payload.instancesToCreate)) {
@@ -133,7 +138,7 @@ async function prepareHelper(
   await acceptLatestAppDeveloperTOS(
     options,
     projectId,
-    context.want.map((i) => i.instanceId)
+    context.want.map((i) => i.instanceId),
   );
 }
 
@@ -142,11 +147,11 @@ export async function prepareDynamicExtensions(
   context: Context,
   options: Options,
   payload: Payload,
-  builds: Record<string, Build>
+  builds: Record<string, Build>,
 ) {
   const filters = getEndpointFilters(options);
   const extensions = extractExtensionsFromBuilds(builds, filters);
-  if (Object.keys(extensions).length == 0) {
+  if (Object.keys(extensions).length === 0) {
     return;
   }
   const projectId = needProjectId(options);
@@ -192,7 +197,7 @@ export async function prepareDynamicExtensions(
         projectNumber,
         aliases,
         projectDir,
-        extensions: await extractAllDynamicExtensions(projectId, options)
+        extensions: await extractAllDynamicExtensions(projectId, options),
       });
       noDeleteExtensions = noDeleteExtensions.concat(dynamicAll);
     }
@@ -208,7 +213,7 @@ export async function prepareDynamicExtensions(
 function hasNonDeployingCodebases(options: Options) {
   const functionFilters = getEndpointFilters(options);
   if (functionFilters?.length) {
-    // If we are filtering for just one extension or function or codebase, 
+    // If we are filtering for just one extension or function or codebase,
     // Then we have non-deploying code.
     return true;
   }

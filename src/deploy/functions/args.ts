@@ -3,7 +3,7 @@ import * as gcfV2 from "../../gcp/cloudfunctionsv2";
 import * as projectConfig from "../../functions/projectConfig";
 import * as deployHelper from "./functionsDeployHelper";
 import { Runtime } from "./runtimes/supported";
-import {Context as ExtContext, Payload as ExtPayload} from "../extensions/args";
+import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args";
 
 // These types should probably be in a root deploy.ts, but we can only boil the ocean one bit at a time.
 interface CodebasePayload {

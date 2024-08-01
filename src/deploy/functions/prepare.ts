@@ -48,7 +48,6 @@ import { assertExhaustive } from "../../functional";
 import { prepareDynamicExtensions } from "../extensions/prepare";
 import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args";
 
-
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 
 /**
@@ -72,9 +71,6 @@ export async function prepare(
   for (const codebase of codebases) {
     logLabeledBullet("functions", `preparing codebase ${clc.bold(codebase)} for deployment`);
   }
-
-  // See if we potentially have any extensions
-  //const extensions = await extractExtensions(projectId, options);
 
   // ===Phase 0. Check that minimum APIs required for function deploys are enabled.
   const checkAPIsEnabled = await Promise.all([

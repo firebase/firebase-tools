@@ -4,7 +4,7 @@ import * as yaml from "yaml";
 
 import { fileExistsSync } from "../fsutils";
 import { FirebaseError } from "../error";
-import { ExtensionSpec, isExtensionSpec } from "./types";
+import { ExtensionSpec } from "./types";
 import { logger } from "../logger";
 
 export const EXTENSIONS_SPEC_FILE = "extension.yaml";
@@ -45,8 +45,7 @@ export function findExtensionYaml(directory: string): string {
 
 /**
  * Retrieves a file from the directory.
- * @param directory the directory containing the file
- * @param file the name of the file
+ * @param pathToFile the path to the file to read
  */
 export function readFile(pathToFile: string): string {
   try {

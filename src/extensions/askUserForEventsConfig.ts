@@ -99,8 +99,13 @@ export async function askShouldCollectEventsConfig(): Promise<boolean> {
   });
 }
 
-export const ALLOWED_EVENT_ARC_REGIONS = ["us-central1", "us-west1", "europe-west4", "asia-northeast1"];
-export type ExtensionsEventArcRegions = typeof ALLOWED_EVENT_ARC_REGIONS[number];
+export const ALLOWED_EVENT_ARC_REGIONS = [
+  "us-central1",
+  "us-west1",
+  "europe-west4",
+  "asia-northeast1",
+];
+export type ExtensionsEventArcRegions = (typeof ALLOWED_EVENT_ARC_REGIONS)[number];
 export const EXTENSIONS_DEFAULT_EVENT_ARC_REGION: ExtensionsEventArcRegions = "us-central1";
 
 export async function askForEventArcLocation(preselectedLocation?: string): Promise<string> {

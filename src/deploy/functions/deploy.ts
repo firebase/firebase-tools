@@ -117,7 +117,7 @@ async function uploadCodebase(
 export async function deploy(
   context: args.Context,
   options: Options,
-  payload: args.Payload
+  payload: args.Payload,
 ): Promise<void> {
   // Deploy extensions
   if (payload.extensions && context.extensions) {
