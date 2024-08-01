@@ -1,21 +1,20 @@
 import * as yaml from "yaml";
 import * as fs from "fs";
 import * as clc from "colorette";
+import * as path from "path";
 
 import { confirm, promptOnce } from "../../../prompt";
-import { readFirebaseJson } from "../../../dataconnect/fileUtils";
+import { readFirebaseJson, getPlatformFromFolder } from "../../../dataconnect/fileUtils";
 import { Config } from "../../../config";
 import { Setup } from "../..";
 import { load } from "../../../dataconnect/load";
 import { logger } from "../../../logger";
-import { ConnectorInfo, ConnectorYaml, JavascriptSDK, KotlinSDK } from "../../../dataconnect/types";
+import { ConnectorInfo, ConnectorYaml, JavascriptSDK, KotlinSDK, Platform } from "../../../dataconnect/types";
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { FirebaseError } from "../../../error";
 import { camelCase, snakeCase } from "lodash";
+import { logLabeledSuccess, logLabeledBullet } from '../../../utils';
 
-const IOS = "ios";
-const WEB = "web";
-const ANDROID = "android";
 export type SDKInfo = {
   connectorYamlContents: string;
   connectorInfo: ConnectorInfo;
@@ -53,20 +52,40 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
     type: "list",
     choices: connectorChoices,
   });
-
-  let platforms: string[] = [];
-  while (!platforms.length) {
-    platforms = await promptOnce({
-      message: "Which platforms do you want to set up a generated SDK for?",
-      type: "checkbox",
-      choices: [
-        { name: "iOS (Swift)", value: IOS },
-        { name: "Web (JavaScript)", value: WEB },
-        { name: "Androd (Kotlin)", value: ANDROID },
-      ],
+  
+  // First, lets check if we are in a app directory
+  let targetPlatform: Platform = Platform.UNDETERMINED;
+  let appDir: string;
+  const cwdPlatformGuess = await getPlatformFromFolder(process.cwd())
+  // If we are, we'll use that directory
+  if (cwdPlatformGuess !== Platform.UNDETERMINED) {
+    logLabeledSuccess("dataconnect", `Detected ${cwdPlatformGuess} app in current directory ${process.cwd()}`);
+    targetPlatform = cwdPlatformGuess;
+    appDir = process.cwd();
+  } else {
+    // If we aren't, ask the user where their app is, and try to autodetect from there
+    logLabeledBullet("dataconnect",`Couldn't automatically detect your app directory.`);
+    appDir = await promptOnce({
+      message: "Where is your app directory?"
     });
-    if (!platforms.length) {
-      logger.info("You must pick at least one platform.");
+    // TODO: Validate?
+    // TODO: test both absolute and relative paths.
+    const platformGuess = await getPlatformFromFolder(appDir);
+    if (platformGuess !== Platform.UNDETERMINED) {
+      logLabeledSuccess("dataconnect",`Detected ${platformGuess} app in directory ${appDir}`);
+      targetPlatform = platformGuess 
+    } else {
+      // If we still can't autodetect, just ask the user
+      logLabeledBullet("dataconnect","Couldn't automatically detect your app's platform.");
+      targetPlatform = await promptOnce({
+        message: "Which platform do you want to set up a generated SDK for?",
+        type: "list",
+        choices: [
+          { name: "iOS (Swift)", value: Platform.IOS },
+          { name: "Web (JavaScript)", value: Platform.WEB },
+          { name: "Androd (Kotlin)", value: Platform.ANDROID },
+        ],
+      });
     }
   }
 
@@ -75,26 +94,17 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
     newConnectorYaml.generate = {};
   }
 
-  if (platforms.includes(IOS)) {
-    const outputDir = await promptOnce({
-      message: `What directory do you want to write your Swift SDK code to? (If not absolute, path will be relative to '${connectorInfo.directory}')`,
-      type: "input",
-      default:
-        newConnectorYaml.generate.swiftSdk?.outputDir ||
-        `./../gensdk/${newConnectorYaml.connectorId}/swift-sdk`,
-    });
+  if (targetPlatform === Platform.IOS) {
+    const outputDir = newConnectorYaml.generate.swiftSdk?.outputDir ||
+        path.join(appDir, `generated/${newConnectorYaml.connectorId}`);
     const pkg = camelCase(newConnectorYaml.connectorId);
     const swiftSdk = { outputDir, package: pkg };
     newConnectorYaml.generate.swiftSdk = swiftSdk;
   }
-  if (platforms.includes(WEB)) {
-    const outputDir = await promptOnce({
-      message: `What directory do you want to write your JavaScript SDK code to? (If not absolute, path will be relative to '${connectorInfo.directory}')`,
-      type: "input",
-      default:
-        newConnectorYaml.generate.javascriptSdk?.outputDir ||
-        `./../gensdk/${newConnectorYaml.connectorId}/javascript-sdk`,
-    });
+  
+  if (targetPlatform === Platform.WEB) {
+    const outputDir = newConnectorYaml.generate.javascriptSdk?.outputDir ||
+        path.join(appDir, `generated/${newConnectorYaml.connectorId}`)
     const pkg =
       newConnectorYaml.generate.javascriptSdk?.package ??
       `@firebasegen/${connectorInfo.connectorYaml.connectorId}`;
@@ -114,14 +124,11 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
     }
     newConnectorYaml.generate.javascriptSdk = javascriptSdk;
   }
-  if (platforms.includes(ANDROID)) {
-    const outputDir = await promptOnce({
-      message: `What directory do you want to write your Kotlin SDK code to? (If not absolute, path will be relative to '${connectorInfo.directory}')`,
-      type: "input",
-      default:
+
+  if (targetPlatform === Platform.ANDROID) {
+    const outputDir = 
         newConnectorYaml.generate.kotlinSdk?.outputDir ||
-        `./../gensdk/${newConnectorYaml.connectorId}/kotlin-sdk`,
-    });
+        path.join(appDir, `generated/${newConnectorYaml.connectorId}`)
     const pkg =
       newConnectorYaml.generate.kotlinSdk?.package ??
       `connectors.${snakeCase(connectorInfo.connectorYaml.connectorId)}`;
