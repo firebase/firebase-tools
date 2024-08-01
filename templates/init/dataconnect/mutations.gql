@@ -42,7 +42,7 @@
 #   )
 # }
 
-# # Allow user to delete their review for a movie
+# # Logged in user can delete their review for a movie
 # mutation DeleteReview(
 #   $movieId: UUID!
 # ) @auth(level: USER) {

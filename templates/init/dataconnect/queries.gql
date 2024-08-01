@@ -16,7 +16,7 @@
 #   users { id, username }
 # }
 
-# # Lists all reviews and movie titles associated with the review of the current user
+# # Logged in user can lists all their reviews and movie titles associated with the review 
 # # Since the query requires the uid of the current authenticated user, the auth level is set to USER
 # query ListUserReviews @auth(level: USER) {
 #   user(key: {id_expr: "auth.uid"}) {
