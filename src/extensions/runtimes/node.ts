@@ -96,7 +96,7 @@ function makeEventName(name: string, prefix: string): string {
   if (match) {
     // Most reliable: event is the thing after the version.
     eventName = match[1];
-  } else if (prefix.length < name.length){
+  } else if (prefix.length < name.length) {
     // No version, go with removing the longest common prefix instead.
     eventName = name.substring(prefix.length);
   } else {
@@ -111,7 +111,7 @@ function makeEventName(name: string, prefix: string): string {
   eventName = eventName.replace(/\w\S*/g, toTitleCase);
   eventName = eventName.replace(/ /g, "");
   eventName = eventName.charAt(0).toLowerCase() + eventName.substring(1);
-  
+
   return eventName;
 }
 
@@ -132,11 +132,11 @@ export async function writeSDK(
     // In order to deploy a local extension, it needs to be copied to the server.
     // So we need to copy the localPath directory to the dirPath/source directory.
     if (await confirm({
-        message: `Copy local extension source to deployment directory? (required for successful deploy)`,
-        nonInteractive: options.nonInteractive,
-        force: options.force,
-        default: true,
-      })) {
+      message: `Copy local extension source to deployment directory? (required for successful deploy)`,
+      nonInteractive: options.nonInteractive,
+      force: options.force,
+      default: true,
+    })) {
       const newLocalPath = path.join(dirPath, "src");
       await copyDirectory(localPath, newLocalPath, options);
       localPath = newLocalPath.replace(options.projectRoot, ".");
@@ -237,7 +237,7 @@ export async function writeSDK(
     for (const param of spec.params) {
       let line: string;
       if (param.type == ParamType.SELECT || param.type == ParamType.MULTISELECT ||
-          param.type == SpecParamType.SELECT || param.type == SpecParamType.MULTISELECT) {
+        param.type == SpecParamType.SELECT || param.type == SpecParamType.MULTISELECT) {
         line = `export type ${makeTypeName(param.param)} =`;
         param.options?.forEach((opt, i) => {
           if (i == 0) {
@@ -311,7 +311,7 @@ export async function writeSDK(
         // not sure how helpful that would be.
         sdkLines.push(`  ${param.param}${opt}: string;`);
         break;
-      
+
       default:
         // This is technically possible since param.type is not a required field.
         // Assume string, and add a comment
@@ -451,13 +451,13 @@ export async function writeSDK(
 
   const codebaseDir = getCodebaseDir(options);
   const shortCodebaseDir = codebaseDir.replace(process.cwd(), ".");
-  let installCmd = "";  
+  let installCmd = "";
   if (await confirm({
-        message: `Do you want to install the SDK with npm now?`,
-        nonInteractive: options.nonInteractive,
-        force: options.force,
-        default: true,
-      })) {
+    message: `Do you want to install the SDK with npm now?`,
+    nonInteractive: options.nonInteractive,
+    force: options.force,
+    default: true,
+  })) {
     logLabeledBullet("extensions", `running 'npm --prefix ${shortCodebaseDir} install --save ${shortDirPath}'`);
     execSync(`npm --prefix ${codebaseDir} install --save ${dirPath}`);
   } else {
@@ -470,20 +470,20 @@ export async function writeSDK(
     sampleImport = makeTypescriptImport(lowerClassName, packageName);
   } else {
     sampleImport = "```js\n" +
-    `const ${lowerClassName} = require("${packageName}").${lowerClassName};` +
-    "\n```";
+      `const ${lowerClassName} = require("${packageName}").${lowerClassName};` +
+      "\n```";
   }
   const instructions =
-  installCmd ? `To install the SDK to your project run:\n    ${installCmd}\n\nThen you ` : "\n You " +
-  `can add this to your codebase to begin using the SDK:\n\n` +
+    installCmd ? `To install the SDK to your project run:\n    ${installCmd}\n\nThen you ` : "\n You " +
+      `can add this to your codebase to begin using the SDK:\n\n` +
       marked(sampleImport) +
-     `See also: ${fixHyperlink(marked("[Extension SDKs documentation](https://firebase.google.com/docs/extensions/generated-sdks)"))}`
+      `See also: ${fixHyperlink(marked("[Extension SDKs documentation](https://firebase.google.com/docs/extensions/generated-sdks)"))}`
 
   return instructions;
 }
 
 function makeTypescriptImport(name: string, pkg: string): string {
-  return clc.magenta("    import ") + clc.yellowBright("{") +
-  clc.cyan(name) + clc.yellowBright("} ") +
-  clc.magenta("from ") + clc.yellow(`"${pkg}"`) + clc.white(";");
+  return clc.magenta("    import ") + clc.yellowBright("{ ") +
+    clc.cyan(name) + clc.yellowBright(" } ") +
+    clc.magenta("from ") + clc.yellow(`"${pkg}"`) + clc.white(";");
 }

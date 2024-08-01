@@ -100,7 +100,6 @@ export async function detectFromPort(
 
   if (res.status !== 200) {
     const text = await res.text();
-    //console.log("DEBUGGGG: wire is:\n" + text);
     logger.debug(`Got response code ${res.status}; body ${text}`);
     throw new FirebaseError(
       "Functions codebase could not be analyzed successfully. " +
@@ -113,7 +112,6 @@ export async function detectFromPort(
   let parsed: any;
   try {
     parsed = yaml.parse(text);
-    console.log("DEBUGGG: wire parse is: " + JSON.stringify(parsed, null, 2));
   } catch (err: any) {
     logger.debug("Failed to parse functions.yaml", err);
     throw new FirebaseError(`Failed to load function definition from source: ${text}`);

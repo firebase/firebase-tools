@@ -95,8 +95,6 @@ export async function prepare(
 
   context.codebaseDeployEvents = {};
 
-  //console.log("DEBUGGG: functions loadCodebases");
-
   // ===Phase 1. Load codebases from source.
   const wantBuilds = await loadCodebases(
     context.config,
@@ -105,8 +103,6 @@ export async function prepare(
     runtimeConfig,
     context.filters,
   );
-  //console.log("DEBUGGG: wantBuilds: \n");
-  //console.dir(wantBuilds);
 
   // == Phase 1.5 Prepare extensions found in codebases if any
   if (Object.values(wantBuilds).some((b) => b.extensions)) {
@@ -444,9 +440,6 @@ export async function loadCodebases(
   runtimeConfig: Record<string, unknown>,
   filters?: EndpointFilter[],
 ): Promise<Record<string, build.Build>> {
-  //console.log("DEBUGGG: loadCodebases options.only: " + options.only);
-  //console.dir(filters);
-  //console.dir(runtimeConfig);
   const codebases = targetCodebases(config, filters);
   const projectId = needProjectId(options);
 

@@ -12,11 +12,11 @@ import {
 } from "../../functions/projectConfig";
 import { loadCodebases } from "../../deploy/functions/prepare";
 import { Build, DynamicExtension } from "../../deploy/functions/build";
-import {getFirebaseConfig} from "../../functionsConfig";
-import { EndpointFilter as Filter } from "../../deploy/functions/functionsDeployHelper";
-import {ExtensionSpec} from "../types";
+import { getFirebaseConfig } from "../../functionsConfig";
+import { EndpointFilter as Filter, targetCodebases } from "../../deploy/functions/functionsDeployHelper";
+import { ExtensionSpec } from "../types";
 
-export {DynamicExtension} from "../../deploy/functions/build";
+export { DynamicExtension } from "../../deploy/functions/build";
 import * as functionRuntimes from "../../deploy/functions/runtimes";
 import * as nodeRuntime from "./node";
 import { logger } from "../../logger";
@@ -48,25 +48,34 @@ export async function extractAllDynamicExtensions(
   // to ask to delete extensions from codebase B in that case, so we 
   // need to exclude those from the deletions.
   const firebaseConfig = await getFirebaseConfig(options);
-  const runtimeConfig: Record<string, unknown> = {firebase: firebaseConfig};
+  const runtimeConfig: Record<string, unknown> = { firebase: firebaseConfig };
   const functionsConfig = normalizeAndValidate(options.config.src.functions);
-  //console.log("DEBUGGG: extensions loadCodeBases");
 
+  // Try to load them separately so if one fails they don't all fail.
+  // (Otherwise you could end up both installing and asking if you want to 
+  // delete the same extension).
   let functionsBuilds: Record<string, Build> = {};
-  try {
-    // Get the full list of extensions in any codebase, so we don't ask to 
-    // delete them when we are doing a partial deploy.
-    //silenceLogging();  // DEBUGGG - silence back on after debugging
-    functionsBuilds = await loadCodebases(functionsConfig, options, firebaseConfig, runtimeConfig);
-  } catch (err) {
-    // This means we couldn't load the codebase(s). So we may be asking you if you
-    // want to delete extensions that are defined in those codebases.
-    logLabeledWarning("extensions", "Unable to determine if additional extensions are defined in other code bases.");
-    functionsBuilds = {};
+  let loadingErr = false;
+  const codebases = targetCodebases(functionsConfig);
+
+  silenceLogging();  // This is best effort only and would be confusing to see so suppress it.
+  for (const codebase of codebases) {
+    try {
+      const filters = [{ codebase: `${codebase}` }];
+      const builds = await loadCodebases(functionsConfig, options, firebaseConfig, runtimeConfig, filters);
+      functionsBuilds = { ...functionsBuilds, ...builds };
+    } catch (err) {
+      loadingErr = true;
+    }
+  }
+  resumeLogging();
+  if (loadingErr) {
+    // This means we couldn't load at least one of the codebase(s). 
+    // So we may be asking you if you want to delete extensions that are 
+    // defined in those codebases.
+    logLabeledWarning("extensions", "Unable to determine if additional extensions are defined in other code bases. Other codebases may have syntax or runtime errors.");
   }
 
-  resumeLogging();
-  
   return extractExtensionsFromBuilds(functionsBuilds);
 }
 
@@ -86,7 +95,7 @@ export function extractExtensionsFromBuilds(builds: Record<string, Build>, filte
 }
 
 function extensionMatchesAnyFilter(codebase: string, extensionId: string, filters?: Filter[]): boolean {
-  if (!filters) { 
+  if (!filters) {
     return true;
   }
   return filters.some((f) => extensionMatchesFilter(codebase, extensionId, f));
@@ -185,11 +194,11 @@ export async function copyDirectory(src: string, dest: string, options: any) {
           // We already have permission. Don't ask again.
           await copyDirectory(srcPath, destPath, { force: true });
         } else if (entry.isFile())
-        try {
-          await fs.promises.copyFile(srcPath, destPath);
-        } catch (err) {
-          throw new FirebaseError(`Failed to copy ${destPath.replace(process.cwd(), ".")}:\n    ${err}`);
-        }
+          try {
+            await fs.promises.copyFile(srcPath, destPath);
+          } catch (err) {
+            throw new FirebaseError(`Failed to copy ${destPath.replace(process.cwd(), ".")}:\n    ${err}`);
+          }
       }
     } else {
       // Don't overwrite
@@ -199,7 +208,7 @@ export async function copyDirectory(src: string, dest: string, options: any) {
     await fs.promises
       .mkdir(dest, { recursive: true })
       .then(async () => {
-         await copyDirectory(src, dest, {force: true});
+        await copyDirectory(src, dest, { force: true });
       })
   }
 }
@@ -215,7 +224,7 @@ export async function writeSDK(
   // Figure out which runtime we need
   const config = normalizeAndValidate(options.config.src.functions);
   const codebaseConfig = configForCodebase(
-    config, 
+    config,
     (options.codebase as string) || DEFAULT_CODEBASE
   );
   const sourceDirName = codebaseConfig.source;
@@ -230,7 +239,7 @@ export async function writeSDK(
   try {
     delegate = await functionRuntimes.getRuntimeDelegate(delegateContext);
   }
-  catch(err) {
+  catch (err) {
     throw new FirebaseError(`Could not detect target language for SDK at ${sourceDir}`);
   }
 

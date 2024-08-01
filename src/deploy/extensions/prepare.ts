@@ -154,14 +154,14 @@ export async function prepareDynamicExtensions(
   const aliases = getAliases(options, projectId);
   const projectDir = options.config.projectDir;
 
-  const isPrimaryCall = !options.only?.split(",").includes("extensions");
+  // This is only a primary call if we are not including extensions
+  const isPrimaryCall = !!options.only && !options.only.split(",").includes("extensions");
 
   if (isPrimaryCall) {
     await ensureExtensionsApiEnabled(options);
   }
   await requirePermissions(options, ["firebaseextensions.instances.list"]);
 
-  //console.log(`DEBUGGG: FIREBASE JSON WANT:\n ${JSON.stringify(firebaseJsonWant, null, 2)}`);
   const dynamicWant = await planner.wantDynamic({
     projectId,
     projectNumber,
@@ -239,7 +239,6 @@ export async function prepare(context: Context, options: Options, payload: Paylo
     projectDir,
     extensions: options.config.get("extensions"),
   });
-  //console.log(`DEBUGGG: FIREBASE JSON WANT:\n ${JSON.stringify(firebaseJsonWant, null, 2)}`);
   const dynamicWant = await planner.wantDynamic({
     projectId,
     projectNumber,
@@ -247,7 +246,6 @@ export async function prepare(context: Context, options: Options, payload: Paylo
     projectDir,
     extensions: await extractAllDynamicExtensions(projectId, options),
   });
-  //console.log(`DEBUGGG: DYNAMIC WANT:\n ${JSON.stringify(dynamicWant, null, 2)}`);
 
   return prepareHelper(context, options, payload, firebaseJsonWant, dynamicWant, true);
 }

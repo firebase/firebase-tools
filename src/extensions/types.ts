@@ -164,7 +164,7 @@ export const isExtensionSpec = (spec: any): spec is ExtensionSpec => {
     validSysParams = false;
   }
   return typeof spec === 'object' &&
-  Boolean(spec.name && spec.version && validResources && validParams && validSysParams)
+    Boolean(spec.name && spec.version && validResources && validParams && validSysParams)
 }
 
 export interface LifecycleEvent {
@@ -295,7 +295,7 @@ export interface Param {
 
 export const isParam = (param: any): param is Param => {
   return typeof param === 'object' &&
-  Boolean(param.param && param.label)
+    Boolean(param.param && param.label)
 }
 
 export enum ParamType {

@@ -483,7 +483,6 @@ function parseExtensionForBuild(
   }
   copyIfPresent(parsed, ex, "params", "events");
 
-  //console.log("DEBUGGG parseExtensionForBuild: \n" + JSON.stringify(parsed, null, 2));
   return parsed;
 }
 

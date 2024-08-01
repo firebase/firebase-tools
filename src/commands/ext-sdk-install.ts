@@ -6,7 +6,7 @@ import { ensureExtensionsApiEnabled } from "../extensions/extensionsHelper";
 import { getLocalExtensionSpec, isLocalExtension } from "../extensions/localHelper";
 import { requirePermissions } from "../requirePermissions";
 import { writeSDK, fixHyperlink } from "../extensions/runtimes/common";
-import {ExtensionSpec, isExtensionSpec} from "../extensions/types";
+import { ExtensionSpec, isExtensionSpec } from "../extensions/types";
 import { FirebaseError } from "../error";
 import { displayExtensionVersionInfo } from "../extensions/displayExtensionInfo";
 import * as refs from "../extensions/refs";
@@ -35,7 +35,7 @@ export const command = new Command("ext:sdk:install <extensionName>")
         throw new FirebaseError("Error: extension.yaml does not contain a valid extension specification.");
       }
       localPath = extensionName;
-      await displayExtensionVersionInfo({spec});
+      await displayExtensionVersionInfo({ spec });
     } else {
       await requirePermissions(options, ["firebaseextensions.sources.get"]);
       await ensureExtensionsApiEnabled(options);
@@ -80,20 +80,19 @@ export const command = new Command("ext:sdk:install <extensionName>")
         logger.info(
           `You are about to install an SDK for extension version ${clc.bold(
             version.spec.version,
-          )} which is older than the latest ${
-            extension.latestApprovedVersion ? "accepted version" : "version"
+          )} which is older than the latest ${extension.latestApprovedVersion ? "accepted version" : "version"
           } ${clc.bold(latest!)}.`,
         );
       }
     }
 
     // Give people a chance to look at the extension information and see
-      // if they want to continue
-      if (!(await confirm({
-        nonInteractive: options.nonInteractive,
-        force: options.force,
-        default: true,
-      }))) {
+    // if they want to continue
+    if (!(await confirm({
+      nonInteractive: options.nonInteractive,
+      force: options.force,
+      default: true,
+    }))) {
       return;
     }
 
