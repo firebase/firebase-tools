@@ -5,11 +5,11 @@ authMode: "PUBLIC"
 # generate:
 #   javascriptSdk:
 #     outputDir: <Path where you want the generated SDK to be written to, relative to this file>
-#     package: "@firebasegen/my-connector"
+#     package: "@firebasegen/default"
 #     packageJSONDir: < Optional. Path to your Javascript app's package.json>
 #   swiftSdk:
 #     outputDir: <Path where you want the generated SDK to be written to, relative to this file>
-#     package: "firebasegen/my-connector"
+#     package: "firebasegen/default"
 #   kotlinSdk:
 #     outputDir: <Path where you want the generated SDK to be written to, relative to this file>
-#     package: "firebasegen/my-connector"
+#     package: com.google.firebase.dataconnect.connectors.default
