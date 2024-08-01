@@ -2,7 +2,9 @@
 
 # # Users
 # # Suppose a user can leave reviews for movies
-# # user-reviews is a one to many relationship, movie-reviews is a one to many relationship, movie:user is a many to many relationship
+# # user  -> reviews is a one to many relationship,
+# # movie -> reviews is a one to many relationship
+# # movie <-> user is a many to many relationship
 # type User
 #   @table {
 #   id: String! @col(name: "user_auth")
