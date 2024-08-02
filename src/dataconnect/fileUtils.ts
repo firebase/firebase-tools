@@ -132,3 +132,8 @@ export async function getPlatformFromFolder(dirPath: string) {
 
   return Platform.UNDETERMINED;
 }
+
+export async function directoryHasPackageJson(dirPath: string) {
+  const fileNames = await fs.readdir(dirPath);
+  return fileNames.some((f) => f.toLowerCase() === "package.json");
+}
