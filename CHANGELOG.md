@@ -1,5 +1,1 @@
-- Fixed an issue where `--force` was not respected during `firebase deploy --only storage`. (#7499)
-- Added support for Customer-managed encryption keys (CMEK) on Firestore databases. (#7479)
-- Improved error message thrown when missing permissions to deploy to hosting. (#7190)
-- Improved default values for 'init dataconnect:sdk'.
-- Fixed issue where `functions:secrets:set` wrongly errorred in non-interactive flows without force option (#7467)
+- Fixes bug where `esbuild` execution was throwing an error saying "Command line too long" on Windows (https://github.com/firebase/firebase-tools/issues/7250 and https://github.com/firebase/firebase-tools/issues/6193).

@@ -43,7 +43,7 @@ export interface RequiredInfo {
 }
 
 const defaultConnector = {
-  id: "default-connector",
+  id: "default",
   files: [
     {
       path: "queries.gql",
