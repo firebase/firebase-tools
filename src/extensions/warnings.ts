@@ -1,9 +1,4 @@
 import * as clc from "colorette";
-import * as TerminalRenderer from "marked-terminal";
-import { marked } from "marked";
-marked.setOptions({
-  renderer: new TerminalRenderer(),
-});
 
 import { logPrefix } from "./extensionsHelper";
 import { humanReadable } from "../deploy/extensions/deploymentSummary";
@@ -40,12 +35,9 @@ export async function displayWarningsForDeploy(instancesToCreate: InstanceSpec[]
     const humanReadableList = unpublishedExtensions.map(toListEntry).join("\n");
     utils.logLabeledBullet(
       logPrefix,
-      marked(
-        `The following extension versions have not been published to the Firebase Extensions Hub:\n${humanReadableList}\n.` +
-          "Unpublished extensions have not been reviewed by " +
-          "Firebase. Please make sure you trust the extension publisher before installing this extension.",
-        { gfm: false },
-      ),
+      `The following extension versions have not been published to the Firebase Extensions Hub:\n${humanReadableList}\n.` +
+        "Unpublished extensions have not been reviewed by " +
+        "Firebase. Please make sure you trust the extension publisher before installing this extension.",
     );
   }
   return unpublishedExtensions.length > 0;

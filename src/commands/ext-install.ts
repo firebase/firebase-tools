@@ -1,7 +1,5 @@
 import * as clc from "colorette";
-import { marked } from "marked";
 import * as semver from "semver";
-import * as TerminalRenderer from "marked-terminal";
 
 import { displayExtensionVersionInfo } from "../extensions/displayExtensionInfo";
 import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
@@ -32,10 +30,6 @@ import { confirm } from "../prompt";
 import { Options } from "../options";
 import * as manifest from "../extensions/manifest";
 import { displayDeveloperTOSWarning } from "../extensions/tos";
-
-marked.setOptions({
-  renderer: new TerminalRenderer(),
-});
 
 /**
  * Command for installing an extension
