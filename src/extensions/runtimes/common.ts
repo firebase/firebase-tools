@@ -23,7 +23,6 @@ function resumeLogging() {
 }
 
 export async function extractAllDynamicExtensions(
-  projectId: string,
   options: Options,
 ): Promise<Record<string, DynamicExtension>> {
   // This looks for extensions in ALL functions codebases.
@@ -73,6 +72,12 @@ export async function extractAllDynamicExtensions(
   return extractExtensionsFromBuilds(functionsBuilds);
 }
 
+/**
+ * Extracts extensions from build records
+ * @param builds The builds to examine
+ * @param filters The filters to use
+ * @returns a record of extensions by extensionId
+ */
 export function extractExtensionsFromBuilds(builds: Record<string, Build>, filters?: Filter[]) {
   const extRecords: Record<string, DynamicExtension> = {};
   Object.entries(builds).forEach(([codebase, build]) => {

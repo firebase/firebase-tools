@@ -197,7 +197,7 @@ export async function prepareDynamicExtensions(
         projectNumber,
         aliases,
         projectDir,
-        extensions: await extractAllDynamicExtensions(projectId, options),
+        extensions: await extractAllDynamicExtensions(options),
       });
       noDeleteExtensions = noDeleteExtensions.concat(dynamicAll);
     }
@@ -249,7 +249,7 @@ export async function prepare(context: Context, options: Options, payload: Paylo
     projectNumber,
     aliases,
     projectDir,
-    extensions: await extractAllDynamicExtensions(projectId, options),
+    extensions: await extractAllDynamicExtensions(options),
   });
 
   return prepareHelper(context, options, payload, firebaseJsonWant, dynamicWant, true);
