@@ -3,7 +3,7 @@ import * as fs from "fs";
 import * as clc from "colorette";
 import * as path from "path";
 
-import { confirm, promptOnce } from "../../../prompt";
+import { confirm, promptForDirectory, promptOnce } from "../../../prompt";
 import {
   readFirebaseJson,
   getPlatformFromFolder,
@@ -12,7 +12,6 @@ import {
 import { Config } from "../../../config";
 import { Setup } from "../..";
 import { load } from "../../../dataconnect/load";
-import { logger } from "../../../logger";
 import {
   ConnectorInfo,
   ConnectorYaml,
@@ -23,7 +22,7 @@ import {
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { FirebaseError } from "../../../error";
 import { camelCase, snakeCase } from "lodash";
-import { logLabeledSuccess, logLabeledBullet } from "../../../utils";
+import { logSuccess, logBullet } from "../../../utils";
 
 export type SDKInfo = {
   connectorYamlContents: string;
@@ -69,27 +68,23 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
   const cwdPlatformGuess = await getPlatformFromFolder(process.cwd());
   if (cwdPlatformGuess !== Platform.UNDETERMINED) {
     // If we are, we'll use that directory
-    logLabeledSuccess(
-      "dataconnect",
-      `Detected ${cwdPlatformGuess} app in current directory ${process.cwd()}`,
-    );
+    logSuccess(`Detected ${cwdPlatformGuess} app in current directory ${process.cwd()}`);
     targetPlatform = cwdPlatformGuess;
     appDir = process.cwd();
   } else {
     // If we aren't, ask the user where their app is, and try to autodetect from there
-    logLabeledBullet("dataconnect", `Couldn't automatically detect your app directory.`);
-    appDir = config.path(
-      await promptOnce({
-        message: "Where is your app directory?",
-      }),
-    );
+    logBullet(`Couldn't automatically detect your app directory.`);
+    appDir = await promptForDirectory({
+      config,
+      message: "Where is your app directory?",
+    });
     const platformGuess = await getPlatformFromFolder(appDir);
     if (platformGuess !== Platform.UNDETERMINED) {
-      logLabeledSuccess("dataconnect", `Detected ${platformGuess} app in directory ${appDir}`);
+      logSuccess(`Detected ${platformGuess} app in directory ${appDir}`);
       targetPlatform = platformGuess;
     } else {
       // If we still can't autodetect, just ask the user
-      logLabeledBullet("dataconnect", "Couldn't automatically detect your app's platform.");
+      logBullet("Couldn't automatically detect your app's platform.");
       targetPlatform = await promptOnce({
         message: "Which platform do you want to set up a generated SDK for?",
         type: "list",
@@ -172,18 +167,26 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
   );
   // TODO: Prompt user about adding generated paths to .gitignore
   const connectorYamlContents = yaml.stringify(newConnectorYaml);
+  connectorInfo.connectorYaml = newConnectorYaml;
   return { connectorYamlContents, connectorInfo, shouldGenerate };
 }
 
 export async function actuate(sdkInfo: SDKInfo, projectId?: string) {
   const connectorYamlPath = `${sdkInfo.connectorInfo.directory}/connector.yaml`;
   fs.writeFileSync(connectorYamlPath, sdkInfo.connectorYamlContents, "utf8");
-  logger.info(`Wrote new config to ${connectorYamlPath}`);
+  logBullet(`Wrote new config to ${connectorYamlPath}`);
   if (projectId && sdkInfo.shouldGenerate) {
     await DataConnectEmulator.generate({
       configDir: sdkInfo.connectorInfo.directory,
       connectorId: sdkInfo.connectorInfo.connectorYaml.connectorId,
     });
-    logger.info(`Generated SDK code for ${sdkInfo.connectorInfo.connectorYaml.connectorId}`);
+    logBullet(`Generated SDK code for ${sdkInfo.connectorInfo.connectorYaml.connectorId}`);
+  }
+  if (sdkInfo.connectorInfo.connectorYaml.generate?.swiftSdk) {
+    logBullet(
+      clc.bold(
+        "Please follow the instructions here to add your generated sdk to your XCode project:\n\thttps://firebase.google.com/docs/data-connect/gp/ios-sdk#set-client",
+      ),
+    );
   }
 }
