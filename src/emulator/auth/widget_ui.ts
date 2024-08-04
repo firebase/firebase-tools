@@ -293,30 +293,18 @@ function runAutogen() {
   var emailInput = document.getElementById('email-input');
   var displayInput = document.getElementById('display-name-input');
   var screenInput = document.getElementById('screen-name-input');
+  var profileInput = document.getElementById('profile-photo-input');
+  var userDetails = window.__generateUserDetails();
 
-  var nameOptions = [
-    'raccoon',
-    'olive',
-    'orange',
-    'chicken',
-    'mountain',
-    'peach',
-    'panda',
-    'grass',
-    'algae',
-    'otter'
-  ];
-
-  var randomNumber = Math.floor(Math.random() * 1000);
-  var givenName = nameOptions[Math.floor(Math.random() * nameOptions.length)];
-  var familyName = nameOptions[Math.floor(Math.random() * nameOptions.length)];
-  emailInput.value = givenName + '.' + familyName + '.' + randomNumber + '@example.com';
-  displayInput.value = capitalize(givenName) + ' ' + capitalize(familyName);
-  screenInput.value = familyName + '_' + givenName;
+  emailInput.value = userDetails.email;
+  displayInput.value = userDetails.name;
+  screenInput.value = userDetails.username;
+  profileInput.value = userDetails.avatar;
 
   emailInput.dispatchEvent(new Event('input'));
   displayInput.dispatchEvent(new Event('input'));
   screenInput.dispatchEvent(new Event('input'));
+  profileInput.dispatchEvent(new Event('input'));
 }
 
 function emailErrorMessage(value) {
@@ -619,5 +607,21 @@ export const WIDGET_UI = `
   </div>
 </div>
 <script src="https://unpkg.com/material-components-web@10/dist/material-components-web.min.js"></script>
+<script type="module">
+  import { faker } from 'https://cdn.skypack.dev/@faker-js/faker';
+
+  window.__generateUserDetails = () => {
+    const firstName = faker.name.firstName();
+    const lastName = faker.name.lastName();
+    const name = firstName + ' ' + lastName;
+    const email = faker.internet.exampleEmail(firstName, lastName);
+    const username = faker.internet.userName(firstName, lastName);
+    const avatar = faker.image.cats(480, 480, true);
+
+    return {
+      name, email, username, avatar
+    };
+  }
+</script>
 <script>${SCRIPT}</script>
 `;
