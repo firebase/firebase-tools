@@ -18,20 +18,31 @@ export class AppHostingEmulator implements EmulatorInstance {
     // if (ports.length > 1) {
     //   this.reservedPorts = ports.slice(1);
     // }
+
+    console.log(`starting apphosting emulatorr!!`);
   }
   connect(): Promise<void> {
-    throw new Error("Method not implemented.");
+    console.log(`connecting apphosting emulatorr!!`);
+    // throw new Error("Method not implemented.");
+    return Promise.resolve();
   }
 
   stop(): Promise<void> {
-    throw new Error("Method not implemented.");
+    // throw new Error("Method not implemented.");
+    console.log("stopping apphosting emulator");
+    return Promise.resolve();
   }
 
   getInfo(): EmulatorInfo {
-    throw new Error("Method not implemented.");
+    // throw new Error("Method not implemented.");
+    return {
+      name: Emulators.APPHOSTING,
+      host: "127.0.0.1",
+      port: 5001,
+    };
   }
 
   getName(): Emulators {
-    throw new Error("Method not implemented.");
+    return Emulators.APPHOSTING;
   }
 }
