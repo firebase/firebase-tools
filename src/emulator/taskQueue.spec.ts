@@ -1,5 +1,6 @@
 import * as _ from "lodash";
 import * as sinon from "sinon";
+import * as nodeFetch from "node-fetch";
 import { expect } from "chai";
 import { EmulatedTask, EmulatedTaskMetadata, Queue, TaskQueue, TaskStatus } from "./taskQueue";
 import { RateLimits, RetryConfig, Task, TaskQueueConfig } from "./tasksEmulator";
@@ -273,8 +274,8 @@ describe("Task Queue", () => {
   describe("Run Task", () => {
     it("should call the task url", () => {
       const taskQueue = new TaskQueue(TEST_TASK_QUEUE_NAME, TEST_TASK_QUEUE_CONFIG);
-      const response = new Response(null, { status: 200 });
-      const fetchStub = sinon.stub(global, "fetch").resolves(response);
+      const response = new nodeFetch.Response(undefined, { status: 200 });
+      const fetchStub = sinon.stub(nodeFetch, "default").resolves(response);
       stubs.push(fetchStub);
       taskQueue.setDispatch([TEST_TASK]);
       const res = taskQueue.runTask(0).then(() => {
@@ -292,12 +293,12 @@ describe("Task Queue", () => {
 
     it("Should wait until the backoff time has elapsed", () => {
       const taskQueue = new TaskQueue(TEST_TASK_QUEUE_NAME, TEST_TASK_QUEUE_CONFIG);
-      const response = new Response(null, { status: 200 });
+      const response = new nodeFetch.Response(undefined, { status: 200 });
 
       TEST_TASK.metadata.lastRunTime = NOW - 1000;
       TEST_TASK.metadata.currentBackoff = 3;
 
-      const fetchStub = sinon.stub(global, "fetch").resolves(response);
+      const fetchStub = sinon.stub(nodeFetch, "default").resolves(response);
       stubs.push(fetchStub);
       taskQueue.setDispatch([TEST_TASK]);
 
@@ -309,11 +310,11 @@ describe("Task Queue", () => {
 
     it("Should run if the backoff time has elapsed", () => {
       const taskQueue = new TaskQueue(TEST_TASK_QUEUE_NAME, TEST_TASK_QUEUE_CONFIG);
-      const response = new Response(null, { status: 200 });
+      const response = new nodeFetch.Response(undefined, { status: 200 });
       TEST_TASK.metadata.lastRunTime = NOW - 3 * 1000;
       TEST_TASK.metadata.currentBackoff = 2;
 
-      const fetchStub = sinon.stub(global, "fetch").resolves(response);
+      const fetchStub = sinon.stub(nodeFetch, "default").resolves(response);
       stubs.push(fetchStub);
       taskQueue.setDispatch([TEST_TASK]);
       const res = taskQueue.runTask(0).then(() => {
@@ -331,9 +332,9 @@ describe("Task Queue", () => {
 
     it("should properly update metadata on success", () => {
       const taskQueue = new TaskQueue(TEST_TASK_QUEUE_NAME, TEST_TASK_QUEUE_CONFIG);
-      const response = new Response(null, { status: 200 });
+      const response = new nodeFetch.Response(undefined, { status: 200 });
 
-      const fetchStub = sinon.stub(global, "fetch").resolves(response);
+      const fetchStub = sinon.stub(nodeFetch, "default").resolves(response);
       stubs.push(fetchStub);
       taskQueue.setDispatch([TEST_TASK]);
       const res = taskQueue.runTask(0).then(() => {
@@ -344,9 +345,9 @@ describe("Task Queue", () => {
 
     it("should properly update metadata on failure", () => {
       const taskQueue = new TaskQueue(TEST_TASK_QUEUE_NAME, TEST_TASK_QUEUE_CONFIG);
-      const response = new Response(null, { status: 500 });
+      const response = new nodeFetch.Response(undefined, { status: 500 });
 
-      const fetchStub = sinon.stub(global, "fetch").resolves(response);
+      const fetchStub = sinon.stub(nodeFetch, "default").resolves(response);
       stubs.push(fetchStub);
       taskQueue.setDispatch([TEST_TASK]);
       const res = taskQueue.runTask(0).then(() => {
@@ -401,9 +402,9 @@ describe("Task Queue", () => {
       task2.name = "task2";
       taskQueue.enqueue(task1);
       taskQueue.enqueue(task2);
-      taskQueue.setTokens(0);
+      taskQueue.setTokens(1);
       taskQueue.dispatchTasks();
-      expect(taskQueue.getDispatch().map((et) => et?.task)).to.be.eq([task1]);
+      expect(taskQueue.getDispatch().map((et) => et?.task)).to.deep.eq([task1]);
     });
 
     it("should fill up empty dispatch slots", () => {
@@ -414,7 +415,7 @@ describe("Task Queue", () => {
       taskQueue.setDispatch([TEST_TASK, null, TEST_TASK]);
       taskQueue.setTokens(1);
       taskQueue.dispatchTasks();
-      expect(taskQueue.getDispatch().map((et) => et?.task)).to.be.eq([
+      expect(taskQueue.getDispatch().map((et) => et?.task)).to.deep.eq([
         TEST_TASK.task,
         task1,
         TEST_TASK.task,
