@@ -17,7 +17,7 @@ export const command = new Command("firestore:databases:restore")
   .option("-b, --backup <backup>", "Backup from which to restore")
   .option(
     "-e, --encryption-type <encryptionType>",
-    `Encryption method of the restored database; one of ${EncryptionType.USE_BACKUP_ENCRYPTION} (default), ` +
+    `Encryption method of the restored database; one of ${EncryptionType.USE_SOURCE_ENCRYPTION} (default), ` +
       `${EncryptionType.CUSTOMER_MANAGED_ENCRYPTION}, ${EncryptionType.GOOGLE_DEFAULT_ENCRYPTION}`,
   )
   // TODO(b/356137854): Remove allowlist only message once feature is public GA.
@@ -47,14 +47,16 @@ export const command = new Command("firestore:databases:restore")
     switch (options.encryptionType) {
       case EncryptionType.GOOGLE_DEFAULT_ENCRYPTION:
         throwIfKmsKeyNameIsSet(options.kmsKeyName);
-        encryptionConfig = { useGoogleDefaultEncryption: {} };
+        encryptionConfig = { googleDefaultEncryption: {} };
         break;
-      case EncryptionType.USE_BACKUP_ENCRYPTION:
+      case EncryptionType.USE_SOURCE_ENCRYPTION:
         throwIfKmsKeyNameIsSet(options.kmsKeyName);
-        encryptionConfig = { useBackupEncryption: {} };
+        encryptionConfig = { useSourceEncryption: {} };
         break;
       case EncryptionType.CUSTOMER_MANAGED_ENCRYPTION:
-        encryptionConfig = { kmsKeyName: getKmsKeyOrThrow(options.kmsKeyName) };
+        encryptionConfig = {
+          customerManagedEncryption: { kmsKeyName: getKmsKeyOrThrow(options.kmsKeyName) },
+        };
         break;
       case undefined:
         throwIfKmsKeyNameIsSet(options.kmsKeyName);
