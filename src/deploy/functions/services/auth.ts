@@ -72,14 +72,14 @@ export class AuthBlockingService implements Service {
       return true;
     }
     return false;
-  }
+  }  
 
   private async registerTriggerLocked(
     endpoint: backend.Endpoint & backend.BlockingTriggered,
   ): Promise<void> {
     const newBlockingConfig = await identityPlatform.getBlockingFunctionsConfig(endpoint.project);
     const oldBlockingConfig = cloneDeep(newBlockingConfig);
-
+  
     if (endpoint.blockingTrigger.eventType === events.v1.BEFORE_CREATE_EVENT) {
       newBlockingConfig.triggers = {
         ...newBlockingConfig.triggers,
@@ -124,7 +124,7 @@ export class AuthBlockingService implements Service {
     }
 
     await identityPlatform.setBlockingFunctionsConfig(endpoint.project, newBlockingConfig);
-  }
+  }  
 
   /**
    * Registers the auth blocking trigger to identity platform.
