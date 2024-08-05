@@ -88,6 +88,8 @@ export class DataConnectEmulator implements EmulatorInstance {
         auto_download: this.args.auto_download,
         listen: listenSpecsToString(this.args.listen),
         config_dir: resolvedConfigDir,
+        enable_output_schema_extensions: true,
+        enable_output_generated_sdk: true,
       });
       this.usingExistingEmulator = false;
     }

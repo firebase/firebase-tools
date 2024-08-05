@@ -159,3 +159,14 @@ type Actions = {
 };
 
 export type NextConfigFileName = (typeof CONFIG_FILES)[number];
+
+export type CustomBuildOptions = {
+  entryPoints: string[];
+  outfile: string;
+  bundle: boolean;
+  platform: "node";
+  target: string;
+  logLevel: "silent" | "verbose" | "debug" | "info" | "warning" | "error";
+  external: string[];
+  format?: "iife" | "cjs" | "esm";
+};
