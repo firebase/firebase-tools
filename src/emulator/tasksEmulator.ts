@@ -60,8 +60,14 @@ export interface RateLimits {
 
 type ResetValue = null;
 
+/**
+ * A controller class which manages:
+ * - The creation of task queues
+ * - Enqueueing tasks to the correct queue
+ * - The timing for when task queue methods are run
+ */
 export class TaskQueueController {
-  static UPDATE_TIMEOUT = 500;
+  static UPDATE_TIMEOUT = 1;
   static LISTEN_TIMEOUT = 1000;
   static TOKEN_REFRESH_INTERVAL = 1000;
   queues: { [key: string]: TaskQueue } = {};
@@ -97,6 +103,11 @@ export class TaskQueueController {
     this.queues[key] = newQueue;
   }
 
+  /**
+   * If there are no active queues (a queue is active if it has tasks in the queue or dispatch) then
+   * wait longer (1s) before checking the status of the queues again. If there are active queues,
+   * continuously (1ms) call their methods to handle dispatching tasks
+   */
   listen(): void {
     let shouldUpdate = false;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -115,7 +126,6 @@ export class TaskQueueController {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     for (const [_key, queue] of Object.entries(this.queues)) {
       if (queue.isActive()) {
-        console.log(queue.getDebugInfo());
         queue.dispatchTasks();
         queue.processDispatch();
       }
@@ -177,6 +187,10 @@ export class TasksEmulator implements EmulatorInstance {
         retry: body.retry ?? false,
         defaultUri: body.defaultUri,
       };
+      if (taskQueueConfig.rateLimits.maxConcurrentDispatches > 5000) {
+        res.status(400).send("cannot set maxConcurrentDispatches to a value over 5000");
+        return;
+      }
 
       this.controller.createQueue(key, taskQueueConfig);
       this.logger.log(
@@ -198,7 +212,7 @@ export class TasksEmulator implements EmulatorInstance {
       const queueKey = `queue:${projectId}-${locationId}-${queueName}`;
       if (!this.controller.queues[queueKey]) {
         this.logger.log("WARN", "Tried to queue a task into a non-existent queue");
-        res.send(404);
+        res.status(404).send("Tried to queue a task from a non-existent queue");
         return;
       }
 
@@ -211,11 +225,11 @@ export class TasksEmulator implements EmulatorInstance {
 
       try {
         this.controller.enqueue(queueKey, task);
+        this.logger.log("DEBUG", `Enqueueing task ${task.name} onto ${queueKey}`);
+        res.status(200).send({ task: task });
       } catch (e) {
         res.status(409).send("A task with the same name already exists");
       }
-      this.logger.log("DEBUG", `Enqueueing task ${task.name} onto ${queueKey}`);
-      res.send({ task: task });
     };
 
     const deleteTasksRoute = `/projects/:project_id/locations/:location_id/queues/:queue_name/tasks/:task_id`;
@@ -227,8 +241,8 @@ export class TasksEmulator implements EmulatorInstance {
       const queueKey = `queue:${projectId}-${locationId}-${queueName}`;
 
       if (!this.controller.queues[queueKey]) {
-        this.logger.log("WARN", "Tried to remove a task from a non-existant queue");
-        res.send(404);
+        this.logger.log("WARN", "Tried to remove a task from a non-existent queue");
+        res.status(404).send("Tried to remove a task from a non-existent queue");
         return;
       }
 
@@ -236,11 +250,11 @@ export class TasksEmulator implements EmulatorInstance {
         const taskName = `projects/${projectId}/locations/${locationId}/queues/${queueName}/tasks/${taskId}`;
         this.logger.log("DEBUG", `removing: ${taskName}`);
         this.controller.delete(queueKey, taskName);
+        res.status(200).send({ res: "OK" });
       } catch (e) {
         this.logger.log("WARN", "Tried to remove a task that doesn't exist");
-        res.send(404);
+        res.status(404).send(e);
       }
-      res.send(200);
     };
 
     hub.post([createTaskQueueRoute], express.json(), createTaskQueueHandler);

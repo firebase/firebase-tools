@@ -288,7 +288,7 @@ export class TaskQueue {
       return;
     }
 
-    // Computer Retry Parameters
+    // Compute Retry Parameters
     this.updateMetadata(metadata, retryConfig);
     metadata.status = TaskStatus.NOT_STARTED;
   }
