@@ -22,6 +22,9 @@ export class DataConnectEmulatorController implements vscode.Disposable {
     function notifyIsConnectedToPostgres(isConnected: boolean) {
       broker.send("notifyIsConnectedToPostgres", isConnected);
     }
+    function notifyIsConfigured(sdks: string[]) {
+      broker.send('notifyConfiguredSdks', sdks);
+    }
 
     // on emulator restart, re-connect
     dataConnectEmulatorEvents.on("restart", () => {
@@ -53,9 +56,16 @@ export class DataConnectEmulatorController implements vscode.Disposable {
         notifyIsConnectedToPostgres(this.isPostgresEnabled.value);
       }),
     );
+    this.subs.push(
+      broker.on('configureSdk', () => this.configureSdk()),
+      effect(() => {
+        notifyIsConfigured(this.configuredSdks.value)
+      })
+    )
   }
 
   readonly isPostgresEnabled = signal(false);
+  readonly configuredSdks = signal<string[]>([]);
   private readonly subs: Array<() => void> = [];
 
   private async promptConnectionString(
@@ -119,6 +129,15 @@ export class DataConnectEmulatorController implements vscode.Disposable {
       "firebase.dataConnect.executeIntrospection",
     );
   }
+
+  private async configureSdk() {
+    const res = await vscode.window.showInformationMessage("Would you like to auto-configure your SDK?", "No", "Yes. Select my app folder");
+    if(res !== "No") {
+      const uri = await vscode.window.showOpenDialog({ openLabel: 'Select your app folder', canSelectFolders: true, canSelectFiles: false, canSelectMany: false}).then(res => res => res[0]);
+    }
+    this.configuredSdks.value = ['dart'];
+  }
+
 
   // Commands to run after the emulator is started successfully
   private async connectToEmulator() {

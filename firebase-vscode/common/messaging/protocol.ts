@@ -78,6 +78,7 @@ export interface WebviewToExtensionParamsMap {
   };
 
   connectToPostgres: void;
+  configureSdk: void;
   disconnectPostgres: void;
   getInitialIsConnectedToPostgres: void;
 
@@ -124,6 +125,8 @@ export interface ExtensionToWebviewParamsMap {
   notifyEmulatorImportFolder: { folder: string };
 
   notifyIsConnectedToPostgres: boolean;
+
+  notifyConfiguredSdks: string[];
 
   notifyPostgresStringChanged: string;
 

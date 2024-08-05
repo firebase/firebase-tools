@@ -21,6 +21,8 @@ function DataConnect() {
       initialRequest: "getInitialIsConnectedToPostgres",
     }) ?? false;
 
+  const configuredSdks =  useBroker("notifyConfiguredSdks") ?? [];
+
   const psqlString = useBroker("notifyPostgresStringChanged");
 
   const user = useBroker("notifyUserChanged", {
@@ -49,6 +51,10 @@ function DataConnect() {
             Connect to Local PostgreSQL
           </VSCodeButton>
         )}
+          <p>Configured SDKs: {configuredSdks.length > 0 ? configuredSdks.join(','): 'None'}</p>
+          <VSCodeButton onClick={() => broker.send("configureSdk")}>
+              Configure New SDK
+            </VSCodeButton>
       </PanelSection>
       <PanelSection title="Production" isLast={true}>
         <p>
