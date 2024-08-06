@@ -261,21 +261,23 @@ export interface ParamOption {
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
+  return typeof value === "object" && value !== null;
 }
 
 export const isParam = (param: unknown): param is Param => {
-  return isObject(param) && typeof param["param"] === 'string' && typeof param["label"] === 'string';
+  return (
+    isObject(param) && typeof param["param"] === "string" && typeof param["label"] === "string"
+  );
 };
 
 export const isResource = (res: unknown): res is Resource => {
-  return isObject(res) && typeof res["name"] === 'string';
+  return isObject(res) && typeof res["name"] === "string";
 };
 
 // Typeguard for ExtensionSpec. (We often get "specs" from parsing yaml).
 // This helps decide if it's actually a spec or just some random yaml.
 export const isExtensionSpec = (spec: unknown): spec is ExtensionSpec => {
-  if (!isObject(spec) || typeof spec.name !== 'string' || typeof spec.version !== 'string') {
+  if (!isObject(spec) || typeof spec.name !== "string" || typeof spec.version !== "string") {
     return false;
   }
 

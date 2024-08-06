@@ -457,7 +457,9 @@ function assertBuildExtension(ex: WireExtension, id: string): void {
     refOrPath++;
   }
   if (refOrPath === 0) {
-    throw new FirebaseError(`Expected either extension reference or local path in extension: ${id}`);
+    throw new FirebaseError(
+      `Expected either extension reference or local path in extension: ${id}`,
+    );
   }
   if (refOrPath > 1) {
     throw new FirebaseError(
