@@ -1,7 +1,7 @@
 import { Command } from "../command";
 import { Emulators } from "../emulator/types";
 import { Options } from "../options";
-import { DEFAULT_POSTGRES_CONNECTION } from "../init/features/emulators";
+import { DEFAULT_POSTGRES_CONNECTION } from "../dataconnect/postgres"
 import { promptOnce } from "../prompt";
 import { logger } from "../logger";
 import { downloadIfNecessary } from "../emulator/downloadableEmulators";

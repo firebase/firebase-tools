@@ -1,31 +1,33 @@
 import { execSync } from "child_process";
 import * as fs from "fs-extra";
+import * as pg from "pg";
+
 import { logger } from '../logger';
 import { FirebaseError } from "../error";
+import { RC } from "../rc";
+import { sleep } from "../utils";
+import { promptOnce } from "../prompt";
+import * as downloadUtils from "../downloadUtils";
+import { downloadPostgresApp } from "../emulator/download";
 
-export async function tryStartProgres() {
+// postgresql://localhost:5432 is a default out of the box value for most installations of Postgres
+export const DEFAULT_POSTGRES_CONNECTION = "postgresql://localhost:5432?sslmode=disable";
+
+export async function tryStartProgres(rc: RC): Promise<string>{
 //  Question: Is postgres already running?
-// Test: Check on default connection string (or conifgured connection string if one is available.
+// Test: Check on default connection string (or configured connection string if one is available.
 // If yes: Use the running postgres
- 
-// Try running postgres.app on MacOs
-if (process.platform === "darwin") {
-  const potentialPaths = [
-    "~/Applications/Postgres.app",
-    "/Applications/Postgres.app",
-  ].filter(p => fs.existsSync(p));
-  console.log("pp is", potentialPaths);
-  if (potentialPaths.length) {
-    try {
-      const command = `open ${potentialPaths[0]}`;
-      logger.debug("Trying ", command);
-      const postgresApp = execSync(command)
-      logger.debug(`App is ${postgresApp}`);
-    } catch(e: any) {
-      logger.debug(`docker test failed: ${e}`)
-    }
-  }
+
+const alreadyRunningConn = await checkForRunningPostgres(rc);
+if (alreadyRunningConn) {
+  return alreadyRunningConn
 }
+
+const postgressAppConn = await tryPostgressApp(rc);
+if (postgressAppConn) {
+  return postgressAppConn;
+}
+
 // Question: Is postgres already installed?
 // Test: 'postgres --verison'
 // If yes: Start up 
@@ -72,13 +74,79 @@ try {
   throw new FirebaseError(`The Data Connect emulator requires a local installation of postgres, but none was found. Please visit ${linkToInstaller()} to install Postgres.`);
 }
 
-function linkToInstaller(): string {
-  // TODO: Switch on platform, and link more specifically.
-  // switch (process.platform) {
-  //   case "win32":
-  //   case "darwin":
-  // TODO: Link to postgres.app here?
+// Attempts to connect to a running postgres instance and run a simple healthcheck query.
+// If successful, returns the connection string that worked.
+// If not, return ""
+async function checkForRunningPostgres(rc: RC): Promise<string> {
+  const potentialConnectionStrings = [
+    DEFAULT_POSTGRES_CONNECTION
+  ];
+  const configuredLCS = rc.getDataconnect().postgres?.localConnectionString;
+  if (configuredLCS && !potentialConnectionStrings.includes(configuredLCS)) {
+    potentialConnectionStrings.push(configuredLCS);
+  }
+  for (const conn of potentialConnectionStrings) {
+    console.log(`trying conn str ${configuredLCS}`);
+    try {
+      const client = new pg.Client(conn);
+      await client.connect();
+      // dummy command
+      const res = await client.query("select version()");
+      console.log(`Success: ${JSON.stringify(res)}`);
+      return conn;
+    } catch(err: any) {
+      console.log(`unable to connect to ${conn}`);
+    }
+  }
+  return "";
+}
 
-  // }
+// Try running postgres.app on MacOs
+async function tryPostgressApp(rc: RC): Promise<string> {
+  if (process.platform === "darwin") {
+    logger.info("Checking if Postgres.app is installed...")
+    const potentialPaths = [
+      "~/Applications/Postgres.app",
+      "/Applications/Postgres.app",
+    ].filter(p => fs.existsSync(p));
+    if (!potentialPaths.length) {
+      // If it's not downloaded, try to download it
+      const freshlyDownloaded = await promptInstallPostgresApp();
+      potentialPaths.push(freshlyDownloaded);
+    }
+    if (potentialPaths.length) {
+      try {
+
+        logger.info("Starting Postgres.app...");
+        const command = `open ${potentialPaths[0]}`;
+        execSync(command)
+        // It takes a short bit of time after the app opens to start accepting connections.
+        await sleep(1000);
+        const pgAppConn = await checkForRunningPostgres(rc);
+        if (pgAppConn) {
+          logger.info("Started Postgres.app.");
+          return pgAppConn;
+        }
+      } catch(e: any) {
+        logger.debug(`Failed to open Postgres.app; ${e}`)
+      }
+    }
+  }
+  return "";
+}
+
+async function promptInstallPostgresApp(): Promise<string> {
+  if(!await promptOnce({
+    message: "No local installation of Postgres detected. Would you like to download Postgres.app now?",
+    type: "confirm",
+  })) {
+    throw new FirebaseError("Command aborted. Please install Postgres to use the Data Connect emulator.");
+  }
+  const app = await downloadPostgresApp();
+  await sleep(1000);
+  return app;
+}
+
+function linkToInstaller(): string {
   return "https://www.postgresql.org/download/";
 }

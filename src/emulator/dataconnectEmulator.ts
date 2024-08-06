@@ -50,7 +50,7 @@ export class DataConnectEmulator implements EmulatorInstance {
   private logger = EmulatorLogger.forEmulator(Emulators.DATACONNECT);
 
   async start(): Promise<void> {
-    await tryStartProgres();
+    await tryStartProgres(this.args.rc);
     let resolvedConfigDir;
     try {
       resolvedConfigDir = this.args.config.path(this.args.configDir);
