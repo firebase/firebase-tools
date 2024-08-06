@@ -6,7 +6,6 @@ import * as tmp from "tmp";
 import { execSync } from "child_process";
 
 import { EmulatorLogger } from "./emulatorLogger";
-import { Logger } from "../logger";
 import { EmulatorDownloadDetails, DownloadableEmulators } from "./types";
 import { FirebaseError } from "../error";
 import { unzip } from "../unzip";
@@ -85,10 +84,10 @@ export async function downloadExtensionVersion(
   await new Promise((resolve) => setTimeout(resolve, 1000));
 }
 
-export async function downloadPostgresApp(): Promise<string>{
-  const postgresAppDownloadLink = "https://github.com/PostgresApp/PostgresApp/releases/download/v2.7.3/Postgres-2.7.3-15.dmg";
+export async function downloadPostgresApp(): Promise<string> {
+  const postgresAppDownloadLink =
+    "https://github.com/PostgresApp/PostgresApp/releases/download/v2.7.3/Postgres-2.7.3-15.dmg";
   const tmpFile = await downloadUtils.downloadToTmp(postgresAppDownloadLink);
-  logger.info();
   await validateSize(tmpFile, 104376912);
   await validateChecksum(tmpFile, "61f582fd200b4e39e1c8ff53daec74b3");
 
@@ -99,24 +98,25 @@ export async function downloadPostgresApp(): Promise<string>{
   const postgresApp = `${dmg.volumePath}/Postgres.app`;
   const appTarget = "/Applications/Postgres.app";
   fs.copySync(postgresApp, appTarget);
-  await dmg.unmount();
+  dmg.unmount();
   return appTarget;
 }
 
 function mountDmg(path: string): {
-  diskPath: string,
-  volumePath: string,
-  unmount: () => {},
+  diskPath: string;
+  volumePath: string;
+  unmount: () => {};
 } {
   const stdout = execSync(`hdiutil attach "${path}"`);
-  const [diskPath, , volumePath] = stdout.toString()
+  const [diskPath, , volumePath] = stdout
+    .toString()
     .trim()
-    .split('\n')
+    .split("\n")
     .pop()!
     .split(/\t+/)
-    .map(s => s.trim())
+    .map((s) => s.trim());
   const unmount = () => execSync(`hdiutil detach "${volumePath}"`);
-  return { diskPath, volumePath, unmount }
+  return { diskPath, volumePath, unmount };
 }
 
 function removeOldFiles(
