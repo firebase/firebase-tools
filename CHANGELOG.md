@@ -1,1 +1,3 @@
-- Fixes bug where `esbuild` execution was throwing an error saying "Command line too long" on Windows (https://github.com/firebase/firebase-tools/issues/7250 and https://github.com/firebase/firebase-tools/issues/6193).
+- Fixes secret params resolution in functions emulator. (#7443)
+- Fixed bug where `esbuild` execution was throwing an error saying "Command line too long" on Windows (#7250, #6193).
+- Automatically detect app platform during `init dataconnect:sdk`.

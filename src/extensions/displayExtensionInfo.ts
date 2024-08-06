@@ -135,14 +135,14 @@ export function displayResources(spec: ExtensionSpec) {
         break;
       default:
     }
-    return `  - ${clc.blue(`${resource.name} (${type})`)}${
+    return `  - ${clc.blueBright(`${resource.name} (${type})`)}${
       resource.description ? `: ${resource.description}` : ""
     }`;
   });
   lines.push(
     ...new Set(
       spec.lifecycleEvents?.map((event: LifecycleEvent) => {
-        return `  - ${clc.blue(`${event.taskQueueTriggerFunction} (Cloud Task queue)`)}`;
+        return `  - ${clc.blueBright(`${event.taskQueueTriggerFunction} (Cloud Task queue)`)}`;
       }),
     ),
   );
@@ -152,7 +152,7 @@ export function displayResources(spec: ExtensionSpec) {
         return param.type === "SECRET";
       })
       .map((param: Param) => {
-        return `  - ${clc.blue(`${param.param} (Cloud Secret Manager secret)`)}`;
+        return `  - ${clc.blueBright(`${param.param} (Cloud Secret Manager secret)`)}`;
       }),
   );
   return clc.bold("Resources created:\n") + (lines.length ? lines.join("\n") : " - None");
