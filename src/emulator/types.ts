@@ -61,6 +61,7 @@ export const EMULATORS_SUPPORTED_BY_FUNCTIONS = [
   Emulators.PUBSUB,
   Emulators.STORAGE,
   Emulators.EVENTARC,
+  Emulators.TASKS,
 ];
 
 export const EMULATORS_SUPPORTED_BY_UI = [

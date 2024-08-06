@@ -372,11 +372,13 @@ export async function startAll(
     // If we already know we need Functions (and Eventarc), assign them now.
     listenConfig[Emulators.FUNCTIONS] = getListenConfig(options, Emulators.FUNCTIONS);
     listenConfig[Emulators.EVENTARC] = getListenConfig(options, Emulators.EVENTARC);
+    listenConfig[Emulators.TASKS] = getListenConfig(options, Emulators.TASKS);
   }
   for (const emulator of ALL_EMULATORS) {
     if (
       emulator === Emulators.FUNCTIONS ||
       emulator === Emulators.EVENTARC ||
+      emulator === Emulators.TASKS ||
       // Same port as Functions, no need for separate assignment
       emulator === Emulators.EXTENSIONS ||
       (emulator === Emulators.UI && !showUI)
@@ -528,7 +530,7 @@ export async function startAll(
   }
 
   if (emulatableBackends.length) {
-    if (!listenForEmulator.functions || !listenForEmulator.eventarc) {
+    if (!listenForEmulator.functions || !listenForEmulator.eventarc || !listenForEmulator.tasks) {
       // We did not know that we need Functions and Eventarc earlier but now we do.
       listenForEmulator = await resolveHostAndAssignPorts({
         ...listenForEmulator,
