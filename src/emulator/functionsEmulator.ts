@@ -540,12 +540,14 @@ export class FunctionsEmulator implements EmulatorInstance {
       };
       const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
       const discoveredBuild = await runtimeDelegate.discoverBuild(runtimeConfig, environment);
-      const resolution = await resolveBackend(
-        discoveredBuild,
-        JSON.parse(firebaseConfig),
+      const resolution = await resolveBackend({
+        build: discoveredBuild,
+        firebaseConfig: JSON.parse(firebaseConfig),
         userEnvOpt,
         userEnvs,
-      );
+        nonInteractive: false,
+        isEmulator: true,
+      });
       const discoveredBackend = resolution.backend;
       const endpoints = backend.allEndpoints(discoveredBackend);
       prepareEndpoints(endpoints);
