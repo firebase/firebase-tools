@@ -110,7 +110,7 @@ export async function pickService(
 // case insensitive exact match indicators for supported app platforms
 const WEB_INDICATORS = ["package.json", "package-lock.json", "node_modules"];
 const IOS_INDICATORS = ["info.plist", "podfile", "package.swift"];
-const ANDROID_INDICATORS = ["androidmanifest.xml", "build.gradle"];
+const ANDROID_INDICATORS = ["androidmanifest.xml", "build.gradle", "build.gradle.kts"];
 
 // endswith match
 const IOS_INDICATORS_2 = [".xcworkspace", ".xcodeproj"];
@@ -131,4 +131,9 @@ export async function getPlatformFromFolder(dirPath: string) {
   }
 
   return Platform.UNDETERMINED;
+}
+
+export async function directoryHasPackageJson(dirPath: string) {
+  const fileNames = await fs.readdir(dirPath);
+  return fileNames.some((f) => f.toLowerCase() === "package.json");
 }
