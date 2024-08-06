@@ -8,11 +8,11 @@ import { EventEmitter } from "events";
   Events are of the format winston.LogEntry
   Example usage:
 
-  vsceLogEmitter.on("log", (logEntry) => {  
+  vsceLogEmitter.on("log", (logEntry) => {
     if (logEntry.level == "error") {
       console.log(logEntry.message)
     }
-  }) 
+  })
 */
 export const vsceLogEmitter = new EventEmitter();
 
@@ -59,6 +59,8 @@ export interface Logger {
 
   add(transport: Transport): Logger;
   remove(transport: Transport): Logger;
+
+  silent: boolean;
 }
 
 function expandErrors(logger: winston.Logger): winston.Logger {

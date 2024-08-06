@@ -170,9 +170,7 @@ export async function prepareDynamicExtensions(
   const dynamicWant = await planner.wantDynamic({
     projectId,
     projectNumber,
-    aliases,
-    projectDir,
-    extensions: extensions,
+    extensions,
   });
 
   // Secondary calls do not need to calculate which extensions
@@ -195,8 +193,6 @@ export async function prepareDynamicExtensions(
       const dynamicAll = await planner.wantDynamic({
         projectId,
         projectNumber,
-        aliases,
-        projectDir,
         extensions: await extractAllDynamicExtensions(options),
       });
       noDeleteExtensions = noDeleteExtensions.concat(dynamicAll);
@@ -247,8 +243,6 @@ export async function prepare(context: Context, options: Options, payload: Paylo
   const dynamicWant = await planner.wantDynamic({
     projectId,
     projectNumber,
-    aliases,
-    projectDir,
     extensions: await extractAllDynamicExtensions(options),
   });
 

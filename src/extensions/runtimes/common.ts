@@ -12,14 +12,14 @@ import { logger } from "../../logger";
 
 export { DynamicExtension } from "../../deploy/functions/build";
 
-const savedLoggerSilent = (logger as any).silent;
+const savedLoggerSilent = logger.silent;
 
 function silenceLogging() {
-  (logger as any).silent = true;
+  logger.silent = true;
 }
 
 function resumeLogging() {
-  (logger as any).silent = savedLoggerSilent;
+  logger.silent = savedLoggerSilent;
 }
 
 export async function extractAllDynamicExtensions(
@@ -80,15 +80,15 @@ export async function extractAllDynamicExtensions(
  */
 export function extractExtensionsFromBuilds(builds: Record<string, Build>, filters?: Filter[]) {
   const extRecords: Record<string, DynamicExtension> = {};
-  Object.entries(builds).forEach(([codebase, build]) => {
+  for (const [codebase, build] of Object.entries(builds)) {
     if (build.extensions) {
-      Object.entries(build.extensions).forEach(([id, ext]) => {
+      for (const [id, ext] of Object.entries(build.extensions)) {
         if (extensionMatchesAnyFilter(codebase, id, filters)) {
           extRecords[id] = ext;
         }
-      });
+      }
     }
-  });
+  }
 
   return extRecords;
 }

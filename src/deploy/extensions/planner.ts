@@ -127,15 +127,17 @@ export async function have(projectId: string): Promise<DeploymentInstanceSpec[]>
 }
 
 /**
- * wantDynamic checks the users code for Extension SDKs usage and returns
+ * wantDynamic checks the user's code for Extension SDKs usage and returns
  * any extensions the user has defined that way.
- * @param args
+ * @param args.projectId The project we are deploying to
+ * @param args.projectNumber The project number we are deploying to.
+ * @param args.extensions The extensions section of firebase.jsonm
+ * @param args.emulatorMode Whether the output will be used by the Extensions emulator.
+ *                     If true, this will check {instanceId}.env.local for params a
  */
 export async function wantDynamic(args: {
   projectId: string;
   projectNumber: string;
-  aliases: string[];
-  projectDir: string;
   extensions: Record<string, DynamicExtension>;
   emulatorMode?: boolean;
 }): Promise<DeploymentInstanceSpec[]> {
@@ -187,12 +189,12 @@ export async function wantDynamic(args: {
 /**
  * want checks firebase.json and the extensions directory for which extensions
  * the user wants installed on their project.
- * @param projectId The project we are deploying to
- * @param projectNumber The project number we are deploying to. Used for checking .env files.
- * @param aliases An array of aliases for the project we are deploying to. Used for checking .env files.
- * @param projectDir The directory containing firebase.json and extensions/
- * @param extensions The extensions section of firebase.jsonm
- * @param emulatorMode Whether the output will be used by the Extensions emulator.
+ * @param args.projectId The project we are deploying to
+ * @param args.projectNumber The project number we are deploying to. Used for checking .env files.
+ * @param args.aliases An array of aliases for the project we are deploying to. Used for checking .env files.
+ * @param args.projectDir The directory containing firebase.json and extensions/
+ * @param args.extensions The extensions section of firebase.jsonm
+ * @param args.emulatorMode Whether the output will be used by the Extensions emulator.
  *                     If true, this will check {instanceId}.env.local for params and will respect `demo-` project rules.
  */
 export async function want(args: {

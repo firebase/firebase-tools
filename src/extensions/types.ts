@@ -227,10 +227,6 @@ export type Resource = ResourceProperties & {
   entryPoint?: string;
 };
 
-export const isResource = (res: any): res is Resource => {
-  return typeof res === "object" && Boolean(res.name);
-};
-
 export interface Author {
   authorName: string;
   url?: string;
@@ -251,10 +247,6 @@ export interface Param {
   advanced?: boolean;
 }
 
-export const isParam = (param: any): param is Param => {
-  return typeof param === "object" && Boolean(param.param && param.label);
-};
-
 export enum ParamType {
   STRING = "STRING",
   SELECT = "SELECT",
@@ -268,11 +260,25 @@ export interface ParamOption {
   label?: string;
 }
 
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+export const isParam = (param: unknown): param is Param => {
+  return isObject(param) && typeof param["param"] === 'string' && typeof param["label"] === 'string';
+};
+
+export const isResource = (res: unknown): res is Resource => {
+  return isObject(res) && typeof res["name"] === 'string';
+};
+
 // Typeguard for ExtensionSpec. (We often get "specs" from parsing yaml).
 // This helps decide if it's actually a spec or just some random yaml.
-// Any is reasonable here since this is a typeguard.
-/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-export const isExtensionSpec = (spec: any): spec is ExtensionSpec => {
+export const isExtensionSpec = (spec: unknown): spec is ExtensionSpec => {
+  if (!isObject(spec) || typeof spec.name !== 'string' || typeof spec.version !== 'string') {
+    return false;
+  }
+
   let validResources = true;
   if (spec.resources && Array.isArray(spec.resources)) {
     for (const res of spec.resources) {
@@ -282,7 +288,7 @@ export const isExtensionSpec = (spec: any): spec is ExtensionSpec => {
       }
     }
   } else {
-    validResources = false;
+    return false;
   }
 
   let validParams = true;
@@ -294,7 +300,7 @@ export const isExtensionSpec = (spec: any): spec is ExtensionSpec => {
       }
     }
   } else {
-    validParams = false;
+    return false;
   }
 
   let validSysParams = true;
@@ -306,10 +312,8 @@ export const isExtensionSpec = (spec: any): spec is ExtensionSpec => {
       }
     }
   } else {
-    validSysParams = false;
+    return false;
   }
-  return (
-    typeof spec === "object" &&
-    Boolean(spec.name && spec.version && validResources && validParams && validSysParams)
-  );
+
+  return true;
 };

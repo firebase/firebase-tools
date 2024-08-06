@@ -457,13 +457,11 @@ function assertBuildExtension(ex: WireExtension, id: string): void {
     refOrPath++;
   }
   if (refOrPath === 0) {
-    throw new FirebaseError("Expected either extension reference or local path in extension " + id);
+    throw new FirebaseError(`Expected either extension reference or local path in extension: ${id}`);
   }
   if (refOrPath > 1) {
     throw new FirebaseError(
-      "Multiple definitions for extension " +
-        id +
-        ". Do not specify both reference and local path.",
+      `Multiple definitions for extension ${id}. Do not specify both reference and local path.`,
     );
   }
 }
