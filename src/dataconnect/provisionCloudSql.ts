@@ -88,7 +88,12 @@ export async function provisionCloudSql(args: {
       silent || utils.logLabeledBullet("dataconnect", "Instance created");
       connectionName = newInstance?.connectionName || "";
     } else {
-      silent || utils.logLabeledBullet("dataconnect", "Instance creation process started");
+      silent ||
+        utils.logLabeledBullet(
+          "dataconnect",
+          "Cloud SQL instance creation started - it should be ready shortly. Database and users will be created on your next deploy.",
+        );
+      return connectionName;
     }
   }
   try {
