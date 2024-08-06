@@ -169,6 +169,5 @@ export function generateSdkYaml(
       package: `connectors.${connectorYaml.connectorId}`,
     };
   }
-
   return connectorYaml;
 }
