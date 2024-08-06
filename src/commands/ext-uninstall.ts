@@ -1,6 +1,3 @@
-import { marked } from "marked";
-import * as TerminalRenderer from "marked-terminal";
-
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import {
@@ -12,10 +9,6 @@ import { requirePermissions } from "../requirePermissions";
 import { logLabeledWarning } from "../utils";
 import * as manifest from "../extensions/manifest";
 import { Options } from "../options";
-
-marked.setOptions({
-  renderer: new TerminalRenderer(),
-});
 
 export const command = new Command("ext:uninstall <extensionInstanceId>")
   .description("uninstall an extension that is installed in your Firebase project by instance ID")

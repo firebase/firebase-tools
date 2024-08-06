@@ -1,7 +1,5 @@
 import * as clc from "colorette";
-import { marked } from "marked";
 import * as semver from "semver";
-import * as TerminalRenderer from "marked-terminal";
 import * as path from "path";
 
 import * as refs from "../extensions/refs";
@@ -20,10 +18,6 @@ import {
 } from "./types";
 import * as iam from "../gcp/iam";
 import { SECRET_ROLE, usesSecrets } from "./secretsUtils";
-
-marked.setOptions({
-  renderer: new TerminalRenderer(),
-});
 
 const TASKS_ROLE = "cloudtasks.enqueuer";
 const TASKS_API = "cloudtasks.googleapis.com";
@@ -141,14 +135,14 @@ export function displayResources(spec: ExtensionSpec) {
         break;
       default:
     }
-    return `  - ${clc.blue(`${resource.name} (${type})`)}${
+    return `  - ${clc.blueBright(`${resource.name} (${type})`)}${
       resource.description ? `: ${resource.description}` : ""
     }`;
   });
   lines.push(
     ...new Set(
       spec.lifecycleEvents?.map((event: LifecycleEvent) => {
-        return `  - ${clc.blue(`${event.taskQueueTriggerFunction} (Cloud Task queue)`)}`;
+        return `  - ${clc.blueBright(`${event.taskQueueTriggerFunction} (Cloud Task queue)`)}`;
       }),
     ),
   );
@@ -158,7 +152,7 @@ export function displayResources(spec: ExtensionSpec) {
         return param.type === "SECRET";
       })
       .map((param: Param) => {
-        return `  - ${clc.blue(`${param.param} (Cloud Secret Manager secret)`)}`;
+        return `  - ${clc.blueBright(`${param.param} (Cloud Secret Manager secret)`)}`;
       }),
   );
   return clc.bold("Resources created:\n") + (lines.length ? lines.join("\n") : " - None");

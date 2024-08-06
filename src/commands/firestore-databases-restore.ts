@@ -9,6 +9,7 @@ import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 import { FirestoreOptions } from "../firestore/options";
 import { PrettyPrint } from "../firestore/pretty-print";
+import { FirebaseError } from "../error";
 
 export const command = new Command("firestore:databases:restore")
   .description("Restore a Firestore database in your Firebase project.")
@@ -19,20 +20,15 @@ export const command = new Command("firestore:databases:restore")
   .action(async (options: FirestoreOptions) => {
     const api = new fsi.FirestoreApi();
     const printer = new PrettyPrint();
+    const helpCommandText = "See firebase firestore:databases:restore --help for more info.";
 
     if (!options.database) {
-      logger.error(
-        "Missing required flag --database. See firebase firestore:databases:restore --help for more info",
-      );
-      return;
+      throw new FirebaseError(`Missing required flag --database. ${helpCommandText}`);
     }
     const databaseId = options.database;
 
     if (!options.backup) {
-      logger.error(
-        "Missing required flag --backup. See firebase firestore:databases:restore --help for more info",
-      );
-      return;
+      throw new FirebaseError(`Missing required flag --backup. ${helpCommandText}`);
     }
     const backupName = options.backup;
 

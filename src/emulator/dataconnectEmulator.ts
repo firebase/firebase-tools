@@ -15,6 +15,7 @@ import { EmulatorRegistry } from "./registry";
 import { logger } from "../logger";
 import { load } from "../dataconnect/load";
 import { isVSCodeExtension } from "../utils";
+import { Config } from "../config";
 import { EventEmitter } from "events";
 
 export interface DataConnectEmulatorArgs {
@@ -23,6 +24,7 @@ export interface DataConnectEmulatorArgs {
   configDir: string;
   auto_download?: boolean;
   rc: RC;
+  config: Config;
 }
 
 export interface DataConnectGenerateArgs {
@@ -47,8 +49,11 @@ export class DataConnectEmulator implements EmulatorInstance {
   private logger = EmulatorLogger.forEmulator(Emulators.DATACONNECT);
 
   async start(): Promise<void> {
+    let resolvedConfigDir;
     try {
-      const info = await DataConnectEmulator.build({ configDir: this.args.configDir });
+      resolvedConfigDir = this.args.config.path(this.args.configDir);
+
+      const info = await DataConnectEmulator.build({ configDir: resolvedConfigDir });
       if (requiresVector(info.metadata)) {
         if (Constants.isDemoProject(this.args.projectId)) {
           this.logger.logLabeled(
@@ -80,7 +85,9 @@ export class DataConnectEmulator implements EmulatorInstance {
       await start(Emulators.DATACONNECT, {
         auto_download: this.args.auto_download,
         listen: listenSpecsToString(this.args.listen),
-        config_dir: this.args.configDir,
+        config_dir: resolvedConfigDir,
+        enable_output_schema_extensions: true,
+        enable_output_generated_sdk: true,
       });
       this.usingExistingEmulator = false;
     }
@@ -196,7 +203,7 @@ export class DataConnectEmulator implements EmulatorInstance {
     if (!emuInfo) {
       return false;
     }
-    const serviceInfo = await load(this.args.projectId, this.args.configDir);
+    const serviceInfo = await load(this.args.projectId, this.args.config, this.args.configDir);
     const sameService = emuInfo.services.find(
       (s) => serviceInfo.dataConnectYaml.serviceId === s.serviceId,
     );

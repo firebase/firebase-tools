@@ -1,23 +1,45 @@
 import * as yaml from "yaml";
-import * as fs from "fs-extra";
-import { confirm, promptOnce } from "../../../prompt";
+import * as fs from "fs";
 import * as clc from "colorette";
 import * as path from "path";
-import { readFirebaseJson } from "../../../dataconnect/fileUtils";
+
+import { confirm, promptForDirectory, promptOnce } from "../../../prompt";
+import {
+  readFirebaseJson,
+  getPlatformFromFolder,
+  directoryHasPackageJson,
+} from "../../../dataconnect/fileUtils";
 import { Config } from "../../../config";
 import { Setup } from "../..";
 import { load } from "../../../dataconnect/load";
-import { logger } from "../../../logger";
-import { ConnectorInfo, ConnectorYaml, JavascriptSDK, KotlinSDK } from "../../../dataconnect/types";
+import {
+  ConnectorInfo,
+  ConnectorYaml,
+  JavascriptSDK,
+  KotlinSDK,
+  Platform,
+} from "../../../dataconnect/types";
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
+import { FirebaseError } from "../../../error";
+import { camelCase, snakeCase } from "lodash";
+import { logSuccess, logBullet } from "../../../utils";
 
-const IOS = "ios";
-const WEB = "web";
-const ANDROID = "android";
+export type SDKInfo = {
+  connectorYamlContents: string;
+  connectorInfo: ConnectorInfo;
+  shouldGenerate: boolean;
+  displayIOSWarning: boolean;
+};
 export async function doSetup(setup: Setup, config: Config): Promise<void> {
+  const sdkInfo = await askQuestions(setup, config);
+  await actuate(sdkInfo, setup.projectId);
+}
+
+async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
   const serviceCfgs = readFirebaseJson(config);
+  // TODO: This current approach removes comments from YAML files. Consider a different approach that won't.
   const serviceInfos = await Promise.all(
-    serviceCfgs.map((c) => load(setup.projectId || "", path.join(process.cwd(), c.source))),
+    serviceCfgs.map((c) => load(setup.projectId || "", config, c.source)),
   );
   const connectorChoices: { name: string; value: ConnectorInfo }[] = serviceInfos
     .map((si) => {
@@ -30,12 +52,11 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     })
     .flat();
   if (!connectorChoices.length) {
-    logger.info(
+    throw new FirebaseError(
       `Your config has no connectors to set up SDKs for. Run ${clc.bold(
         "firebase init dataconnect",
       )} to set up a service and conenctors.`,
     );
-    return;
   }
   const connectorInfo: ConnectorInfo = await promptOnce({
     message: "Which connector do you want set up a generated SDK for?",
@@ -43,100 +64,137 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     choices: connectorChoices,
   });
 
-  const platforms = await promptOnce({
-    message: "Which platforms do you want to set up a generated SDK for?",
-    type: "checkbox",
-    choices: [
-      { name: "iOS (Swift)", value: IOS },
-      { name: "Web (JavaScript)", value: WEB },
-      { name: "Androd (Kotlin)", value: ANDROID },
-    ],
-  });
+  // First, lets check if we are in a app directory
+  let targetPlatform: Platform = Platform.UNDETERMINED;
+  let appDir: string;
+  const cwdPlatformGuess = await getPlatformFromFolder(process.cwd());
+  if (cwdPlatformGuess !== Platform.UNDETERMINED) {
+    // If we are, we'll use that directory
+    logSuccess(`Detected ${cwdPlatformGuess} app in current directory ${process.cwd()}`);
+    targetPlatform = cwdPlatformGuess;
+    appDir = process.cwd();
+  } else {
+    // If we aren't, ask the user where their app is, and try to autodetect from there
+    logBullet(`Couldn't automatically detect your app directory.`);
+    appDir = await promptForDirectory({
+      config,
+      message: "Where is your app directory?",
+    });
+    const platformGuess = await getPlatformFromFolder(appDir);
+    if (platformGuess !== Platform.UNDETERMINED) {
+      logSuccess(`Detected ${platformGuess} app in directory ${appDir}`);
+      targetPlatform = platformGuess;
+    } else {
+      // If we still can't autodetect, just ask the user
+      logBullet("Couldn't automatically detect your app's platform.");
+      targetPlatform = await promptOnce({
+        message: "Which platform do you want to set up a generated SDK for?",
+        type: "list",
+        choices: [
+          { name: "iOS (Swift)", value: Platform.IOS },
+          { name: "Web (JavaScript)", value: Platform.WEB },
+          { name: "Android (Kotlin)", value: Platform.ANDROID },
+        ],
+      });
+    }
+  }
 
   const newConnectorYaml = JSON.parse(JSON.stringify(connectorInfo.connectorYaml)) as ConnectorYaml;
   if (!newConnectorYaml.generate) {
     newConnectorYaml.generate = {};
   }
 
-  if (platforms.includes(IOS)) {
-    const outputDir = await promptOnce({
-      message: `What directory do you want to write your Swift SDK code to? (If not absolute, path will be relative to '${connectorInfo.directory}')`,
-      type: "input",
-      default:
-        newConnectorYaml.generate.swiftSdk?.outputDir ||
-        `./../.dataconnect/generated/${newConnectorYaml.connectorId}/swift-sdk`,
-    });
-    const swiftSdk = { outputDir };
+  let displayIOSWarning = false;
+  if (targetPlatform === Platform.IOS) {
+    const outputDir =
+      newConnectorYaml.generate.swiftSdk?.outputDir ||
+      path.relative(
+        connectorInfo.directory,
+        path.join(appDir, `generated/${newConnectorYaml.connectorId}`),
+      );
+    const pkg =
+      newConnectorYaml.generate.swiftSdk?.package ?? camelCase(newConnectorYaml.connectorId);
+    const swiftSdk = { outputDir, package: pkg };
     newConnectorYaml.generate.swiftSdk = swiftSdk;
+    displayIOSWarning = true;
   }
-  if (platforms.includes(WEB)) {
-    const outputDir = await promptOnce({
-      message: `What directory do you want to write your JavaScript SDK code to? (If not absolute, path will be relative to '${connectorInfo.directory}')`,
-      type: "input",
-      default:
-        newConnectorYaml.generate.javascriptSdk?.outputDir ||
-        `./../.dataconnect/generated/${newConnectorYaml.connectorId}/javascript-sdk`,
-    });
-    const pkg = await promptOnce({
-      message: "What package name do you want to use for your JavaScript SDK?",
-      type: "input",
-      default:
-        newConnectorYaml.generate.javascriptSdk?.package ??
-        `@firebasegen/${connectorInfo.connectorYaml.connectorId}`,
-    });
-    const packageJSONDir = await promptOnce({
-      message:
-        "Which directory contains the package.json that you would like to add the JavaScript SDK dependency to? (Leave blank to skip)",
-      type: "input",
-      default: newConnectorYaml.generate.javascriptSdk?.packageJSONDir,
-    });
-    // ../.. since we ask relative to connector.yaml
+
+  if (targetPlatform === Platform.WEB) {
+    const outputDir =
+      newConnectorYaml.generate.javascriptSdk?.outputDir ||
+      path.relative(
+        connectorInfo.directory,
+        path.join(appDir, `generated/${newConnectorYaml.connectorId}`),
+      );
+    const pkg =
+      newConnectorYaml.generate.javascriptSdk?.package ??
+      `@firebasegen/${connectorInfo.connectorYaml.connectorId}`;
+
     const javascriptSdk: JavascriptSDK = {
       outputDir,
       package: pkg,
     };
-    if (packageJSONDir) {
-      javascriptSdk.packageJSONDir = packageJSONDir;
+
+    if (
+      (await directoryHasPackageJson(appDir)) &&
+      (await confirm({
+        message: "Would you like to add a dependency on the generated SDK to your package.json?",
+      }))
+    ) {
+      javascriptSdk.packageJsonDir = path.relative(connectorInfo.directory, appDir);
     }
     newConnectorYaml.generate.javascriptSdk = javascriptSdk;
   }
-  if (platforms.includes(ANDROID)) {
-    const outputDir = await promptOnce({
-      message: `What directory do you want to write your Kotlin SDK code to? (If not absolute, path will be relative to '${connectorInfo.directory}')`,
-      type: "input",
-      default:
-        newConnectorYaml.generate.kotlinSdk?.outputDir ||
-        `./../.dataconnect/generated/${newConnectorYaml.connectorId}/kotlin-sdk/src/main/kotlin/${newConnectorYaml.connectorId}`,
-    });
-    const pkg = await promptOnce({
-      message: "What package name do you want to use for your Kotlin SDK?",
-      type: "input",
-      default:
-        newConnectorYaml.generate.kotlinSdk?.package ??
-        `com.google.firebase.dataconnect.connectors.${connectorInfo.connectorYaml.connectorId}`,
-    });
+
+  if (targetPlatform === Platform.ANDROID) {
+    // app/src/main is a common practice for Andorid, but not explicitly required.
+    // If it is present, we'll use it. Otherwise, we fall back to the app directory.
+    const baseDir = fs.existsSync(path.join(appDir, "app/src/main"))
+      ? path.join(appDir, "app/src/main")
+      : appDir;
+
+    const outputDir =
+      newConnectorYaml.generate.kotlinSdk?.outputDir ||
+      path.relative(connectorInfo.directory, path.join(baseDir, `generated`));
+    const pkg =
+      newConnectorYaml.generate.kotlinSdk?.package ??
+      `connectors.${snakeCase(connectorInfo.connectorYaml.connectorId)}`;
     const kotlinSdk: KotlinSDK = {
       outputDir,
       package: pkg,
     };
     newConnectorYaml.generate.kotlinSdk = kotlinSdk;
   }
-  // TODO: Prompt user about adding generated paths to .gitignore
-  const connectorYamlContents = yaml.stringify(newConnectorYaml);
-  const connectorYamlPath = `${connectorInfo.directory}/connector.yaml`;
-  fs.writeFileSync(connectorYamlPath, connectorYamlContents, "utf8");
-  logger.info(`Wrote new config to ${connectorYamlPath}`);
-  if (
+
+  const shouldGenerate = !!(
     setup.projectId &&
     (await confirm({
       message: "Would you like to generate SDK code now?",
       default: true,
     }))
-  ) {
+  );
+  // TODO: Prompt user about adding generated paths to .gitignore
+  const connectorYamlContents = yaml.stringify(newConnectorYaml);
+  connectorInfo.connectorYaml = newConnectorYaml;
+  return { connectorYamlContents, connectorInfo, shouldGenerate, displayIOSWarning };
+}
+
+export async function actuate(sdkInfo: SDKInfo, projectId?: string) {
+  const connectorYamlPath = `${sdkInfo.connectorInfo.directory}/connector.yaml`;
+  fs.writeFileSync(connectorYamlPath, sdkInfo.connectorYamlContents, "utf8");
+  logBullet(`Wrote new config to ${connectorYamlPath}`);
+  if (projectId && sdkInfo.shouldGenerate) {
     await DataConnectEmulator.generate({
-      configDir: connectorInfo.directory,
-      connectorId: connectorInfo.connectorYaml.connectorId,
+      configDir: sdkInfo.connectorInfo.directory,
+      connectorId: sdkInfo.connectorInfo.connectorYaml.connectorId,
     });
-    logger.info(`Generated SDK code for ${connectorInfo.connectorYaml.connectorId}`);
+    logBullet(`Generated SDK code for ${sdkInfo.connectorInfo.connectorYaml.connectorId}`);
+  }
+  if (sdkInfo.connectorInfo.connectorYaml.generate?.swiftSdk && sdkInfo.displayIOSWarning) {
+    logBullet(
+      clc.bold(
+        "Please follow the instructions here to add your generated sdk to your XCode project:\n\thttps://firebase.google.com/docs/data-connect/gp/ios-sdk#set-client",
+      ),
+    );
   }
 }

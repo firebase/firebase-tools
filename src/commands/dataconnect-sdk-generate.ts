@@ -1,4 +1,3 @@
-import * as path from "path";
 import * as clc from "colorette";
 
 import { Command } from "../command";
@@ -16,12 +15,8 @@ export const command = new Command("dataconnect:sdk:generate")
 
     const services = readFirebaseJson(options.config);
     for (const service of services) {
-      let configDir = service.source;
-      if (!path.isAbsolute(configDir)) {
-        const cwd = options.cwd || process.cwd();
-        configDir = path.resolve(path.join(cwd), configDir);
-      }
-      const serviceInfo = await load(projectId, configDir);
+      const configDir = service.source;
+      const serviceInfo = await load(projectId, options.config, configDir);
       const hasGeneratables = serviceInfo.connectorInfo.some((c) => {
         return (
           c.connectorYaml.generate?.javascriptSdk ||
