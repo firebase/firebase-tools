@@ -135,7 +135,7 @@ export interface Generate {
 export interface JavascriptSDK {
   outputDir: string;
   package: string;
-  packageJSONDir?: string;
+  packageJsonDir?: string;
 }
 
 export interface SwiftSDK {
