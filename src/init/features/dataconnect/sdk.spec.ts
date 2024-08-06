@@ -75,5 +75,6 @@ function mockSDKInfo(shouldGenerate: boolean): sdk.SDKInfo {
       },
     },
     shouldGenerate,
+    displayIOSWarning: false,
   };
 }

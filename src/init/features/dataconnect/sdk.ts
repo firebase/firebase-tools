@@ -28,6 +28,7 @@ export type SDKInfo = {
   connectorYamlContents: string;
   connectorInfo: ConnectorInfo;
   shouldGenerate: boolean;
+  displayIOSWarning: boolean;
 };
 export async function doSetup(setup: Setup, config: Config): Promise<void> {
   const sdkInfo = await askQuestions(setup, config);
@@ -36,6 +37,7 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
 
 async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
   const serviceCfgs = readFirebaseJson(config);
+  // TODO: This current approach removes comments from YAML files. Consider a different approach that won't.
   const serviceInfos = await Promise.all(
     serviceCfgs.map((c) => load(setup.projectId || "", config, c.source)),
   );
@@ -91,7 +93,7 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
         choices: [
           { name: "iOS (Swift)", value: Platform.IOS },
           { name: "Web (JavaScript)", value: Platform.WEB },
-          { name: "Androd (Kotlin)", value: Platform.ANDROID },
+          { name: "Android (Kotlin)", value: Platform.ANDROID },
         ],
       });
     }
@@ -102,6 +104,7 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
     newConnectorYaml.generate = {};
   }
 
+  let displayIOSWarning = false;
   if (targetPlatform === Platform.IOS) {
     const outputDir =
       newConnectorYaml.generate.swiftSdk?.outputDir ||
@@ -109,9 +112,11 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
         connectorInfo.directory,
         path.join(appDir, `generated/${newConnectorYaml.connectorId}`),
       );
-    const pkg = camelCase(newConnectorYaml.connectorId);
+    const pkg =
+      newConnectorYaml.generate.swiftSdk?.package ?? camelCase(newConnectorYaml.connectorId);
     const swiftSdk = { outputDir, package: pkg };
     newConnectorYaml.generate.swiftSdk = swiftSdk;
+    displayIOSWarning = true;
   }
 
   if (targetPlatform === Platform.WEB) {
@@ -142,12 +147,15 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
   }
 
   if (targetPlatform === Platform.ANDROID) {
+    // app/src/main is a common practice for Andorid, but not explicitly required.
+    // If it is present, we'll use it. Otherwise, we fall back to the app directory.
+    const baseDir = fs.existsSync(path.join(appDir, "app/src/main"))
+      ? path.join(appDir, "app/src/main")
+      : appDir;
+
     const outputDir =
       newConnectorYaml.generate.kotlinSdk?.outputDir ||
-      path.relative(
-        connectorInfo.directory,
-        path.join(appDir, `generated/${newConnectorYaml.connectorId}`),
-      );
+      path.relative(connectorInfo.directory, path.join(baseDir, `generated`));
     const pkg =
       newConnectorYaml.generate.kotlinSdk?.package ??
       `connectors.${snakeCase(connectorInfo.connectorYaml.connectorId)}`;
@@ -168,7 +176,7 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
   // TODO: Prompt user about adding generated paths to .gitignore
   const connectorYamlContents = yaml.stringify(newConnectorYaml);
   connectorInfo.connectorYaml = newConnectorYaml;
-  return { connectorYamlContents, connectorInfo, shouldGenerate };
+  return { connectorYamlContents, connectorInfo, shouldGenerate, displayIOSWarning };
 }
 
 export async function actuate(sdkInfo: SDKInfo, projectId?: string) {
@@ -182,7 +190,7 @@ export async function actuate(sdkInfo: SDKInfo, projectId?: string) {
     });
     logBullet(`Generated SDK code for ${sdkInfo.connectorInfo.connectorYaml.connectorId}`);
   }
-  if (sdkInfo.connectorInfo.connectorYaml.generate?.swiftSdk) {
+  if (sdkInfo.connectorInfo.connectorYaml.generate?.swiftSdk && sdkInfo.displayIOSWarning) {
     logBullet(
       clc.bold(
         "Please follow the instructions here to add your generated sdk to your XCode project:\n\thttps://firebase.google.com/docs/data-connect/gp/ios-sdk#set-client",
