@@ -1,5 +1,5 @@
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../types";
-
+import { spawn } from "cross-spawn";
 interface AppHostingEmulatorArgs {
   options?: any;
   port?: number;
@@ -20,6 +20,12 @@ export class AppHostingEmulator implements EmulatorInstance {
     // }
 
     console.log(`starting apphosting emulatorr!!`);
+    const host = await serve(
+      this.args.options.host,
+      this.args.options.port,
+      "/usr/local/google/home/mathusan/github.com/mathu97/domain-name-generator",
+    );
+    console.log(`serving on ${host}`);
   }
   connect(): Promise<void> {
     console.log(`connecting apphosting emulatorr!!`);
@@ -45,4 +51,27 @@ export class AppHostingEmulator implements EmulatorInstance {
   getName(): Emulators {
     return Emulators.APPHOSTING;
   }
+}
+
+export async function serve(hostaddr: string, port: string, cwd: string) {
+  console.log(`cwd: ${process.cwd()}`);
+  const host = new Promise<string>((resolve, reject) => {
+    const serve = spawn("npm", ["run", "dev", "--", `-H`, hostaddr, `-p`, port], {
+      cwd: process.cwd(),
+    });
+    serve.on("error", function (err) {
+      console.log("Oh noez, teh errurz: " + JSON.stringify(err));
+    });
+    serve.stdout.on("data", (data: any) => {
+      process.stdout.write(data);
+      const match = data.toString().match(/(http:\/\/localhost:\d+)/);
+      if (match) resolve(match[1]);
+    });
+    serve.stderr.on("data", (data: any) => {
+      process.stderr.write(data);
+    });
+    serve.on("exit", reject);
+  });
+
+  return host;
 }
