@@ -45,15 +45,14 @@ export function findExtensionYaml(directory: string): string {
 
 /**
  * Retrieves a file from the directory.
- * @param directory the directory containing the file
- * @param file the name of the file
+ * @param pathToFile the path to the file to read
  */
 export function readFile(pathToFile: string): string {
   try {
     return fs.readFileSync(pathToFile, "utf8");
   } catch (err: any) {
     if (err.code === "ENOENT") {
-      throw new FirebaseError(`Could not find "${pathToFile}""`, { original: err });
+      throw new FirebaseError(`Could not find "${pathToFile}"`, { original: err });
     }
     throw new FirebaseError(`Failed to read file at "${pathToFile}"`, { original: err });
   }
