@@ -147,15 +147,15 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
   }
 
   if (targetPlatform === Platform.ANDROID) {
-    // app/src/main is a common practice for Andorid, but not explicitly required.
+    // app/src/main/java is a common practice for Andorid, but not explicitly required.
     // If it is present, we'll use it. Otherwise, we fall back to the app directory.
-    const baseDir = fs.existsSync(path.join(appDir, "app/src/main"))
-      ? path.join(appDir, "app/src/main")
-      : appDir;
+    const baseDir = fs.existsSync(path.join(appDir, "app/src/main/java"))
+      ? path.join(appDir, "app/src/main/java")
+      : path.join(appDir, "generated");
 
     const outputDir =
       newConnectorYaml.generate.kotlinSdk?.outputDir ||
-      path.relative(connectorInfo.directory, path.join(baseDir, `generated`));
+      path.relative(connectorInfo.directory, baseDir);
     const pkg =
       newConnectorYaml.generate.kotlinSdk?.package ??
       `connectors.${snakeCase(connectorInfo.connectorYaml.connectorId)}`;
