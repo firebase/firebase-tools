@@ -59,15 +59,16 @@ export async function extractAllDynamicExtensions(
     }
   }
   resumeLogging();
-  if (loadingErr) {
-    // This means we couldn't load at least one of the codebase(s).
-    // So we may be asking you if you want to delete extensions that are
-    // defined in those codebases.
-    logLabeledWarning(
-      "extensions",
-      "Unable to determine if additional extensions are defined in other code bases. Other codebases may have syntax or runtime errors.",
-    );
-  }
+  // TODO(ifielker): uncomment when we allow writing extensions to codebases.
+  // if (loadingErr) {
+  //   // This means we couldn't load at least one of the codebase(s).
+  //   // So we may be asking you if you want to delete extensions that are
+  //   // defined in those codebases.
+  //   logLabeledWarning(
+  //     "extensions",
+  //     "Unable to determine if additional extensions are defined in other code bases. Other codebases may have syntax or runtime errors.",
+  //   );
+  // }
 
   return extractExtensionsFromBuilds(functionsBuilds);
 }
