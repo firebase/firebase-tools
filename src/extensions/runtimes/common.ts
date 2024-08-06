@@ -1,4 +1,4 @@
-import { logLabeledWarning } from "../../utils";
+// import { logLabeledWarning } from "../../utils";
 import { Options } from "../../options";
 import { normalizeAndValidate } from "../../functions/projectConfig";
 import { loadCodebases } from "../../deploy/functions/prepare";
@@ -38,7 +38,7 @@ export async function extractAllDynamicExtensions(
   // (Otherwise you could end up both installing and asking if you want to
   // delete the same extension).
   let functionsBuilds: Record<string, Build> = {};
-  let loadingErr = false;
+  // let loadingErr = false;
   const codebases = targetCodebases(functionsConfig);
 
   // This is best effort only and would be confusing to see so suppress it
@@ -55,7 +55,7 @@ export async function extractAllDynamicExtensions(
       );
       functionsBuilds = { ...functionsBuilds, ...builds };
     } catch (err) {
-      loadingErr = true;
+      // loadingErr = true;
     }
   }
   resumeLogging();
