@@ -253,7 +253,7 @@ export class TasksEmulator implements EmulatorInstance {
         res.status(200).send({ res: "OK" });
       } catch (e) {
         this.logger.log("WARN", "Tried to remove a task that doesn't exist");
-        res.status(404).send(e);
+        res.status(404).send("Tried to remove a task that doesn't exist");
       }
     };
 
