@@ -45,6 +45,8 @@ import { generateServiceIdentity } from "../../gcp/serviceusage";
 import { applyBackendHashToBackends } from "./cache/applyHash";
 import { allEndpoints, Backend } from "./backend";
 import { assertExhaustive } from "../../functional";
+import { prepareDynamicExtensions } from "../extensions/prepare";
+import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 
@@ -97,6 +99,15 @@ export async function prepare(
     runtimeConfig,
     context.filters,
   );
+
+  // == Phase 1.5 Prepare extensions found in codebases if any
+  if (Object.values(wantBuilds).some((b) => b.extensions)) {
+    const extContext: ExtContext = {};
+    const extPayload: ExtPayload = {};
+    await prepareDynamicExtensions(extContext, options, extPayload, wantBuilds);
+    context.extensions = extContext;
+    payload.extensions = extPayload;
+  }
 
   // == Phase 2. Resolve build to backend.
   const codebaseUsesEnvs: string[] = [];

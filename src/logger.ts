@@ -4,16 +4,17 @@ import * as Transport from "winston-transport";
 import { isVSCodeExtension } from "./utils";
 import { EventEmitter } from "events";
 
-/** vsceLogEmitter passes CLI logs along to VSCode.
-  Events are of the format winston.LogEntry
-  Example usage:
-
-  vsceLogEmitter.on("log", (logEntry) => {  
-    if (logEntry.level == "error") {
-      console.log(logEntry.message)
-    }
-  }) 
-*/
+/**
+ * vsceLogEmitter passes CLI logs along to VSCode.
+ *
+ * Events are of the format winston.LogEntry
+ * @example
+ * vsceLogEmitter.on("log", (logEntry) => {
+ *   if (logEntry.level == "error") {
+ *     console.log(logEntry.message)
+ *   }
+ * })
+ */
 export const vsceLogEmitter = new EventEmitter();
 
 export type LogLevel =
@@ -59,6 +60,8 @@ export interface Logger {
 
   add(transport: Transport): Logger;
   remove(transport: Transport): Logger;
+
+  silent: boolean;
 }
 
 function expandErrors(logger: winston.Logger): winston.Logger {

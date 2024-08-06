@@ -251,6 +251,7 @@ export enum ParamType {
   STRING = "STRING",
   SELECT = "SELECT",
   MULTISELECT = "MULTISELECT",
+  SELECT_RESOURCE = "SELECT_RESOURCE",
   SECRET = "SECRET",
 }
 
@@ -258,3 +259,63 @@ export interface ParamOption {
   value: string;
   label?: string;
 }
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+export const isParam = (param: unknown): param is Param => {
+  return (
+    isObject(param) && typeof param["param"] === "string" && typeof param["label"] === "string"
+  );
+};
+
+export const isResource = (res: unknown): res is Resource => {
+  return isObject(res) && typeof res["name"] === "string";
+};
+
+// Typeguard for ExtensionSpec. (We often get "specs" from parsing yaml).
+// This helps decide if it's actually a spec or just some random yaml.
+export const isExtensionSpec = (spec: unknown): spec is ExtensionSpec => {
+  if (!isObject(spec) || typeof spec.name !== "string" || typeof spec.version !== "string") {
+    return false;
+  }
+
+  let validResources = true;
+  if (spec.resources && Array.isArray(spec.resources)) {
+    for (const res of spec.resources) {
+      validResources = validResources && isResource(res);
+      if (!validResources) {
+        break;
+      }
+    }
+  } else {
+    return false;
+  }
+
+  let validParams = true;
+  if (spec.params && Array.isArray(spec.params)) {
+    for (const param of spec.params) {
+      validParams = validParams && isParam(param);
+      if (!validParams) {
+        break;
+      }
+    }
+  } else {
+    return false;
+  }
+
+  let validSysParams = true;
+  if (spec.systemParams && Array.isArray(spec.systemParams)) {
+    for (const param of spec.systemParams) {
+      validSysParams = validSysParams && isParam(param);
+      if (!validSysParams) {
+        break;
+      }
+    }
+  } else {
+    return false;
+  }
+
+  return true;
+};
