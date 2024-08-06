@@ -142,10 +142,10 @@ export async function directoryHasPackageJson(dirPath: string) {
 export function generateSdkYaml(
   platform: Platform,
   connectorYaml: ConnectorYaml,
-  connectorYamlPath:string,
+  connectorYamlFolder: string, // path.relative expects folder as first arg
   appFolder: string,
 ): ConnectorYaml {
-  const relPath = path.relative(connectorYamlPath, appFolder);
+  const relPath = path.relative(connectorYamlFolder, appFolder);
   const outputDir = path.join(relPath, "dataconnect-generated");
   if (!connectorYaml.generate) {
     connectorYaml.generate = {};
