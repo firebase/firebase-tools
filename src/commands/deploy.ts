@@ -113,7 +113,13 @@ export const command = new Command("deploy")
       try {
         await requireHostingSite(options);
       } catch (err: unknown) {
-        if (err === errNoDefaultSite) {
+        const isPermissionError =
+          err instanceof FirebaseError &&
+          err.original instanceof FirebaseError &&
+          err.original.status === 403;
+        if (isPermissionError) {
+          throw err;
+        } else if (err === errNoDefaultSite) {
           createSite = true;
         }
       }

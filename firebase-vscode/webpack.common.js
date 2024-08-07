@@ -73,10 +73,8 @@ const extensionConfig = {
     // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
     // mainFields: ['browser', 'module', 'main'], // look for `browser` entry point in imported node modules
     mainFields: ["main", "module"],
-    extensions: [".ts", ".js"],
+    extensions: [".ts", ".js", ".json"], // needed to handle a node_module dependency emojilib, which requires json without ext.
     alias: {
-      // provides alternate implementation for node module and source files
-      "marked-terminal": path.resolve(__dirname, "src/stubs/empty-class.js"),
       // "ora": path.resolve(__dirname, 'src/stubs/empty-function.js'),
       commander: path.resolve(__dirname, "src/stubs/empty-class.js"),
       inquirer: path.resolve(__dirname, "src/stubs/inquirer-stub.js"),
@@ -87,7 +85,6 @@ const extensionConfig = {
       // This is used for Github deploy to hosting - will need to restore
       // or find another solution if we add that feature.
       "libsodium-wrappers": path.resolve(__dirname, "src/stubs/empty-class.js"),
-      marked: path.resolve(__dirname, "src/stubs/marked.js"),
     },
     fallback: {
       // Webpack 5 no longer polyfills Node.js core modules automatically.

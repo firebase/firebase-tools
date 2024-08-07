@@ -1,1 +1,5 @@
+- Fixes secret params resolution in functions emulator. (#7443)
+- Fixed bug where `esbuild` execution was throwing an error saying "Command line too long" on Windows (#7250, #6193). (#7395)
+- Automatically detect app platform during `init dataconnect:sdk`.
+- Support `sharp` ^0.33.x for web frameworks. (#7517)
 - Update supported range for Angular framework. (#7418)

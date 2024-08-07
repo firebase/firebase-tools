@@ -12,6 +12,7 @@ import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfv2 from "../../gcp/cloudfunctionsv2";
 import * as backend from "./backend";
 import { findEndpoint } from "./backend";
+import { deploy as extDeploy } from "../extensions";
 
 setGracefulCleanup();
 
@@ -118,23 +119,23 @@ export async function deploy(
   options: Options,
   payload: args.Payload,
 ): Promise<void> {
-  if (!context.config) {
-    return;
+  // Deploy extensions
+  if (payload.extensions && context.extensions) {
+    await extDeploy(context.extensions, options, payload.extensions);
   }
 
-  if (!payload.functions) {
-    return;
-  }
-
-  await checkHttpIam(context, options, payload);
-  const uploads: Promise<void>[] = [];
-  for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {
-    if (shouldUploadBeSkipped(context, wantBackend, haveBackend)) {
-      continue;
+  // Deploy functions
+  if (payload.functions && context.config) {
+    await checkHttpIam(context, options, payload);
+    const uploads: Promise<void>[] = [];
+    for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {
+      if (shouldUploadBeSkipped(context, wantBackend, haveBackend)) {
+        continue;
+      }
+      uploads.push(uploadCodebase(context, codebase, wantBackend));
     }
-    uploads.push(uploadCodebase(context, codebase, wantBackend));
+    await Promise.all(uploads);
   }
-  await Promise.all(uploads);
 }
 
 /**

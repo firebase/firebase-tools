@@ -57,20 +57,20 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   dataconnect:
     process.platform === "darwin"
       ? {
-          version: "1.3.0",
-          expectedSize: 24175424,
-          expectedChecksum: "e0aefd484499308434a0405a5a55574c",
+          version: "1.3.2",
+          expectedSize: 24195840,
+          expectedChecksum: "b60f4501c657bec4dc8df3f3ec7ab3fd",
         }
       : process.platform === "win32"
         ? {
-            version: "1.3.0",
-            expectedSize: 24585728,
-            expectedChecksum: "c7f9fad2025d9f2c9d2dff44a3edebbe",
+            version: "1.3.2",
+            expectedSize: 24610304,
+            expectedChecksum: "37d5e08f4df5e07b41160b8f2fd90135",
           }
         : {
-            version: "1.3.0",
-            expectedSize: 24084632,
-            expectedChecksum: "f332b33b67680a32ea76bea866540656",
+            version: "1.3.2",
+            expectedSize: 24109208,
+            expectedChecksum: "52b09c69bc9a3a84b01a3a7311817229",
           },
 };
 
@@ -292,9 +292,11 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     optionalArgs: [
       "listen",
       "config_dir",
-      "disable_sdk_generation",
-      "resolvers_emulator",
-      "rpc_retry_count",
+      "enable_output_schema_extensions",
+      "enable_output_generated_sdk",
+      // Additional flags that CLI shouldn't pass:
+      // rpc_retry_count,
+      // resolvers_emulator,
     ],
     joinArgs: true,
     shell: false,
