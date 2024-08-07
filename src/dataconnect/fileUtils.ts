@@ -137,3 +137,37 @@ export async function directoryHasPackageJson(dirPath: string) {
   const fileNames = await fs.readdir(dirPath);
   return fileNames.some((f) => f.toLowerCase() === "package.json");
 }
+
+// Generates sdk yaml based on platform, and returns a modified connectorYaml
+export function generateSdkYaml(
+  platform: Platform,
+  connectorYaml: ConnectorYaml,
+  connectorYamlFolder: string, // path.relative expects folder as first arg
+  appFolder: string,
+): ConnectorYaml {
+  const relPath = path.relative(connectorYamlFolder, appFolder);
+  const outputDir = path.join(relPath, "dataconnect-generated");
+  if (!connectorYaml.generate) {
+    connectorYaml.generate = {};
+  }
+  if (platform === Platform.WEB) {
+    connectorYaml.generate.javascriptSdk = {
+      outputDir,
+      package: `@firebasegen/${connectorYaml.connectorId}`,
+      packageJsonDir: appFolder,
+    };
+  }
+  if (platform === Platform.IOS) {
+    connectorYaml.generate.swiftSdk = {
+      outputDir,
+      package: connectorYaml.connectorId,
+    };
+  }
+  if (platform === Platform.ANDROID) {
+    connectorYaml.generate.kotlinSdk = {
+      outputDir,
+      package: `connectors.${connectorYaml.connectorId}`,
+    };
+  }
+  return connectorYaml;
+}
