@@ -11,6 +11,12 @@ export interface InstanceEventsConfig {
   allowedEventTypes: string[];
 }
 
+/**
+ * Validates the user's selected events against the list of valid events
+ * @param response The user's selected events
+ * @param validEvents The list of valid events
+ * @return True if the response is valid
+ */
 export function checkAllowedEventTypesResponse(
   response: string[],
   validEvents: EventDescriptor[],
@@ -30,13 +36,21 @@ export function checkAllowedEventTypesResponse(
   return true;
 }
 
+/**
+ * Asks the user if events should be enabled, and if yes, for the EventArc
+ * channel and also the events to enable
+ * @param events The list of possible events
+ * @param projectId The projectId for the EventArc channel
+ * @param instanceId The instanceId to get predefined events and location from
+ * @return The instance events config or undefined if the user doesn't want events
+ */
 export async function askForEventsConfig(
   events: EventDescriptor[],
   projectId: string,
   instanceId: string,
 ): Promise<InstanceEventsConfig | undefined> {
   logger.info(
-    `\n${clc.bold("Enable Events")}: ${marked(
+    `\n${clc.bold("Enable Events")}: ${await marked(
       "If you enable events, you can write custom event handlers ([https://firebase.google.com/docs/extensions/install-extensions#eventarc](https://firebase.google.com/docs/extensions/install-extensions#eventarc)) that respond to these events.\n\nYou can always enable or disable events later. Events will be emitted via Eventarc. Fees apply ([https://cloud.google.com/eventarc/pricing](https://cloud.google.com/eventarc/pricing)).",
     )}`,
   );
@@ -59,10 +73,22 @@ export async function askForEventsConfig(
   return { channel, allowedEventTypes };
 }
 
+/**
+ * Creates an EventArc channel resource name
+ * @param projectId The projectId for the channel
+ * @param location The location for the channel
+ * @return The resource name for the EventArc channel
+ */
 export function getEventArcChannel(projectId: string, location: string): string {
   return `projects/${projectId}/locations/${location}/channels/firebase`;
 }
 
+/**
+ * Asks the user which event types they would like to enable
+ * @param eventDescriptors The list of possible events
+ * @param preselectedTypes The list of preselected events
+ * @return A list of strings indicating the event types
+ */
 export async function askForAllowedEventTypes(
   eventDescriptors: EventDescriptor[],
   preselectedTypes?: string[],
@@ -90,6 +116,10 @@ export async function askForAllowedEventTypes(
   return response.filter((e) => e !== "");
 }
 
+/**
+ * Asks the user if they want to enable events
+ * @return A boolean indicating if they want to enable events
+ */
 export async function askShouldCollectEventsConfig(): Promise<boolean> {
   return promptOnce({
     type: "confirm",
@@ -108,6 +138,11 @@ export const ALLOWED_EVENT_ARC_REGIONS = [
 export type ExtensionsEventArcRegions = (typeof ALLOWED_EVENT_ARC_REGIONS)[number];
 export const EXTENSIONS_DEFAULT_EVENT_ARC_REGION: ExtensionsEventArcRegions = "us-central1";
 
+/**
+ * Asks the user to select an EventArc location
+ * @param preselectedLocation (Optional) A preselected option
+ * @return A string representing the EventArc location.
+ */
 export async function askForEventArcLocation(preselectedLocation?: string): Promise<string> {
   let valid = false;
   let location = "";
