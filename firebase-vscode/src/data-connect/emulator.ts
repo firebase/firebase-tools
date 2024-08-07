@@ -121,18 +121,16 @@ export class DataConnectEmulatorController implements vscode.Disposable {
   // Commands to run after the emulator is started successfully
   private async connectToEmulator() {
     const configs = dataConnectConfigs.value?.tryReadValue;
-    if (configs) {
-      runEmulatorIssuesStream(
-        configs,
-        this.emulatorsController.getLocalEndpoint().value,
-        this.isPostgresEnabled,
-        this.schemaReload,
-      );
-      runDataConnectCompiler(
-        configs,
-        this.emulatorsController.getLocalEndpoint().value,
-      );
-    }
+    runEmulatorIssuesStream(
+      configs,
+      this.emulatorsController.getLocalEndpoint().value,
+      this.isPostgresEnabled,
+      this.schemaReload,
+    );
+    runDataConnectCompiler(
+      configs,
+      this.emulatorsController.getLocalEndpoint().value,
+    );
   }
 
   dispose() {
