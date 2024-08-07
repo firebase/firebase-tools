@@ -50,9 +50,9 @@ export async function askForEventsConfig(
   instanceId: string,
 ): Promise<InstanceEventsConfig | undefined> {
   logger.info(
-    `\n${clc.bold("Enable Events")}: ${(await marked(
+    `\n${clc.bold("Enable Events")}: ${await marked(
       "If you enable events, you can write custom event handlers ([https://firebase.google.com/docs/extensions/install-extensions#eventarc](https://firebase.google.com/docs/extensions/install-extensions#eventarc)) that respond to these events.\n\nYou can always enable or disable events later. Events will be emitted via Eventarc. Fees apply ([https://cloud.google.com/eventarc/pricing](https://cloud.google.com/eventarc/pricing)).",
-    ))}`,
+    )}`,
   );
   if (!(await askShouldCollectEventsConfig())) {
     return undefined;

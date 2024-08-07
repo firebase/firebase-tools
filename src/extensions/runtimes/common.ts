@@ -84,7 +84,10 @@ export async function extractAllDynamicExtensions(
  * @param filters The filters to use
  * @return a record of extensions by extensionId
  */
-export function extractExtensionsFromBuilds(builds: Record<string, Build>, filters?: Filter[]): Record<string, DynamicExtension> {
+export function extractExtensionsFromBuilds(
+  builds: Record<string, Build>,
+  filters?: Filter[],
+): Record<string, DynamicExtension> {
   const extRecords: Record<string, DynamicExtension> = {};
   for (const [codebase, build] of Object.entries(builds)) {
     if (build.extensions) {
