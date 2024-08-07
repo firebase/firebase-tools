@@ -123,13 +123,14 @@ export async function prepare(
     const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
     const envs = { ...userEnvs, ...firebaseEnvs };
 
-    const { backend: wantBackend, envs: resolvedEnvs } = await build.resolveBackend(
-      wantBuild,
+    const { backend: wantBackend, envs: resolvedEnvs } = await build.resolveBackend({
+      build: wantBuild,
       firebaseConfig,
       userEnvOpt,
       userEnvs,
-      options.nonInteractive,
-    );
+      nonInteractive: options.nonInteractive,
+      isEmulator: false,
+    });
 
     let hasEnvsFromParams = false;
     wantBackend.environmentVariables = envs;
