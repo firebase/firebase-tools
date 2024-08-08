@@ -15,7 +15,7 @@
 #   )
 # }
 
-# # Upsert (update or insert) a user based on their username
+# # Upsert (update or insert) a user's username based on their auth.uid
 # mutation UpsertUser($username: String!) @auth(level: USER) {
 #   user_upsert(
 #     data: {

@@ -22,6 +22,8 @@
 #   user(key: {id_expr: "auth.uid"}) {
 #     id
 #     username
+#     # <field>_on_<foreign_key_field> makes it easy to grab info from another table
+#     # Here, we use it to grab all the reviews written by the user.
 #     reviews: reviews_on_user {
 #       id
 #       rating
@@ -68,7 +70,7 @@
 # ) @auth(level: PUBLIC) {
 #   movies(
 #     where: {
-#       _or: [
+#       _and: [
 #         { genre: { eq: $genre } }
 #         { title: { contains: $titleInput } }
 #       ]
