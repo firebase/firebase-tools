@@ -164,13 +164,14 @@ async function writeConnectorFiles(
   config: Config,
   connectorInfo: {
     id: string;
+    path: string;
     files: File[];
   },
 ) {
   const subbedConnectorYaml = subConnectorYamlValues({ connectorId: connectorInfo.id });
   const dir: string = config.get("dataconnect.source") || "dataconnect";
   await config.askWriteProjectFile(
-    join(dir, connectorInfo.id, "connector.yaml"),
+    join(dir, connectorInfo.path, "connector.yaml"),
     subbedConnectorYaml,
   );
   for (const f of connectorInfo.files) {
