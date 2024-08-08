@@ -110,25 +110,74 @@ export async function pickService(
 // case insensitive exact match indicators for supported app platforms
 const WEB_INDICATORS = ["package.json", "package-lock.json", "node_modules"];
 const IOS_INDICATORS = ["info.plist", "podfile", "package.swift"];
-const ANDROID_INDICATORS = ["androidmanifest.xml", "build.gradle"];
+const ANDROID_INDICATORS = ["androidmanifest.xml", "build.gradle", "build.gradle.kts"];
 
 // endswith match
-const IOS_INDICATORS_2 = [".xcworkspace", ".xcodeproj"];
+const IOS_POSTFIX_INDICATORS = [".xcworkspace", ".xcodeproj"];
 
 // given a directory, determine the platform type
 export async function getPlatformFromFolder(dirPath: string) {
   // Check for file indicators
   const fileNames = await fs.readdir(dirPath);
 
+  let hasWeb = false;
+  let hasAndroid = false;
+  let hasIOS = false;
   for (const fileName of fileNames) {
     const cleanedFileName = fileName.toLowerCase();
-    if (WEB_INDICATORS.some((indicator) => indicator === cleanedFileName)) return Platform.WEB;
-    if (ANDROID_INDICATORS.some((indicator) => indicator === cleanedFileName))
-      return Platform.ANDROID;
-    if (IOS_INDICATORS.some((indicator) => indicator === cleanedFileName)) return Platform.IOS;
-    if (IOS_INDICATORS_2.some((indicator) => cleanedFileName.endsWith(indicator)))
-      return Platform.IOS;
+    hasWeb ||= WEB_INDICATORS.some((indicator) => indicator === cleanedFileName);
+    hasAndroid ||= ANDROID_INDICATORS.some((indicator) => indicator === cleanedFileName);
+    hasIOS ||=
+      IOS_INDICATORS.some((indicator) => indicator === cleanedFileName) ||
+      IOS_POSTFIX_INDICATORS.some((indicator) => cleanedFileName.endsWith(indicator));
   }
-
+  if (hasWeb && !hasAndroid && !hasIOS) {
+    return Platform.WEB;
+  } else if (hasAndroid && !hasWeb && !hasIOS) {
+    return Platform.ANDROID;
+  } else if (hasIOS && !hasWeb && !hasAndroid) {
+    return Platform.IOS;
+  }
+  // At this point, its not clear which platform the app directory is
+  // (either because we found no indicators, or indicators for multiple platforms)
   return Platform.UNDETERMINED;
+}
+
+export async function directoryHasPackageJson(dirPath: string) {
+  const fileNames = await fs.readdir(dirPath);
+  return fileNames.some((f) => f.toLowerCase() === "package.json");
+}
+
+// Generates sdk yaml based on platform, and returns a modified connectorYaml
+export function generateSdkYaml(
+  platform: Platform,
+  connectorYaml: ConnectorYaml,
+  connectorYamlFolder: string, // path.relative expects folder as first arg
+  appFolder: string,
+): ConnectorYaml {
+  const relPath = path.relative(connectorYamlFolder, appFolder);
+  const outputDir = path.join(relPath, "dataconnect-generated");
+  if (!connectorYaml.generate) {
+    connectorYaml.generate = {};
+  }
+  if (platform === Platform.WEB) {
+    connectorYaml.generate.javascriptSdk = {
+      outputDir,
+      package: `@firebasegen/${connectorYaml.connectorId}`,
+      packageJsonDir: appFolder,
+    };
+  }
+  if (platform === Platform.IOS) {
+    connectorYaml.generate.swiftSdk = {
+      outputDir,
+      package: connectorYaml.connectorId,
+    };
+  }
+  if (platform === Platform.ANDROID) {
+    connectorYaml.generate.kotlinSdk = {
+      outputDir,
+      package: `connectors.${connectorYaml.connectorId}`,
+    };
+  }
+  return connectorYaml;
 }

@@ -56,6 +56,7 @@ describe("init dataconnect", () => {
           connectors: [
             {
               id: "my-connector",
+              path: "hello",
               files: [
                 {
                   path: "queries.gql",
@@ -70,8 +71,8 @@ describe("init dataconnect", () => {
         expectedFiles: [
           "dataconnect/dataconnect.yaml",
           "dataconnect/schema/schema.gql",
-          "dataconnect/my-connector/connector.yaml",
-          "dataconnect/my-connector/queries.gql",
+          "dataconnect/hello/connector.yaml",
+          "dataconnect/hello/queries.gql",
         ],
         expectCSQLProvisioning: false,
       },

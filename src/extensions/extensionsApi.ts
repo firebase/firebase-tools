@@ -548,7 +548,7 @@ export function refNotFoundError(ref: refs.Ref): FirebaseError {
       `  -The name of the ${ref.version ? "extension version" : "extension"} '${clc.bold(
         ref.version ? `${ref.extensionId}@${ref.version}` : ref.extensionId,
       )}' doesn't exist or could be misspelled\n\n` +
-      `Please correct the extension reference and try again. If you meant to install an extension from a local source, please provide a relative path prefixed with '${clc.bold(
+      `Please correct the extension reference and try again. If you meant to reference an extension from a local source, please provide a relative path prefixed with '${clc.bold(
         "./",
       )}', '${clc.bold("../")}', or '${clc.bold("~/")}'.}`,
     { status: 404 },

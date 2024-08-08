@@ -24,10 +24,12 @@ const TASKS_API = "cloudtasks.googleapis.com";
 
 /**
  * Displays info about an extension version, whether it is uploaded to the registry or a local spec.
- *
- * @param spec the extension spec
- * @param extensionVersion the extension version
- * */
+ * @param args.spec the extension spec
+ * @param args.extensionVersion (Optional) the extension version
+ * @param args.latestApprovedVersion (Optional) The latest approved version
+ * @param args.latestVersion (Optional) The latest version
+ * @return A string containing extension version info ready to display
+ */
 export async function displayExtensionVersionInfo(args: {
   spec: ExtensionSpec;
   extensionVersion?: ExtensionVersion;
@@ -75,12 +77,12 @@ export async function displayExtensionVersionInfo(args: {
       );
     }
     if (extensionVersion.buildSourceUri) {
-      const buildSourceUri = new URL(extensionVersion.buildSourceUri!);
+      const buildSourceUri = new URL(extensionVersion.buildSourceUri);
       buildSourceUri.pathname = path.join(
         buildSourceUri.pathname,
         extensionVersion.extensionRoot ?? "",
       );
-      lines.push(`${clc.bold("Source in GitHub:")} ${buildSourceUri}`);
+      lines.push(`${clc.bold("Source in GitHub:")} ${buildSourceUri.toString()}`);
     } else {
       lines.push(
         `${clc.bold("Source download URI:")} ${extensionVersion.sourceDownloadUri ?? "-"}`,
@@ -107,7 +109,12 @@ export async function displayExtensionVersionInfo(args: {
   return lines;
 }
 
-export function displayExternalServices(spec: ExtensionSpec) {
+/**
+ * Gets a display string of the external services an extension would use
+ * @param spec The extension spec containing the external services
+ * @return A string ready to be displayed in the terminal
+ */
+export function displayExternalServices(spec: ExtensionSpec): string {
   const lines =
     spec.externalServices?.map((service: ExternalService) => {
       return `  - ${clc.cyan(`${service.name} (${service.pricingUri})`)}`;
@@ -115,7 +122,12 @@ export function displayExternalServices(spec: ExtensionSpec) {
   return clc.bold("External services used:\n") + lines.join("\n");
 }
 
-export function displayEvents(spec: ExtensionSpec) {
+/**
+ * Gets a display string of the events an extension could emit
+ * @param spec The extension spec containing the events
+ * @return A string ready to be displayed in the terminal
+ */
+export function displayEvents(spec: ExtensionSpec): string {
   const lines =
     spec.events?.map((event: EventDescriptor) => {
       return `  - ${clc.magenta(event.type)}${event.description ? `: ${event.description}` : ""}`;
@@ -123,7 +135,12 @@ export function displayEvents(spec: ExtensionSpec) {
   return clc.bold("Events emitted:\n") + lines.join("\n");
 }
 
-export function displayResources(spec: ExtensionSpec) {
+/**
+ * Gets a display string of the resources an extension could create
+ * @param spec The extension spec
+ * @return A string ready to be displayed in the terminal
+ */
+export function displayResources(spec: ExtensionSpec): string {
   const lines = spec.resources.map((resource: Resource) => {
     let type: string = resource.type;
     switch (resource.type) {
@@ -135,14 +152,14 @@ export function displayResources(spec: ExtensionSpec) {
         break;
       default:
     }
-    return `  - ${clc.blue(`${resource.name} (${type})`)}${
+    return `  - ${clc.blueBright(`${resource.name} (${type})`)}${
       resource.description ? `: ${resource.description}` : ""
     }`;
   });
   lines.push(
     ...new Set(
       spec.lifecycleEvents?.map((event: LifecycleEvent) => {
-        return `  - ${clc.blue(`${event.taskQueueTriggerFunction} (Cloud Task queue)`)}`;
+        return `  - ${clc.blueBright(`${event.taskQueueTriggerFunction} (Cloud Task queue)`)}`;
       }),
     ),
   );
@@ -152,7 +169,7 @@ export function displayResources(spec: ExtensionSpec) {
         return param.type === "SECRET";
       })
       .map((param: Param) => {
-        return `  - ${clc.blue(`${param.param} (Cloud Secret Manager secret)`)}`;
+        return `  - ${clc.blueBright(`${param.param} (Cloud Secret Manager secret)`)}`;
       }),
   );
   return clc.bold("Resources created:\n") + (lines.length ? lines.join("\n") : " - None");
@@ -165,9 +182,9 @@ export function displayResources(spec: ExtensionSpec) {
  * @param role to get info for
  * @return {string} string representation for role
  */
-export async function retrieveRoleInfo(role: string) {
+export async function retrieveRoleInfo(role: string): Promise<string> {
   const res = await iam.getRole(role);
-  return `  - ${clc.yellow(res.title!)}${res.description ? `: ${res.description}` : ""}`;
+  return `  - ${clc.yellow(res.title || res.name)}${res.description ? `: ${res.description}` : ""}`;
 }
 
 async function displayRoles(roles: Role[]): Promise<string> {
@@ -181,7 +198,7 @@ async function displayRoles(roles: Role[]): Promise<string> {
 
 function displayApis(apis: Api[]): string {
   const lines: string[] = apis.map((api: Api) => {
-    return `  - ${clc.cyan(api.apiName!)}: ${api.reason}`;
+    return `  - ${clc.cyan(api.apiName)}: ${api.reason}`;
   });
   return clc.bold("APIs used:\n") + lines.join("\n");
 }
