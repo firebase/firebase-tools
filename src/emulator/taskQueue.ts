@@ -144,6 +144,23 @@ export interface EmulatedTask {
   metadata: EmulatedTaskMetadata;
 }
 
+export interface QueueStatistics {
+  // number of tasks currently in the queue
+  numberOfTasks: number;
+  // Tasks added/min (last 5 min)
+  tasksAdded: number;
+  // Tasks executed (failed or completed) (last min)
+  completedLastMin: number;
+  // Number of tasks failed/min (last 5 min)
+  failedTasks: number;
+  // Number of tasks currently running
+  runningTasks: number;
+  // max rate of dispatch (per second)
+  maxRate: number;
+  // max dispatched at a time
+  maxConcurrent: number;
+}
+
 export class TaskQueue {
   queue: Queue<EmulatedTask> = new Queue<EmulatedTask>();
   logger = EmulatorLogger.forEmulator(Emulators.TASKS);
@@ -161,6 +178,10 @@ export class TaskQueue {
   private dispatches: (EmulatedTask | null)[];
   // The indexes of the open slots in the dispatch array
   private openDispatches: number[];
+
+  private addedTimes: number[] = [];
+  private completedTimes: number[] = [];
+  private failedTimes: number[] = [];
 
   constructor(
     private key: string,
@@ -222,6 +243,8 @@ export class TaskQueue {
           case TaskStatus.FAILED:
             this.dispatches[i] = null;
             this.openDispatches.push(i);
+            this.completedTimes.push(Date.now());
+            this.failedTimes.push(Date.now());
             break;
           case TaskStatus.NOT_STARTED:
             void this.runTask(i);
@@ -232,6 +255,7 @@ export class TaskQueue {
           case TaskStatus.FINISHED:
             this.dispatches[i] = null;
             this.openDispatches.push(i);
+            this.completedTimes.push(Date.now());
             break;
         }
       }
@@ -360,6 +384,7 @@ export class TaskQueue {
       : emulatedTask.task.httpRequest.url;
 
     this.queue.enqueue(emulatedTask.task.name, emulatedTask);
+    this.addedTimes.push(Date.now());
   }
 
   delete(taskId: string): void {
@@ -377,5 +402,23 @@ export class TaskQueue {
     ]
     - Open Locations: [${this.openDispatches.join(", ")}]
     `;
+  }
+  
+  getStatistics(): QueueStatistics {
+    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+    const oneMinuteAgo = Date.now() - 60 * 1000;
+    this.addedTimes = this.addedTimes.filter((t) => t > fiveMinutesAgo);
+    this.failedTimes = this.failedTimes.filter((t) => t > fiveMinutesAgo);
+    this.completedTimes = this.completedTimes.filter((t) => t > oneMinuteAgo);
+
+    return {
+      numberOfTasks: this.queue.size(),
+      tasksAdded: this.addedTimes.length / 5,
+      completedLastMin: this.completedTimes.length,
+      failedTasks: this.failedTimes.length / 5,
+      runningTasks: this.dispatches.length,
+      maxRate: this.config.rateLimits.maxDispatchesPerSecond,
+      maxConcurrent: this.config.rateLimits.maxConcurrentDispatches,
+    };
   }
 }

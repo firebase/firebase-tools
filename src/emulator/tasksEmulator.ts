@@ -5,6 +5,7 @@ import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
 import { createDestroyer } from "../utils";
 import { EmulatorLogger } from "./emulatorLogger";
 import { TaskQueue } from "./taskQueue";
+import * as cors from "cors";
 
 export interface TasksEmulatorArgs {
   port?: number;
@@ -67,7 +68,7 @@ type ResetValue = null;
  * - The timing for when task queue methods are run
  */
 export class TaskQueueController {
-  static UPDATE_TIMEOUT = 1;
+  static UPDATE_TIMEOUT = 0;
   static LISTEN_TIMEOUT = 1000;
   static TOKEN_REFRESH_INTERVAL = 1000;
   queues: { [key: string]: TaskQueue } = {};
@@ -147,6 +148,14 @@ export class TaskQueueController {
 
   isRunning(): boolean {
     return this.running;
+  }
+
+  getStatistics() {
+    const stats: Record<string, any> = {};
+    for (const [key, queue] of Object.entries(this.queues)) {
+      stats[key] = queue.getStatistics();
+    }
+    return stats;
   }
 }
 
@@ -257,6 +266,12 @@ export class TasksEmulator implements EmulatorInstance {
       }
     };
 
+    const getStatsRoute = `/queueStats`;
+    const getStatsHandler: express.Handler = (req, res) => {
+      res.json(this.controller.getStatistics());
+    };
+
+    hub.get([getStatsRoute], cors({ origin: true }), getStatsHandler);
     hub.post([createTaskQueueRoute], express.json(), createTaskQueueHandler);
     hub.post([enqueueTasksRoute], express.json(), enqueueTasksHandler);
     hub.delete([deleteTasksRoute], express.json(), deleteTasksHandler);
