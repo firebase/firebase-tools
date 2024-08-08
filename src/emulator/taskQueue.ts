@@ -367,6 +367,9 @@ export class TaskQueue {
   }
 
   enqueue(task: Task): void {
+    if (this.queuedIds.has(task.name)) {
+      throw new Error(`A task has already been queued with id ${task.name}`)
+    }
     const emulatedTask: EmulatedTask = {
       task: task,
       metadata: {
@@ -384,6 +387,7 @@ export class TaskQueue {
       : emulatedTask.task.httpRequest.url;
 
     this.queue.enqueue(emulatedTask.task.name, emulatedTask);
+    this.queuedIds.add(task.name);
     this.addedTimes.push(Date.now());
   }
 
