@@ -12,4 +12,4 @@ authMode: "PUBLIC"
 #     package: "firebasegen/default"
 #   kotlinSdk:
 #     outputDir: <Path where you want the generated SDK to be written to, relative to this file>
-#     package: com.connectors.default
+#     package: connectors.default
