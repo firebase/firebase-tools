@@ -175,7 +175,7 @@ async function writeConnectorFiles(
     subbedConnectorYaml,
   );
   for (const f of connectorInfo.files) {
-    await config.askWriteProjectFile(join(dir, connectorInfo.id, f.path), f.content);
+    await config.askWriteProjectFile(join(dir, connectorInfo.path, f.path), f.content);
   }
 }
 
