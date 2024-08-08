@@ -125,11 +125,9 @@ export async function getPlatformFromFolder(dirPath: string) {
   let hasIOS = false;
   for (const fileName of fileNames) {
     const cleanedFileName = fileName.toLowerCase();
-    hasWeb = hasWeb || WEB_INDICATORS.some((indicator) => indicator === cleanedFileName);
-    hasAndroid =
-      hasAndroid || ANDROID_INDICATORS.some((indicator) => indicator === cleanedFileName);
-    hasIOS =
-      hasIOS ||
+    hasWeb ||= WEB_INDICATORS.some((indicator) => indicator === cleanedFileName);
+    hasAndroid ||= ANDROID_INDICATORS.some((indicator) => indicator === cleanedFileName);
+    hasIOS ||=
       IOS_INDICATORS.some((indicator) => indicator === cleanedFileName) ||
       IOS_POSTFIX_INDICATORS.some((indicator) => cleanedFileName.endsWith(indicator));
   }
