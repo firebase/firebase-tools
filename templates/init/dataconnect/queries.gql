@@ -1,56 +1,84 @@
-# # Example queries for a simple email app.
+# # Example queries for a simple movie app.
 
 # # @auth() directives control who can call each operation.
-# # Only admins should be able to list all emails, so we use NO_ACCESS
-# query ListEmails @auth(level: NO_ACCESS) {
-#   emails {
-#     id, subject, text, sent
-#     from {
-#       name
-#     }
+# # Anyone should be able to list all movies, so the auth level is set to PUBLIC
+# query ListMovies @auth(level: PUBLIC) {
+#   movies {
+#     id
+#     title
+#     imageUrl
+#     genre
 #   }
 # }
 
-# # Only admins should be able to list all users, so we use NO_ACCESS
+# # List all users, only admins should be able to list all users, so we use NO_ACCESS
 # query ListUsers @auth(level: NO_ACCESS) {
-#   users { uid, name, address }
+#   users { id, username }
 # }
-  
-# # Logged in users should be able to see their inbox though, so we use USER
-# query ListInbox @auth(level: USER) {
-#   # where allows you to filter lists
-#   # Here, we use it to filter to only emails that are sent to the logged in user.
-#   emails(where: {
-#     users_via_Recipient: {
-#       exist: { uid: { eq_expr: "auth.uid" }
-#     }}
-#   }) {
-#     id subject sent
-#     content: text # Select the `text` field but alias it as `content` in the response.
-#     sender: from { name address uid }
+
+# # Logged in user can list all their reviews and movie titles associated with the review 
+# # Since the query requires the uid of the current authenticated user, the auth level is set to USER
+# query ListUserReviews @auth(level: USER) {
+#   user(key: {id_expr: "auth.uid"}) {
+#     id
+#     username
 #     # <field>_on_<foreign_key_field> makes it easy to grab info from another table
-#     # Here, we use it to grab all the recipients of the email.
-#     to: recipients_on_email {
-#       user { name address uid }
+#     # Here, we use it to grab all the reviews written by the user.
+#     reviews: reviews_on_user {
+#       id
+#       rating
+#       reviewDate
+#       reviewText
+#       movie {
+#         id
+#         title
+#       }
 #     }
 #   }
 # }
 
-# query GetUidByEmail($emails: [String!]) @auth(level: PUBLIC) {
-#   users(where: { address: { in: $emails } }) {
-#     uid address
+# # Get movie by id
+# query GetMovieById($id: UUID!) @auth(level: PUBLIC) {
+#   movie(id: $id) {
+#     id
+#     title
+#     imageUrl
+#     genre
+#     metadata: movieMetadatas_on_movie {
+#       director
+#       rating
+#       releaseYear
+#       description
+#     }
+#     reviews: reviews_on_movie {
+#       id
+#       reviewText
+#       reviewDate
+#       rating
+#       user {
+#         id
+#         username
+#       }
+#     }
 #   }
 # }
 
-# query ListSent($uid: String) @auth(level: PUBLIC) {
-#   emails(where: {
-#     from: {uid: {eq: $uid }}
-#   }) {
-#     id subject sent
-#     content: text
-#     sender: from { name address uid }
-#     to: recipients_on_email {
-#       user { name address uid }
+# # Search for movies, actors, and reviews
+# query SearchMovie(
+#   $titleInput: String
+#   $genre: String
+# ) @auth(level: PUBLIC) {
+#   movies(
+#     where: {
+#       _and: [
+#         { genre: { eq: $genre } }
+#         { title: { contains: $titleInput } }
+#       ]
 #     }
+#   ) {
+#     id
+#     title
+#     genre
+#     imageUrl
 #   }
 # }

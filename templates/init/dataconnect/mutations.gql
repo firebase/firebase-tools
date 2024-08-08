@@ -1,35 +1,50 @@
-# # Example mutations for a simple email app
+# # Example mutations for a simple movie app
 
-# # Logged in user can create their own account.
-# mutation CreateUser($name: String!, $address: String!) @auth(level: USER) {
-#   # <type>_insert lets you create a new row in your table.
-#   user_insert(data: {
-#     # Server values let your service populate sensitive data.
-#     # Users can only setup their own account.
-#     uid_expr: "auth.uid",
-#     name: $name,
-#     address: $address
-#   })
+# # Create a movie based on user input
+# mutation CreateMovie(
+#   $title: String!
+#   $genre: String!
+#   $imageUrl: String!
+# ) @auth(level: USER_EMAIL_VERIFIED) {
+#   movie_insert(
+#     data: {
+#       title: $title
+#       genre: $genre
+#       imageUrl: $imageUrl
+#     }
+#   )
 # }
 
-# # Logged in user can send emails from their account.
-# mutation CreateEmail($content: String, $subject: String) @auth(level: USER) {
-#   email_insert(data: {
-#     # The request variable name doesn't have to match the field name.
-#     text: $content,
-#     subject: $subject,
-#     # Server values let your service populate sensitive data.
-#     # Users are only allowed to create emails sent from their account.
-#     fromUid_expr: "auth.uid",
-#     # Server values let your service populate data for you
-#     # Here, we use sent_date: { today: true } to set 'sent' to today's date.
-#     sent_date: { today: true }
-#   })
+# # Upsert (update or insert) a user's username based on their auth.uid
+# mutation UpsertUser($username: String!) @auth(level: USER) {
+#   user_upsert(
+#     data: {
+#       id_expr: "auth.uid"
+#       username: $username
+#     }
+#   )
 # }
 
-# mutation CreateRecipient($emailId: UUID) @auth(level: USER) {
-#   recipient_insert(data: {
-#     emailId: $emailId,
-#     userUid_expr: "auth.uid"
-#   })
+# # Add a review for a movie
+# mutation AddReview(
+#   $movieId: UUID!
+#   $rating: Int!
+#   $reviewText: String!
+# ) @auth(level: USER) {
+#   review_upsert(
+#     data: {
+#       userId_expr: "auth.uid"
+#       movieId: $movieId
+#       rating: $rating
+#       reviewText: $reviewText
+#       # reviewDate defaults to today in the schema. No need to set it manually.
+#     }
+#   )
+# }
+
+# # Logged in user can delete their review for a movie
+# mutation DeleteReview(
+#   $movieId: UUID!
+# ) @auth(level: USER) {
+#   review_delete(key: { userId_expr: "auth.uid", movieId: $movieId })
 # }
