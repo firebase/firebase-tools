@@ -37,7 +37,7 @@
 #       movieId: $movieId
 #       rating: $rating
 #       reviewText: $reviewText
-#       reviewDate_date: { today: true }
+#       # reviewDate defaults to today in the schema. No need to set it manually.
 #     }
 #   )
 # }
