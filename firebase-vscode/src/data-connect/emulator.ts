@@ -115,15 +115,12 @@ export class DataConnectEmulatorController implements vscode.Disposable {
   // on schema reload, restart language server and run introspection again
   private async schemaReload() {
     vscode.commands.executeCommand("fdc-graphql.restart");
-    vscode.commands.executeCommand(
-      "firebase.dataConnect.executeIntrospection",
-    );
+    vscode.commands.executeCommand("firebase.dataConnect.executeIntrospection");
   }
 
   // Commands to run after the emulator is started successfully
   private async connectToEmulator() {
     const configs = dataConnectConfigs.value?.tryReadValue;
-
     runEmulatorIssuesStream(
       configs,
       this.emulatorsController.getLocalEndpoint().value,

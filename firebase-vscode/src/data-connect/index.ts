@@ -6,6 +6,7 @@ import { registerExplorer } from "./explorer";
 import { registerAdHoc } from "./ad-hoc-mutations";
 import { DataConnectService as FdcService } from "./service";
 import {
+  ConfigureSdkCodeLensProvider,
   OperationCodeLensProvider,
   SchemaCodeLensProvider,
 } from "./code-lens-provider";
@@ -29,6 +30,7 @@ import { registerTerminalTasks } from "./terminal";
 import { registerWebview } from "../webview";
 
 import { DataConnectEmulatorController } from "./emulator";
+import { registerFdcSdkGeneration } from "./sdk-generation";
 
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
@@ -159,6 +161,7 @@ export function registerFdc(
     fdcEmulatorsController,
   );
   const schemaCodeLensProvider = new SchemaCodeLensProvider(emulatorController);
+  const configureSdkCodeLensProvider = new ConfigureSdkCodeLensProvider();
 
   // activate language client/serer
   let client: LanguageClient;
@@ -222,6 +225,7 @@ export function registerFdc(
     registerAdHoc(fdcService, telemetryLogger),
     registerConnectors(context, broker, fdcService, telemetryLogger),
     registerFdcDeploy(broker, telemetryLogger),
+    registerFdcSdkGeneration(broker, telemetryLogger),
     registerTerminalTasks(broker, telemetryLogger),
     operationCodeLensProvider,
     vscode.languages.registerCodeLensProvider(
@@ -244,6 +248,12 @@ export function registerFdc(
         // Don't show in untitled files since the provider needs the file name.
       ],
       schemaCodeLensProvider,
+    ),
+    vscode.languages.registerCodeLensProvider(
+      [
+        { scheme: "file", language: "yaml", pattern: "**/connector.yaml" },
+      ],
+      configureSdkCodeLensProvider,
     ),
     {
       dispose: () => {
