@@ -21,7 +21,7 @@ import {
 } from "../../../dataconnect/types";
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { FirebaseError } from "../../../error";
-import { camelCase, snakeCase } from "lodash";
+import { camelCase, snakeCase, upperFirst } from "lodash";
 import { logSuccess, logBullet } from "../../../utils";
 
 export type SDKInfo = {
@@ -110,10 +110,11 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
       newConnectorYaml.generate.swiftSdk?.outputDir ||
       path.relative(
         connectorInfo.directory,
-        path.join(appDir, `generated/${newConnectorYaml.connectorId}`),
+        path.join(appDir, `generated/${newConnectorYaml.connectorId}/swift`),
       );
     const pkg =
-      newConnectorYaml.generate.swiftSdk?.package ?? camelCase(newConnectorYaml.connectorId);
+      newConnectorYaml.generate.swiftSdk?.package ??
+      upperFirst(camelCase(newConnectorYaml.connectorId));
     const swiftSdk = { outputDir, package: pkg };
     newConnectorYaml.generate.swiftSdk = swiftSdk;
     displayIOSWarning = true;
@@ -124,7 +125,7 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
       newConnectorYaml.generate.javascriptSdk?.outputDir ||
       path.relative(
         connectorInfo.directory,
-        path.join(appDir, `generated/${newConnectorYaml.connectorId}`),
+        path.join(appDir, `generated/${newConnectorYaml.connectorId}/javascript`),
       );
     const pkg =
       newConnectorYaml.generate.javascriptSdk?.package ??
@@ -150,17 +151,16 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
     // app/src/main/kotlin and app/src/main/java are conventional for Android,
     // but not required or enforced. If one of them is present (preferring the
     // "kotlin" directory), use it. Otherwise, fall back to the app directory.
-    let baseDir = path.join(appDir, "generated");
+    let baseDir = path.join(appDir, `generated/${newConnectorYaml.connectorId}/kotlin`);
     for (const candidateSubdir of ["app/src/main/java", "app/src/main/kotlin"]) {
       const candidateDir = path.join(appDir, candidateSubdir);
       if (fs.existsSync(candidateDir)) {
         baseDir = candidateDir;
       }
     }
-
     const outputDir =
       newConnectorYaml.generate.kotlinSdk?.outputDir ||
-      path.relative(connectorInfo.directory, baseDir);
+      path.relative(connectorInfo.directory, path.join(appDir, baseDir));
     const pkg =
       newConnectorYaml.generate.kotlinSdk?.package ??
       `connectors.${snakeCase(connectorInfo.connectorYaml.connectorId)}`;
