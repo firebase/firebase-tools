@@ -36,6 +36,12 @@ export interface BuildResult {
   baseUrl?: string;
 }
 
+export interface BundleConfig {
+  staticAssets: string[];
+  serverDirectory?: string;
+  rewrites?: HostingRewrites[];
+}
+
 export type RequestHandler = (
   req: IncomingMessage,
   res: ServerResponse,
@@ -106,4 +112,5 @@ export interface FirebaseDefaults {
 export interface PackageJson {
   main: string;
   type?: "commonjs" | "module";
+  dependencies: Record<string, string>;
 }
