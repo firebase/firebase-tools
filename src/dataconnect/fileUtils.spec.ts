@@ -86,14 +86,14 @@ describe("getPlatformFromFolder", () => {
       output: Platform.IOS,
     },
     {
-      desc: "multiple identifiers, returns first found",
+      desc: "multiple identifiers, returns undetermined",
       folderName: "test/",
       folderItems: {
         file1: "contents",
         podfile: "cocoa pods yummy",
         "androidmanifest.xml": "file found second :(",
       },
-      output: Platform.ANDROID,
+      output: Platform.UNDETERMINED,
     },
   ];
   for (const c of cases) {
