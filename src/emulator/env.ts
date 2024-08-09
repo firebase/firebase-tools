@@ -38,6 +38,9 @@ export function setEnvVarsForEmulators(
       case Emulators.EVENTARC:
         env[Constants.CLOUD_EVENTARC_EMULATOR_HOST] = `http://${host}`;
         break;
+      case Emulators.TASKS:
+        env[Constants.CLOUD_TASKS_EMULATOR_HOST] = host;
+        break;
     }
   }
 }

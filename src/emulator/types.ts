@@ -15,6 +15,7 @@ export enum Emulators {
   EXTENSIONS = "extensions",
   EVENTARC = "eventarc",
   DATACONNECT = "dataconnect",
+  TASKS = "tasks",
 }
 
 export type DownloadableEmulators =
@@ -51,6 +52,7 @@ export const ALL_SERVICE_EMULATORS = [
   Emulators.STORAGE,
   Emulators.EVENTARC,
   Emulators.DATACONNECT,
+  Emulators.TASKS,
 ].filter((v) => v);
 
 export const EMULATORS_SUPPORTED_BY_FUNCTIONS = [
@@ -59,6 +61,7 @@ export const EMULATORS_SUPPORTED_BY_FUNCTIONS = [
   Emulators.PUBSUB,
   Emulators.STORAGE,
   Emulators.EVENTARC,
+  Emulators.TASKS,
 ];
 
 export const EMULATORS_SUPPORTED_BY_UI = [

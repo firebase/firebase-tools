@@ -14,6 +14,7 @@ export const DEFAULT_PORTS: { [s in Emulators]: number } = {
   storage: 9199,
   eventarc: 9299,
   dataconnect: 9399,
+  tasks: 9499,
 };
 
 export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
@@ -30,6 +31,7 @@ export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
   extensions: false,
   eventarc: true,
   dataconnect: true,
+  tasks: true,
 };
 
 export const EMULATOR_DESCRIPTION: Record<Emulators, string> = {
@@ -46,6 +48,7 @@ export const EMULATOR_DESCRIPTION: Record<Emulators, string> = {
   extensions: "Extensions Emulator",
   eventarc: "Eventarc Emulator",
   dataconnect: "Data Connect Emulator",
+  tasks: "Cloud Tasks Emulator",
 };
 
 export const DEFAULT_HOST = "localhost";
@@ -87,6 +90,9 @@ export class Constants {
   // Environment variable to discover the eventarc emulator.
   static CLOUD_EVENTARC_EMULATOR_HOST = "CLOUD_EVENTARC_EMULATOR_HOST";
 
+  // Environment variable to discover the tasks emulator.
+  static CLOUD_TASKS_EMULATOR_HOST = "CLOUD_TASKS_EMULATOR_HOST";
+
   // Environment variable to discover the Emulator HUB
   static FIREBASE_EMULATOR_HUB = "FIREBASE_EMULATOR_HUB";
   static FIREBASE_GA_SESSION = "FIREBASE_GA_SESSION";
@@ -95,7 +101,9 @@ export class Constants {
   static SERVICE_REALTIME_DATABASE = "firebaseio.com";
   static SERVICE_PUBSUB = "pubsub.googleapis.com";
   static SERVICE_EVENTARC = "eventarc.googleapis.com";
+  static SERVICE_CLOUD_TASKS = "cloudtasks.googleapis.com";
   static SERVICE_FIREALERTS = "firebasealerts.googleapis.com";
+
   // Note: the service name below are here solely for logging purposes.
   // There is not an emulator available for these.
   static SERVICE_ANALYTICS = "app-measurement.com";
@@ -127,6 +135,8 @@ export class Constants {
         return "test lab";
       case this.SERVICE_EVENTARC:
         return "eventarc";
+      case this.SERVICE_CLOUD_TASKS:
+        return "tasks";
       default:
         return service;
     }
