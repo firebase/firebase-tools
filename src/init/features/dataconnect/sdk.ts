@@ -21,7 +21,7 @@ import {
 } from "../../../dataconnect/types";
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { FirebaseError } from "../../../error";
-import { camelCase, snakeCase } from "lodash";
+import { camelCase, snakeCase, upperFirst } from "lodash";
 import { logSuccess, logBullet } from "../../../utils";
 
 export type SDKInfo = {
@@ -113,7 +113,8 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
         path.join(appDir, `generated/${newConnectorYaml.connectorId}/swift`),
       );
     const pkg =
-      newConnectorYaml.generate.swiftSdk?.package ?? camelCase(newConnectorYaml.connectorId);
+      newConnectorYaml.generate.swiftSdk?.package ??
+      upperFirst(camelCase(newConnectorYaml.connectorId));
     const swiftSdk = { outputDir, package: pkg };
     newConnectorYaml.generate.swiftSdk = swiftSdk;
     displayIOSWarning = true;
