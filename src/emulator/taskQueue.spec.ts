@@ -168,6 +168,8 @@ describe("Task Queue", () => {
     startTime: 0,
     status: TaskStatus.NOT_STARTED,
     lastRunTime: null,
+    executionCount: 0,
+    previousResponse: null,
   };
 
   const mockEmulatedTask: EmulatedTask = {

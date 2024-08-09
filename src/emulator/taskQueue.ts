@@ -137,6 +137,8 @@ export interface EmulatedTaskMetadata {
   startTime: number;
   status: TaskStatus;
   lastRunTime: number | null;
+  previousResponse: number | null;
+  executionCount: number;
 }
 
 export interface EmulatedTask {
@@ -279,12 +281,22 @@ export class TaskQueue {
 
     emulatedTask.metadata.status = TaskStatus.RUNNING;
     try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        "X-CloudTasks-QueueName": this.key,
+        "X-CloudTasks-TaskName": emulatedTask.task.name.split("/").pop()!,
+        "X-CloudTasks-TaskRetryCount": `${emulatedTask.metadata.currentAttempt - 1}`,
+        "X-CloudTasks-TaskExecutionCount": `${emulatedTask.metadata.executionCount}`,
+        "X-CloudTasks-TaskETA": `${emulatedTask.task.scheduleTime || Date.now()}`,
+        ...emulatedTask.task.httpRequest.headers,
+      };
+      console.log(headers);
+      if (emulatedTask.metadata.previousResponse) {
+        headers["X-CloudTasks-TaskPreviousResponse"] = `${emulatedTask.metadata.previousResponse}`;
+      }
       const response = await fetch(emulatedTask.task.httpRequest.url, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...emulatedTask.task.httpRequest.headers,
-        },
+        headers: headers,
         body: JSON.stringify(emulatedTask.task.httpRequest.body),
       });
 
@@ -292,6 +304,10 @@ export class TaskQueue {
         emulatedTask.metadata.status = TaskStatus.FINISHED;
         return;
       } else {
+        if (!(response.status >= 500 && response.status <= 599)) {
+          emulatedTask.metadata.executionCount++;
+        }
+        emulatedTask.metadata.previousResponse = response.status;
         emulatedTask.metadata.status = TaskStatus.RETRY;
         emulatedTask.metadata.lastRunTime = Date.now();
       }
@@ -378,13 +394,15 @@ export class TaskQueue {
         startTime: 0,
         status: TaskStatus.NOT_STARTED,
         lastRunTime: null,
+        previousResponse: null,
+        executionCount: 0,
       },
     };
 
-    emulatedTask.task.httpRequest.url = 
-      emulatedTask.task.httpRequest.url === '' 
-      ? this.config.defaultUri 
-      : emulatedTask.task.httpRequest.url;
+    emulatedTask.task.httpRequest.url =
+      emulatedTask.task.httpRequest.url === ''
+        ? this.config.defaultUri
+        : emulatedTask.task.httpRequest.url;
 
     this.queue.enqueue(emulatedTask.task.name, emulatedTask);
     this.queuedIds.add(task.name);
@@ -407,7 +425,7 @@ export class TaskQueue {
     - Open Locations: [${this.openDispatches.join(", ")}]
     `;
   }
-  
+
   getStatistics(): QueueStatistics {
     const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
     const oneMinuteAgo = Date.now() - 60 * 1000;
