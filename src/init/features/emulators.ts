@@ -5,15 +5,13 @@ import { prompt, promptOnce } from "../../prompt";
 import { Emulators, ALL_SERVICE_EMULATORS, isDownloadableEmulator } from "../../emulator/types";
 import { Constants } from "../../emulator/constants";
 import { downloadIfNecessary } from "../../emulator/downloadableEmulators";
+import { DEFAULT_POSTGRES_CONNECTION } from "../../dataconnect/postgres";
 import { Setup } from "../index";
 
 interface EmulatorsInitSelections {
   emulators?: Emulators[];
   download?: boolean;
 }
-
-// postgresql://localhost:5432 is a default out of the box value for most installations of Postgres
-export const DEFAULT_POSTGRES_CONNECTION = "postgresql://localhost:5432?sslmode=disable";
 
 export async function doSetup(setup: Setup, config: any) {
   const choices = ALL_SERVICE_EMULATORS.map((e) => {

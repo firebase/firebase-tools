@@ -1,7 +1,9 @@
 import * as crypto from "crypto";
 import * as fs from "fs-extra";
 import * as path from "path";
+import * as os from "os";
 import * as tmp from "tmp";
+import { execSync } from "child_process";
 
 import { EmulatorLogger } from "./emulatorLogger";
 import { EmulatorDownloadDetails, DownloadableEmulators } from "./types";
@@ -80,6 +82,41 @@ export async function downloadExtensionVersion(
   // TODO: We should not need to do this wait
   // However, when I remove this, unzipDir doesn't contain everything yet.
   await new Promise((resolve) => setTimeout(resolve, 1000));
+}
+
+export async function downloadPostgresApp(): Promise<string> {
+  const postgresAppDownloadLink =
+    "https://github.com/PostgresApp/PostgresApp/releases/download/v2.7.3/Postgres-2.7.3-15.dmg";
+  const tmpFile = await downloadUtils.downloadToTmp(postgresAppDownloadLink);
+  await validateSize(tmpFile, 104376912);
+  await validateChecksum(tmpFile, "61f582fd200b4e39e1c8ff53daec74b3");
+
+  const p = path.join(os.homedir(), ".cache", "firebase", "Postgres-2.7.3-15.dmg");
+  fs.copySync(tmpFile, p);
+
+  const dmg = mountDmg(p);
+  const postgresApp = `${dmg.volumePath}/Postgres.app`;
+  const appTarget = "/Applications/Postgres.app";
+  fs.copySync(postgresApp, appTarget);
+  dmg.unmount();
+  return appTarget;
+}
+
+function mountDmg(path: string): {
+  diskPath: string;
+  volumePath: string;
+  unmount: () => {};
+} {
+  const stdout = execSync(`hdiutil attach "${path}"`);
+  const [diskPath, , volumePath] = stdout
+    .toString()
+    .trim()
+    .split("\n")
+    .pop()!
+    .split(/\t+/)
+    .map((s) => s.trim());
+  const unmount = () => execSync(`hdiutil detach "${volumePath}"`);
+  return { diskPath, volumePath, unmount };
 }
 
 function removeOldFiles(
