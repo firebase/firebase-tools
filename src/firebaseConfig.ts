@@ -203,6 +203,10 @@ export type EmulatorsConfig = {
     host?: string;
     port?: number;
   };
+  apphosting?: {
+    host?: string;
+    port?: number;
+  };
   pubsub?: {
     host?: string;
     port?: number;

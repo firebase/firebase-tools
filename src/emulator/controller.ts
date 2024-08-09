@@ -57,6 +57,7 @@ import { HostingEmulator } from "./hostingEmulator";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { StorageEmulator } from "./storage";
 import { readFirebaseJson } from "../dataconnect/fileUtils";
+import { AppHostingEmulator } from "./apphosting";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
@@ -872,6 +873,19 @@ export async function startAll(
     });
 
     await startEmulator(hostingEmulator);
+  }
+
+  // similar to the hosting emulator, the App Hosting emulator should also
+  // start after the other emulators
+  if (listenForEmulator.apphosting) {
+    const apphostingAddr = legacyGetFirstAddr(Emulators.APPHOSTING);
+    const apphostingEmulator = new AppHostingEmulator({
+      host: apphostingAddr.host,
+      port: apphostingAddr.port,
+      options,
+    });
+
+    await startEmulator(apphostingEmulator);
   }
 
   if (listenForEmulator.logging) {

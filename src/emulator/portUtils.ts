@@ -208,6 +208,8 @@ const EMULATOR_CAN_LISTEN_ON_PRIMARY_ONLY: Record<PortName, boolean> = {
 
   // Only one hostname possible in .server mode, can switch to middleware later.
   hosting: true,
+
+  apphosting: true,
 };
 
 export interface EmulatorListenConfig {

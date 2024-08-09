@@ -79,6 +79,8 @@ export class EmulatorRegistry {
       // Hosting is next because it can trigger functions.
       hosting: 2,
 
+      apphosting: 2.1,
+
       // All background trigger emulators are equal here, so we choose
       // an order for consistency.
       database: 3.0,
