@@ -160,10 +160,7 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
     }
     const outputDir =
       newConnectorYaml.generate.kotlinSdk?.outputDir ||
-      path.relative(
-        connectorInfo.directory,
-        path.join(appDir, baseDir),
-      );
+      path.relative(connectorInfo.directory, path.join(appDir, baseDir));
     const pkg =
       newConnectorYaml.generate.kotlinSdk?.package ??
       `connectors.${snakeCase(connectorInfo.connectorYaml.connectorId)}`;
