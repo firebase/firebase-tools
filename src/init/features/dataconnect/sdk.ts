@@ -151,11 +151,18 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
     // app/src/main/kotlin and app/src/main/java are conventional for Android,
     // but not required or enforced. If one of them is present (preferring the
     // "kotlin" directory), use it. Otherwise, fall back to the app directory.
+    let baseDir = path.join(appDir, `generated/${newConnectorYaml.connectorId}/kotlin`);
+    for (const candidateSubdir of ["app/src/main/java", "app/src/main/kotlin"]) {
+      const candidateDir = path.join(appDir, candidateSubdir);
+      if (fs.existsSync(candidateDir)) {
+        baseDir = candidateDir;
+      }
+    }
     const outputDir =
       newConnectorYaml.generate.kotlinSdk?.outputDir ||
       path.relative(
         connectorInfo.directory,
-        path.join(appDir, `generated/${newConnectorYaml.connectorId}/kotlin`),
+        path.join(appDir, baseDir),
       );
     const pkg =
       newConnectorYaml.generate.kotlinSdk?.package ??
