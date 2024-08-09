@@ -263,6 +263,8 @@ export class RuntimeWorker {
     const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
     const timeout = new Promise<never>((resolve, reject) => {
       setTimeout(() => {
+        this.logDebug("Reached socked ready timeout");
+        
         reject(new FirebaseError("Failed to load function."));
       }, 30_000);
     });
