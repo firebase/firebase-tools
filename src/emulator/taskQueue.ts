@@ -1,8 +1,8 @@
-/* eslint-disable prettier/prettier */
+import AbortController from "abort-controller";
 import { EmulatorLogger } from "./emulatorLogger";
 import { RetryConfig, Task, TaskQueueConfig } from "./tasksEmulator";
 import { Emulators } from "./types";
-import fetch from 'node-fetch';
+import fetch from "node-fetch";
 
 class Node<T> {
   public data: T;
@@ -294,12 +294,28 @@ export class TaskQueue {
       if (emulatedTask.metadata.previousResponse) {
         headers["X-CloudTasks-TaskPreviousResponse"] = `${emulatedTask.metadata.previousResponse}`;
       }
-      const response = await fetch(emulatedTask.task.httpRequest.url, {
+      const controller = new AbortController();
+      const signal = controller.signal;
+      const request = fetch(emulatedTask.task.httpRequest.url, {
         method: "POST",
         headers: headers,
         body: JSON.stringify(emulatedTask.task.httpRequest.body),
+        signal: signal,
       });
 
+      const dispatchDeadline = emulatedTask.task.dispatchDeadline;
+      const dispatchDeadlineSeconds = dispatchDeadline
+        ? parseInt(dispatchDeadline.substring(0, dispatchDeadline.length - 1))
+        : 60;
+
+      console.log("Abort Timeout", dispatchDeadlineSeconds);
+      setTimeout(() => {
+        // TODO: Set X-CloudTasks-TaskRetryReason
+        console.log("ABORTING");
+        controller.abort();
+      }, dispatchDeadlineSeconds * 1000);
+
+      const response = await request;
       if (response.ok) {
         emulatedTask.metadata.status = TaskStatus.FINISHED;
         return;
@@ -312,7 +328,8 @@ export class TaskQueue {
         emulatedTask.metadata.lastRunTime = Date.now();
       }
     } catch (e) {
-      console.error(e);
+      this.logger.logLabeled("WARN", `${e}`);
+      emulatedTask.metadata.status = TaskStatus.RETRY;
     }
   }
 
@@ -384,7 +401,7 @@ export class TaskQueue {
 
   enqueue(task: Task): void {
     if (this.queuedIds.has(task.name)) {
-      throw new Error(`A task has already been queued with id ${task.name}`)
+      throw new Error(`A task has already been queued with id ${task.name}`);
     }
     const emulatedTask: EmulatedTask = {
       task: task,
@@ -400,7 +417,7 @@ export class TaskQueue {
     };
 
     emulatedTask.task.httpRequest.url =
-      emulatedTask.task.httpRequest.url === ''
+      emulatedTask.task.httpRequest.url === ""
         ? this.config.defaultUri
         : emulatedTask.task.httpRequest.url;
 

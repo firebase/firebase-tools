@@ -61,6 +61,19 @@ export interface RateLimits {
 
 type ResetValue = null;
 
+const RETRY_CONFIG_DEFAULTS: RetryConfig = {
+  maxAttempts: 3,
+  maxRetrySeconds: null,
+  maxBackoffSeconds: 60 * 60,
+  maxDoublings: 16,
+  minBackoffSeconds: 0.1,
+};
+
+const RATE_LIMITS_DEFAULT: RateLimits = {
+  maxConcurrentDispatches: 1000,
+  maxDispatchesPerSecond: 500,
+};
+
 /**
  * A controller class which manages:
  * - The creation of task queues
@@ -169,6 +182,18 @@ export class TasksEmulator implements EmulatorInstance {
 
   logger = EmulatorLogger.forEmulator(Emulators.TASKS);
 
+  validateQueueId(queueId: string): boolean {
+    if (typeof queueId !== "string") {
+      return false;
+    }
+
+    if (queueId.length > 100) {
+      return false;
+    }
+
+    const regex = /^[A-Za-z0-9-]+$/;
+    return regex.test(queueId);
+  }
   createHubServer(): express.Application {
     const hub = express();
 
@@ -177,20 +202,31 @@ export class TasksEmulator implements EmulatorInstance {
       const projectId = req.params.project_id;
       const locationId = req.params.location_id;
       const queueName = req.params.queue_name;
+      if (!this.validateQueueId(queueName)) {
+        res.status(400).send("Invalid Queue ID");
+        return;
+      }
+
       const key = `queue:${projectId}-${locationId}-${queueName}`;
       this.logger.logLabeled("SUCCESS", "tasks", `Created queue with key: ${key}`);
       const body = req.body as TaskQueueConfig;
+
       const taskQueueConfig: TaskQueueConfig = {
         retryConfig: {
-          maxAttempts: body.retryConfig?.maxAttempts ?? 3,
-          maxRetrySeconds: body.retryConfig?.maxRetrySeconds ?? null,
-          maxBackoffSeconds: body.retryConfig?.maxBackoffSeconds ?? 60 * 60,
-          maxDoublings: body.retryConfig?.maxDoublings ?? 16,
-          minBackoffSeconds: body.retryConfig?.minBackoffSeconds ?? 0.1,
+          maxAttempts: body.retryConfig?.maxAttempts ?? RETRY_CONFIG_DEFAULTS.maxAttempts,
+          maxRetrySeconds:
+            body.retryConfig?.maxRetrySeconds ?? RETRY_CONFIG_DEFAULTS.maxRetrySeconds,
+          maxBackoffSeconds:
+            body.retryConfig?.maxBackoffSeconds ?? RETRY_CONFIG_DEFAULTS.maxBackoffSeconds,
+          maxDoublings: body.retryConfig?.maxDoublings ?? RETRY_CONFIG_DEFAULTS.maxDoublings,
+          minBackoffSeconds:
+            body.retryConfig?.minBackoffSeconds ?? RETRY_CONFIG_DEFAULTS.minBackoffSeconds,
         },
         rateLimits: {
-          maxConcurrentDispatches: body.rateLimits?.maxConcurrentDispatches ?? 1000,
-          maxDispatchesPerSecond: body.rateLimits?.maxDispatchesPerSecond ?? 500,
+          maxConcurrentDispatches:
+            body.rateLimits?.maxConcurrentDispatches ?? RATE_LIMITS_DEFAULT.maxConcurrentDispatches,
+          maxDispatchesPerSecond:
+            body.rateLimits?.maxDispatchesPerSecond ?? RATE_LIMITS_DEFAULT.maxDispatchesPerSecond,
         },
         timeoutSeconds: body.timeoutSeconds ?? 10,
         retry: body.retry ?? false,
