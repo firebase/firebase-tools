@@ -27,6 +27,7 @@ import {
 import * as commandUtils from "../../src/emulator/commandUtils";
 import { currentUser } from "./core/user";
 import { firstWhere } from "./utils/signal";
+import { currentProjectId } from "./core/project";
 export { Emulators };
 
 /**
@@ -46,7 +47,6 @@ export async function requireAuthWrapper(
 
   // helper to determine if VSCode options has the same account as global default
   function isUserMatching(account: Account, options: Options) {
-
     if (!options.user || !options.tokens) {
       return false;
     }
@@ -56,7 +56,7 @@ export async function requireAuthWrapper(
     return (
       account &&
       account.user.email === optionsUser.email &&
-      account.tokens.refresh_token === optionsTokens.refresh_token // Should check refresh token which is consistent, not access_token which is short lived. 
+      account.tokens.refresh_token === optionsTokens.refresh_token // Should check refresh token which is consistent, not access_token which is short lived.
     );
   }
 
@@ -86,7 +86,10 @@ export async function requireAuthWrapper(
     // - we are using tokens from configstore (aka those set by firebase login), AND
     // - we are calling CLI code that skips Command (where we normally call this)
     currentOptions.value = optsCopy;
-    setAccessToken(await getAccessToken()); 
+    if (optsCopy.projectId) {
+      currentProjectId.value = optsCopy.projectId;
+    }
+    setAccessToken(await getAccessToken());
     if (userEmail) {
       pluginLogger.debug("User found: ", userEmail);
 
