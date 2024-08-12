@@ -290,7 +290,6 @@ export class TaskQueue {
         "X-CloudTasks-TaskETA": `${emulatedTask.task.scheduleTime || Date.now()}`,
         ...emulatedTask.task.httpRequest.headers,
       };
-      console.log(headers);
       if (emulatedTask.metadata.previousResponse) {
         headers["X-CloudTasks-TaskPreviousResponse"] = `${emulatedTask.metadata.previousResponse}`;
       }
@@ -308,10 +307,8 @@ export class TaskQueue {
         ? parseInt(dispatchDeadline.substring(0, dispatchDeadline.length - 1))
         : 60;
 
-      console.log("Abort Timeout", dispatchDeadlineSeconds);
       setTimeout(() => {
         // TODO: Set X-CloudTasks-TaskRetryReason
-        console.log("ABORTING");
         controller.abort();
       }, dispatchDeadlineSeconds * 1000);
 
