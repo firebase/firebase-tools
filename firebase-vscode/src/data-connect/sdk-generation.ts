@@ -31,7 +31,7 @@ export function registerFdcSdkGeneration(
       const configs = await firstWhereDefined(dataConnectConfigs).then(
         (c) => c.requireValue,
       );
-      openAndWriteYaml(connectorConfig);
+      await openAndWriteYaml(connectorConfig);
     },
   );
 
