@@ -34,6 +34,7 @@ export interface RequiredInfo {
   cloudSqlDatabase: string;
   connectors: {
     id: string;
+    path: string;
     files: File[];
   }[];
   isNewInstance: boolean;
@@ -44,6 +45,7 @@ export interface RequiredInfo {
 
 const defaultConnector = {
   id: "default",
+  path: "./connector",
   files: [
     {
       path: "queries.gql",
@@ -137,7 +139,7 @@ async function writeFiles(config: Config, info: RequiredInfo) {
   console.log(dir);
   const subbedDataconnectYaml = subDataconnectYamlValues({
     ...info,
-    connectorIds: info.connectors.map((c) => `"./${c.id}"`).join(", "),
+    connectorDirs: info.connectors.map((c) => c.path),
   });
 
   config.set("dataconnect", { source: dir });
@@ -162,17 +164,18 @@ async function writeConnectorFiles(
   config: Config,
   connectorInfo: {
     id: string;
+    path: string;
     files: File[];
   },
 ) {
   const subbedConnectorYaml = subConnectorYamlValues({ connectorId: connectorInfo.id });
   const dir: string = config.get("dataconnect.source") || "dataconnect";
   await config.askWriteProjectFile(
-    join(dir, connectorInfo.id, "connector.yaml"),
+    join(dir, connectorInfo.path, "connector.yaml"),
     subbedConnectorYaml,
   );
   for (const f of connectorInfo.files) {
-    await config.askWriteProjectFile(join(dir, connectorInfo.id, f.path), f.content);
+    await config.askWriteProjectFile(join(dir, connectorInfo.path, f.path), f.content);
   }
 }
 
@@ -180,19 +183,19 @@ function subDataconnectYamlValues(replacementValues: {
   serviceId: string;
   cloudSqlInstanceId: string;
   cloudSqlDatabase: string;
-  connectorIds: string;
+  connectorDirs: string[];
   locationId: string;
 }): string {
   const replacements: Record<string, string> = {
     serviceId: "__serviceId__",
     cloudSqlDatabase: "__cloudSqlDatabase__",
     cloudSqlInstanceId: "__cloudSqlInstanceId__",
-    connectorIds: "__connectorIds__",
+    connectorDirs: "__connectorDirs__",
     locationId: "__location__",
   };
   let replaced = DATACONNECT_YAML_TEMPLATE;
   for (const [k, v] of Object.entries(replacementValues)) {
-    replaced = replaced.replace(replacements[k], v);
+    replaced = replaced.replace(replacements[k], JSON.stringify(v));
   }
   return replaced;
 }
@@ -203,7 +206,7 @@ function subConnectorYamlValues(replacementValues: { connectorId: string }): str
   };
   let replaced = CONNECTOR_YAML_TEMPLATE;
   for (const [k, v] of Object.entries(replacementValues)) {
-    replaced = replaced.replace(replacements[k], v);
+    replaced = replaced.replace(replacements[k], JSON.stringify(v));
   }
   return replaced;
 }
@@ -254,8 +257,10 @@ async function promptForService(setup: Setup, info: RequiredInfo): Promise<Requi
           const connectors = await listConnectors(choice.service.name);
           if (connectors.length) {
             info.connectors = connectors.map((c) => {
+              const id = c.name.split("/").pop()!;
               return {
-                id: c.name.split("/").pop()!,
+                id,
+                path: `./${id}`,
                 files: c.source.files || [],
               };
             });

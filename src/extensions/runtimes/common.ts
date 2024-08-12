@@ -14,14 +14,19 @@ export { DynamicExtension } from "../../deploy/functions/build";
 
 const savedLoggerSilent = logger.silent;
 
-function silenceLogging() {
+function silenceLogging(): void {
   logger.silent = true;
 }
 
-function resumeLogging() {
+function resumeLogging(): void {
   logger.silent = savedLoggerSilent;
 }
 
+/**
+ * Looks in all functions codebases for extension definitions
+ * @param options The options to use for getting the firebaseConfig
+ * @return A list of all extensions defined in functions codebases by id
+ */
 export async function extractAllDynamicExtensions(
   options: Options,
 ): Promise<Record<string, DynamicExtension>> {
@@ -77,9 +82,12 @@ export async function extractAllDynamicExtensions(
  * Extracts extensions from build records
  * @param builds The builds to examine
  * @param filters The filters to use
- * @returns a record of extensions by extensionId
+ * @return a record of extensions by extensionId
  */
-export function extractExtensionsFromBuilds(builds: Record<string, Build>, filters?: Filter[]) {
+export function extractExtensionsFromBuilds(
+  builds: Record<string, Build>,
+  filters?: Filter[],
+): Record<string, DynamicExtension> {
   const extRecords: Record<string, DynamicExtension> = {};
   for (const [codebase, build] of Object.entries(builds)) {
     if (build.extensions) {
