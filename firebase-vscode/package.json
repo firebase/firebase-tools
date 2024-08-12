@@ -71,6 +71,11 @@
           "type": "boolean",
           "default": false,
           "description": "Always allow mutations in production. If false (default), trying to run a mutation in production will open a confirmation modal."
+        },
+        "firebase.dataConnect.skipToAppFolderSelect": {
+          "type": "boolean",
+          "default": false,
+          "description": "Skip app folder selection prompt. If false (default), trying to generate SDK config will open a confirmation modal."
         }
       }
     },

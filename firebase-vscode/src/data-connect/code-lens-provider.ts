@@ -176,3 +176,40 @@ export class SchemaCodeLensProvider extends ComputedCodeLensProvider {
     return codeLenses;
   }
 }
+/**
+ * CodeLensProvider for Configure SDK in Connector.yaml
+ */
+export class ConfigureSdkCodeLensProvider extends ComputedCodeLensProvider {
+  provideCodeLenses(
+    document: vscode.TextDocument,
+    token: vscode.CancellationToken,
+  ): vscode.CodeLens[] {
+    // Wait for configs to be loaded
+    const fdcConfigs = this.watch(dataConnectConfigs)?.tryReadValue;
+    const rc = this.watch(firebaseRC)?.tryReadValue;
+    if (!fdcConfigs || !rc) {
+      return [];
+    }
+
+    const codeLenses: vscode.CodeLens[] = [];
+    const range = new vscode.Range(0, 0, 0, 0);
+    const serviceConfig = fdcConfigs.findEnclosingServiceForPath(
+      document.fileName,
+    );
+    const connectorConfig = serviceConfig.findEnclosingConnectorForPath(
+      document.fileName,
+    );
+    if (serviceConfig) {
+      codeLenses.push(
+        new vscode.CodeLens(range, {
+          title: `$(tools) Configure Generated SDK`,
+          command: "fdc.connector.configure-sdk",
+          tooltip: "Configure a generated SDK for this connector",
+          arguments: [connectorConfig.tryReadValue],
+        }),
+      );
+    }
+
+    return codeLenses;
+  }
+}
