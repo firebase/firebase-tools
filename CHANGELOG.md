@@ -1,1 +1,2 @@
 - Fix esbuild path used to bundle next.config.js on Windows (#7555)
+- Fix (Angular 17+) temporary change the PORT in Angular server.ts (#6651)
