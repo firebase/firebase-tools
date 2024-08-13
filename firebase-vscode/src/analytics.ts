@@ -16,6 +16,9 @@ export enum DATA_CONNECT_EVENT_NAME {
   MOVE_TO_CONNECTOR = "move_to_connector",
   START_EMULATOR_FROM_EXECUTION = "start_emulator_from_execution",
   REFUSE_START_EMULATOR_FROM_EXECUTION = "refuse_start_emulator_from_execution",
+  INIT_SDK = "init_sdk",
+  INIT_SDK_CLI = "init_sdk_cli",
+  INIT_SDK_CODELENSE = "init_sdk_codelense",
 }
 
 export class AnalyticsLogger {
