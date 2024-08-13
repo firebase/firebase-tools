@@ -3,4 +3,4 @@
 - Automatically detect app platform during `init dataconnect:sdk`.
 - Support `sharp` ^0.33.x for web frameworks. (#7517)
 - Update supported range for Angular framework. (#7418)
-- 
+- Fix esbuild path used to bundle next.config.js on Windows (#7555)

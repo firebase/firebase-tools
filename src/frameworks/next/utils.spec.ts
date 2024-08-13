@@ -573,17 +573,20 @@ describe("Next.js utils", () => {
 
     it("should warn if global esbuild version does not match required version", () => {
       const mockBinaryPath = "/path/to/.bin/esbuild";
+      const mockGlobalVersion = "1.2.3";
       execSyncStub
         .withArgs("npx which esbuild", { encoding: "utf8" })
         .returns(mockBinaryPath + "\n");
-      execSyncStub.withArgs("esbuild --version", { encoding: "utf8" }).returns("0.18.0\n");
+      execSyncStub
+        .withArgs(`${mockBinaryPath} --version`, { encoding: "utf8" })
+        .returns(`${mockGlobalVersion}\n`);
 
       const consoleWarnStub = sinon.stub(console, "warn");
 
       findEsbuildPath();
       expect(
         consoleWarnStub.calledWith(
-          `Warning: Global esbuild version (0.18.0) does not match the required version (${ESBUILD_VERSION}).`,
+          `Warning: Global esbuild version (${mockGlobalVersion}) does not match the required version (${ESBUILD_VERSION}).`,
         ),
       ).to.be.true;
 

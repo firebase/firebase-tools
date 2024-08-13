@@ -96,6 +96,9 @@ export interface WebviewToExtensionParamsMap {
   /** Deploy all connectors/services to production */
   "fdc.deploy-all": void;
 
+  /** Configures generated SDK */
+  "fdc.configure-sdk": void;
+
   // Initialize "result" tab.
   getDataConnectResults: void;
 
