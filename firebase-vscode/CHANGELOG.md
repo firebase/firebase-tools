@@ -1,6 +1,6 @@
 ## NEXT
 
-- [Added] Support for configuring generated SDK 
+- [Added] Support for configuring generated SDK
 - Automatically pick up IDX project selection.
 
 ## 0.5.4
