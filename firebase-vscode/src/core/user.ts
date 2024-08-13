@@ -34,7 +34,7 @@ export function registerUser(broker: ExtensionBrokerImpl, telemetryLogger: Telem
 
   const isLoadingSub = effect(() => {
       broker.send("notifyIsLoadingUser", isLoadingUser.value);
-  })
+  });
 
   const addUserSub = broker.on("addUser", async () => {
     telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.LOGIN);

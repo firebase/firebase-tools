@@ -1,7 +1,10 @@
 import * as inquirer from "inquirer";
 import AutocompletePrompt from "inquirer-autocomplete-prompt";
 
+import { fileExistsSync, dirExistsSync } from "./fsutils";
 import { FirebaseError } from "./error";
+import { Config } from "./config";
+import { logger } from "./logger";
 
 declare module "inquirer" {
   interface QuestionMap<T> {
@@ -130,4 +133,33 @@ export async function confirm(args: {
   } else {
     return true;
   }
+}
+
+/**
+ * Prompts for a directory name, and reprompts if that path does not exist
+ */
+export async function promptForDirectory(args: {
+  message: string;
+  config: Config;
+  default?: boolean;
+  relativeTo?: string;
+}): Promise<string> {
+  let dir: string = "";
+  while (!dir) {
+    const target = args.config.path(
+      await promptOnce({
+        message: "Where is your app directory?",
+      }),
+    );
+    if (fileExistsSync(target)) {
+      logger.error(
+        `Expected a directory, but ${target} is a file. Please provide a path to a directory.`,
+      );
+    } else if (!dirExistsSync(target)) {
+      logger.error(`Directory ${target} not found. Please provide a path to a directory`);
+    } else {
+      dir = target;
+    }
+  }
+  return dir;
 }

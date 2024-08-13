@@ -85,7 +85,7 @@ export const command = new Command("hosting:channel:create [channelId]")
       } catch (e: any) {
         logLabeledWarning(
           LOG_TAG,
-          marked(
+          await marked(
             `Unable to add channel domain to Firebase Auth. Visit the Firebase Console at ${consoleUrl(
               projectId,
               "/authentication/providers",

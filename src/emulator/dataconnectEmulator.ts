@@ -49,8 +49,10 @@ export class DataConnectEmulator implements EmulatorInstance {
   private logger = EmulatorLogger.forEmulator(Emulators.DATACONNECT);
 
   async start(): Promise<void> {
+    let resolvedConfigDir;
     try {
-      const resolvedConfigDir = this.args.config.path(this.args.configDir);
+      resolvedConfigDir = this.args.config.path(this.args.configDir);
+
       const info = await DataConnectEmulator.build({ configDir: resolvedConfigDir });
       if (requiresVector(info.metadata)) {
         if (Constants.isDemoProject(this.args.projectId)) {
@@ -83,7 +85,9 @@ export class DataConnectEmulator implements EmulatorInstance {
       await start(Emulators.DATACONNECT, {
         auto_download: this.args.auto_download,
         listen: listenSpecsToString(this.args.listen),
-        config_dir: this.args.configDir,
+        config_dir: resolvedConfigDir,
+        enable_output_schema_extensions: true,
+        enable_output_generated_sdk: true,
       });
       this.usingExistingEmulator = false;
     }

@@ -134,16 +134,24 @@ export interface Generate {
 
 export interface JavascriptSDK {
   outputDir: string;
-  package?: string;
-  packageJSONDir?: string;
+  package: string;
+  packageJsonDir?: string;
 }
+
 export interface SwiftSDK {
-  // Optional for Swift becasue XCode makes you import files.
-  outputDir?: string;
+  outputDir: string;
+  package: string;
 }
 export interface KotlinSDK {
   outputDir: string;
-  package?: string;
+  package: string;
+}
+
+export enum Platform {
+  ANDROID = "ANDROID",
+  WEB = "WEB",
+  IOS = "IOS",
+  UNDETERMINED = "UNDETERMINED",
 }
 
 // Helper types && converters

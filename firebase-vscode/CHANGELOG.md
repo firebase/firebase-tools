@@ -1,5 +1,19 @@
 ## NEXT
 
+- Automatically pick up IDX project selection.
+
+## 0.5.4
+
+- Updated internal firebase-tools dependency to 13.15.1
+
+## 0.5.3
+
+- Updated internal firebase-tools dependency to 13.15.0
+
+## 0.5.2
+
+- Updated internal firebase-tools dependency to 13.14.2
+
 ## 0.5.1
 
 - Updated internal firebase-tools dependency to 13.14.1

@@ -1,5 +1,5 @@
 import { marked } from "marked";
-import * as TerminalRenderer from "marked-terminal";
+import { markedTerminal } from "marked-terminal";
 
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
@@ -9,9 +9,7 @@ import { promptOnce } from "../prompt";
 import { logger } from "../logger";
 import * as npmDependencies from "../init/features/functions/npm-dependencies";
 import { readTemplateSync } from "../templates";
-marked.setOptions({
-  renderer: new TerminalRenderer(),
-});
+marked.use(markedTerminal() as any);
 
 function readCommonTemplates() {
   return {
