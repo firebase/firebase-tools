@@ -498,7 +498,11 @@ export async function whichNextConfigFile(dir: string): Promise<NextConfigFileNa
  */
 export function findEsbuildPath(): string | null {
   try {
-    const esbuildBinPath = execSync("npx which esbuild", { encoding: "utf8" }).trim();
+    const esbuildBinPath = execSync("npx which esbuild", { encoding: "utf8" })?.trim();
+    if (!esbuildBinPath) {
+      return null;
+    }
+
     const globalVersion = getGlobalEsbuildVersion(esbuildBinPath);
     if (globalVersion && !satisfies(globalVersion, ESBUILD_VERSION)) {
       console.warn(
