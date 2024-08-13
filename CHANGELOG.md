@@ -1,0 +1,1 @@
+- Fix esbuild path used to bundle next.config.js on Windows (#7555)
