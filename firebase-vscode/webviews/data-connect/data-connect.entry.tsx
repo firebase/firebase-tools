@@ -67,7 +67,7 @@ function DataConnect() {
       <PanelSection title="Production" isLast={true}>
         <p>
           Deploy FDC services and connectors to production. See also:{" "}
-          <a href="https://firebase.google.com/docs/data-connect/quickstart#deploy-schema">
+          <a href="https://firebase.google.com/docs/data-connect/quickstart#deploy_your_schema_to_production">
             Deploying
           </a>
         </p>
