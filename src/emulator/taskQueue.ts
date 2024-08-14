@@ -211,7 +211,6 @@ export class TaskQueue {
 
         dispatch.metadata.lastRunTime = null;
         dispatch.metadata.currentAttempt = 1;
-        dispatch.metadata.currentBackoff = this.config.retryConfig.minBackoffSeconds;
         dispatch.metadata.status = TaskStatus.NOT_STARTED;
         dispatch.metadata.startTime = Date.now();
 
@@ -307,12 +306,13 @@ export class TaskQueue {
         ? parseInt(dispatchDeadline.substring(0, dispatchDeadline.length - 1))
         : 60;
 
-      setTimeout(() => {
+      const abortId = setTimeout(() => {
         // TODO: Set X-CloudTasks-TaskRetryReason
         controller.abort();
       }, dispatchDeadlineSeconds * 1000);
 
       const response = await request;
+      clearTimeout(abortId);
       if (response.ok) {
         emulatedTask.metadata.status = TaskStatus.FINISHED;
         return;
@@ -327,6 +327,7 @@ export class TaskQueue {
     } catch (e) {
       this.logger.logLabeled("WARN", `${e}`);
       emulatedTask.metadata.status = TaskStatus.RETRY;
+      emulatedTask.metadata.lastRunTime = Date.now();
     }
   }
 
@@ -361,15 +362,18 @@ export class TaskQueue {
   }
 
   updateMetadata(metadata: EmulatedTaskMetadata, retryOptions: RetryConfig): void {
+    const timeMultplier =
+      // Exponential increase
+      Math.pow(2, Math.min(metadata.currentAttempt - 1, retryOptions.maxDoublings)) +
+      // Constant increase (once max doublings is passed)
+      Math.max(0, metadata.currentAttempt - retryOptions.maxDoublings - 1) *
+        Math.pow(2, retryOptions.maxDoublings);
+
+    metadata.currentBackoff = Math.min(
+      retryOptions.maxBackoffSeconds,
+      timeMultplier * retryOptions.minBackoffSeconds,
+    );
     metadata.currentAttempt++;
-    if (metadata.currentAttempt < retryOptions.maxDoublings) {
-      metadata.currentBackoff *= 2;
-    } else {
-      metadata.currentBackoff += 1;
-    }
-    if (metadata.currentBackoff > retryOptions.maxBackoffSeconds) {
-      metadata.currentBackoff = retryOptions.maxBackoffSeconds;
-    }
   }
 
   isActive(): boolean {

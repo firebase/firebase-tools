@@ -1,6 +1,7 @@
 import * as _ from "lodash";
 import * as sinon from "sinon";
 import * as nodeFetch from "node-fetch";
+import AbortController from "abort-controller";
 import { expect } from "chai";
 import { EmulatedTask, EmulatedTaskMetadata, Queue, TaskQueue, TaskStatus } from "./taskQueue";
 import { RateLimits, RetryConfig, Task, TaskQueueConfig } from "./tasksEmulator";
@@ -130,9 +131,9 @@ describe("Queue Test", () => {
 
 describe("Task Queue", () => {
   const TEST_RETRY_CONFIG: RetryConfig = {
-    maxAttempts: 5,
+    maxAttempts: 10,
     maxRetrySeconds: 30,
-    maxBackoffSeconds: 10,
+    maxBackoffSeconds: 40,
     maxDoublings: 2,
     minBackoffSeconds: 2,
   };
@@ -163,7 +164,7 @@ describe("Task Queue", () => {
   };
 
   const mockMetadata: EmulatedTaskMetadata = {
-    currentAttempt: 0,
+    currentAttempt: 1,
     currentBackoff: 0,
     startTime: 0,
     status: TaskStatus.NOT_STARTED,
@@ -192,7 +193,7 @@ describe("Task Queue", () => {
 
   beforeEach(() => {
     TEST_TASK = _.cloneDeep(mockEmulatedTask);
-    TEST_TASK.metadata.currentBackoff = TEST_TASK_QUEUE_CONFIG.retryConfig.minBackoffSeconds;
+    TEST_TASK.metadata.currentBackoff = 0;
   });
 
   afterEach(() => {
@@ -215,7 +216,7 @@ describe("Task Queue", () => {
 
       const taskQueue = new TaskQueue(TEST_TASK_QUEUE_NAME, config);
       TEST_TASK.metadata.status = TaskStatus.RETRY;
-      TEST_TASK.metadata.currentAttempt = 6;
+      TEST_TASK.metadata.currentAttempt = 11;
       taskQueue.setDispatch([TEST_TASK]);
       taskQueue.handleRetry(0);
       expect(TEST_TASK.metadata.status).to.be.eq(TaskStatus.FAILED);
@@ -224,7 +225,7 @@ describe("Task Queue", () => {
     it("should update retried task status to failed when max attempts and max time are reached", () => {
       const taskQueue = new TaskQueue(TEST_TASK_QUEUE_NAME, TEST_TASK_QUEUE_CONFIG);
       TEST_TASK.metadata.status = TaskStatus.RETRY;
-      TEST_TASK.metadata.currentAttempt = 6;
+      TEST_TASK.metadata.currentAttempt = 11;
       TEST_TASK.metadata.startTime = NOW - (1000 * 30 + 1);
       taskQueue.setDispatch([TEST_TASK]);
       taskQueue.handleRetry(0);
@@ -236,7 +237,11 @@ describe("Task Queue", () => {
       TEST_TASK.metadata.status = TaskStatus.RETRY;
       taskQueue.setDispatch([TEST_TASK]);
       taskQueue.handleRetry(0);
+      expect(TEST_TASK.metadata.currentBackoff).to.be.eq(2);
+      taskQueue.handleRetry(0);
       expect(TEST_TASK.metadata.currentBackoff).to.be.eq(4);
+      taskQueue.handleRetry(0);
+      expect(TEST_TASK.metadata.currentBackoff).to.be.eq(8);
     });
 
     it("should increment the attempt number", () => {
@@ -244,26 +249,32 @@ describe("Task Queue", () => {
       TEST_TASK.metadata.status = TaskStatus.RETRY;
       taskQueue.setDispatch([TEST_TASK]);
       taskQueue.handleRetry(0);
-      expect(TEST_TASK.metadata.currentAttempt).to.be.eq(1);
+      expect(TEST_TASK.metadata.currentAttempt).to.be.eq(2);
     });
 
     it("shouldn't exceed the max backoff seconds", () => {
       const taskQueue = new TaskQueue(TEST_TASK_QUEUE_NAME, TEST_TASK_QUEUE_CONFIG);
       TEST_TASK.metadata.status = TaskStatus.RETRY;
-      TEST_TASK.metadata.currentBackoff = 8;
+      TEST_TASK.metadata.currentAttempt = 9;
       taskQueue.setDispatch([TEST_TASK]);
       taskQueue.handleRetry(0);
-      expect(TEST_TASK.metadata.currentBackoff).to.be.eq(10);
+      expect(TEST_TASK.metadata.currentBackoff).to.be.eq(40);
     });
 
     it("should increase by a constant when doublings have maxxed", () => {
       const taskQueue = new TaskQueue(TEST_TASK_QUEUE_NAME, TEST_TASK_QUEUE_CONFIG);
       TEST_TASK.metadata.status = TaskStatus.RETRY;
-      TEST_TASK.metadata.currentBackoff = 8;
-      TEST_TASK.metadata.currentAttempt = 3;
+      TEST_TASK.metadata.currentAttempt = 5;
+      // 1 -> 2
+      // 2 -> 4
+      // 3 -> 8
+      // 4 -> 16
+      // 5 -> 24
       taskQueue.setDispatch([TEST_TASK]);
       taskQueue.handleRetry(0);
-      expect(TEST_TASK.metadata.currentBackoff).to.be.eq(9);
+      expect(TEST_TASK.metadata.currentBackoff).to.be.eq(24);
+      taskQueue.handleRetry(0);
+      expect(TEST_TASK.metadata.currentBackoff).to.be.eq(32);
     });
 
     it("should throw if task doesn't exist", () => {
@@ -285,8 +296,14 @@ describe("Task Queue", () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "X-CloudTasks-QueueName": "task-queue",
+            "X-CloudTasks-TaskName": "",
+            "X-CloudTasks-TaskRetryCount": "0",
+            "X-CloudTasks-TaskExecutionCount": "0",
+            "X-CloudTasks-TaskETA": "60000",
             ...TEST_TASK.task.httpRequest.headers,
           },
+          signal: new AbortController().signal,
           body: JSON.stringify(TEST_TASK.task.httpRequest.body),
         });
       });
@@ -324,8 +341,14 @@ describe("Task Queue", () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "X-CloudTasks-QueueName": "task-queue",
+            "X-CloudTasks-TaskName": "",
+            "X-CloudTasks-TaskRetryCount": "0",
+            "X-CloudTasks-TaskExecutionCount": "0",
+            "X-CloudTasks-TaskETA": "60000",
             ...TEST_TASK.task.httpRequest.headers,
           },
+          signal: new AbortController().signal,
           body: JSON.stringify(TEST_TASK.task.httpRequest.body),
         });
       });
