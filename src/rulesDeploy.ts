@@ -131,15 +131,17 @@ export class RulesDeploy {
       }
 
       // Prompt user to ask if they want to add the service account
-      const addRole = await promptOnce(
-        {
-          type: "confirm",
-          name: "rulesRole",
-          message: `Cloud Storage for Firebase needs an IAM Role to use cross-service rules. Grant the new role?`,
-          default: true,
-        },
-        this.options,
-      );
+      const addRole =
+        this.options.force ||
+        (await promptOnce(
+          {
+            type: "confirm",
+            name: "rulesRole",
+            message: `Cloud Storage for Firebase needs an IAM Role to use cross-service rules. Grant the new role?`,
+            default: true,
+          },
+          this.options,
+        ));
 
       // Try to add the role to the service account
       if (addRole) {
@@ -209,15 +211,17 @@ export class RulesDeploy {
       const history: ListRulesetsEntry[] = await gcp.rules.listAllRulesets(this.options.project);
 
       if (history.length > RULESET_COUNT_LIMIT) {
-        const confirm = await promptOnce(
-          {
-            type: "confirm",
-            name: "force",
-            message: `You have ${history.length} rules, do you want to delete the oldest ${RULESETS_TO_GC} to free up space?`,
-            default: false,
-          },
-          this.options,
-        );
+        const confirm =
+          this.options.force ||
+          (await promptOnce(
+            {
+              type: "confirm",
+              name: "force",
+              message: `You have ${history.length} rules, do you want to delete the oldest ${RULESETS_TO_GC} to free up space?`,
+              default: false,
+            },
+            this.options,
+          ));
         if (confirm) {
           // Find the oldest unreleased rulesets. The rulesets are sorted reverse-chronlogically.
           const releases: Release[] = await gcp.rules.listAllReleases(this.options.project);

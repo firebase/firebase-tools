@@ -13,7 +13,6 @@ import {
 } from "../hosting/api";
 import * as utils from "../utils";
 import { requireAuth } from "../requireAuth";
-import { marked } from "marked";
 import { logger } from "../logger";
 
 export const command = new Command("hosting:clone <source> <targetChannel>")
@@ -100,12 +99,10 @@ For example, to copy the content for a site \`my-site\` from a preview channel \
       } catch (e: any) {
         utils.logLabeledWarning(
           "hosting:clone",
-          marked(
-            `Unable to add channel domain to Firebase Auth. Visit the Firebase Console at ${utils.consoleUrl(
-              targetSiteId,
-              "/authentication/providers",
-            )}`,
-          ),
+          `Unable to add channel domain to Firebase Auth. Visit the Firebase Console at ${utils.consoleUrl(
+            targetSiteId,
+            "/authentication/providers",
+          )}`,
         );
         logger.debug("[hosting] unable to add auth domain", e);
       }
