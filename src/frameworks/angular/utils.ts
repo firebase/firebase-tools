@@ -383,7 +383,8 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
       if (target === buildTarget && builder === ExpectedBuilder.LEGACY_BROWSER) continue;
       if (target === buildTarget && builder === ThirdPartyBuilder.CUSTOM_WEBPACK_BROWSER) continue;
       if (target === browserTarget && builder === ExpectedBuilder.BROWSER_ESBUILD) continue;
-      if (target === browserTarget && builder === ThirdPartyBuilder.CUSTOM_WEBPACK_BROWSER) continue;
+      if (target === browserTarget && builder === ThirdPartyBuilder.CUSTOM_WEBPACK_BROWSER)
+        continue;
       if (target === browserTarget && builder === ExpectedBuilder.LEGACY_BROWSER) continue;
       if (target === prerenderTarget && builder === ExpectedBuilder.LEGACY_DEVKIT_PRERENDER)
         continue;
