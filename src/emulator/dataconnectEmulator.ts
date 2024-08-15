@@ -1,5 +1,6 @@
 import * as childProcess from "child_process";
 import * as clc from "colorette";
+import { EventEmitter } from "events";
 
 import { dataConnectLocalConnString } from "../api";
 import { Constants } from "./constants";
@@ -14,9 +15,9 @@ import { Client, ClientResponse } from "../apiv2";
 import { EmulatorRegistry } from "./registry";
 import { logger } from "../logger";
 import { load } from "../dataconnect/load";
-import { isVSCodeExtension } from "../utils";
+import { isVSCodeExtension, sleep } from "../utils";
 import { Config } from "../config";
-import { EventEmitter } from "events";
+import { PostgresServer } from "./dataconnect/pgliteServer";
 
 export interface DataConnectEmulatorArgs {
   projectId: string;
@@ -25,6 +26,7 @@ export interface DataConnectEmulatorArgs {
   auto_download?: boolean;
   rc: RC;
   config: Config;
+  autostartPostgres: boolean
 }
 
 export interface DataConnectGenerateArgs {
@@ -72,6 +74,10 @@ export class DataConnectEmulator implements EmulatorInstance {
     } catch (err: any) {
       this.logger.log("DEBUG", `'fdc build' failed with error: ${err.message}`);
     }
+
+    const info = await load(this.args.projectId, this.args.config, this.args.configDir);
+    const dbId = info.dataConnectYaml.schema.datasource.postgresql?.database || "postgres";
+    const serviceId = info.dataConnectYaml.serviceId;
     const alreadyRunning = await this.discoverRunningInstance();
     if (alreadyRunning) {
       this.logger.logLabeled(
@@ -82,6 +88,15 @@ export class DataConnectEmulator implements EmulatorInstance {
       this.usingExistingEmulator = true;
       this.watchUnmanagedInstance();
     } else {
+      console.log("pglite branch")
+      if (this.args.autostartPostgres) {
+        console.log(
+          "WE USING PGLITEEEEEE",
+        );
+        const pgServer = new PostgresServer(dbId);
+        const server = await pgServer.createPGServer();
+        console.log(`Started up PGlite yo. listening: ${server.listening}, address: ${server.address()}`);
+      }
       await start(Emulators.DATACONNECT, {
         auto_download: this.args.auto_download,
         listen: listenSpecsToString(this.args.listen),
@@ -92,7 +107,7 @@ export class DataConnectEmulator implements EmulatorInstance {
       this.usingExistingEmulator = false;
     }
     if (!isVSCodeExtension()) {
-      await this.connectToPostgres();
+      await this.connectToPostgres(`postgres://localhost:5432/${dbId}?sslmode=disable`, dbId, serviceId);
     }
     return;
   }
