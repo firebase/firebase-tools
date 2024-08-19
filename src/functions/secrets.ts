@@ -3,13 +3,13 @@ import * as poller from "../operation-poller";
 import * as gcfV1 from "../gcp/cloudfunctions";
 import * as gcfV2 from "../gcp/cloudfunctionsv2";
 import * as backend from "../deploy/functions/backend";
-import * as ensureApiEnabled from "../ensureApiEnabled";
 import { functionsOrigin, functionsV2Origin } from "../api";
 import {
   createSecret,
   destroySecretVersion,
   getSecret,
   getSecretVersion,
+  isAppHostingManaged,
   listSecrets,
   listSecretVersions,
   parseSecretResourceName,
@@ -24,23 +24,25 @@ import { promptOnce } from "../prompt";
 import { validateKey } from "./env";
 import { logger } from "../logger";
 import { assertExhaustive } from "../functional";
+import { isFunctionsManaged, FIREBASE_MANAGED } from "../gcp/secretManager";
+import { labels } from "../gcp/secretManager";
 import { needProjectId } from "../projectUtils";
 
-const FIREBASE_MANAGED = "firebase-managed";
+const Table = require("cli-table");
 
 // For mysterious reasons, importing the poller option in fabricator.ts leads to some
 // value of the poller option to be undefined at runtime. I can't figure out what's going on,
 // but don't have time to find out. Taking a shortcut and copying the values directly in
 // violation of DRY. Sorry!
 const gcfV1PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
-  apiOrigin: functionsOrigin,
+  apiOrigin: functionsOrigin(),
   apiVersion: "v1",
   masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
   maxBackoff: 10_000,
 };
 
 const gcfV2PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
-  apiOrigin: functionsV2Origin,
+  apiOrigin: functionsV2Origin(),
   apiVersion: "v2",
   masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
   maxBackoff: 10_000,
@@ -51,34 +53,11 @@ type ProjectInfo = {
   projectNumber: string;
 };
 
-/**
- * Returns true if secret is managed by Firebase.
- */
-export function isFirebaseManaged(secret: Secret): boolean {
-  return Object.keys(secret.labels || []).includes(FIREBASE_MANAGED);
-}
-
-/**
- * Return labels to mark secret as managed by Firebase.
- * @internal
- */
-export function labels(): Record<string, string> {
-  return { [FIREBASE_MANAGED]: "true" };
-}
-
 function toUpperSnakeCase(key: string): string {
   return key
     .replace(/[.-]/g, "_")
     .replace(/([a-z])([A-Z])/g, "$1_$2")
     .toUpperCase();
-}
-
-/**
- * Utility used in the "before" command annotation to enable the API.
- */
-export function ensureApi(options: any): Promise<void> {
-  const projectId = needProjectId(options);
-  return ensureApiEnabled.ensure(projectId, "secretmanager.googleapis.com", "secretmanager", true);
 }
 
 /**
@@ -98,7 +77,7 @@ export async function ensureValidKey(key: string, options: Options): Promise<str
         default: true,
         message: `Would you like to use ${transformedKey} as key instead?`,
       },
-      options
+      options,
     );
     if (!confirm) {
       throw new FirebaseError("Secret key must be in UPPER_SNAKE_CASE.");
@@ -118,24 +97,45 @@ export async function ensureValidKey(key: string, options: Options): Promise<str
 export async function ensureSecret(
   projectId: string,
   name: string,
-  options: Options
+  options: Options,
 ): Promise<Secret> {
   try {
     const secret = await getSecret(projectId, name);
-    if (!isFirebaseManaged(secret)) {
+    if (isAppHostingManaged(secret)) {
+      logWarning(
+        "Your secret is managed by Firebase App Hosting. Continuing will disable automatic deletion of old versions.",
+      );
+      const stopTracking = await promptOnce(
+        {
+          name: "doNotTrack",
+          type: "confirm",
+          default: false,
+          message: "Do you wish to continue?",
+        },
+        options,
+      );
+      if (stopTracking) {
+        delete secret.labels[FIREBASE_MANAGED];
+        await patchSecret(secret.projectId, secret.name, secret.labels);
+      } else {
+        throw new Error(
+          "A secret cannot be managed by both Firebase App Hosting and Cloud Functions for Firebase",
+        );
+      }
+    } else if (!isFunctionsManaged(secret)) {
       if (!options.force) {
         logWarning(
-          "Your secret is not managed by Firebase. " +
-            "Firebase managed secrets are automatically pruned to reduce your monthly cost for using Secret Manager. "
+          "Your secret is not managed by Cloud Functions for Firebase. " +
+            "Firebase managed secrets are automatically pruned to reduce your monthly cost for using Secret Manager. ",
         );
         const confirm = await promptOnce(
           {
             name: "updateLabels",
             type: "confirm",
             default: true,
-            message: `Would you like to have your secret ${secret.name} managed by Firebase?`,
+            message: `Would you like to have your secret ${secret.name} managed by Cloud Functions for Firebase?`,
           },
-          options
+          options,
         );
         if (confirm) {
           return patchSecret(projectId, secret.name, {
@@ -160,7 +160,7 @@ export async function ensureSecret(
 export function of(endpoints: backend.Endpoint[]): backend.SecretEnvVar[] {
   return endpoints.reduce(
     (envs, endpoint) => [...envs, ...(endpoint.secretEnvironmentVariables || [])],
-    [] as backend.SecretEnvVar[]
+    [] as backend.SecretEnvVar[],
   );
 }
 
@@ -168,10 +168,13 @@ export function of(endpoints: backend.Endpoint[]): backend.SecretEnvVar[] {
  * Generates an object mapping secret's with their versions.
  */
 export function getSecretVersions(endpoint: backend.Endpoint): Record<string, string> {
-  return (endpoint.secretEnvironmentVariables || []).reduce((memo, { secret, version }) => {
-    memo[secret] = version || "";
-    return memo;
-  }, {} as Record<string, string>);
+  return (endpoint.secretEnvironmentVariables || []).reduce(
+    (memo, { secret, version }) => {
+      memo[secret] = version || "";
+      return memo;
+    },
+    {} as Record<string, string>,
+  );
 }
 
 /**
@@ -196,7 +199,7 @@ export function inUse(projectInfo: ProjectInfo, secret: Secret, endpoint: backen
 export function versionInUse(
   projectInfo: ProjectInfo,
   sv: SecretVersion,
-  endpoint: backend.Endpoint
+  endpoint: backend.Endpoint,
 ): boolean {
   const { projectId, projectNumber } = projectInfo;
   for (const sev of of([endpoint])) {
@@ -216,7 +219,7 @@ export function versionInUse(
  */
 export async function pruneSecrets(
   projectInfo: ProjectInfo,
-  endpoints: backend.Endpoint[]
+  endpoints: backend.Endpoint[],
 ): Promise<Required<backend.SecretEnvVar>[]> {
   const { projectId, projectNumber } = projectInfo;
   const pruneKey = (name: string, version: string) => `${name}@${version}`;
@@ -279,14 +282,14 @@ type PruneResult = {
  */
 export async function pruneAndDestroySecrets(
   projectInfo: ProjectInfo,
-  endpoints: backend.Endpoint[]
+  endpoints: backend.Endpoint[],
 ): Promise<PruneResult> {
   const { projectId, projectNumber } = projectInfo;
 
   logger.debug("Pruning secrets to find unused secret versions...");
   const unusedSecrets: Required<backend.SecretEnvVar>[] = await module.exports.pruneSecrets(
     { projectId, projectNumber },
-    endpoints
+    endpoints,
   );
 
   if (unusedSecrets.length === 0) {
@@ -301,7 +304,7 @@ export async function pruneAndDestroySecrets(
     unusedSecrets.map(async (sev) => {
       await destroySecretVersion(sev.projectId, sev.secret, sev.version);
       return sev;
-    })
+    }),
   );
 
   for (const result of destroyResults) {
@@ -320,7 +323,7 @@ export async function pruneAndDestroySecrets(
 export async function updateEndpointSecret(
   projectInfo: ProjectInfo,
   secretVersion: SecretVersion,
-  endpoint: backend.Endpoint
+  endpoint: backend.Endpoint,
 ): Promise<backend.Endpoint> {
   const { projectId, projectNumber } = projectInfo;
 
@@ -370,4 +373,22 @@ export async function updateEndpointSecret(
   } else {
     assertExhaustive(endpoint.platform);
   }
+}
+
+/**
+ * Describe the given secret.
+ */
+export async function describeSecret(key: string, options: Options): Promise<any> {
+  const projectId = needProjectId(options);
+  const versions = await listSecretVersions(projectId, key);
+
+  const table = new Table({
+    head: ["Version", "State"],
+    style: { head: ["yellow"] },
+  });
+  for (const version of versions) {
+    table.push([version.versionId, version.state]);
+  }
+  logger.info(table.toString());
+  return { secrets: versions };
 }

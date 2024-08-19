@@ -16,7 +16,7 @@ const prompt =
 export async function interactiveCreateHostingSite(
   siteId: string,
   appId: string,
-  options: { projectId?: string; nonInteractive?: boolean }
+  options: { projectId?: string; nonInteractive?: boolean },
 ): Promise<Site> {
   const projectId = needProjectId(options);
   const projectNumber = await needProjectNumber(options);
@@ -54,6 +54,7 @@ export async function interactiveCreateHostingSite(
         throw err;
       }
 
+      id = ""; // Clear so the prompt comes back.
       suggestion = getSuggestionFromError(err);
     }
   }
@@ -62,7 +63,7 @@ export async function interactiveCreateHostingSite(
 
 async function trySiteID(
   projectNumber: string,
-  id: string
+  id: string,
 ): Promise<{ available: boolean; suggestion?: string }> {
   try {
     await createSite(projectNumber, id, "", true);
@@ -84,6 +85,8 @@ function getSuggestionFromError(err: FirebaseError): string | undefined {
     if (match) {
       return match[1];
     }
+  } else {
+    logWarning(err.message);
   }
   return;
 }

@@ -271,6 +271,89 @@
                 }
             ]
         },
+        "dataconnect": {
+            "anyOf": [
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "postdeploy": {
+                            "anyOf": [
+                                {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
+                                },
+                                {
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "predeploy": {
+                            "anyOf": [
+                                {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
+                                },
+                                {
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "source": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "source"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                            "postdeploy": {
+                                "anyOf": [
+                                    {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    {
+                                        "type": "string"
+                                    }
+                                ]
+                            },
+                            "predeploy": {
+                                "anyOf": [
+                                    {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    {
+                                        "type": "string"
+                                    }
+                                ]
+                            },
+                            "source": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "source"
+                        ],
+                        "type": "object"
+                    },
+                    "type": "array"
+                }
+            ]
+        },
         "emulators": {
             "additionalProperties": false,
             "properties": {
@@ -287,6 +370,18 @@
                     "type": "object"
                 },
                 "database": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "host": {
+                            "type": "string"
+                        },
+                        "port": {
+                            "type": "number"
+                        }
+                    },
+                    "type": "object"
+                },
+                "dataconnect": {
                     "additionalProperties": false,
                     "properties": {
                         "host": {
@@ -622,7 +717,13 @@
                                 "nodejs14",
                                 "nodejs16",
                                 "nodejs18",
-                                "nodejs20"
+                                "nodejs20",
+                                "nodejs22",
+                                "nodejs6",
+                                "nodejs8",
+                                "python310",
+                                "python311",
+                                "python312"
                             ],
                             "type": "string"
                         },
@@ -678,7 +779,13 @@
                                     "nodejs14",
                                     "nodejs16",
                                     "nodejs18",
-                                    "nodejs20"
+                                    "nodejs20",
+                                    "nodejs22",
+                                    "nodejs6",
+                                    "nodejs8",
+                                    "python310",
+                                    "python311",
+                                    "python312"
                                 ],
                                 "type": "string"
                             },

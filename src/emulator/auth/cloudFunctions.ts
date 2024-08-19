@@ -33,7 +33,7 @@ export class AuthCloudFunction {
     try {
       res = await c.post(
         `/functions/projects/${this.projectId}/trigger_multicast`,
-        multicastEventBody
+        multicastEventBody,
       );
     } catch (e: any) {
       err = e;
@@ -43,14 +43,14 @@ export class AuthCloudFunction {
       this.logger.logLabeled(
         "WARN",
         "functions",
-        `Firebase Authentication function was not triggered due to emulation error. Please file a bug.`
+        `Firebase Authentication function was not triggered due to emulation error. Please file a bug.`,
       );
     }
   }
 
   private createEventRequestBody(
     action: AuthCloudFunctionAction,
-    userInfoPayload: UserInfoPayload
+    userInfoPayload: UserInfoPayload,
   ): CreateEvent {
     return {
       eventId: uuid.v4(),

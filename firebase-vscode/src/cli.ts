@@ -1,6 +1,3 @@
-import * as vscode from "vscode";
-import { inspect } from "util";
-
 import {
   getAllAccounts,
   getGlobalDefaultAccount,
@@ -8,99 +5,68 @@ import {
   setGlobalDefaultAccount,
 } from "../../src/auth";
 import { logoutAction } from "../../src/commands/logout";
-import { hostingChannelDeployAction } from "../../src/commands/hosting-channel-deploy";
 import { listFirebaseProjects } from "../../src/management/projects";
 import { requireAuth } from "../../src/requireAuth";
-import { deploy } from "../../src/deploy";
-import { getDefaultHostingSite } from "../../src/getDefaultHostingSite";
-import { initAction } from "../../src/commands/init";
-import { Account, User } from "../../src/types/auth";
+import { Account, Tokens, User } from "../../src/types/auth";
 import { Options } from "../../src/options";
 import { currentOptions, getCommandOptions } from "./options";
-import { setInquirerOptions } from "./stubs/inquirer-stub";
-import { ServiceAccount } from "../common/types";
-import { listChannels } from "../../src/hosting/api";
-import { EmulatorUiSelections, ChannelWithId } from "../common/messaging/types";
+import { EmulatorUiSelections } from "../common/messaging/types";
 import { pluginLogger } from "./logger-wrapper";
-import { Config } from "../../src/config";
-import { setAccessToken } from "../../src/apiv2";
+import { getAccessToken, setAccessToken } from "../../src/apiv2";
 import {
   startAll as startAllEmulators,
   cleanShutdown as stopAllEmulators,
 } from "../../src/emulator/controller";
 import { EmulatorRegistry } from "../../src/emulator/registry";
-import { EmulatorInfo, Emulators } from "../../src/emulator/types";
+import {
+  DownloadableEmulatorDetails,
+  EmulatorInfo,
+  DownloadableEmulators,
+  Emulators,
+} from "../../src/emulator/types";
 import * as commandUtils from "../../src/emulator/commandUtils";
 import { currentUser } from "./core/user";
-
-/**
- * Try to get a service account by calling requireAuth() without
- * providing any account info.
- */
-async function getServiceAccount() {
-  let email = null;
-  try {
-    // Make sure no user/token is sent
-    // to requireAuth which would prevent autoAuth() from being reached.
-    // We do need to send isVSCE to prevent project selection popup
-    const optionsMinusUser = await getCommandOptions(undefined, {
-      ...currentOptions,
-    });
-    delete optionsMinusUser.user;
-    delete optionsMinusUser.tokens;
-    delete optionsMinusUser.token;
-    email = (await requireAuth(optionsMinusUser)) || null;
-  } catch (e) {
-    let errorMessage = e.message;
-    if (e.original?.message) {
-      errorMessage += ` (original: ${e.original.message})`;
-    }
-    if (process.env.MONOSPACE_ENV) {
-      // If it can't find a service account in Monospace, that's a blocking
-      // error and we should throw.
-      throw new Error(
-        `Unable to find service account. ` + `requireAuthError: ${errorMessage}`
-      );
-    } else {
-      // In other environments, it is common to not find a service account.
-      pluginLogger.debug(
-        `No service account found (this may be normal), ` +
-          `requireAuth error output: ${errorMessage}`
-      );
-    }
-    return null;
-  }
-  if (process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL) {
-    // If Monospace, get service account email using env variable as
-    // the metadata server doesn't currently return the credentials
-    // for the workspace service account. Remove when Monospace is
-    // updated to return credentials through the metadata server.
-    pluginLogger.debug(
-      `Using WORKSPACE_SERVICE_ACCOUNT_EMAIL env ` +
-        `variable to get service account email: ` +
-        `${process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL}`
-    );
-    return process.env.WORKSPACE_SERVICE_ACCOUNT_EMAIL;
-  }
-  pluginLogger.debug(
-    `Got service account email through credentials:` + ` ${email}`
-  );
-  return email;
-}
+import { firstWhere } from "./utils/signal";
+import { currentProjectId } from "./core/project";
+export { Emulators };
 
 /**
  * Wrap the CLI's requireAuth() which is normally run before every command
  * requiring user to be logged in. The CLI automatically supplies it with
  * account info if found in configstore so we need to fill that part in.
+ *
  */
-async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
-  // Try to get global default from configstore. For some reason this is
-  // often overwritten when restarting the extension.
+export async function requireAuthWrapper(
+  showError: boolean = true,
+): Promise<User | null> {
+  // Try to get global default from configstore
   pluginLogger.debug("requireAuthWrapper");
   let account = getGlobalDefaultAccount();
+  // often overwritten when restarting the extension.
+  const accounts = getAllAccounts();
+
+  // helper to determine if VSCode options has the same account as global default
+  function isUserMatching(account: Account, options: Options) {
+    if (!options.user || !options.tokens) {
+      return false;
+    }
+
+    const optionsUser = options.user as User;
+    const optionsTokens = options.tokens as Tokens;
+    return (
+      account &&
+      account.user.email === optionsUser.email &&
+      account.tokens.refresh_token === optionsTokens.refresh_token // Should check refresh token which is consistent, not access_token which is short lived.
+    );
+  }
+
+  // only add account options when vscode is missing account information
+  if (!isUserMatching(account, currentOptions.value)) {
+    currentOptions.value = { ...currentOptions.value, ...account };
+  }
+
   if (!account) {
     // If nothing in configstore top level, grab the first "additionalAccount"
-    const accounts = getAllAccounts();
     for (const additionalAccount of accounts) {
       if (additionalAccount.user.email === currentUser.value.email) {
         account = additionalAccount;
@@ -108,112 +74,46 @@ async function requireAuthWrapper(showError: boolean = true): Promise<boolean> {
       }
     }
   }
-  const commandOptions = await getCommandOptions(undefined, {
-    ...currentOptions,
-  });
   // `requireAuth()` is not just a check, but will also register SERVICE
   // ACCOUNT tokens in memory as a variable in apiv2.ts, which is needed
   // for subsequent API calls. Warning: this variable takes precedence
   // over Google login tokens and must be removed if a Google
   // account is the current user.
   try {
-    const serviceAccountEmail = await getServiceAccount();
-    // Priority 1: Service account exists and is the current selected user
-    if (
-      serviceAccountEmail &&
-      currentUser.value.email === serviceAccountEmail
-    ) {
-      // requireAuth should have been run and apiv2 token should be stored
-      // already due to getServiceAccount() call above.
-      return true;
-    } else if (account) {
-      // Priority 2: Google login account exists and is the currently selected
-      // user
-      // Priority 3: Google login account exists and there is no selected user
-      // Clear service account access token from memory in apiv2.
-      setAccessToken();
-      await requireAuth({ ...commandOptions, ...account });
-      return true;
-    } else if (serviceAccountEmail) {
-      // Priority 4: There is a service account but it's not set as
-      // currentUser for some reason, but there also isn't an oauth account.
-      // requireAuth was already run as part of getServiceAccount() above
-      return true;
+    const optsCopy = currentOptions.value;
+    const userEmail = await requireAuth(optsCopy); // client email
+    // SetAccessToken is necessary here to ensure that access_tokens are available when:
+    // - we are using tokens from configstore (aka those set by firebase login), AND
+    // - we are calling CLI code that skips Command (where we normally call this)
+    currentOptions.value = optsCopy;
+    if (optsCopy.projectId) {
+      currentProjectId.value = optsCopy.projectId;
     }
+    setAccessToken(await getAccessToken());
+    if (userEmail) {
+      pluginLogger.debug("User found: ", userEmail);
+
+      // VSCode only has the concept of a single user
+      return getGlobalDefaultAccount().user;
+    }
+
     pluginLogger.debug("No user found (this may be normal)");
-    return false;
+    return null;
   } catch (e) {
     if (showError) {
-      // Show error to user - show a popup and log it with log level
-      // "error". Usually set on user-triggered actions such as
-      // init hosting and deploy.
+      // Show error to user - show a popup and log it with log level "error".
       pluginLogger.error(
-        `requireAuth error: ${e.original?.message || e.message}`
+        `requireAuth error: ${e.original?.message || e.message}`,
       );
-      vscode.window.showErrorMessage("Not logged in", {
-        modal: true,
-        detail: `Log in by clicking "Sign in with Google" in the sidebar.`,
-      });
     } else {
       // User shouldn't need to see this error - not actionable,
       // but we should log it for debugging purposes.
       pluginLogger.debug(
         "requireAuth error output: ",
-        e.original?.message || e.message
+        e.original?.message || e.message,
       );
     }
-    return false;
-  }
-}
-
-export async function getAccounts(): Promise<Array<Account | ServiceAccount>> {
-  // Get Firebase login accounts
-  const accounts: Array<Account | ServiceAccount> = getAllAccounts();
-  pluginLogger.debug(`Found ${accounts.length} non-service accounts.`);
-  // Get other accounts (assuming service account for now, could also be glogin)
-  const serviceAccountEmail = await getServiceAccount();
-  if (serviceAccountEmail) {
-    pluginLogger.debug(`Found service account: ${serviceAccountEmail}`);
-    accounts.push({
-      user: { email: serviceAccountEmail, type: "service_account" },
-    });
-  }
-  return accounts;
-}
-
-export async function getChannels(
-  firebaseJSON: Config
-): Promise<ChannelWithId[]> {
-  if (!firebaseJSON) {
-    return [];
-  }
-  const loggedIn = await requireAuthWrapper(false);
-  if (!loggedIn) {
-    return [];
-  }
-  const options = { ...currentOptions };
-  if (!options.project) {
-    return [];
-  }
-  try {
-    const site = await getDefaultHostingSite(options);
-    pluginLogger.debug(
-      "Calling listChannels with params",
-      options.project,
-      site
-    );
-    const channels = await listChannels(options.project, site);
-    return channels.map((channel) => ({
-      ...channel,
-      id: channel.name.split("/").pop(),
-    }));
-  } catch (e) {
-    pluginLogger.error("Error in getChannels()", e);
-    vscode.window.showErrorMessage("Error finding hosting channels", {
-      modal: true,
-      detail: `Error finding hosting channels: ${e}`,
-    });
-    return [];
+    return null;
   }
 }
 
@@ -231,118 +131,34 @@ export async function login() {
 }
 
 export async function listProjects() {
-  const loggedIn = await requireAuthWrapper(false);
-  if (!loggedIn) {
+  const loggedInUser = await requireAuthWrapper(false);
+  if (!loggedInUser) {
     return [];
   }
   return listFirebaseProjects();
 }
 
-export async function initHosting(options: {
-  spa: boolean;
-  public?: string;
-  useFrameworks: boolean;
-}): Promise<boolean> {
-  const loggedIn = await requireAuthWrapper(true);
-  if (!loggedIn) {
-    pluginLogger.error("No user found, canceling hosting init");
-    return false;
-  }
-  let webFrameworksOptions = {};
-  if (options.useFrameworks) {
-    pluginLogger.debug("Setting web frameworks options");
-    webFrameworksOptions = {
-      // Should use auto-discovered framework
-      useDiscoveredFramework: true,
-      // Should set up a new framework - do not do this on Monospace
-      useWebFrameworks: false,
-    };
-  }
-  const commandOptions = await getCommandOptions(undefined, currentOptions);
-  const inquirerOptions = {
-    ...commandOptions,
-    ...options,
-    ...webFrameworksOptions,
-    // False for now, we can let the user decide if needed
-    github: false,
-  };
-  pluginLogger.debug(
-    "Calling hosting init with inquirer options",
-    inspect(inquirerOptions)
-  );
-  setInquirerOptions(inquirerOptions);
-  try {
-    await initAction("hosting", commandOptions);
-  } catch (e) {
-    pluginLogger.error(e.message);
-    return false;
-  }
-  return true;
-}
-
-export async function deployToHosting(
-  firebaseJSON: Config,
-  deployTarget: string
-) {
-  if (!(await requireAuthWrapper(true))) {
-    pluginLogger.error("No user found, canceling deployment");
-    return { success: false, hostingUrl: "", consoleUrl: "" };
-  }
-
-  // TODO(hsubox76): throw if it doesn't find firebaseJSON
-  try {
-    const options = { ...currentOptions };
-    // TODO(hsubox76): handle multiple hosting configs
-    pluginLogger.debug(
-      "Calling getDefaultHostingSite() with options",
-      inspect(options)
-    );
-    firebaseJSON.set("hosting", {
-      ...firebaseJSON.get("hosting"),
-      site: await getDefaultHostingSite(options),
-    });
-    pluginLogger.debug(
-      "Calling getCommandOptions() with options",
-      inspect(options)
-    );
-    const commandOptions = await getCommandOptions(firebaseJSON, options);
-    pluginLogger.debug(
-      "Calling hosting deploy with command options",
-      inspect(commandOptions)
-    );
-    if (deployTarget === "live") {
-      await deploy(["hosting"], commandOptions);
-    } else {
-      await hostingChannelDeployAction(deployTarget, commandOptions);
-    }
-    pluginLogger.debug("Hosting deploy complete");
-  } catch (e) {
-    let message = `Error deploying to hosting`;
-    if (e.message) {
-      message += `: ${e.message}`;
-    }
-    if (e.original) {
-      message += ` (original: ${e.original})`;
-    }
-    pluginLogger.error(message);
-    return { success: false, hostingUrl: "", consoleUrl: "" };
-  }
-  return { success: true, hostingUrl: "", consoleUrl: "" };
-}
-
 export async function emulatorsStart(
-  emulatorUiSelections: EmulatorUiSelections
+  emulatorUiSelections: EmulatorUiSelections,
 ) {
+  const only =
+    emulatorUiSelections.mode === "dataconnect"
+      ? `${Emulators.DATACONNECT}`
+      : "";
   const commandOptions = await getCommandOptions(undefined, {
-    ...currentOptions,
+    ...(await firstWhere(
+      // TODO use firstWhereDefined once currentOptions are undefined if not initialized yet
+      currentOptions,
+      (op) => !!op && op.configPath.length !== 0,
+    )),
     project: emulatorUiSelections.projectId,
     exportOnExit: emulatorUiSelections.exportStateOnExit,
     import: emulatorUiSelections.importStateFolderPath,
-    only: emulatorUiSelections.mode === "hosting" ? "hosting" : "",
+    only,
   });
   // Adjusts some options, export on exit can be a boolean or a path.
   commandUtils.setExportOnExitOptions(
-    commandOptions as commandUtils.ExportOnExitOptions
+    commandOptions as commandUtils.ExportOnExitOptions,
   );
   return startAllEmulators(commandOptions, /*showUi=*/ true);
 }
@@ -358,4 +174,10 @@ export function listRunningEmulators(): EmulatorInfo[] {
 export function getEmulatorUiUrl(): string | undefined {
   const url: URL = EmulatorRegistry.url(Emulators.UI);
   return url.hostname === "unknown" ? undefined : url.toString();
+}
+
+export function getEmulatorDetails(
+  emulator: DownloadableEmulators,
+): DownloadableEmulatorDetails {
+  return EmulatorRegistry.getDetails(emulator);
 }

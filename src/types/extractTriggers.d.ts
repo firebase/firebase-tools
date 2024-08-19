@@ -9,5 +9,5 @@ import { ParsedTriggerDefinition } from "../emulator/functionsEmulatorShared";
 export declare function extractTriggers(
   mod: Array<object>, // eslint-disable-line @typescript-eslint/ban-types
   triggers: ParsedTriggerDefinition[],
-  prefix?: string
+  prefix?: string,
 ): void;

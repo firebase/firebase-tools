@@ -4,11 +4,9 @@ import { pluginLogger } from "../logger-wrapper";
 import { execSync } from "child_process";
 
 export function registerQuickstart(broker: ExtensionBrokerImpl): Disposable {
-  broker.on("chooseQuickstartDir", selectDirectory);
+  const sub = broker.on("chooseQuickstartDir", selectDirectory);
 
-  return {
-    dispose() {},
-  };
+  return { dispose: sub };
 }
 
 // Opens a dialog prompting the user to select a directory.

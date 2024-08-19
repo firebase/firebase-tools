@@ -12,7 +12,7 @@ import * as logform from "logform";
 import { EmulatedTriggerDefinition } from "../../src/emulator/functionsEmulatorShared";
 import { EmulatableBackend, FunctionsEmulator } from "../../src/emulator/functionsEmulator";
 import { EmulatorInfo, Emulators } from "../../src/emulator/types";
-import { FakeEmulator } from "../../src/test/emulators/fakeEmulator";
+import { FakeEmulator } from "../../src/emulator/testing/fakeEmulator";
 import { TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
 import { logger } from "../../src/logger";
 import * as registry from "../../src/emulator/registry";
@@ -25,16 +25,16 @@ if ((process.env.DEBUG || "").toLowerCase().includes("spec")) {
       level: "debug",
       format: logform.format.combine(
         logform.format.colorize(),
-        logform.format.printf(dropLogLevels)
+        logform.format.printf(dropLogLevels),
       ),
-    })
+    }),
   );
 }
 
 const FUNCTIONS_DIR = path.resolve(
   // MODULE_ROOT points to firebase-tools/dev since that's where this test file is compiled to.
   // Function source directory is located on firebase-tools/ hence the "..". See run.sh
-  path.join(MODULE_ROOT, "..", "scripts/emulator-tests/functions")
+  path.join(MODULE_ROOT, "..", "scripts/emulator-tests/functions"),
   // path.join(MODULE_ROOT, "scripts/emulator-tests/functions")
 );
 
@@ -63,7 +63,7 @@ async function setupEnvFiles(envs: Record<string, string>) {
 
 async function writeSource(
   triggerSource: () => void,
-  params?: Record<string, () => void>
+  params?: Record<string, () => void>,
 ): Promise<() => Promise<void>> {
   let sourceCode = `module.exports = (${triggerSource.toString()})();\n`;
   const sourcePath = path.join(FUNCTIONS_DIR, "index.js");
@@ -86,7 +86,7 @@ async function useFunction(
   triggerName: string,
   triggerSource: () => {},
   regions: string[] = ["us-central1"],
-  triggerOverrides?: Partial<EmulatedTriggerDefinition>
+  triggerOverrides?: Partial<EmulatedTriggerDefinition>,
 ): Promise<void> {
   await writeSource(triggerSource);
   const triggers: EmulatedTriggerDefinition[] = [];
@@ -119,6 +119,7 @@ describe("FunctionsEmulator", function () {
       projectDir: MODULE_ROOT,
       emulatableBackends: [TEST_BACKEND],
       verbosity: "QUIET",
+      debugPort: false,
       adminSdkConfig: {
         projectId: TEST_PROJECT_ID,
         databaseURL: `https://${TEST_PROJECT_ID}-default-rtdb.firebaseio.com`,
@@ -138,7 +139,7 @@ describe("FunctionsEmulator", function () {
           functionId: require("firebase-functions").https.onRequest(
             (req: express.Request, res: express.Response) => {
               res.json({ path: req.path });
-            }
+            },
           ),
         };
       });
@@ -165,7 +166,7 @@ describe("FunctionsEmulator", function () {
               }),
           };
         },
-        ["us-central1", "europe-west2"]
+        ["us-central1", "europe-west2"],
       );
 
       await supertest(emu.createHubServer())
@@ -190,7 +191,7 @@ describe("FunctionsEmulator", function () {
               }),
           };
         },
-        ["us-central1", "europe-west2"]
+        ["us-central1", "europe-west2"],
       );
 
       await supertest(emu.createHubServer())
@@ -204,7 +205,7 @@ describe("FunctionsEmulator", function () {
           functionId: require("firebase-functions").https.onRequest(
             (req: express.Request, res: express.Response) => {
               res.json({ path: req.path });
-            }
+            },
           ),
         };
       });
@@ -223,7 +224,7 @@ describe("FunctionsEmulator", function () {
           functionId: require("firebase-functions").https.onRequest(
             (req: express.Request, res: express.Response) => {
               res.json({ path: req.path });
-            }
+            },
           ),
         };
       });
@@ -240,7 +241,7 @@ describe("FunctionsEmulator", function () {
             functionId: require("firebase-functions").https.onRequest(
               (req: express.Request, res: express.Response) => {
                 res.json({ path: req.path });
-              }
+              },
             ),
           },
         };
@@ -260,7 +261,7 @@ describe("FunctionsEmulator", function () {
           functionId: require("firebase-functions").https.onRequest(
             (req: express.Request, res: express.Response) => {
               res.json({ path: req.path });
-            }
+            },
           ),
         };
       });
@@ -279,7 +280,7 @@ describe("FunctionsEmulator", function () {
           functionId: require("firebase-functions").https.onRequest(
             (req: express.Request, res: express.Response) => {
               res.json({ path: req.path });
-            }
+            },
           ),
         };
       });
@@ -293,7 +294,7 @@ describe("FunctionsEmulator", function () {
           functionId: require("firebase-functions").https.onRequest(
             (req: express.Request, res: express.Response) => {
               res.json({ path: req.path });
-            }
+            },
           ),
         };
       });
@@ -316,7 +317,7 @@ describe("FunctionsEmulator", function () {
                 baseUrl: req.baseUrl,
                 originalUrl: req.originalUrl,
               });
-            }
+            },
           ),
         };
       });
@@ -342,7 +343,7 @@ describe("FunctionsEmulator", function () {
                 originalUrl: req.originalUrl,
                 query: req.query,
               });
-            }
+            },
           ),
         };
       });
@@ -368,7 +369,7 @@ describe("FunctionsEmulator", function () {
                 baseUrl: req.baseUrl,
                 originalUrl: req.originalUrl,
               });
-            }
+            },
           ),
         };
       });
@@ -401,7 +402,7 @@ describe("FunctionsEmulator", function () {
               }),
           };
         },
-        ["europe-west3"]
+        ["europe-west3"],
       );
 
       await supertest(emu.createHubServer())
@@ -421,7 +422,7 @@ describe("FunctionsEmulator", function () {
           functionId: require("firebase-functions").https.onRequest(
             (req: express.Request, res: express.Response) => {
               res.json(req.body);
-            }
+            },
           ),
         };
       });
@@ -441,7 +442,7 @@ describe("FunctionsEmulator", function () {
           functionId: require("firebase-functions").https.onRequest(
             (req: express.Request, res: express.Response) => {
               res.json(req.query);
-            }
+            },
           ),
         };
       });
@@ -629,7 +630,7 @@ describe("FunctionsEmulator", function () {
           functionId: require("firebase-functions").https.onRequest(
             (req: express.Request, res: express.Response) => {
               res.json({ path: req.path });
-            }
+            },
           ),
         };
       });
@@ -679,7 +680,7 @@ describe("FunctionsEmulator", function () {
                   firestoreHost: process.env.FIRESTORE_EMULATOR_HOST,
                   authHost: process.env.FIREBASE_AUTH_EMULATOR_HOST,
                 });
-              }
+              },
             ),
           };
         });
@@ -702,7 +703,7 @@ describe("FunctionsEmulator", function () {
             functionId: require("firebase-functions").https.onRequest(
               (_req: express.Request, res: express.Response) => {
                 res.json(JSON.parse(process.env.FIREBASE_CONFIG!));
-              }
+              },
             ),
           };
         });
@@ -712,7 +713,7 @@ describe("FunctionsEmulator", function () {
           .expect(200)
           .then((res) => {
             expect(res.body.databaseURL).to.eql(
-              `http://${database.host}:${database.port}/?ns=${TEST_PROJECT_ID}-default-rtdb`
+              `http://${database.host}:${database.port}/?ns=${TEST_PROJECT_ID}-default-rtdb`,
             );
           });
       }).timeout(TIMEOUT_MED);
@@ -723,7 +724,7 @@ describe("FunctionsEmulator", function () {
             functionId: require("firebase-functions").https.onRequest(
               (_req: express.Request, res: express.Response) => {
                 res.json(JSON.parse(process.env.FIREBASE_CONFIG!));
-              }
+              },
             ),
           };
         });
@@ -733,7 +734,7 @@ describe("FunctionsEmulator", function () {
           .expect(200)
           .then((res) => {
             expect(res.body.databaseURL).to.eql(
-              `https://${TEST_PROJECT_ID}-default-rtdb.firebaseio.com`
+              `https://${TEST_PROJECT_ID}-default-rtdb.firebaseio.com`,
             );
           });
       }).timeout(TIMEOUT_MED);
@@ -745,7 +746,7 @@ describe("FunctionsEmulator", function () {
               (_req: express.Request, res: express.Response) => {
                 const now = new Date();
                 res.json({ offset: now.getTimezoneOffset() });
-              }
+              },
             ),
           };
         });
@@ -783,11 +784,11 @@ describe("FunctionsEmulator", function () {
                     FOO: process.env.FOO,
                     BAR: process.env.BAR,
                   });
-                }
+                },
               ),
             };
           },
-          ["us-central1"]
+          ["us-central1"],
         );
 
         await supertest(emu.createHubServer())
@@ -814,11 +815,11 @@ describe("FunctionsEmulator", function () {
                   res.json({
                     FOO: process.env.FOO,
                   });
-                }
+                },
               ),
             };
           },
-          ["us-central1"]
+          ["us-central1"],
         );
 
         await supertest(emu.createHubServer())
@@ -846,11 +847,11 @@ describe("FunctionsEmulator", function () {
                   res.json({
                     FOO: process.env.FOO,
                   });
-                }
+                },
               ),
             };
           },
-          ["us-central1"]
+          ["us-central1"],
         );
 
         await supertest(emu.createHubServer())
@@ -889,7 +890,7 @@ describe("FunctionsEmulator", function () {
               secretsFunctionId: require("firebase-functions").https.onRequest(
                 (req: express.Request, res: express.Response) => {
                   res.json({ secret: process.env.MY_SECRET });
-                }
+                },
               ),
             };
           },
@@ -903,7 +904,7 @@ describe("FunctionsEmulator", function () {
                 version: "1",
               },
             ],
-          }
+          },
         );
 
         await supertest(emu.createHubServer())
@@ -926,7 +927,7 @@ describe("FunctionsEmulator", function () {
               secretsFunctionId: require("firebase-functions").https.onRequest(
                 (req: express.Request, res: express.Response) => {
                   res.json({ secret: process.env.MY_SECRET });
-                }
+                },
               ),
             };
           },
@@ -940,7 +941,7 @@ describe("FunctionsEmulator", function () {
                 version: "1",
               },
             ],
-          }
+          },
         );
 
         await supertest(emu.createHubServer())
@@ -975,7 +976,7 @@ describe("FunctionsEmulator", function () {
         },
         {
           timeout: () => require("firebase-functions/params").defineInt("TIMEOUT"),
-        }
+        },
       );
       cleanupEnvs = await setupEnvFiles({
         ".env": "TIMEOUT=24",
@@ -999,7 +1000,7 @@ describe("FunctionsEmulator", function () {
         },
         {
           timeout: () => require("firebase-functions/params").defineInt("TIMEOUT"),
-        }
+        },
       );
       cleanupEnvs = await setupEnvFiles({
         ".env": "TIMEOUT=24",
@@ -1024,7 +1025,7 @@ describe("FunctionsEmulator", function () {
         },
         {
           timeout: () => require("firebase-functions/params").defineInt("TIMEOUT"),
-        }
+        },
       );
       cleanupEnvs = await setupEnvFiles({
         ".env": "TIMEOUT=24",
@@ -1059,7 +1060,7 @@ describe("FunctionsEmulator", function () {
       ["us-central1"],
       {
         timeoutSeconds: 1,
-      }
+      },
     );
 
     await supertest(emu.createHubServer())

@@ -37,6 +37,11 @@ export interface RCData {
   etags: {
     [projectId: string]: Record<EtagResourceType, Record<string, string>>;
   };
+  dataconnectEmulatorConfig: {
+    postgres?: {
+      localConnectionString: string;
+    };
+  };
 }
 
 export class RC {
@@ -58,7 +63,7 @@ export class RC {
 
   constructor(rcpath?: string, data?: Partial<RCData>) {
     this.path = rcpath;
-    this.data = { projects: {}, targets: {}, etags: {}, ...data };
+    this.data = { projects: {}, targets: {}, etags: {}, dataconnectEmulatorConfig: {}, ...data };
   }
 
   private set(key: string | string[], value: any): void {
@@ -118,8 +123,8 @@ export class RC {
     if (!TARGET_TYPES[type]) {
       throw new FirebaseError(
         `Unrecognized target type ${clc.bold(type)}. Must be one of ${Object.keys(
-          TARGET_TYPES
-        ).join(", ")}`
+          TARGET_TYPES,
+        ).join(", ")}`,
       );
     }
 
@@ -208,10 +213,10 @@ export class RC {
     if (!target.length) {
       throw new FirebaseError(
         `Deploy target ${clc.bold(name)} not configured for project ${clc.bold(
-          project
+          project,
         )}. Configure with:
 
-  firebase target:apply ${type} ${name} <resources...>`
+  firebase target:apply ${type} ${name} <resources...>`,
       );
     }
 
@@ -227,6 +232,15 @@ export class RC {
       this.data.etags[projectId] = {} as Record<EtagResourceType, Record<string, string>>;
     }
     this.data.etags[projectId][resourceType] = etagData;
+    this.save();
+  }
+
+  getDataconnect() {
+    return this.data.dataconnectEmulatorConfig ?? {};
+  }
+
+  setDataconnect(localConnectionString: string) {
+    this.data.dataconnectEmulatorConfig = { postgres: { localConnectionString } };
     this.save();
   }
 

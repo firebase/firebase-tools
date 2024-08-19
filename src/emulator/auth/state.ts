@@ -41,6 +41,8 @@ export abstract class ProjectState {
 
   abstract get oneAccountPerEmail(): boolean;
 
+  abstract get enableImprovedEmailPrivacy(): boolean;
+
   abstract get authCloudFunction(): AuthCloudFunction;
 
   abstract get allowPasswordSignup(): boolean;
@@ -54,7 +56,7 @@ export abstract class ProjectState {
   abstract get enableEmailLinkSignin(): boolean;
 
   abstract shouldForwardCredentialToBlockingFunction(
-    type: "accessToken" | "idToken" | "refreshToken"
+    type: "accessToken" | "idToken" | "refreshToken",
   ): boolean;
 
   abstract getBlockingFunctionUri(event: BlockingFunctionEvents): string | undefined;
@@ -77,7 +79,7 @@ export abstract class ProjectState {
 
   createUserWithLocalId(
     localId: string,
-    props: Omit<UserInfo, "localId" | "lastRefreshAt">
+    props: Omit<UserInfo, "localId" | "lastRefreshAt">,
   ): UserInfo | undefined {
     if (this.users.has(localId)) {
       return undefined;
@@ -102,7 +104,7 @@ export abstract class ProjectState {
    */
   overwriteUserWithLocalId(
     localId: string,
-    props: Omit<UserInfo, "localId" | "lastRefreshAt">
+    props: Omit<UserInfo, "localId" | "lastRefreshAt">,
   ): UserInfo {
     const userInfoBefore = this.users.get(localId);
     if (userInfoBefore) {
@@ -134,7 +136,7 @@ export abstract class ProjectState {
     options: {
       upsertProviders?: ProviderUserInfo[];
       deleteProviders?: string[];
-    } = {}
+    } = {},
   ): UserInfo {
     const upsertProviders = options.upsertProviders ?? [];
     const deleteProviders = options.deleteProviders ?? [];
@@ -216,16 +218,16 @@ export abstract class ProjectState {
     for (const enrollment of enrollments) {
       assert(
         enrollment.phoneInfo && isValidPhoneNumber(enrollment.phoneInfo),
-        "INVALID_MFA_PHONE_NUMBER : Invalid format."
+        "INVALID_MFA_PHONE_NUMBER : Invalid format.",
       );
       assert(
         enrollment.mfaEnrollmentId,
-        "INVALID_MFA_ENROLLMENT_ID : mfaEnrollmentId must be defined."
+        "INVALID_MFA_ENROLLMENT_ID : mfaEnrollmentId must be defined.",
       );
       assert(!enrollmentIds.has(enrollment.mfaEnrollmentId), "DUPLICATE_MFA_ENROLLMENT_ID");
       assert(
         !phoneNumbers.has(enrollment.phoneInfo),
-        "INTERNAL_ERROR : MFA Enrollment Phone Numbers must be unique."
+        "INTERNAL_ERROR : MFA Enrollment Phone Numbers must be unique.",
       );
       phoneNumbers.add(enrollment.phoneInfo);
       enrollmentIds.add(enrollment.mfaEnrollmentId);
@@ -236,7 +238,7 @@ export abstract class ProjectState {
   private updateUserProviderInfo(
     user: UserInfo,
     upsertProviders: ProviderUserInfo[],
-    deleteProviders: string[]
+    deleteProviders: string[],
   ): UserInfo {
     const oldProviderEmails = getProviderEmailsForUser(user);
 
@@ -264,7 +266,7 @@ export abstract class ProjectState {
         users.set(upsert.rawId, user.localId);
 
         const index = user.providerUserInfo.findIndex(
-          (info) => info.providerId === upsert.providerId
+          (info) => info.providerId === upsert.providerId,
         );
         if (index < 0) {
           user.providerUserInfo.push(upsert);
@@ -368,7 +370,7 @@ export abstract class ProjectState {
       const info = user.providerUserInfo?.find((info) => info.providerId === provider);
       if (!info) {
         throw new Error(
-          `Internal assertion error: User ${localId} does not have providerInfo ${provider}.`
+          `Internal assertion error: User ${localId} does not have providerInfo ${provider}.`,
         );
       }
       infos.push(info);
@@ -389,7 +391,7 @@ export abstract class ProjectState {
     }: {
       extraClaims?: Record<string, unknown>;
       secondFactor?: SecondFactorRecord;
-    } = {}
+    } = {},
   ): string {
     const localId = userInfo.localId;
     const refreshTokenRecord = {
@@ -430,7 +432,7 @@ export abstract class ProjectState {
   createOob(
     email: string,
     requestType: OobRequestType,
-    generateLink: (oobCode: string) => string
+    generateLink: (oobCode: string) => string,
   ): OobRecord {
     const oobCode = randomBase64UrlStr(54);
     const oobLink = generateLink(oobCode);
@@ -505,7 +507,7 @@ export abstract class ProjectState {
       order: "ASC" | "DESC";
       sortByField: "localId";
       startToken?: string;
-    }
+    },
   ): UserInfo[] {
     const users = [];
     for (const user of this.users.values()) {
@@ -539,7 +541,7 @@ export abstract class ProjectState {
 
   validateTemporaryProof(
     temporaryProof: string,
-    phoneNumber: string
+    phoneNumber: string,
   ): TemporaryProofRecord | undefined {
     const record = this.temporaryProofs.get(temporaryProof);
     if (!record || record.phoneNumber !== phoneNumber) {
@@ -578,6 +580,9 @@ export class AgentProjectState extends ProjectState {
   private _config: Config = {
     signIn: { allowDuplicateEmails: false },
     blockingFunctions: {},
+    emailPrivacyConfig: {
+      enableImprovedEmailPrivacy: false,
+    },
   };
 
   constructor(projectId: string) {
@@ -594,6 +599,14 @@ export class AgentProjectState extends ProjectState {
 
   set oneAccountPerEmail(oneAccountPerEmail: boolean) {
     this._config.signIn.allowDuplicateEmails = !oneAccountPerEmail;
+  }
+
+  get enableImprovedEmailPrivacy() {
+    return !!this._config.emailPrivacyConfig.enableImprovedEmailPrivacy;
+  }
+
+  set enableImprovedEmailPrivacy(improveEmailPrivacy: boolean) {
+    this._config.emailPrivacyConfig.enableImprovedEmailPrivacy = improveEmailPrivacy;
   }
 
   get allowPasswordSignup() {
@@ -629,7 +642,7 @@ export class AgentProjectState extends ProjectState {
   }
 
   shouldForwardCredentialToBlockingFunction(
-    type: "accessToken" | "idToken" | "refreshToken"
+    type: "accessToken" | "idToken" | "refreshToken",
   ): boolean {
     switch (type) {
       case "accessToken":
@@ -653,12 +666,14 @@ export class AgentProjectState extends ProjectState {
 
   updateConfig(
     update: Schemas["GoogleCloudIdentitytoolkitAdminV2Config"],
-    updateMask: string | undefined
+    updateMask: string | undefined,
   ): Config {
     // Empty masks indicate a full update.
     if (!updateMask) {
       this.oneAccountPerEmail = !update.signIn?.allowDuplicateEmails ?? true;
       this.blockingFunctionsConfig = update.blockingFunctions ?? {};
+      this.enableImprovedEmailPrivacy =
+        update.emailPrivacyConfig?.enableImprovedEmailPrivacy ?? false;
       return this.config;
     }
     return applyMask(updateMask, this.config, update);
@@ -724,7 +739,7 @@ export class AgentProjectState extends ProjectState {
     tenant.tenantId = tenantId;
     this.tenantProjectForTenantId.set(
       tenantId,
-      new TenantProjectState(this.projectId, tenantId, tenant, this)
+      new TenantProjectState(this.projectId, tenantId, tenant, this),
     );
     return tenant;
   }
@@ -739,13 +754,17 @@ export class TenantProjectState extends ProjectState {
     projectId: string,
     readonly tenantId: string,
     private _tenantConfig: Tenant,
-    private readonly parentProject: AgentProjectState
+    private readonly parentProject: AgentProjectState,
   ) {
     super(projectId);
   }
 
   get oneAccountPerEmail() {
     return this.parentProject.oneAccountPerEmail;
+  }
+
+  get enableImprovedEmailPrivacy() {
+    return this.parentProject.enableImprovedEmailPrivacy;
   }
 
   get authCloudFunction() {
@@ -777,7 +796,7 @@ export class TenantProjectState extends ProjectState {
   }
 
   shouldForwardCredentialToBlockingFunction(
-    type: "accessToken" | "idToken" | "refreshToken"
+    type: "accessToken" | "idToken" | "refreshToken",
   ): boolean {
     return this.parentProject.shouldForwardCredentialToBlockingFunction(type);
   }
@@ -792,7 +811,7 @@ export class TenantProjectState extends ProjectState {
 
   updateTenant(
     update: Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"],
-    updateMask: string | undefined
+    updateMask: string | undefined,
   ): Tenant {
     // Empty masks indicate a full update
     if (!updateMask) {
@@ -853,6 +872,8 @@ export type SignInConfig = MakeRequired<
 export type BlockingFunctionsConfig =
   Schemas["GoogleCloudIdentitytoolkitAdminV2BlockingFunctionsConfig"];
 
+export type EmailPrivacyConfig = Schemas["GoogleCloudIdentitytoolkitAdminV2EmailPrivacyConfig"];
+
 // Serves as a substitute for Schemas["GoogleCloudIdentitytoolkitAdminV2Config"],
 // i.e. the configuration object for top-level AgentProjectStates. Emulator
 // fixes certain configurations for ease of use / testing, so as non-standard
@@ -860,6 +881,7 @@ export type BlockingFunctionsConfig =
 export type Config = {
   signIn: SignInConfig;
   blockingFunctions: BlockingFunctionsConfig;
+  emailPrivacyConfig: EmailPrivacyConfig;
 };
 
 export interface RefreshTokenRecord {

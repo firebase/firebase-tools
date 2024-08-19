@@ -6,7 +6,7 @@ import { needProjectId } from "./projectUtils";
 import { last } from "./utils";
 
 export const errNoDefaultSite = new FirebaseError(
-  "Could not determine the default site for the project."
+  "Could not determine the default site for the project.",
 );
 
 /**

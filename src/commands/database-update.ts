@@ -21,7 +21,7 @@ export const command = new Command("database:update <path> [infile]")
   .option("-f, --force", "pass this option to bypass confirmation prompt")
   .option(
     "--instance <instance>",
-    "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
+    "use the database <instance>.firebaseio.com (if omitted, use default database instance)",
   )
   .option("--disable-triggers", "suppress any Cloud functions triggered by this operation")
   .before(requirePermissions, ["firebasedatabase.instances.update"])
@@ -41,7 +41,7 @@ export const command = new Command("database:update <path> [infile]")
         default: false,
         message: `You are about to modify data at ${clc.cyan(url)}. Are you sure?`,
       },
-      options
+      options,
     );
     if (!confirmed) {
       throw new FirebaseError("Command aborted.");
@@ -76,6 +76,6 @@ export const command = new Command("database:update <path> [infile]")
     logger.info();
     logger.info(
       clc.bold("View data at:"),
-      utils.getDatabaseViewDataUrl(origin, options.project, options.instance, path)
+      utils.getDatabaseViewDataUrl(origin, options.project, options.instance, path),
     );
   });

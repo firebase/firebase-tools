@@ -242,7 +242,7 @@ async function assertResolveDeveloperNodeModule(name: string): Promise<Successfu
     !(resolution.installed && resolution.declared && resolution.resolution && resolution.version)
   ) {
     throw new Error(
-      `Assertion failure: could not fully resolve ${name}: ${JSON.stringify(resolution)}`
+      `Assertion failure: could not fully resolve ${name}: ${JSON.stringify(resolution)}`,
     );
   }
 
@@ -402,7 +402,7 @@ async function initializeFirebaseFunctionsStubs(): Promise<void> {
   const firebaseFunctionsResolution = await assertResolveDeveloperNodeModule("firebase-functions");
   const firebaseFunctionsRoot = findModuleRoot(
     "firebase-functions",
-    firebaseFunctionsResolution.resolution
+    firebaseFunctionsResolution.resolution,
   );
   const httpsProviderResolution = path.join(firebaseFunctionsRoot, "lib/providers/https");
   const httpsProviderV1Resolution = path.join(firebaseFunctionsRoot, "lib/v1/providers/https");
@@ -441,7 +441,7 @@ async function initializeFirebaseFunctionsStubs(): Promise<void> {
     httpsProvider[onCallInnerMethodName] = (
       opts: any,
       handler: any,
-      deployOpts: DeploymentOptions
+      deployOpts: DeploymentOptions,
     ) => {
       const wrapped = wrapCallableHandler(handler);
       const cf = onCallMethodOriginal(opts, wrapped, deployOpts);
@@ -576,7 +576,7 @@ async function initializeFirebaseAdminStubs(): Promise<void> {
       }).log();
 
       const defaultApp: admin.app.App = makeProxiedFirebaseApp(
-        adminModuleTarget.initializeApp(defaultAppOptions)
+        adminModuleTarget.initializeApp(defaultAppOptions),
       );
       logDebug("initializeApp(DEFAULT)", defaultAppOptions);
 
@@ -590,7 +590,7 @@ async function initializeFirebaseAdminStubs(): Promise<void> {
           new EmulatorLog(
             "WARN_ONCE",
             "runtime-status",
-            "The Firebase Authentication emulator is running, but your 'firebase-admin' dependency is below version 9.3.0, so calls to Firebase Authentication will affect production."
+            "The Firebase Authentication emulator is running, but your 'firebase-admin' dependency is below version 9.3.0, so calls to Firebase Authentication will affect production.",
           ).log();
         } else if (compareVersionStrings(adminResolution.version, "9.4.2") <= 0) {
           // Between firebase-admin versions 9.3.0 and 9.4.2 (inclusive) we used the
@@ -669,7 +669,7 @@ function warnAboutFirestoreProd(): void {
   new EmulatorLog(
     "WARN_ONCE",
     "runtime-status",
-    "The Cloud Firestore emulator is not running, so calls to Firestore will affect production."
+    "The Cloud Firestore emulator is not running, so calls to Firestore will affect production.",
   ).log();
 }
 
@@ -681,7 +681,7 @@ function warnAboutDatabaseProd(): void {
   new EmulatorLog(
     "WARN_ONCE",
     "runtime-status",
-    "The Realtime Database emulator is not running, so calls to Realtime Database will affect production."
+    "The Realtime Database emulator is not running, so calls to Realtime Database will affect production.",
   ).log();
 }
 
@@ -693,7 +693,7 @@ function warnAboutAuthProd(): void {
   new EmulatorLog(
     "WARN_ONCE",
     "runtime-status",
-    "The Firebase Authentication emulator is not running, so calls to Firebase Authentication will affect production."
+    "The Firebase Authentication emulator is not running, so calls to Firebase Authentication will affect production.",
   ).log();
 }
 
@@ -705,7 +705,7 @@ function warnAboutStorageProd(): void {
   new EmulatorLog(
     "WARN_ONCE",
     "runtime-status",
-    "The Firebase Storage emulator is not running, so calls to Firebase Storage will affect production."
+    "The Firebase Storage emulator is not running, so calls to Firebase Storage will affect production.",
   ).log();
 }
 
@@ -762,7 +762,7 @@ function rawBodySaver(req: express.Request, res: express.Response, buf: Buffer):
 async function processBackground(
   trigger: CloudFunction<any>,
   reqBody: any,
-  signature: SignatureType
+  signature: SignatureType,
 ): Promise<void> {
   if (signature === "cloudevent") {
     return runCloudEvent(trigger, reqBody);
@@ -870,7 +870,7 @@ async function initializeRuntime(): Promise<void> {
       new EmulatorLog(
         "FATAL",
         "runtime-status",
-        `Environment variable FUNCTION_TARGET cannot be empty. This shouldn't happen.`
+        `Environment variable FUNCTION_TARGET cannot be empty. This shouldn't happen.`,
       ).log();
       await flushAndExit(1);
     }
@@ -880,7 +880,7 @@ async function initializeRuntime(): Promise<void> {
       new EmulatorLog(
         "FATAL",
         "runtime-status",
-        `Environment variable FUNCTION_SIGNATURE_TYPE cannot be empty. This shouldn't happen.`
+        `Environment variable FUNCTION_SIGNATURE_TYPE cannot be empty. This shouldn't happen.`,
       ).log();
       await flushAndExit(1);
     }
@@ -892,7 +892,7 @@ async function initializeRuntime(): Promise<void> {
     new EmulatorLog(
       "INFO",
       "runtime-status",
-      `Your functions could not be parsed due to an issue with your node_modules (see above)`
+      `Your functions could not be parsed due to an issue with your node_modules (see above)`,
     ).log();
     return;
   }
@@ -974,7 +974,7 @@ async function main(): Promise<void> {
     new EmulatorLog(
       "FATAL",
       "runtime-status",
-      `Failed to initialize and load triggers. This shouldn't happen: ${e.message}`
+      `Failed to initialize and load triggers. This shouldn't happen: ${e.message}`,
     ).log();
     await flushAndExit(1);
   }
@@ -986,27 +986,27 @@ async function main(): Promise<void> {
     bodyParser.json({
       limit: bodyParserLimit,
       verify: rawBodySaver,
-    })
+    }),
   );
   app.use(
     bodyParser.text({
       limit: bodyParserLimit,
       verify: rawBodySaver,
-    })
+    }),
   );
   app.use(
     bodyParser.urlencoded({
       extended: true,
       limit: bodyParserLimit,
       verify: rawBodySaver,
-    })
+    }),
   );
   app.use(
     bodyParser.raw({
       type: "*/*",
       limit: bodyParserLimit,
       verify: rawBodySaver,
-    })
+    }),
   );
   app.get("/__/health", (req, res) => {
     res.status(200).send();

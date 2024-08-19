@@ -1,9 +1,4 @@
 import * as clc from "colorette";
-import * as TerminalRenderer from "marked-terminal";
-import { marked } from "marked";
-marked.setOptions({
-  renderer: new TerminalRenderer(),
-});
 
 import { logPrefix } from "./extensionsHelper";
 import { humanReadable } from "../deploy/extensions/deploymentSummary";
@@ -33,19 +28,16 @@ export async function displayWarningsForDeploy(instancesToCreate: InstanceSpec[]
     await getExtensionVersion(i);
   }
   const unpublishedExtensions = uploadedExtensionInstances.filter(
-    (i) => i.extensionVersion?.listing?.state !== "APPROVED"
+    (i) => i.extensionVersion?.listing?.state !== "APPROVED",
   );
 
   if (unpublishedExtensions.length) {
     const humanReadableList = unpublishedExtensions.map(toListEntry).join("\n");
     utils.logLabeledBullet(
       logPrefix,
-      marked(
-        `The following extension versions have not been published to the Firebase Extensions Hub:\n${humanReadableList}\n.` +
-          "Unpublished extensions have not been reviewed by " +
-          "Firebase. Please make sure you trust the extension publisher before installing this extension.",
-        { gfm: false }
-      )
+      `The following extension versions have not been published to the Firebase Extensions Hub:\n${humanReadableList}\n.` +
+        "Unpublished extensions have not been reviewed by " +
+        "Firebase. Please make sure you trust the extension publisher before installing this extension.",
     );
   }
   return unpublishedExtensions.length > 0;
@@ -55,6 +47,6 @@ export function outOfBandChangesWarning(instanceIds: string[]) {
   logger.warn(
     "The following instances may have been changed in the Firebase console or by another machine since the last deploy from this machine.\n\t" +
       clc.bold(instanceIds.join("\n\t")) +
-      "\nIf you proceed with this deployment, those changes will be overwritten. To avoid this, run `firebase ext:export` to sync these changes to your local extensions manifest."
+      "\nIf you proceed with this deployment, those changes will be overwritten. To avoid this, run `firebase ext:export` to sync these changes to your local extensions manifest.",
   );
 }

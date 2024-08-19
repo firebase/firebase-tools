@@ -111,7 +111,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
         return sendFileBytes(getObjectResponse.metadata, getObjectResponse.data, req, res);
       }
       return res.json(new CloudStorageObjectMetadata(getObjectResponse.metadata));
-    }
+    },
   );
 
   gcloudStorageAPI.patch("/b/:bucketId/o/:objectId", async (req, res) => {
@@ -178,7 +178,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
         throw err;
       }
       return res.sendStatus(204);
-    }
+    },
   );
 
   gcloudStorageAPI.put("/upload/storage/v1/b/:bucketId/o", async (req, res) => {
@@ -217,7 +217,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     // TODO(abehaskins) Link to a doc with more info
     EmulatorLogger.forEmulator(Emulators.STORAGE).log(
       "WARN_ONCE",
-      "Cloud Storage ACLs are not supported in the Storage Emulator. All related methods will succeed, but have no effect."
+      "Cloud Storage ACLs are not supported in the Storage Emulator. All related methods will succeed, but have no effect.",
     );
     let getObjectResponse: GetObjectResponse;
     try {
@@ -239,7 +239,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     metadata.update({});
     const selfLink = EmulatorRegistry.url(Emulators.STORAGE);
     selfLink.pathname = `/storage/v1/b/${metadata.bucket}/o/${encodeURIComponent(
-      metadata.name
+      metadata.name,
     )}/acl/allUsers`;
     return res.json({
       kind: "storage#objectAccessControl",
@@ -305,7 +305,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       try {
         ({ metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(
           contentTypeHeader,
-          await reqBodyToBuffer(req)
+          await reqBodyToBuffer(req),
         ));
       } catch (err) {
         if (err instanceof Error) {
@@ -416,7 +416,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       } else {
         return next();
       }
-    }
+    },
   );
 
   gcloudStorageAPI.all("/**", (req, res) => {
@@ -457,7 +457,7 @@ function sendObjectNotFound(req: Request, res: Response): void {
 
 function getIncomingFileNameFromRequest(
   query: Query,
-  metadata: IncomingMetadata
+  metadata: IncomingMetadata,
 ): string | undefined {
   const name = query?.name?.toString() || metadata?.name;
   return name?.startsWith("/") ? name.slice(1) : name;

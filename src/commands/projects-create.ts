@@ -11,16 +11,16 @@ import { requireAuth } from "../requireAuth";
 
 export const command = new Command("projects:create [projectId]")
   .description(
-    "creates a new Google Cloud Platform project, then adds Firebase resources to the project"
+    "creates a new Google Cloud Platform project, then adds Firebase resources to the project",
   )
   .option("-n, --display-name <displayName>", "(optional) display name for the project")
   .option(
     "-o, --organization <organizationId>",
-    "(optional) ID of the parent Google Cloud Platform organization under which to create this project"
+    "(optional) ID of the parent Google Cloud Platform organization under which to create this project",
   )
   .option(
     "-f, --folder <folderId>",
-    "(optional) ID of the parent Google Cloud Platform folder in which to create this project"
+    "(optional) ID of the parent Google Cloud Platform folder in which to create this project",
   )
   .before(requireAuth)
   .action(
@@ -30,7 +30,7 @@ export const command = new Command("projects:create [projectId]")
 
       if (options.organization && options.folder) {
         throw new FirebaseError(
-          "Invalid argument, please provide only one type of project parent (organization or folder)"
+          "Invalid argument, please provide only one type of project parent (organization or folder)",
         );
       }
       if (!options.nonInteractive) {
@@ -51,5 +51,5 @@ export const command = new Command("projects:create [projectId]")
         displayName: options.displayName,
         parentResource,
       });
-    }
+    },
   );

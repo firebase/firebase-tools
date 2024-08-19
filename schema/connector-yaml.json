@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "definitions": {
+    "javascriptSdk": {
+      "additionalProperties": true,
+      "type": "object",
+      "properties": {
+        "outputDir": {
+          "type": "string",
+          "description": "Path to the directory where generated files should be written to."
+        },
+        "package": {
+          "type": "string",
+          "description": "The package name to use for the generated code."
+        },
+        "packageJSONDir": {
+          "type": "string",
+          "description": "The directory containining the package.json to install the generated package in."
+        }
+      }
+    },
+    "kotlinSdk": {
+      "additionalProperties": true,
+      "type": "object",
+      "properties": {
+        "outputDir": {
+          "type": "string",
+          "description": "Path to the directory where generated files should be written to."
+        },
+        "package": {
+          "type": "string",
+          "description": "The package name to use for the generated code."
+        }
+      }
+    },
+    "swiftSdk": {
+      "additionalProperties": true,
+      "type": "object",
+      "properties": {
+        "outputDir": {
+          "type": "string",
+          "description": "Path to the directory where generated files should be written to."
+        }
+      }
+    }
+  },
+  "properties": {
+    "connectorId": {
+      "type": "string",
+      "description": "The ID of the Firebase Data Connect connector."
+    },
+    "authMode": {
+      "type": "string",
+      "description": "The authentication strategy to use for this connector"
+
+    },
+    "generate": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "javascriptSdk": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/javascriptSdk"
+          },
+          "description": "Configuration for a generated Javascript SDK"
+        },
+        "kotlinSdk": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/kotlinSdk"
+          },
+          "description": "Configuration for a generated Kotlin SDK"
+        },
+        "swiftSdk": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/swiftSdk"
+          },
+          "description": "Configuration for a generated Swift SDK"
+        }
+      }
+    }
+  }
+}

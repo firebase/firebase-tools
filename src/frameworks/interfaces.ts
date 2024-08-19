@@ -22,7 +22,8 @@ export const enum SupportLevel {
 
 export interface Discovery {
   mayWantBackend: boolean;
-  publicDirectory: string;
+  version?: string;
+  vite?: boolean;
 }
 
 export interface BuildResult {
@@ -38,7 +39,7 @@ export interface BuildResult {
 export type RequestHandler = (
   req: IncomingMessage,
   res: ServerResponse,
-  next: () => void
+  next: () => void,
 ) => void | Promise<void>;
 
 export type FrameworksOptions = HostingOptions &
@@ -50,20 +51,22 @@ export type FrameworksOptions = HostingOptions &
 export type FrameworkContext = {
   projectId?: string;
   hostingChannel?: string;
+  site?: string;
 };
 
 export interface Framework {
+  supportedRange?: string;
   discover: (dir: string) => Promise<Discovery | undefined>;
   type: FrameworkType;
   name: string;
-  build: (dir: string, target: string) => Promise<BuildResult | void>;
+  build: (dir: string, target: string, context?: FrameworkContext) => Promise<BuildResult | void>;
   support: SupportLevel;
   docsUrl?: string;
   init?: (setup: any, config: any) => Promise<void>;
   getDevModeHandle?: (
     dir: string,
     target: string,
-    hostingEmulatorInfo?: EmulatorInfo
+    hostingEmulatorInfo?: EmulatorInfo,
   ) => Promise<RequestHandler>;
   ɵcodegenPublicDirectory: (
     dir: string,
@@ -72,12 +75,13 @@ export interface Framework {
     context: {
       project: string;
       site: string;
-    }
+    },
   ) => Promise<void>;
   ɵcodegenFunctionsDirectory?: (
     dir: string,
     dest: string,
-    target: string
+    target: string,
+    context?: FrameworkContext,
   ) => Promise<{
     bootstrapScript?: string;
     packageJson: any;
@@ -96,4 +100,10 @@ export interface FirebaseDefaults {
   config?: Object;
   emulatorHosts?: Record<string, string>;
   _authTokenSyncURL?: string;
+}
+
+// Only the fields being used are defined here
+export interface PackageJson {
+  main: string;
+  type?: "commonjs" | "module";
 }

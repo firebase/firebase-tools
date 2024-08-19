@@ -1,6 +1,7 @@
 import * as args from "../deploy/functions/args";
 import * as backend from "../deploy/functions/backend";
 import * as secrets from "../functions/secrets";
+import * as secretManager from "../gcp/secretManager";
 
 import { Command } from "../command";
 import { Options } from "../options";
@@ -16,7 +17,7 @@ export const command = new Command("functions:secrets:prune")
   .withForce("Destroys unused secrets without prompt")
   .description("Destroys unused secrets")
   .before(requireAuth)
-  .before(secrets.ensureApi)
+  .before(secretManager.ensureApi)
   .before(requirePermissions, [
     "cloudfunctions.functions.list",
     "secretmanager.secrets.list",
@@ -44,7 +45,7 @@ export const command = new Command("functions:secrets:prune")
     // prompt to get them all deleted
     logBullet(
       `Found ${pruned.length} unused active secret versions:\n\t` +
-        pruned.map((sv) => `${sv.secret}@${sv.version}`).join("\n\t")
+        pruned.map((sv) => `${sv.secret}@${sv.version}`).join("\n\t"),
     );
 
     if (!options.force) {
@@ -55,14 +56,14 @@ export const command = new Command("functions:secrets:prune")
           default: true,
           message: `Do you want to destroy unused secret versions?`,
         },
-        options
+        options,
       );
       if (!confirm) {
         logBullet(
           "Run the following commands to destroy each unused secret version:\n\t" +
             pruned
               .map((sv) => `firebase functions:secrets:destroy ${sv.secret}@${sv.version}`)
-              .join("\n\t")
+              .join("\n\t"),
         );
         return;
       }

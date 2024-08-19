@@ -11,7 +11,7 @@ export const command = new Command("appdistribution:testers:remove [emails...]")
   .option("--file <file>", "a path to a file containing a list of tester emails to be removed")
   .option(
     "--group-alias <group-alias>",
-    "if specified, the testers are only removed from the group identified by this alias, but not the project"
+    "if specified, the testers are only removed from the group identified by this alias, but not the project",
   )
   .before(requireAuth)
   .action(async (emails: string[], options?: any) => {
@@ -22,7 +22,7 @@ export const command = new Command("appdistribution:testers:remove [emails...]")
       utils.logBullet(`Removing ${emailsArr.length} testers from group`);
       await appDistroClient.removeTestersFromGroup(
         `${projectName}/groups/${options.groupAlias}`,
-        emailsArr
+        emailsArr,
       );
     } else {
       let deleteResponse;

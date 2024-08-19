@@ -46,7 +46,7 @@ var set = function (expression) {
       function (err) {
         expect(err).to.be.null;
         resolve();
-      }
+      },
     );
   });
 };
@@ -59,7 +59,7 @@ var unset = function (key) {
       function (err) {
         expect(err).to.be.null;
         resolve();
-      }
+      },
     );
   });
 };
@@ -72,7 +72,7 @@ var getAndCompare = function (expected) {
       function (err, stdout) {
         expect(JSON.parse(stdout)).to.deep.equal(expected);
         resolve();
-      }
+      },
     );
   });
 };

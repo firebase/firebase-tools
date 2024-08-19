@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { createTmpDir, StorageRulesFiles } from "../../../src/test/emulators/fixtures";
+import { createTmpDir, StorageRulesFiles } from "../../../src/emulator/testing/fixtures";
 import { createStorageRulesManager } from "../../../src/emulator/storage/rules/manager";
 import { StorageRulesRuntime } from "../../../src/emulator/storage/rules/runtime";
 import * as fs from "fs";
@@ -44,7 +44,7 @@ describe("Storage Rules Manager", () => {
         path: "/b/bucket_0/o/",
         ruleset: bucket0Ruleset!,
         projectId: PROJECT_ID,
-      })
+      }),
     ).to.be.true;
 
     const bucket1Ruleset = rulesManager.getRuleset("bucket_1");
@@ -54,7 +54,7 @@ describe("Storage Rules Manager", () => {
         path: "/b/bucket_1/o/",
         ruleset: bucket1Ruleset!,
         projectId: PROJECT_ID,
-      })
+      }),
     ).to.be.false;
 
     await rulesManager.stop();
@@ -93,7 +93,7 @@ describe("Storage Rules Manager", () => {
         ...opts,
         ruleset: rulesManager.getRuleset("bucket")!,
         projectId: PROJECT_ID,
-      })
+      }),
     ).to.be.true;
 
     // Write new rules to file
@@ -106,7 +106,7 @@ describe("Storage Rules Manager", () => {
         ...opts,
         ruleset: rulesManager.getRuleset("bucket")!,
         projectId: PROJECT_ID,
-      })
+      }),
     ).to.be.false;
 
     await rulesManager.stop();

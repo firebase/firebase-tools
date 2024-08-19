@@ -1,10 +1,11 @@
 import { readJSON as originalReadJSON } from "fs-extra";
 import type { ReadOptions } from "fs-extra";
-import { extname, join, relative } from "path";
+import { dirname, extname, join, relative } from "path";
 import { readFile } from "fs/promises";
 import { IncomingMessage, request as httpRequest, ServerResponse, Agent } from "http";
 import { sync as spawnSync } from "cross-spawn";
 import * as clc from "colorette";
+import { satisfies as semverSatisfied } from "semver";
 
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
@@ -18,7 +19,7 @@ import {
   NPM_COMMAND_TIMEOUT_MILLIES,
   VALID_LOCALE_FORMATS,
 } from "./constants";
-import { BUILD_TARGET_PURPOSE, RequestHandler } from "./interfaces";
+import { BUILD_TARGET_PURPOSE, PackageJson, RequestHandler } from "./interfaces";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -36,10 +37,12 @@ export function isUrl(url: string): boolean {
 
 /**
  * add type to readJSON
+ *
+ * Note: `throws: false` won't work with the async function: https://github.com/jprichardson/node-fs-extra/issues/542
  */
 export function readJSON<JsonType = any>(
   file: string,
-  options?: ReadOptions | BufferEncoding | string
+  options?: ReadOptions | BufferEncoding | string,
 ): Promise<JsonType> {
   return originalReadJSON(file, options) as Promise<JsonType>;
 }
@@ -51,7 +54,7 @@ export function readJSON<JsonType = any>(
 export async function warnIfCustomBuildScript(
   dir: string,
   framework: string,
-  defaultBuildScripts: string[]
+  defaultBuildScripts: string[],
 ): Promise<void> {
   const packageJsonBuffer = await readFile(join(dir, "package.json"));
   const packageJson = JSON.parse(packageJsonBuffer.toString());
@@ -59,7 +62,7 @@ export async function warnIfCustomBuildScript(
 
   if (buildScript && !defaultBuildScripts.includes(buildScript)) {
     console.warn(
-      `\nWARNING: Your package.json contains a custom build that is being ignored. Only the ${framework} default build script (e.g, "${defaultBuildScripts[0]}") is respected. If you have a more advanced build process you should build a custom integration https://firebase.google.com/docs/hosting/express\n`
+      `\nWARNING: Your package.json contains a custom build that is being ignored. Only the ${framework} default build script (e.g, "${defaultBuildScripts[0]}") is respected. If you have a more advanced build process you should build a custom integration https://firebase.google.com/docs/hosting/express\n`,
     );
   }
 }
@@ -73,13 +76,13 @@ export async function warnIfCustomBuildScript(
 export function proxyResponse(
   req: IncomingMessage,
   res: ServerResponse,
-  next: () => void
+  next: () => void,
 ): ServerResponse {
   const proxiedRes = new ServerResponse(req);
   // Object to store the original response methods
   const buffer: [
     string,
-    Parameters<ServerResponse["write" | "setHeader" | "removeHeader" | "writeHead" | "end"]>
+    Parameters<ServerResponse["write" | "setHeader" | "removeHeader" | "writeHead" | "end"]>,
   ][] = [];
 
   // Proxy the response methods
@@ -92,7 +95,7 @@ export function proxyResponse(
     apply: (
       target: ServerResponse["write"],
       thisArg: ServerResponse,
-      args: Parameters<ServerResponse["write"]>
+      args: Parameters<ServerResponse["write"]>,
     ) => {
       // call the original write method on the proxied response
       target.call(thisArg, ...args);
@@ -105,7 +108,7 @@ export function proxyResponse(
     apply: (
       target: ServerResponse["setHeader"],
       thisArg: ServerResponse,
-      args: Parameters<ServerResponse["setHeader"]>
+      args: Parameters<ServerResponse["setHeader"]>,
     ) => {
       target.call(thisArg, ...args);
       buffer.push(["setHeader", args]);
@@ -115,7 +118,7 @@ export function proxyResponse(
     apply: (
       target: ServerResponse["removeHeader"],
       thisArg: ServerResponse,
-      args: Parameters<ServerResponse["removeHeader"]>
+      args: Parameters<ServerResponse["removeHeader"]>,
     ) => {
       target.call(thisArg, ...args);
       buffer.push(["removeHeader", args]);
@@ -125,7 +128,7 @@ export function proxyResponse(
     apply: (
       target: ServerResponse["writeHead"],
       thisArg: ServerResponse,
-      args: Parameters<ServerResponse["writeHead"]>
+      args: Parameters<ServerResponse["writeHead"]>,
     ) => {
       target.call(thisArg, ...args);
       buffer.push(["writeHead", args]);
@@ -135,7 +138,7 @@ export function proxyResponse(
     apply: (
       target: ServerResponse["end"],
       thisArg: ServerResponse,
-      args: Parameters<ServerResponse["end"]>
+      args: Parameters<ServerResponse["end"]>,
     ) => {
       // call the original end method on the proxied response
       target.call(thisArg, ...args);
@@ -213,7 +216,7 @@ export function simpleProxy(hostOrRequestHandler: string | RequestHandler) {
 
 function scanDependencyTree(searchingFor: string, dependencies = {}): any {
   for (const [name, dependency] of Object.entries(
-    dependencies as Record<string, Record<string, any>>
+    dependencies as Record<string, Record<string, any>>,
   )) {
     if (name === searchingFor) return dependency;
     const result = scanDependencyTree(searchingFor, dependency.dependencies);
@@ -279,7 +282,7 @@ export function findDependency(name: string, options: Partial<FindDepOptions> = 
       ...(omitDev ? ["--omit", "dev"] : []),
       ...(depth === undefined ? [] : ["--depth", depth.toString(10)]),
     ],
-    { cwd, env, timeout: NPM_COMMAND_TIMEOUT_MILLIES }
+    { cwd, env, timeout: NPM_COMMAND_TIMEOUT_MILLIES },
   );
   if (!result.stdout) return;
   const json = JSON.parse(result.stdout.toString());
@@ -288,38 +291,41 @@ export function findDependency(name: string, options: Partial<FindDepOptions> = 
 
 export function relativeRequire(
   dir: string,
-  mod: "@angular-devkit/core"
-): typeof import("@angular-devkit/core");
+  mod: "@angular-devkit/core",
+): Promise<typeof import("@angular-devkit/core")>;
 export function relativeRequire(
   dir: string,
-  mod: "@angular-devkit/core/node"
-): typeof import("@angular-devkit/core/node");
+  mod: "@angular-devkit/core/node",
+): Promise<typeof import("@angular-devkit/core/node")>;
 export function relativeRequire(
   dir: string,
-  mod: "@angular-devkit/architect"
-): typeof import("@angular-devkit/architect");
+  mod: "@angular-devkit/architect",
+): Promise<typeof import("@angular-devkit/architect")>;
 export function relativeRequire(
   dir: string,
-  mod: "@angular-devkit/architect/node"
-): typeof import("@angular-devkit/architect/node");
+  mod: "@angular-devkit/architect/node",
+): Promise<typeof import("@angular-devkit/architect/node")>;
 export function relativeRequire(
   dir: string,
-  mod: "next/dist/build"
-): typeof import("next/dist/build");
+  mod: "next/dist/build",
+): Promise<typeof import("next/dist/build")>;
 export function relativeRequire(
   dir: string,
-  mod: "next/dist/server/config"
-): typeof import("next/dist/server/config");
+  mod: "next/dist/server/config",
+): Promise<typeof import("next/dist/server/config")>;
 export function relativeRequire(
   dir: string,
-  mod: "next/constants"
-): typeof import("next/constants");
+  mod: "next/constants",
+): Promise<typeof import("next/constants")>;
 export function relativeRequire(
   dir: string,
-  mod: "next"
-): typeof import("next") | typeof import("next")["default"];
-export function relativeRequire(dir: string, mod: "vite"): typeof import("vite");
-export function relativeRequire(dir: string, mod: "jsonc-parser"): typeof import("jsonc-parser");
+  mod: "next",
+): Promise<typeof import("next") | (typeof import("next"))["default"]>;
+export function relativeRequire(dir: string, mod: "vite"): Promise<typeof import("vite")>;
+export function relativeRequire(
+  dir: string,
+  mod: "jsonc-parser",
+): Promise<typeof import("jsonc-parser")>;
 
 // TODO the types for @nuxt/kit are causing a lot of troubles, need to do something other than any
 // Nuxt 2
@@ -330,7 +336,7 @@ export function relativeRequire(dir: string, mod: "@nuxt/kit"): Promise<any>;
 /**
  *
  */
-export function relativeRequire(dir: string, mod: string) {
+export async function relativeRequire(dir: string, mod: string) {
   try {
     // If being compiled with webpack, use non webpack require for these calls.
     // (VSCode plugin uses webpack which by default replaces require calls
@@ -344,7 +350,23 @@ export function relativeRequire(dir: string, mod: string) {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore prevent VSCE webpack from erroring on non_webpack_require
     const path = requireFunc.resolve(mod, { paths: [dir] });
-    if (extname(path) === ".mjs") {
+
+    let packageJson: PackageJson | undefined;
+    let isEsm = extname(path) === ".mjs";
+    if (!isEsm) {
+      packageJson = await readJSON<PackageJson | undefined>(
+        join(dirname(path), "package.json"),
+      ).catch(() => undefined);
+
+      isEsm = packageJson?.type === "module";
+    }
+
+    if (isEsm) {
+      // in case path resolves to a cjs file, use main from package.json
+      if (extname(path) === ".cjs" && packageJson?.main) {
+        return dynamicImport(join(dirname(path), packageJson.main));
+      }
+
       return dynamicImport(pathToFileURL(path).toString());
     } else {
       return requireFunc(path);
@@ -354,27 +376,42 @@ export function relativeRequire(dir: string, mod: string) {
     console.error(
       `Could not load dependency ${mod} in ${
         path.startsWith("..") ? path : `./${path}`
-      }, have you run \`npm install\`?`
+      }, have you run \`npm install\`?`,
     );
     throw e;
   }
 }
 
-export function conjoinOptions(
-  opts: any[],
-  conjunction: string = "and",
-  separator: string = ","
-): string | undefined {
-  if (!opts.length) return;
-  if (opts.length === 1) return opts[0].toString();
-  if (opts.length === 2) return `${opts[0].toString()} ${conjunction} ${opts[1].toString()}`;
-  const lastElement = opts.slice(-1)[0].toString();
-  const allButLast = opts.slice(0, -1).map((it) => it.toString());
+export function conjoinOptions(_opts: any[], conjunction = "and", separator = ","): string {
+  if (!_opts.length) return "";
+  const opts: string[] = _opts.map((it) => it.toString().trim());
+  if (opts.length === 1) return opts[0];
+  if (opts.length === 2) return `${opts[0]} ${conjunction} ${opts[1]}`;
+  const lastElement = opts.slice(-1)[0];
+  const allButLast = opts.slice(0, -1);
   return `${allButLast.join(`${separator} `)}${separator} ${conjunction} ${lastElement}`;
 }
 
-export function frameworksCallToAction(message: string, docsUrl = DEFAULT_DOCS_URL, prefix = "") {
-  return `${prefix}${message}
+export function frameworksCallToAction(
+  message: string,
+  docsUrl = DEFAULT_DOCS_URL,
+  prefix = "",
+  framework?: string,
+  version?: string,
+  supportedRange?: string,
+  vite = false,
+): string {
+  return `${prefix}${message}${
+    framework && supportedRange && (!version || !semverSatisfied(version, supportedRange))
+      ? clc.yellow(
+          `\n${prefix}The integration is known to work with ${
+            vite ? "Vite" : framework
+          } version ${clc.italic(
+            conjoinOptions(supportedRange.split("||")),
+          )}. You may encounter errors.`,
+        )
+      : ``
+  }
 
 ${prefix}${clc.bold("Documentation:")} ${docsUrl}
 ${prefix}${clc.bold("File a bug:")} ${FILE_BUG_URL}
@@ -385,13 +422,13 @@ ${prefix}We'd love to learn from you. Express your interest in helping us shape 
 
 export function validateLocales(locales: string[] | undefined = []) {
   const invalidLocales = locales.filter(
-    (locale) => !VALID_LOCALE_FORMATS.some((format) => locale.match(format))
+    (locale) => !VALID_LOCALE_FORMATS.some((format) => locale.match(format)),
   );
   if (invalidLocales.length) {
     throw new FirebaseError(
       `Invalid i18n locales (${invalidLocales.join(
-        ", "
-      )}) for Firebase. See our docs for more information https://firebase.google.com/docs/hosting/i18n-rewrites#country-and-language-codes`
+        ", ",
+      )}) for Firebase. See our docs for more information https://firebase.google.com/docs/hosting/i18n-rewrites#country-and-language-codes`,
     );
   }
 }
@@ -402,8 +439,8 @@ export function getFrameworksBuildTarget(purpose: BUILD_TARGET_PURPOSE, validOpt
     if (!validOptions.includes(frameworksBuild)) {
       throw new FirebaseError(
         `Invalid value for FIREBASE_FRAMEWORKS_BUILD_TARGET environment variable: ${frameworksBuild}. Valid values are: ${validOptions.join(
-          ", "
-        )}`
+          ", ",
+        )}`,
       );
     }
     return frameworksBuild;
@@ -421,8 +458,8 @@ export function getFrameworksBuildTarget(purpose: BUILD_TARGET_PURPOSE, validOpt
     default:
       throw new FirebaseError(
         `We cannot infer your build target from a non-standard NODE_ENV. Please set the FIREBASE_FRAMEWORKS_BUILD_TARGET environment variable. Valid values are: ${validOptions.join(
-          ", "
-        )}`
+          ", ",
+        )}`,
       );
   }
 }

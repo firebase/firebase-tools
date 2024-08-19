@@ -24,6 +24,11 @@ export enum ArrayConfig {
   CONTAINS = "CONTAINS",
 }
 
+export interface VectorConfig {
+  dimension: number;
+  flat?: {};
+}
+
 export enum State {
   CREATING = "CREATING",
   READY = "READY",
@@ -53,6 +58,7 @@ export interface IndexField {
   fieldPath: string;
   order?: Order;
   arrayConfig?: ArrayConfig;
+  vectorConfig?: VectorConfig;
 }
 
 /**
@@ -120,6 +126,17 @@ export interface DatabaseReq {
   type?: DatabaseType;
   deleteProtectionState?: DatabaseDeleteProtectionState;
   pointInTimeRecoveryEnablement?: PointInTimeRecoveryEnablement;
+  cmekConfig?: CmekConfig;
+}
+
+export interface CreateDatabaseReq {
+  project: string;
+  databaseId: string;
+  locationId: string;
+  type: DatabaseType;
+  deleteProtectionState: DatabaseDeleteProtectionState;
+  pointInTimeRecoveryEnablement: PointInTimeRecoveryEnablement;
+  cmekConfig?: CmekConfig;
 }
 
 export interface DatabaseResp {
@@ -137,4 +154,20 @@ export interface DatabaseResp {
   etag: string;
   versionRetentionPeriod: string;
   earliestVersionTime: string;
+  cmekConfig?: CmekConfig;
+}
+
+export interface RestoreDatabaseReq {
+  databaseId: string;
+  backup: string;
+}
+
+export enum RecurrenceType {
+  DAILY = "DAILY",
+  WEEKLY = "WEEKLY",
+}
+
+export interface CmekConfig {
+  kmsKeyName: string;
+  activeKeyVersion?: string[];
 }

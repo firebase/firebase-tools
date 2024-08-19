@@ -5,18 +5,19 @@
 // 'npm run generate:json-schema' to regenerate the schema files.
 //
 
-import { RequireAtLeastOne } from "./metaprogramming";
 import type { HttpsOptions } from "firebase-functions/v2/https";
 import { IngressSetting, MemoryOption, VpcEgressSetting } from "firebase-functions/v2/options";
+import { Runtime, DecommissionedRuntime } from "./deploy/functions/runtimes/supported/types";
 
-// should be sourced from - https://github.com/firebase/firebase-tools/blob/master/src/deploy/functions/runtimes/index.ts#L15
-type CloudFunctionRuntimes =
-  | "nodejs10"
-  | "nodejs12"
-  | "nodejs14"
-  | "nodejs16"
-  | "nodejs18"
-  | "nodejs20";
+/**
+ * Creates a type that requires at least one key to be present in an interface
+ * type. For example, RequireAtLeastOne<{ foo: string; bar: string }> can hold
+ * a value of { foo: "a" }, { bar: "b" }, or { foo: "a", bar: "b" } but not {}
+ * Sourced from - https://docs.microsoft.com/en-us/javascript/api/@azure/keyvault-certificates/requireatleastone?view=azure-node-latest
+ */
+export type RequireAtLeastOne<T> = {
+  [K in keyof T]-?: Required<Pick<T, K>> & Partial<Pick<T, Exclude<keyof T, K>>>;
+}[keyof T];
 
 export type Deployable = {
   predeploy?: string | string[];
@@ -166,7 +167,7 @@ export type FirestoreConfig = FirestoreSingle | FirestoreMultiple;
 export type FunctionConfig = {
   source?: string;
   ignore?: string[];
-  runtime?: CloudFunctionRuntimes;
+  runtime?: Exclude<Runtime, DecommissionedRuntime>;
   codebase?: string;
 } & Deployable;
 
@@ -229,9 +230,22 @@ export type EmulatorsConfig = {
     port?: number;
   };
   singleProjectMode?: boolean;
+  dataconnect?: {
+    host?: string;
+    port?: number;
+  };
 };
 
 export type ExtensionsConfig = Record<string, string>;
+
+export type DataConnectSingle = {
+  // The directory containing dataconnect.yaml for this service
+  source: string;
+} & Deployable;
+
+export type DataConnectMultiple = DataConnectSingle[];
+
+export type DataConnectConfig = DataConnectSingle | DataConnectMultiple;
 
 export type FirebaseConfig = {
   /**
@@ -246,4 +260,5 @@ export type FirebaseConfig = {
   remoteconfig?: RemoteConfigConfig;
   emulators?: EmulatorsConfig;
   extensions?: ExtensionsConfig;
+  dataconnect?: DataConnectConfig;
 };

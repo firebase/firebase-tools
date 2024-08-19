@@ -5,7 +5,7 @@ import { Client } from "../apiv2";
 const API_VERSION = "v2";
 
 const adminApiClient = new Client({
-  urlPrefix: identityOrigin + "/admin",
+  urlPrefix: identityOrigin() + "/admin",
   apiVersion: API_VERSION,
 });
 
@@ -158,7 +158,7 @@ export interface Config {
  * @returns the blocking functions config
  */
 export async function getBlockingFunctionsConfig(
-  project: string
+  project: string,
 ): Promise<BlockingFunctionsConfig> {
   const config = (await getConfig(project)) || {};
   if (!config.blockingFunctions) {
@@ -185,7 +185,7 @@ export async function getConfig(project: string): Promise<Config> {
  */
 export async function setBlockingFunctionsConfig(
   project: string,
-  blockingConfig: BlockingFunctionsConfig
+  blockingConfig: BlockingFunctionsConfig,
 ): Promise<BlockingFunctionsConfig> {
   const config =
     (await updateConfig(project, { blockingFunctions: blockingConfig }, "blockingFunctions")) || {};
@@ -205,7 +205,7 @@ export async function setBlockingFunctionsConfig(
 export async function updateConfig(
   project: string,
   config: Config,
-  updateMask?: string
+  updateMask?: string,
 ): Promise<Config> {
   if (!updateMask) {
     updateMask = proto.fieldMasks(config).join(",");
@@ -217,7 +217,7 @@ export async function updateConfig(
       queryParams: {
         updateMask,
       },
-    }
+    },
   );
   return response.body;
 }

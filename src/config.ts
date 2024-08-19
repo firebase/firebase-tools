@@ -32,6 +32,7 @@ export class Config {
     "hosting",
     "storage",
     "remoteconfig",
+    "dataconnect",
   ];
 
   public options: any;
@@ -57,7 +58,7 @@ export class Config {
         clc.bold('"firebase"') +
           " key in firebase.json is deprecated. Run " +
           clc.bold("firebase use --add") +
-          " instead"
+          " instead",
       );
     }
 
@@ -76,17 +77,30 @@ export class Config {
       }
     });
 
-    // Inject default functions config and source if missing.
-    if (this.projectDir && fsutils.dirExistsSync(this.path(Config.DEFAULT_FUNCTIONS_SOURCE))) {
-      if (Array.isArray(this.get("functions"))) {
-        if (!this.get("functions.[0].source")) {
-          this.set("functions.[0].source", Config.DEFAULT_FUNCTIONS_SOURCE);
-        }
-      } else {
-        if (!this.get("functions.source")) {
-          this.set("functions.source", Config.DEFAULT_FUNCTIONS_SOURCE);
+    // Inject default functions source if missing.
+    if (this.get("functions")) {
+      if (this.projectDir && fsutils.dirExistsSync(this.path(Config.DEFAULT_FUNCTIONS_SOURCE))) {
+        if (Array.isArray(this.get("functions"))) {
+          if (!this.get("functions.[0].source")) {
+            this.set("functions.[0].source", Config.DEFAULT_FUNCTIONS_SOURCE);
+          }
+        } else {
+          if (!this.get("functions.source")) {
+            this.set("functions.source", Config.DEFAULT_FUNCTIONS_SOURCE);
+          }
         }
       }
+    }
+
+    if (
+      this._src.dataconnect?.location ||
+      (Array.isArray(this._src.dataconnect) && this._src.dataconnect.some((c: any) => c?.location))
+    ) {
+      utils.logLabeledWarning(
+        "dataconnect",
+        "'location' has been moved from 'firebase.json' to 'dataconnect.yaml'. " +
+          "Please remove 'dataconnect.location' from 'firebase.json' and add it as top level field to 'dataconnect.yaml' instead ",
+      );
     }
   }
 
@@ -144,7 +158,7 @@ export class Config {
       default:
         throw new FirebaseError(
           "Parse Error: " + filePath + " is not of a supported config file type",
-          { exit: 1 }
+          { exit: 1 },
         );
     }
   }

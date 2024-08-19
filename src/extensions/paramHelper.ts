@@ -153,10 +153,10 @@ export async function promptForNewParams(args: {
   };
 
   let combinedOldParams = args.spec.params.concat(
-    args.spec.systemParams.filter((p) => !p.advanced) ?? []
+    args.spec.systemParams.filter((p) => !p.advanced) ?? [],
   );
   let combinedNewParams = args.newSpec.params.concat(
-    args.newSpec.systemParams.filter((p) => !p.advanced) ?? []
+    args.newSpec.systemParams.filter((p) => !p.advanced) ?? [],
   );
 
   // Special case for updating from LOCATION to system param location
@@ -171,13 +171,13 @@ export async function promptForNewParams(args: {
     delete newParamBindingOptions["LOCATION"];
     combinedOldParams = combinedOldParams.filter((p) => p.param !== "LOCATION");
     combinedNewParams = combinedNewParams.filter(
-      (p) => p.param !== "firebaseextensions.v1beta.function/location"
+      (p) => p.param !== "firebaseextensions.v1beta.function/location",
     );
   }
 
   // Some params are in the spec but not in currentParams, remove so we can prompt for them.
   const oldParams = combinedOldParams.filter((p) =>
-    Object.keys(args.currentParams).includes(p.param)
+    Object.keys(args.currentParams).includes(p.param),
   );
   let paramsDiffDeletions = paramDiff(oldParams, combinedNewParams);
   paramsDiffDeletions = substituteParams<Param[]>(paramsDiffDeletions, firebaseProjectParams);
@@ -214,8 +214,8 @@ export function readEnvFile(envPath: string): Record<string, string> {
   if (result.errors.length) {
     throw new FirebaseError(
       `Error while parsing ${envPath} - unable to parse following lines:\n${result.errors.join(
-        "\n"
-      )}`
+        "\n",
+      )}`,
     );
   }
   return result.envs;

@@ -3,6 +3,7 @@ import { spawn } from "cross-spawn";
 import { existsSync } from "fs";
 import { copy, pathExists } from "fs-extra";
 import { join } from "path";
+const stripAnsi = require("strip-ansi");
 import { FrameworkType, SupportLevel } from "../interfaces";
 import { promptOnce } from "../../prompt";
 import {
@@ -16,6 +17,7 @@ import {
 export const name = "Vite";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Toolchain;
+export const supportedRange = "3 - 5";
 
 export const DEFAULT_BUILD_SCRIPT = ["vite build", "tsc && vite build"];
 
@@ -32,10 +34,13 @@ export async function init(setup: any, config: any, baseTemplate: string = "vani
       { name: "TypeScript", value: `${baseTemplate}-ts` },
     ],
   });
-  execSync(`npm create vite@latest ${setup.hosting.source} --yes -- --template ${template}`, {
-    stdio: "inherit",
-    cwd: config.projectDir,
-  });
+  execSync(
+    `npm create vite@"${supportedRange}" ${setup.hosting.source} --yes -- --template ${template}`,
+    {
+      stdio: "inherit",
+      cwd: config.projectDir,
+    },
+  );
   execSync(`npm install`, { stdio: "inherit", cwd: join(config.projectDir, setup.hosting.source) });
 }
 
@@ -56,23 +61,47 @@ export async function discover(dir: string, plugin?: string, npmDependency?: str
     pathExists(join(dir, "vite.config.ts")),
   ]);
   const anyConfigFileExists = configFilesExist.some((it) => it);
-  if (!anyConfigFileExists && !findDependency("vite", { cwd: dir, depth, omitDev: false })) return;
+  const version: string | undefined = findDependency("vite", {
+    cwd: dir,
+    depth,
+    omitDev: false,
+  })?.version;
+  if (!anyConfigFileExists && !version) return;
   if (npmDependency && !additionalDep) return;
   const { appType, publicDir: publicDirectory, plugins } = await getConfig(dir);
   if (plugin && !plugins.find(({ name }) => name === plugin)) return;
-  return { mayWantBackend: appType !== "spa", publicDirectory };
+  return {
+    mayWantBackend: appType !== "spa",
+    publicDirectory,
+    version,
+    vite: true,
+  };
 }
 
-export async function build(root: string) {
-  const { build } = relativeRequire(root, "vite");
+export async function build(root: string, target: string) {
+  const { build } = await relativeRequire(root, "vite");
 
   await warnIfCustomBuildScript(root, name, DEFAULT_BUILD_SCRIPT);
 
   // SvelteKit uses process.cwd() unfortunately, chdir
   const cwd = process.cwd();
   process.chdir(root);
-  await build({ root, mode: "production" });
+
+  const originalNodeEnv = process.env.NODE_ENV;
+
+  // Downcasting as `string` as otherwise it is inferred as `readonly 'NODE_ENV'`,
+  // but `env[key]` expects a non-readonly variable.
+  const envKey: string = "NODE_ENV";
+  // Voluntarily making .env[key] not statically analyzable to avoid
+  // Webpack from converting it to "development" = target;
+  process.env[envKey] = target;
+
+  await build({ root, mode: target });
   process.chdir(cwd);
+
+  // Voluntarily making .env[key] not statically analyzable to avoid
+  // Webpack from converting it to "development" = target;
+  process.env[envKey] = originalNodeEnv;
 
   return { rewrites: [{ source: "**", destination: "/index.html" }] };
 }
@@ -91,7 +120,8 @@ export async function getDevModeHandle(dir: string) {
     const serve = spawn(cli, [], { cwd: dir });
     serve.stdout.on("data", (data: any) => {
       process.stdout.write(data);
-      const match = data.toString().match(/(http:\/\/.+:\d+)/);
+      const dataWithoutAnsiCodes = stripAnsi(data.toString());
+      const match = dataWithoutAnsiCodes.match(/(http:\/\/.+:\d+)/);
       if (match) resolve(match[1]);
     });
     serve.stderr.on("data", (data: any) => {
@@ -104,7 +134,7 @@ export async function getDevModeHandle(dir: string) {
 }
 
 async function getConfig(root: string) {
-  const { resolveConfig } = relativeRequire(root, "vite");
+  const { resolveConfig } = await relativeRequire(root, "vite");
   // SvelteKit uses process.cwd() unfortunately, we should be defensive here
   const cwd = process.cwd();
   process.chdir(root);
