@@ -1,0 +1,1 @@
+- Add support for deploying beforeEmailSent blocking function. (#6384)
