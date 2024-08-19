@@ -1,1 +1,2 @@
+- Add support for deploying beforeEmailSent blocking function. (#6384)
 - Add support for beforeSmsSent auth blocking triggers. (#6733)
