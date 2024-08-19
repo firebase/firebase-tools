@@ -9,7 +9,7 @@ import { formatHost } from "./functionsEmulatorShared";
  */
 export function setEnvVarsForEmulators(
   env: Record<string, string | undefined>,
-  emulators: EmulatorInfo[]
+  emulators: EmulatorInfo[],
 ): void {
   for (const emu of emulators) {
     const host = formatHost(emu);

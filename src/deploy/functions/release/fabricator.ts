@@ -5,7 +5,7 @@ import { FirebaseError } from "../../../error";
 import { SourceTokenScraper } from "./sourceTokenScraper";
 import { Timer } from "./timer";
 import { assertExhaustive } from "../../../functional";
-import { getHumanFriendlyRuntimeName } from "../runtimes";
+import { RUNTIMES } from "../runtimes/supported";
 import { eventarcOrigin, functionsOrigin, functionsV2Origin } from "../../../api";
 import { logger } from "../../../logger";
 import * as args from "../args";
@@ -15,6 +15,7 @@ import * as deploymentTool from "../../../deploymentTool";
 import * as gcf from "../../../gcp/cloudfunctions";
 import * as gcfV2 from "../../../gcp/cloudfunctionsv2";
 import * as eventarc from "../../../gcp/eventarc";
+import * as experiments from "../../../experiments";
 import * as helper from "../functionsDeployHelper";
 import * as planner from "./planner";
 import * as poller from "../../../operation-poller";
@@ -25,26 +26,26 @@ import * as scheduler from "../../../gcp/cloudscheduler";
 import * as utils from "../../../utils";
 import * as services from "../services";
 import { AUTH_BLOCKING_EVENTS } from "../../../functions/events/v1";
-import { getDefaultComputeServiceAgent } from "../checkIam";
+import * as gce from "../../../gcp/computeEngine";
 import { getHumanFriendlyPlatformName } from "../functionsDeployHelper";
 
 // TODO: Tune this for better performance.
 const gcfV1PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
-  apiOrigin: functionsOrigin,
+  apiOrigin: functionsOrigin(),
   apiVersion: gcf.API_VERSION,
   masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
   maxBackoff: 10_000,
 };
 
 const gcfV2PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
-  apiOrigin: functionsV2Origin,
+  apiOrigin: functionsV2Origin(),
   apiVersion: gcfV2.API_VERSION,
   masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
   maxBackoff: 10_000,
 };
 
 const eventarcPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
-  apiOrigin: eventarcOrigin,
+  apiOrigin: eventarcOrigin(),
   apiVersion: "v1",
   masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
   maxBackoff: 10_000,
@@ -102,7 +103,7 @@ export class Fabricator {
     if (errs.length) {
       logger.debug(
         "Fabricator.applyRegionalChanges returned an unhandled exception. This should never happen",
-        JSON.stringify(errs, null, 2)
+        JSON.stringify(errs, null, 2),
       );
     }
 
@@ -115,7 +116,7 @@ export class Fabricator {
     const handle = async (
       op: reporter.OperationType,
       endpoint: backend.Endpoint,
-      fn: () => Promise<void>
+      fn: () => Promise<void>,
     ): Promise<void> => {
       const timer = new Timer();
       const result: Partial<reporter.DeployResult> = { endpoint };
@@ -135,7 +136,7 @@ export class Fabricator {
     for (const endpoint of changes.endpointsToCreate) {
       this.logOpStart("creating", endpoint);
       upserts.push(
-        handle("create", endpoint, () => this.createEndpoint(endpoint, scraperV1, scraperV2))
+        handle("create", endpoint, () => this.createEndpoint(endpoint, scraperV1, scraperV2)),
       );
     }
     for (const endpoint of changes.endpointsToSkip) {
@@ -144,7 +145,7 @@ export class Fabricator {
     for (const update of changes.endpointsToUpdate) {
       this.logOpStart("updating", update.endpoint);
       upserts.push(
-        handle("update", update.endpoint, () => this.updateEndpoint(update, scraperV1, scraperV2))
+        handle("update", update.endpoint, () => this.updateEndpoint(update, scraperV1, scraperV2)),
       );
     }
     await utils.allSettled(upserts);
@@ -175,7 +176,7 @@ export class Fabricator {
   async createEndpoint(
     endpoint: backend.Endpoint,
     scraperV1: SourceTokenScraper,
-    scraperV2: SourceTokenScraper
+    scraperV2: SourceTokenScraper,
   ): Promise<void> {
     endpoint.labels = { ...endpoint.labels, ...deploymentTool.labels() };
     if (endpoint.platform === "gcfv1") {
@@ -192,7 +193,7 @@ export class Fabricator {
   async updateEndpoint(
     update: planner.EndpointUpdate,
     scraperV1: SourceTokenScraper,
-    scraperV2: SourceTokenScraper
+    scraperV2: SourceTokenScraper,
   ): Promise<void> {
     update.endpoint.labels = { ...update.endpoint.labels, ...deploymentTool.labels() };
     if (update.deleteAndRecreate) {
@@ -364,7 +365,9 @@ export class Fabricator {
     while (!resultFunction) {
       resultFunction = await this.functionExecutor
         .run(async () => {
-          apiFunction.buildConfig.sourceToken = await scraper.getToken();
+          if (experiments.isEnabled("functionsv2deployoptimizations")) {
+            apiFunction.buildConfig.sourceToken = await scraper.getToken();
+          }
           const op: { name: string } = await gcfV2.createFunction(apiFunction);
           return await poller.pollOperation<gcfV2.OutputCloudFunction>({
             ...gcfV2PollerOptions,
@@ -398,7 +401,7 @@ export class Fabricator {
       logger.debug("Result function unexpectedly didn't have a service name.");
       utils.logLabeledWarning(
         "functions",
-        "Updated function is not associated with a service. This deployment is in an unexpected state - please re-deploy your functions."
+        "Updated function is not associated with a service. This deployment is in an unexpected state - please re-deploy your functions.",
       );
       return;
     }
@@ -434,7 +437,9 @@ export class Fabricator {
         .run(() => run.setInvokerCreate(endpoint.project, serviceName, ["public"]))
         .catch(rethrowAs(endpoint, "set invoker"));
     } else if (backend.isScheduleTriggered(endpoint)) {
-      const invoker = [getDefaultComputeServiceAgent(this.projectNumber)];
+      const invoker = endpoint.serviceAccount
+        ? [endpoint.serviceAccount]
+        : [gce.getDefaultServiceAccount(this.projectNumber)];
       await this.executor
         .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
         .catch(rethrowAs(endpoint, "set invoker"));
@@ -500,7 +505,9 @@ export class Fabricator {
     const resultFunction = await this.functionExecutor
       .run(
         async () => {
-          apiFunction.buildConfig.sourceToken = await scraper.getToken();
+          if (experiments.isEnabled("functionsv2deployoptimizations")) {
+            apiFunction.buildConfig.sourceToken = await scraper.getToken();
+          }
           const op: { name: string } = await gcfV2.updateFunction(apiFunction);
           return await poller.pollOperation<gcfV2.OutputCloudFunction>({
             ...gcfV2PollerOptions,
@@ -509,7 +516,7 @@ export class Fabricator {
             onPoll: scraper.poller,
           });
         },
-        { retryCodes: [...DEFAULT_RETRY_CODES, CLOUD_RUN_RESOURCE_EXHAUSTED_CODE] }
+        { retryCodes: [...DEFAULT_RETRY_CODES, CLOUD_RUN_RESOURCE_EXHAUSTED_CODE] },
       )
       .catch((err: any) => {
         scraper.abort();
@@ -524,7 +531,7 @@ export class Fabricator {
       logger.debug("Result function unexpectedly didn't have a service name.");
       utils.logLabeledWarning(
         "functions",
-        "Updated function is not associated with a service. This deployment is in an unexpected state - please re-deploy your functions."
+        "Updated function is not associated with a service. This deployment is in an unexpected state - please re-deploy your functions.",
       );
       return;
     }
@@ -539,7 +546,9 @@ export class Fabricator {
     ) {
       invoker = ["public"];
     } else if (backend.isScheduleTriggered(endpoint)) {
-      invoker = [getDefaultComputeServiceAgent(this.projectNumber)];
+      invoker = endpoint.serviceAccount
+        ? [endpoint.serviceAccount]
+        : [gce.getDefaultServiceAccount(this.projectNumber)];
     }
 
     if (invoker) {
@@ -577,7 +586,7 @@ export class Fabricator {
           };
           await poller.pollOperation<void>(pollerOptions);
         },
-        { retryCodes: [...DEFAULT_RETRY_CODES, CLOUD_RUN_RESOURCE_EXHAUSTED_CODE] }
+        { retryCodes: [...DEFAULT_RETRY_CODES, CLOUD_RUN_RESOURCE_EXHAUSTED_CODE] },
       )
       .catch(rethrowAs(endpoint, "delete"));
   }
@@ -682,7 +691,7 @@ export class Fabricator {
   }
 
   async registerBlockingTrigger(
-    endpoint: backend.Endpoint & backend.BlockingTriggered
+    endpoint: backend.Endpoint & backend.BlockingTriggered,
   ): Promise<void> {
     await this.executor
       .run(() => services.serviceForEndpoint(endpoint).registerTrigger(endpoint))
@@ -719,7 +728,7 @@ export class Fabricator {
   }
 
   async unregisterBlockingTrigger(
-    endpoint: backend.Endpoint & backend.BlockingTriggered
+    endpoint: backend.Endpoint & backend.BlockingTriggered,
   ): Promise<void> {
     await this.executor
       .run(() => services.serviceForEndpoint(endpoint).unregisterTrigger(endpoint))
@@ -727,12 +736,12 @@ export class Fabricator {
   }
 
   logOpStart(op: string, endpoint: backend.Endpoint): void {
-    const runtime = getHumanFriendlyRuntimeName(endpoint.runtime);
+    const runtime = RUNTIMES[endpoint.runtime].friendly;
     const platform = getHumanFriendlyPlatformName(endpoint.platform);
     const label = helper.getFunctionLabel(endpoint);
     utils.logLabeledBullet(
       "functions",
-      `${op} ${runtime} (${platform}) function ${clc.bold(label)}...`
+      `${op} ${runtime} (${platform}) function ${clc.bold(label)}...`,
     );
   }
 
@@ -760,7 +769,7 @@ export class Fabricator {
     const functionNames = endpoints.map((endpoint) => endpoint.id).join(",");
     return `${clc.bold(clc.magenta(`functions:`))} You can re-deploy skipped functions with:
               ${clc.bold(`firebase deploy --only functions:${functionNames}`)} or ${clc.bold(
-      `FUNCTIONS_DEPLOY_UNCHANGED=true firebase deploy`
-    )}`;
+                `FUNCTIONS_DEPLOY_UNCHANGED=true firebase deploy`,
+              )}`;
   }
 }

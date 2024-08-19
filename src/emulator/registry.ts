@@ -1,4 +1,11 @@
-import { ALL_EMULATORS, EmulatorInstance, Emulators, EmulatorInfo } from "./types";
+import {
+  ALL_EMULATORS,
+  EmulatorInstance,
+  Emulators,
+  EmulatorInfo,
+  DownloadableEmulatorDetails,
+  DownloadableEmulators,
+} from "./types";
 import { FirebaseError } from "../error";
 import * as portUtils from "./portUtils";
 import { Constants } from "./constants";
@@ -6,7 +13,7 @@ import { EmulatorLogger } from "./emulatorLogger";
 import * as express from "express";
 import { connectableHostname } from "../utils";
 import { Client, ClientOptions } from "../apiv2";
-
+import { get as getDownloadableEmulatorDetails } from "./downloadableEmulators";
 /**
  * Static registry for running emulators to discover each other.
  *
@@ -28,7 +35,7 @@ export class EmulatorRegistry {
     // No need to wait for the Extensions emulator to close its port, since it runs on the Functions emulator.
     if (instance.getName() !== Emulators.EXTENSIONS) {
       const info = instance.getInfo();
-      await portUtils.waitForPortUsed(info.port, connectableHostname(info.host));
+      await portUtils.waitForPortUsed(info.port, connectableHostname(info.host), info.timeout);
     }
   }
 
@@ -36,7 +43,7 @@ export class EmulatorRegistry {
     EmulatorLogger.forEmulator(name).logLabeled(
       "BULLET",
       name,
-      `Stopping ${Constants.description(name)}`
+      `Stopping ${Constants.description(name)}`,
     );
     const instance = this.get(name);
     if (!instance) {
@@ -50,7 +57,7 @@ export class EmulatorRegistry {
       EmulatorLogger.forEmulator(name).logLabeled(
         "WARN",
         name,
-        `Error stopping ${Constants.description(name)}`
+        `Error stopping ${Constants.description(name)}`,
       );
     }
   }
@@ -80,6 +87,7 @@ export class EmulatorRegistry {
       auth: 3.3,
       storage: 3.5,
       eventarc: 3.6,
+      dataconnect: 3.7,
 
       // Hub shuts down once almost everything else is done
       hub: 4,
@@ -134,6 +142,10 @@ export class EmulatorRegistry {
     };
   }
 
+  static getDetails(emulator: DownloadableEmulators): DownloadableEmulatorDetails {
+    return getDownloadableEmulatorDetails(emulator);
+  }
+
   /**
    * Return a URL object with the emulator protocol, host, and port populated.
    *
@@ -172,8 +184,7 @@ export class EmulatorRegistry {
       }
       url.port = info.port.toString();
     } else {
-      // This can probably only happen during testing, but let's warn anyway.
-      console.warn(`Cannot determine host and port of ${emulator}`);
+      throw new Error(`Cannot determine host and port of ${emulator}`);
     }
 
     return url;

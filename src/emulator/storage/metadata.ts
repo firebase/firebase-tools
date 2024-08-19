@@ -41,7 +41,7 @@ export class StoredFileMetadata {
       bucket: string;
     },
     private _cloudFunctions: StorageCloudFunctions,
-    bytes?: Buffer
+    bytes?: Buffer,
   ) {
     // Required fields
     this.name = opts.name;
@@ -117,7 +117,7 @@ export class StoredFileMetadata {
         downloadTokens: this.downloadTokens,
         customMetadata: this.customMetadata,
       },
-      this._cloudFunctions
+      this._cloudFunctions,
     );
     clone.timeCreated = this.timeCreated;
     clone.updated = this.updated;
@@ -278,7 +278,7 @@ export class StoredFileMetadata {
 
         return value;
       },
-      2
+      2,
     );
   }
 }
@@ -381,7 +381,7 @@ export class CloudStorageBucketMetadata {
     this.location = "US";
     this.storageClass = "STANDARD";
     this.etag = "====";
-    this.locationType = "mutli-region";
+    this.locationType = "multi-region";
   }
 }
 
@@ -396,7 +396,7 @@ export class CloudStorageObjectAccessControlMetadata {
     public role: string,
     public entity: string,
     public bucket: string,
-    public etag: string
+    public etag: string,
   ) {}
 }
 
@@ -489,7 +489,7 @@ export class CloudStorageObjectMetadata {
 
     const mediaLink = EmulatorRegistry.url(Emulators.STORAGE);
     mediaLink.pathname = `/download/storage/v1/b/${metadata.bucket}/o/${encodeURIComponent(
-      metadata.name
+      metadata.name,
     )}`;
     mediaLink.searchParams.set("generation", metadata.generation.toString());
     mediaLink.searchParams.set("alt", "media");

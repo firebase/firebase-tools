@@ -4,24 +4,25 @@ import * as clc from "colorette";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import * as features from "./features";
-import { isEnabled } from "../experiments";
+import { RCData } from "../rc";
 
 export interface Setup {
   config: Record<string, any>;
-  rcfile: {
-    projects: Record<string, any>;
-  };
+  rcfile: RCData;
   features?: string[];
   featureArg?: boolean;
   project?: Record<string, any>;
   projectId?: string;
   projectLocation?: string;
+  hosting?: Record<string, any>;
 }
 
 const featureFns = new Map<string, (setup: any, config: any, options?: any) => Promise<unknown>>([
   ["account", features.account],
   ["database", features.database],
   ["firestore", features.firestore],
+  ["dataconnect", features.dataconnect],
+  ["dataconnect:sdk", features.dataconnectSdk],
   ["functions", features.functions],
   ["hosting", features.hosting],
   ["storage", features.storage],
@@ -30,11 +31,8 @@ const featureFns = new Map<string, (setup: any, config: any, options?: any) => P
   ["project", features.project], // always runs, sets up .firebaserc
   ["remoteconfig", features.remoteconfig],
   ["hosting:github", features.hostingGithub],
+  ["genkit", features.genkit],
 ]);
-
-if (isEnabled("internalframeworks")) {
-  featureFns.set("internalframeworks", features.frameworks);
-}
 
 export async function init(setup: Setup, config: any, options: any): Promise<any> {
   const nextFeature = setup.features?.shift();
@@ -44,7 +42,7 @@ export async function init(setup: Setup, config: any, options: any): Promise<any
         .filter((f) => f !== "project")
         .join(", ");
       throw new FirebaseError(
-        `${clc.bold(nextFeature)} is not a valid feature. Must be one of ${availableFeatures}`
+        `${clc.bold(nextFeature)} is not a valid feature. Must be one of ${availableFeatures}`,
       );
     }
 

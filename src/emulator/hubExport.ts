@@ -53,7 +53,10 @@ export class HubExport {
   private tmpDir: string;
   private exportPath: string;
 
-  constructor(private projectId: string, private options: ExportOptions) {
+  constructor(
+    private projectId: string,
+    private options: ExportOptions,
+  ) {
     this.exportPath = options.path;
     this.tmpDir = fs.mkdtempSync(`firebase-export-${new Date().getTime()}`);
   }
@@ -148,7 +151,7 @@ export class HubExport {
 
     await EmulatorRegistry.client(Emulators.FIRESTORE).post(
       `/emulator/v1/projects/${this.projectId}:export`,
-      firestoreExportBody
+      firestoreExportBody,
     );
   }
 
@@ -211,7 +214,7 @@ export class HubExport {
           path: `/.json?ns=${ns}&format=export`,
           headers: { Authorization: "Bearer owner" },
         },
-        exportFile
+        exportFile,
       );
     }
   }
@@ -239,7 +242,7 @@ export class HubExport {
         path: `/identitytoolkit.googleapis.com/v1/projects/${this.projectId}/accounts:batchGet?maxResults=-1`,
         headers: { Authorization: "Bearer owner" },
       },
-      accountsFile
+      accountsFile,
     );
 
     const configFile = path.join(authExportPath, "config.json");
@@ -251,7 +254,7 @@ export class HubExport {
         path: `/emulator/v1/projects/${this.projectId}/config`,
         headers: { Authorization: "Bearer owner" },
       },
-      configFile
+      configFile,
     );
   }
 

@@ -6,6 +6,7 @@ import { FirebaseError } from "../../error";
 import { Options } from "../../options";
 import { flattenArray } from "../../functional";
 import * as iam from "../../gcp/iam";
+import * as gce from "../../gcp/computeEngine";
 import * as args from "./args";
 import * as backend from "./backend";
 import { trackGA4 } from "../../track";
@@ -32,7 +33,7 @@ export async function checkServiceAccountIam(projectId: string): Promise<void> {
       "https://iam.googleapis.com",
       "v1",
       `projects/${projectId}/serviceAccounts/${saEmail}`,
-      ["iam.serviceAccounts.actAs"]
+      ["iam.serviceAccounts.actAs"],
     );
     passed = iamResult.passed;
   } catch (err: any) {
@@ -44,10 +45,10 @@ export async function checkServiceAccountIam(projectId: string): Promise<void> {
   if (!passed) {
     throw new FirebaseError(
       `Missing permissions required for functions deploy. You must have permission ${bold(
-        "iam.serviceAccounts.ActAs"
+        "iam.serviceAccounts.ActAs",
       )} on service account ${bold(saEmail)}.\n\n` +
         `To address this error, ask a project Owner to assign your account the "Service Account User" role from this URL:\n\n` +
-        `https://console.cloud.google.com/iam-admin/iam?project=${projectId}`
+        `https://console.cloud.google.com/iam-admin/iam?project=${projectId}`,
     );
   }
 }
@@ -63,7 +64,7 @@ export async function checkServiceAccountIam(projectId: string): Promise<void> {
 export async function checkHttpIam(
   context: args.Context,
   options: Options,
-  payload: args.Payload
+  payload: args.Payload,
 ): Promise<void> {
   if (!payload.functions) {
     return;
@@ -84,7 +85,7 @@ export async function checkHttpIam(
   logger.debug(
     "[functions] found",
     newHttpsEndpoints.length,
-    "new HTTP functions, testing setIamPolicy permission..."
+    "new HTTP functions, testing setIamPolicy permission...",
   );
 
   let passed = true;
@@ -94,7 +95,7 @@ export async function checkHttpIam(
   } catch (e: any) {
     logger.debug(
       "[functions] failed http create setIamPolicy permission check. deploy may fail:",
-      e
+      e,
     );
     // fail open since this is an informational check
     return;
@@ -107,12 +108,12 @@ export async function checkHttpIam(
     });
     throw new FirebaseError(
       `Missing required permission on project ${bold(
-        context.projectId
+        context.projectId,
       )} to deploy new HTTPS functions. The permission ${bold(
-        PERMISSION
+        PERMISSION,
       )} is required to deploy the following functions:\n\n- ` +
         newHttpsEndpoints.map((func) => func.id).join("\n- ") +
-        `\n\nTo address this error, please ask a project Owner to assign your account the "Cloud Functions Admin" role at the following URL:\n\nhttps://console.cloud.google.com/iam-admin/iam?project=${context.projectId}`
+        `\n\nTo address this error, please ask a project Owner to assign your account the "Cloud Functions Admin" role at the following URL:\n\nhttps://console.cloud.google.com/iam-admin/iam?project=${context.projectId}`,
     );
   }
   logger.debug("[functions] found setIamPolicy permission, proceeding with deploy");
@@ -121,11 +122,6 @@ export async function checkHttpIam(
 /** obtain the pubsub service agent */
 function getPubsubServiceAgent(projectNumber: string): string {
   return `service-${projectNumber}@gcp-sa-pubsub.iam.gserviceaccount.com`;
-}
-
-/** obtain the default compute service agent */
-export function getDefaultComputeServiceAgent(projectNumber: string): string {
-  return `${projectNumber}-compute@developer.gserviceaccount.com`;
 }
 
 /** Callback reducer function */
@@ -158,9 +154,7 @@ export function obtainPubSubServiceAgentBindings(projectNumber: string): iam.Bin
  * @param existingPolicy the project level IAM policy
  */
 export function obtainDefaultComputeServiceAgentBindings(projectNumber: string): iam.Binding[] {
-  const defaultComputeServiceAgent = `serviceAccount:${getDefaultComputeServiceAgent(
-    projectNumber
-  )}`;
+  const defaultComputeServiceAgent = `serviceAccount:${gce.getDefaultServiceAccount(projectNumber)}`;
   const runInvokerBinding: iam.Binding = {
     role: RUN_INVOKER_ROLE,
     members: [defaultComputeServiceAgent],
@@ -170,51 +164,6 @@ export function obtainDefaultComputeServiceAgentBindings(projectNumber: string):
     members: [defaultComputeServiceAgent],
   };
   return [runInvokerBinding, eventarcEventReceiverBinding];
-}
-
-/** Helper to merge all required bindings into the IAM policy, returns boolean if the policy has been updated */
-export function mergeBindings(policy: iam.Policy, requiredBindings: iam.Binding[]): boolean {
-  let updated = false;
-  for (const requiredBinding of requiredBindings) {
-    const match = policy.bindings.find((b) => b.role === requiredBinding.role);
-    if (!match) {
-      updated = true;
-      policy.bindings.push(requiredBinding);
-      continue;
-    }
-    for (const requiredMember of requiredBinding.members) {
-      if (!match.members.find((m) => m === requiredMember)) {
-        updated = true;
-        match.members.push(requiredMember);
-      }
-    }
-  }
-  return updated;
-}
-
-/** Utility to print the required binding commands */
-function printManualIamConfig(requiredBindings: iam.Binding[], projectId: string) {
-  utils.logLabeledBullet(
-    "functions",
-    "Failed to verify the project has the correct IAM bindings for a successful deployment.",
-    "warn"
-  );
-  utils.logLabeledBullet(
-    "functions",
-    "You can either re-run `firebase deploy` as a project owner or manually run the following set of `gcloud` commands:",
-    "warn"
-  );
-  for (const binding of requiredBindings) {
-    for (const member of binding.members) {
-      utils.logLabeledBullet(
-        "functions",
-        `\`gcloud projects add-iam-policy-binding ${projectId} ` +
-          `--member=${member} ` +
-          `--role=${binding.role}\``,
-        "warn"
-      );
-    }
-  }
 }
 
 /**
@@ -228,13 +177,13 @@ export async function ensureServiceAgentRoles(
   projectId: string,
   projectNumber: string,
   want: backend.Backend,
-  have: backend.Backend
+  have: backend.Backend,
 ): Promise<void> {
   // find new services
   const wantServices = backend.allEndpoints(want).reduce(reduceEventsToServices, []);
   const haveServices = backend.allEndpoints(have).reduce(reduceEventsToServices, []);
   const newServices = wantServices.filter(
-    (wantS) => !haveServices.find((haveS) => wantS.name === haveS.name)
+    (wantS) => !haveServices.find((haveS) => wantS.name === haveS.name),
   );
   if (newServices.length === 0) {
     return;
@@ -260,17 +209,17 @@ export async function ensureServiceAgentRoles(
   try {
     policy = await getIamPolicy(projectNumber);
   } catch (err: any) {
-    printManualIamConfig(requiredBindings, projectId);
+    iam.printManualIamConfig(requiredBindings, projectId, "functions");
     utils.logLabeledBullet(
       "functions",
       "Could not verify the necessary IAM configuration for the following newly-integrated services: " +
         `${newServices.map((service) => service.api).join(", ")}` +
         ". Deployment may fail.",
-      "warn"
+      "warn",
     );
     return;
   }
-  const hasUpdatedBindings = mergeBindings(policy, requiredBindings);
+  const hasUpdatedBindings = iam.mergeBindings(policy, requiredBindings);
   if (!hasUpdatedBindings) {
     return;
   }
@@ -279,12 +228,12 @@ export async function ensureServiceAgentRoles(
   try {
     await setIamPolicy(projectNumber, policy, "bindings");
   } catch (err: any) {
-    printManualIamConfig(requiredBindings, projectId);
+    iam.printManualIamConfig(requiredBindings, projectId, "functions");
     throw new FirebaseError(
       "We failed to modify the IAM policy for the project. The functions " +
         "deployment requires specific roles to be granted to service agents," +
         " otherwise the deployment will fail.",
-      { original: err }
+      { original: err },
     );
   }
 }

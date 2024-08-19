@@ -1,5 +1,11 @@
-import React, { createContext, ReactNode, useContext, useEffect } from "react";
-import { broker } from "./html-broker";
+import React, {
+  createContext,
+  ReactNode,
+  useContext,
+  useEffect,
+  useMemo,
+} from "react";
+import { broker, useBrokerListener } from "./html-broker";
 import { signal, computed } from "@preact/signals-react";
 import { User } from "../types/auth";
 
@@ -31,29 +37,29 @@ export function ExtensionStateProvider({
 }: {
   children: ReactNode;
 }): JSX.Element {
-  const state = createExtensionState();
+  const state = useMemo(() => createExtensionState(), []);
 
   useEffect(() => {
-    broker.on("notifyEnv", ({ env }) => {
-      state.environment.value = env.isMonospace
-        ? Environment.IDX
-        : Environment.VSC;
-    });
-
-    broker.on("notifyUsers", ({ users }) => {
-      state.users.value = users;
-    });
-
-    broker.on("notifyUserChanged", ({ user }) => {
-      state.selectedUserEmail.value = user.email;
-    });
-
-    broker.on("notifyProjectChanged", ({ projectId }) => {
-      state.projectId.value = projectId;
-    });
-
     broker.send("getInitialData");
-  }, [state]);
+  }, []);
+
+  useBrokerListener("notifyEnv", ({ env }) => {
+    state.environment.value = env.isMonospace
+      ? Environment.IDX
+      : Environment.VSC;
+  });
+
+  useBrokerListener("notifyUsers", ({ users }) => {
+    state.users.value = users;
+  });
+
+  useBrokerListener("notifyUserChanged", ({ user }) => {
+    state.selectedUserEmail.value = user.email;
+  });
+
+  useBrokerListener("notifyProjectChanged", ({ projectId }) => {
+    state.projectId.value = projectId;
+  });
 
   return (
     <ExtensionState.Provider value={state}>{children}</ExtensionState.Provider>

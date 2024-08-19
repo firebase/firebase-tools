@@ -98,6 +98,11 @@ export class EmulatorHub extends ExpressBasedEmulator {
     });
 
     app.post(EmulatorHub.PATH_EXPORT, async (req, res) => {
+      if (req.headers.origin) {
+        res.status(403).json({
+          message: `Export cannot be triggered by external callers.`,
+        });
+      }
       const path: string = req.body.path;
       const initiatedBy: string = req.body.initiatedBy || "unknown";
       utils.logLabeledBullet("emulators", `Received export request. Exporting data to ${path}.`);
@@ -122,7 +127,7 @@ export class EmulatorHub extends ExpressBasedEmulator {
     app.put(EmulatorHub.PATH_DISABLE_FUNCTIONS, async (req, res) => {
       utils.logLabeledBullet(
         "emulators",
-        `Disabling Cloud Functions triggers, non-HTTP functions will not execute.`
+        `Disabling Cloud Functions triggers, non-HTTP functions will not execute.`,
       );
 
       const instance = EmulatorRegistry.get(Emulators.FUNCTIONS);
@@ -139,7 +144,7 @@ export class EmulatorHub extends ExpressBasedEmulator {
     app.put(EmulatorHub.PATH_ENABLE_FUNCTIONS, async (req, res) => {
       utils.logLabeledBullet(
         "emulators",
-        `Enabling Cloud Functions triggers, non-HTTP functions will execute.`
+        `Enabling Cloud Functions triggers, non-HTTP functions will execute.`,
       );
 
       const instance = EmulatorRegistry.get(Emulators.FUNCTIONS);
@@ -189,7 +194,7 @@ export class EmulatorHub extends ExpressBasedEmulator {
     if (fs.existsSync(locatorPath)) {
       utils.logLabeledWarning(
         "emulators",
-        `It seems that you are running multiple instances of the emulator suite for project ${projectId}. This may result in unexpected behavior.`
+        `It seems that you are running multiple instances of the emulator suite for project ${projectId}. This may result in unexpected behavior.`,
       );
     }
 
@@ -209,7 +214,8 @@ export class EmulatorHub extends ExpressBasedEmulator {
     const locatorPath = EmulatorHub.getLocatorFilePath(this.args.projectId);
     return new Promise((resolve, reject) => {
       fs.unlink(locatorPath, (e) => {
-        if (e) {
+        // If the file is already deleted, no need to throw.
+        if (e && e.code !== "ENOENT") {
           reject(e);
         } else {
           resolve();

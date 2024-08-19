@@ -12,7 +12,7 @@ import { CommanderStatic } from "commander";
 
 export const command = new Command("ext")
   .description(
-    "display information on how to use ext commands and extensions installed to your project"
+    "display information on how to use ext commands and extensions installed to your project",
   )
   .before(checkMinRequiredVersion, "extMinVersion")
   .action(async (options: any) => {

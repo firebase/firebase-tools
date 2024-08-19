@@ -1,6 +1,6 @@
 import * as fs from "fs-extra";
 import * as path from "path";
-import * as yaml from "js-yaml";
+import * as yaml from "yaml";
 
 import { fileExistsSync } from "../fsutils";
 import { FirebaseError } from "../error";
@@ -35,7 +35,7 @@ export function findExtensionYaml(directory: string): string {
     const parentDir = path.dirname(directory);
     if (parentDir === directory) {
       throw new FirebaseError(
-        "Couldn't find an extension.yaml file. Check that you are in the root directory of your extension."
+        "Couldn't find an extension.yaml file. Check that you are in the root directory of your extension.",
       );
     }
     directory = parentDir;
@@ -45,15 +45,14 @@ export function findExtensionYaml(directory: string): string {
 
 /**
  * Retrieves a file from the directory.
- * @param directory the directory containing the file
- * @param file the name of the file
+ * @param pathToFile the path to the file to read
  */
 export function readFile(pathToFile: string): string {
   try {
     return fs.readFileSync(pathToFile, "utf8");
   } catch (err: any) {
     if (err.code === "ENOENT") {
-      throw new FirebaseError(`Could not find "${pathToFile}""`, { original: err });
+      throw new FirebaseError(`Could not find "${pathToFile}"`, { original: err });
     }
     throw new FirebaseError(`Failed to read file at "${pathToFile}"`, { original: err });
   }
@@ -73,15 +72,15 @@ export function isLocalExtension(extensionName: string): boolean {
 }
 
 /**
- * Wraps `yaml.safeLoad` with an error handler to present better YAML parsing
+ * Wraps `yaml.parse` with an error handler to present better YAML parsing
  * errors.
  * @param source an unparsed YAML string
  */
 function parseYAML(source: string): any {
   try {
-    return yaml.safeLoad(source);
+    return yaml.parse(source);
   } catch (err: any) {
-    if (err instanceof yaml.YAMLException) {
+    if (err instanceof yaml.YAMLParseError) {
       throw new FirebaseError(`YAML Error: ${err.message}`, { original: err });
     }
     throw new FirebaseError(err.message);

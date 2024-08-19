@@ -1,72 +1,62 @@
-import { computed, effect, signal } from "@preact/signals-react";
-import { Disposable } from "vscode";
+import { Signal, computed, effect } from "@preact/signals-react";
+import { Disposable, TelemetryLogger } from "vscode";
 import { ServiceAccountUser } from "../types";
 import { User as AuthUser } from "../../../src/types/auth";
 import { ExtensionBrokerImpl } from "../extension-broker";
-import { getAccounts, login, logoutUser } from "../cli";
-
+import { login, logoutUser, requireAuthWrapper } from "../cli";
+import { globalSignal } from "../utils/globals";
+import { DATA_CONNECT_EVENT_NAME } from "../analytics";
 type User = ServiceAccountUser | AuthUser;
 
-/** Available user accounts */
-export const users = signal<Record<string /** email */, User>>({});
-
-/** Currently selected user email */
-export const currentUserId = signal("");
-
-/** Gets the currently selected user, fallback to first available user */
-export const currentUser = computed<User | undefined>(() => {
-  return users.value[currentUserId.value] ?? Object.values(users.value)[0];
-});
+/** Currently selected user */
+export const currentUser = globalSignal<User|null>(null);
+const isLoadingUser = new Signal<boolean>(false);
 
 export const isServiceAccount = computed(() => {
   return (currentUser.value as ServiceAccountUser)?.type === "service_account";
 });
 
-export function registerUser(broker: ExtensionBrokerImpl): Disposable {
-  effect(() => {
-    broker.send("notifyUsers", { users: Object.values(users.value) });
-  });
+export async function checkLogin() {
+    return await requireAuthWrapper();
+}
 
-  effect(() => {
+export function registerUser(broker: ExtensionBrokerImpl, telemetryLogger: TelemetryLogger): Disposable {
+  
+  const notifyUserChangedSub = effect(() => {
     broker.send("notifyUserChanged", { user: currentUser.value });
   });
 
-  broker.on("getInitialData", async () => {
-    const accounts = await getAccounts();
-    users.value = accounts.reduce(
-      (cumm, curr) => ({ ...cumm, [curr.user.email]: curr.user }),
-      {}
-    );
+  const getInitialDataSub = broker.on("getInitialData", async () => {
+    isLoadingUser.value = true;
+    currentUser.value = await checkLogin();
+    isLoadingUser.value = false;
   });
 
-  broker.on("addUser", async () => {
+  const isLoadingSub = effect(() => {
+      broker.send("notifyIsLoadingUser", isLoadingUser.value);
+  });
+
+  const addUserSub = broker.on("addUser", async () => {
+    telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.LOGIN);
     const { user } = await login();
-    users.value = {
-      ...users.value,
-      [user.email]: user,
-    };
-    currentUserId.value = user.email;
+    currentUser.value = user;
   });
 
-  broker.on("requestChangeUser", ({ user }) => {
-    currentUserId.value = user.email;
-  });
 
-  broker.on("logout", async ({ email }) => {
+  const logoutSub = broker.on("logout", async ({ email }) => {
     try {
       await logoutUser(email);
-      const accounts = await getAccounts();
-      users.value = accounts.reduce(
-        (cumm, curr) => ({ ...cumm, [curr.user.email]: curr.user }),
-        {}
-      );
-      currentUserId.value = "";
+      currentUser.value = null;
     } catch (e) {
       // ignored
     }
   });
 
-  return {
-    dispose() {},
-  };
+  return Disposable.from(
+    { dispose: notifyUserChangedSub },
+    { dispose: getInitialDataSub },
+    { dispose: addUserSub },
+    { dispose: logoutSub },
+    { dispose: isLoadingSub },
+  );
 }

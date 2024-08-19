@@ -20,7 +20,7 @@ type cliEventNames =
   | "function_deploy"
   | "codebase_deploy"
   | "function_deploy_group";
-type GA4Property = "cli" | "emulator";
+type GA4Property = "cli" | "emulator" | "vscode";
 interface GA4Info {
   measurementId: string;
   apiSecret: string;
@@ -40,6 +40,12 @@ export const GA4_PROPERTIES: Record<GA4Property, GA4Info> = {
     measurementId: process.env.FIREBASE_EMULATOR_GA4_MEASUREMENT_ID || "G-KYP2JMPFC0",
     apiSecret: process.env.FIREBASE_EMULATOR_GA4_API_SECRET || "2V_zBYc4TdeoppzDaIu0zw",
     clientIdKey: "emulator-analytics-clientId",
+  },
+  // Info for the GA4 property for the VSCode Extension only.
+  vscode: {
+    measurementId: process.env.FIREBASE_VSCODE_GA4_MEASUREMENT_ID || "G-FYJ489XM2T",
+    apiSecret: process.env.FIREBASE_VSCODE_GA4_API_SECRET || "XAEWKHe7RM-ygCK44N52Ww",
+    clientIdKey: "vscode-analytics-clientId",
   },
 };
 /**
@@ -102,7 +108,7 @@ export interface AnalyticsParams {
 export async function trackGA4(
   eventName: cliEventNames,
   params: AnalyticsParams,
-  duration: number = 1 // Default to 1ms duration so that events show up in realtime view.
+  duration: number = 1, // Default to 1ms duration so that events show up in realtime view.
 ): Promise<void> {
   const session = cliSession();
   if (!session) {
@@ -145,6 +151,38 @@ export async function trackEmulator(eventName: string, params?: AnalyticsParams)
   return _ga4Track({
     session,
     apiSecret: GA4_PROPERTIES.emulator.apiSecret,
+    eventName,
+    params,
+    duration,
+  });
+}
+
+/**
+ * Record a vscode-related event for Analytics.
+ *
+ * @param eventName the event name in snake_case. (Formal requirement:
+ *                  length <= 40, alpha-numeric characters and underscores only
+ *                  (*no spaces*), and must start with an alphabetic character)
+ * @param params custom and standard parameters attached to the event
+ * @return a Promise fulfilled when the event reaches the server or fails
+ *
+ * Note: On performance or latency critical paths, the returned Promise may be
+ * safely ignored with the statement `void trackVSCode(...)`.
+ */
+export async function trackVSCode(eventName: string, params?: AnalyticsParams): Promise<void> {
+  const session = vscodeSession();
+  if (!session) {
+    return;
+  }
+
+  session.debugMode = process.env.VSCODE_DEBUG_MODE === "true";
+
+  const oldTotalEngagementSeconds = session.totalEngagementSeconds;
+  session.totalEngagementSeconds = process.uptime();
+  const duration = session.totalEngagementSeconds - oldTotalEngagementSeconds;
+  return _ga4Track({
+    session,
+    apiSecret: GA4_PROPERTIES.vscode.apiSecret,
     eventName,
     params,
     duration,
@@ -205,7 +243,7 @@ async function _ga4Track(args: {
     logger.info(
       `Sending Analytics for event ${eventName} to property ${session.measurementId}`,
       params,
-      body
+      body,
     );
   }
   try {
@@ -269,13 +307,17 @@ export function emulatorSession(): AnalyticsSession | undefined {
   return session("emulator");
 }
 
+export function vscodeSession(): AnalyticsSession | undefined {
+  return session("vscode");
+}
+
 export function cliSession(): AnalyticsSession | undefined {
   return session("cli");
 }
 
 function session(propertyName: GA4Property): AnalyticsSession | undefined {
   const validateOnly = !!process.env.FIREBASE_CLI_MP_VALIDATE;
-  if (!usageEnabled()) {
+  if (!usageEnabled() && propertyName !== "vscode") {
     if (validateOnly) {
       logger.warn("Google Analytics is DISABLED. To enable, (re)login and opt in to collection.");
     }
@@ -311,7 +353,7 @@ function isDebugMode(): boolean {
     try {
       require("../tsconfig.json");
       logger.info(
-        `Using Google Analytics in DEBUG mode. Emulators (+ UI) events will be shown in GA Debug View only.`
+        `Using Google Analytics in DEBUG mode. Emulators (+ UI) events will be shown in GA Debug View only.`,
       );
       return true;
     } catch {

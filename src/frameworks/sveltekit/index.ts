@@ -11,12 +11,13 @@ export const name = "SvelteKit";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.MetaFramework;
 export const discover = viteDiscoverWithNpmDependency("@sveltejs/kit");
-export { getDevModeHandle } from "../vite";
 
-export async function build(root: string) {
+export { getDevModeHandle, supportedRange } from "../vite";
+
+export async function build(root: string, target: string) {
   const config = await getConfig(root);
   const wantsBackend = config.kit.adapter?.name !== "@sveltejs/adapter-static";
-  await viteBuild(root);
+  await viteBuild(root, target);
   return { wantsBackend };
 }
 

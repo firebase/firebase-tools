@@ -22,14 +22,14 @@ export const command = new Command("database:instances:list")
   .before(requirePermissions, ["firebasedatabase.instances.list"])
   .option(
     "-l, --location <location>",
-    "(optional) location for the database instance, defaults to all regions"
+    "(optional) location for the database instance, defaults to all regions",
   )
   .before(warnEmulatorNotSupported, Emulators.DATABASE)
   .action(async (options: any) => {
     const location = parseDatabaseLocation(options.location, DatabaseLocation.ANY);
     const spinner = ora(
       "Preparing the list of your Firebase Realtime Database instances" +
-        `${location === DatabaseLocation.ANY ? "" : ` for location: ${location}`}`
+        `${location === DatabaseLocation.ANY ? "" : ` for location: ${location}`}`,
     ).start();
 
     const projectId = needProjectId(options);

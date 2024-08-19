@@ -26,11 +26,11 @@ export const command = new Command("ext:dev:list <publisherId>")
     if (extensions.length < 1) {
       throw new FirebaseError(
         `There are no extensions uploaded under publisher ID ${clc.bold(
-          publisherId
+          publisherId,
         )}. This could happen for two reasons:\n` +
           "  - The publisher ID doesn't exist or could be misspelled\n" +
           "  - This publisher has not uploaded any extensions\n\n" +
-          "If you are expecting some extensions to appear, please make sure you have the correct publisher ID and try again."
+          "If you are expecting some extensions to appear, please make sure you have the correct publisher ID and try again.",
       );
     }
 
@@ -50,7 +50,7 @@ export const command = new Command("ext:dev:list <publisherId>")
 
     logLabeledBullet(
       logPrefix,
-      `list of uploaded extensions for publisher ${clc.bold(publisherId)}:`
+      `list of uploaded extensions for publisher ${clc.bold(publisherId)}:`,
     );
     logger.info(table.toString());
     return { extensions: sorted };

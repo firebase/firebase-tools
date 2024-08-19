@@ -25,7 +25,17 @@ export const FIRESTORE_EVENTS = [
   "google.cloud.firestore.document.v1.created",
   "google.cloud.firestore.document.v1.updated",
   "google.cloud.firestore.document.v1.deleted",
+  "google.cloud.firestore.document.v1.written.withAuthContext",
+  "google.cloud.firestore.document.v1.created.withAuthContext",
+  "google.cloud.firestore.document.v1.updated.withAuthContext",
+  "google.cloud.firestore.document.v1.deleted.withAuthContext",
 ] as const;
+
+export const FIREALERTS_EVENT = "google.firebase.firebasealerts.alerts.v1.published";
+
+export const FIRESTORE_EVENT_REGEX = /^google\.cloud\.firestore\.document\.v1\.[^\.]*$/;
+export const FIRESTORE_EVENT_WITH_AUTH_CONTEXT_REGEX =
+  /^google\.cloud\.firestore\.document\.v1\..*\.withAuthContext$/;
 
 export type Event =
   | typeof PUBSUB_PUBLISH_EVENT
@@ -34,4 +44,5 @@ export type Event =
   | (typeof DATABASE_EVENTS)[number]
   | typeof REMOTE_CONFIG_EVENT
   | typeof TEST_LAB_EVENT
-  | (typeof FIRESTORE_EVENTS)[number];
+  | (typeof FIRESTORE_EVENTS)[number]
+  | typeof FIREALERTS_EVENT;

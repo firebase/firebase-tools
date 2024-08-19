@@ -1,4 +1,4 @@
-import vscode, { workspace } from "vscode";
+import { workspace } from "./test_hooks";
 
 interface Settings {
   readonly shouldWriteDebug: boolean;
@@ -9,10 +9,10 @@ interface Settings {
 
 export function getSettings(): Settings {
   // Get user-defined VSCode settings if workspace is found.
-  if (vscode.workspace.workspaceFolders) {
-    const workspaceConfig = workspace.getConfiguration(
+  if (workspace.value.workspaceFolders) {
+    const workspaceConfig = workspace.value.getConfiguration(
       "firebase",
-      vscode.workspace.workspaceFolders[0].uri
+      workspace.value.workspaceFolders[0].uri
     );
 
     return {
