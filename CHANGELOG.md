@@ -1,1 +1,1 @@
-- Add support for deploying beforeEmailSent blocking function. (#6384)
+- Added support for deploying `beforeEmailSent` blocking functions. (#6384)
