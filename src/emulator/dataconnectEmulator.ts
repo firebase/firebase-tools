@@ -93,7 +93,7 @@ export class DataConnectEmulator implements EmulatorInstance {
         console.log(
           "WE USING PGLITEEEEEE",
         );
-        const pgServer = new PostgresServer(dbId);
+        const pgServer = new PostgresServer(dbId, 'postgres');
         const server = await pgServer.createPGServer();
         console.log(`Started up PGlite yo. listening: ${server.listening}, address: ${server.address()}`);
       }
@@ -286,7 +286,7 @@ Run ${clc.bold("firebase setup:emulators:dataconnect")} to set up a Postgres con
           "Data Connect",
           `Retrying connectToPostgress call (${i} of ${MAX_RETRIES} attempts): ${err}`,
         );
-        await new Promise((resolve) => setTimeout(resolve, 800));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
       }
     }
     return false;

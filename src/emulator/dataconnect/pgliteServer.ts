@@ -4,8 +4,9 @@ import { PGlite } from '@electric-sql/pglite';
 // This is hideous, but I'm not trying to migrate to module: node16 as part of
 const { dynamicImport } = require(true && "../../dynamicImport");
 import * as net from 'node:net';
-import { BackendError, PostgresConnection } from 'pg-gateway';
+import { BackendError, PostgresConnection } from './pgGateway';
 export class PostgresServer {
+  public callCount = 0;
   public db: PGlite;
   public async createPGServer(): Promise<net.Server> {
     const db: PGlite = this.db;
@@ -21,38 +22,64 @@ export class PostgresServer {
           return true;
         },
 
-        // Hook into each client message
-        async onMessage(data, { isAuthenticated }) {
-          console.log('handling a message!');
-          console.log(data);
-          console.log(data.toString())
-                // Only forward messages to PGlite after authentication
-          if (!isAuthenticated) {
-            return false;
-          }
-          // Forward raw message to PGlite
+        // // Hook into each client message
+        // async onMessage(data, { isAuthenticated }) {
+        //   // Only forward messages to PGlite after authentication
+        //   if (!isAuthenticated) {
+        //     console.log("WE ARE NOT AUTHENTICATED");
+        //     return false;
+        //   }
+        //   // Forward raw message to PGlite
+        //   // Note: This works until the first client disconnection - then, it stops responding to messges successfully.
+        //   // Looks like an authentication issue?
+        //   try {
+        //     const res = await db.execProtocol(data);
+        //     if (!res.length) {
+        //       console.log("Seems like we're breaking here on describe statements?");
+        //       // connection.sendData(new Uint8Array());
+        //       const hc = await db.query("SELECT 'HELLO WORLD';");
+        //       console.log(hc);
+        //       return false;
+        //     } else {
+
+        //       console.log("But this works fine?");
+        //       const [[br, responseData]] = res;
+        //       connection.sendData(responseData);
+        //     }
+        //   } catch (err) {
+        //     console.log("error is", err);
+        //     connection.sendError(err as BackendError);
+        //     connection.sendReadyForQuery();
+        //   }
+        //   return true;
+        // },
+
+        async onQuery(query, state) {
+
           try {
-            const res = await db.execProtocol(data);
-            if (!res.length) {
-              console.log("ITS EMPTYYYYYY");
-              connection.sendData(new Uint8Array());
-            } else {
-              console.log(res);
-              const [[br, responseData]] = res;
-              console.log("responsedata", responseData);
-              console.log("backend response", br);
-              connection.sendData(responseData);
-            }
+            const result = await db.query(query);
+            console.log("Result is ", result);
+            // if (!result.length) {
+            //   console.log("Seems like we're breaking here on describe statements?");
+            //   // connection.sendData(new Uint8Array());
+            //   const hc = await db.query("SELECT 'HELLO WORLD';");
+            //   console.log(hc);
+            //   return false;
+            // } else {
+
+            console.log("But this works fine?");
+
+            const data = new Uint8Array(result);
+            connection.sendData(data);
           } catch (err) {
             console.log("error is", err);
             connection.sendError(err as BackendError);
             connection.sendReadyForQuery();
           }
-          return true;
-        },
+          return new Uint8Array();
+        }
       });
 
-      console.log("made connection!");
       socket.on('end', () => {
         console.log('Client disconnected');
       });
@@ -71,14 +98,15 @@ export class PostgresServer {
   }
 
 
-  constructor(database: string) {
+  constructor(database: string, username: string) {
     const vector = dynamicImport('@electric-sql/pglite/vector');
     // const uuid_ossp = dynamicImport('@electric-sql/pglite/contrib/uuid_ossp');
     this.db = new PGlite({
     // dataDir?: string;
+      username,
       database,
     // fs?: Filesystem;
-    // debug?: DebugLevel;
+      debug: 5,
     // relaxedDurability?: boolean;
       extensions: {
         // vector,
