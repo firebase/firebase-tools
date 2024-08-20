@@ -57,9 +57,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   dataconnect:
     process.platform === "darwin"
       ? {
-          version: "1.3.5",
-          expectedSize: 24232704,
-          expectedChecksum: "4eabf613a4a5feeaa173e1375b62bde0",
+          version: "dart2",
+          expectedSize: 33772480,
+          expectedChecksum: "57b5592917db709cf2d73810affd4781",
         }
       : process.platform === "win32"
         ? {
@@ -68,9 +68,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
             expectedChecksum: "c7b2b7168ff7226f4e5626ae7d13e0ca",
           }
         : {
-            version: "1.3.5",
-            expectedSize: 24146072,
-            expectedChecksum: "1457937751ce25fa332cdc16b561d64b",
+            version: "dart2",
+            expectedSize: 33780672,
+            expectedChecksum: "7acabaf19472714acb10436baee3f54d",
           },
 };
 
@@ -172,10 +172,10 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
       cacheDir: CACHE_DIR,
       remoteUrl:
         process.platform === "darwin"
-          ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-macos-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
+          ? `https://firebasestorage.googleapis.com/v0/b/getting-started-dart-storage.appspot.com/o/dart_emulator-2?alt=media&token=48694c1f-5458-4044-8361-44d0f37193ce`
           : process.platform === "win32"
             ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-windows-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
-            : `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
+            : `https://firebasestorage.googleapis.com/v0/b/firemat-preview-drop/o/emulator%2Fdart_emulator-2-linux.sh?alt=media&token=2302aed9-fa5d-40f1-b032-d540144252b5`,
       expectedSize: EMULATOR_UPDATE_DETAILS.dataconnect.expectedSize,
       expectedChecksum: EMULATOR_UPDATE_DETAILS.dataconnect.expectedChecksum,
       skipChecksumAndSize: false,
@@ -294,6 +294,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
       "config_dir",
       "enable_output_schema_extensions",
       "enable_output_generated_sdk",
+      "enable_dart",
       // Additional flags that CLI shouldn't pass:
       // rpc_retry_count,
       // resolvers_emulator,
