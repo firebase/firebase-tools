@@ -103,7 +103,10 @@ export async function addPinnedFunctionsToOnlyString(
 /**
  *  Prepare creates versions for each Hosting site to be deployed.
  */
-export async function prepare(context: Context, options: HostingOptions & DeployOptions): Promise<void> {
+export async function prepare(
+  context: Context,
+  options: HostingOptions & DeployOptions,
+): Promise<void> {
   handlePublicDirectoryFlag(options);
 
   const configs = config.hostingConfig(options);
