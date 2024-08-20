@@ -109,7 +109,7 @@ export class AuthBlockingService implements Service {
       };
     } else {
       throw new FirebaseError(
-        `Received invalid blocking trigger event type ${endpoint.blockingTrigger.eventType}`
+        `Received invalid blocking trigger event type ${endpoint.blockingTrigger.eventType}`,
       );
     }
 
