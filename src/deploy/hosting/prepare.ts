@@ -32,7 +32,7 @@ function handlePublicDirectoryFlag(options: HostingOptions & DeployOptions): voi
  * normal boilerplate), and the only string might need to be updated with
  * addPinnedFunctionsToOnlyString.
  */
-export function hasPinnedFunctions(options: HostingOptions & Options): boolean {
+export function hasPinnedFunctions(options: HostingOptions & DeployOptions): boolean {
   handlePublicDirectoryFlag(options);
   for (const c of config.hostingConfig(options)) {
     for (const r of c.rewrites || []) {
@@ -52,7 +52,7 @@ export function hasPinnedFunctions(options: HostingOptions & Options): boolean {
  */
 export async function addPinnedFunctionsToOnlyString(
   context: Context,
-  options: HostingOptions & Options,
+  options: HostingOptions & DeployOptions,
 ): Promise<boolean> {
   if (!options.only) {
     return false;
@@ -103,7 +103,7 @@ export async function addPinnedFunctionsToOnlyString(
 /**
  *  Prepare creates versions for each Hosting site to be deployed.
  */
-export async function prepare(context: Context, options: HostingOptions & Options): Promise<void> {
+export async function prepare(context: Context, options: HostingOptions & DeployOptions): Promise<void> {
   handlePublicDirectoryFlag(options);
 
   const configs = config.hostingConfig(options);

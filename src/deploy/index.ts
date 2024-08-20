@@ -36,7 +36,7 @@ const TARGETS = {
   dataconnect: DataConnectTarget,
 };
 
-export type DeployOptions = Options & { dryRun: boolean };
+export type DeployOptions = Options & { dryRun?: boolean };
 
 type Chain = ((context: any, options: any, payload: any) => Promise<unknown>)[];
 
@@ -53,7 +53,7 @@ const chain = async function (fns: Chain, context: any, options: any, payload: a
  */
 export const deploy = async function (
   targetNames: (keyof typeof TARGETS)[],
-  options: Options & { dryRun: boolean },
+  options: DeployOptions,
   customContext = {},
 ) {
   const projectId = needProjectId(options);
