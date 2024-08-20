@@ -47,6 +47,7 @@ import { allEndpoints, Backend } from "./backend";
 import { assertExhaustive } from "../../functional";
 import { prepareDynamicExtensions } from "../extensions/prepare";
 import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args";
+import { DeployOptions } from "..";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 
@@ -55,7 +56,7 @@ export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
  */
 export async function prepare(
   context: args.Context,
-  options: Options,
+  options: DeployOptions,
   payload: args.Payload,
 ): Promise<void> {
   const projectId = needProjectId(options);
@@ -276,9 +277,12 @@ export async function prepare(
   // ===Phase 7. Finalize preparation by "fixing" all extraneous environment issues like IAM policies.
   // We limit the scope endpoints being deployed.
   await backend.checkAvailability(context, matchingBackend);
-  await ensureServiceAgentRoles(projectId, projectNumber, matchingBackend, haveBackend);
+  // TODO: CheckServiceAgentRoles when dryRun = true
+  options.dryRun ||
+    (await ensureServiceAgentRoles(projectId, projectNumber, matchingBackend, haveBackend));
   await validate.secretsAreValid(projectId, matchingBackend);
-  await ensure.secretAccess(projectId, matchingBackend, haveBackend);
+  // TODO: CheckSecretAccess when dryRun = true
+  options.dryRun || (await ensure.secretAccess(projectId, matchingBackend, haveBackend));
 
   /**
    * ===Phase 8 Generates the hashes for each of the functions now that secret versions have been resolved.

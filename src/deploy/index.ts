@@ -23,6 +23,7 @@ import { addPinnedFunctionsToOnlyString, hasPinnedFunctions } from "./hosting/pr
 import { isRunningInGithubAction } from "../init/features/hosting/github";
 import { TARGET_PERMISSIONS } from "../commands/deploy";
 import { requirePermissions } from "../requirePermissions";
+import { Options } from "../options";
 
 const TARGETS = {
   hosting: HostingTarget,
@@ -34,6 +35,8 @@ const TARGETS = {
   extensions: ExtensionsTarget,
   dataconnect: DataConnectTarget,
 };
+
+export type DeployOptions = Options & { dryRun: boolean };
 
 type Chain = ((context: any, options: any, payload: any) => Promise<unknown>)[];
 
@@ -50,7 +53,7 @@ const chain = async function (fns: Chain, context: any, options: any, payload: a
  */
 export const deploy = async function (
   targetNames: (keyof typeof TARGETS)[],
-  options: any,
+  options: Options & { dryRun: boolean },
   customContext = {},
 ) {
   const projectId = needProjectId(options);
@@ -104,9 +107,11 @@ export const deploy = async function (
 
     predeploys.push(lifecycleHooks(targetName, "predeploy"));
     prepares.push(target.prepare);
-    deploys.push(target.deploy);
-    releases.push(target.release);
-    postdeploys.push(lifecycleHooks(targetName, "postdeploy"));
+    if (!options.dryRun) {
+      deploys.push(target.deploy);
+      releases.push(target.release);
+      postdeploys.push(lifecycleHooks(targetName, "postdeploy"));
+    }
   }
 
   logger.info();
@@ -117,7 +122,7 @@ export const deploy = async function (
 
   await chain(predeploys, context, options, payload);
   await chain(prepares, context, options, payload);
-  await chain(deploys, context, options, payload);
+  if (!options.dr) await chain(deploys, context, options, payload);
   await chain(releases, context, options, payload);
   await chain(postdeploys, context, options, payload);
 
@@ -140,7 +145,7 @@ export const deploy = async function (
   logger.info();
 
   const deployedHosting = includes(targetNames, "hosting");
-  logger.info(bold("Project Console:"), consoleUrl(options.project, "/overview"));
+  logger.info(bold("Project Console:"), consoleUrl(options.project ?? "_", "/overview"));
   if (deployedHosting) {
     each(context.hosting.deploys as HostingDeploy[], (deploy) => {
       logger.info(bold("Hosting URL:"), addSubdomain(hostingOrigin(), deploy.config.site));

@@ -1,4 +1,4 @@
-import { Options } from "../../options";
+import { DeployOptions } from "../";
 import * as client from "../../dataconnect/client";
 import * as utils from "../../utils";
 import { Service, ServiceInfo, requiresVector } from "../../dataconnect/types";
@@ -22,7 +22,7 @@ export default async function (
       filters?: ResourceFilter[];
     };
   },
-  options: Options,
+  options: DeployOptions,
 ): Promise<void> {
   const projectId = needProjectId(options);
   const serviceInfos = context.dataconnect.serviceInfos as ServiceInfo[];
@@ -96,6 +96,7 @@ export default async function (
           return Promise.resolve();
         }
         const enableGoogleMlIntegration = requiresVector(s.deploymentMetadata);
+        utils.logLabeledBullet("dataconnect", "Checking for CloudSQL resources...");
         return provisionCloudSql({
           projectId,
           locationId: parseServiceName(s.serviceName).location,

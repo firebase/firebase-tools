@@ -2,7 +2,6 @@ import * as planner from "./planner";
 import * as deploymentSummary from "./deploymentSummary";
 import * as prompt from "../../prompt";
 import * as refs from "../../extensions/refs";
-import { Options } from "../../options";
 import { getAliases, needProjectId, needProjectNumber } from "../../projectUtils";
 import { logger } from "../../logger";
 import { Context, Payload } from "./args";
@@ -25,6 +24,7 @@ import {
 import { Build } from "../functions/build";
 import { normalizeAndValidate } from "../../functions/projectConfig";
 import { getEndpointFilters, targetCodebases } from "../functions/functionsDeployHelper";
+import { DeployOptions } from "..";
 
 // This is called by prepare and also prepareDynamicExtensions. The only difference
 // is which set of extensions is in the want list and which is in the noDelete list.
@@ -36,7 +36,7 @@ import { getEndpointFilters, targetCodebases } from "../functions/functionsDeplo
 // and notifications twice (e.g. delete these extensions?)
 async function prepareHelper(
   context: Context,
-  options: Options,
+  options: DeployOptions,
   payload: Payload,
   wantExtensions: planner.DeploymentInstanceSpec[],
   noDeleteExtensions: planner.DeploymentInstanceSpec[],
@@ -122,6 +122,7 @@ async function prepareHelper(
   if (payload.instancesToDelete.length) {
     logger.info(deploymentSummary.deletesSummary(payload.instancesToDelete));
     if (
+      !options.dryRun &&
       !(await prompt.confirm({
         message: `Would you like to delete ${payload.instancesToDelete
           .map((i) => i.instanceId)
@@ -148,7 +149,7 @@ async function prepareHelper(
 // This is called by functions/prepare so we can deploy the extensions defined by SDKs
 export async function prepareDynamicExtensions(
   context: Context,
-  options: Options,
+  options: DeployOptions,
   payload: Payload,
   builds: Record<string, Build>,
 ) {
@@ -210,7 +211,7 @@ export async function prepareDynamicExtensions(
 }
 
 // Are there codebases that are not included in the current deploy?
-function hasNonDeployingCodebases(options: Options) {
+function hasNonDeployingCodebases(options: DeployOptions) {
   const functionFilters = getEndpointFilters(options);
   if (functionFilters?.length) {
     // If we are filtering for just one extension or function or codebase,
@@ -227,7 +228,7 @@ function hasNonDeployingCodebases(options: Options) {
   }
 }
 
-export async function prepare(context: Context, options: Options, payload: Payload) {
+export async function prepare(context: Context, options: DeployOptions, payload: Payload) {
   context.extensionsStartTime = Date.now();
   const projectId = needProjectId(options);
   const projectNumber = await needProjectNumber(options);

@@ -4,7 +4,7 @@ import * as config from "../../hosting/config";
 import * as deploymentTool from "../../deploymentTool";
 import * as clc from "colorette";
 import { Context } from "./context";
-import { Options } from "../../options";
+import { DeployOptions } from "../";
 import { HostingOptions } from "../../hosting/options";
 import { assertExhaustive, zipIn } from "../../functional";
 import { trackGA4 } from "../../track";
@@ -14,7 +14,7 @@ import * as backend from "../functions/backend";
 import { ensureTargeted } from "../../functions/ensureTargeted";
 import { generateSSRCodebaseId } from "../../frameworks";
 
-function handlePublicDirectoryFlag(options: HostingOptions & Options): void {
+function handlePublicDirectoryFlag(options: HostingOptions & DeployOptions): void {
   // Allow the public directory to be overridden by the --public flag
   if (options.public) {
     if (Array.isArray(options.config.get("hosting"))) {

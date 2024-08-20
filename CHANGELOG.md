@@ -1,0 +1,1 @@
+- Added `firebase deploy --dry-run`, which validates your changes and builds your code without making any production changes.
