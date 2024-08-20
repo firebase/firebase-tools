@@ -7,6 +7,7 @@ import { needProjectId } from "../projectUtils";
 import { load } from "../dataconnect/load";
 import { readFirebaseJson } from "../dataconnect/fileUtils";
 import { logger } from "../logger";
+import * as experiments from "../experiments";
 
 export const command = new Command("dataconnect:sdk:generate")
   .description("generates typed SDKs for your Data Connect connectors")
@@ -21,7 +22,8 @@ export const command = new Command("dataconnect:sdk:generate")
         return (
           c.connectorYaml.generate?.javascriptSdk ||
           c.connectorYaml.generate?.kotlinSdk ||
-          c.connectorYaml.generate?.swiftSdk
+          c.connectorYaml.generate?.swiftSdk ||
+          (experiments.isEnabled("fdcdart") && c.connectorYaml.generate?.dartSdk)
         );
       });
       if (!hasGeneratables) {

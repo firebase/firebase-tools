@@ -130,6 +130,7 @@ export interface Generate {
   javascriptSdk?: JavascriptSDK;
   swiftSdk?: SwiftSDK;
   kotlinSdk?: KotlinSDK;
+  dartSdk?: DartSDK;
 }
 
 export interface JavascriptSDK {
@@ -146,11 +147,16 @@ export interface KotlinSDK {
   outputDir: string;
   package: string;
 }
+export interface DartSDK {
+  outputDir: string;
+  package: string;
+}
 
 export enum Platform {
   ANDROID = "ANDROID",
   WEB = "WEB",
   IOS = "IOS",
+  DART = "DART",
   UNDETERMINED = "UNDETERMINED",
 }
 

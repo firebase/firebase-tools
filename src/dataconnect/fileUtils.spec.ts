@@ -3,6 +3,7 @@ import { getPlatformFromFolder, generateSdkYaml } from "./fileUtils";
 import { ConnectorYaml, Platform } from "./types";
 import * as mockfs from "mock-fs";
 import FileSystem from "mock-fs/lib/filesystem";
+import { isEnabled, setEnabled } from "../experiments";
 
 describe("getPlatformFromFolder", () => {
   const cases: {
@@ -10,6 +11,7 @@ describe("getPlatformFromFolder", () => {
     folderName: string;
     folderItems: FileSystem.DirectoryItems;
     output: Platform;
+    enableDart?: boolean;
   }[] = [
     {
       desc: "Empty folder",
@@ -86,6 +88,34 @@ describe("getPlatformFromFolder", () => {
       output: Platform.IOS,
     },
     {
+      desc: "Dart identifier 1",
+      folderName: "is/this/a/dart/test",
+      folderItems: {
+        file1: "contents",
+        "pubspec.yaml": "my deps",
+      },
+      enableDart: true,
+      output: Platform.DART,
+    },
+    {
+      desc: "Dart identifier 2",
+      folderName: "is/this/a/dart/test",
+      folderItems: {
+        "pubspec.lock": "my deps",
+      },
+      enableDart: true,
+      output: Platform.DART,
+    },
+    {
+      desc: "Dart identifier with experiment disabled",
+      folderName: "is/this/a/dart/test",
+      folderItems: {
+        "pubspec.lock": "my deps",
+      },
+      enableDart: false,
+      output: Platform.UNDETERMINED,
+    },
+    {
       desc: "multiple identifiers, returns undetermined",
       folderName: "test/",
       folderItems: {
@@ -98,9 +128,13 @@ describe("getPlatformFromFolder", () => {
   ];
   for (const c of cases) {
     it(c.desc, async () => {
+      const wasEnabledBefore = isEnabled("fdcdart");
+      setEnabled("fdcdart", !!c.enableDart);
       mockfs({ [c.folderName]: c.folderItems });
       const platform = await getPlatformFromFolder(c.folderName);
       expect(platform).to.equal(c.output);
+      // Reset experiment
+      setEnabled("fdcdart", wasEnabledBefore);
     });
     afterEach(() => {
       mockfs.restore();
@@ -154,6 +188,19 @@ describe("generateSdkYaml", () => {
     expect(modifiedYaml.generate?.kotlinSdk).to.deep.equal({
       outputDir: "../dataconnect-generated",
       package: "connectors.test_connector",
+    });
+  });
+
+  it("should add Dart SDK generation for DART platform when Dart is enabled", () => {
+    const modifiedYaml = generateSdkYaml(
+      Platform.DART,
+      sampleConnectorYaml,
+      connectorYamlFolder,
+      appFolder,
+    );
+    expect(modifiedYaml.generate?.dartSdk).to.deep.equal({
+      outputDir: "../dataconnect-generated",
+      package: "test_connector",
     });
   });
 

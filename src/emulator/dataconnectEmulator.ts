@@ -17,6 +17,7 @@ import { load } from "../dataconnect/load";
 import { isVSCodeExtension } from "../utils";
 import { Config } from "../config";
 import { EventEmitter } from "events";
+import * as experiments from "../experiments";
 
 export interface DataConnectEmulatorArgs {
   projectId: string;
@@ -88,6 +89,7 @@ export class DataConnectEmulator implements EmulatorInstance {
         config_dir: resolvedConfigDir,
         enable_output_schema_extensions: true,
         enable_output_generated_sdk: true,
+        enable_dart: experiments.isEnabled("fdcdart"),
       });
       this.usingExistingEmulator = false;
     }
@@ -147,6 +149,9 @@ export class DataConnectEmulator implements EmulatorInstance {
       `--config_dir=${args.configDir}`,
       `--connector_id=${args.connectorId}`,
     ];
+    if (experiments.isEnabled("fdcdart")) {
+      cmd.push("--enable_dart=true");
+    }
     const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8" });
 
     logger.info(res.stderr);
