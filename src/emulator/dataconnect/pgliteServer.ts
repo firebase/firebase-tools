@@ -2,7 +2,7 @@
 
 import { PGlite } from '@electric-sql/pglite';
 // This is hideous, but I'm not trying to migrate to module: node16 as part of
-const { dynamicImport } = require(true && "../../dynamicImport");
+// const { dynamicImport } = require(true && "../../dynamicImport");
 import * as net from 'node:net';
 import { BackendError, PostgresConnection } from './pgGateway';
 export class PostgresServer {
@@ -22,55 +22,56 @@ export class PostgresServer {
           return true;
         },
 
-        // // Hook into each client message
-        // async onMessage(data, { isAuthenticated }) {
-        //   // Only forward messages to PGlite after authentication
-        //   if (!isAuthenticated) {
-        //     console.log("WE ARE NOT AUTHENTICATED");
-        //     return false;
-        //   }
-        //   // Forward raw message to PGlite
-        //   // Note: This works until the first client disconnection - then, it stops responding to messges successfully.
-        //   // Looks like an authentication issue?
-        //   try {
-        //     const res = await db.execProtocol(data);
-        //     if (!res.length) {
-        //       console.log("Seems like we're breaking here on describe statements?");
-        //       // connection.sendData(new Uint8Array());
-        //       const hc = await db.query("SELECT 'HELLO WORLD';");
-        //       console.log(hc);
-        //       return false;
-        //     } else {
+        // Hook into each client message
+        async onMessage(data, { isAuthenticated }) {
+          console.log("Got a message");
+          // Only forward messages to PGlite after authentication
+          if (!isAuthenticated) {
+            console.log("WE ARE NOT AUTHENTICATED");
+            return false;
+          }
+      
+            // Forward raw message to PGlite
+            try {
+              const val = await db.execProtocolRaw(data);
+              // const [[_, responseData]] = val;
+              // const responseData = mergeArrays(val);
+              connection.sendData(val);
+            } catch (err) {
+              console.log(`error is ${err}`);
+              connection.sendError(err as BackendError);
+              connection.sendReadyForQuery();
+            }
+            return true;
+          // try {
+          //   const res = await db.execProtocol(data);
+          //   if (!res.length) {
+          //     console.log("Seems like we're breaking here on describe statements?");
+          //     // connection.sendData(new Uint8Array());
+          //     const hc = await db.query("SELECT 'HELLO WORLD';");
+          //     console.log(hc);
+          //     return true;
+          //   } else {
 
-        //       console.log("But this works fine?");
-        //       const [[br, responseData]] = res;
-        //       connection.sendData(responseData);
-        //     }
-        //   } catch (err) {
-        //     console.log("error is", err);
-        //     connection.sendError(err as BackendError);
-        //     connection.sendReadyForQuery();
-        //   }
-        //   return true;
-        // },
+          //     console.log("But this works fine?");
+          //     const [[br, responseData]] = res;
+          //     connection.sendData(responseData);
+          //   }
+          // } catch (err) {
+          //   console.log("error is", err);
+          //   connection.sendError(err as BackendError);
+          //   connection.sendReadyForQuery();
+          // }
+          // return true;
+        },
 
         async onQuery(query, state) {
 
           try {
             const result = await db.query(query);
             console.log("Result is ", result);
-            // if (!result.length) {
-            //   console.log("Seems like we're breaking here on describe statements?");
-            //   // connection.sendData(new Uint8Array());
-            //   const hc = await db.query("SELECT 'HELLO WORLD';");
-            //   console.log(hc);
-            //   return false;
-            // } else {
-
-            console.log("But this works fine?");
-
-            const data = new Uint8Array(result);
-            connection.sendData(data);
+            // const data = new Uint8Array(result);
+            connection.sendData(result.blob);
           } catch (err) {
             console.log("error is", err);
             connection.sendError(err as BackendError);
@@ -99,14 +100,14 @@ export class PostgresServer {
 
 
   constructor(database: string, username: string) {
-    const vector = dynamicImport('@electric-sql/pglite/vector');
+    // const vector = dynamicImport('@electric-sql/pglite/vector');
     // const uuid_ossp = dynamicImport('@electric-sql/pglite/contrib/uuid_ossp');
     this.db = new PGlite({
     // dataDir?: string;
       username,
       database,
     // fs?: Filesystem;
-      debug: 5,
+    // debug: 5,
     // relaxedDurability?: boolean;
       extensions: {
         // vector,
@@ -116,4 +117,19 @@ export class PostgresServer {
     // initialMemory?: number;
     });
   }
+}
+
+function mergeArrays(arrays: Uint8Array[]): Uint8Array {
+  let length = 0;
+  for (const item of arrays) {
+    length += item.length;
+  }
+  // Create a new array with total length and merge all source arrays.
+  let mergedArray = new Uint8Array(length);
+  let offset = 0;
+  for (const item of arrays) {
+    mergedArray.set(item, offset);
+    offset += item.length;
+  }
+  return mergedArray;
 }

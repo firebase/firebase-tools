@@ -385,7 +385,6 @@ export class PostgresConnection {
    */
   async handleMessage(data: Buffer) {
     this.reader.setBuffer(0, data);
-
     // If the `onMessage()` hook returns `true`, it managed this response so skip further processing
     // We must pause/resume the socket before/after each hook to prevent race conditions
     this.socket.pause();
@@ -551,7 +550,7 @@ export class PostgresConnection {
 
     const code = this.reader.byte();
     const length = this.reader.int32();
-
+    console.log(`Message code ${code}`)
     switch (code) {
       case FrontendMessageCode.Password: {
         switch (authMode) {
@@ -636,7 +635,6 @@ export class PostgresConnection {
    * to the frontend.
    */
   async completeAuthentication() {
-    console.log("Authentication Complete!", this.isAuthenticated);
     this.isAuthenticated = true;
     this.sendAuthenticationOk();
 
@@ -784,6 +782,7 @@ export class PostgresConnection {
    */
   readQuery() {
     const query = this.reader.cstring();
+    console.log(`Query is ${query}`);
     return {
       query,
     };
@@ -792,8 +791,7 @@ export class PostgresConnection {
   /**
    * Sends raw data to the frontend.
    */
-  sendData(data: Uint8Array) {
-    console.log("Socket closed?", this.socket.closed)
+  sendData(data: Uint8Array | string) {
     this.socket.write(data);
   }
 
