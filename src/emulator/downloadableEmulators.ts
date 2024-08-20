@@ -57,9 +57,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   dataconnect:
     process.platform === "darwin"
       ? {
-          version: "dart2",
-          expectedSize: 33772480,
-          expectedChecksum: "57b5592917db709cf2d73810affd4781",
+          version: "1.3.5",
+          expectedSize: 24232704,
+          expectedChecksum: "4eabf613a4a5feeaa173e1375b62bde0",
         }
       : process.platform === "win32"
         ? {
@@ -172,7 +172,7 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
       cacheDir: CACHE_DIR,
       remoteUrl:
         process.platform === "darwin"
-          ? `https://firebasestorage.googleapis.com/v0/b/getting-started-dart-storage.appspot.com/o/dart_emulator-2?alt=media&token=48694c1f-5458-4044-8361-44d0f37193ce`
+          ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-macos-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
           : process.platform === "win32"
             ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-windows-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
             : `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
@@ -294,7 +294,6 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
       "config_dir",
       "enable_output_schema_extensions",
       "enable_output_generated_sdk",
-      "enable_dart",
       // Additional flags that CLI shouldn't pass:
       // rpc_retry_count,
       // resolvers_emulator,
