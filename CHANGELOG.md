@@ -1,1 +1,2 @@
 - Added support for deploying `beforeEmailSent` blocking functions. (#6384)
+- Updated `ws` to 7.5.10 to remediate CVE-2024-37890. (#7398)

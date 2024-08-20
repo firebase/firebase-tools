@@ -73,7 +73,7 @@
         "uuid": "^8.3.2",
         "winston": "^3.0.0",
         "winston-transport": "^4.4.0",
-        "ws": "^7.2.3",
+        "ws": "^7.5.10",
         "yaml": "^2.4.1"
       },
       "bin": {
@@ -20709,9 +20709,9 @@
       }
     },
     "node_modules/ws": {
-      "version": "7.4.6",
-      "resolved": "https://registry.npmjs.org/ws/-/ws-7.4.6.tgz",
-      "integrity": "sha512-YmhHDO4MzaDLB+M9ym/mDA5z0naX8j7SIlT8f8z+I0VtzsRbekxEutHSme7NPS2qE8StCYQNUnfWdXta/Yu85A==",
+      "version": "7.5.10",
+      "resolved": "https://registry.npmjs.org/ws/-/ws-7.5.10.tgz",
+      "integrity": "sha512-+dbF1tHwZpXcbOJdVOkzLDxZP1ailvSxM6ZweXTegylPny803bFhA+vqBYw4s31NSAk4S2Qz+AKXK9a4wkdjcQ==",
       "engines": {
         "node": ">=8.3.0"
       },
@@ -36412,9 +36412,9 @@
       }
     },
     "ws": {
-      "version": "7.4.6",
-      "resolved": "https://registry.npmjs.org/ws/-/ws-7.4.6.tgz",
-      "integrity": "sha512-YmhHDO4MzaDLB+M9ym/mDA5z0naX8j7SIlT8f8z+I0VtzsRbekxEutHSme7NPS2qE8StCYQNUnfWdXta/Yu85A==",
+      "version": "7.5.10",
+      "resolved": "https://registry.npmjs.org/ws/-/ws-7.5.10.tgz",
+      "integrity": "sha512-+dbF1tHwZpXcbOJdVOkzLDxZP1ailvSxM6ZweXTegylPny803bFhA+vqBYw4s31NSAk4S2Qz+AKXK9a4wkdjcQ==",
       "requires": {}
     },
     "xdg-basedir": {
