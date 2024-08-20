@@ -1,2 +1,1 @@
-- Updated `ws` to 7.5.10 to remediate CVE-2024-37890. (#7398)
-- Fixed the issue with firebase functions deploy requiring Extensions API. (https://github.com/firebase/firebase-functions/issues/1596)
+- Add support for beforeSmsSent auth blocking triggers. (#6733)

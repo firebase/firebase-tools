@@ -5,8 +5,6 @@ export const BEFORE_SIGN_IN_EVENT = "providers/cloud.auth/eventTypes/user.before
 export const BEFORE_SEND_EMAIL_EVENT = "providers/cloud.auth/eventTypes/user.beforeSendEmail";
 export const BEFORE_SEND_SMS_EVENT = "providers/cloud.auth/eventTypes/user.beforeSendSms";
 
-export const BEFORE_SEND_SMS_EVENT = "providers/cloud.auth/eventTypes/user.beforeSendSms";
-
 export const AUTH_BLOCKING_EVENTS = [
   BEFORE_CREATE_EVENT,
   BEFORE_SIGN_IN_EVENT,
