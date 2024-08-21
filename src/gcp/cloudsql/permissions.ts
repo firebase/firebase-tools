@@ -7,6 +7,7 @@ import { logger } from "../../logger";
 import { concat } from "lodash";
 import * as utils from "../../utils";
 import * as cloudSqlAdminClient from "./cloudsqladmin";
+import { FirebaseError } from "../../error";
 
 export function firebaseowner(databaseId: string) {
   return `firebaseowner_${databaseId}_public`;
@@ -24,7 +25,9 @@ export function getDataConnectP4SA(projectNumber: string): string {
   return `service-${projectNumber}@${dataconnectP4SADomain()}`;
 }
 
-async function checkRoleIsGranted(
+// Returns true if "grantedRole" is granted to "granteeRole" and false otherwise.
+// Throw an error if commands fails due to another reason like connection issues.
+export async function checkRoleIsGranted(
   options: Options,
   instanceId: string,
   databaseId: string,
@@ -60,8 +63,14 @@ async function checkRoleIsGranted(
   try {
     await executeSqlCmdsAsIamUser(options, instanceId, databaseId, [checkCmd], true);
     return true;
-  } catch {
-    return false;
+  } catch (e) {
+    // We only return false after we confirm the error is indeed because the role isn't granted.
+    // Otherwise we propagate the error.
+    if (e instanceof FirebaseError && e.message.includes("not granted to role")) {
+      return false;
+    }
+    logger.error(`Role Check Failed: ${e}`);
+    throw e;
   }
 }
 
@@ -235,8 +244,11 @@ export async function setupSQLPermissions(
   }
 
   const sqlRoleSetupCmds = concat(
-    // For backward compatibality we sometimes need to revoke some roles
+    // For backward compatibality we sometimes need to revoke some roles.
     revokes,
+
+    // We shoud make sure schema exists since this setup runs prior to executing the diffs.
+    [`CREATE SCHEMA IF NOT EXISTS "public"`],
 
     // Create and setup the owner role permissions.
     ownerRolePermissions(databaseId, superuser, "public"),

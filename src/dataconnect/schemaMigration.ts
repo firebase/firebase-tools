@@ -5,10 +5,11 @@ import { IncompatibleSqlSchemaError, Diff, SCHEMA_ID } from "./types";
 import { getSchema, upsertSchema, deleteConnector } from "./client";
 import {
   setupIAMUser,
+  getIAMUser,
   executeSqlCmdsAsIamUser,
   executeSqlCmdsAsSuperUser,
 } from "../gcp/cloudsql/connect";
-import { firebaseowner, iamUserIsCSQLAdmin } from "../gcp/cloudsql/permissions";
+import { firebaseowner, iamUserIsCSQLAdmin, checkRoleIsGranted } from "../gcp/cloudsql/permissions";
 import { promptOnce, confirm } from "../prompt";
 import { logger } from "../logger";
 import { Schema } from "./types";
@@ -204,8 +205,8 @@ async function handleIncompatibleSchemaError(args: {
     })
     .map((d) => d.sql);
   if (commandsToExecute.length) {
-    const commandsToExecuteBySuperUser = commandsToExecute.filter((sql) =>
-      sql.startsWith("CREATE EXTENSION"),
+    const commandsToExecuteBySuperUser = commandsToExecute.filter(
+      (sql) => sql.startsWith("CREATE EXTENSION") || sql.startsWith("CREATE SCHEMA"),
     );
     const commandsToExecuteByOwner = commandsToExecute.filter(
       (sql) => !commandsToExecuteBySuperUser.includes(sql),
@@ -226,16 +227,15 @@ async function handleIncompatibleSchemaError(args: {
     }
 
     // Test if iam user has access to the roles required for this migration
-    try {
-      await executeSqlCmdsAsIamUser(
+    if (
+      !(await checkRoleIsGranted(
         options,
         instanceId,
         databaseId,
-        [`SET ROLE "${firebaseowner(databaseId)}"`],
-        true,
-      );
-      logger.info("Succeeded connecting to database as firebase owner");
-    } catch (e) {
+        firebaseowner(databaseId),
+        (await getIAMUser(options)).user,
+      ))
+    ) {
       throw new FirebaseError(
         `Command aborted. Only users with role firebaseowner role can run migrations.`,
       );
