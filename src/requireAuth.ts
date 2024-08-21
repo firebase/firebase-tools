@@ -51,7 +51,10 @@ async function autoAuth(options: Options, authScopes: string[]): Promise<void | 
   }
   if (process.env.MONOSPACE_ENV && token && clientEmail) {
     // Within monospace, this a OAuth token for the user, so we make it the active user.
-    setActiveAccount(options, { user: { email: clientEmail }, tokens: { access_token: token } });
+    setActiveAccount(options, {
+      user: { email: clientEmail },
+      tokens: { access_token: token },
+    });
     setGlobalDefaultAccount({ user: { email: clientEmail }, tokens: { access_token: token } });
 
     // project is also selected in monospace auth flow
@@ -107,6 +110,8 @@ export async function requireAuth(options: any): Promise<string | void> {
     throw new FirebaseError(AUTH_ERROR_MESSAGE);
   }
 
+  // TODO: 90 percent sure this is redundant, as the only time we hit this is if options.user/options.token is set, and
+  // setActiveAccount is the only code that sets those.
   setActiveAccount(options, { user, tokens });
   return user.email;
 }

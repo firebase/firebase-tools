@@ -23,34 +23,13 @@ const userScopedProjects = computed<FirebaseProjectMetadata[] | undefined>(
   },
 );
 
-// TODO(hlshen): clean up concept of currentProject and currentProjectId
-/** Gets the currently selected project, fallback to first default project in RC file */
-export const currentProject = computed<FirebaseProjectMetadata | undefined>(
-  () => {
-    // Service accounts should only have one project
-    if (isServiceAccount.value) {
-      return userScopedProjects.value?.[0];
-    }
-
-    const wantProjectId =
-      currentProjectId.value ||
-      firebaseRC.value?.tryReadValue?.projects["default"];
-    if (!wantProjectId) {
-      return undefined;
-    }
-
-    return userScopedProjects.value?.find((p) => p.projectId === wantProjectId);
-  },
-);
-
 export function registerProject(broker: ExtensionBrokerImpl): Disposable {
-
   async function fetchNewProjects(user: User) {
-      const userProjects = await listProjects();
-      projects.value = {
-        ...projects.value,
-        [user.email]: userProjects,
-      };
+    const userProjects = await listProjects();
+    projects.value = {
+      ...projects.value,
+      [user.email]: userProjects,
+    };
   }
 
   const sub1 = effect(() => {
@@ -63,7 +42,7 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
 
   const sub2 = effect(() => {
     broker.send("notifyProjectChanged", {
-      projectId: currentProject.value?.projectId ?? "",
+      projectId: currentProjectId.value ?? "",
     });
   });
 
@@ -85,18 +64,21 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
   });
 
   const sub5 = broker.on("getInitialData", () => {
+    let wantProjectId =
+      currentProjectId.value ||
+      firebaseRC.value?.tryReadValue?.projects["default"];
+    // Service accounts should only have one project
+    if (isServiceAccount.value) {
+      wantProjectId = userScopedProjects.value?.[0].projectId;
+    }
+
     broker.send("notifyProjectChanged", {
-      projectId: currentProject.value?.projectId ?? "",
+      projectId: wantProjectId ?? "",
     });
   });
 
-  // TODO: Set projectId from IDX Auth
-  // const monospaceLoginSub = effect(() => {
-  //   if (currentOptions.value.projectId) {
-  //     currentProjectId.value = currentOptions.value.projectId;
-  //   }
-  // })
-
+  // TODO: In IDX, should we just client.GetProject() from the metadata server?
+  // Should we instead hide this command entirely?
   const command = vscode.commands.registerCommand(
     "firebase.selectProject",
     async () => {

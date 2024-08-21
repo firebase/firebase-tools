@@ -3,6 +3,7 @@ import * as utils from "../utils";
 import { grantRolesToCloudSqlServiceAccount } from "./checkIam";
 import { Instance } from "../gcp/cloudsql/types";
 import { promiseWithSpinner } from "../utils";
+import { logger } from "../logger";
 
 const GOOGLE_ML_INTEGRATION_ROLE = "roles/aiplatform.user";
 
@@ -87,7 +88,12 @@ export async function provisionCloudSql(args: {
       silent || utils.logLabeledBullet("dataconnect", "Instance created");
       connectionName = newInstance?.connectionName || "";
     } else {
-      silent || utils.logLabeledBullet("dataconnect", "Instance creation process started");
+      silent ||
+        utils.logLabeledBullet(
+          "dataconnect",
+          "Cloud SQL instance creation started - it should be ready shortly. Database and users will be created on your next deploy.",
+        );
+      return connectionName;
     }
   }
   try {
@@ -106,6 +112,7 @@ export async function provisionCloudSql(args: {
     } else {
       // Skip it if the database is not accessible.
       // Possible that the CSQL instance is in the middle of something.
+      logger.debug(`Unexpected error from CloudSQL: ${err}`);
       silent || utils.logLabeledWarning("dataconnect", `Database ${databaseId} is not accessible.`);
     }
   }

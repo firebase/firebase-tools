@@ -7,7 +7,7 @@ import * as utils from "../utils";
 import { FirebaseError } from "../error";
 import { promptOnce } from "../prompt";
 import { getProjectNumber } from "../getProjectNumber";
-import { developerConnectOrigin } from "../api";
+import { apphostingGitHubAppInstallationURL, developerConnectOrigin } from "../api";
 
 import * as fuzzy from "fuzzy";
 import * as inquirer from "inquirer";
@@ -86,7 +86,8 @@ function generateConnectionId(): string {
   return `apphosting-github-conn-${randomHash}`;
 }
 
-const ADD_CONN_CHOICE = "@ADD_CONN";
+const ADD_ACCOUNT_CHOICE = "@ADD_ACCOUNT";
+const MANAGE_INSTALLATION_CHOICE = "@MANAGE_INSTALLATION";
 
 /**
  * Prompts the user to link their backend to a GitHub repository.
@@ -98,39 +99,54 @@ export async function linkGitHubRepository(
   utils.logBullet(clc.bold(`${clc.yellow("===")} Import a GitHub repository`));
   // Fetch the sentinel Oauth connection first which is needed to create further GitHub connections.
   const oauthConn = await getOrCreateOauthConnection(projectId, location);
-  const existingConns = await listAppHostingConnections(projectId);
+  let installationId = await promptGitHubInstallation(projectId, location, oauthConn);
 
-  if (existingConns.length === 0) {
-    existingConns.push(
-      await createFullyInstalledConnection(projectId, location, generateConnectionId(), oauthConn),
+  while (installationId === ADD_ACCOUNT_CHOICE) {
+    utils.logBullet(
+      "Install the Firebase App Hosting GitHub app on a new account to enable access to those repositories",
+    );
+
+    const apphostingGitHubInstallationURL = apphostingGitHubAppInstallationURL();
+    utils.logBullet(apphostingGitHubInstallationURL);
+    await utils.openInBrowser(apphostingGitHubInstallationURL);
+    await promptOnce({
+      type: "input",
+      message:
+        "Press Enter once you have installed or configured the Firebase App Hosting GitHub app to access your GitHub repo.",
+    });
+    installationId = await promptGitHubInstallation(projectId, location, oauthConn);
+  }
+
+  let connectionMatchingInstallation = await getConnectionForInstallation(
+    projectId,
+    location,
+    installationId,
+  );
+
+  if (!connectionMatchingInstallation) {
+    connectionMatchingInstallation = await createFullyInstalledConnection(
+      projectId,
+      location,
+      generateConnectionId(),
+      oauthConn,
+      installationId,
     );
   }
 
   let repoCloneUri: string | undefined;
-  let connection: devConnect.Connection;
+
   do {
-    if (repoCloneUri === ADD_CONN_CHOICE) {
-      existingConns.push(
-        await createFullyInstalledConnection(
-          projectId,
-          location,
-          generateConnectionId(),
-          oauthConn,
-          /** withNewInstallation= */ true,
-        ),
-      );
+    if (repoCloneUri === MANAGE_INSTALLATION_CHOICE) {
+      await manageInstallation(connectionMatchingInstallation);
     }
 
-    const selection = await promptCloneUri(projectId, existingConns);
-    repoCloneUri = selection.cloneUri;
-    connection = selection.connection;
-  } while (repoCloneUri === ADD_CONN_CHOICE);
+    repoCloneUri = await promptCloneUri(projectId, connectionMatchingInstallation);
+  } while (repoCloneUri === MANAGE_INSTALLATION_CHOICE);
 
-  // Ensure that the selected connection exists in the same region as the backend
-  const { id: connectionId } = parseConnectionName(connection.name)!;
+  const { id: connectionId } = parseConnectionName(connectionMatchingInstallation.name)!;
   await getOrCreateConnection(projectId, location, connectionId, {
-    authorizerCredential: connection.githubConfig?.authorizerCredential,
-    appInstallationId: connection.githubConfig?.appInstallationId,
+    authorizerCredential: connectionMatchingInstallation.githubConfig?.authorizerCredential,
+    appInstallationId: connectionMatchingInstallation.githubConfig?.appInstallationId,
   });
 
   const repo = await getOrCreateRepository(projectId, location, connectionId, repoCloneUri);
@@ -146,19 +162,17 @@ export async function linkGitHubRepository(
  * @param location region where backend is being created
  * @param connectionId id of connection to be created
  * @param oauthConn user's oauth connection
- * @param withNewInstallation Defaults to false if not set, and the Oauth connection's
- *                            Installation Id is re-used when creating a new connection.
- *                            If true the Oauth connection's installation Id is not re-used.
+ * @param installationId represents an installation of the Firebase App Hosting GitHub app on a GitHub account / org
  */
 async function createFullyInstalledConnection(
   projectId: string,
   location: string,
   connectionId: string,
   oauthConn: devConnect.Connection,
-  withNewInstallation = false,
+  installationId: string,
 ): Promise<devConnect.Connection> {
   let conn = await createConnection(projectId, location, connectionId, {
-    appInstallationId: withNewInstallation ? undefined : oauthConn.githubConfig?.appInstallationId,
+    appInstallationId: installationId,
     authorizerCredential: oauthConn.githubConfig?.authorizerCredential,
   });
 
@@ -178,6 +192,113 @@ async function createFullyInstalledConnection(
   }
 
   return conn;
+}
+
+async function manageInstallation(connection: devConnect.Connection): Promise<void> {
+  utils.logBullet(
+    "Manage the Firebase App Hosting GitHub app to enable access to GitHub repositories",
+  );
+  const targetUri = connection.githubConfig?.installationUri;
+  if (!targetUri) {
+    throw new FirebaseError("Failed to get Installation URI. Please try again.");
+  }
+
+  utils.logBullet(targetUri);
+  await utils.openInBrowser(targetUri);
+  await promptOnce({
+    type: "input",
+    message:
+      "Press Enter once you have installed or configured the Firebase App Hosting GitHub app to access your GitHub repo.",
+  });
+}
+
+export async function getConnectionForInstallation(
+  projectId: string,
+  location: string,
+  installationId: string,
+): Promise<devConnect.Connection | null> {
+  const connections = await listAppHostingConnections(projectId, location);
+  const connectionsMatchingInstallation = connections.filter(
+    (conn) => conn.githubConfig?.appInstallationId === installationId,
+  );
+  if (connectionsMatchingInstallation.length === 0) {
+    return null;
+  }
+
+  if (connectionsMatchingInstallation.length > 1) {
+    /**
+     * In the Firebase Console and previous versions of the CLI we create a
+     * connection and then choose an installation, which makes it possible for
+     * there to be more than one connection for the same installation.
+     *
+     * To handle this case gracefully we return the oldest matching connection.
+     */
+    const sorted = devConnect.sortConnectionsByCreateTime(connectionsMatchingInstallation);
+    return sorted[0];
+  }
+
+  return connectionsMatchingInstallation[0];
+}
+
+export async function promptGitHubInstallation(
+  projectId: string,
+  location: string,
+  connection: devConnect.Connection,
+): Promise<string> {
+  const installations = await listValidInstallations(projectId, location, connection);
+
+  const installationName = await promptOnce({
+    type: "autocomplete",
+    name: "installation",
+    message: "Which GitHub account do you want to use?",
+    source: (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
+      return new Promise((resolve) =>
+        resolve([
+          new inquirer.Separator(),
+          {
+            name: "Missing an account? Select this option to add a GitHub account",
+            value: ADD_ACCOUNT_CHOICE,
+          },
+          new inquirer.Separator(),
+          ...fuzzy
+            .filter(input, installations, {
+              extract: (installation) => installation.name || "",
+            })
+            .map((result) => {
+              return {
+                name: result.original.name || "",
+                value: result.original.id,
+              };
+            }),
+        ]),
+      );
+    },
+  });
+
+  return installationName;
+}
+
+/**
+ * A "valid" installation is either the user's account itself or any orgs they
+ * have access to that the GitHub app has been installed on.
+ */
+export async function listValidInstallations(
+  projectId: string,
+  location: string,
+  connection: devConnect.Connection,
+): Promise<devConnect.Installation[]> {
+  const { id: connId } = parseConnectionName(connection.name)!;
+  let installations = await devConnect.fetchGitHubInstallations(projectId, location, connId);
+
+  installations = installations.filter((installation) => {
+    return (
+      (installation.type === "user" &&
+        installation.name === connection.githubConfig?.authorizerCredential?.username) ||
+      installation.type === "organization"
+    );
+  });
+
+  return installations;
 }
 
 /**
@@ -224,9 +345,9 @@ export async function getOrCreateOauthConnection(
 
 async function promptCloneUri(
   projectId: string,
-  connections: devConnect.Connection[],
-): Promise<{ cloneUri: string; connection: devConnect.Connection }> {
-  const { cloneUris, cloneUriToConnection } = await fetchAllRepositories(projectId, connections);
+  connection: devConnect.Connection,
+): Promise<string> {
+  const cloneUris = await fetchRepositoryCloneUris(projectId, connection);
   const cloneUri = await promptOnce({
     type: "autocomplete",
     name: "cloneUri",
@@ -237,7 +358,7 @@ async function promptCloneUri(
           new inquirer.Separator(),
           {
             name: "Missing a repo? Select this option to configure your GitHub connection settings",
-            value: ADD_CONN_CHOICE,
+            value: MANAGE_INSTALLATION_CHOICE,
           },
           new inquirer.Separator(),
           ...fuzzy
@@ -254,7 +375,8 @@ async function promptCloneUri(
       );
     },
   });
-  return { cloneUri, connection: cloneUriToConnection[cloneUri] };
+
+  return cloneUri;
 }
 
 /**
@@ -432,8 +554,10 @@ export async function getOrCreateRepository(
  */
 export async function listAppHostingConnections(
   projectId: string,
+  location: string,
 ): Promise<devConnect.Connection[]> {
-  const conns = await devConnect.listAllConnections(projectId, "-");
+  const conns = await devConnect.listAllConnections(projectId, location);
+
   return conns.filter(
     (conn) =>
       APPHOSTING_CONN_PATTERN.test(conn.name) &&
@@ -445,25 +569,13 @@ export async function listAppHostingConnections(
 /**
  * Exported for unit testing.
  */
-export async function fetchAllRepositories(
+export async function fetchRepositoryCloneUris(
   projectId: string,
-  connections: devConnect.Connection[],
-): Promise<{
-  cloneUris: string[];
-  cloneUriToConnection: Record<string, devConnect.Connection>;
-}> {
-  const cloneUriToConnection: Record<string, devConnect.Connection> = {};
+  connection: devConnect.Connection,
+): Promise<string[]> {
+  const { location, id } = parseConnectionName(connection.name)!;
+  const connectionRepos = await devConnect.listAllLinkableGitRepositories(projectId, location, id);
+  const cloneUris = connectionRepos.map((conn) => conn.cloneUri);
 
-  for (const conn of connections) {
-    const { location, id } = parseConnectionName(conn.name)!;
-    const connectionRepos = await devConnect.listAllLinkableGitRepositories(
-      projectId,
-      location,
-      id,
-    );
-    connectionRepos.forEach((repo) => {
-      cloneUriToConnection[repo.cloneUri] = conn;
-    });
-  }
-  return { cloneUris: Object.keys(cloneUriToConnection), cloneUriToConnection };
+  return cloneUris;
 }

@@ -1,5 +1,52 @@
 ## NEXT
 
+## 0.6.1
+
+- Updated internal firebase-tools dependency to 13.15.3
+
+## 0.6.0
+
+- Updated internal firebase-tools dependency to 13.15.2
+
+- [Added] Support for configuring generated SDK
+- Automatically pick up IDX project selection.
+
+## 0.5.4
+
+- Updated internal firebase-tools dependency to 13.15.1
+
+## 0.5.3
+
+- Updated internal firebase-tools dependency to 13.15.0
+
+## 0.5.2
+
+- Updated internal firebase-tools dependency to 13.14.2
+
+## 0.5.1
+
+- Updated internal firebase-tools dependency to 13.14.1
+
+## 0.5.0
+
+- Updated internal firebase-tools dependency to 13.14.0
+
+## 0.4.4
+
+- [Fixed] Local execution now properly supports Vertex API
+
+## 0.4.3
+
+- Updated internal firebase-tools dependency to 13.13.3
+
+## 0.4.2
+
+- Updated internal firebase-tools dependency to 13.13.2
+
+## 0.4.1
+
+- Updated internal firebase-tools dependency to 13.13.1
+
 - IDX Auth is picked up by VSCode
 - [Fixed] Data Connect emulator issues properly streamed on startup
 - [Fixed] Data Connect schema reloads consistently

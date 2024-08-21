@@ -45,9 +45,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   ui: experiments.isEnabled("emulatoruisnapshot")
     ? { version: "SNAPSHOT", expectedSize: -1, expectedChecksum: "" }
     : {
-        version: "1.12.1",
-        expectedSize: 3498269,
-        expectedChecksum: "a7f4398a00e5ca22abdcd78dc3877d00",
+        version: "1.13.0",
+        expectedSize: 3605485,
+        expectedChecksum: "ec0aa91592c56af9ff7df18168d58459",
       },
   pubsub: {
     version: "0.8.14",
@@ -57,20 +57,20 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   dataconnect:
     process.platform === "darwin"
       ? {
-          version: "1.2.3",
-          expectedSize: 24056640,
-          expectedChecksum: "3ed315b230965d5a6471de08e59c226a",
+          version: "1.3.5",
+          expectedSize: 24232704,
+          expectedChecksum: "4eabf613a4a5feeaa173e1375b62bde0",
         }
       : process.platform === "win32"
         ? {
-            version: "1.2.3",
-            expectedSize: 24466432,
-            expectedChecksum: "a371516844fea7ea6aad3c82baf0149c",
+            version: "1.3.5",
+            expectedSize: 24651264,
+            expectedChecksum: "c7b2b7168ff7226f4e5626ae7d13e0ca",
           }
         : {
-            version: "1.2.3",
-            expectedSize: 23965848,
-            expectedChecksum: "c5c342d76b0c118e74a5f6ecdcaa58b8",
+            version: "1.3.5",
+            expectedSize: 24146072,
+            expectedChecksum: "1457937751ce25fa332cdc16b561d64b",
           },
 };
 
@@ -292,9 +292,11 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     optionalArgs: [
       "listen",
       "config_dir",
-      "disable_sdk_generation",
-      "resolvers_emulator",
-      "rpc_retry_count",
+      "enable_output_schema_extensions",
+      "enable_output_generated_sdk",
+      // Additional flags that CLI shouldn't pass:
+      // rpc_retry_count,
+      // resolvers_emulator,
     ],
     joinArgs: true,
     shell: false,

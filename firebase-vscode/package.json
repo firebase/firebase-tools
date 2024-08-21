@@ -4,7 +4,7 @@
   "publisher": "firebase",
   "icon": "./resources/firebase_logo.png",
   "description": "VSCode Extension for Firebase",
-  "version": "0.4.0",
+  "version": "0.6.1",
   "engines": {
     "vscode": "^1.69.0"
   },
@@ -71,6 +71,11 @@
           "type": "boolean",
           "default": false,
           "description": "Always allow mutations in production. If false (default), trying to run a mutation in production will open a confirmation modal."
+        },
+        "firebase.dataConnect.skipToAppFolderSelect": {
+          "type": "boolean",
+          "default": false,
+          "description": "Skip app folder selection prompt. If false (default), trying to generate SDK config will open a confirmation modal."
         }
       }
     },

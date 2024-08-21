@@ -13,12 +13,10 @@ if (!semver.satisfies(nodeVersion, pkg.engines.node)) {
 
 import * as updateNotifierPkg from "update-notifier-cjs";
 import * as clc from "colorette";
-import * as TerminalRenderer from "marked-terminal";
+import { markedTerminal } from "marked-terminal";
 const updateNotifier = updateNotifierPkg({ pkg });
 import { marked } from "marked";
-marked.setOptions({
-  renderer: new TerminalRenderer(),
-});
+marked.use(markedTerminal() as any);
 
 import { Command } from "commander";
 import { join } from "node:path";
@@ -131,11 +129,14 @@ process.on("exit", (code) => {
 
   // Notify about updates right before process exit.
   try {
+    const installMethod = !process.env.FIREPIT_VERSION ? "npm" : "automatic script";
+    const updateCommand = !process.env.FIREPIT_VERSION
+      ? "npm install -g firebase-tools"
+      : "curl -sL https://firebase.tools | upgrade=true bash";
+
     const updateMessage =
       `Update available ${clc.gray("{currentVersion}")} → ${clc.green("{latestVersion}")}\n` +
-      `To update to the latest version using npm, run\n${clc.cyan(
-        "npm install -g firebase-tools",
-      )}\n` +
+      `To update to the latest version using ${installMethod}, run\n${clc.cyan(updateCommand)}\n` +
       `For other CLI management options, visit the ${marked(
         "[CLI documentation](https://firebase.google.com/docs/cli#update-cli)",
       )}`;

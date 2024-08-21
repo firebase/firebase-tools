@@ -4,8 +4,15 @@ import * as fsPromises from "fs/promises";
 import * as fsExtra from "fs-extra";
 import * as sinon from "sinon";
 import * as glob from "glob";
+import * as childProcess from "child_process";
+import { FirebaseError } from "../../error";
 
-import { EXPORT_MARKER, IMAGES_MANIFEST, APP_PATH_ROUTES_MANIFEST } from "./constants";
+import {
+  EXPORT_MARKER,
+  IMAGES_MANIFEST,
+  APP_PATH_ROUTES_MANIFEST,
+  ESBUILD_VERSION,
+} from "./constants";
 
 import {
   cleanEscapedChars,
@@ -29,6 +36,8 @@ import {
   isUsingNextImageInAppDirectory,
   getNextVersion,
   getRoutesWithServerAction,
+  findEsbuildPath,
+  installEsbuild,
 } from "./utils";
 
 import * as frameworksUtils from "../utils";
@@ -527,6 +536,94 @@ describe("Next.js utils", () => {
       expect(
         getRoutesWithServerAction(serverReferenceManifest, appPathRoutesManifest),
       ).to.deep.equal(["/another-s-a", "/server-action", "/server-action/edge"]);
+    });
+  });
+
+  describe("findEsbuildPath", () => {
+    let execSyncStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      execSyncStub = sinon.stub(childProcess, "execSync");
+    });
+
+    afterEach(() => {
+      execSyncStub.restore();
+    });
+
+    it("should return the correct esbuild path when esbuild is found", () => {
+      const mockBinaryPath = "/path/to/.bin/esbuild";
+      const expectedResolvedPath = "/path/to/esbuild";
+      execSyncStub
+        .withArgs("npx which esbuild", { encoding: "utf8" })
+        .returns(mockBinaryPath + "\n");
+
+      const esbuildPath = findEsbuildPath();
+
+      expect(esbuildPath).to.equal(expectedResolvedPath);
+    });
+
+    it("should return null if esbuild is not found", () => {
+      execSyncStub
+        .withArgs("npx which esbuild", { encoding: "utf8" })
+        .throws(new Error("not found"));
+
+      const esbuildPath = findEsbuildPath();
+      expect(esbuildPath).to.be.null;
+    });
+
+    it("should warn if global esbuild version does not match required version", () => {
+      const mockBinaryPath = "/path/to/.bin/esbuild";
+      const mockGlobalVersion = "1.2.3";
+      execSyncStub
+        .withArgs("npx which esbuild", { encoding: "utf8" })
+        .returns(mockBinaryPath + "\n");
+      execSyncStub
+        .withArgs(`${mockBinaryPath} --version`, { encoding: "utf8" })
+        .returns(`${mockGlobalVersion}\n`);
+
+      const consoleWarnStub = sinon.stub(console, "warn");
+
+      findEsbuildPath();
+      expect(
+        consoleWarnStub.calledWith(
+          `Warning: Global esbuild version (${mockGlobalVersion}) does not match the required version (${ESBUILD_VERSION}).`,
+        ),
+      ).to.be.true;
+
+      consoleWarnStub.restore();
+    });
+  });
+
+  describe("installEsbuild", () => {
+    let execSyncStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      execSyncStub = sinon.stub(childProcess, "execSync");
+    });
+    afterEach(() => execSyncStub.restore());
+
+    it("should successfully install esbuild", () => {
+      execSyncStub
+        .withArgs(`npm install esbuild@${ESBUILD_VERSION} --no-save`, { stdio: "inherit" })
+        .returns("");
+
+      installEsbuild(ESBUILD_VERSION);
+      expect(execSyncStub.calledOnce).to.be.true;
+    });
+
+    it("should throw a FirebaseError if installation fails", () => {
+      execSyncStub
+        .withArgs(`npm install esbuild@${ESBUILD_VERSION} --no-save`, { stdio: "inherit" })
+        .throws(new Error("Installation failed"));
+
+      try {
+        installEsbuild(ESBUILD_VERSION);
+        expect.fail("Expected installEsbuild to throw");
+      } catch (error) {
+        const typedError = error as FirebaseError;
+        expect(typedError).to.be.instanceOf(FirebaseError);
+        expect(typedError.message).to.include("Failed to install esbuild");
+      }
     });
   });
 });

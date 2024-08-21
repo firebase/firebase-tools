@@ -44,6 +44,11 @@ export const apphostingP4SADomain = () =>
     "FIREBASE_APPHOSTING_P4SA_DOMAIN",
     "gcp-sa-firebaseapphosting.iam.gserviceaccount.com",
   );
+export const apphostingGitHubAppInstallationURL = () =>
+  utils.envOverride(
+    "FIREBASE_APPHOSTING_GITHUB_INSTALLATION_URL",
+    "https://github.com/apps/firebase-app-hosting/installations/new",
+  );
 
 export const authOrigin = () =>
   utils.envOverride("FIREBASE_AUTH_URL", "https://accounts.google.com");
