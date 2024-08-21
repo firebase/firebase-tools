@@ -3,14 +3,17 @@ import { format } from "sql-formatter";
 
 import { IncompatibleSqlSchemaError, Diff, SCHEMA_ID } from "./types";
 import { getSchema, upsertSchema, deleteConnector } from "./client";
-import { setupIAMUser, getIAMUser, executeSqlCmdsAsIamUser, executeSqlCmdsAsSuperUser } from "../gcp/cloudsql/connect";
+import {
+  setupIAMUser,
+  executeSqlCmdsAsIamUser,
+  executeSqlCmdsAsSuperUser,
+} from "../gcp/cloudsql/connect";
 import { firebaseowner, iamUserIsCSQLAdmin } from "../gcp/cloudsql/permissions";
 import { promptOnce, confirm } from "../prompt";
 import { logger } from "../logger";
 import { Schema } from "./types";
 import { Options } from "../options";
 import { FirebaseError } from "../error";
-import { needProjectId } from "../projectUtils";
 import { logLabeledBullet, logLabeledWarning, logLabeledSuccess } from "../utils";
 import * as experiments from "../experiments";
 import * as errors from "./errors";
@@ -187,8 +190,6 @@ async function handleIncompatibleSchemaError(args: {
       "This schema migration includes potentially destructive changes. If you'd like to execute it anyway, rerun this command with --force",
     );
   }
-  const projectId = needProjectId(options);
-  const {user:iamUser} = await getIAMUser(options)
 
   const commandsToExecute = incompatibleSchemaError.diffs
     .filter((d) => {
@@ -203,17 +204,21 @@ async function handleIncompatibleSchemaError(args: {
     })
     .map((d) => d.sql);
   if (commandsToExecute.length) {
-    const commandsToExecuteBySuperUser = commandsToExecute.filter((sql) => sql.startsWith("CREATE EXTENSION"))
-    const commandsToExecuteByOwner = commandsToExecute.filter((sql) => !commandsToExecuteBySuperUser.includes(sql))
+    const commandsToExecuteBySuperUser = commandsToExecute.filter((sql) =>
+      sql.startsWith("CREATE EXTENSION"),
+    );
+    const commandsToExecuteByOwner = commandsToExecute.filter(
+      (sql) => !commandsToExecuteBySuperUser.includes(sql),
+    );
 
     const userIsCSQLAdmin = await iamUserIsCSQLAdmin(options);
 
     if (!userIsCSQLAdmin && commandsToExecuteBySuperUser.length) {
       throw new FirebaseError(`Only Admin can run some of the proposed sql diffs.\n 
         Please ask user with roles/cloudsql.admin to apply the following diff.\n
-        ${commandsToExecuteBySuperUser.join("\n")}`)
+        ${commandsToExecuteBySuperUser.join("\n")}`);
     }
-    
+
     // TODO: at some point we would want to only run this after notifying the admin but
     // until we confirm stability it's ok to run it on every migration by admin user.
     if (userIsCSQLAdmin) {
@@ -222,26 +227,40 @@ async function handleIncompatibleSchemaError(args: {
 
     // Test if iam user has access to the roles required for this migration
     try {
-      await executeSqlCmdsAsIamUser(options, instanceId, databaseId, [`SET ROLE "${firebaseowner(databaseId)}"`], true)
-      logger.info("Succeeded connecting to database as firebase owner")
+      await executeSqlCmdsAsIamUser(
+        options,
+        instanceId,
+        databaseId,
+        [`SET ROLE "${firebaseowner(databaseId)}"`],
+        true,
+      );
+      logger.info("Succeeded connecting to database as firebase owner");
     } catch (e) {
-        throw new FirebaseError(
-          `Command aborted. Only users with role firebaseowner role can run migrations.`,
-        );
+      throw new FirebaseError(
+        `Command aborted. Only users with role firebaseowner role can run migrations.`,
+      );
     }
-    
+
     if (commandsToExecuteBySuperUser.length) {
-      logger.info(`The diffs require cloudsql superuser permissions, attempting to apply changes as superuser.`)
-        await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, commandsToExecuteBySuperUser, false);
+      logger.info(
+        `The diffs require cloudsql superuser permissions, attempting to apply changes as superuser.`,
+      );
+      await executeSqlCmdsAsSuperUser(
+        options,
+        instanceId,
+        databaseId,
+        commandsToExecuteBySuperUser,
+        false,
+      );
     }
 
     if (commandsToExecuteByOwner.length) {
-      await executeSqlCmdsAsIamUser(options, instanceId, databaseId,
-        [
-          `SET ROLE "${firebaseowner(databaseId)}"`,
-          ...commandsToExecuteByOwner,
-        ],
-        false
+      await executeSqlCmdsAsIamUser(
+        options,
+        instanceId,
+        databaseId,
+        [`SET ROLE "${firebaseowner(databaseId)}"`, ...commandsToExecuteByOwner],
+        false,
       );
       return incompatibleSchemaError.diffs;
     }

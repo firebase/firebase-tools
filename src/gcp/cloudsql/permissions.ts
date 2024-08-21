@@ -1,7 +1,6 @@
-import { execute } from "./connect";
 import { Options } from "../../options";
 import { needProjectId, needProjectNumber } from "../../projectUtils";
-import { dataconnectP4SADomain } from "../../api"
+import { dataconnectP4SADomain } from "../../api";
 import { toDatabaseUser, executeSqlCmdsAsIamUser, executeSqlCmdsAsSuperUser } from "./connect";
 import { testIamPermissions } from "../iam";
 import { logger } from "../../logger";
@@ -10,30 +9,29 @@ import * as utils from "../../utils";
 import * as cloudSqlAdminClient from "./cloudsqladmin";
 
 export function firebaseowner(databaseId: string) {
-    return `firebaseowner_${databaseId}_public`;
+  return `firebaseowner_${databaseId}_public`;
 }
 
 export function firebasereader(databaseId: string) {
-    return `firebasereader_${databaseId}_public`;
+  return `firebasereader_${databaseId}_public`;
 }
 
 export function firebasewriter(databaseId: string) {
-    return `firebasewriter_${databaseId}_public`;
+  return `firebasewriter_${databaseId}_public`;
 }
 
 export function getDataConnectP4SA(projectNumber: string): string {
-    return `service-${projectNumber}@${dataconnectP4SADomain()}`
-  }
+  return `service-${projectNumber}@${dataconnectP4SADomain()}`;
+}
 
-async function check_role_is_granted(
-  options:Options,
+async function checkRoleIsGranted(
+  options: Options,
   instanceId: string,
-  databaseId: string, 
-  granted_role:string, 
-  grantee_role:string
+  databaseId: string,
+  grantedRole: string,
+  granteeRole: string,
 ): Promise<boolean> {
-  
-  const check_cmd = `
+  const checkCmd = `
     DO $$
     DECLARE
         role_count INTEGER;
@@ -50,25 +48,24 @@ async function check_role_is_granted(
         JOIN
           pg_roles grantor ON grantor.oid = m.grantor
         WHERE
-          granted.rolname = '${granted_role}'
-          AND grantee.rolname = '${grantee_role}';
+          granted.rolname = '${grantedRole}'
+          AND grantee.rolname = '${granteeRole}';
 
         -- If no rows were found, raise an exception
         IF role_count = 0 THEN
-            RAISE EXCEPTION 'Role "%", is not granted to role "%".', '${granted_role}', '${grantee_role}';
+            RAISE EXCEPTION 'Role "%", is not granted to role "%".', '${grantedRole}', '${granteeRole}';
         END IF;
     END $$;
-`
+`;
   try {
-    await executeSqlCmdsAsIamUser(options, instanceId, databaseId, [check_cmd], true)
-    return true
+    await executeSqlCmdsAsIamUser(options, instanceId, databaseId, [checkCmd], true);
+    return true;
   } catch {
-    return false
+    return false;
   }
 }
 
-
-export async function iamUserIsCSQLAdmin(options:Options): Promise<boolean> {
+export async function iamUserIsCSQLAdmin(options: Options): Promise<boolean> {
   const projectId = needProjectId(options);
   const requiredPermissions = [
     "cloudsql.databases.create",
@@ -79,11 +76,11 @@ export async function iamUserIsCSQLAdmin(options:Options): Promise<boolean> {
     "cloudsql.instances.list",
     "cloudsql.instances.update",
     "cloudsql.users.create",
-  ]
+  ];
 
   try {
     const iamResult = await testIamPermissions(projectId, requiredPermissions);
-    return iamResult.passed
+    return iamResult.passed;
   } catch (err: any) {
     logger.debug(`[iam] error while checking permissions, command may fail: ${err}`);
     return false;
@@ -91,10 +88,10 @@ export async function iamUserIsCSQLAdmin(options:Options): Promise<boolean> {
 }
 
 // Creates the owner role, modifies schema owner to firebaseowner.
-function ownerRolePermissions(databaseId: string, superuser: string, schema:string): string[] {
-    const firebaseOwnerRole = firebaseowner(databaseId)
-    return [
-        `do
+function ownerRolePermissions(databaseId: string, superuser: string, schema: string): string[] {
+  const firebaseOwnerRole = firebaseowner(databaseId);
+  return [
+    `do
         $$
         begin
           if not exists (select FROM pg_catalog.pg_roles
@@ -105,23 +102,23 @@ function ownerRolePermissions(databaseId: string, superuser: string, schema:stri
         $$
         ;`,
 
-        // We grant owner to cloudsqlsuperuser because only the owner can alter the schema owner.
-        // It's also needed for the reader and write roles setup as only owner can alter schema defaults.
-        `GRANT "${firebaseOwnerRole}" TO "cloudsqlsuperuser"`,
+    // We grant owner to cloudsqlsuperuser because only the owner can alter the schema owner.
+    // It's also needed for the reader and write roles setup as only owner can alter schema defaults.
+    `GRANT "${firebaseOwnerRole}" TO "cloudsqlsuperuser"`,
 
-        `ALTER SCHEMA "${schema}" OWNER TO "${firebaseOwnerRole}"`,
-        `GRANT USAGE ON SCHEMA "${schema}" TO "${firebaseOwnerRole}"`,
-        `GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA "${schema}" TO "${firebaseOwnerRole}"`,
-        `GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA "${schema}" TO "${firebaseOwnerRole}"`
-    ]
+    `ALTER SCHEMA "${schema}" OWNER TO "${firebaseOwnerRole}"`,
+    `GRANT USAGE ON SCHEMA "${schema}" TO "${firebaseOwnerRole}"`,
+    `GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA "${schema}" TO "${firebaseOwnerRole}"`,
+    `GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA "${schema}" TO "${firebaseOwnerRole}"`,
+  ];
 }
 
-// The SQL permissions required for a role to read/write the FDC databases. 
+// The SQL permissions required for a role to read/write the FDC databases.
 // Requires the firebase_owner_* role to be the owner of the schema for default permissions.
 function writerRolePermissions(databaseId: string, superuser: string, schema: string): string[] {
-    const firebaseWriterRole = firebasewriter(databaseId)
-    return [
-        `do
+  const firebaseWriterRole = firebasewriter(databaseId);
+  return [
+    `do
         $$
         begin
           if not exists (select FROM pg_catalog.pg_roles
@@ -132,36 +129,35 @@ function writerRolePermissions(databaseId: string, superuser: string, schema: st
         $$
       ;`,
 
-        `GRANT "${firebaseWriterRole}" TO "cloudsqlsuperuser"`,
+    `GRANT "${firebaseWriterRole}" TO "cloudsqlsuperuser"`,
 
-        `GRANT USAGE ON SCHEMA "${schema}" TO "${firebaseWriterRole}"`,
+    `GRANT USAGE ON SCHEMA "${schema}" TO "${firebaseWriterRole}"`,
 
-        // Grant writer role SELECT, INSERT, UPDATE, DELETE on all tables
-        // (You might want to exclude certain sensitive tables)
-        `GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA "${schema}" TO "${firebaseWriterRole}"`,
+    // Grant writer role SELECT, INSERT, UPDATE, DELETE on all tables
+    // (You might want to exclude certain sensitive tables)
+    `GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA "${schema}" TO "${firebaseWriterRole}"`,
 
-        // Grant writer usage on sequences for nextval() in inserts
-        `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA "${schema}" TO "${firebaseWriterRole}"`,
+    // Grant writer usage on sequences for nextval() in inserts
+    `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA "${schema}" TO "${firebaseWriterRole}"`,
 
-        // Grant execution on function which could be needed by some extensions.
-        `GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA "${schema}" TO "${firebaseWriterRole}"`,
+    // Grant execution on function which could be needed by some extensions.
+    `GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA "${schema}" TO "${firebaseWriterRole}"`,
 
-        // Set reader defaults for new tables
-        `SET ROLE = '${firebaseowner(databaseId)}';`,
-        `ALTER DEFAULT PRIVILEGES IN SCHEMA "${schema}" GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE ON TABLES TO "${firebaseWriterRole}";`,
-        `ALTER DEFAULT PRIVILEGES IN SCHEMA "${schema}" GRANT USAGE ON SEQUENCES TO "${firebaseWriterRole}";`,
-        `ALTER DEFAULT PRIVILEGES IN SCHEMA "${schema}" GRANT EXECUTE ON FUNCTIONS TO "${firebaseWriterRole}"`,
-        `SET ROLE = cloudsqlsuperuser`
-    ]
+    // Set reader defaults for new tables
+    `SET ROLE = '${firebaseowner(databaseId)}';`,
+    `ALTER DEFAULT PRIVILEGES IN SCHEMA "${schema}" GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE ON TABLES TO "${firebaseWriterRole}";`,
+    `ALTER DEFAULT PRIVILEGES IN SCHEMA "${schema}" GRANT USAGE ON SEQUENCES TO "${firebaseWriterRole}";`,
+    `ALTER DEFAULT PRIVILEGES IN SCHEMA "${schema}" GRANT EXECUTE ON FUNCTIONS TO "${firebaseWriterRole}"`,
+    `SET ROLE = cloudsqlsuperuser`,
+  ];
 }
 
-
-// The SQL permissions required for a role to read the FDC databases. 
+// The SQL permissions required for a role to read the FDC databases.
 // Requires the firebase_owner_* role to be the owner of the schema for default permissions.
 function readerRolePermissions(databaseId: string, superuser: string, schema: string): string[] {
-    const firebaseReaderRole = firebasereader(databaseId)
-    return [
-        `do
+  const firebaseReaderRole = firebasereader(databaseId);
+  return [
+    `do
         $$
         begin
           if not exists (select FROM pg_catalog.pg_roles
@@ -171,82 +167,89 @@ function readerRolePermissions(databaseId: string, superuser: string, schema: st
         end
         $$
       ;`,
-        
-        `GRANT "${firebaseReaderRole}" TO "cloudsqlsuperuser"`,
 
-        `GRANT USAGE ON SCHEMA "${schema}" TO "${firebaseReaderRole}"`,
+    `GRANT "${firebaseReaderRole}" TO "cloudsqlsuperuser"`,
 
-        `GRANT SELECT ON ALL TABLES IN SCHEMA "${schema}" TO "${firebaseReaderRole}"`,
+    `GRANT USAGE ON SCHEMA "${schema}" TO "${firebaseReaderRole}"`,
 
-        // Grant reader usage on sequences for nextval()
-        `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA "${schema}" TO "${firebaseReaderRole}"`,
+    `GRANT SELECT ON ALL TABLES IN SCHEMA "${schema}" TO "${firebaseReaderRole}"`,
 
-        // Grant execution on function which could be needed by some extensions.
-        `GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA "${schema}" TO "${firebaseReaderRole}"`,
+    // Grant reader usage on sequences for nextval()
+    `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA "${schema}" TO "${firebaseReaderRole}"`,
 
-        // Set reader defaults for new tables.
-        // Only the owner of the schema can set defaults.
-        `SET ROLE = '${firebaseowner(databaseId)}';`,
-        `ALTER DEFAULT PRIVILEGES IN SCHEMA "${schema}" GRANT SELECT ON TABLES TO "${firebaseReaderRole}";`,
-        `ALTER DEFAULT PRIVILEGES IN SCHEMA "${schema}" GRANT SELECT, USAGE ON SEQUENCES TO "${firebaseReaderRole}";`,
-        `ALTER DEFAULT PRIVILEGES IN SCHEMA "${schema}" GRANT EXECUTE ON FUNCTIONS TO "${firebaseReaderRole}"`,
-        `SET ROLE = cloudsqlsuperuser`,
-    ]
+    // Grant execution on function which could be needed by some extensions.
+    `GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA "${schema}" TO "${firebaseReaderRole}"`,
+
+    // Set reader defaults for new tables.
+    // Only the owner of the schema can set defaults.
+    `SET ROLE = '${firebaseowner(databaseId)}';`,
+    `ALTER DEFAULT PRIVILEGES IN SCHEMA "${schema}" GRANT SELECT ON TABLES TO "${firebaseReaderRole}";`,
+    `ALTER DEFAULT PRIVILEGES IN SCHEMA "${schema}" GRANT SELECT, USAGE ON SEQUENCES TO "${firebaseReaderRole}";`,
+    `ALTER DEFAULT PRIVILEGES IN SCHEMA "${schema}" GRANT EXECUTE ON FUNCTIONS TO "${firebaseReaderRole}"`,
+    `SET ROLE = cloudsqlsuperuser`,
+  ];
 }
 
 // Sets up all FDC roles (owner, writer, and reader).
 // Creates the P4SA database user and grants it writer role.
 // Returns the superuser name and password if further setup is needed by caller (e.g Granting roles to users).
 export async function setupSQLPermissions(
-    instanceId: string,
-    databaseId: string,
-    options: Options,
-    silent:boolean = false
-  ){
+  instanceId: string,
+  databaseId: string,
+  options: Options,
+  silent: boolean = false,
+) {
+  const projectId = needProjectId(options);
 
-    const projectId = needProjectId(options);
+  // 1. Create a temporary builtin user
+  const superuser = "firebasesuperuser";
+  const temporaryPassword = utils.generateId(20);
+  await cloudSqlAdminClient.createUser(
+    projectId,
+    instanceId,
+    "BUILT_IN",
+    superuser,
+    temporaryPassword,
+  );
 
-    // 1. Create a temporary builtin user
-    const superuser = "firebasesuperuser";
-    const temporaryPassword = utils.generateId(20);
-    await cloudSqlAdminClient.createUser(
-      projectId,
+  // 2. Upsert dataconnenct P4SA user in case it's not created.
+  const projectNumber = await needProjectNumber(options);
+  const { user: dataconnectDBUser, mode } = toDatabaseUser(getDataConnectP4SA(projectNumber));
+  await cloudSqlAdminClient.createUser(projectId, instanceId, mode, dataconnectDBUser);
+
+  // 3. Detect the minimal necessary revokes to avoid errors for users who used the old sql permissions setup.
+  const revokes = [];
+  if (
+    await checkRoleIsGranted(
+      options,
       instanceId,
-      "BUILT_IN",
-      superuser,
-      temporaryPassword,
-    );
-
-
-    // 2. Upsert dataconnenct P4SA user in case it's not created.
-    const projectNumber = await needProjectNumber(options);
-    const {user: dataconnectDBUser, mode} = toDatabaseUser(getDataConnectP4SA(projectNumber))
-    await cloudSqlAdminClient.createUser(projectId, instanceId, mode, dataconnectDBUser);
-
-
-    // 3. Detect the minimal necessary revokes to avoid errors for users who used the old sql permissions setup.
-    const revokes = []
-    if(await check_role_is_granted(options, instanceId, databaseId, "cloudsqlsuperuser", firebaseowner(databaseId))) {
-      logger.warn("Detected cloudsqlsuperuser was previously given to firebase owner, revoking to improve database security.")
-      revokes.push(`REVOKE "cloudsqlsuperuser" FROM "${firebaseowner(databaseId)}"`)
-    }
-
-    const roles_setup = concat(
-        // For backward compatibality we sometimes need to revoke some roles
-        revokes,
-
-        // Create and setup the owner role permissions.
-        ownerRolePermissions(databaseId, superuser, "public"),
-
-        // Create and setup writer role permissions.
-        writerRolePermissions(databaseId, superuser, "public"),
-
-        // Create and setup reader role permissions.
-        readerRolePermissions(databaseId, superuser, "public"),
-
-        // Grant FDC P4SA database user the writer role.
-        [`GRANT "${firebasewriter(databaseId)}" TO "${dataconnectDBUser}"`],
+      databaseId,
+      "cloudsqlsuperuser",
+      firebaseowner(databaseId),
     )
+  ) {
+    logger.warn(
+      "Detected cloudsqlsuperuser was previously given to firebase owner, revoking to improve database security.",
+    );
+    revokes.push(`REVOKE "cloudsqlsuperuser" FROM "${firebaseowner(databaseId)}"`);
+  }
 
-    return executeSqlCmdsAsSuperUser(options, instanceId, databaseId, roles_setup, silent)
+  const sqlRoleSetupCmds = concat(
+    // For backward compatibality we sometimes need to revoke some roles
+    revokes,
+
+    // Create and setup the owner role permissions.
+    ownerRolePermissions(databaseId, superuser, "public"),
+
+    // Create and setup writer role permissions.
+    writerRolePermissions(databaseId, superuser, "public"),
+
+    // Create and setup reader role permissions.
+    readerRolePermissions(databaseId, superuser, "public"),
+
+    // Grant FDC P4SA database user the writer role.
+    [`GRANT "${firebasewriter(databaseId)}" TO "${dataconnectDBUser}"`],
+  );
+
+  return executeSqlCmdsAsSuperUser(options, instanceId, databaseId, sqlRoleSetupCmds, silent);
 }

@@ -10,7 +10,7 @@ import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { Options } from "../../options";
 import { FBToolsAuthClient } from "./fbToolsAuthClient";
-import {setupSQLPermissions, firebaseowner } from './permissions'
+import { setupSQLPermissions, firebaseowner } from "./permissions";
 
 export async function execute(
   sqlStatements: string[],
@@ -106,26 +106,35 @@ export async function execute(
   connector.close();
 }
 
-export async function executeSqlCmdsAsIamUser(options:Options, instanceId: string, databaseId: string, cmds: string[], silent=false): Promise<void> {
+export async function executeSqlCmdsAsIamUser(
+  options: Options,
+  instanceId: string,
+  databaseId: string,
+  cmds: string[],
+  silent = false,
+): Promise<void> {
   const projectId = needProjectId(options);
-  const {user:iamUser} = await getIAMUser(options)
+  const { user: iamUser } = await getIAMUser(options);
 
-   return await execute(
-      cmds,
-      {
-        projectId,
-        instanceId,
-        databaseId,
-        username: iamUser,
-        silent: silent
-      },
-    );
+  return await execute(cmds, {
+    projectId,
+    instanceId,
+    databaseId,
+    username: iamUser,
+    silent: silent,
+  });
 }
 
 // Note this will change the password of the builtin firebasesuperuser user on every invocation.
 // The role is set to 'cloudsqlsuperuser' (not the builtin user) unless SET ROLE is explicitly
 // set in the commands.
-export async function executeSqlCmdsAsSuperUser(options:Options, instanceId: string, databaseId: string, cmds: string[], silent=false) {
+export async function executeSqlCmdsAsSuperUser(
+  options: Options,
+  instanceId: string,
+  databaseId: string,
+  cmds: string[],
+  silent = false,
+) {
   const projectId = needProjectId(options);
   // 1. Create a temporary builtin user
   const superuser = "firebasesuperuser";
@@ -138,10 +147,7 @@ export async function executeSqlCmdsAsSuperUser(options:Options, instanceId: str
     temporaryPassword,
   );
 
-  return await execute([
-    `SET ROLE = cloudsqlsuperuser`,
-    ...cmds
-  ], {
+  return await execute([`SET ROLE = cloudsqlsuperuser`, ...cmds], {
     projectId,
     instanceId,
     databaseId,
@@ -151,7 +157,7 @@ export async function executeSqlCmdsAsSuperUser(options:Options, instanceId: str
   });
 }
 
-export async function getIAMUser(options:Options): Promise<{user:string, mode:UserType}>{
+export async function getIAMUser(options: Options): Promise<{ user: string; mode: UserType }> {
   const account = await requireAuth(options);
   if (!account) {
     throw new FirebaseError(
@@ -182,17 +188,14 @@ export async function setupIAMUser(
   await cloudSqlAdminClient.createUser(projectId, instanceId, mode, user);
 
   // 2. Setup FDC required SQL roles and permissions.
-  await setupSQLPermissions(instanceId, databaseId, options, true)
+  await setupSQLPermissions(instanceId, databaseId, options, true);
 
   // 3. Grant firebaseowner role to the IAM user.
-  const grants = [
-    `GRANT "${firebaseowner(databaseId)}" TO "${user}"`,
-  ]
+  const grants = [`GRANT "${firebaseowner(databaseId)}" TO "${user}"`];
 
-  await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, grants, true)
+  await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, grants, true);
   return user;
 }
-
 
 // Converts a account name to the equivalent SQL user.
 // - Postgres: https://cloud.google.com/sql/docs/postgres/iam-logins#log-in-with-automatic
