@@ -1,0 +1,1 @@
+- Fixed an issue where functions deployment would fail if `firebase.json#extensions` was undefined. (#7575)
