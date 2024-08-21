@@ -101,15 +101,15 @@ function ownerRolePermissions(databaseId: string, superuser: string, schema: str
   const firebaseOwnerRole = firebaseowner(databaseId);
   return [
     `do
-        $$
-        begin
-          if not exists (select FROM pg_catalog.pg_roles
-            WHERE  rolname = '${firebaseOwnerRole}') then
-            CREATE ROLE "${firebaseOwnerRole}" WITH ADMIN "${superuser}";
-          end if;
-        end
-        $$
-        ;`,
+      $$
+      begin
+        if not exists (select FROM pg_catalog.pg_roles
+          WHERE  rolname = '${firebaseOwnerRole}') then
+          CREATE ROLE "${firebaseOwnerRole}" WITH ADMIN "${superuser}";
+        end if;
+      end
+      $$
+    ;`,
 
     // We grant owner to cloudsqlsuperuser because only the owner can alter the schema owner.
     // It's also needed for the reader and write roles setup as only owner can alter schema defaults.
@@ -128,15 +128,15 @@ function writerRolePermissions(databaseId: string, superuser: string, schema: st
   const firebaseWriterRole = firebasewriter(databaseId);
   return [
     `do
-        $$
-        begin
-          if not exists (select FROM pg_catalog.pg_roles
-            WHERE  rolname = '${firebaseWriterRole}') then
-            CREATE ROLE "${firebaseWriterRole}" WITH ADMIN "${superuser}";
-          end if;
-        end
-        $$
-      ;`,
+      $$
+      begin
+        if not exists (select FROM pg_catalog.pg_roles
+          WHERE  rolname = '${firebaseWriterRole}') then
+          CREATE ROLE "${firebaseWriterRole}" WITH ADMIN "${superuser}";
+        end if;
+      end
+      $$
+    ;`,
 
     `GRANT "${firebaseWriterRole}" TO "cloudsqlsuperuser"`,
 
@@ -167,15 +167,15 @@ function readerRolePermissions(databaseId: string, superuser: string, schema: st
   const firebaseReaderRole = firebasereader(databaseId);
   return [
     `do
-        $$
-        begin
-          if not exists (select FROM pg_catalog.pg_roles
-            WHERE  rolname = '${firebaseReaderRole}') then
-            CREATE ROLE "${firebaseReaderRole}" WITH ADMIN "${superuser}";
-          end if;
-        end
-        $$
-      ;`,
+      $$
+      begin
+        if not exists (select FROM pg_catalog.pg_roles
+          WHERE  rolname = '${firebaseReaderRole}') then
+          CREATE ROLE "${firebaseReaderRole}" WITH ADMIN "${superuser}";
+        end if;
+      end
+      $$
+    ;`,
 
     `GRANT "${firebaseReaderRole}" TO "cloudsqlsuperuser"`,
 
