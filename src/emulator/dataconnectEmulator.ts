@@ -274,8 +274,11 @@ Run ${clc.bold("firebase setup:emulators:dataconnect")} to set up a Postgres con
     const MAX_RETRIES = 3;
     for (let i = 1; i <= MAX_RETRIES; i++) {
       try {
-        this.logger.logLabeled("DEBUG", "Data Connect", `Connecting to ${connectionString}}`);
+        this.logger.logLabeled("DEBUG", "Data Connect", `Connecting to ${connectionString}}...`);
         await this.emulatorClient.configureEmulator({ connectionString, database, serviceId });
+        this.logger.logLabeled("DEBUG", "Data Connect", `Successfully connected to ${connectionString}}`)
+        const info = await this.emulatorClient.getInfo();
+        console.log(JSON.stringify(info));
         return true;
       } catch (err: any) {
         if (i === MAX_RETRIES) {

@@ -4,12 +4,15 @@ import { PGlite } from '@electric-sql/pglite';
 // This is hideous, but I'm not trying to migrate to module: node16 as part of
 // const { dynamicImport } = require(true && "../../dynamicImport");
 import * as net from 'node:net';
-import { BackendError, PostgresConnection } from './pgGateway';
+import { BackendError, PostgresConnection, FrontendMessageCode } from './pgGateway';
+import { MessageName } from 'pg-protocol/dist/messages';
 export class PostgresServer {
   public callCount = 0;
-  public db: PGlite;
+  private username: string;
+  private database: string;
+  public db: PGlite | undefined;
   public async createPGServer(): Promise<net.Server> {
-    const db: PGlite = this.db;
+    const db: PGlite = await this.getDb();
     await db.waitReady;
     const server = net.createServer(function(socket) {
       console.log("starting!");
@@ -24,61 +27,28 @@ export class PostgresServer {
 
         // Hook into each client message
         async onMessage(data, { isAuthenticated }) {
-          console.log("Got a message");
           // Only forward messages to PGlite after authentication
           if (!isAuthenticated) {
             console.log("WE ARE NOT AUTHENTICATED");
             return false;
           }
-      
-            // Forward raw message to PGlite
-            try {
-              const val = await db.execProtocolRaw(data);
-              // const [[_, responseData]] = val;
-              // const responseData = mergeArrays(val);
-              connection.sendData(val);
-            } catch (err) {
-              console.log(`error is ${err}`);
-              connection.sendError(err as BackendError);
-              connection.sendReadyForQuery();
-            }
-            return true;
-          // try {
-          //   const res = await db.execProtocol(data);
-          //   if (!res.length) {
-          //     console.log("Seems like we're breaking here on describe statements?");
-          //     // connection.sendData(new Uint8Array());
-          //     const hc = await db.query("SELECT 'HELLO WORLD';");
-          //     console.log(hc);
-          //     return true;
-          //   } else {
-
-          //     console.log("But this works fine?");
-          //     const [[br, responseData]] = res;
-          //     connection.sendData(responseData);
-          //   }
-          // } catch (err) {
-          //   console.log("error is", err);
-          //   connection.sendError(err as BackendError);
-          //   connection.sendReadyForQuery();
-          // }
-          // return true;
-        },
-
-        async onQuery(query, state) {
-
           try {
-            const result = await db.query(query);
-            console.log("Result is ", result);
-            // const data = new Uint8Array(result);
-            connection.sendData(result.blob);
+            const val = await db.execProtocol(data);
+            const typesToSend: MessageName[] = ["dataRow", "emptyQuery", "parseComplete"];
+            const v = val.find((v) => {
+              console.log(v[0].name);
+              return typesToSend.includes(v[0].name)
+            })
+            if (v) {
+              connection.sendData(v[1]);
+            }
           } catch (err) {
-            console.log("error is", err);
+            console.log(`error is ${err}`);
             connection.sendError(err as BackendError);
             connection.sendReadyForQuery();
           }
-          return new Uint8Array();
-        }
+          return true;
+        },
       });
 
       socket.on('end', () => {
@@ -87,8 +57,6 @@ export class PostgresServer {
     });
     let listeningPromise = new Promise<void>((resolve, reject) => {
       server.listen(5432, "127.0.0.1", () => {
-        console.log('opened server on', server.address());
-        console.log(server.listening);
         resolve();
       });
     })
@@ -98,24 +66,31 @@ export class PostgresServer {
     return server;
   }
 
+  async getDb(): Promise<PGlite> {
+    if (this.db) {
+      return this.db
+    }
+    return PGlite.create({
+      // dataDir?: string;
+        username: this.username,
+        database: this.database,
+      // fs?: Filesystem;
+        debug: 0,
+      // relaxedDurability?: boolean;
+        extensions: {
+          // vector,
+          // uuid_ossp
+        },
+      // loadDataDir?: Blob | File;
+      // initialMemory?: number;
+      })
+  }
 
   constructor(database: string, username: string) {
     // const vector = dynamicImport('@electric-sql/pglite/vector');
     // const uuid_ossp = dynamicImport('@electric-sql/pglite/contrib/uuid_ossp');
-    this.db = new PGlite({
-    // dataDir?: string;
-      username,
-      database,
-    // fs?: Filesystem;
-    // debug: 5,
-    // relaxedDurability?: boolean;
-      extensions: {
-        // vector,
-        // uuid_ossp
-      },
-    // loadDataDir?: Blob | File;
-    // initialMemory?: number;
-    });
+    this.username = username;
+    this.database = database;
   }
 }
 

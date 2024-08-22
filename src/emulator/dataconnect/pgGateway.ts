@@ -190,6 +190,7 @@ export type PostgresConnectionOptions = {
    * TODO: change return signature to be more developer-friendly
    * and then translate to wire protocol.
    */
+  // This currently 
   onQuery?(query: string, state: State): Uint8Array | Promise<Uint8Array>;
 };
 
@@ -608,11 +609,10 @@ export class PostgresConnection {
         console.log(`Query: ${query}`);
 
         if (this.options?.onQuery) {
+          // Idea: New signature for onQuery 
           await this.options.onQuery(query, this.state)
           return;
         }
-
-        // TODO: call `onQuery` hook to allow consumer to choose how queries are implemented
 
         this.sendError({
           severity: 'ERROR',
