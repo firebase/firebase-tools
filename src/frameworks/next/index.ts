@@ -6,7 +6,7 @@ import type { NextConfig } from "next";
 import type { PrerenderManifest } from "next/dist/build";
 import type { DomainLocale } from "next/dist/server/config";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
-import { copy, mkdirp, pathExists, pathExistsSync } from "fs-extra";
+import { copy, mkdirp, pathExists, pathExistsSync, readFile } from "fs-extra";
 import { pathToFileURL, parse } from "url";
 import { gte } from "semver";
 import { IncomingMessage, ServerResponse } from "http";
@@ -82,6 +82,7 @@ import {
 } from "./constants";
 import { getAllSiteDomains, getDeploymentDomain } from "../../hosting/api";
 import { logger } from "../../logger";
+import { parseStrict } from "../../functions/env";
 
 const DEFAULT_BUILD_SCRIPT = ["next build"];
 const PUBLIC_DIR = "public";
@@ -126,7 +127,19 @@ export async function build(
     process.env.__NEXT_REACT_ROOT = "true";
   }
 
-  const env = { ...process.env };
+  let env = { ...process.env };
+
+  // Check if the .env.<PROJECT-ID> file exists and make it available for the build process
+  if (context?.projectId) {
+    const projectEnvPath = join(dir, `.env.${context.projectId}`);
+
+    if (await pathExists(projectEnvPath)) {
+      const projectEnvVars = parseStrict((await readFile(projectEnvPath)).toString());
+
+      // Merge the parsed variables with the existing environment variables
+      env = { ...projectEnvVars, ...env };
+    }
+  }
 
   if (context?.projectId && context?.site) {
     const deploymentDomain = await getDeploymentDomain(
