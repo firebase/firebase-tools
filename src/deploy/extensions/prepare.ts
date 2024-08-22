@@ -188,7 +188,7 @@ export async function prepareDynamicExtensions(
       projectNumber,
       aliases,
       projectDir,
-      extensions: options.config.get("extensions"),
+      extensions: options.config.get("extensions", {}),
     });
     noDeleteExtensions = noDeleteExtensions.concat(firebaseJsonWant);
     if (hasNonDeployingCodebases(options)) {
@@ -242,7 +242,7 @@ export async function prepare(context: Context, options: Options, payload: Paylo
     projectNumber,
     aliases,
     projectDir,
-    extensions: options.config.get("extensions"),
+    extensions: options.config.get("extensions", {}),
   });
   const dynamicWant = await planner.wantDynamic({
     projectId,
