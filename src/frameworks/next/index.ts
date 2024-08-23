@@ -52,7 +52,6 @@ import {
   getHeadersFromMetaFiles,
   cleanI18n,
   getNextVersion,
-  hasStaticAppNotFoundComponent,
   getRoutesWithServerAction,
   getProductionDistDirFiles,
   whichNextConfigFile,
@@ -271,7 +270,7 @@ export async function build(
       const notFoundPageKey = ["/_not-found", "/_not-found/page"].find((key) =>
         unrenderedServerComponents.has(key),
       );
-      if (notFoundPageKey && (await hasStaticAppNotFoundComponent(dir, distDir))) {
+      if (notFoundPageKey) {
         unrenderedServerComponents.delete(notFoundPageKey);
       }
 

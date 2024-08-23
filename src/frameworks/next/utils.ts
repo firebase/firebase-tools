@@ -423,20 +423,6 @@ export function getNextVersion(cwd: string): string | undefined {
 }
 
 /**
- * Whether the Next.js project has a static `not-found` page in the app directory.
- *
- * The Next.js build manifests are misleading regarding the existence of a static
- * `not-found` component. Therefore, we check if a `_not-found.html` file exists
- * in the generated app directory files to know whether `not-found` is static.
- */
-export async function hasStaticAppNotFoundComponent(
-  sourceDir: string,
-  distDir: string,
-): Promise<boolean> {
-  return pathExists(join(sourceDir, distDir, "server", "app", "_not-found.html"));
-}
-
-/**
  * Find routes using server actions by checking the server-reference-manifest.json
  */
 export function getRoutesWithServerAction(
