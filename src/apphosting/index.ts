@@ -40,15 +40,13 @@ async function tlsReady(url: string): Promise<boolean> {
   // Note, we do not use the helper libraries because they impose additional logic on content type and parsing.
   try {
     await fetch(url);
-    console.error("TLS READY");
     return true;
   } catch (err) {
-    console.error("TLS NOT READY. Error is", JSON.stringify(err, null, 2));
     // At the time of this writing, the error code is ERR_SSL_SSLV3_ALERT_HANDSHAKE_FAILURE.
     // I've chosen to use a regexp in an attempt to be forwards compatible with new versions of
     // SSL.
-    const maybeNodeError = err as { cause: { code: string } };
-    if (/HANDSHAKE_FAILURE/.test(maybeNodeError?.cause?.code)) {
+    const maybeNodeError = err as { cause: { code: string }, code: string };
+    if (/HANDSHAKE_FAILURE/.test(maybeNodeError?.cause?.code) || "EPROTO" === maybeNodeError?.code) {
       return false;
     }
     return true;
