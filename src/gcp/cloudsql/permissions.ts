@@ -77,14 +77,11 @@ export async function checkRoleIsGranted(
 export async function iamUserIsCSQLAdmin(options: Options): Promise<boolean> {
   const projectId = needProjectId(options);
   const requiredPermissions = [
-    "cloudsql.databases.create",
-    "cloudsql.databases.update",
+    "cloudsql.instances.login",
     "cloudsql.instances.connect",
-    "cloudsql.instances.create",
     "cloudsql.instances.get",
-    "cloudsql.instances.list",
-    "cloudsql.instances.update",
     "cloudsql.users.create",
+    "cloudsql.users.update",
   ];
 
   try {
@@ -209,24 +206,14 @@ export async function setupSQLPermissions(
   silent: boolean = false,
 ) {
   const projectId = needProjectId(options);
-
-  // 1. Create a temporary builtin user
   const superuser = "firebasesuperuser";
-  const temporaryPassword = utils.generateId(20);
-  await cloudSqlAdminClient.createUser(
-    projectId,
-    instanceId,
-    "BUILT_IN",
-    superuser,
-    temporaryPassword,
-  );
 
-  // 2. Upsert dataconnenct P4SA user in case it's not created.
+  // 1. Upsert dataconnenct P4SA user in case it's not created.
   const projectNumber = await needProjectNumber(options);
   const { user: dataconnectDBUser, mode } = toDatabaseUser(getDataConnectP4SA(projectNumber));
   await cloudSqlAdminClient.createUser(projectId, instanceId, mode, dataconnectDBUser);
 
-  // 3. Detect the minimal necessary revokes to avoid errors for users who used the old sql permissions setup.
+  // 2. Detect the minimal necessary revokes to avoid errors for users who used the old sql permissions setup.
   const revokes = [];
   if (
     await checkRoleIsGranted(
