@@ -13,12 +13,6 @@ export class AppHostingEmulator implements EmulatorInstance {
     this.args.options.host = this.args.host;
     this.args.options.port = this.args.port;
 
-    // const { ports } = await serveHosting.start(this.args.options);
-    // this.args.port = ports[0];
-    // if (ports.length > 1) {
-    //   this.reservedPorts = ports.slice(1);
-    // }
-
     console.log("starting apphosting emulator");
     const { port } = await apphostingStart(this.args.options);
     console.log(`serving on port ${port}`);

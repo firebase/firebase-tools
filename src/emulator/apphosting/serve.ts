@@ -2,7 +2,6 @@
  * Start the App Hosting server.
  * @param options the Firebase CLI options.
  */
-import { spawn } from "cross-spawn";
 import { isIPv4 } from "net";
 import { checkListenable } from "../portUtils";
 import { EmulatorLogger } from "../../emulator/emulatorLogger";
@@ -34,25 +33,12 @@ function availablePort(host: string, port: number): Promise<boolean> {
 }
 
 export async function serve(options: any, port: string) {
-  console.log(`current working directory: ${process.cwd()}`);
   const host = new Promise<string>(async (resolve, reject) => {
     const serve = await wrapSpawn(
       "npm",
       ["run", "dev", "--", `-H`, options.host, `-p`, port],
       process.cwd(),
     );
-    // serve.on("error", function (err) {
-    //   console.log("error: " + JSON.stringify(err));
-    // });
-    // serve.stdout.on("data", (data: any) => {
-    //   process.stdout.write(data);
-    //   const match = data.toString().match(/(http:\/\/localhost:\d+)/);
-    //   if (match) resolve(match[1]);
-    // });
-    // serve.stderr.on("data", (data: any) => {
-    //   process.stderr.write(data);
-    // });
-    // serve.on("exit", reject);
   });
 
   return host;
