@@ -5,7 +5,6 @@ import { toDatabaseUser, executeSqlCmdsAsIamUser, executeSqlCmdsAsSuperUser } fr
 import { testIamPermissions } from "../iam";
 import { logger } from "../../logger";
 import { concat } from "lodash";
-import * as utils from "../../utils";
 import * as cloudSqlAdminClient from "./cloudsqladmin";
 import { FirebaseError } from "../../error";
 
