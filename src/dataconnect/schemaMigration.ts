@@ -250,7 +250,7 @@ async function handleIncompatibleSchemaError(args: {
         instanceId,
         databaseId,
         commandsToExecuteBySuperUser,
-        false,
+        /** silent=*/ false,
       );
     }
 
@@ -260,7 +260,7 @@ async function handleIncompatibleSchemaError(args: {
         instanceId,
         databaseId,
         [`SET ROLE "${firebaseowner(databaseId)}"`, ...commandsToExecuteByOwner],
-        false,
+        /** silent=*/ false,
       );
       return incompatibleSchemaError.diffs;
     }

@@ -54,7 +54,7 @@ export async function checkRoleIsGranted(
     END $$;
 `;
   try {
-    await executeSqlCmdsAsIamUser(options, instanceId, databaseId, [checkCmd], true);
+    await executeSqlCmdsAsIamUser(options, instanceId, databaseId, [checkCmd], /** silent=*/ true);
     return true;
   } catch (e) {
     // We only return false after we confirm the error is indeed because the role isn't granted.

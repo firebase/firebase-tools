@@ -211,7 +211,7 @@ export async function setupIAMUsers(
     `GRANT "${firebasewriter(databaseId)}" TO "${fdcP4SAUser}"`,
   ];
 
-  await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, grants, true);
+  await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, grants, /** silent=*/ true);
   return user;
 }
 
