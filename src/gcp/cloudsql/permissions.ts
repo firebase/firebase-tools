@@ -210,8 +210,8 @@ export async function setupSQLPermissions(
 
   // 1. Upsert dataconnenct P4SA user in case it's not created.
   const projectNumber = await needProjectNumber(options);
-  const { user: dataconnectDBUser, mode } = toDatabaseUser(getDataConnectP4SA(projectNumber));
-  await cloudSqlAdminClient.createUser(projectId, instanceId, mode, dataconnectDBUser);
+  const { user: fdcP4SAUser, mode } = toDatabaseUser(getDataConnectP4SA(projectNumber));
+  await cloudSqlAdminClient.createUser(projectId, instanceId, mode, fdcP4SAUser);
 
   // 2. Detect the minimal necessary revokes to avoid errors for users who used the old sql permissions setup.
   const revokes = [];
@@ -247,7 +247,7 @@ export async function setupSQLPermissions(
     readerRolePermissions(databaseId, superuser, "public"),
 
     // Grant FDC P4SA database user the writer role.
-    [`GRANT "${firebasewriter(databaseId)}" TO "${dataconnectDBUser}"`],
+    [`GRANT "${firebasewriter(databaseId)}" TO "${fdcP4SAUser}"`],
   );
 
   return executeSqlCmdsAsSuperUser(options, instanceId, databaseId, sqlRoleSetupCmds, silent);
