@@ -1,5 +1,6 @@
 import { ChildProcess } from "child_process";
 import { EventEmitter } from "events";
+import * as experiments from "../experiments";
 
 export enum Emulators {
   AUTH = "auth",
@@ -49,7 +50,7 @@ export const ALL_SERVICE_EMULATORS = [
   Emulators.FIRESTORE,
   Emulators.DATABASE,
   Emulators.HOSTING,
-  Emulators.APPHOSTING,
+  ...(experiments.isEnabled("emulatorapphosting") ? [Emulators.APPHOSTING] : []),
   Emulators.PUBSUB,
   Emulators.STORAGE,
   Emulators.EVENTARC,

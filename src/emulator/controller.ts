@@ -889,15 +889,17 @@ export async function startAll(
 
   // similar to the hosting emulator, the App Hosting emulator should also
   // start after the other emulators
-  if (listenForEmulator.apphosting) {
-    const apphostingAddr = legacyGetFirstAddr(Emulators.APPHOSTING);
-    const apphostingEmulator = new AppHostingEmulator({
-      host: apphostingAddr.host,
-      port: apphostingAddr.port,
-      options,
-    });
+  if (experiments.isEnabled("emulatorapphosting")) {
+    if (listenForEmulator.apphosting) {
+      const apphostingAddr = legacyGetFirstAddr(Emulators.APPHOSTING);
+      const apphostingEmulator = new AppHostingEmulator({
+        host: apphostingAddr.host,
+        port: apphostingAddr.port,
+        options,
+      });
 
-    await startEmulator(apphostingEmulator);
+      await startEmulator(apphostingEmulator);
+    }
   }
 
   if (listenForEmulator.logging) {
