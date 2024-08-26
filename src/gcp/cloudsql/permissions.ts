@@ -1,11 +1,9 @@
 import { Options } from "../../options";
-import { needProjectId, needProjectNumber } from "../../projectUtils";
-import { dataconnectP4SADomain } from "../../api";
-import { toDatabaseUser, executeSqlCmdsAsIamUser, executeSqlCmdsAsSuperUser } from "./connect";
+import { needProjectId } from "../../projectUtils";
+import { executeSqlCmdsAsIamUser, executeSqlCmdsAsSuperUser } from "./connect";
 import { testIamPermissions } from "../iam";
 import { logger } from "../../logger";
 import { concat } from "lodash";
-import * as cloudSqlAdminClient from "./cloudsqladmin";
 import { FirebaseError } from "../../error";
 
 export function firebaseowner(databaseId: string) {
@@ -18,10 +16,6 @@ export function firebasereader(databaseId: string) {
 
 export function firebasewriter(databaseId: string) {
   return `firebasewriter_${databaseId}_public`;
-}
-
-export function getDataConnectP4SA(projectNumber: string): string {
-  return `service-${projectNumber}@${dataconnectP4SADomain()}`;
 }
 
 // Returns true if "grantedRole" is granted to "granteeRole" and false otherwise.
@@ -196,23 +190,16 @@ function readerRolePermissions(databaseId: string, superuser: string, schema: st
 }
 
 // Sets up all FDC roles (owner, writer, and reader).
-// Creates the P4SA database user and grants it writer role.
-// Returns the superuser name and password if further setup is needed by caller (e.g Granting roles to users).
+// Granting roles to users is done by the caller.
 export async function setupSQLPermissions(
   instanceId: string,
   databaseId: string,
   options: Options,
   silent: boolean = false,
 ) {
-  const projectId = needProjectId(options);
   const superuser = "firebasesuperuser";
 
-  // 1. Upsert dataconnenct P4SA user in case it's not created.
-  const projectNumber = await needProjectNumber(options);
-  const { user: fdcP4SAUser, mode } = toDatabaseUser(getDataConnectP4SA(projectNumber));
-  await cloudSqlAdminClient.createUser(projectId, instanceId, mode, fdcP4SAUser);
-
-  // 2. Detect the minimal necessary revokes to avoid errors for users who used the old sql permissions setup.
+  // Detect the minimal necessary revokes to avoid errors for users who used the old sql permissions setup.
   const revokes = [];
   if (
     await checkRoleIsGranted(
@@ -244,9 +231,6 @@ export async function setupSQLPermissions(
 
     // Create and setup reader role permissions.
     readerRolePermissions(databaseId, superuser, "public"),
-
-    // Grant FDC P4SA database user the writer role.
-    [`GRANT "${firebasewriter(databaseId)}" TO "${fdcP4SAUser}"`],
   );
 
   return executeSqlCmdsAsSuperUser(options, instanceId, databaseId, sqlRoleSetupCmds, silent);

@@ -2,7 +2,8 @@ import * as pg from "pg";
 import { Connector, IpAddressTypes, AuthTypes } from "@google-cloud/cloud-sql-connector";
 
 import { requireAuth } from "../../requireAuth";
-import { needProjectId } from "../../projectUtils";
+import { needProjectId, needProjectNumber } from "../../projectUtils";
+import { dataconnectP4SADomain } from "../../api";
 import * as cloudSqlAdminClient from "./cloudsqladmin";
 import { UserType } from "./types";
 import * as utils from "../../utils";
@@ -10,7 +11,7 @@ import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { Options } from "../../options";
 import { FBToolsAuthClient } from "./fbToolsAuthClient";
-import { setupSQLPermissions, firebaseowner } from "./permissions";
+import { setupSQLPermissions, firebaseowner, firebasewriter } from "./permissions";
 
 export async function execute(
   sqlStatements: string[],
@@ -157,6 +158,10 @@ export async function executeSqlCmdsAsSuperUser(
   });
 }
 
+export function getDataConnectP4SA(projectNumber: string): string {
+  return `service-${projectNumber}@${dataconnectP4SADomain()}`;
+}
+
 export async function getIAMUser(options: Options): Promise<{ user: string; mode: UserType }> {
   const account = await requireAuth(options);
   if (!account) {
@@ -168,12 +173,13 @@ export async function getIAMUser(options: Options): Promise<{ user: string; mode
   return toDatabaseUser(account);
 }
 
-// setupIAMUser sets up the current user identity to connect to CloudSQL.
+// setupIAMUsers sets up the current user identity to connect to CloudSQL.
 // Steps:
-// 2. Create an IAM user for the current identity
-// 3. Connect to the DB as the temporary user and run the necessary grants
-// 4. Deletes the temporary user
-export async function setupIAMUser(
+// 1. Create an IAM user for the current identity
+// 2. Create an IAM user for FDC P4SA
+// 3. Run setupSQLPermissions to setup the SQL database roles and permissions.
+// 4. Connect to the DB as the temporary user and run the necessary grants
+export async function setupIAMUsers(
   instanceId: string,
   databaseId: string,
   options: Options,
@@ -187,11 +193,23 @@ export async function setupIAMUser(
   // 1. Create an IAM user for the current identity.
   await cloudSqlAdminClient.createUser(projectId, instanceId, mode, user);
 
-  // 2. Setup FDC required SQL roles and permissions.
+  // 2. Create dataconnenct P4SA user in case it's not created.
+  const projectNumber = await needProjectNumber(options);
+  const { user: fdcP4SAUser, mode: fdcP4SAmode } = toDatabaseUser(
+    getDataConnectP4SA(projectNumber),
+  );
+  await cloudSqlAdminClient.createUser(projectId, instanceId, fdcP4SAmode, fdcP4SAUser);
+
+  // 3. Setup FDC required SQL roles and permissions.
   await setupSQLPermissions(instanceId, databaseId, options, true);
 
-  // 3. Grant firebaseowner role to the IAM user.
-  const grants = [`GRANT "${firebaseowner(databaseId)}" TO "${user}"`];
+  // 4. Apply necessary grants.
+  const grants = [
+    // Grant firebaseowner role to the current IAM user.
+    `GRANT "${firebaseowner(databaseId)}" TO "${user}"`,
+    // Grant firebaswriter to the FDC P4SA user
+    `GRANT "${firebasewriter(databaseId)}" TO "${fdcP4SAUser}"`,
+  ];
 
   await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, grants, true);
   return user;

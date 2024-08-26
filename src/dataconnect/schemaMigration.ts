@@ -4,7 +4,7 @@ import { format } from "sql-formatter";
 import { IncompatibleSqlSchemaError, Diff, SCHEMA_ID } from "./types";
 import { getSchema, upsertSchema, deleteConnector } from "./client";
 import {
-  setupIAMUser,
+  setupIAMUsers,
   getIAMUser,
   executeSqlCmdsAsIamUser,
   executeSqlCmdsAsSuperUser,
@@ -223,7 +223,7 @@ async function handleIncompatibleSchemaError(args: {
     // TODO: at some point we would want to only run this after notifying the admin but
     // until we confirm stability it's ok to run it on every migration by admin user.
     if (userIsCSQLAdmin) {
-      await setupIAMUser(instanceId, databaseId, options);
+      await setupIAMUsers(instanceId, databaseId, options);
     }
 
     // Test if iam user has access to the roles required for this migration
