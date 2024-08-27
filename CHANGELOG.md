@@ -1,2 +1,1 @@
-- Released Firestore Emulator v 1.19.8 which adds support for `FindNearest.distanceResultField` and `FindNearest.distanceThreshold` parameters.
-- Temporarily removing extensions from functions deploy because it was causing unexpected extension deletions.
+- Add support for cloud tasks within the emulator. (#7475)
