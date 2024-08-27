@@ -57,6 +57,7 @@ import {
   whichNextConfigFile,
   installEsbuild,
   findEsbuildPath,
+  hasStaticAppNotFoundComponent,
 } from "./utils";
 import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES, SHARP_VERSION, I18N_ROOT } from "../constants";
 import type {
@@ -270,7 +271,7 @@ export async function build(
       const notFoundPageKey = ["/_not-found", "/_not-found/page"].find((key) =>
         unrenderedServerComponents.has(key),
       );
-      if (notFoundPageKey) {
+      if (notFoundPageKey && (await hasStaticAppNotFoundComponent(dir, distDir))) {
         unrenderedServerComponents.delete(notFoundPageKey);
       }
 
