@@ -83,11 +83,13 @@ logger.add(
 );
 
 logger.debug("-".repeat(70));
-logger.debug("Command:      ", process.argv.join(" "));
-logger.debug("CLI Version:  ", pkg.version);
-logger.debug("Platform:     ", process.platform);
-logger.debug("Node Version: ", process.version);
-logger.debug("Time:         ", new Date().toString());
+logger.debug(`Command:           ${process.argv.join(" ")}`);
+logger.debug(`CLI Version:       ${pkg.version}`);
+logger.debug(`Platform:          ${process.platform}`);
+logger.debug(`Node Version:      ${process.version}`);
+logger.debug(`Time:              ${new Date().toString()}`);
+logger.debug(`Update Available?: ${updateNotifier.update ?? false}`)
+
 if (utils.envOverrides.length) {
   logger.debug("Env Overrides:", utils.envOverrides.join(", "));
 }
