@@ -1,3 +1,0 @@
-- Added support for Cloud Tasks within the Functions emulator. (#7475)
-- Released Firestore Emulator v 1.19.8 which adds support for `FindNearest.distanceResultField` and `FindNearest.distanceThreshold` parameters.
-- Temporarily removed Extensions from Functions deploy because it was causing unexpected Extension deletions. (#7590, #7582)
