@@ -52,12 +52,12 @@ import {
   getHeadersFromMetaFiles,
   cleanI18n,
   getNextVersion,
+  hasStaticAppNotFoundComponent,
   getRoutesWithServerAction,
   getProductionDistDirFiles,
   whichNextConfigFile,
   installEsbuild,
   findEsbuildPath,
-  hasStaticAppNotFoundComponent,
 } from "./utils";
 import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES, SHARP_VERSION, I18N_ROOT } from "../constants";
 import type {
