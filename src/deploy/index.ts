@@ -122,7 +122,7 @@ export const deploy = async function (
 
   await chain(predeploys, context, options, payload);
   await chain(prepares, context, options, payload);
-  if (!options.dr) await chain(deploys, context, options, payload);
+  await chain(deploys, context, options, payload);
   await chain(releases, context, options, payload);
   await chain(postdeploys, context, options, payload);
 

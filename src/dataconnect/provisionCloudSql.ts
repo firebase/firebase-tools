@@ -41,12 +41,13 @@ export async function provisionCloudSql(args: {
     connectionName = existingInstance?.connectionName || "";
     const why = getUpdateReason(existingInstance, enableGoogleMlIntegration);
     if (why) {
+      const cta = dryRun
+        ? `It will be updated on you next deploy.`
+        : `Updating instance. This may take a few minutes...`;
       silent ||
         utils.logLabeledBullet(
           "dataconnect",
-          `Instance ${instanceId} settings not compatible with Firebase Data Connect. ` +
-            `Updating instance. This may take a few minutes...` +
-            why,
+          `Instance ${instanceId} settings not compatible with Firebase Data Connect. ` + cta + why,
         );
       if (!dryRun) {
         await promiseWithSpinner(
@@ -70,10 +71,12 @@ export async function provisionCloudSql(args: {
       printFreeTrialUnavailable(projectId, freeTrialInstanceId);
       throw new FirebaseError("Free trial unavailable.");
     }
+    const cta = dryRun ? "It will be created on your next deploy" : "Creating it now.";
     silent ||
       utils.logLabeledBullet(
         "dataconnect",
-        `CloudSQL instance '${instanceId}' not found, creating it.` +
+        `CloudSQL instance '${instanceId}' not found.` +
+          cta +
           `\nThis instance is provided under the terms of the Data Connect free trial ${freeTrialTermsLink()}` +
           `\nMonitor the progress at ${cloudSqlAdminClient.instanceConsoleLink(projectId, instanceId)}`,
       );
@@ -114,15 +117,16 @@ export async function provisionCloudSql(args: {
             "dataconnect",
             `Database ${databaseId} not found. It will be created on your next deploy.`,
           );
+      } else {
+        // Create the database if not found.
+        silent ||
+          utils.logLabeledBullet(
+            "dataconnect",
+            `Database ${databaseId} not found, creating it now...`,
+          );
+        await cloudSqlAdminClient.createDatabase(projectId, instanceId, databaseId);
+        silent || utils.logLabeledBullet("dataconnect", `Database ${databaseId} created.`);
       }
-      // Create the database if not found.
-      silent ||
-        utils.logLabeledBullet(
-          "dataconnect",
-          `Database ${databaseId} not found, creating it now...`,
-        );
-      await cloudSqlAdminClient.createDatabase(projectId, instanceId, databaseId);
-      silent || utils.logLabeledBullet("dataconnect", `Database ${databaseId} created.`);
     } else {
       // Skip it if the database is not accessible.
       // Possible that the CSQL instance is in the middle of something.

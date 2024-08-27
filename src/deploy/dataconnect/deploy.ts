@@ -80,8 +80,6 @@ export default async function (
   }
 
   // Provision CloudSQL resources
-  utils.logLabeledBullet("dataconnect", "Checking for CloudSQL resources...");
-
   await Promise.all(
     serviceInfos
       .filter((si) => {

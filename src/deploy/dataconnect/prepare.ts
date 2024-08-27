@@ -60,35 +60,34 @@ export default async function (context: any, options: DeployOptions): Promise<vo
   utils.logLabeledBullet("dataconnect", `Successfully prepared schema and connectors`);
   if (options.dryRun) {
     utils.logLabeledBullet("dataconnect", "Checking for CloudSQL resources...");
-    return;
-  }
-  await Promise.all(
-    serviceInfos
-      .filter((si) => {
-        return !filters || filters?.some((f) => si.dataConnectYaml.serviceId === f.serviceId);
-      })
-      .map(async (s) => {
-        const instanceId = s.schema.primaryDatasource.postgresql?.cloudSql.instance
-          .split("/")
-          .pop();
-        const databaseId = s.schema.primaryDatasource.postgresql?.database;
-        if (!instanceId || !databaseId) {
-          return Promise.resolve();
-        }
-        const enableGoogleMlIntegration = requiresVector(s.deploymentMetadata);
-        utils.logLabeledBullet("dataconnect", "Checking for CloudSQL resources...");
+    await Promise.all(
+      serviceInfos
+        .filter((si) => {
+          return !filters || filters?.some((f) => si.dataConnectYaml.serviceId === f.serviceId);
+        })
+        .map(async (s) => {
+          const instanceId = s.schema.primaryDatasource.postgresql?.cloudSql.instance
+            .split("/")
+            .pop();
+          const databaseId = s.schema.primaryDatasource.postgresql?.database;
+          if (!instanceId || !databaseId) {
+            return Promise.resolve();
+          }
+          const enableGoogleMlIntegration = requiresVector(s.deploymentMetadata);
+          utils.logLabeledBullet("dataconnect", "Checking for CloudSQL resources...");
 
-        return provisionCloudSql({
-          projectId,
-          locationId: parseServiceName(s.serviceName).location,
-          instanceId,
-          databaseId,
-          enableGoogleMlIntegration,
-          waitForCreation: true,
-          dryRun: options.dryRun,
-        });
-      }),
-  );
+          return provisionCloudSql({
+            projectId,
+            locationId: parseServiceName(s.serviceName).location,
+            instanceId,
+            databaseId,
+            enableGoogleMlIntegration,
+            waitForCreation: true,
+            dryRun: options.dryRun,
+          });
+        }),
+    );
+  }
   logger.debug(JSON.stringify(context.dataconnect, null, 2));
   return;
 }
