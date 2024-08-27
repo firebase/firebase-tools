@@ -155,9 +155,9 @@ export async function prepareDynamicExtensions(
   const filters = getEndpointFilters(options);
   const extensions = extractExtensionsFromBuilds(builds, filters);
   const isApiEnabled = await checkExtensionsApiEnabled(options);
-  if (Object.keys(extensions).length === 0 && !isApiEnabled) {
-    // Assume if we have no extensions defined and the API is not enabled
-    // there is nothing to delete.
+  if (Object.keys(extensions).length === 0 && (!isApiEnabled || filters !== undefined)) {
+    // Assume if we have no extensions defined and either the API is not enabled
+    // or the filters are non-null there is nothing to do.
     return;
   }
   const projectId = needProjectId(options);

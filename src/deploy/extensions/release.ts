@@ -27,16 +27,6 @@ export async function release(context: Context, options: Options, payload: Paylo
     handler: tasks.extensionsDeploymentHandler(errorHandler),
   });
 
-  for (const creation of payload.instancesToCreate ?? []) {
-    const task = tasks.createExtensionInstanceTask(projectId, creation);
-    void deploymentQueue.run(task);
-  }
-
-  for (const update of payload.instancesToUpdate ?? []) {
-    const task = tasks.updateExtensionInstanceTask(projectId, update);
-    void deploymentQueue.run(task);
-  }
-
   for (const update of payload.instancesToConfigure ?? []) {
     const task = tasks.configureExtensionInstanceTask(projectId, update);
     void deploymentQueue.run(task);
@@ -44,6 +34,16 @@ export async function release(context: Context, options: Options, payload: Paylo
 
   for (const deletion of payload.instancesToDelete ?? []) {
     const task = tasks.deleteExtensionInstanceTask(projectId, deletion);
+    void deploymentQueue.run(task);
+  }
+
+  for (const creation of payload.instancesToCreate ?? []) {
+    const task = tasks.createExtensionInstanceTask(projectId, creation);
+    void deploymentQueue.run(task);
+  }
+
+  for (const update of payload.instancesToUpdate ?? []) {
+    const task = tasks.updateExtensionInstanceTask(projectId, update);
     void deploymentQueue.run(task);
   }
 

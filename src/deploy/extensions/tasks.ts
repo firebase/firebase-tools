@@ -44,6 +44,12 @@ export function createExtensionInstanceTask(
   validateOnly: boolean = false,
 ): ExtensionDeploymentTask {
   const run = async () => {
+    if (!validateOnly) {
+      utils.logLabeledBullet(
+        "extensions",
+        `Creating ${clc.bold(instanceSpec.instanceId)} extension instance`,
+      );
+    }
     if (instanceSpec.ref) {
       await extensionsApi.createInstance({
         projectId,
@@ -88,6 +94,12 @@ export function updateExtensionInstanceTask(
   validateOnly: boolean = false,
 ): ExtensionDeploymentTask {
   const run = async () => {
+    if (!validateOnly) {
+      utils.logLabeledBullet(
+        "extensions",
+        `Updating ${clc.bold(instanceSpec.instanceId)} extension instance`,
+      );
+    }
     if (instanceSpec.ref) {
       await extensionsApi.updateInstanceFromRegistry({
         projectId,
@@ -134,6 +146,12 @@ export function configureExtensionInstanceTask(
   validateOnly: boolean = false,
 ): ExtensionDeploymentTask {
   const run = async () => {
+    if (!validateOnly) {
+      utils.logLabeledBullet(
+        "extensions",
+        `Configuring ${clc.bold(instanceSpec.instanceId)} extension instance`,
+      );
+    }
     if (instanceSpec.ref) {
       await extensionsApi.configureInstance({
         projectId,
@@ -170,6 +188,10 @@ export function deleteExtensionInstanceTask(
   instanceSpec: InstanceSpec,
 ): ExtensionDeploymentTask {
   const run = async () => {
+    utils.logLabeledBullet(
+      "extensions",
+      `Deleting ${clc.bold(instanceSpec.instanceId)} extension instance`,
+    );
     await extensionsApi.deleteInstance(projectId, instanceSpec.instanceId);
     printSuccess(instanceSpec.instanceId, "delete", false);
     return;
