@@ -1,0 +1,1 @@
+- Released Firestore Emulator v 1.19.8 which adds support for `FindNearest.distanceResultField` and `FindNearest.distanceThreshold` parameters.
