@@ -1,4 +1,1 @@
-- Implemented a check in the Next.js build function to verify if
-  `.env.<PROJECT-ID>` file exists and make its variables available for the build
-  process.
-- Fix esbuild path used to bundle next.config.js on Windows (#7555)
+- Released Firestore Emulator v 1.19.8 which adds support for `FindNearest.distanceResultField` and `FindNearest.distanceThreshold` parameters.

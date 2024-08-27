@@ -12,7 +12,7 @@ describe("DataConnect control plane client", () => {
     it("Should delete all child resources", async () => {
       const testService = "projects/test/locations/us-central1/services/test-service";
       const fake = nock(dataconnectOrigin());
-      fake.get(`/v1alpha/${testService}/connectors?pageSize=100&pageToken=`).reply(200, {
+      fake.get(`/v1alpha/${testService}/connectors?pageSize=100&pageToken=&fields=`).reply(200, {
         connectors: [
           { name: `${testService}/connectors/c1` },
           { name: `${testService}/connectors/c2` },
@@ -40,10 +40,10 @@ describe("DataConnect control plane client", () => {
       expect(nock.isDone()).to.be.true;
     });
 
-    it("Suceed when there are no connectors", async () => {
+    it("Succeed when there are no connectors", async () => {
       const testService = "projects/test/locations/us-central1/services/test-service";
       const fake = nock(dataconnectOrigin());
-      fake.get(`/v1alpha/${testService}/connectors?pageSize=100&pageToken=`).reply(200, {
+      fake.get(`/v1alpha/${testService}/connectors?pageSize=100&pageToken=&fields=`).reply(200, {
         connectors: [],
       });
       fake
@@ -60,10 +60,10 @@ describe("DataConnect control plane client", () => {
       expect(nock.isDone()).to.be.true;
     });
 
-    it("Suceed when there is no schema", async () => {
+    it("Succeed when there is no schema", async () => {
       const testService = "projects/test/locations/us-central1/services/test-service";
       const fake = nock(dataconnectOrigin());
-      fake.get(`/v1alpha/${testService}/connectors?pageSize=100&pageToken=`).reply(200, {
+      fake.get(`/v1alpha/${testService}/connectors?pageSize=100&pageToken=&fields=`).reply(200, {
         connectors: [],
       });
       fake.delete(`/v1alpha/${testService}/schemas/main`).reply(404, {});
