@@ -4,8 +4,7 @@ import { PGlite } from '@electric-sql/pglite';
 // This is hideous, but I'm not trying to migrate to module: node16 as part of
 // const { dynamicImport } = require(true && "../../dynamicImport");
 import * as net from 'node:net';
-import { BackendError, PostgresConnection, FrontendMessageCode } from './pgGateway';
-import { MessageName } from 'pg-protocol/dist/messages';
+import { PostgresConnection } from './pg-gateway';
 export class PostgresServer {
   public callCount = 0;
   private username: string;
@@ -17,37 +16,35 @@ export class PostgresServer {
     const server = net.createServer(function(socket) {
       console.log("starting!");
       const connection = new PostgresConnection(socket, {
-        // serverVersion: '16.3 (PGlite 0.2.0)', // TODO: What's the min version for pgvector support?
-        authMode: 'none',
-
-        // Validate user credentials based on auth mode chosen
-        validateCredentials: async function() {
-          return true;
-        },
+        serverVersion: '16.3 (PGlite 0.2.0)', // TODO: What's the min version for pgvector support?
+        auth: {method:"trust"},
 
         // Hook into each client message
         async onMessage(data, { isAuthenticated }) {
           // Only forward messages to PGlite after authentication
           if (!isAuthenticated) {
             console.log("WE ARE NOT AUTHENTICATED");
-            return false;
+            return;
           }
-          try {
-            const val = await db.execProtocol(data);
-            const typesToSend: MessageName[] = ["dataRow", "emptyQuery", "parseComplete"];
-            const v = val.find((v) => {
-              console.log(v[0].name);
-              return typesToSend.includes(v[0].name)
-            })
-            if (v) {
-              connection.sendData(v[1]);
-            }
-          } catch (err) {
-            console.log(`error is ${err}`);
-            connection.sendError(err as BackendError);
-            connection.sendReadyForQuery();
-          }
-          return true;
+          const td = new TextDecoder();
+          console.log("Data is ", JSON.stringify(td.decode(data)));
+          return await db.execProtocolRaw(data);
+          // try {
+          //   const val = await db.execProtocol(data);
+          //   const typesToSend: MessageName[] = ["dataRow", "emptyQuery", "parseComplete"];
+          //   const v = val.find((v) => {
+          //     console.log(v[0].name);
+          //     return typesToSend.includes(v[0].name)
+          //   })
+          //   if (v) {
+          //     connection.sendData(v[1]);
+          //   }
+          // } catch (err) {
+          //   console.log(`error is ${err}`);
+          //   connection.sendError(err as BackendError);
+          //   connection.sendReadyForQuery();
+          // }
+          // return true;
         },
       });
 

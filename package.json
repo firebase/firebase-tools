@@ -143,7 +143,6 @@
     "ora": "^5.4.1",
     "p-limit": "^3.0.1",
     "pg": "^8.11.3",
-    "pg-gateway": "0.2.4",
     "pg-protocol": "^1.6.1",
     "portfinder": "^1.0.32",
     "progress": "^2.0.3",
