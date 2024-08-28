@@ -9,7 +9,11 @@ import {
   executeSqlCmdsAsIamUser,
   executeSqlCmdsAsSuperUser,
 } from "../gcp/cloudsql/connect";
-import { firebaseowner, iamUserIsCSQLAdmin, checkRoleIsGranted } from "../gcp/cloudsql/permissions";
+import {
+  firebaseowner,
+  iamUserIsCSQLAdmin,
+  checkSQLRoleIsGranted,
+} from "../gcp/cloudsql/permissions";
 import { promptOnce, confirm } from "../prompt";
 import { logger } from "../logger";
 import { Schema } from "./types";
@@ -228,7 +232,7 @@ async function handleIncompatibleSchemaError(args: {
 
     // Test if iam user has access to the roles required for this migration
     if (
-      !(await checkRoleIsGranted(
+      !(await checkSQLRoleIsGranted(
         options,
         instanceId,
         databaseId,
@@ -237,7 +241,7 @@ async function handleIncompatibleSchemaError(args: {
       ))
     ) {
       throw new FirebaseError(
-        `Command aborted. Only users with role firebaseowner role can run migrations.`,
+        `Command aborted. Only users granted firebaseowner SQL role can run migrations.`,
       );
     }
 

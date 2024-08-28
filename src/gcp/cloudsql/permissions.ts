@@ -20,7 +20,7 @@ export function firebasewriter(databaseId: string) {
 
 // Returns true if "grantedRole" is granted to "granteeRole" and false otherwise.
 // Throw an error if commands fails due to another reason like connection issues.
-export async function checkRoleIsGranted(
+export async function checkSQLRoleIsGranted(
   options: Options,
   instanceId: string,
   databaseId: string,
@@ -70,7 +70,6 @@ export async function checkRoleIsGranted(
 export async function iamUserIsCSQLAdmin(options: Options): Promise<boolean> {
   const projectId = needProjectId(options);
   const requiredPermissions = [
-    "cloudsql.instances.login",
     "cloudsql.instances.connect",
     "cloudsql.instances.get",
     "cloudsql.users.create",
@@ -202,7 +201,7 @@ export async function setupSQLPermissions(
   // Detect the minimal necessary revokes to avoid errors for users who used the old sql permissions setup.
   const revokes = [];
   if (
-    await checkRoleIsGranted(
+    await checkSQLRoleIsGranted(
       options,
       instanceId,
       databaseId,
