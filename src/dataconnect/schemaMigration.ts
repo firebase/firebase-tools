@@ -215,12 +215,12 @@ async function handleIncompatibleSchemaError(args: {
     const userIsCSQLAdmin = await iamUserIsCSQLAdmin(options);
 
     if (!userIsCSQLAdmin && commandsToExecuteBySuperUser.length) {
-      throw new FirebaseError(`Only Admin can run some of the proposed sql diffs.\n 
-        Please ask user with roles/cloudsql.admin to apply the following diff.\n
+      throw new FirebaseError(`Some SQL commands required for this migration require Admin permissions.\n 
+        Please ask a user with 'roles/cloudsql.admin' to apply the following commands.\n
         ${commandsToExecuteBySuperUser.join("\n")}`);
     }
 
-    // TODO: at some point we would want to only run this after notifying the admin but
+    // TODO (tammam-g): at some point we would want to only run this after notifying the admin but
     // until we confirm stability it's ok to run it on every migration by admin user.
     if (userIsCSQLAdmin) {
       await setupIAMUsers(instanceId, databaseId, options);
@@ -243,7 +243,7 @@ async function handleIncompatibleSchemaError(args: {
 
     if (commandsToExecuteBySuperUser.length) {
       logger.info(
-        `The diffs require cloudsql superuser permissions, attempting to apply changes as superuser.`,
+        `The diffs require CloudSQL superuser permissions, attempting to apply changes as superuser.`,
       );
       await executeSqlCmdsAsSuperUser(
         options,
