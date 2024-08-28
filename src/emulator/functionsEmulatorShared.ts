@@ -45,6 +45,7 @@ export interface ParsedTriggerDefinition {
   availableMemoryMb?: backend.MemoryOptions;
   httpsTrigger?: any;
   eventTrigger?: EventTrigger;
+  taskQueueTrigger?: backend.TaskQueueTrigger;
   schedule?: EventSchedule;
   blockingTrigger?: BlockingTrigger;
   labels?: { [key: string]: any };
@@ -241,8 +242,20 @@ export function emulatedFunctionsFromEndpoints(
         options: endpoint.blockingTrigger.options || {},
       };
     } else if (backend.isTaskQueueTriggered(endpoint)) {
-      // Just expose TQ trigger as HTTPS. Useful for debugging.
       def.httpsTrigger = {};
+      def.taskQueueTrigger = {
+        retryConfig: {
+          maxAttempts: endpoint.taskQueueTrigger.retryConfig?.maxAttempts,
+          maxRetrySeconds: endpoint.taskQueueTrigger.retryConfig?.maxRetrySeconds,
+          maxBackoffSeconds: endpoint.taskQueueTrigger.retryConfig?.maxBackoffSeconds,
+          maxDoublings: endpoint.taskQueueTrigger.retryConfig?.maxDoublings,
+          minBackoffSeconds: endpoint.taskQueueTrigger.retryConfig?.minBackoffSeconds,
+        },
+        rateLimits: {
+          maxConcurrentDispatches: endpoint.taskQueueTrigger.rateLimits?.maxConcurrentDispatches,
+          maxDispatchesPerSecond: endpoint.taskQueueTrigger.rateLimits?.maxDispatchesPerSecond,
+        },
+      };
     } else {
       // All other trigger types are not supported by the emulator
       // We leave both eventTrigger and httpTrigger attributes empty
@@ -346,6 +359,9 @@ export function getFunctionService(def: ParsedTriggerDefinition): string {
   }
   if (def.httpsTrigger) {
     return "https";
+  }
+  if (def.taskQueueTrigger) {
+    return Constants.SERVICE_CLOUD_TASKS;
   }
 
   return "unknown";

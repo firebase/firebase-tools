@@ -654,6 +654,15 @@ export class FunctionsEmulator implements EmulatorInstance {
           definition.name,
           definition.region,
         );
+        if (definition.taskQueueTrigger) {
+          added = await this.addTaskQueueTrigger(
+            this.args.projectId,
+            definition.region,
+            definition.name,
+            url,
+            definition.taskQueueTrigger,
+          );
+        }
       } else if (definition.eventTrigger) {
         const service: string = getFunctionService(definition);
         const key = this.getTriggerKey(definition);
@@ -1193,6 +1202,35 @@ export class FunctionsEmulator implements EmulatorInstance {
     };
 
     return true;
+  }
+
+  async addTaskQueueTrigger(
+    projectId: string,
+    location: string,
+    entryPoint: string,
+    defaultUri: string,
+    taskQueueTrigger: backend.TaskQueueTrigger,
+  ): Promise<boolean> {
+    logger.debug(`addTaskQueueTrigger`, JSON.stringify(taskQueueTrigger));
+    if (!EmulatorRegistry.isRunning(Emulators.TASKS)) {
+      logger.debug(`addTaskQueueTrigger`, "TQ not running");
+      return Promise.resolve(false);
+    }
+    const bundle = {
+      ...taskQueueTrigger,
+      defaultUri,
+    };
+
+    try {
+      await EmulatorRegistry.client(Emulators.TASKS).post(
+        `/projects/${projectId}/locations/${location}/queues/${entryPoint}`,
+        bundle,
+      );
+      return true;
+    } catch (err) {
+      this.logger.log("WARN", "Error adding Task Queue function: " + err);
+      return false;
+    }
   }
 
   getProjectId(): string {
