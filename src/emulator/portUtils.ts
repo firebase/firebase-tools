@@ -205,6 +205,7 @@ const EMULATOR_CAN_LISTEN_ON_PRIMARY_ONLY: Record<PortName, boolean> = {
   functions: true,
   logging: true,
   storage: true,
+  tasks: true,
 
   // Only one hostname possible in .server mode, can switch to middleware later.
   hosting: true,

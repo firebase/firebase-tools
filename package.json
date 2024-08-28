@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "13.15.1",
+  "version": "13.16.0",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -165,7 +165,7 @@
     "uuid": "^8.3.2",
     "winston": "^3.0.0",
     "winston-transport": "^4.4.0",
-    "ws": "^7.2.3",
+    "ws": "^7.5.10",
     "yaml": "^2.4.1"
   },
   "devDependencies": {

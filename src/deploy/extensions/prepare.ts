@@ -8,7 +8,10 @@ import { logger } from "../../logger";
 import { Context, Payload } from "./args";
 import { FirebaseError } from "../../error";
 import { requirePermissions } from "../../requirePermissions";
-import { ensureExtensionsApiEnabled } from "../../extensions/extensionsHelper";
+import {
+  checkExtensionsApiEnabled,
+  ensureExtensionsApiEnabled,
+} from "../../extensions/extensionsHelper";
 import { ensureSecretManagerApiEnabled } from "../../extensions/secretsUtils";
 import { checkSpecForSecrets } from "./secrets";
 import { displayWarningsForDeploy, outOfBandChangesWarning } from "../../extensions/warnings";
@@ -151,7 +154,10 @@ export async function prepareDynamicExtensions(
 ) {
   const filters = getEndpointFilters(options);
   const extensions = extractExtensionsFromBuilds(builds, filters);
-  if (Object.keys(extensions).length === 0) {
+  const isApiEnabled = await checkExtensionsApiEnabled(options);
+  if (Object.keys(extensions).length === 0 && !isApiEnabled) {
+    // Assume if we have no extensions defined and the API is not enabled
+    // there is nothing to delete.
     return;
   }
   const projectId = needProjectId(options);
@@ -162,9 +168,7 @@ export async function prepareDynamicExtensions(
   // This is only a primary call if we are not including extensions
   const isPrimaryCall = !!options.only && !options.only.split(",").includes("extensions");
 
-  if (isPrimaryCall) {
-    await ensureExtensionsApiEnabled(options);
-  }
+  await ensureExtensionsApiEnabled(options);
   await requirePermissions(options, ["firebaseextensions.instances.list"]);
 
   const dynamicWant = await planner.wantDynamic({
@@ -184,7 +188,7 @@ export async function prepareDynamicExtensions(
       projectNumber,
       aliases,
       projectDir,
-      extensions: options.config.get("extensions"),
+      extensions: options.config.get("extensions", {}),
     });
     noDeleteExtensions = noDeleteExtensions.concat(firebaseJsonWant);
     if (hasNonDeployingCodebases(options)) {
@@ -238,7 +242,7 @@ export async function prepare(context: Context, options: Options, payload: Paylo
     projectNumber,
     aliases,
     projectDir,
-    extensions: options.config.get("extensions"),
+    extensions: options.config.get("extensions", {}),
   });
   const dynamicWant = await planner.wantDynamic({
     projectId,

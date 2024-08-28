@@ -10,6 +10,14 @@ import { saveEtags } from "../../extensions/etags";
 import { trackGA4 } from "../../track";
 
 export async function release(context: Context, options: Options, payload: Payload) {
+  if (
+    !payload.instancesToCreate &&
+    !payload.instancesToUpdate &&
+    !payload.instancesToConfigure &&
+    !payload.instancesToDelete
+  ) {
+    return;
+  }
   const projectId = needProjectId(options);
 
   const errorHandler = new ErrorHandler();

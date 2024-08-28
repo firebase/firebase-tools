@@ -498,8 +498,12 @@ export async function whichNextConfigFile(dir: string): Promise<NextConfigFileNa
  */
 export function findEsbuildPath(): string | null {
   try {
-    const esbuildBinPath = execSync("npx which esbuild", { encoding: "utf8" }).trim();
-    const globalVersion = getGlobalEsbuildVersion();
+    const esbuildBinPath = execSync("npx which esbuild", { encoding: "utf8" })?.trim();
+    if (!esbuildBinPath) {
+      return null;
+    }
+
+    const globalVersion = getGlobalEsbuildVersion(esbuildBinPath);
     if (globalVersion && !satisfies(globalVersion, ESBUILD_VERSION)) {
       console.warn(
         `Warning: Global esbuild version (${globalVersion}) does not match the required version (${ESBUILD_VERSION}).`,
@@ -515,9 +519,13 @@ export function findEsbuildPath(): string | null {
 /**
  * Helper function to get the global esbuild version
  */
-export function getGlobalEsbuildVersion(): string | null {
+export function getGlobalEsbuildVersion(binPath: string): string | null {
   try {
-    const versionOutput = execSync("esbuild --version", { encoding: "utf8" }).trim();
+    const versionOutput = execSync(`${binPath} --version`, { encoding: "utf8" })?.trim();
+    if (!versionOutput) {
+      return null;
+    }
+
     const versionMatch = versionOutput.match(/(\d+\.\d+\.\d+)/);
     return versionMatch ? versionMatch[0] : null;
   } catch (error) {

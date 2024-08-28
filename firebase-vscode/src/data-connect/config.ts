@@ -177,6 +177,12 @@ export class ResolvedDataConnectConfig {
     return this.connectorDirs.map((connectorDir) => connectorDir.replace(".", this.relativePath));
   }
 
+  findConnectorById(connectorId: string): ResolvedConnectorYaml {
+    return this.resolvedConnectors.find(
+      (connector) => connector.tryReadValue.value.connectorId === connectorId,
+    ).tryReadValue;
+  }
+
   containsPath(path: string) {
     return isPathInside(path, this.path);
   }
