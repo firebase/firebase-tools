@@ -1,0 +1,2 @@
+- Improve Firebase Data Connect postgres security by granting fine grained SQL privileges to the users the need it. (#7578)
+- Remove `dataconnect:sql:migrate` command hard dependency on 'roles/cloudsql.admin'. (#7578)
