@@ -4,8 +4,7 @@ import fetch from "node-fetch";
 import { GraphQLError } from "graphql";
 import { Observable, of } from "rxjs";
 import { backOff } from "exponential-backoff";
-import { ResolvedDataConnectConfigs, dataConnectConfigs } from "./config";
-import { DataConnectConfig } from "../firebaseConfig";
+import { ResolvedDataConnectConfigs } from "./config";
 
 type DiagnosticTuple = [Uri, Diagnostic[]];
 type CompilerResponse = { result?: { errors?: GraphQLError[] } };

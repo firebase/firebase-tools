@@ -205,7 +205,7 @@ export class ConfigureSdkCodeLensProvider extends ComputedCodeLensProvider {
           title: `$(tools) Configure Generated SDK`,
           command: "fdc.connector.configure-sdk",
           tooltip: "Configure a generated SDK for this connector",
-          arguments: [connectorConfig.tryReadValue],
+          arguments: [connectorConfig],
         }),
       );
     }

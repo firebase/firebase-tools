@@ -19,12 +19,31 @@ import { Config } from "../config";
 import { DataConnectMultiple } from "../firebaseConfig";
 import path from "path";
 import { ExtensionBrokerImpl } from "../extension-broker";
+import * as fs from "fs";
 
 export * from "../core/config";
 
-export const dataConnectConfigs = signal<
-  Result<ResolvedDataConnectConfigs | undefined> | undefined
->(undefined);
+export type DataConnectConfigsValue = ResolvedDataConnectConfigs | undefined;
+export type DataConnectConfigsError = {
+  path?: string;
+  error: Error | unknown;
+  range: vscode.Range;
+};
+
+export const dataConnectConfigs =
+  signal<Result<DataConnectConfigsValue | undefined, DataConnectConfigsError>>(
+    undefined,
+  );
+
+export class ErrorWithPath extends Error {
+  constructor(
+    readonly path: string,
+    readonly error: unknown,
+    readonly range: vscode.Range,
+  ) {
+    super(error instanceof Error ? error.message : error.toString());
+  }
+}
 
 export function registerDataConnectConfigs(
   broker: ExtensionBrokerImpl,
@@ -41,18 +60,37 @@ export function registerDataConnectConfigs(
     // on it that it's loading.
     dataConnectConfigs.value = undefined;
 
-    const configs = firebaseConfig?.followAsync(
-      async (config) =>
-        new ResultValue(
-          await _readDataConnectConfigs(readFdcFirebaseJson(config)),
-        ),
+    const configs = firebaseConfig?.followAsync<
+      ResolvedDataConnectConfigs | undefined,
+      DataConnectConfigsError
+    >(
+      async (config) => {
+        const configs = await _readDataConnectConfigs(
+          readFdcFirebaseJson(config),
+        );
+
+        return new ResultValue<
+          ResolvedDataConnectConfigs | undefined,
+          DataConnectConfigsError
+        >(configs.requireValue);
+      },
+      (err) => {
+        if (err instanceof ErrorWithPath) {
+          return { path: err.path, error: err.error, range: err.range };
+        }
+        return {
+          path: undefined,
+          error: err,
+          range: new vscode.Range(0, 0, 0, 0),
+        };
+      },
     );
 
     cancel =
       configs &&
       promise.cancelableThen(
         configs,
-        (configs) => (dataConnectConfigs.value = configs.tryReadValue),
+        (configs) => (dataConnectConfigs.value = configs),
       ).cancel;
   }
 
@@ -61,17 +99,21 @@ export function registerDataConnectConfigs(
   const dataConnectWatcher = createWatcher("**/{dataconnect,connector}.yaml");
   dataConnectWatcher?.onDidChange(() => handleResult(firebaseConfig.value));
   dataConnectWatcher?.onDidCreate(() => handleResult(firebaseConfig.value));
-  dataConnectWatcher?.onDidDelete(() => handleResult(undefined));
-  // TODO watch connectors
+  dataConnectWatcher?.onDidDelete(() => handleResult(firebaseConfig.value));
 
-  const hasConfigs = computed(() => !!dataConnectConfigs.value?.tryReadValue?.values.length);
+  const hasConfigs = computed(
+    () => !!dataConnectConfigs.value?.tryReadValue?.values.length,
+  );
 
   const hasConfigSub = effect(() => {
     broker.send("notifyHasFdcConfigs", hasConfigs.value);
   });
-  const getInitialHasFdcConfigsSub = broker.on("getInitialHasFdcConfigs", () => {
-    broker.send("notifyHasFdcConfigs", hasConfigs.value);
-  });
+  const getInitialHasFdcConfigsSub = broker.on(
+    "getInitialHasFdcConfigs",
+    () => {
+      broker.send("notifyHasFdcConfigs", hasConfigs.value);
+    },
+  );
 
   return vscode.Disposable.from(
     { dispose: sub },
@@ -86,37 +128,98 @@ export function registerDataConnectConfigs(
 export async function _readDataConnectConfigs(
   fdcConfig: DataConnectMultiple,
 ): Promise<Result<ResolvedDataConnectConfigs | undefined>> {
-  return Result.guard(async () => {
-    const dataConnects = await Promise.all(
-      fdcConfig.map<Promise<ResolvedDataConnectConfig>>(async (dataConnect) => {
-        // Paths may be relative to the firebase.json file.
-        const absoluteLocation = asAbsolutePath(
-          dataConnect.source,
-          getConfigPath(),
+  async function mapConnector(connectorDirPath: string) {
+    const connectorYaml = await readConnectorYaml(connectorDirPath).catch(
+      (err: unknown) => {
+        const connectorPath = path.normalize(
+          path.join(connectorDirPath, "connector.yaml"),
         );
-        const dataConnectYaml = await readDataConnectYaml(absoluteLocation);
-        const resolvedConnectors = await Promise.all(
-          dataConnectYaml.connectorDirs.map((connectorDir) =>
-            Result.guard(async () => {
-              const connectorYaml = await readConnectorYaml(
-                // Paths may be relative to the dataconnect.yaml
-                asAbsolutePath(connectorDir, absoluteLocation),
-              );
-              return new ResolvedConnectorYaml(
-                asAbsolutePath(connectorDir, absoluteLocation),
-                connectorYaml,
-              );
-            }),
-          ),
+        throw new ErrorWithPath(
+          connectorPath,
+          err,
+          new vscode.Range(0, 0, 0, 0),
         );
-        return new ResolvedDataConnectConfig(
+      },
+    );
+
+    return new ResolvedConnectorYaml(connectorDirPath, connectorYaml);
+  }
+
+  async function mapDataConnect(absoluteLocation: string) {
+    const dataConnectYaml = await readDataConnectYaml(absoluteLocation);
+    const connectorDirs = dataConnectYaml.connectorDirs;
+    if (!Array.isArray(connectorDirs)) {
+      throw new ErrorWithPath(
+        path.join(absoluteLocation, "dataconnect.yaml"),
+        `Expected 'connectorDirs' to be an array, but got ${connectorDirs}`,
+        // TODO(rrousselGit): Decode Yaml using AST to have the error message point to the `connectorDirs:` line
+        new vscode.Range(0, 0, 0, 0),
+      );
+    }
+
+    const resolvedConnectors = await Promise.all(
+      connectorDirs.map((relativeConnector) => {
+        const absoluteConnector = asAbsolutePath(
+          relativeConnector,
           absoluteLocation,
-          dataConnectYaml,
-          resolvedConnectors,
-          dataConnectYaml.location,
         );
+        const connectorPath = path.join(absoluteConnector, "connector.yaml");
+        try {
+          // Check if the file exists
+          if (!fs.existsSync(connectorPath)) {
+            throw new ErrorWithPath(
+              path.join(absoluteLocation, "dataconnect.yaml"),
+              `No connector.yaml found at ${relativeConnector}`,
+              // TODO(rrousselGit): Decode Yaml using AST to have the error message point to the `connectorDirs:` line
+              new vscode.Range(0, 0, 0, 0),
+            );
+          }
+
+          return mapConnector(absoluteConnector);
+        } catch (error) {
+          if (error instanceof ErrorWithPath) {
+            throw error;
+          }
+
+          throw new ErrorWithPath(
+            connectorPath,
+            error,
+            new vscode.Range(0, 0, 0, 0),
+          );
+        }
       }),
     );
+
+    return new ResolvedDataConnectConfig(
+      absoluteLocation,
+      dataConnectYaml,
+      resolvedConnectors,
+      dataConnectYaml.location,
+    );
+  }
+
+  return Result.guard(async () => {
+    const dataConnects = await Promise.all(
+      fdcConfig
+        // Paths may be relative to the firebase.json file.
+        .map((relative) => asAbsolutePath(relative.source, getConfigPath()))
+        .map(async (absolutePath) => {
+          try {
+            return await mapDataConnect(absolutePath);
+          } catch (error) {
+            if (error instanceof ErrorWithPath) {
+              throw error;
+            }
+
+            throw new ErrorWithPath(
+              path.join(absolutePath, "dataconnect.yaml"),
+              error,
+              new vscode.Range(0, 0, 0, 0),
+            );
+          }
+        }),
+    );
+
     return new ResolvedDataConnectConfigs(dataConnects);
   });
 }
@@ -128,7 +231,7 @@ function asAbsolutePath(relativePath: string, from: string): string {
 export class ResolvedConnectorYaml {
   constructor(
     readonly path: string,
-    readonly value: DeepReadOnly<ConnectorYaml>
+    readonly value: DeepReadOnly<ConnectorYaml>,
   ) {}
 
   containsPath(path: string) {
@@ -140,7 +243,7 @@ export class ResolvedDataConnectConfig {
   constructor(
     readonly path: string,
     readonly value: DeepReadOnly<DataConnectYaml>,
-    readonly resolvedConnectors: Result<ResolvedConnectorYaml>[],
+    readonly resolvedConnectors: ResolvedConnectorYaml[],
     readonly dataConnectLocation: string,
   ) {}
 
@@ -148,7 +251,7 @@ export class ResolvedDataConnectConfig {
     const result: string[] = [];
 
     for (const connector of this.resolvedConnectors) {
-      const id = connector.tryReadValue?.value.connectorId;
+      const id = connector.value.connectorId;
       if (id) {
         result.push(id);
       }
@@ -174,13 +277,15 @@ export class ResolvedDataConnectConfig {
   }
 
   get relativeConnectorPaths(): string[] {
-    return this.connectorDirs.map((connectorDir) => connectorDir.replace(".", this.relativePath));
+    return this.connectorDirs.map((connectorDir) =>
+      connectorDir.replace(".", this.relativePath),
+    );
   }
 
   findConnectorById(connectorId: string): ResolvedConnectorYaml {
     return this.resolvedConnectors.find(
-      (connector) => connector.tryReadValue.value.connectorId === connectorId,
-    ).tryReadValue;
+      (connector) => connector.value.connectorId === connectorId,
+    );
   }
 
   containsPath(path: string) {
@@ -189,7 +294,7 @@ export class ResolvedDataConnectConfig {
 
   findEnclosingConnectorForPath(filePath: string) {
     return this.resolvedConnectors.find(
-      (connector) => connector.tryReadValue?.containsPath(filePath) ?? false,
+      (connector) => connector?.containsPath(filePath) ?? false,
     );
   }
 }

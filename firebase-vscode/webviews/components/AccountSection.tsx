@@ -24,7 +24,7 @@ export function AccountSection({
 }: {
   user: UserWithType | ServiceAccountUser | null;
   isMonospace: boolean;
-  isLoadingUser: boolean;
+  isLoadingUser?: boolean;
 }) {
   const [userDropdownVisible, toggleUserDropdown] = useState(false);
 

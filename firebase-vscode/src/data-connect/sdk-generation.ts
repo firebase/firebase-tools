@@ -13,7 +13,7 @@ import {
 import { ConnectorYaml, Platform } from "../../../src/dataconnect/types";
 import * as yaml from "yaml";
 import * as fs from "fs-extra";
-import path from "path";
+
 export function registerFdcSdkGeneration(
   broker: ExtensionBrokerImpl,
   telemetryLogger: vscode.TelemetryLogger,

@@ -9,6 +9,7 @@ import { ValueOrError } from "./messaging/protocol";
 import { FirebaseConfig } from "../../src/firebaseConfig";
 import { RCData } from "../../src/rc";
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react";
+import { PanelSection } from "./components/ui/PanelSection";
 
 export function SidebarApp() {
   const env = useBroker("notifyEnv")?.env;
@@ -49,20 +50,23 @@ export function SidebarApp() {
   if (!configs?.firebaseJson?.value || !hasFdcConfigs) {
     const configLabel = !hasFdcConfigs ? "dataconnect.yaml" : "firebase.json";
     return (
-      <>
+      <PanelSection>
         {accountSection}
         <p>
           No <code>{configLabel}</code> detected in this project
         </p>
         <br />
-        <VSCodeButton
-          onClick={() => {
-            broker.send("runFirebaseInit");
-          }}
-        >
+        <VSCodeButton onClick={() => broker.send("runFirebaseInit")}>
           Run firebase init
         </VSCodeButton>
-      </>
+        <Spacer size="small" />
+        <VSCodeButton
+          appearance="secondary"
+          onClick={() => broker.send("openFolder")}
+        >
+          Open folder
+        </VSCodeButton>
+      </PanelSection>
     );
   }
 
@@ -75,9 +79,6 @@ function SidebarContent(props: {
     firebaseRC: ValueOrError<RCData>;
   };
 }) {
-  const [framework, setFramework] = useState<string | null>(null);
-
-  const firebaseJson = props.configs?.firebaseJson;
   const firebaseRC = props.configs?.firebaseRC;
 
   const projectId = firebaseRC?.value?.projects?.default;
@@ -104,10 +105,7 @@ function SidebarContent(props: {
   }, []);
 
   const accountSection = (
-    <AccountSection
-      user={user}
-      isMonospace={env?.isMonospace}
-    />
+    <AccountSection user={user} isMonospace={env?.isMonospace} />
   );
 
   return (

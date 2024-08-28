@@ -13,9 +13,6 @@
   "categories": [
     "Other"
   ],
-  "extensionDependencies": [
-    "graphql.vscode-graphql-syntax"
-  ],
   "activationEvents": [
     "onStartupFinished",
     "onLanguage:graphql",
@@ -123,7 +120,7 @@
       "firebase": [
         {
           "type": "webview",
-          "id": "sidebar",
+          "id": "fdc_sidebar",
           "name": "Config"
         },
         {

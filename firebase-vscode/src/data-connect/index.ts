@@ -31,6 +31,7 @@ import { registerWebview } from "../webview";
 
 import { DataConnectEmulatorController } from "./emulator";
 import { registerFdcSdkGeneration } from "./sdk-generation";
+import { registerDiagnostics } from "./diagnostics";
 
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
@@ -108,13 +109,7 @@ class CodeActionsProvider implements vscode.CodeActionProvider {
       return;
     }
 
-    for (const connectorResult of enclosingService.resolvedConnectors) {
-      const connector = connectorResult.tryReadValue;
-      if (!connector) {
-        // Parsing error in the connector, skip
-        continue;
-      }
-
+    for (const connector of enclosingService.resolvedConnectors) {
       results.push({
         title: `Move to "${connector.value.connectorId}"`,
         kind: vscode.CodeActionKind.Refactor,
@@ -140,6 +135,8 @@ export function registerFdc(
   emulatorController: EmulatorsController,
   telemetryLogger: TelemetryLogger,
 ): Disposable {
+  registerDiagnostics(context, dataConnectConfigs);
+
   const fdcEmulatorsController = new DataConnectEmulatorController(
     emulatorController,
     broker,
@@ -250,9 +247,7 @@ export function registerFdc(
       schemaCodeLensProvider,
     ),
     vscode.languages.registerCodeLensProvider(
-      [
-        { scheme: "file", language: "yaml", pattern: "**/connector.yaml" },
-      ],
+      [{ scheme: "file", language: "yaml", pattern: "**/connector.yaml" }],
       configureSdkCodeLensProvider,
     ),
     {
