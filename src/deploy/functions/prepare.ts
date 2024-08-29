@@ -278,7 +278,13 @@ export async function prepare(
   // We limit the scope endpoints being deployed.
   await backend.checkAvailability(context, matchingBackend);
   await validate.secretsAreValid(projectId, matchingBackend);
-  await ensureServiceAgentRoles(projectId, projectNumber, matchingBackend, haveBackend, options.dryRun);
+  await ensureServiceAgentRoles(
+    projectId,
+    projectNumber,
+    matchingBackend,
+    haveBackend,
+    options.dryRun,
+  );
   await ensure.secretAccess(projectId, matchingBackend, haveBackend, options.dryRun);
   /**
    * ===Phase 8 Generates the hashes for each of the functions now that secret versions have been resolved.

@@ -122,8 +122,10 @@ async function prepareHelper(
   if (payload.instancesToDelete.length) {
     logger.info(deploymentSummary.deletesSummary(payload.instancesToDelete));
     if (options.dryRun) {
-      logger.info("On your next deploy, these you will be asked if you want to delete these instances.")
-      logger.info("If you deploy --force, they will be deleted.")
+      logger.info(
+        "On your next deploy, these you will be asked if you want to delete these instances.",
+      );
+      logger.info("If you deploy --force, they will be deleted.");
     }
     if (
       !options.dryRun &&
@@ -145,8 +147,10 @@ async function prepareHelper(
   await requirePermissions(options, permissionsNeeded);
   if (options.dryRun) {
     const appDevTos = await getAppDeveloperTOSStatus(projectId);
-    if  (!appDevTos.lastAcceptedVersion) {
-      logger.info("On your next deploy, you will be asked to accept the Firebase Extensions App Developer Terms of Service")
+    if (!appDevTos.lastAcceptedVersion) {
+      logger.info(
+        "On your next deploy, you will be asked to accept the Firebase Extensions App Developer Terms of Service",
+      );
     }
   } else {
     await acceptLatestAppDeveloperTOS(

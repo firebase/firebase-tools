@@ -14,8 +14,6 @@ import * as utils from "../../utils";
 
 import { getIamPolicy, setIamPolicy } from "../../gcp/resourceManager";
 import { Service, serviceForEndpoint } from "./services";
-import { options } from "cjson";
-import * as deepEqualUnordered from 'deep-equal-in-any-order';
 
 const PERMISSION = "cloudfunctions.functions.setIamPolicy";
 export const SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE = "roles/iam.serviceAccountTokenCreator";
@@ -230,10 +228,11 @@ export async function ensureServiceAgentRoles(
   // set the updated policy
   try {
     if (dryRun) {
-        logger.info(`On your next deploy, the following required roles will be granted: ${
-          requiredBindings.map(b => `${b.members.join(", ")}: ${bold(b.role)}`);
-        }`)
-      }
+      logger.info(
+        `On your next deploy, the following required roles will be granted: ${requiredBindings.map(
+          (b) => `${b.members.join(", ")}: ${bold(b.role)}`,
+        )}`,
+      );
     } else {
       await setIamPolicy(projectNumber, policy, "bindings");
     }

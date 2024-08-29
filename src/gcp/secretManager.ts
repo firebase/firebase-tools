@@ -445,7 +445,7 @@ export async function checkServiceAgentRole(
   secret: Pick<Secret, "projectId" | "name">,
   serviceAccountEmails: string[],
   role: string,
-): Promise<iam.Binding[]>{
+): Promise<iam.Binding[]> {
   const policy = await module.exports.getIamPolicy(secret);
   const bindings: iam.Binding[] = policy.bindings || [];
   let binding = bindings.find((b) => b.role === role);
