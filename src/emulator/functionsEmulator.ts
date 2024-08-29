@@ -1959,7 +1959,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     );
   }
 
-  private calculateTimeToWait(
+  /**
+   * @internal
+   */
+  public calculateTimeToWait(
     retryConfig: backend.ScheduleRetryConfig,
     retryCount: number,
   ): number | null {

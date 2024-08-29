@@ -1043,7 +1043,7 @@ describe("FunctionsEmulator", function () {
   describe("calculateTimeToWait", () => {
     it("should return 5 for first retry if minBackoffSeconds is not defined", () => {
       const retryConfig: backend.ScheduleRetryConfig = {};
-      const result = emu["calculateTimeToWait"](retryConfig, 1);
+      const result = emu.calculateTimeToWait(retryConfig, 1);
       expect(result).to.be.equal(5);
     });
 
