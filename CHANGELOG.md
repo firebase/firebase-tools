@@ -1,1 +1,3 @@
 - Added `firebase deploy --dry-run`, which validates your changes and builds your code without making any production changes.
+- Improved Firebase Data Connect postgres security by granting fine grained SQL privileges to the users the need it. (#7578)
+- Removed `dataconnect:sql:migrate` command hard dependency on 'roles/cloudsql.admin'. (#7578)
