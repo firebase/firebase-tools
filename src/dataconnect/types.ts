@@ -32,7 +32,7 @@ export interface Datasource {
 export interface PostgreSql {
   database: string;
   cloudSql: CloudSqlInstance;
-  schemaValidation?: "STRICT" | "NONE" | "SQL_SCHEMA_VALIDATION_UNSPECIFIED";
+  schemaValidation?: "STRICT" | "COMPATIBLE" | "NONE" | "SQL_SCHEMA_VALIDATION_UNSPECIFIED";
 }
 
 export interface CloudSqlInstance {
@@ -102,6 +102,7 @@ export interface DataConnectYaml {
   specVersion?: string;
   serviceId: string;
   schema: SchemaYaml;
+  location: string;
   connectorDirs: string[];
 }
 
@@ -126,20 +127,31 @@ export interface ConnectorYaml {
 }
 
 export interface Generate {
-  javascriptSdk?: JavascriptSDK[];
-  swiftSdk?: SwiftSDK[];
-  kotlinSdk?: KotlinSDK[];
+  javascriptSdk?: JavascriptSDK;
+  swiftSdk?: SwiftSDK;
+  kotlinSdk?: KotlinSDK;
 }
 
 export interface JavascriptSDK {
   outputDir: string;
+  package: string;
+  packageJsonDir?: string;
 }
+
 export interface SwiftSDK {
-  // Optional for Swift becasue XCode makes you import files.
-  outputDir?: string;
+  outputDir: string;
+  package: string;
 }
 export interface KotlinSDK {
   outputDir: string;
+  package: string;
+}
+
+export enum Platform {
+  ANDROID = "ANDROID",
+  WEB = "WEB",
+  IOS = "IOS",
+  UNDETERMINED = "UNDETERMINED",
 }
 
 // Helper types && converters
@@ -147,12 +159,15 @@ export interface ServiceInfo {
   serviceName: string;
   sourceDirectory: string;
   schema: Schema;
-  connectorInfo: {
-    connector: Connector;
-    connectorYaml: ConnectorYaml;
-  }[];
+  connectorInfo: ConnectorInfo[];
   dataConnectYaml: DataConnectYaml;
   deploymentMetadata?: DeploymentMetadata;
+}
+
+export interface ConnectorInfo {
+  directory: string;
+  connector: Connector;
+  connectorYaml: ConnectorYaml;
 }
 
 export function toDatasource(

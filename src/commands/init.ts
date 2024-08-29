@@ -1,5 +1,4 @@
 import * as clc from "colorette";
-import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 
@@ -14,18 +13,23 @@ import * as fsutils from "../fsutils";
 import * as utils from "../utils";
 import { Options } from "../options";
 import { isEnabled } from "../experiments";
+import { readTemplateSync } from "../templates";
 
 const homeDir = os.homedir();
 
-const TEMPLATE_ROOT = path.resolve(__dirname, "../../templates/");
-const BANNER_TEXT = fs.readFileSync(path.join(TEMPLATE_ROOT, "banner.txt"), "utf8");
-const GITIGNORE_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_gitignore"), "utf8");
+const BANNER_TEXT = readTemplateSync("banner.txt");
+const GITIGNORE_TEMPLATE = readTemplateSync("_gitignore");
 
 function isOutside(from: string, to: string): boolean {
   return !!/^\.\./.exec(path.relative(from, to));
 }
 
-const choices = [
+const choices: {
+  value: string;
+  name: string;
+  checked: boolean;
+  hidden?: boolean;
+}[] = [
   {
     value: "database",
     name: "Realtime Database: Configure a security rules file for Realtime Database and (optionally) provision default instance",
@@ -50,6 +54,7 @@ const choices = [
     value: "hosting:github",
     name: "Hosting: Set up GitHub Action deploys",
     checked: false,
+    hidden: true,
   },
   {
     value: "storage",
@@ -71,20 +76,23 @@ const choices = [
     name: "Extensions: Set up an empty Extensions manifest",
     checked: false,
   },
+  {
+    value: "dataconnect",
+    name: "Data Connect: Set up a Firebase Data Connect service",
+    checked: false,
+  },
+  {
+    value: "dataconnect:sdk",
+    name: "Data Connect: Set up a generated SDK for your Firebase Data Connect service",
+    checked: false,
+    hidden: true,
+  },
 ];
 
 if (isEnabled("genkit")) {
   choices.push({
     value: "genkit",
     name: "Genkit: Setup a new Genkit project with Firebase",
-    checked: false,
-  });
-}
-
-if (isEnabled("dataconnect")) {
-  choices.push({
-    value: "dataconnect",
-    name: "Data Connect: Set up a Firebase Data Connect service.",
     checked: false,
   });
 }
@@ -194,7 +202,7 @@ export function initAction(feature: string, options: Options): Promise<void> {
           message:
             "Which Firebase features do you want to set up for this directory? " +
             "Press Space to select features, then Enter to confirm your choices.",
-          choices: choices,
+          choices: choices.filter((c) => !c.hidden),
         },
       ]);
     })

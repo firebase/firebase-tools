@@ -150,19 +150,20 @@ export async function deleteConnector(name: string): Promise<void> {
   return;
 }
 
-export async function listConnectors(serviceName: string) {
+export async function listConnectors(serviceName: string, fields: string[] = []) {
   const connectors: types.Connector[] = [];
   const getNextPage = async (pageToken = "") => {
     const res = await dataconnectClient().get<{
-      connectors: types.Connector[];
-      nextPageToken: string;
+      connectors?: types.Connector[];
+      nextPageToken?: string;
     }>(`${serviceName}/connectors`, {
       queryParams: {
         pageSize: PAGE_SIZE_MAX,
         pageToken,
+        fields: fields.join(","),
       },
     });
-    connectors.push(...res.body.connectors);
+    connectors.push(...(res.body.connectors || []));
     if (res.body.nextPageToken) {
       await getNextPage(res.body.nextPageToken);
     }

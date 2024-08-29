@@ -369,6 +369,7 @@ export async function resolveParams(
   firebaseConfig: FirebaseConfig,
   userEnvs: Record<string, ParamValue>,
   nonInteractive?: boolean,
+  isEmulator = false,
 ): Promise<Record<string, ParamValue>> {
   const paramValues: Record<string, ParamValue> = populateDefaultParams(firebaseConfig);
 
@@ -381,8 +382,11 @@ export async function resolveParams(
   }
 
   const [needSecret, needPrompt] = partition(outstanding, (param) => param.type === "secret");
-  for (const param of needSecret) {
-    await handleSecret(param as SecretParam, firebaseConfig.projectId);
+  // The functions emulator will handle secrets
+  if (!isEmulator) {
+    for (const param of needSecret) {
+      await handleSecret(param as SecretParam, firebaseConfig.projectId);
+    }
   }
 
   if (nonInteractive && needPrompt.length > 0) {

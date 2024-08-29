@@ -8,7 +8,7 @@ import { logger } from "./logger";
 import * as utils from "./utils";
 import * as scopes from "./scopes";
 import { Tokens, User } from "./types/auth";
-import { setRefreshToken, setActiveAccount } from "./auth";
+import { setRefreshToken, setActiveAccount, setGlobalDefaultAccount } from "./auth";
 import type { Options } from "./options";
 
 const AUTH_ERROR_MESSAGE = `Command requires authentication, please run ${clc.bold(
@@ -37,9 +37,6 @@ function getAuthClient(config: GoogleAuthOptions): GoogleAuth {
  * @param authScopes scopes to be obtained.
  */
 async function autoAuth(options: Options, authScopes: string[]): Promise<void | string> {
-  if (process.env.MONOSPACE_ENV) {
-    throw new FirebaseError("autoAuth not yet implemented for IDX. Please run 'firebase login'");
-  }
   const client = getAuthClient({ scopes: authScopes, projectId: options.project });
   const token = await client.getAccessToken();
   token !== null ? apiv2.setAccessToken(token) : false;
@@ -52,7 +49,17 @@ async function autoAuth(options: Options, authScopes: string[]): Promise<void | 
     // Make sure any error here doesn't block the CLI, but log it.
     logger.debug(`Error getting account credentials.`);
   }
+  if (process.env.MONOSPACE_ENV && token && clientEmail) {
+    // Within monospace, this a OAuth token for the user, so we make it the active user.
+    setActiveAccount(options, {
+      user: { email: clientEmail },
+      tokens: { access_token: token },
+    });
+    setGlobalDefaultAccount({ user: { email: clientEmail }, tokens: { access_token: token } });
 
+    // project is also selected in monospace auth flow
+    options.projectId = await client.getProjectId();
+  }
   return clientEmail;
 }
 
@@ -66,7 +73,6 @@ export async function requireAuth(options: any): Promise<string | void> {
 
   const tokens = options.tokens as Tokens | undefined;
   const user = options.user as User | undefined;
-
   let tokenOpt = utils.getInheritedOption(options, "token");
   if (tokenOpt) {
     logger.debug("> authorizing via --token option");
@@ -104,6 +110,8 @@ export async function requireAuth(options: any): Promise<string | void> {
     throw new FirebaseError(AUTH_ERROR_MESSAGE);
   }
 
+  // TODO: 90 percent sure this is redundant, as the only time we hit this is if options.user/options.token is set, and
+  // setActiveAccount is the only code that sets those.
   setActiveAccount(options, { user, tokens });
   return user.email;
 }

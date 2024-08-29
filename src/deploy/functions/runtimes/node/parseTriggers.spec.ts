@@ -9,17 +9,17 @@ import { BEFORE_CREATE_EVENT } from "../../../../functions/events/v1";
 
 async function resolveBackend(bd: build.Build): Promise<backend.Backend> {
   return (
-    await build.resolveBackend(
-      bd,
-      {
+    await build.resolveBackend({
+      build: bd,
+      firebaseConfig: {
         locationId: "",
         projectId: "foo",
         storageBucket: "foo.appspot.com",
         databaseURL: "https://foo.firebaseio.com",
       },
-      { functionsSource: "", projectId: "PROJECT" },
-      {},
-    )
+      userEnvOpt: { functionsSource: "", projectId: "PROJECT" },
+      userEnvs: {},
+    })
   ).backend;
 }
 

@@ -6,6 +6,7 @@ import { SourceFile } from "./types";
 import { Constants } from "../../constants";
 import { Emulators } from "../../types";
 import { EmulatorLogger } from "../../emulatorLogger";
+import { absoluteTemplateFilePath } from "../../../templates";
 
 function getSourceFile(rules: string, options: Options): SourceFile {
   const path = options.config.path(rules);
@@ -79,6 +80,7 @@ export function getStorageRulesConfig(
 }
 
 function defaultStorageRules(): SourceFile {
-  const path = __dirname + "/../../../../templates/emulators/default_storage.rules";
-  return { name: path, content: readFile(path) };
+  const defaultRulesPath = "emulators/default_storage.rules";
+  const name = absoluteTemplateFilePath(defaultRulesPath);
+  return { name, content: readFile(name) };
 }

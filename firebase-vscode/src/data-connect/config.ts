@@ -113,7 +113,7 @@ export async function _readDataConnectConfigs(
           absoluteLocation,
           dataConnectYaml,
           resolvedConnectors,
-          dataConnect.location,
+          dataConnectYaml.location,
         );
       }),
     );
@@ -175,6 +175,12 @@ export class ResolvedDataConnectConfig {
 
   get relativeConnectorPaths(): string[] {
     return this.connectorDirs.map((connectorDir) => connectorDir.replace(".", this.relativePath));
+  }
+
+  findConnectorById(connectorId: string): ResolvedConnectorYaml {
+    return this.resolvedConnectors.find(
+      (connector) => connector.tryReadValue.value.connectorId === connectorId,
+    ).tryReadValue;
   }
 
   containsPath(path: string) {

@@ -1,7 +1,5 @@
-import * as fs from "fs";
-import * as path from "path";
 import { marked } from "marked";
-import * as TerminalRenderer from "marked-terminal";
+import { markedTerminal } from "marked-terminal";
 
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
@@ -10,27 +8,17 @@ import { FirebaseError } from "../error";
 import { promptOnce } from "../prompt";
 import { logger } from "../logger";
 import * as npmDependencies from "../init/features/functions/npm-dependencies";
-marked.setOptions({
-  renderer: new TerminalRenderer(),
-});
-
-const TEMPLATE_ROOT = path.resolve(__dirname, "../../templates/extensions/");
-const FUNCTIONS_ROOT = path.resolve(__dirname, "../../templates/init/functions/");
+import { readTemplateSync } from "../templates";
+marked.use(markedTerminal() as any);
 
 function readCommonTemplates() {
   return {
-    integrationTestFirebaseJsonTemplate: fs.readFileSync(
-      path.join(TEMPLATE_ROOT, "integration-test.json"),
-      "utf8",
-    ),
-    integrationTestEnvTemplate: fs.readFileSync(
-      path.join(TEMPLATE_ROOT, "integration-test.env"),
-      "utf8",
-    ),
-    extSpecTemplate: fs.readFileSync(path.join(TEMPLATE_ROOT, "extension.yaml"), "utf8"),
-    preinstallTemplate: fs.readFileSync(path.join(TEMPLATE_ROOT, "PREINSTALL.md"), "utf8"),
-    postinstallTemplate: fs.readFileSync(path.join(TEMPLATE_ROOT, "POSTINSTALL.md"), "utf8"),
-    changelogTemplate: fs.readFileSync(path.join(TEMPLATE_ROOT, "CL-template.md"), "utf8"),
+    integrationTestFirebaseJsonTemplate: readTemplateSync("extensions/integration-test.json"),
+    integrationTestEnvTemplate: readTemplateSync("extensions/integration-test.env"),
+    extSpecTemplate: readTemplateSync("extensions/extension.yaml"),
+    preinstallTemplate: readTemplateSync("extensions/PREINSTALL.md"),
+    postinstallTemplate: readTemplateSync("extensions/POSTINSTALL.md"),
+    changelogTemplate: readTemplateSync("extensions/CL-template.md"),
   };
 }
 
@@ -45,6 +33,7 @@ export const command = new Command("ext:dev:init")
     const config = new Config({}, { projectDir: cwd, cwd: cwd });
 
     try {
+      let welcome: string;
       const lang = await promptOnce({
         type: "list",
         name: "language",
@@ -64,10 +53,12 @@ export const command = new Command("ext:dev:init")
       switch (lang) {
         case "javascript": {
           await javascriptSelected(config);
+          welcome = readTemplateSync("extensions/javascript/WELCOME.md");
           break;
         }
         case "typescript": {
           await typescriptSelected(config);
+          welcome = readTemplateSync("extensions/typescript/WELCOME.md");
           break;
         }
         default: {
@@ -77,7 +68,6 @@ export const command = new Command("ext:dev:init")
 
       await npmDependencies.askInstallDependencies({ source: "functions" }, config);
 
-      const welcome = fs.readFileSync(path.join(TEMPLATE_ROOT, lang, "WELCOME.md"), "utf8");
       return logger.info("\n" + marked(welcome));
     } catch (err: any) {
       if (!(err instanceof FirebaseError)) {
@@ -97,39 +87,15 @@ export const command = new Command("ext:dev:init")
  * @param {Config} config configuration options
  */
 async function typescriptSelected(config: Config): Promise<void> {
-  const packageLintingTemplate = fs.readFileSync(
-    path.join(TEMPLATE_ROOT, "typescript", "package.lint.json"),
-    "utf8",
-  );
-  const packageNoLintingTemplate = fs.readFileSync(
-    path.join(TEMPLATE_ROOT, "typescript", "package.nolint.json"),
-    "utf8",
-  );
-  const tsconfigTemplate = fs.readFileSync(
-    path.join(TEMPLATE_ROOT, "typescript", "tsconfig.json"),
-    "utf8",
-  );
-  const tsconfigDevTemplate = fs.readFileSync(
-    path.join(TEMPLATE_ROOT, "typescript", "tsconfig.dev.json"),
-    "utf8",
-  );
-  const indexTemplate = fs.readFileSync(path.join(TEMPLATE_ROOT, "typescript", "index.ts"), "utf8");
-  const integrationTestTemplate = fs.readFileSync(
-    path.join(TEMPLATE_ROOT, "typescript", "integration-test.ts"),
-    "utf8",
-  );
-  const gitignoreTemplate = fs.readFileSync(
-    path.join(TEMPLATE_ROOT, "typescript", "_gitignore"),
-    "utf8",
-  );
-  const mocharcTemplate = fs.readFileSync(
-    path.join(TEMPLATE_ROOT, "typescript", "_mocharc"),
-    "utf8",
-  );
-  const eslintTemplate = fs.readFileSync(
-    path.join(FUNCTIONS_ROOT, "typescript", "_eslintrc"),
-    "utf8",
-  );
+  const packageLintingTemplate = readTemplateSync("extensions/typescript/package.lint.json");
+  const packageNoLintingTemplate = readTemplateSync("extensions/typescript/package.nolint.json");
+  const tsconfigTemplate = readTemplateSync("extensions/typescript/tsconfig.json");
+  const tsconfigDevTemplate = readTemplateSync("extensions/typescript/tsconfig.dev.json");
+  const indexTemplate = readTemplateSync("extensions/typescript/index.ts");
+  const integrationTestTemplate = readTemplateSync("extensions/typescript/integration-test.ts");
+  const gitignoreTemplate = readTemplateSync("extensions/typescript/_gitignore");
+  const mocharcTemplate = readTemplateSync("extensions/typescript/_mocharc");
+  const eslintTemplate = readTemplateSync("init/functions/typescript/_eslintrc");
 
   const lint = await promptOnce({
     name: "lint",
@@ -174,27 +140,12 @@ async function typescriptSelected(config: Config): Promise<void> {
  * @param {Config} config configuration options
  */
 async function javascriptSelected(config: Config): Promise<void> {
-  const indexTemplate = fs.readFileSync(path.join(TEMPLATE_ROOT, "javascript", "index.js"), "utf8");
-  const integrationTestTemplate = fs.readFileSync(
-    path.join(TEMPLATE_ROOT, "javascript", "integration-test.js"),
-    "utf8",
-  );
-  const packageLintingTemplate = fs.readFileSync(
-    path.join(TEMPLATE_ROOT, "javascript", "package.lint.json"),
-    "utf8",
-  );
-  const packageNoLintingTemplate = fs.readFileSync(
-    path.join(TEMPLATE_ROOT, "javascript", "package.nolint.json"),
-    "utf8",
-  );
-  const gitignoreTemplate = fs.readFileSync(
-    path.join(TEMPLATE_ROOT, "javascript", "_gitignore"),
-    "utf8",
-  );
-  const eslintTemplate = fs.readFileSync(
-    path.join(FUNCTIONS_ROOT, "javascript", "_eslintrc"),
-    "utf8",
-  );
+  const indexTemplate = readTemplateSync("extensions/javascript/index.js");
+  const integrationTestTemplate = readTemplateSync("extensions/javascript/integration-test.js");
+  const packageLintingTemplate = readTemplateSync("extensions/javascript/package.lint.json");
+  const packageNoLintingTemplate = readTemplateSync("extensions/javascript/package.nolint.json");
+  const gitignoreTemplate = readTemplateSync("extensions/javascript/_gitignore");
+  const eslintTemplate = readTemplateSync("init/functions/javascript/_eslintrc");
 
   const lint = await promptOnce({
     name: "lint",

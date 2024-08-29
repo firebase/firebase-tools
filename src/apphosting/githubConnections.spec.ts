@@ -238,7 +238,7 @@ describe("githubConnections", () => {
     });
   });
 
-  describe("fetchAllRepositories", () => {
+  describe("fetchRepositoryCloneUris", () => {
     const sandbox: sinon.SinonSandbox = sinon.createSandbox();
     let listAllLinkableGitRepositoriesStub: sinon.SinonStub;
 
@@ -254,42 +254,14 @@ describe("githubConnections", () => {
 
     it("should fetch all linkable repositories from multiple connections", async () => {
       const conn0 = mockConn("conn0");
-      const conn1 = mockConn("conn1");
-      const repo0 = mockRepo("repo-0");
-      const repo1 = mockRepo("repo-1");
-      listAllLinkableGitRepositoriesStub.onFirstCall().resolves([repo0]);
-      listAllLinkableGitRepositoriesStub.onSecondCall().resolves([repo1]);
-
-      const { cloneUris, cloneUriToConnection } = await repo.fetchAllRepositories(projectId, [
-        conn0,
-        conn1,
-      ]);
-
-      expect(cloneUris.length).to.equal(2);
-      expect(cloneUriToConnection).to.deep.equal({
-        [repo0.cloneUri]: conn0,
-        [repo1.cloneUri]: conn1,
-      });
-    });
-
-    it("should fetch all linkable repositories without duplicates when there are duplicate connections", async () => {
-      const conn0 = mockConn("conn0");
-      const conn1 = mockConn("conn1");
       const repo0 = mockRepo("repo-0");
       const repo1 = mockRepo("repo-1");
       listAllLinkableGitRepositoriesStub.onFirstCall().resolves([repo0, repo1]);
-      listAllLinkableGitRepositoriesStub.onSecondCall().resolves([repo0, repo1]);
 
-      const { cloneUris, cloneUriToConnection } = await repo.fetchAllRepositories(projectId, [
-        conn0,
-        conn1,
-      ]);
+      const repos = await repo.fetchRepositoryCloneUris(projectId, conn0);
 
-      expect(cloneUris.length).to.equal(2);
-      expect(cloneUriToConnection).to.deep.equal({
-        [repo0.cloneUri]: conn1,
-        [repo1.cloneUri]: conn1,
-      });
+      expect(repos.length).to.equal(2);
+      expect(repos).to.deep.equal([repo0.cloneUri, repo1.cloneUri]);
     });
   });
 
@@ -320,12 +292,158 @@ describe("githubConnections", () => {
         mockConn("apphosting-github-oauth"),
       ]);
 
-      const conns = await repo.listAppHostingConnections(projectId);
+      const conns = await repo.listAppHostingConnections(projectId, location);
       expect(conns).to.have.length(2);
       expect(conns.map((c) => extractId(c.name))).to.include.members([
         "apphosting-github-conn-baddcafe",
         "apphosting-github-conn-deadbeef",
       ]);
+    });
+  });
+
+  describe("listValidInstallations", () => {
+    const sandbox: sinon.SinonSandbox = sinon.createSandbox();
+    let fetchGitHubInstallationsStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      fetchGitHubInstallationsStub = sandbox
+        .stub(devconnect, "fetchGitHubInstallations")
+        .throws("Unexpected fetchGitHubInstallations call");
+    });
+
+    afterEach(() => {
+      sandbox.verifyAndRestore();
+    });
+
+    it("only lists organizations and authorizer github account", async () => {
+      const conn = mockConn("1");
+      conn.githubConfig = {
+        authorizerCredential: {
+          oauthTokenSecretVersion: "blah",
+          username: "main-user",
+        },
+      };
+
+      fetchGitHubInstallationsStub.resolves([
+        {
+          id: "1",
+          name: "main-user",
+          type: "user",
+        },
+        {
+          id: "2",
+          name: "org-1",
+          type: "organization",
+        },
+        {
+          id: "3",
+          name: "org-3",
+          type: "organization",
+        },
+        {
+          id: "4",
+          name: "some-other-user",
+          type: "user",
+        },
+        {
+          id: "5",
+          name: "org-4",
+          type: "organization",
+        },
+      ]);
+
+      const installations = await repo.listValidInstallations(projectId, location, conn);
+      expect(installations).to.deep.equal([
+        {
+          id: "1",
+          name: "main-user",
+          type: "user",
+        },
+        {
+          id: "2",
+          name: "org-1",
+          type: "organization",
+        },
+        {
+          id: "3",
+          name: "org-3",
+          type: "organization",
+        },
+        {
+          id: "5",
+          name: "org-4",
+          type: "organization",
+        },
+      ]);
+    });
+  });
+
+  describe("getConnectionForInstallation", () => {
+    const sandbox: sinon.SinonSandbox = sinon.createSandbox();
+    let listConnectionsStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      listConnectionsStub = sandbox
+        .stub(devconnect, "listAllConnections")
+        .throws("Unexpected listAllConnections call");
+    });
+
+    afterEach(() => {
+      sandbox.verifyAndRestore();
+    });
+
+    it("finds the matching connection for a given installation", async () => {
+      const mockConn1 = mockConn("apphosting-github-conn-1");
+      const mockConn2 = mockConn("apphosting-github-conn-2");
+      const mockConn3 = mockConn("apphosting-github-conn-3");
+      const mockConn4 = mockConn("random-conn");
+
+      const installationToMatch = "installation-1";
+
+      mockConn1.githubConfig = {
+        appInstallationId: installationToMatch,
+      };
+
+      mockConn2.githubConfig = {
+        appInstallationId: "installation-2",
+      };
+
+      mockConn3.githubConfig = {
+        appInstallationId: "installation-3",
+      };
+
+      listConnectionsStub.resolves([mockConn1, mockConn2, mockConn3, mockConn4]);
+
+      const matchingConnection = await repo.getConnectionForInstallation(
+        projectId,
+        location,
+        installationToMatch,
+      );
+      expect(matchingConnection).to.deep.equal(mockConn1);
+    });
+
+    it("returns null if there is no matching connection for a given installation", async () => {
+      const mockConn1 = mockConn("apphosting-github-conn-1");
+      const mockConn2 = mockConn("apphosting-github-conn-2");
+
+      const installationToMatch = "random-installation";
+
+      mockConn1.githubConfig = {
+        appInstallationId: "installation-1",
+      };
+
+      mockConn2.githubConfig = {
+        appInstallationId: "installation-2",
+      };
+
+      listConnectionsStub.resolves([mockConn1, mockConn2]);
+
+      const matchingConnection = await repo.getConnectionForInstallation(
+        projectId,
+        location,
+        installationToMatch,
+      );
+      expect(matchingConnection).to.be.null;
     });
   });
 
@@ -393,6 +511,56 @@ describe("githubConnections", () => {
       ).calledOnce;
       expect(generateP4SAStub).calledOnce;
       expect(promptOnceStub).to.be.called;
+    });
+  });
+  describe("promptGitHubBranch", () => {
+    const sandbox: sinon.SinonSandbox = sinon.createSandbox();
+
+    let promptOnceStub: sinon.SinonStub;
+    let listAllBranchesStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
+      listAllBranchesStub = sandbox
+        .stub(devconnect, "listAllBranches")
+        .throws("Unexpected listAllBranches call");
+    });
+
+    afterEach(() => {
+      sandbox.verifyAndRestore();
+    });
+
+    it("prompts user for branch", async () => {
+      listAllBranchesStub.returns(new Set(["main", "test1"]));
+
+      promptOnceStub.onFirstCall().returns("main");
+      const testRepoLink = {
+        name: "test",
+        cloneUri: "/test",
+        createTime: "",
+        updateTime: "",
+        deleteTime: "",
+        reconciling: false,
+        uid: "",
+      };
+      await expect(repo.promptGitHubBranch(testRepoLink)).to.eventually.equal("main");
+    });
+
+    it("re-prompts if user enters a branch that does not exist in given repo", async () => {
+      listAllBranchesStub.returns(new Set(["main", "test1"]));
+
+      promptOnceStub.onFirstCall().returns("not-main");
+      promptOnceStub.onSecondCall().returns("test1");
+      const testRepoLink = {
+        name: "test",
+        cloneUri: "/test",
+        createTime: "",
+        updateTime: "",
+        deleteTime: "",
+        reconciling: false,
+        uid: "",
+      };
+      await expect(repo.promptGitHubBranch(testRepoLink)).to.eventually.equal("test1");
     });
   });
 });

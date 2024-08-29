@@ -6,6 +6,7 @@ import { registerExplorer } from "./explorer";
 import { registerAdHoc } from "./ad-hoc-mutations";
 import { DataConnectService as FdcService } from "./service";
 import {
+  ConfigureSdkCodeLensProvider,
   OperationCodeLensProvider,
   SchemaCodeLensProvider,
 } from "./code-lens-provider";
@@ -23,14 +24,13 @@ import {
   registerDataConnectConfigs,
 } from "./config";
 import { locationToRange } from "../utils/graphql";
-import { runDataConnectCompiler } from "./core-compiler";
 import { Result } from "../result";
-import { runEmulatorIssuesStream } from "./emulator-stream";
 import { LanguageClient } from "vscode-languageclient/node";
 import { registerTerminalTasks } from "./terminal";
 import { registerWebview } from "../webview";
 
 import { DataConnectEmulatorController } from "./emulator";
+import { registerFdcSdkGeneration } from "./sdk-generation";
 
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
@@ -161,6 +161,7 @@ export function registerFdc(
     fdcEmulatorsController,
   );
   const schemaCodeLensProvider = new SchemaCodeLensProvider(emulatorController);
+  const configureSdkCodeLensProvider = new ConfigureSdkCodeLensProvider();
 
   // activate language client/serer
   let client: LanguageClient;
@@ -177,26 +178,6 @@ export function registerFdc(
       if (configs && configs.values.length > 0) {
         client = setupLanguageClient(context, configs, lsOutputChannel);
         vscode.commands.executeCommand("fdc-graphql.start");
-      }
-    }),
-  });
-
-  // Perform some side-effects when the endpoint changes
-  context.subscriptions.push({
-    dispose: effect(() => {
-      const configs = dataConnectConfigs.value?.tryReadValue;
-      if (configs && emulatorController.getLocalEndpoint().value) {
-        // TODO move to client.start or setupLanguageClient
-        vscode.commands.executeCommand("fdc-graphql.restart");
-        vscode.commands.executeCommand(
-          "firebase.dataConnect.executeIntrospection",
-        );
-        runEmulatorIssuesStream(
-          configs,
-          emulatorController.getLocalEndpoint().value,
-          fdcEmulatorsController.isPostgresEnabled,
-        );
-        runDataConnectCompiler(configs, emulatorController.getLocalEndpoint().value);
       }
     }),
   });
@@ -244,6 +225,7 @@ export function registerFdc(
     registerAdHoc(fdcService, telemetryLogger),
     registerConnectors(context, broker, fdcService, telemetryLogger),
     registerFdcDeploy(broker, telemetryLogger),
+    registerFdcSdkGeneration(broker, telemetryLogger),
     registerTerminalTasks(broker, telemetryLogger),
     operationCodeLensProvider,
     vscode.languages.registerCodeLensProvider(
@@ -266,6 +248,12 @@ export function registerFdc(
         // Don't show in untitled files since the provider needs the file name.
       ],
       schemaCodeLensProvider,
+    ),
+    vscode.languages.registerCodeLensProvider(
+      [
+        { scheme: "file", language: "yaml", pattern: "**/connector.yaml" },
+      ],
+      configureSdkCodeLensProvider,
     ),
     {
       dispose: () => {

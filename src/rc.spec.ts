@@ -1,15 +1,14 @@
 import { expect } from "chai";
 import * as path from "path";
 import { RC, loadRC, RCData } from "./rc";
-
-const fixturesDir = path.resolve(__dirname, "./test/fixtures");
+import { CONFLICT_RC_DIR, FIREBASE_JSON_PATH, INVALID_RC_DIR } from "./test/fixtures/fbrc";
 
 const EMPTY_DATA: RCData = { projects: {}, targets: {}, etags: {}, dataconnectEmulatorConfig: {} };
 
 describe("RC", () => {
   describe(".load", () => {
     it("should load from nearest project directory", () => {
-      const result = loadRC({ cwd: path.resolve(fixturesDir, "fbrc/conflict") });
+      const result = loadRC({ cwd: CONFLICT_RC_DIR });
       expect(result.projects.default).to.eq("top");
     });
 
@@ -19,12 +18,13 @@ describe("RC", () => {
     });
 
     it("should not throw up on invalid json", () => {
-      const result = loadRC({ cwd: path.resolve(fixturesDir, "fbrc/invalid") });
+      const result = loadRC({ cwd: INVALID_RC_DIR });
       return expect(result.data).to.deep.eq(EMPTY_DATA);
     });
 
     it("should load from the right directory when --config is specified", () => {
-      const result = loadRC({ cwd: __dirname, configPath: "./test/fixtures/fbrc/firebase.json" });
+      const cwd = __dirname;
+      const result = loadRC({ cwd, configPath: path.relative(cwd, FIREBASE_JSON_PATH) });
       expect(result.projects.default).to.eq("top");
     });
   });

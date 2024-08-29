@@ -8,7 +8,7 @@ import { listProjects } from "../cli";
 import { pluginLogger } from "../logger-wrapper";
 import { globalSignal } from "../utils/globals";
 import { firstWhereDefined } from "../utils/signal";
-
+import { User } from "../types/auth";
 /** Available projects */
 export const projects = globalSignal<Record<string, FirebaseProjectMetadata[]>>(
   {},
@@ -23,41 +23,26 @@ const userScopedProjects = computed<FirebaseProjectMetadata[] | undefined>(
   },
 );
 
-/** Gets the currently selected project, fallback to first default project in RC file */
-export const currentProject = computed<FirebaseProjectMetadata | undefined>(
-  () => {
-    // Service accounts should only have one project
-    if (isServiceAccount.value) {
-      return userScopedProjects.value?.[0];
-    }
-
-    const wantProjectId =
-      currentProjectId.value ||
-      firebaseRC.value?.tryReadValue?.projects["default"];
-    if (!wantProjectId) {
-      return undefined;
-    }
-
-    return userScopedProjects.value?.find((p) => p.projectId === wantProjectId);
-  },
-);
-
 export function registerProject(broker: ExtensionBrokerImpl): Disposable {
-  const sub1 = effect(async () => {
+  async function fetchNewProjects(user: User) {
+    const userProjects = await listProjects();
+    projects.value = {
+      ...projects.value,
+      [user.email]: userProjects,
+    };
+  }
+
+  const sub1 = effect(() => {
     const user = currentUser.value;
     if (user) {
       pluginLogger.info("(Core:Project) New user detected, fetching projects");
-      const userProjects = await listProjects();
-      projects.value = {
-        ...projects.value,
-        [user.email]: userProjects,
-      };
+      fetchNewProjects(user);
     }
   });
 
   const sub2 = effect(() => {
     broker.send("notifyProjectChanged", {
-      projectId: currentProject.value?.projectId ?? "",
+      projectId: currentProjectId.value ?? "",
     });
   });
 
@@ -79,11 +64,21 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
   });
 
   const sub5 = broker.on("getInitialData", () => {
+    let wantProjectId =
+      currentProjectId.value ||
+      firebaseRC.value?.tryReadValue?.projects["default"];
+    // Service accounts should only have one project
+    if (isServiceAccount.value) {
+      wantProjectId = userScopedProjects.value?.[0].projectId;
+    }
+
     broker.send("notifyProjectChanged", {
-      projectId: currentProject.value?.projectId ?? "",
+      projectId: wantProjectId ?? "",
     });
   });
 
+  // TODO: In IDX, should we just client.GetProject() from the metadata server?
+  // Should we instead hide this command entirely?
   const command = vscode.commands.registerCommand(
     "firebase.selectProject",
     async () => {

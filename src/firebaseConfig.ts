@@ -234,6 +234,10 @@ export type EmulatorsConfig = {
     host?: string;
     port?: number;
   };
+  tasks?: {
+    host?: string;
+    port?: number;
+  };
 };
 
 export type ExtensionsConfig = Record<string, string>;
@@ -241,8 +245,6 @@ export type ExtensionsConfig = Record<string, string>;
 export type DataConnectSingle = {
   // The directory containing dataconnect.yaml for this service
   source: string;
-  // The location to deploy this service to (ie 'us-central1')
-  location: string;
 } & Deployable;
 
 export type DataConnectMultiple = DataConnectSingle[];

@@ -73,10 +73,8 @@ const extensionConfig = {
     // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
     // mainFields: ['browser', 'module', 'main'], // look for `browser` entry point in imported node modules
     mainFields: ["main", "module"],
-    extensions: [".ts", ".js"],
+    extensions: [".ts", ".js", ".json"], // needed to handle a node_module dependency emojilib, which requires json without ext.
     alias: {
-      // provides alternate implementation for node module and source files
-      "marked-terminal": path.resolve(__dirname, "src/stubs/empty-class.js"),
       // "ora": path.resolve(__dirname, 'src/stubs/empty-function.js'),
       commander: path.resolve(__dirname, "src/stubs/empty-class.js"),
       inquirer: path.resolve(__dirname, "src/stubs/inquirer-stub.js"),
@@ -87,7 +85,6 @@ const extensionConfig = {
       // This is used for Github deploy to hosting - will need to restore
       // or find another solution if we add that feature.
       "libsodium-wrappers": path.resolve(__dirname, "src/stubs/empty-class.js"),
-      marked: path.resolve(__dirname, "src/stubs/marked.js"),
     },
     fallback: {
       // Webpack 5 no longer polyfills Node.js core modules automatically.
@@ -111,12 +108,6 @@ const extensionConfig = {
         loader: "string-replace-loader",
         options: {
           multiple: [
-            // CLI code has absolute path to templates/. We copy templates/
-            // into dist, and this is the correct path now.
-            {
-              search: /(\.|\.\.)[\.\/]+templates/g,
-              replace: "./templates",
-            },
             // CLI code has absolute path to schema/. We copy schema/
             // into dist, and this is the correct path now.
             {
@@ -223,7 +214,7 @@ function makeWebConfig(entryName, entryPath = "") {
   return {
     name: entryName,
     mode: "none", // this leaves the source code as close as possible to the original (when packaging we set this to 'production')
-    entry: "./" + path.join("webviews", entryPath,`${entryName}.entry.tsx`),
+    entry: "./" + path.join("webviews", entryPath, `${entryName}.entry.tsx`),
     output: {
       // the bundle is stored in the 'dist' folder (check package.json), 📖 -> https://webpack.js.org/configuration/output/
       path: path.resolve(__dirname, "dist"),

@@ -33,9 +33,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
     expectedChecksum: "2fd771101c0e1f7898c04c9204f2ce63",
   },
   firestore: {
-    version: "1.19.7",
-    expectedSize: 66438992,
-    expectedChecksum: "aec233bea95c5cfab03881574ec16d6c",
+    version: "1.19.8",
+    expectedSize: 63634791,
+    expectedChecksum: "9b43a6daa590678de9b7df6d68260395",
   },
   storage: {
     version: "1.1.3",
@@ -45,9 +45,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   ui: experiments.isEnabled("emulatoruisnapshot")
     ? { version: "SNAPSHOT", expectedSize: -1, expectedChecksum: "" }
     : {
-        version: "1.12.1",
-        expectedSize: 3498269,
-        expectedChecksum: "a7f4398a00e5ca22abdcd78dc3877d00",
+        version: "1.13.0",
+        expectedSize: 3605485,
+        expectedChecksum: "ec0aa91592c56af9ff7df18168d58459",
       },
   pubsub: {
     version: "0.8.14",
@@ -57,20 +57,20 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   dataconnect:
     process.platform === "darwin"
       ? {
-          version: "1.2.0",
-          expectedSize: 23954240,
-          expectedChecksum: "0f250761959519bb5a28fed76ceab2cb",
+          version: "1.3.5",
+          expectedSize: 24232704,
+          expectedChecksum: "4eabf613a4a5feeaa173e1375b62bde0",
         }
       : process.platform === "win32"
         ? {
-            version: "1.2.0",
-            expectedSize: 24360960,
-            expectedChecksum: "168ce32c742e1d26037c52bdbb7d871c",
+            version: "1.3.5",
+            expectedSize: 24651264,
+            expectedChecksum: "c7b2b7168ff7226f4e5626ae7d13e0ca",
           }
         : {
-            version: "1.2.0",
-            expectedSize: 23970052,
-            expectedChecksum: "2ca17e4009a9ebae0f7c983bafff2ee6",
+            version: "1.3.5",
+            expectedSize: 24146072,
+            expectedChecksum: "1457937751ce25fa332cdc16b561d64b",
           },
 };
 
@@ -180,7 +180,7 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
       expectedChecksum: EMULATOR_UPDATE_DETAILS.dataconnect.expectedChecksum,
       skipChecksumAndSize: false,
       namePrefix: "dataconnect-emulator",
-      auth: true,
+      auth: false,
     },
   },
 };
@@ -292,12 +292,11 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     optionalArgs: [
       "listen",
       "config_dir",
-      "project_id",
-      "service_location",
-      "disable_sdk_generation",
-      "resolvers_emulator",
-      "vertex_location",
-      "rpc_retry_count",
+      "enable_output_schema_extensions",
+      "enable_output_generated_sdk",
+      // Additional flags that CLI shouldn't pass:
+      // rpc_retry_count,
+      // resolvers_emulator,
     ],
     joinArgs: true,
     shell: false,

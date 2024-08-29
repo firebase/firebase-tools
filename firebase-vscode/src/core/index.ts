@@ -40,10 +40,21 @@ export async function registerCore(
   });
 
   const sub4 = broker.on("runFirebaseInit", async () => {
+    // Check if the user has a workspace open
+    if (
+      !vscode.workspace.workspaceFolders ||
+      vscode.workspace.workspaceFolders.length === 0
+    ) {
+      vscode.window.showErrorMessage(
+        "You must have a workspace open to run firebase init.",
+      );
+      return;
+    }
+    const workspaceFolder = vscode.workspace.workspaceFolders[0];
     vscode.tasks.executeTask(
       new vscode.Task(
         { type: "shell" }, // this is the same type as in tasks.json
-        vscode.workspace.workspaceFolders[0], // The workspace folder
+        workspaceFolder, // The workspace folder
         "Firebase init", // how you name the task
         "Firebase init", // Shows up as MyTask: name
         new vscode.ShellExecution("firebase init"),

@@ -10,6 +10,7 @@ import { Emulators, ListenSpec } from "./types";
 import { Constants } from "./constants";
 import { EmulatorLogger } from "./emulatorLogger";
 import { execSync } from "node:child_process";
+import { checkIfDataConnectEmulatorRunningOnAddress } from "./dataconnectEmulator";
 
 // See:
 // - https://stackoverflow.com/questions/4313403/why-do-browsers-block-some-ports
@@ -205,6 +206,7 @@ const EMULATOR_CAN_LISTEN_ON_PRIMARY_ONLY: Record<PortName, boolean> = {
   scheduled: true,
   logging: true,
   storage: true,
+  tasks: true,
 
   // Only one hostname possible in .server mode, can switch to middleware later.
   hosting: true,
@@ -303,6 +305,20 @@ export async function resolveHostAndAssignPorts(
           if (listenable) {
             available.push(listen);
           } else {
+            if (/^dataconnect/i.exec(name)) {
+              const alreadyRunning = await checkIfDataConnectEmulatorRunningOnAddress(listen);
+              // If there is already a running Data Connect emulator on this address, we're gonna try to use it.
+              // If it's for a different service, we'll error out later from DataconnectEmulator.start().
+              if (alreadyRunning) {
+                emuLogger.logLabeled(
+                  "DEBUG",
+                  "dataconnect",
+                  `Detected already running emulator on ${listen.address}:${listen.port}. Will attempt to reuse it.`,
+                );
+              }
+              available.push(listen);
+              continue;
+            }
             if (!portFixed) {
               // Try to find another port to avoid any potential conflict.
               if (i > 0) {

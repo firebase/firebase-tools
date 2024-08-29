@@ -42,6 +42,14 @@ export interface GitHubConfig {
   installationUri?: string;
 }
 
+type InstallationType = "user" | "organization";
+
+export interface Installation {
+  id: string;
+  name: string;
+  type: InstallationType;
+}
+
 type InstallationStage =
   | "STAGE_UNSPECIFIED"
   | "PENDING_CREATE_APP"
@@ -235,6 +243,54 @@ export async function listAllLinkableGitRepositories(
 }
 
 /**
+ * Lists all branches for a given repo. Returns a set of branches.
+ */
+
+export async function listAllBranches(repoLinkName: string): Promise<Set<string>> {
+  const branches = new Set<string>();
+
+  const getNextPage = async (pageToken = ""): Promise<void> => {
+    const res = await client.get<{
+      refNames: string[];
+      nextPageToken?: string;
+    }>(`${repoLinkName}:fetchGitRefs`, {
+      queryParams: {
+        refType: "BRANCH",
+        pageSize: PAGE_SIZE_MAX,
+        pageToken,
+      },
+    });
+    if (Array.isArray(res.body.refNames)) {
+      res.body.refNames.forEach((branch) => {
+        branches.add(branch);
+      });
+    }
+    if (res.body.nextPageToken) {
+      await getNextPage(res.body.nextPageToken);
+    }
+  };
+
+  await getNextPage();
+
+  return branches;
+}
+
+/*
+ * Fetch all GitHub installations available to the oauth token referenced by
+ * the given connection
+ */
+export async function fetchGitHubInstallations(
+  projectId: string,
+  location: string,
+  connectionId: string,
+): Promise<Installation[]> {
+  const name = `projects/${projectId}/locations/${LOCATION_OVERRIDE ?? location}/connections/${connectionId}:fetchGitHubInstallations`;
+  const res = await client.get<{ installations: Installation[] }>(name);
+
+  return res.body.installations;
+}
+
+/**
  * Creates a GitRepositoryLink.Upon linking a Git Repository, Developer
  * Connect will configure the Git Repository to send webhook events to
  * Developer Connect.
@@ -269,6 +325,15 @@ export async function getGitRepositoryLink(
   const name = `projects/${projectId}/locations/${LOCATION_OVERRIDE ?? location}/connections/${connectionId}/gitRepositoryLinks/${gitRepositoryLinkId}`;
   const res = await client.get<GitRepositoryLink>(name);
   return res.body;
+}
+
+/**
+ * sorts the given list of connections by create_time from earliest to latest
+ */
+export function sortConnectionsByCreateTime(connections: Connection[]) {
+  return connections.sort((a, b) => {
+    return Date.parse(a.createTime!) - Date.parse(b.createTime!);
+  });
 }
 
 /**
