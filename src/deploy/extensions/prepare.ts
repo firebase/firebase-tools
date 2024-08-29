@@ -16,7 +16,7 @@ import { checkSpecForSecrets } from "./secrets";
 import { displayWarningsForDeploy, outOfBandChangesWarning } from "../../extensions/warnings";
 import { detectEtagChanges } from "../../extensions/etags";
 import { checkSpecForV2Functions, ensureNecessaryV2ApisAndRoles } from "./v2FunctionHelper";
-import { acceptLatestAppDeveloperTOS } from "../../extensions/tos";
+import { acceptLatestAppDeveloperTOS, getAppDeveloperTOSStatus } from "../../extensions/tos";
 import {
   extractAllDynamicExtensions,
   extractExtensionsFromBuilds,
@@ -121,6 +121,10 @@ async function prepareHelper(
   }
   if (payload.instancesToDelete.length) {
     logger.info(deploymentSummary.deletesSummary(payload.instancesToDelete));
+    if (options.dryRun) {
+      logger.info("On your next deploy, these you will be asked if you want to delete these instances.")
+      logger.info("If you deploy --force, they will be deleted.")
+    }
     if (
       !options.dryRun &&
       !(await prompt.confirm({
@@ -139,11 +143,18 @@ async function prepareHelper(
   }
 
   await requirePermissions(options, permissionsNeeded);
-  await acceptLatestAppDeveloperTOS(
-    options,
-    projectId,
-    context.want.map((i) => i.instanceId),
-  );
+  if (options.dryRun) {
+    const appDevTos = await getAppDeveloperTOSStatus(projectId);
+    if  (!appDevTos.lastAcceptedVersion) {
+      logger.info("On your next deploy, you will be asked to accept the Firebase Extensions App Developer Terms of Service")
+    }
+  } else {
+    await acceptLatestAppDeveloperTOS(
+      options,
+      projectId,
+      context.want.map((i) => i.instanceId),
+    );
+  }
 }
 
 // This is called by functions/prepare so we can deploy the extensions defined by SDKs

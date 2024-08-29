@@ -42,7 +42,7 @@ export async function provisionCloudSql(args: {
     const why = getUpdateReason(existingInstance, enableGoogleMlIntegration);
     if (why) {
       const cta = dryRun
-        ? `It will be updated on you next deploy.`
+        ? `It will be updated on your next deploy.`
         : `Updating instance. This may take a few minutes...`;
       silent ||
         utils.logLabeledBullet(

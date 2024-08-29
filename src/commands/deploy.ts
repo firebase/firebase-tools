@@ -93,7 +93,8 @@ export const command = new Command("deploy")
   .option("--except <targets>", 'deploy to all targets except specified (e.g. "database")')
   .option(
     "--dry-run",
-    "Perform a dry run of your deployment. Validates your changes and builds your code without deploying any changes to your project",
+    "Perform a dry run of your deployment. Validates your changes and builds your code without deploying any changes to your project. " + 
+    "In order to provide better validation, this may still enable APIs on the target project.",
   )
   .before(requireConfig)
   .before((options) => {

@@ -277,13 +277,9 @@ export async function prepare(
   // ===Phase 7. Finalize preparation by "fixing" all extraneous environment issues like IAM policies.
   // We limit the scope endpoints being deployed.
   await backend.checkAvailability(context, matchingBackend);
-  // TODO: CheckServiceAgentRoles when dryRun = true
-  options.dryRun ||
-    (await ensureServiceAgentRoles(projectId, projectNumber, matchingBackend, haveBackend));
   await validate.secretsAreValid(projectId, matchingBackend);
-  // TODO: CheckSecretAccess when dryRun = true
-  options.dryRun || (await ensure.secretAccess(projectId, matchingBackend, haveBackend));
-
+  await ensureServiceAgentRoles(projectId, projectNumber, matchingBackend, haveBackend, options.dryRun);
+  await ensure.secretAccess(projectId, matchingBackend, haveBackend, options.dryRun);
   /**
    * ===Phase 8 Generates the hashes for each of the functions now that secret versions have been resolved.
    * This must be called after `await validate.secretsAreValid`.
