@@ -1255,7 +1255,7 @@ export class FunctionsEmulator implements EmulatorInstance {
             return resolve();
           }
 
-          const timeToWait = this.calculateTimeToWait(retryConfig, retryCount);
+          const timeToWait = this.calculateSecondsToWait(retryConfig, retryCount);
           if (timeToWait === null || timeToWait < 0) {
             return resolve();
           }
@@ -1957,9 +1957,10 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   /**
-   * @internal
+   * Calculates actual seconds to wait based on the retry configuration
+   * and the current retry count.
    */
-  public calculateTimeToWait(
+  public calculateSecondsToWait(
     retryConfig: backend.ScheduleRetryConfig,
     retryCount: number,
   ): number | null {

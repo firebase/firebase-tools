@@ -1043,19 +1043,19 @@ describe("FunctionsEmulator", function () {
   describe("calculateTimeToWait", () => {
     it("should return 5 for first retry if minBackoffSeconds is not defined", () => {
       const retryConfig: backend.ScheduleRetryConfig = {};
-      const result = emu.calculateTimeToWait(retryConfig, 1);
+      const result = emu.calculateSecondsToWait(retryConfig, 1);
       expect(result).to.be.equal(5);
     });
 
     it("should return 10 for first retry if minBackoffSeconds is 10", () => {
       const retryConfig: backend.ScheduleRetryConfig = { minBackoffSeconds: 10 };
-      const result = emu["calculateTimeToWait"](retryConfig, 1);
+      const result = emu.calculateSecondsToWait(retryConfig, 1);
       expect(result).to.be.equal(10);
     });
 
     it("should return 20 for second retry if minBackoffSeconds is 10", () => {
       const retryConfig: backend.ScheduleRetryConfig = { minBackoffSeconds: 10 };
-      const result = emu["calculateTimeToWait"](retryConfig, 2);
+      const result = emu.calculateSecondsToWait(retryConfig, 2);
       expect(result).to.be.equal(20);
     });
 
@@ -1064,7 +1064,7 @@ describe("FunctionsEmulator", function () {
         minBackoffSeconds: 10,
         maxBackoffSeconds: 20,
       };
-      const result = emu["calculateTimeToWait"](retryConfig, 2);
+      const result = emu.calculateSecondsToWait(retryConfig, 2);
       expect(result).to.be.equal(20);
     });
 
@@ -1074,7 +1074,7 @@ describe("FunctionsEmulator", function () {
         maxBackoffSeconds: 20,
         maxDoublings: 1,
       };
-      const result = emu["calculateTimeToWait"](retryConfig, 2);
+      const result = emu.calculateSecondsToWait(retryConfig, 2);
       expect(result).to.be.equal(20);
     });
 
@@ -1084,7 +1084,7 @@ describe("FunctionsEmulator", function () {
         maxBackoffSeconds: 20,
         maxDoublings: 1,
       };
-      const result = emu["calculateTimeToWait"](retryConfig, 3);
+      const result = emu.calculateSecondsToWait(retryConfig, 3);
       expect(result).to.be.equal(20);
     });
 
@@ -1093,7 +1093,7 @@ describe("FunctionsEmulator", function () {
         minBackoffSeconds: 10,
         maxDoublings: 2,
       };
-      const result = emu["calculateTimeToWait"](retryConfig, 4);
+      const result = emu.calculateSecondsToWait(retryConfig, 4);
       expect(result).to.be.equal(40);
     });
 
@@ -1101,7 +1101,7 @@ describe("FunctionsEmulator", function () {
       const retryConfig: backend.ScheduleRetryConfig = {
         retryCount: 2,
       };
-      const result = emu["calculateTimeToWait"](retryConfig, 3);
+      const result = emu.calculateSecondsToWait(retryConfig, 3);
       expect(result).to.be.equal(null);
     });
 
@@ -1109,7 +1109,7 @@ describe("FunctionsEmulator", function () {
       const retryConfig: backend.ScheduleRetryConfig = {
         maxRetrySeconds: 10,
       };
-      const result = emu["calculateTimeToWait"](retryConfig, 3);
+      const result = emu.calculateSecondsToWait(retryConfig, 3);
       expect(result).to.be.equal(10);
     });
   });
