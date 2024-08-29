@@ -644,10 +644,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     // When force is true we set up all triggers, otherwise we only set up
     // triggers which have a unique function name
     const toSetup = triggerDefinitions.filter((definition) => {
-      // TODO: See if this is needed
-      if (definition.scheduleTrigger) {
-        return true;
-      }
       if (force) {
         return true;
       }
@@ -657,8 +653,9 @@ export class FunctionsEmulator implements EmulatorInstance {
         const sameEntryPoint = record.def.entryPoint === definition.entryPoint;
 
         // If they both have event triggers, make sure they match
-        const sameEventTrigger =
-          JSON.stringify(record.def.eventTrigger) === JSON.stringify(definition.eventTrigger);
+        const trigger = definition.scheduleTrigger || definition.eventTrigger;
+        const defTrigger = record.def.scheduleTrigger || record.def.eventTrigger;
+        const sameEventTrigger = JSON.stringify(defTrigger) === JSON.stringify(trigger);
 
         if (sameEntryPoint && !sameEventTrigger) {
           this.logger.log(
