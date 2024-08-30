@@ -317,7 +317,7 @@ export function checkForV2Upgrade(want: backend.Endpoint, have: backend.Endpoint
   if (want.platform === "gcfv2" && have.platform === "gcfv1") {
     throw new FirebaseError(
       `[${getFunctionLabel(have)}] Upgrading from 1st Gen to 2nd Gen is not yet supported. ` +
-        "Please review https://firebase.google.com/docs/functions/2nd-gen-upgrade before upgrading your function to 2nd Gen.",
+        "Please review https://firebase.google.com/docs/functions/2nd-gen-upgrade before migrating to 2nd Gen.",
     );
   }
 }
