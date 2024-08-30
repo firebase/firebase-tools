@@ -9,7 +9,7 @@ export class BufferReader {
   private buffer: Buffer = emptyBuffer;
 
   // TODO(bmc): support non-utf8 encoding?
-  private encoding = 'utf-8' as const;
+  private encoding = "utf-8" as const;
 
   constructor(private offset = 0) {}
 
@@ -38,11 +38,7 @@ export class BufferReader {
   }
 
   public string(length: number): string {
-    const result = this.buffer.toString(
-      this.encoding,
-      this.offset,
-      this.offset + length,
-    );
+    const result = this.buffer.toString(this.encoding, this.offset, this.offset + length);
     this.offset += length;
     return result;
   }

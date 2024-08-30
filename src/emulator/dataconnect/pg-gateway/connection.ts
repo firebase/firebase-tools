@@ -1,23 +1,20 @@
-import type { Socket } from 'node:net';
-import type { TLSSocket } from 'node:tls';
-import { BufferReader } from './buffer-reader.js';
-import { BufferWriter } from './buffer-writer.js';
+import type { Socket } from "node:net";
+import type { TLSSocket } from "node:tls";
+import { BufferReader } from "./buffer-reader.js";
+import { BufferWriter } from "./buffer-writer.js";
 
-import type { AuthFlow } from './auth/base-auth-flow.js';
-import { type AuthOptions, createAuthFlow } from './auth/index.js';
-import {
-  type BackendError,
-  createBackendErrorMessage,
-} from './backend-error.js';
+import type { AuthFlow } from "./auth/base-auth-flow.js";
+import { type AuthOptions, createAuthFlow } from "./auth/index.js";
+import { type BackendError, createBackendErrorMessage } from "./backend-error.js";
 import {
   type ClientInfo,
   type ConnectionState,
   ServerStep,
   type TlsInfo,
-} from './connection.types.js';
-import { MessageBuffer } from './message-buffer.js';
-import { BackendMessageCode, FrontendMessageCode } from './message-codes.js';
-import { upgradeTls } from './tls.js';
+} from "./connection.types.js";
+import { MessageBuffer } from "./message-buffer.js";
+import { BackendMessageCode, FrontendMessageCode } from "./message-codes.js";
+import { upgradeTls } from "./tls.js";
 
 export type TlsOptions = {
   key: Buffer;
@@ -26,17 +23,13 @@ export type TlsOptions = {
   passphrase?: string;
 };
 
-export type TlsOptionsCallback = (
-  tlsInfo: TlsInfo,
-) => TlsOptions | Promise<TlsOptions>;
+export type TlsOptionsCallback = (tlsInfo: TlsInfo) => TlsOptions | Promise<TlsOptions>;
 
 export type PostgresConnectionOptions = {
   /**
    * The server version to send to the frontend.
    */
-  serverVersion?:
-    | string
-    | ((state: ConnectionState) => string | Promise<string>);
+  serverVersion?: string | ((state: ConnectionState) => string | Promise<string>);
 
   /**
    * The authentication mode for the server.
@@ -95,10 +88,7 @@ export type PostgresConnectionOptions = {
    * If you wish to hook into messages without bypassing further processing, do not return
    * any data from this callback.
    */
-  onMessage?(
-    data: Uint8Array,
-    state: ConnectionState,
-  ): MessageResponse | Promise<MessageResponse>;
+  onMessage?(data: Uint8Array, state: ConnectionState): MessageResponse | Promise<MessageResponse>;
 
   /**
    * Callback for every frontend query message.
@@ -110,10 +100,7 @@ export type PostgresConnectionOptions = {
    * TODO: change return signature to be more developer-friendly
    * and then translate to wire protocol.
    */
-  onQuery?(
-    query: string,
-    state: ConnectionState,
-  ): Uint8Array | Promise<Uint8Array>;
+  onQuery?(query: string, state: ConnectionState): Uint8Array | Promise<Uint8Array>;
 };
 
 export type MessageResponse =
@@ -125,7 +112,7 @@ export type MessageResponse =
 export default class PostgresConnection {
   private step: ServerStep = ServerStep.AwaitingInitialMessage;
   options: PostgresConnectionOptions & {
-    auth: NonNullable<PostgresConnectionOptions['auth']>;
+    auth: NonNullable<PostgresConnectionOptions["auth"]>;
   };
   authFlow?: AuthFlow;
   secureSocket?: TLSSocket;
@@ -144,7 +131,7 @@ export default class PostgresConnection {
     options: PostgresConnectionOptions = {},
   ) {
     this.options = {
-      auth: { method: 'trust' },
+      auth: { method: "trust" },
       ...options,
     };
     this.boundDataHandler = this.handleData.bind(this);
@@ -162,25 +149,22 @@ export default class PostgresConnection {
   }
 
   createSocketHandlers(socket: Socket) {
-    socket.on('data', this.boundDataHandler);
-    socket.on('error', this.handleSocketError);
+    socket.on("data", this.boundDataHandler);
+    socket.on("error", this.handleSocketError);
   }
 
   handleSocketError = (error: Error) => {
     // Ignore EPIPE and ECONNRESET errors as they are normal when the client disconnects
-    if (
-      'code' in error &&
-      (error.code === 'EPIPE' || error.code === 'ECONNRESET')
-    ) {
+    if ("code" in error && (error.code === "EPIPE" || error.code === "ECONNRESET")) {
       return;
     }
 
-    console.error('Socket error:', error);
+    console.error("Socket error:", error);
   };
 
   removeSocketHandlers(socket: Socket) {
-    socket.off('data', this.boundDataHandler);
-    socket.off('error', this.handleSocketError);
+    socket.off("data", this.boundDataHandler);
+    socket.off("error", this.handleSocketError);
   }
 
   /**
@@ -224,9 +208,7 @@ export default class PostgresConnection {
     // can be returned that contains raw message response data
     if (messageResponse) {
       const iterableResponse =
-        messageResponse instanceof Uint8Array
-          ? [messageResponse]
-          : messageResponse;
+        messageResponse instanceof Uint8Array ? [messageResponse] : messageResponse;
 
       // Asynchronously stream responses back to client
       for await (const responseData of iterableResponse) {
@@ -249,7 +231,7 @@ export default class PostgresConnection {
       }
       return;
     }
-
+    console.log(`step is ${this.step}`);
     switch (this.step) {
       case ServerStep.AwaitingInitialMessage:
         if (this.isSslRequest(message)) {
@@ -258,9 +240,9 @@ export default class PostgresConnection {
           // Guard against SSL connection not being established when `tls` is enabled
           if (this.options.tls && !this.secureSocket) {
             this.sendError({
-              severity: 'FATAL',
-              code: '08P01',
-              message: 'SSL connection is required',
+              severity: "FATAL",
+              code: "08P01",
+              message: "SSL connection is required",
             });
             this.socket.end();
             return;
@@ -268,7 +250,7 @@ export default class PostgresConnection {
           // the next step is determined by handleStartupMessage
           this.handleStartupMessage(message);
         } else {
-          throw new Error('Unexpected initial message');
+          throw new Error("Unexpected initial message");
         }
         break;
 
@@ -289,14 +271,14 @@ export default class PostgresConnection {
 
   async handleSslRequest() {
     if (!this.options.tls) {
-      this.writer.addString('N');
+      this.writer.addString("N");
       const result = this.writer.flush();
       this.sendData(result);
       return;
     }
 
     // Otherwise respond with 'S' to indicate it is supported
-    this.writer.addString('S');
+    this.writer.addString("S");
     const result = this.writer.flush();
     this.sendData(result);
 
@@ -305,15 +287,14 @@ export default class PostgresConnection {
   }
 
   async handleStartupMessage(message: Buffer) {
-    const { majorVersion, minorVersion, parameters } =
-      this.readStartupMessage();
+    const { majorVersion, minorVersion, parameters } = this.readStartupMessage();
 
     // user is required
     if (!parameters.user) {
       this.sendError({
-        severity: 'FATAL',
-        code: '08000',
-        message: 'user is required',
+        severity: "FATAL",
+        code: "08000",
+        message: "user is required",
       });
       this.socket.end();
       return;
@@ -321,8 +302,8 @@ export default class PostgresConnection {
 
     if (majorVersion !== 3 || minorVersion !== 0) {
       this.sendError({
-        severity: 'FATAL',
-        code: '08000',
+        severity: "FATAL",
+        code: "08000",
         message: `Unsupported protocol version ${majorVersion.toString()}.${minorVersion.toString()}`,
       });
       this.socket.end();
@@ -349,7 +330,7 @@ export default class PostgresConnection {
       return;
     }
 
-    if (this.options.auth.method === 'trust') {
+    if (this.options.auth.method === "trust") {
       await this.completeAuthentication();
       return;
     }
@@ -368,7 +349,7 @@ export default class PostgresConnection {
 
     // 'cert' auth flow is an edge case
     // it doesn't expect a new message from the client so we can directly proceed
-    if (this.options.auth.method === 'cert') {
+    if (this.options.auth.method === "cert") {
       await this.authFlow.handleClientMessage(message);
       if (this.authFlow.isCompleted) {
         await this.completeAuthentication();
@@ -384,7 +365,7 @@ export default class PostgresConnection {
     }
 
     if (!this.authFlow) {
-      throw new Error('AuthFlow not initialized');
+      throw new Error("AuthFlow not initialized");
     }
 
     await this.authFlow.handleClientMessage(message);
@@ -399,13 +380,17 @@ export default class PostgresConnection {
       case FrontendMessageCode.Terminate:
         this.handleTerminate(message);
         break;
+      // case FrontendMessageCode.Sync:
+      //   // Flush?
+      //   this.sendReadyForQuery("idle");
+      //   break;
       default:
         this.sendError({
-          severity: 'ERROR',
-          code: '123',
-          message: 'Message code not yet implemented',
+          severity: "ERROR",
+          code: "123",
+          message: "Message code not yet implemented",
         });
-        this.sendReadyForQuery('idle');
+        this.sendReadyForQuery("idle");
     }
   }
 
@@ -439,9 +424,7 @@ export default class PostgresConnection {
     const majorVersion = message.readInt16BE(4);
     const minorVersion = message.readInt16BE(6);
 
-    return (
-      message.length === length && majorVersion === 3 && minorVersion === 0
-    );
+    return message.length === length && majorVersion === 3 && minorVersion === 0;
   }
 
   /**
@@ -459,32 +442,27 @@ export default class PostgresConnection {
 
     if (this.options.serverVersion) {
       let serverVersion: string;
-      if (typeof this.options.serverVersion === 'function') {
+      if (typeof this.options.serverVersion === "function") {
         this.socket.pause();
         serverVersion = await this.options.serverVersion(this.state);
         this.socket.resume();
       } else {
         serverVersion = this.options.serverVersion;
       }
-      this.sendParameterStatus('server_version', serverVersion);
+      this.sendParameterStatus("server_version", serverVersion);
     }
 
     this.step = ServerStep.ReadyForQuery;
-    this.sendReadyForQuery('idle');
+    this.sendReadyForQuery("idle");
   }
 
   /**
    * Upgrades TCP socket connection to TLS.
    */
   async upgradeToTls(options: TlsOptions | TlsOptionsCallback) {
-    const requestCert = this.options.auth.method === 'cert';
+    const requestCert = this.options.auth.method === "cert";
 
-    const { secureSocket, tlsInfo } = await upgradeTls(
-      this.socket,
-      options,
-      {},
-      requestCert,
-    );
+    const { secureSocket, tlsInfo } = await upgradeTls(this.socket, options, {}, requestCert);
 
     this.tlsInfo = tlsInfo;
     this.secureSocket = secureSocket;
@@ -511,7 +489,7 @@ export default class PostgresConnection {
     const parameters: Record<string, string> = {};
 
     // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
-    for (let key: string; (key = this.reader.cstring()) !== ''; ) {
+    for (let key: string; (key = this.reader.cstring()) !== ""; ) {
       parameters[key] = this.reader.cstring();
     }
 
@@ -540,7 +518,7 @@ export default class PostgresConnection {
    */
   sendData(data: Uint8Array) {
     const td = new TextDecoder();
-    console.log(`about to send ${JSON.stringify(td.decode(data))}`);
+    console.log(`Responding with message: ${JSON.stringify(td.decode(data))}`);
     this.socket.write(data);
   }
 
@@ -551,9 +529,7 @@ export default class PostgresConnection {
    */
   sendAuthenticationOk() {
     this.writer.addInt32(0);
-    const response = this.writer.flush(
-      BackendMessageCode.AuthenticationResponse,
-    );
+    const response = this.writer.flush(BackendMessageCode.AuthenticationResponse);
     this.sendData(response);
   }
 
@@ -576,18 +552,16 @@ export default class PostgresConnection {
    *
    * @see https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-READYFORQUERY
    */
-  sendReadyForQuery(
-    transactionStatus: 'idle' | 'transaction' | 'error' = 'idle',
-  ) {
+  sendReadyForQuery(transactionStatus: "idle" | "transaction" | "error" = "idle") {
     switch (transactionStatus) {
-      case 'idle':
-        this.writer.addString('I');
+      case "idle":
+        this.writer.addString("I");
         break;
-      case 'transaction':
-        this.writer.addString('T');
+      case "transaction":
+        this.writer.addString("T");
         break;
-      case 'error':
-        this.writer.addString('E');
+      case "error":
+        this.writer.addString("E");
         break;
       default:
         throw new Error(`Unknown transaction status '${transactionStatus}'`);
@@ -611,11 +585,11 @@ export default class PostgresConnection {
 
   sendAuthenticationFailedError() {
     this.sendError({
-      severity: 'FATAL',
-      code: '28P01',
+      severity: "FATAL",
+      code: "28P01",
       message: this.clientInfo?.parameters.user
         ? `password authentication failed for user "${this.clientInfo.parameters.user}"`
-        : 'password authentication failed',
+        : "password authentication failed",
     });
   }
 }

@@ -26,7 +26,7 @@ export interface DataConnectEmulatorArgs {
   auto_download?: boolean;
   rc: RC;
   config: Config;
-  autostartPostgres: boolean
+  autostartPostgres: boolean;
 }
 
 export interface DataConnectGenerateArgs {
@@ -88,14 +88,14 @@ export class DataConnectEmulator implements EmulatorInstance {
       this.usingExistingEmulator = true;
       this.watchUnmanagedInstance();
     } else {
-      console.log("pglite branch")
+      console.log("pglite branch");
       if (this.args.autostartPostgres) {
-        console.log(
-          "WE USING PGLITEEEEEE",
-        );
-        const pgServer = new PostgresServer(dbId, 'postgres');
+        console.log("WE USING PGLITEEEEEE");
+        const pgServer = new PostgresServer(dbId, "postgres");
         const server = await pgServer.createPGServer();
-        console.log(`Started up PGlite yo. listening: ${server.listening}, address: ${server.address()}`);
+        console.log(
+          `Started up PGlite yo. listening: ${server.listening}, address: ${server.address()}`,
+        );
       }
       await start(Emulators.DATACONNECT, {
         auto_download: this.args.auto_download,
@@ -107,7 +107,11 @@ export class DataConnectEmulator implements EmulatorInstance {
       this.usingExistingEmulator = false;
     }
     if (!isVSCodeExtension()) {
-      await this.connectToPostgres(`postgres://localhost:5432/${dbId}?sslmode=disable`, dbId, serviceId);
+      await this.connectToPostgres(
+        `postgres://localhost:5432/${dbId}?sslmode=disable`,
+        dbId,
+        serviceId,
+      );
     }
     return;
   }
@@ -276,7 +280,11 @@ Run ${clc.bold("firebase setup:emulators:dataconnect")} to set up a Postgres con
       try {
         this.logger.logLabeled("DEBUG", "Data Connect", `Connecting to ${connectionString}}...`);
         await this.emulatorClient.configureEmulator({ connectionString, database, serviceId });
-        this.logger.logLabeled("DEBUG", "Data Connect", `Successfully connected to ${connectionString}}`)
+        this.logger.logLabeled(
+          "DEBUG",
+          "Data Connect",
+          `Successfully connected to ${connectionString}}`,
+        );
         const info = await this.emulatorClient.getInfo();
         console.log(JSON.stringify(info));
         return true;

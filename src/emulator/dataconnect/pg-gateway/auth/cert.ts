@@ -1,12 +1,12 @@
-import type { Socket } from 'node:net';
-import { type PeerCertificate, TLSSocket } from 'node:tls';
-import type { BufferReader } from '../buffer-reader.js';
-import type { BufferWriter } from '../buffer-writer.js';
-import type { ConnectionState } from '../connection.types';
-import { BaseAuthFlow } from './base-auth-flow';
+import type { Socket } from "node:net";
+import { type PeerCertificate, TLSSocket } from "node:tls";
+import type { BufferReader } from "../buffer-reader.js";
+import type { BufferWriter } from "../buffer-writer.js";
+import type { ConnectionState } from "../connection.types";
+import { BaseAuthFlow } from "./base-auth-flow";
 
 export type CertAuthOptions = {
-  method: 'cert';
+  method: "cert";
   validateCredentials?: (
     credentials: {
       username: string;
@@ -18,7 +18,7 @@ export type CertAuthOptions = {
 
 export class CertAuthFlow extends BaseAuthFlow {
   private auth: CertAuthOptions & {
-    validateCredentials: NonNullable<CertAuthOptions['validateCredentials']>;
+    validateCredentials: NonNullable<CertAuthOptions["validateCredentials"]>;
   };
   private username: string;
   private completed = false;
@@ -46,8 +46,8 @@ export class CertAuthFlow extends BaseAuthFlow {
   async handleClientMessage(message: Buffer): Promise<void> {
     if (!(this.socket instanceof TLSSocket)) {
       this.sendError({
-        severity: 'FATAL',
-        code: '08000',
+        severity: "FATAL",
+        code: "08000",
         message: `ssl connection required when auth mode is 'certificate'`,
       });
       this.socket.end();
@@ -56,9 +56,9 @@ export class CertAuthFlow extends BaseAuthFlow {
 
     if (!this.socket.authorized) {
       this.sendError({
-        severity: 'FATAL',
-        code: '08000',
-        message: 'client certificate is invalid',
+        severity: "FATAL",
+        code: "08000",
+        message: "client certificate is invalid",
       });
       this.socket.end();
       return;
@@ -76,9 +76,9 @@ export class CertAuthFlow extends BaseAuthFlow {
 
     if (!isValid) {
       this.sendError({
-        severity: 'FATAL',
-        code: '08000',
-        message: 'client certificate is invalid',
+        severity: "FATAL",
+        code: "08000",
+        message: "client certificate is invalid",
       });
       this.socket.end();
       return;

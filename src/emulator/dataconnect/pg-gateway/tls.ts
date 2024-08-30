@@ -1,11 +1,7 @@
-import type { Socket } from 'node:net';
-import {
-  TLSSocket,
-  type TLSSocketOptions,
-  createSecureContext,
-} from 'node:tls';
-import type { TlsOptions, TlsOptionsCallback } from './connection';
-import type { TlsInfo } from './connection.types.js';
+import type { Socket } from "node:net";
+import { TLSSocket, type TLSSocketOptions, createSecureContext } from "node:tls";
+import type { TlsOptions, TlsOptionsCallback } from "./connection";
+import type { TlsInfo } from "./connection.types.js";
 
 export async function upgradeTls(
   socket: Socket,
@@ -16,22 +12,14 @@ export async function upgradeTls(
   const originalSocket = socket;
   originalSocket.pause();
 
-  const tlsSocketOptions = await createTlsSocketOptions(
-    options,
-    tlsInfo,
-    requestCert,
-  );
+  const tlsSocketOptions = await createTlsSocketOptions(options, tlsInfo, requestCert);
 
   const secureSocket = new TLSSocket(originalSocket, {
     ...tlsSocketOptions,
     isServer: true,
     SNICallback: async (sniServerName, callback) => {
       tlsInfo.sniServerName = sniServerName;
-      const updatedTlsSocketOptions = await createTlsSocketOptions(
-        options,
-        tlsInfo,
-        requestCert,
-      );
+      const updatedTlsSocketOptions = await createTlsSocketOptions(options, tlsInfo, requestCert);
       callback(null, createSecureContext(updatedTlsSocketOptions));
     },
   });
@@ -39,7 +27,7 @@ export async function upgradeTls(
   secureSocket.pause();
 
   await new Promise<void>((resolve) => {
-    secureSocket.on('secure', () => {
+    secureSocket.on("secure", () => {
       onServerSocketSecure(secureSocket);
       resolve();
     });
@@ -56,9 +44,7 @@ async function createTlsSocketOptions(
   requestCert: boolean,
 ): Promise<TLSSocketOptions> {
   const { key, cert, ca, passphrase } =
-    typeof optionsOrCallback === 'function'
-      ? await optionsOrCallback(tlsInfo)
-      : optionsOrCallback;
+    typeof optionsOrCallback === "function" ? await optionsOrCallback(tlsInfo) : optionsOrCallback;
 
   return {
     key,

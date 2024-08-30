@@ -143,7 +143,7 @@ export const ALL_EXPERIMENTS = experiments({
   fdcpglite: {
     shortDescription: "Start up a PGlite database when starting the Data Connect emulator",
     public: false,
-  }
+  },
 });
 
 export type ExperimentName = keyof typeof ALL_EXPERIMENTS;

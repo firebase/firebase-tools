@@ -54,7 +54,6 @@
         "ora": "^5.4.1",
         "p-limit": "^3.0.1",
         "pg": "^8.11.3",
-        "pg-gateway": "0.2.4",
         "pg-protocol": "^1.6.1",
         "portfinder": "^1.0.32",
         "progress": "^2.0.3",
@@ -16194,14 +16193,6 @@
       "version": "2.6.4",
       "resolved": "https://registry.npmjs.org/pg-connection-string/-/pg-connection-string-2.6.4.tgz",
       "integrity": "sha512-v+Z7W/0EO707aNMaAEfiGnGL9sxxumwLl2fJvCQtMn9Fxsg+lPpPkdcyBSv/KFgpGdYkMfn+EI1Or2EHjpgLCA=="
-    },
-    "node_modules/pg-gateway": {
-      "version": "0.2.4",
-      "resolved": "https://registry.npmjs.org/pg-gateway/-/pg-gateway-0.2.4.tgz",
-      "integrity": "sha512-4G65vuaKG9bL+l8bh2EW3JxUpJVqjDTjKzOxqpuVtEr5TBiSm6t5hj9qPulRLAmImVCnQ0J9qKC+2y9POUcMbw==",
-      "dependencies": {
-        "pg-protocol": "^1.6.1"
-      }
     },
     "node_modules/pg-int8": {
       "version": "1.0.1",
@@ -33032,14 +33023,6 @@
       "version": "2.6.4",
       "resolved": "https://registry.npmjs.org/pg-connection-string/-/pg-connection-string-2.6.4.tgz",
       "integrity": "sha512-v+Z7W/0EO707aNMaAEfiGnGL9sxxumwLl2fJvCQtMn9Fxsg+lPpPkdcyBSv/KFgpGdYkMfn+EI1Or2EHjpgLCA=="
-    },
-    "pg-gateway": {
-      "version": "0.2.4",
-      "resolved": "https://registry.npmjs.org/pg-gateway/-/pg-gateway-0.2.4.tgz",
-      "integrity": "sha512-4G65vuaKG9bL+l8bh2EW3JxUpJVqjDTjKzOxqpuVtEr5TBiSm6t5hj9qPulRLAmImVCnQ0J9qKC+2y9POUcMbw==",
-      "requires": {
-        "pg-protocol": "^1.6.1"
-      }
     },
     "pg-int8": {
       "version": "1.0.1",

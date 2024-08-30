@@ -1,13 +1,13 @@
-import { type BinaryLike, createHash } from 'node:crypto';
-import type { Socket } from 'node:net';
-import type { BufferReader } from '../buffer-reader.js';
-import type { BufferWriter } from '../buffer-writer.js';
-import type { ConnectionState } from '../connection.types';
-import { BackendMessageCode } from '../message-codes';
-import { BaseAuthFlow } from './base-auth-flow';
+import { type BinaryLike, createHash } from "node:crypto";
+import type { Socket } from "node:net";
+import type { BufferReader } from "../buffer-reader.js";
+import type { BufferWriter } from "../buffer-writer.js";
+import type { ConnectionState } from "../connection.types";
+import { BackendMessageCode } from "../message-codes";
+import { BaseAuthFlow } from "./base-auth-flow";
 
 export type Md5AuthOptions = {
-  method: 'md5';
+  method: "md5";
   validateCredentials?: (
     credentials: {
       username: string;
@@ -25,7 +25,7 @@ export type Md5AuthOptions = {
 
 export class Md5AuthFlow extends BaseAuthFlow {
   private auth: Md5AuthOptions & {
-    validateCredentials: NonNullable<Md5AuthOptions['validateCredentials']>;
+    validateCredentials: NonNullable<Md5AuthOptions["validateCredentials"]>;
   };
   private username: string;
   private salt: Buffer;
@@ -45,10 +45,7 @@ export class Md5AuthFlow extends BaseAuthFlow {
       validateCredentials:
         params.auth.validateCredentials ??
         (async ({ preHashedPassword, hashedPassword, salt }) => {
-          const expectedHashedPassword = await hashPreHashedPassword(
-            preHashedPassword,
-            salt,
-          );
+          const expectedHashedPassword = await hashPreHashedPassword(preHashedPassword, salt);
           return hashedPassword === expectedHashedPassword;
         }),
     };
@@ -80,8 +77,8 @@ export class Md5AuthFlow extends BaseAuthFlow {
 
     if (!isValid) {
       this.sendError({
-        severity: 'FATAL',
-        code: '28P01',
+        severity: "FATAL",
+        code: "28P01",
         message: `password authentication failed for user "${this.username}"`,
       });
       this.socket.end();
@@ -108,9 +105,7 @@ export class Md5AuthFlow extends BaseAuthFlow {
     this.writer.addInt32(5);
     this.writer.add(Buffer.from(this.salt));
 
-    const response = this.writer.flush(
-      BackendMessageCode.AuthenticationResponse,
-    );
+    const response = this.writer.flush(BackendMessageCode.AuthenticationResponse);
 
     this.socket.write(response);
   }
@@ -121,10 +116,7 @@ export class Md5AuthFlow extends BaseAuthFlow {
  *
  * @see https://www.postgresql.org/docs/current/protocol-flow.html#PROTOCOL-FLOW-START-UP
  */
-export async function hashPreHashedPassword(
-  preHashedPassword: string,
-  salt: Buffer,
-) {
+export async function hashPreHashedPassword(preHashedPassword: string, salt: Buffer) {
   const hash = md5(Buffer.concat([Buffer.from(preHashedPassword), salt]));
   return `md5${hash}`;
 }
@@ -133,7 +125,7 @@ export async function hashPreHashedPassword(
  * Computes the MD5 hash of the given value.
  */
 export function md5(value: BinaryLike) {
-  return createHash('md5').update(value).digest('hex');
+  return createHash("md5").update(value).digest("hex");
 }
 
 /**

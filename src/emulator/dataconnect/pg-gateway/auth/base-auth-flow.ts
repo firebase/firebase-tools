@@ -1,11 +1,8 @@
-import type { Socket } from 'node:net';
-import {
-  type BackendError,
-  createBackendErrorMessage,
-} from '../backend-error.js';
-import type { BufferReader } from '../buffer-reader.js';
-import type { BufferWriter } from '../buffer-writer.js';
-import type { ConnectionState } from '../connection.types.js';
+import type { Socket } from "node:net";
+import { type BackendError, createBackendErrorMessage } from "../backend-error.js";
+import type { BufferReader } from "../buffer-reader.js";
+import type { BufferWriter } from "../buffer-writer.js";
+import type { ConnectionState } from "../connection.types.js";
 
 export interface AuthFlow {
   sendInitialAuthMessage(): void;

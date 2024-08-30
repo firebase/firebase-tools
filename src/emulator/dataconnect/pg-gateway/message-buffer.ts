@@ -18,10 +18,7 @@ export class MessageBuffer {
 
       if (newFullLength > this.buffer.byteLength) {
         let newBuffer: Buffer;
-        if (
-          newLength <= this.buffer.byteLength &&
-          this.bufferOffset >= this.bufferLength
-        ) {
+        if (newLength <= this.buffer.byteLength && this.bufferOffset >= this.bufferLength) {
           newBuffer = this.buffer;
         } else {
           let newBufferLength = this.buffer.byteLength * 2;
@@ -30,12 +27,7 @@ export class MessageBuffer {
           }
           newBuffer = Buffer.allocUnsafe(newBufferLength);
         }
-        this.buffer.copy(
-          newBuffer,
-          0,
-          this.bufferOffset,
-          this.bufferOffset + this.bufferLength,
-        );
+        this.buffer.copy(newBuffer, 0, this.bufferOffset, this.bufferOffset + this.bufferLength);
         this.buffer = newBuffer;
         this.bufferOffset = 0;
       }
@@ -66,20 +58,28 @@ export class MessageBuffer {
     const codeLength = !hasStarted ? 0 : 1;
     const headerLength = 4 + codeLength;
 
+    let pipeline = Buffer.alloc(0);;
     while (offset + headerLength <= bufferFullLength) {
       // The length passed in the message header
       const length = this.buffer.readUInt32BE(offset + codeLength);
-
+      console.log(`Got message of length ${length}`)
       // The length passed in the message header does not include the first single
       // byte code, so we account for it here
       const fullMessageLength = codeLength + length;
 
+    // TODO: Support pipelined messages
+    // If get a prepare, hold on for the next message.
       if (offset + fullMessageLength <= bufferFullLength) {
-        const messageData = this.buffer.subarray(
-          offset,
-          offset + fullMessageLength,
-        );
-        await messageHandler(messageData);
+        const messageData = this.buffer.subarray(offset, offset + fullMessageLength);
+        
+        // if (shouldPipelineMessage(messageData)) {
+        //   pipeline = Buffer.concat([pipeline, messageData], pipeline.length + fullMessageLength);
+        // } else if (pipeline.length) {
+        //   await messageHandler(pipeline);
+        //   await messageHandler(messageData);
+        // } else {
+          await messageHandler(messageData);
+        // }
         offset += fullMessageLength;
       } else {
         break;
@@ -95,4 +95,12 @@ export class MessageBuffer {
       this.bufferOffset = offset;
     }
   }
+}
+
+function shouldPipelineMessage(message: Buffer): boolean {
+  const td = new TextDecoder();
+  const decoded = td.decode(message);
+  console.log(`Message is ${decoded}`);
+  const extendedProtocolMessageCodes = ["P", "D"];
+  return extendedProtocolMessageCodes.includes(decoded[0]);
 }

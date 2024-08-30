@@ -45,7 +45,7 @@ export class BufferWriter {
     } else {
       const len = Buffer.byteLength(string);
       this.ensure(len + 1); // +1 for null terminator
-      this.buffer.write(string, this.offset, 'utf-8');
+      this.buffer.write(string, this.offset, "utf-8");
       this.offset += len;
     }
 
@@ -53,7 +53,7 @@ export class BufferWriter {
     return this;
   }
 
-  public addString(string = ''): BufferWriter {
+  public addString(string = ""): BufferWriter {
     const len = Buffer.byteLength(string);
     this.ensure(len);
     this.buffer.write(string, this.offset);
@@ -71,7 +71,7 @@ export class BufferWriter {
   private join(code?: number): Buffer {
     if (code) {
       this.buffer[this.headerPosition] = code;
-      //length is everything in this packet minus the code
+      // length is everything in this packet minus the code
       const length = this.offset - (this.headerPosition + 1);
       this.buffer.writeInt32BE(length, this.headerPosition + 1);
     }

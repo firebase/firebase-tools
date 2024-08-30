@@ -14,9 +14,9 @@ export type TlsInfo = {
 };
 
 export const ServerStep = {
-  AwaitingInitialMessage: 'AwaitingInitialMessage',
-  PerformingAuthentication: 'PerformingAuthentication',
-  ReadyForQuery: 'ReadyForQuery',
+  AwaitingInitialMessage: "AwaitingInitialMessage",
+  PerformingAuthentication: "PerformingAuthentication",
+  ReadyForQuery: "ReadyForQuery",
 } as const;
 
 export type ServerStep = (typeof ServerStep)[keyof typeof ServerStep];
