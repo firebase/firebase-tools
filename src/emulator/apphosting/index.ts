@@ -17,6 +17,7 @@ export class AppHostingEmulator implements EmulatorInstance {
     const { port } = await apphostingStart(this.args.options);
     console.log(`serving on port ${port}`);
   }
+
   connect(): Promise<void> {
     console.log(`connecting apphosting emulator`);
     return Promise.resolve();
@@ -30,8 +31,8 @@ export class AppHostingEmulator implements EmulatorInstance {
   getInfo(): EmulatorInfo {
     return {
       name: Emulators.APPHOSTING,
-      host: "127.0.0.1",
-      port: 5001,
+      host: this.args.host!,
+      port: this.args.port!,
     };
   }
 

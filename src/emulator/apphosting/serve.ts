@@ -12,8 +12,6 @@ const logger = EmulatorLogger.forEmulator(Emulators.APPHOSTING);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function start(options: any): Promise<{ port: number }> {
-  // const config = read in env variables / secrets etc and other config stuff from firebase.json
-
   let port = options.port;
   while (!(await availablePort(options.host, port))) {
     port += 1;
@@ -33,13 +31,6 @@ function availablePort(host: string, port: number): Promise<boolean> {
 }
 
 export async function serve(options: any, port: string) {
-  const host = new Promise<string>(async (resolve, reject) => {
-    const serve = await wrapSpawn(
-      "npm",
-      ["run", "dev", "--", `-H`, options.host, `-p`, port],
-      process.cwd(),
-    );
-  });
-
-  return host;
+  // TODO: update to support other package managers and frameworks other than NextJS
+  await wrapSpawn("npm", ["run", "dev", "--", `-H`, options.host, `-p`, port], process.cwd());
 }
