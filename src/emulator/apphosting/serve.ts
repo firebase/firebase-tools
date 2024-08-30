@@ -4,11 +4,7 @@
  */
 import { isIPv4 } from "net";
 import { checkListenable } from "../portUtils";
-import { EmulatorLogger } from "../../emulator/emulatorLogger";
-import { Emulators } from "../types";
 import { wrapSpawn } from "../../init/spawn";
-
-const logger = EmulatorLogger.forEmulator(Emulators.APPHOSTING);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function start(options: any): Promise<{ port: number }> {
