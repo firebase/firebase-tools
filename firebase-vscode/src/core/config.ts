@@ -106,48 +106,62 @@ function notifyFirebaseConfig(broker: ExtensionBrokerImpl) {
   });
 }
 
-function registerRc(broker: ExtensionBrokerImpl): Disposable {
+function registerRc(
+  context: vscode.ExtensionContext,
+  broker: ExtensionBrokerImpl,
+) {
   firebaseRC.value = _readRC();
-  const rcRemoveListener = onChange(firebaseRC, () =>
-    notifyFirebaseConfig(broker),
-  );
+  context.subscriptions.push({
+    dispose: onChange(firebaseRC, () => notifyFirebaseConfig(broker)),
+  });
 
-  const showToastOnError = effect(() => {
-    const rc = firebaseRC.value;
-    if (rc instanceof ResultError) {
-      vscode.window.showErrorMessage(`Error reading .firebaserc:\n${rc.error}`);
-    }
+  context.subscriptions.push({
+    dispose: effect(() => {
+      const rc = firebaseRC.value;
+      if (rc instanceof ResultError) {
+        vscode.window.showErrorMessage(
+          `Error reading .firebaserc:\n${rc.error}`,
+        );
+      }
+    }),
   });
 
   const rcWatcher = _createWatcher(".firebaserc");
+  if (rcWatcher) {
+    context.subscriptions.push(rcWatcher);
+  }
+
   rcWatcher?.onDidChange(() => (firebaseRC.value = _readRC()));
   rcWatcher?.onDidCreate(() => (firebaseRC.value = _readRC()));
   rcWatcher?.onDidDelete(() => (firebaseRC.value = undefined));
-
-  return Disposable.from(
-    { dispose: rcRemoveListener },
-    { dispose: showToastOnError },
-    { dispose: () => rcWatcher?.dispose() },
-  );
 }
 
-function registerFirebaseConfig(broker: ExtensionBrokerImpl): Disposable {
+function registerFirebaseConfig(
+  context: vscode.ExtensionContext,
+  broker: ExtensionBrokerImpl,
+) {
   firebaseConfig.value = _readFirebaseConfig();
 
-  const firebaseConfigRemoveListener = onChange(firebaseConfig, () =>
-    notifyFirebaseConfig(broker),
-  );
+  context.subscriptions.push({
+    dispose: onChange(firebaseConfig, () => notifyFirebaseConfig(broker)),
+  });
 
-  const showToastOnError = effect(() => {
-    const config = firebaseConfig.value;
-    if (config instanceof ResultError) {
-      vscode.window.showErrorMessage(
-        `Error reading firebase.json:\n${config.error}`,
-      );
-    }
+  context.subscriptions.push({
+    dispose: effect(() => {
+      const config = firebaseConfig.value;
+      if (config instanceof ResultError) {
+        vscode.window.showErrorMessage(
+          `Error reading firebase.json:\n${config.error}`,
+        );
+      }
+    }),
   });
 
   const configWatcher = _createWatcher("firebase.json");
+  if (configWatcher) {
+    context.subscriptions.push(configWatcher);
+  }
+
   configWatcher?.onDidChange(
     () => (firebaseConfig.value = _readFirebaseConfig()),
   );
@@ -155,27 +169,23 @@ function registerFirebaseConfig(broker: ExtensionBrokerImpl): Disposable {
     () => (firebaseConfig.value = _readFirebaseConfig()),
   );
   configWatcher?.onDidDelete(() => (firebaseConfig.value = undefined));
-
-  return Disposable.from(
-    { dispose: firebaseConfigRemoveListener },
-    { dispose: showToastOnError },
-    { dispose: () => configWatcher?.dispose() },
-  );
 }
 
-export function registerConfig(broker: ExtensionBrokerImpl): Disposable {
+export function registerConfig(
+  context: vscode.ExtensionContext,
+  broker: ExtensionBrokerImpl,
+) {
   // On getInitialData, forcibly notifies the extension.
-  const getInitialDataRemoveListener = broker.on("getInitialData", () => {
-    notifyFirebaseConfig(broker);
+  context.subscriptions.push({
+    dispose: broker.on("getInitialData", () => {
+      notifyFirebaseConfig(broker);
+    }),
   });
 
   // TODO handle deletion of .firebaserc/.firebase.json/firemat.yaml
 
-  return Disposable.from(
-    { dispose: getInitialDataRemoveListener },
-    registerFirebaseConfig(broker),
-    registerRc(broker),
-  );
+  registerFirebaseConfig(context, broker);
+  registerRc(context, broker);
 }
 
 /** @internal */

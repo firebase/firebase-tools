@@ -196,6 +196,8 @@ export function registerFdc(
     );
   });
 
+  registerDataConnectConfigs(context, broker);
+
   return Disposable.from(
     fdcEmulatorsController,
     codeActions,
@@ -209,7 +211,6 @@ export function registerFdc(
         selectedProjectStatus.show();
       }),
     },
-    registerDataConnectConfigs(broker),
     registerExecution(
       context,
       broker,

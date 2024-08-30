@@ -46,9 +46,13 @@ export class ErrorWithPath extends Error {
 }
 
 export function registerDataConnectConfigs(
+  context: vscode.ExtensionContext,
   broker: ExtensionBrokerImpl,
-): vscode.Disposable {
+) {
   let cancel: () => void | undefined;
+  context.subscriptions.push({
+    dispose: () => cancel?.(),
+  });
 
   function handleResult(
     firebaseConfig: Result<Config | undefined> | undefined,
@@ -94,9 +98,13 @@ export function registerDataConnectConfigs(
       ).cancel;
   }
 
-  const sub = effect(() => handleResult(firebaseConfig.value));
+  context.subscriptions.push({
+    dispose: effect(() => handleResult(firebaseConfig.value)),
+  });
 
   const dataConnectWatcher = createWatcher("**/{dataconnect,connector}.yaml");
+  context.subscriptions.push(dataConnectWatcher);
+
   dataConnectWatcher?.onDidChange(() => handleResult(firebaseConfig.value));
   dataConnectWatcher?.onDidCreate(() => handleResult(firebaseConfig.value));
   dataConnectWatcher?.onDidDelete(() => handleResult(firebaseConfig.value));
@@ -105,23 +113,17 @@ export function registerDataConnectConfigs(
     () => !!dataConnectConfigs.value?.tryReadValue?.values.length,
   );
 
-  const hasConfigSub = effect(() => {
-    broker.send("notifyHasFdcConfigs", hasConfigs.value);
-  });
-  const getInitialHasFdcConfigsSub = broker.on(
-    "getInitialHasFdcConfigs",
-    () => {
+  context.subscriptions.push({
+    dispose: effect(() => {
       broker.send("notifyHasFdcConfigs", hasConfigs.value);
-    },
-  );
+    }),
+  });
 
-  return vscode.Disposable.from(
-    { dispose: sub },
-    { dispose: hasConfigSub },
-    { dispose: getInitialHasFdcConfigsSub },
-    { dispose: () => cancel?.() },
-    dataConnectWatcher,
-  );
+  context.subscriptions.push({
+    dispose: broker.on("getInitialHasFdcConfigs", () => {
+      broker.send("notifyHasFdcConfigs", hasConfigs.value);
+    }),
+  });
 }
 
 /** @internal */

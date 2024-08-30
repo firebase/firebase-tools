@@ -13,12 +13,11 @@ import {
   registerConfig,
 } from "../../../../core/config";
 import {
-  addDisposable,
   addTearDown,
   firebaseSuite,
   firebaseTest,
 } from "../../../utils/test_hooks";
-import { createFake, mock } from "../../../utils/mock";
+import { createFake, createFakeContext, mock } from "../../../utils/mock";
 import { resetGlobals } from "../../../../utils/globals";
 import { workspace } from "../../../../utils/test_hooks";
 import { createFile, createTemporaryDirectory } from "../../../utils/fs";
@@ -49,7 +48,7 @@ firebaseSuite("getRootFolders", () => {
       const result = getRootFolders();
 
       assert.deepEqual(result, []);
-    }
+    },
   );
 
   firebaseTest("returns an array of paths", () => {
@@ -135,7 +134,7 @@ firebaseSuite("getConfigPath", () => {
 
       mock(workspace, { workspaceFolders: [aFolder, cFolder, bFolder] });
       assert.deepEqual(getConfigPath(), c, "firebase.json is found first");
-    }
+    },
   );
 
   firebaseTest("if no firebase config found, returns the first folder", () => {
@@ -234,9 +233,9 @@ firebaseSuite("_readFirebaseConfig", () => {
           .startsWith(
             `FirebaseError: There was an error loading ${path.join(
               dir,
-              "firebase.json"
-            )}:`
-          )
+              "firebase.json",
+            )}:`,
+          ),
     );
 
     assert.equal(logs.error.length, 1);
@@ -266,7 +265,7 @@ firebaseSuite("_readRC", () => {
     const config = _readRC();
     assert.deepEqual(
       config?.requireValue.data.projects,
-      expectedConfig.projects
+      expectedConfig.projects,
     );
   });
 
@@ -304,13 +303,13 @@ firebaseSuite("_readRC", () => {
       () => _readRC(),
       (thrown) =>
         thrown.toString() ===
-        `SyntaxError: Unexpected token 'i', "invalid json" is not valid JSON`
+        `SyntaxError: Unexpected token 'i', "invalid json" is not valid JSON`,
     );
 
     assert.equal(logs.error.length, 1);
     assert.equal(
       logs.error[0],
-      `Unexpected token 'i', "invalid json" is not valid JSON`
+      `Unexpected token 'i', "invalid json" is not valid JSON`,
     );
   });
 });
@@ -361,8 +360,8 @@ firebaseSuite("registerConfig", () => {
         firebaseConfig: expectedConfig,
       });
 
-      const disposable = await registerConfig(broker);
-      addDisposable(disposable);
+      const context = createFakeContext();
+      registerConfig(context, broker);
 
       // Initial register should not notify anything.
       assert.deepEqual(broker.sentLogs, []);
@@ -371,9 +370,9 @@ firebaseSuite("registerConfig", () => {
       assert.deepEqual(firebaseConfig.value.requireValue.data, expectedConfig);
       assert.deepEqual(
         firebaseRC.value.requireValue.data.projects,
-        expectedRc.projects
+        expectedRc.projects,
       );
-    }
+    },
   );
 
   firebaseTest(
@@ -386,13 +385,13 @@ firebaseSuite("registerConfig", () => {
         firebaseRc: initialRC,
       });
 
-      const disposable = await registerConfig(broker);
-      addDisposable(disposable);
+      const context = createFakeContext();
+      registerConfig(context, broker);
 
       assert.deepEqual(broker.sentLogs, []);
 
       firebaseRC.value = new ResultValue(
-        new RC(firebaseRC.value.requireValue.path, newRC)
+        new RC(firebaseRC.value.requireValue.path, newRC),
       );
 
       assert.deepEqual(broker.sentLogs, [
@@ -412,7 +411,7 @@ firebaseSuite("registerConfig", () => {
           ],
         },
       ]);
-    }
+    },
   );
 
   firebaseTest(
@@ -425,14 +424,14 @@ firebaseSuite("registerConfig", () => {
         firebaseConfig: initialConfig,
       });
 
-      const disposable = await registerConfig(broker);
-      addDisposable(disposable);
+      const context = createFakeContext();
+      registerConfig(context, broker);
 
       assert.deepEqual(broker.sentLogs, []);
 
       fs.writeFileSync(
         workspaces.byIndex(0).firebaseConfigPath,
-        JSON.stringify(newConfig)
+        JSON.stringify(newConfig),
       );
       firebaseConfig.value = _readFirebaseConfig()!;
 
@@ -453,15 +452,15 @@ firebaseSuite("registerConfig", () => {
           ],
         },
       ]);
-    }
+    },
   );
 
   firebaseTest("supports undefined working directory", async () => {
     const broker = createTestBroker();
     mock(currentOptions, { ...currentOptions.value, cwd: undefined });
 
-    const disposable = await registerConfig(broker);
-    addDisposable(disposable);
+    const context = createFakeContext();
+    registerConfig(context, broker);
 
     // Should not throw.
   });
@@ -491,16 +490,16 @@ firebaseSuite("registerConfig", () => {
           pendingWatchers.push(watcher);
           return watcher;
         },
-      })
+      }),
     );
 
-    const disposable = await registerConfig(broker);
-    addDisposable(disposable);
+    const context = createFakeContext();
+    registerConfig(context, broker);
 
     assert.equal(pendingWatchers.length, 3);
     assert.deepEqual(Object.keys(broker.onListeners), ["getInitialData"]);
 
-    disposable.dispose();
+    context.subscriptions.forEach((sub) => sub.dispose());
 
     assert.equal(pendingWatchers.length, 0);
     assert.deepEqual(Object.keys(broker.onListeners), []);
@@ -527,7 +526,7 @@ firebaseSuite("registerConfig", () => {
       function addFSListener(
         pattern: string,
         type: "create" | "update" | "delete",
-        cb: (uri: vscode.Uri) => void
+        cb: (uri: vscode.Uri) => void,
       ) {
         const listeners = (watcherListeners[pattern] ??= {});
         assert.equal(watcherListeners[pattern]?.create, undefined);
@@ -552,13 +551,13 @@ firebaseSuite("registerConfig", () => {
               dispose: () => {},
             });
           },
-        })
+        }),
       );
 
       const broker = createTestBroker();
 
-      const disposable = await registerConfig(broker);
-      addDisposable(disposable);
+      const context = createFakeContext();
+      registerConfig(context, broker);
 
       const rcListeners = watcherListeners[".firebaserc"]!;
       const rcFile = path.join(dir, ".firebaserc");
@@ -569,7 +568,7 @@ firebaseSuite("registerConfig", () => {
         index: number,
         file: string,
         content: string,
-        fireWatcher: () => void
+        fireWatcher: () => void,
       ) {
         assert.equal(broker.sentLogs.length, index);
 
@@ -581,13 +580,13 @@ firebaseSuite("registerConfig", () => {
 
       function testRcEvent(
         event: "create" | "update" | "delete",
-        index: number
+        index: number,
       ) {
         testEvent(
           index,
           rcFile,
           JSON.stringify({ projects: { default: event } }),
-          () => rcListeners[event]!(vscode.Uri.file(rcFile))
+          () => rcListeners[event]!(vscode.Uri.file(rcFile)),
         );
 
         assert.deepEqual(broker.sentLogs[index].args[0].firebaseRC.projects, {
@@ -597,13 +596,13 @@ firebaseSuite("registerConfig", () => {
 
       function testConfigEvent(
         event: "create" | "update" | "delete",
-        index: number
+        index: number,
       ) {
         testEvent(
           index,
           configFile,
           JSON.stringify({ emulators: { auth: { port: index } } }),
-          () => configListeners[event]!(vscode.Uri.file(configFile))
+          () => configListeners[event]!(vscode.Uri.file(configFile)),
         );
 
         assert.deepEqual(broker.sentLogs[index].args[0].firebaseJson, {
@@ -626,8 +625,8 @@ firebaseSuite("registerConfig", () => {
       firebaseConfig: { emulators: { auth: { port: 9399 } } },
     });
 
-    const disposable = await registerConfig(broker);
-    addDisposable(disposable);
+    const context = createFakeContext();
+    registerConfig(context, broker);
 
     broker.simulateOn("getInitialData");
 

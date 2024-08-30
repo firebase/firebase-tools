@@ -84,13 +84,14 @@ export async function registerCore(
     },
   );
 
+  registerConfig(context, broker);
+
   return [
     emulatorsController,
     Disposable.from(
       openRcCmd,
       emulatorsController,
       registerOptions(context),
-      registerConfig(broker),
       registerEnv(broker),
       registerUser(broker, telemetryLogger),
       registerProject(broker),
