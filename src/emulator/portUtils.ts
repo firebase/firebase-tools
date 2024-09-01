@@ -203,6 +203,7 @@ const EMULATOR_CAN_LISTEN_ON_PRIMARY_ONLY: Record<PortName, boolean> = {
   eventarc: true,
   extensions: true,
   functions: true,
+  scheduled: true,
   logging: true,
   storage: true,
   tasks: true,

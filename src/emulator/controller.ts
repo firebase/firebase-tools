@@ -19,8 +19,13 @@ import {
 import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "./constants";
 import { EmulatableBackend, FunctionsEmulator } from "./functionsEmulator";
 import { FirebaseError } from "../error";
-import { getProjectId, needProjectId, getAliases, needProjectNumber } from "../projectUtils";
+import { getAliases, getProjectId, needProjectId, needProjectNumber } from "../projectUtils";
 import * as commandUtils from "./commandUtils";
+import {
+  FLAG_EXPORT_ON_EXIT_NAME,
+  JAVA_DEPRECATION_WARNING,
+  MIN_SUPPORTED_JAVA_MAJOR_VERSION,
+} from "./commandUtils";
 import { EmulatorHub } from "./hub";
 import { ExportMetadata, HubExport } from "./hubExport";
 import { EmulatorUI } from "./ui";
@@ -29,11 +34,6 @@ import * as dbRulesConfig from "../database/rulesConfig";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 import { EmulatorHubClient } from "./hubClient";
 import { confirm } from "../prompt";
-import {
-  FLAG_EXPORT_ON_EXIT_NAME,
-  JAVA_DEPRECATION_WARNING,
-  MIN_SUPPORTED_JAVA_MAJOR_VERSION,
-} from "./commandUtils";
 import { fileExistsSync } from "../fsutils";
 import { getStorageRulesConfig } from "./storage/rules/config";
 import { getDefaultDatabaseInstance } from "../getDefaultDatabaseInstance";
@@ -46,7 +46,8 @@ import { requiresJava } from "./downloadableEmulators";
 import { prepareFrameworks } from "../frameworks";
 import * as experiments from "../experiments";
 import { EmulatorListenConfig, PortName, resolveHostAndAssignPorts } from "./portUtils";
-import { Runtime, isRuntime } from "../deploy/functions/runtimes/supported";
+import { isRuntime, Runtime } from "../deploy/functions/runtimes/supported";
+import { ScheduledEmulator } from "./scheduledEmulator";
 
 import { AuthEmulator, SingleProjectMode } from "./auth";
 import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
@@ -159,7 +160,7 @@ export function shouldStart(options: Options, name: Emulators): boolean {
   }
 
   // Don't start the functions emulator if we can't find the source directory
-  if (name === Emulators.FUNCTIONS && emulatorInTargets) {
+  if ((name === Emulators.FUNCTIONS || name === Emulators.SCHEDULED) && emulatorInTargets) {
     try {
       normalizeAndValidate(options.config.src.functions);
       return true;
@@ -381,6 +382,7 @@ export async function startAll(
       emulator === Emulators.TASKS ||
       // Same port as Functions, no need for separate assignment
       emulator === Emulators.EXTENSIONS ||
+      emulator === Emulators.SCHEDULED ||
       (emulator === Emulators.UI && !showUI)
     ) {
       continue;
@@ -571,6 +573,9 @@ export async function startAll(
     }
 
     const account = getProjectDefaultAccount(options.projectRoot);
+
+    const scheduledEmulator = new ScheduledEmulator();
+    await startEmulator(scheduledEmulator);
 
     // TODO(b/213241033): Figure out how to watch for changes to extensions .env files & reload triggers when they change.
     const functionsEmulator = new FunctionsEmulator({
@@ -938,7 +943,7 @@ export async function startAll(
 
 function getListenConfig(
   options: EmulatorOptions,
-  emulator: Exclude<Emulators, Emulators.EXTENSIONS>,
+  emulator: Exclude<Emulators, Emulators.EXTENSIONS | Emulators.SCHEDULED>,
 ): EmulatorListenConfig {
   let host = options.config.src.emulators?.[emulator]?.host || Constants.getDefaultHost();
   if (host === "localhost" && utils.isRunningInWSL()) {

@@ -17,6 +17,7 @@ import { TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
 import { logger } from "../../src/logger";
 import * as registry from "../../src/emulator/registry";
 import * as secretManager from "../../src/gcp/secretManager";
+import * as backend from "../../src/deploy/functions/backend";
 
 if ((process.env.DEBUG || "").toLowerCase().includes("spec")) {
   const dropLogLevels = (info: logform.TransformableInfo) => info.message;
@@ -1036,6 +1037,80 @@ describe("FunctionsEmulator", function () {
       const triggerDefinitions = await emu.discoverTriggers(TEST_BACKEND);
       expect(triggerDefinitions).to.have.length(1);
       expect(triggerDefinitions[0].timeoutSeconds).to.equal(26);
+    });
+  });
+
+  describe("calculateTimeToWait", () => {
+    it("should return 5 for first retry if minBackoffSeconds is not defined", () => {
+      const retryConfig: backend.ScheduleRetryConfig = {};
+      const result = emu.calculateSecondsToWait(retryConfig, 1);
+      expect(result).to.be.equal(5);
+    });
+
+    it("should return 10 for first retry if minBackoffSeconds is 10", () => {
+      const retryConfig: backend.ScheduleRetryConfig = { minBackoffSeconds: 10 };
+      const result = emu.calculateSecondsToWait(retryConfig, 1);
+      expect(result).to.be.equal(10);
+    });
+
+    it("should return 20 for second retry if minBackoffSeconds is 10", () => {
+      const retryConfig: backend.ScheduleRetryConfig = { minBackoffSeconds: 10 };
+      const result = emu.calculateSecondsToWait(retryConfig, 2);
+      expect(result).to.be.equal(20);
+    });
+
+    it("should return 20 for second retry if minBackoffSeconds is 10 and maxBackoffSeconds is 20", () => {
+      const retryConfig: backend.ScheduleRetryConfig = {
+        minBackoffSeconds: 10,
+        maxBackoffSeconds: 20,
+      };
+      const result = emu.calculateSecondsToWait(retryConfig, 2);
+      expect(result).to.be.equal(20);
+    });
+
+    it("should return 20 for second retry if minBackoffSeconds is 10, maxBackoffSeconds is 20, and maxDoublings is 1", () => {
+      const retryConfig: backend.ScheduleRetryConfig = {
+        minBackoffSeconds: 10,
+        maxBackoffSeconds: 20,
+        maxDoublings: 1,
+      };
+      const result = emu.calculateSecondsToWait(retryConfig, 2);
+      expect(result).to.be.equal(20);
+    });
+
+    it("should return 20 for third retry if minBackoffSeconds is 10, maxBackoffSeconds is 20, and maxDoublings is 1", () => {
+      const retryConfig: backend.ScheduleRetryConfig = {
+        minBackoffSeconds: 10,
+        maxBackoffSeconds: 20,
+        maxDoublings: 1,
+      };
+      const result = emu.calculateSecondsToWait(retryConfig, 3);
+      expect(result).to.be.equal(20);
+    });
+
+    it("should return 40 for forth retry if minBackoffSeconds is 10, and maxDoublings is 2", () => {
+      const retryConfig: backend.ScheduleRetryConfig = {
+        minBackoffSeconds: 10,
+        maxDoublings: 2,
+      };
+      const result = emu.calculateSecondsToWait(retryConfig, 4);
+      expect(result).to.be.equal(40);
+    });
+
+    it("should return null for third retry if retryCount is 2", () => {
+      const retryConfig: backend.ScheduleRetryConfig = {
+        retryCount: 2,
+      };
+      const result = emu.calculateSecondsToWait(retryConfig, 3);
+      expect(result).to.be.equal(null);
+    });
+
+    it("should return 10 for third retry if maxRetrySeconds is 10", () => {
+      const retryConfig: backend.ScheduleRetryConfig = {
+        maxRetrySeconds: 10,
+      };
+      const result = emu.calculateSecondsToWait(retryConfig, 3);
+      expect(result).to.be.equal(10);
     });
   });
 

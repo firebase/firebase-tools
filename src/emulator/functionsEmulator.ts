@@ -37,6 +37,7 @@ import {
   prepareEndpoints,
   BlockingTrigger,
   getTemporarySocketPath,
+  FunctionsRuntimeBundle,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
@@ -63,6 +64,7 @@ import { resolveBackend } from "../deploy/functions/build";
 import { setEnvVarsForEmulators } from "./env";
 import { runWithVirtualEnv } from "../functions/python";
 import { Runtime } from "../deploy/functions/runtimes/supported";
+import { ScheduledEmulator } from "./scheduledEmulator";
 
 const EVENT_INVOKE_GA4 = "functions_invoke"; // event name GA4 (alphanumertic)
 
@@ -318,6 +320,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     // The URL for the listBackends endpoint, which is used by the Emulator UI.
     const listBackendsRoute = `/backends`;
 
+    // The URL for the listScheduled endpoint, which is used by the Emulator UI.
+    const listScheduledRoute = `/scheduled`;
+    const scheduledForceRun = `/force_run/:trigger_id`;
+
     const httpsHandler: express.RequestHandler = (req, res) => {
       const work: Work = () => {
         return this.handleHttpsTrigger(req, res);
@@ -368,13 +374,33 @@ export class FunctionsEmulator implements EmulatorInstance {
       res.json({ backends: this.getBackendInfo() });
     };
 
+    const listScheduledHandler: express.RequestHandler = (req, res) => {
+      res.json({ scheduled: this.getScheduledInfo() });
+    };
+
+    const scheduledEmulator = EmulatorRegistry.get(Emulators.SCHEDULED) as
+      | ScheduledEmulator
+      | undefined;
+    if (scheduledEmulator) {
+      const scheduledForceRunHandler: express.RequestHandler = (req: express.Request, res) => {
+        void this.runScheduled(req.params.trigger_id, null);
+        res.json({ status: "acknowledged" });
+      };
+      hub.post(scheduledForceRun, cors({ origin: true }), scheduledForceRunHandler);
+    }
+
     // The ordering here is important. The longer routes (background)
     // need to be registered first otherwise the HTTP functions consume
     // all events.
-    hub.get(listBackendsRoute, cors({ origin: true }), listBackendsHandler); // This route needs CORS so the Emulator UI can call it.
+
+    // These routse need CORS so the Emulator UI can call it.
+    hub.get(listBackendsRoute, cors({ origin: true }), listBackendsHandler);
+    hub.get(listScheduledRoute, cors({ origin: true }), listScheduledHandler);
+
     hub.post(backgroundFunctionRoute, dataMiddleware, httpsHandler);
     hub.post(multicastFunctionRoute, dataMiddleware, multicastHandler);
     hub.all(httpsFunctionRoutes, dataMiddleware, httpsHandler);
+
     hub.all("*", dataMiddleware, (req, res) => {
       logger.debug(`Functions emulator received unknown request at path ${req.path}`);
       res.sendStatus(404);
@@ -550,6 +576,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       });
       const discoveredBackend = resolution.backend;
       const endpoints = backend.allEndpoints(discoveredBackend);
+
       prepareEndpoints(endpoints);
       for (const e of endpoints) {
         e.codebase = emulatableBackend.codebase;
@@ -582,6 +609,15 @@ export class FunctionsEmulator implements EmulatorInstance {
       );
       return;
     }
+
+    const scheduledEmulator = EmulatorRegistry.get(Emulators.SCHEDULED) as
+      | ScheduledEmulator
+      | undefined;
+    if (scheduledEmulator) {
+      logger.log("debug", "Clearing scheduled emulator timers");
+      scheduledEmulator.clearTimers();
+    }
+
     // Before loading any triggers we need to make sure there are no 'stale' workers
     // in the pool that would cause us to run old code.
     if (this.debugMode) {
@@ -617,8 +653,9 @@ export class FunctionsEmulator implements EmulatorInstance {
         const sameEntryPoint = record.def.entryPoint === definition.entryPoint;
 
         // If they both have event triggers, make sure they match
-        const sameEventTrigger =
-          JSON.stringify(record.def.eventTrigger) === JSON.stringify(definition.eventTrigger);
+        const trigger = definition.scheduleTrigger || definition.eventTrigger;
+        const defTrigger = record.def.scheduleTrigger || record.def.eventTrigger;
+        const sameEventTrigger = JSON.stringify(defTrigger) === JSON.stringify(trigger);
 
         if (sameEntryPoint && !sameEventTrigger) {
           this.logger.log(
@@ -693,7 +730,7 @@ export class FunctionsEmulator implements EmulatorInstance {
               key,
               definition.eventTrigger,
               signature,
-              definition.schedule,
+              definition.scheduleTrigger,
             );
             break;
           case Constants.SERVICE_EVENTARC:
@@ -727,6 +764,12 @@ export class FunctionsEmulator implements EmulatorInstance {
           definition.region,
         );
         added = this.addBlockingTrigger(url, definition.blockingTrigger);
+      } else if (definition.scheduleTrigger) {
+        added = this.addScheduledTrigger(
+          definition.name,
+          definition.region,
+          definition.scheduleTrigger,
+        );
       } else {
         this.logger.log(
           "WARN",
@@ -1148,6 +1191,92 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
   }
 
+  addScheduledTrigger(
+    triggerName: string,
+    triggerRegion: string,
+    scheduleTrigger: backend.ScheduleTrigger,
+  ): boolean {
+    const scheduledEmulator = EmulatorRegistry.get(Emulators.SCHEDULED) as
+      | ScheduledEmulator
+      | undefined;
+
+    if (!scheduledEmulator) {
+      return false;
+    }
+
+    logger.debug(`addScheduledTrigger`, JSON.stringify({ scheduleTrigger }));
+
+    const scheduledTriggerId = `${triggerRegion}-${triggerName}`;
+
+    if (!scheduleTrigger.schedule) {
+      throw new FirebaseError("Scheduled functions must have a schedule");
+    }
+
+    scheduledEmulator.createTimer(scheduledTriggerId, scheduleTrigger.schedule, () => {
+      void this.runScheduled(scheduledTriggerId, scheduleTrigger.retryConfig);
+    });
+
+    return true;
+  }
+
+  async runScheduled(
+    triggerId: string,
+    retryConfig: backend.ScheduleRetryConfig | null | undefined,
+    retryCount = 0,
+  ): Promise<void> {
+    const record = this.getTriggerRecordByKey(triggerId);
+    const trigger = record.def;
+
+    const pool = this.workerPools[record.backend.codebase];
+    if (!pool.readyForWork(trigger.id)) {
+      try {
+        await this.startRuntime(record.backend, trigger);
+      } catch (e: any) {
+        this.logger.logLabeled("ERROR", `Failed to start runtime for ${trigger.id}: ${e}`);
+        return;
+      }
+    }
+    const worker = pool.getIdleWorker(trigger.id)!;
+
+    const headers = {
+      "Content-Type": "application/json",
+    };
+
+    return new Promise((resolve, reject) => {
+      const req = http.request(
+        {
+          ...worker.runtime.conn.httpReqOpts(),
+          path: `/`,
+          headers: headers,
+        },
+        (message) => {
+          const { statusCode } = message;
+          if (!statusCode || !retryConfig || Object.keys(retryConfig).length === 0) {
+            return resolve();
+          }
+
+          const timeToWait = this.calculateSecondsToWait(retryConfig, retryCount);
+          if (timeToWait === null || timeToWait < 0) {
+            return resolve();
+          }
+
+          this.logger.log(
+            "WARN",
+            `Scheduled function ${triggerId} failed with status ${statusCode}. Retrying in ${timeToWait}s`,
+          );
+
+          setTimeout(() => {
+            void this.runScheduled(triggerId, retryConfig, retryCount + 1);
+          }, timeToWait * 1000);
+
+          resolve();
+        },
+      );
+      req.on("error", reject);
+      req.end();
+    });
+  }
+
   addAuthTrigger(projectId: string, key: string, eventTrigger: EventTrigger): boolean {
     logger.debug(`addAuthTrigger`, JSON.stringify({ eventTrigger }));
 
@@ -1287,6 +1416,17 @@ export class FunctionsEmulator implements EmulatorInstance {
     return Object.values(this.triggers)
       .filter((t) => !t.backend.extensionInstanceId)
       .map((t) => t.def);
+  }
+
+  getScheduledFunctions(): ParsedTriggerDefinition[] {
+    return Object.values(this.triggers)
+      .filter((t) => t.def.scheduleTrigger)
+      .map((t) => t.def);
+  }
+
+  getScheduledInfo(): string {
+    const scheduledFunctions = this.getScheduledFunctions();
+    return JSON.parse(JSON.stringify(scheduledFunctions));
   }
 
   addTriggerRecord(
@@ -1796,7 +1936,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         return;
       }
     }
-    let debugBundle;
+    let debugBundle: FunctionsRuntimeBundle["debug"] | undefined;
     if (this.debugMode) {
       debugBundle = {
         functionTarget: trigger.entryPoint,
@@ -1814,5 +1954,34 @@ export class FunctionsEmulator implements EmulatorInstance {
       reqBody,
       debugBundle,
     );
+  }
+
+  /**
+   * Calculates actual seconds to wait based on the retry configuration
+   * and the current retry count.
+   */
+  public calculateSecondsToWait(
+    retryConfig: backend.ScheduleRetryConfig,
+    retryCount: number,
+  ): number | null {
+    const {
+      retryCount: maxRetryCount,
+      maxRetrySeconds = 0,
+      maxBackoffSeconds,
+      minBackoffSeconds,
+      maxDoublings,
+    } = retryConfig;
+    if (maxRetryCount != null && retryCount >= maxRetryCount) return null;
+
+    const timeToWait = Math.min(
+      maxBackoffSeconds ?? 600,
+      (minBackoffSeconds ?? 5) * Math.pow(2, Math.min(retryCount - 1, maxDoublings ?? 5)),
+    );
+
+    if (maxRetrySeconds !== null && maxRetrySeconds !== 0 && timeToWait > maxRetrySeconds) {
+      return maxRetrySeconds;
+    }
+
+    return timeToWait;
   }
 }

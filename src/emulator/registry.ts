@@ -33,7 +33,7 @@ export class EmulatorRegistry {
     // Start the emulator and wait for it to grab its assigned port.
     await instance.start();
     // No need to wait for the Extensions emulator to close its port, since it runs on the Functions emulator.
-    if (instance.getName() !== Emulators.EXTENSIONS) {
+    if (instance.getName() !== Emulators.EXTENSIONS && instance.getName() !== Emulators.SCHEDULED) {
       const info = instance.getInfo();
       await portUtils.waitForPortUsed(info.port, connectableHostname(info.host), info.timeout);
     }
@@ -68,10 +68,11 @@ export class EmulatorRegistry {
       // once shutdown starts
       ui: 0,
 
-      // The Extensions emulator runs on the same process as the Functions emulator
-      // so this is a no-op. We put this before functions for future proofing, since
-      // the Extensions emulator depends on the Functions emulator.
+      // The Extensions and Scheduled emulators run on the same process as the Functions emulator
+      // so these are no-ops. We put this before functions for future proofing, since
+      // these emulators depend on the Functions emulator.
       extensions: 1,
+      scheduled: 1,
       // Functions is next since it has side effects and
       // dependencies across all the others
       functions: 1.1,
