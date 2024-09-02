@@ -11,6 +11,8 @@ import {
   firebaseRC,
   getRootFolders,
   registerConfig,
+  allRCs,
+  allFirebaseConfigs,
 } from "../../../../core/config";
 import {
   addTearDown,
@@ -332,7 +334,7 @@ firebaseSuite("_createWatcher", () => {
 
     mock(currentOptions, createFake<VsCodeOptions>({ cwd: dir }));
 
-    const watcher = _createWatcher("file")!;
+    const watcher = await _createWatcher("file")!;
     addTearDown(() => watcher.dispose());
 
     const createdFile = new Promise<vscode.Uri>((resolve) => {
@@ -390,9 +392,11 @@ firebaseSuite("registerConfig", () => {
 
       assert.deepEqual(broker.sentLogs, []);
 
-      firebaseRC.value = new ResultValue(
-        new RC(firebaseRC.value.requireValue.path, newRC),
-      );
+      allRCs.value = {
+        [firebaseRC.value.requireValue.path]: new ResultValue(
+          new RC(firebaseRC.value.requireValue.path, newRC),
+        ),
+      };
 
       assert.deepEqual(broker.sentLogs, [
         {
@@ -433,7 +437,9 @@ firebaseSuite("registerConfig", () => {
         workspaces.byIndex(0).firebaseConfigPath,
         JSON.stringify(newConfig),
       );
-      firebaseConfig.value = _readFirebaseConfig()!;
+      allFirebaseConfigs.value = {
+        [workspaces.byIndex(0).firebaseConfigPath]: _readFirebaseConfig()!,
+      };
 
       assert.deepEqual(broker.sentLogs, [
         {
@@ -504,8 +510,8 @@ firebaseSuite("registerConfig", () => {
     assert.equal(pendingWatchers.length, 0);
     assert.deepEqual(Object.keys(broker.onListeners), []);
 
-    firebaseConfig.value = new ResultValue(new Config(""));
-    firebaseRC.value = new ResultValue(new RC());
+    allFirebaseConfigs.value = { "": new ResultValue(new Config("")) };
+    allRCs.value = { "": new ResultValue(new RC()) };
 
     // Notifying firebaseConfig and firebaseRC should not call notifyFirebaseConfig
     assert.deepEqual(broker.sentLogs, []);

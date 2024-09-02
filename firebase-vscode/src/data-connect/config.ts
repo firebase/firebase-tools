@@ -45,7 +45,7 @@ export class ErrorWithPath extends Error {
   }
 }
 
-export function registerDataConnectConfigs(
+export async function registerDataConnectConfigs(
   context: vscode.ExtensionContext,
   broker: ExtensionBrokerImpl,
 ) {
@@ -102,12 +102,14 @@ export function registerDataConnectConfigs(
     dispose: effect(() => handleResult(firebaseConfig.value)),
   });
 
-  const dataConnectWatcher = createWatcher("**/{dataconnect,connector}.yaml");
+  const dataConnectWatcher = await createWatcher(
+    "**/{dataconnect,connector}.yaml",
+  );
   context.subscriptions.push(dataConnectWatcher);
 
-  dataConnectWatcher?.onDidChange(() => handleResult(firebaseConfig.value));
-  dataConnectWatcher?.onDidCreate(() => handleResult(firebaseConfig.value));
-  dataConnectWatcher?.onDidDelete(() => handleResult(firebaseConfig.value));
+  dataConnectWatcher.onDidChange(() => handleResult(firebaseConfig.value));
+  dataConnectWatcher.onDidCreate(() => handleResult(firebaseConfig.value));
+  dataConnectWatcher.onDidDelete(() => handleResult(firebaseConfig.value));
 
   const hasConfigs = computed(
     () => !!dataConnectConfigs.value?.tryReadValue?.values.length,
