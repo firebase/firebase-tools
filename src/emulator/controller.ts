@@ -887,8 +887,12 @@ export async function startAll(
     await startEmulator(hostingEmulator);
   }
 
-  // similar to the hosting emulator, the App Hosting emulator should also
-  // start after the other emulators
+  /**
+   * Similar to the Hosting emulator, the App Hosting emulator should also
+   * start after the other emulators. This is because the service running on
+   * app hosting emulator may depend on other emulators (i.e auth, firestore,
+   * storage, etc).
+   */
   if (experiments.isEnabled("emulatorapphosting")) {
     if (listenForEmulator.apphosting) {
       const apphostingAddr = legacyGetFirstAddr(Emulators.APPHOSTING);
