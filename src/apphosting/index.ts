@@ -45,8 +45,11 @@ async function tlsReady(url: string): Promise<boolean> {
     // At the time of this writing, the error code is ERR_SSL_SSLV3_ALERT_HANDSHAKE_FAILURE.
     // I've chosen to use a regexp in an attempt to be forwards compatible with new versions of
     // SSL.
-    const maybeNodeError = err as { cause: { code: string } };
-    if (/HANDSHAKE_FAILURE/.test(maybeNodeError?.cause?.code)) {
+    const maybeNodeError = err as { cause: { code: string }; code: string };
+    if (
+      /HANDSHAKE_FAILURE/.test(maybeNodeError?.cause?.code) ||
+      "EPROTO" === maybeNodeError?.code
+    ) {
       return false;
     }
     return true;
