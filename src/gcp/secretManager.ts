@@ -428,8 +428,9 @@ export async function ensureServiceAgentRole(
   role: string,
 ): Promise<void> {
   const bindings = await checkServiceAgentRole(secret, serviceAccountEmails, role);
-
-  await module.exports.setIamPolicy(secret, bindings);
+  if (bindings.length) {
+    await module.exports.setIamPolicy(secret, bindings);
+  }
 
   // SecretManager would like us to _always_ inform users when we grant access to one of their secrets.
   // As a safeguard against forgetting to do so, we log it here.
