@@ -500,6 +500,18 @@
                     },
                     "type": "object"
                 },
+                "tasks": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "host": {
+                            "type": "string"
+                        },
+                        "port": {
+                            "type": "number"
+                        }
+                    },
+                    "type": "object"
+                },
                 "ui": {
                     "additionalProperties": false,
                     "properties": {
