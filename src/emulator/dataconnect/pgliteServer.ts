@@ -38,56 +38,26 @@ export class PostgresServer {
           const incomingMessage = td.decode(data);
           console.log("Recieved message: ", incomingMessage);
           let result = await db.execProtocolRaw(data);
-          // if (incomingMessage.startsWith('P')) {
-          //   const dec = td.decode(result);
-          //   const trimmed = dec.replace("Z\u0000\u0000\u0000\u0005I", "");
-          //   return te.encode(trimmed);
-          // }
-          // if (incomingMessage.startsWith('S')) {
-          //   return te.encode("Z\u0000\u0000\u0000\u0005I");
-          // }
-          // // if (incomingMessage.startsWith('P') || incomingMessage.startsWith('D')) {
-          // //   // PGlite behaves weirdly on Describe statements? Per (https://www.postgresql.org/docs/current/protocol-flow.html), it should respond with
-          // //   // a ParameterDescription message follow by a RowDescription message.
-          // //   // However, it actually responds with ParameterDescription, RowDescription, ReadyForQuery
-          // //   // Let's try popping off that extra ReadyForQuery
-          // //   const outgoing = td.decode(result);
-          // //   console.log("Got a Prepare/Describe!");
-          // //   const popped = outgoing.split("Z")[0];
-          // //   const te = new TextEncoder();
-          // //   return te.encode(popped);
-          // // } else 
-          // if (incomingMessage.startsWith('P') || incomingMessage.startsWith('D')) {
-          //   buff.push(data)
-          //   // connection.sendReadyForQuery();
-          //   return "";
-          // } else 
-          // if(incomingMessage.startsWith('S')) {
-          //   if (buff.length) {
-          //     const res = await db.execProtocolRaw(mergeArrays(buff));
-          //     while(buff.length) buff.pop();
-          //     return res;
-          //   }
-          // }
-          // else {
-            return result;
-          // }
-          // try {
-          //   const val = await db.execProtocol(data);
-          //   const typesToSend: MessageName[] = ["dataRow", "emptyQuery", "parseComplete"];
-          //   const v = val.find((v) => {
-          //     console.log(v[0].name);
-          //     return typesToSend.includes(v[0].name)
-          //   })
-          //   if (v) {
-          //     connection.sendData(v[1]);
-          //   }
-          // } catch (err) {
-          //   console.log(`error is ${err}`);
-          //   connection.sendError(err as BackendError);
-          //   connection.sendReadyForQuery();
-          // }
-          // return true;
+          if (incomingMessage.startsWith('P')) {
+
+            // let results = await db.execProtocol(data);
+            // console.log("~~~~~~")
+            // for (const r of results) {
+            //   console.log("-----BREAK-----")
+            //   console.log(`${r[0].name} (${r[0].length})`)
+            //   console.log(td.decode(r[1]));
+            // }
+            // console.log("~~~~~~")
+
+            //TODO: Only do this if there is no error
+            return te.encode("1\u0000\u0000\u0000\u0004");
+          }
+          if (incomingMessage.startsWith('B')) {
+
+            //TODO: Only do this if there is no error
+            return te.encode("2\u0000\u0000\u0000");
+          }
+          return result;
         },
       });
 
