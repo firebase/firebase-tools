@@ -17,7 +17,7 @@ export class PostgresServer {
   public async createPGServer(): Promise<net.Server> {
     const db: PGlite = await this.getDb();
     await db.waitReady;
-    let buff = this.buff;
+    const buff = this.buff;
     const server = net.createServer((socket) => {
       console.log("starting!");
       const connection = new PostgresConnection(socket, {
@@ -37,9 +37,8 @@ export class PostgresServer {
           const te = new TextEncoder();
           const incomingMessage = td.decode(data);
           console.log("Recieved message: ", incomingMessage);
-          let result = await db.execProtocolRaw(data);
-          if (incomingMessage.startsWith('P')) {
-
+          const result = await db.execProtocolRaw(data);
+          if (incomingMessage.startsWith("P")) {
             // let results = await db.execProtocol(data);
             // console.log("~~~~~~")
             // for (const r of results) {
@@ -49,12 +48,11 @@ export class PostgresServer {
             // }
             // console.log("~~~~~~")
 
-            //TODO: Only do this if there is no error
+            // TODO: Only do this if there is no error
             return te.encode("1\u0000\u0000\u0000\u0004");
           }
-          if (incomingMessage.startsWith('B')) {
-
-            //TODO: Only do this if there is no error
+          if (incomingMessage.startsWith("B")) {
+            // TODO: Only do this if there is no error
             return te.encode("2\u0000\u0000\u0000");
           }
           return result;

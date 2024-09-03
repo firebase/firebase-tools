@@ -20,7 +20,7 @@ import * as os from "os";
 import { EmulatorRegistry } from "./registry";
 import { downloadEmulator } from "../emulator/download";
 import * as experiments from "../experiments";
-import { isEnabled } from '../experiments';
+import { isEnabled } from "../experiments";
 
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 4000; /* ms */
 
@@ -55,20 +55,19 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
     expectedSize: 66786933,
     expectedChecksum: "a9025b3e53fdeafd2969ccb3ba1e1d38",
   },
-  dataconnect:
-    experiments.isEnabled('fdcpglite') ? 
-      (process.platform === "darwin"
-        ? {
-            version: "pglite",
-            expectedSize: 0,
-            expectedChecksum: "",
-          }
-        : {
-              version: "pglite",
-              expectedSize: 0,
-              expectedChecksum: "",
-            }) :
-    (process.platform === "darwin"
+  dataconnect: experiments.isEnabled("fdcpglite")
+    ? process.platform === "darwin"
+      ? {
+          version: "pglite",
+          expectedSize: 0,
+          expectedChecksum: "",
+        }
+      : {
+          version: "pglite",
+          expectedSize: 0,
+          expectedChecksum: "",
+        }
+    : process.platform === "darwin"
       ? {
           version: "1.3.5",
           expectedSize: 24232704,
@@ -84,7 +83,7 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
             version: "1.3.5",
             expectedSize: 24146072,
             expectedChecksum: "1457937751ce25fa332cdc16b561d64b",
-          }),
+          },
 };
 
 export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
@@ -182,20 +181,18 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
     ),
     opts: {
       cacheDir: CACHE_DIR,
-      remoteUrl:
-        experiments.isEnabled('fdcpglite') ? 
-        (process.platform === "darwin"
+      remoteUrl: experiments.isEnabled("fdcpglite")
+        ? process.platform === "darwin"
           ? `https://storage.googleapis.com/joehanley-public.appspot.com/emulator/dataconnect-emulator-macos-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
-            : `https://storage.googleapis.com/joehanley-public.appspot.com/emulator/dataconnect-emulator-linux-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`)
-        :
-        (process.platform === "darwin"
+          : `https://storage.googleapis.com/joehanley-public.appspot.com/emulator/dataconnect-emulator-linux-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
+        : process.platform === "darwin"
           ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-macos-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
           : process.platform === "win32"
             ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-windows-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
-            : `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`),
+            : `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
       expectedSize: EMULATOR_UPDATE_DETAILS.dataconnect.expectedSize,
       expectedChecksum: EMULATOR_UPDATE_DETAILS.dataconnect.expectedChecksum,
-      skipChecksumAndSize: experiments.isEnabled('fdcpglite'),
+      skipChecksumAndSize: experiments.isEnabled("fdcpglite"),
       namePrefix: "dataconnect-emulator",
       auth: false,
     },
