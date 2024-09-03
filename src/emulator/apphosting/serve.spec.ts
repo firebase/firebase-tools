@@ -20,7 +20,6 @@ describe("serve", () => {
 
   describe("start", () => {
     it("should only select an available port to serve", async () => {
-      // const reservedPorts = [5000, 5001, 5002];
       checkListenableStub.onFirstCall().returns(false);
       checkListenableStub.onSecondCall().returns(false);
       checkListenableStub.onThirdCall().returns(true);
