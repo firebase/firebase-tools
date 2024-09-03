@@ -18,6 +18,7 @@ import { isVSCodeExtension } from "../utils";
 import { Config } from "../config";
 import { EventEmitter } from "events";
 import * as experiments from "../experiments";
+import { askForAllowedEventTypes } from "../extensions/askUserForEventsConfig";
 
 export interface DataConnectEmulatorArgs {
   projectId: string;
@@ -89,7 +90,7 @@ export class DataConnectEmulator implements EmulatorInstance {
         config_dir: resolvedConfigDir,
         enable_output_schema_extensions: true,
         enable_output_generated_sdk: true,
-        enable_dart: experiments.isEnabled("fdcdart"),
+        enable_dart: true,
       });
       this.usingExistingEmulator = false;
     }

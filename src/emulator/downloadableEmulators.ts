@@ -68,9 +68,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
             expectedChecksum: "c7b2b7168ff7226f4e5626ae7d13e0ca",
           }
         : {
-            version: "dart2",
-            expectedSize: 33780672,
-            expectedChecksum: "7acabaf19472714acb10436baee3f54d",
+            version: "dart4",
+            expectedSize: 33730714,
+            expectedChecksum: "7b33a7435cb14a65395ae43d60c95e58",
           },
 };
 
@@ -175,7 +175,7 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
           ? `https://firebasestorage.googleapis.com/v0/b/getting-started-dart-storage.appspot.com/o/dart_emulator-2?alt=media&token=48694c1f-5458-4044-8361-44d0f37193ce`
           : process.platform === "win32"
             ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-windows-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
-            : `https://firebasestorage.googleapis.com/v0/b/firemat-preview-drop/o/emulator%2Fdart_emulator-2-linux.sh?alt=media&token=2302aed9-fa5d-40f1-b032-d540144252b5`,
+            : `https://firebasestorage.googleapis.com/v0/b/getting-started-dart-storage.appspot.com/o/dart_emulator-3-linux.sh?alt=media&token=36d788ec-e366-4bcd-9aeb-fb2929ccfeab`,
       expectedSize: EMULATOR_UPDATE_DETAILS.dataconnect.expectedSize,
       expectedChecksum: EMULATOR_UPDATE_DETAILS.dataconnect.expectedChecksum,
       skipChecksumAndSize: false,
