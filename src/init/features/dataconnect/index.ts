@@ -254,13 +254,16 @@ async function promptForService(setup: Setup, info: RequiredInfo): Promise<Requi
             info.schemaGql = choice.schema.source.files;
           }
           info.cloudSqlDatabase = choice.schema.primaryDatasource.postgresql?.database ?? "";
-          const connectors = await listConnectors(choice.service.name);
+          const connectors = await listConnectors(choice.service.name, [
+            "connectors.name",
+            "connectors.source.files",
+          ]);
           if (connectors.length) {
             info.connectors = connectors.map((c) => {
               const id = c.name.split("/").pop()!;
               return {
                 id,
-                path: `./${id}`,
+                path: connectors.length === 1 ? "./connector" : `./${id}`,
                 files: c.source.files || [],
               };
             });
