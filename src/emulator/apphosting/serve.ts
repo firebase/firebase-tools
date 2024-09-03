@@ -34,5 +34,5 @@ function availablePort(host: string, port: number): Promise<boolean> {
  */
 export async function serve(options: any, port: string) {
   // TODO: update to support other package managers and frameworks other than NextJS
-  await wrapSpawn("npm", ["run", "dev", "--", `-H`, options.host, `-p`, port], process.cwd());
+  await wrapSpawn("npm", ["run", "dev", "--", "-H", options.host, "-p", port], process.cwd());
 }
