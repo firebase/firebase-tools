@@ -20,7 +20,7 @@ import { getExtensionRegistry } from "./resolveSource";
 import { FirebaseError } from "../error";
 import { diagnose } from "./diagnose";
 import { checkResponse } from "./askUserForParam";
-import { ensure } from "../ensureApiEnabled";
+import { ensure, check } from "../ensureApiEnabled";
 import { deleteObject, uploadObject } from "../gcp/storage";
 import { getProjectId } from "../projectUtils";
 import { createSource, getInstance } from "./extensionsApi";
@@ -505,6 +505,14 @@ async function promptForReleaseStage(args: {
     }
   }
   return stage;
+}
+
+export async function checkExtensionsApiEnabled(options: any): Promise<boolean> {
+  const projectId = getProjectId(options);
+  if (!projectId) {
+    return false;
+  }
+  return await check(projectId, extensionsOrigin(), "extensions", options.markdown);
 }
 
 export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
