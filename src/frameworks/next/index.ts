@@ -536,6 +536,15 @@ export async function ɵcodegenPublicDirectory(
       let defaultDestPath = isDefaultLocale && join(destDir, basePath, ...destPartsOrIndex);
       if (!fileExistsSync(sourcePath) && fileExistsSync(`${sourcePath}.html`)) {
         sourcePath += ".html";
+        // Check if the HTML file is partial (doesn't have closing </html> tag)
+        const content = await readFile(sourcePath, "utf8");
+        if (!content.includes("</html>")) {
+          logger.debug(
+            `Skipping ${path} as it appears to be a partial HTML file which is not supported by Firebase Hosting`,
+          );
+          return;
+        }
+
         if (localizedDestPath) localizedDestPath += ".html";
         if (defaultDestPath) defaultDestPath += ".html";
       } else if (
