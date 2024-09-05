@@ -79,6 +79,12 @@ export class EmulatorRegistry {
       // Hosting is next because it can trigger functions.
       hosting: 2,
 
+      /** App Hosting should be shut down next. Users should not be interacting
+       * with their app while its being shut down as the app may using the
+       * background trigger emulators below.
+       */
+      apphosting: 2.1,
+
       // All background trigger emulators are equal here, so we choose
       // an order for consistency.
       database: 3.0,
