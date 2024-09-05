@@ -56,8 +56,7 @@ export class AuthBlockingService implements Service {
         config.triggers?.beforeSignIn?.functionUri ||
       newConfig.triggers?.beforeSendEmail?.functionUri !==
         config.triggers?.beforeSendEmail?.functionUri ||
-      newConfig.triggers?.beforeSendSms?.functionUri !==
-        config.triggers?.beforeSendSms?.functionUri
+      newConfig.triggers?.beforeSendSms?.functionUri !== config.triggers?.beforeSendSms?.functionUri
     ) {
       return true;
     }
@@ -101,7 +100,7 @@ export class AuthBlockingService implements Service {
           functionUri: endpoint.uri!,
         },
       };
-    } else if (endpoint.blockingTrigger.eventType === events.v1.BEFORE_SEND_EMAIL_EVENT) {
+    } else if (endpoint.blockingTrigger.eventType === events.v1.BEFORE_SEND_SMS_EVENT) {
       newBlockingConfig.triggers = {
         ...newBlockingConfig.triggers,
         beforeSendSms: {
