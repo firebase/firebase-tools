@@ -79,12 +79,15 @@ export async function requireAuthWrapper(
   // for subsequent API calls. Warning: this variable takes precedence
   // over Google login tokens and must be removed if a Google
   // account is the current user.
+  console.log("HAROLD: CHECK LOGIN");
   try {
     const optsCopy = currentOptions.value;
     const userEmail = await requireAuth(optsCopy); // client email
     // SetAccessToken is necessary here to ensure that access_tokens are available when:
     // - we are using tokens from configstore (aka those set by firebase login), AND
     // - we are calling CLI code that skips Command (where we normally call this)
+        console.log(currentOptions.value);
+        console.log(userEmail);
     currentOptions.value = optsCopy;
     if (optsCopy.projectId) {
       currentProjectId.value = optsCopy.projectId;
@@ -131,10 +134,6 @@ export async function login() {
 }
 
 export async function listProjects() {
-  const loggedInUser = await requireAuthWrapper(false);
-  if (!loggedInUser) {
-    return [];
-  }
   return listFirebaseProjects();
 }
 
