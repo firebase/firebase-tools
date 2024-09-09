@@ -78,6 +78,10 @@ export const ALL_EXPERIMENTS = experiments({
   emulatoruisnapshot: {
     shortDescription: "Load pre-release versions of the emulator UI",
   },
+  emulatorapphosting: {
+    shortDescription: "App Hosting emulator",
+    public: false,
+  },
 
   // Hosting experiments
   webframeworks: {
