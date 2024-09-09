@@ -1,8 +1,10 @@
+import { copy } from './utils';
+
 /**
  * Handles buffering of messages for a connection
  */
 export class MessageBuffer {
-  private buffer: Buffer = Buffer.alloc(0);
+  private buffer = new Uint8Array();
   private bufferLength = 0;
   private bufferOffset = 0;
 
@@ -11,13 +13,13 @@ export class MessageBuffer {
    *
    * @see https://github.com/brianc/node-postgres/blob/54eb0fa216aaccd727765641e7d1cf5da2bc483d/packages/pg-protocol/src/parser.ts#L121-L152
    */
-  mergeBuffer(newData: Buffer): void {
+  mergeBuffer(newData: Uint8Array): void {
     if (this.bufferLength > 0) {
       const newLength = this.bufferLength + newData.byteLength;
       const newFullLength = newLength + this.bufferOffset;
 
       if (newFullLength > this.buffer.byteLength) {
-        let newBuffer: Buffer;
+        let newBuffer: Uint8Array;
         if (newLength <= this.buffer.byteLength && this.bufferOffset >= this.bufferLength) {
           newBuffer = this.buffer;
         } else {
@@ -25,13 +27,17 @@ export class MessageBuffer {
           while (newLength >= newBufferLength) {
             newBufferLength *= 2;
           }
-          newBuffer = Buffer.allocUnsafe(newBufferLength);
+          newBuffer = new Uint8Array(newBufferLength);
         }
-        this.buffer.copy(newBuffer, 0, this.bufferOffset, this.bufferOffset + this.bufferLength);
+        const bufferView = this.buffer.subarray(
+          this.bufferOffset,
+          this.bufferOffset + this.bufferLength,
+        );
+        copy(bufferView, newBuffer, 0);
         this.buffer = newBuffer;
         this.bufferOffset = 0;
       }
-      newData.copy(this.buffer, this.bufferOffset + this.bufferLength);
+      copy(newData, this.buffer, this.bufferOffset + this.bufferLength);
       this.bufferLength = newLength;
     } else {
       this.buffer = newData;
@@ -45,10 +51,7 @@ export class MessageBuffer {
    *
    * @see https://github.com/brianc/node-postgres/blob/54eb0fa216aaccd727765641e7d1cf5da2bc483d/packages/pg-protocol/src/parser.ts#L91-L119
    */
-  async processMessages(
-    messageHandler: (message: Buffer) => Promise<void>,
-    hasStarted: boolean,
-  ): Promise<void> {
+  async *processMessages(hasStarted: boolean) {
     const bufferFullLength = this.bufferOffset + this.bufferLength;
     let offset = this.bufferOffset;
 
@@ -58,28 +61,17 @@ export class MessageBuffer {
     const codeLength = !hasStarted ? 0 : 1;
     const headerLength = 4 + codeLength;
 
-    let pipeline = Buffer.alloc(0);;
     while (offset + headerLength <= bufferFullLength) {
       // The length passed in the message header
-      const length = this.buffer.readUInt32BE(offset + codeLength);
-      console.log(`Got message of length ${length}`)
+      const dataView = new DataView(this.buffer.buffer);
+      const length = dataView.getUint32(offset + codeLength);
+
       // The length passed in the message header does not include the first single
       // byte code, so we account for it here
       const fullMessageLength = codeLength + length;
 
-    // TODO: Support pipelined messages
-    // If get a prepare, hold on for the next message.
       if (offset + fullMessageLength <= bufferFullLength) {
-        const messageData = this.buffer.subarray(offset, offset + fullMessageLength);
-        
-        // if (shouldPipelineMessage(messageData)) {
-        //   pipeline = Buffer.concat([pipeline, messageData], pipeline.length + fullMessageLength);
-        // } else if (pipeline.length) {
-        //   await messageHandler(pipeline);
-        //   await messageHandler(messageData);
-        // } else {
-          await messageHandler(messageData);
-        // }
+        yield this.buffer.subarray(offset, offset + fullMessageLength);
         offset += fullMessageLength;
       } else {
         break;
@@ -87,7 +79,7 @@ export class MessageBuffer {
     }
 
     if (offset === bufferFullLength) {
-      this.buffer = Buffer.alloc(0);
+      this.buffer = new Uint8Array();
       this.bufferLength = 0;
       this.bufferOffset = 0;
     } else {
@@ -97,10 +89,17 @@ export class MessageBuffer {
   }
 }
 
-function shouldPipelineMessage(message: Buffer): boolean {
-  const td = new TextDecoder();
-  const decoded = td.decode(message);
-  console.log(`Message is ${decoded}`);
-  const extendedProtocolMessageCodes = ["P", "D"];
-  return extendedProtocolMessageCodes.includes(decoded[0]);
+export function* getMessages(data: Uint8Array) {
+  const dataView = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  let offset = 0;
+
+  if (dataView.byteLength === 0) {
+    return;
+  }
+
+  while (offset < dataView.byteLength) {
+    const length = dataView.getUint32(offset + 1);
+    yield data.subarray(offset, offset + length + 1);
+    offset += length + 1;
+  }
 }

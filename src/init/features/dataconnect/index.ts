@@ -136,7 +136,6 @@ export async function actuate(setup: Setup, config: Config, info: RequiredInfo) 
 
 async function writeFiles(config: Config, info: RequiredInfo) {
   const dir: string = config.get("dataconnect.source") || "dataconnect";
-  console.log(dir);
   const subbedDataconnectYaml = subDataconnectYamlValues({
     ...info,
     connectorDirs: info.connectors.map((c) => c.path),

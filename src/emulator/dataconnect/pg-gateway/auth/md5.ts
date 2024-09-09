@@ -1,18 +1,18 @@
-import { type BinaryLike, createHash } from "node:crypto";
-import type { Socket } from "node:net";
-import type { BufferReader } from "../buffer-reader.js";
-import type { BufferWriter } from "../buffer-writer.js";
-import type { ConnectionState } from "../connection.types";
-import { BackendMessageCode } from "../message-codes";
-import { BaseAuthFlow } from "./base-auth-flow";
+import { createBackendErrorMessage } from '../backend-error.js';
+import type { BufferReader } from '../buffer-reader.js';
+import type { BufferWriter } from '../buffer-writer.js';
+import { closeSignal } from '../connection.js';
+import type { ConnectionState } from '../connection.types';
+import { BackendMessageCode } from '../message-codes';
+import { BaseAuthFlow } from './base-auth-flow';
 
 export type Md5AuthOptions = {
-  method: "md5";
+  method: 'md5';
   validateCredentials?: (
     credentials: {
       username: string;
       preHashedPassword: string;
-      salt: Buffer;
+      salt: BufferSource;
       hashedPassword: string;
     },
     connectionState: ConnectionState,
@@ -25,16 +25,15 @@ export type Md5AuthOptions = {
 
 export class Md5AuthFlow extends BaseAuthFlow {
   private auth: Md5AuthOptions & {
-    validateCredentials: NonNullable<Md5AuthOptions["validateCredentials"]>;
+    validateCredentials: NonNullable<Md5AuthOptions['validateCredentials']>;
   };
   private username: string;
-  private salt: Buffer;
+  private salt: Uint8Array;
   private completed = false;
 
   constructor(params: {
     auth: Md5AuthOptions;
     username: string;
-    socket: Socket;
     reader: BufferReader;
     writer: BufferWriter;
     connectionState: ConnectionState;
@@ -53,11 +52,10 @@ export class Md5AuthFlow extends BaseAuthFlow {
     this.salt = generateMd5Salt();
   }
 
-  async handleClientMessage(message: Buffer): Promise<void> {
+  async *handleClientMessage(message: BufferSource) {
     const length = this.reader.int32();
     const hashedPassword = this.reader.cstring();
 
-    this.socket.pause();
     const preHashedPassword = await this.auth.getPreHashedPassword(
       {
         username: this.username,
@@ -73,23 +71,22 @@ export class Md5AuthFlow extends BaseAuthFlow {
       },
       this.connectionState,
     );
-    this.socket.resume();
 
     if (!isValid) {
-      this.sendError({
-        severity: "FATAL",
-        code: "28P01",
+      yield createBackendErrorMessage({
+        severity: 'FATAL',
+        code: '28P01',
         message: `password authentication failed for user "${this.username}"`,
       });
-      this.socket.end();
+      yield closeSignal;
       return;
     }
 
     this.completed = true;
   }
 
-  override sendInitialAuthMessage(): void {
-    this.sendAuthenticationMD5Password();
+  override createInitialAuthMessage() {
+    return this.createAuthenticationMD5Password();
   }
 
   get isCompleted(): boolean {
@@ -97,17 +94,15 @@ export class Md5AuthFlow extends BaseAuthFlow {
   }
 
   /**
-   * Sends the authentication response to the client.
+   * Creates the authentication response.
    *
    * @see https://www.postgresql.org/docs/current/protocol-flow.html#PROTOCOL-FLOW-START-UP
    */
-  private sendAuthenticationMD5Password(): void {
+  private createAuthenticationMD5Password() {
     this.writer.addInt32(5);
     this.writer.add(Buffer.from(this.salt));
 
-    const response = this.writer.flush(BackendMessageCode.AuthenticationResponse);
-
-    this.socket.write(response);
+    return this.writer.flush(BackendMessageCode.AuthenticationResponse);
   }
 }
 
@@ -116,27 +111,84 @@ export class Md5AuthFlow extends BaseAuthFlow {
  *
  * @see https://www.postgresql.org/docs/current/protocol-flow.html#PROTOCOL-FLOW-START-UP
  */
-export async function hashPreHashedPassword(preHashedPassword: string, salt: Buffer) {
-  const hash = md5(Buffer.concat([Buffer.from(preHashedPassword), salt]));
+export async function hashPreHashedPassword(preHashedPassword: string, salt: BufferSource) {
+  const hash = await md5(
+    concat([
+      new TextEncoder().encode(preHashedPassword),
+      salt instanceof ArrayBuffer
+        ? new Uint8Array(salt)
+        : new Uint8Array(salt.buffer, salt.byteOffset, salt.byteLength),
+    ]),
+  );
   return `md5${hash}`;
 }
 
 /**
  * Computes the MD5 hash of the given value.
  */
-export function md5(value: BinaryLike) {
-  return createHash("md5").update(value).digest("hex");
+export async function md5(value: string | BufferSource) {
+  const hash = await crypto.subtle.digest(
+    'MD5',
+    typeof value === 'string' ? new TextEncoder().encode(value) : value,
+  );
+
+  return encodeHex(hash);
 }
 
 /**
  * Generates a random 4-byte salt for MD5 hashing.
  */
 export function generateMd5Salt() {
-  const salt = Buffer.alloc(4);
+  const salt = new Uint8Array(4);
   crypto.getRandomValues(salt);
   return salt;
 }
 
-export function createPreHashedPassword(username: string, password: string) {
-  return md5(`${password}${username}`);
+export async function createPreHashedPassword(username: string, password: string) {
+  return await md5(`${password}${username}`);
+}
+
+export function concat(buffers: Uint8Array[]): Uint8Array {
+  let length = 0;
+  for (const buffer of buffers) {
+    length += buffer.length;
+  }
+  const output = new Uint8Array(length);
+  let index = 0;
+  for (const buffer of buffers) {
+    output.set(buffer, index);
+    index += buffer.length;
+  }
+
+  return output;
+}
+
+const hexTable = new TextEncoder().encode("0123456789abcdef");
+const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
+
+export function encodeHex(src: string | Uint8Array | ArrayBuffer): string {
+  const u8 = validateBinaryLike(src);
+
+  const dst = new Uint8Array(u8.length * 2);
+  for (let i = 0; i < u8.length; i++) {
+    const v = u8[i]!;
+    dst[i * 2] = hexTable[v >> 4]!;
+    dst[i * 2 + 1] = hexTable[v & 0x0f]!;
+  }
+  return textDecoder.decode(dst);
+}
+
+
+export function validateBinaryLike(source: unknown): Uint8Array {
+  if (typeof source === "string") {
+    return textEncoder.encode(source);
+  } else if (source instanceof Uint8Array) {
+    return source;
+  } else if (source instanceof ArrayBuffer) {
+    return new Uint8Array(source);
+  }
+  throw new TypeError(
+    `Cannot validate the input as it must be a Uint8Array, a string, or an ArrayBuffer`,
+  );
 }

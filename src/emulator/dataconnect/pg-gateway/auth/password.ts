@@ -1,14 +1,15 @@
-import type { Socket } from "node:net";
-import type { BufferReader } from "../buffer-reader.js";
-import type { BufferWriter } from "../buffer-writer.js";
-import type { ConnectionState } from "../connection.types";
-import { BackendMessageCode } from "../message-codes";
-import { BaseAuthFlow } from "./base-auth-flow";
+import { createBackendErrorMessage } from '../backend-error.js';
+import type { BufferReader } from '../buffer-reader.js';
+import type { BufferWriter } from '../buffer-writer.js';
+import { closeSignal } from '../connection.js';
+import type { ConnectionState } from '../connection.types';
+import { BackendMessageCode } from '../message-codes';
+import { BaseAuthFlow } from './base-auth-flow';
 
 export type ClearTextPassword = string;
 
 export type PasswordAuthOptions = {
-  method: "password";
+  method: 'password';
   validateCredentials?: (
     credentials: {
       username: string;
@@ -27,7 +28,7 @@ export type PasswordAuthOptions = {
 
 export class PasswordAuthFlow extends BaseAuthFlow {
   private auth: PasswordAuthOptions & {
-    validateCredentials: NonNullable<PasswordAuthOptions["validateCredentials"]>;
+    validateCredentials: NonNullable<PasswordAuthOptions['validateCredentials']>;
   };
   private username: string;
   private completed = false;
@@ -35,7 +36,6 @@ export class PasswordAuthFlow extends BaseAuthFlow {
   constructor(params: {
     auth: PasswordAuthOptions;
     username: string;
-    socket: Socket;
     reader: BufferReader;
     writer: BufferWriter;
     connectionState: ConnectionState;
@@ -52,11 +52,10 @@ export class PasswordAuthFlow extends BaseAuthFlow {
     this.username = params.username;
   }
 
-  async handleClientMessage(message: Buffer): Promise<void> {
+  async *handleClientMessage(message: BufferSource) {
     const length = this.reader.int32();
     const password = this.reader.cstring();
 
-    this.socket.pause();
     const clearTextPassword = await this.auth.getClearTextPassword(
       {
         username: this.username,
@@ -71,23 +70,22 @@ export class PasswordAuthFlow extends BaseAuthFlow {
       },
       this.connectionState,
     );
-    this.socket.resume();
 
     if (!isValid) {
-      this.sendError({
-        severity: "FATAL",
-        code: "28P01",
+      yield createBackendErrorMessage({
+        severity: 'FATAL',
+        code: '28P01',
         message: `password authentication failed for user "${this.username}"`,
       });
-      this.socket.end();
+      yield closeSignal;
       return;
     }
 
     this.completed = true;
   }
 
-  override sendInitialAuthMessage(): void {
-    this.sendAuthenticationCleartextPassword();
+  override createInitialAuthMessage() {
+    return this.createAuthenticationCleartextPassword();
   }
 
   get isCompleted(): boolean {
@@ -95,13 +93,12 @@ export class PasswordAuthFlow extends BaseAuthFlow {
   }
 
   /**
-   * Sends an "AuthenticationCleartextPassword" message to the frontend.
+   * Create an "AuthenticationCleartextPassword" message.
    *
    * @see https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-AUTHENTICATIONCLEARTEXTPASSWORD
    */
-  private sendAuthenticationCleartextPassword() {
+  private createAuthenticationCleartextPassword() {
     this.writer.addInt32(3);
-    const response = this.writer.flush(BackendMessageCode.AuthenticationResponse);
-    this.socket.write(response);
+    return this.writer.flush(BackendMessageCode.AuthenticationResponse);
   }
 }

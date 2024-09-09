@@ -1,13 +1,12 @@
-import type { Socket } from "node:net";
-import type { BufferReader } from "../buffer-reader.js";
-import type { BufferWriter } from "../buffer-writer.js";
-import type { ConnectionState } from "../connection.types";
-import type { AuthFlow } from "./base-auth-flow";
-import { CertAuthFlow, type CertAuthOptions } from "./cert";
-import { Md5AuthFlow, type Md5AuthOptions } from "./md5";
-import { PasswordAuthFlow, type PasswordAuthOptions } from "./password";
-import { ScramSha256AuthFlow, type ScramSha256AuthOptions } from "./sasl/scram-sha-256";
-import type { TrustAuthOptions } from "./trust";
+import type { BufferReader } from '../buffer-reader.js';
+import type { BufferWriter } from '../buffer-writer.js';
+import type { ConnectionState } from '../connection.types';
+import type { AuthFlow } from './base-auth-flow';
+import { CertAuthFlow, type CertAuthOptions } from './cert';
+import { Md5AuthFlow, type Md5AuthOptions } from './md5';
+import { PasswordAuthFlow, type PasswordAuthOptions } from './password';
+import { ScramSha256AuthFlow, type ScramSha256AuthOptions } from './sasl/scram-sha-256';
+import type { TrustAuthOptions } from './trust';
 
 export type AuthOptions =
   | TrustAuthOptions
@@ -17,7 +16,6 @@ export type AuthOptions =
   | CertAuthOptions;
 
 export function createAuthFlow(options: {
-  socket: Socket;
   reader: BufferReader;
   writer: BufferWriter;
   auth: AuthOptions;
@@ -25,13 +23,13 @@ export function createAuthFlow(options: {
   connectionState: ConnectionState;
 }): AuthFlow {
   switch (options.auth.method) {
-    case "password":
+    case 'password':
       return new PasswordAuthFlow({ ...options, auth: options.auth });
-    case "md5":
+    case 'md5':
       return new Md5AuthFlow({ ...options, auth: options.auth });
-    case "scram-sha-256":
+    case 'scram-sha-256':
       return new ScramSha256AuthFlow({ ...options, auth: options.auth });
-    case "cert":
+    case 'cert':
       return new CertAuthFlow({ ...options, auth: options.auth });
     default:
       throw new Error(`Unsupported auth method: ${options.auth.method}`);

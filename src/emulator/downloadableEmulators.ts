@@ -55,19 +55,7 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
     expectedSize: 66786933,
     expectedChecksum: "a9025b3e53fdeafd2969ccb3ba1e1d38",
   },
-  dataconnect: experiments.isEnabled("fdcpglite")
-    ? process.platform === "darwin"
-      ? {
-          version: "pglite",
-          expectedSize: 0,
-          expectedChecksum: "",
-        }
-      : {
-          version: "pglite",
-          expectedSize: 0,
-          expectedChecksum: "",
-        }
-    : process.platform === "darwin"
+  dataconnect:  process.platform === "darwin"
       ? {
           version: "1.3.5",
           expectedSize: 24232704,
@@ -181,18 +169,14 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
     ),
     opts: {
       cacheDir: CACHE_DIR,
-      remoteUrl: experiments.isEnabled("fdcpglite")
-        ? process.platform === "darwin"
-          ? `https://storage.googleapis.com/joehanley-public.appspot.com/emulator/dataconnect-emulator-macos-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
-          : `https://storage.googleapis.com/joehanley-public.appspot.com/emulator/dataconnect-emulator-linux-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
-        : process.platform === "darwin"
+      remoteUrl: process.platform === "darwin"
           ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-macos-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
           : process.platform === "win32"
             ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-windows-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
             : `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
       expectedSize: EMULATOR_UPDATE_DETAILS.dataconnect.expectedSize,
       expectedChecksum: EMULATOR_UPDATE_DETAILS.dataconnect.expectedChecksum,
-      skipChecksumAndSize: experiments.isEnabled("fdcpglite"),
+      skipChecksumAndSize: false,
       namePrefix: "dataconnect-emulator",
       auth: false,
     },

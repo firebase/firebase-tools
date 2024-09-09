@@ -1,12 +1,13 @@
-import type { Socket } from "node:net";
-import { type PeerCertificate, TLSSocket } from "node:tls";
-import type { BufferReader } from "../buffer-reader.js";
-import type { BufferWriter } from "../buffer-writer.js";
-import type { ConnectionState } from "../connection.types";
-import { BaseAuthFlow } from "./base-auth-flow";
+import type { PeerCertificate } from 'node:tls';
+import { createBackendErrorMessage } from '../backend-error.js';
+import type { BufferReader } from '../buffer-reader.js';
+import type { BufferWriter } from '../buffer-writer.js';
+import type { ConnectionState } from '../connection.types';
+import { BaseAuthFlow } from './base-auth-flow';
+import { closeSignal } from '../connection.js';
 
 export type CertAuthOptions = {
-  method: "cert";
+  method: 'cert';
   validateCredentials?: (
     credentials: {
       username: string;
@@ -18,7 +19,7 @@ export type CertAuthOptions = {
 
 export class CertAuthFlow extends BaseAuthFlow {
   private auth: CertAuthOptions & {
-    validateCredentials: NonNullable<CertAuthOptions["validateCredentials"]>;
+    validateCredentials: NonNullable<CertAuthOptions['validateCredentials']>;
   };
   private username: string;
   private completed = false;
@@ -26,7 +27,6 @@ export class CertAuthFlow extends BaseAuthFlow {
   constructor(params: {
     auth: CertAuthOptions;
     username: string;
-    socket: Socket;
     reader: BufferReader;
     writer: BufferWriter;
     connectionState: ConnectionState;
@@ -43,52 +43,55 @@ export class CertAuthFlow extends BaseAuthFlow {
     this.username = params.username;
   }
 
-  async handleClientMessage(message: Buffer): Promise<void> {
-    if (!(this.socket instanceof TLSSocket)) {
-      this.sendError({
-        severity: "FATAL",
-        code: "08000",
+  async *handleClientMessage(message: BufferSource) {
+    // biome-ignore lint/correctness/noConstantCondition: TODO: detect TLS state
+    if (false) {
+      yield createBackendErrorMessage({
+        severity: 'FATAL',
+        code: '08000',
         message: `ssl connection required when auth mode is 'certificate'`,
       });
-      this.socket.end();
+      yield closeSignal;
       return;
     }
 
-    if (!this.socket.authorized) {
-      this.sendError({
-        severity: "FATAL",
-        code: "08000",
-        message: "client certificate is invalid",
+    // biome-ignore lint/correctness/noConstantCondition: TODO: detect if cert authorized
+    if (false) {
+      yield createBackendErrorMessage({
+        severity: 'FATAL',
+        code: '08000',
+        message: 'client certificate is invalid',
       });
-      this.socket.end();
+      yield closeSignal;
       return;
     }
 
-    this.socket.pause();
-    const isValid = await this.auth.validateCredentials(
-      {
-        username: this.username,
-        certificate: this.socket.getPeerCertificate(),
-      },
-      this.connectionState,
-    );
-    this.socket.resume();
+    // TODO: get peer cert and validate through hook
+    const isValid = false;
+
+    // const isValid = await this.auth.validateCredentials(
+    //   {
+    //     username: this.username,
+    //     certificate:  this.socket.getPeerCertificate(),
+    //   },
+    //   this.connectionState,
+    // );
 
     if (!isValid) {
-      this.sendError({
-        severity: "FATAL",
-        code: "08000",
-        message: "client certificate is invalid",
+      yield createBackendErrorMessage({
+        severity: 'FATAL',
+        code: '08000',
+        message: 'client certificate is invalid',
       });
-      this.socket.end();
+      yield closeSignal;
       return;
     }
 
     this.completed = true;
   }
 
-  override sendInitialAuthMessage(): void {
-    return;
+  override createInitialAuthMessage() {
+    return undefined;
   }
 
   get isCompleted(): boolean {

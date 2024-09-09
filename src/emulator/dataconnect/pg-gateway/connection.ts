@@ -1,25 +1,30 @@
-import type { Socket } from "node:net";
-import type { TLSSocket } from "node:tls";
-import { BufferReader } from "./buffer-reader.js";
-import { BufferWriter } from "./buffer-writer.js";
-
-import type { AuthFlow } from "./auth/base-auth-flow.js";
-import { type AuthOptions, createAuthFlow } from "./auth/index.js";
-import { type BackendError, createBackendErrorMessage } from "./backend-error.js";
+import type { AuthFlow } from './auth/base-auth-flow.js';
+import { type AuthOptions, createAuthFlow } from './auth/index.js';
+import { createBackendErrorMessage } from './backend-error.js';
+import { BufferReader } from './buffer-reader.js';
+import { BufferWriter } from './buffer-writer.js';
 import {
   type ClientInfo,
   type ConnectionState,
   ServerStep,
   type TlsInfo,
-} from "./connection.types.js";
-import { MessageBuffer } from "./message-buffer.js";
-import { BackendMessageCode, FrontendMessageCode } from "./message-codes.js";
-import { upgradeTls } from "./tls.js";
+} from './connection.types.js';
+import type { DuplexStream } from './duplex.js';
+import { AsyncIterableWithMetadata } from './utils.js';
+import { getMessages, MessageBuffer } from './message-buffer.js';
+import {
+  BackendMessageCode,
+  FrontendMessageCode,
+  getBackendMessageName,
+  getFrontendMessageName,
+} from './message-codes.js';
+
+import { logger } from "../../../logger.js"
 
 export type TlsOptions = {
-  key: Buffer;
-  cert: Buffer;
-  ca?: Buffer;
+  key: ArrayBuffer;
+  cert: ArrayBuffer;
+  ca?: ArrayBuffer;
   passphrase?: string;
 };
 
@@ -40,6 +45,22 @@ export type PostgresConnectionOptions = {
    * TLS options for when clients send an SSLRequest.
    */
   tls?: TlsOptions | TlsOptionsCallback;
+
+  /**
+   * Implements the TLS upgrade logic for the stream.
+   *
+   * You probably don't want to implement this yourself -
+   * instead use `fromNodeSocket()` helper.
+   */
+  upgradeTls?(
+    duplex: DuplexStream<Uint8Array>,
+    options: TlsOptions | TlsOptionsCallback,
+    tlsInfo?: TlsInfo,
+    requestCert?: boolean,
+  ): Promise<{
+    duplex: DuplexStream<Uint8Array>;
+    tlsInfo: TlsInfo;
+  }>;
 
   /**
    * Callback after the connection has been upgraded to TLS.
@@ -109,13 +130,16 @@ export type MessageResponse =
   | Iterable<Uint8Array>
   | AsyncIterable<Uint8Array>;
 
+export const closeSignal = Symbol('close');
+export type CloseSignal = typeof closeSignal;
+export type ConnectionSignal = CloseSignal;
+
 export default class PostgresConnection {
   private step: ServerStep = ServerStep.AwaitingInitialMessage;
   options: PostgresConnectionOptions & {
-    auth: NonNullable<PostgresConnectionOptions["auth"]>;
+    auth: NonNullable<PostgresConnectionOptions['auth']>;
   };
   authFlow?: AuthFlow;
-  secureSocket?: TLSSocket;
   hasStarted = false;
   isAuthenticated = false;
   detached = false;
@@ -124,18 +148,22 @@ export default class PostgresConnection {
   clientInfo?: ClientInfo;
   tlsInfo?: TlsInfo;
   messageBuffer = new MessageBuffer();
-  boundDataHandler: (data: Buffer) => Promise<void>;
 
   constructor(
-    public socket: Socket,
+    public duplex: DuplexStream<Uint8Array>,
     options: PostgresConnectionOptions = {},
   ) {
     this.options = {
-      auth: { method: "trust" },
+      auth: { method: 'trust' },
       ...options,
     };
-    this.boundDataHandler = this.handleData.bind(this);
-    this.createSocketHandlers(socket);
+    if (this.options.tls && !this.options.upgradeTls) {
+      throw new Error(
+        'TLS options are only available when upgradeTls() is implemented. Did you mean to use fromNodeSocket()?',
+      );
+    }
+
+    this.processData();
   }
 
   get state(): ConnectionState {
@@ -148,77 +176,72 @@ export default class PostgresConnection {
     };
   }
 
-  createSocketHandlers(socket: Socket) {
-    socket.on("data", this.boundDataHandler);
-    socket.on("error", this.handleSocketError);
-  }
-
-  handleSocketError = (error: Error) => {
-    // Ignore EPIPE and ECONNRESET errors as they are normal when the client disconnects
-    if ("code" in error && (error.code === "EPIPE" || error.code === "ECONNRESET")) {
-      return;
-    }
-
-    console.error("Socket error:", error);
-  };
-
-  removeSocketHandlers(socket: Socket) {
-    socket.off("data", this.boundDataHandler);
-    socket.off("error", this.handleSocketError);
-  }
-
   /**
-   * Detaches the `PostgresConnection` from the socket.
-   * After calling this, no more handlers will be called
-   * and data will no longer be buffered.
-   *
-   * @returns The underlying socket (which could have been upgraded to a `TLSSocket`)
+   * Detaches the `PostgresConnection` from the stream.
+   * After calling this, data will no longer be buffered
+   * and all processing will halt.
    */
-  detach() {
-    this.removeSocketHandlers(this.socket);
+  async detach() {
     this.detached = true;
-    return this.socket;
+    return this.duplex;
   }
 
-  /**
-   * Processes incoming data by buffering it and parsing messages.
-   *
-   * Inspired by https://github.com/brianc/node-postgres/blob/54eb0fa216aaccd727765641e7d1cf5da2bc483d/packages/pg-protocol/src/parser.ts#L91-L119
-   */
-  async handleData(data: Buffer) {
-    try {
+  async processData() {
+    const writer = this.duplex.writable.getWriter();
+    for await (const data of this.duplex.readable) {
       this.messageBuffer.mergeBuffer(data);
-      await this.messageBuffer.processMessages(
-        this.handleClientMessage.bind(this),
-        this.hasStarted,
-      );
-    } catch (err) {
-      console.error(err);
+
+      for await (const clientMessage of this.messageBuffer.processMessages(this.hasStarted)) {
+        logger.debug('Frontend message', getFrontendMessageName(clientMessage[0]!));
+        for await (const responseMessage of this.handleClientMessage(clientMessage)) {
+          if (responseMessage === closeSignal) {
+            await writer.close();
+            return;
+          }
+          for await (const msg of getMessages(responseMessage)) {
+            if (msg[0] !== BackendMessageCode.NoticeMessage) {
+              logger.debug('Backend message', getBackendMessageName(msg[0]!));
+            }
+          }
+          await writer.write(responseMessage);
+        }
+      }
+      // TODO: anywhere else we need to check for this?
+      if (this.detached) {
+        return;
+      }
     }
   }
 
-  async handleClientMessage(message: Buffer): Promise<void> {
-    this.reader.setBuffer(0, message);
+  async *handleClientMessage(
+    message: Uint8Array,
+  ): AsyncGenerator<Uint8Array | CloseSignal, void, undefined> {
+    this.reader.setBuffer(message);
 
-    this.socket.pause();
-    let skipProcessing = false;
     const messageResponse = await this.options.onMessage?.(message, this.state);
+
+    // Returning any value indicates no further processing
+    let skipProcessing = messageResponse !== undefined;
 
     // A `Uint8Array` or `Iterator<Uint8Array>` or `AsyncIterator<Uint8Array>`
     // can be returned that contains raw message response data
     if (messageResponse) {
-      const iterableResponse =
-        messageResponse instanceof Uint8Array ? [messageResponse] : messageResponse;
+      const iterableResponse = new AsyncIterableWithMetadata(
+        messageResponse instanceof Uint8Array ? [messageResponse] : messageResponse,
+      );
 
-      // Asynchronously stream responses back to client
-      for await (const responseData of iterableResponse) {
-        // Skip built-in processing if any response data is sent
-        skipProcessing = true;
-        this.sendData(responseData);
+      // Forward yielded responses back to client
+      yield* iterableResponse;
+
+      // Yield any `Uint8Array` values returned from the iterator
+      if (iterableResponse.returnValue instanceof Uint8Array) {
+        yield iterableResponse.returnValue;
       }
-    }
 
-    this.socket.resume();
+      // Yielding or returning any value within the iterator indicates no further processing
+      skipProcessing =
+        iterableResponse.iterations > 0 || iterableResponse.returnValue !== undefined;
+    }
 
     // the socket was detached during onMessage, we skip further processing
     if (this.detached) {
@@ -231,37 +254,39 @@ export default class PostgresConnection {
       }
       return;
     }
-    console.log(`step is ${this.step}`);
+
     switch (this.step) {
       case ServerStep.AwaitingInitialMessage:
         if (this.isSslRequest(message)) {
-          await this.handleSslRequest();
+          yield* this.handleSslRequest();
         } else if (this.isStartupMessage(message)) {
           // Guard against SSL connection not being established when `tls` is enabled
-          if (this.options.tls && !this.secureSocket) {
-            this.sendError({
-              severity: "FATAL",
-              code: "08P01",
-              message: "SSL connection is required",
+          if (this.options.tls && !this.tlsInfo) {
+            yield createBackendErrorMessage({
+              severity: 'FATAL',
+              code: '08P01',
+              message: 'SSL connection is required',
             });
-            this.socket.end();
+            yield closeSignal;
             return;
           }
           // the next step is determined by handleStartupMessage
-          this.handleStartupMessage(message);
+          yield* this.handleStartupMessage(message);
         } else {
-          throw new Error("Unexpected initial message");
+          throw new Error('Unexpected initial message');
         }
         break;
 
-      case ServerStep.PerformingAuthentication:
-        if ((await this.handleAuthenticationMessage(message)) === true) {
-          await this.completeAuthentication();
+      case ServerStep.PerformingAuthentication: {
+        const authenticationComplete = yield* this.handleAuthenticationMessage(message);
+        if (authenticationComplete) {
+          yield* this.completeAuthentication();
         }
         break;
+      }
 
       case ServerStep.ReadyForQuery:
-        await this.handleRegularMessage(message);
+        yield* this.handleRegularMessage(message);
         break;
 
       default:
@@ -269,44 +294,54 @@ export default class PostgresConnection {
     }
   }
 
-  async handleSslRequest() {
-    if (!this.options.tls) {
-      this.writer.addString("N");
-      const result = this.writer.flush();
-      this.sendData(result);
+  async *handleSslRequest() {
+    if (!this.options.tls || !this.options.upgradeTls) {
+      this.writer.addString('N');
+      yield this.writer.flush();
       return;
     }
 
     // Otherwise respond with 'S' to indicate it is supported
-    this.writer.addString("S");
-    const result = this.writer.flush();
-    this.sendData(result);
+    this.writer.addString('S');
+    yield this.writer.flush();
 
     // From now on the frontend will communicate via TLS, so upgrade the connection
-    await this.upgradeToTls(this.options.tls);
+    const requestCert = this.options.auth.method === 'cert';
+
+    const { duplex, tlsInfo } = await this.options.upgradeTls(
+      this.duplex,
+      this.options.tls,
+      this.tlsInfo,
+      requestCert,
+    );
+
+    this.duplex = duplex;
+    this.tlsInfo = tlsInfo;
+
+    await this.options.onTlsUpgrade?.(this.state);
   }
 
-  async handleStartupMessage(message: Buffer) {
+  async *handleStartupMessage(message: BufferSource) {
     const { majorVersion, minorVersion, parameters } = this.readStartupMessage();
 
     // user is required
     if (!parameters.user) {
-      this.sendError({
-        severity: "FATAL",
-        code: "08000",
-        message: "user is required",
+      yield createBackendErrorMessage({
+        severity: 'FATAL',
+        code: '08000',
+        message: 'user is required',
       });
-      this.socket.end();
+      yield closeSignal;
       return;
     }
 
     if (majorVersion !== 3 || minorVersion !== 0) {
-      this.sendError({
-        severity: "FATAL",
-        code: "08000",
+      yield createBackendErrorMessage({
+        severity: 'FATAL',
+        code: '08000',
         message: `Unsupported protocol version ${majorVersion.toString()}.${minorVersion.toString()}`,
       });
-      this.socket.end();
+      yield closeSignal;
       return;
     }
 
@@ -321,22 +356,18 @@ export default class PostgresConnection {
 
     this.hasStarted = true;
 
-    this.socket.pause();
     await this.options.onStartup?.(this.state);
-    this.socket.resume();
-
     // the socket was detached during onStartup, we skip further processing
     if (this.detached) {
       return;
     }
 
-    if (this.options.auth.method === "trust") {
-      await this.completeAuthentication();
+    if (this.options.auth.method === 'trust') {
+      yield* this.completeAuthentication();
       return;
     }
 
     this.authFlow = createAuthFlow({
-      socket: this.socket,
       reader: this.reader,
       writer: this.writer,
       username: this.clientInfo.parameters.user,
@@ -345,19 +376,23 @@ export default class PostgresConnection {
     });
 
     this.step = ServerStep.PerformingAuthentication;
-    this.authFlow.sendInitialAuthMessage();
+    const initialAuthMessage = this.authFlow.createInitialAuthMessage();
+
+    if (initialAuthMessage) {
+      yield initialAuthMessage;
+    }
 
     // 'cert' auth flow is an edge case
     // it doesn't expect a new message from the client so we can directly proceed
-    if (this.options.auth.method === "cert") {
-      await this.authFlow.handleClientMessage(message);
+    if (this.options.auth.method === 'cert') {
+      yield* this.authFlow.handleClientMessage(message);
       if (this.authFlow.isCompleted) {
-        await this.completeAuthentication();
+        yield* this.completeAuthentication();
       }
     }
   }
 
-  async handleAuthenticationMessage(message: Buffer) {
+  async *handleAuthenticationMessage(message: BufferSource) {
     const code = this.reader.byte();
 
     if (code !== FrontendMessageCode.Password) {
@@ -365,37 +400,29 @@ export default class PostgresConnection {
     }
 
     if (!this.authFlow) {
-      throw new Error("AuthFlow not initialized");
+      throw new Error('AuthFlow not initialized');
     }
 
-    await this.authFlow.handleClientMessage(message);
+    yield* this.authFlow.handleClientMessage(message);
 
     return this.authFlow.isCompleted;
   }
 
-  private async handleRegularMessage(message: Buffer): Promise<void> {
+  private async *handleRegularMessage(message: BufferSource) {
     const code = this.reader.byte();
 
     switch (code) {
       case FrontendMessageCode.Terminate:
-        this.handleTerminate(message);
-        break;
-      // case FrontendMessageCode.Sync:
-      //   // Flush?
-      //   this.sendReadyForQuery("idle");
-      //   break;
+        yield closeSignal;
+        return;
       default:
-        this.sendError({
-          severity: "ERROR",
-          code: "123",
-          message: "Message code not yet implemented",
+        yield createBackendErrorMessage({
+          severity: 'ERROR',
+          code: '123',
+          message: 'Message code not yet implemented',
         });
-        this.sendReadyForQuery("idle");
+        yield this.createReadyForQuery();
     }
-  }
-
-  handleTerminate(message: Buffer) {
-    this.socket.end();
   }
 
   /**
@@ -403,11 +430,13 @@ export default class PostgresConnection {
    *
    * @see https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-SSLREQUEST
    */
-  private isSslRequest(message: Buffer): boolean {
-    if (message.length !== 8) return false;
+  private isSslRequest(message: Uint8Array): boolean {
+    if (message.byteLength !== 8) return false;
 
-    const mostSignificantPart = message.readInt16BE(4);
-    const leastSignificantPart = message.readInt16BE(6);
+    const dataView = new DataView(message.buffer, message.byteOffset, message.byteLength);
+
+    const mostSignificantPart = dataView.getInt16(4);
+    const leastSignificantPart = dataView.getInt16(6);
 
     return mostSignificantPart === 1234 && leastSignificantPart === 5679;
   }
@@ -417,63 +446,41 @@ export default class PostgresConnection {
    *
    * @see https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-STARTUPMESSAGE
    */
-  private isStartupMessage(message: Buffer): boolean {
-    if (message.length < 8) return false;
+  private isStartupMessage(message: Uint8Array): boolean {
+    if (message.byteLength < 8) return false;
 
-    const length = message.readInt32BE(0);
-    const majorVersion = message.readInt16BE(4);
-    const minorVersion = message.readInt16BE(6);
+    const dataView = new DataView(message.buffer, message.byteOffset, message.byteLength);
 
-    return message.length === length && majorVersion === 3 && minorVersion === 0;
+    const length = dataView.getInt32(0);
+    const majorVersion = dataView.getInt16(4);
+    const minorVersion = dataView.getInt16(6);
+
+    return message.byteLength === length && majorVersion === 3 && minorVersion === 0;
   }
 
   /**
    * Completes authentication by forwarding the appropriate messages
    * to the frontend.
    */
-  async completeAuthentication() {
+  async *completeAuthentication() {
     this.isAuthenticated = true;
 
-    this.sendAuthenticationOk();
+    yield this.createAuthenticationOk();
 
-    this.socket.pause();
     await this.options.onAuthenticated?.(this.state);
-    this.socket.resume();
 
     if (this.options.serverVersion) {
       let serverVersion: string;
-      if (typeof this.options.serverVersion === "function") {
-        this.socket.pause();
+      if (typeof this.options.serverVersion === 'function') {
         serverVersion = await this.options.serverVersion(this.state);
-        this.socket.resume();
       } else {
         serverVersion = this.options.serverVersion;
       }
-      this.sendParameterStatus("server_version", serverVersion);
+      yield this.createParameterStatus('server_version', serverVersion);
     }
 
     this.step = ServerStep.ReadyForQuery;
-    this.sendReadyForQuery("idle");
-  }
-
-  /**
-   * Upgrades TCP socket connection to TLS.
-   */
-  async upgradeToTls(options: TlsOptions | TlsOptionsCallback) {
-    const requestCert = this.options.auth.method === "cert";
-
-    const { secureSocket, tlsInfo } = await upgradeTls(this.socket, options, {}, requestCert);
-
-    this.tlsInfo = tlsInfo;
-    this.secureSocket = secureSocket;
-
-    this.removeSocketHandlers(this.socket);
-    this.createSocketHandlers(this.secureSocket);
-    this.socket = this.secureSocket;
-
-    await this.options.onTlsUpgrade?.(this.state);
-
-    this.secureSocket.resume();
+    yield this.createReadyForQuery();
   }
 
   /**
@@ -489,7 +496,7 @@ export default class PostgresConnection {
     const parameters: Record<string, string> = {};
 
     // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
-    for (let key: string; (key = this.reader.cstring()) !== ""; ) {
+    for (let key: string; (key = this.reader.cstring()) !== ''; ) {
       parameters[key] = this.reader.cstring();
     }
 
@@ -514,82 +521,58 @@ export default class PostgresConnection {
   }
 
   /**
-   * Sends raw data to the frontend.
-   */
-  sendData(data: Uint8Array) {
-    const td = new TextDecoder();
-    console.log(`Responding with message: ${JSON.stringify(td.decode(data))}`);
-    this.socket.write(data);
-  }
-
-  /**
-   * Sends an "AuthenticationOk" message to the frontend.
+   * Creates an "AuthenticationOk" message.
    *
    * @see https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-AUTHENTICATIONOK
    */
-  sendAuthenticationOk() {
+  createAuthenticationOk() {
     this.writer.addInt32(0);
-    const response = this.writer.flush(BackendMessageCode.AuthenticationResponse);
-    this.sendData(response);
+    return this.writer.flush(BackendMessageCode.AuthenticationResponse);
   }
 
   /**
-   * Sends an "ParameterStatus" message to the frontend.
+   * Creates a "ParameterStatus" message.
    * Informs the frontend about the current setting of backend parameters.
    *
    * @see https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-PARAMETERSTATUS
    * @see https://www.postgresql.org/docs/current/protocol-flow.html#PROTOCOL-ASYNC
    */
-  sendParameterStatus(name: string, value: string) {
+  createParameterStatus(name: string, value: string) {
     this.writer.addCString(name);
     this.writer.addCString(value);
-    const response = this.writer.flush(BackendMessageCode.ParameterStatus);
-    this.sendData(response);
+    return this.writer.flush(BackendMessageCode.ParameterStatus);
   }
 
   /**
-   * Sends a "ReadyForQuery" message to the frontend.
+   * Creates a "ReadyForQuery" message.
    *
    * @see https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-READYFORQUERY
    */
-  sendReadyForQuery(transactionStatus: "idle" | "transaction" | "error" = "idle") {
+  createReadyForQuery(transactionStatus: 'idle' | 'transaction' | 'error' = 'idle') {
     switch (transactionStatus) {
-      case "idle":
-        this.writer.addString("I");
+      case 'idle':
+        this.writer.addString('I');
         break;
-      case "transaction":
-        this.writer.addString("T");
+      case 'transaction':
+        this.writer.addString('T');
         break;
-      case "error":
-        this.writer.addString("E");
+      case 'error':
+        this.writer.addString('E');
         break;
       default:
         throw new Error(`Unknown transaction status '${transactionStatus}'`);
     }
 
-    const response = this.writer.flush(BackendMessageCode.ReadyForQuery);
-    this.sendData(response);
+    return this.writer.flush(BackendMessageCode.ReadyForQuery);
   }
 
-  /**
-   * Sends an error message to the frontend.
-   *
-   * @see https://www.postgresql.org/docs/current/protocol-message-formats.html#PROTOCOL-MESSAGE-FORMATS-ERRORRESPONSE
-   *
-   * For error fields, see https://www.postgresql.org/docs/current/protocol-error-fields.html#PROTOCOL-ERROR-FIELDS
-   */
-  sendError(error: BackendError) {
-    const errorMessage = createBackendErrorMessage(error);
-    this.sendData(errorMessage);
-  }
-
-  sendAuthenticationFailedError() {
-    this.sendError({
-      severity: "FATAL",
-      code: "28P01",
+  createAuthenticationFailedError() {
+    return createBackendErrorMessage({
+      severity: 'FATAL',
+      code: '28P01',
       message: this.clientInfo?.parameters.user
         ? `password authentication failed for user "${this.clientInfo.parameters.user}"`
-        : "password authentication failed",
+        : 'password authentication failed',
     });
   }
 }

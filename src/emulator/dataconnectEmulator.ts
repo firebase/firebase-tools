@@ -15,7 +15,7 @@ import { Client, ClientResponse } from "../apiv2";
 import { EmulatorRegistry } from "./registry";
 import { logger } from "../logger";
 import { load } from "../dataconnect/load";
-import { isVSCodeExtension } from "../utils";
+import { isVSCodeExtension, logLabeledSuccess } from "../utils";
 import { Config } from "../config";
 import { PostgresServer } from "./dataconnect/pgliteServer";
 
@@ -88,13 +88,13 @@ export class DataConnectEmulator implements EmulatorInstance {
       this.usingExistingEmulator = true;
       this.watchUnmanagedInstance();
     } else {
-      console.log("pglite branch");
       if (this.args.autostartPostgres) {
-        console.log("WE USING PGLITEEEEEE");
         const pgServer = new PostgresServer(dbId, "postgres");
         const server = await pgServer.createPGServer();
-        console.log(
-          `Started up PGlite yo. listening: ${server.listening}, address: ${server.address()}`,
+        this.logger.logLabeled(
+          "INFO",
+          "Data Connect",
+          `Started up Postgres server, listening on ${server.address()?.toString()}`,
         );
       }
       await start(Emulators.DATACONNECT, {
@@ -285,8 +285,6 @@ Run ${clc.bold("firebase setup:emulators:dataconnect")} to set up a Postgres con
           "Data Connect",
           `Successfully connected to ${connectionString}}`,
         );
-        const info = await this.emulatorClient.getInfo();
-        console.log(JSON.stringify(info));
         return true;
       } catch (err: any) {
         if (i === MAX_RETRIES) {
