@@ -4,7 +4,12 @@ import { PGlite } from "@electric-sql/pglite";
 // This is hideous, but I'm not trying to migrate to module: node16 as part of
 const { dynamicImport } = require(true && "../../dynamicImport");
 import * as net from "node:net";
-import { getMessages, type PostgresConnection, FrontendMessageCode, BackendMessageCode } from "./pg-gateway/index";
+import {
+  getMessages,
+  type PostgresConnection,
+  FrontendMessageCode,
+  BackendMessageCode,
+} from "./pg-gateway/index";
 import { fromNodeSocket } from "./pg-gateway/platforms/node";
 import { logger } from "../../logger";
 
@@ -24,7 +29,7 @@ export class PostgresServer {
 
         // Hook into each client message
         // Issue - we are piping back way too many ready for queries
-        async onMessage(data, { isAuthenticated }) {
+        async onMessage(data: Uint8Array, { isAuthenticated }: { isAuthenticated: boolean }) {
           // Only forward messages to PGlite after authentication
           if (!isAuthenticated) {
             return;
@@ -40,7 +45,7 @@ export class PostgresServer {
         logger.debug("Postgres client disconnected");
       });
     });
-    const listeningPromise = new Promise<void>((resolve, reject) => {
+    const listeningPromise = new Promise<void>((resolve) => {
       server.listen(5432, "127.0.0.1", () => {
         resolve();
       });
@@ -57,8 +62,8 @@ export class PostgresServer {
     }
     // Not all schemas will need vector installed, but we don't have an good way
     // to swap extensions after starting PGLite, so we always include it.
-    const vector = (await dynamicImport('@electric-sql/pglite/vector')).vector;;
-    const uuid_ossp = (await  dynamicImport('@electric-sql/pglite/contrib/uuid_ossp')).uuid_ossp;
+    const vector = (await dynamicImport("@electric-sql/pglite/vector")).vector;
+    const uuidOssp = (await dynamicImport("@electric-sql/pglite/contrib/uuid_ossp")).uuid_ossp;
     return PGlite.create({
       // dataDir?: string;
       username: this.username,
@@ -67,7 +72,7 @@ export class PostgresServer {
       debug: 0,
       extensions: {
         vector,
-        uuid_ossp
+        uuidOssp,
       },
       // loadDataDir?: Blob | File;
       // initialMemory?: number;

@@ -20,7 +20,6 @@ import * as os from "os";
 import { EmulatorRegistry } from "./registry";
 import { downloadEmulator } from "../emulator/download";
 import * as experiments from "../experiments";
-import { isEnabled } from "../experiments";
 
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 4000; /* ms */
 
@@ -55,7 +54,8 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
     expectedSize: 66786933,
     expectedChecksum: "a9025b3e53fdeafd2969ccb3ba1e1d38",
   },
-  dataconnect:  process.platform === "darwin"
+  dataconnect:
+    process.platform === "darwin"
       ? {
           version: "1.3.5",
           expectedSize: 24232704,
@@ -169,7 +169,8 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
     ),
     opts: {
       cacheDir: CACHE_DIR,
-      remoteUrl: process.platform === "darwin"
+      remoteUrl:
+        process.platform === "darwin"
           ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-macos-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
           : process.platform === "win32"
             ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-windows-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
