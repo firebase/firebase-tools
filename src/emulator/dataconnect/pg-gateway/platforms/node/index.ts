@@ -1,6 +1,6 @@
 import type { Socket } from 'node:net';
 import { Duplex , Writable} from 'node:stream';
-import PostgresConnection, { type PostgresConnectionOptions } from '../../connection.js';
+import PostgresConnection, { type PostgresConnectionOptions } from '../../connection';
 
 /**
  * Creates a `PostgresConnection` from a Node.js TCP/Unix `Socket`.

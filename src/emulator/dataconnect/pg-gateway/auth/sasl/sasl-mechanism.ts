@@ -1,5 +1,5 @@
-import type { BufferWriter } from '../../buffer-writer.js';
-import { BackendMessageCode } from '../../message-codes.js';
+import type { BufferWriter } from '../../buffer-writer';
+import { BackendMessageCode } from '../../message-codes';
 
 const SaslMessageCode = {
   AuthenticationSASL: 10,

@@ -1,10 +1,10 @@
 import type { PeerCertificate } from 'node:tls';
-import { createBackendErrorMessage } from '../backend-error.js';
-import type { BufferReader } from '../buffer-reader.js';
-import type { BufferWriter } from '../buffer-writer.js';
+import { createBackendErrorMessage } from '../backend-error';
+import type { BufferReader } from '../buffer-reader';
+import type { BufferWriter } from '../buffer-writer';
 import type { ConnectionState } from '../connection.types';
 import { BaseAuthFlow } from './base-auth-flow';
-import { closeSignal } from '../connection.js';
+import { closeSignal } from '../connection';
 
 export type CertAuthOptions = {
   method: 'cert';

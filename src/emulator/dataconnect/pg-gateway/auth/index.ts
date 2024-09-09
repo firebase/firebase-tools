@@ -1,5 +1,5 @@
-import type { BufferReader } from '../buffer-reader.js';
-import type { BufferWriter } from '../buffer-writer.js';
+import type { BufferReader } from '../buffer-reader';
+import type { BufferWriter } from '../buffer-writer';
 import type { ConnectionState } from '../connection.types';
 import type { AuthFlow } from './base-auth-flow';
 import { CertAuthFlow, type CertAuthOptions } from './cert';

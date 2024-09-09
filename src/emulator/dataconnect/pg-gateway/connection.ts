@@ -1,25 +1,27 @@
-import type { AuthFlow } from './auth/base-auth-flow.js';
-import { type AuthOptions, createAuthFlow } from './auth/index.js';
-import { createBackendErrorMessage } from './backend-error.js';
-import { BufferReader } from './buffer-reader.js';
-import { BufferWriter } from './buffer-writer.js';
+import type { AuthFlow } from './auth/base-auth-flow';
+import { type AuthOptions, createAuthFlow } from './auth/index';
+import { createBackendErrorMessage } from './backend-error';
+import { BufferReader } from './buffer-reader';
+import { BufferWriter } from './buffer-writer';
 import {
   type ClientInfo,
   type ConnectionState,
   ServerStep,
   type TlsInfo,
-} from './connection.types.js';
-import type { DuplexStream } from './duplex.js';
-import { AsyncIterableWithMetadata } from './utils.js';
-import { getMessages, MessageBuffer } from './message-buffer.js';
+} from './connection.types';
+import type { DuplexStream } from './duplex';
+import { AsyncIterableWithMetadata } from './utils';
+import { getMessages, MessageBuffer } from './message-buffer';
 import {
   BackendMessageCode,
   FrontendMessageCode,
   getBackendMessageName,
   getFrontendMessageName,
-} from './message-codes.js';
+} from './message-codes';
 
-import { logger } from "../../../logger.js"
+import { ReadableStream } from 'node:stream/web';
+
+import { logger } from "../../../logger"
 
 export type TlsOptions = {
   key: ArrayBuffer;
@@ -188,7 +190,7 @@ export default class PostgresConnection {
 
   async processData() {
     const writer = this.duplex.writable.getWriter();
-    for await (const data of this.duplex.readable) {
+    for await (const data of this.duplex.readable as ReadableStream) {
       this.messageBuffer.mergeBuffer(data);
 
       for await (const clientMessage of this.messageBuffer.processMessages(this.hasStarted)) {

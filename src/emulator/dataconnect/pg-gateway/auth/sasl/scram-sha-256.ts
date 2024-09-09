@@ -1,9 +1,9 @@
-import { createBackendErrorMessage } from '../../backend-error.js';
-import type { BufferReader } from '../../buffer-reader.js';
-import type { BufferWriter } from '../../buffer-writer.js';
-import { closeSignal } from '../../connection.js';
+import { createBackendErrorMessage } from '../../backend-error';
+import type { BufferReader } from '../../buffer-reader';
+import type { BufferWriter } from '../../buffer-writer';
+import { closeSignal } from '../../connection';
 import type { ConnectionState } from '../../connection.types';
-import { createHashKey, createHmacKey, pbkdf2, timingSafeEqual } from '../../crypto.js';
+import { createHashKey, createHmacKey, pbkdf2, timingSafeEqual } from '../../crypto';
 import type { AuthFlow } from '../base-auth-flow';
 import { SaslMechanism } from './sasl-mechanism';
 

@@ -1,4 +1,4 @@
-import PostgresConnection, { type PostgresConnectionOptions } from '../../connection.js';
+import PostgresConnection, { type PostgresConnectionOptions } from '../../connection';
 
 /**
  * Creates a `PostgresConnection` from a Deno TCP/Unix `Conn`.
