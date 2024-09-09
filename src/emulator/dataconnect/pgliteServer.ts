@@ -2,7 +2,7 @@
 
 import { PGlite } from "@electric-sql/pglite";
 // Unfortunately, we need to dynamically import the Postgres extensions.
-// They are only available as ESM, and if we import them normally, 
+// They are only available as ESM, and if we import them normally,
 // our tsconfig will convert them to requires, which will cause errors
 // during module resolution.
 const { dynamicImport } = require(true && "../../dynamicImport");
@@ -36,7 +36,7 @@ export class PostgresServer {
             return;
           }
           const result = await db.execProtocolRaw(data);
-          // Extended query patch removes the extra Ready for Query messages that 
+          // Extended query patch removes the extra Ready for Query messages that
           // pglite wrongly sends.
           return extendedQueryPatch.filterResponse(data, result);
         },
