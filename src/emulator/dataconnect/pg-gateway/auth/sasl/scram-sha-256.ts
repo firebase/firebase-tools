@@ -33,8 +33,6 @@ export type ScramSha256AuthOptions = {
   ) => ScramSha256Data | Promise<ScramSha256Data>;
 };
 
-const { subtle } = globalThis.crypto;
-
 /**
  * Creates scram-sha-256 data for password authentication.
  * @see https://www.postgresql.org/docs/current/sasl-authentication.html
