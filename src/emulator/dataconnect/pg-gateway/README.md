@@ -3,4 +3,4 @@ Full credit for this code goes to @gregnr and the other contributors on that rep
 
 Due to some known issues with how PGLite handles prepared statements, this versiom of pg-gateway includes middleware
 to remove the extra Ready for Query messages that break schema migration. Once these underlying issues with PGLite are fixed,
-we'll mograte to a normal dependency on pg-gateway.
+we'll migrate to a normal dependency on pg-gateway.

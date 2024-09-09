@@ -1,7 +1,10 @@
 // https://github.com/supabase-community/pg-gateway
 
 import { PGlite } from "@electric-sql/pglite";
-// This is hideous, but I'm not trying to migrate to module: node16 as part of
+// Unfortunately, we need to dynamically import the Postgres extensions.
+// They are only available as ESM, and if we import them normally, 
+// our tsconfig will convert them to requires, which will cause errors
+// during module resolution.
 const { dynamicImport } = require(true && "../../dynamicImport");
 import * as net from "node:net";
 import {
@@ -27,14 +30,14 @@ export class PostgresServer {
         serverVersion: "16.3 (PGlite 0.2.0)",
         auth: { method: "trust" },
 
-        // Hook into each client message
-        // Issue - we are piping back way too many ready for queries
         async onMessage(data: Uint8Array, { isAuthenticated }: { isAuthenticated: boolean }) {
           // Only forward messages to PGlite after authentication
           if (!isAuthenticated) {
             return;
           }
           const result = await db.execProtocolRaw(data);
+          // Extended query patch removes the extra Ready for Query messages that 
+          // pglite wrongly sends.
           return extendedQueryPatch.filterResponse(data, result);
         },
       });
