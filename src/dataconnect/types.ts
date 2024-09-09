@@ -117,6 +117,7 @@ export interface DatasourceYaml {
     cloudSql: {
       instanceId: string;
     };
+    schemaValidation?: "STRICT" | "COMPATIBLE";
   };
 }
 
@@ -182,6 +183,7 @@ export function toDatasource(
         cloudSql: {
           instance: `projects/${projectId}/locations/${locationId}/instances/${ds.postgresql.cloudSql.instanceId}`,
         },
+        schemaValidation: ds.postgresql.schemaValidation,
       },
     };
   }
