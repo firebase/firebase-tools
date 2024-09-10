@@ -85,8 +85,6 @@ export async function requireAuthWrapper(
     // SetAccessToken is necessary here to ensure that access_tokens are available when:
     // - we are using tokens from configstore (aka those set by firebase login), AND
     // - we are calling CLI code that skips Command (where we normally call this)
-        console.log(currentOptions.value);
-        console.log(userEmail);
     currentOptions.value = optsCopy;
     if (optsCopy.projectId) {
       currentProjectId.value = optsCopy.projectId;
