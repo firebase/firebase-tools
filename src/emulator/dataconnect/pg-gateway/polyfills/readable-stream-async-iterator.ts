@@ -5,8 +5,7 @@
  * @see https://streams.spec.whatwg.org/#rs-asynciterator
  * @see https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream#async_iteration
  */
-import { ReadableStream } from "node:stream/web";
-ReadableStream.prototype.values ??= function (this: any, { preventCancel = false } = {}) {
+(ReadableStream.prototype as any).values ??= function (this: any, { preventCancel = false } = {}) {
   const reader = this.getReader();
   return {
     async next() {
@@ -37,5 +36,5 @@ ReadableStream.prototype.values ??= function (this: any, { preventCancel = false
   };
 };
 
-ReadableStream.prototype[Symbol.asyncIterator] ??=
-  ReadableStream.prototype.values;
+(ReadableStream.prototype as any) ??=
+(ReadableStream.prototype as any).values;

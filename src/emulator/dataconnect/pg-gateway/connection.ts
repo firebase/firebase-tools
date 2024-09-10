@@ -19,6 +19,7 @@ import {
   getFrontendMessageName,
 } from './message-codes';
 
+import "./polyfills/readable-stream-async-iterator"
 import { ReadableStream } from 'node:stream/web';
 
 type BufferSource = ArrayBufferView | ArrayBuffer;
@@ -192,7 +193,7 @@ export default class PostgresConnection {
 
   async processData() {
     const writer = this.duplex.writable.getWriter();
-    for await (const data of this.duplex.readable as ReadableStream) {
+    for await (const data of this.duplex.readable as any) {
       this.messageBuffer.mergeBuffer(data);
 
       for await (const clientMessage of this.messageBuffer.processMessages(this.hasStarted)) {
