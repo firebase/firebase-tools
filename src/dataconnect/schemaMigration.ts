@@ -106,11 +106,8 @@ export async function migrateSchema(args: {
     /* linkIfNotConnected=*/ true,
   );
 
-  if (experiments.isEnabled("fdccompatiblemode")) {
-    setSchemaValidationMode(schema, "COMPATIBLE");
-  } else {
-    setSchemaValidationMode(schema, "STRICT");
-  }
+  const valMode = experiments.isEnabled("fdccompatiblemode") ? "COMPATIBLE" : "STRICT";
+  setSchemaValidationMode(schema, valMode);
 
   try {
     await upsertSchema(schema, validateOnly);
@@ -132,6 +129,7 @@ export async function migrateSchema(args: {
       databaseId,
       incompatible,
       validateOnly,
+      valMode,
     );
 
     const shouldDeleteInvalidConnectors = await promptForInvalidConnectorError(
