@@ -92,7 +92,10 @@ export class DataConnectEmulator implements EmulatorInstance {
     } else {
       if (this.args.autostartPostgres) {
         const pgServer = new PostgresServer(dbId, "postgres");
-        const server = await pgServer.createPGServer(this.args.postgresHost, this.args.postgresPort);
+        const server = await pgServer.createPGServer(
+          this.args.postgresHost,
+          this.args.postgresPort,
+        );
         this.logger.logLabeled(
           "INFO",
           "Data Connect",

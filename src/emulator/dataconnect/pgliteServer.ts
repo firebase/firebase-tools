@@ -21,7 +21,10 @@ export class PostgresServer {
   private database: string;
 
   public db: PGlite | undefined;
-  public async createPGServer(host: string = "127.0.0.1", port: number = 5432): Promise<net.Server> {
+  public async createPGServer(
+    host: string = "127.0.0.1",
+    port: number = 5432,
+  ): Promise<net.Server> {
     const db: PGlite = await this.getDb();
     await db.waitReady;
     const server = net.createServer(async (socket) => {
@@ -48,7 +51,6 @@ export class PostgresServer {
       });
     });
     const listeningPromise = new Promise<void>((resolve) => {
-
       server.listen(port, host, () => {
         resolve();
       });
