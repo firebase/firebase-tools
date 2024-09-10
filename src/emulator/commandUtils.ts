@@ -20,6 +20,7 @@ import SignalsListener = NodeJS.SignalsListener;
 const Table = require("cli-table");
 import { emulatorSession } from "../track";
 import { setEnvVarsForEmulators } from "./env";
+import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook";
 
 export const FLAG_ONLY = "--only <emulators>";
 export const DESC_ONLY =
@@ -464,9 +465,11 @@ export async function emulatorExec(script: string, options: any): Promise<void> 
   try {
     const showUI = !!options.ui;
     ({ deprecationNotices } = await controller.startAll(options, showUI, true));
+    sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_STARTED });
     exitCode = await runScript(script, extraEnv);
     await controller.onExit(options);
   } finally {
+    sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_START_ERRORED });
     await controller.cleanShutdown();
   }
 

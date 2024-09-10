@@ -1,7 +1,6 @@
 import { EmulatorInstance, EmulatorInfo } from "./types";
 import { FirebaseError } from "../error";
 import * as portUtils from "./portUtils";
-import * as express from "express";
 import { connectableHostname } from "../utils";
 import { DataConnectEmulator, DataConnectEmulatorArgs } from "./dataconnectEmulator";
 

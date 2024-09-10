@@ -11,10 +11,10 @@ export enum VSCODE_MESSAGE {
 
 export interface WebhookBody {
   message: VSCODE_MESSAGE;
-  content: string;
+  content?: string;
 }
 
-export const DEFAULT_PORT = "400322";  // 6 digit default used by vscode;
+export const DEFAULT_PORT = "400322"; // 6 digit default used by vscode;
 
 // If port in use, VSCode will pass a different port to the integrated term through env var
 export const port = process.env.VSCODE_WEBHOOK_PORT || DEFAULT_PORT;

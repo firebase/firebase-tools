@@ -36,9 +36,9 @@ export const command = new Command("emulators:start")
         let deprecationNotices;
         try {
           ({ deprecationNotices } = await controller.startAll(options));
-          sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_STARTED, content: "" });
+          sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_STARTED });
         } catch (e: any) {
-          sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_START_ERRORED, content: "" });
+          sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_START_ERRORED });
           await controller.cleanShutdown();
           throw e;
         }
