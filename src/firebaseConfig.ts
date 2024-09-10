@@ -237,6 +237,8 @@ export type EmulatorsConfig = {
   dataconnect?: {
     host?: string;
     port?: number;
+    postgresHost?: string;
+    postgresPort?: number;
   };
   tasks?: {
     host?: string;

@@ -17,12 +17,11 @@ import { fromNodeSocket } from "./pg-gateway/platforms/node";
 import { logger } from "../../logger";
 
 export class PostgresServer {
-  public callCount = 0;
   private username: string;
   private database: string;
 
   public db: PGlite | undefined;
-  public async createPGServer(): Promise<net.Server> {
+  public async createPGServer(host: string = "127.0.0.1", port: number = 5432): Promise<net.Server> {
     const db: PGlite = await this.getDb();
     await db.waitReady;
     const server = net.createServer(async (socket) => {
@@ -49,7 +48,8 @@ export class PostgresServer {
       });
     });
     const listeningPromise = new Promise<void>((resolve) => {
-      server.listen(5432, "127.0.0.1", () => {
+
+      server.listen(port, host, () => {
         resolve();
       });
     });
@@ -68,17 +68,16 @@ export class PostgresServer {
     const vector = (await dynamicImport("@electric-sql/pglite/vector")).vector;
     const uuidOssp = (await dynamicImport("@electric-sql/pglite/contrib/uuid_ossp")).uuid_ossp;
     return PGlite.create({
-      // dataDir?: string;
       username: this.username,
       database: this.database,
-      // fs?: Filesystem;
       debug: 0,
       extensions: {
         vector,
         uuidOssp,
       },
+      // TODO:  Use dataDir + loadDataDir to implement import/export.
+      // dataDir?: string;
       // loadDataDir?: Blob | File;
-      // initialMemory?: number;
     });
   }
 

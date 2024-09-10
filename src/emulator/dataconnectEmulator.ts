@@ -27,6 +27,8 @@ export interface DataConnectEmulatorArgs {
   rc: RC;
   config: Config;
   autostartPostgres: boolean;
+  postgresHost?: string;
+  postgresPort?: number;
 }
 
 export interface DataConnectGenerateArgs {
@@ -90,7 +92,7 @@ export class DataConnectEmulator implements EmulatorInstance {
     } else {
       if (this.args.autostartPostgres) {
         const pgServer = new PostgresServer(dbId, "postgres");
-        const server = await pgServer.createPGServer();
+        const server = await pgServer.createPGServer(this.args.postgresHost, this.args.postgresPort);
         this.logger.logLabeled(
           "INFO",
           "Data Connect",
@@ -108,7 +110,7 @@ export class DataConnectEmulator implements EmulatorInstance {
     }
     if (!isVSCodeExtension()) {
       await this.connectToPostgres(
-        `postgres://localhost:5432/${dbId}?sslmode=disable`,
+        `postgres://${this.args.postgresHost ?? "127.0.0.1"}:${this.args.postgresPort ?? 5432}/${dbId}?sslmode=disable`,
         dbId,
         serviceId,
       );

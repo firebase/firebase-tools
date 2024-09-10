@@ -852,6 +852,8 @@ export async function startAll(
       rc: options.rc,
       config: options.config,
       autostartPostgres: experiments.isEnabled("fdcpglite"),
+      postgresHost: options.config.get("emulators.dataconnect.postgresHost"),
+      postgresPort: options.config.get("emulators.dataconnect.postgresPort"),
     });
     await startEmulator(dataConnectEmulator);
   }
