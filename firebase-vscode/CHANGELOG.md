@@ -1,5 +1,7 @@
 ## NEXT
 
+- [Fixed] Extension properly picks up firebase.json changes during Firebase Init flow
+
 ## 0.7.0
 
 - Updated internal firebase-tools dependency to 13.16.0
