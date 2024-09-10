@@ -1,7 +1,7 @@
 import * as clc from "colorette";
 import { format } from "sql-formatter";
 
-import { IncompatibleSqlSchemaError, Diff, SCHEMA_ID } from "./types";
+import { IncompatibleSqlSchemaError, Diff, SCHEMA_ID, SchemaValidation } from "./types";
 import { getSchema, upsertSchema, deleteConnector } from "./client";
 import {
   setupIAMUsers,
@@ -25,7 +25,7 @@ import * as errors from "./errors";
 
 export async function diffSchema(
   schema: Schema,
-  schemaValidation?: "STRICT" | "COMPATIBLE",
+  schemaValidation?: SchemaValidation,
 ): Promise<Diff[]> {
   const { serviceName, instanceName, databaseId } = getIdentifiers(schema);
   await ensureServiceIsConnectedToCloudSql(
@@ -34,15 +34,16 @@ export async function diffSchema(
     databaseId,
     /* linkIfNotConnected=*/ false,
   );
+  let diffs: Diff[] = [];
 
-  let valMode = schemaValidation;
+  let valMode: SchemaValidation = "STRICT";
   if (experiments.isEnabled("fdccompatiblemode")) {
-    if (!valMode) {
+    if (!schemaValidation) {
       // If the schema validation mode is unset, we surface both STRICT and COMPATIBLE mode diffs, starting with COMPATIBLE.
       valMode = "COMPATIBLE";
+    } else {
+      valMode = schemaValidation;
     }
-  } else {
-    valMode = "STRICT";
   }
   setSchemaValidationMode(schema, valMode);
 
@@ -66,7 +67,7 @@ export async function diffSchema(
     }
     if (incompatible) {
       displaySchemaChanges(incompatible, valMode);
-      return incompatible.diffs;
+      diffs = incompatible.diffs;
     }
   }
 
@@ -84,13 +85,16 @@ export async function diffSchema(
         }
         const incompatible = errors.getIncompatibleSchemaError(err);
         if (incompatible) {
-          displaySchemaChanges(incompatible, valMode);
-          return incompatible.diffs;
+          if (!diffsEqual(diffs, incompatible.diffs)) {
+            displaySchemaChanges(incompatible, valMode);
+            // Return STRICT diffs if the --json flag is passed and schemaValidation is unset.
+            diffs = incompatible.diffs;
+          }
         }
       }
     }
   }
-  return [];
+  return diffs;
 }
 
 export async function migrateSchema(args: {
@@ -165,7 +169,23 @@ export async function migrateSchema(args: {
   return [];
 }
 
-function setSchemaValidationMode(schema: Schema, schemaValidation: "STRICT" | "COMPATIBLE") {
+function diffsEqual(x: Diff[], y: Diff[]): boolean {
+  if (x.length !== y.length) {
+    return false;
+  }
+  for (let i = 0; i < x.length; i++) {
+    if (
+      x[i].description !== y[i].description ||
+      x[i].destructive !== y[i].destructive ||
+      x[i].sql !== y[i].sql
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function setSchemaValidationMode(schema: Schema, schemaValidation: SchemaValidation) {
   if (experiments.isEnabled("fdccompatiblemode") && schema.primaryDatasource.postgresql) {
     schema.primaryDatasource.postgresql.schemaValidation = schemaValidation;
   }
@@ -301,7 +321,7 @@ async function promptForSchemaMigration(
   databaseName: string,
   err: IncompatibleSqlSchemaError | undefined,
   validateOnly: boolean,
-  schemaValidation: "STRICT" | "COMPATIBLE",
+  schemaValidation: SchemaValidation,
 ): Promise<"none" | "all"> {
   if (!err) {
     return "none";
@@ -468,7 +488,7 @@ async function ensureServiceIsConnectedToCloudSql(
 
 function displaySchemaChanges(
   error: IncompatibleSqlSchemaError,
-  schemaValidation: "STRICT" | "COMPATIBLE",
+  schemaValidation: SchemaValidation | "STRICT_AFTER_COMPATBILE",
 ) {
   switch (error.violationType) {
     case "INCOMPATIBLE_SCHEMA":
@@ -479,10 +499,15 @@ function displaySchemaChanges(
             "Your new schema is incompatible with the schema of your CloudSQL database. " +
             "The following SQL statements will migrate your database schema to be compatible with your new Data Connect schema.\n" +
             error.diffs.map(toString).join("\n");
-        } else {
+        } else if (schemaValidation === "STRICT_AFTER_COMPATBILE") {
           message =
             "Your new schema is compatible with the schema of your CloudSQL database, but contains unused tables or columns. " +
             "The following optional SQL statements will migrate your database schema to match your new Data Connect schema.\n" +
+            error.diffs.map(toString).join("\n");
+        } else {
+          message =
+            "Your new schema does not match the schema of your CloudSQL database. " +
+            "The following SQL statements will migrate your database schema to match your new Data Connect schema.\n" +
             error.diffs.map(toString).join("\n");
         }
         logLabeledWarning("dataconnect", message);

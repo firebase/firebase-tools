@@ -29,10 +29,12 @@ export interface Datasource {
   postgresql?: PostgreSql;
 }
 
+export type SchemaValidation = "STRICT" | "COMPATIBLE";
+
 export interface PostgreSql {
   database: string;
   cloudSql: CloudSqlInstance;
-  schemaValidation?: "STRICT" | "COMPATIBLE" | "NONE" | "SQL_SCHEMA_VALIDATION_UNSPECIFIED";
+  schemaValidation?: SchemaValidation | "NONE" | "SQL_SCHEMA_VALIDATION_UNSPECIFIED";
 }
 
 export interface CloudSqlInstance {
@@ -117,7 +119,7 @@ export interface DatasourceYaml {
     cloudSql: {
       instanceId: string;
     };
-    schemaValidation?: "STRICT" | "COMPATIBLE";
+    schemaValidation?: SchemaValidation;
   };
 }
 
