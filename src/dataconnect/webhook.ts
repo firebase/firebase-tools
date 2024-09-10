@@ -20,10 +20,6 @@ export const DEFAULT_PORT = "400322";  // 6 digit default used by vscode;
 export const port = process.env.VSCODE_WEBHOOK_PORT || DEFAULT_PORT;
 
 export async function sendVSCodeMessage(body: WebhookBody) {
-  // not in vscode integrated environment
-  if (port.length !== 6) {
-    return;
-  }
   const jsonBody = JSON.stringify(body);
 
   await fetch(`http://localhost:${port}/vscode/notify`, {
