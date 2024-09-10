@@ -263,7 +263,7 @@ async function promptForService(setup: Setup, info: RequiredInfo): Promise<Requi
               const id = c.name.split("/").pop()!;
               return {
                 id,
-                path: `./${id}`,
+                path: connectors.length === 1 ? "./connector" : `./${id}`,
                 files: c.source.files || [],
               };
             });

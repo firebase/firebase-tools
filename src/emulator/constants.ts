@@ -7,6 +7,7 @@ export const DEFAULT_PORTS: { [s in Emulators]: number } = {
   hosting: 5000,
   functions: 5001,
   extensions: 5001, // The Extensions Emulator runs on the same port as the Functions Emulator
+  apphosting: 5002,
   firestore: 8080,
   pubsub: 8085,
   database: 9000,
@@ -22,6 +23,7 @@ export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
   hub: true,
   logging: true,
   hosting: true,
+  apphosting: true,
   functions: false,
   firestore: false,
   database: false,
@@ -39,6 +41,7 @@ export const EMULATOR_DESCRIPTION: Record<Emulators, string> = {
   hub: "emulator hub",
   logging: "Logging Emulator",
   hosting: "Hosting Emulator",
+  apphosting: "App Hosting Emulator",
   functions: "Functions Emulator",
   firestore: "Firestore Emulator",
   database: "Database Emulator",
