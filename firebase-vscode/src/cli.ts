@@ -79,7 +79,6 @@ export async function requireAuthWrapper(
   // for subsequent API calls. Warning: this variable takes precedence
   // over Google login tokens and must be removed if a Google
   // account is the current user.
-  console.log("HAROLD: CHECK LOGIN");
   try {
     const optsCopy = currentOptions.value;
     const userEmail = await requireAuth(optsCopy); // client email
