@@ -13,7 +13,6 @@ import { listenSpecsToString } from "./portUtils";
 import { Client, ClientResponse } from "../apiv2";
 import { EmulatorRegistry } from "./registry";
 import { logger } from "../logger";
-import { load } from "../dataconnect/load";
 import { isVSCodeExtension } from "../utils";
 import { Config } from "../config";
 import { EventEmitter } from "events";
@@ -25,6 +24,8 @@ export interface DataConnectEmulatorArgs {
   auto_download?: boolean;
   rc: RC;
   config: Config;
+  enable_output_schema_extensions: boolean;
+  enable_output_generated_sdk: boolean;
 }
 
 export interface DataConnectGenerateArgs {
@@ -72,25 +73,13 @@ export class DataConnectEmulator implements EmulatorInstance {
     } catch (err: any) {
       this.logger.log("DEBUG", `'fdc build' failed with error: ${err.message}`);
     }
-    const alreadyRunning = await this.discoverRunningInstance();
-    if (alreadyRunning) {
-      this.logger.logLabeled(
-        "INFO",
-        "Data Connect",
-        "Detected an instance of the emulator already running with your service, reusing it. This emulator will not be shut down at the end of this command.",
-      );
-      this.usingExistingEmulator = true;
-      this.watchUnmanagedInstance();
-    } else {
-      await start(Emulators.DATACONNECT, {
-        auto_download: this.args.auto_download,
-        listen: listenSpecsToString(this.args.listen),
-        config_dir: resolvedConfigDir,
-        enable_output_schema_extensions: true,
-        enable_output_generated_sdk: true,
-      });
-      this.usingExistingEmulator = false;
-    }
+    await start(Emulators.DATACONNECT, {
+      auto_download: this.args.auto_download,
+      listen: listenSpecsToString(this.args.listen),
+      config_dir: resolvedConfigDir,
+      enable_output_schema_extensions: this.args.enable_output_schema_extensions,
+      enable_output_generated_sdk: this.args.enable_output_generated_sdk,
+    });
     if (!isVSCodeExtension()) {
       await this.connectToPostgres();
     }
@@ -196,51 +185,6 @@ export class DataConnectEmulator implements EmulatorInstance {
       return dataConnectLocalConnString();
     }
     return this.args.rc.getDataconnect()?.postgres?.localConnectionString;
-  }
-
-  private async discoverRunningInstance(): Promise<boolean> {
-    const emuInfo = await this.emulatorClient.getInfo();
-    if (!emuInfo) {
-      return false;
-    }
-    const serviceInfo = await load(this.args.projectId, this.args.config, this.args.configDir);
-    const sameService = emuInfo.services.find(
-      (s) => serviceInfo.dataConnectYaml.serviceId === s.serviceId,
-    );
-    if (!sameService) {
-      throw new FirebaseError(
-        `There is a Data Connect emulator already running on ${this.args.listen[0].address}:${this.args.listen[0].port}, but it is emulating a different service. Please stop that instance of the Data Connect emulator, or specify a different port in 'firebase.json'`,
-      );
-    }
-    if (
-      sameService.connectionString &&
-      sameService.connectionString !== this.getLocalConectionString()
-    ) {
-      throw new FirebaseError(
-        `There is a Data Connect emulator already running, but it is using a different Postgres connection string. Please stop that instance of the Data Connect emulator, or specify a different port in 'firebase.json'`,
-      );
-    }
-    return true;
-  }
-
-  private watchUnmanagedInstance() {
-    return setInterval(async () => {
-      if (!this.usingExistingEmulator) {
-        return;
-      }
-      const emuInfo = await this.emulatorClient.getInfo();
-      if (!emuInfo) {
-        this.logger.logLabeled(
-          "INFO",
-          "Data Connect",
-          "The already running emulator seems to have shut down. Starting a new instance of the Data Connect emulator...",
-        );
-        // If the other emulator was shut down, we spin our own copy up
-        // TODO: Guard against multiple simultaneous calls here.
-        await this.start();
-        dataConnectEmulatorEvents.emit("restart");
-      }
-    }, 5000); // Check uptime every 5 seconds
   }
 
   public async connectToPostgres(

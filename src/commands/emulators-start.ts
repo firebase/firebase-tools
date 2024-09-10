@@ -8,6 +8,7 @@ import * as clc from "colorette";
 import { Constants } from "../emulator/constants";
 import { logLabeledWarning } from "../utils";
 import { ExtensionsEmulator } from "../emulator/extensionsEmulator";
+import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const Table = require("cli-table");
@@ -34,7 +35,9 @@ export const command = new Command("emulators:start")
         let deprecationNotices;
         try {
           ({ deprecationNotices } = await controller.startAll(options));
+          sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_STARTED, content: "" });
         } catch (e: any) {
+          sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_START_ERRORED, content: "" });
           await controller.cleanShutdown();
           throw e;
         }
