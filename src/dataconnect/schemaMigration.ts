@@ -514,7 +514,6 @@ function displaySchemaChanges(
   databaseId: string,
 ) {
   switch (error.violationType) {
-    
     case "INCOMPATIBLE_SCHEMA":
       {
         let message;
