@@ -112,9 +112,25 @@ export async function createHashKey(
  * @see https://github.com/w3c/webcrypto/issues/270#issuecomment-1899234835
  */
 export async function timingSafeEqual(bufferA: BufferSource, bufferB: BufferSource) {
-  const algorithm: HmacKeyGenParams = { name: 'HMAC', hash: 'SHA-256' };
-  const key = await crypto.subtle.generateKey(algorithm, false, ['sign', 'verify']);
+  const algorithm = { name: 'HMAC', hash: 'SHA-256' };
+  const key = (await crypto.subtle.generateKey(algorithm, false, ['sign', 'verify'])) as CryptoKey;
   const hmac = await crypto.subtle.sign(algorithm, key, bufferA);
   const equal = await crypto.subtle.verify(algorithm, key, hmac, bufferB);
   return equal;
 }
+
+interface CryptoKey {
+  /** [MDN Reference](https://developer.mozilla.org/docs/Web/API/CryptoKey/algorithm) */
+  readonly algorithm: {
+    name: string;
+};
+  /** [MDN Reference](https://developer.mozilla.org/docs/Web/API/CryptoKey/extractable) */
+  readonly extractable: boolean;
+  /** [MDN Reference](https://developer.mozilla.org/docs/Web/API/CryptoKey/type) */
+  readonly type: "private" | "public" | "secret";
+  /** [MDN Reference](https://developer.mozilla.org/docs/Web/API/CryptoKey/usages) */
+  readonly usages: KeyUsage[];
+}
+
+type KeyUsage = "decrypt" | "deriveBits" | "deriveKey" | "encrypt" | "sign" | "unwrapKey" | "verify" | "wrapKey";
+type BufferSource = ArrayBufferView | ArrayBuffer;

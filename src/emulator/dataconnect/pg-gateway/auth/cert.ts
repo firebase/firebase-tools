@@ -6,6 +6,8 @@ import type { ConnectionState } from '../connection.types';
 import { BaseAuthFlow } from './base-auth-flow';
 import { closeSignal } from '../connection';
 
+type BufferSource = ArrayBufferView | ArrayBuffer;
+
 export type CertAuthOptions = {
   method: 'cert';
   validateCredentials?: (

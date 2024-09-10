@@ -3,6 +3,8 @@ import type { BufferWriter } from '../buffer-writer';
 import type { ConnectionSignal } from '../connection';
 import type { ConnectionState } from '../connection.types';
 
+type BufferSource = ArrayBufferView | ArrayBuffer;
+
 export interface AuthFlow {
   createInitialAuthMessage(): Uint8Array | undefined;
   handleClientMessage(message: BufferSource): AsyncGenerator<Uint8Array | ConnectionSignal>;

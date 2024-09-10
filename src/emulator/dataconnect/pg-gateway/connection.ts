@@ -21,6 +21,8 @@ import {
 
 import { ReadableStream } from 'node:stream/web';
 
+type BufferSource = ArrayBufferView | ArrayBuffer;
+
 import { logger } from "../../../logger"
 
 export type TlsOptions = {

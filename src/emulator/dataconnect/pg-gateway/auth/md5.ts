@@ -6,6 +6,9 @@ import type { ConnectionState } from '../connection.types';
 import { BackendMessageCode } from '../message-codes';
 import { BaseAuthFlow } from './base-auth-flow';
 
+
+type BufferSource = ArrayBufferView | ArrayBuffer;
+
 export type Md5AuthOptions = {
   method: 'md5';
   validateCredentials?: (

@@ -1,5 +1,5 @@
 import type { Socket } from 'node:net';
-import { Duplex , Writable} from 'node:stream';
+import { Duplex, Readable, Writable } from 'node:stream';
 import PostgresConnection, { type PostgresConnectionOptions } from '../../connection';
 
 /**
@@ -12,12 +12,14 @@ import PostgresConnection, { type PostgresConnectionOptions } from '../../connec
  * upgrades available in Node.js environments.
  */
 export async function fromNodeSocket(socket: Socket, options?: PostgresConnectionOptions) {
-  const rs = Duplex.toWeb(socket);
+  // Duplex.toWeb(socket);
+  const rs = Readable.toWeb(socket);
+  const ws = Writable.toWeb(socket);
   const opts = options
     ? {
         ...options,
       }
     : undefined;
 
-  return new PostgresConnection(rs as any, opts);
+  return new PostgresConnection({ readable: rs, writable: ws}, opts);
 }

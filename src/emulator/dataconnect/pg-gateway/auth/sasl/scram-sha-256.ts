@@ -7,6 +7,8 @@ import { createHashKey, createHmacKey, pbkdf2, timingSafeEqual } from '../../cry
 import type { AuthFlow } from '../base-auth-flow';
 import { SaslMechanism } from './sasl-mechanism';
 
+type BufferSource = ArrayBufferView | ArrayBuffer;
+
 export type ScramSha256Data = {
   salt: string;
   iterations: number;
