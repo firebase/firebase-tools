@@ -79,10 +79,21 @@ const enum ExpectedBuilder {
   LEGACY_DEVKIT_SSR_DEV_SERVER = "@angular-devkit/build-angular:ssr-dev-server",
 }
 
+const enum ThirdPartyBuilder {
+  CUSTOM_WEBPACK_DEV_SERVER = "@angular-builders/custom-webpack:dev-server",
+  CUSTOM_WEBPACK_SERVER = "@angular-builders/custom-webpack:server",
+  CUSTOM_WEBPACK_BROWSER = "@angular-builders/custom-webpack:browser",
+  NGX_ENV_APPLICATION = "@ngx-env/builder:application",
+  NGX_ENV_DEV_SERVER = "@ngx-env/builder:dev-server",
+}
+
 const DEV_SERVER_TARGETS: string[] = [
   ExpectedBuilder.DEV_SERVER,
   ExpectedBuilder.LEGACY_NGUNIVERSAL_SSR_DEV_SERVER,
   ExpectedBuilder.LEGACY_DEVKIT_SSR_DEV_SERVER,
+  ThirdPartyBuilder.CUSTOM_WEBPACK_DEV_SERVER,
+  ThirdPartyBuilder.CUSTOM_WEBPACK_SERVER,
+  ThirdPartyBuilder.NGX_ENV_DEV_SERVER,
 ];
 
 function getValidBuilders(purpose: BUILD_TARGET_PURPOSE): string[] {
@@ -97,8 +108,13 @@ function getValidBuilders(purpose: BUILD_TARGET_PURPOSE): string[] {
   ];
 }
 
+function getValidThirdPartyBuilders(): string[] {
+  return [ThirdPartyBuilder.CUSTOM_WEBPACK_BROWSER, ThirdPartyBuilder.NGX_ENV_APPLICATION];
+}
+
 export async function getAllTargets(purpose: BUILD_TARGET_PURPOSE, dir: string) {
   const validBuilders = getValidBuilders(purpose);
+  const validThirdPartyBuilders = getValidThirdPartyBuilders();
   const [{ NodeJsAsyncHost }, { workspaces }, { targetStringFromTarget }] = await Promise.all([
     relativeRequire(dir, "@angular-devkit/core/node"),
     relativeRequire(dir, "@angular-devkit/core"),
@@ -111,7 +127,16 @@ export async function getAllTargets(purpose: BUILD_TARGET_PURPOSE, dir: string) 
   workspace.projects.forEach((projectDefinition, project) => {
     if (projectDefinition.extensions.projectType !== "application") return;
     projectDefinition.targets.forEach((targetDefinition, target) => {
-      if (!validBuilders.includes(targetDefinition.builder)) return;
+      if (
+        !validBuilders.includes(targetDefinition.builder) &&
+        !validThirdPartyBuilders.includes(targetDefinition.builder)
+      ) {
+        return;
+      } else if (validThirdPartyBuilders.includes(targetDefinition.builder)) {
+        console.warn(
+          "You are using an unofficial Angular builder, in case of unexpected behavior please file a bug at https://github.com/firebase/firebase-tools/issues.",
+        );
+      }
       const configurations = Object.keys(targetDefinition.configurations || {});
       if (!configurations.includes("production")) configurations.push("production");
       if (!configurations.includes("development")) configurations.push("development");
@@ -193,10 +218,12 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
         deployTarget = overrideTarget;
         break;
       case ExpectedBuilder.APPLICATION:
+      case ThirdPartyBuilder.NGX_ENV_APPLICATION:
         buildTarget = overrideTarget;
         break;
       case ExpectedBuilder.BROWSER_ESBUILD:
       case ExpectedBuilder.LEGACY_BROWSER:
+      case ThirdPartyBuilder.CUSTOM_WEBPACK_BROWSER:
         browserTarget = overrideTarget;
         break;
       case ExpectedBuilder.LEGACY_DEVKIT_PRERENDER:
@@ -206,6 +233,9 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
       case ExpectedBuilder.DEV_SERVER:
       case ExpectedBuilder.LEGACY_NGUNIVERSAL_SSR_DEV_SERVER:
       case ExpectedBuilder.LEGACY_DEVKIT_SSR_DEV_SERVER:
+      case ThirdPartyBuilder.CUSTOM_WEBPACK_DEV_SERVER:
+      case ThirdPartyBuilder.CUSTOM_WEBPACK_SERVER:
+      case ThirdPartyBuilder.NGX_ENV_DEV_SERVER:
         serveTarget = overrideTarget;
         break;
       default:
@@ -356,7 +386,12 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
       if (target === deployTarget && builder === ExpectedBuilder.DEPLOY) continue;
       if (target === buildTarget && builder === ExpectedBuilder.APPLICATION) continue;
       if (target === buildTarget && builder === ExpectedBuilder.LEGACY_BROWSER) continue;
+      if (target === buildTarget && builder === ThirdPartyBuilder.CUSTOM_WEBPACK_BROWSER) continue;
+      if (target === buildTarget && builder === ThirdPartyBuilder.NGX_ENV_APPLICATION) continue;
       if (target === browserTarget && builder === ExpectedBuilder.BROWSER_ESBUILD) continue;
+      if (target === browserTarget && builder === ThirdPartyBuilder.CUSTOM_WEBPACK_BROWSER)
+        continue;
+      if (target === browserTarget && builder === ThirdPartyBuilder.NGX_ENV_APPLICATION) continue;
       if (target === browserTarget && builder === ExpectedBuilder.LEGACY_BROWSER) continue;
       if (target === prerenderTarget && builder === ExpectedBuilder.LEGACY_DEVKIT_PRERENDER)
         continue;
@@ -368,6 +403,10 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
       if (target === serveTarget && builder === ExpectedBuilder.LEGACY_DEVKIT_SSR_DEV_SERVER)
         continue;
       if (target === serveTarget && builder === ExpectedBuilder.DEV_SERVER) continue;
+      if (target === serveTarget && builder === ThirdPartyBuilder.CUSTOM_WEBPACK_DEV_SERVER)
+        continue;
+      if (target === serveTarget && builder === ThirdPartyBuilder.CUSTOM_WEBPACK_SERVER) continue;
+      if (target === serveTarget && builder === ThirdPartyBuilder.NGX_ENV_DEV_SERVER) continue;
       throw new FirebaseError(
         `${definition.builder} (${targetString}) is not a recognized builder. Please check your angular.json`,
       );
@@ -425,7 +464,11 @@ export async function getBrowserConfig(sourceDir: string, configuration: string)
 
   const outputPath = join(
     targetOptions.outputPath,
-    buildTarget && builderName === ExpectedBuilder.APPLICATION ? "browser" : "",
+    buildTarget &&
+      (builderName === ExpectedBuilder.APPLICATION ||
+        builderName === ThirdPartyBuilder.NGX_ENV_APPLICATION)
+      ? "browser"
+      : "",
   );
   return { locales, baseHref, outputPath, defaultLocale };
 }
