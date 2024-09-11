@@ -19,9 +19,6 @@ import {
   getFrontendMessageName,
 } from './message-codes';
 
-import "./polyfills/readable-stream-async-iterator"
-import { ReadableStream } from 'node:stream/web';
-
 type BufferSource = ArrayBufferView | ArrayBuffer;
 
 import { logger } from "../../../logger"
