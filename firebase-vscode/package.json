@@ -225,7 +225,7 @@
     "@teamsupercell/typings-for-css-modules-loader": "^2.5.1",
     "@types/glob": "^8.0.0",
     "@types/mocha": "^10.0.1",
-    "@types/node": "16.x",
+    "@types/node": "20.x",
     "@types/react": "^18.0.9",
     "@types/react-dom": "^18.0.4",
     "@types/vscode": "^1.69.0",

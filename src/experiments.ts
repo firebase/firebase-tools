@@ -144,6 +144,10 @@ export const ALL_EXPERIMENTS = experiments({
     fullDescription: "Enable Data Connect schema migrations in Compatible Mode",
     public: false,
   },
+  fdcpglite: {
+    shortDescription: "Start up a PGlite database when starting the Data Connect emulator",
+    public: false,
+  },
 });
 
 export type ExperimentName = keyof typeof ALL_EXPERIMENTS;

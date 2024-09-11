@@ -1,5 +1,6 @@
 import * as childProcess from "child_process";
 import * as clc from "colorette";
+import { EventEmitter } from "events";
 
 import { dataConnectLocalConnString } from "../api";
 import { Constants } from "./constants";
@@ -13,9 +14,10 @@ import { listenSpecsToString } from "./portUtils";
 import { Client, ClientResponse } from "../apiv2";
 import { EmulatorRegistry } from "./registry";
 import { logger } from "../logger";
-import { isVSCodeExtension } from "../utils";
+import { load } from "../dataconnect/load";
 import { Config } from "../config";
-import { EventEmitter } from "events";
+import { PostgresServer } from "./dataconnect/pgliteServer";
+import { isEnabled } from "../experiments";
 
 export interface DataConnectEmulatorArgs {
   projectId: string;
@@ -24,6 +26,9 @@ export interface DataConnectEmulatorArgs {
   auto_download?: boolean;
   rc: RC;
   config: Config;
+  autoconnectToPostgres: boolean;
+  postgresHost?: string;
+  postgresPort?: number;
   enable_output_schema_extensions: boolean;
   enable_output_generated_sdk: boolean;
 }
@@ -73,6 +78,10 @@ export class DataConnectEmulator implements EmulatorInstance {
     } catch (err: any) {
       this.logger.log("DEBUG", `'fdc build' failed with error: ${err.message}`);
     }
+
+    const info = await load(this.args.projectId, this.args.config, this.args.configDir);
+    const dbId = info.dataConnectYaml.schema.datasource.postgresql?.database || "postgres";
+    const serviceId = info.dataConnectYaml.serviceId;
     await start(Emulators.DATACONNECT, {
       auto_download: this.args.auto_download,
       listen: listenSpecsToString(this.args.listen),
@@ -80,8 +89,25 @@ export class DataConnectEmulator implements EmulatorInstance {
       enable_output_schema_extensions: this.args.enable_output_schema_extensions,
       enable_output_generated_sdk: this.args.enable_output_generated_sdk,
     });
-    if (!isVSCodeExtension()) {
-      await this.connectToPostgres();
+    this.usingExistingEmulator = false;
+    if (this.args.autoconnectToPostgres) {
+      // TODO: Skip starting our own PG server if localConnectString is set
+      if (isEnabled("fdcpglite")) {
+        const pgServer = new PostgresServer(dbId, "postgres");
+        const server = await pgServer.createPGServer(
+          this.args.postgresHost,
+          this.args.postgresPort,
+        );
+        this.logger.logLabeled(
+          "INFO",
+          "Data Connect",
+          `Started up Postgres server, listening on ${server.address()?.toString()}`,
+        );
+      }
+      const localConnString = isEnabled("fdcpglite")
+        ? `postgres://${this.args.postgresHost ?? "127.0.0.1"}:${this.args.postgresPort ?? 5432}/${dbId}?sslmode=disable`
+        : this.getLocalConectionString();
+      await this.connectToPostgres(localConnString, dbId, serviceId);
     }
     return;
   }
@@ -203,8 +229,13 @@ Run ${clc.bold("firebase setup:emulators:dataconnect")} to set up a Postgres con
     const MAX_RETRIES = 3;
     for (let i = 1; i <= MAX_RETRIES; i++) {
       try {
-        this.logger.logLabeled("DEBUG", "Data Connect", `Connecting to ${connectionString}}`);
+        this.logger.logLabeled("DEBUG", "Data Connect", `Connecting to ${connectionString}}...`);
         await this.emulatorClient.configureEmulator({ connectionString, database, serviceId });
+        this.logger.logLabeled(
+          "DEBUG",
+          "Data Connect",
+          `Successfully connected to ${connectionString}}`,
+        );
         return true;
       } catch (err: any) {
         if (i === MAX_RETRIES) {
@@ -215,7 +246,7 @@ Run ${clc.bold("firebase setup:emulators:dataconnect")} to set up a Postgres con
           "Data Connect",
           `Retrying connectToPostgress call (${i} of ${MAX_RETRIES} attempts): ${err}`,
         );
-        await new Promise((resolve) => setTimeout(resolve, 800));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
       }
     }
     return false;
