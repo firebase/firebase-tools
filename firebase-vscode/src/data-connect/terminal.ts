@@ -3,8 +3,6 @@ import { ExtensionBrokerImpl } from "../extension-broker";
 import vscode, { Disposable } from "vscode";
 import { checkLogin } from "../core/user";
 import { DATA_CONNECT_EVENT_NAME } from "../analytics";
-import * as path from "path";
-import { write } from "fs";
 
 const environmentVariables = {};
 
@@ -69,7 +67,8 @@ export function registerTerminalTasks(
 
   const startEmulatorsTaskBroker = broker.on("runStartEmulators", () => {
     telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.START_EMULATORS);
-    runTerminalTask("firebase emulators", "firebase emulators:start");
+    // TODO: optional debug mode
+    runTerminalTask("firebase emulators", "firebase emulators:start --debug");
   });
 
   return Disposable.from(

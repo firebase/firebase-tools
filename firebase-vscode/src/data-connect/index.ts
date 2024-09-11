@@ -21,8 +21,6 @@ import * as graphql from "graphql";
 import {
   ResolvedDataConnectConfigs,
   dataConnectConfigs,
-  firebaseConfig,
-  firebaseRC,
   registerDataConnectConfigs,
 } from "./config";
 import { locationToRange } from "../utils/graphql";

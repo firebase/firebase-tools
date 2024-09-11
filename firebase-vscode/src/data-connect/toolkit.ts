@@ -35,8 +35,6 @@ export class DataConnectToolkit implements vscode.Disposable {
   // special function to start FDC emulator with special flags & port
   async startFDCToolkit(configDir: string, config: Config, RC: RC) {
     const port = await this.findOpenPort();
-    console.log("HAROLD: ", configDir);
-    console.log("HAROLD: ", config);
     const toolkitArgs: DataConnectEmulatorArgs = {
       projectId: "toolkit",
       listen: [{ address: "localhost", port, family: "IPv4" }],
