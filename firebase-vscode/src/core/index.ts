@@ -11,6 +11,7 @@ import { registerProject } from "./project";
 import { registerQuickstart } from "./quickstart";
 import { registerOptions } from "../options";
 import { upsertFile } from "../data-connect/file-utils";
+import { registerWebhooks } from "./webhook";
 
 export async function registerCore(
   broker: ExtensionBrokerImpl,
@@ -63,8 +64,6 @@ export async function registerCore(
   });
 
   const emulatorsController = new EmulatorsController(broker);
-  // Start the emulators when the extension starts.
-  emulatorsController.startEmulators();
 
   const openRcCmd = vscode.commands.registerCommand(
     "firebase.openFirebaseRc",
@@ -86,6 +85,7 @@ export async function registerCore(
       registerUser(broker, telemetryLogger),
       registerProject(broker),
       registerQuickstart(broker),
+      registerWebhooks(),
       { dispose: sub1 },
       { dispose: sub2 },
       { dispose: sub3 },

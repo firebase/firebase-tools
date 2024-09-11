@@ -8,6 +8,9 @@ import { Spacer } from "../components/ui/Spacer";
 import styles from "../globals/index.scss";
 import { broker, useBroker, useBrokerListener } from "../globals/html-broker";
 import { PanelSection } from "../components/ui/PanelSection";
+import { EmulatorPanel } from "../components/EmulatorPanel";
+import { computed } from "@preact/signals-core";
+import { Emulators } from "../emulator/types";
 
 // Prevent webpack from removing the `style` import above
 styles;
@@ -16,11 +19,11 @@ const root = createRoot(document.getElementById("root")!);
 root.render(<DataConnect />);
 
 function DataConnect() {
-  const isConnectedToPostgres =
-    useBroker("notifyIsConnectedToPostgres", {
-      initialRequest: "getInitialIsConnectedToPostgres",
+  const emulatorsRunningInfo =
+    useBroker("notifyEmulatorStateChanged", {
+      initialRequest: "getEmulatorInfos",
     }) ?? false;
-
+  
   const psqlString = useBroker("notifyPostgresStringChanged");
 
   const user = useBroker("notifyUserChanged", {
@@ -30,25 +33,15 @@ function DataConnect() {
   return (
     <>
       <PanelSection title="Local Development">
-        {!isConnectedToPostgres && (
-          <p>
-            Connect to Local PostgreSQL.
-            <br></br>
-            See also:{" "}
-            <a href="https://firebase.google.com/docs/data-connect/quickstart#optional_install_postgresql_locally">
-              Working with PostgreSQL
-            </a>
-          </p>
-        )}
         <Spacer size="xsmall" />
-        {isConnectedToPostgres ? (
+        {emulatorsRunningInfo && emulatorsRunningInfo.status === "running" ? (
           <>
-            <label>Local emulator connected to:</label>
-            <VSCodeTextField disabled value={psqlString}></VSCodeTextField>
+          <label>Emulators running in terminal</label>
+          <EmulatorPanel emulatorInfo={emulatorsRunningInfo.infos}></EmulatorPanel>
           </>
         ) : (
-          <VSCodeButton onClick={() => broker.send("connectToPostgres")}>
-            Connect to Local PostgreSQL
+          <VSCodeButton onClick={() => broker.send("runStartEmulators")}>
+            Start emulators
           </VSCodeButton>
         )}
         <Spacer size="xlarge" />

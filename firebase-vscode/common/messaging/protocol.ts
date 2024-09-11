@@ -7,17 +7,9 @@ import { FirebaseConfig } from "../../../src/firebaseConfig";
 import { User } from "../../../src/types/auth";
 import { ServiceAccountUser } from "../types";
 import { RCData } from "../../../src/rc";
-import { EmulatorUiSelections, RunningEmulatorInfo } from "./types";
+import { EmulatorsStatus, RunningEmulatorInfo } from "./types";
 import { ExecutionResult } from "graphql";
 import { SerializedError } from "../error";
-
-export const DEFAULT_EMULATOR_UI_SELECTIONS: EmulatorUiSelections = {
-  projectId: "demo-something",
-  importStateFolderPath: "",
-  exportStateOnExit: false,
-  mode: "dataconnect",
-  debugLogging: false,
-};
 
 export enum UserMockKind {
   ADMIN = "admin",
@@ -44,7 +36,6 @@ export interface WebviewToExtensionParamsMap {
   /* Emulator panel requests */
   getEmulatorUiSelections: void;
   getEmulatorInfos: void;
-  updateEmulatorUiSelections: Partial<EmulatorUiSelections>;
 
   /** Notify extension that current user has been changed in UI. */
   requestChangeUser: { user: User | ServiceAccountUser };
@@ -59,6 +50,9 @@ export interface WebviewToExtensionParamsMap {
 
   /** Calls the `firebase init` CLI */
   runFirebaseInit: void;
+
+  /** Calls the `firebase init` CLI */
+  runStartEmulators: void;
 
   /**
    * Show a UI message using the vscode interface
@@ -119,9 +113,8 @@ export type ValueOrError<T> =
 
 export interface ExtensionToWebviewParamsMap {
   /** Triggered when the emulator UI/state changes */
-  notifyEmulatorUiSelectionsChanged: EmulatorUiSelections;
   notifyEmulatorStateChanged: {
-    status: "running" | "stopped" | "starting" | "stopping";
+    status: EmulatorsStatus;
     infos: RunningEmulatorInfo | undefined;
   };
   notifyEmulatorImportFolder: { folder: string };
