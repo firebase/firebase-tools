@@ -90,6 +90,7 @@ export class DataConnectEmulator implements EmulatorInstance {
       this.usingExistingEmulator = true;
       this.watchUnmanagedInstance();
     } else {
+      // TODO: Skip starting our own PG server is localConnectString is set
       if (this.args.autostartPostgres) {
         const pgServer = new PostgresServer(dbId, "postgres");
         const server = await pgServer.createPGServer(
@@ -110,8 +111,6 @@ export class DataConnectEmulator implements EmulatorInstance {
         enable_output_generated_sdk: true,
       });
       this.usingExistingEmulator = false;
-    }
-    if (!isVSCodeExtension()) {
       await this.connectToPostgres(
         `postgres://${this.args.postgresHost ?? "127.0.0.1"}:${this.args.postgresPort ?? 5432}/${dbId}?sslmode=disable`,
         dbId,

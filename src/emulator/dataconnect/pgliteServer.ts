@@ -89,6 +89,7 @@ export class PostgresServer {
   }
 }
 
+// TODO: Remove this code once https://github.com/electric-sql/pglite/pull/294 is released in PGLite
 export class PGliteExtendedQueryPatch {
   isExtendedQuery = false;
 
