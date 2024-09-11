@@ -143,6 +143,32 @@ export function registerHandlers(
           }
         }
       }
+      case "verifyAndChangeEmail": {
+        try {
+          const { newEmail } = setAccountInfoImpl(state, { oobCode });
+          if (continueUrl) {
+            return res.redirect(303, continueUrl);
+          } else {
+            return res.status(200).json({
+              authEmulator: { success: `The email has been successfully changed.`, newEmail },
+            });
+          }
+        } catch (e: any) {
+          if (
+            e instanceof NotImplementedError ||
+            (e instanceof BadRequestError && e.message === "INVALID_OOB_CODE")
+          ) {
+            return res.status(400).json({
+              authEmulator: {
+                error: `Your request to change your email has expired or the link has already been used.`,
+                instructions: `Try changing your email again.`,
+              },
+            });
+          } else {
+            throw e;
+          }
+        }
+      }
       case "signIn": {
         if (!continueUrl) {
           return res.status(400).json({
