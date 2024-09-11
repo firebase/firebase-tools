@@ -15,6 +15,7 @@ import { Client, ClientResponse } from "../apiv2";
 import { EmulatorRegistry } from "./registry";
 import { logger } from "../logger";
 import { load } from "../dataconnect/load";
+import { isVSCodeExtension } from "../utils";
 import { Config } from "../config";
 import { PostgresServer } from "./dataconnect/pgliteServer";
 import { isEnabled } from "../experiments";
@@ -29,6 +30,8 @@ export interface DataConnectEmulatorArgs {
   autoconnectToPostgres: boolean;
   postgresHost?: string;
   postgresPort?: number;
+  enable_output_schema_extensions: boolean;
+  enable_output_generated_sdk: boolean;
 }
 
 export interface DataConnectGenerateArgs {
@@ -84,8 +87,8 @@ export class DataConnectEmulator implements EmulatorInstance {
       auto_download: this.args.auto_download,
       listen: listenSpecsToString(this.args.listen),
       config_dir: resolvedConfigDir,
-      enable_output_schema_extensions: true,
-      enable_output_generated_sdk: true,
+      enable_output_schema_extensions: this.args.enable_output_schema_extensions,
+      enable_output_generated_sdk: this.args.enable_output_generated_sdk,
     });
     this.usingExistingEmulator = false;
     if (this.args.autoconnectToPostgres) {

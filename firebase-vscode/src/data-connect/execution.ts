@@ -89,7 +89,7 @@ export function registerExecution(
 
     if (
       instance === InstanceType.LOCAL &&
-      !emulatorsController.areEmulatorsRunning.value
+      !emulatorsController.areEmulatorsRunning()
     ) {
       const always = "Yes (always)";
       const yes = "Yes";

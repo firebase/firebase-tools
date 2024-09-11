@@ -107,6 +107,7 @@ function SidebarContent(props: {
     <AccountSection
       user={user}
       isMonospace={env?.isMonospace}
+      isLoadingUser={false}
     />
   );
 

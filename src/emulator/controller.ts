@@ -854,6 +854,8 @@ export async function startAll(
       autoconnectToPostgres: true,
       postgresHost: options.config.get("emulators.dataconnect.postgresHost"),
       postgresPort: options.config.get("emulators.dataconnect.postgresPort"),
+      enable_output_generated_sdk: true, // TODO: source from arguments
+      enable_output_schema_extensions: true,
     });
     await startEmulator(dataConnectEmulator);
   }

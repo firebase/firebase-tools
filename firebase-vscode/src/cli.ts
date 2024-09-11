@@ -10,13 +10,8 @@ import { requireAuth } from "../../src/requireAuth";
 import { Account, Tokens, User } from "../../src/types/auth";
 import { Options } from "../../src/options";
 import { currentOptions, getCommandOptions } from "./options";
-import { EmulatorUiSelections } from "../common/messaging/types";
 import { pluginLogger } from "./logger-wrapper";
 import { getAccessToken, setAccessToken } from "../../src/apiv2";
-import {
-  startAll as startAllEmulators,
-  cleanShutdown as stopAllEmulators,
-} from "../../src/emulator/controller";
 import { EmulatorRegistry } from "../../src/emulator/registry";
 import {
   DownloadableEmulatorDetails,
@@ -24,12 +19,9 @@ import {
   DownloadableEmulators,
   Emulators,
 } from "../../src/emulator/types";
-import * as commandUtils from "../../src/emulator/commandUtils";
 import { currentUser } from "./core/user";
-import { firstWhere } from "./utils/signal";
 import { currentProjectId } from "./core/project";
 export { Emulators };
-
 /**
  * Wrap the CLI's requireAuth() which is normally run before every command
  * requiring user to be logged in. The CLI automatically supplies it with
@@ -131,49 +123,21 @@ export async function login() {
 }
 
 export async function listProjects() {
-  const loggedInUser = await requireAuthWrapper(false);
-  if (!loggedInUser) {
-    return [];
-  }
   return listFirebaseProjects();
 }
 
-export async function emulatorsStart(
-  emulatorUiSelections: EmulatorUiSelections,
-) {
-  const only =
-    emulatorUiSelections.mode === "dataconnect"
-      ? `${Emulators.DATACONNECT}`
-      : "";
-  const commandOptions = await getCommandOptions(undefined, {
-    ...(await firstWhere(
-      // TODO use firstWhereDefined once currentOptions are undefined if not initialized yet
-      currentOptions,
-      (op) => !!op && op.configPath.length !== 0,
-    )),
-    project: emulatorUiSelections.projectId,
-    exportOnExit: emulatorUiSelections.exportStateOnExit,
-    import: emulatorUiSelections.importStateFolderPath,
-    only,
-  });
-  // Adjusts some options, export on exit can be a boolean or a path.
-  commandUtils.setExportOnExitOptions(
-    commandOptions as commandUtils.ExportOnExitOptions,
-  );
-  return startAllEmulators(commandOptions, /*showUi=*/ true);
-}
-
-export async function stopEmulators() {
-  await stopAllEmulators();
-}
 
 export function listRunningEmulators(): EmulatorInfo[] {
   return EmulatorRegistry.listRunningWithInfo();
 }
 
 export function getEmulatorUiUrl(): string | undefined {
-  const url: URL = EmulatorRegistry.url(Emulators.UI);
-  return url.hostname === "unknown" ? undefined : url.toString();
+  try {
+    const url: URL = EmulatorRegistry.url(Emulators.UI);
+    return url.hostname === "unknown" ? undefined : url.toString();
+  } catch {
+    return undefined;
+  }
 }
 
 export function getEmulatorDetails(
