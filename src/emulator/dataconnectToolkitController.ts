@@ -3,6 +3,7 @@ import { FirebaseError } from "../error";
 import * as portUtils from "./portUtils";
 import { connectableHostname } from "../utils";
 import { DataConnectEmulator, DataConnectEmulatorArgs } from "./dataconnectEmulator";
+import { logger } from "../logger";
 
 const name = "Data Connect Toolkit";
 /**
@@ -36,7 +37,7 @@ export class DataConnectToolkitController {
       await this.instance.stop();
       this.isRunning = false;
     } catch (e: any) {
-      // TODO: log error
+      throw new FirebaseError(`Data Connect Toolkit failed to stop with error: ${e}`);
     }
   }
 

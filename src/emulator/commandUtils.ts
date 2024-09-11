@@ -461,15 +461,16 @@ export async function emulatorExec(script: string, options: any): Promise<void> 
     extraEnv[Constants.FIREBASE_GA_SESSION] = JSON.stringify(session);
   }
   let exitCode = 0;
-  let deprecationNotices;
+  let deprecationNotices: string[] = [];
   try {
     const showUI = !!options.ui;
     ({ deprecationNotices } = await controller.startAll(options, showUI, true));
     sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_STARTED });
     exitCode = await runScript(script, extraEnv);
     await controller.onExit(options);
-  } finally {
+  } catch {
     sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_START_ERRORED });
+  } finally {
     await controller.cleanShutdown();
   }
 

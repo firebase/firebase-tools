@@ -3,6 +3,7 @@
  */
 
 import fetch from "node-fetch";
+import { logger } from "../logger";
 
 export enum VSCODE_MESSAGE {
   EMULATORS_STARTED = "EMULATORS_STARTED",
@@ -22,13 +23,20 @@ export const port = process.env.VSCODE_WEBHOOK_PORT || DEFAULT_PORT;
 export async function sendVSCodeMessage(body: WebhookBody) {
   const jsonBody = JSON.stringify(body);
 
-  await fetch(`http://localhost:${port}/vscode/notify`, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      "x-mantle-admin": "all",
-    },
-    body: jsonBody,
-  });
+  try {
+    await fetch(`http://localhost:${port}/vscode/notify`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "x-mantle-admin": "all",
+      },
+      body: jsonBody,
+    });
+  }
+  catch (e) {
+      logger.debug(
+        `Could not find VSCode notification endpoint: ${e}`,
+      );
+  }
 }
