@@ -2,7 +2,6 @@ import * as clc from "colorette";
 import { format } from "sql-formatter";
 
 import { IncompatibleSqlSchemaError, Diff, SCHEMA_ID, SchemaValidation } from "./types";
-import { IncompatibleSqlSchemaError, Diff, SCHEMA_ID, SchemaValidation } from "./types";
 import { getSchema, upsertSchema, deleteConnector } from "./client";
 import {
   setupIAMUsers,
@@ -27,7 +26,6 @@ import * as errors from "./errors";
 export async function diffSchema(
   schema: Schema,
   schemaValidation?: SchemaValidation,
-  schemaValidation?: SchemaValidation,
 ): Promise<Diff[]> {
   const { serviceName, instanceName, databaseId } = getIdentifiers(schema);
   await ensureServiceIsConnectedToCloudSql(
@@ -37,12 +35,9 @@ export async function diffSchema(
     /* linkIfNotConnected=*/ false,
   );
   let diffs: Diff[] = [];
-  let diffs: Diff[] = [];
 
   let validationMode: SchemaValidation = "STRICT";
-  let valMode: SchemaValidation = "STRICT";
   if (experiments.isEnabled("fdccompatiblemode")) {
-    if (!schemaValidation) {
     if (!schemaValidation) {
       // If the schema validation mode is unset, we surface both STRICT and COMPATIBLE mode diffs, starting with COMPATIBLE.
       validationMode = "COMPATIBLE";
@@ -79,8 +74,6 @@ export async function diffSchema(
     }
     if (incompatible) {
       displaySchemaChanges(incompatible, validationMode, instanceName, databaseId);
-      diffs = incompatible.diffs;
-      displaySchemaChanges(incompatible, valMode);
       diffs = incompatible.diffs;
     }
   }
@@ -206,8 +199,8 @@ export async function migrateSchema(args: {
   if (experiments.isEnabled("fdccompatiblemode")) {
     // If the validation mode is unset, then we also surface any additional optional STRICT diffs.
     if (!schemaValidation) {
-      valMode = "STRICT";
-      setSchemaValidationMode(schema, valMode);
+      validationMode = "STRICT";
+      setSchemaValidationMode(schema, validationMode);
       try {
         await upsertSchema(schema, validateOnly);
       } catch (err: any) {
@@ -224,10 +217,11 @@ export async function migrateSchema(args: {
 
         const migrationMode = await promptForSchemaMigration(
           options,
+          instanceName,
           databaseId,
           incompatible,
           validateOnly,
-          valMode,
+          validationMode,
         );
 
         let diffs: Diff[] = [];
@@ -239,6 +233,7 @@ export async function migrateSchema(args: {
             incompatibleSchemaError: incompatible,
             choice: migrationMode,
           });
+          return diffs;
         }
       }
     }
@@ -246,23 +241,6 @@ export async function migrateSchema(args: {
   return [];
 }
 
-function diffsEqual(x: Diff[], y: Diff[]): boolean {
-  if (x.length !== y.length) {
-    return false;
-  }
-  for (let i = 0; i < x.length; i++) {
-    if (
-      x[i].description !== y[i].description ||
-      x[i].destructive !== y[i].destructive ||
-      x[i].sql !== y[i].sql
-    ) {
-      return false;
-    }
-  }
-  return true;
-}
-
-function setSchemaValidationMode(schema: Schema, schemaValidation: SchemaValidation) {
 function diffsEqual(x: Diff[], y: Diff[]): boolean {
   if (x.length !== y.length) {
     return false;
