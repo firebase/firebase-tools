@@ -3,3 +3,4 @@
 - Removed `dataconnect:sql:migrate` command hard dependency on 'roles/cloudsql.admin'. (#7578)
 - Added support for setting the encryption configuration of restored firestore databases. (#7483)
 - Added support for `VERIFY_AND_CHANGE_EMAIL` events in the Auth emulator. (#7618)
+- Updated the Firebase Data Connect toolkit to v1.3.6, which includes support for generated Dart SDKs and serves a generated GraphQL docsite under /docs. ()
