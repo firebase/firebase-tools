@@ -851,6 +851,8 @@ export async function startAll(
       configDir,
       rc: options.rc,
       config: options.config,
+      enable_output_generated_sdk: true, // TODO: source from arguments
+      enable_output_schema_extensions: true,
     });
     await startEmulator(dataConnectEmulator);
   }
