@@ -33,10 +33,7 @@ export async function sendVSCodeMessage(body: WebhookBody) {
       },
       body: jsonBody,
     });
-  }
-  catch (e) {
-      logger.debug(
-        `Could not find VSCode notification endpoint: ${e}`,
-      );
+  } catch (e) {
+    logger.debug(`Could not find VSCode notification endpoint: ${e}`);
   }
 }

@@ -3,7 +3,6 @@ import { FirebaseError } from "../error";
 import * as portUtils from "./portUtils";
 import { connectableHostname } from "../utils";
 import { DataConnectEmulator, DataConnectEmulatorArgs } from "./dataconnectEmulator";
-import { logger } from "../logger";
 
 const name = "Data Connect Toolkit";
 /**
