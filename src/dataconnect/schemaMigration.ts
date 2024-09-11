@@ -48,8 +48,15 @@ export async function diffSchema(
   setSchemaValidationMode(schema, validationMode);
 
   try {
+    if (!schemaValidation && experiments.isEnabled("fdccompatiblemode")) {
+      logLabeledBullet("dataconnect", `generating required schema changes...`);
+    }
     await upsertSchema(schema, /** validateOnly=*/ true);
-    logLabeledSuccess("dataconnect", `Database schema is up to date.`);
+    if (validationMode === "STRICT") {
+      logLabeledSuccess("dataconnect", `Database schema is up to date.`);
+    } else {
+      logLabeledSuccess("dataconnect", `Database schema is compatible.`);
+    }
   } catch (err: any) {
     if (err?.status !== 400) {
       throw err;
@@ -77,7 +84,9 @@ export async function diffSchema(
       validationMode = "STRICT";
       setSchemaValidationMode(schema, validationMode);
       try {
+        logLabeledBullet("dataconnect", `generating schema changes, including optional changes...`);
         await upsertSchema(schema, /** validateOnly=*/ true);
+        logLabeledSuccess("dataconnect", `no additional optional changes`);
       } catch (err: any) {
         if (err?.status !== 400) {
           throw err;
@@ -85,9 +94,20 @@ export async function diffSchema(
         const incompatible = errors.getIncompatibleSchemaError(err);
         if (incompatible) {
           if (!diffsEqual(diffs, incompatible.diffs)) {
-            displaySchemaChanges(incompatible, validationMode, instanceName, databaseId);
+            if (diffs.length === 0) {
+              displaySchemaChanges(
+                incompatible,
+                "STRICT_AFTER_COMPATIBLE",
+                instanceName,
+                databaseId,
+              );
+            } else {
+              displaySchemaChanges(incompatible, validationMode, instanceName, databaseId);
+            }
             // Return STRICT diffs if the --json flag is passed and schemaValidation is unset.
             diffs = incompatible.diffs;
+          } else {
+            logLabeledSuccess("dataconnect", `no additional optional changes`);
           }
         }
       }
@@ -489,7 +509,7 @@ async function ensureServiceIsConnectedToCloudSql(
 
 function displaySchemaChanges(
   error: IncompatibleSqlSchemaError,
-  schemaValidation: SchemaValidation | "STRICT_AFTER_COMPATBILE",
+  schemaValidation: SchemaValidation | "STRICT_AFTER_COMPATIBLE",
   instanceName: string,
   databaseId: string,
 ) {
@@ -506,7 +526,7 @@ function displaySchemaChanges(
             ". " +
             "The following SQL statements will migrate your database schema to be compatible with your new Data Connect schema.\n" +
             error.diffs.map(toString).join("\n");
-        } else if (schemaValidation === "STRICT_AFTER_COMPATBILE") {
+        } else if (schemaValidation === "STRICT_AFTER_COMPATIBLE") {
           message =
             "Your new application schema is compatible with the schema of your PostgreSQL database " +
             databaseId +
