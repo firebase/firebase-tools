@@ -25,6 +25,7 @@ import {
 import { ClientResponse } from "../apiv2";
 import { InstanceType } from "./code-lens-provider";
 import { pluginLogger } from "../logger-wrapper";
+import { DataConnectToolkit } from "./toolkit";
 
 /**
  * DataConnect Emulator service
@@ -32,6 +33,7 @@ import { pluginLogger } from "../logger-wrapper";
 export class DataConnectService {
   constructor(
     private authService: AuthService,
+    private dataConnectToolkit: DataConnectToolkit,
     private emulatorsController: EmulatorsController,
   ) {}
 
@@ -199,7 +201,7 @@ export class DataConnectService {
         extensions: {}, // Introspection is the only caller of executeGraphqlRead
       });
       const resp = await fetch(
-        (await firstWhereDefined(this.emulatorsController.getLocalEndpoint())) +
+        (await this.dataConnectToolkit.getFDCToolkitURL()) +
           `/v1alpha/projects/p/locations/l/services/${serviceId}:executeGraphqlRead`,
         {
           method: "POST",
@@ -250,7 +252,7 @@ export class DataConnectService {
       return this.handleProdResponse(resp);
     } else {
       const resp = await fetch(
-        (await firstWhereDefined(this.emulatorsController.getLocalEndpoint())) +
+        (await this.emulatorsController.getLocalEndpoint()) +
           `/v1alpha/${servicePath}:executeGraphql`,
         {
           method: "POST",
@@ -269,7 +271,7 @@ export class DataConnectService {
   async connectToPostgres(connectionString: string): Promise<boolean> {
     try {
       await fetch(
-        firstWhereDefined(this.emulatorsController.getLocalEndpoint()) +
+        this.emulatorsController.getLocalEndpoint() +
           `/emulator/configure?connectionString=${connectionString}`,
         {
           headers: {

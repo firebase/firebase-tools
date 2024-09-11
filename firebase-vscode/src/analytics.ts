@@ -19,6 +19,7 @@ export enum DATA_CONNECT_EVENT_NAME {
   INIT_SDK = "init_sdk",
   INIT_SDK_CLI = "init_sdk_cli",
   INIT_SDK_CODELENSE = "init_sdk_codelense",
+  START_EMULATORS = "start_emulators",
 }
 
 export class AnalyticsLogger {
