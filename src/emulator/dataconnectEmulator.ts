@@ -15,7 +15,6 @@ import { Client, ClientResponse } from "../apiv2";
 import { EmulatorRegistry } from "./registry";
 import { logger } from "../logger";
 import { load } from "../dataconnect/load";
-import { isVSCodeExtension } from "../utils";
 import { Config } from "../config";
 import { PostgresServer } from "./dataconnect/pgliteServer";
 import { isEnabled } from "../experiments";

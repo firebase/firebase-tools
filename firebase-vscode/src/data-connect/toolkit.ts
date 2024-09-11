@@ -41,6 +41,7 @@ export class DataConnectToolkit implements vscode.Disposable {
       config,
       configDir,
       rc: RC,
+      autoconnectToPostgres: false,
       enable_output_generated_sdk: true,
       enable_output_schema_extensions: true,
     };
