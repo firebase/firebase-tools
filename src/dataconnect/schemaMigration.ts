@@ -128,8 +128,9 @@ export async function migrateSchema(args: {
   schema: Schema;
   /** true for `dataconnect:sql:migrate`, false for `deploy` */
   validateOnly: boolean;
+  schemaValidation?: SchemaValidation;
 }): Promise<Diff[]> {
-  const { options, schema, validateOnly } = args;
+  const { options, schema, validateOnly, schemaValidation } = args;
 
   const { serviceName, instanceId, instanceName, databaseId } = getIdentifiers(schema);
   await ensureServiceIsConnectedToCloudSql(
@@ -139,7 +140,15 @@ export async function migrateSchema(args: {
     /* linkIfNotConnected=*/ true,
   );
 
-  const validationMode = experiments.isEnabled("fdccompatiblemode") ? "COMPATIBLE" : "STRICT";
+  let validationMode: SchemaValidation = "STRICT";
+  if (experiments.isEnabled("fdccompatiblemode")) {
+    if (!schemaValidation) {
+      // If the schema validation mode is unset, we surface both STRICT and COMPATIBLE mode diffs, starting with COMPATIBLE.
+      validationMode = "COMPATIBLE";
+    } else {
+      validationMode = schemaValidation;
+    }
+  }
   setSchemaValidationMode(schema, validationMode);
 
   try {
@@ -192,6 +201,47 @@ export async function migrateSchema(args: {
       await upsertSchema(schema, validateOnly);
     }
     return diffs;
+  }
+
+  if (experiments.isEnabled("fdccompatiblemode")) {
+    // If the validation mode is unset, then we also surface any additional optional STRICT diffs.
+    if (!schemaValidation) {
+      valMode = "STRICT";
+      setSchemaValidationMode(schema, valMode);
+      try {
+        await upsertSchema(schema, validateOnly);
+      } catch (err: any) {
+        if (err.status !== 400) {
+          throw err;
+        }
+        // Parse and handle failed precondition errors, then retry.
+        const incompatible = errors.getIncompatibleSchemaError(err);
+        const invalidConnectors = errors.getInvalidConnectors(err);
+        if (!incompatible && !invalidConnectors.length) {
+          // If we got a different type of error, throw it
+          throw err;
+        }
+
+        const migrationMode = await promptForSchemaMigration(
+          options,
+          databaseId,
+          incompatible,
+          validateOnly,
+          valMode,
+        );
+
+        let diffs: Diff[] = [];
+        if (incompatible) {
+          diffs = await handleIncompatibleSchemaError({
+            options,
+            databaseId,
+            instanceId,
+            incompatibleSchemaError: incompatible,
+            choice: migrationMode,
+          });
+        }
+      }
+    }
   }
   return [];
 }
