@@ -90,8 +90,14 @@ export class DataConnectEmulator implements EmulatorInstance {
       enable_output_generated_sdk: this.args.enable_output_generated_sdk,
     });
     this.usingExistingEmulator = false;
-    if (this.args.autoconnectToPostgres) {
-      // TODO: Skip starting our own PG server if localConnectString is set
+    if (dataConnectLocalConnString()) {
+      this.logger.logLabeled(
+        "INFO",
+        "Data Connect",
+        `FIREBASE_DATACONNECT_POSTGRESQL_STRING is set to ${dataConnectLocalConnString()}`,
+      );
+    }
+    if (this.args.autoconnectToPostgres && !dataConnectLocalConnString()) {
       if (isEnabled("fdcpglite")) {
         const pgServer = new PostgresServer(dbId, "postgres");
         const server = await pgServer.createPGServer(
