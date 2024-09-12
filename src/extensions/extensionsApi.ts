@@ -34,16 +34,18 @@ async function createInstanceHelper(
   projectId: string,
   instanceId: string,
   config: any,
+  labels: Record<string, string> | undefined,
   validateOnly = false,
 ): Promise<ExtensionInstance> {
   const createRes = await extensionsApiClient.post<
-    { name: string; config: unknown },
+    { name: string; config: unknown; labels: Record<string, string> | undefined },
     ExtensionInstance
   >(
     `/projects/${projectId}/instances/`,
     {
       name: `projects/${projectId}/instances/${instanceId}`,
       config,
+      labels,
     },
     {
       queryParams: {
@@ -63,16 +65,7 @@ async function createInstanceHelper(
   return pollRes;
 }
 
-/**
- * Create a new extension instance, given a extension source path, a set of params, and a service account.
- *
- * @param projectId the project to create the instance in
- * @param instanceId the id to set for the instance
- * @param extensionSource the ExtensionSource to create an instance of
- * @param params params to configure the extension instance
- * @param validateOnly if true, only validates the update and makes no changes
- */
-export async function createInstance(args: {
+export type CreateInstanceArgs = {
   projectId: string;
   instanceId: string;
   extensionSource?: ExtensionSource;
@@ -82,7 +75,19 @@ export async function createInstance(args: {
   allowedEventTypes?: string[];
   eventarcChannel?: string;
   validateOnly?: boolean;
-}): Promise<ExtensionInstance> {
+  labels?: Record<string,string>;
+}
+
+/**
+ * Create a new extension instance, given a extension source path, a set of params, and a service account.
+ *
+ * @param projectId the project to create the instance in
+ * @param instanceId the id to set for the instance
+ * @param extensionSource the ExtensionSource to create an instance of
+ * @param params params to configure the extension instance
+ * @param validateOnly if true, only validates the update and makes no changes
+ */
+export async function createInstance(args: CreateInstanceArgs): Promise<ExtensionInstance> {
   const config: any = {
     params: args.params,
     systemParams: args.systemParams ?? {},
@@ -109,7 +114,7 @@ export async function createInstance(args: {
   if (args.eventarcChannel) {
     config.eventarcChannel = args.eventarcChannel;
   }
-  return createInstanceHelper(args.projectId, args.instanceId, config, args.validateOnly);
+  return await createInstanceHelper(args.projectId, args.instanceId, config, args.labels, args.validateOnly);
 }
 
 /**

@@ -24,7 +24,7 @@ import { marked } from "marked";
 marked.use(markedTerminal() as any);
 
 export const SDK_GENERATION_VERSION = "1.0.0";
-export const FIREBASE_FUNCTIONS_VERSION = "^5.0.1";
+export const FIREBASE_FUNCTIONS_VERSION = "^5.1.0";
 export const TYPESCRIPT_VERSION = "^4.5.4";
 
 function makePackageName(extensionRef: string | undefined, name: string): string {
@@ -291,6 +291,9 @@ export async function writeSDK(
 
     sdkLines.push("  /**");
     sdkLines.push(`   * ${param.label}`);
+    if (param.validationRegex && !param.validationRegex.includes("*/")) {
+      sdkLines.push(`   * - Validation regex: ${param.validationRegex}`);
+    }
     sdkLines.push("   */");
 
     switch (param.type) {
@@ -339,6 +342,9 @@ export async function writeSDK(
 
     sdkLines.push("  /**");
     sdkLines.push(`   * ${sysParam.label}`);
+    if (sysParam.validationRegex && !sysParam.validationRegex.includes("*/")) {
+      sdkLines.push(`   * - Validation regex: ${sysParam.validationRegex}`)
+    }
     sdkLines.push("   */");
 
     switch (sysParam.type) {
@@ -414,14 +420,10 @@ export async function writeSDK(
       sdkLines.push("  /**");
       sdkLines.push(`   * ${event.description}`);
       sdkLines.push(`   */`);
-      // sdkLines.push(
-      //  `  ${eventName}(callback: EventCallback<unknown>, options?: SimpleEventarcTriggerOptions) {`
-      // );
       sdkLines.push(
         `  ${eventName}<T = unknown>(callback: EventCallback<T>, options?: SimpleEventarcTriggerOptions) {`,
       );
       sdkLines.push(`    this.events.push("${event.type}");`);
-      // sdkLines.push(`    this.${eventName}Handler = onCustomEventPublished({`);
       sdkLines.push(`    return onCustomEventPublished({`);
       sdkLines.push(`        ...options,`);
       sdkLines.push(`        "eventType": "${event.type}",`);
@@ -490,7 +492,7 @@ export async function writeSDK(
     prefix +
     `can add this to your codebase to begin using the SDK:\n\n` +
     fixDarkBlueText(await marked(sampleImport)) +
-    `See also: ${fixDarkBlueText(await marked("[Extension SDKs documentation](https://firebase.google.com/docs/extensions/install-extensions?platform=sdk)"))}`;
+    `See also: ${fixDarkBlueText(await marked("[Extension SDKs documentation](https://firebase.google.com/docs/extensions/install-extensions?platform=sdk#config)"))}`;
 
   return instructions;
 }

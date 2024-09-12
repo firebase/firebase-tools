@@ -74,6 +74,7 @@ export interface ExtensionInstance {
   etag?: string;
   extensionRef?: string;
   extensionVersion?: string;
+  labels?: Record<string, string>;
 }
 
 export interface ExtensionConfig {

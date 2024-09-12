@@ -7,6 +7,7 @@ import * as refs from "../../extensions/refs";
 import * as utils from "../../utils";
 import { ErrorHandler } from "./errors";
 import { DeploymentInstanceSpec, InstanceSpec } from "./planner";
+import { isObject } from "../../extensions/types";
 
 const isRetryable = (err: any) => err.status === 429 || err.status === 409;
 
@@ -50,34 +51,37 @@ export function createExtensionInstanceTask(
         `Creating ${clc.bold(instanceSpec.instanceId)} extension instance`,
       );
     }
+    let createArgs: extensionsApi.CreateInstanceArgs = {
+      projectId,
+      instanceId: instanceSpec.instanceId,
+      params: instanceSpec.params,
+      systemParams: instanceSpec.systemParams,
+      allowedEventTypes: instanceSpec.allowedEventTypes,
+      eventarcChannel: instanceSpec.eventarcChannel,
+      validateOnly,
+      labels: instanceSpec.labels,
+    };
     if (instanceSpec.ref) {
-      await extensionsApi.createInstance({
-        projectId,
-        instanceId: instanceSpec.instanceId,
-        params: instanceSpec.params,
-        systemParams: instanceSpec.systemParams,
-        extensionVersionRef: refs.toExtensionVersionRef(instanceSpec.ref),
-        allowedEventTypes: instanceSpec.allowedEventTypes,
-        eventarcChannel: instanceSpec.eventarcChannel,
-        validateOnly,
-      });
+      createArgs.extensionVersionRef = refs.toExtensionVersionRef(instanceSpec.ref);
     } else if (instanceSpec.localPath) {
-      const extensionSource = await createSourceFromLocation(projectId, instanceSpec.localPath);
-      await extensionsApi.createInstance({
-        projectId,
-        instanceId: instanceSpec.instanceId,
-        params: instanceSpec.params,
-        systemParams: instanceSpec.systemParams,
-        extensionSource,
-        allowedEventTypes: instanceSpec.allowedEventTypes,
-        eventarcChannel: instanceSpec.eventarcChannel,
-        validateOnly,
-      });
+      createArgs.extensionSource = await createSourceFromLocation(projectId, instanceSpec.localPath);
     } else {
       throw new FirebaseError(
         `Tried to create extension instance ${instanceSpec.instanceId} without a ref or a local path. This should never happen.`,
       );
     }
+
+    try {
+      await extensionsApi.createInstance(createArgs);
+    } catch (err: unknown) {
+      if (isObject(err) && err.status === 409) {
+        // Throwing this error here means not retrying
+        throw new FirebaseError(
+          `Failed to create extension instance. Extension instance ${clc.bold(instanceSpec.instanceId)} already exists.`);
+      }
+      throw err;
+    }
+
     printSuccess(instanceSpec.instanceId, "create", validateOnly);
     return;
   };

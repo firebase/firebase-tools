@@ -103,14 +103,14 @@ export async function prepare(
     context.filters,
   );
 
-  // // == Phase 1.5 Prepare extensions found in codebases if any
-  // if (Object.values(wantBuilds).some((b) => b.extensions)) {
-  //   const extContext: ExtContext = {};
-  //   const extPayload: ExtPayload = {};
-  //   await prepareDynamicExtensions(extContext, options, extPayload, wantBuilds);
-  //   context.extensions = extContext;
-  //   payload.extensions = extPayload;
-  // }
+  // == Phase 1.5 Prepare extensions found in codebases if any
+  if (Object.values(wantBuilds).some((b) => b.extensions)) {
+    const extContext: ExtContext = {};
+    const extPayload: ExtPayload = {};
+    await prepareDynamicExtensions(extContext, options, extPayload, wantBuilds);
+    context.extensions = extContext;
+    payload.extensions = extPayload;
+  }
 
   // == Phase 2. Resolve build to backend.
   const codebaseUsesEnvs: string[] = [];

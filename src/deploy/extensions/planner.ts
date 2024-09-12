@@ -54,6 +54,7 @@ export interface DeploymentInstanceSpec extends InstanceSpec {
   allowedEventTypes?: string[];
   eventarcChannel?: string;
   etag?: string;
+  labels?: Record<string, string>;
 }
 
 /**
@@ -102,12 +103,14 @@ export async function getExtensionSpec(i: InstanceSpec): Promise<ExtensionSpec> 
 }
 
 /**
- * have checks a project for what extension instances are currently installed,
- * and returns them as a list of instanceSpecs.
+ * haveDynamic checks a project for what extension instances created by SDK are
+ * currently installed, and returns them as a list of instanceSpecs.
  * @param projectId
  */
-export async function have(projectId: string): Promise<DeploymentInstanceSpec[]> {
-  const instances = await extensionsApi.listInstances(projectId);
+export async function haveDynamic(projectId: string): Promise<DeploymentInstanceSpec[]> {
+  let instances = await extensionsApi.listInstances(projectId);
+  // Only include instances created by SDK
+  instances = instances.filter((i) => i.labels?.createdBy === "SDK");
   return instances.map((i) => {
     const dep: DeploymentInstanceSpec = {
       instanceId: i.name.split("/").pop()!,
@@ -116,6 +119,35 @@ export async function have(projectId: string): Promise<DeploymentInstanceSpec[]>
       allowedEventTypes: i.config.allowedEventTypes,
       eventarcChannel: i.config.eventarcChannel,
       etag: i.etag,
+      labels: i.labels,
+    };
+    if (i.config.extensionRef) {
+      const ref = refs.parse(i.config.extensionRef);
+      dep.ref = ref;
+      dep.ref.version = i.config.extensionVersion;
+    }
+    return dep;
+  });
+}
+
+/**
+ * have checks a project for what extension instances created by console or CLI
+ * are currently installed, and returns them as a list of instanceSpecs.
+ * @param projectId
+ */
+export async function have(projectId: string): Promise<DeploymentInstanceSpec[]> {
+  let instances = await extensionsApi.listInstances(projectId);
+  // Only include instances created by either CLI or console
+  instances = instances.filter((i) => !(i.labels?.createdBy === "SDK"));
+  return instances.map((i) => {
+    const dep: DeploymentInstanceSpec = {
+      instanceId: i.name.split("/").pop()!,
+      params: i.config.params,
+      systemParams: i.config.systemParams ?? {},
+      allowedEventTypes: i.config.allowedEventTypes,
+      eventarcChannel: i.config.eventarcChannel,
+      etag: i.etag,
+      labels: i.labels,
     };
     if (i.config.extensionRef) {
       const ref = refs.parse(i.config.extensionRef);
@@ -169,6 +201,7 @@ export async function wantDynamic(args: {
         systemParams,
         allowedEventTypes,
         eventarcChannel,
+        labels: ext.labels,
       });
     } else if (ext.ref) {
       instanceSpecs.push({
@@ -178,6 +211,7 @@ export async function wantDynamic(args: {
         systemParams,
         allowedEventTypes,
         eventarcChannel,
+        labels: ext.labels,
       });
     }
   }

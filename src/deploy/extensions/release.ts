@@ -70,8 +70,10 @@ export async function release(context: Context, options: Options, payload: Paylo
   );
 
   // After deployment, write the latest etags to RC so we can detect out of band changes in the next deploy.
-  const newHave = await planner.have(projectId);
-  saveEtags(options.rc, projectId, newHave);
+  const sHave = await planner.have(projectId);
+  const dHave = await planner.haveDynamic(projectId);
+
+  saveEtags(options.rc, projectId, sHave.concat(dHave));
 
   if (errorHandler.hasErrors()) {
     errorHandler.print();
