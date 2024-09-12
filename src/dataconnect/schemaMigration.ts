@@ -247,11 +247,7 @@ function diffsEqual(x: Diff[], y: Diff[]): boolean {
 }
 
 function setSchemaValidationMode(schema: Schema, schemaValidation: SchemaValidation) {
-  if (
-    experiments.isEnabled("fdccompatiblemode") &&
-    schema.primaryDatasource.postgresql &&
-    !schema.primaryDatasource.postgresql.schemaValidation
-  ) {
+  if (experiments.isEnabled("fdccompatiblemode") && schema.primaryDatasource.postgresql) {
     schema.primaryDatasource.postgresql.schemaValidation = schemaValidation;
   }
 }
