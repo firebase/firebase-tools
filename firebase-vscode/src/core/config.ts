@@ -81,10 +81,6 @@ export async function updateFirebaseRCProject(values: {
     );
   }
 
-  if (values.fdcPostgresConnectionString) {
-    rc.setDataconnect(values.fdcPostgresConnectionString);
-  }
-
   rc.save();
 }
 
