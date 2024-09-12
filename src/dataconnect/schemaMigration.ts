@@ -8,12 +8,17 @@ import {
   getIAMUser,
   executeSqlCmdsAsIamUser,
   executeSqlCmdsAsSuperUser,
+  toDatabaseUser,
 } from "../gcp/cloudsql/connect";
 import {
   firebaseowner,
   iamUserIsCSQLAdmin,
   checkSQLRoleIsGranted,
+  firebasewriter,
+  firebasereader,
 } from "../gcp/cloudsql/permissions";
+import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
+import { needProjectId } from "../projectUtils";
 import { promptOnce, confirm } from "../prompt";
 import { logger } from "../logger";
 import { Schema } from "./types";
@@ -127,6 +132,50 @@ export async function migrateSchema(args: {
     return diffs;
   }
   return [];
+}
+
+export async function grantRoleToUserInSchema(options: Options, schema: Schema) {
+  const role = options.role as string;
+  const email = options.email as string;
+
+  if (!role) {
+    throw new FirebaseError("-R, --role <role> is required. Run the command with -h for more info.")
+  }
+  if (!email) {
+      throw new FirebaseError("-E, --email <email> is required. Run the command with -h for more info.")
+  }
+
+  // Make sure current user can perform this action.
+  const userIsCSQLAdmin = await iamUserIsCSQLAdmin(options);
+  if (!userIsCSQLAdmin) {
+    throw new FirebaseError(`Only users with 'roles/cloudsql.admin' can grant SQL roles.`);
+  }
+  
+  // Run the database roles setup. This should be idempotent.
+  const { serviceName, instanceId, instanceName, databaseId } = getIdentifiers(schema);
+  await setupIAMUsers(instanceId, databaseId, options);
+
+  // Upsert user account into the database
+  const projectId = needProjectId(options);
+  const {user, mode} = toDatabaseUser(email)
+  await cloudSqlAdminClient.createUser(projectId, instanceId, mode, user);
+
+  // Grant the role to the user.
+  let cmd;
+  switch (role) {
+    case "owner":
+      cmd = `GRANT "${firebaseowner(databaseId)}" TO "${user}"`;
+      break;
+    case "writer":
+      cmd = `GRANT "${firebasewriter(databaseId)}" TO "${user}"`;
+      break;
+    case "reader":
+      cmd = `GRANT "${firebasereader(databaseId)}" TO "${user}"`;
+      break;
+    default:
+      throw new FirebaseError("Role should be one of owner | writer | reader.")
+  }
+  await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, [cmd], /** silent= */ false)
 }
 
 function setCompatibleMode(schema: Schema, databaseId: string, instanceName: string) {
