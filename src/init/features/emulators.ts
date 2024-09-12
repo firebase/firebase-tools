@@ -1,7 +1,6 @@
 import * as clc from "colorette";
-import * as _ from "lodash";
 import * as utils from "../../utils";
-import { prompt, promptOnce } from "../../prompt";
+import { prompt } from "../../prompt";
 import { Emulators, ALL_SERVICE_EMULATORS, isDownloadableEmulator } from "../../emulator/types";
 import { Constants } from "../../emulator/constants";
 import { downloadIfNecessary } from "../../emulator/downloadableEmulators";
@@ -94,20 +93,6 @@ export async function doSetup(setup: Setup, config: any) {
       }
     }
 
-    if (selections.emulators.includes(Emulators.DATACONNECT)) {
-      const defaultConnectionString =
-        setup.rcfile.dataconnectEmulatorConfig?.postgres?.localConnectionString ??
-        DEFAULT_POSTGRES_CONNECTION;
-      // TODO: Download Postgres
-      const localConnectionString = await promptOnce({
-        type: "input",
-        name: "localConnectionString",
-        message: `What is the connection string of the local Postgres instance you would like to use with the Data Connect emulator?`,
-        default: defaultConnectionString,
-      });
-      setup.rcfile.dataconnectEmulatorConfig = { postgres: { localConnectionString } };
-    }
-
     await prompt(selections, [
       {
         name: "download",
@@ -130,7 +115,7 @@ export async function doSetup(setup: Setup, config: any) {
       }
     }
 
-    if (_.get(setup, "config.emulators.ui.enabled")) {
+    if (setup?.config?.emulators?.ui?.enabled) {
       downloadIfNecessary(Emulators.UI);
     }
   }

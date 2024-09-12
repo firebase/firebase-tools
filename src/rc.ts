@@ -58,7 +58,7 @@ export class RC {
 
   constructor(rcpath?: string, data?: Partial<RCData>) {
     this.path = rcpath;
-    this.data = { projects: {}, targets: {}, etags: {}, dataconnectEmulatorConfig: {}, ...data };
+    this.data = { projects: {}, targets: {}, etags: {}, ...data };
   }
 
   private set(key: string | string[], value: any): void {
