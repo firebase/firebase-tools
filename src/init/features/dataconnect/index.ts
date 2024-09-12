@@ -8,6 +8,7 @@ import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql";
 import { checkForFreeTrialInstance } from "../../../dataconnect/freeTrial";
 import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
 import { ensureApis } from "../../../dataconnect/ensureApis";
+import * as experiments from "../../../experiments";
 import {
   listLocations,
   listAllServices,
@@ -22,6 +23,9 @@ import { readTemplateSync } from "../../../templates";
 import { logSuccess } from "../../../utils";
 
 const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
+const DATACONNECT_YAML_COMPAT_EXPERIMENT_TEMPLATE = readTemplateSync(
+  "init/dataconnect/dataconnect-fdccompatiblemode.yaml",
+);
 const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yaml");
 const SCHEMA_TEMPLATE = readTemplateSync("init/dataconnect/schema.gql");
 const QUERIES_TEMPLATE = readTemplateSync("init/dataconnect/queries.gql");
@@ -193,7 +197,9 @@ function subDataconnectYamlValues(replacementValues: {
     connectorDirs: "__connectorDirs__",
     locationId: "__location__",
   };
-  let replaced = DATACONNECT_YAML_TEMPLATE;
+  let replaced = experiments.isEnabled("fdccompatiblemode")
+    ? DATACONNECT_YAML_COMPAT_EXPERIMENT_TEMPLATE
+    : DATACONNECT_YAML_TEMPLATE;
   for (const [k, v] of Object.entries(replacementValues)) {
     replaced = replaced.replace(replacements[k], JSON.stringify(v));
   }
