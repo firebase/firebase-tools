@@ -97,7 +97,12 @@ export class PGliteExtendedQueryPatch {
 
   async *filterResponse(message: Uint8Array, response: Uint8Array) {
     // 'Parse' indicates the start of an extended query
-    if (message[0] === FrontendMessageCode.Parse || message[0] === FrontendMessageCode.Bind) {
+    const pipelineStartMessages: number[] = [
+      FrontendMessageCode.Parse,
+      FrontendMessageCode.Bind,
+      FrontendMessageCode.Close,
+    ];
+    if (pipelineStartMessages.includes(message[0])) {
       this.isExtendedQuery = true;
     }
 
