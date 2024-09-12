@@ -94,14 +94,16 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
         );
 
         if (service) {
-          codeLenses.push(
-            new vscode.CodeLens(range, {
-              title: `$(play) Run (local)`,
-              command: "firebase.dataConnect.executeOperation",
-              tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
-              arguments: [x, operationLocation, InstanceType.LOCAL],
-            }),
-          );
+          if (this.emulatorsController.areEmulatorsRunning()) {
+            codeLenses.push(
+              new vscode.CodeLens(range, {
+                title: `$(play) Run (local)`,
+                command: "firebase.dataConnect.executeOperation",
+                tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
+                arguments: [x, operationLocation, InstanceType.LOCAL],
+              }),
+            );
+          }
 
           codeLenses.push(
             new vscode.CodeLens(range, {

@@ -8,6 +8,7 @@ import { logger } from "../logger";
 export enum VSCODE_MESSAGE {
   EMULATORS_STARTED = "EMULATORS_STARTED",
   EMULATORS_START_ERRORED = "EMULATORS_START_ERRORED",
+  EMULATORS_SHUTDOWN = "EMULATORS_SHUTDOWN",
 }
 
 export interface WebhookBody {

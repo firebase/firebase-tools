@@ -2,6 +2,7 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import {
   VSCodeButton,
+  VSCodeProgressRing,
   VSCodeTextField,
 } from "@vscode/webview-ui-toolkit/react";
 import { Spacer } from "../components/ui/Spacer";
@@ -23,12 +24,21 @@ function DataConnect() {
     useBroker("notifyEmulatorStateChanged", {
       initialRequest: "getEmulatorInfos",
     }) ?? false;
-  
+
   const psqlString = useBroker("notifyPostgresStringChanged");
 
   const user = useBroker("notifyUserChanged", {
     initialRequest: "getInitialData",
   })?.user;
+
+  if (emulatorsRunningInfo && emulatorsRunningInfo.status === "starting") {
+    return (
+      <>
+        <label>Emulators starting: see integrated terminal</label>
+        <VSCodeProgressRing></VSCodeProgressRing>
+      </>
+    );
+  }
 
   return (
     <>
@@ -36,8 +46,10 @@ function DataConnect() {
         <Spacer size="xsmall" />
         {emulatorsRunningInfo && emulatorsRunningInfo.status === "running" ? (
           <>
-          <label>Emulators running in terminal</label>
-          <EmulatorPanel emulatorInfo={emulatorsRunningInfo.infos}></EmulatorPanel>
+            <label>Emulators running in terminal</label>
+            <EmulatorPanel
+              emulatorInfo={emulatorsRunningInfo.infos}
+            ></EmulatorPanel>
           </>
         ) : (
           <VSCodeButton onClick={() => broker.send("runStartEmulators")}>
@@ -46,7 +58,7 @@ function DataConnect() {
         )}
         <Spacer size="xlarge" />
         <p>
-          Configure a generated SDK. 
+          Configure a generated SDK.
           <br></br>
           See also:{" "}
           <a href="https://firebase.google.com/docs/data-connect/gp/web-sdk">

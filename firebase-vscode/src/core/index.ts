@@ -56,9 +56,9 @@ export async function registerCore(
       new vscode.Task(
         { type: "shell" }, // this is the same type as in tasks.json
         workspaceFolder, // The workspace folder
-        "Firebase init", // how you name the task
-        "Firebase init", // Shows up as MyTask: name
-        new vscode.ShellExecution("firebase init"),
+        "firebase init dataconnect", // how you name the task
+        "firebase init dataconnect", // Shows up as MyTask: name
+        new vscode.ShellExecution("firebase init dataconnect"),
       ),
     );
   });
