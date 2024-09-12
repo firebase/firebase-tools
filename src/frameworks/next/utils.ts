@@ -37,6 +37,7 @@ import { dirExistsSync, fileExistsSync } from "../../fsutils";
 import { IS_WINDOWS } from "../../utils";
 import { execSync } from "child_process";
 import { FirebaseError } from "../../error";
+import { PrerenderManifest } from "next/dist/build";
 
 export const I18N_SOURCE = /\/:nextInternalLocale(\([^\)]+\))?/;
 
@@ -548,4 +549,60 @@ export function installEsbuild(version: string): void {
       throw new FirebaseError(`Failed to install esbuild: ${error}`, { original: error });
     }
   }
+}
+
+/**
+ * Create a PrerenderManifest["routes"] object from PagesManifest
+ */
+export function createPagesManifestLikePrerender(
+  pagesManifestJSON: PagesManifest,
+): PrerenderManifest["routes"] {
+  const pagesManifestLikePrerender: PrerenderManifest["routes"] = {};
+  for (const [path, route] of Object.entries(pagesManifestJSON)) {
+    if (typeof route === "string" && route.endsWith(".html")) {
+      pagesManifestLikePrerender[path] = {
+        srcRoute: null,
+        initialRevalidateSeconds: false,
+        dataRoute: "",
+        experimentalPPR: false,
+        prefetchDataRoute: "",
+      };
+    }
+  }
+  return pagesManifestLikePrerender;
+}
+
+/**
+ * Check if an HTML file is partial (doesn't have closing </html> tag)
+ */
+export async function isPartialHTML(filePath: string): Promise<boolean> {
+  try {
+    const content = await readFile(filePath, "utf8");
+    return !content.includes("</html>");
+  } catch (error) {
+    console.error(`Error reading file ${filePath}:`, error);
+    // Assume it's not partial if we can't read the file
+    return false;
+  }
+}
+
+/**
+ * Get the app path route for a given route
+ */
+export function getAppPathRoute(
+  route: PrerenderManifest["routes"][string],
+  appPathRoutesManifest: AppPathRoutesManifest,
+): string | undefined {
+  if (!route.srcRoute) {
+    return undefined;
+  }
+  const entry = Object.entries(appPathRoutesManifest).find(([, it]) => it === route.srcRoute);
+  return entry ? entry[0] : undefined;
+}
+
+/**
+ * Get the content distribution directory for a given route
+ */
+export function getContentDist(sourceDir: string, distDir: string, appPathRoute?: string): string {
+  return join(sourceDir, distDir, "server", appPathRoute ? "app" : "pages");
 }
