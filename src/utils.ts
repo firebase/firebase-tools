@@ -915,5 +915,12 @@ export function readSecretValue(prompt: string, dataFile?: string): Promise<stri
   if (dataFile && dataFile !== "-") {
     input = dataFile;
   }
-  return Promise.resolve(fs.readFileSync(input, "utf-8"));
+  try {
+    return Promise.resolve(fs.readFileSync(input, "utf-8"));
+  } catch (e: any) {
+    if (e.code === "ENOENT") {
+      throw new FirebaseError(`File not found: ${input}`, { original: e });
+    }
+    throw e;
+  }
 }

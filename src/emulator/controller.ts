@@ -57,6 +57,8 @@ import { HostingEmulator } from "./hostingEmulator";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { StorageEmulator } from "./storage";
 import { readFirebaseJson } from "../dataconnect/fileUtils";
+import { TasksEmulator } from "./tasksEmulator";
+import { AppHostingEmulator } from "./apphosting";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
@@ -371,11 +373,13 @@ export async function startAll(
     // If we already know we need Functions (and Eventarc), assign them now.
     listenConfig[Emulators.FUNCTIONS] = getListenConfig(options, Emulators.FUNCTIONS);
     listenConfig[Emulators.EVENTARC] = getListenConfig(options, Emulators.EVENTARC);
+    listenConfig[Emulators.TASKS] = getListenConfig(options, Emulators.TASKS);
   }
   for (const emulator of ALL_EMULATORS) {
     if (
       emulator === Emulators.FUNCTIONS ||
       emulator === Emulators.EVENTARC ||
+      emulator === Emulators.TASKS ||
       // Same port as Functions, no need for separate assignment
       emulator === Emulators.EXTENSIONS ||
       (emulator === Emulators.UI && !showUI)
@@ -527,12 +531,13 @@ export async function startAll(
   }
 
   if (emulatableBackends.length) {
-    if (!listenForEmulator.functions || !listenForEmulator.eventarc) {
+    if (!listenForEmulator.functions || !listenForEmulator.eventarc || !listenForEmulator.tasks) {
       // We did not know that we need Functions and Eventarc earlier but now we do.
       listenForEmulator = await resolveHostAndAssignPorts({
         ...listenForEmulator,
         functions: listenForEmulator.functions ?? getListenConfig(options, Emulators.FUNCTIONS),
         eventarc: listenForEmulator.eventarc ?? getListenConfig(options, Emulators.EVENTARC),
+        tasks: listenForEmulator.eventarc ?? getListenConfig(options, Emulators.TASKS),
       });
       hubLogger.log("DEBUG", "late-assigned ports for functions and eventarc emulators", {
         user: listenForEmulator,
@@ -588,6 +593,14 @@ export async function startAll(
       port: eventarcAddr.port,
     });
     await startEmulator(eventarcEmulator);
+
+    const tasksAddr = legacyGetFirstAddr(Emulators.TASKS);
+    const tasksEmulator = new TasksEmulator({
+      host: tasksAddr.host,
+      port: tasksAddr.port,
+    });
+
+    await startEmulator(tasksEmulator);
   }
 
   if (listenForEmulator.firestore) {
@@ -872,6 +885,25 @@ export async function startAll(
     });
 
     await startEmulator(hostingEmulator);
+  }
+
+  /**
+   * Similar to the Hosting emulator, the App Hosting emulator should also
+   * start after the other emulators. This is because the service running on
+   * app hosting emulator may depend on other emulators (i.e auth, firestore,
+   * storage, etc).
+   */
+  if (experiments.isEnabled("emulatorapphosting")) {
+    if (listenForEmulator.apphosting) {
+      const apphostingAddr = legacyGetFirstAddr(Emulators.APPHOSTING);
+      const apphostingEmulator = new AppHostingEmulator({
+        host: apphostingAddr.host,
+        port: apphostingAddr.port,
+        options,
+      });
+
+      await startEmulator(apphostingEmulator);
+    }
   }
 
   if (listenForEmulator.logging) {

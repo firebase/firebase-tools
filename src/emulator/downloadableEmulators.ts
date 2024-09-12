@@ -33,9 +33,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
     expectedChecksum: "2fd771101c0e1f7898c04c9204f2ce63",
   },
   firestore: {
-    version: "1.19.7",
-    expectedSize: 66438992,
-    expectedChecksum: "aec233bea95c5cfab03881574ec16d6c",
+    version: "1.19.8",
+    expectedSize: 63634791,
+    expectedChecksum: "9b43a6daa590678de9b7df6d68260395",
   },
   storage: {
     version: "1.1.3",
@@ -57,20 +57,20 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   dataconnect:
     process.platform === "darwin"
       ? {
-          version: "1.3.5",
-          expectedSize: 24232704,
-          expectedChecksum: "4eabf613a4a5feeaa173e1375b62bde0",
+          version: "1.3.6",
+          expectedSize: 24867584,
+          expectedChecksum: "b924d31e3620d7ed4486a95e22629fc8",
         }
       : process.platform === "win32"
         ? {
-            version: "1.3.5",
-            expectedSize: 24651264,
-            expectedChecksum: "c7b2b7168ff7226f4e5626ae7d13e0ca",
+            version: "1.3.6",
+            expectedSize: 25292288,
+            expectedChecksum: "45025491b43b55a94f4e4db8df903250",
           }
         : {
-            version: "1.3.5",
-            expectedSize: 24146072,
-            expectedChecksum: "1457937751ce25fa332cdc16b561d64b",
+            version: "1.3.6",
+            expectedSize: 24785048,
+            expectedChecksum: "6ae5820c0470c5a954540ad97838ec01",
           },
 };
 
