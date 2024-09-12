@@ -217,7 +217,6 @@ export function registerFdc(
       context,
       broker,
       fdcService,
-      emulatorController,
       telemetryLogger,
     ),
     registerExplorer(context, broker, fdcService),

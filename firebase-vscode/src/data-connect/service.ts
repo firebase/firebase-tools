@@ -267,24 +267,4 @@ export class DataConnectService {
       return this.handleResponse(resp);
     }
   }
-
-  async connectToPostgres(connectionString: string): Promise<boolean> {
-    try {
-      await fetch(
-        this.emulatorsController.getLocalEndpoint() +
-          `/emulator/configure?connectionString=${connectionString}`,
-        {
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-            "x-mantle-admin": "all",
-          },
-        },
-      );
-      return true;
-    } catch (e: any) {
-      pluginLogger.error(e);
-      return false;
-    }
-  }
 }

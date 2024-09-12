@@ -10,20 +10,35 @@ export class EmulatorsController implements Disposable {
   constructor(private broker: ExtensionBrokerImpl) {
     this.emulatorStatusItem.command = "firebase.openFirebaseRc";
 
+    // called by emulator UI
     this.subscriptions.push(
       broker.on("getEmulatorInfos", () => this.findRunningCliEmulators()),
+    );
+
+    // called by emulator UI
+    this.subscriptions.push(
+      this.broker.on("runStartEmulators", () => {
+        this.setEmulatorsStarting();
+      }),
     );
   }
 
   readonly emulatorStatusItem = vscode.window.createStatusBarItem("emulators");
 
+  // called by webhook
   private readonly findRunningEmulatorsCommand =
     vscode.commands.registerCommand(
       "firebase.emulators.findRunning",
       this.findRunningCliEmulators.bind(this),
     );
 
-  readonly emulators: { status: EmulatorsStatus, infos: RunningEmulatorInfo } =
+  // called by webhook
+  private readonly emulatorsStoppped = vscode.commands.registerCommand(
+    "firebase.emulators.stopped",
+    this.setEmulatorsStopped.bind(this),
+  );
+
+  readonly emulators: { status: EmulatorsStatus; infos: RunningEmulatorInfo } =
     {
       status: "stopped",
       infos: undefined,
@@ -36,23 +51,22 @@ export class EmulatorsController implements Disposable {
   }
 
   // TODO: Move all api calls to CLI DataConnectEmulatorClient
-  public getLocalEndpoint =
-    () => {
-      const emulatorInfos = this.emulators.infos?.displayInfo;
-      const dataConnectEmulator = emulatorInfos?.find(
-        (emulatorInfo) => emulatorInfo.name === Emulators.DATACONNECT,
-      );
+  public getLocalEndpoint = () => {
+    const emulatorInfos = this.emulators.infos?.displayInfo;
+    const dataConnectEmulator = emulatorInfos?.find(
+      (emulatorInfo) => emulatorInfo.name === Emulators.DATACONNECT,
+    );
 
-      if (!dataConnectEmulator) {
-        return undefined;
-      }
+    if (!dataConnectEmulator) {
+      return undefined;
+    }
 
-      // handle ipv6
-      if (dataConnectEmulator.host.includes(":")) {
-        return `http://[${dataConnectEmulator.host}]:${dataConnectEmulator.port}`;
-      }
-      return `http://${dataConnectEmulator.host}:${dataConnectEmulator.port}`;
-    };
+    // handle ipv6
+    if (dataConnectEmulator.host.includes(":")) {
+      return `http://[${dataConnectEmulator.host}]:${dataConnectEmulator.port}`;
+    }
+    return `http://${dataConnectEmulator.host}:${dataConnectEmulator.port}`;
+  };
 
   public setEmulatorsRunningInfo(info: EmulatorInfo[]) {
     this.emulators.infos = {
@@ -103,5 +117,6 @@ export class EmulatorsController implements Disposable {
     this.subscriptions.forEach((subscription) => subscription());
     this.findRunningEmulatorsCommand.dispose();
     this.emulatorStatusItem.dispose();
+    this.emulatorsStoppped.dispose();
   }
 }
