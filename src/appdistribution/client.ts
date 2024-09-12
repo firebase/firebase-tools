@@ -1,15 +1,17 @@
 import { ReadStream } from "fs";
 
-import * as utils from "../utils";
-import * as operationPoller from "../operation-poller";
-import { Distribution } from "./distribution";
-import { FirebaseError } from "../error";
-import { Client } from "../apiv2";
 import { appDistributionOrigin } from "../api";
+import { Client, ClientResponse } from "../apiv2";
+import { FirebaseError } from "../error";
+import * as operationPoller from "../operation-poller";
+import * as utils from "../utils";
+import { Distribution } from "./distribution";
 import {
   AabInfo,
   BatchRemoveTestersResponse,
   Group,
+  ListGroupsResponse,
+  ListTestersResponse,
   LoginCredential,
   mapDeviceToExecution,
   ReleaseTest,
@@ -123,6 +125,46 @@ export class AppDistributionClient {
     utils.logSuccess("distributed to testers/groups successfully");
   }
 
+  async listTesters(projectName: string, groupName?: string): Promise<ListTestersResponse> {
+    const listTestersResponse: ListTestersResponse = {
+      testers: [],
+    };
+
+    const client = this.appDistroV1Client;
+
+    let pageToken: string | undefined;
+
+    const filter = groupName ? `groups=${projectName}/groups/${groupName}` : null;
+
+    do {
+      const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
+      if (filter != null) {
+        queryParams["filter"] = filter;
+      }
+
+      let apiResponse: ClientResponse<ListTestersResponse>;
+      try {
+        apiResponse = await client.get<ListTestersResponse>(`${projectName}/testers`, {
+          queryParams,
+        });
+      } catch (err) {
+        throw new FirebaseError(`Client request failed to list testers ${err}`);
+      }
+
+      for (const t of apiResponse.body.testers) {
+        listTestersResponse.testers.push({
+          name: t.name,
+          displayName: t.displayName,
+          groups: t.groups,
+          lastActivityTime: new Date(t.lastActivityTime),
+        });
+      }
+
+      pageToken = apiResponse.body.nextPageToken;
+    } while (pageToken);
+    return listTestersResponse;
+  }
+
   async addTesters(projectName: string, emails: string[]): Promise<void> {
     try {
       await this.appDistroV1Client.request({
@@ -152,6 +194,30 @@ export class AppDistributionClient {
       throw new FirebaseError(`Failed to remove testers ${err}`);
     }
     return apiResponse.body;
+  }
+
+  async listGroups(projectName: string): Promise<ListGroupsResponse> {
+    const groups: ListGroupsResponse = {
+      groups: [],
+    };
+
+    const client = this.appDistroV1Client;
+
+    let pageToken: string | undefined;
+
+    do {
+      const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
+      try {
+        const apiResponse = await client.get<ListGroupsResponse>(`${projectName}/groups`, {
+          queryParams,
+        });
+        groups.groups.push(...(apiResponse.body.groups || []));
+        pageToken = apiResponse.body.nextPageToken;
+      } catch (err) {
+        throw new FirebaseError(`Client failed to list groups ${err}`);
+      }
+    } while (pageToken);
+    return groups;
   }
 
   async createGroup(projectName: string, displayName: string, alias?: string): Promise<Group> {

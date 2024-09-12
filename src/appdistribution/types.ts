@@ -55,12 +55,29 @@ export interface BatchRemoveTestersResponse {
   emails: string[];
 }
 
+export interface ListGroupsResponse {
+  groups: Group[];
+  nextPageToken?: string;
+}
+
 export interface Group {
   name: string;
   displayName: string;
   testerCount?: number;
   releaseCount?: number;
   inviteLinkCount?: number;
+}
+
+export interface ListTestersResponse {
+  testers: Tester[];
+  nextPageToken?: string;
+}
+
+export interface Tester {
+  name: string;
+  displayName?: string;
+  groups: string[];
+  lastActivityTime: Date;
 }
 
 export interface CreateReleaseTestRequest {
