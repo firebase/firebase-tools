@@ -106,8 +106,7 @@ export async function cleanShutdown(): Promise<void> {
     "Shutting down emulators.",
   );
   await EmulatorRegistry.stopAll();
-  // TODO: find somewhere to send this message that doesnt race against task closure
-  sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_SHUTDOWN });
+  await sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_SHUTDOWN });
 }
 
 /**

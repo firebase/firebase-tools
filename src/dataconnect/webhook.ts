@@ -25,7 +25,7 @@ export async function sendVSCodeMessage(body: WebhookBody) {
   const jsonBody = JSON.stringify(body);
 
   try {
-    await fetch(`http://localhost:${port}/vscode/notify`, {
+    return await fetch(`http://localhost:${port}/vscode/notify`, {
       method: "POST",
       headers: {
         Accept: "application/json",
