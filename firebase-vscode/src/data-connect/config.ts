@@ -1,7 +1,7 @@
 import { isPathInside } from "./file-utils";
 import { DeepReadOnly } from "../metaprogramming";
 import { ConnectorYaml, DataConnectYaml } from "../dataconnect/types";
-import { Result, ResultValue } from "../result";
+import { Result, ResultError, ResultValue } from "../result";
 import { computed, effect, signal } from "@preact/signals-core";
 import {
   _createWatcher as createWatcher,
@@ -94,7 +94,19 @@ export async function registerDataConnectConfigs(
       configs &&
       promise.cancelableThen(
         configs,
-        (configs) => (dataConnectConfigs.value = configs),
+        (configs) => {
+          cancel = undefined;
+          return (dataConnectConfigs.value = configs);
+        },
+        (err) => {
+          cancel = undefined;
+
+          return (dataConnectConfigs.value = new ResultError({
+            path: undefined,
+            error: err,
+            range: new vscode.Range(0, 0, 0, 0),
+          }));
+        },
       ).cancel;
   }
 

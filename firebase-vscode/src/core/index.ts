@@ -1,4 +1,9 @@
-import vscode, { Disposable, ExtensionContext, TelemetryLogger } from "vscode";
+import vscode, {
+  Disposable,
+  ExtensionContext,
+  QuickInput,
+  TelemetryLogger,
+} from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { getRootFolders, registerConfig } from "./config";
 import { EmulatorsController } from "./emulators";

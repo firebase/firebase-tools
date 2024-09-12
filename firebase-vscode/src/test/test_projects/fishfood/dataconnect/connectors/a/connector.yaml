@@ -1,4 +1,8 @@
-connectorId: "a"
-authMode: "PUBLIC"
+connectorId: a
+authMode: PUBLIC
 generate?:
   outputDir: ../../a_connector_js_sdk
+generate:
+  javascriptSdk:
+    outputDir: ../../../generated/javascript/a
+    package: "@firebasegen/a"

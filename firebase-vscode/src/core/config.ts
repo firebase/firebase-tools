@@ -32,8 +32,6 @@ export const allRCs = globalSignal<
 export const firebaseRC = computed<Result<RC | undefined>>(() => {
   const allConfigs = allRCs.value;
 
-  console.log("hey", "RCs", allConfigs);
-
   const keys = Object.keys(allConfigs);
   return allConfigs[keys[0]];
 });
@@ -151,14 +149,17 @@ async function registerRc(
   const rcWatcher = await _createWatcher(firebaseRcPattern);
   context.subscriptions.push(rcWatcher);
 
-  rcWatcher?.onDidChange((uri) => {
+  rcWatcher.onDidChange((uri) => {
     allRCs.value = { ...allRCs.value, [uri.fsPath]: _readRC() };
   });
-  rcWatcher?.onDidCreate((uri) => {
+  rcWatcher.onDidCreate((uri) => {
     allRCs.value = { ...allRCs.value, [uri.fsPath]: _readRC() };
   });
-  rcWatcher?.onDidDelete((uri) => {
-    delete allRCs.value[uri.fsPath];
+  rcWatcher.onDidDelete((uri) => {
+    const newState = { ...allRCs.value };
+    delete newState[uri.fsPath];
+
+    allRCs.value = newState;
   });
 }
 
@@ -195,25 +196,23 @@ async function registerFirebaseConfig(
   const configWatcher = await _createWatcher(firebaseJsonPattern);
   context.subscriptions.push(configWatcher);
 
-  configWatcher.onDidChange(
-    (uri) =>
-      (allFirebaseConfigs.value = {
-        ...allFirebaseConfigs.value,
-        [uri.fsPath]: _readFirebaseConfig(),
-      }),
-  );
-  configWatcher.onDidCreate(
-    (uri) =>
-      (allFirebaseConfigs.value = {
-        ...allFirebaseConfigs.value,
-        [uri.fsPath]: _readFirebaseConfig(),
-      }),
-  );
-  configWatcher.onDidDelete((uri) => {
-    allFirebaseConfigs.value = {
+  configWatcher.onDidChange((uri) => {
+    return (allFirebaseConfigs.value = {
       ...allFirebaseConfigs.value,
-    };
-    delete allFirebaseConfigs.value[uri.fsPath];
+      [uri.fsPath]: _readFirebaseConfig(),
+    });
+  });
+  configWatcher.onDidCreate((uri) => {
+    return (allFirebaseConfigs.value = {
+      ...allFirebaseConfigs.value,
+      [uri.fsPath]: _readFirebaseConfig(),
+    });
+  });
+  configWatcher.onDidDelete((uri) => {
+    const newState = { ...allFirebaseConfigs.value };
+    delete newState[uri.fsPath];
+
+    allFirebaseConfigs.value = newState;
   });
 }
 

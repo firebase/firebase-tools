@@ -848,7 +848,8 @@ export function readFileFromDirectory(
   file: string,
 ): Promise<{ source: string; sourceDirectory: string }> {
   return new Promise<string>((resolve, reject) => {
-    fs.readFile(path.resolve(directory, file), "utf8", (err, data) => {
+    const resolvedPath = path.resolve(directory, file);
+    fs.readFile(resolvedPath, "utf8", (err, data) => {
       if (err) {
         if (err.code === "ENOENT") {
           return reject(
