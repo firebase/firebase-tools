@@ -216,13 +216,14 @@ export async function migrateSchema(args: {
         );
 
         if (incompatible) {
-          diffs = await handleIncompatibleSchemaError({
+          const maybeDiffs = await handleIncompatibleSchemaError({
             options,
             databaseId,
             instanceId,
             incompatibleSchemaError: incompatible,
             choice: migrationMode,
           });
+          diffs = diffs.concat(maybeDiffs);
         }
       }
     }
