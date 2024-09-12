@@ -6,6 +6,7 @@ import * as sinon from "sinon";
 import * as glob from "glob";
 import * as childProcess from "child_process";
 import { FirebaseError } from "../../error";
+import * as path from "path";
 
 import {
   EXPORT_MARKER,
@@ -38,6 +39,10 @@ import {
   getRoutesWithServerAction,
   findEsbuildPath,
   installEsbuild,
+  createPagesManifestLikePrerender,
+  isPartialHTML,
+  getAppPathRoute,
+  getContentDist,
 } from "./utils";
 
 import * as frameworksUtils from "../utils";
@@ -72,6 +77,9 @@ import {
   serverReferenceManifest,
 } from "./testing";
 import { pathsWithCustomRoutesInternalPrefix } from "./testing/i18n";
+import { AppPathRoutesManifest } from "./interfaces";
+import { PrerenderManifest } from "next/dist/build";
+import { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
 
 describe("Next.js utils", () => {
   describe("cleanEscapedChars", () => {
@@ -624,6 +632,133 @@ describe("Next.js utils", () => {
         expect(typedError).to.be.instanceOf(FirebaseError);
         expect(typedError.message).to.include("Failed to install esbuild");
       }
+    });
+  });
+
+  describe("createPagesManifestLikePrerender", () => {
+    it("should create a PrerenderManifest routes object from PagesManifest", () => {
+      const pagesManifest: PagesManifest = {
+        "/": "pages/index.html",
+        "/about": "pages/about.html",
+        "/api/data": "pages/api/data.js",
+      };
+
+      const result = createPagesManifestLikePrerender(pagesManifest);
+
+      expect(result).to.deep.equal({
+        "/": {
+          srcRoute: null,
+          initialRevalidateSeconds: false,
+          dataRoute: "",
+          experimentalPPR: false,
+          prefetchDataRoute: "",
+        },
+        "/about": {
+          srcRoute: null,
+          initialRevalidateSeconds: false,
+          dataRoute: "",
+          experimentalPPR: false,
+          prefetchDataRoute: "",
+        },
+      });
+    });
+  });
+
+  describe("isPartialHTML", () => {
+    let sandbox: sinon.SinonSandbox;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should return true for partial HTML", async () => {
+      sandbox.stub(fsPromises, "readFile").resolves("<html><body>Partial</body>");
+      expect(await isPartialHTML("partial.html")).to.be.true;
+    });
+
+    it("should return false for complete HTML", async () => {
+      sandbox.stub(fsPromises, "readFile").resolves("<html><body>Complete</body></html>");
+      expect(await isPartialHTML("complete.html")).to.be.false;
+    });
+
+    it("should return false and log error if file read fails", async () => {
+      sandbox.stub(fsPromises, "readFile").rejects(new Error("File not found"));
+      const consoleErrorStub = sandbox.stub(console, "error");
+
+      expect(await isPartialHTML("nonexistent.html")).to.be.false;
+      expect(consoleErrorStub.calledOnce).to.be.true;
+    });
+  });
+
+  describe("getAppPathRoute", () => {
+    it("should return the correct app path route", () => {
+      const route: PrerenderManifest["routes"][string] = {
+        srcRoute: "/app/page",
+        initialRevalidateSeconds: false,
+        dataRoute: "",
+        experimentalPPR: false,
+        prefetchDataRoute: "",
+      };
+      const appPathRoutesManifest: AppPathRoutesManifest = {
+        "/": "/app/page",
+        "/about": "/app/about/page",
+      };
+
+      expect(getAppPathRoute(route, appPathRoutesManifest)).to.equal("/");
+    });
+
+    it("should return undefined if no matching route is found", () => {
+      const route: PrerenderManifest["routes"][string] = {
+        srcRoute: "/app/nonexistent",
+        initialRevalidateSeconds: false,
+        dataRoute: "",
+        experimentalPPR: false,
+        prefetchDataRoute: "",
+      };
+      const appPathRoutesManifest: AppPathRoutesManifest = {
+        "/": "/app/page",
+        "/about": "/app/about/page",
+      };
+
+      expect(getAppPathRoute(route, appPathRoutesManifest)).to.be.undefined;
+    });
+
+    it("should return undefined if srcRoute is null", () => {
+      const route: PrerenderManifest["routes"][string] = {
+        srcRoute: null,
+        initialRevalidateSeconds: false,
+        dataRoute: "",
+        experimentalPPR: false,
+        prefetchDataRoute: "",
+      };
+      const appPathRoutesManifest: AppPathRoutesManifest = {
+        "/": "/app/page",
+      };
+
+      expect(getAppPathRoute(route, appPathRoutesManifest)).to.be.undefined;
+    });
+  });
+
+  describe("getContentDist", () => {
+    it("should return the correct path for app directory", () => {
+      const sourceDir = "/project";
+      const distDir = ".next";
+      const appPathRoute = "/app/page";
+
+      const expected = path.join("/project", ".next", "server", "app");
+      expect(getContentDist(sourceDir, distDir, appPathRoute)).to.equal(expected);
+    });
+
+    it("should return the correct path for pages directory", () => {
+      const sourceDir = "/project";
+      const distDir = ".next";
+
+      const expected = path.join("/project", ".next", "server", "pages");
+      expect(getContentDist(sourceDir, distDir)).to.equal(expected);
     });
   });
 });
