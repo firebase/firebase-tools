@@ -12,7 +12,7 @@ import { FirebaseError } from "../../error";
 import { Options } from "../../options";
 import { FBToolsAuthClient } from "./fbToolsAuthClient";
 import { setupSQLPermissions, firebaseowner, firebasewriter } from "./permissions";
- 
+
 export async function execute(
   sqlStatements: string[],
   opts: {

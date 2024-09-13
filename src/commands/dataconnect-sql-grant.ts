@@ -6,20 +6,16 @@ import { requirePermissions } from "../requirePermissions";
 import { pickService } from "../dataconnect/fileUtils";
 import { grantRoleToUserInSchema } from "../dataconnect/schemaMigration";
 import { requireAuth } from "../requireAuth";
-import { checkSQLRoleIsGranted, firebaseowner, firebasewriter, firebasereader, iamUserIsCSQLAdmin } from "../gcp/cloudsql/permissions"
-import { FirebaseError } from "../error";
 
 export const command = new Command("dataconnect:sql:grant [serviceId]")
-  .description(
-    "Grants the SQL role <role> to the provided user or service account <email>.",
-  )
+  .description("Grants the SQL role <role> to the provided user or service account <email>.")
   .option("-R, --role <role>", "The SQL role to grant. One of: owner, writer, or reader.")
-  .option("-E, --email <email>", "The email of the user or service account we would like to grant the role to.")
-  .before(requirePermissions, [
-    "firebasedataconnect.services.list",
-  ])
+  .option(
+    "-E, --email <email>",
+    "The email of the user or service account we would like to grant the role to.",
+  )
+  .before(requirePermissions, ["firebasedataconnect.services.list"])
   .before(requireAuth)
-  .before(iamUserIsCSQLAdmin)
   .action(async (serviceId: string, options: Options) => {
     const projectId = needProjectId(options);
     await ensureApis(projectId);

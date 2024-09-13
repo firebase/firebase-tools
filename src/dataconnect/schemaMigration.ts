@@ -195,14 +195,25 @@ export async function migrateSchema(args: {
 }
 
 export async function grantRoleToUserInSchema(options: Options, schema: Schema) {
+  const { serviceName, instanceId, instanceName, databaseId } = getIdentifiers(schema);
+  await ensureServiceIsConnectedToCloudSql(
+    serviceName,
+    instanceName,
+    databaseId,
+    /* linkIfNotConnected=*/ false,
+  );
+
   const role = options.role as string;
   const email = options.email as string;
-
   if (!role) {
-    throw new FirebaseError("-R, --role <role> is required. Run the command with -h for more info.")
+    throw new FirebaseError(
+      "-R, --role <role> is required. Run the command with -h for more info.",
+    );
   }
   if (!email) {
-      throw new FirebaseError("-E, --email <email> is required. Run the command with -h for more info.")
+    throw new FirebaseError(
+      "-E, --email <email> is required. Run the command with -h for more info.",
+    );
   }
 
   // Make sure current user can perform this action.
@@ -210,32 +221,37 @@ export async function grantRoleToUserInSchema(options: Options, schema: Schema) 
   if (!userIsCSQLAdmin) {
     throw new FirebaseError(`Only users with 'roles/cloudsql.admin' can grant SQL roles.`);
   }
-  
+
   // Run the database roles setup. This should be idempotent.
-  const { serviceName, instanceId, instanceName, databaseId } = getIdentifiers(schema);
   await setupIAMUsers(instanceId, databaseId, options);
 
-  // Upsert user account into the database
+  // Upsert user account into the database.
   const projectId = needProjectId(options);
-  const {user, mode} = toDatabaseUser(email)
+  const { user, mode } = toDatabaseUser(email);
   await cloudSqlAdminClient.createUser(projectId, instanceId, mode, user);
 
   // Grant the role to the user.
-  let cmd;
-  switch (role) {
+  let fdcSqlRole;
+  switch (role.toLowerCase()) {
     case "owner":
-      cmd = `GRANT "${firebaseowner(databaseId)}" TO "${user}"`;
+      fdcSqlRole = firebaseowner(databaseId);
       break;
     case "writer":
-      cmd = `GRANT "${firebasewriter(databaseId)}" TO "${user}"`;
+      fdcSqlRole = firebasewriter(databaseId);
       break;
     case "reader":
-      cmd = `GRANT "${firebasereader(databaseId)}" TO "${user}"`;
+      fdcSqlRole = firebasereader(databaseId);
       break;
     default:
-      throw new FirebaseError("Role should be one of owner | writer | reader.")
+      throw new FirebaseError("Role should be one of owner | writer | reader.");
   }
-  await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, [cmd], /** silent= */ false)
+  await executeSqlCmdsAsSuperUser(
+    options,
+    instanceId,
+    databaseId,
+    /** cmds= */ [`GRANT "${fdcSqlRole}" TO "${user}"`],
+    /** silent= */ false,
+  );
 }
 
 function diffsEqual(x: Diff[], y: Diff[]): boolean {
