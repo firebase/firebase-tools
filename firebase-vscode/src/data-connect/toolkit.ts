@@ -29,6 +29,9 @@ export class DataConnectToolkit implements vscode.Disposable {
           }
         }
       }),
+      broker.on("fdc.open-docs", () => {
+        vscode.commands.executeCommand("vscode.open", this.getGeneratedDocsURL());
+      })
     );
   }
 
@@ -59,6 +62,10 @@ export class DataConnectToolkit implements vscode.Disposable {
   getFDCToolkitURL() {
     //TODO source from ToolkitController
     return "http://localhost:12345";
+  }
+
+  getGeneratedDocsURL() {
+    return this.getFDCToolkitURL() + "/docs";
   }
 
   readonly isPostgresEnabled = signal(false);

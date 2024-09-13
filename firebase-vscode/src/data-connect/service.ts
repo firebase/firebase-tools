@@ -264,6 +264,10 @@ export class DataConnectService {
       return this.handleResponse(resp);
     }
   }
+
+  docsLink() {
+    return this.dataConnectToolkit.getGeneratedDocsURL();
+  }
 }
 
 function parseVariableString(variables: string): Record<string, any> {
