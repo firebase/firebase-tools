@@ -389,13 +389,14 @@ async function promptForSchemaMigration(
   if (!err) {
     return "none";
   }
+  if (validationMode === "STRICT_AFTER_COMPATIBLE" && (options.nonInteractive || options.force)) {
+    // If these are purely optional changes, do not execute them in non-interactive mode or with the `--force` flag.
+    return "none";
+  }
   displaySchemaChanges(err, validationMode, instanceName, databaseId);
   if (!options.nonInteractive) {
     if (validateOnly && options.force) {
-      // `firebase dataconnect:sql:migrate --force` performs all migrations unless these are purely optional changes.
-      if (validationMode === "STRICT_AFTER_COMPATIBLE") {
-        return "none";
-      }
+      // `firebase dataconnect:sql:migrate --force` performs all migrations.
       return "all";
     }
     // `firebase deploy` and `firebase dataconnect:sql:migrate` always prompt for any SQL migration changes.
@@ -419,10 +420,7 @@ async function promptForSchemaMigration(
       default: defaultValue,
     });
   }
-  if (validationMode === "STRICT_AFTER_COMPATIBLE") {
-    // Neither `firebase deploy --nonInteractive` nor `dataconnect:sql:migrate --nonInteractive` should not perform any optional changes.
-    return "none";
-  } else if (!validateOnly) {
+  if (!validateOnly) {
     // `firebase deploy --nonInteractive` performs no migrations
     throw new FirebaseError(
       "Command aborted. Your database schema is incompatible with your Data Connect schema. Run `firebase dataconnect:sql:migrate` to migrate your database schema",
