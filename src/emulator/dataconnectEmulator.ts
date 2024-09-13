@@ -89,15 +89,16 @@ export class DataConnectEmulator implements EmulatorInstance {
       enable_output_generated_sdk: this.args.enable_output_generated_sdk,
     });
     this.usingExistingEmulator = false;
-    if (dataConnectLocalConnString()) {
-      this.logger.logLabeled(
-        "INFO",
-        "Data Connect",
-        `FIREBASE_DATACONNECT_POSTGRESQL_STRING is set to ${dataConnectLocalConnString()} - using that instead of starting a new database`,
-      );
-    }
-    if (this.args.autoconnectToPostgres && !dataConnectLocalConnString()) {
-      if (isEnabled("fdcpglite")) {
+    if (this.args.autoconnectToPostgres) {
+      let connStr = dataConnectLocalConnString();
+      if (dataConnectLocalConnString()) {
+        this.logger.logLabeled(
+          "INFO",
+          "Data Connect",
+          `FIREBASE_DATACONNECT_POSTGRESQL_STRING is set to ${dataConnectLocalConnString()} - using that instead of starting a new database`,
+        );
+      } else if (isEnabled("fdcpglite")) {
+        connStr = `postgres://${this.args.postgresHost ?? "127.0.0.1"}:${this.args.postgresPort ?? 5432}/${dbId}?sslmode=disable`;
         const pgServer = new PostgresServer(dbId, "postgres");
         const server = await pgServer.createPGServer(
           this.args.postgresHost,
@@ -109,10 +110,7 @@ export class DataConnectEmulator implements EmulatorInstance {
           `Started up Postgres server, listening on ${server.address()?.toString()}`,
         );
       }
-      const localConnString = isEnabled("fdcpglite")
-        ? `postgres://${this.args.postgresHost ?? "127.0.0.1"}:${this.args.postgresPort ?? 5432}/${dbId}?sslmode=disable`
-        : dataConnectLocalConnString();
-      await this.connectToPostgres(localConnString, dbId, serviceId);
+      await this.connectToPostgres(connStr, dbId, serviceId);
     }
     return;
   }
