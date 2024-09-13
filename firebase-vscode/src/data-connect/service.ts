@@ -4,14 +4,12 @@ import {
   IntrospectionQuery,
   getIntrospectionQuery,
 } from "graphql";
-import { computed } from "@preact/signals-core";
 import { assertExecutionResult } from "../../common/graphql";
 import { DataConnectError } from "../../common/error";
 import { AuthService } from "../auth/service";
 import { UserMockKind } from "../../common/messaging/protocol";
 import { firstWhereDefined } from "../utils/signal";
 import { EmulatorsController } from "../core/emulators";
-import { Emulators } from "../cli";
 import { dataConnectConfigs } from "../data-connect/config";
 
 import { firebaseRC } from "../core/config";
@@ -233,10 +231,9 @@ export class DataConnectService {
     if (!servicePath) {
       throw new Error("No service found for path: " + params.path);
     }
-
     const prodBody: ExecuteGraphqlRequest = {
       operationName: params.operationName,
-      variables: JSON.parse(params.variables),
+      variables: parseVariableString(params.variables),
       query: params.query,
       name: `${servicePath}`,
       extensions: this._auth(),
@@ -266,5 +263,16 @@ export class DataConnectService {
       );
       return this.handleResponse(resp);
     }
+  }
+}
+
+function parseVariableString(variables: string): Record<string, any> {
+  if (!variables) {
+    return {};
+  }
+  try {
+    return JSON.parse(variables);
+  } catch(e: any) {
+    throw new Error("Unable to parse variables as JSON. Double check that that there are no unmatched braces or quotes in the variables pane.")
   }
 }
