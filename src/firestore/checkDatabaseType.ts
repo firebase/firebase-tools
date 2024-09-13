@@ -32,7 +32,7 @@ export async function checkDatabaseType(
   } catch (err: any) {
     logger.debug("error getting database type: ", err);
     if (err instanceof FirebaseError) {
-      if (err.status == 404) {
+      if (err.status === 404) {
         logger.info(`${databaseId} does not exist in project ${projectId}.`);
         return "DATABASE_DOES_NOT_EXIST";
       }
