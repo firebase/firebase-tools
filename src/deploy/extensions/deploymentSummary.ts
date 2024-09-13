@@ -58,7 +58,7 @@ export function configuresSummary(toConfigure: planner.InstanceSpec[]) {
 
 export function deletesSummary(toDelete: planner.InstanceSpec[], isDynamic: boolean) {
   const instancesToDelete = toDelete.map((s) => `\t${humanReadable(s)}`).join("\n");
-  const definedLocation = isDynamic ? 'your local source code' : '\'firebase.json\'';
+  const definedLocation = isDynamic ? "your local source code" : "'firebase.json'";
   return toDelete.length
     ? `The following extension instances are found in your project but do not exist in ${definedLocation}:\n${instancesToDelete}\n`
     : "";

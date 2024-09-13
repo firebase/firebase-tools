@@ -75,8 +75,8 @@ export type CreateInstanceArgs = {
   allowedEventTypes?: string[];
   eventarcChannel?: string;
   validateOnly?: boolean;
-  labels?: Record<string,string>;
-}
+  labels?: Record<string, string>;
+};
 
 /**
  * Create a new extension instance, given a extension source path, a set of params, and a service account.
@@ -114,7 +114,13 @@ export async function createInstance(args: CreateInstanceArgs): Promise<Extensio
   if (args.eventarcChannel) {
     config.eventarcChannel = args.eventarcChannel;
   }
-  return await createInstanceHelper(args.projectId, args.instanceId, config, args.labels, args.validateOnly);
+  return await createInstanceHelper(
+    args.projectId,
+    args.instanceId,
+    config,
+    args.labels,
+    args.validateOnly,
+  );
 }
 
 /**

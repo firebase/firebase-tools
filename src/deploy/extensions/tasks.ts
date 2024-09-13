@@ -51,7 +51,7 @@ export function createExtensionInstanceTask(
         `Creating ${clc.bold(instanceSpec.instanceId)} extension instance`,
       );
     }
-    let createArgs: extensionsApi.CreateInstanceArgs = {
+    const createArgs: extensionsApi.CreateInstanceArgs = {
       projectId,
       instanceId: instanceSpec.instanceId,
       params: instanceSpec.params,
@@ -64,7 +64,10 @@ export function createExtensionInstanceTask(
     if (instanceSpec.ref) {
       createArgs.extensionVersionRef = refs.toExtensionVersionRef(instanceSpec.ref);
     } else if (instanceSpec.localPath) {
-      createArgs.extensionSource = await createSourceFromLocation(projectId, instanceSpec.localPath);
+      createArgs.extensionSource = await createSourceFromLocation(
+        projectId,
+        instanceSpec.localPath,
+      );
     } else {
       throw new FirebaseError(
         `Tried to create extension instance ${instanceSpec.instanceId} without a ref or a local path. This should never happen.`,
@@ -77,7 +80,8 @@ export function createExtensionInstanceTask(
       if (isObject(err) && err.status === 409) {
         // Throwing this error here means not retrying
         throw new FirebaseError(
-          `Failed to create extension instance. Extension instance ${clc.bold(instanceSpec.instanceId)} already exists.`);
+          `Failed to create extension instance. Extension instance ${clc.bold(instanceSpec.instanceId)} already exists.`,
+        );
       }
       throw err;
     }

@@ -1,7 +1,7 @@
 import { ExtensionSpec, ParamType } from "../types";
 import { confirm } from "../../prompt";
 import * as secretsUtils from "../secretsUtils";
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import { logLabeledBullet } from "../../utils";
 import * as path from "path";
 import {
@@ -14,6 +14,7 @@ import {
   getInstallPathPrefix,
   getCodebaseDir,
   isTypescriptCodebase,
+  getErrorMessage,
 } from "./common";
 import { ALLOWED_EVENT_ARC_REGIONS } from "../askUserForEventsConfig";
 import { SpecParamType } from "../extensionsHelper";
@@ -343,7 +344,7 @@ export async function writeSDK(
     sdkLines.push("  /**");
     sdkLines.push(`   * ${sysParam.label}`);
     if (sysParam.validationRegex && !sysParam.validationRegex.includes("*/")) {
-      sdkLines.push(`   * - Validation regex: ${sysParam.validationRegex}`)
+      sdkLines.push(`   * - Validation regex: ${sysParam.validationRegex}`);
     }
     sdkLines.push("   */");
 
@@ -442,6 +443,7 @@ export async function writeSDK(
   // Write the files
   // shortDirPath so it's easier to read
   const shortDirPath = dirPath.replace(process.cwd(), ".");
+
   await writeFile(`${dirPath}/index.ts`, sdkLines.join("\n"), options);
   await writeFile(`${dirPath}/package.json`, JSON.stringify(pkgJson, null, 2), options);
   await writeFile(`${dirPath}/tsconfig.json`, JSON.stringify(tsconfigJson, null, 2), options);
@@ -452,11 +454,21 @@ export async function writeSDK(
 
   // NPM install dependencies (since we will be adding this link locally)
   logLabeledBullet("extensions", `running 'npm --prefix ${shortDirPath} install'`);
-  execSync(`npm --prefix ${dirPath} install`);
+  try {
+    execFileSync("npm", ["--prefix", dirPath, "install"]);
+  } catch (err: unknown) {
+    const errMsg = getErrorMessage(err, "unknown error");
+    throw new FirebaseError(`Error during npm install in ${shortDirPath}: ${errMsg}`);
+  }
 
   // Build it
   logLabeledBullet("extensions", `running 'npm --prefix ${shortDirPath} run build'`);
-  execSync(`npm --prefix ${dirPath} run build`);
+  try {
+    execFileSync("npm", ["--prefix", dirPath, "run", "build"]);
+  } catch (err: unknown) {
+    const errMsg = getErrorMessage(err, "unknown error");
+    throw new FirebaseError(`Error during npm run build in ${shortDirPath}: ${errMsg}`);
+  }
 
   const codebaseDir = getCodebaseDir(options);
   const shortCodebaseDir = codebaseDir.replace(process.cwd(), ".");
@@ -473,7 +485,12 @@ export async function writeSDK(
       "extensions",
       `running 'npm --prefix ${shortCodebaseDir} install --save ${shortDirPath}'`,
     );
-    execSync(`npm --prefix ${codebaseDir} install --save ${dirPath}`);
+    try {
+      execFileSync("npm", ["--prefix", codebaseDir, "install", "--save", dirPath]);
+    } catch (err: unknown) {
+      const errMsg = getErrorMessage(err, "unknown error");
+      throw new FirebaseError(`Error during npm install in ${codebaseDir}: ${errMsg}`);
+    }
   } else {
     installCmd = `npm --prefix ${shortCodebaseDir} install --save ${shortDirPath}`;
   }

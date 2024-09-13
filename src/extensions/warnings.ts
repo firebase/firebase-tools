@@ -44,7 +44,9 @@ export async function displayWarningsForDeploy(instancesToCreate: InstanceSpec[]
 }
 
 export function outOfBandChangesWarning(instanceIds: string[], isDynamic: boolean) {
-  const extra = isDynamic ? "" : " To avoid this, run `firebase ext:export` to sync these changes to your local extensions manifest."
+  const extra = isDynamic
+    ? ""
+    : " To avoid this, run `firebase ext:export` to sync these changes to your local extensions manifest.";
   logger.warn(
     "The following instances may have been changed in the Firebase console or by another machine since the last deploy from this machine.\n\t" +
       clc.bold(instanceIds.join("\n\t")) +

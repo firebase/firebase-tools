@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { confirm } from "../../prompt";
 import * as fsutils from "../../fsutils";
-import { logLabeledBullet, logLabeledWarning } from "../../utils";
+import { logLabeledBullet } from "../../utils";
 import { FirebaseError } from "../../error";
 import { Options } from "../../options";
 import {
@@ -10,29 +10,13 @@ import {
   configForCodebase,
   normalizeAndValidate,
 } from "../../functions/projectConfig";
-import { loadCodebases } from "../../deploy/functions/prepare";
 import { Build, DynamicExtension } from "../../deploy/functions/build";
-import { getFirebaseConfig } from "../../functionsConfig";
-import {
-  EndpointFilter as Filter,
-  targetCodebases,
-} from "../../deploy/functions/functionsDeployHelper";
-import { ExtensionSpec } from "../types";
-
-export { DynamicExtension } from "../../deploy/functions/build";
+import { EndpointFilter as Filter } from "../../deploy/functions/functionsDeployHelper";
+import { ExtensionSpec, isObject } from "../types";
 import * as functionRuntimes from "../../deploy/functions/runtimes";
 import * as nodeRuntime from "./node";
-import { logger } from "../../logger";
 
-const savedLoggerSilent = logger.silent;
-
-function silenceLogging(): void {
-  logger.silent = true;
-}
-
-function resumeLogging(): void {
-  logger.silent = savedLoggerSilent;
-}
+export { DynamicExtension } from "../../deploy/functions/build";
 
 /**
  * Fixes unreadable dark blue on black background to be cyan
@@ -44,6 +28,20 @@ export function fixDarkBlueText(txt: string): string {
   const DARK_BLUE = "\u001b[34m";
   const BRIGHT_CYAN = "\u001b[36;1m";
   return txt.replaceAll(DARK_BLUE, BRIGHT_CYAN);
+}
+
+/**
+ * Gets the error message from the err or returns the defaultValue.
+ * @param err The error caught
+ * @param defaultMsg A default msg to return if the error doesn't have one.
+ * @returns An error message
+ */
+export function getErrorMessage(err: unknown, defaultMsg: string): string {
+  if (isObject(err) && err.message && typeof err.message === "string") {
+    return err.message;
+  } else {
+    return defaultMsg;
+  }
 }
 
 /**
@@ -65,7 +63,7 @@ export function extractExtensionsFromBuilds(
             // Duplicate definitions of the same instance
             throw new FirebaseError(`Duplicate extension id found: ${id}`);
           }
-          extRecords[id] = {...ext, labels: {createdBy: "SDK", codebase}};
+          extRecords[id] = { ...ext, labels: { createdBy: "SDK", codebase } };
         }
       }
     }
@@ -97,7 +95,11 @@ export function extensionMatchesAnyFilter(
  * @param filter The fitler to check against
  * @returns true if the extension matches the filter.
  */
-function extensionMatchesFilter(codebase: string | undefined, extensionId: string, filter: Filter): boolean {
+function extensionMatchesFilter(
+  codebase: string | undefined,
+  extensionId: string,
+  filter: Filter,
+): boolean {
   if (codebase && filter.codebase) {
     if (codebase !== filter.codebase) {
       return false;

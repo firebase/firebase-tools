@@ -8,9 +8,7 @@ import { logger } from "../../logger";
 import { Context, Payload } from "./args";
 import { FirebaseError } from "../../error";
 import { requirePermissions } from "../../requirePermissions";
-import {
-  ensureExtensionsApiEnabled,
-} from "../../extensions/extensionsHelper";
+import { ensureExtensionsApiEnabled } from "../../extensions/extensionsHelper";
 import { ensureSecretManagerApiEnabled } from "../../extensions/secretsUtils";
 import { checkSpecForSecrets } from "./secrets";
 import { displayWarningsForDeploy, outOfBandChangesWarning } from "../../extensions/warnings";
@@ -142,7 +140,9 @@ export async function prepareDynamicExtensions(
   const projectNumber = await needProjectNumber(options);
 
   let haveExtensions = await planner.haveDynamic(projectId);
-  haveExtensions = haveExtensions.filter((e) => extensionMatchesAnyFilter(e.labels?.codebase, e.instanceId, filters));
+  haveExtensions = haveExtensions.filter((e) =>
+    extensionMatchesAnyFilter(e.labels?.codebase, e.instanceId, filters),
+  );
 
   if (Object.keys(extensions).length === 0 && haveExtensions.length === 0) {
     // Nothing defined, and nothing to delete
@@ -152,7 +152,7 @@ export async function prepareDynamicExtensions(
   // This is only a primary call if we are not including extensions deploy
   const isPrimaryCall = !!options.only && !options.only.split(",").includes("extensions");
   // If markdown is true, the check is silent (no duplicates)
-  const adjustedOptions = {...options, markdown: isPrimaryCall || options.markdown};
+  const adjustedOptions = { ...options, markdown: isPrimaryCall || options.markdown };
   await ensureExtensionsApiEnabled(adjustedOptions);
   await requirePermissions(options, ["firebaseextensions.instances.list"]);
 

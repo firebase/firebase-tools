@@ -147,8 +147,10 @@ export async function have(projectId: string): Promise<DeploymentInstanceSpec[]>
       allowedEventTypes: i.config.allowedEventTypes,
       eventarcChannel: i.config.eventarcChannel,
       etag: i.etag,
-      labels: i.labels,
     };
+    if (i.labels) {
+      dep.labels = i.labels;
+    }
     if (i.config.extensionRef) {
       const ref = refs.parse(i.config.extensionRef);
       dep.ref = ref;
