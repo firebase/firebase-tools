@@ -17,7 +17,7 @@ export const isServiceAccount = computed(() => {
 });
 
 export async function checkLogin() {
-    return await requireAuthWrapper();
+  return await requireAuthWrapper();
 }
 
 export function registerUser(broker: ExtensionBrokerImpl, telemetryLogger: TelemetryLogger): Disposable {
