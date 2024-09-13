@@ -36,7 +36,7 @@ export const docsUrl = "https://firebase.google.com/docs/hosting/frameworks/angu
 
 const DEFAULT_BUILD_SCRIPT = ["ng build"];
 
-export const supportedRange = "14 - 17";
+export const supportedRange = "16 - 18";
 
 export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!(await pathExists(join(dir, "package.json")))) return;
@@ -242,11 +242,23 @@ exports.handle = function(req,res) {
   });
 };\n`;
   } else if (serverOutputPath) {
-    bootstrapScript = `const app = ${
-      serverEntry?.endsWith(".mjs")
-        ? `import(\`./${serverOutputPath}/${serverEntry}\`)`
-        : `Promise.resolve(require('./${serverOutputPath}/${serverEntry}'))`
-    }.then(server => server.app());
+    bootstrapScript = `
+    const app = new Promise((resolve) => {
+      setTimeout(() => {
+        const port = process.env.PORT;
+        const socket = 'express.sock';
+        process.env.PORT = socket;
+        
+        ${
+          serverEntry?.endsWith(".mjs")
+            ? `import(\`./${serverOutputPath}/${serverEntry}\`)`
+            : `Promise.resolve(require('./${serverOutputPath}/${serverEntry}'))`
+        }.then(({ app }) => {
+          process.env.PORT = port;
+          resolve(app());
+        });
+      }, 0);
+    });
 exports.handle = (req,res) => app.then(it => it(req,res));\n`;
   } else {
     bootstrapScript = `exports.handle = (res, req) => req.sendStatus(404);\n`;
