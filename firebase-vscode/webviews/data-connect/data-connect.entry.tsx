@@ -3,15 +3,12 @@ import { createRoot } from "react-dom/client";
 import {
   VSCodeButton,
   VSCodeProgressRing,
-  VSCodeTextField,
 } from "@vscode/webview-ui-toolkit/react";
 import { Spacer } from "../components/ui/Spacer";
 import styles from "../globals/index.scss";
-import { broker, useBroker, useBrokerListener } from "../globals/html-broker";
+import { broker, useBroker } from "../globals/html-broker";
 import { PanelSection } from "../components/ui/PanelSection";
 import { EmulatorPanel } from "../components/EmulatorPanel";
-import { computed } from "@preact/signals-core";
-import { Emulators } from "../emulator/types";
 
 // Prevent webpack from removing the `style` import above
 styles;
@@ -67,6 +64,13 @@ function DataConnect() {
         </p>
         <VSCodeButton onClick={() => broker.send("fdc.configure-sdk")}>
           Configure Generated SDK
+        </VSCodeButton>
+        <Spacer size="xlarge" />
+        <p>
+          View generated GQL reference docs for your schema
+        </p>
+        <VSCodeButton onClick={() => broker.send("fdc.open-docs")}>
+          View my docs
         </VSCodeButton>
       </PanelSection>
       <PanelSection title="Production" isLast={true}>

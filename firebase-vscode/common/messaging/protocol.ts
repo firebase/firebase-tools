@@ -93,6 +93,9 @@ export interface WebviewToExtensionParamsMap {
   /** Configures generated SDK */
   "fdc.configure-sdk": void;
 
+
+  "fdc.open-docs": void;
+
   // Initialize "result" tab.
   getDataConnectResults: void;
 
