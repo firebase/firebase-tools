@@ -131,10 +131,6 @@ export async function login() {
 }
 
 export async function listProjects() {
-  const loggedInUser = await requireAuthWrapper(false);
-  if (!loggedInUser) {
-    return [];
-  }
   return listFirebaseProjects();
 }
 

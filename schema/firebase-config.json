@@ -357,6 +357,18 @@
         "emulators": {
             "additionalProperties": false,
             "properties": {
+                "apphosting": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "host": {
+                            "type": "string"
+                        },
+                        "port": {
+                            "type": "number"
+                        }
+                    },
+                    "type": "object"
+                },
                 "auth": {
                     "additionalProperties": false,
                     "properties": {
@@ -489,6 +501,18 @@
                     "type": "boolean"
                 },
                 "storage": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "host": {
+                            "type": "string"
+                        },
+                        "port": {
+                            "type": "number"
+                        }
+                    },
+                    "type": "object"
+                },
+                "tasks": {
                     "additionalProperties": false,
                     "properties": {
                         "host": {
