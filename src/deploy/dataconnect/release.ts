@@ -5,6 +5,7 @@ import { promptDeleteConnector } from "../../dataconnect/prompts";
 import { Options } from "../../options";
 import { ResourceFilter } from "../../dataconnect/filters";
 import { migrateSchema } from "../../dataconnect/schemaMigration";
+import { needProjectId } from "../../projectUtils";
 
 /**
  * Release deploys schemas and connectors.
@@ -21,6 +22,7 @@ export default async function (
   },
   options: Options,
 ): Promise<void> {
+  const project = needProjectId(options);
   const serviceInfos = context.dataconnect.serviceInfos;
   const filters = context.dataconnect.filters;
 
@@ -37,7 +39,7 @@ export default async function (
     .map((s) => s.schema);
 
   if (wantSchemas.length) {
-    utils.logLabeledBullet("dataconnect", "Releasing Data Connect schemas...");
+    utils.logLabeledBullet("dataconnect", "Deploying Data Connect schemas...");
 
     // Then, migrate if needed and deploy schemas
     for (const s of wantSchemas) {
@@ -47,7 +49,7 @@ export default async function (
         validateOnly: false,
       });
     }
-    utils.logLabeledBullet("dataconnect", "Schemas released.");
+    utils.logLabeledBullet("dataconnect", "Schemas deployed.");
   }
 
   // Next, deploy connectors
@@ -75,7 +77,7 @@ export default async function (
     : haveConnectors.filter((h) => !wantConnectors.some((w) => w.name === h.name));
 
   if (wantConnectors.length) {
-    utils.logLabeledBullet("dataconnect", "Releasing connectors...");
+    utils.logLabeledBullet("dataconnect", "Deploying connectors...");
     await Promise.all(
       wantConnectors.map(async (c) => {
         await upsertConnector(c);
@@ -85,9 +87,11 @@ export default async function (
     for (const c of connectorsToDelete) {
       await promptDeleteConnector(options, c.name);
     }
-    utils.logLabeledBullet("dataconnect", "Connectors released.");
+    utils.logLabeledBullet("dataconnect", "Connectors deployed.");
+  } else {
+    utils.logLabeledBullet("dataconnect", "No connectors to deploy.")
   }
-  utils.logLabeledSuccess("dataconnect", "Deploy complete!");
+  utils.logLabeledSuccess("dataconnect", `Deploy complete! View your deployed schema and connectors at ${utils.consoleUrl(project, "/dataconnect")}`);
   return;
 }
 
