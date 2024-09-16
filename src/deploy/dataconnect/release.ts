@@ -93,7 +93,7 @@ export default async function (
   }
   utils.logLabeledSuccess(
     "dataconnect",
-    `Deploy complete! View your deployed schema and connectors at ${utils.consoleUrl(project, "/dataconnect")}`,
+    `Deployment complete! View your deployed schema and connectors at ${utils.consoleUrl(project, "/dataconnect")}`,
   );
   return;
 }
