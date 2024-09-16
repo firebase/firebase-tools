@@ -3,6 +3,7 @@ import { ExtensionBrokerImpl } from "../extension-broker";
 import vscode, { Disposable } from "vscode";
 import { checkLogin } from "../core/user";
 import { DATA_CONNECT_EVENT_NAME } from "../analytics";
+import { getSettings } from "../utils/settings";
 
 const environmentVariables = {};
 
@@ -56,19 +57,25 @@ export function registerTerminalTasks(
   broker: ExtensionBrokerImpl,
   telemetryLogger: TelemetryLogger,
 ): Disposable {
+  const settings = getSettings();
+
   const loginTaskBroker = broker.on("executeLogin", () => {
     telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.IDX_LOGIN);
-    runTerminalTask("firebase login", "firebase login --no-localhost").then(
-      () => {
-        checkLogin();
-      },
-    );
+    runTerminalTask(
+      "firebase login",
+      `${settings.firebasePath} login --no-localhost`,
+    ).then(() => {
+      checkLogin();
+    });
   });
 
   const startEmulatorsTaskBroker = broker.on("runStartEmulators", () => {
     telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.START_EMULATORS);
     // TODO: optional debug mode
-    runTerminalTask("firebase emulators", "firebase emulators:start --debug");
+    runTerminalTask(
+      "firebase emulators",
+      `${settings.firebasePath} emulators:start --debug`,
+    );
   });
 
   return Disposable.from(
