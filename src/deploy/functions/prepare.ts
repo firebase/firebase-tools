@@ -72,9 +72,6 @@ export async function prepare(
     logLabeledBullet("functions", `preparing codebase ${clc.bold(codebase)} for deployment`);
   }
 
-  // See if we potentially have any extensions
-  // const extensions = await extractExtensions(projectId, options);
-
   // ===Phase 0. Check that minimum APIs required for function deploys are enabled.
   const checkAPIsEnabled = await Promise.all([
     ensureApiEnabled.ensure(projectId, functionsOrigin(), "functions"),
