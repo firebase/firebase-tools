@@ -50,11 +50,6 @@
       "type": "string",
       "description": "The ID of the Firebase Data Connect connector."
     },
-    "authMode": {
-      "type": "string",
-      "description": "The authentication strategy to use for this connector"
-
-    },
     "generate": {
       "type": "object",
       "additionalProperties": false,
