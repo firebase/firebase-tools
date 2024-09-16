@@ -125,7 +125,6 @@ export interface DatasourceYaml {
 
 export interface ConnectorYaml {
   connectorId: string;
-  authMode?: "ADMIN" | "PUBLIC";
   generate?: Generate;
 }
 
