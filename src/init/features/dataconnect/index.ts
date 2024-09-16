@@ -15,7 +15,6 @@ import {
   listConnectors,
 } from "../../../dataconnect/client";
 import { Schema, Service, File } from "../../../dataconnect/types";
-import { DEFAULT_POSTGRES_CONNECTION } from "../emulators";
 import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
@@ -91,19 +90,6 @@ async function askQuestions(setup: Setup, config: Config): Promise<RequiredInfo>
   if (info.cloudSqlDatabase === "") {
     info = await promptForDatabase(setup, config, info);
   }
-
-  // TODO: Remove this in favor of a better way of setting local connection string.
-  const defaultConnectionString =
-    setup.rcfile.dataconnectEmulatorConfig?.postgres?.localConnectionString ??
-    DEFAULT_POSTGRES_CONNECTION;
-  // TODO: Download Postgres
-  const localConnectionString = await promptOnce({
-    type: "input",
-    name: "localConnectionString",
-    message: `What is the connection string of the local Postgres instance you would like to use with the Data Connect emulator?`,
-    default: defaultConnectionString,
-  });
-  setup.rcfile.dataconnectEmulatorConfig = { postgres: { localConnectionString } };
 
   info.shouldProvisionCSQL = !!(
     setup.projectId &&

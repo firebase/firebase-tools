@@ -1,5 +1,4 @@
 import * as childProcess from "child_process";
-import * as clc from "colorette";
 import { EventEmitter } from "events";
 
 import { dataConnectLocalConnString } from "../api";
@@ -91,8 +90,15 @@ export class DataConnectEmulator implements EmulatorInstance {
     });
     this.usingExistingEmulator = false;
     if (this.args.autoconnectToPostgres) {
-      // TODO: Skip starting our own PG server if localConnectString is set
-      if (isEnabled("fdcpglite")) {
+      let connStr = dataConnectLocalConnString();
+      if (dataConnectLocalConnString()) {
+        this.logger.logLabeled(
+          "INFO",
+          "Data Connect",
+          `FIREBASE_DATACONNECT_POSTGRESQL_STRING is set to ${dataConnectLocalConnString()} - using that instead of starting a new database`,
+        );
+      } else if (isEnabled("fdcpglite")) {
+        connStr = `postgres://${this.args.postgresHost ?? "127.0.0.1"}:${this.args.postgresPort ?? 5432}/${dbId}?sslmode=disable`;
         const pgServer = new PostgresServer(dbId, "postgres");
         const server = await pgServer.createPGServer(
           this.args.postgresHost,
@@ -104,10 +110,7 @@ export class DataConnectEmulator implements EmulatorInstance {
           `Started up Postgres server, listening on ${server.address()?.toString()}`,
         );
       }
-      const localConnString = isEnabled("fdcpglite")
-        ? `postgres://${this.args.postgresHost ?? "127.0.0.1"}:${this.args.postgresPort ?? 5432}/${dbId}?sslmode=disable`
-        : this.getLocalConectionString();
-      await this.connectToPostgres(localConnString, dbId, serviceId);
+      await this.connectToPostgres(connStr, dbId, serviceId);
     }
     return;
   }
@@ -206,22 +209,13 @@ export class DataConnectEmulator implements EmulatorInstance {
     }
   }
 
-  private getLocalConectionString() {
-    if (dataConnectLocalConnString()) {
-      return dataConnectLocalConnString();
-    }
-    return this.args.rc.getDataconnect()?.postgres?.localConnectionString;
-  }
-
   public async connectToPostgres(
-    localConnectionString?: string,
+    connectionString: string,
     database?: string,
     serviceId?: string,
   ): Promise<boolean> {
-    const connectionString = localConnectionString ?? this.getLocalConectionString();
     if (!connectionString) {
-      const msg = `No Postgres connection string found in '.firebaserc'. The Data Connect emulator will not be able to execute operations.
-Run ${clc.bold("firebase setup:emulators:dataconnect")} to set up a Postgres connection.`;
+      const msg = `No Postgres connection found. The Data Connect emulator will not be able to execute operations.`;
       throw new FirebaseError(msg);
     }
     // The Data Connect emulator does not immediately start listening after started
