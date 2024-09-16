@@ -36,11 +36,10 @@ export async function diffSchema(
   );
   let diffs: Diff[] = [];
 
-  let validationMode: SchemaValidation = "STRICT";
-  if (experiments.isEnabled("fdccompatiblemode")) {
-    // If the schema validation mode is unset, we surface both STRICT and COMPATIBLE mode diffs, starting with COMPATIBLE.
-    validationMode = schemaValidation ? schemaValidation : "COMPATIBLE";
-  }
+  // If the schema validation mode is unset, we surface both STRICT and COMPATIBLE mode diffs, starting with COMPATIBLE.
+  let validationMode: SchemaValidation = experiments.isEnabled("fdccompatiblemode")
+    ? schemaValidation ?? "COMPATIBLE"
+    : "STRICT";
   setSchemaValidationMode(schema, validationMode);
 
   try {
@@ -74,37 +73,30 @@ export async function diffSchema(
     }
   }
 
-  if (experiments.isEnabled("fdccompatiblemode")) {
-    // If the validation mode is unset, then we also surface any additional optional STRICT diffs.
-    if (!schemaValidation) {
-      validationMode = "STRICT";
-      setSchemaValidationMode(schema, validationMode);
-      try {
-        logLabeledBullet("dataconnect", `generating schema changes, including optional changes...`);
-        await upsertSchema(schema, /** validateOnly=*/ true);
-        logLabeledSuccess("dataconnect", `no additional optional changes`);
-      } catch (err: any) {
-        if (err?.status !== 400) {
-          throw err;
-        }
-        const incompatible = errors.getIncompatibleSchemaError(err);
-        if (incompatible) {
-          if (!diffsEqual(diffs, incompatible.diffs)) {
-            if (diffs.length === 0) {
-              displaySchemaChanges(
-                incompatible,
-                "STRICT_AFTER_COMPATIBLE",
-                instanceName,
-                databaseId,
-              );
-            } else {
-              displaySchemaChanges(incompatible, validationMode, instanceName, databaseId);
-            }
-            // Return STRICT diffs if the --json flag is passed and schemaValidation is unset.
-            diffs = incompatible.diffs;
+  // If the validation mode is unset, then we also surface any additional optional STRICT diffs.
+  if (experiments.isEnabled("fdccompatiblemode") && !schemaValidation) {
+    validationMode = "STRICT";
+    setSchemaValidationMode(schema, validationMode);
+    try {
+      logLabeledBullet("dataconnect", `generating schema changes, including optional changes...`);
+      await upsertSchema(schema, /** validateOnly=*/ true);
+      logLabeledSuccess("dataconnect", `no additional optional changes`);
+    } catch (err: any) {
+      if (err?.status !== 400) {
+        throw err;
+      }
+      const incompatible = errors.getIncompatibleSchemaError(err);
+      if (incompatible) {
+        if (!diffsEqual(diffs, incompatible.diffs)) {
+          if (diffs.length === 0) {
+            displaySchemaChanges(incompatible, "STRICT_AFTER_COMPATIBLE", instanceName, databaseId);
           } else {
-            logLabeledSuccess("dataconnect", `no additional optional changes`);
+            displaySchemaChanges(incompatible, validationMode, instanceName, databaseId);
           }
+          // Return STRICT diffs if the --json flag is passed and schemaValidation is unset.
+          diffs = incompatible.diffs;
+        } else {
+          logLabeledSuccess("dataconnect", `no additional optional changes`);
         }
       }
     }
@@ -130,11 +122,10 @@ export async function migrateSchema(args: {
   );
   let diffs: Diff[] = [];
 
-  let validationMode: SchemaValidation = "STRICT";
-  if (experiments.isEnabled("fdccompatiblemode")) {
-    // If the schema validation mode is unset, we surface both STRICT and COMPATIBLE mode diffs, starting with COMPATIBLE.
-    validationMode = schemaValidation ? schemaValidation : "COMPATIBLE";
-  }
+  // If the schema validation mode is unset, we surface both STRICT and COMPATIBLE mode diffs, starting with COMPATIBLE.
+  let validationMode: SchemaValidation = experiments.isEnabled("fdccompatiblemode")
+    ? schemaValidation ?? "COMPATIBLE"
+    : "STRICT";
   setSchemaValidationMode(schema, validationMode);
 
   try {
@@ -187,44 +178,42 @@ export async function migrateSchema(args: {
     }
   }
 
-  if (experiments.isEnabled("fdccompatiblemode")) {
-    // If the validation mode is unset, then we also surface any additional optional STRICT diffs.
-    if (!schemaValidation) {
-      validationMode = "STRICT";
-      setSchemaValidationMode(schema, validationMode);
-      try {
-        await upsertSchema(schema, validateOnly);
-      } catch (err: any) {
-        if (err.status !== 400) {
-          throw err;
-        }
-        // Parse and handle failed precondition errors, then retry.
-        const incompatible = errors.getIncompatibleSchemaError(err);
-        const invalidConnectors = errors.getInvalidConnectors(err);
-        if (!incompatible && !invalidConnectors.length) {
-          // If we got a different type of error, throw it
-          throw err;
-        }
+  // If the validation mode is unset, then we also surface any additional optional STRICT diffs.
+  if (experiments.isEnabled("fdccompatiblemode") && !schemaValidation) {
+    validationMode = "STRICT";
+    setSchemaValidationMode(schema, validationMode);
+    try {
+      await upsertSchema(schema, validateOnly);
+    } catch (err: any) {
+      if (err.status !== 400) {
+        throw err;
+      }
+      // Parse and handle failed precondition errors, then retry.
+      const incompatible = errors.getIncompatibleSchemaError(err);
+      const invalidConnectors = errors.getInvalidConnectors(err);
+      if (!incompatible && !invalidConnectors.length) {
+        // If we got a different type of error, throw it
+        throw err;
+      }
 
-        const migrationMode = await promptForSchemaMigration(
+      const migrationMode = await promptForSchemaMigration(
+        options,
+        instanceName,
+        databaseId,
+        incompatible,
+        validateOnly,
+        "STRICT_AFTER_COMPATIBLE",
+      );
+
+      if (incompatible) {
+        const maybeDiffs = await handleIncompatibleSchemaError({
           options,
-          instanceName,
           databaseId,
-          incompatible,
-          validateOnly,
-          "STRICT_AFTER_COMPATIBLE",
-        );
-
-        if (incompatible) {
-          const maybeDiffs = await handleIncompatibleSchemaError({
-            options,
-            databaseId,
-            instanceId,
-            incompatibleSchemaError: incompatible,
-            choice: migrationMode,
-          });
-          diffs = diffs.concat(maybeDiffs);
-        }
+          instanceId,
+          incompatibleSchemaError: incompatible,
+          choice: migrationMode,
+        });
+        diffs = diffs.concat(maybeDiffs);
       }
     }
   }
