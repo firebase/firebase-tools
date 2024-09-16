@@ -7,6 +7,7 @@ import { createE2eMockable } from "../utils/test_hooks";
 import { runCommand } from "./terminal";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { DATA_CONNECT_EVENT_NAME } from "../analytics";
+import { getSettings } from "../utils/settings";
 
 function createDeployOnlyCommand(serviceConnectorMap: {
   [key: string]: string[];
@@ -30,6 +31,8 @@ export function registerFdcDeploy(
   broker: ExtensionBrokerImpl,
   telemetryLogger: vscode.TelemetryLogger,
 ): vscode.Disposable {
+  const settings = getSettings();
+
   const deploySpy = createE2eMockable(
     async (...args: Parameters<typeof cliDeploy>) => {
       // Have the "deploy" return "void" for easier mocking (no return value when spied).
@@ -41,7 +44,7 @@ export function registerFdcDeploy(
 
   const deployAllCmd = vscode.commands.registerCommand("fdc.deploy-all", () => {
     telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.DEPLOY_ALL);
-    runCommand("firebase deploy --only dataconnect");
+    runCommand(`${settings.firebasePath} deploy --only dataconnect`);
   });
 
   const deployCmd = vscode.commands.registerCommand("fdc.deploy", async () => {

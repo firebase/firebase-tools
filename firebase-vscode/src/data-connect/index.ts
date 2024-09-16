@@ -140,9 +140,7 @@ export function registerFdc(
   emulatorController: EmulatorsController,
   telemetryLogger: TelemetryLogger,
 ): Disposable {
-  const dataConnectToolkit = new DataConnectToolkit(
-    broker,
-  );
+  const dataConnectToolkit = new DataConnectToolkit(broker);
 
   const codeActions = vscode.languages.registerCodeActionsProvider(
     [
@@ -155,7 +153,11 @@ export function registerFdc(
     },
   );
 
-  const fdcService = new FdcService(authService, dataConnectToolkit, emulatorController);
+  const fdcService = new FdcService(
+    authService,
+    dataConnectToolkit,
+    emulatorController,
+  );
   const operationCodeLensProvider = new OperationCodeLensProvider(
     emulatorController,
   );
@@ -213,12 +215,7 @@ export function registerFdc(
       }),
     },
     registerDataConnectConfigs(broker),
-    registerExecution(
-      context,
-      broker,
-      fdcService,
-      telemetryLogger,
-    ),
+    registerExecution(context, broker, fdcService, telemetryLogger),
     registerExplorer(context, broker, fdcService),
     registerWebview({ name: "data-connect", context, broker }),
     registerAdHoc(fdcService, telemetryLogger),

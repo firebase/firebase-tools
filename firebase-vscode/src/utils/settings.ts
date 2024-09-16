@@ -1,11 +1,15 @@
 import { workspace } from "./test_hooks";
 
-interface Settings {
-  readonly shouldWriteDebug: boolean;
+export interface Settings {
   readonly debugLogPath: string;
-  readonly useFrameworks: boolean;
+  readonly firebasePath: string;
   readonly npmPath: string;
+  readonly shouldWriteDebug: boolean;
+  readonly useFrameworks: boolean;
 }
+
+// Temporary fallback for bashing, this should probably point to the global firebase binary on the system
+const FIREBASE_BINARY = "npx firebase/firebase-tools#launch.fdc-pp";
 
 export function getSettings(): Settings {
   const config = workspace.value.getConfiguration(
@@ -15,6 +19,7 @@ export function getSettings(): Settings {
 
   return {
     debugLogPath: config.get<string>("debugLogPath"),
+    firebasePath: config.get<string>("firebasePath") || FIREBASE_BINARY,
     npmPath: config.get<string>("npmPath"),
     shouldWriteDebug: config.get<boolean>("debug"),
     useFrameworks: config.get<boolean>("hosting.useFrameworks"),

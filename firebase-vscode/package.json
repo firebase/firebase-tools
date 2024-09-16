@@ -67,6 +67,10 @@
           "default": "/tmp/firebase-plugin.log",
           "markdownDescription": "%ext.config.debugLogPath%"
         },
+        "firebase.firebasePath": {
+          "type": "string",
+          "markdownDescription": "%ext.config.firebasePath%"
+        },
         "firebase.hosting.useFrameworks": {
           "type": "boolean",
           "default": true,

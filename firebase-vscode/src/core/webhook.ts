@@ -9,7 +9,7 @@ export function registerWebhooks() {
   app.use(bodyParser.json()); // for parsing application/json
 
   const server = createServer(app);
-  const port = 40000; // TODO: generate port dynamically with this as default, and pass as env var to integrated terminal
+  const port = 40001; // TODO: generate port dynamically with this as default, and pass as env var to integrated terminal
 
   server.listen(port, () => {
     pluginLogger.debug(`VSCode notification server listening on port ${port}`);

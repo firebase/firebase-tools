@@ -3,7 +3,8 @@
   "ext.config.dataConnect.skipToAppFolderSelect": "Skip app folder selection prompt. If false (default), trying to generate SDK config will open a confirmation modal.",
   "ext.config.debug": "Enable writing debug-level messages to the file provided in `#firebase.debugLogPath#` (requires restart)",
   "ext.config.debugLogPath": "If `#firebase.debug#` is `true`, Append debug-level messages to the provided file (requires restart)",
+  "ext.config.firebasePath": "Path to the `Firebase` module, e.g. `./node_modules/firebase`",
   "ext.config.hosting.useFrameworks": "Enable web frameworks",
   "ext.config.npmPath": "Path to NPM executable in local environment",
-  "ext.config.title": "Firebase"
+  "ext.config.title": "Prettier"
 }
