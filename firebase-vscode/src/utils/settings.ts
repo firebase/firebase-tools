@@ -5,7 +5,6 @@ interface Settings {
   readonly debugLogPath: string;
   readonly useFrameworks: boolean;
   readonly npmPath: string;
-  readonly firebasePath: string;
 }
 
 export function getSettings(): Settings {
@@ -16,7 +15,6 @@ export function getSettings(): Settings {
 
   return {
     debugLogPath: config.get<string>("debugLogPath"),
-    firebasePath: config.get<string>("firebasePath"),
     npmPath: config.get<string>("npmPath"),
     shouldWriteDebug: config.get<boolean>("debug"),
     useFrameworks: config.get<boolean>("hosting.useFrameworks"),
