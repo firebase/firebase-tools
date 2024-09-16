@@ -89,9 +89,12 @@ export default async function (
     }
     utils.logLabeledBullet("dataconnect", "Connectors deployed.");
   } else {
-    utils.logLabeledBullet("dataconnect", "No connectors to deploy.")
+    utils.logLabeledBullet("dataconnect", "No connectors to deploy.");
   }
-  utils.logLabeledSuccess("dataconnect", `Deploy complete! View your deployed schema and connectors at ${utils.consoleUrl(project, "/dataconnect")}`);
+  utils.logLabeledSuccess(
+    "dataconnect",
+    `Deploy complete! View your deployed schema and connectors at ${utils.consoleUrl(project, "/dataconnect")}`,
+  );
   return;
 }
 
