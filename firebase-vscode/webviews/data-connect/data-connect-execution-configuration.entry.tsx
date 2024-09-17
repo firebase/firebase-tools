@@ -67,17 +67,17 @@ export function DataConnectExecutionArgumentsApp() {
 
 function AuthUserMockForm() {
   const [selectedKind, setSelectedMockKind] = useState<UserMockKind>(
-    UserMockKind.ADMIN
+    UserMockKind.ADMIN,
   );
   const [claims, setClaims] = useState<string>(
-    `{\n  "email_verified": true,\n  "sub": "exampleUserId"\n}`
+    `{\n  "email_verified": true,\n  "sub": "exampleUserId"\n}`,
   );
 
   useEffect(() => {
     broker.send("notifyAuthUserMockChange", {
       kind: selectedKind,
       claims: selectedKind === UserMockKind.AUTHENTICATED ? claims : undefined,
-    });
+    } as any);
   }, [selectedKind, claims]);
 
   let expandedForm: JSX.Element | undefined;
@@ -90,7 +90,7 @@ function AuthUserMockForm() {
           resize={"vertical"}
           value={claims}
           rows={4}
-          onChange={(event) => setClaims(event.target.value)}
+          onChange={(event) => setClaims((event.target as any).value)}
         />
       </>
     );
@@ -101,7 +101,7 @@ function AuthUserMockForm() {
       <span>Run as</span>
       <VSCodeDropdown
         value={selectedKind}
-        onChange={(event) => setSelectedMockKind(event.target.value)}
+        onChange={(event) => setSelectedMockKind((event.target as any).value)}
       >
         <VSCodeOption value={UserMockKind.ADMIN}>Admin</VSCodeOption>
         <VSCodeOption value={UserMockKind.UNAUTHENTICATED}>
