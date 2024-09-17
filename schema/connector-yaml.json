@@ -43,6 +43,16 @@
           "description": "Path to the directory where generated files should be written to."
         }
       }
+    },
+    "llmTools": {
+      "additionalProperties": true,
+      "type": "object",
+      "properties": {
+        "outputFile": {
+          "type": "string",
+          "description": "Path where the JSON LLM tool definitions file should be generated."
+        }
+      }
     }
   },
   "properties": {
@@ -53,32 +63,52 @@
     "authMode": {
       "type": "string",
       "description": "The authentication strategy to use for this connector"
-
     },
     "generate": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "javascriptSdk": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/javascriptSdk"
-          },
+          "oneOf": [
+            { "$ref": "#/definitions/javascriptSdk" },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/javascriptSdk"
+              }
+            }
+          ],
           "description": "Configuration for a generated Javascript SDK"
         },
         "kotlinSdk": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/kotlinSdk"
-          },
+          "oneOf": [
+            { "$ref": "#/definitions/kotlinSdk" },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/kotlinSdk"
+              }
+            }
+          ],
           "description": "Configuration for a generated Kotlin SDK"
         },
         "swiftSdk": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/swiftSdk"
-          },
+          "oneOf": [
+            { "$ref": "#/definitions/swiftSdk" },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/swiftSdk"
+              }
+            }
+          ],
           "description": "Configuration for a generated Swift SDK"
+        },
+        "llmTools": {
+          "oneOf": [
+            { "$ref": "#/definitions/llmTools" },
+            { "type": "array", "items": { "$ref": "#/definitions/llmTools" } }
+          ]
         }
       }
     }
