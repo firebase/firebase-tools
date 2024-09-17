@@ -14,8 +14,7 @@ import {
   firebaseowner,
   iamUserIsCSQLAdmin,
   checkSQLRoleIsGranted,
-  firebasewriter,
-  firebasereader,
+  fdcSqlRoleMap,
 } from "../gcp/cloudsql/permissions";
 import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
 import { needProjectId } from "../projectUtils";
@@ -195,56 +194,29 @@ export async function migrateSchema(args: {
 }
 
 export async function grantRoleToUserInSchema(options: Options, schema: Schema) {
-  const { serviceName, instanceId, instanceName, databaseId } = getIdentifiers(schema);
-  await ensureServiceIsConnectedToCloudSql(
-    serviceName,
-    instanceName,
-    databaseId,
-    /* linkIfNotConnected=*/ false,
-  );
-
   const role = options.role as string;
   const email = options.email as string;
-  if (!role) {
-    throw new FirebaseError(
-      "-R, --role <role> is required. Run the command with -h for more info.",
-    );
-  }
-  if (!email) {
-    throw new FirebaseError(
-      "-E, --email <email> is required. Run the command with -h for more info.",
-    );
-  }
+
+  const { instanceId, databaseId } = getIdentifiers(schema);
+  const projectId = needProjectId(options);
+  const { user, mode } = toDatabaseUser(email);
+  const fdcSqlRole = fdcSqlRoleMap[role as keyof typeof fdcSqlRoleMap](databaseId);
 
   // Make sure current user can perform this action.
   const userIsCSQLAdmin = await iamUserIsCSQLAdmin(options);
   if (!userIsCSQLAdmin) {
-    throw new FirebaseError(`Only users with 'roles/cloudsql.admin' can grant SQL roles.`);
+    throw new FirebaseError(
+      `Only users with 'roles/cloudsql.admin' can grant SQL roles. If you do not have this role, ask your database administrator to run this command or manually grant ${fdcSqlRole} to ${user}`,
+    );
   }
 
   // Run the database roles setup. This should be idempotent.
   await setupIAMUsers(instanceId, databaseId, options);
 
   // Upsert user account into the database.
-  const projectId = needProjectId(options);
-  const { user, mode } = toDatabaseUser(email);
   await cloudSqlAdminClient.createUser(projectId, instanceId, mode, user);
 
   // Grant the role to the user.
-  let fdcSqlRole;
-  switch (role.toLowerCase()) {
-    case "owner":
-      fdcSqlRole = firebaseowner(databaseId);
-      break;
-    case "writer":
-      fdcSqlRole = firebasewriter(databaseId);
-      break;
-    case "reader":
-      fdcSqlRole = firebasereader(databaseId);
-      break;
-    default:
-      throw new FirebaseError("Role should be one of owner | writer | reader.");
-  }
   await executeSqlCmdsAsSuperUser(
     options,
     instanceId,
