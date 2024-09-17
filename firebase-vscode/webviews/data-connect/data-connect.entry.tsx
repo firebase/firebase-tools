@@ -10,9 +10,6 @@ import { broker, useBroker } from "../globals/html-broker";
 import { PanelSection } from "../components/ui/PanelSection";
 import { EmulatorPanel } from "../components/EmulatorPanel";
 
-// Prevent webpack from removing the `style` import above
-styles;
-
 const root = createRoot(document.getElementById("root")!);
 root.render(<DataConnect />);
 
@@ -38,7 +35,7 @@ function DataConnect() {
   }
 
   return (
-    <>
+    <div className={styles.root}>
       <PanelSection title="Local Development">
         <Spacer size="xsmall" />
         {emulatorsRunningInfo && emulatorsRunningInfo.status === "running" ? (
@@ -90,6 +87,6 @@ function DataConnect() {
           Deploy Individual
         </VSCodeButton>
       </PanelSection>
-    </>
+    </div>
   );
 }

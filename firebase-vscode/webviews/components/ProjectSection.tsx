@@ -85,8 +85,9 @@ export function ProjectInfo({ projectId }: { projectId: string }) {
       {projectId}
       <ExternalLink
         href={`https://console.firebase.google.com/project/${projectId}/overview`}
-        text={TEXT.CONSOLE_LINK_DESCRIPTION}
-      />
+      >
+        {TEXT.CONSOLE_LINK_DESCRIPTION}
+      </ExternalLink>
     </>
   );
 }

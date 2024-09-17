@@ -130,12 +130,6 @@
           "name": "Config"
         },
         {
-          "type": "webview",
-          "id": "data-connect",
-          "name": "Firebase Data Connect",
-          "when": "firebase-vscode.fdc.enabled"
-        },
-        {
           "id": "firebase.dataConnect.explorerView",
           "name": "FDC Explorer",
           "when": "firebase-vscode.fdc.enabled"
