@@ -376,6 +376,7 @@ export function _getCommand(
     optionalArgs: baseCmd.optionalArgs,
     joinArgs: baseCmd.joinArgs,
     shell: baseCmd.shell,
+    port: args.port,
   };
 }
 
@@ -638,5 +639,5 @@ export async function start(
     "DEBUG",
     `Starting ${Constants.description(targetName)} with command ${JSON.stringify(command)}`,
   );
-  return _runBinary(emulator, command, extraEnv, args.port);
+  return _runBinary(emulator, command, extraEnv);
 }
