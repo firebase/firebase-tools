@@ -87,7 +87,8 @@ async function askQuestions(setup: Setup, config: Config): Promise<RequiredInfo>
     schemaGql: [],
     shouldProvisionCSQL: false,
   };
-  info = await promptForService(setup, info);
+  const isBillingEnabled = setup.projectId ? await checkBillingEnabled(setup.projectId) : false;
+  info = await promptForService(setup, info, isBillingEnabled);
 
   if (info.cloudSqlInstanceId === "") {
     info = await promptForCloudSQLInstance(setup, info);
@@ -113,6 +114,7 @@ async function askQuestions(setup: Setup, config: Config): Promise<RequiredInfo>
   info.shouldProvisionCSQL = !!(
     setup.projectId &&
     (info.isNewInstance || info.isNewDatabase) &&
+    (!experiments.isEnabled("fdccompatiblemode") || isBillingEnabled) &&
     (await confirm({
       message:
         "Would you like to provision your CloudSQL instance and database now? This will take a few minutes.",
@@ -218,9 +220,12 @@ function subConnectorYamlValues(replacementValues: { connectorId: string }): str
   return replaced;
 }
 
-async function promptForService(setup: Setup, info: RequiredInfo): Promise<RequiredInfo> {
+async function promptForService(
+  setup: Setup,
+  info: RequiredInfo,
+  isBillingEnabled: boolean,
+): Promise<RequiredInfo> {
   if (setup.projectId) {
-    const isBillingEnabled = await checkBillingEnabled(setup.projectId);
     if (isBillingEnabled || !experiments.isEnabled("fdcsparkplan")) {
       // Enabling compute.googleapis.com requires a Blaze plan.
       await ensureApis(setup.projectId);
