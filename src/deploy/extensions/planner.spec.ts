@@ -190,8 +190,10 @@ describe("Extensions Deployment Planner", () => {
     INSTANCE_SPEC_WITH_EMPTY_EVENTS_CONFIG.eventarcChannel = "";
     INSTANCE_SPEC_WITH_EMPTY_EVENTS_CONFIG.allowedEventTypes = [];
 
-    const INSTANCE_WITH_SDK_LABELS: ExtensionInstance = JSON.parse(JSON.stringify(INSTANCE_WITH_EVENTS));
-    INSTANCE_WITH_SDK_LABELS.labels = {createdBy: "SDK", codebase: "default"};
+    const INSTANCE_WITH_SDK_LABELS: ExtensionInstance = JSON.parse(
+      JSON.stringify(INSTANCE_WITH_EVENTS),
+    );
+    INSTANCE_WITH_SDK_LABELS.labels = { createdBy: "SDK", codebase: "default" };
 
     const cases = [
       {
@@ -213,7 +215,7 @@ describe("Extensions Deployment Planner", () => {
         description: "have() should not return SDK defined instances",
         instances: [INSTANCE_WITH_SDK_LABELS],
         instanceSpecs: [],
-      }
+      },
     ];
 
     for (const c of cases) {
@@ -249,7 +251,7 @@ describe("Extensions Deployment Planner", () => {
       state: "ACTIVE",
       serviceAccountEmail: "",
       etag: "123456",
-      labels: {createdBy: "SDK", codebase: "default"},
+      labels: { createdBy: "SDK", codebase: "default" },
       config: {
         params: {},
         systemParams: {},
@@ -276,7 +278,7 @@ describe("Extensions Deployment Planner", () => {
       allowedEventTypes: ["google.firebase.custom-event-occurred"],
       eventarcChannel: "projects/my-test-proj/locations/us-central1/channels/firebase",
       etag: "123456",
-      labels: {createdBy: "SDK", codebase: "default"},
+      labels: { createdBy: "SDK", codebase: "default" },
       ref: {
         publisherId: "firebase",
         extensionId: "image-resizer",
@@ -304,7 +306,9 @@ describe("Extensions Deployment Planner", () => {
     INSTANCE_SPEC_WITH_EMPTY_EVENTS_CONFIG.eventarcChannel = "";
     INSTANCE_SPEC_WITH_EMPTY_EVENTS_CONFIG.allowedEventTypes = [];
 
-    const INSTANCE_WITHOUT_SDK_LABELS: ExtensionInstance = JSON.parse(JSON.stringify(INSTANCE_WITH_EVENTS));
+    const INSTANCE_WITHOUT_SDK_LABELS: ExtensionInstance = JSON.parse(
+      JSON.stringify(INSTANCE_WITH_EVENTS),
+    );
     INSTANCE_WITHOUT_SDK_LABELS.labels = undefined;
 
     const cases = [
@@ -314,7 +318,8 @@ describe("Extensions Deployment Planner", () => {
         instanceSpecs: [INSTANCE_SPEC_WITH_EVENTS],
       },
       {
-        description: "haveDynamic() should return correct instance spec with undefined events config",
+        description:
+          "haveDynamic() should return correct instance spec with undefined events config",
         instances: [INSTANCE_WITH_UNDEFINED_EVENTS_CONFIG],
         instanceSpecs: [INSTANCE_SPEC_WITH_UNDEFINED_EVENTS_CONFIG],
       },
@@ -327,7 +332,7 @@ describe("Extensions Deployment Planner", () => {
         description: "haveDynamic() should not return non-SDK defined instances",
         instances: [INSTANCE_WITHOUT_SDK_LABELS],
         instanceSpecs: [],
-      }
+      },
     ];
 
     for (const c of cases) {
