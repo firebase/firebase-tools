@@ -1,2 +1,4 @@
-- Increase Next.js config bundle timeout to 60 seconds (#6214)
+- Added support for non-default Firestore databases in `firebase init`. (#7655)
+- Update supported range for Angular framework. (#7418)
+- Fix (Angular 17+) temporary change the PORT in Angular server.ts (#6651)
 - Fixes issue where auth emulator multi-tenant mode exports/imports only users tied to the default tenant (#5623)

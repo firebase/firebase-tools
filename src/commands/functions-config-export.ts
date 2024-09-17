@@ -32,7 +32,7 @@ function checkReservedAliases(pInfos: configExport.ProjectConfigInfo[]): void {
     if (pInfo.alias && RESERVED_PROJECT_ALIAS.includes(pInfo.alias)) {
       logWarning(
         `Project alias (${clc.bold(pInfo.alias)}) is reserved for internal use. ` +
-          `Saving exported config in .env.${pInfo.projectId} instead.`
+          `Saving exported config in .env.${pInfo.projectId} instead.`,
       );
       delete pInfo.alias;
     }
@@ -43,19 +43,19 @@ function checkReservedAliases(pInfos: configExport.ProjectConfigInfo[]): void {
 async function checkRequiredPermission(pInfos: configExport.ProjectConfigInfo[]): Promise<void> {
   pInfos = pInfos.filter((pInfo) => !pInfo.config);
   const testPermissions = pInfos.map((pInfo) =>
-    testIamPermissions(pInfo.projectId, REQUIRED_PERMISSIONS)
+    testIamPermissions(pInfo.projectId, REQUIRED_PERMISSIONS),
   );
   const results = await Promise.all(testPermissions);
   for (const [pInfo, result] of zip(pInfos, results)) {
     if (result.passed) {
       // We should've been able to fetch the config but couldn't. Ask the user to try export command again.
       throw new FirebaseError(
-        `Unexpectedly failed to fetch runtime config for project ${pInfo.projectId}`
+        `Unexpectedly failed to fetch runtime config for project ${pInfo.projectId}`,
       );
     }
     logWarning(
       "You are missing the following permissions to read functions config on project " +
-        `${clc.bold(pInfo.projectId)}:\n\t${result.missing.join("\n\t")}`
+        `${clc.bold(pInfo.projectId)}:\n\t${result.missing.join("\n\t")}`,
     );
 
     const confirm = await promptOnce({
@@ -81,7 +81,7 @@ async function promptForPrefix(errMsg: string): Promise<string> {
       default: "CONFIG_",
       message: "Enter a PREFIX to rename invalid environment variable keys:",
     },
-    {}
+    {},
   );
 }
 
@@ -113,7 +113,7 @@ export const command = new Command("functions:config:export")
     logBullet(
       "Importing functions configs from projects [" +
         pInfos.map(({ projectId }) => `${clc.bold(projectId)}`).join(", ") +
-        "]"
+        "]",
     );
 
     await configExport.hydrateConfigs(pInfos);
@@ -142,12 +142,10 @@ export const command = new Command("functions:config:export")
     const dotEnvs = pInfos.map((pInfo) => configExport.toDotenvFormat(pInfo.envs!, header));
     const filenames = pInfos.map(configExport.generateDotenvFilename);
     const filesToWrite = fromEntries(zip(filenames, dotEnvs));
-    filesToWrite[
-      ".env.local"
-    ] = `${header}\n# .env.local file contains environment variables for the Functions Emulator.\n`;
-    filesToWrite[
-      ".env"
-    ] = `${header}# .env file contains environment variables that applies to all projects.\n`;
+    filesToWrite[".env.local"] =
+      `${header}\n# .env.local file contains environment variables for the Functions Emulator.\n`;
+    filesToWrite[".env"] =
+      `${header}# .env file contains environment variables that applies to all projects.\n`;
 
     for (const [filename, content] of Object.entries(filesToWrite)) {
       await options.config.askWriteProjectFile(path.join(functionsDir, filename), content);

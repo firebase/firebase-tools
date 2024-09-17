@@ -69,7 +69,7 @@ export abstract class ExpressBasedEmulator implements EmulatorInstance {
           server.once("listening", resolve);
           server.once("error", reject);
           this.destroyers.add(utils.createDestroyer(server));
-        })
+        }),
       );
     }
   }

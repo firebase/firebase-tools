@@ -64,7 +64,7 @@ export class AuthEmulator implements EmulatorInstance {
   async importData(
     authExportDir: string,
     projectId: string,
-    options: { initiatedBy: string }
+    options: { initiatedBy: string },
   ): Promise<void> {
     void trackEmulator("emulator_import", {
       initiated_by: options.initiatedBy,
@@ -92,13 +92,13 @@ export class AuthEmulator implements EmulatorInstance {
             "Content-Type": "application/json",
           },
         },
-        configPath
+        configPath,
       );
     } else {
       logger.logLabeled(
         "WARN",
         "auth",
-        `Skipped importing config because ${configPath} does not exist.`
+        `Skipped importing config because ${configPath} does not exist.`,
       );
     }
 
@@ -149,14 +149,14 @@ function stat(path: fs.PathLike): Promise<fs.Stats | undefined> {
       } else {
         return resolve(stats);
       }
-    })
+    }),
   );
 }
 
 function importFromFile(
   reqOptions: http.RequestOptions,
   path: fs.PathLike,
-  options: { ignoreErrors?: string[] } = {}
+  options: { ignoreErrors?: string[] } = {},
 ): Promise<void> {
   const readStream = fs.createReadStream(path);
 
@@ -185,7 +185,7 @@ function importFromFile(
               }
             }
             return reject(
-              new FirebaseError(`Received HTTP status code: ${response.statusCode}\n${data}`)
+              new FirebaseError(`Received HTTP status code: ${response.statusCode}\n${data}`),
             );
           });
       }

@@ -1,0 +1,14 @@
+connectorId: __connectorId__
+## ## Here's an example of how to add generated SDKs.
+## ## You'll need to replace the outputDirs with ones pointing to where you want the generated code in your app.
+# generate:
+#   javascriptSdk:
+#     outputDir: <Path where you want the generated SDK to be written to, relative to this file>
+#     package: "@firebasegen/my-connector"
+#     packageJsonDir: < Optional. Path to your Javascript app's package.json>
+#   swiftSdk:
+#     outputDir: <Path where you want the generated SDK to be written to, relative to this file>
+#     package: "firebasegen/default"
+#   kotlinSdk:
+#     outputDir: <Path where you want the generated SDK to be written to, relative to this file>
+#     package: connectors.default

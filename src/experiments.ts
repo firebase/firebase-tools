@@ -33,16 +33,18 @@ export const ALL_EXPERIMENTS = experiments({
     shortDescription: "Use new endpoint to administer realtime database instances",
   },
   // Cloud Functions for Firebase experiments
-  pythonfunctions: {
-    shortDescription: "Python support for Cloud Functions for Firebase",
+  functionsv2deployoptimizations: {
+    shortDescription: "Optimize deployments of v2 firebase functions",
     fullDescription:
-      "Adds the ability to initializea and deploy Cloud " +
-      "Functions for Firebase in Python. While this feature is experimental " +
-      "breaking API changes are allowed in MINOR API revisions",
+      "Reuse build images across funtions to increase performance and reliaibility " +
+      "of deploys. This has been made an experiment due to backend bugs that are " +
+      "temporarily causing failures in some regions with this optimization enabled",
+    public: true,
+    default: true,
   },
   deletegcfartifacts: {
     shortDescription: `Add the ${bold(
-      "functions:deletegcfartifacts"
+      "functions:deletegcfartifacts",
     )} command to purge docker build images`,
     fullDescription:
       `Add the ${bold("functions:deletegcfartifacts")}` +
@@ -57,9 +59,28 @@ export const ALL_EXPERIMENTS = experiments({
     public: true,
   },
 
+  // permanent experiment
+  automaticallydeletegcfartifacts: {
+    shortDescription: "Control whether functions cleans up images after deploys",
+    fullDescription:
+      "To control costs, Firebase defaults to automatically deleting containers " +
+      "created during the build process. This has the side-effect of preventing " +
+      "users from rolling back to previous revisions using the Run API. To change " +
+      `this behavior, call ${bold("experiments:disable deletegcfartifactsondeploy")} ` +
+      `consider also calling ${bold("experiments:enable deletegcfartifacts")} ` +
+      `to enable the new command ${bold("functions:deletegcfartifacts")} which` +
+      "lets you clean up images manually",
+    public: true,
+    default: true,
+  },
+
   // Emulator experiments
   emulatoruisnapshot: {
     shortDescription: "Load pre-release versions of the emulator UI",
+  },
+  emulatorapphosting: {
+    shortDescription: "App Hosting emulator",
+    public: false,
   },
 
   // Hosting experiments
@@ -98,9 +119,29 @@ export const ALL_EXPERIMENTS = experiments({
       "without a notice.",
   },
 
-  frameworks: {
+  apphosting: {
     shortDescription: "Allow CLI option for Frameworks",
     default: true,
+    public: false,
+  },
+
+  // TODO(joehanley): Delete this once weve scrubbed all references to experiment from docs.
+  dataconnect: {
+    shortDescription: "Deprecated. Previosuly, enabled Data Connect related features.",
+    fullDescription: "Deprecated. Previously, enabled Data Connect related features.",
+    public: false,
+  },
+
+  genkit: {
+    shortDescription: "Enable Genkit related features.",
+    fullDescription: "Enable Genkit related features.",
+    default: true,
+    public: false,
+  },
+
+  fdccompatiblemode: {
+    shortDescription: "Enable Data Connect schema migrations in Compatible Mode",
+    fullDescription: "Enable Data Connect schema migrations in Compatible Mode",
     public: false,
   },
 });
@@ -122,7 +163,7 @@ export function experimentNameAutocorrect(malformed: string): string[] {
   if (isValidExperiment(malformed)) {
     throw new FirebaseError(
       "Assertion failed: experimentNameAutocorrect given actual experiment name",
-      { exit: 2 }
+      { exit: 2 },
     );
   }
 
@@ -130,7 +171,7 @@ export function experimentNameAutocorrect(malformed: string): string[] {
   // but this logic matches src/index.ts. I neither want to change something
   // with such potential impact nor to create divergent behavior.
   return Object.keys(ALL_EXPERIMENTS).filter(
-    (name) => leven(name, malformed) < malformed.length * 0.4
+    (name) => leven(name, malformed) < malformed.length * 0.4,
   );
 }
 
@@ -199,7 +240,7 @@ export function assertEnabled(name: ExperimentName, task: string): void {
       const newValue = [process.env.FIREBASE_CLI_EXPERIMENTS, name].filter((it) => !!it).join(",");
       throw new FirebaseError(
         `${prefix} To enable add a ${bold(
-          "FIREBASE_CLI_EXPERIMENTS"
+          "FIREBASE_CLI_EXPERIMENTS",
         )} environment variable to ${filename}, like so: ${italic(`
 
 - uses: FirebaseExtended/action-hosting-deploy@v0
@@ -207,11 +248,11 @@ export function assertEnabled(name: ExperimentName, task: string): void {
     ...
   env:
     FIREBASE_CLI_EXPERIMENTS: ${newValue}
-`)}`
+`)}`,
       );
     } else {
       throw new FirebaseError(
-        `${prefix} To enable ${bold(name)} run ${bold(`firebase experiments:enable ${name}`)}`
+        `${prefix} To enable ${bold(name)} run ${bold(`firebase experiments:enable ${name}`)}`,
       );
     }
   }

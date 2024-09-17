@@ -12,6 +12,7 @@ import { spawn } from "cross-spawn";
 export const name = "Nuxt";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.MetaFramework;
+export const supportedRange = "2";
 
 async function getAndLoadNuxt(options: { rootDir: string; for: string }) {
   const nuxt = await relativeRequire(options.rootDir, "nuxt/dist/nuxt.js");
@@ -27,10 +28,9 @@ async function getAndLoadNuxt(options: { rootDir: string; for: string }) {
  */
 export async function discover(rootDir: string) {
   if (!(await pathExists(join(rootDir, "package.json")))) return;
-  const nuxtVersion = getNuxtVersion(rootDir);
-  if (!nuxtVersion || (nuxtVersion && gte(nuxtVersion, "3.0.0-0"))) return;
-  const { app } = await getAndLoadNuxt({ rootDir, for: "build" });
-  return { mayWantBackend: true, publicDirectory: app.options.dir.static };
+  const version = getNuxtVersion(rootDir);
+  if (!version || (version && gte(version, "3.0.0-0"))) return;
+  return { mayWantBackend: true, version };
 }
 
 /**

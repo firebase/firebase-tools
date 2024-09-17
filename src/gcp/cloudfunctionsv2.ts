@@ -5,7 +5,7 @@ import { logger } from "../logger";
 import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1";
 import { PUBSUB_PUBLISH_EVENT } from "../functions/events/v2";
 import * as backend from "../deploy/functions/backend";
-import * as runtimes from "../deploy/functions/runtimes";
+import * as supported from "../deploy/functions/runtimes/supported";
 import * as proto from "./proto";
 import * as utils from "../utils";
 import * as projectConfig from "../functions/projectConfig";
@@ -24,7 +24,7 @@ export const API_VERSION = "v2";
 const DEFAULT_MAX_INSTANCE_COUNT = 100;
 
 const client = new Client({
-  urlPrefix: functionsV2Origin,
+  urlPrefix: functionsV2Origin(),
   auth: true,
   apiVersion: API_VERSION,
 });
@@ -36,11 +36,18 @@ export type FunctionState = "ACTIVE" | "FAILED" | "DEPLOYING" | "DELETING" | "UN
 // Values allowed for the operator field in EventFilter
 export type EventFilterOperator = "match-path-pattern";
 
+// Values allowed for the event trigger retry policy in case of a function's execution failure.
+export type RetryPolicy =
+  | "RETRY_POLICY_UNSPECIFIED"
+  | "RETRY_POLICY_DO_NOT_RETRY"
+  | "RETRY_POLICY_RETRY";
+
 /** Settings for building a container out of the customer source. */
 export interface BuildConfig {
-  runtime: runtimes.Runtime;
+  runtime: supported.Runtime;
   entryPoint: string;
   source: Source;
+  sourceToken?: string;
   environmentVariables: Record<string, string>;
 
   // Output only
@@ -138,6 +145,8 @@ export interface EventTrigger {
   // run.routes.invoke permission on the target service. Defaults
   // to the defualt compute service account.
   serviceAccountEmail?: string;
+
+  retryPolicy?: RetryPolicy;
 
   // The name of the channel associated with the trigger in
   // `projects/{project}/locations/{location}/channels/{channel}` format.
@@ -246,36 +255,36 @@ function functionsOpLogReject(func: InputCloudFunction, type: string, err: any):
       "functions",
       `Your current project quotas don't allow for the current max instances setting of ${maxInstances}. ` +
         "Either reduce this function's maximum instances, or request a quota increase on the underlying Cloud Run service " +
-        "at https://cloud.google.com/run/quotas."
+        "at https://cloud.google.com/run/quotas.",
     );
     const suggestedFix = func.buildConfig.runtime.startsWith("python")
       ? "firebase_functions.options.set_global_options(max_instances=10)"
       : "setGlobalOptions({maxInstances: 10})";
     utils.logLabeledWarning(
       "functions",
-      `You can adjust the max instances value in your function's runtime options:\n\t${suggestedFix}`
+      `You can adjust the max instances value in your function's runtime options:\n\t${suggestedFix}`,
     );
   } else {
     utils.logLabeledWarning("functions", `${err?.message}`);
     if (err?.context?.response?.statusCode === 429) {
       utils.logLabeledWarning(
         "functions",
-        `Got "Quota Exceeded" error while trying to ${type} ${func.name}. Waiting to retry...`
+        `Got "Quota Exceeded" error while trying to ${type} ${func.name}. Waiting to retry...`,
       );
     } else if (
       err?.message?.includes(
-        "If you recently started to use Eventarc, it may take a few minutes before all necessary permissions are propagated to the Service Agent"
+        "If you recently started to use Eventarc, it may take a few minutes before all necessary permissions are propagated to the Service Agent",
       )
     ) {
       utils.logLabeledWarning(
         "functions",
-        `Since this is your first time using 2nd gen functions, we need a little bit longer to finish setting everything up. Retry the deployment in a few minutes.`
+        `Since this is your first time using 2nd gen functions, we need a little bit longer to finish setting everything up. Retry the deployment in a few minutes.`,
       );
     }
     utils.logLabeledWarning(
       "functions",
 
-      ` failed to ${type} function ${func.name}`
+      ` failed to ${type} function ${func.name}`,
     );
   }
   throw new FirebaseError(`Failed to ${type} function ${func.name}`, {
@@ -290,16 +299,16 @@ function functionsOpLogReject(func: InputCloudFunction, type: string, err: any):
  */
 export async function generateUploadUrl(
   projectId: string,
-  location: string
+  location: string,
 ): Promise<GenerateUploadUrlResponse> {
   try {
     const res = await client.post<never, GenerateUploadUrlResponse>(
-      `projects/${projectId}/locations/${location}/functions:generateUploadUrl`
+      `projects/${projectId}/locations/${location}/functions:generateUploadUrl`,
     );
     return res.body;
   } catch (err: any) {
     logger.info(
-      "\n\nThere was an issue deploying your functions. Verify that your project has a Google App Engine instance setup at https://console.cloud.google.com/appengine and try again. If this issue persists, please contact support."
+      "\n\nThere was an issue deploying your functions. Verify that your project has a Google App Engine instance setup at https://console.cloud.google.com/appengine and try again. If this issue persists, please contact support.",
     );
     throw err;
   }
@@ -320,11 +329,16 @@ export async function createFunction(cloudFunction: InputCloudFunction): Promise
     GOOGLE_NODE_RUN_SCRIPTS: "",
   };
 
+  cloudFunction.serviceConfig.environmentVariables = {
+    ...cloudFunction.serviceConfig.environmentVariables,
+    FUNCTION_TARGET: cloudFunction.buildConfig.entryPoint.replaceAll("-", "."),
+  };
+
   try {
     const res = await client.post<typeof cloudFunction, Operation>(
       components.join("/"),
       cloudFunction,
-      { queryParams: { functionId } }
+      { queryParams: { functionId } },
     );
     return res.body;
   } catch (err: any) {
@@ -338,7 +352,7 @@ export async function createFunction(cloudFunction: InputCloudFunction): Promise
 export async function getFunction(
   projectId: string,
   location: string,
-  functionId: string
+  functionId: string,
 ): Promise<OutputCloudFunction> {
   const name = `projects/${projectId}/locations/${location}/functions/${functionId}`;
   const res = await client.get<OutputCloudFunction>(name);
@@ -351,7 +365,7 @@ export async function getFunction(
  */
 export async function listFunctions(
   projectId: string,
-  region: string
+  region: string,
 ): Promise<OutputCloudFunction[]> {
   const res = await listFunctionsInternal(projectId, region);
   if (res.unreachable.includes(region)) {
@@ -370,7 +384,7 @@ export async function listAllFunctions(projectId: string): Promise<ListFunctions
 
 async function listFunctionsInternal(
   projectId: string,
-  region: string
+  region: string,
 ): Promise<ListFunctionsResponse> {
   type Response = ListFunctionsResponse & { nextPageToken?: string };
   const functions: OutputCloudFunction[] = [];
@@ -410,7 +424,7 @@ export async function updateFunction(cloudFunction: InputCloudFunction): Promise
     cloudFunction,
     /* doNotRecurseIn...=*/ "labels",
     "serviceConfig.environmentVariables",
-    "serviceConfig.secretEnvironmentVariables"
+    "serviceConfig.secretEnvironmentVariables",
   );
 
   cloudFunction.buildConfig.environmentVariables = {
@@ -420,6 +434,12 @@ export async function updateFunction(cloudFunction: InputCloudFunction): Promise
     GOOGLE_NODE_RUN_SCRIPTS: "",
   };
   fieldMasks.push("buildConfig.buildEnvironmentVariables");
+
+  cloudFunction.serviceConfig.environmentVariables = {
+    ...cloudFunction.serviceConfig.environmentVariables,
+    FUNCTION_TARGET: cloudFunction.buildConfig.entryPoint.replaceAll("-", "."),
+  };
+
   try {
     const queryParams = {
       updateMask: fieldMasks.join(","),
@@ -427,7 +447,7 @@ export async function updateFunction(cloudFunction: InputCloudFunction): Promise
     const res = await client.patch<typeof cloudFunction, Operation>(
       cloudFunction.name,
       cloudFunction,
-      { queryParams }
+      { queryParams },
     );
     return res.body;
   } catch (err: any) {
@@ -454,14 +474,14 @@ export async function deleteFunction(cloudFunction: string): Promise<Operation> 
 export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunction {
   if (endpoint.platform !== "gcfv2") {
     throw new FirebaseError(
-      "Trying to create a v2 CloudFunction with v1 API. This should never happen"
+      "Trying to create a v2 CloudFunction with v1 API. This should never happen",
     );
   }
 
-  if (!runtimes.isValidRuntime(endpoint.runtime)) {
+  if (!supported.isRuntime(endpoint.runtime)) {
     throw new FirebaseError(
       "Failed internal assertion. Trying to deploy a new function with a deprecated runtime." +
-        " This should never happen"
+        " This should never happen",
     );
   }
 
@@ -486,13 +506,13 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
     "environmentVariables",
     "secretEnvironmentVariables",
     "ingressSettings",
-    "timeoutSeconds"
+    "timeoutSeconds",
   );
   proto.renameIfPresent(
     gcfFunction.serviceConfig,
     endpoint,
     "serviceAccountEmail",
-    "serviceAccount"
+    "serviceAccount",
   );
   // Memory must be set because the default value of GCF gen 2 is Megabytes and
   // we use mebibytes
@@ -506,7 +526,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
     gcfFunction.serviceConfig,
     endpoint,
     "maxInstanceRequestConcurrency",
-    "concurrency"
+    "concurrency",
   );
   proto.convertIfPresent(gcfFunction.serviceConfig, endpoint, "availableCpu", "cpu", (cpu) => {
     return String(cpu);
@@ -518,7 +538,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
       gcfFunction.serviceConfig,
       endpoint.vpc,
       "vpcConnectorEgressSettings",
-      "egressSettings"
+      "egressSettings",
     );
   } else if (endpoint.vpc === null) {
     gcfFunction.serviceConfig.vpcConnector = null;
@@ -528,12 +548,16 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
   if (backend.isEventTriggered(endpoint)) {
     gcfFunction.eventTrigger = {
       eventType: endpoint.eventTrigger.eventType,
+      retryPolicy: "RETRY_POLICY_UNSPECIFIED",
     };
+    if (endpoint.serviceAccount) {
+      gcfFunction.eventTrigger.serviceAccountEmail = endpoint.serviceAccount;
+    }
     if (gcfFunction.eventTrigger.eventType === PUBSUB_PUBLISH_EVENT) {
       if (!endpoint.eventTrigger.eventFilters?.topic) {
         throw new FirebaseError(
           "Error: Pub/Sub event trigger is missing topic: " +
-            JSON.stringify(endpoint.eventTrigger, null, 2)
+            JSON.stringify(endpoint.eventTrigger, null, 2),
         );
       }
       gcfFunction.eventTrigger.pubsubTopic = endpoint.eventTrigger.eventFilters.topic;
@@ -548,7 +572,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
         gcfFunction.eventTrigger.eventFilters.push({ attribute, value });
       }
       for (const [attribute, value] of Object.entries(
-        endpoint.eventTrigger.eventFilterPathPatterns || {}
+        endpoint.eventTrigger.eventFilterPathPatterns || {},
       )) {
         gcfFunction.eventTrigger.eventFilters.push({
           attribute,
@@ -561,13 +585,14 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
       gcfFunction.eventTrigger,
       endpoint.eventTrigger,
       "triggerRegion",
-      "region"
+      "region",
     );
     proto.copyIfPresent(gcfFunction.eventTrigger, endpoint.eventTrigger, "channel");
 
-    if (endpoint.eventTrigger.retry) {
-      logger.warn("Cannot set a retry policy on Cloud Function", endpoint.id);
-    }
+    endpoint.eventTrigger.retry
+      ? (gcfFunction.eventTrigger.retryPolicy = "RETRY_POLICY_RETRY")
+      : (gcfFunction.eventTrigger.retryPolicy = "RETRY_POLICY_DO_NOT_RETRY");
+
     // By default, Functions Framework in GCFv2 opts to downcast incoming cloudevent messages to legacy formats.
     // Since Firebase Functions SDK expects messages in cloudevent format, we set FUNCTION_SIGNATURE_TYPE to tell
     // Functions Framework to disable downcast before passing the cloudevent message to function handler.
@@ -637,7 +662,10 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
   } else if (gcfFunction.eventTrigger) {
     const eventFilters: Record<string, string> = {};
     const eventFilterPathPatterns: Record<string, string> = {};
-    if (gcfFunction.eventTrigger.pubsubTopic) {
+    if (
+      gcfFunction.eventTrigger.pubsubTopic &&
+      gcfFunction.eventTrigger.eventType === PUBSUB_PUBLISH_EVENT
+    ) {
       eventFilters.topic = gcfFunction.eventTrigger.pubsubTopic;
     } else {
       for (const eventFilter of gcfFunction.eventTrigger.eventFilters || []) {
@@ -651,7 +679,7 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
     trigger = {
       eventTrigger: {
         eventType: gcfFunction.eventTrigger.eventType,
-        retry: false,
+        retry: gcfFunction.eventTrigger.retryPolicy === "RETRY_POLICY_RETRY" ? true : false,
       },
     };
     if (Object.keys(eventFilters).length) {
@@ -665,13 +693,13 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
       trigger.eventTrigger,
       gcfFunction.eventTrigger,
       "region",
-      "triggerRegion"
+      "triggerRegion",
     );
   } else {
     trigger = { httpsTrigger: {} };
   }
 
-  if (!runtimes.isValidRuntime(gcfFunction.buildConfig.runtime)) {
+  if (!supported.isRuntime(gcfFunction.buildConfig.runtime)) {
     logger.debug("GCFv2 function has a deprecated runtime:", JSON.stringify(gcfFunction, null, 2));
   }
 
@@ -693,13 +721,13 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
       "environmentVariables",
       "secretEnvironmentVariables",
       "timeoutSeconds",
-      "uri"
+      "uri",
     );
     proto.renameIfPresent(
       endpoint,
       gcfFunction.serviceConfig,
       "serviceAccount",
-      "serviceAccountEmail"
+      "serviceAccountEmail",
     );
     proto.convertIfPresent(
       endpoint,
@@ -716,7 +744,7 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
           logger.debug("Converting a function to an endpoint with an invalid memory option", mem);
         }
         return mem as backend.MemoryOptions;
-      }
+      },
     );
     proto.convertIfPresent(endpoint, gcfFunction.serviceConfig, "cpu", "availableCpu", (cpu) => {
       let cpuVal: number | null = Number(cpu);
@@ -731,7 +759,7 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
       endpoint,
       gcfFunction.serviceConfig,
       "concurrency",
-      "maxInstanceRequestConcurrency"
+      "maxInstanceRequestConcurrency",
     );
     proto.copyIfPresent(endpoint, gcfFunction, "labels");
     if (gcfFunction.serviceConfig.vpcConnector) {
@@ -740,14 +768,14 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
         endpoint.vpc,
         gcfFunction.serviceConfig,
         "egressSettings",
-        "vpcConnectorEgressSettings"
+        "vpcConnectorEgressSettings",
       );
     }
     const serviceName = gcfFunction.serviceConfig.service;
     if (!serviceName) {
       logger.debug(
         "Got a v2 function without a service name." +
-          "Maybe we've migrated to using the v2 API everywhere and missed this code"
+          "Maybe we've migrated to using the v2 API everywhere and missed this code",
       );
     } else {
       endpoint.runServiceId = utils.last(serviceName.split("/"));

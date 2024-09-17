@@ -9,7 +9,7 @@ import { formatHost } from "./functionsEmulatorShared";
  */
 export function setEnvVarsForEmulators(
   env: Record<string, string | undefined>,
-  emulators: EmulatorInfo[]
+  emulators: EmulatorInfo[],
 ): void {
   for (const emu of emulators) {
     const host = formatHost(emu);
@@ -37,6 +37,9 @@ export function setEnvVarsForEmulators(
         break;
       case Emulators.EVENTARC:
         env[Constants.CLOUD_EVENTARC_EMULATOR_HOST] = `http://${host}`;
+        break;
+      case Emulators.TASKS:
+        env[Constants.CLOUD_TASKS_EMULATOR_HOST] = host;
         break;
     }
   }

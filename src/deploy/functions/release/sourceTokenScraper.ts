@@ -3,6 +3,10 @@ import { assertExhaustive } from "../../../functional";
 import { logger } from "../../../logger";
 
 type TokenFetchState = "NONE" | "FETCHING" | "VALID";
+interface TokenFetchResult {
+  token?: string;
+  aborted: boolean;
+}
 
 /**
  * GCF v1 deploys support reusing a build between function deploys.
@@ -11,8 +15,8 @@ type TokenFetchState = "NONE" | "FETCHING" | "VALID";
  */
 export class SourceTokenScraper {
   private tokenValidDurationMs;
-  private resolve!: (token?: string) => void;
-  private promise: Promise<string | undefined>;
+  private resolve!: (token: TokenFetchResult) => void;
+  private promise: Promise<TokenFetchResult>;
   private expiry: number | undefined;
   private fetchState: TokenFetchState;
 
@@ -22,19 +26,29 @@ export class SourceTokenScraper {
     this.fetchState = "NONE";
   }
 
+  abort(): void {
+    this.resolve({ aborted: true });
+  }
+
   async getToken(): Promise<string | undefined> {
     if (this.fetchState === "NONE") {
       this.fetchState = "FETCHING";
       return undefined;
     } else if (this.fetchState === "FETCHING") {
-      return this.promise; // wait until we get a source token
+      const tokenResult = await this.promise;
+      if (tokenResult.aborted) {
+        this.promise = new Promise((resolve) => (this.resolve = resolve));
+        return undefined;
+      }
+      return tokenResult.token;
     } else if (this.fetchState === "VALID") {
+      const tokenResult = await this.promise;
       if (this.isTokenExpired()) {
         this.fetchState = "FETCHING";
         this.promise = new Promise((resolve) => (this.resolve = resolve));
         return undefined;
       }
-      return this.promise;
+      return tokenResult.token;
     } else {
       assertExhaustive(this.fetchState);
     }
@@ -46,7 +60,7 @@ export class SourceTokenScraper {
         "Your deployment is checking the expiration of a source token that has not yet been polled. " +
           "Hitting this case should never happen and should be considered a bug. " +
           "Please file an issue at https://github.com/firebase/firebase-tools/issues " +
-          "and try deploying your functions again."
+          "and try deploying your functions again.",
       );
     }
     return Date.now() >= this.expiry;
@@ -58,7 +72,10 @@ export class SourceTokenScraper {
         const [, , , /* projects*/ /* project*/ /* regions*/ region] =
           op.metadata?.target?.split("/") || [];
         logger.debug(`Got source token ${op.metadata?.sourceToken} for region ${region as string}`);
-        this.resolve(op.metadata?.sourceToken);
+        this.resolve({
+          token: op.metadata?.sourceToken,
+          aborted: false,
+        });
         this.fetchState = "VALID";
         this.expiry = Date.now() + this.tokenValidDurationMs;
       }

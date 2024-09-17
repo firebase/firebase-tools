@@ -73,7 +73,7 @@ exports.storagebucketv2archivedreaction = functionsV2.storage.onObjectArchived(
     console.log(STORAGE_BUCKET_FUNCTION_ARCHIVED_LOG);
     console.log("Object", JSON.stringify(cloudevent.data));
     return true;
-  }
+  },
 );
 
 exports.storagebucketv2deletedreaction = functionsV2.storage.onObjectDeleted(
@@ -82,7 +82,7 @@ exports.storagebucketv2deletedreaction = functionsV2.storage.onObjectDeleted(
     console.log(STORAGE_BUCKET_FUNCTION_DELETED_LOG);
     console.log("Object", JSON.stringify(cloudevent.data));
     return true;
-  }
+  },
 );
 
 exports.storagebucketv2finalizedreaction = functionsV2.storage.onObjectFinalized(
@@ -91,7 +91,7 @@ exports.storagebucketv2finalizedreaction = functionsV2.storage.onObjectFinalized
     console.log(STORAGE_BUCKET_FUNCTION_FINALIZED_LOG);
     console.log("Object", JSON.stringify(cloudevent.data));
     return true;
-  }
+  },
 );
 
 exports.storagebucketv2metadatareaction = functionsV2.storage.onObjectMetadataUpdated(
@@ -100,7 +100,7 @@ exports.storagebucketv2metadatareaction = functionsV2.storage.onObjectMetadataUp
     console.log(STORAGE_BUCKET_FUNCTION_METADATA_LOG);
     console.log("Object", JSON.stringify(cloudevent.data));
     return true;
-  }
+  },
 );
 
 exports.oncallv2 = functionsV2.https.onCall((req) => {
@@ -160,5 +160,5 @@ exports.firestorev2reaction = functionsV2.firestore.onDocumentWritten(
     await dbref.set({ done: new Date().toISOString() });
 
     return true;
-  }
+  },
 );

@@ -1,6 +1,6 @@
 import * as clc from "colorette";
-import * as fs from "fs";
 import { sync as rimraf } from "rimraf";
+import { join } from "path";
 
 import { Client } from "../../../apiv2";
 import { initGitHub } from "./github";
@@ -9,23 +9,54 @@ import { logger } from "../../../logger";
 import { discover, WebFrameworks } from "../../../frameworks";
 import { ALLOWED_SSR_REGIONS, DEFAULT_REGION } from "../../../frameworks/constants";
 import * as experiments from "../../../experiments";
-import { join } from "path";
+import { errNoDefaultSite, getDefaultHostingSite } from "../../../getDefaultHostingSite";
+import { Options } from "../../../options";
+import { last, logSuccess } from "../../../utils";
+import { interactiveCreateHostingSite } from "../../../hosting/interactive";
+import { readTemplateSync } from "../../../templates";
 
-const INDEX_TEMPLATE = fs.readFileSync(
-  __dirname + "/../../../../templates/init/hosting/index.html",
-  "utf8"
-);
-const MISSING_TEMPLATE = fs.readFileSync(
-  __dirname + "/../../../../templates/init/hosting/404.html",
-  "utf8"
-);
+const INDEX_TEMPLATE = readTemplateSync("init/hosting/index.html");
+const MISSING_TEMPLATE = readTemplateSync("init/hosting/404.html");
 const DEFAULT_IGNORES = ["firebase.json", "**/.*", "**/node_modules/**"];
 
 /**
- *
+ * Does the setup steps for Firebase Hosting.
+ * WARNING: #6527 - `options` may not have all the things you think it does.
  */
-export async function doSetup(setup: any, config: any): Promise<void> {
+export async function doSetup(setup: any, config: any, options: Options): Promise<void> {
   setup.hosting = {};
+
+  // There's a path where we can set up Hosting without a project, so if
+  // if setup.projectId is empty, we don't do any checking for a Hosting site.
+  if (setup.projectId) {
+    let hasHostingSite = true;
+    try {
+      await getDefaultHostingSite({ projectId: setup.projectId });
+    } catch (err: unknown) {
+      if (err !== errNoDefaultSite) {
+        throw err;
+      }
+      hasHostingSite = false;
+    }
+
+    if (!hasHostingSite) {
+      const confirmCreate = await promptOnce({
+        type: "confirm",
+        message: "A Firebase Hosting site is required to deploy. Would you like to create one now?",
+        default: true,
+      });
+      if (confirmCreate) {
+        const createOptions = {
+          projectId: setup.projectId,
+          nonInteractive: options.nonInteractive,
+        };
+        const newSite = await interactiveCreateHostingSite("", "", createOptions);
+        logger.info();
+        logSuccess(`Firebase Hosting site ${last(newSite.name.split("/"))} created!`);
+        logger.info();
+      }
+    }
+  }
 
   let discoveredFramework = experiments.isEnabled("webframeworks")
     ? await discover(config.projectDir, false)
@@ -41,7 +72,7 @@ export async function doSetup(setup: any, config: any): Promise<void> {
           default: true,
           message: `Detected an existing ${name} codebase in the current directory, should we use this?`,
         },
-        setup.hosting
+        setup.hosting,
       );
     }
     if (setup.hosting.useDiscoveredFramework) {
@@ -55,7 +86,7 @@ export async function doSetup(setup: any, config: any): Promise<void> {
           default: false,
           message: `Do you want to use a web framework? (${clc.bold("experimental")})`,
         },
-        setup.hosting
+        setup.hosting,
       );
     }
   }
@@ -68,7 +99,7 @@ export async function doSetup(setup: any, config: any): Promise<void> {
         default: "hosting",
         message: "What folder would you like to use for your web application's root directory?",
       },
-      setup.hosting
+      setup.hosting,
     );
 
     if (setup.hosting.source !== ".") delete setup.hosting.useDiscoveredFramework;
@@ -83,7 +114,7 @@ export async function doSetup(setup: any, config: any): Promise<void> {
           default: true,
           message: `Detected an existing ${name} codebase in ${setup.hosting.source}, should we use this?`,
         },
-        setup.hosting
+        setup.hosting,
       );
     }
 
@@ -99,7 +130,7 @@ export async function doSetup(setup: any, config: any): Promise<void> {
       }
 
       const defaultChoice = choices.find(
-        ({ value }) => value === discoveredFramework?.framework
+        ({ value }) => value === discoveredFramework?.framework,
       )?.value;
 
       await promptOnce(
@@ -110,7 +141,7 @@ export async function doSetup(setup: any, config: any): Promise<void> {
           default: defaultChoice,
           choices,
         },
-        setup.hosting
+        setup.hosting,
       );
 
       if (discoveredFramework) rimraf(setup.hosting.source);
@@ -123,9 +154,9 @@ export async function doSetup(setup: any, config: any): Promise<void> {
         type: "list",
         message: "In which region would you like to host server-side content, if applicable?",
         default: DEFAULT_REGION,
-        choices: ALLOWED_SSR_REGIONS,
+        choices: ALLOWED_SSR_REGIONS.filter((region) => region.recommended),
       },
-      setup.hosting
+      setup.hosting,
     );
 
     setup.config.hosting = {
@@ -139,10 +170,10 @@ export async function doSetup(setup: any, config: any): Promise<void> {
   } else {
     logger.info();
     logger.info(
-      `Your ${clc.bold("public")} directory is the folder (relative to your project directory) that`
+      `Your ${clc.bold("public")} directory is the folder (relative to your project directory) that`,
     );
     logger.info(
-      `will contain Hosting assets to be uploaded with ${clc.bold("firebase deploy")}. If you`
+      `will contain Hosting assets to be uploaded with ${clc.bold("firebase deploy")}. If you`,
     );
     logger.info("have a build process for your assets, use your build's output directory.");
     logger.info();
@@ -175,7 +206,7 @@ export async function doSetup(setup: any, config: any): Promise<void> {
       default: false,
       message: "Set up automatic builds and deploys with GitHub?",
     },
-    setup.hosting
+    setup.hosting,
   );
 
   if (!setup.hosting.useWebFrameworks) {
@@ -190,7 +221,7 @@ export async function doSetup(setup: any, config: any): Promise<void> {
     const response = await c.get<{ current: { version: string } }>("/firebasejs/releases.json");
     await config.askWriteProjectFile(
       `${setup.hosting.public}/index.html`,
-      INDEX_TEMPLATE.replace(/{{VERSION}}/g, response.body.current.version)
+      INDEX_TEMPLATE.replace(/{{VERSION}}/g, response.body.current.version),
     );
   }
 

@@ -18,7 +18,7 @@ export const command = new Command("ext:dev:usage <publisherId>")
   .help(
     "use this command to get the usage of extensions you published. " +
       "Specify the publisher ID you used to publish your extensions, " +
-      "or the extension ref of your published extension."
+      "or the extension ref of your published extension.",
   )
   .before(requireAuth)
   .before(checkMinRequiredVersion, "extDevMinVersion")
@@ -44,11 +44,11 @@ export const command = new Command("ext:dev:usage <publisherId>")
       if (extensions.length < 1) {
         throw new FirebaseError(
           `There are no published extensions associated with publisher ID ${clc.bold(
-            publisherId
+            publisherId,
           )}. This could happen for two reasons:\n` +
             "  - The publisher ID doesn't exist or could be misspelled\n" +
             "  - This publisher has not published any extensions\n\n" +
-            "If you are expecting some extensions to appear, please make sure you have the correct publisher ID and try again."
+            "If you are expecting some extensions to appear, please make sure you have the correct publisher ID and try again.",
         );
       }
 
@@ -94,7 +94,7 @@ export const command = new Command("ext:dev:usage <publisherId>")
         `Error occurred when fetching usage data for extension ${extensionName}`,
         {
           original: err,
-        }
+        },
       );
     }
     if (!response) {
@@ -122,7 +122,7 @@ export const command = new Command("ext:dev:usage <publisherId>")
     logger.info(`* Due to privacy considerations, numbers are reported as ranges.`);
     logger.info(`* In the absence of significant changes, we will render a '-' symbol.`);
     logger.info(
-      `* You will need more than 10 installs over a period of more than 28 days to render sufficient data.`
+      `* You will need more than 10 installs over a period of more than 28 days to render sufficient data.`,
     );
     // TODO(b/216289102): Add buildCloudMonitoringLink back after UI is fixed.
   });

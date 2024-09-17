@@ -57,7 +57,7 @@ async function loadModule(packageDir) {
             e.message +
             '\n\nTry running "npm install" in your functions directory before deploying.',
         },
-        EXIT
+        EXIT,
       );
       return;
     }
@@ -69,7 +69,7 @@ async function loadModule(packageDir) {
             'Please ensure you have the latest firebase-functions SDK by running "npm i --save firebase-functions@latest" inside your functions folder.\n\n' +
             e.stack,
         },
-        EXIT
+        EXIT,
       );
       return;
     }
@@ -78,7 +78,7 @@ async function loadModule(packageDir) {
       {
         error: "Error occurred while parsing your function triggers.\n\n" + e.stack,
       },
-      EXIT
+      EXIT,
     );
     return;
   }
@@ -93,7 +93,7 @@ async function loadModule(packageDir) {
             "Error occurred while parsing your function triggers. Please ensure that index.js only " +
             "exports cloud functions.\n\n",
         },
-        EXIT
+        EXIT,
       );
       return;
     }

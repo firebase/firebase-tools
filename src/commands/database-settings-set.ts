@@ -16,7 +16,7 @@ export const command = new Command("database:settings:set <path> <value>")
   .description("set the realtime database setting at path.")
   .option(
     "--instance <instance>",
-    "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
+    "use the database <instance>.firebaseio.com (if omitted, use default database instance)",
   )
   .help(HELP_TEXT)
   .before(requirePermissions, ["firebasedatabase.instances.update"])
@@ -38,8 +38,8 @@ export const command = new Command("database:settings:set <path> <value>")
       utils.getDatabaseUrl(
         realtimeOriginOrCustomUrl(options.instanceDetails.databaseUrl),
         options.instance,
-        `/.settings/${path}.json`
-      )
+        `/.settings/${path}.json`,
+      ),
     );
     const c = new Client({ urlPrefix: u.origin, auth: true });
     try {
@@ -52,6 +52,6 @@ export const command = new Command("database:settings:set <path> <value>")
     }
     utils.logSuccess("Successfully set setting.");
     utils.logSuccess(
-      `For database instance ${options.instance}\n\t ${path} = ${JSON.stringify(parsedValue)}`
+      `For database instance ${options.instance}\n\t ${path} = ${JSON.stringify(parsedValue)}`,
     );
   });

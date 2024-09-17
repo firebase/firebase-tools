@@ -1,5 +1,3 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
 
 import { ExtensionBroker } from "./extension-broker";
@@ -8,20 +6,49 @@ import {
   ExtensionToWebviewParamsMap,
   WebviewToExtensionParamsMap,
 } from "../common/messaging/protocol";
-import { setupSidebar } from "./sidebar";
-import { setupWorkflow } from "./workflow";
-import { pluginLogger } from "./logger-wrapper";
-
-const broker = createBroker<
-  ExtensionToWebviewParamsMap,
-  WebviewToExtensionParamsMap,
-  vscode.Webview
->(new ExtensionBroker());
+import { logSetup, pluginLogger } from "./logger-wrapper";
+import { registerWebview } from "./webview";
+import { registerCore } from "./core";
+import { getSettings } from "./utils/settings";
+import { registerFdc } from "./data-connect";
+import { AuthService } from "./auth/service";
+import { AnalyticsLogger } from "./analytics";
 
 // This method is called when your extension is activated
-export function activate(context: vscode.ExtensionContext) {
-  pluginLogger.debug('Activating Firebase extension.');
+export async function activate(context: vscode.ExtensionContext) {
+  const settings = getSettings();
+  logSetup(settings);
+  pluginLogger.debug("Activating Firebase extension.");
 
-  setupWorkflow(context, broker);
-  setupSidebar(context, broker);
+  const broker = createBroker<
+    ExtensionToWebviewParamsMap,
+    WebviewToExtensionParamsMap,
+    vscode.Webview
+  >(new ExtensionBroker());
+
+  const authService = new AuthService(broker);
+  const analyticsLogger = new AnalyticsLogger();
+
+  const [emulatorsController, coreDisposable] = await registerCore(
+    broker,
+    context,
+    analyticsLogger.logger,
+  );
+
+  context.subscriptions.push(
+    coreDisposable,
+    registerWebview({
+      name: "sidebar",
+      broker,
+      context,
+    }),
+    authService,
+    registerFdc(
+      context,
+      broker,
+      authService,
+      emulatorsController,
+      analyticsLogger.logger,
+    ),
+  );
 }

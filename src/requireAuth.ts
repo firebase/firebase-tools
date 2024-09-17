@@ -8,12 +8,11 @@ import { logger } from "./logger";
 import * as utils from "./utils";
 import * as scopes from "./scopes";
 import { Tokens, User } from "./types/auth";
-import { setRefreshToken, setActiveAccount } from "./auth";
-import { selectProjectInMonospace, isMonospaceEnv } from "./monospace";
+import { setRefreshToken, setActiveAccount, setGlobalDefaultAccount } from "./auth";
 import type { Options } from "./options";
 
 const AUTH_ERROR_MESSAGE = `Command requires authentication, please run ${clc.bold(
-  "firebase login"
+  "firebase login",
 )}`;
 
 let authClient: GoogleAuth | undefined;
@@ -39,7 +38,6 @@ function getAuthClient(config: GoogleAuthOptions): GoogleAuth {
  */
 async function autoAuth(options: Options, authScopes: string[]): Promise<void | string> {
   const client = getAuthClient({ scopes: authScopes, projectId: options.project });
-
   const token = await client.getAccessToken();
   token !== null ? apiv2.setAccessToken(token) : false;
 
@@ -51,15 +49,17 @@ async function autoAuth(options: Options, authScopes: string[]): Promise<void | 
     // Make sure any error here doesn't block the CLI, but log it.
     logger.debug(`Error getting account credentials.`);
   }
-
-  if (!options.isVSCE && isMonospaceEnv()) {
-    await selectProjectInMonospace({
-      projectRoot: options.config.projectDir,
-      project: options.project,
-      isVSCE: options.isVSCE,
+  if (process.env.MONOSPACE_ENV && token && clientEmail) {
+    // Within monospace, this a OAuth token for the user, so we make it the active user.
+    setActiveAccount(options, {
+      user: { email: clientEmail },
+      tokens: { access_token: token },
     });
-  }
+    setGlobalDefaultAccount({ user: { email: clientEmail }, tokens: { access_token: token } });
 
+    // project is also selected in monospace auth flow
+    options.projectId = await client.getProjectId();
+  }
   return clientEmail;
 }
 
@@ -73,19 +73,18 @@ export async function requireAuth(options: any): Promise<string | void> {
 
   const tokens = options.tokens as Tokens | undefined;
   const user = options.user as User | undefined;
-
   let tokenOpt = utils.getInheritedOption(options, "token");
   if (tokenOpt) {
     logger.debug("> authorizing via --token option");
     utils.logWarning(
       "Authenticating with `--token` is deprecated and will be removed in a future major version of `firebase-tools`. " +
-        "Instead, use a service account key with `GOOGLE_APPLICATION_CREDENTIALS`: https://cloud.google.com/docs/authentication/getting-started"
+        "Instead, use a service account key with `GOOGLE_APPLICATION_CREDENTIALS`: https://cloud.google.com/docs/authentication/getting-started",
     );
   } else if (process.env.FIREBASE_TOKEN) {
     logger.debug("> authorizing via FIREBASE_TOKEN environment variable");
     utils.logWarning(
       "Authenticating with `FIREBASE_TOKEN` is deprecated and will be removed in a future major version of `firebase-tools`. " +
-        "Instead, use a service account key with `GOOGLE_APPLICATION_CREDENTIALS`: https://cloud.google.com/docs/authentication/getting-started"
+        "Instead, use a service account key with `GOOGLE_APPLICATION_CREDENTIALS`: https://cloud.google.com/docs/authentication/getting-started",
     );
   } else if (user) {
     logger.debug(`> authorizing via signed-in user (${user.email})`);
@@ -95,7 +94,7 @@ export async function requireAuth(options: any): Promise<string | void> {
     } catch (e: any) {
       throw new FirebaseError(
         `Failed to authenticate, have you run ${clc.bold("firebase login")}?`,
-        { original: e }
+        { original: e },
       );
     }
   }
@@ -111,5 +110,8 @@ export async function requireAuth(options: any): Promise<string | void> {
     throw new FirebaseError(AUTH_ERROR_MESSAGE);
   }
 
+  // TODO: 90 percent sure this is redundant, as the only time we hit this is if options.user/options.token is set, and
+  // setActiveAccount is the only code that sets those.
   setActiveAccount(options, { user, tokens });
+  return user.email;
 }

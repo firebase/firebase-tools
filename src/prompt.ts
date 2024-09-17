@@ -1,6 +1,19 @@
 import * as inquirer from "inquirer";
+import AutocompletePrompt from "inquirer-autocomplete-prompt";
 
+import { fileExistsSync, dirExistsSync } from "./fsutils";
 import { FirebaseError } from "./error";
+import { Config } from "./config";
+import { logger } from "./logger";
+
+declare module "inquirer" {
+  interface QuestionMap<T> {
+    autocomplete: AutocompletePrompt.AutocompleteQuestionOptions<T>;
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-argument
+inquirer.registerPrompt("autocomplete", require("inquirer-autocomplete-prompt"));
 
 /**
  * Question type for inquirer. See
@@ -13,7 +26,8 @@ type QuestionsThatReturnAString<T extends inquirer.Answers> =
   | inquirer.ExpandQuestion<T>
   | inquirer.InputQuestion<T>
   | inquirer.PasswordQuestion<T>
-  | inquirer.EditorQuestion<T>;
+  | inquirer.EditorQuestion<T>
+  | AutocompletePrompt.AutocompleteQuestionOptions<T>;
 
 type Options = Record<string, any> & { nonInteractive?: boolean };
 
@@ -33,7 +47,7 @@ export async function prompt(
   options: Options,
   // NB: If Observables are to be added here, the for loop below will need to
   // be adjusted as well.
-  questions: ReadonlyArray<inquirer.DistinctQuestion>
+  questions: ReadonlyArray<inquirer.DistinctQuestion>,
 ): Promise<any> {
   const prompts = [];
   // For each of our questions, if Options already has an answer,
@@ -50,7 +64,7 @@ export async function prompt(
       `Missing required options (${missingOptions}) while running in non-interactive mode`,
       {
         children: prompts,
-      }
+      },
     );
   }
 
@@ -63,26 +77,26 @@ export async function prompt(
 
 export async function promptOnce<A extends inquirer.Answers>(
   question: QuestionsThatReturnAString<A>,
-  options?: Options
+  options?: Options,
 ): Promise<string>;
 export async function promptOnce<A extends inquirer.Answers>(
   question: inquirer.CheckboxQuestion<A>,
-  options?: Options
+  options?: Options,
 ): Promise<string[]>;
 export async function promptOnce<A extends inquirer.Answers>(
   question: inquirer.ConfirmQuestion<A>,
-  options?: Options
+  options?: Options,
 ): Promise<boolean>;
 export async function promptOnce<A extends inquirer.Answers>(
   question: inquirer.NumberQuestion<A>,
-  options?: Options
+  options?: Options,
 ): Promise<number>;
 
 // This one is a bit hard to type out. Choices can be many things, including a generator function. Even if we decided to limit
 // the ListQuestion to have a choices of ReadonlyArray<ChoiceOption<A>>, a ChoiceOption<A> still has a `.value` of `any`
 export async function promptOnce<A extends inquirer.Answers>(
   question: inquirer.ListQuestion<A>,
-  options?: Options
+  options?: Options,
 ): Promise<any>;
 
 /**
@@ -119,4 +133,33 @@ export async function confirm(args: {
   } else {
     return true;
   }
+}
+
+/**
+ * Prompts for a directory name, and reprompts if that path does not exist
+ */
+export async function promptForDirectory(args: {
+  message: string;
+  config: Config;
+  default?: boolean;
+  relativeTo?: string;
+}): Promise<string> {
+  let dir: string = "";
+  while (!dir) {
+    const target = args.config.path(
+      await promptOnce({
+        message: "Where is your app directory?",
+      }),
+    );
+    if (fileExistsSync(target)) {
+      logger.error(
+        `Expected a directory, but ${target} is a file. Please provide a path to a directory.`,
+      );
+    } else if (!dirExistsSync(target)) {
+      logger.error(`Directory ${target} not found. Please provide a path to a directory`);
+    } else {
+      dir = target;
+    }
+  }
+  return dir;
 }

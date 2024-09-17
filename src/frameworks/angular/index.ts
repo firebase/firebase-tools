@@ -11,7 +11,6 @@ import {
   SupportLevel,
   BUILD_TARGET_PURPOSE,
 } from "../interfaces";
-import { promptOnce } from "../../prompt";
 import {
   simpleProxy,
   relativeRequire,
@@ -21,6 +20,7 @@ import {
 } from "../utils";
 import {
   getAllTargets,
+  getAngularVersion,
   getBrowserConfig,
   getBuildConfig,
   getContext,
@@ -36,41 +36,33 @@ export const docsUrl = "https://firebase.google.com/docs/hosting/frameworks/angu
 
 const DEFAULT_BUILD_SCRIPT = ["ng build"];
 
+export const supportedRange = "16 - 18";
+
 export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!(await pathExists(join(dir, "package.json")))) return;
   if (!(await pathExists(join(dir, "angular.json")))) return;
-  return { mayWantBackend: true, publicDirectory: join(dir, "src", "assets") };
+  const version = getAngularVersion(dir);
+  return { mayWantBackend: true, version };
 }
 
-export async function init(setup: any, config: any) {
+export function init(setup: any, config: any) {
   execSync(
-    `npx --yes -p @angular/cli@latest ng new ${setup.projectId} --directory ${setup.hosting.source} --skip-git`,
+    `npx --yes -p @angular/cli@"${supportedRange}" ng new ${setup.projectId} --directory ${setup.hosting.source} --skip-git`,
     {
       stdio: "inherit",
       cwd: config.projectDir,
-    }
+    },
   );
-  const useAngularUniversal = await promptOnce({
-    name: "useAngularUniversal",
-    type: "confirm",
-    default: false,
-    message: `Would you like to setup Angular Universal?`,
-  });
-  if (useAngularUniversal) {
-    execSync("ng add @nguniversal/express-engine --skip-confirmation", {
-      stdio: "inherit",
-      cwd: join(config.projectDir, setup.hosting.source),
-    });
-  }
+  return Promise.resolve();
 }
 
 export async function build(dir: string, configuration: string): Promise<BuildResult> {
   const {
     targets,
-    serverTarget,
     serveOptimizedImages,
     locales,
     baseHref: baseUrl,
+    ssr,
   } = await getBuildConfig(dir, configuration);
   await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
   for (const target of targets) {
@@ -84,8 +76,8 @@ export async function build(dir: string, configuration: string): Promise<BuildRe
     if (result.status !== 0) throw new FirebaseError(`Unable to build ${target}`);
   }
 
-  const wantsBackend = !!serverTarget || serveOptimizedImages;
-  const rewrites = serverTarget
+  const wantsBackend = ssr || serveOptimizedImages;
+  const rewrites = ssr
     ? []
     : [
         {
@@ -98,7 +90,7 @@ export async function build(dir: string, configuration: string): Promise<BuildRe
 }
 
 export async function getDevModeHandle(dir: string, configuration: string) {
-  const { targetStringFromTarget } = relativeRequire(dir, "@angular-devkit/architect");
+  const { targetStringFromTarget } = await relativeRequire(dir, "@angular-devkit/architect");
   const { serveTarget } = await getContext(dir, configuration);
   if (!serveTarget) throw new Error("Could not find the serveTarget");
   const host = new Promise<string>((resolve, reject) => {
@@ -124,11 +116,11 @@ export async function getDevModeHandle(dir: string, configuration: string) {
 export async function ɵcodegenPublicDirectory(
   sourceDir: string,
   destDir: string,
-  configuration: string
+  configuration: string,
 ) {
   const { outputPath, baseHref, defaultLocale, locales } = await getBrowserConfig(
     sourceDir,
-    configuration
+    configuration,
   );
   await mkdir(join(destDir, baseHref), { recursive: true });
   if (locales) {
@@ -149,8 +141,12 @@ export async function ɵcodegenPublicDirectory(
 export async function getValidBuildTargets(purpose: BUILD_TARGET_PURPOSE, dir: string) {
   const validTargetNames = new Set(["development", "production"]);
   try {
-    const { workspaceProject, browserTarget, serverTarget, serveTarget } = await getContext(dir);
-    const { target } = ((purpose === "emulate" && serveTarget) || serverTarget || browserTarget)!;
+    const { workspaceProject, buildTarget, browserTarget, prerenderTarget, serveTarget } =
+      await getContext(dir);
+    const { target } = ((purpose === "emulate" && serveTarget) ||
+      buildTarget ||
+      prerenderTarget ||
+      browserTarget)!;
     const workspaceTarget = workspaceProject.targets.get(target)!;
     Object.keys(workspaceTarget.configurations || {}).forEach((it) => validTargetNames.add(it));
   } catch (e) {
@@ -169,7 +165,7 @@ export async function shouldUseDevModeHandle(targetOrConfiguration: string, dir:
 export async function ɵcodegenFunctionsDirectory(
   sourceDir: string,
   destDir: string,
-  configuration: string
+  configuration: string,
 ) {
   const {
     packageJson,
@@ -182,6 +178,7 @@ export async function ɵcodegenFunctionsDirectory(
     externalDependencies,
     baseHref,
     serveOptimizedImages,
+    serverEntry,
   } = await getServerConfig(sourceDir, configuration);
 
   const dotEnv = { __NG_BROWSER_OUTPUT_PATH__: browserOutputPath };
@@ -190,11 +187,11 @@ export async function ɵcodegenFunctionsDirectory(
   await Promise.all([
     serverOutputPath
       ? mkdir(join(destDir, serverOutputPath), { recursive: true }).then(() =>
-          copy(join(sourceDir, serverOutputPath), join(destDir, serverOutputPath))
+          copy(join(sourceDir, serverOutputPath), join(destDir, serverOutputPath)),
         )
       : Promise.resolve(),
     mkdir(join(destDir, browserOutputPath), { recursive: true }).then(() =>
-      copy(join(sourceDir, browserOutputPath), join(destDir, browserOutputPath))
+      copy(join(sourceDir, browserOutputPath), join(destDir, browserOutputPath)),
     ),
   ]);
 
@@ -232,14 +229,37 @@ exports.handle = function(req,res) {
     if (localizedApps.has(locale)) {
       localizedApps.get(locale)(req,res);
     } else {
-      const app = require(\`./${serverOutputPath}/\${locale}/main.js\`).app(locale);
-      localizedApps.set(locale, app);
-      app(req,res);
+      ${
+        serverEntry?.endsWith(".mjs")
+          ? `import(\`./${serverOutputPath}/\${locale}/${serverEntry}\`)`
+          : `Promise.resolve(require(\`./${serverOutputPath}/\${locale}/${serverEntry}\`))`
+      }.then(server => {
+        const app = server.app(locale);
+        localizedApps.set(locale, app);
+        app(req,res);
+      });
     }
   });
 };\n`;
   } else if (serverOutputPath) {
-    bootstrapScript = `exports.handle = require('./${serverOutputPath}/main.js').app();\n`;
+    bootstrapScript = `
+    const app = new Promise((resolve) => {
+      setTimeout(() => {
+        const port = process.env.PORT;
+        const socket = 'express.sock';
+        process.env.PORT = socket;
+        
+        ${
+          serverEntry?.endsWith(".mjs")
+            ? `import(\`./${serverOutputPath}/${serverEntry}\`)`
+            : `Promise.resolve(require('./${serverOutputPath}/${serverEntry}'))`
+        }.then(({ app }) => {
+          process.env.PORT = port;
+          resolve(app());
+        });
+      }, 0);
+    });
+exports.handle = (req,res) => app.then(it => it(req,res));\n`;
   } else {
     bootstrapScript = `exports.handle = (res, req) => req.sendStatus(404);\n`;
     rewriteSource = posix.join(baseHref, "__image__");

@@ -31,21 +31,21 @@ const CONCURRENCY_LIMIT = 5;
 
 export const command = new Command("database:import <path> [infile]")
   .description(
-    "non-atomically import the contents of a JSON file to the specified path in Realtime Database"
+    "non-atomically import the contents of a JSON file to the specified path in Realtime Database",
   )
   .withForce()
   .option(
     "--instance <instance>",
-    "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
+    "use the database <instance>.firebaseio.com (if omitted, use default database instance)",
   )
   .option(
     "--disable-triggers",
     "suppress any Cloud functions triggered by this operation, default to true",
-    true
+    true,
   )
   .option(
     "--filter <dataPath>",
-    "import only data at this path in the JSON file (if omitted, import entire file)"
+    "import only data at this path in the JSON file (if omitted, import entire file)",
   )
   .option("--chunk-size <mb>", "max chunk size in megabytes, default to 1 MB")
   .option("--concurrency <val>", "concurrency limit, default to 5")
@@ -82,7 +82,7 @@ export const command = new Command("database:import <path> [infile]")
         default: false,
         message: "You are about to import data to " + clc.cyan(dbPath) + ". Are you sure?",
       },
-      options
+      options,
     );
     if (!confirm) {
       throw new FirebaseError("Command aborted.");
@@ -114,6 +114,6 @@ export const command = new Command("database:import <path> [infile]")
     logger.info();
     logger.info(
       clc.bold("View data at:"),
-      utils.getDatabaseViewDataUrl(origin, projectId, options.instance, path)
+      utils.getDatabaseViewDataUrl(origin, projectId, options.instance, path),
     );
   });

@@ -1,6 +1,4 @@
 import * as clc from "colorette";
-import { marked } from "marked";
-import * as TerminalRenderer from "marked-terminal";
 
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
@@ -27,16 +25,12 @@ import { Options } from "../options";
 import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
 import { displayDeveloperTOSWarning } from "../extensions/tos";
 
-marked.setOptions({
-  renderer: new TerminalRenderer(),
-});
-
 /**
  * Command for updating an existing extension instance
  */
 export const command = new Command("ext:update <extensionInstanceId> [updateSource]")
   .description(
-    "update an existing extension instance to the latest version, or to a specific version if provided"
+    "update an existing extension instance to the latest version, or to a specific version if provided",
   )
   .before(requirePermissions, [
     "firebaseextensions.instances.update",
@@ -55,20 +49,20 @@ export const command = new Command("ext:update <extensionInstanceId> [updateSour
         `Updating an extension with local source is not neccessary. ` +
           `Rerun "firebase deploy" or restart the emulator after making changes to your local extension source. ` +
           `If you've edited the extension param spec, you can edit an extension instance's params ` +
-          `interactively by running "firebase ext:configure --local {instance-id}"`
+          `interactively by running "firebase ext:configure --local {instance-id}"`,
       );
     }
 
     const oldRef = manifest.getInstanceRef(instanceId, config);
     const oldExtensionVersion = await extensionsApi.getExtensionVersion(
-      refs.toExtensionVersionRef(oldRef)
+      refs.toExtensionVersionRef(oldRef),
     );
     updateSource = inferUpdateSource(updateSource, refs.toExtensionRef(oldRef));
 
     const newSourceOrigin = getSourceOrigin(updateSource);
     if (
       ![SourceOrigin.PUBLISHED_EXTENSION, SourceOrigin.PUBLISHED_EXTENSION_VERSION].includes(
-        newSourceOrigin
+        newSourceOrigin,
       )
     ) {
       throw new FirebaseError(`Only updating to a published extension version is allowed`);
@@ -80,16 +74,16 @@ export const command = new Command("ext:update <extensionInstanceId> [updateSour
       utils.logLabeledBullet(
         logPrefix,
         `${clc.bold(instanceId)} is already up to date. Its version is ${clc.bold(
-          newExtensionVersion.ref
-        )}.`
+          newExtensionVersion.ref,
+        )}.`,
       );
       return;
     }
     utils.logLabeledBullet(
       logPrefix,
       `Updating ${clc.bold(instanceId)} from version ${clc.bold(
-        oldExtensionVersion.ref
-      )} to version ${clc.bold(newExtensionVersion.ref)}.`
+        oldExtensionVersion.ref,
+      )} to version ${clc.bold(newExtensionVersion.ref)}.`,
     );
 
     if (
@@ -124,7 +118,7 @@ export const command = new Command("ext:update <extensionInstanceId> [updateSour
       ? await askUserForEventsConfig.askForEventsConfig(
           newExtensionVersion.spec.events,
           "${param:PROJECT_ID}",
-          instanceId
+          instanceId,
         )
       : undefined;
     if (eventsConfig) {
@@ -147,7 +141,7 @@ export const command = new Command("ext:update <extensionInstanceId> [updateSour
       {
         nonInteractive: options.nonInteractive,
         force: true, // Skip asking for permission again
-      }
+      },
     );
     displayDeveloperTOSWarning();
     return;

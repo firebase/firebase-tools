@@ -1,27 +1,17 @@
-import * as fs from "fs";
-import * as path from "path";
-
 import { askInstallDependencies } from "./npm-dependencies";
 import { prompt } from "../../../prompt";
 import { configForCodebase } from "../../../functions/projectConfig";
+import { readTemplateSync } from "../../../templates";
 
-const TEMPLATE_ROOT = path.resolve(__dirname, "../../../../templates/init/functions/typescript/");
-const PACKAGE_LINTING_TEMPLATE = fs.readFileSync(
-  path.join(TEMPLATE_ROOT, "package.lint.json"),
-  "utf8"
+const PACKAGE_LINTING_TEMPLATE = readTemplateSync("init/functions/typescript/package.lint.json");
+const PACKAGE_NO_LINTING_TEMPLATE = readTemplateSync(
+  "init/functions/typescript/package.nolint.json",
 );
-const PACKAGE_NO_LINTING_TEMPLATE = fs.readFileSync(
-  path.join(TEMPLATE_ROOT, "package.nolint.json"),
-  "utf8"
-);
-const ESLINT_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_eslintrc"), "utf8");
-const TSCONFIG_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "tsconfig.json"), "utf8");
-const TSCONFIG_DEV_TEMPLATE = fs.readFileSync(
-  path.join(TEMPLATE_ROOT, "tsconfig.dev.json"),
-  "utf8"
-);
-const INDEX_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "index.ts"), "utf8");
-const GITIGNORE_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_gitignore"), "utf8");
+const ESLINT_TEMPLATE = readTemplateSync("init/functions/typescript/_eslintrc");
+const TSCONFIG_TEMPLATE = readTemplateSync("init/functions/typescript/tsconfig.json");
+const TSCONFIG_DEV_TEMPLATE = readTemplateSync("init/functions/typescript/tsconfig.dev.json");
+const INDEX_TEMPLATE = readTemplateSync("init/functions/typescript/index.ts");
+const GITIGNORE_TEMPLATE = readTemplateSync("init/functions/typescript/_gitignore");
 
 export function setup(setup: any, config: any): Promise<any> {
   return prompt(setup.functions, [
@@ -43,7 +33,7 @@ export function setup(setup: any, config: any): Promise<any> {
           .then(() => {
             return config.askWriteProjectFile(
               `${setup.functions.source}/.eslintrc.js`,
-              ESLINT_TEMPLATE
+              ESLINT_TEMPLATE,
             );
           });
       } else {
@@ -51,20 +41,20 @@ export function setup(setup: any, config: any): Promise<any> {
       }
       return config.askWriteProjectFile(
         `${setup.functions.source}/package.json`,
-        PACKAGE_NO_LINTING_TEMPLATE
+        PACKAGE_NO_LINTING_TEMPLATE,
       );
     })
     .then(() => {
       return config.askWriteProjectFile(
         `${setup.functions.source}/tsconfig.json`,
-        TSCONFIG_TEMPLATE
+        TSCONFIG_TEMPLATE,
       );
     })
     .then(() => {
       if (setup.functions.lint) {
         return config.askWriteProjectFile(
           `${setup.functions.source}/tsconfig.dev.json`,
-          TSCONFIG_DEV_TEMPLATE
+          TSCONFIG_DEV_TEMPLATE,
         );
       }
     })

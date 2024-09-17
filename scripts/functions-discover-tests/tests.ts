@@ -101,7 +101,7 @@ describe("Function discovery test", function (this) {
         (data: any) => {
           output = JSON.parse(data);
           return true;
-        }
+        },
       );
       expect(output.status).to.equal("success");
       for (const e of tc.expects) {

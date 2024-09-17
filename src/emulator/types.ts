@@ -1,5 +1,6 @@
 import { ChildProcess } from "child_process";
 import { EventEmitter } from "events";
+import * as experiments from "../experiments";
 
 export enum Emulators {
   AUTH = "auth",
@@ -8,12 +9,15 @@ export enum Emulators {
   FIRESTORE = "firestore",
   DATABASE = "database",
   HOSTING = "hosting",
+  APPHOSTING = "apphosting",
   PUBSUB = "pubsub",
   UI = "ui",
   LOGGING = "logging",
   STORAGE = "storage",
   EXTENSIONS = "extensions",
   EVENTARC = "eventarc",
+  DATACONNECT = "dataconnect",
+  TASKS = "tasks",
 }
 
 export type DownloadableEmulators =
@@ -21,13 +25,15 @@ export type DownloadableEmulators =
   | Emulators.DATABASE
   | Emulators.PUBSUB
   | Emulators.UI
-  | Emulators.STORAGE;
+  | Emulators.STORAGE
+  | Emulators.DATACONNECT;
 export const DOWNLOADABLE_EMULATORS = [
   Emulators.FIRESTORE,
   Emulators.DATABASE,
   Emulators.PUBSUB,
   Emulators.UI,
   Emulators.STORAGE,
+  Emulators.DATACONNECT,
 ];
 
 export type ImportExportEmulators = Emulators.FIRESTORE | Emulators.DATABASE | Emulators.AUTH;
@@ -44,9 +50,12 @@ export const ALL_SERVICE_EMULATORS = [
   Emulators.FIRESTORE,
   Emulators.DATABASE,
   Emulators.HOSTING,
+  ...(experiments.isEnabled("emulatorapphosting") ? [Emulators.APPHOSTING] : []),
   Emulators.PUBSUB,
   Emulators.STORAGE,
   Emulators.EVENTARC,
+  Emulators.DATACONNECT,
+  Emulators.TASKS,
 ].filter((v) => v);
 
 export const EMULATORS_SUPPORTED_BY_FUNCTIONS = [
@@ -55,6 +64,7 @@ export const EMULATORS_SUPPORTED_BY_FUNCTIONS = [
   Emulators.PUBSUB,
   Emulators.STORAGE,
   Emulators.EVENTARC,
+  Emulators.TASKS,
 ];
 
 export const EMULATORS_SUPPORTED_BY_UI = [
@@ -134,12 +144,15 @@ export interface EmulatorInfo {
   pid?: number;
   reservedPorts?: number[];
 
-  /** All addresses that an emulator listens on. */
+  // All addresses that an emulator listens on.
   listen?: ListenSpec[];
 
-  /** The primary IP address that the emulator listens on. */
+  // The primary IP address that the emulator listens on.
   host: string;
   port: number;
+
+  // How long to wait for the emulator to start before erroring out.
+  timeout?: number;
 }
 
 export interface DownloadableEmulatorCommand {
@@ -147,6 +160,7 @@ export interface DownloadableEmulatorCommand {
   args: string[];
   optionalArgs: string[];
   joinArgs: boolean;
+  shell: boolean;
 }
 
 export interface EmulatorDownloadOptions {
@@ -157,6 +171,7 @@ export interface EmulatorDownloadOptions {
   namePrefix: string;
   skipChecksumAndSize?: boolean;
   skipCache?: boolean;
+  auth?: boolean;
 }
 
 export interface EmulatorUpdateDetails {
@@ -181,6 +196,9 @@ export interface EmulatorDownloadDetails {
   // If specified, a path where the runnable binary can be found after downloading and
   // unzipping. Otherwise downloadPath will be used.
   binaryPath?: string;
+
+  // If true, never try to download this emualtor. Set when developing with local versions of an emulator.
+  localOnly?: boolean;
 }
 
 export interface DownloadableEmulatorDetails {
@@ -227,7 +245,7 @@ export class EmulatorLog {
     emitter: EventEmitter,
     level: string,
     type: string,
-    filter?: (el: EmulatorLog) => boolean
+    filter?: (el: EmulatorLog) => boolean,
   ): Promise<EmulatorLog> {
     return new Promise((resolve) => {
       const listener = (el: EmulatorLog) => {
@@ -275,7 +293,7 @@ export class EmulatorLog {
       parsedLog.type,
       parsedLog.text,
       parsedLog.data,
-      parsedLog.timestamp
+      parsedLog.timestamp,
     );
   }
 
@@ -287,7 +305,7 @@ export class EmulatorLog {
     public type: string,
     public text: string,
     public data?: any,
-    public timestamp?: string
+    public timestamp?: string,
   ) {
     this.timestamp = this.timestamp || new Date().toISOString();
     this.data = this.data || {};
@@ -337,7 +355,7 @@ export class EmulatorLog {
       });
     } else {
       process.stderr.write(
-        "subprocess.send() is undefined, cannot communicate with Functions Runtime."
+        "subprocess.send() is undefined, cannot communicate with Functions Runtime.",
       );
     }
   }
@@ -352,7 +370,7 @@ export class EmulatorLog {
         type: this.type,
       },
       undefined,
-      pretty ? 2 : 0
+      pretty ? 2 : 0,
     );
   }
 }

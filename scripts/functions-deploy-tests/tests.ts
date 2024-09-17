@@ -75,17 +75,17 @@ async function listFns(runId: string): Promise<Record<string, Endpoint>> {
           };
           if (cfg.maxBackoffDuration) {
             ep.scheduleTrigger.retryConfig.maxBackoffSeconds = proto.secondsFromDuration(
-              cfg.maxBackoffDuration
+              cfg.maxBackoffDuration,
             );
           }
           if (cfg.maxRetryDuration) {
             ep.scheduleTrigger.retryConfig.maxRetrySeconds = proto.secondsFromDuration(
-              cfg.maxRetryDuration
+              cfg.maxRetryDuration,
             );
           }
           if (cfg.minBackoffDuration) {
             ep.scheduleTrigger.retryConfig.minBackoffSeconds = proto.secondsFromDuration(
-              cfg.minBackoffDuration
+              cfg.minBackoffDuration,
             );
           }
         }
@@ -122,7 +122,7 @@ describe("firebase deploy", function (this) {
     // All exported functions will have name {hash}-{trigger} e.g. 'abcdefg-v1storage'.
     await fs.writeFile(
       path.join(FUNCTIONS_DIR, "index.js"),
-      `export * as ${RUN_ID} from "./fns.js";`
+      `export * as ${RUN_ID} from "./fns.js";`,
     );
   });
 

@@ -3,30 +3,22 @@ import { copy, existsSync } from "fs-extra";
 import { join } from "path";
 import { BuildResult, Discovery, FrameworkType, SupportLevel } from "../interfaces";
 import { FirebaseError } from "../../error";
-import {
-  readJSON,
-  simpleProxy,
-  warnIfCustomBuildScript,
-  findDependency,
-  getNodeModuleBin,
-} from "../utils";
-import { getBootstrapScript, getConfig } from "./utils";
+import { readJSON, simpleProxy, warnIfCustomBuildScript, getNodeModuleBin } from "../utils";
+import { getAstroVersion, getBootstrapScript, getConfig } from "./utils";
 
 export const name = "Astro";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.MetaFramework;
-
-function getAstroVersion(cwd: string): string | undefined {
-  return findDependency("astro", { cwd, depth: 0, omitDev: false })?.version;
-}
+export const supportedRange = "2 - 4";
 
 export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!existsSync(join(dir, "package.json"))) return;
-  if (!getAstroVersion(dir)) return;
-  const { output, publicDir: publicDirectory } = await getConfig(dir);
+  const version = getAstroVersion(dir);
+  if (!version) return;
+  const { output } = await getConfig(dir);
   return {
     mayWantBackend: output !== "static",
-    publicDirectory,
+    version,
   };
 }
 
@@ -39,7 +31,7 @@ export async function build(cwd: string): Promise<BuildResult> {
   const wantsBackend = output !== "static";
   if (wantsBackend && adapter?.name !== "@astrojs/node") {
     throw new FirebaseError(
-      "Deploying an Astro application with SSR on Firebase Hosting requires the @astrojs/node adapter in middleware mode. https://docs.astro.build/en/guides/integrations-guide/node/"
+      "Deploying an Astro application with SSR on Firebase Hosting requires the @astrojs/node adapter in middleware mode. https://docs.astro.build/en/guides/integrations-guide/node/",
     );
   }
   const build = spawnSync(cli, ["build"], { cwd, stdio: "inherit" });

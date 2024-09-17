@@ -1,3 +1,9 @@
+import * as fs from "fs-extra";
+import * as tty from "tty";
+import * as path from "node:path";
+import * as yaml from "yaml";
+import { Socket } from "node:net";
+
 import * as _ from "lodash";
 import * as url from "url";
 import * as http from "http";
@@ -10,27 +16,29 @@ import * as winston from "winston";
 import { SPLAT } from "triple-beam";
 import { AssertionError } from "assert";
 const stripAnsi = require("strip-ansi");
+import { getPortPromise as getPort } from "portfinder";
 
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
 import { logger, LogLevel } from "./logger";
 import { LogDataOrUndefined } from "./emulator/loggingEmulator";
-import { Socket } from "net";
+import { promptOnce } from "./prompt";
+import { readTemplateSync } from "./templates";
 
-const IS_WINDOWS = process.platform === "win32";
+export const IS_WINDOWS = process.platform === "win32";
 const SUCCESS_CHAR = IS_WINDOWS ? "+" : "✔";
 const WARNING_CHAR = IS_WINDOWS ? "!" : "⚠";
 const ERROR_CHAR = IS_WINDOWS ? "!!" : "⬢";
 const THIRTY_DAYS_IN_MILLISECONDS = 30 * 24 * 60 * 60 * 1000;
 
 export const envOverrides: string[] = [];
-
+export const vscodeEnvVars: { [key: string]: string } = {};
 /**
  * Create a Firebase Console URL for the specified path and project.
  */
 export function consoleUrl(project: string, path: string): string {
   const api = require("./api");
-  return `${api.consoleOrigin}/project/${project}${path}`;
+  return `${api.consoleOrigin()}/project/${project}${path}`;
 }
 
 /**
@@ -48,6 +56,15 @@ export function getInheritedOption(options: any, key: string): any {
 }
 
 /**
+ * Sets the VSCode environment variables to be used by the CLI when called by VSCode
+ * @param envVar name of the environment variable
+ * @param value value of the environment variable
+ */
+export function setVSCodeEnvVars(envVar: string, value: string) {
+  vscodeEnvVars[envVar] = value;
+}
+
+/**
  * Override a value with supplied environment variable if present. A function
  * that returns the environment variable in an acceptable format can be
  * proivded. If it throws an error, the default value will be used.
@@ -55,9 +72,10 @@ export function getInheritedOption(options: any, key: string): any {
 export function envOverride(
   envname: string,
   value: string,
-  coerce?: (value: string, defaultValue: string) => any
+  coerce?: (value: string, defaultValue: string) => any,
 ): string {
-  const currentEnvValue = process.env[envname];
+  const currentEnvValue =
+    isVSCodeExtension() && vscodeEnvVars[envname] ? vscodeEnvVars[envname] : process.env[envname];
   if (currentEnvValue && currentEnvValue.length) {
     envOverrides.push(envname);
     if (coerce) {
@@ -89,7 +107,7 @@ export function getDatabaseViewDataUrl(
   origin: string,
   project: string,
   namespace: string,
-  pathname: string
+  pathname: string,
 ): string {
   const urlObj = new url.URL(origin);
   if (urlObj.hostname.includes("firebaseio") || urlObj.hostname.includes("firebasedatabase")) {
@@ -130,7 +148,7 @@ export function addSubdomain(origin: string, subdomain: string): string {
 export function logSuccess(
   message: string,
   type: LogLevel = "info",
-  data: LogDataOrUndefined = undefined
+  data: LogDataOrUndefined = undefined,
 ): void {
   logger[type](clc.green(clc.bold(`${SUCCESS_CHAR} `)), message, data);
 }
@@ -142,7 +160,7 @@ export function logLabeledSuccess(
   label: string,
   message: string,
   type: LogLevel = "info",
-  data: LogDataOrUndefined = undefined
+  data: LogDataOrUndefined = undefined,
 ): void {
   logger[type](clc.green(clc.bold(`${SUCCESS_CHAR}  ${label}:`)), message, data);
 }
@@ -153,7 +171,7 @@ export function logLabeledSuccess(
 export function logBullet(
   message: string,
   type: LogLevel = "info",
-  data: LogDataOrUndefined = undefined
+  data: LogDataOrUndefined = undefined,
 ): void {
   logger[type](clc.cyan(clc.bold("i ")), message, data);
 }
@@ -165,7 +183,7 @@ export function logLabeledBullet(
   label: string,
   message: string,
   type: LogLevel = "info",
-  data: LogDataOrUndefined = undefined
+  data: LogDataOrUndefined = undefined,
 ): void {
   logger[type](clc.cyan(clc.bold(`i  ${label}:`)), message, data);
 }
@@ -176,7 +194,7 @@ export function logLabeledBullet(
 export function logWarning(
   message: string,
   type: LogLevel = "warn",
-  data: LogDataOrUndefined = undefined
+  data: LogDataOrUndefined = undefined,
 ): void {
   logger[type](clc.yellow(clc.bold(`${WARNING_CHAR} `)), message, data);
 }
@@ -188,19 +206,19 @@ export function logLabeledWarning(
   label: string,
   message: string,
   type: LogLevel = "warn",
-  data: LogDataOrUndefined = undefined
+  data: LogDataOrUndefined = undefined,
 ): void {
   logger[type](clc.yellow(clc.bold(`${WARNING_CHAR}  ${label}:`)), message, data);
 }
 
 /**
- * Log an rror statement with a red bullet at the start of the line.
+ * Log an error statement with a red bullet at the start of the line.
  */
 export function logLabeledError(
   label: string,
   message: string,
   type: LogLevel = "error",
-  data: LogDataOrUndefined = undefined
+  data: LogDataOrUndefined = undefined,
 ): void {
   logger[type](clc.red(clc.bold(`${ERROR_CHAR}  ${label}:`)), message, data);
 }
@@ -256,7 +274,7 @@ export function allSettled<T>(promises: Array<Promise<T>>): Promise<Array<Promis
               status: "rejected",
               reason: err,
             };
-          }
+          },
         )
         .then(() => {
           if (!--remaining) {
@@ -395,7 +413,7 @@ export function promiseAllSettled(promises: Array<Promise<any>>): Promise<Settle
 export async function promiseWhile<T>(
   action: () => Promise<T>,
   check: (value: T) => boolean,
-  interval = 2500
+  interval = 2500,
 ): Promise<T> {
   return new Promise<T>((resolve, promiseReject) => {
     const run = async () => {
@@ -430,7 +448,7 @@ export function withTimeout<T>(timeoutMs: number, promise: Promise<T>): Promise<
       (err) => {
         clearTimeout(timeout);
         reject(err);
-      }
+      },
     );
   });
 }
@@ -492,7 +510,7 @@ export function setupLoggers() {
           const segments = [info.message, ...(info[SPLAT] || [])].map(tryStringify);
           return `${stripAnsi(segments.join(" "))}`;
         }),
-      })
+      }),
     );
   } else if (process.env.IS_FIREBASE_CLI) {
     logger.add(
@@ -501,9 +519,9 @@ export function setupLoggers() {
         format: winston.format.printf((info) =>
           [info.message, ...(info[SPLAT] || [])]
             .filter((chunk) => typeof chunk === "string")
-            .join(" ")
+            .join(" "),
         ),
-      })
+      }),
     );
   }
 }
@@ -525,12 +543,16 @@ export async function promiseWithSpinner<T>(action: () => Promise<T>, message: s
   return data;
 }
 
+/** Creates a promise that resolves after a given timeout. await to "sleep". */
+export function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * Return a "destroy" function for a Node.js HTTP server. MUST be called on
  * server creation (e.g. right after `.listen`), BEFORE any connections.
  *
  * Inspired by https://github.com/isaacs/server-destroy/blob/master/index.js
- *
  * @return a function that destroys all connections and closes the server
  */
 export function createDestroyer(server: http.Server): () => Promise<void> {
@@ -582,6 +604,13 @@ export function isCloudEnvironment() {
 }
 
 /**
+ * Detect if code is running in a VSCode Extension
+ */
+export function isVSCodeExtension(): boolean {
+  return !!process.env.VSCODE_CWD;
+}
+
+/**
  * Indicates whether or not this process is likely to be running in WSL.
  * @return true if we're likely in WSL, false otherwise
  */
@@ -596,7 +625,10 @@ export function thirtyDaysFromNow(): Date {
   return new Date(Date.now() + THIRTY_DAYS_IN_MILLISECONDS);
 }
 
-export function assertIsString(val: any, message?: string): asserts val is string {
+/**
+ * Verifies val is a string.
+ */
+export function assertIsString(val: unknown, message?: string): asserts val is string {
   if (typeof val !== "string") {
     throw new AssertionError({
       message: message || `expected "string" but got "${typeof val}"`,
@@ -604,7 +636,10 @@ export function assertIsString(val: any, message?: string): asserts val is strin
   }
 }
 
-export function assertIsNumber(val: any, message?: string): asserts val is number {
+/**
+ * Verifies val is a number.
+ */
+export function assertIsNumber(val: unknown, message?: string): asserts val is number {
   if (typeof val !== "number") {
     throw new AssertionError({
       message: message || `expected "number" but got "${typeof val}"`,
@@ -612,9 +647,12 @@ export function assertIsNumber(val: any, message?: string): asserts val is numbe
   }
 }
 
+/**
+ * Assert val is a string or undefined.
+ */
 export function assertIsStringOrUndefined(
-  val: any,
-  message?: string
+  val: unknown,
+  message?: string,
 ): asserts val is string | undefined {
   if (!(val === undefined || typeof val === "string")) {
     throw new AssertionError({
@@ -628,17 +666,20 @@ export function assertIsStringOrUndefined(
  */
 export function groupBy<T, K extends string | number | symbol>(
   arr: T[],
-  f: (item: T) => K
+  f: (item: T) => K,
 ): Record<K, T[]> {
-  return arr.reduce((result, item) => {
-    const key = f(item);
-    if (result[key]) {
-      result[key].push(item);
-    } else {
-      result[key] = [item];
-    }
-    return result;
-  }, {} as Record<K, T[]>);
+  return arr.reduce(
+    (result, item) => {
+      const key = f(item);
+      if (result[key]) {
+        result[key].push(item);
+      } else {
+        result[key] = [item];
+      }
+      return result;
+    },
+    {} as Record<K, T[]>,
+  );
 }
 
 function cloneArray<T>(arr: T[]): T[] {
@@ -703,7 +744,7 @@ type DebounceOptions = {
 export function debounce<T>(
   fn: (...args: T[]) => void,
   delay: number,
-  { leading }: DebounceOptions = {}
+  { leading }: DebounceOptions = {},
 ): (...args: T[]) => void {
   let timer: NodeJS.Timeout;
   return (...args) => {
@@ -751,4 +792,135 @@ export function connectableHostname(hostname: string): string {
  */
 export async function openInBrowser(url: string): Promise<void> {
   await open(url);
+}
+
+/**
+ * Like openInBrowser but opens the url in a popup.
+ */
+export async function openInBrowserPopup(
+  url: string,
+  buttonText: string,
+): Promise<{ url: string; cleanup: () => void }> {
+  const popupPage = readTemplateSync("popup.html")
+    .replace("${url}", url)
+    .replace("${buttonText}", buttonText);
+
+  const port = await getPort();
+
+  const server = http.createServer((req, res) => {
+    res.writeHead(200, {
+      "Content-Length": popupPage.length,
+      "Content-Type": "text/html",
+    });
+    res.end(popupPage);
+    req.socket.destroy();
+  });
+
+  server.listen(port);
+
+  const popupPageUri = `http://localhost:${port}`;
+  await openInBrowser(popupPageUri);
+
+  return {
+    url: popupPageUri,
+    cleanup: () => {
+      server.close();
+    },
+  };
+}
+
+/**
+ * Get hostname from a given url or null if the url is invalid
+ */
+export function getHostnameFromUrl(url: string): string | null {
+  try {
+    return new URL(url).hostname;
+  } catch (e: unknown) {
+    return null;
+  }
+}
+
+/**
+ * Retrieves a file from the directory.
+ */
+export function readFileFromDirectory(
+  directory: string,
+  file: string,
+): Promise<{ source: string; sourceDirectory: string }> {
+  return new Promise<string>((resolve, reject) => {
+    fs.readFile(path.resolve(directory, file), "utf8", (err, data) => {
+      if (err) {
+        if (err.code === "ENOENT") {
+          return reject(
+            new FirebaseError(`Could not find "${file}" in "${directory}"`, { original: err }),
+          );
+        }
+        reject(
+          new FirebaseError(`Failed to read file "${file}" in "${directory}"`, { original: err }),
+        );
+      } else {
+        resolve(data);
+      }
+    });
+  }).then((source) => {
+    return {
+      source,
+      sourceDirectory: directory,
+    };
+  });
+}
+
+/**
+ * Wrapps `yaml.safeLoad` with an error handler to present better YAML parsing
+ * errors.
+ */
+export function wrappedSafeLoad(source: string): any {
+  try {
+    return yaml.parse(source);
+  } catch (err: any) {
+    throw new FirebaseError(`YAML Error: ${err.message}`, { original: err });
+  }
+}
+
+/**
+ * Generate id meeting the following criterias:
+ *  - Lowercase, digits, and hyphens only
+ *  - Must begin with letter
+ *  - Cannot end with hyphen
+ */
+export function generateId(n = 6): string {
+  const letters = "abcdefghijklmnopqrstuvwxyz";
+  const allChars = "01234567890-abcdefghijklmnopqrstuvwxyz";
+  let id = letters[Math.floor(Math.random() * letters.length)];
+  for (let i = 1; i < n; i++) {
+    const idx = Math.floor(Math.random() * allChars.length);
+    id += allChars[idx];
+  }
+  return id;
+}
+
+/**
+ * Reads a secret value from either a file or a prompt.
+ * If dataFile is falsy and this is a tty, uses prompty. Otherwise reads from dataFile.
+ * If dataFile is - or falsy, this means reading from file descriptor 0 (e.g. pipe in)
+ */
+export function readSecretValue(prompt: string, dataFile?: string): Promise<string> {
+  if ((!dataFile || dataFile === "-") && tty.isatty(0)) {
+    return promptOnce({
+      type: "password",
+      message: prompt,
+    });
+  }
+  let input: string | number = 0;
+  if (dataFile && dataFile !== "-") {
+    input = dataFile;
+  }
+  try {
+    return Promise.resolve(fs.readFileSync(input, "utf-8"));
+  } catch (e: any) {
+    if (e.code === "ENOENT") {
+      throw new FirebaseError(`File not found: ${input}`, { original: e });
+    }
+    throw e;
+  }
 }

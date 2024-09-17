@@ -57,8 +57,8 @@ export function needProjectId({
         clc.bold("firebase projects:list") +
         ".\n" +
         marked(
-          "To learn about active projects for the CLI, visit https://firebase.google.com/docs/cli#project_aliases"
-        )
+          "To learn about active projects for the CLI, visit https://firebase.google.com/docs/cli#project_aliases",
+        ),
     );
   }
 
@@ -70,7 +70,7 @@ export function needProjectId({
     "No project active, but project aliases are available.\n\nRun " +
       clc.bold("firebase use <alias>") +
       " with one of these options:\n\n" +
-      aliasList
+      aliasList,
   );
 }
 

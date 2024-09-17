@@ -17,7 +17,7 @@ export interface ModuleVersion {
 
 export function extractParamsFromPath(
   wildcardPath: string,
-  snapshotPath: string
+  snapshotPath: string,
 ): { [key: string]: string } {
   if (!isValidWildcardMatch(wildcardPath, snapshotPath)) {
     return {};

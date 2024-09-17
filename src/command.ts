@@ -125,7 +125,7 @@ export class Command {
   }
 
   /**
-   * Registers the command with the client. This is used to inisially set up
+   * Registers the command with the client. This is used to initially set up
    * all the commands and wraps their functionality with analytics and error
    * handling.
    * @param client the client object (from src/index.js).
@@ -174,10 +174,10 @@ export class Command {
         client.errorOut(
           new FirebaseError(
             `Too many arguments. Run ${clc.bold(
-              "firebase help " + this.name
+              "firebase help " + this.name,
             )} for usage instructions`,
-            { exit: 1 }
-          )
+            { exit: 1 },
+          ),
         );
         return;
       }
@@ -190,16 +190,19 @@ export class Command {
       runner(...args)
         .then(async (result) => {
           if (getInheritedOption(options, "json")) {
-            console.log(
-              JSON.stringify(
-                {
-                  status: "success",
-                  result: result,
-                },
-                null,
-                2
-              )
-            );
+            await new Promise((resolve) => {
+              process.stdout.write(
+                JSON.stringify(
+                  {
+                    status: "success",
+                    result: result,
+                  },
+                  null,
+                  2,
+                ),
+                resolve,
+              );
+            });
           }
           const duration = Math.floor((process.uptime() - start) * 1000);
           const trackSuccess = trackGA4("command_execution", {
@@ -219,23 +222,26 @@ export class Command {
                   command_name: this.name,
                   duration,
                 }),
-              ])
+              ]),
             );
           }
           process.exit();
         })
         .catch(async (err) => {
           if (getInheritedOption(options, "json")) {
-            console.log(
-              JSON.stringify(
-                {
-                  status: "error",
-                  error: err.message,
-                },
-                null,
-                2
-              )
-            );
+            await new Promise((resolve) => {
+              process.stdout.write(
+                JSON.stringify(
+                  {
+                    status: "error",
+                    error: err.message,
+                  },
+                  null,
+                  2,
+                ),
+                resolve,
+              );
+            });
           }
           const duration = Math.floor((process.uptime() - start) * 1000);
           await withTimeout(
@@ -248,7 +254,7 @@ export class Command {
                   result: "error",
                   interactive: getInheritedOption(options, "nonInteractive") ? "false" : "true",
                 },
-                duration
+                duration,
               ),
               isEmulator
                 ? trackEmulator("command_error", {
@@ -257,7 +263,7 @@ export class Command {
                     error_type: err.exit === 1 ? "user" : "unexpected",
                   })
                 : Promise.resolve(),
-            ])
+            ]),
           );
 
           client.errorOut(err);
@@ -371,7 +377,7 @@ export class Command {
    * @return an async function that executes the command.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  runner(): (...a: any[]) => Promise<void> {
+  runner(): (...a: any[]) => Promise<any> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return async (...args: any[]) => {
       // Make sure the last argument is an object for options, add {} if none

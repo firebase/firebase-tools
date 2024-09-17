@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import * as request from "request";
+import fetch from "node-fetch";
 import * as crypto from "crypto";
 import * as os from "os";
 import { FrameworkOptions } from "../integration-helpers/framework";
@@ -18,7 +18,7 @@ export function readEmulatorConfig(config = FIREBASE_EMULATOR_CONFIG): Framework
     return readJson(config);
   } catch (error) {
     throw new Error(
-      `Cannot read the emulator config. Please ensure that the file ${config} is present in the current directory.`
+      `Cannot read the emulator config. Please ensure that the file ${config} is present in the current directory.`,
     );
   }
 }
@@ -81,11 +81,7 @@ export function writeToFile(filename: string, contents: Buffer, tmpDir: string):
  * Resets the storage layer of the Storage Emulator.
  */
 export async function resetStorageEmulator(emulatorHost: string) {
-  await new Promise<void>((resolve) => {
-    request.post(`${emulatorHost}/internal/reset`, () => {
-      resolve();
-    });
-  });
+  await fetch(`${emulatorHost}/internal/reset`, { method: "POST" });
 }
 
 export async function getProdAccessToken(serviceAccountKey: any): Promise<string> {
@@ -94,7 +90,7 @@ export async function getProdAccessToken(serviceAccountKey: any): Promise<string
     null,
     serviceAccountKey.private_key,
     ["https://www.googleapis.com/auth/cloud-platform"],
-    null
+    null,
   );
   const credentials = await jwtClient.authorize();
   return credentials.access_token!;
