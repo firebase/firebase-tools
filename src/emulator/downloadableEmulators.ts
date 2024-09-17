@@ -1,3 +1,5 @@
+
+import lsofi from "lsofi";
 import {
   Emulators,
   DownloadableEmulators,
@@ -21,7 +23,6 @@ import { EmulatorRegistry } from "./registry";
 import { downloadEmulator } from "../emulator/download";
 import * as experiments from "../experiments";
 import * as process from "process";
-import { findProcessBlockingPort } from "./portUtils";
 
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 4000; /* ms */
 
@@ -413,7 +414,7 @@ export async function handleEmulatorProcessError(
       `${description} has exited because java is not installed, you can install it from https://openjdk.java.net/install/`,
     );
   } else if (err.code === "EADDRINUSE") {
-    const process = port ? findProcessBlockingPort(port) : false;
+    const process = port ? await lsofi(port) : false;
     await _fatal(
       emulator,
       `${description} has exited because its configured port is already in use${
