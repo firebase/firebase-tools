@@ -42,7 +42,7 @@ export class DataConnectService {
     const dataConnectConfigsValue = await firstWhereDefined(dataConnectConfigs);
     // TODO: avoid calling this here and in getApiServicePathByPath
     const serviceId =
-      dataConnectConfigsValue?.tryReadValue.findEnclosingServiceForPath(path)
+      dataConnectConfigsValue?.tryReadValue!.findEnclosingServiceForPath(path)!
         .value.serviceId;
     const projectId = firebaseRC.value?.tryReadValue?.projects?.default;
 
@@ -190,7 +190,7 @@ export class DataConnectService {
     // TODO: get introspections for all services
     const configs = await firstWhereDefined(dataConnectConfigs);
     // Using "requireValue", so that if configs are not available, the execution should throw.
-    const serviceId = configs.requireValue.serviceIds[0];
+    const serviceId = configs.requireValue!.serviceIds[0];
     try {
       // TODO: get name programmatically
       const body = this._serializeBody({
@@ -276,7 +276,9 @@ function parseVariableString(variables: string): Record<string, any> {
   }
   try {
     return JSON.parse(variables);
-  } catch(e: any) {
-    throw new Error("Unable to parse variables as JSON. Double check that that there are no unmatched braces or quotes in the variables pane.")
+  } catch (e: any) {
+    throw new Error(
+      "Unable to parse variables as JSON. Double check that that there are no unmatched braces or quotes in the variables pane.",
+    );
   }
 }

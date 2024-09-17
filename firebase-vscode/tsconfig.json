@@ -9,11 +9,11 @@
     "moduleResolution": "node",
     "target": "ES2017",
     "outDir": "dist",
-    "lib": ["ES2020", "DOM" ],
+    "lib": ["ES2020", "DOM"],
     "jsx": "react",
     "sourceMap": true,
     "rootDirs": ["src", "../src", "common"],
-    "strict": false /* enable all strict type-checking options */
+    "strict": true /* enable all strict type-checking options */
   },
   "ts-node": {
     "esm": true

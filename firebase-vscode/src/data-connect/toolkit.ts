@@ -13,10 +13,7 @@ import { RC } from "../rc";
 
 /** FDC-specific emulator logic; Toolkit and emulator */
 export class DataConnectToolkit implements vscode.Disposable {
-  constructor(
-    readonly broker: ExtensionBrokerImpl,
-  ) {
-
+  constructor(readonly broker: ExtensionBrokerImpl) {
     this.subs.push(
       effect(() => {
         if (!this.isFDCToolkitRunning()) {
@@ -30,8 +27,11 @@ export class DataConnectToolkit implements vscode.Disposable {
         }
       }),
       broker.on("fdc.open-docs", () => {
-        vscode.commands.executeCommand("vscode.open", this.getGeneratedDocsURL());
-      })
+        vscode.commands.executeCommand(
+          "vscode.open",
+          this.getGeneratedDocsURL(),
+        );
+      }),
     );
   }
 
@@ -79,11 +79,9 @@ export class DataConnectToolkit implements vscode.Disposable {
 
   // Commands to run after the emulator is started successfully
   private async connectToToolkit() {
-        vscode.commands.executeCommand(
-          "firebase.dataConnect.executeIntrospection",
-        );
+    vscode.commands.executeCommand("firebase.dataConnect.executeIntrospection");
 
-    const configs = dataConnectConfigs.value?.tryReadValue;
+    const configs = dataConnectConfigs.value?.tryReadValue!;
     runEmulatorIssuesStream(
       configs,
       this.getFDCToolkitURL(),
