@@ -30,9 +30,9 @@ export function SidebarApp() {
 
   const accountSection = (
     <AccountSection
-      user={user}
-      isMonospace={env?.isMonospace}
-      isLoadingUser={isLoadingUser}
+      user={user!}
+      isMonospace={env?.isMonospace!}
+      isLoadingUser={isLoadingUser!}
     />
   );
   // Just render the account section loading view if it doesn't know user state
@@ -66,7 +66,7 @@ export function SidebarApp() {
     );
   }
 
-  return <SidebarContent configs={configs} />;
+  return <SidebarContent configs={configs as any} />;
 }
 
 function SidebarContent(props: {
@@ -105,8 +105,8 @@ function SidebarContent(props: {
 
   const accountSection = (
     <AccountSection
-      user={user}
-      isMonospace={env?.isMonospace}
+      user={user!}
+      isMonospace={env?.isMonospace!}
       isLoadingUser={false}
     />
   );
@@ -119,7 +119,7 @@ function SidebarContent(props: {
         <ProjectSection
           user={user}
           projectId={projectId}
-          isMonospace={env?.isMonospace}
+          isMonospace={env?.isMonospace!}
         />
       )}
     </>

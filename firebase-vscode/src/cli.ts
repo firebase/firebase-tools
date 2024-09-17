@@ -53,14 +53,14 @@ export async function requireAuthWrapper(
   }
 
   // only add account options when vscode is missing account information
-  if (!isUserMatching(account, currentOptions.value)) {
+  if (!isUserMatching(account!, currentOptions.value)) {
     currentOptions.value = { ...currentOptions.value, ...account };
   }
 
   if (!account) {
     // If nothing in configstore top level, grab the first "additionalAccount"
     for (const additionalAccount of accounts) {
-      if (additionalAccount.user.email === currentUser.value.email) {
+      if (additionalAccount.user.email === currentUser.value!.email) {
         account = additionalAccount;
         setGlobalDefaultAccount(account);
       }
@@ -86,12 +86,12 @@ export async function requireAuthWrapper(
       pluginLogger.debug("User found: ", userEmail);
 
       // VSCode only has the concept of a single user
-      return getGlobalDefaultAccount().user;
+      return getGlobalDefaultAccount()!.user;
     }
 
     pluginLogger.debug("No user found (this may be normal)");
     return null;
-  } catch (e) {
+  } catch (e: any) {
     if (showError) {
       // Show error to user - show a popup and log it with log level "error".
       pluginLogger.error(
@@ -125,7 +125,6 @@ export async function login() {
 export async function listProjects() {
   return listFirebaseProjects();
 }
-
 
 export function listRunningEmulators(): EmulatorInfo[] {
   return EmulatorRegistry.listRunningWithInfo();

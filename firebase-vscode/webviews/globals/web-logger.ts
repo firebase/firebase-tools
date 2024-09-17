@@ -8,7 +8,7 @@ type WebLogger = Record<Level, (...args: string[]) => void>;
 const tempObject = {};
 
 for (const level of levels) {
-  tempObject[level] = (...args: string[]) =>
+  (tempObject as any)[level] = (...args: string[]) =>
     broker.send("writeLog", { level, args });
 }
 

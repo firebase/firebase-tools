@@ -31,7 +31,7 @@ const defaultOptions: Readonly<VsCodeOptions> = {
   nonInteractive: true,
   interactive: false,
   debug: false,
-  rc: null,
+  rc: null as any,
   exportOnExit: false,
   import: "",
 
@@ -46,11 +46,11 @@ const defaultOptions: Readonly<VsCodeOptions> = {
 export const currentOptions = globalSignal({ ...defaultOptions });
 
 export function registerOptions(context: ExtensionContext): vscode.Disposable {
-  currentOptions.value.cwd = getConfigPath();
+  currentOptions.value.cwd = getConfigPath()!;
   const cwdSync = vscode.workspace.onDidChangeWorkspaceFolders(() => {
     currentOptions.value = {
       ...currentOptions.peek(),
-      cwd: getConfigPath(),
+      cwd: getConfigPath()!,
     };
   });
 
@@ -87,7 +87,7 @@ export function registerOptions(context: ExtensionContext): vscode.Disposable {
     } else {
       currentOptions.value = {
         ...previous,
-        rc: null,
+        rc: null as any,
         project: "",
       };
     }
@@ -105,7 +105,7 @@ export function registerOptions(context: ExtensionContext): vscode.Disposable {
     cwdSync,
     { dispose: firebaseConfigSync },
     { dispose: rcSync },
-    { dispose: notifySync }
+    { dispose: notifySync },
   );
 }
 
@@ -115,7 +115,7 @@ export function registerOptions(context: ExtensionContext): vscode.Disposable {
  */
 export async function getCommandOptions(
   firebaseJSON: Config,
-  options: Options = currentOptions.value
+  options: Options = currentOptions.value,
 ): Promise<Options> {
   // Use any string, it doesn't affect `prepare()`.
   const command = new Command("deploy");

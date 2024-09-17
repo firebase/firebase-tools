@@ -195,7 +195,7 @@ export class ConfigureSdkCodeLensProvider extends ComputedCodeLensProvider {
     const serviceConfig = fdcConfigs.findEnclosingServiceForPath(
       document.fileName,
     );
-    const connectorConfig = serviceConfig.findEnclosingConnectorForPath(
+    const connectorConfig = serviceConfig!.findEnclosingConnectorForPath(
       document.fileName,
     );
     if (serviceConfig) {
@@ -204,7 +204,7 @@ export class ConfigureSdkCodeLensProvider extends ComputedCodeLensProvider {
           title: `$(tools) Configure Generated SDK`,
           command: "fdc.connector.configure-sdk",
           tooltip: "Configure a generated SDK for this connector",
-          arguments: [connectorConfig.tryReadValue],
+          arguments: [connectorConfig!.tryReadValue],
         }),
       );
     }

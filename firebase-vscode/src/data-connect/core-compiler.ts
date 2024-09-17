@@ -46,7 +46,7 @@ function convertGQLErrorToDiagnostic(
   configs: ResolvedDataConnectConfigs,
   gqlErrors: GraphQLError[],
 ): DiagnosticTuple[] {
-  const perFileDiagnostics = {};
+  const perFileDiagnostics: any = {};
   const dcPath = configs.values[0].path;
   for (const error of gqlErrors) {
     const absFilePath = `${dcPath}/${error.extensions["file"]}`;
@@ -55,7 +55,7 @@ function convertGQLErrorToDiagnostic(
       source: "Firebase Data Connect: Compiler",
       message: error.message,
       severity: DiagnosticSeverity.Error,
-      range: locationToRange(error.locations[0]),
+      range: locationToRange(error.locations![0]),
     } as Diagnostic);
     perFileDiagnostics[absFilePath] = perFileDiagnostic;
   }
