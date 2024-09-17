@@ -7,7 +7,7 @@ import { Setup } from "../..";
 import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql";
 import { checkForFreeTrialInstance } from "../../../dataconnect/freeTrial";
 import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
-import { ensureApis } from "../../../dataconnect/ensureApis";
+import { ensureApis, ensureSparkApis } from "../../../dataconnect/ensureApis";
 import * as experiments from "../../../experiments";
 import {
   listLocations,
@@ -229,6 +229,8 @@ async function promptForService(
     if (isBillingEnabled) {
       // Enabling compute.googleapis.com requires a Blaze plan.
       await ensureApis(setup.projectId);
+    } else {
+      await ensureSparkApis(setup.projectId);
     }
     // TODO (b/344021748): Support initing with services that have existing sources/files
     const existingServices = await listAllServices(setup.projectId);
