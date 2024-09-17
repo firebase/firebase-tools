@@ -401,8 +401,8 @@ async function _fatal(emulator: Emulators, errorMsg: string): Promise<void> {
  */
 export async function handleEmulatorProcessError(
   emulator: Emulators,
-  port: number,
   err: any,
+  port?: number,
 ): Promise<void> {
   const description = Constants.description(emulator);
   console.log(`${err}`);
@@ -412,7 +412,7 @@ export async function handleEmulatorProcessError(
       `${description} has exited because java is not installed, you can install it from https://openjdk.java.net/install/`,
     );
   } else if (err.code === "EADDRINUSE") {
-    const process = findProcessBlockingPort(port);
+    const process = port ? findProcessBlockingPort(port) : false;
     await _fatal(
       emulator,
       `${description} has exited because its configured port is already in use${
@@ -503,7 +503,7 @@ async function _runBinary(
     });
 
     emulator.instance.on("error", (err) => {
-      handleEmulatorProcessError(emulator.name, err);
+      handleEmulatorProcessError(emulator.name, err, command.port);
     });
 
     emulator.instance.once("exit", async (code, signal) => {
@@ -638,5 +638,5 @@ export async function start(
     "DEBUG",
     `Starting ${Constants.description(targetName)} with command ${JSON.stringify(command)}`,
   );
-  return _runBinary(emulator, command, extraEnv);
+  return _runBinary(emulator, command, extraEnv, args.port);
 }
