@@ -1,23 +1,17 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Spacer } from "./components/ui/Spacer";
-import { broker, brokerSignal, useBroker } from "./globals/html-broker";
+import { broker, brokerSignal } from "./globals/html-broker";
 import { AccountSection } from "./components/AccountSection";
 import { ProjectSection } from "./components/ProjectSection";
-import { webLogger } from "./globals/web-logger";
-import { ValueOrError } from "./messaging/protocol";
-import { FirebaseConfig } from "../../src/firebaseConfig";
-import { RCData } from "../../src/rc";
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react";
 import { Body, Label } from "./components/ui/Text";
 import { PanelSection } from "./components/ui/PanelSection";
-import { computed } from "@preact/signals-core";
 import { EmulatorPanel as Emulators } from "./components/EmulatorPanel";
 import { App } from "./globals/app";
 import { signal, useComputed } from "@preact/signals-react";
 import { Icon } from "./components/ui/Icon";
-import { IconButton } from "./components/ui/IconButton";
-import { MenuItem, PopupMenu } from "./components/ui/popup-menu/PopupMenu";
 import { ButtonGroup } from "./components/ui/ButtonGroup";
+import { ExternalLink } from "./components/ui/ExternalLink";
 
 const user = brokerSignal("notifyUserChanged", {
   initialRequest: "getInitialData",
@@ -34,7 +28,9 @@ const hasFdcConfigs = brokerSignal("notifyHasFdcConfigs", {
 const emulatorsRunningInfo = brokerSignal("notifyEmulatorStateChanged", {
   initialRequest: "getEmulatorInfos",
 });
-const psqlString = brokerSignal("notifyPostgresStringChanged");
+const docsLink = brokerSignal("notifyDocksLink", {
+  initialRequest: "getDocsLink",
+});
 
 function Welcome() {
   const configLabel = useComputed(() => {
@@ -60,7 +56,7 @@ function Welcome() {
 
 function EmulatorsPanel() {
   return emulatorsRunningInfo.value?.infos ? (
-    <Emulators emulatorInfo={emulatorsRunningInfo.value?.infos!} />
+    <Emulators emulatorInfo={emulatorsRunningInfo.value.infos!} />
   ) : (
     <VSCodeButton
       appearance="secondary"
@@ -76,6 +72,17 @@ const deployMenu = signal(false);
 function DataConnect() {
   return (
     <>
+      {docsLink.value && (
+        <>
+          <Body>
+            <ExternalLink href={docsLink.value} prefix={<Icon icon="book" />}>
+              View reference docs
+            </ExternalLink>
+          </Body>
+          <Spacer size="xlarge" />
+        </>
+      )}
+
       <VSCodeButton
         onClick={() => broker.send("fdc.configure-sdk")}
         appearance="secondary"
@@ -89,15 +96,6 @@ function DataConnect() {
           Working with generated SDKs
         </a>
       </Label>
-      <Spacer size="xlarge" />
-      <Label level={3}>Generated GQL reference docs for your schema</Label>
-      <Spacer size="xsmall" />
-      <VSCodeButton
-        onClick={() => broker.send("fdc.open-docs")}
-        appearance="secondary"
-      >
-        View my reference docs
-      </VSCodeButton>
 
       <Spacer size="xlarge" />
 
@@ -142,7 +140,7 @@ export function SidebarApp() {
     return !!configs.value?.firebaseJson?.value && hasFdcConfigs.value;
   });
 
-  if (isLoadingUser.value || !user.value) {
+  if (isLoadingUser.value) {
     return <Body>Loading...</Body>;
   }
 
@@ -150,11 +148,11 @@ export function SidebarApp() {
     <App>
       <PanelSection>
         <AccountSection
-          user={user.value?.user!}
+          user={user.value?.user ?? null}
           isLoadingUser={false}
           isMonospace={env.value?.env.isMonospace ?? false}
         />
-        {project.value && (
+        {user.value && project.value && (
           <ProjectSection
             user={user.value?.user!}
             projectId={project.value?.projectId}
@@ -163,7 +161,14 @@ export function SidebarApp() {
         )}
       </PanelSection>
 
-      {isInitialized.value ? <Content /> : <Welcome />}
+      {user.value &&
+        (isInitialized.value ? (
+          <Content />
+        ) : (
+          <PanelSection isLast={true}>
+            <Welcome />
+          </PanelSection>
+        ))}
     </App>
   );
 }
