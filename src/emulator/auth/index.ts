@@ -125,13 +125,13 @@ export class AuthEmulator implements EmulatorInstance {
           },
           accountsPath,
           // Ignore the error when there are no users. No action needed.
-          { ignoreErrors: ["MISSING_USER_ACCOUNT"] }
+          { ignoreErrors: ["MISSING_USER_ACCOUNT"] },
         );
       } else {
         logger.logLabeled(
           "WARN",
           "auth",
-          `Skipped importing accounts because ${accountsPath} does not exist.`
+          `Skipped importing accounts because ${accountsPath} does not exist.`,
         );
       }
     }

@@ -565,12 +565,12 @@ function batchGet(
     const tenant = state.getTenantProject(queryTenantId);
     users = tenant.queryUsers(
       {},
-      { sortByField: "localId", order: "ASC", startToken: ctx.params.query.nextPageToken }
+      { sortByField: "localId", order: "ASC", startToken: ctx.params.query.nextPageToken },
     );
   } else {
     users = state.queryUsers(
       {},
-      { sortByField: "localId", order: "ASC", startToken: ctx.params.query.nextPageToken }
+      { sortByField: "localId", order: "ASC", startToken: ctx.params.query.nextPageToken },
     );
   }
   let newPageToken: string | undefined = undefined;

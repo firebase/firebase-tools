@@ -243,7 +243,7 @@ export class HubExport {
     for (const tenantId of tenants) {
       const accountsFile = path.join(authExportPath, `accounts-${tenantId}.json`);
       logger.debug(
-        `Exporting auth users in Project ${this.projectId} ${tenantId} tenant to ${accountsFile}`
+        `Exporting auth users in Project ${this.projectId} ${tenantId} tenant to ${accountsFile}`,
       );
       await fetchToFile(
         {
@@ -252,7 +252,7 @@ export class HubExport {
           path: `/identitytoolkit.googleapis.com/v1/projects/${this.projectId}/accounts:batchGet?maxResults=-1&tenantId=${tenantId}`,
           headers: { Authorization: "Bearer owner" },
         },
-        accountsFile
+        accountsFile,
       );
     }
 
@@ -260,7 +260,7 @@ export class HubExport {
 
     const accountsFile = path.join(authExportPath, "accounts.json");
     logger.debug(
-      `Exporting auth users in Project ${this.projectId} default tenant to ${accountsFile}`
+      `Exporting auth users in Project ${this.projectId} default tenant to ${accountsFile}`,
     );
     await fetchToFile(
       {
