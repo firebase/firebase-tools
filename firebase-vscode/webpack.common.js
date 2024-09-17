@@ -130,12 +130,14 @@ const extensionConfig = {
             // a temporary fix.
             {
               search: /module\.exports\.([a-zA-Z0-9]+)\(/g,
+              /** @param match {any} */
               replace: (match) => match.replace("module.exports.", ""),
             },
             // cloudtasks.ts type casts so there's an " as [type]" before the
             // starting paren to call the function
             {
               search: /module\.exports\.([a-zA-Z0-9]+) as/g,
+              /** @param match {any} */
               replace: (match) => match.replace("module.exports.", ""),
             },
             // Disallow starting . to ensure it doesn't conflict with
@@ -144,6 +146,7 @@ const extensionConfig = {
             // such as "exports.something = value"
             {
               search: /[^\.]exports\.([a-zA-Z0-9]+)\(/g,
+              /** @param match {any} */
               replace: (match) => match.replace("exports.", ""),
             },
           ],
@@ -210,6 +213,7 @@ const extensionConfig = {
   },
 };
 
+/** @param entryName {any} */
 function makeWebConfig(entryName, entryPath = "") {
   return {
     name: entryName,
@@ -281,6 +285,7 @@ function makeWebConfig(entryName, entryPath = "") {
 // files to be generated. See:
 // https://github.com/TeamSupercell/typings-for-css-modules-loader#typescript-does-not-find-the-typings
 class WaitForCssTypescriptPlugin {
+  /** @param compiler {any} */
   apply(compiler) {
     const hooks = ForkTsCheckerWebpackPlugin.getCompilerHooks(compiler);
 

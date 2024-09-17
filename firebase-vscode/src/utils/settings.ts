@@ -12,16 +12,13 @@ export interface Settings {
 const FIREBASE_BINARY = "npx firebase/firebase-tools#launch.fdc-pp";
 
 export function getSettings(): Settings {
-  const config = workspace.value.getConfiguration(
-    "firebase",
-    workspace.value.workspaceFolders[0].uri,
-  );
+  const config = workspace.value.getConfiguration("firebase");
 
   return {
-    debugLogPath: config.get<string>("debugLogPath"),
+    debugLogPath: config.get<string>("debugLogPath", "/tmp/firebase-debug.log"),
     firebasePath: config.get<string>("firebasePath") || FIREBASE_BINARY,
-    npmPath: config.get<string>("npmPath"),
-    shouldWriteDebug: config.get<boolean>("debug"),
-    useFrameworks: config.get<boolean>("hosting.useFrameworks"),
+    npmPath: config.get<string>("npmPath", "npm"),
+    shouldWriteDebug: config.get<boolean>("debug", true),
+    useFrameworks: config.get<boolean>("hosting.useFrameworks", false),
   };
 }
