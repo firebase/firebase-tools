@@ -7,7 +7,7 @@ import { Setup } from "../..";
 import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql";
 import { checkForFreeTrialInstance } from "../../../dataconnect/freeTrial";
 import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
-import { ensureApis } from "../../../dataconnect/ensureApis";
+import { ensureApis, ensureSparkApis } from "../../../dataconnect/ensureApis";
 import * as experiments from "../../../experiments";
 import {
   listLocations,
@@ -21,6 +21,7 @@ import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnec
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
 import { logSuccess } from "../../../utils";
+import { checkBillingEnabled } from "../../../gcp/cloudbilling";
 
 const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
 const DATACONNECT_YAML_COMPAT_EXPERIMENT_TEMPLATE = readTemplateSync(
@@ -86,7 +87,8 @@ async function askQuestions(setup: Setup, config: Config): Promise<RequiredInfo>
     schemaGql: [],
     shouldProvisionCSQL: false,
   };
-  info = await promptForService(setup, info);
+  const isBillingEnabled = setup.projectId ? await checkBillingEnabled(setup.projectId) : false;
+  info = await promptForService(setup, info, isBillingEnabled);
 
   if (info.cloudSqlInstanceId === "") {
     info = await promptForCloudSQLInstance(setup, info);
@@ -112,6 +114,7 @@ async function askQuestions(setup: Setup, config: Config): Promise<RequiredInfo>
   info.shouldProvisionCSQL = !!(
     setup.projectId &&
     (info.isNewInstance || info.isNewDatabase) &&
+    isBillingEnabled &&
     (await confirm({
       message: `Would you like to provision your Cloud SQL instance and database now?${info.isNewInstance ? " This will take several minutes." : ""}.`,
       default: true,
@@ -216,9 +219,18 @@ function subConnectorYamlValues(replacementValues: { connectorId: string }): str
   return replaced;
 }
 
-async function promptForService(setup: Setup, info: RequiredInfo): Promise<RequiredInfo> {
+async function promptForService(
+  setup: Setup,
+  info: RequiredInfo,
+  isBillingEnabled: boolean,
+): Promise<RequiredInfo> {
   if (setup.projectId) {
-    await ensureApis(setup.projectId);
+    if (isBillingEnabled) {
+      // Enabling compute.googleapis.com requires a Blaze plan.
+      await ensureApis(setup.projectId);
+    } else {
+      await ensureSparkApis(setup.projectId);
+    }
     // TODO (b/344021748): Support initing with services that have existing sources/files
     const existingServices = await listAllServices(setup.projectId);
     const existingServicesAndSchemas = await Promise.all(
