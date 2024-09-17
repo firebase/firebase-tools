@@ -45,7 +45,7 @@ function DataConnect() {
           <>
             <label>Emulators running in terminal</label>
             <EmulatorPanel
-              emulatorInfo={emulatorsRunningInfo.infos}
+              emulatorInfo={emulatorsRunningInfo.infos as any}
             ></EmulatorPanel>
           </>
         ) : (
@@ -66,9 +66,7 @@ function DataConnect() {
           Configure Generated SDK
         </VSCodeButton>
         <Spacer size="xlarge" />
-        <p>
-          View generated GQL reference docs for your schema
-        </p>
+        <p>View generated GQL reference docs for your schema</p>
         <VSCodeButton onClick={() => broker.send("fdc.open-docs")}>
           View my docs
         </VSCodeButton>

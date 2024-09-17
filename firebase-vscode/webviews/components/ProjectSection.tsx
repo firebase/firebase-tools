@@ -22,7 +22,7 @@ export function ProjectSection({
   projectId: string | null | undefined;
   isMonospace: boolean;
 }) {
-  const userEmail = user.email;
+  const userEmail = user!.email;
 
   if (isMonospace && user?.type === "service_account") {
     return;
