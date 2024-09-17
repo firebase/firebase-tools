@@ -20,7 +20,7 @@ export function PanelSection({
   let [isExpanded, setExpanded] = useState(true);
 
   return (
-    <div>
+    <div className={styles.panel}>
       {title && (
         <button
           aria-label={(isExpanded ? "Hide" : "Toggle") + " " + title}

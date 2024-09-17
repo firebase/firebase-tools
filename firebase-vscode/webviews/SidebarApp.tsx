@@ -100,24 +100,17 @@ function DataConnect() {
       <Spacer size="xlarge" />
 
       <Body>Deploy FDC services and connectors to production</Body>
+      <Spacer size="small" />
+      <VSCodeButton onClick={() => broker.send("fdc.deploy-all")}>
+        Deploy
+      </VSCodeButton>
+      <Spacer size="xsmall" />
       <Label level={3}>
         See also:{" "}
         <a href="https://firebase.google.com/docs/data-connect/quickstart#deploy_your_schema_to_production">
           Deploying
         </a>
       </Label>
-      <Spacer size="xsmall" />
-      <ButtonGroup>
-        <VSCodeButton onClick={() => broker.send("fdc.deploy-all")}>
-          Deploy all
-        </VSCodeButton>
-        <VSCodeButton
-          appearance="secondary"
-          onClick={() => broker.send("fdc.deploy")}
-        >
-          Deploy individual
-        </VSCodeButton>
-      </ButtonGroup>
     </>
   );
 }
