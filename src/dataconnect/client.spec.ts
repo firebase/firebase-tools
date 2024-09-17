@@ -33,10 +33,10 @@ describe("DataConnect control plane client", () => {
       fake
         .delete(`/${API_VERSION}/${testService}`)
         .reply(200, { name: "projects/test/operations/jkl456" });
-      fake.get("/${API_VERSION}/projects/test/operations/abc123").reply(200, { done: true });
-      fake.get("/${API_VERSION}/projects/test/operations/def456").reply(200, { done: true });
-      fake.get("/${API_VERSION}/projects/test/operations/ghi123").reply(200, { done: true });
-      fake.get("/${API_VERSION}/projects/test/operations/jkl456").reply(200, { done: true });
+      fake.get(`/${API_VERSION}/projects/test/operations/abc123`).reply(200, { done: true });
+      fake.get(`/${API_VERSION}/projects/test/operations/def456`).reply(200, { done: true });
+      fake.get(`/${API_VERSION}/projects/test/operations/ghi123`).reply(200, { done: true });
+      fake.get(`/${API_VERSION}/projects/test/operations/jkl456`).reply(200, { done: true });
 
       await client.deleteServiceAndChildResources(testService);
 
@@ -57,8 +57,8 @@ describe("DataConnect control plane client", () => {
       fake
         .delete(`/${API_VERSION}/${testService}`)
         .reply(200, { name: "projects/test/operations/jkl456" });
-      fake.get("/${API_VERSION}/projects/test/operations/ghi123").reply(200, { done: true });
-      fake.get("/${API_VERSION}/projects/test/operations/jkl456").reply(200, { done: true });
+      fake.get(`/${API_VERSION}/projects/test/operations/ghi123`).reply(200, { done: true });
+      fake.get(`/${API_VERSION}/projects/test/operations/jkl456`).reply(200, { done: true });
 
       await client.deleteServiceAndChildResources(testService);
 
@@ -77,7 +77,7 @@ describe("DataConnect control plane client", () => {
       fake
         .delete(`/${API_VERSION}/${testService}`)
         .reply(200, { name: "projects/test/operations/jkl456" });
-      fake.get("/${API_VERSION}/projects/test/operations/jkl456").reply(200, { done: true });
+      fake.get(`/${API_VERSION}/projects/test/operations/jkl456`).reply(200, { done: true });
 
       await client.deleteServiceAndChildResources(testService);
 
