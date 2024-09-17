@@ -42,6 +42,10 @@
       {
         "command": "firebase.selectProject",
         "title": "Firebase: Switch project"
+      },
+      {
+        "command": "firebase.refresh",
+        "title": "Firebase: Refresh"
       }
     ],
     "configuration": {
