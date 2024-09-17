@@ -331,6 +331,169 @@ describe("import/export end to end", () => {
     }
   });
 
+  it("should be able to import/export multi-tenant auth data", async function (this) {
+    this.timeout(2 * TEST_SETUP_TIMEOUT);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // Start up emulator suite
+    const project = FIREBASE_PROJECT || "example";
+    const emulatorsCLI = new CLIProcess("1", __dirname);
+
+    await emulatorsCLI.start("emulators:start", project, ["--only", "auth"], (data: unknown) => {
+      if (typeof data !== "string" && !Buffer.isBuffer(data)) {
+        throw new Error(`data is not a string or buffer (${typeof data})`);
+      }
+      return data.includes(ALL_EMULATORS_STARTED_LOG);
+    });
+
+    // Create some accounts to export:
+    const config = readConfig();
+    const port = config.emulators!.auth.port;
+    try {
+      process.env.FIREBASE_AUTH_EMULATOR_HOST = `${await localhost()}:${port}`;
+      const adminApp = admin.initializeApp(
+        {
+          projectId: project,
+          credential: ADMIN_CREDENTIAL,
+        },
+        "admin-app-auth-mutli-tenant",
+      );
+
+      const defaultTenantAuth = adminApp.auth();
+      const secondTenantAuth = adminApp.auth().tenantManager().authForTenant("second-tenant");
+
+      await defaultTenantAuth.createUser({
+        uid: "123",
+        email: "foo@example.com",
+        password: "testing",
+      });
+      await defaultTenantAuth.createUser({
+        uid: "456",
+        email: "bar@example.com",
+        emailVerified: true,
+      });
+
+      await secondTenantAuth.createUser({
+        uid: "123",
+        email: "foo-second-tenant@example.com",
+        password: "testing",
+      });
+      await secondTenantAuth.createUser({
+        uid: "456",
+        email: "bar-second-tenant@example.com",
+        emailVerified: true,
+      });
+
+      // Ask for export
+      const exportCLI = new CLIProcess("2", __dirname);
+      const exportPath = fs.mkdtempSync(path.join(os.tmpdir(), "emulator-data"));
+      await exportCLI.start("emulators:export", project, [exportPath], (data: unknown) => {
+        if (typeof data !== "string" && !Buffer.isBuffer(data)) {
+          throw new Error(`data is not a string or buffer (${typeof data})`);
+        }
+        return data.includes("Export complete");
+      });
+      await exportCLI.stop();
+
+      // Stop the suite
+      await emulatorsCLI.stop();
+
+      // Confirm the data is exported as expected
+      const configPath = path.join(exportPath, "auth_export", "config.json");
+      const configData = JSON.parse(fs.readFileSync(configPath).toString());
+      expect(configData).to.deep.equal({
+        signIn: {
+          allowDuplicateEmails: false,
+        },
+        emailPrivacyConfig: {
+          enableImprovedEmailPrivacy: false,
+        },
+      });
+
+      const accountsDefaultTenantPath = path.join(exportPath, "auth_export", "accounts.json");
+      const accountsDefaultTenantData = JSON.parse(
+        fs.readFileSync(accountsDefaultTenantPath).toString(),
+      );
+      expect(accountsDefaultTenantData.users).to.have.length(2);
+      expect(accountsDefaultTenantData.users[0]).to.deep.contain({
+        localId: "123",
+        email: "foo@example.com",
+        emailVerified: false,
+        providerUserInfo: [
+          {
+            email: "foo@example.com",
+            federatedId: "foo@example.com",
+            providerId: "password",
+            rawId: "foo@example.com",
+          },
+        ],
+      });
+      expect(accountsDefaultTenantData.users[0].passwordHash).to.match(/:password=testing$/);
+      expect(accountsDefaultTenantData.users[1]).to.deep.contain({
+        localId: "456",
+        email: "bar@example.com",
+        emailVerified: true,
+      });
+
+      const accountsSecondTenantPath = path.join(
+        exportPath,
+        "auth_export",
+        "accounts-second-tenant.json",
+      );
+      const accountsSecondTenantData = JSON.parse(
+        fs.readFileSync(accountsSecondTenantPath).toString(),
+      );
+      expect(accountsSecondTenantData.users).to.have.length(2);
+      expect(accountsSecondTenantData.users[0]).to.deep.contain({
+        localId: "123",
+        email: "foo-second-tenant@example.com",
+        emailVerified: false,
+        providerUserInfo: [
+          {
+            email: "foo-second-tenant@example.com",
+            federatedId: "foo-second-tenant@example.com",
+            providerId: "password",
+            rawId: "foo-second-tenant@example.com",
+          },
+        ],
+      });
+      expect(accountsSecondTenantData.users[0].passwordHash).to.match(/:password=testing$/);
+      expect(accountsSecondTenantData.users[1]).to.deep.contain({
+        localId: "456",
+        email: "bar-second-tenant@example.com",
+        emailVerified: true,
+      });
+
+      // Attempt to import
+      const importCLI = new CLIProcess("3", __dirname);
+      await importCLI.start(
+        "emulators:start",
+        project,
+        ["--only", "auth", "--import", exportPath],
+        (data: unknown) => {
+          if (typeof data !== "string" && !Buffer.isBuffer(data)) {
+            throw new Error(`data is not a string or buffer (${typeof data})`);
+          }
+          return data.includes(ALL_EMULATORS_STARTED_LOG);
+        },
+      );
+
+      // Check users are indeed imported correctly
+      const user1 = await defaultTenantAuth.getUserByEmail("foo@example.com");
+      expect(user1.passwordHash).to.match(/:password=testing$/);
+      const user2 = await defaultTenantAuth.getUser("456");
+      expect(user2.emailVerified).to.be.true;
+      const user3 = await secondTenantAuth.getUserByEmail("foo-second-tenant@example.com");
+      expect(user3.passwordHash).to.match(/:password=testing$/);
+      const user4 = await secondTenantAuth.getUser("456");
+      expect(user4.emailVerified).to.be.true;
+
+      await importCLI.stop();
+    } finally {
+      delete process.env.FIREBASE_AUTH_EMULATOR_HOST;
+    }
+  });
+
   it("should be able to import/export auth data with many users", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
     await new Promise((resolve) => setTimeout(resolve, 2000));
