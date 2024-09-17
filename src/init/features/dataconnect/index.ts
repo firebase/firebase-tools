@@ -114,7 +114,7 @@ async function askQuestions(setup: Setup, config: Config): Promise<RequiredInfo>
   info.shouldProvisionCSQL = !!(
     setup.projectId &&
     (info.isNewInstance || info.isNewDatabase) &&
-    (!experiments.isEnabled("fdccompatiblemode") || isBillingEnabled) &&
+    isBillingEnabled &&
     (await confirm({
       message:
         "Would you like to provision your CloudSQL instance and database now? This will take a few minutes.",
@@ -226,7 +226,7 @@ async function promptForService(
   isBillingEnabled: boolean,
 ): Promise<RequiredInfo> {
   if (setup.projectId) {
-    if (isBillingEnabled || !experiments.isEnabled("fdcsparkplan")) {
+    if (isBillingEnabled) {
       // Enabling compute.googleapis.com requires a Blaze plan.
       await ensureApis(setup.projectId);
     }

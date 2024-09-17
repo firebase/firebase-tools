@@ -144,12 +144,6 @@ export const ALL_EXPERIMENTS = experiments({
     fullDescription: "Enable Data Connect schema migrations in Compatible Mode",
     public: false,
   },
-
-  fdcsparkplan: {
-    shortDescription: "Improve Data Connect experience with Spark projects",
-    fullDescription: "Improve Data Connect experience with Spark projects",
-    public: false,
-  },
 });
 
 export type ExperimentName = keyof typeof ALL_EXPERIMENTS;
