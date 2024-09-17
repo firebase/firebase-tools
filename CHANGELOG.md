@@ -1,4 +1,5 @@
 - Added `firebase deploy --dry-run`, which validates your changes and builds your code without making any production changes.
-- Improved Firebase Data Connect postgres security by granting fine grained SQL privileges to the users the need it. (#7578)
-- Removed `dataconnect:sql:migrate` command hard dependency on 'roles/cloudsql.admin'. (#7578)
-- Added support for setting the encryption configuration of restored firestore databases (#7483)
+- Added support for non-default Firestore databases in `firebase init`. (#7655)
+- Update supported range for Angular framework. (#7418)
+- Fix (Angular 17+) temporary change the PORT in Angular server.ts. (#6651)
+- Improved handling of Spark projects in `firebase init dataconnect`. (#7666)
