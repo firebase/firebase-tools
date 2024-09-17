@@ -41,7 +41,7 @@ export class EmulatorsController implements Disposable {
   readonly emulators: { status: EmulatorsStatus; infos: RunningEmulatorInfo } =
     {
       status: "stopped",
-      infos: undefined,
+      infos: undefined as any,
     };
 
   private readonly subscriptions: (() => void)[] = [];
@@ -70,7 +70,7 @@ export class EmulatorsController implements Disposable {
 
   public setEmulatorsRunningInfo(info: EmulatorInfo[]) {
     this.emulators.infos = {
-      uiUrl: getEmulatorUiUrl(),
+      uiUrl: getEmulatorUiUrl()!,
       displayInfo: info,
     };
     this.emulators.status = "running";
@@ -89,14 +89,14 @@ export class EmulatorsController implements Disposable {
 
   public setEmulatorsStopped() {
     this.emulators.status = "stopped";
-    this.emulators.infos = undefined;
+    this.emulators.infos = undefined as any;
     this.notifyEmulatorStateChanged();
   }
 
   async findRunningCliEmulators() {
     const projectId = firebaseRC.value?.tryReadValue?.projects?.default;
     // TODO: think about what to without projectID, in potentially a logged out mode
-    const hubClient = new EmulatorHubClient(projectId);
+    const hubClient = new EmulatorHubClient(projectId!);
 
     if (hubClient.foundHub()) {
       const response: GetEmulatorsResponse = await hubClient.getEmulators();

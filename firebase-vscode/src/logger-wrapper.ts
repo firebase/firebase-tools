@@ -11,7 +11,7 @@ import { getRootFolders } from "./core/config";
 
 export type LogLevel = "debug" | "info" | "log" | "warn" | "error";
 
-export const pluginLogger: Record<LogLevel, (...args) => void> = {
+export const pluginLogger: Record<LogLevel, (...args: any) => void> = {
   debug: () => {},
   info: () => {},
   log: () => {},
@@ -26,9 +26,9 @@ export function showOutputChannel() {
 }
 
 for (const logLevel in pluginLogger) {
-  pluginLogger[logLevel] = (...args) => {
+  (pluginLogger as any)[logLevel] = (...args: any) => {
     const prefixedArgs = ["[Firebase Plugin]", ...args];
-    cliLogger[logLevel](...prefixedArgs);
+    (cliLogger as any)[logLevel](...prefixedArgs);
   };
 }
 
@@ -61,11 +61,11 @@ export function logSetup({
         filename: filePath,
         format: format.printf((info) => {
           const segments = [info.message, ...(info[SPLAT] || [])].map(
-            tryStringify
+            tryStringify,
           );
           return `[${info.level}] ${stripAnsi(segments.join(" "))}`;
         }),
-      })
+      }),
     );
     cliLogger.add(new VSCodeOutputTransport({ level: "info" }));
   }
@@ -76,10 +76,10 @@ export function logSetup({
  * Write only "info" and greater to avoid too much spam from "debug".
  */
 class VSCodeOutputTransport extends Transport {
-  constructor(opts) {
+  constructor(opts: any) {
     super(opts);
   }
-  log(info, callback) {
+  log(info: any, callback: any) {
     setImmediate(() => {
       this.emit("logged", info);
     });

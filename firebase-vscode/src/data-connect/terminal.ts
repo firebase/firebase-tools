@@ -13,7 +13,7 @@ const terminalOptions: TerminalOptions = {
 };
 
 export function setTerminalEnvVars(envVar: string, value: string) {
-  environmentVariables[envVar] = value;
+  (environmentVariables as any)[envVar] = value;
 }
 
 export function runCommand(command: string) {

@@ -29,7 +29,7 @@ export const dataConnectConfigs = signal<
 export function registerDataConnectConfigs(
   broker: ExtensionBrokerImpl,
 ): vscode.Disposable {
-  let cancel: () => void | undefined;
+  let cancel: (() => void) | undefined;
 
   function handleResult(
     firebaseConfig: Result<Config | undefined> | undefined,
@@ -44,7 +44,7 @@ export function registerDataConnectConfigs(
     const configs = firebaseConfig?.followAsync(
       async (config) =>
         new ResultValue(
-          await _readDataConnectConfigs(readFdcFirebaseJson(config)),
+          await _readDataConnectConfigs(readFdcFirebaseJson(config!)),
         ),
     );
 
@@ -64,21 +64,26 @@ export function registerDataConnectConfigs(
   dataConnectWatcher?.onDidDelete(() => handleResult(undefined));
   // TODO watch connectors
 
-  const hasConfigs = computed(() => !!dataConnectConfigs.value?.tryReadValue?.values.length);
+  const hasConfigs = computed(
+    () => !!dataConnectConfigs.value?.tryReadValue?.values.length,
+  );
 
   const hasConfigSub = effect(() => {
     broker.send("notifyHasFdcConfigs", hasConfigs.value);
   });
-  const getInitialHasFdcConfigsSub = broker.on("getInitialHasFdcConfigs", () => {
-    broker.send("notifyHasFdcConfigs", hasConfigs.value);
-  });
+  const getInitialHasFdcConfigsSub = broker.on(
+    "getInitialHasFdcConfigs",
+    () => {
+      broker.send("notifyHasFdcConfigs", hasConfigs.value);
+    },
+  );
 
   return vscode.Disposable.from(
     { dispose: sub },
     { dispose: hasConfigSub },
     { dispose: getInitialHasFdcConfigsSub },
     { dispose: () => cancel?.() },
-    dataConnectWatcher,
+    dataConnectWatcher!,
   );
 }
 
@@ -92,7 +97,7 @@ export async function _readDataConnectConfigs(
         // Paths may be relative to the firebase.json file.
         const absoluteLocation = asAbsolutePath(
           dataConnect.source,
-          getConfigPath(),
+          getConfigPath()!,
         );
         const dataConnectYaml = await readDataConnectYaml(absoluteLocation);
         const resolvedConnectors = await Promise.all(
@@ -128,7 +133,7 @@ function asAbsolutePath(relativePath: string, from: string): string {
 export class ResolvedConnectorYaml {
   constructor(
     readonly path: string,
-    readonly value: DeepReadOnly<ConnectorYaml>
+    readonly value: DeepReadOnly<ConnectorYaml>,
   ) {}
 
   containsPath(path: string) {
@@ -166,7 +171,7 @@ export class ResolvedDataConnectConfig {
   }
 
   get relativePath(): string {
-    return this.path.split("/").pop();
+    return this.path.split("/").pop()!;
   }
 
   get relativeSchemaPath(): string {
@@ -174,13 +179,15 @@ export class ResolvedDataConnectConfig {
   }
 
   get relativeConnectorPaths(): string[] {
-    return this.connectorDirs.map((connectorDir) => connectorDir.replace(".", this.relativePath));
+    return this.connectorDirs.map((connectorDir) =>
+      connectorDir.replace(".", this.relativePath),
+    );
   }
 
   findConnectorById(connectorId: string): ResolvedConnectorYaml {
     return this.resolvedConnectors.find(
-      (connector) => connector.tryReadValue.value.connectorId === connectorId,
-    ).tryReadValue;
+      (connector) => connector.tryReadValue!.value.connectorId === connectorId,
+    )!.tryReadValue!;
   }
 
   containsPath(path: string) {
@@ -216,8 +223,8 @@ export class ResolvedDataConnectConfigs {
 
   getApiServicePathByPath(projectId: string, path: string) {
     const dataConnectConfig = this.findEnclosingServiceForPath(path);
-    const serviceId = dataConnectConfig.value.serviceId;
-    const locationId = dataConnectConfig.dataConnectLocation;
+    const serviceId = dataConnectConfig!.value.serviceId;
+    const locationId = dataConnectConfig!.dataConnectLocation;
 
     return `projects/${projectId}/locations/${locationId}/services/${serviceId}`;
   }

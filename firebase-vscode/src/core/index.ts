@@ -29,12 +29,15 @@ export async function registerCore(
   }
 
   const sub1 = broker.on("writeLog", async ({ level, args }) => {
-    pluginLogger[level]("(Webview)", ...args);
+    (pluginLogger as any)[level]("(Webview)", ...args);
   });
 
-  const sub2 = broker.on("showMessage", async ({ msg, options }) => {
-    vscode.window.showInformationMessage(msg, options);
-  });
+  const sub2 = broker.on(
+    "showMessage",
+    async ({ msg, options }: { msg: string; options?: any }) => {
+      vscode.window.showInformationMessage(msg, options);
+    },
+  );
 
   const sub3 = broker.on("openLink", async ({ href }) => {
     vscode.env.openExternal(vscode.Uri.parse(href));

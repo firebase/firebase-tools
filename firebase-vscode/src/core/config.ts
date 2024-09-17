@@ -58,7 +58,7 @@ export async function updateFirebaseRCProject(values: {
   };
 }) {
   const rc =
-    firebaseRC.value.tryReadValue ??
+    firebaseRC.value!.tryReadValue ??
     // We don't update firebaseRC if we create a temporary RC,
     // as the file watcher will update the value for us.
     // This is only for the sake of calling `save()`.
@@ -91,7 +91,7 @@ function notifyFirebaseConfig(broker: ExtensionBrokerImpl) {
     >(
       (value) => ({ value: value?.data, error: undefined }),
       (error) => ({ value: undefined, error: `${error}` }),
-    ),
+    ) as any,
     firebaseRC: firebaseRC.value?.switchCase<
       ValueOrError<RCData | undefined> | undefined
     >(
@@ -100,7 +100,7 @@ function notifyFirebaseConfig(broker: ExtensionBrokerImpl) {
         error: undefined,
       }),
       (error) => ({ value: undefined, error: `${error}` }),
-    ),
+    ) as any,
   });
 }
 
@@ -219,7 +219,7 @@ export function _readFirebaseConfig(): Result<Config | undefined> {
   });
 
   if (result instanceof ResultError && (result.error as any).status === 404) {
-    return undefined;
+    return undefined as any;
   }
 
   return result;
