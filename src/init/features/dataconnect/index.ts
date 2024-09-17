@@ -21,6 +21,7 @@ import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnec
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
 import { logSuccess } from "../../../utils";
+import { checkBillingEnabled } from "../../../gcp/cloudbilling";
 
 const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
 const DATACONNECT_YAML_COMPAT_EXPERIMENT_TEMPLATE = readTemplateSync(
@@ -219,7 +220,11 @@ function subConnectorYamlValues(replacementValues: { connectorId: string }): str
 
 async function promptForService(setup: Setup, info: RequiredInfo): Promise<RequiredInfo> {
   if (setup.projectId) {
-    await ensureApis(setup.projectId);
+    const isBillingEnabled = await checkBillingEnabled(setup.projectId);
+    if (isBillingEnabled || !experiments.isEnabled("fdcsparkplan")) {
+      // Enabling compute.googleapis.com requires a Blaze plan.
+      await ensureApis(setup.projectId);
+    }
     // TODO (b/344021748): Support initing with services that have existing sources/files
     const existingServices = await listAllServices(setup.projectId);
     const existingServicesAndSchemas = await Promise.all(
