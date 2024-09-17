@@ -113,8 +113,7 @@ async function askQuestions(setup: Setup, config: Config): Promise<RequiredInfo>
     setup.projectId &&
     (info.isNewInstance || info.isNewDatabase) &&
     (await confirm({
-      message:
-        `Would you like to provision your Cloud SQL instance and database now?${info.isNewInstance ? " This will take several minutes." : ""}.",
+      message: `Would you like to provision your Cloud SQL instance and database now?${info.isNewInstance ? " This will take several minutes." : ""}.`,
       default: true,
     }))
   );
