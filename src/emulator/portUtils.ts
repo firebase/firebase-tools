@@ -495,3 +495,13 @@ export function listenSpecsToString(specs: ListenSpec[]): string {
     })
     .join(",");
 }
+
+export function findProcessBlockingPort(port: number): number | undefined {
+  try {
+    const res = execSync(`lsof -t -i :${port} `, {});
+    return parseInt(res.toString());
+  } catch (e: any) {
+    // This is a best effort check - if it fails, swallow the error.
+    return;
+  }
+}

@@ -20,6 +20,8 @@ import * as os from "os";
 import { EmulatorRegistry } from "./registry";
 import { downloadEmulator } from "../emulator/download";
 import * as experiments from "../experiments";
+import * as process from "process";
+import { findProcessBlockingPort } from "./portUtils";
 
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 4000; /* ms */
 
@@ -397,12 +399,25 @@ async function _fatal(emulator: Emulators, errorMsg: string): Promise<void> {
 /**
  * Handle errors in an emulator process.
  */
-export async function handleEmulatorProcessError(emulator: Emulators, err: any): Promise<void> {
+export async function handleEmulatorProcessError(
+  emulator: Emulators,
+  port: number,
+  err: any,
+): Promise<void> {
   const description = Constants.description(emulator);
+  console.log(`${err}`);
   if (err.path === "java" && err.code === "ENOENT") {
     await _fatal(
       emulator,
       `${description} has exited because java is not installed, you can install it from https://openjdk.java.net/install/`,
+    );
+  } else if (err.code === "EADDRINUSE") {
+    const process = findProcessBlockingPort(port);
+    await _fatal(
+      emulator,
+      `${description} has exited because its configured port is already in use${
+        process ? ` by process number ${process}` : ""
+      }. Are you running another copy of the emulator suite?`,
     );
   } else {
     await _fatal(emulator, `${description} has exited: ${err}`);

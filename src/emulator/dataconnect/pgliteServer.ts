@@ -15,6 +15,8 @@ import {
 } from "./pg-gateway/index";
 import { fromNodeSocket } from "./pg-gateway/platforms/node";
 import { logger } from "../../logger";
+import { FirebaseError } from "../../error";
+import { findProcessBlockingPort } from "../portUtils";
 
 export class PostgresServer {
   private username: string;
@@ -51,13 +53,22 @@ export class PostgresServer {
       });
     });
     const listeningPromise = new Promise<void>((resolve) => {
+      server.on("error", (e: any) => {
+        if (e.code === "EADDRINUSE") {
+          const process = findProcessBlockingPort(port);
+          const errMessage = `Unable to start PGLite server on port ${port} because it is already in use${
+            process ? ` by process number ${process}` : ""
+          }. Are you running another instance of Postgres?`;
+          throw new FirebaseError(errMessage);
+        }
+        throw e;
+      });
       server.listen(port, host, () => {
         resolve();
       });
     });
     await db.waitReady;
     await listeningPromise;
-
     return server;
   }
 

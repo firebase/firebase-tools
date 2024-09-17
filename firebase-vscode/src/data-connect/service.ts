@@ -277,6 +277,6 @@ function parseVariableString(variables: string): Record<string, any> {
   try {
     return JSON.parse(variables);
   } catch(e: any) {
-    throw new Error("Unable to parse variables as JSON. Double check that that there are no unmatched braces or quotes in the variables pane.")
+    throw new Error("Unable to parse variables as JSON. Double check that that there are no unmatched braces or quotes, or unqouted keys in the variables pane.")
   }
 }
