@@ -16,7 +16,6 @@ import { logger } from "../logger";
 import { load } from "../dataconnect/load";
 import { Config } from "../config";
 import { PostgresServer } from "./dataconnect/pgliteServer";
-import { isEnabled } from "../experiments";
 
 export interface DataConnectEmulatorArgs {
   projectId: string;
@@ -97,7 +96,7 @@ export class DataConnectEmulator implements EmulatorInstance {
           "Data Connect",
           `FIREBASE_DATACONNECT_POSTGRESQL_STRING is set to ${dataConnectLocalConnString()} - using that instead of starting a new database`,
         );
-      } else if (isEnabled("fdcpglite")) {
+      } else {
         connStr = `postgres://${this.args.postgresHost ?? "127.0.0.1"}:${this.args.postgresPort ?? 5432}/${dbId}?sslmode=disable`;
         const pgServer = new PostgresServer(dbId, "postgres");
         const server = await pgServer.createPGServer(

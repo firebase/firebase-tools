@@ -225,7 +225,7 @@
     "@types/node": "20.x",
     "@types/react": "^18.0.9",
     "@types/react-dom": "^18.0.4",
-    "@types/vscode": "^1.73.0",
+    "@types/vscode": "^1.69.0",
     "@typescript-eslint/eslint-plugin": "^5.45.0",
     "@typescript-eslint/parser": "^5.45.0",
     "@vscode/test-electron": "^2.2.0",
