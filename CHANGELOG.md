@@ -6,3 +6,4 @@
 - Updated Firebase Data Connect local toolkit version to v1.3.7, which adds support for `v1beta` gRPC APIs and the `OrderDirection` enum in Swift, and makes transactional queries and mutations opt-in with the `@transaction` directive. (#7679)
 - Add dataconnect SQL grant command `firebase dataconnect:sql:grant -R <role> -E email`. (#7656)
 - Added new command `firebase ext:sdk:install` to allow you to configure extensions in a functions codebase. See https://firebase.google.com/docs/extensions/install-extensions?interface=sdk for details.(#7581)
+- Added better handling for paths with spaces in `getGlobalEsbuildVersion` function. (#7571)
