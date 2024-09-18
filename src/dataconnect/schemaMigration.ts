@@ -478,14 +478,8 @@ async function promptForInvalidConnectorError(
   }
   displayInvalidConnectors(invalidConnectors);
   if (validateOnly) {
-    if (options.force) {
-      // `firebase dataconnect:sql:migrate --force` ignores invalid connectors.
-      return false;
-    }
-    // `firebase dataconnect:sql:migrate` aborts if there are invalid connectors.
-    throw new FirebaseError(
-      `Command aborted. If you'd like to migrate it anyway, you may override with --force.`,
-    );
+    // `firebase dataconnect:sql:migrate` ignores invalid connectors.
+    return false;
   }
   if (options.force) {
     // `firebase deploy --force` will delete invalid connectors without prompting.
