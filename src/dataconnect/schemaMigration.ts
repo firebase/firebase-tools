@@ -429,6 +429,10 @@ async function promptForSchemaMigration(
     }
     // `firebase deploy` and `firebase dataconnect:sql:migrate` always prompt for any SQL migration changes.
     // Destructive migrations are too potentially dangerous to not prompt for with --force
+    const message =
+      validationMode === "STRICT_AFTER_COMPATIBLE"
+        ? `Would you like to execute these optional changes against ${databaseId} in your CloudSQL instance ${instanceName}?`
+        : `Would you like to execute these changes against ${databaseId} in your CloudSQL instance ${instanceName}?`;
     let executeChangePrompt = "Execute changes";
     if (validationMode === "STRICT_AFTER_COMPATIBLE") {
       executeChangePrompt = "Execute optional changes";
@@ -442,7 +446,7 @@ async function promptForSchemaMigration(
     ];
     const defaultValue = validationMode === "STRICT_AFTER_COMPATIBLE" ? "none" : "all";
     return await promptOnce({
-      message: `Would you like to execute these changes against ${databaseId}?`,
+      message: message,
       type: "list",
       choices,
       default: defaultValue,
