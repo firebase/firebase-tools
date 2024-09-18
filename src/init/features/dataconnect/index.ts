@@ -116,8 +116,7 @@ async function askQuestions(setup: Setup, config: Config): Promise<RequiredInfo>
     (info.isNewInstance || info.isNewDatabase) &&
     isBillingEnabled &&
     (await confirm({
-      message:
-        "Would you like to provision your CloudSQL instance and database now? This will take a few minutes.",
+      message: `Would you like to provision your Cloud SQL instance and database now?${info.isNewInstance ? " This will take several minutes." : ""}.`,
       default: true,
     }))
   );
@@ -295,7 +294,7 @@ async function promptForService(
     info.serviceId = await promptOnce({
       message: "What ID would you like to use for this service?",
       type: "input",
-      default: "my-service",
+      default: "app",
     });
   }
   return info;
@@ -330,7 +329,7 @@ async function promptForCloudSQLInstance(setup: Setup, info: RequiredInfo): Prom
     info.cloudSqlInstanceId = await promptOnce({
       message: `What ID would you like to use for your new CloudSQL instance?`,
       type: "input",
-      default: `fdc-sql`,
+      default: `${info.serviceId || "app"}-fdc`,
     });
   }
   if (info.locationId === "") {
