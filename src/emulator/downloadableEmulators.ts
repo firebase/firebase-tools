@@ -1,4 +1,4 @@
-import lsofi from "lsofi";
+const lsofi = require("lsofi");
 import {
   Emulators,
   DownloadableEmulators,
@@ -406,7 +406,6 @@ export async function handleEmulatorProcessError(
   port?: number,
 ): Promise<void> {
   const description = Constants.description(emulator);
-  console.log(`${err}`);
   if (err.path === "java" && err.code === "ENOENT") {
     await _fatal(
       emulator,
