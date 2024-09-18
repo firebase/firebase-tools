@@ -13,14 +13,16 @@ import {
 import { ConnectorYaml, Platform } from "../../../src/dataconnect/types";
 import * as yaml from "yaml";
 import * as fs from "fs-extra";
-import path from "path";
+import { getSettings } from "../utils/settings";
 export function registerFdcSdkGeneration(
   broker: ExtensionBrokerImpl,
   telemetryLogger: vscode.TelemetryLogger,
 ): vscode.Disposable {
+  const settings = getSettings();
+
   const initSdkCmd = vscode.commands.registerCommand("fdc.init-sdk", () => {
     telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.INIT_SDK_CLI);
-    runCommand("firebase init dataconnect:sdk");
+    runCommand(`${settings.firebasePath} init dataconnect:sdk`);
   });
 
   // codelense from inside connector.yaml file

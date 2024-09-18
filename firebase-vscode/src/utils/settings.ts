@@ -8,8 +8,11 @@ export interface Settings {
   readonly useFrameworks: boolean;
 }
 
-// TODO (joehanley or hlshen): Temporary fallback for bashing, this should probably point to the global firebase binary on the system
-const FIREBASE_BINARY = "npx firebase/firebase-tools#launch.fdc-pp --yes";
+const FIREBASE_BINARY =
+  // Allow defaults via env var. Useful when starting VS Code from command line or Monospace.
+  process.env.FIREBASE_BINARY ||
+  // TODO: Temporary fallback for bashing, this should probably point to the global firebase binary on the system
+  "npx -y firebase/firebase-tools#launch.fdc-pp";
 
 export function getSettings(): Settings {
   const config = workspace.value.getConfiguration("firebase");

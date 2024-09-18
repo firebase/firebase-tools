@@ -26,11 +26,8 @@ export class DataConnectToolkit implements vscode.Disposable {
           }
         }
       }),
-      broker.on("fdc.open-docs", () => {
-        vscode.commands.executeCommand(
-          "vscode.open",
-          this.getGeneratedDocsURL(),
-        );
+      broker.on("getDocsLink", () => {
+        broker.send("notifyDocksLink", this.getGeneratedDocsURL());
       }),
     );
   }

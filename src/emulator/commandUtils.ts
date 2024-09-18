@@ -465,11 +465,11 @@ export async function emulatorExec(script: string, options: any): Promise<void> 
   try {
     const showUI = !!options.ui;
     ({ deprecationNotices } = await controller.startAll(options, showUI, true));
-    sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_STARTED });
+    await sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_STARTED });
     exitCode = await runScript(script, extraEnv);
     await controller.onExit(options);
   } catch {
-    sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_START_ERRORED });
+    await sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_START_ERRORED });
   } finally {
     await controller.cleanShutdown();
   }
