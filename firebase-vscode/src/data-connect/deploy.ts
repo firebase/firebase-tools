@@ -13,7 +13,7 @@ function createDeployOnlyCommand(serviceConnectorMap: {
   [key: string]: string[];
 }): string {
   return (
-    "firebase deploy --only " +
+    "deploy --only " +
     Object.entries(serviceConnectorMap)
       .map(([serviceId, connectorIds]) => {
         return (
@@ -67,7 +67,9 @@ export function registerFdcDeploy(
       )) as any;
     }
 
-    runCommand(createDeployOnlyCommand(serviceConnectorMap)); // run from terminal
+    runCommand(
+      `${settings.firebasePath} ${createDeployOnlyCommand(serviceConnectorMap)}`,
+    ); // run from terminal
   });
 
   const deployAllSub = broker.on("fdc.deploy-all", async () =>
