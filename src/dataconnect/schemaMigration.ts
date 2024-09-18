@@ -8,12 +8,16 @@ import {
   getIAMUser,
   executeSqlCmdsAsIamUser,
   executeSqlCmdsAsSuperUser,
+  toDatabaseUser,
 } from "../gcp/cloudsql/connect";
 import {
   firebaseowner,
   iamUserIsCSQLAdmin,
   checkSQLRoleIsGranted,
+  fdcSqlRoleMap,
 } from "../gcp/cloudsql/permissions";
+import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
+import { needProjectId } from "../projectUtils";
 import { promptOnce, confirm } from "../prompt";
 import { logger } from "../logger";
 import { Schema } from "./types";
@@ -220,6 +224,39 @@ export async function migrateSchema(args: {
   return diffs;
 }
 
+export async function grantRoleToUserInSchema(options: Options, schema: Schema) {
+  const role = options.role as string;
+  const email = options.email as string;
+
+  const { instanceId, databaseId } = getIdentifiers(schema);
+  const projectId = needProjectId(options);
+  const { user, mode } = toDatabaseUser(email);
+  const fdcSqlRole = fdcSqlRoleMap[role as keyof typeof fdcSqlRoleMap](databaseId);
+
+  // Make sure current user can perform this action.
+  const userIsCSQLAdmin = await iamUserIsCSQLAdmin(options);
+  if (!userIsCSQLAdmin) {
+    throw new FirebaseError(
+      `Only users with 'roles/cloudsql.admin' can grant SQL roles. If you do not have this role, ask your database administrator to run this command or manually grant ${fdcSqlRole} to ${user}`,
+    );
+  }
+
+  // Run the database roles setup. This should be idempotent.
+  await setupIAMUsers(instanceId, databaseId, options);
+
+  // Upsert user account into the database.
+  await cloudSqlAdminClient.createUser(projectId, instanceId, mode, user);
+
+  // Grant the role to the user.
+  await executeSqlCmdsAsSuperUser(
+    options,
+    instanceId,
+    databaseId,
+    /** cmds= */ [`GRANT "${fdcSqlRole}" TO "${user}"`],
+    /** silent= */ false,
+  );
+}
+
 function diffsEqual(x: Diff[], y: Diff[]): boolean {
   if (x.length !== y.length) {
     return false;
@@ -237,8 +274,11 @@ function diffsEqual(x: Diff[], y: Diff[]): boolean {
 }
 
 function setSchemaValidationMode(schema: Schema, schemaValidation: SchemaValidation) {
-  if (experiments.isEnabled("fdccompatiblemode") && schema.primaryDatasource.postgresql) {
-    schema.primaryDatasource.postgresql.schemaValidation = schemaValidation;
+  if (experiments.isEnabled("fdccompatiblemode")) {
+    const postgresDatasource = schema.datasources.find((d) => d.postgresql);
+    if (postgresDatasource?.postgresql) {
+      postgresDatasource.postgresql.schemaValidation = schemaValidation;
+    }
   }
 }
 
@@ -248,13 +288,12 @@ function getIdentifiers(schema: Schema): {
   databaseId: string;
   serviceName: string;
 } {
-  const databaseId = schema.primaryDatasource.postgresql?.database;
+  const postgresDatasource = schema.datasources.find((d) => d.postgresql);
+  const databaseId = postgresDatasource?.postgresql?.database;
   if (!databaseId) {
-    throw new FirebaseError(
-      "Schema is missing primaryDatasource.postgresql?.database, cannot migrate",
-    );
+    throw new FirebaseError("Service does not have a postgres datasource, cannot migrate");
   }
-  const instanceName = schema.primaryDatasource.postgresql?.cloudSql.instance;
+  const instanceName = postgresDatasource?.postgresql?.cloudSql.instance;
   if (!instanceName) {
     throw new FirebaseError(
       "tried to migrate schema but instance name was not provided in dataconnect.yaml",
@@ -509,17 +548,21 @@ async function ensureServiceIsConnectedToCloudSql(
       source: {
         files: [],
       },
-      primaryDatasource: {
-        postgresql: {
-          database: databaseId,
-          cloudSql: {
-            instance: instanceId,
+      datasources: [
+        {
+          postgresql: {
+            database: databaseId,
+            cloudSql: {
+              instance: instanceId,
+            },
           },
         },
-      },
+      ],
     };
   }
-  const postgresql = currentSchema.primaryDatasource.postgresql;
+
+  const postgresDatasource = currentSchema.datasources.find((d) => d.postgresql);
+  const postgresql = postgresDatasource?.postgresql;
   if (postgresql?.cloudSql.instance !== instanceId) {
     logLabeledWarning(
       "dataconnect",
