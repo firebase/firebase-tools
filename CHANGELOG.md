@@ -3,4 +3,4 @@
 - Fixed (Angular 17+) temporary change the PORT in Angular server.ts (#6651)
 - Switched Data Connect API from `v1alpha` to `v1beta`. (#7589)
 - Improved handling of Spark projects in `firebase init dataconnect`. (#7666)
-- Updated Firebase Data Connect local toolkit version to v1.3.7, which adds support for `v1beta` gRPC APIs and the `OrderDirection` enum in Swift, and makes transactional queries and mutations opt-in with the `@transaction` directive. ()
+- Updated Firebase Data Connect local toolkit version to v1.3.7, which adds support for `v1beta` gRPC APIs and the `OrderDirection` enum in Swift, and makes transactional queries and mutations opt-in with the `@transaction` directive. (#7679)
