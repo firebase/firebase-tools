@@ -8,12 +8,16 @@ import {
   getIAMUser,
   executeSqlCmdsAsIamUser,
   executeSqlCmdsAsSuperUser,
+  toDatabaseUser,
 } from "../gcp/cloudsql/connect";
 import {
   firebaseowner,
   iamUserIsCSQLAdmin,
   checkSQLRoleIsGranted,
+  fdcSqlRoleMap,
 } from "../gcp/cloudsql/permissions";
+import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
+import { needProjectId } from "../projectUtils";
 import { promptOnce, confirm } from "../prompt";
 import { logger } from "../logger";
 import { Schema } from "./types";
@@ -218,6 +222,39 @@ export async function migrateSchema(args: {
     }
   }
   return diffs;
+}
+
+export async function grantRoleToUserInSchema(options: Options, schema: Schema) {
+  const role = options.role as string;
+  const email = options.email as string;
+
+  const { instanceId, databaseId } = getIdentifiers(schema);
+  const projectId = needProjectId(options);
+  const { user, mode } = toDatabaseUser(email);
+  const fdcSqlRole = fdcSqlRoleMap[role as keyof typeof fdcSqlRoleMap](databaseId);
+
+  // Make sure current user can perform this action.
+  const userIsCSQLAdmin = await iamUserIsCSQLAdmin(options);
+  if (!userIsCSQLAdmin) {
+    throw new FirebaseError(
+      `Only users with 'roles/cloudsql.admin' can grant SQL roles. If you do not have this role, ask your database administrator to run this command or manually grant ${fdcSqlRole} to ${user}`,
+    );
+  }
+
+  // Run the database roles setup. This should be idempotent.
+  await setupIAMUsers(instanceId, databaseId, options);
+
+  // Upsert user account into the database.
+  await cloudSqlAdminClient.createUser(projectId, instanceId, mode, user);
+
+  // Grant the role to the user.
+  await executeSqlCmdsAsSuperUser(
+    options,
+    instanceId,
+    databaseId,
+    /** cmds= */ [`GRANT "${fdcSqlRole}" TO "${user}"`],
+    /** silent= */ false,
+  );
 }
 
 function diffsEqual(x: Diff[], y: Diff[]): boolean {
