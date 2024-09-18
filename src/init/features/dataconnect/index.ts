@@ -261,16 +261,17 @@ async function promptForService(
         info.serviceId = serviceName.serviceId;
         info.locationId = serviceName.location;
         if (choice.schema) {
-          if (choice.schema.primaryDatasource.postgresql?.cloudSql.instance) {
+          const primaryDatasource = choice.schema.datasources.find((d) => d.postgresql);
+          if (primaryDatasource?.postgresql?.cloudSql.instance) {
             const instanceName = parseCloudSQLInstanceName(
-              choice.schema.primaryDatasource.postgresql?.cloudSql.instance,
+              primaryDatasource.postgresql.cloudSql.instance,
             );
             info.cloudSqlInstanceId = instanceName.instanceId;
           }
           if (choice.schema.source.files) {
             info.schemaGql = choice.schema.source.files;
           }
-          info.cloudSqlDatabase = choice.schema.primaryDatasource.postgresql?.database ?? "";
+          info.cloudSqlDatabase = primaryDatasource?.postgresql?.database ?? "";
           const connectors = await listConnectors(choice.service.name, [
             "connectors.name",
             "connectors.source.files",
