@@ -1,4 +1,5 @@
 - Added support for non-default Firestore databases in `firebase init`. (#7655)
-- Update supported range for Angular framework. (#7418)
-- Fix (Angular 17+) temporary change the PORT in Angular server.ts. (#6651)
+- Updated supported range for Angular framework. (#7418)
+- Fixed (Angular 17+) temporary change the PORT in Angular server.ts (#6651)
+- Switched Data Connect API from `v1alpha` to `v1beta`. (#7589)
 - Improved handling of Spark projects in `firebase init dataconnect`. (#7666)
