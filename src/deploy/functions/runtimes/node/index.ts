@@ -260,7 +260,6 @@ export class Delegate {
       );
       return parseTriggers.discoverBuild(this.projectId, this.sourceDir, this.runtime, config, env);
     }
-
     let discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
     if (!discovered) {
       const basePort = 8000 + randomInt(0, 1000); // Add a jitter to reduce likelihood of race condition
