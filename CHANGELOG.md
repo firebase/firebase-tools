@@ -2,3 +2,4 @@
 - Update supported range for Angular framework. (#7418)
 - Fix (Angular 17+) temporary change the PORT in Angular server.ts. (#6651)
 - Improved handling of Spark projects in `firebase init dataconnect`. (#7666)
+- Add dataconnect SQL grant command `firebase dataconnect:sql:grant -R <role> -E email`. (#7656)
