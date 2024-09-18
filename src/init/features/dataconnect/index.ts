@@ -116,8 +116,7 @@ async function askQuestions(setup: Setup, config: Config): Promise<RequiredInfo>
     (info.isNewInstance || info.isNewDatabase) &&
     isBillingEnabled &&
     (await confirm({
-      message:
-        "Would you like to provision your CloudSQL instance and database now? This will take a few minutes.",
+      message: `Would you like to provision your Cloud SQL instance and database now?${info.isNewInstance ? " This will take several minutes." : ""}.`,
       default: true,
     }))
   );
@@ -262,16 +261,17 @@ async function promptForService(
         info.serviceId = serviceName.serviceId;
         info.locationId = serviceName.location;
         if (choice.schema) {
-          if (choice.schema.primaryDatasource.postgresql?.cloudSql.instance) {
+          const primaryDatasource = choice.schema.datasources.find((d) => d.postgresql);
+          if (primaryDatasource?.postgresql?.cloudSql.instance) {
             const instanceName = parseCloudSQLInstanceName(
-              choice.schema.primaryDatasource.postgresql?.cloudSql.instance,
+              primaryDatasource.postgresql.cloudSql.instance,
             );
             info.cloudSqlInstanceId = instanceName.instanceId;
           }
           if (choice.schema.source.files) {
             info.schemaGql = choice.schema.source.files;
           }
-          info.cloudSqlDatabase = choice.schema.primaryDatasource.postgresql?.database ?? "";
+          info.cloudSqlDatabase = primaryDatasource?.postgresql?.database ?? "";
           const connectors = await listConnectors(choice.service.name, [
             "connectors.name",
             "connectors.source.files",
@@ -295,7 +295,7 @@ async function promptForService(
     info.serviceId = await promptOnce({
       message: "What ID would you like to use for this service?",
       type: "input",
-      default: "my-service",
+      default: "app",
     });
   }
   return info;
@@ -330,7 +330,7 @@ async function promptForCloudSQLInstance(setup: Setup, info: RequiredInfo): Prom
     info.cloudSqlInstanceId = await promptOnce({
       message: `What ID would you like to use for your new CloudSQL instance?`,
       type: "input",
-      default: `fdc-sql`,
+      default: `${info.serviceId || "app"}-fdc`,
     });
   }
   if (info.locationId === "") {

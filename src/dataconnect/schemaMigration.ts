@@ -274,8 +274,11 @@ function diffsEqual(x: Diff[], y: Diff[]): boolean {
 }
 
 function setSchemaValidationMode(schema: Schema, schemaValidation: SchemaValidation) {
-  if (experiments.isEnabled("fdccompatiblemode") && schema.primaryDatasource.postgresql) {
-    schema.primaryDatasource.postgresql.schemaValidation = schemaValidation;
+  if (experiments.isEnabled("fdccompatiblemode")) {
+    const postgresDatasource = schema.datasources.find((d) => d.postgresql);
+    if (postgresDatasource?.postgresql) {
+      postgresDatasource.postgresql.schemaValidation = schemaValidation;
+    }
   }
 }
 
@@ -285,13 +288,12 @@ function getIdentifiers(schema: Schema): {
   databaseId: string;
   serviceName: string;
 } {
-  const databaseId = schema.primaryDatasource.postgresql?.database;
+  const postgresDatasource = schema.datasources.find((d) => d.postgresql);
+  const databaseId = postgresDatasource?.postgresql?.database;
   if (!databaseId) {
-    throw new FirebaseError(
-      "Schema is missing primaryDatasource.postgresql?.database, cannot migrate",
-    );
+    throw new FirebaseError("Service does not have a postgres datasource, cannot migrate");
   }
-  const instanceName = schema.primaryDatasource.postgresql?.cloudSql.instance;
+  const instanceName = postgresDatasource?.postgresql?.cloudSql.instance;
   if (!instanceName) {
     throw new FirebaseError(
       "tried to migrate schema but instance name was not provided in dataconnect.yaml",
@@ -546,17 +548,21 @@ async function ensureServiceIsConnectedToCloudSql(
       source: {
         files: [],
       },
-      primaryDatasource: {
-        postgresql: {
-          database: databaseId,
-          cloudSql: {
-            instance: instanceId,
+      datasources: [
+        {
+          postgresql: {
+            database: databaseId,
+            cloudSql: {
+              instance: instanceId,
+            },
           },
         },
-      },
+      ],
     };
   }
-  const postgresql = currentSchema.primaryDatasource.postgresql;
+
+  const postgresDatasource = currentSchema.datasources.find((d) => d.postgresql);
+  const postgresql = postgresDatasource?.postgresql;
   if (postgresql?.cloudSql.instance !== instanceId) {
     logLabeledWarning(
       "dataconnect",

@@ -88,22 +88,23 @@ export default async function (
         return !filters || filters?.some((f) => si.dataConnectYaml.serviceId === f.serviceId);
       })
       .map(async (s) => {
-        const instanceId = s.schema.primaryDatasource.postgresql?.cloudSql.instance
-          .split("/")
-          .pop();
-        const databaseId = s.schema.primaryDatasource.postgresql?.database;
-        if (!instanceId || !databaseId) {
-          return Promise.resolve();
+        const postgresDatasource = s.schema.datasources.find((d) => d.postgresql);
+        if (postgresDatasource) {
+          const instanceId = postgresDatasource.postgresql?.cloudSql.instance.split("/").pop();
+          const databaseId = postgresDatasource.postgresql?.database;
+          if (!instanceId || !databaseId) {
+            return Promise.resolve();
+          }
+          const enableGoogleMlIntegration = requiresVector(s.deploymentMetadata);
+          return provisionCloudSql({
+            projectId,
+            locationId: parseServiceName(s.serviceName).location,
+            instanceId,
+            databaseId,
+            enableGoogleMlIntegration,
+            waitForCreation: true,
+          });
         }
-        const enableGoogleMlIntegration = requiresVector(s.deploymentMetadata);
-        return provisionCloudSql({
-          projectId,
-          locationId: parseServiceName(s.serviceName).location,
-          instanceId,
-          databaseId,
-          enableGoogleMlIntegration,
-          waitForCreation: true,
-        });
       }),
   );
   return;
