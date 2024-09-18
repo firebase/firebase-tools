@@ -100,7 +100,7 @@ export async function prepare(
     context.filters,
   );
 
-  //== Phase 1.5 Prepare extensions found in codebases if any
+  // == Phase 1.5 Prepare extensions found in codebases if any
   if (Object.values(wantBuilds).some((b) => b.extensions)) {
     const extContext: ExtContext = {};
     const extPayload: ExtPayload = {};

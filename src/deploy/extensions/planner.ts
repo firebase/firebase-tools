@@ -111,22 +111,22 @@ export async function haveDynamic(projectId: string): Promise<DeploymentInstance
   return (await extensionsApi.listInstances(projectId))
     .filter((i) => i.labels?.createdBy === "SDK")
     .map((i) => {
-    const dep: DeploymentInstanceSpec = {
-      instanceId: i.name.split("/").pop()!,
-      params: i.config.params,
-      systemParams: i.config.systemParams ?? {},
-      allowedEventTypes: i.config.allowedEventTypes,
-      eventarcChannel: i.config.eventarcChannel,
-      etag: i.etag,
-      labels: i.labels,
-    };
-    if (i.config.extensionRef) {
-      const ref = refs.parse(i.config.extensionRef);
-      dep.ref = ref;
-      dep.ref.version = i.config.extensionVersion;
-    }
-    return dep;
-  });
+      const dep: DeploymentInstanceSpec = {
+        instanceId: i.name.split("/").pop()!,
+        params: i.config.params,
+        systemParams: i.config.systemParams ?? {},
+        allowedEventTypes: i.config.allowedEventTypes,
+        eventarcChannel: i.config.eventarcChannel,
+        etag: i.etag,
+        labels: i.labels,
+      };
+      if (i.config.extensionRef) {
+        const ref = refs.parse(i.config.extensionRef);
+        dep.ref = ref;
+        dep.ref.version = i.config.extensionVersion;
+      }
+      return dep;
+    });
 }
 
 /**
@@ -136,26 +136,26 @@ export async function haveDynamic(projectId: string): Promise<DeploymentInstance
  */
 export async function have(projectId: string): Promise<DeploymentInstanceSpec[]> {
   return (await extensionsApi.listInstances(projectId))
-  .filter((i) => !(i.labels?.createdBy === "SDK"))
-  .map((i) => {
-    const dep: DeploymentInstanceSpec = {
-      instanceId: i.name.split("/").pop()!,
-      params: i.config.params,
-      systemParams: i.config.systemParams ?? {},
-      allowedEventTypes: i.config.allowedEventTypes,
-      eventarcChannel: i.config.eventarcChannel,
-      etag: i.etag,
-    };
-    if (i.labels) {
-      dep.labels = i.labels;
-    }
-    if (i.config.extensionRef) {
-      const ref = refs.parse(i.config.extensionRef);
-      dep.ref = ref;
-      dep.ref.version = i.config.extensionVersion;
-    }
-    return dep;
-  });
+    .filter((i) => !(i.labels?.createdBy === "SDK"))
+    .map((i) => {
+      const dep: DeploymentInstanceSpec = {
+        instanceId: i.name.split("/").pop()!,
+        params: i.config.params,
+        systemParams: i.config.systemParams ?? {},
+        allowedEventTypes: i.config.allowedEventTypes,
+        eventarcChannel: i.config.eventarcChannel,
+        etag: i.etag,
+      };
+      if (i.labels) {
+        dep.labels = i.labels;
+      }
+      if (i.config.extensionRef) {
+        const ref = refs.parse(i.config.extensionRef);
+        dep.ref = ref;
+        dep.ref.version = i.config.extensionVersion;
+      }
+      return dep;
+    });
 }
 
 /**
