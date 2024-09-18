@@ -41,9 +41,19 @@ export class DataConnectToolkitController {
   }
 
   /**
-   * Get information about an emulator. Use `url` instead for creating URLs.
+   * Get information about an emulator.
    */
   static getInfo(): EmulatorInfo | undefined {
     return this.instance.getInfo();
+  }
+
+  static getUrl(): string {
+    const info = this.instance.getInfo();
+
+    // handle ipv6
+    if (info.host.includes(":")) {
+      return `http://[${info.host}]:${info.port}`;
+    }
+    return `http://${info.host}:${info.port}`;
   }
 }

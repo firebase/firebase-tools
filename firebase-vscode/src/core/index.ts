@@ -97,7 +97,7 @@ export async function registerCore(
       registerUser(broker, telemetryLogger),
       registerProject(broker),
       registerQuickstart(broker),
-      registerWebhooks(),
+      await registerWebhooks(),
       { dispose: sub1 },
       { dispose: sub2 },
       { dispose: sub3 },

@@ -7,6 +7,10 @@ import { getSettings } from "../utils/settings";
 
 const environmentVariables = {};
 
+const executionOptions: vscode.ShellExecutionOptions = {
+  env: environmentVariables,
+};
+
 const terminalOptions: TerminalOptions = {
   name: "Data Connect Terminal",
   env: environmentVariables,
@@ -51,7 +55,7 @@ export function runTerminalTask(
         vscode.TaskScope.Workspace,
         taskName,
         "firebase",
-        new vscode.ShellExecution(command),
+        new vscode.ShellExecution(command, executionOptions),
       ),
     );
   });

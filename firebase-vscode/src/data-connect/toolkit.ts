@@ -7,10 +7,11 @@ import { runEmulatorIssuesStream } from "./emulator-stream";
 import { runDataConnectCompiler } from "./core-compiler";
 import { DataConnectToolkitController } from "../../../src/emulator/dataconnectToolkitController";
 import { DataConnectEmulatorArgs } from "../emulator/dataconnectEmulator";
-import * as net from "net";
 import { Config } from "../config";
 import { RC } from "../rc";
+import { findOpenPort } from "../utils/port_utils";
 
+const DEFAULT_PORT = 50001;
 /** FDC-specific emulator logic; Toolkit and emulator */
 export class DataConnectToolkit implements vscode.Disposable {
   constructor(readonly broker: ExtensionBrokerImpl) {
@@ -34,7 +35,7 @@ export class DataConnectToolkit implements vscode.Disposable {
 
   // special function to start FDC emulator with special flags & port
   async startFDCToolkit(configDir: string, config: Config, RC: RC) {
-    const port = await this.findOpenPort();
+    const port = await findOpenPort(DEFAULT_PORT);
     const toolkitArgs: DataConnectEmulatorArgs = {
       projectId: "toolkit",
       listen: [{ address: "localhost", port, family: "IPv4" }],
@@ -57,8 +58,7 @@ export class DataConnectToolkit implements vscode.Disposable {
   }
 
   getFDCToolkitURL() {
-    //TODO source from ToolkitController
-    return "http://localhost:12345";
+    return DataConnectToolkitController.getUrl();
   }
 
   getGeneratedDocsURL() {
@@ -86,44 +86,6 @@ export class DataConnectToolkit implements vscode.Disposable {
       this.schemaReload,
     );
     runDataConnectCompiler(configs, this.getFDCToolkitURL());
-  }
-
-  async findOpenPort(startPort = 12345): Promise<number> {
-    return new Promise((resolve, reject) => {
-      let server: net.Server | null = null;
-
-      server = net.createServer();
-      server.on("error", (err: any) => {
-        if (err.code === "EADDRINUSE") {
-          // Port is in use, try the next one
-          if (server) {
-            server.close(() =>
-              this.findOpenPort(startPort + 1)
-                .then(resolve)
-                .catch(reject),
-            );
-          } else {
-            reject(new Error("Server is null while handling EADDRINUSE"));
-          }
-        } else {
-          reject(err);
-        }
-      });
-
-      server.listen(startPort, () => {
-        const address = server?.address();
-        if (address && typeof address === "object" && "port" in address) {
-          const port = address.port;
-          if (server) {
-            server.close(() => resolve(port));
-          } else {
-            reject(new Error("Server is null after successful listen"));
-          }
-        } else {
-          reject(new Error("Invalid address returned from server"));
-        }
-      });
-    });
   }
 
   dispose() {
