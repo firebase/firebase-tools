@@ -108,10 +108,9 @@ export async function getExtensionSpec(i: InstanceSpec): Promise<ExtensionSpec> 
  * @param projectId
  */
 export async function haveDynamic(projectId: string): Promise<DeploymentInstanceSpec[]> {
-  let instances = await extensionsApi.listInstances(projectId);
-  // Only include instances created by SDK
-  instances = instances.filter((i) => i.labels?.createdBy === "SDK");
-  return instances.map((i) => {
+  return (await extensionsApi.listInstances(projectId))
+    .filter((i) => i.labels?.createdBy === "SDK")
+    .map((i) => {
     const dep: DeploymentInstanceSpec = {
       instanceId: i.name.split("/").pop()!,
       params: i.config.params,
@@ -136,10 +135,9 @@ export async function haveDynamic(projectId: string): Promise<DeploymentInstance
  * @param projectId
  */
 export async function have(projectId: string): Promise<DeploymentInstanceSpec[]> {
-  let instances = await extensionsApi.listInstances(projectId);
-  // Only include instances created by either CLI or console
-  instances = instances.filter((i) => !(i.labels?.createdBy === "SDK"));
-  return instances.map((i) => {
+  return (await extensionsApi.listInstances(projectId))
+  .filter((i) => !(i.labels?.createdBy === "SDK"))
+  .map((i) => {
     const dep: DeploymentInstanceSpec = {
       instanceId: i.name.split("/").pop()!,
       params: i.config.params,

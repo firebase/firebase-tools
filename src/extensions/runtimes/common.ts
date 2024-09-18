@@ -148,19 +148,18 @@ export async function writeFile(filePath: string, data: string, options: any) {
   } else {
     // write new file
     // Make sure the directories exist
-    await fs.promises
-      .mkdir(path.dirname(filePath), { recursive: true })
-      .then(async () => {
-        try {
+    try {
+      await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+      try {
           await fs.promises.writeFile(`${filePath}`, data, { flag: "w" });
           logLabeledBullet("extensions", `successfully created ${shortFilePath}`);
         } catch (err) {
           throw new FirebaseError(`Failed to create ${shortFilePath}:\n    ${err}`);
         }
-      })
-      .catch((err: any) => {
+      }
+      catch(err) {
         throw new FirebaseError(`Error during SDK file creation:\n    ${err}`);
-      });
+      }
   }
 }
 

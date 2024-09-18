@@ -1,4 +1,6 @@
 import * as clc from "colorette";
+import * as semver from "semver";
+
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import * as extensionsApi from "../extensions/extensionsApi";
@@ -11,7 +13,6 @@ import { FirebaseError } from "../error";
 import { displayExtensionVersionInfo } from "../extensions/displayExtensionInfo";
 import * as refs from "../extensions/refs";
 import { logger } from "../logger";
-import * as semver from "semver";
 import { confirm } from "../prompt";
 import * as utils from "../utils";
 
