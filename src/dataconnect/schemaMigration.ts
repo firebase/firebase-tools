@@ -595,11 +595,11 @@ function displaySchemaChanges(
         let message;
         if (validationMode === "COMPATIBLE") {
           message =
-            "Your new application schema is incompatible with the schema of your PostgreSQL database " +
+            "Your PostgreSQL database " +
             databaseId +
             " in your CloudSQL instance " +
             instanceName +
-            ". " +
+            " must be migrated in order to be compatible with your application schema. " +
             "The following SQL statements will migrate your database schema to be compatible with your new Data Connect schema.\n" +
             error.diffs.map(toString).join("\n");
         } else if (validationMode === "STRICT_AFTER_COMPATIBLE") {
@@ -613,11 +613,11 @@ function displaySchemaChanges(
             error.diffs.map(toString).join("\n");
         } else {
           message =
-            "Your new application schema does not match the schema of your PostgreSQL database " +
+            "Your PostgreSQL database " +
             databaseId +
             " in your CloudSQL instance " +
             instanceName +
-            ". " +
+            " must be migrated in order to match your application schema. " +
             "The following SQL statements will migrate your database schema to match your new Data Connect schema.\n" +
             error.diffs.map(toString).join("\n");
         }
