@@ -149,11 +149,7 @@ export async function prepareDynamicExtensions(
     return;
   }
 
-  // This is only a primary call if we are not including extensions deploy
-  const isPrimaryCall = !!options.only && !options.only.split(",").includes("extensions");
-  // If markdown is true, the check is silent (no duplicates)
-  const adjustedOptions = { ...options, markdown: isPrimaryCall || options.markdown };
-  await ensureExtensionsApiEnabled(adjustedOptions);
+  await ensureExtensionsApiEnabled(options);
   await requirePermissions(options, ["firebaseextensions.instances.list"]);
 
   const dynamicWant = await planner.wantDynamic({
@@ -162,10 +158,14 @@ export async function prepareDynamicExtensions(
     extensions,
   });
 
-  // We are in prepareDynamicExtensions because it is called from functions prepare
-  // Check if we are also deploying extensions (either no `--only` or including
-  // `--only extensions`) if so, it's not a primary call
-  return prepareHelper(context, options, payload, dynamicWant, haveExtensions, true);
+  return prepareHelper(
+    context,
+    options,
+    payload,
+    dynamicWant,
+    haveExtensions,
+    true /* isDynamic */,
+  );
 }
 
 export async function prepare(context: Context, options: Options, payload: Payload) {
@@ -188,7 +188,14 @@ export async function prepare(context: Context, options: Options, payload: Paylo
 
   const haveExtensions = await planner.have(projectId);
 
-  return prepareHelper(context, options, payload, wantExtensions, haveExtensions, false);
+  return prepareHelper(
+    context,
+    options,
+    payload,
+    wantExtensions,
+    haveExtensions,
+    false /* isDynamic */,
+  );
 }
 
 const matchesInstanceId = (dep: planner.InstanceSpec) => (test: planner.InstanceSpec) => {

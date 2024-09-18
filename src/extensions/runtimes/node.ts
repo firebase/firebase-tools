@@ -509,7 +509,7 @@ export async function writeSDK(
     prefix +
     `can add this to your codebase to begin using the SDK:\n\n` +
     fixDarkBlueText(await marked(sampleImport)) +
-    `See also: ${fixDarkBlueText(await marked("[Extension SDKs documentation](https://firebase.google.com/docs/extensions/install-extensions?platform=sdk#config)"))}`;
+    `See also: ${fixDarkBlueText(await marked("[Extension SDKs documentation](https://firebase.google.com/docs/extensions/install-extensions?interface=sdk#config)"))}`;
 
   return instructions;
 }
