@@ -167,12 +167,18 @@ export async function doSetup(
   const createRolloutSpinner = ora(
     "Starting a new rollout; this may take a few minutes. It's safe to exit now.",
   ).start();
-  await orchestrateRollout(projectId, location, backendId, {
-    source: {
-      codebase: {
-        branch,
+  await orchestrateRollout({
+    projectId,
+    location,
+    backendId,
+    buildInput: {
+      source: {
+        codebase: {
+          branch,
+        },
       },
     },
+    isFirstRollout: true,
   });
   createRolloutSpinner.succeed("Rollout complete");
   if (!(await tlsReady(url))) {
@@ -340,16 +346,28 @@ export async function setDefaultTrafficPolicy(
   });
 }
 
+interface OrchestrateRolloutArgs {
+  projectId: string;
+  location: string;
+  backendId: string;
+  buildInput: DeepOmit<Build, apphosting.BuildOutputOnlyFields | "name">;
+  isFirstRollout?: boolean;
+}
+
 /**
  * Creates a new build and rollout and polls both to completion.
  */
 export async function orchestrateRollout(
-  projectId: string,
-  location: string,
-  backendId: string,
-  buildInput: DeepOmit<Build, apphosting.BuildOutputOnlyFields | "name">,
+  args: OrchestrateRolloutArgs,
 ): Promise<{ rollout: Rollout; build: Build }> {
-  const buildId = await apphosting.getNextRolloutId(projectId, location, backendId, 1);
+  const { projectId, location, backendId, buildInput, isFirstRollout } = args;
+
+  const buildId = await apphosting.getNextRolloutId(
+    projectId,
+    location,
+    backendId,
+    isFirstRollout ? 1 : undefined,
+  );
   const buildOp = await apphosting.createBuild(projectId, location, backendId, buildId, buildInput);
 
   const rolloutBody = {
@@ -440,7 +458,7 @@ export async function deleteBackendAndPoll(
  */
 export async function promptLocation(
   projectId: string,
-  prompt: string = "Please select a location:",
+  prompt = "Please select a location:",
 ): Promise<string> {
   const allowedLocations = (await apphosting.listLocations(projectId)).map((loc) => loc.locationId);
   if (allowedLocations.length === 1) {
