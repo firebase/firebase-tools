@@ -88,11 +88,9 @@ export default async function (
         return !filters || filters?.some((f) => si.dataConnectYaml.serviceId === f.serviceId);
       })
       .map(async (s) => {
-        const postgresDatasource = s.schema.datasources.find(d => d.postgresql);
+        const postgresDatasource = s.schema.datasources.find((d) => d.postgresql);
         if (postgresDatasource) {
-          const instanceId = postgresDatasource.postgresql?.cloudSql.instance
-            .split("/")
-            .pop();
+          const instanceId = postgresDatasource.postgresql?.cloudSql.instance.split("/").pop();
           const databaseId = postgresDatasource.postgresql?.database;
           if (!instanceId || !databaseId) {
             return Promise.resolve();

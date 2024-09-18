@@ -254,9 +254,7 @@ function getIdentifiers(schema: Schema): {
   const postgresDatasource = schema.datasources.find((d) => d.postgresql);
   const databaseId = postgresDatasource?.postgresql?.database;
   if (!databaseId) {
-    throw new FirebaseError(
-      "Service does not have a postgres datasource, cannot migrate",
-    );
+    throw new FirebaseError("Service does not have a postgres datasource, cannot migrate");
   }
   const instanceName = postgresDatasource?.postgresql?.cloudSql.instance;
   if (!instanceName) {
