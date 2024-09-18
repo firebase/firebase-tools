@@ -19,6 +19,10 @@ export function setTerminalEnvVars(envVar: string, value: string) {
 export function runCommand(command: string) {
   const terminal = vscode.window.createTerminal(terminalOptions);
   terminal.show();
+
+  // TODO: This fails if the interactive shell is not expecting a command, such
+  // as when oh-my-zsh asking for (Y/n) to updates during startup.
+  // Consider using an non-interactive shell.
   terminal.sendText(command);
 }
 
