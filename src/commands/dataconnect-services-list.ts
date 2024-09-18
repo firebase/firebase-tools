@@ -39,10 +39,10 @@ export const command = new Command("dataconnect:services:list")
       };
       const connectors = await client.listConnectors(service.name);
       const serviceName = names.parseServiceName(service.name);
-      const primaryDatasource = schema?.datasources.find((d) => d.postgresql);
-      const instanceName = primaryDatasource?.postgresql?.cloudSql.instance ?? "";
+      const postgresDatasource = schema?.datasources.find((d) => d.postgresql);
+      const instanceName = postgresDatasource?.postgresql?.cloudSql.instance ?? "";
       const instanceId = instanceName.split("/").pop();
-      const dbId = primaryDatasource?.postgresql?.database ?? "";
+      const dbId = postgresDatasource?.postgresql?.database ?? "";
       const dbName = `CloudSQL Instance: ${instanceId}\nDatabase: ${dbId}`;
       table.push([
         serviceName.serviceId,

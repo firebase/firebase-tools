@@ -238,9 +238,9 @@ function diffsEqual(x: Diff[], y: Diff[]): boolean {
 
 function setSchemaValidationMode(schema: Schema, schemaValidation: SchemaValidation) {
   if (experiments.isEnabled("fdccompatiblemode")) {
-    const primaryDatasource = schema.datasources.find((d) => d.postgresql);
-    if (primaryDatasource?.postgresql) {
-      primaryDatasource.postgresql.schemaValidation = schemaValidation;
+    const postgresDatasource = schema.datasources.find((d) => d.postgresql);
+    if (postgresDatasource?.postgresql) {
+      postgresDatasource.postgresql.schemaValidation = schemaValidation;
     }
   }
 }
@@ -251,14 +251,14 @@ function getIdentifiers(schema: Schema): {
   databaseId: string;
   serviceName: string;
 } {
-  const primaryDatasource = schema.datasources.find((d) => d.postgresql);
-  const databaseId = primaryDatasource?.postgresql?.database;
+  const postgresDatasource = schema.datasources.find((d) => d.postgresql);
+  const databaseId = postgresDatasource?.postgresql?.database;
   if (!databaseId) {
     throw new FirebaseError(
-      "Schema is missing primaryDatasource.postgresql?.database, cannot migrate",
+      "Service does not have a postgres datasource, cannot migrate",
     );
   }
-  const instanceName = primaryDatasource?.postgresql?.cloudSql.instance;
+  const instanceName = postgresDatasource?.postgresql?.cloudSql.instance;
   if (!instanceName) {
     throw new FirebaseError(
       "tried to migrate schema but instance name was not provided in dataconnect.yaml",
@@ -526,8 +526,8 @@ async function ensureServiceIsConnectedToCloudSql(
     };
   }
 
-  const primaryDatasource = currentSchema.datasources.find((d) => d.postgresql);
-  const postgresql = primaryDatasource?.postgresql;
+  const postgresDatasource = currentSchema.datasources.find((d) => d.postgresql);
+  const postgresql = postgresDatasource?.postgresql;
   if (postgresql?.cloudSql.instance !== instanceId) {
     logLabeledWarning(
       "dataconnect",
