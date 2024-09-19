@@ -140,6 +140,7 @@ export const deploy = async function (
   }
   await trackGA4("product_deploy", analyticsParams, duration);
 
+  const successMessage = options.dryRun ? "Dry run complete!" : "Deploy complete!"
   logger.info();
   logSuccess(bold(underline("Deploy complete!")));
   logger.info();

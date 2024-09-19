@@ -15,6 +15,7 @@ import { provisionCloudSql } from "../../dataconnect/provisionCloudSql";
 import { parseServiceName } from "../../dataconnect/names";
 import { FirebaseError } from "../../error";
 import { requiresVector } from "../../dataconnect/types";
+import { diffSchema } from "../../dataconnect/schemaMigration";
 
 /**
  * Prepares for a Firebase DataConnect deployment by loading schemas and connectors from file.
@@ -59,6 +60,9 @@ export default async function (context: any, options: DeployOptions): Promise<vo
   };
   utils.logLabeledBullet("dataconnect", `Successfully prepared schema and connectors`);
   if (options.dryRun) {
+    for (const si of serviceInfos) {
+      await diffSchema(si.schema, si.dataConnectYaml.schema.datasource.postgresql?.schemaValidation)
+    }
     utils.logLabeledBullet("dataconnect", "Checking for CloudSQL resources...");
     await Promise.all(
       serviceInfos
@@ -66,25 +70,24 @@ export default async function (context: any, options: DeployOptions): Promise<vo
           return !filters || filters?.some((f) => si.dataConnectYaml.serviceId === f.serviceId);
         })
         .map(async (s) => {
-          const instanceId = s.schema.primaryDatasource.postgresql?.cloudSql.instance
-            .split("/")
-            .pop();
-          const databaseId = s.schema.primaryDatasource.postgresql?.database;
-          if (!instanceId || !databaseId) {
-            return Promise.resolve();
+          const postgresDatasource = s.schema.datasources.find((d) => d.postgresql);
+          if (postgresDatasource) {
+            const instanceId = postgresDatasource.postgresql?.cloudSql.instance.split("/").pop();
+            const databaseId = postgresDatasource.postgresql?.database;
+            if (!instanceId || !databaseId) {
+              return Promise.resolve();
+            }
+            const enableGoogleMlIntegration = requiresVector(s.deploymentMetadata);
+            return provisionCloudSql({
+              projectId,
+              locationId: parseServiceName(s.serviceName).location,
+              instanceId,
+              databaseId,
+              enableGoogleMlIntegration,
+              waitForCreation: true,
+              dryRun: options.dryRun,
+            });
           }
-          const enableGoogleMlIntegration = requiresVector(s.deploymentMetadata);
-          utils.logLabeledBullet("dataconnect", "Checking for CloudSQL resources...");
-
-          return provisionCloudSql({
-            projectId,
-            locationId: parseServiceName(s.serviceName).location,
-            instanceId,
-            databaseId,
-            enableGoogleMlIntegration,
-            waitForCreation: true,
-            dryRun: options.dryRun,
-          });
         }),
     );
   }
