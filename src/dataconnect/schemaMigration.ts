@@ -429,6 +429,10 @@ async function promptForSchemaMigration(
     }
     // `firebase deploy` and `firebase dataconnect:sql:migrate` always prompt for any SQL migration changes.
     // Destructive migrations are too potentially dangerous to not prompt for with --force
+    const message =
+      validationMode === "STRICT_AFTER_COMPATIBLE"
+        ? `Would you like to execute these optional changes against ${databaseId} in your CloudSQL instance ${instanceName}?`
+        : `Would you like to execute these changes against ${databaseId} in your CloudSQL instance ${instanceName}?`;
     let executeChangePrompt = "Execute changes";
     if (validationMode === "STRICT_AFTER_COMPATIBLE") {
       executeChangePrompt = "Execute optional changes";
@@ -442,7 +446,7 @@ async function promptForSchemaMigration(
     ];
     const defaultValue = validationMode === "STRICT_AFTER_COMPATIBLE" ? "none" : "all";
     return await promptOnce({
-      message: `Would you like to execute these changes against ${databaseId}?`,
+      message: message,
       type: "list",
       choices,
       default: defaultValue,
@@ -478,14 +482,8 @@ async function promptForInvalidConnectorError(
   }
   displayInvalidConnectors(invalidConnectors);
   if (validateOnly) {
-    if (options.force) {
-      // `firebase dataconnect:sql:migrate --force` ignores invalid connectors.
-      return false;
-    }
-    // `firebase dataconnect:sql:migrate` aborts if there are invalid connectors.
-    throw new FirebaseError(
-      `Command aborted. If you'd like to migrate it anyway, you may override with --force.`,
-    );
+    // `firebase dataconnect:sql:migrate` ignores invalid connectors.
+    return false;
   }
   if (options.force) {
     // `firebase deploy --force` will delete invalid connectors without prompting.
@@ -601,11 +599,11 @@ function displaySchemaChanges(
         let message;
         if (validationMode === "COMPATIBLE") {
           message =
-            "Your new application schema is incompatible with the schema of your PostgreSQL database " +
+            "Your PostgreSQL database " +
             databaseId +
             " in your CloudSQL instance " +
             instanceName +
-            ". " +
+            " must be migrated in order to be compatible with your application schema. " +
             "The following SQL statements will migrate your database schema to be compatible with your new Data Connect schema.\n" +
             error.diffs.map(toString).join("\n");
         } else if (validationMode === "STRICT_AFTER_COMPATIBLE") {
@@ -619,11 +617,11 @@ function displaySchemaChanges(
             error.diffs.map(toString).join("\n");
         } else {
           message =
-            "Your new application schema does not match the schema of your PostgreSQL database " +
+            "Your PostgreSQL database " +
             databaseId +
             " in your CloudSQL instance " +
             instanceName +
-            ". " +
+            " must be migrated in order to match your application schema. " +
             "The following SQL statements will migrate your database schema to match your new Data Connect schema.\n" +
             error.diffs.map(toString).join("\n");
         }
