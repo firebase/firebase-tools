@@ -1,3 +1,4 @@
+- Added `firebase deploy --dry-run`, which validates your changes and builds your code without making any production changes.
 - Added support for non-default Firestore databases in `firebase init`. (#7655)
 - Updated supported range for Angular framework. (#7418)
 - Fixed (Angular 17+) temporary change the PORT in Angular server.ts (#6651)
