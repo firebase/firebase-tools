@@ -7,7 +7,8 @@ import { Setup } from "../..";
 import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql";
 import { checkForFreeTrialInstance } from "../../../dataconnect/freeTrial";
 import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
-import { ensureApis } from "../../../dataconnect/ensureApis";
+import { ensureApis, ensureSparkApis } from "../../../dataconnect/ensureApis";
+import * as experiments from "../../../experiments";
 import {
   listLocations,
   listAllServices,
@@ -19,8 +20,12 @@ import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnec
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
 import { logSuccess } from "../../../utils";
+import { checkBillingEnabled } from "../../../gcp/cloudbilling";
 
 const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
+const DATACONNECT_YAML_COMPAT_EXPERIMENT_TEMPLATE = readTemplateSync(
+  "init/dataconnect/dataconnect-fdccompatiblemode.yaml",
+);
 const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yaml");
 const SCHEMA_TEMPLATE = readTemplateSync("init/dataconnect/schema.gql");
 const QUERIES_TEMPLATE = readTemplateSync("init/dataconnect/queries.gql");
@@ -81,7 +86,8 @@ async function askQuestions(setup: Setup, config: Config): Promise<RequiredInfo>
     schemaGql: [],
     shouldProvisionCSQL: false,
   };
-  info = await promptForService(setup, info);
+  const isBillingEnabled = setup.projectId ? await checkBillingEnabled(setup.projectId) : false;
+  info = await promptForService(setup, info, isBillingEnabled);
 
   if (info.cloudSqlInstanceId === "") {
     info = await promptForCloudSQLInstance(setup, info);
@@ -94,9 +100,9 @@ async function askQuestions(setup: Setup, config: Config): Promise<RequiredInfo>
   info.shouldProvisionCSQL = !!(
     setup.projectId &&
     (info.isNewInstance || info.isNewDatabase) &&
+    isBillingEnabled &&
     (await confirm({
-      message:
-        "Would you like to provision your CloudSQL instance and database now? This will take a few minutes.",
+      message: `Would you like to provision your Cloud SQL instance and database now?${info.isNewInstance ? " This will take several minutes." : ""}.`,
       default: true,
     }))
   );
@@ -178,7 +184,9 @@ function subDataconnectYamlValues(replacementValues: {
     connectorDirs: "__connectorDirs__",
     locationId: "__location__",
   };
-  let replaced = DATACONNECT_YAML_TEMPLATE;
+  let replaced = experiments.isEnabled("fdccompatiblemode")
+    ? DATACONNECT_YAML_COMPAT_EXPERIMENT_TEMPLATE
+    : DATACONNECT_YAML_TEMPLATE;
   for (const [k, v] of Object.entries(replacementValues)) {
     replaced = replaced.replace(replacements[k], JSON.stringify(v));
   }
@@ -196,9 +204,18 @@ function subConnectorYamlValues(replacementValues: { connectorId: string }): str
   return replaced;
 }
 
-async function promptForService(setup: Setup, info: RequiredInfo): Promise<RequiredInfo> {
+async function promptForService(
+  setup: Setup,
+  info: RequiredInfo,
+  isBillingEnabled: boolean,
+): Promise<RequiredInfo> {
   if (setup.projectId) {
-    await ensureApis(setup.projectId);
+    if (isBillingEnabled) {
+      // Enabling compute.googleapis.com requires a Blaze plan.
+      await ensureApis(setup.projectId);
+    } else {
+      await ensureSparkApis(setup.projectId);
+    }
     // TODO (b/344021748): Support initing with services that have existing sources/files
     const existingServices = await listAllServices(setup.projectId);
     const existingServicesAndSchemas = await Promise.all(
@@ -229,16 +246,17 @@ async function promptForService(setup: Setup, info: RequiredInfo): Promise<Requi
         info.serviceId = serviceName.serviceId;
         info.locationId = serviceName.location;
         if (choice.schema) {
-          if (choice.schema.primaryDatasource.postgresql?.cloudSql.instance) {
+          const primaryDatasource = choice.schema.datasources.find((d) => d.postgresql);
+          if (primaryDatasource?.postgresql?.cloudSql.instance) {
             const instanceName = parseCloudSQLInstanceName(
-              choice.schema.primaryDatasource.postgresql?.cloudSql.instance,
+              primaryDatasource.postgresql.cloudSql.instance,
             );
             info.cloudSqlInstanceId = instanceName.instanceId;
           }
           if (choice.schema.source.files) {
             info.schemaGql = choice.schema.source.files;
           }
-          info.cloudSqlDatabase = choice.schema.primaryDatasource.postgresql?.database ?? "";
+          info.cloudSqlDatabase = primaryDatasource?.postgresql?.database ?? "";
           const connectors = await listConnectors(choice.service.name, [
             "connectors.name",
             "connectors.source.files",
@@ -262,7 +280,7 @@ async function promptForService(setup: Setup, info: RequiredInfo): Promise<Requi
     info.serviceId = await promptOnce({
       message: "What ID would you like to use for this service?",
       type: "input",
-      default: "my-service",
+      default: "app",
     });
   }
   return info;
@@ -297,7 +315,7 @@ async function promptForCloudSQLInstance(setup: Setup, info: RequiredInfo): Prom
     info.cloudSqlInstanceId = await promptOnce({
       message: `What ID would you like to use for your new CloudSQL instance?`,
       type: "input",
-      default: `fdc-sql`,
+      default: `${info.serviceId || "app"}-fdc`,
     });
   }
   if (info.locationId === "") {

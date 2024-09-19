@@ -16,7 +16,7 @@ export interface Service extends BaseResource {
 export interface Schema extends BaseResource {
   name: string;
 
-  primaryDatasource: Datasource;
+  datasources: Datasource[];
   source: Source;
 }
 
@@ -125,7 +125,6 @@ export interface DatasourceYaml {
 
 export interface ConnectorYaml {
   connectorId: string;
-  authMode?: "ADMIN" | "PUBLIC";
   generate?: Generate;
 }
 

@@ -77,10 +77,19 @@ export async function registerCore(
     },
   );
 
+  const refreshCmd = vscode.commands.registerCommand(
+    "firebase.refresh",
+    async () => {
+      await vscode.commands.executeCommand("workbench.action.closeSidebar");
+      await vscode.commands.executeCommand("workbench.view.extension.firebase");
+    },
+  );
+
   return [
     emulatorsController,
     Disposable.from(
       openRcCmd,
+      refreshCmd,
       emulatorsController,
       registerOptions(context),
       registerConfig(broker),

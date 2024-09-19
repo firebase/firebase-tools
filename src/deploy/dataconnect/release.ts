@@ -36,7 +36,10 @@ export default async function (
         })
       );
     })
-    .map((s) => s.schema);
+    .map((s) => ({
+      schema: s.schema,
+      validationMode: s.dataConnectYaml.schema.datasource.postgresql?.schemaValidation,
+    }));
 
   if (wantSchemas.length) {
     utils.logLabeledBullet("dataconnect", "Deploying Data Connect schemas...");
@@ -45,8 +48,9 @@ export default async function (
     for (const s of wantSchemas) {
       await migrateSchema({
         options,
-        schema: s,
+        schema: s.schema,
         validateOnly: false,
+        schemaValidation: s.validationMode,
       });
     }
     utils.logLabeledBullet("dataconnect", "Schemas deployed.");
