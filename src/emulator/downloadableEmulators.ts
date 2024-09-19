@@ -59,20 +59,20 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   dataconnect:
     process.platform === "darwin"
       ? {
-          version: "1.3.6",
-          expectedSize: 24867584,
-          expectedChecksum: "b924d31e3620d7ed4486a95e22629fc8",
+          version: "1.3.7",
+          expectedSize: 25019136,
+          expectedChecksum: "648ca3e289db8209c2d555bb381e5e5e",
         }
       : process.platform === "win32"
         ? {
-            version: "1.3.6",
-            expectedSize: 25292288,
-            expectedChecksum: "45025491b43b55a94f4e4db8df903250",
+            version: "1.3.7",
+            expectedSize: 25441792,
+            expectedChecksum: "16081147aa94f1b8691329d5b9430b69",
           }
         : {
-            version: "1.3.6",
-            expectedSize: 24785048,
-            expectedChecksum: "6ae5820c0470c5a954540ad97838ec01",
+            version: "1.3.7",
+            expectedSize: 24928408,
+            expectedChecksum: "8749930f3a43f616e3ae231af8c787a8",
           },
 };
 
@@ -412,11 +412,11 @@ export async function handleEmulatorProcessError(
       `${description} has exited because java is not installed, you can install it from https://openjdk.java.net/install/`,
     );
   } else if (err.code === "EADDRINUSE") {
-    const process = port ? await lsofi(port) : false;
+    const ps = port ? await lsofi(port) : false;
     await _fatal(
       emulator,
       `${description} has exited because its configured port is already in use${
-        process ? ` by process number ${process}` : ""
+        ps ? ` by process number ${ps}` : ""
       }. Are you running another copy of the emulator suite?`,
     );
   } else {
@@ -500,10 +500,15 @@ async function _runBinary(
           "Unsupported java version, make sure java --version reports 1.8 or higher.",
         );
       }
+
+      if (data.toString().includes("address already in use")) {
+        const message = `${description} has exited because its configured port ${command.port} is already in use. Are you running another copy of the emulator suite?`;
+        logger.logLabeled("ERROR", emulator.name, message);
+      }
     });
 
-    emulator.instance.on("error", (err) => {
-      handleEmulatorProcessError(emulator.name, err, command.port);
+    emulator.instance.on("error", async (err) => {
+      await handleEmulatorProcessError(emulator.name, err, command.port);
     });
 
     emulator.instance.once("exit", async (code, signal) => {

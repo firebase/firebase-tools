@@ -5,6 +5,8 @@ import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
 import * as utils from "../../utils";
 import { Options } from "../../options";
 import * as fsConfig from "../../firestore/fsConfig";
+import { logger } from "../../logger";
+import { DeployOptions } from "..";
 
 export interface RulesContext {
   databaseId: string;
@@ -69,7 +71,7 @@ function prepareIndexes(
  * @param context The deploy context.
  * @param options The CLI options object.
  */
-export default async function (context: any, options: any): Promise<void> {
+export default async function (context: any, options: DeployOptions): Promise<void> {
   if (options.only) {
     const targets = options.only.split(",");
 
@@ -117,5 +119,18 @@ export default async function (context: any, options: any): Promise<void> {
 
   if (context.firestore.rules.length > 0) {
     await rulesDeploy.compile();
+  }
+
+  const rulesContext: RulesContext[] = context?.firestore?.rules;
+  for (const ruleContext of rulesContext) {
+    const databaseId = ruleContext.databaseId;
+    const rulesFile = ruleContext.rulesFile;
+    if (!rulesFile) {
+      logger.error(
+        `Invalid firestore config for ${databaseId} database: ${JSON.stringify(
+          options.config.src.firestore,
+        )}`,
+      );
+    }
   }
 }

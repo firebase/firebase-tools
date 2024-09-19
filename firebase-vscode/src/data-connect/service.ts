@@ -200,7 +200,7 @@ export class DataConnectService {
       });
       const resp = await fetch(
         (await this.dataConnectToolkit.getFDCToolkitURL()) +
-          `/v1alpha/projects/p/locations/l/services/${serviceId}:executeGraphqlRead`,
+          `/v1beta/projects/p/locations/l/services/${serviceId}:executeGraphqlRead`,
         {
           method: "POST",
           headers: {
@@ -250,7 +250,7 @@ export class DataConnectService {
     } else {
       const resp = await fetch(
         (await this.emulatorsController.getLocalEndpoint()) +
-          `/v1alpha/${servicePath}:executeGraphql`,
+          `/v1beta/${servicePath}:executeGraphql`,
         {
           method: "POST",
           headers: {

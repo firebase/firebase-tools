@@ -18,6 +18,12 @@ export function firebasewriter(databaseId: string) {
   return `firebasewriter_${databaseId}_public`;
 }
 
+export const fdcSqlRoleMap = {
+  owner: firebaseowner,
+  writer: firebasewriter,
+  reader: firebasereader,
+};
+
 // Returns true if "grantedRole" is granted to "granteeRole" and false otherwise.
 // Throw an error if commands fails due to another reason like connection issues.
 export async function checkSQLRoleIsGranted(

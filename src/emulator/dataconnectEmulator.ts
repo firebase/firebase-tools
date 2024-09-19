@@ -99,24 +99,27 @@ export class DataConnectEmulator implements EmulatorInstance {
       } else {
         connStr = `postgres://${this.args.postgresHost ?? "127.0.0.1"}:${this.args.postgresPort ?? 5432}/${dbId}?sslmode=disable`;
         const pgServer = new PostgresServer(dbId, "postgres");
-        try {
-          const server = await pgServer.createPGServer(
-            this.args.postgresHost,
-            this.args.postgresPort,
-          );
-          server.on("error", (err) => {
-            this.logger.logLabeled("ERROR", "Data Connect", `Postgres threw an unexpected error, shutting down the Data Connect emulator: ${err}`);
-            this.stop();
-          });
-          this.logger.logLabeled(
-            "INFO",
-            "Data Connect",
-            `Started up Postgres server, listening on ${server.address()?.toString()}`,
-          );
-        } catch(err: any) {
-            this.logger.logLabeled("ERROR", "Data Connect", `Postgres threw an unexpected error, shutting down the Data Connect emulator: ${err}`);
-            this.stop();
-        }
+        const server = await pgServer.createPGServer(
+          this.args.postgresHost,
+          this.args.postgresPort,
+        );
+        server.on("error", (err) => {
+          if (err instanceof FirebaseError) {
+            this.logger.logLabeled("ERROR", "Data Connect", `${err}`);
+          } else {
+            this.logger.logLabeled(
+              "ERROR",
+              "Data Connect",
+              `Postgres threw an unexpected error, shutting down the Data Connect emulator: ${err}`,
+            );
+          }
+          this.stop();
+        });
+        this.logger.logLabeled(
+          "INFO",
+          "Data Connect",
+          `Started up Postgres server, listening on ${server.address()?.toString()}`,
+        );
       }
       await this.connectToPostgres(connStr, dbId, serviceId);
     }
@@ -306,14 +309,6 @@ export class DataConnectEmulatorClient {
     }
     return getInfo(this.client);
   }
-}
-
-export async function checkIfDataConnectEmulatorRunningOnAddress(l: ListenSpec) {
-  const client = new Client({
-    urlPrefix: `http:/${l.family === "IPv6" ? `[${l.address}]` : l.address}:${l.port}`,
-    auth: false,
-  });
-  return getInfo(client);
 }
 
 async function getInfo(client: Client): Promise<GetInfoResponse | void> {
