@@ -99,15 +99,24 @@ export class DataConnectEmulator implements EmulatorInstance {
       } else {
         connStr = `postgres://${this.args.postgresHost ?? "127.0.0.1"}:${this.args.postgresPort ?? 5432}/${dbId}?sslmode=disable`;
         const pgServer = new PostgresServer(dbId, "postgres");
-        const server = await pgServer.createPGServer(
-          this.args.postgresHost,
-          this.args.postgresPort,
-        );
-        this.logger.logLabeled(
-          "INFO",
-          "Data Connect",
-          `Started up Postgres server, listening on ${server.address()?.toString()}`,
-        );
+        try {
+          const server = await pgServer.createPGServer(
+            this.args.postgresHost,
+            this.args.postgresPort,
+          );
+          server.on("error", (err) => {
+            this.logger.logLabeled("ERROR", "Data Connect", `Postgres threw an unexpected error, shutting down the Data Connect emulator: ${err}`);
+            this.stop();
+          });
+          this.logger.logLabeled(
+            "INFO",
+            "Data Connect",
+            `Started up Postgres server, listening on ${server.address()?.toString()}`,
+          );
+        } catch(err: any) {
+            this.logger.logLabeled("ERROR", "Data Connect", `Postgres threw an unexpected error, shutting down the Data Connect emulator: ${err}`);
+            this.stop();
+        }
       }
       await this.connectToPostgres(connStr, dbId, serviceId);
     }

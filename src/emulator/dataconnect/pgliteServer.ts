@@ -27,13 +27,13 @@ export class PostgresServer {
     host: string = "127.0.0.1",
     port: number = 5432,
   ): Promise<net.Server> {
-    const process = await lsofi(port);
-    if (process) {
-      const errMessage =
-        `Data Connect: Unable to start PGLite server on port ${port} because it is already in use by process number ${process}. This may occur if you are running another instance of Postgres.` +
-        ` You can choose a different port by setting 'firebase.json#emulators.dataconnect.postgresPort'.`;
-      throw new FirebaseError(errMessage);
-    }
+    // const process = await lsofi(port);
+    // if (process) {
+    //   const errMessage =
+    //     `Data Connect: Unable to start PGLite server on port ${port} because it is already in use by process number ${process}. This may occur if you are running another instance of Postgres.` +
+    //     ` You can choose a different port by setting 'firebase.json#emulators.dataconnect.postgresPort'.`;
+    //   throw new FirebaseError(errMessage);
+    // }
     const db: PGlite = await this.getDb();
     await db.waitReady;
     const server = net.createServer(async (socket) => {
