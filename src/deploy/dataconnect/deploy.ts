@@ -1,4 +1,4 @@
-import { DeployOptions } from "../";
+import { Options } from "../../options";
 import * as client from "../../dataconnect/client";
 import * as utils from "../../utils";
 import { Service, ServiceInfo, requiresVector } from "../../dataconnect/types";
@@ -22,7 +22,7 @@ export default async function (
       filters?: ResourceFilter[];
     };
   },
-  options: DeployOptions,
+  options: Options,
 ): Promise<void> {
   const projectId = needProjectId(options);
   const serviceInfos = context.dataconnect.serviceInfos as ServiceInfo[];
@@ -80,29 +80,31 @@ export default async function (
   }
 
   // Provision CloudSQL resources
+  utils.logLabeledBullet("dataconnect", "Checking for CloudSQL resources...");
+
   await Promise.all(
     serviceInfos
       .filter((si) => {
         return !filters || filters?.some((f) => si.dataConnectYaml.serviceId === f.serviceId);
       })
       .map(async (s) => {
-        const instanceId = s.schema.primaryDatasource.postgresql?.cloudSql.instance
-          .split("/")
-          .pop();
-        const databaseId = s.schema.primaryDatasource.postgresql?.database;
-        if (!instanceId || !databaseId) {
-          return Promise.resolve();
+        const postgresDatasource = s.schema.datasources.find((d) => d.postgresql);
+        if (postgresDatasource) {
+          const instanceId = postgresDatasource.postgresql?.cloudSql.instance.split("/").pop();
+          const databaseId = postgresDatasource.postgresql?.database;
+          if (!instanceId || !databaseId) {
+            return Promise.resolve();
+          }
+          const enableGoogleMlIntegration = requiresVector(s.deploymentMetadata);
+          return provisionCloudSql({
+            projectId,
+            locationId: parseServiceName(s.serviceName).location,
+            instanceId,
+            databaseId,
+            enableGoogleMlIntegration,
+            waitForCreation: true,
+          });
         }
-        const enableGoogleMlIntegration = requiresVector(s.deploymentMetadata);
-        utils.logLabeledBullet("dataconnect", "Checking for CloudSQL resources...");
-        return provisionCloudSql({
-          projectId,
-          locationId: parseServiceName(s.serviceName).location,
-          instanceId,
-          databaseId,
-          enableGoogleMlIntegration,
-          waitForCreation: true,
-        });
       }),
   );
   return;
