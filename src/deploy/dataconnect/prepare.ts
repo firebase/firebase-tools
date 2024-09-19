@@ -61,7 +61,10 @@ export default async function (context: any, options: DeployOptions): Promise<vo
   utils.logLabeledBullet("dataconnect", `Successfully prepared schema and connectors`);
   if (options.dryRun) {
     for (const si of serviceInfos) {
-      await diffSchema(si.schema, si.dataConnectYaml.schema.datasource.postgresql?.schemaValidation)
+      await diffSchema(
+        si.schema,
+        si.dataConnectYaml.schema.datasource.postgresql?.schemaValidation,
+      );
     }
     utils.logLabeledBullet("dataconnect", "Checking for CloudSQL resources...");
     await Promise.all(
