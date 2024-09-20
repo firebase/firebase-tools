@@ -24,6 +24,7 @@ export class EmulatorsController implements Disposable {
   }
 
   readonly emulatorStatusItem = vscode.window.createStatusBarItem("emulators");
+  private currExecId = 0;
 
   // called by webhook
   private readonly findRunningEmulatorsCommand =
@@ -82,10 +83,12 @@ export class EmulatorsController implements Disposable {
     this.emulators.status = "starting";
     this.notifyEmulatorStateChanged();
 
-    // TODO: handle rare cases where user cancels on their own, and starts again withing 10 seconds
+    this.currExecId += 1;
+    const execId = this.currExecId;
+
     // fallback in case we're stuck in a loading state
     setTimeout(async () => {
-      if (this.emulators.status === "starting") {
+      if (this.emulators.status === "starting" && this.currExecId === execId) {
         // notify UI to show reset
         this.broker.send("notifyEmulatorsHanging", true);
       }

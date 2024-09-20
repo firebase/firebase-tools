@@ -61,12 +61,11 @@ function Welcome() {
 
 function EmulatorsPanel() {
   if (
-    emulatorsRunningInfo.value &&
-    emulatorsRunningInfo.value.status === "starting"
+    emulatorsRunningInfo.value?.status === "starting"
   ) {
     const runningPanel = (
       <>
-        <label>Emulators starting: see integrated terminal</label>
+        <label>Emulator starting: see integrated terminal</label>
         <VSCodeProgressRing></VSCodeProgressRing>
       </>
     );
