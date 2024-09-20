@@ -72,7 +72,7 @@ function EmulatorsPanel() {
     const resetPanel = (
       <>
         <Spacer size="medium"></Spacer>
-        <label>Emulators startup is taking a while...</label>
+        <label>Emulator startup may take a while. In case of error, click reset.</label>
         <VSCodeButton
           appearance="secondary"
           onClick={() => {
