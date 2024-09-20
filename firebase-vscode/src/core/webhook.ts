@@ -6,12 +6,13 @@ import { VSCODE_MESSAGE, WebhookBody } from "../../../src/dataconnect/webhook";
 import { pluginLogger } from "../logger-wrapper";
 import { findOpenPort } from "../utils/port_utils";
 import { setTerminalEnvVars } from "../data-connect/terminal";
+
+const DEFAULT_PORT = 40001;
 export async function registerWebhooks() {
   const app = express();
   app.use(bodyParser.json()); // for parsing application/json
 
   const server = createServer(app);
-  const DEFAULT_PORT = 40001;
   const port = await findOpenPort(DEFAULT_PORT);
 
   if (port !== DEFAULT_PORT) {
