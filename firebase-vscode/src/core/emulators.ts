@@ -24,6 +24,7 @@ export class EmulatorsController implements Disposable {
   }
 
   readonly emulatorStatusItem = vscode.window.createStatusBarItem("emulators");
+  private currExecId = 0;
 
   // called by webhook
   private readonly findRunningEmulatorsCommand =
@@ -82,17 +83,16 @@ export class EmulatorsController implements Disposable {
     this.emulators.status = "starting";
     this.notifyEmulatorStateChanged();
 
+    this.currExecId += 1;
+    const execId = this.currExecId;
 
     // fallback in case we're stuck in a loading state
     setTimeout(async () => {
-      if (this.emulators.status !== "running") {
-        // try to find emulators again
-        await this.findRunningCliEmulators();
-        if (this.emulators.status === "stopped") {
-          vscode.window.showErrorMessage("Emulators failed to start.");
-        }
+      if (this.emulators.status === "starting" && this.currExecId === execId) {
+        // notify UI to show reset
+        this.broker.send("notifyEmulatorsHanging", true);
       }
-    }, 15000); // default 15 seconds spin up time
+    }, 10000); // default 10 seconds spin up time
   }
 
   public setEmulatorsStopping() {
@@ -119,6 +119,8 @@ export class EmulatorsController implements Disposable {
       } else {
         this.setEmulatorsStopped();
       }
+    } else {
+      this.setEmulatorsStopped();
     }
   }
 

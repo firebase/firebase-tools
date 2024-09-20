@@ -119,11 +119,8 @@ export interface ExtensionToWebviewParamsMap {
     status: EmulatorsStatus;
     infos: RunningEmulatorInfo | undefined;
   };
-  notifyEmulatorImportFolder: { folder: string };
 
-  notifyIsConnectedToPostgres: boolean;
-
-  notifyPostgresStringChanged: string;
+  notifyEmulatorsHanging: boolean;
 
   /** Triggered when new environment variables values are found. */
   notifyEnv: { env: { isMonospace: boolean } };
