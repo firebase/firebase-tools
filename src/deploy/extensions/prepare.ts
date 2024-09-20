@@ -2,7 +2,6 @@ import * as planner from "./planner";
 import * as deploymentSummary from "./deploymentSummary";
 import * as prompt from "../../prompt";
 import * as refs from "../../extensions/refs";
-import { Options } from "../../options";
 import { getAliases, needProjectId, needProjectNumber } from "../../projectUtils";
 import { logger } from "../../logger";
 import { Context, Payload } from "./args";
@@ -14,18 +13,20 @@ import { checkSpecForSecrets } from "./secrets";
 import { displayWarningsForDeploy, outOfBandChangesWarning } from "../../extensions/warnings";
 import { detectEtagChanges } from "../../extensions/etags";
 import { checkSpecForV2Functions, ensureNecessaryV2ApisAndRoles } from "./v2FunctionHelper";
-import { acceptLatestAppDeveloperTOS } from "../../extensions/tos";
+import { acceptLatestAppDeveloperTOS, getAppDeveloperTOSStatus } from "../../extensions/tos";
 import {
   extractExtensionsFromBuilds,
   extensionMatchesAnyFilter,
 } from "../../extensions/runtimes/common";
 import { Build } from "../functions/build";
-import { getEndpointFilters } from "../functions/functionsDeployHelper";
+import { normalizeAndValidate } from "../../functions/projectConfig";
+import { getEndpointFilters, targetCodebases } from "../functions/functionsDeployHelper";
+import { DeployOptions } from "..";
 
 // This is called by prepare and also prepareDynamicExtensions
 async function prepareHelper(
   context: Context,
-  options: Options,
+  options: DeployOptions,
   payload: Payload,
   wantExtensions: planner.DeploymentInstanceSpec[],
   haveExtensions: planner.DeploymentInstanceSpec[],
@@ -103,7 +104,14 @@ async function prepareHelper(
   }
   if (payload.instancesToDelete.length) {
     logger.info(deploymentSummary.deletesSummary(payload.instancesToDelete, isDynamic));
+    if (options.dryRun) {
+      logger.info(
+        "On your next deploy, you will be asked if you want to delete these instances.",
+      );
+      logger.info("If you deploy --force, they will be deleted.");
+    }
     if (
+      !options.dryRun &&
       !(await prompt.confirm({
         message: `Would you like to delete ${payload.instancesToDelete
           .map((i) => i.instanceId)
@@ -120,17 +128,26 @@ async function prepareHelper(
   }
 
   await requirePermissions(options, permissionsNeeded);
-  await acceptLatestAppDeveloperTOS(
-    options,
-    projectId,
-    context.want.map((i) => i.instanceId),
-  );
+  if (options.dryRun) {
+    const appDevTos = await getAppDeveloperTOSStatus(projectId);
+    if (!appDevTos.lastAcceptedVersion) {
+      logger.info(
+        "On your next deploy, you will be asked to accept the Firebase Extensions App Developer Terms of Service",
+      );
+    }
+  } else {
+    await acceptLatestAppDeveloperTOS(
+      options,
+      projectId,
+      context.want.map((i) => i.instanceId),
+    );
+  }
 }
 
 // This is called by functions/prepare so we can deploy the extensions defined by SDKs
 export async function prepareDynamicExtensions(
   context: Context,
-  options: Options,
+  options: DeployOptions,
   payload: Payload,
   builds: Record<string, Build>,
 ) {
@@ -168,7 +185,7 @@ export async function prepareDynamicExtensions(
   );
 }
 
-export async function prepare(context: Context, options: Options, payload: Payload) {
+export async function prepare(context: Context, options: DeployOptions, payload: Payload) {
   context.extensionsStartTime = Date.now();
   const projectId = needProjectId(options);
   const projectNumber = await needProjectNumber(options);
