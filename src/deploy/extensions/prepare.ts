@@ -19,8 +19,7 @@ import {
   extensionMatchesAnyFilter,
 } from "../../extensions/runtimes/common";
 import { Build } from "../functions/build";
-import { normalizeAndValidate } from "../../functions/projectConfig";
-import { getEndpointFilters, targetCodebases } from "../functions/functionsDeployHelper";
+import { getEndpointFilters } from "../functions/functionsDeployHelper";
 import { DeployOptions } from "..";
 
 // This is called by prepare and also prepareDynamicExtensions
@@ -105,9 +104,7 @@ async function prepareHelper(
   if (payload.instancesToDelete.length) {
     logger.info(deploymentSummary.deletesSummary(payload.instancesToDelete, isDynamic));
     if (options.dryRun) {
-      logger.info(
-        "On your next deploy, you will be asked if you want to delete these instances.",
-      );
+      logger.info("On your next deploy, you will be asked if you want to delete these instances.");
       logger.info("If you deploy --force, they will be deleted.");
     }
     if (
