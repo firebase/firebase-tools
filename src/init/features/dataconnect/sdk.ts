@@ -35,7 +35,7 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   await actuate(sdkInfo, setup.projectId);
 }
 
-async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
+export async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
   const serviceCfgs = readFirebaseJson(config);
   // TODO: This current approach removes comments from YAML files. Consider a different approach that won't.
   const serviceInfos = await Promise.all(

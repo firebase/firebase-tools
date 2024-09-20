@@ -22,6 +22,7 @@ import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
 import { logSuccess } from "../../../utils";
 import { checkBillingEnabled } from "../../../gcp/cloudbilling";
+import * as sdk from "./sdk";
 
 const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
 const DATACONNECT_YAML_COMPAT_EXPERIMENT_TEMPLATE = readTemplateSync(
@@ -46,6 +47,7 @@ export interface RequiredInfo {
   isNewDatabase: boolean;
   schemaGql: File[];
   shouldProvisionCSQL: boolean;
+  sdkInfo?: sdk.SDKInfo;
 }
 
 const defaultConnector = {
@@ -86,6 +88,7 @@ async function askQuestions(setup: Setup, config: Config): Promise<RequiredInfo>
     connectors: [defaultConnector],
     schemaGql: [],
     shouldProvisionCSQL: false,
+    sdkInfo: undefined,
   };
   const isBillingEnabled = setup.projectId ? await checkBillingEnabled(setup.projectId) : false;
   info = await promptForService(setup, info, isBillingEnabled);
@@ -120,6 +123,15 @@ async function askQuestions(setup: Setup, config: Config): Promise<RequiredInfo>
       default: true,
     }))
   );
+
+  const promptForSDKGeneration = await confirm({
+    message: `Would you like to configure generated SDKs now?`,
+    default: true,
+  });
+  if (promptForSDKGeneration) {
+    info.sdkInfo = await sdk.askQuestions(setup, config);
+  }
+
   return info;
 }
 
@@ -137,6 +149,10 @@ export async function actuate(setup: Setup, config: Config, info: RequiredInfo) 
       enableGoogleMlIntegration: false,
       waitForCreation: false,
     });
+  }
+
+  if (info.sdkInfo) {
+    await sdk.actuate(info.sdkInfo, setup.projectId);
   }
 }
 
