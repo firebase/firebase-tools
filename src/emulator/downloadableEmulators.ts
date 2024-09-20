@@ -412,11 +412,11 @@ export async function handleEmulatorProcessError(
       `${description} has exited because java is not installed, you can install it from https://openjdk.java.net/install/`,
     );
   } else if (err.code === "EADDRINUSE") {
-    const process = port ? await lsofi(port) : false;
+    const ps = port ? await lsofi(port) : false;
     await _fatal(
       emulator,
       `${description} has exited because its configured port is already in use${
-        process ? ` by process number ${process}` : ""
+        ps ? ` by process number ${ps}` : ""
       }. Are you running another copy of the emulator suite?`,
     );
   } else {
@@ -500,10 +500,15 @@ async function _runBinary(
           "Unsupported java version, make sure java --version reports 1.8 or higher.",
         );
       }
+
+      if (data.toString().includes("address already in use")) {
+        const message = `${description} has exited because its configured port ${command.port} is already in use. Are you running another copy of the emulator suite?`;
+        logger.logLabeled("ERROR", emulator.name, message);
+      }
     });
 
-    emulator.instance.on("error", (err) => {
-      handleEmulatorProcessError(emulator.name, err, command.port);
+    emulator.instance.on("error", (err: any) => {
+      void handleEmulatorProcessError(emulator.name, err, command.port);
     });
 
     emulator.instance.once("exit", async (code, signal) => {

@@ -1,7 +1,6 @@
 // https://github.com/supabase-community/pg-gateway
 
 import { PGlite } from "@electric-sql/pglite";
-const lsofi = require("lsofi");
 // Unfortunately, we need to dynamically import the Postgres extensions.
 // They are only available as ESM, and if we import them normally,
 // our tsconfig will convert them to requires, which will cause errors
@@ -16,24 +15,13 @@ import {
 } from "./pg-gateway/index";
 import { fromNodeSocket } from "./pg-gateway/platforms/node";
 import { logger } from "../../logger";
-import { FirebaseError } from "../../error";
 
 export class PostgresServer {
   private username: string;
   private database: string;
 
   public db: PGlite | undefined;
-  public async createPGServer(
-    host: string = "127.0.0.1",
-    port: number = 5432,
-  ): Promise<net.Server> {
-    const process = await lsofi(port);
-    if (process) {
-      const errMessage =
-        `Data Connect: Unable to start PGLite server on port ${port} because it is already in use by process number ${process}. This may occur if you are running another instance of Postgres.` +
-        ` You can choose a different port by setting 'firebase.json#emulators.dataconnect.postgresPort'.`;
-      throw new FirebaseError(errMessage);
-    }
+  public async createPGServer(host: string = "127.0.0.1", port: number): Promise<net.Server> {
     const db: PGlite = await this.getDb();
     await db.waitReady;
     const server = net.createServer(async (socket) => {
