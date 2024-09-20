@@ -3,7 +3,10 @@ import { Spacer } from "./components/ui/Spacer";
 import { broker, brokerSignal } from "./globals/html-broker";
 import { AccountSection } from "./components/AccountSection";
 import { ProjectSection } from "./components/ProjectSection";
-import { VSCodeButton, VSCodeProgressRing } from "@vscode/webview-ui-toolkit/react";
+import {
+  VSCodeButton,
+  VSCodeProgressRing,
+} from "@vscode/webview-ui-toolkit/react";
 import { Body, Label } from "./components/ui/Text";
 import { PanelSection } from "./components/ui/PanelSection";
 import { EmulatorPanel as Emulators } from "./components/EmulatorPanel";
@@ -32,6 +35,8 @@ const docsLink = brokerSignal("notifyDocksLink", {
   initialRequest: "getDocsLink",
 });
 
+const showResetPanel = brokerSignal("notifyEmulatorsHanging");
+
 function Welcome() {
   const configLabel = useComputed(() => {
     return !hasFdcConfigs.value ? "dataconnect.yaml" : "firebase.json";
@@ -54,17 +59,38 @@ function Welcome() {
   );
 }
 
-
 function EmulatorsPanel() {
-
-  if (emulatorsRunningInfo.value && emulatorsRunningInfo.value.status === "starting") {
-    return (
+  if (
+    emulatorsRunningInfo.value &&
+    emulatorsRunningInfo.value.status === "starting"
+  ) {
+    const runningPanel = (
       <>
         <label>Emulators starting: see integrated terminal</label>
         <VSCodeProgressRing></VSCodeProgressRing>
       </>
     );
+    const resetPanel = (
+      <>
+        <Spacer size="medium"></Spacer>
+        <label>Emulators startup is taking a while...</label>
+        <VSCodeButton
+          appearance="secondary"
+          onClick={() => {
+            broker.send("getEmulatorInfos");
+            showResetPanel.value = false;
+          }}
+        >
+          Reset Emulator View
+        </VSCodeButton>
+      </>
+    );
+    if (showResetPanel.value) {
+      return [runningPanel, resetPanel];
+    }
+    return runningPanel;
   }
+
   return emulatorsRunningInfo.value?.infos ? (
     <Emulators emulatorInfo={emulatorsRunningInfo.value.infos!} />
   ) : (

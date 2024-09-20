@@ -131,12 +131,15 @@
         {
           "type": "webview",
           "id": "sidebar",
-          "name": "Config"
+          "name": "Config",
+          "initialSize": 2
         },
         {
           "id": "firebase.dataConnect.explorerView",
           "name": "FDC Explorer",
-          "when": "firebase-vscode.fdc.enabled"
+          "when": "firebase-vscode.fdc.enabled",
+          "visibility": "collapsed",
+          "initialSize": 1
         }
       ],
       "firebase-data-connect-execution-view": [

@@ -7,20 +7,20 @@ import { globalSignal } from "../utils/globals";
 
 // explorer store
 export const introspectionQuery = globalSignal<IntrospectionQuery | undefined>(
-  undefined
+  undefined,
 );
 
 export function registerExplorer(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl,
-  dataConnectService: DataConnectService
+  dataConnectService: DataConnectService,
 ): Disposable {
   const treeDataProvider = new ExplorerTreeDataProvider();
   const explorerTreeView = vscode.window.createTreeView(
     "firebase.dataConnect.explorerView",
     {
       treeDataProvider,
-    }
+    },
   );
 
   async function executeIntrospection() {
@@ -32,7 +32,7 @@ export function registerExplorer(
     explorerTreeView,
     vscode.commands.registerCommand(
       "firebase.dataConnect.executeIntrospection",
-      executeIntrospection
-    )
+      executeIntrospection,
+    ),
   );
 }
