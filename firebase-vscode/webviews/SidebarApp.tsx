@@ -1,4 +1,4 @@
-import React from "react";
+import React, {useEffect} from "react";
 import { Spacer } from "./components/ui/Spacer";
 import { broker, brokerSignal } from "./globals/html-broker";
 import { AccountSection } from "./components/AccountSection";
@@ -126,6 +126,10 @@ function DataConnect() {
 }
 
 function Content() {
+  useEffect(() => {
+    broker.send('getDocsLink');
+  }, []);
+  
   return (
     <>
       <PanelSection title="Emulators">
