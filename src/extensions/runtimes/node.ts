@@ -25,8 +25,8 @@ import { marked } from "marked";
 marked.use(markedTerminal() as any);
 
 export const SDK_GENERATION_VERSION = "1.0.0";
-export const FIREBASE_FUNCTIONS_VERSION = "^5.1.0";
-export const TYPESCRIPT_VERSION = "^4.5.4";
+export const FIREBASE_FUNCTIONS_VERSION = ">=5.1.0";
+export const TYPESCRIPT_VERSION = "^4.9.0";
 
 function makePackageName(extensionRef: string | undefined, name: string): string {
   if (!extensionRef) {
