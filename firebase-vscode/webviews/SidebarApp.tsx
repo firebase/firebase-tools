@@ -72,7 +72,7 @@ function EmulatorsPanel() {
       return (
         <>
           <Spacer size="medium"></Spacer>
-          <label>Emulator startup is taking a while. In case of error, click reset.</label>
+          <label>Emulator startup may take a while. In case of error, click reset.</label>
           <VSCodeProgressRing></VSCodeProgressRing>
           <Spacer size="medium"></Spacer>
           <VSCodeButton
