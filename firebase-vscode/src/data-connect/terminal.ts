@@ -82,7 +82,7 @@ export function registerTerminalTasks(
     // TODO: optional debug mode
     runTerminalTask(
       "firebase emulators",
-      `${settings.firebasePath} emulators:start --debug`,
+      `${settings.firebasePath} emulators:start`,
     );
   });
 
