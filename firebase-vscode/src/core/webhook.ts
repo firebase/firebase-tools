@@ -16,7 +16,7 @@ export async function registerWebhooks() {
   const port = await findOpenPort(DEFAULT_PORT);
 
   if (port !== DEFAULT_PORT) {
-    setTerminalEnvVars("VSCODE_WEBHOOK_PORT", DEFAULT_PORT.toString());
+    setTerminalEnvVars("VSCODE_WEBHOOK_PORT", port.toString());
   }
   
   server.listen(port, () => {
