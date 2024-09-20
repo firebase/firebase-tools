@@ -139,6 +139,9 @@ export async function prepareDynamicExtensions(
   const projectId = needProjectId(options);
   const projectNumber = await needProjectNumber(options);
 
+  await ensureExtensionsApiEnabled(options);
+  await requirePermissions(options, ["firebaseextensions.instances.list"]);
+
   let haveExtensions = await planner.haveDynamic(projectId);
   haveExtensions = haveExtensions.filter((e) =>
     extensionMatchesAnyFilter(e.labels?.codebase, e.instanceId, filters),
@@ -148,9 +151,6 @@ export async function prepareDynamicExtensions(
     // Nothing defined, and nothing to delete
     return;
   }
-
-  await ensureExtensionsApiEnabled(options);
-  await requirePermissions(options, ["firebaseextensions.instances.list"]);
 
   const dynamicWant = await planner.wantDynamic({
     projectId,
