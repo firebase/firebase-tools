@@ -480,3 +480,16 @@ export function listenSpecsToString(specs: ListenSpec[]): string {
     })
     .join(",");
 }
+
+export async function findOpenPort(startPort: number): Promise<number> {
+  if (
+    await checkListenable({
+      address: "127.0.0.1",
+      port: startPort,
+      family: "IPv4",
+    })
+  ) {
+    return startPort;
+  }
+  return findOpenPort(startPort + 1);
+}

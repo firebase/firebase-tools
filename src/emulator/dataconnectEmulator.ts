@@ -1,5 +1,6 @@
 import * as childProcess from "child_process";
 import { EventEmitter } from "events";
+const lsofi = require("lsofi");
 
 import { dataConnectLocalConnString } from "../api";
 import { Constants } from "./constants";
@@ -9,7 +10,7 @@ import { FirebaseError } from "../error";
 import { EmulatorLogger } from "./emulatorLogger";
 import { RC } from "../rc";
 import { BuildResult, requiresVector } from "../dataconnect/types";
-import { listenSpecsToString } from "./portUtils";
+import { findOpenPort, listenSpecsToString } from "./portUtils";
 import { Client, ClientResponse } from "../apiv2";
 import { EmulatorRegistry } from "./registry";
 import { logger } from "../logger";
@@ -97,12 +98,19 @@ export class DataConnectEmulator implements EmulatorInstance {
           `FIREBASE_DATACONNECT_POSTGRESQL_STRING is set to ${dataConnectLocalConnString()} - using that instead of starting a new database`,
         );
       } else {
-        connStr = `postgres://${this.args.postgresHost ?? "127.0.0.1"}:${this.args.postgresPort ?? 5432}/${dbId}?sslmode=disable`;
         const pgServer = new PostgresServer(dbId, "postgres");
-        const server = await pgServer.createPGServer(
-          this.args.postgresHost,
-          this.args.postgresPort,
-        );
+        if (this.args.postgresPort) {
+          const process = await lsofi(this.args.postgresPort);
+          if (process) {
+            const errMessage =
+              `Data Connect: Unable to start PGLite server on port ${this.args.postgresPort} because it is already in use by process number ${process}. This may occur if you are running another instance of Postgres.` +
+              ` You can choose a different port by setting 'firebase.json#emulators.dataconnect.postgresPort', or you can unset that field to automatically find an open port.`;
+            throw new FirebaseError(errMessage);
+          }
+        }
+        const port = this.args.postgresPort || (await findOpenPort(5432));
+        const server = await pgServer.createPGServer(this.args.postgresHost, port);
+        connStr = `postgres://${this.args.postgresHost ?? "127.0.0.1"}:${port}/${dbId}?sslmode=disable`;
         server.on("error", (err) => {
           if (err instanceof FirebaseError) {
             this.logger.logLabeled("ERROR", "Data Connect", `${err}`);
