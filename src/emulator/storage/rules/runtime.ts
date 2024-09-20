@@ -167,7 +167,7 @@ export class StorageRulesRuntime {
     });
 
     // This catches error when spawning the java process
-    this._childprocess.on("error", async (err: any) => {
+    this._childprocess.on("error", (err: any) => {
       void handleEmulatorProcessError(Emulators.STORAGE, err);
     });
 
