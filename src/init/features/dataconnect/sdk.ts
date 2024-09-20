@@ -33,9 +33,12 @@ export type SDKInfo = {
 export async function doSetup(setup: Setup, config: Config): Promise<void> {
   const sdkInfo = await askQuestions(setup, config);
   await actuate(sdkInfo, setup.projectId);
+  logSuccess(
+    `If you'd like to generate additional SDKs, run ${clc.bold("firebase init dataconnect:sdk")}`,
+  );
 }
 
-export async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
+async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
   const serviceCfgs = readFirebaseJson(config);
   // TODO: This current approach removes comments from YAML files. Consider a different approach that won't.
   const serviceInfos = await Promise.all(
@@ -78,7 +81,8 @@ export async function askQuestions(setup: Setup, config: Config): Promise<SDKInf
     logBullet(`Couldn't automatically detect your app directory.`);
     appDir = await promptForDirectory({
       config,
-      message: "Where is your app directory?",
+      message:
+        "Where is your app directory? Leave blank to set up a generated SDK in your current directory.",
     });
     const platformGuess = await getPlatformFromFolder(appDir);
     if (platformGuess !== Platform.UNDETERMINED) {

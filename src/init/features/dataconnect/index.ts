@@ -47,7 +47,6 @@ export interface RequiredInfo {
   isNewDatabase: boolean;
   schemaGql: File[];
   shouldProvisionCSQL: boolean;
-  sdkInfo?: sdk.SDKInfo;
 }
 
 const defaultConnector = {
@@ -67,14 +66,27 @@ const defaultConnector = {
 
 // doSetup is split into 2 phases - ask questions and then actuate files and API calls based on those answers.
 export async function doSetup(setup: Setup, config: Config): Promise<void> {
-  const info = await askQuestions(setup, config);
+  const info = await askQuestions(setup);
   await actuate(setup, config, info);
+
+  const promptForSDKGeneration = await confirm({
+    message: `Would you like to configure generated SDKs now?`,
+    default: true,
+  });
+  if (promptForSDKGeneration) {
+    await sdk.doSetup(setup, config);
+  } else {
+    logBullet(
+      `If you'd like to generate an SDK for your new connector later, run ${clc.bold("firebase init dataconnect:sdk")}`,
+    );
+  }
+
   logger.info("");
 }
 
 // askQuestions prompts the user about the Data Connect service they want to init. Any prompting
 // logic should live here, and _no_ actuation logic should live here.
-async function askQuestions(setup: Setup, config: Config): Promise<RequiredInfo> {
+async function askQuestions(setup: Setup): Promise<RequiredInfo> {
   let info: RequiredInfo = {
     serviceId: "",
     locationId: "",
@@ -85,7 +97,6 @@ async function askQuestions(setup: Setup, config: Config): Promise<RequiredInfo>
     connectors: [defaultConnector],
     schemaGql: [],
     shouldProvisionCSQL: false,
-    sdkInfo: undefined,
   };
   const isBillingEnabled = setup.projectId ? await checkBillingEnabled(setup.projectId) : false;
   info = await promptForService(setup, info, isBillingEnabled);
@@ -120,19 +131,6 @@ async function askQuestions(setup: Setup, config: Config): Promise<RequiredInfo>
       default: true,
     }))
   );
-
-  const promptForSDKGeneration = await confirm({
-    message: `Would you like to configure generated SDKs now?`,
-    default: true,
-  });
-  if (promptForSDKGeneration) {
-    info.sdkInfo = await sdk.askQuestions(setup, config);
-  } else {
-    logBullet(
-      `If you'd like to generate an SDK for your new connector later, run ${clc.bold("firebase init dataconnect:sdk")}`,
-    );
-  }
-
   return info;
 }
 
@@ -150,10 +148,6 @@ export async function actuate(setup: Setup, config: Config, info: RequiredInfo) 
       enableGoogleMlIntegration: false,
       waitForCreation: false,
     });
-  }
-
-  if (info.sdkInfo) {
-    await sdk.actuate(info.sdkInfo, setup.projectId);
   }
 }
 
