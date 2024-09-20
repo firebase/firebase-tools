@@ -67,23 +67,25 @@ function EmulatorsPanel() {
         <VSCodeProgressRing></VSCodeProgressRing>
       </>
     );
-    const resetPanel = (
-      <>
-        <Spacer size="medium"></Spacer>
-        <label>Emulators startup is taking a while...</label>
-        <VSCodeButton
-          appearance="secondary"
-          onClick={() => {
-            broker.send("getEmulatorInfos");
-            showResetPanel.value = false;
-          }}
-        >
-          Reset Emulator View
-        </VSCodeButton>
-      </>
-    );
+
     if (showResetPanel.value) {
-      return [runningPanel, resetPanel];
+      return (
+        <>
+          <Spacer size="medium"></Spacer>
+          <label>Emulator startup is taking a while. In case of error, click reset.</label>
+          <VSCodeProgressRing></VSCodeProgressRing>
+          <Spacer size="medium"></Spacer>
+          <VSCodeButton
+            appearance="secondary"
+            onClick={() => {
+              broker.send("getEmulatorInfos");
+              showResetPanel.value = false;
+            }}
+          >
+            Reset Emulator View
+          </VSCodeButton>
+        </>
+      );
     }
     return runningPanel;
   }
