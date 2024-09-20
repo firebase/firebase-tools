@@ -16,7 +16,7 @@ export interface WebhookBody {
   content?: string;
 }
 
-export const DEFAULT_PORT = "40001"; // 6 digit default used by vscode;
+export const DEFAULT_PORT = "40001"; // 5 digit default used by vscode;
 
 // If port in use, VSCode will pass a different port to the integrated term through env var
 export const port = process.env.VSCODE_WEBHOOK_PORT || DEFAULT_PORT;

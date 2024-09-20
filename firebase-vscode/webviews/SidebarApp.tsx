@@ -3,7 +3,7 @@ import { Spacer } from "./components/ui/Spacer";
 import { broker, brokerSignal } from "./globals/html-broker";
 import { AccountSection } from "./components/AccountSection";
 import { ProjectSection } from "./components/ProjectSection";
-import { VSCodeButton } from "@vscode/webview-ui-toolkit/react";
+import { VSCodeButton, VSCodeProgressRing } from "@vscode/webview-ui-toolkit/react";
 import { Body, Label } from "./components/ui/Text";
 import { PanelSection } from "./components/ui/PanelSection";
 import { EmulatorPanel as Emulators } from "./components/EmulatorPanel";
@@ -54,7 +54,17 @@ function Welcome() {
   );
 }
 
+
 function EmulatorsPanel() {
+
+  if (emulatorsRunningInfo.value && emulatorsRunningInfo.value.status === "starting") {
+    return (
+      <>
+        <label>Emulators starting: see integrated terminal</label>
+        <VSCodeProgressRing></VSCodeProgressRing>
+      </>
+    );
+  }
   return emulatorsRunningInfo.value?.infos ? (
     <Emulators emulatorInfo={emulatorsRunningInfo.value.infos!} />
   ) : (

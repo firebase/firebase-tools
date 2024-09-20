@@ -17,7 +17,7 @@ export class EmulatorsController implements Disposable {
 
     // called by emulator UI
     this.subscriptions.push(
-      this.broker.on("runStartEmulators", () => {
+      broker.on("runStartEmulators", () => {
         this.setEmulatorsStarting();
       }),
     );
@@ -48,6 +48,7 @@ export class EmulatorsController implements Disposable {
 
   notifyEmulatorStateChanged() {
     this.broker.send("notifyEmulatorStateChanged", this.emulators);
+    vscode.commands.executeCommand("refreshCodelens");
   }
 
   // TODO: Move all api calls to CLI DataConnectEmulatorClient
