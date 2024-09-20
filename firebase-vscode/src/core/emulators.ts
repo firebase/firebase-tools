@@ -92,7 +92,7 @@ export class EmulatorsController implements Disposable {
         // notify UI to show reset
         this.broker.send("notifyEmulatorsHanging", true);
       }
-    }, 10000); // default 15 seconds spin up time
+    }, 10000); // default 10 seconds spin up time
   }
 
   public setEmulatorsStopping() {
