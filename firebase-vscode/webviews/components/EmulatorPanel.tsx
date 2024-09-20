@@ -4,6 +4,10 @@ import { Spacer } from "./ui/Spacer";
 import { PanelSection } from "./ui/PanelSection";
 import { EmulatorInfo } from "../../../src/emulator/types";
 import { RunningEmulatorInfo } from "../messaging/types";
+import { Body, Label } from "./ui/Text";
+import styles from "./EmulatorPanel.scss";
+import { ExternalLink } from "./ui/ExternalLink";
+import { Icon } from "./ui/Icon";
 
 /**
  * Emulator info display component for the VSCode extension.
@@ -15,8 +19,10 @@ export function EmulatorPanel({
 }) {
   return (
     <>
-      Running Emulators:
+      <Label>Running</Label>
+      <Spacer size="medium" />
       <FormatEmulatorRunningInfo infos={emulatorInfo.displayInfo} />
+
       {!!emulatorInfo.uiUrl && (
         <>
           <Spacer size="xxlarge" />
@@ -25,6 +31,16 @@ export function EmulatorPanel({
           </VSCodeLink>
         </>
       )}
+
+      <Spacer size="large" />
+      <Body>
+        <ExternalLink
+          href="https://firebase.google.com/docs/emulator-suite"
+          prefix={<Icon icon="book" />}
+        >
+          See docs
+        </ExternalLink>
+      </Body>
     </>
   );
 }
@@ -33,11 +49,19 @@ export function EmulatorPanel({
 // an implementation detail.
 function FormatEmulatorRunningInfo({ infos }: { infos: EmulatorInfo[] }) {
   return (
-    <ul>
+    <ul className={styles.list}>
       {infos
         .filter((info) => info.name !== "logging")
         .map((info, index) => (
-          <li key={info.pid ?? index}>{info.name}</li>
+          <li key={info.pid ?? index} className={styles.listItem}>
+            <Icon icon="circle-filled" className={styles.runningIndicator} />
+            <Body as="span">
+              {info.name}
+              <Label as="span" level={3}>
+                &nbsp;:{info.port}
+              </Label>
+            </Body>
+          </li>
         ))}
     </ul>
   );
