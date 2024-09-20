@@ -40,6 +40,10 @@ abstract class ComputedCodeLensProvider implements vscode.CodeLensProvider {
     return signal.peek();
   }
 
+  refresh() {
+    this._onChangeCodeLensesEmitter.fire();
+  }
+
   dispose() {
     for (const disposable of this.subscriptions.values()) {
       disposable.dispose();

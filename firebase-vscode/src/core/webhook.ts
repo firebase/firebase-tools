@@ -17,7 +17,6 @@ export function registerWebhooks() {
 
   app.post("/vscode/notify", (req, res) => {
     const webhookData: WebhookBody = req.body;
-
     // Notify extension through vscode commands
     switch (webhookData.message) {
       case VSCODE_MESSAGE.EMULATORS_STARTED: {

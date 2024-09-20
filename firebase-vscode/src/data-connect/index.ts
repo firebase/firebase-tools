@@ -158,11 +158,21 @@ export function registerFdc(
     dataConnectToolkit,
     emulatorController,
   );
+
+  // register codelens
   const operationCodeLensProvider = new OperationCodeLensProvider(
     emulatorController,
   );
   const schemaCodeLensProvider = new SchemaCodeLensProvider(emulatorController);
   const configureSdkCodeLensProvider = new ConfigureSdkCodeLensProvider();
+  const refreshCommand = vscode.commands.registerCommand(
+    "refreshCodelens",
+    () => {
+      operationCodeLensProvider.refresh();
+      schemaCodeLensProvider.refresh();
+      configureSdkCodeLensProvider.refresh();
+    },
+  );
 
   // activate FDC toolkit
   // activate language client/serer
@@ -249,6 +259,7 @@ export function registerFdc(
       [{ scheme: "file", language: "yaml", pattern: "**/connector.yaml" }],
       configureSdkCodeLensProvider,
     ),
+    refreshCommand,
     {
       dispose: () => {
         client.stop();
