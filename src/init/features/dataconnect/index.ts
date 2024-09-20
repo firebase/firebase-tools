@@ -20,7 +20,7 @@ import { DEFAULT_POSTGRES_CONNECTION } from "../emulators";
 import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
-import { logSuccess } from "../../../utils";
+import { logBullet, logSuccess } from "../../../utils";
 import { checkBillingEnabled } from "../../../gcp/cloudbilling";
 import * as sdk from "./sdk";
 
@@ -70,9 +70,6 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   const info = await askQuestions(setup, config);
   await actuate(setup, config, info);
   logger.info("");
-  logSuccess(
-    `If you'd like to generate an SDK for your new connector, run ${clc.bold("firebase init dataconnect:sdk")}`,
-  );
 }
 
 // askQuestions prompts the user about the Data Connect service they want to init. Any prompting
@@ -130,6 +127,10 @@ async function askQuestions(setup: Setup, config: Config): Promise<RequiredInfo>
   });
   if (promptForSDKGeneration) {
     info.sdkInfo = await sdk.askQuestions(setup, config);
+  } else {
+    logBullet(
+      `If you'd like to generate an SDK for your new connector later, run ${clc.bold("firebase init dataconnect:sdk")}`,
+    );
   }
 
   return info;
