@@ -81,6 +81,18 @@ export class EmulatorsController implements Disposable {
   public setEmulatorsStarting() {
     this.emulators.status = "starting";
     this.notifyEmulatorStateChanged();
+
+
+    // fallback in case we're stuck in a loading state
+    setTimeout(async () => {
+      if (this.emulators.status !== "running") {
+        // try to find emulators again
+        await this.findRunningCliEmulators();
+        if (this.emulators.status === "stopped") {
+          vscode.window.showErrorMessage("Emulators failed to start.");
+        }
+      }
+    }, 15000); // default 15 seconds spin up time
   }
 
   public setEmulatorsStopping() {

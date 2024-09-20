@@ -4,13 +4,21 @@ import { createServer } from "http";
 import bodyParser from "body-parser";
 import { VSCODE_MESSAGE, WebhookBody } from "../../../src/dataconnect/webhook";
 import { pluginLogger } from "../logger-wrapper";
-export function registerWebhooks() {
+import { findOpenPort } from "../utils/port_utils";
+import { setTerminalEnvVars } from "../data-connect/terminal";
+
+const DEFAULT_PORT = 40001;
+export async function registerWebhooks() {
   const app = express();
   app.use(bodyParser.json()); // for parsing application/json
 
   const server = createServer(app);
-  const port = 40001; // TODO: generate port dynamically with this as default, and pass as env var to integrated terminal
+  const port = await findOpenPort(DEFAULT_PORT);
 
+  if (port !== DEFAULT_PORT) {
+    setTerminalEnvVars("VSCODE_WEBHOOK_PORT", DEFAULT_PORT.toString());
+  }
+  
   server.listen(port, () => {
     pluginLogger.debug(`VSCode notification server listening on port ${port}`);
   });
