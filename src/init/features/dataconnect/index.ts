@@ -95,7 +95,7 @@ async function askQuestions(setup: Setup, config: Config): Promise<RequiredInfo>
   }
 
   if (info.cloudSqlDatabase === "") {
-    info = await promptForDatabase(setup, config, info);
+    info = await promptForDatabase(setup, info);
   }
 
   // TODO: Remove this in favor of a better way of setting local connection string.
@@ -382,11 +382,7 @@ async function locationChoices(setup: Setup) {
   }
 }
 
-async function promptForDatabase(
-  setup: Setup,
-  config: Config,
-  info: RequiredInfo,
-): Promise<RequiredInfo> {
+async function promptForDatabase(setup: Setup, info: RequiredInfo): Promise<RequiredInfo> {
   if (!info.isNewInstance && setup.projectId) {
     try {
       const dbs = await cloudsql.listDatabases(setup.projectId, info.cloudSqlInstanceId);
