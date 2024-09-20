@@ -507,8 +507,8 @@ async function _runBinary(
       }
     });
 
-    emulator.instance.on("error", async (err) => {
-      await handleEmulatorProcessError(emulator.name, err, command.port);
+    emulator.instance.on("error", async (err: any) => {
+      void handleEmulatorProcessError(emulator.name, err, command.port);
     });
 
     emulator.instance.once("exit", async (code, signal) => {
