@@ -1,5 +1,5 @@
 import { Workbench } from "wdio-vscode-service";
-import { findWebviewWithTitle, runInFrame } from "../webviews";
+import { runWebviewWithTitle, runInFrame } from "../webviews";
 
 export class ExecutionPanel {
   constructor(readonly workbench: Workbench) {
@@ -10,7 +10,7 @@ export class ExecutionPanel {
 
   async open(): Promise<void> {
     await this.workbench.executeCommand(
-      "data-connect-execution-configuration.focus"
+      "data-connect-execution-configuration.focus",
     );
   }
 
@@ -22,14 +22,12 @@ export class ExecutionPanel {
     });
   }
 
-  async runInConfigurationContext<R>(
-    cb: (configs: ConfigurationView) => Promise<R>
-  ): Promise<R> {
-    const [a, b] = await findWebviewWithTitle("Configuration");
-
-    return runInFrame(a, () =>
-      runInFrame(b, () => cb(new ConfigurationView(this.workbench)))
-    );
+  async runInConfigurationContext(
+    cb: (configs: ConfigurationView) => Promise<void>,
+  ): Promise<void> {
+    await runWebviewWithTitle("Configuration", async () => {
+      cb(new ConfigurationView(this.workbench));
+    });
   }
 }
 

@@ -55,6 +55,13 @@ function Welcome() {
       >
         Run firebase init
       </VSCodeButton>
+      <Spacer size="small"></Spacer>
+      <VSCodeButton
+        appearance="secondary"
+        onClick={() => broker.send("openFolder")}
+      >
+        Open folder
+      </VSCodeButton>
     </>
   );
 }
@@ -72,7 +79,9 @@ function EmulatorsPanel() {
       return (
         <>
           <Spacer size="medium"></Spacer>
-          <label>Emulator start-up may take a while. In case of error, click reset.</label>
+          <label>
+            Emulator start-up may take a while. In case of error, click reset.
+          </label>
           <VSCodeProgressRing></VSCodeProgressRing>
           <Spacer size="medium"></Spacer>
           <VSCodeButton

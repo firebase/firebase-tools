@@ -12,6 +12,7 @@ import { registerQuickstart } from "./quickstart";
 import { registerOptions } from "../options";
 import { upsertFile } from "../data-connect/file-utils";
 import { registerWebhooks } from "./webhook";
+import { setupExecuteCommandMockable } from "../utils/test_hooks";
 
 export async function registerCore(
   broker: ExtensionBrokerImpl,
@@ -41,6 +42,14 @@ export async function registerCore(
 
   const sub3 = broker.on("openLink", async ({ href }) => {
     vscode.env.openExternal(vscode.Uri.parse(href));
+  });
+
+  const executeCommand = setupExecuteCommandMockable(context);
+
+  context.subscriptions.push({
+    dispose: broker.on("openFolder", () => {
+      return executeCommand.call("workbench.action.files.openFolder");
+    }),
   });
 
   const sub4 = broker.on("runFirebaseInit", async () => {
