@@ -16,7 +16,7 @@ import {
   listConnectors,
 } from "../../../dataconnect/client";
 import { Schema, Service, File } from "../../../dataconnect/types";
-import { DEFAULT_POSTGRES_CONNECTION } from "../emulators";
+import { DEFAULT_POSTGRES_CONNECTION } from "../../../dataconnect/postgres";
 import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
