@@ -1,4 +1,4 @@
-import { join, basename } from 'path';
+import { join, basename } from "path";
 import * as clc from "colorette";
 
 import { confirm, promptOnce } from "../../../prompt";
