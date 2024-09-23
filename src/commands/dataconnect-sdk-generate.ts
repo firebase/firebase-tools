@@ -23,7 +23,7 @@ export const command = new Command("dataconnect:sdk:generate")
           c.connectorYaml.generate?.javascriptSdk ||
           c.connectorYaml.generate?.kotlinSdk ||
           c.connectorYaml.generate?.swiftSdk ||
-          (experiments.isEnabled("fdcdart") && c.connectorYaml.generate?.dartSdk)
+          c.connectorYaml.generate?.dartSdk
         );
       });
       if (!hasGeneratables) {
