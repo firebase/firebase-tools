@@ -7,7 +7,6 @@ import { needProjectId } from "../projectUtils";
 import { load } from "../dataconnect/load";
 import { readFirebaseJson } from "../dataconnect/fileUtils";
 import { logger } from "../logger";
-import * as experiments from "../experiments";
 
 export const command = new Command("dataconnect:sdk:generate")
   .description("generates typed SDKs for your Data Connect connectors")

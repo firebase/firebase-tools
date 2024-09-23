@@ -184,7 +184,6 @@ export class DataConnectEmulator implements EmulatorInstance {
       `--config_dir=${args.configDir}`,
       `--connector_id=${args.connectorId}`,
     ];
-    
     const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8" });
 
     logger.info(res.stderr);

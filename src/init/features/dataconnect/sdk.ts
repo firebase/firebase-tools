@@ -24,7 +24,6 @@ import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { FirebaseError } from "../../../error";
 import { camelCase, snakeCase, upperFirst } from "lodash";
 import { logSuccess, logBullet } from "../../../utils";
-import * as experiments from "../../../experiments";
 
 export type SDKInfo = {
   connectorYamlContents: string;

@@ -132,8 +132,7 @@ export async function getPlatformFromFolder(dirPath: string) {
     hasIOS ||=
       IOS_INDICATORS.some((indicator) => indicator === cleanedFileName) ||
       IOS_POSTFIX_INDICATORS.some((indicator) => cleanedFileName.endsWith(indicator));
-    hasDart ||=
-      DART_INDICATORS.some((indicator) => indicator === cleanedFileName);
+    hasDart ||= DART_INDICATORS.some((indicator) => indicator === cleanedFileName);
   }
   if (hasWeb && !hasAndroid && !hasIOS && !hasDart) {
     return Platform.WEB;
