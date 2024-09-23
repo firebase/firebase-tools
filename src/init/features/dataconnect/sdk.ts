@@ -34,6 +34,9 @@ export type SDKInfo = {
 export async function doSetup(setup: Setup, config: Config): Promise<void> {
   const sdkInfo = await askQuestions(setup, config);
   await actuate(sdkInfo, setup.projectId);
+  logSuccess(
+    `If you'd like to generate additional SDKs later, run ${clc.bold("firebase init dataconnect:sdk")}`,
+  );
 }
 
 async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
@@ -56,14 +59,9 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
     throw new FirebaseError(
       `Your config has no connectors to set up SDKs for. Run ${clc.bold(
         "firebase init dataconnect",
-      )} to set up a service and conenctors.`,
+      )} to set up a service and connectors.`,
     );
   }
-  const connectorInfo: ConnectorInfo = await promptOnce({
-    message: "Which connector do you want set up a generated SDK for?",
-    type: "list",
-    choices: connectorChoices,
-  });
 
   // First, lets check if we are in a app directory
   let targetPlatform: Platform = Platform.UNDETERMINED;
@@ -79,7 +77,8 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
     logBullet(`Couldn't automatically detect your app directory.`);
     appDir = await promptForDirectory({
       config,
-      message: "Where is your app directory?",
+      message:
+        "Where is your app directory? Leave blank to set up a generated SDK in your current directory.",
     });
     const platformGuess = await getPlatformFromFolder(appDir);
     if (platformGuess !== Platform.UNDETERMINED) {
@@ -101,6 +100,12 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
       });
     }
   }
+
+  const connectorInfo: ConnectorInfo = await promptOnce({
+    message: "Which connector do you want set up a generated SDK for?",
+    type: "list",
+    choices: connectorChoices,
+  });
 
   const newConnectorYaml = JSON.parse(JSON.stringify(connectorInfo.connectorYaml)) as ConnectorYaml;
   if (!newConnectorYaml.generate) {

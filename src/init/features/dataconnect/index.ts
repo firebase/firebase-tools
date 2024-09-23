@@ -15,12 +15,14 @@ import {
   getSchema,
   listConnectors,
 } from "../../../dataconnect/client";
-import { Schema, Service, File } from "../../../dataconnect/types";
+import { Schema, Service, File, Platform } from "../../../dataconnect/types";
 import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
-import { logSuccess } from "../../../utils";
+import { logBullet, logSuccess } from "../../../utils";
 import { checkBillingEnabled } from "../../../gcp/cloudbilling";
+import * as sdk from "./sdk";
+import { getPlatformFromFolder } from "../../../dataconnect/fileUtils";
 
 const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
 const DATACONNECT_YAML_COMPAT_EXPERIMENT_TEMPLATE = readTemplateSync(
@@ -64,17 +66,32 @@ const defaultConnector = {
 
 // doSetup is split into 2 phases - ask questions and then actuate files and API calls based on those answers.
 export async function doSetup(setup: Setup, config: Config): Promise<void> {
-  const info = await askQuestions(setup, config);
+  const info = await askQuestions(setup);
   await actuate(setup, config, info);
+
+  const cwdPlatformGuess = await getPlatformFromFolder(process.cwd());
+  if (cwdPlatformGuess !== Platform.UNDETERMINED) {
+    await sdk.doSetup(setup, config);
+  } else {
+    const promptForSDKGeneration = await confirm({
+      message: `Would you like to configure generated SDKs now?`,
+      default: false,
+    });
+    if (promptForSDKGeneration) {
+      await sdk.doSetup(setup, config);
+    } else {
+      logBullet(
+        `If you'd like to generate an SDK for your new connector later, run ${clc.bold("firebase init dataconnect:sdk")}`,
+      );
+    }
+  }
+
   logger.info("");
-  logSuccess(
-    `If you'd like to generate an SDK for your new connector, run ${clc.bold("firebase init dataconnect:sdk")}`,
-  );
 }
 
 // askQuestions prompts the user about the Data Connect service they want to init. Any prompting
 // logic should live here, and _no_ actuation logic should live here.
-async function askQuestions(setup: Setup, config: Config): Promise<RequiredInfo> {
+async function askQuestions(setup: Setup): Promise<RequiredInfo> {
   let info: RequiredInfo = {
     serviceId: "",
     locationId: "",
@@ -94,7 +111,7 @@ async function askQuestions(setup: Setup, config: Config): Promise<RequiredInfo>
   }
 
   if (info.cloudSqlDatabase === "") {
-    info = await promptForDatabase(setup, config, info);
+    info = await promptForDatabase(setup, info);
   }
 
   info.shouldProvisionCSQL = !!(
@@ -350,11 +367,7 @@ async function locationChoices(setup: Setup) {
   }
 }
 
-async function promptForDatabase(
-  setup: Setup,
-  config: Config,
-  info: RequiredInfo,
-): Promise<RequiredInfo> {
+async function promptForDatabase(setup: Setup, info: RequiredInfo): Promise<RequiredInfo> {
   if (!info.isNewInstance && setup.projectId) {
     try {
       const dbs = await cloudsql.listDatabases(setup.projectId, info.cloudSqlInstanceId);
