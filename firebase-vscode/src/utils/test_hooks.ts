@@ -15,7 +15,7 @@ export interface Mockable<T extends (...args: any) => any> {
 export function createE2eMockable<T extends (...args: any) => any>(
   cb: T,
   key: string,
-  fallback: () => ReturnType<T>
+  fallback: () => ReturnType<T>,
 ): Mockable<T> {
   let value: (...args: Parameters<T>) => ReturnType<T> = cb;
   const calls: Parameters<T>[] = [];
@@ -33,7 +33,7 @@ export function createE2eMockable<T extends (...args: any) => any>(
       }
 
       return calls;
-    }
+    },
   );
 
   return {
@@ -44,4 +44,27 @@ export function createE2eMockable<T extends (...args: any) => any>(
     },
     dispose: command.dispose,
   };
+}
+
+let executeCommandMockable:
+  | Mockable<<T = unknown>(command: string, ...rest: any[]) => Thenable<T>>
+  | undefined;
+
+export function setupExecuteCommandMockable(context: vscode.ExtensionContext) {
+  if (!executeCommandMockable) {
+    const cmd = (executeCommandMockable = createE2eMockable(
+      vscode.commands.executeCommand,
+      "executeCommand",
+      async () => {},
+    ));
+
+    context.subscriptions.push({
+      dispose() {
+        cmd.dispose();
+        executeCommandMockable = undefined;
+      },
+    });
+  }
+
+  return executeCommandMockable;
 }

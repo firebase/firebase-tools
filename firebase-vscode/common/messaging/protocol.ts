@@ -51,6 +51,9 @@ export interface WebviewToExtensionParamsMap {
   /** Calls the `firebase init` CLI */
   runFirebaseInit: void;
 
+  /** Calls VScode's `openFolder` command */
+  openFolder: void;
+
   /** Calls the `firebase init` CLI */
   runStartEmulators: void;
 
