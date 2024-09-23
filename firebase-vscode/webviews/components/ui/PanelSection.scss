@@ -1,3 +1,8 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+}
+
 .panelExpando {
   appearance: none;
   background-color: transparent;

@@ -4,14 +4,12 @@ import {
   IntrospectionQuery,
   getIntrospectionQuery,
 } from "graphql";
-import { computed } from "@preact/signals-core";
 import { assertExecutionResult } from "../../common/graphql";
 import { DataConnectError } from "../../common/error";
 import { AuthService } from "../auth/service";
 import { UserMockKind } from "../../common/messaging/protocol";
 import { firstWhereDefined } from "../utils/signal";
 import { EmulatorsController } from "../core/emulators";
-import { Emulators } from "../cli";
 import { dataConnectConfigs } from "../data-connect/config";
 
 import { firebaseRC } from "../core/config";
@@ -25,6 +23,7 @@ import {
 import { ClientResponse } from "../apiv2";
 import { InstanceType } from "./code-lens-provider";
 import { pluginLogger } from "../logger-wrapper";
+import { DataConnectToolkit } from "./toolkit";
 
 /**
  * DataConnect Emulator service
@@ -32,18 +31,17 @@ import { pluginLogger } from "../logger-wrapper";
 export class DataConnectService {
   constructor(
     private authService: AuthService,
+    private dataConnectToolkit: DataConnectToolkit,
     private emulatorsController: EmulatorsController,
   ) {}
 
   async servicePath(
-    path: string,
-    instance: InstanceType,
+    path: string
   ): Promise<string | undefined> {
     const dataConnectConfigsValue = await firstWhereDefined(dataConnectConfigs);
     // TODO: avoid calling this here and in getApiServicePathByPath
     const serviceId =
-      dataConnectConfigsValue?.tryReadValue.findEnclosingServiceForPath(path)
-        .value.serviceId;
+      dataConnectConfigsValue?.tryReadValue?.findEnclosingServiceForPath(path)?.value.serviceId;
     const projectId = firebaseRC.value?.tryReadValue?.projects?.default;
 
     if (serviceId === undefined || projectId === undefined) {
@@ -190,7 +188,7 @@ export class DataConnectService {
     // TODO: get introspections for all services
     const configs = await firstWhereDefined(dataConnectConfigs);
     // Using "requireValue", so that if configs are not available, the execution should throw.
-    const serviceId = configs.requireValue.serviceIds[0];
+    const serviceId = configs.requireValue?.serviceIds[0];
     try {
       // TODO: get name programmatically
       const body = this._serializeBody({
@@ -199,8 +197,8 @@ export class DataConnectService {
         extensions: {}, // Introspection is the only caller of executeGraphqlRead
       });
       const resp = await fetch(
-        (await firstWhereDefined(this.emulatorsController.getLocalEndpoint())) +
-          `/v1alpha/projects/p/locations/l/services/${serviceId}:executeGraphqlRead`,
+        (await this.dataConnectToolkit.getFDCToolkitURL()) +
+          `/v1beta/projects/p/locations/l/services/${serviceId}:executeGraphqlRead`,
         {
           method: "POST",
           headers: {
@@ -227,14 +225,13 @@ export class DataConnectService {
     path: string;
     instance: InstanceType;
   }) {
-    const servicePath = await this.servicePath(params.path, params.instance);
+    const servicePath = await this.servicePath(params.path);
     if (!servicePath) {
       throw new Error("No service found for path: " + params.path);
     }
-
     const prodBody: ExecuteGraphqlRequest = {
       operationName: params.operationName,
-      variables: JSON.parse(params.variables),
+      variables: parseVariableString(params.variables),
       query: params.query,
       name: `${servicePath}`,
       extensions: this._auth(),
@@ -250,8 +247,8 @@ export class DataConnectService {
       return this.handleProdResponse(resp);
     } else {
       const resp = await fetch(
-        (await firstWhereDefined(this.emulatorsController.getLocalEndpoint())) +
-          `/v1alpha/${servicePath}:executeGraphql`,
+        (await this.emulatorsController.getLocalEndpoint()) +
+          `/v1beta/${servicePath}:executeGraphql`,
         {
           method: "POST",
           headers: {
@@ -266,23 +263,20 @@ export class DataConnectService {
     }
   }
 
-  async connectToPostgres(connectionString: string): Promise<boolean> {
-    try {
-      await fetch(
-        firstWhereDefined(this.emulatorsController.getLocalEndpoint()) +
-          `/emulator/configure?connectionString=${connectionString}`,
-        {
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-            "x-mantle-admin": "all",
-          },
-        },
-      );
-      return true;
-    } catch (e: any) {
-      pluginLogger.error(e);
-      return false;
-    }
+  docsLink() {
+    return this.dataConnectToolkit.getGeneratedDocsURL();
+  }
+}
+
+function parseVariableString(variables: string): Record<string, any> {
+  if (!variables) {
+    return {};
+  }
+  try {
+    return JSON.parse(variables);
+  } catch(e: any) {
+    throw new Error(
+      "Unable to parse variables as JSON. Double check that that there are no unmatched braces or quotes, or unqouted keys in the variables pane."
+    );
   }
 }

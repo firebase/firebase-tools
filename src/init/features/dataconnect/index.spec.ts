@@ -6,7 +6,7 @@ import { Config } from "../../../config";
 import { RCData } from "../../../rc";
 import * as provison from "../../../dataconnect/provisionCloudSql";
 
-const MOCK_RC: RCData = { projects: {}, targets: {}, etags: {}, dataconnectEmulatorConfig: {} };
+const MOCK_RC: RCData = { projects: {}, targets: {}, etags: {} };
 
 describe("init dataconnect", () => {
   describe.skip("askQuestions", () => {

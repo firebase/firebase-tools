@@ -2,7 +2,10 @@ import assert from "assert";
 import { createTestBroker } from "../../../utils/broker";
 import { firebaseSuite, addDisposable } from "../../../utils/test_hooks";
 import { setupMockTestWorkspaces } from "../../../utils/workspace";
-import { dataConnectConfigs, registerDataConnectConfigs } from "../../../../data-connect/config";
+import {
+  dataConnectConfigs,
+  registerDataConnectConfigs,
+} from "../../../../data-connect/config";
 import { createTemporaryDirectory } from "../../../utils/fs";
 import { createFake, mock } from "../../../utils/mock";
 import { workspace } from "../../../../utils/test_hooks";
@@ -79,7 +82,7 @@ firebaseSuite("registerDataConnectConfigs", async () => {
             createFake<vscode.WorkspaceFolder>({ uri: vscode.Uri.file(dir) }),
           ],
           // Override "createFileSystemWatcher" to spy on the watchers.
-          createFileSystemWatcher: (pattern) => {
+          createFileSystemWatcher: (pattern: any) => {
             const file = (pattern as vscode.RelativePattern).pattern;
             return createFake<vscode.FileSystemWatcher>({
               onDidCreate: (cb) => addFSListener(file, "create", cb),
@@ -95,7 +98,8 @@ firebaseSuite("registerDataConnectConfigs", async () => {
       const disposable = await registerDataConnectConfigs(broker);
       addDisposable(disposable);
 
-      const dataConnectListeners = watcherListeners["**/{dataconnect,connector}.yaml"]!;
+      const dataConnectListeners =
+        watcherListeners["**/{dataconnect,connector}.yaml"]!;
       const dataConnectFile = path.join(dir, "**/{dataconnect,connector}.yaml");
 
       function testDataConnectEvent(event: "create" | "update" | "delete") {

@@ -2,19 +2,21 @@ import * as planner from "./planner";
 import * as deploymentSummary from "./deploymentSummary";
 import * as prompt from "../../prompt";
 import * as refs from "../../extensions/refs";
-import { Options } from "../../options";
 import { getAliases, needProjectId, needProjectNumber } from "../../projectUtils";
 import { logger } from "../../logger";
 import { Context, Payload } from "./args";
 import { FirebaseError } from "../../error";
 import { requirePermissions } from "../../requirePermissions";
-import { ensureExtensionsApiEnabled } from "../../extensions/extensionsHelper";
+import {
+  checkExtensionsApiEnabled,
+  ensureExtensionsApiEnabled,
+} from "../../extensions/extensionsHelper";
 import { ensureSecretManagerApiEnabled } from "../../extensions/secretsUtils";
 import { checkSpecForSecrets } from "./secrets";
 import { displayWarningsForDeploy, outOfBandChangesWarning } from "../../extensions/warnings";
 import { detectEtagChanges } from "../../extensions/etags";
 import { checkSpecForV2Functions, ensureNecessaryV2ApisAndRoles } from "./v2FunctionHelper";
-import { acceptLatestAppDeveloperTOS } from "../../extensions/tos";
+import { acceptLatestAppDeveloperTOS, getAppDeveloperTOSStatus } from "../../extensions/tos";
 import {
   extractAllDynamicExtensions,
   extractExtensionsFromBuilds,
@@ -22,6 +24,7 @@ import {
 import { Build } from "../functions/build";
 import { normalizeAndValidate } from "../../functions/projectConfig";
 import { getEndpointFilters, targetCodebases } from "../functions/functionsDeployHelper";
+import { DeployOptions } from "..";
 
 // This is called by prepare and also prepareDynamicExtensions. The only difference
 // is which set of extensions is in the want list and which is in the noDelete list.
@@ -33,7 +36,7 @@ import { getEndpointFilters, targetCodebases } from "../functions/functionsDeplo
 // and notifications twice (e.g. delete these extensions?)
 async function prepareHelper(
   context: Context,
-  options: Options,
+  options: DeployOptions,
   payload: Payload,
   wantExtensions: planner.DeploymentInstanceSpec[],
   noDeleteExtensions: planner.DeploymentInstanceSpec[],
@@ -118,7 +121,14 @@ async function prepareHelper(
   }
   if (payload.instancesToDelete.length) {
     logger.info(deploymentSummary.deletesSummary(payload.instancesToDelete));
+    if (options.dryRun) {
+      logger.info(
+        "On your next deploy, these you will be asked if you want to delete these instances.",
+      );
+      logger.info("If you deploy --force, they will be deleted.");
+    }
     if (
+      !options.dryRun &&
       !(await prompt.confirm({
         message: `Would you like to delete ${payload.instancesToDelete
           .map((i) => i.instanceId)
@@ -135,23 +145,35 @@ async function prepareHelper(
   }
 
   await requirePermissions(options, permissionsNeeded);
-  await acceptLatestAppDeveloperTOS(
-    options,
-    projectId,
-    context.want.map((i) => i.instanceId),
-  );
+  if (options.dryRun) {
+    const appDevTos = await getAppDeveloperTOSStatus(projectId);
+    if (!appDevTos.lastAcceptedVersion) {
+      logger.info(
+        "On your next deploy, you will be asked to accept the Firebase Extensions App Developer Terms of Service",
+      );
+    }
+  } else {
+    await acceptLatestAppDeveloperTOS(
+      options,
+      projectId,
+      context.want.map((i) => i.instanceId),
+    );
+  }
 }
 
 // This is called by functions/prepare so we can deploy the extensions defined by SDKs
 export async function prepareDynamicExtensions(
   context: Context,
-  options: Options,
+  options: DeployOptions,
   payload: Payload,
   builds: Record<string, Build>,
 ) {
   const filters = getEndpointFilters(options);
   const extensions = extractExtensionsFromBuilds(builds, filters);
-  if (Object.keys(extensions).length === 0) {
+  const isApiEnabled = await checkExtensionsApiEnabled(options);
+  if (Object.keys(extensions).length === 0 && !isApiEnabled) {
+    // Assume if we have no extensions defined and the API is not enabled
+    // there is nothing to delete.
     return;
   }
   const projectId = needProjectId(options);
@@ -162,9 +184,7 @@ export async function prepareDynamicExtensions(
   // This is only a primary call if we are not including extensions
   const isPrimaryCall = !!options.only && !options.only.split(",").includes("extensions");
 
-  if (isPrimaryCall) {
-    await ensureExtensionsApiEnabled(options);
-  }
+  await ensureExtensionsApiEnabled(options);
   await requirePermissions(options, ["firebaseextensions.instances.list"]);
 
   const dynamicWant = await planner.wantDynamic({
@@ -184,7 +204,7 @@ export async function prepareDynamicExtensions(
       projectNumber,
       aliases,
       projectDir,
-      extensions: options.config.get("extensions"),
+      extensions: options.config.get("extensions", {}),
     });
     noDeleteExtensions = noDeleteExtensions.concat(firebaseJsonWant);
     if (hasNonDeployingCodebases(options)) {
@@ -206,7 +226,7 @@ export async function prepareDynamicExtensions(
 }
 
 // Are there codebases that are not included in the current deploy?
-function hasNonDeployingCodebases(options: Options) {
+function hasNonDeployingCodebases(options: DeployOptions) {
   const functionFilters = getEndpointFilters(options);
   if (functionFilters?.length) {
     // If we are filtering for just one extension or function or codebase,
@@ -223,7 +243,7 @@ function hasNonDeployingCodebases(options: Options) {
   }
 }
 
-export async function prepare(context: Context, options: Options, payload: Payload) {
+export async function prepare(context: Context, options: DeployOptions, payload: Payload) {
   context.extensionsStartTime = Date.now();
   const projectId = needProjectId(options);
   const projectNumber = await needProjectNumber(options);
@@ -238,7 +258,7 @@ export async function prepare(context: Context, options: Options, payload: Paylo
     projectNumber,
     aliases,
     projectDir,
-    extensions: options.config.get("extensions"),
+    extensions: options.config.get("extensions", {}),
   });
   const dynamicWant = await planner.wantDynamic({
     projectId,

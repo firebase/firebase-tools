@@ -131,9 +131,9 @@ export async function have(projectId: string): Promise<DeploymentInstanceSpec[]>
  * any extensions the user has defined that way.
  * @param args.projectId The project we are deploying to
  * @param args.projectNumber The project number we are deploying to.
- * @param args.extensions The extensions section of firebase.jsonm
+ * @param args.extensions The extensions section of firebase.json
  * @param args.emulatorMode Whether the output will be used by the Extensions emulator.
- *                     If true, this will check {instanceId}.env.local for params a
+ *                     If true, this will check {instanceId}.env.local for params
  */
 export async function wantDynamic(args: {
   projectId: string;
@@ -143,6 +143,9 @@ export async function wantDynamic(args: {
 }): Promise<DeploymentInstanceSpec[]> {
   const instanceSpecs: DeploymentInstanceSpec[] = [];
   const errors: FirebaseError[] = [];
+  if (!args.extensions) {
+    return [];
+  }
   for (const [instanceId, ext] of Object.entries(args.extensions)) {
     const autoPopulatedParams = await getFirebaseProjectParams(args.projectId, args.emulatorMode);
     const subbedParams = substituteParams(ext.params, autoPopulatedParams);
@@ -207,6 +210,9 @@ export async function want(args: {
 }): Promise<DeploymentInstanceSpec[]> {
   const instanceSpecs: DeploymentInstanceSpec[] = [];
   const errors: FirebaseError[] = [];
+  if (!args.extensions) {
+    return [];
+  }
   for (const e of Object.entries(args.extensions)) {
     try {
       const instanceId = e[0];

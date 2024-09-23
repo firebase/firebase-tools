@@ -9,6 +9,7 @@
     "allowSyntheticDefaultImports": true,
     "target": "es2017",
     "sourceMap": true,
+    "skipLibCheck": true,
     "typeRoots": [
       "node_modules/@types",
       "src/types"
@@ -17,7 +18,7 @@
   "lib": [
     "dom",
     "dom.iterable",
-    "es2019"
+    "ES2020"
   ],
   "include": ["src/**/*"],
   "exclude": ["src/dynamicImport.js"]
