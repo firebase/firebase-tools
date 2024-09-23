@@ -3,7 +3,6 @@ import { getPlatformFromFolder, generateSdkYaml } from "./fileUtils";
 import { ConnectorYaml, Platform } from "./types";
 import * as mockfs from "mock-fs";
 import FileSystem from "mock-fs/lib/filesystem";
-import { isEnabled, setEnabled } from "../experiments";
 
 describe("getPlatformFromFolder", () => {
   const cases: {
@@ -11,7 +10,6 @@ describe("getPlatformFromFolder", () => {
     folderName: string;
     folderItems: FileSystem.DirectoryItems;
     output: Platform;
-    enableDart?: boolean;
   }[] = [
     {
       desc: "Empty folder",
@@ -94,7 +92,6 @@ describe("getPlatformFromFolder", () => {
         file1: "contents",
         "pubspec.yaml": "my deps",
       },
-      enableDart: true,
       output: Platform.DART,
     },
     {
@@ -103,16 +100,14 @@ describe("getPlatformFromFolder", () => {
       folderItems: {
         "pubspec.lock": "my deps",
       },
-      enableDart: true,
       output: Platform.DART,
     },
     {
       desc: "Dart identifier with experiment disabled",
       folderName: "is/this/a/dart/test",
       folderItems: {
-        "pubspec.lock": "my deps",
+        "pubspec.mispelled": "my deps",
       },
-      enableDart: false,
       output: Platform.UNDETERMINED,
     },
     {
@@ -128,13 +123,9 @@ describe("getPlatformFromFolder", () => {
   ];
   for (const c of cases) {
     it(c.desc, async () => {
-      const wasEnabledBefore = isEnabled("fdcdart");
-      setEnabled("fdcdart", !!c.enableDart);
       mockfs({ [c.folderName]: c.folderItems });
       const platform = await getPlatformFromFolder(c.folderName);
       expect(platform).to.equal(c.output);
-      // Reset experiment
-      setEnabled("fdcdart", wasEnabledBefore);
     });
     afterEach(() => {
       mockfs.restore();
@@ -191,7 +182,7 @@ describe("generateSdkYaml", () => {
     });
   });
 
-  it("should add Dart SDK generation for DART platform when Dart is enabled", () => {
+  it("should add Dart SDK generation for DART platform", () => {
     const modifiedYaml = generateSdkYaml(
       Platform.DART,
       sampleConnectorYaml,

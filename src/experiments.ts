@@ -143,12 +143,6 @@ export const ALL_EXPERIMENTS = experiments({
     fullDescription: "Enable Data Connect schema migrations in Compatible Mode",
     public: false,
   },
-  // TODO(mtewani): Remove when Dart SDK Generation is supported.
-  fdcdart: {
-    shortDescription: "Enable Data Connect Dart SDK Generation",
-    fullDescription: "Enable Data Connect Dart SDK Generation",
-    public: false,
-  },
 });
 
 export type ExperimentName = keyof typeof ALL_EXPERIMENTS;

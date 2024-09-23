@@ -7,7 +7,6 @@ import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
 import { Config } from "../config";
 import { DataConnectMultiple } from "../firebaseConfig";
 import { load } from "./load";
-import * as experiments from "../experiments";
 
 export function readFirebaseJson(config?: Config): DataConnectMultiple {
   if (!config?.has("dataconnect")) {
@@ -134,7 +133,6 @@ export async function getPlatformFromFolder(dirPath: string) {
       IOS_INDICATORS.some((indicator) => indicator === cleanedFileName) ||
       IOS_POSTFIX_INDICATORS.some((indicator) => cleanedFileName.endsWith(indicator));
     hasDart ||=
-      experiments.isEnabled("fdcdart") &&
       DART_INDICATORS.some((indicator) => indicator === cleanedFileName);
   }
   if (hasWeb && !hasAndroid && !hasIOS && !hasDart) {

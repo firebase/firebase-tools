@@ -173,10 +173,10 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
       cacheDir: CACHE_DIR,
       remoteUrl:
         process.platform === "darwin"
-          ? `https://firebasestorage.googleapis.com/v0/b/getting-started-dart-storage.appspot.com/o/dart_emulator-2?alt=media&token=48694c1f-5458-4044-8361-44d0f37193ce`
+          ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-macos-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
           : process.platform === "win32"
             ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-windows-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
-            : `https://firebasestorage.googleapis.com/v0/b/getting-started-dart-storage.appspot.com/o/dart_emulator-3-linux.sh?alt=media&token=36d788ec-e366-4bcd-9aeb-fb2929ccfeab`,
+            : `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
       expectedSize: EMULATOR_UPDATE_DETAILS.dataconnect.expectedSize,
       expectedChecksum: EMULATOR_UPDATE_DETAILS.dataconnect.expectedChecksum,
       skipChecksumAndSize: false,
@@ -295,7 +295,6 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
       "config_dir",
       "enable_output_schema_extensions",
       "enable_output_generated_sdk",
-      "enable_dart",
       // Additional flags that CLI shouldn't pass:
       // rpc_retry_count,
       // resolvers_emulator,

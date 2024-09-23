@@ -93,10 +93,8 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
         { name: "iOS (Swift)", value: Platform.IOS },
         { name: "Web (JavaScript)", value: Platform.WEB },
         { name: "Android (Kotlin)", value: Platform.ANDROID },
+        { name: "Flutter (Dart)", value: Platform.DART },
       ];
-      if (experiments.isEnabled("fdcdart")) {
-        platforms.push({ name: "Flutter (Dart)", value: Platform.DART });
-      }
       targetPlatform = await promptOnce({
         message: "Which platform do you want to set up a generated SDK for?",
         type: "list",
