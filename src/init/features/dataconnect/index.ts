@@ -1,4 +1,4 @@
-import { join } from "path";
+import { join, basename } from "path";
 import * as clc from "colorette";
 
 import { confirm, promptOnce } from "../../../prompt";
@@ -16,7 +16,6 @@ import {
   listConnectors,
 } from "../../../dataconnect/client";
 import { Schema, Service, File, Platform } from "../../../dataconnect/types";
-import { DEFAULT_POSTGRES_CONNECTION } from "../emulators";
 import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
@@ -115,19 +114,6 @@ async function askQuestions(setup: Setup): Promise<RequiredInfo> {
     info = await promptForDatabase(setup, info);
   }
 
-  // TODO: Remove this in favor of a better way of setting local connection string.
-  const defaultConnectionString =
-    setup.rcfile.dataconnectEmulatorConfig?.postgres?.localConnectionString ??
-    DEFAULT_POSTGRES_CONNECTION;
-  // TODO: Download Postgres
-  const localConnectionString = await promptOnce({
-    type: "input",
-    name: "localConnectionString",
-    message: `What is the connection string of the local Postgres instance you would like to use with the Data Connect emulator?`,
-    default: defaultConnectionString,
-  });
-  setup.rcfile.dataconnectEmulatorConfig = { postgres: { localConnectionString } };
-
   info.shouldProvisionCSQL = !!(
     setup.projectId &&
     (info.isNewInstance || info.isNewDatabase) &&
@@ -159,7 +145,6 @@ export async function actuate(setup: Setup, config: Config, info: RequiredInfo) 
 
 async function writeFiles(config: Config, info: RequiredInfo) {
   const dir: string = config.get("dataconnect.source") || "dataconnect";
-  console.log(dir);
   const subbedDataconnectYaml = subDataconnectYamlValues({
     ...info,
     connectorDirs: info.connectors.map((c) => c.path),
@@ -312,7 +297,7 @@ async function promptForService(
     info.serviceId = await promptOnce({
       message: "What ID would you like to use for this service?",
       type: "input",
-      default: "app",
+      default: basename(process.cwd()),
     });
   }
   return info;

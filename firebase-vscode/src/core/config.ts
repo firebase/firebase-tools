@@ -58,7 +58,7 @@ export async function updateFirebaseRCProject(values: {
   };
 }) {
   const rc =
-    firebaseRC.value.tryReadValue ??
+    firebaseRC.value?.tryReadValue ??
     // We don't update firebaseRC if we create a temporary RC,
     // as the file watcher will update the value for us.
     // This is only for the sake of calling `save()`.
@@ -79,10 +79,6 @@ export async function updateFirebaseRCProject(values: {
       values.projectAlias.alias,
       values.projectAlias.projectId,
     );
-  }
-
-  if (values.fdcPostgresConnectionString) {
-    rc.setDataconnect(values.fdcPostgresConnectionString);
   }
 
   rc.save();
@@ -205,7 +201,7 @@ export function _readRC(): Result<RC | undefined> {
 }
 
 /** @internal */
-export function _readFirebaseConfig(): Result<Config | undefined> {
+export function _readFirebaseConfig(): Result<Config | undefined> | undefined {
   const result = Result.guard(() => {
     const configPath = getConfigPath();
     if (!configPath) {

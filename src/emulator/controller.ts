@@ -59,6 +59,7 @@ import { StorageEmulator } from "./storage";
 import { readFirebaseJson } from "../dataconnect/fileUtils";
 import { TasksEmulator } from "./tasksEmulator";
 import { AppHostingEmulator } from "./apphosting";
+import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
@@ -105,6 +106,7 @@ export async function cleanShutdown(): Promise<void> {
     "Shutting down emulators.",
   );
   await EmulatorRegistry.stopAll();
+  await sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_SHUTDOWN });
 }
 
 /**
@@ -851,6 +853,11 @@ export async function startAll(
       configDir,
       rc: options.rc,
       config: options.config,
+      autoconnectToPostgres: true,
+      postgresHost: options.config.get("emulators.dataconnect.postgresHost"),
+      postgresPort: options.config.get("emulators.dataconnect.postgresPort"),
+      enable_output_generated_sdk: true, // TODO: source from arguments
+      enable_output_schema_extensions: true,
     });
     await startEmulator(dataConnectEmulator);
   }

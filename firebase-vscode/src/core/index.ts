@@ -3,7 +3,7 @@ import { ExtensionBrokerImpl } from "../extension-broker";
 import { getRootFolders, registerConfig } from "./config";
 import { EmulatorsController } from "./emulators";
 import { registerEnv } from "./env";
-import { pluginLogger } from "../logger-wrapper";
+import { pluginLogger, LogLevel } from '../logger-wrapper';
 import { getSettings } from "../utils/settings";
 import { setEnabled } from "../../../src/experiments";
 import { registerUser } from "./user";
@@ -11,6 +11,7 @@ import { registerProject } from "./project";
 import { registerQuickstart } from "./quickstart";
 import { registerOptions } from "../options";
 import { upsertFile } from "../data-connect/file-utils";
+import { registerWebhooks } from "./webhook";
 
 export async function registerCore(
   broker: ExtensionBrokerImpl,
@@ -28,12 +29,15 @@ export async function registerCore(
   }
 
   const sub1 = broker.on("writeLog", async ({ level, args }) => {
-    pluginLogger[level]("(Webview)", ...args);
+    pluginLogger[level as LogLevel]("(Webview)", ...args);
   });
 
-  const sub2 = broker.on("showMessage", async ({ msg, options }) => {
-    vscode.window.showInformationMessage(msg, options);
-  });
+  const sub2 = broker.on(
+    "showMessage",
+    async ({ msg, options }: { msg: string; options?: any }) => {
+      vscode.window.showInformationMessage(msg, options);
+    },
+  );
 
   const sub3 = broker.on("openLink", async ({ href }) => {
     vscode.env.openExternal(vscode.Uri.parse(href));
@@ -55,16 +59,14 @@ export async function registerCore(
       new vscode.Task(
         { type: "shell" }, // this is the same type as in tasks.json
         workspaceFolder, // The workspace folder
-        "Firebase init", // how you name the task
-        "Firebase init", // Shows up as MyTask: name
-        new vscode.ShellExecution("firebase init"),
+        "firebase init dataconnect", // how you name the task
+        "firebase init dataconnect", // Shows up as MyTask: name
+        new vscode.ShellExecution(`${settings.firebasePath} init dataconnect`),
       ),
     );
   });
 
   const emulatorsController = new EmulatorsController(broker);
-  // Start the emulators when the extension starts.
-  emulatorsController.startEmulators();
 
   const openRcCmd = vscode.commands.registerCommand(
     "firebase.openFirebaseRc",
@@ -95,6 +97,7 @@ export async function registerCore(
       registerUser(broker, telemetryLogger),
       registerProject(broker),
       registerQuickstart(broker),
+      await registerWebhooks(),
       { dispose: sub1 },
       { dispose: sub2 },
       { dispose: sub3 },

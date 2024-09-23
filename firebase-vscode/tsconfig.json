@@ -7,13 +7,13 @@
     "typeRoots": ["node_modules/@types", "../src/types"],
     "module": "es2020",
     "moduleResolution": "node",
-    "target": "ES2020",
+    "target": "ES2017",
     "outDir": "dist",
-    "lib": ["ES2020"],
+    "lib": ["ES2020", "DOM"],
     "jsx": "react",
     "sourceMap": true,
     "rootDirs": ["src", "../src", "common"],
-    "strict": false /* enable all strict type-checking options */
+    "strict": true /* enable all strict type-checking options */
   },
   "ts-node": {
     "esm": true

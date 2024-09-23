@@ -3,7 +3,13 @@ import { ExtensionBrokerImpl } from "../extension-broker";
 import vscode, { Disposable } from "vscode";
 import { checkLogin } from "../core/user";
 import { DATA_CONNECT_EVENT_NAME } from "../analytics";
-const environmentVariables = {};
+import { getSettings } from "../utils/settings";
+
+const environmentVariables: Record<string, string> = {};
+
+const executionOptions: vscode.ShellExecutionOptions = {
+  env: environmentVariables,
+};
 
 const terminalOptions: TerminalOptions = {
   name: "Data Connect Terminal",
@@ -17,6 +23,10 @@ export function setTerminalEnvVars(envVar: string, value: string) {
 export function runCommand(command: string) {
   const terminal = vscode.window.createTerminal(terminalOptions);
   terminal.show();
+
+  // TODO: This fails if the interactive shell is not expecting a command, such
+  // as when oh-my-zsh asking for (Y/n) to updates during startup.
+  // Consider using an non-interactive shell.
   terminal.sendText(command);
 }
 
@@ -39,13 +49,13 @@ export function runTerminalTask(
         }
       }
     });
-    vscode.tasks.executeTask(
+    const task = await vscode.tasks.executeTask(
       new vscode.Task(
         { type },
         vscode.TaskScope.Workspace,
         taskName,
         "firebase",
-        new vscode.ShellExecution(command),
+        new vscode.ShellExecution(command, executionOptions),
       ),
     );
   });
@@ -55,12 +65,24 @@ export function registerTerminalTasks(
   broker: ExtensionBrokerImpl,
   telemetryLogger: TelemetryLogger,
 ): Disposable {
+  const settings = getSettings();
+
   const loginTaskBroker = broker.on("executeLogin", () => {
     telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.IDX_LOGIN);
-    runTerminalTask("firebase login", "firebase login --no-localhost").then(
-      () => {
-        checkLogin();
-      },
+    runTerminalTask(
+      "firebase login",
+      `${settings.firebasePath} login --no-localhost`,
+    ).then(() => {
+      checkLogin();
+    });
+  });
+
+  const startEmulatorsTaskBroker = broker.on("runStartEmulators", () => {
+    telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.START_EMULATORS);
+    // TODO: optional debug mode
+    runTerminalTask(
+      "firebase emulators",
+      `${settings.firebasePath} emulators:start`,
     );
   });
 
