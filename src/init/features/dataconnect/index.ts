@@ -228,66 +228,66 @@ async function promptForService(
     if (isBillingEnabled) {
       // Enabling compute.googleapis.com requires a Blaze plan.
       await ensureApis(setup.projectId);
-    } else {
-      await ensureSparkApis(setup.projectId);
-    }
-    // TODO (b/344021748): Support initing with services that have existing sources/files
-    const existingServices = await listAllServices(setup.projectId);
-    const existingServicesAndSchemas = await Promise.all(
-      existingServices.map(async (s) => {
-        return {
-          service: s,
-          schema: await getSchema(s.name),
-        };
-      }),
-    );
-    if (existingServicesAndSchemas.length) {
-      const choices: { name: string; value: any }[] = existingServicesAndSchemas.map((s) => {
-        const serviceName = parseServiceName(s.service.name);
-        return {
-          name: `${serviceName.location}/${serviceName.serviceId}`,
-          value: s,
-        };
-      });
-      choices.push({ name: "Create a new service", value: undefined });
-      const choice: { service: Service; schema: Schema } = await promptOnce({
-        message:
-          "Your project already has existing services. Which would you like to set up local files for?",
-        type: "list",
-        choices,
-      });
-      if (choice) {
-        const serviceName = parseServiceName(choice.service.name);
-        info.serviceId = serviceName.serviceId;
-        info.locationId = serviceName.location;
-        if (choice.schema) {
-          const primaryDatasource = choice.schema.datasources.find((d) => d.postgresql);
-          if (primaryDatasource?.postgresql?.cloudSql.instance) {
-            const instanceName = parseCloudSQLInstanceName(
-              primaryDatasource.postgresql.cloudSql.instance,
-            );
-            info.cloudSqlInstanceId = instanceName.instanceId;
-          }
-          if (choice.schema.source.files) {
-            info.schemaGql = choice.schema.source.files;
-          }
-          info.cloudSqlDatabase = primaryDatasource?.postgresql?.database ?? "";
-          const connectors = await listConnectors(choice.service.name, [
-            "connectors.name",
-            "connectors.source.files",
-          ]);
-          if (connectors.length) {
-            info.connectors = connectors.map((c) => {
-              const id = c.name.split("/").pop()!;
-              return {
-                id,
-                path: connectors.length === 1 ? "./connector" : `./${id}`,
-                files: c.source.files || [],
-              };
-            });
+      // TODO (b/344021748): Support initing with services that have existing sources/files
+      const existingServices = await listAllServices(setup.projectId);
+      const existingServicesAndSchemas = await Promise.all(
+        existingServices.map(async (s) => {
+          return {
+            service: s,
+            schema: await getSchema(s.name),
+          };
+        }),
+      );
+      if (existingServicesAndSchemas.length) {
+        const choices: { name: string; value: any }[] = existingServicesAndSchemas.map((s) => {
+          const serviceName = parseServiceName(s.service.name);
+          return {
+            name: `${serviceName.location}/${serviceName.serviceId}`,
+            value: s,
+          };
+        });
+        choices.push({ name: "Create a new service", value: undefined });
+        const choice: { service: Service; schema: Schema } = await promptOnce({
+          message:
+            "Your project already has existing services. Which would you like to set up local files for?",
+          type: "list",
+          choices,
+        });
+        if (choice) {
+          const serviceName = parseServiceName(choice.service.name);
+          info.serviceId = serviceName.serviceId;
+          info.locationId = serviceName.location;
+          if (choice.schema) {
+            const primaryDatasource = choice.schema.datasources.find((d) => d.postgresql);
+            if (primaryDatasource?.postgresql?.cloudSql.instance) {
+              const instanceName = parseCloudSQLInstanceName(
+                primaryDatasource.postgresql.cloudSql.instance,
+              );
+              info.cloudSqlInstanceId = instanceName.instanceId;
+            }
+            if (choice.schema.source.files) {
+              info.schemaGql = choice.schema.source.files;
+            }
+            info.cloudSqlDatabase = primaryDatasource?.postgresql?.database ?? "";
+            const connectors = await listConnectors(choice.service.name, [
+              "connectors.name",
+              "connectors.source.files",
+            ]);
+            if (connectors.length) {
+              info.connectors = connectors.map((c) => {
+                const id = c.name.split("/").pop()!;
+                return {
+                  id,
+                  path: connectors.length === 1 ? "./connector" : `./${id}`,
+                  files: c.source.files || [],
+                };
+              });
+            }
           }
         }
       }
+    } else {
+      await ensureSparkApis(setup.projectId);
     }
   }
 
