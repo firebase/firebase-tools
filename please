@@ -1,0 +1,25 @@
+FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
+if (firebaseUser != null) {
+    String uid = firebaseUser.getUid();
+    FirebaseFirestore db = FirebaseFirestore.getInstance();
+    db.collection("users").document(uid).delete().addOnCompleteListener(new OnCompleteListener<Void>() {
+        @Override
+        public void onComplete(@NonNull Task<Void> userDocDeleteTask) {
+            if (userDocDeleteTask.isSuccessful()) {
+                Log.d(TAG, "User document successfully deleted from Firestore.");
+                firebaseUser.delete().addOnCompleteListener(new OnCompleteListener<Void>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Void> firebaseUserDeleteTask) {
+                        if (firebaseUserDeleteTask.isSuccessful()) {
+                            Log.d(TAG, "User document successfully deleted from Firebase Authentication.");
+                        } else {
+                            Log.d(TAG, firebaseUserDeleteTask.getException().getMessage());
+                        }
+                    }
+                });
+            } else {
+                Log.d(TAG, userDocDeleteTask.getException().getMessage());
+            }
+        }
+    });
+}
