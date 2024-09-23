@@ -1,10 +1,21 @@
 import vscode, { Disposable, TelemetryLogger } from "vscode";
-import { DocumentNode, GraphQLInputObjectType, GraphQLScalarType, Kind, ObjectTypeDefinitionNode, buildClientSchema, buildSchema } from "graphql";
+import {
+  DocumentNode,
+  GraphQLInputObjectType,
+  GraphQLScalarType,
+  Kind,
+  ObjectTypeDefinitionNode,
+  buildClientSchema,
+  buildSchema,
+} from "graphql";
 import { checkIfFileExists, upsertFile } from "./file-utils";
 import { DataConnectService } from "./service";
 import { DATA_CONNECT_EVENT_NAME } from "../analytics";
 
-export function registerAdHoc(dataConnectService: DataConnectService, telemetryLogger: TelemetryLogger): Disposable {
+export function registerAdHoc(
+  dataConnectService: DataConnectService,
+  telemetryLogger: TelemetryLogger,
+): Disposable {
   const defaultScalarValues = {
     Any: "{}",
     AuthUID: '""',
@@ -60,7 +71,7 @@ export function registerAdHoc(dataConnectService: DataConnectService, telemetryL
       // Whether the query is non-empty. Used to determine whether to return undefined.
       var hasField = false;
       let query = "{\n";
-      for (const field of ast.fields) {
+      for (const field of ast.fields!) {
         // We unwrap NonNullType to obtain the actual type
         let fieldType = field.type;
         if (fieldType.kind === Kind.NON_NULL_TYPE) {
@@ -155,13 +166,15 @@ query {
     ast: ObjectTypeDefinitionNode,
   ): Promise<string> {
     const introspect = (await dataConnectService.introspect())?.data;
-    const schema = buildClientSchema(introspect);
+    const schema = buildClientSchema(introspect!);
 
     const name = ast.name.value;
     const lowerCaseName =
       ast.name.value.charAt(0).toLowerCase() + ast.name.value.slice(1);
     const dataName = `${name}_Data`;
-    const mutationDataType: GraphQLInputObjectType = schema.getTypeMap()[dataName] as GraphQLInputObjectType;
+    const mutationDataType: GraphQLInputObjectType = schema.getTypeMap()[
+      dataName
+    ] as GraphQLInputObjectType;
 
     // build mutation as string
     const functionSpacing = "\t";
@@ -169,17 +182,21 @@ query {
     const mutation = [];
     mutation.push("mutation {"); // mutation header
     mutation.push(`${functionSpacing}${lowerCaseName}_insert(data: {`);
-    for (const [fieldName, field] of Object.entries(mutationDataType.getFields())) {
+    for (const [fieldName, field] of Object.entries(
+      mutationDataType.getFields(),
+    )) {
       // necessary to avoid type error
       const fieldtype: any = field.type;
       // use all argument types that are of scalar, except x_expr
-      if (isDataConnectScalarType(fieldtype.name) && !field.name.includes("_expr")) {
-        const defaultValue = defaultScalarValues[fieldtype.name] || "";
+      if (
+        isDataConnectScalarType(fieldtype.name) &&
+        !field.name.includes("_expr")
+      ) {
+        const defaultValue = (defaultScalarValues as any)[fieldtype.name] || "";
         mutation.push(
           `${fieldSpacing}${fieldName}: ${defaultValue} # ${fieldtype.name}`,
         ); // field name + temp value + comment
       }
-
     }
     mutation.push(`${functionSpacing}})`, "}"); // closing braces/paren
     return mutation.join("\n");

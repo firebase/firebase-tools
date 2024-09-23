@@ -21,7 +21,8 @@ export const command = new Command("dataconnect:sdk:generate")
         return (
           c.connectorYaml.generate?.javascriptSdk ||
           c.connectorYaml.generate?.kotlinSdk ||
-          c.connectorYaml.generate?.swiftSdk
+          c.connectorYaml.generate?.swiftSdk ||
+          c.connectorYaml.generate?.dartSdk
         );
       });
       if (!hasGeneratables) {

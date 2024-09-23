@@ -49,37 +49,40 @@
       }
     ],
     "configuration": {
-      "title": "Firebase VS Code Extension",
+      "title": "%ext.config.title%",
       "properties": {
-        "firebase.debug": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable writing debug-level messages to the file provided in firebase.debugLogPath (requires restart)"
-        },
-        "firebase.debugLogPath": {
-          "type": "string",
-          "default": "/tmp/firebase-plugin.log",
-          "description": "If firebase.debug is true, appends debug-level messages to the provided file (requires restart)"
-        },
-        "firebase.npmPath": {
-          "type": "string",
-          "default": "",
-          "description": "Path to NPM executable in local environment"
-        },
-        "firebase.useFrameworks": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable web frameworks"
-        },
         "firebase.dataConnect.alwaysAllowMutationsInProduction": {
           "type": "boolean",
           "default": false,
-          "description": "Always allow mutations in production. If false (default), trying to run a mutation in production will open a confirmation modal."
+          "markdownDescription": "%ext.config.dataConnect.alwaysAllowMutationsInProduction%"
         },
         "firebase.dataConnect.skipToAppFolderSelect": {
           "type": "boolean",
           "default": false,
-          "description": "Skip app folder selection prompt. If false (default), trying to generate SDK config will open a confirmation modal."
+          "markdownDescription": "%ext.config.dataConnect.skipToAppFolderSelect%"
+        },
+        "firebase.debug": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "%ext.config.debug%"
+        },
+        "firebase.debugLogPath": {
+          "type": "string",
+          "default": "/tmp/firebase-plugin.log",
+          "markdownDescription": "%ext.config.debugLogPath%"
+        },
+        "firebase.firebasePath": {
+          "type": "string",
+          "markdownDescription": "%ext.config.firebasePath%"
+        },
+        "firebase.hosting.useFrameworks": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "%ext.config.hosting.useFrameworks%"
+        },
+        "firebase.npmPath": {
+          "type": "string",
+          "markdownDescription": "%ext.config.npmPath%"
         }
       }
     },
@@ -128,18 +131,15 @@
         {
           "type": "webview",
           "id": "sidebar",
-          "name": "Config"
-        },
-        {
-          "type": "webview",
-          "id": "data-connect",
-          "name": "Firebase Data Connect",
-          "when": "firebase-vscode.fdc.enabled"
+          "name": "Config",
+          "initialSize": 2
         },
         {
           "id": "firebase.dataConnect.explorerView",
           "name": "FDC Explorer",
-          "when": "firebase-vscode.fdc.enabled"
+          "when": "firebase-vscode.fdc.enabled",
+          "visibility": "collapsed",
+          "initialSize": 1
         }
       ],
       "firebase-data-connect-execution-view": [
@@ -229,7 +229,7 @@
     "@teamsupercell/typings-for-css-modules-loader": "^2.5.1",
     "@types/glob": "^8.0.0",
     "@types/mocha": "^10.0.1",
-    "@types/node": "16.x",
+    "@types/node": "20.x",
     "@types/react": "^18.0.9",
     "@types/react-dom": "^18.0.4",
     "@types/vscode": "^1.69.0",

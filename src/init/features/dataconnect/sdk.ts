@@ -15,6 +15,7 @@ import { load } from "../../../dataconnect/load";
 import {
   ConnectorInfo,
   ConnectorYaml,
+  DartSDK,
   JavascriptSDK,
   KotlinSDK,
   Platform,
@@ -87,14 +88,16 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
     } else {
       // If we still can't autodetect, just ask the user
       logBullet("Couldn't automatically detect your app's platform.");
+      const platforms = [
+        { name: "iOS (Swift)", value: Platform.IOS },
+        { name: "Web (JavaScript)", value: Platform.WEB },
+        { name: "Android (Kotlin)", value: Platform.ANDROID },
+        { name: "Flutter (Dart)", value: Platform.DART },
+      ];
       targetPlatform = await promptOnce({
         message: "Which platform do you want to set up a generated SDK for?",
         type: "list",
-        choices: [
-          { name: "iOS (Swift)", value: Platform.IOS },
-          { name: "Web (JavaScript)", value: Platform.WEB },
-          { name: "Android (Kotlin)", value: Platform.ANDROID },
-        ],
+        choices: platforms,
       });
     }
   }
@@ -142,6 +145,21 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
       javascriptSdk.packageJsonDir = path.relative(connectorInfo.directory, appDir);
     }
     newConnectorYaml.generate.javascriptSdk = javascriptSdk;
+  }
+
+  if (targetPlatform === Platform.DART) {
+    const outputDir =
+      newConnectorYaml.generate.dartSdk?.outputDir ||
+      path.relative(
+        connectorInfo.directory,
+        path.join(appDir, `generated/dart/${newConnectorYaml.connectorId}`),
+      );
+    const pkg = newConnectorYaml.generate.dartSdk?.package ?? newConnectorYaml.connectorId;
+    const dartSdk: DartSDK = {
+      outputDir,
+      package: pkg,
+    };
+    newConnectorYaml.generate.dartSdk = dartSdk;
   }
 
   if (targetPlatform === Platform.ANDROID) {

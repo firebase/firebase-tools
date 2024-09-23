@@ -9,7 +9,7 @@ import { DATA_CONNECT_EVENT_NAME } from "../analytics";
 type User = ServiceAccountUser | AuthUser;
 
 /** Currently selected user */
-export const currentUser = globalSignal<User|null>(null);
+export const currentUser = globalSignal<User | null>(null);
 const isLoadingUser = new Signal<boolean>(false);
 
 export const isServiceAccount = computed(() => {
@@ -20,8 +20,10 @@ export async function checkLogin() {
   return await requireAuthWrapper();
 }
 
-export function registerUser(broker: ExtensionBrokerImpl, telemetryLogger: TelemetryLogger): Disposable {
-  
+export function registerUser(
+  broker: ExtensionBrokerImpl,
+  telemetryLogger: TelemetryLogger,
+): Disposable {
   const notifyUserChangedSub = effect(() => {
     broker.send("notifyUserChanged", { user: currentUser.value });
   });
@@ -33,7 +35,7 @@ export function registerUser(broker: ExtensionBrokerImpl, telemetryLogger: Telem
   });
 
   const isLoadingSub = effect(() => {
-      broker.send("notifyIsLoadingUser", isLoadingUser.value);
+    broker.send("notifyIsLoadingUser", isLoadingUser.value);
   });
 
   const addUserSub = broker.on("addUser", async () => {
@@ -41,7 +43,6 @@ export function registerUser(broker: ExtensionBrokerImpl, telemetryLogger: Telem
     const { user } = await login();
     currentUser.value = user;
   });
-
 
   const logoutSub = broker.on("logout", async ({ email }) => {
     try {
