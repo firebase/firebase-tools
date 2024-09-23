@@ -1,0 +1,20 @@
+remoteConfig = FIRRemoteConfig.remoteConfig()
+let remoteConfigSettings = FIRRemoteConfigSettings(developerModeEnabled: true)
+remoteConfig.configSettings = remoteConfigSettings!
+// Important! This needs to be applied before FirebaseApp.configure()
+if remoteConfig["perf_disable_auto"].boolValue {
+    // The following line disables all automatic (out-of-the-box) monitoring
+    Performance.sharedInstance().isInstrumentationEnabled = false
+}
+else {
+    Performance.sharedInstance().isInstrumentationEnabled = true
+}
+if remoteConfig["perf_disable_manual"].boolValue {
+    // The following line disables all custom monitoring
+    Performance.sharedInstance().isDataCollectionEnabled = false
+}
+else {
+    Performance.sharedInstance().isDataCollectionEnabled = true
+}
+// Use Firebase library to configure APIs
+FirebaseApp.configure()
