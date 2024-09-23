@@ -15,7 +15,7 @@ import {
   getSchema,
   listConnectors,
 } from "../../../dataconnect/client";
-import { Schema, Service, File } from "../../../dataconnect/types";
+import { Schema, Service, File, Platform } from "../../../dataconnect/types";
 import { DEFAULT_POSTGRES_CONNECTION } from "../emulators";
 import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
 import { logger } from "../../../logger";
@@ -23,6 +23,7 @@ import { readTemplateSync } from "../../../templates";
 import { logBullet, logSuccess } from "../../../utils";
 import { checkBillingEnabled } from "../../../gcp/cloudbilling";
 import * as sdk from "./sdk";
+import { getPlatformFromFolder } from "../../../dataconnect/fileUtils";
 
 const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
 const DATACONNECT_YAML_COMPAT_EXPERIMENT_TEMPLATE = readTemplateSync(
@@ -69,16 +70,21 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   const info = await askQuestions(setup);
   await actuate(setup, config, info);
 
-  const promptForSDKGeneration = await confirm({
-    message: `Would you like to configure generated SDKs now?`,
-    default: true,
-  });
-  if (promptForSDKGeneration) {
+  const cwdPlatformGuess = await getPlatformFromFolder(process.cwd());
+  if (cwdPlatformGuess !== Platform.UNDETERMINED) {
     await sdk.doSetup(setup, config);
   } else {
-    logBullet(
-      `If you'd like to generate an SDK for your new connector later, run ${clc.bold("firebase init dataconnect:sdk")}`,
-    );
+    const promptForSDKGeneration = await confirm({
+      message: `Would you like to configure generated SDKs now?`,
+      default: false,
+    });
+    if (promptForSDKGeneration) {
+      await sdk.doSetup(setup, config);
+    } else {
+      logBullet(
+        `If you'd like to generate an SDK for your new connector later, run ${clc.bold("firebase init dataconnect:sdk")}`,
+      );
+    }
   }
 
   logger.info("");
