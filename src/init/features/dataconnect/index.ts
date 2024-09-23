@@ -1,4 +1,4 @@
-import { join } from "path";
+import { join, basename } from "path";
 import * as clc from "colorette";
 
 import { confirm, promptOnce } from "../../../prompt";
@@ -295,7 +295,7 @@ async function promptForService(
     info.serviceId = await promptOnce({
       message: "What ID would you like to use for this service?",
       type: "input",
-      default: "app",
+      default: basename(process.cwd()),
     });
   }
   return info;
