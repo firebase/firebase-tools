@@ -1,2 +1,0 @@
-- Updated Firebase Data Connect local toolkit version to v1.3.8, which adds support for `Any` scalar values in the Android SDK, strongly-typed variables in `@auth` expressions, and a minor internal fix for the Dart SDK code generation. (#7696)
-- Added new command `firebase ext:sdk:install` to allow you to configure extensions in a functions codebase. See https://firebase.google.com/docs/extensions/install-extensions?interface=sdk for details.(#7581)
