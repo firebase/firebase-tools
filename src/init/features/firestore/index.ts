@@ -7,6 +7,7 @@ import * as indexes from "./indexes";
 import { FirebaseError } from "../../../error";
 
 import * as clc from "colorette";
+import { promptOnce } from "../../../prompt";
 
 async function checkProjectSetup(setup: any, config: any, options: any) {
   const firestoreUnusedError = new FirebaseError(
@@ -30,7 +31,8 @@ async function checkProjectSetup(setup: any, config: any, options: any) {
 
   // Next, use the AppEngine Apps API to check the database type.
   // This allows us to filter out projects that are not using Firestore in Native mode.
-  const dbType = await checkDatabaseType(setup.projectId);
+  // Will also prompt user for databaseId if default does not exist.
+  const dbType = await getDatabaseType(setup);
   logger.debug(`database_type: ${dbType}`);
 
   if (!dbType) {
@@ -43,6 +45,30 @@ async function checkProjectSetup(setup: any, config: any, options: any) {
   }
 
   await requirePermissions({ ...options, project: setup.projectId });
+}
+
+/**
+ * Potentially recursive function that will allow a user to input the name of their database if the
+ * (default) does not exist. Modifies the setup object to include the databaseId, for use later by
+ * the indexes.initIndexes() which has methods for non-default databaseId's.
+ */
+async function getDatabaseType(setup: any): Promise<string | undefined> {
+  const dbType = await checkDatabaseType(setup.projectId, setup.databaseId);
+  logger.debug(`database_type: ${dbType}`);
+  if (dbType === "DATABASE_DOES_NOT_EXIST") {
+    setup.databaseId = await selectDatabaseByPrompting();
+    return await getDatabaseType(setup);
+  } else {
+    return dbType;
+  }
+}
+
+async function selectDatabaseByPrompting(): Promise<string> {
+  const database = await promptOnce({
+    type: "input",
+    message: "Please input the name of the Native Firestore database you would like to use:",
+  });
+  return database;
 }
 
 export async function doSetup(setup: any, config: any, options: any): Promise<void> {

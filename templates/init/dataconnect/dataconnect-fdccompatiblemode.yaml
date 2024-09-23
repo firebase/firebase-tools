@@ -8,4 +8,5 @@ schema:
       database: __cloudSqlDatabase__
       cloudSql:
         instanceId: __cloudSqlInstanceId__
+      # schemaValidation: "COMPATIBLE"
 connectorDirs: __connectorDirs__

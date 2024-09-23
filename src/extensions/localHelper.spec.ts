@@ -8,6 +8,7 @@ import { FirebaseError } from "../error";
 import { FIXTURE_DIR as EXT_FIXTURE_DIRECTORY } from "../test/fixtures/extension-yamls/sample-ext";
 import { FIXTURE_DIR as EXT_PREINSTALL_FIXTURE_DIRECTORY } from "../test/fixtures/extension-yamls/sample-ext-preinstall";
 import { FIXTURE_DIR as INVALID_EXT_DIRECTORY } from "../test/fixtures/extension-yamls/invalid";
+import { FIXTURE_DIR as EXT_INVALID_SPEC } from "../test/fixtures/extension-yamls/valid-yaml-invalid-spec";
 
 describe("localHelper", () => {
   const sandbox = sinon.createSandbox();
@@ -25,6 +26,13 @@ describe("localHelper", () => {
       expect(result.name).to.equal("fixture-ext-with-preinstall");
       expect(result.version).to.equal("1.0.0");
       expect(result.preinstallContent).to.equal("This is a PREINSTALL file for testing with.\n");
+    });
+
+    it("should validate that the yaml is a valid extension spec", async () => {
+      await expect(localHelper.getLocalExtensionSpec(EXT_INVALID_SPEC)).to.be.rejectedWith(
+        FirebaseError,
+        /.+Resources field must contain at least one resource/,
+      );
     });
 
     it("should return a nice error if there is no extension.yaml", async () => {

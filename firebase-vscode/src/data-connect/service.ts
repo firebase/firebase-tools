@@ -4,14 +4,12 @@ import {
   IntrospectionQuery,
   getIntrospectionQuery,
 } from "graphql";
-import { computed } from "@preact/signals-core";
 import { assertExecutionResult } from "../../common/graphql";
 import { DataConnectError } from "../../common/error";
 import { AuthService } from "../auth/service";
 import { UserMockKind } from "../../common/messaging/protocol";
 import { firstWhereDefined } from "../utils/signal";
 import { EmulatorsController } from "../core/emulators";
-import { Emulators } from "../cli";
 import { dataConnectConfigs } from "../data-connect/config";
 
 import { firebaseRC } from "../core/config";
@@ -200,7 +198,7 @@ export class DataConnectService {
       });
       const resp = await fetch(
         (await firstWhereDefined(this.emulatorsController.getLocalEndpoint())) +
-          `/v1alpha/projects/p/locations/l/services/${serviceId}:executeGraphqlRead`,
+          `/v1beta/projects/p/locations/l/services/${serviceId}:executeGraphqlRead`,
         {
           method: "POST",
           headers: {
@@ -251,7 +249,7 @@ export class DataConnectService {
     } else {
       const resp = await fetch(
         (await firstWhereDefined(this.emulatorsController.getLocalEndpoint())) +
-          `/v1alpha/${servicePath}:executeGraphql`,
+          `/v1beta/${servicePath}:executeGraphql`,
         {
           method: "POST",
           headers: {

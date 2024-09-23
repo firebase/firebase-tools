@@ -2,7 +2,7 @@
   "name": "dist",
   "version": "0.0.1",
   "dependencies": {
-    "firebase-functions": "^4.1.1"
+    "firebase-functions": "^5.1.0"
   },
   "engines": {
     "node": "20"
