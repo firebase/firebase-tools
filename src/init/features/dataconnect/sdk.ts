@@ -148,7 +148,6 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
     newConnectorYaml.generate.javascriptSdk = javascriptSdk;
   }
 
-  // We don't have to check if the experiment was enabled since we already made that check above.
   if (targetPlatform === Platform.DART) {
     const outputDir =
       newConnectorYaml.generate.dartSdk?.outputDir ||
