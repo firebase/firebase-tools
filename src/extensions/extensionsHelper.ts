@@ -81,7 +81,7 @@ const AUTOPOPULATED_PARAM_NAMES = [
   "DATABASE_URL",
 ];
 // Placeholders that can be used whever param substitution is needed, but are not available.
-export const AUTOPOULATED_PARAM_PLACEHOLDERS = {
+export const AUTOPOPULATED_PARAM_PLACEHOLDERS = {
   PROJECT_ID: "project-id",
   STORAGE_BUCKET: "project-id.appspot.com",
   EXT_INSTANCE_ID: "extension-id",
@@ -608,7 +608,7 @@ async function validateExtensionSpec(
   const subbedSpec = JSON.parse(JSON.stringify(extensionSpec));
   subbedSpec.params = substituteParams<Param[]>(
     extensionSpec.params || [],
-    AUTOPOULATED_PARAM_PLACEHOLDERS,
+    AUTOPOPULATED_PARAM_PLACEHOLDERS,
   );
   validateSpec(subbedSpec);
   return extensionSpec;
