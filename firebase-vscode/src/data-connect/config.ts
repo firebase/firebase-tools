@@ -44,7 +44,7 @@ export function registerDataConnectConfigs(
     const configs = firebaseConfig?.followAsync(
       async (config) =>
         new ResultValue(
-          await _readDataConnectConfigs(readFdcFirebaseJson(config!)),
+          await _readDataConnectConfigs(readFdcFirebaseJson(config)),
         ),
     );
 
@@ -83,7 +83,9 @@ export function registerDataConnectConfigs(
     { dispose: hasConfigSub },
     { dispose: getInitialHasFdcConfigsSub },
     { dispose: () => cancel?.() },
-    dataConnectWatcher!,
+    { dispose: () => {
+      dataConnectWatcher?.dispose();
+    }},
   );
 }
 
@@ -95,9 +97,10 @@ export async function _readDataConnectConfigs(
     const dataConnects = await Promise.all(
       fdcConfig.map<Promise<ResolvedDataConnectConfig>>(async (dataConnect) => {
         // Paths may be relative to the firebase.json file.
+        const relativeConfigPath = getConfigPath() ?? "";
         const absoluteLocation = asAbsolutePath(
           dataConnect.source,
-          getConfigPath()!,
+          relativeConfigPath,
         );
         const dataConnectYaml = await readDataConnectYaml(absoluteLocation);
         const resolvedConnectors = await Promise.all(
@@ -223,9 +226,8 @@ export class ResolvedDataConnectConfigs {
 
   getApiServicePathByPath(projectId: string, path: string) {
     const dataConnectConfig = this.findEnclosingServiceForPath(path);
-    const serviceId = dataConnectConfig!.value.serviceId;
-    const locationId = dataConnectConfig!.dataConnectLocation;
-
+    const serviceId = dataConnectConfig?.value.serviceId;
+    const locationId = dataConnectConfig?.dataConnectLocation;
     return `projects/${projectId}/locations/${locationId}/services/${serviceId}`;
   }
 }

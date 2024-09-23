@@ -32,7 +32,7 @@ export class AnalyticsLogger {
 }
 
 class GA4TelemetrySender implements TelemetrySender {
-  constructor(readonly pluginLogger: any) {}
+  constructor(readonly pluginLogger: { warn: (s: string) => void} ) {}
 
   sendEventData(
     eventName: string,

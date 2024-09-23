@@ -93,6 +93,9 @@ export interface WebviewToExtensionParamsMap {
   /** Configures generated SDK */
   "fdc.configure-sdk": void;
 
+  /** Opens generated docs */
+  "fdc.open-docs": void;
+
   // Initialize "result" tab.
   getDataConnectResults: void;
 
@@ -117,7 +120,7 @@ export interface ExtensionToWebviewParamsMap {
   /** Triggered when the emulator UI/state changes */
   notifyEmulatorStateChanged: {
     status: EmulatorsStatus;
-    infos: RunningEmulatorInfo | undefined;
+    infos?: RunningEmulatorInfo | undefined;
   };
 
   notifyEmulatorsHanging: boolean;
@@ -134,15 +137,15 @@ export interface ExtensionToWebviewParamsMap {
   /**
    * This can potentially call multiple webviews to notify of user selection.
    */
-  notifyUserChanged: { user: User | ServiceAccountUser };
+  notifyUserChanged: { user: User | ServiceAccountUser | null };
 
   /**
    * Notify webview of initial discovery or change in firebase.json or
    * .firebaserc
    */
   notifyFirebaseConfig: {
-    firebaseJson: ValueOrError<FirebaseConfig> | undefined;
-    firebaseRC: ValueOrError<RCData> | undefined;
+    firebaseJson?: ValueOrError<FirebaseConfig | undefined>;
+    firebaseRC?: ValueOrError<RCData | undefined>;
   };
   /** Whether any dataconnect.yaml is present */
   notifyHasFdcConfigs: boolean;

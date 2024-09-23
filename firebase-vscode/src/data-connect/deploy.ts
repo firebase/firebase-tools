@@ -53,18 +53,18 @@ export function registerFdcDeploy(
       (c) => c.requireValue,
     );
 
-    const pickedServices = await pickServices(configs!.serviceIds);
-    if (!pickedServices!.length) {
+    const pickedServices = await pickServices(configs?.serviceIds ?? []);
+    if (!pickedServices?.length) {
       return;
     }
 
     const serviceConnectorMap: { [key: string]: string[] } = {};
-    for (const serviceId of pickedServices as any) {
-      const connectorIds = configs!.findById(serviceId)?.connectorIds;
+    for (const serviceId of pickedServices) {
+      const connectorIds = configs?.findById(serviceId)?.connectorIds;
       serviceConnectorMap[serviceId] = (await pickConnectors(
         connectorIds,
         serviceId,
-      )) as any;
+      )) ?? [];
     }
 
     runCommand(
@@ -110,7 +110,7 @@ async function pickServices(
     canPickMany: true,
   });
 
-  return picked!.filter((e) => e.picked).map((service) => service.label);
+  return picked?.filter((e) => e.picked).map((service) => service.label);
 }
 
 async function pickConnectors(
@@ -130,12 +130,10 @@ async function pickConnectors(
     });
   });
 
-  const picked = await vscode.window.showQuickPick(options as any, {
+  const picked = await vscode.window.showQuickPick<{picked: boolean, label: string}>(options as any, {
     title: `Select connectors to deploy for: ${serviceId}`,
     canPickMany: true,
   });
 
-  return picked!
-    .filter((e: any) => e.picked)
-    .map((connector) => (connector as any).label);
+  return picked?.filter(e => e.picked).map(c => c.label);
 }

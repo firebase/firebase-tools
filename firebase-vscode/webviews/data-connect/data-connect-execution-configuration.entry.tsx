@@ -74,10 +74,12 @@ function AuthUserMockForm() {
   );
 
   useEffect(() => {
-    broker.send("notifyAuthUserMockChange", {
+    broker.send("notifyAuthUserMockChange", selectedKind === UserMockKind.AUTHENTICATED ? {
       kind: selectedKind,
-      claims: selectedKind === UserMockKind.AUTHENTICATED ? claims : undefined,
-    } as any);
+      claims:  claims,
+    } : {
+      kind: selectedKind,
+    });
   }, [selectedKind, claims]);
 
   let expandedForm: JSX.Element | undefined;

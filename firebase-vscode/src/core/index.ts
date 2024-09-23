@@ -3,7 +3,7 @@ import { ExtensionBrokerImpl } from "../extension-broker";
 import { getRootFolders, registerConfig } from "./config";
 import { EmulatorsController } from "./emulators";
 import { registerEnv } from "./env";
-import { pluginLogger } from "../logger-wrapper";
+import { pluginLogger, LogLevel } from '../logger-wrapper';
 import { getSettings } from "../utils/settings";
 import { setEnabled } from "../../../src/experiments";
 import { registerUser } from "./user";
@@ -29,7 +29,7 @@ export async function registerCore(
   }
 
   const sub1 = broker.on("writeLog", async ({ level, args }) => {
-    (pluginLogger as any)[level]("(Webview)", ...args);
+    pluginLogger[level as LogLevel]("(Webview)", ...args);
   });
 
   const sub2 = broker.on(

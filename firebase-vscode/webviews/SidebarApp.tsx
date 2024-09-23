@@ -13,7 +13,6 @@ import { EmulatorPanel as Emulators } from "./components/EmulatorPanel";
 import { App } from "./globals/app";
 import { signal, useComputed } from "@preact/signals-react";
 import { Icon } from "./components/ui/Icon";
-import { ButtonGroup } from "./components/ui/ButtonGroup";
 import { ExternalLink } from "./components/ui/ExternalLink";
 
 const user = brokerSignal("notifyUserChanged", {
@@ -183,9 +182,9 @@ export function SidebarApp() {
           isLoadingUser={false}
           isMonospace={env.value?.env.isMonospace ?? false}
         />
-        {user.value && project.value && (
+        {user.value?.user && project.value && (
           <ProjectSection
-            user={user.value?.user!}
+            user={user.value.user}
             projectId={project.value?.projectId}
             isMonospace={env.value?.env.isMonospace ?? false}
           />

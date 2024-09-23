@@ -89,7 +89,9 @@ export class DataConnectToolkit implements vscode.Disposable {
   }
 
   dispose() {
-    this.subs.forEach((sub) => sub());
+    for (const sub of this.subs) {
+      sub();
+    }
     this.stopFDCToolkit();
   }
 }

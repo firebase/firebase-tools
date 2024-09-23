@@ -164,7 +164,7 @@ export function registerConnectors(
         };
       }
 
-      return {} as any;
+      return {} as InputBoxValidationMessage;
     }
 
     function getFilePath(opName: string) {

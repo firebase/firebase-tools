@@ -39,10 +39,9 @@ export class EmulatorsController implements Disposable {
     this.setEmulatorsStopped.bind(this),
   );
 
-  readonly emulators: { status: EmulatorsStatus; infos: RunningEmulatorInfo } =
+  readonly emulators: { status: EmulatorsStatus; infos?: RunningEmulatorInfo } =
     {
       status: "stopped",
-      infos: undefined as any,
     };
 
   private readonly subscriptions: (() => void)[] = [];
@@ -102,7 +101,6 @@ export class EmulatorsController implements Disposable {
 
   public setEmulatorsStopped() {
     this.emulators.status = "stopped";
-    this.emulators.infos = undefined as any;
     this.notifyEmulatorStateChanged();
   }
 

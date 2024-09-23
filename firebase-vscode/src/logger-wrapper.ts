@@ -26,9 +26,9 @@ export function showOutputChannel() {
 }
 
 for (const logLevel in pluginLogger) {
-  (pluginLogger as any)[logLevel] = (...args: any) => {
+  pluginLogger[logLevel as LogLevel] = (...args: any) => {
     const prefixedArgs = ["[Firebase Plugin]", ...args];
-    (cliLogger as any)[logLevel](...prefixedArgs);
+    (cliLogger[logLevel as LogLevel] as any)(...prefixedArgs);
   };
 }
 
