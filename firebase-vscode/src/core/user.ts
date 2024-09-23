@@ -25,7 +25,7 @@ export function registerUser(
   telemetryLogger: TelemetryLogger,
 ): Disposable {
   const notifyUserChangedSub = effect(() => {
-    broker.send("notifyUserChanged", { user: currentUser.value as any });
+    broker.send("notifyUserChanged", { user: currentUser.value });
   });
 
   const getInitialDataSub = broker.on("getInitialData", async () => {

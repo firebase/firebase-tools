@@ -36,14 +36,12 @@ export class DataConnectService {
   ) {}
 
   async servicePath(
-    path: string,
-    instance: InstanceType,
+    path: string
   ): Promise<string | undefined> {
     const dataConnectConfigsValue = await firstWhereDefined(dataConnectConfigs);
     // TODO: avoid calling this here and in getApiServicePathByPath
     const serviceId =
-      dataConnectConfigsValue?.tryReadValue!.findEnclosingServiceForPath(path)!
-        .value.serviceId;
+      dataConnectConfigsValue?.tryReadValue?.findEnclosingServiceForPath(path)?.value.serviceId;
     const projectId = firebaseRC.value?.tryReadValue?.projects?.default;
 
     if (serviceId === undefined || projectId === undefined) {
@@ -190,7 +188,7 @@ export class DataConnectService {
     // TODO: get introspections for all services
     const configs = await firstWhereDefined(dataConnectConfigs);
     // Using "requireValue", so that if configs are not available, the execution should throw.
-    const serviceId = configs.requireValue!.serviceIds[0];
+    const serviceId = configs.requireValue?.serviceIds[0];
     try {
       // TODO: get name programmatically
       const body = this._serializeBody({
@@ -227,7 +225,7 @@ export class DataConnectService {
     path: string;
     instance: InstanceType;
   }) {
-    const servicePath = await this.servicePath(params.path, params.instance);
+    const servicePath = await this.servicePath(params.path);
     if (!servicePath) {
       throw new Error("No service found for path: " + params.path);
     }

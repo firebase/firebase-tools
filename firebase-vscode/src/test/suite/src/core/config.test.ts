@@ -193,7 +193,7 @@ firebaseSuite("_readFirebaseConfig", () => {
     });
 
     const config = _readFirebaseConfig();
-    assert.deepEqual(config.requireValue!.data, expectedConfig);
+    assert.deepEqual(config?.requireValue!.data, expectedConfig);
   });
 
   firebaseTest("returns undefined if firebase.json is not found", () => {

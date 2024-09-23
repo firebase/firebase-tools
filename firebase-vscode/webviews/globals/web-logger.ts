@@ -5,10 +5,10 @@ const levels: Level[] = ["debug", "info", "error"];
 
 type WebLogger = Record<Level, (...args: string[]) => void>;
 
-const tempObject = {};
+const tempObject: Partial<WebLogger> = {};
 
 for (const level of levels) {
-  (tempObject as any)[level] = (...args: string[]) =>
+  tempObject[level] = (...args: string[]) =>
     broker.send("writeLog", { level, args });
 }
 

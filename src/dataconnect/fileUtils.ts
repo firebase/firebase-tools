@@ -8,8 +8,8 @@ import { Config } from "../config";
 import { DataConnectMultiple } from "../firebaseConfig";
 import { load } from "./load";
 
-export function readFirebaseJson(config: Config): DataConnectMultiple {
-  if (!config.has("dataconnect")) {
+export function readFirebaseJson(config?: Config): DataConnectMultiple {
+  if (!config?.has("dataconnect")) {
     return [];
   }
   const validator = (cfg: any) => {

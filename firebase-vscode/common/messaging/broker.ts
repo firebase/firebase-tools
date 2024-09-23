@@ -82,9 +82,9 @@ export function createBroker<
   return {
     send<E extends keyof OutgoingMessages>(
       message: Extract<E, string>,
-      args?: OutgoingMessages[E],
+      args: OutgoingMessages[E],
     ): void {
-      broker.sendMessage(message, args as any);
+      broker.sendMessage<E>(message, args);
     },
     registerReceiver(receiver: R): void {
       broker.registerReceiver(receiver);

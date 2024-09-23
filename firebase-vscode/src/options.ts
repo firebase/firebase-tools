@@ -31,7 +31,7 @@ const defaultOptions: Readonly<VsCodeOptions> = {
   nonInteractive: true,
   interactive: false,
   debug: false,
-  rc: null as any,
+  rc: new RC(),
   exportOnExit: false,
   import: "",
 
@@ -107,19 +107,4 @@ export function registerOptions(context: ExtensionContext): vscode.Disposable {
     { dispose: rcSync },
     { dispose: notifySync },
   );
-}
-
-/**
- * Temporary options to pass to a command, don't write.
- * Mostly runs it through the CLI's command.prepare() options formatter.
- */
-export async function getCommandOptions(
-  firebaseJSON: Config,
-  options: Options = currentOptions.value,
-): Promise<Options> {
-  // Use any string, it doesn't affect `prepare()`.
-  const command = new Command("deploy");
-  let newOptions = Object.assign(options, { config: options.configPath });
-  await command.prepare(newOptions);
-  return newOptions as Options;
 }

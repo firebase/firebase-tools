@@ -5,7 +5,7 @@ import { checkLogin } from "../core/user";
 import { DATA_CONNECT_EVENT_NAME } from "../analytics";
 import { getSettings } from "../utils/settings";
 
-const environmentVariables = {};
+const environmentVariables: Record<string, string> = {};
 
 const executionOptions: vscode.ShellExecutionOptions = {
   env: environmentVariables,
@@ -17,7 +17,7 @@ const terminalOptions: TerminalOptions = {
 };
 
 export function setTerminalEnvVars(envVar: string, value: string) {
-  (environmentVariables as any)[envVar] = value;
+  environmentVariables[envVar] = value;
 }
 
 export function runCommand(command: string) {

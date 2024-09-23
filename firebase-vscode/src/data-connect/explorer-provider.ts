@@ -58,8 +58,8 @@ export class ExplorerTreeDataProvider
   private eleSortFn = (a: Element, b: Element) => {
     const a_field = this._field(a);
     const b_field = this._field(b);
-    const isAList = a_field!.type.kind === TypeKind.OBJECT;
-    const isBList = b_field!.type.kind === TypeKind.OBJECT;
+    const isAList = a_field?.type.kind === TypeKind.OBJECT;
+    const isBList = b_field?.type.kind === TypeKind.OBJECT;
     if ((isAList && isBList) || (!isAList && !isBList)) {
       return 0;
     } else if (isAList) {
@@ -82,7 +82,7 @@ export class ExplorerTreeDataProvider
 
     const field = this._field(element);
     if (!field) {
-      return undefined as any;
+      throw new Error(`Expected field ${element} to be defined but was not.`);
     }
 
     const hasChildren = this._baseType(field).kind === TypeKind.OBJECT;
@@ -100,8 +100,8 @@ export class ExplorerTreeDataProvider
 
   getChildren(element?: Element): Element[] {
     // if the backend did not load yet
-    if (!introspectionQuery.value) {
-      return null as any;
+    if (!introspectionQuery.value || !this.typeSystem) {
+      return [];
     }
     // init the tree with two elements, query and mutation
     if (!element) {
@@ -112,30 +112,32 @@ export class ExplorerTreeDataProvider
     }
 
     if (element.name === OPERATION_TYPE.query) {
-      return this._unref(this.typeSystem!.introspection.__schema.queryType)
+      return this._unref(this.typeSystem.introspection.__schema.queryType)
         .fields.filter((f) => f.name !== "_firebase")
         .map((f) => {
           return { name: f.name, baseType: OPERATION_TYPE.query };
         });
     } else if (element.name === OPERATION_TYPE.mutation) {
-      return this._unref(this.typeSystem!.introspection.__schema.mutationType!)
+      return this._unref(this.typeSystem.introspection.__schema.mutationType!)
         .fields.filter((f) => f.name !== "_firebase")
         .map((f) => {
           return { name: f.name, baseType: OPERATION_TYPE.mutation };
         });
     }
-
-    const unwrapped = this._baseType(this._field(element)!);
-    const type = this._unref(unwrapped);
-    if (type.kind === TypeKind.OBJECT) {
-      return type.fields
-        .map((field) => {
-          return {
-            name: `${element.name}.${field.name}`,
-            baseType: element.baseType,
-          };
-        })
-        .sort(this.eleSortFn);
+    const field = this._field(element)
+    if (field) {
+      const unwrapped = this._baseType(field);
+      const type = this._unref(unwrapped);
+      if (type.kind === TypeKind.OBJECT) {
+        return type.fields
+          .map((field) => {
+            return {
+              name: `${element.name}.${field.name}`,
+              baseType: element.baseType,
+            };
+          })
+          .sort(this.eleSortFn);
+      }
     }
     return [];
   }

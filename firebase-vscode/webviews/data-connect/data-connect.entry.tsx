@@ -17,15 +17,13 @@ function DataConnect() {
   const emulatorsRunningInfo =
     useBroker("notifyEmulatorStateChanged", {
       initialRequest: "getEmulatorInfos",
-    }) ?? false;
-
-  const psqlString = useBroker("notifyPostgresStringChanged");
+    });
 
   const user = useBroker("notifyUserChanged", {
     initialRequest: "getInitialData",
   })?.user;
 
-  if (emulatorsRunningInfo && emulatorsRunningInfo.status === "starting") {
+  if (emulatorsRunningInfo?.status === "starting") {
     return (
       <>
         <label>Emulators starting: see integrated terminal</label>
@@ -38,7 +36,7 @@ function DataConnect() {
     <div className={styles.root}>
       <PanelSection title="Local Development">
         <Spacer size="xsmall" />
-        {emulatorsRunningInfo && emulatorsRunningInfo.status === "running" ? (
+        { emulatorsRunningInfo?.status === "running" ? (
           <>
             <label>Emulators running in terminal</label>
             <EmulatorPanel
@@ -63,10 +61,6 @@ function DataConnect() {
           Configure Generated SDK
         </VSCodeButton>
         <Spacer size="xlarge" />
-        <p>View generated GQL reference docs for your schema</p>
-        <VSCodeButton onClick={() => broker.send("fdc.open-docs")}>
-          View my docs
-        </VSCodeButton>
       </PanelSection>
       <PanelSection title="Production" isLast={true}>
         <p>

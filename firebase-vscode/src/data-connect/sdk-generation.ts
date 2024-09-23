@@ -48,22 +48,28 @@ export function registerFdcSdkGeneration(
 
       // pick service, auto pick if only one
       const pickedService =
-        configs!.serviceIds.length === 1
-          ? configs!.serviceIds[0]
-          : await pickService(configs!.serviceIds);
-      const serviceConfig = configs!.findById(pickedService as any);
+        configs?.serviceIds.length === 1
+          ? configs?.serviceIds[0]
+          : await pickService(configs?.serviceIds ?? []);
+      if (!pickedService) {
+        return;
+      }
+      const serviceConfig = configs?.findById(pickedService);
       const connectorIds = serviceConfig?.connectorIds;
 
       // pick connector for service, auto pick if only one
       const pickedConnectorId =
-        connectorIds!.length === 1
-          ? connectorIds![0]
+        connectorIds?.length === 1
+          ? connectorIds[0]
           : await pickConnector(connectorIds);
-      const connectorConfig = serviceConfig!.findConnectorById(
-        pickedConnectorId!,
-      );
-
-      await openAndWriteYaml(connectorConfig);
+      if (pickedConnectorId) {
+        const connectorConfig = serviceConfig?.findConnectorById(
+          pickedConnectorId,
+        );
+        if (connectorConfig) {
+          await openAndWriteYaml(connectorConfig);
+        }
+      }
     },
   );
 
@@ -118,8 +124,10 @@ export function registerFdcSdkGeneration(
       title: "Select your app folder to link Data Connect to:",
       openLabel: "Select app folder",
     });
-
-    return folderUris![0].fsPath; // can only pick one folder, but return type is an array
+    if (!folderUris?.length) {
+      return;
+    }
+    return folderUris[0].fsPath; // can only pick one folder, but return type is an array
   }
 
   async function writeYaml(
@@ -175,12 +183,11 @@ async function pickService(serviceIds: string[]): Promise<string | undefined> {
     });
   });
 
-  const picked = await vscode.window.showQuickPick(options, {
+  const picked = await vscode.window.showQuickPick<{label: string}>(options, {
     title: "Select service",
     canPickMany: false,
   });
-
-  return (picked as any).label;
+  return picked?.label;
 }
 
 async function pickConnector(
@@ -199,10 +206,10 @@ async function pickConnector(
     });
   });
 
-  const picked = await vscode.window.showQuickPick(options as any, {
+  const picked = await vscode.window.showQuickPick<{label: string}>(options as any, {
     title: `Select connector to generate SDK for.`,
     canPickMany: false,
   });
 
-  return (picked as any).label;
+  return picked?.label;
 }

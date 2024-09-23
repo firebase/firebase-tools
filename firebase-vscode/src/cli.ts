@@ -9,7 +9,7 @@ import { listFirebaseProjects } from "../../src/management/projects";
 import { requireAuth } from "../../src/requireAuth";
 import { Account, Tokens, User } from "../../src/types/auth";
 import { Options } from "../../src/options";
-import { currentOptions, getCommandOptions } from "./options";
+import { currentOptions } from "./options";
 import { pluginLogger } from "./logger-wrapper";
 import { getAccessToken, setAccessToken } from "../../src/apiv2";
 import { EmulatorRegistry } from "../../src/emulator/registry";
@@ -47,7 +47,7 @@ export async function requireAuthWrapper(
     const optionsTokens = options.tokens as Tokens;
     return (
       account &&
-      account.user.email === optionsUser.email &&
+      account.user?.email === optionsUser.email &&
       account.tokens.refresh_token === optionsTokens.refresh_token // Should check refresh token which is consistent, not access_token which is short lived.
     );
   }
