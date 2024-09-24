@@ -22,6 +22,7 @@ import { EmulatorRegistry } from "./registry";
 import { downloadEmulator } from "../emulator/download";
 import * as experiments from "../experiments";
 import * as process from "process";
+console.log(process.platform);
 
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 4000; /* ms */
 
