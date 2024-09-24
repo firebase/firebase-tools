@@ -1,9 +1,9 @@
 {
   "name": "firebase-dataconnect-vscode",
-  "displayName": "Firebase Dataconnect",
+  "displayName": "Firebase Data Connect",
   "publisher": "Firebase",
   "icon": "./resources/firebase_dataconnect_logo.png",
-  "description": "Firebase Dataconenct for VSCode",
+  "description": "Firebase Data Connect for VSCode",
   "version": "0.9.1",
   "engines": {
     "vscode": "^1.69.0"
