@@ -148,20 +148,17 @@
           "id": "data-connect-execution-configuration",
           "name": "Configuration",
           "when": "firebase-vscode.fdc.enabled",
-          "initialSize": 1
         },
         {
           "id": "data-connect-execution-history",
           "name": "History",
           "when": "firebase-vscode.fdc.enabled",
-          "initialSize": 2
         },
         {
           "type": "webview",
           "id": "data-connect-execution-results",
           "name": "Results",
           "when": "firebase-vscode.fdc.enabled",
-          "initialSize": 2
         }
       ]
     },
