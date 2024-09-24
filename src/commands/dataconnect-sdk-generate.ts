@@ -12,6 +12,10 @@ type GenerateOptions = Options & { watch?: boolean };
 
 export const command = new Command("dataconnect:sdk:generate")
   .description("generates typed SDKs for your Data Connect connectors")
+  .option(
+    "--watch",
+    "watch for changes to your connector GQL files and regenerate your SDKs when updates occur",
+  )
   .action(async (options: GenerateOptions) => {
     const projectId = needProjectId(options);
 
