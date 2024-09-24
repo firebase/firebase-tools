@@ -90,7 +90,6 @@ function EmulatorsPanel() {
     }
     return runningPanel;
   }
-  console.log(emulatorsRunningInfo.value);
 
   return (emulatorsRunningInfo.value?.infos && emulatorsRunningInfo.value?.status === "running") ? (
     <Emulators emulatorInfo={emulatorsRunningInfo.value.infos!} />
@@ -106,7 +105,7 @@ function EmulatorsPanel() {
       <Label level={3}>
         See also:{" "}
         <a href="https://firebase.google.com/docs/emulator-suite">
-          Introduction to Firebase Emulators
+          Introduction to Firebase emulators
         </a>
       </Label>
     </>
