@@ -1,0 +1,4 @@
+- Support for `Any` scalar type for JS and Swift code generation.
+- Support for `OrderDirection` for JS code generation.
+- iOS Codegen breaking changes. PLease see documentation for details.
+- Support for `first` to lookup operations (along with `id` and `key`).
