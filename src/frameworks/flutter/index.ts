@@ -8,6 +8,7 @@ import { BuildResult, Discovery, FrameworkType, SupportLevel } from "../interfac
 import { FirebaseError } from "../../error";
 import { assertFlutterCliExists } from "./utils";
 import { DART_RESERVED_WORDS, FALLBACK_PROJECT_NAME } from "./constants";
+import { logger } from "../..";
 
 export const name = "Flutter Web";
 export const type = FrameworkType.Framework;
@@ -50,9 +51,35 @@ export function init(setup: any, config: any) {
   return Promise.resolve();
 }
 
-export function build(cwd: string): Promise<BuildResult> {
+export async function build(cwd: string): Promise<BuildResult | undefined> {
   assertFlutterCliExists();
-  const build = spawnSync("flutter", ["build", "web"], { cwd, stdio: "inherit" });
+
+  const pubSpecPath = "./pubspec.yaml";
+  let pubSpec: Record<string, any> = {};
+  try {
+    const pubSpecBuffer = await readFile(pubSpecPath);
+    pubSpec = yaml.parse(pubSpecBuffer.toString());
+  } catch (error) {
+    logger.info("pubspec.yaml not found, skipping tree shaking");
+  }
+
+  const treeShakePackages = [
+    "material_icons_named",
+    "material_symbols_icons",
+    "material_design_icons_flutter",
+    "flutter_iconpicker",
+    "font_awesome_flutter",
+    "ionicons_named",
+  ];
+
+  const hasTreeShakePackage = treeShakePackages.some((pkg) => pubSpec.dependencies?.[pkg]);
+
+  const buildArgs = ["build", "web"];
+  if (hasTreeShakePackage) {
+    buildArgs.push("--no-tree-shake-icons");
+  }
+
+  const build = spawnSync("flutter", buildArgs, { cwd, stdio: "inherit" });
   if (build.status !== 0) throw new FirebaseError("Unable to build your Flutter app");
   return Promise.resolve({ wantsBackend: false });
 }
