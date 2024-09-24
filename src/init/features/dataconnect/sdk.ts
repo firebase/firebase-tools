@@ -25,6 +25,7 @@ import { FirebaseError } from "../../../error";
 import { camelCase, snakeCase, upperFirst } from "lodash";
 import { logSuccess, logBullet } from "../../../utils";
 
+export const FDC_APP_FOLDER = "_FDC_APP_FOLDER";
 export type SDKInfo = {
   connectorYamlContents: string;
   connectorInfo: ConnectorInfo;
@@ -65,21 +66,22 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
 
   // First, lets check if we are in a app directory
   let targetPlatform: Platform = Platform.UNDETERMINED;
-  let appDir: string;
-  const cwdPlatformGuess = await getPlatformFromFolder(process.cwd());
+  let appDir = process.env[FDC_APP_FOLDER] || process.cwd();
+  const cwdPlatformGuess = await getPlatformFromFolder(appDir);
   if (cwdPlatformGuess !== Platform.UNDETERMINED) {
     // If we are, we'll use that directory
-    logSuccess(`Detected ${cwdPlatformGuess} app in current directory ${process.cwd()}`);
+    logSuccess(`Detected ${cwdPlatformGuess} app in directory ${appDir}`);
     targetPlatform = cwdPlatformGuess;
-    appDir = process.cwd();
   } else {
     // If we aren't, ask the user where their app is, and try to autodetect from there
     logBullet(`Couldn't automatically detect your app directory.`);
-    appDir = await promptForDirectory({
-      config,
-      message:
-        "Where is your app directory? Leave blank to set up a generated SDK in your current directory.",
-    });
+    appDir =
+      process.env[FDC_APP_FOLDER] ??
+      (await promptForDirectory({
+        config,
+        message:
+          "Where is your app directory? Leave blank to set up a generated SDK in your current directory.",
+      }));
     const platformGuess = await getPlatformFromFolder(appDir);
     if (platformGuess !== Platform.UNDETERMINED) {
       logSuccess(`Detected ${platformGuess} app in directory ${appDir}`);
