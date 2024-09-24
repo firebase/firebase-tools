@@ -1,4 +1,4 @@
-# Firebase Extension
+# Firebase Dataconnect Extension
 
 VSCode extension for Firebase. The Firebase Extension currently supports the Data Connect product.
 

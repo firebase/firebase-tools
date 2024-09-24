@@ -71,7 +71,9 @@ function EmulatorsPanel() {
       return (
         <>
           <Spacer size="medium"></Spacer>
-          <label>Emulator start-up may take a while. In case of error, click reset.</label>
+          <label>
+            Emulator start-up may take a while. In case of error, click reset.
+          </label>
           <VSCodeProgressRing></VSCodeProgressRing>
           <Spacer size="medium"></Spacer>
           <VSCodeButton
@@ -88,16 +90,26 @@ function EmulatorsPanel() {
     }
     return runningPanel;
   }
+  console.log(emulatorsRunningInfo.value);
 
-  return emulatorsRunningInfo.value?.infos ? (
+  return (emulatorsRunningInfo.value?.infos && emulatorsRunningInfo.value?.status === "running") ? (
     <Emulators emulatorInfo={emulatorsRunningInfo.value.infos!} />
   ) : (
-    <VSCodeButton
-      appearance="secondary"
-      onClick={() => broker.send("runStartEmulators")}
-    >
-      Start emulators
-    </VSCodeButton>
+    <>
+      <VSCodeButton
+        appearance="secondary"
+        onClick={() => broker.send("runStartEmulators")}
+      >
+        Start emulators
+      </VSCodeButton>
+      <Spacer size="xsmall" />
+      <Label level={3}>
+        See also:{" "}
+        <a href="https://firebase.google.com/docs/emulator-suite">
+          Introduction to Firebase Emulators
+        </a>
+      </Label>
+    </>
   );
 }
 
@@ -155,10 +167,10 @@ function Content() {
 
   return (
     <>
-      <PanelSection title="Emulators">
+      <PanelSection>
         <EmulatorsPanel />
       </PanelSection>
-      <PanelSection title="Data Connect" isLast={true}>
+      <PanelSection isLast={true}>
         <DataConnect />
       </PanelSection>
     </>

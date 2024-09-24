@@ -19,7 +19,7 @@ export function EmulatorPanel({
 }) {
   return (
     <>
-      <Label>Running</Label>
+      <Label level={2}>Emulators Running</Label>
       <Spacer size="medium" />
       <FormatEmulatorRunningInfo infos={emulatorInfo.displayInfo} />
 
@@ -38,7 +38,7 @@ export function EmulatorPanel({
           href="https://firebase.google.com/docs/emulator-suite"
           prefix={<Icon icon="book" />}
         >
-          See docs
+          View Emulator docs
         </ExternalLink>
       </Body>
     </>

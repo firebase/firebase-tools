@@ -1,9 +1,9 @@
 {
-  "name": "firebase-vscode",
-  "displayName": "Firebase",
-  "publisher": "firebase",
-  "icon": "./resources/firebase_logo.png",
-  "description": "VSCode Extension for Firebase",
+  "name": "firebase-dataconnect-vscode",
+  "displayName": "Firebase Dataconnect",
+  "publisher": "Firebase",
+  "icon": "./resources/firebase_dataconnect_logo.png",
+  "description": "Firebase Dataconenct for VSCode",
   "version": "0.9.1",
   "engines": {
     "vscode": "^1.69.0"
@@ -97,16 +97,16 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "firebase",
-          "title": "Firebase",
-          "icon": "$(mono-firebase)"
+          "id": "firebase-data-connect",
+          "title": "Firebase Data Connect",
+          "icon": "resources/firebase_dataconnect_logo.svg"
         }
       ],
       "panel": [
         {
           "id": "firebase-data-connect-execution-view",
           "title": "Data Connect Execution",
-          "icon": "$(mono-firebase)"
+          "icon": "$(gmp-data-connect)"
         }
       ]
     },
@@ -118,7 +118,7 @@
           "fontCharacter": "\\F101"
         }
       },
-      "data-connect": {
+      "gmp-data-connect": {
         "description": "Data Connect icon",
         "default": {
           "fontPath": "./resources/GMPIcons.woff2",
@@ -127,16 +127,16 @@
       }
     },
     "views": {
-      "firebase": [
+      "firebase-data-connect": [
         {
           "type": "webview",
           "id": "sidebar",
-          "name": "Config",
+          "name": "Studio",
           "initialSize": 2
         },
         {
           "id": "firebase.dataConnect.explorerView",
-          "name": "FDC Explorer",
+          "name": "Explorer",
           "when": "firebase-vscode.fdc.enabled",
           "visibility": "collapsed",
           "initialSize": 1
@@ -147,25 +147,28 @@
           "type": "webview",
           "id": "data-connect-execution-configuration",
           "name": "Configuration",
-          "when": "firebase-vscode.fdc.enabled"
+          "when": "firebase-vscode.fdc.enabled",
+          "initialSize": 1
         },
         {
           "id": "data-connect-execution-history",
           "name": "History",
-          "when": "firebase-vscode.fdc.enabled"
+          "when": "firebase-vscode.fdc.enabled",
+          "initialSize": 2
         },
         {
           "type": "webview",
           "id": "data-connect-execution-results",
           "name": "Results",
-          "when": "firebase-vscode.fdc.enabled"
+          "when": "firebase-vscode.fdc.enabled",
+          "initialSize": 2
         }
       ]
     },
     "viewsWelcome": [
       {
         "view": "firebase.dataConnect.explorerView",
-        "contents": "Start the emulator in a Data Connect project to view your schema."
+        "contents": "Resolve compile errors to view your schema."
       }
     ],
     "jsonValidation": [
