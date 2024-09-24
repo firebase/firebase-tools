@@ -60,9 +60,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   dataconnect:
     process.platform === "darwin"
       ? {
-          version: "1.3.9",
-          expectedSize: 25064192,
-          expectedChecksum: "87b403487c33ca79e404b1c05b728a55",
+          version: "1.3.9-dart",
+          expectedSize: 34849696,
+          expectedChecksum: "3b7bb0f5e3435d93da35df84d18c73d7",
         }
       : process.platform === "win32"
         ? {
@@ -71,9 +71,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
             expectedChecksum: "067fe58e401af23fd49b5cbc01a015d0",
           }
         : {
-            version: "1.3.9",
-            expectedSize: 24977560,
-            expectedChecksum: "ec26bcdf2c616801fade7d48ce3dbb9c",
+            version: "1.3.9-dart",
+            expectedSize: 41021763,
+            expectedChecksum: "e78f8c667502e79b8cd6c1ba3ff10110",
           },
 };
 
@@ -174,10 +174,10 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
       cacheDir: CACHE_DIR,
       remoteUrl:
         process.platform === "darwin"
-          ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-macos-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
+          ? `https://firebasestorage.googleapis.com/v0/b/getting-started-dart-storage.appspot.com/o/cli_linux?alt=media&token=5cb7171c-d6cc-4545-9a81-7d34e525a779`
           : process.platform === "win32"
             ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-windows-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
-            : `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
+            : `https://firebasestorage.googleapis.com/v0/b/getting-started-dart-storage.appspot.com/o/cli_macos?alt=media&token=3cde9885-ed2f-43ed-96c2-7d574673f6fa`,
       expectedSize: EMULATOR_UPDATE_DETAILS.dataconnect.expectedSize,
       expectedChecksum: EMULATOR_UPDATE_DETAILS.dataconnect.expectedChecksum,
       skipChecksumAndSize: false,
