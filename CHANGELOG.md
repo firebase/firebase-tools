@@ -1,4 +1,1 @@
-- Support for `Any` scalar type for JS and Swift code generation.
-- Support for `OrderDirection` for JS code generation.
-- iOS Codegen breaking changes. PLease see documentation for details.
-- Support for `first` to lookup operations (along with `id` and `key`).
+- Released version 1.3.9 of the Data Connect emulator, which includes SDK support for `Any` scalar type and  `OrderDirection`, support for `first` to lookup operations, and breaking changes for iOS generated SDKs. PLease see documentation for more details.
