@@ -22,7 +22,6 @@ import { EmulatorRegistry } from "./registry";
 import { downloadEmulator } from "../emulator/download";
 import * as experiments from "../experiments";
 import * as process from "process";
-console.log(process.platform);
 
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 4000; /* ms */
 
@@ -73,8 +72,8 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
           }
         : {
             version: "1.3.9-dart",
-            expectedSize: 41021763,
-            expectedChecksum: "e78f8c667502e79b8cd6c1ba3ff10110",
+            expectedSize: 34807962,
+            expectedChecksum: "9d823c93a322167abc783776d5eae4d6",
           },
 };
 
@@ -178,7 +177,7 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
           ? `https://firebasestorage.googleapis.com/v0/b/getting-started-dart-storage.appspot.com/o/cli_macos?alt=media&token=3cde9885-ed2f-43ed-96c2-7d574673f6fa`
           : process.platform === "win32"
             ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-windows-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
-            : `https://firebasestorage.googleapis.com/v0/b/getting-started-dart-storage.appspot.com/o/cli_linux?alt=media&token=5cb7171c-d6cc-4545-9a81-7d34e525a779`,
+            : `https://firebasestorage.googleapis.com/v0/b/getting-started-dart-storage.appspot.com/o/cli_linux?alt=media&token=54878473-d2a2-425f-b59f-b88da6e7a0fa`,
       expectedSize: EMULATOR_UPDATE_DETAILS.dataconnect.expectedSize,
       expectedChecksum: EMULATOR_UPDATE_DETAILS.dataconnect.expectedChecksum,
       skipChecksumAndSize: false,
