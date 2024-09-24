@@ -1,5 +1,8 @@
 ## NEXT
 
+- Update logo and title
+- Revamped Sidebar UI
+
 ## 0.9.1
 
 - Updated internal firebase-tools dependency to 13.19.0
