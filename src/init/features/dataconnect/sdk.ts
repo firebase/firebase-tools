@@ -66,13 +66,12 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
 
   // First, lets check if we are in a app directory
   let targetPlatform: Platform = Platform.UNDETERMINED;
-  let appDir: string;
-  const cwdPlatformGuess = await getPlatformFromFolder(process.cwd());
+  let appDir = process.env[FDC_APP_FOLDER] || process.cwd();
+  const cwdPlatformGuess = await getPlatformFromFolder(appDir);
   if (cwdPlatformGuess !== Platform.UNDETERMINED) {
     // If we are, we'll use that directory
-    logSuccess(`Detected ${cwdPlatformGuess} app in current directory ${process.cwd()}`);
+    logSuccess(`Detected ${cwdPlatformGuess} app in directory ${appDir}`);
     targetPlatform = cwdPlatformGuess;
-    appDir = process.cwd();
   } else {
     // If we aren't, ask the user where their app is, and try to autodetect from there
     logBullet(`Couldn't automatically detect your app directory.`);

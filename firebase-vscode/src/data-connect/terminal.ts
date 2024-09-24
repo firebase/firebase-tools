@@ -15,11 +15,10 @@ export function setTerminalEnvVars(envVar: string, value: string) {
   environmentVariables[envVar] = value;
 }
 
-export function runCommand(command: string, cwd?: string) {
+export function runCommand(command: string) {
   const terminalOptions: TerminalOptions = {
     name: "Data Connect Terminal",
     env: environmentVariables,
-    cwd,
   };
   const terminal = vscode.window.createTerminal(terminalOptions);
   terminal.show();
