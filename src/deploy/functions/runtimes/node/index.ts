@@ -9,7 +9,12 @@ import fetch from "node-fetch";
 import { FirebaseError } from "../../../../error";
 import { getRuntimeChoice } from "./parseRuntimeAndValidateSDK";
 import { logger } from "../../../../logger";
-import { logLabeledBullet, logLabeledSuccess, logLabeledWarning, randomInt } from "../../../../utils";
+import {
+  logLabeledBullet,
+  logLabeledSuccess,
+  logLabeledWarning,
+  randomInt,
+} from "../../../../utils";
 import * as backend from "../../backend";
 import * as build from "../../build";
 import * as discovery from "../discovery";
