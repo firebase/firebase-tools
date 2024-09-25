@@ -24,7 +24,7 @@ export function printFreeTrialUnavailable(
     `To use a different database in the same instance, change the instanceId to "${instanceId}" in` +
     `${configYamlPath}. Also, update the database field (i.e. the database name in the instance) as needed.`;
   utils.logLabeledBullet("dataconnect", reuseHint);
-  utils.logLabeledError(
+  utils.logLabeledBullet(
     "dataconnect",
     `Or you may create a new (paid) CloudSQL instance at https://console.cloud.google.com/sql/instances`,
   );
