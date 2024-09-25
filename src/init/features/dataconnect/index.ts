@@ -118,23 +118,22 @@ async function askQuestions(setup: Setup): Promise<RequiredInfo> {
       });
 
   if (shouldConfigureBackend) {
-    info = await promptForService(setup, info);
+    info = await promptForService(info);
     info = await promptForCloudSQLInstance(setup, info);
+    info = await promptForDatabase(info);
 
-    if (info.cloudSqlDatabase === "") {
-      info = await promptForDatabase(setup, info);
-    }
+    info.shouldProvisionCSQL = !!(
+      setup.projectId &&
+      (info.isNewInstance || info.isNewDatabase) &&
+      isBillingEnabled &&
+      (await confirm({
+        message: `Would you like to provision your Cloud SQL instance and database now?${info.isNewInstance ? " This will take several minutes." : ""}.`,
+        default: true,
+      }))
+    );
+  } else {
+    // TODO(rosalyntan): Enter defaults.
   }
-
-  info.shouldProvisionCSQL = !!(
-    setup.projectId &&
-    (info.isNewInstance || info.isNewDatabase) &&
-    isBillingEnabled &&
-    (await confirm({
-      message: `Would you like to provision your Cloud SQL instance and database now?${info.isNewInstance ? " This will take several minutes." : ""}.`,
-      default: true,
-    }))
-  );
   return info;
 }
 
@@ -328,7 +327,7 @@ async function checkExistingInstances(
   }
 
   // Check for existing Cloud SQL databases, if we didn't already set one.
-  if (info.cloudSqlDatabase === "") {
+  if (info.cloudSqlDatabase === "" && info.cloudSqlInstanceId !== "") {
     try {
       const dbs = await cloudsql.listDatabases(setup.projectId, info.cloudSqlInstanceId);
       const choices = dbs.map((d) => {
@@ -351,7 +350,7 @@ async function checkExistingInstances(
   return info;
 }
 
-async function promptForService(setup: Setup, info: RequiredInfo): Promise<RequiredInfo> {
+async function promptForService(info: RequiredInfo): Promise<RequiredInfo> {
   if (info.serviceId === "") {
     info.serviceId = await promptOnce({
       message: "What ID would you like to use for this service?",
@@ -403,7 +402,7 @@ async function locationChoices(setup: Setup) {
   }
 }
 
-async function promptForDatabase(setup: Setup, info: RequiredInfo): Promise<RequiredInfo> {
+async function promptForDatabase(info: RequiredInfo): Promise<RequiredInfo> {
   if (info.cloudSqlDatabase === "") {
     info.isNewDatabase = true;
     info.cloudSqlDatabase = await promptOnce({
