@@ -173,7 +173,7 @@ describe("firebase deploy", () => {
             serviceId,
             databaseId,
             service["schemaUpdateTime"],
-            service["connectors"][0]["connectorLastUpdated"],
+            service["connectors"]?.[0]?.["connectorLastUpdated"],
           ),
         );
       }

@@ -35,7 +35,7 @@ export function setup(cb: () => void | Promise<void>) {
 /** A custom "test" to work around "afterEach" not working with the current configs */
 export function firebaseTest(
   description: string,
-  cb: (this: Mocha.Context) => void | Promise<void>
+  cb: (this: Mocha.Context) => void | Promise<void>,
 ) {
   // Since tests may execute in any order, we dereference the list of setup callbacks
   // to unsure that other suites' setups don't affect this test.
@@ -89,7 +89,7 @@ async function runGuarded(callbacks: Array<() => void | Promise<void>>) {
     try {
       await cb();
     } catch (e) {
-      firstError ??= e;
+      firstError ??= e as Error;
     }
   }
 

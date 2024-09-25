@@ -1,0 +1,12 @@
+specVersion: "v1beta"
+serviceId: __serviceId__
+location: __location__
+schema:
+  source: "./schema"
+  datasource:
+    postgresql:
+      database: __cloudSqlDatabase__
+      cloudSql:
+        instanceId: __cloudSqlInstanceId__
+      # schemaValidation: "COMPATIBLE"
+connectorDirs: __connectorDirs__

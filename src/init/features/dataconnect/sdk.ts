@@ -15,6 +15,7 @@ import { load } from "../../../dataconnect/load";
 import {
   ConnectorInfo,
   ConnectorYaml,
+  DartSDK,
   JavascriptSDK,
   KotlinSDK,
   Platform,
@@ -24,6 +25,7 @@ import { FirebaseError } from "../../../error";
 import { camelCase, snakeCase, upperFirst } from "lodash";
 import { logSuccess, logBullet } from "../../../utils";
 
+export const FDC_APP_FOLDER = "_FDC_APP_FOLDER";
 export type SDKInfo = {
   connectorYamlContents: string;
   connectorInfo: ConnectorInfo;
@@ -33,6 +35,9 @@ export type SDKInfo = {
 export async function doSetup(setup: Setup, config: Config): Promise<void> {
   const sdkInfo = await askQuestions(setup, config);
   await actuate(sdkInfo, setup.projectId);
+  logSuccess(
+    `If you'd like to generate additional SDKs later, run ${clc.bold("firebase init dataconnect:sdk")}`,
+  );
 }
 
 async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
@@ -55,31 +60,28 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
     throw new FirebaseError(
       `Your config has no connectors to set up SDKs for. Run ${clc.bold(
         "firebase init dataconnect",
-      )} to set up a service and conenctors.`,
+      )} to set up a service and connectors.`,
     );
   }
-  const connectorInfo: ConnectorInfo = await promptOnce({
-    message: "Which connector do you want set up a generated SDK for?",
-    type: "list",
-    choices: connectorChoices,
-  });
 
   // First, lets check if we are in a app directory
   let targetPlatform: Platform = Platform.UNDETERMINED;
-  let appDir: string;
-  const cwdPlatformGuess = await getPlatformFromFolder(process.cwd());
+  let appDir = process.env[FDC_APP_FOLDER] || process.cwd();
+  const cwdPlatformGuess = await getPlatformFromFolder(appDir);
   if (cwdPlatformGuess !== Platform.UNDETERMINED) {
     // If we are, we'll use that directory
-    logSuccess(`Detected ${cwdPlatformGuess} app in current directory ${process.cwd()}`);
+    logSuccess(`Detected ${cwdPlatformGuess} app in directory ${appDir}`);
     targetPlatform = cwdPlatformGuess;
-    appDir = process.cwd();
   } else {
     // If we aren't, ask the user where their app is, and try to autodetect from there
     logBullet(`Couldn't automatically detect your app directory.`);
-    appDir = await promptForDirectory({
-      config,
-      message: "Where is your app directory?",
-    });
+    appDir =
+      process.env[FDC_APP_FOLDER] ??
+      (await promptForDirectory({
+        config,
+        message:
+          "Where is your app directory? Leave blank to set up a generated SDK in your current directory.",
+      }));
     const platformGuess = await getPlatformFromFolder(appDir);
     if (platformGuess !== Platform.UNDETERMINED) {
       logSuccess(`Detected ${platformGuess} app in directory ${appDir}`);
@@ -87,17 +89,25 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
     } else {
       // If we still can't autodetect, just ask the user
       logBullet("Couldn't automatically detect your app's platform.");
+      const platforms = [
+        { name: "iOS (Swift)", value: Platform.IOS },
+        { name: "Web (JavaScript)", value: Platform.WEB },
+        { name: "Android (Kotlin)", value: Platform.ANDROID },
+        { name: "Flutter (Dart)", value: Platform.DART },
+      ];
       targetPlatform = await promptOnce({
         message: "Which platform do you want to set up a generated SDK for?",
         type: "list",
-        choices: [
-          { name: "iOS (Swift)", value: Platform.IOS },
-          { name: "Web (JavaScript)", value: Platform.WEB },
-          { name: "Android (Kotlin)", value: Platform.ANDROID },
-        ],
+        choices: platforms,
       });
     }
   }
+
+  const connectorInfo: ConnectorInfo = await promptOnce({
+    message: "Which connector do you want set up a generated SDK for?",
+    type: "list",
+    choices: connectorChoices,
+  });
 
   const newConnectorYaml = JSON.parse(JSON.stringify(connectorInfo.connectorYaml)) as ConnectorYaml;
   if (!newConnectorYaml.generate) {
@@ -142,6 +152,21 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
       javascriptSdk.packageJsonDir = path.relative(connectorInfo.directory, appDir);
     }
     newConnectorYaml.generate.javascriptSdk = javascriptSdk;
+  }
+
+  if (targetPlatform === Platform.DART) {
+    const outputDir =
+      newConnectorYaml.generate.dartSdk?.outputDir ||
+      path.relative(
+        connectorInfo.directory,
+        path.join(appDir, `generated/dart/${newConnectorYaml.connectorId}`),
+      );
+    const pkg = newConnectorYaml.generate.dartSdk?.package ?? newConnectorYaml.connectorId;
+    const dartSdk: DartSDK = {
+      outputDir,
+      package: pkg,
+    };
+    newConnectorYaml.generate.dartSdk = dartSdk;
   }
 
   if (targetPlatform === Platform.ANDROID) {

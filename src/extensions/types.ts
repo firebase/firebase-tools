@@ -74,6 +74,7 @@ export interface ExtensionInstance {
   etag?: string;
   extensionRef?: string;
   extensionVersion?: string;
+  labels?: Record<string, string>;
 }
 
 export interface ExtensionConfig {
@@ -125,8 +126,10 @@ export interface ExtensionSpec {
   lifecycleEvents?: LifecycleEvent[];
 }
 
+const lifecycleStages = ["STAGE_UNSPECIFIED", "ON_INSTALL", "ON_UPDATE", "ON_CONFIGURE"] as const;
+export type LifecycleStage = (typeof lifecycleStages)[number];
 export interface LifecycleEvent {
-  stage: "STAGE_UNSPECIFIED" | "ON_INSTALL" | "ON_UPDATE" | "ON_CONFIGURE";
+  stage: LifecycleStage;
   taskQueueTriggerFunction: string;
 }
 
@@ -260,7 +263,7 @@ export interface ParamOption {
   label?: string;
 }
 
-function isObject(value: unknown): value is Record<string, unknown> {
+export function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
@@ -281,40 +284,35 @@ export const isExtensionSpec = (spec: unknown): spec is ExtensionSpec => {
     return false;
   }
 
-  let validResources = true;
   if (spec.resources && Array.isArray(spec.resources)) {
     for (const res of spec.resources) {
-      validResources = validResources && isResource(res);
-      if (!validResources) {
-        break;
+      if (!isResource(res)) {
+        return false;
       }
     }
   } else {
     return false;
   }
 
-  let validParams = true;
   if (spec.params && Array.isArray(spec.params)) {
     for (const param of spec.params) {
-      validParams = validParams && isParam(param);
-      if (!validParams) {
-        break;
+      if (!isParam(param)) {
+        return false;
       }
     }
   } else {
     return false;
   }
 
-  let validSysParams = true;
   if (spec.systemParams && Array.isArray(spec.systemParams)) {
     for (const param of spec.systemParams) {
-      validSysParams = validSysParams && isParam(param);
-      if (!validSysParams) {
-        break;
+      if (!isParam(param)) {
+        return false;
       }
     }
   } else {
-    return false;
+    // Allow systemParams to be missing for local
+    return !spec.systemParams;
   }
 
   return true;

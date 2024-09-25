@@ -58,6 +58,8 @@ import { PubsubEmulator } from "./pubsubEmulator";
 import { StorageEmulator } from "./storage";
 import { readFirebaseJson } from "../dataconnect/fileUtils";
 import { TasksEmulator } from "./tasksEmulator";
+import { AppHostingEmulator } from "./apphosting";
+import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
@@ -104,6 +106,7 @@ export async function cleanShutdown(): Promise<void> {
     "Shutting down emulators.",
   );
   await EmulatorRegistry.stopAll();
+  await sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_SHUTDOWN });
 }
 
 /**
@@ -850,6 +853,11 @@ export async function startAll(
       configDir,
       rc: options.rc,
       config: options.config,
+      autoconnectToPostgres: true,
+      postgresHost: options.config.get("emulators.dataconnect.postgresHost"),
+      postgresPort: options.config.get("emulators.dataconnect.postgresPort"),
+      enable_output_generated_sdk: true, // TODO: source from arguments
+      enable_output_schema_extensions: true,
     });
     await startEmulator(dataConnectEmulator);
   }
@@ -884,6 +892,25 @@ export async function startAll(
     });
 
     await startEmulator(hostingEmulator);
+  }
+
+  /**
+   * Similar to the Hosting emulator, the App Hosting emulator should also
+   * start after the other emulators. This is because the service running on
+   * app hosting emulator may depend on other emulators (i.e auth, firestore,
+   * storage, etc).
+   */
+  if (experiments.isEnabled("emulatorapphosting")) {
+    if (listenForEmulator.apphosting) {
+      const apphostingAddr = legacyGetFirstAddr(Emulators.APPHOSTING);
+      const apphostingEmulator = new AppHostingEmulator({
+        host: apphostingAddr.host,
+        port: apphostingAddr.port,
+        options,
+      });
+
+      await startEmulator(apphostingEmulator);
+    }
   }
 
   if (listenForEmulator.logging) {
