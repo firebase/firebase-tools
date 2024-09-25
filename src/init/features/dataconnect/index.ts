@@ -132,7 +132,14 @@ async function askQuestions(setup: Setup): Promise<RequiredInfo> {
       }))
     );
   } else {
-    // TODO(rosalyntan): Enter defaults.
+    info.serviceId = info.serviceId !== "" ? info.serviceId : basename(process.cwd());
+    info.cloudSqlInstanceId =
+      info.cloudSqlInstanceId !== "" ? info.cloudSqlInstanceId : `${info.serviceId || "app"}-fdc`;
+    info.locationId = info.locationId !== "" ? info.locationId : `us-central1`;
+    info.cloudSqlDatabase = info.cloudSqlDatabase !== "" ? info.cloudSqlDatabase : `fdcdb`;
+    logBullet(
+      `Setting placeholder values in dataconnect.yaml. You can edit these before you deploy to use different IDs or regions.`,
+    );
   }
   return info;
 }
