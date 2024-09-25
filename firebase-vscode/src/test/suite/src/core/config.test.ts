@@ -194,7 +194,7 @@ firebaseSuite("_readFirebaseConfig", () => {
     });
 
     const config = _readFirebaseConfig();
-    assert.deepEqual(config.requireValue.data, expectedConfig);
+    assert.deepEqual(config?.requireValue!.data, expectedConfig);
   });
 
   firebaseTest("returns undefined if firebase.json is not found", () => {
@@ -230,7 +230,7 @@ firebaseSuite("_readFirebaseConfig", () => {
     assert.throws(
       () => _readFirebaseConfig(),
       (thrown) =>
-        thrown
+        thrown!
           .toString()
           .startsWith(
             `FirebaseError: There was an error loading ${path.join(
@@ -266,7 +266,7 @@ firebaseSuite("_readRC", () => {
 
     const config = _readRC();
     assert.deepEqual(
-      config?.requireValue.data.projects,
+      config?.requireValue!.data.projects,
       expectedConfig.projects,
     );
   });
@@ -304,7 +304,7 @@ firebaseSuite("_readRC", () => {
     assert.throws(
       () => _readRC(),
       (thrown) =>
-        thrown.toString() ===
+        thrown!.toString() ===
         `SyntaxError: Unexpected token 'i', "invalid json" is not valid JSON`,
     );
 
@@ -335,10 +335,10 @@ firebaseSuite("_createWatcher", () => {
     mock(currentOptions, createFake<VsCodeOptions>({ cwd: dir }));
 
     const watcher = await _createWatcher("file")!;
-    addTearDown(() => watcher.dispose());
+    addTearDown(() => watcher?.dispose());
 
     const createdFile = new Promise<vscode.Uri>((resolve) => {
-      watcher.onDidChange((e) => resolve(e));
+      watcher?.onDidChange((e) => resolve(e));
     });
 
     fs.writeFileSync(file, "new content");
@@ -368,10 +368,13 @@ firebaseSuite("registerConfig", () => {
       // Initial register should not notify anything.
       assert.deepEqual(broker.sentLogs, []);
 
-      assert.deepEqual(currentOptions.value.cwd, workspaces.byIndex(0).path);
-      assert.deepEqual(firebaseConfig.value.requireValue.data, expectedConfig);
+      assert.deepEqual(currentOptions.value.cwd, workspaces.byIndex(0)!.path);
       assert.deepEqual(
-        firebaseRC.value.requireValue.data.projects,
+        firebaseConfig.value!.requireValue!.data,
+        expectedConfig,
+      );
+      assert.deepEqual(
+        firebaseRC.value!.requireValue!.data.projects,
         expectedRc.projects,
       );
     },
@@ -393,8 +396,8 @@ firebaseSuite("registerConfig", () => {
       assert.deepEqual(broker.sentLogs, []);
 
       allRCs.value = {
-        [firebaseRC.value.requireValue.path]: new ResultValue(
-          new RC(firebaseRC.value.requireValue.path, newRC),
+        [firebaseRC.value!.requireValue!.path!]: new ResultValue(
+          new RC(firebaseRC.value!.requireValue!.path, newRC),
         ),
       };
 
@@ -434,11 +437,11 @@ firebaseSuite("registerConfig", () => {
       assert.deepEqual(broker.sentLogs, []);
 
       fs.writeFileSync(
-        workspaces.byIndex(0).firebaseConfigPath,
+        workspaces.byIndex(0)!.firebaseConfigPath,
         JSON.stringify(newConfig),
       );
       allFirebaseConfigs.value = {
-        [workspaces.byIndex(0).firebaseConfigPath]: _readFirebaseConfig()!,
+        [workspaces.byIndex(0)!.firebaseConfigPath!]: _readFirebaseConfig()!,
       };
 
       assert.deepEqual(broker.sentLogs, [
@@ -475,7 +478,7 @@ firebaseSuite("registerConfig", () => {
     const broker = createTestBroker();
     const dir = createTemporaryDirectory();
 
-    const pendingWatchers = [];
+    const pendingWatchers: any = [];
     mock(
       workspace,
       createFake({
@@ -548,7 +551,7 @@ firebaseSuite("registerConfig", () => {
             createFake<vscode.WorkspaceFolder>({ uri: vscode.Uri.file(dir) }),
           ],
           // Override "createFileSystemWatcher" to spy on the watchers.
-          createFileSystemWatcher: (pattern) => {
+          createFileSystemWatcher: (pattern: any) => {
             const file = (pattern as vscode.RelativePattern).pattern;
             return createFake<vscode.FileSystemWatcher>({
               onDidCreate: (cb) => addFSListener(file, "create", cb),

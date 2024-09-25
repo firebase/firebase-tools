@@ -2,7 +2,7 @@
   "name": "esm",
   "type": "module",
   "dependencies": {
-    "firebase-functions": "^4.0.0"
+    "firebase-functions": "^5.1.0"
   },
   "engines": {
     "node": "20"

@@ -1,7 +1,7 @@
 import { isPathInside } from "./file-utils";
 import { DeepReadOnly } from "../metaprogramming";
 import { ConnectorYaml, DataConnectYaml } from "../dataconnect/types";
-import { Result, ResultError, ResultValue } from "../result";
+import { Result, ResultValue } from "../result";
 import { computed, effect, signal } from "@preact/signals-core";
 import {
   _createWatcher as createWatcher,
@@ -30,10 +30,10 @@ export type DataConnectConfigsError = {
   range: vscode.Range;
 };
 
-export const dataConnectConfigs =
-  signal<Result<DataConnectConfigsValue | undefined, DataConnectConfigsError>>(
-    undefined,
-  );
+export const dataConnectConfigs = signal<
+  | Result<DataConnectConfigsValue | undefined, DataConnectConfigsError>
+  | undefined
+>(undefined);
 
 export class ErrorWithPath extends Error {
   constructor(
@@ -41,7 +41,7 @@ export class ErrorWithPath extends Error {
     readonly error: unknown,
     readonly range: vscode.Range,
   ) {
-    super(error instanceof Error ? error.message : error.toString());
+    super(error instanceof Error ? error.message : `${error}`);
   }
 }
 
@@ -49,7 +49,7 @@ export async function registerDataConnectConfigs(
   context: vscode.ExtensionContext,
   broker: ExtensionBrokerImpl,
 ) {
-  let cancel: () => void | undefined;
+  let cancel: (() => void) | undefined;
   context.subscriptions.push({
     dispose: () => cancel?.(),
   });
@@ -92,13 +92,10 @@ export async function registerDataConnectConfigs(
 
     cancel =
       configs &&
-      promise.cancelableThen(
-        configs,
-        (configs) => {
-          cancel = undefined;
-          return (dataConnectConfigs.value = configs);
-        },
-      ).cancel;
+      promise.cancelableThen(configs, (configs) => {
+        cancel = undefined;
+        return (dataConnectConfigs.value = configs);
+      }).cancel;
   }
 
   context.subscriptions.push({
@@ -108,11 +105,13 @@ export async function registerDataConnectConfigs(
   const dataConnectWatcher = await createWatcher(
     "**/{dataconnect,connector}.yaml",
   );
-  context.subscriptions.push(dataConnectWatcher);
+  if (dataConnectWatcher) {
+    context.subscriptions.push(dataConnectWatcher);
 
-  dataConnectWatcher.onDidChange(() => handleResult(firebaseConfig.value));
-  dataConnectWatcher.onDidCreate(() => handleResult(firebaseConfig.value));
-  dataConnectWatcher.onDidDelete(() => handleResult(firebaseConfig.value));
+    dataConnectWatcher.onDidChange(() => handleResult(firebaseConfig.value));
+    dataConnectWatcher.onDidCreate(() => handleResult(firebaseConfig.value));
+    dataConnectWatcher.onDidDelete(() => handleResult(firebaseConfig.value));
+  }
 
   const hasConfigs = computed(
     () => !!dataConnectConfigs.value?.tryReadValue?.values.length,
@@ -209,7 +208,7 @@ export async function _readDataConnectConfigs(
     const dataConnects = await Promise.all(
       fdcConfig
         // Paths may be relative to the firebase.json file.
-        .map((relative) => asAbsolutePath(relative.source, getConfigPath()))
+        .map((relative) => asAbsolutePath(relative.source, getConfigPath()!))
         .map(async (absolutePath) => {
           try {
             return await mapDataConnect(absolutePath);
@@ -276,7 +275,7 @@ export class ResolvedDataConnectConfig {
   }
 
   get relativePath(): string {
-    return this.path.split("/").pop();
+    return this.path.split("/").pop()!;
   }
 
   get relativeSchemaPath(): string {
@@ -289,7 +288,7 @@ export class ResolvedDataConnectConfig {
     );
   }
 
-  findConnectorById(connectorId: string): ResolvedConnectorYaml {
+  findConnectorById(connectorId: string): ResolvedConnectorYaml | undefined {
     return this.resolvedConnectors.find(
       (connector) => connector.value.connectorId === connectorId,
     );
@@ -328,9 +327,8 @@ export class ResolvedDataConnectConfigs {
 
   getApiServicePathByPath(projectId: string, path: string) {
     const dataConnectConfig = this.findEnclosingServiceForPath(path);
-    const serviceId = dataConnectConfig.value.serviceId;
-    const locationId = dataConnectConfig.dataConnectLocation;
-
+    const serviceId = dataConnectConfig?.value.serviceId;
+    const locationId = dataConnectConfig?.dataConnectLocation;
     return `projects/${projectId}/locations/${locationId}/services/${serviceId}`;
   }
 }

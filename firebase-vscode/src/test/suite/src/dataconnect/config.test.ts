@@ -82,7 +82,7 @@ firebaseSuite("registerDataConnectConfigs", async () => {
             createFake<vscode.WorkspaceFolder>({ uri: vscode.Uri.file(dir) }),
           ],
           // Override "createFileSystemWatcher" to spy on the watchers.
-          createFileSystemWatcher: (pattern) => {
+          createFileSystemWatcher: (pattern: any) => {
             const file = (pattern as vscode.RelativePattern).pattern;
             return createFake<vscode.FileSystemWatcher>({
               onDidCreate: (cb) => addFSListener(file, "create", cb),

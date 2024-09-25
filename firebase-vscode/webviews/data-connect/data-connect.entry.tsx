@@ -2,58 +2,55 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import {
   VSCodeButton,
-  VSCodeTextField,
+  VSCodeProgressRing,
 } from "@vscode/webview-ui-toolkit/react";
 import { Spacer } from "../components/ui/Spacer";
 import styles from "../globals/index.scss";
-import { broker, useBroker, useBrokerListener } from "../globals/html-broker";
+import { broker, useBroker } from "../globals/html-broker";
 import { PanelSection } from "../components/ui/PanelSection";
-
-// Prevent webpack from removing the `style` import above
-styles;
+import { EmulatorPanel } from "../components/EmulatorPanel";
 
 const root = createRoot(document.getElementById("root")!);
 root.render(<DataConnect />);
 
 function DataConnect() {
-  const isConnectedToPostgres =
-    useBroker("notifyIsConnectedToPostgres", {
-      initialRequest: "getInitialIsConnectedToPostgres",
-    }) ?? false;
-
-  const psqlString = useBroker("notifyPostgresStringChanged");
+  const emulatorsRunningInfo =
+    useBroker("notifyEmulatorStateChanged", {
+      initialRequest: "getEmulatorInfos",
+    });
 
   const user = useBroker("notifyUserChanged", {
     initialRequest: "getInitialData",
   })?.user;
 
+  if (emulatorsRunningInfo?.status === "starting") {
+    return (
+      <>
+        <label>Emulators starting: see integrated terminal</label>
+        <VSCodeProgressRing></VSCodeProgressRing>
+      </>
+    );
+  }
+
   return (
-    <>
+    <div className={styles.root}>
       <PanelSection title="Local Development">
-        {!isConnectedToPostgres && (
-          <p>
-            Connect to Local PostgreSQL.
-            <br></br>
-            See also:{" "}
-            <a href="https://firebase.google.com/docs/data-connect/quickstart#optional_install_postgresql_locally">
-              Working with PostgreSQL
-            </a>
-          </p>
-        )}
         <Spacer size="xsmall" />
-        {isConnectedToPostgres ? (
+        { emulatorsRunningInfo?.status === "running" ? (
           <>
-            <label>Local emulator connected to:</label>
-            <VSCodeTextField disabled value={psqlString}></VSCodeTextField>
+            <label>Emulators running in terminal</label>
+            <EmulatorPanel
+              emulatorInfo={emulatorsRunningInfo.infos as any}
+            ></EmulatorPanel>
           </>
         ) : (
-          <VSCodeButton onClick={() => broker.send("connectToPostgres")}>
-            Connect to Local PostgreSQL
+          <VSCodeButton onClick={() => broker.send("runStartEmulators")}>
+            Start emulators
           </VSCodeButton>
         )}
         <Spacer size="xlarge" />
         <p>
-          Configure a generated SDK. 
+          Configure a generated SDK.
           <br></br>
           See also:{" "}
           <a href="https://firebase.google.com/docs/data-connect/gp/web-sdk">
@@ -63,6 +60,7 @@ function DataConnect() {
         <VSCodeButton onClick={() => broker.send("fdc.configure-sdk")}>
           Configure Generated SDK
         </VSCodeButton>
+        <Spacer size="xlarge" />
       </PanelSection>
       <PanelSection title="Production" isLast={true}>
         <p>
@@ -83,6 +81,6 @@ function DataConnect() {
           Deploy Individual
         </VSCodeButton>
       </PanelSection>
-    </>
+    </div>
   );
 }

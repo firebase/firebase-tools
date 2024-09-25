@@ -1,5 +1,31 @@
 ## NEXT
 
+## 0.9.1
+
+- Updated internal firebase-tools dependency to 13.19.0
+
+## 0.9.0
+
+- Updated internal firebase-tools dependency to 13.18.0
+
+## 0.8.0
+
+- Updated internal firebase-tools dependency to 13.17.0
+
+- [Fixed] Extension properly picks up firebase.json changes during Firebase Init flow
+
+## 0.7.0
+
+- Updated internal firebase-tools dependency to 13.16.0
+
+## 0.6.2
+
+- Updated internal firebase-tools dependency to 13.15.4
+
+## 0.6.1
+
+- Updated internal firebase-tools dependency to 13.15.3
+
 ## 0.6.0
 
 - Updated internal firebase-tools dependency to 13.15.2

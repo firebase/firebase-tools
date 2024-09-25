@@ -1,1 +1,1 @@
-- Updated `ws` to 7.5.10 to remediate CVE-2024-37890. (#7398)
+- Released version 1.3.9 of the Data Connect emulator, which includes SDK support for `Any` scalar type and `OrderDirection`, support for `first` to lookup operations, and breaking changes for iOS generated SDKs. PLease see documentation for more details.

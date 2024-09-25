@@ -20,7 +20,7 @@ import { getExtensionRegistry } from "./resolveSource";
 import { FirebaseError } from "../error";
 import { diagnose } from "./diagnose";
 import { checkResponse } from "./askUserForParam";
-import { ensure } from "../ensureApiEnabled";
+import { ensure, check } from "../ensureApiEnabled";
 import { deleteObject, uploadObject } from "../gcp/storage";
 import { getProjectId } from "../projectUtils";
 import { createSource, getInstance } from "./extensionsApi";
@@ -81,7 +81,7 @@ const AUTOPOPULATED_PARAM_NAMES = [
   "DATABASE_URL",
 ];
 // Placeholders that can be used whever param substitution is needed, but are not available.
-export const AUTOPOULATED_PARAM_PLACEHOLDERS = {
+export const AUTOPOPULATED_PARAM_PLACEHOLDERS = {
   PROJECT_ID: "project-id",
   STORAGE_BUCKET: "project-id.appspot.com",
   EXT_INSTANCE_ID: "extension-id",
@@ -507,6 +507,14 @@ async function promptForReleaseStage(args: {
   return stage;
 }
 
+export async function checkExtensionsApiEnabled(options: any): Promise<boolean> {
+  const projectId = getProjectId(options);
+  if (!projectId) {
+    return false;
+  }
+  return await check(projectId, extensionsOrigin(), "extensions", options.markdown);
+}
+
 export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
   const projectId = getProjectId(options);
   if (!projectId) {
@@ -600,7 +608,7 @@ async function validateExtensionSpec(
   const subbedSpec = JSON.parse(JSON.stringify(extensionSpec));
   subbedSpec.params = substituteParams<Param[]>(
     extensionSpec.params || [],
-    AUTOPOULATED_PARAM_PLACEHOLDERS,
+    AUTOPOPULATED_PARAM_PLACEHOLDERS,
   );
   validateSpec(subbedSpec);
   return extensionSpec;

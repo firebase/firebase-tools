@@ -29,7 +29,7 @@ import { LanguageClient } from "vscode-languageclient/node";
 import { registerTerminalTasks } from "./terminal";
 import { registerWebview } from "../webview";
 
-import { DataConnectEmulatorController } from "./emulator";
+import { DataConnectToolkit } from "./toolkit";
 import { registerFdcSdkGeneration } from "./sdk-generation";
 import { registerDiagnostics } from "./diagnostics";
 
@@ -136,11 +136,7 @@ export function registerFdc(
   telemetryLogger: TelemetryLogger,
 ): Disposable {
   registerDiagnostics(context, dataConnectConfigs);
-
-  const fdcEmulatorsController = new DataConnectEmulatorController(
-    emulatorController,
-    broker,
-  );
+  const dataConnectToolkit = new DataConnectToolkit(broker);
 
   const codeActions = vscode.languages.registerCodeActionsProvider(
     [
@@ -153,13 +149,28 @@ export function registerFdc(
     },
   );
 
-  const fdcService = new FdcService(authService, emulatorController);
+  const fdcService = new FdcService(
+    authService,
+    dataConnectToolkit,
+    emulatorController,
+  );
+
+  // register codelens
   const operationCodeLensProvider = new OperationCodeLensProvider(
-    fdcEmulatorsController,
+    emulatorController,
   );
   const schemaCodeLensProvider = new SchemaCodeLensProvider(emulatorController);
   const configureSdkCodeLensProvider = new ConfigureSdkCodeLensProvider();
+  const refreshCommand = vscode.commands.registerCommand(
+    "refreshCodelens",
+    () => {
+      operationCodeLensProvider.refresh();
+      schemaCodeLensProvider.refresh();
+      configureSdkCodeLensProvider.refresh();
+    },
+  );
 
+  // activate FDC toolkit
   // activate language client/serer
   let client: LanguageClient;
   const lsOutputChannel: vscode.OutputChannel =
@@ -199,7 +210,7 @@ export function registerFdc(
   registerDataConnectConfigs(context, broker);
 
   return Disposable.from(
-    fdcEmulatorsController,
+    dataConnectToolkit,
     codeActions,
     selectedProjectStatus,
     { dispose: sub1 },
@@ -215,7 +226,6 @@ export function registerFdc(
       context,
       broker,
       fdcService,
-      emulatorController,
       telemetryLogger,
     ),
     registerExplorer(context, broker, fdcService),
@@ -251,6 +261,7 @@ export function registerFdc(
       [{ scheme: "file", language: "yaml", pattern: "**/connector.yaml" }],
       configureSdkCodeLensProvider,
     ),
+    refreshCommand,
     {
       dispose: () => {
         client.stop();

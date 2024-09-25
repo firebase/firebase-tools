@@ -33,7 +33,7 @@ export const firebaseRC = computed<Result<RC | undefined>>(() => {
   const allConfigs = allRCs.value;
 
   const keys = Object.keys(allConfigs);
-  return allConfigs[keys[0]];
+  return allConfigs[keys[0]]!;
 });
 
 export const allFirebaseConfigs = globalSignal<
@@ -54,7 +54,7 @@ export const firebaseConfig = computed<Result<Config | undefined>>(() => {
   const allConfigs = allFirebaseConfigs.value;
 
   const keys = Object.keys(allConfigs);
-  return allConfigs[keys[0]];
+  return allConfigs[keys[0]]!;
 });
 
 /**
@@ -69,7 +69,7 @@ export async function updateFirebaseRCProject(values: {
 }) {
   let didChange = false;
   const rc =
-    firebaseRC.value.tryReadValue ??
+    firebaseRC.value?.tryReadValue ??
     // We don't update firebaseRC if we create a temporary RC,
     // as the file watcher will update the value for us.
     // This is only for the sake of calling `save()`.
@@ -84,11 +84,6 @@ export async function updateFirebaseRCProject(values: {
       values.projectAlias.alias,
       values.projectAlias.projectId,
     );
-  }
-
-  if (values.fdcPostgresConnectionString) {
-    didChange = true;
-    rc.setDataconnect(values.fdcPostgresConnectionString);
   }
 
   if (didChange) {
@@ -147,20 +142,22 @@ async function registerRc(
   });
 
   const rcWatcher = await _createWatcher(firebaseRcPattern);
-  context.subscriptions.push(rcWatcher);
+  if (rcWatcher) {
+    context.subscriptions.push(rcWatcher);
 
-  rcWatcher.onDidChange((uri) => {
-    allRCs.value = { ...allRCs.value, [uri.fsPath]: _readRC() };
-  });
-  rcWatcher.onDidCreate((uri) => {
-    allRCs.value = { ...allRCs.value, [uri.fsPath]: _readRC() };
-  });
-  rcWatcher.onDidDelete((uri) => {
-    const newState = { ...allRCs.value };
-    delete newState[uri.fsPath];
+    rcWatcher.onDidChange((uri) => {
+      allRCs.value = { ...allRCs.value, [uri.fsPath]: _readRC() };
+    });
+    rcWatcher.onDidCreate((uri) => {
+      allRCs.value = { ...allRCs.value, [uri.fsPath]: _readRC() };
+    });
+    rcWatcher.onDidDelete((uri) => {
+      const newState = { ...allRCs.value };
+      delete newState[uri.fsPath];
 
-    allRCs.value = newState;
-  });
+      allRCs.value = newState;
+    });
+  }
 }
 
 async function registerFirebaseConfig(
@@ -194,26 +191,28 @@ async function registerFirebaseConfig(
   });
 
   const configWatcher = await _createWatcher(firebaseJsonPattern);
-  context.subscriptions.push(configWatcher);
+  if (configWatcher) {
+    context.subscriptions.push(configWatcher);
 
-  configWatcher.onDidChange((uri) => {
-    return (allFirebaseConfigs.value = {
-      ...allFirebaseConfigs.value,
-      [uri.fsPath]: _readFirebaseConfig(),
+    configWatcher.onDidChange((uri) => {
+      return (allFirebaseConfigs.value = {
+        ...allFirebaseConfigs.value,
+        [uri.fsPath]: _readFirebaseConfig(),
+      });
     });
-  });
-  configWatcher.onDidCreate((uri) => {
-    return (allFirebaseConfigs.value = {
-      ...allFirebaseConfigs.value,
-      [uri.fsPath]: _readFirebaseConfig(),
+    configWatcher.onDidCreate((uri) => {
+      return (allFirebaseConfigs.value = {
+        ...allFirebaseConfigs.value,
+        [uri.fsPath]: _readFirebaseConfig(),
+      });
     });
-  });
-  configWatcher.onDidDelete((uri) => {
-    const newState = { ...allFirebaseConfigs.value };
-    delete newState[uri.fsPath];
+    configWatcher.onDidDelete((uri) => {
+      const newState = { ...allFirebaseConfigs.value };
+      delete newState[uri.fsPath];
 
-    allFirebaseConfigs.value = newState;
-  });
+      allFirebaseConfigs.value = newState;
+    });
+  }
 }
 
 export async function registerConfig(
@@ -257,7 +256,7 @@ export function _readRC(): Result<RC | undefined> {
 }
 
 /** @internal */
-export function _readFirebaseConfig(): Result<Config | undefined> {
+export function _readFirebaseConfig(): Result<Config | undefined> | undefined {
   const result = Result.guard(() => {
     const configPath = getConfigPath();
     if (!configPath) {

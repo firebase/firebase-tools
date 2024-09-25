@@ -10,6 +10,14 @@ import { saveEtags } from "../../extensions/etags";
 import { trackGA4 } from "../../track";
 
 export async function release(context: Context, options: Options, payload: Payload) {
+  if (
+    !payload.instancesToCreate &&
+    !payload.instancesToUpdate &&
+    !payload.instancesToConfigure &&
+    !payload.instancesToDelete
+  ) {
+    return;
+  }
   const projectId = needProjectId(options);
 
   const errorHandler = new ErrorHandler();
@@ -19,23 +27,23 @@ export async function release(context: Context, options: Options, payload: Paylo
     handler: tasks.extensionsDeploymentHandler(errorHandler),
   });
 
-  for (const creation of payload.instancesToCreate ?? []) {
-    const task = tasks.createExtensionInstanceTask(projectId, creation);
+  for (const inst of payload.instancesToConfigure ?? []) {
+    const task = tasks.configureExtensionInstanceTask(projectId, inst);
     void deploymentQueue.run(task);
   }
 
-  for (const update of payload.instancesToUpdate ?? []) {
-    const task = tasks.updateExtensionInstanceTask(projectId, update);
+  for (const inst of payload.instancesToDelete ?? []) {
+    const task = tasks.deleteExtensionInstanceTask(projectId, inst);
     void deploymentQueue.run(task);
   }
 
-  for (const update of payload.instancesToConfigure ?? []) {
-    const task = tasks.configureExtensionInstanceTask(projectId, update);
+  for (const inst of payload.instancesToCreate ?? []) {
+    const task = tasks.createExtensionInstanceTask(projectId, inst);
     void deploymentQueue.run(task);
   }
 
-  for (const deletion of payload.instancesToDelete ?? []) {
-    const task = tasks.deleteExtensionInstanceTask(projectId, deletion);
+  for (const inst of payload.instancesToUpdate ?? []) {
+    const task = tasks.updateExtensionInstanceTask(projectId, inst);
     void deploymentQueue.run(task);
   }
 
@@ -61,9 +69,12 @@ export async function release(context: Context, options: Options, payload: Paylo
     duration,
   );
 
-  // After deployment, write the latest etags to RC so we can detect out of band changes in the next deploy.
-  const newHave = await planner.have(projectId);
-  saveEtags(options.rc, projectId, newHave);
+  // After deployment, write the latest etags to RC so we can detect out of
+  // band changes in the next deploy.
+  const have = await planner.have(projectId);
+  const dynamicHave = await planner.haveDynamic(projectId);
+
+  saveEtags(options.rc, projectId, have.concat(dynamicHave));
 
   if (errorHandler.hasErrors()) {
     errorHandler.print();

@@ -19,6 +19,7 @@ export enum DATA_CONNECT_EVENT_NAME {
   INIT_SDK = "init_sdk",
   INIT_SDK_CLI = "init_sdk_cli",
   INIT_SDK_CODELENSE = "init_sdk_codelense",
+  START_EMULATORS = "start_emulators",
 }
 
 export class AnalyticsLogger {
@@ -31,9 +32,7 @@ export class AnalyticsLogger {
 }
 
 class GA4TelemetrySender implements TelemetrySender {
-  constructor(
-    readonly pluginLogger,
-  ) {}
+  constructor(readonly pluginLogger: { warn: (s: string) => void} ) {}
 
   sendEventData(
     eventName: string,

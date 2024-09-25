@@ -86,6 +86,31 @@ describe("getPlatformFromFolder", () => {
       output: Platform.IOS,
     },
     {
+      desc: "Dart identifier 1",
+      folderName: "is/this/a/dart/test",
+      folderItems: {
+        file1: "contents",
+        "pubspec.yaml": "my deps",
+      },
+      output: Platform.DART,
+    },
+    {
+      desc: "Dart identifier 2",
+      folderName: "is/this/a/dart/test",
+      folderItems: {
+        "pubspec.lock": "my deps",
+      },
+      output: Platform.DART,
+    },
+    {
+      desc: "Dart identifier with experiment disabled",
+      folderName: "is/this/a/dart/test",
+      folderItems: {
+        "pubspec.mispelled": "my deps",
+      },
+      output: Platform.UNDETERMINED,
+    },
+    {
       desc: "multiple identifiers, returns undetermined",
       folderName: "test/",
       folderItems: {
@@ -154,6 +179,19 @@ describe("generateSdkYaml", () => {
     expect(modifiedYaml.generate?.kotlinSdk).to.deep.equal({
       outputDir: "../dataconnect-generated",
       package: "connectors.test_connector",
+    });
+  });
+
+  it("should add Dart SDK generation for DART platform", () => {
+    const modifiedYaml = generateSdkYaml(
+      Platform.DART,
+      sampleConnectorYaml,
+      connectorYamlFolder,
+      appFolder,
+    );
+    expect(modifiedYaml.generate?.dartSdk).to.deep.equal({
+      outputDir: "../dataconnect-generated",
+      package: "test_connector",
     });
   });
 
