@@ -79,7 +79,7 @@ export async function provisionCloudSql(args: {
         "dataconnect",
         `CloudSQL instance '${instanceId}' not found.` +
           cta +
-          `\nThis instance is provided under the terms of the Data Connect free trial ${freeTrialTermsLink()}` +
+          `\nThis instance is provided under the terms of the Data Connect no-cost trial ${freeTrialTermsLink()}` +
           `\nMonitor the progress at ${cloudSqlAdminClient.instanceConsoleLink(projectId, instanceId)}`,
       );
     if (!dryRun) {
