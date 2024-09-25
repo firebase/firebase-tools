@@ -10,7 +10,8 @@ import {
 export function registerDiagnostics(
   context: vscode.ExtensionContext,
   dataConnectConfigs: Signal<
-    Result<DataConnectConfigsValue | undefined, DataConnectConfigsError>
+    | Result<DataConnectConfigsValue | undefined, DataConnectConfigsError>
+    | undefined
   >,
 ) {
   const collection =
@@ -29,12 +30,12 @@ export function registerDiagnostics(
         (fdcError) => {
           const error = fdcError.error;
 
-          collection.set(vscode.Uri.file(fdcError.path), [
+          collection.set(vscode.Uri.file(fdcError.path!), [
             new vscode.Diagnostic(
               error instanceof ErrorWithPath
                 ? error.range
                 : new vscode.Range(0, 0, 0, 0),
-              error instanceof Error ? error.message : error.toString(),
+              error instanceof Error ? error.message : `${error}`,
               vscode.DiagnosticSeverity.Error,
             ),
           ]);
