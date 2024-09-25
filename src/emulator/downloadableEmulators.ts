@@ -174,10 +174,10 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
       cacheDir: CACHE_DIR,
       remoteUrl:
         process.platform === "darwin"
-          ? `https://firebasestorage.googleapis.com/v0/b/getting-started-dart-storage.appspot.com/o/cli_macos?alt=media&token=3cde9885-ed2f-43ed-96c2-7d574673f6fa`
+          ? `https://firebasestorage.googleapis.com/v0/b/getting-started-dart-storage.appspot.com/o/cli_macos?alt=media&token=50b2641a-925c-4414-83d4-83a23744c031`
           : process.platform === "win32"
             ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-windows-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
-            : `https://firebasestorage.googleapis.com/v0/b/getting-started-dart-storage.appspot.com/o/cli_linux?alt=media&token=54878473-d2a2-425f-b59f-b88da6e7a0fa`,
+            : `https://firebasestorage.googleapis.com/v0/b/getting-started-dart-storage.appspot.com/o/cli_linux?alt=media&token=5302cf6e-f13d-4d2f-badc-2fd1541d5a88`,
       expectedSize: EMULATOR_UPDATE_DETAILS.dataconnect.expectedSize,
       expectedChecksum: EMULATOR_UPDATE_DETAILS.dataconnect.expectedChecksum,
       skipChecksumAndSize: false,
