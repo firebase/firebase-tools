@@ -16,10 +16,16 @@ export function printFreeTrialUnavailable(
   instanceId: string,
   configYamlPath: string,
 ) {
-  const message =
-    `Project '${projectId} already has a CloudSQL instance '${instanceId}' on the Firebase Data Connect no-cost trial.` +
+  utils.logLabeledError(
+    "dataconnect",
+    `Project '${projectId} already has a CloudSQL instance '${instanceId}' on the Firebase Data Connect no-cost trial.`,
+  );
+  const reuseHint =
     `To use a different database in the same instance, change the instanceId to "${instanceId}" in` +
-    `${configYamlPath}. Also, update the database field (i.e. the database name in the instance) as needed.` +
-    `(Or you may create a new (paid) CloudSQL instance at https://console.cloud.google.com/sql/instances )`;
-  utils.logLabeledError("dataconnect", message);
+    `${configYamlPath}. Also, update the database field (i.e. the database name in the instance) as needed.`;
+  utils.logLabeledBullet("dataconnect", reuseHint);
+  utils.logLabeledError(
+    "dataconnect",
+    `Or you may create a new (paid) CloudSQL instance at https://console.cloud.google.com/sql/instances`,
+  );
 }
