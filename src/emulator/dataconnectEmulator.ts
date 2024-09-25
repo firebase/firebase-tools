@@ -1,6 +1,5 @@
 import * as childProcess from "child_process";
 import { EventEmitter } from "events";
-const lsofi = require("lsofi");
 
 import { dataConnectLocalConnString } from "../api";
 import { Constants } from "./constants";
@@ -18,6 +17,7 @@ import { load } from "../dataconnect/load";
 import { Config } from "../config";
 import { PostgresServer } from "./dataconnect/pgliteServer";
 import { cleanShutdown } from "./controller";
+import { connectableHostname } from "../utils";
 
 export interface DataConnectEmulatorArgs {
   projectId: string;
@@ -100,19 +100,11 @@ export class DataConnectEmulator implements EmulatorInstance {
           "Data Connect",
           `FIREBASE_DATACONNECT_POSTGRESQL_STRING is set to ${dataConnectLocalConnString()} - using that instead of starting a new database`,
         );
-      } else if (pgPort && pgPort) {
+      } else if (pgHost && pgPort) {
         const pgServer = new PostgresServer(dbId, "postgres");
-        if (this.args.postgresListen) {
-          const process = await lsofi(pgPort);
-          if (process) {
-            const errMessage =
-              `Data Connect: Unable to start PGLite server on port ${pgPort} because it is already in use by process number ${process}. This may occur if you are running another instance of Postgres.` +
-              ` You can choose a different port by setting 'firebase.json#emulators.dataconnect.postgresPort', or you can unset that field to automatically find an open port.`;
-            throw new FirebaseError(errMessage);
-          }
-        }
         const server = await pgServer.createPGServer(pgHost, pgPort);
-        connStr = `postgres://${pgHost}:${pgPort}/${dbId}?sslmode=disable`;
+        const connectableHost = connectableHostname(pgHost);
+        connStr = `postgres://${connectableHost}:${pgPort}/${dbId}?sslmode=disable`;
         server.on("error", (err) => {
           if (err instanceof FirebaseError) {
             this.logger.logLabeled("ERROR", "Data Connect", `${err}`);
@@ -131,7 +123,7 @@ export class DataConnectEmulator implements EmulatorInstance {
           `Started up Postgres server, listening on ${server.address()?.toString()}`,
         );
       }
-      await this.connectToPostgres(connStr, dbId, serviceId);
+      await this.connectToPostgres(new URL(connStr), dbId, serviceId);
     }
     return;
   }
@@ -234,7 +226,7 @@ export class DataConnectEmulator implements EmulatorInstance {
   }
 
   public async connectToPostgres(
-    connectionString: string,
+    connectionString: URL,
     database?: string,
     serviceId?: string,
   ): Promise<boolean> {
@@ -248,7 +240,12 @@ export class DataConnectEmulator implements EmulatorInstance {
     for (let i = 1; i <= MAX_RETRIES; i++) {
       try {
         this.logger.logLabeled("DEBUG", "Data Connect", `Connecting to ${connectionString}}...`);
-        await this.emulatorClient.configureEmulator({ connectionString, database, serviceId });
+        connectionString.toString();
+        await this.emulatorClient.configureEmulator({
+          connectionString: connectionString.toString(),
+          database,
+          serviceId,
+        });
         this.logger.logLabeled(
           "DEBUG",
           "Data Connect",
