@@ -15,11 +15,7 @@ export const projects = globalSignal<Record<string, FirebaseProjectMetadata[]>>(
 );
 
 /** Currently selected project ID */
-export const currentProjectId = computed(() => {
-  const rc = firebaseRC.value?.tryReadValue;
-
-  return rc?.projects.default;
-});
+export const currentProjectId = globalSignal("");
 
 const userScopedProjects = computed<FirebaseProjectMetadata[] | undefined>(
   () => {
@@ -60,8 +56,17 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
     }
   });
 
+  // Initialize currentProjectId to default project ID
+  const sub4 = effect(() => {
+    if (!currentProjectId.value) {
+      currentProjectId.value = firebaseRC.value?.tryReadValue?.projects.default;
+    }
+  });
+
   const sub5 = broker.on("getInitialData", () => {
-    let wantProjectId = currentProjectId.value;
+    let wantProjectId =
+      currentProjectId.value ||
+      firebaseRC.value?.tryReadValue?.projects["default"];
     // Service accounts should only have one project
     if (isServiceAccount.value) {
       wantProjectId = userScopedProjects.value?.[0].projectId;
@@ -83,14 +88,8 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
         try {
           const projects = firstWhereDefined(userScopedProjects);
 
-          updateFirebaseRCProject({
-            projectAlias: {
-              alias: "default",
-              projectId:
-                (await _promptUserForProject(projects)) ??
-                currentProjectId.value,
-            },
-          });
+          currentProjectId.value =
+            (await _promptUserForProject(projects)) ?? currentProjectId.value;
         } catch (e) {
           vscode.window.showErrorMessage(e.message);
         }
@@ -107,6 +106,7 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
     { dispose: sub1 },
     { dispose: sub2 },
     { dispose: sub3 },
+    { dispose: sub4 },
     { dispose: sub5 },
     { dispose: sub6 },
   );

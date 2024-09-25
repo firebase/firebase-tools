@@ -8,4 +8,4 @@ schema:
       database: "emulator"
       cloudSql:
         instanceId: "dataconnect-test"
-connectorDirs: ["./connectors/a"]
+connectorDirs: ["./connectors"]

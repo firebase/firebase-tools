@@ -38,7 +38,7 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     coreDisposable,
     registerWebview({
-      name: "fdc_sidebar",
+      name: "sidebar",
       broker,
       context,
     }),

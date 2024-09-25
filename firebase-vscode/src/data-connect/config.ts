@@ -98,15 +98,6 @@ export async function registerDataConnectConfigs(
           cancel = undefined;
           return (dataConnectConfigs.value = configs);
         },
-        (err) => {
-          cancel = undefined;
-
-          return (dataConnectConfigs.value = new ResultError({
-            path: undefined,
-            error: err,
-            range: new vscode.Range(0, 0, 0, 0),
-          }));
-        },
       ).cancel;
   }
 

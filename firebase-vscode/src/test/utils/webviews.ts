@@ -5,10 +5,7 @@
  * Returns the path of elements pointing to the titled webview.
  * This is typically then sent to [runInFrame].
  */
-export async function runWebviewWithTitle(
-  title: string,
-  cb: (frame: object) => Promise<void>,
-) {
+export async function findWebviewWithTitle(title: string) {
   const start = Date.now();
 
   /* Keep running until at least 5 seconds have passed. */
@@ -17,18 +14,15 @@ export async function runWebviewWithTitle(
     const iFrames = Array.from(await $$("iframe.webview.ready"));
 
     for (const iframe of iFrames) {
-      const didRun = await runInFrame(iframe, async () => {
-        const frameWithTitle = await $(`iframe[title="${title}"]`);
-        if ((await frameWithTitle.isExisting()) && !frameWithTitle.error) {
-          await runInFrame(frameWithTitle, () => cb(frameWithTitle));
-          return true;
+      try {
+        await browser.switchToFrame(iframe);
+
+        const frameWithTitle = $(`iframe[title="${title}"]`);
+        if (await frameWithTitle.isExisting()) {
+          return [iframe, await frameWithTitle];
         }
-
-        return false;
-      });
-
-      if (didRun) {
-        return;
+      } finally {
+        await browser.switchToParentFrame();
       }
     }
   }
@@ -38,7 +32,7 @@ export async function runWebviewWithTitle(
 
 export async function runInFrame<R>(
   element: object,
-  cb: () => Promise<R>,
+  cb: () => Promise<R>
 ): Promise<R> {
   await browser.switchToFrame(element);
 
