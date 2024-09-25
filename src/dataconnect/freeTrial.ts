@@ -11,11 +11,15 @@ export async function checkForFreeTrialInstance(projectId: string): Promise<stri
   return instances.find((i) => i.settings.userLabels?.["firebase-data-connect"] === "ft")?.name;
 }
 
-export function printFreeTrialUnavailable(projectId: string, instanceId: string) {
+export function printFreeTrialUnavailable(
+  projectId: string,
+  instanceId: string,
+  configYamlPath: string,
+) {
   const message =
-    `Project '${projectId}' already has a CloudSQL instance '${instanceId}' on the Firebase Data Connect free trial. ` +
-    "The free trial only includes one CloudSQL instance. " +
-    `Consider using a separate database on ${instanceId}, or creating a new CloudSQL instance at ` +
-    "https://console.cloud.google.com/sql/instances";
+    `Project '${projectId} already has a CloudSQL instance '${instanceId}' on the Firebase Data Connect no-cost trial.` +
+    `To use a different database in the same instance, change the instanceId to "${instanceId}" in` +
+    `${configYamlPath}. Also, update the database field (i.e. the database name in the instance) as needed.` +
+    `(Or you may create a new (paid) CloudSQL instance at https://console.cloud.google.com/sql/instances )`;
   utils.logLabeledError("dataconnect", message);
 }
