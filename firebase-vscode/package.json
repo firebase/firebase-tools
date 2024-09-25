@@ -126,7 +126,7 @@
       "firebase-data-connect": [
         {
           "type": "webview",
-          "id": "sidebar",
+          "id": "fdc_sidebar",
           "name": "Studio",
           "initialSize": 2
         },
