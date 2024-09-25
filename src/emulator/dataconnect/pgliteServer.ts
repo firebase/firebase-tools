@@ -39,12 +39,21 @@ export class PostgresServer {
           // pglite wrongly sends.
           return extendedQueryPatch.filterResponse(data, result);
         },
+
+        async onAuthenticated() {
+          // Every time we see a new authentication exchange, we need to throw away previously prepared statements -
+          // Clients may not know of these statements, and may attempt to reuse the same name.
+          await db.query("DEALLOCATE ALL");
+        },
       });
 
       const extendedQueryPatch: PGliteExtendedQueryPatch = new PGliteExtendedQueryPatch(connection);
 
       socket.on("end", () => {
         logger.debug("Postgres client disconnected");
+      });
+      socket.on("error", (err) => {
+        server.emit("error", err);
       });
     });
     const listeningPromise = new Promise<void>((resolve) => {
@@ -98,6 +107,7 @@ export class PGliteExtendedQueryPatch {
       FrontendMessageCode.Bind,
       FrontendMessageCode.Close,
     ];
+
     if (pipelineStartMessages.includes(message[0])) {
       this.isExtendedQuery = true;
     }
@@ -112,8 +122,13 @@ export class PGliteExtendedQueryPatch {
 
     // A PGlite response can contain multiple messages
     for await (const message of getMessages(response)) {
+      // If a prepared statement leads to an error message, we need to end the pipeline.
+      if (message[0] === BackendMessageCode.ErrorMessage) {
+        this.isExtendedQuery = false;
+      }
       // Filter out incorrect `ReadyForQuery` messages during the extended query protocol
       if (this.isExtendedQuery && message[0] === BackendMessageCode.ReadyForQuery) {
+        logger.debug("Filtered out a ReadyForQuery.");
         continue;
       }
       yield message;

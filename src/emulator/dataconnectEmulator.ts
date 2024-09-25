@@ -17,6 +17,7 @@ import { logger } from "../logger";
 import { load } from "../dataconnect/load";
 import { Config } from "../config";
 import { PostgresServer } from "./dataconnect/pgliteServer";
+import { cleanShutdown } from "./controller";
 
 export interface DataConnectEmulatorArgs {
   projectId: string;
@@ -34,6 +35,7 @@ export interface DataConnectEmulatorArgs {
 export interface DataConnectGenerateArgs {
   configDir: string;
   connectorId: string;
+  watch?: boolean;
 }
 
 export interface DataConnectBuildArgs {
@@ -121,7 +123,7 @@ export class DataConnectEmulator implements EmulatorInstance {
               `Postgres threw an unexpected error, shutting down the Data Connect emulator: ${err}`,
             );
           }
-          this.stop();
+          void cleanShutdown();
         });
         this.logger.logLabeled(
           "INFO",
@@ -184,6 +186,9 @@ export class DataConnectEmulator implements EmulatorInstance {
       `--config_dir=${args.configDir}`,
       `--connector_id=${args.connectorId}`,
     ];
+    if (args.watch) {
+      cmd.push("--watch");
+    }
     const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8" });
 
     logger.info(res.stderr);
