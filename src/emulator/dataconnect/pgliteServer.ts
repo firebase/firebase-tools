@@ -43,8 +43,8 @@ export class PostgresServer {
         async onAuthenticated() {
           // Every time we see a new authentication exchange, we need to throw away previously prepared statements -
           // Clients may not know of these statements, and may attempt to reuse the same name.
-          await db.query("DEALLOCATE ALL")
-        }
+          await db.query("DEALLOCATE ALL");
+        },
       });
 
       const extendedQueryPatch: PGliteExtendedQueryPatch = new PGliteExtendedQueryPatch(connection);
@@ -52,9 +52,9 @@ export class PostgresServer {
       socket.on("end", () => {
         logger.debug("Postgres client disconnected");
       });
-      socket.on("error", (err)=> {
+      socket.on("error", (err) => {
         server.emit("error", err);
-      })
+      });
     });
     const listeningPromise = new Promise<void>((resolve) => {
       server.listen(port, host, () => {
@@ -128,7 +128,7 @@ export class PGliteExtendedQueryPatch {
       }
       // Filter out incorrect `ReadyForQuery` messages during the extended query protocol
       if (this.isExtendedQuery && message[0] === BackendMessageCode.ReadyForQuery) {
-        logger.debug('Filtered out a ReadyForQuery.')
+        logger.debug("Filtered out a ReadyForQuery.");
         continue;
       }
       yield message;
