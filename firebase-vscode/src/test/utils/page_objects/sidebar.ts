@@ -1,5 +1,5 @@
 import { Workbench } from "wdio-vscode-service";
-import { findWebviewWithTitle, runInFrame } from "../webviews";
+import { runWebviewWithTitle, runInFrame } from "../webviews";
 import * as vscode from "vscode";
 
 export class FirebaseSidebar {
@@ -8,7 +8,7 @@ export class FirebaseSidebar {
   async open() {
     await browser.executeWorkbench((vs: typeof vscode) => {
       return vs.commands.executeCommand(
-        "firebase.dataConnect.explorerView.focus"
+        "firebase.dataConnect.explorerView.focus",
       );
     });
   }
@@ -46,14 +46,12 @@ export class FirebaseSidebar {
   }
 
   /** Runs the callback in the context of the Firebase view, within the sidebar */
-  async runInFirebaseViewContext<R>(
-    cb: (firebase: FirebaseView) => Promise<R>
-  ): Promise<R> {
-    const [a, b] = await findWebviewWithTitle("Config");
-
-    return runInFrame(a, () =>
-      runInFrame(b, () => cb(new FirebaseView(this.workbench)))
-    );
+  async runInFirebaseViewContext(
+    cb: (firebase: FirebaseView) => Promise<void>,
+  ): Promise<void> {
+    await runWebviewWithTitle("Config", async () => {
+      await cb(new FirebaseView(this.workbench));
+    });
   }
 }
 
@@ -66,5 +64,9 @@ export class FirebaseView {
 
   get connectProjectLinkElement() {
     return $("vscode-link=Connect a Firebase project");
+  }
+
+  get openFolderElement() {
+    return $("vscode-button=Open folder");
   }
 }

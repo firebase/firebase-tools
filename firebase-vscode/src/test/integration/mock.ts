@@ -11,27 +11,36 @@ export async function e2eSpy(key: string): Promise<void> {
 }
 
 export function getE2eSpyCalls(
-  key: "deploy"
+  key: "deploy",
 ): Promise<Array<Parameters<typeof cliDeploy>>>;
+export function getE2eSpyCalls(key: "executeCommand"): Promise<Array<[string]>>;
 export async function getE2eSpyCalls(key: string): Promise<Array<Array<any>>> {
   return callBrowserSpyCommand(
     key,
     // We don't mock anything, just read the call list.
-    { spy: undefined }
+    { spy: undefined },
   );
 }
 
 async function callBrowserSpyCommand(
   key: string,
-  args: { spy: boolean | undefined }
+  args: { spy: boolean | undefined },
 ): Promise<Array<Array<any>>> {
   const result = await browser.executeWorkbench(
     (vs: typeof vscode, key, args) => {
       return vs.commands.executeCommand(key, args);
     },
     `fdc-graphql.spy.${key}`,
-    args
+    args,
   );
 
   return result as Array<Array<any>>;
+}
+
+export async function spyCommands() {
+  await e2eSpy("executeCommand");
+}
+
+export async function getCommandsSpyCalls() {
+  return getE2eSpyCalls("executeCommand");
 }

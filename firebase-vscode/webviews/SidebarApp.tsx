@@ -62,6 +62,13 @@ export function SidebarApp() {
         >
           Run firebase init
         </VSCodeButton>
+        <Spacer size="small"></Spacer>
+        <VSCodeButton
+          appearance="secondary"
+          onClick={() => broker.send("openFolder")}
+        >
+          Open folder
+        </VSCodeButton>
       </>
     );
   }
@@ -104,10 +111,7 @@ function SidebarContent(props: {
   }, []);
 
   const accountSection = (
-    <AccountSection
-      user={user}
-      isMonospace={env?.isMonospace}
-    />
+    <AccountSection user={user} isMonospace={env?.isMonospace} />
   );
 
   return (
