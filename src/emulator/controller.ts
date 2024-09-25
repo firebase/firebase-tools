@@ -120,6 +120,11 @@ export function filterEmulatorTargets(options: { only: string; config: any }): E
     return options.config.has(e) || options.config.has(`emulators.${e}`);
   });
 
+  // Extensions may not be initialized but we can have SDK defined extensions
+  if (targets.includes(Emulators.FUNCTIONS) && !targets.includes(Emulators.EXTENSIONS)) {
+    targets.push(Emulators.EXTENSIONS);
+  }
+
   const onlyOptions: string = options.only;
   if (onlyOptions) {
     const only = onlyOptions.split(",").map((o) => {
@@ -352,6 +357,7 @@ export async function startAll(
       : await needProjectNumber(options);
     const aliases = getAliases(options, projectId);
     extensionEmulator = new ExtensionsEmulator({
+      options,
       projectId,
       projectDir: options.config.projectDir,
       projectNumber,
@@ -359,10 +365,8 @@ export async function startAll(
       extensions: options.config.get("extensions"),
     });
     const extensionsBackends = await extensionEmulator.getExtensionBackends();
-    const filteredExtensionsBackends = extensionEmulator.filterUnemulatedTriggers(
-      options,
-      extensionsBackends,
-    );
+    const filteredExtensionsBackends =
+      extensionEmulator.filterUnemulatedTriggers(extensionsBackends);
     emulatableBackends.push(...filteredExtensionsBackends);
     trackGA4("extensions_emulated", {
       number_of_extensions_emulated: filteredExtensionsBackends.length,
@@ -594,6 +598,7 @@ export async function startAll(
       debugPort: inspectFunctions,
       verbosity: options.logVerbosity,
       projectAlias: options.projectAlias,
+      extensionsEmulator: extensionEmulator,
     });
     await startEmulator(functionsEmulator);
 
