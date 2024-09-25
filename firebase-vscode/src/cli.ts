@@ -21,6 +21,7 @@ import {
 } from "../../src/emulator/types";
 import { currentUser } from "./core/user";
 import { currentProjectId } from "./core/project";
+import { updateFirebaseRCProject } from "./core/config";
 export { Emulators };
 /**
  * Wrap the CLI's requireAuth() which is normally run before every command
@@ -79,7 +80,9 @@ export async function requireAuthWrapper(
     // - we are calling CLI code that skips Command (where we normally call this)
     currentOptions.value = optsCopy;
     if (optsCopy.projectId) {
-      currentProjectId.value = optsCopy.projectId;
+      updateFirebaseRCProject({
+        projectAlias: { alias: "default", projectId: optsCopy.projectId },
+      });
     }
     setAccessToken(await getAccessToken());
     if (userEmail) {
