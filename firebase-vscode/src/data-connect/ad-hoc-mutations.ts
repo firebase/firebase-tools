@@ -1,12 +1,17 @@
 import vscode, { Disposable, TelemetryLogger } from "vscode";
 import {
   DocumentNode,
-  GraphQLInputObjectType,
-  GraphQLScalarType,
+  GraphQLInputField,
   Kind,
+  ObjectFieldNode,
   ObjectTypeDefinitionNode,
+  OperationDefinitionNode,
+  OperationTypeNode,
+  ValueNode,
   buildClientSchema,
-  buildSchema,
+  getNamedType,
+  isInputObjectType,
+  print,
 } from "graphql";
 import { checkIfFileExists, upsertFile } from "./file-utils";
 import { DataConnectService } from "./service";
@@ -135,9 +140,18 @@ query {
     // generate content for the file
     const preamble =
       "# This is a file for you to write an un-named mutation. \n# Only one un-named mutation is allowed per file.";
-    const adhocMutation = await generateMutation(ast);
-    const content = [preamble, adhocMutation].join("\n");
+    const introspect = (await dataConnectService.introspect())?.data;
+    const schema = buildClientSchema(introspect!);
+    const dataType = schema.getType(`${ast.name.value}_Data`);
+    if (!isInputObjectType(dataType)) return;
 
+    const adhocMutation = print(
+      await makeAdHocMutation(
+        Object.values(dataType.getFields()),
+        ast.name.value,
+      ),
+    );
+    const content = [preamble, adhocMutation].join("\n");
     const basePath = vscode.workspace.rootPath + "/dataconnect/";
     const filePath = vscode.Uri.file(`${basePath}${ast.name.value}_insert.gql`);
     const doesFileExist = await checkIfFileExists(filePath);
@@ -162,46 +176,79 @@ query {
     }
   }
 
-  async function generateMutation(
-    ast: ObjectTypeDefinitionNode,
-  ): Promise<string> {
-    const introspect = (await dataConnectService.introspect())?.data;
-    const schema = buildClientSchema(introspect!);
+  function makeAdHocMutation(
+    fields: GraphQLInputField[],
+    singularName: string,
+  ): OperationDefinitionNode {
+    const argumentFields: ObjectFieldNode[] = [];
 
-    const name = ast.name.value;
-    const lowerCaseName =
-      ast.name.value.charAt(0).toLowerCase() + ast.name.value.slice(1);
-    const dataName = `${name}_Data`;
-    const mutationDataType: GraphQLInputObjectType = schema.getTypeMap()[
-      dataName
-    ] as GraphQLInputObjectType;
+    for (const field of fields) {
+      const type = getNamedType(field.type);
+      const defaultValue = getDefaultScalarValue(type.name);
+      if (!defaultValue) continue;
 
-    // build mutation as string
-    const functionSpacing = "\t";
-    const fieldSpacing = "\t\t";
-    const mutation = [];
-    mutation.push("mutation {"); // mutation header
-    mutation.push(`${functionSpacing}${lowerCaseName}_insert(data: {`);
-    for (const [fieldName, field] of Object.entries(
-      mutationDataType.getFields(),
-    )) {
-      // necessary to avoid type error
-      const fieldtype: any = field.type;
-      // use all argument types that are of scalar, except x_expr
-      if (
-        isDataConnectScalarType(fieldtype.name) &&
-        !field.name.includes("_expr")
-      ) {
-        const defaultValue = (defaultScalarValues as any)[fieldtype.name] || "";
-        mutation.push(
-          `${fieldSpacing}${fieldName}: ${defaultValue} # ${fieldtype.name}`,
-        ); // field name + temp value + comment
-      }
+      argumentFields.push({
+        kind: Kind.OBJECT_FIELD,
+        name: { kind: Kind.NAME, value: field.name },
+        value: defaultValue,
+      });
     }
-    mutation.push(`${functionSpacing}})`, "}"); // closing braces/paren
-    return mutation.join("\n");
+
+    return {
+      kind: Kind.OPERATION_DEFINITION,
+      operation: OperationTypeNode.MUTATION,
+      name: { kind: Kind.NAME, value: singularName },
+      selectionSet: {
+        kind: Kind.SELECTION_SET,
+        selections: [
+          {
+            kind: Kind.FIELD,
+            name: { kind: Kind.NAME, value: `${singularName}_insert` },
+            arguments: [
+              {
+                kind: Kind.ARGUMENT,
+                name: { kind: Kind.NAME, value: "data" },
+                value: {
+                  kind: Kind.OBJECT,
+                  fields: argumentFields,
+                },
+              },
+            ],
+          },
+        ],
+      },
+    };
   }
 
+  function getDefaultScalarValue(type: string): ValueNode | undefined {
+    switch (type) {
+      case "Any":
+        return { kind: Kind.OBJECT, fields: [] };
+      case "Boolean":
+        return { kind: Kind.BOOLEAN, value: false };
+      case "Date":
+        return {
+          kind: Kind.STRING,
+          value: new Date().toISOString().substring(0, 10),
+        };
+      case "Float":
+        return { kind: Kind.FLOAT, value: "0" };
+      case "Int":
+        return { kind: Kind.INT, value: "0" };
+      case "Int64":
+        return { kind: Kind.INT, value: "0" };
+      case "String":
+        return { kind: Kind.STRING, value: "" };
+      case "Timestamp":
+        return { kind: Kind.STRING, value: new Date().toISOString() };
+      case "UUID":
+        return { kind: Kind.STRING, value: "" };
+      case "Vector":
+        return { kind: Kind.LIST, values: [] };
+      default:
+        return undefined;
+    }
+  }
   return Disposable.from(
     vscode.commands.registerCommand(
       "firebase.dataConnect.schemaAddData",

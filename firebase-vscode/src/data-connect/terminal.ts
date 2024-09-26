@@ -43,7 +43,7 @@ export function runTerminalTask(
           resolve(`Successfully executed ${taskName} with command: ${command}`);
         } else {
           reject(
-            new Error(`Failed to execute ${taskName} with command: ${command}`),
+            new Error(`Exit code: ${e.exitCode}. Failed to execute ${taskName} with command: ${command}`),
           );
         }
       }
