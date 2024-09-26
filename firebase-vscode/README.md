@@ -1,6 +1,6 @@
-# Firebase Extension
+# Firebase Data Connect for VSCode
 
-VSCode extension for Firebase. The Firebase Extension currently supports the Data Connect product.
+The Firebase Data Connect extension provides a suite of tools aimed to assist developers learn, develop, and deploy Data Connect.
 
 ## Data Connect features
 
