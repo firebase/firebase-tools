@@ -60,9 +60,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   dataconnect:
     process.platform === "darwin"
       ? {
-          version: "1.3.9-dart2",
-          expectedSize: 34890656,
-          expectedChecksum: "072fb37724e15555141e02bdd4c4227d",
+          version: "1.3.9-dart3",
+          expectedSize: 34931616,
+          expectedChecksum: "fa1a02bdfbcd29c6f9081dc55934d506",
         }
       : process.platform === "win32"
         ? {
@@ -71,9 +71,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
             expectedChecksum: "067fe58e401af23fd49b5cbc01a015d0",
           }
         : {
-            version: "1.3.9-dart2",
-            expectedSize: 34848922,
-            expectedChecksum: "fc66f968cea0100959fb4d4a1cd6b7d0",
+            version: "1.3.9-dart3",
+            expectedSize: 34889882,
+            expectedChecksum: "12535ae52db8b30fa422a0e61a762bf9",
           },
 };
 
