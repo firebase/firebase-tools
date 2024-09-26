@@ -95,24 +95,25 @@ const MANAGE_INSTALLATION_CHOICE = "@MANAGE_INSTALLATION";
 export async function createGitHubConnection(
   projectId: string,
   location: string,
-  connectionId: string|null,
+  connectionId: string | null,
 ): Promise<devConnect.Connection> {
   utils.logBullet(clc.bold(`${clc.yellow("===")} Import a GitHub repository`));
 
   if (connectionId) {
     // Check if the connection already exists.
     try {
-      utils.logBullet(clc.bold(`${clc.yellow("===")} Check if connection ${connectionId} already exists`));
+      utils.logBullet(
+        clc.bold(`${clc.yellow("===")} Check if connection ${connectionId} already exists`),
+      );
 
-      const connection = await devConnect.getConnection( projectId, location, connectionId)
+      const connection = await devConnect.getConnection(projectId, location, connectionId);
       utils.logBullet(`Reusing existing connection ${connectionId}`);
-      return connection
-    }
-    catch (e) {
+      return connection;
+    } catch (e) {
       // Expected, the connection doesn't exist.
     }
   } else {
-    connectionId = generateConnectionId()
+    connectionId = generateConnectionId();
   }
 
   // Fetch the sentinel Oauth connection first which is needed to create further GitHub connections.
@@ -136,14 +137,14 @@ export async function createGitHubConnection(
   }
 
   const connection = await createFullyInstalledConnection(
-      projectId,
-      location,
-      connectionId,
-      oauthConn,
-      installationId,
-    );
+    projectId,
+    location,
+    connectionId,
+    oauthConn,
+    installationId,
+  );
 
-    return connection
+  return connection;
 }
 
 /**
@@ -152,12 +153,12 @@ export async function createGitHubConnection(
 export async function linkGitHubRepository(
   projectId: string,
   location: string,
-  createConnectionId: string|null,
+  createConnectionId: string | null,
 ): Promise<devConnect.GitRepositoryLink> {
   const connectionMatchingInstallation = await createGitHubConnection(
     projectId,
     location,
-    createConnectionId
+    createConnectionId,
   );
 
   let repoCloneUri: string | undefined;

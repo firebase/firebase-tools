@@ -186,7 +186,6 @@ export async function doSetup(
   logSuccess(`Your backend is now deployed at:\n\thttps://${backend.uri}`);
 }
 
-
 /**
  * Set up a new App Hosting-type Developer Connect GitRepoLink, optionally with a specific connection ID
  */
@@ -211,14 +210,10 @@ export async function createGitRepoLink(
   }
 
   location =
-    location || (await promptLocation(projectId, "Select a location for your GitRepoLink's connection:\n"));
+    location ||
+    (await promptLocation(projectId, "Select a location for your GitRepoLink's connection:\n"));
 
-
-  await githubConnections.linkGitHubRepository(
-    projectId,
-    location,
-    connectionId,
-  );
+  await githubConnections.linkGitHubRepository(projectId, location, connectionId);
 }
 
 /**
