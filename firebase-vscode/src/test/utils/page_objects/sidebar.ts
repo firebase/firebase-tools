@@ -8,11 +8,6 @@ export class FirebaseSidebar {
 
   async open() {
     await $("a.codicon-mono-firebase").click();
-    // await browser.executeWorkbench((vs: typeof vscode) => {
-    //   return vs.commands.executeCommand(
-    //     "firebase.dataConnect.explorerView.focus",
-    //   );
-    // });
   }
 
   get hostBtn() {
@@ -25,14 +20,6 @@ export class FirebaseSidebar {
 
   get fdcDeployElement() {
     return $("vscode-button=Deploy");
-  }
-
-  async focusFdcExplorer() {
-    await browser.executeWorkbench((vs: typeof vscode) => {
-      return vs.commands.executeCommand(
-        "firebase.dataConnect.explorerView.focus",
-      );
-    });
   }
 
   /** Starts the emulators and waits for the emulators to be started.
@@ -51,10 +38,6 @@ export class FirebaseSidebar {
     });
   }
 
-  get fdcExplorerView() {
-    return $("firebase.dataConnect.explorerView");
-  }
-
   /** Runs the callback in the context of the Firebase view, within the sidebar */
   async runInConfigContext<R>(
     cb: (firebase: ConfigView) => Promise<R>,
@@ -63,17 +46,6 @@ export class FirebaseSidebar {
 
     return runInFrame(a, () =>
       runInFrame(b, () => cb(new ConfigView(this.workbench))),
-    );
-  }
-
-  /** Runs the callback in the context of the Firebase view, within the sidebar */
-  async runInFDCViewContext<R>(
-    cb: (firebase: FDCView) => Promise<R>,
-  ): Promise<R> {
-    const [a, b] = await findWebviewWithTitle("Firebase Data Connect");
-
-    return runInFrame(a, () =>
-      runInFrame(b, () => cb(new FDCView(this.workbench))),
     );
   }
 }
@@ -97,7 +69,56 @@ export class ConfigView {
 export class FDCView {
   constructor(readonly workbench: Workbench) {}
 
-  get startEmulatorBtn() {
-    return $("vscode-button=Connect to Local PostgreSQL");
+  get fdcExplorerView() {
+    return $('div[aria-label="FDC Explorer"] .monaco-list-rows');
+  }
+
+  async focusFdcExplorer() {
+    await browser.executeWorkbench((vs: typeof vscode) => {
+      return vs.commands.executeCommand(
+        "firebase.dataConnect.explorerView.focus",
+      );
+    });
+  }
+
+  async waitForData() {
+    await this.fdcExplorerView.waitForDisplayed();
+  }
+
+  async getQueries() {
+    const explorerView = await this.fdcExplorerView;
+    const query = await explorerView.$(
+      `div.monaco-list-row[aria-label*="query"]`,
+    );
+
+    // Select all the queries
+    await query.waitForDisplayed();
+    await query.click();
+
+    const queries = explorerView.$$(`div.monaco-list-row[aria-level="2"]`);
+    await browser.pause(500);
+
+    // Close the query list
+    await query.click();
+
+    return queries;
+  }
+
+  async getMutations() {
+    const explorerView = await this.fdcExplorerView;
+    const mutation = await explorerView.$(
+      `div.monaco-list-row[aria-label*="mutation"]`,
+    );
+
+    // Select all the queries
+    await mutation.waitForDisplayed();
+    await mutation.click();
+    const mutations = explorerView.$$(`div.monaco-list-row[aria-level="2"]`);
+    await browser.pause(500);
+
+    // Close the mutation list
+    await mutation.click();
+
+    return mutations;
   }
 }
