@@ -9,7 +9,9 @@ describe("developer connect", () => {
   const projectId = "project";
   const location = "us-central1";
   const connectionId = "apphosting-connection";
+  const gitRepoLinkId = "git-repo-link";
   const connectionsRequestPath = `projects/${projectId}/locations/${location}/connections`;
+  const gitRepoLinkPath = `projects/${projectId}/locations/${location}/connections/${connectionId}/gitRepositoryLinks/${gitRepoLinkId}`;
 
   function mockConnection(id: string, createTime: string): devconnect.Connection {
     return {
@@ -181,6 +183,15 @@ describe("developer connect", () => {
           fourthConnection,
           firstConnection,
         ]);
+      });
+    });
+  });
+
+  describe("extractGitRepositoryLinkComponents", () => {
+    it("correctly extracts the connection and git repository link ID", () => {
+      expect(devconnect.extractGitRepositoryLinkComponents(gitRepoLinkPath)).to.deep.equal({
+        connection: "apphosting-connection",
+        gitRepoLink: "git-repo-link",
       });
     });
   });
