@@ -26,7 +26,7 @@ export async function serve(options: any): Promise<string> {
 
   /**
    *  TODO: Should add a timeout here. If the hostUrl cannot be retrieved
-   *  the user is probably using an unsupported framework.
+   *  in a timely manner, user is probably using an unsupported framework.
    * */
 
   const hostUrl = new Promise<string>((resolve, reject) => {
