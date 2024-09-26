@@ -107,16 +107,20 @@ async function askQuestions(setup: Setup): Promise<RequiredInfo> {
   if (setup.projectId) {
     isBillingEnabled ? await ensureApis(setup.projectId) : await ensureSparkApis(setup.projectId);
   }
-
   info = await checkExistingInstances(setup, info, isBillingEnabled);
 
-  const shouldConfigureBackend = isBillingEnabled
-    ? await confirm({
-        message: `Would you like to configure your backend resources now?`,
-        default: false,
-      })
-    : false;
-
+  const requiredConfigUnset =
+    info.serviceId === "" ||
+    info.cloudSqlInstanceId === "" ||
+    info.locationId === "" ||
+    info.cloudSqlDatabase === "";
+  const shouldConfigureBackend =
+    isBillingEnabled && requiredConfigUnset
+      ? await confirm({
+          message: `Would you like to configure your backend resources now?`,
+          default: false,
+        })
+      : false;
   if (shouldConfigureBackend) {
     info = await promptForService(info);
     info = await promptForCloudSQLInstance(setup, info);
@@ -132,14 +136,16 @@ async function askQuestions(setup: Setup): Promise<RequiredInfo> {
       }))
     );
   } else {
+    if (requiredConfigUnset) {
+      logBullet(
+        `Setting placeholder values in dataconnect.yaml. You can edit these before you deploy to specify different IDs or regions.`,
+      );
+    }
     info.serviceId = info.serviceId !== "" ? info.serviceId : basename(process.cwd());
     info.cloudSqlInstanceId =
       info.cloudSqlInstanceId !== "" ? info.cloudSqlInstanceId : `${info.serviceId || "app"}-fdc`;
     info.locationId = info.locationId !== "" ? info.locationId : `us-central1`;
     info.cloudSqlDatabase = info.cloudSqlDatabase !== "" ? info.cloudSqlDatabase : `fdcdb`;
-    logBullet(
-      `Setting placeholder values in dataconnect.yaml. You can edit these before you deploy to specify different IDs or regions.`,
-    );
   }
   return info;
 }
