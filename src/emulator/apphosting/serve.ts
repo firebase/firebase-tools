@@ -2,45 +2,48 @@
  * Start the App Hosting server.
  * @param options the Firebase CLI options.
  */
-import { isIPv4 } from "net";
-import { checkListenable } from "../portUtils";
-import { wrapSpawn } from "../../init/spawn";
-import {discover} from "./utils";
+
+import { spawn } from "cross-spawn";
+import { discoverPackageManager } from "./utils";
 
 /**
  * Spins up a project locally by running the project's dev command.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function start(options: any): Promise<{ port: number }> {
-  let port = options.port;
-  while (!(await availablePort(options.host, port))) {
-    port += 1;
-  }
 
-  serve(options, port);
+export async function start(options: any): Promise<{ hostname: string; port: number }> {
+  const hostUrl = await serve(options);
 
-  return { port };
-}
-
-function availablePort(host: string, port: number): Promise<boolean> {
-  return checkListenable({
-    address: host,
-    port,
-    family: isIPv4(host) ? "IPv4" : "IPv6",
-  });
+  const { hostname, port } = new URL(hostUrl);
+  return { hostname, port: +port };
 }
 
 /**
  * Exported for unit testing
  */
-export async function serve(options: any, port: string) {
-  const { packageManager, framework } = await discover();
+export async function serve(options: any): Promise<string> {
+  const rootDir = process.cwd();
+  const packageManager = await discoverPackageManager(rootDir);
 
-  if (!framework) {
-    console.log(`unable to find framework`)
-    // TODO: Default to standard command that our buildpacks use
-  }
+  /**
+   *  TODO: Should add a timeout here. If the hostUrl cannot be retrieved
+   *  the user is probably using an unsupported framework.
+   * */
 
-  //["run", "dev", "--", "-H", options.host, "-p", port]
-  await wrapSpawn(packageManager, devArgs, process.cwd());
+  const hostUrl = new Promise<string>((resolve, reject) => {
+    const serve = spawn(packageManager, ["run", "dev"], {
+      cwd: rootDir,
+    });
+
+    serve.stdout.on("data", (data: any) => {
+      process.stdout.write(data);
+      const match = data.toString().match(/(http:\/\/.*:\d+)/);
+      if (match) resolve(match[1]);
+    });
+    serve.stderr.on("data", (data: any) => {
+      process.stderr.write(data);
+    });
+    serve.on("exit", reject);
+  });
+
+  return await hostUrl;
 }

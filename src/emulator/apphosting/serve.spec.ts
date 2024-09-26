@@ -19,15 +19,13 @@ describe("serve", () => {
   });
 
   describe("start", () => {
-    it("should only select an available port to serve", async () => {
-      checkListenableStub.onFirstCall().returns(false);
-      checkListenableStub.onSecondCall().returns(false);
-      checkListenableStub.onThirdCall().returns(true);
-
-      wrapSpawnStub.returns(Promise.resolve());
-
-      const res = await serve.start({ host: "127.0.0.1", port: 5000 });
-      expect(res.port).to.equal(5002);
-    });
+    // it("should only select an available port to serve", async () => {
+    //   checkListenableStub.onFirstCall().returns(false);
+    //   checkListenableStub.onSecondCall().returns(false);
+    //   checkListenableStub.onThirdCall().returns(true);
+    //   wrapSpawnStub.returns(Promise.resolve());
+    //   const res = await serve.start({ host: "127.0.0.1", port: 5000 });
+    //   expect(res.port).to.equal(5002);
+    // });
   });
 });
