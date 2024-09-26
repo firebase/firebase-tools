@@ -1,6 +1,7 @@
 import * as path from "path";
 import * as child_process from "child_process";
 import { Notifications } from "./utils/page_objects/editor";
+import type { Options } from "@wdio/types";
 
 export const vscodeConfigs = {
   browserName: "vscode",

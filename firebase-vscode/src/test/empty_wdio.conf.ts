@@ -1,7 +1,6 @@
 import { config as baseConfig } from "./default_wdio.conf";
-import type { Options } from "@wdio/types";
 
-export const config: Options.Testrunner = {
+export const config: WebdriverIO.Config = {
   ...baseConfig,
   specs: ["./integration/empty/**/*.ts"],
   maxInstances: 1,
