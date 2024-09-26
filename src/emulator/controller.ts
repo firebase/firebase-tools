@@ -403,6 +403,14 @@ export async function startAll(
           portFixed: !!wsPortConfig,
         };
       }
+      if (emulator === Emulators.DATACONNECT) {
+        const pglitePortConfig = options.config.src.emulators?.dataconnect?.postgresPort;
+        listenConfig["dataconnect.postgres"] = {
+          host: config.host,
+          port: pglitePortConfig || 5432,
+          portFixed: !!pglitePortConfig,
+        };
+      }
     }
   }
   let listenForEmulator = await resolveHostAndAssignPorts(listenConfig);
@@ -854,8 +862,7 @@ export async function startAll(
       rc: options.rc,
       config: options.config,
       autoconnectToPostgres: true,
-      postgresHost: options.config.get("emulators.dataconnect.postgresHost"),
-      postgresPort: options.config.get("emulators.dataconnect.postgresPort"),
+      postgresListen: listenForEmulator["dataconnect.postgres"],
       enable_output_generated_sdk: true, // TODO: source from arguments
       enable_output_schema_extensions: true,
     });

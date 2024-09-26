@@ -19,6 +19,7 @@ export async function provisionCloudSql(args: {
   locationId: string;
   instanceId: string;
   databaseId: string;
+  configYamlPath: string;
   enableGoogleMlIntegration: boolean;
   waitForCreation: boolean;
   silent?: boolean;
@@ -30,6 +31,7 @@ export async function provisionCloudSql(args: {
     locationId,
     instanceId,
     databaseId,
+    configYamlPath,
     enableGoogleMlIntegration,
     waitForCreation,
     silent,
@@ -68,8 +70,8 @@ export async function provisionCloudSql(args: {
     }
     const freeTrialInstanceId = await checkForFreeTrialInstance(projectId);
     if (freeTrialInstanceId) {
-      printFreeTrialUnavailable(projectId, freeTrialInstanceId);
-      throw new FirebaseError("Free trial unavailable.");
+      printFreeTrialUnavailable(projectId, freeTrialInstanceId, configYamlPath);
+      throw new FirebaseError("Cannot create another no-cost trial Cloud SQL instance.");
     }
     const cta = dryRun ? "It will be created on your next deploy" : "Creating it now.";
     silent ||
@@ -77,7 +79,7 @@ export async function provisionCloudSql(args: {
         "dataconnect",
         `CloudSQL instance '${instanceId}' not found.` +
           cta +
-          `\nThis instance is provided under the terms of the Data Connect free trial ${freeTrialTermsLink()}` +
+          `\nThis instance is provided under the terms of the Data Connect no-cost trial ${freeTrialTermsLink()}` +
           `\nMonitor the progress at ${cloudSqlAdminClient.instanceConsoleLink(projectId, instanceId)}`,
       );
     if (!dryRun) {
