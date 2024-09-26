@@ -13,9 +13,13 @@ import { getSettings } from "./utils/settings";
 import { registerFdc } from "./data-connect";
 import { AuthService } from "./auth/service";
 import { AnalyticsLogger } from "./analytics";
+import { suggestGraphqlSyntaxExtension } from "./data-connect/graphql-syntax-highlighter";
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
+  // Suggest installing the GraphQL syntax highlighter extension
+  await suggestGraphqlSyntaxExtension();
+
   const settings = getSettings();
   logSetup(settings);
   pluginLogger.debug("Activating Firebase extension.");
