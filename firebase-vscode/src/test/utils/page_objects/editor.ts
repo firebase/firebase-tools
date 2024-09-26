@@ -27,6 +27,12 @@ export class EditorView {
     });
   }
 
+  async closeCurrentEditor() {
+    return browser.executeWorkbench(async (vs: typeof vscode) => {
+      await vs.commands.executeCommand("workbench.action.closeActiveEditor");
+    });
+  }
+
   async getActiveEditor() {
     return browser.executeWorkbench(async (vs: typeof vscode) => {
       return vs.window.activeTextEditor;

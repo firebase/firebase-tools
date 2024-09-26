@@ -111,6 +111,8 @@ firebaseTest("GraphQL", async function () {
 }"`);
     expect(editorTitle).toBe("Post_insert.gql");
 
+    await editorView.closeCurrentEditor();
+
     // Verify that inline Read Data button is displayed
     const readDataButton = await editorView.readDataButton;
     await readDataButton.waitForDisplayed();
