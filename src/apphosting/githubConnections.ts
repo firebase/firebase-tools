@@ -90,13 +90,31 @@ const ADD_ACCOUNT_CHOICE = "@ADD_ACCOUNT";
 const MANAGE_INSTALLATION_CHOICE = "@MANAGE_INSTALLATION";
 
 /**
- * Prompts the user to link their backend to a GitHub repository.
+ * Prompts the user to create a GitHub connection.
  */
-export async function linkGitHubRepository(
+export async function createGitHubConnection(
   projectId: string,
   location: string,
-): Promise<devConnect.GitRepositoryLink> {
+  connectionId: string|null,
+): Promise<devConnect.Connection> {
   utils.logBullet(clc.bold(`${clc.yellow("===")} Import a GitHub repository`));
+
+  if (connectionId) {
+    // Check if the connection already exists.
+    try {
+      utils.logBullet(clc.bold(`${clc.yellow("===")} Check if connection ${connectionId} already exists`));
+
+      const connection = await devConnect.getConnection( projectId, location, connectionId)
+      utils.logBullet(`Reusing existing connection ${connectionId}`);
+      return connection
+    }
+    catch (e) {
+      // Expected, the connection doesn't exist.
+    }
+  } else {
+    connectionId = generateConnectionId()
+  }
+
   // Fetch the sentinel Oauth connection first which is needed to create further GitHub connections.
   const oauthConn = await getOrCreateOauthConnection(projectId, location);
   let installationId = await promptGitHubInstallation(projectId, location, oauthConn);
@@ -117,21 +135,30 @@ export async function linkGitHubRepository(
     installationId = await promptGitHubInstallation(projectId, location, oauthConn);
   }
 
-  let connectionMatchingInstallation = await getConnectionForInstallation(
-    projectId,
-    location,
-    installationId,
-  );
-
-  if (!connectionMatchingInstallation) {
-    connectionMatchingInstallation = await createFullyInstalledConnection(
+  const connection = await createFullyInstalledConnection(
       projectId,
       location,
-      generateConnectionId(),
+      connectionId,
       oauthConn,
       installationId,
     );
-  }
+
+    return connection
+}
+
+/**
+ * Prompts the user to link their backend to a GitHub repository.
+ */
+export async function linkGitHubRepository(
+  projectId: string,
+  location: string,
+  createConnectionId: string|null,
+): Promise<devConnect.GitRepositoryLink> {
+  const connectionMatchingInstallation = await createGitHubConnection(
+    projectId,
+    location,
+    createConnectionId
+  );
 
   let repoCloneUri: string | undefined;
 
