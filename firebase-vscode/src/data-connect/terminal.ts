@@ -4,6 +4,7 @@ import vscode, { Disposable } from "vscode";
 import { checkLogin } from "../core/user";
 import { DATA_CONNECT_EVENT_NAME } from "../analytics";
 import { getSettings } from "../utils/settings";
+import { currentProjectId } from "../core/project";
 
 const environmentVariables: Record<string, string> = {};
 
@@ -26,7 +27,7 @@ export function runCommand(command: string) {
   // TODO: This fails if the interactive shell is not expecting a command, such
   // as when oh-my-zsh asking for (Y/n) to updates during startup.
   // Consider using an non-interactive shell.
-  terminal.sendText(command);
+  terminal.sendText(`${command} -P ${currentProjectId.value}`);
 }
 
 export function runTerminalTask(
@@ -81,7 +82,7 @@ export function registerTerminalTasks(
     // TODO: optional debug mode
     runTerminalTask(
       "firebase emulators",
-      `${settings.firebasePath} emulators:start`,
+      `${settings.firebasePath} emulators:start -P ${currentProjectId.value}`,
     );
   });
 
