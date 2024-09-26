@@ -18,7 +18,7 @@ export class AppHostingEmulator implements EmulatorInstance {
   async start(): Promise<void> {
     this.logger.logLabeled("INFO", Emulators.APPHOSTING, "starting apphosting emulator");
 
-    const { hostname, port } = await apphostingStart(this.args.options);
+    const { hostname, port } = await apphostingStart();
     this.args.options.host = hostname;
     this.args.options.port = port;
   }

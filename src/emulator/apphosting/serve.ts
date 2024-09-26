@@ -10,8 +10,8 @@ import { discoverPackageManager } from "./utils";
  * Spins up a project locally by running the project's dev command.
  */
 
-export async function start(options: any): Promise<{ hostname: string; port: number }> {
-  const hostUrl = await serve(options);
+export async function start(): Promise<{ hostname: string; port: number }> {
+  const hostUrl = await serve();
 
   const { hostname, port } = new URL(hostUrl);
   return { hostname, port: +port };
@@ -20,7 +20,7 @@ export async function start(options: any): Promise<{ hostname: string; port: num
 /**
  * Exported for unit testing
  */
-export async function serve(options: any): Promise<string> {
+export async function serve(): Promise<string> {
   const rootDir = process.cwd();
   const packageManager = await discoverPackageManager(rootDir);
 
@@ -36,8 +36,8 @@ export async function serve(options: any): Promise<string> {
 
     serve.stdout.on("data", (data: any) => {
       process.stdout.write(data);
-      const match = data.toString().match(/(http:\/\/.*:\d+)/);
-      if (match) resolve(match[1]);
+      const url = getHostUrlFromString(data.toString());
+      if (url) resolve(url);
     });
     serve.stderr.on("data", (data: any) => {
       process.stderr.write(data);
@@ -46,4 +46,14 @@ export async function serve(options: any): Promise<string> {
   });
 
   return await hostUrl;
+}
+
+/**
+ * Exported for unit testing
+ */
+export function getHostUrlFromString(data: string): string | undefined {
+  const match = data.match(/(http:\/\/.*:\d+)/);
+  if (match) {
+    return match[1];
+  }
 }
