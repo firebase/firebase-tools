@@ -267,15 +267,16 @@ async function checkExistingInstances(
     }),
   );
   if (existingServicesAndSchemas.length) {
-    const choices: { name: string; value: any }[] = existingServicesAndSchemas.map((s) => {
-      const serviceName = parseServiceName(s.service.name);
-      return {
-        name: `${serviceName.location}/${serviceName.serviceId}`,
-        value: s,
-      };
-    });
+    const choices: { name: string; value: { service: Service; schema?: Schema } | undefined }[] =
+      existingServicesAndSchemas.map((s) => {
+        const serviceName = parseServiceName(s.service.name);
+        return {
+          name: `${serviceName.location}/${serviceName.serviceId}`,
+          value: s,
+        };
+      });
     choices.push({ name: "Create a new service", value: undefined });
-    const choice: { service: Service; schema: Schema } = await promptOnce({
+    const choice: { service: Service; schema?: Schema } | undefined = await promptOnce({
       message:
         "Your project already has existing services. Which would you like to set up local files for?",
       type: "list",
