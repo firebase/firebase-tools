@@ -8,7 +8,6 @@ import { checkListenable } from "../portUtils";
 import { discoverPackageManager } from "./utils";
 import { DEFAULT_HOST, DEFAULT_PORTS } from "../constants";
 import { wrapSpawn } from "../../init/spawn";
-import { discover } from "./utils";
 
 /**
  * Spins up a project locally by running the project's dev command.
