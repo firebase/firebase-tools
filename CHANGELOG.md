@@ -1,4 +1,3 @@
 - Switched Data Connect emulator to use an in memory PGLite database instead of requiring a separate Postgres installation. Deprecated 'dataconnectEmulator`in`.firebaserc`.
-- Released version 1.4.0 of the Data Connect emulator, which includes SDK support for `Any` scalar type and `OrderDirection`, support for `first` to lookup operations, and breaking changes for iOS generated SDKs. PLease see documentation for more details.
+- Released version 1.4.1 of the Data Connect emulator, which includes SDK support for `Any` scalar type and `OrderDirection`, support for `first` to lookup operations, and breaking changes for iOS generated SDKs. PLease see documentation for more details (#7744).
 - Revert the minimum Functions SDK version and add logging for extensions features using v5.1.0 (#7731).
-- Release Data Connect Emulator v1.4.1 (#7744).
