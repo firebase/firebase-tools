@@ -16,6 +16,7 @@ import { parseServiceName } from "../../dataconnect/names";
 import { FirebaseError } from "../../error";
 import { requiresVector } from "../../dataconnect/types";
 import { diffSchema } from "../../dataconnect/schemaMigration";
+import { join } from "node:path";
 
 /**
  * Prepares for a Firebase DataConnect deployment by loading schemas and connectors from file.
@@ -86,6 +87,7 @@ export default async function (context: any, options: DeployOptions): Promise<vo
               locationId: parseServiceName(s.serviceName).location,
               instanceId,
               databaseId,
+              configYamlPath: join(s.sourceDirectory, "dataconnect.yaml"),
               enableGoogleMlIntegration,
               waitForCreation: true,
               dryRun: options.dryRun,
