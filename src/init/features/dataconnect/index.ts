@@ -137,6 +137,7 @@ export async function actuate(setup: Setup, config: Config, info: RequiredInfo) 
       locationId: info.locationId,
       instanceId: info.cloudSqlInstanceId,
       databaseId: info.cloudSqlDatabase,
+      configYamlPath: join(config.get("dataconnect.source"), "dataconnect.yaml"),
       enableGoogleMlIntegration: false,
       waitForCreation: false,
     });
