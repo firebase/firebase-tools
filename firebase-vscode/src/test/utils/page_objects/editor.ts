@@ -17,7 +17,6 @@ export class EditorView {
   async openFile(path: string) {
     return browser.executeWorkbench(async (vs: typeof vscode, path) => {
       const doc = await vs.workspace.openTextDocument(path);
-
       return vs.window.showTextDocument(doc, 1, false);
     }, path);
   }
@@ -26,6 +25,17 @@ export class EditorView {
     return browser.executeWorkbench(async (vs: typeof vscode) => {
       await vs.commands.executeCommand("workbench.action.closeAllEditors");
     });
+  }
+
+  async getActiveEditor() {
+    return browser.executeWorkbench(async (vs: typeof vscode) => {
+      return vs.window.activeTextEditor;
+    });
+  }
+
+  async activeEditorContent() {
+    const editorContentElement = await browser.$(".view-lines");
+    return editorContentElement.getText();
   }
 
   /**
@@ -58,6 +68,14 @@ export class EditorView {
     );
 
     return diagnostics;
+  }
+
+  get addDataButton() {
+    return $('a[title="Generate a mutation to add data of this type"]');
+  }
+
+  get readDataButton() {
+    return $('a[title="Generate a query to read data of this type"]');
   }
 }
 

@@ -33,7 +33,7 @@ addTearDown(() => {
 });
 
 firebaseTest("GraphQL", async function () {
-  it("queries file with sytntax error should show the error", async function () {
+  it("GraphQL queries file with sytntax error should show the error", async function () {
     const workbench = await browser.getWorkbench();
 
     const editorView = new EditorView(workbench);
@@ -70,13 +70,68 @@ firebaseTest("GraphQL", async function () {
     expect(mutations.length).toBe(4);
   });
 
-  it("schema file should allow adding data", async function () {
-    // TODO
-    return;
-  });
+  it("GraphQL schema file should allow adding/reading data", async function () {
+    const workbench = await browser.getWorkbench();
 
-  it("schema file should allow reading data", async function () {
-    // TODO
-    return;
+    const schemaFilePath = path.join(
+      __dirname,
+      "..",
+      "..",
+      "test_projects",
+      "fishfood",
+      "dataconnect",
+      "schema",
+      "schema.gql",
+    );
+
+    // Open the schema file
+    const editorView = new EditorView(workbench);
+    await editorView.openFile(schemaFilePath);
+
+    // Verify that inline Add Data button is displayed
+    const addDataButton = await editorView.addDataButton;
+    await addDataButton.waitForDisplayed();
+
+    // Click the Add Data button
+    await addDataButton.click();
+
+    // Wait a bit for the mutation to be generated
+    await browser.pause(1000);
+
+    // Verify the generated mutation
+    const activeEditor = await editorView.getActiveEditor();
+    const editorTitle = activeEditor?.document.fileName.split("/").pop();
+    const editorContent = await editorView.activeEditorContent();
+
+    expect(editorContent).toHaveText(`mutation {
+    post_insert(data: {
+        id: "" # String
+        content: "" # String
+    })
+}"`);
+    expect(editorTitle).toBe("Post_insert.gql");
+
+    // Verify that inline Read Data button is displayed
+    const readDataButton = await editorView.readDataButton;
+    await readDataButton.waitForDisplayed();
+
+    // Click the Read Data button
+    await readDataButton.click();
+
+    // Wait a bit for the query to be generated
+    await browser.pause(1000);
+
+    // Verify the generated query
+    const activeEditor2 = await editorView.getActiveEditor();
+    const editorTitle2 = activeEditor2?.document.fileName.split("/").pop();
+    const editorContent2 = await editorView.activeEditorContent();
+
+    expect(editorContent2).toHaveText(`query {
+  posts{
+    id
+    content
+  }
+}`);
+    expect(editorTitle2).toBe("Post_read.gql");
   });
 });
