@@ -1,7 +1,10 @@
 ## NEXT
 
-- Update logo and title
-- Revamped Sidebar UI
+- [Added] UI overhaul.
+- [Added] Added View Docs button to see generated documentation for your schema and connectors.
+- [Fixed] Improved detection for emulator start up and shut down.
+- [Fixed] Improved error handling for variables pane.
+- [Added] Added Firebase path setting, to control which Firebase dbinary is used when executing commands.
 
 ## 0.9.1
 
