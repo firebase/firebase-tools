@@ -1,6 +1,4 @@
-# This file is used to test the codelens error through the extension,
-# it contains a syntax error in the query.
-query getPost(id: String!) @auth(level: PUBLIC) {
+query getPost($id: String!) @auth(level: PUBLIC) {
   post(id: $id) {
     content
     comments: comments_on_post {
