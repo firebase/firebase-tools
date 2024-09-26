@@ -3,7 +3,7 @@ import { Uri } from "vscode";
 import { firstWhere, firstWhereDefined } from "../utils/signal";
 import { currentOptions } from "../options";
 import { dataConnectConfigs, ResolvedConnectorYaml } from "./config";
-import { runCommand } from "./terminal";
+import { runCommand, setTerminalEnvVars } from "./terminal";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { DATA_CONNECT_EVENT_NAME } from "../analytics";
 import {
@@ -14,16 +14,23 @@ import { ConnectorYaml, Platform } from "../../../src/dataconnect/types";
 import * as yaml from "yaml";
 import * as fs from "fs-extra";
 import { getSettings } from "../utils/settings";
+import { FDC_APP_FOLDER } from "../../../src/init/features/dataconnect/sdk";
+
 export function registerFdcSdkGeneration(
   broker: ExtensionBrokerImpl,
   telemetryLogger: vscode.TelemetryLogger,
 ): vscode.Disposable {
   const settings = getSettings();
 
-  const initSdkCmd = vscode.commands.registerCommand("fdc.init-sdk", () => {
-    telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.INIT_SDK_CLI);
-    runCommand(`${settings.firebasePath} init dataconnect:sdk`);
-  });
+  const initSdkCmd = vscode.commands.registerCommand(
+    "fdc.init-sdk",
+    (args: { appFolder: string }) => {
+      telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.INIT_SDK_CLI);
+      // Lets do it from the right directory
+      setTerminalEnvVars(FDC_APP_FOLDER, args.appFolder);
+      runCommand(`${settings.firebasePath} init dataconnect:sdk`);
+    },
+  );
 
   // codelense from inside connector.yaml file
   const configureSDKCodelense = vscode.commands.registerCommand(
@@ -63,9 +70,8 @@ export function registerFdcSdkGeneration(
           ? connectorIds[0]
           : await pickConnector(connectorIds);
       if (pickedConnectorId) {
-        const connectorConfig = serviceConfig?.findConnectorById(
-          pickedConnectorId,
-        );
+        const connectorConfig =
+          serviceConfig?.findConnectorById(pickedConnectorId);
         if (connectorConfig) {
           await openAndWriteYaml(connectorConfig);
         }
@@ -142,7 +148,7 @@ export function registerFdcSdkGeneration(
       vscode.window.showErrorMessage(
         "Could not determine platform for specified app folder. Configuring from command line.",
       );
-      vscode.commands.executeCommand("fdc.init-sdk");
+      vscode.commands.executeCommand("fdc.init-sdk", { appFolder });
     } else {
       // generate yaml
       const newConnectorYaml = generateSdkYaml(
@@ -183,7 +189,7 @@ async function pickService(serviceIds: string[]): Promise<string | undefined> {
     });
   });
 
-  const picked = await vscode.window.showQuickPick<{label: string}>(options, {
+  const picked = await vscode.window.showQuickPick<{ label: string }>(options, {
     title: "Select service",
     canPickMany: false,
   });
@@ -206,10 +212,13 @@ async function pickConnector(
     });
   });
 
-  const picked = await vscode.window.showQuickPick<{label: string}>(options as any, {
-    title: `Select connector to generate SDK for.`,
-    canPickMany: false,
-  });
+  const picked = await vscode.window.showQuickPick<{ label: string }>(
+    options as any,
+    {
+      title: `Select connector to generate SDK for.`,
+      canPickMany: false,
+    },
+  );
 
   return picked?.label;
 }

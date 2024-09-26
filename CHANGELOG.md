@@ -1,0 +1,2 @@
+- Released version 1.4.0 of the Data Connect emulator, which includes SDK support for `Any` scalar type and `OrderDirection`, support for `first` to lookup operations, and breaking changes for iOS generated SDKs. PLease see documentation for more details.
+- Revert the minimum Functions SDK version and add logging for extensions features using v5.1.0 (#7731).

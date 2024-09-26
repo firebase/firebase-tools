@@ -9,7 +9,12 @@ import fetch from "node-fetch";
 import { FirebaseError } from "../../../../error";
 import { getRuntimeChoice } from "./parseRuntimeAndValidateSDK";
 import { logger } from "../../../../logger";
-import { logLabeledSuccess, logLabeledWarning, randomInt } from "../../../../utils";
+import {
+  logLabeledBullet,
+  logLabeledSuccess,
+  logLabeledWarning,
+  randomInt,
+} from "../../../../utils";
 import * as backend from "../../backend";
 import * as build from "../../build";
 import * as discovery from "../discovery";
@@ -20,7 +25,11 @@ import * as versioning from "./versioning";
 import * as parseTriggers from "./parseTriggers";
 import { fileExistsSync } from "../../../../fsutils";
 
-const MIN_FUNCTIONS_SDK_VERSION = "5.1.0";
+// The versions of the Firebase Functions SDK that added support for the container contract.
+const MIN_FUNCTIONS_SDK_VERSION = "3.20.0";
+
+// The version of the Firebase Functions SDK that added support for the extensions annotation in the container contract.
+const MIN_FUNCTIONS_SDK_VERSION_FOR_EXTENSIONS_FEATURES = "5.1.0";
 
 /**
  *
@@ -259,6 +268,15 @@ export class Delegate {
           `Please update firebase-functions SDK to >=${MIN_FUNCTIONS_SDK_VERSION}`,
       );
       return parseTriggers.discoverBuild(this.projectId, this.sourceDir, this.runtime, config, env);
+    }
+    // Perform a check for the minimum SDK version that added annotation support for the `Build.extensions` property
+    // and log to the user explaining why they need to upgrade their version.
+    if (semver.lt(this.sdkVersion, MIN_FUNCTIONS_SDK_VERSION_FOR_EXTENSIONS_FEATURES)) {
+      logLabeledBullet(
+        "functions",
+        `You are using a version of firebase-functions SDK (${this.sdkVersion}) that does not have support for the newest Firebase Extensions features. ` +
+          `Please update firebase-functions SDK to >=${MIN_FUNCTIONS_SDK_VERSION_FOR_EXTENSIONS_FEATURES} to use them correctly`,
+      );
     }
     let discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
     if (!discovered) {
