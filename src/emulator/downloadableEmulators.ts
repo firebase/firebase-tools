@@ -33,7 +33,7 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
     version: "4.11.2",
     expectedSize: 34495935,
     expectedChecksum: "2fd771101c0e1f7898c04c9204f2ce63",
-  },
+},
   firestore: {
     version: "1.19.8",
     expectedSize: 63634791,
@@ -60,9 +60,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   dataconnect:
     process.platform === "darwin"
       ? {
-          version: "1.3.9-dart4",
+          version: "1.3.9-dart5",
           expectedSize: 34931616,
-          expectedChecksum: "f576221e8ce5019294c1fd9f922f197e",
+          expectedChecksum: "e984fbbb009199cfb7410a5ef5611d2b",
         }
       : process.platform === "win32"
         ? {
@@ -71,9 +71,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
             expectedChecksum: "067fe58e401af23fd49b5cbc01a015d0",
           }
         : {
-            version: "1.3.9-dart4",
+            version: "1.3.9-dart5",
             expectedSize: 34889882,
-            expectedChecksum: "643222179d11a1598a3eefb4602c75d9",
+            expectedChecksum: "56701b1be4aafe74c1d6cfa8092ff6f4",
           },
 };
 
@@ -174,10 +174,10 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
       cacheDir: CACHE_DIR,
       remoteUrl:
         process.platform === "darwin"
-          ? `https://firebasestorage.googleapis.com/v0/b/getting-started-dart-storage.appspot.com/o/cli_macos?alt=media&token=43a1f0ef-b733-45d4-8664-19b97b32c341`
+          ? `https://firebasestorage.googleapis.com/v0/b/getting-started-dart-storage.appspot.com/o/cli_macos?alt=media&token=e5e6699f-a268-4466-99dd-09c5a671ffcd`
           : process.platform === "win32"
             ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-windows-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
-            : `https://firebasestorage.googleapis.com/v0/b/getting-started-dart-storage.appspot.com/o/cli_linux?alt=media&token=3a55fbe0-f2a8-448a-bd0a-1256501c8cfa`,
+            : `https://firebasestorage.googleapis.com/v0/b/getting-started-dart-storage.appspot.com/o/cli_linux?alt=media&token=7d9f7032-403b-4b54-9422-b43c1218c392`,
       expectedSize: EMULATOR_UPDATE_DETAILS.dataconnect.expectedSize,
       expectedChecksum: EMULATOR_UPDATE_DETAILS.dataconnect.expectedChecksum,
       skipChecksumAndSize: false,
