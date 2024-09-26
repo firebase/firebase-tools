@@ -105,17 +105,17 @@ async function askQuestions(setup: Setup): Promise<RequiredInfo> {
   };
   const isBillingEnabled = setup.projectId ? await checkBillingEnabled(setup.projectId) : false;
   if (setup.projectId) {
-    isBillingEnabled ? ensureApis(setup.projectId) : ensureSparkApis(setup.projectId);
+    isBillingEnabled ? await ensureApis(setup.projectId) : await ensureSparkApis(setup.projectId);
   }
 
   info = await checkExistingInstances(setup, info, isBillingEnabled);
 
   const shouldConfigureBackend = isBillingEnabled
-    ? isBillingEnabled
-    : await confirm({
-        message: `Would you like to configure and provision your backend resources now?`,
+    ? await confirm({
+        message: `Would you like to configure your backend resources now?`,
         default: false,
-      });
+      })
+    : false;
 
   if (shouldConfigureBackend) {
     info = await promptForService(info);
@@ -138,7 +138,7 @@ async function askQuestions(setup: Setup): Promise<RequiredInfo> {
     info.locationId = info.locationId !== "" ? info.locationId : `us-central1`;
     info.cloudSqlDatabase = info.cloudSqlDatabase !== "" ? info.cloudSqlDatabase : `fdcdb`;
     logBullet(
-      `Setting placeholder values in dataconnect.yaml. You can edit these before you deploy to use different IDs or regions.`,
+      `Setting placeholder values in dataconnect.yaml. You can edit these before you deploy to specify different IDs or regions.`,
     );
   }
   return info;
