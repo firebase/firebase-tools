@@ -136,7 +136,7 @@
         },
         {
           "id": "firebase.dataConnect.explorerView",
-          "name": "Explorer",
+          "name": "Schema explorer",
           "when": "firebase-vscode.fdc.enabled",
           "visibility": "collapsed",
           "initialSize": 1
@@ -147,25 +147,25 @@
           "type": "webview",
           "id": "data-connect-execution-configuration",
           "name": "Configuration",
-          "when": "firebase-vscode.fdc.enabled",
+          "when": "firebase-vscode.fdc.enabled"
         },
         {
           "id": "data-connect-execution-history",
           "name": "History",
-          "when": "firebase-vscode.fdc.enabled",
+          "when": "firebase-vscode.fdc.enabled"
         },
         {
           "type": "webview",
           "id": "data-connect-execution-results",
           "name": "Results",
-          "when": "firebase-vscode.fdc.enabled",
+          "when": "firebase-vscode.fdc.enabled"
         }
       ]
     },
     "viewsWelcome": [
       {
         "view": "firebase.dataConnect.explorerView",
-        "contents": "Resolve compile errors to view your schema."
+        "contents": "Resolve compilation errors to view your schema."
       }
     ],
     "jsonValidation": [
