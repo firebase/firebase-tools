@@ -23,6 +23,14 @@ describe("serve", () => {
     discoverPackageManagerStub.restore();
   });
 
+  describe("getHostUrlFromString", () => {
+    it("retrieves url from NextJS output", () => {
+      expect(serve.getHostUrlFromString("   - Local:        http://localhost:3002")).to.equal(
+        "http://localhost:3002",
+      );
+    });
+  });
+
   describe("start", () => {
     it("should only select an available port to serve", async () => {
       checkListenableStub.onFirstCall().returns(false);

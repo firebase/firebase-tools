@@ -43,3 +43,13 @@ function availablePort(host: string, port: number): Promise<boolean> {
     family: isIPv4(host) ? "IPv4" : "IPv6",
   });
 }
+
+/**
+ * Exported for unit testing
+ */
+export function getHostUrlFromString(data: string): string | undefined {
+  const match = data.match(/(http:\/\/.*:\d+)/);
+  if (match) {
+    return match[1];
+  }
+}
