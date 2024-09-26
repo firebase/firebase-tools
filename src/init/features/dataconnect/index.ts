@@ -313,6 +313,8 @@ async function checkExistingInstances(
           });
         }
       }
+    } else {
+      info = await promptForService(info);
     }
   }
 
@@ -337,6 +339,8 @@ async function checkExistingInstances(
       if (info.cloudSqlInstanceId !== "") {
         // Infer location if a CloudSQL instance is chosen.
         info.locationId = choices.find((c) => c.value === info.cloudSqlInstanceId)!.location;
+      } else {
+        info = await promptForCloudSQLInstance(setup, info);
       }
     }
   }
@@ -355,6 +359,9 @@ async function checkExistingInstances(
           type: "list",
           choices,
         });
+        if (info.cloudSqlDatabase === "") {
+          info = await promptForDatabase(info);
+        }
       }
     } catch (err) {
       // Show existing databases in a list is optional, ignore any errors from ListDatabases.
