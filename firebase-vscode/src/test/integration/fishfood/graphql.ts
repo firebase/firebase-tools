@@ -1,8 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import { browser } from "@wdio/globals";
-
 import { firebaseTest, setup } from "../../utils/test_hooks";
 import { FirebaseSidebar } from "../../utils/page_objects/sidebar";
 import { EditorView } from "../../utils/page_objects/editor";

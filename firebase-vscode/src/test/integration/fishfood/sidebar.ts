@@ -1,4 +1,3 @@
-import { browser } from "@wdio/globals";
 import { FirebaseSidebar } from "../../utils/page_objects/sidebar";
 import { firebaseTest } from "../../utils/test_hooks";
 import { FirebaseCommands } from "../../utils/page_objects/commands";
@@ -13,8 +12,8 @@ firebaseTest(
     await commands.waitEmulators();
 
     await sidebar.open();
-    await sidebar.runInFirebaseViewContext(async (firebase) => {
+    await sidebar.runInConfigContext(async (firebase) => {
       await sidebar.stopEmulatorBtn.waitForDisplayed();
     });
-  }
+  },
 );

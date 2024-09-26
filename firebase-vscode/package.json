@@ -234,7 +234,6 @@
     "@typescript-eslint/parser": "^5.45.0",
     "@vscode/test-electron": "^2.2.0",
     "@wdio/cli": "^9.0.7",
-    "@wdio/globals": "^9.1.0",
     "@wdio/local-runner": "^8.27.0",
     "@wdio/mocha-framework": "^8.27.0",
     "@wdio/spec-reporter": "^8.27.0",
