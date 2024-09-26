@@ -18,11 +18,9 @@ To execute an operation, click on `Run Local` or `Run Production`. This will exe
 
 Note: You’ll need to start the Data Connect emulator in order to execute operations locally.
 
-
 ## Generated SDK
 
 The extension can help you set-up SDK generation with a simple folder selection. Once you’ve selected an app folder of your choice, client code will start generating automatically.
-
 
 ## Deploy to Production
 
