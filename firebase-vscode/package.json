@@ -1,7 +1,7 @@
 {
   "name": "firebase-dataconnect-vscode",
   "displayName": "Firebase Data Connect",
-  "publisher": "Firebase",
+  "publisher": "GoogleCloudTools",
   "icon": "./resources/firebase_dataconnect_logo.png",
   "description": "Firebase Data Connect for VSCode",
   "version": "0.9.1",
