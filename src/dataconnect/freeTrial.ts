@@ -22,7 +22,7 @@ export function printFreeTrialUnavailable(
     `Project '${projectId} already has a CloudSQL instance '${instanceId}' on the Firebase Data Connect no-cost trial.`,
   );
   const reuseHint =
-    `To use a different database in the same instance, ${clc.bold(`change the instanceId to "${instanceId}"`)} in ` +
+    `To use a different database in the same instance, ${clc.bold(`change the ${clc.blue("instanceId")} to "${instanceId}"`)} in ` +
     `${clc.green(configYamlPath)}. (Also, update the ${clc.blue("database")} field (i.e. DB name in the instance) ` +
     `and ${clc.blue("location")} as needed.)`;
   utils.logLabeledBullet("dataconnect", reuseHint);
