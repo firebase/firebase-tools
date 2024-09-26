@@ -4,4 +4,5 @@ import type { Options } from "@wdio/types";
 export const config: Options.Testrunner = {
   ...baseConfig,
   specs: ["./integration/empty/**/*.ts"],
+  maxInstances: 1,
 };
