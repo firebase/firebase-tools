@@ -1,4 +1,3 @@
-import type { Options } from "@wdio/types";
 import * as path from "path";
 import * as child_process from "child_process";
 import { Notifications } from "./utils/page_objects/editor";
@@ -20,15 +19,10 @@ export const vscodeConfigs = {
   },
 };
 
-export const config: Options.Testrunner = {
+export const config: WebdriverIO.Config = {
   runner: "local",
-  autoCompileOpts: {
-    autoCompile: true,
-    tsNodeOpts: {
-      project: "./tsconfig.test.json",
-      transpileOnly: true,
-    },
-  },
+
+  tsConfigPath: "./tsconfig.test.json",
 
   capabilities: [vscodeConfigs],
 
