@@ -22,7 +22,7 @@ export function printFreeTrialUnavailable(
   );
   const reuseHint =
     `To use a different database in the same instance, change the instanceId to "${instanceId}" in` +
-    `${configYamlPath}. Also, update the database field (i.e. the database name in the instance) as needed.`;
+    `${configYamlPath}. Also, update the database field (i.e. the database name in the instance) and location as needed.`;
   utils.logLabeledBullet("dataconnect", reuseHint);
   utils.logLabeledBullet(
     "dataconnect",
