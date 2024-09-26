@@ -1,5 +1,6 @@
 import { listInstances } from "../gcp/cloudsql/cloudsqladmin";
 import * as utils from "../utils";
+import * as clc from "colorette";
 
 export function freeTrialTermsLink(): string {
   return "https://firebase.google.com/pricing";
@@ -21,8 +22,9 @@ export function printFreeTrialUnavailable(
     `Project '${projectId} already has a CloudSQL instance '${instanceId}' on the Firebase Data Connect no-cost trial.`,
   );
   const reuseHint =
-    `To use a different database in the same instance, change the instanceId to "${instanceId}" in` +
-    `${configYamlPath}. Also, update the database field (i.e. the database name in the instance) and location as needed.`;
+    `To use a different database in the same instance, ${clc.bold(`change the instanceId to "${instanceId}"`)} in ` +
+    `${clc.green(configYamlPath)}. (Also, update the ${clc.blue("database")} field (i.e. DB name in the instance) ` +
+    `and ${clc.blue("location")} as needed.)`;
   utils.logLabeledBullet("dataconnect", reuseHint);
   utils.logLabeledBullet(
     "dataconnect",
