@@ -3,8 +3,12 @@ import { FirebaseSidebar } from "../../utils/page_objects/sidebar";
 import { firebaseTest } from "../../utils/test_hooks";
 import { QuickPick } from "../../utils/page_objects/quick_picks";
 import { e2eSpy, getE2eSpyCalls } from "../mock";
+import { mockUser } from "../../utils/user";
+
 firebaseTest("Can deploy services", async function () {
   const workbench = await browser.getWorkbench();
+  await mockUser({ email: "test@gmail.com" });
+
   const sidebar = new FirebaseSidebar(workbench);
   const quickPicks = new QuickPick(workbench);
 

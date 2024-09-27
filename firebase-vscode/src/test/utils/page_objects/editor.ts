@@ -14,6 +14,10 @@ export class EditorView {
     return this.editorView.elem.$$(".codelens-decoration");
   }
 
+  get runLocalButton() {
+    return this.editorView.elem.$('//a[contains(text(), "Run (local)")]');
+  }
+
   async openFile(path: string) {
     return browser.executeWorkbench(async (vs: typeof vscode, path) => {
       const doc = await vs.workspace.openTextDocument(path);

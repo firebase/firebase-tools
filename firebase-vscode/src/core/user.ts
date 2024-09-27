@@ -6,6 +6,8 @@ import { ExtensionBrokerImpl } from "../extension-broker";
 import { login, logoutUser, requireAuthWrapper } from "../cli";
 import { globalSignal } from "../utils/globals";
 import { DATA_CONNECT_EVENT_NAME } from "../analytics";
+import * as vscode from "vscode";
+
 type User = ServiceAccountUser | AuthUser;
 
 /** Currently selected user */
@@ -24,6 +26,15 @@ export function registerUser(
   broker: ExtensionBrokerImpl,
   telemetryLogger: TelemetryLogger,
 ): Disposable {
+  const userMockCommand = vscode.commands.registerCommand(
+    `fdc-graphql.mock.user`,
+    (user: User | null) => {
+      console.log("Mocking user", user);
+      currentUser.value = user;
+      broker.send("notifyUserChanged", { user });
+    },
+  );
+
   const notifyUserChangedSub = effect(() => {
     broker.send("notifyUserChanged", { user: currentUser.value });
   });
@@ -59,5 +70,6 @@ export function registerUser(
     { dispose: addUserSub },
     { dispose: logoutSub },
     { dispose: isLoadingSub },
+    userMockCommand,
   );
 }

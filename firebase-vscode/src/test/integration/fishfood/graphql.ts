@@ -7,6 +7,7 @@ import {
   FirebaseSidebar,
 } from "../../utils/page_objects/sidebar";
 import { EditorView } from "../../utils/page_objects/editor";
+import { mockUser } from "../../utils/user";
 
 const queriesPath = path.join(
   __dirname,
@@ -38,6 +39,7 @@ addTearDown(() => {
 firebaseTest("GraphQL", async function () {
   it("GraphQL queries file with sytntax error should show the error", async function () {
     const workbench = await browser.getWorkbench();
+    await mockUser({ email: "test@gmail.com" });
 
     const editorView = new EditorView(workbench);
     await editorView.openFile(queriesPath);
