@@ -16,6 +16,7 @@ import { firebaseRC } from "../core/config";
 import {
   dataconnectDataplaneClient,
   executeGraphQL,
+  DATACONNECT_API_VERSION,
 } from "../../../src/dataconnect/dataplaneClient";
 import {
   ExecuteGraphqlRequest,
@@ -246,8 +247,7 @@ export class DataConnectService {
       }
       const client = new Client({
         urlPrefix: endpoint,
-        apiVersion: "v1beta",
-        auth: true,
+        apiVersion: DATACONNECT_API_VERSION,
       });
       const resp = await executeGraphQL(client, servicePath, prodBody);
       return this.handleEmulatorResponse(resp);
