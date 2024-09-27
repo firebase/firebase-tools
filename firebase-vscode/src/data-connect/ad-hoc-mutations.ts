@@ -202,7 +202,7 @@ query {
         selections: [
           {
             kind: Kind.FIELD,
-            name: { kind: Kind.NAME, value: `${singularName}_insert` },
+            name: { kind: Kind.NAME, value: `${singularName.charAt(0).toLowerCase()}${singularName.slice(1)}_insert` },
             arguments: [
               {
                 kind: Kind.ARGUMENT,
@@ -233,7 +233,7 @@ query {
       case "Float":
         return { kind: Kind.FLOAT, value: "0" };
       case "Int":
-        return { kind: Kind.INT, value: 0 };
+        return { kind: Kind.INT, value: "0" };
       case "Int64":
         return { kind: Kind.INT, value: "0" };
       case "String":
