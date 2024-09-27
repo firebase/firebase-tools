@@ -19,5 +19,5 @@ export const command = new Command("apphosting:repos:create")
     const location = options.location;
     const connection = options.gitconnection;
 
-    await createGitRepoLink(projectId, location as string | null, connection as string | null);
+    await createGitRepoLink(projectId, location as string | null, connection as string | undefined);
   });

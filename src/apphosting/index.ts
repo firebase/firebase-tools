@@ -103,7 +103,6 @@ export async function doSetup(
   const gitRepositoryLink: GitRepositoryLink = await githubConnections.linkGitHubRepository(
     projectId,
     location,
-    null,
   );
 
   const rootDir = await promptOnce({
