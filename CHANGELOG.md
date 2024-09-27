@@ -1,1 +1,0 @@
-- Updated the Firebase Data Connect local toolkit to v1.4.3, which includes a fix for URL redirects in the generated docsite. (#7763)
