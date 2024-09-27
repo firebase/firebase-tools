@@ -23,7 +23,7 @@ import {
   ExecuteGraphqlResponseError,
   Impersonation,
 } from "../dataconnect/types";
-import { Client, ClientResponse } from "../apiv2";
+import { Client, ClientResponse } from "../../../src/apiv2";
 import { InstanceType } from "./code-lens-provider";
 import { pluginLogger } from "../logger-wrapper";
 import { DataConnectToolkit } from "./toolkit";
@@ -38,12 +38,13 @@ export class DataConnectService {
     private emulatorsController: EmulatorsController,
   ) {}
 
-  async servicePath(path: string): Promise<string | undefined> {
+  async servicePath(
+    path: string
+  ): Promise<string | undefined> {
     const dataConnectConfigsValue = await firstWhereDefined(dataConnectConfigs);
     // TODO: avoid calling this here and in getApiServicePathByPath
     const serviceId =
-      dataConnectConfigsValue?.tryReadValue?.findEnclosingServiceForPath(path)
-        ?.value.serviceId;
+      dataConnectConfigsValue?.tryReadValue?.findEnclosingServiceForPath(path)?.value.serviceId;
     const projectId = firebaseRC.value?.tryReadValue?.projects?.default;
 
     if (serviceId === undefined || projectId === undefined) {
@@ -88,7 +89,7 @@ export class DataConnectService {
       const errorResponse =
         response as ClientResponse<ExecuteGraphqlResponseError>;
       throw new DataConnectError(
-        `Prod Request failed with status ${response.status}: message ${errorResponse?.body?.error?.message}`,
+        `Prod Request failed with status ${response.status}\nMessage ${errorResponse?.body?.error?.message}`,
       );
     }
     const successResponse = response as ClientResponse<ExecuteGraphqlResponse>;
@@ -104,7 +105,7 @@ export class DataConnectService {
       const errorResponse =
         response as ClientResponse<ExecuteGraphqlResponseError>;
       throw new DataConnectError(
-        `Prod Request failed with status ${response.status}: message ${errorResponse?.body?.error?.message}`,
+        `Prod Request failed with status ${response.status}\nMessage ${errorResponse?.body?.error?.message}`,
       );
     }
     const successResponse = response as ClientResponse<ExecuteGraphqlResponse>;
@@ -264,9 +265,9 @@ function parseVariableString(variables: string): Record<string, any> {
   }
   try {
     return JSON.parse(variables);
-  } catch (e: any) {
+  } catch(e: any) {
     throw new Error(
-      "Unable to parse variables as JSON. Double check that that there are no unmatched braces or quotes, or unqouted keys in the variables pane.",
+      "Unable to parse variables as JSON. Double check that that there are no unmatched braces or quotes, or unqouted keys in the variables pane."
     );
   }
 }
