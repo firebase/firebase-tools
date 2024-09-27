@@ -192,7 +192,7 @@ export async function doSetup(
 export async function createGitRepoLink(
   projectId: string,
   location: string | null,
-  connectionId: string | null,
+  connectionId?: string,
 ): Promise<void> {
   await Promise.all([
     ensure(projectId, developerConnectOrigin(), "apphosting", true),

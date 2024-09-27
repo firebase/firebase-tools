@@ -95,15 +95,15 @@ const MANAGE_INSTALLATION_CHOICE = "@MANAGE_INSTALLATION";
 export async function getOrCreateGithubConnection(
   projectId: string,
   location: string,
-  connectionId: string | null,
+  createConnectionId?: string,
 ): Promise<devConnect.Connection> {
   utils.logBullet(clc.bold(`${clc.yellow("===")} Import a GitHub repository`));
 
-  if (connectionId) {
+  if (createConnectionId) {
     // Check if the connection already exists.
     try {
-      const connection = await devConnect.getConnection(projectId, location, connectionId);
-      utils.logBullet(`Reusing existing connection ${connectionId}`);
+      const connection = await devConnect.getConnection(projectId, location, createConnectionId);
+      utils.logBullet(`Reusing existing connection ${createConnectionId}`);
       return connection;
     } catch (e) {
       // Expected, the connection doesn't exist.
@@ -138,19 +138,19 @@ export async function getOrCreateGithubConnection(
   if (connectionMatchingInstallation) {
     const { id: matchingConnectionId } = parseConnectionName(connectionMatchingInstallation.name)!;
 
-    if (!connectionId || matchingConnectionId === connectionId) {
+    if (!createConnectionId || matchingConnectionId === createConnectionId) {
       utils.logBullet(`Reusing matching connection ${matchingConnectionId}`);
       return connectionMatchingInstallation;
     }
   }
-  if (!connectionId) {
-    connectionId = generateConnectionId();
+  if (!createConnectionId) {
+    createConnectionId = generateConnectionId();
   }
 
   const connection = await createFullyInstalledConnection(
     projectId,
     location,
-    connectionId,
+    createConnectionId,
     oauthConn,
     installationId,
   );
@@ -164,7 +164,7 @@ export async function getOrCreateGithubConnection(
 export async function linkGitHubRepository(
   projectId: string,
   location: string,
-  createConnectionId: string | null,
+  createConnectionId?: string,
 ): Promise<devConnect.GitRepositoryLink> {
   const connection = await getOrCreateGithubConnection(projectId, location, createConnectionId);
 
