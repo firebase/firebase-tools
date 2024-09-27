@@ -105,7 +105,7 @@ export class DataConnectService {
       const errorResponse =
         response as ClientResponse<ExecuteGraphqlResponseError>;
       throw new DataConnectError(
-        `Prod Request failed with status ${response.status}\nMessage ${errorResponse?.body?.error?.message}`,
+        `Emulator Request failed with status ${response.status}\nMessage ${errorResponse?.body?.error?.message}`,
       );
     }
     const successResponse = response as ClientResponse<ExecuteGraphqlResponse>;
