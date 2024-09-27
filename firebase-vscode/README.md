@@ -1,6 +1,6 @@
 # Firebase Data Connect for VSCode
 
-The Firebase Data Connect extension provides a suite of tools aimed to assist developers in their Data Connect development workflow.
+The Firebase Data Connect extension provides a suite of tools to assist developers in their Data Connect development workflow.
 
 ## Language Features
 
@@ -8,7 +8,7 @@ The extension runs a Graphql Language Server that checks for syntax and compile 
 
 The extension will automatically generate GraphQL types based on your schema, viewable in your Explorer panel.
 
-## Execution
+## Query Execution
 
 Within your GraphQL files, you’ll see in-line Codelenses that can help you create and test operations.
 
@@ -18,10 +18,17 @@ To execute an operation, click on `Run Local` or `Run Production`. This will exe
 
 Note: You’ll need to start the Data Connect emulator in order to execute operations locally.
 
-## Generated SDK
+## Strongly typed SDK Generation
 
 The extension can help you set-up SDK generation with a simple folder selection. Once you’ve selected an app folder of your choice, client code will start generating automatically.
 
+## Local Emulator
+You can start a local emulator to test your queries on your application.
+
 ## Deploy to Production
 
-Once you’ve written and tested out your schema and operations, deploy your code to your production Data Connect instance.
+Once you’ve tested the schema and operations and ran the generated SDK in your app, deploy your schema, operation and data to your Cloud SQL instance in production.
+
+
+### Documentation
+Please see [Getting started with Firebase Data Connect](https://firebase.google.com/docs/data-connect/quickstart).
