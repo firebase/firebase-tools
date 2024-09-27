@@ -13,14 +13,17 @@ import { EmulatorsController } from "../core/emulators";
 import { dataConnectConfigs } from "../data-connect/config";
 
 import { firebaseRC } from "../core/config";
-import { executeGraphQL } from "../../../src/dataconnect/dataplaneClient";
+import {
+  dataconnectDataplaneClient,
+  executeGraphQL,
+} from "../../../src/dataconnect/dataplaneClient";
 import {
   ExecuteGraphqlRequest,
   ExecuteGraphqlResponse,
   ExecuteGraphqlResponseError,
   Impersonation,
 } from "../dataconnect/types";
-import { ClientResponse } from "../apiv2";
+import { Client, ClientResponse } from "../apiv2";
 import { InstanceType } from "./code-lens-provider";
 import { pluginLogger } from "../logger-wrapper";
 import { DataConnectToolkit } from "./toolkit";
@@ -35,13 +38,12 @@ export class DataConnectService {
     private emulatorsController: EmulatorsController,
   ) {}
 
-  async servicePath(
-    path: string
-  ): Promise<string | undefined> {
+  async servicePath(path: string): Promise<string | undefined> {
     const dataConnectConfigsValue = await firstWhereDefined(dataConnectConfigs);
     // TODO: avoid calling this here and in getApiServicePathByPath
     const serviceId =
-      dataConnectConfigsValue?.tryReadValue?.findEnclosingServiceForPath(path)?.value.serviceId;
+      dataConnectConfigsValue?.tryReadValue?.findEnclosingServiceForPath(path)
+        ?.value.serviceId;
     const projectId = firebaseRC.value?.tryReadValue?.projects?.default;
 
     if (serviceId === undefined || projectId === undefined) {
@@ -78,47 +80,35 @@ export class DataConnectService {
     return response.text();
   }
   private async handleProdResponse(
-    clientResponse: ClientResponse<
+    response: ClientResponse<
       ExecuteGraphqlResponse | ExecuteGraphqlResponseError
     >,
   ): Promise<ExecutionResult> {
-    if (!(clientResponse.status >= 200 && clientResponse.status < 300)) {
+    if (!(response.status >= 200 && response.status < 300)) {
       const errorResponse =
-        clientResponse as ClientResponse<ExecuteGraphqlResponseError>;
+        response as ClientResponse<ExecuteGraphqlResponseError>;
       throw new DataConnectError(
-        `Request failed with status ${clientResponse.status}`,
-        errorResponse.body.error.message,
+        `Prod Request failed with status ${response.status}: message ${errorResponse?.body?.error?.message}`,
       );
     }
-    const successResponse =
-      clientResponse as ClientResponse<ExecuteGraphqlResponse>;
+    const successResponse = response as ClientResponse<ExecuteGraphqlResponse>;
     return successResponse.body;
   }
 
-  private async handleValidResponse(
-    response: Response,
+  private async handleEmulatorResponse(
+    response: ClientResponse<
+      ExecuteGraphqlResponse | ExecuteGraphqlResponseError
+    >,
   ): Promise<ExecutionResult> {
-    const json = await this.decodeResponse(response, "application/json");
-    assertExecutionResult(json);
-
-    return json;
-  }
-
-  private async handleInvalidResponse(response: Response): Promise<never> {
-    const cause = await this.decodeResponse(response);
-
-    throw new DataConnectError(
-      `Request failed with status ${response.status}`,
-      cause,
-    );
-  }
-
-  private handleResponse(response: Response): Promise<ExecutionResult> {
-    if (response.status >= 200 && response.status < 300) {
-      return this.handleValidResponse(response);
+    if (!(response.status >= 200 && response.status < 300)) {
+      const errorResponse =
+        response as ClientResponse<ExecuteGraphqlResponseError>;
+      throw new DataConnectError(
+        `Prod Request failed with status ${response.status}: message ${errorResponse?.body?.error?.message}`,
+      );
     }
-
-    return this.handleInvalidResponse(response);
+    const successResponse = response as ClientResponse<ExecuteGraphqlResponse>;
+    return successResponse.body;
   }
 
   /** Encode a body while handling the fact that "variables" is raw JSON.
@@ -243,23 +233,23 @@ export class DataConnectService {
       extensions: this._auth(),
     });
     if (params.instance === InstanceType.PRODUCTION) {
-      const resp = await executeGraphQL(servicePath, prodBody);
+      const client = dataconnectDataplaneClient();
+      const resp = await executeGraphQL(client, servicePath, prodBody);
       return this.handleProdResponse(resp);
     } else {
-      const resp = await fetch(
-        (await this.emulatorsController.getLocalEndpoint()) +
-          `/v1beta/${servicePath}:executeGraphql`,
-        {
-          method: "POST",
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-            "x-mantle-admin": "all",
-          },
-          body,
-        },
-      );
-      return this.handleResponse(resp);
+      const endpoint = this.emulatorsController.getLocalEndpoint();
+      if (!endpoint) {
+        throw new DataConnectError(
+          `Emulator isn't running. Please start your emulator!`,
+        );
+      }
+      const client = new Client({
+        urlPrefix: endpoint,
+        apiVersion: "v1beta",
+        auth: true,
+      });
+      const resp = await executeGraphQL(client, servicePath, prodBody);
+      return this.handleEmulatorResponse(resp);
     }
   }
 
@@ -274,9 +264,9 @@ function parseVariableString(variables: string): Record<string, any> {
   }
   try {
     return JSON.parse(variables);
-  } catch(e: any) {
+  } catch (e: any) {
     throw new Error(
-      "Unable to parse variables as JSON. Double check that that there are no unmatched braces or quotes, or unqouted keys in the variables pane."
+      "Unable to parse variables as JSON. Double check that that there are no unmatched braces or quotes, or unqouted keys in the variables pane.",
     );
   }
 }
