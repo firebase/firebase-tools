@@ -61,7 +61,7 @@ export async function registerCore(
         workspaceFolder, // The workspace folder
         "firebase init dataconnect", // how you name the task
         "firebase init dataconnect", // Shows up as MyTask: name
-        new vscode.ShellExecution(`${settings.firebasePath} init dataconnect ${currentProjectId.value}`),
+        new vscode.ShellExecution(`${settings.firebasePath} init dataconnect --project ${currentProjectId.value}`),
       ),
     );
   });
