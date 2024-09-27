@@ -242,7 +242,7 @@ query {
       case "Timestamp":
         return { kind: Kind.STRING, value: new Date().toISOString() };
       case "UUID":
-        return { kind: Kind.STRING, value: "1111-2222-3333-44444" };
+        return { kind: Kind.STRING, value: "11111111222233334444555555555555" };
       case "Vector":
         return { kind: Kind.LIST, values: [] };
       default:
