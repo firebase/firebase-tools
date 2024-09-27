@@ -10,11 +10,7 @@ import { requireTosAcceptance } from "../requireTosAcceptance";
 export const command = new Command("apphosting:repos:create")
   .description("create a Firebase App Hosting Developer Connect Git Repository Link")
   .option("-l, --location <location>", "specify the location of the backend", "")
-  .option(
-    "-g, --gitconnection <connection>",
-    "id of the connection (defaults to autogenerating a random id)",
-    "",
-  )
+  .option("-g, --gitconnection <connection>", "id of the connection", "")
   .before(ensureApiEnabled)
   .before(requireInteractive)
   .before(requireTosAcceptance(APPHOSTING_TOS_ID))

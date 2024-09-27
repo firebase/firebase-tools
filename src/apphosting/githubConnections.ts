@@ -92,7 +92,7 @@ const MANAGE_INSTALLATION_CHOICE = "@MANAGE_INSTALLATION";
 /**
  * Prompts the user to create a GitHub connection.
  */
-export async function createGitHubConnection(
+export async function getOrCreateGithubConnection(
   projectId: string,
   location: string,
   connectionId: string | null,
@@ -102,18 +102,12 @@ export async function createGitHubConnection(
   if (connectionId) {
     // Check if the connection already exists.
     try {
-      utils.logBullet(
-        clc.bold(`${clc.yellow("===")} Check if connection ${connectionId} already exists`),
-      );
-
       const connection = await devConnect.getConnection(projectId, location, connectionId);
       utils.logBullet(`Reusing existing connection ${connectionId}`);
       return connection;
     } catch (e) {
       // Expected, the connection doesn't exist.
     }
-  } else {
-    connectionId = generateConnectionId();
   }
 
   // Fetch the sentinel Oauth connection first which is needed to create further GitHub connections.
@@ -136,6 +130,23 @@ export async function createGitHubConnection(
     installationId = await promptGitHubInstallation(projectId, location, oauthConn);
   }
 
+  const connectionMatchingInstallation = await getConnectionForInstallation(
+    projectId,
+    location,
+    installationId,
+  );
+  if (connectionMatchingInstallation) {
+    const { id: matchingConnectionId } = parseConnectionName(connectionMatchingInstallation.name)!;
+
+    if (!connectionId || matchingConnectionId === connectionId) {
+      utils.logBullet(`Reusing matching connection ${matchingConnectionId}`);
+      return connectionMatchingInstallation;
+    }
+  }
+  if (!connectionId) {
+    connectionId = generateConnectionId();
+  }
+
   const connection = await createFullyInstalledConnection(
     projectId,
     location,
@@ -155,26 +166,22 @@ export async function linkGitHubRepository(
   location: string,
   createConnectionId: string | null,
 ): Promise<devConnect.GitRepositoryLink> {
-  const connectionMatchingInstallation = await createGitHubConnection(
-    projectId,
-    location,
-    createConnectionId,
-  );
+  const connection = await getOrCreateGithubConnection(projectId, location, createConnectionId);
 
   let repoCloneUri: string | undefined;
 
   do {
     if (repoCloneUri === MANAGE_INSTALLATION_CHOICE) {
-      await manageInstallation(connectionMatchingInstallation);
+      await manageInstallation(connection);
     }
 
-    repoCloneUri = await promptCloneUri(projectId, connectionMatchingInstallation);
+    repoCloneUri = await promptCloneUri(projectId, connection);
   } while (repoCloneUri === MANAGE_INSTALLATION_CHOICE);
 
-  const { id: connectionId } = parseConnectionName(connectionMatchingInstallation.name)!;
+  const { id: connectionId } = parseConnectionName(connection.name)!;
   await getOrCreateConnection(projectId, location, connectionId, {
-    authorizerCredential: connectionMatchingInstallation.githubConfig?.authorizerCredential,
-    appInstallationId: connectionMatchingInstallation.githubConfig?.appInstallationId,
+    authorizerCredential: connection.githubConfig?.authorizerCredential,
+    appInstallationId: connection.githubConfig?.appInstallationId,
   });
 
   const repo = await getOrCreateRepository(projectId, location, connectionId, repoCloneUri);
