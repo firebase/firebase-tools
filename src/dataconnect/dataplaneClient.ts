@@ -1,18 +1,23 @@
 import { dataconnectOrigin } from "../api";
-import { Client } from "../apiv2";
+import { Client, ClientResponse } from "../apiv2";
 import * as types from "./types";
 
-const DATACONNECT_API_VERSION = "v1beta";
+export const DATACONNECT_API_VERSION = "v1beta";
 
-const dataconnectDataplaneClient = () =>
-  new Client({
+export function dataconnectDataplaneClient(): Client {
+  return new Client({
     urlPrefix: dataconnectOrigin(),
     apiVersion: DATACONNECT_API_VERSION,
     auth: true,
   });
+}
 
-export async function executeGraphQL(servicePath: string, body: types.ExecuteGraphqlRequest) {
-  const res = await dataconnectDataplaneClient().post<
+export async function executeGraphQL(
+  client: Client,
+  servicePath: string,
+  body: types.ExecuteGraphqlRequest,
+): Promise<ClientResponse<types.ExecuteGraphqlResponse | types.ExecuteGraphqlResponseError>> {
+  const res = await client.post<
     types.ExecuteGraphqlRequest,
     types.ExecuteGraphqlResponse | types.ExecuteGraphqlResponseError
   >(`${servicePath}:executeGraphql`, body, { resolveOnHTTPError: true });
