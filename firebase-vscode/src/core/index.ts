@@ -55,13 +55,16 @@ export async function registerCore(
       return;
     }
     const workspaceFolder = vscode.workspace.workspaceFolders[0];
+    const initCommand = currentProjectId.value ? 
+      `${settings.firebasePath} init dataconnect --project ${currentProjectId.value}` :
+      `${settings.firebasePath} init dataconnect`;
     vscode.tasks.executeTask(
       new vscode.Task(
         { type: "shell" }, // this is the same type as in tasks.json
         workspaceFolder, // The workspace folder
         "firebase init dataconnect", // how you name the task
         "firebase init dataconnect", // Shows up as MyTask: name
-        new vscode.ShellExecution(`${settings.firebasePath} init dataconnect --project ${currentProjectId.value}`),
+        new vscode.ShellExecution(initCommand),
       ),
     );
   });
