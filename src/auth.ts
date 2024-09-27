@@ -560,6 +560,10 @@ export function findAccountByEmail(email: string): Account | undefined {
   return getAllAccounts().find((a) => a.user.email === email);
 }
 
+export function loggedIn() {
+  return !!lastAccessToken;
+}
+
 export function haveValidTokens(refreshToken: string, authScopes: string[]) {
   if (!lastAccessToken?.access_token) {
     const tokens = configstore.get("tokens");
@@ -576,7 +580,13 @@ export function haveValidTokens(refreshToken: string, authScopes: string[]) {
   // tokens if they have a _long_ time before the server rejects them.
   const isExpired = (lastAccessToken?.expires_at || 0) < Date.now() + FIFTEEN_MINUTES_IN_MS;
   const valid = hasTokens && hasSameScopes && !isExpired;
-  logger.debug(`Checked if tokens are valid: ${valid}, expires at: ${lastAccessToken?.expires_at}`);
+  if (hasTokens) {
+    logger.debug(
+      `Checked if tokens are valid: ${valid}, expires at: ${lastAccessToken?.expires_at}`,
+    );
+  } else {
+    logger.debug("No OAuth tokens found");
+  }
   return valid;
 }
 

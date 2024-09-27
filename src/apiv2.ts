@@ -128,7 +128,8 @@ export function setAccessToken(token = ""): void {
  */
 export async function getAccessToken(): Promise<string> {
   const valid = auth.haveValidTokens(refreshToken, []);
-  if (accessToken && valid) {
+  const usingADC = !auth.loggedIn();
+  if (accessToken && (valid || usingADC)) {
     return accessToken;
   }
   const data = await auth.getAccessToken(refreshToken, []);
