@@ -2,7 +2,10 @@ import * as fs from "fs";
 import * as path from "path";
 
 import { addTearDown, firebaseTest, setup } from "../../utils/test_hooks";
-import { FDCView, FirebaseSidebar } from "../../utils/page_objects/sidebar";
+import {
+  SchemaExplorerView,
+  FirebaseSidebar,
+} from "../../utils/page_objects/sidebar";
 import { EditorView } from "../../utils/page_objects/editor";
 
 const queriesPath = path.join(
@@ -54,9 +57,9 @@ firebaseTest("GraphQL", async function () {
   it("FDC Explorer should list all mutations and queries", async function () {
     const workbench = await browser.getWorkbench();
     const sidebar = new FirebaseSidebar(workbench);
-    await sidebar.open();
+    await sidebar.openExtensionSidebar();
 
-    const fdcView = new FDCView(workbench);
+    const fdcView = new SchemaExplorerView(workbench);
     await fdcView.focusFdcExplorer();
 
     // Wait for the TreeView to load and its nodes to be displayed

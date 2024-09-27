@@ -12,7 +12,7 @@ firebaseTest(
     // This shouldn't be necessary. But at the moment,
     // users aren't loaded until the sidebar is opened –
     // which blocks the loading of projects.
-    await sidebar.open();
+    await sidebar.openExtensionSidebar();
 
     const picker = await workbench.executeCommand("firebase.selectProject");
 

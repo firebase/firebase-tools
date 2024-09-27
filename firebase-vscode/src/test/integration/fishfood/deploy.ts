@@ -8,7 +8,7 @@ firebaseTest("Can deploy services", async function () {
   const sidebar = new FirebaseSidebar(workbench);
   const quickPicks = new QuickPick(workbench);
 
-  await sidebar.open();
+  await sidebar.openExtensionSidebar();
   await sidebar.fdcDeployElement.click();
 
   const servicePicks = await quickPicks

@@ -11,7 +11,7 @@ firebaseTest("Can execute queries", async function () {
   const editor = new EditorView(workbench);
   const commands = new FirebaseCommands();
 
-  await commands.waitEmulators();
+  await commands.waitForEmulators();
 
   // Update arguments
   await execution.open();

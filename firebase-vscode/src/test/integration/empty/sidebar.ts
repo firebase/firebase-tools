@@ -8,10 +8,10 @@ firebaseTest("Supports opening empty projects", async function () {
 
     const sidebar = new FirebaseSidebar(workbench);
 
-    await sidebar.open();
+    await sidebar.openExtensionSidebar();
     await workbench.wait(5000);
 
-    await sidebar.runInConfigContext(async (firebase) => {
+    await sidebar.runInStudioContext(async (firebase) => {
       await firebase.signInWithGoogleLink.waitForDisplayed();
     });
   });

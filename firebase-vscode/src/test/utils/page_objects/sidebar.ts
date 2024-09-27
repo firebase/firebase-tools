@@ -6,51 +6,49 @@ import vscode from "vscode";
 export class FirebaseSidebar {
   constructor(readonly workbench: Workbench) {}
 
-  async open() {
-    await $("a.codicon-mono-firebase").click();
-  }
-
-  get hostBtn() {
-    return $("vscode-button=Host your Web App");
-  }
-
-  get stopEmulatorBtn() {
-    return $("vscode-button=Click to stop the emulators");
+  async openExtensionSidebar() {
+    await $(`a[aria-label="Firebase Data Connect"]`).click();
   }
 
   get fdcDeployElement() {
     return $("vscode-button=Deploy");
   }
 
-  /** Starts the emulators and waits for the emulators to be started.
+  /**
+   * Starts the emulators and waits for the emulators to be started.
    *
    * This starts emulators by clicking on the button instead of using
    * the command.
    */
   async startEmulators() {
-    await this.open();
+    await this.openExtensionSidebar();
+    await this.runInStudioContext(async (studio) => {
+      await studio.startEmulatorsBtn.waitForDisplayed();
+      await studio.startEmulatorsBtn.click();
+    });
+  }
 
-    await this.runInConfigContext(async () => {
-      // await this.startEmulatorBtn.click();
-
-      // Wait for the emulators to be started
-      await this.stopEmulatorBtn.waitForDisplayed();
+  async currentEmulators() {
+    return this.runInStudioContext(async (studio) => {
+      const items = await studio.emulatorsList;
+      const texts = items.map((item) => item.getText());
+      return texts;
     });
   }
 
   /** Runs the callback in the context of the Firebase view, within the sidebar */
-  async runInConfigContext<R>(
-    cb: (firebase: ConfigView) => Promise<R>,
+  async runInStudioContext<R>(
+    cb: (firebase: StudioView) => Promise<R>,
   ): Promise<R> {
-    const [a, b] = await findWebviewWithTitle("Config");
+    const [a, b] = await findWebviewWithTitle("Studio");
 
     return runInFrame(a, () =>
-      runInFrame(b, () => cb(new ConfigView(this.workbench))),
+      runInFrame(b, () => cb(new StudioView(this.workbench))),
     );
   }
 }
 
-export class ConfigView {
+export class StudioView {
   constructor(readonly workbench: Workbench) {}
 
   get userIconElement() {
@@ -64,13 +62,21 @@ export class ConfigView {
   get startEmulatorsBtn() {
     return $("vscode-button=Start emulators");
   }
+
+  get configureGeneratedSdkBtn() {
+    return $("vscode-button=Configure generated SDK");
+  }
+
+  get emulatorsList() {
+    return $("ul[class^='list-']").$$(`li span`);
+  }
 }
 
-export class FDCView {
+export class SchemaExplorerView {
   constructor(readonly workbench: Workbench) {}
 
-  get fdcExplorerView() {
-    return $('div[aria-label="FDC Explorer"] .monaco-list-rows');
+  get schemaExplorerView() {
+    return $('div[aria-label="Schema explorer"] .monaco-list-rows');
   }
 
   async focusFdcExplorer() {
@@ -82,11 +88,11 @@ export class FDCView {
   }
 
   async waitForData() {
-    await this.fdcExplorerView.waitForDisplayed();
+    await this.schemaExplorerView.waitForDisplayed();
   }
 
   async getQueries() {
-    const explorerView = await this.fdcExplorerView;
+    const explorerView = await this.schemaExplorerView;
     const query = await explorerView.$(
       `div.monaco-list-row[aria-label*="query"]`,
     );
@@ -105,7 +111,7 @@ export class FDCView {
   }
 
   async getMutations() {
-    const explorerView = await this.fdcExplorerView;
+    const explorerView = await this.schemaExplorerView;
     const mutation = await explorerView.$(
       `div.monaco-list-row[aria-label*="mutation"]`,
     );
