@@ -197,7 +197,6 @@ query {
     return {
       kind: Kind.OPERATION_DEFINITION,
       operation: OperationTypeNode.MUTATION,
-      name: { kind: Kind.NAME, value: singularName },
       selectionSet: {
         kind: Kind.SELECTION_SET,
         selections: [
