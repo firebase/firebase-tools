@@ -1,7 +1,11 @@
 ## NEXT
 
+## 0.10.1
+
 - [Fixed] Fixed an issue where commands would be executed against directory default project instead of the currently selected project.
 - [Fixed] Fixed an issue where expired auth tokens would be used.
+- [Fixed] Fixed an issue where Add Data wouldn't generate UUID types
+- Updated README with feature descriptions
 
 ## 0.10.0
 
