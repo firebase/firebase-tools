@@ -12,7 +12,11 @@ export function dataconnectDataplaneClient(): Client {
   });
 }
 
-export async function executeGraphQL(client: Client, servicePath: string, body: types.ExecuteGraphqlRequest): Promise<ClientResponse<types.ExecuteGraphqlResponse | types.ExecuteGraphqlResponseError>> {
+export async function executeGraphQL(
+  client: Client,
+  servicePath: string,
+  body: types.ExecuteGraphqlRequest,
+): Promise<ClientResponse<types.ExecuteGraphqlResponse | types.ExecuteGraphqlResponseError>> {
   const res = await client.post<
     types.ExecuteGraphqlRequest,
     types.ExecuteGraphqlResponse | types.ExecuteGraphqlResponseError
