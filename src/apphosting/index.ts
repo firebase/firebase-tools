@@ -74,6 +74,9 @@ export async function doSetup(
   webAppName: string | null,
   location: string | null,
   serviceAccount: string | null,
+  backendId: string | null,
+  rootDir: string | null,
+  branch: string | null,
 ): Promise<void> {
   await Promise.all([
     ensure(projectId, developerConnectOrigin(), "apphosting", true),
@@ -105,26 +108,30 @@ export async function doSetup(
     location,
   );
 
-  const rootDir = await promptOnce({
-    name: "rootDir",
-    type: "input",
-    default: "/",
-    message: "Specify your app's root directory relative to your repository",
-  });
+  rootDir =
+    rootDir ||
+    (await promptOnce({
+      name: "rootDir",
+      type: "input",
+      default: "/",
+      message: "Specify your app's root directory relative to your repository",
+    }));
 
   // TODO: Once tag patterns are implemented, prompt which method the user
   // prefers. We could reduce the number of questions asked by letting people
   // enter tag:<pattern>?
-  const branch = await githubConnections.promptGitHubBranch(gitRepositoryLink);
+  branch = branch || (await githubConnections.promptGitHubBranch(gitRepositoryLink));
   logSuccess(`Repo linked successfully!\n`);
 
   logBullet(`${clc.yellow("===")} Set up your backend`);
-  const backendId = await promptNewBackendId(projectId, location, {
-    name: "backendId",
-    type: "input",
-    default: "my-web-app",
-    message: "Provide a name for your backend [1-30 characters]",
-  });
+  backendId =
+    backendId ||
+    (await promptNewBackendId(projectId, location, {
+      name: "backendId",
+      type: "input",
+      default: "my-web-app",
+      message: "Provide a name for your backend [1-30 characters]",
+    }));
   logSuccess(`Name set to ${backendId}\n`);
 
   const webApp = await webApps.getOrCreateWebApp(projectId, webAppName, backendId);
