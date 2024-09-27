@@ -7,7 +7,7 @@ import { pluginLogger, LogLevel } from '../logger-wrapper';
 import { getSettings } from "../utils/settings";
 import { setEnabled } from "../../../src/experiments";
 import { registerUser } from "./user";
-import { registerProject } from "./project";
+import { currentProjectId, registerProject } from "./project";
 import { registerQuickstart } from "./quickstart";
 import { registerOptions } from "../options";
 import { upsertFile } from "../data-connect/file-utils";
@@ -61,7 +61,7 @@ export async function registerCore(
         workspaceFolder, // The workspace folder
         "firebase init dataconnect", // how you name the task
         "firebase init dataconnect", // Shows up as MyTask: name
-        new vscode.ShellExecution(`${settings.firebasePath} init dataconnect`),
+        new vscode.ShellExecution(`${settings.firebasePath} init dataconnect --project ${currentProjectId.value}`),
       ),
     );
   });

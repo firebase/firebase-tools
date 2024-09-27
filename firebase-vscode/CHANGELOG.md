@@ -1,5 +1,9 @@
 ## NEXT
 
+- [Fixed] Fixed an issue where command would be executed against directory default project instead of the currently selected project.
+
+## 0.10.0
+
 - [Added] UI overhaul.
 - [Added] Added View Docs button to see generated documentation for your schema and connectors.
 - [Fixed] Improved detection for emulator start up and shut down.
