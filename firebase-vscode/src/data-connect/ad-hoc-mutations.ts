@@ -233,7 +233,7 @@ query {
       case "Float":
         return { kind: Kind.FLOAT, value: "0" };
       case "Int":
-        return { kind: Kind.INT, value: "0" };
+        return { kind: Kind.INT, value: 0 };
       case "Int64":
         return { kind: Kind.INT, value: "0" };
       case "String":
