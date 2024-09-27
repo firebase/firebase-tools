@@ -23,12 +23,13 @@ Note: You’ll need to start the Data Connect emulator in order to execute opera
 The extension can help you set-up SDK generation with a simple folder selection. Once you’ve selected an app folder of your choice, client code will start generating automatically.
 
 ## Local Emulator
+
 You can start a local emulator to test your queries on your application.
 
 ## Deploy to Production
 
 Once you’ve tested the schema and operations and ran the generated SDK in your app, deploy your schema, operation and data to your Cloud SQL instance in production.
 
-
 ### Documentation
+
 Please see [Getting started with Firebase Data Connect](https://firebase.google.com/docs/data-connect/quickstart).
