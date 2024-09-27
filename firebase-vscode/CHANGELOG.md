@@ -1,6 +1,7 @@
 ## NEXT
 
-- [Fixed] Fixed an issue where command would be executed against directory default project instead of the currently selected project.
+- [Fixed] Fixed an issue where commands would be executed against directory default project instead of the currently selected project.
+- [Fixed] Fixed an issue where expired auth tokens would be used.
 
 ## 0.10.0
 
