@@ -1,5 +1,10 @@
 ## NEXT
 
+- [Fixed] Fixed an issue where commands would be executed against directory default project instead of the currently selected project.
+- [Fixed] Fixed an issue where expired auth tokens would be used.
+
+## 0.10.0
+
 - [Added] UI overhaul.
 - [Added] Added View Docs button to see generated documentation for your schema and connectors.
 - [Fixed] Improved detection for emulator start up and shut down.
