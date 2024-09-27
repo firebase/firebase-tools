@@ -233,7 +233,7 @@ async function manageInstallation(connection: devConnect.Connection): Promise<vo
 }
 
 /**
- *
+ * Gets the oldest matching Dev Connect connection resource for a GitHub app installation.
  */
 export async function getConnectionForInstallation(
   projectId: string,
