@@ -83,6 +83,12 @@
         "firebase.npmPath": {
           "type": "string",
           "markdownDescription": "%ext.config.npmPath%"
+        },
+        "firebase.idx.viewMetricNotice": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "%ext.config.idx.viewMetricNotice%",
+          "scope": "window"
         }
       }
     },
