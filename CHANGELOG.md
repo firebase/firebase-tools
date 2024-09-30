@@ -1,0 +1,1 @@
+- Released version 1.4.4 of the Data Connect emulator, which includes a change in node engine requirements from v20 to v18, and an update to the peer dependency for the web SDK.
