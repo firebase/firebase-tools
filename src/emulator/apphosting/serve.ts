@@ -17,10 +17,7 @@ export async function start(): Promise<{ hostname: string; port: number }> {
   return { hostname, port: +port };
 }
 
-/**
- * Exported for unit testing
- */
-export async function serve(): Promise<string> {
+async function serve(): Promise<string> {
   const rootDir = process.cwd();
   const packageManager = await discoverPackageManager(rootDir);
 
