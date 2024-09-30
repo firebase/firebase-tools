@@ -84,7 +84,7 @@ export async function registerCore(
     "firebase.refresh",
     async () => {
       await vscode.commands.executeCommand("workbench.action.closeSidebar");
-      await vscode.commands.executeCommand("workbench.view.extension.firebase");
+      await vscode.commands.executeCommand("workbench.view.extension.firebase-data-connect");
     },
   );
 

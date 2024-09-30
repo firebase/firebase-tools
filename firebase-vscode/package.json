@@ -45,7 +45,7 @@
       },
       {
         "command": "firebase.refresh",
-        "title": "Firebase: Refresh"
+        "title": "Firebase Data Connect Extension: Refresh"
       }
     ],
     "configuration": {
