@@ -1,6 +1,5 @@
-import * as portUtils from "../portUtils";
 import * as sinon from "sinon";
-import * as spawn from "../../init/spawn";
+import * as sp from "cross-spawn";
 import { expect } from "chai";
 import * as serve from "./serve";
 import { DEFAULT_PORTS } from "../constants";
