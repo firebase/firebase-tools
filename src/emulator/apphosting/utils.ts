@@ -1,7 +1,10 @@
 import { pathExists } from "fs-extra";
 import { join } from "path";
 
-enum PackageManager {
+/**
+ * Exported for unit testing
+ */
+export enum PackageManager {
   npm = "npm",
   yarn = "yarn",
   pnpm = "pnpm",
