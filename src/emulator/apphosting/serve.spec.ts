@@ -29,8 +29,6 @@ describe("serve", () => {
       checkListenableStub.onSecondCall().returns(false);
       checkListenableStub.onThirdCall().returns(true);
 
-      wrapSpawnStub.returns(Promise.resolve());
-
       const res = await serve.start();
       expect(res.port).to.equal(DEFAULT_PORTS.apphosting + 2);
     });
