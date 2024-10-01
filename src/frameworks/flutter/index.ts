@@ -6,7 +6,7 @@ import { readFile } from "fs/promises";
 
 import { BuildResult, Discovery, FrameworkType, SupportLevel } from "../interfaces";
 import { FirebaseError } from "../../error";
-import { assertFlutterCliExists, getPubSpec, getTreeShakeFlag } from "./utils";
+import { assertFlutterCliExists, getPubSpec, getAdditionalBuildArgs } from "./utils";
 import { DART_RESERVED_WORDS, FALLBACK_PROJECT_NAME } from "./constants";
 
 export const name = "Flutter Web";
@@ -50,12 +50,12 @@ export function init(setup: any, config: any) {
   return Promise.resolve();
 }
 
-export async function build(cwd: string): Promise<BuildResult | undefined> {
+export async function build(cwd: string): Promise<BuildResult> {
   assertFlutterCliExists();
 
   const pubSpec = await getPubSpec(cwd);
-  const otherArgs = getTreeShakeFlag(pubSpec);
-  const buildArgs = ["build", "web", otherArgs].filter(Boolean);
+  const otherArgs = getAdditionalBuildArgs(pubSpec);
+  const buildArgs = ["build", "web", ...otherArgs].filter(Boolean);
 
   const build = spawnSync("flutter", buildArgs, { cwd, stdio: "inherit" });
   if (build.status !== 0) throw new FirebaseError("Unable to build your Flutter app");
