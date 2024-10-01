@@ -7,7 +7,7 @@ import { pluginLogger, LogLevel } from '../logger-wrapper';
 import { getSettings } from "../utils/settings";
 import { setEnabled } from "../../../src/experiments";
 import { registerUser } from "./user";
-import { registerProject } from "./project";
+import { currentProjectId, registerProject } from "./project";
 import { registerQuickstart } from "./quickstart";
 import { registerOptions } from "../options";
 import { upsertFile } from "../data-connect/file-utils";
@@ -55,13 +55,16 @@ export async function registerCore(
       return;
     }
     const workspaceFolder = vscode.workspace.workspaceFolders[0];
+    const initCommand = currentProjectId.value ? 
+      `${settings.firebasePath} init dataconnect --project ${currentProjectId.value}` :
+      `${settings.firebasePath} init dataconnect`;
     vscode.tasks.executeTask(
       new vscode.Task(
         { type: "shell" }, // this is the same type as in tasks.json
         workspaceFolder, // The workspace folder
         "firebase init dataconnect", // how you name the task
         "firebase init dataconnect", // Shows up as MyTask: name
-        new vscode.ShellExecution(`${settings.firebasePath} init dataconnect`),
+        new vscode.ShellExecution(initCommand),
       ),
     );
   });
@@ -81,7 +84,7 @@ export async function registerCore(
     "firebase.refresh",
     async () => {
       await vscode.commands.executeCommand("workbench.action.closeSidebar");
-      await vscode.commands.executeCommand("workbench.view.extension.firebase");
+      await vscode.commands.executeCommand("workbench.view.extension.firebase-data-connect");
     },
   );
 

@@ -4,15 +4,11 @@ import vscode, { Disposable } from "vscode";
 import { checkLogin } from "../core/user";
 import { DATA_CONNECT_EVENT_NAME } from "../analytics";
 import { getSettings } from "../utils/settings";
+import { currentProjectId } from "../core/project";
 
 const environmentVariables: Record<string, string> = {};
 
 const executionOptions: vscode.ShellExecutionOptions = {
-  env: environmentVariables,
-};
-
-const terminalOptions: TerminalOptions = {
-  name: "Data Connect Terminal",
   env: environmentVariables,
 };
 
@@ -21,12 +17,19 @@ export function setTerminalEnvVars(envVar: string, value: string) {
 }
 
 export function runCommand(command: string) {
+  const terminalOptions: TerminalOptions = {
+    name: "Data Connect Terminal",
+    env: environmentVariables,
+  };
   const terminal = vscode.window.createTerminal(terminalOptions);
   terminal.show();
 
   // TODO: This fails if the interactive shell is not expecting a command, such
   // as when oh-my-zsh asking for (Y/n) to updates during startup.
   // Consider using an non-interactive shell.
+  if (currentProjectId.value) {
+    command = `${command} --project ${currentProjectId.value}`;
+  }
   terminal.sendText(command);
 }
 
@@ -44,7 +47,9 @@ export function runTerminalTask(
           resolve(`Successfully executed ${taskName} with command: ${command}`);
         } else {
           reject(
-            new Error(`Failed to execute ${taskName} with command: ${command}`),
+            new Error(
+              `{${e.exitCode}}: Failed to execute ${taskName} with command: ${command}`,
+            ),
           );
         }
       }
@@ -82,7 +87,7 @@ export function registerTerminalTasks(
     // TODO: optional debug mode
     runTerminalTask(
       "firebase emulators",
-      `${settings.firebasePath} emulators:start`,
+      `${settings.firebasePath} emulators:start --project ${currentProjectId.value}`,
     );
   });
 
