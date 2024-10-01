@@ -26,6 +26,12 @@ export function assertFlutterCliExists() {
  * https://github.com/firebase/firebase-tools/issues/6197
  */
 export function getAdditionalBuildArgs(pubSpec: Record<string, any>): string[] {
+  /*
+  These packages are known to require the --no-tree-shake-icons flag
+  when building for web.
+  More dependencies might need to add here in the future.
+  Related issue: https://github.com/firebase/firebase-tools/issues/6197
+  */
   const treeShakePackages = [
     "material_icons_named",
     "material_symbols_icons",
