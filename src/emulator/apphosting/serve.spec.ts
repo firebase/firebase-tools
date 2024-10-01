@@ -27,23 +27,16 @@ describe("serve", () => {
     getLocalAppHostingConfigurationStub.restore();
   });
 
-  describe("getHostUrlFromString", () => {
-    it("retrieves url from NextJS output", () => {
-      expect(serve.getHostUrlFromString("   - Local:        http://localhost:3002")).to.equal(
-        "http://localhost:3002",
-      );
-    });
+  describe("start", () => {
+    it("should only select an available port to serve", async () => {
+      checkListenableStub.onFirstCall().returns(false);
+      checkListenableStub.onSecondCall().returns(false);
+      checkListenableStub.onThirdCall().returns(true);
 
-    it("retrieves url from AngularJS output", () => {
-      expect(serve.getHostUrlFromString("  ➜  Local:   http://localhost:4200/")).to.equal(
-        "http://localhost:4200",
-      );
-    });
+      wrapSpawnStub.returns(Promise.resolve());
 
-    it("should not match https urls", () => {
-      expect(serve.getHostUrlFromString("  ➜  Local:   https://www.google.com")).to.equal(
-        undefined,
-      );
+      const res = await serve.start();
+      expect(res.port).to.equal(DEFAULT_PORTS.apphosting + 2);
     });
   });
 
