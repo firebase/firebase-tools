@@ -3,9 +3,9 @@ import * as sinon from "sinon";
 import { EventEmitter } from "events";
 import { Writable } from "stream";
 import * as crossSpawn from "cross-spawn";
-import * as yaml from "yaml";
-import { assertFlutterCliExists, getTreeShakeFlag } from "./utils";
-import * as fs from "fs";
+import { assertFlutterCliExists, getTreeShakeFlag, getPubSpec } from "./utils";
+import * as fs from "fs/promises";
+import * as path from "path";
 
 describe("Flutter utils", () => {
   describe("assertFlutterCliExists", () => {
@@ -34,6 +34,31 @@ describe("Flutter utils", () => {
   });
 
   describe("getTreeShakeFlag", () => {
+    it("should return '--no-tree-shake-icons' when a tree-shake package is present", () => {
+      const pubSpec = {
+        dependencies: {
+          material_icons_named: "^1.0.0",
+        },
+      };
+      expect(getTreeShakeFlag(pubSpec)).to.equal("--no-tree-shake-icons");
+    });
+
+    it("should return an empty string when no tree-shake package is present", () => {
+      const pubSpec = {
+        dependencies: {
+          some_other_package: "^1.0.0",
+        },
+      };
+      expect(getTreeShakeFlag(pubSpec)).to.equal("");
+    });
+
+    it("should return an empty string when dependencies is undefined", () => {
+      const pubSpec = {};
+      expect(getTreeShakeFlag(pubSpec)).to.equal("");
+    });
+  });
+
+  describe("getPubSpec", () => {
     let sandbox: sinon.SinonSandbox;
 
     beforeEach(() => {
@@ -44,40 +69,28 @@ describe("Flutter utils", () => {
       sandbox.restore();
     });
 
-    it("should return '--no-tree-shake-icons' if a tree shake package is found", async () => {
-      const pubSpecContent = `
-        dependencies:
-          material_icons_named: any
-      `;
-      const readFileStub = sandbox.stub(fs, "readFile").resolves(Buffer.from(pubSpecContent));
-      const yamlParseStub = sandbox.stub(yaml, "parse").returns({
+    it("should read and parse pubspec.yaml file", async () => {
+      const mockYamlContent = "dependencies:\n  flutter:\n    sdk: flutter\n  some_package: ^1.0.0";
+      const expectedParsedYaml = {
         dependencies: {
-          material_icons_named: "any",
+          flutter: { sdk: "flutter" },
+          some_package: "^1.0.0",
         },
-      });
+      };
 
-      const result = await getTreeShakeFlag();
-      expect(result).to.equal("--no-tree-shake-icons");
-      sinon.assert.calledOnce(readFileStub);
-      sinon.assert.calledOnce(yamlParseStub);
+      sandbox.stub(fs, "readFile").resolves(Buffer.from(mockYamlContent));
+      sandbox.stub(path, "join").returns("/path/pubspec.yaml");
+
+      const result = await getPubSpec("/path");
+      expect(result).to.deep.equal(expectedParsedYaml);
     });
 
-    it("should return an empty string if no tree shake package is found", async () => {
-      const pubSpecContent = `
-        dependencies:
-          some_other_package: any
-      `;
-      const readFileStub = sandbox.stub(fs, "readFile").resolves(Buffer.from(pubSpecContent));
-      const yamlParseStub = sandbox.stub(yaml, "parse").returns({
-        dependencies: {
-          some_other_package: "any",
-        },
-      });
+    it("should return an empty object if pubspec.yaml is not found", async () => {
+      sandbox.stub(fs, "readFile").rejects(new Error("File not found"));
+      sandbox.stub(console, "info").returns(); // Suppress console output
 
-      const result = await getTreeShakeFlag();
-      expect(result).to.equal("");
-      sinon.assert.calledOnce(readFileStub);
-      sinon.assert.calledOnce(yamlParseStub);
+      const result = await getPubSpec("/path");
+      expect(result).to.deep.equal({});
     });
   });
 });

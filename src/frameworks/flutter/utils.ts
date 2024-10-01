@@ -1,6 +1,7 @@
 import { sync as spawnSync } from "cross-spawn";
 import { FirebaseError } from "../../error";
 import { readFile } from "fs/promises";
+import { join } from "path";
 import * as yaml from "yaml";
 
 export function assertFlutterCliExists() {
@@ -11,17 +12,7 @@ export function assertFlutterCliExists() {
     );
 }
 
-export async function getTreeShakeFlag(): Promise<string> {
-  const pubSpecPath = "./pubspec.yaml";
-  let pubSpec: Record<string, any> = {};
-  try {
-    const pubSpecBuffer = await readFile(pubSpecPath);
-    pubSpec = yaml.parse(pubSpecBuffer.toString());
-  } catch (error) {
-    console.info("pubspec.yaml not found, skipping tree shaking");
-    return "";
-  }
-
+export function getTreeShakeFlag(pubSpec: Record<string, any>): string {
   const treeShakePackages = [
     "material_icons_named",
     "material_symbols_icons",
@@ -33,4 +24,14 @@ export async function getTreeShakeFlag(): Promise<string> {
 
   const hasTreeShakePackage = treeShakePackages.some((pkg) => pubSpec.dependencies?.[pkg]);
   return hasTreeShakePackage ? "--no-tree-shake-icons" : "";
+}
+
+export async function getPubSpec(cwd: string): Promise<Record<string, any>> {
+  try {
+    const pubSpecBuffer = await readFile(join(cwd, "pubspec.yaml"));
+    return yaml.parse(pubSpecBuffer.toString());
+  } catch (error) {
+    console.info("pubspec.yaml not found, skipping tree shaking");
+    return {};
+  }
 }
