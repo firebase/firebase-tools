@@ -1,36 +1,34 @@
+import * as portUtils from "../portUtils";
 import * as sinon from "sinon";
-import * as sp from "cross-spawn";
+import * as spawn from "../../init/spawn";
 import { expect } from "chai";
 import * as serve from "./serve";
+import { DEFAULT_PORTS } from "../constants";
 
 describe("serve", () => {
-  let spawnStub: sinon.SinonStub;
+  let checkListenableStub: sinon.SinonStub;
+  let wrapSpawnStub: sinon.SinonStub;
 
   beforeEach(() => {
-    spawnStub = sinon.stub(sp, "spawn");
+    checkListenableStub = sinon.stub(portUtils, "checkListenable");
+    wrapSpawnStub = sinon.stub(spawn, "wrapSpawn");
   });
 
   afterEach(() => {
-    spawnStub.restore();
+    checkListenableStub.restore();
+    wrapSpawnStub.restore();
   });
 
-  describe("getHostUrlFromString", () => {
-    it("retrieves url from NextJS output", () => {
-      expect(serve.getHostUrlFromString("   - Local:        http://localhost:3002")).to.equal(
-        "http://localhost:3002",
-      );
-    });
+  describe("start", () => {
+    it("should only select an available port to serve", async () => {
+      checkListenableStub.onFirstCall().returns(false);
+      checkListenableStub.onSecondCall().returns(false);
+      checkListenableStub.onThirdCall().returns(true);
 
-    it("retrieves url from AngularJS output", () => {
-      expect(serve.getHostUrlFromString("  ➜  Local:   http://localhost:4200/")).to.equal(
-        "http://localhost:4200",
-      );
-    });
+      wrapSpawnStub.returns(Promise.resolve());
 
-    it("should not match https urls", () => {
-      expect(serve.getHostUrlFromString("  ➜  Local:   https://www.google.com")).to.equal(
-        undefined,
-      );
+      const res = await serve.start();
+      expect(res.port).to.equal(DEFAULT_PORTS.apphosting + 2);
     });
   });
 });

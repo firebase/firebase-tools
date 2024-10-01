@@ -3,54 +3,43 @@
  * @param options the Firebase CLI options.
  */
 
-import { spawn } from "cross-spawn";
+import { isIPv4 } from "net";
+import { checkListenable } from "../portUtils";
 import { discoverPackageManager } from "./utils";
+import { DEFAULT_HOST, DEFAULT_PORTS } from "../constants";
+import { wrapSpawn } from "../../init/spawn";
 
 /**
  * Spins up a project locally by running the project's dev command.
+ *
+ * Assumptions:
+ *  - Dev server runs on "localhost" when the package manager's dev command is
+ *    run
+ *  - Dev server will respect the PORT environment variable
  */
-
 export async function start(): Promise<{ hostname: string; port: number }> {
-  const hostUrl = await serve();
+  const hostname = DEFAULT_HOST;
+  let port = DEFAULT_PORTS.apphosting;
+  while (!(await availablePort(hostname, port))) {
+    port += 1;
+  }
 
-  const { hostname, port } = new URL(hostUrl);
-  return { hostname, port: +port };
+  serve(port);
+
+  return { hostname, port };
 }
 
-async function serve(): Promise<string> {
+async function serve(port: number): Promise<void> {
   const rootDir = process.cwd();
   const packageManager = await discoverPackageManager(rootDir);
 
-  /**
-   *  TODO: Should add a timeout here. If the hostUrl cannot be retrieved
-   *  in a timely manner, user is probably using an unsupported framework.
-   * */
-
-  const hostUrl = new Promise<string>((resolve, reject) => {
-    const serve = spawn(packageManager, ["run", "dev"], {
-      cwd: rootDir,
-    });
-
-    serve.stdout.on("data", (data: any) => {
-      process.stdout.write(data);
-      const url = getHostUrlFromString(data.toString());
-      if (url) resolve(url);
-    });
-    serve.stderr.on("data", (data: any) => {
-      process.stderr.write(data);
-    });
-    serve.on("exit", reject);
-  });
-
-  return await hostUrl;
+  await wrapSpawn(packageManager, ["run", "dev"], rootDir, { PORT: port });
 }
 
-/**
- * Exported for unit testing
- */
-export function getHostUrlFromString(data: string): string | undefined {
-  const match = data.match(/(http:\/\/.*:\d+)/);
-  if (match) {
-    return match[1];
-  }
+function availablePort(host: string, port: number): Promise<boolean> {
+  return checkListenable({
+    address: host,
+    port,
+    family: isIPv4(host) ? "IPv4" : "IPv6",
+  });
 }

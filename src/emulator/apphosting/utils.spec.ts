@@ -1,6 +1,6 @@
 import * as fs from "fs-extra";
 import * as sinon from "sinon";
-import { PackageManager, discoverPackageManager } from "./utils";
+import { discoverPackageManager } from "./utils";
 import { expect } from "chai";
 
 describe("utils", () => {
@@ -24,7 +24,7 @@ describe("utils", () => {
         return false;
       });
 
-      expect(await discoverPackageManager("./")).to.equal(PackageManager.npm);
+      expect(await discoverPackageManager("./")).to.equal("npm");
     });
 
     it("returns pnpm if pnpm-lock.json file fond", async () => {
@@ -36,7 +36,7 @@ describe("utils", () => {
         return false;
       });
 
-      expect(await discoverPackageManager("./")).to.equal(PackageManager.pnpm);
+      expect(await discoverPackageManager("./")).to.equal("pnpm");
     });
   });
 
@@ -49,6 +49,6 @@ describe("utils", () => {
       return false;
     });
 
-    expect(await discoverPackageManager("./")).to.equal(PackageManager.yarn);
+    expect(await discoverPackageManager("./")).to.equal("yarn");
   });
 });

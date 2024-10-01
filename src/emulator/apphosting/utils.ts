@@ -4,11 +4,7 @@ import { join } from "path";
 /**
  * Exported for unit testing
  */
-export enum PackageManager {
-  npm = "npm",
-  yarn = "yarn",
-  pnpm = "pnpm",
-}
+export type PackageManager = "npm" | "yarn" | "pnpm";
 
 /**
  * Returns the package manager used by the project
@@ -17,12 +13,12 @@ export enum PackageManager {
  */
 export async function discoverPackageManager(rootdir: string): Promise<PackageManager> {
   if (await pathExists(join(rootdir, "pnpm-lock.yaml"))) {
-    return PackageManager.pnpm;
+    return "pnpm";
   }
 
   if (await pathExists(join(rootdir, "yarn.lock"))) {
-    return PackageManager.yarn;
+    return "yarn";
   }
 
-  return PackageManager.npm;
+  return "npm";
 }
