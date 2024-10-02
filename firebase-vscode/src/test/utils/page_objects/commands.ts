@@ -1,25 +1,37 @@
 import * as vscode from "vscode";
 import { EmulatorsStatus, RunningEmulatorInfo } from "../../../messaging/types";
+import { waitForTaskCompletion } from "../task";
 
 export class FirebaseCommands {
-  async waitForEmulators(): Promise<void> {
-    const response = await browser.executeWorkbench(
-      async (vs: typeof vscode) => {
-        const emulators = await vs.commands.executeCommand(
-          "firebase.emulators.findRunning",
-        );
-        return emulators as
-          | { status: EmulatorsStatus; infos?: RunningEmulatorInfo }
-          | undefined;
-      },
-    );
+  private async getEmulatorsStatus() {
+    return browser.executeWorkbench(async (vs: typeof vscode) => {
+      const emulators = await vs.commands.executeCommand(
+        "firebase.emulators.findRunning",
+      );
+      return emulators as
+        | { status: EmulatorsStatus; infos?: RunningEmulatorInfo }
+        | undefined;
+    });
+  }
 
-    // Wait for the emulators to be started
-    if (response?.status !== "running") {
-      await browser.pause(1000);
-      await this.waitForEmulators();
-    } else {
-      return;
-    }
+  async waitForEmulators(): Promise<void> {
+    return browser.waitUntil(
+      async () => {
+        const emulators = await this.getEmulatorsStatus();
+        await browser.pause(1000);
+        return emulators?.status === "running";
+      },
+      { timeout: 100000 },
+    );
+  }
+
+  async waitForUser(): Promise<void> {
+    return browser.waitUntil(async () => {
+      return browser.executeWorkbench<void>(async (vs: typeof vscode) => {
+        const isLoading = await vs.commands.executeCommand("fdc-graphql.user");
+        console.log("User loading", isLoading);
+        return true;
+      });
+    });
   }
 }

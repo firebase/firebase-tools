@@ -26,12 +26,20 @@ export function registerUser(
   broker: ExtensionBrokerImpl,
   telemetryLogger: TelemetryLogger,
 ): Disposable {
+  // For testing purposes.
   const userMockCommand = vscode.commands.registerCommand(
     `fdc-graphql.mock.user`,
     (user: User | null) => {
-      console.log("Mocking user", user);
       currentUser.value = user;
       broker.send("notifyUserChanged", { user });
+    },
+  );
+
+  // For testing purposes.
+  const loadingUser = vscode.commands.registerCommand(
+    `fdc-graphql.user`,
+    () => {
+      return isLoadingUser.value;
     },
   );
 
@@ -71,5 +79,6 @@ export function registerUser(
     { dispose: logoutSub },
     { dispose: isLoadingSub },
     userMockCommand,
+    loadingUser,
   );
 }

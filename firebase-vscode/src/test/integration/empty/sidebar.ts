@@ -1,15 +1,21 @@
-import { browser } from "@wdio/globals";
+import { FirebaseCommands } from "../../utils/page_objects/commands";
 import { FirebaseSidebar } from "../../utils/page_objects/sidebar";
+import { mockProject } from "../../utils/projects";
 import { firebaseTest } from "../../utils/test_hooks";
+import { mockUser } from "../../utils/user";
 
 firebaseTest("Supports opening empty projects", async function () {
   it("opens an empty project", async function () {
     const workbench = await browser.getWorkbench();
 
     const sidebar = new FirebaseSidebar(workbench);
-
     await sidebar.openExtensionSidebar();
-    await workbench.wait(5000);
+
+    const commands = new FirebaseCommands();
+    await commands.waitForUser();
+
+    await mockUser({ email: "test@gmail.com" });
+    await mockProject("demo-project");
 
     await sidebar.runInStudioContext(async (firebase) => {
       await firebase.signInWithGoogleLink.waitForDisplayed();

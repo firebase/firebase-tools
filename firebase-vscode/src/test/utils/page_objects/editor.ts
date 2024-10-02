@@ -1,4 +1,4 @@
-import * as vscode from "vscode";
+import vscode from "vscode";
 import { Workbench } from "wdio-vscode-service";
 
 export class EditorView {
@@ -156,7 +156,7 @@ export class Notifications {
         extensionId,
       );
       console.log(`Extension ${extensionId} not installed yet`);
-      // await browser.pause(1000);
+      await browser.pause(1000);
     }
 
     if (installed) {

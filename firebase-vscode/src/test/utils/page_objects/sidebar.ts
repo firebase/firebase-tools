@@ -1,13 +1,16 @@
+import vscode from "vscode";
+
 import { Workbench } from "wdio-vscode-service";
 import { findWebviewWithTitle, runInFrame } from "../webviews";
 import { TEXT } from "../../../../webviews/globals/ux-text";
-import vscode from "vscode";
 
 export class FirebaseSidebar {
   constructor(readonly workbench: Workbench) {}
 
   async openExtensionSidebar() {
-    await $(`a[aria-label="Firebase Data Connect"]`).click();
+    const sidebar = await $(`a[aria-label="Firebase Data Connect"]`);
+    await sidebar.waitForDisplayed();
+    await sidebar.click();
   }
 
   get fdcDeployElement() {
@@ -21,11 +24,15 @@ export class FirebaseSidebar {
    * the command.
    */
   async startEmulators() {
-    await this.openExtensionSidebar();
-    await this.runInStudioContext(async (studio) => {
-      await studio.startEmulatorsBtn.waitForDisplayed();
-      await studio.startEmulatorsBtn.click();
-    });
+    try {
+      await this.runInStudioContext(async (studio) => {
+        await studio.startEmulatorsBtn.waitForDisplayed();
+        await studio.startEmulatorsBtn.click();
+      });
+    } catch (e) {
+      console.error("Error starting emulators", e);
+      await this.startEmulators();
+    }
   }
 
   async currentEmulators() {
@@ -41,7 +48,6 @@ export class FirebaseSidebar {
     cb: (firebase: StudioView) => Promise<R>,
   ): Promise<R> {
     const [a, b] = await findWebviewWithTitle("Studio");
-
     return runInFrame(a, () =>
       runInFrame(b, () => cb(new StudioView(this.workbench))),
     );
@@ -57,6 +63,10 @@ export class StudioView {
 
   get signInWithGoogleLink() {
     return $(`vscode-link=${TEXT.GOOGLE_SIGN_IN}`);
+  }
+
+  get initFirebaseBtn() {
+    return $("vscode-button=Run firebase init");
   }
 
   get startEmulatorsBtn() {

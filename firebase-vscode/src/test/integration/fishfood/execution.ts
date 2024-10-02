@@ -1,8 +1,11 @@
 import { browser, expect } from "@wdio/globals";
-import { ExecutionPanel } from "../../utils/page_objects/execution";
+import {
+  ExecutionPanel,
+  HistoryItem,
+} from "../../utils/page_objects/execution";
 import { firebaseTest } from "../../utils/test_hooks";
 import { EditorView } from "../../utils/page_objects/editor";
-import { mutationsPath, queriesPath } from "../../utils/projects";
+import { mockProject, mutationsPath, queriesPath } from "../../utils/projects";
 import { FirebaseCommands } from "../../utils/page_objects/commands";
 import { FirebaseSidebar } from "../../utils/page_objects/sidebar";
 import { mockUser } from "../../utils/user";
@@ -10,12 +13,18 @@ import { mockUser } from "../../utils/user";
 firebaseTest("Execution", async function () {
   it("should execute a query", async function () {
     const workbench = await browser.getWorkbench();
-    await mockUser({ email: "test@gmail.com" });
 
     const sidebar = new FirebaseSidebar(workbench);
+    await sidebar.openExtensionSidebar();
+
+    const commands = new FirebaseCommands();
+    await commands.waitForUser();
+
+    await mockUser({ email: "test@gmail.com" });
+    await mockProject("test-project");
+
     const execution = new ExecutionPanel(workbench);
     const editor = new EditorView(workbench);
-    const commands = new FirebaseCommands();
 
     await sidebar.startEmulators();
     await commands.waitForEmulators();
@@ -29,16 +38,31 @@ firebaseTest("Execution", async function () {
     await editor.runLocalButton.waitForDisplayed();
     await editor.runLocalButton.click();
 
-    // Check the history entry
-    const item1 = await execution.history.getSelectedItem();
+    async function getExecutionStatus() {
+      let item = await execution.history.getSelectedItem();
+      let status = await item.getStatus();
+      while (status === "pending") {
+        await browser.pause(1000);
+        item = await execution.history.getSelectedItem();
+        status = await item.getStatus();
+      }
+
+      return item;
+    }
 
     // Waiting for the execution to finish
-    await browser.waitUntil(async () => {
-      const status = await item1.getStatus();
-      return status === "success";
-    });
+    let result = await getExecutionStatus();
 
-    expect(await item1.getLabel()).toBe("createPost");
+    // We need to retry the first execution as it will fail if the emulators hasn't started.
+    // This is currently the case because the emulators show as "running" even though it's
+    // still downloading the dataconnect emulator.
+    while ((await result.getStatus()) !== "success") {
+      await editor.runLocalButton.click();
+      await browser.pause(5000);
+      result = await getExecutionStatus();
+    }
+
+    expect(await result.getLabel()).toBe("createPost");
 
     await execution.setVariables(`{"id": "42"}`);
 

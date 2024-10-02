@@ -1,7 +1,6 @@
 import * as path from "path";
 import * as child_process from "child_process";
 import { Notifications } from "./utils/page_objects/editor";
-import type { Options } from "@wdio/types";
 
 export const vscodeConfigs = {
   browserName: "vscode",
@@ -34,7 +33,6 @@ export const config: WebdriverIO.Config = {
 
   beforeTest: async function () {
     const workbench = await browser.getWorkbench();
-
     const notifications = new Notifications(workbench);
     await notifications.installRecommendedExtension({
       extensionId: "graphql.vscode-graphql-syntax",
