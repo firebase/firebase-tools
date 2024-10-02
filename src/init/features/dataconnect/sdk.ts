@@ -141,6 +141,7 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
     const javascriptSdk: JavascriptSDK = {
       outputDir,
       package: pkg,
+      packageJsonDir: newConnectorYaml.generate.javascriptSdk?.packageJsonDir,
     };
 
     if (
