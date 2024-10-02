@@ -1,14 +1,22 @@
 import * as clc from "colorette";
 
 import { Command } from "../command";
-import { getFirebaseProject, listFirebaseProjects } from "../management/projects";
+import { listFirebaseProjects } from "../management/projects";
 import { FirebaseProjectMetadata } from "../types/project";
 import { logger } from "../logger";
 import { Options } from "../options";
 import { prompt } from "../prompt";
 import { requireAuth } from "../requireAuth";
 import { validateProjectId } from "../command";
-import * as utils from "../utils";
+import { FirebaseError } from "../error";
+import { makeActiveProject } from "../utils";
+
+type UseOptions = Options & {
+  add: boolean;
+  alias: string;
+  unalias: string;
+  clear: boolean;
+};
 
 function listAliases(options: Options) {
   if (options.rc.hasProjects) {
@@ -37,8 +45,7 @@ export const command = new Command("use [alias_or_project_id]")
   .option("--alias <name>", "create a new alias for the provided project id")
   .option("--unalias <name>", "remove an already created project alias")
   .option("--clear", "clear the active project selection")
-  .before(requireAuth)
-  .action((newActive, options) => {
+  .action(async (newActive: string, options: UseOptions) => {
     // HACK: Commander.js silently swallows an option called alias >_<
     let aliasOpt: string | undefined;
     const i = process.argv.indexOf("--alias");
@@ -48,7 +55,7 @@ export const command = new Command("use [alias_or_project_id]")
 
     if (!options.projectRoot) {
       // not in project directory
-      return utils.reject(
+      throw new FirebaseError(
         clc.bold("firebase use") +
           " must be run from a Firebase project directory.\n\nRun " +
           clc.bold("firebase init") +
@@ -62,48 +69,36 @@ export const command = new Command("use [alias_or_project_id]")
       const hasAlias = options.rc.hasProjectAlias(newActive);
       const resolvedProject = options.rc.resolveAlias(newActive);
       validateProjectId(resolvedProject);
-      return getFirebaseProject(resolvedProject)
-        .then((foundProject) => {
-          project = foundProject;
-        })
-        .catch(() => {
-          return utils.reject("Invalid project selection, " + verifyMessage(newActive));
-        })
-        .then(() => {
-          if (aliasOpt) {
-            // firebase use [project] --alias [alias]
-            if (!project) {
-              return utils.reject(
-                "Cannot create alias " + clc.bold(aliasOpt) + ", " + verifyMessage(newActive),
-              );
-            }
-            options.rc.addProjectAlias(aliasOpt, newActive);
-            logger.info("Created alias", clc.bold(aliasOpt), "for", resolvedProject + ".");
-          }
+      if (aliasOpt) {
+        // firebase use [project] --alias [alias]
+        if (!project) {
+          throw new FirebaseError(
+            "Cannot create alias " + clc.bold(aliasOpt) + ", " + verifyMessage(newActive),
+          );
+        }
+        options.rc.addProjectAlias(aliasOpt, newActive);
+        logger.info("Created alias", clc.bold(aliasOpt), "for", resolvedProject + ".");
+      }
 
-          if (hasAlias) {
-            // found alias
-            if (!project) {
-              // found alias, but not in project list
-              return utils.reject(
-                "Unable to use alias " +
-                  clc.bold(newActive) +
-                  ", " +
-                  verifyMessage(resolvedProject),
-              );
-            }
+      if (hasAlias) {
+        // found alias
+        if (!project) {
+          // found alias, but not in project list
+          throw new FirebaseError(
+            "Unable to use alias " + clc.bold(newActive) + ", " + verifyMessage(resolvedProject),
+          );
+        }
 
-            utils.makeActiveProject(options.projectRoot, newActive);
-            logger.info("Now using alias", clc.bold(newActive), "(" + resolvedProject + ")");
-          } else if (project) {
-            // exact project id specified
-            utils.makeActiveProject(options.projectRoot, newActive);
-            logger.info("Now using project", clc.bold(newActive));
-          } else {
-            // no alias or project recognized
-            return utils.reject("Invalid project selection, " + verifyMessage(newActive));
-          }
-        });
+        makeActiveProject(options.projectRoot, newActive);
+        logger.info("Now using alias", clc.bold(newActive), "(" + resolvedProject + ")");
+      } else if (project) {
+        // exact project id specified
+        makeActiveProject(options.projectRoot, newActive);
+        logger.info("Now using project", clc.bold(newActive));
+      } else {
+        // no alias or project recognized
+        throw new FirebaseError("Invalid project selection, " + verifyMessage(newActive));
+      }
     } else if (options.unalias) {
       // firebase use --unalias [alias]
       if (options.rc.hasProjectAlias(options.unalias)) {
@@ -115,7 +110,7 @@ export const command = new Command("use [alias_or_project_id]")
     } else if (options.add) {
       // firebase use --add
       if (options.nonInteractive) {
-        return utils.reject(
+        throw new FirebaseError(
           "Cannot run " +
             clc.bold("firebase use --add") +
             " in non-interactive mode. Use " +
@@ -123,39 +118,34 @@ export const command = new Command("use [alias_or_project_id]")
             " instead.",
         );
       }
-      return listFirebaseProjects().then((projects) => {
-        const results: { project?: string; alias?: string } = {};
-        return prompt(results, [
-          {
-            type: "list",
-            name: "project",
-            message: "Which project do you want to add?",
-            choices: projects.map((p) => p.projectId).sort(),
+      await requireAuth(options);
+      const projects = await listFirebaseProjects();
+      const results: { project: string; alias: string } = await prompt(options, [
+        {
+          type: "list",
+          name: "project",
+          message: "Which project do you want to add?",
+          choices: projects.map((p) => p.projectId).sort(),
+        },
+        {
+          type: "input",
+          name: "alias",
+          message: "What alias do you want to use for this project? (e.g. staging)",
+          validate: (input) => {
+            return input && input.length > 0;
           },
-          {
-            type: "input",
-            name: "alias",
-            message: "What alias do you want to use for this project? (e.g. staging)",
-            validate: (input) => {
-              return input && input.length > 0;
-            },
-          },
-        ]).then(() => {
-          options.rc.addProjectAlias(results.alias, results.project);
-          utils.makeActiveProject(options.projectRoot, results.alias);
-          logger.info();
-          logger.info("Created alias", clc.bold(results.alias || ""), "for", results.project + ".");
-          logger.info(
-            "Now using alias",
-            clc.bold(results.alias || "") + " (" + results.project + ")",
-          );
-        });
-      });
+        },
+      ]);
+      options.rc.addProjectAlias(results.alias, results.project);
+      makeActiveProject(options.projectRoot, results.alias);
+      logger.info();
+      logger.info("Created alias", clc.bold(results.alias || ""), "for", results.project + ".");
+      logger.info("Now using alias", clc.bold(results.alias || "") + " (" + results.project + ")");
     } else if (options.clear) {
       // firebase use --clear
-      utils.makeActiveProject(options.projectRoot, undefined);
-      options.projectAlias = null;
-      options.project = null;
+      makeActiveProject(options.projectRoot, undefined);
+      options.projectAlias = undefined;
+      options.project = undefined;
       logger.info("Cleared active project.");
       logger.info();
       listAliases(options);
@@ -166,7 +156,7 @@ export const command = new Command("use [alias_or_project_id]")
           logger.info(options.project);
           return options.project;
         }
-        return utils.reject("No active project");
+        throw new FirebaseError("No active project");
       }
 
       if (options.projectAlias) {
