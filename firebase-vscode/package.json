@@ -4,7 +4,7 @@
   "publisher": "GoogleCloudTools",
   "icon": "./resources/firebase_dataconnect_logo.png",
   "description": "Firebase Data Connect for VSCode",
-  "version": "0.9.1",
+  "version": "0.10.1",
   "engines": {
     "vscode": "^1.69.0"
   },
@@ -42,7 +42,7 @@
       },
       {
         "command": "firebase.refresh",
-        "title": "Firebase: Refresh"
+        "title": "Firebase Data Connect Extension: Refresh"
       }
     ],
     "configuration": {
@@ -80,6 +80,12 @@
         "firebase.npmPath": {
           "type": "string",
           "markdownDescription": "%ext.config.npmPath%"
+        },
+        "firebase.idx.viewMetricNotice": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "%ext.config.idx.viewMetricNotice%",
+          "scope": "application"
         }
       }
     },

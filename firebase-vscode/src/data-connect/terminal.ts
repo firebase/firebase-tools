@@ -27,7 +27,10 @@ export function runCommand(command: string) {
   // TODO: This fails if the interactive shell is not expecting a command, such
   // as when oh-my-zsh asking for (Y/n) to updates during startup.
   // Consider using an non-interactive shell.
-  terminal.sendText(`${command} -P ${currentProjectId.value}`);
+  if (currentProjectId.value) {
+    command = `${command} --project ${currentProjectId.value}`;
+  }
+  terminal.sendText(command);
 }
 
 export function runTerminalTask(
@@ -44,7 +47,9 @@ export function runTerminalTask(
           resolve(`Successfully executed ${taskName} with command: ${command}`);
         } else {
           reject(
-            new Error(`Failed to execute ${taskName} with command: ${command}`),
+            new Error(
+              `{${e.exitCode}}: Failed to execute ${taskName} with command: ${command}`,
+            ),
           );
         }
       }

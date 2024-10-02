@@ -6,5 +6,6 @@
   "ext.config.firebasePath": "Path to the `Firebase` module, e.g. `./node_modules/firebase`",
   "ext.config.hosting.useFrameworks": "Enable web frameworks",
   "ext.config.npmPath": "Path to NPM executable in local environment",
-  "ext.config.title": "Prettier"
+  "ext.config.title": "Prettier",
+  "ext.config.idx.viewMetricNotice": "Show data collection notice on next startup (IDX Only)"
 }
