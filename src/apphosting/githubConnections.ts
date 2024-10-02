@@ -19,11 +19,11 @@ import { Client } from "../apiv2";
 
 const githubApiClient = new Client({ urlPrefix: githubApiOrigin(), auth: false });
 
-interface GitHubBranchInfo {
+export interface GitHubBranchInfo {
   commit: GitHubCommitInfo;
 }
 
-interface GitHubCommitInfo {
+export interface GitHubCommitInfo {
   sha: string;
   commit: GitHubCommit;
 }
