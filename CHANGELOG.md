@@ -1,0 +1,1 @@
+- `firebase use <project> --alias <alias>` no longer requires `firebase login`. (#7624)
