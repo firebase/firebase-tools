@@ -1,5 +1,9 @@
 import { pathExists } from "fs-extra";
 import { join } from "path";
+import { EmulatorLogger } from "../emulatorLogger";
+import { Emulators } from "../types";
+
+export const logger = EmulatorLogger.forEmulator(Emulators.APPHOSTING);
 
 /**
  * Exported for unit testing

@@ -8,7 +8,7 @@ import { checkListenable } from "../portUtils";
 import { discoverPackageManager } from "./utils";
 import { DEFAULT_HOST, DEFAULT_PORTS } from "../constants";
 import { wrapSpawn } from "../../init/spawn";
-import { loadAppHostingYaml } from "./environments";
+import { getLocalAppHostingConfiguration } from "./environments";
 /**
  * Spins up a project locally by running the project's dev command.
  *
@@ -32,10 +32,10 @@ export async function start(): Promise<{ hostname: string; port: number }> {
 async function serve(port: number): Promise<void> {
   const rootDir = process.cwd();
   const packageManager = await discoverPackageManager(rootDir);
-  const apphostingConfigs = await loadAppHostingYaml(rootDir);
+  const apphostingLocalConfig = await getLocalAppHostingConfiguration(rootDir);
 
   await wrapSpawn(packageManager, ["run", "dev"], rootDir, {
-    ...apphostingConfigs.environmentVariables,
+    ...apphostingLocalConfig.environmentVariables,
     PORT: port,
   });
 }
