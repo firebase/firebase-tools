@@ -3,7 +3,7 @@
  */
 
 import fetch from "node-fetch";
-import { logger } from "..";
+import { logger } from "../logger";
 import { AbortSignal } from "node-fetch/externals";
 
 export enum VSCODE_MESSAGE {
