@@ -3,9 +3,8 @@
  */
 
 import fetch from "node-fetch";
+import { logger } from "..";
 import { AbortSignal } from "node-fetch/externals";
-import { EmulatorLogger } from "../emulator/emulatorLogger";
-import { Emulators } from "../emulator/types";
 
 export enum VSCODE_MESSAGE {
   EMULATORS_STARTED = "EMULATORS_STARTED",
@@ -22,7 +21,6 @@ export const DEFAULT_PORT = "40001"; // 5 digit default used by vscode;
 
 // If port in use, VSCode will pass a different port to the integrated term through env var
 export const port = process.env.VSCODE_WEBHOOK_PORT || DEFAULT_PORT;
-const emuLogger = EmulatorLogger.forEmulator(Emulators.DATACONNECT);
 export async function sendVSCodeMessage(body: WebhookBody) {
   const jsonBody = JSON.stringify(body);
 
@@ -35,13 +33,11 @@ export async function sendVSCodeMessage(body: WebhookBody) {
         "x-mantle-admin": "all",
       },
       body: jsonBody,
-      signal: AbortSignal.timeout(3000) as AbortSignal, // cast necessary due to https://github.com/node-fetch/node-fetch/issues/1652
+      signal: AbortSignal.timeout(3000) as unknown as AbortSignal, // necessary due to https://github.com/node-fetch/node-fetch/issues/1652
     });
   } catch (e) {
-    emuLogger.logLabeled(
-      "WARN",
-      `Could not find VSCode notification endpoint: ${e}. If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
-      `,
+    logger.debug(
+      `Could not find VSCode notification endpoint: ${e}. If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.`,
     );
   }
 }
