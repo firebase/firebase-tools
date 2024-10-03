@@ -40,15 +40,4 @@ describe("serve", () => {
       expect(res.port).to.equal(DEFAULT_PORTS.apphosting + 2);
     });
   });
-
-  describe("start", () => {
-    it("should only select an available port to serve", async () => {
-      checkListenableStub.onFirstCall().returns(false);
-      checkListenableStub.onSecondCall().returns(false);
-      checkListenableStub.onThirdCall().returns(true);
-
-      const res = await serve.start();
-      expect(res.port).to.equal(DEFAULT_PORTS.apphosting + 2);
-    });
-  });
 });
