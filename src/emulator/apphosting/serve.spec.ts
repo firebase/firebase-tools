@@ -32,7 +32,7 @@ describe("serve", () => {
       checkListenableStub.onFirstCall().returns(false);
       checkListenableStub.onSecondCall().returns(false);
       checkListenableStub.onThirdCall().returns(true);
-
+      getLocalAppHostingConfigurationStub.returns({ environmentVariables: {}, secrets: {} });
       const res = await serve.start();
       expect(res.port).to.equal(DEFAULT_PORTS.apphosting + 2);
     });
