@@ -645,12 +645,10 @@ export class FunctionsEmulator implements EmulatorInstance {
       if (force) {
         return true; // We are going to load all of the triggers anyway, so we can remove everything
       }
-      return (
-        !triggerDefinitions.some(
-          (def) =>
-            record.def.entryPoint === def.entryPoint &&
-            JSON.stringify(record.def.eventTrigger) === JSON.stringify(def.eventTrigger),
-        )
+      return !triggerDefinitions.some(
+        (def) =>
+          record.def.entryPoint === def.entryPoint &&
+          JSON.stringify(record.def.eventTrigger) === JSON.stringify(def.eventTrigger),
       );
     });
     await this.removeTriggers(toRemove);
