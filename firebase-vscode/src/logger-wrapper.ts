@@ -35,25 +35,17 @@ for (const logLevel in pluginLogger) {
 /**
  * Logging setup for logging to console and to file.
  */
-export function logSetup({
-  shouldWriteDebug,
-  debugLogPath,
-}: {
-  shouldWriteDebug: boolean;
-  debugLogPath: string;
-}) {
+export function logSetup() {
   // Log to console (use built in CLI functionality)
   process.env.DEBUG = "true";
   setupLoggers();
 
   // Log to file
   // Only log to file if firebase.debug extension setting is true.
-  if (shouldWriteDebug) {
     // Re-implement file logger call from ../../src/bin/firebase.ts to not bring
     // in the entire firebase.ts file
     const rootFolders = getRootFolders();
-    const filePath =
-      debugLogPath || path.join(rootFolders[0], "firebase-plugin-debug.log");
+    const filePath = path.join(rootFolders[0], ".firebase", "logs", "firebase-extension-debug.log");
     pluginLogger.info("Logging to path", filePath);
     cliLogger.add(
       new transports.File({
@@ -68,7 +60,6 @@ export function logSetup({
       }),
     );
     cliLogger.add(new VSCodeOutputTransport({ level: "info" }));
-  }
 }
 
 /**
