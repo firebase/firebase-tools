@@ -4,7 +4,7 @@
     "checkJs": false,
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
-    "types": ["node", "@wdio/globals/types", "@wdio/mocha-framework"],
+    "typeRoots": ["node_modules/@types", "../src/types"],
     "module": "es2020",
     "moduleResolution": "node",
     "target": "ES2017",

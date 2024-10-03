@@ -9,9 +9,9 @@
     "rootDirs": ["../", "../../../src", "../../common"],
     "jsx": "react",
     /* Cannot be enabled until we enable it in the root tsconfig.json */
-    "strict": true,
+    "strict": false,
     "skipLibCheck": true,
-    "types": ["node", "@wdio/globals/types", "@wdio/mocha-framework"]
+    "types": ["node", "expect-webdriverio", "wdio-vscode-service", "mocha"]
   },
   "exclude": ["**/*.test.ts"],
   "include": ["../**/*", "../../common/**/*"]
