@@ -8,9 +8,10 @@ import { logger } from "../logger";
 const GOOGLE_ML_INTEGRATION_ROLE = "roles/aiplatform.user";
 
 import {
-  checkForFreeTrialInstance,
+  getFreeTrialInstanceId,
   freeTrialTermsLink,
   printFreeTrialUnavailable,
+  checkFreeTrialInstanceEligibility,
 } from "./freeTrial";
 import { FirebaseError } from "../error";
 
@@ -68,9 +69,9 @@ export async function provisionCloudSql(args: {
     if (err.status !== 404) {
       throw err;
     }
-    const freeTrialInstanceId = await checkForFreeTrialInstance(projectId);
-    if (freeTrialInstanceId) {
-      printFreeTrialUnavailable(projectId, freeTrialInstanceId, configYamlPath);
+    const freeTrialInstanceId = await getFreeTrialInstanceId(projectId);
+    if (await checkFreeTrialInstanceEligibility(projectId)) {
+      printFreeTrialUnavailable(projectId, configYamlPath, freeTrialInstanceId);
       throw new FirebaseError("Cannot create another no-cost trial Cloud SQL instance.");
     }
     const cta = dryRun ? "It will be created on your next deploy" : "Creating it now.";
