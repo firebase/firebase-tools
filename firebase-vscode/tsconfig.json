@@ -18,5 +18,6 @@
   "ts-node": {
     "esm": true
   },
+  "exclude": ["src/test/**/*"],
   "include": ["src/**/*", "common/**/*"]
 }
