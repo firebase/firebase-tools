@@ -53,7 +53,7 @@ export async function loadAppHostingYaml(
 
 /**
  * Loads in apphosting.yaml & apphosting.local.yaml, giving
- * apphosting.local.yaml precedence if one is present.
+ * apphosting.local.yaml precedence if present.
  */
 export async function getLocalAppHostingConfiguration(
   sourceDirectory: string,
