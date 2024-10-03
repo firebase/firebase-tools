@@ -427,6 +427,26 @@ export async function ensureServiceAgentRole(
   serviceAccountEmails: string[],
   role: string,
 ): Promise<void> {
+  const bindings = await checkServiceAgentRole(secret, serviceAccountEmails, role);
+  if (bindings.length) {
+    await module.exports.setIamPolicy(secret, bindings);
+  }
+
+  // SecretManager would like us to _always_ inform users when we grant access to one of their secrets.
+  // As a safeguard against forgetting to do so, we log it here.
+  logLabeledSuccess(
+    "secretmanager",
+    `Granted ${role} on projects/${secret.projectId}/secrets/${
+      secret.name
+    } to ${serviceAccountEmails.join(", ")}`,
+  );
+}
+
+export async function checkServiceAgentRole(
+  secret: Pick<Secret, "projectId" | "name">,
+  serviceAccountEmails: string[],
+  role: string,
+): Promise<iam.Binding[]> {
   const policy = await module.exports.getIamPolicy(secret);
   const bindings: iam.Binding[] = policy.bindings || [];
   let binding = bindings.find((b) => b.role === role);
@@ -443,18 +463,8 @@ export async function ensureServiceAgentRole(
     }
   }
 
-  if (shouldShortCircuit) return;
-
-  await module.exports.setIamPolicy(secret, bindings);
-
-  // SecretManager would like us to _always_ inform users when we grant access to one of their secrets.
-  // As a safeguard against forgetting to do so, we log it here.
-  logLabeledSuccess(
-    "secretmanager",
-    `Granted ${role} on projects/${secret.projectId}/secrets/${
-      secret.name
-    } to ${serviceAccountEmails.join(", ")}`,
-  );
+  if (shouldShortCircuit) return [];
+  return bindings;
 }
 
 export const FIREBASE_MANAGED = "firebase-managed";

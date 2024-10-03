@@ -586,7 +586,7 @@ describe("Next.js utils", () => {
         .withArgs("npx which esbuild", { encoding: "utf8" })
         .returns(mockBinaryPath + "\n");
       execSyncStub
-        .withArgs(`${mockBinaryPath} --version`, { encoding: "utf8" })
+        .withArgs(`"${mockBinaryPath}" --version`, { encoding: "utf8" })
         .returns(`${mockGlobalVersion}\n`);
 
       const consoleWarnStub = sinon.stub(console, "warn");

@@ -1,8 +1,16 @@
 import { env, TelemetryLogger, TelemetrySender } from "vscode";
 import { pluginLogger } from "./logger-wrapper";
 import { AnalyticsParams, trackVSCode } from "../../src/track";
+import {env as monospaceEnv} from "../src/core/env";
+
+export const IDX_METRIC_NOTICE = `
+When you use the Firebase Data Connect Extension, Google collects telemetry data such as usage statistics, error metrics, and crash reports. Telemetry helps us better understand how the Firebase Extension is performing, where improvements need to be made, and how features are being used. Firebase uses this data, consistent with our [Google Privacy Policy](https://policies.google.com/privacy?hl=en-US), to provide, improve, and develop Firebase products and services.
+We take steps to protect your privacy as part of this process. This includes disconnecting your telemetry data from your Google Account, fully anonymizing it, and storing that data for up to 14 months. 
+Read more in our [Privacy Policy](https://policies.google.com/privacy?hl=en-US).
+`;
 
 export enum DATA_CONNECT_EVENT_NAME {
+  EXTENSION_START = "extension_start",
   COMMAND_EXECUTION = "command_execution",
   DEPLOY_ALL = "deploy_all",
   DEPLOY_INDIVIDUAL = "deploy_individual",
@@ -19,6 +27,7 @@ export enum DATA_CONNECT_EVENT_NAME {
   INIT_SDK = "init_sdk",
   INIT_SDK_CLI = "init_sdk_cli",
   INIT_SDK_CODELENSE = "init_sdk_codelense",
+  START_EMULATORS = "start_emulators",
 }
 
 export class AnalyticsLogger {
@@ -31,15 +40,17 @@ export class AnalyticsLogger {
 }
 
 class GA4TelemetrySender implements TelemetrySender {
-  constructor(
-    readonly pluginLogger,
-  ) {}
+  constructor(readonly pluginLogger: { warn: (s: string) => void }) {
+    // initial event to start session
+    this.sendEventData(DATA_CONNECT_EVENT_NAME.EXTENSION_START);
+  }
 
   sendEventData(
     eventName: string,
     data?: Record<string, any> | undefined,
   ): void {
-    if (!env.isTelemetryEnabled) {
+    // telemtry flag does not exist in monospace
+    if (!env.isTelemetryEnabled && !monospaceEnv.value.isMonospace) {
       this.pluginLogger.warn("Telemetry is not enabled.");
       return;
     }

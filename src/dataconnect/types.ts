@@ -16,7 +16,7 @@ export interface Service extends BaseResource {
 export interface Schema extends BaseResource {
   name: string;
 
-  primaryDatasource: Datasource;
+  datasources: Datasource[];
   source: Source;
 }
 
@@ -125,7 +125,6 @@ export interface DatasourceYaml {
 
 export interface ConnectorYaml {
   connectorId: string;
-  authMode?: "ADMIN" | "PUBLIC";
   generate?: Generate;
 }
 
@@ -133,6 +132,7 @@ export interface Generate {
   javascriptSdk?: JavascriptSDK;
   swiftSdk?: SwiftSDK;
   kotlinSdk?: KotlinSDK;
+  dartSdk?: DartSDK;
 }
 
 export interface JavascriptSDK {
@@ -149,11 +149,16 @@ export interface KotlinSDK {
   outputDir: string;
   package: string;
 }
+export interface DartSDK {
+  outputDir: string;
+  package: string;
+}
 
 export enum Platform {
   ANDROID = "ANDROID",
   WEB = "WEB",
   IOS = "IOS",
+  DART = "DART",
   UNDETERMINED = "UNDETERMINED",
 }
 

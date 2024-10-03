@@ -8,9 +8,15 @@ import { load } from "../dataconnect/load";
 import { readFirebaseJson } from "../dataconnect/fileUtils";
 import { logger } from "../logger";
 
+type GenerateOptions = Options & { watch?: boolean };
+
 export const command = new Command("dataconnect:sdk:generate")
   .description("generates typed SDKs for your Data Connect connectors")
-  .action(async (options: Options) => {
+  .option(
+    "--watch",
+    "watch for changes to your connector GQL files and regenerate your SDKs when updates occur",
+  )
+  .action(async (options: GenerateOptions) => {
     const projectId = needProjectId(options);
 
     const services = readFirebaseJson(options.config);
@@ -21,7 +27,8 @@ export const command = new Command("dataconnect:sdk:generate")
         return (
           c.connectorYaml.generate?.javascriptSdk ||
           c.connectorYaml.generate?.kotlinSdk ||
-          c.connectorYaml.generate?.swiftSdk
+          c.connectorYaml.generate?.swiftSdk ||
+          c.connectorYaml.generate?.dartSdk
         );
       });
       if (!hasGeneratables) {
@@ -38,6 +45,7 @@ export const command = new Command("dataconnect:sdk:generate")
         const output = await DataConnectEmulator.generate({
           configDir,
           connectorId: conn.connectorYaml.connectorId,
+          watch: options.watch,
         });
         logger.info(output);
         logger.info(`Generated SDKs for ${conn.connectorYaml.connectorId}`);

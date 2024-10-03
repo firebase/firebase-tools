@@ -1,3 +1,4 @@
+const lsofi = require("lsofi");
 import {
   Emulators,
   DownloadableEmulators,
@@ -20,6 +21,7 @@ import * as os from "os";
 import { EmulatorRegistry } from "./registry";
 import { downloadEmulator } from "../emulator/download";
 import * as experiments from "../experiments";
+import * as process from "process";
 
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 4000; /* ms */
 
@@ -57,20 +59,20 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   dataconnect:
     process.platform === "darwin"
       ? {
-          version: "1.3.6",
-          expectedSize: 24867584,
-          expectedChecksum: "b924d31e3620d7ed4486a95e22629fc8",
+          version: "1.4.4",
+          expectedSize: 25142016,
+          expectedChecksum: "9b071275feaba21e04bbb0db842f945d",
         }
       : process.platform === "win32"
         ? {
-            version: "1.3.6",
-            expectedSize: 25292288,
-            expectedChecksum: "45025491b43b55a94f4e4db8df903250",
+            version: "1.4.4",
+            expectedSize: 25567744,
+            expectedChecksum: "d23bf88b04a09d666ae927a107317611",
           }
         : {
-            version: "1.3.6",
-            expectedSize: 24785048,
-            expectedChecksum: "6ae5820c0470c5a954540ad97838ec01",
+            version: "1.4.4",
+            expectedSize: 25055384,
+            expectedChecksum: "9c04a6c4738088305eb1a7b2a5d34df4",
           },
 };
 
@@ -157,7 +159,6 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
       namePrefix: "pubsub-emulator",
     },
   },
-  // TODO: Add Windows binary here as well
   dataconnect: {
     downloadPath: path.join(
       CACHE_DIR,
@@ -375,6 +376,7 @@ export function _getCommand(
     optionalArgs: baseCmd.optionalArgs,
     joinArgs: baseCmd.joinArgs,
     shell: baseCmd.shell,
+    port: args.port,
   };
 }
 
@@ -398,12 +400,24 @@ async function _fatal(emulator: Emulators, errorMsg: string): Promise<void> {
 /**
  * Handle errors in an emulator process.
  */
-export async function handleEmulatorProcessError(emulator: Emulators, err: any): Promise<void> {
+export async function handleEmulatorProcessError(
+  emulator: Emulators,
+  err: any,
+  port?: number,
+): Promise<void> {
   const description = Constants.description(emulator);
   if (err.path === "java" && err.code === "ENOENT") {
     await _fatal(
       emulator,
       `${description} has exited because java is not installed, you can install it from https://openjdk.java.net/install/`,
+    );
+  } else if (err.code === "EADDRINUSE") {
+    const ps = port ? await lsofi(port) : false;
+    await _fatal(
+      emulator,
+      `${description} has exited because its configured port is already in use${
+        ps ? ` by process number ${ps}` : ""
+      }. Are you running another copy of the emulator suite?`,
     );
   } else {
     await _fatal(emulator, `${description} has exited: ${err}`);
@@ -486,10 +500,15 @@ async function _runBinary(
           "Unsupported java version, make sure java --version reports 1.8 or higher.",
         );
       }
+
+      if (data.toString().includes("address already in use")) {
+        const message = `${description} has exited because its configured port ${command.port} is already in use. Are you running another copy of the emulator suite?`;
+        logger.logLabeled("ERROR", emulator.name, message);
+      }
     });
 
-    emulator.instance.on("error", (err) => {
-      handleEmulatorProcessError(emulator.name, err);
+    emulator.instance.on("error", (err: any) => {
+      void handleEmulatorProcessError(emulator.name, err, command.port);
     });
 
     emulator.instance.once("exit", async (code, signal) => {

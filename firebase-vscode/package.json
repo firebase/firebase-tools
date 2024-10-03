@@ -1,10 +1,10 @@
 {
-  "name": "firebase-vscode",
-  "displayName": "Firebase",
-  "publisher": "firebase",
-  "icon": "./resources/firebase_logo.png",
-  "description": "VSCode Extension for Firebase",
-  "version": "0.8.0",
+  "name": "firebase-dataconnect-vscode",
+  "displayName": "Firebase Data Connect",
+  "publisher": "GoogleCloudTools",
+  "icon": "./resources/firebase_dataconnect_logo.png",
+  "description": "Firebase Data Connect for VSCode",
+  "version": "0.10.2",
   "engines": {
     "vscode": "^1.69.0"
   },
@@ -14,7 +14,7 @@
     "Other"
   ],
   "extensionDependencies": [
-    "graphql.vscode-graphql-syntax"
+    "GraphQL.vscode-graphql-syntax"
   ],
   "activationEvents": [
     "onStartupFinished",
@@ -42,40 +42,53 @@
       {
         "command": "firebase.selectProject",
         "title": "Firebase: Switch project"
+      },
+      {
+        "command": "firebase.refresh",
+        "title": "Firebase Data Connect Extension: Refresh"
       }
     ],
     "configuration": {
-      "title": "Firebase VS Code Extension",
+      "title": "%ext.config.title%",
       "properties": {
-        "firebase.debug": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable writing debug-level messages to the file provided in firebase.debugLogPath (requires restart)"
-        },
-        "firebase.debugLogPath": {
-          "type": "string",
-          "default": "/tmp/firebase-plugin.log",
-          "description": "If firebase.debug is true, appends debug-level messages to the provided file (requires restart)"
-        },
-        "firebase.npmPath": {
-          "type": "string",
-          "default": "",
-          "description": "Path to NPM executable in local environment"
-        },
-        "firebase.useFrameworks": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable web frameworks"
-        },
         "firebase.dataConnect.alwaysAllowMutationsInProduction": {
           "type": "boolean",
           "default": false,
-          "description": "Always allow mutations in production. If false (default), trying to run a mutation in production will open a confirmation modal."
+          "markdownDescription": "%ext.config.dataConnect.alwaysAllowMutationsInProduction%"
         },
         "firebase.dataConnect.skipToAppFolderSelect": {
           "type": "boolean",
           "default": false,
-          "description": "Skip app folder selection prompt. If false (default), trying to generate SDK config will open a confirmation modal."
+          "markdownDescription": "%ext.config.dataConnect.skipToAppFolderSelect%"
+        },
+        "firebase.debug": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "%ext.config.debug%"
+        },
+        "firebase.debugLogPath": {
+          "type": "string",
+          "default": "/tmp/firebase-plugin.log",
+          "markdownDescription": "%ext.config.debugLogPath%"
+        },
+        "firebase.firebasePath": {
+          "type": "string",
+          "markdownDescription": "%ext.config.firebasePath%"
+        },
+        "firebase.hosting.useFrameworks": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "%ext.config.hosting.useFrameworks%"
+        },
+        "firebase.npmPath": {
+          "type": "string",
+          "markdownDescription": "%ext.config.npmPath%"
+        },
+        "firebase.idx.viewMetricNotice": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "%ext.config.idx.viewMetricNotice%",
+          "scope": "application"
         }
       }
     },
@@ -90,16 +103,16 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "firebase",
-          "title": "Firebase",
-          "icon": "$(mono-firebase)"
+          "id": "firebase-data-connect",
+          "title": "Firebase Data Connect",
+          "icon": "resources/firebase_dataconnect_logo.svg"
         }
       ],
       "panel": [
         {
           "id": "firebase-data-connect-execution-view",
           "title": "Data Connect Execution",
-          "icon": "$(mono-firebase)"
+          "icon": "$(gmp-data-connect)"
         }
       ]
     },
@@ -111,7 +124,7 @@
           "fontCharacter": "\\F101"
         }
       },
-      "data-connect": {
+      "gmp-data-connect": {
         "description": "Data Connect icon",
         "default": {
           "fontPath": "./resources/GMPIcons.woff2",
@@ -120,22 +133,19 @@
       }
     },
     "views": {
-      "firebase": [
+      "firebase-data-connect": [
         {
           "type": "webview",
           "id": "sidebar",
-          "name": "Config"
-        },
-        {
-          "type": "webview",
-          "id": "data-connect",
-          "name": "Firebase Data Connect",
-          "when": "firebase-vscode.fdc.enabled"
+          "name": "Studio",
+          "initialSize": 2
         },
         {
           "id": "firebase.dataConnect.explorerView",
-          "name": "FDC Explorer",
-          "when": "firebase-vscode.fdc.enabled"
+          "name": "Schema explorer",
+          "when": "firebase-vscode.fdc.enabled",
+          "visibility": "collapsed",
+          "initialSize": 1
         }
       ],
       "firebase-data-connect-execution-view": [
@@ -161,7 +171,7 @@
     "viewsWelcome": [
       {
         "view": "firebase.dataConnect.explorerView",
-        "contents": "Start the emulator in a Data Connect project to view your schema."
+        "contents": "Resolve compilation errors to view your schema."
       }
     ],
     "jsonValidation": [
@@ -225,7 +235,7 @@
     "@teamsupercell/typings-for-css-modules-loader": "^2.5.1",
     "@types/glob": "^8.0.0",
     "@types/mocha": "^10.0.1",
-    "@types/node": "16.x",
+    "@types/node": "20.x",
     "@types/react": "^18.0.9",
     "@types/react-dom": "^18.0.4",
     "@types/vscode": "^1.69.0",
