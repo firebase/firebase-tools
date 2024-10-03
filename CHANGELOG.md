@@ -1,0 +1,1 @@
+- Updated emulator UI to version 1.14.0, which adds support for SDK defined extensions.
