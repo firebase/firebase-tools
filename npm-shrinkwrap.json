@@ -1,12 +1,12 @@
 {
   "name": "firebase-tools",
-  "version": "13.20.1",
+  "version": "13.20.2",
   "lockfileVersion": 2,
   "requires": true,
   "packages": {
     "": {
       "name": "firebase-tools",
-      "version": "13.20.1",
+      "version": "13.20.2",
       "license": "MIT",
       "dependencies": {
         "@electric-sql/pglite": "^0.2.0",
