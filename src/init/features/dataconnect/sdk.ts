@@ -4,11 +4,7 @@ import * as clc from "colorette";
 import * as path from "path";
 
 import { confirm, promptForDirectory, promptOnce } from "../../../prompt";
-import {
-  readFirebaseJson,
-  getPlatformFromFolder,
-  directoryHasPackageJson,
-} from "../../../dataconnect/fileUtils";
+import { readFirebaseJson, getPlatformFromFolder } from "../../../dataconnect/fileUtils";
 import { Config } from "../../../config";
 import { Setup } from "../..";
 import { load } from "../../../dataconnect/load";
@@ -64,16 +60,16 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
     );
   }
 
-  // First, lets check if we are in a app directory
+  // First, lets check  if we are in a app directory
   let targetPlatform: Platform = Platform.UNDETERMINED;
   let appDir = process.env[FDC_APP_FOLDER] || process.cwd();
   const cwdPlatformGuess = await getPlatformFromFolder(appDir);
   if (cwdPlatformGuess !== Platform.UNDETERMINED) {
-    // If we are, we'll use that directory
+    // If we are, we'll u se that directory
     logSuccess(`Detected ${cwdPlatformGuess} app in directory ${appDir}`);
     targetPlatform = cwdPlatformGuess;
   } else {
-    // If we aren't, ask the user where their app is, and try to autodetect from there
+    // If we aren't, ask  the user where their app is, and try to autodetect from there
     logBullet(`Couldn't automatically detect your app directory.`);
     appDir =
       process.env[FDC_APP_FOLDER] ??
@@ -87,13 +83,13 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
       logSuccess(`Detected ${platformGuess} app in directory ${appDir}`);
       targetPlatform = platformGuess;
     } else {
-      // If we still can't autodetect, just ask the user
+      // If we still can't  autodetect, just ask the user
       logBullet("Couldn't automatically detect your app's platform.");
       const platforms = [
         { name: "iOS (Swift)", value: Platform.IOS },
         { name: "Web (JavaScript)", value: Platform.WEB },
         { name: "Android (Kotlin)", value: Platform.ANDROID },
-        // { name: "Flutter (Dart)", value: Platform.DART },
+        // { name: "Flutter ( Dart)", value: Platform.DART },
       ];
       targetPlatform = await promptOnce({
         message: "Which platform do you want to set up a generated SDK for?",
@@ -109,91 +105,13 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
     choices: connectorChoices,
   });
 
-  const newConnectorYaml = JSON.parse(JSON.stringify(connectorInfo.connectorYaml)) as ConnectorYaml;
-  if (!newConnectorYaml.generate) {
-    newConnectorYaml.generate = {};
-  }
-
-  let displayIOSWarning = false;
-  if (targetPlatform === Platform.IOS) {
-    const outputDir =
-      newConnectorYaml.generate.swiftSdk?.outputDir ||
-      path.relative(connectorInfo.directory, path.join(appDir, `generated/swift`));
-    const pkg =
-      newConnectorYaml.generate.swiftSdk?.package ??
-      upperFirst(camelCase(newConnectorYaml.connectorId));
-    const swiftSdk = { outputDir, package: pkg };
-    newConnectorYaml.generate.swiftSdk = swiftSdk;
-    displayIOSWarning = true;
-  }
-
-  if (targetPlatform === Platform.WEB) {
-    const outputDir =
-      newConnectorYaml.generate.javascriptSdk?.outputDir ||
-      path.relative(
-        connectorInfo.directory,
-        path.join(appDir, `generated/javascript/${newConnectorYaml.connectorId}`),
-      );
-    const pkg =
-      newConnectorYaml.generate.javascriptSdk?.package ??
-      `@firebasegen/${connectorInfo.connectorYaml.connectorId}`;
-
-    const javascriptSdk: JavascriptSDK = {
-      outputDir,
-      package: pkg,
-      packageJsonDir: newConnectorYaml.generate.javascriptSdk?.packageJsonDir,
-    };
-
-    if (
-      (await directoryHasPackageJson(appDir)) &&
-      (await confirm({
-        message: "Would you like to add a dependency on the generated SDK to your package.json?",
-      }))
-    ) {
-      javascriptSdk.packageJsonDir = path.relative(connectorInfo.directory, appDir);
-    }
-    newConnectorYaml.generate.javascriptSdk = javascriptSdk;
-  }
-
-  if (targetPlatform === Platform.DART) {
-    const outputDir =
-      newConnectorYaml.generate.dartSdk?.outputDir ||
-      path.relative(
-        connectorInfo.directory,
-        path.join(appDir, `generated/dart/${newConnectorYaml.connectorId}`),
-      );
-    const pkg = newConnectorYaml.generate.dartSdk?.package ?? newConnectorYaml.connectorId;
-    const dartSdk: DartSDK = {
-      outputDir,
-      package: pkg,
-    };
-    newConnectorYaml.generate.dartSdk = dartSdk;
-  }
-
-  if (targetPlatform === Platform.ANDROID) {
-    // app/src/main/kotlin and app/src/main/java are conventional for Android,
-    // but not required or enforced. If one of them is present (preferring the
-    // "kotlin" directory), use it. Otherwise, fall back to the app directory.
-    let baseDir = path.join(appDir, `generated/kotlin`);
-    for (const candidateSubdir of ["app/src/main/java", "app/src/main/kotlin"]) {
-      const candidateDir = path.join(appDir, candidateSubdir);
-      if (fs.existsSync(candidateDir)) {
-        baseDir = candidateDir;
-      }
-    }
-
-    const outputDir =
-      newConnectorYaml.generate.kotlinSdk?.outputDir ||
-      path.relative(connectorInfo.directory, baseDir);
-    const pkg =
-      newConnectorYaml.generate.kotlinSdk?.package ??
-      `connectors.${snakeCase(connectorInfo.connectorYaml.connectorId)}`;
-    const kotlinSdk: KotlinSDK = {
-      outputDir,
-      package: pkg,
-    };
-    newConnectorYaml.generate.kotlinSdk = kotlinSdk;
-  }
+  const connectorYaml = JSON.parse(JSON.stringify(connectorInfo.connectorYaml)) as ConnectorYaml;
+  const newConnectorYaml = generateSdkYaml(
+    targetPlatform,
+    connectorYaml,
+    connectorInfo.directory,
+    appDir,
+  );
 
   const shouldGenerate = !!(
     setup.projectId &&
@@ -202,10 +120,99 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
       default: true,
     }))
   );
-  // TODO: Prompt user about adding generated paths to .gitignore
+  // TODO: Prompt user  about adding generated paths to .gitignore
   const connectorYamlContents = yaml.stringify(newConnectorYaml);
   connectorInfo.connectorYaml = newConnectorYaml;
+  const displayIOSWarning = targetPlatform === Platform.IOS;
   return { connectorYamlContents, connectorInfo, shouldGenerate, displayIOSWarning };
+}
+
+export function generateSdkYaml(
+  targetPlatform: Platform,
+  connectorYaml: ConnectorYaml,
+  connectorDir: string, // path.relative expe cts folder as first arg
+  appDir: string,
+): ConnectorYaml {
+  console.log(targetPlatform, connectorYaml, connectorDir, appDir);
+  console.log(process.cwd());
+  if (!connectorYaml.generate) {
+    connectorYaml.generate = {};
+  }
+  // If appDir diffs from `connectorDir`, this is an intentional choice.
+  // Write under `dataconnect-generated` of the picked app folder.
+  // No need to worry about output path conflict among platforms.
+  const appDirOutputDir =
+    connectorDir === appDir
+      ? undefined
+      : path.relative(connectorDir, path.join(appDir, "dataconnect-generated"));
+
+  if (targetPlatform === Platform.IOS) {
+    const outputDir =
+      connectorYaml.generate.swiftSdk?.outputDir || appDirOutputDir || `generated/swift`;
+    const pkg =
+      connectorYaml.generate.swiftSdk?.package ?? upperFirst(camelCase(connectorYaml.connectorId));
+    const swiftSdk = { outputDir, package: pkg };
+    connectorYaml.generate.swiftSdk = swiftSdk;
+  }
+
+  if (targetPlatform === Platform.WEB) {
+    const outputDir =
+      connectorYaml.generate.javascriptSdk?.outputDir ||
+      appDirOutputDir ||
+      `generated/javascript/${connectorYaml.connectorId}`;
+    const pkg =
+      connectorYaml.generate.javascriptSdk?.package ?? `@firebasegen/${connectorYaml.connectorId}`;
+
+    const javascriptSdk: JavascriptSDK = {
+      outputDir,
+      package: pkg,
+      packageJsonDir: connectorYaml.generate.javascriptSdk?.packageJsonDir,
+    };
+    if (connectorDir !== appDir) { 
+      // If appDir is a intentionally picked, install JS SDK there.
+      javascriptSdk.packageJsonDir = path.relative(connectorDir, appDir);
+    }
+    connectorYaml.generate.javascriptSdk = javascriptSdk;
+  }
+
+  if (targetPlatform === Platform.DART) {
+    const outputDir =
+      connectorYaml.generate.dartSdk?.outputDir ||
+       appDirOutputDir ||
+       `generated/dart/${connectorYaml.connectorId}`;
+    const pkg = connectorYaml.generate.dartSdk?.package ?? connectorYaml.connectorId;
+    const dartSdk: DartSDK = {
+      outputDir,
+      package: pkg,
+    };
+    connectorYaml.generate.dartSdk = dartSdk;
+  }
+
+  if (targetPlatform === Platform.ANDROID) {
+    // app/src/main/kotli n and app/src/main/java are conventional for Android,
+    // but not required o r enforced. If one of them is present (preferring the
+    // "kotlin" directory ), use it. Otherwise, fall back to the app directory.
+    let baseDir = appDirOutputDir || `generated/kotlin`;
+    for (const candidateSubdir of ["app/src/main/java", "app/src/main/kotlin"]) {
+      const candidateDir = path.join(appDir, candidateSubdir);
+      if (fs.existsSync(candidateDir)) {
+        baseDir = candidateDir;
+      }
+    }
+
+    const outputDir =
+      connectorYaml.generate.kotlinSdk?.outputDir || path.relative(connectorDir, baseDir);
+    const pkg =
+      connectorYaml.generate.kotlinSdk?.package ??
+      `connectors.${snakeCase(connectorYaml.connectorId)}`;
+    const kotlinSdk: KotlinSDK = {
+      outputDir,
+      package: pkg,
+    };
+    connectorYaml.generate.kotlinSdk = kotlinSdk;
+  }
+
+  return connectorYaml;
 }
 
 export async function actuate(sdkInfo: SDKInfo, projectId?: string) {

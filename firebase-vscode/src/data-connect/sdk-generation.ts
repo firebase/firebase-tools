@@ -6,15 +6,12 @@ import { dataConnectConfigs, ResolvedConnectorYaml } from "./config";
 import { runCommand, setTerminalEnvVars } from "./terminal";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { DATA_CONNECT_EVENT_NAME } from "../analytics";
-import {
-  getPlatformFromFolder,
-  generateSdkYaml,
-} from "../../../src/dataconnect/fileUtils";
+import { getPlatformFromFolder } from "../../../src/dataconnect/fileUtils";
 import { ConnectorYaml, Platform } from "../../../src/dataconnect/types";
 import * as yaml from "yaml";
 import * as fs from "fs-extra";
 import { getSettings } from "../utils/settings";
-import { FDC_APP_FOLDER } from "../../../src/init/features/dataconnect/sdk";
+import { FDC_APP_FOLDER, generateSdkYaml } from "../../../src/init/features/dataconnect/sdk";
 
 export function registerFdcSdkGeneration(
   broker: ExtensionBrokerImpl,

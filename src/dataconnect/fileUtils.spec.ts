@@ -1,5 +1,6 @@
 import { expect } from "chai";
-import { getPlatformFromFolder, generateSdkYaml } from "./fileUtils";
+import { getPlatformFromFolder } from "./fileUtils";
+import { generateSdkYaml } from "../init/features/dataconnect/sdk";
 import { ConnectorYaml, Platform } from "./types";
 import * as mockfs from "mock-fs";
 import FileSystem from "mock-fs/lib/filesystem";
@@ -150,7 +151,7 @@ describe("generateSdkYaml", () => {
       appFolder,
     );
     expect(modifiedYaml.generate?.javascriptSdk).to.deep.equal({
-      outputDir: "../dataconnect-generated",
+      outputDir: "../generated",
       package: "@firebasegen/test_connector",
       packageJsonDir: appFolder,
     });
@@ -164,7 +165,7 @@ describe("generateSdkYaml", () => {
       appFolder,
     );
     expect(modifiedYaml.generate?.swiftSdk).to.deep.equal({
-      outputDir: "../dataconnect-generated",
+      outputDir: "../generated",
       package: "test_connector",
     });
   });
@@ -177,7 +178,7 @@ describe("generateSdkYaml", () => {
       appFolder,
     );
     expect(modifiedYaml.generate?.kotlinSdk).to.deep.equal({
-      outputDir: "../dataconnect-generated",
+      outputDir: "../generated",
       package: "connectors.test_connector",
     });
   });
@@ -190,7 +191,7 @@ describe("generateSdkYaml", () => {
       appFolder,
     );
     expect(modifiedYaml.generate?.dartSdk).to.deep.equal({
-      outputDir: "../dataconnect-generated",
+      outputDir: "../generated",
       package: "test_connector",
     });
   });
@@ -238,7 +239,7 @@ describe("generateSdkYaml", () => {
       appFolderDown,
     );
     expect(modifiedYaml2.generate?.kotlinSdk).to.deep.equal({
-      outputDir: "belowConnector/dataconnect-generated",
+      outputDir: "belowConnector/generated",
       package: "connectors.test_connector",
     });
   });
