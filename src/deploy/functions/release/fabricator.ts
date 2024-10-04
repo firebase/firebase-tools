@@ -218,12 +218,29 @@ export class Fabricator {
       await this.deleteTrigger(endpoint);
     }
     catch(err) {
+      /**
+       * In cases where a function has been partially deleted, 
+       * we may encounter errors on subsequent attempts to delete it.
+       * 
+       * For example, if an account lacking the `pubsub.topics.delete` permission
+       * attempts to delete a function with a Pub/Sub trigger, the trigger will be
+       * deleted but the topic will not. This will cause the function deletion
+       * to fail on subsequent attempts.
+       * 
+       */
       if (
           err instanceof reporter.DeploymentError && 
           err.op == "delete schedule" && 
           (err.original as FirebaseError).message == "HTTP Error: 404, Job not found."
-        ) { 
-          logger.warn(`Trigger for ${endpoint.id} not found, continuing with deletion of function`);
+        ) {
+          logger.warn(`Trigger for ${endpoint.id} not found. Continuing to delete function.`);
+      }
+      else if (
+          err instanceof reporter.DeploymentError && 
+          err.op == "delete topic" && 
+          err.message.startsWith("Failed to delete topic function")
+        ) {
+          logger.warn(`Failed to delete topic function for ${endpoint.id}. Ensure the account has 'pubsub.topics.delete' permission.  You may need to manually delete the topic.  Continuing to delete function.`);
       }
       else {
         throw err;
