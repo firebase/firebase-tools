@@ -68,6 +68,35 @@ jobs:
       - uses: codecov/codecov-action@v3
         if: matrix.node-version == '20'
 
+  vscode_integration:
+    # Using windows to bypass an error thrown by VScode
+    # when run in an environment that does not have a screen.
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        node-version:
+          - "18"
+          - "20"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: firebase-vscode/package-lock.json
+
+      - run: npm i -g npm@9.5
+      - run: npm ci
+      - run: npm install
+        working-directory: firebase-vscode
+      - run: npm run build
+        working-directory: firebase-vscode
+      - run: npm run test:e2e
+        working-directory: firebase-vscode
+
+      - uses: codecov/codecov-action@v3
+        if: matrix.node-version == '20'
+
   unit:
     runs-on: ubuntu-latest
     strategy:
