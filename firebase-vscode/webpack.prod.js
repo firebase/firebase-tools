@@ -5,7 +5,6 @@ const common = require("./webpack.common.js");
 module.exports = common.map((config) =>
   merge(config, {
     mode: "production",
-    parallelism: 20,
     optimization: {
       minimize: true,
       minimizer: [
