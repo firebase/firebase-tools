@@ -1,27 +1,9 @@
-import * as fs from "fs";
 import { FirebaseCommands } from "../../utils/page_objects/commands";
 import { FirebaseSidebar } from "../../utils/page_objects/sidebar";
-import {
-  firebaseLogsPath,
-  firebaseRcPath,
-  mockProject,
-} from "../../utils/projects";
-import { waitForTaskCompletion } from "../../utils/task";
-import {
-  addTearDown,
-  firebaseSuite,
-  firebaseTest,
-} from "../../utils/test_hooks";
+import { mockProject } from "../../utils/projects";
+import { waitForTaskCompletion, waitForTaskStart } from "../../utils/task";
+import { firebaseSuite, firebaseTest } from "../../utils/test_hooks";
 import { mockUser } from "../../utils/user";
-
-addTearDown(async () => {
-  await mockUser(undefined);
-  await mockProject("");
-
-  // Clean up the .firebaserc file
-  fs.unlinkSync(firebaseRcPath);
-  fs.unlinkSync(firebaseLogsPath);
-});
 
 firebaseSuite("Init Firebase", async function () {
   firebaseTest("calls init command in an empty project", async function () {
@@ -37,15 +19,19 @@ firebaseSuite("Init Firebase", async function () {
     await mockProject("demo-project");
 
     await sidebar.runInStudioContext(async (firebase) => {
+      await firebase.initFirebaseBtn.waitForExist();
       await firebase.initFirebaseBtn.waitForDisplayed();
       await firebase.initFirebaseBtn.click();
     });
+
+    console.log("Clicked init button");
 
     // Check the task was executed
     // Wait for the task to complete and verify it started
     const taskStarted = await waitForTaskCompletion(
       "firebase init dataconnect",
     );
+    console.log("Task started: ", taskStarted);
 
     // Assert that the task was started successfully.
     // We don't need to check if it completed because the task will fail in a test environment.

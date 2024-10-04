@@ -16,6 +16,9 @@ export const vscodeConfigs = {
     userSettings: {
       "editor.fontSize": 14,
     },
+    vscodeProxyOptions: {
+      commandTimeout: 60000,
+    },
   },
 };
 
@@ -53,6 +56,6 @@ export const config: WebdriverIO.Config = {
   reporters: ["spec"],
   mochaOpts: {
     ui: "tdd",
-    timeout: 100000,
+    timeout: 120000,
   },
 };

@@ -55,9 +55,12 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: npm
           cache-dependency-path: firebase-vscode/package-lock.json
+
       - run: npm i -g npm@9.5
       - run: npm ci
       - run: npm install
+        working-directory: firebase-vscode
+      - run: npm run build
         working-directory: firebase-vscode
       - run: npm run test:unit
         working-directory: firebase-vscode
@@ -71,6 +74,7 @@ jobs:
         node-version:
           - "18"
           - "20"
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
@@ -78,14 +82,25 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: npm
           cache-dependency-path: firebase-vscode/package-lock.json
+
       - run: npm i -g npm@9.5
       - run: npm ci
       - run: npm install
         working-directory: firebase-vscode
       - run: npm run build
         working-directory: firebase-vscode
-      - run: npm run test:e2e
+
+      - uses: GabrielBB/xvfb-action@v1
+        with:
+          run: npm run test:e2e
         working-directory: firebase-vscode
+
+      - uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: screenshots
+          path: test/screenshots
+
       - uses: codecov/codecov-action@v3
         if: matrix.node-version == '20'
 
