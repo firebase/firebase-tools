@@ -19,9 +19,10 @@ export class FirebaseCommands {
       async () => {
         const emulators = await this.getEmulatorsStatus();
         await browser.pause(1000);
+        console.log("Emulators status", emulators);
         return emulators?.status === "running";
       },
-      { timeout: 120000 },
+      { timeout: 60000 },
     );
   }
 

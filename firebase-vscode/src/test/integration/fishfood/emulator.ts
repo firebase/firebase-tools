@@ -20,6 +20,7 @@ firebaseSuite("Emulators", async function () {
       await mockProject("test-project");
 
       await sidebar.startEmulators();
+      console.log("Waiting for emulators to start...");
       await commands.waitForEmulators();
 
       const current = await sidebar.currentEmulators();
