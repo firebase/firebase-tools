@@ -3,6 +3,7 @@
 ## 0.10.2
 
 - Updated internal firebase-tools dependency to 13.20.2
+- [Fixed] Fixed an issue where emulator startup would hang
 
 ## 0.10.1
 
