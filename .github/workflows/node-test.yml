@@ -92,6 +92,9 @@ jobs:
           cache: npm
           cache-dependency-path: firebase-vscode/package-lock.json
 
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools@latest
+
       - name: Cache firebase emulators
         uses: actions/cache@v3
         with:
