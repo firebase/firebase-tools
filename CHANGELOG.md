@@ -1,2 +1,0 @@
-- Update supported range for Angular framework. (#7418)
-- Fix (Angular 17+) temporary change the PORT in Angular server.ts (#6651)

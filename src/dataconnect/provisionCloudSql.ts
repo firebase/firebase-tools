@@ -19,9 +19,11 @@ export async function provisionCloudSql(args: {
   locationId: string;
   instanceId: string;
   databaseId: string;
+  configYamlPath: string;
   enableGoogleMlIntegration: boolean;
   waitForCreation: boolean;
   silent?: boolean;
+  dryRun?: boolean;
 }): Promise<string> {
   let connectionName = ""; // Not used yet, will be used for schema migration
   const {
@@ -29,9 +31,11 @@ export async function provisionCloudSql(args: {
     locationId,
     instanceId,
     databaseId,
+    configYamlPath,
     enableGoogleMlIntegration,
     waitForCreation,
     silent,
+    dryRun,
   } = args;
   try {
     const existingInstance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
@@ -39,22 +43,25 @@ export async function provisionCloudSql(args: {
     connectionName = existingInstance?.connectionName || "";
     const why = getUpdateReason(existingInstance, enableGoogleMlIntegration);
     if (why) {
+      const cta = dryRun
+        ? `It will be updated on your next deploy.`
+        : `Updating instance. This may take a few minutes...`;
       silent ||
         utils.logLabeledBullet(
           "dataconnect",
-          `Instance ${instanceId} settings not compatible with Firebase Data Connect. ` +
-            `Updating instance. This may take a few minutes...` +
-            why,
+          `Instance ${instanceId} settings not compatible with Firebase Data Connect. ` + cta + why,
         );
-      await promiseWithSpinner(
-        () =>
-          cloudSqlAdminClient.updateInstanceForDataConnect(
-            existingInstance,
-            enableGoogleMlIntegration,
-          ),
-        "Updating your instance...",
-      );
-      silent || utils.logLabeledBullet("dataconnect", "Instance updated");
+      if (!dryRun) {
+        await promiseWithSpinner(
+          () =>
+            cloudSqlAdminClient.updateInstanceForDataConnect(
+              existingInstance,
+              enableGoogleMlIntegration,
+            ),
+          "Updating your instance...",
+        );
+        silent || utils.logLabeledBullet("dataconnect", "Instance updated");
+      }
     }
   } catch (err: any) {
     // We only should catch NOT FOUND errors
@@ -63,52 +70,65 @@ export async function provisionCloudSql(args: {
     }
     const freeTrialInstanceId = await checkForFreeTrialInstance(projectId);
     if (freeTrialInstanceId) {
-      printFreeTrialUnavailable(projectId, freeTrialInstanceId);
-      throw new FirebaseError("Free trial unavailable.");
+      printFreeTrialUnavailable(projectId, freeTrialInstanceId, configYamlPath);
+      throw new FirebaseError("Cannot create another no-cost trial Cloud SQL instance.");
     }
+    const cta = dryRun ? "It will be created on your next deploy" : "Creating it now.";
     silent ||
       utils.logLabeledBullet(
         "dataconnect",
-        `CloudSQL instance '${instanceId}' not found, creating it.` +
-          `\nThis instance is provided under the terms of the Data Connect free trial ${freeTrialTermsLink()}` +
+        `CloudSQL instance '${instanceId}' not found.` +
+          cta +
+          `\nThis instance is provided under the terms of the Data Connect no-cost trial ${freeTrialTermsLink()}` +
           `\nMonitor the progress at ${cloudSqlAdminClient.instanceConsoleLink(projectId, instanceId)}`,
       );
-    const newInstance = await promiseWithSpinner(
-      () =>
-        cloudSqlAdminClient.createInstance(
-          projectId,
-          locationId,
-          instanceId,
-          enableGoogleMlIntegration,
-          waitForCreation,
-        ),
-      "Creating your instance...",
-    );
-    if (newInstance) {
-      silent || utils.logLabeledBullet("dataconnect", "Instance created");
-      connectionName = newInstance?.connectionName || "";
-    } else {
-      silent ||
-        utils.logLabeledBullet(
-          "dataconnect",
-          "Cloud SQL instance creation started - it should be ready shortly. Database and users will be created on your next deploy.",
-        );
-      return connectionName;
+    if (!dryRun) {
+      const newInstance = await promiseWithSpinner(
+        () =>
+          cloudSqlAdminClient.createInstance(
+            projectId,
+            locationId,
+            instanceId,
+            enableGoogleMlIntegration,
+            waitForCreation,
+          ),
+        "Creating your instance...",
+      );
+      if (newInstance) {
+        silent || utils.logLabeledBullet("dataconnect", "Instance created");
+        connectionName = newInstance?.connectionName || "";
+      } else {
+        silent ||
+          utils.logLabeledBullet(
+            "dataconnect",
+            "Cloud SQL instance creation started - it should be ready shortly. Database and users will be created on your next deploy.",
+          );
+        return connectionName;
+      }
     }
   }
+
   try {
     await cloudSqlAdminClient.getDatabase(projectId, instanceId, databaseId);
     silent || utils.logLabeledBullet("dataconnect", `Found existing database ${databaseId}.`);
   } catch (err: any) {
     if (err.status === 404) {
-      // Create the database if not found.
-      silent ||
-        utils.logLabeledBullet(
-          "dataconnect",
-          `Database ${databaseId} not found, creating it now...`,
-        );
-      await cloudSqlAdminClient.createDatabase(projectId, instanceId, databaseId);
-      silent || utils.logLabeledBullet("dataconnect", `Database ${databaseId} created.`);
+      if (dryRun) {
+        silent ||
+          utils.logLabeledBullet(
+            "dataconnect",
+            `Database ${databaseId} not found. It will be created on your next deploy.`,
+          );
+      } else {
+        // Create the database if not found.
+        silent ||
+          utils.logLabeledBullet(
+            "dataconnect",
+            `Database ${databaseId} not found, creating it now...`,
+          );
+        await cloudSqlAdminClient.createDatabase(projectId, instanceId, databaseId);
+        silent || utils.logLabeledBullet("dataconnect", `Database ${databaseId} created.`);
+      }
     } else {
       // Skip it if the database is not accessible.
       // Possible that the CSQL instance is in the middle of something.
@@ -116,7 +136,7 @@ export async function provisionCloudSql(args: {
       silent || utils.logLabeledWarning("dataconnect", `Database ${databaseId} is not accessible.`);
     }
   }
-  if (enableGoogleMlIntegration) {
+  if (enableGoogleMlIntegration && !dryRun) {
     await grantRolesToCloudSqlServiceAccount(projectId, instanceId, [GOOGLE_ML_INTEGRATION_ROLE]);
   }
   return connectionName;

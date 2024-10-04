@@ -37,7 +37,7 @@ npm install
 echo "Ran npm install for VSCode."
 
 echo "Building firebase-vscode .VSIX file"
-npm run pkg
+NODE_OPTIONS="--max-old-space-size=8192" npm run pkg
 echo "Built firebase-vscode .VSIX file."
 
 echo "Uploading VSIX file to GCS..."
