@@ -1,2 +1,3 @@
 - Added emulator support for extensions defined by SDK.
 - Various emulator bug fixes.
+- Added Next.js utils for checking if an HTML file is partial.
