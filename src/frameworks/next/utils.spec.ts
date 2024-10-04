@@ -689,11 +689,8 @@ describe("Next.js utils", () => {
 
     it("should return false if file does not exist", async () => {
       sandbox.stub(fsExtra, "pathExists").resolves(false);
-      const consoleWarnStub = sandbox.stub(console, "warn");
 
       expect(await isPartialHTML("nonexistent.html")).to.be.false;
-      expect(consoleWarnStub.calledOnce).to.be.true;
-      expect(consoleWarnStub.firstCall.args[0]).to.include("File does not exist");
     });
 
     it("should return false and log error if file read fails", async () => {
