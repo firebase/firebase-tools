@@ -1,5 +1,10 @@
 ## NEXT
 
+## 0.10.2
+
+- Updated internal firebase-tools dependency to 13.20.2
+- [Fixed] Fixed an issue where emulator startup would hang
+
 ## 0.10.1
 
 - [Fixed] Fixed an issue where commands would be executed against directory default project instead of the currently selected project.
