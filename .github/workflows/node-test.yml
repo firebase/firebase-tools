@@ -75,6 +75,9 @@ jobs:
           - "18"
           - "20"
 
+    env:
+      FIREBASE_EMULATORS_PATH: ${{ github.workspace }}/emulator-cache
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
@@ -82,6 +85,13 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: npm
           cache-dependency-path: firebase-vscode/package-lock.json
+
+      - name: Cache firebase emulators
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.FIREBASE_EMULATORS_PATH }}
+          key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('emulator-cache/**') }}
+        continue-on-error: true
 
       - run: npm i -g npm@9.5
       - run: npm ci

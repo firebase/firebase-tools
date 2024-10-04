@@ -21,7 +21,7 @@ export class FirebaseCommands {
         await browser.pause(1000);
         return emulators?.status === "running";
       },
-      { timeout: 100000 },
+      { timeout: 120000 },
     );
   }
 
