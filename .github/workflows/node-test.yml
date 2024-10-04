@@ -79,6 +79,12 @@ jobs:
       FIREBASE_EMULATORS_PATH: ${{ github.workspace }}/emulator-cache
 
     steps:
+      - name: Setup Java JDK
+        uses: actions/setup-java@v3.3.0
+        with:
+          java-version: 17
+          distribution: temurin
+
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
         with:
@@ -99,6 +105,8 @@ jobs:
         working-directory: firebase-vscode
       - run: npm run build
         working-directory: firebase-vscode
+
+      - run: firebase emulators:start
 
       - uses: GabrielBB/xvfb-action@v1
         with:
