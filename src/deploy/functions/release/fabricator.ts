@@ -214,7 +214,21 @@ export class Fabricator {
   }
 
   async deleteEndpoint(endpoint: backend.Endpoint): Promise<void> {
-    await this.deleteTrigger(endpoint);
+    try{
+      await this.deleteTrigger(endpoint);
+    }
+    catch(err) {
+      if (
+          err instanceof reporter.DeploymentError && 
+          err.op == "delete schedule" && 
+          (err.original as FirebaseError).message == "HTTP Error: 404, Job not found."
+        ) { 
+          logger.warn(`Trigger for ${endpoint.id} not found, continuing with deletion of function`);
+      }
+      else {
+        throw err;
+      }
+    }
     if (endpoint.platform === "gcfv1") {
       await this.deleteV1Function(endpoint);
     } else {
