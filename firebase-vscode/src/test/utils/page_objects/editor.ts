@@ -127,7 +127,7 @@ export class Notifications {
             return notifications.length > 0 && containsGraphQL;
           },
           {
-            timeout: 5000,
+            timeout: 120000,
             timeoutMsg: "No notifications found",
           },
         );

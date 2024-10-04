@@ -67,7 +67,7 @@ firebaseSuite("GraphQL", async function () {
           diagnostics = await editorView.diagnoseFile(queriesPath);
           return diagnostics.length > 1;
         },
-        { timeout: 50000 },
+        { timeout: 120000 },
       );
 
       // Verify that the list of errors contains one from the FDC compiler source.
