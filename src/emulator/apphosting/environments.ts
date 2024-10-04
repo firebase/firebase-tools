@@ -9,7 +9,7 @@ type EnvironmentAvailability = "BUILD" | "RUNTIME";
 const APPHOSTING_YAML = "apphosting.yaml";
 const APPHOSTING_LOCAL_YAML = "apphosting.local.yaml";
 
-// Schema of the apphosting.yaml file
+// Schema of apphosting.*.yaml files
 interface AppHostingYaml {
   env?: {
     variable: string;
