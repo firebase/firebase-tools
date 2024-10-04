@@ -676,21 +676,34 @@ describe("Next.js utils", () => {
     });
 
     it("should return true for partial HTML", async () => {
+      sandbox.stub(fsExtra, "pathExists").resolves(true);
       sandbox.stub(fsPromises, "readFile").resolves("<html><body>Partial</body>");
       expect(await isPartialHTML("partial.html")).to.be.true;
     });
 
     it("should return false for complete HTML", async () => {
+      sandbox.stub(fsExtra, "pathExists").resolves(true);
       sandbox.stub(fsPromises, "readFile").resolves("<html><body>Complete</body></html>");
       expect(await isPartialHTML("complete.html")).to.be.false;
     });
 
-    it("should return false and log error if file read fails", async () => {
-      sandbox.stub(fsPromises, "readFile").rejects(new Error("File not found"));
-      const consoleErrorStub = sandbox.stub(console, "error");
+    it("should return false if file does not exist", async () => {
+      sandbox.stub(fsExtra, "pathExists").resolves(false);
+      const consoleWarnStub = sandbox.stub(console, "warn");
 
       expect(await isPartialHTML("nonexistent.html")).to.be.false;
+      expect(consoleWarnStub.calledOnce).to.be.true;
+      expect(consoleWarnStub.firstCall.args[0]).to.include("File does not exist");
+    });
+
+    it("should return false and log error if file read fails", async () => {
+      sandbox.stub(fsExtra, "pathExists").resolves(true);
+      sandbox.stub(fsPromises, "readFile").rejects(new Error("File read error"));
+      const consoleErrorStub = sandbox.stub(console, "error");
+
+      expect(await isPartialHTML("error.html")).to.be.false;
       expect(consoleErrorStub.calledOnce).to.be.true;
+      expect(consoleErrorStub.firstCall.args[0]).to.include("Error processing file");
     });
   });
 

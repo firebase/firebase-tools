@@ -577,10 +577,15 @@ export function createPagesManifestLikePrerender(
  */
 export async function isPartialHTML(filePath: string): Promise<boolean> {
   try {
+    // Check if the file exists before attempting to read it
+    if (!(await pathExists(filePath))) {
+      return false;
+    }
+
     const content = await readFile(filePath, "utf8");
     return !content.includes("</html>");
   } catch (error) {
-    console.error(`Error reading file ${filePath}:`, error);
+    console.error(`Error processing file ${filePath}:`, error);
     // Assume it's not partial if we can't read the file
     return false;
   }
