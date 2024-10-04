@@ -5,7 +5,7 @@ import { confirm, promptOnce } from "../../../prompt";
 import { Config } from "../../../config";
 import { Setup } from "../..";
 import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql";
-import { checkForFreeTrialInstance } from "../../../dataconnect/freeTrial";
+import { checkFreeTrialInstanceUsed, getFreeTrialInstanceId } from "../../../dataconnect/freeTrial";
 import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
 import { ensureApis, ensureSparkApis } from "../../../dataconnect/ensureApis";
 import * as experiments from "../../../experiments";
@@ -327,8 +327,10 @@ async function checkExistingInstances(
     // If we've already chosen a region (ie service already exists), only list instances from that region.
     choices = choices.filter((c) => info.locationId === "" || info.locationId === c.location);
     if (choices.length) {
-      const freeTrialInstanceId = await checkForFreeTrialInstance(setup.projectId);
-      if (!freeTrialInstanceId) {
+      const freeTrialInstanceId = await getFreeTrialInstanceId(setup.projectId);
+      if (await checkFreeTrialInstanceUsed(setup.projectId)) {
+        logBullet(`Found an existing CloudSQL free trial instance ${freeTrialInstanceId}`);
+      } else {
         choices.push({ name: "Create a new instance", value: "", location: "" });
       }
       info.cloudSqlInstanceId = await promptOnce({

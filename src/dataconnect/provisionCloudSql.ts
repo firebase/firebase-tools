@@ -11,7 +11,7 @@ import {
   getFreeTrialInstanceId,
   freeTrialTermsLink,
   printFreeTrialUnavailable,
-  checkFreeTrialInstanceEligibility,
+  checkFreeTrialInstanceUsed,
 } from "./freeTrial";
 import { FirebaseError } from "../error";
 
@@ -70,7 +70,7 @@ export async function provisionCloudSql(args: {
       throw err;
     }
     const freeTrialInstanceId = await getFreeTrialInstanceId(projectId);
-    if (await checkFreeTrialInstanceEligibility(projectId)) {
+    if (await checkFreeTrialInstanceUsed(projectId)) {
       printFreeTrialUnavailable(projectId, configYamlPath, freeTrialInstanceId);
       throw new FirebaseError("Cannot create another no-cost trial Cloud SQL instance.");
     }

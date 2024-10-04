@@ -10,14 +10,19 @@ export function freeTrialTermsLink(): string {
 const FREE_TRIAL_METRIC = "sqladmin.googleapis.com/fdc_lifetime_free_trial_per_project";
 
 // Checks whether there is already a free trial instance on a project.
-export async function checkFreeTrialInstanceEligibility(projectId: string): Promise<boolean> {
-
+export async function checkFreeTrialInstanceUsed(projectId: string): Promise<boolean> {
+  const past7d = new Date();
+  past7d.setDate(past7d.getDate() - 7);
   const query: CmQuery = {
-    filter:`metric.type="${FREE_TRIAL_METRIC}"`,
+    filter: `metric.type="serviceruntime.googleapis.com/quota/allocation/usage" AND metric.label.quota_metric = "${FREE_TRIAL_METRIC}"`,
+    "interval.endTime": new Date().toJSON(),
+    "interval.startTime": past7d.toJSON(),
   };
   const ts = await queryTimeSeries(query, projectId);
-  console.log(ts);
-  return false;
+  if (ts.length) {
+    return ts[0].points.some((p) => p.value.int64Value);
+  }
+  return true;
 }
 
 export async function getFreeTrialInstanceId(projectId: string): Promise<string | undefined> {
@@ -33,7 +38,7 @@ export function printFreeTrialUnavailable(
   if (!instanceId) {
     utils.logLabeledBullet(
       "data connect",
-      "The CloudSQL free trial has already been used on this project."
+      "The CloudSQL free trial has already been used on this project.",
     );
     utils.logLabeledBullet(
       "data connect",
@@ -49,8 +54,8 @@ export function printFreeTrialUnavailable(
     `To use a different database in the same instance, ${clc.bold(`change the ${clc.blue("instanceId")} to "${instanceId}"`)} in ` +
     `${clc.green(configYamlPath)}. (Also, update the ${clc.blue("database")} field (i.e. DB name in the instance) ` +
     `and ${clc.blue("location")} as needed.)`;
-  utils.logLabeledBullet("data connect", reuseHint);
-  utils.logLabeledBullet(
+  utils.logLabeledError("data connect", reuseHint);
+  utils.logLabeledError(
     "data connect",
     `Or you may create a new (paid) CloudSQL instance at https://console.cloud.google.com/sql/instances`,
   );

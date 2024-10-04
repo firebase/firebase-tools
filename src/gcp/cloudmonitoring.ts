@@ -18,6 +18,7 @@ export interface CmQuery {
   "aggregation.perSeriesAligner"?: Aligner;
   "aggregation.crossSeriesReducer"?: Reducer;
   "aggregation.groupByFields"?: string;
+
   orderBy?: string;
   pageSize?: number;
   pageToken?: string;
