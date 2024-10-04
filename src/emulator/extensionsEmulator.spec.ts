@@ -129,6 +129,7 @@ describe("Extensions Emulator", () => {
     for (const testCase of testCases) {
       it(testCase.desc, async () => {
         const e = new ExtensionsEmulator({
+          options: {} as any,
           projectId: "test-project",
           projectNumber: "1234567",
           projectDir: ".",
