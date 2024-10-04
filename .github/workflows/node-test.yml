@@ -109,8 +109,6 @@ jobs:
       - run: npm run build
         working-directory: firebase-vscode
 
-      - run: firebase emulators:start
-
       - uses: GabrielBB/xvfb-action@v1
         with:
           run: npm run test:e2e
