@@ -18,11 +18,17 @@ export async function checkFreeTrialInstanceUsed(projectId: string): Promise<boo
     "interval.endTime": new Date().toJSON(),
     "interval.startTime": past7d.toJSON(),
   };
-  const ts = await queryTimeSeries(query, projectId);
-  if (ts.length) {
-    return ts[0].points.some((p) => p.value.int64Value);
+  try {
+    const ts = await queryTimeSeries(query, projectId);
+    if (ts.length) {
+      return ts[0].points.some((p) => p.value.int64Value);
+    }
+    return true;
+  } catch(err: any) {
+    // If the metric doesn't exist, free trial is not used.
+    return false;
   }
-  return true;
+
 }
 
 export async function getFreeTrialInstanceId(projectId: string): Promise<string | undefined> {
