@@ -7,6 +7,7 @@ export function run(): Promise<void> {
   const mocha = new Mocha({
     ui: "tdd",
     color: true,
+    require: ["ts-node/register", "@babel/register"],
   });
 
   const testsRoot = path.resolve(__dirname, "..");

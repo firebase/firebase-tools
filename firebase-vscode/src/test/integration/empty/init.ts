@@ -7,20 +7,24 @@ import {
   mockProject,
 } from "../../utils/projects";
 import { waitForTaskCompletion } from "../../utils/task";
-import { addTearDown, firebaseTest } from "../../utils/test_hooks";
+import {
+  addTearDown,
+  firebaseSuite,
+  firebaseTest,
+} from "../../utils/test_hooks";
 import { mockUser } from "../../utils/user";
 
-firebaseTest("Init Firebase", async function () {
-  addTearDown(async () => {
-    await mockUser(undefined);
-    await mockProject("");
+addTearDown(async () => {
+  await mockUser(undefined);
+  await mockProject("");
 
-    // Clean up the .firebaserc file
-    fs.unlinkSync(firebaseRcPath);
-    fs.unlinkSync(firebaseLogsPath);
-  });
+  // Clean up the .firebaserc file
+  fs.unlinkSync(firebaseRcPath);
+  fs.unlinkSync(firebaseLogsPath);
+});
 
-  it("calls init command in an empty project", async function () {
+firebaseSuite("Init Firebase", async function () {
+  firebaseTest("calls init command in an empty project", async function () {
     const workbench = await browser.getWorkbench();
 
     const sidebar = new FirebaseSidebar(workbench);

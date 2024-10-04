@@ -3,15 +3,15 @@ import {
   ExecutionPanel,
   HistoryItem,
 } from "../../utils/page_objects/execution";
-import { firebaseTest } from "../../utils/test_hooks";
+import { firebaseSuite, firebaseTest } from "../../utils/test_hooks";
 import { EditorView } from "../../utils/page_objects/editor";
 import { mockProject, mutationsPath, queriesPath } from "../../utils/projects";
 import { FirebaseCommands } from "../../utils/page_objects/commands";
 import { FirebaseSidebar } from "../../utils/page_objects/sidebar";
 import { mockUser } from "../../utils/user";
 
-firebaseTest("Execution", async function () {
-  it("should execute a query", async function () {
+firebaseSuite("Execution", async function () {
+  firebaseTest("should execute a query", async function () {
     const workbench = await browser.getWorkbench();
 
     const sidebar = new FirebaseSidebar(workbench);

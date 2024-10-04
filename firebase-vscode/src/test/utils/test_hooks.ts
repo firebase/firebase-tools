@@ -35,29 +35,28 @@ export function setup(cb: () => void | Promise<void>) {
 /** A custom "test" to work around "afterEach" not working with the current configs */
 export function firebaseTest(
   description: string,
-  cb: (this: Mocha.Suite) => void | Promise<void>,
+  cb: () => void | Promise<void>,
 ) {
   // Since tests may execute in any order, we dereference the list of setup callbacks
   // to unsure that other suites' setups don't affect this test.
   const testSetups = [...setups];
   const testTearDowns = [...tearDowns];
+  // Tests may call addTearDown to register a callback to run after the test ends.
+  // We make sure those callbacks are applied only to this test.
+  const previousTearDowns = tearDowns;
+  tearDowns = testTearDowns;
 
-  describe(description, function () {
-    // Tests may call addTearDown to register a callback to run after the test ends.
-    // We make sure those callbacks are applied only to this test.
-    const previousTearDowns = tearDowns;
-    tearDowns = testTearDowns;
+  setup(async function () {
+    await runGuarded(testSetups);
+  });
 
-    beforeEach(async function () {
-      await runGuarded(testSetups);
-    });
+  teardown(async function () {
+    await runGuarded(testTearDowns.reverse());
+    tearDowns = previousTearDowns;
+  });
 
-    afterEach(async function () {
-      await runGuarded(testTearDowns.reverse());
-      tearDowns = previousTearDowns;
-    });
-
-    cb.call(this);
+  test(description, async function () {
+    await cb();
   });
 }
 

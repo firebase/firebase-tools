@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { EmulatorsStatus, RunningEmulatorInfo } from "../../../messaging/types";
 import { waitForTaskCompletion } from "../task";
-
+// import { browser } from "@wdio/globals";
 export class FirebaseCommands {
   private async getEmulatorsStatus() {
     return browser.executeWorkbench(async (vs: typeof vscode) => {
