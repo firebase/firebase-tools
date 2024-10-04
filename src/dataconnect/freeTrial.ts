@@ -24,11 +24,10 @@ export async function checkFreeTrialInstanceUsed(projectId: string): Promise<boo
       return ts[0].points.some((p) => p.value.int64Value);
     }
     return true;
-  } catch(err: any) {
+  } catch (err: any) {
     // If the metric doesn't exist, free trial is not used.
     return false;
   }
-
 }
 
 export async function getFreeTrialInstanceId(projectId: string): Promise<string | undefined> {
