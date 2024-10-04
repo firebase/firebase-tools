@@ -41,7 +41,7 @@ async function executeQuery(query: string, conn: pg.PoolClient) {
         } else {
             // If nothing is returned and the query was select, let the user know there was no results.
             if (query.toUpperCase().includes('SELECT'))
-            logger.info(chalk.yellow('No results returned'));
+                logger.info(chalk.yellow('No results returned'));
         }
     } catch (err) {
         spinner.fail(chalk.red(`Failed executing query: ${err}`));
@@ -51,19 +51,32 @@ async function executeQuery(query: string, conn: pg.PoolClient) {
 const sqlKeywords = ['SELECT', 'FROM', 'WHERE', 'INSERT', 'UPDATE', 'DELETE', 'JOIN', 'GROUP BY', 'ORDER BY', 'LIMIT', 'GRANT', 'CREATE', 'DROP'];
 
 async function promptForQuery(): Promise<string> {
-    const question: Question = {
-        type: 'input',
-        name: 'query',
-        message: 'Enter your SQL query (or "exit" to quit):',
-        transformer: (input: string) => {
-          // Highlight SQL keywords
-          return input.split(' ').map(word => 
-            sqlKeywords.includes(word.toUpperCase()) ? chalk.cyan(word) : word
-          ).join(' ');
-        }
-      };
+    let query = ''
+    let line = ''
 
-    const { query } = await prompt({ nonInteractive: false }, [question]);
+    do {
+        const question: Question = {
+            type: 'input',
+            name: 'line',
+            message: query ? '> ' : 'Enter your SQL query (or ".exit"):',
+            transformer: (input: string) => {
+                // Highlight SQL keywords
+                return input.split(' ').map(word =>
+                    sqlKeywords.includes(word.toUpperCase()) ? chalk.cyan(word) : word
+                ).join(' ');
+            }
+        };
+
+        ({ line } = await prompt({ nonInteractive: false }, [question]));
+
+        line = line.trimEnd()
+
+        if (line.toLowerCase() === '.exit') {
+            return '.exit';
+        }
+
+        query += (query ? '\n' : '') + line;
+    } while (line !== '' && !query.endsWith(';'));
     return query;
 }
 
@@ -93,7 +106,7 @@ export const command = new Command("dataconnect:sql:shell [serviceId]")
 
         const { serviceName, instanceId, instanceName, databaseId } = getIdentifiers(serviceInfo.schema);
 
-        const { user:username, mode } = await getIAMUser(options);
+        const { user: username, mode } = await getIAMUser(options);
 
         const instance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
 
@@ -123,12 +136,12 @@ export const command = new Command("dataconnect:sql:shell [serviceId]")
 
 
         logger.info(chalk.cyan('Welcome to the GCP SQL Shell'));
-        logger.info(chalk.gray('Type your SQL queries or "exit" to quit.\n'));
+        logger.info(chalk.gray('Type your your SQL query or ".exit" to quit, queries should end with \';\' or add empty line to execute.'));
 
-        
+
         while (true) {
             const query = await promptForQuery();
-            if (query.toLowerCase() === 'exit') {
+            if (query.toLowerCase() === '.exit') {
                 break;
             }
 
