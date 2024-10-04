@@ -200,7 +200,7 @@
     "dev:extension": "npm run copyfiles && webpack --config webpack.dev.js --config-name extension",
     "dev:sidebar": "npm run copyfiles && webpack --config webpack.dev.js --config-name sidebar",
     "watch": "npm run copyfiles && webpack --config webpack.dev.js --watch",
-    "build": "npm run copyfiles && webpack --config webpack.prod.js --devtool hidden-source-map",
+    "build": "npm run copyfiles && node --max-old-space-size=4096 ./node_modules/webpack/bin/webpack.js --config webpack.prod.js --devtool hidden-source-map",
     "build:extension": "webpack --config webpack.prod.js --config-name extension",
     "build:sidebar": "npm run copyfiles && webpack --config webpack.prod.js --config-name sidebar",
     "test-compile": "npm run copyfiles && webpack --config src/test/webpack.test.js",

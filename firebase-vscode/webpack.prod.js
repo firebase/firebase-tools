@@ -13,6 +13,7 @@ module.exports = common.map((config) =>
             keep_classnames: /AbortSignal/,
             keep_fnames: /AbortSignal/,
           },
+          parallel: 2,
         }),
         "...",
       ],
