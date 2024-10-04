@@ -107,8 +107,29 @@ export class Notifications {
 
     while (!foundNotification) {
       try {
-        const notifications = await browser.$$(
+        let notifications = await browser.$$(
           ".monaco-workbench .notification-list-item",
+        );
+        let containsGraphQL = notifications.some(async (notification) =>
+          (await notification.getText()).includes(message),
+        );
+
+        await browser.waitUntil(
+          async () => {
+            console.log("No notifications found, retrying...");
+
+            notifications = await browser.$$(
+              ".monaco-workbench .notification-list-item",
+            );
+            containsGraphQL = notifications.some(async (notification) =>
+              (await notification.getText()).includes(message),
+            );
+            return notifications.length > 0 && containsGraphQL;
+          },
+          {
+            timeout: 5000,
+            timeoutMsg: "No notifications found",
+          },
         );
 
         // Loop through notifications to find the correct one
