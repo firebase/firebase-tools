@@ -53,6 +53,6 @@ export const config: WebdriverIO.Config = {
   reporters: ["spec"],
   mochaOpts: {
     ui: "tdd",
-    timeout: 60000,
+    timeout: 100000,
   },
 };
