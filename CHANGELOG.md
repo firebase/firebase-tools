@@ -1,0 +1,2 @@
+- Added emulator support for extensions defined by SDK.
+- Various emulator bug fixes.

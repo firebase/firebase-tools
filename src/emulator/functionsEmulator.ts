@@ -639,6 +639,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     const toRemove = Object.keys(this.triggers).filter((recordKey) => {
       const record = this.getTriggerRecordByKey(recordKey);
       if (record.backend.codebase !== emulatableBackend.codebase) {
+        // Order is important here. This needs to go before any other checks.
         // We are only loading one codebase, don't delete triggers from another.
         return false;
       }
