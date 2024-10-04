@@ -93,7 +93,7 @@ jobs:
       - uses: GabrielBB/xvfb-action@v1
         with:
           run: npm run test:e2e
-        working-directory: firebase-vscode
+          working-directory: firebase-vscode
 
       - uses: actions/upload-artifact@v3
         if: failure()

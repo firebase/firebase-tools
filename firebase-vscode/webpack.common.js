@@ -13,7 +13,6 @@ const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
 const extensionConfig = {
   name: "extension",
   target: "node", // vscode extensions run in webworker context for VS Code web 📖 -> https://webpack.js.org/configuration/target/#target
-
   entry: {
     extension: "./src/extension.ts",
     server: {

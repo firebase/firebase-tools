@@ -1,0 +1,8 @@
+I1004 19:21:46.508025   68363 load.go:37] Reloading schema and connectors...
+I1004 19:21:46.527861   68363 control.go:45] [engine.Service /emulator/us-east deb0] UpdateSchema(): done sources: schema/schema.gql [126B] 
+E1004 19:21:46.536474   68363 load.go:56] Could not load sources: connectors/a/queries.gql:3: Expected $, found Name
+I1004 19:21:46.536950   68363 load.go:57] Finished reloading
+I1004 19:21:46.540838   68363 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50001
+I1004 19:21:46.659962   68363 engine.go:148] [engine.Service /emulator/us-east deb0] ExecuteGraphqlRead IntrospectionQuery: succeeded. 
+I1004 19:21:46.751598   68363 engine.go:148] [engine.Service /emulator/us-east deb0] ExecuteGraphqlRead IntrospectionQuery: succeeded. 
+I1004 19:22:01.714402   68363 engine.go:148] [engine.Service /emulator/us-east deb0] ExecuteGraphqlRead IntrospectionQuery: succeeded. 
