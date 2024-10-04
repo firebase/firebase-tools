@@ -1,4 +1,4 @@
-import { firebaseSuite, firebaseTest, setup } from "../../utils/test_hooks";
+import { firebaseSuite, firebaseTest } from "../../utils/test_hooks";
 import { FirebaseSidebar } from "../../utils/page_objects/sidebar";
 import { EditorView } from "../../utils/page_objects/editor";
 import { mockUser } from "../../utils/user";

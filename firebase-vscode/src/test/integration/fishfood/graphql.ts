@@ -5,7 +5,7 @@ import {
   addTearDown,
   firebaseSuite,
   firebaseTest,
-  setup,
+  addSetup,
 } from "../../utils/test_hooks";
 import {
   SchemaExplorerView,
@@ -28,7 +28,7 @@ const queriesPath = path.join(
   "queries.gql",
 );
 
-setup(() => {
+addSetup(() => {
   const queriesWithSyntaxError = fs.readFileSync(
     path.join(__dirname, "..", "queries_with_error.gql"),
   );

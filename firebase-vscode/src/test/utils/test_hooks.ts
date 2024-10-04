@@ -28,7 +28,7 @@ let setups: Array<() => void | Promise<void>> = [];
  *
  * The callback is bound to the suite, and when that suite ends, the callback is unregistered.
  */
-export function setup(cb: () => void | Promise<void>) {
+export function addSetup(cb: () => void | Promise<void>) {
   setups.push(cb);
 }
 
