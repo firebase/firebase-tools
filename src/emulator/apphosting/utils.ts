@@ -6,7 +6,7 @@ import { Emulators } from "../types";
 export const logger = EmulatorLogger.forEmulator(Emulators.APPHOSTING);
 
 /**
- * Exported for unit testing
+ * Supported package managers. This mirrors production.
  */
 export type PackageManager = "npm" | "yarn" | "pnpm";
 

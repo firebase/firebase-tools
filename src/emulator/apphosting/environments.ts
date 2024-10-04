@@ -4,11 +4,12 @@ import { join } from "path";
 import { logger } from "./utils";
 import { Emulators } from "../types";
 
-export type EnvironmentAvailability = "BUILD" | "RUNTIME";
+type EnvironmentAvailability = "BUILD" | "RUNTIME";
 
 const APPHOSTING_YAML = "apphosting.yaml";
 const APPHOSTING_LOCAL_YAML = "apphosting.local.yaml";
 
+// Schema of the apphosting.yaml file
 interface AppHostingYaml {
   env?: {
     variable: string;
@@ -24,7 +25,8 @@ interface AppHostingConfiguration {
 }
 
 /**
- * Exported for unit testing
+ * Reads an apphosting.*.yaml file, parses, and returns in an easy to use
+ * format.
  */
 export async function loadAppHostingYaml(
   sourceDirectory: string,
