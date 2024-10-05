@@ -135,17 +135,9 @@ export function generateSdkYaml(
   if (!connectorYaml.generate) {
     connectorYaml.generate = {};
   }
-  // If appDir diffs from `cwd()`, this is an intentional choice.
-  // Write under `dataconnect-generated` of the picked app folder.
-  // No need to worry about output path conflict among platforms.
-  const appDirOutputDir =
-    process.cwd() === appDir
-      ? undefined
-      : path.relative(connectorDir, path.join(appDir, "dataconnect-generated"));
 
   if (targetPlatform === Platform.IOS) {
-    const outputDir =
-      appDirOutputDir || connectorYaml.generate.swiftSdk?.outputDir || `../generated/swift`;
+    const outputDir = path.relative(connectorDir, path.join(appDir, `dataconnect-generated/swift`));
     const pkg =
       connectorYaml.generate.swiftSdk?.package ?? upperFirst(camelCase(connectorYaml.connectorId));
     const swiftSdk = { outputDir, package: pkg };
@@ -153,10 +145,7 @@ export function generateSdkYaml(
   }
 
   if (targetPlatform === Platform.WEB) {
-    const outputDir =
-      appDirOutputDir ||
-      connectorYaml.generate.javascriptSdk?.outputDir ||
-      `../generated/javascript/${connectorYaml.connectorId}`;
+    const outputDir = path.relative(connectorDir, path.join(appDir, `dataconnect-generated/js`));
     const pkg =
       connectorYaml.generate.javascriptSdk?.package ?? `@firebasegen/${connectorYaml.connectorId}`;
 
@@ -173,10 +162,7 @@ export function generateSdkYaml(
   }
 
   if (targetPlatform === Platform.DART) {
-    const outputDir =
-      appDirOutputDir ||
-      connectorYaml.generate.dartSdk?.outputDir ||
-      `../generated/dart/${connectorYaml.connectorId}`;
+    const outputDir = path.relative(connectorDir, path.join(appDir, `dataconnect-generated/dart`));
     const pkg = connectorYaml.generate.dartSdk?.package ?? connectorYaml.connectorId;
     const dartSdk: DartSDK = {
       outputDir,
@@ -189,8 +175,7 @@ export function generateSdkYaml(
     // app/src/main/kotlin and app/src/main/java are conventional for Android,
     // but not required o r enforced. If one of them is present (preferring the
     // "kotlin" directory ), use it. Otherwise, fall back to the app directory.
-    let outputDir =
-      appDirOutputDir || connectorYaml.generate.kotlinSdk?.outputDir || `../generated/kotlin`;
+    let outputDir = path.relative(connectorDir, path.join(appDir, `dataconnect-generated/kotlin`));
     for (const candidateSubdir of ["app/src/main/java", "app/src/main/kotlin"]) {
       const candidateDir = path.join(appDir, candidateSubdir);
       if (fs.existsSync(candidateDir)) {
