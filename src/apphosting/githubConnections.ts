@@ -105,8 +105,11 @@ export async function getOrCreateGithubConnection(
       const connection = await devConnect.getConnection(projectId, location, createConnectionId);
       utils.logBullet(`Reusing existing connection ${createConnectionId}`);
       return connection;
-    } catch (e) {
-      // Expected, the connection doesn't exist.
+    } catch (err: unknown) {
+      // A 404 is expected if the connection doesn't exist. Otherwise, continue to throw the err.
+      if ((err as any).status !== 404) {
+        throw err;
+      }
     }
   }
 
@@ -138,7 +141,7 @@ export async function getOrCreateGithubConnection(
   if (connectionMatchingInstallation) {
     const { id: matchingConnectionId } = parseConnectionName(connectionMatchingInstallation.name)!;
 
-    if (!createConnectionId || matchingConnectionId === createConnectionId) {
+    if (!createConnectionId) {
       utils.logBullet(`Reusing matching connection ${matchingConnectionId}`);
       return connectionMatchingInstallation;
     }
