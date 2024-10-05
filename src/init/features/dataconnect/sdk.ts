@@ -3,6 +3,7 @@ import * as fs from "fs";
 import * as clc from "colorette";
 import * as path from "path";
 
+import { fileExistsSync, dirExistsSync } from "../../../fsutils";
 import { confirm, promptForDirectory, promptOnce } from "../../../prompt";
 import { readFirebaseJson, getPlatformFromFolder } from "../../../dataconnect/fileUtils";
 import { Config } from "../../../config";
@@ -152,10 +153,9 @@ export function generateSdkYaml(
     const javascriptSdk: JavascriptSDK = {
       outputDir,
       package: pkg,
-      packageJsonDir: connectorYaml.generate.javascriptSdk?.packageJsonDir,
     };
-    if (process.cwd() !== appDir) {
-      // If appDir is a intentionally picked, install JS SDK there.
+    if (fileExistsSync(path.join(appDir, "package.json"))) {
+      // If appDir has package.json, install JS SDK there.
       javascriptSdk.packageJsonDir = path.relative(connectorDir, appDir);
     }
     connectorYaml.generate.javascriptSdk = javascriptSdk;
@@ -173,12 +173,12 @@ export function generateSdkYaml(
 
   if (targetPlatform === Platform.ANDROID) {
     // app/src/main/kotlin and app/src/main/java are conventional for Android,
-    // but not required o r enforced. If one of them is present (preferring the
+    // but not required or enforced. If one of them is present (preferring the
     // "kotlin" directory ), use it. Otherwise, fall back to the app directory.
     let outputDir = path.relative(connectorDir, path.join(appDir, `dataconnect-generated/kotlin`));
     for (const candidateSubdir of ["app/src/main/java", "app/src/main/kotlin"]) {
       const candidateDir = path.join(appDir, candidateSubdir);
-      if (fs.existsSync(candidateDir)) {
+      if (dirExistsSync(candidateDir)) {
         outputDir = path.relative(connectorDir, candidateDir);
       }
     }

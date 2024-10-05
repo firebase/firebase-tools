@@ -120,6 +120,7 @@ const IOS_POSTFIX_INDICATORS = [".xcworkspace", ".xcodeproj"];
 export async function getPlatformFromFolder(dirPath: string) {
   // Check for file indicators
   const fileNames = await fs.readdir(dirPath);
+  console.error("filenames", fileNames);
 
   let hasWeb = false;
   let hasAndroid = false;
