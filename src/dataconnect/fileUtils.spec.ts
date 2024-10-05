@@ -322,7 +322,7 @@ describe("generateSdkYaml", () => {
 
     it("should add Dart SDK generation to sub folder", () => {
       const modifiedYaml = generateSdkYaml(
-        Platform.ANDROID,
+        Platform.DART,
         sampleConnectorYaml,
         connectorYamlFolder,
         appFolderBelowConnector,
@@ -334,7 +334,7 @@ describe("generateSdkYaml", () => {
     });
     it("should add Dart SDK generation to outside folder", () => {
       const modifiedYaml = generateSdkYaml(
-        Platform.ANDROID,
+        Platform.DART,
         sampleConnectorYaml,
         connectorYamlFolder,
         appFolderOutside,
