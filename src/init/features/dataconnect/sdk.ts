@@ -120,7 +120,7 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
       default: true,
     }))
   );
-  // TODO: Prompt user  about adding generated paths to .gitignore
+  // TODO: Prompt user about adding generated paths to .gitignore
   const connectorYamlContents = yaml.stringify(newConnectorYaml);
   connectorInfo.connectorYaml = newConnectorYaml;
   const displayIOSWarning = targetPlatform === Platform.IOS;
@@ -149,8 +149,9 @@ export function generateSdkYaml(
     const javascriptSdk: JavascriptSDK = {
       outputDir: path.relative(connectorDir, path.join(appDir, `dataconnect-generated/js`)),
       package: `@firebasegen/${connectorYaml.connectorId}`,
-      // If appDir has package.json, this would install JS SDK there.
+      // If appDir has package.json, Emulator would install JS SDK for every reload.
       // Otherwise, emulator would ignore it. Always add it here in case `package.json` is added later.
+      // TODO: Explore other platforms that can be automatically installed. Dart? Android?
       packageJsonDir: path.relative(connectorDir, appDir),
     };
     connectorYaml.generate.javascriptSdk = javascriptSdk;
