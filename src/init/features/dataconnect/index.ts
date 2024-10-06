@@ -70,7 +70,7 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   await actuate(setup, config, info);
 
   const cwdPlatformGuess = await getPlatformFromFolder(process.cwd());
-  if (cwdPlatformGuess !== Platform.UNDETERMINED) {
+  if (cwdPlatformGuess !== Platform.NONE) {
     await sdk.doSetup(setup, config);
   } else {
     logBullet(
