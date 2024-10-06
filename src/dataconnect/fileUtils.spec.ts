@@ -164,7 +164,7 @@ describe("generateSdkYaml", () => {
         },
       },
       {
-        desc: "link packageJsonDir",
+        desc: "has package.json",
         appDir: appFolderDetectable,
         output: {
           outputDir: "../detected/dataconnect-generated/js",
