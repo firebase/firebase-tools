@@ -67,15 +67,13 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
   // First, lets check if we are in an app directory
   let appDir = process.env[FDC_APP_FOLDER] || process.cwd();
   let targetPlatform = await getPlatformFromFolder(appDir);
-  if (targetPlatform === Platform.NONE) {
+  if (targetPlatform === Platform.NONE && !process.env[FDC_APP_FOLDER]?.length) {
     // If we aren't in an app directory, ask the user where their app is, and try to autodetect from there.
-    appDir =
-      process.env[FDC_APP_FOLDER] ||
-      (await promptForDirectory({
-        config,
-        message:
-          "Where is your app directory? Leave blank to set up a generated SDK in your current directory.",
-      }));
+    appDir = await promptForDirectory({
+      config,
+      message:
+        "Where is your app directory? Leave blank to set up a generated SDK in your current directory.",
+    });
     targetPlatform = await getPlatformFromFolder(appDir);
   }
   if (targetPlatform === Platform.NONE || targetPlatform === Platform.MULTIPLE) {
