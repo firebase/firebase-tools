@@ -138,35 +138,30 @@ export function generateSdkYaml(
   }
 
   if (targetPlatform === Platform.IOS) {
-    const outputDir = path.relative(connectorDir, path.join(appDir, `dataconnect-generated/swift`));
-    const pkg =
-      connectorYaml.generate.swiftSdk?.package ?? upperFirst(camelCase(connectorYaml.connectorId));
-    const swiftSdk = { outputDir, package: pkg };
+    const swiftSdk = {
+      outputDir: path.relative(connectorDir, path.join(appDir, `dataconnect-generated/swift`)),
+      package: upperFirst(camelCase(connectorYaml.connectorId)),
+    };
     connectorYaml.generate.swiftSdk = swiftSdk;
   }
 
   if (targetPlatform === Platform.WEB) {
-    const outputDir = path.relative(connectorDir, path.join(appDir, `dataconnect-generated/js`));
-    const pkg =
-      connectorYaml.generate.javascriptSdk?.package ?? `@firebasegen/${connectorYaml.connectorId}`;
-
     const javascriptSdk: JavascriptSDK = {
-      outputDir,
-      package: pkg,
+      outputDir: path.relative(connectorDir, path.join(appDir, `dataconnect-generated/js`)),
+      package: `@firebasegen/${connectorYaml.connectorId}`,
     };
     if (fileExistsSync(path.join(appDir, "package.json"))) {
       // If appDir has package.json, install JS SDK there.
+      // Otherwise, setting `packageJsonDir` would be no-op, so leave it out.
       javascriptSdk.packageJsonDir = path.relative(connectorDir, appDir);
     }
     connectorYaml.generate.javascriptSdk = javascriptSdk;
   }
 
   if (targetPlatform === Platform.DART) {
-    const outputDir = path.relative(connectorDir, path.join(appDir, `dataconnect-generated/dart`));
-    const pkg = connectorYaml.generate.dartSdk?.package ?? connectorYaml.connectorId;
     const dartSdk: DartSDK = {
-      outputDir,
-      package: pkg,
+      outputDir: path.relative(connectorDir, path.join(appDir, `dataconnect-generated/dart`)),
+      package: connectorYaml.connectorId,
     };
     connectorYaml.generate.dartSdk = dartSdk;
   }
@@ -182,12 +177,9 @@ export function generateSdkYaml(
         outputDir = path.relative(connectorDir, candidateDir);
       }
     }
-    const pkg =
-      connectorYaml.generate.kotlinSdk?.package ??
-      `connectors.${snakeCase(connectorYaml.connectorId)}`;
     const kotlinSdk: KotlinSDK = {
       outputDir,
-      package: pkg,
+      package: `connectors.${snakeCase(connectorYaml.connectorId)}`,
     };
     connectorYaml.generate.kotlinSdk = kotlinSdk;
   }
