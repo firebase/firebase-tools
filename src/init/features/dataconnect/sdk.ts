@@ -3,7 +3,7 @@ import * as fs from "fs";
 import * as clc from "colorette";
 import * as path from "path";
 
-import { fileExistsSync, dirExistsSync } from "../../../fsutils";
+import { dirExistsSync } from "../../../fsutils";
 import { confirm, promptForDirectory, promptOnce } from "../../../prompt";
 import { readFirebaseJson, getPlatformFromFolder } from "../../../dataconnect/fileUtils";
 import { Config } from "../../../config";
@@ -149,12 +149,10 @@ export function generateSdkYaml(
     const javascriptSdk: JavascriptSDK = {
       outputDir: path.relative(connectorDir, path.join(appDir, `dataconnect-generated/js`)),
       package: `@firebasegen/${connectorYaml.connectorId}`,
+      // If appDir has package.json, this would install JS SDK there.
+      // Otherwise, emulator would ignore it. Add it here in case `package.json` is added later.
+      packageJsonDir: path.relative(connectorDir, appDir),
     };
-    if (fileExistsSync(path.join(appDir, "package.json"))) {
-      // If appDir has package.json, install JS SDK there.
-      // Otherwise, setting `packageJsonDir` would be no-op, so leave it out.
-      javascriptSdk.packageJsonDir = path.relative(connectorDir, appDir);
-    }
     connectorYaml.generate.javascriptSdk = javascriptSdk;
   }
 
