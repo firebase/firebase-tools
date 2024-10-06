@@ -160,6 +160,7 @@ describe("generateSdkYaml", () => {
         output: {
           outputDir: "../dataconnect-generated/js",
           package: "@firebasegen/test-connector",
+          packageJsonDir: "..",
         },
       },
       {
@@ -168,7 +169,7 @@ describe("generateSdkYaml", () => {
         output: {
           outputDir: "../detected/dataconnect-generated/js",
           package: "@firebasegen/test-connector",
-          packageJsonDir: "../detected", // use relative path!
+          packageJsonDir: "../detected",
         },
       },
       {
@@ -177,6 +178,7 @@ describe("generateSdkYaml", () => {
         output: {
           outputDir: "belowConnector/dataconnect-generated/js",
           package: "@firebasegen/test-connector",
+          packageJsonDir: "belowConnector",
         },
       },
       {
@@ -185,6 +187,7 @@ describe("generateSdkYaml", () => {
         output: {
           outputDir: "../../outside/dataconnect-generated/js",
           package: "@firebasegen/test-connector",
+          packageJsonDir: "../../outside",
         },
       },
     ];
