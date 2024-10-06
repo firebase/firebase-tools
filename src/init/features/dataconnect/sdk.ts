@@ -147,7 +147,10 @@ export function generateSdkYaml(
 
   if (targetPlatform === Platform.WEB) {
     const javascriptSdk: JavascriptSDK = {
-      outputDir: path.relative(connectorDir, path.join(appDir, `dataconnect-generated/js`)),
+      outputDir: path.relative(
+        connectorDir,
+        path.join(appDir, `dataconnect-generated/js/${connectorYaml.connectorId}`),
+      ),
       package: `@firebasegen/${connectorYaml.connectorId}`,
       // If appDir has package.json, Emulator would install JS SDK for every reload.
       // Otherwise, emulator would ignore it. Always add it here in case `package.json` is added later.
@@ -159,7 +162,10 @@ export function generateSdkYaml(
 
   if (targetPlatform === Platform.DART) {
     const dartSdk: DartSDK = {
-      outputDir: path.relative(connectorDir, path.join(appDir, `dataconnect-generated/dart`)),
+      outputDir: path.relative(
+        connectorDir,
+        path.join(appDir, `dataconnect-generated/dart/${connectorYaml.connectorId}`),
+      ),
       package: connectorYaml.connectorId,
     };
     connectorYaml.generate.dartSdk = dartSdk;

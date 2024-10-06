@@ -158,7 +158,7 @@ describe("generateSdkYaml", () => {
         desc: "basic",
         appDir: appFolderBase,
         output: {
-          outputDir: "../dataconnect-generated/js",
+          outputDir: "../dataconnect-generated/js/test-connector",
           package: "@firebasegen/test-connector",
           packageJsonDir: "..",
         },
@@ -167,7 +167,7 @@ describe("generateSdkYaml", () => {
         desc: "has package.json",
         appDir: appFolderDetectable,
         output: {
-          outputDir: "../detected/dataconnect-generated/js",
+          outputDir: "../detected/dataconnect-generated/js/test-connector",
           package: "@firebasegen/test-connector",
           packageJsonDir: "../detected",
         },
@@ -176,7 +176,7 @@ describe("generateSdkYaml", () => {
         desc: "below connector",
         appDir: appFolderBelowConnector,
         output: {
-          outputDir: "belowConnector/dataconnect-generated/js",
+          outputDir: "belowConnector/dataconnect-generated/js/test-connector",
           package: "@firebasegen/test-connector",
           packageJsonDir: "belowConnector",
         },
@@ -185,7 +185,7 @@ describe("generateSdkYaml", () => {
         desc: "outside",
         appDir: appFolderOutside,
         output: {
-          outputDir: "../../outside/dataconnect-generated/js",
+          outputDir: "../../outside/dataconnect-generated/js/test-connector",
           package: "@firebasegen/test-connector",
           packageJsonDir: "../../outside",
         },
@@ -336,7 +336,7 @@ describe("generateSdkYaml", () => {
         desc: "basic",
         appDir: appFolderBase,
         output: {
-          outputDir: "../dataconnect-generated/dart",
+          outputDir: "../dataconnect-generated/dart/test-connector",
           package: "test-connector",
         },
       },
@@ -344,7 +344,7 @@ describe("generateSdkYaml", () => {
         desc: "below connector",
         appDir: appFolderBelowConnector,
         output: {
-          outputDir: "belowConnector/dataconnect-generated/dart",
+          outputDir: "belowConnector/dataconnect-generated/dart/test-connector",
           package: "test-connector",
         },
       },
@@ -352,7 +352,7 @@ describe("generateSdkYaml", () => {
         desc: "outside",
         appDir: appFolderOutside,
         output: {
-          outputDir: "../../outside/dataconnect-generated/dart",
+          outputDir: "../../outside/dataconnect-generated/dart/test-connector",
           package: "test-connector",
         },
       },
