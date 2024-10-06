@@ -129,9 +129,7 @@ export async function confirm(args: {
       default: args.default,
     });
   } else if (args.nonInteractive && !args.force) {
-    throw new FirebaseError(
-      "Pass the --force flag to use this command in non-interactive mode " + `${args.message}`,
-    );
+    throw new FirebaseError("Pass the --force flag to use this command in non-interactive mode");
   } else {
     return true;
   }

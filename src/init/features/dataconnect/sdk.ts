@@ -150,7 +150,7 @@ export function generateSdkYaml(
       outputDir: path.relative(connectorDir, path.join(appDir, `dataconnect-generated/js`)),
       package: `@firebasegen/${connectorYaml.connectorId}`,
       // If appDir has package.json, this would install JS SDK there.
-      // Otherwise, emulator would ignore it. Add it here in case `package.json` is added later.
+      // Otherwise, emulator would ignore it. Always add it here in case `package.json` is added later.
       packageJsonDir: path.relative(connectorDir, appDir),
     };
     connectorYaml.generate.javascriptSdk = javascriptSdk;
@@ -165,20 +165,19 @@ export function generateSdkYaml(
   }
 
   if (targetPlatform === Platform.ANDROID) {
+    const kotlinSdk: KotlinSDK = {
+      outputDir: path.relative(connectorDir, path.join(appDir, `dataconnect-generated/kotlin`)),
+      package: `connectors.${snakeCase(connectorYaml.connectorId)}`,
+    };
     // app/src/main/kotlin and app/src/main/java are conventional for Android,
     // but not required or enforced. If one of them is present (preferring the
-    // "kotlin" directory ), use it. Otherwise, fall back to the app directory.
-    let outputDir = path.relative(connectorDir, path.join(appDir, `dataconnect-generated/kotlin`));
+    // "kotlin" directory), use it. Otherwise, fall back to the dataconnect-generated dir.
     for (const candidateSubdir of ["app/src/main/java", "app/src/main/kotlin"]) {
       const candidateDir = path.join(appDir, candidateSubdir);
       if (dirExistsSync(candidateDir)) {
-        outputDir = path.relative(connectorDir, candidateDir);
+        kotlinSdk.outputDir = path.relative(connectorDir, candidateDir);
       }
     }
-    const kotlinSdk: KotlinSDK = {
-      outputDir,
-      package: `connectors.${snakeCase(connectorYaml.connectorId)}`,
-    };
     connectorYaml.generate.kotlinSdk = kotlinSdk;
   }
 
