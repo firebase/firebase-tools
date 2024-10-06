@@ -118,7 +118,7 @@ async function askQuestions(setup: Setup): Promise<RequiredInfo> {
     isBillingEnabled && requiredConfigUnset
       ? await confirm({
           message: `Would you like to configure your backend resources now?`,
-          default: true,
+          default: false,
         })
       : false;
   if (shouldConfigureBackend) {
