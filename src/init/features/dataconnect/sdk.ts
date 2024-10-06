@@ -71,9 +71,9 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
     targetPlatform = cwdPlatformGuess;
   } else {
     // If we aren't, ask the user where their app is, and try to autodetect from there
-    logBullet(`Couldn't automatically detect your app in directory ${appDir}.`);
+    logBullet(`Couldn't automatically detect your app directory.`);
     appDir =
-      process.env[FDC_APP_FOLDER] ||
+      process.env[FDC_APP_FOLDER] ??
       (await promptForDirectory({
         config,
         message:
@@ -85,6 +85,7 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
       targetPlatform = platformGuess;
     } else {
       // If we still can't autodetect, just ask the user
+      logBullet("Couldn't automatically detect your app's platform.");
       const platforms = [
         { name: "iOS (Swift)", value: Platform.IOS },
         { name: "Web (JavaScript)", value: Platform.WEB },
