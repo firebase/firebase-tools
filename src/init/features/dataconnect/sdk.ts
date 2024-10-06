@@ -131,7 +131,7 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
 export function generateSdkYaml(
   targetPlatform: Platform,
   connectorYaml: ConnectorYaml,
-  connectorDir: string, // path.relative expe cts folder as first arg
+  connectorDir: string,
   appDir: string,
 ): ConnectorYaml {
   if (!connectorYaml.generate) {
