@@ -297,7 +297,7 @@ async function checkExistingInstances(
           );
           info.cloudSqlInstanceId = instanceName.instanceId;
         }
-        if (choice.schema.source.files) {
+        if (choice.schema.source.files?.length) {
           info.schemaGql = choice.schema.source.files;
         }
         info.cloudSqlDatabase = primaryDatasource?.postgresql?.database ?? "";
