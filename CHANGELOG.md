@@ -4,3 +4,4 @@
 - Fixed various trigger handling issues in the Functions emualtor, including an issue where Eventarc functions would not be emulated correctly after a reload.
 - Added support for generating Dart SDKs for Data Connect connectors.
 - Commands now correctly default to 'default' alias when there is more than one alias listed. (#7624)
+- Updated Data Connect emulator to v1.15.0, which includes bug fixes for `insertMany` and improved error handling .
