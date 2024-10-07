@@ -78,6 +78,7 @@ jobs:
     env:
       FIREBASE_EMULATORS_PATH: ${{ github.workspace }}/emulator-cache
       # FIREBASE_BINARY: sudo npx -y firebase-tools@latest
+      DEBUG: "*"
 
     steps:
       - name: Setup Java JDK
