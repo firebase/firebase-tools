@@ -124,10 +124,6 @@ jobs:
       - uses: codecov/codecov-action@v3
         if: matrix.node-version == '20'
 
-      - name: Print debug logs
-        if: failure()
-        run: type *debug.log
-
   unit:
     runs-on: ubuntu-latest
     strategy:
