@@ -136,18 +136,16 @@ export function generateSdkYaml(
   if (targetPlatform === Platform.IOS) {
     const swiftSdk = {
       outputDir: path.relative(connectorDir, path.join(appDir, `dataconnect-generated/swift`)),
-      package: upperFirst(camelCase(connectorYaml.connectorId)),
+      package: upperFirst(camelCase(connectorYaml.connectorId)) + "Connector",
     };
     connectorYaml.generate.swiftSdk = swiftSdk;
   }
 
   if (targetPlatform === Platform.WEB) {
+    const pkg = `${connectorYaml.connectorId}-connector`;
     const javascriptSdk: JavascriptSDK = {
-      outputDir: path.relative(
-        connectorDir,
-        path.join(appDir, `dataconnect-generated/js/${connectorYaml.connectorId}`),
-      ),
-      package: `@firebasegen/${connectorYaml.connectorId}`,
+      outputDir: path.relative(connectorDir, path.join(appDir, `dataconnect-generated/js/${pkg}`)),
+      package: `@firebasegen/${pkg}`,
       // If appDir has package.json, Emulator would add Generated JS SDK to `package.json`.
       // Otherwise, emulator would ignore it. Always add it here in case `package.json` is added later.
       // TODO: Explore other platforms that can be automatically installed. Dart? Android?
@@ -157,12 +155,13 @@ export function generateSdkYaml(
   }
 
   if (targetPlatform === Platform.FLUTTER) {
+    const pkg = `${snakeCase(connectorYaml.connectorId)}_connector`;
     const dartSdk: DartSDK = {
       outputDir: path.relative(
         connectorDir,
-        path.join(appDir, `dataconnect-generated/dart/${snakeCase(connectorYaml.connectorId)}`),
+        path.join(appDir, `dataconnect-generated/dart/${pkg}`),
       ),
-      package: snakeCase(connectorYaml.connectorId),
+      package: pkg,
     };
     connectorYaml.generate.dartSdk = dartSdk;
   }

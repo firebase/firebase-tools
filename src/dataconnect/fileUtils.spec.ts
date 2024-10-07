@@ -138,7 +138,7 @@ describe("getPlatformFromFolder", () => {
 describe("generateSdkYaml", () => {
   // Test Data
   const sampleConnectorYaml: ConnectorYaml = {
-    connectorId: "test-connector",
+    connectorId: "default",
     generate: {},
   };
   const connectorYamlFolder = "/my/app/folder/connector";
@@ -158,8 +158,8 @@ describe("generateSdkYaml", () => {
         desc: "basic",
         appDir: appFolderBase,
         output: {
-          outputDir: "../dataconnect-generated/js/test-connector",
-          package: "@firebasegen/test-connector",
+          outputDir: "../dataconnect-generated/js/default-connector",
+          package: "@firebasegen/default-connector",
           packageJsonDir: "..",
         },
       },
@@ -167,8 +167,8 @@ describe("generateSdkYaml", () => {
         desc: "has package.json",
         appDir: appFolderDetectable,
         output: {
-          outputDir: "../detected/dataconnect-generated/js/test-connector",
-          package: "@firebasegen/test-connector",
+          outputDir: "../detected/dataconnect-generated/js/default-connector",
+          package: "@firebasegen/default-connector",
           packageJsonDir: "../detected",
         },
       },
@@ -176,8 +176,8 @@ describe("generateSdkYaml", () => {
         desc: "below connector",
         appDir: appFolderBelowConnector,
         output: {
-          outputDir: "belowConnector/dataconnect-generated/js/test-connector",
-          package: "@firebasegen/test-connector",
+          outputDir: "belowConnector/dataconnect-generated/js/default-connector",
+          package: "@firebasegen/default-connector",
           packageJsonDir: "belowConnector",
         },
       },
@@ -185,8 +185,8 @@ describe("generateSdkYaml", () => {
         desc: "outside",
         appDir: appFolderOutside,
         output: {
-          outputDir: "../../outside/dataconnect-generated/js/test-connector",
-          package: "@firebasegen/test-connector",
+          outputDir: "../../outside/dataconnect-generated/js/default-connector",
+          package: "@firebasegen/default-connector",
           packageJsonDir: "../../outside",
         },
       },
@@ -216,7 +216,7 @@ describe("generateSdkYaml", () => {
         appDir: appFolderBase,
         output: {
           outputDir: "../dataconnect-generated/swift",
-          package: "TestConnector",
+          package: "DefaultConnector",
         },
       },
       {
@@ -224,7 +224,7 @@ describe("generateSdkYaml", () => {
         appDir: appFolderBelowConnector,
         output: {
           outputDir: "belowConnector/dataconnect-generated/swift",
-          package: "TestConnector",
+          package: "DefaultConnector",
         },
       },
       {
@@ -232,7 +232,7 @@ describe("generateSdkYaml", () => {
         appDir: appFolderOutside,
         output: {
           outputDir: "../../outside/dataconnect-generated/swift",
-          package: "TestConnector",
+          package: "DefaultConnector",
         },
       },
     ];
@@ -263,7 +263,7 @@ describe("generateSdkYaml", () => {
         appDir: appFolderBase,
         output: {
           outputDir: "../dataconnect-generated/kotlin",
-          package: "connectors.test_connector",
+          package: "connectors.default",
         },
       },
       {
@@ -271,7 +271,7 @@ describe("generateSdkYaml", () => {
         appDir: appFolderHasJava,
         output: {
           outputDir: "../has-java/app/src/main/java",
-          package: "connectors.test_connector",
+          package: "connectors.default",
         },
       },
       {
@@ -279,7 +279,7 @@ describe("generateSdkYaml", () => {
         appDir: appFolderHasKotlin,
         output: {
           outputDir: "../has-kotlin/app/src/main/kotlin",
-          package: "connectors.test_connector",
+          package: "connectors.default",
         },
       },
       {
@@ -287,7 +287,7 @@ describe("generateSdkYaml", () => {
         appDir: appFolderHasBoth,
         output: {
           outputDir: "../has-both/app/src/main/kotlin",
-          package: "connectors.test_connector",
+          package: "connectors.default",
         },
       },
       {
@@ -295,7 +295,7 @@ describe("generateSdkYaml", () => {
         appDir: appFolderBelowConnector,
         output: {
           outputDir: "belowConnector/dataconnect-generated/kotlin",
-          package: "connectors.test_connector",
+          package: "connectors.default",
         },
       },
       {
@@ -303,7 +303,7 @@ describe("generateSdkYaml", () => {
         appDir: appFolderOutside,
         output: {
           outputDir: "../../outside/dataconnect-generated/kotlin",
-          package: "connectors.test_connector",
+          package: "connectors.default",
         },
       },
     ];
@@ -336,24 +336,24 @@ describe("generateSdkYaml", () => {
         desc: "basic",
         appDir: appFolderBase,
         output: {
-          outputDir: "../dataconnect-generated/dart/test_connector",
-          package: "test_connector",
+          outputDir: "../dataconnect-generated/dart/default_connector",
+          package: "default_connector",
         },
       },
       {
         desc: "below connector",
         appDir: appFolderBelowConnector,
         output: {
-          outputDir: "belowConnector/dataconnect-generated/dart/test_connector",
-          package: "test_connector",
+          outputDir: "belowConnector/dataconnect-generated/dart/default_connector",
+          package: "default_connector",
         },
       },
       {
         desc: "outside",
         appDir: appFolderOutside,
         output: {
-          outputDir: "../../outside/dataconnect-generated/dart/test_connector",
-          package: "test_connector",
+          outputDir: "../../outside/dataconnect-generated/dart/default_connector",
+          package: "default_connector",
         },
       },
     ];
@@ -371,7 +371,7 @@ describe("generateSdkYaml", () => {
   });
 
   it("should create generate object if it doesn't exist", () => {
-    const yamlWithoutGenerate: ConnectorYaml = { connectorId: "test-connector" };
+    const yamlWithoutGenerate: ConnectorYaml = { connectorId: "default-connector" };
     const modifiedYaml = generateSdkYaml(
       Platform.WEB,
       yamlWithoutGenerate,
