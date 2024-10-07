@@ -16,12 +16,11 @@ export class AppHostingEmulator implements EmulatorInstance {
   constructor(private args: AppHostingEmulatorArgs) {}
 
   async start(): Promise<void> {
-    this.args.options.host = this.args.host;
-    this.args.options.port = this.args.port;
-
     this.logger.logLabeled("INFO", Emulators.APPHOSTING, "starting apphosting emulator");
-    const { port } = await apphostingStart(this.args.options);
-    this.logger.logLabeled("INFO", Emulators.APPHOSTING, `serving on port ${port}`);
+
+    const { hostname, port } = await apphostingStart();
+    this.args.options.host = hostname;
+    this.args.options.port = port;
   }
 
   connect(): Promise<void> {
@@ -37,8 +36,8 @@ export class AppHostingEmulator implements EmulatorInstance {
   getInfo(): EmulatorInfo {
     return {
       name: Emulators.APPHOSTING,
-      host: this.args.host!,
-      port: this.args.port!,
+      host: this.args.options.host!,
+      port: this.args.options.port!,
     };
   }
 

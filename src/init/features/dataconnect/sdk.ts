@@ -64,43 +64,38 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
     );
   }
 
-  // First, lets check if we are in a app directory
-  let targetPlatform: Platform = Platform.UNDETERMINED;
+  // First, lets check if we are in an app directory
   let appDir = process.env[FDC_APP_FOLDER] || process.cwd();
-  const cwdPlatformGuess = await getPlatformFromFolder(appDir);
-  if (cwdPlatformGuess !== Platform.UNDETERMINED) {
-    // If we are, we'll use that directory
-    logSuccess(`Detected ${cwdPlatformGuess} app in directory ${appDir}`);
-    targetPlatform = cwdPlatformGuess;
-  } else {
-    // If we aren't, ask the user where their app is, and try to autodetect from there
-    logBullet(`Couldn't automatically detect your app directory.`);
-    appDir =
-      process.env[FDC_APP_FOLDER] ??
-      (await promptForDirectory({
-        config,
-        message:
-          "Where is your app directory? Leave blank to set up a generated SDK in your current directory.",
-      }));
-    const platformGuess = await getPlatformFromFolder(appDir);
-    if (platformGuess !== Platform.UNDETERMINED) {
-      logSuccess(`Detected ${platformGuess} app in directory ${appDir}`);
-      targetPlatform = platformGuess;
+  let targetPlatform = await getPlatformFromFolder(appDir);
+  if (targetPlatform === Platform.NONE && !process.env[FDC_APP_FOLDER]?.length) {
+    // If we aren't in an app directory, ask the user where their app is, and try to autodetect from there.
+    appDir = await promptForDirectory({
+      config,
+      message:
+        "Where is your app directory? Leave blank to set up a generated SDK in your current directory.",
+    });
+    targetPlatform = await getPlatformFromFolder(appDir);
+  }
+  if (targetPlatform === Platform.NONE || targetPlatform === Platform.MULTIPLE) {
+    if (targetPlatform === Platform.NONE) {
+      logBullet(`Couldn't automatically detect app your in directory ${appDir}.`);
     } else {
-      // If we still can't autodetect, just ask the user
-      logBullet("Couldn't automatically detect your app's platform.");
-      const platforms = [
-        { name: "iOS (Swift)", value: Platform.IOS },
-        { name: "Web (JavaScript)", value: Platform.WEB },
-        { name: "Android (Kotlin)", value: Platform.ANDROID },
-        // { name: "Flutter (Dart)", value: Platform.DART },
-      ];
-      targetPlatform = await promptOnce({
-        message: "Which platform do you want to set up a generated SDK for?",
-        type: "list",
-        choices: platforms,
-      });
+      logSuccess(`Detected multiple app platforms in directory ${appDir}`);
+      // Can only setup one platform at a time, just ask the user
     }
+    const platforms = [
+      { name: "iOS (Swift)", value: Platform.IOS },
+      { name: "Web (JavaScript)", value: Platform.WEB },
+      { name: "Android (Kotlin)", value: Platform.ANDROID },
+      { name: "Flutter (Dart)", value: Platform.DART },
+    ];
+    targetPlatform = await promptOnce({
+      message: "Which platform do you want to set up a generated SDK for?",
+      type: "list",
+      choices: platforms,
+    });
+  } else {
+    logSuccess(`Detected ${targetPlatform} app in directory ${appDir}`);
   }
 
   const connectorInfo: ConnectorInfo = await promptOnce({

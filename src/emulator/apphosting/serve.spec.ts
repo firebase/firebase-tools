@@ -3,19 +3,24 @@ import * as sinon from "sinon";
 import * as spawn from "../../init/spawn";
 import { expect } from "chai";
 import * as serve from "./serve";
+import { DEFAULT_PORTS } from "../constants";
+import * as utils from "./utils";
 
 describe("serve", () => {
   let checkListenableStub: sinon.SinonStub;
   let wrapSpawnStub: sinon.SinonStub;
+  let discoverPackageManagerStub: sinon.SinonStub;
 
   beforeEach(() => {
     checkListenableStub = sinon.stub(portUtils, "checkListenable");
     wrapSpawnStub = sinon.stub(spawn, "wrapSpawn");
+    discoverPackageManagerStub = sinon.stub(utils, "discoverPackageManager");
   });
 
   afterEach(() => {
     checkListenableStub.restore();
     wrapSpawnStub.restore();
+    discoverPackageManagerStub.restore();
   });
 
   describe("start", () => {
@@ -24,10 +29,8 @@ describe("serve", () => {
       checkListenableStub.onSecondCall().returns(false);
       checkListenableStub.onThirdCall().returns(true);
 
-      wrapSpawnStub.returns(Promise.resolve());
-
-      const res = await serve.start({ host: "127.0.0.1", port: 5000 });
-      expect(res.port).to.equal(5002);
+      const res = await serve.start();
+      expect(res.port).to.equal(DEFAULT_PORTS.apphosting + 2);
     });
   });
 });
