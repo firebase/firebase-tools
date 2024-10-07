@@ -92,9 +92,6 @@ jobs:
           cache: npm
           cache-dependency-path: npm-shrinkwrap.json
 
-      - name: Install Tools
-        run: sudo npm i -g firebase-tools
-
       - name: Cache Firebase Emulators
         uses: actions/cache@v3
         with:
@@ -102,6 +99,7 @@ jobs:
           key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('emulator-cache/**') }}
         continue-on-error: true
 
+      - run: npm i -g npm@9.5
       - run: npm ci
       - run: npm install
         working-directory: firebase-vscode
