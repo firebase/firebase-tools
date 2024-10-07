@@ -242,7 +242,7 @@ export class Config {
     if (existingContent && existingContent !== content && !force) {
       next = promptOnce({
         type: "confirm",
-        message: "File " + clc.underline(p) + " is changed. Overwrite?",
+        message: "File " + clc.underline(p) + " already exists. Overwrite?",
         default: false,
       });
     } else {
