@@ -132,7 +132,7 @@ function DataConnect() {
         onClick={() => broker.send("fdc.configure-sdk")}
         appearance="secondary"
       >
-        Update SDK configuration
+        Add SDK to app
       </VSCodeButton>
       <Spacer size="xsmall" />
       <Label level={3}>
