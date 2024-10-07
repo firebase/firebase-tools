@@ -55,7 +55,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * Safely gets a status from an unknown object if
+ * Safely gets a status from an unknown object if it has one.
  * @param err The error to get the status of
  * @param defaultStatus a default status if there is none
  * @return the err status, a default status or DEFAULT_STATUS
