@@ -29,14 +29,13 @@ export const FDC_APP_FOLDER = "_FDC_APP_FOLDER";
 export type SDKInfo = {
   connectorYamlContents: string;
   connectorInfo: ConnectorInfo;
-  shouldGenerate: boolean;
   displayIOSWarning: boolean;
 };
 export async function doSetup(setup: Setup, config: Config): Promise<void> {
   const sdkInfo = await askQuestions(setup, config);
-  await actuate(sdkInfo, setup.projectId);
+  await actuate(sdkInfo);
   logSuccess(
-    `If you'd like to generate additional SDKs later, run ${clc.bold("firebase init dataconnect:sdk")}`,
+    `If you'd like to add more generated SDKs to your app your later, run ${clc.bold("firebase init dataconnect:sdk")} again`,
   );
 }
 
@@ -190,30 +189,21 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
     newConnectorYaml.generate.kotlinSdk = kotlinSdk;
   }
 
-  const shouldGenerate = !!(
-    setup.projectId &&
-    (await confirm({
-      message: "Would you like to generate SDK code now?",
-      default: true,
-    }))
-  );
   // TODO: Prompt user about adding generated paths to .gitignore
   const connectorYamlContents = yaml.stringify(newConnectorYaml);
   connectorInfo.connectorYaml = newConnectorYaml;
-  return { connectorYamlContents, connectorInfo, shouldGenerate, displayIOSWarning };
+  return { connectorYamlContents, connectorInfo, displayIOSWarning };
 }
 
-export async function actuate(sdkInfo: SDKInfo, projectId?: string) {
+export async function actuate(sdkInfo: SDKInfo) {
   const connectorYamlPath = `${sdkInfo.connectorInfo.directory}/connector.yaml`;
   fs.writeFileSync(connectorYamlPath, sdkInfo.connectorYamlContents, "utf8");
   logBullet(`Wrote new config to ${connectorYamlPath}`);
-  if (projectId && sdkInfo.shouldGenerate) {
-    await DataConnectEmulator.generate({
-      configDir: sdkInfo.connectorInfo.directory,
-      connectorId: sdkInfo.connectorInfo.connectorYaml.connectorId,
-    });
-    logBullet(`Generated SDK code for ${sdkInfo.connectorInfo.connectorYaml.connectorId}`);
-  }
+  await DataConnectEmulator.generate({
+    configDir: sdkInfo.connectorInfo.directory,
+    connectorId: sdkInfo.connectorInfo.connectorYaml.connectorId,
+  });
+  logBullet(`Generated SDK code for ${sdkInfo.connectorInfo.connectorYaml.connectorId}`);
   if (sdkInfo.connectorInfo.connectorYaml.generate?.swiftSdk && sdkInfo.displayIOSWarning) {
     logBullet(
       clc.bold(
