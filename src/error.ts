@@ -34,6 +34,41 @@ export class FirebaseError extends Error {
 }
 
 /**
+ * Safely gets an error message from an unknown object
+ * @param err an unknown error type
+ * @param defaultMsg an optional message to return if the err is not Error or string
+ * @return An error string
+ */
+export function getErrMsg(err: unknown, defaultMsg?: string): string {
+  if (err instanceof Error) {
+    return err.message;
+  } else if (typeof err === "string") {
+    return err;
+  } else if (defaultMsg) {
+    return defaultMsg;
+  }
+  return JSON.stringify(err);
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+/**
+ * Safely gets a status from an unknown object if it has one.
+ * @param err The error to get the status of
+ * @param defaultStatus a default status if there is none
+ * @return the err status, a default status or DEFAULT_STATUS
+ */
+export function getErrStatus(err: unknown, defaultStatus?: number): number {
+  if (isObject(err) && err.status && typeof err.status === "number") {
+    return err.status;
+  }
+
+  return defaultStatus || DEFAULT_STATUS;
+}
+
+/**
  * Checks if a FirebaseError is caused by attempting something
  * that requires billing enabled while billing is not enabled.
  */
