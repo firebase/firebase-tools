@@ -1,6 +1,6 @@
 import * as pg from "pg";
 import * as ora from "ora";
-import chalk from 'chalk';
+import chalk from "chalk";
 import { Connector, IpAddressTypes, AuthTypes } from "@google-cloud/cloud-sql-connector";
 
 import { Command } from "../command";
@@ -13,7 +13,7 @@ import { getIdentifiers } from "../dataconnect/schemaMigration";
 import { requireAuth } from "../requireAuth";
 import { getIAMUser } from "../gcp/cloudsql/connect";
 import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
-import { prompt, promptOnce, confirm, Question } from '../prompt';
+import { prompt, confirm, Question } from "../prompt";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { FBToolsAuthClient } from "../gcp/cloudsql/fbToolsAuthClient";
@@ -21,145 +21,155 @@ import { FBToolsAuthClient } from "../gcp/cloudsql/fbToolsAuthClient";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const Table = require("cli-table");
 
+const sqlKeywords = [
+  "SELECT",
+  "FROM",
+  "WHERE",
+  "INSERT",
+  "UPDATE",
+  "DELETE",
+  "JOIN",
+  "GROUP",
+  "ORDER",
+  "LIMIT",
+  "GRANT",
+  "CREATE",
+  "DROP",
+];
+
 async function executeQuery(query: string, conn: pg.PoolClient) {
-    const spinner = ora('Executing query...').start();
-    try {
-        const results = await conn.query(query);
-        spinner.succeed(chalk.green('Query executed successfully'));
+  const spinner = ora("Executing query...").start();
+  try {
+    const results = await conn.query(query);
+    spinner.succeed(chalk.green("Query executed successfully"));
 
-        if (Array.isArray(results.rows) && results.rows.length > 0) {
-            const table = new Table({
-                head: Object.keys(results.rows[0]).map(key => chalk.cyan(key)),
-                style: { head: [], border: [] }
-            });
+    if (Array.isArray(results.rows) && results.rows.length > 0) {
+      const table = new Table({
+        head: Object.keys(results.rows[0]).map((key) => chalk.cyan(key)),
+        style: { head: [], border: [] },
+      });
 
-            results.rows.forEach(row => {
-                table.push(Object.values(row) as any);
-            });
+      results.rows.forEach((row) => {
+        table.push(Object.values(row) as any);
+      });
 
-            logger.info(table.toString());
-        } else {
-            // If nothing is returned and the query was select, let the user know there was no results.
-            if (query.toUpperCase().includes('SELECT'))
-                logger.info(chalk.yellow('No results returned'));
-        }
-    } catch (err) {
-        spinner.fail(chalk.red(`Failed executing query: ${err}`));
+      logger.info(table.toString());
+    } else {
+      // If nothing is returned and the query was select, let the user know there was no results.
+      if (query.toUpperCase().includes("SELECT")) {
+        logger.info(chalk.yellow("No results returned"));
+      }
     }
+  } catch (err) {
+    spinner.fail(chalk.red(`Failed executing query: ${err}`));
+  }
 }
 
-const sqlKeywords = ['SELECT', 'FROM', 'WHERE', 'INSERT', 'UPDATE', 'DELETE', 'JOIN', 'GROUP BY', 'ORDER BY', 'LIMIT', 'GRANT', 'CREATE', 'DROP'];
-
 async function promptForQuery(): Promise<string> {
-    let query = ''
-    let line = ''
+  let query = "";
+  let line = "";
 
-    do {
-        const question: Question = {
-            type: 'input',
-            name: 'line',
-            message: query ? '> ' : 'Enter your SQL query (or ".exit"):',
-            transformer: (input: string) => {
-                // Highlight SQL keywords
-                return input.split(' ').map(word =>
-                    sqlKeywords.includes(word.toUpperCase()) ? chalk.cyan(word) : word
-                ).join(' ');
-            }
-        };
+  do {
+    const question: Question = {
+      type: "input",
+      name: "line",
+      message: query ? "> " : "Enter your SQL query (or '.exit'):",
+      transformer: (input: string) => {
+        // Highlight SQL keywords
+        return input
+          .split(" ")
+          .map((word) => (sqlKeywords.includes(word.toUpperCase()) ? chalk.cyan(word) : word))
+          .join(" ");
+      },
+    };
 
-        ({ line } = await prompt({ nonInteractive: false }, [question]));
+    ({ line } = await prompt({ nonInteractive: false }, [question]));
+    line = line.trimEnd();
 
-        line = line.trimEnd()
+    if (line.toLowerCase() === ".exit") {
+      return ".exit";
+    }
 
-        if (line.toLowerCase() === '.exit') {
-            return '.exit';
-        }
-
-        query += (query ? '\n' : '') + line;
-    } while (line !== '' && !query.endsWith(';'));
-    return query;
+    query += (query ? "\n" : "") + line;
+  } while (line !== "" && !query.endsWith(";"));
+  return query;
 }
 
 async function confirmDangerousQuery(query: string): Promise<boolean> {
-    if (query.toUpperCase().includes('DROP') || query.toUpperCase().includes('DELETE')) {
-        return await confirm({
-            message: chalk.yellow('This query may be destructive. Are you sure you want to proceed?'),
-            default: false,
-        });
-    }
-    return true;
+  if (query.toUpperCase().includes("DROP") || query.toUpperCase().includes("DELETE")) {
+    return await confirm({
+      message: chalk.yellow("This query may be destructive. Are you sure you want to proceed?"),
+      default: false,
+    });
+  }
+  return true;
 }
 
 export const command = new Command("dataconnect:sql:shell [serviceId]")
-    .description(
-        "Starts a shell connected directly to your cloudsql instance.",
-    )
-    .before(requirePermissions, [
-        "firebasedataconnect.services.list",
-        "cloudsql.instances.connect",
-    ])
-    .before(requireAuth)
-    .action(async (serviceId: string, options: Options) => {
-        const projectId = needProjectId(options);
-        await ensureApis(projectId);
-        const serviceInfo = await pickService(projectId, options.config, serviceId);
+  .description("Starts a shell connected directly to your cloudsql instance.")
+  .before(requirePermissions, ["firebasedataconnect.services.list", "cloudsql.instances.connect"])
+  .before(requireAuth)
+  .action(async (serviceId: string, options: Options) => {
+    const projectId = needProjectId(options);
+    await ensureApis(projectId);
+    const serviceInfo = await pickService(projectId, options.config, serviceId);
+    const { instanceId, databaseId } = getIdentifiers(serviceInfo.schema);
+    const { user: username } = await getIAMUser(options);
+    const instance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
 
-        const { serviceName, instanceId, instanceName, databaseId } = getIdentifiers(serviceInfo.schema);
-
-        const { user: username, mode } = await getIAMUser(options);
-
-        const instance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
-
-        const connectionName = instance.connectionName;
-        if (!connectionName) {
-            throw new FirebaseError(
-                `Could not get instance connection string for ${options.instanceId}:${options.databaseId}`,
-            );
-        }
-
-        let connector: Connector = new Connector({
-            auth: new FBToolsAuthClient(),
-        });
-        const clientOpts = await connector.getOptions({
-            instanceConnectionName: connectionName,
-            ipType: IpAddressTypes.PUBLIC,
-            authType: AuthTypes.IAM,
-        });
-        let pool: pg.Pool = new pg.Pool({
-            ...clientOpts,
-            user: username,
-            database: databaseId,
-        });
-
-        const conn: pg.PoolClient = await pool.connect();
-        logger.info(`Logged in as ${username}`);
-
-
-        logger.info(chalk.cyan('Welcome to the GCP SQL Shell'));
-        logger.info(chalk.gray('Type your your SQL query or ".exit" to quit, queries should end with \';\' or add empty line to execute.'));
-
-
-        while (true) {
-            const query = await promptForQuery();
-            if (query.toLowerCase() === '.exit') {
-                break;
-            }
-
-            if (query == '') {
-                continue;
-            }
-
-            if (await confirmDangerousQuery(query)) {
-                await executeQuery(query, conn);
-            } else {
-                logger.info(chalk.yellow('Query cancelled.'));
-            }
-        }
-
-        logger.info(chalk.yellow('Exiting shell...'));
-        conn.release();
-        await pool.end();
-        connector.close();
-
-        return { projectId, serviceId };
+    // Setup the connection
+    const connectionName = instance.connectionName;
+    if (!connectionName) {
+      throw new FirebaseError(
+        `Could not get instance connection string for ${options.instanceId}:${options.databaseId}`,
+      );
+    }
+    const connector: Connector = new Connector({
+      auth: new FBToolsAuthClient(),
     });
+    const clientOpts = await connector.getOptions({
+      instanceConnectionName: connectionName,
+      ipType: IpAddressTypes.PUBLIC,
+      authType: AuthTypes.IAM,
+    });
+    const pool: pg.Pool = new pg.Pool({
+      ...clientOpts,
+      user: username,
+      database: databaseId,
+    });
+    const conn: pg.PoolClient = await pool.connect();
+
+    logger.info(`Logged in as ${username}`);
+    logger.info(chalk.cyan("Welcome to the GCP SQL Shell"));
+    logger.info(
+      chalk.gray(
+        "Type your your SQL query or '.exit' to quit, queries should end with ';' or add empty line to execute.",
+      ),
+    );
+
+    // Start accepting queries
+    while (true) {
+      const query = await promptForQuery();
+      if (query.toLowerCase() === ".exit") {
+        break;
+      }
+
+      if (query === "") {
+        continue;
+      }
+
+      if (await confirmDangerousQuery(query)) {
+        await executeQuery(query, conn);
+      } else {
+        logger.info(chalk.yellow("Query cancelled."));
+      }
+    }
+
+    // Cleanup after exit
+    logger.info(chalk.yellow("Exiting shell..."));
+    conn.release();
+    await pool.end();
+    connector.close();
+
+    return { projectId, serviceId };
+  });
