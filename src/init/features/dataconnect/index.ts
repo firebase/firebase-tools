@@ -314,7 +314,7 @@ async function checkExistingInstances(
           });
         }
       }
-    }export  else {
+    } else {
       info = await promptForService(info);
     }
   }
