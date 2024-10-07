@@ -5,7 +5,7 @@ import { confirm, promptOnce } from "../../../prompt";
 import { Config } from "../../../config";
 import { Setup } from "../..";
 import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql";
-import { checkForFreeTrialInstance } from "../../../dataconnect/freeTrial";
+import { checkForFreeTrialInstance, upgradeInstructions } from "../../../dataconnect/freeTrial";
 import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
 import { ensureApis, ensureSparkApis } from "../../../dataconnect/ensureApis";
 import * as experiments from "../../../experiments";
@@ -141,17 +141,8 @@ async function askQuestions(setup: Setup): Promise<RequiredInfo> {
     info.locationId = info.locationId || `us-central1`;
     info.cloudSqlDatabase = info.cloudSqlDatabase || `fdcdb`;
   }
-  if (!isBillingEnabled) {
-    logBullet(
-      `If you'd like to provision a CloudSQL instance on the Firebase Data Connect no-cost trial:
-1. Please upgrade to the pay-as-you-go (Blaze) billing plan.
-2. Run ${clc.bold("firebase init dataconnect")} again to configure the Cloud SQL instance.
-3. Run ${clc.bold("firebase deploy --only dataconnect")} to deploy your Data Connect service.
-
-To upgrade your project, visit the following URL:
-
-https://console.firebase.google.com/project/${projectId}/usage/details`,
-    );
+  if (!isBillingEnabled && setup.projectId) {
+    logBullet(upgradeInstructions(setup.projectId));
   }
   return info;
 }

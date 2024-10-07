@@ -12,11 +12,13 @@ import { ensureApis } from "../../dataconnect/ensureApis";
 import { requireTosAcceptance } from "../../requireTosAcceptance";
 import { DATA_CONNECT_TOS_ID } from "../../gcp/firedata";
 import { provisionCloudSql } from "../../dataconnect/provisionCloudSql";
+import { checkBillingEnabled } from "../../gcp/cloudbilling";
 import { parseServiceName } from "../../dataconnect/names";
 import { FirebaseError } from "../../error";
 import { requiresVector } from "../../dataconnect/types";
 import { diffSchema } from "../../dataconnect/schemaMigration";
 import { join } from "node:path";
+import { upgradeInstructions } from "../../dataconnect/freeTrial";
 
 /**
  * Prepares for a Firebase DataConnect deployment by loading schemas and connectors from file.
@@ -59,6 +61,9 @@ export default async function (context: any, options: DeployOptions): Promise<vo
     serviceInfos,
     filters,
   };
+  if (!(await checkBillingEnabled(projectId))) {
+    throw new FirebaseError(upgradeInstructions(projectId));
+  }
   utils.logLabeledBullet("dataconnect", `Successfully prepared schema and connectors`);
   if (options.dryRun) {
     for (const si of serviceInfos) {
