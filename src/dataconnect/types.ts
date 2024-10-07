@@ -160,6 +160,7 @@ export enum Platform {
   WEB = "WEB",
   IOS = "IOS",
   DART = "DART",
+  FLUTTER = "FLUTTER",
   MULTIPLE = "MULTIPLE",
 }
 

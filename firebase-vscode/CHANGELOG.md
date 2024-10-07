@@ -3,7 +3,9 @@
 ## 0.10.2
 
 - Updated internal firebase-tools dependency to 13.20.2
+- Updated default debug-log output to .firebase/logs directory
 - [Fixed] Fixed an issue where emulator startup would hang
+- Updated text for configuration button
 
 ## 0.10.1
 

@@ -39,7 +39,7 @@ describe("init dataconnect", () => {
         requiredInfo: mockRequiredInfo(),
         config: mockConfig(),
         expectedSource: "dataconnect",
-        expectedFiles: ["dataconnect/dataconnect.yaml", "dataconnect/schema/schema.gql"],
+        expectedFiles: ["dataconnect/dataconnect.yaml"],
         expectCSQLProvisioning: false,
       },
       {
@@ -47,7 +47,22 @@ describe("init dataconnect", () => {
         requiredInfo: mockRequiredInfo(),
         config: mockConfig({ dataconnect: { source: "not-dataconnect" } }),
         expectedSource: "not-dataconnect",
-        expectedFiles: ["not-dataconnect/dataconnect.yaml", "not-dataconnect/schema/schema.gql"],
+        expectedFiles: ["not-dataconnect/dataconnect.yaml"],
+        expectCSQLProvisioning: false,
+      },
+      {
+        desc: "should write schema files",
+        requiredInfo: mockRequiredInfo({
+          schemaGql: [
+            {
+              path: "schema.gql",
+              content: "## Fake GQL",
+            },
+          ],
+        }),
+        config: mockConfig({}),
+        expectedSource: "dataconnect",
+        expectedFiles: ["dataconnect/dataconnect.yaml", "dataconnect/schema/schema.gql"],
         expectCSQLProvisioning: false,
       },
       {
@@ -70,7 +85,6 @@ describe("init dataconnect", () => {
         expectedSource: "dataconnect",
         expectedFiles: [
           "dataconnect/dataconnect.yaml",
-          "dataconnect/schema/schema.gql",
           "dataconnect/hello/connector.yaml",
           "dataconnect/hello/queries.gql",
         ],
@@ -83,7 +97,7 @@ describe("init dataconnect", () => {
         }),
         config: mockConfig({}),
         expectedSource: "dataconnect",
-        expectedFiles: ["dataconnect/dataconnect.yaml", "dataconnect/schema/schema.gql"],
+        expectedFiles: ["dataconnect/dataconnect.yaml"],
         expectCSQLProvisioning: true,
       },
     ];

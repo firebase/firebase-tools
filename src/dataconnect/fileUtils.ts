@@ -143,54 +143,9 @@ export async function getPlatformFromFolder(dirPath: string) {
   } else if (hasIOS && !hasWeb && !hasAndroid && !hasDart) {
     return Platform.IOS;
   } else if (hasDart && !hasWeb && !hasIOS && !hasAndroid) {
-    return Platform.DART;
+    return Platform.FLUTTER;
   }
   // At this point, its not clear which platform the app directory is
   // because we found indicators for multiple platforms.
   return Platform.MULTIPLE;
-}
-
-export async function directoryHasPackageJson(dirPath: string) {
-  const fileNames = await fs.readdir(dirPath);
-  return fileNames.some((f) => f.toLowerCase() === "package.json");
-}
-
-// Generates sdk yaml based on platform, and returns a modified connectorYaml
-export function generateSdkYaml(
-  platform: Platform,
-  connectorYaml: ConnectorYaml,
-  connectorYamlFolder: string, // path.relative expects folder as first arg
-  appFolder: string,
-): ConnectorYaml {
-  const relPath = path.relative(connectorYamlFolder, appFolder);
-  const outputDir = path.join(relPath, "dataconnect-generated");
-  if (!connectorYaml.generate) {
-    connectorYaml.generate = {};
-  }
-  if (platform === Platform.WEB) {
-    connectorYaml.generate.javascriptSdk = {
-      outputDir,
-      package: `@firebasegen/${connectorYaml.connectorId}`,
-      packageJsonDir: appFolder,
-    };
-  }
-  if (platform === Platform.IOS) {
-    connectorYaml.generate.swiftSdk = {
-      outputDir,
-      package: connectorYaml.connectorId,
-    };
-  }
-  if (platform === Platform.ANDROID) {
-    connectorYaml.generate.kotlinSdk = {
-      outputDir,
-      package: `connectors.${connectorYaml.connectorId}`,
-    };
-  }
-  if (platform === Platform.DART) {
-    connectorYaml.generate.dartSdk = {
-      outputDir,
-      package: connectorYaml.connectorId,
-    };
-  }
-  return connectorYaml;
 }

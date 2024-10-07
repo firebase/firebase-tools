@@ -5,7 +5,7 @@ import { confirm, promptOnce } from "../../../prompt";
 import { Config } from "../../../config";
 import { Setup } from "../..";
 import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql";
-import { checkForFreeTrialInstance, upgradeInstructions } from "../../../dataconnect/freeTrial";
+import { checkFreeTrialInstanceUsed, upgradeInstructions } from "../../../dataconnect/freeTrial";
 import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
 import { ensureApis, ensureSparkApis } from "../../../dataconnect/ensureApis";
 import * as experiments from "../../../experiments";
@@ -49,6 +49,12 @@ export interface RequiredInfo {
   shouldProvisionCSQL: boolean;
 }
 
+const emptyConnector = {
+  id: "default",
+  path: "./connector",
+  files: [],
+};
+
 const defaultConnector = {
   id: "default",
   path: "./connector",
@@ -64,6 +70,8 @@ const defaultConnector = {
   ],
 };
 
+const defaultSchema = { path: "schema.gql", content: SCHEMA_TEMPLATE };
+
 // doSetup is split into 2 phases - ask questions and then actuate files and API calls based on those answers.
 export async function doSetup(setup: Setup, config: Config): Promise<void> {
   const info = await askQuestions(setup);
@@ -74,11 +82,9 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     await sdk.doSetup(setup, config);
   } else {
     logBullet(
-      `If you'd like to generate an SDK for your new connector later, run ${clc.bold("firebase init dataconnect:sdk")}`,
+      `If you'd like to add the generated SDK to your app your later, run ${clc.bold("firebase init dataconnect:sdk")}`,
     );
   }
-
-  logger.info("");
 }
 
 // askQuestions prompts the user about the Data Connect service they want to init. Any prompting
@@ -92,7 +98,7 @@ async function askQuestions(setup: Setup): Promise<RequiredInfo> {
     cloudSqlDatabase: "",
     isNewDatabase: false,
     connectors: [defaultConnector],
-    schemaGql: [],
+    schemaGql: [defaultSchema],
     shouldProvisionCSQL: false,
   };
   const isBillingEnabled = setup.projectId ? await checkBillingEnabled(setup.projectId) : false;
@@ -110,11 +116,10 @@ async function askQuestions(setup: Setup): Promise<RequiredInfo> {
   const shouldConfigureBackend =
     isBillingEnabled && requiredConfigUnset
       ? await confirm({
-          message: `Would you like to configure your CloudSQL instance now?`,
+          message: `Would you like to configure your backend resources now?`,
           // For Blaze Projects, configure Cloud SQL by default.
-          // TODO: For Spark projects, allow them to configure Cloud SQL,
-          // but deploy as unlinked Postgres.
-          default: isBillingEnabled,
+          // TODO: For Spark projects, allow them to configure Cloud SQL but deploy as unlinked Postgres.
+          default: true,
         })
       : false;
   if (shouldConfigureBackend) {
@@ -182,8 +187,6 @@ async function writeFiles(config: Config, info: RequiredInfo) {
     for (const f of info.schemaGql) {
       await config.askWriteProjectFile(join(dir, "schema", f.path), f.content);
     }
-  } else {
-    await config.askWriteProjectFile(join(dir, "schema", "schema.gql"), SCHEMA_TEMPLATE);
   }
   for (const c of info.connectors) {
     await writeConnectorFiles(config, c);
@@ -283,6 +286,9 @@ async function promptForExistingServices(
       const serviceName = parseServiceName(choice.service.name);
       info.serviceId = serviceName.serviceId;
       info.locationId = serviceName.location;
+      // If the existing service has no schema, don't override any gql files.
+      info.schemaGql = [];
+      info.connectors = [emptyConnector];
       if (choice.schema) {
         const primaryDatasource = choice.schema.datasources.find((d) => d.postgresql);
         if (primaryDatasource?.postgresql?.cloudSql.instance) {
@@ -291,7 +297,7 @@ async function promptForExistingServices(
           );
           info.cloudSqlInstanceId = instanceName.instanceId;
         }
-        if (choice.schema.source.files) {
+        if (choice.schema.source.files?.length) {
           info.schemaGql = choice.schema.source.files;
         }
         info.cloudSqlDatabase = primaryDatasource?.postgresql?.database ?? "";
@@ -320,14 +326,17 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<Requ
   if (info.cloudSqlInstanceId === "" && setup.projectId) {
     const instances = await cloudsql.listInstances(setup.projectId);
     let choices = instances.map((i) => {
-      return { name: i.name, value: i.name, location: i.region };
+      let display = `${i.name} (${i.region})`;
+      if (i.settings.userLabels?.["firebase-data-connect"] === "ft") {
+        display += " (no cost trial)";
+      }
+      return { name: display, value: i.name, location: i.region };
     });
     // If we've already chosen a region (ie service already exists), only list instances from that region.
     choices = choices.filter((c) => info.locationId === "" || info.locationId === c.location);
     if (choices.length) {
-      const freeTrialInstanceId = await checkForFreeTrialInstance(setup.projectId);
-      if (!freeTrialInstanceId) {
-        choices.push({ name: "Create a new instance", value: "", location: "" });
+      if (!(await checkFreeTrialInstanceUsed(setup.projectId))) {
+        choices.push({ name: "Create a new free trial instance", value: "", location: "" });
       }
       info.cloudSqlInstanceId = await promptOnce({
         message: `Which CloudSQL instance would you like to use?`,
