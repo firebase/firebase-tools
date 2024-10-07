@@ -2,4 +2,5 @@
 - Added support for Customer-managed encryption keys (CMEK) on Firestore databases. (#7479)
 - Improved error message thrown when missing permissions to deploy to hosting. (#7190)
 - Improved default values for 'init dataconnect:sdk'.
-- Fixed issue where `functions:secrets:set` wrongly errorred in non-interactive flows without force option (#7467)
+- Fixed issue where `functions:secrets:set` wrongly errorred in non-interactive flows without force option. (#7467)
+- Commands now correctly default to 'default' alias when there is more than one alias listed. (#7624)
