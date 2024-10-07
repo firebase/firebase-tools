@@ -79,14 +79,13 @@ jobs:
       FIREBASE_EMULATORS_PATH: ${{ github.workspace }}/emulator-cache
 
     steps:
-      - uses: actions/checkout@v4
-
       - name: Setup Java JDK
         uses: actions/setup-java@v3.3.0
         with:
           java-version: 17
           distribution: temurin
 
+      - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
