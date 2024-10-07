@@ -112,7 +112,7 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
   const connectorYamlContents = yaml.stringify(newConnectorYaml);
   connectorInfo.connectorYaml = newConnectorYaml;
   const displayIOSWarning = targetPlatform === Platform.IOS;
-  return { connectorYamlContents, connectorInfo, shouldGenerate, displayIOSWarning };
+  return { connectorYamlContents, connectorInfo, displayIOSWarning };
 }
 
 export function generateSdkYaml(
