@@ -159,7 +159,6 @@ export enum Platform {
   ANDROID = "ANDROID",
   WEB = "WEB",
   IOS = "IOS",
-  DART = "DART",
   FLUTTER = "FLUTTER",
   MULTIPLE = "MULTIPLE",
 }
