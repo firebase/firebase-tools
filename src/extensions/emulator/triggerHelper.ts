@@ -99,7 +99,7 @@ export function functionResourceToEmulatedTriggerDefintion(
     } else {
       EmulatorLogger.forEmulator(Emulators.FUNCTIONS).log(
         "WARN",
-        `Function '${resource.name} is missing a trigger in extension.yaml. Please add one, as triggers defined in code are ignored.`,
+        `Function '${resource.name}' is missing a trigger in extension.yaml. Please add one, as triggers defined in code are ignored.`,
       );
     }
     return etd;
