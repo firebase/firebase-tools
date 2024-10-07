@@ -4,7 +4,7 @@ import * as clc from "colorette";
 import * as path from "path";
 
 import { dirExistsSync } from "../../../fsutils";
-import { confirm, promptForDirectory, promptOnce } from "../../../prompt";
+import { promptForDirectory, promptOnce } from "../../../prompt";
 import { readFirebaseJson, getPlatformFromFolder } from "../../../dataconnect/fileUtils";
 import { Config } from "../../../config";
 import { Setup } from "../..";
