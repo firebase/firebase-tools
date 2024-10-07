@@ -1,7 +1,7 @@
 import * as clc from "colorette";
 
 import { Command } from "../command";
-import { listFirebaseProjects } from "../management/projects";
+import { listFirebaseProjects, getFirebaseProject } from "../management/projects";
 import { FirebaseProjectMetadata } from "../types/project";
 import { logger } from "../logger";
 import { Options } from "../options";
@@ -10,6 +10,7 @@ import { requireAuth } from "../requireAuth";
 import { validateProjectId } from "../command";
 import { FirebaseError } from "../error";
 import { makeActiveProject } from "../utils";
+import { Constants } from "../emulator/constants";
 
 type UseOptions = Options & {
   add: boolean;
@@ -69,9 +70,12 @@ export const command = new Command("use [alias_or_project_id]")
       const hasAlias = options.rc.hasProjectAlias(newActive);
       const resolvedProject = options.rc.resolveAlias(newActive);
       validateProjectId(resolvedProject);
+      if (!Constants.isDemoProject(resolvedProject)) {
+        project = await getFirebaseProject(resolvedProject) 
+      }
       if (aliasOpt) {
         // firebase use [project] --alias [alias]
-        if (!project) {
+        if (!project && !Constants.isDemoProject(resolvedProject)) {
           throw new FirebaseError(
             "Cannot create alias " + clc.bold(aliasOpt) + ", " + verifyMessage(newActive),
           );
@@ -82,7 +86,7 @@ export const command = new Command("use [alias_or_project_id]")
 
       if (hasAlias) {
         // found alias
-        if (!project) {
+        if (!project && !Constants.isDemoProject(resolvedProject)) {
           // found alias, but not in project list
           throw new FirebaseError(
             "Unable to use alias " + clc.bold(newActive) + ", " + verifyMessage(resolvedProject),
