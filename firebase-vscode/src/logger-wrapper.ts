@@ -45,7 +45,7 @@ export function logSetup() {
     // Re-implement file logger call from ../../src/bin/firebase.ts to not bring
     // in the entire firebase.ts file
     const rootFolders = getRootFolders();
-    const filePath = path.join(rootFolders[0], ".firebase", "logs", "firebase-extension-debug.log");
+    const filePath = path.join(rootFolders[0], ".firebase", "logs", "vsce-debug.log");
     pluginLogger.info("Logging to path", filePath);
     cliLogger.add(
       new transports.File({
