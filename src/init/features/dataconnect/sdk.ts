@@ -178,7 +178,7 @@ export function generateSdkYaml(
   return connectorYaml;
 }
 
-export async function actuate(sdkInfo: SDKInfo, projectId?: string) {
+export async function actuate(sdkInfo: SDKInfo) {
   const connectorYamlPath = `${sdkInfo.connectorInfo.directory}/connector.yaml`;
   fs.writeFileSync(connectorYamlPath, sdkInfo.connectorYamlContents, "utf8");
   logBullet(`Wrote new config to ${connectorYamlPath}`);
