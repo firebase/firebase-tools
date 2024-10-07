@@ -1,11 +1,11 @@
-import * as portUtils from "../portUtils";
 import * as sinon from "sinon";
-import * as spawn from "../../init/spawn";
 import { expect } from "chai";
+import * as portUtils from "../portUtils";
+import * as spawn from "../../init/spawn";
 import * as serve from "./serve";
 import { DEFAULT_PORTS } from "../constants";
 import * as utils from "./utils";
-import * as environments from "./environments";
+import * as configs from "./config";
 
 describe("serve", () => {
   let checkListenableStub: sinon.SinonStub;
@@ -17,10 +17,7 @@ describe("serve", () => {
     checkListenableStub = sinon.stub(portUtils, "checkListenable");
     wrapSpawnStub = sinon.stub(spawn, "wrapSpawn");
     discoverPackageManagerStub = sinon.stub(utils, "discoverPackageManager");
-    getLocalAppHostingConfigurationStub = sinon.stub(
-      environments,
-      "getLocalAppHostingConfiguration",
-    );
+    getLocalAppHostingConfigurationStub = sinon.stub(configs, "getLocalAppHostingConfiguration");
   });
 
   afterEach(() => {

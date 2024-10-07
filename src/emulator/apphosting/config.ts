@@ -1,6 +1,6 @@
-import { readFileFromDirectory, wrappedSafeLoad } from "../../utils";
-import { pathExists } from "fs-extra";
 import { join } from "path";
+import { pathExists } from "fs-extra";
+import { readFileFromDirectory, wrappedSafeLoad } from "../../utils";
 import { logger } from "./utils";
 import { Emulators } from "../types";
 
@@ -20,8 +20,8 @@ interface AppHostingYaml {
 }
 
 interface AppHostingConfiguration {
-  environmentVariables?: { [key: string]: string };
-  secrets?: { [key: string]: string };
+  environmentVariables?: Record<string, string>;
+  secrets?: Record<string, string>;
 }
 
 /**
@@ -35,11 +35,11 @@ export async function loadAppHostingYaml(
   const file = await readFileFromDirectory(sourceDirectory, fileName);
   const apphostingYaml: AppHostingYaml = await wrappedSafeLoad(file.source);
 
-  const environmentVariables: { [key: string]: string } = {};
-  const secrets: { [key: string]: string } = {};
+  const environmentVariables: Record<string, string> = {};
+  const secrets: Record<string, string> = {};
 
   if (apphostingYaml.env) {
-    apphostingYaml.env.map((env) => {
+    for (const env of apphostingYaml.env) {
       if (env.value) {
         environmentVariables[env.variable] = env.value;
       }
@@ -47,7 +47,7 @@ export async function loadAppHostingYaml(
       if (env.secret) {
         secrets[env.variable] = env.secret;
       }
-    });
+    }
   }
 
   return { environmentVariables, secrets };

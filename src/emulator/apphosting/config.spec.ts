@@ -5,7 +5,7 @@ import * as utils from "./utils";
 
 import * as sinon from "sinon";
 import { expect } from "chai";
-import { getLocalAppHostingConfiguration, loadAppHostingYaml } from "./environments";
+import { getLocalAppHostingConfiguration, loadAppHostingYaml } from "./config";
 
 const SAMPLE_APPHOSTING_YAML_CONFIG_ONE = {
   env: [
