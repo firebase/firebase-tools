@@ -17,19 +17,19 @@ describe("getPlatformFromFolder", () => {
       desc: "Empty folder",
       folderName: "test/",
       folderItems: {},
-      output: Platform.UNDETERMINED,
+      output: Platform.NONE,
     },
     {
       desc: "Empty folder, long path name",
       folderName: "root/abcd/test/",
       folderItems: {},
-      output: Platform.UNDETERMINED,
+      output: Platform.NONE,
     },
     {
       desc: "folder w/ no identifier",
       folderName: "test/",
       folderItems: { file1: "contents", randomfile2: "my android contents" },
-      output: Platform.UNDETERMINED,
+      output: Platform.NONE,
     },
     {
       desc: "Web identifier 1",
@@ -110,7 +110,7 @@ describe("getPlatformFromFolder", () => {
       folderItems: {
         "pubspec.mispelled": "my deps",
       },
-      output: Platform.UNDETERMINED,
+      output: Platform.NONE,
     },
     {
       desc: "multiple identifiers, returns undetermined",
@@ -120,7 +120,7 @@ describe("getPlatformFromFolder", () => {
         podfile: "cocoa pods yummy",
         "androidmanifest.xml": "file found second :(",
       },
-      output: Platform.UNDETERMINED,
+      output: Platform.MULTIPLE,
     },
   ];
   for (const c of cases) {
