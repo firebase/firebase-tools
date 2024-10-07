@@ -27,6 +27,9 @@ import { upgradeInstructions } from "../../dataconnect/freeTrial";
  */
 export default async function (context: any, options: DeployOptions): Promise<void> {
   const projectId = needProjectId(options);
+  if (!(await checkBillingEnabled(projectId))) {
+    throw new FirebaseError(upgradeInstructions(projectId));
+  }
   await ensureApis(projectId);
   await requireTosAcceptance(DATA_CONNECT_TOS_ID)(options);
   const serviceCfgs = readFirebaseJson(options.config);
@@ -61,9 +64,6 @@ export default async function (context: any, options: DeployOptions): Promise<vo
     serviceInfos,
     filters,
   };
-  if (!(await checkBillingEnabled(projectId))) {
-    throw new FirebaseError(upgradeInstructions(projectId));
-  }
   utils.logLabeledBullet("dataconnect", `Successfully prepared schema and connectors`);
   if (options.dryRun) {
     for (const si of serviceInfos) {

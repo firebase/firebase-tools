@@ -19,7 +19,7 @@ import { Schema, Service, File, Platform } from "../../../dataconnect/types";
 import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
-import { logBullet, logSuccess } from "../../../utils";
+import { logBullet } from "../../../utils";
 import { checkBillingEnabled } from "../../../gcp/cloudbilling";
 import * as sdk from "./sdk";
 import { getPlatformFromFolder } from "../../../dataconnect/fileUtils";
@@ -74,7 +74,11 @@ const defaultSchema = { path: "schema.gql", content: SCHEMA_TEMPLATE };
 
 // doSetup is split into 2 phases - ask questions and then actuate files and API calls based on those answers.
 export async function doSetup(setup: Setup, config: Config): Promise<void> {
-  const info = await askQuestions(setup);
+  const isBillingEnabled = setup.projectId ? await checkBillingEnabled(setup.projectId) : false;
+  if (setup.projectId) {
+    isBillingEnabled ? await ensureApis(setup.projectId) : await ensureSparkApis(setup.projectId);
+  }
+  const info = await askQuestions(setup, isBillingEnabled);
   await actuate(setup, config, info);
 
   const cwdPlatformGuess = await getPlatformFromFolder(process.cwd());
@@ -82,14 +86,17 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     await sdk.doSetup(setup, config);
   } else {
     logBullet(
-      `If you'd like to add the generated SDK to your app your later, run ${clc.bold("firebase init dataconnect:sdk")}`,
+      `If you'd like to add the generated SDK to your app your, run ${clc.bold("firebase init dataconnect:sdk")}`,
     );
+  }
+  if (setup.projectId && !isBillingEnabled) {
+    logBullet(upgradeInstructions(setup.projectId));
   }
 }
 
 // askQuestions prompts the user about the Data Connect service they want to init. Any prompting
 // logic should live here, and _no_ actuation logic should live here.
-async function askQuestions(setup: Setup): Promise<RequiredInfo> {
+async function askQuestions(setup: Setup, isBillingEnabled: boolean): Promise<RequiredInfo> {
   let info: RequiredInfo = {
     serviceId: "",
     locationId: "",
@@ -101,10 +108,6 @@ async function askQuestions(setup: Setup): Promise<RequiredInfo> {
     schemaGql: [defaultSchema],
     shouldProvisionCSQL: false,
   };
-  const isBillingEnabled = setup.projectId ? await checkBillingEnabled(setup.projectId) : false;
-  if (setup.projectId) {
-    isBillingEnabled ? await ensureApis(setup.projectId) : await ensureSparkApis(setup.projectId);
-  }
   // Query backend and pick up any existing services quickly.
   info = await promptForExistingServices(setup, info, isBillingEnabled);
 
@@ -136,18 +139,10 @@ async function askQuestions(setup: Setup): Promise<RequiredInfo> {
       }))
     );
   } else {
-    if (requiredConfigUnset) {
-      logBullet(
-        `Setting placeholder values in dataconnect.yaml. You can edit these before you deploy to specify different IDs or regions.`,
-      );
-    }
     info.serviceId = info.serviceId || basename(process.cwd());
     info.cloudSqlInstanceId = info.cloudSqlInstanceId || `${info.serviceId || "app"}-fdc`;
     info.locationId = info.locationId || `us-central1`;
     info.cloudSqlDatabase = info.cloudSqlDatabase || `fdcdb`;
-  }
-  if (!isBillingEnabled && setup.projectId) {
-    logBullet(upgradeInstructions(setup.projectId));
   }
   return info;
 }
@@ -178,12 +173,16 @@ async function writeFiles(config: Config, info: RequiredInfo) {
   });
 
   config.set("dataconnect", { source: dir });
-  await config.askWriteProjectFile(join(dir, "dataconnect.yaml"), subbedDataconnectYaml);
+  await config.askWriteProjectFile(
+    join(dir, "dataconnect.yaml"),
+    subbedDataconnectYaml,
+    false,
+    // Default to override dataconnect.yaml
+    // Sole purpose of `firebase init dataconnect` is to update `dataconnect.yaml`.
+    true,
+  );
 
   if (info.schemaGql.length) {
-    logSuccess(
-      "The service you chose already has GQL files deployed. We'll use those instead of the default templates.",
-    );
     for (const f of info.schemaGql) {
       await config.askWriteProjectFile(join(dir, "schema", f.path), f.content);
     }
