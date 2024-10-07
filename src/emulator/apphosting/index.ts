@@ -5,6 +5,7 @@ interface AppHostingEmulatorArgs {
   options?: any;
   port?: number;
   host?: string;
+  startCommandOverride?: string;
 }
 
 /**
@@ -12,34 +13,14 @@ interface AppHostingEmulatorArgs {
  * environment for testing App Hosting features locally.
  */
 export class AppHostingEmulator implements EmulatorInstance {
-  constructor(private args: AppHostingEmulatorArgs) {}
+  constructor(private args: AppHostingEmulatorArgs) {
+    this.args = args;
+  }
 
   async start(): Promise<void> {
-    function simpleStringify(object: any) {
-      // stringify an object, avoiding circular structures
-      // https://stackoverflow.com/a/31557814
-      var simpleObject: any = {};
-      for (var prop in object) {
-        if (!object.hasOwnProperty(prop)) {
-          continue;
-        }
-        if (typeof object[prop] == "object") {
-          continue;
-        }
-        if (typeof object[prop] == "function") {
-          continue;
-        }
-        simpleObject[prop] = object[prop];
-      }
-      return JSON.stringify(simpleObject); // returns cleaned up JSON
-    }
-    logger.logLabeled("INFO", Emulators.APPHOSTING, "starting apphosting emulator");
-    logger.logLabeled(
-      "ERROR",
-      Emulators.APPHOSTING,
-      `options:  ${simpleStringify(this.args.options)}`,
-    );
-    const { hostname, port } = await apphostingStart(this.args.options);
+    const { hostname, port } = await apphostingStart({
+      customStartCommand: this.args.startCommandOverride,
+    });
     this.args.options.host = hostname;
     this.args.options.port = port;
   }
