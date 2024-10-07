@@ -74,7 +74,7 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     await sdk.doSetup(setup, config);
   } else {
     logBullet(
-      `If you'd like to generate an SDK for your new connector later, run ${clc.bold("firebase init dataconnect:sdk")}`,
+      `If you'd like to add the generated SDK to your app your later, run ${clc.bold("firebase init dataconnect:sdk")}`,
     );
   }
 
