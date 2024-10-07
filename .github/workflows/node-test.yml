@@ -79,23 +79,24 @@ jobs:
       FIREBASE_EMULATORS_PATH: ${{ github.workspace }}/emulator-cache
 
     steps:
+      - uses: actions/checkout@v4
+
       - name: Setup Java JDK
         uses: actions/setup-java@v3.3.0
         with:
           java-version: 17
           distribution: temurin
 
-      - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
           cache-dependency-path: firebase-vscode/package-lock.json
 
-      - name: Install Firebase CLI
-        run: npm install -g firebase-tools@latest
+      - name: Install Tools
+        run: sudo npm i -g firebase-tools
 
-      - name: Cache firebase emulators
+      - name: Cache Firebase Emulators
         uses: actions/cache@v3
         with:
           path: ${{ env.FIREBASE_EMULATORS_PATH }}
@@ -122,6 +123,10 @@ jobs:
 
       - uses: codecov/codecov-action@v3
         if: matrix.node-version == '20'
+
+      - name: Print debug logs
+        if: failure()
+        run: type *debug.log
 
   unit:
     runs-on: ubuntu-latest
