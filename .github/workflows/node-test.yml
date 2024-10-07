@@ -77,7 +77,7 @@ jobs:
 
     env:
       FIREBASE_EMULATORS_PATH: ${{ github.workspace }}/emulator-cache
-      FIREBASE_BINARY: sudo npx -y firebase-tools@latest
+      # FIREBASE_BINARY: sudo npx -y firebase-tools@latest
 
     steps:
       - name: Setup Java JDK
@@ -100,8 +100,7 @@ jobs:
           key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('emulator-cache/**') }}
         continue-on-error: true
 
-      - run: npm i -g npm@9.5
-      - run: npm i -g npx --force
+      - run: sudo chown -R 501:20 "/Users/runner/.npm" || exit 1
       - run: npm ci
       - run: npm install
         working-directory: firebase-vscode
