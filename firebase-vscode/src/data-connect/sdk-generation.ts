@@ -142,7 +142,7 @@ export function registerFdcSdkGeneration(
   ) {
     const platform = await getPlatformFromFolder(appFolder);
     // if app platform undetermined, run init command
-    if (platform === Platform.UNDETERMINED) {
+    if (platform === Platform.NONE || platform === Platform.MULTIPLE) {
       vscode.window.showErrorMessage(
         "Could not determine platform for specified app folder. Configuring from command line.",
       );
