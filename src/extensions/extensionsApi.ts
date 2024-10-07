@@ -14,7 +14,6 @@ import {
   ExtensionSpec,
   ExtensionVersion,
   isExtensionInstance,
-  isObject,
 } from "./types";
 
 const EXTENSIONS_API_VERSION = "v1beta";
@@ -468,7 +467,7 @@ export async function getExtensionVersion(extensionVersionRef: string): Promise<
     }
     return res.body;
   } catch (err: unknown) {
-    if (isObject(err) && err.status === 404) {
+    if (getErrStatus(err) === 404) {
       throw refNotFoundError(ref);
     } else if (err instanceof FirebaseError) {
       throw err;
