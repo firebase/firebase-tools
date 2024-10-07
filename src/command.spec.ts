@@ -31,7 +31,7 @@ describe("Command", () => {
     }).not.to.throw();
   });
 
-  describe.only("runner", () => {
+  describe("runner", () => {
     let rcStub: sinon.SinonStub;
     beforeEach(() => {
       rcStub = sinon
