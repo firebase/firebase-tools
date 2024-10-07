@@ -87,19 +87,15 @@ jobs:
           distribution: temurin
 
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
-          cache-dependency-path: npm-shrinkwrap.json
+          cache-dependency-path: firebase-vscode/package-lock.json
 
-      - name: Cache Firebase Emulators
-        uses: actions/cache@v3
-        with:
-          path: ${{ env.FIREBASE_EMULATORS_PATH }}
-          key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('emulator-cache/**') }}
-        continue-on-error: true
-
+        # TODO temporary workaround for GitHub Actions CI issue:
+        # npm ERR! Your cache folder contains root-owned files, due to a bug in
+        # npm ERR! previous versions of npm which has since been addressed.
       - run: sudo chown -R 501:20 "/Users/runner/.npm" || exit 1
       - run: npm ci
       - run: npm install
