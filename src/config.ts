@@ -229,7 +229,7 @@ export class Config {
     fs.removeSync(this.path(p));
   }
 
-  askWriteProjectFile(p: string, content: any, force?: boolean) {
+  askWriteProjectFile(p: string, content: any, force?: boolean, confirmByDefault?: boolean) {
     const writeTo = this.path(p);
     let next;
     if (typeof content !== "string") {
@@ -243,7 +243,7 @@ export class Config {
       next = promptOnce({
         type: "confirm",
         message: "File " + clc.underline(p) + " already exists. Overwrite?",
-        default: false,
+        default: !!confirmByDefault,
       });
     } else {
       next = Promise.resolve(true);
