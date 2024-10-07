@@ -70,20 +70,12 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   await actuate(setup, config, info);
 
   const cwdPlatformGuess = await getPlatformFromFolder(process.cwd());
-  if (cwdPlatformGuess !== Platform.UNDETERMINED) {
+  if (cwdPlatformGuess !== Platform.NONE) {
     await sdk.doSetup(setup, config);
   } else {
-    const promptForSDKGeneration = await confirm({
-      message: `Would you like to configure generated SDKs now?`,
-      default: false,
-    });
-    if (promptForSDKGeneration) {
-      await sdk.doSetup(setup, config);
-    } else {
-      logBullet(
-        `If you'd like to generate an SDK for your new connector later, run ${clc.bold("firebase init dataconnect:sdk")}`,
-      );
-    }
+    logBullet(
+      `If you'd like to add the generated SDK to your app your later, run ${clc.bold("firebase init dataconnect:sdk")}`,
+    );
   }
 
   logger.info("");
