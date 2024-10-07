@@ -10,6 +10,10 @@ import { DEFAULT_HOST, DEFAULT_PORTS } from "../constants";
 import { wrapSpawn } from "../../init/spawn";
 import { getLocalAppHostingConfiguration } from "./config";
 
+interface StartOptions {
+  customStartCommand?: string;
+}
+
 /**
  * Spins up a project locally by running the project's dev command.
  *
@@ -18,27 +22,33 @@ import { getLocalAppHostingConfiguration } from "./config";
  *    run
  *  - Dev server will respect the PORT environment variable
  */
-export async function start(): Promise<{ hostname: string; port: number }> {
+export async function start(options?: StartOptions): Promise<{ hostname: string; port: number }> {
   const hostname = DEFAULT_HOST;
   let port = DEFAULT_PORTS.apphosting;
   while (!(await availablePort(hostname, port))) {
     port += 1;
   }
 
-  serve(port);
+  serve(port, options?.customStartCommand);
 
   return { hostname, port };
 }
 
-async function serve(port: number): Promise<void> {
+async function serve(port: number, customStartCommand?: string): Promise<void> {
   const rootDir = process.cwd();
-  const packageManager = await discoverPackageManager(rootDir);
   const apphostingLocalConfig = await getLocalAppHostingConfiguration(rootDir);
-
-  await wrapSpawn(packageManager, ["run", "dev"], rootDir, {
+  const environmentVariablesToInject = {
     ...apphostingLocalConfig.environmentVariables,
     PORT: port,
-  });
+  };
+
+  if (customStartCommand) {
+    await wrapSpawn(customStartCommand, [], rootDir, environmentVariablesToInject);
+    return;
+  }
+
+  const packageManager = await discoverPackageManager(rootDir);
+  await wrapSpawn(packageManager, ["run", "dev"], rootDir, environmentVariablesToInject);
 }
 
 function availablePort(host: string, port: number): Promise<boolean> {
