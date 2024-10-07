@@ -88,7 +88,7 @@ describe("getPlatformFromFolder", () => {
       output: Platform.IOS,
     },
     {
-      desc: "Dart identifier 1",
+      desc: "Flutter identifier 1",
       folderName: "is/this/a/dart/test",
       folderItems: {
         file1: "contents",
@@ -97,7 +97,7 @@ describe("getPlatformFromFolder", () => {
       output: Platform.FLUTTER,
     },
     {
-      desc: "Dart identifier 2",
+      desc: "Flutter identifier 2",
       folderName: "is/this/a/dart/test",
       folderItems: {
         "pubspec.lock": "my deps",
@@ -105,7 +105,7 @@ describe("getPlatformFromFolder", () => {
       output: Platform.FLUTTER,
     },
     {
-      desc: "Dart identifier with experiment disabled",
+      desc: "Flutter identifier with experiment disabled",
       folderName: "is/this/a/dart/test",
       folderItems: {
         "pubspec.mispelled": "my deps",
