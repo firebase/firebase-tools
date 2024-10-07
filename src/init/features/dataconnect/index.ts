@@ -5,7 +5,7 @@ import { confirm, promptOnce } from "../../../prompt";
 import { Config } from "../../../config";
 import { Setup } from "../..";
 import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql";
-import { checkForFreeTrialInstance } from "../../../dataconnect/freeTrial";
+import { checkFreeTrialInstanceUsed } from "../../../dataconnect/freeTrial";
 import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
 import { ensureApis, ensureSparkApis } from "../../../dataconnect/ensureApis";
 import * as experiments from "../../../experiments";
@@ -314,14 +314,17 @@ async function checkExistingInstances(
   if (info.cloudSqlInstanceId === "") {
     const instances = await cloudsql.listInstances(setup.projectId);
     let choices = instances.map((i) => {
-      return { name: i.name, value: i.name, location: i.region };
+      let display = `${i.name} (${i.region})`;
+      if (i.settings.userLabels?.["firebase-data-connect"] === "ft") {
+        display += " (no cost trial)";
+      }
+      return { name: display, value: i.name, location: i.region };
     });
     // If we've already chosen a region (ie service already exists), only list instances from that region.
     choices = choices.filter((c) => info.locationId === "" || info.locationId === c.location);
     if (choices.length) {
-      const freeTrialInstanceId = await checkForFreeTrialInstance(setup.projectId);
-      if (!freeTrialInstanceId) {
-        choices.push({ name: "Create a new instance", value: "", location: "" });
+      if (!(await checkFreeTrialInstanceUsed(setup.projectId))) {
+        choices.push({ name: "Create a new free trial instance", value: "", location: "" });
       }
       info.cloudSqlInstanceId = await promptOnce({
         message: `Which CloudSQL instance would you like to use?`,
