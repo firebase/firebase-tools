@@ -155,11 +155,12 @@ export interface DartSDK {
 }
 
 export enum Platform {
+  NONE = "NONE",
   ANDROID = "ANDROID",
   WEB = "WEB",
   IOS = "IOS",
   DART = "DART",
-  UNDETERMINED = "UNDETERMINED",
+  MULTIPLE = "MULTIPLE",
 }
 
 // Helper types && converters
