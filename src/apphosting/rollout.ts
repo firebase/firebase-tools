@@ -28,7 +28,7 @@ const GIT_COMMIT_SHA_REGEX = /^(?:[0-9a-f]{40}|[0-9a-f]{7})$/;
  * Create a new App Hosting rollout for a backend.
  * Implements core logic for apphosting:rollouts:create command.
  */
-export async function doSetup(
+export async function createRollout(
   backendId: string,
   projectId: string,
   location: string,

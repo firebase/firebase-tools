@@ -3,7 +3,7 @@ import { Command } from "../command";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { FirebaseError } from "../error";
-import { doSetup } from "../apphosting/rollout";
+import { createRollout } from "../apphosting/rollout";
 
 export const command = new Command("apphosting:rollouts:create <backendId>")
   .description("create a rollout using a build for an App Hosting backend")
@@ -24,9 +24,9 @@ export const command = new Command("apphosting:rollouts:create <backendId>")
     const commit = options.gitCommit as string | undefined;
     if (branch && commit) {
       throw new FirebaseError(
-        "Cannot specify both a branch and commit to deploy. Please specify either --git-branch or --commit.",
+        "Cannot specify both a branch and commit to deploy. Please specify either --git-branch or --git-commit.",
       );
     }
 
-    await doSetup(backendId, projectId, location, branch, commit, options.force);
+    await createRollout(backendId, projectId, location, branch, commit, options.force);
   });

@@ -1,6 +1,6 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
-import { doSetup, orchestrateRollout } from "./rollout";
+import { createRollout, orchestrateRollout } from "./rollout";
 import * as devConnect from "../gcp/devConnect";
 import * as githubConnections from "../apphosting/githubConnections";
 import * as apphosting from "../gcp/apphosting";
@@ -140,7 +140,7 @@ describe("apphosting rollouts", () => {
       state: "READY",
     };
 
-    describe("doSetup", () => {
+    describe("createRollout", () => {
       it("should create a new rollout from user-specified branch", async () => {
         getBackendStub.resolves(backend);
         getRepoDetailsFromBackendStub.resolves(repoLinkDetails);
@@ -152,7 +152,7 @@ describe("apphosting rollouts", () => {
         pollOperationStub.onFirstCall().resolves(rollout);
         pollOperationStub.onSecondCall().resolves(build);
 
-        await doSetup(backendId, projectId, location, branchId, undefined, true);
+        await createRollout(backendId, projectId, location, branchId, undefined, true);
 
         expect(createBuildStub).to.be.called;
         expect(createRolloutStub).to.be.called;
@@ -169,7 +169,7 @@ describe("apphosting rollouts", () => {
         pollOperationStub.onFirstCall().resolves(rollout);
         pollOperationStub.onSecondCall().resolves(build);
 
-        await doSetup(backendId, projectId, location, undefined, commitSha, true);
+        await createRollout(backendId, projectId, location, undefined, commitSha, true);
 
         expect(createBuildStub).to.be.called;
         expect(createRolloutStub).to.be.called;
@@ -187,7 +187,7 @@ describe("apphosting rollouts", () => {
         pollOperationStub.onFirstCall().resolves(rollout);
         pollOperationStub.onSecondCall().resolves(build);
 
-        await doSetup(backendId, projectId, location, undefined, undefined, true);
+        await createRollout(backendId, projectId, location, undefined, undefined, true);
 
         expect(promptGitHubBranchStub).to.be.called;
         expect(createBuildStub).to.be.called;
@@ -201,7 +201,7 @@ describe("apphosting rollouts", () => {
         listAllBranchesStub.resolves(branches);
 
         await expect(
-          doSetup(backendId, projectId, location, "invalid-branch", undefined, true),
+          createRollout(backendId, projectId, location, "invalid-branch", undefined, true),
         ).to.be.rejectedWith(/Unrecognized git branch/);
       });
 
@@ -211,7 +211,7 @@ describe("apphosting rollouts", () => {
         getGitHubCommitStub.rejects(new FirebaseError("error", { status: 422 }));
 
         await expect(
-          doSetup(backendId, projectId, location, undefined, commitSha, true),
+          createRollout(backendId, projectId, location, undefined, commitSha, true),
         ).to.be.rejectedWith(/Unrecognized git commit/);
       });
     });
