@@ -130,9 +130,9 @@ describe("getPlatformFromFolder", () => {
       expect(platform).to.equal(c.output);
     });
   }
-    afterEach(() => {
-      mockfs.restore();
-    });
+  afterEach(() => {
+    mockfs.restore();
+  });
 });
 
 describe("generateSdkYaml", () => {
@@ -194,14 +194,14 @@ describe("generateSdkYaml", () => {
     for (const c of cases) {
       it(c.desc, () => {
         mockfs({ [appFolderDetectable]: { ["package.json"]: "{}" } });
-    const modifiedYaml = generateSdkYaml(
-      Platform.WEB,
-      sampleConnectorYaml,
-      connectorYamlFolder,
+        const modifiedYaml = generateSdkYaml(
+          Platform.WEB,
+          sampleConnectorYaml,
+          connectorYamlFolder,
           c.appDir,
-    );
+        );
         expect(modifiedYaml.generate?.javascriptSdk).to.deep.equal(c.output);
-    });
+      });
     }
   });
 
@@ -238,14 +238,14 @@ describe("generateSdkYaml", () => {
     ];
     for (const c of cases) {
       it(c.desc, () => {
-    const modifiedYaml = generateSdkYaml(
-      Platform.IOS,
-      sampleConnectorYaml,
-      connectorYamlFolder,
+        const modifiedYaml = generateSdkYaml(
+          Platform.IOS,
+          sampleConnectorYaml,
+          connectorYamlFolder,
           c.appDir,
-    );
+        );
         expect(modifiedYaml.generate?.swiftSdk).to.deep.equal(c.output);
-    });
+      });
     }
   });
 
@@ -315,14 +315,14 @@ describe("generateSdkYaml", () => {
           [appFolderHasBoth + "/app/src/main/java"]: {},
           [appFolderHasBoth + "/app/src/main/kotlin"]: {},
         });
-    const modifiedYaml = generateSdkYaml(
-      Platform.ANDROID,
-      sampleConnectorYaml,
-      connectorYamlFolder,
+        const modifiedYaml = generateSdkYaml(
+          Platform.ANDROID,
+          sampleConnectorYaml,
+          connectorYamlFolder,
           c.appDir,
-    );
+        );
         expect(modifiedYaml.generate?.kotlinSdk).to.deep.equal(c.output);
-    });
+      });
     }
   });
 
@@ -359,14 +359,14 @@ describe("generateSdkYaml", () => {
     ];
     for (const c of cases) {
       it(c.desc, () => {
-    const modifiedYaml = generateSdkYaml(
+        const modifiedYaml = generateSdkYaml(
           Platform.FLUTTER,
-      sampleConnectorYaml,
-      connectorYamlFolder,
+          sampleConnectorYaml,
+          connectorYamlFolder,
           c.appDir,
-    );
+        );
         expect(modifiedYaml.generate?.dartSdk).to.deep.equal(c.output);
-    });
+      });
     }
   });
 

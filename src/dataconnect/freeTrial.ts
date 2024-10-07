@@ -41,7 +41,7 @@ export function printFreeTrialUnavailable(
   instanceId?: string,
 ): void {
   if (!instanceId) {
-  utils.logLabeledError(
+    utils.logLabeledError(
       "data connect",
       "The CloudSQL free trial has already been used on this project.",
     );
