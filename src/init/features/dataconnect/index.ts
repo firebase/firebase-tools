@@ -49,6 +49,12 @@ export interface RequiredInfo {
   shouldProvisionCSQL: boolean;
 }
 
+const emptyConnector = {
+  id: "default",
+  path: "./connector",
+  files: [],
+};
+
 const defaultConnector = {
   id: "default",
   path: "./connector",
@@ -64,6 +70,8 @@ const defaultConnector = {
   ],
 };
 
+const defaultSchema = { path: "schema.gql", content: SCHEMA_TEMPLATE };
+
 // doSetup is split into 2 phases - ask questions and then actuate files and API calls based on those answers.
 export async function doSetup(setup: Setup, config: Config): Promise<void> {
   const info = await askQuestions(setup);
@@ -77,8 +85,6 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
       `If you'd like to add the generated SDK to your app your later, run ${clc.bold("firebase init dataconnect:sdk")}`,
     );
   }
-
-  logger.info("");
 }
 
 // askQuestions prompts the user about the Data Connect service they want to init. Any prompting
@@ -92,7 +98,7 @@ async function askQuestions(setup: Setup): Promise<RequiredInfo> {
     cloudSqlDatabase: "",
     isNewDatabase: false,
     connectors: [defaultConnector],
-    schemaGql: [],
+    schemaGql: [defaultSchema],
     shouldProvisionCSQL: false,
   };
   const isBillingEnabled = setup.projectId ? await checkBillingEnabled(setup.projectId) : false;
@@ -110,7 +116,9 @@ async function askQuestions(setup: Setup): Promise<RequiredInfo> {
     isBillingEnabled && requiredConfigUnset
       ? await confirm({
           message: `Would you like to configure your backend resources now?`,
-          default: false,
+          // For Blaze Projects, configure Cloud SQL by default.
+          // TODO: For Spark projects, allow them to configure Cloud SQL but deploy as unlinked Postgres.
+          default: true,
         })
       : false;
   if (shouldConfigureBackend) {
@@ -177,8 +185,6 @@ async function writeFiles(config: Config, info: RequiredInfo) {
     for (const f of info.schemaGql) {
       await config.askWriteProjectFile(join(dir, "schema", f.path), f.content);
     }
-  } else {
-    await config.askWriteProjectFile(join(dir, "schema", "schema.gql"), SCHEMA_TEMPLATE);
   }
   for (const c of info.connectors) {
     await writeConnectorFiles(config, c);
@@ -278,6 +284,9 @@ async function checkExistingInstances(
       const serviceName = parseServiceName(choice.service.name);
       info.serviceId = serviceName.serviceId;
       info.locationId = serviceName.location;
+      // If the existing service has no schema, don't override any gql files.
+      info.schemaGql = [];
+      info.connectors = [emptyConnector];
       if (choice.schema) {
         const primaryDatasource = choice.schema.datasources.find((d) => d.postgresql);
         if (primaryDatasource?.postgresql?.cloudSql.instance) {
@@ -286,7 +295,7 @@ async function checkExistingInstances(
           );
           info.cloudSqlInstanceId = instanceName.instanceId;
         }
-        if (choice.schema.source.files) {
+        if (choice.schema.source.files?.length) {
           info.schemaGql = choice.schema.source.files;
         }
         info.cloudSqlDatabase = primaryDatasource?.postgresql?.database ?? "";
@@ -305,7 +314,7 @@ async function checkExistingInstances(
           });
         }
       }
-    } else {
+    }export  else {
       info = await promptForService(info);
     }
   }
