@@ -1,5 +1,35 @@
 ## NEXT
 
+## 0.10.2
+
+- Updated internal firebase-tools dependency to 13.20.2
+- Updated default debug-log output to .firebase/logs directory
+- [Fixed] Fixed an issue where emulator startup would hang
+- Updated text for configuration button
+
+## 0.10.1
+
+- [Fixed] Fixed an issue where commands would be executed against directory default project instead of the currently selected project.
+- [Fixed] Fixed an issue where expired auth tokens would be used.
+- [Fixed] Fixed an issue where Add Data wouldn't generate UUID types
+- Updated README with feature descriptions
+
+## 0.10.0
+
+- [Added] UI overhaul.
+- [Added] Added View Docs button to see generated documentation for your schema and connectors.
+- [Fixed] Improved detection for emulator start up and shut down.
+- [Fixed] Improved error handling for variables pane.
+- [Added] Added Firebase path setting, to control which Firebase dbinary is used when executing commands.
+
+## 0.9.1
+
+- Updated internal firebase-tools dependency to 13.19.0
+
+## 0.9.0
+
+- Updated internal firebase-tools dependency to 13.18.0
+
 ## 0.8.0
 
 - Updated internal firebase-tools dependency to 13.17.0

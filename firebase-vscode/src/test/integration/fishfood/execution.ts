@@ -1,4 +1,4 @@
-import { browser } from "@wdio/globals";
+import { browser, expect } from "@wdio/globals";
 import { ExecutionPanel } from "../../utils/page_objects/execution";
 import { firebaseTest } from "../../utils/test_hooks";
 import { EditorView } from "../../utils/page_objects/editor";

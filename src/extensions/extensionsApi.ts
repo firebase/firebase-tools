@@ -3,7 +3,7 @@ import * as clc from "colorette";
 
 import { Client } from "../apiv2";
 import { extensionsOrigin } from "../api";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg, getErrStatus } from "../error";
 import { logger } from "../logger";
 import * as operationPoller from "../operation-poller";
 import * as refs from "./refs";
@@ -13,6 +13,7 @@ import {
   ExtensionSource,
   ExtensionSpec,
   ExtensionVersion,
+  isExtensionInstance,
 } from "./types";
 
 const EXTENSIONS_API_VERSION = "v1beta";
@@ -25,25 +26,28 @@ const extensionsApiClient = new Client({
 
 /**
  * Create a new extension instance, given a extension source path or extension reference, a set of params, and a service account.
- *
  * @param projectId the project to create the instance in
  * @param instanceId the id to set for the instance
  * @param config instance configuration
+ * @param labels labels for the instance
+ * @param validateOnly if true we only perform validation, not the actual creation
  */
 async function createInstanceHelper(
   projectId: string,
   instanceId: string,
-  config: any,
+  config: Record<string, unknown>,
+  labels: Record<string, string> | undefined,
   validateOnly = false,
 ): Promise<ExtensionInstance> {
   const createRes = await extensionsApiClient.post<
-    { name: string; config: unknown },
+    { name: string; config: unknown; labels: Record<string, string> | undefined },
     ExtensionInstance
   >(
     `/projects/${projectId}/instances/`,
     {
       name: `projects/${projectId}/instances/${instanceId}`,
       config,
+      labels,
     },
     {
       queryParams: {
@@ -63,16 +67,7 @@ async function createInstanceHelper(
   return pollRes;
 }
 
-/**
- * Create a new extension instance, given a extension source path, a set of params, and a service account.
- *
- * @param projectId the project to create the instance in
- * @param instanceId the id to set for the instance
- * @param extensionSource the ExtensionSource to create an instance of
- * @param params params to configure the extension instance
- * @param validateOnly if true, only validates the update and makes no changes
- */
-export async function createInstance(args: {
+export type CreateInstanceArgs = {
   projectId: string;
   instanceId: string;
   extensionSource?: ExtensionSource;
@@ -82,8 +77,15 @@ export async function createInstance(args: {
   allowedEventTypes?: string[];
   eventarcChannel?: string;
   validateOnly?: boolean;
-}): Promise<ExtensionInstance> {
-  const config: any = {
+  labels?: Record<string, string>;
+};
+
+/**
+ * Create a new extension instance, given a extension source path, a set of params, and a service account.
+ * @param args the args for creating the instance
+ */
+export async function createInstance(args: CreateInstanceArgs): Promise<ExtensionInstance> {
+  const config: Record<string, unknown> = {
     params: args.params,
     systemParams: args.systemParams ?? {},
     allowedEventTypes: args.allowedEventTypes,
@@ -109,16 +111,21 @@ export async function createInstance(args: {
   if (args.eventarcChannel) {
     config.eventarcChannel = args.eventarcChannel;
   }
-  return createInstanceHelper(args.projectId, args.instanceId, config, args.validateOnly);
+  return await createInstanceHelper(
+    args.projectId,
+    args.instanceId,
+    config,
+    args.labels,
+    args.validateOnly,
+  );
 }
 
 /**
  * Delete an instance and all of the associated resources and its service account.
- *
  * @param projectId the project where the instance exists
  * @param instanceId the id of the instance to delete
  */
-export async function deleteInstance(projectId: string, instanceId: string): Promise<any> {
+export async function deleteInstance(projectId: string, instanceId: string): Promise<unknown> {
   const deleteRes = await extensionsApiClient.delete<{ name: string }>(
     `/projects/${projectId}/instances/${instanceId}`,
   );
@@ -136,12 +143,17 @@ export async function deleteInstance(projectId: string, instanceId: string): Pro
  * @param projectId the project where the instance exists
  * @param instanceId the id of the instance to delete
  */
-export async function getInstance(projectId: string, instanceId: string): Promise<any> {
+export async function getInstance(
+  projectId: string,
+  instanceId: string,
+): Promise<ExtensionInstance | undefined> {
   try {
     const res = await extensionsApiClient.get(`/projects/${projectId}/instances/${instanceId}`);
-    return res.body;
-  } catch (err: any) {
-    if (err.status === 404) {
+    if (isExtensionInstance(res.body)) {
+      return res.body;
+    }
+  } catch (err: unknown) {
+    if (getErrStatus(err) === 404) {
       throw new FirebaseError(
         `Extension instance '${clc.bold(instanceId)}' not found in project '${clc.bold(
           projectId,
@@ -155,7 +167,6 @@ export async function getInstance(projectId: string, instanceId: string): Promis
 
 /**
  * Returns a list of all installed extension instances on the project with projectId.
- *
  * @param projectId the project to list instances for
  */
 export async function listInstances(projectId: string): Promise<ExtensionInstance[]> {
@@ -183,13 +194,15 @@ export async function listInstances(projectId: string): Promise<ExtensionInstanc
 
 /**
  * Configure a extension instance, given an project id, instance id, and a set of params
- *
- * @param projectId the project the instance is in
- * @param instanceId the id of the instance to configure
- * @param params params to configure the extension instance
- * @param allowedEventTypes types of events (selected by consumer) that the extension is allowed to emit
- * @param eventarcChannel fully qualified eventarc channel resource name to emit events to
- * @param validateOnly if true, only validates the update and makes no changes
+ * @param args the args to configure the instance
+ * @param args.projectId the project the instance is in
+ * @param args.instanceId the id of the instance to configure
+ * @param args.params params to configure the extension instance
+ * @param args.systemParams system params to configure the extension instance
+ * @param args.canEmitEvents if the instance can emit events
+ * @param args.allowedEventTypes types of events (selected by consumer) that the extension is allowed to emit
+ * @param args.eventarcChannel fully qualified eventarc channel resource name to emit events to
+ * @param args.validateOnly if true, only validates the update and makes no changes
  */
 export async function configureInstance(args: {
   projectId: string;
@@ -200,8 +213,8 @@ export async function configureInstance(args: {
   allowedEventTypes?: string[];
   eventarcChannel?: string;
   validateOnly?: boolean;
-}): Promise<any> {
-  const reqBody: any = {
+}): Promise<unknown> {
+  const reqBody = {
     projectId: args.projectId,
     instanceId: args.instanceId,
     updateMask: "config.params",
@@ -209,7 +222,7 @@ export async function configureInstance(args: {
     data: {
       config: {
         params: args.params,
-      },
+      } as Record<string, unknown>,
     },
   };
   if (args.canEmitEvents) {
@@ -231,14 +244,16 @@ export async function configureInstance(args: {
 
 /**
  * Update the version of a extension instance, given an project id, instance id, and a set of params
- *
- * @param projectId the project the instance is in
- * @param instanceId the id of the instance to configure
- * @param extensionSource the source for the version of the extension to update to
- * @param params params to configure the extension instance
- * @param allowedEventTypes types of events (selected by consumer) that the extension is allowed to emit
- * @param eventarcChannel fully qualified eventarc channel resource name to emit events to
- * @param validateOnly if true, only validates the update and makes no changes
+ * @param args The update instance args
+ * @param args.projectId the project the instance is in
+ * @param args.instanceId the id of the instance to configure
+ * @param args.extensionSource the source for the version of the extension to update to
+ * @param args.params params to update the extension instance
+ * @param args.systemParams system params to update the extension instance
+ * @param args.canEmitEvents if the instance can emit events
+ * @param args.allowedEventTypes types of events (selected by consumer) that the extension is allowed to emit
+ * @param args.eventarcChannel fully qualified eventarc channel resource name to emit events to
+ * @param args.validateOnly if true, only validates the update and makes no changes
  */
 export async function updateInstance(args: {
   projectId: string;
@@ -250,8 +265,8 @@ export async function updateInstance(args: {
   allowedEventTypes?: string[];
   eventarcChannel?: string;
   validateOnly?: boolean;
-}): Promise<any> {
-  const body: any = {
+}): Promise<unknown> {
+  const body: Record<string, Record<string, unknown>> = {
     config: {
       source: { name: args.extensionSource.name },
     },
@@ -286,14 +301,16 @@ export async function updateInstance(args: {
 
 /**
  * Update the version of a extension instance, given an project id, instance id, and a set of params
- *
- * @param projectId the project the instance is in
- * @param instanceId the id of the instance to configure
- * @param extRef reference for the extension to update to
- * @param params params to configure the extension instance
- * @param allowedEventTypes types of events (selected by consumer) that the extension is allowed to emit
- * @param eventarcChannel fully qualified eventarc channel resource name to emit events to
- * @param validateOnly if true, only validates the update and makes no changes
+ * @param args the update args
+ * @param args.projectId the project the instance is in
+ * @param args.instanceId the id of the instance to configure
+ * @param args.extRef reference for the extension to update to
+ * @param args.params params to configure the extension instance
+ * @param args.systemParams system params to configure the extension instance
+ * @param args.canEmitEvents if the instance can emit events
+ * @param args.allowedEventTypes types of events (selected by consumer) that the extension is allowed to emit
+ * @param args.eventarcChannel fully qualified eventarc channel resource name to emit events to
+ * @param args.validateOnly if true, only validates the update and makes no changes
  */
 export async function updateInstanceFromRegistry(args: {
   projectId: string;
@@ -305,9 +322,9 @@ export async function updateInstanceFromRegistry(args: {
   allowedEventTypes?: string[];
   eventarcChannel?: string;
   validateOnly?: boolean;
-}): Promise<any> {
+}): Promise<unknown> {
   const ref = refs.parse(args.extRef);
-  const body: any = {
+  const body: Record<string, Record<string, unknown>> = {
     config: {
       extensionRef: refs.toExtensionRef(ref),
       extensionVersion: ref.version,
@@ -346,8 +363,8 @@ async function patchInstance(args: {
   instanceId: string;
   updateMask: string;
   validateOnly: boolean;
-  data: any;
-}): Promise<any> {
+  data: unknown;
+}): Promise<unknown> {
   const updateRes = await extensionsApiClient.patch<unknown, { name: string }>(
     `/projects/${args.projectId}/instances/${args.instanceId}`,
     args.data,
@@ -370,6 +387,10 @@ async function patchInstance(args: {
   return pollRes;
 }
 
+/**
+ * populates the spec by parsing yaml properties into real properties
+ * @param spec The spec to populate
+ */
 export function populateSpec(spec: ExtensionSpec): void {
   if (spec) {
     for (const r of spec.resources) {
@@ -377,8 +398,8 @@ export function populateSpec(spec: ExtensionSpec): void {
         if (r.propertiesYaml) {
           r.properties = yaml.parse(r.propertiesYaml);
         }
-      } catch (err: any) {
-        logger.debug(`[ext] failed to parse resource properties yaml: ${err}`);
+      } catch (err: unknown) {
+        logger.debug(`[ext] failed to parse resource properties yaml: ${getErrMsg(err)}`);
       }
     }
     // We need to populate empty repeated fields with empty arrays, since proto wire format removes them.
@@ -389,7 +410,6 @@ export function populateSpec(spec: ExtensionSpec): void {
 
 /**
  * Create a new extension source
- *
  * @param projectId The project to create the source in
  * @param packageUri A URI for a zipper archive of a extension source
  * @param extensionRoot A directory inside the archive to look for extension.yaml
@@ -420,7 +440,6 @@ export async function createSource(
 
 /**
  * Get a extension source by its fully qualified path
- *
  * @param sourceName the fully qualified path of the extension source (/projects/<projectId>/sources/<sourceId>)
  */
 export async function getSource(sourceName: string): Promise<ExtensionSource> {
@@ -432,7 +451,7 @@ export async function getSource(sourceName: string): Promise<ExtensionSource> {
 }
 
 /**
- * @param ref user-friendly identifier for the ExtensionVersion (publisher-id/extension-id@1.0.0)
+ * @param extensionVersionRef user-friendly identifier for the ExtensionVersion (publisher-id/extension-id@1.0.0)
  */
 export async function getExtensionVersion(extensionVersionRef: string): Promise<ExtensionVersion> {
   const ref = refs.parse(extensionVersionRef);
@@ -447,14 +466,14 @@ export async function getExtensionVersion(extensionVersionRef: string): Promise<
       populateSpec(res.body.spec);
     }
     return res.body;
-  } catch (err: any) {
-    if (err.status === 404) {
+  } catch (err: unknown) {
+    if (getErrStatus(err) === 404) {
       throw refNotFoundError(ref);
     } else if (err instanceof FirebaseError) {
       throw err;
     }
     throw new FirebaseError(
-      `Failed to query the extension version '${clc.bold(extensionVersionRef)}': ${err}`,
+      `Failed to query the extension version '${clc.bold(extensionVersionRef)}': ${getErrMsg(err)}`,
     );
   }
 }
@@ -464,7 +483,7 @@ export async function getExtensionVersion(extensionVersionRef: string): Promise<
  */
 export async function listExtensions(publisherId: string): Promise<Extension[]> {
   const extensions: Extension[] = [];
-  const getNextPage = async (pageToken = "") => {
+  const getNextPage = async (pageToken = ""): Promise<void> => {
     const res = await extensionsApiClient.get<{ extensions: Extension[]; nextPageToken: string }>(
       `/publishers/${publisherId}/extensions`,
       {
@@ -495,7 +514,7 @@ export async function listExtensionVersions(
 ): Promise<ExtensionVersion[]> {
   const { publisherId, extensionId } = refs.parse(ref);
   const extensionVersions: ExtensionVersion[] = [];
-  const getNextPage = async (pageToken = "") => {
+  const getNextPage = async (pageToken = ""): Promise<void> => {
     const res = await extensionsApiClient.get<{
       extensionVersions: ExtensionVersion[];
       nextPageToken: string;
@@ -519,7 +538,7 @@ export async function listExtensionVersions(
 }
 
 /**
- * @param ref user-friendly identifier for the Extension (publisher-id/extension-id)
+ * @param extensionRef user-friendly identifier for the Extension (publisher-id/extension-id)
  * @return the extension
  */
 export async function getExtension(extensionRef: string): Promise<Extension> {
@@ -527,18 +546,26 @@ export async function getExtension(extensionRef: string): Promise<Extension> {
   try {
     const res = await extensionsApiClient.get<Extension>(`/${refs.toExtensionName(ref)}`);
     return res.body;
-  } catch (err: any) {
-    if (err.status === 404) {
+  } catch (err: unknown) {
+    if (getErrStatus(err) === 404) {
       throw refNotFoundError(ref);
     } else if (err instanceof FirebaseError) {
       throw err;
     }
-    throw new FirebaseError(`Failed to query the extension '${clc.bold(extensionRef)}': ${err}`, {
-      status: err.status,
-    });
+    throw new FirebaseError(
+      `Failed to query the extension '${clc.bold(extensionRef)}': ${getErrMsg(err)}`,
+      {
+        status: getErrStatus(err),
+      },
+    );
   }
 }
 
+/**
+ * refNotFoundError returns a nicely formatted error when a reference is not found
+ * @param ref The reference that is missing
+ * @return a formatted FirebaseError
+ */
 export function refNotFoundError(ref: refs.Ref): FirebaseError {
   return new FirebaseError(
     `The extension reference '${clc.bold(

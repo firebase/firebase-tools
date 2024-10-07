@@ -4,27 +4,30 @@ import {
   IntrospectionQuery,
   getIntrospectionQuery,
 } from "graphql";
-import { computed } from "@preact/signals-core";
 import { assertExecutionResult } from "../../common/graphql";
 import { DataConnectError } from "../../common/error";
 import { AuthService } from "../auth/service";
 import { UserMockKind } from "../../common/messaging/protocol";
 import { firstWhereDefined } from "../utils/signal";
 import { EmulatorsController } from "../core/emulators";
-import { Emulators } from "../cli";
 import { dataConnectConfigs } from "../data-connect/config";
 
 import { firebaseRC } from "../core/config";
-import { executeGraphQL } from "../../../src/dataconnect/dataplaneClient";
+import {
+  dataconnectDataplaneClient,
+  executeGraphQL,
+  DATACONNECT_API_VERSION,
+} from "../../../src/dataconnect/dataplaneClient";
 import {
   ExecuteGraphqlRequest,
   ExecuteGraphqlResponse,
   ExecuteGraphqlResponseError,
   Impersonation,
 } from "../dataconnect/types";
-import { ClientResponse } from "../apiv2";
+import { Client, ClientResponse } from "../../../src/apiv2";
 import { InstanceType } from "./code-lens-provider";
 import { pluginLogger } from "../logger-wrapper";
+import { DataConnectToolkit } from "./toolkit";
 
 /**
  * DataConnect Emulator service
@@ -32,18 +35,17 @@ import { pluginLogger } from "../logger-wrapper";
 export class DataConnectService {
   constructor(
     private authService: AuthService,
+    private dataConnectToolkit: DataConnectToolkit,
     private emulatorsController: EmulatorsController,
   ) {}
 
   async servicePath(
-    path: string,
-    instance: InstanceType,
+    path: string
   ): Promise<string | undefined> {
     const dataConnectConfigsValue = await firstWhereDefined(dataConnectConfigs);
     // TODO: avoid calling this here and in getApiServicePathByPath
     const serviceId =
-      dataConnectConfigsValue?.tryReadValue.findEnclosingServiceForPath(path)
-        .value.serviceId;
+      dataConnectConfigsValue?.tryReadValue?.findEnclosingServiceForPath(path)?.value.serviceId;
     const projectId = firebaseRC.value?.tryReadValue?.projects?.default;
 
     if (serviceId === undefined || projectId === undefined) {
@@ -80,47 +82,35 @@ export class DataConnectService {
     return response.text();
   }
   private async handleProdResponse(
-    clientResponse: ClientResponse<
+    response: ClientResponse<
       ExecuteGraphqlResponse | ExecuteGraphqlResponseError
     >,
   ): Promise<ExecutionResult> {
-    if (!(clientResponse.status >= 200 && clientResponse.status < 300)) {
+    if (!(response.status >= 200 && response.status < 300)) {
       const errorResponse =
-        clientResponse as ClientResponse<ExecuteGraphqlResponseError>;
+        response as ClientResponse<ExecuteGraphqlResponseError>;
       throw new DataConnectError(
-        `Request failed with status ${clientResponse.status}`,
-        errorResponse.body.error.message,
+        `Prod Request failed with status ${response.status}\nMessage ${errorResponse?.body?.error?.message}`,
       );
     }
-    const successResponse =
-      clientResponse as ClientResponse<ExecuteGraphqlResponse>;
+    const successResponse = response as ClientResponse<ExecuteGraphqlResponse>;
     return successResponse.body;
   }
 
-  private async handleValidResponse(
-    response: Response,
+  private async handleEmulatorResponse(
+    response: ClientResponse<
+      ExecuteGraphqlResponse | ExecuteGraphqlResponseError
+    >,
   ): Promise<ExecutionResult> {
-    const json = await this.decodeResponse(response, "application/json");
-    assertExecutionResult(json);
-
-    return json;
-  }
-
-  private async handleInvalidResponse(response: Response): Promise<never> {
-    const cause = await this.decodeResponse(response);
-
-    throw new DataConnectError(
-      `Request failed with status ${response.status}`,
-      cause,
-    );
-  }
-
-  private handleResponse(response: Response): Promise<ExecutionResult> {
-    if (response.status >= 200 && response.status < 300) {
-      return this.handleValidResponse(response);
+    if (!(response.status >= 200 && response.status < 300)) {
+      const errorResponse =
+        response as ClientResponse<ExecuteGraphqlResponseError>;
+      throw new DataConnectError(
+        `Emulator Request failed with status ${response.status}\nMessage ${errorResponse?.body?.error?.message}`,
+      );
     }
-
-    return this.handleInvalidResponse(response);
+    const successResponse = response as ClientResponse<ExecuteGraphqlResponse>;
+    return successResponse.body;
   }
 
   /** Encode a body while handling the fact that "variables" is raw JSON.
@@ -190,7 +180,7 @@ export class DataConnectService {
     // TODO: get introspections for all services
     const configs = await firstWhereDefined(dataConnectConfigs);
     // Using "requireValue", so that if configs are not available, the execution should throw.
-    const serviceId = configs.requireValue.serviceIds[0];
+    const serviceId = configs.requireValue?.serviceIds[0];
     try {
       // TODO: get name programmatically
       const body = this._serializeBody({
@@ -199,8 +189,8 @@ export class DataConnectService {
         extensions: {}, // Introspection is the only caller of executeGraphqlRead
       });
       const resp = await fetch(
-        (await firstWhereDefined(this.emulatorsController.getLocalEndpoint())) +
-          `/v1alpha/projects/p/locations/l/services/${serviceId}:executeGraphqlRead`,
+        (await this.dataConnectToolkit.getFDCToolkitURL()) +
+          `/v1beta/projects/p/locations/l/services/${serviceId}:executeGraphqlRead`,
         {
           method: "POST",
           headers: {
@@ -227,14 +217,13 @@ export class DataConnectService {
     path: string;
     instance: InstanceType;
   }) {
-    const servicePath = await this.servicePath(params.path, params.instance);
+    const servicePath = await this.servicePath(params.path);
     if (!servicePath) {
       throw new Error("No service found for path: " + params.path);
     }
-
     const prodBody: ExecuteGraphqlRequest = {
       operationName: params.operationName,
-      variables: JSON.parse(params.variables),
+      variables: parseVariableString(params.variables),
       query: params.query,
       name: `${servicePath}`,
       extensions: this._auth(),
@@ -246,43 +235,39 @@ export class DataConnectService {
       extensions: this._auth(),
     });
     if (params.instance === InstanceType.PRODUCTION) {
-      const resp = await executeGraphQL(servicePath, prodBody);
+      const client = dataconnectDataplaneClient();
+      const resp = await executeGraphQL(client, servicePath, prodBody);
       return this.handleProdResponse(resp);
     } else {
-      const resp = await fetch(
-        (await firstWhereDefined(this.emulatorsController.getLocalEndpoint())) +
-          `/v1alpha/${servicePath}:executeGraphql`,
-        {
-          method: "POST",
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-            "x-mantle-admin": "all",
-          },
-          body,
-        },
-      );
-      return this.handleResponse(resp);
+      const endpoint = this.emulatorsController.getLocalEndpoint();
+      if (!endpoint) {
+        throw new DataConnectError(
+          `Emulator isn't running. Please start your emulator!`,
+        );
+      }
+      const client = new Client({
+        urlPrefix: endpoint,
+        apiVersion: DATACONNECT_API_VERSION,
+      });
+      const resp = await executeGraphQL(client, servicePath, prodBody);
+      return this.handleEmulatorResponse(resp);
     }
   }
 
-  async connectToPostgres(connectionString: string): Promise<boolean> {
-    try {
-      await fetch(
-        firstWhereDefined(this.emulatorsController.getLocalEndpoint()) +
-          `/emulator/configure?connectionString=${connectionString}`,
-        {
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-            "x-mantle-admin": "all",
-          },
-        },
-      );
-      return true;
-    } catch (e: any) {
-      pluginLogger.error(e);
-      return false;
-    }
+  docsLink() {
+    return this.dataConnectToolkit.getGeneratedDocsURL();
+  }
+}
+
+function parseVariableString(variables: string): Record<string, any> {
+  if (!variables) {
+    return {};
+  }
+  try {
+    return JSON.parse(variables);
+  } catch(e: any) {
+    throw new Error(
+      "Unable to parse variables as JSON. Double check that that there are no unmatched braces or quotes, or unqouted keys in the variables pane."
+    );
   }
 }

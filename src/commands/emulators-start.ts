@@ -8,6 +8,8 @@ import * as clc from "colorette";
 import { Constants } from "../emulator/constants";
 import { logLabeledWarning } from "../utils";
 import { ExtensionsEmulator } from "../emulator/extensionsEmulator";
+import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook";
+import { Options } from "../options";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const Table = require("cli-table");
@@ -26,7 +28,7 @@ export const command = new Command("emulators:start")
   .option(commandUtils.FLAG_EXPORT_ON_EXIT, commandUtils.DESC_EXPORT_ON_EXIT)
   .option(commandUtils.FLAG_VERBOSITY, commandUtils.DESC_VERBOSITY)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  .action((options: any) => {
+  .action((options: Options) => {
     const killSignalPromise = commandUtils.shutdownWhenKilled(options);
     return Promise.race([
       killSignalPromise,
@@ -34,7 +36,9 @@ export const command = new Command("emulators:start")
         let deprecationNotices;
         try {
           ({ deprecationNotices } = await controller.startAll(options));
+          await sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_STARTED });
         } catch (e: any) {
+          await sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_START_ERRORED });
           await controller.cleanShutdown();
           throw e;
         }
@@ -121,7 +125,7 @@ function printEmulatorOverview(options: any): void {
     const extensionsEmulatorInstance = EmulatorRegistry.get(
       Emulators.EXTENSIONS,
     ) as ExtensionsEmulator;
-    extensionsTable = extensionsEmulatorInstance.extensionsInfoTable(options);
+    extensionsTable = extensionsEmulatorInstance.extensionsInfoTable();
   }
   logger.info(`\n${successMessageTable}
 

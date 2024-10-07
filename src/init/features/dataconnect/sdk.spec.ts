@@ -32,14 +32,9 @@ describe("init dataconnect:sdk", () => {
       shouldGenerate: boolean;
     }[] = [
       {
-        desc: "should write files and generate code if shouldGenerate=true",
-        sdkInfo: mockSDKInfo(true),
+        desc: "should write files and generate code",
+        sdkInfo: mockSDKInfo(),
         shouldGenerate: true,
-      },
-      {
-        desc: "should write files and not generate code if shouldGenerate=false",
-        sdkInfo: mockSDKInfo(false),
-        shouldGenerate: false,
       },
     ];
 
@@ -47,7 +42,7 @@ describe("init dataconnect:sdk", () => {
       it(c.desc, async () => {
         generateStub.resolves();
         fsStub.returns({});
-        await sdk.actuate(c.sdkInfo, "TEST_PROJECT");
+        await sdk.actuate(c.sdkInfo);
         expect(generateStub.called).to.equal(c.shouldGenerate);
         expect(fsStub.args).to.deep.equal([
           [
@@ -61,7 +56,7 @@ describe("init dataconnect:sdk", () => {
   });
 });
 
-function mockSDKInfo(shouldGenerate: boolean): sdk.SDKInfo {
+function mockSDKInfo(): sdk.SDKInfo {
   return {
     connectorYamlContents: CONNECTOR_YAML_CONTENTS,
     connectorInfo: {
@@ -74,7 +69,6 @@ function mockSDKInfo(shouldGenerate: boolean): sdk.SDKInfo {
         connectorId: "app",
       },
     },
-    shouldGenerate,
     displayIOSWarning: false,
   };
 }

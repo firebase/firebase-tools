@@ -8,12 +8,16 @@ import {
   getIAMUser,
   executeSqlCmdsAsIamUser,
   executeSqlCmdsAsSuperUser,
+  toDatabaseUser,
 } from "../gcp/cloudsql/connect";
 import {
   firebaseowner,
   iamUserIsCSQLAdmin,
   checkSQLRoleIsGranted,
+  fdcSqlRoleMap,
 } from "../gcp/cloudsql/permissions";
+import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
+import { needProjectId } from "../projectUtils";
 import { promptOnce, confirm } from "../prompt";
 import { logger } from "../logger";
 import { Schema } from "./types";
@@ -220,6 +224,39 @@ export async function migrateSchema(args: {
   return diffs;
 }
 
+export async function grantRoleToUserInSchema(options: Options, schema: Schema) {
+  const role = options.role as string;
+  const email = options.email as string;
+
+  const { instanceId, databaseId } = getIdentifiers(schema);
+  const projectId = needProjectId(options);
+  const { user, mode } = toDatabaseUser(email);
+  const fdcSqlRole = fdcSqlRoleMap[role as keyof typeof fdcSqlRoleMap](databaseId);
+
+  // Make sure current user can perform this action.
+  const userIsCSQLAdmin = await iamUserIsCSQLAdmin(options);
+  if (!userIsCSQLAdmin) {
+    throw new FirebaseError(
+      `Only users with 'roles/cloudsql.admin' can grant SQL roles. If you do not have this role, ask your database administrator to run this command or manually grant ${fdcSqlRole} to ${user}`,
+    );
+  }
+
+  // Run the database roles setup. This should be idempotent.
+  await setupIAMUsers(instanceId, databaseId, options);
+
+  // Upsert user account into the database.
+  await cloudSqlAdminClient.createUser(projectId, instanceId, mode, user);
+
+  // Grant the role to the user.
+  await executeSqlCmdsAsSuperUser(
+    options,
+    instanceId,
+    databaseId,
+    /** cmds= */ [`GRANT "${fdcSqlRole}" TO "${user}"`],
+    /** silent= */ false,
+  );
+}
+
 function diffsEqual(x: Diff[], y: Diff[]): boolean {
   if (x.length !== y.length) {
     return false;
@@ -237,8 +274,11 @@ function diffsEqual(x: Diff[], y: Diff[]): boolean {
 }
 
 function setSchemaValidationMode(schema: Schema, schemaValidation: SchemaValidation) {
-  if (experiments.isEnabled("fdccompatiblemode") && schema.primaryDatasource.postgresql) {
-    schema.primaryDatasource.postgresql.schemaValidation = schemaValidation;
+  if (experiments.isEnabled("fdccompatiblemode")) {
+    const postgresDatasource = schema.datasources.find((d) => d.postgresql);
+    if (postgresDatasource?.postgresql) {
+      postgresDatasource.postgresql.schemaValidation = schemaValidation;
+    }
   }
 }
 
@@ -248,13 +288,12 @@ function getIdentifiers(schema: Schema): {
   databaseId: string;
   serviceName: string;
 } {
-  const databaseId = schema.primaryDatasource.postgresql?.database;
+  const postgresDatasource = schema.datasources.find((d) => d.postgresql);
+  const databaseId = postgresDatasource?.postgresql?.database;
   if (!databaseId) {
-    throw new FirebaseError(
-      "Schema is missing primaryDatasource.postgresql?.database, cannot migrate",
-    );
+    throw new FirebaseError("Service does not have a postgres datasource, cannot migrate");
   }
-  const instanceName = schema.primaryDatasource.postgresql?.cloudSql.instance;
+  const instanceName = postgresDatasource?.postgresql?.cloudSql.instance;
   if (!instanceName) {
     throw new FirebaseError(
       "tried to migrate schema but instance name was not provided in dataconnect.yaml",
@@ -390,6 +429,10 @@ async function promptForSchemaMigration(
     }
     // `firebase deploy` and `firebase dataconnect:sql:migrate` always prompt for any SQL migration changes.
     // Destructive migrations are too potentially dangerous to not prompt for with --force
+    const message =
+      validationMode === "STRICT_AFTER_COMPATIBLE"
+        ? `Would you like to execute these optional changes against ${databaseId} in your CloudSQL instance ${instanceName}?`
+        : `Would you like to execute these changes against ${databaseId} in your CloudSQL instance ${instanceName}?`;
     let executeChangePrompt = "Execute changes";
     if (validationMode === "STRICT_AFTER_COMPATIBLE") {
       executeChangePrompt = "Execute optional changes";
@@ -403,7 +446,7 @@ async function promptForSchemaMigration(
     ];
     const defaultValue = validationMode === "STRICT_AFTER_COMPATIBLE" ? "none" : "all";
     return await promptOnce({
-      message: `Would you like to execute these changes against ${databaseId}?`,
+      message: message,
       type: "list",
       choices,
       default: defaultValue,
@@ -439,14 +482,8 @@ async function promptForInvalidConnectorError(
   }
   displayInvalidConnectors(invalidConnectors);
   if (validateOnly) {
-    if (options.force) {
-      // `firebase dataconnect:sql:migrate --force` ignores invalid connectors.
-      return false;
-    }
-    // `firebase dataconnect:sql:migrate` aborts if there are invalid connectors.
-    throw new FirebaseError(
-      `Command aborted. If you'd like to migrate it anyway, you may override with --force.`,
-    );
+    // `firebase dataconnect:sql:migrate` ignores invalid connectors.
+    return false;
   }
   if (options.force) {
     // `firebase deploy --force` will delete invalid connectors without prompting.
@@ -509,17 +546,21 @@ async function ensureServiceIsConnectedToCloudSql(
       source: {
         files: [],
       },
-      primaryDatasource: {
-        postgresql: {
-          database: databaseId,
-          cloudSql: {
-            instance: instanceId,
+      datasources: [
+        {
+          postgresql: {
+            database: databaseId,
+            cloudSql: {
+              instance: instanceId,
+            },
           },
         },
-      },
+      ],
     };
   }
-  const postgresql = currentSchema.primaryDatasource.postgresql;
+
+  const postgresDatasource = currentSchema.datasources.find((d) => d.postgresql);
+  const postgresql = postgresDatasource?.postgresql;
   if (postgresql?.cloudSql.instance !== instanceId) {
     logLabeledWarning(
       "dataconnect",
@@ -558,11 +599,11 @@ function displaySchemaChanges(
         let message;
         if (validationMode === "COMPATIBLE") {
           message =
-            "Your new application schema is incompatible with the schema of your PostgreSQL database " +
+            "Your PostgreSQL database " +
             databaseId +
             " in your CloudSQL instance " +
             instanceName +
-            ". " +
+            " must be migrated in order to be compatible with your application schema. " +
             "The following SQL statements will migrate your database schema to be compatible with your new Data Connect schema.\n" +
             error.diffs.map(toString).join("\n");
         } else if (validationMode === "STRICT_AFTER_COMPATIBLE") {
@@ -576,11 +617,11 @@ function displaySchemaChanges(
             error.diffs.map(toString).join("\n");
         } else {
           message =
-            "Your new application schema does not match the schema of your PostgreSQL database " +
+            "Your PostgreSQL database " +
             databaseId +
             " in your CloudSQL instance " +
             instanceName +
-            ". " +
+            " must be migrated in order to match your application schema. " +
             "The following SQL statements will migrate your database schema to match your new Data Connect schema.\n" +
             error.diffs.map(toString).join("\n");
         }

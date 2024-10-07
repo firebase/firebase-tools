@@ -1,0 +1,9 @@
+{
+  "ext.config.dataConnect.alwaysAllowMutationsInProduction": "Always allow mutations in production. If false (default), trying to run a mutation in production will open a confirmation modal.",
+  "ext.config.dataConnect.skipToAppFolderSelect": "Skip app folder selection prompt. If false (default), trying to generate SDK config will open a confirmation modal.",
+  "ext.config.firebasePath": "Path to the `Firebase` module, e.g. `./node_modules/firebase`",
+  "ext.config.hosting.useFrameworks": "Enable web frameworks",
+  "ext.config.npmPath": "Path to NPM executable in local environment",
+  "ext.config.title": "Prettier",
+  "ext.config.idx.viewMetricNotice": "Show data collection notice on next startup (IDX Only)"
+}
