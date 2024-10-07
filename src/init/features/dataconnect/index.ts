@@ -55,7 +55,7 @@ const emptyConnector = {
   files: [],
 };
 
-const defaultConnector = {
+export const defaultConnector = {
   id: "default",
   path: "./connector",
   files: [
@@ -70,7 +70,7 @@ const defaultConnector = {
   ],
 };
 
-const defaultSchema = { path: "schema.gql", content: SCHEMA_TEMPLATE };
+export const defaultSchema = { path: "schema.gql", content: SCHEMA_TEMPLATE };
 
 // doSetup is split into 2 phases - ask questions and then actuate files and API calls based on those answers.
 export async function doSetup(setup: Setup, config: Config): Promise<void> {
