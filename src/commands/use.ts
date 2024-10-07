@@ -71,7 +71,7 @@ export const command = new Command("use [alias_or_project_id]")
       const resolvedProject = options.rc.resolveAlias(newActive);
       validateProjectId(resolvedProject);
       if (!Constants.isDemoProject(resolvedProject)) {
-        project = await getFirebaseProject(resolvedProject) 
+        project = await getFirebaseProject(resolvedProject);
       }
       if (aliasOpt) {
         // firebase use [project] --alias [alias]
