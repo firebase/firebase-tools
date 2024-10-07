@@ -39,29 +39,29 @@ export function printFreeTrialUnavailable(
   projectId: string,
   configYamlPath: string,
   instanceId?: string,
-) {
+): void {
   if (!instanceId) {
-    utils.logLabeledBullet(
+    utils.logLabeledError(
       "data connect",
       "The CloudSQL free trial has already been used on this project.",
     );
-    utils.logLabeledBullet(
+    utils.logLabeledError(
       "data connect",
       `You may create or use a paid CloudSQL instance by visiting https://console.cloud.google.com/sql/instances`,
     );
     return;
   }
   utils.logLabeledError(
-    "dataconnect",
+    "data connect",
     `Project '${projectId} already has a CloudSQL instance '${instanceId}' on the Firebase Data Connect no-cost trial.`,
   );
   const reuseHint =
-    `To use a different database in the same instance, ${clc.bold(`change the ${clc.blue("instanceId")} to "${instanceId}"`)} in ` +
-    `${clc.green(configYamlPath)}. (Also, update the ${clc.blue("database")} field (i.e. DB name in the instance) ` +
-    `and ${clc.blue("location")} as needed.)`;
+    `To use a different database in the same instance, ${clc.bold(`change the ${clc.blue("instanceId")} to "${instanceId}"`)} and update ${clc.blue("location")} in ` +
+    `${clc.green(configYamlPath)}.`;
+
   utils.logLabeledError("data connect", reuseHint);
   utils.logLabeledError(
     "data connect",
-    `Or you may create a new (paid) CloudSQL instance at https://console.cloud.google.com/sql/instances`,
+    `Alternatively, you may create a new (paid) CloudSQL instance at https://console.cloud.google.com/sql/instances`,
   );
 }

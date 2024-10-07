@@ -72,7 +72,7 @@ export async function provisionCloudSql(args: {
     const freeTrialInstanceId = await getFreeTrialInstanceId(projectId);
     if (await checkFreeTrialInstanceUsed(projectId)) {
       printFreeTrialUnavailable(projectId, configYamlPath, freeTrialInstanceId);
-      throw new FirebaseError("Cannot create another no-cost trial Cloud SQL instance.");
+      throw new FirebaseError("No-cost Cloud SQL trial has already been used on this project.");
     }
     const cta = dryRun ? "It will be created on your next deploy" : "Creating it now.";
     silent ||

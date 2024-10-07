@@ -141,7 +141,7 @@ export async function queryTimeSeries(
   });
   try {
     const res = await client.get<{ timeSeries: TimeSeriesResponse }>(
-      `/projects/${[project]}/timeSeries/`,
+      `/projects/${project}/timeSeries/`,
       {
         queryParams: query as { [key: string]: any },
       },
