@@ -148,7 +148,7 @@ export function generateSdkYaml(
         path.join(appDir, `dataconnect-generated/js/${connectorYaml.connectorId}`),
       ),
       package: `@firebasegen/${connectorYaml.connectorId}`,
-      // If appDir has package.json, Emulator would install JS SDK for every reload.
+      // If appDir has package.json, Emulator would add Generated JS SDK to `package.json`.
       // Otherwise, emulator would ignore it. Always add it here in case `package.json` is added later.
       // TODO: Explore other platforms that can be automatically installed. Dart? Android?
       packageJsonDir: path.relative(connectorDir, appDir),
