@@ -1,4 +1,6 @@
 import * as path from "path";
+import * as fs from "fs";
+
 import * as child_process from "child_process";
 import { Notifications } from "./utils/page_objects/editor";
 
@@ -43,11 +45,17 @@ export const config: WebdriverIO.Config = {
     });
   },
 
-  afterTest: async function () {
+  afterTest: async function (test) {
     // Reset the test_projects directory to its original state after each test.
     // This ensures tests do not modify the test_projects directory.
     child_process.execSync(
       `git restore --source=HEAD -- ./src/test/test_projects`,
+    );
+
+    const screenshotDir = path.join(__dirname, "screenshots");
+    fs.mkdirSync(screenshotDir, { recursive: true });
+    await browser.saveScreenshot(
+      path.join(screenshotDir, `${test.parent} - ${test.title}.png`),
     );
   },
 
