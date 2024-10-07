@@ -58,16 +58,6 @@
           "default": false,
           "markdownDescription": "%ext.config.dataConnect.skipToAppFolderSelect%"
         },
-        "firebase.debug": {
-          "type": "boolean",
-          "default": true,
-          "markdownDescription": "%ext.config.debug%"
-        },
-        "firebase.debugLogPath": {
-          "type": "string",
-          "default": "/tmp/firebase-plugin.log",
-          "markdownDescription": "%ext.config.debugLogPath%"
-        },
         "firebase.firebasePath": {
           "type": "string",
           "markdownDescription": "%ext.config.firebasePath%"

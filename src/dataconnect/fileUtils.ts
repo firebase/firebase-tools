@@ -134,7 +134,9 @@ export async function getPlatformFromFolder(dirPath: string) {
       IOS_POSTFIX_INDICATORS.some((indicator) => cleanedFileName.endsWith(indicator));
     hasDart ||= DART_INDICATORS.some((indicator) => indicator === cleanedFileName);
   }
-  if (hasWeb && !hasAndroid && !hasIOS && !hasDart) {
+  if (!hasWeb && !hasAndroid && !hasIOS && !hasDart) {
+    return Platform.NONE;
+  } else if (hasWeb && !hasAndroid && !hasIOS && !hasDart) {
     return Platform.WEB;
   } else if (hasAndroid && !hasWeb && !hasIOS && !hasDart) {
     return Platform.ANDROID;
@@ -144,8 +146,8 @@ export async function getPlatformFromFolder(dirPath: string) {
     return Platform.DART;
   }
   // At this point, its not clear which platform the app directory is
-  // (either because we found no indicators, or indicators for multiple platforms)
-  return Platform.UNDETERMINED;
+  // because we found indicators for multiple platforms.
+  return Platform.MULTIPLE;
 }
 
 export async function directoryHasPackageJson(dirPath: string) {
