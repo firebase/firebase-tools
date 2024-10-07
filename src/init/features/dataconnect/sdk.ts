@@ -162,7 +162,7 @@ export function generateSdkYaml(
         connectorDir,
         path.join(appDir, `dataconnect-generated/dart/${snakeCase(connectorYaml.connectorId)}`),
       ),
-      package: connectorYaml.connectorId,
+      package: snakeCase(connectorYaml.connectorId),
     };
     connectorYaml.generate.dartSdk = dartSdk;
   }
