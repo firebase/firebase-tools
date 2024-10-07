@@ -16,13 +16,19 @@ import { getAppEngineLocation } from "../../../functionsConfig";
 import { getFunctionLabel } from "../functionsDeployHelper";
 import { FirebaseError } from "../../../error";
 import { getProjectNumber } from "../../../getProjectNumber";
+import { release as extRelease } from "../../extensions";
 
-/** Releases new versions of functions to prod. */
+/** Releases new versions of functions and extensions to prod. */
 export async function release(
   context: args.Context,
   options: Options,
   payload: args.Payload,
 ): Promise<void> {
+  // Release extensions if any
+  if (context.extensions && payload.extensions) {
+    await extRelease(context.extensions, options, payload.extensions);
+  }
+
   if (!context.config) {
     return;
   }

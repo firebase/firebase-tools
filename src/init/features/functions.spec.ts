@@ -24,7 +24,7 @@ function createExistingTestSetupAndConfig(): { setup: Setup; config: Config } {
       config: {
         functions: [cbconfig],
       },
-      rcfile: { projects: {}, targets: {}, etags: {}, dataconnectEmulatorConfig: {} },
+      rcfile: { projects: {}, targets: {}, etags: {} },
       featureArg: true,
     },
     config: new Config({ functions: [cbconfig] }, { projectDir: "test", cwd: "test" }),

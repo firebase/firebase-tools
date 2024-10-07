@@ -6,7 +6,6 @@ import { Disposable } from "vscode";
 import { Signal } from "@preact/signals-core";
 import { dataConnectConfigs, firebaseRC } from "./config";
 import { EmulatorsController } from "../core/emulators";
-import { DataConnectEmulatorController } from "./emulator";
 
 export enum InstanceType {
   LOCAL = "local",
@@ -41,6 +40,10 @@ abstract class ComputedCodeLensProvider implements vscode.CodeLensProvider {
     return signal.peek();
   }
 
+  refresh() {
+    this._onChangeCodeLensesEmitter.fire();
+  }
+
   dispose() {
     for (const disposable of this.subscriptions.values()) {
       disposable.dispose();
@@ -58,7 +61,7 @@ abstract class ComputedCodeLensProvider implements vscode.CodeLensProvider {
  * CodeLensProvider provides codelens for actions in graphql files.
  */
 export class OperationCodeLensProvider extends ComputedCodeLensProvider {
-  constructor(readonly emulatorsController: DataConnectEmulatorController) {
+  constructor(readonly emulatorsController: EmulatorsController) {
     super();
   }
 
@@ -95,7 +98,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
         );
 
         if (service) {
-          if (this.watch(this.emulatorsController.isPostgresEnabled)) {
+          if (this.emulatorsController.areEmulatorsRunning()) {
             codeLenses.push(
               new vscode.CodeLens(range, {
                 title: `$(play) Run (local)`,
@@ -134,7 +137,7 @@ export class SchemaCodeLensProvider extends ComputedCodeLensProvider {
     document: vscode.TextDocument,
     token: vscode.CancellationToken,
   ): vscode.CodeLens[] {
-    if (!this.watch(this.emulatorsController.areEmulatorsRunning)) {
+    if (!this.emulatorsController.areEmulatorsRunning) {
       return [];
     }
 
@@ -171,6 +174,43 @@ export class SchemaCodeLensProvider extends ComputedCodeLensProvider {
           }),
         );
       }
+    }
+
+    return codeLenses;
+  }
+}
+/**
+ * CodeLensProvider for Configure SDK in Connector.yaml
+ */
+export class ConfigureSdkCodeLensProvider extends ComputedCodeLensProvider {
+  provideCodeLenses(
+    document: vscode.TextDocument,
+    token: vscode.CancellationToken,
+  ): vscode.CodeLens[] {
+    // Wait for configs to be loaded
+    const fdcConfigs = this.watch(dataConnectConfigs)?.tryReadValue;
+    const rc = this.watch(firebaseRC)?.tryReadValue;
+    if (!fdcConfigs || !rc) {
+      return [];
+    }
+
+    const codeLenses: vscode.CodeLens[] = [];
+    const range = new vscode.Range(0, 0, 0, 0);
+    const serviceConfig = fdcConfigs.findEnclosingServiceForPath(
+      document.fileName,
+    );
+    const connectorConfig = serviceConfig!.findEnclosingConnectorForPath(
+      document.fileName,
+    );
+    if (serviceConfig) {
+      codeLenses.push(
+        new vscode.CodeLens(range, {
+          title: `$(tools) Configure Generated SDK`,
+          command: "fdc.connector.configure-sdk",
+          tooltip: "Configure a generated SDK for this connector",
+          arguments: [connectorConfig!.tryReadValue],
+        }),
+      );
     }
 
     return codeLenses;

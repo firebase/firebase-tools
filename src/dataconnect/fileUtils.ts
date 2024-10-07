@@ -8,8 +8,8 @@ import { Config } from "../config";
 import { DataConnectMultiple } from "../firebaseConfig";
 import { load } from "./load";
 
-export function readFirebaseJson(config: Config): DataConnectMultiple {
-  if (!config.has("dataconnect")) {
+export function readFirebaseJson(config?: Config): DataConnectMultiple {
+  if (!config?.has("dataconnect")) {
     return [];
   }
   const validator = (cfg: any) => {
@@ -110,25 +110,42 @@ export async function pickService(
 // case insensitive exact match indicators for supported app platforms
 const WEB_INDICATORS = ["package.json", "package-lock.json", "node_modules"];
 const IOS_INDICATORS = ["info.plist", "podfile", "package.swift"];
-const ANDROID_INDICATORS = ["androidmanifest.xml", "build.gradle"];
+const ANDROID_INDICATORS = ["androidmanifest.xml", "build.gradle", "build.gradle.kts"];
+const DART_INDICATORS = ["pubspec.yaml", "pubspec.lock"];
 
 // endswith match
-const IOS_INDICATORS_2 = [".xcworkspace", ".xcodeproj"];
+const IOS_POSTFIX_INDICATORS = [".xcworkspace", ".xcodeproj"];
 
 // given a directory, determine the platform type
 export async function getPlatformFromFolder(dirPath: string) {
   // Check for file indicators
   const fileNames = await fs.readdir(dirPath);
 
+  let hasWeb = false;
+  let hasAndroid = false;
+  let hasIOS = false;
+  let hasDart = false;
   for (const fileName of fileNames) {
     const cleanedFileName = fileName.toLowerCase();
-    if (WEB_INDICATORS.some((indicator) => indicator === cleanedFileName)) return Platform.WEB;
-    if (ANDROID_INDICATORS.some((indicator) => indicator === cleanedFileName))
-      return Platform.ANDROID;
-    if (IOS_INDICATORS.some((indicator) => indicator === cleanedFileName)) return Platform.IOS;
-    if (IOS_INDICATORS_2.some((indicator) => cleanedFileName.endsWith(indicator)))
-      return Platform.IOS;
+    hasWeb ||= WEB_INDICATORS.some((indicator) => indicator === cleanedFileName);
+    hasAndroid ||= ANDROID_INDICATORS.some((indicator) => indicator === cleanedFileName);
+    hasIOS ||=
+      IOS_INDICATORS.some((indicator) => indicator === cleanedFileName) ||
+      IOS_POSTFIX_INDICATORS.some((indicator) => cleanedFileName.endsWith(indicator));
+    hasDart ||= DART_INDICATORS.some((indicator) => indicator === cleanedFileName);
   }
-
-  return Platform.UNDETERMINED;
+  if (!hasWeb && !hasAndroid && !hasIOS && !hasDart) {
+    return Platform.NONE;
+  } else if (hasWeb && !hasAndroid && !hasIOS && !hasDart) {
+    return Platform.WEB;
+  } else if (hasAndroid && !hasWeb && !hasIOS && !hasDart) {
+    return Platform.ANDROID;
+  } else if (hasIOS && !hasWeb && !hasAndroid && !hasDart) {
+    return Platform.IOS;
+  } else if (hasDart && !hasWeb && !hasIOS && !hasAndroid) {
+    return Platform.FLUTTER;
+  }
+  // At this point, its not clear which platform the app directory is
+  // because we found indicators for multiple platforms.
+  return Platform.MULTIPLE;
 }

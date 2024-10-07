@@ -9,14 +9,9 @@ import { listFirebaseProjects } from "../../src/management/projects";
 import { requireAuth } from "../../src/requireAuth";
 import { Account, Tokens, User } from "../../src/types/auth";
 import { Options } from "../../src/options";
-import { currentOptions, getCommandOptions } from "./options";
-import { EmulatorUiSelections } from "../common/messaging/types";
+import { currentOptions } from "./options";
 import { pluginLogger } from "./logger-wrapper";
 import { getAccessToken, setAccessToken } from "../../src/apiv2";
-import {
-  startAll as startAllEmulators,
-  cleanShutdown as stopAllEmulators,
-} from "../../src/emulator/controller";
 import { EmulatorRegistry } from "../../src/emulator/registry";
 import {
   DownloadableEmulatorDetails,
@@ -24,11 +19,9 @@ import {
   DownloadableEmulators,
   Emulators,
 } from "../../src/emulator/types";
-import * as commandUtils from "../../src/emulator/commandUtils";
 import { currentUser } from "./core/user";
-import { firstWhere } from "./utils/signal";
+import { currentProjectId } from "./core/project";
 export { Emulators };
-
 /**
  * Wrap the CLI's requireAuth() which is normally run before every command
  * requiring user to be logged in. The CLI automatically supplies it with
@@ -46,7 +39,6 @@ export async function requireAuthWrapper(
 
   // helper to determine if VSCode options has the same account as global default
   function isUserMatching(account: Account, options: Options) {
-
     if (!options.user || !options.tokens) {
       return false;
     }
@@ -55,20 +47,20 @@ export async function requireAuthWrapper(
     const optionsTokens = options.tokens as Tokens;
     return (
       account &&
-      account.user.email === optionsUser.email &&
-      account.tokens.refresh_token === optionsTokens.refresh_token // Should check refresh token which is consistent, not access_token which is short lived. 
+      account.user?.email === optionsUser.email &&
+      account.tokens.refresh_token === optionsTokens.refresh_token // Should check refresh token which is consistent, not access_token which is short lived.
     );
   }
 
   // only add account options when vscode is missing account information
-  if (!isUserMatching(account, currentOptions.value)) {
+  if (!isUserMatching(account!, currentOptions.value)) {
     currentOptions.value = { ...currentOptions.value, ...account };
   }
 
   if (!account) {
     // If nothing in configstore top level, grab the first "additionalAccount"
     for (const additionalAccount of accounts) {
-      if (additionalAccount.user.email === currentUser.value.email) {
+      if (additionalAccount.user.email === currentUser.value!.email) {
         account = additionalAccount;
         setGlobalDefaultAccount(account);
       }
@@ -86,17 +78,20 @@ export async function requireAuthWrapper(
     // - we are using tokens from configstore (aka those set by firebase login), AND
     // - we are calling CLI code that skips Command (where we normally call this)
     currentOptions.value = optsCopy;
-    setAccessToken(await getAccessToken()); 
+    if (optsCopy.projectId) {
+      currentProjectId.value = optsCopy.projectId;
+    }
+    setAccessToken(await getAccessToken());
     if (userEmail) {
       pluginLogger.debug("User found: ", userEmail);
 
       // VSCode only has the concept of a single user
-      return getGlobalDefaultAccount().user;
+      return getGlobalDefaultAccount()!.user;
     }
 
     pluginLogger.debug("No user found (this may be normal)");
     return null;
-  } catch (e) {
+  } catch (e: any) {
     if (showError) {
       // Show error to user - show a popup and log it with log level "error".
       pluginLogger.error(
@@ -128,40 +123,7 @@ export async function login() {
 }
 
 export async function listProjects() {
-  const loggedInUser = await requireAuthWrapper(false);
-  if (!loggedInUser) {
-    return [];
-  }
   return listFirebaseProjects();
-}
-
-export async function emulatorsStart(
-  emulatorUiSelections: EmulatorUiSelections,
-) {
-  const only =
-    emulatorUiSelections.mode === "dataconnect"
-      ? `${Emulators.DATACONNECT}`
-      : "";
-  const commandOptions = await getCommandOptions(undefined, {
-    ...(await firstWhere(
-      // TODO use firstWhereDefined once currentOptions are undefined if not initialized yet
-      currentOptions,
-      (op) => !!op && op.configPath.length !== 0,
-    )),
-    project: emulatorUiSelections.projectId,
-    exportOnExit: emulatorUiSelections.exportStateOnExit,
-    import: emulatorUiSelections.importStateFolderPath,
-    only,
-  });
-  // Adjusts some options, export on exit can be a boolean or a path.
-  commandUtils.setExportOnExitOptions(
-    commandOptions as commandUtils.ExportOnExitOptions,
-  );
-  return startAllEmulators(commandOptions, /*showUi=*/ true);
-}
-
-export async function stopEmulators() {
-  await stopAllEmulators();
 }
 
 export function listRunningEmulators(): EmulatorInfo[] {
@@ -169,8 +131,12 @@ export function listRunningEmulators(): EmulatorInfo[] {
 }
 
 export function getEmulatorUiUrl(): string | undefined {
-  const url: URL = EmulatorRegistry.url(Emulators.UI);
-  return url.hostname === "unknown" ? undefined : url.toString();
+  try {
+    const url: URL = EmulatorRegistry.url(Emulators.UI);
+    return url.hostname === "unknown" ? undefined : url.toString();
+  } catch {
+    return undefined;
+  }
 }
 
 export function getEmulatorDetails(

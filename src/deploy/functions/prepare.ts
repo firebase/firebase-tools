@@ -45,6 +45,9 @@ import { generateServiceIdentity } from "../../gcp/serviceusage";
 import { applyBackendHashToBackends } from "./cache/applyHash";
 import { allEndpoints, Backend } from "./backend";
 import { assertExhaustive } from "../../functional";
+import { prepareDynamicExtensions } from "../extensions/prepare";
+import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args";
+import { DeployOptions } from "..";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 
@@ -53,7 +56,7 @@ export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
  */
 export async function prepare(
   context: args.Context,
-  options: Options,
+  options: DeployOptions,
   payload: args.Payload,
 ): Promise<void> {
   const projectId = needProjectId(options);
@@ -98,6 +101,15 @@ export async function prepare(
     context.filters,
   );
 
+  // == Phase 1.5 Prepare extensions found in codebases if any
+  if (Object.values(wantBuilds).some((b) => b.extensions)) {
+    const extContext: ExtContext = {};
+    const extPayload: ExtPayload = {};
+    await prepareDynamicExtensions(extContext, options, extPayload, wantBuilds);
+    context.extensions = extContext;
+    payload.extensions = extPayload;
+  }
+
   // == Phase 2. Resolve build to backend.
   const codebaseUsesEnvs: string[] = [];
   const wantBackends: Record<string, backend.Backend> = {};
@@ -112,13 +124,14 @@ export async function prepare(
     const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
     const envs = { ...userEnvs, ...firebaseEnvs };
 
-    const { backend: wantBackend, envs: resolvedEnvs } = await build.resolveBackend(
-      wantBuild,
+    const { backend: wantBackend, envs: resolvedEnvs } = await build.resolveBackend({
+      build: wantBuild,
       firebaseConfig,
       userEnvOpt,
       userEnvs,
-      options.nonInteractive,
-    );
+      nonInteractive: options.nonInteractive,
+      isEmulator: false,
+    });
 
     let hasEnvsFromParams = false;
     wantBackend.environmentVariables = envs;
@@ -264,10 +277,15 @@ export async function prepare(
   // ===Phase 7. Finalize preparation by "fixing" all extraneous environment issues like IAM policies.
   // We limit the scope endpoints being deployed.
   await backend.checkAvailability(context, matchingBackend);
-  await ensureServiceAgentRoles(projectId, projectNumber, matchingBackend, haveBackend);
   await validate.secretsAreValid(projectId, matchingBackend);
-  await ensure.secretAccess(projectId, matchingBackend, haveBackend);
-
+  await ensureServiceAgentRoles(
+    projectId,
+    projectNumber,
+    matchingBackend,
+    haveBackend,
+    options.dryRun,
+  );
+  await ensure.secretAccess(projectId, matchingBackend, haveBackend, options.dryRun);
   /**
    * ===Phase 8 Generates the hashes for each of the functions now that secret versions have been resolved.
    * This must be called after `await validate.secretsAreValid`.

@@ -6,6 +6,7 @@ import { registerExplorer } from "./explorer";
 import { registerAdHoc } from "./ad-hoc-mutations";
 import { DataConnectService as FdcService } from "./service";
 import {
+  ConfigureSdkCodeLensProvider,
   OperationCodeLensProvider,
   SchemaCodeLensProvider,
 } from "./code-lens-provider";
@@ -28,7 +29,8 @@ import { LanguageClient } from "vscode-languageclient/node";
 import { registerTerminalTasks } from "./terminal";
 import { registerWebview } from "../webview";
 
-import { DataConnectEmulatorController } from "./emulator";
+import { DataConnectToolkit } from "./toolkit";
+import { registerFdcSdkGeneration } from "./sdk-generation";
 
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
@@ -138,10 +140,7 @@ export function registerFdc(
   emulatorController: EmulatorsController,
   telemetryLogger: TelemetryLogger,
 ): Disposable {
-  const fdcEmulatorsController = new DataConnectEmulatorController(
-    emulatorController,
-    broker,
-  );
+  const dataConnectToolkit = new DataConnectToolkit(broker);
 
   const codeActions = vscode.languages.registerCodeActionsProvider(
     [
@@ -154,12 +153,28 @@ export function registerFdc(
     },
   );
 
-  const fdcService = new FdcService(authService, emulatorController);
+  const fdcService = new FdcService(
+    authService,
+    dataConnectToolkit,
+    emulatorController,
+  );
+
+  // register codelens
   const operationCodeLensProvider = new OperationCodeLensProvider(
-    fdcEmulatorsController,
+    emulatorController,
   );
   const schemaCodeLensProvider = new SchemaCodeLensProvider(emulatorController);
+  const configureSdkCodeLensProvider = new ConfigureSdkCodeLensProvider();
+  const refreshCommand = vscode.commands.registerCommand(
+    "refreshCodelens",
+    () => {
+      operationCodeLensProvider.refresh();
+      schemaCodeLensProvider.refresh();
+      configureSdkCodeLensProvider.refresh();
+    },
+  );
 
+  // activate FDC toolkit
   // activate language client/serer
   let client: LanguageClient;
   const lsOutputChannel: vscode.OutputChannel =
@@ -197,7 +212,7 @@ export function registerFdc(
   });
 
   return Disposable.from(
-    fdcEmulatorsController,
+    dataConnectToolkit,
     codeActions,
     selectedProjectStatus,
     { dispose: sub1 },
@@ -210,18 +225,13 @@ export function registerFdc(
       }),
     },
     registerDataConnectConfigs(broker),
-    registerExecution(
-      context,
-      broker,
-      fdcService,
-      emulatorController,
-      telemetryLogger,
-    ),
+    registerExecution(context, broker, fdcService, telemetryLogger),
     registerExplorer(context, broker, fdcService),
     registerWebview({ name: "data-connect", context, broker }),
     registerAdHoc(fdcService, telemetryLogger),
     registerConnectors(context, broker, fdcService, telemetryLogger),
     registerFdcDeploy(broker, telemetryLogger),
+    registerFdcSdkGeneration(broker, telemetryLogger),
     registerTerminalTasks(broker, telemetryLogger),
     operationCodeLensProvider,
     vscode.languages.registerCodeLensProvider(
@@ -245,6 +255,11 @@ export function registerFdc(
       ],
       schemaCodeLensProvider,
     ),
+    vscode.languages.registerCodeLensProvider(
+      [{ scheme: "file", language: "yaml", pattern: "**/connector.yaml" }],
+      configureSdkCodeLensProvider,
+    ),
+    refreshCommand,
     {
       dispose: () => {
         client.stop();

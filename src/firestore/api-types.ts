@@ -160,6 +160,7 @@ export interface DatabaseResp {
 export interface RestoreDatabaseReq {
   databaseId: string;
   backup: string;
+  encryptionConfig?: EncryptionConfig;
 }
 
 export enum RecurrenceType {
@@ -171,3 +172,14 @@ export interface CmekConfig {
   kmsKeyName: string;
   activeKeyVersion?: string[];
 }
+
+type UseGoogleDefaultEncryption = { googleDefaultEncryption: Record<string, never> };
+type UseSourceEncryption = { useSourceEncryption: Record<string, never> };
+type UseCustomerManagedEncryption = { customerManagedEncryption: CustomerManagedEncryptionOptions };
+type CustomerManagedEncryptionOptions = {
+  kmsKeyName: string;
+};
+export type EncryptionConfig =
+  | UseCustomerManagedEncryption
+  | UseSourceEncryption
+  | UseGoogleDefaultEncryption;

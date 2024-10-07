@@ -1,11 +1,17 @@
 import * as spawn from "cross-spawn";
 import { logger } from "../logger";
 
-export function wrapSpawn(cmd: string, args: string[], projectDir: string): Promise<void> {
+export function wrapSpawn(
+  cmd: string,
+  args: string[],
+  projectDir: string,
+  environmentVariables?: any,
+): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const installer = spawn(cmd, args, {
       cwd: projectDir,
       stdio: "inherit",
+      env: { ...process.env, ...environmentVariables },
     });
 
     installer.on("error", (err: any) => {

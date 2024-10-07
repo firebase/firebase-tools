@@ -2,7 +2,6 @@ import * as planner from "./planner";
 import * as deploymentSummary from "./deploymentSummary";
 import * as prompt from "../../prompt";
 import * as refs from "../../extensions/refs";
-import { Options } from "../../options";
 import { getAliases, needProjectId, needProjectNumber } from "../../projectUtils";
 import { logger } from "../../logger";
 import { Context, Payload } from "./args";
@@ -14,38 +13,47 @@ import { checkSpecForSecrets } from "./secrets";
 import { displayWarningsForDeploy, outOfBandChangesWarning } from "../../extensions/warnings";
 import { detectEtagChanges } from "../../extensions/etags";
 import { checkSpecForV2Functions, ensureNecessaryV2ApisAndRoles } from "./v2FunctionHelper";
-import { acceptLatestAppDeveloperTOS } from "../../extensions/tos";
+import { acceptLatestAppDeveloperTOS, getAppDeveloperTOSStatus } from "../../extensions/tos";
+import {
+  extractExtensionsFromBuilds,
+  extensionMatchesAnyFilter,
+} from "../../extensions/runtimes/common";
+import { Build } from "../functions/build";
+import { getEndpointFilters } from "../functions/functionsDeployHelper";
+import { DeployOptions } from "..";
 
-export async function prepare(context: Context, options: Options, payload: Payload) {
-  context.extensionsStartTime = Date.now();
+// This is called by prepare and also prepareDynamicExtensions
+async function prepareHelper(
+  context: Context,
+  options: DeployOptions,
+  payload: Payload,
+  wantExtensions: planner.DeploymentInstanceSpec[],
+  haveExtensions: planner.DeploymentInstanceSpec[],
+  isDynamic: boolean,
+) {
   const projectId = needProjectId(options);
-  const projectNumber = await needProjectNumber(options);
-  const aliases = getAliases(options, projectId);
 
-  await ensureExtensionsApiEnabled(options);
-  await requirePermissions(options, ["firebaseextensions.instances.list"]);
-
-  context.have = await planner.have(projectId);
-  context.want = await planner.want({
-    projectId,
-    projectNumber,
-    aliases,
-    projectDir: options.config.projectDir,
-    extensions: options.config.get("extensions"),
-  });
+  context.want = wantExtensions;
+  context.have = haveExtensions;
 
   const etagsChanged = detectEtagChanges(options.rc, projectId, context.have);
   if (etagsChanged.length) {
-    outOfBandChangesWarning(etagsChanged);
-    if (
-      !(await prompt.confirm({
-        message: `Do you wish to continue deploying these extension instances?`,
-        default: false,
-        nonInteractive: options.nonInteractive,
-        force: options.force,
-      }))
-    ) {
-      throw new FirebaseError("Deployment cancelled");
+    // We only care about changed eTags for things we are going to deploy
+    const wantChangedIds = wantExtensions
+      .map((e) => e.instanceId)
+      .filter((id) => etagsChanged.includes(id));
+    if (wantChangedIds.length) {
+      outOfBandChangesWarning(wantChangedIds, isDynamic);
+      if (
+        !(await prompt.confirm({
+          message: `Do you wish to continue deploying these extension instances?`,
+          default: false,
+          nonInteractive: options.nonInteractive,
+          force: options.force,
+        }))
+      ) {
+        throw new FirebaseError("Deployment cancelled");
+      }
     }
   }
 
@@ -94,8 +102,13 @@ export async function prepare(context: Context, options: Options, payload: Paylo
     logger.info(deploymentSummary.configuresSummary(payload.instancesToConfigure));
   }
   if (payload.instancesToDelete.length) {
-    logger.info(deploymentSummary.deletesSummary(payload.instancesToDelete));
+    logger.info(deploymentSummary.deletesSummary(payload.instancesToDelete, isDynamic));
+    if (options.dryRun) {
+      logger.info("On your next deploy, you will be asked if you want to delete these instances.");
+      logger.info("If you deploy --force, they will be deleted.");
+    }
     if (
+      !options.dryRun &&
       !(await prompt.confirm({
         message: `Would you like to delete ${payload.instancesToDelete
           .map((i) => i.instanceId)
@@ -112,12 +125,93 @@ export async function prepare(context: Context, options: Options, payload: Paylo
   }
 
   await requirePermissions(options, permissionsNeeded);
-  await acceptLatestAppDeveloperTOS(
-    options,
+  if (options.dryRun) {
+    const appDevTos = await getAppDeveloperTOSStatus(projectId);
+    if (!appDevTos.lastAcceptedVersion) {
+      logger.info(
+        "On your next deploy, you will be asked to accept the Firebase Extensions App Developer Terms of Service",
+      );
+    }
+  } else {
+    await acceptLatestAppDeveloperTOS(
+      options,
+      projectId,
+      context.want.map((i) => i.instanceId),
+    );
+  }
+}
+
+// This is called by functions/prepare so we can deploy the extensions defined by SDKs
+export async function prepareDynamicExtensions(
+  context: Context,
+  options: DeployOptions,
+  payload: Payload,
+  builds: Record<string, Build>,
+) {
+  const filters = getEndpointFilters(options);
+  const extensions = extractExtensionsFromBuilds(builds, filters);
+  const projectId = needProjectId(options);
+  const projectNumber = await needProjectNumber(options);
+
+  await ensureExtensionsApiEnabled(options);
+  await requirePermissions(options, ["firebaseextensions.instances.list"]);
+
+  let haveExtensions = await planner.haveDynamic(projectId);
+  haveExtensions = haveExtensions.filter((e) =>
+    extensionMatchesAnyFilter(e.labels?.codebase, e.instanceId, filters),
+  );
+
+  if (Object.keys(extensions).length === 0 && haveExtensions.length === 0) {
+    // Nothing defined, and nothing to delete
+    return;
+  }
+
+  const dynamicWant = await planner.wantDynamic({
     projectId,
-    context.want.map((i) => i.instanceId),
+    projectNumber,
+    extensions,
+  });
+
+  return prepareHelper(
+    context,
+    options,
+    payload,
+    dynamicWant,
+    haveExtensions,
+    true /* isDynamic */,
   );
 }
+
+export async function prepare(context: Context, options: DeployOptions, payload: Payload) {
+  context.extensionsStartTime = Date.now();
+  const projectId = needProjectId(options);
+  const projectNumber = await needProjectNumber(options);
+  const aliases = getAliases(options, projectId);
+  const projectDir = options.config.projectDir;
+
+  await ensureExtensionsApiEnabled(options);
+  await requirePermissions(options, ["firebaseextensions.instances.list"]);
+
+  const wantExtensions = await planner.want({
+    projectId,
+    projectNumber,
+    aliases,
+    projectDir,
+    extensions: options.config.get("extensions", {}),
+  });
+
+  const haveExtensions = await planner.have(projectId);
+
+  return prepareHelper(
+    context,
+    options,
+    payload,
+    wantExtensions,
+    haveExtensions,
+    false /* isDynamic */,
+  );
+}
+
 const matchesInstanceId = (dep: planner.InstanceSpec) => (test: planner.InstanceSpec) => {
   return dep.instanceId === test.instanceId;
 };

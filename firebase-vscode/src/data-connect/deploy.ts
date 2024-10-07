@@ -7,12 +7,13 @@ import { createE2eMockable } from "../utils/test_hooks";
 import { runCommand } from "./terminal";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { DATA_CONNECT_EVENT_NAME } from "../analytics";
+import { getSettings } from "../utils/settings";
 
 function createDeployOnlyCommand(serviceConnectorMap: {
   [key: string]: string[];
 }): string {
   return (
-    "firebase deploy --only " +
+    "deploy --only " +
     Object.entries(serviceConnectorMap)
       .map(([serviceId, connectorIds]) => {
         return (
@@ -30,6 +31,8 @@ export function registerFdcDeploy(
   broker: ExtensionBrokerImpl,
   telemetryLogger: vscode.TelemetryLogger,
 ): vscode.Disposable {
+  const settings = getSettings();
+
   const deploySpy = createE2eMockable(
     async (...args: Parameters<typeof cliDeploy>) => {
       // Have the "deploy" return "void" for easier mocking (no return value when spied).
@@ -41,7 +44,7 @@ export function registerFdcDeploy(
 
   const deployAllCmd = vscode.commands.registerCommand("fdc.deploy-all", () => {
     telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.DEPLOY_ALL);
-    runCommand("firebase deploy --only dataconnect");
+    runCommand(`${settings.firebasePath} deploy --only dataconnect`);
   });
 
   const deployCmd = vscode.commands.registerCommand("fdc.deploy", async () => {
@@ -50,21 +53,23 @@ export function registerFdcDeploy(
       (c) => c.requireValue,
     );
 
-    const pickedServices = await pickServices(configs.serviceIds);
-    if (!pickedServices.length) {
+    const pickedServices = await pickServices(configs?.serviceIds ?? []);
+    if (!pickedServices?.length) {
       return;
     }
 
     const serviceConnectorMap: { [key: string]: string[] } = {};
     for (const serviceId of pickedServices) {
-      const connectorIds = configs.findById(serviceId)?.connectorIds;
-      serviceConnectorMap[serviceId] = await pickConnectors(
+      const connectorIds = configs?.findById(serviceId)?.connectorIds;
+      serviceConnectorMap[serviceId] = (await pickConnectors(
         connectorIds,
         serviceId,
-      );
+      )) ?? [];
     }
 
-    runCommand(createDeployOnlyCommand(serviceConnectorMap)); // run from terminal
+    runCommand(
+      `${settings.firebasePath} ${createDeployOnlyCommand(serviceConnectorMap)}`,
+    ); // run from terminal
   });
 
   const deployAllSub = broker.on("fdc.deploy-all", async () =>
@@ -105,7 +110,7 @@ async function pickServices(
     canPickMany: true,
   });
 
-  return picked.filter((e) => e.picked).map((service) => service.label);
+  return picked?.filter((e) => e.picked).map((service) => service.label);
 }
 
 async function pickConnectors(
@@ -125,10 +130,10 @@ async function pickConnectors(
     });
   });
 
-  const picked = await vscode.window.showQuickPick(options, {
+  const picked = await vscode.window.showQuickPick<{picked: boolean, label: string}>(options as any, {
     title: `Select connectors to deploy for: ${serviceId}`,
     canPickMany: true,
   });
 
-  return picked.filter((e) => e.picked).map((connector) => connector.label);
+  return picked?.filter(e => e.picked).map(c => c.label);
 }

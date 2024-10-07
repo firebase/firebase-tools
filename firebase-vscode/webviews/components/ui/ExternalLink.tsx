@@ -1,11 +1,22 @@
 import React from "react";
 import { VSCodeLink } from "@vscode/webview-ui-toolkit/react";
-import { broker } from "../../globals/html-broker";
+import styles from "./ExternalLink.scss";
 
-export function ExternalLink({ href, text }: { href: string; text: string }) {
+export function ExternalLink({
+  href,
+  children,
+  prefix,
+}: {
+  href: string;
+  children: string;
+  prefix?: JSX.Element;
+}) {
   return (
-    <VSCodeLink onClick={() => broker.send("openLink", { href })}>
-      {text}
+    <VSCodeLink className={styles.link} href={href}>
+      <span className={styles.linkContent}>
+        {prefix}
+        <span className={styles.linkText}>{children}</span>
+      </span>
     </VSCodeLink>
   );
 }

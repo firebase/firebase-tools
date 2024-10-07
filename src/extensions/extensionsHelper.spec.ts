@@ -836,7 +836,7 @@ describe("extensionsHelper", () => {
 
       await expect(extensionsHelper.instanceIdExists("proj", TEST_NAME)).to.be.rejectedWith(
         FirebaseError,
-        "Unexpected error when checking if instance ID exists: FirebaseError: Internal Error",
+        "Unexpected error when checking if instance ID exists: Internal Error",
       );
     });
   });

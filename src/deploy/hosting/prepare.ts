@@ -4,7 +4,7 @@ import * as config from "../../hosting/config";
 import * as deploymentTool from "../../deploymentTool";
 import * as clc from "colorette";
 import { Context } from "./context";
-import { Options } from "../../options";
+import { DeployOptions } from "../";
 import { HostingOptions } from "../../hosting/options";
 import { assertExhaustive, zipIn } from "../../functional";
 import { trackGA4 } from "../../track";
@@ -14,7 +14,7 @@ import * as backend from "../functions/backend";
 import { ensureTargeted } from "../../functions/ensureTargeted";
 import { generateSSRCodebaseId } from "../../frameworks";
 
-function handlePublicDirectoryFlag(options: HostingOptions & Options): void {
+function handlePublicDirectoryFlag(options: HostingOptions & DeployOptions): void {
   // Allow the public directory to be overridden by the --public flag
   if (options.public) {
     if (Array.isArray(options.config.get("hosting"))) {
@@ -32,7 +32,7 @@ function handlePublicDirectoryFlag(options: HostingOptions & Options): void {
  * normal boilerplate), and the only string might need to be updated with
  * addPinnedFunctionsToOnlyString.
  */
-export function hasPinnedFunctions(options: HostingOptions & Options): boolean {
+export function hasPinnedFunctions(options: HostingOptions & DeployOptions): boolean {
   handlePublicDirectoryFlag(options);
   for (const c of config.hostingConfig(options)) {
     for (const r of c.rewrites || []) {
@@ -52,7 +52,7 @@ export function hasPinnedFunctions(options: HostingOptions & Options): boolean {
  */
 export async function addPinnedFunctionsToOnlyString(
   context: Context,
-  options: HostingOptions & Options,
+  options: HostingOptions & DeployOptions,
 ): Promise<boolean> {
   if (!options.only) {
     return false;
@@ -103,7 +103,10 @@ export async function addPinnedFunctionsToOnlyString(
 /**
  *  Prepare creates versions for each Hosting site to be deployed.
  */
-export async function prepare(context: Context, options: HostingOptions & Options): Promise<void> {
+export async function prepare(
+  context: Context,
+  options: HostingOptions & DeployOptions,
+): Promise<void> {
   handlePublicDirectoryFlag(options);
 
   const configs = config.hostingConfig(options);

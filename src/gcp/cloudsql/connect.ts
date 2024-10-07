@@ -2,7 +2,8 @@ import * as pg from "pg";
 import { Connector, IpAddressTypes, AuthTypes } from "@google-cloud/cloud-sql-connector";
 
 import { requireAuth } from "../../requireAuth";
-import { needProjectId } from "../../projectUtils";
+import { needProjectId, needProjectNumber } from "../../projectUtils";
+import { dataconnectP4SADomain } from "../../api";
 import * as cloudSqlAdminClient from "./cloudsqladmin";
 import { UserType } from "./types";
 import * as utils from "../../utils";
@@ -10,6 +11,7 @@ import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { Options } from "../../options";
 import { FBToolsAuthClient } from "./fbToolsAuthClient";
+import { setupSQLPermissions, firebaseowner, firebasewriter } from "./permissions";
 
 export async function execute(
   sqlStatements: string[],
@@ -105,82 +107,119 @@ export async function execute(
   connector.close();
 }
 
-// setupIAMUser sets up the current user identity to connect to CloudSQL.
-// Steps:
-// 2. Create an IAM user for the current identity
-// 3. Connect to the DB as the temporary user and run the necessary grants
-// 4. Deletes the temporary user
-export async function setupIAMUser(
+export async function executeSqlCmdsAsIamUser(
+  options: Options,
   instanceId: string,
   databaseId: string,
-  options: Options,
-): Promise<string> {
-  // TODO: Is there a good way to short circuit this by checking if the IAM user exists and has the appropriate role first?
+  cmds: string[],
+  silent = false,
+): Promise<void> {
   const projectId = needProjectId(options);
-  // 0. Get the current identity
+  const { user: iamUser } = await getIAMUser(options);
+
+  return await execute(cmds, {
+    projectId,
+    instanceId,
+    databaseId,
+    username: iamUser,
+    silent: silent,
+  });
+}
+
+// Note this will change the password of the builtin firebasesuperuser user on every invocation.
+// The role is set to 'cloudsqlsuperuser' (not the builtin user) unless SET ROLE is explicitly
+// set in the commands.
+export async function executeSqlCmdsAsSuperUser(
+  options: Options,
+  instanceId: string,
+  databaseId: string,
+  cmds: string[],
+  silent = false,
+) {
+  const projectId = needProjectId(options);
+  // 1. Create a temporary builtin user
+  const superuser = "firebasesuperuser";
+  const temporaryPassword = utils.generateId(20);
+  await cloudSqlAdminClient.createUser(
+    projectId,
+    instanceId,
+    "BUILT_IN",
+    superuser,
+    temporaryPassword,
+  );
+
+  return await execute([`SET ROLE = cloudsqlsuperuser`, ...cmds], {
+    projectId,
+    instanceId,
+    databaseId,
+    username: superuser,
+    password: temporaryPassword,
+    silent: silent,
+  });
+}
+
+export function getDataConnectP4SA(projectNumber: string): string {
+  return `service-${projectNumber}@${dataconnectP4SADomain()}`;
+}
+
+export async function getIAMUser(options: Options): Promise<{ user: string; mode: UserType }> {
   const account = await requireAuth(options);
   if (!account) {
     throw new FirebaseError(
       "No account to set up! Run `firebase login` or set Application Default Credentials",
     );
   }
-  // 1. Create a temporary builtin user
-  const setupUser = "firebasesuperuser";
-  const temporaryPassword = utils.generateId(20);
-  await cloudSqlAdminClient.createUser(
-    projectId,
-    instanceId,
-    "BUILT_IN",
-    setupUser,
-    temporaryPassword,
-  );
 
-  // 2. Create an IAM user for the current identity
-  const { user, mode } = toDatabaseUser(account);
-  await cloudSqlAdminClient.createUser(projectId, instanceId, mode, user);
-
-  // 3. Connect to the DB as the temporary user and run the necessary grants
-  // TODO: I think we're missing something here, sometimes backend can't see the tables.
-  const grants = [
-    `do
-      $$
-      begin
-        if not exists (select FROM pg_catalog.pg_roles
-          WHERE  rolname = '${firebaseowner(databaseId)}') then
-          CREATE ROLE "${firebaseowner(databaseId)}" WITH ADMIN "${setupUser}";
-        end if;
-      end
-      $$
-      ;`,
-    `GRANT ALL PRIVILEGES ON DATABASE "${databaseId}" TO "${firebaseowner(databaseId)}"`,
-    `GRANT cloudsqlsuperuser TO "${firebaseowner(databaseId)}"`,
-    `GRANT "${firebaseowner(databaseId)}" TO "${setupUser}"`,
-    `GRANT "${firebaseowner(databaseId)}" TO "${user}"`,
-    `ALTER SCHEMA public OWNER TO "${firebaseowner(databaseId)}"`,
-    `GRANT USAGE ON SCHEMA "public" TO PUBLIC`,
-    `GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA "public" TO PUBLIC`,
-    `GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA "public" TO PUBLIC`,
-  ];
-  await execute(grants, {
-    projectId,
-    instanceId,
-    databaseId,
-    username: setupUser,
-    password: temporaryPassword,
-    silent: true,
-  });
-  return user;
+  return toDatabaseUser(account);
 }
 
-export function firebaseowner(databaseId: string) {
-  return `firebaseowner_${databaseId}_public`;
+// setupIAMUsers sets up the current user identity to connect to CloudSQL.
+// Steps:
+// 1. Create an IAM user for the current identity
+// 2. Create an IAM user for FDC P4SA
+// 3. Run setupSQLPermissions to setup the SQL database roles and permissions.
+// 4. Connect to the DB as the temporary user and run the necessary grants
+export async function setupIAMUsers(
+  instanceId: string,
+  databaseId: string,
+  options: Options,
+): Promise<string> {
+  // TODO: Is there a good way to short circuit this by checking if the IAM user exists and has the appropriate role first?
+  const projectId = needProjectId(options);
+
+  // 0. Get the current identity
+  const { user, mode } = await getIAMUser(options);
+
+  // 1. Create an IAM user for the current identity.
+  await cloudSqlAdminClient.createUser(projectId, instanceId, mode, user);
+
+  // 2. Create dataconnenct P4SA user in case it's not created.
+  const projectNumber = await needProjectNumber(options);
+  const { user: fdcP4SAUser, mode: fdcP4SAmode } = toDatabaseUser(
+    getDataConnectP4SA(projectNumber),
+  );
+  await cloudSqlAdminClient.createUser(projectId, instanceId, fdcP4SAmode, fdcP4SAUser);
+
+  // 3. Setup FDC required SQL roles and permissions.
+  await setupSQLPermissions(instanceId, databaseId, options, true);
+
+  // 4. Apply necessary grants.
+  const grants = [
+    // Grant firebaseowner role to the current IAM user.
+    `GRANT "${firebaseowner(databaseId)}" TO "${user}"`,
+    // Grant firebaswriter to the FDC P4SA user
+    `GRANT "${firebasewriter(databaseId)}" TO "${fdcP4SAUser}"`,
+  ];
+
+  await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, grants, /** silent=*/ true);
+  return user;
 }
 
 // Converts a account name to the equivalent SQL user.
 // - Postgres: https://cloud.google.com/sql/docs/postgres/iam-logins#log-in-with-automatic
 //   - For user: it's full email address.
 //   - For service account: it's email address without the .gserviceaccount.com domain suffix.
-function toDatabaseUser(account: string): { user: string; mode: UserType } {
+export function toDatabaseUser(account: string): { user: string; mode: UserType } {
   let mode: UserType = "CLOUD_IAM_USER";
   let user = account;
   if (account.endsWith(".gserviceaccount.com")) {

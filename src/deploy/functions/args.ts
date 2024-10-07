@@ -3,6 +3,7 @@ import * as gcfV2 from "../../gcp/cloudfunctionsv2";
 import * as projectConfig from "../../functions/projectConfig";
 import * as deployHelper from "./functionsDeployHelper";
 import { Runtime } from "./runtimes/supported";
+import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args";
 
 // These types should probably be in a root deploy.ts, but we can only boil the ocean one bit at a time.
 interface CodebasePayload {
@@ -26,6 +27,7 @@ export interface Source {
 // Payload holds the output of what we want to build + what we already have.
 export interface Payload {
   functions?: Record<string, CodebasePayload>; // codebase -> payload
+  extensions?: ExtPayload;
 }
 
 // Context holds cached values of what we've looked up in handling this request.
@@ -53,6 +55,9 @@ export interface Context {
 
   // Tracks metrics about codebase deployments to send to GA4
   codebaseDeployEvents?: Record<string, CodebaseDeployEvent>;
+
+  // Tracks context for extension deploy
+  extensions?: ExtContext;
 }
 
 export interface CodebaseDeployEvent {

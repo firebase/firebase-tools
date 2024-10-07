@@ -39,11 +39,9 @@ export async function load(
     sourceDirectory: resolvedDir,
     schema: {
       name: `${serviceName}/schemas/${SCHEMA_ID}`,
-      primaryDatasource: toDatasource(
-        projectId,
-        dataConnectYaml.location,
-        dataConnectYaml.schema.datasource,
-      ),
+      datasources: [
+        toDatasource(projectId, dataConnectYaml.location, dataConnectYaml.schema.datasource),
+      ],
       source: {
         files: schemaGQLs,
       },

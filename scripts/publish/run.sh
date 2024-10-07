@@ -2,7 +2,7 @@
 set -e
 
 printusage() {
-  echo "run.sh <version>"
+  echo "run.sh <version> <vscode_version>"
   echo ""
   echo "Arguments:"
   echo "  version: 'patch', 'minor', or 'major'."
@@ -19,13 +19,13 @@ elif [[ ! ($VERSION == "patch" || $VERSION == "minor" || $VERSION == "major") ]]
 fi
 
 VSCODE_VERSION=$2
+
 if [[ $VSCODE_VERSION == "" ]]; then
   VSCODE_VERSION=$VERSION
-elif [[ ! ($VSCODE_VERSION == "patch" || $VERSION == "minor" || $VERSION == "major") ]]; then
+elif [[ ! ($VSCODE_VERSION == "patch" || $VSCODE_VERSION == "minor" || $VSCODE_VERSION == "major") ]]; then
   printusage
   exit 1
 fi
-
 THIS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 cd "$THIS_DIR"

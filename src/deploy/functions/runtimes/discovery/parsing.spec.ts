@@ -109,7 +109,7 @@ describe("assertKeyTypes", () => {
       parsing.assertKeyTypes("", obj, {
         foo: "string",
       }),
-    ).to.throw(FirebaseError, /Unexpected key number/);
+    ).to.throw(FirebaseError, /Unexpected key 'number'/);
   });
 
   // Omit isn't really useful at runtime, but it allows us to

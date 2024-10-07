@@ -76,7 +76,7 @@ export function assertKeyTypes<T extends object>(
 
     if (!schema[key] || schema[key] === "omit") {
       throw new FirebaseError(
-        `Unexpected key ${fullKey}. You may need to install a newer version of the Firebase CLI.`,
+        `Unexpected key '${fullKey}'. You may need to install a newer version of the Firebase CLI.`,
       );
     }
     let schemaType = schema[key] as string | ((value: T[keyof T]) => boolean);

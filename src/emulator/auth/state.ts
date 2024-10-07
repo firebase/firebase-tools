@@ -431,6 +431,7 @@ export abstract class ProjectState {
 
   createOob(
     email: string,
+    newEmail: string | undefined,
     requestType: OobRequestType,
     generateLink: (oobCode: string) => string,
   ): OobRecord {
@@ -439,6 +440,7 @@ export abstract class ProjectState {
 
     const oob: OobRecord = {
       email,
+      newEmail,
       requestType,
       oobCode,
       oobLink,
@@ -905,6 +907,7 @@ export type OobRequestType = NonNullable<
 
 export interface OobRecord {
   email: string;
+  newEmail?: string;
   oobLink: string;
   oobCode: string;
   requestType: OobRequestType;

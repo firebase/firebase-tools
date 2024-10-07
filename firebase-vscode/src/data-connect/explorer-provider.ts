@@ -58,8 +58,8 @@ export class ExplorerTreeDataProvider
   private eleSortFn = (a: Element, b: Element) => {
     const a_field = this._field(a);
     const b_field = this._field(b);
-    const isAList = a_field.type.kind === TypeKind.OBJECT;
-    const isBList = b_field.type.kind === TypeKind.OBJECT;
+    const isAList = a_field?.type.kind === TypeKind.OBJECT;
+    const isBList = b_field?.type.kind === TypeKind.OBJECT;
     if ((isAList && isBList) || (!isAList && !isBList)) {
       return 0;
     } else if (isAList) {
@@ -76,13 +76,13 @@ export class ExplorerTreeDataProvider
     ) {
       return new vscode.TreeItem(
         element.name,
-        vscode.TreeItemCollapsibleState.Collapsed
+        vscode.TreeItemCollapsibleState.Collapsed,
       );
     }
 
     const field = this._field(element);
     if (!field) {
-      return undefined;
+      throw new Error(`Expected field ${element} to be defined but was not.`);
     }
 
     const hasChildren = this._baseType(field).kind === TypeKind.OBJECT;
@@ -91,7 +91,7 @@ export class ExplorerTreeDataProvider
       label,
       hasChildren
         ? vscode.TreeItemCollapsibleState.Collapsed
-        : vscode.TreeItemCollapsibleState.None
+        : vscode.TreeItemCollapsibleState.None,
     );
 
     treeItem.description = this._formatType(field.type);
@@ -100,8 +100,8 @@ export class ExplorerTreeDataProvider
 
   getChildren(element?: Element): Element[] {
     // if the backend did not load yet
-    if (!introspectionQuery.value) {
-      return null;
+    if (!introspectionQuery.value || !this.typeSystem) {
+      return [];
     }
     // init the tree with two elements, query and mutation
     if (!element) {
@@ -118,24 +118,26 @@ export class ExplorerTreeDataProvider
           return { name: f.name, baseType: OPERATION_TYPE.query };
         });
     } else if (element.name === OPERATION_TYPE.mutation) {
-      return this._unref(this.typeSystem.introspection.__schema.mutationType)
+      return this._unref(this.typeSystem.introspection.__schema.mutationType!)
         .fields.filter((f) => f.name !== "_firebase")
         .map((f) => {
           return { name: f.name, baseType: OPERATION_TYPE.mutation };
         });
     }
-
-    const unwrapped = this._baseType(this._field(element));
-    const type = this._unref(unwrapped);
-    if (type.kind === TypeKind.OBJECT) {
-      return type.fields
-        .map((field) => {
-          return {
-            name: `${element.name}.${field.name}`,
-            baseType: element.baseType,
-          };
-        })
-        .sort(this.eleSortFn);
+    const field = this._field(element)
+    if (field) {
+      const unwrapped = this._baseType(field);
+      const type = this._unref(unwrapped);
+      if (type.kind === TypeKind.OBJECT) {
+        return type.fields
+          .map((field) => {
+            return {
+              name: `${element.name}.${field.name}`,
+              baseType: element.baseType,
+            };
+          })
+          .sort(this.eleSortFn);
+      }
     }
     return [];
   }
@@ -154,7 +156,7 @@ export class ExplorerTreeDataProvider
   resolveTreeItem(
     item: vscode.TreeItem,
     element: Element,
-    token: CancellationToken
+    token: CancellationToken,
   ): vscode.ProviderResult<vscode.TreeItem> {
     const field = this._field(element);
     item.tooltip =
@@ -169,15 +171,15 @@ export class ExplorerTreeDataProvider
     const path = element.name.split(".");
     const typeRef =
       element.baseType === OPERATION_TYPE.query
-        ? this.typeSystem.introspection.__schema.queryType
-        : this.typeSystem.introspection.__schema.mutationType;
+        ? this.typeSystem!.introspection.__schema.queryType
+        : this.typeSystem!.introspection.__schema.mutationType;
 
     if (!path.length) {
       return undefined;
     }
     let field = undefined;
     for (let i = 0; i < path.length; i++) {
-      const baseTypeRef = i === 0 ? typeRef : this._baseType(field);
+      const baseTypeRef: any = i === 0 ? typeRef : this._baseType(field!);
 
       const type = this._unref(baseTypeRef);
       if (type.kind !== TypeKind.OBJECT) {
@@ -193,22 +195,22 @@ export class ExplorerTreeDataProvider
   }
 
   _unref<T extends IntrospectionType>(ref: IntrospectionNamedTypeRef<T>): T {
-    const type = this.typeSystem.typeForName.get(ref.name);
+    const type = this.typeSystem!.typeForName.get(ref.name);
     if (!type) {
       throw new Error(
-        `Introspection invariant violation: Ref type ${ref.name} does not exist`
+        `Introspection invariant violation: Ref type ${ref.name} does not exist`,
       );
     }
     if (ref.kind && type.kind !== ref.kind) {
       throw new Error(
-        `Introspection invariant violation: Ref kind ${ref.kind} does not match Type kind ${type.kind}`
+        `Introspection invariant violation: Ref kind ${ref.kind} does not match Type kind ${type.kind}`,
       );
     }
     return type as T;
   }
 
   _baseType(
-    field: IntrospectionField
+    field: IntrospectionField,
   ): IntrospectionNamedTypeRef<IntrospectionOutputType> {
     let unwrapped = field.type;
     while (

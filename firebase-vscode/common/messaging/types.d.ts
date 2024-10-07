@@ -1,5 +1,4 @@
 import { EmulatorInfo } from "../emulator/types";
-import { ExtensionToWebviewParamsMap, MessageParamsMap } from "./protocol";
 
 export interface Message<M> {
   command: string;
@@ -16,14 +15,8 @@ export interface MessageListeners<M> {
  * Info to display in the UI while the emulators are running
  */
 export interface RunningEmulatorInfo {
+  uiUrl: string;
   displayInfo: EmulatorInfo[];
 }
 
-export interface EmulatorUiSelections {
-  projectId: string;
-  firebaseJsonPath?: string;
-  importStateFolderPath?: string;
-  exportStateOnExit: boolean;
-  mode: "all" | "dataconnect";
-  debugLogging: boolean;
-}
+export type EmulatorsStatus = "running" | "stopped" | "starting" | "stopping";

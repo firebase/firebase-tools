@@ -127,7 +127,9 @@ export function setAccessToken(token = ""): void {
  * @returns An access token
  */
 export async function getAccessToken(): Promise<string> {
-  if (accessToken) {
+  const valid = auth.haveValidTokens(refreshToken, []);
+  const usingADC = !auth.loggedIn();
+  if (accessToken && (valid || usingADC)) {
     return accessToken;
   }
   const data = await auth.getAccessToken(refreshToken, []);
@@ -462,6 +464,16 @@ export class Client {
         this.logResponse(res, body, options);
 
         if (res.status >= 400) {
+          if (res.status === 401 && this.opts.auth) {
+            // If we get a 401, access token is expired or otherwise invalid.
+            // Throw it away and get a new one. We check for validity before using
+            // tokens, so this should not happen.
+            logger.debug(
+              "Got a 401 Unauthenticated error for a call that required authentication. Refreshing tokens.",
+            );
+            setAccessToken();
+            setAccessToken(await getAccessToken());
+          }
           if (options.retryCodes?.includes(res.status)) {
             const err = responseToError({ statusCode: res.status }, body) || undefined;
             if (operation.retry(err)) {

@@ -696,4 +696,51 @@ FOO=foo
       }).to.throw("Failed to load");
     });
   });
+
+  describe("parseStrict", () => {
+    it("should parse valid environment variables", () => {
+      const input = `
+	FOO=foo
+	BAR="bar"
+	BAZ='baz'
+	`;
+      const expected = { FOO: "foo", BAR: "bar", BAZ: "baz" };
+      expect(env.parseStrict(input)).to.deep.equal(expected);
+    });
+
+    it("should throw an error for invalid lines", () => {
+      const input = `
+	FOO=foo
+	INVALID LINE
+	BAR=bar
+	`;
+      expect(() => env.parseStrict(input)).to.throw(FirebaseError, /Invalid dotenv file/);
+    });
+
+    it("should throw an error for reserved keys", () => {
+      const input = `
+	FIREBASE_CONFIG=config
+	FOO=foo
+	`;
+      expect(() => env.parseStrict(input)).to.throw(FirebaseError, /Validation failed/);
+    });
+
+    it("should throw an error for invalid key formats", () => {
+      const input = `
+	foo=bar
+	BAR=baz
+	`;
+      expect(() => env.parseStrict(input)).to.throw(FirebaseError, /Validation failed/);
+    });
+
+    it("should handle escape sequences correctly", () => {
+      const input = `
+	FOO="foo\\nbar"
+	BAR="bar\\tfoo"
+	BAZ="baz\\rfoo"
+	`;
+      const expected = { FOO: "foo\nbar", BAR: "bar\tfoo", BAZ: "baz\rfoo" };
+      expect(env.parseStrict(input)).to.deep.equal(expected);
+    });
+  });
 });

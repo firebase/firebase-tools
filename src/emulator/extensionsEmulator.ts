@@ -19,8 +19,11 @@ import { checkForUnemulatedTriggerTypes, getUnemulatedAPIs } from "./extensions/
 import { EmulatableBackend } from "./functionsEmulator";
 import { EmulatorRegistry } from "./registry";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
+import { Build } from "../deploy/functions/build";
+import { extractExtensionsFromBuilds } from "../extensions/runtimes/common";
 
 export interface ExtensionEmulatorArgs {
+  options: Options;
   projectId: string;
   projectNumber: string;
   aliases?: string[];
@@ -30,7 +33,10 @@ export interface ExtensionEmulatorArgs {
 
 export class ExtensionsEmulator implements EmulatorInstance {
   private want: planner.DeploymentInstanceSpec[] = [];
+  private wantDynamic: Record<string, planner.DeploymentInstanceSpec[]> = {};
   private backends: EmulatableBackend[] = [];
+  private staticBackends: EmulatableBackend[] = [];
+  private dynamicBackends: Record<string, EmulatableBackend[]> = {};
   private args: ExtensionEmulatorArgs;
   private logger = EmulatorLogger.forEmulator(Emulators.EXTENSIONS);
 
@@ -204,14 +210,49 @@ export class ExtensionsEmulator implements EmulatorInstance {
    *  @return A list of emulatableBackends, one for each extension instance to be emulated
    */
   public async getExtensionBackends(): Promise<EmulatableBackend[]> {
+    this.backends = await this.getStaticExtensionBackends();
+    for (const backends of Object.values(this.dynamicBackends)) {
+      this.backends.push(...backends);
+    }
+    return this.backends;
+  }
+
+  async getStaticExtensionBackends(): Promise<EmulatableBackend[]> {
     await this.readManifest();
     await this.checkAndWarnAPIs(this.want);
-    this.backends = await Promise.all(
+    this.staticBackends = await Promise.all(
       this.want.map((i: planner.DeploymentInstanceSpec) => {
         return this.toEmulatableBackend(i);
       }),
     );
-    return this.backends;
+    return this.staticBackends;
+  }
+
+  public getDynamicExtensionBackends(): EmulatableBackend[] {
+    const dynamicBackends: EmulatableBackend[] = [];
+    for (const backends of Object.values(this.dynamicBackends)) {
+      dynamicBackends.push(...backends);
+    }
+
+    return dynamicBackends;
+  }
+
+  public async addDynamicExtensions(codebase: string, build: Build): Promise<void> {
+    const extensions = extractExtensionsFromBuilds({ build });
+    this.wantDynamic[codebase] = await planner.wantDynamic({
+      projectId: this.args.projectId,
+      projectNumber: this.args.projectNumber,
+      extensions,
+      emulatorMode: true,
+    });
+    await this.checkAndWarnAPIs(this.wantDynamic[codebase]);
+    this.dynamicBackends[codebase] = await Promise.all(
+      this.wantDynamic[codebase].map((i: planner.DeploymentInstanceSpec) => {
+        return this.toEmulatableBackend(i);
+      }),
+    );
+    // Make sure the new entries are in this.backends
+    await this.getExtensionBackends();
   }
 
   /**
@@ -317,13 +358,10 @@ export class ExtensionsEmulator implements EmulatorInstance {
    * @param backends a list of backends to filter
    * @return a list of backends that include only emulated triggers.
    */
-  public filterUnemulatedTriggers(
-    options: Options,
-    backends: EmulatableBackend[],
-  ): EmulatableBackend[] {
+  public filterUnemulatedTriggers(backends: EmulatableBackend[]): EmulatableBackend[] {
     let foundUnemulatedTrigger = false;
     const filteredBackends = backends.filter((backend) => {
-      const unemulatedServices = checkForUnemulatedTriggerTypes(backend, options);
+      const unemulatedServices = checkForUnemulatedTriggerTypes(backend, this.args.options);
       if (unemulatedServices.length) {
         foundUnemulatedTrigger = true;
         const msg = ` ignored becuase it includes ${unemulatedServices.join(
@@ -354,8 +392,8 @@ export class ExtensionsEmulator implements EmulatorInstance {
     return clc.underline(clc.bold(uiUrl.toString()));
   }
 
-  public extensionsInfoTable(options: Options): string {
-    const filtedBackends = this.filterUnemulatedTriggers(options, this.backends);
+  public extensionsInfoTable(): string {
+    const filtedBackends = this.filterUnemulatedTriggers(this.backends);
     const uiRunning = EmulatorRegistry.isRunning(Emulators.UI);
     const tableHead = ["Extension Instance Name", "Extension Ref"];
     if (uiRunning) {
