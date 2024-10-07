@@ -138,8 +138,6 @@ function mockRequiredInfo(info: Partial<init.RequiredInfo> = {}): init.RequiredI
     shouldProvisionCSQL: false,
     connectors: [],
     schemaGql: [],
-    // connectors: [init.defaultConnector],
-    // schemaGql: [init.defaultSchema],
     ...info,
   };
 }
