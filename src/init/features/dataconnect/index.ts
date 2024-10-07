@@ -5,7 +5,7 @@ import { confirm, promptOnce } from "../../../prompt";
 import { Config } from "../../../config";
 import { Setup } from "../..";
 import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql";
-import { checkForFreeTrialInstance } from "../../../dataconnect/freeTrial";
+import { checkFreeTrialInstanceUsed } from "../../../dataconnect/freeTrial";
 import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
 import { ensureApis, ensureSparkApis } from "../../../dataconnect/ensureApis";
 import * as experiments from "../../../experiments";
@@ -70,20 +70,12 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   await actuate(setup, config, info);
 
   const cwdPlatformGuess = await getPlatformFromFolder(process.cwd());
-  if (cwdPlatformGuess !== Platform.UNDETERMINED) {
+  if (cwdPlatformGuess !== Platform.NONE) {
     await sdk.doSetup(setup, config);
   } else {
-    const promptForSDKGeneration = await confirm({
-      message: `Would you like to configure generated SDKs now?`,
-      default: false,
-    });
-    if (promptForSDKGeneration) {
-      await sdk.doSetup(setup, config);
-    } else {
-      logBullet(
-        `If you'd like to generate an SDK for your new connector later, run ${clc.bold("firebase init dataconnect:sdk")}`,
-      );
-    }
+    logBullet(
+      `If you'd like to add the generated SDK to your app your later, run ${clc.bold("firebase init dataconnect:sdk")}`,
+    );
   }
 
   logger.info("");
@@ -322,14 +314,17 @@ async function checkExistingInstances(
   if (info.cloudSqlInstanceId === "") {
     const instances = await cloudsql.listInstances(setup.projectId);
     let choices = instances.map((i) => {
-      return { name: i.name, value: i.name, location: i.region };
+      let display = `${i.name} (${i.region})`;
+      if (i.settings.userLabels?.["firebase-data-connect"] === "ft") {
+        display += " (no cost trial)";
+      }
+      return { name: display, value: i.name, location: i.region };
     });
     // If we've already chosen a region (ie service already exists), only list instances from that region.
     choices = choices.filter((c) => info.locationId === "" || info.locationId === c.location);
     if (choices.length) {
-      const freeTrialInstanceId = await checkForFreeTrialInstance(setup.projectId);
-      if (!freeTrialInstanceId) {
-        choices.push({ name: "Create a new instance", value: "", location: "" });
+      if (!(await checkFreeTrialInstanceUsed(setup.projectId))) {
+        choices.push({ name: "Create a new free trial instance", value: "", location: "" });
       }
       info.cloudSqlInstanceId = await promptOnce({
         message: `Which CloudSQL instance would you like to use?`,
