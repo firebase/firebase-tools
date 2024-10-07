@@ -87,6 +87,12 @@ let choices: {
     checked: false,
     hidden: true,
   },
+  {
+    value: "apphosting",
+    name: "App Hosting: Configure an apphosting.yaml file for App Hosting",
+    checked: false,
+    hidden: false,
+  },
 ];
 
 if (isEnabled("genkit")) {
