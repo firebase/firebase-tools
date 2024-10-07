@@ -314,7 +314,6 @@ async function checkExistingInstances(
           });
         }
       }
-      console.error(info.schemaGql);
     } else {
       info = await promptForService(info);
     }
