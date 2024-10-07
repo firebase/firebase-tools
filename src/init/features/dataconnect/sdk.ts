@@ -35,7 +35,7 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   const sdkInfo = await askQuestions(setup, config);
   await actuate(sdkInfo);
   logSuccess(
-    `If you'd like to add more generated SDKs to your app your later, run ${clc.bold("firebase init dataconnect:sdk")}`,
+    `If you'd like to add more generated SDKs to your app your later, run ${clc.bold("firebase init dataconnect:sdk")} again`,
   );
 }
 

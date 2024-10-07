@@ -70,6 +70,8 @@ const defaultConnector = {
   ],
 };
 
+const defaultSchema = { path: "schema.gql", content: SCHEMA_TEMPLATE };
+
 // doSetup is split into 2 phases - ask questions and then actuate files and API calls based on those answers.
 export async function doSetup(setup: Setup, config: Config): Promise<void> {
   const info = await askQuestions(setup);
@@ -83,8 +85,6 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
       `If you'd like to add the generated SDK to your app your later, run ${clc.bold("firebase init dataconnect:sdk")}`,
     );
   }
-
-  logger.info("");
 }
 
 // askQuestions prompts the user about the Data Connect service they want to init. Any prompting
@@ -98,7 +98,7 @@ async function askQuestions(setup: Setup): Promise<RequiredInfo> {
     cloudSqlDatabase: "",
     isNewDatabase: false,
     connectors: [defaultConnector],
-    schemaGql: [],
+    schemaGql: [defaultSchema],
     shouldProvisionCSQL: false,
   };
   const isBillingEnabled = setup.projectId ? await checkBillingEnabled(setup.projectId) : false;
@@ -185,8 +185,6 @@ async function writeFiles(config: Config, info: RequiredInfo) {
     for (const f of info.schemaGql) {
       await config.askWriteProjectFile(join(dir, "schema", f.path), f.content);
     }
-  } else {
-    await config.askWriteProjectFile(join(dir, "schema", "schema.gql"), SCHEMA_TEMPLATE);
   }
   for (const c of info.connectors) {
     await writeConnectorFiles(config, c);
@@ -316,6 +314,7 @@ async function checkExistingInstances(
           });
         }
       }
+      console.error(info.schemaGql);
     } else {
       info = await promptForService(info);
     }
