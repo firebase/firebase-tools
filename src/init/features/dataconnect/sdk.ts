@@ -84,7 +84,7 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
       { name: "iOS (Swift)", value: Platform.IOS },
       { name: "Web (JavaScript)", value: Platform.WEB },
       { name: "Android (Kotlin)", value: Platform.ANDROID },
-      { name: "Flutter (Dart)", value: Platform.DART },
+      { name: "Flutter (Dart)", value: Platform.FLUTTER },
     ];
     targetPlatform = await promptOnce({
       message: "Which platform do you want to set up a generated SDK for?",
@@ -156,11 +156,11 @@ export function generateSdkYaml(
     connectorYaml.generate.javascriptSdk = javascriptSdk;
   }
 
-  if (targetPlatform === Platform.DART) {
+  if (targetPlatform === Platform.FLUTTER) {
     const dartSdk: DartSDK = {
       outputDir: path.relative(
         connectorDir,
-        path.join(appDir, `dataconnect-generated/dart/${connectorYaml.connectorId}`),
+        path.join(appDir, `dataconnect-generated/dart/${snakeCase(connectorYaml.connectorId)}`),
       ),
       package: connectorYaml.connectorId,
     };

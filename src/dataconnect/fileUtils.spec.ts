@@ -94,7 +94,7 @@ describe("getPlatformFromFolder", () => {
         file1: "contents",
         "pubspec.yaml": "my deps",
       },
-      output: Platform.DART,
+      output: Platform.FLUTTER,
     },
     {
       desc: "Dart identifier 2",
@@ -102,7 +102,7 @@ describe("getPlatformFromFolder", () => {
       folderItems: {
         "pubspec.lock": "my deps",
       },
-      output: Platform.DART,
+      output: Platform.FLUTTER,
     },
     {
       desc: "Dart identifier with experiment disabled",
@@ -326,7 +326,7 @@ describe("generateSdkYaml", () => {
     }
   });
 
-  describe("Dart platform should add Dart SDK Generation", () => {
+  describe("Flutter platform should add Dart SDK Generation", () => {
     const cases: {
       desc: string;
       appDir: string;
@@ -336,7 +336,7 @@ describe("generateSdkYaml", () => {
         desc: "basic",
         appDir: appFolderBase,
         output: {
-          outputDir: "../dataconnect-generated/dart/test-connector",
+          outputDir: "../dataconnect-generated/dart/test_connector",
           package: "test-connector",
         },
       },
@@ -344,7 +344,7 @@ describe("generateSdkYaml", () => {
         desc: "below connector",
         appDir: appFolderBelowConnector,
         output: {
-          outputDir: "belowConnector/dataconnect-generated/dart/test-connector",
+          outputDir: "belowConnector/dataconnect-generated/dart/test_connector",
           package: "test-connector",
         },
       },
@@ -352,7 +352,7 @@ describe("generateSdkYaml", () => {
         desc: "outside",
         appDir: appFolderOutside,
         output: {
-          outputDir: "../../outside/dataconnect-generated/dart/test-connector",
+          outputDir: "../../outside/dataconnect-generated/dart/test_connector",
           package: "test-connector",
         },
       },
@@ -360,7 +360,7 @@ describe("generateSdkYaml", () => {
     for (const c of cases) {
       it(c.desc, () => {
         const modifiedYaml = generateSdkYaml(
-          Platform.DART,
+          Platform.FLUTTER,
           sampleConnectorYaml,
           connectorYamlFolder,
           c.appDir,

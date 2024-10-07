@@ -143,7 +143,7 @@ export async function getPlatformFromFolder(dirPath: string) {
   } else if (hasIOS && !hasWeb && !hasAndroid && !hasDart) {
     return Platform.IOS;
   } else if (hasDart && !hasWeb && !hasIOS && !hasAndroid) {
-    return Platform.DART;
+    return Platform.FLUTTER;
   }
   // At this point, its not clear which platform the app directory is
   // because we found indicators for multiple platforms.
