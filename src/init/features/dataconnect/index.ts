@@ -49,6 +49,12 @@ export interface RequiredInfo {
   shouldProvisionCSQL: boolean;
 }
 
+const emptyConnector = {
+  id: "default",
+  path: "./connector",
+  files: [],
+};
+
 const defaultConnector = {
   id: "default",
   path: "./connector",
@@ -110,7 +116,9 @@ async function askQuestions(setup: Setup): Promise<RequiredInfo> {
     isBillingEnabled && requiredConfigUnset
       ? await confirm({
           message: `Would you like to configure your backend resources now?`,
-          default: false,
+          // For Blaze Projects, configure Cloud SQL by default.
+          // TODO: For Spark projects, allow them to configure Cloud SQL but deploy as unlinked Postgres.
+          default: true,
         })
       : false;
   if (shouldConfigureBackend) {
@@ -278,6 +286,9 @@ async function checkExistingInstances(
       const serviceName = parseServiceName(choice.service.name);
       info.serviceId = serviceName.serviceId;
       info.locationId = serviceName.location;
+      // If the existing service has no schema, don't override any gql files.
+      info.schemaGql = [];
+      info.connectors = [emptyConnector];
       if (choice.schema) {
         const primaryDatasource = choice.schema.datasources.find((d) => d.postgresql);
         if (primaryDatasource?.postgresql?.cloudSql.instance) {
