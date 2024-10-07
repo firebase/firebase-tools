@@ -102,59 +102,35 @@ export class Notifications {
     extensionId: string;
     message: string;
   }): Promise<void> {
-    let foundNotification;
-    let tries = 0;
+    let installed: vscode.Extension<any> | undefined;
+
+    console.log(`Installing extension ${extensionId}`);
+    let foundNotification: WebdriverIO.Element | undefined;
 
     while (!foundNotification) {
       try {
         let notifications = await browser.$$(
           ".monaco-workbench .notification-list-item",
         );
-        let containsGraphQL = notifications.some(async (notification) =>
-          (await notification.getText()).includes(message),
-        );
 
         await browser.waitUntil(
           async () => {
-            console.log("No notifications found, retrying...");
-
             notifications = await browser.$$(
               ".monaco-workbench .notification-list-item",
             );
-            containsGraphQL = notifications.some(async (notification) =>
+
+            foundNotification = await notifications.find(async (notification) =>
               (await notification.getText()).includes(message),
             );
-            return notifications.length > 0 && containsGraphQL;
+
+            return foundNotification;
           },
           {
-            timeout: 120000,
+            timeout: 10000,
             timeoutMsg: "No notifications found",
           },
         );
-
-        // Loop through notifications to find the correct one
-        for (let notification of notifications) {
-          await notification.waitForDisplayed({ timeout: 1000 });
-          const messageText = await notification.getText();
-          if (messageText.includes(message)) {
-            console.log(`Found notification after ${tries} tries`);
-            foundNotification = notification;
-            break;
-          }
-        }
-
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        tries++;
-
-        // Timeout if notification is not found after 3 seconds.
-        if (tries > 3) {
-          console.warn(
-            `Notification with message "${message}" not found after ${tries} tries`,
-          );
-          return;
-        }
       } catch (e) {
-        console.warn(e);
         return;
       }
     }
@@ -165,8 +141,6 @@ export class Notifications {
     await installButton.click();
 
     console.log(`Installing extension ${extensionId}`);
-
-    let installed;
 
     // Wait for the extension to be installed
     while (!installed) {

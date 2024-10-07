@@ -119,7 +119,7 @@ jobs:
         if: failure()
         with:
           name: screenshots
-          path: test/screenshots
+          path: firebase-vscode/src/test
 
       - uses: codecov/codecov-action@v3
         if: matrix.node-version == '20'
