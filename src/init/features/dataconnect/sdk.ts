@@ -4,7 +4,7 @@ import * as clc from "colorette";
 import * as path from "path";
 
 import { dirExistsSync } from "../../../fsutils";
-import { confirm, promptForDirectory, promptOnce } from "../../../prompt";
+import { promptForDirectory, promptOnce } from "../../../prompt";
 import { readFirebaseJson, getPlatformFromFolder } from "../../../dataconnect/fileUtils";
 import { Config } from "../../../config";
 import { Setup } from "../..";
@@ -104,9 +104,9 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
   const newConnectorYaml = generateSdkYaml(
     targetPlatform,
     connectorYaml,
-        connectorInfo.directory,
+    connectorInfo.directory,
     appDir,
-      );
+  );
 
   // TODO: Prompt user about adding generated paths to .gitignore
   const connectorYamlContents = yaml.stringify(newConnectorYaml);
@@ -178,15 +178,15 @@ export function generateSdkYaml(
   return connectorYaml;
 }
 
-export async function actuate(sdkInfo: SDKInfo, projectId?: string) {
+export async function actuate(sdkInfo: SDKInfo) {
   const connectorYamlPath = `${sdkInfo.connectorInfo.directory}/connector.yaml`;
   fs.writeFileSync(connectorYamlPath, sdkInfo.connectorYamlContents, "utf8");
   logBullet(`Wrote new config to ${connectorYamlPath}`);
-    await DataConnectEmulator.generate({
-      configDir: sdkInfo.connectorInfo.directory,
-      connectorId: sdkInfo.connectorInfo.connectorYaml.connectorId,
-    });
-    logBullet(`Generated SDK code for ${sdkInfo.connectorInfo.connectorYaml.connectorId}`);
+  await DataConnectEmulator.generate({
+    configDir: sdkInfo.connectorInfo.directory,
+    connectorId: sdkInfo.connectorInfo.connectorYaml.connectorId,
+  });
+  logBullet(`Generated SDK code for ${sdkInfo.connectorInfo.connectorYaml.connectorId}`);
   if (sdkInfo.connectorInfo.connectorYaml.generate?.swiftSdk && sdkInfo.displayIOSWarning) {
     logBullet(
       clc.bold(
