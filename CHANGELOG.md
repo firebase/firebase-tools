@@ -1,0 +1,1 @@
+- Fix issue in IDX where using the CLI from the terminal requires calling login --reauth
