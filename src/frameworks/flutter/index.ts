@@ -1,8 +1,6 @@
 import { sync as spawnSync } from "cross-spawn";
-import { copy, pathExists } from "fs-extra";
+import { copy } from "fs-extra";
 import { join } from "path";
-import * as yaml from "yaml";
-import { readFile } from "fs/promises";
 
 import { BuildResult, Discovery, FrameworkType, SupportLevel } from "../interfaces";
 import { FirebaseError } from "../../error";
@@ -14,10 +12,7 @@ export const type = FrameworkType.Framework;
 export const support = SupportLevel.Experimental;
 
 export async function discover(dir: string): Promise<Discovery | undefined> {
-  if (!(await pathExists(join(dir, "pubspec.yaml")))) return;
-  if (!(await pathExists(join(dir, "web")))) return;
-  const pubSpecBuffer = await readFile(join(dir, "pubspec.yaml"));
-  const pubSpec = yaml.parse(pubSpecBuffer.toString());
+  const pubSpec = await getPubSpec(dir);
   const usingFlutter = pubSpec.dependencies?.flutter;
   if (!usingFlutter) return;
   return { mayWantBackend: false };

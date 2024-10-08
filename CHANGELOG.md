@@ -1,1 +1,2 @@
 - Added App Hosting as an option for firebase init. (#7803)
+- Parsing pubspec.yaml to detect dependencies that might require the --no-tree-shake-icons flag in order to build. (#7724)
