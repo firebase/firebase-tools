@@ -1,1 +1,2 @@
 - Fix issue in IDX where using the CLI from the terminal requires calling login --reauth
+- Added App Hosting as an option for firebase init. (#7803)
