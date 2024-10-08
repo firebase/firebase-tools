@@ -51,12 +51,14 @@ export const config: WebdriverIO.Config = {
     child_process.execSync(
       `git restore --source=HEAD -- ./src/test/test_projects`,
     );
-
-    const screenshotDir = path.join(__dirname, "screenshots");
-    fs.mkdirSync(screenshotDir, { recursive: true });
-    await browser.saveScreenshot(
-      path.join(screenshotDir, `${test.parent} - ${test.title}.png`),
-    );
+    // Only take a screenshot if the test failed
+    if (test.error !== undefined) {
+      const screenshotDir = path.join(__dirname, "screenshots");
+      fs.mkdirSync(screenshotDir, { recursive: true });
+      await browser.saveScreenshot(
+        path.join(screenshotDir, `${test.parent} - ${test.title}.png`),
+      );
+    }
   },
 
   services: ["vscode"],
