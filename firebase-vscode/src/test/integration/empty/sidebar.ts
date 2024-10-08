@@ -7,9 +7,9 @@ firebaseSuite("Supports opening empty projects", async function () {
     const workbench = await browser.getWorkbench();
 
     const sidebar = new FirebaseSidebar(workbench);
-    await sidebar.openExtensionSidebar();
-
     const commands = new FirebaseCommands();
+
+    await sidebar.openExtensionSidebar();
     await commands.waitForUser();
 
     await sidebar.runInStudioContext(async (firebase) => {
