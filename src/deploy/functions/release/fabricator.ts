@@ -233,7 +233,7 @@ export class Fabricator {
           err.op == "delete schedule" && 
           (err.original as FirebaseError).message == "HTTP Error: 404, Job not found."
         ) {
-          logger.warn(`Trigger for ${endpoint.id} not found. Continuing to delete function.`);
+          logger.warn(`Cloud Scheduler job for ${endpoint.id} not found. It may have been deleted out of band. Continuing to delete function.`);
       }
       else if (
           err instanceof reporter.DeploymentError && 
