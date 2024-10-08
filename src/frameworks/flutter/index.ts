@@ -1,5 +1,5 @@
 import { sync as spawnSync } from "cross-spawn";
-import { copy } from "fs-extra";
+import { copy, pathExists } from "fs-extra";
 import { join } from "path";
 
 import { BuildResult, Discovery, FrameworkType, SupportLevel } from "../interfaces";
@@ -12,6 +12,8 @@ export const type = FrameworkType.Framework;
 export const support = SupportLevel.Experimental;
 
 export async function discover(dir: string): Promise<Discovery | undefined> {
+  if (!(await pathExists(join(dir, "pubspec.yaml")))) return;
+  if (!(await pathExists(join(dir, "web")))) return;
   const pubSpec = await getPubSpec(dir);
   const usingFlutter = pubSpec.dependencies?.flutter;
   if (!usingFlutter) return;
