@@ -35,15 +35,21 @@ describe("init dataconnect", () => {
       expectCSQLProvisioning: boolean;
     }[] = [
       {
-        desc: "should default to dataconnect directory",
+        desc: "empty project should generate template",
         requiredInfo: mockRequiredInfo(),
         config: mockConfig(),
         expectedSource: "dataconnect",
-        expectedFiles: ["dataconnect/dataconnect.yaml"],
+        expectedFiles: [
+          "dataconnect/dataconnect.yaml",
+          "dataconnect/schema/schema.gql",
+          "dataconnect/connector/connector.yaml",
+          "dataconnect/connector/queries.gql",
+          "dataconnect/connector/mutations.gql",
+        ],
         expectCSQLProvisioning: false,
       },
       {
-        desc: "should use existing directory if there is one in firebase.json",
+        desc: "exiting project should use existing directory",
         requiredInfo: mockRequiredInfo(),
         config: mockConfig({ dataconnect: { source: "not-dataconnect" } }),
         expectedSource: "not-dataconnect",
@@ -97,7 +103,13 @@ describe("init dataconnect", () => {
         }),
         config: mockConfig({}),
         expectedSource: "dataconnect",
-        expectedFiles: ["dataconnect/dataconnect.yaml"],
+        expectedFiles: [
+          "dataconnect/dataconnect.yaml",
+          "dataconnect/schema/schema.gql",
+          "dataconnect/connector/connector.yaml",
+          "dataconnect/connector/queries.gql",
+          "dataconnect/connector/mutations.gql",
+        ],
         expectCSQLProvisioning: true,
       },
     ];
