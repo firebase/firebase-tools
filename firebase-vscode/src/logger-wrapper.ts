@@ -47,8 +47,8 @@ export function logSetup() {
     // in the entire firebase.ts file
     const rootFolders = getRootFolders();
     // Default to a central path, but write files to a local path if we're in a Firebase directory.
-    let filePath = "~/.cache/firebase/vscode/vsce-debug.log";
-    if (fs.existsSync(path.join(rootFolders[0], "firebase.json")) { 
+    let filePath = path.join("~", ".cache", "firebase", "logs", "vsce-debug.log");
+    if (fs.existsSync(path.join(rootFolders[0], "firebase.json"))) { 
       filePath = path.join(rootFolders[0], ".firebase", "logs", "vsce-debug.log");
     }
     pluginLogger.info("Logging to path", filePath);
