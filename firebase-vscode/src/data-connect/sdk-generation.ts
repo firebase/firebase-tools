@@ -6,15 +6,12 @@ import { dataConnectConfigs, ResolvedConnectorYaml } from "./config";
 import { runCommand, setTerminalEnvVars } from "./terminal";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { DATA_CONNECT_EVENT_NAME } from "../analytics";
-import {
-  getPlatformFromFolder,
-  generateSdkYaml,
-} from "../../../src/dataconnect/fileUtils";
+import { getPlatformFromFolder } from "../../../src/dataconnect/fileUtils";
 import { ConnectorYaml, Platform } from "../../../src/dataconnect/types";
 import * as yaml from "yaml";
 import * as fs from "fs-extra";
 import { getSettings } from "../utils/settings";
-import { FDC_APP_FOLDER } from "../../../src/init/features/dataconnect/sdk";
+import { FDC_APP_FOLDER, generateSdkYaml } from "../../../src/init/features/dataconnect/sdk";
 
 export function registerFdcSdkGeneration(
   broker: ExtensionBrokerImpl,
@@ -142,7 +139,7 @@ export function registerFdcSdkGeneration(
   ) {
     const platform = await getPlatformFromFolder(appFolder);
     // if app platform undetermined, run init command
-    if (platform === Platform.UNDETERMINED) {
+    if (platform === Platform.NONE || platform === Platform.MULTIPLE) {
       vscode.window.showErrorMessage(
         "Could not determine platform for specified app folder. Configuring from command line.",
       );

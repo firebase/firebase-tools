@@ -61,11 +61,20 @@ export interface PublisherProfile {
   iconUri?: string;
 }
 
+const extensionInstanceState = [
+  "STATE_UNSPECIFIED",
+  "DEPLOYING",
+  "UNINSTALLING",
+  "ACTIVE",
+  "ERRORED",
+  "PAUSED",
+] as const;
+export type ExtensionInstanceState = (typeof extensionInstanceState)[number];
 export interface ExtensionInstance {
   name: string;
   createTime: string;
   updateTime: string;
-  state: "STATE_UNSPECIFIED" | "DEPLOYING" | "UNINSTALLING" | "ACTIVE" | "ERRORED" | "PAUSED";
+  state: ExtensionInstanceState;
   config: ExtensionConfig;
   serviceAccountEmail: string;
   errorStatus?: string;
@@ -76,6 +85,15 @@ export interface ExtensionInstance {
   extensionVersion?: string;
   labels?: Record<string, string>;
 }
+
+export const isExtensionInstance = (value: unknown): value is ExtensionInstance => {
+  if (!isObject(value) || typeof value.name !== "string") {
+    return false;
+  }
+
+  // TODO: complete validation for any fields we use
+  return true;
+};
 
 export interface ExtensionConfig {
   name: string;

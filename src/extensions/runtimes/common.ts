@@ -3,7 +3,7 @@ import * as path from "path";
 import { confirm } from "../../prompt";
 import * as fsutils from "../../fsutils";
 import { logLabeledBullet } from "../../utils";
-import { FirebaseError } from "../../error";
+import { FirebaseError, getErrMsg } from "../../error";
 import { Options } from "../../options";
 import {
   DEFAULT_CODEBASE,
@@ -12,7 +12,7 @@ import {
 } from "../../functions/projectConfig";
 import { Build, DynamicExtension } from "../../deploy/functions/build";
 import { EndpointFilter as Filter } from "../../deploy/functions/functionsDeployHelper";
-import { ExtensionSpec, isObject } from "../types";
+import { ExtensionSpec } from "../types";
 import * as functionRuntimes from "../../deploy/functions/runtimes";
 import * as nodeRuntime from "./node";
 
@@ -28,20 +28,6 @@ export function fixDarkBlueText(txt: string): string {
   const DARK_BLUE = "\u001b[34m";
   const BRIGHT_CYAN = "\u001b[36;1m";
   return txt.replaceAll(DARK_BLUE, BRIGHT_CYAN);
-}
-
-/**
- * Gets the error message from the err or returns the defaultValue.
- * @param err The error caught
- * @param defaultMsg A default msg to return if the error doesn't have one.
- * @returns An error message
- */
-export function getErrorMessage(err: unknown, defaultMsg: string): string {
-  if (isObject(err) && err.message && typeof err.message === "string") {
-    return err.message;
-  } else {
-    return defaultMsg;
-  }
 }
 
 /**
@@ -74,9 +60,10 @@ export function extractExtensionsFromBuilds(
 
 /**
  * Checks if the extension matches any filter
- * @param extension The extension to check
+ * @param codebase The codebase to check
+ * @param extensionId The extension to check
  * @param filters The filters to check against
- * @returns true if the extension matches any of the filters.
+ * @return true if the extension matches any of the filters.
  */
 export function extensionMatchesAnyFilter(
   codebase: string | undefined,
@@ -91,9 +78,10 @@ export function extensionMatchesAnyFilter(
 
 /**
  * Checks if the extension matches a filter
- * @param extension The extension to check
+ * @param codebase The codebase to check
+ * @param extensionId The extension to check
  * @param filter The fitler to check against
- * @returns true if the extension matches the filter.
+ * @return true if the extension matches the filter.
  */
 function extensionMatchesFilter(
   codebase: string | undefined,
@@ -119,11 +107,22 @@ function extensionMatchesFilter(
   return extensionId === filterId;
 }
 
-export function isTypescriptCodebase(codebaseDir: string) {
+/**
+ * Looks for the tsconfig.json file
+ * @param codebaseDir The codebase directory to check
+ * @return true iff the codebase directory is typescript.
+ */
+export function isTypescriptCodebase(codebaseDir: string): boolean {
   return fsutils.fileExistsSync(path.join(codebaseDir, "tsconfig.json"));
 }
 
-export async function writeFile(filePath: string, data: string, options: any) {
+/**
+ * Writes a file containing data. Asks permission based on options
+ * @param filePath Where the create a file
+ * @param data What to put into the file
+ * @param options options for force or nonInteractive to skip permission requests
+ */
+export async function writeFile(filePath: string, data: string, options: Options): Promise<void> {
   const shortFilePath = filePath.replace(process.cwd(), ".");
   if (fsutils.fileExistsSync(filePath)) {
     if (
@@ -138,8 +137,8 @@ export async function writeFile(filePath: string, data: string, options: any) {
       try {
         await fs.promises.writeFile(filePath, data, { flag: "w" });
         logLabeledBullet("extensions", `successfully wrote ${shortFilePath}`);
-      } catch (err) {
-        throw new FirebaseError(`Failed to write ${shortFilePath}:\n    ${err}`);
+      } catch (err: unknown) {
+        throw new FirebaseError(`Failed to write ${shortFilePath}:\n    ${getErrMsg(err)}`);
       }
     } else {
       // don't overwrite
@@ -153,16 +152,23 @@ export async function writeFile(filePath: string, data: string, options: any) {
       try {
         await fs.promises.writeFile(`${filePath}`, data, { flag: "w" });
         logLabeledBullet("extensions", `successfully created ${shortFilePath}`);
-      } catch (err) {
-        throw new FirebaseError(`Failed to create ${shortFilePath}:\n    ${err}`);
+      } catch (err: unknown) {
+        throw new FirebaseError(`Failed to create ${shortFilePath}:\n    ${getErrMsg(err)}`);
       }
-    } catch (err) {
-      throw new FirebaseError(`Error during SDK file creation:\n    ${err}`);
+    } catch (err: unknown) {
+      throw new FirebaseError(`Error during SDK file creation:\n    ${getErrMsg(err)}`);
     }
   }
 }
 
-export async function copyDirectory(src: string, dest: string, options: any) {
+/**
+ * copies one directory to another recursively creating directories as needed.
+ * It will ask for permission before overwriting any existing files.
+ * @param src The source path
+ * @param dest The destination path
+ * @param options The command options
+ */
+export async function copyDirectory(src: string, dest: string, options: Options): Promise<void> {
   const shortDestPath = dest.replace(process.cwd(), ",");
   if (fsutils.dirExistsSync(dest)) {
     if (
@@ -184,13 +190,13 @@ export async function copyDirectory(src: string, dest: string, options: any) {
             continue;
           }
           // We already have permission. Don't ask again.
-          await copyDirectory(srcPath, destPath, { force: true });
+          await copyDirectory(srcPath, destPath, { ...options, force: true });
         } else if (entry.isFile())
           try {
             await fs.promises.copyFile(srcPath, destPath);
-          } catch (err) {
+          } catch (err: unknown) {
             throw new FirebaseError(
-              `Failed to copy ${destPath.replace(process.cwd(), ".")}:\n    ${err}`,
+              `Failed to copy ${destPath.replace(process.cwd(), ".")}:\n    ${getErrMsg(err)}`,
             );
           }
       }
@@ -199,13 +205,17 @@ export async function copyDirectory(src: string, dest: string, options: any) {
       return;
     }
   } else {
-    await fs.promises.mkdir(dest, { recursive: true }).then(async () => {
-      await copyDirectory(src, dest, { force: true });
-    });
+    await fs.promises.mkdir(dest, { recursive: true });
+    await copyDirectory(src, dest, { ...options, force: true });
   }
 }
 
-export async function getCodebaseRuntime(options: any): Promise<string> {
+/**
+ * getCodebaseRuntime determines the runtime from the specified optoins
+ * @param options The options passed to the command
+ * @return as string like 'nodejs18' or 'python312' representing the runtime.
+ */
+export async function getCodebaseRuntime(options: Options): Promise<string> {
   const config = normalizeAndValidate(options.config.src.functions);
   const codebaseConfig = configForCodebase(
     config,
@@ -222,20 +232,27 @@ export async function getCodebaseRuntime(options: any): Promise<string> {
   let delegate: functionRuntimes.RuntimeDelegate;
   try {
     delegate = await functionRuntimes.getRuntimeDelegate(delegateContext);
-  } catch (err) {
+  } catch (err: unknown) {
     throw new FirebaseError(`Could not detect target language for SDK at ${sourceDir}`);
   }
 
   return delegate.runtime;
 }
 
-// Figure out which runtime we are using, then call the appropriate
-// runtime.WriteSDK
+/**
+ * writeSDK figures out which runtime we are using and then calls
+ * that runtime's implementation of writeSDK.
+ * @param extensionRef The extension reference of a published extension
+ * @param localPath The localPath of a local extension
+ * @param spec The spec for the extension
+ * @param options The options passed from the ext:sdk:install command
+ * @return Usage instructions for the SDK.
+ */
 export async function writeSDK(
   extensionRef: string | undefined,
   localPath: string | undefined,
   spec: ExtensionSpec,
-  options: any,
+  options: Options,
 ): Promise<string> {
   // Figure out which runtime we need
   const runtime = await getCodebaseRuntime(options);
@@ -253,7 +270,15 @@ export async function writeSDK(
   }
 }
 
+/**
+ * getCodebaseDir gets the codebase directory based on the options passed
+ * @param options are used to determine which codebase and the config for it
+ * @return a functions codebase directory
+ */
 export function getCodebaseDir(options: Options): string {
+  if (!options.projectRoot) {
+    throw new FirebaseError("Unable to determine root directory of project");
+  }
   const config = normalizeAndValidate(options.config.src.functions);
   const codebaseConfig = configForCodebase(
     config,
@@ -262,22 +287,49 @@ export function getCodebaseDir(options: Options): string {
   return `${options.projectRoot}/${codebaseConfig.source}/`;
 }
 
+/**
+ * getInstallPathPrefix gets a prefix under the codebase directory
+ * for where extension SDKs should be installed.
+ * @param options are used to get the functions codebase directory
+ * @return an SDK install path prefix
+ */
 export function getInstallPathPrefix(options: Options): string {
   return `${getCodebaseDir(options)}generated/extensions/`;
 }
 
+/**
+ * toTitleCase takes the input string, capitalizes the first letter, and
+ * lowercases the rest of the letters aBcdEf -> Abcdef
+ * @param txt The text to transform
+ * @return The title cased string
+ */
 export function toTitleCase(txt: string): string {
   return txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase();
 }
 
+/**
+ * capitalizeFirstLetter capitalizes the first letter of the input string
+ * @param txt the string to transform
+ * @return the input string with the first letter capitalized
+ */
 export function capitalizeFirstLetter(txt: string): string {
   return txt.charAt(0).toUpperCase() + txt.substring(1);
 }
 
+/**
+ * lowercaseFirstLetter makes the first letter of a string lowercase
+ * @param txt a string to transform
+ * @return the input string but with the first letter lowercase
+ */
 export function lowercaseFirstLetter(txt: string): string {
   return txt.charAt(0).toLowerCase() + txt.substring(1);
 }
 
+/**
+ * snakeToCamelCase transforms text from snake_case to camelCase.
+ * @param txt the snake_case string to transform
+ * @return a camelCase string
+ */
 export function snakeToCamelCase(txt: string): string {
   let ret = txt.toLowerCase();
   ret = ret.replace(/_/g, " ");
@@ -286,6 +338,11 @@ export function snakeToCamelCase(txt: string): string {
   return ret;
 }
 
+/**
+ * longestCommonPrefix extracts the longest common prefix from an array of string
+ * @param arr The array to find a longest common prefix in.
+ * @return A string that is the longest common prefix
+ */
 export function longestCommonPrefix(arr: string[]): string {
   if (arr.length === 0) {
     return "";
