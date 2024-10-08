@@ -58,7 +58,7 @@ async function autoAuth(options: Options, authScopes: string[]): Promise<void | 
         expires_at: client.cachedCredential?.credentials.expiry_date,
       } as TokensWithExpiration, // We need the refresh_token here.
     });
-    setGlobalDefaultAccount({ user: { email: clientEmail }, tokens: { access_token: token } });
+    setGlobalDefaultAccount({ user: { email: clientEmail }, tokens: ({ access_token: token, expires_at: client.cachedCredential?.credentials.expiry_date} as TokensWithExpiration) });
 
     // project is also selected in monospace auth flow
     options.projectId = await client.getProjectId();
@@ -89,7 +89,7 @@ export async function requireAuth(options: any): Promise<string | void> {
       "Authenticating with `FIREBASE_TOKEN` is deprecated and will be removed in a future major version of `firebase-tools`. " +
         "Instead, use a service account key with `GOOGLE_APPLICATION_CREDENTIALS`: https://cloud.google.com/docs/authentication/getting-started",
     );
-  } else if (user && !process.env.MONOSPACE_ENV) {
+  } else if (user) {
     logger.debug(`> authorizing via signed-in user (${user.email})`);
   } else {
     try {
