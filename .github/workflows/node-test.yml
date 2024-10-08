@@ -77,6 +77,8 @@ jobs:
 
     env:
       FIREBASE_EMULATORS_PATH: ${{ github.workspace }}/emulator-cache
+      # This overrides the binary which runs firebase commands in the extension tasks such as emulator start.
+      # Currently, CI fails to start with npx so we change it to the global firebase binary.
       FIREBASE_BINARY: firebase
       DEBUG: "*"
 

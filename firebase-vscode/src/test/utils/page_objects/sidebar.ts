@@ -13,10 +13,6 @@ export class FirebaseSidebar {
     await sidebar.click();
   }
 
-  get fdcDeployElement() {
-    return $("vscode-button=Deploy");
-  }
-
   /**
    * Starts the emulators and waits for the emulators to be started.
    *
@@ -40,6 +36,13 @@ export class FirebaseSidebar {
       const items = await studio.emulatorsList;
       const texts = items.map((item) => item.getText());
       return texts;
+    });
+  }
+
+  async startDeploy() {
+    return this.runInStudioContext(async (studio) => {
+      await studio.fdcDeployElement.waitForDisplayed();
+      await studio.fdcDeployElement.click();
     });
   }
 
@@ -79,6 +82,10 @@ export class StudioView {
 
   get emulatorsList() {
     return $("ul[class^='list-']").$$(`li span`);
+  }
+
+  get fdcDeployElement() {
+    return $(`vscode-button=${TEXT.DEPLOY_FDC_ENABLED}`);
   }
 }
 
