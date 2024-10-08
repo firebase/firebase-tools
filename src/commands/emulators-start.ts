@@ -125,7 +125,7 @@ function printEmulatorOverview(options: any): void {
     const extensionsEmulatorInstance = EmulatorRegistry.get(
       Emulators.EXTENSIONS,
     ) as ExtensionsEmulator;
-    extensionsTable = extensionsEmulatorInstance.extensionsInfoTable(options);
+    extensionsTable = extensionsEmulatorInstance.extensionsInfoTable();
   }
   logger.info(`\n${successMessageTable}
 

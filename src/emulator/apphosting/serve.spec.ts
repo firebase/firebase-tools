@@ -1,21 +1,30 @@
-import * as portUtils from "../portUtils";
 import * as sinon from "sinon";
-import * as spawn from "../../init/spawn";
 import { expect } from "chai";
+import * as portUtils from "../portUtils";
+import * as spawn from "../../init/spawn";
 import * as serve from "./serve";
+import { DEFAULT_PORTS } from "../constants";
+import * as utils from "./utils";
+import * as configs from "./config";
 
 describe("serve", () => {
   let checkListenableStub: sinon.SinonStub;
   let wrapSpawnStub: sinon.SinonStub;
+  let discoverPackageManagerStub: sinon.SinonStub;
+  let getLocalAppHostingConfigurationStub: sinon.SinonStub;
 
   beforeEach(() => {
     checkListenableStub = sinon.stub(portUtils, "checkListenable");
     wrapSpawnStub = sinon.stub(spawn, "wrapSpawn");
+    discoverPackageManagerStub = sinon.stub(utils, "discoverPackageManager");
+    getLocalAppHostingConfigurationStub = sinon.stub(configs, "getLocalAppHostingConfiguration");
   });
 
   afterEach(() => {
     checkListenableStub.restore();
     wrapSpawnStub.restore();
+    discoverPackageManagerStub.restore();
+    getLocalAppHostingConfigurationStub.restore();
   });
 
   describe("start", () => {
@@ -23,11 +32,9 @@ describe("serve", () => {
       checkListenableStub.onFirstCall().returns(false);
       checkListenableStub.onSecondCall().returns(false);
       checkListenableStub.onThirdCall().returns(true);
-
-      wrapSpawnStub.returns(Promise.resolve());
-
-      const res = await serve.start({ host: "127.0.0.1", port: 5000 });
-      expect(res.port).to.equal(5002);
+      getLocalAppHostingConfigurationStub.returns({ environmentVariables: {}, secrets: {} });
+      const res = await serve.start();
+      expect(res.port).to.equal(DEFAULT_PORTS.apphosting + 2);
     });
   });
 });

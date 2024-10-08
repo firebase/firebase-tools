@@ -22,7 +22,7 @@ import { env } from "./core/env";
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
   const settings = getSettings();
-  logSetup(settings);
+  logSetup();
   pluginLogger.debug("Activating Firebase extension.");
 
   const broker = createBroker<

@@ -1,27 +1,32 @@
 import * as apphosting from "../gcp/apphosting";
-import { logger } from "../logger";
 import { Command } from "../command";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
+import { FirebaseError } from "../error";
+import { createRollout } from "../apphosting/rollout";
 
-export const command = new Command("apphosting:rollouts:create <backendId> <buildId>")
+export const command = new Command("apphosting:rollouts:create <backendId>")
   .description("create a rollout using a build for an App Hosting backend")
   .option("-l, --location <location>", "specify the region of the backend", "us-central1")
   .option("-i, --id <rolloutId>", "id of the rollout (defaults to autogenerating a random id)", "")
+  .option(
+    "-gb, --git-branch <gitBranch>",
+    "repository branch to deploy (mutually exclusive with -gc)",
+  )
+  .option("-gc, --git-commit <gitCommit>", "git commit to deploy (mutually exclusive with -gb)")
+  .withForce("Skip confirmation before creating rollout")
   .before(apphosting.ensureApiEnabled)
-  .action(async (backendId: string, buildId: string, options: Options) => {
+  .action(async (backendId: string, options: Options) => {
     const projectId = needProjectId(options);
     const location = options.location as string;
-    // TODO: Should we just reuse the buildId?
-    const rolloutId =
-      (options.buildId as string) ||
-      (await apphosting.getNextRolloutId(projectId, location, backendId));
-    const build = `projects/${projectId}/backends/${backendId}/builds/${buildId}`;
-    const op = await apphosting.createRollout(projectId, location, backendId, rolloutId, {
-      build,
-    });
-    logger.info(`Started a rollout for backend ${backendId} with build ${buildId}.`);
-    logger.info("Check status by running:");
-    logger.info(`\tfirebase apphosting:rollouts:list --location ${location}`);
-    return op;
+
+    const branch = options.gitBranch as string | undefined;
+    const commit = options.gitCommit as string | undefined;
+    if (branch && commit) {
+      throw new FirebaseError(
+        "Cannot specify both a branch and commit to deploy. Please specify either --git-branch or --git-commit.",
+      );
+    }
+
+    await createRollout(backendId, projectId, location, branch, commit, options.force);
   });
