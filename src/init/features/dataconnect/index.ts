@@ -5,7 +5,7 @@ import { confirm, promptOnce } from "../../../prompt";
 import { Config } from "../../../config";
 import { Setup } from "../..";
 import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql";
-import { checkFreeTrialInstanceUsed } from "../../../dataconnect/freeTrial";
+import { checkFreeTrialInstanceUsed, upgradeInstructions } from "../../../dataconnect/freeTrial";
 import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
 import { ensureApis, ensureSparkApis } from "../../../dataconnect/ensureApis";
 import * as experiments from "../../../experiments";
@@ -19,7 +19,7 @@ import { Schema, Service, File, Platform } from "../../../dataconnect/types";
 import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
-import { logBullet, logSuccess } from "../../../utils";
+import { logBullet } from "../../../utils";
 import { checkBillingEnabled } from "../../../gcp/cloudbilling";
 import * as sdk from "./sdk";
 import { getPlatformFromFolder } from "../../../dataconnect/fileUtils";
@@ -49,6 +49,12 @@ export interface RequiredInfo {
   shouldProvisionCSQL: boolean;
 }
 
+const emptyConnector = {
+  id: "default",
+  path: "./connector",
+  files: [],
+};
+
 const defaultConnector = {
   id: "default",
   path: "./connector",
@@ -64,9 +70,15 @@ const defaultConnector = {
   ],
 };
 
+const defaultSchema = { path: "schema.gql", content: SCHEMA_TEMPLATE };
+
 // doSetup is split into 2 phases - ask questions and then actuate files and API calls based on those answers.
 export async function doSetup(setup: Setup, config: Config): Promise<void> {
-  const info = await askQuestions(setup);
+  const isBillingEnabled = setup.projectId ? await checkBillingEnabled(setup.projectId) : false;
+  if (setup.projectId) {
+    isBillingEnabled ? await ensureApis(setup.projectId) : await ensureSparkApis(setup.projectId);
+  }
+  const info = await askQuestions(setup, isBillingEnabled);
   await actuate(setup, config, info);
 
   const cwdPlatformGuess = await getPlatformFromFolder(process.cwd());
@@ -74,16 +86,17 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     await sdk.doSetup(setup, config);
   } else {
     logBullet(
-      `If you'd like to add the generated SDK to your app your later, run ${clc.bold("firebase init dataconnect:sdk")}`,
+      `If you'd like to add the generated SDK to your app your, run ${clc.bold("firebase init dataconnect:sdk")}`,
     );
   }
-
-  logger.info("");
+  if (setup.projectId && !isBillingEnabled) {
+    logBullet(upgradeInstructions(setup.projectId));
+  }
 }
 
 // askQuestions prompts the user about the Data Connect service they want to init. Any prompting
 // logic should live here, and _no_ actuation logic should live here.
-async function askQuestions(setup: Setup): Promise<RequiredInfo> {
+async function askQuestions(setup: Setup, isBillingEnabled: boolean): Promise<RequiredInfo> {
   let info: RequiredInfo = {
     serviceId: "",
     locationId: "",
@@ -92,14 +105,11 @@ async function askQuestions(setup: Setup): Promise<RequiredInfo> {
     cloudSqlDatabase: "",
     isNewDatabase: false,
     connectors: [defaultConnector],
-    schemaGql: [],
+    schemaGql: [defaultSchema],
     shouldProvisionCSQL: false,
   };
-  const isBillingEnabled = setup.projectId ? await checkBillingEnabled(setup.projectId) : false;
-  if (setup.projectId) {
-    isBillingEnabled ? await ensureApis(setup.projectId) : await ensureSparkApis(setup.projectId);
-  }
-  info = await checkExistingInstances(setup, info, isBillingEnabled);
+  // Query backend and pick up any existing services quickly.
+  info = await promptForExistingServices(setup, info, isBillingEnabled);
 
   const requiredConfigUnset =
     info.serviceId === "" ||
@@ -110,13 +120,14 @@ async function askQuestions(setup: Setup): Promise<RequiredInfo> {
     isBillingEnabled && requiredConfigUnset
       ? await confirm({
           message: `Would you like to configure your backend resources now?`,
-          default: false,
+          // For Blaze Projects, configure Cloud SQL by default.
+          // TODO: For Spark projects, allow them to configure Cloud SQL but deploy as unlinked Postgres.
+          default: true,
         })
       : false;
   if (shouldConfigureBackend) {
     info = await promptForService(info);
-    info = await promptForCloudSQLInstance(setup, info);
-    info = await promptForDatabase(info);
+    info = await promptForCloudSQL(setup, info);
 
     info.shouldProvisionCSQL = !!(
       setup.projectId &&
@@ -128,16 +139,10 @@ async function askQuestions(setup: Setup): Promise<RequiredInfo> {
       }))
     );
   } else {
-    if (requiredConfigUnset) {
-      logBullet(
-        `Setting placeholder values in dataconnect.yaml. You can edit these before you deploy to specify different IDs or regions.`,
-      );
-    }
-    info.serviceId = info.serviceId !== "" ? info.serviceId : basename(process.cwd());
-    info.cloudSqlInstanceId =
-      info.cloudSqlInstanceId !== "" ? info.cloudSqlInstanceId : `${info.serviceId || "app"}-fdc`;
-    info.locationId = info.locationId !== "" ? info.locationId : `us-central1`;
-    info.cloudSqlDatabase = info.cloudSqlDatabase !== "" ? info.cloudSqlDatabase : `fdcdb`;
+    info.serviceId = info.serviceId || basename(process.cwd());
+    info.cloudSqlInstanceId = info.cloudSqlInstanceId || `${info.serviceId || "app"}-fdc`;
+    info.locationId = info.locationId || `us-central1`;
+    info.cloudSqlDatabase = info.cloudSqlDatabase || `fdcdb`;
   }
   return info;
 }
@@ -168,17 +173,19 @@ async function writeFiles(config: Config, info: RequiredInfo) {
   });
 
   config.set("dataconnect", { source: dir });
-  await config.askWriteProjectFile(join(dir, "dataconnect.yaml"), subbedDataconnectYaml);
+  await config.askWriteProjectFile(
+    join(dir, "dataconnect.yaml"),
+    subbedDataconnectYaml,
+    false,
+    // Default to override dataconnect.yaml
+    // Sole purpose of `firebase init dataconnect` is to update `dataconnect.yaml`.
+    true,
+  );
 
   if (info.schemaGql.length) {
-    logSuccess(
-      "The service you chose already has GQL files deployed. We'll use those instead of the default templates.",
-    );
     for (const f of info.schemaGql) {
       await config.askWriteProjectFile(join(dir, "schema", f.path), f.content);
     }
-  } else {
-    await config.askWriteProjectFile(join(dir, "schema", "schema.gql"), SCHEMA_TEMPLATE);
   }
   for (const c of info.connectors) {
     await writeConnectorFiles(config, c);
@@ -238,7 +245,7 @@ function subConnectorYamlValues(replacementValues: { connectorId: string }): str
   return replaced;
 }
 
-async function checkExistingInstances(
+async function promptForExistingServices(
   setup: Setup,
   info: RequiredInfo,
   isBillingEnabled: boolean,
@@ -278,6 +285,9 @@ async function checkExistingInstances(
       const serviceName = parseServiceName(choice.service.name);
       info.serviceId = serviceName.serviceId;
       info.locationId = serviceName.location;
+      // If the existing service has no schema, don't override any gql files.
+      info.schemaGql = [];
+      info.connectors = [emptyConnector];
       if (choice.schema) {
         const primaryDatasource = choice.schema.datasources.find((d) => d.postgresql);
         if (primaryDatasource?.postgresql?.cloudSql.instance) {
@@ -286,7 +296,7 @@ async function checkExistingInstances(
           );
           info.cloudSqlInstanceId = instanceName.instanceId;
         }
-        if (choice.schema.source.files) {
+        if (choice.schema.source.files?.length) {
           info.schemaGql = choice.schema.source.files;
         }
         info.cloudSqlDatabase = primaryDatasource?.postgresql?.database ?? "";
@@ -305,13 +315,14 @@ async function checkExistingInstances(
           });
         }
       }
-    } else {
-      info = await promptForService(info);
     }
   }
+  return info;
+}
 
+async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<RequiredInfo> {
   // Check for existing Cloud SQL instances, if we didn't already set one.
-  if (info.cloudSqlInstanceId === "") {
+  if (info.cloudSqlInstanceId === "" && setup.projectId) {
     const instances = await cloudsql.listInstances(setup.projectId);
     let choices = instances.map((i) => {
       let display = `${i.name} (${i.region})`;
@@ -334,51 +345,11 @@ async function checkExistingInstances(
       if (info.cloudSqlInstanceId !== "") {
         // Infer location if a CloudSQL instance is chosen.
         info.locationId = choices.find((c) => c.value === info.cloudSqlInstanceId)!.location;
-      } else {
-        info = await promptForCloudSQLInstance(setup, info);
       }
     }
   }
 
-  // Check for existing Cloud SQL databases, if we didn't already set one.
-  if (info.cloudSqlDatabase === "" && info.cloudSqlInstanceId !== "") {
-    try {
-      const dbs = await cloudsql.listDatabases(setup.projectId, info.cloudSqlInstanceId);
-      const choices = dbs.map((d) => {
-        return { name: d.name, value: d.name };
-      });
-      choices.push({ name: "Create a new database", value: "" });
-      if (dbs.length) {
-        info.cloudSqlDatabase = await promptOnce({
-          message: `Which database in ${info.cloudSqlInstanceId} would you like to use?`,
-          type: "list",
-          choices,
-        });
-        if (info.cloudSqlDatabase === "") {
-          info = await promptForDatabase(info);
-        }
-      }
-    } catch (err) {
-      // Show existing databases in a list is optional, ignore any errors from ListDatabases.
-      // This often happen when the Cloud SQL instance is still being created.
-      logger.debug(`[dataconnect] Cannot list databases during init: ${err}`);
-    }
-  }
-  return info;
-}
-
-async function promptForService(info: RequiredInfo): Promise<RequiredInfo> {
-  if (info.serviceId === "") {
-    info.serviceId = await promptOnce({
-      message: "What ID would you like to use for this service?",
-      type: "input",
-      default: basename(process.cwd()),
-    });
-  }
-  return info;
-}
-
-async function promptForCloudSQLInstance(setup: Setup, info: RequiredInfo): Promise<RequiredInfo> {
+  // No existing instance found or choose to create new instance.
   if (info.cloudSqlInstanceId === "") {
     info.isNewInstance = true;
     info.cloudSqlInstanceId = await promptOnce({
@@ -393,6 +364,51 @@ async function promptForCloudSQLInstance(setup: Setup, info: RequiredInfo): Prom
       message: "What location would like to use?",
       type: "list",
       choices,
+    });
+  }
+
+  // Look for existing databases within the picked instance.
+  // Best effort since the picked `info.cloudSqlInstanceId` may not exists or is still being provisioned.
+  if (info.cloudSqlDatabase === "" && setup.projectId) {
+    try {
+      const dbs = await cloudsql.listDatabases(setup.projectId, info.cloudSqlInstanceId);
+      const choices = dbs.map((d) => {
+        return { name: d.name, value: d.name };
+      });
+      choices.push({ name: "Create a new database", value: "" });
+      if (dbs.length) {
+        info.cloudSqlDatabase = await promptOnce({
+          message: `Which database in ${info.cloudSqlInstanceId} would you like to use?`,
+          type: "list",
+          choices,
+        });
+      }
+    } catch (err) {
+      // Show existing databases in a list is optional, ignore any errors from ListDatabases.
+      // This often happen when the Cloud SQL instance is still being created.
+      logger.debug(`[dataconnect] Cannot list databases during init: ${err}`);
+    }
+  }
+
+  // No existing database found or cannot access the instance.
+  // Prompt for a name.
+  if (info.cloudSqlDatabase === "") {
+    info.isNewDatabase = true;
+    info.cloudSqlDatabase = await promptOnce({
+      message: `What ID would you like to use for your new database in ${info.cloudSqlInstanceId}?`,
+      type: "input",
+      default: `fdcdb`,
+    });
+  }
+  return info;
+}
+
+async function promptForService(info: RequiredInfo): Promise<RequiredInfo> {
+  if (info.serviceId === "") {
+    info.serviceId = await promptOnce({
+      message: "What ID would you like to use for this service?",
+      type: "input",
+      default: basename(process.cwd()),
     });
   }
   return info;
@@ -417,16 +433,4 @@ async function locationChoices(setup: Setup) {
       { name: "asia-southeast1", value: "asia-southeast1" },
     ];
   }
-}
-
-async function promptForDatabase(info: RequiredInfo): Promise<RequiredInfo> {
-  if (info.cloudSqlDatabase === "") {
-    info.isNewDatabase = true;
-    info.cloudSqlDatabase = await promptOnce({
-      message: `What ID would you like to use for your new database in ${info.cloudSqlInstanceId}?`,
-      type: "input",
-      default: `fdcdb`,
-    });
-  }
-  return info;
 }
