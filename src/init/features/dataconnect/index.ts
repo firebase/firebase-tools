@@ -171,6 +171,14 @@ async function writeFiles(config: Config, info: RequiredInfo) {
     ...info,
     connectorDirs: info.connectors.map((c) => c.path),
   });
+  // If we are starting from a fresh project without data connect,
+  if (!config.get("dataconnect.source")) {
+    // If the existing service is empty (no schema / connector GQL), include the template.
+    if (!info.schemaGql.length && !info.connectors.flatMap((r) => r.files).length) {
+      info.schemaGql = [defaultSchema];
+      info.connectors = [defaultConnector];
+    }
+  }
 
   config.set("dataconnect", { source: dir });
   await config.askWriteProjectFile(
