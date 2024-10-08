@@ -106,7 +106,7 @@ async function confirmDangerousQuery(query: string): Promise<boolean> {
 }
 
 export const command = new Command("dataconnect:sql:shell [serviceId]")
-  .description("Starts a shell connected directly to your cloudsql instance.")
+  .description("Starts a shell connected directly to your dataconnect cloudsql instance.")
   .before(requirePermissions, ["firebasedataconnect.services.list", "cloudsql.instances.connect"])
   .before(requireAuth)
   .action(async (serviceId: string, options: Options) => {
@@ -140,7 +140,7 @@ export const command = new Command("dataconnect:sql:shell [serviceId]")
     const conn: pg.PoolClient = await pool.connect();
 
     logger.info(`Logged in as ${username}`);
-    logger.info(chalk.cyan("Welcome to the GCP SQL Shell"));
+    logger.info(chalk.cyan("Welcome to Data Connect Cloud SQL Shell"));
     logger.info(
       chalk.gray(
         "Type your your SQL query or '.exit' to quit, queries should end with ';' or add empty line to execute.",
