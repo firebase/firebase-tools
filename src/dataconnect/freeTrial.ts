@@ -65,3 +65,11 @@ export function printFreeTrialUnavailable(
     `Alternatively, you may create a new (paid) CloudSQL instance at https://console.cloud.google.com/sql/instances`,
   );
 }
+
+export function upgradeInstructions(projectId: string): string {
+  return `If you'd like to provision a CloudSQL Postgres instance on the Firebase Data Connect no-cost trial:
+1. Please upgrade to the pay-as-you-go (Blaze) billing plan. Visit the following page:
+     https://console.firebase.google.com/project/${projectId}/usage/details
+2. Run ${clc.bold("firebase init dataconnect")} again to configure the Cloud SQL instance.
+3. Run ${clc.bold("firebase deploy --only dataconnect")} to deploy your Data Connect service.`;
+}

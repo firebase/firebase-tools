@@ -861,9 +861,13 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
   }
 
-  addEventarcTrigger(projectId: string, key: string, eventTrigger: EventTrigger): Promise<boolean> {
+  async addEventarcTrigger(
+    projectId: string,
+    key: string,
+    eventTrigger: EventTrigger,
+  ): Promise<boolean> {
     if (!EmulatorRegistry.isRunning(Emulators.EVENTARC)) {
-      return Promise.resolve(false);
+      return false;
     }
     const bundle = {
       eventTrigger: {
@@ -872,16 +876,20 @@ export class FunctionsEmulator implements EmulatorInstance {
       },
     };
     logger.debug(`addEventarcTrigger`, JSON.stringify(bundle));
-    return EmulatorRegistry.client(Emulators.EVENTARC)
-      .post(`/emulator/v1/projects/${projectId}/triggers/${key}`, bundle)
-      .then(() => true)
-      .catch((err) => {
-        this.logger.log("WARN", "Error adding Eventarc function: " + err);
-        return false;
-      });
+
+    try {
+      await EmulatorRegistry.client(Emulators.EVENTARC).post(
+        `/emulator/v1/projects/${projectId}/triggers/${key}`,
+        bundle,
+      );
+      return true;
+    } catch (err: unknown) {
+      this.logger.log("WARN", "Error adding Eventarc function: " + err);
+    }
+    return false;
   }
 
-  removeEventarcTrigger(
+  async removeEventarcTrigger(
     projectId: string,
     key: string,
     eventTrigger: EventTrigger,
@@ -896,22 +904,25 @@ export class FunctionsEmulator implements EmulatorInstance {
       },
     };
     logger.debug(`removeEventarcTrigger`, JSON.stringify(bundle));
-    return EmulatorRegistry.client(Emulators.EVENTARC)
-      .post(`/emulator/v1/remove/projects/${projectId}/triggers/${key}`, bundle)
-      .then(() => true)
-      .catch((err) => {
-        this.logger.log("WARN", "Error removing Eventarc function: " + err);
-        return false;
-      });
+    try {
+      await EmulatorRegistry.client(Emulators.EVENTARC).post(
+        `/emulator/v1/remove/projects/${projectId}/triggers/${key}`,
+        bundle,
+      );
+      return true;
+    } catch (err: unknown) {
+      this.logger.log("WARN", "Error removing Eventarc function: " + err);
+    }
+    return false;
   }
 
-  addFirealertsTrigger(
+  async addFirealertsTrigger(
     projectId: string,
     key: string,
     eventTrigger: EventTrigger,
   ): Promise<boolean> {
     if (!EmulatorRegistry.isRunning(Emulators.EVENTARC)) {
-      return Promise.resolve(false);
+      return false;
     }
     const bundle = {
       eventTrigger: {
@@ -920,22 +931,25 @@ export class FunctionsEmulator implements EmulatorInstance {
       },
     };
     logger.debug(`addFirealertsTrigger`, JSON.stringify(bundle));
-    return EmulatorRegistry.client(Emulators.EVENTARC)
-      .post(`/emulator/v1/projects/${projectId}/triggers/${key}`, bundle)
-      .then(() => true)
-      .catch((err) => {
-        this.logger.log("WARN", "Error adding FireAlerts function: " + err);
-        return false;
-      });
+    try {
+      await EmulatorRegistry.client(Emulators.EVENTARC).post(
+        `/emulator/v1/projects/${projectId}/triggers/${key}`,
+        bundle,
+      );
+      return true;
+    } catch (err: unknown) {
+      this.logger.log("WARN", "Error adding FireAlerts function: " + err);
+    }
+    return false;
   }
 
-  removeFirealertsTrigger(
+  async removeFirealertsTrigger(
     projectId: string,
     key: string,
     eventTrigger: EventTrigger,
   ): Promise<boolean> {
     if (!EmulatorRegistry.isRunning(Emulators.EVENTARC)) {
-      return Promise.resolve(false);
+      return false;
     }
     const bundle = {
       eventTrigger: {
@@ -944,13 +958,16 @@ export class FunctionsEmulator implements EmulatorInstance {
       },
     };
     logger.debug(`removeFirealertsTrigger`, JSON.stringify(bundle));
-    return EmulatorRegistry.client(Emulators.EVENTARC)
-      .post(`/emulator/v1/remove/projects/${projectId}/triggers/${key}`, bundle)
-      .then(() => true)
-      .catch((err) => {
-        this.logger.log("WARN", "Error removing FireAlerts function: " + err);
-        return false;
-      });
+    try {
+      await EmulatorRegistry.client(Emulators.EVENTARC).post(
+        `/emulator/v1/remove/projects/${projectId}/triggers/${key}`,
+        bundle,
+      );
+      return true;
+    } catch (err: unknown) {
+      this.logger.log("WARN", "Error removing FireAlerts function: " + err);
+    }
+    return false;
   }
 
   async performPostLoadOperations(): Promise<void> {
