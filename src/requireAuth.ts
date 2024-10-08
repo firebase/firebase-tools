@@ -51,20 +51,15 @@ async function autoAuth(options: Options, authScopes: string[]): Promise<void | 
   }
   if (process.env.MONOSPACE_ENV && token && clientEmail) {
     // Within monospace, this a OAuth token for the user, so we make it the active user.
-    setActiveAccount(options, {
-      user: { email: clientEmail },
-      tokens: {
-        access_token: token,
-        expires_at: client.cachedCredential?.credentials.expiry_date,
-      } as TokensWithExpiration, // We need the refresh_token here.
-    });
-    setGlobalDefaultAccount({
+    const activeAccount = {
       user: { email: clientEmail },
       tokens: {
         access_token: token,
         expires_at: client.cachedCredential?.credentials.expiry_date,
       } as TokensWithExpiration,
-    });
+    };
+    setActiveAccount(options, activeAccount);
+    setGlobalDefaultAccount(activeAccount);
 
     // project is also selected in monospace auth flow
     options.projectId = await client.getProjectId();
