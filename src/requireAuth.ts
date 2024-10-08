@@ -58,7 +58,13 @@ async function autoAuth(options: Options, authScopes: string[]): Promise<void | 
         expires_at: client.cachedCredential?.credentials.expiry_date,
       } as TokensWithExpiration, // We need the refresh_token here.
     });
-    setGlobalDefaultAccount({ user: { email: clientEmail }, tokens: ({ access_token: token, expires_at: client.cachedCredential?.credentials.expiry_date} as TokensWithExpiration) });
+    setGlobalDefaultAccount({
+      user: { email: clientEmail },
+      tokens: {
+        access_token: token,
+        expires_at: client.cachedCredential?.credentials.expiry_date,
+      } as TokensWithExpiration,
+    });
 
     // project is also selected in monospace auth flow
     options.projectId = await client.getProjectId();
