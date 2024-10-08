@@ -1,5 +1,7 @@
 ## NEXT
 
+- Fixed an issue where log files would be written to non-Firebase directories.
+
 ## 0.10.3
 
 - Updated internal firebase-tools dependency to 13.21.0
