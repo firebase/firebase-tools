@@ -1,10 +1,8 @@
 import { ConfigurationTarget, workspace } from "vscode";
 
 export interface Settings {
-  readonly debugLogPath: string;
   readonly firebasePath: string;
   readonly npmPath: string;
-  readonly shouldWriteDebug: boolean;
   readonly useFrameworks: boolean;
   readonly shouldShowIdxMetricNotice: boolean;
 }
@@ -19,10 +17,8 @@ export function getSettings(): Settings {
   const config = workspace.getConfiguration("firebase");
 
   return {
-    debugLogPath: config.get<string>("debugLogPath", "/tmp/firebase-debug.log"),
     firebasePath: config.get<string>("firebasePath") || FIREBASE_BINARY,
     npmPath: config.get<string>("npmPath", "npm"),
-    shouldWriteDebug: config.get<boolean>("debug", true),
     useFrameworks: config.get<boolean>("hosting.useFrameworks", false),
     shouldShowIdxMetricNotice: config.get<boolean>(
       "idx.viewMetricNotice",

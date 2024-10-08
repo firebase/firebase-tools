@@ -1,4 +1,3 @@
-- Updated emulator UI to version 1.14.0, which adds support for SDK defined extensions.
-- Added emulator support for SDK defined extensions.
-- Fixed various trigger handling issues in the Functions emualtor, including an issue where Eventarc functions would not be emulated correctly after a reload.
-- Added new command dataconnect:sql:shell which allows users to directly connect and run queries against their dataconnect cloudsql instance.
+- Fixed an issue where running the CLI in IDX required immediate reauthentication.
+- Added App Hosting as an option for firebase init. (#7803)
+- Added new command dataconnect:sql:shell which allows users to directly connect and run queries against their dataconnect cloudsql instance (#7778).
