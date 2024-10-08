@@ -1,2 +1,0 @@
-- Fixed an issue where running the CLI in IDX required immediate reauthentication.
-- Added App Hosting as an option for firebase init. (#7803)
