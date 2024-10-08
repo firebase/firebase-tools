@@ -76,7 +76,7 @@ export class EventarcEmulator implements EmulatorInstance {
       return { projectId, triggerName, eventTrigger, key };
     };
 
-    const removeTriggerRoute = `/emulator/v1/remove/projects/:project_id/triggers/:trigger_name`;
+    const removeTriggerRoute = `/emulator/v1/remove/projects/:project_id/triggers/:trigger_name(*)`;
     const removeTriggerHandler: express.RequestHandler = (req, res) => {
       try {
         const { projectId, triggerName, eventTrigger, key } = getTriggerIdentifiers(req);

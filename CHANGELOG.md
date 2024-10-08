@@ -1,0 +1,3 @@
+- Updated emulator UI to version 1.14.0, which adds support for SDK defined extensions.
+- Added emulator support for SDK defined extensions.
+- Fixed various trigger handling issues in the Functions emualtor, including an issue where Eventarc functions would not be emulated correctly after a reload.
