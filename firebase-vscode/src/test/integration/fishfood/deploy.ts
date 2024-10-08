@@ -27,11 +27,11 @@ firebaseSuite("Deployment", async function () {
 
     const args = await getE2eSpyCalls("deploy");
 
-    expect(args.length).toBe(1);
+    const fbBinary =
+      process.env.FIREBASE_BINARY || "npx -y firebase-tools@latest";
 
+    expect(args.length).toBe(1);
     expect(args[0].length).toBe(1);
-    expect(args[0][0]).toEqual(
-      "npx -y firebase-tools@latest deploy --only dataconnect",
-    );
+    expect(args[0][0]).toEqual(`${fbBinary} deploy --only dataconnect`);
   });
 });
