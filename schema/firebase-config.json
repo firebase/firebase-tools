@@ -367,7 +367,7 @@
                             "type": "number"
                         },
                         "startCommandOverride": {
-                          "type": "string"
+                            "type": "string"
                         }
                     },
                     "type": "object"
