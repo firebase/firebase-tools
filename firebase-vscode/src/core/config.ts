@@ -8,37 +8,17 @@ import { RC, RCData } from "../../../src/rc";
 import { Config } from "../../../src/config";
 import { globalSignal } from "../utils/globals";
 import { workspace } from "../utils/test_hooks";
-import { ResolvedDataConnectConfigs } from "../data-connect/config";
 import { ValueOrError } from "../../common/messaging/protocol";
 import { firstWhereDefined, onChange } from "../utils/signal";
 import { Result, ResultError, ResultValue } from "../result";
 import { FirebaseConfig } from "../firebaseConfig";
 import { computed, effect } from "@preact/signals-react";
 
-export const allRCs = globalSignal<
-  Record<string, Result<RC | undefined> | undefined>
->({});
+const allFirebaseConfigsUris = globalSignal<Array<vscode.Uri>>([]);
 
-/**
- * The .firebaserc configs.
- *
- * `undefined` means that the extension has yet to load the file.
- * {@link ResultValue} with an `undefined` value means that the file was not found.
- * {@link ResultError} means that the file was found but the parsing failed.
- *
- * This enables the UI to differentiate between "no config" and "error reading config",
- * and also await for configs to be loaded (thanks to the {@link firstWhereDefined} util)
- */
-export const firebaseRC = computed<Result<RC | undefined>>(() => {
-  const allConfigs = allRCs.value;
-
-  const keys = Object.keys(allConfigs);
-  return allConfigs[keys[0]]!;
-});
-
-export const allFirebaseConfigs = globalSignal<
-  Record<string, Result<Config | undefined> | undefined>
->({});
+const selectedFirebaseConfigUri = globalSignal<vscode.Uri | undefined>(
+  undefined,
+);
 
 /**
  * The firebase.json configs.
@@ -50,12 +30,33 @@ export const allFirebaseConfigs = globalSignal<
  * This enables the UI to differentiate between "no config" and "error reading config",
  * and also await for configs to be loaded (thanks to the {@link firstWhereDefined} util)
  */
-export const firebaseConfig = computed<Result<Config | undefined>>(() => {
-  const allConfigs = allFirebaseConfigs.value;
+export const firebaseConfig = globalSignal<
+  Result<Config | undefined> | undefined
+>(undefined);
 
-  const keys = Object.keys(allConfigs);
-  return allConfigs[keys[0]]!;
+const selectedRCUri = computed(() => {
+  const configUri = selectedFirebaseConfigUri.value;
+  if (!configUri) {
+    return undefined;
+  }
+
+  const folderPath = path.dirname(configUri.fsPath);
+  return vscode.Uri.file(path.join(folderPath, ".firebaserc"));
 });
+
+/**
+ * The .firebaserc configs.
+ *
+ * `undefined` means that the extension has yet to load the file.
+ * {@link ResultValue} with an `undefined` value means that the file was not found.
+ * {@link ResultError} means that the file was found but the parsing failed.
+ *
+ * This enables the UI to differentiate between "no config" and "error reading config",
+ * and also await for configs to be loaded (thanks to the {@link firstWhereDefined} util)
+ */
+export const firebaseRC = globalSignal<Result<RC | undefined> | undefined>(
+  undefined,
+);
 
 /**
  * Write new default project to .firebaserc
@@ -111,20 +112,49 @@ function notifyFirebaseConfig(broker: ExtensionBrokerImpl) {
   });
 }
 
+function displayStringForUri(uri: vscode.Uri) {
+  return vscode.workspace.asRelativePath(uri);
+}
+
+function notifyFirebaseConfigListChanged(broker: ExtensionBrokerImpl) {
+  broker.send("notifyFirebaseConfigListChanged", {
+    values: allFirebaseConfigsUris.value.map(displayStringForUri),
+    selected: selectedFirebaseConfigUri.value
+      ? displayStringForUri(selectedFirebaseConfigUri.value)
+      : undefined,
+  });
+}
+
 async function registerRc(
   context: vscode.ExtensionContext,
   broker: ExtensionBrokerImpl,
 ) {
-  const firebaseRcPattern = "**/.firebaserc";
-  allRCs.value = await findFiles(firebaseRcPattern).then((uris) =>
-    uris.reduce<Record<string, Result<RC | undefined> | undefined>>(
-      (acc, uri) => ({
-        ...acc,
-        [uri.fsPath]: _readRC(),
-      }),
-      {},
-    ),
-  );
+  let disposable: Disposable | undefined;
+  context.subscriptions.push({ dispose: () => disposable?.dispose() });
+
+  context.subscriptions.push({
+    dispose: effect(() => {
+      disposable?.dispose();
+      disposable = undefined;
+      firebaseRC.value = undefined;
+
+      const rcUri = selectedRCUri.value;
+      console.log("here", "rcURi", rcUri);
+      if (!rcUri) {
+        return;
+      }
+
+      const watcher = workspace.value.createFileSystemWatcher(rcUri.fsPath);
+      disposable = watcher;
+
+      watcher.onDidChange(() => (firebaseRC.value = _readRC(rcUri)));
+      watcher.onDidCreate(() => (firebaseRC.value = _readRC(rcUri)));
+      // TODO handle deletion of .firebaserc/.firebase.json/firemat.yaml
+      watcher.onDidDelete(() => (firebaseRC.value = undefined));
+
+      firebaseRC.value = _readRC(rcUri);
+    }),
+  });
 
   context.subscriptions.push({
     dispose: onChange(firebaseRC, () => notifyFirebaseConfig(broker)),
@@ -140,79 +170,108 @@ async function registerRc(
       }
     }),
   });
-
-  const rcWatcher = await _createWatcher(firebaseRcPattern);
-  if (rcWatcher) {
-    context.subscriptions.push(rcWatcher);
-
-    rcWatcher.onDidChange((uri) => {
-      allRCs.value = { ...allRCs.value, [uri.fsPath]: _readRC() };
-    });
-    rcWatcher.onDidCreate((uri) => {
-      allRCs.value = { ...allRCs.value, [uri.fsPath]: _readRC() };
-    });
-    rcWatcher.onDidDelete((uri) => {
-      const newState = { ...allRCs.value };
-      delete newState[uri.fsPath];
-
-      allRCs.value = newState;
-    });
-  }
 }
 
 async function registerFirebaseConfig(
   context: vscode.ExtensionContext,
   broker: ExtensionBrokerImpl,
 ) {
+  console.log("here", "registering firebase config");
   const firebaseJsonPattern = "**/firebase.json";
-  allFirebaseConfigs.value = await findFiles(firebaseJsonPattern).then((uris) =>
-    uris.reduce<Record<string, Result<Config | undefined> | undefined>>(
-      (acc, uri) => ({
-        ...acc,
-        [uri.fsPath]: _readFirebaseConfig(),
-      }),
-      {},
-    ),
-  );
+  allFirebaseConfigsUris.value = await findFiles(firebaseJsonPattern);
+
+  const configWatcher = await _createWatcher(firebaseJsonPattern);
+  // Track the URI of any firebase.json in the project.
+  if (configWatcher) {
+    context.subscriptions.push(configWatcher);
+
+    // We don't listen to changes here, as we'll only watch the selected config.
+    configWatcher.onDidCreate((addedUri) => {
+      console.log("here", "addedUri", allFirebaseConfigsUris.value);
+      allFirebaseConfigsUris.value = [
+        ...allFirebaseConfigsUris.value,
+        addedUri,
+      ];
+    });
+    configWatcher.onDidDelete((deletedUri) => {
+      console.log("here", "removedUri", allFirebaseConfigsUris.value);
+      allFirebaseConfigsUris.value = allFirebaseConfigsUris.value.filter(
+        (uri) => uri.fsPath !== deletedUri.fsPath,
+      );
+    });
+  }
 
   context.subscriptions.push({
     dispose: onChange(firebaseConfig, () => notifyFirebaseConfig(broker)),
   });
 
+  // When no config is selected, or the selected config is deleted, select the first one.
   context.subscriptions.push({
     dispose: effect(() => {
-      const config = firebaseConfig.value;
-      if (config instanceof ResultError) {
-        vscode.window.showErrorMessage(
-          `Error reading firebase.json:\n${config.error}`,
-        );
+      const configUri = selectedFirebaseConfigUri.value;
+      // We watch all config URIs before selecting one, so that when deleting the selected
+      // config, the effect runs again and selects a new one.
+      const allConfigUris = allFirebaseConfigsUris.value;
+      console.log("here", "selecting firebase config", allConfigUris);
+      if (configUri && fs.existsSync(configUri.fsPath)) {
+        console.log("here", "selected config still valid");
+        return;
+      }
+
+      if (allConfigUris[0] !== selectedFirebaseConfigUri.value) {
+        selectedFirebaseConfigUri.value = allConfigUris[0];
       }
     }),
   });
 
-  const configWatcher = await _createWatcher(firebaseJsonPattern);
-  if (configWatcher) {
-    context.subscriptions.push(configWatcher);
+  let disposable: Disposable | undefined;
+  context.subscriptions.push({ dispose: () => disposable?.dispose() });
+  context.subscriptions.push({
+    dispose: effect(() => {
+      disposable?.dispose();
+      disposable = undefined;
+      firebaseRC.value = undefined;
 
-    configWatcher.onDidChange((uri) => {
-      return (allFirebaseConfigs.value = {
-        ...allFirebaseConfigs.value,
-        [uri.fsPath]: _readFirebaseConfig(),
-      });
-    });
-    configWatcher.onDidCreate((uri) => {
-      return (allFirebaseConfigs.value = {
-        ...allFirebaseConfigs.value,
-        [uri.fsPath]: _readFirebaseConfig(),
-      });
-    });
-    configWatcher.onDidDelete((uri) => {
-      const newState = { ...allFirebaseConfigs.value };
-      delete newState[uri.fsPath];
+      const configUri = selectedFirebaseConfigUri.value;
+      console.log("here", "configUri", configUri);
+      if (!configUri) {
+        return;
+      }
 
-      allFirebaseConfigs.value = newState;
-    });
-  }
+      disposable = configWatcher?.onDidChange((uri) => {
+        if (uri.fsPath !== configUri.fsPath) {
+          // ignore changes from firebase.json files that are not the selected one
+        }
+
+        firebaseConfig.value = _readFirebaseConfig(configUri);
+      });
+
+      firebaseConfig.value = _readFirebaseConfig(configUri);
+    }),
+  });
+
+  // Bind the list of URIs to webviews
+  context.subscriptions.push({
+    dispose: effect(() => {
+      // Listen to changes
+      allFirebaseConfigsUris.value;
+      selectedFirebaseConfigUri.value;
+
+      notifyFirebaseConfigListChanged(broker);
+    }),
+  });
+  context.subscriptions.push({
+    dispose: broker.on("getInitialFirebaseConfigList", () => {
+      notifyFirebaseConfigListChanged(broker);
+    }),
+  });
+  context.subscriptions.push({
+    dispose: broker.on("selectFirebaseConfig", (uri) => {
+      selectedFirebaseConfigUri.value = allFirebaseConfigsUris.value.find(
+        (u) => displayStringForUri(u) === uri,
+      );
+    }),
+  });
 }
 
 export async function registerConfig(
@@ -226,45 +285,34 @@ export async function registerConfig(
     }),
   });
 
-  // TODO handle deletion of .firebaserc/.firebase.json/firemat.yaml
-
+  // Register configs before RC as the path to RC depends on the path to configs.
   await registerFirebaseConfig(context, broker);
   await registerRc(context, broker);
 }
 
 /** @internal */
-export function _readRC(): Result<RC | undefined> {
+export function _readRC(uri: vscode.Uri): Result<RC | undefined> {
   return Result.guard(() => {
-    const configPath = getConfigPath();
-    if (!configPath) {
-      return undefined;
-    }
     // RC.loadFile silences errors and returns a non-empty object if the rc file is
     // missing. Let's load it ourselves.
 
-    const rcPath = path.join(configPath, ".firebaserc");
-
-    if (!fs.existsSync(rcPath)) {
+    if (!fs.existsSync(uri.fsPath)) {
       return undefined;
     }
 
-    const json = fs.readFileSync(rcPath);
+    const json = fs.readFileSync(uri.fsPath);
     const data = JSON.parse(json.toString());
 
-    return new RC(rcPath, data);
+    return new RC(uri.fsPath, data);
   });
 }
 
 /** @internal */
-export function _readFirebaseConfig(): Result<Config | undefined> | undefined {
+export function _readFirebaseConfig(
+  uri: vscode.Uri,
+): Result<Config | undefined> | undefined {
   const result = Result.guard(() => {
-    const configPath = getConfigPath();
-    if (!configPath) {
-      return undefined;
-    }
-    const config = Config.load({
-      configPath: path.join(configPath, "firebase.json"),
-    });
+    const config = Config.load({ configPath: uri.fsPath });
     if (!config) {
       // Config.load may return null. We transform it to undefined.
       return undefined;
@@ -287,14 +335,14 @@ export async function _createWatcher(
   const cwdSignal = computed(() => currentOptions.value.cwd);
   const cwd = await firstWhereDefined(cwdSignal);
 
-  return workspace.value?.createFileSystemWatcher(
+  return workspace.value.createFileSystemWatcher(
     // Using RelativePattern enables tests to use watchers too.
     new vscode.RelativePattern(vscode.Uri.file(cwd), file),
   );
 }
 
 async function findFiles(file: string) {
-  return workspace.value?.findFiles(file, "**/node_modules");
+  return workspace.value.findFiles(file, "**/node_modules");
 }
 
 export function getRootFolders() {

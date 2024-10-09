@@ -1,10 +1,12 @@
 import React, { useEffect } from "react";
 import { Spacer } from "./components/ui/Spacer";
-import { broker, brokerSignal } from "./globals/html-broker";
+import { broker, brokerSignal, useBroker } from "./globals/html-broker";
 import { AccountSection } from "./components/AccountSection";
 import { ProjectSection } from "./components/ProjectSection";
 import {
   VSCodeButton,
+  VSCodeDropdown,
+  VSCodeOption,
   VSCodeProgressRing,
 } from "@vscode/webview-ui-toolkit/react";
 import { Body, Label } from "./components/ui/Text";
@@ -71,7 +73,9 @@ function EmulatorsPanel() {
       return (
         <>
           <Spacer size="medium"></Spacer>
-          <label>Emulator start-up may take a while. In case of error, click reset.</label>
+          <label>
+            Emulator start-up may take a while. In case of error, click reset.
+          </label>
           <VSCodeProgressRing></VSCodeProgressRing>
           <Spacer size="medium"></Spacer>
           <VSCodeButton
@@ -165,6 +169,35 @@ function Content() {
   );
 }
 
+function ConfigPicker() {
+  const configs = useBroker("notifyFirebaseConfigListChanged", {
+    initialRequest: "getInitialFirebaseConfigList",
+  });
+
+  if (!configs || configs.values.length < 2) {
+    // Only show the picker when there are multiple configs
+    return <></>;
+  }
+
+  return (
+    <>
+      <Spacer size="medium" />
+
+      <Label>Choose a `firebase.json` location</Label>
+      <VSCodeDropdown
+        value={configs.selected}
+        onChange={(e) =>
+          broker.send("selectFirebaseConfig", (e.target as any).value)
+        }
+      >
+        {configs.values.map((uri) => (
+          <VSCodeOption key={uri}>{uri}</VSCodeOption>
+        ))}
+      </VSCodeDropdown>
+    </>
+  );
+}
+
 export function SidebarApp() {
   const isInitialized = useComputed(() => {
     return !!configs.value?.firebaseJson?.value && hasFdcConfigs.value;
@@ -189,6 +222,7 @@ export function SidebarApp() {
             isMonospace={env.value?.env.isMonospace ?? false}
           />
         )}
+        <ConfigPicker />
       </PanelSection>
 
       {user.value &&
