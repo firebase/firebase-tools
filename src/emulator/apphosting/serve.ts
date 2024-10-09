@@ -41,7 +41,7 @@ async function serve(port: number, customStartCommand?: string): Promise<void> {
   const apphostingLocalConfig = await getLocalAppHostingConfiguration(rootDir);
   const environmentVariablesToInject = {
     ...apphostingLocalConfig.environmentVariables,
-    PORT: port.toString(),
+    PORT: port,
   };
 
   if (customStartCommand) {
