@@ -300,18 +300,18 @@ export async function build(
       ...createPagesManifestLikePrerender(pagesManifestJSON),
     };
 
-    for (const [path, route] of Object.entries(allRoutes)) {
-      const appPathRoute = getAppPathRoute(route, appPathRoutesManifest);
-      const contentDist = getContentDist(dir, distDir, appPathRoute);
-      const sourceParts = path.split("/").filter((it) => !!it);
-      const sourcePartsOrIndex = sourceParts.length > 0 ? sourceParts : ["index"];
-
-      const sourcePath = join(contentDist, ...sourcePartsOrIndex);
-
-      if (await isPartialHTML(`${sourcePath}.html`)) {
-        reasonsForBackend.add(`partial HTML file ${path}`);
-      }
-    }
+    await Promise.all(
+      Object.entries(allRoutes).map(async ([path, route]) => {
+        const appPathRoute = getAppPathRoute(route, appPathRoutesManifest);
+        const contentDist = getContentDist(dir, distDir, appPathRoute);
+        const sourceParts = path.split("/").filter((it) => !!it);
+        const sourcePartsOrIndex = sourceParts.length > 0 ? sourceParts : ["index"];
+        const sourcePath = join(contentDist, ...sourcePartsOrIndex);
+        if (await isPartialHTML(`${sourcePath}.html`)) {
+          reasonsForBackend.add(`partial HTML file ${path}`);
+        }
+      }),
+    );
   }
 
   const isEveryRedirectSupported = nextJsRedirects
