@@ -27,6 +27,11 @@ export function wrapSpawn(
   });
 }
 
+/**
+ *
+ * Spawn a child process with a command string.
+ *
+ */
 export function spawnWithCommandString(
   cmd: string,
   projectDir: string,

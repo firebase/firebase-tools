@@ -13,7 +13,7 @@ import { logger } from "./utils";
 import { Emulators } from "../types";
 
 interface StartOptions {
-  customStartCommand?: string;
+  startCommand?: string;
 }
 
 /**
@@ -31,12 +31,12 @@ export async function start(options?: StartOptions): Promise<{ hostname: string;
     port += 1;
   }
 
-  serve(port, options?.customStartCommand);
+  serve(port, options?.startCommand);
 
   return { hostname, port };
 }
 
-async function serve(port: number, customStartCommand?: string): Promise<void> {
+async function serve(port: number, startCommand?: string): Promise<void> {
   const rootDir = process.cwd();
   const apphostingLocalConfig = await getLocalAppHostingConfiguration(rootDir);
   const environmentVariablesToInject = {
@@ -44,17 +44,23 @@ async function serve(port: number, customStartCommand?: string): Promise<void> {
     PORT: port,
   };
 
-  if (customStartCommand) {
+  if (startCommand) {
     logger.logLabeled(
       "BULLET",
       Emulators.APPHOSTING,
-      `running custom start command: '${customStartCommand}'`,
+      `running custom start command: '${startCommand}'`,
     );
-    await spawnWithCommandString(customStartCommand, rootDir, environmentVariablesToInject);
+    await spawnWithCommandString(startCommand, rootDir, environmentVariablesToInject);
     return;
   }
 
   const packageManager = await discoverPackageManager(rootDir);
+
+  logger.logLabeled(
+    "BULLET",
+    Emulators.APPHOSTING,
+    `starting app with: '${packageManager} run dev'`,
+  );
   await wrapSpawn(packageManager, ["run", "dev"], rootDir, environmentVariablesToInject);
 }
 

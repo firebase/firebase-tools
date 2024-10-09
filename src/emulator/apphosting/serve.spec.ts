@@ -41,14 +41,14 @@ describe("serve", () => {
     });
 
     it("should run the custom start command if one is provided", async () => {
-      const customStartCommand = "custom test command";
+      const startCommand = "custom test command";
       checkListenableStub.onFirstCall().returns(true);
       getLocalAppHostingConfigurationStub.returns({ environmentVariables: {}, secrets: {} });
 
-      await serve.start({ customStartCommand });
+      await serve.start({ startCommand });
 
       expect(spawnWithCommandStringStub).to.be.called;
-      expect(spawnWithCommandStringStub.getCall(0).args[0]).to.eq(customStartCommand);
+      expect(spawnWithCommandStringStub.getCall(0).args[0]).to.eq(startCommand);
     });
   });
 });
