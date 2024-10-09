@@ -13,9 +13,7 @@ interface AppHostingEmulatorArgs {
  * environment for testing App Hosting features locally.
  */
 export class AppHostingEmulator implements EmulatorInstance {
-  constructor(private args: AppHostingEmulatorArgs) {
-    this.args = args;
-  }
+  constructor(private args: AppHostingEmulatorArgs) {}
 
   async start(): Promise<void> {
     const { hostname, port } = await apphostingStart({
