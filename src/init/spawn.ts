@@ -26,3 +26,29 @@ export function wrapSpawn(
     });
   });
 }
+
+export function spawnWithCommandString(
+  cmd: string,
+  projectDir: string,
+  environmentVariables?: any,
+): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const installer = spawn(cmd, {
+      cwd: projectDir,
+      stdio: "inherit",
+      shell: true,
+      env: { ...process.env, ...environmentVariables },
+    });
+
+    installer.on("error", (err: any) => {
+      logger.log("DEBUG", err.stack);
+    });
+
+    installer.on("close", (code) => {
+      if (code === 0) {
+        return resolve();
+      }
+      return reject();
+    });
+  });
+}

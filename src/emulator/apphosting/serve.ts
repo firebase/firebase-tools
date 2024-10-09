@@ -7,9 +7,8 @@ import { isIPv4 } from "net";
 import { checkListenable } from "../portUtils";
 import { discoverPackageManager } from "./utils";
 import { DEFAULT_HOST, DEFAULT_PORTS } from "../constants";
-import { wrapSpawn } from "../../init/spawn";
+import { spawnWithCommandString, wrapSpawn } from "../../init/spawn";
 import { getLocalAppHostingConfiguration } from "./config";
-import { spawn } from "child_process";
 import { logger } from "./utils";
 import { Emulators } from "../types";
 
@@ -51,7 +50,7 @@ async function serve(port: number, customStartCommand?: string): Promise<void> {
       Emulators.APPHOSTING,
       `running custom start command: '${customStartCommand}'`,
     );
-    await customSpawn(customStartCommand, rootDir, environmentVariablesToInject);
+    await spawnWithCommandString(customStartCommand, rootDir, environmentVariablesToInject);
     return;
   }
 
@@ -64,31 +63,5 @@ function availablePort(host: string, port: number): Promise<boolean> {
     address: host,
     port,
     family: isIPv4(host) ? "IPv4" : "IPv6",
-  });
-}
-
-export function customSpawn(
-  cmd: string,
-  projectDir: string,
-  environmentVariables?: any,
-): Promise<void> {
-  return new Promise<void>((resolve, reject) => {
-    const installer = spawn(cmd, {
-      cwd: projectDir,
-      stdio: "inherit",
-      shell: true,
-      env: { ...process.env, ...environmentVariables },
-    });
-
-    installer.on("error", (err: any) => {
-      logger.log("DEBUG", err.stack);
-    });
-
-    installer.on("close", (code) => {
-      if (code === 0) {
-        return resolve();
-      }
-      return reject();
-    });
   });
 }
