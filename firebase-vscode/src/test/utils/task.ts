@@ -6,19 +6,19 @@ export async function waitForTaskCompletion(
   return browser.executeWorkbench<Promise<boolean>>(
     (vs: typeof vscode, taskName: string) => {
       return new Promise((resolve, reject) => {
-        let taskStarted = false;
+        let taskCompleted = false;
 
         const startListener = vs.tasks.onDidStartTask((e) => {
           if (e.execution.task.name === taskName) {
             console.log(`Task "${taskName}" started.`);
-            taskStarted = true;
           }
         });
 
         const endListener = vs.tasks.onDidEndTask((e) => {
           if (e.execution.task.name === taskName) {
             console.log(`Task "${taskName}" completed.`);
-            resolve(taskStarted); // Resolve the promise when the task finishes
+            taskCompleted = true;
+            resolve(taskCompleted); // Resolve the promise when the task finishes
             startListener.dispose(); // Clean up the listeners
             endListener.dispose();
           }
