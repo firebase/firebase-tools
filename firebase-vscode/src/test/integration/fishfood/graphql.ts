@@ -105,7 +105,7 @@ firebaseSuite("GraphQL", async function () {
   );
 
   firebaseTest(
-    "GraphQL schema file should allow adding/reading data",
+    "GraphQL schema file should allow adding new data",
     async function () {
       const workbench = await browser.getWorkbench();
 
@@ -151,6 +151,31 @@ firebaseSuite("GraphQL", async function () {
       expect(editorTitle).toBe("Post_insert.gql");
 
       await editorView.closeCurrentEditor();
+    },
+  );
+
+  firebaseTest(
+    "GraphQL schema file should allow reading new data",
+    async function () {
+      const workbench = await browser.getWorkbench();
+
+      const sidebar = new FirebaseSidebar(workbench);
+      await sidebar.openExtensionSidebar();
+
+      const schemaFilePath = path.join(
+        __dirname,
+        "..",
+        "..",
+        "test_projects",
+        "fishfood",
+        "dataconnect",
+        "schema",
+        "schema.gql",
+      );
+
+      // Open the schema file
+      const editorView = new EditorView(workbench);
+      await editorView.openFile(schemaFilePath);
 
       // Verify that inline Read Data button is displayed
       const readDataButton = await editorView.readDataButton;
@@ -163,17 +188,17 @@ firebaseSuite("GraphQL", async function () {
       await browser.pause(1000);
 
       // Verify the generated query
-      const activeEditor2 = await editorView.getActiveEditor();
-      const editorTitle2 = activeEditor2?.document.fileName.split("/").pop();
-      const editorContent2 = await editorView.activeEditorContent();
+      const activeEditor = await editorView.getActiveEditor();
+      const editorTitle = activeEditor?.document.fileName.split("/").pop();
+      const editorContent = await editorView.activeEditorContent();
 
-      expect(editorContent2).toHaveText(`query {
-    posts{
-      id
-      content
-    }
-  }`);
-      expect(editorTitle2).toBe("Post_read.gql");
+      expect(editorContent).toHaveText(`query {
+  posts{
+    id
+    content
+  }
+}`);
+      expect(editorTitle).toBe("Post_read.gql");
     },
   );
 });
