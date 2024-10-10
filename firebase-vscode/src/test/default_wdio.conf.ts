@@ -10,7 +10,6 @@ export const vscodeConfigs = {
   "wdio:vscodeOptions": {
     vscodeArgs: {
       disableExtensions: false,
-      installExtensions: ["graphql.vscode-graphql-syntax"],
     },
     // points to directory where extension package.json is located
     extensionPath: path.join(__dirname, "..", ".."),

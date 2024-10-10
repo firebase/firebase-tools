@@ -1,7 +1,6 @@
 import * as vscode from "vscode";
 import { firstWhere, firstWhereDefined } from "../utils/signal";
 import { currentOptions } from "../options";
-import { deploy as cliDeploy } from "../../../src/deploy";
 import { dataConnectConfigs } from "./config";
 import { createE2eMockable } from "../utils/test_hooks";
 import { runCommand } from "./terminal";

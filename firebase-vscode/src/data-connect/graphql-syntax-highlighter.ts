@@ -1,13 +1,8 @@
 import vscode from "vscode";
 
 export async function suggestGraphqlSyntaxExtension() {
-  // Skip if this is a test run
-  // if (process.env.TEST === "true") {
-  //   return;
-  // }
-
   const graphqlSyntaxExt = "graphql.vscode-graphql-syntax";
-  const firebaseExt = "myExtension";
+  const firebaseExt = "firebase.dataConnect";
   const gql = vscode.extensions.getExtension(graphqlSyntaxExt);
 
   if (
