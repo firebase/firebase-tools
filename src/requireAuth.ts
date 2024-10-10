@@ -10,6 +10,7 @@ import * as scopes from "./scopes";
 import { Tokens, TokensWithExpiration, User } from "./types/auth";
 import { setRefreshToken, setActiveAccount, setGlobalDefaultAccount } from "./auth";
 import type { Options } from "./options";
+import { configstore } from "./configstore";
 
 const AUTH_ERROR_MESSAGE = `Command requires authentication, please run ${clc.bold(
   "firebase login",
@@ -37,10 +38,23 @@ function getAuthClient(config: GoogleAuthOptions): GoogleAuth {
  * @param authScopes scopes to be obtained.
  */
 async function autoAuth(options: Options, authScopes: string[]): Promise<void | string> {
+  console.log('autoAuth');
   const client = getAuthClient({ scopes: authScopes, projectId: options.project });
   const token = await client.getAccessToken();
   token !== null ? apiv2.setAccessToken(token) : false;
-
+  const timeoutPromise = new Promise(async (resolve, reject) => {
+    const client2 = await client.getClient();
+  client2.on('tokens', (tokens) => {
+        console.log(tokens);
+        if(tokens.refresh_token) {
+          resolve(tokens);
+        }
+      });
+    const timeout = setTimeout(() => {
+      reject('reached timeout!');
+    }, 60000);;
+  });
+  await timeoutPromise;
   let clientEmail;
   try {
     const credentials = await client.getCredentials();

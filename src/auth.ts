@@ -257,6 +257,8 @@ let lastAccessToken: TokensWithExpiration | undefined;
 function getCallbackUrl(port?: number): string {
   if (typeof port === "undefined") {
     return "urn:ietf:wg:oauth:2.0:oob";
+  } else if(process.env.MONOSPACE_ENV) {
+    return `https://${port}-${process.env.WEB_HOST}`;
   }
   return `http://localhost:${port}`;
 }
