@@ -16,7 +16,7 @@ const AUTH_ERROR_MESSAGE = `Command requires authentication, please run ${clc.bo
 )}`;
 
 let authClient: GoogleAuth | undefined;
-
+let lastOptions: Options;
 /**
  * Returns the auth client.
  * @param config options for the auth client.
@@ -67,11 +67,19 @@ async function autoAuth(options: Options, authScopes: string[]): Promise<void | 
   return clientEmail;
 }
 
+export async function refreshAuth(): Promise<string | void> {
+  if (!lastOptions) {
+    throw new FirebaseError("Unable to refresh auth: not yet authenticated.");
+  }
+  return requireAuth(lastOptions);
+}
+
 /**
  * Ensures that there is an authenticated user.
  * @param options CLI options.
  */
 export async function requireAuth(options: any): Promise<string | void> {
+  lastOptions = options;
   api.setScopes([scopes.CLOUD_PLATFORM, scopes.FIREBASE_PLATFORM]);
   options.authScopes = api.getScopes();
 

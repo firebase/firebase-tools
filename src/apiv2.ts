@@ -12,6 +12,7 @@ import { FirebaseError } from "./error";
 import { logger } from "./logger";
 import { responseToError } from "./responseToError";
 import * as FormData from "form-data";
+import { refreshAuth } from "./requireAuth";
 
 // Using import would require resolveJsonModule, which seems to break the
 // build/output format.
@@ -132,8 +133,14 @@ export async function getAccessToken(): Promise<string> {
   if (accessToken && (valid || usingADC)) {
     return accessToken;
   }
-  const data = await auth.getAccessToken(refreshToken, []);
-  return data.access_token;
+  if (refreshToken) {
+    const data = await auth.getAccessToken(refreshToken, []);
+    return data.access_token;
+  } else {
+    // If there is no refresh token, we need to grab a whole new token.
+    await refreshAuth();
+    return accessToken;
+  }
 }
 
 function proxyURIFromEnv(): string | undefined {
