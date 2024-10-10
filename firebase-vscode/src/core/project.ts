@@ -21,7 +21,7 @@ const userScopedProjects = computed<FirebaseProjectMetadata[] | undefined>(
   () => {
     return projects.value[currentUser.value?.email ?? ""];
   },
-);
+) as Signal<FirebaseProjectMetadata[] | undefined>;
 
 export function registerProject(broker: ExtensionBrokerImpl): Disposable {
   // For testing purposes.
@@ -96,9 +96,7 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
         return;
       } else {
         try {
-          const projects = firstWhereDefined(
-            userScopedProjects as Signal<FirebaseProjectMetadata | undefined>,
-          );
+          const projects = firstWhereDefined(userScopedProjects);
 
           currentProjectId.value =
             (await _promptUserForProject(projects as any)) ??
