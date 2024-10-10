@@ -1,2 +1,1 @@
-- Added App Hosting as an option for firebase init. (#7803)
 - Updated dependencies in functions initialization template. (#7809)

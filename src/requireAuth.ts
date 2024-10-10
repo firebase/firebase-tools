@@ -7,7 +7,7 @@ import { FirebaseError } from "./error";
 import { logger } from "./logger";
 import * as utils from "./utils";
 import * as scopes from "./scopes";
-import { Tokens, User } from "./types/auth";
+import { Tokens, TokensWithExpiration, User } from "./types/auth";
 import { setRefreshToken, setActiveAccount, setGlobalDefaultAccount } from "./auth";
 import type { Options } from "./options";
 
@@ -51,11 +51,15 @@ async function autoAuth(options: Options, authScopes: string[]): Promise<void | 
   }
   if (process.env.MONOSPACE_ENV && token && clientEmail) {
     // Within monospace, this a OAuth token for the user, so we make it the active user.
-    setActiveAccount(options, {
+    const activeAccount = {
       user: { email: clientEmail },
-      tokens: { access_token: token },
-    });
-    setGlobalDefaultAccount({ user: { email: clientEmail }, tokens: { access_token: token } });
+      tokens: {
+        access_token: token,
+        expires_at: client.cachedCredential?.credentials.expiry_date,
+      } as TokensWithExpiration,
+    };
+    setActiveAccount(options, activeAccount);
+    setGlobalDefaultAccount(activeAccount);
 
     // project is also selected in monospace auth flow
     options.projectId = await client.getProjectId();
