@@ -7,10 +7,30 @@ import * as utils from "../utils";
 import { FirebaseError } from "../error";
 import { promptOnce } from "../prompt";
 import { getProjectNumber } from "../getProjectNumber";
-import { apphostingGitHubAppInstallationURL, developerConnectOrigin } from "../api";
+import {
+  apphostingGitHubAppInstallationURL,
+  developerConnectOrigin,
+  githubApiOrigin,
+} from "../api";
 
 import * as fuzzy from "fuzzy";
 import * as inquirer from "inquirer";
+import { Client } from "../apiv2";
+
+const githubApiClient = new Client({ urlPrefix: githubApiOrigin(), auth: false });
+
+export interface GitHubBranchInfo {
+  commit: GitHubCommitInfo;
+}
+
+export interface GitHubCommitInfo {
+  sha: string;
+  commit: GitHubCommit;
+}
+
+interface GitHubCommit {
+  message: string;
+}
 
 interface ConnectionNameParts {
   projectId: string;
@@ -212,6 +232,9 @@ async function manageInstallation(connection: devConnect.Connection): Promise<vo
   });
 }
 
+/**
+ * Gets the oldest matching Dev Connect connection resource for a GitHub app installation.
+ */
 export async function getConnectionForInstallation(
   projectId: string,
   location: string,
@@ -240,6 +263,9 @@ export async function getConnectionForInstallation(
   return connectionsMatchingInstallation[0];
 }
 
+/**
+ * Prompts the user to select which GitHub account to install the GitHub app.
+ */
 export async function promptGitHubInstallation(
   projectId: string,
   location: string,
@@ -383,7 +409,7 @@ async function promptCloneUri(
  * Prompts the user for a GitHub branch and validates that the given branch
  * actually exists. User is re-prompted until they enter a valid branch.
  */
-export async function promptGitHubBranch(repoLink: devConnect.GitRepositoryLink) {
+export async function promptGitHubBranch(repoLink: devConnect.GitRepositoryLink): Promise<string> {
   const branches = await devConnect.listAllBranches(repoLink.name);
   while (true) {
     const branch = await promptOnce({
@@ -578,4 +604,42 @@ export async function fetchRepositoryCloneUris(
   const cloneUris = connectionRepos.map((conn) => conn.cloneUri);
 
   return cloneUris;
+}
+
+/**
+ * Gets the details of a GitHub branch from the GitHub REST API.
+ */
+export async function getGitHubBranch(
+  owner: string,
+  repo: string,
+  branch: string,
+  readToken: string,
+): Promise<GitHubBranchInfo> {
+  const headers = { Authorization: `Bearer ${readToken}`, "User-Agent": "Firebase CLI" };
+  const { body } = await githubApiClient.get<GitHubBranchInfo>(
+    `/repos/${owner}/${repo}/branches/${branch}`,
+    {
+      headers,
+    },
+  );
+  return body;
+}
+
+/**
+ * Gets the details of a GitHub commit from the GitHub REST API.
+ */
+export async function getGitHubCommit(
+  owner: string,
+  repo: string,
+  ref: string,
+  readToken: string,
+): Promise<GitHubCommitInfo> {
+  const headers = { Authorization: `Bearer ${readToken}`, "User-Agent": "Firebase CLI" };
+  const { body } = await githubApiClient.get<GitHubCommitInfo>(
+    `/repos/${owner}/${repo}/commits/${ref}`,
+    {
+      headers,
+    },
+  );
+  return body;
 }
