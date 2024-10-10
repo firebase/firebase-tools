@@ -1,6 +1,6 @@
 import vscode, { Disposable } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
-import { computed, effect } from "@preact/signals-react";
+import { computed, effect, Signal } from "@preact/signals-react";
 import { firebaseRC, updateFirebaseRCProject } from "./config";
 import { FirebaseProjectMetadata } from "../types/project";
 import { currentUser, isServiceAccount } from "./user";
@@ -96,7 +96,9 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
         return;
       } else {
         try {
-          const projects = firstWhereDefined(userScopedProjects as any);
+          const projects = firstWhereDefined(
+            userScopedProjects as Signal<FirebaseProjectMetadata | undefined>,
+          );
 
           currentProjectId.value =
             (await _promptUserForProject(projects as any)) ??
