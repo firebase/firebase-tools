@@ -1,1 +1,2 @@
 - Updated dependencies in functions initialization template. (#7809)
+- Fixed Flutter web apps that might require the --no-tree-shake-icons flag in order to build. (#7724)
