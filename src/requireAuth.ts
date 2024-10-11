@@ -39,6 +39,7 @@ function getAuthClient(config: GoogleAuthOptions): GoogleAuth {
 async function autoAuth(options: Options, authScopes: string[]): Promise<void | string> {
   const client = getAuthClient({ scopes: authScopes, projectId: options.project });
   const token = await client.getAccessToken();
+  console.log("TOLKEN IS", token);
   token !== null ? apiv2.setAccessToken(token) : false;
 
   let clientEmail;
@@ -67,11 +68,12 @@ async function autoAuth(options: Options, authScopes: string[]): Promise<void | 
   return clientEmail;
 }
 
-export async function refreshAuth(): Promise<string | void> {
+export async function refreshAuth(): Promise<Tokens> {
   if (!lastOptions) {
     throw new FirebaseError("Unable to refresh auth: not yet authenticated.");
   }
-  return requireAuth(lastOptions);
+  await requireAuth(lastOptions);
+  return lastOptions.tokens as Tokens;
 }
 
 /**
