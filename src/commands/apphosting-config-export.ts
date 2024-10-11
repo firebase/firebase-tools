@@ -6,7 +6,7 @@ import { accessSecretVersion } from "../gcp/secretManager";
 import { requireAuth } from "../requireAuth";
 import * as secretManager from "../gcp/secretManager";
 import { requirePermissions } from "../requirePermissions";
-import { allYamlPaths } from "../apphosting/config";
+import { allYamlPaths, exportSecrets } from "../apphosting/config";
 
 export const command = new Command("apphosting:config:export")
   .description(
@@ -27,6 +27,12 @@ export const command = new Command("apphosting:config:export")
     // }
     // const value = await accessSecretVersion(projectId, name, version);
     const currentDir = process.cwd();
+    const yamlFilePaths = allYamlPaths(currentDir);
+    console.log(`yaml file paths: ${JSON.stringify(yamlFilePaths)}`);
+    if (!yamlFilePaths) {
+      logger.warn("No apphosting YAMLS found");
+      return;
+    }
 
-    logger.info(`found yamls: ${await allYamlPaths(currentDir)}`);
+    await exportSecrets(yamlFilePaths);
   });

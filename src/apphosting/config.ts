@@ -1,4 +1,4 @@
-import { resolve, join, dirname } from "path";
+import { resolve, join, dirname, basename } from "path";
 import { writeFileSync, readdirSync } from "fs";
 import * as yaml from "yaml";
 
@@ -66,6 +66,7 @@ export function allYamlPaths(cwd: string): string[] | null {
 
   while (files.length == 0) {
     files = listAppHostingYamlsInCWD(dir);
+
     // We've hit project root
     if (fs.fileExistsSync(resolve(dir, "firebase.json"))) {
       break;
@@ -83,9 +84,13 @@ export function allYamlPaths(cwd: string): string[] | null {
 }
 
 function listAppHostingYamlsInCWD(cwd: string): string[] {
-  return readdirSync(cwd).filter(
-    (fn) => (fn.endsWith(".yaml") || fn.endsWith(".yml")) && fn.startsWith("apphosting."),
-  );
+  let paths: string[] = [];
+  for (const file of readdirSync(cwd)) {
+    if (file.startsWith("apphosting.") && file.endsWith(".yaml")) {
+      paths.push(join(cwd, file));
+    }
+  }
+  return paths;
 }
 
 /** Load apphosting.yaml */
@@ -183,4 +188,16 @@ export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
     secret: secretName,
   });
   dynamicDispatch.store(path, projectYaml);
+}
+
+export async function exportSecrets(yamlPaths: string[]) {
+  const files = yamlPaths.map((yamlPath) => basename(yamlPath));
+
+  const location = (await prompt.promptOnce({
+    name: "apphosting-yaml",
+    type: "list",
+    default: APPHOSTING_BASE_YAML_FILE,
+    message: "Which environment would you like to export secrets from Secret Manager for?",
+    choices: files,
+  })) as string;
 }
