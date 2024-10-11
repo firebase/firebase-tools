@@ -21,7 +21,7 @@ export function describeAuthEmulator(
   return describe(`Auth Emulator: ${title}`, function (this) {
     this.timeout(20000);
     let authApp: Express.Application;
-    beforeEach("setup or reuse auth server", async (this) => {
+    beforeEach("setup or reuse auth server", async () => {
       authApp = await createOrReuseApp(singleProjectMode);
     });
 
