@@ -28,14 +28,12 @@ export function wrapSpawn(
 }
 
 /**
- *
  * Spawn a child process with a command string.
- *
  */
 export function spawnWithCommandString(
   cmd: string,
   projectDir: string,
-  environmentVariables?: any,
+  environmentVariables?: Record<string, string>,
 ): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const installer = spawn(cmd, {
