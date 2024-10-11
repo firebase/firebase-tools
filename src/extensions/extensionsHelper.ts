@@ -119,9 +119,11 @@ export async function getFirebaseProjectParams(
   if (!projectId) {
     return {};
   }
+  console.log("we getting config");
   const body = emulatorMode
     ? await getProjectAdminSdkConfigOrCached(projectId)
     : await getFirebaseConfig({ project: projectId });
+  console.log("we getting params");
   const projectNumber =
     emulatorMode && Constants.isDemoProject(projectId)
       ? Constants.FAKE_PROJECT_NUMBER
