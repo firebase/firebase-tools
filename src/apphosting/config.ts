@@ -1,11 +1,13 @@
 import { resolve, join, dirname } from "path";
-import { writeFileSync } from "fs";
+import { writeFileSync, readdirSync } from "fs";
 import * as yaml from "yaml";
 
 import * as fs from "../fsutils";
 import { NodeType } from "yaml/dist/nodes/Node";
 import * as prompt from "../prompt";
 import * as dialogs from "./secrets/dialogs";
+
+export const APPHOSTING_BASE_YAML_FILE = "apphosting.yaml";
 
 export interface RunConfig {
   concurrency?: number;
@@ -41,7 +43,7 @@ export interface Config {
 export function yamlPath(cwd: string): string | null {
   let dir = cwd;
 
-  while (!fs.fileExistsSync(resolve(dir, "apphosting.yaml"))) {
+  while (!fs.fileExistsSync(resolve(dir, APPHOSTING_BASE_YAML_FILE))) {
     // We've hit project root
     if (fs.fileExistsSync(resolve(dir, "firebase.json"))) {
       return null;
@@ -54,7 +56,36 @@ export function yamlPath(cwd: string): string | null {
     }
     dir = parent;
   }
-  return resolve(dir, "apphosting.yaml");
+  return resolve(dir, APPHOSTING_BASE_YAML_FILE);
+}
+
+export function allYamlPaths(cwd: string): string[] | null {
+  let dir = cwd;
+
+  let files: string[] = [];
+
+  while (files.length == 0) {
+    files = listAppHostingYamlsInCWD(dir);
+    // We've hit project root
+    if (fs.fileExistsSync(resolve(dir, "firebase.json"))) {
+      break;
+    }
+
+    const parent = dirname(dir);
+    // We've hit the filesystem root
+    if (parent === dir) {
+      break;
+    }
+    dir = parent;
+  }
+
+  return files.length > 0 ? files : null;
+}
+
+function listAppHostingYamlsInCWD(cwd: string): string[] {
+  return readdirSync(cwd).filter(
+    (fn) => (fn.endsWith(".yaml") || fn.endsWith(".yml")) && fn.startsWith("apphosting."),
+  );
 }
 
 /** Load apphosting.yaml */
