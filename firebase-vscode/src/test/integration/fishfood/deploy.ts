@@ -1,7 +1,6 @@
 import { browser, expect } from "@wdio/globals";
 import { FirebaseSidebar } from "../../utils/page_objects/sidebar";
 import { firebaseSuite, firebaseTest } from "../../utils/test_hooks";
-import { QuickPick } from "../../utils/page_objects/quick_picks";
 import { e2eSpy, getE2eSpyCalls } from "../mock";
 import { mockUser } from "../../utils/user";
 import { FirebaseCommands } from "../../utils/page_objects/commands";
@@ -12,7 +11,6 @@ firebaseSuite("Deployment", async function () {
     const workbench = await browser.getWorkbench();
 
     const sidebar = new FirebaseSidebar(workbench);
-    const quickPicks = new QuickPick(workbench);
     const commands = new FirebaseCommands();
 
     await sidebar.openExtensionSidebar();

@@ -1,6 +1,7 @@
 import { addTearDown } from "../utils/test_hooks";
 import { deploy as cliDeploy } from "../../../../src/deploy";
 import * as vscode from "vscode";
+import { runTerminalTask } from "../../data-connect/terminal";
 
 export async function e2eSpy(key: string): Promise<void> {
   addTearDown(async () => {
@@ -11,8 +12,11 @@ export async function e2eSpy(key: string): Promise<void> {
 }
 
 export function getE2eSpyCalls(
-  key: "deploy",
-): Promise<Array<Parameters<typeof cliDeploy>>>;
+  key: "deploy" | "init",
+): Promise<
+  | Array<Parameters<typeof cliDeploy>>
+  | Array<Parameters<typeof runTerminalTask>>
+>;
 export async function getE2eSpyCalls(key: string): Promise<Array<Array<any>>> {
   return callBrowserSpyCommand(
     key,

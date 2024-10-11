@@ -107,10 +107,6 @@ jobs:
 
       - run: npm i -g firebase-tools@latest
 
-      - run: |
-          echo ${{ secrets.service_account_json_base64 }} | base64 -d > ./scripts/service-account.json
-          source ./scripts/set-default-credentials.sh
-
       - uses: GabrielBB/xvfb-action@v1
         with:
           run: npm run test:e2e
