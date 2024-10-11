@@ -36,7 +36,7 @@ import * as refs from "./refs";
 import { EXTENSIONS_SPEC_FILE, readFile, getLocalExtensionSpec } from "./localHelper";
 import { confirm, promptOnce } from "../prompt";
 import { logger } from "../logger";
-import { envOverride } from "../utils";
+import { envOverride, logLabeledWarning } from '../utils';
 import { getLocalChangelog } from "./change-log";
 import { getProjectNumber } from "../getProjectNumber";
 import { Constants } from "../emulator/constants";
@@ -119,15 +119,24 @@ export async function getFirebaseProjectParams(
   if (!projectId) {
     return {};
   }
-  console.log("we getting config");
   const body = emulatorMode
     ? await getProjectAdminSdkConfigOrCached(projectId)
     : await getFirebaseConfig({ project: projectId });
-  console.log("we getting params");
-  const projectNumber =
-    emulatorMode && Constants.isDemoProject(projectId)
-      ? Constants.FAKE_PROJECT_NUMBER
-      : await getProjectNumber({ projectId });
+
+  let projectNumber = Constants.FAKE_PROJECT_NUMBER;
+  if (!Constants.isDemoProject(projectId)) {
+    try {
+      projectNumber = await getProjectNumber({ projectId });;
+    } catch (err: any) {
+      logLabeledWarning(
+        "ERROR",
+        `Unable to look up project number for ${projectId}.\n` +
+          " If this is a real project, ensure that you are logged in and have access to it.\n" +
+          " If this is a fake project, please use a project ID starting with 'demo-' to skip production calls.\n" +
+          " Continuing with a fake project number - secrets and other features that require production access may behave unexpectedly.",
+      );
+    }
+  }
   const databaseURL = body?.databaseURL ?? `https://${projectId}.firebaseio.com`;
   const storageBucket = body?.storageBucket ?? `${projectId}.appspot.com`;
   // This env variable is needed for parameter-less initialization of firebase-admin
