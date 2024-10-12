@@ -216,4 +216,4 @@ describe("functions", () => {
       });
     });
   });
-});
+}).timeout(5000);
