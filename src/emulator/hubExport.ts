@@ -133,8 +133,11 @@ export class HubExport {
     // Remove any existing data in the directory and then swap it with the
     // temp directory.
     logger.debug(`hubExport: swapping ${this.tmpDir} with ${this.exportPath}`);
-    rimraf.sync(this.exportPath);
-    fse.moveSync(this.tmpDir, this.exportPath);
+    // glob must use posix style paths even on windows
+    const exportPathGlob = path.join(this.exportPath.split(path.sep).join(path.posix.sep), '*');
+    rimraf.sync(exportPathGlob);
+    fse.copySync(this.tmpDir, this.exportPath);
+    rimraf.sync(this.tmpDir);
   }
 
   private async exportFirestore(metadata: ExportMetadata): Promise<void> {
