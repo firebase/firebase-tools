@@ -77,7 +77,7 @@ export class StudioView {
   }
 
   get configureGeneratedSdkBtn() {
-    return $("vscode-button=Configure generated SDK");
+    return $("vscode-button=Add SDK to app");
   }
 
   get emulatorsList() {

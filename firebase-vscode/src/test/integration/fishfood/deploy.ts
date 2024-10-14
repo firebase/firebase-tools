@@ -16,8 +16,8 @@ firebaseSuite("Deployment", async function () {
     await sidebar.openExtensionSidebar();
     await commands.waitForUser();
 
-    mockUser({ email: "test@gmail.com" });
-    mockProject("test-project");
+    await mockUser({ email: "test@gmail.com" });
+    await mockProject("test-project");
 
     await e2eSpy("deploy");
 

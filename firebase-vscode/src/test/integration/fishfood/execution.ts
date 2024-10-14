@@ -53,15 +53,6 @@ firebaseSuite("Execution", async function () {
     // Waiting for the execution to finish
     let result = await getExecutionStatus();
 
-    // We need to retry the first execution as it will fail if the emulators hasn't started.
-    // This is currently the case because the emulators show as "running" even though it's
-    // still downloading the dataconnect emulator.
-    while ((await result.getStatus()) !== "success") {
-      await editor.runLocalButton.click();
-      await browser.pause(5000);
-      result = await getExecutionStatus();
-    }
-
     expect(await result.getLabel()).toBe("createPost");
 
     await execution.setVariables(`{"id": "42"}`);
