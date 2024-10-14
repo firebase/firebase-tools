@@ -294,13 +294,17 @@ function getAppConfigResourceString(appId: string, platform: AppPlatform): strin
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function parseConfigFromResponse(responseBody: any, platform: AppPlatform, skipTemplate = false): AppConfigurationData {
+function parseConfigFromResponse(
+  responseBody: any,
+  platform: AppPlatform,
+  skipTemplate = false,
+): AppConfigurationData {
   if (platform === AppPlatform.WEB) {
-    if(skipTemplate) {
+    if (skipTemplate) {
       return {
         fileName: WEB_CONFIG_FILE_NAME,
-        fileContents: JSON.stringify(responseBody, null, 2)
-      }
+        fileContents: JSON.stringify(responseBody, null, 2),
+      };
     }
     const JS_TEMPLATE = readTemplateSync("setup/web.js");
     return {
@@ -324,7 +328,11 @@ function parseConfigFromResponse(responseBody: any, platform: AppPlatform, skipT
  * @return the platform-specific file information (name and contents).
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getAppConfigFile(config: any, platform: AppPlatform, skipTemplate = false): AppConfigurationData {
+export function getAppConfigFile(
+  config: any,
+  platform: AppPlatform,
+  skipTemplate = false,
+): AppConfigurationData {
   return parseConfigFromResponse(config, platform, skipTemplate);
 }
 

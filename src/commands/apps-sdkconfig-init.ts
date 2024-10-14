@@ -16,11 +16,9 @@ import { requireAuth } from "../requireAuth";
 import { logBullet, logSuccess } from "../utils";
 import { getSdkConfig, writeConfigToFile } from "./apps-sdkconfig";
 import { logError } from "../logError";
-import { getProjectAdminSdkConfigOrCached } from "../emulator/adminSdkConfig";
 import { sdkInit } from "./apps-create";
-import { readTemplate, readTemplateSync } from "../templates";
+import { readTemplate } from "../templates";
 import { FirebaseError } from "../error";
-import { fsync } from "fs";
 export function getSdkOutputDir(appDir: string, platform: Platform): string {
   switch (platform) {
     case Platform.ANDROID:
@@ -87,20 +85,27 @@ export const command = new Command("apps:sdkconfig:init [appId]")
       }
     }
 
-    const outputFile = await getSdkOutputDir(appDir, targetPlatform);
-    if(targetPlatform as unknown as AppPlatform === AppPlatform.WEB) {
-        const files = await getAutoInitConfigFile(sdkConfig, targetPlatform as unknown as AppPlatform);
-        fs.mkdirpSync(outputFile);
-        for(let file of files) {
-            try {
-                await writeConfigToFile(path.join(outputFile, file.fileName), options.nonInteractive, file.fileContents);
-                logSuccess(`Wrote ${file.fileName}`);
-            } catch(e) {
-                console.log(e);
-                logError(`Unable to write to output directory.`);
-            }
+    const outputFile = getSdkOutputDir(appDir, targetPlatform);
+    if ((targetPlatform as unknown as AppPlatform) === AppPlatform.WEB) {
+      const files = await getAutoInitConfigFile(
+        sdkConfig,
+        targetPlatform as unknown as AppPlatform,
+      );
+      fs.mkdirpSync(outputFile);
+      for (const file of files) {
+        try {
+          await writeConfigToFile(
+            path.join(outputFile, file.fileName),
+            options.nonInteractive,
+            file.fileContents,
+          );
+          logSuccess(`Wrote ${file.fileName}`);
+        } catch (e) {
+          console.log(e);
+          logError(`Unable to write to output directory.`);
         }
-        console.log(`
+      }
+      console.log(`
             How to use your JS SDK Config:
             // ES Module:
             import { autoInitApp } from './firebase-js-auto-init/index.esm.js';
@@ -109,7 +114,7 @@ export const command = new Command("apps:sdkconfig:init [appId]")
             // CommonJS Module:
             const { autoInitApp } = require('./firebase-js-auto-init/index.cjs.js');
             autoInitApp();// instead of initializeApp(config);
-        `)
+        `);
     } else {
       const fileInfo = getAppConfigFile(sdkConfig, targetPlatform as unknown as AppPlatform);
       await writeConfigToFile(outputFile, options.nonInteractive, fileInfo.fileContents);

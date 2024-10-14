@@ -100,23 +100,27 @@ export async function getSdkConfig(
   return configData;
 }
 
-export async function writeConfigToFile(filename: string, nonInteractive: boolean, fileContents: string) {
-    if (fs.existsSync(filename)) {
-      if (nonInteractive) {
-        throw new FirebaseError(`${filename} already exists`);
-      }
-      const overwrite = await promptOnce({
-        type: "confirm",
-        default: false,
-        message: `${filename} already exists. Do you want to overwrite?`,
-      });
-
-      if (!overwrite) {
-        return;
-      }
+export async function writeConfigToFile(
+  filename: string,
+  nonInteractive: boolean,
+  fileContents: string,
+) {
+  if (fs.existsSync(filename)) {
+    if (nonInteractive) {
+      throw new FirebaseError(`${filename} already exists`);
     }
-    // TODO(mtewani): Make the call to get the fileContents a part of one of these util fns.
-    fs.writeFileSync(filename, fileContents);
+    const overwrite = await promptOnce({
+      type: "confirm",
+      default: false,
+      message: `${filename} already exists. Do you want to overwrite?`,
+    });
+
+    if (!overwrite) {
+      return;
+    }
+  }
+  // TODO(mtewani): Make the call to get the fileContents a part of one of these util fns.
+  fs.writeFileSync(filename, fileContents);
 }
 
 export const command = new Command("apps:sdkconfig [platform] [appId]")
@@ -127,7 +131,7 @@ export const command = new Command("apps:sdkconfig [platform] [appId]")
   .option("-o, --out [file]", "(optional) write config output to a file")
   .before(requireAuth)
   .action(async (platform = "", appId = "", options: Options): Promise<AppConfigurationData> => {
-    let appPlatform = getAppPlatform(platform);
+    const appPlatform = getAppPlatform(platform);
     const configData = await getSdkConfig(options, appPlatform, appId);
     const fileInfo = getAppConfigFile(configData, appPlatform);
     if (appPlatform === AppPlatform.WEB) {
@@ -140,7 +144,7 @@ export const command = new Command("apps:sdkconfig [platform] [appId]")
     }
 
     const shouldUseDefaultFilename = options.out === true || options.out === "";
-      
+
     const filename = shouldUseDefaultFilename ? configData.fileName : options.out;
     await writeConfigToFile(filename, options.nonInteractive, fileInfo.fileContents);
     logger.info(`App configuration is written in ${filename}`);
