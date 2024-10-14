@@ -294,8 +294,14 @@ function getAppConfigResourceString(appId: string, platform: AppPlatform): strin
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function parseConfigFromResponse(responseBody: any, platform: AppPlatform): AppConfigurationData {
+function parseConfigFromResponse(responseBody: any, platform: AppPlatform, skipTemplate = false): AppConfigurationData {
   if (platform === AppPlatform.WEB) {
+    if(skipTemplate) {
+      return {
+        fileName: WEB_CONFIG_FILE_NAME,
+        fileContents: JSON.stringify(responseBody, null, 2)
+      }
+    }
     const JS_TEMPLATE = readTemplateSync("setup/web.js");
     return {
       fileName: WEB_CONFIG_FILE_NAME,
@@ -314,11 +320,12 @@ function parseConfigFromResponse(responseBody: any, platform: AppPlatform): AppC
  * Returns information representing the file need to initalize the application.
  * @param config the object from `getAppConfig`.
  * @param platform the platform the `config` represents.
+ * @param skipTemplate whether to skip pre-pending the web.js template for web platforms.
  * @return the platform-specific file information (name and contents).
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getAppConfigFile(config: any, platform: AppPlatform): AppConfigurationData {
-  return parseConfigFromResponse(config, platform);
+export function getAppConfigFile(config: any, platform: AppPlatform, skipTemplate = false): AppConfigurationData {
+  return parseConfigFromResponse(config, platform, skipTemplate);
 }
 
 /**

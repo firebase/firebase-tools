@@ -194,22 +194,25 @@ export const command = new Command("apps:create [platform] [displayName]")
 
       logger.info(`Create your ${appPlatform} app in project ${clc.bold(projectId)}:`);
       options.displayName = displayName; // add displayName into options to pass into prompt function
-      let appData;
-      switch (appPlatform) {
-        case AppPlatform.IOS:
-          appData = await initiateIosAppCreation(options);
-          break;
-        case AppPlatform.ANDROID:
-          appData = await initiateAndroidAppCreation(options);
-          break;
-        case AppPlatform.WEB:
-          appData = await initiateWebAppCreation(options);
-          break;
-        default:
-          throw new FirebaseError("Unexpected error. This should not happen");
-      }
-
+      let appData = await sdkInit(appPlatform, options);
       logPostAppCreationInformation(appData, appPlatform);
       return appData;
     },
   );
+  export async function sdkInit(appPlatform: AppPlatform, options: any) {
+    let appData;
+    switch (appPlatform) {
+      case AppPlatform.IOS:
+        appData = await initiateIosAppCreation(options);
+        break;
+      case AppPlatform.ANDROID:
+        appData = await initiateAndroidAppCreation(options);
+        break;
+      case AppPlatform.WEB:
+        appData = await initiateWebAppCreation(options);
+        break;
+      default:
+        throw new FirebaseError("Unexpected error. This should not happen");
+    }
+    return appData;
+  }
