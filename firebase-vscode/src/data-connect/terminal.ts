@@ -54,15 +54,15 @@ export function runTerminalTask(
         }
       }
     });
-    const task = await vscode.tasks.executeTask(
-      new vscode.Task(
-        { type },
-        vscode.TaskScope.Workspace,
-        taskName,
-        "firebase",
-        new vscode.ShellExecution(command, executionOptions),
-      ),
+    const task = new vscode.Task(
+      { type },
+      vscode.TaskScope.Workspace,
+      taskName,
+      "firebase",
+      new vscode.ShellExecution(command, executionOptions),
     );
+    task.presentationOptions = { focus: true };
+    await vscode.tasks.executeTask(task);
   });
 }
 
