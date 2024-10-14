@@ -39,7 +39,6 @@ function getAuthClient(config: GoogleAuthOptions): GoogleAuth {
 async function autoAuth(options: Options, authScopes: string[]): Promise<void | string> {
   const client = getAuthClient({ scopes: authScopes, projectId: options.project });
   const token = await client.getAccessToken();
-  console.log("TOLKEN IS", token);
   token !== null ? apiv2.setAccessToken(token) : false;
 
   let clientEmail;
