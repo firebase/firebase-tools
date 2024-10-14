@@ -19,4 +19,4 @@ describe("EmulatorController", () => {
     expect(EmulatorRegistry.isRunning(name)).to.be.true;
     expect(EmulatorRegistry.getInfo(name)!.port).to.eql(fake.getInfo().port);
   });
-});
+}).timeout(2000);

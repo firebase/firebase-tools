@@ -925,11 +925,14 @@ export async function startAll(
    * storage, etc).
    */
   if (experiments.isEnabled("emulatorapphosting")) {
+    const apphostingConfig = options.config.src.emulators?.[Emulators.APPHOSTING];
+
     if (listenForEmulator.apphosting) {
       const apphostingAddr = legacyGetFirstAddr(Emulators.APPHOSTING);
       const apphostingEmulator = new AppHostingEmulator({
         host: apphostingAddr.host,
         port: apphostingAddr.port,
+        startCommandOverride: apphostingConfig?.startCommandOverride,
         options,
       });
 
