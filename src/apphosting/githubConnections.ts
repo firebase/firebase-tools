@@ -92,7 +92,7 @@ const MANAGE_INSTALLATION_CHOICE = "@MANAGE_INSTALLATION";
 /**
  * Prompts the user to create a GitHub connection.
  */
-export async function getOrCreateGithubConnection(
+export async function getOrCreateGithubConnectionWithSentinel(
   projectId: string,
   location: string,
   createConnectionId?: string,
@@ -169,7 +169,11 @@ export async function linkGitHubRepository(
   location: string,
   createConnectionId?: string,
 ): Promise<devConnect.GitRepositoryLink> {
-  const connection = await getOrCreateGithubConnection(projectId, location, createConnectionId);
+  const connection = await getOrCreateGithubConnectionWithSentinel(
+    projectId,
+    location,
+    createConnectionId,
+  );
 
   let repoCloneUri: string | undefined;
 
@@ -525,6 +529,7 @@ export async function createConnection(
 }
 
 /**
+ * Gets or creates a new Developer Connect Connection resource. Will typically need some initialization
  * Exported for unit testing.
  */
 export async function getOrCreateConnection(
@@ -548,6 +553,7 @@ export async function getOrCreateConnection(
 }
 
 /**
+ * Gets or creates a new Developer Connect GitRepositoryLink resource on a Developer Connect connection.
  * Exported for unit testing.
  */
 export async function getOrCreateRepository(
@@ -585,10 +591,10 @@ export async function getOrCreateRepository(
 }
 
 /**
- * Exported for unit testing.
- *
  * Lists all App Hosting Developer Connect Connections
  * not including the OAuth Connection
+ *
+ * Exported for unit testing.
  */
 export async function listAppHostingConnections(
   projectId: string,
@@ -605,6 +611,8 @@ export async function listAppHostingConnections(
 }
 
 /**
+ * Fetch the git clone url using a Developer Connect GitRepositoryLink.
+ *
  * Exported for unit testing.
  */
 export async function fetchRepositoryCloneUris(

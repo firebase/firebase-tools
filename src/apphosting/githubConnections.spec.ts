@@ -92,6 +92,7 @@ describe("githubConnections", () => {
     let fetchLinkableRepositoriesStub: sinon.SinonStub;
     let getProjectNumberStub: sinon.SinonStub;
     let openInBrowserPopupStub: sinon.SinonStub;
+    let listConnectionsStub: sinon.SinonStub;
 
     beforeEach(() => {
       promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
@@ -121,6 +122,9 @@ describe("githubConnections", () => {
       getProjectNumberStub = sandbox
         .stub(srcUtils, "getProjectNumber")
         .throws("Unexpected getProjectNumber call");
+      listConnectionsStub = sandbox
+        .stub(devconnect, "listAllConnections")
+        .throws("Unexpected listAllConnections call");
     });
 
     afterEach(() => {
@@ -220,6 +224,22 @@ describe("githubConnections", () => {
         "test-repo0",
         repos.repositories[0].remoteUri,
       );
+    });
+
+    it("links a github repository with an sentinel connection", async () => {
+      getConnectionStub.onFirstCall().resolves(completeConn);
+      promptOnceStub.onFirstCall().resolves("instillationID");
+      listConnectionsStub.rejects(new FirebaseError("error", { status: 404 }));
+      createRepositoryStub.resolves({ name: "op" });
+      promptOnceStub.onSecondCall().resolves("enter");
+      getConnectionStub.onSecondCall().resolves(completeConn);
+      promptOnceStub.onSecondCall().resolves(repos.repositories[0].remoteUri);
+      getRepositoryStub.rejects(new FirebaseError("error", { status: 404 }));
+      createRepositoryStub.resolves({ name: "op" });
+      pollOperationStub.resolves(repos.repositories[0]);
+
+      const r = await repo.linkGitHubRepository(projectId, location);
+      expect(r).to.be.deep.equal(repos.repositories[0]);
     });
 
     it("re-uses existing repository it already exists", async () => {
