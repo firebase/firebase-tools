@@ -35,4 +35,18 @@ export class FirebaseCommands {
       });
     });
   }
+
+  async setConfigToSkipFolderSelection(): Promise<void> {
+    await browser.executeWorkbench(async (vs: typeof vscode) => {
+      // Retrieve the existing configuration for "firebase.dataConnect"
+      const configs = vs.workspace.getConfiguration("firebase.dataConnect");
+
+      // Update the configuration with new values
+      await configs.update(
+        "skipToAppFolderSelect",
+        true,
+        vs.ConfigurationTarget.Workspace,
+      );
+    });
+  }
 }
