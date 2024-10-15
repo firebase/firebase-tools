@@ -226,20 +226,126 @@ describe("githubConnections", () => {
       );
     });
 
-    it("links a github repository with an sentinel connection", async () => {
-      getConnectionStub.onFirstCall().resolves(completeConn);
-      promptOnceStub.onFirstCall().resolves("instillationID");
-      listConnectionsStub.rejects(new FirebaseError("error", { status: 404 }));
-      createRepositoryStub.resolves({ name: "op" });
-      promptOnceStub.onSecondCall().resolves("enter");
-      getConnectionStub.onSecondCall().resolves(completeConn);
-      promptOnceStub.onSecondCall().resolves(repos.repositories[0].remoteUri);
-      getRepositoryStub.rejects(new FirebaseError("error", { status: 404 }));
-      createRepositoryStub.resolves({ name: "op" });
-      pollOperationStub.resolves(repos.repositories[0]);
+    it("links a github repository using a sentinel connection", async () => {
+      // linkGitHubRepository()
+      // -getOrCreateGithubConnectionWithSentinel()
+      getConnectionStub.onFirstCall().resolves(completeConn); // Fetches oauth sentinel.
+      promptOnceStub.onFirstCall().resolves("installationID"); // Uses existing Github Account installation.
+      listConnectionsStub.resolves([completeConn]); // Installation has sentinel connection.
+
+      // linkGitHubRepository()
+      promptOnceStub.onSecondCall().resolves(repos.repositories[0].remoteUri); // promptCloneUri() returns repo's clone uri.
+      getConnectionStub.onSecondCall().resolves(completeConn); // getOrCreateConnection() returns a completed connection.
+
+      // -getOrCreateRepository()
+      getRepositoryStub.rejects(new FirebaseError("error", { status: 404 })); // Repo not yet created.
+      createRepositoryStub.resolves({ name: "op" }); // Poll on createGitRepositoryLink().
+      pollOperationStub.resolves(repos.repositories[0]); // Polling returns the gitRepoLink.
 
       const r = await repo.linkGitHubRepository(projectId, location);
+      expect(r).to.be.deep.equal(repos.repositories[0]); // Returns the correct repo.
+    });
+
+    it("links a github repository with a new named connection", async () => {
+      const namedConnectionId = `apphosting-named-${location}`;
+      const oauthConnectionId = `apphosting-oauth-${location}`;
+
+      const namedCompleteConn = {
+        name: `projects/${projectId}/locations/${location}/connections/${namedConnectionId}`,
+        disabled: false,
+        createTime: "0",
+        updateTime: "1",
+        installationState: {
+          stage: "COMPLETE",
+          message: "complete",
+          actionUri: "https://google.com",
+        },
+        reconciling: false,
+      };
+
+      const oauthConn = {
+        name: `projects/${projectId}/locations/${location}/connections/${oauthConnectionId}`,
+        disabled: false,
+        createTime: "0",
+        updateTime: "1",
+        installationState: {
+          stage: "COMPLETE",
+          message: "complete",
+          actionUri: "https://google.com",
+        },
+        reconciling: false,
+        githubConfig: {
+          githubApp: "FIREBASE",
+          authorizerCredential: {
+            oauthTokenSecretVersion: "1",
+            username: "testUser",
+          },
+          appInstallationId: "installationID",
+          installationUri: "http://uri",
+        },
+      };
+
+      // linkGitHubRepository()
+      // -getOrCreateGithubConnectionWithSentinel()
+      getConnectionStub.onFirstCall().rejects(new FirebaseError("error", { status: 404 })); // Named connection does not exist.
+      getConnectionStub.onSecondCall().resolves(oauthConn); // Fetches oauth sentinel.
+      promptOnceStub.onFirstCall().resolves("installationID"); // Uses existing Github Account installation.
+      listConnectionsStub.resolves([oauthConn]); // Installation has sentinel connection but not the named one.
+
+      // --createFullyInstalledConnection
+      createConnectionStub.resolves(namedCompleteConn); // Creates new conn with existing oauth.
+      // linkGitHubRepository()
+      promptOnceStub.onSecondCall().resolves(repos.repositories[0].remoteUri); // promptCloneUri() returns repo's clone uri.
+      getConnectionStub.onThirdCall().resolves(namedCompleteConn); // getOrCreateConnection() returns a completed connection.
+
+      // -getOrCreateRepository()
+      getRepositoryStub.rejects(new FirebaseError("error", { status: 404 })); // Repo not yet created.
+      createRepositoryStub.resolves({ name: "op" }); // Poll on createGitRepositoryLink().
+      pollOperationStub.resolves(repos.repositories[0]); // Polling returns the gitRepoLink.
+
+      const r = await repo.linkGitHubRepository(projectId, location, namedConnectionId);
+
       expect(r).to.be.deep.equal(repos.repositories[0]);
+      expect(createConnectionStub).calledWith(projectId, location, namedConnectionId, {
+        appInstallationId: "installationID",
+        authorizerCredential: oauthConn.githubConfig.authorizerCredential,
+      });
+    });
+
+    it("reuses an existing named connection to link github repo", async () => {
+      const namedConnectionId = `apphosting-named-${location}`;
+
+      const namedCompleteConn = {
+        name: `projects/${projectId}/locations/${location}/connections/${namedConnectionId}`,
+        disabled: false,
+        createTime: "0",
+        updateTime: "1",
+        installationState: {
+          stage: "COMPLETE",
+          message: "complete",
+          actionUri: "https://google.com",
+        },
+        reconciling: false,
+      };
+
+      // linkGitHubRepository()
+      // -getOrCreateGithubConnectionWithSentinel()
+      getConnectionStub.onFirstCall().resolves(namedCompleteConn); // Named connection already exists.
+
+      // linkGitHubRepository()
+      promptOnceStub.onSecondCall().resolves(repos.repositories[0].remoteUri); // promptCloneUri() returns repo's clone uri.
+      getConnectionStub.onThirdCall().resolves(namedCompleteConn); // getOrCreateConnection() returns a completed connection.
+
+      // -getOrCreateRepository()
+      getRepositoryStub.rejects(new FirebaseError("error", { status: 404 })); // Repo not yet created.
+      createRepositoryStub.resolves({ name: "op" }); // Poll on createGitRepositoryLink().
+      pollOperationStub.resolves(repos.repositories[0]); // Polling returns the gitRepoLink.
+
+      const r = await repo.linkGitHubRepository(projectId, location, namedConnectionId);
+
+      expect(r).to.be.deep.equal(repos.repositories[0]);
+      expect(listConnectionsStub).to.not.be.called;
+      expect(createConnectionStub).to.not.be.called;
     });
 
     it("re-uses existing repository it already exists", async () => {
