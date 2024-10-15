@@ -7,9 +7,7 @@ export class FirebaseSidebar {
 
   async open() {
     await browser.executeWorkbench((vs: typeof vscode) => {
-      return vs.commands.executeCommand(
-        "firebase.dataConnect.explorerView.focus"
-      );
+      return vs.commands.executeCommand("fdc_sidebar.focus");
     });
   }
 
