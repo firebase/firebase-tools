@@ -15,10 +15,12 @@ export interface Mockable<T extends (...args: any) => any> {
 export function createE2eMockable<T extends (...args: any) => any>(
   cb: T,
   key: string,
-  fallback: () => ReturnType<T>
+  fallback: () => ReturnType<T>,
 ): Mockable<T> {
   let value: (...args: Parameters<T>) => ReturnType<T> = cb;
   const calls: Parameters<T>[] = [];
+
+  console.log("Creating mockable", key);
 
   // A command used by e2e tests to replace the `deploy` function with a mock.
   // It is not part of the public API.
@@ -33,7 +35,7 @@ export function createE2eMockable<T extends (...args: any) => any>(
       }
 
       return calls;
-    }
+    },
   );
 
   return {

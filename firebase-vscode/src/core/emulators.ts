@@ -104,7 +104,9 @@ export class EmulatorsController implements Disposable {
     this.notifyEmulatorStateChanged();
   }
 
-  async findRunningCliEmulators() {
+  async findRunningCliEmulators(): Promise<
+    { status: EmulatorsStatus; infos?: RunningEmulatorInfo } | undefined
+  > {
     const projectId = firebaseRC.value?.tryReadValue?.projects?.default;
     // TODO: think about what to without projectID, in potentially a logged out mode
     const hubClient = new EmulatorHubClient(projectId!);
@@ -120,6 +122,8 @@ export class EmulatorsController implements Disposable {
     } else {
       this.setEmulatorsStopped();
     }
+
+    return this.emulators;
   }
 
   public areEmulatorsRunning() {

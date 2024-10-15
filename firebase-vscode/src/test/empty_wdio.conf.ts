@@ -1,7 +1,16 @@
-import { config as baseConfig } from "./default_wdio.conf";
-import type { Options } from "@wdio/types";
+import { merge } from "lodash";
+import { config as baseConfig, vscodeConfigs } from "./default_wdio.conf";
+import * as path from "path";
 
-export const config: Options.Testrunner = {
+const emptyPath = path.resolve(process.cwd(), "src/test/test_projects/empty");
+
+export const config: WebdriverIO.Config = {
   ...baseConfig,
   specs: ["./integration/empty/**/*.ts"],
+  maxInstances: 1,
+  capabilities: [
+    merge(vscodeConfigs, {
+      "wdio:vscodeOptions": { workspacePath: emptyPath },
+    }),
+  ],
 };

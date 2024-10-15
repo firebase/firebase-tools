@@ -14,10 +14,9 @@ const root = createRoot(document.getElementById("root")!);
 root.render(<DataConnect />);
 
 function DataConnect() {
-  const emulatorsRunningInfo =
-    useBroker("notifyEmulatorStateChanged", {
-      initialRequest: "getEmulatorInfos",
-    });
+  const emulatorsRunningInfo = useBroker("notifyEmulatorStateChanged", {
+    initialRequest: "getEmulatorInfos",
+  });
 
   const user = useBroker("notifyUserChanged", {
     initialRequest: "getInitialData",
@@ -36,7 +35,7 @@ function DataConnect() {
     <div className={styles.root}>
       <PanelSection title="Local Development">
         <Spacer size="xsmall" />
-        { emulatorsRunningInfo?.status === "running" ? (
+        {emulatorsRunningInfo?.status === "running" ? (
           <>
             <label>Emulators running in terminal</label>
             <EmulatorPanel

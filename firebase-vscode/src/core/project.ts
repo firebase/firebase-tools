@@ -1,6 +1,6 @@
 import vscode, { Disposable } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
-import { computed, effect } from "@preact/signals-react";
+import { computed, effect, Signal } from "@preact/signals-react";
 import { firebaseRC, updateFirebaseRCProject } from "./config";
 import { FirebaseProjectMetadata } from "../types/project";
 import { currentUser, isServiceAccount } from "./user";
@@ -21,9 +21,18 @@ const userScopedProjects = computed<FirebaseProjectMetadata[] | undefined>(
   () => {
     return projects.value[currentUser.value?.email ?? ""];
   },
-);
+) as Signal<FirebaseProjectMetadata[] | undefined>;
 
 export function registerProject(broker: ExtensionBrokerImpl): Disposable {
+  // For testing purposes.
+  const demoProjectCommand = vscode.commands.registerCommand(
+    `fdc-graphql.mock.project`,
+    (project: string) => {
+      currentProjectId.value = project;
+      broker.send("notifyProjectChanged", { projectId: project });
+    },
+  );
+
   async function fetchNewProjects(user: User) {
     const userProjects = await listProjects();
     projects.value = {
@@ -90,7 +99,8 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
           const projects = firstWhereDefined(userScopedProjects);
 
           currentProjectId.value =
-            (await _promptUserForProject(projects)) ?? currentProjectId.value;
+            (await _promptUserForProject(projects as any)) ??
+            currentProjectId.value;
         } catch (e: any) {
           vscode.window.showErrorMessage(e.message);
         }
@@ -104,6 +114,7 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
 
   return vscode.Disposable.from(
     command,
+    demoProjectCommand,
     { dispose: sub1 },
     { dispose: sub2 },
     { dispose: sub3 },

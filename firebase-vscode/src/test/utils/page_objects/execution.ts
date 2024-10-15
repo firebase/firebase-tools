@@ -10,7 +10,7 @@ export class ExecutionPanel {
 
   async open(): Promise<void> {
     await this.workbench.executeCommand(
-      "data-connect-execution-configuration.focus"
+      "data-connect-execution-configuration.focus",
     );
   }
 
@@ -23,12 +23,12 @@ export class ExecutionPanel {
   }
 
   async runInConfigurationContext<R>(
-    cb: (configs: ConfigurationView) => Promise<R>
+    cb: (configs: ConfigurationView) => Promise<R>,
   ): Promise<R> {
     const [a, b] = await findWebviewWithTitle("Configuration");
 
     return runInFrame(a, () =>
-      runInFrame(b, () => cb(new ConfigurationView(this.workbench)))
+      runInFrame(b, () => cb(new ConfigurationView(this.workbench))),
     );
   }
 }
