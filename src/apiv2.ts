@@ -132,6 +132,7 @@ export async function getAccessToken(): Promise<string> {
   if (accessToken && (valid || usingADC)) {
     return accessToken;
   }
+
   const data = await auth.getAccessToken(refreshToken, []);
   return data.access_token;
 }

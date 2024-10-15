@@ -3,7 +3,7 @@ import * as crypto from "crypto";
 import * as fs from "fs-extra";
 import * as os from "os";
 import * as path from "path";
-import { sync as rimraf } from "rimraf";
+import { rmSync } from "node:fs";
 
 import * as fsAsync from "./fsAsync";
 
@@ -43,7 +43,7 @@ describe("fsAsync", () => {
   });
 
   after(() => {
-    rimraf(baseDir);
+    rmSync(baseDir, { recursive: true });
     expect(() => {
       fs.statSync(baseDir);
     }).to.throw();
