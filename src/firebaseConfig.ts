@@ -240,7 +240,7 @@ export type EmulatorsConfig = {
     port?: number;
     postgresHost?: string;
     postgresPort?: number;
-    postgresDataDirectory?: string;
+    dataDirectory?: string;
   };
   tasks?: {
     host?: string;

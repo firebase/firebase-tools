@@ -19,6 +19,7 @@ import { logger } from "../../logger";
 export class PostgresServer {
   private username: string;
   private database: string;
+  private dataDirectory?: string;
 
   public db: PGlite | undefined;
   public async createPGServer(host: string = "127.0.0.1", port: number): Promise<net.Server> {
@@ -77,14 +78,15 @@ export class PostgresServer {
         uuidOssp,
       },
       // TODO:  Use dataDir + loadDataDir to implement import/export.
-      // dataDir?: string;
-      // loadDataDir?: Blob | File;
+       dataDir: this.dataDirectory,
+      // loadDataDir?: Blob | File; // This will be used with .dumpDataDir() for import/export
     });
   }
 
-  constructor(database: string, username: string) {
+  constructor(database: string, username: string, dataDirectory?: string) {
     this.username = username;
     this.database = database;
+    this.dataDirectory = dataDirectory;
   }
 }
 

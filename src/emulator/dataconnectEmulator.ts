@@ -101,7 +101,8 @@ export class DataConnectEmulator implements EmulatorInstance {
           `FIREBASE_DATACONNECT_POSTGRESQL_STRING is set to ${dataConnectLocalConnString()} - using that instead of starting a new database`,
         );
       } else if (pgHost && pgPort) {
-        const pgServer = new PostgresServer(dbId, "postgres");
+        const dataDirectory = this.args.config.get("emulators.dataconnect.dataDirectory");
+        const pgServer = new PostgresServer(dbId, "postgres", dataDirectory);
         const server = await pgServer.createPGServer(pgHost, pgPort);
         const connectableHost = connectableHostname(pgHost);
         connStr = `postgres://${connectableHost}:${pgPort}/${dbId}?sslmode=disable`;
@@ -109,6 +110,7 @@ export class DataConnectEmulator implements EmulatorInstance {
           if (err instanceof FirebaseError) {
             this.logger.logLabeled("ERROR", "Data Connect", `${err}`);
           } else {
+            console
             this.logger.logLabeled(
               "ERROR",
               "Data Connect",
