@@ -1,5 +1,4 @@
 import * as pg from "pg";
-import * as ora from "ora";
 import chalk from "chalk";
 import { Connector, IpAddressTypes, AuthTypes } from "@google-cloud/cloud-sql-connector";
 
@@ -13,14 +12,13 @@ import { getIdentifiers } from "../dataconnect/schemaMigration";
 import { requireAuth } from "../requireAuth";
 import { getIAMUser } from "../gcp/cloudsql/connect";
 import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
-import { prompt, confirm, Question } from "../prompt";
+import { prompt, Question } from "../prompt";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { FBToolsAuthClient } from "../gcp/cloudsql/fbToolsAuthClient";
+import { confirmDangerousQuery, interactiveExecuteQuery } from "../gcp/cloudsql/interactive";
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const Table = require("cli-table");
-
+// Not a comprehensive list, used for keyword coloring.
 const sqlKeywords = [
   "SELECT",
   "FROM",
@@ -36,34 +34,6 @@ const sqlKeywords = [
   "CREATE",
   "DROP",
 ];
-
-async function executeQuery(query: string, conn: pg.PoolClient) {
-  const spinner = ora("Executing query...").start();
-  try {
-    const results = await conn.query(query);
-    spinner.succeed(chalk.green("Query executed successfully"));
-
-    if (Array.isArray(results.rows) && results.rows.length > 0) {
-      const table = new Table({
-        head: Object.keys(results.rows[0]).map((key) => chalk.cyan(key)),
-        style: { head: [], border: [] },
-      });
-
-      results.rows.forEach((row) => {
-        table.push(Object.values(row) as any);
-      });
-
-      logger.info(table.toString());
-    } else {
-      // If nothing is returned and the query was select, let the user know there was no results.
-      if (query.toUpperCase().includes("SELECT")) {
-        logger.info(chalk.yellow("No results returned"));
-      }
-    }
-  } catch (err) {
-    spinner.fail(chalk.red(`Failed executing query: ${err}`));
-  }
-}
 
 async function promptForQuery(): Promise<string> {
   let query = "";
@@ -95,14 +65,23 @@ async function promptForQuery(): Promise<string> {
   return query;
 }
 
-async function confirmDangerousQuery(query: string): Promise<boolean> {
-  if (query.toUpperCase().includes("DROP") || query.toUpperCase().includes("DELETE")) {
-    return await confirm({
-      message: chalk.yellow("This query may be destructive. Are you sure you want to proceed?"),
-      default: false,
-    });
+async function mainShellLoop(conn: pg.PoolClient) {
+  while (true) {
+    const query = await promptForQuery();
+    if (query.toLowerCase() === ".exit") {
+      break;
+    }
+
+    if (query === "") {
+      continue;
+    }
+
+    if (await confirmDangerousQuery(query)) {
+      await interactiveExecuteQuery(query, conn);
+    } else {
+      logger.info(chalk.yellow("Query cancelled."));
+    }
   }
-  return true;
 }
 
 export const command = new Command("dataconnect:sql:shell [serviceId]")
@@ -148,22 +127,7 @@ export const command = new Command("dataconnect:sql:shell [serviceId]")
     );
 
     // Start accepting queries
-    while (true) {
-      const query = await promptForQuery();
-      if (query.toLowerCase() === ".exit") {
-        break;
-      }
-
-      if (query === "") {
-        continue;
-      }
-
-      if (await confirmDangerousQuery(query)) {
-        await executeQuery(query, conn);
-      } else {
-        logger.info(chalk.yellow("Query cancelled."));
-      }
-    }
+    await mainShellLoop(conn);
 
     // Cleanup after exit
     logger.info(chalk.yellow("Exiting shell..."));
