@@ -352,9 +352,21 @@ export async function startAll(
   // the Functions emulator needs to start.
   let extensionEmulator: ExtensionsEmulator | undefined = undefined;
   if (shouldStart(options, Emulators.EXTENSIONS)) {
-    const projectNumber = isDemoProject
-      ? Constants.FAKE_PROJECT_NUMBER
-      : await needProjectNumber(options);
+    let projectNumber = Constants.FAKE_PROJECT_NUMBER;
+    if (!isDemoProject) {
+      try {
+        projectNumber = await needProjectNumber(options);
+      } catch (err: any) {
+        EmulatorLogger.forEmulator(Emulators.EXTENSIONS).logLabeled(
+          "ERROR",
+          Emulators.EXTENSIONS,
+          `Unable to look up project number for ${options.project}.\n` +
+            " If this is a real project, ensure that you are logged in and have access to it.\n" +
+            " If this is a fake project, please use a project ID starting with 'demo-' to skip production calls.\n" +
+            " Continuing with a fake project number - secrets and other features that require production access may behave unexpectedly.",
+        );
+      }
+    }
     const aliases = getAliases(options, projectId);
     extensionEmulator = new ExtensionsEmulator({
       options,
@@ -913,11 +925,14 @@ export async function startAll(
    * storage, etc).
    */
   if (experiments.isEnabled("emulatorapphosting")) {
+    const apphostingConfig = options.config.src.emulators?.[Emulators.APPHOSTING];
+
     if (listenForEmulator.apphosting) {
       const apphostingAddr = legacyGetFirstAddr(Emulators.APPHOSTING);
       const apphostingEmulator = new AppHostingEmulator({
         host: apphostingAddr.host,
         port: apphostingAddr.port,
+        startCommandOverride: apphostingConfig?.startCommandOverride,
         options,
       });
 

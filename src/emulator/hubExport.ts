@@ -10,7 +10,7 @@ import { FirebaseError } from "../error";
 import { EmulatorHub } from "./hub";
 import { getDownloadDetails } from "./downloadableEmulators";
 import { DatabaseEmulator } from "./databaseEmulator";
-import * as rimraf from "rimraf";
+import { rmSync } from "node:fs";
 import { trackEmulator } from "../track";
 
 export interface FirestoreExportMetadata {
@@ -133,7 +133,7 @@ export class HubExport {
     // Remove any existing data in the directory and then swap it with the
     // temp directory.
     logger.debug(`hubExport: swapping ${this.tmpDir} with ${this.exportPath}`);
-    rimraf.sync(this.exportPath);
+    rmSync(this.exportPath, { recursive: true });
     fse.moveSync(this.tmpDir, this.exportPath);
   }
 
