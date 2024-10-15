@@ -110,7 +110,7 @@ export class DataConnectEmulator implements EmulatorInstance {
           if (err instanceof FirebaseError) {
             this.logger.logLabeled("ERROR", "Data Connect", `${err}`);
           } else {
-            console
+            console;
             this.logger.logLabeled(
               "ERROR",
               "Data Connect",

@@ -78,7 +78,7 @@ export class PostgresServer {
         uuidOssp,
       },
       // TODO:  Use dataDir + loadDataDir to implement import/export.
-       dataDir: this.dataDirectory,
+      dataDir: this.dataDirectory,
       // loadDataDir?: Blob | File; // This will be used with .dumpDataDir() for import/export
     });
   }
