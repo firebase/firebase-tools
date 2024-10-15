@@ -70,9 +70,9 @@ export class HubExport {
     try {
       mdString = fs.readFileSync(metadataPath, "utf8").toString();
       return JSON.parse(mdString) as ExportMetadata;
-    } catch(err: any) {
+    } catch (err: any) {
       // JSON parse errors are unreadable. Throw the original.
-      throw new FirebaseError(`Unable to parse metadata file ${metadataPath}: ${mdString});
+      throw new FirebaseError(`Unable to parse metadata file ${metadataPath}: ${mdString}`);
     }
   }
 
