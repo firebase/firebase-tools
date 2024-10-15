@@ -36,6 +36,7 @@ export function runCommand(command: string) {
 export function runTerminalTask(
   taskName: string,
   command: string,
+  presentationOptions: vscode.TaskPresentationOptions = { focus: true },
 ): Promise<string> {
   const type = "firebase-" + Date.now();
   return new Promise(async (resolve, reject) => {
@@ -61,7 +62,7 @@ export function runTerminalTask(
       "firebase",
       new vscode.ShellExecution(command, executionOptions),
     );
-    task.presentationOptions = { focus: true };
+    task.presentationOptions = presentationOptions;
     await vscode.tasks.executeTask(task);
   });
 }
@@ -88,6 +89,8 @@ export function registerTerminalTasks(
     runTerminalTask(
       "firebase emulators",
       `${settings.firebasePath} emulators:start --project ${currentProjectId.value}`,
+      // emulators:start almost never ask interactive questions.
+      { focus: false },
     );
   });
 
