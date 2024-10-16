@@ -78,6 +78,12 @@ export abstract class Result<DataT, ErrorT = unknown> {
     return error((that as ResultError<DataT, ErrorT>).error);
   }
 
+  /**
+   * A `.then`-like method that guarantees to return a `Result` object.
+   *
+   * Any exception inside the callback will be caught and converted into an error
+   * result.
+   */
   follow<NewT>(
     cb: (prev: DataT) => Result<NewT>,
     onError?: (error: unknown) => ErrorT,
@@ -88,6 +94,10 @@ export abstract class Result<DataT, ErrorT = unknown> {
     );
   }
 
+  /**
+   * A `.then`-like method that guarantees to return a `Result` object.
+   * It is the same as `follow`, but supports asynchronous callbacks.
+   */
   followAsync<NewT, ErrorT>(
     cb: (prev: DataT) => Promise<Result<NewT, ErrorT>>,
     onError?: (error: unknown) => ErrorT,
