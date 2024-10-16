@@ -23,13 +23,14 @@ export function registerFdcSdkGeneration(
 ): vscode.Disposable {
   const settings = getSettings();
 
+  // For testing purposes.
   const selectFolderSpy = createE2eMockable(
     async () => {
       return selectAppFolder();
     },
     "select-folder",
     async () => {
-      return "dataconnect/connectors/a";
+      return Promise.resolve("src/test/test_projects/fishfood/test-node-app");
     },
   );
 
