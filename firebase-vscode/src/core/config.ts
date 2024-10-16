@@ -232,11 +232,10 @@ async function registerFirebaseConfig(
       }
 
       disposable = configWatcher?.onDidChange((uri) => {
+        // ignore changes from firebase.json files that are not the selected one
         if (uri.fsPath !== configUri.fsPath) {
-          // ignore changes from firebase.json files that are not the selected one
+          firebaseConfig.value = _readFirebaseConfig(configUri);
         }
-
-        firebaseConfig.value = _readFirebaseConfig(configUri);
       });
 
       firebaseConfig.value = _readFirebaseConfig(configUri);
