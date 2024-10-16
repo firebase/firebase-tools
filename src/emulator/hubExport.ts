@@ -66,8 +66,14 @@ export class HubExport {
     if (!fs.existsSync(metadataPath)) {
       return undefined;
     }
-
-    return JSON.parse(fs.readFileSync(metadataPath, "utf8").toString()) as ExportMetadata;
+    let mdString: string = "";
+    try {
+      mdString = fs.readFileSync(metadataPath, "utf8").toString();
+      return JSON.parse(mdString) as ExportMetadata;
+    } catch (err: any) {
+      // JSON parse errors are unreadable. Throw the original.
+      throw new FirebaseError(`Unable to parse metadata file ${metadataPath}: ${mdString}`);
+    }
   }
 
   public async exportAll(): Promise<void> {
