@@ -89,10 +89,11 @@ describe("githubConnections", () => {
     let createConnectionStub: sinon.SinonStub;
     let serviceAccountHasRolesStub: sinon.SinonStub;
     let createRepositoryStub: sinon.SinonStub;
-    let fetchLinkableRepositoriesStub: sinon.SinonStub;
+    let listAllLinkableGitRepositoriesStub: sinon.SinonStub;
     let getProjectNumberStub: sinon.SinonStub;
     let openInBrowserPopupStub: sinon.SinonStub;
     let listConnectionsStub: sinon.SinonStub;
+    let fetchGitHubInstallationsStub: sinon.SinonStub;
 
     beforeEach(() => {
       promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
@@ -112,7 +113,7 @@ describe("githubConnections", () => {
       createRepositoryStub = sandbox
         .stub(devconnect, "createGitRepositoryLink")
         .throws("Unexpected createGitRepositoryLink call");
-      fetchLinkableRepositoriesStub = sandbox
+      listAllLinkableGitRepositoriesStub = sandbox
         .stub(devconnect, "listAllLinkableGitRepositories")
         .throws("Unexpected listAllLinkableGitRepositories call");
       sandbox.stub(utils, "openInBrowser").resolves();
@@ -125,6 +126,9 @@ describe("githubConnections", () => {
       listConnectionsStub = sandbox
         .stub(devconnect, "listAllConnections")
         .throws("Unexpected listAllConnections call");
+      fetchGitHubInstallationsStub = sandbox
+        .stub(devconnect, "fetchGitHubInstallations")
+        .throws("Unexpected fetchGitHubInstallations call");
     });
 
     afterEach(() => {
@@ -205,7 +209,7 @@ describe("githubConnections", () => {
 
     it("creates repository if it doesn't exist", async () => {
       getConnectionStub.resolves(completeConn);
-      fetchLinkableRepositoriesStub.resolves(repos);
+      listAllLinkableGitRepositoriesStub.resolves(repos);
       promptOnceStub.onFirstCall().resolves(repos.repositories[0].remoteUri);
       getRepositoryStub.rejects(new FirebaseError("error", { status: 404 }));
       createRepositoryStub.resolves({ name: "op" });
@@ -230,6 +234,14 @@ describe("githubConnections", () => {
       // linkGitHubRepository()
       // -getOrCreateGithubConnectionWithSentinel()
       getConnectionStub.onFirstCall().resolves(completeConn); // Fetches oauth sentinel.
+      fetchGitHubInstallationsStub.resolves([
+        {
+          id: "installationID",
+          name: "main-user",
+          type: "user",
+        },
+      ]);
+
       promptOnceStub.onFirstCall().resolves("installationID"); // Uses existing Github Account installation.
       listConnectionsStub.resolves([completeConn]); // Installation has sentinel connection.
 
@@ -289,6 +301,13 @@ describe("githubConnections", () => {
       // -getOrCreateGithubConnectionWithSentinel()
       getConnectionStub.onFirstCall().rejects(new FirebaseError("error", { status: 404 })); // Named connection does not exist.
       getConnectionStub.onSecondCall().resolves(oauthConn); // Fetches oauth sentinel.
+      fetchGitHubInstallationsStub.resolves([
+        {
+          id: "installationID",
+          name: "main-user",
+          type: "user",
+        },
+      ]);
       promptOnceStub.onFirstCall().resolves("installationID"); // Uses existing Github Account installation.
       listConnectionsStub.resolves([oauthConn]); // Installation has sentinel connection but not the named one.
 
@@ -332,8 +351,11 @@ describe("githubConnections", () => {
       // -getOrCreateGithubConnectionWithSentinel()
       getConnectionStub.onFirstCall().resolves(namedCompleteConn); // Named connection already exists.
 
+      // -promptCloneUri()
+      listAllLinkableGitRepositoriesStub.resolves(repos); // fetchRepositoryCloneUris() returns repos
+      promptOnceStub.onSecondCall().resolves(repos.repositories[0].remoteUri); // Selects the repo's clone uri.
+
       // linkGitHubRepository()
-      promptOnceStub.onSecondCall().resolves(repos.repositories[0].remoteUri); // promptCloneUri() returns repo's clone uri.
       getConnectionStub.onThirdCall().resolves(namedCompleteConn); // getOrCreateConnection() returns a completed connection.
 
       // -getOrCreateRepository()
@@ -350,7 +372,7 @@ describe("githubConnections", () => {
 
     it("re-uses existing repository it already exists", async () => {
       getConnectionStub.resolves(completeConn);
-      fetchLinkableRepositoriesStub.resolves(repos);
+      listAllLinkableGitRepositoriesStub.resolves(repos);
       promptOnceStub.onFirstCall().resolves(repos.repositories[0].remoteUri);
       getRepositoryStub.resolves(repos.repositories[0]);
 
