@@ -49,17 +49,9 @@ export async function registerDataConnectConfigs(
   context: vscode.ExtensionContext,
   broker: ExtensionBrokerImpl,
 ) {
-  let cancel: (() => void) | undefined;
-  context.subscriptions.push({
-    dispose: () => cancel?.(),
-  });
-
   function handleResult(
     firebaseConfig: Result<Config | undefined> | undefined,
-  ) {
-    cancel?.();
-    cancel = undefined;
-
+  ): undefined | (() => void) {
     // While waiting for the promise to resolve, we clear the configs, to tell anything that depends
     // on it that it's loading.
     dataConnectConfigs.value = undefined;
@@ -90,12 +82,13 @@ export async function registerDataConnectConfigs(
       },
     );
 
-    cancel =
+    const operation =
       configs &&
       promise.cancelableThen(configs, (configs) => {
-        cancel = undefined;
         return (dataConnectConfigs.value = configs);
-      }).cancel;
+      });
+
+    return operation?.cancel;
   }
 
   context.subscriptions.push({
