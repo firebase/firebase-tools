@@ -189,15 +189,3 @@ export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
   });
   dynamicDispatch.store(path, projectYaml);
 }
-
-export async function exportSecrets(yamlPaths: string[]) {
-  const files = yamlPaths.map((yamlPath) => basename(yamlPath));
-
-  const location = (await prompt.promptOnce({
-    name: "apphosting-yaml",
-    type: "list",
-    default: APPHOSTING_BASE_YAML_FILE,
-    message: "Which environment would you like to export secrets from Secret Manager for?",
-    choices: files,
-  })) as string;
-}

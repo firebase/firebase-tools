@@ -6,7 +6,8 @@ import { accessSecretVersion } from "../gcp/secretManager";
 import { requireAuth } from "../requireAuth";
 import * as secretManager from "../gcp/secretManager";
 import { requirePermissions } from "../requirePermissions";
-import { allYamlPaths, exportSecrets } from "../apphosting/config";
+import { allYamlPaths } from "../apphosting/config";
+import { getExportableSecrets } from "../apphosting/secrets";
 
 export const command = new Command("apphosting:config:export")
   .description(
@@ -34,5 +35,6 @@ export const command = new Command("apphosting:config:export")
       return;
     }
 
-    await exportSecrets(yamlFilePaths);
+    const secretsToExport = await getExportableSecrets(yamlFilePaths);
+    console.log(`secretsToExport: ${JSON.stringify(secretsToExport)}`);
   });
