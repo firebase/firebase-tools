@@ -68,7 +68,6 @@ export async function updateFirebaseRCProject(values: {
     projectId: string;
   };
 }) {
-  let didChange = false;
   const rc =
     firebaseRC.value?.tryReadValue ??
     // We don't update firebaseRC if we create a temporary RC,
@@ -80,14 +79,11 @@ export async function updateFirebaseRCProject(values: {
     values.projectAlias &&
     rc.resolveAlias(values.projectAlias.alias) !== values.projectAlias.projectId
   ) {
-    didChange = true;
     rc.addProjectAlias(
       values.projectAlias.alias,
       values.projectAlias.projectId,
     );
-  }
 
-  if (didChange) {
     rc.save();
   }
 }
