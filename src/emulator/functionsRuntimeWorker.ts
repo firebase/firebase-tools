@@ -265,7 +265,7 @@ export class RuntimeWorker {
     const timeout = new Promise<never>((resolve, reject) => {
       setTimeout(() => {
         reject(new FirebaseError("Failed to load function."));
-      }, getFunctionDiscoveryTimeout() ?? 30_000);
+      }, getFunctionDiscoveryTimeout() || 30_000);
     });
     while (true) {
       try {

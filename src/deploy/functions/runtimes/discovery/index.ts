@@ -15,7 +15,7 @@ export const readFileAsync = promisify(fs.readFile);
 
 const TIMEOUT_OVERRIDE_ENV_VAR = "FUNCTIONS_DISCOVERY_TIMEOUT";
 
-export function getFunctionDiscoveryTimeout(): number | undefined {
+export function getFunctionDiscoveryTimeout(): number {
   return +(process.env[TIMEOUT_OVERRIDE_ENV_VAR] || 0) * 1000; /* ms */
 }
 
