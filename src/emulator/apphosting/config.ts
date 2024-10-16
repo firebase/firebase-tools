@@ -2,11 +2,8 @@ import { join } from "path";
 import { pathExists } from "fs-extra";
 import { logger } from "./utils";
 import { Emulators } from "../types";
-import { APPHOSTING_BASE_YAML_FILE } from "../../apphosting/config";
+import { APPHOSTING_BASE_YAML_FILE, APPHOSTING_LOCAL_YAML } from "../../apphosting/config";
 import { AppHostingConfiguration, loadAppHostingYaml } from "../../apphosting/utils";
-import { readFileFromDirectory } from "../../utils";
-
-const APPHOSTING_LOCAL_YAML = "apphosting.local.yaml";
 
 /**
  * Loads in apphosting.yaml & apphosting.local.yaml, giving

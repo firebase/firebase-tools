@@ -6,8 +6,11 @@ import { accessSecretVersion } from "../gcp/secretManager";
 import { requireAuth } from "../requireAuth";
 import * as secretManager from "../gcp/secretManager";
 import { requirePermissions } from "../requirePermissions";
-import { allYamlPaths } from "../apphosting/config";
-import { getExportableSecrets } from "../apphosting/secrets";
+import { APPHOSTING_LOCAL_YAML, allYamlPaths, store } from "../apphosting/config";
+import { getAppHostingConfigToExport } from "../apphosting/secrets";
+import { FirebaseError } from "../error";
+import { join } from "path";
+import * as yaml from "yaml";
 
 export const command = new Command("apphosting:config:export")
   .description(
@@ -22,19 +25,42 @@ export const command = new Command("apphosting:config:export")
   .before(requirePermissions, ["secretmanager.versions.access"])
   .action(async (options: Options) => {
     const projectId = needProjectId(options);
-    // let [name, version] = key.split("@");
-    // if (!version) {
-    //   version = "latest";
-    // }
-    // const value = await accessSecretVersion(projectId, name, version);
     const currentDir = process.cwd();
     const yamlFilePaths = allYamlPaths(currentDir);
-    console.log(`yaml file paths: ${JSON.stringify(yamlFilePaths)}`);
+
     if (!yamlFilePaths) {
       logger.warn("No apphosting YAMLS found");
       return;
     }
 
-    const secretsToExport = await getExportableSecrets(yamlFilePaths);
-    console.log(`secretsToExport: ${JSON.stringify(secretsToExport)}`);
+    const config = await getAppHostingConfigToExport(yamlFilePaths);
+    const secretsToExport = config.secrets;
+    if (!secretsToExport) {
+      logger.warn("No secrets found to export in the choosen apphosting files");
+      return;
+    }
+
+    if (!config.environmentVariables) {
+      config.environmentVariables = {};
+    }
+
+    try {
+      for (const secretKey of Object.keys(secretsToExport)) {
+        let [name, version] = secretsToExport[secretKey].split("@");
+        if (!version) {
+          version = "latest";
+        }
+
+        const value = await accessSecretVersion(projectId, name, version);
+        config.environmentVariables[name] = value;
+      }
+    } catch (e) {
+      throw new FirebaseError(`Error exporting secrets: ${e}`);
+    }
+
+    // write this config to apphosting.local.yaml
+    store(join(currentDir, APPHOSTING_LOCAL_YAML), yaml.parseDocument(JSON.stringify(config)));
+
+    logger.log("silly", `Wrote Secrets as environment variables to ${APPHOSTING_LOCAL_YAML}.`);
+    logger.info(`Wrote Secrets as environment variables to ${APPHOSTING_LOCAL_YAML}.`);
   });

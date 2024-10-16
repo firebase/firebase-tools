@@ -10,7 +10,7 @@ import * as utils from "../../utils";
 import * as prompt from "../../prompt";
 import { basename, dirname } from "path";
 import { APPHOSTING_BASE_YAML_FILE } from "../config";
-import { loadAppHostingYaml } from "../utils";
+import { AppHostingConfiguration, loadAppHostingYaml } from "../utils";
 
 /** Interface for holding the service account pair for a given Backend. */
 export interface ServiceAccounts {
@@ -168,7 +168,9 @@ export async function upsertSecret(
   return false;
 }
 
-export async function getExportableSecrets(yamlPaths: string[]) {
+export async function getAppHostingConfigToExport(
+  yamlPaths: string[],
+): Promise<AppHostingConfiguration> {
   const fileNameToPathMap: Map<string, string> = new Map();
   for (const path of yamlPaths) {
     const fileName = basename(path);
@@ -190,7 +192,7 @@ export async function getExportableSecrets(yamlPaths: string[]) {
     };
   }
 
-  return config.secrets;
+  return config;
 }
 
 async function promptForAppHostingFileToExportSecretsFrom(fileNameToPathMap: Map<string, string>) {

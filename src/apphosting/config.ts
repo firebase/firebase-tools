@@ -1,4 +1,4 @@
-import { resolve, join, dirname, basename } from "path";
+import { resolve, join, dirname } from "path";
 import { writeFileSync, readdirSync } from "fs";
 import * as yaml from "yaml";
 
@@ -8,6 +8,7 @@ import * as prompt from "../prompt";
 import * as dialogs from "./secrets/dialogs";
 
 export const APPHOSTING_BASE_YAML_FILE = "apphosting.yaml";
+export const APPHOSTING_LOCAL_YAML = "apphosting.local.yaml";
 
 export interface RunConfig {
   concurrency?: number;
