@@ -139,7 +139,6 @@ async function registerRc(
       firebaseRC.value = undefined;
 
       const rcUri = selectedRCUri.value;
-      console.log("here", "rcURi", rcUri);
       if (!rcUri) {
         return;
       }
@@ -176,7 +175,6 @@ async function registerFirebaseConfig(
   context: vscode.ExtensionContext,
   broker: ExtensionBrokerImpl,
 ) {
-  console.log("here", "registering firebase config");
   const firebaseJsonPattern = "**/firebase.json";
   allFirebaseConfigsUris.value = await findFiles(firebaseJsonPattern);
 
@@ -187,14 +185,12 @@ async function registerFirebaseConfig(
 
     // We don't listen to changes here, as we'll only watch the selected config.
     configWatcher.onDidCreate((addedUri) => {
-      console.log("here", "addedUri", allFirebaseConfigsUris.value);
       allFirebaseConfigsUris.value = [
         ...allFirebaseConfigsUris.value,
         addedUri,
       ];
     });
     configWatcher.onDidDelete((deletedUri) => {
-      console.log("here", "removedUri", allFirebaseConfigsUris.value);
       allFirebaseConfigsUris.value = allFirebaseConfigsUris.value.filter(
         (uri) => uri.fsPath !== deletedUri.fsPath,
       );
@@ -212,9 +208,7 @@ async function registerFirebaseConfig(
       // We watch all config URIs before selecting one, so that when deleting the selected
       // config, the effect runs again and selects a new one.
       const allConfigUris = allFirebaseConfigsUris.value;
-      console.log("here", "selecting firebase config", allConfigUris);
       if (configUri && fs.existsSync(configUri.fsPath)) {
-        console.log("here", "selected config still valid");
         return;
       }
 
@@ -233,7 +227,6 @@ async function registerFirebaseConfig(
       firebaseRC.value = undefined;
 
       const configUri = selectedFirebaseConfigUri.value;
-      console.log("here", "configUri", configUri);
       if (!configUri) {
         return;
       }
