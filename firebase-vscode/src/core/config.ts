@@ -129,13 +129,8 @@ async function registerRc(
   context: vscode.ExtensionContext,
   broker: ExtensionBrokerImpl,
 ) {
-  let disposable: Disposable | undefined;
-  context.subscriptions.push({ dispose: () => disposable?.dispose() });
-
   context.subscriptions.push({
     dispose: effect(() => {
-      disposable?.dispose();
-      disposable = undefined;
       firebaseRC.value = undefined;
 
       const rcUri = selectedRCUri.value;
@@ -144,7 +139,6 @@ async function registerRc(
       }
 
       const watcher = workspace.value.createFileSystemWatcher(rcUri.fsPath);
-      disposable = watcher;
 
       watcher.onDidChange(() => (firebaseRC.value = _readRC(rcUri)));
       watcher.onDidCreate(() => (firebaseRC.value = _readRC(rcUri)));
@@ -152,6 +146,10 @@ async function registerRc(
       watcher.onDidDelete(() => (firebaseRC.value = undefined));
 
       firebaseRC.value = _readRC(rcUri);
+
+      return () => {
+        watcher.dispose();
+      };
     }),
   });
 
