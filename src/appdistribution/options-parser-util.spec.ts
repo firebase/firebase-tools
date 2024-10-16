@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { getLoginCredential, getTestDevices } from "./options-parser-util";
 import { FirebaseError } from "../error";
 import * as fs from "fs-extra";
-import * as rimraf from "rimraf";
+import { rmSync } from "node:fs";
 import * as tmp from "tmp";
 import { join } from "path";
 
@@ -14,7 +14,7 @@ describe("options-parser-util", () => {
   fs.outputFileSync(passwordFile, "password-from-file\n");
 
   after(() => {
-    rimraf.sync(tempdir.name);
+    rmSync(tempdir.name, { recursive: true });
   });
 
   describe("getTestDevices", () => {
