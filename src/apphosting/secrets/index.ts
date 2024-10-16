@@ -8,6 +8,9 @@ import { FIREBASE_MANAGED } from "../../gcp/secretManager";
 import { isFunctionsManaged } from "../../gcp/secretManager";
 import * as utils from "../../utils";
 import * as prompt from "../../prompt";
+import { basename, dirname } from "path";
+import { APPHOSTING_BASE_YAML_FILE } from "../config";
+import { loadAppHostingYaml } from "../utils";
 
 /** Interface for holding the service account pair for a given Backend. */
 export interface ServiceAccounts {
@@ -163,4 +166,72 @@ export async function upsertSecret(
   // TODO: consider whether we should prompt a user who has an unmanaged secret to enroll in version control.
   // This may not be a great idea until version control is actually implemented.
   return false;
+}
+
+export async function getExportableSecrets(yamlPaths: string[]) {
+  const fileNameToPathMap: Map<string, string> = new Map();
+  for (const path of yamlPaths) {
+    const fileName = basename(path);
+    fileNameToPathMap.set(fileName, path);
+  }
+  const baseFilePath = fileNameToPathMap.get(APPHOSTING_BASE_YAML_FILE);
+  const fileToExportPath = await promptForAppHostingFileToExportSecretsFrom(fileNameToPathMap);
+
+  let config = await loadAppHostingYaml(dirname(fileToExportPath), basename(fileToExportPath));
+
+  // if the base file exists we'll include it
+  if (baseFilePath) {
+    const baseConfig = await loadAppHostingYaml(dirname(baseFilePath), basename(baseFilePath));
+
+    // if the user had selected the base file only, thats okay becuase logic below won't alter the config or cause duplicates
+    config = {
+      ...config,
+      ...baseConfig,
+    };
+  }
+
+  return config.secrets;
+}
+
+async function promptForAppHostingFileToExportSecretsFrom(fileNameToPathMap: Map<string, string>) {
+  const fileNames = Array.from(fileNameToPathMap.keys());
+
+  //qq: Is it possible for the basefile to not exist but an environment specific apphosting.<environment>.yaml file to exist?
+  const baseFilePath = fileNameToPathMap.get(APPHOSTING_BASE_YAML_FILE);
+  let listOptions = fileNames.map((fileName) => {
+    if (fileName === APPHOSTING_BASE_YAML_FILE) {
+      return {
+        name: `base (${APPHOSTING_BASE_YAML_FILE})`,
+        value: baseFilePath,
+      };
+    }
+
+    const environment = getEnvironmentNameFromYamlFileName(fileName);
+    return {
+      name: baseFilePath
+        ? `${environment} (${APPHOSTING_BASE_YAML_FILE} + ${fileName})`
+        : `${environment} (${fileName})`,
+      value: fileNameToPathMap.get(fileName)!,
+    };
+  });
+
+  const fileToExportPath = await prompt.promptOnce({
+    name: "apphosting-yaml",
+    type: "list",
+    message: "Which environment would you like to export secrets from Secret Manager for?",
+    choices: listOptions,
+  });
+
+  return fileToExportPath;
+}
+
+function getEnvironmentNameFromYamlFileName(fileName: string): string {
+  const envrionmentRegex = /apphosting\.(.+)\.yaml/;
+  const found = fileName.match(envrionmentRegex);
+
+  if (!found) {
+    throw new Error("Invalid apphosting environment file");
+  }
+
+  return found[1];
 }
