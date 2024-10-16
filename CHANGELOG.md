@@ -2,3 +2,5 @@
 - Fixed Flutter web apps that might require the --no-tree-shake-icons flag in order to build. (#7724)
 - Removed outdated dependency on `rimraf`.
 - Fixed an issue where the Extensions emulator would fail silently if started with a non-existant project without the `demo-` prefix. (#7779)
+- Bumped the Firebase Data Connect local toolkit version to v1.5.1, which adds compatible mode schema migration support to the emulator and fixes an issue with the Timestamp type in Swift codegen. (#7837)
+- Improved handling when `emulators:export` cannot read the metadata file.
