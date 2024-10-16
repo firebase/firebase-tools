@@ -20,8 +20,6 @@ export function createE2eMockable<T extends (...args: any) => any>(
   let value: (...args: Parameters<T>) => ReturnType<T> = cb;
   const calls: Parameters<T>[] = [];
 
-  console.log("Creating mockable", key);
-
   // A command used by e2e tests to replace the `deploy` function with a mock.
   // It is not part of the public API.
   const command = vscode.commands.registerCommand(
