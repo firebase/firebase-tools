@@ -1,1 +1,1 @@
-- Added Next.js utils for checking if an HTML file is partial.
+- Fixed issue with ppr routes not rendering correctly.
