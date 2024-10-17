@@ -6,7 +6,6 @@ import * as sinon from "sinon";
 import * as glob from "glob";
 import * as childProcess from "child_process";
 import { FirebaseError } from "../../error";
-import * as path from "path";
 
 import {
   EXPORT_MARKER,
@@ -33,16 +32,12 @@ import {
   getMiddlewareMatcherRegexes,
   getNonStaticRoutes,
   getNonStaticServerComponents,
-  getHeadersFromMetaFiles,
+  getAppMetadataFromMetaFiles,
   isUsingNextImageInAppDirectory,
   getNextVersion,
   getRoutesWithServerAction,
   findEsbuildPath,
   installEsbuild,
-  createPagesManifestLikePrerender,
-  isPartialHTML,
-  getAppPathRoute,
-  getContentDist,
 } from "./utils";
 
 import * as frameworksUtils from "../utils";
@@ -77,9 +72,6 @@ import {
   serverReferenceManifest,
 } from "./testing";
 import { pathsWithCustomRoutesInternalPrefix } from "./testing/i18n";
-import { AppPathRoutesManifest } from "./interfaces";
-import { PrerenderManifest } from "next/dist/build";
-import { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
 
 describe("Next.js utils", () => {
   describe("cleanEscapedChars", () => {
@@ -480,38 +472,63 @@ describe("Next.js utils", () => {
     });
   });
 
-  describe("getHeadersFromMetaFiles", () => {
+  describe("getAppMetadataFromMetaFiles", () => {
     let sandbox: sinon.SinonSandbox;
     beforeEach(() => (sandbox = sinon.createSandbox()));
     afterEach(() => sandbox.restore());
 
-    it("should get headers from meta files", async () => {
+    it("should return the correct headers and pprRoutes from meta files", async () => {
       const distDir = ".next";
       const readJsonStub = sandbox.stub(frameworksUtils, "readJSON");
       const dirExistsSyncStub = sandbox.stub(fsUtils, "dirExistsSync");
       const fileExistsSyncStub = sandbox.stub(fsUtils, "fileExistsSync");
 
+      // /api/static
       dirExistsSyncStub.withArgs(`${distDir}/server/app/api/static`).returns(true);
       fileExistsSyncStub.withArgs(`${distDir}/server/app/api/static.meta`).returns(true);
       readJsonStub.withArgs(`${distDir}/server/app/api/static.meta`).resolves(metaFileContents);
 
+      // /ppr
+      dirExistsSyncStub.withArgs(`${distDir}/server/app/ppr`).returns(true);
+      fileExistsSyncStub.withArgs(`${distDir}/server/app/ppr.meta`).returns(true);
+      readJsonStub.withArgs(`${distDir}/server/app/ppr.meta`).resolves({
+        ...metaFileContents,
+        postponed: "true",
+      });
+
       expect(
-        await getHeadersFromMetaFiles(".", distDir, "/asdf", appPathRoutesManifest),
-      ).to.deep.equal([
-        {
-          source: "/asdf/api/static",
-          headers: [
-            {
-              key: "content-type",
-              value: "application/json",
-            },
-            {
-              key: "custom-header",
-              value: "custom-value",
-            },
-          ],
-        },
-      ]);
+        await getAppMetadataFromMetaFiles(".", distDir, "/asdf", appPathRoutesManifest),
+      ).to.deep.equal({
+        headers: [
+          {
+            source: "/asdf/api/static",
+            headers: [
+              {
+                key: "content-type",
+                value: "application/json",
+              },
+              {
+                key: "custom-header",
+                value: "custom-value",
+              },
+            ],
+          },
+          {
+            source: "/asdf/ppr",
+            headers: [
+              {
+                key: "content-type",
+                value: "application/json",
+              },
+              {
+                key: "custom-header",
+                value: "custom-value",
+              },
+            ],
+          },
+        ],
+        pprRoutes: ["/ppr"],
+      });
     });
   });
 
@@ -632,143 +649,6 @@ describe("Next.js utils", () => {
         expect(typedError).to.be.instanceOf(FirebaseError);
         expect(typedError.message).to.include("Failed to install esbuild");
       }
-    });
-  });
-
-  describe("createPagesManifestLikePrerender", () => {
-    it("should create a PrerenderManifest routes object from PagesManifest", () => {
-      const pagesManifest: PagesManifest = {
-        "/": "pages/index.html",
-        "/about": "pages/about.html",
-        "/api/data": "pages/api/data.js",
-      };
-
-      const result = createPagesManifestLikePrerender(pagesManifest);
-
-      expect(result).to.deep.equal({
-        "/": {
-          srcRoute: null,
-          initialRevalidateSeconds: false,
-          dataRoute: "",
-          experimentalPPR: false,
-          prefetchDataRoute: "",
-        },
-        "/about": {
-          srcRoute: null,
-          initialRevalidateSeconds: false,
-          dataRoute: "",
-          experimentalPPR: false,
-          prefetchDataRoute: "",
-        },
-      });
-    });
-  });
-
-  describe("isPartialHTML", () => {
-    let sandbox: sinon.SinonSandbox;
-
-    beforeEach(() => {
-      sandbox = sinon.createSandbox();
-    });
-
-    afterEach(() => {
-      sandbox.restore();
-    });
-
-    it("should return true for partial HTML", async () => {
-      sandbox.stub(fsExtra, "pathExists").resolves(true);
-      sandbox.stub(fsPromises, "readFile").resolves("<html><body>Partial</body>");
-      expect(await isPartialHTML("partial.html")).to.be.true;
-    });
-
-    it("should return false for complete HTML", async () => {
-      sandbox.stub(fsExtra, "pathExists").resolves(true);
-      sandbox.stub(fsPromises, "readFile").resolves("<html><body>Complete</body></html>");
-      expect(await isPartialHTML("complete.html")).to.be.false;
-    });
-
-    it("should return false if file does not exist", async () => {
-      sandbox.stub(fsExtra, "pathExists").resolves(false);
-
-      expect(await isPartialHTML("nonexistent.html")).to.be.false;
-    });
-
-    it("should return false and log error if file read fails", async () => {
-      sandbox.stub(fsExtra, "pathExists").resolves(true);
-      sandbox.stub(fsPromises, "readFile").rejects(new Error("File read error"));
-      const consoleErrorStub = sandbox.stub(console, "error");
-
-      expect(await isPartialHTML("error.html")).to.be.false;
-      expect(consoleErrorStub.calledOnce).to.be.true;
-      expect(consoleErrorStub.firstCall.args[0]).to.include("Error processing file");
-    });
-  });
-
-  describe("getAppPathRoute", () => {
-    it("should return the correct app path route", () => {
-      const route: PrerenderManifest["routes"][string] = {
-        srcRoute: "/app/page",
-        initialRevalidateSeconds: false,
-        dataRoute: "",
-        experimentalPPR: false,
-        prefetchDataRoute: "",
-      };
-      const appPathRoutesManifest: AppPathRoutesManifest = {
-        "/": "/app/page",
-        "/about": "/app/about/page",
-      };
-
-      expect(getAppPathRoute(route, appPathRoutesManifest)).to.equal("/");
-    });
-
-    it("should return undefined if no matching route is found", () => {
-      const route: PrerenderManifest["routes"][string] = {
-        srcRoute: "/app/nonexistent",
-        initialRevalidateSeconds: false,
-        dataRoute: "",
-        experimentalPPR: false,
-        prefetchDataRoute: "",
-      };
-      const appPathRoutesManifest: AppPathRoutesManifest = {
-        "/": "/app/page",
-        "/about": "/app/about/page",
-      };
-
-      expect(getAppPathRoute(route, appPathRoutesManifest)).to.be.undefined;
-    });
-
-    it("should return undefined if srcRoute is null", () => {
-      const route: PrerenderManifest["routes"][string] = {
-        srcRoute: null,
-        initialRevalidateSeconds: false,
-        dataRoute: "",
-        experimentalPPR: false,
-        prefetchDataRoute: "",
-      };
-      const appPathRoutesManifest: AppPathRoutesManifest = {
-        "/": "/app/page",
-      };
-
-      expect(getAppPathRoute(route, appPathRoutesManifest)).to.be.undefined;
-    });
-  });
-
-  describe("getContentDist", () => {
-    it("should return the correct path for app directory", () => {
-      const sourceDir = "/project";
-      const distDir = ".next";
-      const appPathRoute = "/app/page";
-
-      const expected = path.join("/project", ".next", "server", "app");
-      expect(getContentDist(sourceDir, distDir, appPathRoute)).to.equal(expected);
-    });
-
-    it("should return the correct path for pages directory", () => {
-      const sourceDir = "/project";
-      const distDir = ".next";
-
-      const expected = path.join("/project", ".next", "server", "pages");
-      expect(getContentDist(sourceDir, distDir)).to.equal(expected);
     });
   });
 });

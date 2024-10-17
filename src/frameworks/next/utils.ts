@@ -37,7 +37,6 @@ import { dirExistsSync, fileExistsSync } from "../../fsutils";
 import { IS_WINDOWS } from "../../utils";
 import { execSync } from "child_process";
 import { FirebaseError } from "../../error";
-import { PrerenderManifest } from "next/dist/build";
 
 export const I18N_SOURCE = /\/:nextInternalLocale(\([^\)]+\))?/;
 
@@ -366,15 +365,16 @@ export function getNonStaticServerComponents(
 }
 
 /**
- * Get headers from .meta files
+ * Get metadata from .meta files
  */
-export async function getHeadersFromMetaFiles(
+export async function getAppMetadataFromMetaFiles(
   sourceDir: string,
   distDir: string,
   basePath: string,
   appPathRoutesManifest: AppPathRoutesManifest,
-): Promise<HostingHeadersWithSource[]> {
+): Promise<{ headers: HostingHeadersWithSource[]; pprRoutes: string[] }> {
   const headers: HostingHeadersWithSource[] = [];
+  const pprRoutes: string[] = [];
 
   await Promise.all(
     Object.entries(appPathRoutesManifest).map(async ([key, source]) => {
@@ -386,17 +386,20 @@ export async function getHeadersFromMetaFiles(
       const metadataPath = `${routePath}.meta`;
 
       if (dirExistsSync(routePath) && fileExistsSync(metadataPath)) {
-        const meta = await readJSON<{ headers?: Record<string, string> }>(metadataPath);
+        const meta = await readJSON<{ headers?: Record<string, string>; postponed?: string }>(
+          metadataPath,
+        );
         if (meta.headers)
           headers.push({
             source: posix.join(basePath, source),
             headers: Object.entries(meta.headers).map(([key, value]) => ({ key, value })),
           });
+        if (meta.postponed) pprRoutes.push(source);
       }
     }),
   );
 
-  return headers;
+  return { headers, pprRoutes };
 }
 
 /**
@@ -549,65 +552,4 @@ export function installEsbuild(version: string): void {
       throw new FirebaseError(`Failed to install esbuild: ${error}`, { original: error });
     }
   }
-}
-
-/**
- * Create a PrerenderManifest["routes"] object from PagesManifest
- */
-export function createPagesManifestLikePrerender(
-  pagesManifestJSON: PagesManifest,
-): PrerenderManifest["routes"] {
-  const pagesManifestLikePrerender: PrerenderManifest["routes"] = {};
-  for (const [path, route] of Object.entries(pagesManifestJSON)) {
-    if (typeof route === "string" && route.endsWith(".html")) {
-      pagesManifestLikePrerender[path] = {
-        srcRoute: null,
-        initialRevalidateSeconds: false,
-        dataRoute: "",
-        experimentalPPR: false,
-        prefetchDataRoute: "",
-      };
-    }
-  }
-  return pagesManifestLikePrerender;
-}
-
-/**
- * Check if an HTML file is partial (doesn't have closing </html> tag)
- */
-export async function isPartialHTML(filePath: string): Promise<boolean> {
-  try {
-    // Check if the file exists before attempting to read it
-    if (!(await pathExists(filePath))) {
-      return false;
-    }
-
-    const content = await readFile(filePath, "utf8");
-    return !content.includes("</html>");
-  } catch (error) {
-    console.error(`Error processing file ${filePath}:`, error);
-    // Assume it's not partial if we can't read the file
-    return false;
-  }
-}
-
-/**
- * Get the app path route for a given route
- */
-export function getAppPathRoute(
-  route: PrerenderManifest["routes"][string],
-  appPathRoutesManifest: AppPathRoutesManifest,
-): string | undefined {
-  if (!route.srcRoute) {
-    return undefined;
-  }
-  const entry = Object.entries(appPathRoutesManifest).find(([, it]) => it === route.srcRoute);
-  return entry ? entry[0] : undefined;
-}
-
-/**
- * Get the content distribution directory for a given route
- */
-export function getContentDist(sourceDir: string, distDir: string, appPathRoute?: string): string {
-  return join(sourceDir, distDir, "server", appPathRoute ? "app" : "pages");
 }

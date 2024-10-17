@@ -49,7 +49,7 @@ import {
   getMiddlewareMatcherRegexes,
   getNonStaticRoutes,
   getNonStaticServerComponents,
-  getHeadersFromMetaFiles,
+  getAppMetadataFromMetaFiles,
   cleanI18n,
   getNextVersion,
   hasStaticAppNotFoundComponent,
@@ -58,10 +58,6 @@ import {
   whichNextConfigFile,
   installEsbuild,
   findEsbuildPath,
-  createPagesManifestLikePrerender,
-  isPartialHTML,
-  getAppPathRoute,
-  getContentDist,
 } from "./utils";
 import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES, SHARP_VERSION, I18N_ROOT } from "../constants";
 import type {
@@ -256,13 +252,17 @@ export async function build(
   ]);
 
   if (appPathRoutesManifest) {
-    const headersFromMetaFiles = await getHeadersFromMetaFiles(
+    const { headers: headersFromMetaFiles, pprRoutes } = await getAppMetadataFromMetaFiles(
       dir,
       distDir,
       baseUrl,
       appPathRoutesManifest,
     );
     headers.push(...headersFromMetaFiles);
+
+    for (const route of pprRoutes) {
+      reasonsForBackend.add(`route with ppr ${route}`);
+    }
 
     if (appPathsManifest) {
       const unrenderedServerComponents = getNonStaticServerComponents(
@@ -294,24 +294,6 @@ export async function build(
         reasonsForBackend.add(`route with server action ${key}`);
       }
     }
-
-    const allRoutes: PrerenderManifest["routes"] = {
-      ...prerenderManifest.routes,
-      ...createPagesManifestLikePrerender(pagesManifestJSON),
-    };
-
-    await Promise.all(
-      Object.entries(allRoutes).map(async ([path, route]) => {
-        const appPathRoute = getAppPathRoute(route, appPathRoutesManifest);
-        const contentDist = getContentDist(dir, distDir, appPathRoute);
-        const sourceParts = path.split("/").filter((it) => !!it);
-        const sourcePartsOrIndex = sourceParts.length > 0 ? sourceParts : ["index"];
-        const sourcePath = join(contentDist, ...sourcePartsOrIndex);
-        if (await isPartialHTML(`${sourcePath}.html`)) {
-          reasonsForBackend.add(`partial HTML file ${path}`);
-        }
-      }),
-    );
   }
 
   const isEveryRedirectSupported = nextJsRedirects
@@ -454,6 +436,8 @@ export async function ɵcodegenPublicDirectory(
     ),
   ]);
 
+  const appPathRoutesEntries = Object.entries(appPathRoutesManifest);
+
   const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(middlewareManifest);
 
   const { redirects = [], rewrites = [], headers = [] } = routesManifest;
@@ -485,10 +469,34 @@ export async function ɵcodegenPublicDirectory(
     appPathRoutesManifest,
   );
 
+  const pagesManifestLikePrerender: PrerenderManifest["routes"] = Object.fromEntries(
+    Object.entries(pagesManifest)
+      .filter(([, srcRoute]) => srcRoute.endsWith(".html"))
+      .map(([path]) => {
+        return [
+          path,
+          {
+            srcRoute: null,
+            initialRevalidateSeconds: false,
+            dataRoute: "",
+            experimentalPPR: false,
+            prefetchDataRoute: "",
+          },
+        ];
+      }),
+  );
+
   const routesToCopy: PrerenderManifest["routes"] = {
     ...prerenderManifest.routes,
-    ...createPagesManifestLikePrerender(pagesManifest),
+    ...pagesManifestLikePrerender,
   };
+
+  const { pprRoutes } = await getAppMetadataFromMetaFiles(
+    sourceDir,
+    distDir,
+    basePath,
+    appPathRoutesManifest,
+  );
 
   await Promise.all(
     Object.entries(routesToCopy).map(async ([path, route]) => {
@@ -507,9 +515,9 @@ export async function ɵcodegenPublicDirectory(
         logger.debug(`skipping ${path} due to server action`);
         return;
       }
-
-      const appPathRoute = getAppPathRoute(route, appPathRoutesManifest || {});
-      const contentDist = getContentDist(sourceDir, distDir, appPathRoute);
+      const appPathRoute =
+        route.srcRoute && appPathRoutesEntries.find(([, it]) => it === route.srcRoute)?.[0];
+      const contentDist = join(sourceDir, distDir, "server", appPathRoute ? "app" : "pages");
 
       const sourceParts = path.split("/").filter((it) => !!it);
       const locale = i18n?.locales.includes(sourceParts[0]) ? sourceParts[0] : undefined;
@@ -536,13 +544,12 @@ export async function ɵcodegenPublicDirectory(
         locale &&
         join(destDir, I18N_ROOT, locale, basePath, ...destPartsOrIndex);
       let defaultDestPath = isDefaultLocale && join(destDir, basePath, ...destPartsOrIndex);
+
       if (!fileExistsSync(sourcePath) && fileExistsSync(`${sourcePath}.html`)) {
         sourcePath += ".html";
-        // Check if the HTML file is partial
-        if (await isPartialHTML(sourcePath)) {
-          logger.debug(
-            `skipping ${path} as it appears to be a partial HTML file which is not supported by Firebase Hosting`,
-          );
+
+        if (pprRoutes.includes(path)) {
+          logger.debug(`skipping ${path} due to ppr`);
           return;
         }
 
