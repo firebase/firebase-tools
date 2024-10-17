@@ -15,6 +15,10 @@ export const readFileAsync = promisify(fs.readFile);
 
 const TIMEOUT_OVERRIDE_ENV_VAR = "FUNCTIONS_DISCOVERY_TIMEOUT";
 
+export function getFunctionDiscoveryTimeout(): number {
+  return +(process.env[TIMEOUT_OVERRIDE_ENV_VAR] || 0) * 1000; /* ms */
+}
+
 /**
  * Converts the YAML retrieved from discovery into a Build object for param interpolation.
  */
@@ -75,14 +79,9 @@ export async function detectFromPort(
 ): Promise<build.Build> {
   let res: Response;
   const timedOut = new Promise<never>((resolve, reject) => {
-    setTimeout(
-      () => {
-        reject(
-          new FirebaseError("User code failed to load. Cannot determine backend specification"),
-        );
-      },
-      +(process.env[TIMEOUT_OVERRIDE_ENV_VAR] || 0) * 1000 /* ms */ || timeout,
-    );
+    setTimeout(() => {
+      reject(new FirebaseError("User code failed to load. Cannot determine backend specification"));
+    }, getFunctionDiscoveryTimeout() || timeout);
   });
 
   while (true) {
