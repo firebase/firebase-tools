@@ -51,12 +51,12 @@ export const firebaseConfig = globalSignal<
  * Write new default project to .firebaserc
  */
 export async function updateFirebaseRCProject(values: {
-  fdcPostgresConnectionString?: string;
   projectAlias?: {
     alias: string;
     projectId: string;
   };
 }) {
+  let didChange = false;
   const rc =
     firebaseRC.value?.tryReadValue ??
     // We don't update firebaseRC if we create a temporary RC,
@@ -64,24 +64,20 @@ export async function updateFirebaseRCProject(values: {
     // This is only for the sake of calling `save()`.
     new RC(path.join(currentOptions.value.cwd, ".firebaserc"), {});
 
-  if (values.projectAlias) {
-    if (
-      rc.resolveAlias(values.projectAlias.alias) ===
-      values.projectAlias.projectId
-    ) {
-      // Nothing to update, avoid an unnecessary write.
-      // That's especially important as a write will trigger file watchers,
-      // which may then re-trigger this function.
-      return;
-    }
-
+  if (
+    values.projectAlias &&
+    rc.resolveAlias(values.projectAlias.alias) !== values.projectAlias.projectId
+  ) {
+    didChange = true;
     rc.addProjectAlias(
       values.projectAlias.alias,
       values.projectAlias.projectId,
     );
   }
 
-  rc.save();
+  if (didChange) {
+    rc.save();
+  }
 }
 
 function notifyFirebaseConfig(broker: ExtensionBrokerImpl) {
