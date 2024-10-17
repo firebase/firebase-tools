@@ -3,7 +3,6 @@ import { firebaseApiOrigin } from "../api";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { pollOperation } from "../operation-poller";
-import { readTemplateSync } from "../templates";
 
 const TIMEOUT_MILLIS = 30000;
 export const APP_LIST_PAGE_SIZE = 100;
@@ -296,10 +295,9 @@ function getAppConfigResourceString(appId: string, platform: AppPlatform): strin
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function parseConfigFromResponse(responseBody: any, platform: AppPlatform): AppConfigurationData {
   if (platform === AppPlatform.WEB) {
-    const JS_TEMPLATE = readTemplateSync("setup/web.js");
     return {
       fileName: WEB_CONFIG_FILE_NAME,
-      fileContents: JS_TEMPLATE.replace("{/*--CONFIG--*/}", JSON.stringify(responseBody, null, 2)),
+      fileContents: JSON.stringify(responseBody, null, 2),
     };
   } else if (platform === AppPlatform.ANDROID || platform === AppPlatform.IOS) {
     return {
@@ -314,6 +312,7 @@ function parseConfigFromResponse(responseBody: any, platform: AppPlatform): AppC
  * Returns information representing the file need to initalize the application.
  * @param config the object from `getAppConfig`.
  * @param platform the platform the `config` represents.
+ * @param skipTemplate whether to skip pre-pending the web.js template for web platforms.
  * @return the platform-specific file information (name and contents).
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
