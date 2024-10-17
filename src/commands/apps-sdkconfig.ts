@@ -30,11 +30,11 @@ export function getSdkOutputPath(appDir: string, platform: Platform): string {
       // build.gradle can be in either / or /android/app. We always want to place the google-services.json in /android/app.
       // So we check the current directory if it's app, and if so, we'll place it in the current directory, if not, we'll put it in the android/app dir.
       // Fallback is just to the current app dir.
-      if(path.dirname(appDir) !== 'app') {
+      if (path.dirname(appDir) !== "app") {
         try {
-          const fileNames = fs.readdirSync(path.join(appDir, 'app'));
-          if(fileNames.includes('build.gradle')) {
-            appDir = path.join(appDir, 'app');
+          const fileNames = fs.readdirSync(path.join(appDir, "app"));
+          if (fileNames.includes("build.gradle")) {
+            appDir = path.join(appDir, "app");
           }
         } catch {
           // Wasn't able to find app dir. Default to outputting to current directory.
@@ -150,29 +150,7 @@ export async function writeConfigToFile(
   // TODO(mtewani): Make the call to get the fileContents a part of one of these util fns.
   fs.writeFileSync(filename, fileContents);
 }
-async function getAutoInitConfigFile(
-  responseBody: any,
-  platform: AppPlatform,
-): Promise<AppConfigurationData[]> {
-  if (platform === AppPlatform.WEB) {
-    const [esmTemplate, cjsTemplate] = await Promise.all([
-      readTemplate("setup/web-auto.esm.js"),
-      readTemplate("setup/web-auto.cjs.js"),
-    ]);
-    const REPLACE_STR = "{/*--CONFIG--*/}";
-    return [
-      {
-        fileName: "index.esm.js",
-        fileContents: esmTemplate.replace(REPLACE_STR, JSON.stringify(responseBody, null, 2)),
-      },
-      {
-        fileName: "index.cjs.js",
-        fileContents: cjsTemplate.replace(REPLACE_STR, JSON.stringify(responseBody, null, 2)),
-      },
-    ];
-  }
-  throw new FirebaseError("Unexpected app platform");
-}
+
 export const command = new Command("apps:sdkconfig [platform] [appId]")
   .description(
     "print the Google Services config of a Firebase app. " +

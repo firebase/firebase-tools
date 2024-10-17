@@ -294,10 +294,7 @@ function getAppConfigResourceString(appId: string, platform: AppPlatform): strin
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function parseConfigFromResponse(
-  responseBody: any,
-  platform: AppPlatform,
-): AppConfigurationData {
+function parseConfigFromResponse(responseBody: any, platform: AppPlatform): AppConfigurationData {
   if (platform === AppPlatform.WEB) {
     return {
       fileName: WEB_CONFIG_FILE_NAME,
@@ -320,10 +317,7 @@ function parseConfigFromResponse(
  * @return the platform-specific file information (name and contents).
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getAppConfigFile(
-  config: any,
-  platform: AppPlatform,
-): AppConfigurationData {
+export function getAppConfigFile(config: any, platform: AppPlatform): AppConfigurationData {
   return parseConfigFromResponse(config, platform);
 }
 
