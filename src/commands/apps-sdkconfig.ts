@@ -23,7 +23,6 @@ import * as path from "path";
 import { Platform } from "../dataconnect/types";
 import { logBullet, logSuccess } from "../utils";
 import { sdkInit } from "./apps-create";
-import { readTemplate } from "../templates";
 export function getSdkOutputPath(appDir: string, platform: Platform): string {
   switch (platform) {
     case Platform.ANDROID:
