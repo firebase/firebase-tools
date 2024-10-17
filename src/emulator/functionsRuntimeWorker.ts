@@ -8,6 +8,7 @@ import { EventEmitter } from "events";
 import { EmulatorLogger, ExtensionLogInfo } from "./emulatorLogger";
 import { FirebaseError } from "../error";
 import { Serializable } from "child_process";
+import { getFunctionDiscoveryTimeout } from "../deploy/functions/runtimes/discovery";
 
 type LogListener = (el: EmulatorLog) => any;
 
@@ -264,7 +265,7 @@ export class RuntimeWorker {
     const timeout = new Promise<never>((resolve, reject) => {
       setTimeout(() => {
         reject(new FirebaseError("Failed to load function."));
-      }, 30_000);
+      }, getFunctionDiscoveryTimeout() || 30_000);
     });
     while (true) {
       try {

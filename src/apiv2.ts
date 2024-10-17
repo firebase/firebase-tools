@@ -476,13 +476,13 @@ export class Client {
             setAccessToken(await getAccessToken());
           }
           if (options.retryCodes?.includes(res.status)) {
-            const err = responseToError({ statusCode: res.status }, body) || undefined;
+            const err = responseToError({ statusCode: res.status }, body, fetchURL) || undefined;
             if (operation.retry(err)) {
               return;
             }
           }
           if (!options.resolveOnHTTPError) {
-            return reject(responseToError({ statusCode: res.status }, body));
+            return reject(responseToError({ statusCode: res.status }, body, fetchURL));
           }
         }
 
