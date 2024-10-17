@@ -3,24 +3,27 @@ import { Uri } from "vscode";
 import { firstWhere, firstWhereDefined } from "../utils/signal";
 import { currentOptions } from "../options";
 import { dataConnectConfigs, ResolvedConnectorYaml } from "./config";
-import { runCommand } from "./terminal";
+import { runCommand, setTerminalEnvVars } from "./terminal";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { DATA_CONNECT_EVENT_NAME } from "../analytics";
-import {
-  getPlatformFromFolder,
-  generateSdkYaml,
-} from "../../../src/dataconnect/fileUtils";
+import { getPlatformFromFolder } from "../../../src/dataconnect/fileUtils";
 import { ConnectorYaml, Platform } from "../../../src/dataconnect/types";
 import * as yaml from "yaml";
 import * as fs from "fs-extra";
-import path from "path";
+import { getSettings } from "../utils/settings";
+import { FDC_APP_FOLDER, generateSdkYaml } from "../../../src/init/features/dataconnect/sdk";
+
 export function registerFdcSdkGeneration(
   broker: ExtensionBrokerImpl,
   telemetryLogger: vscode.TelemetryLogger,
 ): vscode.Disposable {
-  const initSdkCmd = vscode.commands.registerCommand("fdc.init-sdk", () => {
+  const settings = getSettings();
+
+  const initSdkCmd = vscode.commands.registerCommand("fdc.init-sdk", (args: { appFolder: string }) => {
     telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.INIT_SDK_CLI);
-    runCommand("firebase init dataconnect:sdk");
+    // Lets do it from the right directory
+    setTerminalEnvVars(FDC_APP_FOLDER, args.appFolder);
+    runCommand(`${settings.firebasePath} init dataconnect:sdk`);
   });
 
   // codelense from inside connector.yaml file
@@ -46,21 +49,28 @@ export function registerFdcSdkGeneration(
 
       // pick service, auto pick if only one
       const pickedService =
-        configs.serviceIds.length === 1
-          ? configs.serviceIds[0]
-          : await pickService(configs.serviceIds);
-      const serviceConfig = configs.findById(pickedService);
+        configs?.serviceIds.length === 1
+          ? configs?.serviceIds[0]
+          : await pickService(configs?.serviceIds ?? []);
+      if (!pickedService) {
+        return;
+      }
+      const serviceConfig = configs?.findById(pickedService);
       const connectorIds = serviceConfig?.connectorIds;
 
       // pick connector for service, auto pick if only one
       const pickedConnectorId =
-        connectorIds.length === 1
+        connectorIds?.length === 1
           ? connectorIds[0]
           : await pickConnector(connectorIds);
-      const connectorConfig =
-        serviceConfig.findConnectorById(pickedConnectorId);
-
-      await openAndWriteYaml(connectorConfig);
+      if (pickedConnectorId) {
+        const connectorConfig = serviceConfig?.findConnectorById(
+          pickedConnectorId,
+        );
+        if (connectorConfig) {
+          await openAndWriteYaml(connectorConfig);
+        }
+      }
     },
   );
 
@@ -109,13 +119,15 @@ export function registerFdcSdkGeneration(
     }
 
     // open app folder selector
-    const folderUris: Uri[] = await vscode.window.showOpenDialog({
+    const folderUris: Uri[] | undefined = await vscode.window.showOpenDialog({
       canSelectFiles: false,
       canSelectFolders: true,
       title: "Select your app folder to link Data Connect to:",
       openLabel: "Select app folder",
     });
-
+    if (!folderUris?.length) {
+      return;
+    }
     return folderUris[0].fsPath; // can only pick one folder, but return type is an array
   }
 
@@ -127,11 +139,11 @@ export function registerFdcSdkGeneration(
   ) {
     const platform = await getPlatformFromFolder(appFolder);
     // if app platform undetermined, run init command
-    if (platform === Platform.UNDETERMINED) {
+    if (platform === Platform.NONE || platform === Platform.MULTIPLE) {
       vscode.window.showErrorMessage(
         "Could not determine platform for specified app folder. Configuring from command line.",
       );
-      vscode.commands.executeCommand("fdc.init-sdk");
+      vscode.commands.executeCommand("fdc.init-sdk", { appFolder });
     } else {
       // generate yaml
       const newConnectorYaml = generateSdkYaml(
@@ -172,12 +184,11 @@ async function pickService(serviceIds: string[]): Promise<string | undefined> {
     });
   });
 
-  const picked = await vscode.window.showQuickPick(options, {
+  const picked = await vscode.window.showQuickPick<{label: string}>(options, {
     title: "Select service",
     canPickMany: false,
   });
-
-  return picked.label;
+  return picked?.label;
 }
 
 async function pickConnector(
@@ -196,10 +207,10 @@ async function pickConnector(
     });
   });
 
-  const picked = await vscode.window.showQuickPick(options, {
+  const picked = await vscode.window.showQuickPick<{label: string}>(options as any, {
     title: `Select connector to generate SDK for.`,
     canPickMany: false,
   });
 
-  return picked.label;
+  return picked?.label;
 }

@@ -365,6 +365,9 @@
                         },
                         "port": {
                             "type": "number"
+                        },
+                        "startCommandOverride": {
+                            "type": "string"
                         }
                     },
                     "type": "object"
@@ -400,6 +403,12 @@
                             "type": "string"
                         },
                         "port": {
+                            "type": "number"
+                        },
+                        "postgresHost": {
+                            "type": "string"
+                        },
+                        "postgresPort": {
                             "type": "number"
                         }
                     },

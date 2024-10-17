@@ -32,7 +32,7 @@ export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
   storage: false,
   extensions: false,
   eventarc: true,
-  dataconnect: true,
+  dataconnect: false,
   tasks: true,
 };
 

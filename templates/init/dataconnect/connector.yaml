@@ -1,5 +1,4 @@
 connectorId: __connectorId__
-authMode: "PUBLIC"
 ## ## Here's an example of how to add generated SDKs.
 ## ## You'll need to replace the outputDirs with ones pointing to where you want the generated code in your app.
 # generate:

@@ -88,6 +88,8 @@ export function load(client: any): any {
   client.ext.list = loadCommand("ext-list");
   client.ext.uninstall = loadCommand("ext-uninstall");
   client.ext.update = loadCommand("ext-update");
+  client.ext.sdk = {};
+  client.ext.sdk.install = loadCommand("ext-sdk-install");
   client.ext.dev = {};
   client.ext.dev.init = loadCommand("ext-dev-init");
   client.ext.dev.list = loadCommand("ext-dev-list");
@@ -176,6 +178,8 @@ export function load(client: any): any {
       client.apphosting.builds = {};
       client.apphosting.builds.get = loadCommand("apphosting-builds-get");
       client.apphosting.builds.create = loadCommand("apphosting-builds-create");
+      client.apphosting.repos = {};
+      client.apphosting.repos.create = loadCommand("apphosting-repos-create");
       client.apphosting.rollouts = {};
       client.apphosting.rollouts.create = loadCommand("apphosting-rollouts-create");
       client.apphosting.rollouts.list = loadCommand("apphosting-rollouts-list");
@@ -212,6 +216,7 @@ export function load(client: any): any {
   client.dataconnect.sql = {};
   client.dataconnect.sql.diff = loadCommand("dataconnect-sql-diff");
   client.dataconnect.sql.migrate = loadCommand("dataconnect-sql-migrate");
+  client.dataconnect.sql.grant = loadCommand("dataconnect-sql-grant");
   client.dataconnect.sdk = {};
   client.dataconnect.sdk.generate = loadCommand("dataconnect-sdk-generate");
   client.target = loadCommand("target");

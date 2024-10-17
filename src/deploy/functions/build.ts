@@ -276,6 +276,7 @@ export type DynamicExtension = {
   ref?: string;
   localPath?: string;
   events: string[];
+  labels?: Record<string, string>;
 };
 
 interface ResolveBackendOpts {

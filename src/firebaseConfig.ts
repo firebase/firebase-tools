@@ -206,6 +206,7 @@ export type EmulatorsConfig = {
   apphosting?: {
     host?: string;
     port?: number;
+    startCommandOverride?: string;
   };
   pubsub?: {
     host?: string;
@@ -237,6 +238,8 @@ export type EmulatorsConfig = {
   dataconnect?: {
     host?: string;
     port?: number;
+    postgresHost?: string;
+    postgresPort?: number;
   };
   tasks?: {
     host?: string;

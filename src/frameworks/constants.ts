@@ -30,7 +30,7 @@ const DEFAULT_FIREBASE_FRAMEWORKS_VERSION = "^0.11.0";
 export const FIREBASE_FRAMEWORKS_VERSION =
   (experiments.isEnabled("internaltesting") && process.env.FIREBASE_FRAMEWORKS_VERSION) ||
   DEFAULT_FIREBASE_FRAMEWORKS_VERSION;
-export const FIREBASE_FUNCTIONS_VERSION = "^4.5.0";
+export const FIREBASE_FUNCTIONS_VERSION = "^6.0.1";
 export const FIREBASE_ADMIN_VERSION = "^11.11.1";
 export const SHARP_VERSION = "^0.32 || ^0.33";
 export const NODE_VERSION = parseInt(process.versions.node, 10);

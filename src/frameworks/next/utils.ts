@@ -521,7 +521,7 @@ export function findEsbuildPath(): string | null {
  */
 export function getGlobalEsbuildVersion(binPath: string): string | null {
   try {
-    const versionOutput = execSync(`${binPath} --version`, { encoding: "utf8" })?.trim();
+    const versionOutput = execSync(`"${binPath}" --version`, { encoding: "utf8" })?.trim();
     if (!versionOutput) {
       return null;
     }

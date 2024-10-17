@@ -44,8 +44,7 @@
 #     title
 #     imageUrl
 #     genre
-#     metadata: movieMetadatas_on_movie {
-#       director
+#     metadata: movieMetadata_on_movie {
 #       rating
 #       releaseYear
 #       description

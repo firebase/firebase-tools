@@ -163,6 +163,8 @@ export function registerConnectors(
           message: `${vscode.workspace.asRelativePath(fp)} already exists.`,
         };
       }
+
+      return {} as InputBoxValidationMessage;
     }
 
     function getFilePath(opName: string) {
@@ -361,7 +363,7 @@ export function registerConnectors(
       },
       OperationDefinition: {
         leave(node) {
-          const variableDefinitions = [...node.variableDefinitions];
+          const variableDefinitions = [...node.variableDefinitions!];
           for (const extract of picked) {
             variableDefinitions.push({
               kind: Kind.VARIABLE_DEFINITION,
@@ -379,7 +381,7 @@ export function registerConnectors(
               type: toTypeNode(extract.type),
             });
           }
-          const directives = [...node.directives];
+          const directives = [...node.directives!];
           directives.push({
             kind: Kind.DIRECTIVE,
             name: {

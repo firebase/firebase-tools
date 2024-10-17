@@ -1,7 +1,6 @@
 import { bold, italic } from "colorette";
 import * as leven from "leven";
 import { basename } from "path";
-
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
 import { isRunningInGithubAction } from "./init/features/hosting/github";
@@ -142,6 +141,7 @@ export const ALL_EXPERIMENTS = experiments({
   fdccompatiblemode: {
     shortDescription: "Enable Data Connect schema migrations in Compatible Mode",
     fullDescription: "Enable Data Connect schema migrations in Compatible Mode",
+    default: true,
     public: false,
   },
 });

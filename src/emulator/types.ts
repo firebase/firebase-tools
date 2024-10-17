@@ -161,6 +161,7 @@ export interface DownloadableEmulatorCommand {
   optionalArgs: string[];
   joinArgs: boolean;
   shell: boolean;
+  port?: number;
 }
 
 export interface EmulatorDownloadOptions {

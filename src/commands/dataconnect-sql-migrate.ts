@@ -34,6 +34,7 @@ export const command = new Command("dataconnect:sql:migrate [serviceId]")
       options,
       schema: serviceInfo.schema,
       validateOnly: true,
+      schemaValidation: serviceInfo.dataConnectYaml.schema.datasource.postgresql?.schemaValidation,
     });
     if (diffs.length) {
       logLabeledSuccess(
