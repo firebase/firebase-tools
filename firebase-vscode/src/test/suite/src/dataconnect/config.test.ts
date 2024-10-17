@@ -1,13 +1,13 @@
 import assert from "assert";
 import { createTestBroker } from "../../../utils/broker";
-import { firebaseSuite, addDisposable } from "../../../utils/test_hooks";
+import { firebaseSuite } from "../../../utils/test_hooks";
 import { setupMockTestWorkspaces } from "../../../utils/workspace";
 import {
   dataConnectConfigs,
   registerDataConnectConfigs,
 } from "../../../../data-connect/config";
 import { createTemporaryDirectory } from "../../../utils/fs";
-import { createFake, mock } from "../../../utils/mock";
+import { createFake, createFakeContext, mock } from "../../../utils/mock";
 import { workspace } from "../../../../utils/test_hooks";
 import * as vscode from "vscode";
 import * as fs from "fs";
@@ -21,8 +21,8 @@ firebaseSuite("registerDataConnectConfigs", async () => {
       firebaseConfig: { emulators: { dataconnect: { port: 9399 } } },
     });
 
-    const disposable = registerDataConnectConfigs(broker);
-    addDisposable(disposable);
+    const context = createFakeContext();
+    registerDataConnectConfigs(context, broker);
 
     broker.simulateOn("getInitialData");
 
@@ -94,9 +94,9 @@ firebaseSuite("registerDataConnectConfigs", async () => {
         }),
       );
 
+      const context = createFakeContext();
       const broker = createTestBroker();
-      const disposable = await registerDataConnectConfigs(broker);
-      addDisposable(disposable);
+      registerDataConnectConfigs(context, broker);
 
       const dataConnectListeners =
         watcherListeners["**/{dataconnect,connector}.yaml"]!;
