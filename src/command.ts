@@ -1,6 +1,6 @@
 import * as clc from "colorette";
 import { CommanderStatic } from "commander";
-import { first, last, get, size, head, keys, values } from "lodash";
+import { first, last, size, head, keys, values } from "lodash";
 
 import { FirebaseError } from "./error";
 import { getInheritedOption, setupLoggers, withTimeout } from "./utils";
@@ -12,6 +12,7 @@ import { trackEmulator, trackGA4 } from "./track";
 import { selectAccount, setActiveAccount } from "./auth";
 import { getFirebaseProject } from "./management/projects";
 import { requireAuth } from "./requireAuth";
+import { Options } from "./options";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ActionFunction = (...args: any[]) => any;
@@ -334,25 +335,33 @@ export class Command {
    * @param options the command options object.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private applyRC(options: any): void {
+  private applyRC(options: Options): void {
     const rc = loadRC(options);
     options.rc = rc;
-
-    options.project =
-      options.project || (configstore.get("activeProjects") || {})[options.projectRoot];
+    const activeProject = options.projectRoot
+      ? (configstore.get("activeProjects") ?? {})[options.projectRoot]
+      : undefined;
+    options.project = options.project ?? activeProject;
     // support deprecated "firebase" key in firebase.json
     if (options.config && !options.project) {
       options.project = options.config.defaults.project;
     }
 
     const aliases = rc.projects;
-    const rcProject = get(aliases, options.project);
+    const rcProject = options.project ? aliases[options.project] : undefined;
     if (rcProject) {
+      // Look up aliases
       options.projectAlias = options.project;
       options.project = rcProject;
     } else if (!options.project && size(aliases) === 1) {
+      // If there's only a single alias, use that.
+      // This seems to be how we originally implemented default project - keeping this behavior to avoid breaking any unusual set ups.
       options.projectAlias = head(keys(aliases));
       options.project = head(values(aliases));
+    } else if (!options.project && aliases["default"]) {
+      // If there's an alias named 'default', default to that.
+      options.projectAlias = "default";
+      options.project = aliases["default"];
     }
   }
 

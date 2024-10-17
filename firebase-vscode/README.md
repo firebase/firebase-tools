@@ -2,6 +2,8 @@
 
 The Firebase Data Connect extension provides a suite of tools to assist developers in their Data Connect development workflow.
 
+![Extension Demo Gif](https://www.gstatic.com/mobilesdk/241004_mobilesdk/fdc_extension_readme.gif)
+
 ## Language Features
 
 The extension runs a Graphql Language Server that checks for syntax and compile time errors in your Data Connect code. Additionally, it provides auto-complete suggestions specific to Data Connect.

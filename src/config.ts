@@ -229,21 +229,30 @@ export class Config {
     fs.removeSync(this.path(p));
   }
 
-  askWriteProjectFile(p: string, content: any, force?: boolean) {
+  askWriteProjectFile(p: string, content: any, force?: boolean, confirmByDefault?: boolean) {
     const writeTo = this.path(p);
     let next;
-    if (fsutils.fileExistsSync(writeTo) && !force) {
+    if (typeof content !== "string") {
+      content = JSON.stringify(content, null, 2) + "\n";
+    }
+    let existingContent: string | undefined;
+    if (fsutils.fileExistsSync(writeTo)) {
+      existingContent = fsutils.readFile(writeTo);
+    }
+    if (existingContent && existingContent !== content && !force) {
       next = promptOnce({
         type: "confirm",
         message: "File " + clc.underline(p) + " already exists. Overwrite?",
-        default: false,
+        default: !!confirmByDefault,
       });
     } else {
       next = Promise.resolve(true);
     }
 
     return next.then((result: boolean) => {
-      if (result) {
+      if (existingContent === content) {
+        utils.logBullet(clc.bold(p) + " is unchanged");
+      } else if (result) {
         this.writeProjectFile(p, content);
         utils.logSuccess("Wrote " + clc.bold(p));
       } else {

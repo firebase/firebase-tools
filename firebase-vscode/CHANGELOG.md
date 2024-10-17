@@ -1,9 +1,23 @@
 ## NEXT
 
+## 0.10.5
+
+- [Fixed] Fixed an issue where multiple instances of the extension would break the toolkit.
+
+## 0.10.4
+
+- [Fixed] Fixed an issue where log files would be written to non-Firebase directories.
+
+## 0.10.3
+
+- Updated internal firebase-tools dependency to 13.21.0
+- Updated default debug-log output to .firebase/logs directory
+- [Fixed] Fixed an issue where emulator startup would hang
+- Updated text for SDK configuration button
+
 ## 0.10.2
 
 - Updated internal firebase-tools dependency to 13.20.2
-- [Fixed] Fixed an issue where emulator startup would hang
 
 ## 0.10.1
 
