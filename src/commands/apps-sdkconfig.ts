@@ -16,9 +16,38 @@ import { getOrPromptProject } from "../management/projects";
 import { FirebaseError } from "../error";
 import { requireAuth } from "../requireAuth";
 import { logger } from "../logger";
-import { promptOnce } from "../prompt";
+import { promptForDirectory, promptOnce } from "../prompt";
 import { Options } from "../options";
-
+import { getPlatformFromFolder } from "../dataconnect/fileUtils";
+import * as path from "path";
+import { Platform } from "../dataconnect/types";
+import { logBullet, logSuccess } from "../utils";
+import { sdkInit } from "./apps-create";
+import { readTemplate } from "../templates";
+export function getSdkOutputPath(appDir: string, platform: Platform): string {
+  switch (platform) {
+    case Platform.ANDROID:
+      // build.gradle can be in either / or /android/app. We always want to place the google-services.json in /android/app.
+      // So we check the current directory if it's app, and if so, we'll place it in the current directory, if not, we'll put it in the android/app dir.
+      // Fallback is just to the current app dir.
+      if(path.dirname(appDir) !== 'app') {
+        try {
+          const fileNames = fs.readdirSync(path.join(appDir, 'app'));
+          if(fileNames.includes('build.gradle')) {
+            appDir = path.join(appDir, 'app');
+          }
+        } catch {
+          // Wasn't able to find app dir. Default to outputting to current directory.
+        }
+      }
+      return path.join(appDir, "google-services.json");
+    case Platform.WEB:
+      return path.join(appDir, "firebase-js-config.json");
+    case Platform.IOS:
+      return path.join(appDir, "GoogleService-Info.plist");
+  }
+  throw new Error("Platform " + platform.toString() + " is not supported yet.");
+}
 export function checkForApps(apps: AppMetadata[], appPlatform: AppPlatform): void {
   if (!apps.length) {
     throw new FirebaseError(
@@ -91,7 +120,6 @@ export async function getSdkConfig(
   try {
     configData = await getAppConfig(appId, appPlatform);
   } catch (err: any) {
-    console.log(err);
     spinner.fail();
     throw err;
   }
@@ -122,7 +150,29 @@ export async function writeConfigToFile(
   // TODO(mtewani): Make the call to get the fileContents a part of one of these util fns.
   fs.writeFileSync(filename, fileContents);
 }
-
+async function getAutoInitConfigFile(
+  responseBody: any,
+  platform: AppPlatform,
+): Promise<AppConfigurationData[]> {
+  if (platform === AppPlatform.WEB) {
+    const [esmTemplate, cjsTemplate] = await Promise.all([
+      readTemplate("setup/web-auto.esm.js"),
+      readTemplate("setup/web-auto.cjs.js"),
+    ]);
+    const REPLACE_STR = "{/*--CONFIG--*/}";
+    return [
+      {
+        fileName: "index.esm.js",
+        fileContents: esmTemplate.replace(REPLACE_STR, JSON.stringify(responseBody, null, 2)),
+      },
+      {
+        fileName: "index.cjs.js",
+        fileContents: cjsTemplate.replace(REPLACE_STR, JSON.stringify(responseBody, null, 2)),
+      },
+    ];
+  }
+  throw new FirebaseError("Unexpected app platform");
+}
 export const command = new Command("apps:sdkconfig [platform] [appId]")
   .description(
     "print the Google Services config of a Firebase app. " +
@@ -131,11 +181,88 @@ export const command = new Command("apps:sdkconfig [platform] [appId]")
   .option("-o, --out [file]", "(optional) write config output to a file")
   .before(requireAuth)
   .action(async (platform = "", appId = "", options: Options): Promise<AppConfigurationData> => {
-    const appPlatform = getAppPlatform(platform);
-    const configData = await getSdkConfig(options, appPlatform, appId);
-    const fileInfo = getAppConfigFile(configData, appPlatform);
-    if (appPlatform === AppPlatform.WEB) {
-      fileInfo.sdkConfig = configData;
+    /**
+     * 1. If the user has already selected where they want to output to, then skip the autodetection
+     * 2. If the user hasn't already selected where they want to output to, determine what platform they want.
+     */
+    let outputPath: string | undefined = undefined;
+    if (options.out === undefined) {
+      // do auto-download
+      let appDir = process.cwd();
+      const config = options.config;
+      if (!platform) {
+        // Detect what platform based on current user
+        let targetPlatform = await getPlatformFromFolder(appDir);
+        if (targetPlatform === Platform.NONE) {
+          // If we aren't in an app directory, ask the user where their app is, and try to autodetect from there.
+          appDir = await promptForDirectory({
+            config,
+            message: "Where is your app directory?",
+          });
+          targetPlatform = await getPlatformFromFolder(appDir);
+        }
+        if (targetPlatform === Platform.NONE || targetPlatform === Platform.MULTIPLE) {
+          if (targetPlatform === Platform.NONE) {
+            logBullet(`Couldn't automatically detect app your in directory ${appDir}.`);
+          } else {
+            logSuccess(`Detected multiple app platforms in directory ${appDir}`);
+            // Can only setup one platform at a time, just ask the user
+          }
+          const platforms = [
+            { name: "iOS (Swift)", value: Platform.IOS },
+            { name: "Web (JavaScript)", value: Platform.WEB },
+            { name: "Android (Kotlin)", value: Platform.ANDROID },
+            { name: "Flutter (Dart)", value: Platform.FLUTTER },
+          ];
+          targetPlatform = await promptOnce({
+            message: "Which platform do you want to set up a generated SDK for?",
+            type: "list",
+            choices: platforms,
+          });
+        } else {
+          logSuccess(`Detected ${targetPlatform} app in directory ${appDir}`);
+        }
+        platform = targetPlatform as Platform;
+        outputPath = getSdkOutputPath(appDir, platform);
+      }
+    }
+    const outputDir = path.dirname(outputPath!);
+    fs.mkdirpSync(outputDir);
+    // TODO(mtewani): Map any -> unknown
+
+    // TODO(mtewani): Include message for Dart
+    // TODO(mtewani): Include prompt for optional appId
+    let sdkConfig: any;
+    while (sdkConfig === undefined) {
+      try {
+        sdkConfig = await getSdkConfig(options, getAppPlatform(platform), appId);
+      } catch (e) {
+        if ((e as Error).message.includes("associated with this Firebase project")) {
+          await sdkInit(platform as unknown as AppPlatform, options);
+        } else {
+          throw e;
+        }
+      }
+    }
+
+    const fileInfo = getAppConfigFile(sdkConfig, platform as unknown as AppPlatform);
+    await writeConfigToFile(outputPath!, options.nonInteractive, fileInfo.fileContents);
+
+    if (platform === AppPlatform.WEB) {
+      console.log(`
+      How to use your JS SDK Config:
+      ES Module:
+      import { initializeApp } from 'firebase/app';
+      import json from './firebase-js-config.json';
+      initializeApp(json);
+      // CommonJS Module:
+      const { initializeApp } from 'firebase/app';
+      const json = require('./firebase-js-config.json');
+      initializeApp(json);// instead of initializeApp(config);
+        `);
+      if (platform === AppPlatform.WEB) {
+        fileInfo.sdkConfig = sdkConfig;
+      }
     }
 
     if (options.out === undefined) {
@@ -145,8 +272,8 @@ export const command = new Command("apps:sdkconfig [platform] [appId]")
 
     const shouldUseDefaultFilename = options.out === true || options.out === "";
 
-    const filename = shouldUseDefaultFilename ? configData.fileName : options.out;
+    const filename = shouldUseDefaultFilename ? sdkConfig.fileName : options.out;
     await writeConfigToFile(filename, options.nonInteractive, fileInfo.fileContents);
     logger.info(`App configuration is written in ${filename}`);
-    return configData;
+    return sdkConfig;
   });

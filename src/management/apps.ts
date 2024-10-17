@@ -297,19 +297,11 @@ function getAppConfigResourceString(appId: string, platform: AppPlatform): strin
 function parseConfigFromResponse(
   responseBody: any,
   platform: AppPlatform,
-  skipTemplate = false,
 ): AppConfigurationData {
   if (platform === AppPlatform.WEB) {
-    if (skipTemplate) {
-      return {
-        fileName: WEB_CONFIG_FILE_NAME,
-        fileContents: JSON.stringify(responseBody, null, 2),
-      };
-    }
-    const JS_TEMPLATE = readTemplateSync("setup/web.js");
     return {
       fileName: WEB_CONFIG_FILE_NAME,
-      fileContents: JS_TEMPLATE.replace("{/*--CONFIG--*/}", JSON.stringify(responseBody, null, 2)),
+      fileContents: JSON.stringify(responseBody, null, 2),
     };
   } else if (platform === AppPlatform.ANDROID || platform === AppPlatform.IOS) {
     return {
@@ -331,9 +323,8 @@ function parseConfigFromResponse(
 export function getAppConfigFile(
   config: any,
   platform: AppPlatform,
-  skipTemplate = false,
 ): AppConfigurationData {
-  return parseConfigFromResponse(config, platform, skipTemplate);
+  return parseConfigFromResponse(config, platform);
 }
 
 /**
