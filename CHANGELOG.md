@@ -1,1 +1,1 @@
-- Added new command dataconnect:sql:shell which allows users to directly connect and run queries against their dataconnect cloudsql instance (#7778).
+- Added new command `dataconnect:sql:shell` which run queries against Data Connect CloudSQL instances (#7778).
