@@ -1,5 +1,5 @@
 import * as pg from "pg";
-import chalk from "chalk";
+import * as clc from "colorette";
 import { Connector, IpAddressTypes, AuthTypes } from "@google-cloud/cloud-sql-connector";
 
 import { Command } from "../command";
@@ -48,7 +48,7 @@ async function promptForQuery(): Promise<string> {
         // Highlight SQL keywords
         return input
           .split(" ")
-          .map((word) => (sqlKeywords.includes(word.toUpperCase()) ? chalk.cyan(word) : word))
+          .map((word) => (sqlKeywords.includes(word.toUpperCase()) ? clc.cyan(word) : word))
           .join(" ");
       },
     };
@@ -79,7 +79,7 @@ async function mainShellLoop(conn: pg.PoolClient) {
     if (await confirmDangerousQuery(query)) {
       await interactiveExecuteQuery(query, conn);
     } else {
-      logger.info(chalk.yellow("Query cancelled."));
+      logger.info(clc.yellow("Query cancelled."));
     }
   }
 }
@@ -119,9 +119,9 @@ export const command = new Command("dataconnect:sql:shell [serviceId]")
     const conn: pg.PoolClient = await pool.connect();
 
     logger.info(`Logged in as ${username}`);
-    logger.info(chalk.cyan("Welcome to Data Connect Cloud SQL Shell"));
+    logger.info(clc.cyan("Welcome to Data Connect Cloud SQL Shell"));
     logger.info(
-      chalk.gray(
+      clc.gray(
         "Type your your SQL query or '.exit' to quit, queries should end with ';' or add empty line to execute.",
       ),
     );
@@ -130,7 +130,7 @@ export const command = new Command("dataconnect:sql:shell [serviceId]")
     await mainShellLoop(conn);
 
     // Cleanup after exit
-    logger.info(chalk.yellow("Exiting shell..."));
+    logger.info(clc.yellow("Exiting shell..."));
     conn.release();
     await pool.end();
     connector.close();

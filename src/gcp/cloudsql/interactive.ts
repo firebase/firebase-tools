@@ -1,6 +1,6 @@
 import * as pg from "pg";
 import * as ora from "ora";
-import chalk from "chalk";
+import * as clc from "colorette";
 import { logger } from "../../logger";
 import { confirm } from "../../prompt";
 
@@ -18,7 +18,7 @@ function checkIsDestructiveSql(query: string): boolean {
 export async function confirmDangerousQuery(query: string): Promise<boolean> {
   if (checkIsDestructiveSql(query)) {
     return await confirm({
-      message: chalk.yellow("This query may be destructive. Are you sure you want to proceed?"),
+      message: clc.yellow("This query may be destructive. Are you sure you want to proceed?"),
       default: false,
     });
   }
@@ -30,11 +30,11 @@ export async function interactiveExecuteQuery(query: string, conn: pg.PoolClient
   const spinner = ora("Executing query...").start();
   try {
     const results = await conn.query(query);
-    spinner.succeed(chalk.green("Query executed successfully"));
+    spinner.succeed(clc.green("Query executed successfully"));
 
     if (Array.isArray(results.rows) && results.rows.length > 0) {
       const table: any[] = new Table({
-        head: Object.keys(results.rows[0]).map((key) => chalk.cyan(key)),
+        head: Object.keys(results.rows[0]).map((key) => clc.cyan(key)),
         style: { head: [], border: [] },
       });
 
@@ -46,10 +46,10 @@ export async function interactiveExecuteQuery(query: string, conn: pg.PoolClient
     } else {
       // If nothing is returned and the query was select, let the user know there was no results.
       if (query.toUpperCase().includes("SELECT")) {
-        logger.info(chalk.yellow("No results returned"));
+        logger.info(clc.yellow("No results returned"));
       }
     }
   } catch (err) {
-    spinner.fail(chalk.red(`Failed executing query: ${err}`));
+    spinner.fail(clc.red(`Failed executing query: ${err}`));
   }
 }
