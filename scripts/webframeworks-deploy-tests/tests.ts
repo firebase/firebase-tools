@@ -143,6 +143,16 @@ describe("webframeworks", function (this) {
                 source: "/base/app/image",
               },
               {
+                source: "/base/_not-found",
+                headers: [
+                  {
+                    key: "x-next-cache-tags",
+                    value:
+                      "_N_T_/layout,_N_T_/_not-found/layout,_N_T_/_not-found/page,_N_T_/_not-found",
+                  },
+                ],
+              },
+              {
                 headers: [
                   {
                     key: "x-next-cache-tags",
