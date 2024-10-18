@@ -41,10 +41,10 @@ export interface Config {
  * we find the project root (where firebase.json is) or the filesystem root;
  * in these cases, returns null.
  */
-export function yamlPath(cwd: string): string | null {
+export function yamlPath(cwd: string, yamlFileName: string): string | null {
   let dir = cwd;
 
-  while (!fs.fileExistsSync(resolve(dir, APPHOSTING_BASE_YAML_FILE))) {
+  while (!fs.fileExistsSync(resolve(dir, yamlFileName))) {
     // We've hit project root
     if (fs.fileExistsSync(resolve(dir, "firebase.json"))) {
       return null;
@@ -157,7 +157,7 @@ export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
     store: typeof store;
   };
   // Note: The API proposal suggested that we would check if the env exists. This is stupidly hard because the YAML may not exist yet.
-  let path = dynamicDispatch.yamlPath(process.cwd());
+  let path = dynamicDispatch.yamlPath(process.cwd(), APPHOSTING_BASE_YAML_FILE);
   let projectYaml: yaml.Document;
   if (path) {
     projectYaml = dynamicDispatch.load(path);
@@ -181,7 +181,7 @@ export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
         "It looks like you don't have an apphosting.yaml yet. Where would you like to store it?",
       default: process.cwd(),
     });
-    path = join(path, "apphosting.yaml");
+    path = join(path, APPHOSTING_BASE_YAML_FILE);
   }
   const envName = await dialogs.envVarForSecret(secretName);
   dynamicDispatch.upsertEnv(projectYaml, {
