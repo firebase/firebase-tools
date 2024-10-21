@@ -233,7 +233,7 @@ export const command = new Command("apps:sdkconfig [platform] [appId]")
       import json from './firebase-js-config.json';
       initializeApp(json);
       // CommonJS Module:
-      const { initializeApp } from 'firebase/app';
+      const { initializeApp } = require('firebase/app');
       const json = require('./firebase-js-config.json');
       initializeApp(json);// instead of initializeApp(config);
       `);
