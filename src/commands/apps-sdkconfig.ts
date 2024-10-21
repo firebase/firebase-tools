@@ -24,6 +24,7 @@ import { Platform } from "../dataconnect/types";
 import { logBullet, logSuccess } from "../utils";
 import { sdkInit } from "./apps-create";
 import { logError } from "../logError";
+import { PLATFORMS } from "../init/features/dataconnect/sdk";
 export function getSdkOutputPath(appDir: string, platform: Platform): string {
   switch (platform) {
     case Platform.ANDROID:
@@ -182,16 +183,10 @@ export const command = new Command("apps:sdkconfig [platform] [appId]")
             logSuccess(`Detected multiple app platforms in directory ${appDir}`);
             // Can only setup one platform at a time, just ask the user
           }
-          const platforms = [
-            { name: "iOS (Swift)", value: Platform.IOS },
-            { name: "Web (JavaScript)", value: Platform.WEB },
-            { name: "Android (Kotlin)", value: Platform.ANDROID },
-            { name: "Flutter (Dart)", value: Platform.FLUTTER },
-          ];
           targetPlatform = await promptOnce({
-            message: "Which platform do you want to set up a generated SDK for?",
+            message: "Which platform do you want to set up an SDK for?",
             type: "list",
-            choices: platforms,
+            choices: PLATFORMS,
           });
         } else if (targetPlatform === Platform.FLUTTER) {
           logError(
