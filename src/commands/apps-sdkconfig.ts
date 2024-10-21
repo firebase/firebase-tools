@@ -24,7 +24,7 @@ import { Platform } from "../dataconnect/types";
 import { logBullet, logSuccess } from "../utils";
 import { sdkInit } from "./apps-create";
 import { logError } from "../logError";
-import { PLATFORMS } from "../init/features/dataconnect/sdk";
+
 export function getSdkOutputPath(appDir: string, platform: Platform): string {
   switch (platform) {
     case Platform.ANDROID:
@@ -47,7 +47,7 @@ export function getSdkOutputPath(appDir: string, platform: Platform): string {
     case Platform.IOS:
       return path.join(appDir, "GoogleService-Info.plist");
   }
-  throw new Error("Platform " + platform.toString() + " is not supported yet.");
+  throw new FirebaseError("Platform " + platform.toString() + " is not supported yet.");
 }
 export function checkForApps(apps: AppMetadata[], appPlatform: AppPlatform): void {
   if (!apps.length) {
@@ -183,10 +183,15 @@ export const command = new Command("apps:sdkconfig [platform] [appId]")
             logSuccess(`Detected multiple app platforms in directory ${appDir}`);
             // Can only setup one platform at a time, just ask the user
           }
+          const platforms = [
+            { name: "iOS (Swift)", value: Platform.IOS },
+            { name: "Web (JavaScript)", value: Platform.WEB },
+            { name: "Android (Kotlin)", value: Platform.ANDROID },
+          ];
           targetPlatform = await promptOnce({
             message: "Which platform do you want to set up an SDK for?",
             type: "list",
-            choices: PLATFORMS,
+            choices: platforms,
           });
         } else if (targetPlatform === Platform.FLUTTER) {
           logError(

@@ -36,13 +36,6 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   );
 }
 
-export const PLATFORMS = [
-  { name: "iOS (Swift)", value: Platform.IOS },
-  { name: "Web (JavaScript)", value: Platform.WEB },
-  { name: "Android (Kotlin)", value: Platform.ANDROID },
-  { name: "Flutter (Dart)", value: Platform.FLUTTER },
-];
-
 async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
   const serviceCfgs = readFirebaseJson(config);
   // TODO: This current approach removes comments from YAML files. Consider a different approach that won't.
@@ -86,11 +79,16 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
       logSuccess(`Detected multiple app platforms in directory ${appDir}`);
       // Can only setup one platform at a time, just ask the user
     }
-
+    const platforms = [
+      { name: "iOS (Swift)", value: Platform.IOS },
+      { name: "Web (JavaScript)", value: Platform.WEB },
+      { name: "Android (Kotlin)", value: Platform.ANDROID },
+      { name: "Flutter (Dart)", value: Platform.FLUTTER },
+    ];
     targetPlatform = await promptOnce({
       message: "Which platform do you want to set up a generated SDK for?",
       type: "list",
-      choices: PLATFORMS,
+      choices: platforms,
     });
   } else {
     logSuccess(`Detected ${targetPlatform} app in directory ${appDir}`);
