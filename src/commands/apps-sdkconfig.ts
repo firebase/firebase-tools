@@ -23,6 +23,7 @@ import * as path from "path";
 import { Platform } from "../dataconnect/types";
 import { logBullet, logSuccess } from "../utils";
 import { sdkInit } from "./apps-create";
+import { logError } from "../logError";
 export function getSdkOutputPath(appDir: string, platform: Platform): string {
   switch (platform) {
     case Platform.ANDROID:
@@ -192,19 +193,22 @@ export const command = new Command("apps:sdkconfig [platform] [appId]")
             type: "list",
             choices: platforms,
           });
+        } else if (targetPlatform === Platform.FLUTTER) {
+          logError(
+            `Flutter is not supported by apps:sdkconfig. Please install the flutterfire CLI and run "flutterfire configure" to set up firebase for your flutter app.`,
+          );
         } else {
           logSuccess(`Detected ${targetPlatform} app in directory ${appDir}`);
         }
-        platform = targetPlatform as Platform;
+        platform =
+          targetPlatform === Platform.MULTIPLE
+            ? AppPlatform.PLATFORM_UNSPECIFIED
+            : (targetPlatform as Platform);
         outputPath = getSdkOutputPath(appDir, platform);
       }
     }
     const outputDir = path.dirname(outputPath!);
     fs.mkdirpSync(outputDir);
-    // TODO(mtewani): Map any -> unknown
-
-    // TODO(mtewani): Include message for Dart
-    // TODO(mtewani): Include prompt for optional appId
     let sdkConfig: any;
     while (sdkConfig === undefined) {
       try {
@@ -232,7 +236,7 @@ export const command = new Command("apps:sdkconfig [platform] [appId]")
       const { initializeApp } from 'firebase/app';
       const json = require('./firebase-js-config.json');
       initializeApp(json);// instead of initializeApp(config);
-        `);
+      `);
       if (platform === AppPlatform.WEB) {
         fileInfo.sdkConfig = sdkConfig;
       }
