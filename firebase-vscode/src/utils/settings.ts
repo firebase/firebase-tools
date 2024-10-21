@@ -1,4 +1,4 @@
-import { ConfigurationTarget,window, workspace  } from "vscode";
+import { ConfigurationTarget, window, workspace } from "vscode";
 
 export interface Settings {
   readonly firebasePath: string;
@@ -17,7 +17,9 @@ export function getSettings(): Settings {
   // Persist env var as path setting when path setting doesn't exist
   if (process.env.FIREBASE_BINARY && !config.get<string>("firebasePath")) {
     config.update("firebasePath", process.env.FIREBASE_BINARY);
-    window.showInformationMessage("Detected FIREBASE_BINARY env var. Saving to `Firebase Path` setting.")
+    window.showInformationMessage(
+      "Detected FIREBASE_BINARY env var. Saving to `Firebase Path` setting.",
+    );
   }
 
   return {
