@@ -91,6 +91,11 @@ export const command = new Command("deploy")
       '(e.g. "--only dataconnect:serviceId,dataconnect:serviceId:connectorId,dataconnect:serviceId:schema"). ',
   )
   .option("--except <targets>", 'deploy to all targets except specified (e.g. "database")')
+  .option(
+    "--dry-run",
+    "Perform a dry run of your deployment. Validates your changes and builds your code without deploying any changes to your project. " +
+      "In order to provide better validation, this may still enable APIs on the target project.",
+  )
   .before(requireConfig)
   .before((options) => {
     options.filteredTargets = filterTargets(options, VALID_DEPLOY_TARGETS);

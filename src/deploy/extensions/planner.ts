@@ -54,6 +54,7 @@ export interface DeploymentInstanceSpec extends InstanceSpec {
   allowedEventTypes?: string[];
   eventarcChannel?: string;
   etag?: string;
+  labels?: Record<string, string>;
 }
 
 /**
@@ -102,28 +103,59 @@ export async function getExtensionSpec(i: InstanceSpec): Promise<ExtensionSpec> 
 }
 
 /**
- * have checks a project for what extension instances are currently installed,
- * and returns them as a list of instanceSpecs.
+ * haveDynamic checks a project for what extension instances created by SDK are
+ * currently installed, and returns them as a list of instanceSpecs.
+ * @param projectId
+ */
+export async function haveDynamic(projectId: string): Promise<DeploymentInstanceSpec[]> {
+  return (await extensionsApi.listInstances(projectId))
+    .filter((i) => i.labels?.createdBy === "SDK")
+    .map((i) => {
+      const dep: DeploymentInstanceSpec = {
+        instanceId: i.name.split("/").pop()!,
+        params: i.config.params,
+        systemParams: i.config.systemParams ?? {},
+        allowedEventTypes: i.config.allowedEventTypes,
+        eventarcChannel: i.config.eventarcChannel,
+        etag: i.etag,
+        labels: i.labels,
+      };
+      if (i.config.extensionRef) {
+        const ref = refs.parse(i.config.extensionRef);
+        dep.ref = ref;
+        dep.ref.version = i.config.extensionVersion;
+      }
+      return dep;
+    });
+}
+
+/**
+ * have checks a project for what extension instances created by console or CLI
+ * are currently installed, and returns them as a list of instanceSpecs.
  * @param projectId
  */
 export async function have(projectId: string): Promise<DeploymentInstanceSpec[]> {
-  const instances = await extensionsApi.listInstances(projectId);
-  return instances.map((i) => {
-    const dep: DeploymentInstanceSpec = {
-      instanceId: i.name.split("/").pop()!,
-      params: i.config.params,
-      systemParams: i.config.systemParams ?? {},
-      allowedEventTypes: i.config.allowedEventTypes,
-      eventarcChannel: i.config.eventarcChannel,
-      etag: i.etag,
-    };
-    if (i.config.extensionRef) {
-      const ref = refs.parse(i.config.extensionRef);
-      dep.ref = ref;
-      dep.ref.version = i.config.extensionVersion;
-    }
-    return dep;
-  });
+  return (await extensionsApi.listInstances(projectId))
+    .filter((i) => !(i.labels?.createdBy === "SDK"))
+    .map((i) => {
+      const dep: DeploymentInstanceSpec = {
+        instanceId: i.name.split("/").pop()!,
+        params: i.config.params,
+        systemParams: i.config.systemParams ?? {},
+        allowedEventTypes: i.config.allowedEventTypes,
+        eventarcChannel: i.config.eventarcChannel,
+        etag: i.etag,
+      };
+      if (i.labels) {
+        dep.labels = i.labels;
+      }
+      if (i.config.extensionRef) {
+        const ref = refs.parse(i.config.extensionRef);
+        dep.ref = ref;
+        dep.ref.version = i.config.extensionVersion;
+      }
+      return dep;
+    });
 }
 
 /**
@@ -131,9 +163,8 @@ export async function have(projectId: string): Promise<DeploymentInstanceSpec[]>
  * any extensions the user has defined that way.
  * @param args.projectId The project we are deploying to
  * @param args.projectNumber The project number we are deploying to.
- * @param args.extensions The extensions section of firebase.jsonm
+ * @param args.extensions The extensions section of firebase.json
  * @param args.emulatorMode Whether the output will be used by the Extensions emulator.
- *                     If true, this will check {instanceId}.env.local for params a
  */
 export async function wantDynamic(args: {
   projectId: string;
@@ -143,6 +174,9 @@ export async function wantDynamic(args: {
 }): Promise<DeploymentInstanceSpec[]> {
   const instanceSpecs: DeploymentInstanceSpec[] = [];
   const errors: FirebaseError[] = [];
+  if (!args.extensions) {
+    return [];
+  }
   for (const [instanceId, ext] of Object.entries(args.extensions)) {
     const autoPopulatedParams = await getFirebaseProjectParams(args.projectId, args.emulatorMode);
     const subbedParams = substituteParams(ext.params, autoPopulatedParams);
@@ -167,6 +201,7 @@ export async function wantDynamic(args: {
         systemParams,
         allowedEventTypes,
         eventarcChannel,
+        labels: ext.labels,
       });
     } else if (ext.ref) {
       instanceSpecs.push({
@@ -176,6 +211,7 @@ export async function wantDynamic(args: {
         systemParams,
         allowedEventTypes,
         eventarcChannel,
+        labels: ext.labels,
       });
     }
   }
@@ -207,6 +243,9 @@ export async function want(args: {
 }): Promise<DeploymentInstanceSpec[]> {
   const instanceSpecs: DeploymentInstanceSpec[] = [];
   const errors: FirebaseError[] = [];
+  if (!args.extensions) {
+    return [];
+  }
   for (const e of Object.entries(args.extensions)) {
     try {
       const instanceId = e[0];

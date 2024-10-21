@@ -32,7 +32,7 @@ export class EmulatorRegistry {
 
     // Start the emulator and wait for it to grab its assigned port.
     await instance.start();
-    // No need to wait for the Extensions emulator to close its port, since it runs on the Functions emulator.
+    // No need to wait for the Extensions emulator to block its port, since it runs on the Functions emulator.
     if (instance.getName() !== Emulators.EXTENSIONS) {
       const info = instance.getInfo();
       await portUtils.waitForPortUsed(info.port, connectableHostname(info.host), info.timeout);
@@ -79,6 +79,12 @@ export class EmulatorRegistry {
       // Hosting is next because it can trigger functions.
       hosting: 2,
 
+      /** App Hosting should be shut down next. Users should not be interacting
+       * with their app while its being shut down as the app may using the
+       * background trigger emulators below.
+       */
+      apphosting: 2.1,
+
       // All background trigger emulators are equal here, so we choose
       // an order for consistency.
       database: 3.0,
@@ -88,6 +94,7 @@ export class EmulatorRegistry {
       storage: 3.5,
       eventarc: 3.6,
       dataconnect: 3.7,
+      tasks: 3.8,
 
       // Hub shuts down once almost everything else is done
       hub: 4,

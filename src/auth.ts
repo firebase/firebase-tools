@@ -38,6 +38,7 @@ import {
   UserCredentials,
 } from "./types/auth";
 import { readTemplate } from "./templates";
+import { refreshAuth } from "./requireAuth";
 
 portfinder.setBasePort(9005);
 
@@ -560,7 +561,11 @@ export function findAccountByEmail(email: string): Account | undefined {
   return getAllAccounts().find((a) => a.user.email === email);
 }
 
-function haveValidTokens(refreshToken: string, authScopes: string[]) {
+export function loggedIn() {
+  return !!lastAccessToken;
+}
+
+export function haveValidTokens(refreshToken: string, authScopes: string[]) {
   if (!lastAccessToken?.access_token) {
     const tokens = configstore.get("tokens");
     if (refreshToken === tokens?.refresh_token) {
@@ -575,8 +580,15 @@ function haveValidTokens(refreshToken: string, authScopes: string[]) {
   // To avoid token expiration in the middle of a long process we only hand out
   // tokens if they have a _long_ time before the server rejects them.
   const isExpired = (lastAccessToken?.expires_at || 0) < Date.now() + FIFTEEN_MINUTES_IN_MS;
-
-  return hasTokens && hasSameScopes && !isExpired;
+  const valid = hasTokens && hasSameScopes && !isExpired;
+  if (hasTokens) {
+    logger.debug(
+      `Checked if tokens are valid: ${valid}, expires at: ${lastAccessToken?.expires_at}`,
+    );
+  } else {
+    logger.debug("No OAuth tokens found");
+  }
+  return valid;
 }
 
 function deleteAccount(account: Account) {
@@ -713,7 +725,16 @@ export async function getAccessToken(refreshToken: string, authScopes: string[])
   if (haveValidTokens(refreshToken, authScopes) && lastAccessToken) {
     return lastAccessToken;
   }
-  return refreshTokens(refreshToken, authScopes);
+  if (refreshToken) {
+    return refreshTokens(refreshToken, authScopes);
+  } else {
+    try {
+      return refreshAuth();
+    } catch (err: any) {
+      logger.debug(`Unable to refresh token: ${err}`);
+    }
+    throw new FirebaseError("Unable to getAccessToken");
+  }
 }
 
 export async function logout(refreshToken: string) {

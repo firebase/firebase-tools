@@ -59,7 +59,8 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
   // Initialize currentProjectId to default project ID
   const sub4 = effect(() => {
     if (!currentProjectId.value) {
-      currentProjectId.value = firebaseRC.value?.tryReadValue?.projects.default;
+      currentProjectId.value =
+        firebaseRC.value?.tryReadValue?.projects.default!;
     }
   });
 
@@ -90,7 +91,7 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
 
           currentProjectId.value =
             (await _promptUserForProject(projects)) ?? currentProjectId.value;
-        } catch (e) {
+        } catch (e: any) {
           vscode.window.showErrorMessage(e.message);
         }
       }

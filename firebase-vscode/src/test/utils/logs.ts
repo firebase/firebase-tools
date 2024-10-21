@@ -21,11 +21,13 @@ export function spyLogs() {
     error: [],
   };
   for (const key in loggerBackup) {
-    pluginLogger[key] = function (...args: any[]) {
-      const logs = allLogs[key];
+    if (key in allLogs) {
+      pluginLogger[key as LogLevel] = function (...args: any[]) {
+        const logs = allLogs[key as LogLevel];
 
-      logs.push(args.join(" "));
-    };
+        logs.push(args.join(" "));
+      };
+    }
   }
 
   return allLogs;

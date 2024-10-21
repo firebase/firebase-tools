@@ -151,6 +151,11 @@ export const githubClientSecret = () =>
 
 export const dataconnectOrigin = () =>
   utils.envOverride("FIREBASE_DATACONNECT_URL", "https://firebasedataconnect.googleapis.com");
+export const dataconnectP4SADomain = () =>
+  utils.envOverride(
+    "FIREBASE_DATACONNECT_P4SA_DOMAIN",
+    "gcp-sa-firebasedataconnect.iam.gserviceaccount.com",
+  );
 export const dataConnectLocalConnString = () =>
   utils.envOverride("FIREBASE_DATACONNECT_POSTGRESQL_STRING", "");
 export const cloudSQLAdminOrigin = () =>

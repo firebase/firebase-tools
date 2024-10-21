@@ -5,7 +5,7 @@ import type { FirebaseProjectMetadata } from "../../types/project";
 import { ensure } from "../../ensureApiEnabled";
 import { FirebaseError, isBillingError } from "../../error";
 import { logLabeledBullet, logLabeledSuccess } from "../../utils";
-import { ensureServiceAgentRole } from "../../gcp/secretManager";
+import { checkServiceAgentRole, ensureServiceAgentRole } from "../../gcp/secretManager";
 import { getFirebaseProject } from "../../management/projects";
 import { assertExhaustive } from "../../functional";
 import { cloudbuildOrigin } from "../../api";
@@ -114,17 +114,32 @@ export async function secretAccess(
   projectId: string,
   wantBackend: backend.Backend,
   haveBackend: backend.Backend,
+  dryRun?: boolean,
 ) {
   const ensureAccess = async (secret: string, serviceAccounts: string[]) => {
     logLabeledBullet(
       "functions",
       `ensuring ${clc.bold(serviceAccounts.join(", "))} access to secret ${clc.bold(secret)}.`,
     );
-    await ensureServiceAgentRole(
-      { name: secret, projectId },
-      serviceAccounts,
-      "roles/secretmanager.secretAccessor",
-    );
+    if (dryRun) {
+      const check = await checkServiceAgentRole(
+        { name: secret, projectId },
+        serviceAccounts,
+        "roles/secretmanager.secretAccessor",
+      );
+      if (check.length) {
+        logLabeledBullet(
+          "functions",
+          `On your next deploy, ${clc.bold(serviceAccounts.join(", "))} will be granted access to secret ${clc.bold(secret)}.`,
+        );
+      }
+    } else {
+      await ensureServiceAgentRole(
+        { name: secret, projectId },
+        serviceAccounts,
+        "roles/secretmanager.secretAccessor",
+      );
+    }
     logLabeledSuccess(
       "functions",
       `ensured ${clc.bold(serviceAccounts.join(", "))} access to ${clc.bold(secret)}.`,

@@ -148,7 +148,7 @@ export async function promptForDirectory(args: {
   while (!dir) {
     const target = args.config.path(
       await promptOnce({
-        message: "Where is your app directory?",
+        message: args.message,
       }),
     );
     if (fileExistsSync(target)) {

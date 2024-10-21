@@ -1,32 +1,33 @@
-import { workspace } from "./test_hooks";
+import { ConfigurationTarget, workspace } from "vscode";
 
-interface Settings {
-  readonly shouldWriteDebug: boolean;
-  debugLogPath: string;
-  useFrameworks: boolean;
-  npmPath: string;
+export interface Settings {
+  readonly firebasePath: string;
+  readonly npmPath: string;
+  readonly useFrameworks: boolean;
+  readonly shouldShowIdxMetricNotice: boolean;
 }
 
-export function getSettings(): Settings {
-  // Get user-defined VSCode settings if workspace is found.
-  if (workspace.value.workspaceFolders) {
-    const workspaceConfig = workspace.value.getConfiguration(
-      "firebase",
-      workspace.value.workspaceFolders[0].uri
-    );
+const FIREBASE_BINARY =
+  // Allow defaults via env var. Useful when starting VS Code from command line or Monospace.
+  process.env.FIREBASE_BINARY ||
+  // TODO: Temporary fallback for bashing, this should probably point to the global firebase binary on the system
+  "npx -y firebase-tools@latest";
 
-    return {
-      shouldWriteDebug: workspaceConfig.get("debug"),
-      debugLogPath: workspaceConfig.get("debugLogPath"),
-      useFrameworks: workspaceConfig.get("useFrameworks"),
-      npmPath: workspaceConfig.get("npmPath"),
-    };
-  }
+export function getSettings(): Settings {
+  const config = workspace.getConfiguration("firebase");
 
   return {
-    shouldWriteDebug: false,
-    debugLogPath: "",
-    useFrameworks: false,
-    npmPath: "",
+    firebasePath: config.get<string>("firebasePath") || FIREBASE_BINARY,
+    npmPath: config.get<string>("npmPath", "npm"),
+    useFrameworks: config.get<boolean>("hosting.useFrameworks", false),
+    shouldShowIdxMetricNotice: config.get<boolean>(
+      "idx.viewMetricNotice",
+      true,
+    ),
   };
+}
+
+export function updateIdxSetting(shouldShow: boolean) {
+  const config = workspace.getConfiguration("firebase");
+  config.update("idx.viewMetricNotice", shouldShow, ConfigurationTarget.Global);
 }

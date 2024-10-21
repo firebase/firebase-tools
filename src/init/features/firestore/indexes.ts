@@ -52,15 +52,15 @@ export function initIndexes(setup: any, config: any): Promise<any> {
         return config.writeProjectFile(setup.config.firestore.indexes, INDEXES_TEMPLATE);
       }
 
-      return getIndexesFromConsole(setup.projectId).then((contents: any) => {
+      return getIndexesFromConsole(setup.projectId, setup.databaseId).then((contents: any) => {
         return config.writeProjectFile(setup.config.firestore.indexes, contents);
       });
     });
 }
 
-function getIndexesFromConsole(projectId: any): Promise<any> {
-  const indexesPromise = indexes.listIndexes(projectId);
-  const fieldOverridesPromise = indexes.listFieldOverrides(projectId);
+function getIndexesFromConsole(projectId: any, databaseId: any): Promise<any> {
+  const indexesPromise = indexes.listIndexes(projectId, databaseId);
+  const fieldOverridesPromise = indexes.listFieldOverrides(projectId, databaseId);
 
   return Promise.all([indexesPromise, fieldOverridesPromise])
     .then((res) => {

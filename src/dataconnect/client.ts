@@ -3,7 +3,7 @@ import { Client } from "../apiv2";
 import * as operationPoller from "../operation-poller";
 import * as types from "./types";
 
-const DATACONNECT_API_VERSION = "v1alpha";
+const DATACONNECT_API_VERSION = "v1beta";
 const PAGE_SIZE_MAX = 100;
 
 const dataconnectClient = () =>
@@ -150,7 +150,7 @@ export async function deleteConnector(name: string): Promise<void> {
   return;
 }
 
-export async function listConnectors(serviceName: string) {
+export async function listConnectors(serviceName: string, fields: string[] = []) {
   const connectors: types.Connector[] = [];
   const getNextPage = async (pageToken = "") => {
     const res = await dataconnectClient().get<{
@@ -160,6 +160,7 @@ export async function listConnectors(serviceName: string) {
       queryParams: {
         pageSize: PAGE_SIZE_MAX,
         pageToken,
+        fields: fields.join(","),
       },
     });
     connectors.push(...(res.body.connectors || []));

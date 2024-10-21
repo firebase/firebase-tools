@@ -1,4 +1,4 @@
-import { Client } from "../../apiv2";
+import { Client, ClientResponse } from "../../apiv2";
 import { cloudSQLAdminOrigin } from "../../api";
 import * as operationPoller from "../../operation-poller";
 import { Instance, Database, User, UserType, DatabaseFlag } from "./types";
@@ -47,27 +47,33 @@ export async function createInstance(
   if (enableGoogleMlIntegration) {
     databaseFlags.push({ name: "cloudsql.enable_google_ml_integration", value: "on" });
   }
-  const op = await client.post<Partial<Instance>, Operation>(`projects/${projectId}/instances`, {
-    name: instanceId,
-    region: location,
-    databaseVersion: "POSTGRES_15",
-    settings: {
-      tier: "db-f1-micro",
-      edition: "ENTERPRISE",
-      ipConfiguration: {
-        authorizedNetworks: [],
+  let op: ClientResponse<Operation>;
+  try {
+    op = await client.post<Partial<Instance>, Operation>(`projects/${projectId}/instances`, {
+      name: instanceId,
+      region: location,
+      databaseVersion: "POSTGRES_15",
+      settings: {
+        tier: "db-f1-micro",
+        edition: "ENTERPRISE",
+        ipConfiguration: {
+          authorizedNetworks: [],
+        },
+        enableGoogleMlIntegration,
+        databaseFlags,
+        storageAutoResize: false,
+        userLabels: { "firebase-data-connect": "ft" },
+        insightsConfig: {
+          queryInsightsEnabled: true,
+          queryPlansPerMinute: 5, // Match the default settings
+          queryStringLength: 1024, // Match the default settings
+        },
       },
-      enableGoogleMlIntegration,
-      databaseFlags,
-      storageAutoResize: false,
-      userLabels: { "firebase-data-connect": "ft" },
-      insightsConfig: {
-        queryInsightsEnabled: true,
-        queryPlansPerMinute: 5, // Match the default settings
-        queryStringLength: 1024, // Match the default settings
-      },
-    },
-  });
+    });
+  } catch (err: any) {
+    handleAllowlistError(err, location);
+    throw err;
+  }
   if (!waitForCreation) {
     return;
   }
@@ -121,6 +127,14 @@ export async function updateInstanceForDataConnect(
     masterTimeout: 1_200_000, // This operation frequently takes 5+ minutes
   });
   return pollRes;
+}
+
+function handleAllowlistError(err: any, region: string) {
+  if (err.message.includes("Not allowed to set system label: firebase-data-connect")) {
+    throw new FirebaseError(
+      `Cloud SQL free trial instances are not yet available in ${region}. Please check https://firebase.google.com/docs/data-connect/ for a full list of available regions.`,
+    );
+  }
 }
 
 function setDatabaseFlag(flag: DatabaseFlag, flags: DatabaseFlag[] = []): DatabaseFlag[] {

@@ -1,5 +1,7 @@
 import * as path from "path";
 import * as vscode from "vscode";
+import * as fs from "fs";
+import * as os from "os";
 import { transports, format } from "winston";
 import Transport from "winston-transport";
 import stripAnsi from "strip-ansi";
@@ -11,7 +13,7 @@ import { getRootFolders } from "./core/config";
 
 export type LogLevel = "debug" | "info" | "log" | "warn" | "error";
 
-export const pluginLogger: Record<LogLevel, (...args) => void> = {
+export const pluginLogger: Record<LogLevel, (...args: any) => void> = {
   debug: () => {},
   info: () => {},
   log: () => {},
@@ -26,34 +28,30 @@ export function showOutputChannel() {
 }
 
 for (const logLevel in pluginLogger) {
-  pluginLogger[logLevel] = (...args) => {
+  pluginLogger[logLevel as LogLevel] = (...args: any) => {
     const prefixedArgs = ["[Firebase Plugin]", ...args];
-    cliLogger[logLevel](...prefixedArgs);
+    (cliLogger[logLevel as LogLevel] as any)(...prefixedArgs);
   };
 }
 
 /**
  * Logging setup for logging to console and to file.
  */
-export function logSetup({
-  shouldWriteDebug,
-  debugLogPath,
-}: {
-  shouldWriteDebug: boolean;
-  debugLogPath: string;
-}) {
+export function logSetup() {
   // Log to console (use built in CLI functionality)
   process.env.DEBUG = "true";
   setupLoggers();
 
   // Log to file
   // Only log to file if firebase.debug extension setting is true.
-  if (shouldWriteDebug) {
     // Re-implement file logger call from ../../src/bin/firebase.ts to not bring
     // in the entire firebase.ts file
     const rootFolders = getRootFolders();
-    const filePath =
-      debugLogPath || path.join(rootFolders[0], "firebase-plugin-debug.log");
+    // Default to a central path, but write files to a local path if we're in a Firebase directory.
+    let filePath = path.join(os.homedir(), ".cache", "firebase", "logs", "vsce-debug.log");
+    if (fs.existsSync(path.join(rootFolders[0], "firebase.json"))) { 
+      filePath = path.join(rootFolders[0], ".firebase", "logs", "vsce-debug.log");
+    }
     pluginLogger.info("Logging to path", filePath);
     cliLogger.add(
       new transports.File({
@@ -61,14 +59,13 @@ export function logSetup({
         filename: filePath,
         format: format.printf((info) => {
           const segments = [info.message, ...(info[SPLAT] || [])].map(
-            tryStringify
+            tryStringify,
           );
           return `[${info.level}] ${stripAnsi(segments.join(" "))}`;
         }),
-      })
+      }),
     );
     cliLogger.add(new VSCodeOutputTransport({ level: "info" }));
-  }
 }
 
 /**
@@ -76,10 +73,10 @@ export function logSetup({
  * Write only "info" and greater to avoid too much spam from "debug".
  */
 class VSCodeOutputTransport extends Transport {
-  constructor(opts) {
+  constructor(opts: any) {
     super(opts);
   }
-  log(info, callback) {
+  log(info: any, callback: any) {
     setImmediate(() => {
       this.emit("logged", info);
     });

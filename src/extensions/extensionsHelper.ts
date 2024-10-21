@@ -20,7 +20,7 @@ import { getExtensionRegistry } from "./resolveSource";
 import { FirebaseError } from "../error";
 import { diagnose } from "./diagnose";
 import { checkResponse } from "./askUserForParam";
-import { ensure } from "../ensureApiEnabled";
+import { ensure, check } from "../ensureApiEnabled";
 import { deleteObject, uploadObject } from "../gcp/storage";
 import { getProjectId } from "../projectUtils";
 import { createSource, getInstance } from "./extensionsApi";
@@ -36,7 +36,7 @@ import * as refs from "./refs";
 import { EXTENSIONS_SPEC_FILE, readFile, getLocalExtensionSpec } from "./localHelper";
 import { confirm, promptOnce } from "../prompt";
 import { logger } from "../logger";
-import { envOverride } from "../utils";
+import { envOverride, logLabeledError } from "../utils";
 import { getLocalChangelog } from "./change-log";
 import { getProjectNumber } from "../getProjectNumber";
 import { Constants } from "../emulator/constants";
@@ -81,7 +81,7 @@ const AUTOPOPULATED_PARAM_NAMES = [
   "DATABASE_URL",
 ];
 // Placeholders that can be used whever param substitution is needed, but are not available.
-export const AUTOPOULATED_PARAM_PLACEHOLDERS = {
+export const AUTOPOPULATED_PARAM_PLACEHOLDERS = {
   PROJECT_ID: "project-id",
   STORAGE_BUCKET: "project-id.appspot.com",
   EXT_INSTANCE_ID: "extension-id",
@@ -122,10 +122,21 @@ export async function getFirebaseProjectParams(
   const body = emulatorMode
     ? await getProjectAdminSdkConfigOrCached(projectId)
     : await getFirebaseConfig({ project: projectId });
-  const projectNumber =
-    emulatorMode && Constants.isDemoProject(projectId)
-      ? Constants.FAKE_PROJECT_NUMBER
-      : await getProjectNumber({ projectId });
+
+  let projectNumber = Constants.FAKE_PROJECT_NUMBER;
+  if (!Constants.isDemoProject(projectId)) {
+    try {
+      projectNumber = await getProjectNumber({ projectId });
+    } catch (err: any) {
+      logLabeledError(
+        "extensions",
+        `Unable to look up project number for ${projectId}.\n` +
+          " If this is a real project, ensure that you are logged in and have access to it.\n" +
+          " If this is a fake project, please use a project ID starting with 'demo-' to skip production calls.\n" +
+          " Continuing with a fake project number - secrets and other features that require production access may behave unexpectedly.",
+      );
+    }
+  }
   const databaseURL = body?.databaseURL ?? `https://${projectId}.firebaseio.com`;
   const storageBucket = body?.storageBucket ?? `${projectId}.appspot.com`;
   // This env variable is needed for parameter-less initialization of firebase-admin
@@ -507,6 +518,14 @@ async function promptForReleaseStage(args: {
   return stage;
 }
 
+export async function checkExtensionsApiEnabled(options: any): Promise<boolean> {
+  const projectId = getProjectId(options);
+  if (!projectId) {
+    return false;
+  }
+  return await check(projectId, extensionsOrigin(), "extensions", options.markdown);
+}
+
 export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
   const projectId = getProjectId(options);
   if (!projectId) {
@@ -600,7 +619,7 @@ async function validateExtensionSpec(
   const subbedSpec = JSON.parse(JSON.stringify(extensionSpec));
   subbedSpec.params = substituteParams<Param[]>(
     extensionSpec.params || [],
-    AUTOPOULATED_PARAM_PLACEHOLDERS,
+    AUTOPOPULATED_PARAM_PLACEHOLDERS,
   );
   validateSpec(subbedSpec);
   return extensionSpec;

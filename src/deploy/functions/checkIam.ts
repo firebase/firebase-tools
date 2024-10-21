@@ -178,6 +178,7 @@ export async function ensureServiceAgentRoles(
   projectNumber: string,
   want: backend.Backend,
   have: backend.Backend,
+  dryRun?: boolean,
 ): Promise<void> {
   // find new services
   const wantServices = backend.allEndpoints(want).reduce(reduceEventsToServices, []);
@@ -226,7 +227,15 @@ export async function ensureServiceAgentRoles(
 
   // set the updated policy
   try {
-    await setIamPolicy(projectNumber, policy, "bindings");
+    if (dryRun) {
+      logger.info(
+        `On your next deploy, the following required roles will be granted: ${requiredBindings.map(
+          (b) => `${b.members.join(", ")}: ${bold(b.role)}`,
+        )}`,
+      );
+    } else {
+      await setIamPolicy(projectNumber, policy, "bindings");
+    }
   } catch (err: any) {
     iam.printManualIamConfig(requiredBindings, projectId, "functions");
     throw new FirebaseError(
