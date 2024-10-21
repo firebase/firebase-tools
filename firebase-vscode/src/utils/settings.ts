@@ -16,7 +16,11 @@ export function getSettings(): Settings {
   // TODO: Consider moving side effect out of getSettings
   // Persist env var as path setting when path setting doesn't exist
   if (process.env.FIREBASE_BINARY && !config.get<string>("firebasePath")) {
-    config.update("firebasePath", process.env.FIREBASE_BINARY, ConfigurationTarget.Global);
+    config.update(
+      "firebasePath",
+      process.env.FIREBASE_BINARY,
+      ConfigurationTarget.Global,
+    );
     window.showInformationMessage(
       "Detected FIREBASE_BINARY env var. Saving to `Firebase Path` setting.",
     );
