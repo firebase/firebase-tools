@@ -158,10 +158,6 @@ export const command = new Command("apps:sdkconfig [platform] [appId]")
   .option("-o, --out [file]", "(optional) write config output to a file")
   .before(requireAuth)
   .action(async (platform = "", appId = "", options: Options): Promise<AppConfigurationData> => {
-    /**
-     * 1. If the user has already selected where they want to output to, then skip the autodetection
-     * 2. If the user hasn't already selected where they want to output to, determine what platform they want.
-     */
     let outputPath: string | undefined = undefined;
     if (options.out === undefined) {
       // do auto-download

@@ -312,7 +312,6 @@ function parseConfigFromResponse(responseBody: any, platform: AppPlatform): AppC
  * Returns information representing the file need to initalize the application.
  * @param config the object from `getAppConfig`.
  * @param platform the platform the `config` represents.
- * @param skipTemplate whether to skip pre-pending the web.js template for web platforms.
  * @return the platform-specific file information (name and contents).
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

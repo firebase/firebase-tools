@@ -67,12 +67,11 @@ function generateWebAppList(counts: number): WebAppMetadata[] {
 describe("App management", () => {
   let sandbox: sinon.SinonSandbox;
   let pollOperationStub: sinon.SinonStub;
-  let readFileSyncStub: sinon.SinonStub;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
     pollOperationStub = sandbox.stub(pollUtils, "pollOperation").throws("Unexpected poll call");
-    readFileSyncStub = sandbox.stub(fs, "readFileSync").throws("Unxpected readFileSync call");
+    sandbox.stub(fs, "readFileSync").throws("Unxpected readFileSync call");
     nock.disableNetConnect();
   });
 
