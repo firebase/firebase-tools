@@ -1,14 +1,296 @@
+import * as fs from "fs-extra";
 import { Client } from "../apiv2";
 import { firebaseApiOrigin } from "../api";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { pollOperation } from "../operation-poller";
+import { WebConfig } from "../fetchWebSetup";
+import ora from "ora";
+import path from "path";
+import { Platform } from "../dataconnect/types";
+import { needProjectId } from "../projectUtils";
+import { promptOnce, Question, prompt, promptForDirectory } from "../prompt";
+import { getOrPromptProject } from "./projects";
+import { Options } from "../options";
+import { Config } from "../config";
+import { getPlatformFromFolder } from "../dataconnect/fileUtils";
+import { logBullet, logSuccess } from "../utils";
 
 const TIMEOUT_MILLIS = 30000;
 export const APP_LIST_PAGE_SIZE = 100;
 const CREATE_APP_API_REQUEST_TIMEOUT_MILLIS = 15000;
+const DISPLAY_NAME_QUESTION: Question = {
+  type: "input",
+  name: "displayName",
+  default: "",
+  message: "What would you like to call your app?",
+};
 
-const WEB_CONFIG_FILE_NAME = "google-config.js";
+interface CreateFirebaseAppOptions {
+  project: string;
+  nonInteractive: boolean;
+  displayName?: string;
+}
+
+interface CreateIosAppOptions extends CreateFirebaseAppOptions {
+  bundleId?: string;
+  appStoreId?: string;
+}
+
+interface CreateAndroidAppOptions extends CreateFirebaseAppOptions {
+  packageName: string;
+}
+
+interface CreateWebAppOptions extends CreateFirebaseAppOptions {
+  displayName: string;
+}
+
+export async function getPlatform(appDir: string, config: Config) {
+  // Detect what platform based on current user
+  let targetPlatform = await getPlatformFromFolder(appDir);
+  if (targetPlatform === Platform.NONE) {
+    // If we aren't in an app directory, ask the user where their app is, and try to autodetect from there.
+    appDir = await promptForDirectory({
+      config,
+      message: "Where is your app directory?",
+    });
+    targetPlatform = await getPlatformFromFolder(appDir);
+  }
+  if (targetPlatform === Platform.NONE || targetPlatform === Platform.MULTIPLE) {
+    if (targetPlatform === Platform.NONE) {
+      logBullet(`Couldn't automatically detect app your in directory ${appDir}.`);
+    } else {
+      logSuccess(`Detected multiple app platforms in directory ${appDir}`);
+      // Can only setup one platform at a time, just ask the user
+    }
+    const platforms = [
+      { name: "iOS (Swift)", value: Platform.IOS },
+      { name: "Web (JavaScript)", value: Platform.WEB },
+      { name: "Android (Kotlin)", value: Platform.ANDROID },
+    ];
+    targetPlatform = await promptOnce({
+      message: "Which platform do you want to set up an SDK for?",
+      type: "list",
+      choices: platforms,
+    });
+  } else if (targetPlatform === Platform.FLUTTER) {
+    throw new FirebaseError(`Flutter is not supported by apps:sdkconfig. Please follow the link below to set up firebase for your flutter app:
+      https://firebase.google.com/docs/flutter/setup
+    `);
+  } else {
+    logSuccess(`Detected ${targetPlatform} app in directory ${appDir}`);
+  }
+
+  return targetPlatform === Platform.MULTIPLE
+    ? AppPlatform.PLATFORM_UNSPECIFIED
+    : (targetPlatform as unknown as AppPlatform);
+}
+
+async function initiateIosAppCreation(options: CreateIosAppOptions): Promise<IosAppMetadata> {
+  if (!options.nonInteractive) {
+    await prompt(options, [
+      DISPLAY_NAME_QUESTION,
+      {
+        type: "input",
+        default: "",
+        name: "bundleId",
+        message: "Please specify your iOS app bundle ID:",
+      },
+      {
+        type: "input",
+        default: "",
+        name: "appStoreId",
+        message: "Please specify your iOS app App Store ID:",
+      },
+    ]);
+  }
+  if (!options.bundleId) {
+    throw new FirebaseError("Bundle ID for iOS app cannot be empty");
+  }
+
+  const spinner = ora("Creating your iOS app").start();
+  try {
+    const appData = await createIosApp(options.project, {
+      displayName: options.displayName,
+      bundleId: options.bundleId,
+      appStoreId: options.appStoreId,
+    });
+    spinner.succeed();
+    return appData;
+  } catch (err: any) {
+    spinner.fail();
+    throw err;
+  }
+}
+
+async function initiateAndroidAppCreation(
+  options: CreateAndroidAppOptions,
+): Promise<AndroidAppMetadata> {
+  if (!options.nonInteractive) {
+    await prompt(options, [
+      DISPLAY_NAME_QUESTION,
+      {
+        type: "input",
+        default: "",
+        name: "packageName",
+        message: "Please specify your Android app package name:",
+      },
+    ]);
+  }
+  if (!options.packageName) {
+    throw new FirebaseError("Package name for Android app cannot be empty");
+  }
+
+  const spinner = ora("Creating your Android app").start();
+  try {
+    const appData = await createAndroidApp(options.project, {
+      displayName: options.displayName,
+      packageName: options.packageName,
+    });
+    spinner.succeed();
+    return appData;
+  } catch (err: any) {
+    spinner.fail();
+    throw err;
+  }
+}
+
+async function initiateWebAppCreation(options: CreateWebAppOptions): Promise<WebAppMetadata> {
+  if (!options.nonInteractive) {
+    await prompt(options, [DISPLAY_NAME_QUESTION]);
+  }
+  if (!options.displayName) {
+    throw new FirebaseError("Display name for Web app cannot be empty");
+  }
+  const spinner = ora("Creating your Web app").start();
+  try {
+    const appData = await createWebApp(options.project, { displayName: options.displayName });
+    spinner.succeed();
+    return appData;
+  } catch (err: any) {
+    spinner.fail();
+    throw err;
+  }
+}
+export async function sdkInit(appPlatform: AppPlatform, options: any) {
+  let appData;
+  switch (appPlatform) {
+    case AppPlatform.IOS:
+      appData = await initiateIosAppCreation(options);
+      break;
+    case AppPlatform.ANDROID:
+      appData = await initiateAndroidAppCreation(options);
+      break;
+    case AppPlatform.WEB:
+      appData = await initiateWebAppCreation(options);
+      break;
+    default:
+      throw new FirebaseError("Unexpected error. This should not happen");
+  }
+  return appData;
+}
+export function getSdkOutputPath(appDir: string, platform: AppPlatform): string {
+  switch (platform) {
+    case AppPlatform.ANDROID:
+      // build.gradle can be in either / or /android/app. We always want to place the google-services.json in /android/app.
+      // So we check the current directory if it's app, and if so, we'll place it in the current directory, if not, we'll put it in the android/app dir.
+      // Fallback is just to the current app dir.
+      if (path.dirname(appDir) !== "app") {
+        try {
+          const fileNames = fs.readdirSync(path.join(appDir, "app"));
+          if (fileNames.includes("build.gradle")) {
+            appDir = path.join(appDir, "app");
+          }
+        } catch {
+          // Wasn't able to find app dir. Default to outputting to current directory.
+        }
+      }
+      return path.join(appDir, "google-services.json");
+    case AppPlatform.WEB:
+      return path.join(appDir, "firebase-js-config.json");
+    case AppPlatform.IOS:
+      return path.join(appDir, "GoogleService-Info.plist");
+  }
+  throw new FirebaseError("Platform " + platform.toString() + " is not supported yet.");
+}
+export function checkForApps(apps: AppMetadata[], appPlatform: AppPlatform): void {
+  if (!apps.length) {
+    throw new FirebaseError(
+      `There are no ${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}apps ` +
+        "associated with this Firebase project",
+    );
+  }
+}
+async function selectAppInteractively(
+  apps: AppMetadata[],
+  appPlatform: AppPlatform,
+): Promise<AppMetadata> {
+  checkForApps(apps, appPlatform);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const choices = apps.map((app: any) => {
+    return {
+      name:
+        `${app.displayName || app.bundleId || app.packageName}` +
+        ` - ${app.appId} (${app.platform})`,
+      value: app,
+    };
+  });
+
+  return await promptOnce({
+    type: "list",
+    message:
+      `Select the ${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}` +
+      "app to get the configuration data:",
+    choices,
+  });
+}
+
+export async function getSdkConfig(
+  options: Options,
+  appPlatform: AppPlatform,
+  appId?: string,
+): Promise<AppConfig> {
+  if (!appId) {
+    let projectId = needProjectId(options);
+    if (options.nonInteractive && !projectId) {
+      throw new FirebaseError("Must supply app and project ids in non-interactive mode.");
+    } else if (!projectId) {
+      const result = await getOrPromptProject(options);
+      projectId = result.projectId;
+    }
+
+    const apps = await listFirebaseApps(projectId, appPlatform);
+    // Fail out early if there's no apps.
+    checkForApps(apps, appPlatform);
+    // if there's only one app, we don't need to prompt interactively
+    if (apps.length === 1) {
+      // If there's only one, use it.
+      appId = apps[0].appId;
+      appPlatform = apps[0].platform;
+    } else if (options.nonInteractive) {
+      // If there's > 1 and we're non-interactive, fail.
+      throw new FirebaseError(`Project ${projectId} has multiple apps, must specify an app id.`);
+    } else {
+      // > 1, ask what the user wants.
+      const appMetadata: AppMetadata = await selectAppInteractively(apps, appPlatform);
+      appId = appMetadata.appId;
+      appPlatform = appMetadata.platform;
+    }
+  }
+
+  let configData: AppConfig;
+  const spinner = ora(`Downloading configuration data of your Firebase ${appPlatform} app`).start();
+  try {
+    configData = await getAppConfig(appId, appPlatform);
+  } catch (err: any) {
+    spinner.fail();
+    throw err;
+  }
+  spinner.succeed();
+
+  return configData;
+}
 
 export interface AppMetadata {
   name: string /* The fully qualified resource name of the Firebase App */;
@@ -40,7 +322,7 @@ export interface AppConfigurationData {
   // File contents in utf8 format.
   fileContents: string;
   // Only for `AppPlatform.WEB`, the raw configuration parameters.
-  sdkConfig?: { [key: string]: string };
+  sdkConfig?: AppConfig;
 }
 
 export interface AppAndroidShaData {
@@ -292,20 +574,27 @@ function getAppConfigResourceString(appId: string, platform: AppPlatform): strin
   return `/projects/-/${platformResource}/${appId}/config`;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function parseConfigFromResponse(responseBody: any, platform: AppPlatform): AppConfigurationData {
+function parseConfigFromResponse(
+  responseBody: AppConfig,
+  platform: AppPlatform,
+): AppConfigurationData {
   if (platform === AppPlatform.WEB) {
     return {
-      fileName: WEB_CONFIG_FILE_NAME,
+      fileName: "firebase-js-config.json",
       fileContents: JSON.stringify(responseBody, null, 2),
     };
-  } else if (platform === AppPlatform.ANDROID || platform === AppPlatform.IOS) {
+  } else if ("configFilename" in responseBody) {
     return {
       fileName: responseBody.configFilename,
       fileContents: Buffer.from(responseBody.configFileContents, "base64").toString("utf8"),
     };
   }
   throw new FirebaseError("Unexpected app platform");
+}
+
+export interface MobileConfig {
+  configFilename: string;
+  configFileContents: string;
 }
 
 /**
@@ -315,8 +604,33 @@ function parseConfigFromResponse(responseBody: any, platform: AppPlatform): AppC
  * @return the platform-specific file information (name and contents).
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getAppConfigFile(config: any, platform: AppPlatform): AppConfigurationData {
+export function getAppConfigFile(config: AppConfig, platform: AppPlatform): AppConfigurationData {
   return parseConfigFromResponse(config, platform);
+}
+
+export type AppConfig = MobileConfig | WebConfig;
+
+export async function writeConfigToFile(
+  filename: string,
+  nonInteractive: boolean,
+  fileContents: string,
+) {
+  if (fs.existsSync(filename)) {
+    if (nonInteractive) {
+      throw new FirebaseError(`${filename} already exists`);
+    }
+    const overwrite = await promptOnce({
+      type: "confirm",
+      default: false,
+      message: `${filename} already exists. Do you want to overwrite?`,
+    });
+
+    if (!overwrite) {
+      return;
+    }
+  }
+  // TODO(mtewani): Make the call to get the fileContents a part of one of these util fns.
+  fs.writeFileSync(filename, fileContents);
 }
 
 /**
@@ -327,9 +641,9 @@ export function getAppConfigFile(config: any, platform: AppPlatform): AppConfigu
  *   base64-encoded content string.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function getAppConfig(appId: string, platform: AppPlatform): Promise<any> {
+export async function getAppConfig(appId: string, platform: AppPlatform): Promise<AppConfig> {
   try {
-    const response = await apiClient.request<void, any>({
+    const response = await apiClient.request<void, AppConfig>({
       method: "GET",
       path: getAppConfigResourceString(appId, platform),
       timeout: TIMEOUT_MILLIS,

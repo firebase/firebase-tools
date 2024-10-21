@@ -587,7 +587,7 @@ describe("App management", () => {
       const fileData = getAppConfigFile(configData, AppPlatform.WEB);
 
       expect(fileData).to.deep.equal({
-        fileName: "google-config.js",
+        fileName: "firebase-js-config.json",
         fileContents: JSON.stringify(mockWebConfig, null, 2),
       });
       expect(nock.isDone()).to.be.true;
