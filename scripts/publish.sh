@@ -2,13 +2,12 @@
 set -e
 
 printusage() {
-  echo "publish.sh <version> [vscode-version]"
+  echo "publish.sh <version>"
   echo "REPOSITORY_ORG and REPOSITORY_NAME should be set in the environment."
   echo "e.g. REPOSITORY_ORG=user, REPOSITORY_NAME=repo"
   echo ""
   echo "Arguments:"
   echo "  version: 'patch', 'minor', or 'major'."
-  echo "  vscode-version: Optional. If omitted, defaults to <version>. May be 'patch', 'minor', or 'major'."
 }
 
 VERSION=$1
@@ -16,14 +15,6 @@ if [[ $VERSION == "" ]]; then
   printusage
   exit 1
 elif [[ ! ($VERSION == "patch" || $VERSION == "minor" || $VERSION == "major") ]]; then
-  printusage
-  exit 1
-fi
-
-VSCODE_VERSION=$2
-if [[ $VSCODE_VERSION == "" ]]; then
-  VSCODE_VERSION=$VERSION
-elif [[ ! ($VSCODE_VERSION == "patch" || $VSCODE_VERSION == "minor" || $VSCODE_VERSION == "major") ]]; then
   printusage
   exit 1
 fi
@@ -94,10 +85,6 @@ npm version $VERSION
 NEW_VERSION=$(jq -r ".version" package.json)
 echo "Made a $VERSION version."
 
-echo "Publishing a $VSCODE_VERSION version of the VSCode extension..."
-# bash ./scripts/publish-vsce.sh $VSCODE_VERSION $NEW_VERSION
-echo "Published a $VSCODE_VERSION version of the VSCode extension."
-
 echo "Making the release notes..."
 RELEASE_NOTES_FILE=$(mktemp)
 echo "[DEBUG] ${RELEASE_NOTES_FILE}"
@@ -113,7 +100,7 @@ echo "Published to npm."
 echo "Cleaning up release notes..."
 rm CHANGELOG.md
 touch CHANGELOG.md
-git commit -m "[firebase-release] Removed change log and reset repo after ${NEW_VERSION} release" CHANGELOG.md firebase-vscode/CHANGELOG.md firebase-vscode/package.json firebase-vscode/package-lock.json 
+git commit -m "[firebase-release] Removed change log and reset repo after ${NEW_VERSION} release" CHANGELOG.md 
 echo "Cleaned up release notes."
 
 echo "Pushing to GitHub..."
