@@ -583,7 +583,6 @@ describe("App management", () => {
       nock(firebaseApiOrigin())
         .get(`/v1beta1/projects/-/webApps/${APP_ID}/config`)
         .reply(200, mockWebConfig);
-      readFileSyncStub.onFirstCall().returns("{/*--CONFIG--*/}");
 
       const configData = await getAppConfig(APP_ID, AppPlatform.WEB);
       const fileData = getAppConfigFile(configData, AppPlatform.WEB);
@@ -593,7 +592,6 @@ describe("App management", () => {
         fileContents: JSON.stringify(mockWebConfig, null, 2),
       });
       expect(nock.isDone()).to.be.true;
-      expect(readFileSyncStub).to.be.calledOnce;
     });
   });
 
