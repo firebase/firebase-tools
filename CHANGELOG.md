@@ -1,0 +1,1 @@
+- Added new command `dataconnect:sql:shell` which run queries against Data Connect CloudSQL instances (#7778).
