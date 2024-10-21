@@ -63,7 +63,8 @@
         },
         "firebase.firebasePath": {
           "type": "string",
-          "markdownDescription": "%ext.config.firebasePath%"
+          "markdownDescription": "%ext.config.firebasePath%",
+          "scope": "application"
         },
         "firebase.hosting.useFrameworks": {
           "type": "boolean",
