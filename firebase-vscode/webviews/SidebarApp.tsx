@@ -93,15 +93,24 @@ function EmulatorsPanel() {
     return runningPanel;
   }
 
-  return emulatorsRunningInfo.value?.infos ? (
+  return (emulatorsRunningInfo.value?.infos && emulatorsRunningInfo.value?.status === "running") ? (
     <Emulators emulatorInfo={emulatorsRunningInfo.value.infos!} />
   ) : (
-    <VSCodeButton
-      appearance="secondary"
-      onClick={() => broker.send("runStartEmulators")}
-    >
-      Start emulators
-    </VSCodeButton>
+    <>
+      <VSCodeButton
+        appearance="secondary"
+        onClick={() => broker.send("runStartEmulators")}
+      >
+        Start emulators
+      </VSCodeButton>
+      <Spacer size="xsmall" />
+      <Label level={3}>
+        See also:{" "}
+        <a href="https://firebase.google.com/docs/emulator-suite">
+          Introduction to Firebase emulators
+        </a>
+      </Label>
+    </>
   );
 }
 
@@ -125,7 +134,7 @@ function DataConnect() {
         onClick={() => broker.send("fdc.configure-sdk")}
         appearance="secondary"
       >
-        Configure generated SDK
+        Add SDK to app
       </VSCodeButton>
       <Spacer size="xsmall" />
       <Label level={3}>
@@ -159,10 +168,10 @@ function Content() {
 
   return (
     <>
-      <PanelSection title="Emulators">
+      <PanelSection>
         <EmulatorsPanel />
       </PanelSection>
-      <PanelSection title="Data Connect" isLast={true}>
+      <PanelSection isLast={true}>
         <DataConnect />
       </PanelSection>
     </>

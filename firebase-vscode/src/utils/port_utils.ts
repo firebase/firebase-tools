@@ -22,7 +22,7 @@ export async function findOpenPort(startPort: number): Promise<number> {
       }
     });
 
-    server.listen(startPort, () => {
+    server.listen(startPort, "127.0.0.1", () => {
       const address = server?.address();
       if (address && typeof address === "object" && "port" in address) {
         const port = address.port;

@@ -245,6 +245,7 @@ export class DataConnectEmulator implements EmulatorInstance {
           connectionString: connectionString.toString(),
           database,
           serviceId,
+          maxOpenConnections: 1, // PGlite only supports a single open connection at a time - otherwise, prepared statements will misbehave.
         });
         this.logger.logLabeled(
           "DEBUG",
@@ -278,6 +279,8 @@ type ConfigureEmulatorRequest = {
   // populated, then any database specified in the connection_string will be
   // overwritten.
   database?: string;
+  // The max number of simultaneous Postgres connections the emulator may open
+  maxOpenConnections?: number;
 };
 
 type GetInfoResponse = {

@@ -2,23 +2,66 @@
  * Start the App Hosting server.
  * @param options the Firebase CLI options.
  */
+
 import { isIPv4 } from "net";
 import { checkListenable } from "../portUtils";
-import { wrapSpawn } from "../../init/spawn";
+import { discoverPackageManager } from "./utils";
+import { DEFAULT_HOST, DEFAULT_PORTS } from "../constants";
+import { spawnWithCommandString, wrapSpawn } from "../../init/spawn";
+import { getLocalAppHostingConfiguration } from "./config";
+import { logger } from "./utils";
+import { Emulators } from "../types";
+
+interface StartOptions {
+  startCommand?: string;
+}
 
 /**
  * Spins up a project locally by running the project's dev command.
+ *
+ * Assumptions:
+ *  - Dev server runs on "localhost" when the package manager's dev command is
+ *    run
+ *  - Dev server will respect the PORT environment variable
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function start(options: any): Promise<{ port: number }> {
-  let port = options.port;
-  while (!(await availablePort(options.host, port))) {
+export async function start(options?: StartOptions): Promise<{ hostname: string; port: number }> {
+  const hostname = DEFAULT_HOST;
+  let port = DEFAULT_PORTS.apphosting;
+  while (!(await availablePort(hostname, port))) {
     port += 1;
   }
 
-  serve(options, port);
+  serve(port, options?.startCommand);
 
-  return { port };
+  return { hostname, port };
+}
+
+async function serve(port: number, startCommand?: string): Promise<void> {
+  const rootDir = process.cwd();
+  const apphostingLocalConfig = await getLocalAppHostingConfiguration(rootDir);
+  const environmentVariablesToInject = {
+    ...apphostingLocalConfig.environmentVariables,
+    PORT: port.toString(),
+  };
+
+  if (startCommand) {
+    logger.logLabeled(
+      "BULLET",
+      Emulators.APPHOSTING,
+      `running custom start command: '${startCommand}'`,
+    );
+    await spawnWithCommandString(startCommand, rootDir, environmentVariablesToInject);
+    return;
+  }
+
+  const packageManager = await discoverPackageManager(rootDir);
+
+  logger.logLabeled(
+    "BULLET",
+    Emulators.APPHOSTING,
+    `starting app with: '${packageManager} run dev'`,
+  );
+  await wrapSpawn(packageManager, ["run", "dev"], rootDir, environmentVariablesToInject);
 }
 
 function availablePort(host: string, port: number): Promise<boolean> {
@@ -27,12 +70,4 @@ function availablePort(host: string, port: number): Promise<boolean> {
     port,
     family: isIPv4(host) ? "IPv4" : "IPv6",
   });
-}
-
-/**
- * Exported for unit testing
- */
-export async function serve(options: any, port: string) {
-  // TODO: update to support other package managers and frameworks other than NextJS
-  await wrapSpawn("npm", ["run", "dev", "--", "-H", options.host, "-p", port], process.cwd());
 }

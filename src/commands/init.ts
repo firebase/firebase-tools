@@ -24,15 +24,15 @@ function isOutside(from: string, to: string): boolean {
   return !!/^\.\./.exec(path.relative(from, to));
 }
 
-const choices: {
+let choices: {
   value: string;
   name: string;
   checked: boolean;
   hidden?: boolean;
 }[] = [
   {
-    value: "database",
-    name: "Realtime Database: Configure a security rules file for Realtime Database and (optionally) provision default instance",
+    value: "dataconnect",
+    name: "Data Connect: Set up a Firebase Data Connect service",
     checked: false,
   },
   {
@@ -49,12 +49,6 @@ const choices: {
     value: "hosting",
     name: "Hosting: Configure files for Firebase Hosting and (optionally) set up GitHub Action deploys",
     checked: false,
-  },
-  {
-    value: "hosting:github",
-    name: "Hosting: Set up GitHub Action deploys",
-    checked: false,
-    hidden: true,
   },
   {
     value: "storage",
@@ -77,9 +71,15 @@ const choices: {
     checked: false,
   },
   {
-    value: "dataconnect",
-    name: "Data Connect: Set up a Firebase Data Connect service",
+    value: "database",
+    name: "Realtime Database: Configure a security rules file for Realtime Database and (optionally) provision default instance",
     checked: false,
+  },
+  {
+    value: "hosting:github",
+    name: "Hosting: Set up GitHub Action deploys",
+    checked: false,
+    hidden: true,
   },
   {
     value: "dataconnect:sdk",
@@ -87,14 +87,24 @@ const choices: {
     checked: false,
     hidden: true,
   },
+  {
+    value: "apphosting",
+    name: "App Hosting: Configure an apphosting.yaml file for App Hosting",
+    checked: false,
+    hidden: false,
+  },
 ];
 
 if (isEnabled("genkit")) {
-  choices.push({
-    value: "genkit",
-    name: "Genkit: Setup a new Genkit project with Firebase",
-    checked: false,
-  });
+  choices = [
+    ...choices.slice(0, 2),
+    {
+      value: "genkit",
+      name: "Genkit: Setup a new Genkit project with Firebase",
+      checked: false,
+    },
+    ...choices.slice(2),
+  ];
 }
 
 const featureNames = choices.map((choice) => choice.value);

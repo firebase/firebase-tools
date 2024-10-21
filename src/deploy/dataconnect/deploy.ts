@@ -8,6 +8,7 @@ import { parseServiceName } from "../../dataconnect/names";
 import { ResourceFilter } from "../../dataconnect/filters";
 import { vertexAIOrigin } from "../../api";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
+import { join } from "node:path";
 
 /**
  * Checks for and creates a Firebase DataConnect service, if needed.
@@ -101,6 +102,7 @@ export default async function (
             locationId: parseServiceName(s.serviceName).location,
             instanceId,
             databaseId,
+            configYamlPath: join(s.sourceDirectory, "dataconnect.yaml"),
             enableGoogleMlIntegration,
             waitForCreation: true,
           });

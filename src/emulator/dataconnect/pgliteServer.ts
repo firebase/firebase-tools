@@ -39,12 +39,6 @@ export class PostgresServer {
           // pglite wrongly sends.
           return extendedQueryPatch.filterResponse(data, result);
         },
-
-        async onAuthenticated() {
-          // Every time we see a new authentication exchange, we need to throw away previously prepared statements -
-          // Clients may not know of these statements, and may attempt to reuse the same name.
-          await db.query("DEALLOCATE ALL");
-        },
       });
 
       const extendedQueryPatch: PGliteExtendedQueryPatch = new PGliteExtendedQueryPatch(connection);
