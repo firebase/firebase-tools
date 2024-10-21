@@ -1,1 +1,1 @@
-- Added new command `dataconnect:sql:shell` which run queries against Data Connect CloudSQL instances (#7778).
+- Add support for deploying new blocking triggers. (#6384)
