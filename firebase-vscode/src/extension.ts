@@ -80,11 +80,11 @@ async function checkCLIInstallation(): Promise<void> {
     // Fetch directly so that we don't need to rely on any tools being presnt on path.
     const latestVersionRes = await fetch("https://registry.npmjs.org/firebase-tools");
     const latestVersion = (await latestVersionRes.json())?.["dist-tags"]?.["latest"];
-    const versionRes = spawnSync("firebase", ["--version"]);
-    pluginLogger.info("versionRes is :", versionRes.stderr?.toString());
+    const env = { ...process.env, "VSCODE_CWD":"" }
+    const versionRes = spawnSync("firebase", ["--version"], { env });
     const currentVersion = semver.valid(versionRes.stdout?.toString())
     const npmVersionRes = spawnSync("npm", ["--version"])
-    const npmVersion = semver.valid(npmVersionRes.stdout.toString())
+    const npmVersion = semver.valid(npmVersionRes.stdout?.toString())
     if (!currentVersion) {
       message = `The Firebase CLI is not installed (or not available on $PATH). If you would like to install it, run ${
         npmVersion
