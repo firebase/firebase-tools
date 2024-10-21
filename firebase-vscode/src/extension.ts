@@ -105,6 +105,6 @@ async function checkCLIInstallation(): Promise<void> {
   }
 
   if (message) {
-    vscode.window.showInformationMessage(message);
+    vscode.window.showWarningMessage(message);
   }
 }
