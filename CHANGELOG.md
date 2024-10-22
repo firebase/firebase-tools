@@ -1,1 +1,1 @@
-- Add support for deploying new blocking triggers. (#6384)
+- Fixed issue with ppr routes not rendering correctly.
