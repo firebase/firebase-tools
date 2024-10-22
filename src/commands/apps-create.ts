@@ -10,11 +10,13 @@ import {
   getAppPlatform,
   IosAppMetadata,
   sdkInit,
+  SdkInitOptions,
   WebAppMetadata,
 } from "../management/apps";
 import { promptOnce } from "../prompt";
 import { requireAuth } from "../requireAuth";
 import { logger } from "../logger";
+import { Options } from "../options";
 
 export function logPostAppCreationInformation(
   appMetadata: IosAppMetadata | AndroidAppMetadata | WebAppMetadata,
@@ -43,6 +45,12 @@ export function logPostAppCreationInformation(
   logger.info(`  firebase apps:sdkconfig ${appPlatform} ${appMetadata.appId}`);
 }
 
+interface AppsCreateOptions extends Options {
+  packageName: string;
+  bundleId: string;
+  appStoreId: string;
+}
+
 export const command = new Command("apps:create [platform] [displayName]")
   .description(
     "create a new Firebase app. [platform] can be IOS, ANDROID or WEB (case insensitive).",
@@ -55,7 +63,7 @@ export const command = new Command("apps:create [platform] [displayName]")
     async (
       platform: string = "",
       displayName: string | undefined,
-      options: any,
+      options: AppsCreateOptions,
     ): Promise<AppMetadata> => {
       const projectId = needProjectId(options);
 
@@ -78,7 +86,7 @@ export const command = new Command("apps:create [platform] [displayName]")
 
       logger.info(`Create your ${appPlatform} app in project ${clc.bold(projectId)}:`);
       options.displayName = displayName; // add displayName into options to pass into prompt function
-      const appData = await sdkInit(appPlatform, options);
+      const appData = await sdkInit(appPlatform, options as SdkInitOptions);
       logPostAppCreationInformation(appData, appPlatform);
       return appData;
     },

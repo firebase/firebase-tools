@@ -1,4 +1,5 @@
 import * as fs from "fs-extra";
+import * as path from "path";
 
 import { Command } from "../command";
 import {
@@ -10,12 +11,12 @@ import {
   getSdkConfig,
   getSdkOutputPath,
   sdkInit,
+  SdkInitOptions,
   writeConfigToFile,
 } from "../management/apps";
 import { requireAuth } from "../requireAuth";
 import { logger } from "../logger";
 import { Options } from "../options";
-import * as path from "path";
 
 interface AppsSdkConfigOptions extends Options {
   out?: string | boolean;
@@ -34,11 +35,11 @@ export const command = new Command("apps:sdkconfig [platform] [appId]")
       appId = "",
       options: AppsSdkConfigOptions,
     ): Promise<AppConfig> => {
-      let outputPath: string | undefined = options.out === true ? "" : (options.out as string);
+      let outputPath: string = (options.out || "") as string;
       const skipWrite = options.out === false;
       const config = options.config;
       const appDir = process.cwd();
-      if (!platform) {
+      if (platform === AppPlatform.PLATFORM_UNSPECIFIED) {
         // Auto-detect platform based on current directory if not specified
         platform = await getPlatform(appDir, config);
       }
@@ -49,7 +50,7 @@ export const command = new Command("apps:sdkconfig [platform] [appId]")
           sdkConfig = await getSdkConfig(options, getAppPlatform(platform), appId);
         } catch (e) {
           if ((e as Error).message.includes("associated with this Firebase project")) {
-            await sdkInit(platform as unknown as AppPlatform, options);
+            await sdkInit(platform, options as SdkInitOptions);
           } else {
             throw e;
           }

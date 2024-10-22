@@ -172,17 +172,18 @@ async function initiateWebAppCreation(options: CreateWebAppOptions): Promise<Web
     throw err;
   }
 }
-export async function sdkInit(appPlatform: AppPlatform, options: any) {
+export type SdkInitOptions = CreateIosAppOptions | CreateAndroidAppOptions | CreateWebAppOptions;
+export async function sdkInit(appPlatform: AppPlatform, options: SdkInitOptions) {
   let appData;
   switch (appPlatform) {
     case AppPlatform.IOS:
       appData = await initiateIosAppCreation(options);
       break;
     case AppPlatform.ANDROID:
-      appData = await initiateAndroidAppCreation(options);
+      appData = await initiateAndroidAppCreation(options as CreateAndroidAppOptions);
       break;
     case AppPlatform.WEB:
-      appData = await initiateWebAppCreation(options);
+      appData = await initiateWebAppCreation(options as CreateWebAppOptions);
       break;
     default:
       throw new FirebaseError("Unexpected error. This should not happen");
