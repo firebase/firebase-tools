@@ -3,7 +3,8 @@ import { pathExists } from "fs-extra";
 import { logger } from "./utils";
 import { Emulators } from "../types";
 import { APPHOSTING_BASE_YAML_FILE } from "../../apphosting/config";
-import { AppHostingConfiguration, loadAppHostingYaml } from "../../apphosting/utils";
+import { loadAppHostingYaml } from "../../apphosting/utils";
+import { AppHostingReadableConfiguration } from "../../apphosting/config";
 
 const APPHOSTING_LOCAL_YAML = "apphosting.local.yaml";
 
@@ -13,9 +14,9 @@ const APPHOSTING_LOCAL_YAML = "apphosting.local.yaml";
  */
 export async function getLocalAppHostingConfiguration(
   sourceDirectory: string,
-): Promise<AppHostingConfiguration> {
-  let apphostingBaseConfig: AppHostingConfiguration = {};
-  let apphostingLocalConfig: AppHostingConfiguration = {};
+): Promise<AppHostingReadableConfiguration> {
+  let apphostingBaseConfig: AppHostingReadableConfiguration = {};
+  let apphostingLocalConfig: AppHostingReadableConfiguration = {};
 
   if (await pathExists(join(sourceDirectory, APPHOSTING_BASE_YAML_FILE))) {
     logger.logLabeled(

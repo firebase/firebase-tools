@@ -9,8 +9,8 @@ import { isFunctionsManaged } from "../../gcp/secretManager";
 import * as utils from "../../utils";
 import * as prompt from "../../prompt";
 import { basename, dirname } from "path";
-import { APPHOSTING_BASE_YAML_FILE } from "../config";
-import { AppHostingConfiguration, loadAppHostingYaml } from "../utils";
+import { APPHOSTING_BASE_YAML_FILE, AppHostingReadableConfiguration } from "../config";
+import { loadAppHostingYaml } from "../utils";
 
 /** Interface for holding the service account pair for a given Backend. */
 export interface ServiceAccounts {
@@ -170,7 +170,7 @@ export async function upsertSecret(
 
 export async function getAppHostingConfigToExport(
   yamlPaths: string[],
-): Promise<AppHostingConfiguration> {
+): Promise<AppHostingReadableConfiguration> {
   const fileNameToPathMap: Map<string, string> = new Map();
   for (const path of yamlPaths) {
     const fileName = basename(path);

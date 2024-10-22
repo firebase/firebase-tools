@@ -1,10 +1,5 @@
 import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
-import { Config as AppHostingYaml } from "./config";
-
-export interface AppHostingConfiguration {
-  environmentVariables?: Record<string, string>;
-  secrets?: Record<string, string>;
-}
+import { Config as AppHostingYaml, AppHostingReadableConfiguration } from "./config";
 
 /**
  * Reads an apphosting.*.yaml file, parses, and returns in an easy to use
@@ -13,7 +8,7 @@ export interface AppHostingConfiguration {
 export async function loadAppHostingYaml(
   sourceDirectory: string,
   fileName: string,
-): Promise<AppHostingConfiguration> {
+): Promise<AppHostingReadableConfiguration> {
   const file = await readFileFromDirectory(sourceDirectory, fileName);
   const apphostingYaml: AppHostingYaml = await wrappedSafeLoad(file.source);
   const environmentVariables: Record<string, string> = {};

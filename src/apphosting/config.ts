@@ -1,6 +1,7 @@
 import { resolve, join, dirname } from "path";
 import { writeFileSync, readdirSync } from "fs";
 import * as yaml from "yaml";
+import * as jsYaml from "js-yaml";
 
 import * as fs from "../fsutils";
 import { NodeType } from "yaml/dist/nodes/Node";
@@ -33,6 +34,11 @@ export type Env = {
 export interface Config {
   runConfig?: RunConfig;
   env?: Env[];
+}
+
+export interface AppHostingReadableConfiguration {
+  environmentVariables?: Record<string, string>;
+  secrets?: Record<string, string>;
 }
 
 /**
@@ -189,4 +195,26 @@ export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
     secret: secretName,
   });
   dynamicDispatch.store(path, projectYaml);
+}
+
+export function writeReadableConfigToAppHostingYaml(
+  readbaleConfig: AppHostingReadableConfiguration,
+  apphostingYamlPath: string,
+) {
+  const config: Config = {
+    env: [],
+  };
+  if (!readbaleConfig.environmentVariables) {
+    return config;
+  }
+
+  for (const key of Object.keys(readbaleConfig.environmentVariables)) {
+    config.env?.push({
+      variable: key,
+      value: readbaleConfig.environmentVariables[key],
+      availability: ["RUNTIME"],
+    });
+  }
+
+  store(apphostingYamlPath, yaml.parseDocument(jsYaml.dump(config)));
 }

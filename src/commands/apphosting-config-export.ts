@@ -6,15 +6,20 @@ import { accessSecretVersion } from "../gcp/secretManager";
 import { requireAuth } from "../requireAuth";
 import * as secretManager from "../gcp/secretManager";
 import { requirePermissions } from "../requirePermissions";
-import { APPHOSTING_LOCAL_YAML, allYamlPaths, store, yamlPath } from "../apphosting/config";
+import {
+  APPHOSTING_LOCAL_YAML,
+  allYamlPaths,
+  store,
+  writeReadableConfigToAppHostingYaml,
+  yamlPath,
+} from "../apphosting/config";
 import { getAppHostingConfigToExport } from "../apphosting/secrets";
 import { FirebaseError } from "../error";
 import { basename, dirname, join } from "path";
 import * as yaml from "yaml";
 import * as jsYaml from "js-yaml";
-import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
-import { Config } from "../apphosting/config";
-import fs from "fs";
+import { loadAppHostingYaml } from "../apphosting/utils";
+import { AppHostingReadableConfiguration } from "../apphosting/config";
 
 export const command = new Command("apphosting:config:export")
   .description(
@@ -35,54 +40,73 @@ export const command = new Command("apphosting:config:export")
     let yamlFilePaths = allYamlPaths(currentDir)?.filter(
       (path) => !path.endsWith(APPHOSTING_LOCAL_YAML),
     );
+
     if (!yamlFilePaths) {
       logger.warn("No apphosting YAMLS found");
       return;
     }
 
-    // TODO: Load apphosting.local.yaml file if it exists. Secrets should be added to the env list in this object and written back to the apphosting.local.yaml
-    let localAppHostingConfig: Config = {};
-    const apphostingLocalConfigPath = yamlPath(currentDir, APPHOSTING_LOCAL_YAML);
-    if (apphostingLocalConfigPath) {
-      const file = await readFileFromDirectory(
-        dirname(apphostingLocalConfigPath),
-        basename(apphostingLocalConfigPath),
-      );
+    // Load apphosting.local.yaml file if it exists. Secrets should be added to the env list in this object and written back to the apphosting.local.yaml
+    let localAppHostingConfig = await loadLocalAppHostingYaml(currentDir);
 
-      localAppHostingConfig = await wrappedSafeLoad(file.source);
-    }
-
-    const mergedConfigs = await getAppHostingConfigToExport(yamlFilePaths);
-    const secretsToExport = mergedConfigs.secrets;
+    const configsToUse = await getAppHostingConfigToExport(yamlFilePaths);
+    const secretsToExport = configsToUse.secrets;
     if (!secretsToExport) {
       logger.warn("No secrets found to export in the choosen apphosting files");
       return;
     }
 
-    if (!localAppHostingConfig.env) {
-      localAppHostingConfig.env = [];
-    }
+    const secretsToInjectAsEnvs = await fetchSecrets(projectId, secretsToExport);
 
-    try {
-      for (const secretKey of Object.keys(secretsToExport)) {
-        let [name, version] = secretsToExport[secretKey].split("@");
-        if (!version) {
-          version = "latest";
-        }
-
-        const value = await accessSecretVersion(projectId, name, version);
-        localAppHostingConfig.env.push({ variable: secretKey, value, availability: ["RUNTIME"] });
-      }
-    } catch (e) {
-      throw new FirebaseError(`Error exporting secrets: ${e}`);
-    }
+    configsToUse.environmentVariables = {
+      ...configsToUse.environmentVariables,
+      ...secretsToInjectAsEnvs,
+    };
+    configsToUse.secrets = {};
 
     // write this config to apphosting.local.yaml
-    store(
-      join(currentDir, APPHOSTING_LOCAL_YAML),
-      yaml.parseDocument(jsYaml.dump(localAppHostingConfig)),
-    );
+    writeReadableConfigToAppHostingYaml(configsToUse, join(currentDir, APPHOSTING_LOCAL_YAML));
 
     logger.log("silly", `Wrote Secrets as environment variables to ${APPHOSTING_LOCAL_YAML}.`);
     logger.info(`Wrote Secrets as environment variables to ${APPHOSTING_LOCAL_YAML}.`);
   });
+
+async function loadLocalAppHostingYaml(cwd: string): Promise<AppHostingReadableConfiguration> {
+  let localAppHostingConfig: AppHostingReadableConfiguration = {};
+  const apphostingLocalConfigPath = yamlPath(cwd, APPHOSTING_LOCAL_YAML);
+  if (apphostingLocalConfigPath) {
+    localAppHostingConfig = await loadAppHostingYaml(
+      dirname(apphostingLocalConfigPath),
+      basename(apphostingLocalConfigPath),
+    );
+  }
+
+  if (!localAppHostingConfig.environmentVariables) {
+    localAppHostingConfig.environmentVariables = {};
+  }
+
+  return localAppHostingConfig;
+}
+
+async function fetchSecrets(
+  projectId: string,
+  secretKeySourcePair: Record<string, string>,
+): Promise<Record<string, string>> {
+  const secretsKeyValuePairs: Record<string, string> = {};
+
+  try {
+    for (const secretKey of Object.keys(secretKeySourcePair)) {
+      let [name, version] = secretKeySourcePair[secretKey].split("@");
+      if (!version) {
+        version = "latest";
+      }
+
+      const value = await accessSecretVersion(projectId, name, version);
+      secretsKeyValuePairs[secretKey] = value;
+    }
+  } catch (e) {
+    throw new FirebaseError(`Error exporting secrets: ${e}`);
+  }
+
+  return secretsKeyValuePairs;
+}
