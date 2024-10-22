@@ -389,6 +389,23 @@ export async function promptLocation(
 }
 
 /**
+ * Fetches a backend from the server in the specified region (location).
+ */
+export async function getBackendForLocation(
+  projectId: string,
+  location: string,
+  backendId: string,
+): Promise<apphosting.Backend> {
+  try {
+    return await apphosting.getBackend(projectId, location, backendId);
+  } catch (err: any) {
+    throw new FirebaseError(`No backend named "${backendId}" found in ${location}.`, {
+      original: err,
+    });
+  }
+}
+
+/**
  * Fetches a backend from the server. If there are multiple backends with that name (ie multi-regional backends),
  * prompts the user to disambiguate.
  */

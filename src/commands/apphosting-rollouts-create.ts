@@ -7,7 +7,7 @@ import { createRollout } from "../apphosting/rollout";
 
 export const command = new Command("apphosting:rollouts:create <backendId>")
   .description("create a rollout using a build for an App Hosting backend")
-  .option("-l, --location <location>", "specify the region of the backend", "us-central1")
+  .option("-l, --location <location>", "specify the region of the backend", "-")
   .option("-i, --id <rolloutId>", "id of the rollout (defaults to autogenerating a random id)", "")
   .option(
     "-gb, --git-branch <gitBranch>",

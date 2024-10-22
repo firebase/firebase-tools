@@ -14,6 +14,7 @@ import { confirm } from "../prompt";
 import { logBullet, sleep } from "../utils";
 import { apphostingOrigin, consoleOrigin } from "../api";
 import { DeepOmit } from "../metaprogramming";
+import { getBackendForAmbiguousLocation, getBackendForLocation } from ".";
 
 const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: apphostingOrigin(),
@@ -36,7 +37,18 @@ export async function createRollout(
   commit?: string,
   force?: boolean,
 ): Promise<void> {
-  const backend = await apphosting.getBackend(projectId, location, backendId);
+  let backend: apphosting.Backend;
+  if (location === "-" || location === "") {
+    backend = await getBackendForAmbiguousLocation(
+      projectId,
+      backendId,
+      "Please select the location of the backend you'd like to roll out:",
+    );
+    location = apphosting.parseBackendName(backend.name).location;
+  } else {
+    backend = await getBackendForLocation(projectId, location, backendId);
+  }
+
   if (!backend.codebase.repository) {
     throw new FirebaseError(
       `Backend ${backendId} is misconfigured due to missing a connected repository. You can delete and recreate your backend using 'firebase apphosting:backends:delete' and 'firebase apphosting:backends:create'.`,
