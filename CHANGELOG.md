@@ -1,1 +1,2 @@
 - Add support for deploying new blocking triggers. (#6384)
+- Have the firestore:delete command retry on bandwidth exceeded errors. (#7845)
