@@ -1,5 +1,5 @@
 import { resolve, join, dirname } from "path";
-import { writeFileSync, readdirSync } from "fs";
+import { writeFileSync } from "fs";
 import * as yaml from "yaml";
 import * as jsYaml from "js-yaml";
 
@@ -66,33 +66,36 @@ export function yamlPath(cwd: string, fileName: string): string | null {
   return resolve(dir, APPHOSTING_BASE_YAML_FILE);
 }
 
+/**
+ * Finds all paths of apphosting.*.yaml files.
+ * Starts with cwd and walks up the tree finding all apphosting.*.yaml files
+ * until the the project root (where firebase.json is) or the filesystem root
+ * is reached;
+ *
+ * If no apphosting.*.yaml files are found, null is returned.
+ */
 export function allYamlPaths(cwd: string): string[] | null {
   let dir = cwd;
+  const files: string[] = [];
 
-  let files: string[] = [];
-
-  while (files.length === 0) {
-    files = listAppHostingYamlsInCWD(dir);
-
-    // We've hit project root
-    if (fs.fileExistsSync(resolve(dir, "firebase.json"))) {
-      break;
-    }
+  do {
+    files.push(...listAppHostingYamlsInCWD(dir));
 
     const parent = dirname(dir);
     // We've hit the filesystem root
     if (parent === dir) {
       break;
     }
+
     dir = parent;
-  }
+  } while (!fs.fileExistsSync(resolve(dir, "firebase.json"))); // We've hit project root
 
   return files.length > 0 ? files : null;
 }
 
-function listAppHostingYamlsInCWD(cwd: string): string[] {
+export function listAppHostingYamlsInCWD(cwd: string): string[] {
   const paths: string[] = [];
-  for (const file of readdirSync(cwd)) {
+  for (const file of fs.listFiles(cwd)) {
     if (file.startsWith("apphosting.") && file.endsWith(".yaml")) {
       paths.push(join(cwd, file));
     }

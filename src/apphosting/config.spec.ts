@@ -214,4 +214,67 @@ env:
       expect(store).to.have.been.calledWithMatch(path.join("CWD", "apphosting.yaml"), doc);
     });
   });
+
+  describe("listAppHostingYamlsInCwd", () => {
+    let fs: sinon.SinonStubbedInstance<typeof fsImport>;
+
+    beforeEach(() => {
+      fs = sinon.stub(fsImport);
+    });
+
+    afterEach(() => {
+      sinon.verifyAndRestore();
+    });
+
+    it("lists apphosting yamls only", () => {
+      fs.listFiles
+        .withArgs("/cwd")
+        .returns([
+          "apphosting.staging.yaml",
+          "blah.js",
+          "apphosting.yaml",
+          "apphosting.local.yaml",
+          "blah.txt",
+        ]);
+
+      const apphostingYamls = config.listAppHostingYamlsInCWD("/cwd");
+      expect(apphostingYamls).to.deep.equal([
+        "/cwd/apphosting.staging.yaml",
+        "/cwd/apphosting.yaml",
+        "/cwd/apphosting.local.yaml",
+      ]);
+    });
+  });
+  describe("allYamlPaths", () => {
+    let fs: sinon.SinonStubbedInstance<typeof fsImport>;
+
+    beforeEach(() => {
+      fs = sinon.stub(fsImport);
+    });
+
+    afterEach(() => {
+      sinon.verifyAndRestore();
+    });
+
+    it("moves up the tree finding apphosting.*.yaml files till firebase.json file found", () => {
+      fs.fileExistsSync.withArgs("/parent-parent/firebase.json").returns(true);
+      fs.fileExistsSync.withArgs("/parent-parent/parent/cwd/firebase.json").returns(false);
+      fs.fileExistsSync.withArgs("/parent-parent/parent/firebase.json").returns(false);
+
+      fs.listFiles
+        .withArgs("/parent-parent/parent/cwd")
+        .returns(["apphosting.staging.yaml", "blah.js"]);
+
+      fs.listFiles
+        .withArgs("/parent-parent/parent")
+        .returns(["apphosting.local.yaml", "bloh.txt", "apphosting.yaml"]);
+
+      const apphostingYamls = config.allYamlPaths("/parent-parent/parent/cwd");
+      expect(apphostingYamls).to.deep.equal([
+        "/parent-parent/parent/cwd/apphosting.staging.yaml",
+        "/parent-parent/parent/apphosting.local.yaml",
+        "/parent-parent/parent/apphosting.yaml",
+      ]);
+    });
+  });
 });
