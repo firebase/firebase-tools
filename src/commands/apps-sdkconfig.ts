@@ -62,6 +62,7 @@ export const command = new Command("apps:sdkconfig [platform] [appId]")
         writeToFile = options.out;
         outputPath = getSdkOutputPath(appDir, platform);
       } else if (typeof options.out === "string") {
+        writeToFile = true;
         outputPath = options.out;
       }
 
