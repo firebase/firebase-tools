@@ -1,1 +1,1 @@
-- Fixed Flutter web apps that might require the --no-tree-shake-icons flag in order to build. (#7724)
+- Add support for deploying new blocking triggers. (#6384)

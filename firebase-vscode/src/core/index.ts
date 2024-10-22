@@ -3,7 +3,7 @@ import { ExtensionBrokerImpl } from "../extension-broker";
 import { getRootFolders, registerConfig } from "./config";
 import { EmulatorsController } from "./emulators";
 import { registerEnv } from "./env";
-import { pluginLogger, LogLevel } from '../logger-wrapper';
+import { pluginLogger, LogLevel } from "../logger-wrapper";
 import { getSettings } from "../utils/settings";
 import { setEnabled } from "../../../src/experiments";
 import { registerUser } from "./user";
@@ -55,18 +55,18 @@ export async function registerCore(
       return;
     }
     const workspaceFolder = vscode.workspace.workspaceFolders[0];
-    const initCommand = currentProjectId.value ? 
-      `${settings.firebasePath} init dataconnect --project ${currentProjectId.value}` :
-      `${settings.firebasePath} init dataconnect`;
-    vscode.tasks.executeTask(
-      new vscode.Task(
-        { type: "shell" }, // this is the same type as in tasks.json
-        workspaceFolder, // The workspace folder
-        "firebase init dataconnect", // how you name the task
-        "firebase init dataconnect", // Shows up as MyTask: name
-        new vscode.ShellExecution(initCommand),
-      ),
+    const initCommand = currentProjectId.value
+      ? `${settings.firebasePath} init dataconnect --project ${currentProjectId.value}`
+      : `${settings.firebasePath} init dataconnect`;
+    const task = new vscode.Task(
+      { type: "shell" }, // this is the same type as in tasks.json
+      workspaceFolder, // The workspace folder
+      "firebase init dataconnect", // how you name the task
+      "firebase init dataconnect", // Shows up as MyTask: name
+      new vscode.ShellExecution(initCommand),
     );
+    task.presentationOptions = { focus: true };
+    vscode.tasks.executeTask(task);
   });
 
   const emulatorsController = new EmulatorsController(broker);
@@ -80,11 +80,14 @@ export async function registerCore(
     },
   );
 
+  registerConfig(context, broker);
   const refreshCmd = vscode.commands.registerCommand(
     "firebase.refresh",
     async () => {
       await vscode.commands.executeCommand("workbench.action.closeSidebar");
-      await vscode.commands.executeCommand("workbench.view.extension.firebase-data-connect");
+      await vscode.commands.executeCommand(
+        "workbench.view.extension.firebase-data-connect",
+      );
     },
   );
 
@@ -95,7 +98,6 @@ export async function registerCore(
       refreshCmd,
       emulatorsController,
       registerOptions(context),
-      registerConfig(broker),
       registerEnv(broker),
       registerUser(broker, telemetryLogger),
       registerProject(broker),
