@@ -237,7 +237,7 @@ env:
           "blah.txt",
         ]);
 
-      const apphostingYamls = config.listAppHostingYamlsInCWD("/cwd");
+      const apphostingYamls = config.list("/cwd");
       expect(apphostingYamls).to.deep.equal([
         "/cwd/apphosting.staging.yaml",
         "/cwd/apphosting.yaml",

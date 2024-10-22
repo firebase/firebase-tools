@@ -79,7 +79,7 @@ export function allYamlPaths(cwd: string): string[] | null {
   const files: string[] = [];
 
   do {
-    files.push(...listAppHostingYamlsInCWD(dir));
+    files.push(...list(dir));
 
     const parent = dirname(dir);
     // We've hit the filesystem root
@@ -96,7 +96,7 @@ export function allYamlPaths(cwd: string): string[] | null {
 /**
  * Lists all apphosting.*.yaml files in the given directory.
  */
-export function listAppHostingYamlsInCWD(cwd: string): string[] {
+export function list(cwd: string): string[] {
   const paths: string[] = [];
   for (const file of fs.listFiles(cwd)) {
     if (file.startsWith("apphosting.") && file.endsWith(".yaml")) {
