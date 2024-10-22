@@ -47,10 +47,10 @@ export interface AppHostingReadableConfiguration {
  * we find the project root (where firebase.json is) or the filesystem root;
  * in these cases, returns null.
  */
-export function yamlPath(cwd: string, yamlFileName: string): string | null {
+export function yamlPath(cwd: string, fileName: string): string | null {
   let dir = cwd;
 
-  while (!fs.fileExistsSync(resolve(dir, yamlFileName))) {
+  while (!fs.fileExistsSync(resolve(dir, fileName))) {
     // We've hit project root
     if (fs.fileExistsSync(resolve(dir, "firebase.json"))) {
       return null;
@@ -71,7 +71,7 @@ export function allYamlPaths(cwd: string): string[] | null {
 
   let files: string[] = [];
 
-  while (files.length == 0) {
+  while (files.length === 0) {
     files = listAppHostingYamlsInCWD(dir);
 
     // We've hit project root
@@ -91,7 +91,7 @@ export function allYamlPaths(cwd: string): string[] | null {
 }
 
 function listAppHostingYamlsInCWD(cwd: string): string[] {
-  let paths: string[] = [];
+  const paths: string[] = [];
   for (const file of readdirSync(cwd)) {
     if (file.startsWith("apphosting.") && file.endsWith(".yaml")) {
       paths.push(join(cwd, file));

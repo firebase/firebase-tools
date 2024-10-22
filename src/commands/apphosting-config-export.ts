@@ -9,15 +9,12 @@ import { requirePermissions } from "../requirePermissions";
 import {
   APPHOSTING_LOCAL_YAML,
   allYamlPaths,
-  store,
   writeReadableConfigToAppHostingYaml,
   yamlPath,
 } from "../apphosting/config";
 import { getAppHostingConfigToExport } from "../apphosting/secrets";
 import { FirebaseError } from "../error";
 import { basename, dirname, join } from "path";
-import * as yaml from "yaml";
-import * as jsYaml from "js-yaml";
 import { loadAppHostingYaml } from "../apphosting/utils";
 import { AppHostingReadableConfiguration } from "../apphosting/config";
 
@@ -37,7 +34,7 @@ export const command = new Command("apphosting:config:export")
     const currentDir = process.cwd();
 
     // Get all apphosting yaml files ignoring the apphosting.local.yaml file
-    let yamlFilePaths = allYamlPaths(currentDir)?.filter(
+    const yamlFilePaths = allYamlPaths(currentDir)?.filter(
       (path) => !path.endsWith(APPHOSTING_LOCAL_YAML),
     );
 
@@ -47,7 +44,7 @@ export const command = new Command("apphosting:config:export")
     }
 
     // Load apphosting.local.yaml file if it exists. Secrets should be added to the env list in this object and written back to the apphosting.local.yaml
-    let localAppHostingConfig = await loadLocalAppHostingYaml(currentDir);
+    const localAppHostingConfig = await loadLocalAppHostingYaml(currentDir);
 
     const configsToUse = await getAppHostingConfigToExport(yamlFilePaths);
     const secretsToExport = configsToUse.secrets;
@@ -59,7 +56,7 @@ export const command = new Command("apphosting:config:export")
     const secretsToInjectAsEnvs = await fetchSecrets(projectId, secretsToExport);
 
     configsToUse.environmentVariables = {
-      ...configsToUse.environmentVariables,
+      ...localAppHostingConfig.environmentVariables,
       ...secretsToInjectAsEnvs,
     };
     configsToUse.secrets = {};

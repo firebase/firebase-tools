@@ -198,9 +198,8 @@ export async function getAppHostingConfigToExport(
 async function promptForAppHostingFileToExportSecretsFrom(fileNameToPathMap: Map<string, string>) {
   const fileNames = Array.from(fileNameToPathMap.keys());
 
-  //qq: Is it possible for the basefile to not exist but an environment specific apphosting.<environment>.yaml file to exist?
   const baseFilePath = fileNameToPathMap.get(APPHOSTING_BASE_YAML_FILE);
-  let listOptions = fileNames.map((fileName) => {
+  const listOptions = fileNames.map((fileName) => {
     if (fileName === APPHOSTING_BASE_YAML_FILE) {
       return {
         name: `base (${APPHOSTING_BASE_YAML_FILE})`,
