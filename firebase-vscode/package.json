@@ -64,7 +64,7 @@
         "firebase.firebasePath": {
           "type": "string",
           "markdownDescription": "%ext.config.firebasePath%",
-          "scope": "application"
+          "scope": "machine-overridable"
         },
         "firebase.hosting.useFrameworks": {
           "type": "boolean",
