@@ -93,6 +93,9 @@ export function allYamlPaths(cwd: string): string[] | null {
   return files.length > 0 ? files : null;
 }
 
+/**
+ * Lists all apphosting.*.yaml files in the given directory.
+ */
 export function listAppHostingYamlsInCWD(cwd: string): string[] {
   const paths: string[] = [];
   for (const file of fs.listFiles(cwd)) {
