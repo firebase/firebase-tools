@@ -153,11 +153,7 @@ export async function deleteDocuments(
   });
   const data = { writes };
 
-  const res = await apiClient.post<any, { writeResults: any[] }>(
-    url,
-    data,
-    {retries: 10, retryCodes: [ 429, 409, 503 ], retryMaxTimeout: 20 * 1000}
-  );
+  const res = await apiClient.post<any, { writeResults: any[] }>(url, data, {retries: 10, retryCodes: [ 429, 409, 503 ], retryMaxTimeout: 20 * 1000});
   return res.body.writeResults.length;
 }
 
