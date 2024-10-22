@@ -27,7 +27,9 @@ export const command = new Command("apps:sdkconfig [platform] [appId]")
     "print the Google Services config of a Firebase app. " +
       "[platform] can be IOS, ANDROID or WEB (case insensitive)",
   )
-  .option("-o, --out [file]", "(optional) write config output to a file") // Note: There's a discrepency here: this expects a string, but below we check if `output` is a boolean
+  .option("-o, --out [file]", "(optional) write config output to a file")
+  // Note: Command behaves weirdly with optional string flags - when `--out`, options.out is a boolean
+  // but when `--out myFile.json`, options.out is a string
   .before(requireAuth)
   .action(
     async (
@@ -35,8 +37,6 @@ export const command = new Command("apps:sdkconfig [platform] [appId]")
       appId = "",
       options: AppsSdkConfigOptions,
     ): Promise<AppConfig> => {
-      let outputPath: string = (options.out || "") as string;
-      const skipWrite = options.out === false;
       const config = options.config;
       const appDir = process.cwd();
       if (platform === AppPlatform.PLATFORM_UNSPECIFIED) {
@@ -57,8 +57,17 @@ export const command = new Command("apps:sdkconfig [platform] [appId]")
         }
       }
 
-      if (!skipWrite) {
+      let writeToFile = false;
+      let outputPath: string = "";
+      if (typeof options.out === "boolean") {
+        writeToFile = options.out;
         outputPath = getSdkOutputPath(appDir, platform);
+      } else if (typeof options.out === "string") {
+        writeToFile = true;
+        outputPath = options.out;
+      }
+
+      if (writeToFile) {
         const outputDir = path.dirname(outputPath!);
         fs.mkdirpSync(outputDir);
         const fileInfo = getAppConfigFile(sdkConfig, platform);
