@@ -1,12 +1,12 @@
 import * as fs from "fs-extra";
+import * as ora from "ora";
+import * as path from "path";
 import { Client } from "../apiv2";
 import { firebaseApiOrigin } from "../api";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { pollOperation } from "../operation-poller";
 import { WebConfig } from "../fetchWebSetup";
-import ora from "ora";
-import path from "path";
 import { Platform } from "../dataconnect/types";
 import { needProjectId } from "../projectUtils";
 import { promptOnce, Question, prompt, promptForDirectory } from "../prompt";
