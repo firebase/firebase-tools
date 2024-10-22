@@ -29,6 +29,7 @@ export interface WebviewToExtensionParamsMap {
    */
   getInitialData: {};
   getInitialHasFdcConfigs: void;
+  getInitialFirebaseConfigList: void;
 
   addUser: {};
   logout: { email: string };
@@ -42,6 +43,9 @@ export interface WebviewToExtensionParamsMap {
 
   /** Trigger project selection */
   selectProject: {};
+
+  /** When 2+ firebase.json are detected, the user can manually pick one */
+  selectFirebaseConfig: string;
 
   /**
    * Prompt user for text input
@@ -121,6 +125,12 @@ export interface ExtensionToWebviewParamsMap {
   notifyEmulatorStateChanged: {
     status: EmulatorsStatus;
     infos?: RunningEmulatorInfo | undefined;
+  };
+
+  /** Lists all firebase.json in the workspace */
+  notifyFirebaseConfigListChanged: {
+    values: string[];
+    selected: string | undefined;
   };
 
   notifyEmulatorsHanging: boolean;

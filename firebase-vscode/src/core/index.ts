@@ -80,6 +80,7 @@ export async function registerCore(
     },
   );
 
+  registerConfig(context, broker);
   const refreshCmd = vscode.commands.registerCommand(
     "firebase.refresh",
     async () => {
@@ -97,7 +98,6 @@ export async function registerCore(
       refreshCmd,
       emulatorsController,
       registerOptions(context),
-      registerConfig(broker),
       registerEnv(broker),
       registerUser(broker, telemetryLogger),
       registerProject(broker),
