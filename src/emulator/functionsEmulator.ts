@@ -459,15 +459,12 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   async start(): Promise<void> {
     const credentialEnv = await this.getCredentialsEnvironment();
-
-    console.log("got creds env");
     for (const e of this.staticBackends) {
       e.env = { ...credentialEnv, ...e.env };
     }
 
     if (Object.keys(this.adminSdkConfig || {}).length <= 1) {
       const adminSdkConfig = await getProjectAdminSdkConfigOrCached(this.args.projectId);
-      console.log("got admin sdk");
       if (adminSdkConfig) {
         this.adminSdkConfig = adminSdkConfig;
       } else {
