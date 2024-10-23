@@ -203,6 +203,9 @@ export default class PostgresConnection {
           for await (const msg of getMessages(responseMessage)) {
             if (msg[0] !== BackendMessageCode.NoticeMessage) {
               logger.debug('Backend message', getBackendMessageName(msg[0]!));
+              if (msg[0] === BackendMessageCode.ErrorMessage) {
+                logger.debug(new TextDecoder().decode(msg));
+              }
             }
           }
           await writer.write(responseMessage);

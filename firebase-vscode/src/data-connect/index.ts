@@ -31,6 +31,7 @@ import { registerWebview } from "../webview";
 
 import { DataConnectToolkit } from "./toolkit";
 import { registerFdcSdkGeneration } from "./sdk-generation";
+import { registerDiagnostics } from "./diagnostics";
 
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
@@ -108,13 +109,7 @@ class CodeActionsProvider implements vscode.CodeActionProvider {
       return;
     }
 
-    for (const connectorResult of enclosingService.resolvedConnectors) {
-      const connector = connectorResult.tryReadValue;
-      if (!connector) {
-        // Parsing error in the connector, skip
-        continue;
-      }
-
+    for (const connector of enclosingService.resolvedConnectors) {
       results.push({
         title: `Move to "${connector.value.connectorId}"`,
         kind: vscode.CodeActionKind.Refactor,
@@ -140,6 +135,7 @@ export function registerFdc(
   emulatorController: EmulatorsController,
   telemetryLogger: TelemetryLogger,
 ): Disposable {
+  registerDiagnostics(context, dataConnectConfigs);
   const dataConnectToolkit = new DataConnectToolkit(broker);
 
   const codeActions = vscode.languages.registerCodeActionsProvider(
@@ -211,6 +207,8 @@ export function registerFdc(
     );
   });
 
+  registerDataConnectConfigs(context, broker);
+
   return Disposable.from(
     dataConnectToolkit,
     codeActions,
@@ -224,8 +222,12 @@ export function registerFdc(
         selectedProjectStatus.show();
       }),
     },
-    registerDataConnectConfigs(broker),
-    registerExecution(context, broker, fdcService, telemetryLogger),
+    registerExecution(
+      context,
+      broker,
+      fdcService,
+      telemetryLogger,
+    ),
     registerExplorer(context, broker, fdcService),
     registerWebview({ name: "data-connect", context, broker }),
     registerAdHoc(fdcService, telemetryLogger),

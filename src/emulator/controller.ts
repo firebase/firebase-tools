@@ -120,6 +120,11 @@ export function filterEmulatorTargets(options: { only: string; config: any }): E
     return options.config.has(e) || options.config.has(`emulators.${e}`);
   });
 
+  // Extensions may not be initialized but we can have SDK defined extensions
+  if (targets.includes(Emulators.FUNCTIONS) && !targets.includes(Emulators.EXTENSIONS)) {
+    targets.push(Emulators.EXTENSIONS);
+  }
+
   const onlyOptions: string = options.only;
   if (onlyOptions) {
     const only = onlyOptions.split(",").map((o) => {
@@ -347,11 +352,24 @@ export async function startAll(
   // the Functions emulator needs to start.
   let extensionEmulator: ExtensionsEmulator | undefined = undefined;
   if (shouldStart(options, Emulators.EXTENSIONS)) {
-    const projectNumber = isDemoProject
-      ? Constants.FAKE_PROJECT_NUMBER
-      : await needProjectNumber(options);
+    let projectNumber = Constants.FAKE_PROJECT_NUMBER;
+    if (!isDemoProject) {
+      try {
+        projectNumber = await needProjectNumber(options);
+      } catch (err: any) {
+        EmulatorLogger.forEmulator(Emulators.EXTENSIONS).logLabeled(
+          "ERROR",
+          Emulators.EXTENSIONS,
+          `Unable to look up project number for ${options.project}.\n` +
+            " If this is a real project, ensure that you are logged in and have access to it.\n" +
+            " If this is a fake project, please use a project ID starting with 'demo-' to skip production calls.\n" +
+            " Continuing with a fake project number - secrets and other features that require production access may behave unexpectedly.",
+        );
+      }
+    }
     const aliases = getAliases(options, projectId);
     extensionEmulator = new ExtensionsEmulator({
+      options,
       projectId,
       projectDir: options.config.projectDir,
       projectNumber,
@@ -359,10 +377,8 @@ export async function startAll(
       extensions: options.config.get("extensions"),
     });
     const extensionsBackends = await extensionEmulator.getExtensionBackends();
-    const filteredExtensionsBackends = extensionEmulator.filterUnemulatedTriggers(
-      options,
-      extensionsBackends,
-    );
+    const filteredExtensionsBackends =
+      extensionEmulator.filterUnemulatedTriggers(extensionsBackends);
     emulatableBackends.push(...filteredExtensionsBackends);
     trackGA4("extensions_emulated", {
       number_of_extensions_emulated: filteredExtensionsBackends.length,
@@ -401,6 +417,14 @@ export async function startAll(
           host: config.host,
           port: wsPortConfig || 9150,
           portFixed: !!wsPortConfig,
+        };
+      }
+      if (emulator === Emulators.DATACONNECT) {
+        const pglitePortConfig = options.config.src.emulators?.dataconnect?.postgresPort;
+        listenConfig["dataconnect.postgres"] = {
+          host: config.host,
+          port: pglitePortConfig || 5432,
+          portFixed: !!pglitePortConfig,
         };
       }
     }
@@ -586,6 +610,7 @@ export async function startAll(
       debugPort: inspectFunctions,
       verbosity: options.logVerbosity,
       projectAlias: options.projectAlias,
+      extensionsEmulator: extensionEmulator,
     });
     await startEmulator(functionsEmulator);
 
@@ -854,8 +879,7 @@ export async function startAll(
       rc: options.rc,
       config: options.config,
       autoconnectToPostgres: true,
-      postgresHost: options.config.get("emulators.dataconnect.postgresHost"),
-      postgresPort: options.config.get("emulators.dataconnect.postgresPort"),
+      postgresListen: listenForEmulator["dataconnect.postgres"],
       enable_output_generated_sdk: true, // TODO: source from arguments
       enable_output_schema_extensions: true,
     });
@@ -901,11 +925,14 @@ export async function startAll(
    * storage, etc).
    */
   if (experiments.isEnabled("emulatorapphosting")) {
+    const apphostingConfig = options.config.src.emulators?.[Emulators.APPHOSTING];
+
     if (listenForEmulator.apphosting) {
       const apphostingAddr = legacyGetFirstAddr(Emulators.APPHOSTING);
       const apphostingEmulator = new AppHostingEmulator({
         host: apphostingAddr.host,
         port: apphostingAddr.port,
+        startCommandOverride: apphostingConfig?.startCommandOverride,
         options,
       });
 

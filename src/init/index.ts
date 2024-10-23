@@ -32,6 +32,7 @@ const featureFns = new Map<string, (setup: any, config: any, options?: any) => P
   ["remoteconfig", features.remoteconfig],
   ["hosting:github", features.hostingGithub],
   ["genkit", features.genkit],
+  ["apphosting", features.apphosting],
 ]);
 
 export async function init(setup: Setup, config: any, options: any): Promise<any> {

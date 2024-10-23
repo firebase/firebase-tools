@@ -1,5 +1,41 @@
 ## NEXT
 
+- [Added] Persist FIREBASE_BINARY env variable to settings.
+
+## 0.10.5
+
+- [Fixed] Fixed an issue where multiple instances of the extension would break the toolkit.
+
+## 0.10.4
+
+- [Fixed] Fixed an issue where log files would be written to non-Firebase directories.
+
+## 0.10.3
+
+- Updated internal firebase-tools dependency to 13.21.0
+- Updated default debug-log output to .firebase/logs directory
+- [Fixed] Fixed an issue where emulator startup would hang
+- Updated text for SDK configuration button
+
+## 0.10.2
+
+- Updated internal firebase-tools dependency to 13.20.2
+
+## 0.10.1
+
+- [Fixed] Fixed an issue where commands would be executed against directory default project instead of the currently selected project.
+- [Fixed] Fixed an issue where expired auth tokens would be used.
+- [Fixed] Fixed an issue where Add Data wouldn't generate UUID types
+- Updated README with feature descriptions
+
+## 0.10.0
+
+- [Added] UI overhaul.
+- [Added] Added View Docs button to see generated documentation for your schema and connectors.
+- [Fixed] Improved detection for emulator start up and shut down.
+- [Fixed] Improved error handling for variables pane.
+- [Added] Added Firebase path setting, to control which Firebase dbinary is used when executing commands.
+
 ## 0.9.1
 
 - Updated internal firebase-tools dependency to 13.19.0

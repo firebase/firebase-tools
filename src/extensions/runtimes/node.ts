@@ -1,9 +1,13 @@
-import { ExtensionSpec, ParamType } from "../types";
+import * as path from "path";
+import { execFileSync } from "child_process";
+import { markedTerminal } from "marked-terminal";
+import { marked } from "marked";
+
+import { Options } from "../../options";
+import { ExtensionSpec, ParamType, isObject } from "../types";
 import { confirm } from "../../prompt";
 import * as secretsUtils from "../secretsUtils";
-import { execFileSync } from "child_process";
 import { logLabeledBullet } from "../../utils";
-import * as path from "path";
 import {
   writeFile,
   copyDirectory,
@@ -14,13 +18,10 @@ import {
   getInstallPathPrefix,
   getCodebaseDir,
   isTypescriptCodebase,
-  getErrorMessage,
 } from "./common";
 import { ALLOWED_EVENT_ARC_REGIONS } from "../askUserForEventsConfig";
 import { SpecParamType } from "../extensionsHelper";
-import { FirebaseError } from "../../error";
-import { markedTerminal } from "marked-terminal";
-import { marked } from "marked";
+import { FirebaseError, getErrMsg } from "../../error";
 
 marked.use(markedTerminal() as any);
 
@@ -90,7 +91,7 @@ function makeClassName(name: string): string {
 function makeEventName(name: string, prefix: string): string {
   let eventName: string;
   const versionedEvent = /^(?:[^.]+[.])+(?:[vV]\d+[.])(?<event>.*)$/;
-  const match = name.match(versionedEvent);
+  const match = versionedEvent.exec(name);
   if (match) {
     // Most reliable: event is the thing after the version.
     eventName = match[1];
@@ -103,7 +104,7 @@ function makeEventName(name: string, prefix: string): string {
     eventName = parts[parts.length - 1];
   }
   const allCaps = /^[A-Z._-]+$/;
-  eventName = eventName.match(allCaps) ? eventName : eventName.replace(/([A-Z])/g, " $1").trim();
+  eventName = allCaps.exec(eventName) ? eventName : eventName.replace(/([A-Z])/g, " $1").trim();
   eventName = eventName.replace(/[._-]/g, " ");
   eventName = eventName.toLowerCase().startsWith("on") ? eventName : "on " + eventName;
   eventName = eventName.replace(/\w\S*/g, toTitleCase);
@@ -113,11 +114,33 @@ function makeEventName(name: string, prefix: string): string {
   return eventName;
 }
 
+function addPeerDependency(
+  pkgJson: Record<string, unknown>,
+  dependency: string,
+  version: string,
+): void {
+  if (!pkgJson.peerDependencies) {
+    pkgJson.peerDependencies = {};
+  }
+  if (!isObject(pkgJson.peerDependencies)) {
+    throw new FirebaseError("Internal error generating peer dependencies.");
+  }
+  pkgJson.peerDependencies[dependency] = version;
+}
+
+/**
+ * writeSDK generates and writes SDK files for the given extension
+ * @param extensionRef The extension ref of a published extension
+ * @param localPath The localPath of a local extension
+ * @param spec The spec for the extension
+ * @param options The options from the ext:sdk:install command
+ * @return Usage instructions to print on screen after install completes
+ */
 export async function writeSDK(
   extensionRef: string | undefined,
   localPath: string | undefined,
   spec: ExtensionSpec,
-  options: any,
+  options: Options,
 ): Promise<string> {
   const sdkLines: string[] = []; // index.ts file
   const className = makeClassName(spec.name);
@@ -139,7 +162,7 @@ export async function writeSDK(
     ) {
       const newLocalPath = path.join(dirPath, "src");
       await copyDirectory(localPath, newLocalPath, options);
-      localPath = newLocalPath.replace(options.projectRoot, ".");
+      localPath = newLocalPath.replace(options.projectRoot || ".", ".");
     }
   }
 
@@ -152,10 +175,10 @@ export async function writeSDK(
 
   const packageName = makePackageName(extensionRef, spec.name);
   // package.json
-  const pkgJson: any = {
+  const pkgJson: Record<string, unknown> = {
     name: packageName,
     version: `${SDK_GENERATION_VERSION}`,
-    description: `Generated SDK for ${spec.displayName}@${spec.version}`,
+    description: `Generated SDK for ${spec.displayName || spec.name}@${spec.version}`,
     main: "./output/index.js",
     private: true,
     scripts: {
@@ -182,7 +205,7 @@ export async function writeSDK(
 
   // index.ts file
   sdkLines.push("/**");
-  sdkLines.push(` * ${spec.displayName} SDK for ${spec.name}@${spec.version}`);
+  sdkLines.push(` * ${spec.displayName || spec.name} SDK for ${spec.name}@${spec.version}`);
   sdkLines.push(" *");
   sdkLines.push(" * When filing bugs or feature requests please specify:");
   if (extensionRef) {
@@ -204,19 +227,12 @@ export async function writeSDK(
     sdkLines.push(
       `import { onCustomEventPublished, EventarcTriggerOptions } from "firebase-functions/v2/eventarc";`,
     );
-
-    if (!pkgJson.peerDependencies) {
-      pkgJson.peerDependencies = {};
-    }
-    pkgJson.peerDependencies["firebase-functions"] = FIREBASE_FUNCTIONS_VERSION;
+    addPeerDependency(pkgJson, "firebase-functions", FIREBASE_FUNCTIONS_VERSION);
   }
   const usesSecrets = secretsUtils.usesSecrets(spec);
   if (usesSecrets) {
     sdkLines.push(`import { defineSecret } from "firebase-functions/params";`);
-    if (!pkgJson.peerDependencies) {
-      pkgJson.peerDependencies = {};
-    }
-    pkgJson.peerDependencies["firebase-functions"] = FIREBASE_FUNCTIONS_VERSION;
+    addPeerDependency(pkgJson, "firebase-functions", FIREBASE_FUNCTIONS_VERSION);
   }
   if (hasEvents || usesSecrets) {
     sdkLines.push("");
@@ -373,7 +389,9 @@ export async function writeSDK(
         sdkLines.push(`  ${sysParam.param}${opt}: string;`);
         break;
       default:
-        throw new FirebaseError(`Error: Unknown systemParam type: ${sysParam.type}.`);
+        throw new FirebaseError(
+          `Error: Unknown systemParam type: ${sysParam.type || "undefined"}.`,
+        );
     }
     sdkLines.push("");
   }
@@ -389,7 +407,7 @@ export async function writeSDK(
 
   // The main class
   sdkLines.push(`/**`);
-  sdkLines.push(` * ${spec.displayName}`);
+  sdkLines.push(` * ${spec.displayName || spec.name}`);
   spec.description?.split("\n").forEach((val: string) => {
     sdkLines.push(` * ${val.replace(/\*\//g, "* /")}`); // don't end the comment
   });
@@ -457,7 +475,7 @@ export async function writeSDK(
   try {
     execFileSync("npm", ["--prefix", dirPath, "install"]);
   } catch (err: unknown) {
-    const errMsg = getErrorMessage(err, "unknown error");
+    const errMsg = getErrMsg(err, "unknown error");
     throw new FirebaseError(`Error during npm install in ${shortDirPath}: ${errMsg}`);
   }
 
@@ -466,7 +484,7 @@ export async function writeSDK(
   try {
     execFileSync("npm", ["--prefix", dirPath, "run", "build"]);
   } catch (err: unknown) {
-    const errMsg = getErrorMessage(err, "unknown error");
+    const errMsg = getErrMsg(err, "unknown error");
     throw new FirebaseError(`Error during npm run build in ${shortDirPath}: ${errMsg}`);
   }
 
@@ -488,7 +506,7 @@ export async function writeSDK(
     try {
       execFileSync("npm", ["--prefix", codebaseDir, "install", "--save", dirPath]);
     } catch (err: unknown) {
-      const errMsg = getErrorMessage(err, "unknown error");
+      const errMsg = getErrMsg(err, "unknown error");
       throw new FirebaseError(`Error during npm install in ${codebaseDir}: ${errMsg}`);
     }
   } else {

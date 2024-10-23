@@ -175,7 +175,7 @@ export async function waitForPortUsed(
   }
 }
 
-export type PortName = Emulators | "firestore.websocket";
+export type PortName = Emulators | "firestore.websocket" | "dataconnect.postgres";
 
 const EMULATOR_CAN_LISTEN_ON_PRIMARY_ONLY: Record<PortName, boolean> = {
   // External processes that accept only one hostname and one port, and will
@@ -184,6 +184,7 @@ const EMULATOR_CAN_LISTEN_ON_PRIMARY_ONLY: Record<PortName, boolean> = {
   firestore: true,
   "firestore.websocket": true,
   pubsub: true,
+  "dataconnect.postgres": true,
 
   // External processes that accepts multiple listen specs.
   dataconnect: false,
@@ -253,7 +254,11 @@ export async function resolveHostAndAssignPorts(
     }
     const findAddrs = lookup.then(async (addrs) => {
       const emuLogger = EmulatorLogger.forEmulator(
-        name === "firestore.websocket" ? Emulators.FIRESTORE : name,
+        name === "firestore.websocket"
+          ? Emulators.FIRESTORE
+          : name === "dataconnect.postgres"
+            ? Emulators.DATACONNECT
+            : name,
       );
       if (addrs.some((addr) => addr.address === IPV6_UNSPECIFIED.address)) {
         if (!addrs.some((addr) => addr.address === IPV4_UNSPECIFIED.address)) {
@@ -386,7 +391,9 @@ export async function resolveHostAndAssignPorts(
 function portDescription(name: PortName): string {
   return name === "firestore.websocket"
     ? `websocket server for ${Emulators.FIRESTORE}`
-    : Constants.description(name);
+    : name === "dataconnect.postgres"
+      ? `postgres server for ${Emulators.DATACONNECT}`
+      : Constants.description(name);
 }
 
 function warnPartiallyAvailablePort(
@@ -479,17 +486,4 @@ export function listenSpecsToString(specs: ListenSpec[]): string {
       return `${host}:${spec.port}`;
     })
     .join(",");
-}
-
-export async function findOpenPort(startPort: number): Promise<number> {
-  if (
-    await checkListenable({
-      address: "127.0.0.1",
-      port: startPort,
-      family: "IPv4",
-    })
-  ) {
-    return startPort;
-  }
-  return findOpenPort(startPort + 1);
 }

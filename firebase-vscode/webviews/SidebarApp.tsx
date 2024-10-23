@@ -1,10 +1,12 @@
 import React, { useEffect } from "react";
 import { Spacer } from "./components/ui/Spacer";
-import { broker, brokerSignal } from "./globals/html-broker";
+import { broker, brokerSignal, useBroker } from "./globals/html-broker";
 import { AccountSection } from "./components/AccountSection";
 import { ProjectSection } from "./components/ProjectSection";
 import {
   VSCodeButton,
+  VSCodeDropdown,
+  VSCodeOption,
   VSCodeProgressRing,
 } from "@vscode/webview-ui-toolkit/react";
 import { Body, Label } from "./components/ui/Text";
@@ -71,7 +73,9 @@ function EmulatorsPanel() {
       return (
         <>
           <Spacer size="medium"></Spacer>
-          <label>Emulator start-up may take a while. In case of error, click reset.</label>
+          <label>
+            Emulator start-up may take a while. In case of error, click reset.
+          </label>
           <VSCodeProgressRing></VSCodeProgressRing>
           <Spacer size="medium"></Spacer>
           <VSCodeButton
@@ -89,15 +93,24 @@ function EmulatorsPanel() {
     return runningPanel;
   }
 
-  return emulatorsRunningInfo.value?.infos ? (
+  return (emulatorsRunningInfo.value?.infos && emulatorsRunningInfo.value?.status === "running") ? (
     <Emulators emulatorInfo={emulatorsRunningInfo.value.infos!} />
   ) : (
-    <VSCodeButton
-      appearance="secondary"
-      onClick={() => broker.send("runStartEmulators")}
-    >
-      Start emulators
-    </VSCodeButton>
+    <>
+      <VSCodeButton
+        appearance="secondary"
+        onClick={() => broker.send("runStartEmulators")}
+      >
+        Start emulators
+      </VSCodeButton>
+      <Spacer size="xsmall" />
+      <Label level={3}>
+        See also:{" "}
+        <a href="https://firebase.google.com/docs/emulator-suite">
+          Introduction to Firebase emulators
+        </a>
+      </Label>
+    </>
   );
 }
 
@@ -121,7 +134,7 @@ function DataConnect() {
         onClick={() => broker.send("fdc.configure-sdk")}
         appearance="secondary"
       >
-        Configure generated SDK
+        Add SDK to app
       </VSCodeButton>
       <Spacer size="xsmall" />
       <Label level={3}>
@@ -155,12 +168,41 @@ function Content() {
 
   return (
     <>
-      <PanelSection title="Emulators">
+      <PanelSection>
         <EmulatorsPanel />
       </PanelSection>
-      <PanelSection title="Data Connect" isLast={true}>
+      <PanelSection isLast={true}>
         <DataConnect />
       </PanelSection>
+    </>
+  );
+}
+
+function ConfigPicker() {
+  const configs = useBroker("notifyFirebaseConfigListChanged", {
+    initialRequest: "getInitialFirebaseConfigList",
+  });
+
+  if (!configs || configs.values.length < 2) {
+    // Only show the picker when there are multiple configs
+    return <></>;
+  }
+
+  return (
+    <>
+      <Spacer size="medium" />
+
+      <Label>Choose a `firebase.json` location</Label>
+      <VSCodeDropdown
+        value={configs.selected}
+        onChange={(e) =>
+          broker.send("selectFirebaseConfig", (e.target as any).value)
+        }
+      >
+        {configs.values.map((uri) => (
+          <VSCodeOption key={uri}>{uri}</VSCodeOption>
+        ))}
+      </VSCodeDropdown>
     </>
   );
 }
@@ -189,6 +231,7 @@ export function SidebarApp() {
             isMonospace={env.value?.env.isMonospace ?? false}
           />
         )}
+        <ConfigPicker />
       </PanelSection>
 
       {user.value &&
