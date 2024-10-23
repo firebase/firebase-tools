@@ -67,12 +67,11 @@ function generateWebAppList(counts: number): WebAppMetadata[] {
 describe("App management", () => {
   let sandbox: sinon.SinonSandbox;
   let pollOperationStub: sinon.SinonStub;
-  let readFileSyncStub: sinon.SinonStub;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
     pollOperationStub = sandbox.stub(pollUtils, "pollOperation").throws("Unexpected poll call");
-    readFileSyncStub = sandbox.stub(fs, "readFileSync").throws("Unxpected readFileSync call");
+    sandbox.stub(fs, "readFileSync").throws("Unxpected readFileSync call");
     nock.disableNetConnect();
   });
 
@@ -583,17 +582,15 @@ describe("App management", () => {
       nock(firebaseApiOrigin())
         .get(`/v1beta1/projects/-/webApps/${APP_ID}/config`)
         .reply(200, mockWebConfig);
-      readFileSyncStub.onFirstCall().returns("{/*--CONFIG--*/}");
 
       const configData = await getAppConfig(APP_ID, AppPlatform.WEB);
       const fileData = getAppConfigFile(configData, AppPlatform.WEB);
 
       expect(fileData).to.deep.equal({
-        fileName: "google-config.js",
+        fileName: "firebase-js-config.json",
         fileContents: JSON.stringify(mockWebConfig, null, 2),
       });
       expect(nock.isDone()).to.be.true;
-      expect(readFileSyncStub).to.be.calledOnce;
     });
   });
 
