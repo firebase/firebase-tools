@@ -1,7 +1,7 @@
-import { env, TelemetryLogger, TelemetrySender } from "vscode";
+import vscode, { env, TelemetryLogger, TelemetrySender } from "vscode";
 import { pluginLogger } from "./logger-wrapper";
 import { AnalyticsParams, trackVSCode } from "../../src/track";
-import {env as monospaceEnv} from "../src/core/env";
+import { env as monospaceEnv } from "../src/core/env";
 
 export const IDX_METRIC_NOTICE = `
 When you use the Firebase Data Connect Extension, Google collects telemetry data such as usage statistics, error metrics, and crash reports. Telemetry helps us better understand how the Firebase Extension is performing, where improvements need to be made, and how features are being used. Firebase uses this data, consistent with our [Google Privacy Policy](https://policies.google.com/privacy?hl=en-US), to provide, improve, and develop Firebase products and services.
@@ -28,14 +28,128 @@ export enum DATA_CONNECT_EVENT_NAME {
   INIT_SDK_CLI = "init_sdk_cli",
   INIT_SDK_CODELENSE = "init_sdk_codelense",
   START_EMULATORS = "start_emulators",
+  AUTO_COMPLETE = "auto_complete",
+  SESSION_CHAR_COUNT = "session_char_count",
 }
 
 export class AnalyticsLogger {
   readonly logger: TelemetryLogger;
+  private disposable: vscode.Disposable;
+  private sessionCharCount = 0; // Track total chars for the session
+
   constructor() {
     this.logger = env.createTelemetryLogger(
       new GA4TelemetrySender(pluginLogger),
     );
+
+    let subscriptions: vscode.Disposable[] = [
+      vscode.workspace.onDidChangeTextDocument(
+        this.trackWrittenCharacters,
+        this,
+      ),
+      vscode.workspace.onDidChangeTextDocument(
+        this.trackWrittenCharactersInSession,
+        this,
+      ),
+      vscode.commands.registerCommand(
+        "fdc.logCompletionItem",
+        this.listenForAutocompleteEvent,
+      ),
+    ];
+
+    this.disposable = vscode.Disposable.from(...subscriptions);
+  }
+
+  onDispose() {
+    this.disposable.dispose();
+  }
+
+  private TYPING_TRACK_DURATION = 5000;
+  private typedCharCount = 0;
+  private timeoutHandle: NodeJS.Timeout | undefined | null;
+
+  // Track manual typing during a session.
+  private trackWrittenCharactersInSession = (
+    e: vscode.TextDocumentChangeEvent,
+  ) => {
+    e.contentChanges.forEach((change) => {
+      if (change.text === "") {
+        // Handle text deletion (backspace).
+        this.sessionCharCount = Math.max(
+          0,
+          this.sessionCharCount - change.rangeLength,
+        );
+      } else {
+        // Add the number of manually typed characters.
+        this.sessionCharCount += change.text.length;
+      }
+    });
+  };
+
+  private trackWrittenCharacters = (e: vscode.TextDocumentChangeEvent) => {
+    e.contentChanges.forEach((change) => {
+      if (change.text === "") {
+        // Text deletion (backspace)
+        this.typedCharCount = Math.max(
+          0,
+          this.typedCharCount - change.rangeLength,
+        );
+      } else {
+        this.typedCharCount += change.text.length;
+      }
+    });
+  };
+
+  listenForAutocompleteEvent = (label: string) => {
+    if (this.timeoutHandle) {
+      // Log the previously tracked session before resetting.
+      this.endAutocompleteTrackingSession(label);
+    }
+
+    // Reset the count for tracking characters written after autocomplete.
+    this.typedCharCount = 0;
+
+    // Start a new tracking session with a timeout.
+    this.timeoutHandle = setTimeout(() => {
+      this.endAutocompleteTrackingSession(label);
+    }, this.TYPING_TRACK_DURATION);
+
+    console.log(`Started tracking after autocomplete: ${label}`);
+    this.logger.logUsage(DATA_CONNECT_EVENT_NAME.AUTO_COMPLETE, {
+      label,
+    });
+  };
+
+  private endAutocompleteTrackingSession(label?: string) {
+    if (this.typedCharCount > 0) {
+      console.log(
+        `User typed ${this.typedCharCount} chars after autocomplete.`,
+      );
+
+      this.logger.logUsage(DATA_CONNECT_EVENT_NAME.AUTO_COMPLETE, {
+        autoCompleted: label,
+        charsCountAfterAutocomplete: this.typedCharCount,
+      });
+    }
+
+    // Reset the count and clear the timeout.
+    this.typedCharCount = 0;
+    if (this.timeoutHandle) {
+      clearTimeout(this.timeoutHandle);
+      this.timeoutHandle = null;
+    }
+  }
+
+  endSession() {
+    console.log(
+      `Total characters written in session: ${this.sessionCharCount}`,
+    );
+
+    this.logger.logUsage(DATA_CONNECT_EVENT_NAME.SESSION_CHAR_COUNT, {
+      totalChars: this.sessionCharCount,
+    });
+
+    this.sessionCharCount = 0;
   }
 }
 

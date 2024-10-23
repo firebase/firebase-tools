@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { spawnSync } from 'child_process';
+import { spawnSync } from "child_process";
 import * as semver from "semver";
 
 import { ExtensionBroker } from "./extension-broker";
@@ -56,6 +56,8 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
+    { dispose: analyticsLogger.endSession },
+    { dispose: analyticsLogger.onDispose },
     coreDisposable,
     registerWebview({
       name: "fdc_sidebar",
@@ -78,30 +80,34 @@ async function checkCLIInstallation(): Promise<void> {
   let message = "";
   try {
     // Fetch directly so that we don't need to rely on any tools being presnt on path.
-    const latestVersionRes = await fetch("https://registry.npmjs.org/firebase-tools");
-    const latestVersion = (await latestVersionRes.json())?.["dist-tags"]?.["latest"];
-    const env = { ...process.env, "VSCODE_CWD":"" }
+    const latestVersionRes = await fetch(
+      "https://registry.npmjs.org/firebase-tools",
+    );
+    const latestVersion = (await latestVersionRes.json())?.["dist-tags"]?.[
+      "latest"
+    ];
+    const env = { ...process.env, VSCODE_CWD: "" };
     const versionRes = spawnSync("firebase", ["--version"], { env });
-    const currentVersion = semver.valid(versionRes.stdout?.toString())
-    const npmVersionRes = spawnSync("npm", ["--version"])
-    const npmVersion = semver.valid(npmVersionRes.stdout?.toString())
+    const currentVersion = semver.valid(versionRes.stdout?.toString());
+    const npmVersionRes = spawnSync("npm", ["--version"]);
+    const npmVersion = semver.valid(npmVersionRes.stdout?.toString());
     if (!currentVersion) {
       message = `The Firebase CLI is not installed (or not available on $PATH). If you would like to install it, run ${
         npmVersion
           ? "npm install -g firebase-tools"
           : "curl -sL https://firebase.tools | bash"
-      }`
+      }`;
     } else if (semver.lt(currentVersion, latestVersion)) {
-       message = `There is an outdated version of the Firebase CLI installed on your system. We recommened updating to the latest verion by running ${
+      message = `There is an outdated version of the Firebase CLI installed on your system. We recommened updating to the latest verion by running ${
         npmVersion
-        ? "npm install -g firebase-tools"
-        : "curl -sL https://firebase.tools | upgrade=true bash"
-       }`
+          ? "npm install -g firebase-tools"
+          : "curl -sL https://firebase.tools | upgrade=true bash"
+      }`;
     } else {
       pluginLogger.info(`Checked firebase-tools, is up to date!`);
     }
-   } catch(err: any) {
-    pluginLogger.info(`Unable to check firebase-tools installation: ${err}`)
+  } catch (err: any) {
+    pluginLogger.info(`Unable to check firebase-tools installation: ${err}`);
   }
 
   if (message) {

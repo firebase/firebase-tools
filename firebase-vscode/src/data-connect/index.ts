@@ -222,12 +222,7 @@ export function registerFdc(
         selectedProjectStatus.show();
       }),
     },
-    registerExecution(
-      context,
-      broker,
-      fdcService,
-      telemetryLogger,
-    ),
+    registerExecution(context, broker, fdcService, telemetryLogger),
     registerExplorer(context, broker, fdcService),
     registerWebview({ name: "data-connect", context, broker }),
     registerAdHoc(fdcService, telemetryLogger),
