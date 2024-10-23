@@ -8,6 +8,8 @@
 import type { HttpsOptions } from "firebase-functions/v2/https";
 import { IngressSetting, MemoryOption, VpcEgressSetting } from "firebase-functions/v2/options";
 import { Runtime, DecommissionedRuntime } from "./deploy/functions/runtimes/supported/types";
+import { RequireAtLeastOne } from "./metaprogramming";
+// Sourced from - https://docs.microsoft.com/en-us/javascript/api/@azure/keyvault-certificates/requireatleastone?view=azure-node-latest
 
 /**
  * Creates a type that requires at least one key to be present in an interface
@@ -213,6 +215,10 @@ export type EmulatorsConfig = {
     port?: number;
   };
   storage?: {
+    host?: string;
+    port?: number;
+  };
+  remoteconfig?: {
     host?: string;
     port?: number;
   };

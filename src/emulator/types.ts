@@ -18,6 +18,7 @@ export enum Emulators {
   EVENTARC = "eventarc",
   DATACONNECT = "dataconnect",
   TASKS = "tasks",
+  REMOTECONFIG = "remoteconfig",
 }
 
 export type DownloadableEmulators =
@@ -56,7 +57,9 @@ export const ALL_SERVICE_EMULATORS = [
   Emulators.EVENTARC,
   Emulators.DATACONNECT,
   Emulators.TASKS,
-].filter((v) => v);
+  Emulators.REMOTECONFIG,
+  Emulators.REMOTECONFIG,
+].filter((v) => v !== Emulators.REMOTE_CONFIG || experiments.isEnabled("rcemulator"));
 
 export const EMULATORS_SUPPORTED_BY_FUNCTIONS = [
   Emulators.FIRESTORE,
@@ -65,6 +68,7 @@ export const EMULATORS_SUPPORTED_BY_FUNCTIONS = [
   Emulators.STORAGE,
   Emulators.EVENTARC,
   Emulators.TASKS,
+  Emulators.REMOTECONFIG,
 ];
 
 export const EMULATORS_SUPPORTED_BY_UI = [
@@ -74,6 +78,7 @@ export const EMULATORS_SUPPORTED_BY_UI = [
   Emulators.FUNCTIONS,
   Emulators.STORAGE,
   Emulators.EXTENSIONS,
+  Emulators.REMOTECONFIG,
 ];
 
 export const EMULATORS_SUPPORTED_BY_USE_EMULATOR = [
@@ -82,6 +87,7 @@ export const EMULATORS_SUPPORTED_BY_USE_EMULATOR = [
   Emulators.FIRESTORE,
   Emulators.FUNCTIONS,
   Emulators.STORAGE,
+  Emulators.REMOTE_CONFIG,
 ];
 
 // TODO: Is there a way we can just allow iteration over the enum?
