@@ -9,7 +9,7 @@ import { requirePermissions } from "../requirePermissions";
 import {
   APPHOSTING_LOCAL_YAML,
   allYamlPaths,
-  writeReadableConfigToAppHostingYaml,
+  writeReadableConfigToAppHostingLocal,
   yamlPath,
 } from "../apphosting/config";
 import { getAppHostingConfigToExport } from "../apphosting/secrets";
@@ -62,7 +62,7 @@ export const command = new Command("apphosting:config:export")
     configsToUse.secrets = {};
 
     // write this config to apphosting.local.yaml
-    writeReadableConfigToAppHostingYaml(configsToUse, join(currentDir, APPHOSTING_LOCAL_YAML));
+    writeReadableConfigToAppHostingLocal(configsToUse, join(currentDir, APPHOSTING_LOCAL_YAML));
 
     logger.log("silly", `Wrote Secrets as environment variables to ${APPHOSTING_LOCAL_YAML}.`);
     logger.info(`Wrote Secrets as environment variables to ${APPHOSTING_LOCAL_YAML}.`);

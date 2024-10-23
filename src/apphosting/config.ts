@@ -203,9 +203,13 @@ export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
   dynamicDispatch.store(path, projectYaml);
 }
 
-export function writeReadableConfigToAppHostingYaml(
+/**
+ * Takes a AppHostingReadableConfiguration converts it to a valid
+ * AppHosting.local.yaml format and writes to the given path.
+ */
+export function writeReadableConfigToAppHostingLocal(
   readbaleConfig: AppHostingReadableConfiguration,
-  apphostingYamlPath: string,
+  path: string,
 ) {
   const config: Config = {
     env: [],
@@ -222,5 +226,5 @@ export function writeReadableConfigToAppHostingYaml(
     });
   }
 
-  store(apphostingYamlPath, yaml.parseDocument(jsYaml.dump(config)));
+  store(path, yaml.parseDocument(jsYaml.dump(config)));
 }
