@@ -37,7 +37,6 @@ export const command = new Command("apphosting:config:export")
 
     // Load apphosting.local.yaml file if it exists. Secrets should be added to the env list in this object and written back to the apphosting.local.yaml
     const apphostingLocalConfigPath = yamlPath(currentDir, APPHOSTING_LOCAL_YAML);
-    logger.info(`apphostinglocal conifg path: ${apphostingLocalConfigPath}`)
     const localAppHostingConfig = await loadAppHostingYaml(apphostingLocalConfigPath ?? undefined);
 
     const configsToExport = await getConfigToExport(yamlFilePaths);
