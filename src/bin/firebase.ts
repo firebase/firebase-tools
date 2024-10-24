@@ -21,7 +21,7 @@ marked.use(markedTerminal() as any);
 import { Command } from "commander";
 import { join } from "node:path";
 import { SPLAT } from "triple-beam";
-const stripAnsi = require("strip-ansi");
+import { stripVTControlCharacters } from "node:util";
 import * as fs from "node:fs";
 
 import { configstore } from "../configstore";
@@ -77,7 +77,7 @@ logger.add(
     filename: logFilename,
     format: winston.format.printf((info) => {
       const segments = [info.message, ...(info[SPLAT] || [])].map(utils.tryStringify);
-      return `[${info.level}] ${stripAnsi(segments.join(" "))}`;
+      return `[${info.level}] ${stripVTControlCharacters(segments.join(" "))}`;
     }),
   }),
 );
