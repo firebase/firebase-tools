@@ -258,17 +258,37 @@ describe("secrets", () => {
     });
   });
 
-  describe("getEnvironmentName", () => {
-    it("should throw an error if environment can't be found", () => {
-      expect(
-        secrets.getEnvironmentName.bind(secrets.getEnvironmentName, "apphosting.yaml"),
-      ).to.throw("Invalid apphosting environment file");
+  describe("fetchSecrets", () => {
+    const projectId = "randomProject";
+    it("correctly attempts to fetch secret and it's version", async () => {
+      const secretKeySourcePair = {
+        PINNED_API_KEY: "myApiKeySecret@5",
+      };
+
+      gcsm.accessSecretVersion.returns(Promise.resolve("some-value"));
+      await secrets.fetchSecrets(projectId, secretKeySourcePair);
+
+      expect(gcsm.accessSecretVersion).calledOnce;
+      expect(gcsm.accessSecretVersion).calledWithExactly(projectId, "myApiKeySecret", "5");
     });
 
-    it("should return the environment if valid environment specific apphosting file is given", () => {
-      expect(secrets.getEnvironmentName("apphosting.staging.yaml")).to.equal("staging");
+    it("fetches latest version if version not explicitely provided", async () => {
+      const secretKeySourcePair = {
+        VERBOSE_API_KEY: "projects/test-project/secrets/secretID",
+      };
+
+      gcsm.accessSecretVersion.returns(Promise.resolve("some-value"));
+      await secrets.fetchSecrets(projectId, secretKeySourcePair);
+
+      expect(gcsm.accessSecretVersion).calledOnce;
+      expect(gcsm.accessSecretVersion).calledWithExactly(
+        projectId,
+        "projects/test-project/secrets/secretID",
+        "latest",
+      );
     });
   });
+
   describe("promptForAppHostingYaml", () => {
     it("should prompt with the correct options", async () => {
       const apphostingFileNameToPathMap = new Map<string, string>([

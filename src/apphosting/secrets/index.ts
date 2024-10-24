@@ -10,7 +10,7 @@ import * as utils from "../../utils";
 import * as prompt from "../../prompt";
 import { basename, dirname } from "path";
 import { APPHOSTING_BASE_YAML_FILE, AppHostingReadableConfiguration } from "../config";
-import { loadAppHostingYaml } from "../utils";
+import { getEnvironmentName, loadAppHostingYaml } from "../utils";
 
 /** Interface for holding the service account pair for a given Backend. */
 export interface ServiceAccounts {
@@ -169,6 +169,34 @@ export async function upsertSecret(
 }
 
 /**
+ * Given key value pairs of secret names and their url, this function fetches
+ * secrets from Google Secret Manager and returns a key-value pair of secrets
+ * and their value in plain text.
+ */
+export async function fetchSecrets(
+  projectId: string,
+  secretKeySourcePair: Record<string, string>,
+): Promise<Record<string, string>> {
+  const secretsKeyValuePairs: Record<string, string> = {};
+
+  try {
+    for (const secretKey of Object.keys(secretKeySourcePair)) {
+      let [name, version] = secretKeySourcePair[secretKey].split("@");
+      if (!version) {
+        version = "latest";
+      }
+
+      const value = await gcsm.accessSecretVersion(projectId, name, version);
+      secretsKeyValuePairs[secretKey] = value;
+    }
+  } catch (e) {
+    throw new FirebaseError(`Error exporting secrets: ${e}`);
+  }
+
+  return secretsKeyValuePairs;
+}
+
+/**
  * When user wants to export secrets, they need to choose a apphosting.*.yaml
  * file that indicates the secrets for the env they wish to export. By default
  * the apphosting.yaml config will be included to emulate production behaviour.
@@ -250,18 +278,4 @@ export async function promptForAppHostingYaml(apphostingFileNameToPathMap: Map<s
   });
 
   return fileToExportPath;
-}
-
-/**
- * Returns <environment> given an apphosting.<environment>.yaml file
- */
-export function getEnvironmentName(apphostingYamlFileName: string): string {
-  const envrionmentRegex = /apphosting\.(.+)\.yaml/;
-  const found = apphostingYamlFileName.match(envrionmentRegex);
-
-  if (!found) {
-    throw new FirebaseError("Invalid apphosting environment file");
-  }
-
-  return found[1];
 }

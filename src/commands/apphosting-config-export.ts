@@ -12,7 +12,7 @@ import {
   writeReadableConfigToAppHostingLocal,
   yamlPath,
 } from "../apphosting/config";
-import { getConfigToExport } from "../apphosting/secrets";
+import { fetchSecrets, getConfigToExport } from "../apphosting/secrets";
 import { FirebaseError } from "../error";
 import { basename, dirname, join } from "path";
 import { loadAppHostingYaml } from "../apphosting/utils";
@@ -83,27 +83,4 @@ async function loadLocalAppHostingYaml(cwd: string): Promise<AppHostingReadableC
   }
 
   return localAppHostingConfig;
-}
-
-async function fetchSecrets(
-  projectId: string,
-  secretKeySourcePair: Record<string, string>,
-): Promise<Record<string, string>> {
-  const secretsKeyValuePairs: Record<string, string> = {};
-
-  try {
-    for (const secretKey of Object.keys(secretKeySourcePair)) {
-      let [name, version] = secretKeySourcePair[secretKey].split("@");
-      if (!version) {
-        version = "latest";
-      }
-
-      const value = await accessSecretVersion(projectId, name, version);
-      secretsKeyValuePairs[secretKey] = value;
-    }
-  } catch (e) {
-    throw new FirebaseError(`Error exporting secrets: ${e}`);
-  }
-
-  return secretsKeyValuePairs;
 }
