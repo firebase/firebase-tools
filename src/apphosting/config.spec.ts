@@ -2,7 +2,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import * as yaml from "yaml";
 import * as path from "path";
-import * as fsUtilsImport from "../fsutils";
+import * as fsImport from "../fsutils";
 import * as promptImport from "../prompt";
 import * as dialogs from "./secrets/dialogs";
 import * as config from "./config";
@@ -10,10 +10,10 @@ import { NodeType } from "yaml/dist/nodes/Node";
 
 describe("config", () => {
   describe("yamlPath", () => {
-    let fs: sinon.SinonStubbedInstance<typeof fsUtilsImport>;
+    let fs: sinon.SinonStubbedInstance<typeof fsImport>;
 
     beforeEach(() => {
-      fs = sinon.stub(fsUtilsImport);
+      fs = sinon.stub(fsImport);
     });
 
     afterEach(() => {
@@ -215,10 +215,10 @@ env:
   });
 
   describe("listAppHostingYamlsInCwd", () => {
-    let fs: sinon.SinonStubbedInstance<typeof fsUtilsImport>;
+    let fs: sinon.SinonStubbedInstance<typeof fsImport>;
 
     beforeEach(() => {
-      fs = sinon.stub(fsUtilsImport);
+      fs = sinon.stub(fsImport);
     });
 
     afterEach(() => {
@@ -245,10 +245,10 @@ env:
     });
   });
   describe("allYamlPaths", () => {
-    let fs: sinon.SinonStubbedInstance<typeof fsUtilsImport>;
+    let fs: sinon.SinonStubbedInstance<typeof fsImport>;
 
     beforeEach(() => {
-      fs = sinon.stub(fsUtilsImport);
+      fs = sinon.stub(fsImport);
     });
 
     afterEach(() => {
