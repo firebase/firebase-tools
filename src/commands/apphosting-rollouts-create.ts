@@ -7,13 +7,12 @@ import { createRollout } from "../apphosting/rollout";
 
 export const command = new Command("apphosting:rollouts:create <backendId>")
   .description("create a rollout using a build for an App Hosting backend")
-  .option("-l, --location <location>", "specify the region of the backend", "us-central1")
-  .option("-i, --id <rolloutId>", "id of the rollout (defaults to autogenerating a random id)", "")
+  .option("-l, --location <location>", "specify the region of the backend", "-")
   .option(
-    "-gb, --git-branch <gitBranch>",
-    "repository branch to deploy (mutually exclusive with -gc)",
+    "-b, --git-branch <gitBranch>",
+    "repository branch to deploy (mutually exclusive with -g)",
   )
-  .option("-gc, --git-commit <gitCommit>", "git commit to deploy (mutually exclusive with -gb)")
+  .option("-g, --git-commit <gitCommit>", "git commit to deploy (mutually exclusive with -b)")
   .withForce("Skip confirmation before creating rollout")
   .before(apphosting.ensureApiEnabled)
   .action(async (backendId: string, options: Options) => {

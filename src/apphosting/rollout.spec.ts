@@ -4,6 +4,7 @@ import { createRollout, orchestrateRollout } from "./rollout";
 import * as devConnect from "../gcp/devConnect";
 import * as githubConnections from "../apphosting/githubConnections";
 import * as apphosting from "../gcp/apphosting";
+import * as backend from "./backend";
 import { FirebaseError } from "../error";
 import * as poller from "../operation-poller";
 import * as utils from "../utils";
@@ -21,7 +22,8 @@ describe("apphosting rollouts", () => {
   const gitRepoLinkId = `${user}-${repo}`;
   const buildAndRolloutId = "build-2024-10-01-001";
 
-  let getBackendStub: sinon.SinonStub;
+  let getBackendForLocationStub: sinon.SinonStub;
+  let getBackendForAmbiguousLocationStub: sinon.SinonStub;
   let getRepoDetailsFromBackendStub: sinon.SinonStub;
   let listAllBranchesStub: sinon.SinonStub;
   let getGitHubBranchStub: sinon.SinonStub;
@@ -34,7 +36,12 @@ describe("apphosting rollouts", () => {
   let sleepStub: sinon.SinonStub;
 
   beforeEach(() => {
-    getBackendStub = sinon.stub(apphosting, "getBackend").throws("unexpected getBackend call");
+    getBackendForLocationStub = sinon
+      .stub(backend, "getBackendForLocation")
+      .throws("unexpected getBackendForLocation call");
+    getBackendForAmbiguousLocationStub = sinon
+      .stub(backend, "getBackendForAmbiguousLocation")
+      .throws("unexpected getBackendForAmbiguousLocation call");
     getRepoDetailsFromBackendStub = sinon
       .stub(devConnect, "getRepoDetailsFromBackend")
       .throws("unexpected getRepoDetailsFromBackend call");
@@ -142,7 +149,8 @@ describe("apphosting rollouts", () => {
 
     describe("createRollout", () => {
       it("should create a new rollout from user-specified branch", async () => {
-        getBackendStub.resolves(backend);
+        getBackendForLocationStub.resolves(backend);
+        getBackendForAmbiguousLocationStub.resolves(backend);
         getRepoDetailsFromBackendStub.resolves(repoLinkDetails);
         listAllBranchesStub.resolves(branches);
         getGitHubBranchStub.resolves(branchInfo);
@@ -160,7 +168,8 @@ describe("apphosting rollouts", () => {
       });
 
       it("should create a new rollout from user-specified commit", async () => {
-        getBackendStub.resolves(backend);
+        getBackendForLocationStub.resolves(backend);
+        getBackendForAmbiguousLocationStub.resolves(backend);
         getRepoDetailsFromBackendStub.resolves(repoLinkDetails);
         getGitHubCommitStub.resolves(commitInfo);
         getNextRolloutIdStub.resolves(buildAndRolloutId);
@@ -177,7 +186,8 @@ describe("apphosting rollouts", () => {
       });
 
       it("should prompt user for a branch if branch or commit ID is not specified", async () => {
-        getBackendStub.resolves(backend);
+        getBackendForLocationStub.resolves(backend);
+        getBackendForAmbiguousLocationStub.resolves(backend);
         getRepoDetailsFromBackendStub.resolves(repoLinkDetails);
         promptGitHubBranchStub.resolves(branchId);
         getGitHubBranchStub.resolves(branchInfo);
@@ -187,7 +197,7 @@ describe("apphosting rollouts", () => {
         pollOperationStub.onFirstCall().resolves(rollout);
         pollOperationStub.onSecondCall().resolves(build);
 
-        await createRollout(backendId, projectId, location, undefined, undefined, true);
+        await createRollout(backendId, projectId, location, undefined, undefined, false);
 
         expect(promptGitHubBranchStub).to.be.called;
         expect(createBuildStub).to.be.called;
@@ -196,7 +206,8 @@ describe("apphosting rollouts", () => {
       });
 
       it("should throw an error if GitHub branch is not found", async () => {
-        getBackendStub.resolves(backend);
+        getBackendForLocationStub.resolves(backend);
+        getBackendForAmbiguousLocationStub.resolves(backend);
         getRepoDetailsFromBackendStub.resolves(repoLinkDetails);
         listAllBranchesStub.resolves(branches);
 
@@ -206,13 +217,23 @@ describe("apphosting rollouts", () => {
       });
 
       it("should throw an error if GitHub commit is not found", async () => {
-        getBackendStub.resolves(backend);
+        getBackendForLocationStub.resolves(backend);
+        getBackendForAmbiguousLocationStub.resolves(backend);
         getRepoDetailsFromBackendStub.resolves(repoLinkDetails);
         getGitHubCommitStub.rejects(new FirebaseError("error", { status: 422 }));
 
         await expect(
           createRollout(backendId, projectId, location, undefined, commitSha, true),
         ).to.be.rejectedWith(/Unrecognized git commit/);
+      });
+
+      it("should throw an error if --force flag is specified but --git-branch and --git-commit are missing", async () => {
+        getBackendForLocationStub.resolves(backend);
+        getRepoDetailsFromBackendStub.resolves(repoLinkDetails);
+
+        await expect(
+          createRollout(backendId, projectId, location, undefined, undefined, true),
+        ).to.be.rejectedWith(/Failed to create rollout with --force option/);
       });
     });
 

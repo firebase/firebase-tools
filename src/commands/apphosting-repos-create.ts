@@ -2,7 +2,7 @@ import { Command } from "../command";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import requireInteractive from "../requireInteractive";
-import { createGitRepoLink } from "../apphosting";
+import { createGitRepoLink } from "../apphosting/backend";
 import { ensureApiEnabled } from "../gcp/apphosting";
 import { APPHOSTING_TOS_ID } from "../gcp/firedata";
 import { requireTosAcceptance } from "../requireTosAcceptance";
