@@ -168,16 +168,25 @@ export async function upsertSecret(
   return false;
 }
 
-export async function getAppHostingConfigToExport(
-  yamlPaths: string[],
+/**
+ * When user wants to export secrets, we need them to choose the apphosting.*.yaml
+ * file that they want use to export. By default the apphosting.yaml config will be included
+ * to emulate production behaviour. The apphosting.*.yaml configs is prioritized
+ * over the apphosting.yaml config.
+ *
+ * This function returns a configuration (combination of
+ * apphosting.<env>.yaml + apphosting.yaml) that will be used to export.
+ */
+export async function getConfigToExport(
+  allAppHostingYamlPaths: string[],
 ): Promise<AppHostingReadableConfiguration> {
   const fileNameToPathMap: Map<string, string> = new Map();
-  for (const path of yamlPaths) {
+  for (const path of allAppHostingYamlPaths) {
     const fileName = basename(path);
     fileNameToPathMap.set(fileName, path);
   }
   const baseFilePath = fileNameToPathMap.get(APPHOSTING_BASE_YAML_FILE);
-  const fileToExportPath = await promptForAppHostingFileToExportSecretsFrom(fileNameToPathMap);
+  const fileToExportPath = await promptForAppHostingYaml(fileNameToPathMap);
 
   let config = await loadAppHostingYaml(dirname(fileToExportPath), basename(fileToExportPath));
 
@@ -187,18 +196,29 @@ export async function getAppHostingConfigToExport(
 
     // if the user had selected the base file only, thats okay becuase logic below won't alter the config or cause duplicates
     config = {
-      ...config,
       ...baseConfig,
+      ...config,
     };
   }
 
   return config;
 }
 
-async function promptForAppHostingFileToExportSecretsFrom(fileNameToPathMap: Map<string, string>) {
-  const fileNames = Array.from(fileNameToPathMap.keys());
+/**
+ * Prompts user for an apphosting configuration.
+ *
+ * Given a map of apphosting yaml file names and their paths, this function
+ * will prompt the user for an apphosting configuration.
+ *
+ * Example choices:
+ *  - base (apphosting.yaml)
+ *  - staging (apphosting.yaml + apphosting.staging.yaml)
+ *  - ...
+ */
+export async function promptForAppHostingYaml(apphostingFileNameToPathMap: Map<string, string>) {
+  const fileNames = Array.from(apphostingFileNameToPathMap.keys());
 
-  const baseFilePath = fileNameToPathMap.get(APPHOSTING_BASE_YAML_FILE);
+  const baseFilePath = apphostingFileNameToPathMap.get(APPHOSTING_BASE_YAML_FILE);
   const listOptions = fileNames.map((fileName) => {
     if (fileName === APPHOSTING_BASE_YAML_FILE) {
       return {
@@ -207,12 +227,12 @@ async function promptForAppHostingFileToExportSecretsFrom(fileNameToPathMap: Map
       };
     }
 
-    const environment = getEnvironmentNameFromYamlFileName(fileName);
+    const environment = getEnvironmentName(fileName);
     return {
       name: baseFilePath
         ? `${environment} (${APPHOSTING_BASE_YAML_FILE} + ${fileName})`
         : `${environment} (${fileName})`,
-      value: fileNameToPathMap.get(fileName)!,
+      value: apphostingFileNameToPathMap.get(fileName)!,
     };
   });
 
@@ -226,12 +246,15 @@ async function promptForAppHostingFileToExportSecretsFrom(fileNameToPathMap: Map
   return fileToExportPath;
 }
 
-function getEnvironmentNameFromYamlFileName(fileName: string): string {
+/**
+ * Returns <environment> given an apphosting.<environment>.yaml file
+ */
+export function getEnvironmentName(apphostingYamlFileName: string): string {
   const envrionmentRegex = /apphosting\.(.+)\.yaml/;
-  const found = fileName.match(envrionmentRegex);
+  const found = apphostingYamlFileName.match(envrionmentRegex);
 
   if (!found) {
-    throw new Error("Invalid apphosting environment file");
+    throw new FirebaseError("Invalid apphosting environment file");
   }
 
   return found[1];

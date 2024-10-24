@@ -256,4 +256,44 @@ describe("secrets", () => {
       expect(gcsm.setIamPolicy).to.be.calledWithMatch(secret, newBindings);
     });
   });
+
+  describe("getEnvironmentName", () => {
+    it("should throw an error if environment can't be found", () => {
+      expect(
+        secrets.getEnvironmentName.bind(secrets.getEnvironmentName, "apphosting.yaml"),
+      ).to.throw("Invalid apphosting environment file");
+    });
+
+    it("should return the environment if valid environment specific apphosting file is given", () => {
+      expect(secrets.getEnvironmentName("apphosting.staging.yaml")).to.equal("staging");
+    });
+  });
+  describe("promptForAppHostingYaml", () => {
+    it("should prompt with the correct options", async () => {
+      const apphostingFileNameToPathMap = new Map<string, string>([
+        ["apphosting.yaml", "/parent/cwd/apphosting.yaml"],
+        ["apphosting.staging.yaml", "/parent/apphosting.staging.yaml"],
+      ]);
+
+      prompt.promptOnce.returns(Promise.resolve());
+
+      await secrets.promptForAppHostingYaml(apphostingFileNameToPathMap);
+
+      expect(prompt.promptOnce).to.have.been.calledWith({
+        name: "apphosting-yaml",
+        type: "list",
+        message: "Which environment would you like to export secrets from Secret Manager for?",
+        choices: [
+          {
+            name: "base (apphosting.yaml)",
+            value: "/parent/cwd/apphosting.yaml",
+          },
+          {
+            name: "staging (apphosting.yaml + apphosting.staging.yaml)",
+            value: "/parent/apphosting.staging.yaml",
+          },
+        ],
+      });
+    });
+  });
 });
