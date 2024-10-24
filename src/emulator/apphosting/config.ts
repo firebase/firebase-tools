@@ -36,7 +36,6 @@ export async function getLocalAppHostingConfiguration(
     );
 
     const localConfig = await loadAppHostingYaml(join(sourceDirectory, APPHOSTING_LOCAL_YAML));
-    console.log(`local config: ${JSON.stringify(localConfig.environmentVariables)}`);
     if (mainConfig) {
       mainConfig.merge(localConfig);
     }
