@@ -8,6 +8,13 @@ import { fileExistsSync } from "../fsutils";
 export type EnvironmentVariable = Omit<Env, "secret">;
 export type Secret = Omit<Env, "availability" | "value">;
 
+/**
+ * AppHostingYamlConfig is an object representing an Apphosting Yaml configuration
+ * present in the user's codebase (i.e 'apphosting.yaml', 'apphosting.staging.yaml', etc).
+ *
+ * This class is used to abstract away the parsing and handling logic of these
+ * yaml files.
+ */
 export class AppHostingYamlConfig {
   filePath?: string;
   _loadedAppHostingYaml: Config;

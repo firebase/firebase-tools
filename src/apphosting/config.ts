@@ -61,12 +61,16 @@ export function yamlPath(cwd: string, fileName: string): string | null {
 }
 
 /**
- * Finds all paths of apphosting.*.yaml files.
- * Starts with cwd and walks up the tree finding all apphosting.*.yaml files
- * until the the project root (where firebase.json is) or the filesystem root
- * is reached;
+ * Finds all paths to `apphosting.*.yaml` files within a project.
  *
- * If no apphosting.*.yaml files are found, null is returned.
+ * This function starts at the provided directory (`cwd`) and traverses
+ * upwards through the file system until it finds a `firebase.json` file
+ * (indicating the project root) or reaches the root of the filesystem.
+ * Along the way, it collects the paths of all encountered `apphosting.*.yaml` files.
+ *
+ * @param cwd The directory to start the search from.
+ * @returns An array of strings representing the paths to all found `apphosting.*.yaml` files,
+ *          or `null` if no such files are found.
  */
 export function allYamlPaths(cwd: string): string[] | null {
   let dir = cwd;

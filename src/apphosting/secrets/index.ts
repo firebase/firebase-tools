@@ -170,9 +170,17 @@ export async function upsertSecret(
 }
 
 /**
- * Given key value pairs of secret names and their url, this function fetches
- * secrets from Google Secret Manager and returns a key-value pair of secrets
- * and their value in plain text.
+ * Fetches secrets from Google Secret Manager and returns their values in plain text.
+ *
+ * This function takes an array of `Secret` objects, each containing the name
+ * and URL of a secret stored in Google Secret Manager. It retrieves the
+ * secrets from Secret Manager and returns a Map where the keys are the secret
+ * names and the values are the corresponding secret values in plain text.
+ *
+ * @param projectId The ID of the Google Cloud project where the secrets are stored.
+ * @param secrets An array of `Secret` objects, each specifying the name and URL of a secret.
+ * @returns A Promise that resolves to a Map containing the secret names as keys and their
+ *          plain text values as values.
  */
 export async function fetchSecrets(
   projectId: string,
@@ -198,13 +206,17 @@ export async function fetchSecrets(
 }
 
 /**
- * When user wants to export secrets, they need to choose a apphosting.*.yaml
- * file that indicates the secrets for the env they wish to export. By default
- * the apphosting.yaml config will be included to emulate production behaviour.
- * The apphosting.*.yaml configs is prioritized over the apphosting.yaml config.
+ * Determines the appropriate App Hosting YAML configuration for exporting secrets.
  *
- * This function returns a configuration (combination of
- * apphosting.<env>.yaml + apphosting.yaml) that will be used to export.
+ * When exporting secrets, users need to select an `apphosting.*.yaml` file that corresponds
+ * to the environment they want to export from.
+ *
+ * Environment-specific configurations are prioritized over the default `apphosting.yaml`
+ * to ensure the exported secrets accurately reflect the chosen environment.
+ *
+ * @param allAppHostingYamlPaths An array of paths to all available `apphosting.*.yaml` files.
+ * @returns A Promise that resolves to an `AppHostingYamlConfig` object representing the combined
+ *          configuration to be used for exporting configurations.
  */
 export async function getConfigToExport(
   allAppHostingYamlPaths: string[],
@@ -232,15 +244,11 @@ export async function getConfigToExport(
 }
 
 /**
- * Prompts user for an apphosting configuration.
+ * Prompts user for an apphosting yaml file
  *
  * Given a map of apphosting yaml file names and their paths, this function
- * will prompt the user for an apphosting configuration.
- *
- * Example choices:
- *  - base (apphosting.yaml)
- *  - staging (apphosting.yaml + apphosting.staging.yaml)
- *  - ...
+ * will prompt the user for an apphosting configuration. It returns the path
+ * of the chosen apphosting yaml file.
  */
 export async function promptForAppHostingYaml(apphostingFileNameToPathMap: Map<string, string>) {
   const fileNames = Array.from(apphostingFileNameToPathMap.keys());
