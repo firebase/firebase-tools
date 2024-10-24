@@ -110,13 +110,29 @@ const ADD_ACCOUNT_CHOICE = "@ADD_ACCOUNT";
 const MANAGE_INSTALLATION_CHOICE = "@MANAGE_INSTALLATION";
 
 /**
- * Prompts the user to link their backend to a GitHub repository.
+ * Prompts the user to create a GitHub connection.
  */
-export async function linkGitHubRepository(
+export async function getOrCreateGithubConnectionWithSentinel(
   projectId: string,
   location: string,
-): Promise<devConnect.GitRepositoryLink> {
+  createConnectionId?: string,
+): Promise<devConnect.Connection> {
   utils.logBullet(clc.bold(`${clc.yellow("===")} Import a GitHub repository`));
+
+  if (createConnectionId) {
+    // Check if the connection already exists.
+    try {
+      const connection = await devConnect.getConnection(projectId, location, createConnectionId);
+      utils.logBullet(`Reusing existing connection ${createConnectionId}`);
+      return connection;
+    } catch (err: unknown) {
+      // A 404 is expected if the connection doesn't exist. Otherwise, continue to throw the err.
+      if ((err as any).status !== 404) {
+        throw err;
+      }
+    }
+  }
+
   // Fetch the sentinel Oauth connection first which is needed to create further GitHub connections.
   const oauthConn = await getOrCreateOauthConnection(projectId, location);
   let installationId = await promptGitHubInstallation(projectId, location, oauthConn);
@@ -137,36 +153,62 @@ export async function linkGitHubRepository(
     installationId = await promptGitHubInstallation(projectId, location, oauthConn);
   }
 
-  let connectionMatchingInstallation = await getConnectionForInstallation(
+  const connectionMatchingInstallation = await getConnectionForInstallation(
     projectId,
     location,
     installationId,
   );
+  if (connectionMatchingInstallation) {
+    const { id: matchingConnectionId } = parseConnectionName(connectionMatchingInstallation.name)!;
 
-  if (!connectionMatchingInstallation) {
-    connectionMatchingInstallation = await createFullyInstalledConnection(
-      projectId,
-      location,
-      generateConnectionId(),
-      oauthConn,
-      installationId,
-    );
+    if (!createConnectionId) {
+      utils.logBullet(`Reusing matching connection ${matchingConnectionId}`);
+      return connectionMatchingInstallation;
+    }
   }
+  if (!createConnectionId) {
+    createConnectionId = generateConnectionId();
+  }
+
+  const connection = await createFullyInstalledConnection(
+    projectId,
+    location,
+    createConnectionId,
+    oauthConn,
+    installationId,
+  );
+
+  return connection;
+}
+
+/**
+ * Prompts the user to link their backend to a GitHub repository.
+ */
+export async function linkGitHubRepository(
+  projectId: string,
+  location: string,
+  createConnectionId?: string,
+): Promise<devConnect.GitRepositoryLink> {
+  const connection = await getOrCreateGithubConnectionWithSentinel(
+    projectId,
+    location,
+    createConnectionId,
+  );
 
   let repoCloneUri: string | undefined;
 
   do {
     if (repoCloneUri === MANAGE_INSTALLATION_CHOICE) {
-      await manageInstallation(connectionMatchingInstallation);
+      await manageInstallation(connection);
     }
 
-    repoCloneUri = await promptCloneUri(projectId, connectionMatchingInstallation);
+    repoCloneUri = await promptCloneUri(projectId, connection);
   } while (repoCloneUri === MANAGE_INSTALLATION_CHOICE);
 
-  const { id: connectionId } = parseConnectionName(connectionMatchingInstallation.name)!;
+  const { id: connectionId } = parseConnectionName(connection.name)!;
   await getOrCreateConnection(projectId, location, connectionId, {
-    authorizerCredential: connectionMatchingInstallation.githubConfig?.authorizerCredential,
-    appInstallationId: connectionMatchingInstallation.githubConfig?.appInstallationId,
+    authorizerCredential: connection.githubConfig?.authorizerCredential,
+    appInstallationId: connection.githubConfig?.appInstallationId,
   });
 
   const repo = await getOrCreateRepository(projectId, location, connectionId, repoCloneUri);
@@ -519,6 +561,7 @@ export async function createConnection(
 }
 
 /**
+ * Gets or creates a new Developer Connect Connection resource. Will typically need some initialization
  * Exported for unit testing.
  */
 export async function getOrCreateConnection(
@@ -542,6 +585,7 @@ export async function getOrCreateConnection(
 }
 
 /**
+ * Gets or creates a new Developer Connect GitRepositoryLink resource on a Developer Connect connection.
  * Exported for unit testing.
  */
 export async function getOrCreateRepository(
@@ -579,10 +623,10 @@ export async function getOrCreateRepository(
 }
 
 /**
- * Exported for unit testing.
- *
  * Lists all App Hosting Developer Connect Connections
  * not including the OAuth Connection
+ *
+ * Exported for unit testing.
  */
 export async function listAppHostingConnections(
   projectId: string,
@@ -599,6 +643,8 @@ export async function listAppHostingConnections(
 }
 
 /**
+ * Fetch the git clone url using a Developer Connect GitRepositoryLink.
+ *
  * Exported for unit testing.
  */
 export async function fetchRepositoryCloneUris(

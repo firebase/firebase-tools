@@ -4,7 +4,7 @@
   "publisher": "GoogleCloudTools",
   "icon": "./resources/firebase_dataconnect_logo.png",
   "description": "Firebase Data Connect for VSCode",
-  "version": "0.10.4",
+  "version": "0.10.5",
   "engines": {
     "vscode": "^1.69.0"
   },
@@ -63,7 +63,8 @@
         },
         "firebase.firebasePath": {
           "type": "string",
-          "markdownDescription": "%ext.config.firebasePath%"
+          "markdownDescription": "%ext.config.firebasePath%",
+          "scope": "machine-overridable"
         },
         "firebase.hosting.useFrameworks": {
           "type": "boolean",

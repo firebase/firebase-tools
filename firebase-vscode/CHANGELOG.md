@@ -1,5 +1,9 @@
 ## NEXT
 
+- [Added] Persist FIREBASE_BINARY env variable to settings.
+
+## 0.10.5
+
 - [Fixed] Fixed an issue where multiple instances of the extension would break the toolkit.
 
 ## 0.10.4

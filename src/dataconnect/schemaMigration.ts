@@ -282,7 +282,7 @@ function setSchemaValidationMode(schema: Schema, schemaValidation: SchemaValidat
   }
 }
 
-function getIdentifiers(schema: Schema): {
+export function getIdentifiers(schema: Schema): {
   instanceName: string;
   instanceId: string;
   databaseId: string;
