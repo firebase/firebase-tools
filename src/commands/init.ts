@@ -46,6 +46,12 @@ let choices: {
     checked: false,
   },
   {
+    value: "apphosting",
+    name: "App Hosting: Configure an apphosting.yaml file for App Hosting",
+    checked: false,
+    hidden: false,
+  },
+  {
     value: "hosting",
     name: "Hosting: Configure files for Firebase Hosting and (optionally) set up GitHub Action deploys",
     checked: false,
@@ -86,12 +92,6 @@ let choices: {
     name: "Data Connect: Set up a generated SDK for your Firebase Data Connect service",
     checked: false,
     hidden: true,
-  },
-  {
-    value: "apphosting",
-    name: "App Hosting: Configure an apphosting.yaml file for App Hosting",
-    checked: false,
-    hidden: false,
   },
 ];
 
