@@ -1,1 +1,1 @@
-- Fixed issue with ppr routes not rendering correctly.
+- Added support for Next.js 15.
