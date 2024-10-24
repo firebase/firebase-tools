@@ -1,12 +1,12 @@
 {
   "name": "firebase-tools",
-  "version": "13.22.0",
+  "version": "13.23.0",
   "lockfileVersion": 2,
   "requires": true,
   "packages": {
     "": {
       "name": "firebase-tools",
-      "version": "13.22.0",
+      "version": "13.23.0",
       "license": "MIT",
       "dependencies": {
         "@electric-sql/pglite": "^0.2.0",
@@ -59,7 +59,6 @@
         "progress": "^2.0.3",
         "proxy-agent": "^6.3.0",
         "retry": "^0.13.1",
-        "rimraf": "^5.0.0",
         "semver": "^7.5.2",
         "sql-formatter": "^15.3.0",
         "stream-chain": "^2.2.4",
@@ -17701,23 +17700,6 @@
         "node": ">=0.10.0"
       }
     },
-    "node_modules/rimraf": {
-      "version": "5.0.7",
-      "resolved": "https://registry.npmjs.org/rimraf/-/rimraf-5.0.7.tgz",
-      "integrity": "sha512-nV6YcJo5wbLW77m+8KjH8aB/7/rxQy9SZ0HY5shnwULfS+9nmTtVXAJET5NdZmCzA4fPI/Hm1wo/Po/4mopOdg==",
-      "dependencies": {
-        "glob": "^10.3.7"
-      },
-      "bin": {
-        "rimraf": "dist/esm/bin.mjs"
-      },
-      "engines": {
-        "node": ">=14.18"
-      },
-      "funding": {
-        "url": "https://github.com/sponsors/isaacs"
-      }
-    },
     "node_modules/rollup": {
       "version": "3.20.2",
       "resolved": "https://registry.npmjs.org/rollup/-/rollup-3.20.2.tgz",
@@ -34203,14 +34185,6 @@
       "resolved": "https://registry.npmjs.org/reusify/-/reusify-1.0.4.tgz",
       "integrity": "sha512-U9nH88a3fc/ekCF1l0/UP1IosiuIjyTh7hBvXVMHYgVcfGvt897Xguj2UOLDeI5BG2m7/uwyaLVT6fbtCwTyzw==",
       "dev": true
-    },
-    "rimraf": {
-      "version": "5.0.7",
-      "resolved": "https://registry.npmjs.org/rimraf/-/rimraf-5.0.7.tgz",
-      "integrity": "sha512-nV6YcJo5wbLW77m+8KjH8aB/7/rxQy9SZ0HY5shnwULfS+9nmTtVXAJET5NdZmCzA4fPI/Hm1wo/Po/4mopOdg==",
-      "requires": {
-        "glob": "^10.3.7"
-      }
     },
     "rollup": {
       "version": "3.20.2",

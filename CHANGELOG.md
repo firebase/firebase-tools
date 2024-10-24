@@ -1,1 +1,0 @@
-- Fixed Flutter web apps that might require the --no-tree-shake-icons flag in order to build. (#7724)

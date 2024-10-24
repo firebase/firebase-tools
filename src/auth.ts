@@ -38,6 +38,7 @@ import {
   UserCredentials,
 } from "./types/auth";
 import { readTemplate } from "./templates";
+import { refreshAuth } from "./requireAuth";
 
 portfinder.setBasePort(9005);
 
@@ -724,7 +725,16 @@ export async function getAccessToken(refreshToken: string, authScopes: string[])
   if (haveValidTokens(refreshToken, authScopes) && lastAccessToken) {
     return lastAccessToken;
   }
-  return refreshTokens(refreshToken, authScopes);
+  if (refreshToken) {
+    return refreshTokens(refreshToken, authScopes);
+  } else {
+    try {
+      return refreshAuth();
+    } catch (err: any) {
+      logger.debug(`Unable to refresh token: ${err}`);
+    }
+    throw new FirebaseError("Unable to getAccessToken");
+  }
 }
 
 export async function logout(refreshToken: string) {
