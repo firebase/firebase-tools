@@ -87,7 +87,7 @@ import { parseStrict } from "../../functions/env";
 const DEFAULT_BUILD_SCRIPT = ["next build"];
 const PUBLIC_DIR = "public";
 
-export const supportedRange = "12 - 14.0";
+export const supportedRange = "12 - 15.0";
 
 export const name = "Next.js";
 export const support = SupportLevel.Preview;
@@ -676,9 +676,12 @@ export async function ɵcodegenFunctionsDirectory(
     await copy(join(sourceDir, "public"), join(destDir, "public"));
   }
 
-  // Add the `sharp` library if app is using image optimization
+  // Add the `sharp` library if app is using image optimization and is less than next@15
   if (await isUsingImageOptimization(sourceDir, distDir)) {
-    packageJson.dependencies["sharp"] = SHARP_VERSION;
+    const nextVersion = getNextVersion(sourceDir);
+    if (!nextVersion || !gte(nextVersion, "15.0.0")) {
+      packageJson.dependencies["sharp"] = SHARP_VERSION;
+    }
   }
 
   const dotEnv: Record<string, string> = {};
