@@ -1,111 +1,199 @@
-// const SAMPLE_APPHOSTING_YAML_CONFIG_ONE = {
-//   env: [
-//     {
-//       variable: "STORAGE_BUCKET",
-//       value: "mybucket.appspot.com",
-//       availability: ["BUILD", "RUNTIME"],
-//     },
-//     {
-//       variable: "API_KEY",
-//       secret: "myApiKeySecret",
-//     },
-//     {
-//       variable: "PINNED_API_KEY",
-//       secret: "myApiKeySecret@5",
-//     },
-//     {
-//       variable: "VERBOSE_API_KEY",
-//       secret: "projects/test-project/secrets/secretID",
-//     },
-//     {
-//       variable: "PINNED_VERBOSE_API_KEY",
-//       secret: "projects/test-project/secrets/secretID/versions/5",
-//     },
-//   ],
-// };
+import { expect } from "chai";
+import { AppHostingYamlConfig } from "./yaml";
 
-// const SAMPLE_APPHOSTING_YAML_CONFIG_TWO = {
-//   env: [
-//     {
-//       variable: "randomEnvOne",
-//       value: "envOne",
-//     },
-//     {
-//       variable: "randomEnvTwo",
-//       value: "envTwo",
-//     },
-//     {
-//       variable: "randomEnvThree",
-//       value: "envThree",
-//     },
-//     { variable: "randomSecretOne", secret: "secretOne" },
-//     { variable: "randomSecretTwo", secret: "secretTwo" },
-//     { variable: "randomSecretThree", secret: "secretThree" },
-//   ],
-// };
+describe("yaml", () => {
+  describe("environment variables", () => {
+    let apphostingYaml: AppHostingYamlConfig;
+    beforeEach(() => {
+      apphostingYaml = new AppHostingYamlConfig();
+    });
 
-// const SAMPLE_APPHOSTING_YAML_CONFIG_THREE = {
-//   env: [
-//     {
-//       variable: "randomEnvOne",
-//       value: "envOne",
-//     },
-//     {
-//       variable: "randomEnvTwo",
-//       value: "blah",
-//     },
-//     {
-//       variable: "randomEnvFour",
-//       value: "envFour",
-//     },
-//     { variable: "randomSecretOne", secret: "bleh" },
-//     { variable: "randomSecretTwo", secret: "secretTwo" },
-//     { variable: "randomSecretFour", secret: "secretFour" },
-//   ],
-// };
+    it("adds environment variables and retrieves them correctly", () => {
+      apphostingYaml.addEnvironmentVariable({
+        variable: "TEST_1",
+        value: "value_1",
+      });
 
-// describe("environments", () => {
-//   let pathExistsStub: sinon.SinonStub;
-//   let joinStub: sinon.SinonStub;
-//   let loggerStub: sinon.SinonStub;
-//   let readFileFromDirectoryStub: sinon.SinonStub;
-//   let wrappedSafeLoadStub: sinon.SinonStub;
+      apphostingYaml.addEnvironmentVariable({
+        variable: "TEST_2",
+        value: "value_2",
+      });
 
-//   beforeEach(() => {
-//     pathExistsStub = sinon.stub(fsExtra, "pathExists");
-//     joinStub = sinon.stub(path, "join");
-//     loggerStub = sinon.stub(utils, "logger");
-//     readFileFromDirectoryStub = sinon.stub(emulatorUtils, "readFileFromDirectory");
-//     wrappedSafeLoadStub = sinon.stub(emulatorUtils, "wrappedSafeLoad");
-//   });
+      expect(JSON.stringify(apphostingYaml.environmentVariables)).to.equal(
+        JSON.stringify([
+          {
+            variable: "TEST_1",
+            value: "value_1",
+          },
+          {
+            variable: "TEST_2",
+            value: "value_2",
+          },
+        ]),
+      );
+    });
 
-//   afterEach(() => {
-//     pathExistsStub.restore();
-//     joinStub.restore();
-//     loggerStub.restore();
-//     readFileFromDirectoryStub.restore();
-//     wrappedSafeLoadStub.restore();
-//   });
+    it("overwrites stored environment variable if another is added with same name", () => {
+      apphostingYaml.addEnvironmentVariable({
+        variable: "TEST",
+        value: "value",
+      });
 
-//   describe("loadAppHostingYaml", () => {
-//     it("should return a configuration in the correct format", async () => {
-//       readFileFromDirectoryStub.returns({ source: "blah" });
-//       wrappedSafeLoadStub.returns(SAMPLE_APPHOSTING_YAML_CONFIG_ONE);
+      apphostingYaml.addEnvironmentVariable({
+        variable: "TEST",
+        value: "overwritten_value",
+      });
 
-//       const res = await loadAppHostingYaml("test", "test.yaml");
-//       expect(JSON.stringify(res)).to.equal(
-//         JSON.stringify({
-//           environmentVariables: {
-//             STORAGE_BUCKET: "mybucket.appspot.com",
-//           },
-//           secrets: {
-//             API_KEY: "myApiKeySecret",
-//             PINNED_API_KEY: "myApiKeySecret@5",
-//             VERBOSE_API_KEY: "projects/test-project/secrets/secretID",
-//             PINNED_VERBOSE_API_KEY: "projects/test-project/secrets/secretID/versions/5",
-//           },
-//         }),
-//       );
-//     });
-//   });
-// });
+      expect(JSON.stringify(apphostingYaml.environmentVariables)).to.equal(
+        JSON.stringify([{ variable: "TEST", value: "overwritten_value" }]),
+      );
+    });
+
+    it("converts environment variables to records correctly", () => {
+      apphostingYaml.addEnvironmentVariable({
+        variable: "TEST_1",
+        value: "value_1",
+      });
+
+      apphostingYaml.addEnvironmentVariable({
+        variable: "TEST_2",
+        value: "value_2",
+      });
+
+      expect(JSON.stringify(apphostingYaml.environmentVariablesAsRecord())).to.equal(
+        JSON.stringify({
+          TEST_1: "value_1",
+          TEST_2: "value_2",
+        }),
+      );
+    });
+  });
+
+  describe("secrets", () => {
+    let apphostingYaml: AppHostingYamlConfig;
+    beforeEach(() => {
+      apphostingYaml = new AppHostingYamlConfig();
+    });
+
+    it("adds environment variables and retrieves them correctly", () => {
+      apphostingYaml.addSecret({
+        variable: "TEST_1",
+        secret: "value_1",
+      });
+
+      apphostingYaml.addSecret({
+        variable: "TEST_2",
+        secret: "value_2",
+      });
+
+      expect(JSON.stringify(apphostingYaml.secrets)).to.equal(
+        JSON.stringify([
+          {
+            variable: "TEST_1",
+            secret: "value_1",
+          },
+          {
+            variable: "TEST_2",
+            secret: "value_2",
+          },
+        ]),
+      );
+    });
+
+    it("overwrites stored environment variable if another is added with same name", () => {
+      apphostingYaml.addSecret({
+        variable: "TEST",
+        secret: "value",
+      });
+
+      apphostingYaml.addSecret({
+        variable: "TEST",
+        secret: "overwritten_value",
+      });
+
+      expect(JSON.stringify(apphostingYaml.secrets)).to.equal(
+        JSON.stringify([{ variable: "TEST", secret: "overwritten_value" }]),
+      );
+    });
+  });
+
+  describe("merge", () => {
+    let apphostingYaml: AppHostingYamlConfig;
+    beforeEach(() => {
+      apphostingYaml = new AppHostingYamlConfig();
+    });
+
+    it("merges incoming apphosting yaml config with precendence", () => {
+      apphostingYaml.addEnvironmentVariable({
+        variable: "ENV_1",
+        value: "env_1",
+      });
+      apphostingYaml.addEnvironmentVariable({
+        variable: "ENV_2",
+        value: "env_2",
+      });
+      apphostingYaml.addSecret({
+        variable: "SECRET_1",
+        secret: "secret_1",
+      });
+      apphostingYaml.addSecret({
+        variable: "SECRET_2",
+        secret: "secret_2",
+      });
+
+      const incomingAppHostingYaml = new AppHostingYamlConfig();
+      incomingAppHostingYaml.addEnvironmentVariable({
+        variable: "ENV_1",
+        value: "incoming_env_1",
+      });
+      incomingAppHostingYaml.addEnvironmentVariable({
+        variable: "ENV_3",
+        value: "incoming_env_3",
+      });
+      incomingAppHostingYaml.addSecret({
+        variable: "SECRET_2",
+        secret: "incoming_secret_1",
+      });
+      incomingAppHostingYaml.addSecret({
+        variable: "SECRET_3",
+        secret: "incoming_secret_3",
+      });
+
+      apphostingYaml.merge(incomingAppHostingYaml);
+
+      expect(JSON.stringify(apphostingYaml.environmentVariables)).to.equal(
+        JSON.stringify([
+          {
+            variable: "ENV_1",
+            value: "incoming_env_1",
+          },
+          {
+            variable: "ENV_2",
+            value: "env_2",
+          },
+          {
+            variable: "ENV_3",
+            value: "incoming_env_3",
+          },
+        ]),
+      );
+
+      expect(JSON.stringify(apphostingYaml.secrets)).to.equal(
+        JSON.stringify([
+          {
+            variable: "SECRET_1",
+            secret: "secret_1",
+          },
+          {
+            variable: "SECRET_2",
+            secret: "incoming_secret_1",
+          },
+          {
+            variable: "SECRET_3",
+            secret: "incoming_secret_3",
+          },
+        ]),
+      );
+    });
+  });
+});
