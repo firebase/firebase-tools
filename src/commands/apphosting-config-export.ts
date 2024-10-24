@@ -2,7 +2,6 @@ import { Command } from "../command";
 import { logger } from "../logger";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
-import { accessSecretVersion } from "../gcp/secretManager";
 import { requireAuth } from "../requireAuth";
 import * as secretManager from "../gcp/secretManager";
 import { requirePermissions } from "../requirePermissions";
@@ -13,7 +12,6 @@ import {
   yamlPath,
 } from "../apphosting/config";
 import { fetchSecrets, getConfigToExport } from "../apphosting/secrets";
-import { FirebaseError } from "../error";
 import { basename, dirname, join } from "path";
 import { loadAppHostingYaml } from "../apphosting/utils";
 import { AppHostingReadableConfiguration } from "../apphosting/config";
