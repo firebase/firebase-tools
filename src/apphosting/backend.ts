@@ -193,6 +193,36 @@ export async function doSetup(
 }
 
 /**
+ * Set up a new App Hosting-type Developer Connect GitRepoLink, optionally with a specific connection ID
+ */
+export async function createGitRepoLink(
+  projectId: string,
+  location: string | null,
+  connectionId?: string,
+): Promise<void> {
+  await Promise.all([
+    ensure(projectId, developerConnectOrigin(), "apphosting", true),
+    ensure(projectId, secretManagerOrigin(), "apphosting", true),
+    ensure(projectId, iamOrigin(), "apphosting", true),
+  ]);
+
+  const allowedLocations = (await apphosting.listLocations(projectId)).map((loc) => loc.locationId);
+  if (location) {
+    if (!allowedLocations.includes(location)) {
+      throw new FirebaseError(
+        `Invalid location ${location}. Valid choices are ${allowedLocations.join(", ")}`,
+      );
+    }
+  }
+
+  location =
+    location ||
+    (await promptLocation(projectId, "Select a location for your GitRepoLink's connection:\n"));
+
+  await githubConnections.linkGitHubRepository(projectId, location, connectionId);
+}
+
+/**
  * Ensures the service account is present the user has permissions to use it by
  * checking the `iam.serviceAccounts.actAs` permission. If the permissions
  * check fails, this returns an error. If the permission check fails with a
