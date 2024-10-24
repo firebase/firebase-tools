@@ -62,12 +62,12 @@ export const firebaseRC = globalSignal<Result<RC | undefined> | undefined>(
  * Write new default project to .firebaserc
  */
 export async function updateFirebaseRCProject(values: {
-  fdcPostgresConnectionString?: string;
   projectAlias?: {
     alias: string;
     projectId: string;
   };
 }) {
+  let didChange = false;
   const rc =
     firebaseRC.value?.tryReadValue ??
     // We don't update firebaseRC if we create a temporary RC,
@@ -83,7 +83,6 @@ export async function updateFirebaseRCProject(values: {
       values.projectAlias.alias,
       values.projectAlias.projectId,
     );
-
     rc.save();
   }
 }
