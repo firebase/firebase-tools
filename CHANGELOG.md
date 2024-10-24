@@ -1,1 +1,1 @@
-- Fixed issue with ppr routes not rendering correctly. (#7625)
+- Fixed Next.js issue with PPR routes not rendering correctly. (#7625)
