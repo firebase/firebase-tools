@@ -411,22 +411,28 @@ async function promptCloneUri(
  */
 export async function promptGitHubBranch(repoLink: devConnect.GitRepositoryLink): Promise<string> {
   const branches = await devConnect.listAllBranches(repoLink.name);
-  while (true) {
-    const branch = await promptOnce({
-      name: "branch",
-      type: "input",
-      default: "main",
-      message: "Pick a branch for continuous deployment",
-    });
+  const branch = await promptOnce({
+    type: "autocomplete",
+    name: "branch",
+    message: "Pick a branch for continuous deployment",
+    source: (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
+      return new Promise((resolve) =>
+        resolve([
+          ...fuzzy.filter(input, Array.from(branches)).map((result) => {
+            return {
+              name: result.original,
+              value: result.original,
+            };
+          }),
+        ]),
+      );
+    },
+  });
 
-    if (branches.has(branch)) {
-      return branch;
-    }
-
-    utils.logWarning(
-      `The branch "${branch}" does not exist on "${extractRepoSlugFromUri(repoLink.cloneUri)}". Please enter a valid branch for this repo.`,
-    );
-  }
+  utils.logWarning(
+    `The branch "${branch}" does not exist on "${extractRepoSlugFromUri(repoLink.cloneUri) ?? ""}". Please enter a valid branch for this repo.`,
+  );
+  return branch;
 }
 
 /**

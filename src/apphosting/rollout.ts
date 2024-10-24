@@ -10,11 +10,10 @@ import {
 } from "../apphosting/githubConnections";
 import * as poller from "../operation-poller";
 
-import { confirm } from "../prompt";
 import { logBullet, sleep } from "../utils";
 import { apphostingOrigin, consoleOrigin } from "../api";
 import { DeepOmit } from "../metaprogramming";
-import { getBackendForAmbiguousLocation, getBackendForLocation } from ".";
+import { getBackendForAmbiguousLocation, getBackendForLocation } from "./backend";
 
 const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: apphostingOrigin(),
@@ -43,6 +42,7 @@ export async function createRollout(
       projectId,
       backendId,
       "Please select the location of the backend you'd like to roll out:",
+      force,
     );
     location = apphosting.parseBackendName(backend.name).location;
   } else {
@@ -87,6 +87,11 @@ export async function createRollout(
       throw err;
     }
   } else {
+    if (force) {
+      throw new FirebaseError(
+        `Failed to create rollout with --force option because no target branch or commit was specified. Please specify which branch or commit to roll out with the --git-branch or --git-commit flag.`,
+      );
+    }
     branch = await promptGitHubBranch(repoLink);
     const branchInfo = await getGitHubBranch(owner, repo, branch, readToken.token);
     targetCommit = branchInfo.commit;
@@ -95,13 +100,6 @@ export async function createRollout(
   logBullet(
     `You are about to deploy [${targetCommit.sha.substring(0, 7)}]: ${targetCommit.commit.message}`,
   );
-  const confirmRollout = await confirm({
-    force: !!force,
-    message: "Do you want to continue?",
-  });
-  if (!confirmRollout) {
-    return;
-  }
   logBullet(
     `You may also track this rollout at:\n\t${consoleOrigin()}/project/${projectId}/apphosting`,
   );

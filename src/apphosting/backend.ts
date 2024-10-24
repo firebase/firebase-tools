@@ -407,12 +407,14 @@ export async function getBackendForLocation(
 
 /**
  * Fetches a backend from the server. If there are multiple backends with that name (ie multi-regional backends),
- * prompts the user to disambiguate.
+ * prompts the user to disambiguate. If the force option is specified and multiple backends have the same name,
+ * it throws an error.
  */
 export async function getBackendForAmbiguousLocation(
   projectId: string,
   backendId: string,
   locationDisambugationPrompt: string,
+  force?: boolean,
 ): Promise<apphosting.Backend> {
   let { unreachable, backends } = await apphosting.listBackends(projectId, "-");
   if (unreachable && unreachable.length !== 0) {
@@ -429,6 +431,11 @@ export async function getBackendForAmbiguousLocation(
   }
   if (backends.length === 1) {
     return backends[0];
+  }
+  if (force) {
+    throw new FirebaseError(
+      `Multiple backends found with ID ${backendId}. Please specify the region of your target backend.`,
+    );
   }
 
   const backendsByLocation = new Map<string, apphosting.Backend>();

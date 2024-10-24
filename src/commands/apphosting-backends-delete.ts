@@ -10,7 +10,7 @@ import {
   deleteBackendAndPoll,
   getBackendForAmbiguousLocation,
   getBackendForLocation,
-} from "../apphosting";
+} from "../apphosting/backend";
 import * as ora from "ora";
 
 export const command = new Command("apphosting:backends:delete <backend>")
