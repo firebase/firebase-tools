@@ -169,10 +169,10 @@ export async function upsertSecret(
 }
 
 /**
- * When user wants to export secrets, we need them to choose the apphosting.*.yaml
- * file that they want use to export. By default the apphosting.yaml config will be included
- * to emulate production behaviour. The apphosting.*.yaml configs is prioritized
- * over the apphosting.yaml config.
+ * When user wants to export secrets, they need to choose a apphosting.*.yaml
+ * file that indicates the secrets for the env they wish to export. By default
+ * the apphosting.yaml config will be included to emulate production behaviour.
+ * The apphosting.*.yaml configs is prioritized over the apphosting.yaml config.
  *
  * This function returns a configuration (combination of
  * apphosting.<env>.yaml + apphosting.yaml) that will be used to export.
@@ -196,8 +196,14 @@ export async function getConfigToExport(
 
     // if the user had selected the base file only, thats okay becuase logic below won't alter the config or cause duplicates
     config = {
-      ...baseConfig,
-      ...config,
+      environmentVariables: {
+        ...baseConfig.environmentVariables,
+        ...config.environmentVariables,
+      },
+      secrets: {
+        ...baseConfig.secrets,
+        ...config.secrets,
+      },
     };
   }
 

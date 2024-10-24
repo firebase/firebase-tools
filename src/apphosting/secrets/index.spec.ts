@@ -9,6 +9,7 @@ import * as gce from "../../gcp/computeEngine";
 import * as gcsmImport from "../../gcp/secretManager";
 import * as utilsImport from "../../utils";
 import * as promptImport from "../../prompt";
+import * as apphostingUtilsImport from "../utils";
 
 describe("secrets", () => {
   let gcsm: sinon.SinonStubbedInstance<typeof gcsmImport>;
@@ -294,6 +295,102 @@ describe("secrets", () => {
           },
         ],
       });
+    });
+  });
+
+  describe("getConfigToExport", () => {
+    const baseAppHostingYaml = {
+      environmentVariables: {
+        ENV_1: "base_env_1",
+        ENV_3: "base_env_3",
+      },
+      secrets: {
+        SECRET_1: "base_secret_1",
+        SECRET_2: "base_secret_2",
+        SECRET_3: "base_secret_3",
+      },
+    };
+
+    const stagingAppHostingYaml = {
+      environmentVariables: {
+        ENV_1: "staging_env_1",
+        ENV_2: "staging_env_2",
+      },
+      secrets: {
+        SECRET_1: "staging_secret_1",
+        SECRET_2: "staging_secret_2",
+      },
+    };
+
+    let apphostingUtils: sinon.SinonStubbedInstance<typeof apphostingUtilsImport>;
+
+    beforeEach(() => {
+      apphostingUtils = sinon.stub(apphostingUtilsImport);
+    });
+
+    afterEach(() => {
+      sinon.verifyAndRestore();
+    });
+
+    it("returns a config that complies with the expected precendence", async () => {
+      const apphostingYamlPaths = [
+        "/parent/cwd/apphosting.yaml",
+        "/parent/apphosting.staging.yaml",
+      ];
+
+      prompt.promptOnce.onFirstCall().returns(Promise.resolve("/parent/apphosting.staging.yaml"));
+      apphostingUtils.loadAppHostingYaml.callsFake(async (_, fileName) => {
+        if (fileName === "apphosting.staging.yaml") {
+          return Promise.resolve(stagingAppHostingYaml);
+        }
+        return Promise.resolve(baseAppHostingYaml);
+      });
+
+      const resultingConfig = await secrets.getConfigToExport(apphostingYamlPaths);
+      expect(JSON.stringify(resultingConfig)).to.equal(
+        JSON.stringify({
+          environmentVariables: {
+            ENV_1: "staging_env_1",
+            ENV_3: "base_env_3",
+            ENV_2: "staging_env_2",
+          },
+          secrets: {
+            SECRET_1: "staging_secret_1",
+            SECRET_2: "staging_secret_2",
+            SECRET_3: "base_secret_3",
+          },
+        }),
+      );
+    });
+
+    it("returns appropriate config if only base file was selected", async () => {
+      const apphostingYamlPaths = [
+        "/parent/cwd/apphosting.yaml",
+        "/parent/apphosting.staging.yaml",
+      ];
+
+      prompt.promptOnce.onFirstCall().returns(Promise.resolve("/parent/apphosting.yaml"));
+      apphostingUtils.loadAppHostingYaml.callsFake(async (_, fileName) => {
+        if (fileName === "apphosting.staging.yaml") {
+          return Promise.resolve(stagingAppHostingYaml);
+        }
+        return Promise.resolve(baseAppHostingYaml);
+      });
+
+      const resultingConfig = await secrets.getConfigToExport(apphostingYamlPaths);
+      expect(JSON.stringify(resultingConfig)).to.equal(
+        JSON.stringify({
+          environmentVariables: {
+            ENV_1: "base_env_1",
+            ENV_3: "base_env_3",
+          },
+          secrets: {
+            SECRET_1: "base_secret_1",
+            SECRET_2: "base_secret_2",
+            SECRET_3: "base_secret_3",
+          },
+        }),
+      );
     });
   });
 });
