@@ -8,9 +8,10 @@ import { FIREBASE_MANAGED } from "../../gcp/secretManager";
 import { isFunctionsManaged } from "../../gcp/secretManager";
 import * as utils from "../../utils";
 import * as prompt from "../../prompt";
-import { basename, dirname } from "path";
-import { APPHOSTING_BASE_YAML_FILE, AppHostingReadableConfiguration } from "../config";
-import { getEnvironmentName, loadAppHostingYaml } from "../utils";
+import { basename } from "path";
+import { APPHOSTING_BASE_YAML_FILE } from "../config";
+import { getEnvironmentName } from "../utils";
+import { AppHostingYamlConfig, Secret, loadAppHostingYaml } from "../yaml";
 
 /** Interface for holding the service account pair for a given Backend. */
 export interface ServiceAccounts {
@@ -175,19 +176,19 @@ export async function upsertSecret(
  */
 export async function fetchSecrets(
   projectId: string,
-  secretKeySourcePair: Record<string, string>,
-): Promise<Record<string, string>> {
-  const secretsKeyValuePairs: Record<string, string> = {};
+  secrets: Secret[],
+): Promise<Map<string, string>> {
+  const secretsKeyValuePairs: Map<string, string> = new Map();
 
   try {
-    for (const secretKey of Object.keys(secretKeySourcePair)) {
-      let [name, version] = secretKeySourcePair[secretKey].split("@");
+    for (const secretConfig of secrets) {
+      let [name, version] = secretConfig.secret!.split("@");
       if (!version) {
         version = "latest";
       }
 
       const value = await gcsm.accessSecretVersion(projectId, name, version);
-      secretsKeyValuePairs[secretKey] = value;
+      secretsKeyValuePairs.set(secretConfig.variable, value);
     }
   } catch (e) {
     throw new FirebaseError(`Error exporting secrets: ${e}`);
@@ -207,35 +208,27 @@ export async function fetchSecrets(
  */
 export async function getConfigToExport(
   allAppHostingYamlPaths: string[],
-): Promise<AppHostingReadableConfiguration> {
+): Promise<AppHostingYamlConfig> {
   const fileNameToPathMap: Map<string, string> = new Map();
   for (const path of allAppHostingYamlPaths) {
     const fileName = basename(path);
     fileNameToPathMap.set(fileName, path);
   }
   const baseFilePath = fileNameToPathMap.get(APPHOSTING_BASE_YAML_FILE);
-  const fileToExportPath = await promptForAppHostingYaml(fileNameToPathMap);
+  const appHostingfileToExportPath = await promptForAppHostingYaml(fileNameToPathMap);
 
-  let config = await loadAppHostingYaml(dirname(fileToExportPath), basename(fileToExportPath));
+  const envConfig = await loadAppHostingYaml(appHostingfileToExportPath);
 
   // if the base file exists we'll include it
   if (baseFilePath) {
-    const baseConfig = await loadAppHostingYaml(dirname(baseFilePath), basename(baseFilePath));
+    const baseConfig = await loadAppHostingYaml(baseFilePath);
 
     // if the user had selected the base file only, thats okay becuase logic below won't alter the config or cause duplicates
-    config = {
-      environmentVariables: {
-        ...baseConfig.environmentVariables,
-        ...config.environmentVariables,
-      },
-      secrets: {
-        ...baseConfig.secrets,
-        ...config.secrets,
-      },
-    };
+    baseConfig.merge(envConfig);
+    return baseConfig;
   }
 
-  return config;
+  return envConfig;
 }
 
 /**

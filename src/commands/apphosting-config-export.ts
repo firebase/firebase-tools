@@ -5,16 +5,10 @@ import { needProjectId } from "../projectUtils";
 import { requireAuth } from "../requireAuth";
 import * as secretManager from "../gcp/secretManager";
 import { requirePermissions } from "../requirePermissions";
-import {
-  APPHOSTING_LOCAL_YAML,
-  allYamlPaths,
-  writeReadableConfigToAppHostingLocal,
-  yamlPath,
-} from "../apphosting/config";
+import { APPHOSTING_LOCAL_YAML, allYamlPaths, yamlPath } from "../apphosting/config";
 import { fetchSecrets, getConfigToExport } from "../apphosting/secrets";
-import { basename, dirname, join } from "path";
-import { loadAppHostingYaml } from "../apphosting/utils";
-import { AppHostingReadableConfiguration } from "../apphosting/config";
+import { join } from "path";
+import { loadAppHostingYaml } from "../apphosting/yaml";
 
 export const command = new Command("apphosting:config:export")
   .description(
@@ -42,7 +36,9 @@ export const command = new Command("apphosting:config:export")
     }
 
     // Load apphosting.local.yaml file if it exists. Secrets should be added to the env list in this object and written back to the apphosting.local.yaml
-    const localAppHostingConfig = await loadLocalAppHostingYaml(currentDir);
+    const apphostingLocalConfigPath = yamlPath(currentDir, APPHOSTING_LOCAL_YAML);
+    logger.info(`apphostinglocal conifg path: ${apphostingLocalConfigPath}`)
+    const localAppHostingConfig = await loadAppHostingYaml(apphostingLocalConfigPath ?? undefined);
 
     const configsToExport = await getConfigToExport(yamlFilePaths);
     const secretsToExport = configsToExport.secrets;
@@ -52,33 +48,18 @@ export const command = new Command("apphosting:config:export")
     }
 
     const secretsToInjectAsEnvs = await fetchSecrets(projectId, secretsToExport);
+    for (const [key, value] of secretsToInjectAsEnvs) {
+      localAppHostingConfig.addEnvironmentVariable({
+        variable: key,
+        value: value,
+        availability: ["RUNTIME"],
+      });
+    }
 
-    configsToExport.environmentVariables = {
-      ...localAppHostingConfig.environmentVariables,
-      ...secretsToInjectAsEnvs,
-    };
-    configsToExport.secrets = {};
+    // update apphosting.local.yaml
+    localAppHostingConfig.writeToFile(
+      apphostingLocalConfigPath ?? join(currentDir, APPHOSTING_LOCAL_YAML),
+    );
 
-    // write this config to apphosting.local.yaml
-    writeReadableConfigToAppHostingLocal(configsToExport, join(currentDir, APPHOSTING_LOCAL_YAML));
-
-    logger.log("silly", `Wrote Secrets as environment variables to ${APPHOSTING_LOCAL_YAML}.`);
     logger.info(`Wrote Secrets as environment variables to ${APPHOSTING_LOCAL_YAML}.`);
   });
-
-async function loadLocalAppHostingYaml(cwd: string): Promise<AppHostingReadableConfiguration> {
-  let localAppHostingConfig: AppHostingReadableConfiguration = {};
-  const apphostingLocalConfigPath = yamlPath(cwd, APPHOSTING_LOCAL_YAML);
-  if (apphostingLocalConfigPath) {
-    localAppHostingConfig = await loadAppHostingYaml(
-      dirname(apphostingLocalConfigPath),
-      basename(apphostingLocalConfigPath),
-    );
-  }
-
-  if (!localAppHostingConfig.environmentVariables) {
-    localAppHostingConfig.environmentVariables = {};
-  }
-
-  return localAppHostingConfig;
-}

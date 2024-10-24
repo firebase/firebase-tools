@@ -3,8 +3,7 @@ import { pathExists } from "fs-extra";
 import { logger } from "./utils";
 import { Emulators } from "../types";
 import { APPHOSTING_BASE_YAML_FILE } from "../../apphosting/config";
-import { loadAppHostingYaml } from "../../apphosting/utils";
-import { AppHostingReadableConfiguration } from "../../apphosting/config";
+import { AppHostingYamlConfig, loadAppHostingYaml } from "../../apphosting/yaml";
 
 const APPHOSTING_LOCAL_YAML = "apphosting.local.yaml";
 
@@ -14,9 +13,8 @@ const APPHOSTING_LOCAL_YAML = "apphosting.local.yaml";
  */
 export async function getLocalAppHostingConfiguration(
   sourceDirectory: string,
-): Promise<AppHostingReadableConfiguration> {
-  let apphostingBaseConfig: AppHostingReadableConfiguration = {};
-  let apphostingLocalConfig: AppHostingReadableConfiguration = {};
+): Promise<AppHostingYamlConfig> {
+  let mainConfig: AppHostingYamlConfig | undefined;
 
   if (await pathExists(join(sourceDirectory, APPHOSTING_BASE_YAML_FILE))) {
     logger.logLabeled(
@@ -25,7 +23,9 @@ export async function getLocalAppHostingConfiguration(
       `${APPHOSTING_BASE_YAML_FILE} found, loading configuration`,
     );
 
-    apphostingBaseConfig = await loadAppHostingYaml(sourceDirectory, APPHOSTING_BASE_YAML_FILE);
+    mainConfig = await loadAppHostingYaml(join(sourceDirectory, APPHOSTING_BASE_YAML_FILE));
+    console.log(`${JSON.stringify(mainConfig._loadedAppHostingYaml)}`);
+    console.log(`main config: ${JSON.stringify(mainConfig.environmentVariables)}`);
   }
 
   if (await pathExists(join(sourceDirectory, APPHOSTING_LOCAL_YAML))) {
@@ -34,18 +34,18 @@ export async function getLocalAppHostingConfiguration(
       Emulators.APPHOSTING,
       `${APPHOSTING_LOCAL_YAML} found, loading configuration`,
     );
-    apphostingLocalConfig = await loadAppHostingYaml(sourceDirectory, APPHOSTING_LOCAL_YAML);
+
+    const localConfig = await loadAppHostingYaml(join(sourceDirectory, APPHOSTING_LOCAL_YAML));
+    console.log(`local config: ${JSON.stringify(localConfig.environmentVariables)}`);
+    if (mainConfig) {
+      mainConfig.merge(localConfig);
+    }
   }
 
   // Combine apphosting configurations in order of lowest precedence to highest
-  return {
-    environmentVariables: {
-      ...apphostingBaseConfig.environmentVariables,
-      ...apphostingLocalConfig.environmentVariables,
-    },
-    secrets: {
-      ...apphostingBaseConfig.secrets,
-      ...apphostingLocalConfig.secrets,
-    },
-  };
+  if (!mainConfig) {
+    return await loadAppHostingYaml();
+  }
+
+  return mainConfig;
 }

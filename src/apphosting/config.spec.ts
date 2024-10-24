@@ -2,9 +2,6 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import * as yaml from "yaml";
 import * as path from "path";
-import * as jsYaml from "js-yaml";
-
-import * as fsImport from "fs";
 import * as fsUtilsImport from "../fsutils";
 import * as promptImport from "../prompt";
 import * as dialogs from "./secrets/dialogs";
@@ -277,41 +274,6 @@ env:
         "/parent-parent/parent/apphosting.local.yaml",
         "/parent-parent/parent/apphosting.yaml",
       ]);
-    });
-  });
-
-  describe("writeReadableConfigToAppHostingLocal", () => {
-    let fs: sinon.SinonStubbedInstance<typeof fsImport>;
-    let yamlParseDocumentStub: sinon.SinonStub;
-
-    beforeEach(() => {
-      fs = sinon.stub(fsImport);
-      yamlParseDocumentStub = sinon.stub(yaml, "parseDocument");
-    });
-
-    afterEach(() => {
-      sinon.verifyAndRestore();
-    });
-
-    it("converts a config to proper apphosting yaml format", () => {
-      const readableConfig: config.AppHostingReadableConfiguration = {
-        environmentVariables: {
-          ENV1: "env-1",
-          ENV2: "env-2",
-        },
-      };
-
-      fs.writeFileSync.returns();
-      yamlParseDocumentStub.returns(new yaml.Document());
-      config.writeReadableConfigToAppHostingLocal(readableConfig, "/cwd/apphosting.local.yaml");
-      expect(yamlParseDocumentStub).to.have.been.calledWith(
-        jsYaml.dump({
-          env: [
-            { variable: "ENV1", value: "env-1", availability: ["RUNTIME"] },
-            { variable: "ENV2", value: "env-2", availability: ["RUNTIME"] },
-          ],
-        }),
-      );
     });
   });
 });

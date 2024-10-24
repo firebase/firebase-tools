@@ -1,7 +1,6 @@
 import { resolve, join, dirname } from "path";
 import { writeFileSync } from "fs";
 import * as yaml from "yaml";
-import * as jsYaml from "js-yaml";
 
 import * as fs from "../fsutils";
 import { NodeType } from "yaml/dist/nodes/Node";
@@ -36,11 +35,6 @@ export interface Config {
   env?: Env[];
 }
 
-export interface AppHostingReadableConfiguration {
-  environmentVariables?: Record<string, string>;
-  secrets?: Record<string, string>;
-}
-
 /**
  * Finds the path of apphosting.yaml.
  * Starts with cwd and walks up the tree until apphosting.yaml is found or
@@ -63,7 +57,7 @@ export function yamlPath(cwd: string, fileName: string): string | null {
     }
     dir = parent;
   }
-  return resolve(dir, APPHOSTING_BASE_YAML_FILE);
+  return resolve(dir, fileName);
 }
 
 /**
@@ -201,30 +195,4 @@ export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
     secret: secretName,
   });
   dynamicDispatch.store(path, projectYaml);
-}
-
-/**
- * Takes a AppHostingReadableConfiguration converts it to a valid
- * AppHosting.local.yaml format and writes to the given path.
- */
-export function writeReadableConfigToAppHostingLocal(
-  readbaleConfig: AppHostingReadableConfiguration,
-  path: string,
-) {
-  const config: Config = {
-    env: [],
-  };
-  if (!readbaleConfig.environmentVariables) {
-    return config;
-  }
-
-  for (const key of Object.keys(readbaleConfig.environmentVariables)) {
-    config.env?.push({
-      variable: key,
-      value: readbaleConfig.environmentVariables[key],
-      availability: ["RUNTIME"],
-    });
-  }
-
-  store(path, yaml.parseDocument(jsYaml.dump(config)));
 }

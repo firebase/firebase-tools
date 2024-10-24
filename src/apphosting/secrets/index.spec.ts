@@ -9,7 +9,9 @@ import * as gce from "../../gcp/computeEngine";
 import * as gcsmImport from "../../gcp/secretManager";
 import * as utilsImport from "../../utils";
 import * as promptImport from "../../prompt";
-import * as apphostingUtilsImport from "../utils";
+import * as apphostingYamlImport from "../yaml";
+
+import { Secret } from "../yaml";
 
 describe("secrets", () => {
   let gcsm: sinon.SinonStubbedInstance<typeof gcsmImport>;
@@ -261,24 +263,30 @@ describe("secrets", () => {
   describe("fetchSecrets", () => {
     const projectId = "randomProject";
     it("correctly attempts to fetch secret and it's version", async () => {
-      const secretKeySourcePair = {
-        PINNED_API_KEY: "myApiKeySecret@5",
-      };
+      const secretSource: Secret[] = [
+        {
+          variable: "PINNED_API_KEY",
+          secret: "myApiKeySecret@5",
+        },
+      ];
 
       gcsm.accessSecretVersion.returns(Promise.resolve("some-value"));
-      await secrets.fetchSecrets(projectId, secretKeySourcePair);
+      await secrets.fetchSecrets(projectId, secretSource);
 
       expect(gcsm.accessSecretVersion).calledOnce;
       expect(gcsm.accessSecretVersion).calledWithExactly(projectId, "myApiKeySecret", "5");
     });
 
     it("fetches latest version if version not explicitely provided", async () => {
-      const secretKeySourcePair = {
-        VERBOSE_API_KEY: "projects/test-project/secrets/secretID",
-      };
+      const secretSource: Secret[] = [
+        {
+          variable: "VERBOSE_API_KEY",
+          secret: "projects/test-project/secrets/secretID",
+        },
+      ];
 
       gcsm.accessSecretVersion.returns(Promise.resolve("some-value"));
-      await secrets.fetchSecrets(projectId, secretKeySourcePair);
+      await secrets.fetchSecrets(projectId, secretSource);
 
       expect(gcsm.accessSecretVersion).calledOnce;
       expect(gcsm.accessSecretVersion).calledWithExactly(
@@ -319,33 +327,61 @@ describe("secrets", () => {
   });
 
   describe("getConfigToExport", () => {
-    const baseAppHostingYaml = {
-      environmentVariables: {
-        ENV_1: "base_env_1",
-        ENV_3: "base_env_3",
-      },
-      secrets: {
-        SECRET_1: "base_secret_1",
-        SECRET_2: "base_secret_2",
-        SECRET_3: "base_secret_3",
-      },
-    };
+    let loadAppHostingYamlStub: sinon.SinonStub;
+    let baseAppHostingYaml: apphostingYamlImport.AppHostingYamlConfig;
+    let stagingAppHostingYaml: apphostingYamlImport.AppHostingYamlConfig;
 
-    const stagingAppHostingYaml = {
-      environmentVariables: {
-        ENV_1: "staging_env_1",
-        ENV_2: "staging_env_2",
-      },
-      secrets: {
-        SECRET_1: "staging_secret_1",
-        SECRET_2: "staging_secret_2",
-      },
-    };
-
-    let apphostingUtils: sinon.SinonStubbedInstance<typeof apphostingUtilsImport>;
+    const apphostingYamlPaths = ["/parent/cwd/apphosting.yaml", "/parent/apphosting.staging.yaml"];
 
     beforeEach(() => {
-      apphostingUtils = sinon.stub(apphostingUtilsImport);
+      loadAppHostingYamlStub = sinon.stub(apphostingYamlImport, "loadAppHostingYaml");
+
+      baseAppHostingYaml = new apphostingYamlImport.AppHostingYamlConfig();
+      baseAppHostingYaml.addEnvironmentVariable({
+        variable: "ENV_1",
+        value: "base_env_1",
+      });
+      baseAppHostingYaml.addEnvironmentVariable({
+        variable: "ENV_3",
+        value: "base_env_3",
+      });
+      baseAppHostingYaml.addSecret({
+        variable: "SECRET_1",
+        secret: "base_secret_1",
+      });
+      baseAppHostingYaml.addSecret({
+        variable: "SECRET_2",
+        secret: "base_secret_2",
+      });
+      baseAppHostingYaml.addSecret({
+        variable: "SECRET_3",
+        secret: "base_secret_3",
+      });
+
+      stagingAppHostingYaml = new apphostingYamlImport.AppHostingYamlConfig();
+      stagingAppHostingYaml.addEnvironmentVariable({
+        variable: "ENV_1",
+        value: "staging_env_1",
+      });
+      stagingAppHostingYaml.addEnvironmentVariable({
+        variable: "ENV_2",
+        value: "staging_env_2",
+      });
+      stagingAppHostingYaml.addSecret({
+        variable: "SECRET_1",
+        secret: "staging_secret_1",
+      });
+      stagingAppHostingYaml.addSecret({
+        variable: "SECRET_2",
+        secret: "staging_secret_2",
+      });
+
+      loadAppHostingYamlStub.callsFake(async (filePath) => {
+        if (filePath?.includes("apphosting.staging.yaml")) {
+          return Promise.resolve(stagingAppHostingYaml);
+        }
+        return Promise.resolve(baseAppHostingYaml);
+      });
     });
 
     afterEach(() => {
@@ -353,63 +389,43 @@ describe("secrets", () => {
     });
 
     it("returns a config that complies with the expected precendence", async () => {
-      const apphostingYamlPaths = [
-        "/parent/cwd/apphosting.yaml",
-        "/parent/apphosting.staging.yaml",
-      ];
-
       prompt.promptOnce.onFirstCall().returns(Promise.resolve("/parent/apphosting.staging.yaml"));
-      apphostingUtils.loadAppHostingYaml.callsFake(async (_, fileName) => {
-        if (fileName === "apphosting.staging.yaml") {
-          return Promise.resolve(stagingAppHostingYaml);
-        }
-        return Promise.resolve(baseAppHostingYaml);
-      });
 
       const resultingConfig = await secrets.getConfigToExport(apphostingYamlPaths);
-      expect(JSON.stringify(resultingConfig)).to.equal(
-        JSON.stringify({
-          environmentVariables: {
-            ENV_1: "staging_env_1",
-            ENV_3: "base_env_3",
-            ENV_2: "staging_env_2",
-          },
-          secrets: {
-            SECRET_1: "staging_secret_1",
-            SECRET_2: "staging_secret_2",
-            SECRET_3: "base_secret_3",
-          },
-        }),
+      expect(JSON.stringify(resultingConfig.environmentVariables)).to.equal(
+        JSON.stringify([
+          { variable: "ENV_1", value: "staging_env_1" },
+          { variable: "ENV_3", value: "base_env_3" },
+          { variable: "ENV_2", value: "staging_env_2" },
+        ]),
+      );
+
+      expect(JSON.stringify(resultingConfig.secrets)).to.equal(
+        JSON.stringify([
+          { variable: "SECRET_1", secret: "staging_secret_1" },
+          { variable: "SECRET_2", secret: "staging_secret_2" },
+          { variable: "SECRET_3", secret: "base_secret_3" },
+        ]),
       );
     });
 
     it("returns appropriate config if only base file was selected", async () => {
-      const apphostingYamlPaths = [
-        "/parent/cwd/apphosting.yaml",
-        "/parent/apphosting.staging.yaml",
-      ];
-
       prompt.promptOnce.onFirstCall().returns(Promise.resolve("/parent/apphosting.yaml"));
-      apphostingUtils.loadAppHostingYaml.callsFake(async (_, fileName) => {
-        if (fileName === "apphosting.staging.yaml") {
-          return Promise.resolve(stagingAppHostingYaml);
-        }
-        return Promise.resolve(baseAppHostingYaml);
-      });
 
       const resultingConfig = await secrets.getConfigToExport(apphostingYamlPaths);
-      expect(JSON.stringify(resultingConfig)).to.equal(
-        JSON.stringify({
-          environmentVariables: {
-            ENV_1: "base_env_1",
-            ENV_3: "base_env_3",
-          },
-          secrets: {
-            SECRET_1: "base_secret_1",
-            SECRET_2: "base_secret_2",
-            SECRET_3: "base_secret_3",
-          },
-        }),
+      expect(JSON.stringify(resultingConfig.environmentVariables)).to.equal(
+        JSON.stringify([
+          { variable: "ENV_1", value: "base_env_1" },
+          { variable: "ENV_3", value: "base_env_3" },
+        ]),
+      );
+
+      expect(JSON.stringify(resultingConfig.secrets)).to.equal(
+        JSON.stringify([
+          { variable: "SECRET_1", secret: "base_secret_1" },
+          { variable: "SECRET_2", secret: "base_secret_2" },
+          { variable: "SECRET_3", secret: "base_secret_3" },
+        ]),
       );
     });
   });
