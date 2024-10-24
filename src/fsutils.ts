@@ -1,4 +1,4 @@
-import { readFileSync, statSync } from "fs";
+import { readFileSync, readdirSync, statSync } from "fs";
 import { FirebaseError } from "./error";
 
 export function fileExistsSync(path: string): boolean {
@@ -23,6 +23,17 @@ export function readFile(path: string): string {
   } catch (e: unknown) {
     if ((e as NodeJS.ErrnoException).code === "ENOENT") {
       throw new FirebaseError(`File not found: ${path}`);
+    }
+    throw e;
+  }
+}
+
+export function listFiles(path: string): string[] {
+  try {
+    return readdirSync(path);
+  } catch (e: unknown) {
+    if ((e as NodeJS.ErrnoException).code === "ENOENT") {
+      throw new FirebaseError(`Directory not found: ${path}`);
     }
     throw e;
   }

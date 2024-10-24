@@ -7,6 +7,9 @@ import { NodeType } from "yaml/dist/nodes/Node";
 import * as prompt from "../prompt";
 import * as dialogs from "./secrets/dialogs";
 
+export const APPHOSTING_BASE_YAML_FILE = "apphosting.yaml";
+export const APPHOSTING_LOCAL_YAML = "apphosting.local.yaml";
+
 export interface RunConfig {
   concurrency?: number;
   cpu?: number;
@@ -38,10 +41,10 @@ export interface Config {
  * we find the project root (where firebase.json is) or the filesystem root;
  * in these cases, returns null.
  */
-export function yamlPath(cwd: string): string | null {
+export function yamlPath(cwd: string, fileName: string): string | null {
   let dir = cwd;
 
-  while (!fs.fileExistsSync(resolve(dir, "apphosting.yaml"))) {
+  while (!fs.fileExistsSync(resolve(dir, fileName))) {
     // We've hit project root
     if (fs.fileExistsSync(resolve(dir, "firebase.json"))) {
       return null;
@@ -54,7 +57,51 @@ export function yamlPath(cwd: string): string | null {
     }
     dir = parent;
   }
-  return resolve(dir, "apphosting.yaml");
+  return resolve(dir, fileName);
+}
+
+/**
+ * Finds all paths to `apphosting.*.yaml` files within a project.
+ *
+ * This function starts at the provided directory (`cwd`) and traverses
+ * upwards through the file system until it finds a `firebase.json` file
+ * (indicating the project root) or reaches the root of the filesystem.
+ * Along the way, it collects the paths of all encountered `apphosting.*.yaml` files.
+ *
+ * @param cwd The directory to start the search from.
+ * @returns An array of strings representing the paths to all found `apphosting.*.yaml` files,
+ *          or `null` if no such files are found.
+ */
+export function allYamlPaths(cwd: string): string[] | null {
+  let dir = cwd;
+  const files: string[] = [];
+
+  do {
+    files.push(...list(dir));
+
+    const parent = dirname(dir);
+    // We've hit the filesystem root
+    if (parent === dir) {
+      break;
+    }
+
+    dir = parent;
+  } while (!fs.fileExistsSync(resolve(dir, "firebase.json"))); // We've hit project root
+
+  return files.length > 0 ? files : null;
+}
+
+/**
+ * Lists all apphosting.*.yaml files in the given directory.
+ */
+export function list(cwd: string): string[] {
+  const paths: string[] = [];
+  for (const file of fs.listFiles(cwd)) {
+    if (file.startsWith("apphosting.") && file.endsWith(".yaml")) {
+      paths.push(join(cwd, file));
+    }
+  }
+  return paths;
 }
 
 /** Load apphosting.yaml */
@@ -120,7 +167,7 @@ export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
     store: typeof store;
   };
   // Note: The API proposal suggested that we would check if the env exists. This is stupidly hard because the YAML may not exist yet.
-  let path = dynamicDispatch.yamlPath(process.cwd());
+  let path = dynamicDispatch.yamlPath(process.cwd(), APPHOSTING_BASE_YAML_FILE);
   let projectYaml: yaml.Document;
   if (path) {
     projectYaml = dynamicDispatch.load(path);
@@ -144,7 +191,7 @@ export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
         "It looks like you don't have an apphosting.yaml yet. Where would you like to store it?",
       default: process.cwd(),
     });
-    path = join(path, "apphosting.yaml");
+    path = join(path, APPHOSTING_BASE_YAML_FILE);
   }
   const envName = await dialogs.envVarForSecret(secretName);
   dynamicDispatch.upsertEnv(projectYaml, {

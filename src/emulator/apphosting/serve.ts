@@ -39,8 +39,9 @@ export async function start(options?: StartOptions): Promise<{ hostname: string;
 async function serve(port: number, startCommand?: string): Promise<void> {
   const rootDir = process.cwd();
   const apphostingLocalConfig = await getLocalAppHostingConfiguration(rootDir);
+
   const environmentVariablesToInject = {
-    ...apphostingLocalConfig.environmentVariables,
+    ...apphostingLocalConfig.environmentVariablesAsRecord(),
     PORT: port.toString(),
   };
 

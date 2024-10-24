@@ -5,29 +5,28 @@ import * as spawn from "../../init/spawn";
 import * as serve from "./serve";
 import { DEFAULT_PORTS } from "../constants";
 import * as utils from "./utils";
-import * as configs from "./config";
+import * as configsImport from "./config";
+import { AppHostingYamlConfig } from "../../apphosting/yaml";
 
 describe("serve", () => {
   let checkListenableStub: sinon.SinonStub;
   let wrapSpawnStub: sinon.SinonStub;
   let spawnWithCommandStringStub: sinon.SinonStub;
   let discoverPackageManagerStub: sinon.SinonStub;
-  let getLocalAppHostingConfigurationStub: sinon.SinonStub;
+  let configsStub: sinon.SinonStubbedInstance<typeof configsImport>;
 
   beforeEach(() => {
     checkListenableStub = sinon.stub(portUtils, "checkListenable");
     wrapSpawnStub = sinon.stub(spawn, "wrapSpawn");
     spawnWithCommandStringStub = sinon.stub(spawn, "spawnWithCommandString");
     discoverPackageManagerStub = sinon.stub(utils, "discoverPackageManager");
-    getLocalAppHostingConfigurationStub = sinon.stub(configs, "getLocalAppHostingConfiguration");
+    configsStub = sinon.stub(configsImport);
   });
 
   afterEach(() => {
-    checkListenableStub.restore();
     wrapSpawnStub.restore();
-    spawnWithCommandStringStub.restore();
     discoverPackageManagerStub.restore();
-    getLocalAppHostingConfigurationStub.restore();
+    sinon.verifyAndRestore();
   });
 
   describe("start", () => {
@@ -35,7 +34,9 @@ describe("serve", () => {
       checkListenableStub.onFirstCall().returns(false);
       checkListenableStub.onSecondCall().returns(false);
       checkListenableStub.onThirdCall().returns(true);
-      getLocalAppHostingConfigurationStub.returns({ environmentVariables: {}, secrets: {} });
+      configsStub.getLocalAppHostingConfiguration.returns(
+        Promise.resolve(new AppHostingYamlConfig()),
+      );
       const res = await serve.start();
       expect(res.port).to.equal(DEFAULT_PORTS.apphosting + 2);
     });
@@ -43,7 +44,9 @@ describe("serve", () => {
     it("should run the custom start command if one is provided", async () => {
       const startCommand = "custom test command";
       checkListenableStub.onFirstCall().returns(true);
-      getLocalAppHostingConfigurationStub.returns({ environmentVariables: {}, secrets: {} });
+      configsStub.getLocalAppHostingConfiguration.returns(
+        Promise.resolve(new AppHostingYamlConfig()),
+      );
 
       await serve.start({ startCommand });
 

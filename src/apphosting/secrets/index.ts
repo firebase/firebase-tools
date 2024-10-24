@@ -8,6 +8,10 @@ import { FIREBASE_MANAGED } from "../../gcp/secretManager";
 import { isFunctionsManaged } from "../../gcp/secretManager";
 import * as utils from "../../utils";
 import * as prompt from "../../prompt";
+import { basename } from "path";
+import { APPHOSTING_BASE_YAML_FILE } from "../config";
+import { getEnvironmentName } from "../utils";
+import { AppHostingYamlConfig, Secret, loadAppHostingYaml } from "../yaml";
 
 /** Interface for holding the service account pair for a given Backend. */
 export interface ServiceAccounts {
@@ -163,4 +167,116 @@ export async function upsertSecret(
   // TODO: consider whether we should prompt a user who has an unmanaged secret to enroll in version control.
   // This may not be a great idea until version control is actually implemented.
   return false;
+}
+
+/**
+ * Fetches secrets from Google Secret Manager and returns their values in plain text.
+ *
+ * This function takes an array of `Secret` objects, each containing the name
+ * and URL of a secret stored in Google Secret Manager. It retrieves the
+ * secrets from Secret Manager and returns a Map where the keys are the secret
+ * names and the values are the corresponding secret values in plain text.
+ *
+ * @param projectId The ID of the Google Cloud project where the secrets are stored.
+ * @param secrets An array of `Secret` objects, each specifying the name and URL of a secret.
+ * @returns A Promise that resolves to a Map containing the secret names as keys and their
+ *          plain text values as values.
+ */
+export async function fetchSecrets(
+  projectId: string,
+  secrets: Secret[],
+): Promise<Map<string, string>> {
+  const secretsKeyValuePairs: Map<string, string> = new Map();
+
+  try {
+    for (const secretConfig of secrets) {
+      let [name, version] = secretConfig.secret!.split("@");
+      if (!version) {
+        version = "latest";
+      }
+
+      const value = await gcsm.accessSecretVersion(projectId, name, version);
+      secretsKeyValuePairs.set(secretConfig.variable, value);
+    }
+  } catch (e) {
+    throw new FirebaseError(`Error exporting secrets: ${e}`);
+  }
+
+  return secretsKeyValuePairs;
+}
+
+/**
+ * Determines the appropriate App Hosting YAML configuration for exporting secrets.
+ *
+ * When exporting secrets, users need to select an `apphosting.*.yaml` file that corresponds
+ * to the environment they want to export from.
+ *
+ * Environment-specific configurations are prioritized over the default `apphosting.yaml`
+ * to ensure the exported secrets accurately reflect the chosen environment.
+ *
+ * @param allAppHostingYamlPaths An array of paths to all available `apphosting.*.yaml` files.
+ * @returns A Promise that resolves to an `AppHostingYamlConfig` object representing the combined
+ *          configuration to be used for exporting configurations.
+ */
+export async function getConfigToExport(
+  allAppHostingYamlPaths: string[],
+): Promise<AppHostingYamlConfig> {
+  const fileNameToPathMap: Map<string, string> = new Map();
+  for (const path of allAppHostingYamlPaths) {
+    const fileName = basename(path);
+    fileNameToPathMap.set(fileName, path);
+  }
+  const baseFilePath = fileNameToPathMap.get(APPHOSTING_BASE_YAML_FILE);
+  const appHostingfileToExportPath = await promptForAppHostingYaml(fileNameToPathMap);
+
+  const envConfig = await loadAppHostingYaml(appHostingfileToExportPath);
+
+  // if the base file exists we'll include it
+  if (baseFilePath) {
+    const baseConfig = await loadAppHostingYaml(baseFilePath);
+
+    // if the user had selected the base file only, thats okay becuase logic below won't alter the config or cause duplicates
+    baseConfig.merge(envConfig);
+    return baseConfig;
+  }
+
+  return envConfig;
+}
+
+/**
+ * Prompts user for an apphosting yaml file
+ *
+ * Given a map of apphosting yaml file names and their paths, this function
+ * will prompt the user for an apphosting configuration. It returns the path
+ * of the chosen apphosting yaml file.
+ */
+export async function promptForAppHostingYaml(apphostingFileNameToPathMap: Map<string, string>) {
+  const fileNames = Array.from(apphostingFileNameToPathMap.keys());
+
+  const baseFilePath = apphostingFileNameToPathMap.get(APPHOSTING_BASE_YAML_FILE);
+  const listOptions = fileNames.map((fileName) => {
+    if (fileName === APPHOSTING_BASE_YAML_FILE) {
+      return {
+        name: `base (${APPHOSTING_BASE_YAML_FILE})`,
+        value: baseFilePath,
+      };
+    }
+
+    const environment = getEnvironmentName(fileName);
+    return {
+      name: baseFilePath
+        ? `${environment} (${APPHOSTING_BASE_YAML_FILE} + ${fileName})`
+        : `${environment} (${fileName})`,
+      value: apphostingFileNameToPathMap.get(fileName)!,
+    };
+  });
+
+  const fileToExportPath = await prompt.promptOnce({
+    name: "apphosting-yaml",
+    type: "list",
+    message: "Which environment would you like to export secrets from Secret Manager for?",
+    choices: listOptions,
+  });
+
+  return fileToExportPath;
 }

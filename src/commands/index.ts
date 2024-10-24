@@ -184,6 +184,10 @@ export function load(client: any): any {
       client.apphosting.rollouts.create = loadCommand("apphosting-rollouts-create");
       client.apphosting.rollouts.list = loadCommand("apphosting-rollouts-list");
     }
+    if (experiments.isEnabled("emulatorapphosting")) {
+      client.apphosting.config = {};
+      client.apphosting.config.export = loadCommand("apphosting-config-export");
+    }
   }
   client.login = loadCommand("login");
   client.login.add = loadCommand("login-add");
