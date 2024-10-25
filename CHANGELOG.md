@@ -1,1 +1,1 @@
-- Add support for deploying new blocking triggers. (#6384)
+- Fixed Next.js issue with PPR routes not rendering correctly. (#7625)
