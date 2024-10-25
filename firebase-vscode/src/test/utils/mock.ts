@@ -1,5 +1,6 @@
 import { Ref } from "../../utils/test_hooks";
 import { addTearDown } from "./test_hooks";
+import * as vscode from "vscode";
 
 /** A function that creates a new object which partially an interface.
  *
@@ -34,4 +35,16 @@ export function mock<T>(ref: Ref<T>, value: Partial<T> | undefined) {
 
   // Unsafe cast, but it's fine because we're only using this in tests.
   ref.value = fake as T;
+}
+
+export function createFakeContext(): vscode.ExtensionContext {
+  const context = createFake<vscode.ExtensionContext>({
+    subscriptions: [],
+  });
+
+  addTearDown(() => {
+    context.subscriptions.forEach((sub) => sub.dispose());
+  });
+
+  return context;
 }
