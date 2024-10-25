@@ -676,7 +676,7 @@ export async function ɵcodegenFunctionsDirectory(
     await copy(join(sourceDir, "public"), join(destDir, "public"));
   }
 
-  // Add the `sharp` library if app is using image optimization and is less than next@15
+  // Add the `sharp` library if app is using image optimization
   if (await isUsingImageOptimization(sourceDir, distDir)) {
     packageJson.dependencies["sharp"] = SHARP_VERSION;
   }
