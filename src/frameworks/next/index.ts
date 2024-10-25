@@ -678,10 +678,7 @@ export async function ɵcodegenFunctionsDirectory(
 
   // Add the `sharp` library if app is using image optimization and is less than next@15
   if (await isUsingImageOptimization(sourceDir, distDir)) {
-    const nextVersion = getNextVersion(sourceDir);
-    if (!nextVersion || !gte(nextVersion, "15.0.0")) {
-      packageJson.dependencies["sharp"] = SHARP_VERSION;
-    }
+    packageJson.dependencies["sharp"] = SHARP_VERSION;
   }
 
   const dotEnv: Record<string, string> = {};
