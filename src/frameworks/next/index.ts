@@ -261,7 +261,7 @@ export async function build(
     headers.push(...headersFromMetaFiles);
 
     for (const route of pprRoutes) {
-      reasonsForBackend.add(`route with ppr ${route}`);
+      reasonsForBackend.add(`route with PPR ${route}`);
     }
 
     if (appPathsManifest) {
