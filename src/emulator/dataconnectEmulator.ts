@@ -98,7 +98,7 @@ export class DataConnectEmulator implements EmulatorInstance {
       if (connStr) {
         this.logger.logLabeled(
           "INFO",
-          "Data Connect",
+          "dataconnect",
           `FIREBASE_DATACONNECT_POSTGRESQL_STRING is set to ${clc.bold(connStr)} - using that instead of starting a new database`,
         );
       } else if (pgHost && pgPort) {
@@ -112,7 +112,7 @@ export class DataConnectEmulator implements EmulatorInstance {
           } else {
             this.logger.logLabeled(
               "ERROR",
-              "data onnect",
+              "dataconnect",
               `Postgres threw an unexpected error, shutting down the Data Connect emulator: ${err}`,
             );
           }
