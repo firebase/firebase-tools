@@ -9,6 +9,7 @@ import * as dialogs from "./secrets/dialogs";
 
 export const APPHOSTING_BASE_YAML_FILE = "apphosting.yaml";
 export const APPHOSTING_LOCAL_YAML_FILE = "apphosting.local.yaml";
+const APPHOSTING_YAML_FILE_REGEX = /^apphosting(\.[a-zA-Z0-9]+)?\.yaml$/;
 
 export interface RunConfig {
   concurrency?: number;
@@ -36,15 +37,15 @@ export interface Config {
 }
 
 /**
- * Finds the path of apphosting.yaml.
- * Starts with cwd and walks up the tree until apphosting.yaml is found or
+ * Finds the path of a yaml file.
+ * Starts with cwd and walks up the tree until yamlFileName is found or
  * we find the project root (where firebase.json is) or the filesystem root;
  * in these cases, returns null.
  */
-export function yamlPath(cwd: string, fileName: string): string | null {
+export function yamlPath(cwd: string, yamlFileName: string): string | null {
   let dir = cwd;
 
-  while (!fs.fileExistsSync(resolve(dir, fileName))) {
+  while (!fs.fileExistsSync(resolve(dir, yamlFileName))) {
     // We've hit project root
     if (fs.fileExistsSync(resolve(dir, "firebase.json"))) {
       return null;
@@ -57,7 +58,7 @@ export function yamlPath(cwd: string, fileName: string): string | null {
     }
     dir = parent;
   }
-  return resolve(dir, fileName);
+  return resolve(dir, yamlFileName);
 }
 
 /**
@@ -77,7 +78,7 @@ export function allYamlPaths(cwd: string): string[] | null {
   const files: string[] = [];
 
   do {
-    files.push(...list(dir));
+    files.push(...listAppHostingYamlFiles(dir));
 
     const parent = dirname(dir);
     // We've hit the filesystem root
@@ -94,10 +95,10 @@ export function allYamlPaths(cwd: string): string[] | null {
 /**
  * Lists all apphosting.*.yaml files in the given directory.
  */
-export function list(cwd: string): string[] {
+export function listAppHostingYamlFiles(cwd: string): string[] {
   const paths: string[] = [];
   for (const file of fs.listFiles(cwd)) {
-    if (file.startsWith("apphosting.") && file.endsWith(".yaml")) {
+    if (APPHOSTING_YAML_FILE_REGEX.test(file)) {
       paths.push(join(cwd, file));
     }
   }
