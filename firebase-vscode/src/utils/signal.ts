@@ -1,8 +1,8 @@
-import { Signal } from "@preact/signals-react";
+import { ReadonlySignal, Signal } from "@preact/signals-react";
 
 /** Waits for a signal value to not be undefined */
 export async function firstWhereDefined<T>(
-  signal: Signal<T | undefined>,
+  signal: Signal<T | undefined> | ReadonlySignal<T | undefined>,
 ): Promise<T> {
   const result = await firstWhere(signal, (v) => v !== undefined);
   return result!;
@@ -10,7 +10,7 @@ export async function firstWhereDefined<T>(
 
 /** Waits for a signal value to respect a certain condition */
 export function firstWhere<T>(
-  signal: Signal<T>,
+  signal: Signal<T> | ReadonlySignal<T>,
   predicate: (value: T) => boolean,
 ): Promise<T> {
   return new Promise((resolve) => {
