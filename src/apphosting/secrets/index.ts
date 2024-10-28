@@ -171,35 +171,35 @@ export async function upsertSecret(
 
 /**
  * Fetches secrets from Google Secret Manager and returns their values in plain text.
- *
- * This function takes an array of `Secret` objects, each containing the name
- * and URL of a secret stored in Google Secret Manager. It retrieves the
- * secrets from Secret Manager and returns a Map where the keys are the secret
- * names and the values are the corresponding secret values in plain text.
- *
- * @param projectId The ID of the Google Cloud project where the secrets are stored.
- * @param secrets An array of `Secret` objects, each specifying the name and URL of a secret.
- * @returns A Promise that resolves to a Map containing the secret names as keys and their
- *          plain text values as values.
  */
 export async function fetchSecrets(
   projectId: string,
   secrets: Secret[],
 ): Promise<Map<string, string>> {
-  const secretsKeyValuePairs: Map<string, string> = new Map();
+  let secretsKeyValuePairs: Map<string, string>;
 
   try {
-    for (const secretConfig of secrets) {
+    const secretPromises: Promise<[string, string]>[] = secrets.map(async (secretConfig) => {
+      /**
+       * secretConfig.secret expected to be in fromat "myApiKeySecret@5",
+       * "projects/test-project/secrets/secretID", or
+       * "projects/test-project/secrets/secretID/versions/5"
+       */
       let [name, version] = secretConfig.secret!.split("@");
       if (!version) {
         version = "latest";
       }
 
       const value = await gcsm.accessSecretVersion(projectId, name, version);
-      secretsKeyValuePairs.set(secretConfig.variable, value);
-    }
-  } catch (e) {
-    throw new FirebaseError(`Error exporting secrets: ${e}`);
+      return [secretConfig.variable, value] as [string, string];
+    });
+
+    const secretEntries = await Promise.all(secretPromises);
+    secretsKeyValuePairs = new Map(secretEntries);
+  } catch (e: any) {
+    throw new FirebaseError(`Error exporting secrets`, {
+      original: e,
+    });
   }
 
   return secretsKeyValuePairs;
