@@ -62,6 +62,8 @@ firebaseSuite("Init Firebase", async function () {
 });
 
 async function upsertConfig() {
+  console.log("Upserting config");
+
   // Upsert all config files.
   const emptyProjectPath = path.join(
     __dirname,
@@ -76,6 +78,13 @@ async function upsertConfig() {
     "dataconnect",
     "dataconnect.yaml",
   );
+    const connectorYamlPath = path.join(
+      emptyProjectPath,
+      "dataconnect",
+      "connector",
+      "connector.yaml"
+    );
+
 
   // Create the firebase.json file.
   fs.writeFileSync(
@@ -89,6 +98,7 @@ async function upsertConfig() {
 
   // Create the dataconnect directory.
   fs.mkdirSync(path.join(emptyProjectPath, "dataconnect"));
+  fs.mkdirSync(path.join(emptyProjectPath, "dataconnect", "connector"));
   // Create the dataconnect.yaml file.
   fs.writeFileSync(
     dataconnectYamlPath,
@@ -108,4 +118,7 @@ connectorDirs: ["./connector"]
 `.trim(),
     "utf8",
   );
+  
+  // create connector.yaml file
+  fs.writeFileSync(connectorYamlPath, "");
 }
