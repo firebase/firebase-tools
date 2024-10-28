@@ -5,7 +5,7 @@ import { needProjectId } from "../projectUtils";
 import { requireAuth } from "../requireAuth";
 import * as secretManager from "../gcp/secretManager";
 import { requirePermissions } from "../requirePermissions";
-import { APPHOSTING_LOCAL_YAML, allYamlPaths, yamlPath } from "../apphosting/config";
+import { APPHOSTING_LOCAL_YAML_FILE, allYamlPaths, yamlPath } from "../apphosting/config";
 import { fetchSecrets, getConfigToExport } from "../apphosting/secrets";
 import { join } from "path";
 import { loadAppHostingYaml } from "../apphosting/yaml";
@@ -27,7 +27,7 @@ export const command = new Command("apphosting:config:export")
 
     // Get all apphosting yaml files ignoring the apphosting.local.yaml file
     const yamlFilePaths = allYamlPaths(currentDir)?.filter(
-      (path) => !path.endsWith(APPHOSTING_LOCAL_YAML),
+      (path) => !path.endsWith(APPHOSTING_LOCAL_YAML_FILE),
     );
 
     if (!yamlFilePaths) {
@@ -36,7 +36,7 @@ export const command = new Command("apphosting:config:export")
     }
 
     // Load apphosting.local.yaml file if it exists. Secrets should be added to the env list in this object and written back to the apphosting.local.yaml
-    const apphostingLocalConfigPath = yamlPath(currentDir, APPHOSTING_LOCAL_YAML);
+    const apphostingLocalConfigPath = yamlPath(currentDir, APPHOSTING_LOCAL_YAML_FILE);
     const localAppHostingConfig = await loadAppHostingYaml(apphostingLocalConfigPath ?? undefined);
 
     const configsToExport = await getConfigToExport(yamlFilePaths);
@@ -57,8 +57,8 @@ export const command = new Command("apphosting:config:export")
 
     // update apphosting.local.yaml
     localAppHostingConfig.writeToFile(
-      apphostingLocalConfigPath ?? join(currentDir, APPHOSTING_LOCAL_YAML),
+      apphostingLocalConfigPath ?? join(currentDir, APPHOSTING_LOCAL_YAML_FILE),
     );
 
-    logger.info(`Wrote Secrets as environment variables to ${APPHOSTING_LOCAL_YAML}.`);
+    logger.info(`Wrote Secrets as environment variables to ${APPHOSTING_LOCAL_YAML_FILE}.`);
   });

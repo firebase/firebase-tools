@@ -8,7 +8,7 @@ import * as prompt from "../prompt";
 import * as dialogs from "./secrets/dialogs";
 
 export const APPHOSTING_BASE_YAML_FILE = "apphosting.yaml";
-export const APPHOSTING_LOCAL_YAML = "apphosting.local.yaml";
+export const APPHOSTING_LOCAL_YAML_FILE = "apphosting.local.yaml";
 
 export interface RunConfig {
   concurrency?: number;
