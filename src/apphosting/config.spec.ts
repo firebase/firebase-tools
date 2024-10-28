@@ -214,38 +214,7 @@ env:
     });
   });
 
-  describe("listAppHostingYamlsInCwd", () => {
-    let fs: sinon.SinonStubbedInstance<typeof fsImport>;
-
-    beforeEach(() => {
-      fs = sinon.stub(fsImport);
-    });
-
-    afterEach(() => {
-      sinon.verifyAndRestore();
-    });
-
-    it("lists apphosting yamls only", () => {
-      fs.listFiles
-        .withArgs("/cwd")
-        .returns([
-          "apphosting.staging.yaml",
-          "blah.js",
-          "apphosting.yaml",
-          "apphosting.local.yaml",
-          "blah.txt",
-          "apphosting.foo.bar.yaml",
-        ]);
-
-      const apphostingYamls = config.listAppHostingYamlFiles("/cwd");
-      expect(apphostingYamls).to.deep.equal([
-        "/cwd/apphosting.staging.yaml",
-        "/cwd/apphosting.yaml",
-        "/cwd/apphosting.local.yaml",
-      ]);
-    });
-  });
-  describe("allYamlPaths", () => {
+  describe("discoverConfigsInProject", () => {
     let fs: sinon.SinonStubbedInstance<typeof fsImport>;
 
     beforeEach(() => {
@@ -263,13 +232,13 @@ env:
 
       fs.listFiles
         .withArgs("/parent-parent/parent/cwd")
-        .returns(["apphosting.staging.yaml", "blah.js"]);
+        .returns(["apphosting.staging.yaml", "blah.js", "apphosting.foo.bar.yaml"]);
 
       fs.listFiles
         .withArgs("/parent-parent/parent")
         .returns(["apphosting.local.yaml", "bloh.txt", "apphosting.yaml"]);
 
-      const apphostingYamls = config.allYamlPaths("/parent-parent/parent/cwd");
+      const apphostingYamls = config.discoverConfigsInProject("/parent-parent/parent/cwd");
       expect(apphostingYamls).to.deep.equal([
         "/parent-parent/parent/cwd/apphosting.staging.yaml",
         "/parent-parent/parent/apphosting.local.yaml",

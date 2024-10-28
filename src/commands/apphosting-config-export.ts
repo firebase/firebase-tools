@@ -5,7 +5,11 @@ import { needProjectId } from "../projectUtils";
 import { requireAuth } from "../requireAuth";
 import * as secretManager from "../gcp/secretManager";
 import { requirePermissions } from "../requirePermissions";
-import { APPHOSTING_LOCAL_YAML_FILE, allYamlPaths, yamlPath } from "../apphosting/config";
+import {
+  APPHOSTING_LOCAL_YAML_FILE,
+  discoverConfigsInProject,
+  yamlPath,
+} from "../apphosting/config";
 import { fetchSecrets, getConfigToExport } from "../apphosting/secrets";
 import { join } from "path";
 import { loadAppHostingYaml } from "../apphosting/yaml";
@@ -26,7 +30,7 @@ export const command = new Command("apphosting:config:export")
     const currentDir = process.cwd();
 
     // Get all apphosting yaml files ignoring the apphosting.local.yaml file
-    const yamlFilePaths = allYamlPaths(currentDir)?.filter(
+    const yamlFilePaths = discoverConfigsInProject(currentDir)?.filter(
       (path) => !path.endsWith(APPHOSTING_LOCAL_YAML_FILE),
     );
 

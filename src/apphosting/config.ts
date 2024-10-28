@@ -62,7 +62,7 @@ export function yamlPath(cwd: string, yamlFileName: string): string | null {
 }
 
 /**
- * Finds all paths to `apphosting.*.yaml` files within a project.
+ * Finds all paths to `apphosting.*.yaml` configs within a project.
  *
  * This function starts at the provided directory (`cwd`) and traverses
  * upwards through the file system until it finds a `firebase.json` file
@@ -73,12 +73,16 @@ export function yamlPath(cwd: string, yamlFileName: string): string | null {
  * @returns An array of strings representing the paths to all found `apphosting.*.yaml` files,
  *          or `null` if no such files are found.
  */
-export function allYamlPaths(cwd: string): string[] | null {
+export function discoverConfigsInProject(cwd: string): string[] | null {
   let dir = cwd;
   const files: string[] = [];
 
   do {
-    files.push(...listAppHostingYamlFiles(dir));
+    const apphostingYamlFiles = fs
+      .listFiles(dir)
+      .filter((file) => APPHOSTING_YAML_FILE_REGEX.test(file));
+    const apphostingYamlFilePaths = apphostingYamlFiles.map((file) => join(dir, file));
+    files.push(...apphostingYamlFilePaths);
 
     const parent = dirname(dir);
     // We've hit the filesystem root
@@ -90,19 +94,6 @@ export function allYamlPaths(cwd: string): string[] | null {
   } while (!fs.fileExistsSync(resolve(dir, "firebase.json"))); // We've hit project root
 
   return files.length > 0 ? files : null;
-}
-
-/**
- * Lists all apphosting.*.yaml files in the given directory.
- */
-export function listAppHostingYamlFiles(cwd: string): string[] {
-  const paths: string[] = [];
-  for (const file of fs.listFiles(cwd)) {
-    if (APPHOSTING_YAML_FILE_REGEX.test(file)) {
-      paths.push(join(cwd, file));
-    }
-  }
-  return paths;
 }
 
 /** Load apphosting.yaml */
