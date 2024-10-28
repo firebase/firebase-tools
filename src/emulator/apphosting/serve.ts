@@ -40,8 +40,13 @@ async function serve(port: number, startCommand?: string): Promise<void> {
   const rootDir = process.cwd();
   const apphostingLocalConfig = await getLocalAppHostingConfiguration(rootDir);
 
+  const environmentVariablesAsRecord: Record<string, string> = {};
+  for (const env of apphostingLocalConfig.environmentVariables) {
+    environmentVariablesAsRecord[env.variable] = env.value!;
+  }
+
   const environmentVariablesToInject = {
-    ...apphostingLocalConfig.environmentVariablesAsRecord(),
+    ...environmentVariablesAsRecord,
     PORT: port.toString(),
   };
 

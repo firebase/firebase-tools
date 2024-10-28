@@ -48,25 +48,6 @@ describe("yaml", () => {
         JSON.stringify([{ variable: "TEST", value: "overwritten_value" }]),
       );
     });
-
-    it("converts environment variables to records correctly", () => {
-      apphostingYaml.addEnvironmentVariable({
-        variable: "TEST_1",
-        value: "value_1",
-      });
-
-      apphostingYaml.addEnvironmentVariable({
-        variable: "TEST_2",
-        value: "value_2",
-      });
-
-      expect(JSON.stringify(apphostingYaml.environmentVariablesAsRecord())).to.equal(
-        JSON.stringify({
-          TEST_1: "value_1",
-          TEST_2: "value_2",
-        }),
-      );
-    });
   });
 
   describe("secrets", () => {

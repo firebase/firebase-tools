@@ -258,7 +258,9 @@ export async function getConfigToExport(
  * will prompt the user for an apphosting configuration. It returns the path
  * of the chosen apphosting yaml file.
  */
-export async function promptForAppHostingYaml(apphostingFileNameToPathMap: Map<string, string>) {
+export async function promptForAppHostingYaml(
+  apphostingFileNameToPathMap: Map<string, string>,
+): Promise<string> {
   const fileNames = Array.from(apphostingFileNameToPathMap.keys());
 
   const baseFilePath = apphostingFileNameToPathMap.get(APPHOSTING_BASE_YAML_FILE);

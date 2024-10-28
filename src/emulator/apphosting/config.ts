@@ -12,7 +12,7 @@ import { AppHostingYamlConfig, loadAppHostingYaml } from "../../apphosting/yaml"
 export async function getLocalAppHostingConfiguration(
   sourceDirectory: string,
 ): Promise<AppHostingYamlConfig> {
-  let mainConfig: AppHostingYamlConfig | undefined;
+  const config: AppHostingYamlConfig = new AppHostingYamlConfig();
 
   if (await pathExists(join(sourceDirectory, APPHOSTING_BASE_YAML_FILE))) {
     logger.logLabeled(
@@ -21,9 +21,8 @@ export async function getLocalAppHostingConfiguration(
       `${APPHOSTING_BASE_YAML_FILE} found, loading configuration`,
     );
 
-    mainConfig = await loadAppHostingYaml(join(sourceDirectory, APPHOSTING_BASE_YAML_FILE));
-    console.log(`${JSON.stringify(mainConfig._loadedAppHostingYaml)}`);
-    console.log(`main config: ${JSON.stringify(mainConfig.environmentVariables)}`);
+    const baseConfig = await loadAppHostingYaml(join(sourceDirectory, APPHOSTING_BASE_YAML_FILE));
+    config.merge(baseConfig);
   }
 
   if (await pathExists(join(sourceDirectory, APPHOSTING_LOCAL_YAML_FILE))) {
@@ -34,15 +33,8 @@ export async function getLocalAppHostingConfiguration(
     );
 
     const localConfig = await loadAppHostingYaml(join(sourceDirectory, APPHOSTING_LOCAL_YAML_FILE));
-    if (mainConfig) {
-      mainConfig.merge(localConfig);
-    }
+    config.merge(localConfig);
   }
 
-  // Combine apphosting configurations in order of lowest precedence to highest
-  if (!mainConfig) {
-    return await loadAppHostingYaml();
-  }
-
-  return mainConfig;
+  return config;
 }

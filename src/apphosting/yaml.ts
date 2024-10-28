@@ -51,14 +51,6 @@ export class AppHostingYamlConfig {
     return this.mapToEnv(this._secrets);
   }
 
-  environmentVariablesAsRecord(): Record<string, string> {
-    const newObject: Record<string, string> = {};
-    for (const [key, env] of this._environmentVariables) {
-      newObject[key] = env.value!;
-    }
-    return newObject;
-  }
-
   addEnvironmentVariable(env: EnvironmentVariable) {
     this._environmentVariables.set(env.variable, env);
   }
@@ -125,7 +117,7 @@ export class AppHostingYamlConfig {
 /**
  * Helper function to load and initialize an AppHostingYamlConfig object
  */
-export async function loadAppHostingYaml(filePath?: string): Promise<AppHostingYamlConfig> {
+export async function loadAppHostingYaml(filePath: string): Promise<AppHostingYamlConfig> {
   const apphostingConfig = new AppHostingYamlConfig(filePath);
   await apphostingConfig.init();
 
