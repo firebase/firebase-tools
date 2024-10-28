@@ -4,7 +4,7 @@ import * as fs from "fs";
 import * as os from "os";
 import { transports, format } from "winston";
 import Transport from "winston-transport";
-import stripAnsi from "strip-ansi";
+import { stripVTControlCharacters } from "node:util";
 import { SPLAT } from "triple-beam";
 import { logger as cliLogger } from "../../src/logger";
 import { setupLoggers, tryStringify } from "../../src/utils";
@@ -61,7 +61,7 @@ export function logSetup() {
           const segments = [info.message, ...(info[SPLAT] || [])].map(
             tryStringify,
           );
-          return `[${info.level}] ${stripAnsi(segments.join(" "))}`;
+          return `[${info.level}] ${stripVTControlCharacters(segments.join(" "))}`;
         }),
       }),
     );
@@ -81,7 +81,7 @@ class VSCodeOutputTransport extends Transport {
       this.emit("logged", info);
     });
     const segments = [info.message, ...(info[SPLAT] || [])].map(tryStringify);
-    const text = `[${info.level}] ${stripAnsi(segments.join(" "))}`;
+    const text = `[${info.level}] ${stripVTControlCharacters(segments.join(" "))}`;
 
     if (info.level !== "debug") {
       // info or greater: write to output window
