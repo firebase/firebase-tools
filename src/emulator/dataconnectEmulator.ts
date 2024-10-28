@@ -48,6 +48,7 @@ export const dataConnectEmulatorEvents = new EventEmitter();
 export class DataConnectEmulator implements EmulatorInstance {
   private emulatorClient: DataConnectEmulatorClient;
   private usingExistingEmulator: boolean = false;
+  private postgresServer: PostgresServer | undefined;
 
   constructor(private args: DataConnectEmulatorArgs) {
     this.emulatorClient = new DataConnectEmulatorClient();
@@ -102,11 +103,11 @@ export class DataConnectEmulator implements EmulatorInstance {
         );
       } else if (pgHost && pgPort) {
         const dataDirectory = this.args.config.get("emulators.dataconnect.dataDirectory");
-        const pgServer = new PostgresServer(dbId, "postgres", dataDirectory);
-        const server = await pgServer.createPGServer(pgHost, pgPort);
+        this.postgresServer = new PostgresServer(dbId, "postgres", dataDirectory);
+        const server = await this.postgresServer.createPGServer(pgHost, pgPort);
         const connectableHost = connectableHostname(pgHost);
         connStr = `postgres://${connectableHost}:${pgPort}/${dbId}?sslmode=disable`;
-        server.on("error", (err) => {
+        server.on("error", (err: any) => {
           if (err instanceof FirebaseError) {
             this.logger.logLabeled("ERROR", "Data Connect", `${err}`);
           } else {
@@ -169,6 +170,12 @@ export class DataConnectEmulator implements EmulatorInstance {
 
   getName(): Emulators {
     return Emulators.DATACONNECT;
+  }
+
+  async clearData(): Promise<void> {
+    if (this.postgresServer) {
+      await this.postgresServer.clearDb();
+    }
   }
 
   static async generate(args: DataConnectGenerateArgs): Promise<string> {

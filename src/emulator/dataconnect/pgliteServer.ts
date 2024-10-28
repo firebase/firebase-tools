@@ -7,6 +7,8 @@ import { PGlite } from "@electric-sql/pglite";
 // during module resolution.
 const { dynamicImport } = require(true && "../../dynamicImport");
 import * as net from "node:net";
+import { rmSync } from "node:fs";
+
 import {
   getMessages,
   type PostgresConnection,
@@ -21,10 +23,11 @@ export class PostgresServer {
   private database: string;
   private dataDirectory?: string;
 
-  public db: PGlite | undefined;
+  public db: PGlite | undefined = undefined;
   public async createPGServer(host: string = "127.0.0.1", port: number): Promise<net.Server> {
-    const db: PGlite = await this.getDb();
-    await db.waitReady;
+    const getDb: () => Promise<PGlite> = this.getDb;
+    await getDb();
+
     const server = net.createServer(async (socket) => {
       const connection: PostgresConnection = await fromNodeSocket(socket, {
         serverVersion: "16.3 (PGlite 0.2.0)",
@@ -35,6 +38,7 @@ export class PostgresServer {
           if (!isAuthenticated) {
             return;
           }
+          const db = await getDb();
           const result = await db.execProtocolRaw(data);
           // Extended query patch removes the extra Ready for Query messages that
           // pglite wrongly sends.
@@ -51,36 +55,46 @@ export class PostgresServer {
         server.emit("error", err);
       });
     });
+
     const listeningPromise = new Promise<void>((resolve) => {
       server.listen(port, host, () => {
         resolve();
       });
     });
-    await db.waitReady;
     await listeningPromise;
     return server;
   }
 
   async getDb(): Promise<PGlite> {
-    if (this.db) {
-      return this.db;
+    if (!this.db) {
+      // Not all schemas will need vector installed, but we don't have an good way
+      // to swap extensions after starting PGLite, so we always include it.
+      const vector = (await dynamicImport("@electric-sql/pglite/vector")).vector;
+      const uuidOssp = (await dynamicImport("@electric-sql/pglite/contrib/uuid_ossp")).uuid_ossp;
+      this.db = await PGlite.create({
+        username: this.username,
+        database: this.database,
+        debug: 0,
+        extensions: {
+          vector,
+          uuidOssp,
+        },
+        // TODO:  Use dataDir + loadDataDir to implement import/export.
+        dataDir: this.dataDirectory,
+        // loadDataDir?: Blob | File; // This will be used with .dumpDataDir() for import/export
+      });
+      // await this.db.waitReady;
     }
-    // Not all schemas will need vector installed, but we don't have an good way
-    // to swap extensions after starting PGLite, so we always include it.
-    const vector = (await dynamicImport("@electric-sql/pglite/vector")).vector;
-    const uuidOssp = (await dynamicImport("@electric-sql/pglite/contrib/uuid_ossp")).uuid_ossp;
-    return PGlite.create({
-      username: this.username,
-      database: this.database,
-      debug: 0,
-      extensions: {
-        vector,
-        uuidOssp,
-      },
-      // TODO:  Use dataDir + loadDataDir to implement import/export.
-      dataDir: this.dataDirectory,
-      // loadDataDir?: Blob | File; // This will be used with .dumpDataDir() for import/export
-    });
+    return this.db;
+  }
+
+  public async clearDb(): Promise<PGlite> {
+    if (this.dataDirectory) {
+      rmSync(this.dataDirectory, { recursive: true });
+    }
+    await this.db?.close();
+    this.db = undefined;
+    return this.getDb(); 
   }
 
   constructor(database: string, username: string, dataDirectory?: string) {
