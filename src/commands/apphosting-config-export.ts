@@ -35,23 +35,26 @@ export const command = new Command("apphosting:config:export")
     );
 
     if (!yamlFilePaths) {
-      logger.warn("No apphosting YAMLS found");
+      logger.warn("No apphosting.yaml found");
       return;
     }
 
     // Load apphosting.local.yaml file if it exists. Secrets should be added to the env list in this object and written back to the apphosting.local.yaml
-    const apphostingLocalConfigPath = yamlPath(currentDir, APPHOSTING_LOCAL_YAML_FILE);
-    const localAppHostingConfig = await loadAppHostingYaml(apphostingLocalConfigPath ?? undefined);
+    const localApphostingConfigPath = yamlPath(currentDir, APPHOSTING_LOCAL_YAML_FILE);
+    const localAppHostingConfig = await loadAppHostingYaml(localApphostingConfigPath ?? undefined);
 
-    const configsToExport = await getConfigToExport(yamlFilePaths);
-    const secretsToExport = configsToExport.secrets;
+    const configToExport = await getConfigToExport(
+      yamlFilePaths,
+      options.secrets as string | undefined,
+    );
+    const secretsToExport = configToExport.secrets;
     if (!secretsToExport) {
       logger.warn("No secrets found to export in the choosen apphosting files");
       return;
     }
 
-    const secretsToInjectAsEnvs = await fetchSecrets(projectId, secretsToExport);
-    for (const [key, value] of secretsToInjectAsEnvs) {
+    const secretMaterial = await fetchSecrets(projectId, secretsToExport);
+    for (const [key, value] of secretMaterial) {
       localAppHostingConfig.addEnvironmentVariable({
         variable: key,
         value: value,
@@ -61,8 +64,8 @@ export const command = new Command("apphosting:config:export")
 
     // update apphosting.local.yaml
     localAppHostingConfig.writeToFile(
-      apphostingLocalConfigPath ?? join(currentDir, APPHOSTING_LOCAL_YAML_FILE),
+      localApphostingConfigPath ?? join(currentDir, APPHOSTING_LOCAL_YAML_FILE),
     );
 
-    logger.info(`Wrote Secrets as environment variables to ${APPHOSTING_LOCAL_YAML_FILE}.`);
+    logger.info(`Wrote secrets as environment variables to ${APPHOSTING_LOCAL_YAML_FILE}.`);
   });

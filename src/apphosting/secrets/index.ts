@@ -9,7 +9,7 @@ import { isFunctionsManaged } from "../../gcp/secretManager";
 import * as utils from "../../utils";
 import * as prompt from "../../prompt";
 import { basename } from "path";
-import { APPHOSTING_BASE_YAML_FILE } from "../config";
+import { APPHOSTING_BASE_YAML_FILE, APPHOSTING_YAML_FILE_REGEX } from "../config";
 import { getEnvironmentName } from "../utils";
 import { AppHostingYamlConfig, Secret, loadAppHostingYaml } from "../yaml";
 
@@ -215,19 +215,27 @@ export async function fetchSecrets(
  * to ensure the exported secrets accurately reflect the chosen environment.
  *
  * @param allAppHostingYamlPaths An array of paths to all available `apphosting.*.yaml` files.
- * @returns A Promise that resolves to an `AppHostingYamlConfig` object representing the combined
- *          configuration to be used for exporting configurations.
  */
 export async function getConfigToExport(
   allAppHostingYamlPaths: string[],
+  appHostingfileToExportPath?: string,
 ): Promise<AppHostingYamlConfig> {
+  if (appHostingfileToExportPath && !APPHOSTING_YAML_FILE_REGEX.test(appHostingfileToExportPath)) {
+    throw new FirebaseError(
+      "Invalid apphosting yaml file provided. File must be in format: 'apphosting.yaml' or 'apphosting.<environment>.yaml'",
+    );
+  }
+
   const fileNameToPathMap: Map<string, string> = new Map();
   for (const path of allAppHostingYamlPaths) {
     const fileName = basename(path);
     fileNameToPathMap.set(fileName, path);
   }
   const baseFilePath = fileNameToPathMap.get(APPHOSTING_BASE_YAML_FILE);
-  const appHostingfileToExportPath = await promptForAppHostingYaml(fileNameToPathMap);
+  if (!appHostingfileToExportPath) {
+    // If file is not provided, prompt the user
+    appHostingfileToExportPath = await promptForAppHostingYaml(fileNameToPathMap);
+  }
 
   const envConfig = await loadAppHostingYaml(appHostingfileToExportPath);
 

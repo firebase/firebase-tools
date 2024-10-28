@@ -2,10 +2,8 @@ import { join } from "path";
 import { pathExists } from "fs-extra";
 import { logger } from "./utils";
 import { Emulators } from "../types";
-import { APPHOSTING_BASE_YAML_FILE } from "../../apphosting/config";
+import { APPHOSTING_BASE_YAML_FILE, APPHOSTING_LOCAL_YAML_FILE } from "../../apphosting/config";
 import { AppHostingYamlConfig, loadAppHostingYaml } from "../../apphosting/yaml";
-
-const APPHOSTING_LOCAL_YAML = "apphosting.local.yaml";
 
 /**
  * Loads in apphosting.yaml & apphosting.local.yaml, giving
@@ -28,14 +26,14 @@ export async function getLocalAppHostingConfiguration(
     console.log(`main config: ${JSON.stringify(mainConfig.environmentVariables)}`);
   }
 
-  if (await pathExists(join(sourceDirectory, APPHOSTING_LOCAL_YAML))) {
+  if (await pathExists(join(sourceDirectory, APPHOSTING_LOCAL_YAML_FILE))) {
     logger.logLabeled(
       "SUCCESS",
       Emulators.APPHOSTING,
-      `${APPHOSTING_LOCAL_YAML} found, loading configuration`,
+      `${APPHOSTING_LOCAL_YAML_FILE} found, loading configuration`,
     );
 
-    const localConfig = await loadAppHostingYaml(join(sourceDirectory, APPHOSTING_LOCAL_YAML));
+    const localConfig = await loadAppHostingYaml(join(sourceDirectory, APPHOSTING_LOCAL_YAML_FILE));
     if (mainConfig) {
       mainConfig.merge(localConfig);
     }

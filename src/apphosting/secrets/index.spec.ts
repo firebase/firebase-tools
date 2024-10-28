@@ -12,6 +12,7 @@ import * as promptImport from "../../prompt";
 import * as apphostingYamlImport from "../yaml";
 
 import { Secret } from "../yaml";
+import { FirebaseError } from "../../error";
 
 describe("secrets", () => {
   let gcsm: sinon.SinonStubbedInstance<typeof gcsmImport>;
@@ -427,6 +428,18 @@ describe("secrets", () => {
           { variable: "SECRET_3", secret: "base_secret_3" },
         ]),
       );
+    });
+
+    it("returns throws an error if an invalid apphosting yaml if provided", async () => {
+      await expect(secrets.getConfigToExport(apphostingYamlPaths, "blah.txt")).to.be.rejectedWith(
+        FirebaseError,
+        /Invalid apphosting yaml file provided. File must be in format: 'apphosting.yaml' or 'apphosting.<environment>.yaml'/,
+      );
+    });
+
+    it("does not prompt user if an appHostingfileToExportPath is provided", async () => {
+      await secrets.getConfigToExport(apphostingYamlPaths, "apphosting.staging.yaml");
+      expect(prompt.promptOnce).to.not.be.called;
     });
   });
 });
