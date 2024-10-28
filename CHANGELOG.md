@@ -1,3 +1,1 @@
-- Fixed Flutter web apps that might require the --no-tree-shake-icons flag in order to build. (#7724)
-- Removed outdated dependency on `rimraf`.
-- Fixed an issue where the Extensions emulator would fail silently if started with a non-existant project without the `demo-` prefix. (#7779)
+- Fixed Next.js issue with PPR routes not rendering correctly. (#7625)

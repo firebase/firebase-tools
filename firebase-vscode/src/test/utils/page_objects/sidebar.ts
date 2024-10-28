@@ -7,10 +7,20 @@ import { TEXT } from "../../../../webviews/globals/ux-text";
 export class FirebaseSidebar {
   constructor(readonly workbench: Workbench) {}
 
+
   async openExtensionSidebar() {
     const sidebar = await $(`a[aria-label="Firebase Data Connect"]`);
     await sidebar.waitForDisplayed();
     await sidebar.click();
+  }
+  async open() {
+    await browser.executeWorkbench((vs: typeof vscode) => {
+      return vs.commands.executeCommand("fdc_sidebar.focus");
+    });
+  }
+
+  get hostBtn() {
+    return $("vscode-button=Host your Web App");
   }
 
   /**

@@ -69,7 +69,7 @@ export async function registerCore(
       ? `${settings.firebasePath} init dataconnect --project ${currentProjectId.value}`
       : `${settings.firebasePath} init dataconnect`;
 
-    initSpy.call("firebase init", initCommand);
+    initSpy.call("firebase init", initCommand, {focus: true});
   });
 
   const emulatorsController = new EmulatorsController(broker);
@@ -83,6 +83,7 @@ export async function registerCore(
     },
   );
 
+  registerConfig(context, broker);
   const refreshCmd = vscode.commands.registerCommand(
     "firebase.refresh",
     async () => {
@@ -101,7 +102,6 @@ export async function registerCore(
       emulatorsController,
       initSpy,
       registerOptions(context),
-      registerConfig(broker),
       registerEnv(broker),
       registerUser(broker, telemetryLogger),
       registerProject(broker),
