@@ -12,6 +12,8 @@ import { registerQuickstart } from "./quickstart";
 import { registerOptions } from "../options";
 import { upsertFile } from "../data-connect/file-utils";
 import { registerWebhooks } from "./webhook";
+import { createE2eMockable } from "../utils/test_hooks";
+import { runTerminalTask } from "../data-connect/terminal";
 
 export async function registerCore(
   broker: ExtensionBrokerImpl,
@@ -19,6 +21,15 @@ export async function registerCore(
   telemetryLogger: TelemetryLogger,
 ): Promise<[EmulatorsController, vscode.Disposable]> {
   const settings = getSettings();
+
+  // Wrap the runTerminalTask function to allow for e2e testing.
+  const initSpy = createE2eMockable(
+    async (...args: Parameters<typeof runTerminalTask>) => {
+      await runTerminalTask(...args);
+    },
+    "init",
+    async () => {},
+  );
 
   if (settings.npmPath) {
     process.env.PATH += `:${settings.npmPath}`;
@@ -54,19 +65,11 @@ export async function registerCore(
       );
       return;
     }
-    const workspaceFolder = vscode.workspace.workspaceFolders[0];
     const initCommand = currentProjectId.value
       ? `${settings.firebasePath} init dataconnect --project ${currentProjectId.value}`
       : `${settings.firebasePath} init dataconnect`;
-    const task = new vscode.Task(
-      { type: "shell" }, // this is the same type as in tasks.json
-      workspaceFolder, // The workspace folder
-      "firebase init dataconnect", // how you name the task
-      "firebase init dataconnect", // Shows up as MyTask: name
-      new vscode.ShellExecution(initCommand),
-    );
-    task.presentationOptions = { focus: true };
-    vscode.tasks.executeTask(task);
+
+    initSpy.call("firebase init", initCommand, {focus: true});
   });
 
   const emulatorsController = new EmulatorsController(broker);
@@ -97,6 +100,7 @@ export async function registerCore(
       openRcCmd,
       refreshCmd,
       emulatorsController,
+      initSpy,
       registerOptions(context),
       registerEnv(broker),
       registerUser(broker, telemetryLogger),
