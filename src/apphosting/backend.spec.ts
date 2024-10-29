@@ -13,7 +13,7 @@ import {
   setDefaultTrafficPolicy,
   ensureAppHostingComputeServiceAccount,
   getBackendForAmbiguousLocation,
-} from "./index";
+} from "./backend";
 import * as deploymentTool from "../deploymentTool";
 import { FirebaseError } from "../error";
 
