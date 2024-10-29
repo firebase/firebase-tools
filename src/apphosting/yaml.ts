@@ -17,7 +17,6 @@ export type Secret = Omit<Env, "availability" | "value">;
  * yaml files.
  */
 export class AppHostingYamlConfig {
-  _loadedAppHostingYaml: Config;
   private _environmentVariables: Map<string, EnvironmentVariable>;
   private _secrets: Map<string, Secret>;
 
@@ -28,10 +27,10 @@ export class AppHostingYamlConfig {
     }
 
     const file = await readFileFromDirectory(dirname(filePath), basename(filePath));
-    config._loadedAppHostingYaml = (await wrappedSafeLoad(file.source)) ?? {};
+    const loadedAppHostingYaml = (await wrappedSafeLoad(file.source)) ?? {};
 
-    if (config._loadedAppHostingYaml.env) {
-      const parsedEnvs = config.parseEnv(config._loadedAppHostingYaml.env);
+    if (loadedAppHostingYaml.env) {
+      const parsedEnvs = parseEnv(loadedAppHostingYaml.env);
       config._environmentVariables = parsedEnvs.environmentVariables;
       config._secrets = parsedEnvs.secrets;
     }
@@ -44,17 +43,16 @@ export class AppHostingYamlConfig {
   }
 
   private constructor() {
-    this._loadedAppHostingYaml = {};
     this._environmentVariables = new Map();
     this._secrets = new Map();
   }
 
   get environmentVariables(): EnvironmentVariable[] {
-    return this.mapToEnv(this._environmentVariables);
+    return mapToEnv(this._environmentVariables);
   }
 
   get secrets(): Secret[] {
-    return this.mapToEnv(this._secrets);
+    return mapToEnv(this._secrets);
   }
 
   addEnvironmentVariable(env: EnvironmentVariable) {
@@ -79,37 +77,44 @@ export class AppHostingYamlConfig {
     }
   }
 
-  writeToFile(customFilePath: string) {
-    const yamlConfigToWrite = this._loadedAppHostingYaml;
-    yamlConfigToWrite.env = [
-      ...this.mapToEnv(this._environmentVariables),
-      ...this.mapToEnv(this._secrets),
-    ];
+  /**
+   * Loads the given file if it exists and updates it. If
+   * it does not exist a new file will be created.
+   */
+  async writeToFile(filePath: string) {
+    let yamlConfigToWrite: Config = {};
 
-    store(customFilePath, yaml.parseDocument(jsYaml.dump(yamlConfigToWrite)));
-  }
-
-  private mapToEnv(map: Map<string, Env>): Env[] {
-    return Array.from(map.values());
-  }
-
-  private parseEnv(envs: Env[]) {
-    const environmentVariables = new Map<string, EnvironmentVariable>();
-    const secrets = new Map<string, Secret>();
-
-    for (const env of envs) {
-      if (env.value) {
-        environmentVariables.set(env.variable, env);
-      }
-
-      if (env.secret) {
-        secrets.set(env.variable, env);
-      }
+    if (fileExistsSync(filePath)) {
+      const file = await readFileFromDirectory(dirname(filePath), basename(filePath));
+      yamlConfigToWrite = await wrappedSafeLoad(file.source);
     }
 
-    return {
-      environmentVariables,
-      secrets,
-    };
+    yamlConfigToWrite.env = [...this.environmentVariables, ...this.secrets];
+
+    store(filePath, yaml.parseDocument(jsYaml.dump(yamlConfigToWrite)));
   }
+}
+
+function parseEnv(envs: Env[]) {
+  const environmentVariables = new Map<string, EnvironmentVariable>();
+  const secrets = new Map<string, Secret>();
+
+  for (const env of envs) {
+    if (env.value) {
+      environmentVariables.set(env.variable, env);
+    }
+
+    if (env.secret) {
+      secrets.set(env.variable, env);
+    }
+  }
+
+  return {
+    environmentVariables,
+    secrets,
+  };
+}
+
+function mapToEnv(map: Map<string, Env>): Env[] {
+  return Array.from(map.values());
 }
