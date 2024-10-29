@@ -46,7 +46,7 @@ function Welcome() {
   return (
     <>
       <Body>
-        No <code>{configLabel}</code> detected in this project
+        No <code>{configLabel.value}</code> detected in this project
       </Body>
       <Spacer size="medium" />
       <VSCodeButton
@@ -93,7 +93,8 @@ function EmulatorsPanel() {
     return runningPanel;
   }
 
-  return (emulatorsRunningInfo.value?.infos && emulatorsRunningInfo.value?.status === "running") ? (
+  return emulatorsRunningInfo.value?.infos &&
+    emulatorsRunningInfo.value?.status === "running" ? (
     <Emulators emulatorInfo={emulatorsRunningInfo.value.infos!} />
   ) : (
     <>
