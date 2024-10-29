@@ -12,7 +12,7 @@ import {
 } from "../apphosting/config";
 import { fetchSecrets, getConfigToExport } from "../apphosting/secrets";
 import { join } from "path";
-import { AppHostingYamlConfig, loadAppHostingYaml } from "../apphosting/yaml";
+import { AppHostingYamlConfig } from "../apphosting/yaml";
 
 export const command = new Command("apphosting:config:export")
   .description(
@@ -41,15 +41,17 @@ export const command = new Command("apphosting:config:export")
 
     // Load apphosting.local.yaml file if it exists. Secrets should be added to the env list in this object and written back to the apphosting.local.yaml
     const localApphostingConfigPath = yamlPath(currentDir, APPHOSTING_LOCAL_YAML_FILE);
-    const localAppHostingConfig =
-      localApphostingConfigPath !== null
-        ? await loadAppHostingYaml(localApphostingConfigPath)
-        : new AppHostingYamlConfig();
+    let localAppHostingConfig: AppHostingYamlConfig = AppHostingYamlConfig.empty();
+
+    if (localApphostingConfigPath) {
+      localAppHostingConfig = await AppHostingYamlConfig.loadFromFile(localApphostingConfigPath);
+    }
 
     const configToExport = await getConfigToExport(
       yamlFilePaths,
       options.secrets as string | undefined,
     );
+
     const secretsToExport = configToExport.secrets;
     if (!secretsToExport) {
       logger.warn("No secrets found to export in the choosen apphosting files");

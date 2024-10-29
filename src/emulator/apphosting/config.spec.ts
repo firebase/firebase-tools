@@ -5,7 +5,7 @@ import * as utils from "./utils";
 import * as sinon from "sinon";
 import { expect } from "chai";
 import { getLocalAppHostingConfiguration } from "./config";
-import * as apphostingYaml from "../../apphosting/yaml";
+import { AppHostingYamlConfig } from "../../apphosting/yaml";
 
 describe("environments", () => {
   let pathExistsStub: sinon.SinonStub;
@@ -14,10 +14,10 @@ describe("environments", () => {
   let loadAppHostingYamlStub: sinon.SinonStub;
 
   beforeEach(() => {
+    loadAppHostingYamlStub = sinon.stub(AppHostingYamlConfig, "loadFromFile");
     pathExistsStub = sinon.stub(fsExtra, "pathExists");
     joinStub = sinon.stub(path, "join");
     loggerStub = sinon.stub(utils, "logger");
-    loadAppHostingYamlStub = sinon.stub(apphostingYaml, "loadAppHostingYaml");
   });
 
   afterEach(() => {
@@ -31,8 +31,8 @@ describe("environments", () => {
       pathExistsStub.returns(true);
 
       // Second config takes precedence
-      const apphostingYamlConfigTwo = new apphostingYaml.AppHostingYamlConfig();
-      const apphostingYamlConfigThree = new apphostingYaml.AppHostingYamlConfig();
+      const apphostingYamlConfigTwo = AppHostingYamlConfig.empty();
+      const apphostingYamlConfigThree = AppHostingYamlConfig.empty();
 
       apphostingYamlConfigTwo.addEnvironmentVariable({
         variable: "randomEnvOne",

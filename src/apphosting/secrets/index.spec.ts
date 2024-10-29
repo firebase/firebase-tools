@@ -9,7 +9,7 @@ import * as gce from "../../gcp/computeEngine";
 import * as gcsmImport from "../../gcp/secretManager";
 import * as utilsImport from "../../utils";
 import * as promptImport from "../../prompt";
-import * as apphostingYamlImport from "../yaml";
+import { AppHostingYamlConfig } from "../yaml";
 
 import { Secret } from "../yaml";
 import { FirebaseError } from "../../error";
@@ -328,16 +328,15 @@ describe("secrets", () => {
   });
 
   describe("getConfigToExport", () => {
-    let loadAppHostingYamlStub: sinon.SinonStub;
-    let baseAppHostingYaml: apphostingYamlImport.AppHostingYamlConfig;
-    let stagingAppHostingYaml: apphostingYamlImport.AppHostingYamlConfig;
+    let loadFromFileStub: sinon.SinonStub;
+    let baseAppHostingYaml: AppHostingYamlConfig;
+    let stagingAppHostingYaml: AppHostingYamlConfig;
 
     const apphostingYamlPaths = ["/parent/cwd/apphosting.yaml", "/parent/apphosting.staging.yaml"];
 
     beforeEach(() => {
-      loadAppHostingYamlStub = sinon.stub(apphostingYamlImport, "loadAppHostingYaml");
-
-      baseAppHostingYaml = new apphostingYamlImport.AppHostingYamlConfig();
+      loadFromFileStub = sinon.stub(AppHostingYamlConfig, "loadFromFile");
+      baseAppHostingYaml = AppHostingYamlConfig.empty();
       baseAppHostingYaml.addEnvironmentVariable({
         variable: "ENV_1",
         value: "base_env_1",
@@ -359,7 +358,7 @@ describe("secrets", () => {
         secret: "base_secret_3",
       });
 
-      stagingAppHostingYaml = new apphostingYamlImport.AppHostingYamlConfig();
+      stagingAppHostingYaml = AppHostingYamlConfig.empty();
       stagingAppHostingYaml.addEnvironmentVariable({
         variable: "ENV_1",
         value: "staging_env_1",
@@ -377,7 +376,7 @@ describe("secrets", () => {
         secret: "staging_secret_2",
       });
 
-      loadAppHostingYamlStub.callsFake(async (filePath) => {
+      loadFromFileStub.callsFake(async (filePath) => {
         if (filePath?.includes("apphosting.staging.yaml")) {
           return Promise.resolve(stagingAppHostingYaml);
         }

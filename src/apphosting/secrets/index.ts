@@ -11,7 +11,7 @@ import * as prompt from "../../prompt";
 import { basename } from "path";
 import { APPHOSTING_BASE_YAML_FILE, APPHOSTING_YAML_FILE_REGEX } from "../config";
 import { getEnvironmentName } from "../utils";
-import { AppHostingYamlConfig, Secret, loadAppHostingYaml } from "../yaml";
+import { AppHostingYamlConfig, Secret } from "../yaml";
 
 /** Interface for holding the service account pair for a given Backend. */
 export interface ServiceAccounts {
@@ -237,11 +237,11 @@ export async function getConfigToExport(
     appHostingfileToExportPath = await promptForAppHostingYaml(fileNameToPathMap);
   }
 
-  const envConfig = await loadAppHostingYaml(appHostingfileToExportPath);
+  const envConfig = await AppHostingYamlConfig.loadFromFile(appHostingfileToExportPath);
 
   // if the base file exists we'll include it
   if (baseFilePath) {
-    const baseConfig = await loadAppHostingYaml(baseFilePath);
+    const baseConfig = await AppHostingYamlConfig.loadFromFile(baseFilePath);
 
     // if the user had selected the base file only, thats okay becuase logic below won't alter the config or cause duplicates
     baseConfig.merge(envConfig);

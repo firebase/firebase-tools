@@ -4,6 +4,7 @@ import { Config, Env, store } from "./config";
 import * as yaml from "yaml";
 import * as jsYaml from "js-yaml";
 import { fileExistsSync } from "../fsutils";
+import { FirebaseError } from "../error";
 
 export type EnvironmentVariable = Omit<Env, "secret">;
 export type Secret = Omit<Env, "availability" | "value">;
@@ -16,31 +17,36 @@ export type Secret = Omit<Env, "availability" | "value">;
  * yaml files.
  */
 export class AppHostingYamlConfig {
-  filePath?: string;
   _loadedAppHostingYaml: Config;
   private _environmentVariables: Map<string, EnvironmentVariable>;
   private _secrets: Map<string, Secret>;
 
-  constructor(filePath?: string) {
-    this.filePath = filePath;
+  static async loadFromFile(filePath: string): Promise<AppHostingYamlConfig> {
+    const config = new AppHostingYamlConfig();
+    if (!fileExistsSync(filePath)) {
+      throw new FirebaseError("Cannot load AppHostingYamlConfig from given path, it doesn't exist");
+    }
+
+    const file = await readFileFromDirectory(dirname(filePath), basename(filePath));
+    config._loadedAppHostingYaml = (await wrappedSafeLoad(file.source)) ?? {};
+
+    if (config._loadedAppHostingYaml.env) {
+      const parsedEnvs = config.parseEnv(config._loadedAppHostingYaml.env);
+      config._environmentVariables = parsedEnvs.environmentVariables;
+      config._secrets = parsedEnvs.secrets;
+    }
+
+    return config;
+  }
+
+  static empty() {
+    return new AppHostingYamlConfig();
+  }
+
+  private constructor() {
     this._loadedAppHostingYaml = {};
     this._environmentVariables = new Map();
     this._secrets = new Map();
-  }
-
-  async init() {
-    // If the file doesn't exist don't load it in, instead it will be used to write to later
-
-    if (this.filePath && fileExistsSync(this.filePath)) {
-      const file = await readFileFromDirectory(dirname(this.filePath), basename(this.filePath));
-      this._loadedAppHostingYaml = (await wrappedSafeLoad(file.source)) ?? {};
-
-      if (this._loadedAppHostingYaml.env) {
-        const parsedEnvs = this.parseEnv(this._loadedAppHostingYaml.env);
-        this._environmentVariables = parsedEnvs.environmentVariables;
-        this._secrets = parsedEnvs.secrets;
-      }
-    }
   }
 
   get environmentVariables(): EnvironmentVariable[] {
@@ -73,20 +79,14 @@ export class AppHostingYamlConfig {
     }
   }
 
-  writeToFile(customFilePath?: string) {
-    if (!this.filePath && !customFilePath) {
-      throw Error("No apphosting yaml file path provided to write to");
-    }
-
-    const pathToWrite = customFilePath ?? this.filePath;
-
+  writeToFile(customFilePath: string) {
     const yamlConfigToWrite = this._loadedAppHostingYaml;
     yamlConfigToWrite.env = [
       ...this.mapToEnv(this._environmentVariables),
       ...this.mapToEnv(this._secrets),
     ];
 
-    store(pathToWrite!, yaml.parseDocument(jsYaml.dump(yamlConfigToWrite)));
+    store(customFilePath, yaml.parseDocument(jsYaml.dump(yamlConfigToWrite)));
   }
 
   private mapToEnv(map: Map<string, Env>): Env[] {
@@ -112,14 +112,4 @@ export class AppHostingYamlConfig {
       secrets,
     };
   }
-}
-
-/**
- * Helper function to load and initialize an AppHostingYamlConfig object
- */
-export async function loadAppHostingYaml(filePath: string): Promise<AppHostingYamlConfig> {
-  const apphostingConfig = new AppHostingYamlConfig(filePath);
-  await apphostingConfig.init();
-
-  return apphostingConfig;
 }

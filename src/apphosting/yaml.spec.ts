@@ -5,7 +5,7 @@ describe("yaml", () => {
   describe("environment variables", () => {
     let apphostingYaml: AppHostingYamlConfig;
     beforeEach(() => {
-      apphostingYaml = new AppHostingYamlConfig();
+      apphostingYaml = AppHostingYamlConfig.empty();
     });
 
     it("adds environment variables and retrieves them correctly", () => {
@@ -53,7 +53,7 @@ describe("yaml", () => {
   describe("secrets", () => {
     let apphostingYaml: AppHostingYamlConfig;
     beforeEach(() => {
-      apphostingYaml = new AppHostingYamlConfig();
+      apphostingYaml = AppHostingYamlConfig.empty();
     });
 
     it("adds environment variables and retrieves them correctly", () => {
@@ -101,7 +101,7 @@ describe("yaml", () => {
   describe("merge", () => {
     let apphostingYaml: AppHostingYamlConfig;
     beforeEach(() => {
-      apphostingYaml = new AppHostingYamlConfig();
+      apphostingYaml = AppHostingYamlConfig.empty();
     });
 
     it("merges incoming apphosting yaml config with precendence", () => {
@@ -122,7 +122,7 @@ describe("yaml", () => {
         secret: "secret_2",
       });
 
-      const incomingAppHostingYaml = new AppHostingYamlConfig();
+      const incomingAppHostingYaml = AppHostingYamlConfig.empty();
       incomingAppHostingYaml.addEnvironmentVariable({
         variable: "ENV_1",
         value: "incoming_env_1",

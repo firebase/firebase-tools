@@ -35,7 +35,7 @@ describe("serve", () => {
       checkListenableStub.onSecondCall().returns(false);
       checkListenableStub.onThirdCall().returns(true);
       configsStub.getLocalAppHostingConfiguration.returns(
-        Promise.resolve(new AppHostingYamlConfig()),
+        Promise.resolve(AppHostingYamlConfig.empty()),
       );
       const res = await serve.start();
       expect(res.port).to.equal(DEFAULT_PORTS.apphosting + 2);
@@ -45,7 +45,7 @@ describe("serve", () => {
       const startCommand = "custom test command";
       checkListenableStub.onFirstCall().returns(true);
       configsStub.getLocalAppHostingConfiguration.returns(
-        Promise.resolve(new AppHostingYamlConfig()),
+        Promise.resolve(AppHostingYamlConfig.empty()),
       );
 
       await serve.start({ startCommand });
