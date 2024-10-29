@@ -7,7 +7,7 @@ import * as deploymentTool from "../deploymentTool";
 import { FirebaseError } from "../error";
 import { DeepOmit, RecursiveKeyOf, assertImplements } from "../metaprogramming";
 
-export const API_VERSION = "v1alpha";
+export const API_VERSION = "v1beta";
 
 export const client = new Client({
   urlPrefix: apphostingOrigin(),
