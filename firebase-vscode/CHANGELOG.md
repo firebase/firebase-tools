@@ -1,6 +1,7 @@
 ## NEXT
 
 - [Added] Persist FIREBASE_BINARY env variable to settings.
+- [Fixed] Fixed an issue where Add data and Read data would generate operations in the wrong folder
 
 ## 0.10.5
 
