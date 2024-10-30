@@ -1,2 +1,3 @@
+- Check that billing is enabled and move App Hosting next to Hosting in init list (#7871).
 - Fix rollouts:create to handle backend regionality & other fixes. (#7862)
 - Fixed Next.js issue with PPR routes not rendering correctly. (#7625)
