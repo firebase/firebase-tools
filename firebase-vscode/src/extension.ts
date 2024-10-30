@@ -61,6 +61,8 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
+    { dispose: analyticsLogger.endSession },
+    { dispose: analyticsLogger.onDispose },
     coreDisposable,
     registerWebview({
       name: "fdc_sidebar",
