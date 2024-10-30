@@ -232,7 +232,12 @@ env:
 
       fs.listFiles
         .withArgs("/parent-parent/parent/cwd")
-        .returns(["apphosting.staging.yaml", "blah.js", "apphosting.foo.bar.yaml"]);
+        .returns([
+          "apphosting.staging.yaml",
+          "blah.js",
+          "apphosting.foo.bar.yaml",
+          "apphosting.staging_test.yaml",
+        ]);
 
       fs.listFiles
         .withArgs("/parent-parent/parent")
@@ -241,6 +246,7 @@ env:
       const apphostingYamls = config.discoverConfigsInProject("/parent-parent/parent/cwd");
       expect(apphostingYamls).to.deep.equal([
         "/parent-parent/parent/cwd/apphosting.staging.yaml",
+        "/parent-parent/parent/cwd/apphosting.staging_test.yaml",
         "/parent-parent/parent/apphosting.local.yaml",
         "/parent-parent/parent/apphosting.yaml",
       ]);

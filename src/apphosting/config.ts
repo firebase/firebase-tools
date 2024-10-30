@@ -9,7 +9,7 @@ import * as dialogs from "./secrets/dialogs";
 
 export const APPHOSTING_BASE_YAML_FILE = "apphosting.yaml";
 export const APPHOSTING_LOCAL_YAML_FILE = "apphosting.local.yaml";
-export const APPHOSTING_YAML_FILE_REGEX = /^apphosting(\.[a-zA-Z0-9]+)?\.yaml$/;
+export const APPHOSTING_YAML_FILE_REGEX = /^apphosting(\.[a-z0-9_]+)?\.yaml$/;
 
 export interface RunConfig {
   concurrency?: number;
