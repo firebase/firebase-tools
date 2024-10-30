@@ -173,7 +173,6 @@ query {
     const dataconnectConfig =
       configs.tryReadValue?.findEnclosingServiceForPath(documentPath);
     const basePath = dataconnectConfig?.path;
-    console.log("HAROLD: ", basePath)
 
     const filePath = vscode.Uri.file(`${basePath}/${ast.name.value}_insert.gql`);
     const doesFileExist = await checkIfFileExists(filePath);
