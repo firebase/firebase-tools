@@ -150,18 +150,14 @@ export class SchemaCodeLensProvider extends ComputedCodeLensProvider {
       if (x.kind === Kind.OBJECT_TYPE_DEFINITION && x.loc) {
         const line = x.loc.startToken.line - 1;
         const range = new vscode.Range(line, 0, line, 0);
-        const position = new vscode.Position(line, 0);
-        const schemaLocation = {
-          documentPath: document.fileName,
-          position: position,
-        };
+        const documentPath = document.fileName;
 
         codeLenses.push(
           new vscode.CodeLens(range, {
             title: `$(database) Add data`,
             command: "firebase.dataConnect.schemaAddData",
             tooltip: "Generate a mutation to add data of this type",
-            arguments: [x, schemaLocation],
+            arguments: [x, documentPath],
           }),
         );
 
@@ -170,7 +166,7 @@ export class SchemaCodeLensProvider extends ComputedCodeLensProvider {
             title: `$(database) Read data`,
             command: "firebase.dataConnect.schemaReadData",
             tooltip: "Generate a query to read data of this type",
-            arguments: [documentNode, x],
+            arguments: [documentNode, x, documentPath],
           }),
         );
       }

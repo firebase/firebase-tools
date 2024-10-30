@@ -154,6 +154,91 @@ firebaseSuite("GraphQL", async function () {
     },
   );
 
+
+  firebaseTest(
+    "Add Data should generate file in correct folder",
+    async function () {
+      const workbench = await browser.getWorkbench();
+
+      const sidebar = new FirebaseSidebar(workbench);
+      await sidebar.openExtensionSidebar();
+
+      const schemaFilePath = path.join(
+        __dirname,
+        "..",
+        "..",
+        "test_projects",
+        "fishfood",
+        "dataconnect",
+        "schema",
+        "schema.gql",
+      );
+
+      // Open the schema file
+      const editorView = new EditorView(workbench);
+      await editorView.openFile(schemaFilePath);
+
+      // Verify that inline Add Data button is displayed
+      const addDataButton = await editorView.addDataButton;
+      await addDataButton.waitForDisplayed();
+
+      // Click the Add Data button
+      await addDataButton.click();
+
+      // Wait a bit for the mutation to be generated
+      await browser.pause(1500);
+
+      // Verify the generated mutation file path
+      const activeEditor = await editorView.getActiveEditor();
+      const filePath = activeEditor?.document.fileName;
+      console.log(filePath);
+      expect(filePath).toBe("../../test_projects/fishfood/Post_insert.gql");
+
+      await editorView.closeCurrentEditor();
+    },
+  );
+
+    firebaseTest(
+      "Read Data should generate file in correct folder",
+      async function () {
+        const workbench = await browser.getWorkbench();
+
+        const sidebar = new FirebaseSidebar(workbench);
+        await sidebar.openExtensionSidebar();
+
+        const schemaFilePath = path.join(
+          __dirname,
+          "..",
+          "..",
+          "test_projects",
+          "fishfood",
+          "dataconnect",
+          "schema",
+          "schema.gql",
+        );
+
+        // Open the schema file
+        const editorView = new EditorView(workbench);
+        await editorView.openFile(schemaFilePath);
+
+        // Verify that inline Read Data button is displayed
+        const readDataButton = await editorView.readDataButton;
+        await readDataButton.waitForDisplayed();
+
+        // Click the Read Data button
+        await readDataButton.click();
+
+        // Wait a bit for the query to be generated
+        await browser.pause(1500);
+
+        // Verify the generated query file path
+        const activeEditor = await editorView.getActiveEditor();
+        const filePath = activeEditor?.document.fileName;
+        expect(filePath).toBe("../../test_projects/fishfood/Post_read.gql");
+        await editorView.closeCurrentEditor();
+      },
+    );
+
   firebaseTest(
     "GraphQL schema file should allow reading new data",
     async function () {
