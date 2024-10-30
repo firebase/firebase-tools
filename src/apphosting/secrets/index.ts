@@ -13,7 +13,7 @@ import {
   APPHOSTING_BASE_YAML_FILE,
   APPHOSTING_LOCAL_YAML_FILE,
   APPHOSTING_YAML_FILE_REGEX,
-  discoverConfigsAlongPath,
+  discoverConfigsAtProjectRoot,
   loadConfigForEnvironment,
 } from "../config";
 import { promptForAppHostingYaml } from "../utils";
@@ -219,7 +219,7 @@ export async function loadConfigToExport(
   }
 
   // Get all apphosting yaml files ignoring the apphosting.local.yaml file
-  const appHostingConfigPaths = discoverConfigsAlongPath(cwd)?.filter(
+  const appHostingConfigPaths = discoverConfigsAtProjectRoot(cwd)?.filter(
     (path) => !path.endsWith(APPHOSTING_LOCAL_YAML_FILE),
   );
   if (!appHostingConfigPaths) {

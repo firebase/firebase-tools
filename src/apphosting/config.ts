@@ -38,17 +38,15 @@ export interface Config {
 }
 
 /**
- * Finds the absolute path of a file.
- * Starts with cwd and walks up the path until fileName is found or
- * we find the project root (where firebase.json is) or the filesystem root;
- * in these cases, returns null.
+ * Finds the project root for apphosting backends.
+ * Starts with cwd and walks up the path until a apphosting.yaml file is found
  *
- * Eample path that's returned: "/home/my-project/<fileName>"
+ * Eample path that's returned: "/home/my-project"
  */
-export function discoverFilePath(cwd: string, fileName: string): string | null {
+export function discoverProjectRoot(cwd: string): string | null {
   let dir = cwd;
 
-  while (!fs.fileExistsSync(resolve(dir, fileName))) {
+  while (!fs.fileExistsSync(resolve(dir, APPHOSTING_BASE_YAML_FILE))) {
     // We've hit project root
     if (fs.fileExistsSync(resolve(dir, "firebase.json"))) {
       return null;
@@ -61,43 +59,41 @@ export function discoverFilePath(cwd: string, fileName: string): string | null {
     }
     dir = parent;
   }
-  return resolve(dir, fileName);
+
+  return dir;
 }
 
 /**
- * Finds absolute paths to `apphosting.*.yaml` configs found in cwd and upwards
- * until project root is reached.
- *
- * This function starts at the provided directory (`cwd`) and moves
- * up the path until it finds a `firebase.json` file
- * (indicating the project root) or reaches the root of the filesystem.
- * Along the way, it collects the paths of all encountered `apphosting.*.yaml` files.
- *
- * @param cwd The directory to start the search from.
- * @returns An array of strings representing the paths to all found `apphosting.*.yaml` files,
- *          or `null` if no such files are found.
+ * Lists absolute paths for `apphosting.*.yaml` configs at project root, if
+ * a project root cannot be found it returns files from cwd.
  */
-export function discoverConfigsAlongPath(cwd: string): string[] | null {
-  let dir = cwd;
-  const files: string[] = [];
-
-  do {
-    const apphostingYamlFiles = fs
-      .listFiles(dir)
-      .filter((file) => APPHOSTING_YAML_FILE_REGEX.test(file));
-    const apphostingYamlFilePaths = apphostingYamlFiles.map((file) => join(dir, file));
-    files.push(...apphostingYamlFilePaths);
-
-    const parent = dirname(dir);
-    // We've hit the filesystem root
-    if (parent === dir) {
-      break;
+export function discoverConfigsAtProjectRoot(cwd: string): string[] | null {
+  const projectRoot = discoverProjectRoot(cwd);
+  if (!projectRoot) {
+    const configsInCwd = listAppHostingFilesInPath(cwd);
+    if (configsInCwd.length === 0) {
+      return null;
     }
 
-    dir = parent;
-  } while (!fs.fileExistsSync(resolve(dir, "firebase.json"))); // We've hit project root
+    return configsInCwd;
+  }
 
-  return files.length > 0 ? files : null;
+  const configsAtRoot = listAppHostingFilesInPath(projectRoot);
+  if (configsAtRoot.length === 0) {
+    return null;
+  }
+
+  return configsAtRoot;
+}
+
+/**
+ * Returns paths of apphosting config files in the given path
+ * */
+function listAppHostingFilesInPath(path: string) {
+  return fs
+    .listFiles(path)
+    .filter((file) => APPHOSTING_YAML_FILE_REGEX.test(file))
+    .map((file) => join(path, file));
 }
 
 /** Load apphosting.yaml */
@@ -156,16 +152,18 @@ export function upsertEnv(document: yaml.Document, env: Env): void {
 export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
   // We must go through the exports object for stubbing to work in tests.
   const dynamicDispatch = exports as {
-    discoverFilePath: typeof discoverFilePath;
+    discoverProjectRoot: typeof discoverProjectRoot;
     load: typeof load;
     findEnv: typeof findEnv;
     upsertEnv: typeof upsertEnv;
     store: typeof store;
   };
   // Note: The API proposal suggested that we would check if the env exists. This is stupidly hard because the YAML may not exist yet.
-  let path = dynamicDispatch.discoverFilePath(process.cwd(), APPHOSTING_BASE_YAML_FILE);
+  const projectRoot = dynamicDispatch.discoverProjectRoot(process.cwd());
+  let path: string | undefined;
   let projectYaml: yaml.Document;
-  if (path) {
+  if (projectRoot) {
+    path = join(projectRoot, APPHOSTING_BASE_YAML_FILE);
     projectYaml = dynamicDispatch.load(path);
   } else {
     projectYaml = new yaml.Document();

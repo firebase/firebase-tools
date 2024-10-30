@@ -305,7 +305,7 @@ describe("secrets", () => {
 
     beforeEach(() => {
       apphostingConfigs = sinon.stub(configImport);
-      apphostingConfigs.discoverConfigsAlongPath.returns([
+      apphostingConfigs.discoverConfigsAtProjectRoot.returns([
         baseYamlPath,
         "/parent/apphosting.staging.yaml",
       ]);
