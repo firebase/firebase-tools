@@ -7,6 +7,7 @@ import * as promptImport from "../prompt";
 import * as dialogs from "./secrets/dialogs";
 import * as config from "./config";
 import { NodeType } from "yaml/dist/nodes/Node";
+import { AppHostingYamlConfig } from "./yaml";
 
 describe("config", () => {
   describe("yamlPath", () => {
@@ -22,7 +23,7 @@ describe("config", () => {
 
     it("finds apphosting.yaml at cwd", () => {
       fs.fileExistsSync.withArgs("/cwd/apphosting.yaml").returns(true);
-      expect(config.yamlPath("/cwd", config.APPHOSTING_BASE_YAML_FILE)).equals(
+      expect(config.discoverFilePath("/cwd", config.APPHOSTING_BASE_YAML_FILE)).equals(
         "/cwd/apphosting.yaml",
       );
     });
@@ -32,7 +33,7 @@ describe("config", () => {
       fs.fileExistsSync.withArgs("/parent/cwd/firebase.json").returns(false);
       fs.fileExistsSync.withArgs("/parent/apphosting.yaml").returns(true);
 
-      expect(config.yamlPath("/parent/cwd", config.APPHOSTING_BASE_YAML_FILE)).equals(
+      expect(config.discoverFilePath("/parent/cwd", config.APPHOSTING_BASE_YAML_FILE)).equals(
         "/parent/apphosting.yaml",
       );
     });
@@ -43,7 +44,7 @@ describe("config", () => {
       fs.fileExistsSync.withArgs("/parent/apphosting.yaml").returns(false);
       fs.fileExistsSync.withArgs("/parent/firebase.json").returns(true);
 
-      expect(config.yamlPath("/parent/cwd", config.APPHOSTING_BASE_YAML_FILE)).equals(null);
+      expect(config.discoverFilePath("/parent/cwd", config.APPHOSTING_BASE_YAML_FILE)).equals(null);
     });
 
     it("returns if it reaches the fs root", () => {
@@ -54,7 +55,7 @@ describe("config", () => {
       fs.fileExistsSync.withArgs("/apphosting.yaml").returns(false);
       fs.fileExistsSync.withArgs("/firebase.json").returns(false);
 
-      expect(config.yamlPath("/parent/cwd", config.APPHOSTING_BASE_YAML_FILE)).equals(null);
+      expect(config.discoverFilePath("/parent/cwd", config.APPHOSTING_BASE_YAML_FILE)).equals(null);
     });
   });
 
@@ -133,7 +134,7 @@ env:
 
     beforeEach(() => {
       prompt = sinon.stub(promptImport);
-      yamlPath = sinon.stub(config, "yamlPath");
+      yamlPath = sinon.stub(config, "discoverFilePath");
       load = sinon.stub(config, "load");
       findEnv = sinon.stub(config, "findEnv");
       upsertEnv = sinon.stub(config, "upsertEnv");
@@ -243,13 +244,112 @@ env:
         .withArgs("/parent-parent/parent")
         .returns(["apphosting.local.yaml", "bloh.txt", "apphosting.yaml"]);
 
-      const apphostingYamls = config.discoverConfigsInProject("/parent-parent/parent/cwd");
+      const apphostingYamls = config.discoverConfigsAlongPath("/parent-parent/parent/cwd");
       expect(apphostingYamls).to.deep.equal([
         "/parent-parent/parent/cwd/apphosting.staging.yaml",
         "/parent-parent/parent/cwd/apphosting.staging_test.yaml",
         "/parent-parent/parent/apphosting.local.yaml",
         "/parent-parent/parent/apphosting.yaml",
       ]);
+    });
+  });
+  describe("loadConfigForEnvironment", () => {
+    let loadFromFileStub: sinon.SinonStub;
+    let baseAppHostingYaml: AppHostingYamlConfig;
+    let stagingAppHostingYaml: AppHostingYamlConfig;
+
+    beforeEach(() => {
+      baseAppHostingYaml = AppHostingYamlConfig.empty();
+      baseAppHostingYaml.addEnvironmentVariable({
+        variable: "ENV_1",
+        value: "base_env_1",
+      });
+      baseAppHostingYaml.addEnvironmentVariable({
+        variable: "ENV_3",
+        value: "base_env_3",
+      });
+      baseAppHostingYaml.addSecret({
+        variable: "SECRET_1",
+        secret: "base_secret_1",
+      });
+      baseAppHostingYaml.addSecret({
+        variable: "SECRET_2",
+        secret: "base_secret_2",
+      });
+      baseAppHostingYaml.addSecret({
+        variable: "SECRET_3",
+        secret: "base_secret_3",
+      });
+
+      stagingAppHostingYaml = AppHostingYamlConfig.empty();
+      stagingAppHostingYaml.addEnvironmentVariable({
+        variable: "ENV_1",
+        value: "staging_env_1",
+      });
+      stagingAppHostingYaml.addEnvironmentVariable({
+        variable: "ENV_2",
+        value: "staging_env_2",
+      });
+      stagingAppHostingYaml.addSecret({
+        variable: "SECRET_1",
+        secret: "staging_secret_1",
+      });
+      stagingAppHostingYaml.addSecret({
+        variable: "SECRET_2",
+        secret: "staging_secret_2",
+      });
+
+      loadFromFileStub = sinon.stub(AppHostingYamlConfig, "loadFromFile");
+      loadFromFileStub.callsFake(async (filePath) => {
+        if (filePath?.includes("apphosting.staging.yaml")) {
+          return Promise.resolve(stagingAppHostingYaml);
+        }
+        return Promise.resolve(baseAppHostingYaml);
+      });
+    });
+
+    afterEach(() => {
+      sinon.verifyAndRestore();
+    });
+
+    it("returns a config that complies with the expected precendence", async () => {
+      const resultingConfig = await config.loadConfigForEnvironment(
+        "/parent/cwd/apphosting.staging.yaml",
+        "/parent/cwd/apphosting.yaml",
+      );
+      expect(JSON.stringify(resultingConfig.environmentVariables)).to.equal(
+        JSON.stringify([
+          { variable: "ENV_1", value: "staging_env_1" },
+          { variable: "ENV_3", value: "base_env_3" },
+          { variable: "ENV_2", value: "staging_env_2" },
+        ]),
+      );
+
+      expect(JSON.stringify(resultingConfig.secrets)).to.equal(
+        JSON.stringify([
+          { variable: "SECRET_1", secret: "staging_secret_1" },
+          { variable: "SECRET_2", secret: "staging_secret_2" },
+          { variable: "SECRET_3", secret: "base_secret_3" },
+        ]),
+      );
+    });
+
+    it("returns appropriate config if only base file was selected", async () => {
+      const resultingConfig = await config.loadConfigForEnvironment("/parent/cwd/apphosting.yaml");
+      expect(JSON.stringify(resultingConfig.environmentVariables)).to.equal(
+        JSON.stringify([
+          { variable: "ENV_1", value: "base_env_1" },
+          { variable: "ENV_3", value: "base_env_3" },
+        ]),
+      );
+
+      expect(JSON.stringify(resultingConfig.secrets)).to.equal(
+        JSON.stringify([
+          { variable: "SECRET_1", secret: "base_secret_1" },
+          { variable: "SECRET_2", secret: "base_secret_2" },
+          { variable: "SECRET_3", secret: "base_secret_3" },
+        ]),
+      );
     });
   });
 });

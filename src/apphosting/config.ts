@@ -6,6 +6,7 @@ import * as fs from "../fsutils";
 import { NodeType } from "yaml/dist/nodes/Node";
 import * as prompt from "../prompt";
 import * as dialogs from "./secrets/dialogs";
+import { AppHostingYamlConfig } from "./yaml";
 
 export const APPHOSTING_BASE_YAML_FILE = "apphosting.yaml";
 export const APPHOSTING_LOCAL_YAML_FILE = "apphosting.local.yaml";
@@ -37,15 +38,17 @@ export interface Config {
 }
 
 /**
- * Finds the path of a yaml file.
- * Starts with cwd and walks up the tree until yamlFileName is found or
+ * Finds the absolute path of a file.
+ * Starts with cwd and walks up the path until fileName is found or
  * we find the project root (where firebase.json is) or the filesystem root;
  * in these cases, returns null.
+ *
+ * Eample path that's returned: "/home/my-project/<fileName>"
  */
-export function yamlPath(cwd: string, yamlFileName: string): string | null {
+export function discoverFilePath(cwd: string, fileName: string): string | null {
   let dir = cwd;
 
-  while (!fs.fileExistsSync(resolve(dir, yamlFileName))) {
+  while (!fs.fileExistsSync(resolve(dir, fileName))) {
     // We've hit project root
     if (fs.fileExistsSync(resolve(dir, "firebase.json"))) {
       return null;
@@ -58,14 +61,15 @@ export function yamlPath(cwd: string, yamlFileName: string): string | null {
     }
     dir = parent;
   }
-  return resolve(dir, yamlFileName);
+  return resolve(dir, fileName);
 }
 
 /**
- * Finds all paths to `apphosting.*.yaml` configs within a project.
+ * Finds absolute paths to `apphosting.*.yaml` configs found in cwd and upwards
+ * until project root is reached.
  *
- * This function starts at the provided directory (`cwd`) and traverses
- * upwards through the file system until it finds a `firebase.json` file
+ * This function starts at the provided directory (`cwd`) and moves
+ * up the path until it finds a `firebase.json` file
  * (indicating the project root) or reaches the root of the filesystem.
  * Along the way, it collects the paths of all encountered `apphosting.*.yaml` files.
  *
@@ -73,7 +77,7 @@ export function yamlPath(cwd: string, yamlFileName: string): string | null {
  * @returns An array of strings representing the paths to all found `apphosting.*.yaml` files,
  *          or `null` if no such files are found.
  */
-export function discoverConfigsInProject(cwd: string): string[] | null {
+export function discoverConfigsAlongPath(cwd: string): string[] | null {
   let dir = cwd;
   const files: string[] = [];
 
@@ -152,14 +156,14 @@ export function upsertEnv(document: yaml.Document, env: Env): void {
 export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
   // We must go through the exports object for stubbing to work in tests.
   const dynamicDispatch = exports as {
-    yamlPath: typeof yamlPath;
+    discoverFilePath: typeof discoverFilePath;
     load: typeof load;
     findEnv: typeof findEnv;
     upsertEnv: typeof upsertEnv;
     store: typeof store;
   };
   // Note: The API proposal suggested that we would check if the env exists. This is stupidly hard because the YAML may not exist yet.
-  let path = dynamicDispatch.yamlPath(process.cwd(), APPHOSTING_BASE_YAML_FILE);
+  let path = dynamicDispatch.discoverFilePath(process.cwd(), APPHOSTING_BASE_YAML_FILE);
   let projectYaml: yaml.Document;
   if (path) {
     projectYaml = dynamicDispatch.load(path);
@@ -191,4 +195,32 @@ export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
     secret: secretName,
   });
   dynamicDispatch.store(path, projectYaml);
+}
+
+/**
+ * Given apphosting yaml config paths this function returns the
+ * appropriate combined configuration.
+ *
+ * Environment specific config (i.e apphosting.<environment>.yaml) will
+ * take precedence over the base config (apphosting.yaml).
+ *
+ * @param envYamlPath: Example: "/home/my-project/apphosting.staging.yaml"
+ * @param baseYamlPath: Example: "/home/my-project/apphosting.yaml"
+ */
+export async function loadConfigForEnvironment(
+  envYamlPath: string,
+  baseYamlPath?: string,
+): Promise<AppHostingYamlConfig> {
+  const envYamlConfig = await AppHostingYamlConfig.loadFromFile(envYamlPath);
+
+  // if the base file exists we'll include it
+  if (baseYamlPath) {
+    const baseConfig = await AppHostingYamlConfig.loadFromFile(baseYamlPath);
+
+    // if the user had selected the base file only, thats okay becuase logic below won't alter the config or cause duplicates
+    baseConfig.merge(envYamlConfig);
+    return baseConfig;
+  }
+
+  return envYamlConfig;
 }

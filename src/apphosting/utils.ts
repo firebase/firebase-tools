@@ -1,4 +1,6 @@
 import { FirebaseError } from "../error";
+import { APPHOSTING_BASE_YAML_FILE } from "./config";
+import * as prompt from "../prompt";
 
 /**
  * Returns <environment> given an apphosting.<environment>.yaml file
@@ -12,4 +14,45 @@ export function getEnvironmentName(apphostingYamlFileName: string): string {
   }
 
   return found[1];
+}
+
+/**
+ * Prompts user for an apphosting yaml file
+ *
+ * Given a map of apphosting yaml file names and their paths, this function
+ * will prompt the user to choose an apphosting configuration. It returns the path
+ * of the chosen apphosting configuration.
+ */
+export async function promptForAppHostingYaml(
+  apphostingFileNameToPathMap: Map<string, string>,
+  promptMessage = "Please select an apphosting config:",
+): Promise<string> {
+  const fileNames = Array.from(apphostingFileNameToPathMap.keys());
+
+  const baseFilePath = apphostingFileNameToPathMap.get(APPHOSTING_BASE_YAML_FILE);
+  const listOptions = fileNames.map((fileName) => {
+    if (fileName === APPHOSTING_BASE_YAML_FILE) {
+      return {
+        name: `base (${APPHOSTING_BASE_YAML_FILE})`,
+        value: baseFilePath,
+      };
+    }
+
+    const environment = getEnvironmentName(fileName);
+    return {
+      name: baseFilePath
+        ? `${environment} (${APPHOSTING_BASE_YAML_FILE} + ${fileName})`
+        : `${environment} (${fileName})`,
+      value: apphostingFileNameToPathMap.get(fileName)!,
+    };
+  });
+
+  const fileToExportPath = await prompt.promptOnce({
+    name: "apphosting-yaml",
+    type: "list",
+    message: promptMessage,
+    choices: listOptions,
+  });
+
+  return fileToExportPath;
 }

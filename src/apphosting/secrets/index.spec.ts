@@ -9,7 +9,7 @@ import * as gce from "../../gcp/computeEngine";
 import * as gcsmImport from "../../gcp/secretManager";
 import * as utilsImport from "../../utils";
 import * as promptImport from "../../prompt";
-import { AppHostingYamlConfig } from "../yaml";
+import * as configImport from "../config";
 
 import { Secret } from "../yaml";
 import { FirebaseError } from "../../error";
@@ -298,146 +298,32 @@ describe("secrets", () => {
     });
   });
 
-  describe("promptForAppHostingYaml", () => {
-    it("should prompt with the correct options", async () => {
-      const apphostingFileNameToPathMap = new Map<string, string>([
-        ["apphosting.yaml", "/parent/cwd/apphosting.yaml"],
-        ["apphosting.staging.yaml", "/parent/apphosting.staging.yaml"],
-      ]);
+  describe("loadConfigToExport", () => {
+    let apphostingConfigs: sinon.SinonStubbedInstance<typeof configImport>;
 
-      prompt.promptOnce.returns(Promise.resolve());
-
-      await secrets.promptForAppHostingYaml(apphostingFileNameToPathMap);
-
-      expect(prompt.promptOnce).to.have.been.calledWith({
-        name: "apphosting-yaml",
-        type: "list",
-        message: "Which environment would you like to export secrets from Secret Manager for?",
-        choices: [
-          {
-            name: "base (apphosting.yaml)",
-            value: "/parent/cwd/apphosting.yaml",
-          },
-          {
-            name: "staging (apphosting.yaml + apphosting.staging.yaml)",
-            value: "/parent/apphosting.staging.yaml",
-          },
-        ],
-      });
-    });
-  });
-
-  describe("getConfigToExport", () => {
-    let loadFromFileStub: sinon.SinonStub;
-    let baseAppHostingYaml: AppHostingYamlConfig;
-    let stagingAppHostingYaml: AppHostingYamlConfig;
-
-    const apphostingYamlPaths = ["/parent/cwd/apphosting.yaml", "/parent/apphosting.staging.yaml"];
+    const baseYamlPath = "/parent/cwd/apphosting.yaml";
 
     beforeEach(() => {
-      loadFromFileStub = sinon.stub(AppHostingYamlConfig, "loadFromFile");
-      baseAppHostingYaml = AppHostingYamlConfig.empty();
-      baseAppHostingYaml.addEnvironmentVariable({
-        variable: "ENV_1",
-        value: "base_env_1",
-      });
-      baseAppHostingYaml.addEnvironmentVariable({
-        variable: "ENV_3",
-        value: "base_env_3",
-      });
-      baseAppHostingYaml.addSecret({
-        variable: "SECRET_1",
-        secret: "base_secret_1",
-      });
-      baseAppHostingYaml.addSecret({
-        variable: "SECRET_2",
-        secret: "base_secret_2",
-      });
-      baseAppHostingYaml.addSecret({
-        variable: "SECRET_3",
-        secret: "base_secret_3",
-      });
-
-      stagingAppHostingYaml = AppHostingYamlConfig.empty();
-      stagingAppHostingYaml.addEnvironmentVariable({
-        variable: "ENV_1",
-        value: "staging_env_1",
-      });
-      stagingAppHostingYaml.addEnvironmentVariable({
-        variable: "ENV_2",
-        value: "staging_env_2",
-      });
-      stagingAppHostingYaml.addSecret({
-        variable: "SECRET_1",
-        secret: "staging_secret_1",
-      });
-      stagingAppHostingYaml.addSecret({
-        variable: "SECRET_2",
-        secret: "staging_secret_2",
-      });
-
-      loadFromFileStub.callsFake(async (filePath) => {
-        if (filePath?.includes("apphosting.staging.yaml")) {
-          return Promise.resolve(stagingAppHostingYaml);
-        }
-        return Promise.resolve(baseAppHostingYaml);
-      });
+      apphostingConfigs = sinon.stub(configImport);
+      apphostingConfigs.discoverConfigsAlongPath.returns([
+        baseYamlPath,
+        "/parent/apphosting.staging.yaml",
+      ]);
     });
 
     afterEach(() => {
       sinon.verifyAndRestore();
     });
 
-    it("returns a config that complies with the expected precendence", async () => {
-      prompt.promptOnce.onFirstCall().returns(Promise.resolve("/parent/apphosting.staging.yaml"));
-
-      const resultingConfig = await secrets.getConfigToExport(apphostingYamlPaths);
-      expect(JSON.stringify(resultingConfig.environmentVariables)).to.equal(
-        JSON.stringify([
-          { variable: "ENV_1", value: "staging_env_1" },
-          { variable: "ENV_3", value: "base_env_3" },
-          { variable: "ENV_2", value: "staging_env_2" },
-        ]),
-      );
-
-      expect(JSON.stringify(resultingConfig.secrets)).to.equal(
-        JSON.stringify([
-          { variable: "SECRET_1", secret: "staging_secret_1" },
-          { variable: "SECRET_2", secret: "staging_secret_2" },
-          { variable: "SECRET_3", secret: "base_secret_3" },
-        ]),
-      );
-    });
-
-    it("returns appropriate config if only base file was selected", async () => {
-      prompt.promptOnce.onFirstCall().returns(Promise.resolve("/parent/apphosting.yaml"));
-
-      const resultingConfig = await secrets.getConfigToExport(apphostingYamlPaths);
-      expect(JSON.stringify(resultingConfig.environmentVariables)).to.equal(
-        JSON.stringify([
-          { variable: "ENV_1", value: "base_env_1" },
-          { variable: "ENV_3", value: "base_env_3" },
-        ]),
-      );
-
-      expect(JSON.stringify(resultingConfig.secrets)).to.equal(
-        JSON.stringify([
-          { variable: "SECRET_1", secret: "base_secret_1" },
-          { variable: "SECRET_2", secret: "base_secret_2" },
-          { variable: "SECRET_3", secret: "base_secret_3" },
-        ]),
-      );
-    });
-
     it("returns throws an error if an invalid apphosting yaml if provided", async () => {
-      await expect(secrets.getConfigToExport(apphostingYamlPaths, "blah.txt")).to.be.rejectedWith(
+      await expect(secrets.loadConfigToExport("/parent/cwd", "blah.txt")).to.be.rejectedWith(
         FirebaseError,
-        /Invalid apphosting yaml file provided. File must be in format: 'apphosting.yaml' or 'apphosting.<environment>.yaml'/,
+        "Invalid apphosting yaml config file provided. File must be in format: 'apphosting.yaml' or 'apphosting.<environment>.yaml'",
       );
     });
 
     it("does not prompt user if an appHostingfileToExportPath is provided", async () => {
-      await secrets.getConfigToExport(apphostingYamlPaths, "apphosting.staging.yaml");
+      await secrets.loadConfigToExport("/parent/awd", "apphosting.staging.yaml");
       expect(prompt.promptOnce).to.not.be.called;
     });
   });

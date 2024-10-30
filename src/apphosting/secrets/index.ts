@@ -9,8 +9,14 @@ import { isFunctionsManaged } from "../../gcp/secretManager";
 import * as utils from "../../utils";
 import * as prompt from "../../prompt";
 import { basename } from "path";
-import { APPHOSTING_BASE_YAML_FILE, APPHOSTING_YAML_FILE_REGEX } from "../config";
-import { getEnvironmentName } from "../utils";
+import {
+  APPHOSTING_BASE_YAML_FILE,
+  APPHOSTING_LOCAL_YAML_FILE,
+  APPHOSTING_YAML_FILE_REGEX,
+  discoverConfigsAlongPath,
+  loadConfigForEnvironment,
+} from "../config";
+import { promptForAppHostingYaml } from "../utils";
 import { AppHostingYamlConfig, Secret } from "../yaml";
 
 /** Interface for holding the service account pair for a given Backend. */
@@ -180,15 +186,7 @@ export async function fetchSecrets(
 
   try {
     const secretPromises: Promise<[string, string]>[] = secrets.map(async (secretConfig) => {
-      /**
-       * secretConfig.secret expected to be in fromat "myApiKeySecret@5",
-       * "projects/test-project/secrets/secretID", or
-       * "projects/test-project/secrets/secretID/versions/5"
-       */
-      let [name, version] = secretConfig.secret!.split("@");
-      if (!version) {
-        version = "latest";
-      }
+      const [name, version] = getSecretNameParts(secretConfig.secret!);
 
       const value = await gcsm.accessSecretVersion(projectId, name, version);
       return [secretConfig.variable, value] as [string, string];
@@ -206,87 +204,58 @@ export async function fetchSecrets(
 }
 
 /**
- * Determines the appropriate App Hosting YAML configuration for exporting secrets.
+ * Returns the appropriate App Hosting YAML configuration for exporting secrets.
  *
- * When exporting secrets, users need to select an `apphosting.*.yaml` file that corresponds
- * to the environment they want to export from.
- *
- * Environment-specific configurations are prioritized over the default `apphosting.yaml`
- * to ensure the exported secrets accurately reflect the chosen environment.
- *
- * @param allAppHostingYamlPaths An array of paths to all available `apphosting.*.yaml` files.
+ * @returns The final merged config
  */
-export async function getConfigToExport(
-  allAppHostingYamlPaths: string[],
-  appHostingfileToExportPath?: string,
+export async function loadConfigToExport(
+  cwd: string,
+  environmentConfigFile?: string,
 ): Promise<AppHostingYamlConfig> {
-  if (appHostingfileToExportPath && !APPHOSTING_YAML_FILE_REGEX.test(appHostingfileToExportPath)) {
+  if (environmentConfigFile && !APPHOSTING_YAML_FILE_REGEX.test(environmentConfigFile)) {
     throw new FirebaseError(
-      "Invalid apphosting yaml file provided. File must be in format: 'apphosting.yaml' or 'apphosting.<environment>.yaml'",
+      "Invalid apphosting yaml config file provided. File must be in format: 'apphosting.yaml' or 'apphosting.<environment>.yaml'",
     );
   }
 
+  // Get all apphosting yaml files ignoring the apphosting.local.yaml file
+  const appHostingConfigPaths = discoverConfigsAlongPath(cwd)?.filter(
+    (path) => !path.endsWith(APPHOSTING_LOCAL_YAML_FILE),
+  );
+  if (!appHostingConfigPaths) {
+    throw new FirebaseError("No apphosting configs found");
+  }
+
+  // generate a map to make it easier to interface between file name and it's path
   const fileNameToPathMap: Map<string, string> = new Map();
-  for (const path of allAppHostingYamlPaths) {
+  for (const path of appHostingConfigPaths) {
     const fileName = basename(path);
     fileNameToPathMap.set(fileName, path);
   }
-  const baseFilePath = fileNameToPathMap.get(APPHOSTING_BASE_YAML_FILE);
-  if (!appHostingfileToExportPath) {
+
+  const baseFilePath = fileNameToPathMap.get(APPHOSTING_BASE_YAML_FILE)!;
+  let environmentConfigFilePath = baseFilePath;
+  if (!environmentConfigFile) {
     // If file is not provided, prompt the user
-    appHostingfileToExportPath = await promptForAppHostingYaml(fileNameToPathMap);
+    environmentConfigFilePath = await promptForAppHostingYaml(
+      fileNameToPathMap,
+      "Which environment would you like to export secrets from Secret Manager for?",
+    );
   }
 
-  const envConfig = await AppHostingYamlConfig.loadFromFile(appHostingfileToExportPath);
-
-  // if the base file exists we'll include it
-  if (baseFilePath) {
-    const baseConfig = await AppHostingYamlConfig.loadFromFile(baseFilePath);
-
-    // if the user had selected the base file only, thats okay becuase logic below won't alter the config or cause duplicates
-    baseConfig.merge(envConfig);
-    return baseConfig;
-  }
-
-  return envConfig;
+  return await loadConfigForEnvironment(environmentConfigFilePath, baseFilePath);
 }
 
 /**
- * Prompts user for an apphosting yaml file
- *
- * Given a map of apphosting yaml file names and their paths, this function
- * will prompt the user for an apphosting configuration. It returns the path
- * of the chosen apphosting yaml file.
+ * secret expected to be in format "myApiKeySecret@5",
+ * "projects/test-project/secrets/secretID", or
+ * "projects/test-project/secrets/secretID/versions/5"
  */
-export async function promptForAppHostingYaml(
-  apphostingFileNameToPathMap: Map<string, string>,
-): Promise<string> {
-  const fileNames = Array.from(apphostingFileNameToPathMap.keys());
+export function getSecretNameParts(secret: string): [string, string] {
+  let [name, version] = secret.split("@");
+  if (!version) {
+    version = "latest";
+  }
 
-  const baseFilePath = apphostingFileNameToPathMap.get(APPHOSTING_BASE_YAML_FILE);
-  const listOptions = fileNames.map((fileName) => {
-    if (fileName === APPHOSTING_BASE_YAML_FILE) {
-      return {
-        name: `base (${APPHOSTING_BASE_YAML_FILE})`,
-        value: baseFilePath,
-      };
-    }
-
-    const environment = getEnvironmentName(fileName);
-    return {
-      name: baseFilePath
-        ? `${environment} (${APPHOSTING_BASE_YAML_FILE} + ${fileName})`
-        : `${environment} (${fileName})`,
-      value: apphostingFileNameToPathMap.get(fileName)!,
-    };
-  });
-
-  const fileToExportPath = await prompt.promptOnce({
-    name: "apphosting-yaml",
-    type: "list",
-    message: "Which environment would you like to export secrets from Secret Manager for?",
-    choices: listOptions,
-  });
-
-  return fileToExportPath;
+  return [name, version];
 }

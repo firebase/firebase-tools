@@ -20,6 +20,11 @@ export class AppHostingYamlConfig {
   private _environmentVariables: Map<string, EnvironmentVariable>;
   private _secrets: Map<string, Secret>;
 
+  /**
+   * Reads in the apphosting yaml file found in filePath, parses the secrets and
+   * environment variables, and returns an object that makes it easier to
+   * programatically read or manipulate the apphosting config.
+   */
   static async loadFromFile(filePath: string): Promise<AppHostingYamlConfig> {
     const config = new AppHostingYamlConfig();
     if (!fileExistsSync(filePath)) {
@@ -38,6 +43,10 @@ export class AppHostingYamlConfig {
     return config;
   }
 
+  /**
+   * Simply returns an empty AppHostingYamlConfig (no environment variables
+   * or secrets).
+   */
   static empty() {
     return new AppHostingYamlConfig();
   }
@@ -48,11 +57,11 @@ export class AppHostingYamlConfig {
   }
 
   get environmentVariables(): EnvironmentVariable[] {
-    return mapToEnv(this._environmentVariables);
+    return mapToArray(this._environmentVariables);
   }
 
   get secrets(): Secret[] {
-    return mapToEnv(this._secrets);
+    return mapToArray(this._secrets);
   }
 
   addEnvironmentVariable(env: EnvironmentVariable) {
@@ -81,7 +90,7 @@ export class AppHostingYamlConfig {
    * Loads the given file if it exists and updates it. If
    * it does not exist a new file will be created.
    */
-  async writeToFile(filePath: string) {
+  async upsertFile(filePath: string) {
     let yamlConfigToWrite: Config = {};
 
     if (fileExistsSync(filePath)) {
@@ -115,6 +124,6 @@ function parseEnv(envs: Env[]) {
   };
 }
 
-function mapToEnv(map: Map<string, Env>): Env[] {
+function mapToArray(map: Map<string, Env>): Env[] {
   return Array.from(map.values());
 }
