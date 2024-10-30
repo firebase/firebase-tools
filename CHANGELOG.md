@@ -1,3 +1,4 @@
 - Check that billing is enabled and move App Hosting next to Hosting in init list (#7871).
 - Fix rollouts:create to handle backend regionality & other fixes. (#7862)
 - Fixed Next.js issue with PPR routes not rendering correctly. (#7625)
+- Bump the Firebase Data Connect local toolkit version to v1.6.0, which adds support for `upsertMany`, introduces `vars` as a shorthand for `request.variables` in `@auth` expressions, adds new methods to `GeneratedConnector` and `GeneratedOperation` implementations in Kotlin codegen (requires the v16.0.0-beta03 SDK), and fixes the use of Timestamp with optional types in Dart codegen (#7888).
