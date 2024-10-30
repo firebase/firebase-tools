@@ -79,9 +79,6 @@ export class DataConnectEmulator implements EmulatorInstance {
       this.logger.log("DEBUG", `'fdc build' failed with error: ${err.message}`);
     }
 
-    const info = await load(this.args.projectId, this.args.config, this.args.configDir);
-    const dbId = info.dataConnectYaml.schema.datasource.postgresql?.database || "postgres";
-    const serviceId = info.dataConnectYaml.serviceId;
     await start(Emulators.DATACONNECT, {
       auto_download: this.args.auto_download,
       listen: listenSpecsToString(this.args.listen),
@@ -91,6 +88,9 @@ export class DataConnectEmulator implements EmulatorInstance {
     });
     this.usingExistingEmulator = false;
     if (this.args.autoconnectToPostgres) {
+      const info = await load(this.args.projectId, this.args.config, this.args.configDir);
+      const dbId = info.dataConnectYaml.schema.datasource.postgresql?.database || "postgres";
+      const serviceId = info.dataConnectYaml.serviceId;
       const pgPort = this.args.postgresListen?.[0].port;
       const pgHost = this.args.postgresListen?.[0].address;
       let connStr = dataConnectLocalConnString();
