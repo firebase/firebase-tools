@@ -1,7 +1,7 @@
 ## NEXT
 
 - [Added] Persist FIREBASE_BINARY env variable to settings.
-- [Fixed] Fixed an issue where .firebaseRC was being overwritten by the extension
+- [Fixed] Fixed an issue where .firebaseRC was being overwritten by the extension (#7861)
 
 ## 0.10.5
 
