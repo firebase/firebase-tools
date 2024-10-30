@@ -103,11 +103,17 @@ async function checkCLIInstallation(): Promise<void> {
           : "curl -sL https://firebase.tools | bash"
       }`;
     } else if (semver.lt(currentVersion, latestVersion)) {
-      message = `There is an outdated version of the Firebase CLI installed on your system. We recommened updating to the latest verion by running ${
-        npmVersion
-          ? "npm install -g firebase-tools"
-          : "curl -sL https://firebase.tools | upgrade=true bash"
-      }`;
+      let installCommand =
+        "curl -sL https://firebase.tools | upgrade=true bash";
+      if (npmVersion) {
+        // Despite the presence of npm, the existing command may be standalone.
+        // Run a special standalone-specific command to tell if it actually is.
+        const checkRes = spawnSync("firebase", ["--tool:setup-check"], { env });
+        if (checkRes.status !== 0) {
+          installCommand = "npm install -g firebase-tools@latest";
+        }
+      }
+      message = `There is an outdated version of the Firebase CLI installed on your system. We recommened updating to the latest verion by running ${installCommand}`;
     } else {
       pluginLogger.info(`Checked firebase-tools, is up to date!`);
     }
