@@ -53,6 +53,7 @@ describe("Backend", () => {
     },
   };
   const RUN_URI = "https://id-nonce-region-project.run.app";
+  const GCF_URL = "https://region-project.cloudfunctions.net/id";
   const HAVE_CLOUD_FUNCTION_V2: gcfV2.OutputCloudFunction = {
     ...CLOUD_FUNCTION_V2,
     serviceConfig: {
@@ -61,6 +62,7 @@ describe("Backend", () => {
       availableCpu: "1",
       maxInstanceRequestConcurrency: 80,
     },
+    url: GCF_URL,
     state: "ACTIVE",
     updateTime: new Date(),
   };
