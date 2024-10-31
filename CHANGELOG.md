@@ -1,0 +1,1 @@
+- Added support for Next.js 15. (#7588)
