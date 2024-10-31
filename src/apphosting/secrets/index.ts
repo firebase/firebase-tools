@@ -13,7 +13,7 @@ import {
   APPHOSTING_BASE_YAML_FILE,
   APPHOSTING_LOCAL_YAML_FILE,
   APPHOSTING_YAML_FILE_REGEX,
-  discoverConfigsAtProjectRoot,
+  discoverConfigsAtBackendRoot,
   loadConfigForEnvironment,
 } from "../config";
 import { promptForAppHostingYaml } from "../utils";
@@ -210,42 +210,59 @@ export async function fetchSecrets(
  */
 export async function loadConfigToExport(
   cwd: string,
-  environmentConfigFile?: string,
+  userGivenConfigFile?: string,
 ): Promise<AppHostingYamlConfig> {
-  if (environmentConfigFile && !APPHOSTING_YAML_FILE_REGEX.test(environmentConfigFile)) {
+  if (userGivenConfigFile && !APPHOSTING_YAML_FILE_REGEX.test(userGivenConfigFile)) {
     throw new FirebaseError(
       "Invalid apphosting yaml config file provided. File must be in format: 'apphosting.yaml' or 'apphosting.<environment>.yaml'",
     );
   }
 
-  // Get all apphosting yaml files ignoring the apphosting.local.yaml file
-  const appHostingConfigPaths = discoverConfigsAtProjectRoot(cwd)?.filter(
-    (path) => !path.endsWith(APPHOSTING_LOCAL_YAML_FILE),
-  );
-  if (!appHostingConfigPaths) {
-    throw new FirebaseError("No apphosting configs found");
+  const allConfigs = discoverConfigs(cwd);
+  let userGivenConfigFilePath: string;
+  if (userGivenConfigFile) {
+    if (!allConfigs.has(userGivenConfigFile)) {
+      throw new FirebaseError(
+        `The provided app hosting config file "${userGivenConfigFile}" does not exist`,
+      );
+    }
+
+    userGivenConfigFilePath = allConfigs.get(userGivenConfigFile)!;
+  } else {
+    userGivenConfigFilePath = await promptForAppHostingYaml(
+      allConfigs,
+      "Which environment would you like to export secrets from Secret Manager for?",
+    );
   }
 
-  // generate a map to make it easier to interface between file name and it's path
+  if (userGivenConfigFile === APPHOSTING_BASE_YAML_FILE) {
+    return AppHostingYamlConfig.loadFromFile(allConfigs.get(APPHOSTING_BASE_YAML_FILE)!);
+  }
+
+  const baseFilePath = allConfigs.get(APPHOSTING_BASE_YAML_FILE)!;
+  return await loadConfigForEnvironment(userGivenConfigFilePath, baseFilePath);
+}
+
+/**
+ * Gets all apphosting yaml configs excluding apphosting.local.yaml and returns
+ * a map in the format {"apphosting.staging.yaml" => "/cwd/apphosting.staging.yaml"}.
+ */
+function discoverConfigs(cwd: string): Map<string, string> {
+  const appHostingConfigPaths = discoverConfigsAtBackendRoot(cwd).filter(
+    (path) => !path.endsWith(APPHOSTING_LOCAL_YAML_FILE),
+  );
+  if (appHostingConfigPaths.length === 0) {
+    throw new FirebaseError("No apphosting.*.yaml configs found");
+  }
+
   const fileNameToPathMap: Map<string, string> = new Map();
   for (const path of appHostingConfigPaths) {
     const fileName = basename(path);
     fileNameToPathMap.set(fileName, path);
   }
 
-  const baseFilePath = fileNameToPathMap.get(APPHOSTING_BASE_YAML_FILE)!;
-  let environmentConfigFilePath = baseFilePath;
-  if (!environmentConfigFile) {
-    // If file is not provided, prompt the user
-    environmentConfigFilePath = await promptForAppHostingYaml(
-      fileNameToPathMap,
-      "Which environment would you like to export secrets from Secret Manager for?",
-    );
-  }
-
-  return await loadConfigForEnvironment(environmentConfigFilePath, baseFilePath);
+  return fileNameToPathMap;
 }
-
 /**
  * secret expected to be in format "myApiKeySecret@5",
  * "projects/test-project/secrets/secretID", or

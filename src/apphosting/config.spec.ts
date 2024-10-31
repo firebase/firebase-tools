@@ -10,7 +10,7 @@ import { NodeType } from "yaml/dist/nodes/Node";
 import { AppHostingYamlConfig } from "./yaml";
 
 describe("config", () => {
-  describe("discoverProjectRoot", () => {
+  describe("discoverBackendRoot", () => {
     let fs: sinon.SinonStubbedInstance<typeof fsImport>;
 
     beforeEach(() => {
@@ -23,7 +23,7 @@ describe("config", () => {
 
     it("finds apphosting.yaml at cwd", () => {
       fs.fileExistsSync.withArgs("/cwd/apphosting.yaml").returns(true);
-      expect(config.discoverProjectRoot("/cwd")).equals("/cwd");
+      expect(config.discoverBackendRoot("/cwd")).equals("/cwd");
     });
 
     it("finds apphosting.yaml in a parent directory", () => {
@@ -31,7 +31,7 @@ describe("config", () => {
       fs.fileExistsSync.withArgs("/parent/cwd/firebase.json").returns(false);
       fs.fileExistsSync.withArgs("/parent/apphosting.yaml").returns(true);
 
-      expect(config.discoverProjectRoot("/parent/cwd")).equals("/parent");
+      expect(config.discoverBackendRoot("/parent/cwd")).equals("/parent");
     });
 
     it("returns null if it finds firebase.json without finding apphosting.yaml", () => {
@@ -40,7 +40,7 @@ describe("config", () => {
       fs.fileExistsSync.withArgs("/parent/apphosting.yaml").returns(false);
       fs.fileExistsSync.withArgs("/parent/firebase.json").returns(true);
 
-      expect(config.discoverProjectRoot("/parent/cwd")).equals(null);
+      expect(config.discoverBackendRoot("/parent/cwd")).equals(null);
     });
 
     it("returns if it reaches the fs root", () => {
@@ -51,7 +51,7 @@ describe("config", () => {
       fs.fileExistsSync.withArgs("/apphosting.yaml").returns(false);
       fs.fileExistsSync.withArgs("/firebase.json").returns(false);
 
-      expect(config.discoverProjectRoot("/parent/cwd")).equals(null);
+      expect(config.discoverBackendRoot("/parent/cwd")).equals(null);
     });
   });
 
@@ -121,7 +121,7 @@ env:
 
   describe("maybeAddSecretToYaml", () => {
     let prompt: sinon.SinonStubbedInstance<typeof promptImport>;
-    let discoverProjectRootForBackend: sinon.SinonStub;
+    let discoverBackendRoot: sinon.SinonStub;
     let load: sinon.SinonStub;
     let findEnv: sinon.SinonStub;
     let upsertEnv: sinon.SinonStub;
@@ -130,7 +130,7 @@ env:
 
     beforeEach(() => {
       prompt = sinon.stub(promptImport);
-      discoverProjectRootForBackend = sinon.stub(config, "discoverProjectRoot");
+      discoverBackendRoot = sinon.stub(config, "discoverBackendRoot");
       load = sinon.stub(config, "load");
       findEnv = sinon.stub(config, "findEnv");
       upsertEnv = sinon.stub(config, "upsertEnv");
@@ -144,13 +144,13 @@ env:
 
     it("noops if the env already exists", async () => {
       const doc = yaml.parseDocument("{}");
-      discoverProjectRootForBackend.returns("CWD");
+      discoverBackendRoot.returns("CWD");
       load.returns(doc);
       findEnv.withArgs(doc, "SECRET").returns({ variable: "SECRET", secret: "SECRET" });
 
       await config.maybeAddSecretToYaml("SECRET");
 
-      expect(discoverProjectRootForBackend).to.have.been.called;
+      expect(discoverBackendRoot).to.have.been.called;
       expect(load).to.have.been.calledWith("CWD/apphosting.yaml");
       expect(prompt.confirm).to.not.have.been.called;
       expect(prompt.promptOnce).to.not.have.been.called;
@@ -158,7 +158,7 @@ env:
 
     it("inserts into an existing doc", async () => {
       const doc = yaml.parseDocument("{}");
-      discoverProjectRootForBackend.returns("CWD");
+      discoverBackendRoot.returns("CWD");
       load.withArgs(path.join("CWD", "apphosting.yaml")).returns(doc);
       findEnv.withArgs(doc, "SECRET").returns(undefined);
       prompt.confirm.resolves(true);
@@ -166,7 +166,7 @@ env:
 
       await config.maybeAddSecretToYaml("SECRET");
 
-      expect(discoverProjectRootForBackend).to.have.been.called;
+      expect(discoverBackendRoot).to.have.been.called;
       expect(load).to.have.been.calledWith("CWD/apphosting.yaml");
       expect(prompt.confirm).to.have.been.calledWithMatch({
         message: "Would you like to add this secret to apphosting.yaml?",
@@ -183,7 +183,7 @@ env:
 
     it("inserts into an new doc", async () => {
       const doc = new yaml.Document();
-      discoverProjectRootForBackend.returns(null);
+      discoverBackendRoot.returns(null);
       findEnv.withArgs(doc, "SECRET").returns(undefined);
       prompt.confirm.resolves(true);
       prompt.promptOnce.resolves("CWD");
@@ -191,7 +191,7 @@ env:
 
       await config.maybeAddSecretToYaml("SECRET");
 
-      expect(discoverProjectRootForBackend).to.have.been.called;
+      expect(discoverBackendRoot).to.have.been.called;
       expect(load).to.not.have.been.called;
       expect(prompt.confirm).to.have.been.calledWithMatch({
         message: "Would you like to add this secret to apphosting.yaml?",
@@ -234,7 +234,7 @@ env:
         .withArgs("/project-root")
         .returns(["apphosting.yaml", "test4.js", "apphosting.staging.yaml"]);
 
-      const apphostingYamls = config.discoverConfigsAtProjectRoot("/project-root/parent/cwd");
+      const apphostingYamls = config.discoverConfigsAtBackendRoot("/project-root/parent/cwd");
       expect(apphostingYamls).to.deep.equal([
         "/project-root/apphosting.yaml",
         "/project-root/apphosting.staging.yaml",

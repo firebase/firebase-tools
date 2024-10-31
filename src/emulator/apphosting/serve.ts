@@ -8,9 +8,9 @@ import { checkListenable } from "../portUtils";
 import { discoverPackageManager } from "./utils";
 import { DEFAULT_HOST, DEFAULT_PORTS } from "../constants";
 import { spawnWithCommandString, wrapSpawn } from "../../init/spawn";
-import { getLocalAppHostingConfiguration } from "./config";
 import { logger } from "./utils";
 import { Emulators } from "../types";
+import { getLocalAppHostingConfiguration } from "./config";
 
 interface StartOptions {
   startCommand?: string;

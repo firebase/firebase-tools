@@ -1,44 +1,30 @@
-import { join } from "path";
-import { pathExists } from "fs-extra";
-import { logger } from "./utils";
-import { Emulators } from "../types";
-import { APPHOSTING_BASE_YAML_FILE, APPHOSTING_LOCAL_YAML_FILE } from "../../apphosting/config";
+import { basename } from "path";
+import {
+  APPHOSTING_BASE_YAML_FILE,
+  APPHOSTING_LOCAL_YAML_FILE,
+  discoverConfigsAtBackendRoot,
+  loadConfigForEnvironment,
+} from "../../apphosting/config";
 import { AppHostingYamlConfig } from "../../apphosting/yaml";
 
 /**
  * Loads in apphosting.yaml & apphosting.local.yaml, giving
  * apphosting.local.yaml precedence if present.
  */
-export async function getLocalAppHostingConfiguration(
-  sourceDirectory: string,
-): Promise<AppHostingYamlConfig> {
-  const config: AppHostingYamlConfig = AppHostingYamlConfig.empty();
+export async function getLocalAppHostingConfiguration(cwd: string): Promise<AppHostingYamlConfig> {
+  // Get all apphosting yaml files ignoring the apphosting.local.yaml file
+  const appHostingConfigPaths = discoverConfigsAtBackendRoot(cwd).filter(
+    (path) => !path.endsWith(APPHOSTING_LOCAL_YAML_FILE),
+  );
 
-  if (await pathExists(join(sourceDirectory, APPHOSTING_BASE_YAML_FILE))) {
-    logger.logLabeled(
-      "SUCCESS",
-      Emulators.APPHOSTING,
-      `${APPHOSTING_BASE_YAML_FILE} found, loading configuration`,
-    );
-
-    const baseConfig = await AppHostingYamlConfig.loadFromFile(
-      join(sourceDirectory, APPHOSTING_BASE_YAML_FILE),
-    );
-    config.merge(baseConfig);
+  // generate a map to make it easier to interface between file name and it's path
+  const fileNameToPathMap: Map<string, string> = new Map();
+  for (const path of appHostingConfigPaths) {
+    const fileName = basename(path);
+    fileNameToPathMap.set(fileName, path);
   }
 
-  if (await pathExists(join(sourceDirectory, APPHOSTING_LOCAL_YAML_FILE))) {
-    logger.logLabeled(
-      "SUCCESS",
-      Emulators.APPHOSTING,
-      `${APPHOSTING_LOCAL_YAML_FILE} found, loading configuration`,
-    );
-
-    const localConfig = await AppHostingYamlConfig.loadFromFile(
-      join(sourceDirectory, APPHOSTING_LOCAL_YAML_FILE),
-    );
-    config.merge(localConfig);
-  }
-
-  return config;
+  const baseFilePath = fileNameToPathMap.get(APPHOSTING_BASE_YAML_FILE)!;
+  const localFilePath = fileNameToPathMap.get(APPHOSTING_LOCAL_YAML_FILE)!;
+  return await loadConfigForEnvironment(localFilePath, baseFilePath);
 }

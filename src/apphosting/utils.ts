@@ -1,25 +1,24 @@
 import { FirebaseError } from "../error";
-import { APPHOSTING_BASE_YAML_FILE } from "./config";
+import { APPHOSTING_BASE_YAML_FILE, APPHOSTING_YAML_FILE_REGEX } from "./config";
 import * as prompt from "../prompt";
 
 /**
  * Returns <environment> given an apphosting.<environment>.yaml file
  */
 export function getEnvironmentName(apphostingYamlFileName: string): string {
-  const envrionmentRegex = /apphosting\.(.+)\.yaml/;
-  const found = apphostingYamlFileName.match(envrionmentRegex);
-
-  if (!found) {
+  const found = apphostingYamlFileName.match(APPHOSTING_YAML_FILE_REGEX);
+  if (!found || found.length < 2 || !found[1]) {
     throw new FirebaseError("Invalid apphosting environment file");
   }
 
-  return found[1];
+  return found[1].replaceAll(".", "");
 }
 
 /**
  * Prompts user for an apphosting yaml file
  *
- * Given a map of apphosting yaml file names and their paths, this function
+ * Given a map of apphosting yaml file names and their paths
+ * (e.g: "apphosting.staging.yaml" => "/cwd/apphosting.staging.yaml"), this function
  * will prompt the user to choose an apphosting configuration. It returns the path
  * of the chosen apphosting configuration.
  */

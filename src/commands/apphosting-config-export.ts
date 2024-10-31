@@ -5,11 +5,12 @@ import { needProjectId } from "../projectUtils";
 import { requireAuth } from "../requireAuth";
 import * as secretManager from "../gcp/secretManager";
 import { requirePermissions } from "../requirePermissions";
-import { APPHOSTING_LOCAL_YAML_FILE, discoverProjectRoot } from "../apphosting/config";
+import { APPHOSTING_LOCAL_YAML_FILE, discoverBackendRoot } from "../apphosting/config";
 import { fetchSecrets, loadConfigToExport } from "../apphosting/secrets";
-import { join, resolve } from "path";
+import { resolve } from "path";
 import * as fs from "../fsutils";
 import { AppHostingYamlConfig } from "../apphosting/yaml";
+import { FirebaseError } from "../error";
 
 export const command = new Command("apphosting:config:export")
   .description(
@@ -29,20 +30,22 @@ export const command = new Command("apphosting:config:export")
 
     // Load apphosting.local.yaml file if it exists. Secrets should be added to the env list in this object and written back to the apphosting.local.yaml
     let localAppHostingConfig: AppHostingYamlConfig = AppHostingYamlConfig.empty();
-    const projectRoot = discoverProjectRoot(cwd);
-    let localAppHostingConfigPath: string | undefined;
+    const backendRoot = discoverBackendRoot(cwd);
+    if (!backendRoot) {
+      throw new FirebaseError(
+        "Missing apphosting.yaml: This command requires an apphosting.yaml configuration file. Please create one and try again.",
+      );
+    }
 
-    if (projectRoot) {
-      localAppHostingConfigPath = resolve(projectRoot, APPHOSTING_LOCAL_YAML_FILE);
-      if (fs.fileExistsSync(localAppHostingConfigPath)) {
-        localAppHostingConfig = await AppHostingYamlConfig.loadFromFile(localAppHostingConfigPath);
-      }
+    const localAppHostingConfigPath = resolve(backendRoot, APPHOSTING_LOCAL_YAML_FILE);
+    if (fs.fileExistsSync(localAppHostingConfigPath)) {
+      localAppHostingConfig = await AppHostingYamlConfig.loadFromFile(localAppHostingConfigPath);
     }
 
     const configToExport = await loadConfigToExport(cwd, environmentConfigFile);
     const secretsToExport = configToExport.secrets;
     if (!secretsToExport) {
-      logger.warn("No secrets found to export in the choosen apphosting files");
+      logger.warn("No secrets found to export in the chosen App Hosting config files");
       return;
     }
 
@@ -56,9 +59,6 @@ export const command = new Command("apphosting:config:export")
     }
 
     // update apphosting.local.yaml
-    localAppHostingConfig.upsertFile(
-      localAppHostingConfigPath ?? join(cwd, APPHOSTING_LOCAL_YAML_FILE),
-    );
-
+    localAppHostingConfig.upsertFile(localAppHostingConfigPath);
     logger.info(`Wrote secrets as environment variables to ${APPHOSTING_LOCAL_YAML_FILE}.`);
   });

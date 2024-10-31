@@ -10,11 +10,8 @@ export type EnvironmentVariable = Omit<Env, "secret">;
 export type Secret = Omit<Env, "availability" | "value">;
 
 /**
- * AppHostingYamlConfig is an object representing an Apphosting Yaml configuration
+ * AppHostingYamlConfig is an object representing an apphosting.yaml configuration
  * present in the user's codebase (i.e 'apphosting.yaml', 'apphosting.staging.yaml', etc).
- *
- * This class is used to abstract away the parsing and handling logic of these
- * yaml files.
  */
 export class AppHostingYamlConfig {
   private _environmentVariables: Map<string, EnvironmentVariable>;
@@ -76,12 +73,12 @@ export class AppHostingYamlConfig {
    * Merges this AppHostingYamlConfig with another config, the incoming config
    * has precedence if there are any conflicting configurations.
    * */
-  merge(anotherAppHostingYamlConfig: AppHostingYamlConfig) {
-    for (const [key, value] of anotherAppHostingYamlConfig._environmentVariables) {
+  merge(other: AppHostingYamlConfig) {
+    for (const [key, value] of other._environmentVariables) {
       this._environmentVariables.set(key, value);
     }
 
-    for (const [key, value] of anotherAppHostingYamlConfig._secrets) {
+    for (const [key, value] of other._secrets) {
       this._secrets.set(key, value);
     }
   }

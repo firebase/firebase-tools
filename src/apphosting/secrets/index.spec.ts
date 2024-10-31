@@ -305,7 +305,7 @@ describe("secrets", () => {
 
     beforeEach(() => {
       apphostingConfigs = sinon.stub(configImport);
-      apphostingConfigs.discoverConfigsAtProjectRoot.returns([
+      apphostingConfigs.discoverConfigsAtBackendRoot.returns([
         baseYamlPath,
         "/parent/apphosting.staging.yaml",
       ]);
@@ -322,9 +322,22 @@ describe("secrets", () => {
       );
     });
 
-    it("does not prompt user if an appHostingfileToExportPath is provided", async () => {
-      await secrets.loadConfigToExport("/parent/awd", "apphosting.staging.yaml");
+    it("does not prompt user if an userGivenConfigFile is provided", async () => {
+      await secrets.loadConfigToExport("/parent/cwd", "apphosting.staging.yaml");
       expect(prompt.promptOnce).to.not.be.called;
+    });
+
+    it("prompts user if userGivenConfigFile not provided", async () => {
+      await secrets.loadConfigToExport("/parent/cwd");
+      expect(prompt.promptOnce).to.be.called;
+    });
+
+    it("should throw an error if userGivenConfigFile could not be found", async () => {
+      await expect(
+        secrets.loadConfigToExport("/parent/cwd", "apphosting.preview.yaml"),
+      ).to.be.rejectedWith(
+        'The provided app hosting config file "apphosting.preview.yaml" does not exist',
+      );
     });
   });
 });

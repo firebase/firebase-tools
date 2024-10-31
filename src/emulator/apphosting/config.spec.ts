@@ -5,6 +5,7 @@ import * as utils from "./utils";
 import * as sinon from "sinon";
 import { expect } from "chai";
 import { getLocalAppHostingConfiguration } from "./config";
+import * as configImport from "../../apphosting/config";
 import { AppHostingYamlConfig } from "../../apphosting/yaml";
 
 describe("environments", () => {
@@ -12,12 +13,18 @@ describe("environments", () => {
   let joinStub: sinon.SinonStub;
   let loggerStub: sinon.SinonStub;
   let loadAppHostingYamlStub: sinon.SinonStub;
+  let discoverConfigsAtBackendRoot: sinon.SinonStub;
 
   beforeEach(() => {
     loadAppHostingYamlStub = sinon.stub(AppHostingYamlConfig, "loadFromFile");
     pathExistsStub = sinon.stub(fsExtra, "pathExists");
     joinStub = sinon.stub(path, "join");
     loggerStub = sinon.stub(utils, "logger");
+    discoverConfigsAtBackendRoot = sinon.stub(configImport, "discoverConfigsAtBackendRoot");
+    discoverConfigsAtBackendRoot.returns([
+      "/parent/cwd/apphosting.yaml",
+      "/parent/apphosting.staging.yaml",
+    ]);
   });
 
   afterEach(() => {
@@ -68,8 +75,8 @@ describe("environments", () => {
       apphostingYamlConfigThree.addSecret({ variable: "randomSecretTwo", secret: "secretTwo" });
       apphostingYamlConfigThree.addSecret({ variable: "randomSecretFour", secret: "secretFour" });
 
-      loadAppHostingYamlStub.onFirstCall().returns(apphostingYamlConfigTwo);
-      loadAppHostingYamlStub.onSecondCall().returns(apphostingYamlConfigThree);
+      loadAppHostingYamlStub.onFirstCall().returns(apphostingYamlConfigThree);
+      loadAppHostingYamlStub.onSecondCall().returns(apphostingYamlConfigTwo);
 
       const apphostingConfig = await getLocalAppHostingConfiguration("test");
 
