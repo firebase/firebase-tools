@@ -114,7 +114,6 @@ export class AnalyticsLogger {
       this.endAutocompleteTrackingSession(label);
     }, this.TYPING_TRACK_DURATION);
 
-    console.log(`Started tracking after autocomplete: ${label}`);
     this.logger.logUsage(DATA_CONNECT_EVENT_NAME.AUTO_COMPLETE, {
       label,
     });
@@ -122,10 +121,6 @@ export class AnalyticsLogger {
 
   private endAutocompleteTrackingSession(label?: string) {
     if (this.typedCharCount > 0) {
-      console.log(
-        `User typed ${this.typedCharCount} chars after autocomplete.`,
-      );
-
       this.logger.logUsage(DATA_CONNECT_EVENT_NAME.AUTO_COMPLETE, {
         autoCompleted: label,
         charsCountAfterAutocomplete: this.typedCharCount,
@@ -141,10 +136,6 @@ export class AnalyticsLogger {
   }
 
   endSession() {
-    console.log(
-      `Total characters written in session: ${this.sessionCharCount}`,
-    );
-
     this.logger.logUsage(DATA_CONNECT_EVENT_NAME.SESSION_CHAR_COUNT, {
       totalChars: this.sessionCharCount,
     });
@@ -154,10 +145,8 @@ export class AnalyticsLogger {
 }
 
 class GA4TelemetrySender implements TelemetrySender {
-  constructor(readonly pluginLogger: { warn: (s: string) => void }) {
-    // initial event to start session
-    this.sendEventData(DATA_CONNECT_EVENT_NAME.EXTENSION_START);
-  }
+  private hasSentData = false;
+  constructor(readonly pluginLogger: { warn: (s: string) => void }) {}
 
   sendEventData(
     eventName: string,
@@ -170,7 +159,10 @@ class GA4TelemetrySender implements TelemetrySender {
     }
 
     // telemetry logger adds prefixes to eventName and params that are disallowed in GA4
-    eventName = eventName.replace("firebase.firebase-vscode/", "");
+    eventName = eventName.replace(
+      "GoogleCloudTools.firebase-dataconnect-vscode/",
+      "",
+    );
     for (const key in data) {
       if (key.includes("common.")) {
         data[key.replace("common.", "")] = data[key];
@@ -178,7 +170,12 @@ class GA4TelemetrySender implements TelemetrySender {
       }
     }
     data = { ...data };
-    trackVSCode(eventName, data as AnalyticsParams);
+    const idxPrepend = monospaceEnv.value.isMonospace ? "idx-" : "";
+
+    if (!this.hasSentData) {
+      trackVSCode(`${idxPrepend}DATA_CONNECT_EVENT_NAME.EXTENSION_START`);
+    }
+    trackVSCode(`${idxPrepend}${eventName}`, data as AnalyticsParams);
   }
 
   sendErrorData(error: Error, data?: Record<string, any> | undefined): void {
