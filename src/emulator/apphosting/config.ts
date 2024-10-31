@@ -12,11 +12,7 @@ import { AppHostingYamlConfig } from "../../apphosting/yaml";
  * apphosting.local.yaml precedence if present.
  */
 export async function getLocalAppHostingConfiguration(cwd: string): Promise<AppHostingYamlConfig> {
-  // Get all apphosting yaml files ignoring the apphosting.local.yaml file
-  const appHostingConfigPaths = discoverConfigsAtBackendRoot(cwd).filter(
-    (path) => !path.endsWith(APPHOSTING_LOCAL_YAML_FILE),
-  );
-
+  const appHostingConfigPaths = discoverConfigsAtBackendRoot(cwd);
   // generate a map to make it easier to interface between file name and it's path
   const fileNameToPathMap: Map<string, string> = new Map();
   for (const path of appHostingConfigPaths) {
@@ -25,6 +21,8 @@ export async function getLocalAppHostingConfiguration(cwd: string): Promise<AppH
   }
 
   const baseFilePath = fileNameToPathMap.get(APPHOSTING_BASE_YAML_FILE)!;
-  const localFilePath = fileNameToPathMap.get(APPHOSTING_LOCAL_YAML_FILE)!;
-  return await loadConfigForEnvironment(localFilePath, baseFilePath);
+  const localFilePath = fileNameToPathMap.get(APPHOSTING_LOCAL_YAML_FILE);
+
+  // apphosting.local.yaml is not required to run the emulator so it may not exist
+  return await loadConfigForEnvironment(localFilePath ?? baseFilePath, baseFilePath);
 }

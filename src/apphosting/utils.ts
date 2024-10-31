@@ -15,16 +15,16 @@ export function getEnvironmentName(apphostingYamlFileName: string): string {
 }
 
 /**
- * Prompts user for an apphosting yaml file
+ * Prompts user for an app hosting yaml file
  *
- * Given a map of apphosting yaml file names and their paths
+ * Given a map of app hosting yaml file names and their paths
  * (e.g: "apphosting.staging.yaml" => "/cwd/apphosting.staging.yaml"), this function
- * will prompt the user to choose an apphosting configuration. It returns the path
- * of the chosen apphosting configuration.
+ * will prompt the user to choose an app hosting configuration. It returns the path
+ * of the chosen app hosting configuration.
  */
 export async function promptForAppHostingYaml(
   apphostingFileNameToPathMap: Map<string, string>,
-  promptMessage = "Please select an apphosting config:",
+  promptMessage = "Please select an app hosting config:",
 ): Promise<string> {
   const fileNames = Array.from(apphostingFileNameToPathMap.keys());
 

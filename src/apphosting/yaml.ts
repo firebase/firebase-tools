@@ -18,9 +18,9 @@ export class AppHostingYamlConfig {
   private _secrets: Map<string, Secret>;
 
   /**
-   * Reads in the apphosting yaml file found in filePath, parses the secrets and
+   * Reads in the app hosting yaml file found in filePath, parses the secrets and
    * environment variables, and returns an object that makes it easier to
-   * programatically read or manipulate the apphosting config.
+   * programatically read or manipulate the app hosting config.
    */
   static async loadFromFile(filePath: string): Promise<AppHostingYamlConfig> {
     const config = new AppHostingYamlConfig();

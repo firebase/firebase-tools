@@ -65,17 +65,17 @@ export function discoverBackendRoot(cwd: string): string | null {
 }
 
 /**
- * Lists absolute paths for `apphosting.*.yaml` configs at project root
+ * Lists absolute paths for `apphosting.*.yaml` configs at backend root
  */
 export function discoverConfigsAtBackendRoot(cwd: string): string[] {
-  const projectRoot = discoverBackendRoot(cwd);
-  if (!projectRoot) {
+  const backendRoot = discoverBackendRoot(cwd);
+  if (!backendRoot) {
     throw new FirebaseError(
       "Unable to find your project's root, ensure the apphosting.yaml config is initialized. Try 'firebase init apphosting'",
     );
   }
 
-  return listAppHostingFilesInPath(projectRoot);
+  return listAppHostingFilesInPath(backendRoot);
 }
 
 /**

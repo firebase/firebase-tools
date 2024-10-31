@@ -14,7 +14,7 @@ import { FirebaseError } from "../error";
 
 export const command = new Command("apphosting:config:export")
   .description(
-    "Export apphosting configurations such as secrets into an apphosting.local.yaml file",
+    "Export App Hosting configurations such as secrets into an apphosting.local.yaml file",
   )
   .option(
     "-s, --secrets <apphosting.yaml or apphosting.<environment>.yaml file to export secrets from>",
