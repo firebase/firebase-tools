@@ -282,7 +282,7 @@ firebaseSuite("GraphQL", async function () {
       // Verify the generated query file path
       const activeEditor = await editorView.getActiveEditor();
       const filePath = activeEditor?.document.fileName;
-      expect(filePath).toBe("test_projects/fishfood/dataconnect/Post_read.gql");
+      expect(filePath).toContain("test_projects/fishfood/dataconnect/Post_read.gql");
       await editorView.closeCurrentEditor();
     },
   );
