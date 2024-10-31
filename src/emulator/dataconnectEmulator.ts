@@ -4,7 +4,7 @@ import { EventEmitter } from "events";
 import { dataConnectLocalConnString } from "../api";
 import { Constants } from "./constants";
 import { getPID, start, stop, downloadIfNecessary } from "./downloadableEmulators";
-import { EmulatorInfo, EmulatorInstance, Emulators, ListenSpec } from "./types";
+import { EmulatorInfo, EmulatorInstance, Emulators, ListenSpec, CustomType } from "./types";
 import { FirebaseError } from "../error";
 import { EmulatorLogger } from "./emulatorLogger";
 import { RC } from "../rc";
@@ -321,6 +321,36 @@ export class DataConnectEmulatorClient {
       this.client = EmulatorRegistry.client(Emulators.DATACONNECT);
     }
     return getInfo(this.client);
+  }
+
+  public async configureTypes(
+    types: Record<string, CustomType>
+  ): Promise<ClientResponse<void>> {
+    if (!this.client) {
+      this.client = EmulatorRegistry.client(Emulators.DATACONNECT);
+    }
+    return this.client.post<Record<string, CustomType>, void>(
+      "emulator/configure-types",
+      types,
+      {
+        resolveOnHTTPError: true // エラーレスポンスも処理する
+      }
+    );
+  }
+
+  public async configureResolvers(
+    resolvers: Record<string, string>
+  ): Promise<ClientResponse<void>> {
+    if (!this.client) {
+      this.client = EmulatorRegistry.client(Emulators.DATACONNECT);
+    }
+    return this.client.post<Record<string, string>, void>(
+      "emulator/configure-resolvers",
+      resolvers,
+      {
+        resolveOnHTTPError: true
+      }
+    );
   }
 }
 

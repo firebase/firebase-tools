@@ -398,3 +398,10 @@ export interface SourcePosition {
   line: number;
   column: number;
 }
+
+export interface CustomType {
+  sqlType: string;
+  graphqlType: string;
+  serialize: string;
+  parseValue: string;
+}
