@@ -174,6 +174,7 @@ class GA4TelemetrySender implements TelemetrySender {
 
     if (!this.hasSentData) {
       trackVSCode(`${idxPrepend}DATA_CONNECT_EVENT_NAME.EXTENSION_START`);
+      this.hasSentData = true;
     }
     trackVSCode(`${idxPrepend}${eventName}`, data as AnalyticsParams);
   }
