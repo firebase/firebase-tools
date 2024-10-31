@@ -33,7 +33,7 @@ export const command = new Command("apphosting:config:export")
     const backendRoot = discoverBackendRoot(cwd);
     if (!backendRoot) {
       throw new FirebaseError(
-        "Missing apphosting.yaml: This command requires an apphosting.yaml configuration file. Please create one and try again.",
+        "Missing apphosting.yaml: This command requires an apphosting.yaml configuration file. Please run 'firebase init apphosting' and try again.",
       );
     }
 
