@@ -51,9 +51,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
   await checkCLIInstallation();
 
-  // log start event for session tracking
-  analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.EXTENSION_START);
-
   const [emulatorsController, coreDisposable] = await registerCore(
     broker,
     context,

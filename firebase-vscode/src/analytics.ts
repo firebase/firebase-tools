@@ -163,6 +163,10 @@ class GA4TelemetrySender implements TelemetrySender {
       "GoogleCloudTools.firebase-dataconnect-vscode/",
       "",
     );
+
+    // sanitize string as a fallback; numbers, letters, and underscore only
+    eventName = eventName.replace(/[^a-zA-Z0-9_]/g, "");
+
     for (const key in data) {
       if (key.includes("common.")) {
         data[key.replace("common.", "")] = data[key];
