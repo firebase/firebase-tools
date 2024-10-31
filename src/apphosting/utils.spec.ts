@@ -36,7 +36,7 @@ describe("utils", () => {
       expect(prompt.promptOnce).to.have.been.calledWith({
         name: "apphosting-yaml",
         type: "list",
-        message: "Please select an apphosting config:",
+        message: "Please select an app hosting config:",
         choices: [
           {
             name: "base (apphosting.yaml)",
