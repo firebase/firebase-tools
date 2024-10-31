@@ -170,7 +170,7 @@ class GA4TelemetrySender implements TelemetrySender {
       }
     }
     data = { ...data };
-    const idxPrepend = monospaceEnv.value.isMonospace ? "idx-" : "";
+    const idxPrepend = monospaceEnv.value.isMonospace ? "idx_" : "";
 
     if (!this.hasSentData) {
       trackVSCode(`${idxPrepend}DATA_CONNECT_EVENT_NAME.EXTENSION_START`);
