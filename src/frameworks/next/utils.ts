@@ -365,15 +365,16 @@ export function getNonStaticServerComponents(
 }
 
 /**
- * Get headers from .meta files
+ * Get metadata from .meta files
  */
-export async function getHeadersFromMetaFiles(
+export async function getAppMetadataFromMetaFiles(
   sourceDir: string,
   distDir: string,
   basePath: string,
   appPathRoutesManifest: AppPathRoutesManifest,
-): Promise<HostingHeadersWithSource[]> {
+): Promise<{ headers: HostingHeadersWithSource[]; pprRoutes: string[] }> {
   const headers: HostingHeadersWithSource[] = [];
+  const pprRoutes: string[] = [];
 
   await Promise.all(
     Object.entries(appPathRoutesManifest).map(async ([key, source]) => {
@@ -385,17 +386,20 @@ export async function getHeadersFromMetaFiles(
       const metadataPath = `${routePath}.meta`;
 
       if (dirExistsSync(routePath) && fileExistsSync(metadataPath)) {
-        const meta = await readJSON<{ headers?: Record<string, string> }>(metadataPath);
+        const meta = await readJSON<{ headers?: Record<string, string>; postponed?: string }>(
+          metadataPath,
+        );
         if (meta.headers)
           headers.push({
             source: posix.join(basePath, source),
             headers: Object.entries(meta.headers).map(([key, value]) => ({ key, value })),
           });
+        if (meta.postponed) pprRoutes.push(source);
       }
     }),
   );
 
-  return headers;
+  return { headers, pprRoutes };
 }
 
 /**
@@ -521,7 +525,7 @@ export function findEsbuildPath(): string | null {
  */
 export function getGlobalEsbuildVersion(binPath: string): string | null {
   try {
-    const versionOutput = execSync(`${binPath} --version`, { encoding: "utf8" })?.trim();
+    const versionOutput = execSync(`"${binPath}" --version`, { encoding: "utf8" })?.trim();
     if (!versionOutput) {
       return null;
     }

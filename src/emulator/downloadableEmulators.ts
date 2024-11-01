@@ -1,3 +1,4 @@
+const lsofi = require("lsofi");
 import {
   Emulators,
   DownloadableEmulators,
@@ -20,6 +21,7 @@ import * as os from "os";
 import { EmulatorRegistry } from "./registry";
 import { downloadEmulator } from "../emulator/download";
 import * as experiments from "../experiments";
+import * as process from "process";
 
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 4000; /* ms */
 
@@ -33,9 +35,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
     expectedChecksum: "2fd771101c0e1f7898c04c9204f2ce63",
   },
   firestore: {
-    version: "1.19.7",
-    expectedSize: 66438992,
-    expectedChecksum: "aec233bea95c5cfab03881574ec16d6c",
+    version: "1.19.8",
+    expectedSize: 63634791,
+    expectedChecksum: "9b43a6daa590678de9b7df6d68260395",
   },
   storage: {
     version: "1.1.3",
@@ -45,9 +47,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   ui: experiments.isEnabled("emulatoruisnapshot")
     ? { version: "SNAPSHOT", expectedSize: -1, expectedChecksum: "" }
     : {
-        version: "1.13.0",
-        expectedSize: 3605485,
-        expectedChecksum: "ec0aa91592c56af9ff7df18168d58459",
+        version: "1.14.0",
+        expectedSize: 3615311,
+        expectedChecksum: "30763ff4a8b81e2c482f05b56799b5c0",
       },
   pubsub: {
     version: "0.8.14",
@@ -57,20 +59,20 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   dataconnect:
     process.platform === "darwin"
       ? {
-          version: "1.3.5",
-          expectedSize: 24232704,
-          expectedChecksum: "4eabf613a4a5feeaa173e1375b62bde0",
+          version: "1.6.0",
+          expectedSize: 25301760,
+          expectedChecksum: "4fad7ada11b35ecea6c8aadf132a5a8a",
         }
       : process.platform === "win32"
         ? {
-            version: "1.3.5",
-            expectedSize: 24651264,
-            expectedChecksum: "c7b2b7168ff7226f4e5626ae7d13e0ca",
+            version: "1.6.0",
+            expectedSize: 25731072,
+            expectedChecksum: "8d3a59cc79cd74199ee1d8c28012297f",
           }
         : {
-            version: "1.3.5",
-            expectedSize: 24146072,
-            expectedChecksum: "1457937751ce25fa332cdc16b561d64b",
+            version: "1.6.0",
+            expectedSize: 25219224,
+            expectedChecksum: "ceb10cfca7ded004c48f7724dbc0cccf",
           },
 };
 
@@ -157,7 +159,6 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
       namePrefix: "pubsub-emulator",
     },
   },
-  // TODO: Add Windows binary here as well
   dataconnect: {
     downloadPath: path.join(
       CACHE_DIR,
@@ -375,6 +376,7 @@ export function _getCommand(
     optionalArgs: baseCmd.optionalArgs,
     joinArgs: baseCmd.joinArgs,
     shell: baseCmd.shell,
+    port: args.port,
   };
 }
 
@@ -398,12 +400,24 @@ async function _fatal(emulator: Emulators, errorMsg: string): Promise<void> {
 /**
  * Handle errors in an emulator process.
  */
-export async function handleEmulatorProcessError(emulator: Emulators, err: any): Promise<void> {
+export async function handleEmulatorProcessError(
+  emulator: Emulators,
+  err: any,
+  port?: number,
+): Promise<void> {
   const description = Constants.description(emulator);
   if (err.path === "java" && err.code === "ENOENT") {
     await _fatal(
       emulator,
       `${description} has exited because java is not installed, you can install it from https://openjdk.java.net/install/`,
+    );
+  } else if (err.code === "EADDRINUSE") {
+    const ps = port ? await lsofi(port) : false;
+    await _fatal(
+      emulator,
+      `${description} has exited because its configured port is already in use${
+        ps ? ` by process number ${ps}` : ""
+      }. Are you running another copy of the emulator suite?`,
     );
   } else {
     await _fatal(emulator, `${description} has exited: ${err}`);
@@ -486,10 +500,15 @@ async function _runBinary(
           "Unsupported java version, make sure java --version reports 1.8 or higher.",
         );
       }
+
+      if (data.toString().includes("address already in use")) {
+        const message = `${description} has exited because its configured port ${command.port} is already in use. Are you running another copy of the emulator suite?`;
+        logger.logLabeled("ERROR", emulator.name, message);
+      }
     });
 
-    emulator.instance.on("error", (err) => {
-      handleEmulatorProcessError(emulator.name, err);
+    emulator.instance.on("error", (err: any) => {
+      void handleEmulatorProcessError(emulator.name, err, command.port);
     });
 
     emulator.instance.once("exit", async (code, signal) => {

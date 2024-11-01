@@ -7,17 +7,9 @@ import { FirebaseConfig } from "../../../src/firebaseConfig";
 import { User } from "../../../src/types/auth";
 import { ServiceAccountUser } from "../types";
 import { RCData } from "../../../src/rc";
-import { EmulatorUiSelections, RunningEmulatorInfo } from "./types";
+import { EmulatorsStatus, RunningEmulatorInfo } from "./types";
 import { ExecutionResult } from "graphql";
 import { SerializedError } from "../error";
-
-export const DEFAULT_EMULATOR_UI_SELECTIONS: EmulatorUiSelections = {
-  projectId: "demo-something",
-  importStateFolderPath: "",
-  exportStateOnExit: false,
-  mode: "dataconnect",
-  debugLogging: false,
-};
 
 export enum UserMockKind {
   ADMIN = "admin",
@@ -37,6 +29,7 @@ export interface WebviewToExtensionParamsMap {
    */
   getInitialData: {};
   getInitialHasFdcConfigs: void;
+  getInitialFirebaseConfigList: void;
 
   addUser: {};
   logout: { email: string };
@@ -44,13 +37,15 @@ export interface WebviewToExtensionParamsMap {
   /* Emulator panel requests */
   getEmulatorUiSelections: void;
   getEmulatorInfos: void;
-  updateEmulatorUiSelections: Partial<EmulatorUiSelections>;
 
   /** Notify extension that current user has been changed in UI. */
   requestChangeUser: { user: User | ServiceAccountUser };
 
   /** Trigger project selection */
   selectProject: {};
+
+  /** When 2+ firebase.json are detected, the user can manually pick one */
+  selectFirebaseConfig: string;
 
   /**
    * Prompt user for text input
@@ -59,6 +54,9 @@ export interface WebviewToExtensionParamsMap {
 
   /** Calls the `firebase init` CLI */
   runFirebaseInit: void;
+
+  /** Calls the `firebase init` CLI */
+  runStartEmulators: void;
 
   /**
    * Show a UI message using the vscode interface
@@ -99,11 +97,16 @@ export interface WebviewToExtensionParamsMap {
   /** Configures generated SDK */
   "fdc.configure-sdk": void;
 
+  /** Opens generated docs */
+  "fdc.open-docs": void;
+
   // Initialize "result" tab.
   getDataConnectResults: void;
 
   // execute terminal tasks
   executeLogin: void;
+
+  getDocsLink: void;
 }
 
 export interface DataConnectResults {
@@ -119,16 +122,18 @@ export type ValueOrError<T> =
 
 export interface ExtensionToWebviewParamsMap {
   /** Triggered when the emulator UI/state changes */
-  notifyEmulatorUiSelectionsChanged: EmulatorUiSelections;
   notifyEmulatorStateChanged: {
-    status: "running" | "stopped" | "starting" | "stopping";
-    infos: RunningEmulatorInfo | undefined;
+    status: EmulatorsStatus;
+    infos?: RunningEmulatorInfo | undefined;
   };
-  notifyEmulatorImportFolder: { folder: string };
 
-  notifyIsConnectedToPostgres: boolean;
+  /** Lists all firebase.json in the workspace */
+  notifyFirebaseConfigListChanged: {
+    values: string[];
+    selected: string | undefined;
+  };
 
-  notifyPostgresStringChanged: string;
+  notifyEmulatorsHanging: boolean;
 
   /** Triggered when new environment variables values are found. */
   notifyEnv: { env: { isMonospace: boolean } };
@@ -142,15 +147,15 @@ export interface ExtensionToWebviewParamsMap {
   /**
    * This can potentially call multiple webviews to notify of user selection.
    */
-  notifyUserChanged: { user: User | ServiceAccountUser };
+  notifyUserChanged: { user: User | ServiceAccountUser | null };
 
   /**
    * Notify webview of initial discovery or change in firebase.json or
    * .firebaserc
    */
   notifyFirebaseConfig: {
-    firebaseJson: ValueOrError<FirebaseConfig> | undefined;
-    firebaseRC: ValueOrError<RCData> | undefined;
+    firebaseJson?: ValueOrError<FirebaseConfig | undefined>;
+    firebaseRC?: ValueOrError<RCData | undefined>;
   };
   /** Whether any dataconnect.yaml is present */
   notifyHasFdcConfigs: boolean;
@@ -165,6 +170,8 @@ export interface ExtensionToWebviewParamsMap {
   notifyDataConnectRequiredArgs: { args: string[] };
 
   notifyIsLoadingUser: boolean;
+
+  notifyDocksLink: string;
 }
 
 export type MessageParamsMap =

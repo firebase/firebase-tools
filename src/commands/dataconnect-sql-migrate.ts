@@ -16,7 +16,6 @@ export const command = new Command("dataconnect:sql:migrate [serviceId]")
     "firebasedataconnect.schemas.list",
     "firebasedataconnect.schemas.update",
     "cloudsql.instances.connect",
-    "cloudsql.users.create",
   ])
   .before(requireAuth)
   .withForce("Execute any required database changes without prompting")
@@ -35,6 +34,7 @@ export const command = new Command("dataconnect:sql:migrate [serviceId]")
       options,
       schema: serviceInfo.schema,
       validateOnly: true,
+      schemaValidation: serviceInfo.dataConnectYaml.schema.datasource.postgresql?.schemaValidation,
     });
     if (diffs.length) {
       logLabeledSuccess(

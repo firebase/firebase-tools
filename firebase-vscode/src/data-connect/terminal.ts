@@ -3,10 +3,12 @@ import { ExtensionBrokerImpl } from "../extension-broker";
 import vscode, { Disposable } from "vscode";
 import { checkLogin } from "../core/user";
 import { DATA_CONNECT_EVENT_NAME } from "../analytics";
-const environmentVariables = {};
+import { getSettings } from "../utils/settings";
+import { currentProjectId } from "../core/project";
 
-const terminalOptions: TerminalOptions = {
-  name: "Data Connect Terminal",
+const environmentVariables: Record<string, string> = {};
+
+const executionOptions: vscode.ShellExecutionOptions = {
   env: environmentVariables,
 };
 
@@ -15,14 +17,26 @@ export function setTerminalEnvVars(envVar: string, value: string) {
 }
 
 export function runCommand(command: string) {
+  const terminalOptions: TerminalOptions = {
+    name: "Data Connect Terminal",
+    env: environmentVariables,
+  };
   const terminal = vscode.window.createTerminal(terminalOptions);
   terminal.show();
+
+  // TODO: This fails if the interactive shell is not expecting a command, such
+  // as when oh-my-zsh asking for (Y/n) to updates during startup.
+  // Consider using an non-interactive shell.
+  if (currentProjectId.value) {
+    command = `${command} --project ${currentProjectId.value}`;
+  }
   terminal.sendText(command);
 }
 
 export function runTerminalTask(
   taskName: string,
   command: string,
+  presentationOptions: vscode.TaskPresentationOptions = { focus: true },
 ): Promise<string> {
   const type = "firebase-" + Date.now();
   return new Promise(async (resolve, reject) => {
@@ -34,20 +48,22 @@ export function runTerminalTask(
           resolve(`Successfully executed ${taskName} with command: ${command}`);
         } else {
           reject(
-            new Error(`Failed to execute ${taskName} with command: ${command}`),
+            new Error(
+              `{${e.exitCode}}: Failed to execute ${taskName} with command: ${command}`,
+            ),
           );
         }
       }
     });
-    vscode.tasks.executeTask(
-      new vscode.Task(
-        { type },
-        vscode.TaskScope.Workspace,
-        taskName,
-        "firebase",
-        new vscode.ShellExecution(command),
-      ),
+    const task = new vscode.Task(
+      { type },
+      vscode.TaskScope.Workspace,
+      taskName,
+      "firebase",
+      new vscode.ShellExecution(command, executionOptions),
     );
+    task.presentationOptions = presentationOptions;
+    await vscode.tasks.executeTask(task);
   });
 }
 
@@ -55,17 +71,32 @@ export function registerTerminalTasks(
   broker: ExtensionBrokerImpl,
   telemetryLogger: TelemetryLogger,
 ): Disposable {
+  const settings = getSettings();
+
   const loginTaskBroker = broker.on("executeLogin", () => {
     telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.IDX_LOGIN);
-    runTerminalTask("firebase login", "firebase login --no-localhost").then(
-      () => {
-        checkLogin();
-      },
+    runTerminalTask(
+      "firebase login",
+      `${settings.firebasePath} login --no-localhost`,
+    ).then(() => {
+      checkLogin();
+    });
+  });
+
+  const startEmulatorsTaskBroker = broker.on("runStartEmulators", () => {
+    telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.START_EMULATORS);
+    // TODO: optional debug mode
+    runTerminalTask(
+      "firebase emulators",
+      `${settings.firebasePath} emulators:start --project ${currentProjectId.value}`,
+      // emulators:start almost never ask interactive questions.
+      { focus: false },
     );
   });
 
   return Disposable.from(
     { dispose: loginTaskBroker },
+    { dispose: startEmulatorsTaskBroker },
     vscode.commands.registerCommand(
       "firebase.dataConnect.runTerminalTask",
       (taskName, command) => {

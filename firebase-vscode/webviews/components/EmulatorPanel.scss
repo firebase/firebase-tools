@@ -1,0 +1,13 @@
+.list {
+  list-style: none;
+}
+
+.list-item {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+}
+
+.running-indicator {
+  color: var(--vscode-testing-runAction, green);
+}

@@ -1,5 +1,5 @@
 import * as clc from "colorette";
-import { sync as rimraf } from "rimraf";
+import { rmSync } from "node:fs";
 import { join } from "path";
 
 import { Client } from "../../../apiv2";
@@ -144,7 +144,7 @@ export async function doSetup(setup: any, config: any, options: Options): Promis
         setup.hosting,
       );
 
-      if (discoveredFramework) rimraf(setup.hosting.source);
+      if (discoveredFramework) rmSync(setup.hosting.source, { recursive: true });
       await WebFrameworks[setup.hosting.whichFramework].init!(setup, config);
     }
 

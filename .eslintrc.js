@@ -122,6 +122,7 @@ module.exports = {
   // TODO(jamesdaniels): add this to overrides instead
   ignorePatterns: [
     "src/dynamicImport.js",
+    "src/emulator/dataconnect/pg-gateway",
     "scripts/webframeworks-deploy-tests/nextjs/**",
     "scripts/webframeworks-deploy-tests/angular/**",
     "scripts/frameworks-tests/vite-project/**",

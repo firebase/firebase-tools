@@ -32,6 +32,7 @@ export const command = new Command("ext:export")
     // Look up the instances that already exist,
     // set any secrets to latest version,
     // and strip project IDs from the param values.
+    // Note that this does not, nor should it include instances defined via SDK.
     const have = await Promise.all(await planner.have(projectId));
 
     if (have.length === 0) {

@@ -32,7 +32,7 @@ import {
   getMiddlewareMatcherRegexes,
   getNonStaticRoutes,
   getNonStaticServerComponents,
-  getHeadersFromMetaFiles,
+  getAppMetadataFromMetaFiles,
   isUsingNextImageInAppDirectory,
   getNextVersion,
   getRoutesWithServerAction,
@@ -472,38 +472,63 @@ describe("Next.js utils", () => {
     });
   });
 
-  describe("getHeadersFromMetaFiles", () => {
+  describe("getAppMetadataFromMetaFiles", () => {
     let sandbox: sinon.SinonSandbox;
     beforeEach(() => (sandbox = sinon.createSandbox()));
     afterEach(() => sandbox.restore());
 
-    it("should get headers from meta files", async () => {
+    it("should return the correct headers and pprRoutes from meta files", async () => {
       const distDir = ".next";
       const readJsonStub = sandbox.stub(frameworksUtils, "readJSON");
       const dirExistsSyncStub = sandbox.stub(fsUtils, "dirExistsSync");
       const fileExistsSyncStub = sandbox.stub(fsUtils, "fileExistsSync");
 
+      // /api/static
       dirExistsSyncStub.withArgs(`${distDir}/server/app/api/static`).returns(true);
       fileExistsSyncStub.withArgs(`${distDir}/server/app/api/static.meta`).returns(true);
       readJsonStub.withArgs(`${distDir}/server/app/api/static.meta`).resolves(metaFileContents);
 
+      // /ppr
+      dirExistsSyncStub.withArgs(`${distDir}/server/app/ppr`).returns(true);
+      fileExistsSyncStub.withArgs(`${distDir}/server/app/ppr.meta`).returns(true);
+      readJsonStub.withArgs(`${distDir}/server/app/ppr.meta`).resolves({
+        ...metaFileContents,
+        postponed: "true",
+      });
+
       expect(
-        await getHeadersFromMetaFiles(".", distDir, "/asdf", appPathRoutesManifest),
-      ).to.deep.equal([
-        {
-          source: "/asdf/api/static",
-          headers: [
-            {
-              key: "content-type",
-              value: "application/json",
-            },
-            {
-              key: "custom-header",
-              value: "custom-value",
-            },
-          ],
-        },
-      ]);
+        await getAppMetadataFromMetaFiles(".", distDir, "/asdf", appPathRoutesManifest),
+      ).to.deep.equal({
+        headers: [
+          {
+            source: "/asdf/api/static",
+            headers: [
+              {
+                key: "content-type",
+                value: "application/json",
+              },
+              {
+                key: "custom-header",
+                value: "custom-value",
+              },
+            ],
+          },
+          {
+            source: "/asdf/ppr",
+            headers: [
+              {
+                key: "content-type",
+                value: "application/json",
+              },
+              {
+                key: "custom-header",
+                value: "custom-value",
+              },
+            ],
+          },
+        ],
+        pprRoutes: ["/ppr"],
+      });
     });
   });
 
@@ -578,7 +603,7 @@ describe("Next.js utils", () => {
         .withArgs("npx which esbuild", { encoding: "utf8" })
         .returns(mockBinaryPath + "\n");
       execSyncStub
-        .withArgs(`${mockBinaryPath} --version`, { encoding: "utf8" })
+        .withArgs(`"${mockBinaryPath}" --version`, { encoding: "utf8" })
         .returns(`${mockGlobalVersion}\n`);
 
       const consoleWarnStub = sinon.stub(console, "warn");

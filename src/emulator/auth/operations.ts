@@ -849,6 +849,7 @@ export function resetPassword(
     // when they call the emailLinkSignIn endpoint.
     // See: https://firebase.google.com/docs/auth/web/email-link-auth#security_concerns
     email: oob.requestType === "EMAIL_SIGNIN" ? undefined : oob.email,
+    newEmail: oob.newEmail,
   };
 }
 
@@ -873,6 +874,7 @@ function sendOobCode(
   }
 
   let email: string;
+  let newEmail: string | undefined;
   let mode: string;
 
   switch (reqBody.requestType) {
@@ -912,7 +914,23 @@ function sendOobCode(
         email = user.email;
       }
       break;
-    // TODO: implement case for requestType VERIFY_AND_CHANGE_EMAIL.
+    case "VERIFY_AND_CHANGE_EMAIL":
+      mode = "verifyAndChangeEmail";
+      assert(reqBody.newEmail, "MISSING_NEW_EMAIL");
+      newEmail = canonicalizeEmailAddress(reqBody.newEmail);
+      if (reqBody.returnOobLink && !reqBody.idToken) {
+        assert(reqBody.email, "MISSING_EMAIL");
+        email = canonicalizeEmailAddress(reqBody.email);
+        const maybeUser = state.getUserByEmail(email);
+        assert(maybeUser, "USER_NOT_FOUND");
+      } else {
+        assert(reqBody.idToken, "MISSING_ID_TOKEN");
+        const user = parseIdToken(state, reqBody.idToken).user;
+        assert(user.email, "MISSING_EMAIL");
+        email = user.email;
+      }
+      assert(!state.getUserByEmail(newEmail), "EMAIL_EXISTS");
+      break;
     default:
       throw new NotImplementedError(reqBody.requestType);
   }
@@ -929,6 +947,7 @@ function sendOobCode(
     requestType: reqBody.requestType,
     mode,
     continueUrl: reqBody.continueUrl,
+    newEmail,
   });
 
   if (reqBody.returnOobLink) {
@@ -1047,6 +1066,7 @@ export function setAccountInfoImpl(
   let user: UserInfo;
   let signInProvider: string | undefined;
   let isEmailUpdate: boolean = false;
+  let newEmail: string | undefined;
 
   if (reqBody.oobCode) {
     const oob = state.validateOobCode(reqBody.oobCode);
@@ -1064,6 +1084,19 @@ export function setAccountInfoImpl(
         }
         break;
       }
+      case "VERIFY_AND_CHANGE_EMAIL":
+        state.deleteOobCode(reqBody.oobCode);
+        const maybeUser = state.getUserByEmail(oob.email);
+        assert(maybeUser, "INVALID_OOB_CODE");
+        assert(oob.newEmail, "INVALID_OOB_CODE");
+        assert(!state.getUserByEmail(oob.newEmail), "EMAIL_EXISTS");
+        user = maybeUser;
+        if (oob.newEmail !== user.email) {
+          updates.email = oob.newEmail;
+          updates.emailVerified = true;
+          newEmail = oob.newEmail;
+        }
+        break;
       case "RECOVER_EMAIL": {
         state.deleteOobCode(reqBody.oobCode);
         const maybeUser = state.getUserByInitialEmail(oob.email);
@@ -1095,7 +1128,7 @@ export function setAccountInfoImpl(
     if (reqBody.email) {
       assert(isValidEmailAddress(reqBody.email), "INVALID_EMAIL");
 
-      const newEmail = canonicalizeEmailAddress(reqBody.email);
+      newEmail = canonicalizeEmailAddress(reqBody.email);
       if (newEmail !== user.email) {
         assert(!state.getUserByEmail(newEmail), "EMAIL_EXISTS");
         updates.email = newEmail;
@@ -1220,6 +1253,7 @@ export function setAccountInfoImpl(
     email: user.email,
     displayName: user.displayName,
     photoUrl: user.photoUrl,
+    newEmail,
     passwordHash: user.passwordHash,
 
     ...(updates.validSince && signInProvider ? issueTokens(state, user, signInProvider) : {}),
@@ -1244,9 +1278,10 @@ function createOobRecord(
     requestType: OobRequestType;
     mode: string;
     continueUrl?: string;
+    newEmail?: string;
   },
 ): OobRecord {
-  const oobRecord = state.createOob(email, params.requestType, (oobCode) => {
+  const oobRecord = state.createOob(email, params.newEmail, params.requestType, (oobCode) => {
     url.pathname = "/emulator/action";
     url.searchParams.set("mode", params.mode);
     url.searchParams.set("lang", "en");
@@ -1287,6 +1322,9 @@ function logOobMessage(oobRecord: OobRecord) {
       break;
     case "VERIFY_EMAIL":
       maybeMessage = `To verify the email address ${email}, follow this link: ${oobLink}`;
+      break;
+    case "VERIFY_AND_CHANGE_EMAIL":
+      maybeMessage = `To verify and change the email address from ${email} to ${oobRecord.newEmail}, follow this link: ${oobLink}`;
       break;
     case "RECOVER_EMAIL":
       maybeMessage = `To reset your email address to ${email}, follow this link: ${oobLink}`;

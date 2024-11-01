@@ -3,14 +3,17 @@ import { ExtensionBrokerImpl } from "../extension-broker";
 import { getRootFolders, registerConfig } from "./config";
 import { EmulatorsController } from "./emulators";
 import { registerEnv } from "./env";
-import { pluginLogger } from "../logger-wrapper";
+import { pluginLogger, LogLevel } from "../logger-wrapper";
 import { getSettings } from "../utils/settings";
 import { setEnabled } from "../../../src/experiments";
 import { registerUser } from "./user";
-import { registerProject } from "./project";
+import { currentProjectId, registerProject } from "./project";
 import { registerQuickstart } from "./quickstart";
 import { registerOptions } from "../options";
 import { upsertFile } from "../data-connect/file-utils";
+import { registerWebhooks } from "./webhook";
+import { createE2eMockable } from "../utils/test_hooks";
+import { runTerminalTask } from "../data-connect/terminal";
 
 export async function registerCore(
   broker: ExtensionBrokerImpl,
@@ -18,6 +21,15 @@ export async function registerCore(
   telemetryLogger: TelemetryLogger,
 ): Promise<[EmulatorsController, vscode.Disposable]> {
   const settings = getSettings();
+
+  // Wrap the runTerminalTask function to allow for e2e testing.
+  const initSpy = createE2eMockable(
+    async (...args: Parameters<typeof runTerminalTask>) => {
+      await runTerminalTask(...args);
+    },
+    "init",
+    async () => {},
+  );
 
   if (settings.npmPath) {
     process.env.PATH += `:${settings.npmPath}`;
@@ -28,12 +40,15 @@ export async function registerCore(
   }
 
   const sub1 = broker.on("writeLog", async ({ level, args }) => {
-    pluginLogger[level]("(Webview)", ...args);
+    pluginLogger[level as LogLevel]("(Webview)", ...args);
   });
 
-  const sub2 = broker.on("showMessage", async ({ msg, options }) => {
-    vscode.window.showInformationMessage(msg, options);
-  });
+  const sub2 = broker.on(
+    "showMessage",
+    async ({ msg, options }: { msg: string; options?: any }) => {
+      vscode.window.showInformationMessage(msg, options);
+    },
+  );
 
   const sub3 = broker.on("openLink", async ({ href }) => {
     vscode.env.openExternal(vscode.Uri.parse(href));
@@ -50,21 +65,14 @@ export async function registerCore(
       );
       return;
     }
-    const workspaceFolder = vscode.workspace.workspaceFolders[0];
-    vscode.tasks.executeTask(
-      new vscode.Task(
-        { type: "shell" }, // this is the same type as in tasks.json
-        workspaceFolder, // The workspace folder
-        "Firebase init", // how you name the task
-        "Firebase init", // Shows up as MyTask: name
-        new vscode.ShellExecution("firebase init"),
-      ),
-    );
+    const initCommand = currentProjectId.value
+      ? `${settings.firebasePath} init dataconnect --project ${currentProjectId.value}`
+      : `${settings.firebasePath} init dataconnect`;
+
+    initSpy.call("firebase init", initCommand, {focus: true});
   });
 
   const emulatorsController = new EmulatorsController(broker);
-  // Start the emulators when the extension starts.
-  emulatorsController.startEmulators();
 
   const openRcCmd = vscode.commands.registerCommand(
     "firebase.openFirebaseRc",
@@ -75,17 +83,30 @@ export async function registerCore(
     },
   );
 
+  registerConfig(context, broker);
+  const refreshCmd = vscode.commands.registerCommand(
+    "firebase.refresh",
+    async () => {
+      await vscode.commands.executeCommand("workbench.action.closeSidebar");
+      await vscode.commands.executeCommand(
+        "workbench.view.extension.firebase-data-connect",
+      );
+    },
+  );
+
   return [
     emulatorsController,
     Disposable.from(
       openRcCmd,
+      refreshCmd,
       emulatorsController,
+      initSpy,
       registerOptions(context),
-      registerConfig(broker),
       registerEnv(broker),
       registerUser(broker, telemetryLogger),
       registerProject(broker),
       registerQuickstart(broker),
+      await registerWebhooks(),
       { dispose: sub1 },
       { dispose: sub2 },
       { dispose: sub3 },

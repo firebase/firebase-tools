@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
-import { sync as rimraf } from "rimraf";
+import { rmSync } from "node:fs";
 import { expect } from "chai";
 
 import * as env from "./env";
@@ -301,7 +301,7 @@ FOO=foo
     });
 
     afterEach(() => {
-      rimraf(tmpdir);
+      rmSync(tmpdir, { recursive: true });
       expect(() => {
         fs.statSync(tmpdir);
       }).to.throw();
@@ -519,7 +519,7 @@ FOO=foo
     });
 
     afterEach(() => {
-      rimraf(tmpdir);
+      rmSync(tmpdir, { recursive: true });
       expect(() => {
         fs.statSync(tmpdir);
       }).to.throw();

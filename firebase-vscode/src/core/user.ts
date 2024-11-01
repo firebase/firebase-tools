@@ -6,10 +6,12 @@ import { ExtensionBrokerImpl } from "../extension-broker";
 import { login, logoutUser, requireAuthWrapper } from "../cli";
 import { globalSignal } from "../utils/globals";
 import { DATA_CONNECT_EVENT_NAME } from "../analytics";
+import * as vscode from "vscode";
+
 type User = ServiceAccountUser | AuthUser;
 
 /** Currently selected user */
-export const currentUser = globalSignal<User|null>(null);
+export const currentUser = globalSignal<User | null>(null);
 const isLoadingUser = new Signal<boolean>(false);
 
 export const isServiceAccount = computed(() => {
@@ -17,11 +19,30 @@ export const isServiceAccount = computed(() => {
 });
 
 export async function checkLogin() {
-    return await requireAuthWrapper();
+  return await requireAuthWrapper();
 }
 
-export function registerUser(broker: ExtensionBrokerImpl, telemetryLogger: TelemetryLogger): Disposable {
-  
+export function registerUser(
+  broker: ExtensionBrokerImpl,
+  telemetryLogger: TelemetryLogger,
+): Disposable {
+  // For testing purposes.
+  const userMockCommand = vscode.commands.registerCommand(
+    `fdc-graphql.mock.user`,
+    (user: User | null) => {
+      currentUser.value = user;
+      broker.send("notifyUserChanged", { user });
+    },
+  );
+
+  // For testing purposes.
+  const loadingUser = vscode.commands.registerCommand(
+    `fdc-graphql.user`,
+    () => {
+      return isLoadingUser.value;
+    },
+  );
+
   const notifyUserChangedSub = effect(() => {
     broker.send("notifyUserChanged", { user: currentUser.value });
   });
@@ -33,7 +54,7 @@ export function registerUser(broker: ExtensionBrokerImpl, telemetryLogger: Telem
   });
 
   const isLoadingSub = effect(() => {
-      broker.send("notifyIsLoadingUser", isLoadingUser.value);
+    broker.send("notifyIsLoadingUser", isLoadingUser.value);
   });
 
   const addUserSub = broker.on("addUser", async () => {
@@ -41,7 +62,6 @@ export function registerUser(broker: ExtensionBrokerImpl, telemetryLogger: Telem
     const { user } = await login();
     currentUser.value = user;
   });
-
 
   const logoutSub = broker.on("logout", async ({ email }) => {
     try {
@@ -58,5 +78,7 @@ export function registerUser(broker: ExtensionBrokerImpl, telemetryLogger: Telem
     { dispose: addUserSub },
     { dispose: logoutSub },
     { dispose: isLoadingSub },
+    userMockCommand,
+    loadingUser,
   );
 }

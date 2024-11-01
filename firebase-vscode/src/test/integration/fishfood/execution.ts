@@ -1,44 +1,83 @@
-import { browser } from "@wdio/globals";
-import { ExecutionPanel } from "../../utils/page_objects/execution";
-import { firebaseTest } from "../../utils/test_hooks";
+import { browser, expect } from "@wdio/globals";
+import {
+  ExecutionPanel,
+  HistoryItem,
+} from "../../utils/page_objects/execution";
+import { firebaseSuite, firebaseTest } from "../../utils/test_hooks";
 import { EditorView } from "../../utils/page_objects/editor";
-import { queriesPath } from "../../utils/projects";
+import { mockProject, mutationsPath, queriesPath } from "../../utils/projects";
 import { FirebaseCommands } from "../../utils/page_objects/commands";
+import { FirebaseSidebar } from "../../utils/page_objects/sidebar";
+import { mockUser } from "../../utils/user";
 
-firebaseTest("Can execute queries", async function () {
-  const workbench = await browser.getWorkbench();
-  const execution = new ExecutionPanel(workbench);
-  const editor = new EditorView(workbench);
-  const commands = new FirebaseCommands();
+firebaseSuite("Execution", async function () {
+  firebaseTest("should execute a query", async function () {
+    const workbench = await browser.getWorkbench();
 
-  await commands.waitEmulators();
+    const sidebar = new FirebaseSidebar(workbench);
+    await sidebar.openExtensionSidebar();
 
-  // Update arguments
-  await execution.open();
+    const commands = new FirebaseCommands();
+    await commands.waitForUser();
 
-  await execution.setVariables(`{
-  "id": "42"
-}`);
+    await mockUser({ email: "test@gmail.com" });
+    await mockProject("test-project");
 
-  // Execute query
-  await editor.openFile(queriesPath);
+    const execution = new ExecutionPanel(workbench);
+    const editor = new EditorView(workbench);
 
-  await editor.firstCodeLense.waitForDisplayed();
-  await editor.firstCodeLense.click();
+    await sidebar.startEmulators();
+    await commands.waitForEmulators();
 
-  // Check the history entry
-  // TODO - revert history and result view after test
-  const item = await execution.history.getSelectedItem();
+    // Update arguments
+    await execution.open();
+    await execution.setVariables(`{"id": "42", "content": "Hello, World!"}`);
 
-  // TODO this should work without opening the sidebar
-  // While the emulator correctly starts without, some leftover state
-  // still needs the sidebar.
-  expect(await item.getLabel()).toBe("getPost");
+    // Insert a post
+    await editor.openFile(mutationsPath);
+    await editor.runLocalButton.waitForDisplayed();
+    await editor.runLocalButton.click();
 
-  // Waiting for the execution to finish
-  browser.waitUntil(async () => {
-    (await item.getStatus()) === "success";
+    async function getExecutionStatus() {
+      let item = await execution.history.getSelectedItem();
+      let status = await item.getStatus();
+      while (status === "pending") {
+        await browser.pause(1000);
+        item = await execution.history.getSelectedItem();
+        status = await item.getStatus();
+      }
+
+      return item;
+    }
+
+    // Waiting for the execution to finish
+    let result = await getExecutionStatus();
+
+    expect(await result.getLabel()).toBe("createPost");
+
+    await execution.setVariables(`{"id": "42"}`);
+
+    // Execute query
+    await editor.openFile(queriesPath);
+    await editor.runLocalButton.waitForDisplayed();
+    await editor.runLocalButton.click();
+
+    // Waiting for the new history entry to appear
+    await browser.waitUntil(async () => {
+      const selectedItem = await execution.history.getSelectedItem();
+      return (await selectedItem.getLabel()) === "getPost";
+    });
+
+    // Check the history entry
+    const item2 = await execution.history.getSelectedItem();
+
+    // Waiting for the execution to finish
+    await browser.waitUntil(async () => {
+      const status = await item2.getStatus();
+      return status === "success";
+    });
+
+    expect(await item2.getLabel()).toBe("getPost");
+    expect(await item2.getDescription()).toHaveText('Arguments: {"id": "42"}');
   });
-
-  expect(await item.getDescription()).toContain('Arguments: { "id": "42" }');
 });

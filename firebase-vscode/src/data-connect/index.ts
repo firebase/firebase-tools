@@ -29,8 +29,9 @@ import { LanguageClient } from "vscode-languageclient/node";
 import { registerTerminalTasks } from "./terminal";
 import { registerWebview } from "../webview";
 
-import { DataConnectEmulatorController } from "./emulator";
+import { DataConnectToolkit } from "./toolkit";
 import { registerFdcSdkGeneration } from "./sdk-generation";
+import { registerDiagnostics } from "./diagnostics";
 
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
@@ -108,13 +109,7 @@ class CodeActionsProvider implements vscode.CodeActionProvider {
       return;
     }
 
-    for (const connectorResult of enclosingService.resolvedConnectors) {
-      const connector = connectorResult.tryReadValue;
-      if (!connector) {
-        // Parsing error in the connector, skip
-        continue;
-      }
-
+    for (const connector of enclosingService.resolvedConnectors) {
       results.push({
         title: `Move to "${connector.value.connectorId}"`,
         kind: vscode.CodeActionKind.Refactor,
@@ -140,10 +135,8 @@ export function registerFdc(
   emulatorController: EmulatorsController,
   telemetryLogger: TelemetryLogger,
 ): Disposable {
-  const fdcEmulatorsController = new DataConnectEmulatorController(
-    emulatorController,
-    broker,
-  );
+  registerDiagnostics(context, dataConnectConfigs);
+  const dataConnectToolkit = new DataConnectToolkit(broker);
 
   const codeActions = vscode.languages.registerCodeActionsProvider(
     [
@@ -156,13 +149,28 @@ export function registerFdc(
     },
   );
 
-  const fdcService = new FdcService(authService, emulatorController);
+  const fdcService = new FdcService(
+    authService,
+    dataConnectToolkit,
+    emulatorController,
+  );
+
+  // register codelens
   const operationCodeLensProvider = new OperationCodeLensProvider(
-    fdcEmulatorsController,
+    emulatorController,
   );
   const schemaCodeLensProvider = new SchemaCodeLensProvider(emulatorController);
   const configureSdkCodeLensProvider = new ConfigureSdkCodeLensProvider();
+  const refreshCommand = vscode.commands.registerCommand(
+    "refreshCodelens",
+    () => {
+      operationCodeLensProvider.refresh();
+      schemaCodeLensProvider.refresh();
+      configureSdkCodeLensProvider.refresh();
+    },
+  );
 
+  // activate FDC toolkit
   // activate language client/serer
   let client: LanguageClient;
   const lsOutputChannel: vscode.OutputChannel =
@@ -199,8 +207,10 @@ export function registerFdc(
     );
   });
 
+  registerDataConnectConfigs(context, broker);
+
   return Disposable.from(
-    fdcEmulatorsController,
+    dataConnectToolkit,
     codeActions,
     selectedProjectStatus,
     { dispose: sub1 },
@@ -212,14 +222,7 @@ export function registerFdc(
         selectedProjectStatus.show();
       }),
     },
-    registerDataConnectConfigs(broker),
-    registerExecution(
-      context,
-      broker,
-      fdcService,
-      emulatorController,
-      telemetryLogger,
-    ),
+    registerExecution(context, broker, fdcService, telemetryLogger),
     registerExplorer(context, broker, fdcService),
     registerWebview({ name: "data-connect", context, broker }),
     registerAdHoc(fdcService, telemetryLogger),
@@ -250,11 +253,10 @@ export function registerFdc(
       schemaCodeLensProvider,
     ),
     vscode.languages.registerCodeLensProvider(
-      [
-        { scheme: "file", language: "yaml", pattern: "**/connector.yaml" },
-      ],
+      [{ scheme: "file", language: "yaml", pattern: "**/connector.yaml" }],
       configureSdkCodeLensProvider,
     ),
+    refreshCommand,
     {
       dispose: () => {
         client.stop();

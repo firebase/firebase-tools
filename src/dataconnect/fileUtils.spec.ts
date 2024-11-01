@@ -1,7 +1,9 @@
-import { expect } from "chai";
-import { getPlatformFromFolder, generateSdkYaml } from "./fileUtils";
-import { ConnectorYaml, Platform } from "./types";
 import * as mockfs from "mock-fs";
+
+import { expect } from "chai";
+import { getPlatformFromFolder } from "./fileUtils";
+import { generateSdkYaml } from "../init/features/dataconnect/sdk";
+import { ConnectorYaml, Platform } from "./types";
 import FileSystem from "mock-fs/lib/filesystem";
 
 describe("getPlatformFromFolder", () => {
@@ -15,19 +17,19 @@ describe("getPlatformFromFolder", () => {
       desc: "Empty folder",
       folderName: "test/",
       folderItems: {},
-      output: Platform.UNDETERMINED,
+      output: Platform.NONE,
     },
     {
       desc: "Empty folder, long path name",
       folderName: "root/abcd/test/",
       folderItems: {},
-      output: Platform.UNDETERMINED,
+      output: Platform.NONE,
     },
     {
       desc: "folder w/ no identifier",
       folderName: "test/",
       folderItems: { file1: "contents", randomfile2: "my android contents" },
-      output: Platform.UNDETERMINED,
+      output: Platform.NONE,
     },
     {
       desc: "Web identifier 1",
@@ -86,6 +88,31 @@ describe("getPlatformFromFolder", () => {
       output: Platform.IOS,
     },
     {
+      desc: "Flutter identifier 1",
+      folderName: "is/this/a/dart/test",
+      folderItems: {
+        file1: "contents",
+        "pubspec.yaml": "my deps",
+      },
+      output: Platform.FLUTTER,
+    },
+    {
+      desc: "Flutter identifier 2",
+      folderName: "is/this/a/dart/test",
+      folderItems: {
+        "pubspec.lock": "my deps",
+      },
+      output: Platform.FLUTTER,
+    },
+    {
+      desc: "Flutter identifier with experiment disabled",
+      folderName: "is/this/a/dart/test",
+      folderItems: {
+        "pubspec.mispelled": "my deps",
+      },
+      output: Platform.NONE,
+    },
+    {
       desc: "multiple identifiers, returns undetermined",
       folderName: "test/",
       folderItems: {
@@ -93,7 +120,7 @@ describe("getPlatformFromFolder", () => {
         podfile: "cocoa pods yummy",
         "androidmanifest.xml": "file found second :(",
       },
-      output: Platform.UNDETERMINED,
+      output: Platform.MULTIPLE,
     },
   ];
   for (const c of cases) {
@@ -102,68 +129,254 @@ describe("getPlatformFromFolder", () => {
       const platform = await getPlatformFromFolder(c.folderName);
       expect(platform).to.equal(c.output);
     });
-    afterEach(() => {
-      mockfs.restore();
-    });
   }
+  afterEach(() => {
+    mockfs.restore();
+  });
 });
 
 describe("generateSdkYaml", () => {
   // Test Data
   const sampleConnectorYaml: ConnectorYaml = {
-    connectorId: "test_connector",
+    connectorId: "default",
     generate: {},
   };
-  const appFolder = "/my/app/folder";
-  const connectorYamlFolder = "/my/app/folder/connectors/";
+  const connectorYamlFolder = "/my/app/folder/connector";
 
-  it("should add JavaScript SDK generation for WEB platform", () => {
-    const modifiedYaml = generateSdkYaml(
-      Platform.WEB,
-      sampleConnectorYaml,
-      connectorYamlFolder,
-      appFolder,
-    );
-    expect(modifiedYaml.generate?.javascriptSdk).to.deep.equal({
-      outputDir: "../dataconnect-generated",
-      package: "@firebasegen/test_connector",
-      packageJsonDir: appFolder,
-    });
+  const appFolderBase = "/my/app/folder";
+  const appFolderDetectable = "/my/app/folder/detected";
+  const appFolderBelowConnector = "/my/app/folder/connector/belowConnector";
+  const appFolderOutside = "/my/app/outside";
+
+  describe("Web platform should add JavaScript SDK Generation", () => {
+    const cases: {
+      desc: string;
+      appDir: string;
+      output: any;
+    }[] = [
+      {
+        desc: "basic",
+        appDir: appFolderBase,
+        output: {
+          outputDir: "../dataconnect-generated/js/default-connector",
+          package: "@firebasegen/default-connector",
+          packageJsonDir: "..",
+        },
+      },
+      {
+        desc: "has package.json",
+        appDir: appFolderDetectable,
+        output: {
+          outputDir: "../detected/dataconnect-generated/js/default-connector",
+          package: "@firebasegen/default-connector",
+          packageJsonDir: "../detected",
+        },
+      },
+      {
+        desc: "below connector",
+        appDir: appFolderBelowConnector,
+        output: {
+          outputDir: "belowConnector/dataconnect-generated/js/default-connector",
+          package: "@firebasegen/default-connector",
+          packageJsonDir: "belowConnector",
+        },
+      },
+      {
+        desc: "outside",
+        appDir: appFolderOutside,
+        output: {
+          outputDir: "../../outside/dataconnect-generated/js/default-connector",
+          package: "@firebasegen/default-connector",
+          packageJsonDir: "../../outside",
+        },
+      },
+    ];
+    for (const c of cases) {
+      it(c.desc, () => {
+        mockfs({ [appFolderDetectable]: { ["package.json"]: "{}" } });
+        const modifiedYaml = generateSdkYaml(
+          Platform.WEB,
+          sampleConnectorYaml,
+          connectorYamlFolder,
+          c.appDir,
+        );
+        expect(modifiedYaml.generate?.javascriptSdk).to.deep.equal(c.output);
+      });
+    }
   });
 
-  it("should add Swift SDK generation for IOS platform", () => {
-    const modifiedYaml = generateSdkYaml(
-      Platform.IOS,
-      sampleConnectorYaml,
-      connectorYamlFolder,
-      appFolder,
-    );
-    expect(modifiedYaml.generate?.swiftSdk).to.deep.equal({
-      outputDir: "../dataconnect-generated",
-      package: "test_connector",
-    });
+  describe("IOS platform should add Swift SDK Generation", () => {
+    const cases: {
+      desc: string;
+      appDir: string;
+      output: any;
+    }[] = [
+      {
+        desc: "basic",
+        appDir: appFolderBase,
+        output: {
+          outputDir: "../dataconnect-generated/swift",
+          package: "DefaultConnector",
+        },
+      },
+      {
+        desc: "below connector",
+        appDir: appFolderBelowConnector,
+        output: {
+          outputDir: "belowConnector/dataconnect-generated/swift",
+          package: "DefaultConnector",
+        },
+      },
+      {
+        desc: "outside",
+        appDir: appFolderOutside,
+        output: {
+          outputDir: "../../outside/dataconnect-generated/swift",
+          package: "DefaultConnector",
+        },
+      },
+    ];
+    for (const c of cases) {
+      it(c.desc, () => {
+        const modifiedYaml = generateSdkYaml(
+          Platform.IOS,
+          sampleConnectorYaml,
+          connectorYamlFolder,
+          c.appDir,
+        );
+        expect(modifiedYaml.generate?.swiftSdk).to.deep.equal(c.output);
+      });
+    }
   });
 
-  it("should add Kotlin SDK generation for ANDROID platform", () => {
-    const modifiedYaml = generateSdkYaml(
-      Platform.ANDROID,
-      sampleConnectorYaml,
-      connectorYamlFolder,
-      appFolder,
-    );
-    expect(modifiedYaml.generate?.kotlinSdk).to.deep.equal({
-      outputDir: "../dataconnect-generated",
-      package: "connectors.test_connector",
-    });
+  describe("Android platform should add Kotlin SDK Generation", () => {
+    const appFolderHasJava = "/my/app/folder/has-java";
+    const appFolderHasKotlin = "/my/app/folder/has-kotlin";
+    const appFolderHasBoth = "/my/app/folder/has-both";
+    const cases: {
+      desc: string;
+      appDir: string;
+      output: any;
+    }[] = [
+      {
+        desc: "basic",
+        appDir: appFolderBase,
+        output: {
+          outputDir: "../dataconnect-generated/kotlin",
+          package: "connectors.default",
+        },
+      },
+      {
+        desc: "has java folder",
+        appDir: appFolderHasJava,
+        output: {
+          outputDir: "../has-java/app/src/main/java",
+          package: "connectors.default",
+        },
+      },
+      {
+        desc: "has kotlin folder",
+        appDir: appFolderHasKotlin,
+        output: {
+          outputDir: "../has-kotlin/app/src/main/kotlin",
+          package: "connectors.default",
+        },
+      },
+      {
+        desc: "prefer kotlin folder over java folder",
+        appDir: appFolderHasBoth,
+        output: {
+          outputDir: "../has-both/app/src/main/kotlin",
+          package: "connectors.default",
+        },
+      },
+      {
+        desc: "below connector",
+        appDir: appFolderBelowConnector,
+        output: {
+          outputDir: "belowConnector/dataconnect-generated/kotlin",
+          package: "connectors.default",
+        },
+      },
+      {
+        desc: "outside",
+        appDir: appFolderOutside,
+        output: {
+          outputDir: "../../outside/dataconnect-generated/kotlin",
+          package: "connectors.default",
+        },
+      },
+    ];
+    for (const c of cases) {
+      it(c.desc, () => {
+        mockfs({
+          [appFolderHasJava + "/app/src/main/java"]: {},
+          [appFolderHasKotlin + "/app/src/main/kotlin"]: {},
+          [appFolderHasBoth + "/app/src/main/java"]: {},
+          [appFolderHasBoth + "/app/src/main/kotlin"]: {},
+        });
+        const modifiedYaml = generateSdkYaml(
+          Platform.ANDROID,
+          sampleConnectorYaml,
+          connectorYamlFolder,
+          c.appDir,
+        );
+        expect(modifiedYaml.generate?.kotlinSdk).to.deep.equal(c.output);
+      });
+    }
+  });
+
+  describe("Flutter platform should add Dart SDK Generation", () => {
+    const cases: {
+      desc: string;
+      appDir: string;
+      output: any;
+    }[] = [
+      {
+        desc: "basic",
+        appDir: appFolderBase,
+        output: {
+          outputDir: "../dataconnect-generated/dart/default_connector",
+          package: "default_connector",
+        },
+      },
+      {
+        desc: "below connector",
+        appDir: appFolderBelowConnector,
+        output: {
+          outputDir: "belowConnector/dataconnect-generated/dart/default_connector",
+          package: "default_connector",
+        },
+      },
+      {
+        desc: "outside",
+        appDir: appFolderOutside,
+        output: {
+          outputDir: "../../outside/dataconnect-generated/dart/default_connector",
+          package: "default_connector",
+        },
+      },
+    ];
+    for (const c of cases) {
+      it(c.desc, () => {
+        const modifiedYaml = generateSdkYaml(
+          Platform.FLUTTER,
+          sampleConnectorYaml,
+          connectorYamlFolder,
+          c.appDir,
+        );
+        expect(modifiedYaml.generate?.dartSdk).to.deep.equal(c.output);
+      });
+    }
   });
 
   it("should create generate object if it doesn't exist", () => {
-    const yamlWithoutGenerate: ConnectorYaml = { connectorId: "test_connector" };
+    const yamlWithoutGenerate: ConnectorYaml = { connectorId: "default-connector" };
     const modifiedYaml = generateSdkYaml(
       Platform.WEB,
       yamlWithoutGenerate,
       connectorYamlFolder,
-      appFolder,
+      appFolderBase,
     );
     expect(modifiedYaml.generate).to.exist;
   });
@@ -174,34 +387,12 @@ describe("generateSdkYaml", () => {
       unknownPlatform,
       sampleConnectorYaml,
       connectorYamlFolder,
-      appFolder,
+      appFolderBase,
     );
     expect(modifiedYaml).to.deep.equal(sampleConnectorYaml); // No changes
   });
 
-  it("should handle relative paths", () => {
-    const sameFolder = "/my/app/folder/connectors";
-    const modifiedYaml1 = generateSdkYaml(
-      Platform.ANDROID,
-      sampleConnectorYaml,
-      connectorYamlFolder,
-      sameFolder,
-    );
-    expect(modifiedYaml1.generate?.kotlinSdk).to.deep.equal({
-      outputDir: "dataconnect-generated",
-      package: "connectors.test_connector",
-    });
-
-    const appFolderDown = "/my/app/folder/connectors/belowConnector";
-    const modifiedYaml2 = generateSdkYaml(
-      Platform.ANDROID,
-      sampleConnectorYaml,
-      connectorYamlFolder,
-      appFolderDown,
-    );
-    expect(modifiedYaml2.generate?.kotlinSdk).to.deep.equal({
-      outputDir: "belowConnector/dataconnect-generated",
-      package: "connectors.test_connector",
-    });
+  afterEach(() => {
+    mockfs.restore();
   });
 });

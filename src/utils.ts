@@ -15,7 +15,7 @@ import { Readable } from "stream";
 import * as winston from "winston";
 import { SPLAT } from "triple-beam";
 import { AssertionError } from "assert";
-const stripAnsi = require("strip-ansi");
+import { stripVTControlCharacters } from "node:util";
 import { getPortPromise as getPort } from "portfinder";
 
 import { configstore } from "./configstore";
@@ -508,7 +508,7 @@ export function setupLoggers() {
         level: "debug",
         format: winston.format.printf((info) => {
           const segments = [info.message, ...(info[SPLAT] || [])].map(tryStringify);
-          return `${stripAnsi(segments.join(" "))}`;
+          return `${stripVTControlCharacters(segments.join(" "))}`;
         }),
       }),
     );
@@ -915,5 +915,12 @@ export function readSecretValue(prompt: string, dataFile?: string): Promise<stri
   if (dataFile && dataFile !== "-") {
     input = dataFile;
   }
-  return Promise.resolve(fs.readFileSync(input, "utf-8"));
+  try {
+    return Promise.resolve(fs.readFileSync(input, "utf-8"));
+  } catch (e: any) {
+    if (e.code === "ENOENT") {
+      throw new FirebaseError(`File not found: ${input}`, { original: e });
+    }
+    throw e;
+  }
 }

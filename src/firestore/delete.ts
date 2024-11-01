@@ -426,6 +426,24 @@ export class FirestoreDelete {
 
             // Retry this batch
             queue.unshift(...toDelete);
+          } else if (
+            e.status === 429 &&
+            this.deleteBatchSize >= 10 &&
+            e.message.includes("database has exceeded their maximum bandwidth")
+          ) {
+            logger.debug("Database has exceeded maximum write bandwidth", e);
+            const newBatchSize = Math.floor(toDelete.length / 2);
+
+            if (newBatchSize < this.deleteBatchSize) {
+              utils.logLabeledWarning(
+                "firestore",
+                `delete rate exceeding maximum bandwidth, reducing batch size from ${this.deleteBatchSize} to ${newBatchSize}`,
+              );
+              this.setDeleteBatchSize(newBatchSize);
+            }
+
+            // Retry this batch
+            queue.unshift(...toDelete);
           } else if (e.status >= 500 && e.status < 600) {
             // For server errors, retry if the document has not yet been retried.
             logger.debug("Server error deleting doc batch", e);

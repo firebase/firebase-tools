@@ -57,6 +57,9 @@ import { HostingEmulator } from "./hostingEmulator";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { StorageEmulator } from "./storage";
 import { readFirebaseJson } from "../dataconnect/fileUtils";
+import { TasksEmulator } from "./tasksEmulator";
+import { AppHostingEmulator } from "./apphosting";
+import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
@@ -103,6 +106,7 @@ export async function cleanShutdown(): Promise<void> {
     "Shutting down emulators.",
   );
   await EmulatorRegistry.stopAll();
+  await sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_SHUTDOWN });
 }
 
 /**
@@ -115,6 +119,11 @@ export function filterEmulatorTargets(options: { only: string; config: any }): E
   targets = targets.filter((e) => {
     return options.config.has(e) || options.config.has(`emulators.${e}`);
   });
+
+  // Extensions may not be initialized but we can have SDK defined extensions
+  if (targets.includes(Emulators.FUNCTIONS) && !targets.includes(Emulators.EXTENSIONS)) {
+    targets.push(Emulators.EXTENSIONS);
+  }
 
   const onlyOptions: string = options.only;
   if (onlyOptions) {
@@ -343,11 +352,24 @@ export async function startAll(
   // the Functions emulator needs to start.
   let extensionEmulator: ExtensionsEmulator | undefined = undefined;
   if (shouldStart(options, Emulators.EXTENSIONS)) {
-    const projectNumber = isDemoProject
-      ? Constants.FAKE_PROJECT_NUMBER
-      : await needProjectNumber(options);
+    let projectNumber = Constants.FAKE_PROJECT_NUMBER;
+    if (!isDemoProject) {
+      try {
+        projectNumber = await needProjectNumber(options);
+      } catch (err: any) {
+        EmulatorLogger.forEmulator(Emulators.EXTENSIONS).logLabeled(
+          "ERROR",
+          Emulators.EXTENSIONS,
+          `Unable to look up project number for ${options.project}.\n` +
+            " If this is a real project, ensure that you are logged in and have access to it.\n" +
+            " If this is a fake project, please use a project ID starting with 'demo-' to skip production calls.\n" +
+            " Continuing with a fake project number - secrets and other features that require production access may behave unexpectedly.",
+        );
+      }
+    }
     const aliases = getAliases(options, projectId);
     extensionEmulator = new ExtensionsEmulator({
+      options,
       projectId,
       projectDir: options.config.projectDir,
       projectNumber,
@@ -355,10 +377,8 @@ export async function startAll(
       extensions: options.config.get("extensions"),
     });
     const extensionsBackends = await extensionEmulator.getExtensionBackends();
-    const filteredExtensionsBackends = extensionEmulator.filterUnemulatedTriggers(
-      options,
-      extensionsBackends,
-    );
+    const filteredExtensionsBackends =
+      extensionEmulator.filterUnemulatedTriggers(extensionsBackends);
     emulatableBackends.push(...filteredExtensionsBackends);
     trackGA4("extensions_emulated", {
       number_of_extensions_emulated: filteredExtensionsBackends.length,
@@ -371,11 +391,13 @@ export async function startAll(
     // If we already know we need Functions (and Eventarc), assign them now.
     listenConfig[Emulators.FUNCTIONS] = getListenConfig(options, Emulators.FUNCTIONS);
     listenConfig[Emulators.EVENTARC] = getListenConfig(options, Emulators.EVENTARC);
+    listenConfig[Emulators.TASKS] = getListenConfig(options, Emulators.TASKS);
   }
   for (const emulator of ALL_EMULATORS) {
     if (
       emulator === Emulators.FUNCTIONS ||
       emulator === Emulators.EVENTARC ||
+      emulator === Emulators.TASKS ||
       // Same port as Functions, no need for separate assignment
       emulator === Emulators.EXTENSIONS ||
       (emulator === Emulators.UI && !showUI)
@@ -395,6 +417,14 @@ export async function startAll(
           host: config.host,
           port: wsPortConfig || 9150,
           portFixed: !!wsPortConfig,
+        };
+      }
+      if (emulator === Emulators.DATACONNECT) {
+        const pglitePortConfig = options.config.src.emulators?.dataconnect?.postgresPort;
+        listenConfig["dataconnect.postgres"] = {
+          host: config.host,
+          port: pglitePortConfig || 5432,
+          portFixed: !!pglitePortConfig,
         };
       }
     }
@@ -527,12 +557,13 @@ export async function startAll(
   }
 
   if (emulatableBackends.length) {
-    if (!listenForEmulator.functions || !listenForEmulator.eventarc) {
+    if (!listenForEmulator.functions || !listenForEmulator.eventarc || !listenForEmulator.tasks) {
       // We did not know that we need Functions and Eventarc earlier but now we do.
       listenForEmulator = await resolveHostAndAssignPorts({
         ...listenForEmulator,
         functions: listenForEmulator.functions ?? getListenConfig(options, Emulators.FUNCTIONS),
         eventarc: listenForEmulator.eventarc ?? getListenConfig(options, Emulators.EVENTARC),
+        tasks: listenForEmulator.eventarc ?? getListenConfig(options, Emulators.TASKS),
       });
       hubLogger.log("DEBUG", "late-assigned ports for functions and eventarc emulators", {
         user: listenForEmulator,
@@ -579,6 +610,7 @@ export async function startAll(
       debugPort: inspectFunctions,
       verbosity: options.logVerbosity,
       projectAlias: options.projectAlias,
+      extensionsEmulator: extensionEmulator,
     });
     await startEmulator(functionsEmulator);
 
@@ -588,6 +620,14 @@ export async function startAll(
       port: eventarcAddr.port,
     });
     await startEmulator(eventarcEmulator);
+
+    const tasksAddr = legacyGetFirstAddr(Emulators.TASKS);
+    const tasksEmulator = new TasksEmulator({
+      host: tasksAddr.host,
+      port: tasksAddr.port,
+    });
+
+    await startEmulator(tasksEmulator);
   }
 
   if (listenForEmulator.firestore) {
@@ -838,6 +878,10 @@ export async function startAll(
       configDir,
       rc: options.rc,
       config: options.config,
+      autoconnectToPostgres: true,
+      postgresListen: listenForEmulator["dataconnect.postgres"],
+      enable_output_generated_sdk: true, // TODO: source from arguments
+      enable_output_schema_extensions: true,
     });
     await startEmulator(dataConnectEmulator);
   }
@@ -872,6 +916,28 @@ export async function startAll(
     });
 
     await startEmulator(hostingEmulator);
+  }
+
+  /**
+   * Similar to the Hosting emulator, the App Hosting emulator should also
+   * start after the other emulators. This is because the service running on
+   * app hosting emulator may depend on other emulators (i.e auth, firestore,
+   * storage, etc).
+   */
+  if (experiments.isEnabled("emulatorapphosting")) {
+    const apphostingConfig = options.config.src.emulators?.[Emulators.APPHOSTING];
+
+    if (listenForEmulator.apphosting) {
+      const apphostingAddr = legacyGetFirstAddr(Emulators.APPHOSTING);
+      const apphostingEmulator = new AppHostingEmulator({
+        host: apphostingAddr.host,
+        port: apphostingAddr.port,
+        startCommandOverride: apphostingConfig?.startCommandOverride,
+        options,
+      });
+
+      await startEmulator(apphostingEmulator);
+    }
   }
 
   if (listenForEmulator.logging) {

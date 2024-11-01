@@ -20,6 +20,7 @@ import SignalsListener = NodeJS.SignalsListener;
 const Table = require("cli-table");
 import { emulatorSession } from "../track";
 import { setEnvVarsForEmulators } from "./env";
+import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook";
 
 export const FLAG_ONLY = "--only <emulators>";
 export const DESC_ONLY =
@@ -460,12 +461,15 @@ export async function emulatorExec(script: string, options: any): Promise<void> 
     extraEnv[Constants.FIREBASE_GA_SESSION] = JSON.stringify(session);
   }
   let exitCode = 0;
-  let deprecationNotices;
+  let deprecationNotices: string[] = [];
   try {
     const showUI = !!options.ui;
     ({ deprecationNotices } = await controller.startAll(options, showUI, true));
+    await sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_STARTED });
     exitCode = await runScript(script, extraEnv);
     await controller.onExit(options);
+  } catch {
+    await sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_START_ERRORED });
   } finally {
     await controller.cleanShutdown();
   }
@@ -578,5 +582,5 @@ export async function checkJavaMajorVersion(): Promise<number> {
 
 export const MIN_SUPPORTED_JAVA_MAJOR_VERSION = 11;
 export const JAVA_DEPRECATION_WARNING =
-  "firebase-tools no longer supports Java version before 11. " +
-  "Please upgrade to Java version 11 or above to continue using the emulators.";
+  "firebase-tools no longer supports Java versions before 11. " +
+  "Please install a JDK at version 11 or above to get a compatible runtime.";
