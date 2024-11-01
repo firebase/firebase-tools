@@ -139,7 +139,6 @@ export interface Rollout {
   pauseTime: string;
   error?: Error;
   build: string;
-  stages?: RolloutStage[];
   displayName?: string;
   createTime: string;
   updateTime: string;
@@ -194,8 +193,6 @@ export type TrafficOutputOnlyFields =
   | "etag"
   | "uid"
   | "rolloutPolicy.disabledTime"
-  | "rolloutPolicy.stages.startTime"
-  | "rolloutPolicy.stages.endTime";
 
 assertImplements<TrafficOutputOnlyFields, RecursiveKeyOf<Traffic>>();
 
@@ -213,7 +210,6 @@ export interface RolloutPolicy {
   codebaseBranch?: string;
   codebaseTagPattern?: string;
   // end oneof trigger
-  stages?: RolloutStage[];
   disabled?: boolean;
 
   // TODO: This will be undefined if disabled is not true, right?
