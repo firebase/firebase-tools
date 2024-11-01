@@ -295,6 +295,13 @@ type GetInfoResponse = {
   }[];
 };
 
+export interface ErrorResponse {
+  error: {
+    message: string;
+    code?: string;
+  };
+}
+
 export class DataConnectEmulatorClient {
   private client: Client | undefined = undefined;
 
@@ -325,26 +332,26 @@ export class DataConnectEmulatorClient {
 
   public async configureTypes(
     types: Record<string, CustomType>
-  ): Promise<ClientResponse<void>> {
+  ): Promise<ClientResponse<void | ErrorResponse>> {
     if (!this.client) {
       this.client = EmulatorRegistry.client(Emulators.DATACONNECT);
     }
-    return this.client.post<Record<string, CustomType>, void>(
+    return this.client.post<Record<string, CustomType>, void | ErrorResponse>(
       "emulator/configure-types",
       types,
       {
-        resolveOnHTTPError: true // エラーレスポンスも処理する
+        resolveOnHTTPError: true
       }
     );
   }
 
   public async configureResolvers(
     resolvers: Record<string, string>
-  ): Promise<ClientResponse<void>> {
+  ): Promise<ClientResponse<void | ErrorResponse>> {
     if (!this.client) {
       this.client = EmulatorRegistry.client(Emulators.DATACONNECT);
     }
-    return this.client.post<Record<string, string>, void>(
+    return this.client.post<Record<string, string>, void | ErrorResponse>(
       "emulator/configure-resolvers",
       resolvers,
       {
