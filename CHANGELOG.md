@@ -1,2 +1,1 @@
-- Fix rollouts:create to handle backend regionality & other fixes. (#7862)
-- Fixed Next.js issue with PPR routes not rendering correctly. (#7625)
+- Added support for Next.js 15. (#7588)
