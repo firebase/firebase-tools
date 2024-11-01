@@ -192,7 +192,7 @@ export type TrafficOutputOnlyFields =
   | "updateTime"
   | "etag"
   | "uid"
-  | "rolloutPolicy.disabledTime"
+  | "rolloutPolicy.disabledTime";
 
 assertImplements<TrafficOutputOnlyFields, RecursiveKeyOf<Traffic>>();
 
