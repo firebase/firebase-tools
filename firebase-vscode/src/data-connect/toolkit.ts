@@ -6,10 +6,13 @@ import { dataConnectConfigs, firebaseConfig } from "./config";
 import { runEmulatorIssuesStream } from "./emulator-stream";
 import { runDataConnectCompiler } from "./core-compiler";
 import { DataConnectToolkitController } from "../../../src/emulator/dataconnectToolkitController";
-import { DataConnectEmulatorArgs } from "../emulator/dataconnectEmulator";
+import { DataConnectEmulatorArgs, DataConnectEmulatorClient, ErrorResponse } from "../../../src/emulator/dataconnectEmulator";
 import { Config } from "../config";
 import { RC } from "../rc";
 import { findOpenPort } from "../utils/port_utils";
+import { CustomType } from "../../../src/dataconnect/types";
+import { ClientResponse } from "../../../src/apiv2";
+import { FirebaseError } from "../../../src/error";
 
 const DEFAULT_PORT = 50001;
 /** FDC-specific emulator logic; Toolkit and emulator */
@@ -86,6 +89,32 @@ export class DataConnectToolkit implements vscode.Disposable {
       this.schemaReload,
     );
     runDataConnectCompiler(configs, this.getFDCToolkitURL());
+  }
+
+  /**
+   * Configures custom type definitions through the Data Connect emulator
+   */
+  public async configureTypes(
+    types: Record<string, CustomType>
+  ): Promise<ClientResponse<void | ErrorResponse>> {
+    if (!DataConnectToolkitController.isRunning) {
+      throw new FirebaseError("Data Connect emulator is not running");
+    }
+    const client = new DataConnectEmulatorClient();
+    return client.configureTypes(types);
+  }
+
+  /**
+   * Configures resolver functions through the Data Connect emulator
+   */
+  public async configureResolvers(
+    resolvers: Record<string, string>
+  ): Promise<ClientResponse<void | ErrorResponse>> {
+    if (!DataConnectToolkitController.isRunning) {
+      throw new FirebaseError("Data Connect emulator is not running");
+    }
+    const client = new DataConnectEmulatorClient();
+    return client.configureResolvers(resolvers);
   }
 
   dispose() {

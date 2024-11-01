@@ -1,8 +1,8 @@
 import fetch, { Response } from "node-fetch";
 import {
   ExecutionResult,
-  IntrospectionQuery,
   getIntrospectionQuery,
+  IntrospectionQuery,
 } from "graphql";
 import { assertExecutionResult } from "../../common/graphql";
 import { DataConnectError } from "../../common/error";
@@ -14,11 +14,12 @@ import { dataConnectConfigs } from "../data-connect/config";
 
 import { firebaseRC } from "../core/config";
 import {
+  DATACONNECT_API_VERSION,
   dataconnectDataplaneClient,
   executeGraphQL,
-  DATACONNECT_API_VERSION,
 } from "../../../src/dataconnect/dataplaneClient";
 import {
+  CustomType,
   ExecuteGraphqlRequest,
   ExecuteGraphqlResponse,
   ExecuteGraphqlResponseError,
@@ -28,6 +29,7 @@ import { Client, ClientResponse } from "../../../src/apiv2";
 import { InstanceType } from "./code-lens-provider";
 import { pluginLogger } from "../logger-wrapper";
 import { DataConnectToolkit } from "./toolkit";
+import { validateCustomTypes, validateResolvers } from "../../../src/dataconnect/validate";
 
 /**
  * DataConnect Emulator service
@@ -40,12 +42,12 @@ export class DataConnectService {
   ) {}
 
   async servicePath(
-    path: string
+    path: string,
   ): Promise<string | undefined> {
     const dataConnectConfigsValue = await firstWhereDefined(dataConnectConfigs);
     // TODO: avoid calling this here and in getApiServicePathByPath
-    const serviceId =
-      dataConnectConfigsValue?.tryReadValue?.findEnclosingServiceForPath(path)?.value.serviceId;
+    const serviceId = dataConnectConfigsValue?.tryReadValue
+      ?.findEnclosingServiceForPath(path)?.value.serviceId;
     const projectId = firebaseRC.value?.tryReadValue?.projects?.default;
 
     if (serviceId === undefined || projectId === undefined) {
@@ -87,8 +89,9 @@ export class DataConnectService {
     >,
   ): Promise<ExecutionResult> {
     if (!(response.status >= 200 && response.status < 300)) {
-      const errorResponse =
-        response as ClientResponse<ExecuteGraphqlResponseError>;
+      const errorResponse = response as ClientResponse<
+        ExecuteGraphqlResponseError
+      >;
       throw new DataConnectError(
         `Prod Request failed with status ${response.status}\nMessage ${errorResponse?.body?.error?.message}`,
       );
@@ -103,8 +106,9 @@ export class DataConnectService {
     >,
   ): Promise<ExecutionResult> {
     if (!(response.status >= 200 && response.status < 300)) {
-      const errorResponse =
-        response as ClientResponse<ExecuteGraphqlResponseError>;
+      const errorResponse = response as ClientResponse<
+        ExecuteGraphqlResponseError
+      >;
       throw new DataConnectError(
         `Emulator Request failed with status ${response.status}\nMessage ${errorResponse?.body?.error?.message}`,
       );
@@ -138,10 +142,9 @@ export class DataConnectService {
       return {};
     }
     return {
-      impersonate:
-        userMock.kind === UserMockKind.AUTHENTICATED
-          ? { authClaims: JSON.parse(userMock.claims) }
-          : { unauthenticated: true },
+      impersonate: userMock.kind === UserMockKind.AUTHENTICATED
+        ? { authClaims: JSON.parse(userMock.claims) }
+        : { unauthenticated: true },
     };
   }
 
@@ -254,6 +257,60 @@ export class DataConnectService {
     }
   }
 
+  /**
+   * Configure custom type definitions for the Data Connect service.
+   *
+   * @param types - Record of custom type definitions
+   * @throws {DataConnectError} If validation fails or the server returns an error
+   */
+  async configureCustomTypes(types: Record<string, CustomType>): Promise<void> {
+    const validationErrors = validateCustomTypes(types);
+    if (validationErrors.length > 0) {
+      throw new DataConnectError(
+        `Invalid custom type definitions:\n${
+          validationErrors.join("\n")
+        }`,
+      );
+    }
+
+    const response = await this.dataConnectToolkit.configureTypes(types);
+    if (response.status >= 400) {
+      throw new DataConnectError(
+        `Failed to configure custom types: ${
+          response?.body?.error?.message || "Unknown error"
+        }`,
+      );
+    }
+  }
+
+  /**
+   * Configure GraphQL resolvers for the Data Connect service.
+   *
+   * @param resolvers - Record of resolver functions
+   * @throws {DataConnectError} If validation fails or the server returns an error
+   */
+  async configureResolvers(resolvers: Record<string, string>): Promise<void> {
+    const validationErrors = validateResolvers(resolvers);
+    if (validationErrors.length > 0) {
+      throw new DataConnectError(
+        `Invalid resolver definitions:\n${
+          validationErrors.join("\n")
+        }`,
+      );
+    }
+
+    const response = await this.dataConnectToolkit.configureResolvers(
+      resolvers,
+    );
+    if (response.status >= 400) {
+      throw new DataConnectError(
+        `Failed to configure resolvers: ${
+          response?.body?.error?.message || "Unknown error"
+        }`,
+      );
+    }
+  }
+
   docsLink() {
     return this.dataConnectToolkit.getGeneratedDocsURL();
   }
@@ -265,9 +322,9 @@ function parseVariableString(variables: string): Record<string, any> {
   }
   try {
     return JSON.parse(variables);
-  } catch(e: any) {
+  } catch (e: any) {
     throw new Error(
-      "Unable to parse variables as JSON. Double check that that there are no unmatched braces or quotes, or unqouted keys in the variables pane."
+      "Unable to parse variables as JSON. Double check that that there are no unmatched braces or quotes, or unqouted keys in the variables pane.",
     );
   }
 }
