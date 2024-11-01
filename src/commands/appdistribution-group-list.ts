@@ -38,7 +38,7 @@ export const command = new Command("appdistribution:group:list")
 /**
  * Prints a table given a list of groups
  */
-export function printGroupsTable(groups: Group[]): void {
+function printGroupsTable(groups: Group[]): void {
   const tableHead = ["Group", "Display Name", "Tester Count", "Release Count", "Invite Link Count"];
 
   const table = new Table({
