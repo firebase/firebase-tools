@@ -1,1 +1,2 @@
 - Added support for Next.js 15. (#7588)
+- Added the appdistribution:group:list and appdistribution:testers:list commands.
