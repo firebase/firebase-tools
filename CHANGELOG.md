@@ -1,2 +1,0 @@
-- Fixes an error creating a rollout with App Hosting in the beta API (#7896)
-- Added support for Next.js 15. (#7588)
