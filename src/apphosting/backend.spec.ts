@@ -136,12 +136,6 @@ describe("apphosting setup functions", () => {
       expect(updateTrafficStub).to.be.calledWith(projectId, location, backendId, {
         rolloutPolicy: {
           codebaseBranch: "main",
-          stages: [
-            {
-              progression: "IMMEDIATE",
-              targetPercent: 100,
-            },
-          ],
         },
       });
     });

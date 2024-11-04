@@ -361,12 +361,6 @@ export async function setDefaultTrafficPolicy(
   const traffic: DeepOmit<apphosting.Traffic, apphosting.TrafficOutputOnlyFields | "name"> = {
     rolloutPolicy: {
       codebaseBranch: codebaseBranch,
-      stages: [
-        {
-          progression: "IMMEDIATE",
-          targetPercent: 100,
-        },
-      ],
     },
   };
   const op = await apphosting.updateTraffic(projectId, location, backendId, traffic);
