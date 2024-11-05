@@ -933,6 +933,7 @@ export async function startAll(
         host: apphostingAddr.host,
         port: apphostingAddr.port,
         startCommandOverride: apphostingConfig?.startCommandOverride,
+        rootDirectory: apphostingConfig?.rootDirectory,
         options,
       });
 

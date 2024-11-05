@@ -207,6 +207,7 @@ export type EmulatorsConfig = {
     host?: string;
     port?: number;
     startCommandOverride?: string;
+    rootDirectory?: string;
   };
   pubsub?: {
     host?: string;

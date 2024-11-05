@@ -6,6 +6,7 @@ interface AppHostingEmulatorArgs {
   port?: number;
   host?: string;
   startCommandOverride?: string;
+  rootDirectory?: string
 }
 
 /**
