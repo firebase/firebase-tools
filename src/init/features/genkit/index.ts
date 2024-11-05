@@ -18,6 +18,7 @@ import * as fs from "fs";
 import * as inquirer from "inquirer";
 import * as path from "path";
 import * as semver from "semver";
+import * as clc from "colorette";
 import { execFileSync } from "child_process";
 
 import { doSetup as functionsSetup } from "../functions";
@@ -93,7 +94,7 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
     logger.info();
   }
 
-  const projectDir: string = `${config.projectDir}/${setup.functions.source}`;
+  const projectDir = `${config.projectDir}/${setup.functions.source}`;
 
   const installType = await promptOnce({
     type: "list",
@@ -105,32 +106,40 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
   });
 
   try {
-    logger.info("Installing Genkit CLI");
+    logger.info(`Installing Genkit CLI version ${genkitInfo.genkitVersion}`);
     if (installType === "globally") {
-      await wrapSpawn("npm", ["install", "-g", `genkit@${genkitInfo.genkitVersion}`], projectDir);
+
       if (genkitInfo.useInit) {
+        await wrapSpawn("npm", ["install", "-g", `genkit@${genkitInfo.genkitVersion}`], projectDir);
         await wrapSpawn("genkit", ["init", "-p", "firebase"], projectDir);
         logger.info("Start the Genkit developer experience by running:");
         logger.info(`    cd ${setup.functions.source} && genkit start`);
       } else {
+        await wrapSpawn("npm", ["install", "-g", `genkit-cli@${genkitInfo.genkitVersion}`], projectDir);
         await genkitSetup(options, genkitInfo, projectDir);
         logger.info("Start the Genkit developer experience by running:");
         logger.info(`    cd ${setup.functions.source} && npm run genkit:start`);
       }
     } else {
-      await wrapSpawn(
-        "npm",
-        ["install", `genkit@${genkitInfo.genkitVersion}`, "--save-dev"],
-        projectDir,
-      );
       if (genkitInfo.useInit) {
+        await wrapSpawn(
+            "npm",
+            ["install", `genkit@${genkitInfo.genkitVersion}`, "--save-dev"],
+            projectDir,
+          );
         await wrapSpawn("npx", ["genkit", "init", "-p", "firebase"], projectDir);
         logger.info("Start the Genkit developer experience by running:");
         logger.info(`    cd ${setup.functions.source} && npx genkit start`);
       } else {
+        await wrapSpawn(
+            "npm",
+            ["install", `genkit-cli@${genkitInfo.genkitVersion}`, "--save-dev"],
+            projectDir,
+          );
         await genkitSetup(options, genkitInfo, projectDir);
         logger.info("Start the Genkit developer experience by running:");
-        logger.info(`    cd ${setup.functions.source} && npm run genkit:start`);
+        logger.info();
+        logger.info(clc.bold(clc.green(`    cd ${setup.functions.source} && npm run genkit:start`)));
       }
     }
   } catch (e) {
