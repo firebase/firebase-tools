@@ -1,0 +1,1 @@
+- Fixes an issue where Cloud resource location wasn't set during `firebase init`
