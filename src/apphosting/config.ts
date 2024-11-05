@@ -8,6 +8,8 @@ import * as prompt from "../prompt";
 import * as dialogs from "./secrets/dialogs";
 import { AppHostingYamlConfig } from "./yaml";
 import { FirebaseError } from "../error";
+import { detectProjectRoot } from "../detectProjectRoot";
+import { logWarning } from "../utils";
 
 export const APPHOSTING_BASE_YAML_FILE = "apphosting.yaml";
 export const APPHOSTING_LOCAL_YAML_FILE = "apphosting.local.yaml";
@@ -39,40 +41,34 @@ export interface Config {
 }
 
 /**
- * Finds the project root for apphosting backends.
- * Starts with cwd and walks up the path until an apphosting.yaml file is found
+ * Finds the project root for apphosting backends. Returns backendRootDirectory
+ * relative to project root (wherever 'firebase.json' file is found).
+ *
+ * Returns null if backend root cannot be found
  *
  * Example path that's returned: "/home/my-project"
  */
-export function discoverBackendRoot(cwd: string): string | null {
-  let dir = cwd;
-
-  while (!fs.fileExistsSync(resolve(dir, APPHOSTING_BASE_YAML_FILE))) {
-    // We've hit project root
-    if (fs.fileExistsSync(resolve(dir, "firebase.json"))) {
-      return null;
-    }
-
-    const parent = dirname(dir);
-    // We've hit the filesystem root
-    if (parent === dir) {
-      return null;
-    }
-    dir = parent;
+export function discoverBackendRoot(cwd: string, backendRootDirectory?: string): string | null {
+  const projectRoot = detectProjectRoot({ cwd });
+  if (!projectRoot) {
+    return null;
   }
 
-  return dir;
+  if (backendRootDirectory) {
+    return resolve(projectRoot, backendRootDirectory);
+  }
+
+  return projectRoot;
 }
 
 /**
  * Lists absolute paths for `apphosting.*.yaml` configs at backend root
  */
-export function discoverConfigsAtBackendRoot(cwd: string): string[] {
-  const backendRoot = discoverBackendRoot(cwd);
+export function discoverConfigsAtBackendRoot(cwd: string, backendRootDirectory: string): string[] {
+  const backendRoot = discoverBackendRoot(cwd, backendRootDirectory);
   if (!backendRoot) {
-    throw new FirebaseError(
-      "Unable to find your project's root, ensure the apphosting.yaml config is initialized. Try 'firebase init apphosting'",
-    );
+    logWarning("Unable to find your project's root, using current working directory.");
+    return listAppHostingFilesInPath(cwd);
   }
 
   return listAppHostingFilesInPath(backendRoot);
