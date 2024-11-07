@@ -1,7 +1,11 @@
 ## NEXT
-
-- [Added] Persist FIREBASE_BINARY env variable to settings.
 - [Fixed] Fixed an issue where Add data and Read data would generate operations in the wrong folder
+
+## 0.10.6
+
+- Updated internal firebase-tools dependency to 13.23.1
+- [Added] Persist FIREBASE_BINARY env variable to settings.
+- [Fixed] Fixed an issue where .firebaserc was being overwritten by the extension (#7861)
 
 ## 0.10.5
 

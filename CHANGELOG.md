@@ -1,1 +1,1 @@
-- Added support for Next.js 15. (#7588)
+- Bump the Firebase Data Connect local toolkit to v1.6.1, which fixes the `OrderDirection` enum with `Optional` types in Dart codegen and adds `@ExperimentalFirebaseDataConnect` annotations in Kotlin codegen to avoid compiler warnings. (#7912)

@@ -96,6 +96,7 @@ export function registerTerminalTasks(
 
   return Disposable.from(
     { dispose: loginTaskBroker },
+    { dispose: startEmulatorsTaskBroker },
     vscode.commands.registerCommand(
       "firebase.dataConnect.runTerminalTask",
       (taskName, command) => {

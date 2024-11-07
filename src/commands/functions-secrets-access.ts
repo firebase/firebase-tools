@@ -5,6 +5,7 @@ import { needProjectId } from "../projectUtils";
 import { accessSecretVersion } from "../gcp/secretManager";
 import { requireAuth } from "../requireAuth";
 import * as secretManager from "../gcp/secretManager";
+import { getSecretNameParts } from "../apphosting/secrets";
 
 export const command = new Command("functions:secrets:access <KEY>[@version]")
   .description(
@@ -14,10 +15,8 @@ export const command = new Command("functions:secrets:access <KEY>[@version]")
   .before(secretManager.ensureApi)
   .action(async (key: string, options: Options) => {
     const projectId = needProjectId(options);
-    let [name, version] = key.split("@");
-    if (!version) {
-      version = "latest";
-    }
+    const [name, version] = getSecretNameParts(key);
+
     const value = await accessSecretVersion(projectId, name, version);
     logger.info(value);
   });
