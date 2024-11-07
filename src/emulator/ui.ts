@@ -18,7 +18,7 @@ export interface EmulatorUIOptions {
 
 export class EmulatorUI implements EmulatorInstance {
 
-  private destroyServer?: () => Promise<void>;
+  private destroyers = new Set<() => Promise<void>>();
   constructor(private args: EmulatorUIOptions) { }
 
   async start(): Promise<void> {
@@ -38,26 +38,28 @@ export class EmulatorUI implements EmulatorInstance {
     const downloadDetails = downloadableEmulators.DownloadDetails[Emulators.UI]; // FIXME Question: use getDownloadDetails to re-use path override? idk
     await downloadableEmulators.downloadIfNecessary(Emulators.UI);
 
-    const server = await createApp(
+    const servers = await createApp(
       downloadDetails.unzipDir!!,
       projectId,
       EmulatorRegistry.url(Emulators.HUB).host,
       emulatorSession(),
       ExpressBasedEmulator.listenOptionsFromSpecs(this.args.listen),
       enabledExperiments);
-      this.destroyServer = createDestroyer(server);
-
+      servers.forEach((server) => {
+        this.destroyers.add(createDestroyer(server));
+      });
   }
 
   connect(): Promise<void> {
     return Promise.resolve();
   }
 
-  stop(): Promise<void> {
-    if (this.destroyServer) {
-      return this.destroyServer();
+  async stop(): Promise<void> {
+    const promises = [];
+    for (const destroyer of this.destroyers) {
+      promises.push(destroyer().then(() => this.destroyers.delete(destroyer)));
     }
-    return Promise.resolve();
+    await Promise.all(promises);
   }
 
   getInfo(): EmulatorInfo {

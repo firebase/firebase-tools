@@ -14,15 +14,17 @@
  * limitations under the License.
  */
 
-import { createServer } from 'http';
-import type { ListenOptions } from 'net';
-import * as path from 'path';
+import * as http from "http";
+import type { ListenOptions } from "net";
+import * as path from "path";
 
 import * as express from "express";
-import fetch from 'node-fetch';
+import fetch from "node-fetch";
 import { AnalyticsSession } from "../../track";
 import { ExperimentName } from "../../experiments";
-import * as http from "http";
+import { FirebaseError } from "../../error";
+import { EmulatorLogger } from "../emulatorLogger";
+import { Emulators } from "../types";
 
 /*
   This file defines Node.js server-side logic for the Emulator UI.
@@ -37,7 +39,7 @@ export async function createApp(
   hubHost: string,
   emulatorGaSession: AnalyticsSession | undefined,
   listenOptions: ListenOptions[],
-  experiments: Array<ExperimentName>): Promise<http.Server> {
+  experiments: Array<ExperimentName>): Promise<http.Server[]> {
 
   const app = express();
   // Exposes the host and port of various emulators to facilitate accessing
@@ -75,26 +77,25 @@ export async function createApp(
   });
 
   if (listenOptions.length == 0) {
-    console.error(`Failed to start UI server, listenOptions empty`);
-    process.exit(1);
+    throw new FirebaseError("Failed to start UI server, listenOptions empty");
   }
-  var server = null;
+  var servers : http.Server[] = [];
   for (const opts of listenOptions) {
-    server = createServer(app).listen(opts);
+    var server = http.createServer(app).listen(opts)
+    servers.push(server);
     server.once('listening', () => {
-      console.log(`Web / API server started at ${opts.host}:${opts.port}`);
+      EmulatorLogger.forEmulator(Emulators.UI).log("DEBUG", `Web / API server started at ${opts.host}:${opts.port}`);
     });
     server.once('error', (err) => {
-      console.error(`Failed to start server at ${opts.host}:${opts.port}`);
-      console.error(err);
+      EmulatorLogger.forEmulator(Emulators.UI).log("ERROR", `Failed to start server at ${opts.host}:${opts.port}. ${err}`);
       if (opts === listenOptions[0]) {
         // If we failed to listen on the primary address, surface the error.
-        process.exit(1);
+        throw new FirebaseError(`Failed to start server for the primary address at ${opts.host}:${opts.port}`);
       }
     });
   }
 
-  return server!!
+  return servers
 }
 
 function jsonHandler(
@@ -106,7 +107,7 @@ function jsonHandler(
         res.status(200).json(body);
       },
       (err) => {
-        console.error(err);
+        EmulatorLogger.forEmulator(Emulators.UI).log("ERROR", err);
         res.status(500).json({
           message: err.message,
           stack: err.stack,
