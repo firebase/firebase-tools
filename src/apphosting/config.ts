@@ -87,7 +87,9 @@ export function discoverBackendRoot(
 export function discoverConfigsAtBackendRoot(cwd: string, rootDir?: string): string[] {
   const backendRoot = discoverBackendRoot(cwd, rootDir);
   if (!backendRoot) {
-    logWarning("Unable to find your project's root, using current working directory.");
+    logWarning(
+      "Unable to find your project's root, listing App Hosting config files in current working directory.",
+    );
     return listAppHostingFilesInPath(cwd);
   }
 

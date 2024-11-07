@@ -21,6 +21,13 @@ describe("config", () => {
       sinon.verifyAndRestore();
     });
 
+    it("returns backend root relative to project root", () => {
+      fs.fileExistsSync.withArgs("/project-root/firebase.json").returns(true);
+      expect(config.discoverBackendRoot("/project-root", "./backend-root")).equals(
+        "/project-root/backend-root",
+      );
+    });
+
     it("finds apphosting.yaml at cwd", () => {
       fs.fileExistsSync.withArgs("/cwd/apphosting.yaml").returns(true);
       expect(config.discoverBackendRoot("/cwd")).equals("/cwd");
