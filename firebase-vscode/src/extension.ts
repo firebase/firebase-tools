@@ -89,9 +89,15 @@ async function checkCLIInstallation(): Promise<void> {
       "latest"
     ];
     const env = { ...process.env, VSCODE_CWD: "" };
-    const versionRes = spawnSync("firebase", ["--version"], { env });
+    const versionRes = spawnSync("firebase", ["--version"], {
+      env,
+      shell: process.platform === "win32",
+    });
     const currentVersion = semver.valid(versionRes.stdout?.toString());
-    const npmVersionRes = spawnSync("npm", ["--version"]);
+    const npmVersionRes = spawnSync("npm", ["--version"], {
+      env,
+      shell: process.platform === "win32",
+    });
     const npmVersion = semver.valid(npmVersionRes.stdout?.toString());
     if (!currentVersion) {
       message = `The Firebase CLI is not installed (or not available on $PATH). If you would like to install it, run ${
