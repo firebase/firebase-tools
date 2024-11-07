@@ -7,7 +7,6 @@ import { NodeType } from "yaml/dist/nodes/Node";
 import * as prompt from "../prompt";
 import * as dialogs from "./secrets/dialogs";
 import { AppHostingYamlConfig } from "./yaml";
-import { FirebaseError } from "../error";
 import { detectProjectRoot } from "../detectProjectRoot";
 import { logWarning } from "../utils";
 

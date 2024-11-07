@@ -11,7 +11,6 @@ import { spawnWithCommandString, wrapSpawn } from "../../init/spawn";
 import { logger } from "./utils";
 import { Emulators } from "../types";
 import { getLocalAppHostingConfiguration } from "./config";
-import { left } from "inquirer/lib/utils/readline";
 import { resolve } from "path";
 
 interface StartOptions {
@@ -44,7 +43,7 @@ async function serve(
   startCommand?: string,
   backendRelativeDir?: string,
 ): Promise<void> {
-  let rootDir = process.cwd();
+  const rootDir = process.cwd();
   backendRelativeDir = backendRelativeDir ?? "./";
 
   const apphostingLocalConfig = await getLocalAppHostingConfiguration(rootDir, backendRelativeDir);
@@ -59,7 +58,7 @@ async function serve(
     PORT: port.toString(),
   };
 
-  let backendRootDir = resolve(rootDir, backendRelativeDir);
+  const backendRootDir = resolve(rootDir, backendRelativeDir);
   if (startCommand) {
     logger.logLabeled(
       "BULLET",
