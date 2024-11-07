@@ -1,6 +1,8 @@
 ## NEXT
 
 - [Fixed] Fixed an issue where the toolkit wouldn't start with misconfigured configs
+- [Fixed] Fixed an issue where Add data and Read data would generate operations in the wrong folder
+- [Fixed] Fixed an issue where firebase version check produced false positives on Windows (#7910)
 
 ## 0.10.6
 
