@@ -41,31 +41,52 @@ export interface Config {
 }
 
 /**
- * Finds the project root for apphosting backends. Returns backendRootDirectory
- * relative to project root (wherever 'firebase.json' file is found).
+ * Returns the absolute path for an app hosting backend root.
  *
- * Returns null if backend root cannot be found
+ * If backendRootRelativeToProjectRoot is provided then this function will
+ * try to return the absolute path of the backend root
  *
- * Example path that's returned: "/home/my-project"
+ * Otherwise backend root will be determined by looking for an apphosting.yaml
+ * file.
  */
-export function discoverBackendRoot(cwd: string, backendRootDirectory?: string): string | null {
-  const projectRoot = detectProjectRoot({ cwd });
-  if (!projectRoot) {
-    return null;
+export function discoverBackendRoot(
+  cwd: string,
+  backendRootRelativeToProjectRoot?: string,
+): string | null {
+  if (backendRootRelativeToProjectRoot) {
+    const projectRoot = detectProjectRoot({ cwd });
+    if (!projectRoot) {
+      return null;
+    }
+
+    return resolve(projectRoot, backendRootRelativeToProjectRoot);
   }
 
-  if (backendRootDirectory) {
-    return resolve(projectRoot, backendRootDirectory);
+  // Look for an apphosting.yaml to find backend root
+  let dir = cwd;
+
+  while (!fs.fileExistsSync(resolve(dir, APPHOSTING_BASE_YAML_FILE))) {
+    // We've hit project root
+    if (fs.fileExistsSync(resolve(dir, "firebase.json"))) {
+      return null;
+    }
+
+    const parent = dirname(dir);
+    // We've hit the filesystem root
+    if (parent === dir) {
+      return null;
+    }
+    dir = parent;
   }
 
-  return projectRoot;
+  return dir;
 }
 
 /**
  * Lists absolute paths for `apphosting.*.yaml` configs at backend root
  */
-export function discoverConfigsAtBackendRoot(cwd: string, backendRootDirectory: string): string[] {
-  const backendRoot = discoverBackendRoot(cwd, backendRootDirectory);
+export function discoverConfigsAtBackendRoot(cwd: string, rootDir?: string): string[] {
+  const backendRoot = discoverBackendRoot(cwd, rootDir);
   if (!backendRoot) {
     logWarning("Unable to find your project's root, using current working directory.");
     return listAppHostingFilesInPath(cwd);
