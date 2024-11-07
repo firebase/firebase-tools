@@ -1,5 +1,5 @@
 /**
- * Copyright 2022 Google LLC
+ * Copyright 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,9 @@ import * as http from "http";
 /*
   This file defines Node.js server-side logic for the Emulator UI.
 
-  It is a facsimile class of the local server in firebase-tools-ui/server.ts.
+  It is a facsimile class of the local server in firebase-tools-ui/server.ts. For that reason, 
+  values that were previously environment variables are passed in rather than fetched/derived 
+  in the class itself.
 */
 export async function createApp(
   zipDirPath: string,
@@ -72,11 +74,11 @@ export async function createApp(
     res.sendFile(path.join(webDir, 'index.html'));
   });
 
-  if(listenOptions.length == 0) {
+  if (listenOptions.length == 0) {
     console.error(`Failed to start UI server, listenOptions empty`);
     process.exit(1);
   }
-  var server =  null;
+  var server = null;
   for (const opts of listenOptions) {
     server = createServer(app).listen(opts);
     server.once('listening', () => {
