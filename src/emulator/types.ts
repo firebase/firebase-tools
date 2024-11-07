@@ -27,6 +27,7 @@ export type DownloadableEmulators =
   | Emulators.UI
   | Emulators.STORAGE
   | Emulators.DATACONNECT;
+
 export const DOWNLOADABLE_EMULATORS = [
   Emulators.FIRESTORE,
   Emulators.DATABASE,

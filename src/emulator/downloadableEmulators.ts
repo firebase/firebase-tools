@@ -280,9 +280,9 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     joinArgs: true,
     shell: true,
   },
-  ui: { // FIXME
-    binary: "node",
-    args: [getExecPath(Emulators.UI)],
+  ui: {
+    binary: "",
+    args: [],
     optionalArgs: [],
     joinArgs: false,
     shell: false,

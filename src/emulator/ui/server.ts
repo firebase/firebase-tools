@@ -27,16 +27,8 @@ import * as http from "http";
 /*
   This file defines Node.js server-side logic for the Emulator UI.
 
-  During development, the express app is loaded into the Vite dev server
-  (configured via ./vite.config.ts) and exposes the /api/* endpoints below.
-
-  For production, this file serves as an entry point and runs additional logic
-  (see `import.meta.env.PROD` below) to start the server on a port which serves
-  static assets in addition to APIs.
-
-  This file may NOT import any front-end code or types from src/.
+  It is a facsimile class of the local server in firebase-tools-ui/server.ts.
 */
-// FIXME note that this is a facsimile class, and some items are passed in rather than fetched on purpose to keep logic similar to the local instance.
 export async function createApp(
   zipDirPath: string,
   projectId: string,
