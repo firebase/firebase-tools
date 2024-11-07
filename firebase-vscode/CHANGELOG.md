@@ -1,5 +1,7 @@
 ## NEXT
 
+- [Fixed] Fixed an issue where Add data and Read data would generate operations in the wrong folder
+
 ## 0.10.6
 
 - Updated internal firebase-tools dependency to 13.23.1
